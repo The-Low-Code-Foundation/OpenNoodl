@@ -33,15 +33,29 @@ interface ComponentExportData {
  * One authored component: its node models, connections, roots and own ports. Published as
  * {@link ComponentModelLike} in `@noodl/types`; this is its implementation.
  *
- * `nodes` is declared — and published — as an array, but it is used as an id-keyed
- * dictionary throughout (`this.nodes[node.id] = node` with GUID ids), so its *elements*
- * are almost never populated. `getAllNodes` works because `Object.values` returns
- * string-keyed properties too. See the DEFECT note in `reset` for where the distinction
- * bites.
+ * ⚠️ **`nodes` is a NULL-PROTOTYPE dictionary, and that is load-bearing.** It used to be
+ * `[]` — an array used as an id-keyed map (`this.nodes[node.id] = node`), which is fine
+ * for GUID ids and fatal for authored ones. `collection.ts` installs the collection
+ * vocabulary directly on `Array.prototype` — `add`, `get`, `set`, `size`, `each`,
+ * `contains`, `notify`, `getId` — as `writable: false`, plus the accessors `items` and
+ * `id`. Every source file here is a module, so assigning to a non-writable inherited
+ * property **throws**: one node called `add` threw
+ * `Cannot assign to read only property 'add'` out of `addNode`, the component never
+ * finished importing, and the only thing the user ever saw was
+ * `Can't find component model for …` — from the *next* caller, naming a component whose
+ * real failure nothing had reported. Every function sharing that bundle went with it.
+ *
+ * A dictionary with no prototype closes the whole class rather than the one name: `add`,
+ * `length`, `constructor`, `toString`, `hasOwnProperty` and `__proto__` are ordinary keys
+ * on an object that inherits nothing. It must therefore never be given a prototype again
+ * (`{}` is not equivalent — `__proto__` and `hasOwnProperty` are still special there), and
+ * nothing may call an array or object method *on* it: use `Object.keys`/`Object.values`,
+ * which is what every reader here already does.
  */
 interface ComponentModel extends ComponentModelLike {
   name: string;
-  nodes: NodeModel[];
+  /** Id-keyed, and prototypeless — see the class note above. */
+  nodes: Record<string, NodeModel>;
   connections: Connection[];
   roots: string[];
   inputPorts: Record<string, GraphPortModel>;
@@ -89,7 +103,9 @@ const ComponentModel = function ComponentModel(this: ComponentModel, name: strin
   EventSender.call(this);
 
   this.name = name;
-  this.nodes = [];
+  // Prototypeless on purpose — see the class note. `{}` would still lose a node whose id
+  // is `__proto__` and break every `hasOwnProperty` call on one called `hasOwnProperty`.
+  this.nodes = Object.create(null);
   this.connections = [];
   this.roots = [];
   this.inputPorts = {};
@@ -403,24 +419,28 @@ ComponentModel.prototype.reset = async function (this: ComponentModel) {
   }
 
   /**
-   * DEFECT (PLAT-003 NOTES §31), left verbatim: this loop can never remove anything.
-   * `nodes` is an array used as an id-keyed dictionary, so `for…of` yields its *elements*
-   * — none at all under GUID ids (the dictionary entries are not elements), or the node
-   * objects themselves under numeric ids — never the id strings `hasNodeWithId` expects.
-   * The comment below says `Object.keys(this.nodes)` runs this loop; the code does not.
-   * Only roots and their descendants are actually removed by a reset.
+   * PLAT-003 NOTES §31 recorded this loop as a DEFECT and left it verbatim: `nodes` was an
+   * array used as an id-keyed dictionary, so `for…of` yielded its *elements* — none at all
+   * under GUID ids — and the loop could never remove anything. Only roots and their
+   * descendants were actually removed by a reset.
+   *
+   * Now that `nodes` is a plain dictionary the loop does what its own comment always said
+   * it did, and both guards below became reachable. In practice it still removes nothing:
+   * every node an editor exports is under a root, so the roots loop above has already
+   * emptied the dictionary. What changed is that a component with an orphan node now
+   * resets cleanly instead of leaving a node — and its connections — behind.
    */
-  for (const id of this.nodes) {
+  for (const id of Object.keys(this.nodes)) {
     //note: with an incomplete library there will be no roots
     //so some of the nodes will have children, which will be recursively removed by
     //removeNodeWithId(), so some IDs from the Object.keys(this.nodes) that runs this loop
     //will already have been removed, so check if they exist before removing
-    if (this.hasNodeWithId(id as unknown as string)) {
-      await this.removeNodeWithId(id as unknown as string);
+    if (this.hasNodeWithId(id)) {
+      await this.removeNodeWithId(id);
     }
   }
 
-  if (this.nodes.length > 0) {
+  if (Object.keys(this.nodes).length > 0) {
     throw new Error('Not all nodes were removed during a reset');
   }
 

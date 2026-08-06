@@ -28,6 +28,24 @@ type ScopedNode = RuntimeNode & {
 /** How far an event travels from the scope that sent it. */
 type EventPropagation = 'parent' | 'children' | 'siblings' | null | undefined;
 
+/**
+ * Is `id` a key of this id-keyed map?
+ *
+ * ⚠️ **Not `map.hasOwnProperty(id)`, and not by taste.** The maps below are keyed by
+ * *authored* node ids, and are created with `Object.create(null)` so that an id which
+ * collides with a built-in name — `__proto__`, `constructor`, `toString`,
+ * `hasOwnProperty` itself — is an ordinary key instead of a trap. The whole reason for
+ * that is the `Array.prototype` version of the same bug one layer up, where a node called
+ * `add` failed a component's import and surfaced as `Can't find component model`; a `{}`
+ * here would still swallow a node called `__proto__` (the assignment sets the prototype)
+ * and a call to `.hasOwnProperty` on a map that has one would not even be a function.
+ * Prototypeless maps have no `hasOwnProperty` to call, which is exactly why this helper
+ * exists rather than a call on the object.
+ */
+function hasNode(map: Record<string, ScopedNode>, id: string): boolean {
+  return Object.prototype.hasOwnProperty.call(map, id);
+}
+
 interface NodeScope {
   context: RuntimeNodeContext;
   nodes: Record<string, ScopedNode>;
@@ -98,9 +116,10 @@ interface NodeScopeConstructor {
  */
 const NodeScope = function NodeScope(this: NodeScope, context: RuntimeNodeContext, componentOwner?: any) {
   this.context = context;
-  this.nodes = {};
+  // Both maps are keyed by authored node ids, so both are prototypeless — see `hasNode`.
+  this.nodes = Object.create(null);
   this.componentOwner = componentOwner; //Component Instance that owns this NodeScope
-  this.componentInstanceChildren = {};
+  this.componentInstanceChildren = Object.create(null);
 } as unknown as NodeScopeConstructor;
 
 function verifyData(data: Record<string, unknown>, requiredKeys: string[]) {
@@ -242,20 +261,20 @@ NodeScope.prototype.insertNodeInTree = function (nodeInstance, nodeModel) {
 };
 
 NodeScope.prototype.getNodeWithId = function (id) {
-  if (this.nodes.hasOwnProperty(id) === false) {
+  if (hasNode(this.nodes, id) === false) {
     throw new Error('Unknown node id ' + id);
   }
   return this.nodes[id];
 };
 
 NodeScope.prototype.hasNodeWithId = function (id) {
-  return this.nodes.hasOwnProperty(id);
+  return hasNode(this.nodes, id);
 };
 
 NodeScope.prototype.createPrimitiveNode = function (name, id, extraProps) {
   if (!id) id = guid();
 
-  if (this.nodes.hasOwnProperty(id)) {
+  if (hasNode(this.nodes, id)) {
     throw Error('duplicate id ' + id);
   }
 
@@ -273,7 +292,7 @@ NodeScope.prototype.createPrimitiveNode = function (name, id, extraProps) {
 NodeScope.prototype.createNode = async function (name, id, extraProps) {
   if (!id) id = guid();
 
-  if (this.nodes.hasOwnProperty(id)) {
+  if (hasNode(this.nodes, id)) {
     throw Error('duplicate id ' + id);
   }
 
@@ -300,7 +319,7 @@ NodeScope.prototype.getNodesWithIdRecursive = function (id) {
   var ComponentInstanceNode = require('./nodes/componentinstance');
 
   function findNodesWithIdRec(scope: NodeScope, id: string, result: ScopedNode[]) {
-    if (scope.nodes.hasOwnProperty(id)) {
+    if (hasNode(scope.nodes, id)) {
       result.push(scope.nodes[id]);
     }
 
@@ -477,14 +496,14 @@ NodeScope.prototype.reset = function () {
   }
 
   Object.keys(this.nodes).forEach((id) => {
-    if (this.nodes.hasOwnProperty(id)) {
+    if (hasNode(this.nodes, id)) {
       this.deleteNode(this.nodes[id]);
     }
   });
 };
 
 NodeScope.prototype.deleteNode = function (nodeInstance) {
-  if (this.nodes.hasOwnProperty(nodeInstance.id) === false) {
+  if (hasNode(this.nodes, nodeInstance.id) === false) {
     console.error("Node doesn't belong to this scope", nodeInstance.id, nodeInstance.name);
     return;
   }
@@ -509,7 +528,7 @@ NodeScope.prototype.deleteNode = function (nodeInstance) {
     const connectionTo = this.componentModel.getConnectionsTo(nodeInstance.id);
 
     connectionFrom.concat(connectionTo).forEach((connection: ConnectionData) => {
-      if (this.nodes.hasOwnProperty(connection.targetId) && this.nodes.hasOwnProperty(connection.sourceId)) {
+      if (hasNode(this.nodes, connection.targetId) && hasNode(this.nodes, connection.sourceId)) {
         this.removeConnection(connection);
       }
     });

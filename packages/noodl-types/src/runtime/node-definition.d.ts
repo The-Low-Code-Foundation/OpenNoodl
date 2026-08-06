@@ -1421,7 +1421,18 @@ export interface GraphPortModel {
 /** One component in the graph model. */
 export interface ComponentModelLike extends EventSenderLike {
   readonly name: string;
-  nodes: GraphNodeModel[];
+  /**
+   * The component's nodes, keyed by id, in a dictionary with **no prototype**.
+   *
+   * It was declared as an array here and built as `[]` in `componentmodel.ts` while being
+   * used as a map throughout. That is not a spelling difference: a node whose authored id
+   * was `add` hit `Array.prototype.add` — which `collection.ts` installs `writable: false`
+   * — and threw out of `addNode`, failing the whole bundle's import and reporting it as
+   * `Can't find component model`. Prefer `getNodeWithId` / `getAllNodes`; if you must read
+   * this directly, treat it as `Object.keys`-able and nothing more, because it inherits
+   * no methods at all.
+   */
+  nodes: Record<string, GraphNodeModel>;
   /** Ids of the component's root nodes. */
   roots: string[];
   /**
