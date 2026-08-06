@@ -73,6 +73,13 @@ interface FunctionRules {
   allowNoAuth: boolean;
   runAs: string | null;
   rateLimit: RateLimit | null;
+  /**
+   * CWF-018's per-function execution bound, in MILLISECONDS as security.json
+   * stores it. `null` = undeclared, and what applies instead is the service's
+   * `defaultTimeoutMs`; a declared `0` is "no limit" and is not the same thing,
+   * which is why this cannot collapse to a number with a falsy default.
+   */
+  timeoutMs: number | null;
   /** The two gates disagreeing: open at the door, closed inside the graph. */
   graphRefusesAnonymous: boolean;
 }
@@ -111,6 +118,8 @@ export function PermissionsPanel({ backendId, backendName, onClose }: Permission
   const [tables, setTables] = useState<string[]>([]);
   const [functions, setFunctions] = useState<FunctionRules[]>([]);
   const [classRateLimit, setClassRateLimit] = useState<RateLimit | null>(null);
+  /** CWF-018: what an undeclared timeout means, answered by the backend. */
+  const [defaultTimeoutMs, setDefaultTimeoutMs] = useState<number | null>(null);
   const [roles, setRoles] = useState<Role[]>([]);
   const [keys, setKeys] = useState<ApiKey[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -132,6 +141,7 @@ export function PermissionsPanel({ backendId, backendName, onClose }: Permission
       const fns = await ipcRenderer.invoke('backend:getFunctionRules', backendId);
       setFunctions(fns.functions || []);
       setClassRateLimit(fns.classRateLimit || null);
+      setDefaultTimeoutMs(typeof fns.defaultTimeoutMs === 'number' ? fns.defaultTimeoutMs : null);
       setRoles((await ipcRenderer.invoke('backend:listRoles', backendId)).roles || []);
       setKeys((await ipcRenderer.invoke('backend:listApiKeys', backendId)).keys || []);
     } catch (err) {
@@ -266,6 +276,49 @@ export function PermissionsPanel({ backendId, backendName, onClose }: Permission
       await writeFunctionRules(name, { rateLimit: { ratePerMinute, burst } }, `${name}: ${ratePerMinute}/min, burst ${burst}`);
     },
     [reportError, writeFunctionRules]
+  );
+
+  /**
+   * CWF-018's per-function time limit, authored in SECONDS.
+   *
+   * The wire and security.json are milliseconds (`timeoutMs`), because the
+   * workflow engine already spells every bound that way and a second word for
+   * the same idea is how two of them end up disagreeing. The panel converts
+   * rather than mirrors: a function's limit is an authoring decision measured in
+   * "how long may a user wait", and asking someone to write 45000 in a text box
+   * beside a rate of 60/min is how a stray zero becomes a twelve-minute hang.
+   *
+   * Blank clears the entry (the service default applies again); `0` is a
+   * DECLARED no-limit, which is the honest way for a streaming function to opt
+   * out (CWF-007) and is deliberately not the same as blank.
+   */
+  const setFunctionTimeout = useCallback(
+    async (name: string, text: string) => {
+      const trimmed = text.trim();
+      if (!trimmed) {
+        await writeFunctionRules(
+          name,
+          { timeoutMs: null },
+          defaultTimeoutMs === null
+            ? `${name}: the service default`
+            : `${name}: the service default (${defaultTimeoutMs / 1000}s)`
+        );
+        return;
+      }
+      const seconds = Number(trimmed);
+      if (!Number.isFinite(seconds) || seconds < 0) {
+        reportError(
+          new Error(`"${trimmed}" is not a time limit. Write seconds — e.g. 45. 0 means no limit at all.`)
+        );
+        return;
+      }
+      await writeFunctionRules(
+        name,
+        { timeoutMs: Math.round(seconds * 1000) },
+        seconds === 0 ? `${name}: no time limit` : `${name}: ${seconds}s`
+      );
+    },
+    [defaultTimeoutMs, reportError, writeFunctionRules]
   );
 
   // ---- Roles ---------------------------------------------------------------
@@ -475,7 +528,10 @@ export function PermissionsPanel({ backendId, backendName, onClose }: Permission
               port. Functions run with the backend's own authority — running as the caller is not built, so there is
               nothing to choose. Limits are on top of the shared budget for all functions
               {classRateLimit ? ` (${classRateLimit.ratePerMinute}/min, burst ${classRateLimit.burst})` : ''}, so a
-              number here can only tighten.
+              number here can only tighten. A function is stopped with a 504 if it has not answered within its time
+              limit
+              {defaultTimeoutMs === null ? '' : `, ${defaultTimeoutMs / 1000}s unless you set one`} — write{' '}
+              <em>0</em> for a function that legitimately holds its connection open.
             </Text>
             {functions.map((fn) => (
               <div key={fn.name} className={css.CollectionRow} data-test={`function-rules-${fn.name}`}>
@@ -546,6 +602,24 @@ export function PermissionsPanel({ backendId, backendName, onClose }: Permission
                         const current = fn.rateLimit ? `${fn.rateLimit.ratePerMinute}/${fn.rateLimit.burst}` : '';
                         if (e.target.value.trim() === current) return;
                         setFunctionRateLimit(fn.name, e.target.value);
+                      }}
+                    />
+                  </label>
+                  {/* CWF-018: the bound that turns a function which never sends
+                      a Response into a 504 instead of a held socket. */}
+                  <label className={css.OpField}>
+                    <Text textType={TextType.Shy} style={{ fontSize: '10px' }}>
+                      time limit (seconds)
+                    </Text>
+                    <input
+                      className={css.RuleInput}
+                      key={`${fn.name}-timeout-${fn.timeoutMs === null ? '' : fn.timeoutMs}`}
+                      defaultValue={fn.timeoutMs === null ? '' : String(fn.timeoutMs / 1000)}
+                      placeholder={defaultTimeoutMs === null ? 'the default' : `${defaultTimeoutMs / 1000} (default)`}
+                      onBlur={(e) => {
+                        const current = fn.timeoutMs === null ? '' : String(fn.timeoutMs / 1000);
+                        if (e.target.value.trim() === current) return;
+                        setFunctionTimeout(fn.name, e.target.value);
                       }}
                     />
                   </label>

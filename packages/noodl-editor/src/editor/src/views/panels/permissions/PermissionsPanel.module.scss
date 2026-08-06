@@ -111,7 +111,10 @@
 /* CWF-017: rule preset, exact rule, and this function's own budget. */
 .FunctionGrid {
   display: grid;
-  grid-template-columns: 1.2fr 1.4fr 1fr;
+  // Four: who may call it, an exact rule, its rate budget, its time limit
+  // (CWF-018). The last two are both "how much of this backend may one function
+  // spend", which is why they sit together rather than in a second section.
+  grid-template-columns: 1.2fr 1.4fr 1fr 1fr;
   gap: 8px;
 }
 
