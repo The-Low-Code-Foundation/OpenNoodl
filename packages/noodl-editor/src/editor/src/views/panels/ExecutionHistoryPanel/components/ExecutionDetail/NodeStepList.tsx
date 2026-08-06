@@ -20,15 +20,21 @@ export function NodeStepList({ steps }: Props) {
   const annotations = useMemo(() => annotateSteps(steps), [steps]);
 
   if (steps.length === 0) {
-    // WFA-002: found live — a cloud function call ALWAYS lands here.
-    // `ExecutionLogger.startNode` is called only by the WF-001 workflow engine,
-    // so a function's graph nodes are never recorded individually. "No steps
-    // recorded" read as data loss; it is the shape of the data.
+    // WFA-002: found live — "No steps recorded" read as data loss; it is the
+    // shape of the data. `ExecutionLogger.startNode` is called by the WF-001
+    // workflow engine for every step, so a workflow run always has them.
+    //
+    // CWF-013 changed the other half and the wording lagged behind it: a cloud
+    // function's graph nodes are still never recorded individually, but a `Log`
+    // node writes a step of its own. So "a function call is one execution, not
+    // node by node" is now true only of a function with no Log node in it —
+    // which is exactly the call looking at this message, and is what it says.
     return (
       <div className={styles.Empty}>
         <span>No per-step data.</span>
         <span className={styles.EmptyHint}>
-          Only workflow runs record steps. A cloud function call is recorded as one execution, not node by node.
+          Workflow runs record every step. A cloud function records only what its Log nodes report — this call
+          reached none, so it is one execution with nothing inside it.
         </span>
       </div>
     );

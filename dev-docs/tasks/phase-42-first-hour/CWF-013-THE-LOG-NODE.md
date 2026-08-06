@@ -87,11 +87,13 @@ Both destinations have a reader, and both are named on the node's page:
   `inputData` expandable (`ExecutionDetail/NodeStepItem.tsx`), so each `Log` line appears as a
   `net.noodl.Log` step in the run it belongs to.
 
-⚠️ One honest wrinkle worth knowing before you go looking: that panel's empty state currently reads
-*"Only workflow runs record steps. A cloud function call is recorded as one execution, not node by
-node."* That was true before this node and stays true for a function with no `Log` node in it —
-the message only renders when there are no steps at all — but a function that logs now does record
-steps, so the sentence is no longer the whole story. Not changed here; filed as an observation.
+⚠️ One honest wrinkle, **now fixed** (2026-08-06): that panel's empty state read *"Only workflow
+runs record steps. A cloud function call is recorded as one execution, not node by node."* That was
+true before this node and stayed true for a function with no `Log` node in it — the message only
+renders when there are no steps at all — but a function that logs does record steps, so the sentence
+was no longer the whole story. It now reads *"Workflow runs record every step. A cloud function
+records only what its Log nodes report — this call reached none, so it is one execution with nothing
+inside it."*, which is true in both cases and says which case the reader is in.
 
 The admin dashboard was checked and is **not** a reader: it serves ops state, and there is no log
 or execution route on it.
