@@ -69,6 +69,24 @@ export class ViewerConnection extends Model {
   /** AIX-008: clientId → the export that client gets instead of the project. */
   sandboxProviders: Map<string, () => object | undefined>;
 
+  /**
+   * This editor window's own id on the relay — HUD-004.
+   *
+   * ⚠️ **Neither editor peer had one.** The editor registered as `{cmd:'register', type:'editor',
+   * token}` and so did `nodegx-observe`, so `clientId` was `undefined` for both, they were
+   * filtered out of the relay's own `clients` listing, and the relay forwards messages verbatim
+   * without ever stamping a sender. There was **no identity in the system to own a switch with** —
+   * which is why an agent's `stop_trace` could disarm a human's recording and an agent's
+   * `start_trace` could destroy one.
+   *
+   * ⚠️ **It is a label and never a credential.** Authorisation is the relay's token gate, checked
+   * per socket on `register`; anything downstream that treats this as proof of anything is a bug.
+   *
+   * Minted once per window and stable across reconnects, so a socket that drops and comes back
+   * re-arms the trace it already owned rather than acquiring a second ownership nothing releases.
+   */
+  readonly clientId: string = 'editor-' + Math.random().toString(36).slice(2, 10);
+
   static instance: ViewerConnection;
   ws: WebSocket;
 
@@ -100,7 +118,7 @@ export class ViewerConnection extends Model {
       // Nothing else may go out before it — an unauthorised peer is closed on its first
       // message — and `send()` no-ops unless the socket is OPEN, so the await is safe.
       getRelayToken().then((token) => {
-        _this.send({ cmd: 'register', type: 'editor', token });
+        _this.send({ cmd: 'register', type: 'editor', clientId: _this.clientId, token });
         _this.watchAndExportModelChanges();
       });
     });
@@ -216,6 +234,10 @@ export class ViewerConnection extends Model {
     } else if (request.cmd === 'traceEvents' && request.type === 'viewer') {
       const content = typeof request.content === 'string' ? JSON.parse(request.content) : request.content;
       EventDispatcher.instance.emit('TraceEvents', { clientId: request.clientId, events: content.events });
+    } else if (request.cmd === 'traceState' && request.type === 'viewer') {
+      // HUD-004 — who holds the trace, and where its buffer has got to.
+      const content = typeof request.content === 'string' ? JSON.parse(request.content) : request.content;
+      EventDispatcher.instance.emit('TraceState', { clientId: request.clientId, state: content });
     } else if (request.cmd === 'portValues' && request.type === 'viewer') {
       const content = typeof request.content === 'string' ? JSON.parse(request.content) : request.content;
       EventDispatcher.instance.emit('TracePortValues', { clientId: request.clientId, values: content.values });
@@ -472,10 +494,32 @@ export class ViewerConnection extends Model {
    * against its own before answering — the same self-filtering `getConnectionValue` uses, so
    * a project with a preview and a cloud runtime attached does not get two replies.
    */
+  /**
+   * Arm or disarm the trace **on this editor's behalf** — HUD-004.
+   *
+   * ⚠️ `owner` is not optional in practice and stamping it here rather than at the call site is
+   * the point: `TraceSession` should not have to remember to identify itself, and a send that
+   * forgot would fall back to the runtime's single anonymous key and share a switch with
+   * `nodegx-observe` exactly as before.
+   */
   sendTraceEnabled(enabled: boolean) {
     this.send({
       cmd: 'traceEnabled',
-      content: JSON.stringify({ enabled })
+      content: JSON.stringify({ enabled, owner: this.clientId })
+    });
+  }
+
+  /**
+   * Ask a viewer who is tracing it, and how far its buffer has got — HUD-004 slice 4.
+   *
+   * ⚠️ **Sent *before* arming, never after.** The answer is only useful as the state the trace
+   * was in before this editor touched it: `highestSeq` is where a joining recording must start
+   * reading from, and `enabled` is how it knows it joined one rather than started it.
+   */
+  sendGetTraceState(clientId: string) {
+    this.send({
+      cmd: 'getTraceState',
+      content: JSON.stringify({ clientId })
     });
   }
 

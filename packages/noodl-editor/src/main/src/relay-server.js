@@ -181,11 +181,39 @@ function startWebSocketServer(server, options) {
         // that clientId's export cache.
         if (!_handle.authorised) return;
 
-        const msg = JSON.stringify({
-          cmd: 'disconnect',
-          clientId: clientId
-        });
-        broadcastMessage(msg, 'viewer'); // Notify editor that a viewer disconnected
+        // ⚠️ **Gated on the peer's type, which it never used to be.** This branch fired for
+        // every socket, including editors, and got away with it only because editor peers had
+        // no `clientId` — so the message editors received named nobody and did nothing. HUD-004
+        // gives editor peers ids, and without this gate an editor window closing would tell
+        // every other editor that client `editor-…` had disconnected: an export cache dropped
+        // and a `viewerClientsChanged` for a viewer that never existed.
+        if (_handle.type === 'viewer') {
+          const msg = JSON.stringify({
+            cmd: 'disconnect',
+            clientId: clientId
+          });
+          broadcastMessage(msg, 'viewer'); // Notify editor that a viewer disconnected
+          return;
+        }
+
+        // HUD-004 slice 3 — the other direction, which did not exist.
+        //
+        // Disconnects were announced only *toward editors*, so a viewer never learned that a
+        // peer had gone away. That was harmless while the trace was one global boolean and
+        // became a permanent failure the moment it grew owners: an agent killed mid-trace holds
+        // its ownership for the life of the page, the set never empties, and the human's Stop
+        // silently does nothing. Same class as "a project switch leaves the runtime tracing
+        // forever" (FH-011).
+        //
+        // A peer with no `clientId` names nobody and is not worth the traffic.
+        if (!clientId) return;
+        broadcastMessage(
+          JSON.stringify({
+            cmd: 'peerDisconnected',
+            clientId: clientId
+          }),
+          _handle.type || 'editor'
+        );
       });
     })();
   });

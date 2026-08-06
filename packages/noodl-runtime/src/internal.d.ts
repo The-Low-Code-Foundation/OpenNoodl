@@ -47,6 +47,8 @@ export interface RuntimeEditorConnection extends EditorConnectionLike {
   /** OBS-001. See `tracebuffer.ts`. */
   sendTraceDictionary(dictionary: unknown): void;
   sendTraceEvents(events: unknown[]): void;
+  /** HUD-004. Who holds the trace, and the last `seq` written. See `tracebuffer.ts`. */
+  sendTraceState(state: unknown): void;
   sendPortValues(values: unknown[]): void;
 }
 

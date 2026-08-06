@@ -297,6 +297,29 @@ export function headerSummary(eventCount: number, off: OffCanvasSummary = EMPTY_
 }
 
 /**
+ * Who else is holding the trace — HUD-004 slice 4.
+ *
+ * ⚠️ **The point of this sentence is a class of bug report, not a feature.** The trace was one
+ * global boolean shared by the editor's Record and `nodegx-observe`'s `start_trace`, so an agent
+ * arming or disarming changed what a human's recorder was doing with no signal anywhere: "it
+ * stopped by itself" and "my events vanished" were both true and both unexplainable. Ownership
+ * makes them stop happening; this makes the remaining, legitimate case *visible*.
+ *
+ * ⚠️ **`hadOthers` is why an agent leaving says something rather than nothing.** Silence is what
+ * the surface looked like for the whole of the bug, and a header that quietly loses a phrase is
+ * indistinguishable from one that never had it.
+ */
+export function traceOwnersNote(input: { others: number; joined: boolean; hadOthers: boolean }): string | undefined {
+  if (input.others > 0) {
+    const who = input.others === 1 ? 'an agent' : `${input.others} agents`;
+    return input.joined ? `joined a trace already running · also traced by ${who}` : `also traced by ${who}`;
+  }
+  // Nobody else now, but there was — and this recording is unaffected, which is the whole news.
+  if (input.hadOthers) return 'the agent has stopped tracing · still recording';
+  return undefined;
+}
+
+/**
  * The second line, when the header alone would be ambiguous.
  *
  * ⚠️ **A count of zero is a result and has to look like one.** A recording that has captured

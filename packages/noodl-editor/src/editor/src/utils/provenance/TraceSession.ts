@@ -102,7 +102,39 @@ export class TraceSession extends Model {
   public hasTrace = false;
   public hasTopology = false;
 
+  /**
+   * Peers holding the runtime's trace, **excluding this editor** — HUD-004.
+   *
+   * The trace is one switch with two peers, and until it grew owners the second one to arm wiped
+   * the first one's buffer. Surfaced rather than merely fixed because "it stopped by itself" is a
+   * whole class of report that a sentence prevents: a HUD that says `also traced by an agent` is
+   * telling the truth about a session it does not control.
+   *
+   * ⚠️ Names, not credentials. See `ViewerConnection.clientId`.
+   */
+  public otherOwners: string[] = [];
+  /**
+   * Whether this recording *joined* a trace somebody else had already started.
+   *
+   * Not derivable from {@link otherOwners}: an agent that arms halfway through is a different
+   * fact from a recording that began inside one, and only the second one means the buffer this
+   * session is reading has history in it that the user did not record.
+   */
+  public joinedExistingTrace = false;
+
   private lastSeq = 0;
+  /**
+   * True between arming and the runtime answering where its buffer had got to.
+   *
+   * ⚠️ **Pulls are held off while it is set, and that is load-bearing.** `start()` used to set
+   * `lastSeq = 0` because arming always cleared the runtime's buffer. Under HUD-004 it no longer
+   * does, so a first pull issued before the runtime has said `highestSeq` would return the *other
+   * owner's* history and this session would present it as what the user had just recorded.
+   * Cleared by the `TraceState` reply, or by a deadline so a runtime too old to answer behaves
+   * exactly as it did before.
+   */
+  private armSyncing = false;
+  private armSyncTimer: ReturnType<typeof setTimeout> | undefined;
   private listening = false;
   private pollTimer: ReturnType<typeof setInterval> | undefined;
   private pollInFlight = false;
@@ -231,6 +263,35 @@ export class TraceSession extends Model {
       this
     );
 
+    // HUD-004 — the runtime saying who holds its trace.
+    //
+    // Arrives twice for two different reasons: once at the moment of arming, where it decides
+    // where this recording starts reading from, and then on every poll, where it keeps the
+    // header honest about an agent that joined or left after the fact.
+    EventDispatcher.instance.on(
+      'TraceState',
+      ({ state }) => {
+        if (!state || typeof state !== 'object') return;
+        const owners: string[] = Array.isArray(state.owners) ? state.owners : [];
+        const mine = ViewerConnection.instance?.clientId;
+        const others = owners.filter((owner) => owner !== mine);
+
+        if (this.armSyncing) {
+          this.clearArmSync();
+          // The pre-arm state: `enabled` means somebody else was already tracing, and
+          // `highestSeq` is everything they had captured before this recording existed. Reading
+          // from there is what keeps their history out of it.
+          this.joinedExistingTrace = !!state.enabled;
+          this.lastSeq = typeof state.highestSeq === 'number' ? state.highestSeq : 0;
+        }
+
+        const changed = others.length !== this.otherOwners.length || others.some((o, i) => o !== this.otherOwners[i]);
+        this.otherOwners = others;
+        if (changed) this.notifyListeners('ownersChanged');
+      },
+      this
+    );
+
     EventDispatcher.instance.on(
       'TracePortValues',
       ({ values }) => {
@@ -260,18 +321,49 @@ export class TraceSession extends Model {
    */
   public start(): boolean {
     this.listen();
-    if (!this.isPreviewRunning) return false;
+    const clientId = this.clientId;
+    if (!clientId) return false;
 
     this.traceEvents = [];
     this.lastSeq = 0;
     this.recording = true;
     this.hasTrace = true;
+    this.joinedExistingTrace = false;
     this.armGeneration++;
     this.notifyBufferReset();
+
+    // ⚠️ **Order is the whole of HUD-004 slice 4.** Both messages ride one socket and the
+    // runtime handles them in order, so asking *first* gets the state the trace was in before
+    // this editor touched it — which is the only version of it worth having.
+    this.beginArmSync();
+    ViewerConnection.instance?.sendGetTraceState(clientId);
     ViewerConnection.instance?.sendTraceEnabled(true);
+
     this.startPolling();
     this.notifyListeners('recordingChanged');
     return true;
+  }
+
+  /**
+   * Hold the first pull until the runtime says where its buffer had got to.
+   *
+   * The deadline is not padding. A viewer bundle older than this change never answers
+   * `getTraceState` at all, and a recording that waited forever for it would capture nothing
+   * while displaying a live counter — strictly worse than the behaviour it replaced.
+   */
+  private beginArmSync() {
+    this.clearArmSync();
+    this.armSyncing = true;
+    this.armSyncTimer = setTimeout(() => {
+      this.armSyncing = false;
+      this.armSyncTimer = undefined;
+    }, REQUEST_TIMEOUT);
+  }
+
+  private clearArmSync() {
+    this.armSyncing = false;
+    if (this.armSyncTimer) clearTimeout(this.armSyncTimer);
+    this.armSyncTimer = undefined;
   }
 
   /**
@@ -293,12 +385,18 @@ export class TraceSession extends Model {
     const armed = this.armGeneration;
     this.recording = false;
     this.stopPolling();
+    // The pull below has to be allowed to happen; nothing is waiting on the arm any more.
+    this.clearArmSync();
     this.notifyListeners('recordingChanged');
 
     await this.refreshEvents();
 
     // A new recording started while that pull was in flight; disarming now would turn it off.
     if (this.armGeneration !== armed) return;
+    // ⚠️ This releases *this editor's* ownership and nothing else (HUD-004). If an agent is
+    // still holding the trace, the runtime keeps capturing and keeps its buffer — which is the
+    // point: the reverse of this used to destroy the agent's recording, and the agent's used to
+    // destroy this one.
     ViewerConnection.instance?.sendTraceEnabled(false);
   }
 
@@ -317,6 +415,11 @@ export class TraceSession extends Model {
       // resolve.
       if (this.pollInFlight) return;
       this.pollInFlight = true;
+      // HUD-004: piggybacked on the pull rather than given a timer of its own. This is what
+      // makes "the agent has gone" arrive on the header instead of being true and invisible —
+      // and an agent joining or leaving is not something the runtime ever announces.
+      const clientId = this.clientId;
+      if (clientId) ViewerConnection.instance?.sendGetTraceState(clientId);
       void this.refreshEvents().finally(() => {
         this.pollInFlight = false;
       });
@@ -361,6 +464,9 @@ export class TraceSession extends Model {
     this.listen();
     const clientId = this.clientId;
     if (!clientId) return Promise.resolve(this.traceEvents);
+    // ⚠️ The arm has not been told where to start reading yet. Pulling now would ask for
+    // everything from `seq 0` and hand this session another owner's recording (HUD-004).
+    if (this.armSyncing) return Promise.resolve(this.traceEvents);
 
     return new Promise((resolve) => {
       this.awaitEvent('eventsPulled', () => resolve(this.traceEvents), () => resolve(this.traceEvents));
@@ -440,6 +546,9 @@ export class TraceSession extends Model {
   private forget() {
     if (this.recording) ViewerConnection.instance?.sendTraceEnabled(false);
     this.stopPolling();
+    this.clearArmSync();
+    this.otherOwners = [];
+    this.joinedExistingTrace = false;
     this.topology = { nodes: {}, edges: [] };
     this.hasTopology = false;
     this.traceEvents = [];

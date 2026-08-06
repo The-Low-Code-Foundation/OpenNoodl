@@ -274,6 +274,18 @@
 }
 
 /**
+ * HUD-004: who else holds the trace.
+ *
+ * Muted rather than a warning tone — an agent tracing alongside you is a normal state of the
+ * system, not a fault, and red is danger only (phase 23's one hard colour rule).
+ */
+.Owners {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--theme-color-fg-muted);
+}
+
+/**
  * The second line — "recording, and nothing is happening *here*".
  *
  * An empty canvas under a live counter is indistinguishable from a HUD that failed to mount,

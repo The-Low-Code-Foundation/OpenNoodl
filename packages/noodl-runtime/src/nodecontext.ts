@@ -12,7 +12,7 @@ import {
 } from './runtimeerror';
 import TimerScheduler = require('./timerscheduler');
 import { DEFAULT_VALUE_CAP, TraceBuffer, previewValue, toWireEvent } from './tracebuffer';
-import type { SessionDictionary, TraceEvent } from './tracebuffer';
+import type { SessionDictionary, TraceEvent, TraceState } from './tracebuffer';
 import Variants = require('./variants');
 
 /** Set by the viewer before any node runs; carries deploy-time environment values. */
@@ -71,6 +71,19 @@ interface NodeContext extends RuntimeNodeContext {
    * is a plain boolean and is checked before anything else happens.
    */
   traceEnabled: boolean;
+  /**
+   * HUD-004 — who asked for the trace.
+   *
+   * ⚠️ **`traceEnabled` is derived from this: it means "the set is non-empty".** Two peers share
+   * this switch — the editor's Record and `nodegx-observe`'s `start_trace` — and until this set
+   * existed the second one to arm *replaced the buffer*, silently destroying a recording the
+   * first was in the middle of. Ownership is what makes the buffer's lifetime match the
+   * recording's rather than the last message's.
+   *
+   * The derived boolean is kept as a plain field precisely so the propagation hot path
+   * (`traceEdgeSend`, `outputproperty`, `node`) never has to ask a Set anything.
+   */
+  _traceOwners: Set<string>;
   _traceBuffer: TraceBuffer | undefined;
   _traceValueCap: number;
   /**
@@ -111,7 +124,9 @@ interface NodeContext extends RuntimeNodeContext {
   _getDebugInspectorValueForNode(id: string): { type: 'node'; id: string; value: unknown } | undefined;
   sendDebugInspectorValues(): void;
   setDebugInspectorsEnabled(enabled: boolean): void;
-  setTraceEnabled(enabled: boolean): void;
+  setTraceEnabled(enabled: boolean, owner?: string): void;
+  releaseTraceOwner(owner: string): void;
+  getTraceState(): TraceState;
   traceEdgeSend(
     fromNode: string,
     fromPort: string,
@@ -189,6 +204,7 @@ const NodeContext = function NodeContext(this: NodeContext, args?: NodeContextAr
   // OBS-001. The buffer is not allocated until tracing is turned on — an app nobody is
   // debugging holds no trace storage at all, not even an empty ring.
   this.traceEnabled = false;
+  this._traceOwners = new Set();
   this._traceBuffer = undefined;
   this._traceValueCap = DEFAULT_VALUE_CAP;
   this._currentCause = 0;
@@ -263,8 +279,25 @@ const NodeContext = function NodeContext(this: NodeContext, args?: NodeContextAr
     // OBS-001. The editor pulls rather than the runtime pushing: the buffer is an index the
     // walk queries, not a firehose anyone reads front to back, and pushing 250k events at a
     // renderer is precisely the failure the shelved panel died of.
-    this.editorConnection.on('traceEnabledChanged', (enabled) => {
-      this.setTraceEnabled(enabled);
+    // ⚠️ The payload gained an `owner` (HUD-004) and the old shape was a bare boolean. Both are
+    // accepted: the runtime and the editor are built together, but a viewer bundle and an
+    // `nodegx-observe` on disk are not, and an argument silently read as `undefined` here would
+    // route every peer onto the same anonymous key — i.e. straight back to the bug.
+    this.editorConnection.on('traceEnabledChanged', (message) => {
+      if (typeof message === 'boolean') this.setTraceEnabled(message);
+      else this.setTraceEnabled(!!message.enabled, message.owner);
+    });
+
+    // HUD-004 slice 3 — the relay saying an editor peer's socket has gone. Without it an agent
+    // that crashes mid-trace holds its ownership for the life of the page, and the human's Stop
+    // silently does nothing because the set never empties.
+    this.editorConnection.on('peerDisconnected', ({ clientId }) => {
+      this.releaseTraceOwner(clientId);
+    });
+
+    this.editorConnection.on('getTraceState', ({ clientId }) => {
+      if (this.editorConnection.clientId !== clientId) return;
+      this.editorConnection.sendTraceState(this.getTraceState());
     });
 
     this.editorConnection.on('getTraceEvents', ({ clientId, afterSeq }) => {
@@ -671,17 +704,47 @@ NodeContext.prototype.setDebugInspectorsEnabled = function (enabled) {
 };
 
 /**
- * Turn the per-edge trace on or off (OBS-001).
+ * Turn the per-edge trace on or off, for one owner (OBS-001, HUD-004).
  *
  * Independent of `setDebugInspectorsEnabled` on purpose — the two answer different questions
  * and the editor turns them on from different surfaces.
+ *
+ * ⚠️ **Ownership is a set, and capture is "the set is non-empty".** This switch has two peers —
+ * the editor's Record button and `nodegx-observe`'s `start_trace` — and the message that carried
+ * it had no identity in it at all. Two things followed, both real and both hit by accident:
+ *
+ *  1. an agent's `stop_trace` disarmed a human's recording, with no signal anywhere; and
+ *  2. an agent's `start_trace` **destroyed** it, because arming replaced the buffer
+ *     unconditionally. That one is data loss, not confusion, and it is what this set is for.
+ *
+ * So the buffer is created only on **empty→non-empty** and dropped only on **non-empty→empty**.
+ * A second owner arming into a live trace joins it and changes nothing; the first owner leaving
+ * while a second is still there stops nothing.
+ *
+ * ⚠️ **An `owner` of `undefined` maps to one legacy key**, so a peer that has not been updated
+ * behaves exactly as it always did — including the old "last message wins" feel, which is the
+ * correct behaviour for a single anonymous peer and the only thing it can be given for two.
  */
-NodeContext.prototype.setTraceEnabled = function (enabled) {
-  if (this.traceEnabled === enabled) return;
+const ANONYMOUS_TRACE_OWNER = '(anonymous)';
 
-  this.traceEnabled = enabled;
+NodeContext.prototype.setTraceEnabled = function (enabled, owner) {
+  if (!this._traceOwners) this._traceOwners = new Set();
 
-  if (enabled) {
+  const key = typeof owner === 'string' && owner.length > 0 ? owner : ANONYMOUS_TRACE_OWNER;
+  const was = this._traceOwners.size > 0;
+
+  if (enabled) this._traceOwners.add(key);
+  else this._traceOwners.delete(key);
+
+  const now = this._traceOwners.size > 0;
+  // Nothing crossed the boundary: somebody joined a trace already running, or left one somebody
+  // else is still holding. Returning here is the whole fix — this is where the buffer used to be
+  // thrown away under a recording that was still going.
+  if (now === was) return;
+
+  this.traceEnabled = now;
+
+  if (now) {
     // Starting a trace clears whatever the last one left, so a recording always begins empty.
     this._traceBuffer = new TraceBuffer();
     this._currentCause = 0;
@@ -693,6 +756,40 @@ NodeContext.prototype.setTraceEnabled = function (enabled) {
     this._traceBuffer = undefined;
     this._currentCause = 0;
   }
+};
+
+/**
+ * A traced peer went away without disarming — HUD-004 slice 3.
+ *
+ * An agent whose process is killed mid-trace holds its ownership forever otherwise, and the
+ * human's Stop then appears not to work: the set never empties, so capture never stops. Same
+ * class as FH-011's "a project switch leaves the runtime tracing forever", and the relay is the
+ * only party that knows a socket has gone.
+ *
+ * ⚠️ Only ever called with a real peer id. An empty one would map to the anonymous key and
+ * disarm a legacy peer that is still very much there.
+ */
+NodeContext.prototype.releaseTraceOwner = function (owner) {
+  if (typeof owner !== 'string' || owner.length === 0) return;
+  this.setTraceEnabled(false, owner);
+};
+
+/**
+ * Who is tracing, and how far the buffer has got — HUD-004 slice 4.
+ *
+ * ⚠️ **`highestSeq` is why this exists at all**, more than `owners` is. Arming used to clear the
+ * runtime's buffer, so the editor could safely start reading from `seq 0`. It no longer does, so
+ * a peer that arms into a trace somebody else started would otherwise pull that peer's history
+ * on its first poll and present it as what the user had just recorded.
+ */
+NodeContext.prototype.getTraceState = function () {
+  return {
+    enabled: !!this.traceEnabled,
+    owners: this._traceOwners ? Array.from(this._traceOwners) : [],
+    // `peekNextSeq` is the seq the *next* push will take, so the last one assigned is one below.
+    // Zero with no buffer, which is what a fresh recording should start from.
+    highestSeq: this._traceBuffer ? this._traceBuffer.peekNextSeq() - 1 : 0
+  };
 };
 
 /**

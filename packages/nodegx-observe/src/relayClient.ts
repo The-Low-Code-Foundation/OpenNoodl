@@ -174,6 +174,25 @@ export class RelayClient {
   public recording = false;
   public warnings = new Map<string, RuntimeWarning>();
 
+  /**
+   * This server's own id on the relay — HUD-004.
+   *
+   * ⚠️ **Neither editor peer had one.** This client and the editor both registered as
+   * `{cmd:'register', type:'editor', token}`, so the relay had no sender to stamp on anything and
+   * the runtime's trace switch was one global boolean with two owners and no way to tell them
+   * apart. `stop_trace` here disarmed a human's recording; `start_trace` here *destroyed* it.
+   *
+   * ⚠️ **A label, never a credential.** Authorisation is the token gate on `register`, per
+   * socket. Nothing may treat this id as proof of anything.
+   *
+   * Stable across reconnects, so a socket that drops and returns re-arms the ownership it had
+   * rather than acquiring a second one that nothing will ever release.
+   *
+   * Safe against the OBS-004 discovery path: `discoverClients` keeps only `type === 'viewer'`
+   * entries, so editor peers appearing in the relay's `clients` listing changes nothing for it.
+   */
+  public readonly clientId = 'observe-' + Math.random().toString(36).slice(2, 10);
+
   private highestSeq = 0;
 
   constructor(options: RelayClientOptions) {
@@ -235,7 +254,7 @@ export class RelayClient {
       }
 
       socket.addEventListener('open', () => {
-        socket.send(JSON.stringify({ cmd: 'register', type: 'editor', token: this.token }));
+        socket.send(JSON.stringify({ cmd: 'register', type: 'editor', clientId: this.clientId, token: this.token }));
         // There is no `registered` ack for an editor peer — the relay only announces
         // *viewers*. A rejection, however, arrives immediately and closes the socket, so a
         // short grace period is what distinguishes accepted from refused.
@@ -373,7 +392,10 @@ export class RelayClient {
     // recording would silently disarm across a restart (FH-011's class of defect).
     if (this.recording) {
       try {
-        this.send({ cmd: 'traceEnabled', content: JSON.stringify({ enabled: true }) });
+        // ⚠️ The owner goes with it (HUD-004). The relay releases this server's ownership when
+        // its socket closes, so a re-arm that forgot its own name would land on the runtime's
+        // single anonymous key and be back to sharing one switch with the editor.
+        this.send({ cmd: 'traceEnabled', content: JSON.stringify({ enabled: true, owner: this.clientId }) });
       } catch (e) {
         /* the socket died again between here and there; the close handler takes it from here */
       }
@@ -608,15 +630,45 @@ export class RelayClient {
     return this.viewerClients;
   }
 
+  /**
+   * Arm or disarm the trace **on this server's behalf** — HUD-004.
+   *
+   * ⚠️ **`owner` is what stops this destroying somebody's recording.** The runtime keeps a set of
+   * owners and creates its buffer only on empty→non-empty, so arming into a trace a human
+   * started now *joins* it instead of replacing it, and `stop_trace` releases only this server's
+   * hold. Before that, both of those were data loss and neither had a signal.
+   *
+   * ⚠️ **And arming no longer clears the runtime's buffer, so this has to ask where it is.** The
+   * old `highestSeq = 0` was correct only because the runtime started from nothing every time;
+   * kept, it would make the first `get_trace` return the human's history as though this server
+   * had recorded it — the same trap on this side of the socket that `TraceSession` has on the
+   * other. Asked *before* the arm, because the answer wanted is the pre-arm one.
+   */
   async setTraceEnabled(enabled: boolean): Promise<void> {
-    this.send({ cmd: 'traceEnabled', content: JSON.stringify({ enabled }) });
     if (enabled) {
-      // The runtime clears its buffer on the off->on transition, so ours must go too, or the
-      // walk would be built from a mix of two sessions.
       this.events = [];
-      this.highestSeq = 0;
+      this.highestSeq = await this.fetchTraceHighWaterMark();
     }
+    this.send({ cmd: 'traceEnabled', content: JSON.stringify({ enabled, owner: this.clientId }) });
     this.recording = enabled;
+  }
+
+  /**
+   * Where the runtime's trace buffer had got to before this server armed.
+   *
+   * Falls back to 0 rather than throwing: a viewer too old to answer `getTraceState` also never
+   * shares its buffer with anyone, so 0 is exactly right for it.
+   */
+  private async fetchTraceHighWaterMark(): Promise<number> {
+    const clientId = await this.resolveClientId();
+    const reply = await this.request(
+      { cmd: 'getTraceState', content: JSON.stringify({ clientId }) },
+      (m) => m.cmd === 'traceState',
+      'trace state'
+    ).catch(() => undefined);
+    if (!reply) return 0;
+    const body = typeof reply.content === 'string' ? JSON.parse(reply.content) : reply.content;
+    return (body && typeof body.highestSeq === 'number' && body.highestSeq) || 0;
   }
 
   async fetchTopology(): Promise<Topology> {

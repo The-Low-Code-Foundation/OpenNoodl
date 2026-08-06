@@ -409,7 +409,11 @@ describe('surviving an editor restart', () => {
 
     await waitFor(() => client.state === 'connected', 10000, 'the reconnect');
     await waitFor(() => rearmed.length > 0, 5000, 'the trace to be re-armed');
-    expect(JSON.parse(rearmed[0] as string)).toEqual({ enabled: true });
+    // ⚠️ The owner rides along (HUD-004). The relay releases this server's ownership when its
+    // socket closes, so a re-arm that forgot its own name would land on the runtime's single
+    // anonymous key — back to sharing one switch with the editor, which is the bug this server
+    // was the second half of.
+    expect(JSON.parse(rearmed[0] as string)).toEqual({ enabled: true, owner: client.clientId });
   });
 
   it('never swaps the token it was given when there is no refresher', async () => {

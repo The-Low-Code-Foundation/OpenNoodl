@@ -88,6 +88,22 @@ export interface SessionDictionary {
   edges: Array<{ from: { node: string; port: string }; to: { node: string; port: string } }>;
 }
 
+/**
+ * Who is tracing, and how far the buffer has got — HUD-004.
+ *
+ * ⚠️ **`owners` is a label list, never a credential.** The relay's authorisation gate is
+ * per-socket and checked on `register`; a peer that got past it can name itself anything. This
+ * exists so a surface can say *"also traced by an agent"* instead of pretending it is alone —
+ * ownership must not become a trust decision anywhere.
+ */
+export interface TraceState {
+  /** Derived: whether any owner is holding the trace. */
+  enabled: boolean;
+  owners: string[];
+  /** The last `seq` assigned, or 0 when there is no buffer. */
+  highestSeq: number;
+}
+
 /** Default character cap for a value preview. The real memory lever — see the module note. */
 export const DEFAULT_VALUE_CAP = 200;
 

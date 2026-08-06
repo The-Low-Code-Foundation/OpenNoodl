@@ -120,10 +120,10 @@ export function createObserveServer(client: RelayClient): McpServer {
     {
       title: 'Start recording',
       description:
-        'Turn on the running app\'s per-edge trace and clear whatever was recorded before. ' +
-        'Every value and signal crossing every wire is captured until stop_trace. Do this ' +
-        'BEFORE reproducing the problem. ⚠️ There is one runtime: this also clears the trace ' +
-        'the editor\'s Provenance panel is showing.',
+        'Turn on the running app\'s per-edge trace. Every value and signal crossing every wire ' +
+        'is captured until stop_trace. Do this BEFORE reproducing the problem. If the user is ' +
+        'already recording in the editor, this joins their trace rather than replacing it — ' +
+        'you will see everything from this point on, and they keep everything they had.',
       inputSchema: {}
     },
     async () => {
@@ -137,7 +137,9 @@ export function createObserveServer(client: RelayClient): McpServer {
     'stop_trace',
     {
       title: 'Stop recording',
-      description: 'Stop capturing. The buffer is kept, so the walks still work afterwards.',
+      description:
+        'Stop capturing, for this server only. The buffer is kept, so the walks still work ' +
+        'afterwards — and if the user is recording in the editor, their recording carries on.',
       inputSchema: {}
     },
     async () => {

@@ -173,6 +173,57 @@ describe('the relay token gate', () => {
     expect(seen.map((m) => m.cmd)).not.toContain('disconnect');
   });
 
+  // ---------------------------------------------------------------------------
+  // HUD-004 — a viewer has to learn that a traced peer went away
+  // ---------------------------------------------------------------------------
+
+  it('tells viewers when a non-viewer peer disconnects', async () => {
+    // Disconnects were announced only *toward editors*, so a viewer never learned that a peer
+    // had gone. That was harmless while the trace was one global boolean and became permanent
+    // the moment it grew owners: an agent killed mid-trace holds its ownership for the life of
+    // the page, the set never empties, and the human's Stop silently does nothing.
+    const viewer = await open();
+    const heard = collect(viewer);
+    await register(viewer, 'viewer', { clientId: 'v1' });
+
+    const agent = await open();
+    await register(agent, 'editor', { clientId: 'observe-1' });
+    agent.close();
+    await settle();
+
+    expect(heard).toContainEqual({ cmd: 'peerDisconnected', clientId: 'observe-1' });
+  });
+
+  it('does not tell editors that an editor peer disconnected', async () => {
+    // ⚠️ The close handler announced `disconnect` for *every* socket and got away with it only
+    // because editor peers had no clientId, so the message named nobody. HUD-004 gives them one
+    // — and an editor window closing must not make every other editor drop an export cache for
+    // a viewer that never existed.
+    const editor = await open();
+    const heard = collect(editor);
+    await register(editor, 'editor', { clientId: 'editor-1' });
+
+    const other = await open();
+    await register(other, 'editor', { clientId: 'editor-2' });
+    other.close();
+    await settle();
+
+    expect(heard.map((m) => m.cmd)).not.toContain('disconnect');
+  });
+
+  it('still tells editors when a viewer disconnects', async () => {
+    const editor = await open();
+    const heard = collect(editor);
+    await register(editor, 'editor', { clientId: 'editor-1' });
+
+    const viewer = await open();
+    await register(viewer, 'viewer', { clientId: 'v1' });
+    viewer.close();
+    await settle();
+
+    expect(heard).toContainEqual({ cmd: 'disconnect', clientId: 'v1' });
+  });
+
   it('ignores unparseable input rather than throwing out of the message handler', async () => {
     const ws = await open();
     const closed = new Promise((resolve) => ws.on('close', (code) => resolve(code)));

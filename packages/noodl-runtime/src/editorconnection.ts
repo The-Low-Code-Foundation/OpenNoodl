@@ -122,6 +122,7 @@ interface EditorConnection extends RuntimeEditorConnection, EventSender {
   sendPulsingConnections(connectionMap: Record<string, { connections: unknown[] }>): void;
   sendTraceDictionary(dictionary: unknown): void;
   sendTraceEvents(events: unknown[]): void;
+  sendTraceState(state: unknown): void;
   sendPortValues(values: unknown[]): void;
   sendInputResult(result: unknown): void;
   sendDynamicPorts(id: string, ports: RuntimeDiscoveredPort[], options?: SendDynamicPortsOptions): void;
@@ -267,9 +268,30 @@ EditorConnection.prototype.connect = function (this: EditorConnection, address, 
       // OBS-001. Wired exactly like `debuggingEnabled` above, including the `isRunningLocally`
       // gate: the trace captures every value in the app, so it must never be switchable on a
       // deployed runtime by anything that can reach the socket.
+      //
+      // HUD-004 adds `owner`, and it is forwarded rather than interpreted: this file is
+      // transport, and which peer may hold the trace is `NodeContext`'s question. `owner` is
+      // absent from an older peer's message and that maps to one legacy key downstream.
       if (self.isRunningLocally()) {
         content = JSON.parse(message.content);
-        self.emit('traceEnabledChanged', content.enabled);
+        self.emit('traceEnabledChanged', { enabled: content.enabled, owner: content.owner });
+      }
+    } else if (message.cmd === 'peerDisconnected') {
+      // HUD-004 slice 3 — the relay announcing that a non-viewer peer's socket has gone.
+      //
+      // ⚠️ Same gate as the rest of the channel, and it matters more here than it looks: this
+      // one *releases* a capability rather than granting it, but the whole trace channel is
+      // behind `isRunningLocally()` and a command that is handled on a deployed runtime is a
+      // command an attacker can probe for.
+      if (self.isRunningLocally()) {
+        content = JSON.parse(message.content);
+        self.emit('peerDisconnected', { clientId: content.clientId });
+      }
+    } else if (message.cmd === 'getTraceState') {
+      // HUD-004 slice 4 — "who is tracing, and how far has the buffer got?".
+      if (self.isRunningLocally()) {
+        content = JSON.parse(message.content);
+        await self.emit('getTraceState', { clientId: content.clientId });
       }
     } else if (message.cmd === 'getTraceEvents') {
       if (self.isRunningLocally()) {
@@ -489,6 +511,21 @@ EditorConnection.prototype.sendTraceEvents = function (this: EditorConnection, e
     cmd: 'traceEvents',
     type: 'viewer',
     content: JSON.stringify({ events })
+  });
+};
+
+/**
+ * Who holds the trace, and the last `seq` written (HUD-004).
+ *
+ * The only *reply* on this channel that is not about the graph or its values. It exists because
+ * arming no longer clears the buffer, so a peer joining a live trace has to be told where the
+ * buffer already is or its first pull reads somebody else's recording as its own.
+ */
+EditorConnection.prototype.sendTraceState = function (this: EditorConnection, state) {
+  this.send({
+    cmd: 'traceState',
+    type: 'viewer',
+    content: JSON.stringify(state)
   });
 };
 

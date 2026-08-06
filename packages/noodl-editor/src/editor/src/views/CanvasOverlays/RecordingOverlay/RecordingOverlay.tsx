@@ -40,6 +40,7 @@ import {
   headerSummary,
   interactionList,
   offCanvas,
+  traceOwnersNote,
   visibleBadges
 } from '../../../utils/provenance/recordingHud';
 import { buildIndex } from '../../../utils/provenance/walkEngine';
@@ -97,15 +98,36 @@ export function RecordingOverlay({ viewport, getNodeBounds, enabled }: Recording
    * pattern, and for the same reason, as `ProvenancePanel`'s.
    */
   const [revision, setRevision] = useState(0);
+  /**
+   * HUD-004: peers other than this editor holding the runtime's trace, and whether this
+   * recording joined one they had already started.
+   *
+   * `hadOthers` is sticky for the life of the recording on purpose — an agent leaving has to
+   * *say so*. The whole bug this replaces was a switch changing under the user in silence.
+   */
+  const [owners, setOwners] = useState<{ others: number; joined: boolean; hadOthers: boolean }>({
+    others: 0,
+    joined: false,
+    hadOthers: false
+  });
 
   useEffect(() => {
     if (!enabled) return;
 
     const group = {};
+    const readOwners = () =>
+      setOwners((prev) => ({
+        others: session.otherOwners.length,
+        joined: session.joinedExistingTrace,
+        hadOthers: prev.hadOthers || session.otherOwners.length > 0
+      }));
+
+    session.on('ownersChanged', readOwners, group);
     session.on(
       'recordingChanged',
       () => {
         setRecording(session.recording);
+        setOwners({ others: session.otherOwners.length, joined: session.joinedExistingTrace, hadOthers: false });
         // Both directions clear the badges: arming empties the runtime's buffer, and stopping
         // ends the "this just happened" claim a badge is making. The events themselves survive
         // both — they are what the Provenance panel's walk reads afterwards.
@@ -172,6 +194,7 @@ export function RecordingOverlay({ viewport, getNodeBounds, enabled }: Recording
   const eventCount = session.traceEvents.length;
   const onCanvasBadges = visible.filter((badge) => boundsOf(badge.nodeId) !== null).length;
   const note = refusal ?? canvasNote({ recording, eventCount, onCanvasBadges, off });
+  const ownersNote = recording ? traceOwnersNote(owners) : undefined;
 
   /**
    * The interactions list — HUD-003 slice 1.
@@ -275,6 +298,14 @@ export function RecordingOverlay({ viewport, getNodeBounds, enabled }: Recording
               <span className={styles.Count} data-test="recording-hud-count">
                 {headerSummary(eventCount, off)}
               </span>
+              {ownersNote && (
+                <>
+                  <span className={styles.Separator}>·</span>
+                  <span className={styles.Owners} data-test="recording-hud-owners">
+                    {ownersNote}
+                  </span>
+                </>
+              )}
               <button
                 className={styles.Expand}
                 onClick={() => setExpanded((value) => !value)}
