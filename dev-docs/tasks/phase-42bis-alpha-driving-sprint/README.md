@@ -1,7 +1,9 @@
 # Phase 42bis — The alpha driving sprint
 
 **Created:** 2026-08-06
-**Status:** open, blocks the alpha cut
+**Status:** ✅ **all five tasks built 2026-08-06**; eight of thirteen findings driven in a
+real editor, four built–not–driven, one (F90) explicitly not reproduced. See
+[PROGRESS.md](./PROGRESS.md) for what was driven and what is owed.
 **Measured against:** `91fcd680` (clean tree)
 **Origin:** Richard's own live driving on 2026-08-06, during the ALPHA-001 first-hour run
 
@@ -102,6 +104,40 @@ so — see SPR-001 §1.
 Every one of the thirteen either fixed and **driven in a real editor**, or filed with a
 measured reason it was not. Then ALPHA-001 Part A resumes at §2, from a clean tree, with
 the commit recorded.
+
+### Where it landed, 2026-08-06
+
+**Met, with four measured exceptions.** All thirteen have committed code. Eight were driven
+live against the QA fixture with the SQLite backend running (F82, F83, F84, F85, F88, F91,
+F92, F93). Four are built–not–driven with the reason recorded: **F86** needs a deployed
+cloud function and two users, **F89** is copy, **F94** needs canvas port hit-testing this
+harness does not have, and **F90 was never reproduced** — its *stuck* mechanism was found
+and fixed, and the unanswered half carries a one-click discriminator rather than a shrug.
+
+⚠️ **Every live check was light theme only.** Dark theme is owed across the board, and it
+is the inverse of OBS-003's gap, which recorded the recording HUD as dark-only.
+
+⚠️ **Seven new findings (F95–F101) were opened while building**, including one gate that
+has been red since before this phase (F100) and one — F96 — demonstrated by the driving
+pass itself, which added a column it then could not remove.
+
+## The lesson this phase actually produced
+
+**Four of the five specs were wrong about their own mechanism**, and each was wrong in a way
+that would have sent the work to the wrong file:
+
+- F94's occlusion was not a z-index fight — the popup was already portalled above everything;
+  it had no `left` and no `right`, so it drew in the corner of the window.
+- F84's cause was not `READ_ONLY_FIELDS` — the column never reached the renderer.
+- F88 was not a broken button — it was a no-op stub, with 350 lines of finished UI stranded
+  behind a barrel export that nothing rendered.
+- SPR-005's "the header already has a plus button" cited a docstring for a panel deleted
+  years ago. There was no plus button.
+
+The register's own rule — *re-measure a row before you act on it* — was written because rows
+outlive their fixes. This phase shows the sharper version: **a row can be wrong on the day it
+is written**, because the person writing it is reading the same surface the defect is hiding
+behind.
 
 ## What this phase must not become
 
