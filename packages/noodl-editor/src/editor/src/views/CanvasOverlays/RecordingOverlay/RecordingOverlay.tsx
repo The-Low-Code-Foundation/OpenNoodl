@@ -263,7 +263,12 @@ export function RecordingOverlay({ viewport, getNodeBounds, enabled }: Recording
       // long as the receipt is on screen.
       const events = session.traceEvents.length;
       const interactions = events
-        ? rootEvents(buildIndex(session.topology, session.traceEvents, session.portValues, { recording: true })).length
+        ? rootEvents(
+            // `hasTrace`, never `recording`: the recording has just been stopped and this is the
+            // same distinction the Provenance panel's index turns on — pressing Stop does not
+            // un-record what was recorded.
+            buildIndex(session.topology, session.traceEvents, session.portValues, { recording: session.hasTrace })
+          ).length
         : 0;
       setSummary(recordingSummary({ events, interactions }));
     });
