@@ -65,20 +65,20 @@ export function CredentialsSection({
   });
 
   const handleConnect = async () => {
-    console.log('🔘 [CredentialsSection] handleConnect called - button clicked!');
     setIsConnecting(true);
     setError(null);
     setProgressMessage('Opening GitHub in your browser...');
 
     try {
-      console.log('🔐 [CredentialsSection] Calling GitHubOAuthService.initiateOAuth...');
       await oauthService.initiateOAuth();
 
-      console.log('✅ [CredentialsSection] OAuth flow initiated');
-      // State will be updated via event listener when auth completes
-      setProgressMessage('Waiting for authorization...');
+      // F63: the code itself is shown by the device-code dialog, which opens
+      // itself off the service's event — this line only explains why the panel
+      // is sitting still. Repeating the code here would be a second copy to
+      // keep in step with a flow this panel does not own.
+      setProgressMessage('Enter the code shown to finish signing in…');
     } catch (err) {
-      console.error('❌ [CredentialsSection] OAuth flow error:', err);
+      console.error('❌ [CredentialsSection] GitHub sign-in error:', err);
       setError(err instanceof Error ? err.message : 'Authentication failed');
       setProgressMessage('');
       setIsConnecting(false);
@@ -94,6 +94,13 @@ export function CredentialsSection({
   useEventListener(oauthService, 'oauth-error', (event: { error: string }) => {
     setIsConnecting(false);
     setError(event.error);
+    setProgressMessage('');
+  });
+
+  // A flow the user cancelled from the dialog must not leave this button stuck
+  // reading "Connecting…" forever — cancellation raises no error.
+  useEventListener(oauthService, 'oauth-cancelled', () => {
+    setIsConnecting(false);
     setProgressMessage('');
   });
 

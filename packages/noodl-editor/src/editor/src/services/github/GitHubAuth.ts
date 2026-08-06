@@ -1,9 +1,9 @@
 /**
  * GitHubAuth
  *
- * Handles GitHub OAuth authentication using Web OAuth Flow.
- * Web OAuth Flow allows users to select which organizations and repositories
- * to grant access to, providing better permission control.
+ * Handles GitHub OAuth authentication using the Device Flow (F63).
+ * The device flow authenticates with the client id alone — there is no client
+ * secret to ship, which is why it replaced the authorization-code flow.
  *
  * @module services/github
  * @since 1.1.0
@@ -21,63 +21,78 @@ import type {
   GitHubInstallation
 } from './GitHubTypes';
 
-/**
- * Scopes required for GitHub integration
- * - repo: Full control of private repositories (for issues, PRs)
- * - read:org: Read organization membership
- * - read:user: Read user profile data
- * - user:email: Read user email addresses
+/*
+ * The requested scopes (`repo`, `read:org`, `read:user`, `user:email`) are NOT
+ * declared here. They used to be, as a `REQUIRED_SCOPES` constant this file
+ * never read — the real list was, and still is, in the main process, which is
+ * the only side that talks to GitHub. A second copy that nothing consumes is a
+ * list that drifts. See `src/main/src/github-device-flow.js`.
  */
-const REQUIRED_SCOPES = ['repo', 'read:org', 'read:user', 'user:email'];
 
 /**
  * GitHubAuth
  *
- * Manages GitHub OAuth authentication using Device Flow.
+ * Manages GitHub OAuth authentication using the Device Flow.
  * Provides methods to authenticate, check status, and disconnect.
  */
 export class GitHubAuth {
   /**
-   * Initiate GitHub Web OAuth flow
+   * Run the GitHub OAuth **device flow** to completion.
    *
-   * Opens browser to GitHub authorization page where user can select
-   * which organizations and repositories to grant access to.
+   * F63: this used to be `startWebOAuthFlow` and used to `shell.openExternal`
+   * an authorization URL that the main process built from a hardcoded client
+   * secret. There is no auth URL any more — `github-oauth-start` now answers
+   * with a short user code and `https://github.com/login/device`, and the user
+   * has to type the one into the other. ⚠️ Anything calling this must surface
+   * `onDeviceCode`; a caller that only reports progress leaves the user staring
+   * at a browser page asking for a code nothing ever showed them.
    *
    * @param onProgress - Callback for progress updates
+   * @param onDeviceCode - Receives the code the user must enter
    * @returns Promise that resolves when authentication completes
    *
-   * @throws {GitHubAuthError} If OAuth flow fails
-   *
-   * @example
-   * ```typescript
-   * await GitHubAuth.startWebOAuthFlow((message) => {
-   *   console.log(message);
-   * });
-   * console.log('Successfully authenticated!');
-   * ```
+   * @throws {GitHubAuthError} If the flow fails, is denied, or expires
    */
-  static async startWebOAuthFlow(onProgress?: (message: string) => void): Promise<void> {
+  static async startDeviceFlow(
+    onProgress?: (message: string) => void,
+    onDeviceCode?: (device: GitHubDeviceCode) => void
+  ): Promise<void> {
     try {
       onProgress?.('Starting GitHub authentication...');
 
-      // Request OAuth flow from main process
+      // Request the device code from the main process
       const result = await ipcRenderer.invoke('github-oauth-start');
 
       if (!result.success) {
-        throw new Error(result.error || 'Failed to start OAuth flow');
+        throw new Error(result.error || 'Failed to start GitHub sign-in');
       }
 
-      onProgress?.('Opening GitHub in your browser...');
+      const device: GitHubDeviceCode = {
+        device_code: '',
+        user_code: result.userCode,
+        verification_uri: result.verificationUri,
+        expires_in: result.expiresIn,
+        interval: result.interval
+      };
 
-      // Open browser to GitHub authorization page
-      shell.openExternal(result.authUrl);
+      onDeviceCode?.(device);
+      onProgress?.(`Enter the code ${device.user_code} at ${device.verification_uri}`);
 
-      // Wait for OAuth callback from main process
+      shell.openExternal(device.verification_uri);
+
+      // Wait for the outcome of the poll, which runs in the main process
       return new Promise((resolve, reject) => {
+        // ⚠️ Was a flat 5 minutes, which is *shorter* than the 15-minute life of
+        // a GitHub device code: it would have given up on a user who was still
+        // typing, while the main process kept polling behind it. The main
+        // process owns the deadline now (it sends `expired_token`); this is
+        // only a backstop for a main process that went silent, so it is the
+        // code's own lifetime plus a minute.
+        const timeoutMs = ((device.expires_in || 900) + 60) * 1000;
         const timeout = setTimeout(() => {
           cleanup();
-          reject(new Error('Authentication timed out after 5 minutes'));
-        }, 300000); // 5 minutes
+          reject(new Error('Authentication timed out'));
+        }, timeoutMs);
 
         const handleSuccess = async (_event: Electron.IpcRendererEvent, data: any) => {
           console.log('🎉 [GitHub Auth] ========================================');
@@ -109,7 +124,11 @@ export class GitHubAuth {
 
         const handleError = (_event: Electron.IpcRendererEvent, data: any) => {
           cleanup();
-          reject(new Error(data.message || 'Authentication failed'));
+          // The code is carried through, not flattened into prose: a caller has
+          // to be able to tell `access_denied` from `expired_token`.
+          const error: GitHubAuthError = new Error(data.message || 'Authentication failed');
+          error.code = data.error;
+          reject(error);
         };
 
         const cleanup = () => {
@@ -133,20 +152,11 @@ export class GitHubAuth {
   }
 
   /**
-   * @deprecated Use startWebOAuthFlow instead. Device Flow kept for backward compatibility.
+   * @deprecated F63 — there is no web OAuth flow any more; this runs the device
+   * flow. Kept only so an out-of-tree caller does not break silently.
    */
-  static async startDeviceFlow(onProgress?: (message: string) => void): Promise<GitHubDeviceCode> {
-    console.warn('[GitHub] startDeviceFlow is deprecated, using startWebOAuthFlow instead');
-    await this.startWebOAuthFlow(onProgress);
-
-    // Return empty device code for backward compatibility
-    return {
-      device_code: '',
-      user_code: '',
-      verification_uri: '',
-      expires_in: 0,
-      interval: 0
-    };
+  static async startWebOAuthFlow(onProgress?: (message: string) => void): Promise<void> {
+    return this.startDeviceFlow(onProgress);
   }
 
   /**

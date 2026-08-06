@@ -17,6 +17,7 @@ import { AppRouteOptions, AppRouter } from './pages/AppRouter';
 import { EditorPage } from './pages/EditorPage';
 import { ProjectsPage } from './pages/ProjectsPage';
 import { DialogLayerContainer } from './views/DialogLayer';
+import { installGitHubDeviceFlowDialog } from './views/DialogLayer/components/GitHubDeviceCodeDialog';
 import { installReportProblemListener } from './views/DialogLayer/components/ReportProblemDialog';
 import { ToastLayerContainer } from './views/ToastLayer';
 
@@ -72,6 +73,12 @@ function createDialogLayer() {
   // Here rather than in the dialog, because the tail has to be collecting
   // *before* the thing being reported goes wrong.
   installReportProblemListener();
+
+  // F63: GitHub sign-in is a device flow, and the user code it produces has no
+  // home in any one panel — three separate Connect buttons start the same
+  // flow. Installed here so all of them get the dialog and none of them has to
+  // own it.
+  installGitHubDeviceFlowDialog();
 }
 
 export default class Router
