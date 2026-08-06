@@ -18,6 +18,12 @@ export { BackendServiceOptions, resolveOptions, requiresAuth, generateAuthToken 
 export { HttpServer, ListenInfo, RequestContext, RouteAccess, RouteInfo } from './server/HttpServer';
 export { WorkflowRunner } from './workflow/WorkflowRunner';
 export { ExecutionHistory } from './execution/ExecutionStore';
+export {
+  IdempotencyStore,
+  IdempotencyClaim,
+  IdempotencyRow,
+  DEFAULT_IDEMPOTENCY_TTL_MS
+} from './execution/IdempotencyStore';
 // BAK-003 — the access-control contract. BAK-001's realtime delivery imports
 // canReadRecord/resolvePrincipal from here (model doc §11).
 export {

@@ -26,6 +26,7 @@ import { BackendServiceOptions, resolveOptions, requiresAuth } from './config';
 import { createAdapter, PersistenceHandle } from './persistence/createAdapter';
 import { AdapterFacade } from './persistence/AdapterFacade';
 import { ExecutionHistory, ExecutionHistoryStatus } from './execution/ExecutionStore';
+import { IdempotencyStore } from './execution/IdempotencyStore';
 import { HttpServer, ListenInfo } from './server/HttpServer';
 import { WorkflowRunner } from './workflow/WorkflowRunner';
 import { WorkflowSubsystem } from './workflow/WorkflowSubsystem';
@@ -130,6 +131,8 @@ export class BackendService {
   /** CWF-015: the system-scoped user operations a cloud function can perform. */
   private systemUsers: SystemUsers | null = null;
   private readonly executions = new ExecutionHistory();
+  /** CWF-016: the idempotency claim table, in the execution history's own file. */
+  private readonly idempotency = new IdempotencyStore();
 
   constructor(partial: Partial<BackendServiceOptions> = {}) {
     this.options = resolveOptions(partial);
@@ -290,6 +293,37 @@ export class BackendService {
         `[nodegx-backend] execution history DISABLED: ${executionHistory.error} — function runs proceed unlogged.`
       );
     }
+    // 2.1 CWF-016: the idempotency claim table, in the SAME file on the SAME
+    //     connection. It rides `ExecutionHistory.prune` (registerSweep) rather
+    //     than growing a fourth timer, and its first act is to release every
+    //     claim a prior process left `running` — the same doctrine as 5.5 below:
+    //     a claim that outlived its process is a key nothing could ever retry.
+    const db = this.executions.getDatabase();
+    if (db) {
+      try {
+        this.idempotency.open(db, {
+          getTtlMs: () => this.ops!.config.executions.idempotencyTtlHours * 3_600_000
+        });
+        this.executions.registerSweep('idempotency', () => this.idempotency.sweep());
+        const releasedClaims = this.idempotency.releaseInFlight();
+        if (releasedClaims > 0) {
+          // eslint-disable-next-line no-console
+          console.warn(
+            `[nodegx-backend] CWF-016: released ${releasedClaims} idempotency claim(s) left in flight by a ` +
+              'prior process — those keys may run their function again.'
+          );
+        }
+      } catch (e) {
+        // Same policy as the history itself: DISABLED and loud, never a silent
+        // in-memory fallback, and never a reason a real function call fails.
+        // eslint-disable-next-line no-console
+        console.warn(
+          `[nodegx-backend] CWF-016 idempotency DISABLED: ${e instanceof Error ? e.message : String(e)} — ` +
+            'duplicate deliveries will run the function twice.'
+        );
+      }
+    }
+
     this.executions.prune();
 
     // 2.2 Workflows (WF-001): the definition registry loads workflow-defs/ (loud

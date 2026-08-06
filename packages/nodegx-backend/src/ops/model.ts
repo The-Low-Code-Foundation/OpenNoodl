@@ -118,6 +118,21 @@ export interface AuditConfig {
 export interface ExecutionsConfig {
   /** Days to keep `workflow_executions` rows (steps cascade). 0 = keep forever. */
   retentionDays: number;
+  /**
+   * CWF-016: hours to keep an answered idempotency key before the same
+   * `Idempotency-Key` is allowed to run the graph again. 0 = keep forever.
+   *
+   * **Here rather than in its own section, on purpose.** It is the same class of
+   * decision as `retentionDays` — how long this backend remembers what it did —
+   * over rows in the same database file, swept on the same pass. A second
+   * retention surface is how two retention policies come to disagree, and the
+   * only thing an operator would gain from one is a second place to look.
+   *
+   * 24h is the industry default (Stripe's) and long enough to cover every
+   * provider retry schedule worth naming; the number is here so a backend whose
+   * upstream retries for a week can say so.
+   */
+  idempotencyTtlHours: number;
 }
 
 export interface MetricsConfig {
@@ -175,7 +190,7 @@ export function defaultOpsConfig(): OpsConfig {
     },
     cors: { origins: ['*'], credentials: false },
     audit: { enabled: true, retentionDays: 90 },
-    executions: { retentionDays: 30 },
+    executions: { retentionDays: 30, idempotencyTtlHours: 24 },
     metrics: { enabled: true, allowLoopback: true }
   };
 }
@@ -282,7 +297,10 @@ export function validateOpsConfig(raw: unknown): string[] {
     }
   }
 
-  if (cfg.executions !== undefined && checkKeys(errors, 'executions', cfg.executions, ['retentionDays'])) {
+  if (
+    cfg.executions !== undefined &&
+    checkKeys(errors, 'executions', cfg.executions, ['retentionDays', 'idempotencyTtlHours'])
+  ) {
     const executions = cfg.executions as Record<string, unknown>;
     if (
       executions.retentionDays !== undefined &&
@@ -291,6 +309,14 @@ export function validateOpsConfig(raw: unknown): string[] {
         executions.retentionDays < 0)
     ) {
       errors.push('executions.retentionDays must be a number >= 0 (0 = keep forever)');
+    }
+    if (
+      executions.idempotencyTtlHours !== undefined &&
+      (typeof executions.idempotencyTtlHours !== 'number' ||
+        !Number.isFinite(executions.idempotencyTtlHours) ||
+        executions.idempotencyTtlHours < 0)
+    ) {
+      errors.push('executions.idempotencyTtlHours must be a number >= 0 (0 = keep forever)');
     }
   }
 

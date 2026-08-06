@@ -21,6 +21,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 import { logger } from '../ops/logger';
+import type { SqlDatabase } from './IdempotencyStore';
 
 // Bundled from noodl-viewer-cloud/src/execution-history by esbuild (test-time:
 // jest moduleNameMapper), so the CONSTRUCTION stays a runtime `require` — this
@@ -73,11 +74,19 @@ export interface ExecutionListQuery {
   startedBefore?: number;
 }
 
+/** A retention pass some other table rides on this one's clock. See `registerSweep`. */
+interface RegisteredSweep {
+  name: string;
+  run: () => number;
+}
+
 export class ExecutionHistory {
   private store: CloudExecutionStore | null = null;
+  private db: SqlDatabase | null = null;
   private status: ExecutionHistoryStatus = { enabled: false, dbPath: null, error: null };
   private getRetentionDays: (() => number) | null = null;
   private lastPrune = 0;
+  private sweeps: RegisteredSweep[] = [];
 
   /** Open (or create) `<dataDir>/executions.sqlite` and init the schema. */
   open(dataDir: string, options: ExecutionHistoryOpenOptions = {}): ExecutionHistoryStatus {
@@ -91,10 +100,12 @@ export class ExecutionHistory {
       const store = new executionHistory.ExecutionStore(db);
       store.initSchema();
       this.store = store;
+      this.db = db as SqlDatabase;
       this.status = { enabled: true, dbPath, error: null };
     } catch (e) {
       const message = e instanceof Error ? e.message : String(e);
       this.store = null;
+      this.db = null;
       this.status = { enabled: false, dbPath, error: message };
     }
     return this.status;
@@ -102,6 +113,35 @@ export class ExecutionHistory {
 
   getStatus(): ExecutionHistoryStatus {
     return this.status;
+  }
+
+  /**
+   * The open handle, for a table that lives beside the execution history in the
+   * same file (CWF-016's idempotency keys).
+   *
+   * One file and ONE connection is the point: a second `DatabaseSync` on the
+   * same path is a second writer contending for a lock nobody has a plan for,
+   * and a second file is a second thing to back up and to forget to back up.
+   * `null` when history is disabled — which is the honest answer, because a
+   * table needs the same sqlite the history needed.
+   */
+  getDatabase(): SqlDatabase | null {
+    return this.db;
+  }
+
+  /**
+   * Ride this store's retention clock.
+   *
+   * The alternative was a fourth timer, and `maybePrune`'s note below is the
+   * whole argument against one. A sweep registered here runs on the same
+   * write-driven hourly pass, is wrapped so a failure cannot take a function run
+   * with it, and — unlike the execution cleanup — runs whatever
+   * `executions.retentionDays` says, because `retentionDays: 0` means "keep
+   * every execution forever" and must not be read as "keep every idempotency
+   * key forever" too.
+   */
+  registerSweep(name: string, run: () => number): void {
+    this.sweeps.push({ name, run });
   }
 
   /**
@@ -147,8 +187,23 @@ export class ExecutionHistory {
    * asserting against a knob that is not connected.
    */
   prune(): number {
-    if (!this.store || !this.getRetentionDays) return 0;
     this.lastPrune = Date.now();
+    const removed = this.pruneExecutions();
+    // Registered sweeps run whatever the execution retention says — see
+    // `registerSweep`. Each is isolated so one broken table cannot stop another.
+    for (const sweep of this.sweeps) {
+      try {
+        const swept = sweep.run();
+        if (swept > 0) logger.info(`${sweep.name}.pruned`, { removed: swept });
+      } catch (e) {
+        logger.warn(`${sweep.name}.prune-failed`, { error: e instanceof Error ? e.message : String(e) });
+      }
+    }
+    return removed;
+  }
+
+  private pruneExecutions(): number {
+    if (!this.store || !this.getRetentionDays) return 0;
     try {
       // Inside the try on purpose: the callback reads live service state, and a
       // record written while the service is tearing down must not throw here.
@@ -177,7 +232,7 @@ export class ExecutionHistory {
    * covers the backend that is stopped for a year and comes back.
    */
   private maybePrune(): void {
-    if (!this.getRetentionDays) return;
+    if (!this.getRetentionDays && this.sweeps.length === 0) return;
     if (Date.now() - this.lastPrune < PRUNE_INTERVAL_MS) return;
     this.prune();
   }
