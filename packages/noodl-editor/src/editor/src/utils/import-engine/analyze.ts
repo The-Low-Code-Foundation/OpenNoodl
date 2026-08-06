@@ -21,11 +21,33 @@ import FileSystem from '../filesystem';
 import { buildInventory, catalogPortType } from './inventory';
 import type { ProjectData, SourceInventory } from './types';
 
-const IGNORED_FILES = new Set(['project.json', '.ds_store', '.gitignore', '.gitattributes', 'readme.md']);
+/**
+ * Project *source* files, in both formats — never importable resources. The
+ * graph they encode is imported through `projectFromDirectory` above; listing
+ * them here as well would offer the user their own component files as if they
+ * were assets.
+ */
+const IGNORED_FILES = new Set([
+  'project.json',
+  'nodegx.project.json',
+  'nodegx.routes.json',
+  'nodegx.styles.json',
+  '.ds_store',
+  '.gitignore',
+  '.gitattributes',
+  'readme.md'
+]);
 
 /** List a loaded project's importable resource paths (project-relative). */
 function listResources(project: ProjectModel, sourceDir: string): Promise<string[]> {
   const ignoreFullPath = [`${project._retainedProjectDirectory}/.git`, `${project._retainedProjectDirectory}/__MACOSX`];
+  // A v2 project keeps its whole graph under components/ — source, not assets.
+  // Only skipped when the project actually is v2: `components/` is a plausible
+  // asset folder name in a legacy project (the same carve-out the deploy copy
+  // filter makes in `compilation/build/ignore.ts`).
+  const componentsDir =
+    project._projectFormat === 'v2' ? `${project._retainedProjectDirectory}/components/` : undefined;
+
   return new Promise((resolve) => {
     project.listFilesInProjectDirectory(
       (entries: { name: string; fullPath: string }[]) => {
@@ -33,6 +55,7 @@ function listResources(project: ProjectModel, sourceDir: string): Promise<string
         for (const e of entries) {
           if (IGNORED_FILES.has(e.name.toLowerCase())) continue;
           if (e.fullPath.indexOf('.git') === 0) continue;
+          if (componentsDir && e.fullPath.startsWith(componentsDir)) continue;
           if (e.fullPath.startsWith(project._retainedProjectDirectory + '/noodl_modules')) continue;
           resources.push(e.fullPath.substring(sourceDir.length + 1));
         }

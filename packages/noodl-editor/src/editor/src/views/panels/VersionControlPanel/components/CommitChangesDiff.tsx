@@ -7,12 +7,12 @@ import { FileChange } from '@noodl/git/src/core/models/status';
 import { revRange } from '@noodl/git/src/core/rev-list';
 
 import { ProjectModel } from '@noodl-models/projectmodel';
-import { applyPatches } from '@noodl-models/ProjectPatches/applypatches';
 import { mergeProject } from '@noodl-versioning';
 import { ProjectDiff, diffProject } from '@noodl-utils/projectmerger.diff';
 
 import { useVersionControlContext } from '../context';
-import { getProjectFilePath } from '../context/DiffUtils';
+import { getProjectRootInRepo } from '../context/DiffUtils';
+import { readProjectFromSnapshot } from '../context/snapshotProject';
 import { GraphProjectDiff, safeGraphDiff } from '../context/graphDiff';
 import { DiffList } from './DiffList';
 
@@ -135,10 +135,6 @@ async function getMergeDiff(repositoryPath: string, commit: Commit, refToDiffTo:
 }
 
 async function getProjectFile(commit: Commit) {
-  const projectFilePath = getProjectFilePath(commit.repositoryDir, ProjectModel.instance._retainedProjectDirectory);
-
-  const projectContentRaw = await commit.getFileAsString(projectFilePath);
-  const projectContent = JSON.parse(projectContentRaw);
-  applyPatches(projectContent);
-  return projectContent;
+  const root = getProjectRootInRepo(commit.repositoryDir, ProjectModel.instance._retainedProjectDirectory);
+  return readProjectFromSnapshot(commit, root);
 }

@@ -109,8 +109,15 @@ export function unflattenNodes(flatNodes: NodeV2[]): LegacyNode[] {
     if (v2Node.defaultStateTransitions !== undefined) {
       legacyNode.defaultStateTransitions = v2Node.defaultStateTransitions;
     }
-    if (v2Node.ports !== undefined) legacyNode.ports = v2Node.ports as unknown[];
-    if (v2Node.dynamicports !== undefined) legacyNode.dynamicports = v2Node.dynamicports as unknown[];
+    // Same invariant as `parameters`: legacy graphs always carry both (3691 of
+    // 3691 nodes across the corpus projects), and `NodeGraphNode.toJSON` emits
+    // them whether or not they hold anything. v2 omits them when empty, so a
+    // reconstructed node that did not restore them compares unequal to the live
+    // model over nothing — which surfaced as every component being permanently
+    // "Changed" in the version-control panel, since `nodesSoftEqual` omits
+    // `dynamicports` but not `ports`.
+    legacyNode.ports = (v2Node.ports as unknown[]) ?? [];
+    legacyNode.dynamicports = (v2Node.dynamicports as unknown[]) ?? [];
     if (v2Node.conflicts !== undefined) legacyNode.conflicts = v2Node.conflicts as unknown[];
     if (v2Node.metadata !== undefined) legacyNode.metadata = v2Node.metadata;
 

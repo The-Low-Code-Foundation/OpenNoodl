@@ -3,7 +3,6 @@ import { getCommit } from '@noodl/git/src/core/logs';
 import { FileStatusKind } from '@noodl/git/src/core/models/status';
 
 import { FeedbackType } from '@noodl-constants/FeedbackType';
-import { applyPatches } from '@noodl-models/ProjectPatches/applypatches';
 import {
   ProjectDiff,
   ProjectDiffItem,
@@ -17,6 +16,8 @@ import { IconName } from '@noodl-core-ui/components/common/Icon';
 import { ListItemProps } from '@noodl-core-ui/components/layout/ListItem';
 
 import { ProjectModel } from '../../../../models/projectmodel';
+import { V2_FILES } from '../../../../services/ProjectStructure/types';
+import { readProjectFromSnapshot } from './snapshotProject';
 
 export interface ProjectLocalDiff extends ProjectDiff {
   baseProject: TSFixme; //Project model as an object from raw json
@@ -87,10 +88,39 @@ export function getFileStatusIconProps(status: FileStatusKind): Partial<ListItem
   }
 }
 
-export function getProjectFilePath(repositoryPath: string, projectPath: string) {
-  const relativePath = path.relative(repositoryPath, projectPath);
-  const projectFilePath = path.join(relativePath, 'project.json').replaceAll('\\', '/');
-  return projectFilePath;
+/**
+ * True for a repo path that holds project *source* in either format.
+ *
+ * These files are already represented in the panel as a component/style/setting
+ * diff — the whole point of the graph diff is that a user reads "Home changed",
+ * not "components/__page__/Home/nodes.json changed". Listing them again under
+ * raw file changes double-counts every edit, and in v2 a one-node change would
+ * otherwise show up as three JSON files plus a registry.
+ *
+ * Deliberately matched on the v2 filenames rather than on `components/` alone:
+ * in a legacy project `components/` is a perfectly ordinary asset folder.
+ */
+export function isProjectSourceFile(filePath: string): boolean {
+  const normalized = filePath.replaceAll('\\', '/');
+  const name = normalized.split('/').pop();
+
+  if (name === 'project.json' || name === V2_FILES.project) return true;
+  if (name === V2_FILES.routes || name === V2_FILES.styles) return true;
+
+  // Per-component files and the registry, at any depth under a components/ dir.
+  const isV2ComponentFile =
+    name === V2_FILES.component || name === V2_FILES.nodes || name === V2_FILES.connections || name === '_registry.json';
+  return isV2ComponentFile && normalized.includes(`${V2_FILES.componentsDir}/`);
+}
+
+/**
+ * The project's root inside the repository, repo-relative and `/`-separated
+ * (`''` when the project *is* the repository root). Formerly this returned the
+ * path of `project.json`; a v2 project has no single file, so what the readers
+ * need is the directory the format lives under.
+ */
+export function getProjectRootInRepo(repositoryPath: string, projectPath: string) {
+  return path.relative(repositoryPath, projectPath).replaceAll('\\', '/');
 }
 
 export async function doLocalDiff(
@@ -98,13 +128,11 @@ export async function doLocalDiff(
   projectPath: string,
   headCommitId: string
 ): Promise<ProjectLocalDiff> {
-  const projectFilePath = getProjectFilePath(repositoryPath, projectPath);
+  const root = getProjectRootInRepo(repositoryPath, projectPath);
 
   try {
     const baseCommit = await getCommit(projectPath, headCommitId);
-    const baseProjectJson = await baseCommit.getFileAsString(projectFilePath);
-    const baseProject = JSON.parse(baseProjectJson);
-    applyPatches(baseProject);
+    const baseProject = await readProjectFromSnapshot(baseCommit, root);
 
     const diff = diffProject(baseProject, ProjectModel.instance.toJSON());
 
@@ -115,7 +143,7 @@ export async function doLocalDiff(
     };
   } catch (error) {
     if (error.toString().includes('exists on disk, but not in')) {
-      console.warn('project.json does not exist in this commit.');
+      console.warn('This commit contains no project to diff against.');
     }
 
     // Return empty state

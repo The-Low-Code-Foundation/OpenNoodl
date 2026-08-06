@@ -30,6 +30,7 @@ import {
   getChangedComponents,
   getChangedObjectProperties,
   getFileStatusIconProps,
+  isProjectSourceFile,
   ObjectPropertyChange
 } from '../context/DiffUtils';
 import { useShowComponentDiffDocument } from '../hooks/useShowComponentDiffDocument';
@@ -68,7 +69,7 @@ export function DiffList({ diff, fileChanges, componentDiffTitle, graphDiff, act
   const [imageDiff, setImageDiff] = useState<IImageDiff>(null);
 
   const components = diff?.components ? getChangedComponents(diff.components) : [];
-  const files = (fileChanges || [])?.filter((f) => !f.path.endsWith('project.json')) || [];
+  const files = (fileChanges || [])?.filter((f) => !isProjectSourceFile(f.path)) || [];
   const settings = diff?.settings ? getChangedObjectProperties(diff.settings) : [];
   const colorStyles = diff?.styles.colors ? getChangedObjectProperties(diff.styles.colors) : [];
   const textStyles = diff?.styles.text ? getChangedObjectProperties(diff.styles.text) : [];
