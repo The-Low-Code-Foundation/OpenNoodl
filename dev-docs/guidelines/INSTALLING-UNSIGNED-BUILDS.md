@@ -13,8 +13,15 @@ time. After that first launch it opens normally.
 
 ## macOS
 
-**Download:** `NodeGX-<version>-mac-universal.dmg` — one file, runs on both Apple
-Silicon (M1/M2/M3/M4) and Intel Macs.
+**Download:** the `.dmg` for your Mac — there are two, and neither is universal:
+
+| Your Mac | File |
+|----------|------|
+| Apple Silicon (M1/M2/M3/M4) | `NodeGX-<version>-mac-arm64.dmg` |
+| Intel | `NodeGX-<version>-mac-x64.dmg` |
+
+Not sure which you have? **Apple menu → About This Mac** — "Apple M…" means
+arm64, "Intel" means x64.
 
 1. Open the `.dmg` and drag **NodeGX** into **Applications**.
 2. The first time you open it, macOS will say NodeGX *"cannot be opened because

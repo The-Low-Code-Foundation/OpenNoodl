@@ -144,6 +144,22 @@ a bug for over a week. It was a bug, but a different one: see below.
 > `.deb` builds. The lesson worth keeping is that **a published artifact is not
 > evidence of a green job** — electron-builder uploads as it goes.
 
+### The draft is checked for completeness before you ever look at it
+
+A `verify-release-assets` job runs after the matrix (with `if: always()`, so it
+runs *because* something failed) and asserts the draft carries every expected
+artifact: both mac `.dmg`s and `.zip`s, the Windows `.exe`, the AppImage, the
+`.deb`, `latest.yml`, and a `latest-mac.yml` that lists **both** architectures.
+It fails naming what is missing.
+
+This exists because of the lesson in the Linux note above — a draft with files in
+it is not evidence of a green run — and because the mac feed merge could
+previously exit 0 with "nothing to merge", shipping a single-architecture update
+feed with no symptom on the machine that cut the release. Both are now failures.
+
+Run the rules against fixtures any time with
+`node scripts/check-release-assets.js --self-test`; the PR gate does.
+
 Because the release is a **draft**, it is invisible to the public and to
 electron-updater until a human clicks Publish. An unsigned or broken build
 therefore can never reach a user by accident.
@@ -151,6 +167,28 @@ therefore can never reach a user by accident.
 **If a signing secret is missing,** that platform still builds and publishes,
 but the artifact is unsigned (macOS: not notarised; Windows: unsigned). The
 `macos-notarize.js` hook logs a clear "skipping notarisation" line in that case.
+
+This is a mechanism, not a hope, and it is worth knowing which line does it.
+CI passes every secret to every leg, so an *absent* secret arrives as an **empty
+string** — and electron-builder reads an empty-but-set `CSC_LINK` as a
+certificate *path*, failing with "`<cwd>` not a file". That is what actually
+broke the v0.1.0 darwin legs. `packages/noodl-editor/scripts/build.ts` deletes
+the empty ones before invoking electron-builder, which is what turns "secret
+absent" into "unsigned build" rather than "failed job".
+
+> **Add the certificates one platform at a time and it still works — but only
+> because of a second guard.** `WIN_CSC_LINK` is not a separate variable to
+> electron-builder, it is a *preference*: `getCscLink("WIN_CSC_LINK")` falls
+> back to `CSC_LINK`, and `WIN_CSC_KEY_PASSWORD` falls back to
+> `CSC_KEY_PASSWORD`. With the Apple `.p12` in `CSC_LINK` and no Windows
+> certificate yet — the expected interim state — the Windows leg would import
+> the Apple certificate and hand it to signtool. `scripts/build.ts` now scopes
+> signing material to the target platform so that cannot happen.
+
+**If you add the Apple *notarisation* secrets without `CSC_LINK`,** the macOS leg
+fails immediately with a message naming the missing secret. Apple cannot
+notarise an app that is not signed with a Developer ID, and its own error for
+that arrives late and says little. Add all five macOS secrets together.
 
 ---
 
@@ -244,10 +282,11 @@ These are documented deliberately rather than silently shipped:
 - **AppImage build is CI-verified only.** AppImage cannot be built on macOS, so
   it is exercised by the Linux runner, not locally. Local verification here
   covered the macOS packaging path only.
-- **App icons.** The build uses the 256×256 `src/assets/images/icon.png`. That
-  satisfies AppImage's icon requirement, but for crisp macOS/Windows icons a
-  proper multi-resolution `.icns`/`.ico` (or a ≥512px master) should be added
-  under `build/`. Not blocking for v0.
+- ~~**App icons.**~~ **Fixed (F75).** `packages/noodl-editor/build/icon.png` is a
+  1024×1024 master, which electron-builder converts to `.icns` and `.ico` for
+  macOS and Windows. Linux keeps its explicit `linux.icon`
+  (`src/assets/images/icon.png`, 512×512). The old text here said the build used
+  a 256×256 icon; both the size and the file were wrong.
 - **GitHub OAuth deep-link scheme is still `noodl://`.** The app's own protocol
   was rebranded to `nodegx://`, but the GitHub OAuth callback
   (`github-oauth-handler.js`) deliberately keeps `noodl://` because it is bound
