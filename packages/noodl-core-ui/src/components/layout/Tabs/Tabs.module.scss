@@ -44,8 +44,18 @@ $_text-variant-top-padding: 15px;
     padding: $_text-variant-top-padding 15px 13px;
   }
 
+  /* SPR-003 §2 (F92): the sidebar row has to claim the panel's width.
+     `Tabs.tsx` gives every button `width: calc(100/n% - 2px)`, and a percentage
+     resolves against this element — which, as a `flex: 0 1 auto` item, was
+     sized by its own content. Two buttons therefore each got half of
+     `Properties + Ports`, i.e. their *average* width, so the longer label
+     overflowed its box to the right while the shorter one had room to spare.
+     That is exactly what Richard saw: "less spacing at the right than the
+     left". With the row full-width the buttons split the panel instead. */
   .Root.is-variant-sidebar & {
     margin-left: -$_gutter;
+    flex: 1;
+    min-width: 0;
   }
 
   // UIX-013: the pill-in-a-track segmented control.
@@ -155,14 +165,34 @@ $_text-variant-top-padding: 15px;
 
   .Root.is-variant-sidebar & {
     background-color: var(--theme-color-bg-3);
+    /* SPR-003 §2: `flex-basis: 1` is not valid CSS — a unitless non-zero length
+       is dropped, leaving `auto`, so the inline percentage width was doing all
+       the sizing. `0` makes the buttons split the row evenly whatever their
+       labels say, and `flex-shrink: 1` + `min-width: 0` let them keep doing it
+       when the panel is dragged narrow instead of pushing out of the panel. */
     flex-grow: 1;
-    flex-shrink: 0;
-    flex-basis: 1;
+    flex-shrink: 1;
+    flex-basis: 0;
+    min-width: 0;
     border: none;
     padding: 12px 16px;
     margin-left: $_gutter;
     color: var(--theme-color-fg-default);
     transition: color var(--speed-quick) var(--easing-base);
+
+    /* The label is centred in the tab rather than left-aligned against the
+       padding — a `<button>`'s default `text-align: center` was being defeated
+       by `Text`'s block `<p>` filling the box. */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    > p {
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
 
     &.is-active {
       background-color: var(--theme-color-bg-1);

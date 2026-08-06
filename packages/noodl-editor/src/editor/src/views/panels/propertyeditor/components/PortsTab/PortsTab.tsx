@@ -77,8 +77,23 @@ interface PortGroupRows {
   rows: PortRow[];
 }
 
-/** How many enum values are spelled out before the list is trimmed. */
-const MAX_ENUM_VALUES = 8;
+/**
+ * How many enum values are spelled out before the list is trimmed.
+ *
+ * SPR-003 §3 relaxed this from 8. The old reason was the wrong one — the list
+ * was trimmed *because the row was too tight*, which is the defect F93 filed,
+ * and the mitigation had been applied to the type instead of to the layout. Now
+ * that the type label owns its own line and wraps, width is no longer the
+ * constraint.
+ *
+ * A cap still earns its place, for a different reason: a long enum is a wall of
+ * text in a read-only summary, and the tab's job is to say *what this port is*,
+ * not to be the property editor's dropdown. 12 spells out every enum in the
+ * library except the 16 blend modes (`node-shared-port-definitions.ts`) —
+ * including the 10 HTML tags on Text and the 9 on Group, and the two
+ * `Treat empty as` options that started this.
+ */
+const MAX_ENUM_VALUES = 12;
 
 function typeLabelFor(type: TSFixme): string {
   const name = NodeLibrary.nameForPortType(type) || 'unknown';
@@ -158,14 +173,21 @@ function PortRowView({ row, direction }: { row: PortRow; direction: 'input' | 'o
 
   return (
     <div className={css['Row']}>
+      {/*
+       * SPR-003 §3 (F93): two lines, not one. The name and the type label used
+       * to be flex siblings and the type won — a long enum label squeezed the
+       * name to one character per line.
+       */}
       <div className={css['RowHead']}>
-        {row.isSignal && (
-          <span className={css['SignalIcon']}>
-            {/* UIX-010: `IconSize` is inert, so the size is explicit — same as `PortItem.tsx`. */}
-            <Icon icon={IconName.Lightning} UNSAFE_style={{ width: 13, height: 13 }} />
-          </span>
-        )}
-        <span className={css['Name']}>{row.displayName}</span>
+        <span className={css['NameLine']}>
+          {row.isSignal && (
+            <span className={css['SignalIcon']}>
+              {/* UIX-010: `IconSize` is inert, so the size is explicit — same as `PortItem.tsx`. */}
+              <Icon icon={IconName.Lightning} UNSAFE_style={{ width: 13, height: 13 }} />
+            </span>
+          )}
+          <span className={css['Name']}>{row.displayName}</span>
+        </span>
         <span className={css['Type']}>{row.typeLabel}</span>
       </div>
 

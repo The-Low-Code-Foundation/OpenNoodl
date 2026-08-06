@@ -57,11 +57,26 @@
   background-color: var(--theme-color-bg-2);
 }
 
+/* SPR-003 §3 (F93): the name and the type label were flex siblings on one line
+   with `margin-left: auto` pushing the type right. The type is `flex: none`, so
+   a long one (`enum: Null (default), Empty string ("")`) took the width it
+   wanted and the name — `overflow-wrap: anywhere` — was squeezed to one
+   character per line. They are now two rows: the name on its own line, the type
+   beneath it. Nothing here shrinks the name any more. */
 .RowHead {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--spacing-0-5);
+  min-width: 0;
+}
+
+.NameLine {
   display: flex;
   align-items: center;
   gap: var(--spacing-1-5);
   min-width: 0;
+  max-width: 100%;
 }
 
 .SignalIcon {
@@ -78,14 +93,17 @@
 }
 
 .Type {
-  margin-left: auto;
-  flex: none;
+  max-width: 100%;
   color: var(--theme-color-fg-default-shy);
   font-family: var(--font-family-code);
   font-size: var(--font-size-xs);
+  line-height: var(--line-height-normal);
   padding: 1px var(--spacing-1);
   border-radius: var(--radius-sm);
   background-color: var(--theme-color-bg-3);
+  /* The label now owns a full row, so it wraps rather than pushing the name
+     out of the way. `anywhere` because an enum label can be one long token. */
+  overflow-wrap: anywhere;
 }
 
 /* SPR-003 §1 (F82): an `allowEditOnly` port is real but unwireable. The row
