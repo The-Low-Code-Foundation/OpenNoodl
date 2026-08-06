@@ -38,6 +38,33 @@ function createUsersAPI(modelScope) {
       });
     },
 
+    /**
+     * Mint (or reuse) a session for another user and return that user.
+     *
+     * ⚠️ **The session row's user is `userId`, a flat string — never a `user`
+     * pointer.** This API inherited Parse Server's `_Session` shape, where the
+     * user is a Pointer column called `user`. The backend this runtime actually
+     * talks to spells it `userId`: `UserRoutes.requireUser`,
+     * `SystemUsers.verifyToken`, the identity-revocation sweep and the
+     * email-driven sweep all read `session.userId`, and `_Session` declares no
+     * `user` column at all (`service.ts` `ensureSystemTables`). Both halves of
+     * the old shape were broken by that, and the first one loudly:
+     *
+     *  - the **reuse query** below asked for `user pointsTo <id>`, which the
+     *    filter translator refuses outright without a schema saying which
+     *    collection `user` points to — so `impersonate()` threw *"Filtering
+     *    "user" by the record it points to needs the collection schema"* before
+     *    it ever minted anything;
+     *  - and the **row it wrote** carried no `userId`, so the `/users/me` call
+     *    at the end of this function answered 209 and the token was inert.
+     *
+     * There is deliberately **no compatibility read for old `user`-pointer
+     * rows**. Not an oversight — a row of that shape has never resolved to a
+     * user on this backend (it 209s, asserted in
+     * `nodegx-backend/tests/impersonate-session.test.ts`), so reusing one would
+     * hand back a token that cannot be used. Ignoring them and minting a fresh
+     * session is the only behaviour that ends with a working token.
+     */
     async impersonate(username, options) {
       // Look for the user based on username
       const users = await Records.query('_User', {
@@ -52,7 +79,7 @@ function createUsersAPI(modelScope) {
       const user = users[0];
 
       const query = {
-        and: [{ user: { pointsTo: user.id } }, { expiresAt: { greaterThan: new Date() } }]
+        and: [{ userId: { equalTo: user.id } }, { expiresAt: { greaterThan: new Date() } }]
       };
 
       if (options && options.installationId) {
@@ -75,7 +102,7 @@ function createUsersAPI(modelScope) {
       if (!sessions || sessions.length === 0) {
         // No session, we need to create one
         const session = await Records.create('_Session', {
-          user: user.id,
+          userId: user.id,
           installationId: options ? options.installationId : undefined,
           sessionToken: 'r:' + Model.guid() + Model.guid(),
           expiresAt: new Date(
