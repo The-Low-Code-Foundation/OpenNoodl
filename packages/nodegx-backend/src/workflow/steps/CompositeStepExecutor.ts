@@ -18,7 +18,7 @@ import type { StepExecContext, StepExecutor, StepExecReturn } from '../StepExecu
 import { FunctionStepExecutor, StepExecutionError } from '../StepExecutor';
 import type { WorkflowRunner } from '../WorkflowRunner';
 import type { StepKind } from '../types';
-import { RetryStepExecutor, StopStepExecutor } from './errors';
+import { StopStepExecutor } from './errors';
 import { STEP_KINDS } from './kinds';
 import { BranchStepExecutor, ForEachStepExecutor, MergeStepExecutor, SwitchStepExecutor } from './logic';
 import { ReturnStepExecutor } from './returns';
@@ -41,7 +41,6 @@ export class CompositeStepExecutor implements StepExecutor {
       switch: new SwitchStepExecutor(),
       'for-each': new ForEachStepExecutor({ getRunner }),
       merge: new MergeStepExecutor(),
-      retry: new RetryStepExecutor({ getRunner }),
       stop: new StopStepExecutor(),
       wait: new WaitStepExecutor(),
       'wait-until': new WaitUntilStepExecutor(),

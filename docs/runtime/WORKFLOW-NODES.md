@@ -35,7 +35,7 @@ nothing to author against until one is up.
 Click a workflow to draw it:
 
 - **A step is a node.** Its title is the step's name (or its id), and its second
-  line is the kind, the function it invokes for `call-function` and `retry`, and
+  line is the kind, the function it invokes for `call-function` and `for-each`, and
   `entry step` on the one the run starts at.
 - **An edge is a connection.** `next` is the plain wire; a route carries its
   name on the wire, because an unlabelled branch is unreadable; `onError` is red
@@ -377,6 +377,73 @@ failure. This is the workhorse — any real work is a cloud-function graph.
 { "id": "validate", "kind": "call-function", "ref": "validateOrder", "next": ["charge"] }
 ```
 
+#### Retrying it — the policy, not a separate step
+
+A Call Function step can retry itself with exponential backoff. The policy is
+**off** unless `maxAttempts` is greater than 1, and a step without it is invoked
+exactly once, exactly as before.
+
+| Param | Shown as | Default | Description |
+|---|---|---|---|
+| `maxAttempts` | Total attempts (incl. the first) | `3` | How many times the function is called **in total**. `1` means no retry. |
+| `delayMs` | First delay (ms) | `1000` | The wait before the **second** attempt. Later delays multiply from this. |
+| `backoffMultiplier` | Delay multiplier | `2` | Multiplies each subsequent delay. `1` = a fixed delay every time. |
+| `maxDelayMs` | Longest single delay (ms) | `60000` | Ceiling on any one delay, however far the multiplier has taken it. |
+| `jitter` | Spread delays randomly | `false` | Randomise each delay across [50%, 100%], to avoid retry storms. |
+| `retryOnStatus` | Retry ONLY these statuses | — | **Leave empty to retry any failure.** Set it and the meaning inverts. |
+
+```jsonc
+{
+  "id": "charge", "kind": "call-function", "ref": "chargeCard",
+  "params": { "maxAttempts": 4, "delayMs": 500, "jitter": true, "retryOnStatus": [429, 502, 503, 504] },
+  "next": ["receipt"], "onError": ["alertOps"]
+}
+```
+
+Two of these have caught people out, and the property panel now says so where you
+read it rather than only in this table:
+
+- **`maxAttempts` counts the first call.** `4` means one attempt and three
+  retries; `1` means no retry at all, and used to be accepted without a word. The
+  panel labels it "Total attempts (incl. the first)" and says "1 means no retry"
+  when you type one.
+- **`retryOnStatus` is an allow-list, and setting it INVERTS the default.** Empty
+  means "retry any failure". Adding `503` to be helpful makes every other failure
+  fail immediately — which is usually right, and is never what adding one code to
+  a list looks like. Set it when you can: a `400` will not become a `200` on the
+  third attempt.
+
+The panel draws the **delay sequence** beside the attempt count — "3 attempts,
+waiting 1s, then 2s — up to 3s of delay" — because five numbers you have to
+multiply together are not a policy anyone can read. With jitter on it shows a
+range, because that is what you will observe.
+
+With the policy on, the step output also carries **`attempts`** and
+**`retried`**, so `{"$path": "previous.attempts"}` downstream keeps resolving.
+Exhausting the attempts is an ordinary step failure, so `onError` routing (or the
+unrouted-halt rule) applies. Backoff waits are **cancellable** — cancelling the
+run does not sleep out the remaining delay.
+
+#### There used to be a `retry` step kind
+
+There is not one now. It took its own `ref` and invoked a function directly, so it
+never wrapped a neighbouring step — it *was* a Call Function with backoff, and an
+author who wanted to retry an existing Call Function had to delete it and rebuild
+it as a Retry.
+
+A definition that still says `kind: "retry"` is **migrated when it is read**, and
+keeps working: it becomes a `call-function` step with the same policy, and its
+`maxAttempts` is written in explicitly so a Retry that never set one keeps
+retrying three times. **The file on disk is not rewritten** by being read — the
+migrated form is persisted the first time you save that workflow yourself. The
+reader accepts `kind: "retry"` forever, so an agent that learned the old
+vocabulary is converted rather than refused.
+
+The one thing to know if you roll a backend BACK past this change: a workflow
+saved after the fold says `call-function`, and an older backend will load it, run
+it, and call the function **once**, ignoring the policy.
+
+
 #### How a function returns a value
 
 Everything the rest of this document says about `previous.result.…` depends on
@@ -530,55 +597,6 @@ alternative branches (as after a `branch` or `switch`), which is the common case
 
 ---
 
-### `retry`
-
-Invokes `ref` repeatedly with exponential backoff until it succeeds.
-
-| Param | Shown as | Default | Description |
-|---|---|---|---|
-| `maxAttempts` | Total attempts (incl. the first) | `3` | How many times the function is called **in total**. `1` means no retry. |
-| `delayMs` | First delay (ms) | `1000` | The wait before the **second** attempt. Later delays multiply from this. |
-| `backoffMultiplier` | Delay multiplier | `2` | Multiplies each subsequent delay. `1` = a fixed delay every time. |
-| `maxDelayMs` | Longest single delay (ms) | `60000` | Ceiling on any one delay, however far the multiplier has taken it. |
-| `jitter` | Spread delays randomly | `false` | Randomise each delay across [50%, 100%], to avoid retry storms. |
-| `retryOnStatus` | Retry ONLY these statuses | — | **Leave empty to retry any failure.** Set it and the meaning inverts. |
-
-Two of these have caught people out, and the property panel now says so where you
-read it rather than only in this table:
-
-- **`maxAttempts` counts the first call.** `4` means one attempt and three
-  retries; `1` means no retry at all, and used to be accepted without a word. The
-  panel labels it "Total attempts (incl. the first)" and says "1 means no retry"
-  when you type one.
-- **`retryOnStatus` is an allow-list, and setting it INVERTS the default.** Empty
-  means "retry any failure". Adding `503` to be helpful makes every other failure
-  fail immediately — which is usually right, and is never what adding one code to
-  a list looks like.
-
-The panel also draws the **delay sequence** beside the attempt count — "3
-attempts, waiting 1s, then 2s — up to 3s of delay" — because five numbers you
-have to multiply together are not a policy you can read. With jitter on it shows a
-range, because that is what you will observe.
-
-**Output:** the successful attempt's output, plus `attempts` and `retried`.
-
-```jsonc
-{
-  "id": "charge", "kind": "retry", "ref": "chargeCard",
-  "params": { "maxAttempts": 4, "delayMs": 500, "jitter": true, "retryOnStatus": [429, 502, 503, 504] },
-  "next": ["receipt"], "onError": ["alertOps"]
-}
-```
-
-Set `retryOnStatus` when you can: a `400` will not become a `200` on the third
-attempt, and retrying it just delays the report of the same error.
-
-Exhausting the attempts is an ordinary step failure, so `onError` routing (or the
-unrouted-halt rule) applies. Backoff waits are **cancellable** — cancelling the
-run does not sleep out the remaining delay.
-
----
-
 ### `stop`
 
 Ends this path deliberately.
@@ -728,7 +746,7 @@ and cancellation behaviour as `wait`.
 
 ## A worked example
 
-Webhook → validate → branch on value → retry the charge → notify, with an error
+Webhook → validate → branch on value → charge with a retry policy → notify, with an error
 route throughout:
 
 ```jsonc
@@ -751,7 +769,7 @@ route throughout:
 
     // `previous` here is the branch's `{result, isfalse}`, so the amount comes
     // from the validate step by id — the case `previous` cannot express.
-    { "id": "charge", "kind": "retry", "ref": "chargeCard",
+    { "id": "charge", "kind": "call-function", "ref": "chargeCard",
       "params": { "amount": { "$path": "upstream.validate.total" },
                   "maxAttempts": 4, "delayMs": 500, "retryOnStatus": [429, 502, 503] },
       "next": ["join"], "onError": ["alertOps"] },

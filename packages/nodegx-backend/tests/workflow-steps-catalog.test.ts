@@ -31,7 +31,6 @@ const EXPECTED_KINDS = [
   'switch',
   'for-each',
   'merge',
-  'retry',
   'stop',
   'return',
   'wait',
@@ -78,7 +77,9 @@ describe('WF-002 step-kind catalog coverage', () => {
 
   it('function-invoking kinds are exactly the ones that take a ref', () => {
     const invoking = STEP_KINDS.filter((k) => STEP_KIND_SPECS[k].invokesFunction);
-    expect([...invoking].sort()).toEqual(['call-function', 'for-each', 'retry']);
+    // CWF-005 folded `retry` in: it took its own `ref` and invoked a function
+    // directly, so it was a call-function with backoff rather than a wrapper.
+    expect([...invoking].sort()).toEqual(['call-function', 'for-each']);
   });
 
   it('the served catalog is complete and self-describing', () => {

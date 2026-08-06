@@ -23,7 +23,6 @@ export type StepKind =
   | 'switch'
   | 'for-each'
   | 'merge'
-  | 'retry'
   | 'stop'
   | 'wait'
   | 'wait-until'
@@ -51,6 +50,8 @@ export interface StepParamSpec {
   description: string;
   /** The row label. Falls back to `name` — see CWF-005's `maxAttempts`. */
   displayName?: string;
+  /** The property-panel section this param belongs in. Defaults to `Params`. */
+  group?: string;
   /**
    * A bespoke control this param wants, when the control for its `type` will not
    * do. A name this editor does not recognise falls back to the type's control,
@@ -148,6 +149,11 @@ export interface StepKindCatalog {
   valueLanguage: ValueLanguageSpec;
   /** Present from catalog 1.2.0 (WFA-004). */
   conditionLanguage?: ConditionLanguageSpec;
+  /**
+   * CWF-005: kinds this backend no longer serves but still reads and converts,
+   * as `{ oldKind: newKind }`. Absent from a pre-1.5.0 backend.
+   */
+  migratedKinds?: Record<string, string>;
 }
 
 /** A comparison, the leaf of a condition. */

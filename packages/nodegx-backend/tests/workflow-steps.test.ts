@@ -503,14 +503,14 @@ describe('WF-002 merge (CF11-001)', () => {
 // CF11-002 — retry / stop, and the error data that makes catch branches work
 // ---------------------------------------------------------------------------
 
-describe('WF-002 retry (CF11-002)', () => {
+describe('WF-002 retry, now a call-function policy (CF11-002 / CWF-005)', () => {
   it('retries with backoff until the function succeeds', async () => {
     const { engine, runner } = makeHarness();
     runner.define('flaky', (_i, n) => (n < 3 ? Object.assign(new Error('503'), { statusCode: 503 }) : { ok: true }));
     runner.define('after', (input) => ({ got: input.previous }));
     const d = def(
       [
-        { id: 'r', kind: 'retry', ref: 'flaky', params: { maxAttempts: 3, delayMs: 5 }, next: ['after'] },
+        { id: 'r', kind: 'call-function', ref: 'flaky', params: { maxAttempts: 3, delayMs: 5 }, next: ['after'] },
         fn('after', 'after')
       ],
       'r'
@@ -527,7 +527,7 @@ describe('WF-002 retry (CF11-002)', () => {
     runner.define('alert', (input) => ({ got: input.previous }));
     const d = def(
       [
-        { id: 'r', kind: 'retry', ref: 'always', params: { maxAttempts: 2, delayMs: 1 }, onError: ['alert'] },
+        { id: 'r', kind: 'call-function', ref: 'always', params: { maxAttempts: 2, delayMs: 1 }, onError: ['alert'] },
         fn('alert', 'alert')
       ],
       'r'
@@ -543,12 +543,34 @@ describe('WF-002 retry (CF11-002)', () => {
     const { engine, runner } = makeHarness();
     runner.define('bad', () => Object.assign(new Error('bad request'), { statusCode: 400 }));
     const d = def(
-      [{ id: 'r', kind: 'retry', ref: 'bad', params: { maxAttempts: 5, delayMs: 1, retryOnStatus: [503, 429] } }],
+      [{ id: 'r', kind: 'call-function', ref: 'bad', params: { maxAttempts: 5, delayMs: 1, retryOnStatus: [503, 429] } }],
       'r'
     );
     const res = await engine.run(d, { trigger: { type: 'manual' } });
     expect(res.status).toBe('error');
     expect(runner.calls).toHaveLength(1); // did not burn the retry budget on a 400
+  });
+
+  it('is OFF without maxAttempts, so an ordinary Call Function is called once', async () => {
+    // The gate that makes the fold free: every call-function step written before
+    // CWF-005 takes the single-call path, and does not grow `attempts`/`retried`
+    // on its output.
+    const { engine, runner } = makeHarness();
+    runner.define('once', () => ({ ok: true }));
+    runner.define('after', (input) => ({ got: input.previous }));
+    const d = def([{ id: 'c', kind: 'call-function', ref: 'once', next: ['after'] }, fn('after', 'after')], 'c');
+    const res = await engine.run(d, { trigger: { type: 'manual' } });
+    expect(res.status).toBe('success');
+    expect(runner.calls.filter((c) => c.name === 'once')).toHaveLength(1);
+    expect(runner.calls.at(-1)!.input.previous).toEqual({ ok: true });
+  });
+
+  it('is OFF at maxAttempts 1, which is what "1 means no retry" means', async () => {
+    const { engine, runner } = makeHarness();
+    runner.define('once', () => Object.assign(new Error('down'), { statusCode: 500 }));
+    const d = def([{ id: 'c', kind: 'call-function', ref: 'once', params: { maxAttempts: 1 } }], 'c');
+    expect((await engine.run(d, { trigger: { type: 'manual' } })).status).toBe('error');
+    expect(runner.calls).toHaveLength(1);
   });
 });
 
@@ -766,7 +788,7 @@ describe('WF-002 write-time validation', () => {
 
   it('rejects ref on a kind that does not invoke a function, and its absence where it is needed', () => {
     expect(check([{ id: 'a', kind: 'wait', ref: 'x', params: { duration: 1 } }])[0]).toMatch(/remove "ref"/);
-    expect(check([{ id: 'a', kind: 'retry' }])[0]).toMatch(/needs a ref/);
+    expect(check([{ id: 'a', kind: 'call-function' }])[0]).toMatch(/needs a ref/);
   });
 
   it('rejects switch cases that are ambiguous, duplicated, or named `default`', () => {

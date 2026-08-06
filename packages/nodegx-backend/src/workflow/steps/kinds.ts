@@ -44,6 +44,7 @@ import type { StepKind, WorkflowStep } from '../types';
 import { CONDITION_LANGUAGE, validateCondition } from './conditions';
 import type { ConditionLanguageSpec } from './conditions';
 import type { ValueLanguageSpec } from './values';
+import { MIGRATED_STEP_KINDS } from './migrate';
 import { isPlainObject, VALUE_LANGUAGE } from './values';
 
 /**
@@ -74,8 +75,12 @@ import { isPlainObject, VALUE_LANGUAGE } from './values';
  * names a bespoke editor control, and an editor that does not recognise the name
  * falls back to the control for the param's `type`, which is the whole reason it
  * is a served string rather than an enum.
+ * 1.5.0 — CWF-005 folded `retry` into `call-function` as a policy group, added
+ * `group` on a param, and added `migratedKinds` to the served catalog. A client
+ * that refuses a kind this backend does not serve needs to tell "cannot run it"
+ * from "accepts it and converts it", and only the backend knows which.
  */
-export const STEP_KIND_CATALOG_VERSION = '1.4.0';
+export const STEP_KIND_CATALOG_VERSION = '1.5.0';
 
 export interface StepParamSpec {
   name: string;
@@ -104,6 +109,15 @@ export interface StepParamSpec {
    * for an editor older than the backend it is talking to.
    */
   control?: string;
+  /**
+   * The property-panel section this param belongs in. Defaults to the kind's one
+   * Params group.
+   *
+   * CWF-005: `call-function` carries a six-knob retry policy that is off for most
+   * steps, and six ungrouped number fields between the function name and the
+   * routes is exactly the shape the fold exists to avoid.
+   */
+  group?: string;
   /**
    * WFA-003: this param is a DSL STRUCTURE — a condition, a filter, a switch's
    * cases — not a value. Its operands use the value language, but the executor
@@ -180,6 +194,9 @@ export interface StepKindSpec {
 // The catalog
 // ---------------------------------------------------------------------------
 
+/** The property-panel section the folded retry knobs live in (CWF-005). */
+const RETRY_GROUP = 'Retry policy';
+
 const REF_PARAM: StepParamSpec = {
   name: 'ref',
   type: 'string',
@@ -244,14 +261,77 @@ export const STEP_KIND_SPECS: Record<StepKind, StepKindSpec> = {
       'The workhorse step: any real work — reading or writing records, calling an external API, sending email — ' +
       'is a cloud function graph, and this step schedules it. Prefer it over inventing new step kinds.',
     invokesFunction: true,
-    params: [REF_PARAM],
+    params: [
+      REF_PARAM,
+      {
+        name: 'maxAttempts',
+        group: RETRY_GROUP,
+        displayName: 'Total attempts (incl. the first)',
+        // CWF-005: this row also draws the backoff preview, because the delay
+        // sequence is the thing seven separate number fields cannot show you.
+        control: 'retry-backoff',
+        type: 'number',
+        default: 3,
+        description: 'How many times the function is called IN TOTAL. 1 means no retry at all. Min 1.'
+      },
+      {
+        name: 'delayMs',
+        group: RETRY_GROUP,
+        displayName: 'First delay (ms)',
+        type: 'number',
+        default: 1000,
+        description: 'How long to wait before the SECOND attempt. Later delays multiply from this.'
+      },
+      {
+        name: 'backoffMultiplier',
+        group: RETRY_GROUP,
+        displayName: 'Delay multiplier',
+        type: 'number',
+        default: 2,
+        description: 'Each subsequent delay is multiplied by this. 1 = a fixed delay every time.'
+      },
+      {
+        name: 'maxDelayMs',
+        group: RETRY_GROUP,
+        displayName: 'Longest single delay (ms)',
+        type: 'number',
+        default: 60000,
+        description: 'Ceiling on any one backoff delay, however far the multiplier has taken it.'
+      },
+      {
+        name: 'jitter',
+        group: RETRY_GROUP,
+        displayName: 'Spread delays randomly',
+        type: 'boolean',
+        default: false,
+        description: 'Randomise each delay across [50%, 100%] of its computed length, to avoid retry storms.'
+      },
+      {
+        name: 'retryOnStatus',
+        group: RETRY_GROUP,
+        displayName: 'Retry ONLY these statuses',
+        type: 'array',
+        description:
+          'Leave empty to retry any failure. Set it and the meaning INVERTS: only these HTTP statuses are ' +
+          'retried and every other failure fails immediately — which is usually what you want (a 400 will not ' +
+          'get better on the third attempt), and is never what adding one helpful code to the list looks like.'
+      }
+    ],
     paramMapping: CALL_FUNCTION_MAPPING,
     routes: [],
-    output: "The function's parsed 2xx response body. A non-2xx response or a missing function is a step FAILURE.",
+    output:
+      "The function's parsed 2xx response body. A non-2xx response or a missing function is a step FAILURE. " +
+      'With the retry policy ON, the output also carries `attempts` and `retried`.',
     notes: [
       'Runs through the unlogged WorkflowRunner.invokeFunction, so the engine writes the only execution record.',
       "The request body is the run payload, then this step's params, then `previous` — in that order, so a mapped " +
-        'name overrides a payload key of the same name and `previous` cannot be overridden at all.'
+        'name overrides a payload key of the same name and `previous` cannot be overridden at all.',
+      'CWF-005: the retry policy is OFF unless `maxAttempts` is greater than 1, and a step without it is invoked ' +
+        'exactly once through exactly the path it always used. The standalone `retry` kind was folded in here — it ' +
+        'took its own `ref` and invoked a function directly, so it was never a wrapper — and a definition still ' +
+        'saying `kind: "retry"` is migrated on read, forever.',
+      'Backoff waits are cancellable: cancelling the run or tripping the workflow timeout aborts the wait ' +
+        'immediately rather than sleeping out the delay.'
     ]
   },
 
@@ -441,77 +521,6 @@ export const STEP_KIND_SPECS: Record<StepKind, StepKindSpec> = {
     ]
   },
 
-  retry: {
-    kind: 'retry',
-    displayName: 'Retry',
-    category: 'Workflow Error Handling',
-    source: 'CF11-002',
-    summary: 'Invokes a cloud function repeatedly with exponential backoff until it succeeds or attempts run out.',
-    whenToUse:
-      'Wrap a call that fails transiently — a flaky third-party API, a rate-limited endpoint. Use `onError` edges ' +
-      'for failures that need a different path rather than another attempt.',
-    invokesFunction: true,
-    params: [
-      REF_PARAM,
-      {
-        name: 'maxAttempts',
-        displayName: 'Total attempts (incl. the first)',
-        // CWF-005: this row also draws the backoff preview, because the delay
-        // sequence is the thing seven separate number fields cannot show you.
-        control: 'retry-backoff',
-        type: 'number',
-        default: 3,
-        description: 'How many times the function is called IN TOTAL. 1 means no retry at all. Min 1.'
-      },
-      {
-        name: 'delayMs',
-        displayName: 'First delay (ms)',
-        type: 'number',
-        default: 1000,
-        description: 'How long to wait before the SECOND attempt. Later delays multiply from this.'
-      },
-      {
-        name: 'backoffMultiplier',
-        displayName: 'Delay multiplier',
-        type: 'number',
-        default: 2,
-        description: 'Each subsequent delay is multiplied by this. 1 = a fixed delay every time.'
-      },
-      {
-        name: 'maxDelayMs',
-        displayName: 'Longest single delay (ms)',
-        type: 'number',
-        default: 60000,
-        description: 'Ceiling on any one backoff delay, however far the multiplier has taken it.'
-      },
-      {
-        name: 'jitter',
-        displayName: 'Spread delays randomly',
-        type: 'boolean',
-        default: false,
-        description: 'Randomise each delay across [50%, 100%] of its computed length, to avoid retry storms.'
-      },
-      {
-        name: 'retryOnStatus',
-        displayName: 'Retry ONLY these statuses',
-        type: 'array',
-        description:
-          'Leave empty to retry any failure. Set it and the meaning INVERTS: only these HTTP statuses are ' +
-          'retried and every other failure fails immediately — which is usually what you want (a 400 will not ' +
-          'get better on the third attempt), and is never what adding one helpful code to the list looks like.'
-      }
-    ],
-    routes: [],
-    output: "The successful attempt's function output, plus `attempts` and `retried`.",
-    clientEquivalent: 'None.',
-    notes: [
-      'Backoff waits are cancellable: cancelling the run or tripping the workflow timeout aborts the wait ' +
-        'immediately rather than sleeping out the delay.',
-      'Exhausting all attempts is a normal step FAILURE, so `onError` routing (or the halt rule) applies. The ' +
-        'last error message names the attempt count.'
-    ]
-  },
-
   stop: {
     kind: 'stop',
     displayName: 'Stop / Error',
@@ -691,6 +700,17 @@ export interface StepKindCatalog {
    * to hold its own copy of the list.
    */
   conditionLanguage: ConditionLanguageSpec;
+  /**
+   * CWF-005: step kinds this backend no longer SERVES but still reads and
+   * converts, as `{ oldKind: newKind }`.
+   *
+   * A client that refuses a kind the backend does not serve — MCP's
+   * `refuseUnservedKinds`, WFA-007's proposal check — has to tell "this backend
+   * cannot run that" from "this backend accepts that and will convert it", and
+   * only the backend knows which. Served rather than bundled for the same reason
+   * everything else here is.
+   */
+  migratedKinds: Record<string, string>;
 }
 
 export function stepKindCatalog(): StepKindCatalog {
@@ -700,7 +720,8 @@ export function stepKindCatalog(): StepKindCatalog {
     docs: 'docs/runtime/WORKFLOW-NODES.md',
     kinds: STEP_KINDS.map((k) => STEP_KIND_SPECS[k]),
     valueLanguage: VALUE_LANGUAGE,
-    conditionLanguage: CONDITION_LANGUAGE
+    conditionLanguage: CONDITION_LANGUAGE,
+    migratedKinds: { ...MIGRATED_STEP_KINDS }
   };
 }
 
@@ -878,21 +899,6 @@ export function validateStepShape(step: WorkflowStep): string[] {
       break;
     }
 
-    case 'retry': {
-      requirePositiveNumber(p.maxAttempts, `${at}.params.maxAttempts`, errors);
-      requirePositiveNumber(p.delayMs, `${at}.params.delayMs`, errors, 0);
-      requirePositiveNumber(p.maxDelayMs, `${at}.params.maxDelayMs`, errors, 0);
-      if (p.backoffMultiplier !== undefined && (typeof p.backoffMultiplier !== 'number' || p.backoffMultiplier < 1)) {
-        errors.push(`${at}.params.backoffMultiplier must be a number >= 1`);
-      }
-      if (p.retryOnStatus !== undefined) {
-        if (!Array.isArray(p.retryOnStatus) || p.retryOnStatus.some((s) => typeof s !== 'number')) {
-          errors.push(`${at}.params.retryOnStatus must be an array of HTTP status numbers`);
-        }
-      }
-      break;
-    }
-
     case 'stop': {
       if (p.message !== undefined && typeof p.message !== 'string') errors.push(`${at}.params.message must be a string`);
       if (p.isError !== undefined && typeof p.isError !== 'boolean') {
@@ -954,6 +960,21 @@ export function validateStepShape(step: WorkflowStep): string[] {
       // tolerable while no UI could author one, and is not now that the mapping
       // is a declared, documented feature with a row of its own.
       errors.push(...validateParamMapping(spec, p, at));
+
+      // CWF-005: this WAS `case 'retry'`, moved here by the fold. Unchanged, so
+      // a definition that migrated is checked by exactly the rules it was
+      // checked by before.
+      requirePositiveNumber(p.maxAttempts, `${at}.params.maxAttempts`, errors);
+      requirePositiveNumber(p.delayMs, `${at}.params.delayMs`, errors, 0);
+      requirePositiveNumber(p.maxDelayMs, `${at}.params.maxDelayMs`, errors, 0);
+      if (p.backoffMultiplier !== undefined && (typeof p.backoffMultiplier !== 'number' || p.backoffMultiplier < 1)) {
+        errors.push(`${at}.params.backoffMultiplier must be a number >= 1`);
+      }
+      if (p.retryOnStatus !== undefined) {
+        if (!Array.isArray(p.retryOnStatus) || p.retryOnStatus.some((s) => typeof s !== 'number')) {
+          errors.push(`${at}.params.retryOnStatus must be an array of HTTP status numbers`);
+        }
+      }
       break;
     }
 

@@ -94,7 +94,7 @@ const REF_WARNING_KEY = 'workflow-step-ref';
  * The card's second line.
  *
  * It carries four things, in the order they are worth reading: what kind of
- * step this is, which function it invokes (`call-function`, `retry` and
+ * step this is, which function it invokes (`call-function` and
  * `for-each` — the single most useful thing on the card, §2), **what that
  * function resolves to** when it is anything other than plainly fine (WFA-006
  * §3), and whether the run starts here. All of it rides

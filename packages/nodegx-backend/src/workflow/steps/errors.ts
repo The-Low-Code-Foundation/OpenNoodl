@@ -1,5 +1,10 @@
 /**
- * CF11-002 error-handling step kinds: `retry` and `stop`.
+ * CF11-002's error-handling step kind: `stop`.
+ *
+ * `retry` used to live here too. CWF-005 folded it into `call-function` as a
+ * policy — it took its own `ref` and invoked a function directly, so it was a
+ * call-function with backoff rather than a wrapper — and the loop moved to
+ * `steps/retryPolicy.ts` unchanged.
  *
  * TRY/CATCH IS DELIBERATELY ABSENT — IT ALREADY SHIPPED
  * -----------------------------------------------------
@@ -32,9 +37,7 @@
  */
 
 import type { StepExecContext, StepExecutor, StepExecResult } from '../StepExecutor';
-import { StepExecutionError, invokeCloudFunction, stepResult } from '../StepExecutor';
-import type { WorkflowRunner } from '../WorkflowRunner';
-import { sleep } from './sleep';
+import { StepExecutionError, stepResult } from '../StepExecutor';
 
 function params(ctx: StepExecContext): Record<string, unknown> {
   return (ctx.step.params || {}) as Record<string, unknown>;
@@ -42,74 +45,6 @@ function params(ctx: StepExecContext): Record<string, unknown> {
 
 function numberParam(v: unknown, fallback: number): number {
   return typeof v === 'number' && Number.isFinite(v) ? v : fallback;
-}
-
-// ---------------------------------------------------------------------------
-// retry
-// ---------------------------------------------------------------------------
-
-export interface RetryDeps {
-  getRunner: () => WorkflowRunner | null;
-}
-
-export class RetryStepExecutor implements StepExecutor {
-  constructor(private readonly deps: RetryDeps) {}
-
-  async execute(ctx: StepExecContext): Promise<Record<string, unknown>> {
-    const p = params(ctx);
-    const ref = ctx.step.ref;
-    if (!ref) throw new StepExecutionError(`Step "${ctx.step.id}" is a retry step with no ref`);
-
-    const maxAttempts = Math.max(1, Math.floor(numberParam(p.maxAttempts, 3)));
-    const baseDelay = Math.max(0, numberParam(p.delayMs, 1000));
-    const multiplier = Math.max(1, numberParam(p.backoffMultiplier, 2));
-    const maxDelay = Math.max(0, numberParam(p.maxDelayMs, 60000));
-    const jitter = p.jitter === true;
-    const retryOnStatus = Array.isArray(p.retryOnStatus) ? (p.retryOnStatus as number[]) : null;
-
-    let lastError: Error | null = null;
-
-    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-      // The engine's abort race has already ended the run; do not start
-      // another attempt against a cancelled/timed-out workflow.
-      if (ctx.signal.aborted) break;
-
-      try {
-        const output = await invokeCloudFunction(this.deps.getRunner, ref, {
-          ...ctx.input,
-          attempt
-        });
-        return { ...output, attempts: attempt, retried: attempt > 1 };
-      } catch (e) {
-        lastError = e instanceof Error ? e : new Error(String(e));
-
-        // A selective retry list means everything else fails NOW. A 400 will
-        // not become a 200 on the third attempt, and pretending otherwise just
-        // burns the backoff budget before reporting the same error.
-        if (retryOnStatus) {
-          const status = e instanceof StepExecutionError ? e.statusCode : undefined;
-          if (status === undefined || !retryOnStatus.includes(status)) {
-            throw new StepExecutionError(
-              `Step "${ctx.step.id}" attempt ${attempt}/${maxAttempts} failed with a non-retryable error: ${lastError.message}`,
-              status
-            );
-          }
-        }
-
-        if (attempt < maxAttempts) {
-          const raw = Math.min(baseDelay * Math.pow(multiplier, attempt - 1), maxDelay);
-          const delay = jitter ? raw * (0.5 + Math.random() * 0.5) : raw;
-          const { aborted } = await sleep(delay, ctx.signal);
-          if (aborted) break;
-        }
-      }
-    }
-
-    throw new StepExecutionError(
-      `Step "${ctx.step.id}" failed after ${maxAttempts} attempt(s): ${lastError ? lastError.message : 'aborted'}`,
-      lastError instanceof StepExecutionError ? lastError.statusCode : undefined
-    );
-  }
 }
 
 // ---------------------------------------------------------------------------

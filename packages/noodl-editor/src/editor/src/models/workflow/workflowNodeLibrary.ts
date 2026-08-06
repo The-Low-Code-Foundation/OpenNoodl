@@ -250,7 +250,10 @@ function portsForKind(spec: StepKindSpec, catalog?: StepKindCatalog) {
       displayName: param.displayName || param.name,
       type: param.raw ? portTypeForRawParam(param, catalog) : portTypeForParam(param, catalog),
       plug: 'input',
-      group: GROUP_PARAMS,
+      // CWF-005: a served section name wins. Call Function's six retry knobs are
+      // off for most steps, and six ungrouped numbers between the function name
+      // and the routes is the shape the fold exists to avoid.
+      group: param.group || GROUP_PARAMS,
       index: index++,
       default: param.default,
       tooltip: param.description

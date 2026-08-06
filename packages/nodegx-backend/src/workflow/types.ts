@@ -44,7 +44,6 @@ export type StepKind =
   | 'for-each'
   | 'merge'
   // CF11-002 error handling
-  | 'retry'
   | 'stop'
   // CF11-003 wait / delay
   | 'wait'
@@ -59,7 +58,7 @@ export interface WorkflowStep {
   name?: string;
   /** What the step runs. See StepKind. */
   kind: StepKind;
-  /** For function-invoking kinds ('call-function', 'for-each', 'retry'): the cloud-function name. */
+  /** For function-invoking kinds ('call-function', 'for-each'): the cloud-function name. */
   ref?: string;
   /** Static parameters merged into the step's input (see semantics doc §Data). */
   params?: Record<string, unknown>;

@@ -20,6 +20,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 import { validateWorkflowDefinition } from './WorkflowEngine';
+import { migrateDefinition } from './steps/migrate';
 import type { WorkflowDefinition, WorkflowInput } from './types';
 
 const DIR = 'workflow-defs';
@@ -61,7 +62,14 @@ export class WorkflowRegistry {
         allErrors.push(`${file}: not valid JSON: ${e instanceof Error ? e.message : e}`);
         continue;
       }
-      const def = parsed as WorkflowDefinition;
+      // CWF-005: a definition written against an older step vocabulary becomes
+      // the current one HERE, in memory, before validation — so it validates and
+      // runs by today's rules. The FILE IS NOT REWRITTEN: nothing edits a user's
+      // workflow because they started a backend. It is persisted in the migrated
+      // form the first time they save it themselves. See `steps/migrate.ts` for
+      // all three cases, including what an older backend makes of a file saved
+      // after the fold.
+      const def = migrateDefinition(parsed as WorkflowDefinition);
       const errs = validateWorkflowDefinition(def);
       if (errs.length) {
         allErrors.push(...errs.map((e) => `${file}: ${e}`));
@@ -95,6 +103,11 @@ export class WorkflowRegistry {
    * differently from the real write would answer a question nobody asked.
    */
   private normalize(input: WorkflowInput): WorkflowDefinition {
+    // CWF-005: migrate on the WRITE path too, so a client that still speaks the
+    // old vocabulary — an agent that learned `retry`, a definition copied from
+    // an older backend — is accepted and converted rather than rejected. The
+    // catalog serves `migratedKinds` so a client can know that in advance.
+    input = migrateDefinition(input);
     const existing = input.id ? this.defs.get(input.id) : undefined;
     const id = input.id || 'wf_' + crypto.randomBytes(9).toString('base64url');
     if (!ID_RE.test(id)) {

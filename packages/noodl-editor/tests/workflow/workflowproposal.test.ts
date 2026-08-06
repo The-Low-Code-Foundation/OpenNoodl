@@ -42,7 +42,7 @@ const BASE: WorkflowDefinition = {
   updatedAt: '2026-01-01T00:00:00.000Z'
 };
 
-/** The proposal: retry the charge, and route its failure to a handler. */
+/** The proposal: charge with a retry policy, and route its failure to a handler. */
 const PROPOSED: WorkflowInput = {
   id: 'wf_orders',
   name: 'Order pipeline',
@@ -52,7 +52,7 @@ const PROPOSED: WorkflowInput = {
     { id: 'receive', kind: 'call-function', ref: 'saveOrder', next: ['charge'], ui: { x: 80, y: 80 } },
     {
       id: 'charge',
-      kind: 'retry',
+      kind: 'call-function',
       ref: 'chargeCard',
       params: { maxAttempts: 3 },
       onError: ['logfail'],
@@ -93,7 +93,7 @@ describe('WFA-007 — AIX-003’s review component takes a workflow', () => {
     const charge = reviewGraph().roots.find((n) => n.id === 'charge');
     expect(charge.diffData).toBeDefined();
     expect((charge.diffData.parent as { type: string }).type).toBe('workflow.call-function');
-    expect(charge.type).toBe('workflow.retry');
+    expect(charge.type).toBe('workflow.call-function');
   });
 
   it('annotates the added error edge', () => {
@@ -126,7 +126,7 @@ describe('WFA-007 — AIX-003’s review component takes a workflow', () => {
     const changeSet = buildWorkflowChangeSet(BASE, PROPOSED);
     const { workflow } = materializeWorkflowSelection(changeSet, []);
     expect(workflow.steps.map((s) => s.id)).toEqual(['receive', 'charge', 'logfail']);
-    expect(workflow.steps[1].kind).toBe('retry');
+    expect(workflow.steps[1].kind).toBe('call-function');
     expect(workflow.steps[1].onError).toEqual(['logfail']);
   });
 });

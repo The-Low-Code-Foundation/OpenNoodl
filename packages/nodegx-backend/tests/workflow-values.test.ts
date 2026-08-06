@@ -329,9 +329,11 @@ describe('WFA-003 the served spec describes the value language', () => {
     // CWF-001 added `paramMapping`, so a client can render a row for the
     // author-named params the engine has merged in since WFA-003; CWF-005 added
     // `displayName` and `control`, because two of retry's knobs lied in the
-    // field NAME and the name is the wire contract and cannot change.
+    // field NAME and the name is the wire contract and cannot change; CWF-005
+    // then folded `retry` into `call-function` and added `migratedKinds`, so a
+    // client can tell "cannot run that" from "accepts and converts that".
     // Bumping this line is the deliberate act the catalog's `version` is for.
-    expect(catalog.version).toBe('1.4.0');
+    expect(catalog.version).toBe('1.5.0');
   });
 
   it('marks every DSL param raw, and nothing else', () => {

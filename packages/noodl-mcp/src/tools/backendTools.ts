@@ -193,7 +193,7 @@ export function registerBackendReadTools(server: McpServer): void {
       title: 'List backend workflow step kinds',
       description:
         'The step vocabulary a backend can run (WF-002): every step `kind` with its params, routes, output shape ' +
-        'and when to use it — call-function, branch, switch, for-each, merge, retry, stop, wait, wait-until — ' +
+        'and when to use it — call-function, branch, switch, for-each, merge, stop, wait, wait-until — ' +
         'PLUS `valueLanguage` (WFA-003): how a param references data ($path / $literal), what a $path may ' +
         'address (body, trigger, previous, upstream.<stepId>), and the one payload shape every entry point ' +
         'delivers. CALL THIS BEFORE AUTHORING A WORKFLOW. A workflow step is not a canvas node, so these are ' +
@@ -941,7 +941,7 @@ export function registerBackendWriteTools(server: McpServer): void {
     kind: z
       .string()
       .describe(
-        'What the step runs, e.g. call-function / branch / switch / for-each / merge / retry / stop / wait / ' +
+        'What the step runs, e.g. call-function / branch / switch / for-each / merge / stop / wait / ' +
           'wait-until. THE AUTHORITY IS THE TARGET BACKEND: call list_backend_step_kinds against the backend ' +
           "you are authoring for, and use what it returns — for each kind's params, routes and output shape, " +
           'and because the vocabulary differs between backend versions. A kind this backend does not serve is ' +
@@ -950,7 +950,7 @@ export function registerBackendWriteTools(server: McpServer): void {
     ref: z
       .string()
       .optional()
-      .describe('The cloud function to invoke. Required for call-function, for-each and retry; invalid on the others.'),
+      .describe('The cloud function to invoke. Required for call-function and for-each; invalid on the others.'),
     params: z
       .record(z.unknown())
       .optional()
@@ -1010,15 +1010,31 @@ export function registerBackendWriteTools(server: McpServer): void {
    */
   async function refuseUnservedKinds(client: BackendClient, steps: { id?: string; kind?: string }[]): Promise<void> {
     const { json } = await client.request('GET', '/admin/workflow-step-kinds');
-    const catalog = json as { kinds?: { kind?: string }[] } | null;
+    const catalog = json as { kinds?: { kind?: string }[]; migratedKinds?: Record<string, string> } | null;
     // A backend that answers the catalog with something that is not a catalog
     // is not evidence that a kind is wrong — say nothing rather than refuse on
     // a guess. The write path's own validation still applies.
     const served = (catalog?.kinds || []).map((k) => k.kind).filter((k): k is string => typeof k === 'string');
     if (served.length === 0) return;
 
+    /**
+     * CWF-005: a kind this backend no longer SERVES but still reads and
+     * converts — `retry`, folded into `call-function`. An agent that learned the
+     * old vocabulary keeps writing it, and the write path accepts-and-migrates
+     * rather than rejecting, so refusing here would be this tool inventing a
+     * failure the backend does not have. Read from the catalog, never bundled:
+     * only the backend knows what it will convert.
+     */
+    const migrated = catalog?.migratedKinds && typeof catalog.migratedKinds === 'object' ? catalog.migratedKinds : {};
+
     const unknown = (steps || [])
-      .filter((s) => s && typeof s.kind === 'string' && !served.includes(s.kind))
+      .filter(
+        (s) =>
+          s &&
+          typeof s.kind === 'string' &&
+          !served.includes(s.kind) &&
+          !Object.prototype.hasOwnProperty.call(migrated, s.kind)
+      )
       .map((s) => `step "${s.id}" uses kind "${s.kind}"`);
     if (unknown.length === 0) return;
 

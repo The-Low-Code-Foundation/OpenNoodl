@@ -122,7 +122,6 @@ describe('WF-002 step kinds end-to-end over a real backend', () => {
       'switch',
       'for-each',
       'merge',
-      'retry',
       'stop',
       'return',
       'wait',
@@ -136,7 +135,7 @@ describe('WF-002 step kinds end-to-end over a real backend', () => {
     // param may use, and which params are structures rather than values. A
     // client that had to hardcode either would be a client that can disagree
     // with the backend executing the definition.
-    expect(res.json.version).toBe('1.4.0');
+    expect(res.json.version).toBe('1.5.0');
     expect(res.json.valueLanguage.forms.map((f) => f.form)).toEqual(['literal', '$path', '$literal']);
     expect(res.json.valueLanguage.scope.map((s) => s.name)).toContain('upstream.<stepId>');
     expect(branch?.params.find((p) => p.name === 'condition')?.raw).toBe(true);

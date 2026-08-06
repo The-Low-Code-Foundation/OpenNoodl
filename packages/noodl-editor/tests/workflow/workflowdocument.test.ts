@@ -70,18 +70,6 @@ const CATALOG: StepKindCatalog = {
       output: ''
     },
     {
-      kind: 'retry',
-      displayName: 'Retry',
-      category: 'Workflow Error Handling',
-      source: 'CF11-002',
-      summary: '',
-      whenToUse: '',
-      invokesFunction: true,
-      params: [{ name: 'maxAttempts', type: 'number', description: '' }],
-      routes: [],
-      output: ''
-    },
-    {
       kind: 'merge',
       displayName: 'Merge',
       category: 'Workflow Logic',
@@ -122,7 +110,11 @@ const REF: WorkflowRef = {
   stepCount: 6
 };
 
-/** The phase-19 test workflow: a branch, a retry, an error route and a merge. */
+/**
+ * The phase-19 test workflow: a branch, a call with a retry policy, an error
+ * route and a merge. (CWF-005 folded the standalone `retry` kind into
+ * `call-function`, so the charge step is a Call Function carrying `maxAttempts`.)
+ */
 function orderPipeline(): WorkflowDefinition {
   return {
     version: 1,
@@ -142,7 +134,7 @@ function orderPipeline(): WorkflowDefinition {
       {
         id: 'charge',
         name: 'Charge card',
-        kind: 'retry',
+        kind: 'call-function',
         ref: 'chargeCard',
         params: { maxAttempts: 2 },
         next: ['tally'],
@@ -174,7 +166,7 @@ describe('WFA-004 workflow document', () => {
     it('types each node from its kind', () => {
       const doc = WorkflowDocument.fromDefinition(REF, orderPipeline(), CATALOG);
       expect(doc.graph.findNodeWithId('decide').typename).toBe(typeNameForKind('branch'));
-      expect(doc.graph.findNodeWithId('charge').typename).toBe(typeNameForKind('retry'));
+      expect(doc.graph.findNodeWithId('charge').typename).toBe(typeNameForKind('call-function'));
     });
 
     it('labels a node with the step name, and subtitles a function step with its ref', () => {

@@ -19,6 +19,7 @@
  * @module nodegx-backend/workflow/StepExecutor
  */
 
+import { invokeWithRetryPolicy, retryPolicyActive } from './steps/retryPolicy';
 import type { WorkflowRunner } from './WorkflowRunner';
 import type { WorkflowDefinition, WorkflowStep } from './types';
 
@@ -160,6 +161,12 @@ export class StepExecutionError extends Error {
  * a step FAILURE (so error routing / halt applies), a 2xx response's parsed body
  * is the step output. A missing target function is a loud failure, not a silent
  * skip.
+ *
+ * CWF-005: it also carries the optional RETRY POLICY, which is what the standalone
+ * `retry` kind became — that kind took its own `ref` and invoked a function
+ * directly, so it was never a wrapper around a neighbouring step. The policy is
+ * OFF unless `maxAttempts` > 1, and a step without it takes the single-call branch
+ * below, unchanged, so every workflow written before the fold behaves identically.
  */
 export class FunctionStepExecutor implements StepExecutor {
   constructor(private readonly getRunner: () => WorkflowRunner | null) {}
@@ -172,6 +179,10 @@ export class FunctionStepExecutor implements StepExecutor {
     }
     const name = ctx.step.ref;
     if (!name) throw new StepExecutionError(`Step "${ctx.step.id}" is a call-function step with no ref`);
+
+    if (retryPolicyActive(ctx.step.params as Record<string, unknown> | undefined)) {
+      return invokeWithRetryPolicy(this.getRunner, name, ctx);
+    }
     return invokeCloudFunction(this.getRunner, name, ctx.input);
   }
 }
