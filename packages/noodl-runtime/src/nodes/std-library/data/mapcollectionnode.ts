@@ -69,6 +69,7 @@ interface MapCollectionInstance extends NodeInstance {
   bindCollection(collection: CollectionLike): void;
   scheduleMap(): void;
   requestMap(): void;
+  compileMapScript(code: string): void;
   reportFailure(code: string, message: string, detail?: unknown, tokens?: OutcomeToken[]): void;
 }
 
@@ -82,6 +83,23 @@ const MapCollectionNode: NodeDefinitionOptions = {
     this._internal.collectionChangedCallback = () => {
       this.scheduleMap();
     };
+
+    /**
+     * ⚠️ **The declared `default` below never runs its setter** — `initializeDefaultValues`
+     * writes it straight into `_inputValues` and returns (`nodedefinition.ts:161`, called from
+     * the constructor at `:481`), and only `setInputValue` reaches a setter. The setter is what
+     * *compiles* the script, so an Array Map whose Script the author had never touched had
+     * `mapFunc === undefined` and failed every run with `'could not be compiled: unknown
+     * error'` — "unknown" because nothing had failed to compile; nothing had ever compiled.
+     * Meanwhile the editor rendered the template into the Script field, so the node was
+     * refusing to run a script the author could see. Filed by CWF-008, fixed here.
+     *
+     * Establishing it in `initialize` is Array Filter's answer to the same trap (`enabled` is
+     * an inert `default` there too, and `initialize` sets `_internal.enabled` itself). It does
+     * not schedule: nothing is bound yet, and a run queued from the constructor would put an
+     * after-inputs callback on a node that has not been wired into the graph.
+     */
+    this.compileMapScript(defaultMapCode);
 
     //     this._internal.mappedCollection = Collection.get();
   },
@@ -108,20 +126,7 @@ const MapCollectionNode: NodeDefinitionOptions = {
         'entry is either a source property name or a function of the record',
       default: defaultMapCode,
       set: function (this: MapCollectionInstance, value: string) {
-        this._internal.mapCode = value;
-        try {
-          this._internal.mapFunc = new Function('map', 'object', this._internal.mapCode) as MapCollectionInstance['_internal']['mapFunc'];
-        } catch (e) {
-          // NDA-012 (Data): the diagnosis is kept and reported from `scheduleMap`, not here.
-          // Raising in the setter would announce on the boot path for a node whose Items are
-          // never connected; a script that cannot compile only matters when something asks it
-          // to run. Array Filter draws the same line for `filter-failed`.
-          this._internal.mapFunc = undefined;
-          this._internal.mapCompileError = (e as Error).message || String(e);
-          this.scheduleMap();
-          return;
-        }
-        this._internal.mapCompileError = undefined;
+        this.compileMapScript(value);
         this.scheduleMap();
       }
     },
@@ -189,6 +194,27 @@ const MapCollectionNode: NodeDefinitionOptions = {
     }
   },
   prototypeExtensions: {
+    /**
+     * Compiles one script and records the verdict. Called from the `mapScript` setter and from
+     * `initialize` with the declared default — the two places a script can arrive.
+     *
+     * NDA-012 (Data): the diagnosis is kept and reported from `scheduleMap`, not raised here.
+     * Raising in the setter would announce on the boot path for a node whose Items are never
+     * connected; a script that cannot compile only matters when something asks it to run. Array
+     * Filter draws the same line for `filter-failed`. Scheduling is the caller's business for
+     * the same reason `initialize` must not do it.
+     */
+    compileMapScript: function (this: MapCollectionInstance, code: string) {
+      this._internal.mapCode = code;
+      try {
+        this._internal.mapFunc = new Function('map', 'object', code) as MapCollectionInstance['_internal']['mapFunc'];
+      } catch (e) {
+        this._internal.mapFunc = undefined;
+        this._internal.mapCompileError = (e as Error).message || String(e);
+        return;
+      }
+      this._internal.mapCompileError = undefined;
+    },
     setCollection: function (this: MapCollectionInstance, collection: CollectionLike) {
       this.bindCollection(collection);
       this.flagOutputDirty('items');
@@ -291,11 +317,16 @@ const MapCollectionNode: NodeDefinitionOptions = {
          * Ungated on `requested`: a script that will not run is wrong whenever it is asked to,
          * and unlike "no array yet" it is never a state the graph passes through on its way to
          * working.
+         *
+         * ⚠️ Since `initialize` compiles the declared default, reaching here means a script
+         * *arrived and failed*, so `mapCompileError` is always set. The fallback is the sentence
+         * that would be true if it somehow were not — never "unknown error", which is what this
+         * node said for the whole time nothing had been compiled at all.
          */
         if (this._internal.mapFunc === undefined) {
           this.reportFailure(
             'array-map/script-failed',
-            'The map script could not be compiled: ' + (this._internal.mapCompileError || 'unknown error'),
+            'The map script could not be compiled: ' + (this._internal.mapCompileError || 'the Script input is empty'),
             undefined,
             tokens
           );

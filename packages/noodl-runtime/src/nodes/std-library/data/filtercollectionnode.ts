@@ -165,6 +165,17 @@ const FilterCollectionNode: NodeDefinitionOptions = {
       this.scheduleFilter();
     };
 
+    /**
+     * ⚠️ **Load-bearing, and it looks redundant beside `enabled`'s `default: true`.** It is not:
+     * a declared `default` never runs its setter — `initializeDefaultValues` writes it into
+     * `_inputValues` and returns (`nodedefinition.ts:161`, called at `:481`) — so this line is
+     * the only thing that establishes `_internal.enabled`, and without it the `if
+     * (this._internal.enabled)` in `scheduleFilter` reads `undefined` and the node passes
+     * **everything** through unfiltered. CWF-008 filed exactly that defect against this node;
+     * measured, it was Array Map's (whose `mapScript` default had no `initialize` behind it),
+     * and this line is why. Asserted in `test/nodes/array-family-declared-defaults.test.ts` so
+     * that deleting it cannot pass silently.
+     */
     this._internal.enabled = true;
     this._internal.filterSettings = {};
     //this._internal.filteredCollection = Collection.get();
