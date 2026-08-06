@@ -5,9 +5,11 @@
 **not** POL-004's defect and was not caused by its fix — the doc-review sheet is correct in both
 themes. This is what the same measurement found sitting on top of it.
 
-**Status:** ☑ **FIXED 2026-08-06.** Both failing elements, not just the gutter — see
-[What was actually changed](#what-was-actually-changed) at the bottom, and note the correction to
-criterion 4, which as originally written asked for more than the proposed fix delivered.
+**Status:** ☑ **FIXED 2026-08-06**, with one thing owed. Both failing elements are fixed, not just
+the gutter — see [What was actually changed](#what-was-actually-changed) at the bottom, and note the
+correction to criterion 4, which as originally written asked for more than the proposed fix
+delivered. ⚠️ The `pol004-doc-diff.js` re-run that criterion 4 names has **not** been done; §5 says
+why and what is left.
 
 It gets a row because that is now the phase's rule: a finding recorded only as prose inside a
 completed task is a finding that has been lost. That is the whole reason
@@ -140,4 +142,14 @@ Checked in the running editor over CDP, read-only, in both themes: the CSSOM con
 rule matching `Text-module__is-type-shy` and **exactly one** matching
 `Label-module__is-variant-shy`, both resolving `var(--theme-color-fg-default-shy)`, so no selector
 can out-rank them. Token values read live off `:root` in each theme match `colors.css`
-(`fg-default-shy` = `#8b95a1` dark, `#616c79` light).
+(`fg-default-shy` = `#8b95a1` dark, `#616c79` light). Same check for the three
+`.popup-layer-*` rules AAQ-011 F1 changed in the same pass.
+
+### 5. What is still owed
+
+**`pol004-doc-diff.js` has not been re-run.** Both elements its last run reported below 4.5:1 are
+fixed, and the ratios above are computed from the same token values the harness measured — but that
+is a derivation, not a re-measurement, and this file should not claim otherwise. The re-run needs the
+scripted-provider drive of the AI panel and a restarted stack (see the HMR trap above); the editor
+was in another session's hands when this landed. **Criterion 4 is therefore satisfied by
+construction, not yet by the harness** — re-run it in the next session that owns the editor.
