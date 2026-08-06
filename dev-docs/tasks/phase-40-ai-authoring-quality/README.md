@@ -176,10 +176,12 @@ Three things belong here rather than only in the task file:
    reconciled now always belongs to the project doing the reconciling.
 2. **`config.projectIds` had been dead since the backend manager was written**, with three modules
    carrying a comment saying so. It is now the ownership key, which is why the fix needed no new field.
-3. **⚠️ A seventh premise failed the read** (AAQ-011 F8): the project review still tells the model the
-   built-in backend's collections are "unknown, not absent", on the ground that the editor has no schema
+3. **⚠️ A seventh premise failed the read** (AAQ-011 F8): the project review told the model the
+   built-in backend's collections were "unknown, not absent", on the ground that the editor has no schema
    introspection for a `cloudservices` endpoint. That was true when AIX-010 wrote it and stopped being
-   true in **this phase's own Layer 1**. Filed, not fixed — it is the review path, not authoring.
+   true in **this phase's own Layer 1**. ✅ Closed `61579634` — `collectBackendSummary` reads the
+   `dbCollections` cache Layer 1 restored. Outcome 3 narrowed rather than being replaced: an empty cache
+   is still "we could not look", because that is what a stopped backend leaves behind.
 
 **Criteria 1–3 are still undriven.** Every previous answer to criterion 5 also looked right on paper.
 

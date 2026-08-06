@@ -246,10 +246,12 @@ it reaches a Record node.
 
 Nothing in this task. What it leaves behind, all in the register:
 
-- **AAQ-011 F8** — the *review* path still tells the model the built-in backend's collections are
-  "unknown, not absent", on a premise Layer 1 made stale. The reader it needs now exists
-  (`projectSchemaCollections`).
-- **AAQ-011 F9, F10, F11** — found during the criteria 1–3 drive; F10 in particular decides whether a
+- ✅ **AAQ-011 F8 — closed `61579634`.** The *review* path told the model the built-in backend's
+  collections were "unknown, not absent", on a premise Layer 1 made stale; it now reads that Layer 1
+  cache through `builtInSchemaCollections`.
+- ✅ **AAQ-011 F9 — closed `339b3009`.** The false `⚠ 1` on every wizard-built app was a missing
+  `clearWarning`, not a wrong diagnosis.
+- **AAQ-011 F10, F11** — found during the criteria 1–3 drive; F10 in particular decides whether a
   wizard-built app works the second time it is opened.
 
 ## The mechanisms

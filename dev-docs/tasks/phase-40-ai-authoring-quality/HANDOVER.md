@@ -262,14 +262,14 @@ The gate is one, the apply is one, and the vocabulary is one. In order:
    slice 1 warned about.
 2. **AAQ-006 (harness) → AAQ-007 (self-review)**, in that order, on top of it. Read the perf warning
    above first — it is a prerequisite for AAQ-007, not a footnote.
-3. **AAQ-011 F14, with F9 and F10**, if you want the Layer-1 apps defensible before the engine lands.
+3. **AAQ-011 F14, with F10**, if you want the Layer-1 apps defensible before the engine lands.
    F14 is the one that matters for quality: **a component the editor's agent creates can never have a
    variant or a visual state**, while an external agent can set both. That is AAQ-010's subject and it
-   needs the agent told which variants exist (AIB-010) or it will invent names. F9 is a false `⚠ 1` on
-   *every* wizard-built app (`router.tsx::resetAsync` raises `router/no-pages` on the mount preceding its
-   `pages` parameter and never calls `clearWarning`; `dbmodelcrudbase.clearWarnings` is the shape the fix
-   wants). F10 decides whether a wizard-built app works the second time it is opened — `backend:start` has
-   exactly two callers, neither on the project-open path.
+   needs the agent told which variants exist (AIB-010) or it will invent names. F10 decides whether a
+   wizard-built app works the second time it is opened — `backend:start` has exactly two callers, neither
+   on the project-open path. ✅ **F9 is closed (`339b3009`)**: the clear went into `_reportReset` and
+   withdraws every reset diagnosis the current pass did not reach, so a genuinely empty Router still
+   warns.
 4. **AAQ-011 F7** — promote `PageWithoutPageNode` to the blocking set, which lives in
    `validation/authoredCandidate.ts` and is one set for both clients. It needs 57 fixture sites across 15
    AI spec files corrected (every one builds a `/Pages/…` component out of a bare Group). Mechanical, but
@@ -277,15 +277,20 @@ The gate is one, the apply is one, and the vocabulary is one. In order:
    Claude Code may write too.
 5. **AAQ-011 F13** — whether the MCP server may create backends at all. Until it can, a full-stack app
    cannot be built end to end through the external door; the graph is diagnosed (slice 1 gave the package
-   `checkBackendRequirements`) but nothing offers to fix it. Worth putting to Richard alongside F9/F10.
+   `checkBackendRequirements`) but nothing offers to fix it. Worth putting to Richard alongside F10.
+   ⚠️ **This line used to name F9 too, and that was wrong** — F9 was a missing `clearWarning`, a plain
+   bug with no decision owed, and the register row said so all along. A row that says "product question"
+   in one document and "missing clear" in another is a row nobody picks up.
 6. **AAQ-011 F12** — the MCP write gate is **component-scoped**, so a project-wide rule
    (`duplicate-node-id`) fires only *after* the write: `create_component` returns `errors: 0` and the very
    next `validate_project --strict` returns 3. An external agent can still write a colliding node id and
    be told the write is clean. Making a project-scoped rule reachable from a component-scoped gate is a
    design change, which is why slice 1 filed it rather than patched it.
-7. **AAQ-011 F8** — the review path still calls the built-in backend's collections "unknown, not absent"
-   on a premise Layer 1 made stale. The reader it needs (`projectSchemaCollections`) exists, so this is
-   wiring; three specs assert the current four-outcome shape.
+7. ✅ **AAQ-011 F8 is closed (`61579634`)** — `collectBackendSummary` now reads the built-in backend's
+   cached schema through `builtInSchemaCollections` and hands it to `buildBackendSummary`. Outcome 3
+   **narrowed** rather than being replaced (an empty cache still means "we could not look"), and no fifth
+   outcome was added. Two claims in the row were wrong: `DatabaseSchemaExtractor` needed no wiring of its
+   own, and **one** spec asserted the four-outcome shape, not three.
 
 Richard's bar has not moved: *"legendary creations rivaling the best Opus landing page artifacts."* A page
 that validates is not the goal, and the exit criteria are three briefs judged side by side against Claude

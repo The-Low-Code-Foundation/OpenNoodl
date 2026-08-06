@@ -178,13 +178,13 @@ This is the **largest remaining block** and it is a dependency chain, not a list
 
 **Open F-rows that are plain bugs, no decision needed** — good parallel-agent fodder:
 
-- **F9** — every wizard-built app carries a permanent, false `⚠ 1` "Router has no Pages
-  configured". The fix shape is named: a missing `dbmodelcrudbase.clearWarnings`.
-  ⚠️ HANDOVER lists F9 as a "product question for Richard" and the row itself describes a plain
-  bug — resolve that contradiction before treating it as blocked.
-- **F8** — project review still says built-in backend collections are "unknown, not absent".
-  "This is wiring, not discovery"; the reader `projectSchemaCollections` already exists. Three
-  specs assert the current four-outcome shape.
+- ✅ **F9 — closed `339b3009`.** The clear went into `_reportReset` and withdraws every reset
+  diagnosis the current pass did not reach; a genuinely empty Router still warns. The HANDOVER
+  contradiction was resolved in the same commit — the row was right, it was never a product
+  question.
+- ✅ **F8 — closed `61579634`.** `collectBackendSummary` reads the built-in backend's cached schema
+  through `builtInSchemaCollections`. Outcome 3 narrowed rather than being replaced; **one** spec
+  asserted the four-outcome shape, not three, and `DatabaseSchemaExtractor` needed no wiring.
 - **F11** — the Data Browser's first open reports "Failed to load tables" (an undefined
   `backendId` rendered as a broken backend).
 - **F1** — light mode: a component dragged from the component menu is a dark pill with dark text.
