@@ -1,0 +1,28 @@
+{
+  "typeName": "noodl.cloud.jwtverify",
+  "summary": "Check a JWT somebody else issued: signature, algorithm, exp and nbf. Not how you authenticate your own users.",
+  "description": "JWT Verify checks a token against the secret on Key and, only if it verifies, puts the payload on Claims. It refuses a token whose header names any algorithm other than the one you selected — which is what stops both `alg: none` and algorithm confusion — and it checks nbf and exp with an optional clock tolerance. Nothing in a token can be believed before the signature check, so Claims is left alone on any failure rather than handed over unchecked. IMPORTANT: this is for OTHER people's tokens — a partner's signed webhook, an OIDC id_token, a link your own backend minted with JWT Sign. Your own callers are already resolved: the Request node outputs Authenticated and User Id from the session token before the graph runs.",
+  "whenToUse": "A partner hands you a signed token; an identity provider returns an id_token; you are checking back a link you minted with JWT Sign. Never for your own session tokens.",
+  "ports": {
+    "token": "The JWT, without any 'Bearer ' prefix.",
+    "key": "The secret the issuer signed with. Wire this from a Secret node.",
+    "algorithm": "The algorithm the token MUST carry. A token claiming anything else is refused unread.",
+    "clockTolerance": "Seconds of leeway on exp and nbf, for issuers whose clock is not quite yours. Default 0.",
+    "verify": "Signal (Do); checks the token.",
+    "valid": "True when the token verified; false whenever Failure fired.",
+    "claims": "The payload — set only after the signature verified.",
+    "done": "Fires when the token verified.",
+    "failure": "Fires when it did not, for any reason. Error says which.",
+    "error": "Why the token did not verify."
+  },
+  "examples": [],
+  "patterns": [
+    "Request receive → Secret Do → JWT Verify Do, with Failure wired to a Response that answers 401.",
+    "Wire both Done and Failure. A function that only wires the happy path hangs when the token is bad."
+  ],
+  "antiPatterns": [
+    "Using this to authenticate your own app's users. The Request node's Authenticated and User Id already did that.",
+    "Reading Claims off the Failure path. It is deliberately not set there."
+  ],
+  "relatedNodes": ["noodl.cloud.jwtsign", "noodl.cloud.secret", "noodl.cloud.request"]
+}

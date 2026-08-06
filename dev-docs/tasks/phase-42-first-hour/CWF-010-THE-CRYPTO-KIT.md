@@ -1,8 +1,38 @@
 # CWF-010 — Hash, random, UUID and JWT, as nodes
 
 **From:** [TALK-007](TALK-007-WHAT-CLOUD-FUNCTIONS-SHOULD-HAVE.md) §6 rows 1–2, approved 2026-08-05.
-**Status:** open, unowned. **Depends on [CWF-009](CWF-009-THE-SECRET-NODE.md)** for the signing key —
-build the hash half without it, the JWT half after it.
+**Status:** ✅ **shipped 2026-08-06** — six nodes, no dependency. RS256 deferred (slice 4's own
+second half). Built on [CWF-009](CWF-009-THE-SECRET-NODE.md), which is where every Key input's
+value comes from.
+
+## What shipped, and where each node is registered
+
+| Node | Type | Runtime | Why |
+|---|---|---|---|
+| Hash | `net.noodl.Hash` | **shared** | takes no key |
+| Random Bytes | `net.noodl.RandomBytes` | **shared** | takes no key |
+| UUID | `net.noodl.UUID` | **shared** | takes no key |
+| HMAC | `noodl.cloud.hmac` | **cloud only** | takes a key |
+| JWT Sign | `noodl.cloud.jwtsign` | **cloud only** | takes a key |
+| JWT Verify | `noodl.cloud.jwtverify` | **cloud only** | HS256's key is a *shared* secret |
+
+⚠️ **HMAC's placement was a decision this task did not make.** The trap list names only JWT Sign as
+cloud-only. The same argument decides HMAC and JWT Verify: every real use of an HMAC holds a shared
+secret, and a browser node whose Key can only be filled from a literal or a fetch is a secret in the
+page. The one browser-legitimate case is RS256 verification with a *public* key — asymmetric, and
+not what these nodes do. It is asserted, not just stated:
+[`cloud-crypto-kit.test.ts`](../../../packages/nodegx-backend/tests/cloud-crypto-kit.test.ts) reads
+`availableIn` out of the committed catalog for all six.
+
+## A doc premise that was wrong
+
+~~"There is already a **`Unique Id`** node … if it is already a UUID v4, this slice is
+*documentation*, not a node."~~ — **it is not a UUID.** `Unique Id` returns `Model.guid()`, which is
+**ten characters** from `Math.random()` (`model.ts` `_randomString`). So the slice is a node after
+all — and the finding is worth more than the node: a port described as *"a globally unique
+identifier"* has been handing out 10 characters of `Math.random()` to anyone who read that sentence
+and used it as a record id. Both descriptions now say which is which, and the table is in
+`crypto/uuid.ts`'s module comment.
 
 ## The engine is already there — this is about making it visual
 
@@ -61,12 +91,25 @@ session token and outputs `Authenticated` and `User Id` (TALK-007 Pile C). JWT V
 *someone else's* tokens — a partner's webhook, an OIDC id_token — not for our own sessions. Say that
 on the node's page or it will be used for the wrong thing.
 
-## Done when
+## Done when — all met
 
 - Each node driven in a real cloud function, output checked against a known-good vector (not against
-  our own other node — that proves consistency, not correctness).
-- JWT Verify rejects: expired, not-yet-valid, wrong key, `alg: none`, and a tampered payload.
-- Nothing new in `package.json`.
+  our own other node — that proves consistency, not correctness). ✅ Two suites:
+  [`cwf-010-crypto.test.ts`](../../../packages/noodl-runtime/test/nodes/cwf-010-crypto.test.ts) for
+  the algorithms (standard SHA-2 vectors for `"abc"`, jwt.io's published HS256 token) and
+  [`cloud-crypto-kit.test.ts`](../../../packages/nodegx-backend/tests/cloud-crypto-kit.test.ts) for
+  the graph (HMAC checked against `node:crypto`, not against our own node).
+- JWT Verify rejects: expired, not-yet-valid, wrong key, `alg: none`, and a tampered payload. ✅ All
+  five, plus algorithm confusion (an HS512 token offered where HS256 was expected) and five shapes
+  of malformed token.
+- Nothing new in `package.json`. ✅
+
+## Deferred, on purpose
+
+**RS256.** Slice 4 already scopes it as second: it needs `crypto.subtle.importKey` with a PEM and a
+key-format decision, still with no dependency. The enum on both JWT nodes offers HS256/384/512 only,
+so nothing can be selected that is not implemented — the failure mode of "offered but unbuilt" is
+what this avoids.
 
 ## Traps
 

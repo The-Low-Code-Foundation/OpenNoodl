@@ -251,6 +251,14 @@ function registerNodes(noodlRuntime: NoodlRuntime) {
     require('./src/nodes/std-library/stringformat'),
     require('./src/nodes/std-library/counter'),
     require('./src/nodes/std-library/uniqueid'),
+
+    // Crypto (CWF-010). Shared, because hashing, random bytes and ids are as ordinary in a
+    // browser as on a server and none of them takes a key. The three that DO take a key —
+    // HMAC, JWT Sign, JWT Verify — are registered in `noodl-viewer-cloud` instead: a key in a
+    // browser is a key in the hands of everyone who opens the page.
+    require('./src/nodes/std-library/crypto/hash'),
+    require('./src/nodes/std-library/crypto/randombytes'),
+    require('./src/nodes/std-library/crypto/uuid'),
     // CWF-008: multi-way Switch and range maths. The cloud had only the two-way Condition.
     require('./src/nodes/std-library/switch'),
     require('./src/nodes/std-library/numberremapper'),

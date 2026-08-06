@@ -1,0 +1,24 @@
+{
+  "typeName": "net.noodl.RandomBytes",
+  "summary": "A block of cryptographically random bytes as hex, base64 or base64url. Never falls back to Math.random().",
+  "description": "Random Bytes fills Length bytes from the platform's cryptographic random source (crypto.getRandomValues) and renders them in Encoding. If there is no such source it fails loudly rather than substituting Math.random() — a silent downgrade there produces output that looks identical and is worthless. Length counts BYTES, not characters: 32 bytes is 64 hex characters or 43 base64url characters. A length outside 1-4096 is refused rather than clamped.",
+  "whenToUse": "A nonce, a CSRF token, a PKCE verifier, an invite code, a one-time download key — anything that has to be unguessable. For an identifier that only has to be unique, the UUID node says so more clearly.",
+  "ports": {
+    "length": "How many random bytes to produce, 1-4096. Default 32.",
+    "encoding": "hex (default), base64 or base64url. Base64 URL is the one that is safe in a URL.",
+    "generate": "Signal (New); produces a fresh block.",
+    "value": "The random bytes rendered in Encoding, replaced on every New.",
+    "done": "Fires once Value holds fresh bytes.",
+    "failure": "Fires when there is no cryptographic random source, or Length is out of range.",
+    "error": "Why no bytes were produced."
+  },
+  "examples": [],
+  "patterns": [
+    "New → Done → store or send. The value is replaced on every New, so read it from the Done path rather than later."
+  ],
+  "antiPatterns": [
+    "Treating Length as a character count. 16 bytes of hex is 32 characters.",
+    "Using this where a UUID is what the other system expects — the shapes are not interchangeable."
+  ],
+  "relatedNodes": ["net.noodl.UUID", "net.noodl.Hash", "Unique Id"]
+}

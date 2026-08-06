@@ -1,0 +1,25 @@
+{
+  "typeName": "net.noodl.Hash",
+  "summary": "SHA-256/384/512 digest of a string, rendered as hex, base64 or base64url. Works in the browser and in a cloud function.",
+  "description": "Hash takes the text on Value, hashes it with the chosen SHA-2 algorithm and puts the digest on Digest. It runs on WebCrypto, which both runtimes already have — there is no dependency behind it. The digest is computed asynchronously, so Done fires from a later turn than the Do that started it: wire Done, never assume Digest is fresh in the same frame. MD5 and SHA-1 are deliberately not offered; WebCrypto implements neither for digesting, and hand-rolling one would be shipping a broken hash. If you need a keyed digest, that is the HMAC node, which is cloud-only because it takes a secret.",
+  "whenToUse": "Content addressing, a cache key, an integrity check, or comparing a value against a digest somebody else published. Not for storing passwords — a plain SHA-2 is the wrong tool for that, whichever runtime you are in.",
+  "ports": {
+    "value": "The text to hash, encoded as UTF-8 bytes.",
+    "algorithm": "SHA-256 (default), SHA-384 or SHA-512.",
+    "encoding": "hex (default), base64 or base64url — how the digest bytes are rendered as text.",
+    "hash": "Signal (Do); computes the digest. Nothing happens until this fires.",
+    "digest": "The digest, valid once Done has fired.",
+    "done": "Fires when Digest holds the finished digest.",
+    "failure": "Fires when WebCrypto is unavailable — in a browser that means the page is not in a secure context.",
+    "error": "Why the digest could not be computed."
+  },
+  "examples": [],
+  "patterns": [
+    "Do → Done → the node that consumes Digest. The digest is asynchronous, so a wire off Done is the only way to sequence it correctly."
+  ],
+  "antiPatterns": [
+    "Reading Digest immediately after pulsing Do, in the same frame. It is still the previous value.",
+    "Hashing a password with this node. Use your backend's password flow; a bare SHA-2 is not a password hash."
+  ],
+  "relatedNodes": ["noodl.cloud.hmac", "net.noodl.RandomBytes", "net.noodl.UUID"]
+}

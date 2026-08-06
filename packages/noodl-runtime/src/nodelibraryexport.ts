@@ -626,6 +626,13 @@ function generateNodeLibrary(nodeRegister: NodeRegisterLike, options?: { runtime
           items: ['Substring', 'String Mapper', 'String Format', 'Date To String', 'Unique Id']
         },
         {
+          // CWF-010. Shared runtime — none of these three takes a key, so none of them is a
+          // secret waiting to be shipped in a browser bundle. The three that do (HMAC, JWT
+          // Sign, JWT Verify) live under Cloud Functions instead.
+          name: 'Crypto',
+          items: ['net.noodl.Hash', 'net.noodl.RandomBytes', 'net.noodl.UUID']
+        },
+        {
           name: 'System',
           items: ['Screen Resolution', 'Open File Picker', 'On App Error']
         },
@@ -797,6 +804,12 @@ function generateNodeLibrary(nodeRegister: NodeRegisterLike, options?: { runtime
           // a Secret node offered on a browser canvas would be a defect.
           name: 'Secrets',
           items: ['noodl.cloud.secret']
+        },
+        {
+          // CWF-010: the crypto nodes that hold a key. Cloud-only, deliberately — see the
+          // module comments on hmac.ts and jwtsign.ts.
+          name: 'Security',
+          items: ['noodl.cloud.hmac', 'noodl.cloud.jwtsign', 'noodl.cloud.jwtverify']
         }
       ]
     }

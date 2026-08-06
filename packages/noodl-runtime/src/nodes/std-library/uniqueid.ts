@@ -49,7 +49,15 @@ const UniqueIdNode: NodeDefinitionOptions = {
     guid: {
       type: 'string',
       displayName: 'Id',
-      description: 'A globally unique identifier, generated once when the node is created and again on every New',
+      /**
+       * CWF-010 slice 3. The old wording — "a globally unique identifier" — was the reason that
+       * task expected this node to already be a UUID v4. It is not: `Model.guid()` is ten
+       * characters from `Math.random()`. That is a fine key for a rendered list and is not
+       * something to hand a database or an attacker, so both nodes now say which is which.
+       */
+      description:
+        'A short random id — 10 characters, from Math.random(). Good for keying a list. For a record ' +
+        'id, an idempotency key or anything that must be unguessable, use the UUID node instead',
       getter: function (this: UniqueIdNodeInstance) {
         const internal = this._internal;
         return internal.guid;

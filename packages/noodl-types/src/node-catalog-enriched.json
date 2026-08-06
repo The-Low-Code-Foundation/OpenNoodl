@@ -31782,7 +31782,7 @@
             "name": "string"
           },
           "isSignal": false,
-          "description": "A globally unique identifier, generated once when the node is created and again on every New"
+          "description": "A short random id — 10 characters, from Math.random(). Good for keying a list. For a record id, an idempotency key or anything that must be unguessable, use the UUID node instead"
         }
       ],
       "dynamicPorts": null,
@@ -35940,6 +35940,188 @@
       }
     },
     {
+      "typeName": "net.noodl.Hash",
+      "displayName": "Hash",
+      "category": "Utilities",
+      "isVisual": false,
+      "isDeprecated": false,
+      "inNodePicker": true,
+      "availableIn": [
+        "browser",
+        "cloud"
+      ],
+      "providedBy": "noodl-runtime",
+      "ssr": {
+        "compat": "safe"
+      },
+      "docs": "https://docs.noodl.net/nodes/utilities/hash",
+      "inputs": [
+        {
+          "name": "algorithm",
+          "displayName": "Algorithm",
+          "group": "General",
+          "plug": "input",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "SHA-256",
+                "value": "SHA-256"
+              },
+              {
+                "label": "SHA-384",
+                "value": "SHA-384"
+              },
+              {
+                "label": "SHA-512",
+                "value": "SHA-512"
+              }
+            ]
+          },
+          "isSignal": false,
+          "default": "SHA-256",
+          "description": "Which SHA-2 digest to compute. MD5 and SHA-1 are not offered — WebCrypto has neither"
+        },
+        {
+          "name": "encoding",
+          "displayName": "Encoding",
+          "group": "General",
+          "plug": "input",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "Hex",
+                "value": "hex"
+              },
+              {
+                "label": "Base64",
+                "value": "base64"
+              },
+              {
+                "label": "Base64 URL",
+                "value": "base64url"
+              }
+            ]
+          },
+          "isSignal": false,
+          "default": "hex",
+          "description": "How the digest bytes are rendered as text"
+        },
+        {
+          "name": "hash",
+          "displayName": "Do",
+          "group": "Actions",
+          "plug": "input",
+          "type": {
+            "name": "signal",
+            "allowConnectionsOnly": true
+          },
+          "isSignal": true,
+          "description": "Computes the digest of Value"
+        },
+        {
+          "name": "value",
+          "displayName": "Value",
+          "group": "General",
+          "plug": "input",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "description": "The text to hash, as UTF-8 bytes"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
+          "name": "digest",
+          "displayName": "Digest",
+          "group": "Value",
+          "plug": "output",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "description": "The hash of Value, rendered in Encoding. Available once Done has fired"
+        },
+        {
+          "name": "done",
+          "displayName": "Done",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires once the digest has been computed and is available on Digest"
+        },
+        {
+          "name": "error",
+          "displayName": "Error",
+          "group": "Error",
+          "plug": "output",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "description": "Why the digest could not be computed"
+        },
+        {
+          "name": "failure",
+          "displayName": "Failure",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when the digest could not be computed, most often because WebCrypto is not available here"
+        }
+      ],
+      "dynamicPorts": null,
+      "parameterEncoding": null,
+      "enrichment": {
+        "typeName": "net.noodl.Hash",
+        "summary": "SHA-256/384/512 digest of a string, rendered as hex, base64 or base64url. Works in the browser and in a cloud function.",
+        "description": "Hash takes the text on Value, hashes it with the chosen SHA-2 algorithm and puts the digest on Digest. It runs on WebCrypto, which both runtimes already have — there is no dependency behind it. The digest is computed asynchronously, so Done fires from a later turn than the Do that started it: wire Done, never assume Digest is fresh in the same frame. MD5 and SHA-1 are deliberately not offered; WebCrypto implements neither for digesting, and hand-rolling one would be shipping a broken hash. If you need a keyed digest, that is the HMAC node, which is cloud-only because it takes a secret.",
+        "whenToUse": "Content addressing, a cache key, an integrity check, or comparing a value against a digest somebody else published. Not for storing passwords — a plain SHA-2 is the wrong tool for that, whichever runtime you are in.",
+        "ports": {
+          "value": "The text to hash, encoded as UTF-8 bytes.",
+          "algorithm": "SHA-256 (default), SHA-384 or SHA-512.",
+          "encoding": "hex (default), base64 or base64url — how the digest bytes are rendered as text.",
+          "hash": "Signal (Do); computes the digest. Nothing happens until this fires.",
+          "digest": "The digest, valid once Done has fired.",
+          "done": "Fires when Digest holds the finished digest.",
+          "failure": "Fires when WebCrypto is unavailable — in a browser that means the page is not in a secure context.",
+          "error": "Why the digest could not be computed."
+        },
+        "examples": [],
+        "patterns": [
+          "Do → Done → the node that consumes Digest. The digest is asynchronous, so a wire off Done is the only way to sequence it correctly."
+        ],
+        "antiPatterns": [
+          "Reading Digest immediately after pulsing Do, in the same frame. It is still the previous value.",
+          "Hashing a password with this node. Use your backend's password flow; a bare SHA-2 is not a password hash."
+        ],
+        "relatedNodes": [
+          "noodl.cloud.hmac",
+          "net.noodl.RandomBytes",
+          "net.noodl.UUID"
+        ]
+      }
+    },
+    {
       "typeName": "net.noodl.JSONStreamParser",
       "displayName": "JSON Stream Parser",
       "category": "Data",
@@ -37165,6 +37347,162 @@
           "Substring",
           "String Format",
           "String Mapper"
+        ]
+      }
+    },
+    {
+      "typeName": "net.noodl.RandomBytes",
+      "displayName": "Random Bytes",
+      "category": "Utilities",
+      "isVisual": false,
+      "isDeprecated": false,
+      "inNodePicker": true,
+      "availableIn": [
+        "browser",
+        "cloud"
+      ],
+      "providedBy": "noodl-runtime",
+      "ssr": {
+        "compat": "safe"
+      },
+      "docs": "https://docs.noodl.net/nodes/utilities/random-bytes",
+      "inputs": [
+        {
+          "name": "encoding",
+          "displayName": "Encoding",
+          "group": "General",
+          "plug": "input",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "Hex",
+                "value": "hex"
+              },
+              {
+                "label": "Base64",
+                "value": "base64"
+              },
+              {
+                "label": "Base64 URL",
+                "value": "base64url"
+              }
+            ]
+          },
+          "isSignal": false,
+          "default": "hex",
+          "description": "How the bytes are rendered as text. Base64 URL is the safe one for a URL or a token"
+        },
+        {
+          "name": "generate",
+          "displayName": "New",
+          "group": "Actions",
+          "plug": "input",
+          "type": {
+            "name": "signal",
+            "allowConnectionsOnly": true
+          },
+          "isSignal": true,
+          "description": "Generates a fresh block of random bytes"
+        },
+        {
+          "name": "length",
+          "displayName": "Length",
+          "group": "General",
+          "plug": "input",
+          "type": {
+            "name": "number"
+          },
+          "isSignal": false,
+          "default": 32,
+          "description": "How many random BYTES to generate (not characters — hex renders each byte as two). 1 to 4096"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
+          "name": "done",
+          "displayName": "Done",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires once fresh random bytes are available on Value"
+        },
+        {
+          "name": "error",
+          "displayName": "Error",
+          "group": "Error",
+          "plug": "output",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "description": "Why no random bytes were produced"
+        },
+        {
+          "name": "failure",
+          "displayName": "Failure",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when there is no cryptographic random source here, or Length is out of range. This node will not quietly substitute Math.random()"
+        },
+        {
+          "name": "value",
+          "displayName": "Value",
+          "group": "Value",
+          "plug": "output",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "description": "The random bytes rendered in Encoding, replaced on every New"
+        }
+      ],
+      "dynamicPorts": null,
+      "parameterEncoding": null,
+      "enrichment": {
+        "typeName": "net.noodl.RandomBytes",
+        "summary": "A block of cryptographically random bytes as hex, base64 or base64url. Never falls back to Math.random().",
+        "description": "Random Bytes fills Length bytes from the platform's cryptographic random source (crypto.getRandomValues) and renders them in Encoding. If there is no such source it fails loudly rather than substituting Math.random() — a silent downgrade there produces output that looks identical and is worthless. Length counts BYTES, not characters: 32 bytes is 64 hex characters or 43 base64url characters. A length outside 1-4096 is refused rather than clamped.",
+        "whenToUse": "A nonce, a CSRF token, a PKCE verifier, an invite code, a one-time download key — anything that has to be unguessable. For an identifier that only has to be unique, the UUID node says so more clearly.",
+        "ports": {
+          "length": "How many random bytes to produce, 1-4096. Default 32.",
+          "encoding": "hex (default), base64 or base64url. Base64 URL is the one that is safe in a URL.",
+          "generate": "Signal (New); produces a fresh block.",
+          "value": "The random bytes rendered in Encoding, replaced on every New.",
+          "done": "Fires once Value holds fresh bytes.",
+          "failure": "Fires when there is no cryptographic random source, or Length is out of range.",
+          "error": "Why no bytes were produced."
+        },
+        "examples": [],
+        "patterns": [
+          "New → Done → store or send. The value is replaced on every New, so read it from the Done path rather than later."
+        ],
+        "antiPatterns": [
+          "Treating Length as a character count. 16 bytes of hex is 32 characters.",
+          "Using this where a UUID is what the other system expects — the shapes are not interchangeable."
+        ],
+        "relatedNodes": [
+          "net.noodl.UUID",
+          "net.noodl.Hash",
+          "Unique Id"
         ]
       }
     },
@@ -39334,6 +39672,120 @@
           "net.noodl.StreamBuffer",
           "String Format",
           "Substring"
+        ]
+      }
+    },
+    {
+      "typeName": "net.noodl.UUID",
+      "displayName": "UUID",
+      "category": "Utilities",
+      "isVisual": false,
+      "isDeprecated": false,
+      "inNodePicker": true,
+      "availableIn": [
+        "browser",
+        "cloud"
+      ],
+      "providedBy": "noodl-runtime",
+      "ssr": {
+        "compat": "safe"
+      },
+      "docs": "https://docs.noodl.net/nodes/utilities/uuid",
+      "inputs": [
+        {
+          "name": "generate",
+          "displayName": "New",
+          "group": "Actions",
+          "plug": "input",
+          "type": {
+            "name": "signal",
+            "allowConnectionsOnly": true
+          },
+          "isSignal": true,
+          "description": "Generates a fresh UUID, replacing the one on Id"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
+          "name": "done",
+          "displayName": "Done",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires once a new UUID is available on Id"
+        },
+        {
+          "name": "error",
+          "displayName": "Error",
+          "group": "Error",
+          "plug": "output",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "description": "Why no UUID could be generated"
+        },
+        {
+          "name": "failure",
+          "displayName": "Failure",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when there is no cryptographic random source here, leaving Id as it was"
+        },
+        {
+          "name": "uuid",
+          "displayName": "Id",
+          "group": "Value",
+          "plug": "output",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "description": "A random version-4 UUID, generated once when the node is created and again on every New. Use this rather than Unique Id wherever the id has to be globally unique or unguessable"
+        }
+      ],
+      "dynamicPorts": null,
+      "parameterEncoding": null,
+      "enrichment": {
+        "typeName": "net.noodl.UUID",
+        "summary": "A random version-4 UUID from the platform's cryptographic random source. Not the same thing as Unique Id.",
+        "description": "UUID emits a standard RFC 4122 version-4 identifier — 36 characters, 122 random bits — generated once when the node is created and again on every New. It uses crypto.randomUUID where that exists and builds the same layout from crypto.getRandomValues where it does not (a browser on a non-secure origin), so it is never weaker, only differently reached. It is deliberately a second node beside Unique Id rather than a replacement: Unique Id is 10 characters from Math.random(), which is right for keying a rendered list and wrong for a record id, an idempotency key or anything an attacker might try to guess.",
+        "whenToUse": "A record id, an idempotency key, a correlation id across services, a filename that must not collide. Anywhere the id leaves this page or has to be unguessable.",
+        "ports": {
+          "generate": "Signal (New); mints a fresh UUID, replacing the one on Id.",
+          "uuid": "The current UUID. Populated at creation, so it is never blank before the first New.",
+          "done": "Fires once Id holds a fresh UUID.",
+          "failure": "Fires when there is no cryptographic random source here, leaving Id as it was.",
+          "error": "Why no UUID could be generated."
+        },
+        "examples": [],
+        "patterns": [
+          "Create Record with Id wired from this node: an id minted client-side lets the same request be retried safely."
+        ],
+        "antiPatterns": [
+          "Using Unique Id where this node is meant. Ten characters of Math.random() is not an identifier to key a database on."
+        ],
+        "relatedNodes": [
+          "Unique Id",
+          "net.noodl.RandomBytes"
         ]
       }
     },
@@ -55354,6 +55806,561 @@
       }
     },
     {
+      "typeName": "noodl.cloud.hmac",
+      "displayName": "HMAC",
+      "category": "Cloud",
+      "isVisual": false,
+      "isDeprecated": false,
+      "inNodePicker": true,
+      "availableIn": [
+        "cloud"
+      ],
+      "providedBy": "noodl-viewer-cloud",
+      "docs": "https://docs.noodl.net/nodes/cloud-functions/hmac",
+      "inputs": [
+        {
+          "name": "algorithm",
+          "displayName": "Algorithm",
+          "group": "General",
+          "plug": "input",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "SHA-256",
+                "value": "SHA-256"
+              },
+              {
+                "label": "SHA-384",
+                "value": "SHA-384"
+              },
+              {
+                "label": "SHA-512",
+                "value": "SHA-512"
+              }
+            ]
+          },
+          "isSignal": false,
+          "default": "SHA-256",
+          "description": "Which SHA-2 digest the HMAC is built on. HMAC-SHA256 is what almost every webhook uses"
+        },
+        {
+          "name": "encoding",
+          "displayName": "Encoding",
+          "group": "General",
+          "plug": "input",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "Hex",
+                "value": "hex"
+              },
+              {
+                "label": "Base64",
+                "value": "base64"
+              },
+              {
+                "label": "Base64 URL",
+                "value": "base64url"
+              }
+            ]
+          },
+          "isSignal": false,
+          "default": "hex",
+          "description": "How the signature bytes are rendered as text. Match whatever the other side sends"
+        },
+        {
+          "name": "key",
+          "displayName": "Key",
+          "group": "General",
+          "plug": "input",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "description": "The shared secret. Wire this from a Secret node — never type a credential into the graph"
+        },
+        {
+          "name": "sign",
+          "displayName": "Do",
+          "group": "Actions",
+          "plug": "input",
+          "type": {
+            "name": "signal",
+            "allowConnectionsOnly": true
+          },
+          "isSignal": true,
+          "description": "Computes the signature of Value under Key"
+        },
+        {
+          "name": "value",
+          "displayName": "Value",
+          "group": "General",
+          "plug": "input",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "description": "The message to sign, as UTF-8 bytes. For a webhook signature this is the raw request body"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
+          "name": "done",
+          "displayName": "Done",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires once the signature has been computed and is available on Signature"
+        },
+        {
+          "name": "error",
+          "displayName": "Error",
+          "group": "Error",
+          "plug": "output",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "description": "Why no signature was produced. It names the problem, never the key"
+        },
+        {
+          "name": "failure",
+          "displayName": "Failure",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when the signature could not be computed — most often no Key"
+        },
+        {
+          "name": "signature",
+          "displayName": "Signature",
+          "group": "Value",
+          "plug": "output",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "description": "The HMAC of Value, rendered in Encoding. Available once Done has fired"
+        }
+      ],
+      "dynamicPorts": null,
+      "parameterEncoding": null,
+      "enrichment": {
+        "typeName": "noodl.cloud.hmac",
+        "summary": "Keyed SHA-2 signature of a string. Cloud-only, because it takes a shared secret.",
+        "description": "HMAC signs the text on Value with the secret on Key and puts the result on Signature, rendered in the chosen encoding. It is the primitive behind webhook signature verification (compute the HMAC of the raw request body and compare it to the header the sender supplied) and behind signing an outbound API request. It is registered only in the cloud runtime, and that is the point: every real use holds a shared secret, and a browser node whose Key input can only be filled from a literal or a fetch is a secret in the page. It shares one implementation with JWT Sign and JWT Verify, so a token this backend mints and a signature this node checks cannot drift apart.",
+        "whenToUse": "Verifying a Stripe, GitHub or supplier webhook; signing a request some API requires signed; minting a tamper-evident download token. Wire Key from a Secret node.",
+        "ports": {
+          "value": "The message to sign. For a webhook signature this must be the RAW body, byte for byte, not a re-serialised object.",
+          "key": "The shared secret. Wire this from a Secret node.",
+          "algorithm": "SHA-256 (default), SHA-384 or SHA-512. Almost every webhook uses SHA-256.",
+          "encoding": "hex (default), base64 or base64url. Match whatever the other side sends.",
+          "sign": "Signal (Do); computes the signature.",
+          "signature": "The HMAC, valid once Done has fired.",
+          "done": "Fires once Signature holds the result.",
+          "failure": "Fires when the signature could not be computed — most often no Key.",
+          "error": "Why no signature was produced. It names the problem, never the key."
+        },
+        "examples": [],
+        "patterns": [
+          "Secret Done → HMAC Do, with Value wired from the Request node's raw body: the standard webhook-verification shape."
+        ],
+        "antiPatterns": [
+          "Re-serialising the request body before signing it. Any difference in key order or whitespace changes the signature.",
+          "Typing the key into the graph. It ends up in the exported project; use a Secret node."
+        ],
+        "relatedNodes": [
+          "noodl.cloud.secret",
+          "net.noodl.Hash",
+          "noodl.cloud.jwtsign"
+        ]
+      }
+    },
+    {
+      "typeName": "noodl.cloud.jwtsign",
+      "displayName": "JWT Sign",
+      "category": "Cloud",
+      "isVisual": false,
+      "isDeprecated": false,
+      "inNodePicker": true,
+      "availableIn": [
+        "cloud"
+      ],
+      "providedBy": "noodl-viewer-cloud",
+      "docs": "https://docs.noodl.net/nodes/cloud-functions/jwt-sign",
+      "inputs": [
+        {
+          "name": "algorithm",
+          "displayName": "Algorithm",
+          "group": "General",
+          "plug": "input",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "HS256",
+                "value": "HS256"
+              },
+              {
+                "label": "HS384",
+                "value": "HS384"
+              },
+              {
+                "label": "HS512",
+                "value": "HS512"
+              }
+            ]
+          },
+          "isSignal": false,
+          "default": "HS256",
+          "description": "Which HMAC signs the token. RS256 is not offered yet — it needs a key-import pass of its own"
+        },
+        {
+          "name": "claims",
+          "displayName": "Claims",
+          "group": "General",
+          "plug": "input",
+          "type": {
+            "name": "object",
+            "allowConnectionsOnly": true
+          },
+          "isSignal": false,
+          "description": "The payload object. `iat` is always added; `exp` is added when Expires In is set. Anything you put here is readable by whoever holds the token — a JWT is signed, not encrypted"
+        },
+        {
+          "name": "expiresIn",
+          "displayName": "Expires In (s)",
+          "group": "General",
+          "plug": "input",
+          "type": {
+            "name": "number"
+          },
+          "isSignal": false,
+          "description": "Seconds until the token expires, stamped as `exp`. Leave empty for a token with no expiry — which is a decision, not a default"
+        },
+        {
+          "name": "key",
+          "displayName": "Key",
+          "group": "General",
+          "plug": "input",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "description": "The signing secret. Wire this from a Secret node — never type a credential into the graph"
+        },
+        {
+          "name": "sign",
+          "displayName": "Do",
+          "group": "Actions",
+          "plug": "input",
+          "type": {
+            "name": "signal",
+            "allowConnectionsOnly": true
+          },
+          "isSignal": true,
+          "description": "Signs the claims and puts the token on Token"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
+          "name": "done",
+          "displayName": "Done",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires once the token has been signed and is available on Token"
+        },
+        {
+          "name": "error",
+          "displayName": "Error",
+          "group": "Error",
+          "plug": "output",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "description": "Why no token was produced. It names the problem, never the key"
+        },
+        {
+          "name": "failure",
+          "displayName": "Failure",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when the token could not be signed — no Key, or claims that will not serialise"
+        },
+        {
+          "name": "token",
+          "displayName": "Token",
+          "group": "Value",
+          "plug": "output",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "description": "The signed JWT, available once Done has fired"
+        }
+      ],
+      "dynamicPorts": null,
+      "parameterEncoding": null,
+      "enrichment": {
+        "typeName": "noodl.cloud.jwtsign",
+        "summary": "Mint a signed JSON Web Token (HS256/384/512). Cloud-only — signing in a browser means the key is in the browser.",
+        "description": "JWT Sign serialises the Claims object into a JWT signed with the secret on Key. It always stamps `iat`; it stamps `exp` only when Expires In is set, so a token with no expiry is something you chose rather than something that happened. A JWT is signed, not encrypted: everything in Claims is readable by whoever holds the token. RS256 is not offered in this pass — it needs a PEM key import, still with no dependency, and is a slice of its own.",
+        "whenToUse": "Issuing a short-lived token your own system will check later — a download link, a callback nonce, a hand-off to a partner who has your shared secret. To authenticate your own users, do not mint tokens here: the Request node already resolves the caller from their session.",
+        "ports": {
+          "claims": "The payload object. Readable by anyone holding the token — put identifiers in it, never secrets.",
+          "key": "The signing secret. Wire this from a Secret node.",
+          "algorithm": "HS256 (default), HS384 or HS512.",
+          "expiresIn": "Seconds until the token expires, stamped as exp. Leave empty for a token that never expires.",
+          "sign": "Signal (Do); signs the claims.",
+          "token": "The signed JWT, valid once Done has fired.",
+          "done": "Fires once Token holds the signed token.",
+          "failure": "Fires when the token could not be signed — no Key, or claims that will not serialise.",
+          "error": "Why no token was produced."
+        },
+        "examples": [],
+        "patterns": [
+          "Secret Done → JWT Sign Do, then Token into a URL or a response: the whole shape of a signed link."
+        ],
+        "antiPatterns": [
+          "Putting a secret in Claims. The payload is base64, not encryption — anyone with the token can read it.",
+          "Leaving Expires In empty for a token that reaches a user's browser. A token with no expiry is valid until the key changes."
+        ],
+        "relatedNodes": [
+          "noodl.cloud.jwtverify",
+          "noodl.cloud.secret",
+          "noodl.cloud.hmac"
+        ]
+      }
+    },
+    {
+      "typeName": "noodl.cloud.jwtverify",
+      "displayName": "JWT Verify",
+      "category": "Cloud",
+      "isVisual": false,
+      "isDeprecated": false,
+      "inNodePicker": true,
+      "availableIn": [
+        "cloud"
+      ],
+      "providedBy": "noodl-viewer-cloud",
+      "docs": "https://docs.noodl.net/nodes/cloud-functions/jwt-verify",
+      "inputs": [
+        {
+          "name": "algorithm",
+          "displayName": "Algorithm",
+          "group": "General",
+          "plug": "input",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "HS256",
+                "value": "HS256"
+              },
+              {
+                "label": "HS384",
+                "value": "HS384"
+              },
+              {
+                "label": "HS512",
+                "value": "HS512"
+              }
+            ]
+          },
+          "isSignal": false,
+          "default": "HS256",
+          "description": "The algorithm the token MUST have been signed with. A token whose header says anything else is refused unread — that is what stops alg:none and algorithm confusion"
+        },
+        {
+          "name": "clockTolerance",
+          "displayName": "Clock Tolerance (s)",
+          "group": "General",
+          "plug": "input",
+          "type": {
+            "name": "number"
+          },
+          "isSignal": false,
+          "default": 0,
+          "description": "Seconds of leeway on exp and nbf, for issuers whose clock is not quite yours"
+        },
+        {
+          "name": "key",
+          "displayName": "Key",
+          "group": "General",
+          "plug": "input",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "description": "The shared secret the issuer signed with. Wire this from a Secret node"
+        },
+        {
+          "name": "token",
+          "displayName": "Token",
+          "group": "General",
+          "plug": "input",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "description": "The JWT to check, without any \"Bearer \" prefix"
+        },
+        {
+          "name": "verify",
+          "displayName": "Do",
+          "group": "Actions",
+          "plug": "input",
+          "type": {
+            "name": "signal",
+            "allowConnectionsOnly": true
+          },
+          "isSignal": true,
+          "description": "Checks the token"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "claims",
+          "displayName": "Claims",
+          "group": "Value",
+          "plug": "output",
+          "type": {
+            "name": "object"
+          },
+          "isSignal": false,
+          "description": "The token payload — set ONLY after the signature verified. Nothing in a token can be believed before that, so this is left alone on a failure rather than handed over unchecked"
+        },
+        {
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
+          "name": "done",
+          "displayName": "Done",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when the token verified and Claims holds its payload"
+        },
+        {
+          "name": "error",
+          "displayName": "Error",
+          "group": "Error",
+          "plug": "output",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "description": "Why the token did not verify"
+        },
+        {
+          "name": "failure",
+          "displayName": "Failure",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when the token did not verify, for any reason — expired, not yet valid, wrong key, wrong algorithm, tampered with, or malformed. Error says which"
+        },
+        {
+          "name": "valid",
+          "displayName": "Valid",
+          "group": "Value",
+          "plug": "output",
+          "type": {
+            "name": "boolean"
+          },
+          "isSignal": false,
+          "description": "Whether the token verified. False whenever Failure fired, so either can be wired"
+        }
+      ],
+      "dynamicPorts": null,
+      "parameterEncoding": null,
+      "enrichment": {
+        "typeName": "noodl.cloud.jwtverify",
+        "summary": "Check a JWT somebody else issued: signature, algorithm, exp and nbf. Not how you authenticate your own users.",
+        "description": "JWT Verify checks a token against the secret on Key and, only if it verifies, puts the payload on Claims. It refuses a token whose header names any algorithm other than the one you selected — which is what stops both `alg: none` and algorithm confusion — and it checks nbf and exp with an optional clock tolerance. Nothing in a token can be believed before the signature check, so Claims is left alone on any failure rather than handed over unchecked. IMPORTANT: this is for OTHER people's tokens — a partner's signed webhook, an OIDC id_token, a link your own backend minted with JWT Sign. Your own callers are already resolved: the Request node outputs Authenticated and User Id from the session token before the graph runs.",
+        "whenToUse": "A partner hands you a signed token; an identity provider returns an id_token; you are checking back a link you minted with JWT Sign. Never for your own session tokens.",
+        "ports": {
+          "token": "The JWT, without any 'Bearer ' prefix.",
+          "key": "The secret the issuer signed with. Wire this from a Secret node.",
+          "algorithm": "The algorithm the token MUST carry. A token claiming anything else is refused unread.",
+          "clockTolerance": "Seconds of leeway on exp and nbf, for issuers whose clock is not quite yours. Default 0.",
+          "verify": "Signal (Do); checks the token.",
+          "valid": "True when the token verified; false whenever Failure fired.",
+          "claims": "The payload — set only after the signature verified.",
+          "done": "Fires when the token verified.",
+          "failure": "Fires when it did not, for any reason. Error says which.",
+          "error": "Why the token did not verify."
+        },
+        "examples": [],
+        "patterns": [
+          "Request receive → Secret Do → JWT Verify Do, with Failure wired to a Response that answers 401.",
+          "Wire both Done and Failure. A function that only wires the happy path hangs when the token is bad."
+        ],
+        "antiPatterns": [
+          "Using this to authenticate your own app's users. The Request node's Authenticated and User Id already did that.",
+          "Reading Claims off the Failure path. It is deliberately not set there."
+        ],
+        "relatedNodes": [
+          "noodl.cloud.jwtsign",
+          "noodl.cloud.secret",
+          "noodl.cloud.request"
+        ]
+      }
+    },
+    {
       "typeName": "noodl.cloud.request",
       "displayName": "Request",
       "category": "Cloud",
@@ -56012,8 +57019,8 @@
     "version": "1.0.0",
     "docs": "docs/node-catalog/ENRICHMENT.md",
     "coverage": {
-      "documented": 154,
-      "total": 154
+      "documented": 160,
+      "total": 160
     }
   },
   "compatibility": {

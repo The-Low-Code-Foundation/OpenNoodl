@@ -14,6 +14,16 @@ export function registerNodes(runtime: NoodlRuntime) {
      */
     require('./cloud/secret'),
 
+    /**
+     * CWF-010 — the three crypto nodes that take a KEY. Hash, Random Bytes and UUID are in the
+     * shared runtime because none of them does; these are here because a key in a browser is a
+     * key in the hands of everyone who opens the page. JWT Verify is here for the same reason:
+     * an HS256 key is a shared secret, so verifying in a browser means shipping it.
+     */
+    require('./cloud/hmac'),
+    require('./cloud/jwtsign'),
+    require('./cloud/jwtverify'),
+
     require('./data/aggregatenode'),
 
     /**
