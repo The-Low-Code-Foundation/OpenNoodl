@@ -7,7 +7,8 @@ is the only reason anyone looked.
 and so is the editor row for the new setting: the Permissions panel does not render `timeoutMs` yet,
 though the admin API it reads now returns it. Driven by
 `packages/nodegx-backend/tests/cloud-function-timeout.test.ts` (7 cases), not yet driven in a live
-editor. Two of this doc's cited mechanisms were slightly wrong and are **CORRECTED** in place below.
+editor. One cited mechanism was wrong and is **CORRECTED** in place below; everything else this doc
+said about `CloudRunner.run` and the workflow engine held up line for line.
 
 ## The mechanism, exactly
 
