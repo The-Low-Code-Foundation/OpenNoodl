@@ -28,7 +28,14 @@ import path from 'path';
 import { AuthoringContextBuilder } from '../../src/editor/src/models/AiAssistant/authoring/ContextBuilder';
 import { validatePlan } from '../../src/editor/src/models/AiAssistant/authoring/plan';
 import { fromSerialisedProject } from '../../src/editor/src/models/AiAssistant/explain/graph';
-import { RECORD_SCOPE, SCOPING_TOOLS, scopingSystemPrompt } from '../../src/editor/src/models/AiAssistant/scoping/prompts';
+import {
+  RECORD_SCOPE,
+  SCOPE_RECORDED,
+  SCOPE_RECORDED_ANSWER_NEEDED,
+  SCOPE_RECORDED_REPLY,
+  SCOPING_TOOLS,
+  scopingSystemPrompt
+} from '../../src/editor/src/models/AiAssistant/scoping/prompts';
 import { ScopingSession } from '../../src/editor/src/models/AiAssistant/scoping/ScopingSession';
 import {
   DOC_INITIAL_SCOPE,
@@ -102,8 +109,10 @@ function scriptedChat(responses: AiChatResponse[]) {
  * session wraps the callbacks, and the wrapping is the thing under test.
  */
 function streamingScriptedChat(responses: AiChatResponse[]) {
+  const requests: AiChatRequest[] = [];
   const queue = [...responses];
-  const chat = async (_request: AiChatRequest, callbacks?: AiStreamCallbacks): Promise<AiChatResponse> => {
+  const chat = async (request: AiChatRequest, callbacks?: AiStreamCallbacks): Promise<AiChatResponse> => {
+    requests.push(request);
     const next = queue.shift();
     if (!next) throw new Error('The scoping script ran out of responses.');
     let accumulated = '';
@@ -114,7 +123,12 @@ function streamingScriptedChat(responses: AiChatResponse[]) {
     }
     return next;
   };
-  return { chat };
+  return { chat, requests };
+}
+
+/** The tool results a round was handed, in order. */
+function toolResults(request: AiChatRequest): string[] {
+  return request.messages.filter((m) => m.role === 'tool').map((m) => String(m.content));
 }
 
 const READING_LIST = {
@@ -260,17 +274,18 @@ describe('AIX-012 — the scoping conversation', () => {
 
   it('AAQ-004: the long answer that streamed is the answer that is kept', async () => {
     // Richard's finding #2 — "long form answer… reduces to a one sentence
-    // version". The shape that produced it: a long first answer, a
-    // `record_scope` call whose tool result says "Now answer the user in
-    // prose", and a short recap. Only the recap used to reach `entries`, so the
-    // long answer vanished in front of the user when the run resolved.
+    // version". Only the last round used to reach `entries`, so a long answer
+    // followed by a second round vanished in front of the user when the run
+    // resolved. `record_scope` no longer produces that second round (AAQ-011
+    // F3), so the multi-round shape here is the one that remains: a tool this
+    // conversation does not have, answered as unknown, and the turn continues.
     const long =
       'A Library page lists every book with its author and whether it is finished, ' +
       'and an Add page is the only place a Book record is created. ' +
       'Two questions before we go further: does a finished book stay in the main list, and do you want covers?';
     const recap = 'So: Library and Add, one Book record.';
     const { chat } = streamingScriptedChat([
-      toolThen(RECORD_SCOPE, { summary: READING_LIST.summary, pages: READING_LIST.pages }, long),
+      toolThen('submit_component', { nodes: [] }, long),
       prose(recap)
     ]);
     const session = new ScopingSession({ chat });
@@ -296,6 +311,97 @@ describe('AIX-012 — the scoping conversation', () => {
     }
   });
 
+  it('AAQ-011 F3: a turn that answered and then recorded stops there — one prose answer, not two', async () => {
+    // Richard's finding: the tool result used to say "Now answer the user in
+    // prose" unconditionally, so every recording turn produced a second,
+    // visibly redundant recap. The tool result IS the answer once the user has
+    // already been answered: the round after the call is never asked for.
+    const answer =
+      'A Library page lists every book, and an Add page is the only place a Book record is created. ' +
+      'Does a finished book stay in the main list?';
+    const redundant = 'So: Library and Add, one Book record.';
+    const { chat, requests } = streamingScriptedChat([
+      toolThen(RECORD_SCOPE, { summary: READING_LIST.summary, pages: READING_LIST.pages }, answer),
+      prose(redundant)
+    ]);
+    const session = new ScopingSession({ chat });
+
+    const streamedToTheUser: string[] = [];
+    const turn = await session.send('a reading list app', { onText: (fullText) => streamedToTheUser.push(fullText) });
+
+    // One round only: the second scripted response is never consumed.
+    expect(requests.length).toBe(1);
+    expect(turn.status).toBe('ok');
+    expect(turn.reply).toBe(answer);
+    expect(turn.reply.indexOf(redundant)).toBe(-1);
+
+    const kept = session.transcript.filter((entry) => entry.role === 'assistant');
+    expect(kept.length).toBe(1);
+    expect(kept[0].text).toBe(answer);
+    expect(streamedToTheUser[streamedToTheUser.length - 1]).toBe(answer);
+
+    // The scope is still recorded, and still current after the exchange.
+    expect(turn.scope.summary).toBe(READING_LIST.summary);
+    expect(session.scope.pages.length).toBe(2);
+  });
+
+  it('AAQ-011 F3: a turn whose only output is record_scope still says something', async () => {
+    // The case removing the second turn could have turned into silence. The
+    // model called the tool and said nothing, so there is no first answer to
+    // keep — this turn is the one that still needs its prose round.
+    const answer = 'Noted. Who else uses this?';
+    const { chat, requests } = streamingScriptedChat([
+      toolThen(RECORD_SCOPE, { summary: READING_LIST.summary }),
+      prose(answer)
+    ]);
+    const session = new ScopingSession({ chat });
+
+    const turn = await session.send('a reading list app');
+
+    expect(requests.length).toBe(2);
+    expect(turn.status).toBe('ok');
+    expect(turn.reply).toBe(answer);
+    expect(turn.scope.summary).toBe(READING_LIST.summary);
+
+    // ...and the prose is asked for only in that case. The round that follows
+    // an answered recording is never issued, so the only tool result the model
+    // ever sees asking for prose is this one.
+    expect(toolResults(requests[1])[0]).toBe(SCOPE_RECORDED_ANSWER_NEEDED);
+  });
+
+  it('AAQ-011 F3: an answered recording is told only that it was recorded', async () => {
+    // Carried into the NEXT user turn's message list, so the nudge must not
+    // survive there either — a stale "now answer in prose" is a standing
+    // instruction to repeat yourself.
+    const { chat, requests } = streamingScriptedChat([
+      toolThen(RECORD_SCOPE, { summary: READING_LIST.summary }, 'Two pages then. Who else uses this?'),
+      prose('Just you, then.')
+    ]);
+    const session = new ScopingSession({ chat });
+
+    await session.send('a reading list app');
+    await session.send('just me');
+
+    expect(toolResults(requests[1])).toEqual([SCOPE_RECORDED]);
+  });
+
+  it('AAQ-011 F3: a recording turn the model never speaks in is not silence', async () => {
+    // The pathological tail: record_scope with no prose, and then a round that
+    // says nothing either. `reply` is what the launcher gates the bubble on —
+    // empty means the user's own message appears and nothing answers it.
+    const { chat } = streamingScriptedChat([toolThen(RECORD_SCOPE, { summary: READING_LIST.summary }), prose('')]);
+    const session = new ScopingSession({ chat });
+
+    const turn = await session.send('a reading list app');
+
+    expect(turn.status).toBe('ok');
+    expect(turn.reply).toBe(SCOPE_RECORDED_REPLY);
+    const kept = session.transcript.filter((entry) => entry.role === 'assistant');
+    expect(kept.length).toBe(1);
+    expect(kept[0].text).toBe(SCOPE_RECORDED_REPLY);
+    expect(turn.scope.summary).toBe(READING_LIST.summary);
+  });
+
   it('AAQ-004: a one-round turn keeps exactly what streamed, with nothing duplicated', async () => {
     // The inverse failure the fix must not introduce: text shown once and then
     // entered twice.
@@ -315,9 +421,11 @@ describe('AIX-012 — the scoping conversation', () => {
 
   it('AAQ-004: a turn that fails after speaking keeps what was already said', async () => {
     // The prose the user watched arrive is theirs whether or not the round
-    // after it reached the provider.
+    // after it reached the provider. (The tool here is one that does not exist,
+    // because since AAQ-011 F3 an answered `record_scope` ends the turn and
+    // there is no round after it to fail.)
     const spoken = 'Two pages then — Library and Add.';
-    const queue: AiChatResponse[] = [toolThen(RECORD_SCOPE, { pages: READING_LIST.pages }, spoken)];
+    const queue: AiChatResponse[] = [toolThen('submit_component', { nodes: [] }, spoken)];
     const chat = async (): Promise<AiChatResponse> => {
       const next = queue.shift();
       if (!next) throw new Error('the provider is unreachable');

@@ -240,6 +240,10 @@ question. The user can walk away at any moment and whatever you last recorded is
 with — an unrecorded agreement is a lost one. Set "agreed" true only once you have laid out the whole scope
 and they have said yes to it.
 
+Say what you have to say to the user in the SAME message as the call. Recording is bookkeeping, not a
+question you are waiting on: the turn ends there, and you will not be asked to speak again afterwards. A
+recap after recording is you repeating yourself.
+
 Every field you send REPLACES the one you sent before — the lists are not added to. So when a decision
 changes, re-send that whole list without the entry that is no longer true. Assuming "no accounts" early and
 then agreeing to sign-in later means re-sending outOfScope WITHOUT the accounts line; leave it in and their
@@ -264,6 +268,35 @@ export function scopingOpeningMessage(request: string): string {
     `answer changes the most about what this app is. Record anything you already know with ${RECORD_SCOPE}.`
   ].join('\n');
 }
+
+/**
+ * AAQ-011 F3. The `record_scope` tool result when the user has already been
+ * answered this turn — which is the normal shape, because the model is asked to
+ * say its piece in the same message as the call.
+ *
+ * It used to read "Recorded. Now answer the user in prose." unconditionally, and
+ * the turn dutifully produced a second, shorter answer that said the same thing
+ * again. Richard's decision: the first answer is the answer. Note that this
+ * string outlives its round — it stays in the message list for every later turn,
+ * so a nudge left here is a standing instruction to repeat yourself.
+ */
+export const SCOPE_RECORDED = 'Recorded.';
+
+/**
+ * The same tool result when the model has said *nothing* to the user this turn.
+ * Removing the follow-up round unconditionally would answer a recording-only
+ * turn with silence, so this is the one case that still asks for prose.
+ */
+export const SCOPE_RECORDED_ANSWER_NEEDED =
+  'Recorded. You have not said anything to the user this turn — answer them now, in prose.';
+
+/**
+ * Last resort: what a turn says when it recorded a scope and the model never
+ * spoke, not even in the round that asked it to. The launcher shows nothing at
+ * all for an empty reply, so the alternative here is a user message with no
+ * answer under it.
+ */
+export const SCOPE_RECORDED_REPLY = "I've noted that down. What would you like to settle next?";
 
 /** Answered when the model reaches for a tool that does not exist here. */
 export function unknownToolMessage(name: string): string {

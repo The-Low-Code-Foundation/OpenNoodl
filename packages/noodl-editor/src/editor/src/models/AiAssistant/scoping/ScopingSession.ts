@@ -28,7 +28,16 @@
 import { AiClient } from '../client';
 import { withTurnDeadline } from '../client/turnDeadline';
 import type { AiChatRequest, AiChatResponse, AiEffort, AiMessage, AiStreamCallbacks } from '../client/types';
-import { RECORD_SCOPE, SCOPING_TOOLS, scopingOpeningMessage, scopingSystemPrompt, unknownToolMessage } from './prompts';
+import {
+  RECORD_SCOPE,
+  SCOPE_RECORDED,
+  SCOPE_RECORDED_ANSWER_NEEDED,
+  SCOPE_RECORDED_REPLY,
+  SCOPING_TOOLS,
+  scopingOpeningMessage,
+  scopingSystemPrompt,
+  unknownToolMessage
+} from './prompts';
 import type { ProjectScope, ScopeBackendInput, ScopeTranscriptEntry } from './scope';
 import { emptyScope, mergeScope } from './scope';
 
@@ -57,6 +66,10 @@ const MAX_TOOL_ROUNDS = 4;
  * as a single reply. A blank line, because they are separate model turns that
  * happen to belong to the same answer — never a joiner that implies a sentence
  * continues across the seam.
+ *
+ * Since AAQ-011 F3 a `record_scope` call no longer produces a second round, so
+ * the shapes that still reach this are a tool this conversation does not have
+ * (the model is told so and answers) and a recording turn that said nothing.
  */
 const TURN_SEPARATOR = '\n\n';
 
@@ -189,14 +202,22 @@ export class ScopingSession {
        */
       const prose: string[] = [];
       const proseSoFar = () => prose.join(TURN_SEPARATOR);
+      /** AAQ-011 F3: whether `record_scope` ran at all in this turn. */
+      let recorded = false;
       /**
        * Enter what was said into the transcript and answer it. Every exit from
        * this turn goes through here — including the failure ones, because prose
        * the user watched arrive is theirs whether or not the round after it
        * reached the provider.
+       *
+       * `fallback` is AAQ-011 F3's floor: a turn that recorded a scope and never
+       * spoke would otherwise return an empty reply, which the launcher renders
+       * as nothing at all under the user's own message. Only the successful exit
+       * asks for it — a cancelled or failed turn has its own message, and
+       * inventing prose there would claim the turn worked.
        */
-      const keep = () => {
-        const text = proseSoFar();
+      const keep = (fallback = false) => {
+        const text = proseSoFar() || (fallback ? SCOPE_RECORDED_REPLY : '');
         if (text) this.entries.push({ role: 'assistant', text });
         return text;
       };
@@ -244,6 +265,25 @@ export class ScopingSession {
 
         if (response.toolCalls.length === 0) break;
 
+        /**
+         * AAQ-011 F3. The tool result used to ask for prose unconditionally, so
+         * a turn that had already given its long answer produced a second,
+         * shorter one saying the same thing — the redundant reply Richard
+         * reported. Recording is not a question, so once the user has been
+         * answered the tool result IS the end of the turn.
+         *
+         * Two things keep this from becoming silence, and they are the whole of
+         * the condition. `answered` — a turn whose *only* output is the call has
+         * said nothing yet, so that one still gets its round (and a tool result
+         * that says so). `onlyRecording` — an unknown tool in the same response
+         * is a model that tried to do something else, and `unknownToolMessage`
+         * is an instruction it has not had a chance to act on; that round is
+         * owed regardless of how much prose came with it.
+         */
+        const onlyRecording = response.toolCalls.every((call) => call.name === RECORD_SCOPE);
+        const answered = Boolean(proseSoFar());
+        const done = onlyRecording && answered;
+
         for (const call of response.toolCalls) {
           if (call.name !== RECORD_SCOPE) {
             // Includes every authoring tool. There is nothing to build against
@@ -256,17 +296,22 @@ export class ScopingSession {
             });
             continue;
           }
+          recorded = true;
           this.current = mergeScope(this.current, toScopePatch(call.arguments));
           this.messages.push({
             role: 'tool',
             toolCallId: call.id,
             name: call.name,
-            content: 'Recorded. Now answer the user in prose.'
+            // This message outlives its round — it stays in `messages` for every
+            // later turn — so the nudge must not be written when it is not owed.
+            content: done ? SCOPE_RECORDED : SCOPE_RECORDED_ANSWER_NEEDED
           });
         }
+
+        if (done) break;
       }
 
-      return { status: 'ok', reply: keep(), scope: this.current, costUsd: this.cost };
+      return { status: 'ok', reply: keep(recorded), scope: this.current, costUsd: this.cost };
     } finally {
       if (this.abortController === abortController) this.abortController = undefined;
     }
