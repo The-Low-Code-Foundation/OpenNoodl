@@ -60,6 +60,12 @@ export * from './authoring-apply.test';
 export * from './authoring-plan.test';
 export * from './authoring-plan-staging.test';
 
+// AAQ-011 F12 (editor half): what the AI write path allocates for node ids, and
+// what the apply path does with them. The register row was filed as a question
+// — the editor has four `rekeyAllIds()` callers — and this is the measurement
+// that answers it against a real `ProjectModel`.
+export * from './authoring-node-ids.test';
+
 // AIX-011 criterion 7: the doc-authoring turn (scripted chat), the
 // graph-restatement lint that keeps AIX-009's design line mechanical, and the
 // plan doc write path on real files.
