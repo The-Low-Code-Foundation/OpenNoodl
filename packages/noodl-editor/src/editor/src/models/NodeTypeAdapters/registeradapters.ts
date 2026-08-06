@@ -7,6 +7,7 @@ import { PageInputsAdapter } from '@noodl-models/NodeTypeAdapters/PageInputsAdap
 import { QueryRecordsAdapter } from '@noodl-models/NodeTypeAdapters/QueryRecordsAdapter';
 import { RouterAdapter } from '@noodl-models/NodeTypeAdapters/RouterAdapter';
 import { RouterNavigateAdapter } from '@noodl-models/NodeTypeAdapters/RouterNavigateAdapter';
+import { SubscribeToChangesAdapter } from '@noodl-models/NodeTypeAdapters/SubscribeToChangesAdapter';
 import { ProjectModel } from '@noodl-models/projectmodel';
 
 import { EventDispatcher } from '../../../../shared/utils/EventDispatcher';
@@ -16,6 +17,8 @@ const _adapters = {
   RouterNavigate: () => RouterNavigateAdapter,
   PageInputs: () => PageInputsAdapter,
   DbCollection2: () => QueryRecordsAdapter,
+  // FH-021. Same rule, worse consequence — see the adapter.
+  SubscribeToChanges: () => SubscribeToChangesAdapter,
   FilterDBModels: () => FilterRecordsAdapter,
   CloudFunction2: () => CloudFunctionAdapter,
   AggregateRecords: () => AggregateRecordsAdapter,

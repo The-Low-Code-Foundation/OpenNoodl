@@ -23,7 +23,6 @@
 
 import type { BackendType, BackendHandle } from './backends';
 import type { AdapterRecord } from './data';
-import type { Filter } from './filter';
 
 // ── What arrives ───────────────────────────────────────────────────────────
 
@@ -354,19 +353,34 @@ export interface RealtimeCallbacks {
 }
 
 /**
- * What to watch.
+ * A subscription's server-side filter, **in the selected backend's own dialect**.
  *
- * `filter` is server-side where the backend has one — ours accepts a `Filter` and
- * rejects what it cannot evaluate by name (measured: `"$nonsense" is not
- * supported in realtime subscription filters`), PocketBase takes an expression,
- * Directus takes none on a subscribe at all. A transport that cannot filter
- * server-side must **not** filter client-side and call it the same thing: the
- * events it never receives are not events it filtered out, and BCN-008 proper
- * declares that difference rather than papering over it.
+ * ⚠️ **Not the neutral `Filter` from `./filter`, and FH-021 changed this field's type because it
+ * said so and it was wrong.** Exactly one wire reads it: `NODEGX_SSE.subscribeRequest`
+ * puts it on `subscription.filter`, and our own backend evaluates it with
+ * `nodegx-backend/src/realtime/filter.ts` — which is the **Parse-style `$` operator
+ * grammar** the query routes use, as this docblock's own measured quote (`"$nonsense" is
+ * not supported in realtime subscription filters`) always showed. Hand it
+ * `{title: {equalTo: 'x'}}` and `matchOperator` throws `UnsupportedFilterError` on the
+ * first change, `RealtimeHub` catches it and fails **closed** — a subscription that
+ * connects, confirms, and then silently delivers nothing at all.
+ *
+ * So the type is the dialect, not a neutral document, and the node layer is what
+ * translates: `QueryUtils.convertVisualFilter` already produces exactly this shape.
+ *
+ * PocketBase takes an expression language and `DirectusWebSocketTransport` takes no
+ * filter on a subscribe at all; neither reads this field. A transport that cannot filter
+ * server-side must **not** filter client-side and call it the same thing — the events it
+ * never receives are not events it filtered out — so the asymmetry is disclosed on the
+ * port rather than papered over.
  */
+export type RealtimeFilter = Record<string, unknown>;
+
+/** What to watch. */
 export interface RealtimeSubscribeOptions extends RealtimeCallbacks {
   collection: string;
-  where?: Filter;
+  /** See {@link RealtimeFilter}: the backend's own dialect, not the neutral `Filter`. */
+  where?: RealtimeFilter;
   /** See {@link RealtimeDeps}. */
   deps?: RealtimeDeps;
   timing?: RealtimeTiming;

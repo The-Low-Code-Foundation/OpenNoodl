@@ -36,7 +36,6 @@
  */
 
 import type { BackendHandle } from '@noodl/backend-contract';
-import type { Filter } from '@noodl/backend-contract/translators';
 import {
   REALTIME_FAILURE_KINDS,
   REALTIME_TIMING,
@@ -48,6 +47,7 @@ import {
   type RealtimeErrorCode,
   type RealtimeEventSourceLike,
   type RealtimeFailureKind,
+  type RealtimeFilter,
   type RealtimeHandle,
   type RealtimeLifecycle,
   type RealtimeSocketLike,
@@ -100,7 +100,8 @@ export abstract class RealtimeSubscription implements RealtimeLifecycle, Realtim
   abstract readonly transport: RealtimeTransport;
 
   protected readonly handle: BackendHandle;
-  protected readonly where?: Filter;
+  /** The backend's own filter dialect — see `RealtimeFilter`, not the neutral `Filter`. */
+  protected readonly where?: RealtimeFilter;
   protected readonly primaryKey: string;
   protected readonly timing: RealtimeTiming;
   private readonly _deps: RealtimeDeps;

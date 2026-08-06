@@ -1,5 +1,42 @@
 # FH-021 — A standalone Subscribe To Changes node
 
+**Status:** ✅ **shipped 2026-08-06** — slices 1–6 built, slice 7 items 1 and 2 covered in-process.
+`SubscribeToChanges` is registered browser-only, in the Cloud Data section of the picker, with a
+`node:` capability row and a full enrichment entry plus a validated example. Two things this doc
+got wrong, both load-bearing, are recorded below.
+
+**⚠️ The doc's slice 3 is wrong about the filter's shape, and the shipped layer was wrong with
+it.** `RealtimeSubscribeOptions.where` was typed as the **neutral** `Filter`, and the only wire
+that reads it — `NODEGX_SSE` — hands it straight to our backend, which evaluates a subscription
+filter in the **Parse-style `$` grammar** (`nodegx-backend/src/realtime/filter.ts`, `matchOperator`
+throws on anything else and `RealtimeHub` then fails **closed**). A neutral filter therefore
+produces a subscription that connects, confirms, reports `Subscribed`, and delivers nothing at all,
+silently. The existing transport row asserted `{title: {equalTo: 'x'}}` reaching the wire and was
+green either way — a pass-through assertion cannot see the difference. Closed here: the contract
+now declares `RealtimeFilter` (the backend's own dialect), the type is threaded through
+`RealtimeSubscription` and `SseDialect.subscribeRequest`, the fixture was corrected, and the node
+sends `QueryUtils.convertVisualFilter`'s Parse document.
+
+**⚠️ Slice 1's `browserOnlyNodes` coordination note is stale.** No such identifier exists. What
+landed is an inline `if (noodlRuntime.type !== 'cloud')` register block at the foot of
+`registerNodes` — an *additive* browser-only list, not a subtraction — so the node is registered
+there **only**, not in the shared list as well. Absence from the cloud picker was checked, not
+inferred: `cloud-node-library.json` has 63 `nodetypes` and `SubscribeToChanges` is not one of them
+(it appears in the shared `nodeIndex`, which `createnodeindex.ts` filters by resolvable type —
+exactly as the nine AIX-005 nodes do).
+
+**Also fixed in passing, because they taught the opposite of what shipped:** the `DbCollection2`
+enrichment documented a port called `realtimeEnabled` (the port is `realtime`) and claimed realtime
+is "gated by the backend's descriptor — a backend that cannot do realtime does not offer it", which
+is the reverse of the shipped decision; and `cloud-record-live-refresh.json` set a parameter named
+`realtimeEnabled`, which no port has ever read. Both corrected.
+
+**Not built:** slice 7 items 2 and 3 as *live* passes. The Directus key-only delete and the Supabase
+disclosure are driven end to end in `realtime-transports.test.ts` against the real transports on
+injected globals, but no live PocketBase/Directus/Supabase instance was stood up in this session —
+see the live-QA recipe in the handover. The docs page (slice 4 item 3) is a URL this repo does not
+own; the content belongs to the docs repo.
+
 Covers reported item **2**. Decided in [TALK-005](TALK-005-BACKEND-BOUND-REALTIME.md) (had
 2026-08-05) — read its decisions table and its **four corrections** before starting; two of them
 contradict the shape TALK-005's own closing paragraph proposed.

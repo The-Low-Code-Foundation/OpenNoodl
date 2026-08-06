@@ -33,6 +33,11 @@ import {
 import { idsFromRecords, normalizedHttpBase, webSocketBase } from '../../src/api/backends/realtime/RealtimeSubscription';
 import type { BackendHandle, RealtimeChange, RealtimeError, RealtimeStatus } from '@noodl/backend-contract';
 
+// FH-021 — the node layer, tested at the foot of this file.
+import NoodlRuntime = require('../../noodl-runtime');
+import { createNode, type DrivenNode } from '../helpers/node-harness';
+import subscribeModule = require('../../src/nodes/std-library/data/subscribetochanges');
+
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 // ── doubles ────────────────────────────────────────────────────────────────
@@ -588,11 +593,18 @@ describe('SSE transport — the NodeGX dialect', () => {
     expect(streams).toHaveLength(2);
   });
 
-  it('sends the server-side filter when one is given', async () => {
-    const t = open([{ status: 200, body: { accepted: [1] } }], { where: { title: { equalTo: 'x' } } });
+  it('sends the server-side filter when one is given, in the dialect the server evaluates', async () => {
+    // ⚠️ FH-021 changed this fixture from `{title: {equalTo: 'x'}}`, and the row was
+    // green either way — which is the point. `RealtimeFilter` is the **Parse-style `$`
+    // grammar**, because `nodegx-backend/src/realtime/filter.ts` matches with
+    // `matchOperator` and `RealtimeHub` fails closed on an operator it cannot evaluate.
+    // A neutral filter therefore produces a subscription that connects, confirms, and
+    // then delivers nothing at all — and a pass-through assertion cannot see the
+    // difference. The dialect is asserted here so the fixture stops teaching the wrong one.
+    const t = open([{ status: 200, body: { accepted: [1] } }], { where: { title: { $eq: 'x' } } });
     t.stream().emit('connected', { clientId: 'c1' });
     await flush();
-    expect(JSON.parse(t.fetchCalls[0].init.body).subscriptions[0].filter).toEqual({ title: { equalTo: 'x' } });
+    expect(JSON.parse(t.fetchCalls[0].init.body).subscriptions[0].filter).toEqual({ title: { $eq: 'x' } });
   });
 
   it('normalises create, update and delete — and a delete carries the whole record', async () => {
@@ -917,5 +929,413 @@ describe('Supabase and custom — nothing measured, and it says so', () => {
     );
     expect(w.errors[0].code).toBe('CAPABILITY_UNAVAILABLE');
     expect(sub.transport).toBe('none');
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+//
+// FH-021 — the standalone Subscribe To Changes node, on the same doubles.
+//
+// These rows are the node layer, not the wire: the transports above prove what arrives,
+// and what is unproven until here is that a node an author dropped on a canvas turns it
+// into signals and outputs. Every row that claims a subscription **receives** something
+// drives a real transport end to end — the hello frame, the registration POST, the change
+// frame — because a subscription test that never receives an event proves nothing.
+//
+// The doubles are installed as globals rather than injected: the node calls
+// `createRealtimeSubscription` with no `deps`, exactly as it does in a browser, so
+// swapping `EventSource`/`WebSocket`/`fetch` is what exercises the code that ships.
+// ═══════════════════════════════════════════════════════════════════════════
+
+
+/** One backend of a given type, as the project metadata a running runtime would carry. */
+function useBackend(type: string, url = 'http://nodegx.test:8593'): void {
+  (NoodlRuntime as unknown as { instance: unknown }).instance = {
+    getMetaData: (key: string) =>
+      key === 'backendServices' ? { backends: [{ id: 'b1', type, name: 'The backend', url }] } : undefined
+  };
+}
+
+describe('Subscribe To Changes (FH-021)', () => {
+  const realEventSource = (globalThis as any).EventSource;
+  const realWebSocket = (globalThis as any).WebSocket;
+  const realFetch = (globalThis as any).fetch;
+  const realInstance = (NoodlRuntime as unknown as { instance: unknown }).instance;
+
+  /** Every subscription POST answered `accepted`, and every call recorded. */
+  let fetchCalls: { url: string; init: any }[] = [];
+
+  beforeEach(() => {
+    fetchCalls = [];
+    (globalThis as any).EventSource = FakeEventSource;
+    (globalThis as any).WebSocket = FakeSocket;
+    (globalThis as any).fetch = (url: string, init?: unknown) => {
+      fetchCalls.push({ url, init });
+      return Promise.resolve({ status: 200, json: () => Promise.resolve({ accepted: [{ collection: 'Note' }] }) });
+    };
+    useBackend('nodegx');
+  });
+
+  afterEach(() => {
+    (globalThis as any).EventSource = realEventSource;
+    (globalThis as any).WebSocket = realWebSocket;
+    (globalThis as any).fetch = realFetch;
+    (NoodlRuntime as unknown as { instance: unknown }).instance = realInstance;
+  });
+
+  /**
+   * Build the node and let its scheduled reconfigure run.
+   *
+   * `scheduleAfterInputsHaveUpdated` queues onto the update loop, so `update()` is what a
+   * frame would have done. Every input here is a *dynamic* one — the node declares only
+   * `Enabled` — so `registerInputIfNeeded` is on the path, which is also the path a saved
+   * project takes when it applies a parameter before the port exists.
+   */
+  function place(inputs: Record<string, unknown> = { collectionName: 'Note' }): DrivenNode {
+    const probe = createNode(subscribeModule as never, 'SubscribeToChanges', 'sub-1');
+    for (const [name, value] of Object.entries(inputs)) {
+      probe.node.registerInputIfNeeded(name);
+      probe.node.setInputValue(name, value);
+    }
+    probe.node.update();
+    return probe;
+  }
+
+  const stream = () => streams[streams.length - 1];
+
+  // ── the default that makes it the easy path ──────────────────────────────
+
+  it('⚠️ subscribes with nothing configured but a class — the Enabled default runs no setter', () => {
+    const probe = place();
+
+    // If `Enabled` were read off `_internal` it would be `undefined` here, because a port
+    // declared with a `default` never runs its setter — and this node would sit inert
+    // until somebody toggled a checkbox twice. That is the whole "drop it and go" claim.
+    expect(streams).toHaveLength(1);
+    expect(stream().url).toBe('http://nodegx.test:8593/realtime');
+    expect(probe.out('realtimeStatus')).toBe('connecting');
+
+    probe.node._onNodeDeleted();
+  });
+
+  it('and with no Backend chosen either: an untouched picker resolves to the project default', async () => {
+    const probe = place();
+    stream().emit('connected', { clientId: 'c1' });
+    await flush();
+
+    expect(fetchCalls[0].url).toBe('http://nodegx.test:8593/realtime/subscriptions');
+    expect(JSON.parse(fetchCalls[0].init.body).subscriptions[0].collection).toBe('Note');
+
+    probe.node._onNodeDeleted();
+  });
+
+  it('does nothing at all without a class — an unnamed subscription is not a subscription', () => {
+    const probe = place({});
+    expect(streams).toHaveLength(0);
+    expect(probe.signals).toEqual([]);
+    probe.node._onNodeDeleted();
+  });
+
+  // ── delivery ─────────────────────────────────────────────────────────────
+
+  it('turns a delivered change into signals and outputs', async () => {
+    const probe = place();
+    stream().emit('connected', { clientId: 'c1' });
+    await flush();
+
+    expect(probe.out('subscribed')).toBe(true);
+    expect(probe.out('realtimeStatus')).toBe('subscribed');
+
+    stream().emit('change', { action: 'create', collection: 'Note', record: { objectId: 'n1', title: 'a' } });
+
+    expect(probe.signals).toEqual(['created', 'changed']);
+    expect(probe.out('changedEvent')).toBe('create');
+    expect(probe.out('changedRecordId')).toBe('n1');
+    expect(probe.out('changedRecord')).toEqual({ objectId: 'n1', title: 'a' });
+    expect(probe.out('changedRecords')).toEqual([{ objectId: 'n1', title: 'a' }]);
+
+    stream().emit('change', { action: 'update', collection: 'Note', record: { objectId: 'n1', title: 'b' } });
+    expect(probe.signals).toEqual(['created', 'changed', 'updated', 'changed']);
+
+    probe.node._onNodeDeleted();
+  });
+
+  it('a resync fires Records Changed and nothing else — it is not a create', async () => {
+    const probe = place();
+    stream().emit('connected', { clientId: 'c1' });
+    await flush();
+
+    stream().emit('resync', { reason: 'reconnect' });
+
+    expect(probe.signals).toEqual(['changed']);
+    expect(probe.out('changedEvent')).toBe('resync');
+    expect(probe.out('changedRecordId')).toBe('');
+
+    probe.node._onNodeDeleted();
+  });
+
+  it('⚠️ a Directus delete carries the key only, and Changed Record Id is the output that works', () => {
+    // The one place the "a subscription without a query is a stream of ids nobody can
+    // render" objection still bites (TALK-005 correction 3). Driven end to end on the
+    // WebSocket wire rather than asserted at the node's method, because the null is
+    // produced by `recordsComplete` — and a create/update-only test passes while a delete
+    // publishes `{}`.
+    useBackend('directus', 'http://directus.test:8055');
+    const probe = place({ collectionName: 'items' });
+
+    const socket = sockets[sockets.length - 1];
+    socket.open();
+    socket.message({ type: 'auth', status: 'ok' });
+    socket.message({ type: 'subscription', event: 'init', data: [] });
+
+    // `init` is the confirmation snapshot, not a burst of writes.
+    expect(probe.signals).toEqual([]);
+    expect(probe.out('subscribed')).toBe(true);
+
+    socket.message({ type: 'subscription', event: 'delete', data: ['2'] });
+
+    expect(probe.signals).toEqual(['deleted', 'changed']);
+    expect(probe.out('changedRecord')).toBeNull();
+    expect(probe.out('changedRecords')).toEqual([]);
+    // A string, even though the Directus primary key is an integer.
+    expect(probe.out('changedRecordId')).toBe('2');
+
+    probe.node._onNodeDeleted();
+  });
+
+  // ── the switch, and the teardown ─────────────────────────────────────────
+
+  it('Enabled false closes the connection and clears Subscribed; true opens a new one', async () => {
+    const probe = place();
+    stream().emit('connected', { clientId: 'c1' });
+    await flush();
+    expect(probe.out('subscribed')).toBe(true);
+
+    probe.node.setInputValue('enabled', false);
+    probe.node.update();
+
+    expect(stream().closed).toBe(true);
+    expect(probe.out('subscribed')).toBe(false);
+    expect(probe.out('realtimeStatus')).toBe('');
+
+    probe.node.setInputValue('enabled', true);
+    probe.node.update();
+    expect(streams).toHaveLength(2);
+    expect(stream().closed).toBe(false);
+
+    probe.node._onNodeDeleted();
+  });
+
+  it('deleting the node leaves nothing connected', () => {
+    const probe = place();
+    expect(streams).toHaveLength(1);
+
+    probe.node._onNodeDeleted();
+    expect(stream().closed).toBe(true);
+  });
+
+  it('changing the class moves the subscription rather than adding one', () => {
+    const probe = place();
+    const first = stream();
+
+    probe.node.setInputValue('collectionName', 'Task');
+    probe.node.update();
+
+    expect(first.closed).toBe(true);
+    expect(streams).toHaveLength(2);
+
+    probe.node._onNodeDeleted();
+  });
+
+  // ── the disclosure ───────────────────────────────────────────────────────
+
+  it('⚠️ Supabase reports a reason on Realtime Error and fires Realtime Failure', () => {
+    useBackend('supabase', 'http://sb.test');
+    const probe = place();
+
+    // Answered without opening anything, so it is a sentence rather than a spinner.
+    expect(streams).toHaveLength(0);
+    expect(sockets).toHaveLength(0);
+    expect(probe.signals).toEqual(['realtimeFailure']);
+    expect(probe.out('subscribed')).toBe(false);
+
+    const error = probe.out('realtimeError') as { code: string; message: string; kind: string };
+    expect(error.code).toBe('CAPABILITY_UNAVAILABLE');
+    expect(error.kind).toBe('fatal');
+    expect(error.message).toContain('unmeasured');
+
+    probe.node._onNodeDeleted();
+  });
+
+  it('a backend the project no longer has says so, naming what it was set to', () => {
+    const probe = place({ collectionName: 'Note', backendId: 'gone' });
+
+    expect(streams).toHaveLength(0);
+    const error = probe.out('realtimeError') as { message: string };
+    expect(error.message).toContain('"gone"');
+    expect(probe.signals).toEqual(['realtimeFailure']);
+
+    probe.node._onNodeDeleted();
+  });
+
+  // ── the filter, and the dialect it has to be in ──────────────────────────
+
+  it('⚠️ sends the filter in the backend\'s own dialect, not the neutral one', async () => {
+    const probe = place({
+      collectionName: 'Note',
+      visualFilter: {
+        combinator: 'and',
+        rules: [{ property: 'title', operator: 'equal to', value: 'a' }]
+      }
+    });
+    stream().emit('connected', { clientId: 'c1' });
+    await flush();
+
+    // `$eq`, not `equalTo`. Our backend evaluates a subscription filter with the same
+    // Parse-style grammar its query routes use; the neutral document would be refused by
+    // `matchOperator` and `RealtimeHub` would then fail closed — a live subscription
+    // delivering nothing, with nothing anywhere saying why.
+    expect(JSON.parse(fetchCalls[0].init.body).subscriptions[0].filter).toEqual({ title: { $eq: 'a' } });
+
+    probe.node._onNodeDeleted();
+  });
+
+  it('a filter value port re-subscribes when it moves — the server decides what is delivered', async () => {
+    const probe = place({
+      collectionName: 'Note',
+      visualFilter: {
+        combinator: 'and',
+        rules: [{ property: 'title', operator: 'equal to', input: 'wanted' }]
+      }
+    });
+    probe.node.registerInputIfNeeded('qp-wanted');
+    probe.node.setInputValue('qp-wanted', 'a');
+    probe.node.update();
+
+    stream().emit('connected', { clientId: 'c1' });
+    await flush();
+    expect(JSON.parse(fetchCalls[fetchCalls.length - 1].init.body).subscriptions[0].filter).toEqual({
+      title: { $eq: 'a' }
+    });
+
+    probe.node.setInputValue('qp-wanted', 'b');
+    probe.node.update();
+    stream().emit('connected', { clientId: 'c2' });
+    await flush();
+    expect(JSON.parse(fetchCalls[fetchCalls.length - 1].init.body).subscriptions[0].filter).toEqual({
+      title: { $eq: 'b' }
+    });
+
+    probe.node._onNodeDeleted();
+  });
+
+  it('sends no filter when none is set, rather than an empty one', async () => {
+    const probe = place();
+    stream().emit('connected', { clientId: 'c1' });
+    await flush();
+
+    expect(JSON.parse(fetchCalls[0].init.body).subscriptions[0]).toEqual({ collection: 'Note' });
+
+    probe.node._onNodeDeleted();
+  });
+
+  // ── what the definition promises ─────────────────────────────────────────
+
+  it('is client-only, and says so on the definition rather than checking a platform', () => {
+    const probe = place({});
+    expect(probe.metadata.ssr).toMatchObject({ compat: 'client-only' });
+    probe.node._onNodeDeleted();
+  });
+
+  // ── the ports the editor is sent ─────────────────────────────────────────
+
+  /**
+   * Run the module's `setup` against a fake editor and hand back what it published.
+   *
+   * The port set is the *whole* author-facing surface of this node — a picker that hid
+   * itself when it should not, or a Filter port with no disclosure on it, is invisible to
+   * every row above. This is the one place either can be seen.
+   */
+  function portsSent(parameters: Record<string, unknown>, backends: unknown[]) {
+    let sent: any[] = [];
+    const handlers: Record<string, ((...args: any[]) => void)[]> = {};
+    const graphModel: any = {
+      getMetaData: (key: string) => (key === 'backendServices' ? { backends } : undefined),
+      on: (name: string, cb: (...args: any[]) => void) => {
+        (handlers[name] = handlers[name] || []).push(cb);
+      },
+      getNodesWithType: () => [{ id: 'n1', parameters, on: () => undefined }]
+    };
+    const context: any = {
+      editorConnection: {
+        isRunningLocally: () => true,
+        sendDynamicPorts: (_id: string, ports: any[]) => {
+          sent = ports;
+        }
+      }
+    };
+
+    (subscribeModule as unknown as { setup(c: unknown, g: unknown): void }).setup(context, graphModel);
+    (handlers['editorImportComplete'] || []).forEach((cb) => cb());
+    return sent;
+  }
+
+  const NOTE_SCHEMA = {
+    id: 'b1',
+    type: 'nodegx',
+    name: 'The backend',
+    url: 'http://nodegx.test:8593',
+    schema: { collections: [{ name: 'Note', primaryKey: 'objectId', fields: [{ name: 'title', type: 'string' }] }] }
+  };
+
+  it('⚠️ hides the Backend picker in a one-backend project — that IS the easy path', () => {
+    const ports = portsSent({ collectionName: 'Note' }, [NOTE_SCHEMA]);
+    expect(ports.find((p) => p.name === 'backendId')).toBeUndefined();
+    // And the node still resolves one, which the delivery rows above prove.
+    expect(ports.find((p) => p.name === 'collectionName')).toMatchObject({ displayName: 'Class' });
+  });
+
+  it('offers the picker, defaulted to Active Backend, once there are two', () => {
+    const ports = portsSent({ collectionName: 'Note' }, [NOTE_SCHEMA, { id: 'b2', type: 'directus', name: 'D' }]);
+    expect(ports.find((p) => p.name === 'backendId')).toMatchObject({ default: '_active_' });
+  });
+
+  it('⚠️ the Filter port carries the disclosure, and carries it where a row is rendered', () => {
+    // `description` is the field `Ports.renderParams` turns into the row's tooltip. The
+    // asymmetry is deliberate (only NodeGX evaluates a subscription filter) and this
+    // sentence is the whole of what makes it a knowing one rather than a fourth twin of
+    // the filter semantics BCN-003 collapsed.
+    const filter = portsSent({ collectionName: 'Note' }, [NOTE_SCHEMA]).find((p) => p.name === 'visualFilter');
+    expect(filter).toBeDefined();
+    expect(String(filter.description)).toContain('built-in NodeGX backend only');
+    expect(String(filter.description)).toContain('never applied on the client');
+  });
+
+  it('declares no Filter port at all when there is no schema to build one from', () => {
+    const ports = portsSent({ collectionName: 'Note' }, [{ id: 'b1', type: 'directus', name: 'D' }]);
+    expect(ports.find((p) => p.name === 'visualFilter')).toBeUndefined();
+  });
+
+  it('mints one Query Parameter port per filter value bound to one', () => {
+    const ports = portsSent(
+      {
+        collectionName: 'Note',
+        visualFilter: { combinator: 'and', rules: [{ property: 'title', operator: 'equal to', input: 'wanted' }] }
+      },
+      [NOTE_SCHEMA]
+    );
+    expect(ports.find((p) => p.name === 'qp-wanted')).toMatchObject({ displayName: 'wanted', plug: 'input' });
+  });
+
+  it('⚠️ declares the Realtime ports whatever the backend is — nothing is gated', () => {
+    // TALK-005's shipped correction. A capability that disappears from the panel when the
+    // picker moves is worse than one that says why it cannot connect, and the Supabase row
+    // above is the other half of that claim.
+    const probe = place({});
+    const outputs = Object.keys(probe.metadata.outputs);
+    for (const name of ['subscribed', 'realtimeStatus', 'realtimeError', 'realtimeFailure', 'changedRecordId']) {
+      expect(outputs).toContain(name);
+    }
+    probe.node._onNodeDeleted();
   });
 });

@@ -693,14 +693,19 @@ function generateNodeLibrary(nodeRegister: NodeRegisterLike, options?: { runtime
             'FilterDBModels',
             'SetDbModelProperties',
             'DbCollection2',
+            // FH-021. A type absent from this index is unreachable in the add-node picker,
+            // which is the whole complaint this node answers: realtime shipped as a checkbox
+            // and its owner never found it. Registered browser-only, so the cloud library's
+            // copy of this index filters it back out (`createnodeindex.ts` drops names with
+            // no type).
+            'SubscribeToChanges',
             'DeleteDbModelProperties',
             'AddDbModelRelation',
             'RemoveDbModelRelation',
             'Cloud File',
             'Upload File',
             'Sign File URL',
-            'CloudFunction2',
-            'DbConfig'
+            'CloudFunction2'
           ]
         },
         {
@@ -786,6 +791,12 @@ function generateNodeLibrary(nodeRegister: NodeRegisterLike, options?: { runtime
           // BAK-002: server-side only, same as the rest of this category.
           name: 'Email',
           items: ['noodl.cloud.sendemail']
+        },
+        {
+          // CWF-009: server-side only, and the only category it could be in —
+          // a Secret node offered on a browser canvas would be a defect.
+          name: 'Secrets',
+          items: ['noodl.cloud.secret']
         }
       ]
     }

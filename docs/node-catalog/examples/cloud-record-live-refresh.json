@@ -1,7 +1,7 @@
 {
   "id": "cloud-record-live-refresh",
   "title": "A list that keeps itself current, with Subscribe To Changes",
-  "description": "A query is a snapshot — it only refreshes when `Do` fires. Turning on **Subscribe To Changes** closes that gap on the Query Records node itself: it holds a live subscription on the collection and fires `Changed` whenever any client creates, updates or deletes a record, so wiring `Changed` → `Do` keeps the list current without polling. `Subscribed` drives a small 'live' indicator so people can see when realtime updates are actually running, and `Realtime Status` says which of connecting/subscribed/interrupted it is in. Works on every backend whose descriptor allows it — SSE on the built-in backend and PocketBase, a WebSocket on Directus.",
+  "description": "A query is a snapshot — it only refreshes when `Do` fires. Turning on **Subscribe To Changes** closes that gap on the Query Records node itself: it holds a live subscription on the collection and fires `Changed` whenever any client creates, updates or deletes a record, so wiring `Changed` → `Do` keeps the list current without polling. `Subscribed` drives a small 'live' indicator so people can see when realtime updates are actually running, and `Realtime Status` says which of connecting/subscribed/interrupted it is in. Works on every backend that can push — SSE on the built-in backend and PocketBase, a WebSocket on Directus.",
   "demonstrates": [
     "DbCollection2"
   ],
@@ -45,7 +45,7 @@
           "label": "Notes",
           "parameters": {
             "collectionName": "Note",
-            "realtimeEnabled": true
+            "realtime": true
           }
         }
       ],

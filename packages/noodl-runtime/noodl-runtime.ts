@@ -229,7 +229,10 @@ function registerNodes(noodlRuntime: NoodlRuntime) {
     // Cloud
     require('./src/nodes/std-library/data/cloudfilenode'),
     require('./src/nodes/std-library/data/signfileurl'), // BAK-006 follow-up
-    require('./src/nodes/std-library/data/dbconfig'),
+    // FH-018: `dbconfig` (the Config node) was deleted, not moved to the browser-only
+    // block below. It fetched project settings over a public `GET /config` so an app
+    // could read an API key in the browser — and anything the browser can read, the
+    // user can read. Server-side secrets belong in a cloud function (CWF-009).
 
     // Variables
     require('./src/nodes/std-library/variables/number'),
@@ -280,6 +283,9 @@ function registerNodes(noodlRuntime: NoodlRuntime) {
    * silently forgets between two calls is worse than no Global Store.
    *
    * They stay registered in the browser unchanged; this only subtracts them from `type: 'cloud'`.
+   *
+   * FH-021's `Subscribe To Changes` is here too, for a different reason recorded at its own line:
+   * not per-session state but a connection that has to outlive the request a cloud function is.
    */
   if (noodlRuntime.type !== 'cloud') {
     [
@@ -291,7 +297,19 @@ function registerNodes(noodlRuntime: NoodlRuntime) {
       require('./src/nodes/std-library/agent/undonode'),
       require('./src/nodes/std-library/agent/statesnapshotnode'),
       require('./src/nodes/std-library/agent/actiondispatchernode'),
-      require('./src/nodes/std-library/agent/actionhandlernode')
+      require('./src/nodes/std-library/agent/actionhandlernode'),
+
+      /**
+       * FH-021. Not scratch state like the nine above — a *long-lived SSE stream*, which is
+       * the same mistake with a socket attached. A cloud function is one request that
+       * answers and is torn down (`CloudRunner.run` deletes the component on send), so a
+       * subscription there either never delivers or leaks the connection that outlives it.
+       *
+       * Its declaration also says `ssr: { compat: 'client-only' }`, which is the browser's
+       * own half of the same rule; this line is what keeps it out of the cloud vocabulary,
+       * and `cloud-library:check` is what proves it (the generated snapshot is the picker).
+       */
+      require('./src/nodes/std-library/data/subscribetochanges')
     ].forEach((node) => noodlRuntime.registerNode(node));
   }
 }

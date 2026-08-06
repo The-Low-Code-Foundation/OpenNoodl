@@ -2,7 +2,7 @@
   "typeName": "net.noodl.WebSocket",
   "summary": "Two-way WebSocket connection: send and receive text, JSON or binary, with connection state as graph outputs.",
   "description": "A bidirectional transport for agent chat, collaboration, telemetry and any other stream where the client also talks back. `url` plus `autoConnect` opens the socket; `Connect`/`Disconnect` do it by hand. `Send` transmits whatever is on `message` — a string goes as text, an object is JSON-serialized, an ArrayBuffer or typed array goes as a binary frame, and `messageType: binary` UTF-8 encodes text first. Received text is JSON-parsed onto `received` with the original on `receivedRaw`; binary arrives on `received` as an ArrayBuffer with `receivedIsBinary` true. Everything about the connection's health is an output rather than a console message: `connectionState` moves through idle → connecting → open → reconnecting → closed/error, `retryCount` counts attempts within the current outage, `lastError` says what went wrong, `closeCode`/`closeReason` carry the server's own explanation, and `queueSize`/`droppedCount` account for every message that has not reached the wire. Reconnection is exponential backoff from `reconnectDelay`, doubling to `maxReconnectDelay`, with jitter, stopping after `maxRetries` — or immediately for close codes where retrying is futile (1002, 1003, 1007–1010, 1015). Giving up sets `connectionState` to error and fires `onError`; it is never silent.",
-  "whenToUse": "When the client needs to send as well as receive — chat with an agent, collaborative editing, live cursors, device control, order placement. If the server only pushes and the client never sends, Server-Sent Events is simpler and more firewall-friendly. This node is transport only: point it at your own endpoint, and use ordinary Object/Array/Function nodes to shape what flows through it. It is client-only, so it stays inert during server-side rendering and connects in the browser after hydration.",
+  "whenToUse": "When the client needs to send as well as receive — chat with an agent, collaborative editing, live cursors, device control, order placement. If the server only pushes and the client never sends, Server-Sent Events is simpler and more firewall-friendly. This node is transport only: point it at your own endpoint, and use ordinary Object/Array/Function nodes to shape what flows through it. It is client-only, so it stays inert during server-side rendering and connects in the browser after hydration. ⚠️ **It is not the node for your project's own backend data.** NodeGX's built-in backend has no WebSocket server at all — realtime there is Server-Sent Events — and PocketBase, Parse and Supabase each speak something different again, so there is no URL to point this node at. Use **Subscribe To Changes**, which picks the transport from the backend's type and hides it.",
   "ports": {
     "url": "Must start with ws:// or wss://. Anything else is rejected as an error rather than attempted. Use wss:// in production. Browsers cannot set WebSocket headers, so tokens go in the query string or in a first message sent from On Open.",
     "autoConnect": "Connects as soon as a URL exists — no Connect signal needed. With no URL the node simply stays idle; an explicit Connect with no URL is reported as an error.",
@@ -25,10 +25,10 @@
     "onReconnect": "Fires on every open after the first. A WebSocket has no session resume, so a reconnect is a new session and the node cannot know what was missed — wire this to whatever re-fetches state, the way you would handle a resync.",
     "onClose": "Fires whenever the socket goes down, including when a reconnect is about to be attempted; read `connectionState` to tell the two apart. A Connect that replaces a live socket does not fire it, because the app asked for that.",
     "onError": "Fires for a rejected URL, a failed connect, a refused or failed send, a dead heartbeat, and the moment reconnection is abandoned.",
-    "done": "Signal; this invocation finished and changed something \u2014 a Connect whose socket opened, a Send accepted for delivery, or a Disconnect that closed a live socket. \u26a0\ufe0f A Send that was queued rather than written reports Done too, because the value is still owed to the wire; On Message Sent is what says it actually went.",
-    "unchanged": "Signal; there was nothing to do \u2014 a Disconnect with nothing open, a Send the Drop policy discarded, or a Connect that a later Connect or a Disconnect superseded before it opened. None of these is an error and none of them raises.",
-    "failure": "Signal; the action could not be performed \u2014 no URL, a URL that is not ws:// or wss://, a connection that gave up retrying, or a Send refused by the Report Error policy, an empty Message, a full queue or an encoding error. Last Error carries the reason.",
-    "completed": "Signal; fires after every Connect, Send and Disconnect the author triggered, whatever the outcome. \u26a0\ufe0f Auto Connect and a URL change also open sockets, and neither reports \u2014 they are not invocations of a port, so a boot that fired Done would pulse every chain in the app."
+    "done": "Signal; this invocation finished and changed something — a Connect whose socket opened, a Send accepted for delivery, or a Disconnect that closed a live socket. ⚠️ A Send that was queued rather than written reports Done too, because the value is still owed to the wire; On Message Sent is what says it actually went.",
+    "unchanged": "Signal; there was nothing to do — a Disconnect with nothing open, a Send the Drop policy discarded, or a Connect that a later Connect or a Disconnect superseded before it opened. None of these is an error and none of them raises.",
+    "failure": "Signal; the action could not be performed — no URL, a URL that is not ws:// or wss://, a connection that gave up retrying, or a Send refused by the Report Error policy, an empty Message, a full queue or an encoding error. Last Error carries the reason.",
+    "completed": "Signal; fires after every Connect, Send and Disconnect the author triggered, whatever the outcome. ⚠️ Auto Connect and a URL change also open sockets, and neither reports — they are not invocations of a port, so a boot that fired Done would pulse every chain in the app."
   },
   "patterns": [
     "`connectionState` → a status Text, and `lastError` → an error Text: an outage becomes something the user can see rather than a UI that has quietly stopped answering.",
@@ -44,6 +44,13 @@
     "Setting Max Queue Size to 0 on a long-lived page: an outage then grows the queue without bound.",
     "Putting a long-lived secret in the URL. Browsers cannot set WebSocket headers, but a query-string token ends up in server logs; prefer a short-lived ticket, or authenticate with a first message from On Open."
   ],
-  "examples": ["data-websocket-agent-chat"],
-  "relatedNodes": ["REST2", "net.noodl.HTTP", "DbCollection2"]
+  "examples": [
+    "data-websocket-agent-chat"
+  ],
+  "relatedNodes": [
+    "SubscribeToChanges",
+    "REST2",
+    "net.noodl.HTTP",
+    "DbCollection2"
+  ]
 }

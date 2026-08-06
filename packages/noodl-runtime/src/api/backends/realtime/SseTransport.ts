@@ -46,10 +46,10 @@
  */
 
 import type { BackendHandle } from '@noodl/backend-contract';
-import type { Filter } from '@noodl/backend-contract/translators';
 import type {
   RealtimeChange,
   RealtimeEventSourceLike,
+  RealtimeFilter,
   RealtimeTransport
 } from '@noodl/backend-contract/realtime';
 
@@ -85,7 +85,7 @@ export interface SseDialect {
     token: string,
     clientId: string,
     collection: string,
-    where: Filter | undefined
+    where: RealtimeFilter | undefined
   ): { url: string; init: Record<string, unknown> };
   /** Whether the registration actually took, from the status **and** the body. */
   readVerdict(status: number | undefined, body: unknown): SseSubscribeVerdict;
@@ -111,6 +111,10 @@ export const NODEGX_SSE: SseDialect = {
   resyncEvent: 'resync',
   subscribeRequest(base, token, clientId, collection, where) {
     const subscription: { collection: string; filter?: unknown } = { collection };
+    // ⚠️ `where` is the **Parse-style `$` grammar**, not the neutral `Filter` — see
+    // `RealtimeFilter`. `nodegx-backend/src/realtime/filter.ts` evaluates it with
+    // `matchOperator`, which throws on any other operator name, and `RealtimeHub` then
+    // fails closed: a confirmed subscription that delivers nothing, forever, silently.
     if (where) subscription.filter = where;
     const headers: Record<string, string> = { 'content-type': 'application/json' };
     if (token) headers['authorization'] = 'Bearer ' + token;

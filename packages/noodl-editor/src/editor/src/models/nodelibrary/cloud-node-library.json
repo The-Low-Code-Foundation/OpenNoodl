@@ -3831,16 +3831,6 @@
       ]
     },
     {
-      "name": "DbConfig",
-      "displayNodeName": "Config",
-      "docs": "https://docs.noodl.net/nodes/data/cloud-data/config",
-      "shortDocs": "https://docs.noodl.net/nodes/data/cloud-data/config-short.md",
-      "category": "Cloud Services",
-      "usePortAsLabel": "configKey",
-      "color": "data",
-      "ports": []
-    },
-    {
       "name": "Number",
       "nodeDoubleClickAction": {
         "focusPort": "value"
@@ -7071,6 +7061,84 @@
       ]
     },
     {
+      "name": "noodl.cloud.secret",
+      "displayNodeName": "Secret",
+      "docs": "https://docs.noodl.net/nodes/cloud-functions/secret",
+      "shortDocs": "https://docs.noodl.net/nodes/cloud-functions/secret-short.md",
+      "category": "Cloud",
+      "color": "data",
+      "connectionPanel": {
+        "groupPriority": [
+          "General",
+          "Actions",
+          "Value",
+          "Events",
+          "Error"
+        ]
+      },
+      "ports": [
+        {
+          "name": "name",
+          "type": "string",
+          "plug": "input",
+          "group": "General",
+          "displayName": "Name",
+          "description": "Which stored secret to read. A cloud function can only ever read the project's own secrets — the backend's webhook, email, auth and admin credentials are not addressable from here"
+        },
+        {
+          "name": "fetch",
+          "type": {
+            "name": "signal",
+            "allowConnectionsOnly": true
+          },
+          "plug": "input",
+          "group": "Actions",
+          "displayName": "Do",
+          "description": "Reads the secret and puts it on Value"
+        },
+        {
+          "name": "value",
+          "type": "string",
+          "plug": "output",
+          "group": "Value",
+          "displayName": "Value",
+          "description": "The secret, available once Done has fired. Blank until then, and blank after a Failure"
+        },
+        {
+          "name": "done",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Done",
+          "description": "Fires once the secret has been read and is available on Value"
+        },
+        {
+          "name": "completed",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Completed",
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
+          "name": "failure",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Failure",
+          "description": "Fires when the secret is not provisioned on this machine, or the Name is unusable. A missing credential is loud here rather than an empty string that becomes a 401 from somebody else an hour later"
+        },
+        {
+          "name": "error",
+          "type": "string",
+          "plug": "output",
+          "group": "Error",
+          "displayName": "Error",
+          "description": "Why the secret could not be read — names the secret and where to put it, never a value"
+        }
+      ]
+    },
+    {
       "name": "noodl.cloud.aggregate",
       "displayNodeName": "Aggregate Records",
       "docs": "https://docs.noodl.net/nodes/cloud-functions/cloud-data/aggregate-records",
@@ -7427,14 +7495,14 @@
               "FilterDBModels",
               "SetDbModelProperties",
               "DbCollection2",
+              "SubscribeToChanges",
               "DeleteDbModelProperties",
               "AddDbModelRelation",
               "RemoveDbModelRelation",
               "Cloud File",
               "Upload File",
               "Sign File URL",
-              "CloudFunction2",
-              "DbConfig"
+              "CloudFunction2"
             ]
           },
           {
@@ -7531,6 +7599,12 @@
             "name": "Email",
             "items": [
               "noodl.cloud.sendemail"
+            ]
+          },
+          {
+            "name": "Secrets",
+            "items": [
+              "noodl.cloud.secret"
             ]
           }
         ]

@@ -35,7 +35,6 @@ export type NodeTypeName =
   | 'Date To String'
   | 'DbCollection'
   | 'DbCollection2'
-  | 'DbConfig'
   | 'DbModel'
   | 'DbModel2'
   | 'DeleteDbModelProperties'
@@ -100,6 +99,7 @@ export type NodeTypeName =
   | 'String Format'
   | 'String Mapper'
   | 'String Selector'
+  | 'SubscribeToChanges'
   | 'Substring'
   | 'Switch'
   | 'Text'
@@ -158,6 +158,7 @@ export type NodeTypeName =
   | 'noodl.cloud.aggregate'
   | 'noodl.cloud.request'
   | 'noodl.cloud.response'
+  | 'noodl.cloud.secret'
   | 'noodl.cloud.sendemail';
 
 /** Node palette categories present in the registries. */

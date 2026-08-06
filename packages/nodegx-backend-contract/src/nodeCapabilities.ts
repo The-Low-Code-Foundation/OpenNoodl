@@ -85,6 +85,18 @@ export const NODE_CAPABILITIES: Readonly<Record<string, NodeCapabilityBinding>> 
   // its push site), and this is what puts the reason under it.
   DbCollection2: Object.freeze({ ports: Object.freeze({ realtime: 'realtime.subscribe' }) }),
 
+  // FH-021's standalone Subscribe To Changes. A **`node:`** row, not a `ports:` one, and
+  // the difference is the whole reason both spellings exist: on Query Records realtime is
+  // one optional port on a node that queries perfectly well without it, whereas this node
+  // *is* the subscription — there is nothing left of it on a backend that cannot push. The
+  // `noodl.cloud.aggregate` precedent above, for the same reason.
+  //
+  // ⚠️ This marks the node with a sentence; it does not hide it and it does not gate a
+  // port. That is TALK-005's shipped correction, and the runtime says the same thing twice
+  // over on purpose: `realtimeSupportFor` answers again at connect time and the reason
+  // lands on `Realtime Error`, because a canvas warning is not reachable from a running app.
+  SubscribeToChanges: Object.freeze({ node: 'realtime.subscribe' }),
+
   // Access Control Rules is a Parse-family idea. Directus has roles, Supabase
   // has RLS and PocketBase has API rules — all three configured in that
   // backend's own admin, none of them reachable from a per-record rule list.

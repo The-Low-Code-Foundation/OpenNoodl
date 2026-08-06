@@ -6304,35 +6304,6 @@
       }
     },
     {
-      "typeName": "DbConfig",
-      "displayName": "Config",
-      "category": "Cloud Services",
-      "isVisual": false,
-      "isDeprecated": false,
-      "inNodePicker": true,
-      "availableIn": [
-        "browser",
-        "cloud"
-      ],
-      "providedBy": "noodl-runtime",
-      "ssr": {
-        "compat": "safe"
-      },
-      "docs": "https://docs.noodl.net/nodes/data/cloud-data/config",
-      "inputs": [],
-      "outputs": [],
-      "dynamicPorts": {
-        "mechanisms": [
-          "runtime-discovered"
-        ],
-        "description": "Some ports are discovered at runtime from user code, parameters or connected components, and are pushed to the editor per instance; the static port list below is incomplete for such instances."
-      },
-      "parameterEncoding": {
-        "known": false,
-        "reason": "Ports follow the database configuration schema fetched from the backend."
-      }
-    },
-    {
       "typeName": "DbModel",
       "displayName": "Model",
       "category": "Cloud Services",
@@ -26188,6 +26159,194 @@
       "parameterEncoding": {
         "known": false,
         "reason": "The port helper needs project context this generator cannot supply headlessly — a live component, a connected node, or a backend schema."
+      }
+    },
+    {
+      "typeName": "SubscribeToChanges",
+      "displayName": "Subscribe To Changes",
+      "category": "Cloud Services",
+      "isVisual": false,
+      "isDeprecated": false,
+      "inNodePicker": true,
+      "availableIn": [
+        "browser"
+      ],
+      "providedBy": "noodl-runtime",
+      "ssr": {
+        "compat": "client-only",
+        "note": "A realtime subscription cannot be opened during a server render and would hold one connection per request; the node subscribes in the browser after hydration."
+      },
+      "docs": "https://docs.noodl.net/nodes/data/cloud-data/subscribe-to-changes",
+      "searchTags": [
+        "realtime",
+        "subscribe",
+        "subscription",
+        "live",
+        "changes",
+        "push",
+        "sync",
+        "sse",
+        "websocket",
+        "socket",
+        "backend"
+      ],
+      "inputs": [
+        {
+          "name": "enabled",
+          "displayName": "Enabled",
+          "group": "General",
+          "plug": "input",
+          "type": {
+            "name": "boolean"
+          },
+          "isSignal": false,
+          "default": true,
+          "description": "Hold the subscription open. Turn it off to stop receiving changes without deleting the node — the connection is closed and Subscribed goes false. On by default: this node has nothing else to do"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "changed",
+          "displayName": "Records Changed",
+          "group": "Realtime",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Any of the three, and also the backend saying the view may be stale after a reconnect — the one to react to if you do not care which happened"
+        },
+        {
+          "name": "changedEvent",
+          "displayName": "Change Type",
+          "group": "Realtime",
+          "plug": "output",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "description": "create, update, delete, init or resync"
+        },
+        {
+          "name": "changedRecord",
+          "displayName": "Changed Record",
+          "group": "Realtime",
+          "plug": "output",
+          "type": {
+            "name": "object"
+          },
+          "isSignal": false,
+          "description": "The record the change was about. ⚠️ Null on a delete against Directus, which sends only the key — use Changed Record Id, which every backend fills"
+        },
+        {
+          "name": "changedRecordId",
+          "displayName": "Changed Record Id",
+          "group": "Realtime",
+          "plug": "output",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "description": "The id of the changed record, always a string — even where the backend's primary key is an integer"
+        },
+        {
+          "name": "changedRecords",
+          "displayName": "Changed Records",
+          "group": "Realtime",
+          "plug": "output",
+          "type": {
+            "name": "array"
+          },
+          "isSignal": false,
+          "description": "Every record in the change frame; some backends batch"
+        },
+        {
+          "name": "created",
+          "displayName": "Record Created",
+          "group": "Realtime",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Another client created a record in this collection"
+        },
+        {
+          "name": "deleted",
+          "displayName": "Record Deleted",
+          "group": "Realtime",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Another client deleted a record from this collection"
+        },
+        {
+          "name": "realtimeError",
+          "displayName": "Realtime Error",
+          "group": "Realtime",
+          "plug": "output",
+          "type": {
+            "name": "object"
+          },
+          "isSignal": false,
+          "description": "The last realtime failure, with a code and whether retrying can help; null until one happens"
+        },
+        {
+          "name": "realtimeFailure",
+          "displayName": "Realtime Failure",
+          "group": "Realtime",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when a subscription cannot connect, is rejected, or has been given up on"
+        },
+        {
+          "name": "realtimeStatus",
+          "displayName": "Realtime Status",
+          "group": "Realtime",
+          "plug": "output",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "description": "connecting, subscribed, interrupted or stopped. Four states rather than a boolean, because \"connecting for the first time\" and \"dropped and retrying\" want different things on screen"
+        },
+        {
+          "name": "subscribed",
+          "displayName": "Subscribed",
+          "group": "Realtime",
+          "plug": "output",
+          "type": {
+            "name": "boolean"
+          },
+          "isSignal": false,
+          "description": "True while the backend has confirmed the subscription and is delivering changes"
+        },
+        {
+          "name": "updated",
+          "displayName": "Record Updated",
+          "group": "Realtime",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Another client updated a record in this collection"
+        }
+      ],
+      "dynamicPorts": {
+        "mechanisms": [
+          "runtime-discovered"
+        ],
+        "description": "Every input but \"enabled\" is discovered at runtime. \"backendId\" is a dropdown of the project's backends, defaulting to \"_active_\" and omitted entirely when the project has only one; \"collectionName\" is a dropdown of the selected backend's introspected classes; \"visualFilter\" is a query-filter editor built from that class's schema, and each filter value bound to a port mints one \"qp-<name>\" input. An authoring tool should set \"collectionName\" (and \"backendId\" only when the project has more than one backend); the outputs are all static."
+      },
+      "parameterEncoding": {
+        "known": false,
+        "reason": "No parameter on this node carries the list its ports are generated from, so the port set could not be observed headlessly."
       }
     },
     {
@@ -51571,6 +51730,103 @@
           }
         ]
       }
+    },
+    {
+      "typeName": "noodl.cloud.secret",
+      "displayName": "Secret",
+      "category": "Cloud",
+      "isVisual": false,
+      "isDeprecated": false,
+      "inNodePicker": true,
+      "availableIn": [
+        "cloud"
+      ],
+      "providedBy": "noodl-viewer-cloud",
+      "docs": "https://docs.noodl.net/nodes/cloud-functions/secret",
+      "inputs": [
+        {
+          "name": "fetch",
+          "displayName": "Do",
+          "group": "Actions",
+          "plug": "input",
+          "type": {
+            "name": "signal",
+            "allowConnectionsOnly": true
+          },
+          "isSignal": true,
+          "description": "Reads the secret and puts it on Value"
+        },
+        {
+          "name": "name",
+          "displayName": "Name",
+          "group": "General",
+          "plug": "input",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "description": "Which stored secret to read. A cloud function can only ever read the project's own secrets — the backend's webhook, email, auth and admin credentials are not addressable from here"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
+          "name": "done",
+          "displayName": "Done",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires once the secret has been read and is available on Value"
+        },
+        {
+          "name": "error",
+          "displayName": "Error",
+          "group": "Error",
+          "plug": "output",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "description": "Why the secret could not be read — names the secret and where to put it, never a value"
+        },
+        {
+          "name": "failure",
+          "displayName": "Failure",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when the secret is not provisioned on this machine, or the Name is unusable. A missing credential is loud here rather than an empty string that becomes a 401 from somebody else an hour later"
+        },
+        {
+          "name": "value",
+          "displayName": "Value",
+          "group": "Value",
+          "plug": "output",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "description": "The secret, available once Done has fired. Blank until then, and blank after a Failure"
+        }
+      ],
+      "dynamicPorts": null,
+      "parameterEncoding": null
     },
     {
       "typeName": "noodl.cloud.sendemail",

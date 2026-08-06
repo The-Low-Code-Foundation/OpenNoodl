@@ -7,7 +7,7 @@
     "items": "Array output with the query result; the canonical source for a Repeater's `items`.",
     "fetched": "Signal; fires each time a fetch (initial or re-run) completes.",
     "isEmpty": "Boolean level; drive empty-state visuals from here rather than comparing `count` yourself.",
-    "realtimeEnabled": "Boolean. Turns on Subscribe To Changes: the node holds a live subscription on the collection and reacts to changes any client makes. Off by default, and gated by the backend's descriptor — a backend that cannot do realtime does not offer it.",
+    "realtime": "Boolean. Turns on Subscribe To Changes: the node holds a live subscription on the collection and re-runs this query when any client creates, updates or deletes a record. Off by default. ⚠️ The port is declared whatever the backend is and is never hidden — a backend that cannot push says why on `realtimeError` instead. For reacting to changes without owning a query, use the standalone Subscribe To Changes node.",
     "subscribed": "True only while the subscription is confirmed live — false during connect, during backoff, and after a fatal auth failure. Wire it to an indicator's visibility so people can see when live updates are actually running.",
     "realtimeStatus": "Which state the subscription is in as a string: connecting, subscribed, interrupted or unavailable. `subscribed` alone cannot tell 'reconnecting' from 'never started'.",
     "realtimeError": "Last connection or protocol error; cleared when a subscription (re)confirms. An invalid token is fatal and the node will not retry until a parameter changes.",
@@ -26,7 +26,8 @@
     "repeater-query-records",
     "send-event-across-components",
     "cloud-record-live-refresh",
-    "cloud-record-crud"
+    "cloud-record-crud",
+    "cloud-subscribe-to-changes"
   ],
   "patterns": [
     "`items` → Repeater `items`, with record properties delivered to the item component via Component Inputs: the canonical list page.",
@@ -45,6 +46,7 @@
     "DbModel2",
     "NewDbModelProperties",
     "FilterDBModels",
-    "CloudFunction2"
+    "CloudFunction2",
+    "SubscribeToChanges"
   ]
 }
