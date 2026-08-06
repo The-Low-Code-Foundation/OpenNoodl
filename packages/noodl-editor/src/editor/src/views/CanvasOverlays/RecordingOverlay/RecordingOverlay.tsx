@@ -28,22 +28,24 @@ import React, { useEffect, useMemo, useState } from 'react';
 
 import { EventDispatcher } from '../../../../../shared/utils/EventDispatcher';
 import { TraceSession } from '../../../utils/provenance/TraceSession';
-import { requestProvenanceRootWalk } from '../../../utils/provenance/provenanceRequest';
+import { requestProvenanceResults, requestProvenanceRootWalk } from '../../../utils/provenance/provenanceRequest';
 import {
   BADGE_FADE_MS,
   BadgeState,
   EMPTY_BADGE_STATE,
   EMPTY_OFF_CANVAS,
+  RecordingSummary,
   badgeOpacity,
   canvasNote,
   foldEvents,
   headerSummary,
   interactionList,
   offCanvas,
+  recordingSummary,
   traceOwnersNote,
   visibleBadges
 } from '../../../utils/provenance/recordingHud';
-import { buildIndex } from '../../../utils/provenance/walkEngine';
+import { buildIndex, rootEvents } from '../../../utils/provenance/walkEngine';
 import type { NodeBounds } from '../ExecutionOverlay';
 import { RecordingNodeBadge } from './RecordingNodeBadge';
 import styles from './RecordingOverlay.module.scss';
@@ -89,6 +91,17 @@ export function RecordingOverlay({ viewport, getNodeBounds, enabled }: Recording
   const [refusal, setRefusal] = useState<string | undefined>(undefined);
   /** HUD-003: whether the interactions list is showing. Off by default; a HUD is not a panel. */
   const [expanded, setExpanded] = useState(false);
+  /**
+   * F91 — what the recording that just finished captured, and the door to it.
+   *
+   * ⚠️ **Held here rather than derived, because it is a claim about a moment.** Everything else
+   * this component draws is a pure function of the session's *current* contents; this one is a
+   * receipt for the recording the user just stopped, and it must not silently re-count itself if
+   * an agent's trace goes on filling the same buffer afterwards (HUD-004 makes that legal). It is
+   * computed once, in `handleStop`, and cleared by the two things that make it a lie: a new
+   * recording, and the buffer being replaced underneath it.
+   */
+  const [summary, setSummary] = useState<RecordingSummary | undefined>(undefined);
   /**
    * Bumped on every arriving batch.
    *
@@ -137,9 +150,15 @@ export function RecordingOverlay({ viewport, getNodeBounds, enabled }: Recording
         // panel, fed by this same session. A list left hanging over an idle canvas would be a
         // second, competing copy of it.
         if (!session.recording) setExpanded(false);
+        // F91: arming replaces what the receipt is a receipt *for*.
+        if (session.recording) setSummary(undefined);
       },
       group
     );
+    // F91 — the buffer the receipt counted has been replaced, so the count is no longer about
+    // anything. Covers the project switch (`forget`), a manual clear, and a preview reload's
+    // renumber; arming is covered above, where it is also the moment the badges go.
+    session.on('bufferReset', () => setSummary(undefined), group);
     session.on(
       'eventsChanged',
       () => {
@@ -230,10 +249,41 @@ export function RecordingOverlay({ viewport, getNodeBounds, enabled }: Recording
   };
 
   const handleStop = () => {
-    // Not awaited: `stop()` pulls the buffer before it disarms the runtime (FH-011) and that
-    // round trip takes up to 2s, but `recording` flips synchronously inside it, so the control
-    // returns to the idle pill the moment it is pressed rather than two seconds later.
-    void session.stop();
+    // Not awaited *for the UI*: `stop()` pulls the buffer before it disarms the runtime (FH-011)
+    // and that round trip takes up to 2s, but `recording` flips synchronously inside it, so the
+    // control returns to the idle pill the moment it is pressed rather than two seconds later.
+    //
+    // ⚠️ **The receipt has to wait for that pull, though — F91.** The last events of a recording
+    // are the ones the user just made and is looking for, and they only exist on this side of the
+    // `await`. Counting synchronously would print a number one poll out of date and, on a short
+    // recording, frequently zero.
+    void session.stop().then(() => {
+      // Built once, here, and never in render. `buildIndex` walks the whole buffer — up to a
+      // quarter of a million events — and this component re-renders on every pan and zoom for as
+      // long as the receipt is on screen.
+      const events = session.traceEvents.length;
+      const interactions = events
+        ? rootEvents(buildIndex(session.topology, session.traceEvents, session.portValues, { recording: true })).length
+        : 0;
+      setSummary(recordingSummary({ events, interactions }));
+    });
+  };
+
+  /**
+   * The door — F91.
+   *
+   * ⚠️ Through `provenanceRequest`, never a bare emit-then-switch, and this is the case the
+   * request module was written for at its most exposed: an entire recording can be armed,
+   * watched and stopped on the canvas without the Provenance panel ever having been
+   * *constructed*, so this click is always the losing case rather than merely the first of a
+   * session.
+   *
+   * The receipt stays up afterwards. Opening the results is not "done with the recording", and a
+   * bar that vanished on the way out would leave the user with no way back if they closed the
+   * panel.
+   */
+  const handleOpenResults = () => {
+    requestProvenanceResults();
   };
 
   if (!enabled) return null;
@@ -286,6 +336,31 @@ export function RecordingOverlay({ viewport, getNodeBounds, enabled }: Recording
                 {interactions.hidden} earlier interaction{interactions.hidden === 1 ? '' : 's'} not shown
               </div>
             )}
+          </div>
+        )}
+
+        {/* F91 — the end of a recording, with an opinion about what happens next.
+            ⚠️ Only while stopped. During a recording the header's own live counter is the count,
+            and a second one under it would be two numbers about the same thing. */}
+        {!recording && summary && (
+          <div className={styles.Result} data-test="recording-hud-result">
+            <span className={styles.ResultText} data-test="recording-hud-result-count">
+              {summary.text}
+            </span>
+            {summary.hasResults && (
+              <button className={styles.ResultOpen} onClick={handleOpenResults} data-test="recording-hud-results">
+                See what happened
+              </button>
+            )}
+            <button
+              className={styles.ResultDismiss}
+              onClick={() => setSummary(undefined)}
+              title="Dismiss"
+              aria-label="Dismiss the recording summary"
+              data-test="recording-hud-result-dismiss"
+            >
+              ✕
+            </button>
           </div>
         )}
 

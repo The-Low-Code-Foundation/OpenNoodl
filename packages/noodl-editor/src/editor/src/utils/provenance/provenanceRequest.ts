@@ -41,17 +41,19 @@ import type { EdgeRef, RootEvent } from './walkEngine';
  */
 let pendingWalk: EdgeRef | undefined;
 let pendingRoot: RootEvent | undefined;
+let pendingResults = false;
 
 /**
  * Only one destination survives.
  *
- * Both stashes are claimed by the same mount, and a panel that claimed both would start a
+ * All three stashes are claimed by the same mount, and a panel that claimed two would start a
  * backward walk and then immediately replace it with a forward one — the earlier gesture
  * deciding what the later one shows. The last thing the user pointed at is the thing they meant.
  */
 function clearAll(): void {
   pendingWalk = undefined;
   pendingRoot = undefined;
+  pendingResults = false;
 }
 
 export function requestProvenanceWalk(ref: EdgeRef): void {
@@ -80,6 +82,26 @@ export function requestProvenanceRootWalk(root: RootEvent): void {
 }
 
 /**
+ * Open the panel on **what the recording that just finished captured** — F91.
+ *
+ * ⚠️ **Deliberately not a root walk.** The receipt on the canvas is offered the moment Stop is
+ * pressed, before the user has said which interaction they care about, and picking one for them
+ * is picking wrong: the panel's own recorded-interactions list is the results view, and choosing
+ * from it is the next gesture rather than one this request should pre-empt.
+ *
+ * ⚠️ **This is the most exposed of the three requests, for the reason the file header gives with
+ * the most force.** A whole recording can run — armed on the canvas, watched on the canvas,
+ * stopped on the canvas — with the Provenance panel never once constructed, so the stash is not
+ * an edge case here: it is the ordinary path.
+ */
+export function requestProvenanceResults(): void {
+  clearAll();
+  pendingResults = true;
+  EventDispatcher.instance.emit('provenance:results');
+  SidebarModel.instance.switch('provenance');
+}
+
+/**
  * Claim a request made before the panel existed. Returns `undefined` once consumed, so a later
  * remount — switching sidebars, reloading the panel — does not silently repeat an old walk.
  */
@@ -104,6 +126,18 @@ export function clearPendingProvenanceWalk(): void {
 /** Called by the panel's own listener, so a live request is never also replayed on mount. */
 export function clearPendingProvenanceRoot(): void {
   pendingRoot = undefined;
+}
+
+/** The results half of {@link takePendingProvenanceWalk}, with the same claimed-once contract. */
+export function takePendingProvenanceResults(): boolean {
+  const wanted = pendingResults;
+  pendingResults = false;
+  return wanted;
+}
+
+/** Called by the panel's own listener, so a live request is never also replayed on mount. */
+export function clearPendingProvenanceResults(): void {
+  pendingResults = false;
 }
 
 /**

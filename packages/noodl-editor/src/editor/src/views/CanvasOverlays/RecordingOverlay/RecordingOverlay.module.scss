@@ -286,6 +286,102 @@
 }
 
 /**
+ * F91 — the receipt, and the door out of it.
+ *
+ * ⚠️ **Sits in the same dock column as everything else, on purpose.** The whole finding is that
+ * the recording control and the results had no relationship on screen; a receipt anywhere but
+ * directly above the button that produced it would restate the problem in a new position.
+ *
+ * ⚠️ **`bg-2` against the pill's `bg-1`**, so the two read as two things rather than as one
+ * control that grew. Same treatment the note above it already has, and the same reason.
+ */
+.Result {
+  pointer-events: all;
+
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  max-width: min(520px, 100%);
+
+  padding: 6px 6px 6px 14px;
+  border-radius: var(--radius-full);
+  background-color: var(--theme-color-bg-2);
+  border: 1px solid var(--theme-color-border-default);
+  box-shadow: var(--shadow-popup);
+
+  font-family: var(--font-family);
+  font-size: 12.5px;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.ResultText {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--theme-color-fg-highlight);
+  font-variant-numeric: tabular-nums;
+}
+
+/**
+ * The one action the end of a recording has.
+ *
+ * ⚠️ **Filled, not a muted borderless button.** POL-013 measured those at 1.00:1 against their
+ * own surface across 143 call sites; this is the primary next step of the whole feature and it
+ * is the thing the finding says was missing, so it is drawn as one. The fill is the azure action
+ * accent in both themes, with the surface colour as its label — the same pairing `.Stop:hover`
+ * uses, which is what keeps light theme legible without a second rule.
+ */
+.ResultOpen {
+  flex: 0 0 auto;
+  border: 1px solid var(--theme-color-primary);
+  border-radius: var(--radius-full);
+  background-color: var(--theme-color-primary);
+  color: var(--theme-color-bg-1);
+  padding: 3px 12px;
+  font-family: var(--font-family);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.3;
+  cursor: pointer;
+
+  &:hover {
+    background-color: var(--theme-color-primary-highlight);
+    border-color: var(--theme-color-primary-highlight);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--theme-color-primary);
+    outline-offset: 2px;
+  }
+}
+
+/* Borderless by the same argument the disclosure glyph is: a glyph inside a bordered surface,
+   measured against `bg-2`, with a hover fill and a real focus ring of its own. */
+.ResultDismiss {
+  flex: 0 0 auto;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-full);
+  background-color: transparent;
+  color: var(--theme-color-fg-default);
+  font-size: 11px;
+  line-height: 1;
+  cursor: pointer;
+
+  &:hover {
+    background-color: var(--theme-color-bg-3);
+    color: var(--theme-color-fg-highlight);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--theme-color-primary);
+    outline-offset: 2px;
+  }
+}
+
+/**
  * The second line — "recording, and nothing is happening *here*".
  *
  * An empty canvas under a live counter is indistinguishable from a HUD that failed to mount,

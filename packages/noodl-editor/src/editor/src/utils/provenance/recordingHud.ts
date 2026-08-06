@@ -320,6 +320,44 @@ export function traceOwnersNote(input: { others: number; joined: boolean; hadOth
 }
 
 /**
+ * The receipt a finished recording leaves behind — F91.
+ *
+ * ⚠️ **The end of a recording was the one moment in this feature with no next action.** Stop tore
+ * down the counter, the badges and the interactions list in the same tick, and the canvas went
+ * back to an idle `Record` pill: everything the user had just captured existed only inside a
+ * panel on the far side of the window that they had no reason to believe was related to the
+ * button they had just pressed. Reported from a live run: *"ok, it shows me which nodes fire,
+ * nice, now what"*. This is the "now what" — the count, and a door.
+ *
+ * ⚠️ **A recording that captured nothing gets a sentence and no door.** It is still a result and
+ * it still has to be said out loud (the same rule as {@link canvasNote}'s live zero), but a
+ * button that opens an empty panel is how a dead end acquires a second step rather than losing
+ * one. `hasResults` is keyed on **events**, not on interactions: a ring that wrapped can hold
+ * events whose roots have been evicted, and those are still a trace worth walking.
+ */
+export interface RecordingSummary {
+  /** What was captured, as a sentence. Always present. */
+  text: string;
+  /** Whether there is anything on the other side of the door. */
+  hasResults: boolean;
+}
+
+export function recordingSummary(input: { events: number; interactions: number }): RecordingSummary {
+  if (input.events <= 0) {
+    return {
+      text: 'Recorded nothing — no wire carried a value while you were recording.',
+      hasResults: false
+    };
+  }
+
+  const events = `${input.events} event${input.events === 1 ? '' : 's'}`;
+  if (input.interactions <= 0) return { text: `Recorded ${events}`, hasResults: true };
+
+  const interactions = `${input.interactions} interaction${input.interactions === 1 ? '' : 's'}`;
+  return { text: `Recorded ${events} · ${interactions}`, hasResults: true };
+}
+
+/**
  * The second line, when the header alone would be ambiguous.
  *
  * ⚠️ **A count of zero is a result and has to look like one.** A recording that has captured

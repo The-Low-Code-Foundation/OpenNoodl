@@ -17,6 +17,7 @@ import {
   foldEvents,
   headerSummary,
   offCanvas,
+  recordingSummary,
   visibleBadges
 } from '@noodl-utils/provenance/recordingHud';
 import type { TraceEventLike } from '@noodl-utils/provenance/walkEngine';
@@ -242,5 +243,35 @@ describe('recordingHud — an empty canvas must not read as a broken overlay', (
         off: { nodes: 2, events: 8, components: ['/Checkout'] }
       })
     ).toBeUndefined();
+  });
+});
+
+describe('recordingHud — the receipt a finished recording leaves (F91)', () => {
+  it('states the count and offers the door', () => {
+    const summary = recordingSummary({ events: 137, interactions: 6 });
+    expect(summary.text).toBe('Recorded 137 events · 6 interactions');
+    expect(summary.hasResults).toBe(true);
+  });
+
+  it('gets both singulars right', () => {
+    expect(recordingSummary({ events: 1, interactions: 1 }).text).toBe('Recorded 1 event · 1 interaction');
+  });
+
+  it('a recording that captured nothing is a result, and gets no door', () => {
+    const summary = recordingSummary({ events: 0, interactions: 0 });
+    expect(summary.text).toContain('Recorded nothing');
+    expect(summary.hasResults).toBe(false);
+  });
+
+  // The ring wrapped past the causes. There is still a trace worth walking, so the door stays —
+  // `hasResults` is keyed on events and never on roots.
+  it('still opens when the roots have been evicted but events remain', () => {
+    const summary = recordingSummary({ events: 250000, interactions: 0 });
+    expect(summary.text).toBe('Recorded 250000 events');
+    expect(summary.hasResults).toBe(true);
+  });
+
+  it('never claims a negative recording', () => {
+    expect(recordingSummary({ events: -1, interactions: -1 }).hasResults).toBe(false);
   });
 });

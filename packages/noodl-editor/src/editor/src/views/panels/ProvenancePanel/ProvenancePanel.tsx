@@ -15,8 +15,10 @@ import { annotateWarnings } from '../../../utils/provenance/annotateWarnings';
 import { editorDiagnoses } from '../../../utils/provenance/editorDiagnoses';
 import {
   clearPendingProvenanceRequests,
+  clearPendingProvenanceResults,
   clearPendingProvenanceRoot,
   clearPendingProvenanceWalk,
+  takePendingProvenanceResults,
   takePendingProvenanceRoot,
   takePendingProvenanceWalk
 } from '../../../utils/provenance/provenanceRequest';
@@ -202,6 +204,38 @@ export function ProvenancePanel() {
   }, [recording, target, load]);
 
   /**
+   * A preview arriving re-grounds whatever is on screen — F90.
+   *
+   * ⚠️ **Both of the panel's "the walk could not run" sentences are computed from a snapshot and
+   * neither had anything that invalidated it.** `previewRunning` is read from the session inside
+   * the walk memo — a getter, not a dependency — and the topology is pulled exactly once per
+   * walk request, so the two states POL-010 added (*"No preview is running…"* and *"X is not
+   * running in the preview… The preview has instantiated …"*) survived the thing that made them
+   * false. Nothing in this panel subscribed to a viewer appearing, `TraceSession` only re-pulls
+   * the topology while a recording **and** a walk are both live, and the runtime only pushes a
+   * fresh dictionary while `traceEnabled` (`nodecontext.ts:327`) — so with the recording stopped
+   * the sentence had no way back at all except the Refresh button, which is itself disabled
+   * while `!isPreviewRunning` and only re-evaluated on a render this panel had no reason to do.
+   *
+   * That is a pane stuck on a warning about the preview while the preview is running, which is
+   * exactly the report. The subscription costs nothing and removes the whole class: a viewer
+   * registering is the one event that can turn either sentence from true into stale.
+   */
+  useEffect(() => {
+    const group = {};
+    EventDispatcher.instance.on(
+      'ViewerRegistered',
+      () => {
+        // Quiet: this is not a gesture, and a status line appearing on its own reads as a hang.
+        if (target) void load(target, { quiet: true });
+        else void session.refreshTopology().then(bump);
+      },
+      group
+    );
+    return () => EventDispatcher.instance.off(group);
+  }, [target, load, session, bump]);
+
+  /**
    * Focus one recorded interaction and walk forwards from it.
    *
    * ⚠️ `target` is deliberately left alone. A backward walk and a forward one are two answers
@@ -234,6 +268,25 @@ export function ProvenancePanel() {
   // only when it is first opened), so a click on an interaction is *always* the losing case
   // rather than merely the first of a session. Every root click would need a second click if
   // this went through a bare emit.
+  /**
+   * Show what the recording that just finished captured — F91.
+   *
+   * ⚠️ **Clears both destinations rather than choosing one.** The list of recorded interactions
+   * *is* the results view, and it lives in this panel's empty state; a walk or a focused root
+   * left over from earlier would cover it with an answer to a question the user has not asked
+   * yet. Arriving here from the canvas receipt has to land on the list every time, including on
+   * the second press.
+   *
+   * The topology pull is what turns the ids in that list into the labels the user typed, and a
+   * panel reached straight from the HUD has very often never asked for one.
+   */
+  const showResults = useCallback(() => {
+    setTarget(undefined);
+    setFocusedRoot(undefined);
+    setSelectedKey(undefined);
+    void session.refreshTopology().then(bump);
+  }, [session, bump]);
+
   useEffect(() => {
     const group = {};
     const start = (ref: EdgeRef) => {
@@ -261,14 +314,25 @@ export function ProvenancePanel() {
       group
     );
 
+    EventDispatcher.instance.on(
+      'provenance:results',
+      () => {
+        clearPendingProvenanceResults();
+        showResults();
+      },
+      group
+    );
+
     const pendingWalk = takePendingProvenanceWalk();
     if (pendingWalk) start(pendingWalk);
 
     const pendingRoot = takePendingProvenanceRoot();
     if (pendingRoot) focusRoot(pendingRoot);
 
+    if (takePendingProvenanceResults()) showResults();
+
     return () => EventDispatcher.instance.off(group);
-  }, [load, focusRoot]);
+  }, [load, focusRoot, showResults]);
 
   const walk: WalkResult | undefined = useMemo(() => {
     // ⚠️ `previewRunning` is not decoration. The engine holds a topology and never a connection,
@@ -326,7 +390,13 @@ export function ProvenancePanel() {
   const handleRefresh = useCallback(async () => {
     setStatus('Pulling events…');
     await session.refreshEvents();
+    // ⚠️ **The topology is pulled whether or not there is a walk on screen — F90.** With no
+    // `target` this button used to pull the buffer and nothing else, so the one gesture offered
+    // for "this looks out of date" could not fix the one thing that goes out of date: the graph
+    // the walk is grounded in. A panel opened from the recording HUD has no `target` at all, so
+    // that was its every press.
     if (target) await load(target);
+    else await session.refreshTopology();
     setStatus(undefined);
     bump();
   }, [session, target, load, bump]);
@@ -740,11 +810,24 @@ function EmptyState({
           )}
         </>
       )}
+      {/* ⚠️ **A finished recording is what this panel is showing, so it has to say so — F91.**
+          Arriving here from the canvas receipt used to land on two lines of instructions about
+          how to start a recording, above the results of the one that had just finished. The
+          count is repeated from the receipt deliberately: it is the join that tells the user the
+          door they came through and the room they landed in are about the same thing. */}
+      {!recording && eventCount > 0 && (
+        <Text>
+          Recorded {eventCount} event{eventCount === 1 ? '' : 's'}
+        </Text>
+      )}
       {/* ⚠️ **This sentence has to say WHERE Record is.** It used to say "press Record" while
           the button was six pixels above it; HUD-001 moved that button onto the canvas, and a
           user reading the old sentence inside this panel would look for a control that is no
-          longer there — which is worse than no instruction at all. */}
-      {!recording && (
+          longer there — which is worse than no instruction at all.
+
+          Suppressed once there is a recording to read: telling somebody how to take one, above
+          the one they just took, is the shape the F91 route arrived in before this. */}
+      {!recording && eventCount === 0 && (
         <>
           <Text textType={TextType.Shy}>
             Right-click a port on the canvas and choose <b>Why is this empty?</b> to walk backwards from it.
@@ -754,6 +837,14 @@ function EmptyState({
             <b>Record</b> on the canvas — the pill at the bottom of the node graph — reproduce the problem, then walk.
           </Text>
         </>
+      )}
+      {/* Events but no roots: the ring wrapped and the causes have been evicted. Saying nothing
+          here would leave the count above standing over an empty panel. */}
+      {!recording && eventCount > 0 && roots.length === 0 && (
+        <Text textType={TextType.Shy}>
+          None of them is the start of an interaction — the buffer has wrapped past what caused them. Right-click a port
+          and choose <b>Why is this empty?</b> to walk one.
+        </Text>
       )}
       {roots.length > 0 && (
         <>
