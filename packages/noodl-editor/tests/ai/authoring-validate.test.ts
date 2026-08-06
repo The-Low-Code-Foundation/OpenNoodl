@@ -24,10 +24,18 @@ function validate(payload: SubmitPayload) {
   return validateCandidateComponent(GRAPH, LEGACY, candidate.files!);
 }
 
-/** A minimal component with a real interface, using only dynamic-port nodes. */
+/**
+ * A minimal component with a real interface, using only dynamic-port nodes.
+ *
+ * The `Page` node is not decoration. `LEGACY` is `/Pages/Authored`, so this
+ * candidate is a routed page, and AAQ-011 F7 made `page-without-page-node`
+ * blocking for authored output — a routed component with no `Page` node is a
+ * route to a blank screen, which is not what "a well-formed component" means.
+ */
 function validPayload(): SubmitPayload {
   return {
     nodes: [
+      { id: 'page', type: 'Page', parameters: { title: 'Authored', urlPath: '/authored' } },
       {
         id: 'in',
         type: 'Component Inputs',

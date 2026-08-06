@@ -307,8 +307,11 @@ describe('AIX-011 criterion 7 — doc operations in the fan-out', () => {
             id: 'c1',
             name: 'submit_component',
             arguments: {
-              nodes: [{ id: 'co_root', type: 'Group', label: 'Checkout root' }],
-              visual_roots: ['co_root']
+              nodes: [
+                { id: 'co_page', type: 'Page', label: 'Checkout', parameters: { title: 'Checkout', urlPath: '/checkout' } },
+                { id: 'co_root', type: 'Group', parent: 'co_page', label: 'Checkout root' }
+              ],
+              visual_roots: ['co_page']
             }
           }
         ],
@@ -345,8 +348,11 @@ describe('AIB-009 F4 — the doc pass after a stopped run', () => {
         id: 'c1',
         name: 'submit_component',
         arguments: {
-          nodes: [{ id: 'co_root', type: 'Group', label: 'Checkout root' }],
-          visual_roots: ['co_root']
+          nodes: [
+            { id: 'co_page', type: 'Page', label: 'Checkout', parameters: { title: 'Checkout', urlPath: '/checkout' } },
+            { id: 'co_root', type: 'Group', parent: 'co_page', label: 'Checkout root' }
+          ],
+          visual_roots: ['co_page']
         }
       }
     ],

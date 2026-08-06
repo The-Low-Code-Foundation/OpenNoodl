@@ -48,11 +48,23 @@ function call(name: string, args: Record<string, unknown>): AiToolCall {
   return { id: `call-${++callCounter}`, name, arguments: args };
 }
 
-/** A page whose `PageInputs` node declares its route parameters however given. */
+/**
+ * A page whose `PageInputs` node declares its route parameters however given.
+ *
+ * The root is a `Page`, not a Group: `PageInputs` reads the route of the page it
+ * sits in, and since AAQ-011 F7 a `/Pages/…` component with no `Page` node is
+ * refused outright — so a Group root would have made every round in this file
+ * fail for a reason that has nothing to do with the parameter value under test.
+ */
 function submitArgs(pathParams: unknown): Record<string, unknown> {
   return {
     nodes: [
-      { id: 'root', type: 'Group', label: 'Article Detail' },
+      {
+        id: 'root',
+        type: 'Page',
+        label: 'Article Detail',
+        parameters: { title: 'Article Detail', urlPath: '/articles/{id}' }
+      },
       { id: 'params', type: 'PageInputs', parameters: { pathParams } }
     ],
     connections: [],

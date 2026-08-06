@@ -125,7 +125,8 @@ entire page list in ONE parameter, and full component names, exactly as the proj
   when the project has more than one router, to that router's name.
 - EVERY page component must have a "Page" node as its root, with the page's content inside it. This is not
   decoration: the runtime builds its whole page index from Page nodes, so a component the router lists
-  without one is a route to a BLANK SCREEN — the router finds nothing to show and reports no error.
+  without one is a route to a BLANK SCREEN — the router finds nothing to show and reports no error. The
+  validator REFUSES a page component with no Page node; it is not advice you can decline.
 - A page's own URL lives on that same Page node: "urlPath": "puppies", with "title" for the browser tab.
   Nothing else defines the URL of a page.
 - "Navigate To Path" (PageStackNavigateToPath) drives the browser URL rather than the router directly: it

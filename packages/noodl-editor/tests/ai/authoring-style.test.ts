@@ -44,13 +44,22 @@ function call(name: string, args: Record<string, unknown>, id = `c-${Math.random
   return { id, name, arguments: args };
 }
 
-/** A valid component (Component Inputs/Outputs + wire) with an extra Group. */
+/**
+ * A valid component (Component Inputs/Outputs + wire) with a styled Group.
+ *
+ * Every `componentPath` in this file is `Pages/Styled…`, so the candidate is a
+ * routed page and needs a `Page` root — `page-without-page-node` blocks authored
+ * output since AAQ-011 F7. The Group is the subject of the style lint and keeps
+ * its parameters exactly; it simply hangs off the page now, which is where a
+ * page's content actually lives.
+ */
 function submitArgs(groupParams: Record<string, unknown>): Record<string, unknown> {
   return {
     nodes: [
+      { id: 'page', type: 'Page', parameters: { title: 'Styled', urlPath: '/styled' } },
       { id: 'in', type: 'Component Inputs', ports: [{ name: 'Trigger', plug: 'output', type: '*' }] },
       { id: 'out', type: 'Component Outputs', ports: [{ name: 'Done', plug: 'input', type: '*' }] },
-      { id: 'g', type: 'Group', parameters: groupParams }
+      { id: 'g', type: 'Group', parent: 'page', parameters: groupParams }
     ],
     connections: [{ fromId: 'in', fromProperty: 'Trigger', toId: 'out', toProperty: 'Done' }],
     description: 'A styled group.'

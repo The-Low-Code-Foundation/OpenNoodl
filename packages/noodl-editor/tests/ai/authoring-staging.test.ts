@@ -28,10 +28,14 @@ const REQUEST: AuthoringRequest = {
   componentPath: 'Pages/Authored'
 };
 
-/** A candidate that validates cleanly — the same shape the session specs use. */
+/**
+ * A candidate that validates cleanly — the same shape the session specs use,
+ * including the `Page` root every `/Pages/…` candidate needs since AAQ-011 F7.
+ */
 function stagedFiles(): ComponentFiles {
   const result = buildCandidate(REQUEST, {
     nodes: [
+      { id: 'page', type: 'Page', parameters: { title: 'Authored', urlPath: '/authored' } },
       { id: 'in', type: 'Component Inputs', ports: [{ name: 'Trigger', plug: 'output', type: '*' }] },
       { id: 'out', type: 'Component Outputs', ports: [{ name: 'Done', plug: 'input', type: '*' }] }
     ],
@@ -102,6 +106,7 @@ describe('AIX-002 authoring staging', () => {
           name: 'submit_component',
           arguments: {
             nodes: [
+              { id: 'page', type: 'Page', parameters: { title: 'Authored', urlPath: '/authored' } },
               { id: 'in', type: 'Component Inputs', ports: [{ name: 'Trigger', plug: 'output', type: '*' }] },
               { id: 'out', type: 'Component Outputs', ports: [{ name: 'Done', plug: 'input', type: '*' }] }
             ],

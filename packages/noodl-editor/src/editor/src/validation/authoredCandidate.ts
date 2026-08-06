@@ -131,20 +131,26 @@ export interface ComponentNodesView {
  * class: the graph is well formed, the gate is green, and the button does
  * nothing.
  *
- * ⚠️ `PageWithoutPageNode` is deliberately absent, and this is the one place that
- * decision now lives (AAQ-011 F7 carries the bill). The rule is right — a routed
- * component with no `Page` node renders a blank screen — and it was calibrated on
- * the corpus at 6 hits. But the population that flows through *this* gate is the
- * authored one, and there it fires on 57 fixture sites across 15 spec files,
- * every one of which builds a `/Pages/…` component out of a bare Group, because
- * that is what everyone believed a page was until the launcher was driven end to
- * end. Promoting it means correcting those fixtures, which is a real change to
- * what a large part of the AI suite asserts and deserves its own read.
+ * `PageWithoutPageNode` joined them in AAQ-011 F7, and the delay is worth a
+ * sentence because it was not doubt about the rule. The rule was never in
+ * question — a routed component with no `Page` node renders a blank screen, and
+ * that was proved live against a real preview, not argued. What blocked the
+ * promotion was the fixture population: the AI suite built `/Pages/…` components
+ * out of bare Groups throughout, because that is what everyone believed a page
+ * was until the launcher was driven end to end. Those fixtures were not testing
+ * the warning; they were teaching a shape the runtime refuses to render, and a
+ * gate that a suite would fail is a gate the suite was asserting the wrong thing
+ * about. They now build a real `Page` node, which is the correction and not a
+ * suppression.
+ *
+ * The corpus is untouched by this: `validate:project` never applied the authored
+ * policy, so promoting a code here cannot turn 6 corpus hits into errors.
  */
 export const AUTHORED_BLOCKING_WARNINGS: ReadonlySet<string> = new Set([
   DiagnosticCode.UnknownParameter,
   DiagnosticCode.UnitlessDimension,
-  DiagnosticCode.UnresolvedNavigation
+  DiagnosticCode.UnresolvedNavigation,
+  DiagnosticCode.PageWithoutPageNode
 ]);
 
 /** Whether a diagnostic rejects an authored submission. */

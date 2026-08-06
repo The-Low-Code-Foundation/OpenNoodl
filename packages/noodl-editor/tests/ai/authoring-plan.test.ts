@@ -52,21 +52,30 @@ function toolResponse(name: string, args: Record<string, unknown>): AiChatRespon
   };
 }
 
+/**
+ * Both submissions are rooted on a `Page`, because both targets are `Pages/…`
+ * and AAQ-011 F7 made `page-without-page-node` blocking for authored output.
+ * The update is not exempt from it either: the corpus `/Pages/Article` already
+ * HAS a Page node, so a revision that drops it is the revision's own defect and
+ * the baseline has nothing to forgive.
+ */
 const CHECKOUT_SUBMISSION = {
   nodes: [
-    { id: 'co_root', type: 'Group', label: 'Checkout root' },
+    { id: 'co_page', type: 'Page', label: 'Checkout', parameters: { title: 'Checkout', urlPath: '/checkout' } },
+    { id: 'co_root', type: 'Group', parent: 'co_page', label: 'Checkout root' },
     { id: 'co_text', type: 'Text', parent: 'co_root', parameters: { text: 'Checkout' } }
   ],
-  visual_roots: ['co_root']
+  visual_roots: ['co_page']
 };
 
 /** The Article revision instantiates the component op-1 creates. */
 const ARTICLE_SUBMISSION = {
   nodes: [
-    { id: 'ar_root', type: 'Group', label: 'Article root' },
+    { id: 'ar_page', type: 'Page', label: 'Article', parameters: { title: 'Article', urlPath: '/article' } },
+    { id: 'ar_root', type: 'Group', parent: 'ar_page', label: 'Article root' },
     { id: 'ar_checkout', type: '/Pages/Checkout', parent: 'ar_root' }
   ],
-  visual_roots: ['ar_root']
+  visual_roots: ['ar_page']
 };
 
 /** Route a session's chat by the component named in its opening task. */
@@ -330,8 +339,11 @@ describe('AIX-011 plan run', () => {
       // Without op-1 staged, referencing /Pages/Checkout would fail — this
       // revision stands alone instead.
       return toolResponse('submit_component', {
-        nodes: [{ id: 'ar_root', type: 'Group', label: 'Article root' }],
-        visual_roots: ['ar_root']
+        nodes: [
+          { id: 'ar_page', type: 'Page', label: 'Article', parameters: { title: 'Article', urlPath: '/article' } },
+          { id: 'ar_root', type: 'Group', parent: 'ar_page', label: 'Article root' }
+        ],
+        visual_roots: ['ar_page']
       });
     };
     const run = new PlanRun(loadGraph(), THREE_OP_PLAN, {

@@ -26,10 +26,17 @@ const REQUEST: AuthoringRequest = {
   componentPath: 'Pages/Reviewed'
 };
 
+/**
+ * The `Page` root is what makes `/Pages/Reviewed` a page rather than a route to
+ * a blank screen, and since AAQ-011 F7 `expectGateClean` below would refuse the
+ * candidate without it. The Group stays: a page's content sits inside a layout
+ * container, which is the shape a proposal actually arrives in.
+ */
 function basePayload(): SubmitPayload {
   return {
     nodes: [
-      { id: 'g', type: 'Group', x: 0, y: 0 },
+      { id: 'page', type: 'Page', x: 0, y: -80, parameters: { title: 'Reviewed', urlPath: '/reviewed' } },
+      { id: 'g', type: 'Group', parent: 'page', x: 0, y: 0 },
       { id: 't', type: 'Text', parent: 'g', x: 20, y: 40, parameters: { text: 'Hello' } },
       { id: 'in', type: 'Component Inputs', x: -200, y: 40, ports: [{ name: 'Trigger', plug: 'output', type: '*' }] }
     ],
@@ -95,7 +102,7 @@ describe('AIX-003 partial acceptance', () => {
     // The closure rejected the connection too — it plugs into the text.
     expect(rejected.size).toBe(2);
     const nodeIds = materialized.nodes.nodes.map((n) => n.id).sort();
-    expect(nodeIds).toEqual(['g', 'in']);
+    expect(nodeIds).toEqual(['g', 'in', 'page']);
     expect(materialized.connections.connections).toEqual([]);
     expectGateClean(materialized);
   });
@@ -119,7 +126,7 @@ describe('AIX-003 partial acceptance', () => {
 
     expect(rejected.has(removeInput)).toBe(true);
     const nodeIds = materialized.nodes.nodes.map((n) => n.id).sort();
-    expect(nodeIds).toEqual(['g', 'in', 't']);
+    expect(nodeIds).toEqual(['g', 'in', 'page', 't']);
     const text = materialized.nodes.nodes.find((n) => n.id === 't')!;
     expect(text.parameters).toEqual({ text: 'Goodbye' });
 
@@ -147,7 +154,7 @@ describe('AIX-003 partial acceptance', () => {
 
     expect(rejected.has(removeInput)).toBe(true);
     const nodeIds = materialized.nodes.nodes.map((n) => n.id).sort();
-    expect(nodeIds).toEqual(['g', 'in', 't']);
+    expect(nodeIds).toEqual(['g', 'in', 'page', 't']);
     expect(materialized.connections.connections.length).toBe(1);
     expectSameGraph(materialized, filesFor(basePayload()));
     expectGateClean(materialized);
@@ -167,11 +174,17 @@ describe('AIX-003 partial acceptance — shapes a live proposal has', () => {
     UndoQueue.instance.clear();
   });
 
-  /** Two children under one group, so a revision has somewhere to insert. */
+  /**
+   * Two children under one group, so a revision has somewhere to insert. The
+   * group hangs off the page's `Page` root — `childOrder` below reads siblings
+   * of `g`, so the extra level changes nothing these specs measure, and without
+   * it every `expectGateClean` here refuses the candidate (AAQ-011 F7).
+   */
   function rowsPayload(): SubmitPayload {
     return {
       nodes: [
-        { id: 'g', type: 'Group', x: 0, y: 0 },
+        { id: 'page', type: 'Page', x: 0, y: -80, parameters: { title: 'Reviewed', urlPath: '/reviewed' } },
+        { id: 'g', type: 'Group', parent: 'page', x: 0, y: 0 },
         { id: 'first', type: 'Text', parent: 'g', x: 20, y: 0, parameters: { text: 'First' } },
         { id: 'last', type: 'Text', parent: 'g', x: 20, y: 60, parameters: { text: 'Last' } }
       ]
@@ -196,7 +209,7 @@ describe('AIX-003 partial acceptance — shapes a live proposal has', () => {
   it('an inserted node lands where the proposal put it, not after the siblings it displaced', () => {
     const project = projectWithRows();
     const payload = rowsPayload();
-    payload.nodes.splice(2, 0, { id: 'middle', type: 'Text', parent: 'g', x: 20, y: 30, parameters: { text: 'Middle' } });
+    payload.nodes.splice(3, 0, { id: 'middle', type: 'Text', parent: 'g', x: 20, y: 30, parameters: { text: 'Middle' } });
     const files = filesFor(payload);
     expect(childOrder(files)).toEqual(['first', 'middle', 'last']);
 
@@ -214,7 +227,7 @@ describe('AIX-003 partial acceptance — shapes a live proposal has', () => {
   it('rejecting the insert leaves the base order exactly as it was', () => {
     const project = projectWithRows();
     const payload = rowsPayload();
-    payload.nodes.splice(2, 0, { id: 'middle', type: 'Text', parent: 'g', x: 20, y: 30, parameters: { text: 'Middle' } });
+    payload.nodes.splice(3, 0, { id: 'middle', type: 'Text', parent: 'g', x: 20, y: 30, parameters: { text: 'Middle' } });
     const files = filesFor(payload);
     const changeSet = buildChangeSet(project, files);
     const insert = idOf(changeSet, (kind, anchor) => kind === 'node-added' && anchor === 'middle');
@@ -228,7 +241,7 @@ describe('AIX-003 partial acceptance — shapes a live proposal has', () => {
   it('a rejected reorder keeps the base order while the rest of the proposal lands', () => {
     const project = projectWithRows();
     const payload = rowsPayload();
-    payload.nodes = [payload.nodes[0], payload.nodes[2], payload.nodes[1]];
+    payload.nodes = [payload.nodes[0], payload.nodes[1], payload.nodes[3], payload.nodes[2]];
     payload.nodes.push({ id: 'extra', type: 'Text', parent: 'g', x: 20, y: 90, parameters: { text: 'Extra' } });
     const files = filesFor(payload);
     expect(childOrder(files)).toEqual(['last', 'first', 'extra']);

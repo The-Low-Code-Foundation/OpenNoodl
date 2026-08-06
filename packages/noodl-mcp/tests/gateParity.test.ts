@@ -207,17 +207,19 @@ describe('AAQ-005 — the editor gate and the MCP write gate agree', () => {
     expect(mcp.ok).toBe(true);
   });
 
-  it('agrees that a routed component with no Page node is a warning and does NOT block', () => {
-    // AAQ-011 F7 lives here: the rule is right and blocking it would need 57
-    // fixture sites corrected first. Both clients must be on the same side of
-    // that decision, which is the reason `AUTHORED_BLOCKING_WARNINGS` is one set
-    // rather than two.
+  it('agrees that a routed component with no Page node BLOCKS (AAQ-011 F7)', () => {
+    // AAQ-011 F7 closed here. This is the one fixture in either suite that keeps
+    // its bare Group on purpose: it is the warning path's own test, so the shape
+    // it builds is the defect under examination rather than an example anyone
+    // should copy. Both clients must be on the same side of the decision, which
+    // is why `AUTHORED_BLOCKING_WARNINGS` is one set rather than two — before the
+    // promotion this same fixture asserted `ok === true` in both gates.
     const files = candidateFiles([{ id: 'body', type: 'Group', parameters: { text: undefined } } as NodeV2]);
 
     const { editor, mcp } = judge(files);
-    expect(editor.ok).toBe(true);
-    expect(mcp.ok).toBe(true);
-    expect(editor.diagnostics.some((d) => d.code === 'page-without-page-node')).toBe(true);
-    expect(mcp.diagnostics.some((d) => d.code === 'page-without-page-node')).toBe(true);
+    expect(editor.ok).toBe(false);
+    expect(mcp.ok).toBe(false);
+    expect(blockingCodes(mcp.newErrors)).toEqual(blockingCodes(editor.errors));
+    expect(blockingCodes(mcp.newErrors)).toContain('page-without-page-node');
   });
 });

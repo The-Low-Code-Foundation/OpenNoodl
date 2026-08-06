@@ -43,10 +43,18 @@ function call(name: string, args: Record<string, unknown>, id = `call-${Math.ran
   return { id, name, arguments: args };
 }
 
-/** The submit arguments for a component that validates cleanly. */
+/**
+ * The submit arguments for a component that validates cleanly.
+ *
+ * `REQUEST.componentPath` is `Pages/Authored`, so "validates cleanly" includes
+ * having a `Page` node: AAQ-011 F7 made `page-without-page-node` blocking for
+ * authored output, on the ground that a routed component without one is a route
+ * to a blank screen. It is the first node because it is the page's root.
+ */
 function goodSubmitArgs(extraNodes: Record<string, unknown>[] = []): Record<string, unknown> {
   return {
     nodes: [
+      { id: 'page', type: 'Page', parameters: { title: 'Authored', urlPath: '/authored' } },
       { id: 'in', type: 'Component Inputs', ports: [{ name: 'Trigger', plug: 'output', type: '*' }] },
       { id: 'out', type: 'Component Outputs', ports: [{ name: 'Done', plug: 'input', type: '*' }] },
       ...extraNodes
@@ -286,7 +294,8 @@ describe('AIX-002 authoring session', () => {
       expect(state.busy).toBe(false);
       expect(state.phase).toBe('staged');
       expect(state.legacyName).toBe('/Pages/Authored');
-      expect(state.staged).toEqual({ nodeCount: 3, connectionCount: 1 });
+      // Page, Component Inputs, Component Outputs, and the Group this round adds.
+      expect(state.staged).toEqual({ nodeCount: 4, connectionCount: 1 });
 
       // Empty assistant bubbles are dropped; everything else is in order.
       expect(state.activities.map((a) => a.kind)).toEqual(['user', 'assistant', 'tool', 'submit', 'submit']);
@@ -373,8 +382,12 @@ describe('AIX-002 authoring session', () => {
     it('publishes the forming graph as submit_component arguments stream', async () => {
       const args = goodSubmitArgs();
       const json = JSON.stringify(args);
-      // Three fragments: mid first node, after first node, complete.
-      const cuts = [json.indexOf('"out"') - 5, json.indexOf('"connections"'), json.length];
+      // Three fragments: mid second node, mid third node, complete — so the
+      // published picture goes one node, two nodes, then the whole payload.
+      // Cut on the *id* of the node that must still be incomplete, rather than
+      // on `"connections"`: a fixed marker at the end of the node list makes the
+      // count depend on how many nodes the fixture happens to have.
+      const cuts = [json.indexOf('"in"') - 5, json.indexOf('"out"') - 5, json.length];
 
       const chat: AuthoringChatFn = async (_request, callbacks) => {
         for (const cut of cuts) {
@@ -399,7 +412,7 @@ describe('AIX-002 authoring session', () => {
       const finalBuilding = session.state.building!;
       expect(finalBuilding.complete).toBe(true);
       expect(finalBuilding.submission).toBe(1);
-      expect(finalBuilding.nodes.map((n) => n.id)).toEqual(['in', 'out']);
+      expect(finalBuilding.nodes.map((n) => n.id)).toEqual(['page', 'in', 'out']);
       expect(finalBuilding.connections.length).toBe(1);
     });
 
@@ -412,7 +425,7 @@ describe('AIX-002 authoring session', () => {
       expect(building).toBeDefined();
       expect(building.complete).toBe(true);
       expect(building.submission).toBe(1);
-      expect(building.nodes.length).toBe(2);
+      expect(building.nodes.length).toBe(3);
     });
 
     it('a repair round is a new submission — the preview rebuilds instead of morphing', async () => {
@@ -466,13 +479,17 @@ describe('AIX-002 authoring session — update mode', () => {
    * from the live component. Synthetic here — the loop only needs a trio whose
    * component exists in the graph — with hand-tuning the submit contract
    * cannot express, to prove it survives an update round.
+   *
+   * Rooted on a `Page`, like the create-mode fixtures and for the same reason
+   * (AAQ-011 F7). The revision below keeps that root, so the update is judged on
+   * what it changed rather than on a defect the base handed it.
    */
   function articleBase() {
     const result = buildCandidate(
       UPDATE_REQUEST,
       {
         nodes: [
-          { id: 'art-root', type: 'Group', label: 'Article root' },
+          { id: 'art-root', type: 'Page', label: 'Article root', parameters: { title: 'Article', urlPath: '/article' } },
           { id: 'art-title', type: 'Text', parent: 'art-root', parameters: { text: 'Article' } }
         ],
         visualRoots: ['art-root'],
@@ -502,7 +519,7 @@ describe('AIX-002 authoring session — update mode', () => {
           toolCalls: [
             call('submit_component', {
               nodes: [
-                { id: 'art-root', type: 'Group', label: 'Article root' },
+                { id: 'art-root', type: 'Page', label: 'Article root', parameters: { title: 'Article', urlPath: '/article' } },
                 { id: 'art-title', type: 'Text', parent: 'art-root', parameters: { text: 'Article' } },
                 { id: 'art-sub', type: 'Text', parent: 'art-root', parameters: { text: 'A subtitle' } }
               ],
