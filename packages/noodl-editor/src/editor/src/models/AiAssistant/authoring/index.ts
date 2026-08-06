@@ -138,8 +138,13 @@ export type {
   ApplyPlanOptions,
   PlanBackendProvisioner,
   PlanDocWriter,
+  PlanTokenWriter,
   ProvisionedBackend
 } from './planStaging';
+// AAQ-005 criterion 3 — the plan's design-token channel. The tool that produces
+// the tokens is AAQ-009's; this is what makes the write part of one changeset.
+export { createPlanTokenWriter } from './planTokens';
+export type { TokenModelLike, TokenStoreLike } from './planTokens';
 export { PLANNING_TOOLS, planningSystemPrompt, planningUserMessage, planRepairMessage, SUBMIT_PLAN } from './prompts/planning';
 export { buildChangeSet, requiredWith, excludedWith } from './ChangeSet';
 export type { AuthoringChangeSet, ReviewChange } from './ChangeSet';
