@@ -108,6 +108,162 @@
   gap: 8px;
 }
 
+/* ---------------------------------------------------------------------------
+   SPR-001 §3: the collection permission matrix.
+
+   Everything below is drawn from theme tokens only — no literal colours — so
+   the light and dark palettes both come out of the same rules. The two states
+   that need to be distinguishable without colour (inherited, and a role that
+   cannot change the answer) use OPACITY and a dotted underline rather than a
+   hue, because a permission surface that only reads in one theme is a
+   permission surface that gets misread in the other.
+   --------------------------------------------------------------------------- */
+
+.Disclosure {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 4px 2px 0;
+  background: none;
+  border: none;
+  border-radius: 4px;
+  color: var(--theme-color-fg-default);
+  cursor: pointer;
+  text-align: left;
+
+  &:hover {
+    background-color: var(--theme-color-bg-3);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--theme-color-primary);
+    outline-offset: 1px;
+  }
+}
+
+/* One rule, in words. Always visible — collapsed, this row IS the policy. */
+.OpSummary {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 4px 7px;
+  background-color: var(--theme-color-bg-3);
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: 4px;
+  color: var(--theme-color-fg-default);
+  cursor: pointer;
+  text-align: left;
+  overflow: hidden;
+
+  &:hover {
+    border-color: var(--theme-color-primary);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--theme-color-primary);
+    outline-offset: 1px;
+  }
+
+  /* Inheriting: the words are the DEFAULT's, not this collection's. */
+  &[data-inherited='true'] .OpSummaryValue {
+    opacity: 0.65;
+    font-style: italic;
+  }
+}
+
+.OpSummaryValue {
+  font-size: 11px;
+  line-height: 1.3;
+  color: var(--theme-color-fg-default);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.Matrix {
+  margin-top: 10px;
+  padding: 10px;
+  background-color: var(--theme-color-bg-3);
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: 4px;
+  overflow-x: auto;
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 11px;
+    color: var(--theme-color-fg-default);
+  }
+
+  th,
+  td {
+    padding: 4px 6px;
+    text-align: center;
+  }
+
+  thead th {
+    font-weight: 400;
+    color: var(--theme-color-fg-default-shy);
+    border-bottom: 1px solid var(--theme-color-border-default);
+  }
+
+  tbody th {
+    text-align: left;
+    font-weight: 400;
+    white-space: nowrap;
+  }
+
+  input[type='checkbox'] {
+    cursor: pointer;
+    margin: 0;
+  }
+
+  /* A tick that is not this column's own doing: the default's, or a role that
+     `authenticated` already covers. Legible, but visibly not an assertion. */
+  input[data-dimmed='true'] {
+    opacity: 0.45;
+  }
+}
+
+.MatrixCorner {
+  text-align: left !important;
+  width: 40%;
+}
+
+.MatrixRow {
+  border-top: 1px solid var(--theme-color-border-subtle, var(--theme-color-border-default));
+
+  &:hover {
+    background-color: var(--theme-color-bg-2);
+  }
+
+  /* A role a rule names but that does not exist here. */
+  &[data-missing='true'] .MatrixRowLabel {
+    color: var(--theme-color-notice);
+  }
+}
+
+.MatrixRowLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.MatrixRowHint {
+  display: block;
+  font-size: 10px;
+  color: var(--theme-color-fg-default-shy);
+}
+
+.MatrixFooter {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid var(--theme-color-border-default);
+}
+
 /* CWF-017: rule preset, exact rule, and this function's own budget. */
 .FunctionGrid {
   display: grid;

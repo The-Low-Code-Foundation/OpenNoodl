@@ -22,13 +22,13 @@ import { PrimaryButton, PrimaryButtonSize, PrimaryButtonVariant } from '@noodl-c
 import { HStack, VStack } from '@noodl-core-ui/components/layout/Stack';
 import { Text, TextType } from '@noodl-core-ui/components/typography/Text';
 
+import { CollectionPermissions } from './CollectionPermissions';
 import css from './PermissionsPanel.module.scss';
+import { ClpOp, RuleValue, describeRule, roleAtom, rolesToOffer } from './ruleVocabulary';
 
 const { ipcRenderer } = window.require('electron');
 
-const OPS = ['find', 'get', 'create', 'update', 'delete'] as const;
-type Op = (typeof OPS)[number];
-type RuleValue = string | string[];
+type Op = ClpOp;
 
 interface CollectionRules {
   permissions?: Partial<Record<Op, RuleValue>>;
@@ -236,12 +236,20 @@ export function PermissionsPanel({ backendId, backendName, onClose }: Permission
   );
 
   // ---- Collection rules ----------------------------------------------------
+  /**
+   * Write one operation's rule. `undefined` REMOVES it, which is how "use the
+   * default" is said on the wire — the key is deleted, not set to a copy of the
+   * default, so this collection keeps following the default when it changes.
+   *
+   * The rule arrives already in the backend's shape (SPR-001 §3): the matrix
+   * hands over a `RuleValue` built by `selectionToRule`, so no string is parsed
+   * on the way in and a role name containing a comma is no longer two rules.
+   */
   const setCollectionRule = useCallback(
-    async (collection: string, op: Op, text: string) => {
+    async (collection: string, op: Op, rule: RuleValue | undefined) => {
       try {
         const current = config?.collections[collection] || {};
         const permissions = { ...(current.permissions || {}) };
-        const rule = textToRule(text);
         if (rule === undefined) delete permissions[op];
         else permissions[op] = rule;
         const res = await ipcRenderer.invoke('backend:setCollectionPermissions', backendId, collection, {
@@ -249,7 +257,7 @@ export function PermissionsPanel({ backendId, backendName, onClose }: Permission
           creatorOwns: current.creatorOwns
         });
         setConfig((c) => (c ? { ...c, collections: { ...c.collections, [collection]: res.rules } } : c));
-        flash(`Updated ${collection}.${op}`);
+        flash(`${collection}.${op}: ${rule === undefined ? 'the default' : describeRule(rule)}`);
       } catch (err) {
         reportError(err);
       }
@@ -400,18 +408,31 @@ export function PermissionsPanel({ backendId, backendName, onClose }: Permission
   );
 
   // ---- Roles ---------------------------------------------------------------
+  /**
+   * Create a role by name. Reachable from two places on purpose: this section,
+   * and the permission matrix itself — a role you are about to write a rule
+   * about is best created without leaving the rule (SPR-001 §3).
+   */
+  const createRoleNamed = useCallback(
+    async (raw: string) => {
+      const name = raw.trim();
+      if (!name) return;
+      try {
+        await ipcRenderer.invoke('backend:createRole', backendId, name);
+        await load();
+        flash(`Role "${name}" created — it is now a row on every collection`);
+      } catch (err) {
+        reportError(err);
+      }
+    },
+    [backendId, load, flash, reportError]
+  );
+
   const createRole = useCallback(async () => {
-    const name = newRoleName.trim();
-    if (!name) return;
-    try {
-      await ipcRenderer.invoke('backend:createRole', backendId, name);
-      setNewRoleName('');
-      await load();
-      flash(`Role "${name}" created`);
-    } catch (err) {
-      reportError(err);
-    }
-  }, [backendId, newRoleName, load, flash, reportError]);
+    if (!newRoleName.trim()) return;
+    await createRoleNamed(newRoleName);
+    setNewRoleName('');
+  }, [newRoleName, createRoleNamed]);
 
   const deleteRole = useCallback(
     async (name: string) => {
@@ -482,12 +503,16 @@ export function PermissionsPanel({ backendId, backendName, onClose }: Permission
     [backendId, load, reportError]
   );
 
-  const effectiveRule = (collection: string, op: Op): string => {
-    const c = config?.collections[collection];
-    const own = c?.permissions?.[op];
-    if (own !== undefined) return ruleToText(own);
-    return config ? ruleToText(config.defaults.permissions[op]) : '';
-  };
+  /**
+   * The role atoms a function's rule select offers: every role that exists,
+   * plus any a function rule already names. A rule outlives the role it names,
+   * and an option list that cannot show `role:ghost` would report a perfectly
+   * valid rule as "custom" and hide it behind the free-text box (SPR-001 §3).
+   */
+  const functionRoleOptions = rolesToOffer(
+    roles.map((role) => role.name),
+    functions.map((fn) => (fn.configured === null ? undefined : fn.configured))
+  ).map(roleAtom);
 
   return (
     <div className={css.Root}>
@@ -548,50 +573,14 @@ export function PermissionsPanel({ backendId, backendName, onClose }: Permission
           <Text textType={TextType.DefaultContrast} style={{ marginBottom: '8px' }}>
             Collection permissions
           </Text>
-          <Text textType={TextType.Shy} style={{ fontSize: '11px', marginBottom: '10px' }}>
-            Rules: public, authenticated, nobody, role:&lt;name&gt; (comma-separate for OR). Blank inherits the default.
-          </Text>
-          {tables.length === 0 && (
-            <Text textType={TextType.Shy} style={{ fontSize: '11px' }}>
-              No collections yet — create one in the Schema panel.
-            </Text>
-          )}
-          {tables.map((table) => {
-            const c = config?.collections[table];
-            const creatorOwns = c?.creatorOwns ?? config?.defaults.creatorOwns ?? true;
-            return (
-              <div key={table} className={css.CollectionRow}>
-                <div className={css.CollectionName}>
-                  <Text textType={TextType.DefaultContrast}>{table}</Text>
-                  <label className={css.CreatorOwns}>
-                    <input
-                      type="checkbox"
-                      checked={creatorOwns}
-                      onChange={(e) => toggleCreatorOwns(table, e.target.checked)}
-                    />
-                    <Text textType={TextType.Shy} style={{ fontSize: '10px' }}>
-                      creator-owns
-                    </Text>
-                  </label>
-                </div>
-                <div className={css.OpGrid}>
-                  {OPS.map((op) => (
-                    <label key={op} className={css.OpField}>
-                      <Text textType={TextType.Shy} style={{ fontSize: '10px' }}>
-                        {op}
-                      </Text>
-                      <input
-                        className={css.RuleInput}
-                        defaultValue={effectiveRule(table, op)}
-                        placeholder={config ? ruleToText(config.defaults.permissions[op]) : ''}
-                        onBlur={(e) => setCollectionRule(table, op, e.target.value)}
-                      />
-                    </label>
-                  ))}
-                </div>
-              </div>
-            );
-          })}
+          <CollectionPermissions
+            tables={tables}
+            config={config}
+            roleNames={roles.map((role) => role.name)}
+            onSetRule={setCollectionRule}
+            onToggleCreatorOwns={toggleCreatorOwns}
+            onCreateRole={createRoleNamed}
+          />
         </div>
 
         {/* Cloud function access + budget (CWF-017) */}
@@ -647,12 +636,19 @@ export function PermissionsPanel({ backendId, backendName, onClose }: Permission
                     <Text textType={TextType.Shy} style={{ fontSize: '10px' }}>
                       who can call this
                     </Text>
+                    {/* SPR-001 §3: the single-role cases are options here, so a
+                        role never has to be spelled by hand. A SET of roles is
+                        still the box beside it — that is the escape hatch, and
+                        it is why the box did not go away. */}
                     <select
                       className={css.RuleInput}
+                      data-test={`function-call-${fn.name}`}
                       value={
                         fn.source === 'graph'
                           ? 'graph'
-                          : typeof fn.call === 'string' && ['public', 'authenticated', 'nobody'].includes(fn.call)
+                          : typeof fn.call === 'string' &&
+                              (['public', 'authenticated', 'nobody'].includes(fn.call) ||
+                                functionRoleOptions.includes(fn.call))
                             ? fn.call
                             : 'custom'
                       }
@@ -664,12 +660,17 @@ export function PermissionsPanel({ backendId, backendName, onClose }: Permission
                       <option value="public">Anyone</option>
                       <option value="authenticated">Signed-in</option>
                       <option value="nobody">Nobody</option>
-                      <option value="custom">Roles… (use the box)</option>
+                      {functionRoleOptions.map((atom) => (
+                        <option key={atom} value={atom}>
+                          Only {atom}
+                        </option>
+                      ))}
+                      <option value="custom">Several roles… (use the box)</option>
                     </select>
                   </label>
                   <label className={css.OpField}>
                     <Text textType={TextType.Shy} style={{ fontSize: '10px' }}>
-                      or an exact rule
+                      or several, comma-separated
                     </Text>
                     <input
                       className={css.RuleInput}
