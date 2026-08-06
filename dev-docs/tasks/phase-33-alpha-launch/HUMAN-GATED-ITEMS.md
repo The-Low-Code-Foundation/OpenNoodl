@@ -117,16 +117,37 @@ comment (stripped before display). Both files ship *inside the binary* via
 Three answers: the publishing entity's legal name, a contact address, and governing
 law/jurisdiction. Coupled to A1's Apple enrolment — same entity.
 
-### B2. F63 — the GitHub OAuth client secret in every build 🔴
+### B2. F63 — the leaked GitHub OAuth client secret 🔴 **code fixed, two GitHub actions outstanding**
 
-`packages/noodl-editor/src/main/github-oauth-handler.js:19` falls back to a literal
-`GITHUB_CLIENT_SECRET` when the env var is unset, so **every distributed build
-contains it**, in a public repo. Anyone can impersonate the app to GitHub.
+**Code fixed 2026-08-06.** Richard's decision was the **device flow**, and it is
+built: `src/main/src/github-device-flow.js` (the polling state machine, 19 tests),
+`github-oauth-handler.js` (Electron wiring, no secret, no `noodl://github-callback`),
+and `GitHubDeviceCodeDialog` (the user code, which the flow cannot complete without).
+The handler is also excluded from the `files` allow-list now, so it no longer ships
+as readable source alongside the bundle.
 
-This is the one finding in the register I would treat as release-blocking rather
-than merely filed. The fix is a **public OAuth client (PKCE)** or the **device
-flow** — both need someone with admin on the GitHub OAuth app to register or
-reconfigure it. The code change is an agent's job; the app registration is not.
+**Two things only a human with admin on the OAuth app can do. Neither is optional.**
+
+1. ⚠️ **Revoke the old client secret** — `c45276fa80b0618de06e5e2b09c1019ca150baef`,
+   OAuth app client id `Ov23li2n9u3dwAhwoifb`. It has been public in a public repo
+   and is **still valid until it is regenerated in the app's settings**. Deleting it
+   from source does not un-leak it: every clone, fork and build already made still
+   has it. Until this is done, F63 is not fixed — it is only no longer getting worse.
+   *GitHub → Settings → Developer settings → OAuth Apps → this app → Generate a new
+   client secret, then delete the old one.* Nothing in NodeGX consumes the new one;
+   the device flow uses the client **id** only, which is public by design.
+
+2. ⚠️ **Tick "Enable Device Flow"** on the same OAuth app. It is **off by default**,
+   and GitHub does not warn you — the app just gets `device_flow_disabled` on the
+   very first request. That case is handled distinctly and says so in plain words,
+   but no user can do anything about it. *Same settings page, checkbox near the
+   bottom, then Update application.*
+
+**This has not been driven against live GitHub**, because both actions above have to
+happen first — a device-code request against an app with the flow disabled cannot
+succeed. Once they are done, the flow is worth one live pass: Connect from the
+version-control panel, check the dialog shows a code, complete it on github.com, and
+separately press Cancel there to confirm the refusal message differs from a timeout.
 
 Related and unowned: **F64** — `GitHubTokenStore.ts`'s docstring claims Electron
 `safeStorage` "OS-level encryption"; the code uses only `electron-store`'s
