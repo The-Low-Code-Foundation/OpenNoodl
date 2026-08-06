@@ -31,7 +31,6 @@
  */
 
 import React, { useRef, useState } from 'react';
-
 import { platform } from '@noodl/platform';
 
 import { IconName, IconSize } from '@noodl-core-ui/components/common/Icon';
@@ -78,7 +77,10 @@ export function HelpCenter() {
           { label: 'Discord', onClick: () => platform.openExternal(EXTERNAL_LINKS.discord) },
           'divider',
           { label: 'Report a bug', onClick: () => platform.openExternal(issueForm('bug_report.yml')) },
-          { label: 'Report a node behaving wrongly', onClick: () => platform.openExternal(issueForm('node_report.yml')) },
+          {
+            label: 'Report a node behaving wrongly',
+            onClick: () => platform.openExternal(issueForm('node_report.yml'))
+          },
           { label: 'Suggest a feature', onClick: () => platform.openExternal(issueForm('feature_request.yml')) }
         ]}
       />
