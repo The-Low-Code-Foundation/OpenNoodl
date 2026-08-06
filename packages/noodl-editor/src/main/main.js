@@ -215,9 +215,12 @@ function launchApp() {
     if (!image.isEmpty()) app.dock.setIcon(image);
   }
 
-  // App deep-link scheme (rebranded to NodeGX in REV-007). The GitHub OAuth
-  // callback scheme stays `noodl://` (see github-oauth-handler.js) because it is
-  // bound to the externally-registered OAuth app redirect URI.
+  // App deep-link scheme (rebranded to NodeGX in REV-007). `noodl://` is still
+  // registered too — not for OAuth any more (F63's device flow has no redirect),
+  // but because `noodl:import/…` deep links from the design-tool import server
+  // depend on it (editor/index.ts:30). That registration lives in
+  // github-oauth-handler.js for historical reasons and is load-bearing there:
+  // deleting it as OAuth cleanup would silently kill design-tool import.
   app.setAsDefaultProtocolClient('nodegx');
 
   let win;
@@ -1007,12 +1010,12 @@ function launchApp() {
       console.log('open-url', uri);
       event.preventDefault();
 
-      // GitHub OAuth callbacks are handled by github-oauth-handler.js
-      // Only handle other noodl:// URIs here
-      if (!uri.startsWith('noodl://github-callback')) {
-        win && win.webContents.send('open-noodl-uri', uri);
-        process.env.noodlURI = uri;
-      }
+      // This used to skip `noodl://github-callback`, which the OAuth
+      // authorization-code flow produced. F63 replaced that flow with the device
+      // flow, which has no redirect and so no callback URL — nothing produces
+      // that scheme any more, and the guard silently swallowed nothing.
+      win && win.webContents.send('open-noodl-uri', uri);
+      process.env.noodlURI = uri;
     });
   });
 
