@@ -746,7 +746,27 @@ function _addAccessControl(def: DbCrudNodeModule) {
       displayName: 'Access Control Rules',
       group: 'Access Control Rules',
       description:
-        'Read and write rules stored on the record as it is written, each rule adding its own Target, Read and Write ports; backends that have no per-record access control ignore them',
+        'Read and write rules stored on the record as it is written, each rule adding its own Target, Read and Write ports; the NodeGX backend enforces them on every query and every realtime event, and backends with no per-record access control ignore them',
+      /**
+       * SPR-001 §1 (F87). Richard asked, while looking at this exact row, whether these
+       * rules "actually work … or is it a vestige of the Parse Server nodes". They work.
+       * The answer took forty minutes to re-derive from source, which is why it now lives
+       * where the question gets asked rather than only in `BAK-003-SECURITY-MODEL.md`.
+       *
+       * The chain, if you need to re-verify it: `_getACL` below → `newdbmodelpropertiesnode`
+       * / `setdbmodelpropertiesnode` → `ParseWireAdapter` `{ ACL: … }` →
+       * `nodegx-backend/src/security/model.ts`, whose JS predicate is property-tested
+       * against its SQL twin and shared with realtime delivery so query filtering and
+       * event filtering cannot drift apart.
+       */
+      tooltip:
+        'Access Control Rules\n' +
+        '\n' +
+        'Rules written onto the record itself and enforced by the backend, not by your app.\n' +
+        '\n' +
+        'On the NodeGX backend a record you have no Read rule for is never returned by a query, and its changes are never delivered to you over realtime. It is a real permission boundary, not a display filter.\n' +
+        '\n' +
+        'Backends that control access another way — Supabase, PostgREST, Directus, PocketBase — have no per-record ACL and ignore these rules. On those this port is disabled, with the reason on the row.',
       set: function (this: AccessControlInstance, value: unknown) {
         this._internal.accessControlRules = value as AccessControlInstance['_internal']['accessControlRules'];
       }

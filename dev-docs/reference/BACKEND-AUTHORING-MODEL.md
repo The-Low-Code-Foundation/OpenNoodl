@@ -147,6 +147,40 @@ the model above rather than from the nodes:
   privilege is role membership in `_Role`, which nothing in this family writes; and `ACL`,
   `objectId` and every `_`-prefixed column are refused by name rather than dropped.
 
+## Per-record access control: yes, it works
+
+The Access Control Rules on `Create Record` and `Set Record Properties` are **live and enforced**,
+not a Parse vestige. This section exists because the question was asked by the person who
+commissioned the backend, and answering it took forty minutes of reading source (SPR-001 §1, F87).
+
+The chain, verified end to end on 2026-08-06:
+
+| Link | Where |
+| --- | --- |
+| The node collects the ACL | `noodl-runtime/src/nodes/std-library/data/dbmodelcrudbase.ts` — `_getACL`, via the `accessControl` proplist |
+| The adapter sends it | `noodl-runtime/src/api/backends/ParseWireAdapter.ts` — `{ ACL: options.acl }` on create and on update |
+| The backend models it | `nodegx-backend/src/security/model.ts` — `principalKeys()` returns `['*', userId, …roles.map(r => 'role:' + r)]`, exactly the key set an ACL object may use |
+| The backend enforces it | Same file: a JS predicate **property-tested against its SQL twin** (`tests/security-model.test.ts`), and shared with realtime delivery so query filtering and event filtering cannot drift apart |
+
+So a record the caller has no read rule for is not returned by a query **and** its changes are not
+delivered over realtime. It is a permission boundary, not a display filter. The normative document
+is [`BAK-003-SECURITY-MODEL.md`](../tasks/phase-22-production-backend/BAK-003-SECURITY-MODEL.md),
+whose own header states the rule to keep: *if code and document disagree, the document wins and the
+code is the bug.*
+
+**Two things this does not mean.**
+
+- ⚠️ **The BYOB REST backends drop a per-record ACL.** `RestDataAdapter.ts` (~`:1032`) skips it when
+  the backend does not declare `data.acl`, warns to the console, and still creates the record.
+  That is deliberate — Supabase, PostgREST, Directus and PocketBase control access with roles, RLS
+  or API rules instead. It is **not** invisible in the editor: `data.acl` is bound to this port in
+  `nodegx-backend-contract/src/nodeCapabilities.ts`, so the property row is gated with its reason by
+  `capability-gating/gateForPort`. The console warning is the second line of defence, not the first.
+- ⚠️ **Nothing puts a user in a role at runtime.** A rule may say `role:member`; membership lives in
+  `_Role`, and no node in the library writes it (see also §Users above — the CWF-015 family
+  deliberately cannot manufacture privilege). Until that gap is closed, the role half of the model
+  is reachable only by hand in the editor's Permissions panel. Tracked as F86.
+
 ## Naming
 
 "Cloud function" is a Noodl-era term; the wire URLs say Parse for compatibility reasons that have
