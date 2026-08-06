@@ -34,6 +34,30 @@ Tools accept either form as input (a leading `/`/`#` is normalised away), and
 every component-shaped response carries both. Responses that show component
 instances point out that the node `type` is the legacy name.
 
+### Node ids are allocated, not accepted (AAQ-011/F12)
+
+A node id you send is a *request*. If the project already uses it in another
+component, the write reallocates it (`title` → `title-2`) and rewrites every
+reference inside that component — `parent`, `children[]`, `visualRoots[]`,
+`connections[].fromId/toId` — before validating or writing anything. The
+response then carries `remappedNodeIds` and `remapNote`; **use those ids in
+follow-up calls**, or re-read with `get_component`.
+
+Why the write does this rather than refusing: the `duplicate-node-id` rule
+(SUB-012) is project-wide, and the write gate is component-scoped, so the rule
+could only ever fire *after* a clean-looking write. Making a collision
+unreachable is cheaper than making a component-scoped gate express a
+project-wide rule, and it asks nothing of the caller — an agent cannot know
+which ids are free without reading every component first. It is also what the
+editor already does: `NodeGraphModel.rekeyAllIds()` on every copy/import path.
+
+Two things this does **not** do. Ids the component already had on disk are never
+touched, whatever they collide with — a pre-existing collision is not this
+write's doing, and the gate's policy is "don't make it worse". And two nodes
+sharing an id *within one payload* stay a hard refusal: that component's own
+connections would be genuinely ambiguous, and nothing can guess which node a
+wire meant.
+
 ## Tool surface (v1)
 
 ### Read (always registered)

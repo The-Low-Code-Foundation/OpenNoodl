@@ -58,6 +58,7 @@ import { catalogIndex } from '../catalog';
 import { ToolError } from '../errors';
 import type { ComponentFiles } from '../graph';
 import { reconcileHierarchy } from '../graph';
+import { deconflictNodeIds, remapNote } from '../project/nodeIds';
 import { pathToLegacyName, toPathForm, validateComponentPath } from '../paths';
 import { componentIsPage, registerPages, registrationSummary } from '../project/pageRegistration';
 import type { ProjectStore } from '../project/ProjectStore';
@@ -451,24 +452,39 @@ export function registerPlanTools(server: McpServer, store: ProjectStore): void 
           throw new ToolError('invalid-argument', 'Node hierarchy is inconsistent.', { errors: reconciled.errors });
         }
 
+        const legacyName = pathToLegacyName(operation.target);
         let candidate: ComponentFiles;
+        let baseline: ComponentFiles | undefined;
         if (operation.kind === 'create') {
           candidate = assembleCreateFiles({
             path: operation.target,
-            legacyName: pathToLegacyName(operation.target),
+            legacyName,
             nodes: reconciled.nodes,
             connections: args.connections,
             visualRoots: args.visual_roots,
             description: args.description
           });
         } else {
-          const baseline = store.readComponent(operation.target).files;
+          baseline = store.readComponent(operation.target).files;
           candidate = assembleSetFiles(baseline, {
             nodes: reconciled.nodes,
             connections: args.connections,
             visualRoots: args.visual_roots
           });
         }
+
+        // AAQ-011/F12 — same allocation rule as the direct doors, and it has to
+        // be here rather than at apply: the overlay of the *other* staged
+        // operations is part of the project this candidate must not collide
+        // with, and by apply time they are all being written together.
+        const deconflicted = deconflictNodeIds(
+          store,
+          legacyName,
+          candidate,
+          baseline,
+          stagedOverlay(serverPlan) // this operation's own previous staging is replaced below
+        );
+        candidate = deconflicted.files;
 
         const validation = validateStaged(store, serverPlan, operation, candidate, {
           allowUnknownTypes: args.allow_unknown_types
@@ -486,6 +502,9 @@ export function registerPlanTools(server: McpServer, store: ProjectStore): void 
           staged: operation.id,
           target: operation.target,
           warnings: validation.warnings,
+          ...(deconflicted.remapped.length > 0
+            ? { remappedNodeIds: deconflicted.remapped, remapNote: remapNote(deconflicted.remapped) }
+            : {}),
           progress: stagingProgress(serverPlan),
           remaining: unstagedIds(serverPlan)
         });

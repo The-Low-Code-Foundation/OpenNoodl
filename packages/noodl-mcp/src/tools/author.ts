@@ -20,6 +20,8 @@ import type { ComponentFiles, UpdateOperation } from '../graph';
 import { applyOperations, reconcileHierarchy } from '../graph';
 import { pathToLegacyName, validateComponentPath } from '../paths';
 import { componentIsPage, registerPages, registrationSummary } from '../project/pageRegistration';
+import type { NodeIdRemap } from '../project/nodeIds';
+import { deconflictNodeIds, remapNote } from '../project/nodeIds';
 import type { ProjectStore } from '../project/ProjectStore';
 import type { WriteValidation } from '../validate';
 import { validateCandidate, validateDeletion } from '../validate';
@@ -29,6 +31,7 @@ import type {
   DeletionRefusalDetails,
   ValidationFailureDetails,
   DeleteComponentResponse,
+  NodeIdRemapSummary,
   UpdateComponentResponse,
   WriteValidationSummary
 } from './responses';
@@ -193,6 +196,12 @@ function rejectWith(validation: WriteValidation, intent: string): never {
   throw new ToolError('validation-failed', `${intent} rejected — nothing was written.`, { ...details });
 }
 
+/** AAQ-011/F12 — the remap block, present only when ids actually moved. */
+function remapPayload(remapped: readonly NodeIdRemap[]): NodeIdRemapSummary {
+  if (remapped.length === 0) return {};
+  return { remappedNodeIds: [...remapped], remapNote: remapNote(remapped) };
+}
+
 function successPayload(validation: WriteValidation): WriteValidationSummary {
   const nonErrors = validation.diagnostics.filter((d) => d.severity !== 'error');
   return {
@@ -226,6 +235,9 @@ export function registerAuthorTools(server: McpServer, store: ProjectStore): voi
         'ports, connection endpoints); any error rejects it with actionable diagnostics and nothing is written. ' +
         'Node hierarchy may be given via `parent` fields, `children` arrays, or both. To use the new component ' +
         'from another graph, add a node whose type is the returned legacyName. ' +
+        'Node ids must be unique across the whole project: any id you send that is already used elsewhere is ' +
+        'reallocated (and the graph rewired to match) — see `remappedNodeIds` in the response and use those ids ' +
+        'from then on. ' +
         'If the component is a page (its path is under Pages/, or its graph has a `Page` node) it is also ' +
         'registered in the project router — returned as `registeredPages`, and a no-op if already listed.',
       inputSchema: CREATE_COMPONENT_SHAPE
@@ -252,7 +264,7 @@ export function registerAuthorTools(server: McpServer, store: ProjectStore): voi
           throw new ToolError('invalid-argument', 'Node hierarchy is inconsistent.', { errors: reconciled.errors });
         }
 
-        const candidate = assembleCreateFiles({
+        const assembled = assembleCreateFiles({
           path: args.path,
           legacyName,
           type: args.type,
@@ -261,6 +273,12 @@ export function registerAuthorTools(server: McpServer, store: ProjectStore): voi
           visualRoots: args.visual_roots,
           description: args.description
         });
+
+        // AAQ-011/F12: before validating, move any id this project already uses
+        // elsewhere. The write gate is component-scoped and cannot see a
+        // project-wide collision, so the fix is to make one unreachable rather
+        // than to detect one. See `project/nodeIds.ts`.
+        const { files: candidate, remapped } = deconflictNodeIds(store, legacyName, assembled);
 
         const validation = validateCandidate(store, args.path, candidate, undefined, {
           allowUnknownTypes: args.allow_unknown_types
@@ -283,6 +301,7 @@ export function registerAuthorTools(server: McpServer, store: ProjectStore): voi
           revision,
           registry: 'updated',
           ...registrationSummary(registration),
+          ...remapPayload(remapped),
           ...successPayload(validation)
         };
         return jsonResult(payload);
@@ -298,6 +317,8 @@ export function registerAuthorTools(server: McpServer, store: ProjectStore): voi
         'Change one component, either with `set` (full replacement of nodes/connections/visualRoots) or with a ' +
         'batch of `operations` (add/update/remove nodes, add/remove connections, set ports/info) — one call, one ' +
         'reviewable change. Validated before writing; new errors reject the whole batch and nothing is written. ' +
+        'A node id this call introduces that is already used elsewhere in the project is reallocated and ' +
+        'reported as `remappedNodeIds`; ids the component already had are never touched. ' +
         'Pass the `revision` from get_component as `if_revision` to fail cleanly if the component changed since ' +
         'you read it.',
       inputSchema: {
@@ -356,6 +377,13 @@ export function registerAuthorTools(server: McpServer, store: ProjectStore): voi
         candidate.component.modifiedBy = 'noodl-mcp';
         backfillIds(candidate);
 
+        // AAQ-011/F12. `baseline` is passed so ids the component *already* had
+        // are never touched — a pre-existing collision is not this write's doing,
+        // and the gate's rule is "don't make it worse", not "fix everything".
+        const deconflicted = deconflictNodeIds(store, stored.legacyName, candidate, baseline);
+        candidate = deconflicted.files;
+        const remapped = deconflicted.remapped;
+
         const validation = validateCandidate(store, stored.key, candidate, baseline, {
           allowUnknownTypes: args.allow_unknown_types
         });
@@ -373,6 +401,7 @@ export function registerAuthorTools(server: McpServer, store: ProjectStore): voi
           revision,
           ...(applied ? { applied } : {}),
           ...registrationSummary(registration),
+          ...remapPayload(remapped),
           ...successPayload(validation)
         };
         return jsonResult(payload);

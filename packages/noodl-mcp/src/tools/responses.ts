@@ -16,6 +16,7 @@ import type { CatalogExample, ExampleRow, NodeTypeDetail, NodeTypeLookupMiss, No
 import type { ComponentDescription } from '../describe';
 import type { ComponentV2File, ConnectionV2, Diagnostic, NodeV2, RegistryV2File, ValidationReport } from '../editor-deps';
 import type { ToolError } from '../errors';
+import type { NodeIdRemap } from '../project/nodeIds';
 import type { ComponentListRow, Usage } from '../project/ProjectStore';
 import type { StructuralFailure, WriteValidation } from '../validate';
 
@@ -173,7 +174,21 @@ export interface PageRegistrationSummary {
   };
 }
 
-export interface CreateComponentResponse extends WriteValidationSummary, PageRegistrationSummary {
+/**
+ * AAQ-011/F12 — node ids this write had to move, and why.
+ *
+ * Present only when something moved. The rewrite is safe to do silently (a node
+ * id is never referenced from outside its own component) but not honest to
+ * *report* silently: a caller that intends a follow-up `update_component` keyed
+ * on the id it just sent needs to know the id changed. See
+ * `project/nodeIds.ts`.
+ */
+export interface NodeIdRemapSummary {
+  remappedNodeIds?: NodeIdRemap[];
+  remapNote?: string;
+}
+
+export interface CreateComponentResponse extends WriteValidationSummary, PageRegistrationSummary, NodeIdRemapSummary {
   created: string;
   legacyName: string;
   type: string;
@@ -181,7 +196,7 @@ export interface CreateComponentResponse extends WriteValidationSummary, PageReg
   registry: 'updated';
 }
 
-export interface UpdateComponentResponse extends WriteValidationSummary, PageRegistrationSummary {
+export interface UpdateComponentResponse extends WriteValidationSummary, PageRegistrationSummary, NodeIdRemapSummary {
   updated: string;
   revision: string;
   /** Present for the `operations` form; absent for `set`. */
