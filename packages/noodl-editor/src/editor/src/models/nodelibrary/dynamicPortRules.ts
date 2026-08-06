@@ -14,9 +14,16 @@
  *   "condition": "status = success OR status NOT SET",   // optional
  *   "parameter": "params",
  *   "port": { "name": "pm-{{*}}", "displayName": "{{*}}", "type": "*",
+ *             "typeFromParameter": "ptype-{{*}}",        // optional, CWF-014
  *             "plug": "input", "group": "Parameters" }
  * }
  * ```
+ *
+ * `typeFromParameter` (CWF-014) names a *sibling* parameter holding this port's
+ * declared type — `ptype-total: "number"` makes `pm-total` a `number` port. It
+ * is a second question about parameters, not a computation: the value is used
+ * verbatim as the port type, and anything falsy or `'*'` leaves the template's
+ * own type in place. The whole of it is one lookup, which is the line below.
  *
  * **Where the line is.** A rule may ask a *question* about parameters (the
  * `condition`, evaluated by the same code `conditionalports/*` uses) and expand
@@ -216,6 +223,20 @@ export function generatedPortsForNode(node: RuleNodeLike): GeneratedPort[] {
       const port = instantiate(rule.port, name);
       if (taken[port.name]) continue;
       taken[port.name] = true;
+
+      // CWF-014 — the declared type, if the rule asked for one. `instantiate`
+      // has already turned `ptype-{{*}}` into `ptype-total`, so this is a
+      // lookup and nothing else. The meta field never reaches the port: a port
+      // carrying an unknown key would be compared, exported and rendered with
+      // it, and `portsEqual` would start reporting a difference the editor
+      // cannot show.
+      const typeFrom = port.typeFromParameter;
+      delete port.typeFromParameter;
+      if (typeof typeFrom === 'string') {
+        const declared = node.getParameter(typeFrom);
+        if (declared && declared !== '*') port.type = declared;
+      }
+
       ports.push(port);
     }
   }

@@ -104,7 +104,32 @@ describe('WFA-009: the library rule and the runtime setup() emit identical ports
   });
 
   describe('noodl.cloud.request', () => {
-    for (const { label, parameters } of CASES) {
+    // CWF-014 added three rules over the same parameter, so every case below now
+    // compares four ports per name rather than one — including the `pm-` port's
+    // type, which a `ptype-` parameter changes on both sides or neither.
+    const TYPED_CASES: { label: string; parameters: Parameters }[] = [
+      ...CASES,
+      { label: 'a typed parameter', parameters: { params: 'total', 'ptype-total': 'number' } },
+      {
+        label: 'one typed name among untyped ones',
+        parameters: { params: 'id,total,note', 'ptype-total': 'number' }
+      },
+      { label: 'a parameter typed back to Any', parameters: { params: 'total', 'ptype-total': '*' } },
+      {
+        label: 'a type an older or newer editor wrote',
+        parameters: { params: 'total', 'ptype-total': 'quaternion' }
+      },
+      {
+        label: 'required and defaulted',
+        parameters: { params: 'total', 'ptype-total': 'number', 'preq-total': true, 'pdef-total': '0' }
+      },
+      {
+        label: 'a contract row left behind after its name was deleted',
+        parameters: { params: 'id', 'ptype-total': 'number' }
+      }
+    ];
+
+    for (const { label, parameters } of TYPED_CASES) {
       it(label, () => {
         expect(portsFromLibraryRule(requestNode, parameters)).toEqual(
           portsFromRuntimeSetup(requestSetup, 'noodl.cloud.request', parameters)
@@ -121,8 +146,38 @@ describe('WFA-009: what the ports actually are', () => {
     ]);
   });
 
-  it('a Request parameter name becomes an output port to read it', () => {
-    expect(portsFromLibraryRule(requestNode, { params: 'total' })).toEqual([
+  it('a Request parameter name becomes an output port to read it, and three rows to declare what it is', () => {
+    const ports = portsFromLibraryRule(requestNode, { params: 'total' });
+    expect(ports[0]).toEqual({
+      name: 'pm-total',
+      displayName: 'total',
+      type: '*',
+      plug: 'output',
+      group: 'Parameters'
+    });
+    // CWF-014. The value port keeps its place and its shape — `typeFromParameter`
+    // is a rule-level instruction and must never survive onto the port itself.
+    expect(ports[0]).not.toHaveProperty('typeFromParameter');
+    expect(ports.map((p) => p.name)).toEqual(['pm-total', 'ptype-total', 'preq-total', 'pdef-total']);
+  });
+
+  it('CWF-014: a declared type reaches the value port, so the wire out of it is checked', () => {
+    const ports = portsFromLibraryRule(requestNode, { params: 'total', 'ptype-total': 'number' });
+    expect(ports[0]).toEqual({
+      name: 'pm-total',
+      displayName: 'total',
+      type: 'number',
+      plug: 'output',
+      group: 'Parameters'
+    });
+  });
+
+  it('CWF-014: an undeclared parameter is `*`, exactly as before — this is the whole of the migration', () => {
+    const before = portsFromLibraryRule(requestNode, { params: 'id,total' }).filter((p) =>
+      p.name.startsWith('pm-')
+    );
+    expect(before).toEqual([
+      { name: 'pm-id', displayName: 'id', type: '*', plug: 'output', group: 'Parameters' },
       { name: 'pm-total', displayName: 'total', type: '*', plug: 'output', group: 'Parameters' }
     ]);
   });
@@ -132,7 +187,7 @@ describe('WFA-009: what the ports actually are', () => {
   });
 
   it('a Request has no such condition — its parameters are the caller’s, not the answer’s', () => {
-    expect(portsFromLibraryRule(requestNode, { params: 'total', status: 'failure' })).toHaveLength(1);
+    expect(portsFromLibraryRule(requestNode, { params: 'total', status: 'failure' })).toHaveLength(4);
   });
 
   it('an emptied list mints nothing, rather than a port with a blank name', () => {

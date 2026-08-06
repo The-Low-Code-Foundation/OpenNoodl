@@ -37145,6 +37145,137 @@
       }
     },
     {
+      "typeName": "net.noodl.Log",
+      "displayName": "Log",
+      "category": "Utilities",
+      "isVisual": false,
+      "isDeprecated": false,
+      "inNodePicker": true,
+      "availableIn": [
+        "browser",
+        "cloud"
+      ],
+      "providedBy": "noodl-runtime",
+      "ssr": {
+        "compat": "safe"
+      },
+      "docs": "https://docs.noodl.net/nodes/utilities/log",
+      "inputs": [
+        {
+          "name": "data",
+          "displayName": "Data",
+          "group": "General",
+          "plug": "input",
+          "type": {
+            "name": "object"
+          },
+          "isSignal": false,
+          "description": "An optional object written alongside the message as structured fields. In a cloud function every property whose NAME says it holds a credential is redacted on the way out"
+        },
+        {
+          "name": "level",
+          "displayName": "Level",
+          "group": "General",
+          "plug": "input",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "Debug",
+                "value": "debug"
+              },
+              {
+                "label": "Info",
+                "value": "info"
+              },
+              {
+                "label": "Warning",
+                "value": "warn"
+              },
+              {
+                "label": "Error",
+                "value": "error"
+              }
+            ]
+          },
+          "isSignal": false,
+          "default": "info",
+          "description": "How loud this line is. In a cloud function the backend drops anything below its configured level, so Debug lines cost nothing in production unless someone turns them on"
+        },
+        {
+          "name": "log",
+          "displayName": "Log",
+          "group": "Actions",
+          "plug": "input",
+          "type": {
+            "name": "signal",
+            "allowConnectionsOnly": true
+          },
+          "isSignal": true,
+          "description": "Writes the line. Nothing is written until this fires"
+        },
+        {
+          "name": "message",
+          "displayName": "Message",
+          "group": "General",
+          "plug": "input",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "description": "The line to write. Free text, so keep credentials out of it by habit — the backend does scrub the values of its own stored secrets out of this before it is written, but that cannot cover a credential it never issued"
+        },
+        {
+          "name": "value",
+          "displayName": "Value",
+          "group": "General",
+          "plug": "input",
+          "type": {
+            "name": "*"
+          },
+          "isSignal": false,
+          "description": "Passed straight through to the Value output, so this node can sit inline on a wire"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation. This node has no other outcome — no Unchanged and no Failure — so it always fires together with Done, and wiring either one does the same thing. It is here on every action so that reaching for it is never a per-node decision"
+        },
+        {
+          "name": "done",
+          "displayName": "Done",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires once the line has been written"
+        },
+        {
+          "name": "value",
+          "displayName": "Value",
+          "group": "Value",
+          "plug": "output",
+          "type": {
+            "name": "*"
+          },
+          "isSignal": false,
+          "description": "Whatever arrived on the Value input, unchanged — this node never alters what passes through it"
+        }
+      ],
+      "dynamicPorts": null,
+      "parameterEncoding": null
+    },
+    {
       "typeName": "net.noodl.Now",
       "displayName": "Now",
       "category": "Utilities",
@@ -59035,7 +59166,7 @@
     "docs": "docs/node-catalog/ENRICHMENT.md",
     "coverage": {
       "documented": 171,
-      "total": 171
+      "total": 172
     }
   },
   "compatibility": {

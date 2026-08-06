@@ -5664,6 +5664,104 @@
       ]
     },
     {
+      "name": "net.noodl.Log",
+      "displayNodeName": "Log",
+      "docs": "https://docs.noodl.net/nodes/utilities/log",
+      "shortDocs": "https://docs.noodl.net/nodes/utilities/log-short.md",
+      "category": "Utilities",
+      "color": "default",
+      "ports": [
+        {
+          "name": "message",
+          "type": "string",
+          "plug": "input",
+          "group": "General",
+          "displayName": "Message",
+          "description": "The line to write. Free text, so keep credentials out of it by habit — the backend does scrub the values of its own stored secrets out of this before it is written, but that cannot cover a credential it never issued"
+        },
+        {
+          "name": "level",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "Debug",
+                "value": "debug"
+              },
+              {
+                "label": "Info",
+                "value": "info"
+              },
+              {
+                "label": "Warning",
+                "value": "warn"
+              },
+              {
+                "label": "Error",
+                "value": "error"
+              }
+            ]
+          },
+          "plug": "input",
+          "group": "General",
+          "displayName": "Level",
+          "description": "How loud this line is. In a cloud function the backend drops anything below its configured level, so Debug lines cost nothing in production unless someone turns them on",
+          "default": "info"
+        },
+        {
+          "name": "data",
+          "type": "object",
+          "plug": "input",
+          "group": "General",
+          "displayName": "Data",
+          "description": "An optional object written alongside the message as structured fields. In a cloud function every property whose NAME says it holds a credential is redacted on the way out"
+        },
+        {
+          "name": "value",
+          "type": "*",
+          "plug": "input",
+          "group": "General",
+          "displayName": "Value",
+          "description": "Passed straight through to the Value output, so this node can sit inline on a wire"
+        },
+        {
+          "name": "log",
+          "type": {
+            "name": "signal",
+            "allowConnectionsOnly": true
+          },
+          "plug": "input",
+          "group": "Actions",
+          "displayName": "Log",
+          "description": "Writes the line. Nothing is written until this fires"
+        },
+        {
+          "name": "value",
+          "type": "*",
+          "plug": "output",
+          "group": "Value",
+          "displayName": "Value",
+          "description": "Whatever arrived on the Value input, unchanged — this node never alters what passes through it"
+        },
+        {
+          "name": "done",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Done",
+          "description": "Fires once the line has been written"
+        },
+        {
+          "name": "completed",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Completed",
+          "description": "Fires after every invocation. This node has no other outcome — no Unchanged and no Failure — so it always fires together with Done, and wiring either one does the same thing. It is here on every action so that reaching for it is never a per-node decision"
+        }
+      ]
+    },
+    {
       "name": "Switch",
       "docs": "https://docs.noodl.net/nodes/logic/switch",
       "shortDocs": "https://docs.noodl.net/nodes/logic/switch-short.md",
@@ -9373,7 +9471,8 @@
             "items": [
               "Screen Resolution",
               "Open File Picker",
-              "On App Error"
+              "On App Error",
+              "net.noodl.Log"
             ]
           },
           {

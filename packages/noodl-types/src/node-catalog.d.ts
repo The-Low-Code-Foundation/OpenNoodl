@@ -126,6 +126,7 @@ export type NodeTypeName =
   | 'net.noodl.HTTP'
   | 'net.noodl.Hash'
   | 'net.noodl.JSONStreamParser'
+  | 'net.noodl.Log'
   | 'net.noodl.Now'
   | 'net.noodl.ObjectChanged'
   | 'net.noodl.OptimisticUpdate'

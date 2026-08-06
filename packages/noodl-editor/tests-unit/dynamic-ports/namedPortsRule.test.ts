@@ -71,19 +71,62 @@ describe('WFA-009: a Response node offers a port per response parameter', () => 
 });
 
 describe('WFA-009: a Request node offers a port per request parameter', () => {
+  /** The value ports only — CWF-014 added three declaration rows beside each. */
+  const valuePorts = (parameters: Record<string, unknown>) =>
+    portNames(parameters, 'noodl.cloud.request').filter((n) => n.startsWith('pm-'));
+
   it('offers an output to read, not an input to fill', () => {
-    expect(generatedPortsForNode(nodeOfType('noodl.cloud.request', { params: 'total' }))).toEqual([
-      { name: 'pm-total', displayName: 'total', type: '*', plug: 'output', group: 'Parameters' }
-    ]);
+    const ports = generatedPortsForNode(nodeOfType('noodl.cloud.request', { params: 'total' }));
+    expect(ports[0]).toEqual({
+      name: 'pm-total',
+      displayName: 'total',
+      type: '*',
+      plug: 'output',
+      group: 'Parameters'
+    });
   });
 
   it('changing the value changes the ports', () => {
-    expect(portNames({ params: 'a,b' }, 'noodl.cloud.request')).toEqual(['pm-a', 'pm-b']);
-    expect(portNames({ params: 'b' }, 'noodl.cloud.request')).toEqual(['pm-b']);
+    expect(valuePorts({ params: 'a,b' })).toEqual(['pm-a', 'pm-b']);
+    expect(valuePorts({ params: 'b' })).toEqual(['pm-b']);
   });
 
   it('is not conditioned on anything — a Request has no status to answer with', () => {
-    expect(portNames({ params: 'a', status: 'failure' }, 'noodl.cloud.request')).toEqual(['pm-a']);
+    expect(valuePorts({ params: 'a', status: 'failure' })).toEqual(['pm-a']);
+  });
+
+  /**
+   * CWF-014 — the declaration rows, read off the same committed library the
+   * editor serves. Four rules over one parameter, rule-major, which is the order
+   * `request.ts`'s `setup()` has to reproduce (see the parity suite).
+   */
+  it('CWF-014: offers a Type, Required and Default row beside every value port', () => {
+    expect(portNames({ params: 'id,total' }, 'noodl.cloud.request')).toEqual([
+      'pm-id',
+      'pm-total',
+      'ptype-id',
+      'ptype-total',
+      'preq-id',
+      'preq-total',
+      'pdef-id',
+      'pdef-total'
+    ]);
+  });
+
+  it('CWF-014: a declared type reaches the value port, and never leaks the rule that put it there', () => {
+    const [value, typeRow] = generatedPortsForNode(
+      nodeOfType('noodl.cloud.request', { params: 'total', 'ptype-total': 'number' })
+    );
+    expect(value.type).toBe('number');
+    expect(value).not.toHaveProperty('typeFromParameter');
+    // The picker itself is an ordinary enum port, which is why this needed no
+    // new property-editor control.
+    expect((typeRow.type as { name: string }).name).toBe('enum');
+  });
+
+  it('CWF-014: an undeclared parameter is `*`, which is every function written before the task', () => {
+    const [value] = generatedPortsForNode(nodeOfType('noodl.cloud.request', { params: 'total' }));
+    expect(value.type).toBe('*');
   });
 });
 
@@ -99,8 +142,16 @@ describe('WFA-009: which types the mechanism claims', () => {
     expect(typeGeneratesNamedPorts(nodeType('noodl.cloud.aggregate'))).toBe(false);
     expect(typeGeneratesNamedPorts(nodeType('noodl.cloud.sendemail'))).toBe(false);
 
+    // A snapshot of who uses the mechanism, so a rule that starts matching by
+    // accident fails here. It grows when a node adopts it deliberately —
+    // CWF-015's user nodes did, and that is a diff worth reading, not a leak.
     const claimed = (library.nodetypes as LibraryType[]).filter((t) => typeGeneratesNamedPorts(t)).map((t) => t.name);
-    expect(claimed.sort()).toEqual(['noodl.cloud.request', 'noodl.cloud.response']);
+    expect(claimed.sort()).toEqual([
+      'noodl.cloud.createuser',
+      'noodl.cloud.request',
+      'noodl.cloud.response',
+      'noodl.cloud.updateuser'
+    ]);
   });
 
   it('generates nothing for a type with no rule, however its parameters are set', () => {

@@ -29,6 +29,9 @@ import * as path from 'path';
 
 import type { ExecutionHistory } from '../execution/ExecutionStore';
 import { logger } from '../ops/logger';
+// CWF-013 — type-only, from the cloud runtime's own declaration, so the sink this file builds
+// and the `NodeScope.runContext` a node reads cannot drift apart.
+import type { NodeRunContext, RuntimeLogEntry } from '@cloud-runtime';
 
 // Bundled from noodl-viewer-cloud/src by esbuild (test-time: jest mapper).
 // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -36,6 +39,15 @@ const { CloudRunner, isCloudFunctionTimeout } = require('@cloud-runtime') as {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   CloudRunner: any;
   isCloudFunctionTimeout(e: unknown): boolean;
+};
+// CWF-014 — from the node's own module rather than the package entry, the way
+// `execution-history` is reached. The guard is checked by `name` for the same
+// reason `isCloudFunctionTimeout` is: this package arrives through a bundler
+// alias, so an `instanceof` that depends on one module instance is a check that
+// silently starts answering "no".
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const { isCloudFunctionBadRequest } = require('@cloud-runtime/nodes/cloud/requestContract') as {
+  isCloudFunctionBadRequest(e: unknown): boolean;
 };
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const { scrubRequestForLogging } = require('@cloud-runtime/execution-history');
@@ -87,7 +99,31 @@ export interface WorkflowRunnerOptions {
    * without waiting the real duration.
    */
   getFunctionTimeoutMs?: (functionName: string) => number | undefined;
+  /**
+   * CWF-013 — the value-based scrub a `Log` node's free text goes through before
+   * it is written. Supplied by the service, which is the only thing that holds a
+   * `SecretsStore`; absent means "no secrets to recognise", not "skip redaction"
+   * (the key-based `redact()` inside `logger` runs either way).
+   */
+  scrubSecretValues?: LogValueScrubber;
 }
+
+/** What {@link WorkflowRunnerOptions.scrubSecretValues} has to be able to do. */
+export interface LogValueScrubber {
+  scrub(text: string): string;
+  scrubValue(value: unknown): unknown;
+}
+
+/**
+ * How many `Log` lines one run may write before the rest are counted and dropped.
+ *
+ * ⚠️ The volume trap CWF-013 names: a `Log` node inside a `Run Tasks` loop over 10,000 items
+ * writes 10,000 stdout lines AND 10,000 execution-record steps, and the execution store is the
+ * thing that fills a disk. The cap is per run rather than per second because a run is the unit an
+ * author can reason about, and the suppression itself is announced — a silent cap is a debugging
+ * session where half the evidence is missing and nothing says so.
+ */
+export const MAX_LOG_LINES_PER_RUN = 200;
 
 export interface RunnerResponse {
   statusCode: number;
@@ -134,6 +170,7 @@ export class WorkflowRunner {
   private readonly backendName: string;
   private readonly enableDebugInspectors: boolean;
   private readonly getFunctionTimeoutMs?: (functionName: string) => number | undefined;
+  private readonly scrubSecretValues?: LogValueScrubber;
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private cloudRunner: any = null;
@@ -147,6 +184,82 @@ export class WorkflowRunner {
     this.backendName = options.backendName;
     this.enableDebugInspectors = options.enableDebugInspectors || false;
     this.getFunctionTimeoutMs = options.getFunctionTimeoutMs;
+    this.scrubSecretValues = options.scrubSecretValues;
+  }
+
+  /**
+   * CWF-013 — where a `Log` node's line goes, for ONE run.
+   *
+   * Built per run and handed to `CloudRunner.run`, which puts it on the request's own
+   * `NodeScope`. That is what carries the request id: two functions run concurrently in this
+   * process, so a module-level "current run" would attribute one caller's line to the other.
+   *
+   * ## ⚠️ Two redactions, and neither is a superset of the other
+   *
+   *  1. `logger.log` runs the service's one `redact()` over every field — **key-based**, so it
+   *     catches `{ apiKey: … }` whatever the value is.
+   *  2. `scrubSecretValues` runs first, over the message text and the data, and is
+   *     **value-based**. It exists because `redact()`'s own comment concedes the gap — *"a secret
+   *     stored under an innocent name is not caught"* — and this node is the first thing in the
+   *     product to walk into it: `Message` is free author text with no key in front of it, and
+   *     `Secret → Log` is a two-node graph.
+   *
+   * The execution-record copy goes through both too. A record that is safer than the log, or
+   * less safe, is a record nobody can reason about.
+   */
+  private createLogSink(
+    functionName: string,
+    execLogger: ReturnType<ExecutionHistory['createLogger']>,
+    trigger?: RunTriggerContext
+  ): NodeRunContext {
+    const requestId = trigger && trigger.requestId;
+    let written = 0;
+
+    return {
+      requestId,
+      log: (entry: RuntimeLogEntry) => {
+        written++;
+        if (written > MAX_LOG_LINES_PER_RUN) {
+          // Announce the cap exactly once, then go quiet. A silent cap is worse than no cap.
+          if (written === MAX_LOG_LINES_PER_RUN + 1) {
+            logger.warn('function.log.suppressed', {
+              function: functionName,
+              requestId,
+              limit: MAX_LOG_LINES_PER_RUN,
+              hint: 'a Log node inside a loop — the rest of this run’s lines are dropped'
+            });
+          }
+          return;
+        }
+
+        const level = entry && entry.level ? entry.level : 'info';
+        const scrub = this.scrubSecretValues;
+        const message = scrub ? scrub.scrub(String(entry.message || '')) : String((entry && entry.message) || '');
+        const data = entry && entry.data !== undefined ? (scrub ? scrub.scrubValue(entry.data) : entry.data) : undefined;
+
+        // `function.log` is one event name for every author line, so an operator can filter the
+        // graph's own output apart from the service's with `jq 'select(.event=="function.log")'`.
+        logger.log(level, 'function.log', {
+          function: functionName,
+          requestId,
+          nodeId: entry && entry.nodeId,
+          message,
+          ...(data !== undefined ? { data } : {})
+        });
+
+        if (execLogger) {
+          // A step per line, started and completed in the same breath: a log line has no
+          // duration, and the History panel already renders steps.
+          const stepId = execLogger.startNode({
+            nodeId: (entry && entry.nodeId) || 'log',
+            nodeType: 'net.noodl.Log',
+            nodeName: 'Log',
+            inputData: { level, message, ...(data !== undefined ? { data } : {}) }
+          });
+          execLogger.completeNode(stepId, true);
+        }
+      }
+    };
   }
 
   /**
@@ -176,6 +289,33 @@ export class WorkflowRunner {
         code: 'function/timeout',
         function: functionName,
         timeoutMs
+      })
+    };
+  }
+
+  /**
+   * CWF-014 — a request refused by the function's own declared contract.
+   *
+   * **400, not 500**, and the distinction is the whole point of the task: a 500
+   * says the endpoint is broken, a 400 says the caller's body is. The body names
+   * every field that was wrong, because the caller of a cloud function is a
+   * supplier's webhook or another team's app, and "Invalid request body" with no
+   * field name is a support ticket rather than an error.
+   *
+   * ⚠️ It reports the fields that failed and never the values that failed. The
+   * caller sent them, so echoing them leaks nothing to *them* — but this string
+   * also reaches the execution record and the ops log, and `redact()` is
+   * key-based (see the note in `run`), so a value echoed here is a value stored
+   * unredacted.
+   */
+  private badRequestResponse(e: unknown): RunnerResponse {
+    const error = e as { message: string; fields?: unknown[] };
+    return {
+      statusCode: 400,
+      body: JSON.stringify({
+        error: error.message,
+        code: 'function/bad-request',
+        fields: error.fields || []
       })
     };
   }
@@ -337,7 +477,11 @@ export class WorkflowRunner {
 
     try {
       safeLog(`Executing function: ${functionName}`);
-      const response = await this.cloudRunner.run(functionName, request, { timeoutMs });
+      const response = await this.cloudRunner.run(functionName, request, {
+        timeoutMs,
+        // CWF-013: this is what gives a `Log` node in the graph somewhere to go.
+        runContext: this.createLogSink(functionName, execLogger, trigger)
+      });
       const duration = Date.now() - startTime;
       safeLog(`Function ${functionName} completed in ${duration}ms`);
 
@@ -350,6 +494,7 @@ export class WorkflowRunner {
       const duration = Date.now() - startTime;
       const message = e instanceof Error ? e.message : String(e);
       const timedOut = isCloudFunctionTimeout(e);
+      const badRequest = isCloudFunctionBadRequest(e);
 
       // CWF-018: the operator-facing line. It goes through the ops logger, not
       // `safeLog`, because that is the one door that is levelled, structured and
@@ -373,6 +518,15 @@ export class WorkflowRunner {
           triggerSource: trigger && trigger.source,
           hint: 'no Response node was reached — check the graph has no path that ends without one'
         });
+      } else if (badRequest) {
+        // CWF-014: a refused body is the caller's mistake, not the operator's.
+        // `warn`, not `error`, or every malformed webhook becomes a page.
+        logger.warn('function.badRequest', {
+          function: functionName,
+          durationMs: duration,
+          requestId: trigger && trigger.requestId,
+          error: message
+        });
       } else {
         logger.error('function.failed', {
           function: functionName,
@@ -391,6 +545,7 @@ export class WorkflowRunner {
       }
 
       if (timedOut) return this.timeoutResponse(functionName, timeoutMs);
+      if (badRequest) return this.badRequestResponse(e);
       return { statusCode: 500, body: JSON.stringify({ error: message }) };
     }
   }
@@ -416,7 +571,14 @@ export class WorkflowRunner {
     }
     const timeoutMs = this.timeoutFor(functionName);
     try {
-      return await this.cloudRunner.run(functionName, request, { timeoutMs });
+      // CWF-013: a function called AS A STEP logs too. It has no execution record of its own —
+      // the engine writes the one per-step record — so the sink gets no `execLogger` and the
+      // lines land in the structured log only. Silence here would mean a function that logs
+      // when you call it and does not when a workflow does, which is the worst of both.
+      return await this.cloudRunner.run(functionName, request, {
+        timeoutMs,
+        runContext: this.createLogSink(functionName, null)
+      });
     } catch (e) {
       if (isCloudFunctionTimeout(e)) {
         logger.error('function.timeout', {
@@ -427,6 +589,12 @@ export class WorkflowRunner {
         });
         return this.timeoutResponse(functionName, timeoutMs);
       }
+      // CWF-014: a step whose resolved params do not satisfy the function's
+      // contract gets the same 400 an HTTP caller does, with the same field
+      // list — so a workflow that maps `previous.result.total` into a `number`
+      // parameter and gets a string fails naming the field, in the step's own
+      // execution record, rather than as an opaque 500.
+      if (isCloudFunctionBadRequest(e)) return this.badRequestResponse(e);
       const message = e instanceof Error ? e.message : String(e);
       return { statusCode: 500, body: JSON.stringify({ error: message }) };
     }
