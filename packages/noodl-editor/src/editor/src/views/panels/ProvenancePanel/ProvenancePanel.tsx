@@ -9,6 +9,7 @@ import { ProjectModel } from '@noodl-models/projectmodel';
 import { WarningsModel } from '@noodl-models/warningsmodel';
 
 import { EventDispatcher } from '../../../../../shared/utils/EventDispatcher';
+import { ViewerConnection } from '../../../ViewerConnection';
 import { NodeGraphContextTmp } from '../../../contexts/NodeGraphContext/NodeGraphContext';
 import { LIVE_POLL_MS, TraceSession } from '../../../utils/provenance/TraceSession';
 import { annotateWarnings } from '../../../utils/provenance/annotateWarnings';
@@ -218,21 +219,32 @@ export function ProvenancePanel() {
    * while `!isPreviewRunning` and only re-evaluated on a render this panel had no reason to do.
    *
    * That is a pane stuck on a warning about the preview while the preview is running, which is
-   * exactly the report. The subscription costs nothing and removes the whole class: a viewer
-   * registering is the one event that can turn either sentence from true into stale.
+   * exactly the report. The subscription costs nothing and removes the whole class: a preview
+   * appearing or going away is the one thing that can turn either sentence from true into stale.
+   *
+   * ⚠️ **Two signals, and both are needed.** `ViewerRegistered` is emitted the moment the relay
+   * says a viewer registered ([ViewerConnection.ts:179](../../../ViewerConnection.ts#L179)) — but
+   * `isPreviewRunning` reads `NodeLibraryImporter`'s client list, which is not populated until the
+   * viewer's *node library* arrives one message later (`loadNodeLibrary`). So a re-pull on
+   * registration alone still finds no client, sends nothing, and re-renders a Refresh button that
+   * is still disabled. `viewerClientsChanged` is the signal for the state this panel actually
+   * reads, and it fires on the way out as well.
    */
   useEffect(() => {
     const group = {};
-    EventDispatcher.instance.on(
-      'ViewerRegistered',
-      () => {
-        // Quiet: this is not a gesture, and a status line appearing on its own reads as a hang.
-        if (target) void load(target, { quiet: true });
-        else void session.refreshTopology().then(bump);
-      },
-      group
-    );
-    return () => EventDispatcher.instance.off(group);
+    const reground = () => {
+      // Quiet: this is not a gesture, and a status line appearing on its own reads as a hang.
+      if (target) void load(target, { quiet: true });
+      else void session.refreshTopology().then(bump);
+    };
+
+    EventDispatcher.instance.on('ViewerRegistered', reground, group);
+    ViewerConnection.instance?.on('viewerClientsChanged', reground, group);
+
+    return () => {
+      EventDispatcher.instance.off(group);
+      ViewerConnection.instance?.off(group);
+    };
   }, [target, load, session, bump]);
 
   /**
