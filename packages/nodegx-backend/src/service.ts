@@ -47,6 +47,7 @@ import { logger } from './ops/logger';
 import { SecretValueScrubber } from './ops/log-scrub';
 import { AuditLog, ensureAuditTable } from './ops/audit';
 import { SystemUsers, SystemUserRequest, SystemUserResult } from './users/SystemUsers';
+import { SystemRoles, SystemRoleRequest, SystemRoleResult } from './roles/SystemRoles';
 import { TriggerSubsystem } from './triggers/TriggerSubsystem';
 import { BackupSubsystem } from './backup/BackupSubsystem';
 import { FileSubsystem } from './storage/FileSubsystem';
@@ -130,6 +131,12 @@ export class BackendService {
   private mailer: Mailer | null = null;
   /** CWF-015: the system-scoped user operations a cloud function can perform. */
   private systemUsers: SystemUsers | null = null;
+  /**
+   * F86: role membership, from a cloud function. Deliberately a SEPARATE object
+   * from `systemUsers` — see the header of `roles/SystemRoles.ts` for why the
+   * one that creates accounts must go on writing no roles.
+   */
+  private systemRoles: SystemRoles | null = null;
   private readonly executions = new ExecutionHistory();
   /** CWF-016: the idempotency claim table, in the execution history's own file. */
   private readonly idempotency = new IdempotencyStore();
@@ -265,6 +272,33 @@ export class BackendService {
     //      so the dashboard's filter list has them without a second vocabulary.
     this.systemUsers = new SystemUsers({
       facade: this.facade,
+      onAudit: ({ action, outcome, target }) => {
+        void this.audit?.record({
+          action,
+          actorKind: 'system',
+          actor: 'cloud-function',
+          outcome,
+          target,
+          ip: 'in-process'
+        });
+      }
+    });
+
+    // 1.76 F86: role membership from a cloud function. A second object rather
+    //      than a fifth operation on `systemUsers`, because that module's
+    //      documented and tested safety property #2 is that it writes neither
+    //      `_Role` nor the membership junction — the property that makes "a node
+    //      that can create a user" provably not "a node that can create an
+    //      admin". Granting privilege gets its own door, its own audit actions
+    //      and its own name.
+    //
+    //      ⚠️ `rolesForUser` is SecurityState's own resolver, passed in rather
+    //      than re-implemented: the node's `Roles` output exists to answer "did
+    //      the membership take effect?", and a second resolver could answer yes
+    //      while enforcement said no.
+    this.systemRoles = new SystemRoles({
+      facade: this.facade,
+      rolesForUser: (userId) => (this.security ? this.security.rolesForUser(userId) : []),
       onAudit: ({ action, outcome, target }) => {
         void this.audit?.record({
           action,
@@ -509,6 +543,26 @@ export class BackendService {
             error: 'User administration is not available: the backend service is not running.'
           });
 
+    // 4.8 F86: the role-membership nodes, the same idiom one door along. A
+    //     SEPARATE global from `_noodl_system_users` on purpose — the module
+    //     behind it is the only thing in this process that can give a `_User`
+    //     row privilege, and "grep for the one global that grants" is the
+    //     property that would be lost by folding it into the other.
+    //
+    //     ⚠️ Like the users seam it adds NO HTTP route. `/admin/roles/:name/users`
+    //     exists and is admin-gated; a graph reaching that would need the admin
+    //     credential in the graph, which is the thing the Secret node exists to
+    //     prevent. In process, the ONLY gate is CWF-017's per-function `call`
+    //     rule.
+    (globalThis as any)._noodl_system_roles = (request: SystemRoleRequest): Promise<SystemRoleResult> =>
+      this.systemRoles
+        ? this.systemRoles.handle(request)
+        : Promise.resolve<SystemRoleResult>({
+            outcome: 'failure',
+            code: 'role/service-stopped',
+            error: 'Role administration is not available: the backend service is not running.'
+          });
+
     // 5. Workflows.
     this.runner = new WorkflowRunner({
       workflowsPath: path.join(this.options.dataDir, 'workflows'),
@@ -623,6 +677,9 @@ export class BackendService {
     // `_noodl_send_email` do — a `start()` overwrites it), but it now answers a
     // loud `user/service-stopped` rather than reaching a disconnected adapter.
     this.systemUsers = null;
+    // F86, same reasoning: the global stays, the answer becomes a loud
+    // `role/service-stopped`.
+    this.systemRoles = null;
   }
 
   /** True when the current options require a bearer token (non-loopback bind). */

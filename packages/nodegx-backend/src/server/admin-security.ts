@@ -42,24 +42,18 @@ import {
   ruleAllows
 } from '../security/model';
 import { HttpError, readJSONBody, sendJSON } from './http-util';
-
-/** A `_Role` row. Stored fields stay open; the two this file reads do not. */
-export interface RoleRecord {
-  objectId: string;
-  name: string;
-}
+import { ROLE_NAME_RULE, RoleStore, isValidRoleName } from '../roles/RoleStore';
+import type { RoleRecord } from '../roles/RoleStore';
 
 /**
- * Narrow one raw `_Role` row. Throws naming the row rather than passing an
- * `undefined` objectId into a relation call, where it would silently address
- * nothing.
+ * ⚠️ Re-exported, not defined here. `RoleRecord` and the mechanics under it
+ * moved to `roles/RoleStore` for F86, which needed the same operations from a
+ * cloud function — a place with no `RequestContext` to answer into. The export
+ * stays so existing importers do not have to care; the definition does not, so
+ * that "what a role name may contain" and "which junction membership lives in"
+ * have exactly one answer.
  */
-function asRole(row: Record<string, unknown>): RoleRecord {
-  if (typeof row.objectId !== 'string' || typeof row.name !== 'string') {
-    throw new HttpError(500, `Malformed _Role row: ${JSON.stringify(row)}`);
-  }
-  return { objectId: row.objectId, name: row.name };
-}
+export type { RoleRecord };
 
 export class AdminSecurityRoutes {
   private readonly security: SecurityState;
@@ -429,15 +423,16 @@ export class AdminSecurityRoutes {
   // Roles
   // ==========================================================================
 
+  /** The transport-free half, shared with the cloud-function seam (F86). */
+  private get roles(): RoleStore {
+    return new RoleStore(this.facade);
+  }
+
   async listRoles(ctx: RequestContext): Promise<void> {
-    const { results } = await this.facade.rawQuery('_Role', {});
+    const store = this.roles;
     const roles: (RoleRecord & { users: string[] })[] = [];
-    for (const raw of results) {
-      const role = asRole(raw);
-      const members = this.facade.schemaManager
-        ? (this.facade.schemaManager.getRelatedIds('_Role', role.objectId, 'users') as string[])
-        : [];
-      roles.push({ ...role, users: members });
+    for (const role of await store.list()) {
+      roles.push({ ...role, users: store.members(role) });
     }
     sendJSON(ctx.res, 200, { roles });
   }
@@ -445,41 +440,26 @@ export class AdminSecurityRoutes {
   async createRole(ctx: RequestContext): Promise<void> {
     const body = await readJSONBody(ctx.req);
     const name = String(body.name || '').trim();
-    if (!name || !/^[a-zA-Z0-9_-]+$/.test(name)) {
-      throw new HttpError(400, 'Role name must be non-empty and use only letters, digits, _ and -');
+    if (!isValidRoleName(name)) {
+      throw new HttpError(400, ROLE_NAME_RULE);
     }
-    const { results } = await this.facade.rawQuery('_Role', { where: { name }, limit: 1 });
-    if (results.length > 0) {
+    if (await this.roles.find(name)) {
       throw new HttpError(400, `Role "${name}" already exists.`);
     }
     ctx.audit({ role: name });
-    const role = await this.facade.rawCreate('_Role', { name });
+    const role = await this.roles.create(name);
     sendJSON(ctx.res, 201, { objectId: role.objectId, name });
   }
 
-  /**
-   * A `_Role` row as this file uses it. It came back `Record<string, unknown>`,
-   * so `role.objectId` was `unknown` and every relation call took it anyway —
-   * which only compiled because `schemaManager` was `any` (PLAT-004).
-   */
+  /** The named role, or a 404. `RoleStore.find` answers null instead. */
   private async findRole(name: string): Promise<RoleRecord> {
-    const { results } = await this.facade.rawQuery('_Role', { where: { name }, limit: 1 });
-    if (results.length === 0) throw new HttpError(404, `No such role: ${name}`);
-    return asRole(results[0]);
+    const role = await this.roles.find(name);
+    if (!role) throw new HttpError(404, `No such role: ${name}`);
+    return role;
   }
 
   async deleteRole(ctx: RequestContext): Promise<void> {
-    const role = await this.findRole(ctx.params.name);
-    const sm = this.facade.schemaManager;
-    if (sm) {
-      // Remove memberships so a later role with the same objectId (impossible
-      // with UUIDs, but hygiene) cannot inherit them.
-      const members = sm.getRelatedIds('_Role', role.objectId, 'users') as string[];
-      for (const userId of members) {
-        sm.removeRelation('_Role', role.objectId, 'users', userId);
-      }
-    }
-    await this.facade.rawDelete('_Role', role.objectId);
+    await this.roles.remove(await this.findRole(ctx.params.name));
     sendJSON(ctx.res, 200, { success: true, name: ctx.params.name });
   }
 
@@ -493,13 +473,13 @@ export class AdminSecurityRoutes {
     } catch {
       throw new HttpError(404, `No such user: ${userId}`);
     }
-    this.facade.schemaManager.addRelation('_Role', role.objectId, 'users', userId);
+    await this.roles.addMember(role, userId);
     sendJSON(ctx.res, 200, { success: true, role: ctx.params.name, userId });
   }
 
   async removeRoleUser(ctx: RequestContext): Promise<void> {
     const role = await this.findRole(ctx.params.name);
-    this.facade.schemaManager.removeRelation('_Role', role.objectId, 'users', ctx.params.userId);
+    await this.roles.removeMember(role, ctx.params.userId);
     sendJSON(ctx.res, 200, { success: true, role: ctx.params.name, userId: ctx.params.userId });
   }
 

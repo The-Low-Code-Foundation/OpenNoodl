@@ -37,6 +37,16 @@
  *     Nothing here writes either table, and nothing here calls `addRelation`.
  *     A user this module creates resolves to `roles: []`, so every `role:` rule
  *     denies it.
+ *
+ *     ⚠️ **Since F86 something else does write them**, and this property is why
+ *     it is not here. `roles/SystemRoles.ts` — its own module, its own
+ *     `_noodl_system_roles` global, its own audit actions — is the one and only
+ *     thing in this process that can put a `_User` row in a role. Adding a
+ *     fifth `op` to the door below would have been the smaller diff and would
+ *     have deleted the invariant: "the family that creates accounts cannot
+ *     grant privilege" is only checkable while the two are separate files. A
+ *     function that needs both wires Create User's `Done` into Add User To
+ *     Role, which is a graph an author can see.
  *  3. **Protected keys are REFUSED, not stripped.** `POST /users` quietly
  *     `delete`s `ACL` and `_method`; a system-privileged node must be louder
  *     than that, because a silently-dropped `ACL` is an author who believes

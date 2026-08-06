@@ -155,6 +155,26 @@ export const AUDIT_SYSTEM_USER_CREATE = 'user.system.create';
 export const AUDIT_SYSTEM_USER_UPDATE = 'user.system.update';
 export const AUDIT_SYSTEM_USER_DELETE = 'user.system.delete';
 
+/**
+ * Role membership written by a cloud function (F86), and named separately from
+ * the `role.*` entries above on purpose.
+ *
+ * `role.user.add` is an operator clicking in the Permissions panel; this is a
+ * *graph* granting privilege, at whatever rate its function is called. They are
+ * the same effect through two very different doors, and an operator asking "who
+ * made this account staff?" needs to be able to tell them apart in one filter
+ * rather than by reading actor columns.
+ *
+ * ⚠️ Membership in a role is the ONLY way a `_User` row acquires privilege on
+ * this backend (`SecurityState.rolesForUser`; admin authority is a credential,
+ * not a row). So these three are the highest-value entries the system-side
+ * families write — higher than `user.system.create`, which by construction
+ * creates an account with no privilege at all.
+ */
+export const AUDIT_SYSTEM_ROLE_CREATE = 'role.system.create';
+export const AUDIT_SYSTEM_ROLE_USER_ADD = 'role.system.user.add';
+export const AUDIT_SYSTEM_ROLE_USER_REMOVE = 'role.system.user.remove';
+
 /** The declared action for a route, or null when the route is not audited. */
 export function auditActionFor(method: string, pattern: string): string | null {
   return ACTIONS[`${method} ${pattern}`] || null;
@@ -182,7 +202,10 @@ export function declaredAuditActions(): string[] {
       AUDIT_AUTH_CREDENTIALS_REVOKED,
       AUDIT_SYSTEM_USER_CREATE,
       AUDIT_SYSTEM_USER_UPDATE,
-      AUDIT_SYSTEM_USER_DELETE
+      AUDIT_SYSTEM_USER_DELETE,
+      AUDIT_SYSTEM_ROLE_CREATE,
+      AUDIT_SYSTEM_ROLE_USER_ADD,
+      AUDIT_SYSTEM_ROLE_USER_REMOVE
     ])
   ].sort();
 }
