@@ -125,6 +125,9 @@ export class ViewportActions {
     editor.commentLayer && editor.commentLayer.setPanAndScale(panAndScale);
     editor.overlayViews.updateHighlightOverlay();
     editor.overlayViews.updateExecutionOverlay();
+    // HUD-001: the recording badges are positioned in canvas space, so they follow pan and
+    // zoom by the same route the execution badges do.
+    editor.overlayViews.updateRecordingOverlay();
     // PAR-003: keep the HUD zoom percentage live.
     editor.overlayViews.updateCanvasHud();
   }

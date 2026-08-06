@@ -267,6 +267,10 @@ export class NodeGraphEditor extends View {
 
     // PAR-003: the HUD's AI pill is hidden on read-only canvases
     this.overlayViews.updateCanvasHud();
+
+    // HUD-001: and so is Record — a read-only canvas is a diff or a review document, and
+    // arming the live preview from one is not a gesture that means anything.
+    this.overlayViews.updateRecordingOverlay();
   }
 
   reset() {
@@ -337,6 +341,11 @@ export class NodeGraphEditor extends View {
     // Render the execution overlay (CF11-007)
     setTimeout(() => {
       this.overlayViews.renderExecutionOverlay();
+    }, 1);
+
+    // Render the recording HUD (HUD-001: Record, the live counter, the node badges)
+    setTimeout(() => {
+      this.overlayViews.renderRecordingOverlay();
     }, 1);
 
     // Render the canvas HUD (PAR-003: AI pill + zoom cluster)

@@ -256,23 +256,19 @@ export function ProvenancePanel() {
   // sentence saying the walk could not run reads as "and here is what it found".
   const blocked = walk ? isBlocked(walk.foundation) : false;
 
-  const handleRecord = useCallback(() => {
-    if (session.recording) {
-      // Stopping pulls the buffer before it disarms the runtime — the events do not survive the
-      // disarm — so this is where the interactions list fills. Deliberately not awaited: the
-      // button flips synchronously and `eventsChanged` re-renders the list when it lands.
-      setStatus('Pulling events…');
-      void session.stop().then(() => setStatus(undefined));
-    } else if (session.start()) {
-      setSelectedKey(undefined);
-      setStatus(undefined);
-    } else {
-      // Criterion 4. Arming against a socket with nothing on the other end is the failure this
-      // panel exists to not commit: it would say "Stop", record nothing, and blame the graph.
-      setStatus('No preview is running — open the app, then press Record.');
-    }
-  }, [session]);
-
+  /**
+   * ⚠️ **There is no Record button here any more — HUD-001 / TALK-003 Q1.**
+   *
+   * Record is a canvas control now, and the product split is the reason: this panel answers
+   * questions about wiring, the HUD watches the app run. Arming a recorder from inside a
+   * question-answering panel was the thing that made Record feel vestigial, and it had a
+   * mechanical cost too — `SidePanel` does not *construct* a panel until it is first opened,
+   * so the recorder's only surface did not exist for a user who had never opened this one.
+   *
+   * What stays is Refresh: it is the manual pull, and FH-011 made it rarely needed rather than
+   * useless. `recording` is still read here — the walk on screen has to keep up with a
+   * recording somebody armed on the canvas — it is simply no longer armed from here.
+   */
   const handleRefresh = useCallback(async () => {
     setStatus('Pulling events…');
     await session.refreshEvents();
@@ -316,12 +312,6 @@ export function ProvenancePanel() {
     <BasePanel title="Provenance" isFill hasContentScroll={false}>
       <div className={css.Root}>
         <div className={css.Toolbar}>
-          <PrimaryButton
-            label={recording ? 'Stop' : 'Record'}
-            size={PrimaryButtonSize.Small}
-            variant={recording ? PrimaryButtonVariant.Danger : PrimaryButtonVariant.Cta}
-            onClick={handleRecord}
-          />
           <PrimaryButton
             label="Refresh"
             size={PrimaryButtonSize.Small}
@@ -676,14 +666,18 @@ function EmptyState({
           )}
         </>
       )}
+      {/* ⚠️ **This sentence has to say WHERE Record is.** It used to say "press Record" while
+          the button was six pixels above it; HUD-001 moved that button onto the canvas, and a
+          user reading the old sentence inside this panel would look for a control that is no
+          longer there — which is worse than no instruction at all. */}
       {!recording && (
         <>
           <Text textType={TextType.Shy}>
             Right-click a port on the canvas and choose <b>Why is this empty?</b> to walk backwards from it.
           </Text>
           <Text textType={TextType.Shy}>
-            Current values work with a preview running and nothing recorded. Press <b>Record</b>, reproduce the problem,
-            then walk to see which hop never fired.
+            Current values work with a preview running and nothing recorded. To see which hop never fired, press{' '}
+            <b>Record</b> on the canvas — the pill at the bottom of the node graph — reproduce the problem, then walk.
           </Text>
         </>
       )}

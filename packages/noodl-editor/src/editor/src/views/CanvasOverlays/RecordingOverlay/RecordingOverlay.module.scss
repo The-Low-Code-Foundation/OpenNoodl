@@ -1,0 +1,160 @@
+/**
+ * HUD-001 styles.
+ *
+ * ⚠️ **Bottom centre, not "a corner" as the task doc had it.** All four corners are taken and
+ * the doc's premise that one was free is wrong: PAR-003's AI pill owns bottom-left and its zoom
+ * cluster bottom-right, and `ExecutionOverlay` spans the *whole* top edge with its header and
+ * notice and the whole bottom edge with its timeline whenever a workflow run is pinned. Bottom
+ * centre is the only place a recording control can sit without covering one of them, and it
+ * lands on the same 52px baseline as the other two HUD pills, which is what makes the three
+ * read as one row rather than as three unrelated widgets.
+ *
+ * Theme tokens throughout: the canvas repalettes on `nodegx:themechanged` (UIX-005), and this
+ * sits on top of it in both themes.
+ */
+
+.Overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.Control {
+  position: absolute;
+  left: 50%;
+  bottom: 52px;
+  transform: translateX(-50%);
+  pointer-events: all;
+
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  max-width: calc(100% - 32px);
+
+  background-color: var(--theme-color-bg-1);
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: var(--radius-full);
+  box-shadow: var(--shadow-popup);
+  padding: 5px 6px 5px 14px;
+
+  font-family: var(--font-family);
+  font-size: 12.5px;
+  line-height: 1.2;
+  color: var(--theme-color-fg-muted);
+  white-space: nowrap;
+}
+
+/* The one state a user is trying to read: is it on? */
+.Dot {
+  flex: 0 0 auto;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: var(--theme-color-fg-muted);
+
+  .Control[data-recording='true'] & {
+    background-color: var(--theme-color-danger);
+    animation: recording-pulse 1.6s ease-in-out infinite;
+  }
+}
+
+@keyframes recording-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+
+/* ⚠️ Not a "muted" borderless button. POL-013 measured those at 1.00:1 against their own
+   surface across 143 call sites — a control nobody could see was a control. Both of these
+   carry their own border. */
+.Record,
+.Stop {
+  flex: 0 0 auto;
+  border-radius: var(--radius-full);
+  padding: 3px 12px;
+  font-family: var(--font-family);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.3;
+  cursor: pointer;
+
+  &:focus-visible {
+    outline: 2px solid var(--theme-color-primary);
+    outline-offset: 2px;
+  }
+}
+
+.Record {
+  background-color: transparent;
+  border: 1px solid var(--theme-color-border-strong);
+  color: var(--theme-color-fg-highlight);
+
+  &:hover {
+    background-color: var(--theme-color-bg-3);
+    border-color: var(--theme-color-primary);
+    color: var(--theme-color-primary);
+  }
+}
+
+.Stop {
+  background-color: var(--theme-color-danger-bg);
+  border: 1px solid var(--theme-color-danger);
+  color: var(--theme-color-danger);
+
+  &:hover {
+    background-color: var(--theme-color-danger);
+    color: var(--theme-color-bg-1);
+  }
+}
+
+.Label {
+  color: var(--theme-color-fg-highlight);
+  font-weight: 600;
+}
+
+.Separator {
+  color: var(--theme-color-fg-muted);
+}
+
+.Count {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--theme-color-fg-default);
+  font-variant-numeric: tabular-nums;
+}
+
+/**
+ * The second line — "recording, and nothing is happening *here*".
+ *
+ * An empty canvas under a live counter is indistinguishable from a HUD that failed to mount,
+ * which is the failure `renderSlot`'s silent no-op makes easy to ship.
+ */
+.Note {
+  position: absolute;
+  left: 50%;
+  bottom: 90px;
+  transform: translateX(-50%);
+  pointer-events: none;
+
+  max-width: min(520px, calc(100% - 32px));
+  padding: 6px 12px;
+  border-radius: var(--radius-default);
+
+  background-color: var(--theme-color-bg-2);
+  border: 1px solid var(--theme-color-border-default);
+  box-shadow: var(--shadow-sm);
+
+  font-family: var(--font-family);
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--theme-color-fg-default-shy);
+  text-align: center;
+}

@@ -23,6 +23,16 @@ export interface CanvasShell {
   highlightOverlayLayer: HTMLDivElement;
   /** CF11-007 canvas execution visualisation. */
   executionOverlayLayer: HTMLDivElement;
+  /**
+   * HUD-001: the Record control and the badges that light up as nodes fire.
+   *
+   * Its own layer, and not a lodger in `executionOverlayLayer`. `OverlayHost.renderSlot`
+   * keeps ONE React root per named slot and unmounts it when the slot is re-rendered with a
+   * different element, so a second `renderSlot('execution-overlay', …)` would not add a HUD —
+   * it would delete the pinned workflow run. TALK-003 proposed sharing the slot; this is why
+   * it does not.
+   */
+  recordingOverlayLayer: HTMLDivElement;
   /** Host for the DOM-rendered node views (`NodeGraphEditorNode`). */
   domLayer: HTMLDivElement;
   componentTrailRoot: HTMLDivElement;
@@ -88,6 +98,17 @@ function clippingWrapper(child: HTMLElement, pointerEvents: 'none' | undefined, 
  */
 const EXECUTION_OVERLAY_Z = '5';
 
+/**
+ * HUD-001: the recording HUD sits one step above the execution overlay.
+ *
+ * Same reasoning as {@link EXECUTION_OVERLAY_Z} — a positive `z-index` makes the wrapper a
+ * stacking context so everything inside it competes as one number — and the same ceiling: below
+ * `.popup-layer`'s 10, so the node picker still draws over the HUD. Above 5 because a pinned
+ * workflow run and a live recording can be on screen at once (HUD-001 criterion 3) and the
+ * thing the user just pressed has to be the thing they can see.
+ */
+const RECORDING_OVERLAY_Z = '6';
+
 export function createCanvasShell(): CanvasShell {
   const root = div({ width: '100%', height: '100%' }, undefined, 'nodegrapgeditor-bg nodegrapheditor-canvas');
 
@@ -108,6 +129,7 @@ export function createCanvasShell(): CanvasShell {
 
   const highlightOverlayLayer = div(undefined, 'highlight-overlay-layer');
   const executionOverlayLayer = div({ pointerEvents: 'all' }, 'execution-overlay-layer');
+  const recordingOverlayLayer = div({ pointerEvents: 'all' }, 'recording-overlay-layer');
   const commentLayerFg = div({ pointerEvents: 'all' }, 'comment-layer-fg');
 
   const domLayer = div(undefined, 'nodegraph-dom-layer');
@@ -125,6 +147,7 @@ export function createCanvasShell(): CanvasShell {
     canvas,
     clippingWrapper(highlightOverlayLayer, 'none'),
     clippingWrapper(executionOverlayLayer, 'none', EXECUTION_OVERLAY_Z),
+    clippingWrapper(recordingOverlayLayer, 'none', RECORDING_OVERLAY_Z),
     clippingWrapper(commentLayerFg, 'none'),
     domLayerWrapper,
     canvasHudRoot,
@@ -141,6 +164,7 @@ export function createCanvasShell(): CanvasShell {
     canvas,
     highlightOverlayLayer,
     executionOverlayLayer,
+    recordingOverlayLayer,
     domLayer,
     componentTrailRoot,
     canvasHudRoot

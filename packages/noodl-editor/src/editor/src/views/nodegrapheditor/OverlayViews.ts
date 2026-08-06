@@ -5,6 +5,7 @@ import { ProjectModel } from '../../models/projectmodel';
 import { CanvasHud } from '../CanvasOverlays/CanvasHud';
 import { ExecutionOverlay } from '../CanvasOverlays/ExecutionOverlay';
 import { HighlightOverlay } from '../CanvasOverlays/HighlightOverlay';
+import { RecordingOverlay } from '../CanvasOverlays/RecordingOverlay';
 import { CanvasTabs } from '../CanvasTabs';
 import { EditorBanner } from '../EditorBanner';
 import { refFromComponentName } from '../../models/workflow/functionRefResolution';
@@ -181,6 +182,49 @@ export class OverlayViews {
   }
 
   /**
+   * Render the RecordingOverlay React component (HUD-001).
+   *
+   * ⚠️ **Its own slot and its own layer, not a second tenant of `execution-overlay`.**
+   * `OverlayHost.renderSlot` keeps one React root per named slot and unmounts it when the slot
+   * is re-rendered with a different element, so mounting this into the execution overlay's slot
+   * would not add a HUD — it would silently delete a pinned workflow run. TALK-003 proposed
+   * sharing the slot; HUD-001 corrected it.
+   *
+   * Same cadence as its execution-overlay twin: re-rendered on every pan and zoom so the
+   * viewport prop the badge container transforms by stays current.
+   */
+  renderRecordingOverlay() {
+    const panAndScale = this.editor.getPanAndScale();
+    const viewport = {
+      x: panAndScale.x,
+      y: panAndScale.y,
+      zoom: panAndScale.scale
+    };
+
+    this.editor.overlays.renderSlot(
+      'recording-overlay',
+      this.editor.shell.recordingOverlayLayer,
+      React.createElement(RecordingOverlay, {
+        viewport,
+        getNodeBounds: this.getNodeBounds,
+        // Read-only canvases are diff and review documents over historical graphs. Arming the
+        // live preview from one of those is not a gesture that means anything.
+        enabled: !this.editor.readOnly
+      })
+    );
+  }
+
+  /**
+   * Update the recording overlay with new viewport state.
+   * Called whenever pan/zoom changes (same cadence as updateExecutionOverlay).
+   */
+  updateRecordingOverlay() {
+    if (this.editor.overlays.hasSlot('recording-overlay')) {
+      this.renderRecordingOverlay();
+    }
+  }
+
+  /**
    * Render the canvas HUD overlays (PAR-003): the AI pill (bottom-left) and
    * the zoom cluster (bottom-right) from the editor mock. Zoom actions drive
    * the same ViewportActions path as mouse-wheel zoom; fit is the existing
@@ -229,11 +273,28 @@ export class OverlayViews {
    */
   setCanvasVisibility(visible: boolean) {
     const editor = this.editor;
-    const { canvas, commentLayerBg, commentLayerFg, highlightOverlayLayer, componentTrailRoot, canvasHudRoot } =
-      editor.shell;
+    const {
+      canvas,
+      commentLayerBg,
+      commentLayerFg,
+      highlightOverlayLayer,
+      recordingOverlayLayer,
+      componentTrailRoot,
+      canvasHudRoot
+    } = editor.shell;
 
-    // Show/hide the canvas and related elements.
-    for (const el of [canvas, commentLayerBg, commentLayerFg, highlightOverlayLayer, canvasHudRoot]) {
+    // Show/hide the canvas and related elements. The recording HUD goes with them: the Logic
+    // Builder takes the whole canvas over, and a Record pill floating on top of a Blockly
+    // workspace is a control over a surface it has nothing to say about.
+    const layers = [
+      canvas,
+      commentLayerBg,
+      commentLayerFg,
+      highlightOverlayLayer,
+      recordingOverlayLayer,
+      canvasHudRoot
+    ];
+    for (const el of layers) {
       el.style.display = visible ? 'block' : 'none';
     }
     componentTrailRoot.style.display = visible ? 'flex' : 'none';
