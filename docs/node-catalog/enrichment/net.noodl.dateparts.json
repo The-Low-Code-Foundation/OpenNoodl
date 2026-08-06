@@ -1,0 +1,30 @@
+{
+  "typeName": "net.noodl.DateParts",
+  "summary": "The fields of a date — year, month, day, time, weekday and ISO week — as outputs off one node.",
+  "description": "Date Parts takes a date apart into eleven outputs. Month is 1-12, not JavaScript's 0-11: nobody reading a port called Month expects January to be 0. Day of Week keeps JavaScript's numbering (0 is Sunday) and Day Name gives the English name beside it. ISO Week is ISO-8601 — weeks start Monday and week 1 is the one holding the first Thursday, so 1 January 2027 is week 53 of 2026. All fields are read in the host's local zone, which on a server is whatever the container's TZ says; when the zone matters, format through Date To String's Timezone input instead of reading parts here.",
+  "whenToUse": "Grouping by month or year, branching on the weekday, building a custom label from pieces, or feeding a chart axis. One node rather than seven, so every field comes from the same instant.",
+  "ports": {
+    "input": "The instant to take apart. A string or a millisecond timestamp here is read as a date.",
+    "year": "Four-digit year.",
+    "month": "Month as 1-12.",
+    "date": "Day of the month, 1-31.",
+    "hours": "Hour of the day, 0-23.",
+    "minutes": "Minutes past the hour.",
+    "seconds": "Seconds past the minute.",
+    "milliseconds": "Milliseconds past the second.",
+    "dayOfWeek": "0-6, Sunday first.",
+    "dayName": "English weekday name. For a localised one, use Date To String.",
+    "isoWeek": "ISO-8601 week number, 1-53.",
+    "timestamp": "The instant as milliseconds since 1 January 1970 UTC.",
+    "changed": "Fires after a new Date has been taken apart.",
+    "failure": "Invalid Date — fires when a date arrived that could not be read, leaving every part unset."
+  },
+  "examples": [],
+  "patterns": [
+    "Date Parts Month → String Mapper: a month name in your own wording, without a formatter."
+  ],
+  "antiPatterns": [
+    "Reading parts here to render a date for a user in another timezone. Use Date To String with a Timezone; these fields are always local."
+  ],
+  "relatedNodes": ["Date To String", "net.noodl.DateCompare", "net.noodl.Now"]
+}

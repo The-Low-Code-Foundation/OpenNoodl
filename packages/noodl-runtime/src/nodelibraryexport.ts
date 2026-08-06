@@ -633,6 +633,18 @@ function generateNodeLibrary(nodeRegister: NodeRegisterLike, options?: { runtime
           items: ['net.noodl.Hash', 'net.noodl.RandomBytes', 'net.noodl.UUID']
         },
         {
+          // CWF-011. `Date To String` stays where it is, under String Manipulation, because
+          // that is where authors have always found it; the maths gets its own row.
+          name: 'Date & Time',
+          items: [
+            'net.noodl.Now',
+            'net.noodl.DateAdd',
+            'net.noodl.DateDifference',
+            'net.noodl.DateCompare',
+            'net.noodl.DateParts'
+          ]
+        },
+        {
           name: 'System',
           items: ['Screen Resolution', 'Open File Picker', 'On App Error']
         },

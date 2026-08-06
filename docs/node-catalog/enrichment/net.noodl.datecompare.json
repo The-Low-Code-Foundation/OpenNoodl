@@ -1,0 +1,26 @@
+{
+  "typeName": "net.noodl.DateCompare",
+  "summary": "Is this date before, after or the same as that one — at a granularity you choose, including 'the same day'.",
+  "description": "Date Compare answers all three questions at once, as booleans and as signals, and fires exactly one signal per comparison. Granularity is the point: two instants are almost never the same millisecond, so comparing raw dates answers 'no' to the question people are actually asking. Set Granularity to Day and 09:00 and 17:00 on the same date are Same. Truncation happens in the host's local zone, because 'the same day' is a question about a calendar somebody is looking at — on a server that calendar is whatever the container says, which is worth knowing before you rely on it.",
+  "whenToUse": "'Is this overdue', 'is this today', 'did these two things happen in the same month'. Wire the booleans into a Condition or the signals into a flow.",
+  "ports": {
+    "a": "The instant being asked about.",
+    "b": "The instant it is compared against.",
+    "granularity": "Millisecond (default, exact), Second, Minute, Hour, Day, Month or Year.",
+    "before": "True when Date is earlier than Compare To, at this granularity.",
+    "after": "True when Date is later.",
+    "same": "True when the two land in the same granularity bucket.",
+    "isBefore": "Fires after a comparison that came out Before.",
+    "isAfter": "Fires after a comparison that came out After.",
+    "isSame": "Fires after a comparison that came out Same.",
+    "failure": "Invalid Date — fires when a date arrived that could not be read."
+  },
+  "examples": [],
+  "patterns": [
+    "Due date → Date, Now Date → Compare To, then On Before → the overdue branch."
+  ],
+  "antiPatterns": [
+    "Leaving Granularity at Millisecond and expecting Is Same to mean 'the same day'. It will essentially never be true."
+  ],
+  "relatedNodes": ["net.noodl.Now", "net.noodl.DateDifference", "net.noodl.DateParts"]
+}

@@ -259,6 +259,16 @@ function registerNodes(noodlRuntime: NoodlRuntime) {
     require('./src/nodes/std-library/crypto/hash'),
     require('./src/nodes/std-library/crypto/randombytes'),
     require('./src/nodes/std-library/crypto/uuid'),
+
+    // Date maths (CWF-011). `Date To String` was the entire date vocabulary in both runtimes, so
+    // "what time is it", "what is this plus 30 days", "how far apart are these" and "is this
+    // before that" were an Expression or a Function node in every project. Shared, for the reason
+    // the task gives: the browser wants them just as much as a cloud function does.
+    require('./src/nodes/std-library/date/now'),
+    require('./src/nodes/std-library/date/dateadd'),
+    require('./src/nodes/std-library/date/datedifference'),
+    require('./src/nodes/std-library/date/datecompare'),
+    require('./src/nodes/std-library/date/dateparts'),
     // CWF-008: multi-way Switch and range maths. The cloud had only the two-way Condition.
     require('./src/nodes/std-library/switch'),
     require('./src/nodes/std-library/numberremapper'),

@@ -5762,6 +5762,17 @@
           },
           "isSignal": false,
           "description": "The instant to render; a string arriving here is parsed as a date first"
+        },
+        {
+          "name": "timeZone",
+          "displayName": "Timezone",
+          "plug": "input",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "default": "",
+          "description": "IANA zone name to render in, such as Europe/London or America/New_York. Leave empty for the host machine's zone — which on a server is whatever the container says, and is the usual reason a date is an hour out in production but right on your laptop"
         }
       ],
       "outputs": [
@@ -32521,6 +32532,608 @@
       }
     },
     {
+      "typeName": "net.noodl.DateAdd",
+      "displayName": "Date Add",
+      "category": "Utilities",
+      "isVisual": false,
+      "isDeprecated": false,
+      "inNodePicker": true,
+      "availableIn": [
+        "browser",
+        "cloud"
+      ],
+      "providedBy": "noodl-runtime",
+      "ssr": {
+        "compat": "safe"
+      },
+      "docs": "https://docs.noodl.net/nodes/utilities/date-add",
+      "inputs": [
+        {
+          "name": "amount",
+          "displayName": "Amount",
+          "group": "General",
+          "plug": "input",
+          "type": {
+            "name": "number"
+          },
+          "isSignal": false,
+          "default": 0,
+          "description": "How much to add. Negative subtracts. Months and years use whole steps"
+        },
+        {
+          "name": "input",
+          "displayName": "Date",
+          "group": "General",
+          "plug": "input",
+          "type": {
+            "name": "date"
+          },
+          "isSignal": false,
+          "description": "The instant to shift. A string or a millisecond timestamp arriving here is read as a date"
+        },
+        {
+          "name": "unit",
+          "displayName": "Unit",
+          "group": "General",
+          "plug": "input",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "Milliseconds",
+                "value": "milliseconds"
+              },
+              {
+                "label": "Seconds",
+                "value": "seconds"
+              },
+              {
+                "label": "Minutes",
+                "value": "minutes"
+              },
+              {
+                "label": "Hours",
+                "value": "hours"
+              },
+              {
+                "label": "Days",
+                "value": "days"
+              },
+              {
+                "label": "Weeks",
+                "value": "weeks"
+              },
+              {
+                "label": "Months",
+                "value": "months"
+              },
+              {
+                "label": "Years",
+                "value": "years"
+              }
+            ]
+          },
+          "isSignal": false,
+          "default": "days",
+          "description": "What Amount counts. Months and years are calendar steps and CLAMP: 31 January plus one month is 28 (or 29) February, never 2 March"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "changed",
+          "displayName": "Changed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after Result has been recomputed, whichever input caused it"
+        },
+        {
+          "name": "failure",
+          "displayName": "Invalid Date",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when Date could not be read, leaving Result unset"
+        },
+        {
+          "name": "result",
+          "displayName": "Result",
+          "group": "Value",
+          "plug": "output",
+          "type": {
+            "name": "date"
+          },
+          "isSignal": false,
+          "description": "Date shifted by Amount of Unit, or unset when Date could not be read"
+        }
+      ],
+      "dynamicPorts": null,
+      "parameterEncoding": null
+    },
+    {
+      "typeName": "net.noodl.DateCompare",
+      "displayName": "Date Compare",
+      "category": "Utilities",
+      "isVisual": false,
+      "isDeprecated": false,
+      "inNodePicker": true,
+      "availableIn": [
+        "browser",
+        "cloud"
+      ],
+      "providedBy": "noodl-runtime",
+      "ssr": {
+        "compat": "safe"
+      },
+      "docs": "https://docs.noodl.net/nodes/utilities/date-compare",
+      "inputs": [
+        {
+          "name": "a",
+          "displayName": "Date",
+          "group": "General",
+          "plug": "input",
+          "type": {
+            "name": "date"
+          },
+          "isSignal": false,
+          "description": "The instant being asked about"
+        },
+        {
+          "name": "b",
+          "displayName": "Compare To",
+          "group": "General",
+          "plug": "input",
+          "type": {
+            "name": "date"
+          },
+          "isSignal": false,
+          "description": "The instant it is compared against"
+        },
+        {
+          "name": "granularity",
+          "displayName": "Granularity",
+          "group": "General",
+          "plug": "input",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "Millisecond (exact)",
+                "value": "millisecond"
+              },
+              {
+                "label": "Second",
+                "value": "second"
+              },
+              {
+                "label": "Minute",
+                "value": "minute"
+              },
+              {
+                "label": "Hour",
+                "value": "hour"
+              },
+              {
+                "label": "Day",
+                "value": "day"
+              },
+              {
+                "label": "Month",
+                "value": "month"
+              },
+              {
+                "label": "Year",
+                "value": "year"
+              }
+            ]
+          },
+          "isSignal": false,
+          "default": "millisecond",
+          "description": "How coarsely to compare. Day answers \"is this the same day\", which is almost always the question — two instants are hardly ever the same millisecond"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "after",
+          "displayName": "Is After",
+          "group": "Value",
+          "plug": "output",
+          "type": {
+            "name": "boolean"
+          },
+          "isSignal": false,
+          "description": "True when Date is later than Compare To, at this Granularity"
+        },
+        {
+          "name": "before",
+          "displayName": "Is Before",
+          "group": "Value",
+          "plug": "output",
+          "type": {
+            "name": "boolean"
+          },
+          "isSignal": false,
+          "description": "True when Date is earlier than Compare To, at this Granularity"
+        },
+        {
+          "name": "failure",
+          "displayName": "Invalid Date",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when a date arrived that could not be read, leaving all three answers unset"
+        },
+        {
+          "name": "isAfter",
+          "displayName": "On After",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after a comparison that came out After"
+        },
+        {
+          "name": "isBefore",
+          "displayName": "On Before",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after a comparison that came out Before"
+        },
+        {
+          "name": "isSame",
+          "displayName": "On Same",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after a comparison that came out Same"
+        },
+        {
+          "name": "same",
+          "displayName": "Is Same",
+          "group": "Value",
+          "plug": "output",
+          "type": {
+            "name": "boolean"
+          },
+          "isSignal": false,
+          "description": "True when the two land in the same Granularity bucket — the same day, month or year"
+        }
+      ],
+      "dynamicPorts": null,
+      "parameterEncoding": null
+    },
+    {
+      "typeName": "net.noodl.DateDifference",
+      "displayName": "Date Difference",
+      "category": "Utilities",
+      "isVisual": false,
+      "isDeprecated": false,
+      "inNodePicker": true,
+      "availableIn": [
+        "browser",
+        "cloud"
+      ],
+      "providedBy": "noodl-runtime",
+      "ssr": {
+        "compat": "safe"
+      },
+      "docs": "https://docs.noodl.net/nodes/utilities/date-difference",
+      "inputs": [
+        {
+          "name": "absolute",
+          "displayName": "Absolute",
+          "group": "General",
+          "plug": "input",
+          "type": {
+            "name": "boolean"
+          },
+          "isSignal": false,
+          "default": false,
+          "description": "Drop the sign, so the output is a distance rather than a direction"
+        },
+        {
+          "name": "from",
+          "displayName": "From",
+          "group": "General",
+          "plug": "input",
+          "type": {
+            "name": "date"
+          },
+          "isSignal": false,
+          "description": "The earlier instant, in the reading that makes Difference positive"
+        },
+        {
+          "name": "to",
+          "displayName": "To",
+          "group": "General",
+          "plug": "input",
+          "type": {
+            "name": "date"
+          },
+          "isSignal": false,
+          "description": "The later instant. Difference is negative when this is actually earlier than From"
+        },
+        {
+          "name": "unit",
+          "displayName": "Unit",
+          "group": "General",
+          "plug": "input",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "Milliseconds",
+                "value": "milliseconds"
+              },
+              {
+                "label": "Seconds",
+                "value": "seconds"
+              },
+              {
+                "label": "Minutes",
+                "value": "minutes"
+              },
+              {
+                "label": "Hours",
+                "value": "hours"
+              },
+              {
+                "label": "Days",
+                "value": "days"
+              },
+              {
+                "label": "Weeks",
+                "value": "weeks"
+              },
+              {
+                "label": "Months",
+                "value": "months"
+              },
+              {
+                "label": "Years",
+                "value": "years"
+              }
+            ]
+          },
+          "isSignal": false,
+          "default": "days",
+          "description": "What Difference counts. Fixed units are exact and fractional (36 hours is 1.5 days); months and years are whole calendar steps"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "changed",
+          "displayName": "Changed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after Difference has been recomputed"
+        },
+        {
+          "name": "difference",
+          "displayName": "Difference",
+          "group": "Value",
+          "plug": "output",
+          "type": {
+            "name": "number"
+          },
+          "isSignal": false,
+          "description": "To minus From, counted in Unit. Unset while either date is missing or unreadable"
+        },
+        {
+          "name": "failure",
+          "displayName": "Invalid Date",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when a date arrived that could not be read, leaving Difference unset"
+        }
+      ],
+      "dynamicPorts": null,
+      "parameterEncoding": null
+    },
+    {
+      "typeName": "net.noodl.DateParts",
+      "displayName": "Date Parts",
+      "category": "Utilities",
+      "isVisual": false,
+      "isDeprecated": false,
+      "inNodePicker": true,
+      "availableIn": [
+        "browser",
+        "cloud"
+      ],
+      "providedBy": "noodl-runtime",
+      "ssr": {
+        "compat": "safe"
+      },
+      "docs": "https://docs.noodl.net/nodes/utilities/date-parts",
+      "inputs": [
+        {
+          "name": "input",
+          "displayName": "Date",
+          "group": "General",
+          "plug": "input",
+          "type": {
+            "name": "date"
+          },
+          "isSignal": false,
+          "description": "The instant to take apart. A string or a millisecond timestamp here is read as a date"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "changed",
+          "displayName": "Changed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after a new Date has been taken apart and every part output is up to date"
+        },
+        {
+          "name": "date",
+          "displayName": "Day of Month",
+          "group": "Value",
+          "plug": "output",
+          "type": {
+            "name": "number"
+          },
+          "isSignal": false,
+          "description": "Day of the month, 1-31"
+        },
+        {
+          "name": "dayName",
+          "displayName": "Day Name",
+          "group": "Value",
+          "plug": "output",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "description": "The English name of the weekday. For a localised name, format through Date To String"
+        },
+        {
+          "name": "dayOfWeek",
+          "displayName": "Day of Week",
+          "group": "Value",
+          "plug": "output",
+          "type": {
+            "name": "number"
+          },
+          "isSignal": false,
+          "description": "Day of the week as 0-6, Sunday first — JavaScript s own numbering"
+        },
+        {
+          "name": "failure",
+          "displayName": "Invalid Date",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when a date arrived that could not be read, leaving every part unset"
+        },
+        {
+          "name": "hours",
+          "displayName": "Hours",
+          "group": "Value",
+          "plug": "output",
+          "type": {
+            "name": "number"
+          },
+          "isSignal": false,
+          "description": "Hour of the day, 0-23"
+        },
+        {
+          "name": "isoWeek",
+          "displayName": "ISO Week",
+          "group": "Value",
+          "plug": "output",
+          "type": {
+            "name": "number"
+          },
+          "isSignal": false,
+          "description": "ISO-8601 week number, 1-53: weeks start on Monday and week 1 holds the first Thursday"
+        },
+        {
+          "name": "milliseconds",
+          "displayName": "Milliseconds",
+          "group": "Value",
+          "plug": "output",
+          "type": {
+            "name": "number"
+          },
+          "isSignal": false,
+          "description": "Milliseconds past the second, 0-999"
+        },
+        {
+          "name": "minutes",
+          "displayName": "Minutes",
+          "group": "Value",
+          "plug": "output",
+          "type": {
+            "name": "number"
+          },
+          "isSignal": false,
+          "description": "Minutes past the hour, 0-59"
+        },
+        {
+          "name": "month",
+          "displayName": "Month",
+          "group": "Value",
+          "plug": "output",
+          "type": {
+            "name": "number"
+          },
+          "isSignal": false,
+          "description": "Month as 1-12 — January is 1, not 0"
+        },
+        {
+          "name": "seconds",
+          "displayName": "Seconds",
+          "group": "Value",
+          "plug": "output",
+          "type": {
+            "name": "number"
+          },
+          "isSignal": false,
+          "description": "Seconds past the minute, 0-59"
+        },
+        {
+          "name": "timestamp",
+          "displayName": "Timestamp",
+          "group": "Value",
+          "plug": "output",
+          "type": {
+            "name": "number"
+          },
+          "isSignal": false,
+          "description": "The instant as milliseconds since 1 January 1970 UTC"
+        },
+        {
+          "name": "year",
+          "displayName": "Year",
+          "group": "Value",
+          "plug": "output",
+          "type": {
+            "name": "number"
+          },
+          "isSignal": false,
+          "description": "Four-digit year, in the host s local zone"
+        }
+      ],
+      "dynamicPorts": null,
+      "parameterEncoding": null
+    },
+    {
       "typeName": "net.noodl.GlobalStore",
       "displayName": "Global Store",
       "category": "Data",
@@ -33448,6 +34061,96 @@
           },
           "isSignal": false,
           "description": "Every value completed by the most recent Parse, in order"
+        }
+      ],
+      "dynamicPorts": null,
+      "parameterEncoding": null
+    },
+    {
+      "typeName": "net.noodl.Now",
+      "displayName": "Now",
+      "category": "Utilities",
+      "isVisual": false,
+      "isDeprecated": false,
+      "inNodePicker": true,
+      "availableIn": [
+        "browser",
+        "cloud"
+      ],
+      "providedBy": "noodl-runtime",
+      "ssr": {
+        "compat": "safe"
+      },
+      "docs": "https://docs.noodl.net/nodes/utilities/now",
+      "inputs": [
+        {
+          "name": "read",
+          "displayName": "Read",
+          "group": "Actions",
+          "plug": "input",
+          "type": {
+            "name": "signal",
+            "allowConnectionsOnly": true
+          },
+          "isSignal": true,
+          "description": "Re-reads the clock. The outputs hold the instant of the last Read, not a live value"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation. This node has no other outcome — no Unchanged and no Failure — so it always fires together with Done, and wiring either one does the same thing. It is here on every action so that reaching for it is never a per-node decision"
+        },
+        {
+          "name": "date",
+          "displayName": "Date",
+          "group": "Value",
+          "plug": "output",
+          "type": {
+            "name": "date"
+          },
+          "isSignal": false,
+          "description": "The instant of the last Read, for the other date nodes"
+        },
+        {
+          "name": "done",
+          "displayName": "Done",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires once the outputs hold the freshly-read instant"
+        },
+        {
+          "name": "iso",
+          "displayName": "ISO String",
+          "group": "Value",
+          "plug": "output",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "description": "The same instant as an ISO-8601 string in UTC — the shape to put in a JSON body"
+        },
+        {
+          "name": "timestamp",
+          "displayName": "Timestamp",
+          "group": "Value",
+          "plug": "output",
+          "type": {
+            "name": "number"
+          },
+          "isSignal": false,
+          "description": "The same instant as milliseconds since 1 January 1970 UTC"
         }
       ],
       "dynamicPorts": null,

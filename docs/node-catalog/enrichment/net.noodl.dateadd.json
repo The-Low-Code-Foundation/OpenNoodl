@@ -1,0 +1,22 @@
+{
+  "typeName": "net.noodl.DateAdd",
+  "summary": "A date shifted by an amount of a unit. Months and years CLAMP: 31 January plus one month is 28 February.",
+  "description": "Date Add takes a date and produces the date that many units later, recomputing whenever Date, Amount or Unit changes. A negative amount subtracts. Milliseconds through weeks are fixed durations and are exact. Months and years are calendar steps and CLAMP to the end of the target month: 31 January plus one month is 28 February (29 in a leap year), never 2 or 3 March, and 29 February plus one year is 28 February. Both answers are defensible; the classic date bug is not knowing which one you have, so this one is written down. Date accepts a Date, an ISO string or a millisecond timestamp, because a JSON round trip through a Request or Response node turns a date into one of the latter two.",
+  "whenToUse": "Deadlines, trial expiry, renewal dates, 'thirty days from now', 'the same day next month'.",
+  "ports": {
+    "input": "The instant to shift. A string or a millisecond timestamp here is read as a date.",
+    "amount": "How much to add; negative subtracts. Whole steps for months and years.",
+    "unit": "Milliseconds, Seconds, Minutes, Hours, Days (default), Weeks, Months or Years.",
+    "result": "The shifted date, or unset when Date could not be read.",
+    "changed": "Fires after Result has been recomputed, whichever input caused it.",
+    "failure": "Invalid Date — fires when a date arrived that could not be read. It does not fire while Date is simply unset."
+  },
+  "examples": [],
+  "patterns": [
+    "Now Date → Date Add (+14 days) → Create Record: a trial end date computed on the server."
+  ],
+  "antiPatterns": [
+    "Using Days where Months was meant, to avoid thinking about clamping. 30 days and 1 month are different dates in eleven months of the year."
+  ],
+  "relatedNodes": ["net.noodl.Now", "net.noodl.DateDifference", "Date To String"]
+}
