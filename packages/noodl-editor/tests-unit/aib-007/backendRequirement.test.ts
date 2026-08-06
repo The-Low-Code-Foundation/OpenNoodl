@@ -10,7 +10,7 @@
  * somebody says which it is.
  */
 
-import { NODE_CAPABILITIES } from '@noodl/backend-contract';
+import { DELIBERATELY_UNBOUND, NODE_CAPABILITIES } from '@noodl/backend-contract';
 
 import catalogJson from '../../../noodl-types/src/node-catalog.json';
 import {
@@ -76,6 +76,28 @@ describe('the table is complete', () => {
     expect(ghosts).toEqual([]);
   });
 
+  /**
+   * FH-025 — the same guard, for BCN-010's other table.
+   *
+   * `DELIBERATELY_UNBOUND` carried a `DbConfig` row for the whole time between
+   * FH-018 deleting the node type and FH-025 removing it, and no test in
+   * `@noodl/backend-contract` could have said so: that package does not depend
+   * on `@noodl/noodl-types` and must not, because a contract package importing
+   * the editor's node catalog inverts the dependency BCN-001 drew. Its
+   * `gating.test.ts` therefore checks the table against itself (disjointness,
+   * capability keys) and never against reality.
+   *
+   * This file already imports both, so the check costs one line and belongs
+   * here. `NODE_CAPABILITIES`'s own keys are covered by the sweep above, which
+   * requires each of them to be classified by a table that is itself
+   * ghost-checked — so this closes the last edge.
+   */
+  it('BCN-010\'s deliberately-unbound table names only node types the catalog has', () => {
+    const known = new Set(CATALOG.map((n) => n.typeName));
+    const ghosts = Object.keys(DELIBERATELY_UNBOUND).filter((t) => !known.has(t));
+    expect(ghosts).toEqual([]);
+  });
+
   it('requires a backend for the two nodes that started this task', () => {
     // Richard's plan authored these into a project with no backend and the gate
     // said nothing.
@@ -89,7 +111,11 @@ describe('checkBackendRequirements', () => {
     { id: 'n1', type: 'net.noodl.user.SignUp', label: 'Create User Account' },
     { id: 'n2', type: 'DbCollection2', label: 'Query Records' },
     { id: 'n3', type: 'Group' },
-    { id: 'n4', type: 'DbConfig' }
+    // FH-025: was `DbConfig` — a type FH-018 deleted, so the fixture proved
+    // nothing after that day. `FilterDBModels` is the live equivalent: a cloud
+    // node classified `DELIBERATELY_BACKEND_FREE`, which is what this case is
+    // for.
+    { id: 'n4', type: 'FilterDBModels' }
   ];
 
   it('names the node and the missing precondition — criterion 2', () => {
@@ -99,8 +125,8 @@ describe('checkBackendRequirements', () => {
     expect(found[0].message).toContain('Create User Account');
     expect(found[0].message).toContain('user accounts');
     expect(found[1].message).toContain('reads and writes on a backend');
-    // Neither Group nor DbConfig — the latter is the node you'd use to CHECK
-    // whether there is a backend.
+    // Neither Group nor Filter Records — the latter filters an array that is
+    // already in memory and issues no request.
   });
 
   it('is an error only when the conversation agreed there is none', () => {

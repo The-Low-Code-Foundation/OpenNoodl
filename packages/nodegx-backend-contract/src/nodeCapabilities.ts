@@ -154,8 +154,14 @@ export const DELIBERATELY_UNBOUND: Readonly<Record<string, string>> = Object.fre
     'Writes user columns through the same save path as any record; `auth.signUpProperties` is about sign-up, not later edits.',
   DbModel2: 'Fetch and save are `data.fetch`/`data.save`, supported on every backend in the descriptor.',
   DeleteDbModelProperties: '`data.delete` is supported on every backend in the descriptor.',
-  FilterDBModels: 'Filters an in-memory collection; its per-operator gating is BCN-003b\'s, on the filter port.',
-  DbConfig: 'Reads project config, not the backend.'
+  FilterDBModels: 'Filters an in-memory collection; its per-operator gating is BCN-003b\'s, on the filter port.'
+  // ⚠️ `DbConfig` had a row here until FH-025. The node type was deleted by
+  // FH-018 and its last instances by FH-023, and the row outlived both — this
+  // package cannot see the node catalog (it must not: a contract package that
+  // imports the editor's catalog inverts BCN-001's dependency), so nothing here
+  // could ever have said so. The guard that now does live in the editor, in
+  // `tests-unit/aib-007/backendRequirement.test.ts`, which already imports both
+  // this table and the catalog.
 });
 
 /** The binding for a type, or `undefined`. */

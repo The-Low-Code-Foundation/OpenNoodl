@@ -75,6 +75,14 @@ export const NODES_REQUIRING_BACKEND: Readonly<Record<string, BackendRequirement
   RemoveDbModelRelation: 'backend',
   'noodl.cloud.aggregate': 'backend',
 
+  // ── Cloud Data: realtime ──────────────────────────────────────────────────
+  // Subscribe To Changes is browser-side and its entire function is to open a
+  // channel to the project's backend. With none it subscribes to nothing and
+  // reports nothing — the silent-success failure the Users note below calls
+  // "worse than an error because it looks like it worked". BCN-010 binds it
+  // `realtime.subscribe`, which is the same judgement at finer grain.
+  SubscribeToChanges: 'backend',
+
   // ── Cloud Data: files ─────────────────────────────────────────────────────
   'Upload File': 'backend',
   'Sign File URL': 'backend',
@@ -112,20 +120,51 @@ export const NODES_REQUIRING_BACKEND: Readonly<Record<string, BackendRequirement
  * catalog's cloud categories.
  */
 export const DELIBERATELY_BACKEND_FREE: Readonly<Record<string, string>> = Object.freeze({
-  DbConfig:
-    'Reads the project\'s own cloud-services config and reports whether one is set. It is the node you would ' +
-    'use to check, so it must work when the answer is "there is none".',
   FilterDBModels:
     'Filters an array that is already in memory. It never issues a request — the fetch it filters the results ' +
     'of belongs to Query Records, which does carry the requirement.',
-  // The three Cloud-category nodes run INSIDE a cloud function, in the backend
-  // process. They are not client-side callers, and a project that has them has
-  // already decided it has somewhere to deploy them; a diagnostic here would
-  // fire on every cloud function in every project rather than on the case this
-  // task is about.
+
+  // ── Cloud category, group 1: it has a deploy target by construction ───────
+  // These run INSIDE a cloud function, in the backend process. They are not
+  // client-side callers, and a project that has them has already decided it has
+  // somewhere to deploy them; a diagnostic here would fire on every cloud
+  // function in every project rather than on the case this task is about.
+  //
+  // ⚠️ This is a per-node classification, not a rule about the category, and it
+  // must stay one. `noodl.cloud.aggregate` is cloud-only *and* carries
+  // `'backend'` above, because it issues a real data request — so "category
+  // Cloud ⇒ backend-free" is already false in this file. A sweep would also
+  // destroy the property the completeness guard exists for: a new cloud node
+  // should fail that test until somebody decides which of these it is.
   'noodl.cloud.request': 'Runs inside a cloud function; it reads that function\'s own request, not a backend.',
   'noodl.cloud.response': 'Runs inside a cloud function; it writes that function\'s own response.',
-  'noodl.cloud.sendemail': 'Runs inside a cloud function, against the backend it is already deployed to.'
+  'noodl.cloud.sendemail': 'Runs inside a cloud function, against the backend it is already deployed to.',
+  // CWF-015's server-side users. Same argument as Send Email: they act on the
+  // user store of the backend hosting the function, which exists because the
+  // function is deployed to it.
+  'noodl.cloud.createuser': 'Runs inside a cloud function, against the backend it is already deployed to.',
+  'noodl.cloud.updateuser': 'Runs inside a cloud function, against the backend it is already deployed to.',
+  'noodl.cloud.deleteuser': 'Runs inside a cloud function, against the backend it is already deployed to.',
+  'noodl.cloud.verifysessiontoken':
+    'Runs inside a cloud function; it checks a token against the session store of the backend hosting it.',
+  // CWF-009's Secret. Not the same claim as the group above: it reads the
+  // hosting *process*’s own secret store through the `functions` namespace, so
+  // it is not a request to a configured backend at all. Its real failure —
+  // "works locally, 401s in production because nobody provisioned it" — is a
+  // provisioning problem, and a "you have no backend" diagnostic names the
+  // wrong thing.
+  'noodl.cloud.secret':
+    'Reads the hosting function process’s own secret store (the `functions` namespace), not a backend. ' +
+    'An unprovisioned secret is a provisioning failure, not a missing backend.',
+
+  // ── Cloud category, group 2: it reaches nothing at all ────────────────────
+  // CWF-010's crypto kit. Pure computation over `node:crypto`. A strictly
+  // stronger claim than group 1 — these would need no backend even if they ran
+  // in a browser — and written separately so the two are not merged by the next
+  // reader.
+  'noodl.cloud.hmac': 'Pure computation over `node:crypto`. It reaches nothing.',
+  'noodl.cloud.jwtsign': 'Pure computation over `node:crypto`. It reaches nothing.',
+  'noodl.cloud.jwtverify': 'Pure computation over `node:crypto`. It reaches nothing.'
 });
 
 /** The requirement for a type, or `undefined`. */
