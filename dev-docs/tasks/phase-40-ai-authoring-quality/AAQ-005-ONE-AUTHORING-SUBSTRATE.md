@@ -2,8 +2,94 @@
 
 **Findings:** #11 and Richard's directive on the contract question: *"Hooold the front door… Surely
 we can do better than [one component per session]. Let's not cut corners here."*
-**Status:** open — **slices 1 (one gate), 2 (one apply) and 3 (one vocabulary) are built and green**;
-criteria 3 and 4 are not started, and the multi-component *tool set* is deliberately still two shapes
+**Status:** open — **slices 1 (one gate), 2 (one apply) and 3 (one vocabulary) are built and green, and
+acceptance criterion 3 is MET** (2026-08-06, `b5599a91`); criterion 4 is not started, and the
+multi-component *tool set* is deliberately still two shapes
+
+## ✅ Criterion 3 met: one changeset, and a token undo that did not restore the project (2026-08-06)
+
+*"A scripted multi-component session (no model) creates a page + two section components + a token
+write in one changeset, applies atomically, and undoes as one group."* Driven in
+`tests/ai/authoring-multi-component.test.ts` — 9 cases, `b5599a91`.
+
+**Three of the four halves already held, and were measured rather than assumed.** `applyAuthoredPlan`
+records every mutation into ONE `UndoActionGroup` and pushes it once, so a three-component plan is one
+undo step, not three; preflight already refuses the whole plan before the first mutation; and the
+cross-operation graph extension already lets a page's candidate instantiate two sections that exist
+nowhere but in sibling operations' staged files. The criterion's value was almost entirely in the one
+half that did **not** hold.
+
+**The token write could not ride the changeset.** `StyleTokensModel.setToken(…, { undo: true })` mints
+and pushes its **own** `UndoActionGroup` per token, so a plan that agreed a five-token palette would
+have left six undo steps behind and "undo the build" would have undone the last colour. `applyPreset`
+— the seam AAQ-009 is told to build on — takes no undo at all. Built: a `tokens` + `tokenWriter`
+channel on the transaction, on the same injected seam as `PlanDocWriter` and `PlanBackendProvisioner`
+and for the same reason (the transaction must not grow a dependency on the styles model, its resolver
+and `EventDispatcher`). A plan carrying tokens with **no** writer is refused in preflight, loudly —
+the same shape as a missing `docWriter`, because silently applying an unstyled app is the "AI styling
+is discarded by a silent mechanism" failure in a new place.
+
+### ⚠️ The defect the drive found: restoring every token VALUE does not restore the PROJECT
+
+`StyleTokensModel._store()` writes `{ version, customTokens: [] }` under the `designTokens` metadata
+key, and a project that never had a custom token **had no such key at all**. So write-then-undo left a
+project byte-different from the one the user started with — which is precisely what the transaction's
+criterion 4 promises can never happen. **`StyleTokensModel`'s own four undo specs cannot see this**:
+they read values back out of the model, not out of the project. The transaction snapshots the metadata
+blob before the first token is written and restores it last, and a spec asserts the failure directly
+with the snapshot omitted, so the repair cannot later be deleted as redundant. The model-side four
+undo paths still have the residue and are not this task's to change.
+
+### The AAQ-009 boundary, stated rather than blurred
+
+This task's own decision record says `set_design_tokens` is **declared** here and **implemented** in
+AAQ-009. What landed is neither: it is the **transaction** half — the thing that makes a token write
+part of one changeset — which is the property criterion 3 names and the property this task owns.
+Deliberately NOT built, and each for a reason:
+
+- **the `set_design_tokens` tool.** It is a vocabulary surface, and declaring one in
+  `authoringVocabulary.ts` re-renders `noodl-mcp`'s zod schemas — a package this slice was scoped out
+  of. AAQ-009 adds it, and the parity spec covers it from the day it exists, exactly as the decision
+  record intends.
+- **which tokens a bespoke identity carries**, and how a model is asked for them. AAQ-009's subject.
+- **any policy about a token the user has already customised.** The writer writes what the approved
+  plan gave it. ⚠️ That is a genuine open question and it is left open rather than guessed:
+  `applySettings` takes the *opposite* view for project settings (a decided value is a decision), and
+  a bespoke palette that declines to change the palette is not obviously right either.
+  `StyleTokensModel.isOverridden(name)` is the hook if AAQ-009 wants the other answer.
+- **the panel wiring.** `ProjectAuthoringView` does not yet pass `tokens`/`tokenWriter`, because
+  nothing yet produces tokens for a plan to carry. It is one `createPlanTokenWriter(model, project)`
+  argument once AAQ-009's tool exists; building it now would ship an unreachable channel.
+
+### ⚠️ Two doc premises corrected
+
+1. **"the scripted drivers in `scripts/aib38-live/`"** (in *What this replaces*) — the path is
+   `packages/noodl-editor/scripts/aib38-live/`, and every one of those drivers is a **CDP driver that
+   needs a running editor**. They are not usable as a regression harness for a code change, and they
+   are not what "scripted, no model" means for this criterion. The recipe that *is* established and
+   was used here is `authoring-plan.test.ts`'s `planChatScript`: `PlanRun` and `AuthoringSession` take
+   a `chat` function, and the reply is routed by the component named in the session's opening user
+   message. Everything downstream is the app's own code.
+2. **"criteria 3 and 4 are not started"** was true of criterion 3's *token* half only. The
+   multi-component apply, its atomicity and its single undo group had all existed since AIX-011 and
+   were being asserted by `authoring-plan-staging.test.ts`'s criterion-4 spec under a different name.
+
+### Incidentally
+
+The criterion-3 fixture authors **both sections with the same node ids** (`root`, `title`), because
+that is what a model does. Without AAQ-011 F12's allocator — closed the same day, one commit earlier —
+criterion 3 would have passed on a project where `ProjectModel.findNodeWithId` answered with the wrong
+node. It is asserted here as well as there.
+
+### Evidence
+
+- `tests/ai/authoring-multi-component.test.ts` — 9 cases: the scripted call log (three turns, no
+  provider), one changeset, one undo step, byte-identical undo *and* redo, an atomic refusal that
+  leaves neither the other components nor the palette, the two refusal paths (no writer; a token name
+  that is not a CSS custom property), the introduced-token inverse, the metadata residue, and the F12
+  interaction.
+- Editor suite **2391 specs, 0 failures**; `npx jest tests-unit/aib-001 tests-unit/aaq-005` **93
+  passed** (criterion 5's guard); `typecheck:editor-tests` clean.
 
 ## ⚠️ Slice 3 landed: one vocabulary, and the field that decides a port exists was on one door only (2026-08-05)
 
@@ -359,8 +445,11 @@ Preview/verify (AAQ-007 consumes these): `render_preview`, `get_render_report`.
 `AuthoringSession`'s tool plumbing and `PlanRun`'s one-op-one-session orchestration become
 consumers of the substrate. They keep working through this task (AAQ-006 retires the orchestration);
 this task's deliverable is the substrate plus the editor binding plus the MCP convergence, proven by
-the existing loop running on top of it with zero behaviour change (the aib-001 suites and the
-scripted drivers in `scripts/aib38-live/` are the regression harness).
+the existing loop running on top of it with zero behaviour change (the aib-001 suites are the
+regression harness). ⚠️ **The drivers in `packages/noodl-editor/scripts/aib38-live/` are NOT part of
+that harness** — every one is a CDP driver against a *running* editor, so none can be run as part of a
+code change. The offline, no-model recipe is `authoring-plan.test.ts`'s `planChatScript`; criterion 3
+used it.
 
 ## Acceptance criteria
 
@@ -373,8 +462,12 @@ scripted drivers in `scripts/aib38-live/` are the regression harness).
    the tool **set**: three tools here, a larger surface there, with `operations` and the plan tools
    deliberately MCP-only. A drift detector over the shared vocabulary now exists; forcing one tool list
    is a separate decision.)*
-3. A scripted multi-component session (no model) creates a page + two section components + a token
-   write in one changeset, applies atomically, and undoes as one group.
+3. ✅ **MET 2026-08-06 — `b5599a91`.** A scripted multi-component session (no model) creates a page +
+   two section components + a token write in one changeset, applies atomically, and undoes as one
+   group. See the criterion-3 section at the top: three of the four halves already held and were
+   measured; the token write could not ride the changeset and now does; and the drive found that
+   restoring every token *value* does not restore the *project*. The `set_design_tokens` **tool** and
+   the token content stay with AAQ-009, per this file's own decision record.
 4. Claude Code, pointed at `noodl-mcp` against a scratch project, builds a multi-component page
    through the converged tools — driven once, live, and the transcript kept as a fixture.
 5. Parameter-value validation (AIB-001), connection-only, units, and blocking-warning behaviour are
