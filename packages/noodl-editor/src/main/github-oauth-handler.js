@@ -1,181 +1,171 @@
 /**
- * GitHubOAuthCallbackHandler
+ * GitHub sign-in, main-process half.
  *
- * Handles GitHub OAuth callback in Electron main process using custom protocol handler.
- * This enables Web OAuth Flow with organization/repository selection UI.
+ * F63 replaced the authorization-code flow this file used to run with the
+ * **device flow**. The reason was not ergonomics: the old flow needed a client
+ * *secret*, and the secret was a literal here —
+ *
+ *     const GITHUB_CLIENT_SECRET = process.env.GITHUB_CLIENT_SECRET || 'c452…';
+ *
+ * — behind a `process.env` fallback that was never taken, because
+ * `GITHUB_CLIENT_SECRET` is set by no workflow, build script or webpack config
+ * anywhere in the tree. In a public repo, in a file that shipped both inlined
+ * into `main.bundle.js` and as readable source. Anyone could impersonate the
+ * app to GitHub. ⚠️ **That secret is burned and must be revoked by hand in the
+ * OAuth app's settings** — deleting it from source does not un-leak it.
+ *
+ * The device flow uses the client **id** only, so there is nothing confidential
+ * left in this file. It also has no redirect URI, which is why the custom
+ * `noodl://github-callback` protocol handling is gone with it.
+ *
+ * The polling state machine lives in `./src/github-device-flow` with every
+ * clock and socket injected, so `tests-main/` can drive `slow_down`,
+ * `expired_token` and `access_denied` without a network. This file is the
+ * Electron wiring: IPC in, browser-window broadcasts out.
+ *
+ * ── The IPC contract ────────────────────────────────────────────────────────
+ *
+ * - `invoke('github-oauth-start')` → `{ success, userCode, verificationUri,
+ *   expiresIn, interval }`. The renderer shows `userCode` and opens
+ *   `verificationUri`. ⚠️ GitHub does **not** return `verification_uri_complete`,
+ *   so the code cannot be carried in the URL — showing it is mandatory, not a
+ *   nicety.
+ * - `invoke('github-oauth-stop')` → cancels the poll.
+ * - `send('github-oauth-complete', { token, user, installations, authMethod })`
+ *   — unchanged shape, so `GitHubOAuthService` and `GitHubAuth` keep working.
+ * - `send('github-oauth-error', { error, message })` where `error` is the
+ *   machine-readable code: `access_denied` and `expired_token` are distinct, and
+ *   the dialog says different things for them.
  *
  * @module noodl-editor/main
- * @since 1.1.0
  */
 
-const crypto = require('crypto');
 const { ipcMain, BrowserWindow } = require('electron');
 
-/**
- * GitHub OAuth credentials
- * Uses existing credentials from GitHubOAuthService
- */
-const GITHUB_CLIENT_ID = process.env.GITHUB_CLIENT_ID || 'Ov23li2n9u3dwAhwoifb';
-const GITHUB_CLIENT_SECRET = process.env.GITHUB_CLIENT_SECRET || 'c45276fa80b0618de06e5e2b09c1019ca150baef';
+const {
+  GITHUB_CLIENT_ID,
+  GITHUB_SCOPES,
+  DeviceFlowError,
+  describeDeviceFlowError,
+  requestDeviceCode,
+  pollForToken
+} = require('./src/github-device-flow');
 
 /**
- * Custom protocol for OAuth callback
+ * The app's deep-link scheme.
+ *
+ * ⚠️ Not an OAuth concern any more — the device flow never comes back to the
+ * app — but registering it is still done here because this is the only place
+ * that ever did it, and `noodl:import/…` links (the design-tool import, handled
+ * in `editor/index.ts`) stop working without it. `main.js` registers `nodegx`
+ * separately; this belongs beside that, and moving it is a `main.js` edit.
  */
-const OAUTH_PROTOCOL = 'noodl';
-const OAUTH_CALLBACK_PATH = 'github-callback';
+const DEEP_LINK_PROTOCOL = 'noodl';
 
 /**
- * Manages GitHub OAuth using custom protocol handler
+ * Runs one device-flow sign-in at a time.
  */
-class GitHubOAuthCallbackHandler {
-  constructor() {
-    this.pendingAuth = null;
+class GitHubDeviceFlowHandler {
+  /**
+   * @param {object} [deps] injection seam for tests; production passes nothing.
+   */
+  constructor(deps = {}) {
+    this.deps = deps;
+    /** The in-flight flow, or null. */
+    this.pending = null;
   }
 
   /**
-   * Handle protocol callback from GitHub OAuth
-   * Called when user is redirected to noodl://github-callback?code=XXX&state=YYY
+   * Ask GitHub for a code, then poll in the background.
+   *
+   * Returns as soon as there is something to show the user — the poll is
+   * deliberately *not* awaited, because the renderer needs the code on screen
+   * while it runs. Completion arrives over IPC.
    */
-  async handleProtocolCallback(url) {
-    console.log('🔐 [GitHub OAuth] ========================================');
-    console.log('🔐 [GitHub OAuth] PROTOCOL CALLBACK RECEIVED');
-    console.log('🔐 [GitHub OAuth] URL:', url);
-    console.log('🔐 [GitHub OAuth] ========================================');
+  async start() {
+    // A second Connect click while one flow is live would otherwise leave an
+    // orphaned poll racing the new one, and whichever finished first would win.
+    this.cancel();
 
-    try {
-      // Parse the URL
-      const parsedUrl = new URL(url);
-      const params = parsedUrl.searchParams;
-
-      const code = params.get('code');
-      const state = params.get('state');
-      const error = params.get('error');
-      const error_description = params.get('error_description');
-
-      // Handle OAuth error
-      if (error) {
-        console.error('[GitHub OAuth] Error from GitHub:', error, error_description);
-        this.sendErrorToRenderer(error, error_description);
-        return;
-      }
-
-      // Validate required parameters
-      if (!code || !state) {
-        console.error('[GitHub OAuth] Missing code or state in callback');
-        this.sendErrorToRenderer('invalid_request', 'Missing authorization code or state');
-        return;
-      }
-
-      // Validate state (CSRF protection)
-      if (!this.validateState(state)) {
-        throw new Error('Invalid OAuth state - possible CSRF attack or expired');
-      }
-
-      // Exchange code for token
-      const token = await this.exchangeCodeForToken(code);
-
-      // Fetch user info
-      const user = await this.fetchUserInfo(token.access_token);
-
-      // Fetch installation info (organizations/repos)
-      const installations = await this.fetchInstallations(token.access_token);
-
-      // Send result to renderer process
-      this.sendSuccessToRenderer({
-        token,
-        user,
-        installations,
-        authMethod: 'web_oauth'
-      });
-
-      // Clear pending auth
-      this.pendingAuth = null;
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      console.error('[GitHub OAuth] Callback handling error:', error);
-      this.sendErrorToRenderer('token_exchange_failed', errorMessage);
-    }
-  }
-
-  /**
-   * Generate OAuth state for new flow
-   */
-  generateOAuthState() {
-    const state = crypto.randomBytes(32).toString('hex');
-    const verifier = crypto.randomBytes(32).toString('base64url');
-    const now = Date.now();
-
-    this.pendingAuth = {
-      state,
-      verifier,
-      createdAt: now,
-      expiresAt: now + 300000 // 5 minutes
-    };
-
-    return this.pendingAuth;
-  }
-
-  /**
-   * Validate OAuth state from callback
-   */
-  validateState(receivedState) {
-    if (!this.pendingAuth) {
-      console.error('[GitHub OAuth] No pending auth state');
-      return false;
-    }
-
-    if (receivedState !== this.pendingAuth.state) {
-      console.error('[GitHub OAuth] State mismatch');
-      return false;
-    }
-
-    if (Date.now() > this.pendingAuth.expiresAt) {
-      console.error('[GitHub OAuth] State expired');
-      return false;
-    }
-
-    return true;
-  }
-
-  /**
-   * Exchange authorization code for access token
-   */
-  async exchangeCodeForToken(code) {
-    console.log('[GitHub OAuth] Exchanging code for access token');
-
-    const response = await fetch('https://github.com/login/oauth/access_token', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Accept: 'application/json'
-      },
-      body: JSON.stringify({
-        client_id: GITHUB_CLIENT_ID,
-        client_secret: GITHUB_CLIENT_SECRET,
-        code,
-        redirect_uri: `${OAUTH_PROTOCOL}://${OAUTH_CALLBACK_PATH}`
-      })
+    const device = await requestDeviceCode({
+      fetchImpl: this.deps.fetchImpl,
+      clientId: GITHUB_CLIENT_ID,
+      scopes: GITHUB_SCOPES
     });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Token exchange failed: ${response.status} ${errorText}`);
-    }
+    const pending = { cancelled: false, deviceCode: device.device_code };
+    this.pending = pending;
 
-    const data = await response.json();
+    console.log('[GitHub device flow] Code issued, waiting for the user to enter it on GitHub');
 
-    if (data.error) {
-      throw new Error(`GitHub OAuth error: ${data.error_description || data.error}`);
-    }
+    this.runPoll(pending, device);
 
-    return data;
+    return {
+      userCode: device.user_code,
+      verificationUri: device.verification_uri,
+      expiresIn: device.expires_in,
+      interval: device.interval
+    };
   }
 
   /**
-   * Fetch user information from GitHub
+   * The background half of `start`. Separated so `start` can return without
+   * `await`ing it, and so the catch is in one place.
+   */
+  async runPoll(pending, device) {
+    try {
+      const token = await pollForToken({
+        deviceCode: device.device_code,
+        clientId: GITHUB_CLIENT_ID,
+        interval: device.interval,
+        expiresIn: device.expires_in,
+        fetchImpl: this.deps.fetchImpl,
+        sleep: this.deps.sleep,
+        now: this.deps.now,
+        isCancelled: () => pending.cancelled
+      });
+
+      // A flow the user cancelled while the last request was in flight must not
+      // sign them in anyway.
+      if (pending.cancelled || this.pending !== pending) return;
+
+      const user = await this.fetchUserInfo(token.access_token);
+      const installations = await this.fetchInstallations(token.access_token);
+
+      if (pending.cancelled || this.pending !== pending) return;
+
+      this.pending = null;
+      this.sendSuccessToRenderer({ token, user, installations, authMethod: 'device_flow' });
+    } catch (error) {
+      if (pending.cancelled || this.pending !== pending) return;
+      this.pending = null;
+
+      const code = error instanceof DeviceFlowError ? error.code : 'unknown_error';
+      // `cancelled` is the app's own doing; the renderer already knows.
+      if (code === 'cancelled') return;
+
+      console.error('[GitHub device flow] Failed:', code, error.message);
+      this.sendErrorToRenderer(code, error.message || describeDeviceFlowError(code));
+    }
+  }
+
+  /**
+   * Abandon the in-flight flow, if any. Idempotent.
+   */
+  cancel() {
+    if (this.pending) {
+      this.pending.cancelled = true;
+      this.pending = null;
+      console.log('[GitHub device flow] Cancelled');
+    }
+  }
+
+  /**
+   * Fetch user information from GitHub.
    */
   async fetchUserInfo(token) {
-    const response = await fetch('https://api.github.com/user', {
+    const fetchImpl = this.deps.fetchImpl || fetch;
+    const response = await fetchImpl('https://api.github.com/user', {
       headers: {
         Authorization: `Bearer ${token}`,
         Accept: 'application/vnd.github.v3+json'
@@ -190,12 +180,15 @@ class GitHubOAuthCallbackHandler {
   }
 
   /**
-   * Fetch installation information (orgs/repos user granted access to)
+   * Fetch installation information (orgs/repos the user granted access to).
+   *
+   * Best-effort: a user with no GitHub App installations gets a 403 here, and
+   * that is not a failed sign-in.
    */
   async fetchInstallations(token) {
     try {
-      // Fetch user installations
-      const response = await fetch('https://api.github.com/user/installations', {
+      const fetchImpl = this.deps.fetchImpl || fetch;
+      const response = await fetchImpl('https://api.github.com/user/installations', {
         headers: {
           Authorization: `Bearer ${token}`,
           Accept: 'application/vnd.github.v3+json'
@@ -203,86 +196,44 @@ class GitHubOAuthCallbackHandler {
       });
 
       if (!response.ok) {
-        console.warn('[GitHub OAuth] Failed to fetch installations:', response.status);
+        console.warn('[GitHub device flow] Could not fetch installations:', response.status);
         return [];
       }
 
       const data = await response.json();
       return data.installations || [];
     } catch (error) {
-      console.warn('[GitHub OAuth] Error fetching installations:', error);
+      console.warn('[GitHub device flow] Error fetching installations:', error);
       return [];
     }
   }
 
   /**
-   * Send success to renderer process
-   * Broadcasts to ALL windows since the editor might not be windows[0]
+   * Broadcast to ALL windows — the editor is not reliably `windows[0]`.
    */
   sendSuccessToRenderer(result) {
-    console.log('📤 [GitHub OAuth] ========================================');
-    console.log('📤 [GitHub OAuth] SENDING IPC EVENT: github-oauth-complete');
-    console.log('📤 [GitHub OAuth] User:', result.user.login);
-    console.log('📤 [GitHub OAuth] Installations:', result.installations.length);
-    console.log('📤 [GitHub OAuth] ========================================');
+    console.log('[GitHub device flow] Signed in as', result.user && result.user.login);
 
-    const windows = BrowserWindow.getAllWindows();
-    if (windows.length > 0) {
-      // Broadcast to ALL windows - the one with the listener will handle it
-      windows.forEach((win, index) => {
-        try {
-          win.webContents.send('github-oauth-complete', result);
-          console.log(`✅ [GitHub OAuth] IPC event sent to window ${index}`);
-        } catch (err) {
-          console.error(`❌ [GitHub OAuth] Failed to send to window ${index}:`, err.message);
-        }
-      });
-    } else {
-      console.error('❌ [GitHub OAuth] No windows available to send IPC event!');
+    for (const win of BrowserWindow.getAllWindows()) {
+      try {
+        win.webContents.send('github-oauth-complete', result);
+      } catch (err) {
+        // A window that is being torn down cannot receive; the others still can.
+      }
     }
   }
 
-  /**
-   * Send error to renderer process
-   * Broadcasts to ALL windows since the editor might not be windows[0]
-   */
   sendErrorToRenderer(error, description) {
-    const windows = BrowserWindow.getAllWindows();
-    if (windows.length > 0) {
-      windows.forEach((win) => {
-        try {
-          win.webContents.send('github-oauth-error', {
-            error,
-            message: description || error
-          });
-        } catch (err) {
-          // Ignore errors for windows that can't receive messages
-        }
-      });
+    for (const win of BrowserWindow.getAllWindows()) {
+      try {
+        win.webContents.send('github-oauth-error', {
+          error,
+          message: description || describeDeviceFlowError(error)
+        });
+      } catch (err) {
+        // See above.
+      }
     }
-  }
-
-  /**
-   * Get authorization URL for OAuth flow
-   */
-  getAuthorizationUrl(state) {
-    const params = new URLSearchParams({
-      client_id: GITHUB_CLIENT_ID,
-      redirect_uri: `${OAUTH_PROTOCOL}://${OAUTH_CALLBACK_PATH}`,
-      scope: 'repo read:org read:user user:email',
-      state,
-      allow_signup: 'true'
-    });
-
-    return `https://github.com/login/oauth/authorize?${params}`;
-  }
-
-  /**
-   * Cancel pending OAuth flow
-   */
-  cancelPendingAuth() {
-    this.pendingAuth = null;
-    console.log('[GitHub OAuth] Pending auth cancelled');
   }
 }
 
@@ -290,65 +241,37 @@ class GitHubOAuthCallbackHandler {
 let handlerInstance = null;
 
 /**
- * Initialize GitHub OAuth IPC handlers and protocol handler
+ * Initialize GitHub sign-in IPC handlers.
  */
 function initializeGitHubOAuthHandlers(app) {
-  handlerInstance = new GitHubOAuthCallbackHandler();
+  handlerInstance = new GitHubDeviceFlowHandler();
 
-  // Register custom protocol handler
-  if (!app.isDefaultProtocolClient(OAUTH_PROTOCOL)) {
-    app.setAsDefaultProtocolClient(OAUTH_PROTOCOL);
-    console.log(`[GitHub OAuth] Registered ${OAUTH_PROTOCOL}:// protocol handler`);
+  // See DEEP_LINK_PROTOCOL — kept for `noodl:import/…`, not for sign-in.
+  if (!app.isDefaultProtocolClient(DEEP_LINK_PROTOCOL)) {
+    app.setAsDefaultProtocolClient(DEEP_LINK_PROTOCOL);
+    console.log(`[GitHub device flow] Registered ${DEEP_LINK_PROTOCOL}:// deep-link handler`);
   }
 
-  // Handle protocol callback on macOS/Linux
-  app.on('open-url', (event, url) => {
-    event.preventDefault();
-    if (url.startsWith(`${OAUTH_PROTOCOL}://${OAUTH_CALLBACK_PATH}`)) {
-      handlerInstance.handleProtocolCallback(url);
-    }
-  });
-
-  // Handle protocol callback on Windows (second instance)
-  app.on('second-instance', (event, commandLine) => {
-    // Find the protocol URL in command line args
-    const protocolUrl = commandLine.find((arg) => arg.startsWith(`${OAUTH_PROTOCOL}://`));
-    if (protocolUrl && protocolUrl.includes(OAUTH_CALLBACK_PATH)) {
-      handlerInstance.handleProtocolCallback(protocolUrl);
-    }
-
-    // Focus the main window
-    const windows = BrowserWindow.getAllWindows();
-    if (windows.length > 0) {
-      if (windows[0].isMinimized()) windows[0].restore();
-      windows[0].focus();
-    }
-  });
-
-  // Handle start OAuth flow request from renderer
   ipcMain.handle('github-oauth-start', async () => {
     try {
-      const authState = handlerInstance.generateOAuthState();
-      const authUrl = handlerInstance.getAuthorizationUrl(authState.state);
-
-      return { success: true, authUrl };
+      const device = await handlerInstance.start();
+      return { success: true, ...device };
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      return { success: false, error: errorMessage };
+      const code = error instanceof DeviceFlowError ? error.code : 'unknown_error';
+      return { success: false, code, error: error.message || describeDeviceFlowError(code) };
     }
   });
 
-  // Handle stop OAuth flow request from renderer
   ipcMain.handle('github-oauth-stop', async () => {
-    handlerInstance.cancelPendingAuth();
+    handlerInstance.cancel();
     return { success: true };
   });
 
-  console.log('[GitHub OAuth] IPC handlers and protocol handler initialized');
+  console.log('[GitHub device flow] IPC handlers initialized');
 }
 
 module.exports = {
-  GitHubOAuthCallbackHandler,
+  GitHubDeviceFlowHandler,
   initializeGitHubOAuthHandlers,
-  OAUTH_PROTOCOL
+  DEEP_LINK_PROTOCOL
 };
