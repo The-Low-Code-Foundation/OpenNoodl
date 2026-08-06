@@ -382,6 +382,34 @@ failure. This is the workhorse — any real work is a cloud-function graph.
 { "id": "validate", "kind": "call-function", "ref": "validateOrder", "next": ["charge"] }
 ```
 
+#### The function doesn't exist yet
+
+Double-click a Call Function step and you land inside the graph of the function
+it calls. When there is no such function — you named one you have not written,
+or the step names nothing at all — the answer is not an empty canvas: the step is
+drawn with a warning ring, its property row says which of the two stores is
+missing it, and both the row and the right-click menu offer **New cloud function
+"…" from this step**.
+
+That gesture creates the function, points the step at it, and drops you inside
+it. Two things it does that are worth knowing before you use it:
+
+- **It declares your params on the new function.** The names in the step's Params
+  section become the Request node's parameters, so you arrive in a graph whose
+  input ports are already the values this step sends. Rename them there and you
+  have changed the function's contract, not the step's — retarget the step's
+  params to match.
+- **It may name the function something other than what you typed.** A function
+  name is also a URL path segment (`POST /functions/<name>`), so `charge card`
+  becomes `chargeCard`, and a name the project already uses gets a number. The
+  step is repointed at whatever was actually created, and the toast says so.
+
+It is offered only for a step that resolves to **nothing**. A step calling a
+function that is deployed from somewhere else is not offered a local one of the
+same name — that would overwrite the deployed function on your next push, which
+is a decision to take in the Components panel with the consequence in front of
+you.
+
 #### Retrying it — the policy, not a separate step
 
 A Call Function step can retry itself with exponential backoff. The policy is
@@ -736,12 +764,24 @@ interpolation and not a function call. It is the one operation that can look
 - **No wildcards in paths.** `lines.*.amount` is genuinely useful and it is a
   change to the `$path` walker that **conditions share** — so it is one change
   for both languages or none, never a second walker for transforms.
+- **No aggregation step** — no `count` / `sum` / `min` / `max` / `group-by` over
+  an array. Everything else in this family is *the data you already had, minus
+  some of it or in a different order*; aggregation is the one candidate that
+  **computes**, and "no arithmetic — compute in a cloud function" is served to
+  every client from `VALUE_LANGUAGE.limits`. Summing an array is a Call Function
+  step away, and after `filter` / `sort` / `deduplicate` / `split` the function it
+  calls is a three-line `reduce` over a list you have already made clean.
+  ⚠️ Not to be confused with the **Aggregate Records** node, which is a database
+  aggregation over a *stored collection query* inside a cloud function — it
+  cannot see a payload merely passing through a workflow, so it is not the same
+  answer to the same question.
 - **No free function step, ever.** See
   [the backend authoring model](../../dev-docs/reference/BACKEND-AUTHORING-MODEL.md):
   a workflow definition is persisted, deployable, agent-authored JSON executing
   with admin authority, and an `eval`'d string in one is remote code execution
   behind an admin credential. When you genuinely need code, the answer is a
-  one-node cloud function reached by the descent gesture.
+  one-node cloud function — and from a Call Function step that names one you have
+  not written, [creating it is one gesture](#the-function-doesnt-exist-yet).
 
 **Client equivalent:** nothing exact. In the browser you would wire an Object
 node or compute in a Function; server-side there is no code here on purpose.

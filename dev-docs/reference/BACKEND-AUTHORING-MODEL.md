@@ -71,7 +71,17 @@ same argument one step earlier.
 **Out, at the workflow level, permanently:** a free JavaScript/expression step, an HTTP step, a
 database step. Not because they'd be hard — because each one recreates the melting pot, and each has
 a home one level down that is already better at it. The escape hatch when you genuinely need code is
-a **one-node cloud function** reached by the descent gesture, not an eval in the definition.
+a **one-node cloud function** reached by the descent gesture, not an eval in the definition. Since
+CWF-004 S6 that escape hatch is one gesture even when the function does not exist yet: a step whose
+`ref` resolves to nothing offers **New cloud function "…" from this step**, which creates it,
+declares the step's params on its Request node, points the step at it and drops you inside its graph.
+
+**And aggregation is out for the same reason, decided 2026-08-06.** No `count` / `sum` / `min` /
+`max` step: it is the one candidate in CWF-004's family that *computes* rather than referencing or
+reshaping, and `VALUE_LANGUAGE.limits` serves *"No arithmetic, string interpolation or function
+calls. Compute in a cloud function"* to every client. The accepted cost is that an in-flight array
+that is never stored needs a `call-function` hop to be summed — `Aggregate Records` covers data at
+rest only.
 
 ## How they join
 
