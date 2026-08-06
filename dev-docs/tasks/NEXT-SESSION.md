@@ -225,7 +225,7 @@ This is the **largest remaining block** and it is a dependency chain, not a list
 | **AAQ-008** — components by default | Not started. Depends on AAQ-005/006. |
 | **AAQ-009** — a bespoke visual identity per project | Not started. Fully bespoke tokens, not presets — decided. Prompt-encodable parts can land early. |
 | **AAQ-010** — the whole styling surface | Not started. Blocked on AAQ-009 + AAQ-007 + **F14** + **AIB-010** (which lives in phase 38). |
-| **AAQ-001** — a created page is reachable | Criteria closed live. One thing owed: promote `PageWithoutPageNode` to blocking (**F7**) — 57 fixture sites across 15 spec files. |
+| **AAQ-001** — a created page is reachable | **CLOSED 2026-08-06 (`d2b1077b`).** Criteria closed live; the one thing owed — promoting `PageWithoutPageNode` to blocking (**F7**) — is done. The "57 sites across 15 files" estimate was ~3.5× too large: 41 specs in 8 files went red, 16 fixture sites fixed it. |
 | **AAQ-003** — authored apps scroll | Criterion 2 is not driven; needs a second brief, to take with the engine work. |
 | **AAQ-004** — the conversation is kept | Mechanism A built and under test. **Mechanism B sits with AAQ-006.** F3 is the decision inside its fix review. |
 

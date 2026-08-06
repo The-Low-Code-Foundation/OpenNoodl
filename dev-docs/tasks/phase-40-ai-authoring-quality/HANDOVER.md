@@ -35,7 +35,7 @@ runtime **2144 passed**; `typecheck:editor` and `typecheck:editor-tests` clean.
 
 | Task | State |
 |---|---|
-| AAQ-001 — a created page is reachable | **Criteria 1, 3, 4, 5 closed live.** Criterion 2 closed by construction. One thing owed: promote `PageWithoutPageNode` to blocking (AAQ-011 F7). |
+| AAQ-001 — a created page is reachable | **CLOSED 2026-08-06.** Criteria 1, 3, 4, 5 closed live; criterion 2 closed by construction; `PageWithoutPageNode` promoted to blocking in `d2b1077b` (AAQ-011 F7) — the last thing it owed. |
 | AAQ-002 — the backend is first-class | ✅ **CLOSED.** All four slices built, all five criteria driven live. |
 | AAQ-003 — authored apps scroll | **Criterion 1 closed live.** Criterion 3 under test. Criterion 2 (a dashboard brief's regions scrolling independently) needs a second brief — take it with the engine work. |
 | AAQ-004 — the conversation is kept | Mechanism A built, under test, confirmed live. Mechanism B stays with AAQ-006. |
@@ -285,11 +285,14 @@ The gate is one, the apply is one, and the vocabulary is one. In order:
    on the project-open path. ✅ **F9 is closed (`339b3009`)**: the clear went into `_reportReset` and
    withdraws every reset diagnosis the current pass did not reach, so a genuinely empty Router still
    warns.
-4. **AAQ-011 F7** — promote `PageWithoutPageNode` to the blocking set, which lives in
-   `validation/authoredCandidate.ts` and is one set for both clients. It needs 57 fixture sites across 15
-   AI spec files corrected (every one builds a `/Pages/…` component out of a bare Group). Mechanical, but
-   it changes what a large part of the suite asserts, so it wants its own read — and it now changes what
-   Claude Code may write too.
+4. ~~**AAQ-011 F7** — promote `PageWithoutPageNode` to the blocking set.~~ **DONE `d2b1077b`,
+   2026-08-06.** The set is in `validation/authoredCandidate.ts` and one set for three gates, so the
+   editor, the MCP write gate and the MCP plan gate all refuse it now. ⚠️ **The "57 sites across 15
+   files" estimate was ~3.5× too large** — it counted mentions of `/Pages/`, not constructions the gate
+   judges. Real bill: 41 editor specs across 8 files and 1 MCP spec, 16 fixture sites, 15 new `Page`
+   roots. ⚠️ **An update is not automatically exempt**: the baseline forgives only what the base already
+   had, and the corpus `/Pages/Article` HAS a `Page` node, so three `authoring-plan` specs were charged
+   for dropping it.
 5. **AAQ-011 F13** — whether the MCP server may create backends at all. Until it can, a full-stack app
    cannot be built end to end through the external door; the graph is diagnosed (slice 1 gave the package
    `checkBackendRequirements`) but nothing offers to fix it. Worth putting to Richard alongside F10.
@@ -347,9 +350,13 @@ Gates and harness:
   projects, and a 20-line python walk over them is what said `input/output` is a real plug value used 92
   times. **Read the corpus rather than reasoning about the value set.**
 - ⚠️ **A rule calibrated on the project corpus is not calibrated on the authored one.**
-  `PageWithoutPageNode` fires 6 times over 96 real projects and **57 times across 15 AI spec files**.
-  There is a third population: `noodl-mcp`'s fixtures and whatever Claude Code writes.
-  Before you make a diagnostic blocking, run **all three** suites.
+  `PageWithoutPageNode` fires 6 times over 96 real projects and, in the authored population, over a
+  large part of the AI suite. There is a third population: `noodl-mcp`'s fixtures and whatever Claude
+  Code writes. Before you make a diagnostic blocking, run **all three** suites.
+  ⚠️ **And do not trust the size estimate you wrote while filing it.** F7 filed "57 sites across 15 spec
+  files" from a grep for `/Pages/`; the promotion (`d2b1077b`) turned **41 specs across 8 files** red,
+  and correcting them took **16 fixture sites**. Counting mentions is not counting sites — run the suite
+  and let it tell you.
 - **Verify a new spec fails without the fix.** Slice 1's parity spec passed on the first run; only
   reverting the change proved it was worth anything. Slice 3 did the same by reinstating the old
   hand-written schemas (8 of 23 failed) and by adding one undeclared, unstored field (7 of 16 failed). A

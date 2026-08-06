@@ -1,9 +1,11 @@
 # AAQ-001 — A created page is reachable
 
 **Findings:** #5 (router has no pages after apply), #6 (`navigate to path /puppies` with no such page)
-**Status:** criteria 1, 3, 4, 5 **closed live** (2026-08-05). Criterion 2 remains closed-by-construction.
-The live pass found **three defects that 2165 green specs could not see**, all now fixed, plus one
-contract nobody had written down. Read the next section before anything else in this file.
+**Status:** **CLOSED 2026-08-06.** Criteria 1, 3, 4, 5 closed live (2026-08-05); criterion 2 closed by
+construction; the one thing still owed — promoting `PageWithoutPageNode` to blocking — landed in
+`d2b1077b` (AAQ-011 F7). The live pass found **three defects that 2165 green specs could not see**, all
+now fixed, plus one contract nobody had written down. Read the next section before anything else in this
+file.
 
 ## ⚠️ The live pass, 2026-08-05 — what was actually wrong
 
@@ -29,8 +31,8 @@ wizard end to end (`packages/noodl-editor/scripts/aaq40-live/`) found this, in t
    listed, one page indexed. Nothing anywhere said a page component needs a `Page` node —
    `stagedComponentIsPage` accepts the `/Pages/…` *name*, which is right for deciding what to register
    and was never a claim about what renders. Now `DiagnosticCode.PageWithoutPageNode` plus an explicit
-   sentence in the authoring prompt. **The diagnostic is a warning, not blocking, and that is a
-   deliberate half-measure with a bill attached — see the note in `validate.ts`.**
+   sentence in the authoring prompt. **It shipped as a warning and was promoted to blocking on
+   2026-08-06 (`d2b1077b`, AAQ-011 F7) — see "Paid off" below.**
 4. The repair message the agent reads offered `/Pages/Admin` **twice** and called `App` a page. Both
    fixed in `checkNavigation`; it now dedupes and says "component names", and states when the list is
    truncated.
@@ -49,13 +51,24 @@ Against a real preview window, with the fixes in:
 Gates at the end of the pass: editor suite **2168 specs, 0 failures**; `typecheck:editor` and
 `typecheck:editor-tests` clean.
 
-### Still owed
+### Paid off — `d2b1077b`, 2026-08-06
 
-- **Promote `PageWithoutPageNode` to `BLOCKING_WARNINGS`.** It fires on **57 fixture sites across 15 AI
-  spec files**, every one of which builds a `/Pages/…` component out of a bare Group — the belief the
-  product itself held until this pass. Correcting them changes what a large part of the suite asserts and
-  deserves its own read; it was not tacked onto the session that found the defect. Until then a blank
-  page is a warning the agent is shown and a contract the prompt states, not a refusal.
+- **`PageWithoutPageNode` is in `AUTHORED_BLOCKING_WARNINGS`.** A `/Pages/…` candidate with no `Page`
+  node is now refused by the editor gate and by both MCP gates, so a blank page is a refusal rather than
+  a note the agent may ignore. The prompt says so too: *"the validator REFUSES a page component with no
+  Page node; it is not advice you can decline."*
+- **The fixture bill above was wrong by ~3.5×.** "57 sites across 15 spec files" counted *mentions* of
+  `/Pages/`; the sites the authored gate actually judges are **16 across 9 files**. Promoting the code
+  turned **41 editor specs** red across 8 AI spec files, plus one MCP gate-parity spec. Every one was
+  corrected by giving the fixture a real `Page` root — 15 of them — rather than by relaxing an assertion.
+- ⚠️ **An update is not automatically exempt, and that is the part the bill did not anticipate.** The
+  baseline exemption forgives only diagnostics the BASE already had, and the corpus `/Pages/Article`
+  **has** a `Page` node — so a revision that drops it is charged to the revision. Three `authoring-plan`
+  specs failed precisely there. The `authoring-session` update-mode specs passed only because their base
+  is synthetic and carried the same defect; they were corrected too.
+- ⚠️ **One fixture keeps its bare Group deliberately** — `noodl-mcp/tests/gateParity.test.ts`'s page-shape
+  row, which is the diagnostic's own test. It now asserts both gates **block**, where it previously
+  asserted both let it through.
 
 ## What was built
 
