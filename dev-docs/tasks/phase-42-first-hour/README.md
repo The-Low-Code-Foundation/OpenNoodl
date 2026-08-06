@@ -71,6 +71,26 @@ building on one.
   [NDA-017 §4](../phase-30-node-library-audit/NDA-017-SIGNAL-INPUT-FRESHNESS.md#4--the-migration-built),
   and the filed-not-fixed row below is closed.
 
+**Decisions taken 2026-08-06, second sitting (Richard) — the last three that were owed:**
+
+- **FH-024 → fix it now, options (a) + (b), and drive it first.** Never send CORS headers on
+  `admin/*`, **and** stop `devOpen` relaxing `admin/*` (it keeps its ergonomics on data and function
+  routes, where hitting your own collections without a token is the point). Slice 0 is a **real
+  cross-origin `fetch` at a real running backend** before any fix — the doc's own rule is that a
+  threat model read off source proves what the source says, not what the browser does. Option (d)
+  (random port + per-launch token) was weighed and rejected as too large for what it buys: two
+  spawners (the editor and `noodl-mcp`) share one record format and would both have to learn the
+  token.
+- **AAQ-011 F12 → do NOT widen the write gate to project scope. Fix `duplicate-node-id`
+  specifically** — make id allocation collision-proof at write time so the rule has nothing to
+  report. This deliberately **leaves the gate-scope class open** for the next project-wide rule;
+  that is the decision, not an oversight, and the F12 row must say so rather than claiming the class
+  is closed.
+- **AAQ-011 F3 → remove the second prose turn entirely.** After `record_scope` the tool result *is*
+  the answer; stop asking for prose. ⚠️ The case to handle is a turn where `record_scope` is the
+  model's **only** output — removing the second turn there leaves the user with silence, and
+  AAQ-004 keeping the first answer does not help when there was no first answer.
+
 **Shipped, 2026-08-06 — the third batch (seven parallel agents, fourteen commits `54298d59`…`51f00310`):**
 
 | Task | What landed | Notable |
