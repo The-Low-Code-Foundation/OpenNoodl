@@ -844,6 +844,17 @@ function launchApp() {
     // Initialize local backend IPC handlers
     setupBackendIPC();
 
+    // AAQ-011/F10 — claim ownership of the backends this session spawns, and
+    // reap the ones a previous session left behind.
+    //
+    // This must run before anything can start a backend, and it does: the
+    // renderer cannot ask for one until its window has loaded, and
+    // `startBackend` awaits this sweep regardless. Deliberately not awaited
+    // here — `app.on('ready')` is not an async context, and holding the window
+    // back on a process sweep would trade a rare orphan for a slow launch on
+    // every launch.
+    backendManager.claimAndSweep();
+
     // WF-006: open the execution-history store and register the IPC handlers
     // the Execution History Panel's hooks call.
     setupExecutionHistoryIPC();
@@ -971,6 +982,15 @@ function launchApp() {
       })
       .catch((e) => console.log('Error stopping backends:', e))
       .then(() => {
+        // AAQ-011/F10 — drop this session's ownership claim last, after the
+        // stops. Order matters: while the claim stands, every record it owns is
+        // protected from the next launch's reaper, so releasing it before the
+        // backends are actually down would open a window in which a crash here
+        // leaves live children that the next sweep can see but this one can no
+        // longer stop. Releasing after means a `stopAll` timeout leaves the
+        // records unowned, which is exactly what makes the next launch reap
+        // them.
+        backendManager.releaseOwnership();
         readyToQuit = true;
         app.quit();
       });

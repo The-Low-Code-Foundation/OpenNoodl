@@ -23,6 +23,7 @@ const path = require('path');
 const os = require('os');
 
 const { ServiceSupervisor } = require('./ServiceSupervisor');
+const { BackendProcessRegistry } = require('./BackendProcessRegistry');
 const workflowProposals = require('./workflow-proposals');
 
 /**
@@ -60,13 +61,81 @@ function generateBackendId() {
  * BackendManager singleton class
  */
 class BackendManager {
-  constructor() {
-    this.backendsPath = path.join(os.homedir(), '.noodl', 'backends');
+  /**
+   * @param {Object} [options]
+   * @param {string} [options.backendsPath] - Override the metadata root. The
+   *   singleton never passes it; a test does, so the process-registry wiring can
+   *   be asserted without writing into the developer's real `~/.noodl`.
+   * @param {Object} [options.registryDeps] - Injectable probes for the orphan
+   *   reaper (see BackendProcessRegistry).
+   */
+  constructor(options = {}) {
+    this.backendsPath = options.backendsPath || path.join(os.homedir(), '.noodl', 'backends');
     this.runningBackends = new Map(); // id -> ServiceSupervisor
     // id -> { code, message } — remembers why the last start attempt failed so
     // the UI can show "persistence unavailable" for a backend that isn't running.
     this.startErrors = new Map();
     this.ipcHandlersSetup = false;
+
+    // AAQ-011/F10. The durable half of the lifecycle: a record per spawned child
+    // that outlives this process, so the next launch can reap what a crash left
+    // behind. Sibling of `backends/` rather than inside it — `listBackends`
+    // enumerates that directory and would log every runtime file as an invalid
+    // backend. See BackendProcessRegistry for the whole design.
+    this.registry = new BackendProcessRegistry({
+      rootDir: path.join(path.dirname(this.backendsPath), 'backend-runtime'),
+      kind: 'editor',
+      deps: options.registryDeps
+    });
+    /** Resolves once the startup sweep has finished; `startBackend` waits on it. */
+    this.sweepPromise = null;
+  }
+
+  /**
+   * Claim this process as the owner of the backends it is about to spawn, and
+   * settle whatever a previous session left behind (AAQ-011/F10).
+   *
+   * Called once from `app.on('ready')`. `startBackend` awaits the sweep before
+   * spawning anything, so a backend that is about to be started can never race
+   * the reaper that is deciding whether its predecessor is an orphan.
+   *
+   * @returns {Promise<object>} the sweep report
+   */
+  claimAndSweep() {
+    if (this.sweepPromise) return this.sweepPromise;
+    try {
+      this.registry.registerOwner();
+    } catch (e) {
+      safeLog(`Could not claim backend ownership: ${e.message}`);
+    }
+    this.sweepPromise = this.registry
+      .sweep()
+      .then((report) => {
+        const { reaped, kept, dropped, failed } = report;
+        if (reaped.length || failed.length || dropped.length || kept.length) {
+          safeLog(
+            `Orphan sweep: ${reaped.length} reaped, ${kept.length} owned elsewhere, ` +
+              `${dropped.length} stale records dropped, ${failed.length} could not be stopped`
+          );
+        }
+        return report;
+      })
+      .catch((e) => {
+        // A sweep that throws must not stop the editor starting: the worst case
+        // is the orphan the backend's own `--parent-pid` guard is still watching.
+        safeLog(`Orphan sweep failed: ${e.message}`);
+        return { reaped: [], kept: [], dropped: [], failed: [] };
+      });
+    return this.sweepPromise;
+  }
+
+  /** Give up this process's ownership claim. Orderly exits only, by definition. */
+  releaseOwnership() {
+    try {
+      this.registry.releaseOwner();
+    } catch (e) {
+      safeLog(`Could not release backend ownership: ${e.message}`);
+    }
   }
 
   /**
@@ -615,6 +684,13 @@ class BackendManager {
       return this.getStatus(id);
     }
 
+    // AAQ-011/F10: never spawn while the startup sweep is still deciding whether
+    // a process from a previous session is an orphan. Without this, an auto-start
+    // on project open could bind the port a moment before the reaper kills the
+    // predecessor that was holding it — or, worse, the reaper could settle a
+    // record we had just overwritten.
+    if (this.sweepPromise) await this.sweepPromise;
+
     // Load config
     const config = await this.getBackend(id);
     if (!config) {
@@ -634,6 +710,11 @@ class BackendManager {
       // invisible: the panel kept showing a running backend that was gone.
       onUnexpectedExit: ({ code, signal }) => {
         this.runningBackends.delete(id);
+        // The process is gone, so its spawn record describes nothing. Dropping
+        // it here is what stops a crashed backend's pid being carried into the
+        // next session's sweep, where a recycled pid would have to be refused
+        // on identity rather than never considered.
+        this.registry.forgetSpawn(id);
         this.startErrors.set(id, {
           code: 'BACKEND_EXITED',
           message: `The backend service exited unexpectedly (code=${code}, signal=${signal}).`
@@ -643,8 +724,52 @@ class BackendManager {
     });
 
     try {
-      await supervisor.start();
+      // AAQ-011/F10 — the record is written from the child's pid, which exists
+      // the moment `start()` is CALLED (the `spawn()` happens synchronously in
+      // the promise executor), not when it resolves. Recording here rather than
+      // after the await is deliberate: the READY handshake has a 15-second
+      // ceiling, and a crash inside that window would otherwise leave a live
+      // child with no record of it anywhere.
+      const started = supervisor.start();
+      try {
+        if (supervisor.child && supervisor.child.pid) {
+          this.registry.recordSpawn({
+            backendId: id,
+            name: config.name,
+            pid: supervisor.child.pid,
+            port: config.port,
+            dataDir: backendPath,
+            projectId: (config.projectIds || [])[0]
+          });
+        }
+      } catch (e) {
+        // A registry that cannot write is a reaping problem, not a start
+        // problem. The backend's own `--parent-pid` guard still applies.
+        safeLog(`Could not record the spawn of ${id}: ${e.message}`);
+      }
+      await started;
+      // The service may bind a different port than the config asked for; the
+      // record has to describe where it actually is, because the health probe
+      // that corroborates identity uses it.
+      const boundPort = (supervisor.ready && supervisor.ready.port) || config.port;
+      if (boundPort !== config.port && supervisor.child && supervisor.child.pid) {
+        try {
+          this.registry.recordSpawn({
+            backendId: id,
+            name: config.name,
+            pid: supervisor.child.pid,
+            port: boundPort,
+            dataDir: backendPath,
+            projectId: (config.projectIds || [])[0]
+          });
+        } catch (e) {
+          safeLog(`Could not update the spawn record of ${id}: ${e.message}`);
+        }
+      }
     } catch (e) {
+      // The child either never existed or is on its way out; either way the
+      // record must not survive this call.
+      this.registry.forgetSpawn(id);
       // Remember the failure so getStatus() can report "persistence unavailable"
       // for this stopped backend, and rethrow so backend:start rejects loudly.
       this.startErrors.set(id, {
@@ -676,6 +801,9 @@ class BackendManager {
 
     await supervisor.stop();
     this.runningBackends.delete(id);
+    // Orderly stop: the record has nothing left to describe. This is the happy
+    // path the reaper exists because we cannot rely on (AAQ-011/F10).
+    this.registry.forgetSpawn(id);
 
     safeLog(`Stopped backend: ${id}`);
     this.broadcastStatusChanged(id, 'stopped');
@@ -999,8 +1127,12 @@ class BackendManager {
     for (const [id, supervisor] of this.runningBackends) {
       try {
         await supervisor.stop();
+        this.registry.forgetSpawn(id);
         safeLog(`Stopped backend: ${id}`);
       } catch (e) {
+        // Deliberately NOT forgetting the record here: a stop that threw may
+        // have left the child alive, and the record is the only thing that will
+        // ever find it again.
         safeLog(`Error stopping backend ${id}:`, e);
       }
     }
