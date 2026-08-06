@@ -20,10 +20,17 @@ shared helper or a shared index and are counted **once** here and cross-referenc
 per NDA-012's batching warning. The per-node number is a *usage* count and is the one to distrust.
 
 Two claims here are about runtime behaviour rather than about what the source says, and are pinned:
-[`nda-012-cloud-services-category.test.ts`](../../../../packages/noodl-runtime/test/corpus/nda-012-cloud-services-category.test.ts)
-(rows M1–M4, the Config fetch latch — three `test.failing`, one control) and
+`nda-012-cloud-services-category.test.ts` (rows M1–M4, the Config fetch latch — three
+`test.failing`, one control) and
 [`nda-012-aggregate-records.test.ts`](../../../../packages/noodl-viewer-cloud/tests/nda-012-aggregate-records.test.ts)
 (rows C1–C5, the one defect this pass fixed).
+
+> **Update 2026-08-06 (FH-018): rows M1–M4 are closed by deletion.** The `Config` node, its
+> `ConfigService` client and the corpus file that pinned those four rows are all gone — Richard's
+> decision, because a browser-readable config that holds secrets is unsafe whatever the fetch
+> latch does. Every `Config` verdict below is therefore historical. The fetch-latch shape
+> (`configCachePending` deleted *after* the `await`, so a rejection latches forever) is worth
+> remembering as a pattern; it no longer exists in this tree.
 
 **One thing was fixed rather than filed, and the reason is the rule about criteria, not about
 size.** `Aggregate Records` carried both halves of a defect NDA-004 §2 signed off as closed across
