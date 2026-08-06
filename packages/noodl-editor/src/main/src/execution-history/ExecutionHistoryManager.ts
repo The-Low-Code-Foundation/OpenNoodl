@@ -60,6 +60,24 @@ export interface RemoteExecutionSource {
   id: string;
   name: string;
   endpoint: string;
+  /**
+   * The backend's admin credential (BAK-003), when the provider can supply it.
+   *
+   * ⚠️ `GET /executions` and `GET /executions/:id` are `access: { kind: 'admin' }`
+   * routes — they just do not start with `admin/`, which is why FH-024's CORS
+   * suppression had to be decided from the route table rather than the path.
+   * Until FH-024 they answered anyway, because dev-open relaxed every admin gate
+   * on loopback and the editor's own backends are dev-open. FH-024 (b) removed
+   * that relaxation, and these two fetches were the only admin calls in the
+   * editor that did not already go through `ServiceSupervisor.request` — so the
+   * whole Execution History panel started answering "running but could not be
+   * read: HTTP 401".
+   *
+   * Optional because a source that genuinely has no credential (a test double,
+   * a backend whose secrets.json is unreadable) must still be *asked* and still
+   * be reported unreachable rather than silently skipped.
+   */
+  adminToken?: string | null;
 }
 
 /**
@@ -93,6 +111,15 @@ export interface ExecutionListResult {
 }
 
 const REMOTE_FETCH_TIMEOUT_MS = 2000;
+
+/**
+ * The bearer header for a remote source, or nothing at all when it has no
+ * credential. `undefined` rather than `{}` so the request is byte-identical to
+ * the one this module has always sent when there is no token to send.
+ */
+function authHeaders(source: RemoteExecutionSource): Record<string, string> | undefined {
+  return source.adminToken ? { authorization: `Bearer ${source.adminToken}` } : undefined;
+}
 
 /** The editor's own store, as a source alongside the running backends. */
 const LOCAL_SOURCE_ID = 'local';
@@ -227,6 +254,7 @@ export class ExecutionHistoryManager {
       if (query.triggerType) params.set('triggerType', query.triggerType);
       if (query.limit !== undefined) params.set('limit', String(query.limit));
       const res = await fetch(`${source.endpoint}/executions?${params}`, {
+        headers: authHeaders(source),
         signal: AbortSignal.timeout(REMOTE_FETCH_TIMEOUT_MS)
       });
       if (!res.ok) return { rows: [], reachable: false, error: `HTTP ${res.status}` };
@@ -244,6 +272,7 @@ export class ExecutionHistoryManager {
   private async fetchRemoteGet(source: RemoteExecutionSource, executionId: string): Promise<ExecutionWithSteps | null> {
     try {
       const res = await fetch(`${source.endpoint}/executions/${encodeURIComponent(executionId)}`, {
+        headers: authHeaders(source),
         signal: AbortSignal.timeout(REMOTE_FETCH_TIMEOUT_MS)
       });
       if (!res.ok) return null;

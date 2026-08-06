@@ -893,13 +893,24 @@ class BackendManager {
   /**
    * Endpoints of all currently-running backends (used by the execution-history
    * IPC merge — the services own their execution stores now).
-   * @returns {{ id: string, name: string, endpoint: string }[]}
+   *
+   * ⚠️ The admin credential rides along because `GET /executions` is an admin
+   * route (it simply does not start with `admin/`), and since FH-024 (b)
+   * dev-open no longer relaxes the admin gate. `ExecutionHistoryManager` fetches
+   * those two paths itself rather than through `ServiceSupervisor.request`, so
+   * this is the only place it can be handed the token.
+   * @returns {{ id: string, name: string, endpoint: string, adminToken: string|null }[]}
    */
   getRunningEndpoints() {
     const result = [];
     for (const [id, supervisor] of this.runningBackends) {
       if (supervisor.isRunning()) {
-        result.push({ id, name: supervisor.config.name, endpoint: supervisor.endpoint });
+        result.push({
+          id,
+          name: supervisor.config.name,
+          endpoint: supervisor.endpoint,
+          adminToken: supervisor.adminToken()
+        });
       }
     }
     return result;

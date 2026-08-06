@@ -154,4 +154,79 @@ describe('ExecutionHistoryManager remote-store merge (WF-004)', () => {
       expect(typeof error).toBe('string');
     });
   });
+
+  /**
+   * FH-024 (b) — `GET /executions` is an `access: { kind: 'admin' }` route that
+   * does not start with `admin/`, and dev-open no longer relaxes the admin
+   * gate. These two fetches were the only admin calls in the editor that did
+   * not go through `ServiceSupervisor.request`, so the whole panel started
+   * rendering "running but could not be read: HTTP 401" against every local
+   * backend. Driven in the real editor 2026-08-06 before it was fixed.
+   *
+   * The stand-in server below *enforces*, exactly as a post-FH-024 backend
+   * does; the first case is red without the bearer header.
+   */
+  describe('an enforcing backend (FH-024)', () => {
+    let authServer: http.Server;
+    let authEndpoint: string;
+    const TOKEN = 'fh024-admin-token';
+    let seenAuth: string | undefined;
+
+    beforeAll(async () => {
+      authServer = http.createServer((req, res) => {
+        seenAuth = req.headers.authorization;
+        res.setHeader('content-type', 'application/json');
+        if (req.headers.authorization !== `Bearer ${TOKEN}`) {
+          res.statusCode = 401;
+          res.end(JSON.stringify({ error: 'Unauthorized' }));
+          return;
+        }
+        const url = req.url || '';
+        if (url.startsWith('/executions/exec_remote1')) res.end(JSON.stringify({ ...remoteExecution, steps: [] }));
+        else if (url.startsWith('/executions')) res.end(JSON.stringify([remoteExecution]));
+        else {
+          res.statusCode = 404;
+          res.end('{}');
+        }
+      });
+      await new Promise<void>((resolve) => authServer.listen(0, '127.0.0.1', () => resolve()));
+      const addr = authServer.address();
+      authEndpoint = `http://127.0.0.1:${typeof addr === 'object' && addr ? addr.port : 0}`;
+    });
+
+    afterAll(() => {
+      authServer.close();
+    });
+
+    function enforcingManager(token: string | null): ExecutionHistoryManager {
+      const manager = new ExecutionHistoryManager();
+      manager.init(':memory:');
+      manager.setRemoteSources(() => [
+        { id: 'backend_remote', name: 'Remote', endpoint: authEndpoint, adminToken: token }
+      ]);
+      return manager;
+    }
+
+    it('reads the list when the source carries the admin token', async () => {
+      const { executions, sources } = await enforcingManager(TOKEN).listMerged({ limit: 10 });
+      expect(seenAuth).toBe(`Bearer ${TOKEN}`);
+      expect(executions.map((e) => e.workflowId)).toContain('remoteFunc');
+      expect(sources.find((s) => s.id === 'backend_remote')!.reachable).toBe(true);
+    });
+
+    it('opens a run from the source that owns it', async () => {
+      const detail = (await enforcingManager(TOKEN).getMerged('exec_remote1')) as { workflowId: string };
+      expect(detail.workflowId).toBe('remoteFunc');
+    });
+
+    // The regression, kept as its own case: without the credential the panel
+    // must still say *why*, not merely show an empty list.
+    it('without the token, reports the source unreachable with the 401', async () => {
+      const { executions, sources } = await enforcingManager(null).listMerged({ limit: 10 });
+      expect(executions).toEqual([]);
+      const backend = sources.find((s) => s.id === 'backend_remote')!;
+      expect(backend.reachable).toBe(false);
+      expect(backend.error).toBe('HTTP 401');
+    });
+  });
 });

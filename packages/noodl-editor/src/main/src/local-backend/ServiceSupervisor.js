@@ -306,12 +306,22 @@ class ServiceSupervisor {
    * The backend's admin credential (BAK-003), read from secrets.json in its
    * data dir — the editor owns that directory, so there is no bootstrap
    * problem. Attached as a bearer token on every proxied request so admin
-   * routes keep working when the operator turns dev-open off. In dev-open the
-   * backend ignores it (loopback + relaxed), so it is harmless there too.
-   * @private
+   * routes keep working.
+   *
+   * ⚠️ Not private any more, and the comment that used to say "in dev-open the
+   * backend ignores it" is no longer true: FH-024 (b) stopped dev-open relaxing
+   * the admin gate, so this token is now the *only* thing that opens an admin
+   * route on a local backend. `BackendManager.getRunningEndpoints()` reads it
+   * for the execution-history merge, which fetches `/executions` directly
+   * rather than through `request()`.
+   *
+   * The cache deliberately holds only a *successful* read. secrets.json is
+   * minted by the backend on its first start, so a read that lands before the
+   * child has written it must not pin `null` for the rest of the session —
+   * that would be a permanent, silent 401 on every admin surface.
    */
   adminToken() {
-    if (this._adminToken !== undefined) return this._adminToken;
+    if (this._adminToken) return this._adminToken;
     try {
       // eslint-disable-next-line @typescript-eslint/no-var-requires
       const fs = require('fs');
