@@ -6,7 +6,13 @@ import { registerNodes } from './nodes';
 import NoodlRuntime from '@noodl/runtime';
 import Model from '@noodl/runtime/src/model';
 import NodeScope from '@noodl/runtime/src/nodescope';
+import type { NodeRunContext, RuntimeLogEntry, RuntimeLogLevel } from '@noodl/runtime/src/runcontext';
 import './noodl-js-api';
+
+// CWF-013 — the shape a host has to fill in to give a cloud function's `Log` node somewhere to
+// go. Re-exported from the package entry because the backend reaches this module through the
+// `@cloud-runtime` bundler alias and has no other way to name the type.
+export type { NodeRunContext, RuntimeLogEntry, RuntimeLogLevel };
 
 require('./services/userservice');
 
@@ -19,6 +25,19 @@ export interface CloudRunOptions {
    * will need — the bound belongs to the caller, not to this class.
    */
   timeoutMs?: number;
+  /**
+   * CWF-013 — per-run services the graph may reach, attached to the request's
+   * own `NodeScope` and inherited by every component instance below it (the
+   * same propagation `modelScope` gets, in `componentinstance.ts`).
+   *
+   * ⚠️ It has to travel this way rather than as a process global, which is what
+   * `_noodl_send_email` and `_noodl_get_secret` are. Those two answer the same
+   * thing whoever asks; a log line does not — it carries the request id, and two
+   * cloud functions run concurrently in this one process. A module-level
+   * "current run" would attribute one caller's line to the other's request the
+   * first time two overlapped.
+   */
+  runContext?: NodeRunContext;
 }
 
 /**
@@ -116,6 +135,9 @@ export class CloudRunner {
 
       const requestScope = new NodeScope(this.runtime.context);
       requestScope.modelScope = new Model.Scope();
+      // CWF-013: the same per-request channel `modelScope` uses. Set on the scope the function
+      // component is created in, so `componentinstance.ts` hands it down the whole tree.
+      requestScope.runContext = options.runContext;
 
       // One request, one settlement. Every path — delivery, timeout, a throw
       // out of the request node — goes through `settle`, which is the only

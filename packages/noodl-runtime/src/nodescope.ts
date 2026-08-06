@@ -1,6 +1,7 @@
 'use strict';
 
 import type { RuntimeNode, RuntimeNodeContext } from './internal';
+import type { NodeRunContext } from './runcontext';
 
 import guid = require('./guid');
 
@@ -40,6 +41,15 @@ interface NodeScope {
    * browser viewer.
    */
   modelScope?: any;
+  /**
+   * Per-run services (CWF-013), attached by the cloud runtime to the scope it creates for one
+   * request and inherited by every component instance below it — the same propagation
+   * `modelScope` gets, and for the same reason: two cloud functions run concurrently in one
+   * process, so anything belonging to *this* request cannot live on a module-level global.
+   * Unset in the browser viewer, which is what lets the `Log` node have one name and two
+   * destinations without asking which runtime it is in.
+   */
+  runContext?: NodeRunContext;
 
   addConnection(connectionData: ConnectionData): void;
   setNodeParameters(node: ScopedNode, nodeModel: any): void;

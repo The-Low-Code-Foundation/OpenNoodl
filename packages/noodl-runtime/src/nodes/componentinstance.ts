@@ -84,6 +84,10 @@ const ComponentInstanceNode = function ComponentInstanceNode(
   this._internal.instanceId = '__$ndl_componentInstaceId' + componentIdCounter;
 
   this.nodeScope.modelScope = parentNodeScope ? parentNodeScope.modelScope : undefined;
+  // CWF-013: the per-run services travel the same way the model scope does, and have to — a node
+  // that logs is usually several component instances deep, and the request id it needs belongs to
+  // the scope the cloud runner created for this one request.
+  this.nodeScope.runContext = parentNodeScope ? parentNodeScope.runContext : undefined;
 
   componentIdCounter++;
 } as unknown as ComponentInstanceNodeConstructor;

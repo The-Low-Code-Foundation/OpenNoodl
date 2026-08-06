@@ -645,8 +645,11 @@ function generateNodeLibrary(nodeRegister: NodeRegisterLike, options?: { runtime
           ]
         },
         {
+          // CWF-013. `Log` sits beside `On App Error` because they are the two nodes an author
+          // reaches for when the question is "what is this thing actually doing" — one you place
+          // deliberately, one that catches what you did not.
           name: 'System',
-          items: ['Screen Resolution', 'Open File Picker', 'On App Error']
+          items: ['Screen Resolution', 'Open File Picker', 'On App Error', 'net.noodl.Log']
         },
         {
           name: 'Variables',

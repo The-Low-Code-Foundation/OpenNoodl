@@ -43,6 +43,7 @@ import {
 } from './config/SecretsStore';
 import { OpsState } from './ops/OpsState';
 import { logger } from './ops/logger';
+import { SecretValueScrubber } from './ops/log-scrub';
 import { AuditLog, ensureAuditTable } from './ops/audit';
 import { SystemUsers, SystemUserRequest, SystemUserResult } from './users/SystemUsers';
 import { TriggerSubsystem } from './triggers/TriggerSubsystem';
@@ -472,7 +473,12 @@ export class BackendService {
       backendName: this.options.backendName,
       // CWF-018: read live, so a timeout edited through CWF-017's panel applies
       // to the next call — same stance as the realtime cap above.
-      getFunctionTimeoutMs: (name) => (this.security ? functionTimeoutMs(this.security.config, name) : undefined)
+      getFunctionTimeoutMs: (name) => (this.security ? functionTimeoutMs(this.security.config, name) : undefined),
+      // CWF-013: the value-based half of a `Log` node's redaction. The service is the only
+      // thing that holds a SecretsStore, and it deliberately stays that way — the scrubber
+      // exposes `scrub(text)` and nothing that hands a value back, so this is not a way around
+      // SecretsStore's missing bulk read (CWF-009 design question 4).
+      scrubSecretValues: new SecretValueScrubber(new SecretsStore(this.options.dataDir))
     });
     await this.runner.initialize();
     await this.runner.loadWorkflows();

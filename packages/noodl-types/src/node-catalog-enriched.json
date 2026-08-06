@@ -37273,7 +37273,36 @@
         }
       ],
       "dynamicPorts": null,
-      "parameterEncoding": null
+      "parameterEncoding": null,
+      "enrichment": {
+        "typeName": "net.noodl.Log",
+        "summary": "Writes a line to the log — the structured backend log inside a cloud function, the browser console in an app.",
+        "description": "Log writes a message, at a level, when its Log signal fires. Where the line goes is chosen by the runtime, not by you: inside a cloud function it goes to the backend's structured log — one JSON line per event on stdout, carrying the run's request id and the id of this node — and a copy is recorded as a step in the run's execution record, so the History panel shows it beside the rest of the run. In a browser app the same node writes to the console at the matching level. Value passes straight through, so the node can sit inline on a wire without breaking the chain. The important difference from a Function node's console.log is redaction: in a cloud function every property of Data whose name says it holds a credential is replaced before the line is written, and the values of the backend's own stored secrets are scrubbed out of the message text as well — so wiring a Secret node's Value into a Log message writes [REDACTED], not the credential.",
+        "whenToUse": "Tracing what a cloud function actually did with a real request, and leaving a breadcrumb for the next person who has to answer 'what happened at 3am'. Use the Data object for anything you might want to filter on later: the backend's log is JSON, so `jq 'select(.orderId==7)'` works on structured fields and does not work on a sentence.",
+        "ports": {
+          "message": "The line to write. Free text.",
+          "level": "Debug, Info, Warning or Error. A cloud function's backend drops anything below its configured level, so Debug costs nothing in production until someone turns it on.",
+          "data": "An optional object written alongside the message as structured fields. Credential-named properties are redacted in a cloud function.",
+          "value": "Passed straight through to the Value output so this node can sit inline on a wire.",
+          "log": "Signal; writes the line. Nothing is written until this fires.",
+          "done": "Fires once the line has been written.",
+          "completed": "Fires after every write. This node has no other outcome."
+        },
+        "examples": [],
+        "patterns": [
+          "Splice it onto an existing wire: value in, value out, and the Log signal taken from whatever outcome you want to record. The graph behaves identically with the node removed.",
+          "Log at `error` on a Failure branch, with the failing record's id in Data. That line carries the request id, so it lines up with the access log and the execution record."
+        ],
+        "antiPatterns": [
+          "A Log node inside a Run Tasks loop over thousands of items. That is thousands of stdout lines and thousands of execution-record steps; the backend caps the copies it records per run, but the volume is still yours to think about.",
+          "Putting a credential in Message on purpose, on the assumption it will be scrubbed. The backend scrubs the values it issued; a token that arrived in a request body is not one of them."
+        ],
+        "relatedNodes": [
+          "noodl.cloud.secret",
+          "noodl.cloud.request",
+          "On App Error"
+        ]
+      }
     },
     {
       "typeName": "net.noodl.Now",
@@ -59165,7 +59194,7 @@
     "version": "1.0.0",
     "docs": "docs/node-catalog/ENRICHMENT.md",
     "coverage": {
-      "documented": 171,
+      "documented": 172,
       "total": 172
     }
   },
