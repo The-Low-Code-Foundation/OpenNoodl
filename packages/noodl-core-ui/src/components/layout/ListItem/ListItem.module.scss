@@ -49,7 +49,7 @@
 
   // FH-009. This used to paint the selected row with `--theme-color-secondary`,
   // which is the neutral ACTION colour: inverted relative to the surface by
-  // construction (#18212b near-black on light, #eef2f6 near-white on dark). As a
+  // construction (18212b near-black on light, eef2f6 near-white on dark). As a
   // row surface it broke in both themes — the label stayed `TextType.Default`
   // and measured 2.17:1 (light) / 1.95:1 (dark). A selected row is a SURFACE, so
   // it gets a surface pair: the primary selection tint plus `fg-highlight` text
