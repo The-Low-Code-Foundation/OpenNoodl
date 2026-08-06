@@ -1,8 +1,52 @@
 # Next session — the prompt
 
-**Written 2026-08-06**, updated at the end of a **second** session the same day. Covers everything
+**Written 2026-08-06**, updated at the end of a **third** session the same day. Covers everything
 still open in **phase 42** (first hour), **phase 40** (AI authoring quality) and **phase 39**
 (alpha polish).
+
+## What the THIRD session did (five parallel agents), so you do not redo it
+
+**Gates at the end, all re-run by the orchestrator on the settled tree — not taken from agent
+reports:** typechecks green · the three catalog gates green **and HEAD verified consistent** (the
+working tree equals HEAD for every source they read) · `library:check` 58/58 · runtime **2293** ·
+cloud-runtime 172 · nodegx-backend **91 suites** · observe green · mcp **186** ·
+**`Jasmine: 2346 specs, 0 failures`**.
+
+1. 🔴 **A security finding, filed not fixed, needing your decision —
+   [FH-024](phase-42-first-hour/FH-024-THE-LOCAL-ADMIN-API-IS-CROSS-ORIGIN-READABLE.md)
+   (`d5a24e63`). Candidate alpha-blocker.** `devOpen` defaults **true** so every admin gate returns
+   early with no token read, and CORS defaults to `origins: ['*']` applied **before routing** — so
+   `GET http://127.0.0.1:<port>/admin/*` is unauthenticated *and* answers
+   `Access-Control-Allow-Origin: *`. Any web page on the developer's machine can read it. The deploy
+   interlock is correct and deployed backends are unaffected; the error is treating `loopback` as
+   "only the developer can reach this". **OBS-004 was this exact bug.** ⚠️ **F10 made it live all
+   session** by starting the backend on project open. ⚠️ **Confirmed by construction, NOT driven** —
+   slice 0 is the real cross-origin `fetch`.
+2. **AAQ-011 F6 was not a defect, and it had been gating the whole phase-40 chain.** The "6m51s of
+   editor main-thread time" was **the fixture measuring itself**: the scripted provider awaits
+   `setTimeout(…, 10)` fourteen times per component and Electron clamps timers in an occluded window
+   (**88ms on screen → 7882ms hidden → 16992ms after five minutes**). The publish path is *flat* —
+   400 nodes × 4000 partial payloads = 17.1ms. Also: "editor main-thread time" was never measured;
+   the panel prints `Date.now()` either side of an `await`. **AAQ-007 is unblocked.**
+3. **Closed:** F6, F7 (`PageWithoutPageNode` now blocks — the row's "57 sites across 15 files" was
+   really **16 across 9**), CWF-004 slice 1 (the `transform` step), CWF-009's admin route,
+   CWF-018's `timeoutMs` panel row, the Execution History empty state, and the Array inert-defaults
+   row. **AAQ-011 is now 12 of 15 closed** — the three left are F3 and F12 (your decisions) and F14
+   (blocked on AAQ-010). **Every open F-row that was a plain bug is closed.**
+4. ⚠️ **Half the Array row was FALSE.** `Array Map` was real (its setter is what *compiles* the
+   script, so an untouched Script reported *"unknown error"* — unknown because nothing had ever
+   compiled). **`Array Filter` never passed everything through**: `filtercollectionnode.ts:179` sets
+   `_internal.enabled` inside `initialize`. That line looks redundant beside the `default` and is
+   load-bearing; it is now commented and asserted. **Behaviour change to know:** an Array Map whose
+   Script was never edited now emits one *empty* record per source record and fires `Done`, where it
+   used to emit nothing and fire `Failure`.
+
+⚠️ **The register lied again — five more rows, and the failure is now the most reliable thing in
+this repo.** `phase-39/PROGRESS.md` carried POL-017 as *filed, not fixed* while two commits had
+fixed it (corrected in `a249c78e` to **fixed-with-a-measurement-owed**, which is neither `open` nor
+`done` — folding it into `done` would have lost the `pol004-doc-diff.js` re-run). And **four rows in
+this very prompt** claimed open work: three fixed by `edb8661b` the day before, which the phase-42
+README already recorded. **The README outranks this prompt.** Grep before believing a row here.
 
 **What the second session did**, so you do not redo it:
 
@@ -177,8 +221,8 @@ Six items. The phase README's tables carry the mechanisms.
 
 | Task | State |
 |---|---|
-| **CWF-004** — Transform + the data-step family | Was blocked on CWF-001; **now unblocked**. Widened on Richard's argument: without a workflow-level reshape, every function carries its caller's mess. A free Function step is advised against. |
-| **CWF-006** — triggers + the entry step | A **subset of phase 43** (`dev-docs/tasks/phase-43-backend-authoring-clarity/`) — if that lands first this is superseded. CWF-002 deferred its entry-card indicator here on the same grounds. Check phase 43 before building. |
+| **CWF-004** — the data-step family | ✅ **Slice 1 (Transform) shipped `54d94fc2`.** Kind `transform`, `invokesFunction: false`, one `raw` param `output`, and a **closed 12-name op table with fixed arity** served as `transformLanguage` (catalog **1.6.0**) so the editor can never offer an op the backend cannot perform. Ops are deliberately **not** in the shared resolver — `resolveValueDeep` takes the table as a parameter with no default, so a *condition* still cannot compute and cannot start by someone widening a shared list. **Still open: the wider family** (Validate, Filter, Split, Sort, Dedupe, Parse JSON) and the "new function from this step" gesture. ⚠️ Two spec premises were wrong: `validateParamDepth` does not exist (it is `validateValueReferences`), and §Traps' scope bullet names a mechanism that cannot apply to a `raw` param. |
+| **CWF-006** — triggers + the entry step | ⚠️ **NOT superseded — phase 43 is open and NOT YET SCHEDULED**, and its own Inputs section says to keep CWF-006 *"as the cheap immediate fix and let this phase supersede it if it lands first."* So it is buildable now. **Sequence it after CWF-004's canvas work rather than beside it** — both land on the workflow canvas, and two agents given adjacent problems in this repo built two incompatible spawn records once already. |
 | **CWF-007** — streaming responses | A design doc to argue with, not a build. Its Q3 was already answered by TALK-005. |
 | **CWF-016** — idempotency keys | The only item on the track with nothing built behind it, and the only capability a Function node cannot fake (needs state across requests). **Design first, concurrency test first.** |
 | **FH-007** / ERG-005 §2 | Decided; sequenced behind the other session's §1. |
@@ -255,7 +299,7 @@ This is the **largest remaining block** and it is a dependency chain, not a list
 |---|---|
 | **AAQ-005** — one authoring substrate | Slices 1–3 built and green. **Criteria 3 and 4 are not started**, and the multi-component *tool set* is still two shapes deliberately (`SURFACE_DIVERGENCES`). |
 | **AAQ-006** — the agent harness | Not started. Engine choice (Strands) is settled and recorded so it is not relitigated. Depends on AAQ-005. |
-| **AAQ-007** — the agent sees its work | Not started. **F6 is a prerequisite, not a footnote**: authoring a 55-node component costs 6m51s of editor main-thread time against a zero-latency provider. |
+| **AAQ-007** — the agent sees its work | Not started, and **no longer gated**. ⚠️ The line that used to sit here — *"F6 is a prerequisite, not a footnote: authoring a 55-node component costs 6m51s of editor main-thread time"* — **was false in every clause.** The publish path is flat (400 nodes × 4000 partial payloads = 17.1ms); the 6m51s was the *fixture's* `setTimeout` clamped by Electron background throttling in an occluded window; and nothing in that pass measured main-thread time at all. See F6, closed `4d1520f6`. |
 | **AAQ-008** — components by default | Not started. Depends on AAQ-005/006. |
 | **AAQ-009** — a bespoke visual identity per project | Not started. Fully bespoke tokens, not presets — decided. Prompt-encodable parts can land early. |
 | **AAQ-010** — the whole styling surface | Not started. Blocked on AAQ-009 + AAQ-007 + **F14** + **AIB-010** (which lives in phase 38). |
@@ -284,8 +328,24 @@ This is the **largest remaining block** and it is a dependency chain, not a list
   (`.popup-layer-toast`, still reachable from `EditorClipboard.ts:267`, at 1.92:1).
 - ✅ **F2 — closed as superseded**, both halves driven: FH-013 killed the label truncation, FH-005's
   `flushSync` fixed the popout. It had been fixed for a day while the row said otherwise.
-- **F6** — the 6m51s authoring cost. Not a decision; it gates AAQ-007. **Still the only open F-row
-  that is a plain bug**, and it is the one blocking the AAQ chain.
+- ✅ **F6 — closed `4d1520f6`, and it was never a defect.** The 6m51s was the fixture measuring
+  itself: `wizard-replay.js`'s scripted provider awaited `setTimeout(…, 10)` **fourteen times per
+  component**, and Electron clamps timers in an occluded window — which is every window driven from
+  a terminal. Measured with the editor's own webPreferences: 8 × `setTimeout(10)` is **88ms on
+  screen, 7882ms hidden, 16992ms after five minutes hidden**; `MessagePort` is 0.6–1.4ms throughout.
+  `main.js:311` leaves `backgroundThrottling` at the default while `test.js:120` and
+  `floating-window.js:37` both turn it off — and `turnDeadline.ts:26-29` had **already recorded this
+  same throttling** during AIB-002's live QA, so it has now cost two sessions. The publish path is
+  flat in both node count and fragment count (`partial.ts:143` reports `changed` only when an
+  element *closed*). `--fast` was never anything but seven fewer clamped timers. ⚠️ **Two lessons
+  bigger than the bug:** what the Build panel prints is `endedAt - startedAt` around an `await`, so
+  **a wall-clock number was read as a CPU number** and gated a phase for a day; and never assert
+  wall-clock in the editor suite — the same component measured 31.7ms idle and 2416.8ms under nine
+  concurrent runs. One thing owed: `renderer-probe.js` is committed but was never run against the
+  editor's own renderer (the editor was queued behind agents' suites all session).
+
+**There are now NO open F-rows that are plain bugs.** AAQ-011 is 12 of 15 closed; F3 and F12 are
+Richard's decisions and F14 is blocked on AAQ-010.
 
 ---
 
