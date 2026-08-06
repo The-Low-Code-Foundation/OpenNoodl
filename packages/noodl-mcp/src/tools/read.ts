@@ -7,7 +7,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 
 import { describeComponent } from '../describe';
-import { isComponentRef, refToPath } from '../editor-deps';
+import { DECOMPOSITION_DOCTRINE_MD, isComponentRef, refToPath } from '../editor-deps';
 import { ToolError } from '../errors';
 import type { ProjectStore } from '../project/ProjectStore';
 import type {
@@ -29,7 +29,8 @@ export function registerReadTools(server: McpServer, store: ProjectStore, option
       title: 'Get project info',
       description:
         'Project metadata and orientation: name, settings, root component, routes, global style names, ' +
-        'component stats and whether this server allows writes. Cheap — call this first.',
+        'component stats and whether this server allows writes. On a read-write server it also returns ' +
+        '`authoringDoctrine` — how work is expected to be factored into components. Cheap — call this first.',
       inputSchema: {}
     },
     guarded(() => {
@@ -57,7 +58,11 @@ export function registerReadTools(server: McpServer, store: ProjectStore, option
         mode: options.allowWrites ? 'read-write' : 'read-only',
         note:
           'Component identifiers: tools accept the path form ("Pages/Home") or the legacy name ("/Pages/Home"). ' +
-          'A node that instantiates a project component uses the component\'s legacyName as its node type.'
+          'A node that instantiates a project component uses the component\'s legacyName as its node type.',
+        // AAQ-008: an external agent gets no system prompt, so this response is
+        // the only orientation surface that reaches it before it authors. Sent
+        // only when writes are allowed — see ProjectInfoResponse.
+        ...(options.allowWrites ? { authoringDoctrine: DECOMPOSITION_DOCTRINE_MD } : {})
       };
       return jsonResult(payload);
     })

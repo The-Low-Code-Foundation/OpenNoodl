@@ -61,6 +61,12 @@ export interface ProjectInfoResponse {
   stats: RegistryV2File['stats'] | { totalComponents: number };
   mode: 'read-write' | 'read-only';
   note: string;
+  /**
+   * AAQ-008 — the decomposition doctrine, verbatim from the shared module the
+   * in-editor planner is prompted with. Present only on a read-write server:
+   * a read-only client has nothing to apply it to, and it is not small.
+   */
+  authoringDoctrine?: string;
 }
 
 export interface ListComponentsResponse {

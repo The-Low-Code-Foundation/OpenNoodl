@@ -225,6 +225,18 @@ export {
 export type { KnownDoc, KnownDocKind } from '../../noodl-editor/src/editor/src/models/ProjectDocs/docsText';
 export { DOC_TEMPLATES } from '../../noodl-editor/src/editor/src/models/ProjectDocs/templates';
 
+// ─── Decomposition doctrine (AAQ-008) ─────────────────────────────────────────
+// `prompts/decomposition` imports NOTHING, same containment rule as docsText —
+// so the doctrine an external agent reads out of `get_project_info` and the one
+// the in-editor planner is prompted with are literally the same bytes. AAQ-005's
+// rule applied to a text rather than a schema: one substrate, two clients, and
+// no second dialect of "prefer components".
+export {
+  DECOMPOSITION_AUTHORING,
+  DECOMPOSITION_DOCTRINE_MD,
+  DECOMPOSITION_PLANNING
+} from '../../noodl-editor/src/editor/src/models/AiAssistant/authoring/prompts/decomposition';
+
 // ─── Project review (AIX-010) ─────────────────────────────────────────────────
 // The pure half of the docs retrofit only. `review/assembleProject`,
 // `review/pageMap`, `review/selection` and `review/prompts` import nothing

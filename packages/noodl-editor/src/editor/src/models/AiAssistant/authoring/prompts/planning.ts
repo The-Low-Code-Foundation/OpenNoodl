@@ -11,6 +11,7 @@
  * @module AiAssistant/authoring/prompts/planning
  */
 
+import { DECOMPOSITION_PLANNING } from './decomposition';
 import type { AiToolDefinition } from '../../client/types';
 
 export const SUBMIT_PLAN = 'submit_plan';
@@ -76,7 +77,11 @@ HOW TO SCOPE
 - A "doc" operation updates a project document (e.g. docs/ARCHITECTURE.md) to record what changed.
   Include one only when the project's docs are listed in the overview material and the change is worth
   recording — never as filler.
-- Keep plans as small as the request allows. Two or three precise operations beat six vague ones.
+- Keep plans as TIGHT as the request allows: no operation on a component the request never implies.
+  "Tight" is about relevance, not count — see COMPONENTS ARE THE UNIT OF GOOD WORK below, which is
+  the other half of this rule and outranks any instinct to keep the number of operations down.
+
+${DECOMPOSITION_PLANNING}
 
 PAGES ARE REGISTERED, OR THEY DO NOT EXIST
 A page component is only reachable when a Page Router node lists it — the router's "pages" parameter

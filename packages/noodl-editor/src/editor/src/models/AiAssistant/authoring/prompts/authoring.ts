@@ -19,6 +19,7 @@
  * @module AiAssistant/authoring/prompts/authoring
  */
 
+import { DECOMPOSITION_AUTHORING } from './decomposition';
 import type { AuthoringMode, AuthoringRequest } from '../types';
 
 const FRAMING: Record<AuthoringMode, string> = {
@@ -154,7 +155,10 @@ WHAT NOT TO DO
   documentation, the project overview, or a component you read.
 - Do not invent token names or emit raw colour/spacing values where a listed token fits.
 - Do not recreate something the project already has a component for — instantiate it.
-- Do not add nodes the task does not need. Smaller graphs are better graphs.`;
+- Do not add nodes the task does not need. A node that is wired to nothing and changes nothing is
+  dead weight — but do not read this as "keep the graph flat": see COMPOSITION.
+
+${DECOMPOSITION_AUTHORING}`;
 
 export function systemPrompt(mode: AuthoringMode = 'create'): string {
   return systemPromptFor(mode);
