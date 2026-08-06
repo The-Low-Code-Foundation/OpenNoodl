@@ -277,6 +277,13 @@ function registerNodes(noodlRuntime: NoodlRuntime) {
     require('./src/nodes/std-library/data/parsecsv'),
     require('./src/nodes/std-library/data/tocsv'),
 
+    // CWF-013 — `Log`. Shared rather than cloud-only, and the task argued that out: a browser
+    // app wants a log line too, and two implementations behind one name is the mistake. So the
+    // node has one branch and the RUNTIME chooses the destination — the cloud runner attaches a
+    // sink to the run (`src/runcontext.ts`), nothing does in the browser, and the browser falls
+    // through to the console.
+    require('./src/nodes/std-library/log'),
+
     // CWF-008: multi-way Switch and range maths. The cloud had only the two-way Condition.
     require('./src/nodes/std-library/switch'),
     require('./src/nodes/std-library/numberremapper'),
