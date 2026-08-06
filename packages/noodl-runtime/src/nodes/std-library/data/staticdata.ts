@@ -9,84 +9,20 @@ import type {
   NodeModule
 } from '@noodl/types';
 
+import { parseCSVRows, rowsToRecords } from '../../../csv';
 
 /**
- * Splits CSV into rows of raw cell strings.
+ * ⚠️ CWF-012 slice 1 — the tokeniser that used to live here now lives in `src/csv.ts`.
  *
- * Everything comes back as a string — there is no type inference here, so a Static Array
- * authored as CSV yields string properties even for columns that look numeric. The JSON
- * branch below does preserve types, which is the practical difference between the two.
+ * It was a real CSV parser (quoted cells, embedded delimiters and newlines, doubled quotes) that
+ * only ever ran at authoring time, because a Static Array's CSV is typed into the editor. CWF-012
+ * needed the same parser at *runtime*, and copying it would have produced two behaviours on the
+ * same file — with the fixed one always being the copy you are not using. So `Parse CSV`,
+ * `To CSV` and this node now share one module, and this node's behaviour is unchanged: every cell
+ * is still a string, a trailing newline still yields a trailing row, and the tolerant entry point
+ * (`parseCSVRows`) is deliberately the one used here — an authored CSV that stops short is the
+ * author looking at their own text, not a runtime failure to announce.
  */
-function CSVToArray(strData: string, strDelimiter?: string): string[][] {
-  // Check to see if the delimiter is defined. If not,
-  // then default to comma.
-  strDelimiter = strDelimiter || ',';
-
-  // Create a regular expression to parse the CSV values.
-  const objPattern = new RegExp(
-    // Delimiters.
-    '(\\' +
-      strDelimiter +
-      '|\\r?\\n|\\r|^)' +
-      // Quoted fields.
-      '(?:"([^"]*(?:""[^"]*)*)"|' +
-      // Standard fields.
-      '([^"\\' +
-      strDelimiter +
-      '\\r\\n]*))',
-    'gi'
-  );
-
-  // Create an array to hold our data. Give the array
-  // a default empty first row.
-  const arrData: string[][] = [[]];
-
-  // Create an array to hold our individual pattern
-  // matching groups.
-  let arrMatches: RegExpExecArray | null = null;
-
-  let prevLastIndex: number | undefined;
-
-  // Keep looping over the regular expression matches
-  // until we can no longer find a match.
-  while ((arrMatches = objPattern.exec(strData)) && prevLastIndex !== objPattern.lastIndex) {
-    prevLastIndex = objPattern.lastIndex;
-
-    // Get the delimiter that was found.
-    const strMatchedDelimiter = arrMatches[1];
-
-    // Check to see if the given delimiter has a length
-    // (is not the start of string) and if it matches
-    // field delimiter. If id does not, then we know
-    // that this delimiter is a row delimiter.
-    if (strMatchedDelimiter.length && strMatchedDelimiter !== strDelimiter) {
-      // Since we have reached a new row of data,
-      // add an empty row to our data array.
-      arrData.push([]);
-    }
-
-    let strMatchedValue: string;
-
-    // Now that we have our delimiter out of the way,
-    // let's check to see which kind of value we
-    // captured (quoted or unquoted).
-    if (arrMatches[2]) {
-      // We found a quoted value. When we capture
-      // this value, unescape any double quotes.
-      strMatchedValue = arrMatches[2].replace(new RegExp('""', 'g'), '"');
-    } else {
-      // We found a non-quoted value.
-      strMatchedValue = arrMatches[3];
-    }
-
-    // Now that we have our value string, let's add
-    // it to the data array.
-    arrData[arrData.length - 1].push(strMatchedValue);
-  }
-
-  // Return the parsed data.
-  return arrData;
-}
 
 /** `this` inside the Static Array node. */
 interface StaticDataInstance extends NodeInstance {
@@ -262,17 +198,7 @@ const CSVNode: NodeDefinitionOptions = {
 
       if (internal.type === undefined || internal.type === 'csv') {
         // Data is string, parse it as CSV
-        const data = CSVToArray(internal.csv);
-        const json: Record<string, string>[] = [];
-        const fields = data[0];
-        for (let i = 1; i < data.length; i++) {
-          const row = data[i];
-          const obj: Record<string, string> = {};
-          for (let j = 0; j < fields.length; j++) {
-            obj[fields[j]] = row[j];
-          }
-          json.push(obj);
-        }
+        const json = rowsToRecords(parseCSVRows(internal.csv));
 
         internal.collection = Collection.get();
         internal.collection.set(json);

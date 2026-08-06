@@ -269,6 +269,14 @@ function registerNodes(noodlRuntime: NoodlRuntime) {
     require('./src/nodes/std-library/date/datedifference'),
     require('./src/nodes/std-library/date/datecompare'),
     require('./src/nodes/std-library/date/dateparts'),
+
+    // CSV, both directions (CWF-012). The tokeniser has shipped inside `Static Array` for years
+    // but only ever ran at authoring time; these two put it in front of text that arrives at
+    // runtime. Shared, and deliberately with no cloud guard: a browser app importing a
+    // spreadsheet wants this exactly as much as a function parsing a supplier's file does.
+    require('./src/nodes/std-library/data/parsecsv'),
+    require('./src/nodes/std-library/data/tocsv'),
+
     // CWF-008: multi-way Switch and range maths. The cloud had only the two-way Condition.
     require('./src/nodes/std-library/switch'),
     require('./src/nodes/std-library/numberremapper'),
