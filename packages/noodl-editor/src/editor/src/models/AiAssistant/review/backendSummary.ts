@@ -8,12 +8,12 @@
  * ## Where the collections come from, and where they used to come from
  *
  * They used to come from `DatabaseSchemaExtractor`, i.e. `SchemaHandler`.
- * **`SchemaHandler` has been a stub since WF-007**: `_fetch()` sets
- * `dbCollections = []` and `haveCloudServices = false` unconditionally, because
- * the master-key admin surface it introspected through was deleted along with
- * the rest of the Parse management framework. So the summary returned an empty
- * collection list for every project ever run through it — backend or no backend
- * — and then, because empty-plus-configured is not a trustworthy shape,
+ * **`SchemaHandler` was a stub from WF-007 until phase 40's Layer 1**: `_fetch()`
+ * set `dbCollections = []` and `haveCloudServices = false` unconditionally,
+ * because the master-key admin surface it introspected through was deleted along
+ * with the rest of the Parse management framework. So the summary returned an
+ * empty collection list for every project ever run through it — backend or no
+ * backend — and then, because empty-plus-configured is not a trustworthy shape,
  * concluded *"a backend is configured but its schema returned nothing — it may
  * be unreachable"*.
  *
@@ -29,14 +29,33 @@
  * the same cache the record nodes build their ports from — so if the ports on
  * the canvas know the field names, this does too.
  *
+ * ## The built-in backend — AAQ-011 **F8**, and the paragraph this replaces
+ *
+ * This header used to say that a project bound only to its `cloudservices`
+ * endpoint "has no cached schema anywhere in the editor". **That was true when
+ * AIX-010 wrote it and stopped being true in phase 40's Layer 1.**
+ * `SchemaHandler._fetch()` was restored: it resolves the project's endpoint to
+ * one of the backends this editor runs (`backend:list` → `backend:status` →
+ * `backend:getSchema`) and caches the answer in the `dbCollections` project
+ * metadata — the same cache the Record family's `prop-*` ports come from. So for
+ * exactly the backend phase 40 is about, the collections *are* knowable, and the
+ * review was telling the model they were not.
+ *
+ * They arrive here as the third argument rather than being read here, for the
+ * reason this module is separate from `collectSources.ts` at all: the reading of
+ * singletons stays on the Electron side, the judgement stays specable.
+ * `BackendServices/projectCollections.ts::builtInSchemaCollections` is the reader.
+ *
  * ## What still cannot be read, and is now said plainly
  *
- * A project bound only to its `cloudservices` endpoint — which is how the
- * built-in backend is configured, since starting one writes `cloudservices` and
- * no `BackendConfig` — has no cached schema anywhere in the editor. That is
- * reported as *unavailable, with the reason*, never as "no collections": the
- * difference between "there is nothing" and "we could not look" is the whole
- * point of `schemaAvailable`.
+ * A cloud endpoint whose built-in cache is **empty** is still *unavailable, with
+ * the reason*, never "no collections". Empty is not evidence of absence here:
+ * `SchemaHandler._store()` writes `dbCollections = undefined` whenever the fetch
+ * failed, so a stopped backend, a backend mid-restart and a foreign Parse server
+ * we have no key for all land on the same empty value. The difference between
+ * "there is nothing" and "we could not look" is the whole point of
+ * `schemaAvailable`, and it is why F8 **narrowed** outcome 3 rather than deleting
+ * it.
  *
  * ## Credentials
  *
@@ -80,23 +99,41 @@ export function collectionsFromCachedSchema(backend: BackendConfig): SchemaColle
  * Two systems can each be configured, and a project may have either or both:
  * Parse-wire cloud services (the built-in NodeGX backend or an external Parse),
  * and Backend Services entries (Supabase/Directus/PocketBase/Parse/custom).
+ * `builtIn` is the first system's cached schema, read by
+ * `builtInSchemaCollections`; the second system's rides on each `BackendConfig`.
  *
  * Four outcomes, and each one says something different:
  *
- * 1. at least one synced schema — the collections, plus a note naming any
+ * 1. at least one collection could be read — from the built-in backend's cache,
+ *    from a synced Backend Services schema, or from both — plus a note naming any
  *    backend that was *not* synced, because a partial list presented whole is
  *    still a wrong answer;
  * 2. backends configured, none synced — unavailable, and it says how to fix it;
- * 3. a cloud endpoint only — unavailable, and it says the collections are
- *    unknown rather than absent;
+ * 3. a cloud endpoint whose schema could not be read — unavailable, and it says
+ *    the collections are unknown rather than absent;
  * 4. nothing configured at all — the one shape in which an empty list is a fact.
+ *
+ * ⚠️ **AAQ-011 F8 did not add a fifth outcome, and that was the decision rather
+ * than the default.** A cloud endpoint whose collections *are* readable wants
+ * precisely what outcome 1 already does — list them, and name anything that could
+ * not be read alongside — so a fifth branch would have been outcome 1 with a
+ * second copy of the partial-read note, which is the one-fact-in-two-places shape
+ * this phase keeps paying for. What changed is the *predicate*: outcome 1 no
+ * longer means "a synced Backend Services schema", it means "something was read".
+ * Outcome 3 narrowed to the empty-cache case and kept its wording, because that
+ * case is still real and still exactly what it says — see the header.
  */
 export function buildBackendSummary(
   cloud: BackendSummary['cloud'],
-  backends: readonly BackendConfig[]
+  backends: readonly BackendConfig[],
+  builtIn: readonly SchemaCollection[] = []
 ): BackendSummary {
   const summary: BackendSummary = { services: [], collections: [], schemaAvailable: false };
   if (cloud) summary.cloud = cloud;
+
+  // First, because `renderBackend` names the cloud endpoint before the services and
+  // a reader should meet the collections in the order it met the backends.
+  summary.collections.push(...builtIn);
 
   const unsynced: string[] = [];
 

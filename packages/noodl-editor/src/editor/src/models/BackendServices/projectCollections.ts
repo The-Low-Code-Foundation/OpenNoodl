@@ -38,7 +38,23 @@ import type { BackendConfig } from './types';
  * Returns an empty list for every "we could not look" case rather than throwing:
  * a project whose backend is stopped is a project whose agent gets no schema
  * block, which is the same outcome as having no backend and is honest about it.
+ *
+ * ⚠️ **Empty means "we could not look", not "there is nothing"**, and every caller
+ * owes that distinction to whatever it is writing. `SchemaHandler._store()` writes
+ * `dbCollections = undefined` whenever the fetch failed, so a stopped backend and a
+ * backend with no tables are the same value here — which is exactly why
+ * `buildBackendSummary` keeps its "unknown, not absent" branch for the empty case
+ * (AAQ-011 F8) rather than concluding the project stores nothing.
+ *
+ * Exported for that caller. It is the *built-in* half only: `buildBackendSummary`
+ * already walks the Backend Services entries itself, so handing it the whole of
+ * {@link projectSchemaCollections} would list every BYOB collection twice.
  */
+export function builtInSchemaCollections(project: ProjectModel | undefined): SchemaCollectionInfo[] {
+  if (!project) return [];
+  return builtInCollections(project);
+}
+
 function builtInCollections(project: ProjectModel): SchemaCollectionInfo[] {
   try {
     const tables = project.getMetaData('dbCollections');

@@ -3,12 +3,13 @@
  *
  * ## What was wrong
  *
- * This module read `SchemaHandler.dbCollections`. **That has been a stub since
- * WF-007** — `_fetch()` sets `dbCollections = []` unconditionally, because the
- * master-key admin surface it introspected through went with the rest of the
- * Parse management framework. So `extractDatabaseSchema()` returned a single
- * newline for every project ever run through it, and both templates
- * substituted that under the words *"Here is the schema of the database:"*.
+ * This module read `SchemaHandler.dbCollections`. **That was a stub from WF-007
+ * until phase 40's Layer 1** — `_fetch()` set `dbCollections = []`
+ * unconditionally, because the master-key admin surface it introspected through
+ * went with the rest of the Parse management framework. So
+ * `extractDatabaseSchema()` returned a single newline for every project ever run
+ * through it, and both templates substituted that under the words *"Here is the
+ * schema of the database:"*.
  *
  * Two templates whose entire job is writing CRUD and query functions were
  * being told, in effect, that the database has no collections — and told it in
@@ -20,10 +21,17 @@
  * ## One reader, three consumers
  *
  * The reader is `collectBackendSummary` — the same call the project review
- * makes, over the same `BackendConfig.schema` cache the record nodes build
- * their ports from. There is no second schema read left in the product and
- * there must not be a third: {@link renderDatabaseSchema} is a *renderer* over
- * its result, nothing more.
+ * makes, over the same caches the record nodes build their ports from
+ * (`BackendConfig.schema` for a Backend Services entry, the `dbCollections`
+ * metadata for the built-in backend). There is no second schema read left in the
+ * product and there must not be a third: {@link renderDatabaseSchema} is a
+ * *renderer* over its result, nothing more.
+ *
+ * ⚠️ That is why AAQ-011 **F8** cost this file nothing. F8 filed it as "a third
+ * consumer of the same idea" needing the same wiring; it needed none, because it
+ * does not read a schema — it renders whatever the one reader returns, and the
+ * wiring went in there. A consumer that had grown its own read would have needed
+ * fixing twice, which is the argument for keeping it this way.
  *
  * `extractDatabaseSchemaJSON` and `databaseSchemaCompact` used to live here.
  * Both were the raw Parse `{name, schema: {properties}}` spelling, both read

@@ -21,6 +21,8 @@
 
 import { buildBackendSummary } from '../../src/editor/src/models/AiAssistant/review/backendSummary';
 import { renderBackend } from '../../src/editor/src/models/AiAssistant/review/assembleProject';
+import { renderDatabaseSchema } from '../../src/editor/src/models/AiAssistant/DatabaseSchemaExtractor';
+import { builtInSchemaCollections } from '../../src/editor/src/models/BackendServices/projectCollections';
 import { parseSchemaResponse } from '../../src/editor/src/models/BackendServices/schemaParsers';
 import type { BackendConfig } from '../../src/editor/src/models/BackendServices/types';
 
@@ -105,15 +107,89 @@ describe('collectBackendSummary — a project with a real backend (AIX-010)', ()
     expect(summary.schemaNote.indexOf('unreachable')).toBe(-1);
   });
 
-  it('says a cloud endpoint\'s collections are unknown, not absent', () => {
+  it('says a cloud endpoint\'s collections are unknown, not absent — when they are', () => {
+    // ⚠️ AAQ-011 F8 **narrowed** this outcome; it did not delete it. The empty third
+    // argument is the whole of what it now means: `SchemaHandler._store()` writes
+    // `dbCollections = undefined` whenever the fetch failed, so a stopped backend, a
+    // backend mid-restart and a foreign Parse server we hold no key for all land here.
+    // Concluding "no collections" from that is the lie this module exists to prevent.
     const summary = buildBackendSummary(
       { type: 'nodegx', endpoint: 'http://127.0.0.1:8599', appId: 'nodegx-backend' },
+      [],
       []
     );
 
     expect(summary.schemaAvailable).toBe(false);
     expect(summary.schemaNote).toContain('unknown, not absent');
     expect(renderBackend(summary)).toContain('NOT evidence');
+  });
+
+  /**
+   * AAQ-011 **F8** — the rows the narrowing is for.
+   *
+   * The built-in backend is bound through `cloudservices` and has no `BackendConfig`,
+   * so it fell into the outcome above *by construction* — and that outcome's stated
+   * ground, "the editor has no schema introspection for one", stopped being true in
+   * phase 40's Layer 1. `SchemaHandler._fetch()` introspects it over
+   * `backend:list` → `backend:status` → `backend:getSchema` and caches the answer in
+   * the `dbCollections` metadata; `builtInSchemaCollections` reads it back through
+   * the same `parseParseSchema` the ports use. So the review was calling unknowable
+   * exactly the backend this phase provisions, and the fix was wiring.
+   */
+  const BUILT_IN = [
+    {
+      name: 'Puppy',
+      fields: [
+        { name: 'name', type: 'string' },
+        { name: 'age', type: 'number' }
+      ]
+    }
+  ];
+
+  it('lists the built-in backend\'s collections instead of calling them unknown', () => {
+    const summary = buildBackendSummary(
+      { type: 'nodegx', endpoint: 'http://127.0.0.1:8599', appId: 'nodegx-backend' },
+      [],
+      BUILT_IN
+    );
+
+    expect(summary.schemaAvailable).toBe(true);
+    expect(summary.collections.map((c) => c.name)).toEqual(['Puppy']);
+    expect(summary.schemaNote).toBe(undefined);
+
+    const rendered = renderBackend(summary);
+    expect(rendered).toContain('the built-in NodeGX backend');
+    expect(rendered).toContain('  - age: number');
+    // The sentence that was wrong for every built-in backend in the product.
+    expect(rendered.indexOf('unknown, not absent')).toBe(-1);
+  });
+
+  it('does not merge the built-in cache into a BYOB entry\'s partial-read note', () => {
+    // Outcome 1's predicate is now "something was read", so a built-in schema plus an
+    // unsynced Backend Services entry must still say which half is missing — otherwise
+    // "here are the collections" reads as "here are all of them".
+    const summary = buildBackendSummary(
+      { type: 'nodegx', endpoint: 'http://127.0.0.1:8599', appId: 'nodegx-backend' },
+      [liveBackend(false)],
+      BUILT_IN
+    );
+
+    expect(summary.schemaAvailable).toBe(true);
+    expect(summary.collections.map((c) => c.name)).toEqual(['Puppy']);
+    expect(summary.schemaNote).toContain('Local NodeGX');
+    expect(renderBackend(summary)).toContain('Not everything could be read');
+  });
+
+  it('lists both systems\' collections when a project has both, without duplicating either', () => {
+    const summary = buildBackendSummary(
+      { type: 'nodegx', endpoint: 'http://127.0.0.1:8599', appId: 'nodegx-backend' },
+      [liveBackend(true)],
+      BUILT_IN
+    );
+
+    expect(summary.schemaAvailable).toBe(true);
+    expect(summary.collections.map((c) => c.name)).toEqual(['Puppy', 'Task', 'Project']);
+    expect(summary.schemaNote).toBe(undefined);
   });
 
   it('still asserts "nothing server-side" only when nothing is configured', () => {
@@ -153,5 +229,76 @@ describe('collectBackendSummary — a project with a real backend (AIX-010)', ()
     expect(summary.services).toEqual([
       { id: 'be-1', name: 'Local NodeGX', type: 'nodegx', url: 'http://127.0.0.1:8599' }
     ]);
+  });
+});
+
+/**
+ * AAQ-011 **F8**, the reader half — because the rows above would all pass with the
+ * wiring absent.
+ *
+ * `buildBackendSummary` is pure and takes the built-in collections as an argument;
+ * every row above hands them over by hand. What F8 actually was is that *nothing
+ * handed them over*, and the only thing that can catch that regressing is a row over
+ * the reader — `builtInSchemaCollections`, from the `dbCollections` metadata
+ * `SchemaHandler._store()` writes, through the same `parseParseSchema` the Record
+ * family's `prop-*` ports are generated from.
+ *
+ * The payload is the verbatim `tables` array again, because that is what the metadata
+ * holds: `SchemaHandler` caches the backend's own answer unaltered.
+ */
+describe('the built-in backend’s collections reach the review (AAQ-011 F8)', () => {
+  /** A `ProjectModel` reduced to the one call the reader makes. */
+  function projectWithMetadata(value: unknown) {
+    return {
+      getMetaData: (key: string) => (key === 'dbCollections' ? value : undefined)
+    } as unknown as Parameters<typeof builtInSchemaCollections>[0];
+  }
+
+  it('reads the cache SchemaHandler writes, in the shape it writes it', () => {
+    const collections = builtInSchemaCollections(projectWithMetadata(LIVE_SCHEMA_PAYLOAD.tables));
+
+    expect(collections.map((c) => c.name)).toEqual(['Task', 'Project']);
+    expect(collections[0].fields).toEqual([
+      { name: 'title', type: 'string' },
+      { name: 'done', type: 'boolean' },
+      { name: 'priority', type: 'number' }
+    ]);
+  });
+
+  it('turns the built-in backend from "unknown" into a listed schema, end to end', () => {
+    // The two halves joined: the reader's output is what `collectBackendSummary` now
+    // passes, so this is the sentence a wizard-built project's review actually gets.
+    const summary = buildBackendSummary(
+      { type: 'nodegx', endpoint: 'http://127.0.0.1:8599', appId: 'nodegx-backend' },
+      [],
+      builtInSchemaCollections(projectWithMetadata(LIVE_SCHEMA_PAYLOAD.tables))
+    );
+
+    expect(summary.schemaAvailable).toBe(true);
+    expect(renderBackend(summary)).toContain('- Task');
+    expect(renderDatabaseSchema(summary)).toContain('- priority: number');
+  });
+
+  /**
+   * The direction that must NOT change. An empty cache is "we could not look" —
+   * `_store()` writes `dbCollections = undefined` whenever the fetch failed — so a
+   * stopped backend must go on saying the collections are unknown.
+   */
+  it('says nothing new when the cache is empty, unreadable, or the wrong shape', () => {
+    for (const value of [undefined, null, [], {}, 'not an array']) {
+      expect(builtInSchemaCollections(projectWithMetadata(value))).toEqual([]);
+    }
+
+    const summary = buildBackendSummary(
+      { type: 'nodegx', endpoint: 'http://127.0.0.1:8599', appId: 'nodegx-backend' },
+      [],
+      builtInSchemaCollections(projectWithMetadata(undefined))
+    );
+    expect(summary.schemaAvailable).toBe(false);
+    expect(summary.schemaNote).toContain('unknown, not absent');
+  });
+
+  it('is undefined-safe, because the review runs on projects that are not open', () => {
+    expect(builtInSchemaCollections(undefined)).toEqual([]);
   });
 });

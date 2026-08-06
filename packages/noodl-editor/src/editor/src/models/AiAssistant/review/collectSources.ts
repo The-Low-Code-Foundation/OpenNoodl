@@ -19,13 +19,14 @@
  */
 
 import { BackendServices } from '../../BackendServices';
+import { builtInSchemaCollections } from '../../BackendServices/projectCollections';
 import type { BackendConfig } from '../../BackendServices/types';
 import type { ProjectModel } from '../../projectmodel';
 import { getCloudServices } from '../../projectmodel.editor';
 import { buildStyleVocabulary } from '../../StyleTokensModel/StyleVocabulary';
 import type { ProjectDocsContent } from '../../ProjectDocs/docsText';
 import { buildBackendSummary } from './backendSummary';
-import type { BackendSummary, DeclaredRoute, ProjectReviewSources } from './types';
+import type { BackendSummary, DeclaredRoute, ProjectReviewSources, SchemaCollection } from './types';
 
 /**
  * `metadata.routes`, when it is array-shaped.
@@ -58,6 +59,21 @@ export function readDeclaredRoutes(project: ProjectModel): DeclaredRoute[] | und
  *
  * The reading of the two singletons is all that lives here; the judgement — and
  * the long-standing defect it fixes — is in `backendSummary.ts`.
+ *
+ * AAQ-011 **F8** added the third read. The built-in backend is bound through
+ * `cloudservices` and has no `BackendConfig`, so neither singleton above knows
+ * anything about it — and the review consequently told the model its collections
+ * were "unknown, not absent" for exactly the backend phase 40 provisions. Layer 1
+ * restored `SchemaHandler`, which caches that schema in project metadata, and
+ * `builtInSchemaCollections` is the reader over it. It was wiring, not discovery.
+ *
+ * ⚠️ The **built-in half only**. `projectSchemaCollections` also returns every
+ * Backend Services entry's schema, and `buildBackendSummary` walks those itself —
+ * passing the whole thing would list every BYOB collection twice.
+ *
+ * This is the one reader in the product, so `DatabaseSchemaExtractor` — the
+ * Read/Write Database templates' schema block — is fixed by the same change with
+ * no wiring of its own; it renders whatever this returns.
  */
 export async function collectBackendSummary(project: ProjectModel): Promise<BackendSummary> {
   let cloud: BackendSummary['cloud'];
@@ -81,7 +97,14 @@ export async function collectBackendSummary(project: ProjectModel): Promise<Back
     /* Backend Services not initialised in this session */
   }
 
-  return buildBackendSummary(cloud, backends);
+  let builtIn: SchemaCollection[] = [];
+  try {
+    builtIn = builtInSchemaCollections(project);
+  } catch {
+    /* an unreadable metadata cache is "we could not look", which is outcome 3 */
+  }
+
+  return buildBackendSummary(cloud, backends, builtIn);
 }
 
 /** Everything the assembler needs beyond the graph. Never throws. */
