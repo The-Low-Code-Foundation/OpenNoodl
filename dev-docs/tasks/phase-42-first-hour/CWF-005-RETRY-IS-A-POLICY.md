@@ -25,6 +25,17 @@ move the validator into.
    The policy ships as a named **Retry policy** group, expanded, with the backoff preview making it
    readable at a glance instead.
 4. Line-number drift: the validator's `case 'retry'` was at **670-683**, not 669-683.
+5. **S3 named two readers; there were three.** "Migrate on read" was written for the backend
+   registry, and MCP's `refuseUnservedKinds` was the second. The third is the editor's **proposal
+   review**, which nobody listed because it does not look like a reader: a proposal comes off DISK
+   from `noodl-mcp` and never passes through the backend read path. Caught by `test:ci`, not by any
+   gate in the task. Measured consequence: a proposal restating exactly what is stored reported
+   `node-type-changed: call-function → retry` — a semantic change announced for a change not being
+   made, which the backend would migrate straight back on save. Note the shape of the trap: an
+   editor-side conversion that migrated only the KIND would have been worse than the bug, because
+   the backend's migration then does not fire on save and the step is stored with the policy off.
+   Closed by having the dry run (`POST /admin/workflow-defs/validate`) return the definition it
+   would store, so there is still exactly one authority on the rule.
 
 ## What shipped
 
