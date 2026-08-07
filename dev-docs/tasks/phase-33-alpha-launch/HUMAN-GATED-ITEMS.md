@@ -319,7 +319,7 @@ Not blockers. Worth writing down so they are decided rather than discovered.
 | D1 | **Phase 37 (project tabs)** — specced 2026-08-02, nothing built, six tasks of main-process architecture | **Out of alpha, in writing.** Phase 33 excludes feature work by rule, and this is the most attractive unstarted thing on the board |
 | D2 | **Phase 17's LEARN-007…010** — four new untracked specs | Park with the phase. Phase 33's README already holds phase 17 as a G3 question |
 | D3 | **ERG-005 §1** — phase 35 calls it the headline unstarted piece, and §0 doubled its scope | A genuine call. Component Inputs/Outputs is the only mechanism in the library that cannot be documented at all, and a user hits it on their second component |
-| D4 | **NDA-014 criterion 1** — a Function `object` output wired to a Text node renders `[object Object]`; the live check on 2026-08-01 found the JSON mirror could never fire on any graph | Fix before ALPHA-001. It is a first-ten-minutes-visible defect on a contract believed closed, and ALPHA-001 will find it anyway |
+| D4 | ~~**NDA-014 criterion 1** — a Function `object` output wired to a Text node renders `[object Object]`~~ | ✅ **Already fixed**, `461859be` (2026-08-02, the day after this row's own 2026-08-01 live check). Re-verified 2026-08-07: `packages/noodl-runtime/test/corpus/nda-014-outbound-string-cast.test.ts` (9 cases) passes clean on `cline-dev` HEAD. Another row that outlived its fix — see `registers-outlive-their-fixes` |
 | D5 | **NDA-005 (port documentation)** is §0-only — 95% of 2,650 ports | Not alpha-blocking, but it is the AI authoring loop's largest single input, and ALPHA-006 §1 makes it *visible* by putting the enrichment in the help panel |
 
 ---
