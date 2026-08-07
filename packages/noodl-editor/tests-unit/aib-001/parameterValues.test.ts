@@ -169,11 +169,49 @@ describe('a parameter that names no port at all', () => {
     expect(diagnostic.suggestion).toBe('clamp');
   });
 
-  it('is skipped entirely on a node that declares dynamic ports', () => {
-    // Group carries declared port groups, so a name the catalog cannot see is
-    // not evidence of a mistake. 96 of the 153 catalog types are in this class.
+  it('is skipped only when the ports are genuinely runtime-determined', () => {
+    // `States` names its ports from a seed parameter: the catalog cannot
+    // enumerate them, so silence is the only honest answer.
+    expect(catalog.hasRuntimeDynamicPorts('States')).toBe(true);
+    expect(check([{ id: 's', type: 'States', parameters: { 'value-on-opacity': 1 } }])).toEqual([]);
+  });
+
+  it('checks a node whose only dynamism is conditional port groups', () => {
+    // `Group` declares dynamic ports, but every one of them is listed in the
+    // catalog under a condition — so the catalog *can* say that `widht` is not
+    // among them. The exemption used to key on `isDynamicNode`, which covers 88
+    // of the 175 types and swallowed this entire class: `Text`, `Group`,
+    // `Image`, `Button`, `Text Input` — the whole visual vocabulary a page is
+    // built from. That is how 18 `fontWeight` parameters validated clean while
+    // no node in the runtime has ever had a `fontWeight` port.
     expect(catalog.isDynamicNode('Group')).toBe(true);
-    expect(check([{ id: 'g', type: 'Group', parameters: { widht: 100 } }])).toEqual([]);
+    expect(catalog.hasRuntimeDynamicPorts('Group')).toBe(false);
+
+    const [diagnostic, ...rest] = check([{ id: 'g', type: 'Group', parameters: { widht: 100 } }]);
+    expect(rest).toHaveLength(0);
+    expect(diagnostic.code).toBe(DiagnosticCode.UnknownParameter);
+    expect(diagnostic.severity).toBe('warning');
+    expect(diagnostic.suggestion).toBe('width');
+  });
+
+  it('accepts the weight token that a whole page was silently losing', () => {
+    // An authored page carried 18 of these and rendered every word at 400: the
+    // design system shipped nine `--font-*` weight tokens and four Inter faces
+    // to serve them, `ElementConfigs` gave every variant a `fontWeight`, and
+    // `StyleVocabulary` handed those variants to the model as the worked
+    // example — while no node in the runtime had a port to consume any of it.
+    // The port exists now, typed like `lineHeight` so a token is legal on it.
+    expect(catalog.hasPort('Text', 'input', 'fontWeight')).toBe(true);
+    expect(check([{ id: 't', type: 'Text', parameters: { fontWeight: 'var(--font-semibold)' } }])).toEqual([]);
+    // and the plain numeric form the CSS property actually takes
+    expect(check([{ id: 't', type: 'Text', parameters: { fontWeight: 600 } }])).toEqual([]);
+  });
+
+  it('still catches a parameter the visual vocabulary genuinely has no port for', () => {
+    // `padding` is a CSS shorthand, not a port — the four edges are.
+    const found = check([{ id: 'g', type: 'Group', parameters: { padding: '16px' } }]);
+    expect(found.map((d) => d.code)).toEqual([DiagnosticCode.UnknownParameter]);
+    expect(found[0].message).toContain('padding');
   });
 
   it('can be turned off for callers that only want value problems', () => {
@@ -271,10 +309,18 @@ describe('the styling a candidate believes it set', () => {
     it('stays quiet when the author already used the object form', () => {
       // The unit is already right, so the stray sibling costs nothing and
       // erroring would spend a repair round making the candidate no better.
-      // (Image has dynamic ports, so it does not even draw the unknown-parameter
-      // warning — the trap fires ahead of that exemption on purpose, because the
-      // port it pairs with is statically declared.)
-      expect(one('Image', { width: { value: 228, unit: 'px' }, widthUnit: 'px' })).toEqual([]);
+      const found = one('Image', { width: { value: 228, unit: 'px' }, widthUnit: 'px' });
+      expect(found.filter((d) => d.code === DiagnosticCode.InvalidParameterValue)).toEqual([]);
+      expect(found.filter((d) => d.code === DiagnosticCode.UnitlessDimension)).toEqual([]);
+      // What it does say is two separate true things: `Image`'s `sizeMode`
+      // defaults to `contentSize`, so this perfectly-formed width is ignored;
+      // and `widthUnit` is not a port on anything, so it is never read either.
+      // The unit *trap* stays quiet because the width needs no repair — that is
+      // a different claim from "the stray sibling is a real port".
+      expect(found.map((d) => d.code)).toEqual([
+        DiagnosticCode.InactiveConditionalParameter,
+        DiagnosticCode.UnknownParameter
+      ]);
     });
 
     it('fires on a node with dynamic ports, whose static ports are still static', () => {
@@ -323,7 +369,17 @@ describe('the styling a candidate believes it set', () => {
 
     it('does not double-report when the unit sibling already explains it', () => {
       const codes = one('Image', { width: 228, widthUnit: 'px' }).map((d) => d.code);
-      expect(codes).toEqual([DiagnosticCode.InvalidParameterValue]);
+      // One report for the unit mistake, not two — plus the independent fact
+      // that `sizeMode` leaves the width unread either way. Both are needed:
+      // repairing only the unit gives an image that is still ignored, and
+      // repairing only `sizeMode` gives one that is 228% wide.
+      expect(codes).toEqual([DiagnosticCode.InactiveConditionalParameter, DiagnosticCode.InvalidParameterValue]);
+    });
+
+    it('says nothing about a conditional port whose condition is met', () => {
+      // The same width, with the sibling the condition asks for.
+      const codes = one('Image', { sizeMode: 'explicit', width: { value: 228, unit: 'px' } }).map((d) => d.code);
+      expect(codes).toEqual([]);
     });
 
     it('blocks an authored candidate even though it is only a warning', () => {

@@ -57,6 +57,7 @@
 
 import { CatalogIndex, nearest, type CatalogPort } from './CatalogIndex';
 import { DiagnosticCode, type Diagnostic, type Severity } from './diagnostics';
+import { conditionForInput, conditionIsUnsatisfied } from './portConditions';
 
 /** The catalog's `type` field, normalised to its object form. */
 export interface PortTypeShape {
@@ -85,7 +86,9 @@ export interface CheckParameterValuesOptions {
   component: string;
   /**
    * Report a parameter naming no declared port. Default `true`. Always a
-   * warning, and never emitted for a node with dynamic ports.
+   * warning, and never emitted for a node whose ports are *runtime-determined* —
+   * a node that merely declares conditional port groups is checked, because the
+   * catalog enumerates those ports in full.
    */
   reportUnknownParameters?: boolean;
 }
@@ -422,6 +425,36 @@ export function wireFormatHint(port: CatalogPort | undefined): string {
   return format.example ? `${format.hint}, e.g. ${format.example}` : format.hint;
 }
 
+// ─── Conditional ports ───────────────────────────────────────────────────────
+
+/**
+ * A port condition as a sentence.
+ *
+ * The stored form (`sizeMode = explicit OR sizeMode = contentHeight`) is already
+ * close to readable, so this only unpicks the two bits of punctuation a reader
+ * would stumble on: `NOT SET` reads as a phrase, and `=` reads as "is".
+ */
+function describeCondition(condition: string): string {
+  return condition
+    .replace(/\s+NOT SET/g, ' is not set')
+    .replace(/\s*!=\s*/g, ' is not ')
+    .replace(/\s*=\s*/g, ' is ')
+    .replace(/\bOR\b/g, 'or')
+    .replace(/\bAND\b/g, 'and');
+}
+
+/**
+ * The sibling edit that switches the port on, when the condition names exactly
+ * one — which covers the cases that actually bite (`sizeMode = explicit`,
+ * `boxShadowEnabled = true`). A multi-clause `OR` offers a choice this is not
+ * entitled to make for the author, so it stays silent and the message alone
+ * carries the repair.
+ */
+function repairForCondition(condition: string): string | undefined {
+  const single = /^\s*(\w+)\s*=\s*'?([\w-]+)'?\s*$/.exec(condition);
+  return single ? `${single[1]}: ${JSON.stringify(single[2])}` : undefined;
+}
+
 // ─── The rule ────────────────────────────────────────────────────────────────
 
 /**
@@ -512,7 +545,17 @@ export function checkParameterValues(
   for (const node of nodes) {
     const parameters = node.parameters;
     if (!parameters || !catalog.hasType(node.type)) continue;
-    const dynamic = catalog.isDynamicNode(node.type);
+    // Only *runtime-unbounded* dynamism earns the skip below. The broader
+    // `isDynamicNode` was exempting all 88 types that declare any dynamic ports,
+    // and for 20 of them — `Text`, `Group`, `Image`, `Button`, `Text Input` and
+    // the rest of the visual vocabulary — the dynamism is `declared-port-groups`,
+    // whose every member is enumerable from the catalog. So the one rule that
+    // catches a parameter naming no port was switched off for exactly the nodes
+    // a page is built from: 18 `fontWeight` parameters across five components of
+    // an authored project validated clean, and every word on the page rendered
+    // at weight 400 because no node in the runtime has a `fontWeight` port.
+    const dynamic = catalog.hasRuntimeDynamicPorts(node.type);
+    const portGroups = catalog.declaredPortGroups(node.type);
 
     for (const [name, value] of Object.entries(parameters)) {
       // "Not set". `undefined` is what the editor writes for a cleared field;
@@ -542,6 +585,28 @@ export function checkParameterValues(
           ...(suggestion ? { suggestion } : {})
         });
         continue;
+      }
+
+      // A port switched off by a sibling parameter reads like a live one: it is
+      // declared, and the value is well formed. Reported first, because "this is
+      // never read" is the useful sentence — but it does **not** `continue` the
+      // way `allowConnectionsOnly` does below. A connection-only port discards
+      // the value whatever else the author writes, so its shape is genuinely
+      // moot; here a sibling edit makes the port live, and the value has to
+      // survive that edit. `Image { width: 228 }` is wrong twice over — ignored
+      // today because `sizeMode` defaults to `contentSize`, and 228 *percent*
+      // once `sizeMode` is fixed — and a repair round that is told only the
+      // first one produces a second broken image.
+      const condition = conditionForInput(portGroups, name);
+      if (condition && conditionIsUnsatisfied(condition, parameters)) {
+        const repair = repairForCondition(condition);
+        diagnostics.push({
+          code: DiagnosticCode.InactiveConditionalParameter,
+          severity: 'warning',
+          message: `${node.type}'s "${name}" only applies when ${describeCondition(condition)}, so this parameter is never read.`,
+          location: locate(component, node, name),
+          ...(repair ? { suggestion: repair } : {})
+        });
       }
 
       // Before the value is examined at all: a connection-only port discards

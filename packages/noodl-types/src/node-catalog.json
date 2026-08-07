@@ -7971,6 +7971,30 @@
           "index": 6
         },
         {
+          "name": "boxSizing",
+          "displayName": "Box Sizing",
+          "group": "Margin and padding",
+          "plug": "input",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "Include padding and border",
+                "value": "border-box"
+              },
+              {
+                "label": "Content only",
+                "value": "content-box"
+              }
+            ]
+          },
+          "isSignal": false,
+          "default": "border-box",
+          "description": "Whether Width and Height include this element's padding and border, or only its content",
+          "index": 63,
+          "allowVisualStates": true
+        },
+        {
           "name": "cssClassName",
           "displayName": "CSS Class",
           "group": "Advanced HTML",
@@ -9548,6 +9572,30 @@
           "index": 6
         },
         {
+          "name": "boxSizing",
+          "displayName": "Box Sizing",
+          "group": "Margin and padding",
+          "plug": "input",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "Include padding and border",
+                "value": "border-box"
+              },
+              {
+                "label": "Content only",
+                "value": "content-box"
+              }
+            ]
+          },
+          "isSignal": false,
+          "default": "border-box",
+          "description": "Whether Width and Height include this element's padding and border, or only its content",
+          "index": 63,
+          "allowVisualStates": true
+        },
+        {
           "name": "cssClassName",
           "displayName": "CSS Class",
           "group": "Advanced HTML",
@@ -11117,6 +11165,30 @@
           "default": 2,
           "description": "How much larger than the element the shadow is drawn",
           "index": 254,
+          "allowVisualStates": true
+        },
+        {
+          "name": "boxSizing",
+          "displayName": "Box Sizing",
+          "group": "Margin and padding",
+          "plug": "input",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "Include padding and border",
+                "value": "border-box"
+              },
+              {
+                "label": "Content only",
+                "value": "content-box"
+              }
+            ]
+          },
+          "isSignal": false,
+          "default": "border-box",
+          "description": "Whether Width and Height include this element's padding and border, or only its content",
+          "index": 63,
           "allowVisualStates": true
         },
         {
@@ -15112,6 +15184,26 @@
           "allowVisualStates": true
         },
         {
+          "name": "fontWeight",
+          "displayName": "Font Weight",
+          "editorName": "Font Weight",
+          "group": "Text Style",
+          "plug": "input",
+          "type": {
+            "name": "number",
+            "defaultUnit": "",
+            "parentPort": "textStyle",
+            "units": [
+              ""
+            ]
+          },
+          "isSignal": false,
+          "default": "Auto",
+          "description": "How heavy the text is drawn, from 100 (thin) to 900 (black); leave as Auto to use the weight the font family sets",
+          "index": 21.5,
+          "allowVisualStates": true
+        },
+        {
           "name": "for",
           "displayName": "For",
           "group": "General",
@@ -15549,6 +15641,7 @@
             "childPorts": [
               "fontFamily",
               "fontSize",
+              "fontWeight",
               "color",
               "letterSpacing",
               "lineHeight",
@@ -18089,6 +18182,30 @@
           "index": 254
         },
         {
+          "name": "boxSizing",
+          "displayName": "Box Sizing",
+          "group": "Margin and padding",
+          "plug": "input",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "Include padding and border",
+                "value": "border-box"
+              },
+              {
+                "label": "Content only",
+                "value": "content-box"
+              }
+            ]
+          },
+          "isSignal": false,
+          "default": "border-box",
+          "description": "Whether Width and Height include this element's padding and border, or only its content",
+          "index": 63,
+          "allowVisualStates": true
+        },
+        {
           "name": "clickBubbling",
           "displayName": "Click Bubbling",
           "plug": "input",
@@ -19141,6 +19258,30 @@
       ],
       "allowAsExportRoot": false,
       "inputs": [
+        {
+          "name": "boxSizing",
+          "displayName": "Box Sizing",
+          "group": "Margin and padding",
+          "plug": "input",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "Include padding and border",
+                "value": "border-box"
+              },
+              {
+                "label": "Content only",
+                "value": "content-box"
+              }
+            ]
+          },
+          "isSignal": false,
+          "default": "border-box",
+          "description": "Whether Width and Height include this element's padding and border, or only its content",
+          "index": 63,
+          "allowVisualStates": true
+        },
         {
           "name": "cssClassName",
           "displayName": "CSS Class",
@@ -21774,6 +21915,30 @@
           "isSignal": false,
           "description": "Vertical alignment of this element within the space its parent gives it",
           "index": 6
+        },
+        {
+          "name": "boxSizing",
+          "displayName": "Box Sizing",
+          "group": "Margin and padding",
+          "plug": "input",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "Include padding and border",
+                "value": "border-box"
+              },
+              {
+                "label": "Content only",
+                "value": "content-box"
+              }
+            ]
+          },
+          "isSignal": false,
+          "default": "border-box",
+          "description": "Whether Width and Height include this element's padding and border, or only its content",
+          "index": 63,
+          "allowVisualStates": true
         },
         {
           "name": "cssClassName",
@@ -26809,6 +26974,26 @@
           "allowVisualStates": true
         },
         {
+          "name": "fontWeight",
+          "displayName": "Font Weight",
+          "editorName": "Font Weight",
+          "group": "Text Style",
+          "plug": "input",
+          "type": {
+            "name": "number",
+            "defaultUnit": "",
+            "parentPort": "textStyle",
+            "units": [
+              ""
+            ]
+          },
+          "isSignal": false,
+          "default": "Auto",
+          "description": "How heavy the text is drawn, from 100 (thin) to 900 (black); leave as Auto to use the weight the font family sets",
+          "index": 21.5,
+          "allowVisualStates": true
+        },
+        {
           "name": "height",
           "displayName": "Height",
           "group": "Dimensions",
@@ -27332,6 +27517,7 @@
             "childPorts": [
               "fontFamily",
               "fontSize",
+              "fontWeight",
               "color",
               "letterSpacing",
               "lineHeight",
@@ -27989,6 +28175,30 @@
           "isSignal": false,
           "default": 2,
           "index": 254
+        },
+        {
+          "name": "boxSizing",
+          "displayName": "Box Sizing",
+          "group": "Margin and padding",
+          "plug": "input",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "Include padding and border",
+                "value": "border-box"
+              },
+              {
+                "label": "Content only",
+                "value": "content-box"
+              }
+            ]
+          },
+          "isSignal": false,
+          "default": "border-box",
+          "description": "Whether Width and Height include this element's padding and border, or only its content",
+          "index": 63,
+          "allowVisualStates": true
         },
         {
           "name": "clear",
@@ -38687,6 +38897,30 @@
           "allowVisualStates": true
         },
         {
+          "name": "boxSizing",
+          "displayName": "Box Sizing",
+          "group": "Margin and padding",
+          "plug": "input",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "Include padding and border",
+                "value": "border-box"
+              },
+              {
+                "label": "Content only",
+                "value": "content-box"
+              }
+            ]
+          },
+          "isSignal": false,
+          "default": "border-box",
+          "description": "Whether Width and Height include this element's padding and border, or only its content",
+          "index": 63,
+          "allowVisualStates": true
+        },
+        {
           "name": "clickBubbling",
           "displayName": "Click Bubbling",
           "group": "Pointer Events",
@@ -38785,6 +39019,26 @@
           "isSignal": false,
           "description": "Height of the text, in pixels",
           "index": 21,
+          "allowVisualStates": true
+        },
+        {
+          "name": "fontWeight",
+          "displayName": "Font Weight",
+          "editorName": "Font Weight",
+          "group": "Label Text Style",
+          "plug": "input",
+          "type": {
+            "name": "number",
+            "defaultUnit": "",
+            "parentPort": "textStyle",
+            "units": [
+              ""
+            ]
+          },
+          "isSignal": false,
+          "default": "Auto",
+          "description": "How heavy the text is drawn, from 100 (thin) to 900 (black); leave as Auto to use the weight the font family sets",
+          "index": 21.5,
           "allowVisualStates": true
         },
         {
@@ -39418,6 +39672,7 @@
             "childPorts": [
               "fontFamily",
               "fontSize",
+              "fontWeight",
               "color",
               "letterSpacing",
               "lineHeight",
@@ -39903,6 +40158,7 @@
               "textStyle",
               "fontFamily",
               "fontSize",
+              "fontWeight",
               "color",
               "letterSpacing",
               "lineHeight",
@@ -40645,6 +40901,30 @@
           "allowVisualStates": true
         },
         {
+          "name": "boxSizing",
+          "displayName": "Box Sizing",
+          "group": "Margin and padding",
+          "plug": "input",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "Include padding and border",
+                "value": "border-box"
+              },
+              {
+                "label": "Content only",
+                "value": "content-box"
+              }
+            ]
+          },
+          "isSignal": false,
+          "default": "border-box",
+          "description": "Whether Width and Height include this element's padding and border, or only its content",
+          "index": 63,
+          "allowVisualStates": true
+        },
+        {
           "name": "check",
           "displayName": "Check",
           "group": "Actions",
@@ -40902,6 +41182,26 @@
           "allowVisualStates": true
         },
         {
+          "name": "labelfontWeight",
+          "displayName": "Font Weight",
+          "editorName": "Font Weight",
+          "group": "Label Text Style",
+          "plug": "input",
+          "type": {
+            "name": "number",
+            "defaultUnit": "",
+            "parentPort": "labeltextStyle",
+            "units": [
+              ""
+            ]
+          },
+          "isSignal": false,
+          "default": "Auto",
+          "description": "How heavy the text is drawn, from 100 (thin) to 900 (black); leave as Auto to use the weight the font family sets",
+          "index": 21.5,
+          "allowVisualStates": true
+        },
+        {
           "name": "labelletterSpacing",
           "displayName": "Letter Spacing",
           "editorName": "Letter Spacing",
@@ -40955,6 +41255,7 @@
             "childPorts": [
               "fontFamily",
               "fontSize",
+              "fontWeight",
               "color",
               "letterSpacing",
               "lineHeight",
@@ -41798,6 +42099,7 @@
               "labeltextStyle",
               "labelfontFamily",
               "labelfontSize",
+              "labelfontWeight",
               "labelcolor",
               "labelletterSpacing",
               "labellineHeight",
@@ -42515,6 +42817,30 @@
           "allowVisualStates": true
         },
         {
+          "name": "boxSizing",
+          "displayName": "Box Sizing",
+          "group": "Margin and padding",
+          "plug": "input",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "Include padding and border",
+                "value": "border-box"
+              },
+              {
+                "label": "Content only",
+                "value": "content-box"
+              }
+            ]
+          },
+          "isSignal": false,
+          "default": "border-box",
+          "description": "Whether Width and Height include this element's padding and border, or only its content",
+          "index": 63,
+          "allowVisualStates": true
+        },
+        {
           "name": "clickBubbling",
           "displayName": "Click Bubbling",
           "group": "Pointer Events",
@@ -42613,6 +42939,26 @@
           "isSignal": false,
           "description": "Height of the text, in pixels",
           "index": 21,
+          "allowVisualStates": true
+        },
+        {
+          "name": "fontWeight",
+          "displayName": "Font Weight",
+          "editorName": "Font Weight",
+          "group": "Text Style",
+          "plug": "input",
+          "type": {
+            "name": "number",
+            "defaultUnit": "",
+            "parentPort": "textStyle",
+            "units": [
+              ""
+            ]
+          },
+          "isSignal": false,
+          "default": "Auto",
+          "description": "How heavy the text is drawn, from 100 (thin) to 900 (black); leave as Auto to use the weight the font family sets",
+          "index": 21.5,
           "allowVisualStates": true
         },
         {
@@ -42850,6 +43196,26 @@
           "allowVisualStates": true
         },
         {
+          "name": "labelfontWeight",
+          "displayName": "Font Weight",
+          "editorName": "Font Weight",
+          "group": "Label Text Style",
+          "plug": "input",
+          "type": {
+            "name": "number",
+            "defaultUnit": "",
+            "parentPort": "labeltextStyle",
+            "units": [
+              ""
+            ]
+          },
+          "isSignal": false,
+          "default": "Auto",
+          "description": "How heavy the text is drawn, from 100 (thin) to 900 (black); leave as Auto to use the weight the font family sets",
+          "index": 21.5,
+          "allowVisualStates": true
+        },
+        {
           "name": "labelletterSpacing",
           "displayName": "Letter Spacing",
           "editorName": "Letter Spacing",
@@ -42903,6 +43269,7 @@
             "childPorts": [
               "fontFamily",
               "fontSize",
+              "fontWeight",
               "color",
               "letterSpacing",
               "lineHeight",
@@ -43445,6 +43812,7 @@
             "childPorts": [
               "fontFamily",
               "fontSize",
+              "fontWeight",
               "color",
               "letterSpacing",
               "lineHeight",
@@ -43964,6 +44332,7 @@
               "labeltextStyle",
               "labelfontFamily",
               "labelfontSize",
+              "labelfontWeight",
               "labelcolor",
               "labelletterSpacing",
               "labellineHeight",
@@ -44685,6 +45054,30 @@
           "allowVisualStates": true
         },
         {
+          "name": "boxSizing",
+          "displayName": "Box Sizing",
+          "group": "Margin and padding",
+          "plug": "input",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "Include padding and border",
+                "value": "border-box"
+              },
+              {
+                "label": "Content only",
+                "value": "content-box"
+              }
+            ]
+          },
+          "isSignal": false,
+          "default": "border-box",
+          "description": "Whether Width and Height include this element's padding and border, or only its content",
+          "index": 63,
+          "allowVisualStates": true
+        },
+        {
           "name": "clickBubbling",
           "displayName": "Click Bubbling",
           "group": "Pointer Events",
@@ -44948,6 +45341,26 @@
           "allowVisualStates": true
         },
         {
+          "name": "labelfontWeight",
+          "displayName": "Font Weight",
+          "editorName": "Font Weight",
+          "group": "Label Text Style",
+          "plug": "input",
+          "type": {
+            "name": "number",
+            "defaultUnit": "",
+            "parentPort": "labeltextStyle",
+            "units": [
+              ""
+            ]
+          },
+          "isSignal": false,
+          "default": "Auto",
+          "description": "How heavy the text is drawn, from 100 (thin) to 900 (black); leave as Auto to use the weight the font family sets",
+          "index": 21.5,
+          "allowVisualStates": true
+        },
+        {
           "name": "labelletterSpacing",
           "displayName": "Letter Spacing",
           "editorName": "Letter Spacing",
@@ -45001,6 +45414,7 @@
             "childPorts": [
               "fontFamily",
               "fontSize",
+              "fontWeight",
               "color",
               "letterSpacing",
               "lineHeight",
@@ -45812,6 +46226,7 @@
               "labeltextStyle",
               "labelfontFamily",
               "labelfontSize",
+              "labelfontWeight",
               "labelcolor",
               "labelletterSpacing",
               "labellineHeight",
@@ -45980,6 +46395,30 @@
           "isSignal": false,
           "description": "Stops every pointer event that lands on this control from reaching the nodes it sits inside. Blunt: it takes hover and pointer-down with it, so reach for Click Bubbling first if it is only clicks you want to keep in",
           "index": 450
+        },
+        {
+          "name": "boxSizing",
+          "displayName": "Box Sizing",
+          "group": "Margin and padding",
+          "plug": "input",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "Include padding and border",
+                "value": "border-box"
+              },
+              {
+                "label": "Content only",
+                "value": "content-box"
+              }
+            ]
+          },
+          "isSignal": false,
+          "default": "border-box",
+          "description": "Whether Width and Height include this element's padding and border, or only its content",
+          "index": 63,
+          "allowVisualStates": true
         },
         {
           "name": "clickBubbling",
@@ -48731,6 +49170,30 @@
           "allowVisualStates": true
         },
         {
+          "name": "boxSizing",
+          "displayName": "Box Sizing",
+          "group": "Margin and padding",
+          "plug": "input",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "Include padding and border",
+                "value": "border-box"
+              },
+              {
+                "label": "Content only",
+                "value": "content-box"
+              }
+            ]
+          },
+          "isSignal": false,
+          "default": "border-box",
+          "description": "Whether Width and Height include this element's padding and border, or only its content",
+          "index": 63,
+          "allowVisualStates": true
+        },
+        {
           "name": "clear",
           "displayName": "Clear",
           "group": "Actions",
@@ -48853,6 +49316,26 @@
           "isSignal": false,
           "description": "Height of the text, in pixels",
           "index": 20,
+          "allowVisualStates": true
+        },
+        {
+          "name": "fontWeight",
+          "displayName": "Font Weight",
+          "editorName": "Font Weight",
+          "group": "Text Style",
+          "plug": "input",
+          "type": {
+            "name": "number",
+            "defaultUnit": "",
+            "parentPort": "textStyle",
+            "units": [
+              ""
+            ]
+          },
+          "isSignal": false,
+          "default": "Auto",
+          "description": "How heavy the text is drawn, from 100 (thin) to 900 (black); leave as Auto to use the weight the font family sets",
+          "index": 20.5,
           "allowVisualStates": true
         },
         {
@@ -49079,6 +49562,26 @@
           "allowVisualStates": true
         },
         {
+          "name": "labelfontWeight",
+          "displayName": "Font Weight",
+          "editorName": "Label Font Weight",
+          "group": "Label Text Style",
+          "plug": "input",
+          "type": {
+            "name": "number",
+            "defaultUnit": "",
+            "parentPort": "labeltextStyle",
+            "units": [
+              ""
+            ]
+          },
+          "isSignal": false,
+          "default": "Auto",
+          "description": "How heavy the text is drawn, from 100 (thin) to 900 (black); leave as Auto to use the weight the font family sets",
+          "index": 21.5,
+          "allowVisualStates": true
+        },
+        {
           "name": "labelletterSpacing",
           "displayName": "Letter Spacing",
           "editorName": "Label Letter Spacing",
@@ -49132,6 +49635,7 @@
             "childPorts": [
               "fontFamily",
               "fontSize",
+              "fontWeight",
               "color",
               "letterSpacing",
               "lineHeight",
@@ -49741,6 +50245,7 @@
             "childPorts": [
               "fontFamily",
               "fontSize",
+              "fontWeight",
               "color",
               "letterSpacing",
               "lineHeight",
@@ -50334,6 +50839,7 @@
               "labeltextStyle",
               "labelfontFamily",
               "labelfontSize",
+              "labelfontWeight",
               "labelcolor",
               "labelletterSpacing",
               "labellineHeight",
@@ -52099,6 +52605,30 @@
           "isSignal": false,
           "description": "Vertical alignment of this element within the space its parent gives it",
           "index": 6
+        },
+        {
+          "name": "boxSizing",
+          "displayName": "Box Sizing",
+          "group": "Margin and padding",
+          "plug": "input",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "Include padding and border",
+                "value": "border-box"
+              },
+              {
+                "label": "Content only",
+                "value": "content-box"
+              }
+            ]
+          },
+          "isSignal": false,
+          "default": "border-box",
+          "description": "Whether Width and Height include this element's padding and border, or only its content",
+          "index": 63,
+          "allowVisualStates": true
         },
         {
           "name": "cssClassName",

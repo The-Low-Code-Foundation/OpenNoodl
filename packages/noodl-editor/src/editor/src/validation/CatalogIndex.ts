@@ -14,6 +14,7 @@
 
 // Type-only import of the generated catalog shape (no runtime cost).
 import type { NodeCatalog, CatalogNode, CatalogPort, Typecast } from '../../../../../noodl-types/src/node-catalog';
+import type { DeclaredPortGroup } from './portConditions';
 
 export type { NodeCatalog, CatalogNode, CatalogPort };
 
@@ -101,6 +102,19 @@ export class CatalogIndex {
     const dyn = this.byType.get(typeName)?.dynamicPorts;
     if (!dyn) return false;
     return dyn.mechanisms.some((m) => RUNTIME_DYNAMIC_MECHANISMS.has(m));
+  }
+
+  /**
+   * The node's conditionally-declared port groups, if it has any.
+   *
+   * Every member of these groups is *also* a statically declared input (checked
+   * across the whole shipped catalog: no type declares a port only
+   * conditionally), so `getPort` still finds them. What the groups add is the
+   * `condition` — the only place the catalog records that a port depends on a
+   * sibling parameter's value.
+   */
+  declaredPortGroups(typeName: string): DeclaredPortGroup[] | undefined {
+    return this.byType.get(typeName)?.dynamicPorts?.declaredPortGroups as DeclaredPortGroup[] | undefined;
   }
 
   /** A short human note describing why a port could not be checked. */

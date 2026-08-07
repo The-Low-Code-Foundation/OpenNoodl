@@ -87,6 +87,27 @@ export enum DiagnosticCode {
    */
   UnknownParameter = 'unknown-parameter',
   /**
+   * A parameter sets a port that *exists* but is currently switched off by a
+   * sibling parameter's value — the port's `condition` in `declaredPortGroups`
+   * is not satisfied, so the runtime never reads it.
+   *
+   * Its own code because, like `ConnectionOnlyParameter`, it is invisible to
+   * every neighbouring check: the port is genuinely declared, so
+   * `UnknownParameter` cannot see it, and the value is perfectly well-formed for
+   * its type, so `InvalidParameterValue` cannot either. The canonical case is
+   * `Image`: `defaultSizeMode` is `contentSize`, and `objectFit` is declared
+   * `condition: 'sizeMode = explicit'`. An agent writes `width`, `height` and
+   * `objectFit: 'cover'` — the three things that crop a photo — and gets none of
+   * them, rendering the image at its natural size. That produced the 800px-tall
+   * photos that wrecked an authored page while validation reported zero problems.
+   *
+   * A warning, not an error: the dependency is real but the repair is a
+   * *sibling* edit (set `sizeMode`), and the condition language admits forms
+   * this rule deliberately declines to judge (see `conditionIsUnsatisfied`).
+   * Only an unambiguously unsatisfied condition is reported.
+   */
+  InactiveConditionalParameter = 'inactive-conditional-parameter',
+  /**
    * A parameter sets a port the catalog marks `allowConnectionsOnly` — a port
    * that only ever takes a wired connection and silently discards a statically
    * authored value.

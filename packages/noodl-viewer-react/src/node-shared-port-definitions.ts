@@ -1449,7 +1449,7 @@ export default {
     const textStylePortPrefix = args.styleTag || '';
 
     const ports = ['label'].concat(
-      ['textStyle', 'fontFamily', 'fontSize', 'color', 'letterSpacing', 'lineHeight', 'textTransform'].map(
+      ['textStyle', 'fontFamily', 'fontSize', 'fontWeight', 'color', 'letterSpacing', 'lineHeight', 'textTransform'].map(
         (port) => textStylePortPrefix + port
       )
     );
@@ -1525,7 +1525,7 @@ export default {
         index: index,
         type: {
           name: 'textStyle',
-          childPorts: ['fontFamily', 'fontSize', 'color', 'letterSpacing', 'lineHeight', 'textTransform'],
+          childPorts: ['fontFamily', 'fontSize', 'fontWeight', 'color', 'letterSpacing', 'lineHeight', 'textTransform'],
           childPortPrefix: portPrefix
         },
         group: group,
@@ -1594,6 +1594,43 @@ export default {
         allowVisualStates: true,
         popout: args.popout,
         styleTag
+      },
+      // The design system has shipped nine weight tokens (`--font-thin` …
+      // `--font-black`) and four Inter faces to serve them since POL-006, every
+      // Text/Button/Input variant in `ElementConfigs` specifies a `fontWeight`,
+      // and `StyleVocabulary` hands those variants to an authoring model as the
+      // worked example — while no node in the runtime had a port that could
+      // consume any of it. An authored page therefore carried 18 `fontWeight`
+      // parameters and rendered every word at 400: correct type *scale*, no type
+      // *hierarchy*, which is most of why such a page reads as undesigned.
+      //
+      // Typed like `lineHeight` — a unitless number with an `Auto` escape —
+      // rather than as an enum of 100…900, because a token reference is the
+      // documented way to say "semibold" here and an enum port rejects one.
+      [portPrefix + 'fontWeight']: {
+        index: index + 2.5,
+        group: group,
+        displayName: 'Font Weight',
+        editorName: prettyName('Font Weight'),
+        description:
+          'How heavy the text is drawn, from 100 (thin) to 900 (black); leave as Auto to use the weight the font family sets',
+        targetStyleProperty: 'fontWeight',
+        type: {
+          name: 'number',
+          units: [''],
+          defaultUnit: '',
+          parentPort: textStyleInputName
+        },
+        default: 'Auto',
+        applyDefault: false,
+        allowVisualStates: true,
+        popout: args.popout,
+        styleTag,
+        onChange() {
+          if (this.props[textStyleInputName]) {
+            this.forceUpdate();
+          }
+        }
       },
       [portPrefix + 'color']: {
         index: index + 3,

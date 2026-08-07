@@ -87,7 +87,11 @@ describe('AAQ-005 — page registration through the MCP door', () => {
   it('leaves a non-page component alone — registration is not a side effect of every write', async () => {
     const res = await call<CreateComponentResponse>(session, 'create_component', {
       path: 'Widgets/Badge',
-      nodes: [{ id: 'b_group', type: 'Group', parameters: { text: 'Badge' } }]
+      // A `Text` node, because `text` is a port on Text and not on Group. The
+      // gate's unknown-parameter rule used to skip every node with dynamic
+      // ports, which is the whole visual vocabulary, so this fixture's
+      // `Group { text }` went unremarked; it is a real diagnostic now.
+      nodes: [{ id: 'b_label', type: 'Text', parameters: { text: 'Badge' } }]
     });
 
     expect(res.isError).toBe(false);
