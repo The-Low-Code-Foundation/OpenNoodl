@@ -53,6 +53,11 @@ export enum DiagnosticCode {
   DanglingConnection = 'dangling-connection',
   UnresolvedComponentRef = 'unresolved-component-ref',
   OrphanedNode = 'orphaned-node',
+  /**
+   * A page component's content is parented to a second visual root beside the
+   * `Page` node rather than inside it, so the page renders blank.
+   */
+  DetachedPageContent = 'detached-page-content',
   TypeIncompatibleConnection = 'type-incompatible-connection',
   /**
    * NDA-017: a control signal fires without waiting for the asynchronous producer of a value

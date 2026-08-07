@@ -26,6 +26,7 @@ import { nonexistentPort } from './nonexistentPort';
 import { danglingConnection } from './danglingConnection';
 import { unresolvedComponentRef } from './unresolvedComponentRef';
 import { orphanedNode } from './orphanedNode';
+import { detachedPageContent } from './detachedPageContent';
 import { typeIncompatibleConnection } from './typeIncompatibleConnection';
 import { signalDrivenStaleInput } from './signalDrivenStaleInput';
 import { unwiredOutcome } from './unwiredOutcome';
@@ -38,6 +39,7 @@ export const ALL_RULES: Rule[] = [
   danglingConnection,
   unresolvedComponentRef,
   orphanedNode,
+  detachedPageContent,
   typeIncompatibleConnection,
   signalDrivenStaleInput,
   unwiredOutcome
@@ -51,6 +53,7 @@ export {
   danglingConnection,
   unresolvedComponentRef,
   orphanedNode,
+  detachedPageContent,
   typeIncompatibleConnection,
   signalDrivenStaleInput,
   unwiredOutcome
