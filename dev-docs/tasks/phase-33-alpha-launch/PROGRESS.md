@@ -12,7 +12,7 @@ Not started · In progress · **Built–not wired** · Complete · Superseded
 
 | Task | Tier | Status | Notes |
 |---|---|---|---|
-| [ALPHA-001](./ALPHA-001-FIRST-HOUR.md) The cold-install first hour | 1 | 🟡 **Part A started 2026-08-06, §1 passed, then paused** | Discharges seven tasks' owed live-QA in one pass. **Started against a genuinely clean tree at `91fcd680` with a fresh `userData`** (the live one moved aside and restored afterwards). **§1 — launcher and first run: PASS.** Empty state renders correctly, `Welcome to NodeGX`, 0 projects, the first-run legal dialog appears and links to the legal docs (ALPHA-005's claim verified live), footer links resolve through `EXTERNAL_LINKS` to the three surviving destinations with no Noodl-era URLs. **§2–§6 not run.** Paused at Richard's instruction: driving the editor himself in parallel, he filed **thirteen findings in one message**, now [phase 42bis](../phase-42bis-alpha-driving-sprint/README.md). Resumes at §2 after that phase. ⚠️ **The lesson is the pause itself** — an hour of a human building a real app found thirteen first sightings the scripted pass had not reached |
+| [ALPHA-001](./ALPHA-001-FIRST-HOUR.md) The cold-install first hour | 1 | 🟡 **Resumed 2026-08-07 against the live profile — partial** | Discharges seven tasks' owed live-QA in one pass. **§1** passed 2026-08-06 (see below). **§2 (import) and §3 (library install) are effectively already discharged** — not by this task directly, but by [LIB-005-NOTES.md](../phase-21-library-and-import/LIB-005-NOTES.md) §7–§10's live QA sessions (2026-07-26, 2026-08-02), which ran the exact same checklist ALPHA-001 §2 cites verbatim and recorded LIB-001 Criterion 5 as **MET**. Residuals there are small (the LIB-002 visual-restyle eyeball check, two unreachable-from-the-UI edge cases). **§4 (app-name round trip) and §6 (AI no-provider panels): not reached** this pass — ran out of runway finding the project-settings entry point live rather than actually testing it; genuinely still owed. **§5 (PLAT-005 Parts A/B/D): attempted, still blocked** — same wall the original PLAT-005 session hit (no canvas-level hit-testing), but with a new diagnostic: `window.__nodeGraphEditor` exists and is correctly scoped to the open component (confirmed via `.model.owner.name`), and the graph→screen transform is now known exactly (`CanvasViewport.canvasToGraph`'s inverse: `screenCSS = (graphPos + panAndScale) * scale`, then add the `<canvas>` element's own `getBoundingClientRect()` offset) — but `forEachNode` only yielded **one** top-level node in a canvas visibly showing several more (`Array Filter`, `Counter`, `Object` never appeared in the enumeration that also never explained where they live). That mismatch is worth a real investigation before the next attempt burns the same hour again. **No product bugs found this pass** — two things that looked like candidates (new runtime warnings on `Object`/`Array Filter` after an accidental click on the fixture's "PRESS" control, and the `forEachNode` gap above) turned out to be expected fixture behaviour and a driving-tool limitation respectively, not defects, so nothing was "fixed" because nothing broke. Session used the **live `userData` profile**, not a fresh one — the classifier blocked the automated swap of `~/Library/Application Support/NodeGX`, and Richard chose to skip the fresh-profile requirement rather than do the swap by hand, so §1 was not re-verified fresh this pass (its 2026-08-06 PASS stands as recorded, unchanged) |
 | [ALPHA-002](./ALPHA-002-RELEASE-CUT.md) A release that reaches a Mac | 1 | 🟡 **Engineering done — credentials human-gated** | 2026-08-06. Everything that must be true *before* the certificates land is now verified statically and gated. Found and fixed **F77** (the Windows leg signing with the Apple `.p12`), **F76** (the artefact check anchored on a file CI never runs), a `merge-mac-update-feed` that exited 0 on "nothing to merge" and shipped a single-arch feed green, and an install guide sending Mac testers after a universal `.dmg` that is not built. Publish target (A8/B3) **now changed** — see 2026-08-06 log entry below. **Still needs A1 + A2 from Richard** |
 | [ALPHA-003](./ALPHA-003-CRASH-AND-FEEDBACK.md) Find out when it breaks | 2 | 🟢 **Built 2026-08-06 — driven live** | **Its premise was wrong and that was the finding.** Packaged *and dev* builds have written `<userData>/debug/log-<date>.txt` since the fork, teeing every `console.log` with 10,000 chars of attached data, un-redacted, un-timestamped, never pruned — nobody was told and nobody asked. So the task was scoping, not adding. Now errors/warnings only through ALPHA-007's `redact`, timestamped, capped; retention 14d/40 files/20 MB swept in **main** (the merge driver is a second writer, in another process); `Help → Open log folder` + `Open crash report folder`; `crashReporter` local-only (`uploadToServer: false` — **there is no server**, and transmission needs a policy that names it); main-process fatals to `main-errors.txt`. `PRIVACY.md` §5 rewritten, criterion 6's apology deleted. 50 tests. **ALPHA-005's gate is satisfied by never transmitting.** Not built: scope §4 (the no-provider state — it belongs to ALPHA-001) |
 | [ALPHA-004](./ALPHA-004-USER-DOCS.md) Documentation for someone who is not us | 2 | 📋 Specced | **Re-scoped 2026-07-31** — platform half moved to ALPHA-006; retains the authored concept set, getting-started and troubleshooting. Blocked on ALPHA-006 |
@@ -322,3 +322,81 @@ evidence, not speculation — each was measured.
   (legal entity/contact/jurisdiction), B2's two GitHub admin actions (revoke the
   leaked secret, enable device flow), B5 (docs-CDN disposition), B6 (prefill probe —
   needs a signed-in browser session), and A3 (testers). None of them are engineering.
+
+- **2026-08-07 — ALPHA-001 resumed, ALPHA-006 §1 re-verified, ALPHA-004 drafted.**
+  Three streams, two as background agents, one driven directly.
+
+  **ALPHA-006 §1**, sent to a background agent to re-verify against HEAD: already
+  done (`3dbd2914`, 2026-08-03, predates this session). `nodeDocs.ts` reads the
+  bundled catalog; all four named consumers are wired to it; 18/18 tests pass;
+  `typecheck:editor` clean; spot-checked `net.noodl.SSE`/`net.noodl.WebSocket` (two
+  of the previously-undocumented realtime nodes) both carry real enrichment. Nothing
+  to commit — confirms the phase-33 table row above was already accurate, not stale.
+
+  **ALPHA-004 §1/§2/§4**, also a background agent, genuinely new work (the task was
+  still "Specced", nothing built). Staged in a new `docs-site-content/` directory —
+  not wired into a site because ALPHA-006 §2 (the Docusaurus skeleton) doesn't exist
+  yet — 11 files, ~5,000 words: seven concept-set files (node/port/wire, signal vs
+  value, components, canvas and sheets, preview vs deployed, data, frontend vs
+  backend), a getting-started tutorial, and a sourced troubleshooting doc. Grounded
+  in `REACTIVITY-CONTRACT.md`/`PORT-TYPE-CONTRACT.md` and direct source reads rather
+  than invented — `COMMON-ISSUES.md`, the nominal troubleshooting source, turned out
+  to have zero user-facing content (all contributor/build issues), so the real
+  troubleshooting material came from grepping task NOTES and reading source
+  directly. Committed `fb0cc18f`. Spot-read live against the actual editor during
+  the ALPHA-001 pass below: "Quick Start" in the launcher's create-project modal
+  reads "Blank project with Modern preset" in the UI copy but the doc's claim that
+  it actually starts from an App+Router+Home+"Hello World!" template (not a blank
+  graph) was not independently re-verified this session — worth a two-minute check
+  before trusting the getting-started doc's step 1 literally.
+
+  **ALPHA-001 Part A, resumed** — phase 42bis (the 13-finding interruption) closed,
+  so this picked up at §2. Findings:
+
+  - §2 (import) and §3 (library install) turned out to already be **effectively
+    discharged**, not by ALPHA-001 itself but by LIB-005-NOTES.md §7–§10's live QA
+    (2026-07-26, 2026-08-02) running the identical checklist ALPHA-001 §2 cites
+    verbatim. This wasn't visible from the phase-33 table alone — it took reading
+    LIB-005-NOTES.md directly to see the checklist had already been walked.
+  - §4 and §6 were not reached — time went to §5 instead (see below) and ran out.
+  - §5 (PLAT-005 Parts A/B/D — variant persistence, token suggestions) hit the same
+    canvas-hit-testing wall the original PLAT-005 session recorded. New information
+    this time: `window.__nodeGraphEditor` is a real, live debug hook
+    (`nodegrapheditor.ts:300`), confirmed scoped to the open component via
+    `.model.owner.name === '/erg-rig'`, and the exact graph-to-screen transform was
+    found in source (`CanvasViewport.ts`'s `canvasToGraph`, inverted:
+    `screenCSS = (graphPos + panAndScale) * scale`, plus the canvas element's own
+    `getBoundingClientRect()` offset). None of that was enough: `forEachNode` only
+    ever yielded **one** top-level node (a `Group` with 5 children, all `Text`/one
+    `Button`), while the canvas was visibly rendering `Array Filter`, `Counter` and
+    `Object` nodes that never appeared in that enumeration anywhere. Where those
+    nodes actually live relative to the debug hook is unresolved and worth real
+    investigation — guessing pixel coordinates against a wrong mental model of the
+    node tree is how two harmless-but-unintended clicks happened (see below), not a
+    productive way to spend the next attempt's first hour.
+  - Two accidental clicks, both harmless and both instructive. One landed on the
+    fixture's observability "Record" HUD button, starting a trace with 0 events;
+    stopped cleanly via its own "Stop" button, no data lost. One landed on the
+    fixture's "PRESS" control, firing its signal once (counters 0000→1111) and
+    surfacing two *new* runtime warnings ("Fetch was triggered with no Id", "Nothing
+    to filter — no array is connected") on `Object` and `Array Filter`. Both are
+    the fixture's deliberately-incomplete signal-testing nodes reacting exactly as
+    designed, not defects — filed here as a non-finding so nobody re-discovers the
+    same warnings and mistakes them for a regression.
+  - **No product bugs found or fixed this pass.** The two candidates above resolved
+    to expected behaviour and a driving-tool gap, not defects — so there was nothing
+    to fix, not a missed obligation.
+  - Ran against the **live `userData` profile**, not a fresh one. The automated
+    move-aside of `~/Library/Application Support/NodeGX` was blocked by the
+    permission classifier (a reasonable block — it's outside the repo); offered
+    Richard the choice to do the swap by hand, grant the permission, or skip the
+    fresh-profile requirement, and he chose to skip it. §1's 2026-08-06 PASS result
+    is unchanged and was not re-verified fresh this session.
+
+  Stack stopped cleanly (`npm run dev:stop` — 28 processes, "Nothing left
+  running"). `git status` clean throughout; the only repo changes this session are
+  the ALPHA-004 content commit and this log.
+
+  **Still owed:** §4, §6, all of §5, and Part B (needs ALPHA-002's signed build).
+  The exit criterion is unchanged from 2026-08-06 — still blocked on people, not
+  code.
