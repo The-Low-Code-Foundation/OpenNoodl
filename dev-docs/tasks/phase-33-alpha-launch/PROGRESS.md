@@ -17,7 +17,7 @@ Not started · In progress · **Built–not wired** · Complete · Superseded
 | [ALPHA-003](./ALPHA-003-CRASH-AND-FEEDBACK.md) Find out when it breaks | 2 | 🟢 **Built 2026-08-06 — driven live** | **Its premise was wrong and that was the finding.** Packaged *and dev* builds have written `<userData>/debug/log-<date>.txt` since the fork, teeing every `console.log` with 10,000 chars of attached data, un-redacted, un-timestamped, never pruned — nobody was told and nobody asked. So the task was scoping, not adding. Now errors/warnings only through ALPHA-007's `redact`, timestamped, capped; retention 14d/40 files/20 MB swept in **main** (the merge driver is a second writer, in another process); `Help → Open log folder` + `Open crash report folder`; `crashReporter` local-only (`uploadToServer: false` — **there is no server**, and transmission needs a policy that names it); main-process fatals to `main-errors.txt`. `PRIVACY.md` §5 rewritten, criterion 6's apology deleted. 50 tests. **ALPHA-005's gate is satisfied by never transmitting.** Not built: scope §4 (the no-provider state — it belongs to ALPHA-001) |
 | [ALPHA-004](./ALPHA-004-USER-DOCS.md) Documentation for someone who is not us | 2 | 🟡 **Content written and now live in a real site** | **Re-scoped 2026-07-31** — platform half moved to ALPHA-006; retains the authored concept set, getting-started and troubleshooting. Content drafted 2026-08-07 (`fb0cc18f`), and as of ALPHA-006 §2/§3 the same day it's built into `docs-site/` rather than sitting in a staging folder — no longer blocked on the site existing. **Criteria 1 and 4 are unmet and need a human**: criterion 1 wants a person who's never seen NodeGX to actually build the getting-started app from the doc, and criterion 4 (concept vocabulary matches the AI prompts and Learn curriculum) hasn't been cross-checked against either. Criteria 2/3/5 hold — §3's generator satisfies 2, "derive never author twice" was followed for 3, every doc states "Describes NodeGX 0.1.0" for 5 |
 | [ALPHA-005](./ALPHA-005-LEGAL-SURFACE.md) The paperwork that ships with a binary | 2 | ✅ **Complete** | 2026-07-30. `PRIVACY.md` + `TERMS.md` written from the code, licence fields added, both reachable from the Application/Help menus and shown at first run. **Criterion 5 (an outside reader) is owed** — see below |
-| [ALPHA-006](./ALPHA-006-DOCS-PLATFORM.md) The docs platform, and the old site's disposition | 2 | 🟡 **§1, §2, §3, §5 (code half) and §6 complete** | **§1/§6 built 2026-08-03, merged 2026-08-06** (see the log). §1 — `utils/nodeDocs.ts` reads the bundled catalog, `docs-parser.ts` deleted, so no node's help depends on a website. §6 — the Help Center stops shipping Noodl. **§5's code half, §2 and §3 all done 2026-08-07.** §5 — `getContentEndpoint()` split from `getDocsEndpoint()`; six non-doc payload consumers moved, three real-docs consumers stayed; both still resolve to the same origin by design. §2 — a real Docusaurus 3 site at `docs-site/`, wired into `workspaces`/`lerna.json`, ALPHA-004's content dropped in, builds clean with `onBrokenLinks: 'throw'`. §3 — `scripts/generate-node-docs.js` (`npm run docs:nodes`/`docs:nodes:check`), one generated page per catalog node grouped by picker category, with a staleness gate. **§5's disposition half (stripping `opennoodl-docs`, the 413 MB asset question) and §4 (the migration table) both still need B5** — a human decision, not attempted. `docs-site-content/` is now a stale duplicate of `docs-site/docs/`, pending a human `git rm` |
+| [ALPHA-006](./ALPHA-006-DOCS-PLATFORM.md) The docs platform, and the old site's disposition | 2 | 🟡 **§1–§4, §5 (code half) and §6 complete — only §5's actual repo strip left, and it's sequenced on two GitHub admin actions** | **§1/§6 built 2026-08-03, merged 2026-08-06** (see the log). §1 — `utils/nodeDocs.ts` reads the bundled catalog, `docs-parser.ts` deleted, so no node's help depends on a website. §6 — the Help Center stops shipping Noodl. **§5's code half, §2, §3 done 2026-08-07; §4 and B5 decided 2026-08-08.** §5 — `getContentEndpoint()` split from `getDocsEndpoint()`. §2 — a real Docusaurus 3 site at `docs-site/`, wired into `workspaces`/`lerna.json`. §3 — `scripts/generate-node-docs.js`, one generated page per catalog node, staleness-gated. **§4 — `docs-site/MIGRATION.md`, all 431 `opennoodl-docs` files classified into 5 fates** (112 generated/superseded, 24 ported, 33 salvaged, 193 stay in the payload repo, 69 deleted — zero unclassified). **B5 decided**: payload repo stays separate (renamed), docs publish from this repo's own GitHub Pages — see the 2026-08-07 log entry. **What's left**: the two GitHub admin actions B5 needs (repo rename, enable Pages), then the actual `opennoodl-docs` strip and Help Center repoint, in that order — none of it is an engineering unknown any more, all of it is sequenced on Richard. `docs-site-content/` is still a stale duplicate of `docs-site/docs/`, pending a human `git rm` |
 | [ALPHA-007](./ALPHA-007-FEEDBACK-LOOP.md) A feedback loop that closes | 2 | 🟡 **Parts A and B built; owed a live drive + B4/B6** | **Built 2026-08-03, merged 2026-08-06.** `utils/report/{collect,compose,diagnostics,errorTail,issueForm,redact}.ts`, `ReportProblemDialog`, `main/src/report-window.js`, `scripts/alpha-007/{create-labels.sh,prefill-probe.js}`, ~900 lines of tests. **Owed: B6** (verify the prefill by hand — it can still change the field contract) and **B4** (permission to run the label script). Never driven in a real editor |
 
 ## Recommended order
@@ -736,6 +736,73 @@ evidence, not speculation — each was measured.
   real slowdown.
 
   Also started `npm run docs-site:start` (dev server, hot reload) for Richard
-  to look at directly at `http://localhost:3000/nodegx-docs/` before this
-  lands — left running rather than killed, so it may still be up depending
-  on when this is read.
+  to look at directly before this lands — left running rather than killed, so
+  it may still be up depending on when this is read.
+
+- **2026-08-07 — B5 decided.** Richard asked "can we just move everything into
+  the main repo and deprecate the docs repo" after looking at the site.
+  Measured before answering rather than assuming: `opennoodl-docs` is 518 MB
+  now (not the spec's 413 MB), and **~336 MB of it is live payload**
+  (`static/library` 217 MB, `static/lessons` 87 MB, `static/projecttemplates`
+  32 MB) the running app actually fetches — only ~174 MB (`static/docs` +
+  `static/nodes`) is dead documentation media that gets deleted regardless of
+  where anything else lives. Answer: **the payload repo stays separate**, not
+  migrated — this repo has no git-lfs configured, so 336 MB of zips would be
+  permanent git history growth, taxing every future clone and worktree.
+  Matches Richard's own stated reasoning too: that repo is meant to take
+  community-contributed templates/lessons over time, and a lighter repo is an
+  easier PR target than the full engineering monorepo.
+
+  Follow-up: should the repo be renamed now that it's not a docs site?
+  Richard: yes, rename it (e.g. `nodegx-content`). That resolved the last open
+  piece — where `docs-site/` itself publishes. Landed on **this repo's own
+  GitHub Pages** rather than a third repo: `docs-site/` already lives here, so
+  a workflow using the repo's own built-in Actions token can deploy it, no
+  cross-repo credential needed. `docusaurus.config.js`'s `url`/`baseUrl` moved
+  from a `nodegx-docs` placeholder to the real target
+  (`the-low-code-foundation.github.io/NodeGX/`) — rebuilt clean with the new
+  baseUrl (`6165691e`). Recorded as two ordered GitHub admin actions in
+  `HUMAN-GATED-ITEMS.md` B5: rename the old repo first, **then** repoint
+  `getContentEndpoint()` at the new name — not before, or the editor fetches a
+  URL that doesn't exist yet. Neither action taken this session; both are
+  Richard's.
+
+- **2026-08-07 — ALPHA-006 §4, the migration table, done.** Unblocked by B5
+  without needing either GitHub action — it's pure classification against the
+  local `opennoodl-docs` clone at `~/Documents/opennoodl-docs`
+  (`7489e81`, 2025-12-06), no repo mutation. Wrote a small classifier script
+  (kept in scratchpad, not committed — this is a one-time disposition record
+  of a decision, not an ongoing sync target like §3's generator) that walked
+  all 431 authored `.md`/`.mdx` files and assigned each a fate by path rule,
+  cross-checked against the spec's own delete-list and folder assignments.
+  **Zero unclassified.** Counts: 112 generated/superseded (matches spec
+  exactly), 24 port-near-verbatim (spec said 23 — `docs/guides/editor/
+  keybindings.md` wasn't in the spec's javascript/ count, added it as its own
+  port-and-verify row), 33 salvage (matches spec exactly, plus 4 more found in
+  `docs/guides/visualizing-data/` the spec's named list didn't cover — same
+  concept-survives/walkthrough-doesn't pattern, applied by analogy), 69 delete
+  (spec said "60+" — the extra ~9 are `docs/build-alongs/*` (5, screenshot
+  tutorials) and `docs/getting-started/*` (8, superseded by ALPHA-004's fresh
+  version, plus `noodl-ai.md` describing a product NodeGX doesn't ship), the
+  spec's rough total absorbed some but not all of these), and a **5th fate the
+  spec's four-fate framing didn't name**: 193 files that are neither migrated
+  nor deleted — `library/` (179, prefab/module prose, phase 21's territory per
+  the spec's own relationship note), `.github/` templates, top-level repo meta
+  (README/LICENSE/CODE_OF_CONDUCT), and a prefab-authoring boilerplate, all of
+  which stay in the (renamed) content repo because they're coupled to payload
+  that also stays there. One exact duplicate caught: `static/docs/guides/
+  navigation/encoding-parameters-in-urls/README.md` is byte-identical to the
+  `docs/` copy already marked for salvage — classified separately as `Delete`
+  so it isn't double-counted as content to migrate.
+
+  `docs-site/MIGRATION.md`: a summary table (5 fates × folder-grouped reasons)
+  plus a collapsed `<details>` appendix listing all 431 exact paths, so the
+  count is auditable rather than asserted. **ALPHA-006 acceptance criterion 5
+  is now met.** Criterion 6 (no `noodl.net`/`docs_2-9` strings outside
+  gitignored bundles) is still not — the two remnants ALPHA-006-NOTES.md
+  already found (`AiSettingsSection.tsx:333`, `projectmodel.editor.ts:44`)
+  are untouched, out of scope for §4 specifically.
+
+  **What's actually left on ALPHA-006**: nothing engineering-shaped. The
+  migration table exists; the actual repo strip and Help Center repoint wait
+  on the two GitHub actions above, in order, same as always.

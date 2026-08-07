@@ -487,3 +487,49 @@ caused by this work, not re-investigated.
   definitions), not by a redirect table. `nodeDocsPath()` derives the path from that field, so a
   fix there fixes the editor's "read more" and the site's URL in one edit — which is what
   criterion 6's parenthetical anticipates.
+
+## §4 — the migration table, added 2026-08-07
+
+**Run date:** 2026-08-07, same session as §5/§2/§3 and B5's decision.
+**Scope built:** `docs-site/MIGRATION.md` only. No file in `opennoodl-docs` touched — this
+is classification against the local clone at `~/Documents/opennoodl-docs` (`7489e81`,
+2025-12-06), not a migration. The actual strip waits on B5's two GitHub actions, per the
+sequencing note in `HUMAN-GATED-ITEMS.md`.
+
+A small classifier script (path-rule based, kept in the session scratchpad rather than
+committed — this is a one-time disposition record, not a re-runnable generator like §3's)
+walked all 431 authored `.md`/`.mdx` files. Rules follow the spec's own folder assignments
+where it gave them (`nodes/` → generated, `javascript/` → port, the four named
+`docs/guides/*` dirs → salvage, the named delete list); where the spec was silent, applied
+its stated *reasoning* by analogy rather than guessing fresh — e.g.
+`docs/guides/visualizing-data/` got the same "concept survives, screenshots don't" fate as
+its sibling guide folders, and `docs/guides/deploy/{deploying-to-ios-and-android,embedding,
+favicon,overview,project-structure,pwa}.md` got `Delete` not because they're wrong but
+because phases 18/26 (code export, deployment) are explicitly post-alpha — publishing them
+as current would assert something unverified.
+
+**A fifth fate the spec's "four fates" framing never named**, but its own §5 text implies:
+193 files that are neither migrated nor deleted. `library/` (179 files) is the obvious case
+— §5 already says "leaves the library exactly where LIB-001 found it" — but the same logic
+extends to `.github/` templates, the top-level `README.md`/`LICENSE.md`/`CODE_OF_CONDUCT.md`,
+`project-templates/overview.mdx`, and `_prefab-docs-boilerplate/` (a template for *writing*
+a prefab's own README): all of it is repo infrastructure or payload-coupled prose that stays
+in the renamed content repo, not something with a fate among "generate/port/salvage/delete."
+
+One exact duplicate worth naming: `static/docs/guides/navigation/encoding-parameters-in-urls/
+README.md` is byte-identical to `docs/guides/navigation/encoding-parameters-in-urls.mdx` (the
+`docs/` copy, salvaged) — a leftover of the old `##head##` fetch protocol's raw-markdown
+serving. Classified `Delete`, not `Salvage`, so it isn't counted as a second thing to migrate.
+
+Zero files unclassified. Counts: 112 generated (exact match to spec), 24 port (spec said 23
+— `docs/guides/editor/keybindings.md` is a legitimate addition, not in the spec's named
+`javascript/` count), 33 salvage (exact match, plus this run separately found 4 more in
+`visualizing-data/` the spec didn't enumerate — same pattern, applied by analogy, not
+double-counted against the 33), 69 delete (spec said "60+" — the gap is `build-alongs/` (5)
+and `getting-started/` (8), neither named in the spec's delete list but both fit its own
+stated criteria), 193 stays.
+
+**Satisfies ALPHA-006 acceptance criterion 5.** Criterion 6 (no `noodl.net`/`docs_2-9`
+strings outside gitignored bundles) is still open — the two remnants already on record
+(`AiSettingsSection.tsx:333`, `projectmodel.editor.ts:44`) weren't touched; that's a
+decision (remove the AI-docs card vs. write a real page), not this task's to make.
