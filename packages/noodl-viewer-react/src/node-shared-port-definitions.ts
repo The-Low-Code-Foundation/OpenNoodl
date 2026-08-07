@@ -70,6 +70,43 @@ function humanCorner(suffix: string): string {
   return suffix.replace(/([a-z])([A-Z])/g, '$1-$2').toLowerCase();
 }
 
+/**
+ * Coerce a dimension port's value into a CSS length string.
+ *
+ * These ports carry three shapes, and only two of them were ever handled: the
+ * editor's `{value, unit}` pair, and a bare number meaning pixels. A design
+ * token — `var(--radius-lg)`, or any other CSS length such as `calc(...)` or
+ * `1rem` — went through `Number(value) + 'px'` and became the literal string
+ * `'NaNpx'`. The CSSOM rejects that on assignment, so the declaration never
+ * reached the DOM and nothing anywhere reported an error: tokens resolved for
+ * colour and font size (those ports pass their value straight into the style
+ * object) while every radius and border width silently vanished.
+ *
+ * So anything that is not a number is passed through verbatim and left for the
+ * browser to resolve. Returning `undefined` for an unset value matters too — the
+ * `_update*` methods fall back to the all-corners/all-edges value with `||`, and
+ * a truthy `'NaNpx'` used to win that fallback.
+ */
+function cssLength(value: unknown): string | undefined {
+  if (value === null || value === undefined) return undefined;
+
+  if (typeof value === 'object') {
+    const dimension = value as { value?: number; unit?: string };
+    if (typeof dimension.value !== 'number' || !Number.isFinite(dimension.value)) return undefined;
+    return `${dimension.value}${dimension.unit || 'px'}`;
+  }
+
+  if (typeof value === 'number') {
+    return Number.isFinite(value) ? `${value}px` : undefined;
+  }
+
+  const text = String(value).trim();
+  if (text === '') return undefined;
+
+  // A bare numeric string is the legacy "this many pixels" shape.
+  return /^[+-]?(\d+\.?\d*|\.\d+)$/.test(text) ? `${text}px` : text;
+}
+
 export interface DimensionsOptions {
   defaultSizeMode?: 'explicit' | 'contentHeight' | 'contentWidth' | (string & {});
   /** Wording used in the size-mode enum labels, e.g. 'Content' vs 'Text'. */
@@ -875,8 +912,7 @@ export default {
           default: defaults[radiusName],
           tab,
           set(value) {
-            this._internal.borderRadius[radiusName] =
-              value.value === undefined ? Number(value) + 'px' : value.value + value.unit;
+            this._internal.borderRadius[radiusName] = cssLength(value);
 
             this._updateCornerRadii();
           }
@@ -993,8 +1029,7 @@ export default {
           default: defaults[widthName],
           tab,
           set(value) {
-            this._internal.borders[widthName] =
-              value.value === undefined ? Number(value) + 'px' : value.value + value.unit;
+            this._internal.borders[widthName] = cssLength(value);
             this._updateBorders();
           }
         },
@@ -1103,7 +1138,7 @@ export default {
         },
         allowVisualStates: true,
         set(value) {
-          this._internal.boxShadowOffsetX = value.value + value.unit;
+          this._internal.boxShadowOffsetX = cssLength(value) || '0px';
           this._updateBoxShadow();
         }
       },
@@ -1120,7 +1155,7 @@ export default {
         },
         allowVisualStates: true,
         set(value) {
-          this._internal.boxShadowOffsetY = value.value + value.unit;
+          this._internal.boxShadowOffsetY = cssLength(value) || '0px';
           this._updateBoxShadow();
         }
       },
@@ -1137,7 +1172,7 @@ export default {
         },
         allowVisualStates: true,
         set(value) {
-          this._internal.boxShadowBlurRadius = value.value + value.unit;
+          this._internal.boxShadowBlurRadius = cssLength(value) || '0px';
           this._updateBoxShadow();
         }
       },
@@ -1154,7 +1189,7 @@ export default {
         },
         allowVisualStates: true,
         set(value) {
-          this._internal.boxShadowSpreadRadius = value.value + value.unit;
+          this._internal.boxShadowSpreadRadius = cssLength(value) || '0px';
           this._updateBoxShadow();
         }
       },
