@@ -60,7 +60,7 @@ import { GitHubOAuthService, GitHubClient } from '../../services/github';
 import { ProjectOrganizationService } from '../../services/ProjectOrganizationService';
 // Relative for the same reason `AiConfigStore` above is.
 import { EditorSettings } from '../../utils/editorsettings';
-import getDocsEndpoint from '../../utils/getDocsEndpoint';
+import getContentEndpoint from '../../utils/getContentEndpoint';
 import { LocalProjectsModel, ProjectItemWithRuntime } from '../../utils/LocalProjectsModel';
 import { tracker } from '../../utils/tracker';
 import { getLessonsState } from '../../views/projectsview.lessonstate';
@@ -163,7 +163,7 @@ function mapLessonsToLauncherData(
   templates: TSFixme[],
   lessonsModel: LessonsProjectsModel
 ): LauncherLessonData[] {
-  const endpoint = getDocsEndpoint();
+  const endpoint = getContentEndpoint();
   const progressList = templates.map(
     (t) => lessonsModel.getLessonProjectProgress(t.name) || { index: 0, end: 0 }
   );

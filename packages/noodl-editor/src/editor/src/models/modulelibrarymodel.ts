@@ -2,7 +2,7 @@ import { platform } from '@noodl/platform';
 
 import { addHashToUrl } from '@noodl-utils/addHashToUrl';
 import FileSystem from '@noodl-utils/filesystem';
-import getDocsEndpoint from '@noodl-utils/getDocsEndpoint';
+import getContentEndpoint from '@noodl-utils/getContentEndpoint';
 
 import Model from '../../../shared/model';
 import {
@@ -143,7 +143,7 @@ export class ModuleLibraryModel extends Model {
    * escape it.
    */
   async fetchModules(type: 'modules' | 'prefabs'): Promise<IModule[]> {
-    const endpoint = getDocsEndpoint();
+    const endpoint = getContentEndpoint();
     const urlPath = addHashToUrl(`${endpoint}/library/${type}/index.json`);
 
     const response = await fetch(urlPath);

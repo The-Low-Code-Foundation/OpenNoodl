@@ -3,7 +3,7 @@ import React from 'react';
 import { createRoot } from 'react-dom/client';
 
 import { LocalStorageKey } from '@noodl-constants/LocalStorageKey';
-import getDocsEndpoint from '@noodl-utils/getDocsEndpoint';
+import getContentEndpoint from '@noodl-utils/getContentEndpoint';
 
 import { NewsModal } from './views/NewsModal';
 import PopupLayer from './views/popuplayer';
@@ -18,7 +18,7 @@ export async function whatsnewRender() {
   // if user runs an older version the changelog will be irrelevant
   if (newEditorVersionAvailable) return;
 
-  const latestChangelogPost = await fetch(`${getDocsEndpoint()}/whats-new/feed.json`)
+  const latestChangelogPost = await fetch(`${getContentEndpoint()}/whats-new/feed.json`)
     .then((data) => data.json())
     .then((json) => json.items[0]);
 

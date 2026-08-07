@@ -1,5 +1,5 @@
 const Model = require('../../../shared/model');
-const getDocsEndpoint = require('../utils/getDocsEndpoint').default;
+const getContentEndpoint = require('../utils/getContentEndpoint').default;
 
 class TutorialsModel extends Model {
   constructor() {
@@ -36,7 +36,7 @@ class TutorialsModel extends Model {
       return url;
     }
 
-    const endpoint = getDocsEndpoint();
+    const endpoint = getContentEndpoint();
     return endpoint + (url[0] === '/' ? '' : '/') + url;
   }
 
@@ -45,7 +45,7 @@ class TutorialsModel extends Model {
   }
 
   list(fn) {
-    const endpoint = getDocsEndpoint();
+    const endpoint = getContentEndpoint();
     this._makeRequest(endpoint + '/tutorials/index.json' + '?' + new Date().getTime(), {
       success: (json) => {
         this.tutorials = json;

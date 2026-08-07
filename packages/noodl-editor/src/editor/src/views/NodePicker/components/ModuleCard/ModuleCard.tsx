@@ -2,7 +2,7 @@ import classNames from 'classnames';
 import React, { useMemo, useState } from 'react';
 
 import { IModule, isModuleCompatible, ModuleLibraryModel } from '@noodl-models/modulelibrarymodel';
-import getDocsEndpoint from '@noodl-utils/getDocsEndpoint';
+import getContentEndpoint from '@noodl-utils/getContentEndpoint';
 import { tracker } from '@noodl-utils/tracker';
 
 import { FeedbackType } from '@noodl-constants/FeedbackType';
@@ -26,7 +26,7 @@ enum CardState {
 
 export type ModuleCardProps = IModule;
 
-const endpoint = getDocsEndpoint();
+const endpoint = getContentEndpoint();
 
 export function ModuleCard(module: ModuleCardProps) {
   const { label, desc, icon, project, docs, tags, minEditorVersion } = module;

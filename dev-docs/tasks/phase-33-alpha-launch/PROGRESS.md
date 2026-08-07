@@ -17,7 +17,7 @@ Not started · In progress · **Built–not wired** · Complete · Superseded
 | [ALPHA-003](./ALPHA-003-CRASH-AND-FEEDBACK.md) Find out when it breaks | 2 | 🟢 **Built 2026-08-06 — driven live** | **Its premise was wrong and that was the finding.** Packaged *and dev* builds have written `<userData>/debug/log-<date>.txt` since the fork, teeing every `console.log` with 10,000 chars of attached data, un-redacted, un-timestamped, never pruned — nobody was told and nobody asked. So the task was scoping, not adding. Now errors/warnings only through ALPHA-007's `redact`, timestamped, capped; retention 14d/40 files/20 MB swept in **main** (the merge driver is a second writer, in another process); `Help → Open log folder` + `Open crash report folder`; `crashReporter` local-only (`uploadToServer: false` — **there is no server**, and transmission needs a policy that names it); main-process fatals to `main-errors.txt`. `PRIVACY.md` §5 rewritten, criterion 6's apology deleted. 50 tests. **ALPHA-005's gate is satisfied by never transmitting.** Not built: scope §4 (the no-provider state — it belongs to ALPHA-001) |
 | [ALPHA-004](./ALPHA-004-USER-DOCS.md) Documentation for someone who is not us | 2 | 📋 Specced | **Re-scoped 2026-07-31** — platform half moved to ALPHA-006; retains the authored concept set, getting-started and troubleshooting. Blocked on ALPHA-006 |
 | [ALPHA-005](./ALPHA-005-LEGAL-SURFACE.md) The paperwork that ships with a binary | 2 | ✅ **Complete** | 2026-07-30. `PRIVACY.md` + `TERMS.md` written from the code, licence fields added, both reachable from the Application/Help menus and shown at first run. **Criterion 5 (an outside reader) is owed** — see below |
-| [ALPHA-006](./ALPHA-006-DOCS-PLATFORM.md) The docs platform, and the old site's disposition | 2 | 🟡 **§1 and §6 complete** | **Built 2026-08-03, merged 2026-08-06** (see the log). §1 — `utils/nodeDocs.ts` reads the bundled catalog, `docs-parser.ts` deleted, so no node's help depends on a website. §6 — the Help Center stops shipping Noodl. §2–§5 remain, and §5 needs B5 |
+| [ALPHA-006](./ALPHA-006-DOCS-PLATFORM.md) The docs platform, and the old site's disposition | 2 | 🟡 **§1, §5 (endpoint split) and §6 complete** | **§1/§6 built 2026-08-03, merged 2026-08-06** (see the log). §1 — `utils/nodeDocs.ts` reads the bundled catalog, `docs-parser.ts` deleted, so no node's help depends on a website. §6 — the Help Center stops shipping Noodl. **§5's code half done 2026-08-07** — `getContentEndpoint()` split from `getDocsEndpoint()`; the six non-documentation payload consumers moved to it, the three real-docs consumers (`NodeLabel.tsx`, `NodePicker.hooks.ts`, `McpSettingsSection.tsx`) stayed. Both still resolve to the same origin, by design — the split is what lets them move independently, not a move by itself. **§5's disposition half (stripping `opennoodl-docs`, the 413 MB asset question) is still B5, unresolved.** §2, §3, §4 remain |
 | [ALPHA-007](./ALPHA-007-FEEDBACK-LOOP.md) A feedback loop that closes | 2 | 🟡 **Parts A and B built; owed a live drive + B4/B6** | **Built 2026-08-03, merged 2026-08-06.** `utils/report/{collect,compose,diagnostics,errorTail,issueForm,redact}.ts`, `ReportProblemDialog`, `main/src/report-window.js`, `scripts/alpha-007/{create-labels.sh,prefill-probe.js}`, ~900 lines of tests. **Owed: B6** (verify the prefill by hand — it can still change the field contract) and **B4** (permission to run the label script). Never driven in a real editor |
 
 ## Recommended order
@@ -550,3 +550,38 @@ evidence, not speculation — each was measured.
   **Still owed:** Part B (needs ALPHA-002's signed build) and PLAT-005 Part B's live
   confirmation. ALPHA-001 Part A is otherwise complete — see the go/no-go verdict
   this session's handover records.
+
+- **2026-08-07 — ALPHA-006 §5, the endpoint split (code half only).** With ALPHA-001
+  Part A closed, resumed §5 per the suggested order — "a mechanical rename that
+  de-risks everything after it." Measured the real call sites first rather than
+  trusting the spec's counts (which predate §1): `getDocsEndpoint()` had **12** live
+  consumer files (`grep -rl`, excluding the definition and the gitignored bundle),
+  not the spec's implied 10. New `utils/getContentEndpoint.ts` is a byte-for-byte
+  sibling of `getDocsEndpoint.ts` (same `useLocalDocs` override, same origin) —
+  split as its own module rather than wrapping the original, since the two are
+  meant to diverge later.
+
+  Six payload types moved to it (9 files): library (`modulelibrarymodel.ts`,
+  `ModuleCard.tsx`), lessons (`lessontemplatesmodel.js`, `ProjectsPage.tsx`'s lesson
+  thumbnails), tutorials (`tutorialsmodel.js`), what's-new
+  (`whats-new.ts`, `NewsModal.tsx`), and project templates
+  (`noodl-docs-template-provider.ts`, rewired through `forge/index.ts`). Three real
+  documentation consumers stayed on `getDocsEndpoint()`: `NodeLabel.tsx` and
+  `NodePicker.hooks.ts` (both "read more" links to a node's docs page — §1 rewrote
+  their fetch, not their link), and `McpSettingsSection.tsx` (a docs-page HEAD
+  probe not in the spec's original Finding 2 table — added after 2026-07-31).
+
+  Both endpoints still resolve to the same origin — this is the call-site split
+  only, not a hosting change. No data flow changed, so `PRIVACY.md` needed no edit.
+
+  Gates re-run clean: `typecheck:editor` 0 errors, `npx jest` from
+  `packages/noodl-editor` 933/933 (67 suites), `lint:ci` 860 errors vs a 3916
+  baseline, **`test:ci` (Jasmine): 2418 specs, 0 failures** — matching the
+  2026-08-07 ALPHA-001 baseline exactly, so nothing regressed.
+
+  **§5's other half — the actual disposition of `opennoodl-docs` (strip it to the
+  six payload types, decide the 413 MB asset question) — is still B5, unresolved,
+  and genuinely needs Richard.** Not attempted here. §2 (the new Docusaurus site)
+  and §3 (the generator) do not depend on B5 and are the next tractable slice —
+  ALPHA-004's authored content is already staged in `docs-site-content/` waiting
+  for a site to go into.

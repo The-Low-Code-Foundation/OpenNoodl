@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { platform } from '@noodl/platform';
 
-import getDocsEndpoint from '@noodl-utils/getDocsEndpoint';
+import getContentEndpoint from '@noodl-utils/getContentEndpoint';
 
 import { HtmlRenderer } from '@noodl-core-ui/components/common/HtmlRenderer';
 import { PrimaryButton } from '@noodl-core-ui/components/inputs/PrimaryButton';
@@ -19,7 +19,7 @@ export interface NewsModalProps {
 export function NewsModal({ content, onFinished }: NewsModalProps) {
   const [isVisible, setIsVisible] = useState(undefined);
   const [activeSlide, setActiveSlide] = useState(0);
-  const host = getDocsEndpoint();
+  const host = getContentEndpoint();
   const version = platform.getVersion();
 
   const parsedContent = useMemo(() => {

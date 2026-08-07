@@ -13,13 +13,13 @@ export class NoodlDocsTemplateProvider implements ITemplateProvider {
    * origin. It reports the endpoint it actually used (ALPHA-006 criterion 6).
    */
   get name(): string {
-    return this.getDocsEndpoint();
+    return this.getContentEndpoint();
   }
 
-  constructor(private readonly getDocsEndpoint: () => string) {}
+  constructor(private readonly getContentEndpoint: () => string) {}
 
   async list(_options: TemplateListFilter): Promise<readonly TemplateItem[]> {
-    const endpoint = this.getDocsEndpoint();
+    const endpoint = this.getContentEndpoint();
     const templates = await this.makeRequest(endpoint);
     templates.forEach((t) => {
       t.iconURL = endpoint + '/projecttemplates/' + t.iconURL;

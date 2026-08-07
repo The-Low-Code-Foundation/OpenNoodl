@@ -276,6 +276,57 @@ Help Center destinations, all checked: `/search`, `/docs/getting-started/overvie
 
 ---
 
+## §5 — the endpoint split (code half), added 2026-08-07
+
+**Run date:** 2026-08-07 · straight to `cline-dev`, no branch.
+**Scope built:** the call-site half of §5 only — a new `getContentEndpoint()`,
+and the six non-documentation payload consumers repointed at it.
+**Explicitly not built:** the disposition half — `opennoodl-docs` still serves
+everything, nothing was stripped, nothing was archived. That's B5, and it
+needs a human decision on the 413 MB asset question before any of it moves.
+
+`getDocsEndpoint()` had 12 real consumer files at HEAD (not the spec's ~10 —
+`McpSettingsSection.tsx` is a genuinely new docs-page probe added after the
+spec was written, and §1 already reduced the node-docs consumers from 4 to 2
+by deleting `docs-parser.ts` outright and rewriting
+`ConnectionPopup/DocsParser.ts` to a catalog lookup that no longer needs a
+host at all).
+
+`utils/getContentEndpoint.ts` is deliberately a sibling, not a wrapper —
+identical body to `getDocsEndpoint.ts` today (same `useLocalDocs` global,
+same fallback origin), because the spec is explicit that "both may resolve to
+the same origin initially" and the value of the split is only realized when
+they're free to diverge later.
+
+Moved (6 payload types, 9 files):
+
+| Payload | Files |
+|---|---|
+| Library | `models/modulelibrarymodel.ts`, `views/NodePicker/components/ModuleCard/ModuleCard.tsx` |
+| Lessons | `models/lessontemplatesmodel.js`, `pages/ProjectsPage/ProjectsPage.tsx` (lesson thumbnails) |
+| Tutorials | `models/tutorialsmodel.js` |
+| What's-new | `whats-new.ts`, `views/NewsModal/NewsModal.tsx` |
+| Project templates | `utils/forge/template/providers/noodl-docs-template-provider.ts` (constructor param renamed `getContentEndpoint`), rewired at its one call site in `utils/forge/index.ts` |
+
+Stayed on `getDocsEndpoint()` (3 files, all genuine docs-page links, not
+payload fetches): `NodeLabel.tsx` and `NodePicker.hooks.ts` (the "read more"
+link §1 left behind after replacing the fetch with a catalog lookup), and
+`McpSettingsSection.tsx` (`HEAD`-probes a real docs page to decide whether to
+show an "MCP docs" link at all).
+
+No data flow changed — same origin either way — so `PRIVACY.md` needed no
+edit here, unlike §6's Algolia removal.
+
+Gates: `typecheck:editor` clean, `npx jest` (from `packages/noodl-editor`)
+933/933 across 67 suites, `lint:ci` 860 errors vs. the 3916 baseline,
+`test:ci` (Jasmine) **2418 specs, 0 failures** — identical to the same-day
+ALPHA-001 baseline, so this landed with zero regression.
+
+**What this de-risks, per the suggested order:** §2 (site skeleton) and §3
+(generator) can now be built without touching a single non-doc call site by
+accident — `getDocsEndpoint()` unambiguously means "the docs site" from here
+on. §4's disposition table and the actual repo strip still wait on B5.
+
 ## What §3 inherits from this
 
 §1 was ordered first because it decides the generator's shape, and it does:
