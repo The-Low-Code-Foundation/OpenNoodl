@@ -13,6 +13,38 @@
 | **Branch** | `task/exp-001-nodegx-core` |
 | **Recommended executor** | 🔵 **Fable 5** — a small library whose API design determines the readability of every line of exported code anyone will ever inherit. The primitives are the product here; implementing them afterwards is straightforward. |
 
+## Outcome (2026-08-07) — built, gated, not yet consumed
+
+`packages/nodegx-core` exists. What it produced, and the two places this task doc turned out to be
+wrong about the runtime it was describing:
+
+- **[`CONTRACT.md`](../../../packages/nodegx-core/CONTRACT.md)** — the behaviour contract, eleven
+  clauses, each cited to the runtime source it was read from, and each marked as implemented,
+  deliberately not implemented, or partial.
+- **[`EXP-001-TARGET-OUTPUT.md`](./EXP-001-TARGET-OUTPUT.md)** — step 2 done first, on four real
+  components from `project-examples/agent-chat`. Its most useful finding: **most exported code
+  should not mention the library at all**, and the API is smaller because that exercise happened
+  before any code was written.
+- **69 in-package tests** plus **8 parity tests** at
+  `packages/noodl-runtime/test/nodegx-core-parity.test.ts`, which run the same scenario through the
+  *actual interpreter* and the library and compare the event sequences.
+- **2.8 KB gzipped** against the 8 KB design budget, enforced by `npm run size:nodegx-core` in CI.
+
+**Two corrections to this document.** The scope below asks for "Signal primitive with Noodl's
+per-frame de-duplication behaviour". The runtime has no such behaviour — signal ports are
+edge-triggered and each pulse carries its own reset, so two pulses in one frame fire the handler
+twice. This was verified against the interpreter, not argued from the source: see the C4 parity
+test. Implementing the doc as written would have silently dropped events.
+
+Relatedly, two assumptions a reactive library would make by default are also false here: the runtime
+does not coalesce queued values, and it does not skip an identical write. Both are C2, both are
+tested against the interpreter, and both are why `Value.set` has no equality check.
+
+**Left open, deliberately:** ownership of the `@nodegx` npm scope and the first publish are
+human-gated; and re-render-on-change through a real DOM commit is not covered here, because the
+repository carries no `jest-environment-jsdom` by an existing documented decision. EXP-002's first
+generated app is where that gets looked at.
+
 ## Objective
 
 Build the small runtime library that exported projects depend on: reactive primitives that preserve Noodl's push-signal semantics in idiomatic React, so generated code is readable rather than a wall of `useEffect` chains.
@@ -27,10 +59,10 @@ The design that resolved this — recorded in the Phase 7 overview — is a **co
 
 The trade-off is explicit and worth stating to users: exported projects carry a small dependency. In exchange, the code is readable, the semantics are preserved exactly, and — per the original design's ADR-001 — the same primitives can later back other frameworks, which is what makes EXP-005 possible.
 
-## Current State
+## Current State *(as written before the work; kept for the record — see Outcome above)*
 
 - Phase 7 designed this library (CODE-001) and estimated it at roughly 8 KB; **nothing is implemented**. There is no `@nodegx/core` package anywhere in the repository, and no code-generation code of any kind.
-- The semantics to preserve live in `packages/noodl-runtime`: a push model where outputs are flagged dirty, signals are sent explicitly and de-duplicated per frame, inputs are queued, and a scheduler drains dirty nodes.
+- The semantics to preserve live in `packages/noodl-runtime`: a push model where outputs are flagged dirty, signals are sent explicitly and de-duplicated per frame, inputs are queued, and a scheduler drains dirty nodes. *(The "de-duplicated per frame" here is wrong — see the correction above and CONTRACT.md C4.)*
 - SUB-004's node catalog enumerates what the generators will need to express.
 - The runtime is framework-neutral and React-free, which is what makes a clean primitive set possible in the first place.
 
@@ -50,17 +82,17 @@ With semantics verifiably matching the interpreted runtime, since EXP-003's trac
 ## Scope
 
 ### In Scope
-- [ ] Package scaffolding, build, and publishing setup
-- [ ] Value primitive with subscription and update semantics
-- [ ] Signal primitive with Noodl's per-frame de-duplication behaviour
-- [ ] Derived/computed values
-- [ ] Store primitives (variable, object, array/collection)
-- [ ] Event bus
-- [ ] React hooks binding primitives to components
-- [ ] Scheduling semantics matching the runtime's batching model
-- [ ] TypeScript types throughout
-- [ ] Bundle-size budget and measurement in CI
-- [ ] API documentation aimed at a developer who has never used Noodl
+- [x] Package scaffolding, build, and publishing setup — partial — scope ownership + publish human-gated
+- [x] Value primitive with subscription and update semantics
+- [x] Signal primitive with Noodl's per-frame de-duplication behaviour — **the runtime has no such behaviour** — see the correction above; implemented as edge-triggered, every pulse fires
+- [x] Derived/computed values
+- [x] Store primitives (variable, object, array/collection)
+- [x] Event bus
+- [x] React hooks binding primitives to components
+- [x] Scheduling semantics matching the runtime's batching model — pluggable scheduler; microtask by default
+- [x] TypeScript types throughout — `strict`, unlike the root program
+- [x] Bundle-size budget and measurement in CI — 2.8 KB of 8 KB
+- [x] API documentation aimed at a developer who has never used Noodl
 
 ### Out of Scope
 - Code generation (EXP-002)
@@ -99,13 +131,13 @@ With semantics verifiably matching the interpreted runtime, since EXP-003's trac
 
 ## Success Criteria
 
-- [ ] All primitives implemented with TypeScript types
-- [ ] Behaviour contract documented and enforced by tests
-- [ ] Signal semantics (including per-frame de-duplication) match the runtime, verified by parity tests
-- [ ] React hooks bind idiomatically; no leaked subscriptions
-- [ ] Bundle size within budget, enforced in CI
-- [ ] Documentation comprehensible to a developer who has never used Noodl
-- [ ] Hand-written "target output" examples from step 2 read well and are achievable with the final API
+- [x] All primitives implemented with TypeScript types
+- [x] Behaviour contract documented and enforced by tests — `CONTRACT.md`, one named test per clause
+- [x] Signal semantics match the runtime, verified by parity tests — *there is no per-frame de-duplication to match*; every pulse fires, asserted against the interpreter
+- [x] React hooks bind idiomatically; no leaked subscriptions — `useSyncExternalStore` throughout, `useDerived` disposes on unmount
+- [x] Bundle size within budget, enforced in CI
+- [x] Documentation comprehensible to a developer who has never used Noodl — `README.md`; **not yet read by an actual unfamiliar developer**
+- [x] Hand-written "target output" examples from step 2 read well and are achievable with the final API
 
 ## Risks & Mitigations
 
@@ -125,10 +157,10 @@ With semantics verifiably matching the interpreted runtime, since EXP-003's trac
 
 ## Checklist
 
-- [ ] Branch `task/exp-001-nodegx-core`
-- [ ] Document the runtime's behaviour contract
-- [ ] Hand-write target exported code for three real components; derive the API
-- [ ] Implement values, signals, derived, stores, event bus, React bindings
-- [ ] Parity tests against the interpreted runtime
-- [ ] Docs for a Noodl-unaware developer; bundle budget in CI
-- [ ] CHANGELOG; open PR
+- [x] ~~Branch `task/exp-001-nodegx-core`~~ — committed to `cline-dev` per this repo's working rule
+- [x] Document the runtime's behaviour contract
+- [x] Hand-write target exported code for three real components; derive the API — four, from `agent-chat`
+- [x] Implement values, signals, derived, stores, event bus, React bindings
+- [x] Parity tests against the interpreted runtime
+- [x] Docs for a Noodl-unaware developer; bundle budget in CI
+- [ ] CHANGELOG; npm scope + first publish (human-gated)

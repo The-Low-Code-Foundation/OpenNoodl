@@ -51,7 +51,7 @@ Plus three already-specced phases that the comparison independently found load-b
 | Phase | Weeks | Why the comparison cares |
 |---|---|---|
 | [41 — Accessibility](phase-41-accessibility/README.md) | scheduled | The strongest *strategic* argument the platform has: correct output by emission, not by the author remembering. Currently the runtime emits one aria attribute and deletes every focus ring. |
-| [18 — Code Export v2](phase-18-code-export-v2/PROGRESS.md) | 20–26 | Kills the lock-in objection outright, which is the first thing every technical evaluator raises. 0/7 built. |
+| [18 — Code Export v2](phase-18-code-export-v2/PROGRESS.md) | 20–26 | Kills the lock-in objection outright, which is the first thing every technical evaluator raises. **1/7 built** — EXP-001 `@nodegx/core` landed 2026-08-07. |
 | [26 — Deployment](phase-26-deployment/README.md) | ~7 | Today "deploy" writes a frontend folder and leaves the backend as a shell script you're expected to find. |
 
 ## ⚡ The cheap items, extracted
@@ -118,7 +118,7 @@ counting six phases while the built-world comparison evaluated **ten**. Complete
 |---|---|
 | 44 · 45 · 46 · 47 · 48 · 49 (revised) | **~41 wks** |
 | 50 · 51 · 52 · 53 (the boundary phases) | **~23 wks** |
-| [18 — Code Export v2](phase-18-code-export-v2/PROGRESS.md) | **20–26 wks, 0/7 started** |
+| [18 — Code Export v2](phase-18-code-export-v2/PROGRESS.md) | **20–26 wks, 1/7 built** (EXP-001) |
 | [26 — Deployment](phase-26-deployment/README.md) | ~9 wks serial ("5–6 realistic") |
 | [41 — Accessibility](phase-41-accessibility/README.md) | **no task list, no estimate** |
 | [40 — AI Authoring Quality](phase-40-ai-authoring-quality/README.md) | **no estimate; exit = "Richard judges"** |

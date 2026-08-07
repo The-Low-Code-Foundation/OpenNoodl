@@ -1,7 +1,8 @@
 # Phase 18 Progress — Code Export v2
 
 **Created:** 2026-07-22, from [NOODL-REVIVAL-ROADMAP.md](../../reviews/NOODL-REVIVAL-ROADMAP.md) Track F
-**Overall status:** 🔴 Not started — 0 / 7 tasks
+**Last updated:** 2026-08-07
+**Overall status:** 🟡 In progress — 1 / 7 tasks built (EXP-001)
 
 ## Status vocabulary
 
@@ -11,7 +12,7 @@ Not started · In progress · **Built–not wired** · Complete · Superseded
 
 | ID | Title | Status | Estimate | Notes |
 |---|---|---|---|---|
-| EXP-001 | `@nodegx/core` companion library | Not started | 3 wks | Reactive primitives preserving push-signal semantics (phase-7 CODE-001 design) |
+| [EXP-001](./EXP-001-NODEGX-CORE.md) | `@nodegx/core` companion library | **Built–not wired** | 3 wks | `packages/nodegx-core`. Behaviour contract read from the runtime ([CONTRACT.md](../../../packages/nodegx-core/CONTRACT.md)), API derived by hand-writing the wanted output first ([EXP-001-TARGET-OUTPUT.md](./EXP-001-TARGET-OUTPUT.md)). 69 tests in-package + 8 parity tests running the same scenario through the real interpreter. 2.8 KB gzipped against an 8 KB budget, gated in CI. **No call sites until EXP-002**; npm scope ownership + publish are human-gated |
 | EXP-002 | Deterministic generators | Not started | 6–8 wks | Visual nodes, state stores, events, routing, scaffolding — "the mechanical 70%" |
 | EXP-003 | AI logic translation + trace verification | Not started | 6–8 wks | **The 2026 addition** — machine-checked translation of Function/Expression/dynamic-port nodes |
 | EXP-004 | Export report & honesty UX | Not started | 1 wk | What exported clean, what is best-effort, what needs review |
@@ -27,7 +28,7 @@ This phase **supersedes** `dev-docs/tasks/phase-7-code-export/` rather than repl
 2. **EXP-003, which did not exist in 2025.** The original design and the earlier `CODE-EXPORT-STUDY.md` both concluded that translating Function and Expression nodes was the intractable part, and proposed leaving TODO comments. Machine-verified AI translation is a genuinely new option, and it changes the achievable fidelity.
 3. **EXP-005's reframing of multi-framework support.** Rather than maintaining N compiler backends, export to React once and let AI port the output, verified by the same trace harness.
 
-Mark `phase-7-code-export/PROGRESS.md` as superseded when EXP-001 begins.
+~~Mark `phase-7-code-export/PROGRESS.md` as superseded when EXP-001 begins.~~ Done, 2026-08-07.
 
 **CODE-008 is resolved — it is [EXP-006](./EXP-006-EXPORT-AUTHORING-INTENT.md) now** (2026-07-29).
 `phase-7-code-export/CODE-008-node-comments-export.md` specs node-comment export in full detail, and

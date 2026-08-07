@@ -1,0 +1,15 @@
+{
+  // Declarations only, and only for `src` — the checking config includes `tests` too, which would
+  // make the package root the inferred rootDir and emit `dist/src/index.d.ts` instead of the
+  // `dist/index.d.ts` the `exports` map advertises.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "declaration": true,
+    "emitDeclarationOnly": true,
+    "declarationMap": true,
+    "rootDir": "src",
+    "outDir": "dist"
+  },
+  "include": ["src/**/*"]
+}

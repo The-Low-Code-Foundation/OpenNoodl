@@ -1,6 +1,6 @@
 # Phase 18: Code Export v2 (Revival Track F)
 
-**Status:** 🔴 Not Started
+**Status:** 🟡 In progress — EXP-001 built (2026-08-07)
 **Total Estimated Effort:** 20-26 weeks (tasks overlap; calendar ~4-6 months)
 **Source:** `dev-docs/reviews/NOODL-REVIVAL-ROADMAP.md` — Track F (F-01..F-05)
 **Design Input:** `dev-docs/tasks/phase-7-code-export/` (complete 12-16 wk design, 0% built)

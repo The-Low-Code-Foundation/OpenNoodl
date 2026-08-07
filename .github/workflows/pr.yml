@@ -37,6 +37,15 @@ jobs:
       # backend has to a contract test for its HTTP wire, so a type written in
       # one has to mean something.
       - run: npm run typecheck:backend-tests
+      # `@nodegx/core` is not in the root program's `include` list and never will be —
+      # it is published, so it compiles under `strict` rather than under the root's
+      # legacy `noImplicitAny: false` (EXP-001). Its types are the API surface every
+      # exported project sees, so they get their own gate.
+      - run: npm run typecheck:nodegx-core
+      # The bundle budget is a gate, not a report: the companion library's whole
+      # proposition is that an exported project carries a small dependency, and a
+      # library that grows into a second runtime would quietly retract it.
+      - run: npm run size:nodegx-core
 
   lint:
     name: Lint

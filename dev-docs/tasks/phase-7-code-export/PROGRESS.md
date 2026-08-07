@@ -1,7 +1,18 @@
 # Phase 7: Code Export - Progress Tracker
 
-**Last Updated:** 2026-07-23 (REV-006 documentation-truth audit)
-**Overall Status:** 🔴 Not Started (verified accurate — see audit below)
+**Last Updated:** 2026-08-07
+**Overall Status:** ⏭️ **Superseded by [phase 18 — Code Export v2](../phase-18-code-export-v2/PROGRESS.md)**
+
+> Phase 18's PROGRESS said to stamp this file when EXP-001 began. It began on 2026-08-07, and
+> `@nodegx/core` — this phase's CODE-001 — now exists at `packages/nodegx-core`.
+>
+> **Nothing here is lost.** The design work is what phase 18 executes: the companion-library
+> approach (ADR-001), the per-node-type generators, the ts-morph pipeline. CODE-008's node-comment
+> export was rescued into [EXP-006](../phase-18-code-export-v2/EXP-006-EXPORT-AUTHORING-INTENT.md)
+> in 2026-07-29 for exactly this reason. Read the CODE-00x documents for design detail; track
+> status in phase 18.
+>
+> The audit below remains the accurate record of this phase's state at the time it was superseded.
 
 ---
 
