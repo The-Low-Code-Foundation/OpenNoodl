@@ -1,194 +1,225 @@
 # Phase 33 — handover prompt
 
-Written **2026-08-07**, at the end of a session that closed three Tier B decisions
-(B3/B4/B7), re-verified ALPHA-006 §1, drafted ALPHA-004's authored content, and resumed
-ALPHA-001 Part A. Measured at `e0894ad8`. Replaces the 2026-08-06 handover, superseded in
-full — that session's "tree is dirty" and "erg-005 is red" warnings are both **stale**:
-the tree is clean and `test:main` was 878/3 (erg-005) as of last measurement, re-check
-before trusting either number.
+Written **2026-08-07**, at the end of a long session that closed nearly all of ALPHA-006's
+engineering (§2/§3/§4/§5's code half, on top of §1/§6 already done), fixed a real
+node-catalog enrichment gap, got B5 **decided** by Richard, and — while live-driving
+ALPHA-007 for the first time — found a real, currently-live regression that a real user
+hit. Measured at `e3922d58`. Replaces the same-day `e0894ad8` handover, superseded in
+full: ALPHA-001 Part A is now **fully closed** (that handover's "§4/§5/§6 owed" is stale
+— see `9ad5d71b`), and everything that handover listed as "ALPHA-006 §2 onward, once
+ALPHA-004's content exists" is now built.
 
-**The next session's job is ALPHA-001 §4 and §6, one more attempt at §5, then ALPHA-006
-§2 onward now that ALPHA-004's content exists to fill it.**
+**The next session's job, in priority order: (1) fix the live regression below — it's
+small, diagnosed, and real users are hitting it right now; (2) drive ALPHA-007's actual
+composer correctly this time, now that its real location is known; (3) once Richard has
+done B5's two GitHub actions, do the actual `opennoodl-docs` repo strip and repoint
+`getDocsEndpoint()`/`nodeDocsPath()`.**
 
 Paste the block below into a fresh session.
 
 ---
 
-Continue **ALPHA-001 Part A** — the cold-install first hour — against
-`dev-docs/tasks/phase-33-alpha-launch`. Work on `cline-dev`, commit straight to it, no
-branches, no PRs.
+Continue phase 33 alpha-launch work against `dev-docs/tasks/phase-33-alpha-launch`. Work
+on `cline-dev`, commit straight to it, no branches, no PRs.
 
 Read these first, in this order:
 
 1. `dev-docs/tasks/phase-33-alpha-launch/PROGRESS.md` — task status and the full findings
    register. Its head carries a standing warning, still true: **re-measure a row before
-   acting on it.** The 2026-08-07 log entry at the bottom is the most recent state.
-2. `dev-docs/tasks/phase-33-alpha-launch/ALPHA-001-FIRST-HOUR.md` — the run itself, six
-   sections, §1–§3 done (see below), §4/§5/§6 owed.
-3. `dev-docs/tasks/phase-33-alpha-launch/HUMAN-GATED-ITEMS.md` — what only Richard can do.
-   B3/B4/B7 are now done; A1/A2, B1, B2 (two GitHub admin actions), B5, B6, C1, A3 are not.
-4. `docs-site-content/README.md` — ALPHA-004's staged authored content (concepts,
-   getting-started, troubleshooting), written 2026-08-07, not yet wired into a site.
+   acting on it.** The three 2026-08-07 log entries at the bottom (B5 decided, §4 done,
+   plus the enrichment-gap fix) are the most recent state.
+2. `dev-docs/tasks/phase-33-alpha-launch/HUMAN-GATED-ITEMS.md` B5 — **decided**, two
+   GitHub admin actions owed, in order. Not yet done as of this handover.
+3. `dev-docs/tasks/phase-33-alpha-launch/ALPHA-007-FEEDBACK-LOOP.md` and
+   `ALPHA-007-NOTES.md` — before touching the composer again, given what this session
+   got wrong about where it lives (below).
 
-## What's actually done — don't redo it
+## 🔴 Fix this first — a live regression a real user just hit
 
-- **ALPHA-001 §1** (launcher/first run): PASS, 2026-08-06.
-- **ALPHA-001 §2** (import flow) **and §3** (library install): effectively discharged.
-  Not by ALPHA-001 itself — by `dev-docs/tasks/phase-21-library-and-import/LIB-005-NOTES.md`
-  §7–§10's live QA (2026-07-26, 2026-08-02), which ran the **identical checklist** §2
-  cites verbatim, and recorded LIB-001 Criterion 5 as MET. Small residuals only: the
-  LIB-002 visual-restyle eyeball check, and two checklist items (QA-6.1/6.3) that are
-  unreachable from the shipped UI by design (filed as a finding, not a defect). Read
-  LIB-005-NOTES.md §8–§10 before spending time re-running what it already ran.
-- **ALPHA-006 §1** (node help off the network): done since `3dbd2914` (2026-08-03),
-  re-verified green 2026-08-07 (18/18 tests, clean `typecheck:editor`). **ALPHA-006 §6**
-  (Help Center) also done. §2–§5 are not.
-- **ALPHA-004 §1/§2/§4** (concept set, getting-started, troubleshooting): drafted
-  2026-08-07, `fb0cc18f`, staged in `docs-site-content/` since ALPHA-006 §2 (the actual
-  Docusaurus site) doesn't exist yet. Grounded in `REACTIVITY-CONTRACT.md` and direct
-  source reads, not invented. **One claim in `getting-started.md` step 1 was not
-  independently re-verified against the live app**: that the launcher's "Quick Start"
-  option starts from an App+Router+Home+"Hello World!" template rather than a literal
-  blank graph, despite its own UI copy saying "Blank project with Modern preset." Two
-  minutes to check before trusting that doc further.
-- **B3/B4/B7** (repo rename, issue labels, Discord): all done 2026-08-07, see
-  `HUMAN-GATED-ITEMS.md` for the detail. The repo is now `The-Low-Code-Foundation/NodeGX`
-  — old links redirect but don't add new hardcoded `OpenNoodl` references.
+While live-testing the Help menu, Richard clicked "Report a bug" himself and got **a
+blank GitHub issue with no template, no labels, nothing applied** — not a test artifact,
+a real observed failure. Root cause, found and confirmed, **not yet fixed**:
 
-## ALPHA-001 — what's left
+`packages/noodl-editor/src/editor/src/views/HelpCenter/HelpCenter.tsx:49` —
 
-**§4. The app-name round trip, with a real keystroke, then quit and reopen.** Not
-reached 2026-08-07 — time went to hunting for the project-settings entry point live
-rather than testing it. Find where the app name actually lives (F44's fix touched
-`project.json` — grep for what wrote it) before assuming it's behind the gear icon in
-the top toolbar; that icon was clicked once this session with no observable effect,
-which is itself unconfirmed (might have opened something off-screen, might do nothing).
+```ts
+const REPO_URL = 'https://github.com/The-Low-Code-Foundation/OpenNoodl';
+```
 
-**§5. PLAT-005 Parts A, B and D** (variant-suggestion banner, token suggestions,
-regression check on the Variants editor). Blocked twice now on the same root cause:
-**no reliable way to click a specific node on the graph canvas**, because it's
-Canvas2D-rendered, not per-node DOM. What's newly known, so the next attempt doesn't
-re-derive it:
+Still the **old** repo name, from before B3's rename to `NodeGX` (`dev-docs/tasks/
+phase-33-alpha-launch/HUMAN-GATED-ITEMS.md` B3, done 2026-08-07 earlier the same day).
+GitHub's repo-rename redirect carries the path but **drops the `?template=` query
+param**, which is exactly the blank-issue symptom Richard saw. B3's own rename session
+apparently grepped for `OpenNoodl` and missed this file (it wasn't caught until a human
+actually clicked the button).
 
-- `window.__nodeGraphEditor` is a real debug hook (`nodegrapheditor.ts:300`), live
-  whenever a project is open. Confirm which component it's scoped to via
-  `window.__nodeGraphEditor.model.owner.name`.
-- The exact graph→screen transform, from `CanvasViewport.ts`'s `canvasToGraph` inverted:
-  `screenCSS = (graphNode.global + viewport.panAndScale) * viewport.panAndScale.scale`,
-  then add the `<canvas>` element's own `getBoundingClientRect()` `{left, top}`.
-  `viewport.canvasWidth`/`canvasHeight` are **device pixels** (÷ `ratio` for CSS size);
-  `panAndScale` is already in canvas-local CSS pixels.
-- **The gap that actually blocked this session**: `window.__nodeGraphEditor.forEachNode()`
-  only ever yielded **one** top-level node — a `Group` with 5 `Text`/`Button` children —
-  while the canvas was visibly rendering unrelated `Array Filter`/`Counter`/`Object`
-  nodes that never appeared in that enumeration, from any traversal tried. Either
-  `forEachNode` doesn't do what its name suggests, or those nodes belong to a different
-  scope than `.model.owner.name` reported. **Resolve this before trying more coordinate
-  math** — it's a wrong-model problem, not a wrong-arithmetic problem, and guessing
-  pixels against a wrong model is how the two accidental clicks below happened.
-- A reusable click helper (exact-text match, or raw x/y, via `cdp.js`'s own exported
-  `connect`/`evaluate`/`dispatchClick` so target-resolution stays correct) was written
-  to `/private/tmp/.../scratchpad/click-helper.js` this session but **not committed** —
-  it only exists for the session that wrote it. If it's useful again, it belongs at
-  `scripts/devtools/` as a real command (`cdp.js clickxy <x> <y>` and
-  `cdp.js clicktext "<text>" [--nth=N]`) rather than being reinvented each time — the
-  library functions it needs (`elementCentre`, `dispatchClick`) are already exported
-  from `cdp.js`.
-- Two accidental clicks happened while guessing coordinates, both harmless: one hit the
-  observability HUD's "Record" button (stopped cleanly via its own Stop button, "Recorded
-  nothing"); one hit the QA fixture's "PRESS" control, firing it once and surfacing two
-  *expected* runtime warnings on the fixture's deliberately-unwired `Object`/`Array
-  Filter` nodes (not a defect — don't re-file it).
-- Use the **`NodeGX QA Fixture`** project for this (`Recent projects` in the launcher of
-  the live profile) — it's a real, purpose-built fixture (see the
-  `nodegx-qa-fixture` note in project memory), not a throwaway. `erg-rig` is the
-  component memory flags as good for signal QA; you likely want a **different**
-  component in the same fixture with an actual `Button` node for PLAT-005's variant test
-  — check the `Test`/`Uncategorized` folders and the fixture's own component tree first.
+**Same bug, same fix, one more site, also unfixed:**
+`packages/noodl-editor/src/editor/src/views/migration/steps/FailedStep.tsx:94` — a
+"check the issues" link on a migration-failure screen, same hardcoded old URL.
 
-**§6. AI panels with no provider configured.** Not reached. Should be the most tractable
-of what's left — mostly navigation and reading rendered state, no canvas interaction.
+Fix: change both to `https://github.com/The-Low-Code-Foundation/NodeGX`. Re-grep
+`The-Low-Code-Foundation/OpenNoodl` across `packages/*/src` after, excluding the
+gitignored `*.bundle.js` build artifacts (both already appear there too — those
+regenerate on the next dev launch, don't hand-edit them). Verify by actually clicking
+"Report a bug" live and confirming the template + labels load — that's the only way
+this bug was ever going to be caught, and it's the only way to confirm the fix.
 
-**Part B** (packaged-build pass) still needs ALPHA-002's signed build — human-gated,
-not yours to unblock.
+The real issue Richard filed while testing this is closed:
+`github.com/The-Low-Code-Foundation/NodeGX/issues/18`.
 
-## userData — the fresh-profile requirement
+## ALPHA-007 — you were looking in the wrong place; here's the right one
 
-ALPHA-001 wants a **fresh `userData`** for §1's genuinely-first-run test. The automated
-move-aside of `~/Library/Application Support/NodeGX` was **blocked by the permission
-classifier** this session (reasonable — it's outside the repo). A parallel profile
-already exists at `~/Library/Application Support/NodeGX.alpha001-freshrun` from
-2026-08-06 (post-§1, pre-contamination) if you want to reuse it rather than create
-another. Options, in order of friction: ask Richard to do the `mv` swap by hand and
-restore it after; ask for permission to do the swap yourself; or do what this session
-did and run against the live profile, noting §1 isn't being re-verified fresh.
+This session tried to live-drive the report composer via `npm run cdp` and repeatedly
+failed to make it appear, despite clicking what looked like the right menu items. The
+reason: **the Help Center's `?` icon (in-app, renderer DOM) does not open the composer
+at all.** Its "Report a bug" / "Report a node behaving wrongly" / "Suggest a feature"
+items (`HelpCenter.tsx`, the ones with the stale-URL bug above) are deliberately *plain*
+GitHub issue-template links — POL-002/ALPHA-006 §6 built them that way on purpose,
+because a screenshot capture can't be triggered from the renderer.
 
-## The verdict you owe, once §4/§5/§6 are attempted
+**The actual composer (`ReportProblemDialog`, the rich one with diagnostics/redaction/
+screenshot) lives at `Help → Report a problem…` in the native OS application menu bar**
+— registered in `packages/noodl-editor/src/main/main.js:767`
+(`{ label: 'Report a problem…', click: () => openReportComposer() }`). That is a real
+native `Menu`/`MenuItem`, not DOM — `npm run cdp -- click`/`eval` only reach the
+renderer and will never find it, no matter how the selector is phrased. Two ways to
+actually trigger it next time:
 
-Report a **go / no-go on cutting the alpha**, and be precise about which question you
-are answering — there are two and only one is yours:
+- **`npm run dev:debug -- --inspect-main`**, attach to the main-process inspector on
+  `:9229`, and call `openReportComposer()` directly (it's a named function in
+  `main.js`) or find and `.click()` the `MenuItem` on the built `Menu` — this is the
+  clean path, no OS automation needed.
+- Native OS menu automation (`osascript` on macOS) as a fallback, if the above proves
+  awkward — slower and platform-specific, prefer the inspector route first.
 
-- ✅ **"Is the product ready to put in front of strangers?"** — you can answer this.
-  Findings, severity, and for each: blocks the release / fix before strangers / file and
-  ship.
-- ❌ **"Is phase 33's exit criterion met?"** — you cannot answer this. The criterion is
-  *"each of those three demonstrated by someone who is not Richard and did not build
-  it."* An agent driving the editor satisfies none of it. Say so plainly.
+**None of ALPHA-007's acceptance criteria were actually exercised this session** —
+criterion 4 (redaction against a hostile fixture) was set up (a plan for injecting a
+composite hostile string via `console.error` into the error-tail ring buffer, covering
+an API key, a backend endpoint, a component named after a client, and a path outside the
+project root — see `errorTail.ts`/`redact.ts` if re-deriving this) but never run, because
+the composer never opened. Redo it once the composer is reachable. **B6** (verify the
+GitHub prefill lands in the real dropdowns) is *also* still open — what Richard did
+today tested the broken plain-template path, not the composer's prefill, so it doesn't
+discharge B6. It needs the composer specifically, with a signed-in browser.
 
-State explicitly what's still human-gated: **A1/A2** (signing secrets — the Apple cert
-already exists, ~15 min of export once Richard does it), **A3** (recruit one macOS, one
-Windows, one Linux tester who've never built this — the long pole, nothing shortens it),
-**B1** (legal entity/contact/governing law — a `TODO` inside the shipped binary), **B2**
-(revoke the leaked GitHub secret `c45276fa…` and tick "Enable Device Flow" on OAuth app
-`Ov23li2n9u3dwAhwoifb` — both admin actions on github.com, neither optional), **B5**
-(docs-CDN disposition decision), **B6** (verify the ALPHA-007 issue prefill by hand,
-`node scripts/alpha-007/prefill-probe.js` prints the URL — needs a signed-in browser),
-**C1** (an outside reader for `PRIVACY.md`/`TERMS.md`).
+## ALPHA-006 — nearly all engineering done; B5 decided
 
-## Gate baselines — NOT re-run this session, re-run before trusting them
+Everything except the actual repo strip and two things sequenced behind it is done: §1,
+§2 (`docs-site/`, a real Docusaurus 3 site, wired into `workspaces`/`lerna.json`), §3
+(`scripts/generate-node-docs.js`, `npm run docs:nodes`/`docs:nodes:check`), §4
+(`docs-site/MIGRATION.md`, all 431 `opennoodl-docs` files classified, zero
+unclassified), §5's code half (`getContentEndpoint()` split from `getDocsEndpoint()`),
+and §6. Commits: `307967a5`, `84b4934e`, `c5c5a784`, `6165691e`, `e3922d58`.
 
-The 2026-08-07 session only ran targeted suites for files it touched
-(`tests-unit/alpha-007`, `tests-main` legal-window/issueForm/github-*, ALPHA-006's
-`nodeDocs.test.ts`, `typecheck:editor`) — all green, but that is not the full sweep. The
-last **full** sweep on record is 2026-08-06's, now a day stale:
+**B5 is decided** (Richard, 2026-08-07): the payload repo (`opennoodl-docs`) stays
+separate from the main monorepo — measured that ~336 MB of its 518 MB is genuinely live
+payload (prefab/lesson/template zips the app fetches), not deletable doc media, and this
+repo has no git-lfs, so dragging it in would be permanent history growth. Two GitHub
+admin actions owed, **in this order** — don't do the second before the first, and don't
+do either without Richard:
+
+1. **Rename `opennoodl-docs`** to reflect what it now is (he said something like
+   `nodegx-content`, not finalised). Old name redirects, but `getContentEndpoint()`
+   must not be repointed until this has actually happened.
+2. **Enable GitHub Pages on the `NodeGX` repo itself** for `docs-site/` — no third repo
+   needed, a workflow here can use the repo's own built-in Actions token.
+   `docusaurus.config.js` already targets the real URL
+   (`the-low-code-foundation.github.io/NodeGX/`), but nothing publishes there yet.
+
+**Once docs-site is actually live**, two more things need fixing (found while answering
+a question about them today, not yet done):
+
+- `getDocsEndpoint()` still returns the old `opennoodl-docs` origin — repoint it.
+- `nodeDocsPath()` (`utils/nodeDocs.ts`) derives a node's docs URL from the catalog's
+  legacy `docs` field verbatim (old site's URL shape, e.g.
+  `/nodes/data/object/object-node`) — this **does not match** `docs-site`'s generated
+  structure (`/docs/nodes/<category-slug>/<type-slug>`, from `generate-node-docs.js`).
+  Repointing the origin alone will 404 every node's "Open docs" link. Rewrite
+  `nodeDocsPath()` to derive the same way the generator does (category + typeName slug),
+  not from the legacy field.
+
+`docs-site-content/` (ALPHA-004's staging dir) is still an unremoved stale duplicate of
+`docs-site/docs/` — `git rm -r docs-site-content` was blocked by the permission
+classifier as destructive, twice now across sessions. Needs a human to do it or
+explicitly authorise an agent to.
+
+§4's migration table found and documented **a fifth fate the spec's own "four fates"
+framing never named**: 193 of the 431 files (library prose, repo meta, a
+prefab-authoring boilerplate) are neither migrated nor deleted — they stay in the
+renamed content repo. Read `docs-site/MIGRATION.md`'s own summary table, not the spec,
+if reasoning about this again.
+
+## The enrichment coverage fix, if it comes up again
+
+Richard asked directly "is everything documented" and it wasn't — `catalog:merge:check
+--require-coverage` had been failing all day. Fixed same session (`c5c5a784`): 3 cloud
+role-management nodes (`noodl.cloud.addusertorole`/`getuserroles`/`removeuserfromrole`)
+had zero enrichment authored, so they were silently absent from
+`node-catalog-enriched.json` entirely; separately the committed catalog was stale
+relative to an already-authored wording fix in `docs/node-catalog/enrichment/*.json`
+(same failure class as F76 — a generation script existed, nobody re-ran it). **Catalog
+is now 175/175, `catalog:merge:check` green.** Don't re-investigate this; it's closed.
+
+## Gate baselines — full sweep run repeatedly today, all clean at `e3922d58`
 
 ```
 npm run typecheck:runtime|cloud|viewer|editor|editor-tests    # clean
-npm run catalog:check && npm run cloud-library:check && npm run catalog:merge:check
-                                            # 172 nodes / 81 cloud / 172-172 enriched
+npm run catalog:check                       # 175 nodes, up to date (structural catalog)
+npm run cloud-library:check                 # 84 nodes, up to date
+npm run catalog:merge:check --require-coverage   # 175/175 documented, up to date — GREEN for the first time today
 npm run library:check                       # 58/58
-npx lerna run test --scope @noodl/runtime           # 2298
-npx lerna run test --scope @noodl/cloud-runtime     # 172
-npx lerna run test --scope @noodl/nodegx-backend    # 97 suites / 1056
-npx lerna run test --scope @noodl/observe           # 23
-npx lerna run test --scope @noodl/mcp               # 196
-npm run test:main                           # 878 passing, 3 failing (erg-005, unowned)
-npm run test:ci                             # Jasmine: 2391 specs, 0 failures
+npm run docs:nodes:check                    # 194 generated files match 175 catalog nodes
+npx jest (from packages/noodl-editor)       # 933/933, 67 suites
+npm run lint:ci                             # 860 errors vs 3916 baseline
+npm run test:ci                             # Jasmine: 2418 specs, 0 failures
+npm run docs-site:build                     # clean, onBrokenLinks: 'throw'
 ```
 
-⚠️ **`test:main` reports `Tests: 0` for a suite that won't compile** — compare the
-passing count, not the exit code. `npm run typecheck:core-ui` is **not a gate**, red on
-files nobody owns. **Re-run the full sweep yourself on the settled tree at the end of
-the session** — every session that's done this has found something.
+⚠️ `node-catalog.json` (structural, 175) and `node-catalog-enriched.json` (enriched,
+also 175 as of this session — previously 172) are **two different files** with
+historically different counts; don't conflate them if they drift again.
+**`npm run typecheck:core-ui` is still not a gate**, red on files nobody owns.
+**Re-run the full sweep yourself on the settled tree at the end** — every session that's
+done this has found something, including this one (the enrichment gap).
 
-## Driving traps — each has cost real time
+## Driving traps — including two new ones from today
 
+- **Native OS menus (the application menu bar) are invisible to `npm run cdp`.** It only
+  reaches the renderer's DOM. If a menu item isn't findable by any selector or text
+  search, check whether it's actually a `Menu`/`MenuItem` in `main.js` before spending
+  more time guessing DOM structure — this cost most of a live-drive attempt today.
+- **A live session can trigger a real external side effect with no undo.** Clicking a
+  "Report a bug"-shaped button in a running editor can genuinely open a real browser tab
+  and, if a human is present and completes it, file a real issue on the real repo — which
+  is exactly what happened this session. Warn the human before clicking anything
+  report/submit-shaped, or find a way to inspect the composed output without triggering
+  the send.
+- Finding an element by visible text (not exposed as a CSS selector) needs an `eval`
+  round-trip: `[...document.querySelectorAll('*')].find(e => e.children.length===0 &&
+  e.textContent.trim()==='exact text')`, then `.closest('button,[role=button]')` or the
+  nearest clickable ancestor class before `.click()`. Plain `npm run cdp -- click
+  "text=..."` is not valid syntax — it's CSS selectors only.
+- Repeated `eval` calls in the same CDP session can hit `Identifier 'x' has already been
+  declared` on a shared `const`/`let` — wrap each eval body in an IIFE
+  (`(function(){ ... })()`) to avoid this.
 - **Verify WHICH project actually opened, by name**, before believing anything.
 - `--target=editor` **can attach to the launcher** — same file, first match wins.
-- **An occluded preview repaints late; reading its DOM is not measuring the graph.**
 - **An occluded Electron window clamps timers ~1000×.** Pace drivers with `MessagePort`.
 - A sibling's edit **full-reloads the editor** and kills every one-shot state.
-- Each `npm run cdp` costs ~1.5s — collapse click-then-measure into one call where you can.
 - `screenshot`/`reload` on the viewer target are unsafe; the in-editor preview is a
   `<webview>` guest and killing it white-screens the editor.
 - **Restart the editor; do not trust HMR** — it will not reach a mounted panel.
-- **`cdp.js click "<selector>"` only takes a CSS selector** (`document.querySelector`,
-  first match wins) — for canvas-drawn nodes this does nothing useful; see §5 above.
-- **Getting a `DOMRect` back through `evaluate()` needs explicit field extraction**
-  (`{x:r.x, y:r.y, ...}`) — `JSON.stringify`-ing a live `DOMRect` gives `{}`, its fields
-  are prototype getters, not own properties. Cost one dead end this session.
 - Check both themes. Use the `run-editor` skill — it has all of the above baked in
   already; read it before re-deriving any of it by hand.
+
+## What's still human-gated, unchanged from before
+
+**A1/A2** (signing secrets), **A3** (recruit testers — the long pole), **B1** (legal
+entity/contact/governing law), **B2** (revoke the leaked GitHub secret, enable Device
+Flow), **B4** (permission to run `scripts/alpha-007/create-labels.sh`), **B6** (verify
+the prefill by hand — needs the *actual* composer per above, not the broken plain-link
+path), **C1** (outside reader for `PRIVACY.md`/`TERMS.md`). **B5's two actions** (repo
+rename, enable Pages) are new to this list — see above.
 
 ## Rules of engagement
 
@@ -197,11 +228,12 @@ the session** — every session that's done this has found something.
 - **Commit incrementally, per slice.** An agent that has not committed has produced
   nothing.
 - **Only one agent may own the Electron editor** — it is a queue, and a sibling
-  `dev:stop` kills another session's `test:ci`.
+  `dev:stop` kills another session's `test:ci`. **Always `npm run dev:stop` when done**
+  — this session left the stack running once and had to be reminded.
 - ⚠️ **Before building anything a handover recommends: `git branch -a` and grep the log
   for the task ID.** This repo has shipped the "rebuild something that already existed"
-  mistake twice now (ALPHA-006/007 in worktrees, then again).
-- **Re-run the gates yourself on the settled tree at the end.** Not done 2026-08-07 —
-  see above. Every session that's done it has found something.
-- Task docs are researched but not infallible — roughly two premises per doc are wrong.
-  Re-measure, don't inherit.
+  mistake twice now.
+- **Re-run the gates yourself on the settled tree at the end.**
+- Task docs are researched but not infallible — re-measure, don't inherit. This session's
+  own numbers (175/175, 431 files, ~336 MB payload) are real measurements as of
+  `e3922d58` — re-verify if much time has passed before trusting them further.
