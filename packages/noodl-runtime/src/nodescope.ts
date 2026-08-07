@@ -139,7 +139,7 @@ NodeScope.prototype.addConnection = function (connectionData) {
       'targetPort'
     ]);
   } catch (e) {
-    throw new Error('Error in connection: ' + e.message);
+    throw new Error('Error in connection: ' + (e as Error).message);
   }
 
   try {
@@ -150,7 +150,7 @@ NodeScope.prototype.addConnection = function (connectionData) {
     sourceNode.registerOutputIfNeeded(connectionData.sourcePort);
     targetNode.connectInput(connectionData.targetPort, sourceNode, connectionData.sourcePort);
   } catch (e) {
-    console.error(e.message);
+    console.error((e as Error).message);
   }
 };
 
@@ -159,7 +159,7 @@ NodeScope.prototype.setNodeParameters = function (node, nodeModel) {
 
   if (variant) {
     //apply the variant (this will also apply the parameters)
-    node.setVariant(variant);
+    node.setVariant?.(variant);
   } else {
     const parameters = nodeModel.parameters;
 
@@ -227,10 +227,10 @@ NodeScope.prototype.createNodeFromModel = async function (nodeModel, updateOnDir
     node.updateOnDirtyFlagging = updateOnDirtyFlagging === false ? false : true;
     node.setNodeModel(nodeModel);
   } catch (e) {
-    console.error(e.message);
+    console.error((e as Error).message);
     if (this.context.editorConnection && this.context.isWarningTypeEnabled('nodescope')) {
       this.context.editorConnection.sendWarning(this.componentOwner.name, nodeModel.id, 'nodelibrary-unknown-node', {
-        message: e.message,
+        message: (e as Error).message,
         showGlobally: true
       });
     }
@@ -401,7 +401,7 @@ NodeScope.prototype.onNodeModelRemoved = function (nodeModel) {
 
   if (nodeModel.parent) {
     var parentInstance = this.getNodeWithId(nodeModel.parent.id);
-    parentInstance.removeChild(nodeInstance);
+    parentInstance.removeChild?.(nodeInstance);
   }
 
   nodeInstance._onNodeDeleted();
@@ -515,7 +515,7 @@ NodeScope.prototype.deleteNode = function (nodeInstance) {
   //depth first
   if (nodeInstance.getChildren) {
     nodeInstance.getChildren().forEach((child) => {
-      nodeInstance.removeChild(child);
+      nodeInstance.removeChild?.(child);
       //the child might be created in a different scope
       //if the child is a component instance, we want its parent scope, not the inner scope
       const nodeScope = child.parentNodeScope || child.nodeScope;

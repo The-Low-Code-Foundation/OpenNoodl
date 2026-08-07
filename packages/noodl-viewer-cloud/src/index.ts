@@ -7,6 +7,7 @@ import NoodlRuntime from '@noodl/runtime';
 import Model from '@noodl/runtime/src/model';
 import NodeScope from '@noodl/runtime/src/nodescope';
 import type { NodeRunContext, RuntimeLogEntry, RuntimeLogLevel } from '@noodl/runtime/src/runcontext';
+import type { RuntimeNodeContext } from '@noodl/runtime/src/internal';
 import './noodl-js-api';
 
 // CWF-013 — the shape a host has to fill in to give a cloud function's `Log` node somewhere to
@@ -93,7 +94,7 @@ export class CloudRunner {
 
     registerNodes(this.runtime);
 
-    this.runtime.setDebugInspectorsEnabled(options.enableDebugInspectors);
+    this.runtime.setDebugInspectorsEnabled(options.enableDebugInspectors ?? false);
 
     if (options.connectToEditor && options.editorAddress) {
       this.runtime.connectToEditor(options.editorAddress);
@@ -133,7 +134,12 @@ export class CloudRunner {
     return new Promise<NoodlResponse>((resolve, reject) => {
       const requestId = Math.random().toString(26).slice(2);
 
-      const requestScope = new NodeScope(this.runtime.context);
+      // `this.runtime` is typed via `@noodl/runtime`'s own `types` field (dist-types),
+      // while `NodeScope` is deep-imported from source (`@noodl/runtime/src/nodescope`)
+      // — two declarations of the same `RuntimeNodeContext`, structurally identical but
+      // nominally distinct because dist-types is a verbatim copy of the same hand-written
+      // .d.ts, and a private field makes TS compare them by declaration site, not shape.
+      const requestScope = new NodeScope(this.runtime.context as unknown as RuntimeNodeContext);
       requestScope.modelScope = new Model.Scope();
       // CWF-013: the same per-request channel `modelScope` uses. Set on the scope the function
       // component is created in, so `componentinstance.ts` hands it down the whole tree.

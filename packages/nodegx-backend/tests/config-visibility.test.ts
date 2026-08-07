@@ -126,7 +126,11 @@ describe('FH-018 — GET /config filters by caller', () => {
   });
 
   it('the master key / admin token gets everything, unwrapped', async () => {
-    for (const headers of [{ 'x-parse-master-key': adminToken }, { authorization: `Bearer ${adminToken}` }]) {
+    const headerVariants: Record<string, string>[] = [
+      { 'x-parse-master-key': adminToken },
+      { authorization: `Bearer ${adminToken}` }
+    ];
+    for (const headers of headerVariants) {
       const { status, json } = await req(headers);
 
       expect(status).toBe(200);

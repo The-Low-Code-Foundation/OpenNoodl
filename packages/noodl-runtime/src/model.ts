@@ -279,13 +279,16 @@ Model.guid = function guid() {
 Model.prototype.on = function (event: string, listener: (args: ModelChangeEvent) => void) {
   if (!this.listeners) this.listeners = {};
   if (!this.listeners[event]) this.listeners[event] = [];
-  this.listeners[event].push(listener);
+  // `listeners` is stored as `(args?: unknown) => void` — `notify` calls listeners
+  // positionally with whatever it was given, so this cast just matches the actual
+  // (untyped) dispatch contract rather than narrowing it.
+  this.listeners[event].push(listener as (args?: unknown) => void);
 };
 
 Model.prototype.off = function (event: string, listener: (args: ModelChangeEvent) => void) {
   if (!this.listeners) return;
   if (!this.listeners[event]) return;
-  var idx = this.listeners[event].indexOf(listener);
+  var idx = this.listeners[event].indexOf(listener as (args?: unknown) => void);
   if (idx !== -1) this.listeners[event].splice(idx, 1);
 };
 

@@ -91,7 +91,7 @@ describe('WFA-004 — the served step-kind catalog is what the canvas assumes', 
       headers: { authorization: `Bearer ${secrets.adminToken}` }
     });
     expect(res.status).toBe(200);
-    catalog = await res.json();
+    catalog = (await res.json()) as typeof catalog;
   });
 
   afterAll(async () => {
@@ -140,7 +140,7 @@ describe('WFA-004 — the served step-kind catalog is what the canvas assumes', 
       for (const param of kind.params) {
         if (param.type !== 'enum') continue;
         expect(Array.isArray(param.enums)).toBe(true);
-        expect(param.enums.length).toBeGreaterThan(0);
+        expect(param.enums!.length).toBeGreaterThan(0);
       }
     }
   });
@@ -188,10 +188,10 @@ describe('WFA-004 — the served step-kind catalog is what the canvas assumes', 
     // WFA-003 marked these; a condition rendered as a value control would show
     // `{left: …, op: …}` as text, which §4 says fails the task.
     const branch = catalog.kinds.find((k) => k.kind === 'branch');
-    expect(branch.params.find((p) => p.name === 'condition').raw).toBe(true);
+    expect(branch!.params.find((p) => p.name === 'condition')!.raw).toBe(true);
 
     const sw = catalog.kinds.find((k) => k.kind === 'switch');
-    expect(sw.params.find((p) => p.name === 'cases').raw).toBe(true);
+    expect(sw!.params.find((p) => p.name === 'cases')!.raw).toBe(true);
   });
 
   it('declares dynamic routes only where the canvas derives ports from a param', () => {
@@ -249,9 +249,9 @@ describe('WFA-004 — the served step-kind catalog is what the canvas assumes', 
     expect(put.status).toBe(200);
 
     const get = await fetch(`${endpoint}/admin/workflow-defs/uiPositions`, { headers: auth });
-    const { workflow } = await get.json();
-    expect(workflow.steps.find((s: { id: string }) => s.id === 'a').ui).toEqual({ x: 120, y: 40 });
-    expect(workflow.steps.find((s: { id: string }) => s.id === 'b').ui).toEqual({ x: 380, y: 40 });
+    const { workflow } = (await get.json()) as { workflow: { steps: { id: string; ui: unknown }[] } };
+    expect(workflow.steps.find((s) => s.id === 'a')!.ui).toEqual({ x: 120, y: 40 });
+    expect(workflow.steps.find((s) => s.id === 'b')!.ui).toEqual({ x: 380, y: 40 });
   });
 
   it('rejects a malformed position rather than persisting it', async () => {
@@ -270,7 +270,7 @@ describe('WFA-004 — the served step-kind catalog is what the canvas assumes', 
     // A definition that fails validation on LOAD stops the backend booting, so
     // the only safe place to refuse a bad one is before it is written.
     expect(res.status).toBe(400);
-    const body = await res.json();
+    const body = (await res.json()) as { error?: string };
     expect(String(body.error)).toContain('ui must be');
   });
 });

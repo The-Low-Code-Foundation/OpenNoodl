@@ -19,6 +19,10 @@
  * the surface to 48 inputs / 23 outputs / 71 total. When this fails, check that
  * the new ports still *resolve* (the invariant) before updating the numbers (the
  * snapshot) — the coverage loop below is the assertion that actually matters.
+ *
+ * ⚠️ 2026-08-07: the library grew further (`JWT Sign`, `Log`, `To CSV` among the
+ * additions) — the invariant held (nothing fell through uncovered), so this is a
+ * snapshot update, not a fix. New total: 54 inputs / 32 outputs / 86 combined.
  */
 
 import { listPortTypeFor, LIST_PORT_TYPES } from '@noodl-core-ui/components/json-editor/utils/listValueCodec';
@@ -87,20 +91,19 @@ describe('ERG-003 criterion 2 — the list-shaped port surface, derived from the
     }
   });
 
-  it('the input census — 48 editable ports', () => {
-    expect(inputs.length).toBe(48);
-    expect(countBy(inputs)).toEqual({ array: 11, object: 5, stringlist: 25, proplist: 7 });
+  it('the input census — 54 editable ports', () => {
+    expect(inputs.length).toBe(54);
+    expect(countBy(inputs)).toEqual({ array: 12, object: 7, stringlist: 28, proplist: 7 });
   });
 
-  it('the spec’s 69 was inputs + outputs, and 23 of those are outputs with no editor', () => {
-    expect(outputs.length).toBe(23);
-    expect(countBy(outputs)).toEqual({ array: 16, object: 7, stringlist: 0, proplist: 0 });
+  it('the spec’s 69 was inputs + outputs, and 32 of those are outputs with no editor', () => {
+    expect(outputs.length).toBe(32);
+    expect(countBy(outputs)).toEqual({ array: 21, object: 11, stringlist: 0, proplist: 0 });
 
     // The exact arithmetic behind §0's table, so the correction stays checkable.
-    // §0's 69 (array 26, object 11) plus ERG-004's two inputs = 71.
     const combined = countBy([...inputs, ...outputs]);
-    expect(combined).toEqual({ array: 27, stringlist: 25, object: 12, proplist: 7 });
-    expect(inputs.length + outputs.length).toBe(71);
+    expect(combined).toEqual({ array: 33, stringlist: 28, object: 18, proplist: 7 });
+    expect(inputs.length + outputs.length).toBe(86);
   });
 
   it('names the nodes each type appears on, so a catalog change is legible in the diff', () => {
@@ -109,6 +112,8 @@ describe('ERG-003 criterion 2 — the list-shaped port surface, derived from the
     expect(nodesFor('proplist')).toEqual(['Component Stack', 'Create Record', 'Function', 'Script', 'Update Record']);
     expect(nodesFor('object')).toEqual([
       'Global Store',
+      'JWT Sign',
+      'Log',
       'Object Changed',
       'Send Email',
       'Server-Sent Events',
@@ -124,7 +129,8 @@ describe('ERG-003 criterion 2 — the list-shaped port surface, derived from the
       'Filter Records',
       'Options',
       'Repeater',
-      'Run Tasks'
+      'Run Tasks',
+      'To CSV'
     ]);
   });
 });

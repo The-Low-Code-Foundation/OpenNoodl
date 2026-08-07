@@ -153,19 +153,25 @@ describe('matchesFilter is the exact twin of the SQL WHERE clause', () => {
    * wrong answer) but "they agree *and* the answer is right".
    */
   it('agrees with SQL on the geo operators, which used to be no-ops on both sides', async () => {
+    interface PlaceRec {
+      objectId?: string;
+      city: string;
+      at?: unknown;
+    }
+
     const cities: Array<{ city: string; lat: number; lng: number }> = [
       { city: 'London', lat: 51.5074, lng: -0.1278 },
       { city: 'Bristol', lat: 51.4545, lng: -2.5879 },
       { city: 'Edinburgh', lat: 55.9533, lng: -3.1883 },
       { city: 'Paris', lat: 48.8566, lng: 2.3522 }
     ];
-    const placed: Rec[] = [];
+    const placed: PlaceRec[] = [];
     for (const { city, lat, lng } of cities) {
       await new Promise<void>((resolve, reject) => {
         adapter.create({
           collection: 'Place',
           data: { city, at: { __type: 'GeoPoint', latitude: lat, longitude: lng } },
-          success: (rec: Rec) => {
+          success: (rec: PlaceRec) => {
             placed.push(rec);
             resolve();
           },
@@ -214,8 +220,8 @@ describe('matchesFilter is the exact twin of the SQL WHERE clause', () => {
       adapter.query({
         collection: 'Place',
         where: filter,
-        success: (results: Rec[]) => {
-          viaSql = results.map((r) => r.city as string);
+        success: (results: PlaceRec[]) => {
+          viaSql = results.map((r) => r.city);
         },
         error: (e: unknown) => {
           throw new Error(String(e));
@@ -223,7 +229,7 @@ describe('matchesFilter is the exact twin of the SQL WHERE clause', () => {
       });
       const viaJs = placed
         .filter((rec) => matchesFilter(filter, rec as unknown as Record<string, unknown>))
-        .map((rec) => rec.city as string);
+        .map((rec) => rec.city);
 
       expect(viaSql.sort()).toEqual([...expected].sort());
       expect(viaJs.sort()).toEqual([...expected].sort());
