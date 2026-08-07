@@ -89,6 +89,59 @@ export interface StyleVocabulary {
 const RAW_SCALE_CATEGORIES = new Set<TokenCategory>(['color-palette']);
 
 /**
+ * Rewrite an element config's CSS into the parameters a node actually has.
+ *
+ * The element configs are authored as CSS — they also drive the editor's own
+ * variant rendering, so they carry `transform`, `cursor` and shorthand
+ * properties. The vocabulary, though, is read by an agent as "copy these
+ * parameters onto the node", and a parameter with no matching port is dropped
+ * at apply with only a warning, which never blocks. So `boxShadow` and the
+ * `padding` shorthand were being taught as settable when the runtime declares
+ * neither: it has `boxShadowEnabled` plus five components, and one port per
+ * padding side.
+ *
+ * Only the two shorthands the configs actually use are expanded. Anything else
+ * is passed through untouched rather than filtered against a hardcoded port
+ * list, which would go stale the moment a port is added.
+ */
+function toPortParameters(styles: Record<string, string>): Record<string, string> {
+  const out: Record<string, string> = {};
+
+  for (const [key, value] of Object.entries(styles)) {
+    if (key === 'padding' || key === 'margin') {
+      // `2px 4px` → top/bottom, left/right. CSS's 1–4 value box shorthand.
+      const parts = value.trim().split(/\s+/);
+      const [top, right, bottom, left] =
+        parts.length === 1
+          ? [parts[0], parts[0], parts[0], parts[0]]
+          : parts.length === 2
+            ? [parts[0], parts[1], parts[0], parts[1]]
+            : parts.length === 3
+              ? [parts[0], parts[1], parts[2], parts[1]]
+              : [parts[0], parts[1], parts[2], parts[3]];
+      out[`${key}Top`] = top;
+      out[`${key}Right`] = right;
+      out[`${key}Bottom`] = bottom;
+      out[`${key}Left`] = left;
+      continue;
+    }
+
+    if (key === 'boxShadow') {
+      // There is no shorthand port. Turning the shadow on gets the runtime's
+      // own subtle default; the components stay available for a node that wants
+      // to be specific. Emitting the token here would set a *colour* port to a
+      // full shadow value, which is what the authored pages ended up doing.
+      out.boxShadowEnabled = 'true';
+      continue;
+    }
+
+    out[key] = value;
+  }
+
+  return out;
+}
+
+/**
  * Build the full style vocabulary. Pass a metadata source (ProjectModel, a
  * serialized project's `{ getMetaData }`, or the MCP project file) to reflect a
  * project's custom token overrides; omit it for the shipped defaults.
@@ -124,7 +177,7 @@ export function buildStyleVocabulary(source?: MetaDataSource | null): StyleVocab
     const variantStyles: Record<string, Record<string, string>> = {};
     for (const variant of variants) {
       const resolved = ElementConfigRegistry.resolveVariant(nodeType, variant);
-      if (resolved) variantStyles[variant] = resolved.baseStyles;
+      if (resolved) variantStyles[variant] = toPortParameters(resolved.baseStyles);
     }
     const sizeStyles: Record<string, Record<string, string>> = {};
     for (const size of sizes) {
@@ -136,7 +189,7 @@ export function buildStyleVocabulary(source?: MetaDataSource | null): StyleVocab
           if (typeof v === 'string') applied[k] = v;
         }
       }
-      sizeStyles[size] = applied;
+      sizeStyles[size] = toPortParameters(applied);
     }
     return { nodeType, variants, sizes, variantStyles, sizeStyles };
   });
