@@ -443,6 +443,13 @@ export function backendNameForProject(projectName: string | undefined): string {
  * way, and is the field the scoping prompt has always pushed hardest on. A
  * scope with three objects and no explicit collections is the common case, not
  * the degenerate one.
+ *
+ * The two field shapes are not the same, which is what used to lose them:
+ * `ScopeCollection.fields` is already `{name, type?}`, while `ScopeObject.fields`
+ * is prose (`'title (text)'`). The object path passed `undefined` rather than
+ * translating, so the common case — objects, no explicit collections — provisioned
+ * every table with **no columns at all**, and every `prop-*` port the plan then
+ * wired on the pages pointed at a column that did not exist.
  */
 export function provisionFromScope(scope: ProjectScope, options: PlanFromScopeOptions = {}): PlanProvisionSpec | undefined {
   const backend = scope.backend;
@@ -451,7 +458,7 @@ export function provisionFromScope(scope: ProjectScope, options: PlanFromScopeOp
 
   const named = backend.collections?.length
     ? backend.collections.map((c) => ({ name: c.name, fields: c.fields }))
-    : scope.objects.map((o) => ({ name: o.name, fields: undefined }));
+    : scope.objects.map((o) => ({ name: o.name, fields: (o.fields ?? []).map(parseFieldPhrase) }));
 
   const collections: PlanProvisionCollection[] = [];
   const seen = new Set<string>();
@@ -484,22 +491,56 @@ function collectionName(name: string): string {
 }
 
 /**
- * A prose field description as a typed column, or `undefined` when it is not
- * one.
+ * One `ScopeObject.fields` entry — prose — as the `{name, type?}` shape the
+ * collection path already speaks.
  *
- * `ScopeCollection.fields[].type` is a hint from a model, not a `nodegx-backend`
- * column type, so it is *mapped* rather than passed through — an unmapped type
- * yields no column at all rather than a column the schema manager will refuse.
- * The backend infers the type from the first record written either way, so the
- * cost of dropping one is a column typed later instead of now.
+ * The scoping prompt asks for "title (text)", "finished (yes/no)", so the hint is
+ * usually parenthesised; "title — text" and "title: text" come back often enough
+ * to be worth reading too. A bare "photo" is a name with no hint, which is fine —
+ * `toColumn` defaults the type.
+ *
+ * The separator forms require surrounding whitespace so that a hyphenated field
+ * name ("first-name") stays one name.
+ */
+function parseFieldPhrase(phrase: string): { name: string; type?: string } {
+  const text = (phrase ?? '').trim();
+
+  const bracketed = text.match(/^(.+?)\s*[([]([^)\]]*)[)\]]\s*$/);
+  if (bracketed) return { name: bracketed[1].trim(), type: bracketed[2].trim() || undefined };
+
+  const dashed = text.match(/^(.+?)\s+[—–-]\s+(.+)$/);
+  if (dashed) return { name: dashed[1].trim(), type: dashed[2].trim() };
+
+  const colon = text.match(/^([^:]+):\s*(.+)$/);
+  if (colon) return { name: colon[1].trim(), type: colon[2].trim() };
+
+  return { name: text };
+}
+
+/**
+ * A field description as a typed column, or `undefined` when it is not one.
+ *
+ * `type` is a hint from a model, not a `nodegx-backend` column type, so it is
+ * *mapped* rather than passed through. An unrecognised or absent hint now falls
+ * back to `String` instead of dropping the column.
+ *
+ * Dropping was justified by "the backend infers the type from the first record
+ * written", which is true of the storage and false of everything above it: the
+ * column is what gives a Record node its `prop-*` ports, so a dropped column
+ * leaves the authored UI with nothing to bind to and no way to write that first
+ * record. A puppy-adoption build lost `name`, `photo`, `breed`, `age` and
+ * `description` exactly this way. `String` is always a legal column type, so the
+ * schema manager cannot refuse it, and a column typed loosely is recoverable in a
+ * way that a missing one is not.
  */
 function toColumn(field: { name: string; type?: string }): PlanProvisionColumn | undefined {
   const name = field.name.replace(/[^A-Za-z0-9_]+/g, '').trim();
   // `objectId`, `createdAt` and `updatedAt` are the backend's own; a column of
   // that name is refused by the schema manager, not merged.
   if (!name || ['objectId', 'createdAt', 'updatedAt', 'ACL', 'id'].includes(name)) return undefined;
-  const type = columnType(field.type);
-  return type ? { name, type } : undefined;
+  // The name is worth reading when there is no hint — "email", "url" and "count"
+  // are types said as names.
+  return { name, type: columnType(field.type) ?? columnType(field.name) ?? 'String' };
 }
 
 function columnType(hint: string | undefined): string | undefined {
