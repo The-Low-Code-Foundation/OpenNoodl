@@ -1449,7 +1449,7 @@ export default {
     const textStylePortPrefix = args.styleTag || '';
 
     const ports = ['label'].concat(
-      ['textStyle', 'fontFamily', 'fontSize', 'fontWeight', 'color', 'letterSpacing', 'lineHeight', 'textTransform'].map(
+      ['textStyle', 'fontFamily', 'fontSize', 'fontWeight', 'fontStyle', 'color', 'letterSpacing', 'lineHeight', 'textTransform'].map(
         (port) => textStylePortPrefix + port
       )
     );
@@ -1525,7 +1525,7 @@ export default {
         index: index,
         type: {
           name: 'textStyle',
-          childPorts: ['fontFamily', 'fontSize', 'fontWeight', 'color', 'letterSpacing', 'lineHeight', 'textTransform'],
+          childPorts: ['fontFamily', 'fontSize', 'fontWeight', 'fontStyle', 'color', 'letterSpacing', 'lineHeight', 'textTransform'],
           childPortPrefix: portPrefix
         },
         group: group,
@@ -1623,6 +1623,37 @@ export default {
         },
         default: 'Auto',
         applyDefault: false,
+        allowVisualStates: true,
+        popout: args.popout,
+        styleTag,
+        onChange() {
+          if (this.props[textStyleInputName]) {
+            this.forceUpdate();
+          }
+        }
+      },
+      // The other typography axis with no port, found alongside `fontWeight` by
+      // checking the style vocabulary against the catalog: the `blockquote`
+      // variant has always specified `fontStyle: 'italic'` and nothing could
+      // apply it. An enum rather than a token-bearing number, because there are
+      // no `--font-style-*` tokens for it to have to accept.
+      [portPrefix + 'fontStyle']: {
+        index: index + 2.6,
+        group: group,
+        displayName: 'Font Style',
+        editorName: prettyName('Font Style'),
+        description: 'Renders the text upright or italic',
+        targetStyleProperty: 'fontStyle',
+        applyDefault: false,
+        type: {
+          name: 'enum',
+          enums: [
+            { label: 'Normal', value: 'normal' },
+            { label: 'Italic', value: 'italic' }
+          ],
+          parentPort: textStyleInputName
+        },
+        default: 'normal',
         allowVisualStates: true,
         popout: args.popout,
         styleTag,

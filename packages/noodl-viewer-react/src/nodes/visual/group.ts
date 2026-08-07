@@ -277,7 +277,12 @@ const GroupNode: ReactNodeDefinition = {
         enums: [
           { label: 'Start', value: 'flex-start' },
           { label: 'End', value: 'flex-end' },
-          { label: 'Center', value: 'center' }
+          { label: 'Center', value: 'center' },
+          // Without this, a row of cards could not be made equal-height at all:
+          // each sized to its own content, so one with a shorter description sat
+          // 23px proud of its neighbours. The only workaround was hand-computing
+          // a fixed height, which then breaks on the next content change.
+          { label: 'Stretch', value: 'stretch' }
         ],
         alignComp: 'align-items'
       },

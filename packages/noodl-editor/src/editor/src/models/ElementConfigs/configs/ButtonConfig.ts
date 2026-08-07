@@ -114,16 +114,16 @@ export const ButtonConfig: ElementConfig = {
       }
     },
 
+    // No `textDecoration` port on this node, so the underline-on-hover this
+    // variant described never rendered. Dropped rather than left claiming it;
+    // the variant is now the colour and the absent chrome, which is the part
+    // that always worked.
     link: {
       backgroundColor: 'transparent',
       color: 'var(--primary)',
       borderWidth: '0',
-      textDecoration: 'none',
       paddingLeft: '0',
-      paddingRight: '0',
-      states: {
-        hover: { textDecoration: 'underline' }
-      }
+      paddingRight: '0'
     }
   }
 };

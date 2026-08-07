@@ -10495,6 +10495,10 @@
               {
                 "label": "Center",
                 "value": "center"
+              },
+              {
+                "label": "Stretch",
+                "value": "stretch"
               }
             ]
           },
@@ -15184,6 +15188,32 @@
           "allowVisualStates": true
         },
         {
+          "name": "fontStyle",
+          "displayName": "Font Style",
+          "editorName": "Font Style",
+          "group": "Text Style",
+          "plug": "input",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "Normal",
+                "value": "normal"
+              },
+              {
+                "label": "Italic",
+                "value": "italic"
+              }
+            ],
+            "parentPort": "textStyle"
+          },
+          "isSignal": false,
+          "default": "normal",
+          "description": "Renders the text upright or italic",
+          "index": 21.6,
+          "allowVisualStates": true
+        },
+        {
           "name": "fontWeight",
           "displayName": "Font Weight",
           "editorName": "Font Weight",
@@ -15642,6 +15672,7 @@
               "fontFamily",
               "fontSize",
               "fontWeight",
+              "fontStyle",
               "color",
               "letterSpacing",
               "lineHeight",
@@ -26974,6 +27005,32 @@
           "allowVisualStates": true
         },
         {
+          "name": "fontStyle",
+          "displayName": "Font Style",
+          "editorName": "Font Style",
+          "group": "Text Style",
+          "plug": "input",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "Normal",
+                "value": "normal"
+              },
+              {
+                "label": "Italic",
+                "value": "italic"
+              }
+            ],
+            "parentPort": "textStyle"
+          },
+          "isSignal": false,
+          "default": "normal",
+          "description": "Renders the text upright or italic",
+          "index": 21.6,
+          "allowVisualStates": true
+        },
+        {
           "name": "fontWeight",
           "displayName": "Font Weight",
           "editorName": "Font Weight",
@@ -27518,6 +27575,7 @@
               "fontFamily",
               "fontSize",
               "fontWeight",
+              "fontStyle",
               "color",
               "letterSpacing",
               "lineHeight",
@@ -39022,6 +39080,32 @@
           "allowVisualStates": true
         },
         {
+          "name": "fontStyle",
+          "displayName": "Font Style",
+          "editorName": "Font Style",
+          "group": "Label Text Style",
+          "plug": "input",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "Normal",
+                "value": "normal"
+              },
+              {
+                "label": "Italic",
+                "value": "italic"
+              }
+            ],
+            "parentPort": "textStyle"
+          },
+          "isSignal": false,
+          "default": "normal",
+          "description": "Renders the text upright or italic",
+          "index": 21.6,
+          "allowVisualStates": true
+        },
+        {
           "name": "fontWeight",
           "displayName": "Font Weight",
           "editorName": "Font Weight",
@@ -39673,6 +39757,7 @@
               "fontFamily",
               "fontSize",
               "fontWeight",
+              "fontStyle",
               "color",
               "letterSpacing",
               "lineHeight",
@@ -40159,6 +40244,7 @@
               "fontFamily",
               "fontSize",
               "fontWeight",
+              "fontStyle",
               "color",
               "letterSpacing",
               "lineHeight",
@@ -41182,6 +41268,32 @@
           "allowVisualStates": true
         },
         {
+          "name": "labelfontStyle",
+          "displayName": "Font Style",
+          "editorName": "Font Style",
+          "group": "Label Text Style",
+          "plug": "input",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "Normal",
+                "value": "normal"
+              },
+              {
+                "label": "Italic",
+                "value": "italic"
+              }
+            ],
+            "parentPort": "labeltextStyle"
+          },
+          "isSignal": false,
+          "default": "normal",
+          "description": "Renders the text upright or italic",
+          "index": 21.6,
+          "allowVisualStates": true
+        },
+        {
           "name": "labelfontWeight",
           "displayName": "Font Weight",
           "editorName": "Font Weight",
@@ -41256,6 +41368,7 @@
               "fontFamily",
               "fontSize",
               "fontWeight",
+              "fontStyle",
               "color",
               "letterSpacing",
               "lineHeight",
@@ -42100,6 +42213,7 @@
               "labelfontFamily",
               "labelfontSize",
               "labelfontWeight",
+              "labelfontStyle",
               "labelcolor",
               "labelletterSpacing",
               "labellineHeight",
@@ -42942,6 +43056,32 @@
           "allowVisualStates": true
         },
         {
+          "name": "fontStyle",
+          "displayName": "Font Style",
+          "editorName": "Font Style",
+          "group": "Text Style",
+          "plug": "input",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "Normal",
+                "value": "normal"
+              },
+              {
+                "label": "Italic",
+                "value": "italic"
+              }
+            ],
+            "parentPort": "textStyle"
+          },
+          "isSignal": false,
+          "default": "normal",
+          "description": "Renders the text upright or italic",
+          "index": 21.6,
+          "allowVisualStates": true
+        },
+        {
           "name": "fontWeight",
           "displayName": "Font Weight",
           "editorName": "Font Weight",
@@ -43196,6 +43336,32 @@
           "allowVisualStates": true
         },
         {
+          "name": "labelfontStyle",
+          "displayName": "Font Style",
+          "editorName": "Font Style",
+          "group": "Label Text Style",
+          "plug": "input",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "Normal",
+                "value": "normal"
+              },
+              {
+                "label": "Italic",
+                "value": "italic"
+              }
+            ],
+            "parentPort": "labeltextStyle"
+          },
+          "isSignal": false,
+          "default": "normal",
+          "description": "Renders the text upright or italic",
+          "index": 21.6,
+          "allowVisualStates": true
+        },
+        {
           "name": "labelfontWeight",
           "displayName": "Font Weight",
           "editorName": "Font Weight",
@@ -43270,6 +43436,7 @@
               "fontFamily",
               "fontSize",
               "fontWeight",
+              "fontStyle",
               "color",
               "letterSpacing",
               "lineHeight",
@@ -43813,6 +43980,7 @@
               "fontFamily",
               "fontSize",
               "fontWeight",
+              "fontStyle",
               "color",
               "letterSpacing",
               "lineHeight",
@@ -44333,6 +44501,7 @@
               "labelfontFamily",
               "labelfontSize",
               "labelfontWeight",
+              "labelfontStyle",
               "labelcolor",
               "labelletterSpacing",
               "labellineHeight",
@@ -45341,6 +45510,32 @@
           "allowVisualStates": true
         },
         {
+          "name": "labelfontStyle",
+          "displayName": "Font Style",
+          "editorName": "Font Style",
+          "group": "Label Text Style",
+          "plug": "input",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "Normal",
+                "value": "normal"
+              },
+              {
+                "label": "Italic",
+                "value": "italic"
+              }
+            ],
+            "parentPort": "labeltextStyle"
+          },
+          "isSignal": false,
+          "default": "normal",
+          "description": "Renders the text upright or italic",
+          "index": 21.6,
+          "allowVisualStates": true
+        },
+        {
           "name": "labelfontWeight",
           "displayName": "Font Weight",
           "editorName": "Font Weight",
@@ -45415,6 +45610,7 @@
               "fontFamily",
               "fontSize",
               "fontWeight",
+              "fontStyle",
               "color",
               "letterSpacing",
               "lineHeight",
@@ -46227,6 +46423,7 @@
               "labelfontFamily",
               "labelfontSize",
               "labelfontWeight",
+              "labelfontStyle",
               "labelcolor",
               "labelletterSpacing",
               "labellineHeight",
@@ -49319,6 +49516,32 @@
           "allowVisualStates": true
         },
         {
+          "name": "fontStyle",
+          "displayName": "Font Style",
+          "editorName": "Font Style",
+          "group": "Text Style",
+          "plug": "input",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "Normal",
+                "value": "normal"
+              },
+              {
+                "label": "Italic",
+                "value": "italic"
+              }
+            ],
+            "parentPort": "textStyle"
+          },
+          "isSignal": false,
+          "default": "normal",
+          "description": "Renders the text upright or italic",
+          "index": 20.6,
+          "allowVisualStates": true
+        },
+        {
           "name": "fontWeight",
           "displayName": "Font Weight",
           "editorName": "Font Weight",
@@ -49562,6 +49785,32 @@
           "allowVisualStates": true
         },
         {
+          "name": "labelfontStyle",
+          "displayName": "Font Style",
+          "editorName": "Label Font Style",
+          "group": "Label Text Style",
+          "plug": "input",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "Normal",
+                "value": "normal"
+              },
+              {
+                "label": "Italic",
+                "value": "italic"
+              }
+            ],
+            "parentPort": "labeltextStyle"
+          },
+          "isSignal": false,
+          "default": "normal",
+          "description": "Renders the text upright or italic",
+          "index": 21.6,
+          "allowVisualStates": true
+        },
+        {
           "name": "labelfontWeight",
           "displayName": "Font Weight",
           "editorName": "Label Font Weight",
@@ -49636,6 +49885,7 @@
               "fontFamily",
               "fontSize",
               "fontWeight",
+              "fontStyle",
               "color",
               "letterSpacing",
               "lineHeight",
@@ -50246,6 +50496,7 @@
               "fontFamily",
               "fontSize",
               "fontWeight",
+              "fontStyle",
               "color",
               "letterSpacing",
               "lineHeight",
@@ -50840,6 +51091,7 @@
               "labelfontFamily",
               "labelfontSize",
               "labelfontWeight",
+              "labelfontStyle",
               "labelcolor",
               "labelletterSpacing",
               "labellineHeight",

@@ -53,33 +53,16 @@ describe('the style vocabulary against the catalog', () => {
   });
 
   /**
-   * Styles the vocabulary teaches that no port can carry — filed, not fixed.
+   * Styles the vocabulary teaches that no port can carry.
    *
-   * All of them are `Text` being asked to behave like a box. `Text` in this
-   * runtime deliberately is not one: it has no background, no padding and no
-   * border, and a boxed piece of text is a `Text` inside a `Group`. So the
-   * `code` and `blockquote` variants describe something the node cannot be,
-   * and `fontStyle` (italic) is a typography axis with no port at all — the
-   * same shape of hole `fontWeight` was.
-   *
-   * Whether the repair is to give `Text` those ports or to change what the
-   * variants claim is a design-system decision, not a test's. What this list
-   * does is stop a *new* one appearing unnoticed, which is how all three
-   * previous instances got in.
+   * Empty, and meant to stay that way. The eleven that were here when this gate
+   * was written were resolved two ways: `fontStyle` became a port, because it
+   * was a typography axis with no way to express it — the same hole `fontWeight`
+   * was — and the rest were `Text` being asked to behave like a box, which it
+   * deliberately is not. `code`'s tint and `blockquote`'s rule now belong to a
+   * wrapping `Group`, and the variants describe only what a `Text` can be.
    */
-  const KNOWN_ORPHANS = [
-    'Text.backgroundColor',
-    'Text.borderLeftColor',
-    'Text.borderLeftStyle',
-    'Text.borderLeftWidth',
-    'Text.borderRadius',
-    'Text.fontStyle',
-    'Text.paddingBottom',
-    'Text.paddingLeft',
-    'Text.paddingRight',
-    'Text.paddingTop',
-    'net.noodl.controls.button.textDecoration'
-  ];
+  const KNOWN_ORPHANS: string[] = [];
 
   it('names only ports the node types actually declare', () => {
     const orphans = styles
