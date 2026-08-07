@@ -248,6 +248,40 @@ before the cause was known.
 
 Not attempted. Needs a build and someone who did not write it.
 
+### G. Criterion 4 — redaction against a hostile fixture
+
+**Verified live, 2026-08-07 (third session that day).** Not verifiable from
+the build notes at the time this file was written — the 87-test unit suite
+(`hostile-fixture.test.ts`) exercises `composeReport` directly, which is
+exactly the "argued rather than demonstrated" shape criterion 4 rules out.
+
+Built a real project
+(`~/vscode_projects/NodeGX test projects/alpha007-hostile-fixture`, not
+committed) carrying an API key in a node parameter, a backend endpoint in
+`metadata.cloudservices`, a component named after a client
+(`Acme Legal Client Portal`), an unregistered private-module node type, and
+paths outside the project root — the same shapes `hostile-fixture.test.ts`
+uses, built as an actual openable project rather than a duck-typed fixture
+object. Opened it for real (patched `dialog.showOpenDialog` on the
+main-process inspector to skip the unscriptable native picker, then clicked
+the launcher's own "Open project…" button), injected matching hostile
+`console.error`/`console.warn` lines so the live `errorTail.ts` ring buffer
+held them, then drove `Help → Report a problem…` through the real menu,
+typed a real "what happened", and clicked "Open GitHub with this filled in"
+for real — capturing the actual composed URL off the OS clipboard rather than
+letting the issue-filing page stay open, and closing it unsubmitted.
+
+Decoded and parsed the real URL's nine fields plus the on-disk
+`report.md`/`diagnostics.json`, and grepped all of it — raw and decoded, so a
+percent-encoded secret can't hide — for every hostile string. **None
+survived.** Full account, including the one non-defect observation (a CSP
+warning correctly excluded by the 5-minute window, not by redaction) and the
+one process trap this session hit (`shell.openExternal` must be patched in
+the **renderer**, not the main process — `platform-electron.ts` imports
+`shell` directly into renderer code, a different binding than
+`process.mainModule.require('electron').shell`), is in `PROGRESS.md`'s
+2026-08-07 third-session log entry.
+
 ---
 
 ## The Help Center addition — one block, for the orchestrator to apply

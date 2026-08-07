@@ -18,7 +18,7 @@ Not started · In progress · **Built–not wired** · Complete · Superseded
 | [ALPHA-004](./ALPHA-004-USER-DOCS.md) Documentation for someone who is not us | 2 | 🟡 **Content written and now live in a real site** | **Re-scoped 2026-07-31** — platform half moved to ALPHA-006; retains the authored concept set, getting-started and troubleshooting. Content drafted 2026-08-07 (`fb0cc18f`), and as of ALPHA-006 §2/§3 the same day it's built into `docs-site/` rather than sitting in a staging folder — no longer blocked on the site existing. **Criteria 1 and 4 are unmet and need a human**: criterion 1 wants a person who's never seen NodeGX to actually build the getting-started app from the doc, and criterion 4 (concept vocabulary matches the AI prompts and Learn curriculum) hasn't been cross-checked against either. Criteria 2/3/5 hold — §3's generator satisfies 2, "derive never author twice" was followed for 3, every doc states "Describes NodeGX 0.1.0" for 5 |
 | [ALPHA-005](./ALPHA-005-LEGAL-SURFACE.md) The paperwork that ships with a binary | 2 | ✅ **Complete** | 2026-07-30. `PRIVACY.md` + `TERMS.md` written from the code, licence fields added, both reachable from the Application/Help menus and shown at first run. **Criterion 5 (an outside reader) is owed** — see below |
 | [ALPHA-006](./ALPHA-006-DOCS-PLATFORM.md) The docs platform, and the old site's disposition | 2 | 🟡 **§1–§4, §5 (code half) and §6 complete — only §5's actual repo strip left, and it's sequenced on two GitHub admin actions** | **§1/§6 built 2026-08-03, merged 2026-08-06** (see the log). §1 — `utils/nodeDocs.ts` reads the bundled catalog, `docs-parser.ts` deleted, so no node's help depends on a website. §6 — the Help Center stops shipping Noodl. **§5's code half, §2, §3 done 2026-08-07; §4 and B5 decided 2026-08-08.** §5 — `getContentEndpoint()` split from `getDocsEndpoint()`. §2 — a real Docusaurus 3 site at `docs-site/`, wired into `workspaces`/`lerna.json`. §3 — `scripts/generate-node-docs.js`, one generated page per catalog node, staleness-gated. **§4 — `docs-site/MIGRATION.md`, all 431 `opennoodl-docs` files classified into 5 fates** (112 generated/superseded, 24 ported, 33 salvaged, 193 stay in the payload repo, 69 deleted — zero unclassified). **B5 decided**: payload repo stays separate (renamed), docs publish from this repo's own GitHub Pages — see the 2026-08-07 log entry. **What's left**: the two GitHub admin actions B5 needs (repo rename, enable Pages), then the actual `opennoodl-docs` strip and Help Center repoint, in that order — none of it is an engineering unknown any more, all of it is sequenced on Richard. `docs-site-content/` is still a stale duplicate of `docs-site/docs/`, pending a human `git rm` |
-| [ALPHA-007](./ALPHA-007-FEEDBACK-LOOP.md) A feedback loop that closes | 2 | 🟡 **Driven live for the first time, 2026-08-07 — criterion 2 confirmed, F104 found and fixed** | **Built 2026-08-03, merged 2026-08-06; driven live 2026-08-07** via the main-process inspector (`Help → Report a problem…` is a native `Menu`/`MenuItem`, invisible to `npm run cdp`). **Criterion 2 confirmed real**: opened over the "All sheets" popup without dismissing it — the popup is visible both live and in the captured screenshot thumbnail. Found and fixed **F104** along the way (the composer's own content was unreachable past 90vh — a general `CoreBaseDialog` defect, not specific to this dialog). Field prefill (criterion 3) verified against real composed data — `what-happened`/`surface`/`severity`/`os`/`version`/`fresh-project`/`diagnostics`/`errors` all landed correctly and matched the dropdown selections, URL 3.1KB (well under the 6KB budget) — but GitHub's own dropdown-acceptance behaviour still needs a signed-in browser, deliberately not attempted here to avoid risking a real issue filing (a prior session's own live click did exactly that). Redaction spot-checked on real console output: an Electron security-warning URL was correctly collapsed to `<url>`. Bundle (criterion 5) confirmed written correctly on macOS — `report.md` + `diagnostics.json` + `screenshot.jpg`, matching the spec's schema. **Still owed:** B6's full sign-in check (B4 was already done 2026-08-06 — `gh label list` confirms all nine labels live; the prior handover's "B4 owed" was stale), criterion 4's hostile-fixture demonstration (covered today only by the existing 87-test unit suite, not re-run live), criterion 1 (packaged build, two platforms) |
+| [ALPHA-007](./ALPHA-007-FEEDBACK-LOOP.md) A feedback loop that closes | 2 | 🟡 **Criteria 2, 3 (partial) and 4 demonstrated live, 2026-08-07 — F104 found and fixed** | **Built 2026-08-03, merged 2026-08-06; driven live across two 2026-08-07 sessions.** Via the main-process inspector (`Help → Report a problem…` is a native `Menu`/`MenuItem`, invisible to `npm run cdp`). **Criterion 2 confirmed real**: opened over the "All sheets" popup without dismissing it — the popup is visible both live and in the captured screenshot thumbnail. Found and fixed **F104** along the way (the composer's own content was unreachable past 90vh — a general `CoreBaseDialog` defect, not specific to this dialog). Field prefill (criterion 3) verified against real composed data — but GitHub's own dropdown-acceptance behaviour still needs a signed-in browser (B6, unblocked and two minutes of work). **Criterion 4 demonstrated live, not argued**: built a real project (`~/vscode_projects/NodeGX test projects/alpha007-hostile-fixture`) carrying an API key in a node parameter, a backend endpoint in `metadata.cloudservices`, a component named `Acme Legal Client Portal`, and paths outside the project root, then drove the actual composer end to end — the real composed GitHub URL (captured via clipboard after a real, non-submitted browser tab open, then closed), the on-disk `report.md`, and `diagnostics.json` were all decoded and grepped for all twelve secret strings. **None survived.** `appId`/`masterKey`/emails/paths/the endpoint all redacted correctly; the project summary's `nodeTypes` histogram bucketed the private module as `<unknown>` and never named the client component; the screenshot alone is deliberately unredacted (shown to the reporter before send, by design, not an automatic-report leak). Bundle (criterion 5) confirmed written correctly on macOS — `report.md` + `diagnostics.json` + `screenshot.jpg`, matching the spec's schema. **Still owed:** B6's full sign-in check, criterion 1 (packaged build, two platforms), Windows/Linux reveal-in-file-manager |
 
 ## Recommended order
 
@@ -882,3 +882,86 @@ evidence, not speculation — each was measured.
 
   Full stack stopped cleanly (`npm run dev:stop`) at the end; `typecheck:editor`
   clean on both fixes.
+
+- **2026-08-07 (third session) — ALPHA-007 criterion 4, demonstrated live.**
+  The prior two sessions both explicitly deferred this: "the existing 87-test
+  unit suite covers this" is exactly the "argued rather than demonstrated"
+  criterion 4 forbids. This session built the hostile fixture for real and drove
+  it through the actual composer.
+
+  **The fixture.** `~/vscode_projects/NodeGX test projects/alpha007-hostile-fixture`
+  (legacy monolithic `project.json`, generated, not committed — it exists only
+  to be hostile). A component named `Acme Legal Client Portal` holding Text
+  nodes whose parameters carry an Anthropic-shaped API key, an AWS key id, a
+  password, a reporter email, a path outside the project root
+  (`/Volumes/ClientShare/Acme Legal/rates-2026.xlsx`) and one under `$HOME`, plus
+  a node of an unregistered type (`com.acmelegal.internal.BillingWidget`) —
+  and `metadata.cloudservices` pointing at a fictitious
+  `acme-legal-internal.example.com` endpoint with `appId: acme-legal-prod`.
+  `npm run validate:project` passes clean (0 errors, 1 expected warning for the
+  unresolved type). Opened not through the native file dialog (unscriptable)
+  but by patching `dialog.showOpenDialog` on the main-process inspector to
+  return the fixture's path, then clicking the launcher's real "Open project…"
+  button (`[data-test=launcher-open-project]`) — the ordinary `openDialog` →
+  `openProjectFromFolder` → `router.route({to:'editor'})` path ran unmodified.
+
+  **The error tail.** Seven `console.error`/`console.warn` calls from the
+  renderer, mirroring `hostile-fixture.test.ts`'s own fixture almost exactly
+  (a failed fetch carrying the endpoint and API key as a query param, an ENOENT
+  on the outside path, a warn on the home path, a stack frame naming the
+  component-as-filename, a rejected sign-in naming the reporter's email, a
+  Parse-shaped `{"masterKey":...,"appId":...}` line, and an uncaught-error
+  line). Confirmed captured in the live ring buffer via
+  `errorTail.ts`'s `getErrorTail()`, called through the `webpackChunknoodl_editor`
+  require-capture trick already used by `scripts/pol39-live/*`.
+
+  **Drove the real composer, not a mock.** `Menu.getApplicationMenu()` →
+  `Help` → `'Report a problem…'.click()` (same recipe as the prior sessions).
+  Typed a real "what happened", expanded the composer's own "What gets sent"
+  disclosure and read the live-rendered JSON straight out of the DOM — every
+  secret already absent there. Clicked "Open GitHub with this filled in" for
+  real this time (deliberately, to get the actual composed URL rather than
+  arguing from the preview alone) — this **does** open a real browser tab
+  (Firefox, confirmed via `osascript`/System Events), since `platform.openExternal`
+  in `platform-electron.ts` imports `shell` directly into the **renderer**, not
+  the main process; a same-session attempt to intercept it via the main-process
+  inspector patched the wrong process and silently no-opped. Recovered by
+  reading the composed URL off the OS clipboard (`Cmd+L`, `Cmd+C` via System
+  Events) and closing the tab with `Cmd+W` before anything was submitted — no
+  issue was filed. **Correction for future sessions: `shell.openExternal` must
+  be patched in the renderer (`require('electron').shell` via `npm run cdp --
+  eval`), not on the main-process inspector — they are different bindings and
+  patching one does not affect the other.**
+
+  **The verdict.** Decoded and parsed the real captured URL (all nine fields:
+  `template`, `what-happened`, `surface`, `severity`, `version`, `os`,
+  `fresh-project`, `errors`, `diagnostics`), plus the on-disk
+  `report.md`/`diagnostics.json`, and grepped both — raw and decoded/parsed,
+  per the unit test's own discipline against percent-encoding — for all twelve
+  hostile strings (the API key, the AWS key, the endpoint URL and bare host,
+  the client name, both outside paths, the private module name, the password,
+  the email, the app id). **None appeared anywhere.** The `diagnostics.project`
+  block showed `"format": "legacy"`, `"components": 4`, a `nodeTypes` histogram
+  bucketing the private module under `<unknown>` and never naming the
+  component, and `"backendConfigured": true, "backendType": "parse"` with the
+  endpoint itself absent — exactly the allow-list design in `diagnostics.ts`
+  working as documented. The error tail redacted the fetch line to `Failed to
+  fetch <url>` (endpoint and key both gone), both outside paths to `<path>`,
+  the Parse-shaped JSON line to `{"masterKey":[redacted],"appId":[redacted]}`,
+  and the email to `[redacted-email]`. **One observation, not a defect**: the
+  ring buffer actually held 8 entries at capture time, not 7 — the 8th was a
+  genuine, unprompted Electron CSP security warning logged ~4.7 minutes
+  earlier, correctly excluded by `formatErrorTail`'s own documented 5-minute
+  `windowMs` ("the last few minutes" per §3), not by anything redaction-related.
+  The screenshot in the bundle *does* show the hostile project's own on-canvas
+  text (`Welcome, Acme Legal`) in plain sight — deliberate, not a leak: the
+  composer shows the reporter the screenshot before they choose to send, the
+  same human-in-the-loop model B6 already relies on for the rest of the form.
+
+  **Criterion 4 is met.** Cleaned up after: restored both main-process patches
+  (`dialog.showOpenDialog`, `electron.shell.openExternal`) to their originals,
+  deleted the real report bundle from `<userData>/reports/`, cleared the OS
+  clipboard, closed the browser tab, stopped the stack
+  (`npm run dev:stop` — 25 processes, clean). The fixture project itself was
+  left in place (uncommitted, outside the repo) for any future re-verification
+  rather than rebuilt from scratch each time.
