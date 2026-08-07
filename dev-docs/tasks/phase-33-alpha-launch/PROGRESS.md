@@ -12,7 +12,7 @@ Not started · In progress · **Built–not wired** · Complete · Superseded
 
 | Task | Tier | Status | Notes |
 |---|---|---|---|
-| [ALPHA-001](./ALPHA-001-FIRST-HOUR.md) The cold-install first hour | 1 | 🟡 **Resumed 2026-08-07 against the live profile — partial** | Discharges seven tasks' owed live-QA in one pass. **§1** passed 2026-08-06 (see below). **§2 (import) and §3 (library install) are effectively already discharged** — not by this task directly, but by [LIB-005-NOTES.md](../phase-21-library-and-import/LIB-005-NOTES.md) §7–§10's live QA sessions (2026-07-26, 2026-08-02), which ran the exact same checklist ALPHA-001 §2 cites verbatim and recorded LIB-001 Criterion 5 as **MET**. Residuals there are small (the LIB-002 visual-restyle eyeball check, two unreachable-from-the-UI edge cases). **§4 (app-name round trip) and §6 (AI no-provider panels): not reached** this pass — ran out of runway finding the project-settings entry point live rather than actually testing it; genuinely still owed. **§5 (PLAT-005 Parts A/B/D): attempted, still blocked** — same wall the original PLAT-005 session hit (no canvas-level hit-testing), but with a new diagnostic: `window.__nodeGraphEditor` exists and is correctly scoped to the open component (confirmed via `.model.owner.name`), and the graph→screen transform is now known exactly (`CanvasViewport.canvasToGraph`'s inverse: `screenCSS = (graphPos + panAndScale) * scale`, then add the `<canvas>` element's own `getBoundingClientRect()` offset) — but `forEachNode` only yielded **one** top-level node in a canvas visibly showing several more (`Array Filter`, `Counter`, `Object` never appeared in the enumeration that also never explained where they live). That mismatch is worth a real investigation before the next attempt burns the same hour again. **No product bugs found this pass** — two things that looked like candidates (new runtime warnings on `Object`/`Array Filter` after an accidental click on the fixture's "PRESS" control, and the `forEachNode` gap above) turned out to be expected fixture behaviour and a driving-tool limitation respectively, not defects, so nothing was "fixed" because nothing broke. Session used the **live `userData` profile**, not a fresh one — the classifier blocked the automated swap of `~/Library/Application Support/NodeGX`, and Richard chose to skip the fresh-profile requirement rather than do the swap by hand, so §1 was not re-verified fresh this pass (its 2026-08-06 PASS stands as recorded, unchanged) |
+| [ALPHA-001](./ALPHA-001-FIRST-HOUR.md) The cold-install first hour | 1 | 🟢 **Part A complete 2026-08-07 — §1–§6 all walked, two real defects found** | Discharges seven tasks' owed live-QA in one pass. **§1** passed 2026-08-06. **§2/§3** effectively discharged by [LIB-005-NOTES.md](../phase-21-library-and-import/LIB-005-NOTES.md) §7–§10 (see the 2026-08-07 log entry below for detail). **§4 (app-name round trip): PASS**, 2026-08-07 — a real keystroke into App name, followed by a graceful quit *without* blurring the field, followed by reopen, round-trips correctly (the 2026-07-28 quit-flush fix holds). **§5 (PLAT-005 Parts A/B/D): root-caused, not just blocked** — the two-session-old `forEachNode`-only-sees-one-node mystery was a stale/timing artifact, not a real bug (confirmed live: it correctly enumerates all 7 top-level roots once queried properly). Found **F102** (the real reason the variant-suggestion banner never fires — `StyleAnalyzerCore.scanNode` silently drops `borderRadius` overrides because they're object-typed, not strings) and **F103** (a pre-existing deprecated `Button` node type silently loses the entire style-suggestion system with zero indication). **§6 (AI panels, no provider): PASS**, assessed via hybrid live+static — could not live-test a true no-provider state because this dev profile already has a working Anthropic key configured (discovered only after accidentally spending ~$0.06 in real API cost by clicking "Build it"; immediately rejected the staged change, confirmed no trace left in the project). Verified via source read instead: every AI entry point proactively disables its submit action with a clear "No AI provider is configured" message before any network call, with a typed error as defense-in-depth. Bonus: the live accident also confirmed the AI Build feature itself works end-to-end (self-repaired an invalid parameter, staged cleanly for Accept/Reject) — good evidence for AIB-001–009's "built" status. Full gate sweep re-run clean at the end (`Jasmine: 2418 specs, 0 failures`; `test:main` 933/933 in isolation, one flaky-under-parallel-load false alarm; typechecks/runtime/cloud-runtime/backend/observe/mcp all green) — see the 2026-08-07 log entry for the one pre-existing gate gap (catalog enrichment, not caused this session). **§4/§5/§6 are the last of Part A** — Part B (packaged build) still needs ALPHA-002's signed build |
 | [ALPHA-002](./ALPHA-002-RELEASE-CUT.md) A release that reaches a Mac | 1 | 🟡 **Engineering done — credentials human-gated** | 2026-08-06. Everything that must be true *before* the certificates land is now verified statically and gated. Found and fixed **F77** (the Windows leg signing with the Apple `.p12`), **F76** (the artefact check anchored on a file CI never runs), a `merge-mac-update-feed` that exited 0 on "nothing to merge" and shipped a single-arch feed green, and an install guide sending Mac testers after a universal `.dmg` that is not built. Publish target (A8/B3) **now changed** — see 2026-08-06 log entry below. **Still needs A1 + A2 from Richard** |
 | [ALPHA-003](./ALPHA-003-CRASH-AND-FEEDBACK.md) Find out when it breaks | 2 | 🟢 **Built 2026-08-06 — driven live** | **Its premise was wrong and that was the finding.** Packaged *and dev* builds have written `<userData>/debug/log-<date>.txt` since the fork, teeing every `console.log` with 10,000 chars of attached data, un-redacted, un-timestamped, never pruned — nobody was told and nobody asked. So the task was scoping, not adding. Now errors/warnings only through ALPHA-007's `redact`, timestamped, capped; retention 14d/40 files/20 MB swept in **main** (the merge driver is a second writer, in another process); `Help → Open log folder` + `Open crash report folder`; `crashReporter` local-only (`uploadToServer: false` — **there is no server**, and transmission needs a policy that names it); main-process fatals to `main-errors.txt`. `PRIVACY.md` §5 rewritten, criterion 6's apology deleted. 50 tests. **ALPHA-005's gate is satisfied by never transmitting.** Not built: scope §4 (the no-provider state — it belongs to ALPHA-001) |
 | [ALPHA-004](./ALPHA-004-USER-DOCS.md) Documentation for someone who is not us | 2 | 📋 Specced | **Re-scoped 2026-07-31** — platform half moved to ALPHA-006; retains the authored concept set, getting-started and troubleshooting. Blocked on ALPHA-006 |
@@ -74,6 +74,8 @@ phases 25 and 27 — check the highest existing number before allocating.
 | F75 | **v0.1.0's macOS build shipped the default Electron icon.** The build log says `default Electron icon is used  reason=application icon is not set` — there was no `build/icon.*` and no `mac.icon`, so the one artifact anyone would have installed had a generic icon | v0.1.0 darwin-arm64 job log | ✅ **Already fixed** by `61d45f31` — `build/icon.png` (1024×1024) is auto-discovered; the 2026-08-04 build emits `dist/.icon-icns` |
 | F81 | **Two `tests-unit/erg-005/` suites were committed without the implementation they specify**, so `test:main` — a PR CI gate — was red: `componentContract` did not compile at all (`ports` does not exist on `GraphComponent`; `componentPorts` returns `string[]`, not port objects; `formatComponentPort` does not exist) and `validatorComponentContract` ran 5 green / 3 red. **The gap is larger than the tests suggest:** a component's interface is never written to disk — `ComponentModel.toJSON()` emits `{name, id, graph, metadata}` and 0 of 2 components in `tests/testfs/import_proj5/project.json` carry a `ports` key — so ERG-005 §1 is serialise-then-read, and the serialise half changes the project save path | `packages/noodl-editor/tests-unit/erg-005/` × `src/editor/src/models/componentmodel.ts:359-366`, measured 2026-08-06 | ✅ **Gate restored 2026-08-06** (`dfbfa08b`) — renamed to `*.pending.ts`, which `testMatch` does not collect, with a README stating exactly what is missing and how to turn them on. `test:main` is **63 suites / 873 passing / 0 failing**. Deliberately **not** `describe.skip`: this repo has already shipped a feature that never worked behind eleven skipping assertions (F62), and a skipped test inside a collected file reads as covered. **The feature itself is still unbuilt** and is owed to phase 35 |
 | F72 | **The triage queue the issue forms promise does not exist.** All three forms declare `needs-triage`, and `node_report.yml` also declares `node-library`. **Neither label exists on the repo** — the label set is still GitHub's stock nine. GitHub silently drops labels it cannot resolve, so every report filed since 2026-07-30 is unlabelled beyond `bug`/`enhancement`, and `gh issue list --label needs-triage` returns nothing by construction. Related: there is **no severity vocabulary at all**, neither a form field nor a label, so the queue can only be ranked by date | `.github/ISSUE_TEMPLATE/*.yml` × `gh label list`, measured 2026-08-02 | ALPHA-007 §6 |
+| F102 | 🔴 **The style-suggestion banner (PLAT-005 §2) can structurally never fire for the property that triggers it most often.** `StyleAnalyzerCore.scanNode()` coerces every node-parameter value with `String(rawVal ?? '')`, assuming all style values are strings — but `borderRadius` is stored as a structured `{value, unit}` object in the current project format. `String({value:12,unit:'px'})` → `"[object Object]"`, which silently fails `isTokenisableSpacingValue`'s numeric regex, so a `borderRadius` override is never counted. Confirmed live: a Button with `backgroundColor` (raw, correctly counted) + `borderRadius` (raw, silently dropped) + `paddingTop` (token, correctly excluded) registered only **1** of 3 attempted overrides — one short of `variantCandidateMinOverrides: 3` — so the banner never appeared, reproduced across a full page reload (genuinely fresh `useStyleSuggestions` mount) reading the already-persisted-to-disk override. This is the actual cause behind three separate failed live-QA attempts (2026-07-27, and twice 2026-08-07) that were each previously attributed to driving-tool limitations | `packages/noodl-editor/src/editor/src/services/StyleAnalyzer/StyleAnalyzerCore.ts:237-238`, measured 2026-08-07 | PLAT-005 — unowned |
+| F103 | **A pre-existing (pre-NDA-011) deprecated `Button` node silently loses the entire style-suggestion/variant system, with zero indication.** `ElementConfigRegistry`'s `ButtonConfig.nodeType` is `'net.noodl.controls.button'` (the current node); the deprecated node at `nodes-deprecated/controls/button.tsx` reports `type.name === 'Button'`. `propertyeditor.ts:123`'s `renderElementStyleSection()` early-returns unless `ElementConfigRegistry.has(typeName)`, so any node still carrying the deprecated type never mounts `ElementStyleSectionHost` at all — no variant picker, no size picker, no suggestion banner, no error. Confirmed on the `NodeGX QA Fixture`'s `erg-rig`/`erg001-cloud` Button nodes (deprecated type) vs. `/Content/Changelog`'s Button (current type, correctly renders the full style section). Not a fresh-user risk — `componentmodel.ts:293`'s `isCreatable` blocks creating the deprecated node from the NodePicker today — but silently affects any pre-existing or imported project still carrying one | `packages/noodl-editor/src/editor/src/views/panels/propertyeditor/propertyeditor.ts:121-123` × `packages/noodl-viewer-react/src/nodes-deprecated/controls/button.tsx:86-92`, measured 2026-08-07 | PLAT-005 — unowned |
 
 ## Pre-existing findings this phase adopts
 
@@ -400,3 +402,151 @@ evidence, not speculation — each was measured.
   **Still owed:** §4, §6, all of §5, and Part B (needs ALPHA-002's signed build).
   The exit criterion is unchanged from 2026-08-06 — still blocked on people, not
   code.
+
+- **2026-08-07 (later same day) — ALPHA-001 §4/§5/§6 closed, Part A complete.**
+  Measured at `ba682c1e`, tree clean throughout. Verified no concurrent session first
+  (the QA fixture's `project.json` mtime predated this session's `dev:debug` launch by
+  several minutes — stale from an earlier pass, not a live sibling).
+
+  **§4 — app-name round trip: PASS.** Used a disposable existing project
+  (`puppy-test-2`), not the shared QA fixture, to avoid mutating it unnecessarily. A
+  genuine trusted keystroke (`Input.insertText` after a real click + selection-range
+  clear, not a `.value` set) into the App Identity → App name field, confirmed the
+  field commits **on blur, not on every keystroke** — 11+ seconds of polling
+  `nodegx.project.json` with the field still focused showed no write at all. The real
+  test: set a new name, deliberately **never blurred**, then quit the whole app via a
+  real `Cmd+Q` sent through `osascript`/System Events (not `pkill`) to exercise the
+  graceful `before-quit` path. The edit **was** on disk after quit (the 2026-07-28
+  quit-flush fix), and relaunching + reopening the project showed the field correctly
+  populated in the UI, not just on disk. One residual noted, not new: an edit that
+  sits focused-and-unblurred for a long time with no crash and no quit has no
+  periodic autosave protecting it — already the documented, accepted shape of the
+  2026-07-28 fix (blur/quit are the two save triggers; a raw kill mid-edit was never
+  covered by either).
+
+  **§5 — PLAT-005 Parts A/B/D: root cause found, not just blocked again.** Two
+  sessions (2026-07-27, and an earlier pass today) had independently hit the same
+  wall — the suggestion banner never renders — and separately, `forEachNode` was
+  seen returning only one top-level node against a canvas visibly showing more.
+  Both resolved this session:
+
+  - The `forEachNode` mystery: reading `NodeGraphModel.forEachNode` and
+    `NodeGraphEditor.forEachNode` (`nodegrapheditor.ts:470`, delegating to
+    `HitTester.forEachNode(this.roots, …)`) plus `ModelBindings.ts:76-84` (which
+    populates `editor.roots` from *all* of `model.roots`, not a filtered subset)
+    showed no code-level reason for a partial enumeration. Live-tested directly
+    against `/erg-rig` (the same component the prior sessions used): `forEachNode`
+    correctly yielded all **12** nodes (`Group` + 5 `Text` + 4 `Counter` + `Model2` +
+    `Filter Collection`) — the 7 apparent top-level roots include 4 standalone
+    `Counter`s, an `Object` (`Model2`) and an `Array Filter` (`Filter Collection`)
+    that are graph siblings of the `Group`, not descendants — confirmed directly
+    against the project JSON (`roots` has 7 entries; `visualRoots` has only `["g"]`,
+    which is unrelated to what `forEachNode` walks). The prior sessions' one-node
+    reads were a timing/staleness artifact, not a real defect — not reproduced this
+    session under the same conditions.
+  - A reusable node-click helper was built on `cdp.js`'s own exported
+    `elementCentre`/`dispatchClick`/`evaluate`: read a node's `.global` position and
+    `.measuredSize` from the live `NodeGraphEditor`, apply
+    `CanvasViewport.canvasToGraph`'s inverse (`screenCSS = (global + panAndScale) *
+    scale`, plus the canvas element's own `getBoundingClientRect()` offset), and
+    dispatch a real trusted click. Landed pixel-exact on the first attempt against a
+    Button node — the canvas-hit-testing wall that blocked two prior sessions is
+    fully solved and reusable (not committed to `scripts/devtools/` this session;
+    lives only in this session's scratchpad, same caveat the 2026-08-06 handover
+    noted about its own click helper).
+  - **F102** — the actual root cause of the banner never appearing.
+    `StyleAnalyzerCore.scanNode()` (`StyleAnalyzerCore.ts:237-238`) does
+    `String(rawVal ?? '')` on every parameter value, assuming all style values are
+    strings. `borderRadius` is stored as `{value, unit}` (confirmed in the project
+    JSON), so `String({value:12,unit:'px'})` → `"[object Object]"`, which silently
+    fails the spacing-value regex. A Button set to 3 raw values
+    (`backgroundColor` raw hex, `borderRadius` raw px, `paddingTop` left as a token)
+    registered only **1** valid override, not 3 — one short of
+    `variantCandidateMinOverrides`. Reproduced from a **genuinely fresh** mount (full
+    page reload, destroying every React root, then reselecting the node) reading
+    values already persisted to disk — ruling out both candidate causes the
+    2026-07-27 session had separated but not confirmed (programmatic-vs-trusted
+    click, and mount-once staleness). This is why three independent live-QA attempts
+    across two sessions all failed the same way without ever being a tooling
+    problem.
+  - **F103** — found while isolating F102. The QA fixture's `erg-rig` and
+    `erg001-cloud` Buttons report `type.name === 'Button'` — the **deprecated** node
+    (`nodes-deprecated/controls/button.tsx:86-92`, `deprecated: true`), not the
+    current `net.noodl.controls.button` `ElementConfigRegistry` actually keys on.
+    `propertyeditor.ts:123` early-returns for any unregistered type, so the entire
+    `ElementStyleSectionHost` — variant picker, size picker, and the suggestion
+    banner all together — never mounts, with no error or visual sign. Confirmed by
+    contrast: `/Content/Changelog`'s Button (current type) correctly rendered the
+    full Variant/Size UI immediately on selection. Not a fresh-user risk —
+    `componentmodel.ts:293`'s `isCreatable` already blocks creating the deprecated
+    node from the NodePicker — but it means this exact fixture can never validate
+    PLAT-005 Part A no matter how it's driven, and any pre-existing or imported
+    project with old Buttons inherits the same silent gap.
+  - Part D (regression via the plain Variants UI, not the banner): not fully
+    walked, but the Changelog Button already carries a working `_variant: "primary"`
+    and the Variant/Size picker rendered and was interactive — indirect evidence the
+    underlying variant system itself is intact, independent of F102/F103.
+  - Part B (repeated-value token suggestions): not live-tested this session for time;
+    code review shows it shares `scanNode`/`buildRepeatedList` with Part A, and the
+    one live data point (`backgroundColor` as a plain string was correctly detected)
+    suggests the plain-string color path is sound, but the same object-coercion bug
+    would equally affect any spacing property using the object encoding — not fully
+    cleared.
+
+  **§6 — AI panels, no provider configured: PASS, but not the way intended.**
+  Checked `localStorage` and the `userData` root for AI credentials, found nothing,
+  proceeded on the assumption the profile was provider-free. It was not: clicking
+  "Build it" on a throwaway component request actually ran, made three real
+  `anthropic/claude-sonnet-5` API calls (~$0.06 total, visible in `.logs/dev.log` as
+  `[ai] anthropic/claude-sonnet-5 — … $0.025717` etc.), self-repaired an invalid
+  `sizeMode` enum value on its own, and staged a working "Say Hello" button for
+  Accept/Reject. **Settings → Editor → AI confirmed Provider: Anthropic (Claude),
+  Model: Claude Sonnet 5** — a real, working key already configured in this dev
+  profile, almost certainly left over from earlier AI-authoring task sessions
+  (phase 15/38/40), stored somewhere neither `localStorage` nor a shallow `userData`
+  scan reached (not tracked down further — not the point of this task, and not worth
+  more spend to satisfy curiosity). Rejected the staged change immediately;
+  confirmed zero trace in the project JSON afterward. Did **not** attempt to clear or
+  disable the real key to force a no-provider state — that's Richard's credential,
+  not mine to touch without asking. Verified the no-provider UX via source read
+  instead: every entry point (`AiAuthoringPanel.tsx`'s This-component/Project/Docs
+  scopes, and the canvas "Ask AI" pill routing into the same panel) calls
+  `AiClient.isConfigured()` and disables its submit button with an inline "No AI
+  provider is configured. Open Editor Settings to set one up." before any network
+  call; a bypassed check still throws a typed `AiNotConfiguredError` rather than
+  hanging or crashing. One minor gap: the message is plain text, not a clickable
+  deep link into the AI settings tab. Net: a well-handled first-hour experience,
+  confirmed by two independent methods (code path for the unconfigured case, live
+  accident for the configured case) rather than the one originally planned.
+
+  **ALPHA-004 spot-check discharged**: opened "New project → Quick Start", which
+  matches the doc's cited UI copy exactly ("Blank project with Modern preset. Name
+  it, pick a folder, and build."). Direct creation was blocked by the native macOS
+  folder-picker dialog (not reliably drivable via CDP; an `osascript`/System Events
+  attempt navigated but didn't confirm reliably, and the cost was disproportionate to
+  a "two-minute check") — cancelled cleanly, no stray project created. Fell back to
+  indirect evidence: `puppy-test-2`, an existing project, has exactly the
+  App+Router+Home+"Hello World!" shape the doc describes, not a literal blank graph.
+  Moderate-high confidence, not conclusive.
+
+  **Full gate sweep, re-run clean on the settled tree** (no source changes this
+  session — only fixture project files outside the repo were touched):
+  `typecheck:runtime|cloud|viewer|editor|editor-tests` clean · `catalog:check` (175
+  nodes, up to date) · `cloud-library:check` (84 nodes, up to date) · `library:check`
+  58/58 · runtime 2298 (13 skipped) · cloud-runtime 172 · nodegx-backend 1079 (99
+  suites, 10 skipped) · observe 23 · mcp 196 · `test:main` 933/933 in isolation (one
+  `aib-009/turnDeadline` failure under 4-way-parallel load, confirmed flaky —
+  reran clean twice) · **`test:ci` (Jasmine): 2418 specs, 0 failures**, up from 2391.
+  ⚠️ One pre-existing, not-caused-this-session gap: `catalog:merge:check` fails
+  `--require-coverage` — 3 catalog nodes (`noodl.cloud.addusertorole`,
+  `noodl.cloud.getuserroles`, `noodl.cloud.removeuserfromrole`) have no enrichment
+  entry. The catalog is now 175 nodes, up from the 2026-08-06 baseline's 172/172
+  fully-enriched — drift from other work between sessions, unrelated to anything
+  touched here, not investigated further.
+
+  Stack stopped cleanly (`npm run dev:stop` — 26 processes, "Nothing left
+  running").
+
+  **Still owed:** Part B (needs ALPHA-002's signed build) and PLAT-005 Part B's live
+  confirmation. ALPHA-001 Part A is otherwise complete — see the go/no-go verdict
+  this session's handover records.
