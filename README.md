@@ -9,6 +9,8 @@ stopped shipping.
 
 This is an **alpha**. Expect rough edges, and please [report what you find](https://github.com/The-Low-Code-Foundation/NodeGX/issues/new/choose) — a working feedback loop is one of the things this phase of the project exists to build.
 
+**[Watch a tour of the new editor](https://youtu.be/fqmHH36ndc0)** — a walkthrough of what's changed, from Richard.
+
 ## Installing NodeGX
 
 **[Download the latest release](https://github.com/The-Low-Code-Foundation/NodeGX/releases/latest)** — pick the artifact for your platform.
@@ -24,6 +26,8 @@ wrong thing — so this points at the release list instead, which cannot.
 
 **[Docs site](https://the-low-code-foundation.github.io/NodeGX/)** — concepts, a
 getting-started tutorial, and a generated reference page for every node in the library.
+
+**[Changelog & roadmap](https://claude.ai/code/artifact/35dd9e33-52cc-4bc2-b63e-cea797f71ab1)** — what's shipped since the last update, and what's next.
 
 ## Community
 
