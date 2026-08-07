@@ -15,9 +15,9 @@ Not started · In progress · **Built–not wired** · Complete · Superseded
 | [ALPHA-001](./ALPHA-001-FIRST-HOUR.md) The cold-install first hour | 1 | 🟢 **Part A complete 2026-08-07 — §1–§6 all walked, two real defects found** | Discharges seven tasks' owed live-QA in one pass. **§1** passed 2026-08-06. **§2/§3** effectively discharged by [LIB-005-NOTES.md](../phase-21-library-and-import/LIB-005-NOTES.md) §7–§10 (see the 2026-08-07 log entry below for detail). **§4 (app-name round trip): PASS**, 2026-08-07 — a real keystroke into App name, followed by a graceful quit *without* blurring the field, followed by reopen, round-trips correctly (the 2026-07-28 quit-flush fix holds). **§5 (PLAT-005 Parts A/B/D): root-caused, not just blocked** — the two-session-old `forEachNode`-only-sees-one-node mystery was a stale/timing artifact, not a real bug (confirmed live: it correctly enumerates all 7 top-level roots once queried properly). Found **F102** (the real reason the variant-suggestion banner never fires — `StyleAnalyzerCore.scanNode` silently drops `borderRadius` overrides because they're object-typed, not strings) and **F103** (a pre-existing deprecated `Button` node type silently loses the entire style-suggestion system with zero indication). **§6 (AI panels, no provider): PASS**, assessed via hybrid live+static — could not live-test a true no-provider state because this dev profile already has a working Anthropic key configured (discovered only after accidentally spending ~$0.06 in real API cost by clicking "Build it"; immediately rejected the staged change, confirmed no trace left in the project). Verified via source read instead: every AI entry point proactively disables its submit action with a clear "No AI provider is configured" message before any network call, with a typed error as defense-in-depth. Bonus: the live accident also confirmed the AI Build feature itself works end-to-end (self-repaired an invalid parameter, staged cleanly for Accept/Reject) — good evidence for AIB-001–009's "built" status. Full gate sweep re-run clean at the end (`Jasmine: 2418 specs, 0 failures`; `test:main` 933/933 in isolation, one flaky-under-parallel-load false alarm; typechecks/runtime/cloud-runtime/backend/observe/mcp all green) — see the 2026-08-07 log entry for the one pre-existing gate gap (catalog enrichment, not caused this session). **§4/§5/§6 are the last of Part A** — Part B (packaged build) still needs ALPHA-002's signed build |
 | [ALPHA-002](./ALPHA-002-RELEASE-CUT.md) A release that reaches a Mac | 1 | 🟡 **Engineering done — credentials human-gated** | 2026-08-06. Everything that must be true *before* the certificates land is now verified statically and gated. Found and fixed **F77** (the Windows leg signing with the Apple `.p12`), **F76** (the artefact check anchored on a file CI never runs), a `merge-mac-update-feed` that exited 0 on "nothing to merge" and shipped a single-arch feed green, and an install guide sending Mac testers after a universal `.dmg` that is not built. Publish target (A8/B3) **now changed** — see 2026-08-06 log entry below. **Still needs A1 + A2 from Richard** |
 | [ALPHA-003](./ALPHA-003-CRASH-AND-FEEDBACK.md) Find out when it breaks | 2 | 🟢 **Built 2026-08-06 — driven live** | **Its premise was wrong and that was the finding.** Packaged *and dev* builds have written `<userData>/debug/log-<date>.txt` since the fork, teeing every `console.log` with 10,000 chars of attached data, un-redacted, un-timestamped, never pruned — nobody was told and nobody asked. So the task was scoping, not adding. Now errors/warnings only through ALPHA-007's `redact`, timestamped, capped; retention 14d/40 files/20 MB swept in **main** (the merge driver is a second writer, in another process); `Help → Open log folder` + `Open crash report folder`; `crashReporter` local-only (`uploadToServer: false` — **there is no server**, and transmission needs a policy that names it); main-process fatals to `main-errors.txt`. `PRIVACY.md` §5 rewritten, criterion 6's apology deleted. 50 tests. **ALPHA-005's gate is satisfied by never transmitting.** Not built: scope §4 (the no-provider state — it belongs to ALPHA-001) |
-| [ALPHA-004](./ALPHA-004-USER-DOCS.md) Documentation for someone who is not us | 2 | 📋 Specced | **Re-scoped 2026-07-31** — platform half moved to ALPHA-006; retains the authored concept set, getting-started and troubleshooting. Blocked on ALPHA-006 |
+| [ALPHA-004](./ALPHA-004-USER-DOCS.md) Documentation for someone who is not us | 2 | 🟡 **Content written and now live in a real site** | **Re-scoped 2026-07-31** — platform half moved to ALPHA-006; retains the authored concept set, getting-started and troubleshooting. Content drafted 2026-08-07 (`fb0cc18f`), and as of ALPHA-006 §2/§3 the same day it's built into `docs-site/` rather than sitting in a staging folder — no longer blocked on the site existing. **Criteria 1 and 4 are unmet and need a human**: criterion 1 wants a person who's never seen NodeGX to actually build the getting-started app from the doc, and criterion 4 (concept vocabulary matches the AI prompts and Learn curriculum) hasn't been cross-checked against either. Criteria 2/3/5 hold — §3's generator satisfies 2, "derive never author twice" was followed for 3, every doc states "Describes NodeGX 0.1.0" for 5 |
 | [ALPHA-005](./ALPHA-005-LEGAL-SURFACE.md) The paperwork that ships with a binary | 2 | ✅ **Complete** | 2026-07-30. `PRIVACY.md` + `TERMS.md` written from the code, licence fields added, both reachable from the Application/Help menus and shown at first run. **Criterion 5 (an outside reader) is owed** — see below |
-| [ALPHA-006](./ALPHA-006-DOCS-PLATFORM.md) The docs platform, and the old site's disposition | 2 | 🟡 **§1, §5 (endpoint split) and §6 complete** | **§1/§6 built 2026-08-03, merged 2026-08-06** (see the log). §1 — `utils/nodeDocs.ts` reads the bundled catalog, `docs-parser.ts` deleted, so no node's help depends on a website. §6 — the Help Center stops shipping Noodl. **§5's code half done 2026-08-07** — `getContentEndpoint()` split from `getDocsEndpoint()`; the six non-documentation payload consumers moved to it, the three real-docs consumers (`NodeLabel.tsx`, `NodePicker.hooks.ts`, `McpSettingsSection.tsx`) stayed. Both still resolve to the same origin, by design — the split is what lets them move independently, not a move by itself. **§5's disposition half (stripping `opennoodl-docs`, the 413 MB asset question) is still B5, unresolved.** §2, §3, §4 remain |
+| [ALPHA-006](./ALPHA-006-DOCS-PLATFORM.md) The docs platform, and the old site's disposition | 2 | 🟡 **§1, §2, §3, §5 (code half) and §6 complete** | **§1/§6 built 2026-08-03, merged 2026-08-06** (see the log). §1 — `utils/nodeDocs.ts` reads the bundled catalog, `docs-parser.ts` deleted, so no node's help depends on a website. §6 — the Help Center stops shipping Noodl. **§5's code half, §2 and §3 all done 2026-08-07.** §5 — `getContentEndpoint()` split from `getDocsEndpoint()`; six non-doc payload consumers moved, three real-docs consumers stayed; both still resolve to the same origin by design. §2 — a real Docusaurus 3 site at `docs-site/`, wired into `workspaces`/`lerna.json`, ALPHA-004's content dropped in, builds clean with `onBrokenLinks: 'throw'`. §3 — `scripts/generate-node-docs.js` (`npm run docs:nodes`/`docs:nodes:check`), one generated page per catalog node grouped by picker category, with a staleness gate. **§5's disposition half (stripping `opennoodl-docs`, the 413 MB asset question) and §4 (the migration table) both still need B5** — a human decision, not attempted. `docs-site-content/` is now a stale duplicate of `docs-site/docs/`, pending a human `git rm` |
 | [ALPHA-007](./ALPHA-007-FEEDBACK-LOOP.md) A feedback loop that closes | 2 | 🟡 **Parts A and B built; owed a live drive + B4/B6** | **Built 2026-08-03, merged 2026-08-06.** `utils/report/{collect,compose,diagnostics,errorTail,issueForm,redact}.ts`, `ReportProblemDialog`, `main/src/report-window.js`, `scripts/alpha-007/{create-labels.sh,prefill-probe.js}`, ~900 lines of tests. **Owed: B6** (verify the prefill by hand — it can still change the field contract) and **B4** (permission to run the label script). Never driven in a real editor |
 
 ## Recommended order
@@ -585,3 +585,93 @@ evidence, not speculation — each was measured.
   and §3 (the generator) do not depend on B5 and are the next tractable slice —
   ALPHA-004's authored content is already staged in `docs-site-content/` waiting
   for a site to go into.
+
+- **2026-08-07 — ALPHA-006 §2 (the site) and §3 (the generator), both built.**
+  Continued straight on from §5 in the same session.
+
+  **§2.** A fresh Docusaurus 3 site at `docs-site/` (repo root, per spec), wired
+  as a real workspace member — added to root `workspaces` and `lerna.json`
+  `packages`, not just dropped on disk. `npm install` at the root pulled 574
+  packages for it; nothing in the existing 15 packages needed to change (React
+  19 in the editor and React 18 in `docs-site` coexist fine under npm's nested
+  node_modules — no forced hoist). Carried over from `opennoodl-docs` only what
+  §2 asked for: `@easyops-cn/docusaurus-search-local` for offline search (the
+  old site's hardcoded Algolia `docs_2-9` client is gone since §6). Did **not**
+  carry over the old SCSS — restyled as a light-touch pass instead, one
+  `custom.css` overriding Infima's primary-color tokens with the editor's own
+  azure-500/700 (`packages/noodl-core-ui/.../colors.css`), rather than porting
+  five bespoke `.scss` files built for Noodl's now-retired branding. Logo/
+  favicon reuse the existing "Noodle" mark (`Logo.tsx`'s geometry, baked to
+  static SVG since a navbar `<img>` can't inherit `currentColor`).
+
+  ALPHA-004's staged content (`docs-site-content/`) dropped into `docs-site/docs/`
+  almost verbatim, as its own README predicted — one broken cross-link fixed
+  (`concepts/README.md` → `concepts/index.md`, a rename Docusaurus's category
+  convention wants). **`docs-site-content/` still exists on disk, now a stale
+  duplicate — deleting it was blocked by the permission classifier as a
+  destructive action; it needs a human `git rm -r docs-site-content` or explicit
+  sign-off to remove.**
+
+  ⚠️ **`url`/`baseUrl`/`organizationName`/`projectName` in `docusaurus.config.js`
+  are explicitly marked provisional in a comment.** Where this actually
+  publishes to is entangled with B5 (does `opennoodl-docs` keep serving docs at
+  its current URL, or does something else). Not this session's call.
+
+  **§3.** `scripts/generate-node-docs.js`, wired as `npm run docs:nodes` /
+  `docs:nodes:check`. Reads `node-catalog-enriched.json` (172 nodes, 17
+  categories — both counts drift from the spec's 156/whatever and from each
+  other session to session; re-measure, don't inherit) and writes one page per
+  node under `docs-site/docs/nodes/<category-slug>/`, grouped by the catalog's
+  own `category` field — the same field the picker uses, so the old site's
+  Button-is-`ui-controls`-but-`Visual` disagreement is structurally impossible
+  now. Ports split into Values/Signals/Failure outputs (failure = `group ===
+  'Error'` or a name matching `/error|failure/i`); dynamic-port mechanisms,
+  `availableIn`, SSR compatibility, patterns, anti-patterns, examples (from the
+  catalog's own `examples` array) and related-node cross-links all render.
+  Deprecated nodes get a warning admonition instead of being silently omitted,
+  per the spec's rule 3.
+
+  The staleness gate deletes and regenerates `docs-site/docs/nodes/` from
+  scratch on every non-check run (no orphan pages when a node is renamed) and,
+  in `--check` mode, diffs the fresh output against what's on disk — missing,
+  stale and orphaned files are all reported by name, exit 1 on any of them.
+  Committed the generated output rather than gitignoring it, matching
+  `cloud-library:check`'s pattern elsewhere in this repo.
+
+  **One real bug caught by actually building the site, not just eyeballing the
+  generator's output**: Docusaurus 3 parses `.md` files as MDX by default, and
+  the catalog's own prose is full of MDX-breaking sequences it was never
+  written to avoid — `<name>` placeholders read as unclosed JSX tags, `{count}`
+  reads as a bare JS expression. `docusaurus.config.js` now sets
+  `markdown.format: 'detect'` so `.md` parses as plain CommonMark; the generator
+  never had to escape catalog text. Would not have been caught by unit-testing
+  the generator's string output alone — only `docusaurus build` actually runs
+  the MDX compiler.
+
+  Verified past "the code runs": `npm run docs-site:build` succeeds
+  (`onBrokenLinks: 'throw'`, so every internal cross-link — concept-to-concept,
+  node-to-related-node, sidebar — actually resolves), then served the build and
+  `curl`-checked real pages: headings, all 7 tables on a sample node page, the
+  "Generated" info admonition, and the local search index all present in the
+  rendered HTML.
+
+  Gates re-run clean on the settled tree: `typecheck:runtime|cloud|viewer|
+  editor|editor-tests` all clean, `catalog:check` (175 nodes — that's
+  `node-catalog.json`, the *structural* catalog `catalog:check` grades; the
+  *enriched* one this session's generator reads, `node-catalog-enriched.json`,
+  is a separate file at 172. Two different counts, not one drifting number —
+  worth not conflating them again), `cloud-library:check` clean, `library:check`
+  58/58, `docs:nodes:check` clean,
+  jest 933/933, `lint:ci` 860 vs. 3916 baseline (docs-site is outside its
+  target glob, confirmed unaffected), **`test:ci` (Jasmine): 2418 specs, 0
+  failures** — identical to every other measurement today. `catalog:merge:check
+  --require-coverage` still fails on the same pre-existing 3-node gap noted
+  earlier today (`noodl.cloud.addusertorole`/`getuserroles`/`removeuserfromrole`
+  have no enrichment) — not caused here, not re-investigated.
+
+  **Still owed on ALPHA-006:** §4 (the `MIGRATION.md` disposition table for
+  `opennoodl-docs`'s 431 authored files) and the rest of §5 (the actual repo
+  strip) — both need B5. A local clone of `opennoodl-docs` exists at
+  `~/Documents/opennoodl-docs` (outside this repo, not touched), which makes §4
+  more tractable than the spec assumed — it doesn't require a fresh clone,
+  just doesn't resolve B5's decision on its own.

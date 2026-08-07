@@ -12,7 +12,8 @@
   "version": "1.1.0",
   "license": "GPL-3.0-only",
   "workspaces": [
-    "packages/*"
+    "packages/*",
+    "docs-site"
   ],
   "scripts": {
     "clean:cache": "rimraf node_modules/.cache packages/*/node_modules/.cache .eslintcache packages/*/.eslintcache && echo '\u2713 Webpack/Babel caches cleared'",
@@ -64,6 +65,10 @@
     "catalog:encoding:eval": "node scripts/node-catalog/encoding-eval.js",
     "catalog:merge": "node scripts/node-catalog/merge.js",
     "catalog:merge:check": "node scripts/node-catalog/merge.js --check --require-coverage",
+    "docs:nodes": "node scripts/generate-node-docs.js",
+    "docs:nodes:check": "node scripts/generate-node-docs.js --check",
+    "docs-site:start": "npm --prefix docs-site run start",
+    "docs-site:build": "npm run docs:nodes && npm --prefix docs-site run build",
     "catalog:examples": "ts-node -P ./scripts/tsconfig.json ./scripts/validate-examples.ts",
     "validate:project": "ts-node -P ./scripts/tsconfig.json ./scripts/validate-project.ts",
     "library:build": "node scripts/library/build.js",

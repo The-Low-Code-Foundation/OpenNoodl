@@ -1,0 +1,10 @@
+<!-- NodeGX mark, static colours for a dark navbar. Same geometry as
+     packages/noodl-core-ui/src/components/common/Logo/Logo.tsx's <Mark>; that
+     one rides currentColor/var(--theme-color-primary) because it's inlined
+     React, this one can't (an <img src> logo can't inherit page CSS), so the
+     colours are baked in twice: once here, once in logo-light.svg. -->
+<svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <path d="M6.7 8.2C19 8.2 13 23.8 25.3 23.8" stroke="#4DA3FF" stroke-width="2.6" stroke-linecap="round"/>
+  <circle cx="6.7" cy="8.2" r="3.2" fill="#EEF2F6"/>
+  <circle cx="25.3" cy="23.8" r="3.2" fill="#4DA3FF"/>
+</svg>

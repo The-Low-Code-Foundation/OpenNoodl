@@ -1,0 +1,31 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- NodeGX app icon master. Same mark as the core-ui Logo: two ports, one wire —
+       an homage to Noodl, which is the one piece of the old identity worth keeping.
+
+       The mark is authored in a 32-unit box (see Logo.tsx) and mapped here so its
+       634-unit width lands at 62% of the 1024 canvas — the macOS icon grid's optical
+       fill. Bounding box is 195..829 x 233..791, centred on 512,512 in both axes.
+       Scale factor is 25.4 units per authoring unit.
+
+       Rasterise: build/icon.png (1024) for electron-builder mac/win, plus the
+       src/assets/images/icon{,128,48}.png set for linux and window icons:
+         rsvg-convert -w N -h N build/icon.svg -o <target>.png -->
+  <defs>
+    <linearGradient id="wire" x1="276" y1="314" x2="748" y2="710" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#4DA3FF"/>
+      <stop offset="1" stop-color="#1570EF"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.5" cy="0.42" r="0.75">
+      <stop offset="0" stop-color="#182231"/>
+      <stop offset="1" stop-color="#0B0E12"/>
+    </radialGradient>
+  </defs>
+  <rect width="1024" height="1024" rx="229" fill="url(#glow)"/>
+  <rect x="6" y="6" width="1012" height="1012" rx="223" stroke="#232A33" stroke-width="12"/>
+  <!-- wire -->
+  <path d="M276 314C588 314 436 710 748 710" stroke="url(#wire)" stroke-width="66" stroke-linecap="round"/>
+  <!-- input port -->
+  <circle cx="276" cy="314" r="81" fill="#EEF2F6"/>
+  <!-- output port (accent) -->
+  <circle cx="748" cy="710" r="81" fill="#4DA3FF"/>
+</svg>
