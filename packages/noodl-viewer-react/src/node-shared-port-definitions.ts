@@ -307,6 +307,34 @@ export default {
     const styleTag = args.styleTag;
 
     addInputCss(definition, {
+      /**
+       * The runtime used to emit no `box-sizing` at all, so the browser default
+       * `content-box` applied: a node with `width: 100%` *and* padding overflowed
+       * its parent by exactly the padding, every time. There was no way to author
+       * a padded full-width container — `alignItems` has no `stretch` either — so
+       * the only workaround was hand-computing pixel widths against the parent,
+       * which is not something a person or an agent should have to do.
+       *
+       * Defaults to `border-box` because that is what "width" means to everyone
+       * who is not a CSS historian. It is a real behaviour change for a layout
+       * that was tuned around the old overflow.
+       */
+      boxSizing: {
+        index: 63,
+        group: 'Margin and padding',
+        displayName: 'Box Sizing',
+        description: "Whether Width and Height include this element's padding and border, or only its content",
+        default: 'border-box',
+        type: {
+          name: 'enum',
+          enums: [
+            { value: 'border-box', label: 'Include padding and border' },
+            { value: 'content-box', label: 'Content only' }
+          ]
+        },
+        allowVisualStates: true,
+        styleTag
+      },
       paddingLeft: {
         index: 64,
         group: 'Margin and padding',
