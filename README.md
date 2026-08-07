@@ -1,55 +1,73 @@
-# OpenNoodl
+# NodeGX
 
 [![PR](https://github.com/The-Low-Code-Foundation/NodeGX/actions/workflows/pr.yml/badge.svg?branch=cline-dev)](https://github.com/The-Low-Code-Foundation/NodeGX/actions/workflows/pr.yml)
 
-OpenNoodl is a fork of the original Noodl open source code under GPL-3.0 license. OpenNoodl / Noodl is a front end React app builder with a visual programming interface.
+NodeGX is a visual, node-based app builder — design the UI, wire up logic, and connect
+a backend without hand-writing the plumbing. It's a fork of [Noodl](https://noodl.net)
+(GPL-3.0), continued and extended by The Low Code Foundation after the original project
+stopped shipping.
 
-OpenNoodl will aim to stay entirely in sync with the original repository, including future updates to this repository. A roadmap for updates will be published soon.
+This is an **alpha**. Expect rough edges, and please [report what you find](https://github.com/The-Low-Code-Foundation/NodeGX/issues/new/choose) — a working feedback loop is one of the things this phase of the project exists to build.
 
-# Installing OpenNoodl
-
-## One-click install
+## Installing NodeGX
 
 **[Download the latest release](https://github.com/The-Low-Code-Foundation/NodeGX/releases/latest)** — pick the artifact for your platform.
 
-These used to be three direct links to OpenNoodl 1.1.0's `.dmg`/`.exe`. They were
-removed rather than updated: 1.1.0 predates the current editor by a long way, and a
-new reader following the README was installing a version that shares almost nothing
-with what this repository builds. Version-pinned download links go stale silently —
-they keep resolving, to the wrong thing — so this points at the release list instead,
-which cannot.
+- **macOS**: signed and notarized — no Gatekeeper prompt.
+- **Windows**: not yet code-signed, so Windows SmartScreen will warn on first run ("Windows protected your PC" → More info → Run anyway). This is expected for a new, unsigned publisher and improves over time; see [`INSTALLING-UNSIGNED-BUILDS.md`](dev-docs/guidelines/INSTALLING-UNSIGNED-BUILDS.md).
+- **Linux**: AppImage and `.deb`, unsigned (normal for Linux desktop distribution).
 
-## Arch Linux
+Version-pinned download links go stale silently — they keep resolving, just to the
+wrong thing — so this points at the release list instead, which cannot.
 
-On Arch Linux, OpenNoodl can be installed [from the AUR](https://aur.archlinux.org/packages/opennoodl):
-```
-yay -S opennoodl
-```
+## Documentation
 
-# Getting started
+**[Docs site](https://the-low-code-foundation.github.io/NodeGX/)** — concepts, a
+getting-started tutorial, and a generated reference page for every node in the library.
 
-## Beginner resources
+## Community
 
-* [Tutorials and basic info](https://learn-noodl.com)
-* [Resources and community components](https://the-low-code-foundation.fibery.io/invite/5NtlTThnCPh2vaAk)
+Questions, feedback, and general discussion happen on
+**[Discord](https://discord.gg/dZw4w5pKf9)**. For bugs and feature requests, please
+[open an issue](https://github.com/The-Low-Code-Foundation/NodeGX/issues/new/choose)
+instead — it's the only channel that becomes a tracked, triaged queue.
 
-## Integrated back-end
+## The backend
 
-### Cloud hosted
+NodeGX ships its own backend (`nodegx-backend`) — a standalone Node service, not a
+third-party dependency you have to provision separately. It gives your app:
 
-OpenNoodl has native CRUD nodes that work with Parse Server backends. [OpenNoodl Hosting](https://opennoodl-hosting.com) provides free and paid Parse Server backends to help you get started.
+- **Cloud functions** — a component in your project (nodes and wires, same authoring
+  model as the rest of NodeGX) that runs server-side and answers one request at a time.
+- **Workflows** — a step-based process (branch, retry, wait, transform…) that a webhook,
+  a schedule, or a record change can trigger, and that can itself call your cloud
+  functions to do the work.
 
-### Self hosted
-
-If you prefer self-hosting or a local backend, while still taking advantage of the native OpenNoodl CRUD nodes, check out the repositories of the original [Noodl Cloud Services backend](https://github.com/The-Low-Code-Foundation/opennoodl-cloudservice) (Parse and cloud functions), as well as the new [OpenNoodl Better Backend](https://github.com/The-Low-Code-Foundation/opennoodl-better-backend) (Parse and n8n).
+In short: a workflow orchestrates, a cloud function computes, and a workflow calls
+cloud functions when it needs one done. Data storage, auth, and file storage are built
+in — nothing to stand up separately to get started.
 
 ## Building from source
 
-See the original Noodl documentation below
+```bash
+# Install all dependencies
+npm install
 
-# Contribution
+# Start the editor and build a production version of the cloud and React runtimes
+# (useful when running NodeGX from source but deploying to production)
+npm start
 
-We welcome contributions to OpenNoodl! To contribute:
+# Start the editor and watch the filesystem for runtime changes — development
+# builds, not meant for production (larger, with source maps)
+npm run dev
+
+# Run the editor's test suite
+npm run test:editor
+```
+
+## Contributing
+
+We welcome contributions! To contribute:
 
 1. **Fork the repository** and create your feature branch (`git checkout -b feature/my-feature`).
 2. **Make your changes** and follow the existing code style.
@@ -58,57 +76,23 @@ We welcome contributions to OpenNoodl! To contribute:
 5. **Push to your branch** (`git push origin feature/my-feature`).
 6. **Open a pull request** describing your changes.
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for details and our code of conduct.
-
-If you have questions, join our [community](https://the-low-code-foundation.fibery.io/invite/5NtlTThnCPh2vaAk) or open an issue.
-
-# Noodl
-
-[Noodl](https://noodl.net) is a low-code platform where designers and developers build custom applications and experiences. Designed as a visual programming environment, it aims to expedite your development process. It promotes the swift and efficient creation of applications, requiring minimal coding knowledge.
-
-## Documentation
-Documentation for how to use Noodl can be found here:
-[https://noodlapp.github.io/noodl-docs/](https://noodlapp.github.io/noodl-docs/)
-
-## Community
-Main support channel is Discord: [https://www.noodl.net/community](https://www.noodl.net/community)
-
-## Download releases
-Pre-built binaries can be [downloaded from Github](https://github.com/noodlapp/noodl/releases)
-
-## Note for users who are migrating from the deprecated closed source version
-- [Migrating the project files and workspaces to a Git provider](https://noodlapp.github.io/noodl-docs/docs/guides/collaboration/migrating-from-noodl-hosted-git)
-- [Migrate backend and database](https://noodlapp.github.io/noodl-docs/docs/guides/deploy/using-an-external-backend#migrating-from-a-noodl-cloud-service)
-- [Self-host frontend](https://noodlapp.github.io/noodl-docs/docs/guides/deploy/hosting-frontend)
-
-## Building from source
-
-```bash
-# Install all dependencies
-$ npm install
-
-# Start the Noodl Editor and build a production version of the cloud and react runtime (useful when running Noodl from source but want to deploy to production)
-$ npm start
-
-# Start the Noodl Editor and watch the filesystem for changes to the runtimes. Development versions of the runtimes, not meant for production (mostly due to source maps and file size)
-# This is ideal for a quick workflow when doing changes on the runtimes.
-$ npm run dev
-
-# Start Noodl Editor test runner
-$ npm run test:editor
-```
+See [CONTRIBUTING.md](CONTRIBUTING.md) for details, or ask on
+[Discord](https://discord.gg/dZw4w5pKf9) if you have questions.
 
 ## Licenses
-This repository contains two different licenses for different parts of the Noodl platform.
 
-- Components related to the editor, used to edit Noodl projects, are under GPLv3
-- Components related to the end applications, used by the applications Noodl deploys, are under MIT
+This repository contains two different licenses for different parts of the platform:
 
-All of the source code of applications created with Noodl are under MIT. This means you can do project specific changes to the runtime without having to redistribute your changes.
+- Components related to the **editor** (used to build NodeGX projects) are **GPL-3.0**.
+- Components related to the **end applications** (what NodeGX deploys) are **MIT** — so
+  you can make project-specific runtime changes without having to redistribute them.
 
-Packaged licensed under MIT:
+Packages licensed under MIT:
+
 - `noodl-runtime`
 - `noodl-viewer-cloud`
 - `noodl-viewer-react`
+- `nodegx-backend`
+- `nodegx-backend-contract`
 
-You can find a MIT LICENSE file in each of these packages. The rest of the repository is licensed under GPLv3.
+Each carries its own `LICENSE` file. The rest of the repository is GPL-3.0.
