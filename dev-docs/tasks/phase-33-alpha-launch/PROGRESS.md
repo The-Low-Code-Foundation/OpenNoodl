@@ -965,3 +965,81 @@ evidence, not speculation — each was measured.
   (`npm run dev:stop` — 25 processes, clean). The fixture project itself was
   left in place (uncommitted, outside the repo) for any future re-verification
   rather than rebuilt from scratch each time.
+
+- **2026-08-07 (fourth session) — `origin/main` synced for the first time since
+  2025-09-09; B2, B5, D4 closed; B6 found to be a different bug entirely.**
+
+  Asked Richard to run B6's prefill probe directly. He got a **completely blank**
+  issue form, signed in, not just empty dropdowns — the wrong failure mode for
+  what B6 was written to catch. Root cause: `origin/main` — the branch GitHub
+  reads issue templates, Pages source, and non-tag Actions triggers from — had
+  received **zero fork commits since 2025-09-09**. Still `noodl-editor` v1.1.0, no
+  `.github/ISSUE_TEMPLATE/`, no `release.yml`, no `PRIVACY.md`/`TERMS.md`, no
+  `docs-site/`. `origin/cline-dev` was closer but 440 commits stale (last pushed
+  2026-08-02). Full account, including why this was invisible for so long, in
+  memory (`main-was-never-synced-2026-08-07`).
+
+  **Fixed it properly rather than patching around it**, per Richard's explicit
+  choice of "merge/fast-forward main to cline-dev" over three lower-blast-radius
+  options offered. `main` is branch-protected (required checks, `enforce_admins`),
+  so this meant a real PR (#19, cline-dev → main), not a direct push. Pushing
+  `cline-dev` for the first time in 5 days also tripped GitHub secret-scanning
+  push protection on two false positives (the redactor test's deliberately-fake
+  Slack token fixture, the Stripe prefab README's literal `sk_test_xxxx...`
+  placeholder) — Richard cleared both via GitHub's unblock URLs.
+
+  **The PR's required checks were the first real CI run in 5 days, and they found
+  real drift**, all fixed same session:
+  - `typecheck:backend-tests` (~22 errors): `noodl-viewer-cloud/src/index.ts` mixed
+    a dist-types-resolved `@noodl/runtime` import with source-resolved deep
+    imports, producing two nominally distinct copies of the same runtime classes
+    the moment both flowed into one signature — fixed by importing
+    `RuntimeNodeContext`'s type from source and casting at the one call site that
+    needed it, not by changing module resolution (tried that first, it broke
+    `typecheck:cloud`, reverted). The rest were `nodegx-backend`'s `strict:true`
+    catching real gaps in `noodl-runtime` source, deliberately `strict:false`
+    there per PLAT-003 (optional-method calls, untyped catch clauses), plus a
+    handful of genuinely untyped `nodegx-backend` test call sites.
+  - TSFixme ratchet (+43 TSFixme, +35 `any`): accumulated debt across 20 unrelated
+    files from the same unpushed window, none from this session's own fixes
+    (confirmed — the total didn't move after this session's edits). Baseline
+    raised per the ratchet's own documented escape hatch rather than rewritten
+    blind.
+  - ERG-003's list-port coverage census test (`listPortCoverage.test.ts`) was a
+    stale snapshot — the invariant (nothing falls through uncovered) still held,
+    only the pinned numbers needed updating: 48→54 inputs, 23→32 outputs, two new
+    nodes (`JWT Sign`, `Log`) plus `To CSV` joining the array category.
+  - **`@noodl/preview`'s 14 tests had never actually executed in this CI pipeline
+    before.** `lerna run test` bails the whole run on the first package failure,
+    and something upstream had apparently always failed first — so
+    `@noodl/preview:test` silently never ran, hiding that the `test-packages` job
+    never built its own prerequisites (`packages/noodl-preview/dist` + the
+    deployed viewer runtime). It runs on a separate GitHub Actions runner from the
+    `build` job with no shared filesystem and no `needs:` between them. Fixed by
+    adding the two build steps `assertPrerequisites()` itself names. Verified
+    locally end to end: `npm run test:packages`, all 9 scoped packages green.
+
+  **D4** (`HUMAN-GATED-ITEMS.md` Tier D — Function `object` output rendering
+  `[object Object]`) was investigated as the session's one piece of unblocked
+  engineering and found **already fixed**, `461859be` (2026-08-02) — another
+  instance of the repo's own `registers-outlive-their-fixes` pattern. The doc row
+  was wrong, not the code; corrected rather than re-fixing something already
+  fixed.
+
+  **B5's remaining GitHub actions done**: `opennoodl-docs` renamed to
+  `nodegx-content`; GitHub Pages enabled on `NodeGX` (`build_type: workflow`);
+  `.github/workflows/deploy-docs.yml` written (nothing existed before) and fired
+  automatically on the same push that synced `main` — confirmed live,
+  `the-low-code-foundation.github.io/NodeGX/` → 200. `getContentEndpoint()`
+  repoint and the actual `opennoodl-docs` content strip are still owed.
+
+  **B2 fully closed**: Richard regenerated the OAuth app's client secret, deleted
+  the old leaked one, and ticked Enable Device Flow. Code needed no changes — the
+  device flow uses the client id only. One live pass (Connect, code shown,
+  complete + separately Cancel) is still owed.
+
+  PR #19 merged clean at `d569d2bd` — 100 commits, 6276 files, all 10 required
+  checks green. `main` now matches `cline-dev`. **B6 is unblocked again** and
+  needs a fresh run now that `bug_report.yml` actually exists on `main` — whether
+  the four dropdowns honour their prefill values is still the original open
+  question, just no longer masked by a missing template.
