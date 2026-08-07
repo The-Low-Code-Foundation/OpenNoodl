@@ -675,3 +675,67 @@ evidence, not speculation — each was measured.
   `~/Documents/opennoodl-docs` (outside this repo, not touched), which makes §4
   more tractable than the spec assumed — it doesn't require a fresh clone,
   just doesn't resolve B5's decision on its own.
+
+- **2026-08-07 — the coverage gap `catalog:merge:check --require-coverage`
+  had been failing on all day got closed, 172/175 → 175/175.** Richard asked
+  directly whether every node was actually documented; checking properly (not
+  just re-citing the earlier-noted gap) turned up two separate things:
+
+  1. **Three nodes were entirely absent from the generated docs, not just
+     thin** — `noodl.cloud.addusertorole`, `noodl.cloud.getuserroles`,
+     `noodl.cloud.removeuserfromrole` (the F86 role-management family) have
+     no enrichment authored for them at all, so they don't even appear in
+     `node-catalog-enriched.json`'s node list — §3's generator only iterates
+     that file, so it silently produced zero pages for them, no warning.
+  2. **The committed enriched catalog was separately stale relative to its
+     own authored inputs**, independent of the missing 3 — running
+     `node scripts/node-catalog/merge.js` with no `--check` (to see the real
+     diff before touching anything) showed one enrichment sentence, about
+     per-record access-control rules, had been updated in
+     `docs/node-catalog/enrichment/*.json` (to say the NodeGX backend
+     actually enforces them, not the old generic "some backends ignore
+     them") and never landed via `catalog:merge`. Affects `Record`/`db-
+     model2` and `Query Records`/`db-collection2`'s `accessControl` port
+     description on both the docs site and the in-editor help panel. **This
+     is the same failure mode as F76 and the register-drift pattern**: a
+     generation script exists and nobody re-ran it after the source changed.
+
+  Both are pre-existing gaps in the enrichment pipeline, predating this
+  session — not introduced by §3's generator, which is only as correct as
+  the catalog it reads.
+
+  Fixed: wrote three new enrichment files (`docs/node-catalog/enrichment/
+  noodl.cloud.{addusertorole,getuserroles,removeuserfromrole}.json`),
+  grounded in the actual node source (`packages/noodl-viewer-cloud/src/
+  nodes/cloud/{addusertorole,getuserroles,removeuserfromrole,system-
+  roles}.ts`, which is unusually well-commented — F86's own doc comments
+  carry most of the "why", not just the "what") and following
+  `PORT-DESCRIPTION-STYLE.md`'s pattern (verified against the sibling
+  `noodl.cloud.deleteuser.json`). Two summaries needed trimming to the
+  140-char limit `catalog:merge:check` enforces — not obvious from reading
+  the style guide alone, only from the gate rejecting the first draft. One
+  real miss caught by comparing port-name coverage programmatically rather
+  than trusting the prose looked complete: all three files were missing
+  `treatUnchangedAs` (a port every one of these nodes gets from the shared
+  `outcomeInputs` helper) on the first pass — added after counting `ports`
+  dict keys against actual port names and finding a mismatch.
+
+  Ran `catalog:merge` for real once coverage was 175/175 and the port-name
+  check passed, then `docs:nodes` to regenerate (194 files / 175 nodes),
+  then rebuilt the site and `curl`-verified the new `Add User To Role` page
+  end to end — all 7 tables, the "watch out for" list, and its related-node
+  links to `Get User Roles`/`Remove User From Role`/`Create User` all
+  resolving. Full gate sweep re-run clean, `catalog:merge:check` now passing
+  for the first time today: typecheck×5 clean, `catalog:check` clean,
+  `cloud-library:check` clean, `library:check` 58/58, `docs:nodes:check`
+  clean, jest 933/933, `lint:ci` unchanged at 860/3916, **`test:ci` (Jasmine):
+  2418 specs, 0 failures** — identical to every other measurement taken today.
+  The run took noticeably longer than usual (backgrounded past the 480s
+  foreground limit); nothing in this session touched runtime or editor
+  source, so almost certainly the known occluded-Electron timer clamp, not a
+  real slowdown.
+
+  Also started `npm run docs-site:start` (dev server, hot reload) for Richard
+  to look at directly at `http://localhost:3000/nodegx-docs/` before this
+  lands — left running rather than killed, so it may still be up depending
+  on when this is read.

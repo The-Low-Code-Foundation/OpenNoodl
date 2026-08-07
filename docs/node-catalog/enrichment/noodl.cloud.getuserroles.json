@@ -1,0 +1,25 @@
+{
+  "typeName": "noodl.cloud.getuserroles",
+  "summary": "Reads every permission role a user is currently in, from inside a cloud function. Cloud-only and read-only — nothing is written.",
+  "description": "Get User Roles answers 'what is this account allowed to do' without making a change to find out. `Roles` comes from the same resolver a permission rule's `role:` check evaluates, so this cannot answer `member` while a rule disagrees — it is the actual check, not a second opinion on it. `unchanged` fires (rather than `done` with an empty array) when the user is in no roles at all, because that is the branch a membership check actually wants to take, and an empty array arriving on a `done` wire is easy to mistake for a port nobody connected.",
+  "whenToUse": "Whenever a cloud function needs to decide something based on what a user is allowed to do — gating a branch on `role:staff`, showing a different response to a `pro` subscriber, or verifying a role grant actually took before reporting success to the caller. Also the honest way to check 'did Add User To Role actually work' without trusting its own report.",
+  "ports": {
+    "userId": "Value; required. Which account's roles to read. A blank id is a `failure`, never a fallback to the function's own caller.",
+    "read": "Signal (Do); performs the read. Nothing happens until this fires.",
+    "treatUnchangedAs": "Edit-only enum, default Unchanged. Set it to Failure if a user with no roles at all should be treated as a check failing rather than a distinct outcome.",
+    "roles": "Value; every role this user is in, read through the same resolver the access check itself uses.",
+    "done": "Signal; fires once Roles holds every role this user is in — including when that's more than zero.",
+    "unchanged": "Signal; fires when the user is in no roles at all — the branch a membership check wants, rather than an empty array silently arriving on Done.",
+    "failure": "Signal; fires when the roles could not be read — a blank User Id, or a user id nothing resolves.",
+    "completed": "Signal; fires after every attempt, whatever the outcome.",
+    "error": "Value; why the last attempt failed."
+  },
+  "examples": [],
+  "patterns": [
+    "Read this after Add User To Role or Remove User From Role to confirm the membership actually changed, rather than trusting the mutation's own Done — useful when a function's response needs to report the account's current role set, not just that one operation succeeded."
+  ],
+  "antiPatterns": [
+    "Re-deriving 'is this user staff' from a cached copy of Roles taken earlier in a long-running function instead of reading it fresh — roles can change between the start of a function and a later branch inside it."
+  ],
+  "relatedNodes": ["noodl.cloud.addusertorole", "noodl.cloud.removeuserfromrole"]
+}

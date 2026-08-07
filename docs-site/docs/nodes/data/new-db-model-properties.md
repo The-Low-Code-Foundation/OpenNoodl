@@ -25,7 +25,7 @@ The write half of every 'add item' flow — forms, quick-add buttons, duplicatin
 
 | Name | Type | Default | Description |
 |---|---|---|---|
-| `accessControl` | Proplist | — | Read and write rules stored on the record as it is written, each rule adding its own Target, Read and Write ports; backends that have no per-record access control ignore them |
+| `accessControl` | Proplist | — | Read and write rules stored on the record as it is written, each rule adding its own Target, Read and Write ports; the NodeGX backend enforces them on every query and every realtime event, and backends with no per-record access control ignore them |
 | `sourceObjectId` | String | — | Id of an existing record whose properties seed the new one before the property inputs are applied over them; leave blank to start empty |
 
 ### Signals
