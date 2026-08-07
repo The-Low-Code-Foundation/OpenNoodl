@@ -91,7 +91,7 @@ export function FailedStep({
               <Text size={TextSize.Small}>
                 If the problem persists, check the{' '}
                 <a 
-                  href="https://github.com/The-Low-Code-Foundation/OpenNoodl/issues" 
+                  href="https://github.com/The-Low-Code-Foundation/NodeGX/issues"
                   target="_blank" 
                   rel="noopener noreferrer"
                   className={css['Link']}

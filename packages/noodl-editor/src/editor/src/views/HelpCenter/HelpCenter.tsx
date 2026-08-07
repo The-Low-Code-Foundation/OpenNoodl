@@ -46,7 +46,7 @@ import css from './HelpCenter.module.scss';
  * `blank_issues_enabled` is on, so `issues/new/choose` is a valid fallback if a
  * form is ever renamed.
  */
-const REPO_URL = 'https://github.com/The-Low-Code-Foundation/OpenNoodl';
+const REPO_URL = 'https://github.com/The-Low-Code-Foundation/NodeGX';
 
 /** File an issue against one of `.github/ISSUE_TEMPLATE/`'s forms. */
 function issueForm(template: string): string {
