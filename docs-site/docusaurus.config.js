@@ -8,12 +8,17 @@
  * lesson templates, project templates, tutorials list and what's-new feed all
  * stay where they are; see `getContentEndpoint()` in the editor and ALPHA-006 §5.
  *
- * ⚠️ `url`/`baseUrl`/`organizationName`/`projectName` below are PROVISIONAL.
- * Where this actually publishes to, and what (if anything) still lives at
- * `the-low-code-foundation.github.io/opennoodl-docs` once it's no longer a docs
- * site, is B5 — a human decision on a 413 MB asset question, not something this
- * build step gets to assume. Read `dev-docs/tasks/phase-33-alpha-launch/
- * HUMAN-GATED-ITEMS.md` before changing these to something that ships.
+ * B5 is decided (2026-08-07, see HUMAN-GATED-ITEMS.md): the payload repo stays
+ * separate (renamed, not migrated here — dragging 336 MB of live zips into this
+ * repo's git history would be permanent with no git-lfs configured). Docs
+ * publish from THIS repo's own GitHub Pages instead of a third repo — no
+ * cross-repo deploy credential needed, since a workflow here can use the
+ * repo's own built-in Actions token.
+ *
+ * ⚠️ Nothing publishes here yet. This target is real, not a placeholder, but
+ * two human GitHub actions are still owed before it's live: enabling Pages on
+ * this repo, and writing the deploy workflow. Until then this `url`/`baseUrl`
+ * describes where it WILL be, not where it IS.
  */
 
 /** @type {import('@docusaurus/types').Config} */
@@ -21,11 +26,11 @@ const config = {
   title: 'NodeGX',
   tagline: 'Documentation for the low-code editor',
   url: 'https://the-low-code-foundation.github.io',
-  baseUrl: '/nodegx-docs/',
+  baseUrl: '/NodeGX/',
   onBrokenLinks: 'throw',
   favicon: 'img/favicon.svg',
   organizationName: 'The-Low-Code-Foundation',
-  projectName: 'nodegx-docs',
+  projectName: 'NodeGX',
 
   // §3's generated node pages carry the catalog's own prose verbatim, which
   // includes things like `<name>` placeholders and `{count}` template

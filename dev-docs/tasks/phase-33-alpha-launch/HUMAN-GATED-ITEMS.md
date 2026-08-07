@@ -177,17 +177,46 @@ live: `needs-triage`, `node-library`, `severity:blocker/serious/annoying/cosmeti
 `gh issue list --label needs-triage` now returns a real (empty) queue instead of
 failing by construction.
 
-### B5. The content origin's disposition → ALPHA-006 §5
+### B5. The content origin's disposition → ALPHA-006 §5 ✅ **Decided 2026-08-07, two actions owed**
 
 `the-low-code-foundation.github.io/opennoodl-docs` is not a docs site — it is the
 editor's **content CDN for seven payload types**, six of which are not documentation
 (F71). Moving or archiving it silently empties the Library panel, the Learn lesson
 list and the new-project template picker, with no error.
 
-The decision: the old repo stops being a docs site and becomes the content host,
-stripped to the payloads. That is a repo/hosting call with a 413 MB asset question
-attached (1,621 PNGs and 315 MP4s all show the pre-refresh editor and are wrong after
-phases 23–28 — dropping them is the largest single saving).
+**Decision (Richard, 2026-08-07): the payload stays in its own repo, not the main
+monorepo.** Measured first, not assumed — the repo is 518 MB today (grown from the
+spec's 413 MB), of which **~336 MB is live payload** (`static/library` 217 MB,
+`static/lessons` 87 MB, `static/projecttemplates` 32 MB) that the running app
+actually fetches, and only ~174 MB (`static/docs` + `static/nodes`) is dead
+documentation media that gets deleted regardless of where anything else lives.
+Dragging 336 MB of zips into the main repo's git history would be permanent (no
+git-lfs configured here) and pay a tax on every future clone and worktree,
+forever — rejected on that basis. Reasoning also holds for the stated reason:
+this repo is expected to take community-contributed templates and lesson
+content over time, and a lighter, purpose-specific repo is an easier target for
+that than the full engineering monorepo.
+
+**Two GitHub admin actions this now needs, in order — do not do the second before
+the first:**
+
+1. **Rename `opennoodl-docs` → a name reflecting what it now is** (e.g.
+   `nodegx-content`), same pattern as B3's `OpenNoodl` → `NodeGX` rename. GitHub
+   redirects the old name, so this has a grace period, but `getContentEndpoint()`
+   should be repointed at the new name once it's done — **not before**, or the
+   editor fetches a URL that doesn't exist yet.
+2. **Enable GitHub Pages on the `NodeGX` repo itself** for `docs-site/` — no new
+   repo needed for docs, since `docs-site/` already lives in this monorepo. A
+   GitHub Actions workflow using the repo's own built-in token can build and
+   deploy it to `the-low-code-foundation.github.io/NodeGX/` with no cross-repo
+   deploy credential required. Not built yet — `docusaurus.config.js`'s `url`/
+   `baseUrl` are set to this target but nothing publishes there until the
+   workflow exists and Pages is turned on.
+
+**Sequencing that matters:** don't strip `opennoodl-docs`'s old doc content (§4's
+disposal, §5's actual repo strip) until `docs-site/` is actually live at its new
+URL — stripping first would make `getDocsEndpoint()` resolve to nothing for
+everyone still on the old origin, in the window between the two.
 
 Not blocking ALPHA-006 §1, which is running now and works entirely off the bundled
 catalog.
