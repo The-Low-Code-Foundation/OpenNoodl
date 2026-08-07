@@ -1,0 +1,15 @@
+{
+  "typeName": "Component Children",
+  "summary": "Placeholder inside a component's visual tree marking where children given to an instance of that component are inserted.",
+  "description": "Component Children is how a component becomes a wrapper. Placed somewhere in the component's own visual tree (typically inside a Group), it marks the insertion point: when a parent graph adds visual children to an *instance* of the component, those children render at exactly this position, surrounded by whatever chrome the component defines. The node has no inputs or outputs and renders nothing by itself — it is purely a structural marker. A component that contains one accepts children in the node picker; a component without one does not. A component has a single insertion point: adding more than one Component Children does not create multiple slots.",
+  "whenToUse": "Whenever you build a reusable container whose content varies per use — cards, page sections, modals, styled panels: define padding, borders, headers once in the wrapper component and drop Component Children where the caller's content goes. Not for repeating data-driven content (use For Each with a template component) and not for passing values into a component (use Component Inputs).",
+  "examples": ["vis-wrapper-component-children"],
+  "patterns": [
+    "Wrapper component: Group root with the shared styling, a Text header bound from Component Inputs, and Component Children below it — instances then supply arbitrary content children.",
+    "Combine with Component Inputs: chrome configuration (title, variant) flows through inputs while free-form content flows through children."
+  ],
+  "antiPatterns": [
+    "Placing several Component Children to try to create multiple named slots — only one insertion point exists per component; split into smaller wrapper components instead."
+  ],
+  "relatedNodes": ["Group", "Component Inputs", "Component Outputs", "For Each"]
+}

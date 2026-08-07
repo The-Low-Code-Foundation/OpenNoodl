@@ -1,0 +1,32 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "CommonJS",
+    "moduleResolution": "node",
+    "lib": ["ES2022"],
+    // No `outDir`/`rootDir`/`declaration`. This config is only ever run with
+    // `--noEmit` — `dist/` is produced by esbuild (scripts/build.js), never by
+    // tsc — so those three were configuring an output nothing generates, and
+    // `rootDir`'s only live effect was TS6059 on the type-only `@cloud-runtime`
+    // imports below.
+    "noEmit": true,
+    "sourceMap": true,
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "noImplicitAny": false,
+    "forceConsistentCasingInFileNames": true,
+    "types": ["node", "jest"],
+    // Mirrors the esbuild alias in scripts/build.js and the jest
+    // moduleNameMapper, so `import type` from the cloud runtime resolves to the
+    // same sources those two already bundle. Type-only by policy: the runtime
+    // `require` stays, so this package's module graph is unchanged.
+    "paths": {
+      "@cloud-runtime": ["../noodl-viewer-cloud/src/index.ts"],
+      "@cloud-runtime/*": ["../noodl-viewer-cloud/src/*"]
+    }
+  },
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist", "**/*.test.ts"]
+}

@@ -1,0 +1,232 @@
+{
+    "name": "Export",
+    "components": [
+        {
+            "name": "/PDF Viewer",
+            "id": "edcfaa66-a19b-fcf1-2c9c-ba385f015cca",
+            "graph": {
+                "connections": [
+                    {
+                        "fromId": "5e657b31-2b10-d6b9-505b-d3cf170decbc",
+                        "fromProperty": "out-urlEncoded",
+                        "toId": "fbda7151-c0eb-1a05-4904-30c97237fea6",
+                        "toProperty": "prop-pdfUrl"
+                    },
+                    {
+                        "fromId": "370ab22c-cb69-d62a-5cb1-5bbc25186aeb",
+                        "fromProperty": "Width",
+                        "toId": "8cfc98cf-4e05-8f7c-f817-a5c200a37e4c",
+                        "toProperty": "width"
+                    },
+                    {
+                        "fromId": "370ab22c-cb69-d62a-5cb1-5bbc25186aeb",
+                        "fromProperty": "Height",
+                        "toId": "8cfc98cf-4e05-8f7c-f817-a5c200a37e4c",
+                        "toProperty": "height"
+                    },
+                    {
+                        "fromId": "9ab2630b-0fcf-060e-61fc-2152b2f841d8",
+                        "fromProperty": "PDF URL",
+                        "toId": "5e657b31-2b10-d6b9-505b-d3cf170decbc",
+                        "toProperty": "in-url"
+                    }
+                ],
+                "roots": [
+                    {
+                        "id": "5e657b31-2b10-d6b9-505b-d3cf170decbc",
+                        "type": "JavaScriptFunction",
+                        "label": "URL encode link",
+                        "x": -230.86736899508935,
+                        "y": 146.5063110406249,
+                        "parameters": {
+                            "functionScript": "Outputs.urlEncoded = encodeURIComponent(Inputs.url);",
+                            "scriptInputs": [
+                                {
+                                    "id": "6ya6",
+                                    "label": "url"
+                                }
+                            ],
+                            "in-url": "https://github.com/mozilla/pdf.js/raw/159f853e061b95ec45c7f476f1193411025f05c1/web/compressed.tracemonkey-pldi-09.pdf"
+                        },
+                        "ports": [],
+                        "dynamicports": [
+                            {
+                                "name": "intype-url",
+                                "displayName": "Type",
+                                "editorName": "url | Type",
+                                "plug": "input",
+                                "type": {
+                                    "name": "enum",
+                                    "enums": [
+                                        {
+                                            "value": "string",
+                                            "label": "String"
+                                        },
+                                        {
+                                            "value": "boolean",
+                                            "label": "Boolean"
+                                        },
+                                        {
+                                            "value": "number",
+                                            "label": "Number"
+                                        },
+                                        {
+                                            "value": "object",
+                                            "label": "Object"
+                                        },
+                                        {
+                                            "value": "date",
+                                            "label": "Date"
+                                        },
+                                        {
+                                            "value": "array",
+                                            "label": "Array"
+                                        },
+                                        {
+                                            "value": "color",
+                                            "label": "Color"
+                                        }
+                                    ],
+                                    "allowEditOnly": true
+                                },
+                                "default": "string",
+                                "parent": "scriptInputs",
+                                "parentItemId": "6ya6",
+                                "index": 4
+                            },
+                            {
+                                "name": "in-url",
+                                "displayName": "url",
+                                "plug": "input",
+                                "type": "string",
+                                "group": "Inputs",
+                                "index": 5
+                            },
+                            {
+                                "name": "out-urlEncoded",
+                                "displayName": "urlEncoded",
+                                "plug": "output",
+                                "type": "*",
+                                "group": "Outputs",
+                                "index": 6
+                            }
+                        ],
+                        "children": [],
+                        "metadata": {
+                            "merge": {
+                                "soureCodePorts": [
+                                    "functionScript"
+                                ]
+                            }
+                        }
+                    },
+                    {
+                        "id": "370ab22c-cb69-d62a-5cb1-5bbc25186aeb",
+                        "type": "Component Inputs",
+                        "x": -429.0473699866071,
+                        "y": 40.88315899062496,
+                        "parameters": {},
+                        "ports": [
+                            {
+                                "name": "Width",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "index": 2
+                            },
+                            {
+                                "name": "Height",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "index": 3
+                            }
+                        ],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "8cfc98cf-4e05-8f7c-f817-a5c200a37e4c",
+                        "type": "Group",
+                        "x": 18.192979848951893,
+                        "y": 49.25383756351221,
+                        "parameters": {},
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": [
+                            {
+                                "id": "fbda7151-c0eb-1a05-4904-30c97237fea6",
+                                "type": "module.inlineHtml",
+                                "parameters": {
+                                    "html": "<iframe frameborder=\"0\" height=\"100%\" width=\"100%\" src=\"https://docs.google.com/viewer?url={{pdfUrl}}&embedded=true\"></iframe>\n",
+                                    "styleCss": "width: 100%;\nheight: 100%;"
+                                },
+                                "ports": [],
+                                "dynamicports": [
+                                    {
+                                        "name": "prop-pdfUrl",
+                                        "displayName": "pdfUrl",
+                                        "group": "Variables",
+                                        "type": "*",
+                                        "plug": "input",
+                                        "index": 14
+                                    }
+                                ],
+                                "children": []
+                            }
+                        ]
+                    },
+                    {
+                        "id": "9ab2630b-0fcf-060e-61fc-2152b2f841d8",
+                        "type": "Component Inputs",
+                        "x": -428.54278932470817,
+                        "y": 159.5022536063694,
+                        "parameters": {},
+                        "ports": [
+                            {
+                                "name": "PDF URL",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "index": 1
+                            }
+                        ],
+                        "dynamicports": [],
+                        "children": []
+                    }
+                ],
+                "comments": [
+                    {
+                        "text": "Google's PDF viewer embedded in an <iframe>",
+                        "width": 308,
+                        "height": 272,
+                        "fill": true,
+                        "x": -44,
+                        "y": -1,
+                        "id": "f5211223-ee31-01d7-4d27-c5b54d9a86a7",
+                        "color": "logic",
+                        "largeFont": false
+                    }
+                ]
+            },
+            "metadata": {
+                "canvasPos": {
+                    "x": 1119,
+                    "y": 0
+                }
+            }
+        }
+    ],
+    "settings": {},
+    "version": "3",
+    "metadata": {
+        "styles": {
+            "text": {},
+            "colors": {}
+        }
+    },
+    "variants": []
+}

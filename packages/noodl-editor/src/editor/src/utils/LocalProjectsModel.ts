@@ -2,21 +2,23 @@ import path from 'node:path';
 import { GitStore } from '@noodl-store/GitStore';
 import Store from 'electron-store';
 import { isEqual } from 'underscore';
-import {
-  RequestGitAccountFuncReturn,
-  setRequestGitAccount
-} from '@noodl/git/src/core/trampoline/trampoline-askpass-handler';
+import { getTopLevelWorkingDirectory } from '@noodl/git/src/core/open';
+import { setRequestGitAccount } from '@noodl/git/src/core/trampoline/trampoline-askpass-handler';
 import { filesystem, platform } from '@noodl/platform';
 
 import { ProjectModel } from '@noodl-models/projectmodel';
 import { templateRegistry } from '@noodl-utils/forge';
 
 import Model from '../../../shared/model';
+import { detectRuntimeVersion } from '../models/migration/ProjectScanner';
+import { RuntimeVersionInfo } from '../models/migration/types';
 import { projectFromDirectory, unzipIntoDirectory } from '../models/projectmodel.editor';
+import { installStarterAssets } from '../models/template/starterAssets';
+import { GitHubOAuthService } from '../services/GitHubOAuthService';
+import { isV2FormatEnabled } from '../services/ProjectStructure/featureFlags';
 import FileSystem from './filesystem';
 import { tracker } from './tracker';
 import { guid } from './utils';
-import { getTopLevelWorkingDirectory } from '@noodl/git/src/core/open';
 
 export interface ProjectItem {
   id: string;
@@ -24,6 +26,14 @@ export interface ProjectItem {
   latestAccessed: number;
   thumbURI: string;
   retainedProjectDirectory: string;
+}
+
+/**
+ * Extended project item with runtime version info (not persisted)
+ */
+export interface ProjectItemWithRuntime extends ProjectItem {
+  runtimeInfo?: RuntimeVersionInfo;
+  runtimeDetectionPending?: boolean;
 }
 export class LocalProjectsModel extends Model {
   public static instance = new LocalProjectsModel();
@@ -34,7 +44,29 @@ export class LocalProjectsModel extends Model {
     name: 'recently_opened_project'
   });
 
+  /**
+   * Persistent store for runtime version cache
+   * Survives app restarts to avoid re-detecting runtime on every launch
+   */
+  private runtimeCacheStore = new Store({
+    name: 'project_runtime_cache'
+  });
+
+  /**
+   * Cache for runtime version info - keyed by project directory path
+   * Loaded from persistent store on init, saved on updates
+   */
+  private runtimeInfoCache: Map<string, RuntimeVersionInfo> = new Map();
+
+  /**
+   * Set of project directories currently being detected
+   */
+  private detectingProjects: Set<string> = new Set();
+
   async fetch() {
+    // Load runtime cache from persistent store
+    this.loadRuntimeCache();
+
     // Fetch projects from local storage and verify project folders
     const folders = (this.recentProjectsStore.get('recentProjects') || []) as ProjectItem[];
 
@@ -80,7 +112,7 @@ export class LocalProjectsModel extends Model {
   loadProject(projectEntry: ProjectItem) {
     tracker.track('Load Local Project');
 
-    return new Promise<ProjectModel>((resolve, reject) => {
+    return new Promise<ProjectModel>((resolve) => {
       projectFromDirectory(projectEntry.retainedProjectDirectory, (project) => {
         if (!project) {
           resolve(null);
@@ -90,6 +122,10 @@ export class LocalProjectsModel extends Model {
         project.name = projectEntry.name; // Also assign the name
         this.touchProject(projectEntry);
         this.bindProject(project);
+
+        // Initialize Git authentication for this project
+        this.setCurrentGlobalGitAuth(projectEntry.id);
+
         resolve(project);
       });
     });
@@ -210,40 +246,98 @@ export class LocalProjectsModel extends Model {
         }
       });
 
+      // POL-006. After the template, so a template that ships its own font or icon set keeps it —
+      // `installStarterAssets` never overwrites — and before the load, so the module scanner sees
+      // them on its first scan rather than one nobody triggers.
+      await installStarterAssets(dirEntry);
+
       // Project extracted successfully, load it
       projectFromDirectory(dirEntry, (project) => {
         if (!project) {
           fn();
-          // callback({
-          //   result: 'failure',
-          //   message: 'Failed to load project'
-          // });
           return;
         }
 
         project.name = name; //update the name from the template
+        project.runtimeVersion = 'react19'; // NEW projects default to React 19
 
         // Store the project, this will make it a unique project by
         // forcing it to generate a project id
         this._addProject(project);
         project.toDirectory(project._retainedProjectDirectory, (res) => {
-          if (res.result === 'success') {
-            fn(project);
-            // callback({
-            //   result: 'success',
-            //   project: project
-            // });
-          } else {
+          if (res.result !== 'success') {
             fn();
-            // callback({
-            //   result: 'failure',
-            //   message: 'Failed to clone project'
-            // });
+            return;
           }
+          this._adoptV2Format(project).then(() => fn(project));
         });
       });
     } else {
-      this._unzipAndLaunchProject('./external/projecttemplates/helloworld.zip', dirEntry, fn, options);
+      // No template specified - use default embedded Hello World template
+      // This uses the template system implemented in TASK-009
+      const defaultTemplate = 'embedded://hello-world';
+
+      // For embedded templates, write directly to the project directory
+      // (no need for temporary folder + copy)
+      const { EmbeddedTemplateProvider } = await import('../models/template/EmbeddedTemplateProvider');
+      const embeddedProvider = new EmbeddedTemplateProvider();
+
+      await embeddedProvider.download(defaultTemplate, dirEntry);
+
+      // POL-006 — see the note in the template branch above. Both branches are covered because both
+      // the manual wizard and the AI scoping wizard reach the project through this one method.
+      await installStarterAssets(dirEntry);
+
+      // Load the newly created project
+      projectFromDirectory(dirEntry, (project) => {
+        if (!project) {
+          console.error('Failed to create project from template');
+          fn();
+          return;
+        }
+
+        project.name = name;
+        project.runtimeVersion = 'react19'; // NEW projects default to React 19
+        this._addProject(project);
+        project.toDirectory(project._retainedProjectDirectory, (res) => {
+          if (res.result !== 'success') {
+            console.error('Failed to save project to directory');
+            fn();
+            return;
+          }
+          this._adoptV2Format(project).then(() => {
+            console.log('Project created successfully:', name);
+            fn(project);
+          });
+        });
+      });
+    }
+  }
+
+  /**
+   * Converts a freshly-created project to the v2 decomposed format — one file per
+   * component instead of a single monolithic `project.json`.
+   *
+   * Templates (embedded and downloaded alike) ship as legacy single-file projects,
+   * so a new project is born legacy and converted here, immediately after its
+   * first save. Doing it at creation is the only point where the conversion is
+   * risk-free: the project is a template with no user work in it yet.
+   *
+   * Non-fatal by construction. The migrator restores the legacy project on any
+   * failure, so a project that cannot be converted is still a perfectly good
+   * legacy project — the user gets their project either way, and the reason lands
+   * in the console rather than in a dialog they cannot act on.
+   */
+  private async _adoptV2Format(project: ProjectModel): Promise<void> {
+    if (!isV2FormatEnabled()) return;
+
+    try {
+      const result = await project.initializeAsV2();
+      if (result.result === 'failure') {
+        console.warn(`[v2] New project kept the legacy format: ${result.message}`);
+      }
+    } catch (err) {
+      console.warn('[v2] New project kept the legacy format:', err);
     }
   }
 
@@ -271,8 +365,8 @@ export class LocalProjectsModel extends Model {
   /**
    * Check if this project is in a git repository.
    *
-   * @param project 
-   * @returns 
+   * @param project
+   * @returns
    */
   async isGitProject(project: ProjectModel): Promise<boolean> {
     const gitPath = await getTopLevelWorkingDirectory(project._retainedProjectDirectory);
@@ -282,13 +376,39 @@ export class LocalProjectsModel extends Model {
   setCurrentGlobalGitAuth(projectId: string) {
     const func = async (endpoint: string) => {
       if (endpoint.includes('github.com')) {
+        // Priority 1: Check for global OAuth token from GitHubOAuthService
+        try {
+          const token = await GitHubOAuthService.instance.getToken();
+          const user = GitHubOAuthService.instance.getCurrentUser();
+          if (token) {
+            console.log('[Git Auth] Using GitHub OAuth token for:', endpoint, 'user:', user?.login);
+            return {
+              username: user?.login || 'oauth',
+              password: token
+            };
+          }
+        } catch (err) {
+          console.warn('[Git Auth] Failed to get OAuth token:', err);
+        }
+
+        // Priority 2: Fall back to project-specific PAT
         const config = await GitStore.get('github', projectId);
-        //username is not used by github when using a token, but git will still ask for it. Just set it to "noodl"
+        if (config?.password) {
+          console.log('[Git Auth] Using project PAT for:', endpoint);
+          return {
+            username: 'noodl',
+            password: config.password
+          };
+        }
+
+        // No credentials available
+        console.warn('[Git Auth] No GitHub credentials found for:', endpoint);
         return {
           username: 'noodl',
-          password: config?.password
+          password: ''
         };
       } else {
+        // Non-GitHub providers use project-specific credentials only
         const config = await GitStore.get('unknown', projectId);
         return {
           username: config?.username,
@@ -298,5 +418,168 @@ export class LocalProjectsModel extends Model {
     };
 
     setRequestGitAccount(func);
+  }
+
+  // =========================================================================
+  // Runtime Version Detection Methods
+  // =========================================================================
+
+  /**
+   * Load runtime cache from persistent store
+   */
+  private loadRuntimeCache(): void {
+    try {
+      const cached = this.runtimeCacheStore.get('cache') as Record<string, RuntimeVersionInfo> | undefined;
+      if (cached) {
+        this.runtimeInfoCache = new Map(Object.entries(cached));
+      }
+    } catch (error) {
+      console.warn('Failed to load runtime cache:', error);
+      this.runtimeInfoCache = new Map();
+    }
+  }
+
+  /**
+   * Save runtime cache to persistent store
+   */
+  private saveRuntimeCache(): void {
+    try {
+      const cacheObject = Object.fromEntries(this.runtimeInfoCache.entries());
+      this.runtimeCacheStore.set('cache', cacheObject);
+    } catch (error) {
+      console.error('Failed to save runtime cache:', error);
+    }
+  }
+
+  /**
+   * Get cached runtime info for a project, or null if not yet detected
+   * @param projectPath - The project directory path
+   */
+  getRuntimeInfo(projectPath: string): RuntimeVersionInfo | null {
+    return this.runtimeInfoCache.get(projectPath) || null;
+  }
+
+  /**
+   * Check if runtime detection is currently in progress for a project
+   * @param projectPath - The project directory path
+   */
+  isDetectingRuntime(projectPath: string): boolean {
+    return this.detectingProjects.has(projectPath);
+  }
+
+  /**
+   * Get projects with their runtime info (extended interface)
+   * Returns projects enriched with cached runtime detection status
+   */
+  getProjectsWithRuntime(): ProjectItemWithRuntime[] {
+    return this.projectEntries.map((project) => ({
+      ...project,
+      runtimeInfo: this.getRuntimeInfo(project.retainedProjectDirectory),
+      runtimeDetectionPending: this.isDetectingRuntime(project.retainedProjectDirectory)
+    }));
+  }
+
+  /**
+   * Detect runtime version for a single project.
+   * Results are cached and listeners are notified.
+   * @param projectPath - Path to the project directory
+   * @returns The detected runtime version info
+   */
+  async detectProjectRuntime(projectPath: string): Promise<RuntimeVersionInfo> {
+    // Return cached result if available
+    const cached = this.runtimeInfoCache.get(projectPath);
+    if (cached) {
+      return cached;
+    }
+
+    // Skip if already detecting
+    if (this.detectingProjects.has(projectPath)) {
+      // Wait for existing detection to complete by polling
+      return new Promise((resolve) => {
+        const checkCached = () => {
+          const result = this.runtimeInfoCache.get(projectPath);
+          if (result) {
+            resolve(result);
+          } else if (this.detectingProjects.has(projectPath)) {
+            setTimeout(checkCached, 100);
+          } else {
+            // Detection finished but no result - return unknown
+            resolve({ version: 'unknown', confidence: 'low', indicators: ['Detection failed'] });
+          }
+        };
+        checkCached();
+      });
+    }
+
+    // Mark as detecting
+    this.detectingProjects.add(projectPath);
+    this.notifyListeners('runtimeDetectionStarted', projectPath);
+
+    try {
+      const runtimeInfo = await detectRuntimeVersion(projectPath);
+      this.runtimeInfoCache.set(projectPath, runtimeInfo);
+      this.saveRuntimeCache(); // Persist to disk
+      this.notifyListeners('runtimeDetectionComplete', projectPath, runtimeInfo);
+      return runtimeInfo;
+    } catch (error) {
+      console.error(`Failed to detect runtime for ${projectPath}:`, error);
+      const fallback: RuntimeVersionInfo = {
+        version: 'unknown',
+        confidence: 'low',
+        indicators: ['Detection error: ' + (error instanceof Error ? error.message : 'Unknown error')]
+      };
+      this.runtimeInfoCache.set(projectPath, fallback);
+      this.saveRuntimeCache(); // Persist to disk
+      this.notifyListeners('runtimeDetectionComplete', projectPath, fallback);
+      return fallback;
+    } finally {
+      this.detectingProjects.delete(projectPath);
+    }
+  }
+
+  /**
+   * Detect runtime version for all projects in the list (background)
+   * Useful for pre-populating the cache when the projects view loads
+   */
+  async detectAllProjectRuntimes(): Promise<void> {
+    const projects = this.getProjects();
+
+    // Detect in parallel but don't wait for all to complete
+    // Instead, trigger detection and let events update the UI
+    for (const project of projects) {
+      // Don't await - let them run in background
+      this.detectProjectRuntime(project.retainedProjectDirectory).catch(() => {
+        // Errors are handled in detectProjectRuntime
+      });
+    }
+  }
+
+  /**
+   * Check if a project is a legacy project (React 17)
+   * @param projectPath - Path to the project directory
+   * @returns True if project is detected as React 17
+   */
+  isLegacyProject(projectPath: string): boolean {
+    const info = this.getRuntimeInfo(projectPath);
+    return info?.version === 'react17';
+  }
+
+  /**
+   * Clear runtime cache for a specific project (e.g., after migration)
+   * @param projectPath - Path to the project directory
+   */
+  clearRuntimeCache(projectPath: string): void {
+    this.runtimeInfoCache.delete(projectPath);
+    this.saveRuntimeCache(); // Persist the change
+    this.notifyListeners('runtimeCacheCleared', projectPath);
+  }
+
+  /**
+   * Clear all runtime cache (useful for debugging or forcing re-detection)
+   */
+  clearAllRuntimeCache(): void {
+    this.runtimeInfoCache.clear();
+    this.saveRuntimeCache();
+    this.notifyListeners('allRuntimeCacheCleared');
   }
 }

@@ -16,13 +16,17 @@
 }
 
 .ViewportInfo {
-  color: var(--theme-color-fg-default);
-  padding: 8px;
-  font-size: 12px;
-  line-height: 1;
+  /* Size/zoom tag (UIX-004/PAR-003): plain muted mono at top-right per the
+     mock (`.size-tag`: right 14 / top 10, 10.5px, fg-3, no chip). */
+  color: var(--theme-color-fg-muted);
+  font-family: var(--font-family-code);
+  font-size: 10.5px;
+  line-height: 1.2;
   position: absolute;
-  background-color: var(--theme-color-bg-3);
+  top: 10px;
+  right: 14px;
   pointer-events: none;
+  z-index: 1;
 }
 
 .WebviewContainer {
@@ -56,6 +60,11 @@
 .Webview {
   flex-shrink: 0;
   flex-grow: 0;
+  /* Device-card framing (UIX-004): presentation only. box-shadow and
+     border-radius never alter the layout box, so the JS-driven preview size
+     and canvas-fit math are untouched. */
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm), 0 0 0 1px var(--theme-color-border-default);
 }
 
 .Crashed {

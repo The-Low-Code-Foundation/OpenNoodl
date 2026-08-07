@@ -1,0 +1,135 @@
+{
+  "id": "cloud-subscribe-to-changes",
+  "title": "Reacting to what another user changed, without owning the query",
+  "description": "**Subscribe To Changes** watches one class on the selected backend and fires signals when anything in it changes — no query, no list, no configuration beyond the class. Here it does the two things it is for at once: `changed` re-runs a Query Records node so the list on screen stays current, and `created` drives a 'new order' notice off `changedRecord`, which the subscription already carries so nothing has to be fetched to show it. `subscribed` drives a live indicator, so a dropped connection is visible rather than a screen that has quietly stopped updating. Against the built-in backend this needs no Backend setting at all: the picker defaults to the project's active backend and is not even shown when there is only one.",
+  "demonstrates": ["SubscribeToChanges"],
+  "components": [
+    {
+      "name": "/Live Orders",
+      "nodes": [
+        {
+          "id": "root",
+          "type": "Group",
+          "label": "Live orders",
+          "parameters": {
+            "flexDirection": "column"
+          },
+          "children": ["live_badge", "new_order_notice", "orders_list"]
+        },
+        {
+          "id": "live_badge",
+          "type": "Text",
+          "label": "Live indicator",
+          "parent": "root",
+          "parameters": {
+            "text": "● live"
+          }
+        },
+        {
+          "id": "new_order_notice",
+          "type": "Text",
+          "label": "New order notice",
+          "parent": "root"
+        },
+        {
+          "id": "orders_list",
+          "type": "For Each",
+          "label": "Orders",
+          "parent": "root",
+          "parameters": {
+            "template": "/Order Row"
+          }
+        },
+        {
+          "id": "orders_query",
+          "type": "DbCollection2",
+          "label": "Orders",
+          "parameters": {
+            "collectionName": "Order"
+          }
+        },
+        {
+          "id": "watch_orders",
+          "type": "SubscribeToChanges",
+          "label": "Any change to Order",
+          "parameters": {
+            "collectionName": "Order"
+          }
+        },
+        {
+          "id": "notice_text",
+          "type": "String Format",
+          "label": "Notice text",
+          "parameters": {
+            "format": "New order {reference}"
+          }
+        }
+      ],
+      "connections": [
+        {
+          "fromId": "orders_query",
+          "fromProperty": "items",
+          "toId": "orders_list",
+          "toProperty": "items"
+        },
+        {
+          "fromId": "watch_orders",
+          "fromProperty": "changed",
+          "toId": "orders_query",
+          "toProperty": "storageFetch"
+        },
+        {
+          "fromId": "watch_orders",
+          "fromProperty": "subscribed",
+          "toId": "live_badge",
+          "toProperty": "visible"
+        },
+        {
+          "fromId": "watch_orders",
+          "fromProperty": "changedRecordId",
+          "toId": "notice_text",
+          "toProperty": "reference"
+        },
+        {
+          "fromId": "notice_text",
+          "fromProperty": "formatted",
+          "toId": "new_order_notice",
+          "toProperty": "text"
+        }
+      ]
+    },
+    {
+      "name": "/Order Row",
+      "nodes": [
+        {
+          "id": "row",
+          "type": "Group",
+          "label": "Row",
+          "parameters": {
+            "flexDirection": "row"
+          },
+          "children": ["reference_text"]
+        },
+        {
+          "id": "reference_text",
+          "type": "Text",
+          "label": "Reference",
+          "parent": "row"
+        },
+        {
+          "id": "row_inputs",
+          "type": "Component Inputs",
+          "label": "Record in"
+        }
+      ],
+      "connections": [
+        {
+          "fromId": "row_inputs",
+          "fromProperty": "reference",
+          "toId": "reference_text",
+          "toProperty": "text"
+        }
+      ]
+    }
+  ]
+}

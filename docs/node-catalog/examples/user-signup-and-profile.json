@@ -1,0 +1,36 @@
+{
+  "id": "user-signup-and-profile",
+  "title": "Sign up, then set profile properties",
+  "description": "Sign Up creates the account and starts a session (`done` fires once the user is signed up and logged in). Custom profile fields beyond username/email/password are written afterwards with Set User Properties, whose property inputs are generated from the user-class schema — here `displayName` is set from the same form, triggered by the signup succeeding. Chain the signals: signup `done` → set-properties `store`.",
+  "demonstrates": ["net.noodl.user.SignUp", "net.noodl.user.SetUserProperties"],
+  "components": [
+    {
+      "name": "/Signup Screen",
+      "nodes": [
+        {
+          "id": "root",
+          "type": "Group",
+          "label": "Form",
+          "parameters": { "flexDirection": "column" },
+          "children": ["email_input", "password_input", "name_input", "signup_btn", "error_text"]
+        },
+        { "id": "email_input", "type": "net.noodl.controls.textinput", "label": "Email", "parent": "root", "parameters": { "placeholder": "you@example.com" } },
+        { "id": "password_input", "type": "net.noodl.controls.textinput", "label": "Password", "parent": "root", "parameters": { "placeholder": "Password", "type": "password" } },
+        { "id": "name_input", "type": "net.noodl.controls.textinput", "label": "Display name", "parent": "root", "parameters": { "placeholder": "Display name" } },
+        { "id": "signup_btn", "type": "net.noodl.controls.button", "label": "Sign up", "parent": "root", "parameters": { "label": "Create account" } },
+        { "id": "error_text", "type": "Text", "label": "Error", "parent": "root" },
+        { "id": "do_signup", "type": "net.noodl.user.SignUp", "label": "Create account" },
+        { "id": "set_profile", "type": "net.noodl.user.SetUserProperties", "label": "Save display name" }
+      ],
+      "connections": [
+        { "fromId": "email_input", "fromProperty": "onTextChanged", "toId": "do_signup", "toProperty": "username" },
+        { "fromId": "email_input", "fromProperty": "onTextChanged", "toId": "do_signup", "toProperty": "email" },
+        { "fromId": "password_input", "fromProperty": "onTextChanged", "toId": "do_signup", "toProperty": "password" },
+        { "fromId": "signup_btn", "fromProperty": "onClick", "toId": "do_signup", "toProperty": "signup" },
+        { "fromId": "do_signup", "fromProperty": "error", "toId": "error_text", "toProperty": "text" },
+        { "fromId": "name_input", "fromProperty": "onTextChanged", "toId": "set_profile", "toProperty": "displayName" },
+        { "fromId": "do_signup", "fromProperty": "done", "toId": "set_profile", "toProperty": "store" }
+      ]
+    }
+  ]
+}

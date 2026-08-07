@@ -104,7 +104,12 @@ export class FileSystemNode implements IFileSystem {
     let jsonText = '';
 
     try {
-      jsonText = JSON.stringify(obj);
+      // Indented, not minified. `project.json` is the main thing written through
+      // here, and a one-line project makes every graph edit a whole-file diff —
+      // in a product that ships git integration, a graph merge driver (SUB-007)
+      // and example projects it asks people to read. Two spaces matches the
+      // repo's `tabWidth` and the examples that are already committed that way.
+      jsonText = JSON.stringify(obj, null, 2);
     } catch (error) {
       console.log('Error serializing json', error);
       throw error;

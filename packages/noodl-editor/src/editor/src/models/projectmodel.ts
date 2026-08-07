@@ -1,5 +1,5 @@
 import _ from 'underscore';
-import { filesystem } from '@noodl/platform';
+import { filesystem, platform } from '@noodl/platform';
 
 import { UndoQueue, UndoActionGroup } from '@noodl-models/undo-queue-model';
 import { WarningsModel } from '@noodl-models/warningsmodel';
@@ -7,18 +7,42 @@ import { verifyJsonFile } from '@noodl-utils/verifyJson';
 
 import Model from '../../../shared/model';
 import { EventDispatcher } from '../../../shared/utils/EventDispatcher';
+import type { IconSetDescriptor } from '../../../shared/utils/iconsets';
 import Utils from '../utils/utils';
 import { ComponentModel } from './componentmodel';
 import LessonModel from './lessonmodel';
 import { NodeGraphModel, NodeGraphNode } from './nodegraphmodel';
 import { NodeLibrary } from './nodelibrary';
-import { listProjectModules, ProjectModule, ProjectModuleManifest, readProjectModules } from './projectmodel.modules';
+import {
+  listProjectIconSets,
+  listProjectModules,
+  ProjectModule,
+  ProjectModuleManifest,
+  readProjectModules
+} from './projectmodel.modules';
 import { VariantModel } from './VariantModel';
+import { projectStructureService, projectMigrator } from '../services/ProjectStructure';
+import type { PreflightReport, MigrationResult } from '../services/ProjectStructure';
+import { isV2FormatEnabled } from '../services/ProjectStructure/featureFlags';
+
+/** Which on-disk format a loaded project uses. Set at load; drives the save path. */
+export type ProjectFormatKind = 'legacy' | 'v2';
+
+/**
+ * WF-007: discriminates whether the endpoint this pointer targets is known
+ * to be a NodeGX backend (`nodegx-backend`, local or deployed — implements
+ * the Parse-wire subset *and* NodeGX-specific extensions like the realtime/
+ * SSE transport) versus an `'external'` Parse-wire-compatible server we
+ * cannot assume anything beyond the base protocol for. `undefined` means
+ * unknown (pre-existing projects saved before this field existed).
+ */
+export type CloudServiceType = 'nodegx' | 'external';
 
 export interface CloudServiceMetadata {
   id: string;
   endpoint: string;
   appId: string;
+  type?: CloudServiceType;
 
   /** @deprecated use `endpoint` instead. */
   url?: string;
@@ -28,6 +52,7 @@ export interface CloudServiceMetadataDataFormat {
   instanceId: string;
   endpoint: string;
   appId: string;
+  type?: CloudServiceType;
 }
 
 export type ProjectSettings =
@@ -97,7 +122,11 @@ export class ProjectModel extends Model {
   public id?: string;
   public name?: string;
   public version?: string;
+  public runtimeVersion?: 'react17' | 'react19';
   public _retainedProjectDirectory?: string;
+  public _isReadOnly?: boolean; // Flag for read-only mode (legacy projects)
+  /** On-disk format this project was loaded from. Determines the save path. Defaults to legacy. */
+  public _projectFormat?: ProjectFormatKind;
   public settings?: ProjectSettings;
   public metadata?: TSFixme;
   public components: ComponentModel[];
@@ -118,12 +147,20 @@ export class ProjectModel extends Model {
     this.settings = {};
     if (args) {
       this.name = args.name;
-      this.settings = args.settings;
+      // A project.json with no `settings` block must still leave this an object —
+      // four read sites index it directly and the panel crashes on undefined (POL-001).
+      this.settings = args.settings ?? {};
       // this.thumbnailURI = args.thumbnailURI;
       this.version = args.version;
+      this.runtimeVersion = args.runtimeVersion;
       this.metadata = args.metadata;
       // this.deviceSettings = args.deviceSettings;
     }
+
+    // NOTE: runtimeVersion is NOT auto-defaulted here!
+    // - New projects: Explicitly set to 'react19' in LocalProjectsModel.newProject()
+    // - Old projects: Left undefined, detected by runtime scanner
+    // - This prevents corrupting legacy projects when they're loaded
 
     NodeLibrary.instance.on(
       ['moduleRegistered', 'moduleUnregistered', 'libraryUpdated'],
@@ -169,6 +206,14 @@ export class ProjectModel extends Model {
 
     if (json.rootNodeId) _this.rootNode = _this.findNodeWithId(json.rootNodeId);
 
+    // Handle rootComponent from templates (name of component instead of node ID)
+    if (json.rootComponent && !_this.rootNode) {
+      const rootComponent = _this.getComponentWithName(json.rootComponent);
+      if (rootComponent) {
+        _this.setRootComponent(rootComponent);
+      }
+    }
+
     // Upgrade project if necessary
     ProjectModel.upgrade(_this);
 
@@ -177,8 +222,18 @@ export class ProjectModel extends Model {
 
   static setSaveOnModelChange(enabled) {
     saveOnModelChange = enabled;
+
     if (!saveOnModelChange) {
+      // The queued write is held, not abandoned — `savePending` survives the
+      // disable, so the branch below re-arms it. Callers turn saving off for a
+      // short critical section (a component reload from disk, the v2
+      // migration) and turn it back on; without the re-arm, an edit that was
+      // already waiting on the timer when the section began simply never
+      // reached disk. Same family of defect as the quit path.
       clearTimeout(saveTimeout);
+    } else if (savePending) {
+      clearTimeout(saveTimeout);
+      saveTimeout = setTimeout(saveProject, 1000);
     }
   }
 
@@ -535,11 +590,17 @@ export class ProjectModel extends Model {
   }
 
   setSettings(settings) {
-    this.settings = settings;
+    this.settings = settings ?? {};
     this.notifyListeners('settingsChanged');
   }
 
   setSetting(name, value) {
+    // The constructor takes `args.settings` verbatim, so a project saved without
+    // a settings block loads with `settings === undefined` — writing must heal that.
+    if (!this.settings) {
+      this.settings = {};
+    }
+
     if (this.settings[name] === value) {
       return;
     }
@@ -551,6 +612,20 @@ export class ProjectModel extends Model {
     }
 
     this.notifyListeners('settingsChanged');
+  }
+
+  /**
+   * Select which runtime React pair this project gets (RUN-001). 'react19'
+   * opts into the React 19 globals; undefined clears the marker so the project
+   * returns to the default (React 18.3.1) pair. Persisted via the regular
+   * autosave (the notify below reaches the global Model.* save listener).
+   */
+  setRuntimeVersion(version: 'react17' | 'react19' | undefined) {
+    if (this.runtimeVersion === version) {
+      return;
+    }
+    this.runtimeVersion = version;
+    this.notifyListeners('runtimeVersionChanged', { version });
   }
 
   resolveColor(color: string) {
@@ -578,6 +653,30 @@ export class ProjectModel extends Model {
 
   // Save to directory
   toDirectory(retainedProjectDirectory, callback) {
+    // v2 decomposed format: write only the components (and project-level files)
+    // that actually changed, atomically, via the ProjectStructure service. The
+    // saver strips child node positions per-component itself, mirroring the
+    // legacy path's stripNodeChildPositions.
+    if (this._projectFormat === 'v2' && isV2FormatEnabled()) {
+      projectStructureService
+        .saveProject(retainedProjectDirectory, this.toJSON())
+        .then((res) => {
+          if (res.result === 'success') {
+            callback && callback({ result: 'success' });
+          } else {
+            callback && callback({ result: 'failure', message: res.message || 'Error writing project files.' });
+          }
+        })
+        .catch((err) => {
+          callback &&
+            callback({
+              result: 'failure',
+              message: err instanceof Error ? err.message : 'Error writing project files.'
+            });
+        });
+      return;
+    }
+
     // This function stores the project in project json
     // First it writes to a tmp file, make sure it is correctly written and then moves it to project.json
     // This is to avoid project files becomming corrupted in the case of a process exit
@@ -628,6 +727,122 @@ export class ProjectModel extends Model {
             message: 'Error writing project file.'
           });
       });
+  }
+
+  /**
+   * Reloads a single component from disk and swaps it into the project in place,
+   * without disturbing other components' unsaved state.
+   *
+   * This is the surgical-reload seam for file-watch and future live-collab: when
+   * a component's files change underneath us (a peer's edit synced in), call this
+   * to refresh just that component. The ProjectStructure service updates its
+   * save baseline for the component, so the next autosave neither clobbers nor
+   * echoes the external change.
+   *
+   * v2 projects only; a no-op (resolves false) otherwise. Autosave is suspended
+   * during the swap so the reload itself does not schedule a save-back.
+   *
+   * @param componentPath Registry path of the component (e.g. "Pages/Home").
+   * @returns true if a component was reloaded and swapped in.
+   */
+  async reloadComponentFromDisk(componentPath: string): Promise<boolean> {
+    if (this._projectFormat !== 'v2' || !this._retainedProjectDirectory) return false;
+
+    const legacyComponent = await projectStructureService.reloadComponent(
+      this._retainedProjectDirectory,
+      componentPath
+    );
+    const newModel = ComponentModel.fromJSON(legacyComponent);
+    const existing = this.getComponentWithName(legacyComponent.name);
+
+    const wasSaving = saveOnModelChange;
+    ProjectModel.setSaveOnModelChange(false);
+    try {
+      if (existing) this.removeComponent(existing);
+      this.addComponent(newModel);
+    } finally {
+      ProjectModel.setSaveOnModelChange(wasSaving);
+    }
+
+    this.notifyListeners('componentReloadedFromDisk', { component: newModel });
+    return true;
+  }
+
+  // ── v2 migration (SUB-003) ──────────────────────────────────────────────────
+  //
+  // The seam the migration wizard drives. `analyzeMigration` reports what a
+  // migration would do (no writes); `migrateToV2` performs it safely — backup,
+  // convert, verify, and roll back automatically on any failure. Both operate on
+  // the currently-open project directory.
+
+  /**
+   * True when the open project is a legacy monolithic project that could be
+   * migrated to the v2 decomposed format. Cheap; drives whether to offer migration.
+   */
+  canOfferMigration(): boolean {
+    return this._projectFormat === 'legacy' && !!this._retainedProjectDirectory;
+  }
+
+  /** Pre-flight analysis of the open project (no writes). */
+  async analyzeMigration(): Promise<PreflightReport | undefined> {
+    if (!this._retainedProjectDirectory) return undefined;
+    return projectMigrator.analyze(this._retainedProjectDirectory);
+  }
+
+  /**
+   * Migrates the open project to the v2 format. Safe and reversible: a full
+   * backup is taken first, the result is verified against the in-memory project,
+   * and any failure rolls back to the backup. Returns a structured result rather
+   * than throwing.
+   */
+  async migrateToV2(): Promise<MigrationResult> {
+    if (!this._retainedProjectDirectory) {
+      return { result: 'failure', message: 'No project directory is open.' };
+    }
+    const result = await projectMigrator.migrate(this._retainedProjectDirectory);
+    if (result.result === 'success') {
+      this._projectFormat = 'v2';
+      this.notifyListeners('projectMigratedToV2', { backupPath: result.backupPath });
+    }
+    return result;
+  }
+
+  /**
+   * Converts a *just-created* project to v2 in place — the new-project path, not
+   * the user-facing migration.
+   *
+   * Same engine as {@link migrateToV2} (convert → verify → roll back on failure),
+   * with one difference: the backup goes to the temp directory and is deleted on
+   * success. The retained backup that `migrateToV2` leaves beside the project is
+   * there because the user had work to lose; a project created seconds ago from a
+   * template does not, and a `<name>.nodegx-backup` folder appearing in Documents
+   * next to every new project is noise, not safety.
+   *
+   * The rollback path still needs a real backup: `writeV2Files` runs before the
+   * legacy `project.json` is removed, so an unverified conversion would otherwise
+   * leave the directory looking like a half-written v2 project to the detector.
+   */
+  async initializeAsV2(): Promise<MigrationResult> {
+    if (!this._retainedProjectDirectory) {
+      return { result: 'failure', message: 'No project directory is open.' };
+    }
+
+    const backupPath = filesystem.makeUniquePath(
+      filesystem.join(platform.getTempPath(), `${filesystem.basename(this._retainedProjectDirectory)}.nodegx-new`)
+    );
+
+    const result = await projectMigrator.migrate(this._retainedProjectDirectory, { backupPath });
+
+    if (result.result === 'success') {
+      this._projectFormat = 'v2';
+      try {
+        filesystem.removeDirRecursive(backupPath);
+      } catch {
+        /* temp cleanup is best-effort; the OS reclaims it */
+      }
+    }
+
+    return result;
   }
 
   // Project lessons
@@ -772,6 +987,16 @@ export class ProjectModel extends Model {
       });
   }
 
+  /** Installed icon sets, normalised — NDA-007 §2. See `shared/utils/iconsets`. */
+  listIconSets(callback: (sets: IconSetDescriptor[]) => void) {
+    listProjectIconSets(this)
+      .then(callback)
+      .catch((error) => {
+        console.error(error);
+        callback([]);
+      });
+  }
+
   readModules(callback: (modules?: ProjectModule[]) => void) {
     readProjectModules(this)
       .then(callback)
@@ -849,6 +1074,13 @@ export class ProjectModel extends Model {
       key,
       data
     });
+
+    // F44: `metadata` is serialised by `toJSON`, but this event is dispatched
+    // under the `ProjectModel.` namespace and so never reaches the `Model.*`
+    // autosave listener. Arm the save here rather than renaming the event —
+    // `Model.metadataChanged` is already taken by `ComponentModel.setMetaData`
+    // and forwarded to the viewer, and this is a *project* change.
+    scheduleProjectSave();
   }
 
   getMetaData(key: string) {
@@ -879,6 +1111,85 @@ export class ProjectModel extends Model {
         data: this.metadata[key]
       });
     }
+
+    // F44: same gap as `setMetaData` — see the note there.
+    scheduleProjectSave();
+  }
+
+  // App Configuration Methods
+  /**
+   * Gets the app configuration from project metadata.
+   * @returns The app config object
+   */
+  getAppConfig() {
+    // Import types dynamically to avoid circular dependencies
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { DEFAULT_APP_CONFIG } = require('@noodl/runtime/src/config/types');
+    return this.getMetaData('appConfig') || DEFAULT_APP_CONFIG;
+  }
+
+  /**
+   * Sets the app configuration in project metadata.
+   * @param config - The app config to save
+   */
+  setAppConfig(config) {
+    this.setMetaData('appConfig', config);
+  }
+
+  /**
+   * Updates the app configuration with partial values.
+   * @param updates - Partial app config updates
+   */
+  updateAppConfig(updates) {
+    const current = this.getAppConfig();
+    this.setAppConfig({
+      ...current,
+      ...updates,
+      identity: {
+        ...current.identity,
+        ...(updates.identity || {})
+      },
+      seo: {
+        ...current.seo,
+        ...(updates.seo || {})
+      },
+      pwa: updates.pwa ? { ...current.pwa, ...updates.pwa } : current.pwa
+    });
+  }
+
+  /**
+   * Gets all config variables.
+   * @returns Array of config variables
+   */
+  getConfigVariables() {
+    return this.getAppConfig().variables || [];
+  }
+
+  /**
+   * Sets or updates a config variable.
+   * @param variable - The config variable to set
+   */
+  setConfigVariable(variable) {
+    const config = this.getAppConfig();
+    const index = config.variables.findIndex((v) => v.key === variable.key);
+
+    if (index >= 0) {
+      config.variables[index] = variable;
+    } else {
+      config.variables.push(variable);
+    }
+
+    this.setAppConfig(config);
+  }
+
+  /**
+   * Removes a config variable by key.
+   * @param key - The variable key to remove
+   */
+  removeConfigVariable(key: string) {
+    const config = this.getAppConfig();
+    config.variables = config.variables.filter((v) => v.key !== key);
+    this.setAppConfig(config);
   }
 
   createNewVariant(name, node) {
@@ -1078,6 +1389,7 @@ export class ProjectModel extends Model {
       rootNodeId: this.rootNode ? this.rootNode.id : undefined,
       // thumbnailURI:this.thumbnailURI,
       version: this.version,
+      runtimeVersion: this.runtimeVersion,
       lesson: this.lesson ? this.lesson.toJSON() : undefined,
       metadata: this.metadata,
       variants: this.variants.map((v) => v.toJSON())
@@ -1132,62 +1444,316 @@ function stripNodeChildPositions(json) {
 // Project saver, saves current project when a change to a model occurs
 let saveOnModelChange = true;
 let saveTimeout;
-const ignoreEvents = [
-  'Model.thumbnailChanged',
-  'Model.inspectorAdded',
-  'Model.inspectorRemoved',
-  'Model.itemsChanged',
-  'Model.activeChanged',
-  'Model.warningsChanged',
-  'Model.GetCurrentFrontends',
-  'Model.GetAllEnvironments',
-  'Model.myProjectsChanged',
-  'Model.moduleRegistered',
-  'Model.libraryUpdated',
-  'Model.documentChanged',
-  'Model.nodeSelected',
-  'Model.selectNode',
-  'Model.moduleUnregistered',
-  'Model.exitEditor',
-  'Model.lessonProgressChanged',
-  'Model.instancePortsChanged',
-  'Model.0',
-  'Model.1',
-  'Model.2'
-];
+
+/**
+ * True from the moment an edit arms the debounce until that edit has actually
+ * reached disk. It is what `flushPendingProjectSave()` reads to decide whether
+ * there is anything to drain, and it deliberately outlives `saveTimeout` — the
+ * timer having fired is not the same as the write having landed, and
+ * `setSaveOnModelChange(false)` clears the timer without the edit being written.
+ */
+let savePending = false;
+/**
+ * The events that mean *the project's serialised content changed*.
+ *
+ * This was a 22-name **denylist**, and the design was the bug. Every `Model.*`
+ * event raised anywhere in the app armed a project save unless someone had
+ * previously noticed that particular event and excluded it — so each new event
+ * type in any model silently became a save trigger. There are 116 distinct
+ * `Model.*` events in the editor, which left ~94 of them writing `project.json`.
+ * Measured on a cold start with zero user input: **two complete project writes in
+ * twenty seconds**, none of them caused by a change to project content.
+ * `Model.templatesChanged` is the launcher's *lesson template list* loading;
+ * `Model.viewerClientsChanged` means a preview client connected. Neither has
+ * anything to do with the project, and both wrote it to disk.
+ *
+ * Adding those two names to the denylist would have fixed the symptom and kept
+ * the design. So the list is inverted: an event has to be *named here* to reach
+ * disk, and the membership rule is `ProjectModel.toJSON()` — `name`,
+ * `components[]`, `settings`, `rootNodeId`, `runtimeVersion`, `lesson`,
+ * `metadata`, `variants[]`. Anything a save would not write is not here.
+ *
+ * `metadata` needs no entry: `setMetaData` calls `scheduleProjectSave()` itself,
+ * which is what covers app config, styles and style tokens.
+ *
+ * Notable *exclusions*, each previously a trigger: `thumbnailChanged` (the
+ * thumbnail is commented out of `toJSON`), `folderCreated`/`folderRenamed`/
+ * `folderDeleted`/`folderReordered` (launcher folders, persisted to the
+ * launcher's own store), `dirtyChanged`/`stepChanged`/`triggersChanged`/
+ * `entryChanged` (workflow documents, which live in a backend's data directory),
+ * `tokensChanged` (reaches disk via `setMetaData`), and `instancePortsChanged`
+ * (derived from parameters, which are themselves a trigger).
+ */
+const projectSaveTriggers = new Set(
+  [
+    /**
+     * `Model.prototype.set` — the base-class assign-and-notify. This is how
+     * **dragging a node** persists: `commitMoveNode` does `node.model.set({x, y})`.
+     * It is also the reason the ownership gate below is not optional. `set` is on
+     * every Model in the app, so allowing this name alone would re-admit most of
+     * what the denylist let through.
+     */
+    'change',
+
+    // ProjectModel — the project's own shape.
+    'renamed',
+    'settingsChanged',
+    'runtimeVersionChanged',
+    'rootNodeChanged',
+    'componentAdded',
+    'componentRemoved',
+    'componentRenamed',
+    'componentDuplicated',
+    'cloudServicesChanged',
+    'projectMigratedToV2',
+    'variantAdded',
+    'variantCreated',
+    'variantUpdated',
+    'variantDeleted',
+    'variantRenamed',
+
+    // ComponentModel.
+    'metadataChanged',
+    /**
+     * Binding a graph onto a component. Two callers reach this with a project
+     * component: the load path — already silent, `projectFromDirectory` holds
+     * `Model._listenersEnabled = false` across `fromJSON` — and version
+     * control's "reset component to a previous version", which replaces the
+     * graph wholesale and is a genuine edit that must reach disk. The third
+     * caller is `WorkflowComponentModel`, and the ownership gate is what
+     * separates it.
+     */
+    'graphModelBound',
+
+    // NodeGraphModel — nodes, wires, and parent/child.
+    'nodeAdded',
+    'nodeRemoved',
+    'nodeAttached',
+    'nodeDetached',
+    'connectionAdded',
+    'connectionRemoved',
+    /** A wire's own fields — its label and where that label sits (CAN-001/002). */
+    'connectionUpdated',
+    'connectionPortChanged',
+    'nodePortRenamed',
+    'nodePortRearranged',
+
+    // NodeGraphNode — parameters, label, variant, states, ports.
+    'parametersChanged',
+    'labelChanged',
+    'variantChanged',
+    'stateTransitionsChanged',
+    'defaultStateTransitionChanged',
+    'commentChanged',
+    'portAdded',
+    'portRemoved',
+    'portRenamed',
+    'portRearranged',
+    'modelParameterUndo',
+    'modelParameterRedo',
+
+    // VariantModel — variants serialise into the project.
+    'variantParametersChanged',
+    'variantStateTransitionsChanged',
+    'variantDefaultStateTransitionChanged',
+
+    // CommentsModel.
+    'commentAdded',
+    'commentsChanged',
+
+    /**
+     * StylesModel. Redundant in principle — `store()` goes through `setMetaData`,
+     * which schedules a save directly — and named anyway, so that a style edit
+     * does not depend on that one call staying where it is.
+     */
+    'stylesChanged',
+    'styleChanged',
+    'styleRenamed'
+  ].map((event) => 'Model.' + event)
+);
+
+/** node → graph → component → project is three; the rest is headroom. */
+const MAX_OWNER_HOPS = 6;
+
+/**
+ * Whether the model that raised an event is part of the project we would save.
+ *
+ * The allowlist cannot answer this on its own, because the same event names are
+ * raised by graphs that are **not in the project at all**.
+ * `WorkflowComponentModel extends ComponentModel`, so opening a workflow tab runs
+ * `ComponentModel`'s constructor — `bindGraph`, then a `nodeAdded` per step and a
+ * `connectionAdded` per wire, then `graphModelBound`. Every one of those armed a
+ * full `project.json` write for a document that lives in a backend's data
+ * directory. That burst, arriving straight after the node library, is what the
+ * cold-start measurement caught and attributed to load-time reconstruction; the
+ * project's own load is in fact already silent, because `projectFromDirectory`
+ * holds `Model._listenersEnabled = false` across `fromJSON`.
+ *
+ * So the discriminator is structural rather than a load/edit state flag: walk the
+ * `owner` chain and require it to reach `ProjectModel.instance`. A flag has to be
+ * set and cleared correctly by every future caller; ownership is already true or
+ * false at the moment the event fires.
+ *
+ * Applied **only** to the three classes whose chain is known to terminate at the
+ * project (`ComponentModel` → `NodeGraphModel` → `NodeGraphNode`). `VariantModel`,
+ * `StylesModel` and `CommentsModel` have no `owner` at all, so judging them this
+ * way would read "unowned" as "foreign" and quietly stop saving. Everything else
+ * is left to the allowlist — the bias throughout is that a redundant write is
+ * cheap and a dropped edit is not.
+ */
+function emitterIsForeignToProject(emitter: unknown): boolean {
+  const project: unknown = ProjectModel.instance;
+  if (!project || !emitter) return false; // Cannot tell — let the save through.
+
+  const isGraphTreeModel =
+    emitter instanceof ComponentModel || emitter instanceof NodeGraphModel || emitter instanceof NodeGraphNode;
+  if (!isGraphTreeModel) return false;
+
+  let current: unknown = emitter;
+  for (let hops = 0; current && hops <= MAX_OWNER_HOPS; hops++) {
+    if (current === project) return false;
+    current = (current as { owner?: unknown }).owner;
+  }
+
+  return true;
+}
+/**
+ * F44: the one place that arms the autosave.
+ *
+ * It used to be inlined in the `Model.*` listener below, which meant the *only*
+ * way to get a project written to disk was to emit an event through
+ * `Model.notifyListeners` — `EventDispatcher`'s wildcard match requires the
+ * first dot-component to be identical, so anything dispatched under another
+ * namespace was silently unsaved. `setMetaData` dispatches
+ * `ProjectModel.metadataChanged`, so every write to `metadata` (the app config:
+ * app name, description, SEO, PWA, config variables) mutated memory and
+ * scheduled nothing. It reached `project.json` only when some *other* change
+ * fired a real `Model.*` event and `toJSON()` swept the pending metadata along
+ * with it — which is why the app name appeared to lag exactly one edit behind.
+ */
+function scheduleProjectSave() {
+  if (!saveOnModelChange) return;
+
+  savePending = true;
+  clearTimeout(saveTimeout);
+  saveTimeout = setTimeout(saveProject, 1000);
+}
+
 EventDispatcher.instance.on(
   'Model.*',
   function (event, eventName) {
-    if (ignoreEvents.indexOf(eventName) !== -1) return;
-    if (!saveOnModelChange) return;
+    if (!projectSaveTriggers.has(eventName)) return;
 
-    clearTimeout(saveTimeout);
-    saveTimeout = setTimeout(saveProject, 1000);
+    // `Model.notifyListeners` dispatches `{ model: <emitter>, args }`, so the
+    // model that raised the event is available here without any extra plumbing.
+    if (emitterIsForeignToProject(event?.model)) return;
+
+    scheduleProjectSave();
   },
   null
 );
 
-function saveProject() {
-  if (!ProjectModel.instance) return;
+type SaveOutcome =
+  /** Written to the project directory. The only case that emits `projectSavedToDisk`. */
+  | { status: 'saved' }
+  /** Nothing to write, or written somewhere that is not the project directory. */
+  | { status: 'skipped' }
+  | { status: 'failed'; message: string };
 
-  if (ProjectModel.instance._retainedProjectDirectory) {
+/**
+ * Serialises writes. `toDirectory` is async and there are now two callers —
+ * the debounced timer and `flushPendingProjectSave()` — so a flush can arrive
+ * while a save is already mid-write. Two concurrent directory writes of the
+ * same project can interleave, so each write waits for the previous one to
+ * settle (hence `onSettled` on both arms) before starting.
+ */
+let saveChain: Promise<SaveOutcome> = Promise.resolve({ status: 'skipped' });
+
+function writeProjectToDisk(): Promise<SaveOutcome> {
+  const onSettled = () => doWriteProjectToDisk();
+  const next = saveChain.then(onSettled, onSettled);
+  saveChain = next;
+  return next;
+}
+
+function doWriteProjectToDisk(): Promise<SaveOutcome> {
+  return new Promise<SaveOutcome>((resolve) => {
+    const project = ProjectModel.instance;
+    if (!project) return resolve({ status: 'skipped' });
+
+    // CRITICAL: Do not save read-only projects (e.g., legacy projects opened for inspection)
+    if (project._isReadOnly) {
+      console.log('⚠️  Skipping auto-save: Project is in read-only mode');
+      return resolve({ status: 'skipped' });
+    }
+
+    if (!project._retainedProjectDirectory) {
+      // The project is not loaded from a directory, store to local store
+      localStorage['project'] = JSON.stringify(project.toJSON(), null, 3);
+      console.log('Project stored to local storage ' + new Date());
+      return resolve({ status: 'skipped' });
+    }
+
     // Project is loaded from directory, save it
-    ProjectModel.instance.toDirectory(ProjectModel.instance._retainedProjectDirectory, function (r) {
-      if (r.result !== 'success') {
-        console.log(r.message);
-        //retry in 3 seconds
-        clearTimeout(saveTimeout);
-        saveTimeout = setTimeout(saveProject, 3000);
-        EventDispatcher.instance.emit('ProjectModel.saveFailedRetryScheduled');
-      } else {
-        console.log('Project saved ' + new Date()); // Project is saved to disk, start the watch timer
-        EventDispatcher.instance.emit('ProjectModel.projectSavedToDisk');
-        //startWatchTimeOut();
-      }
+    project.toDirectory(project._retainedProjectDirectory, function (r) {
+      resolve(r.result === 'success' ? { status: 'saved' } : { status: 'failed', message: r.message });
     });
-  } else {
-    // The project is not loaded from a directory, store to local store
-    localStorage['project'] = JSON.stringify(ProjectModel.instance.toJSON(), null, 3);
-    console.log('Project stored to local storage ' + new Date());
-  }
+  });
+}
+
+function saveProject() {
+  writeProjectToDisk().then((outcome) => {
+    if (outcome.status === 'failed') {
+      console.log(outcome.message);
+      //retry in 3 seconds — `savePending` stays true, so a quit in the meantime
+      //still flushes rather than dropping the edit on the floor.
+      clearTimeout(saveTimeout);
+      saveTimeout = setTimeout(saveProject, 3000);
+      EventDispatcher.instance.emit('ProjectModel.saveFailedRetryScheduled');
+      return;
+    }
+
+    savePending = false;
+
+    if (outcome.status === 'saved') {
+      console.log('Project saved ' + new Date()); // Project is saved to disk, start the watch timer
+      EventDispatcher.instance.emit('ProjectModel.projectSavedToDisk');
+      //startWatchTimeOut();
+    }
+  });
+}
+
+/**
+ * Write any pending edit *now* and resolve once it has landed.
+ *
+ * `scheduleProjectSave()` debounces by a second, and until this existed nothing
+ * ever asked the renderer to drain that timer before the app went away:
+ * `app.on('before-quit')` awaited `backendManager.stopAll()` and nothing else,
+ * so an edit followed by ⌘Q inside the debounce reached memory, never disk, and
+ * failed silently. Two callers wire it up in `src/editor/index.ts` — the main
+ * process's quit handshake, and window `blur`.
+ *
+ * It resolves rather than rejects when the write fails. Both callers are on
+ * their way out, a retry timer would never get to run, and a rejection would
+ * only risk wedging the quit it was added to protect — so a failure is logged
+ * as loudly as this layer can and `savePending` is left set.
+ */
+export function flushPendingProjectSave(): Promise<void> {
+  if (!savePending) return Promise.resolve();
+
+  clearTimeout(saveTimeout);
+
+  return writeProjectToDisk().then((outcome) => {
+    if (outcome.status === 'failed') {
+      console.error('Project save FAILED while flushing before exit — changes may be lost: ' + outcome.message);
+      return;
+    }
+
+    savePending = false;
+
+    if (outcome.status === 'saved') {
+      console.log('Pending project save flushed to disk ' + new Date());
+      EventDispatcher.instance.emit('ProjectModel.projectSavedToDisk');
+    }
+  });
 }

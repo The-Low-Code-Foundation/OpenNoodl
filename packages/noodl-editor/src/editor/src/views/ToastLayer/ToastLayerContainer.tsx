@@ -8,6 +8,9 @@ export function ToastLayerContainer() {
     <div className={css['Root']}>
       <Toaster
         position="bottom-right"
+        // Mock toast anchor (PAR-001): right 20, bottom 58 — clears the 42px
+        // launcher footer.
+        containerStyle={{ right: 20, bottom: 58 }}
         containerClassName={css['ToastContainer']}
         toastOptions={{
           icon: null,

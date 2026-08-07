@@ -1,16 +1,12 @@
-import { NodeLibrary } from '@noodl-models/nodelibrary';
+import { ProjectModel } from '@noodl-models/projectmodel';
+import ThumbnailCache from '@noodl-utils/thumbnailcache';
 
-import ImagePicker from '../imagepicker';
-import { TypeView } from '../TypeView';
+import { ContentPickerItem } from '../components/ContentPicker';
+import { folderForProjectPath } from '../components/fontItems';
 import { getEditType } from '../utils';
+import { PickerTypeView } from './PickerTypeView';
 
-function firstType(type) {
-  return NodeLibrary.nameForPortType(type);
-}
-
-export class ImageType extends TypeView {
-  el: TSFixme;
-
+export class ImageType extends PickerTypeView {
   static fromPort(args) {
     const view = new ImageType();
 
@@ -29,52 +25,34 @@ export class ImageType extends TypeView {
 
     return view;
   }
-  render() {
-    const _this = this;
 
-    this.el = this.bindView(this.parent.cloneTemplate(firstType(this.type)), this);
-    TypeView.prototype.render.call(this);
+  protected openPicker() {
+    const picker = this.openContentPicker({ title: 'Choose image' });
 
-    let imagePicker;
-    this.$('input')
-      .on('focus', function (e) {
-        e.stopPropagation();
-      })
-      .on('click', function (e) {
-        imagePicker = new ImagePicker({
-          onItemSelected: function (name) {
-            _this.$('input').val(name);
-            _this.$('input').trigger('change');
-            _this.parent.hidePopout();
-            // _this.$('input').blur();
-          }
+    ProjectModel.instance.listFilesInProjectDirectory(
+      (files) => {
+        const items: ContentPickerItem[] = [];
+        let filesLeft = files.length;
+        if (!filesLeft) return;
+
+        files.forEach((fileEntry) => {
+          ThumbnailCache.instance.getThumbnailForFile(fileEntry, (thumbnail) => {
+            const pathInProjectFolder = fileEntry.fullPath.substring(
+              ProjectModel.instance._retainedProjectDirectory.length + 1
+            );
+
+            items.push({
+              name: fileEntry.name,
+              fullPath: pathInProjectFolder,
+              folder: folderForProjectPath(pathInProjectFolder),
+              thumbnail: thumbnail ? thumbnail.dataUrl : ''
+            });
+
+            if (--filesLeft === 0) picker.addItems(items);
+          });
         });
-        //imagePicker.setFilter($(this).val());
-        imagePicker.render();
-
-        const el = $(this);
-        _this.parent.showPopout({
-          content: imagePicker,
-          attachTo: el,
-          position: 'right'
-        });
-
-        e.stopPropagation(); // Most stop propagation here otherwise the popup will close
-      })
-      .on('keyup', function (e) {
-        imagePicker && imagePicker.setFilter($(this).val());
-      });
-
-    return this.el;
-  }
-  onPropertyChanged(scope, el) {
-    this.parent.setParameter(scope.name, el.val() === '' ? undefined : el.val());
-
-    // Update current value and if it is default or not
-    const current = this.getCurrentValue();
-    el.val(current.value);
-    this.isDefault = current.isDefault;
-
-    el.blur();
+      },
+      ['png', 'jpeg', 'jpg', 'svg', 'gif', 'webp']
+    );
   }
 }

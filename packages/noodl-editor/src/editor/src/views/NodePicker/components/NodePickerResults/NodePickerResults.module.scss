@@ -1,0 +1,46 @@
+.Root {
+  padding: 14px 16px 16px;
+}
+
+.Group {
+  margin-bottom: 18px;
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+}
+
+.GroupHead {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 0 0 9px;
+  padding-left: 2px;
+}
+
+.GroupTitle {
+  margin: 0;
+  color: var(--theme-color-fg-default);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.GroupCount {
+  color: var(--theme-color-fg-muted);
+  font-family: var(--font-family-code);
+  font-size: var(--font-size-xs);
+}
+
+.GroupRule {
+  flex: 1;
+  height: 1px;
+  background-color: var(--theme-color-border-default);
+}
+
+.Grid {
+  display: grid;
+  grid-template-columns: repeat(var(--picker-columns, 3), minmax(0, 1fr));
+  gap: 7px;
+}

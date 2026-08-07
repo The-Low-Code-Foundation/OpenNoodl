@@ -5,8 +5,6 @@ import { IconName } from '@noodl-core-ui/components/common/Icon';
 import { IconButton, IconButtonState, IconButtonVariant } from '@noodl-core-ui/components/inputs/IconButton';
 import { Collapsible } from '@noodl-core-ui/components/layout/Collapsible';
 import { SectionVariant } from '@noodl-core-ui/components/sidebar/Section';
-import { Label, LabelSize } from '@noodl-core-ui/components/typography/Label';
-import { TextType } from '@noodl-core-ui/components/typography/Text';
 import { UnsafeStyleProps } from '@noodl-core-ui/types/global';
 
 import css from './CollapsableSection.module.scss';
@@ -59,9 +57,12 @@ export function CollapsableSection({
           onClick={() => setIsCollapsed((prev) => !prev)}
           className={classNames([css['Header'], css[`is-variant-${variant}`], css['is-collapsable']])}
         >
-          <Label variant={TextType.Proud} size={LabelSize.Medium}>
+          {/* PNL-005: a plain span for the same reason as `PanelHeader.Title` —
+              `Label` is `display: block; white-space: pre`, so a long section
+              title could not ellipsise and pushed the caret out of the panel. */}
+          <div className={css['Title']} title={title}>
             {title}
-          </Label>
+          </div>
           {Boolean(actions) && <div>{actions}</div>}
           <IconButton
             icon={IconName.CaretUp}

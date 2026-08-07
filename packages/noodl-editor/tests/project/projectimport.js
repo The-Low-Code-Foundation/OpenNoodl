@@ -1,4 +1,14 @@
-const ProjectImporter = require('@noodl-utils/projectimporter');
+// LIB-004 wrote this suite as the characterization contract for the import
+// engine, driven through the strangler adapter that kept the old checkbox
+// popups alive. LIB-005 replaced those popups and deleted the adapter, so the
+// suite now drives `analyze` / `plan` / `apply` directly — the same behaviours,
+// asserted one layer closer to the code that implements them.
+//
+// The target-project adapter under test (`createTargetProject`) is the same one
+// the import flow uses, so collision detection is verified through the real
+// path rather than a test double.
+const { analyzeSource, apply, plan } = require('@noodl-utils/import-engine');
+const { createTargetProject } = require('../../src/editor/src/views/ImportFlow/model/targetProject');
 const FileSystem = require('@noodl-utils/filesystem');
 const { ProjectModel } = require('@noodl-models/projectmodel');
 const Utils = require('@noodl-utils/utils');
@@ -9,8 +19,82 @@ const { projectFromDirectory } = require('@noodl-models/projectmodel.editor');
 
 const remote = require('@electron/remote');
 const App = remote.app;
+const { NodeLibrary } = require('@noodl-models/nodelibrary');
+
+/** Everything a source project offers, as an `ImportSelection`. */
+function selectEverything(inventory) {
+  return {
+    components: inventory.components.map((c) => ({ name: c.name })),
+    resources: inventory.resources.map((r) => ({ name: r.name })),
+    modules: inventory.modules.map((m) => ({ name: m.name })),
+    variants: inventory.variants.map((v) => ({ name: v.name, typename: v.typename })),
+    styles: {
+      colors: inventory.styles.colors.map((c) => ({ name: c.name })),
+      text: inventory.styles.text.map((t) => ({ name: t.name }))
+    }
+  };
+}
+
+/** Plan the whole of `sourceDir` into the currently open project. */
+async function planEverythingInto(sourceDir, targetProject) {
+  const { inventory, project } = await analyzeSource(sourceDir);
+  const target = await createTargetProject(targetProject);
+  return { inventory, plan: plan(inventory, project, selectEverything(inventory), target) };
+}
+
+/** The colliding subset of a plan, counted the way the old dialog counted it. */
+function collisionsOf(p) {
+  const collides = (items) => items.filter((i) => i.collides);
+  return {
+    components: collides(p.components),
+    resources: collides(p.resources),
+    modules: collides(p.modules),
+    variants: collides(p.variants),
+    styles: { colors: collides(p.styles.colors), text: collides(p.styles.text) }
+  };
+}
+
+/** Inventory components minus the id, which the legacy listing did not carry. */
+function componentShapes(inventory) {
+  return inventory.components.map((c) => ({
+    name: c.name,
+    dependencies: c.dependencies,
+    fileDependencies: c.fileDependencies,
+    styleDependencies: c.styleDependencies,
+    variantDependencies: c.variantDependencies
+  }));
+}
 
 describe('Project import and export unit tests', function () {
+  /**
+   * Almost every spec here assigns the global `ProjectModel.instance` and none of
+   * them put it back, so under a randomized order the next spec file inherited a
+   * half-imported project. That is the other half of the order-dependence the
+   * NodeLibrary fix below did not reach: type resolution reads the *current*
+   * project as well as the library. Restoring it makes this file's mutations end
+   * at its own boundary.
+   */
+  let outerProjectInstance;
+
+  beforeEach(() => {
+    outerProjectInstance = ProjectModel.instance;
+  });
+
+  afterEach(() => {
+    ProjectModel.instance = outerProjectInstance;
+  });
+
+  beforeEach(() => {
+    // The re-keying characterization counts nodes via `forEachNodeRecursive`,
+    // which descends *through* component instances — so its count depends on
+    // whether a component-instance node's type resolved, which depends on the
+    // singleton NodeLibrary having been loaded. Inheriting whatever an earlier
+    // spec file happened to install made the same assertion produce 8, 5 and 4
+    // on different seeds. Install our own library so the count is ours.
+    window.NodeLibraryData = require('../nodegraph/nodelibrary');
+    NodeLibrary.instance.loadLibrary();
+  });
+
   function expectFilesToExist(direntry, paths, callback) {
     var filesToCheck = paths.length;
     var success = true;
@@ -28,189 +112,144 @@ describe('Project import and export unit tests', function () {
     }
   }
 
-  it('can import project with styles and variants', function (done) {
-    ProjectImporter.instance.listComponentsAndDependencies(
-      Process.cwd() + '/tests/testfs/import_proj5',
-      function (imports) {
-        expect(imports.styles.colors).toEqual([
-          {
-            name: 'Primary'
-          },
-          {
-            name: 'Light Gray'
-          },
-          {
-            name: 'Dark Gray'
-          },
-          {
-            name: 'Primary Dark'
-          },
-          {
-            name: 'Dark'
-          },
-          {
-            name: 'Primary Light'
-          }
-        ]);
+  it('can import project with styles and variants', async function () {
+    const { inventory } = await analyzeSource(Process.cwd() + '/tests/testfs/import_proj5');
 
-        expect(imports.styles.text).toEqual([
-          {
-            name: 'Body Text',
-            fileDependencies: ['fonts/Roboto/Roboto-Regular.ttf']
-          },
-          {
-            name: 'Button Label',
-            fileDependencies: ['fonts/Roboto/Roboto-Regular.ttf']
-          },
-          {
-            name: 'Label Text',
-            fileDependencies: ['fonts/Roboto/Roboto-Regular.ttf']
-          }
-        ]);
+    expect(inventory.styles.colors).toEqual([
+      { name: 'Primary' },
+      { name: 'Light Gray' },
+      { name: 'Dark Gray' },
+      { name: 'Primary Dark' },
+      { name: 'Dark' },
+      { name: 'Primary Light' }
+    ]);
 
-        expect(imports.variants).toEqual([
-          {
-            name: 'Basic',
-            typename: 'net.noodl.controls.button',
-            fileDependencies: ['fonts/Roboto/Roboto-Medium.ttf'],
-            styleDependencies: {
-              colors: ['Primary', 'Primary Light', 'Primary Dark', 'Light Gray'],
-              text: ['Button Label']
-            }
-          },
-          {
-            name: 'Search Field',
-            typename: 'net.noodl.controls.textinput',
-            fileDependencies: ['fonts/Roboto/Roboto-Medium.ttf'],
-            styleDependencies: {
-              colors: ['Light Gray', 'Dark', 'Primary'],
-              text: ['Body Text', 'Label Text']
-            }
-          }
-        ]);
-
-        done();
+    expect(inventory.styles.text).toEqual([
+      {
+        name: 'Body Text',
+        fileDependencies: ['fonts/Roboto/Roboto-Regular.ttf']
+      },
+      {
+        name: 'Button Label',
+        fileDependencies: ['fonts/Roboto/Roboto-Regular.ttf']
+      },
+      {
+        name: 'Label Text',
+        fileDependencies: ['fonts/Roboto/Roboto-Regular.ttf']
       }
-    );
+    ]);
+
+    expect(inventory.variants).toEqual([
+      {
+        name: 'Basic',
+        typename: 'net.noodl.controls.button',
+        fileDependencies: ['fonts/Roboto/Roboto-Medium.ttf'],
+        styleDependencies: {
+          colors: ['Primary', 'Primary Light', 'Primary Dark', 'Light Gray'],
+          text: ['Button Label']
+        }
+      },
+      {
+        name: 'Search Field',
+        typename: 'net.noodl.controls.textinput',
+        fileDependencies: ['fonts/Roboto/Roboto-Medium.ttf'],
+        styleDependencies: {
+          colors: ['Light Gray', 'Dark', 'Primary'],
+          text: ['Body Text', 'Label Text']
+        }
+      }
+    ]);
   });
 
   it('can check for collissions (with styles and variants)', function (done) {
     projectFromDirectory(Process.cwd() + '/tests/testfs/import_proj5', function (project) {
       ProjectModel.instance = project;
 
-      // Now check for collistions with project to import
-      ProjectImporter.instance.listComponentsAndDependencies(
-        Process.cwd() + '/tests/testfs/import_proj5',
-        function (imports) {
-          ProjectImporter.instance.checkForCollisions(imports, function (collisions) {
-            expect(collisions.components.length).toBe(2);
-            expect(collisions.modules.length).toBe(1);
-            expect(collisions.resources.length).toBe(13);
-            expect(collisions.variants.length).toBe(2);
-            expect(collisions.styles.colors.length).toBe(6);
-            expect(collisions.styles.text.length).toBe(3);
-            done();
-          });
-        }
-      );
+      // Importing a project into itself: everything collides.
+      planEverythingInto(Process.cwd() + '/tests/testfs/import_proj5', project).then(({ plan: p }) => {
+        const collisions = collisionsOf(p);
+        expect(collisions.components.length).toBe(2);
+        expect(collisions.modules.length).toBe(1);
+        expect(collisions.resources.length).toBe(13);
+        expect(collisions.variants.length).toBe(2);
+        expect(collisions.styles.colors.length).toBe(6);
+        expect(collisions.styles.text.length).toBe(3);
+        done();
+      });
     });
   });
 
-  it('can list components and dependencies', function (done) {
-    ProjectImporter.instance.listComponentsAndDependencies(
-      Process.cwd() + '/tests/testfs/import_proj1',
-      function (imports) {
-        console.log(imports);
-        expect(imports.components).toEqual([
-          {
-            name: '/comp1',
-            dependencies: [],
-            fileDependencies: ['assets/bear.jpg'],
-            styleDependencies: {
-              text: [],
-              colors: []
-            },
-            variantDependencies: []
-          },
-          {
-            name: '/comp2',
-            dependencies: [],
-            fileDependencies: [],
-            styleDependencies: {
-              text: [],
-              colors: []
-            },
-            variantDependencies: []
-          },
-          {
-            name: '/Main',
-            dependencies: ['/comp1'],
-            fileDependencies: ['Fontfabric - Nexa-Bold.otf'],
-            styleDependencies: {
-              text: [],
-              colors: []
-            },
-            variantDependencies: []
-          }
-        ]);
+  it('can list components and dependencies', async function () {
+    const { inventory } = await analyzeSource(Process.cwd() + '/tests/testfs/import_proj1');
 
-        expect(imports.styles).toEqual({
+    expect(componentShapes(inventory)).toEqual([
+      {
+        name: '/comp1',
+        dependencies: [],
+        fileDependencies: ['assets/bear.jpg'],
+        styleDependencies: {
           text: [],
           colors: []
-        });
-
-        //the order of these are different on mac and windows, so sort them
-        imports.resources.sort((a, b) => {
-          return a.name.localeCompare(b.name);
-        });
-
-        expect(imports.resources).toEqual([
-          {
-            name: 'assets/bear.jpg'
-          },
-          {
-            name: 'assets/bikeyellowbuilding.jpg'
-          },
-          {
-            name: 'bear.jpg'
-          },
-          {
-            name: 'Fontfabric - Nexa-Bold.otf'
-          }
-        ]);
-
-        expect(imports.variants).toEqual([]);
-        expect(imports.modules).toEqual([]);
-
-        done();
+        },
+        variantDependencies: []
+      },
+      {
+        name: '/comp2',
+        dependencies: [],
+        fileDependencies: [],
+        styleDependencies: {
+          text: [],
+          colors: []
+        },
+        variantDependencies: []
+      },
+      {
+        name: '/Main',
+        dependencies: ['/comp1'],
+        fileDependencies: ['Fontfabric - Nexa-Bold.otf'],
+        styleDependencies: {
+          text: [],
+          colors: []
+        },
+        variantDependencies: []
       }
-    );
+    ]);
+
+    expect(inventory.styles).toEqual({
+      text: [],
+      colors: []
+    });
+
+    //the order of these are different on mac and windows, so sort them
+    const resources = [...inventory.resources].sort((a, b) => a.name.localeCompare(b.name));
+
+    expect(resources).toEqual([
+      { name: 'assets/bear.jpg' },
+      { name: 'assets/bikeyellowbuilding.jpg' },
+      { name: 'bear.jpg' },
+      { name: 'Fontfabric - Nexa-Bold.otf' }
+    ]);
+
+    expect(inventory.variants).toEqual([]);
+    expect(inventory.modules).toEqual([]);
   });
 
   it('can check for collissions (1)', function (done) {
     projectFromDirectory(Process.cwd() + '/tests/testfs/import_proj1', function (project) {
       ProjectModel.instance = project;
 
-      // Now check for collistions with project to import
-      ProjectImporter.instance.listComponentsAndDependencies(
-        Process.cwd() + '/tests/testfs/import_proj2',
-        function (imports) {
-          ProjectImporter.instance.checkForCollisions(imports, function (collisions) {
-            expect(collisions.components.length).toBe(1);
-            expect(collisions.components[0].name).toBe('/Main');
+      planEverythingInto(Process.cwd() + '/tests/testfs/import_proj2', project).then(({ plan: p }) => {
+        const collisions = collisionsOf(p);
+        expect(collisions.components.length).toBe(1);
+        expect(collisions.components[0].name).toBe('/Main');
 
-            expect(collisions.resources).toEqual([]);
-            expect(collisions.modules).toEqual([]);
-            expect(collisions.variants).toEqual([]);
-            expect(collisions.styles).toEqual({
-              colors: [],
-              text: []
-            });
-
-            done();
-          });
-        }
-      );
+        expect(collisions.resources).toEqual([]);
+        expect(collisions.modules).toEqual([]);
+        expect(collisions.variants).toEqual([]);
+        expect(collisions.styles.colors).toEqual([]);
+        expect(collisions.styles.text).toEqual([]);
+        done();
+      });
     });
   });
 
@@ -218,32 +257,19 @@ describe('Project import and export unit tests', function () {
     projectFromDirectory(Process.cwd() + '/tests/testfs/import_proj1', function (project) {
       ProjectModel.instance = project;
 
-      // Now check for collistions with project to import
-      ProjectImporter.instance.listComponentsAndDependencies(
-        Process.cwd() + '/tests/testfs/import_proj3',
-        function (imports) {
-          ProjectImporter.instance.checkForCollisions(imports, function (collisions) {
-            expect(collisions.resources).toEqual([
-              {
-                name: 'Fontfabric - Nexa-Bold.otf'
-              },
-              {
-                name: 'assets/bear.jpg'
-              }
-            ]);
+      planEverythingInto(Process.cwd() + '/tests/testfs/import_proj3', project).then(({ plan: p }) => {
+        const collisions = collisionsOf(p);
+        expect(collisions.resources.map((r) => r.name).sort()).toEqual(
+          ['Fontfabric - Nexa-Bold.otf', 'assets/bear.jpg'].sort()
+        );
 
-            expect(collisions.components).toEqual([]);
-            expect(collisions.modules).toEqual([]);
-            expect(collisions.variants).toEqual([]);
-            expect(collisions.styles).toEqual({
-              colors: [],
-              text: []
-            });
-
-            done();
-          });
-        }
-      );
+        expect(collisions.components).toEqual([]);
+        expect(collisions.modules).toEqual([]);
+        expect(collisions.variants).toEqual([]);
+        expect(collisions.styles.colors).toEqual([]);
+        expect(collisions.styles.text).toEqual([]);
+        done();
+      });
     });
   });
 
@@ -262,24 +288,21 @@ describe('Project import and export unit tests', function () {
         projectFromDirectory(tempDir + '/import_proj1', function (project) {
           ProjectModel.instance = project;
 
-          ProjectImporter.instance.listComponentsAndDependencies(
-            Process.cwd() + '/tests/testfs/import_proj3',
-            function (imports) {
-              ProjectImporter.instance.import(Process.cwd() + '/tests/testfs/import_proj3', imports, function () {
-                expect(ProjectModel.instance.getComponentWithName('/Main2')).not.toBe(undefined);
+          planEverythingInto(Process.cwd() + '/tests/testfs/import_proj3', project)
+            .then(({ plan: p }) => apply(p, ProjectModel.instance))
+            .then(() => {
+              expect(ProjectModel.instance.getComponentWithName('/Main2')).not.toBe(undefined);
 
-                // Check that files have been copied properly
-                expectFilesToExist(
-                  tempDir + '/import_proj1',
-                  ['assets/bear.jpg', 'Fontfabric - Nexa-Bold.otf', 'newfile.jpg'],
-                  function (success) {
-                    expect(success).toBe(true);
-                    done();
-                  }
-                );
-              });
-            }
-          );
+              // Check that files have been copied properly
+              expectFilesToExist(
+                tempDir + '/import_proj1',
+                ['assets/bear.jpg', 'Fontfabric - Nexa-Bold.otf', 'newfile.jpg'],
+                function (success) {
+                  expect(success).toBe(true);
+                  done();
+                }
+              );
+            });
         });
       });
     });
@@ -300,59 +323,225 @@ describe('Project import and export unit tests', function () {
         projectFromDirectory(tempDir + '/import_proj1', function (project) {
           ProjectModel.instance = project;
 
-          ProjectImporter.instance.listComponentsAndDependencies(
-            Process.cwd() + '/tests/testfs/import_proj5',
-            function (imports) {
-              ProjectImporter.instance.import(Process.cwd() + '/tests/testfs/import_proj5', imports, function () {
-                const styles = ProjectModel.instance.getMetaData('styles');
-                expect(Object.keys(styles.colors).sort()).toEqual([
-                  'Dark',
-                  'Dark Gray',
-                  'Light Gray',
-                  'Primary',
-                  'Primary Dark',
-                  'Primary Light'
-                ]);
-                expect(Object.keys(styles.text).sort()).toEqual(['Body Text', 'Button Label', 'Label Text']);
+          planEverythingInto(Process.cwd() + '/tests/testfs/import_proj5', project)
+            .then(({ plan: p }) => apply(p, ProjectModel.instance))
+            .then(() => {
+              const styles = ProjectModel.instance.getMetaData('styles');
+              expect(Object.keys(styles.colors).sort()).toEqual([
+                'Dark',
+                'Dark Gray',
+                'Light Gray',
+                'Primary',
+                'Primary Dark',
+                'Primary Light'
+              ]);
+              expect(Object.keys(styles.text).sort()).toEqual(['Body Text', 'Button Label', 'Label Text']);
 
-                expect(
-                  ProjectModel.instance.findVariant('Basic', {
-                    localName: 'net.noodl.controls.button'
-                  })
-                ).not.toBe(undefined);
-                expect(
-                  ProjectModel.instance.findVariant('Search Field', {
-                    localName: 'net.noodl.controls.textinput'
-                  })
-                ).not.toBe(undefined);
+              expect(
+                ProjectModel.instance.findVariant('Basic', {
+                  localName: 'net.noodl.controls.button'
+                })
+              ).not.toBe(undefined);
+              expect(
+                ProjectModel.instance.findVariant('Search Field', {
+                  localName: 'net.noodl.controls.textinput'
+                })
+              ).not.toBe(undefined);
 
-                expect(fs.existsSync(tempDir + '/import_proj1/noodl_modules/material-icons')).toBe(true);
+              expect(fs.existsSync(tempDir + '/import_proj1/noodl_modules/material-icons')).toBe(true);
 
-                done();
-              });
-            }
-          );
+              done();
+            });
         });
       });
     });
   });
 
-  it('ignores .git', function (done) {
+  // ── Characterization: id semantics the import engine v2 must preserve ──────
+  // The legacy engine (projectimporter.js:388–398) re-keyed every imported
+  // component and its nodes to fresh ids, EXCEPT that an overwrite reused the
+  // existing target component's id so references to it keep resolving. Nothing
+  // documented or tested this; these pin it as the contract for apply().
+
+  it('overwrite reuses the target component id (characterization)', function (done) {
+    // Target: a temp COPY of proj1 (has /Main). Source: proj2 (/Main empty).
+    //
+    // This used to load `tests/testfs/import_proj1` in place, on the reasoning
+    // that a model-only overwrite writes nothing. That reasoning holds for this
+    // spec but not for the run: the gutted project stayed in the global
+    // `ProjectModel.instance`, and under randomized order a later spec that
+    // saves the current project wrote it back over the fixture — after which
+    // every spec reading `import_proj1/project.json` from disk failed, in a way
+    // that looked like a bug in the import engine. Copy first, like the sibling
+    // spec below already does. (LIB-005: found the first time this Electron
+    // suite was actually executed.)
+    const tempDir = App.getPath('temp') + '/noodlunittests-' + Utils.guid() + '/';
+    FileSystem.instance.makeDirectory(tempDir, function () {
+      ncp(Process.cwd() + '/tests/testfs/import_proj1', tempDir + '/p', function (err) {
+        if (err) throw err;
+        projectFromDirectory(tempDir + '/p', function (project) {
+          ProjectModel.instance = project;
+
+          const targetMain = ProjectModel.instance.getComponentWithName('/Main');
+          targetMain.id = 'TARGET-MAIN-ID';
+
+          planEverythingInto(Process.cwd() + '/tests/testfs/import_proj2', project)
+            .then(({ inventory, plan: p }) => {
+              expect(inventory.resources).toEqual([]); // guard: proj2 is model-only
+              return apply(p, ProjectModel.instance);
+            })
+            .then((r) => {
+              expect(r.result).toBe('success');
+              const after = ProjectModel.instance.getComponentWithName('/Main');
+              // The overwritten component keeps the TARGET's id, not a fresh one.
+              expect(after.id).toBe('TARGET-MAIN-ID');
+              done();
+            });
+        });
+      });
+    });
+  });
+
+  it('re-keys imported node ids while reusing the target component id (characterization)', function (done) {
+    // Target: a temp copy of proj2 (/Main empty). Source: a temp copy of proj1
+    // (/Main with 4 nodes + resources).
+    //
+    // ── Why both sides are copied, and why the count moved ───────────────────
+    // This assertion has been diagnosed three times and been wrong three times:
+    // as engine data loss (retracted), as the `forEachRecursive` truthy-return
+    // bug (real, fixed, not the whole story), and as NodeLibrary singleton
+    // leakage (real, fixed by the `beforeEach` above, still not the whole
+    // story). It kept failing with a *different* number each time — 4, 5, 8,
+    // and 10 on seed 63183 of the current tree — which is the tell: the number
+    // was never the contract, it was a measurement of global state.
+    //
+    // `forEachNodeRecursive` descends THROUGH a component-instance node into
+    // whatever its `type` resolved to. So the count depends on how many
+    // instance nodes resolved and to which components — i.e. on what the
+    // singleton NodeLibrary and the previous `ProjectModel.instance` happen to
+    // hold. No amount of pinning the expected number fixes that, so this spec
+    // no longer counts through the descent. It asserts the three things the
+    // characterization is actually for, each independently of spec order:
+    //
+    //   1. the overwrite reuses the TARGET component's id;
+    //   2. /Main's own graph is re-keyed afresh — no source node id survives;
+    //   3. references inside imported components resolve post-import — asserted
+    //      by identity on the /comp1 instance's `type` rather than inferred
+    //      from a node total, which is what made it order-dependent.
+    //
+    // The source is copied too because it used to be read through
+    // `require('../testfs/import_proj1/project.json')`. `require` caches by
+    // path, so whether `srcNodeIds` described the bytes on disk depended on
+    // which spec loaded it first — and a sibling spec writes into
+    // `tests/testfs/` directly. Reading the temp copy with `fs` removes both.
+    const tempDir = App.getPath('temp') + '/noodlunittests-' + Utils.guid() + '/';
+    FileSystem.instance.makeDirectory(tempDir, function () {
+      ncp(Process.cwd() + '/tests/testfs/import_proj1', tempDir + '/src', function (err) {
+        if (err) throw err;
+        ncp(Process.cwd() + '/tests/testfs/import_proj2', tempDir + '/p', function (err2) {
+          if (err2) throw err2;
+
+          const srcJson = JSON.parse(fs.readFileSync(tempDir + '/src/project.json', 'utf8'));
+          const srcMain = srcJson.components.find((c) => c.name === '/Main');
+          const srcNodeIds = [];
+          (function walk(nodes) {
+            (nodes || []).forEach((n) => {
+              srcNodeIds.push(n.id);
+              walk(n.children);
+            });
+          })(srcMain.graph.roots);
+
+          projectFromDirectory(tempDir + '/p', function (project) {
+            ProjectModel.instance = project;
+            const tMain = ProjectModel.instance.getComponentWithName('/Main');
+            tMain.id = 'T-ID';
+
+            planEverythingInto(tempDir + '/src', project)
+              .then(({ plan: p }) => apply(p, ProjectModel.instance))
+              .then((r) => {
+                expect(r.result).toBe('success');
+                const after = ProjectModel.instance.getComponentWithName('/Main');
+                expect(after.id).toBe('T-ID'); // 1. overwrite reused the target id
+
+                // 2. `forEachNode` walks children only — it does NOT descend into
+                // a node's resolved type — so this counts /Main's own graph and
+                // nothing else. Expected against the fixture rather than a
+                // literal, so editing the fixture cannot silently pass.
+                const ownIds = [];
+                after.forEachNode((n) => {
+                  ownIds.push(n.id);
+                });
+                expect(ownIds.length).toBe(srcNodeIds.length);
+                srcNodeIds.forEach((id) => expect(ownIds.indexOf(id)).toBe(-1));
+
+                // 3. The /comp1 instance still names /comp1, the target project
+                // now holds a /comp1, and the name resolves to a component
+                // rather than to an unknown-node placeholder. That is the
+                // "references in imported components resolve post-import"
+                // contract, stated over this project's own state only.
+                //
+                // Object identity is deliberately NOT asserted, and the reason is
+                // now measured rather than suspected.
+                //
+                // An earlier note read `instanceNode.type.owner.name === 'proj1'`
+                // as "the type resolves to the component owned by the SOURCE
+                // project analyzeSource loaded, not the one apply put in the
+                // target" — a retention leak into a discarded project. Measured
+                // over seeds 63183 / 07241 / 69768 (2026-07-28), that is wrong
+                // twice:
+                //
+                //   - `proj1` never identified the source. `import_proj2`, the
+                //     TARGET fixture, was also named "proj1", so both sides
+                //     reported the same owner name. It has since been renamed to
+                //     "proj2" precisely so this cannot mislead again.
+                //   - identity came out false / TRUE / false across those three
+                //     seeds. Order-dependent, which is the discriminator the note
+                //     itself named: test isolation, not `apply`.
+                //
+                // What is stable on all three: the typeCache entry for '/comp1'
+                // IS the target's component, so `getNodeTypeWithName` resolves
+                // correctly. What varies is whether `instanceNode.type` had
+                // already latched a type object from an earlier resolution, in a
+                // suite where NodeLibrary is a singleton and specs assign
+                // ProjectModel.instance freely.
+                //
+                // So identity stays unasserted because it is a property of spec
+                // order, not of the importer. Asserting it either way would pin
+                // the singleton's history.
+                const importedComp1 = ProjectModel.instance.getComponentWithName('/comp1');
+                expect(importedComp1).not.toBe(undefined);
+                let instanceNode;
+                after.forEachNode((n) => {
+                  if (n.typename === '/comp1') instanceNode = n;
+                });
+                expect(instanceNode).not.toBe(undefined);
+                expect(instanceNode.type.name).toBe('/comp1');
+
+                // The target's own component is what the name resolves through —
+                // asserted, unlike identity, because it is order-independent.
+                expect(NodeLibrary.instance.typeCache.get('/comp1')).toBe(importedComp1);
+
+                done();
+              });
+          });
+        });
+      });
+    });
+  });
+
+  it('ignores .git', async function () {
     const path = Process.cwd() + '/tests/testfs/import_proj4/';
 
     //add a .git folder with a file inside
     FileSystem.instance.makeDirectorySync(path + '.git');
     FileSystem.instance.writeFileSync(path + '.git/test', 'test');
 
-    ProjectImporter.instance.listComponentsAndDependencies(path, (imports) => {
-      expect(imports.components.length).toBe(1);
-      expect(imports.resources.length).toBe(0);
+    const { inventory } = await analyzeSource(path);
+    expect(inventory.components.length).toBe(1);
+    expect(inventory.resources.length).toBe(0);
 
-      //remove the .git folder
-      FileSystem.instance.removeFileSync(path + '.git/test');
-      FileSystem.instance.removeDirectoryRecursiveSync(path + '.git');
-
-      done();
-    });
+    //remove the .git folder
+    FileSystem.instance.removeFileSync(path + '.git/test');
+    FileSystem.instance.removeDirectoryRecursiveSync(path + '.git');
   });
 });

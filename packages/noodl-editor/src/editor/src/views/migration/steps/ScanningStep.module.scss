@@ -1,0 +1,76 @@
+/**
+ * CLEANUP-000H: ScanningStep — design token polish
+ */
+
+.StepContainer {
+  padding: var(--spacing-6, 24px);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-4, 16px);
+}
+
+.StepTitle {
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+  color: var(--theme-color-fg-highlight, var(--theme-color-fg-default));
+  margin: 0;
+}
+
+.LoadingContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-8, 32px) var(--spacing-4, 16px);
+  gap: var(--spacing-4, 16px);
+}
+
+.Spinner {
+  width: 48px;
+  height: 48px;
+  border: 3px solid var(--theme-color-bg-3);
+  border-top-color: var(--theme-color-primary);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.LoadingText {
+  font-size: var(--font-size-md);
+  color: var(--theme-color-fg-default-shy);
+  text-align: center;
+  line-height: 1.5;
+}
+
+.CurrentFile {
+  font-size: var(--font-size-base);
+  color: var(--theme-color-fg-default-shy);
+  font-family: var(--font-family-code);
+  text-align: center;
+  max-width: 400px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ProgressBar {
+  width: 100%;
+  max-width: 300px;
+  height: 4px;
+  background-color: var(--theme-color-bg-3);
+  border-radius: 99px;
+  overflow: hidden;
+}
+
+.ProgressFill {
+  height: 100%;
+  background-color: var(--theme-color-primary);
+  border-radius: 99px;
+  transition: width 300ms ease;
+}

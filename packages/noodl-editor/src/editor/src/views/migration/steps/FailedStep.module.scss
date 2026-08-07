@@ -1,0 +1,85 @@
+/**
+ * CLEANUP-000H: FailedStep — design token polish
+ */
+
+.StepContainer {
+  padding: var(--spacing-6, 24px);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-4, 16px);
+}
+
+.StepTitle {
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+  color: var(--theme-color-fg-highlight, var(--theme-color-fg-default));
+  margin: 0;
+}
+
+// Error banner
+.ErrorBanner {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-3, 12px);
+  padding: var(--spacing-4, 16px);
+  background-color: color-mix(in srgb, var(--theme-color-danger) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--theme-color-danger) 30%, transparent);
+  border-radius: var(--radius-default);
+}
+
+.ErrorIcon {
+  width: 24px;
+  height: 24px;
+  color: var(--theme-color-danger);
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.ErrorContent {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2, 8px);
+  flex: 1;
+}
+
+.ErrorTitle {
+  font-size: var(--font-size-md);
+  font-weight: 600;
+  color: var(--theme-color-danger);
+}
+
+.ErrorMessage {
+  font-size: var(--font-size-base);
+  color: var(--theme-color-fg-default);
+  line-height: 1.5;
+}
+
+// Error details (collapsible/scrollable)
+.ErrorDetails {
+  margin-top: var(--spacing-3, 12px);
+  padding: var(--spacing-3, 12px);
+  background-color: var(--theme-color-bg-1);
+  border-radius: var(--radius-default);
+  font-family: var(--font-family-code);
+  font-size: var(--font-size-base);
+  color: var(--theme-color-fg-default-shy);
+  overflow-x: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 200px;
+  overflow-y: auto;
+  border: 1px solid var(--theme-color-border-default);
+}
+
+.ActionRow {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2, 8px);
+  padding-top: var(--spacing-2, 8px);
+}
+
+.HintText {
+  font-size: var(--font-size-base);
+  color: var(--theme-color-fg-default-shy);
+  line-height: 1.5;
+}

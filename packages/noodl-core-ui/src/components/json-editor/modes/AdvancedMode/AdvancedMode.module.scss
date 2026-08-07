@@ -1,0 +1,156 @@
+/**
+ * Advanced Mode Styles
+ * Text editor for power users
+ */
+
+.Root {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--theme-color-bg-2);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+/* Toolbar */
+.Toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background-color: var(--theme-color-bg-3);
+  border-bottom: 1px solid var(--theme-color-border-default);
+}
+
+.ToolbarLeft,
+.ToolbarRight {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.StatusValid {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--theme-color-success);
+}
+
+.StatusInvalid {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--theme-color-danger);
+}
+
+.FormatButton {
+  padding: 4px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  background-color: var(--theme-color-primary);
+  color: var(--theme-color-on-primary);
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+
+  &:hover:not(:disabled) {
+    opacity: 0.9;
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+/* Text Editor */
+.Editor {
+  flex: 1;
+  padding: 12px;
+  font-size: 13px;
+  font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
+  line-height: 1.6;
+  background-color: var(--theme-color-bg-1);
+  color: var(--theme-color-fg-default);
+  border: none;
+  outline: none;
+  resize: none;
+  overflow-y: auto;
+
+  &::placeholder {
+    color: var(--theme-color-fg-muted);
+    opacity: 0.5;
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+}
+
+/* Error Panel */
+.ErrorPanel {
+  padding: 12px;
+  background-color: var(--theme-color-danger-bg);
+  border-top: 2px solid var(--theme-color-danger);
+  animation: slideDown 0.2s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.ErrorHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.ErrorIcon {
+  font-size: 16px;
+}
+
+.ErrorTitle {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--theme-color-danger);
+}
+
+.ErrorMessage {
+  font-size: 13px;
+  font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
+  color: var(--theme-color-fg-default);
+  margin-bottom: 8px;
+  padding: 8px;
+  background-color: var(--theme-color-bg-2);
+  border-radius: 3px;
+  border-left: 3px solid var(--theme-color-danger);
+}
+
+.ErrorSuggestion {
+  font-size: 13px;
+  color: var(--theme-color-fg-default);
+  padding: 8px;
+  background-color: var(--theme-color-primary-bg);
+  border-radius: 3px;
+  border-left: 3px solid var(--theme-color-primary);
+  margin-bottom: 8px;
+
+  strong {
+    color: var(--theme-color-primary);
+  }
+}
+
+.ErrorLocation {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--theme-color-fg-muted);
+}

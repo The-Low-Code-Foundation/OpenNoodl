@@ -1,0 +1,1009 @@
+{
+    "name": "Export",
+    "components": [
+        {
+            "name": "/Multi Choice",
+            "id": "d10ef080-55fe-0520-2e3a-0a1cd6e0239c",
+            "graph": {
+                "connections": [
+                    {
+                        "fromId": "a8ef5439-a96a-5c39-a5bf-6c72bb19dfa8",
+                        "fromProperty": "Item Template",
+                        "toId": "4a837179-6a93-757e-2c60-f1c091046c1c",
+                        "toProperty": "template"
+                    },
+                    {
+                        "fromId": "8ecf8457-1fb6-e919-df94-fb2e89266c71",
+                        "fromProperty": "value-Checkboxes",
+                        "toId": "4a837179-6a93-757e-2c60-f1c091046c1c",
+                        "toProperty": "items"
+                    },
+                    {
+                        "fromId": "4a837179-6a93-757e-2c60-f1c091046c1c",
+                        "fromProperty": "itemOutputSignal-Selection Changed",
+                        "toId": "76629fce-634a-d680-fea2-aa679c444fff",
+                        "toProperty": "run"
+                    },
+                    {
+                        "fromId": "8ecf8457-1fb6-e919-df94-fb2e89266c71",
+                        "fromProperty": "value-Selection",
+                        "toId": "4429382c-15ea-7c28-6735-20829568b6da",
+                        "toProperty": "Selection"
+                    },
+                    {
+                        "fromId": "a8ef5439-a96a-5c39-a5bf-6c72bb19dfa8",
+                        "fromProperty": "Selection",
+                        "toId": "8ecf8457-1fb6-e919-df94-fb2e89266c71",
+                        "toProperty": "value-Selection"
+                    },
+                    {
+                        "fromId": "76629fce-634a-d680-fea2-aa679c444fff",
+                        "fromProperty": "out-Changed",
+                        "toId": "4429382c-15ea-7c28-6735-20829568b6da",
+                        "toProperty": "Selection Changed"
+                    },
+                    {
+                        "fromId": "a8ef5439-a96a-5c39-a5bf-6c72bb19dfa8",
+                        "fromProperty": "Labels",
+                        "toId": "b2f8ed56-e2f2-fcbe-f016-633c73f417f2",
+                        "toProperty": "in-Labels"
+                    },
+                    {
+                        "fromId": "a8ef5439-a96a-5c39-a5bf-6c72bb19dfa8",
+                        "fromProperty": "Options",
+                        "toId": "b2f8ed56-e2f2-fcbe-f016-633c73f417f2",
+                        "toProperty": "in-Options"
+                    },
+                    {
+                        "fromId": "a8ef5439-a96a-5c39-a5bf-6c72bb19dfa8",
+                        "fromProperty": "Selection",
+                        "toId": "b2f8ed56-e2f2-fcbe-f016-633c73f417f2",
+                        "toProperty": "in-Selection"
+                    },
+                    {
+                        "fromId": "fc59a672-1444-76d6-b6e3-b365cf6acd33",
+                        "fromProperty": "Align Y",
+                        "toId": "4d3ea934-d84d-e9c6-9e10-2d064908afdb",
+                        "toProperty": "alignY"
+                    },
+                    {
+                        "fromId": "fc59a672-1444-76d6-b6e3-b365cf6acd33",
+                        "fromProperty": "Align X",
+                        "toId": "4d3ea934-d84d-e9c6-9e10-2d064908afdb",
+                        "toProperty": "alignX"
+                    },
+                    {
+                        "fromId": "fc59a672-1444-76d6-b6e3-b365cf6acd33",
+                        "fromProperty": "Margin Top",
+                        "toId": "4d3ea934-d84d-e9c6-9e10-2d064908afdb",
+                        "toProperty": "marginTop"
+                    },
+                    {
+                        "fromId": "fc59a672-1444-76d6-b6e3-b365cf6acd33",
+                        "fromProperty": "Margin Bottom",
+                        "toId": "4d3ea934-d84d-e9c6-9e10-2d064908afdb",
+                        "toProperty": "marginBottom"
+                    },
+                    {
+                        "fromId": "fc59a672-1444-76d6-b6e3-b365cf6acd33",
+                        "fromProperty": "Margin Left",
+                        "toId": "4d3ea934-d84d-e9c6-9e10-2d064908afdb",
+                        "toProperty": "marginLeft"
+                    },
+                    {
+                        "fromId": "fc59a672-1444-76d6-b6e3-b365cf6acd33",
+                        "fromProperty": "Margin Right",
+                        "toId": "4d3ea934-d84d-e9c6-9e10-2d064908afdb",
+                        "toProperty": "marginRight"
+                    },
+                    {
+                        "fromId": "fc59a672-1444-76d6-b6e3-b365cf6acd33",
+                        "fromProperty": "Position",
+                        "toId": "4d3ea934-d84d-e9c6-9e10-2d064908afdb",
+                        "toProperty": "position"
+                    },
+                    {
+                        "fromId": "fc59a672-1444-76d6-b6e3-b365cf6acd33",
+                        "fromProperty": "Width",
+                        "toId": "4d3ea934-d84d-e9c6-9e10-2d064908afdb",
+                        "toProperty": "width"
+                    },
+                    {
+                        "fromId": "fc59a672-1444-76d6-b6e3-b365cf6acd33",
+                        "fromProperty": "Label",
+                        "toId": "bb43bc11-6110-e275-11b8-308619318d10",
+                        "toProperty": "text"
+                    }
+                ],
+                "roots": [
+                    {
+                        "id": "4d3ea934-d84d-e9c6-9e10-2d064908afdb",
+                        "type": "Group",
+                        "label": "Multi Choice",
+                        "x": 19.41428973149368,
+                        "y": 58.48997469158948,
+                        "parameters": {
+                            "backgroundColor": "White",
+                            "sizeMode": "contentSize"
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": [
+                            {
+                                "id": "bb43bc11-6110-e275-11b8-308619318d10",
+                                "type": "Text",
+                                "label": "Label",
+                                "parameters": {
+                                    "color": "Grey - 700",
+                                    "textStyle": "Label Small",
+                                    "text": "Checkbox group label"
+                                },
+                                "ports": [],
+                                "dynamicports": [],
+                                "children": []
+                            },
+                            {
+                                "id": "82f6d0d0-b31a-ea7d-0ae9-6f19ec347ebd",
+                                "type": "Group",
+                                "label": "Checkbox container",
+                                "parameters": {
+                                    "sizeMode": "contentSize",
+                                    "marginTop": {
+                                        "value": 8,
+                                        "unit": "px"
+                                    }
+                                },
+                                "ports": [],
+                                "dynamicports": [],
+                                "children": [
+                                    {
+                                        "id": "4a837179-6a93-757e-2c60-f1c091046c1c",
+                                        "type": "For Each",
+                                        "parameters": {
+                                            "template": "/Multi Choice/Item"
+                                        },
+                                        "ports": [],
+                                        "dynamicports": [
+                                            {
+                                                "name": "itemOutputSignal-Selection Changed",
+                                                "displayName": "Selection Changed",
+                                                "type": "signal",
+                                                "plug": "output",
+                                                "group": "Item Signals",
+                                                "index": 6
+                                            },
+                                            {
+                                                "name": "inputMappingScript",
+                                                "type": {
+                                                    "name": "string",
+                                                    "codeeditor": "javascript"
+                                                },
+                                                "displayName": "Script",
+                                                "group": "Input Mapping",
+                                                "default": "// Here you add mappings between the properties of the item objects and the inputs of the components.\n// 'myComponentInput': 'myObjectProperty',\n// 'anotherComponentInput': function () { return object.get('someProperty') + ' ' + object.get('otherProp') }\n// These are the default mappings based on the selected template component.\nmap({\n})\n",
+                                                "plug": "input",
+                                                "index": 7
+                                            }
+                                        ],
+                                        "children": []
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        "id": "a8ef5439-a96a-5c39-a5bf-6c72bb19dfa8",
+                        "type": "Component Inputs",
+                        "x": -601.3042166666273,
+                        "y": 207.1545118515811,
+                        "parameters": {},
+                        "ports": [
+                            {
+                                "name": "Options",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "index": 0,
+                                "group": "General"
+                            },
+                            {
+                                "name": "Selection",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "index": 1,
+                                "group": "General"
+                            },
+                            {
+                                "name": "Item Template",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "index": 3,
+                                "group": "Style"
+                            },
+                            {
+                                "name": "Labels",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "group": "General",
+                                "index": 2
+                            }
+                        ],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "4429382c-15ea-7c28-6735-20829568b6da",
+                        "type": "Component Outputs",
+                        "x": 453.74314519897996,
+                        "y": 318.1250091937026,
+                        "parameters": {},
+                        "ports": [
+                            {
+                                "name": "Selection",
+                                "plug": "input",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "index": 1
+                            },
+                            {
+                                "name": "Selection Changed",
+                                "plug": "input",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "index": 2
+                            }
+                        ],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "8ecf8457-1fb6-e919-df94-fb2e89266c71",
+                        "type": "net.noodl.ComponentObject",
+                        "x": 311.54541191363785,
+                        "y": -13.72473669297608,
+                        "parameters": {
+                            "properties": "Checkboxes,Selection"
+                        },
+                        "ports": [],
+                        "dynamicports": [
+                            {
+                                "type": {
+                                    "name": "*",
+                                    "allowConnectionsOnly": true
+                                },
+                                "plug": "input/output",
+                                "group": "Properties",
+                                "name": "value-Checkboxes",
+                                "displayName": "Checkboxes",
+                                "index": 4
+                            },
+                            {
+                                "type": "signal",
+                                "plug": "output",
+                                "group": "Changed Events",
+                                "displayName": "Checkboxes Changed",
+                                "name": "changed-Checkboxes",
+                                "index": 5
+                            },
+                            {
+                                "type": {
+                                    "name": "*",
+                                    "allowConnectionsOnly": true
+                                },
+                                "plug": "input/output",
+                                "group": "Properties",
+                                "name": "value-Selection",
+                                "displayName": "Selection",
+                                "index": 6
+                            },
+                            {
+                                "type": "signal",
+                                "plug": "output",
+                                "group": "Changed Events",
+                                "displayName": "Selection Changed",
+                                "name": "changed-Selection",
+                                "index": 7
+                            }
+                        ],
+                        "children": []
+                    },
+                    {
+                        "id": "b2f8ed56-e2f2-fcbe-f016-633c73f417f2",
+                        "type": "JavaScriptFunction",
+                        "label": "Initialize",
+                        "x": -268.45458808636215,
+                        "y": 352.2752633070239,
+                        "parameters": {
+                            "functionScript": "if(!Inputs.Options) return // No options, no fun\n\nComponent.Object.Checkboxes = Inputs.Options.map((o,idx) => Noodl.Object.create({\n    id:Component.Object.id+'-'+o,\n    Value:o,\n    Label:Inputs.Labels!==undefined?Inputs.Labels[idx]:o,\n    Checked:Inputs.Selection!==undefined && Inputs.Selection.indexOf(o) !== -1\n}))",
+                            "scriptInputs": [
+                                {
+                                    "id": "melj",
+                                    "label": "Options"
+                                },
+                                {
+                                    "id": "pdiv",
+                                    "label": "Selection"
+                                },
+                                {
+                                    "id": "l9z7",
+                                    "label": "Labels"
+                                }
+                            ],
+                            "intype-Options": "array",
+                            "intype-Selection": "array",
+                            "intype-Labels": "array",
+                            "in-Options": "['one','two','three']",
+                            "in-Labels": "['One','Two','Three']"
+                        },
+                        "ports": [],
+                        "dynamicports": [
+                            {
+                                "name": "intype-Options",
+                                "displayName": "Type",
+                                "editorName": "Options | Type",
+                                "plug": "input",
+                                "type": {
+                                    "name": "enum",
+                                    "enums": [
+                                        {
+                                            "value": "string",
+                                            "label": "String"
+                                        },
+                                        {
+                                            "value": "boolean",
+                                            "label": "Boolean"
+                                        },
+                                        {
+                                            "value": "number",
+                                            "label": "Number"
+                                        },
+                                        {
+                                            "value": "object",
+                                            "label": "Object"
+                                        },
+                                        {
+                                            "value": "date",
+                                            "label": "Date"
+                                        },
+                                        {
+                                            "value": "array",
+                                            "label": "Array"
+                                        },
+                                        {
+                                            "value": "color",
+                                            "label": "Color"
+                                        }
+                                    ],
+                                    "allowEditOnly": true
+                                },
+                                "default": "string",
+                                "parent": "scriptInputs",
+                                "parentItemId": "melj",
+                                "index": 4
+                            },
+                            {
+                                "name": "in-Options",
+                                "displayName": "Options",
+                                "plug": "input",
+                                "type": "array",
+                                "group": "Inputs",
+                                "index": 5
+                            },
+                            {
+                                "name": "intype-Selection",
+                                "displayName": "Type",
+                                "editorName": "Selection | Type",
+                                "plug": "input",
+                                "type": {
+                                    "name": "enum",
+                                    "enums": [
+                                        {
+                                            "value": "string",
+                                            "label": "String"
+                                        },
+                                        {
+                                            "value": "boolean",
+                                            "label": "Boolean"
+                                        },
+                                        {
+                                            "value": "number",
+                                            "label": "Number"
+                                        },
+                                        {
+                                            "value": "object",
+                                            "label": "Object"
+                                        },
+                                        {
+                                            "value": "date",
+                                            "label": "Date"
+                                        },
+                                        {
+                                            "value": "array",
+                                            "label": "Array"
+                                        },
+                                        {
+                                            "value": "color",
+                                            "label": "Color"
+                                        }
+                                    ],
+                                    "allowEditOnly": true
+                                },
+                                "default": "string",
+                                "parent": "scriptInputs",
+                                "parentItemId": "pdiv",
+                                "index": 6
+                            },
+                            {
+                                "name": "in-Selection",
+                                "displayName": "Selection",
+                                "plug": "input",
+                                "type": "array",
+                                "group": "Inputs",
+                                "index": 7
+                            },
+                            {
+                                "name": "intype-Labels",
+                                "displayName": "Type",
+                                "editorName": "Labels | Type",
+                                "plug": "input",
+                                "type": {
+                                    "name": "enum",
+                                    "enums": [
+                                        {
+                                            "value": "string",
+                                            "label": "String"
+                                        },
+                                        {
+                                            "value": "boolean",
+                                            "label": "Boolean"
+                                        },
+                                        {
+                                            "value": "number",
+                                            "label": "Number"
+                                        },
+                                        {
+                                            "value": "object",
+                                            "label": "Object"
+                                        },
+                                        {
+                                            "value": "date",
+                                            "label": "Date"
+                                        },
+                                        {
+                                            "value": "array",
+                                            "label": "Array"
+                                        },
+                                        {
+                                            "value": "color",
+                                            "label": "Color"
+                                        }
+                                    ],
+                                    "allowEditOnly": true
+                                },
+                                "default": "string",
+                                "parent": "scriptInputs",
+                                "parentItemId": "l9z7",
+                                "index": 8
+                            },
+                            {
+                                "name": "in-Labels",
+                                "displayName": "Labels",
+                                "plug": "input",
+                                "type": "array",
+                                "group": "Inputs",
+                                "index": 9
+                            }
+                        ],
+                        "children": [],
+                        "metadata": {
+                            "merge": {
+                                "soureCodePorts": [
+                                    "functionScript"
+                                ]
+                            }
+                        }
+                    },
+                    {
+                        "id": "76629fce-634a-d680-fea2-aa679c444fff",
+                        "type": "JavaScriptFunction",
+                        "label": "Update selection",
+                        "x": -267.45458808636215,
+                        "y": 506.2752633070238,
+                        "parameters": {
+                            "functionScript": "Component.Object.Selection = Component.Object.Checkboxes.filter(o => o.Checked).map(o => o.Value)\nOutputs.Changed()\n",
+                            "scriptInputs": [
+                                {
+                                    "id": "melj",
+                                    "label": "Options"
+                                },
+                                {
+                                    "id": "pdiv",
+                                    "label": "Selection"
+                                }
+                            ],
+                            "intype-Options": "array",
+                            "intype-Selection": "array"
+                        },
+                        "ports": [],
+                        "dynamicports": [
+                            {
+                                "name": "intype-Options",
+                                "displayName": "Type",
+                                "editorName": "Options | Type",
+                                "plug": "input",
+                                "type": {
+                                    "name": "enum",
+                                    "enums": [
+                                        {
+                                            "value": "string",
+                                            "label": "String"
+                                        },
+                                        {
+                                            "value": "boolean",
+                                            "label": "Boolean"
+                                        },
+                                        {
+                                            "value": "number",
+                                            "label": "Number"
+                                        },
+                                        {
+                                            "value": "object",
+                                            "label": "Object"
+                                        },
+                                        {
+                                            "value": "date",
+                                            "label": "Date"
+                                        },
+                                        {
+                                            "value": "array",
+                                            "label": "Array"
+                                        },
+                                        {
+                                            "value": "color",
+                                            "label": "Color"
+                                        }
+                                    ],
+                                    "allowEditOnly": true
+                                },
+                                "default": "string",
+                                "parent": "scriptInputs",
+                                "parentItemId": "melj",
+                                "index": 4
+                            },
+                            {
+                                "name": "in-Options",
+                                "displayName": "Options",
+                                "plug": "input",
+                                "type": "array",
+                                "group": "Inputs",
+                                "index": 5
+                            },
+                            {
+                                "name": "intype-Selection",
+                                "displayName": "Type",
+                                "editorName": "Selection | Type",
+                                "plug": "input",
+                                "type": {
+                                    "name": "enum",
+                                    "enums": [
+                                        {
+                                            "value": "string",
+                                            "label": "String"
+                                        },
+                                        {
+                                            "value": "boolean",
+                                            "label": "Boolean"
+                                        },
+                                        {
+                                            "value": "number",
+                                            "label": "Number"
+                                        },
+                                        {
+                                            "value": "object",
+                                            "label": "Object"
+                                        },
+                                        {
+                                            "value": "date",
+                                            "label": "Date"
+                                        },
+                                        {
+                                            "value": "array",
+                                            "label": "Array"
+                                        },
+                                        {
+                                            "value": "color",
+                                            "label": "Color"
+                                        }
+                                    ],
+                                    "allowEditOnly": true
+                                },
+                                "default": "string",
+                                "parent": "scriptInputs",
+                                "parentItemId": "pdiv",
+                                "index": 6
+                            },
+                            {
+                                "name": "in-Selection",
+                                "displayName": "Selection",
+                                "plug": "input",
+                                "type": "array",
+                                "group": "Inputs",
+                                "index": 7
+                            },
+                            {
+                                "name": "out-Changed",
+                                "displayName": "Changed",
+                                "plug": "output",
+                                "type": "signal",
+                                "group": "Outputs",
+                                "index": 8
+                            }
+                        ],
+                        "children": [],
+                        "metadata": {
+                            "merge": {
+                                "soureCodePorts": [
+                                    "functionScript"
+                                ]
+                            }
+                        }
+                    },
+                    {
+                        "id": "fc59a672-1444-76d6-b6e3-b365cf6acd33",
+                        "type": "Component Inputs",
+                        "x": -267.41842433254,
+                        "y": -38.31745239034251,
+                        "parameters": {},
+                        "ports": [
+                            {
+                                "name": "Align X",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "group": "Alignment",
+                                "index": 1
+                            },
+                            {
+                                "name": "Align Y",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "group": "Alignment",
+                                "index": 0
+                            },
+                            {
+                                "name": "Position",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "group": "Layout",
+                                "index": 6
+                            },
+                            {
+                                "name": "Margin Top",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "group": "Margins",
+                                "index": 2
+                            },
+                            {
+                                "name": "Margin Bottom",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "group": "Margins",
+                                "index": 3
+                            },
+                            {
+                                "name": "Margin Left",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "group": "Margins",
+                                "index": 4
+                            },
+                            {
+                                "name": "Margin Right",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "group": "Margins",
+                                "index": 5
+                            },
+                            {
+                                "name": "Width",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "group": "Dimensions",
+                                "index": 7
+                            },
+                            {
+                                "name": "Label",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "group": "Other",
+                                "index": 8
+                            }
+                        ],
+                        "dynamicports": [],
+                        "children": []
+                    }
+                ]
+            },
+            "metadata": {
+                "canvasPos": {
+                    "x": 2381.6590552643065,
+                    "y": -362.5497149944302
+                }
+            }
+        },
+        {
+            "name": "/Multi Choice/Item",
+            "id": "1eb2d654-cc5a-1eeb-67b3-7a0a054b877e",
+            "graph": {
+                "connections": [
+                    {
+                        "fromId": "cf1a84d7-ebdd-24ca-fe01-cfb549f2a753",
+                        "fromProperty": "prop-Checked",
+                        "toId": "97efb085-ce0c-fcac-8c6c-eba33de816dd",
+                        "toProperty": "checked"
+                    },
+                    {
+                        "fromId": "97efb085-ce0c-fcac-8c6c-eba33de816dd",
+                        "fromProperty": "onChange",
+                        "toId": "0b38d18d-995b-c31b-6028-278555e402f0",
+                        "toProperty": "store"
+                    },
+                    {
+                        "fromId": "97efb085-ce0c-fcac-8c6c-eba33de816dd",
+                        "fromProperty": "checked",
+                        "toId": "0b38d18d-995b-c31b-6028-278555e402f0",
+                        "toProperty": "prop-Checked"
+                    },
+                    {
+                        "fromId": "cf1a84d7-ebdd-24ca-fe01-cfb549f2a753",
+                        "fromProperty": "id",
+                        "toId": "0b38d18d-995b-c31b-6028-278555e402f0",
+                        "toProperty": "modelId"
+                    },
+                    {
+                        "fromId": "cf1a84d7-ebdd-24ca-fe01-cfb549f2a753",
+                        "fromProperty": "prop-Label",
+                        "toId": "97efb085-ce0c-fcac-8c6c-eba33de816dd",
+                        "toProperty": "label"
+                    },
+                    {
+                        "fromId": "0b38d18d-995b-c31b-6028-278555e402f0",
+                        "fromProperty": "done",
+                        "toId": "a84e12da-699a-75de-ffb9-b1291ba8967a",
+                        "toProperty": "Selection Changed"
+                    }
+                ],
+                "roots": [
+                    {
+                        "id": "6a42a039-1346-c7cc-1720-3d989b9d5620",
+                        "type": "Group",
+                        "label": "Checkbox wrapper",
+                        "x": -237.13418498559759,
+                        "y": -86.30538651894608,
+                        "parameters": {
+                            "sizeMode": "contentHeight",
+                            "marginBottom": {
+                                "value": 4,
+                                "unit": "px"
+                            }
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": [
+                            {
+                                "id": "97efb085-ce0c-fcac-8c6c-eba33de816dd",
+                                "type": "net.noodl.controls.checkbox",
+                                "parameters": {
+                                    "styleCss": "cursor:pointer;"
+                                },
+                                "ports": [],
+                                "dynamicports": [],
+                                "children": []
+                            }
+                        ]
+                    },
+                    {
+                        "id": "cf1a84d7-ebdd-24ca-fe01-cfb549f2a753",
+                        "type": "Model2",
+                        "x": -527.9146853817153,
+                        "y": -18.8741974168818,
+                        "parameters": {
+                            "properties": "Label,Checked",
+                            "idSource": "foreach"
+                        },
+                        "ports": [],
+                        "dynamicports": [
+                            {
+                                "type": {
+                                    "name": "*",
+                                    "allowConnectionsOnly": true
+                                },
+                                "plug": "input/output",
+                                "group": "Properties",
+                                "name": "prop-Label",
+                                "displayName": "Label",
+                                "index": 7
+                            },
+                            {
+                                "type": "signal",
+                                "plug": "output",
+                                "group": "Changed Events",
+                                "displayName": "Label Changed",
+                                "name": "changed-Label",
+                                "index": 8
+                            },
+                            {
+                                "type": {
+                                    "name": "*",
+                                    "allowConnectionsOnly": true
+                                },
+                                "plug": "input/output",
+                                "group": "Properties",
+                                "name": "prop-Checked",
+                                "displayName": "Checked",
+                                "index": 9
+                            },
+                            {
+                                "type": "signal",
+                                "plug": "output",
+                                "group": "Changed Events",
+                                "displayName": "Checked Changed",
+                                "name": "changed-Checked",
+                                "index": 10
+                            }
+                        ],
+                        "children": []
+                    },
+                    {
+                        "id": "0b38d18d-995b-c31b-6028-278555e402f0",
+                        "type": "SetModelProperties",
+                        "x": 7.2410381499237815,
+                        "y": -1.08104732733824,
+                        "parameters": {
+                            "properties": "Checked"
+                        },
+                        "ports": [],
+                        "dynamicports": [
+                            {
+                                "type": {
+                                    "name": "*"
+                                },
+                                "plug": "input",
+                                "group": "Property Values",
+                                "displayName": "Checked",
+                                "name": "prop-Checked",
+                                "index": 6
+                            },
+                            {
+                                "type": {
+                                    "name": "enum",
+                                    "enums": [
+                                        {
+                                            "label": "String",
+                                            "value": "string"
+                                        },
+                                        {
+                                            "label": "Boolean",
+                                            "value": "boolean"
+                                        },
+                                        {
+                                            "label": "Number",
+                                            "value": "number"
+                                        },
+                                        {
+                                            "label": "Date",
+                                            "value": "date"
+                                        },
+                                        {
+                                            "label": "Array",
+                                            "value": "array"
+                                        },
+                                        {
+                                            "label": "Object",
+                                            "value": "object"
+                                        },
+                                        {
+                                            "label": "Any",
+                                            "value": "*"
+                                        }
+                                    ],
+                                    "allowEditOnly": true
+                                },
+                                "default": "*",
+                                "plug": "input",
+                                "group": "Property Types",
+                                "displayName": "Checked",
+                                "name": "type-Checked",
+                                "index": 7
+                            }
+                        ],
+                        "children": []
+                    },
+                    {
+                        "id": "a84e12da-699a-75de-ffb9-b1291ba8967a",
+                        "type": "Component Outputs",
+                        "x": 219.12256226105228,
+                        "y": 12.566901317729702,
+                        "parameters": {},
+                        "ports": [
+                            {
+                                "name": "Selection Changed",
+                                "plug": "input",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "index": 1
+                            }
+                        ],
+                        "dynamicports": [],
+                        "children": []
+                    }
+                ]
+            },
+            "metadata": {
+                "canvasPos": {
+                    "x": 2382.9289889251104,
+                    "y": -296.2584143137957
+                },
+                "canvasSize": {
+                    "width": "229px",
+                    "height": "auto"
+                }
+            }
+        }
+    ],
+    "settings": {},
+    "version": "3",
+    "metadata": {
+        "styles": {
+            "text": {
+                "Label Small": {
+                    "fontFamily": "fonts/Inter/Inter-Medium.ttf",
+                    "fontSize": {
+                        "value": "12",
+                        "unit": "px"
+                    },
+                    "color": "#000000",
+                    "letterSpacing": "Auto",
+                    "lineHeight": {
+                        "value": "120",
+                        "unit": "%"
+                    },
+                    "textTransform": "none"
+                }
+            },
+            "colors": {
+                "Grey - 700": "#4C4C4C",
+                "White": "#FFFFFF"
+            }
+        }
+    },
+    "variants": []
+}

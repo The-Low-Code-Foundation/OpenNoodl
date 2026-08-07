@@ -3,7 +3,10 @@ import React, { useEffect, useState } from 'react';
 import type { TSFixme } from '../../../../typings/global';
 import Layout from '../../../layout';
 import Utils from '../../../nodes/controls/utils';
+import type { StyleObject } from '../../../react-component-node';
 import { Noodl } from '../../../types';
+import { noodlRootRef } from '../../noodl-root-ref';
+import { IconGlyph } from '../../visual/Icon/IconGlyph';
 
 export interface SelectProps extends Noodl.ReactProps {
   id: string;
@@ -64,17 +67,7 @@ export function Select(props: SelectProps) {
       if (props.iconPlacement === 'left' || props.iconPlacement === undefined) style.marginRight = props.iconSpacing;
       else style.marginLeft = props.iconSpacing;
 
-      if (props.iconIconSource.codeAsClass === true) {
-        return (
-          <span className={[props.iconIconSource.class, props.iconIconSource.code].join(' ')} style={style}></span>
-        );
-      } else {
-        return (
-          <span className={props.iconIconSource.class} style={style}>
-            {props.iconIconSource.code}
-          </span>
-        );
-      }
+      return <IconGlyph source={props.iconIconSource} style={style} />;
     }
 
     return null;
@@ -83,6 +76,9 @@ export function Select(props: SelectProps) {
   const inputProps = {
     id: props.id,
     className: props.className,
+    // Typed as a Noodl StyleObject rather than React.CSSProperties: it carries the
+    // vendor key `-webkit-appearance`, which CSSProperties has no place for, and the
+    // string values here would otherwise widen away from React's literal unions.
     style: {
       inset: 0,
       opacity: 0,
@@ -90,7 +86,7 @@ export function Select(props: SelectProps) {
       textTransform: 'inherit',
       cursor: props.enabled ? '' : 'default',
       '-webkit-appearance': 'none' //this makes styling possible on Safari, otherwise the size will be incorrect as it will use the native styling
-    },
+    } as StyleObject,
     onClick: props.onClick
   };
 
@@ -135,7 +131,12 @@ export function Select(props: SelectProps) {
 
   //A hidden first option is preselected and added to the list of options, it makes it possible to select the first item in the dropdown
   const inputWrapper = (
-    <div className="ndl-controls-pointer" style={inputWrapperStyle} noodl-style-tag="inputWrapper">
+    <div
+      ref={noodlRootRef(props.noodlNode)}
+      className="ndl-controls-pointer"
+      style={inputWrapperStyle}
+      noodl-style-tag="inputWrapper"
+    >
       {props.useIcon && props.iconPlacement === 'left' ? _renderIcon() : null}
       <div
         style={{
@@ -176,7 +177,7 @@ export function Select(props: SelectProps) {
     }
 
     return (
-      <div style={outerWrapperStyle}>
+      <div ref={noodlRootRef(props.noodlNode)} style={outerWrapperStyle}>
         <label
           htmlFor={props.id}
           style={{

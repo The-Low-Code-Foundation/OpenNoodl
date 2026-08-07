@@ -1,0 +1,23 @@
+/**
+ * AIB-008 — Repository section.
+ *
+ * Tokens only, no literals: `npm run colors` counts hex in this package and the
+ * count may go down, never up.
+ */
+
+.Remote {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/*
+ * The ahead/behind figure. Pushed to the right rather than run inline with the
+ * branch name so it stays in one place as the branch name changes length — it
+ * is the number a user glances at, and a glance needs a fixed target.
+ */
+.Sync {
+  margin-left: auto;
+  white-space: nowrap;
+}

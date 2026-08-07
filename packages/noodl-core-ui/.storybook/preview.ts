@@ -1,6 +1,7 @@
 import '../src/styles/custom-properties/fonts.css';
 import '../src/styles/custom-properties/colors.css';
 import '../src/styles/custom-properties/animations.css';
+import '../src/styles/custom-properties/spacing.css';
 import '../src/styles/global.css';
 import { themes } from '@storybook/theming';
 

@@ -1,1 +1,0 @@
-export { LauncherSidebar } from './LauncherSidebar';

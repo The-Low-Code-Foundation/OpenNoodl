@@ -1,0 +1,95 @@
+{
+  "name": "Synthetic Awkward",
+  "id": "awkward-proj-0001",
+  "version": "4",
+  "rootNodeId": "root-comp-id",
+  "thumbnailURI": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUg==",
+  "lesson": {
+    "index": 3,
+    "numberOfLessons": 7,
+    "url": "lesson.json",
+    "name": "your-first-nodes",
+    "title": "Your first nodes",
+    "baseURL": "https://the-low-code-foundation.github.io/opennoodl-docs/lessons/your-first-nodes/",
+    "completionBadge": "first-nodes"
+  },
+  "settings": {
+    "rootComponent": "/#App",
+    "navigationPathType": "hash"
+  },
+  "metadata": {
+    "dbCollections": ["Users", "Posts"],
+    "styles": {
+      "colors": { "Primary": "#5836F5", "Accent": "#00C2A8" },
+      "text": {
+        "Heading": { "fontFamily": "Inter-Bold.ttf", "fontSize": { "value": "32", "unit": "px" } }
+      }
+    },
+    "routes": {
+      "/home": { "component": "/#Home" },
+      "/about": { "component": "/#About" }
+    }
+  },
+  "variants": [
+    {
+      "typename": "Group",
+      "name": "Card",
+      "parameters": { "backgroundColor": "Primary", "cornerRadius": 8 },
+      "stateParamaters": { "hover": { "backgroundColor": "Accent" } },
+      "stateTransitions": { "hover": { "backgroundColor": { "curve": "easeOut", "dur": 200 } } },
+      "defaultStateTransitions": { "backgroundColor": { "curve": "linear", "dur": 100 } },
+      "conflicts": [{ "property": "cornerRadius", "kind": "Changed" }]
+    }
+  ],
+  "components": [
+    {
+      "name": "/#App",
+      "id": "root-comp-id",
+      "metadata": { "created": "2026-01-01T00:00:00.000Z" },
+      "graph": {
+        "roots": [
+          {
+            "id": "node-a",
+            "type": "Group",
+            "x": 0,
+            "y": 0,
+            "parameters": { "flexDirection": "column" },
+            "children": [
+              {
+                "id": "node-b",
+                "type": "net.noodl.expression",
+                "x": 40,
+                "y": 60,
+                "parameters": { "expression": "a + b" },
+                "dynamicports": [
+                  { "name": "a", "type": "number", "plug": "input" },
+                  { "name": "b", "type": "number", "plug": "input" }
+                ],
+                "stateParameters": { "focused": { "value": 1 } },
+                "stateTransitions": { "focused": { "value": { "curve": "easeIn", "dur": 150 } } },
+                "defaultStateTransitions": { "value": { "curve": "linear", "dur": 50 } },
+                "children": []
+              }
+            ]
+          },
+          {
+            "id": "node-c",
+            "type": "Text",
+            "x": 200,
+            "y": 0,
+            "parameters": { "text": "Hello" },
+            "label": "Greeting",
+            "children": []
+          }
+        ],
+        "connections": [
+          { "fromId": "node-b", "fromProperty": "result", "toId": "node-c", "toProperty": "text" }
+        ],
+        "visualRoots": ["node-a", "node-c"],
+        "comments": [
+          { "text": "Layout region", "x": -50, "y": -50, "width": 300, "height": 200, "fill": true, "id": "cmt-1" }
+        ]
+      }
+    }
+  ]
+}

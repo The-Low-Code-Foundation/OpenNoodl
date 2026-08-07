@@ -1,0 +1,26 @@
+{
+  "typeName": "noodl.cloud.jwtsign",
+  "summary": "Mint a signed JSON Web Token (HS256/384/512). Cloud-only — signing in a browser means the key is in the browser.",
+  "description": "JWT Sign serialises the Claims object into a JWT signed with the secret on Key. It always stamps `iat`; it stamps `exp` only when Expires In is set, so a token with no expiry is something you chose rather than something that happened. A JWT is signed, not encrypted: everything in Claims is readable by whoever holds the token. RS256 is not offered in this pass — it needs a PEM key import, still with no dependency, and is a slice of its own.",
+  "whenToUse": "Issuing a short-lived token your own system will check later — a download link, a callback nonce, a hand-off to a partner who has your shared secret. To authenticate your own users, do not mint tokens here: the Request node already resolves the caller from their session.",
+  "ports": {
+    "claims": "The payload object. Readable by anyone holding the token — put identifiers in it, never secrets.",
+    "key": "The signing secret. Wire this from a Secret node.",
+    "algorithm": "HS256 (default), HS384 or HS512.",
+    "expiresIn": "Seconds until the token expires, stamped as exp. Leave empty for a token that never expires.",
+    "sign": "Signal (Do); signs the claims.",
+    "token": "The signed JWT, valid once Done has fired.",
+    "done": "Fires once Token holds the signed token.",
+    "failure": "Fires when the token could not be signed — no Key, or claims that will not serialise.",
+    "error": "Why no token was produced."
+  },
+  "examples": [],
+  "patterns": [
+    "Secret Done → JWT Sign Do, then Token into a URL or a response: the whole shape of a signed link."
+  ],
+  "antiPatterns": [
+    "Putting a secret in Claims. The payload is base64, not encryption — anyone with the token can read it.",
+    "Leaving Expires In empty for a token that reaches a user's browser. A token with no expiry is valid until the key changes."
+  ],
+  "relatedNodes": ["noodl.cloud.jwtverify", "noodl.cloud.secret", "noodl.cloud.hmac"]
+}

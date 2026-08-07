@@ -1,24 +1,28 @@
-import { ComponentStory, ComponentMeta } from '@storybook/react';
-import React from 'react';
+import type { Meta, StoryObj } from '@storybook/react';
 
 import { AiChatLoader } from './AiChatLoader';
 
-export default {
+const meta: Meta<typeof AiChatLoader> = {
   title: 'Ai/Ai Chat Loader',
   component: AiChatLoader,
   argTypes: {}
-} as ComponentMeta<typeof AiChatLoader>;
+};
 
-const Template: ComponentStory<typeof AiChatLoader> = (args) => (
+export default meta;
+type Story = StoryObj<typeof meta>;
+
+const Template: Story = (args) => (
   <div style={{ width: '337px' }}>
     <AiChatLoader {...args} />
   </div>
 );
 
-export const Common = Template.bind({});
-Common.args = {};
+export const Common: Story = {
+  args: {},
+};
 
-export const LongText = Template.bind({});
-LongText.args = {
+export const LongText: Story = {
+  args: {
   text: 'Making sense of the universe... one moment please!'
+},
 };

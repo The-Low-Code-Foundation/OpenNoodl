@@ -1,0 +1,332 @@
+{
+  "component": {
+    "$schema": "https://opennoodl.dev/schemas/component-v2.json",
+    "id": "aa1ae1a0-9d78-42ca-9731-32b4f50eadb5",
+    "name": "Manage Saved Articles",
+    "path": "/Logic Components/Manage Saved Articles",
+    "type": "visual",
+    "created": "2026-07-27T20:34:56.258Z",
+    "modified": "2026-07-27T20:34:56.258Z",
+    "modifiedBy": "ai-authoring",
+    "description": "Logic component managing a user's saved articles: toggles save/unsave records in a SavedArticle cloud class for the current user based on the 'action' input, and always exposes the current isSaved status for the given articleId plus the full live list of the user's saved articles."
+  },
+  "nodes": {
+    "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+    "componentId": "aa1ae1a0-9d78-42ca-9731-32b4f50eadb5",
+    "version": 1,
+    "nodes": [
+      {
+        "id": "in",
+        "type": "Component Inputs",
+        "label": "Inputs",
+        "x": 0,
+        "y": 200,
+        "ports": [
+          {
+            "name": "Do",
+            "plug": "output",
+            "type": "signal"
+          },
+          {
+            "name": "articleId",
+            "plug": "output",
+            "type": "string"
+          },
+          {
+            "name": "action",
+            "plug": "output",
+            "type": "string"
+          }
+        ]
+      },
+      {
+        "id": "out",
+        "type": "Component Outputs",
+        "label": "Outputs",
+        "x": 1200,
+        "y": 200,
+        "ports": [
+          {
+            "name": "Success",
+            "plug": "input",
+            "type": "signal"
+          },
+          {
+            "name": "Failure",
+            "plug": "input",
+            "type": "signal"
+          },
+          {
+            "name": "isSaved",
+            "plug": "input",
+            "type": "boolean"
+          },
+          {
+            "name": "savedArticles",
+            "plug": "input",
+            "type": "array"
+          }
+        ]
+      },
+      {
+        "id": "user",
+        "type": "net.noodl.user.User",
+        "label": "Current User",
+        "x": 150,
+        "y": 420
+      },
+      {
+        "id": "query",
+        "type": "DbCollection2",
+        "label": "Query Saved Articles",
+        "x": 150,
+        "y": 600,
+        "parameters": {
+          "collectionName": "SavedArticle"
+        }
+      },
+      {
+        "id": "savedForUser",
+        "type": "Expression",
+        "label": "Filter items for current user",
+        "x": 400,
+        "y": 600,
+        "parameters": {
+          "expression": "items.filter(r => r.userId === userId)"
+        }
+      },
+      {
+        "id": "isSavedExpr",
+        "type": "Expression",
+        "label": "Compute isSaved",
+        "x": 650,
+        "y": 700,
+        "parameters": {
+          "expression": "savedForUser.some(r => r.articleId === articleId)"
+        }
+      },
+      {
+        "id": "existingRecord",
+        "type": "Expression",
+        "label": "Find existing record",
+        "x": 650,
+        "y": 850,
+        "parameters": {
+          "expression": "savedForUser.find(r => r.articleId === articleId)"
+        }
+      },
+      {
+        "id": "existingId",
+        "type": "Expression",
+        "label": "Existing record id",
+        "x": 900,
+        "y": 850,
+        "parameters": {
+          "expression": "existingRecord ? existingRecord.id : ''"
+        }
+      },
+      {
+        "id": "eqSave",
+        "type": "Expression",
+        "label": "action == save",
+        "x": 150,
+        "y": 50,
+        "parameters": {
+          "expression": "action === 'save'"
+        }
+      },
+      {
+        "id": "eqUnsave",
+        "type": "Expression",
+        "label": "action == unsave",
+        "x": 150,
+        "y": 150,
+        "parameters": {
+          "expression": "action === 'unsave'"
+        }
+      },
+      {
+        "id": "condSave",
+        "type": "Condition",
+        "label": "On Save",
+        "x": 400,
+        "y": 50
+      },
+      {
+        "id": "condUnsave",
+        "type": "Condition",
+        "label": "On Unsave",
+        "x": 400,
+        "y": 150
+      },
+      {
+        "id": "createRecord",
+        "type": "NewDbModelProperties",
+        "label": "Create Saved Record",
+        "x": 650,
+        "y": 50,
+        "parameters": {
+          "collectionName": "SavedArticle"
+        }
+      },
+      {
+        "id": "deleteRecord",
+        "type": "DeleteDbModelProperties",
+        "label": "Delete Saved Record",
+        "x": 900,
+        "y": 150
+      }
+    ]
+  },
+  "connections": {
+    "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+    "componentId": "aa1ae1a0-9d78-42ca-9731-32b4f50eadb5",
+    "version": 1,
+    "connections": [
+      {
+        "fromId": "query",
+        "fromProperty": "items",
+        "toId": "savedForUser",
+        "toProperty": "items"
+      },
+      {
+        "fromId": "user",
+        "fromProperty": "id",
+        "toId": "savedForUser",
+        "toProperty": "userId"
+      },
+      {
+        "fromId": "savedForUser",
+        "fromProperty": "result",
+        "toId": "isSavedExpr",
+        "toProperty": "savedForUser"
+      },
+      {
+        "fromId": "in",
+        "fromProperty": "articleId",
+        "toId": "isSavedExpr",
+        "toProperty": "articleId"
+      },
+      {
+        "fromId": "isSavedExpr",
+        "fromProperty": "asBoolean",
+        "toId": "out",
+        "toProperty": "isSaved"
+      },
+      {
+        "fromId": "savedForUser",
+        "fromProperty": "result",
+        "toId": "out",
+        "toProperty": "savedArticles"
+      },
+      {
+        "fromId": "savedForUser",
+        "fromProperty": "result",
+        "toId": "existingRecord",
+        "toProperty": "savedForUser"
+      },
+      {
+        "fromId": "in",
+        "fromProperty": "articleId",
+        "toId": "existingRecord",
+        "toProperty": "articleId"
+      },
+      {
+        "fromId": "existingRecord",
+        "fromProperty": "result",
+        "toId": "existingId",
+        "toProperty": "existingRecord"
+      },
+      {
+        "fromId": "existingId",
+        "fromProperty": "asString",
+        "toId": "deleteRecord",
+        "toProperty": "modelId"
+      },
+      {
+        "fromId": "in",
+        "fromProperty": "action",
+        "toId": "eqSave",
+        "toProperty": "action"
+      },
+      {
+        "fromId": "in",
+        "fromProperty": "action",
+        "toId": "eqUnsave",
+        "toProperty": "action"
+      },
+      {
+        "fromId": "eqSave",
+        "fromProperty": "asBoolean",
+        "toId": "condSave",
+        "toProperty": "condition"
+      },
+      {
+        "fromId": "in",
+        "fromProperty": "Do",
+        "toId": "condSave",
+        "toProperty": "eval"
+      },
+      {
+        "fromId": "eqUnsave",
+        "fromProperty": "asBoolean",
+        "toId": "condUnsave",
+        "toProperty": "condition"
+      },
+      {
+        "fromId": "in",
+        "fromProperty": "Do",
+        "toId": "condUnsave",
+        "toProperty": "eval"
+      },
+      {
+        "fromId": "condSave",
+        "fromProperty": "ontrue",
+        "toId": "createRecord",
+        "toProperty": "store"
+      },
+      {
+        "fromId": "user",
+        "fromProperty": "id",
+        "toId": "createRecord",
+        "toProperty": "prop-userId"
+      },
+      {
+        "fromId": "in",
+        "fromProperty": "articleId",
+        "toId": "createRecord",
+        "toProperty": "prop-articleId"
+      },
+      {
+        "fromId": "createRecord",
+        "fromProperty": "created",
+        "toId": "out",
+        "toProperty": "Success"
+      },
+      {
+        "fromId": "createRecord",
+        "fromProperty": "failure",
+        "toId": "out",
+        "toProperty": "Failure"
+      },
+      {
+        "fromId": "condUnsave",
+        "fromProperty": "ontrue",
+        "toId": "deleteRecord",
+        "toProperty": "store"
+      },
+      {
+        "fromId": "deleteRecord",
+        "fromProperty": "deleted",
+        "toId": "out",
+        "toProperty": "Success"
+      },
+      {
+        "fromId": "deleteRecord",
+        "fromProperty": "failure",
+        "toId": "out",
+        "toProperty": "Failure"
+      }
+    ]
+  }
+}

@@ -1,0 +1,65 @@
+.Root {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-width: 0;
+  background-color: var(--theme-color-bg-2);
+}
+
+.Bar {
+  height: 30px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 8px;
+  border-bottom: 1px solid var(--theme-color-bg-1);
+}
+
+.Summary {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Sits between the summary and the mode buttons; never squeezed out, because a
+   caveat you cannot see is the same as no caveat. */
+.Notice {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  color: var(--theme-color-notice);
+}
+
+.Modes {
+  margin-left: auto;
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.Stage {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+  display: flex;
+  background-color: var(--theme-color-bg-3);
+}
+
+.Webview {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background-color: white;
+}
+
+.Empty {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px;
+  text-align: center;
+}

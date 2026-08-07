@@ -2,6 +2,7 @@ import { Checkbox } from '../../components/controls/Checkbox';
 import guid from '../../guid';
 import NodeSharedPortDefinitions from '../../node-shared-port-definitions';
 import { createNodeFromReactComponent } from '../../react-component-node';
+import { outcomeOutputs } from '@noodl/runtime/src/outcome';
 import Utils from './utils';
 
 const CheckBoxNode = {
@@ -53,6 +54,7 @@ const CheckBoxNode = {
       type: 'boolean',
       displayName: 'Checked',
       group: 'General',
+      description: 'Sets whether the box is ticked; setting it from the graph does not fire Changed',
       default: false,
       index: 100,
       set: function (value) {
@@ -70,29 +72,19 @@ const CheckBoxNode = {
     check: {
       type: 'signal',
       displayName: 'Check',
+      description: 'Ticks the box if it is not already ticked, then fires Done — or Unchanged if it already was. Does not fire Changed',
       group: 'Actions',
       valueChangedToTrue() {
-        if (this._internal.checked === true) return;
-
-        this.props.checked = this._internal.checked = true;
-
-        this.forceUpdate();
-        this.flagOutputDirty('checked');
-        this._updateVisualState();
+        this.setCheckedByAction(true);
       }
     },
     uncheck: {
       type: 'signal',
       displayName: 'Uncheck',
+      description: 'Unticks the box if it is ticked, then fires Done — or Unchanged if it already was. Does not fire Changed',
       group: 'Actions',
       valueChangedToTrue() {
-        if (this._internal.checked === false) return;
-
-        this.props.checked = this._internal.checked = false;
-
-        this.forceUpdate();
-        this.flagOutputDirty('checked');
-        this._updateVisualState();
+        this.setCheckedByAction(false);
       }
     }
   },
@@ -100,6 +92,7 @@ const CheckBoxNode = {
     backgroundColor: {
       index: 201,
       displayName: 'Background Color',
+      description: 'Fill colour of the box itself, behind the tick',
       group: 'Style',
       type: 'color',
       default: 'transparent',
@@ -111,6 +104,7 @@ const CheckBoxNode = {
       index: 11,
       group: 'Dimensions',
       displayName: 'Width',
+      description: 'Width of the box; the label sits beside it and is sized separately',
       type: {
         name: 'number',
         units: ['px', 'vw', 'vh'],
@@ -124,6 +118,7 @@ const CheckBoxNode = {
       index: 12,
       group: 'Dimensions',
       displayName: 'Height',
+      description: 'Height of the box',
       type: {
         name: 'number',
         units: ['px', 'vw', 'vh'],
@@ -139,6 +134,7 @@ const CheckBoxNode = {
       type: 'boolean',
       displayName: 'Checked',
       group: 'States',
+      description: 'Whether the box is currently ticked',
       getter: function () {
         return this._internal.checked;
       }
@@ -146,7 +142,45 @@ const CheckBoxNode = {
     onChange: {
       displayName: 'Changed',
       group: 'Events',
+      description: 'Fires when the user ticks or unticks the box; the Checked input and the Check/Uncheck actions do not fire it',
       type: 'signal'
+    },
+
+    /**
+     * ERG-001 §4 / DV-viii, and the one Visual node in §0.3's `Unchanged` register.
+     *
+     * `Check` on an already-ticked box was `if (checked === true) return;` — a bare return, so
+     * the graph got nothing at all. `Changed` deliberately does not fire for these actions
+     * (it means "the *user* did it"), so there was no other signal either: the chain died, and
+     * the state the author asked for was already true.
+     *
+     * Not `Failure`. The box is ticked, which is what `Check` asked for.
+     */
+    ...outcomeOutputs({
+      done: 'Fires when Check or Uncheck actually flipped the box',
+      unchanged: 'Fires when the box was already in that state, so nothing was flipped and Changed did not fire'
+    })
+  },
+  methods: {
+    /**
+     * The one place `Check` and `Uncheck` differ is the value, so they share a body — the two
+     * used to be near-identical blocks and the outcome contract would have made that three
+     * near-identical blocks.
+     */
+    setCheckedByAction(next) {
+      const outcome = this.beginOutcome();
+      if (this._internal.checked === next) {
+        this.reportOutcome(outcome, 'unchanged');
+        return;
+      }
+
+      this.props.checked = this._internal.checked = next;
+
+      this.forceUpdate();
+      this.flagOutputDirty('checked');
+      this._updateVisualState();
+      // Last: the value is on the output before the pulse that describes it.
+      this.reportOutcome(outcome, 'done');
     }
   }
 };

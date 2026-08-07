@@ -1,0 +1,10 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "c_card",
+  "version": 1,
+  "nodes": [
+    { "id": "card_root", "type": "Group", "label": "Card", "parameters": { "paddingLeft": 16, "paddingTop": 16 }, "children": ["card_text"] },
+    { "id": "card_text", "type": "Text", "label": "Card Label", "parent": "card_root", "parameters": { "text": "I am a card" } }
+  ],
+  "visualRoots": ["card_root"]
+}

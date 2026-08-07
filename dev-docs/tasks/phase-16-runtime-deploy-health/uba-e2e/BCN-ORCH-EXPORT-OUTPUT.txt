@@ -1,0 +1,18 @@
+PASS  the project has a root node
+PASS  the exporter produced an export
+PASS  export metadata carries backendServices
+PASS  export metadata carries the converged activeBackendId
+PASS  export metadata carries the selection version marker
+PASS  the Query node's backendId parameter survives the export
+PASS  the adminToken is NOT published to the deployed app (types.ts:59's own promise)
+SERVING http://127.0.0.1:8577/
+
+--- deployed app, real browser (headless Chrome, CDP) ---
+rows rendered: ["1","bcnorch-alpha","2","bcnorch-beta","3","bcnorch-gamma"]
+adminToken in window.projectData: false
+auth published: {"method":"bearer","publicToken":"bcnorch-static-token-1234567890"}
+request: GET http://127.0.0.1:8578/items/bcnorch  (backendServices), endpoint http://127.0.0.1:9111 is DEAD
+
+--- mutation: version marker dropped (legacy metadata) ---
+rows rendered: []
+request: POST http://127.0.0.1:9111/classes/bcnorch  (endpoint, Parse wire) -- the legacy gate holds

@@ -1,18 +1,15 @@
 import React from 'react';
-import ReactDOM from 'react-dom';
+import { createRoot, Root } from 'react-dom/client';
 
-import { NodeLibrary } from '@noodl-models/nodelibrary';
-
+import { IconInput, IconValue } from '../components/IconInput';
 import IconPicker from '../iconpicker';
 import { TypeView } from '../TypeView';
 import { getEditType } from '../utils';
 
-function firstType(type) {
-  return NodeLibrary.nameForPortType(type);
-}
-
 export class IconType extends TypeView {
   el: TSFixme;
+  private root: Root | null = null;
+  private pickerRoot: Root | null = null;
 
   static fromPort(args) {
     const view = new IconType();
@@ -32,77 +29,91 @@ export class IconType extends TypeView {
 
     return view;
   }
-  render() {
-    this.el = this.bindView(this.parent.cloneTemplate(firstType(this.type)), this);
-    TypeView.prototype.render.call(this);
 
-    if (this.value) {
-      if (this.value.codeAsClass) {
-        this.$('#iconThumbnail').attr('class', [this.value.class, this.value.code].join(' ')).text('');
-      } else {
-        this.$('#iconThumbnail').attr('class', this.value.class).text(this.value.code);
-      }
+  render() {
+    const div = document.createElement('div');
+    div.style.width = '100%';
+
+    if (!this.root) {
+      this.root = createRoot(div);
     }
 
-    IconPicker.LoadIconSets((iconsSets) => {
-      // Just make sure all styles and fonts are loaded
-    });
+    // Make sure all icon set styles and fonts are loaded so the thumbnail can render
+    IconPicker.LoadIconSets(() => {});
 
-    // var iconPicker;
-    /* this.$('input').on('focus', function (e) {
-      e.stopPropagation();
-    })
-      .on('click', function (e) {
-  
-      })
-      .on('keyup', function (e) {
-      //  iconPicker && iconPicker.setFilter($(this).val());
-      })*/
+    this.renderReact();
+
+    this.el = div;
     return this.el;
   }
-  onLaunchClicked(scope, el, evt) {
-    // Show Icon picker
-    const props = {
-      value: this.value,
-      onIconSelected: (icon) => {
-        if (icon.codeAsClass) {
-          this.$('#iconThumbnail').attr('class', [icon.class, icon.code].join(' ')).text('');
-        } else {
-          this.$('#iconThumbnail').attr('class', icon.class).text(icon.code);
-        }
 
-        this.parent.setParameter(scope.name, { class: icon.class, code: icon.code, codeAsClass: icon.codeAsClass });
-        this.isDefault = false;
-        this.parent.hidePopout();
-      }
-    };
+  private renderReact() {
+    if (!this.root) return;
+
+    this.root.render(
+      React.createElement(IconInput, {
+        label: this.displayName,
+        value: this.value as IconValue | undefined,
+        isChanged: !this.isDefault,
+        dataIdentifier: this.name,
+        onOpenPicker: (anchor: HTMLElement) => this.openPicker(anchor),
+        onReset: () => {
+          this.parent.model.setParameter(this.name, undefined, {
+            undo: true,
+            label: 'reset parameter'
+          });
+          this.value = undefined;
+          this.isDefault = true;
+          this.renderReact();
+        }
+      })
+    );
+  }
+
+  private openPicker(anchor: HTMLElement) {
     const div = document.createElement('div');
-    ReactDOM.render(React.createElement(IconPicker, props), div);
+    this.pickerRoot = createRoot(div);
+
+    this.pickerRoot.render(
+      React.createElement(IconPicker, {
+        value: this.value,
+        onIconSelected: (icon: IconValue) => {
+          // NDA-007 §3: stored as handed over. This used to rebuild the value as
+          // `{ class, code, codeAsClass }`, so even once the picker could offer a sprite set the
+          // three fields that describe one were dropped on the way to the parameter — a silent
+          // narrowing in a line that reads like a copy.
+          this.value = icon;
+          this.parent.setParameter(this.name, this.value);
+          this.isDefault = false;
+          this.renderReact();
+          this.parent.hidePopout();
+        }
+      })
+    );
 
     this.parent.showPopout({
-      content: {
-        el: $(div)
-      },
-      attachTo: el,
-      position: 'right'
+      content: { el: div },
+      attachTo: anchor,
+      position: 'right',
+      onClose: () => {
+        if (this.pickerRoot) {
+          this.pickerRoot.unmount();
+          this.pickerRoot = null;
+        }
+      }
     });
-
-    evt.stopPropagation(); // Most stop propagation here otherwise the popup will close
   }
 
-  // @ts-expect-error
-  resetToDefault(scope, el) {
-    this.$('#iconThumbnail').attr('class', '').text('');
+  resetToDefault() {
+    this.value = this.getCurrentValue().value;
+    this.renderReact();
+  }
+
+  dispose() {
+    if (this.root) {
+      this.root.unmount();
+      this.root = null;
+    }
+    super.dispose();
   }
 }
-
-/*PropertyEditor.IconType.prototype.onPropertyChanged = function (scope, el) {
-  this.parent.setParameter(scope.name, el.val() === '' ? undefined : el.val());
-
-  // Update current value and if it is default or not
-  var current = this.getCurrentValue();
-  el.val(current.value);
-  this.isDefault = current.isDefault;
-
-  el.blur();
-}*/

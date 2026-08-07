@@ -1,0 +1,22 @@
+{
+  "typeName": "RouterNavigate",
+  "summary": "Navigate: tells a named Router to switch to a target page, passing typed path parameters, when its navigate signal fires.",
+  "description": "Navigate drives a Router. When `navigate` is triggered it switches the router named in its `router` parameter to the page chosen in `target`, updating the URL if the router does. Path/query parameters declared by the target page become input ports on this node, so per-page data (an id, a tab name) is wired like any other value. `done` fires when the transition completes, `unchanged` when the router is already showing that page with those parameters, and `failure` when the target is not a page of that router; `completed` fires after all three. `openInNewTab` opens the target in a new browser tab instead of transitioning in place.",
+  "whenToUse": "All URL-style page switching with a Router. For stack-style flows (push/pop with transitions, e.g. wizards or mobile-style drill-in) use Page Stack with PageStackNavigate instead; for external URLs use net.noodl.externallink.",
+  "ports": {
+    "navigate": "Signal; performs the navigation. Typically fed from a Button's `onClick`.",
+    "done": "Signal; fires after the router has switched. If this node lives on the page being left it is destroyed with that page, so sequencing that must survive the navigation belongs on a node outside the Router.",
+    "unchanged": "Signal; the router was already showing that page with those parameters, so it was not rebuilt.",
+    "openInNewTab": "Boolean; when true the navigation opens a new tab rather than switching this router."
+  },
+  "runtimeBehavior": "Runtime-determined inputs (runtime-discovered + editor-adapter): the `router` and `target` choices come from the routers and pages that exist in the project, and each parameter declared by the chosen target page is registered as an input port on demand. The port set therefore depends on project content, not the node type.",
+  "examples": ["navigate-on-click"],
+  "patterns": [
+    "Button `onClick` → `navigate` with `target` set on the node: the standard menu/link wiring.",
+    "Record id from a list item → the page-parameter input, so the detail page can query its record from the URL."
+  ],
+  "antiPatterns": [
+    "Encoding app state in many routers when one router plus page parameters suffices; multiple routers are for genuinely independent regions."
+  ],
+  "relatedNodes": ["Router", "PageInputs", "Page", "PageStackNavigate", "net.noodl.externallink"]
+}

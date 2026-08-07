@@ -6,30 +6,30 @@ import RadioButton from './nodes/controls/radiobutton.ts';
 import RadioButtonGroup from './nodes/controls/radiobuttongroup.ts';
 import Range from './nodes/controls/slider.ts';
 import TextInput from './nodes/controls/text-input.ts';
-import NavigationStack from './nodes/navigation/navigation-stack.jsx';
-import Page from './nodes/navigation/page.js';
+import NavigationStack from './nodes/navigation/navigation-stack';
+import Page from './nodes/navigation/page';
 import Router from './nodes/navigation/router.tsx';
 import ExternalLink from './nodes/std-library/externallink';
-import Circle from './nodes/visual/circle.js';
-import Columns from './nodes/visual/columns.js';
+import Circle from './nodes/visual/circle';
+import Columns from './nodes/visual/columns';
 import CSSDefinition from './nodes/visual/css-definition';
-import DragNode from './nodes/visual/drag.js';
-import Group from './nodes/visual/group.js';
-import Icon from './nodes/visual/icon.js';
-import Image from './nodes/visual/image.js';
-import TextNode from './nodes/visual/text.js';
-import Video from './nodes/visual/video.js';
+import DragNode from './nodes/visual/drag';
+import Group from './nodes/visual/group';
+import Icon from './nodes/visual/icon';
+import Image from './nodes/visual/image';
+import TextNode from './nodes/visual/text';
+import Video from './nodes/visual/video';
 import './assets/style.css';
 //Deprecated
-import ButtonOld from './nodes-deprecated/controls/button.jsx';
-import CheckBoxOld from './nodes-deprecated/controls/checkbox.jsx';
-import FieldSet from './nodes-deprecated/controls/fieldset.jsx';
-import Form from './nodes-deprecated/controls/form.jsx';
-import Label from './nodes-deprecated/controls/label.jsx';
-import OptionsOld from './nodes-deprecated/controls/options.jsx';
-import RadioButtonOld from './nodes-deprecated/controls/radiobutton.jsx';
-import RangeOld from './nodes-deprecated/controls/range.jsx';
-import TextInputOld from './nodes-deprecated/controls/text-input.jsx';
+import ButtonOld from './nodes-deprecated/controls/button';
+import CheckBoxOld from './nodes-deprecated/controls/checkbox';
+import FieldSet from './nodes-deprecated/controls/fieldset';
+import Form from './nodes-deprecated/controls/form';
+import Label from './nodes-deprecated/controls/label';
+import OptionsOld from './nodes-deprecated/controls/options';
+import RadioButtonOld from './nodes-deprecated/controls/radiobutton';
+import RangeOld from './nodes-deprecated/controls/range';
+import TextInputOld from './nodes-deprecated/controls/text-input';
 
 export default function registerNodes(noodlRuntime) {
   [
@@ -38,7 +38,7 @@ export default function registerNodes(noodlRuntime) {
     //require('./nodes/std-library/condition'),
     //require('./nodes/std-library/and'),
     //require('./nodes/std-library/or'),
-    require('./nodes/std-library/switch'),
+    //require('./nodes/std-library/switch'), // moved to runtime (CWF-008)
     //require('./nodes/std-library/booleantostring'), // moved to runtime
     //require('./nodes/std-library/datetostring'),
     //require('./nodes/std-library/stringmapper'),
@@ -51,7 +51,7 @@ export default function registerNodes(noodlRuntime) {
     require('./nodes/std-library/screenresolution'),
     require('./nodes/std-library/javascript'),
     //require('./nodes/std-library/simplejavascript'), // moved to runtime
-    require('./nodes/std-library/numberremapper'),
+    //require('./nodes/std-library/numberremapper'), // moved to runtime (CWF-008)
     require('./nodes/std-library/valuechanged'),
     require('./nodes/std-library/states'),
     //require('./nodes/std-library/stringformat'), // moved to runtime
@@ -60,20 +60,26 @@ export default function registerNodes(noodlRuntime) {
     require('./nodes/std-library/colorblend'),
     require('./nodes/std-library/animate-to-value'),
 
+    // HTTP node - temporarily here for debugging (normally in noodl-runtime)
+    require('@noodl/runtime/src/nodes/std-library/data/httpnode'),
+
+    // BYOB (Bring Your Own Backend) data nodes
+
     //require('./nodes/std-library/variables/number'), // moved to runtime
     //require('./nodes/std-library/variables/string'),
     //require('./nodes/std-library/variables/boolean'),
     require('./nodes/std-library/variables/color'),
 
-    // Component Object
-    require('./nodes/std-library/componentutils/componentobject'),
+    // Component Object — the self pair moved to the runtime (CWF-008); the parent pair is
+    // browser-only, because "parent" has no meaning at the top of a cloud function graph.
+    //require('./nodes/std-library/componentutils/componentobject'), // moved to runtime (CWF-008)
     require('./nodes/std-library/componentutils/parentcomponentobject'),
-    require('./nodes/std-library/componentutils/setcomponentobjectproperties'),
+    //require('./nodes/std-library/componentutils/setcomponentobjectproperties'), // moved to runtime (CWF-008)
     require('./nodes/std-library/componentutils/setparentcomponentobjectproperties'),
 
     // Variable
-    require('./nodes/std-library/data/variablenode2'),
-    require('./nodes/std-library/data/setvariablenode'),
+    //require('./nodes/std-library/data/variablenode2'), // moved to runtime (CWF-008)
+    //require('./nodes/std-library/data/setvariablenode'), // moved to runtime (CWF-008)
 
     // New object
     // require('./nodes/std-library/data/modelnode2'), // moved to runtime
@@ -90,17 +96,18 @@ export default function registerNodes(noodlRuntime) {
     // require('./nodes/std-library/data/dbmodelnode-removerelation'),
     // require('./nodes/std-library/data/filterdbmodelsnode'),
 
-    // New array
-    require('./nodes/std-library/data/collectionnode2'),
-    require('./nodes/std-library/data/collectionnode-insert'),
-    require('./nodes/std-library/data/collectionnode-remove'),
-    require('./nodes/std-library/data/collectionnode-clear'),
-    require('./nodes/std-library/data/collectionnode-new'),
-    require('./nodes/std-library/data/filtercollectionnode'),
+    // New array — the whole family moved to the runtime (CWF-008) so a cloud function can
+    // build, filter and reshape a list.
+    //require('./nodes/std-library/data/collectionnode2'), // moved to runtime (CWF-008)
+    //require('./nodes/std-library/data/collectionnode-insert'), // moved to runtime (CWF-008)
+    //require('./nodes/std-library/data/collectionnode-remove'), // moved to runtime (CWF-008)
+    //require('./nodes/std-library/data/collectionnode-clear'), // moved to runtime (CWF-008)
+    //require('./nodes/std-library/data/collectionnode-new'), // moved to runtime (CWF-008)
+    //require('./nodes/std-library/data/filtercollectionnode'), // moved to runtime (CWF-008)
 
-    require('./nodes/std-library/data/staticdata'),
+    //require('./nodes/std-library/data/staticdata'), // moved to runtime (CWF-008)
 
-    require('./nodes/std-library/data/mapcollectionnode'),
+    //require('./nodes/std-library/data/mapcollectionnode'), // moved to runtime (CWF-008)
     //require('./nodes/std-library/data/restnode'), // moved to runtime
     require('./nodes/std-library/data/cloudfunction2'),
     //require('./nodes/std-library/uniqueid'), // moved to runtime
@@ -130,6 +137,14 @@ export default function registerNodes(noodlRuntime) {
     require('./nodes/std-library/user/sendemailverification'),
     require('./nodes/std-library/user/resetpassword'),
     require('./nodes/std-library/user/requestpasswordreset'),
+    // BAK-004
+    require('./nodes/std-library/user/signinwith'),
+    require('./nodes/std-library/user/requestmagiclink'),
+
+    // ERG-004 — change detection inside Objects and Arrays. Separate nodes rather than modes on
+    // `Value Changed`, which stays exactly as it was; see the file headers for why.
+    require('./nodes/std-library/objectchanged'),
+    require('./nodes/std-library/arraychanged'),
 
     // Deprecated
     require('./nodes/std-library/data/cloudfunction'),
@@ -148,8 +163,22 @@ export default function registerNodes(noodlRuntime) {
     require('./nodes-deprecated/std-library/data/dbcollectionnode'),
     require('./nodes-deprecated/std-library/data/collectionnode'),
     require('./nodes-deprecated/std-library/scriptdownloader')
-  ].forEach(function (nodeDefinition) {
-    noodlRuntime.registerNode(nodeDefinition);
+  ].forEach(function (module) {
+    // The list mixes two module systems, and this expression is what bridges them.
+    //
+    // The viewer's own node files compile at `module: es6` and `export default`, so
+    // `require()` hands back a namespace object and the node is under `.default`. The
+    // `@noodl/runtime` entries below compile under that package's own CommonJS tsconfig
+    // and use `export =`, so `require()` hands back the node itself and `.default` is
+    // undefined — the `||` is what serves both.
+    //
+    // PLAT-003 slice 12 expected converting the `@noodl/runtime` half to retire this. It
+    // does not, and cannot: `export =` is the *required* convention for a runtime module
+    // that no viewer `.ts` imports (PLAT-003 NOTES §25.1), so those files stay CommonJS
+    // deliberately. Removing the unwrap was tried and fails outright — the whole viewer
+    // half registers `undefined`. It stays for as long as the two halves compile
+    // differently, which is to say indefinitely.
+    noodlRuntime.registerNode(module.default || module);
   });
 
   noodlRuntime.registerNode(CSSDefinition);

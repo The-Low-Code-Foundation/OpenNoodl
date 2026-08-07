@@ -5,7 +5,7 @@ import { ArrayDiff } from '@noodl-utils/projectmerger.diff';
 
 import { Slot } from '@noodl-core-ui/types/global';
 
-import { doLocalDiff, ProjectLocalDiff } from './DiffUtils';
+import { doLocalDiff, isProjectSourceFile, ProjectLocalDiff } from './DiffUtils';
 import { useVersionControlFetch } from './fetch.context';
 import { BranchStatus, IVersionControlContext } from './types';
 import { ProjectModel } from '@noodl-models/projectmodel';
@@ -43,7 +43,7 @@ export function VersionControlProvider({ git, children }: { git: Git; children: 
 
   const fetch = useVersionControlFetch({ git });
 
-  const localFiles = (fetch.workingDirectoryStatus?.files || []).filter((f) => f.path !== 'project.json');
+  const localFiles = (fetch.workingDirectoryStatus?.files || []).filter((f) => !isProjectSourceFile(f.path));
 
   const localChangesCount =
     getNumChanges(localDiff?.components) +

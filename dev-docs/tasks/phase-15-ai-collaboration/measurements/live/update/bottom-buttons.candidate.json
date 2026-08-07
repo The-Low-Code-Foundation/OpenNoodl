@@ -1,0 +1,154 @@
+{
+  "component": {
+    "$schema": "https://opennoodl.dev/schemas/component-v2.json",
+    "id": "7f06e1d9-8e22-0546-c86b-6880a814058a",
+    "name": "Bottom Button Section",
+    "path": "/Visual Components/Bottom Button Section",
+    "type": "visual",
+    "modified": "2026-07-27T20:29:35.589Z",
+    "metadata": {
+      "canvasPos": {
+        "x": 2739,
+        "y": 29.01498438671254
+      }
+    },
+    "modifiedBy": "ai-authoring",
+    "description": "Bottom button section with Back/Next buttons; accepts a Disabled input that dims and disables both buttons when true."
+  },
+  "nodes": {
+    "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+    "componentId": "7f06e1d9-8e22-0546-c86b-6880a814058a",
+    "version": 1,
+    "nodes": [
+      {
+        "id": "b12cebdf-3dfa-01b6-9c40-8148bb55743b",
+        "type": "Group",
+        "x": -388,
+        "y": -135,
+        "children": [
+          "ad39e980-9775-4b7c-cc51-9843695ccda3",
+          "34cf1766-25d1-e652-7185-17d36aa8c348"
+        ],
+        "parameters": {
+          "flexDirection": "row",
+          "justifyContent": "space-between",
+          "sizeMode": "contentHeight"
+        }
+      },
+      {
+        "id": "ad39e980-9775-4b7c-cc51-9843695ccda3",
+        "type": "net.noodl.controls.button",
+        "label": "Back Button",
+        "parent": "b12cebdf-3dfa-01b6-9c40-8148bb55743b",
+        "parameters": {
+          "height": {
+            "value": 40,
+            "unit": "px"
+          },
+          "sizeMode": "explicit",
+          "marginRight": {
+            "value": 24,
+            "unit": "px"
+          },
+          "label": "Back"
+        },
+        "variant": "Button Secondary"
+      },
+      {
+        "id": "34cf1766-25d1-e652-7185-17d36aa8c348",
+        "type": "net.noodl.controls.button",
+        "label": "Next Button",
+        "parent": "b12cebdf-3dfa-01b6-9c40-8148bb55743b",
+        "parameters": {
+          "label": "Next"
+        },
+        "variant": "Button Primary"
+      },
+      {
+        "id": "4c5320d0-12c8-f64b-ddeb-c465db714b57",
+        "type": "Component Outputs",
+        "x": -18.08460970301121,
+        "y": -82.77062949295305,
+        "ports": [
+          {
+            "name": "Back Button Click",
+            "plug": "input",
+            "type": {
+              "name": "*"
+            },
+            "index": 1
+          },
+          {
+            "name": "Next Button Click",
+            "plug": "input",
+            "type": {
+              "name": "*"
+            },
+            "index": 2
+          }
+        ]
+      },
+      {
+        "id": "inputs1",
+        "type": "Component Inputs",
+        "x": -700,
+        "y": -135,
+        "ports": [
+          {
+            "name": "Disabled",
+            "plug": "output",
+            "type": "boolean",
+            "index": 1
+          }
+        ]
+      },
+      {
+        "id": "inv1",
+        "type": "Inverter",
+        "label": "Not Disabled",
+        "x": -550,
+        "y": -135
+      }
+    ],
+    "visualRoots": [
+      "b12cebdf-3dfa-01b6-9c40-8148bb55743b"
+    ]
+  },
+  "connections": {
+    "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+    "componentId": "7f06e1d9-8e22-0546-c86b-6880a814058a",
+    "version": 1,
+    "connections": [
+      {
+        "fromId": "ad39e980-9775-4b7c-cc51-9843695ccda3",
+        "fromProperty": "onClick",
+        "toId": "4c5320d0-12c8-f64b-ddeb-c465db714b57",
+        "toProperty": "Back Button Click"
+      },
+      {
+        "fromId": "34cf1766-25d1-e652-7185-17d36aa8c348",
+        "fromProperty": "onClick",
+        "toId": "4c5320d0-12c8-f64b-ddeb-c465db714b57",
+        "toProperty": "Next Button Click"
+      },
+      {
+        "fromId": "inputs1",
+        "fromProperty": "Disabled",
+        "toId": "inv1",
+        "toProperty": "value"
+      },
+      {
+        "fromId": "inv1",
+        "fromProperty": "result",
+        "toId": "ad39e980-9775-4b7c-cc51-9843695ccda3",
+        "toProperty": "enabled"
+      },
+      {
+        "fromId": "inv1",
+        "fromProperty": "result",
+        "toId": "34cf1766-25d1-e652-7185-17d36aa8c348",
+        "toProperty": "enabled"
+      }
+    ]
+  }
+}

@@ -1,7 +1,12 @@
 .Root {
+  box-sizing: border-box;
   display: flex;
   flex-direction: column;
   overflow: hidden;
+
+  /* PNL-001: same as CollapsableSection — a section must not shrink to fit and
+     clip itself; the scroll container is what should overflow. */
+  flex-shrink: 0;
 
   &.has-visible-overflow {
     overflow: visible;
@@ -44,7 +49,7 @@
   /* consistency */
   flex: 0 0 36px;
   min-height: 36px;
-  padding: 0 10px 0 16px;
+  padding: 0 var(--spacing-2-5) 0 var(--spacing-4);
 
   user-select: none;
 
@@ -63,13 +68,17 @@
   &.is-collapsable {
     padding-right: 0;
     cursor: pointer;
+
+    &:hover {
+      background-color: var(--theme-color-bg-hover);
+    }
   }
 }
 
 .Body {
-  /* allow scrolling */
-  overflow: hidden overlay;
-  padding-top: 8px;
+  /* allow scrolling (`overlay` is a stale alias for `auto` in current Chromium) */
+  overflow: hidden auto;
+  padding-top: var(--spacing-2);
 
   &.is-variant-in-modal {
     padding: 0;
@@ -80,10 +89,28 @@
   }
 
   &.has-bottom-spacing {
-    padding-bottom: 12px;
+    padding-bottom: var(--spacing-3);
   }
 
   &.has-gutter {
-    padding: 15px;
+    padding: var(--spacing-section-padding);
+  }
+
+  /* Custom scrollbar styling */
+  &::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: var(--theme-color-bg-3);
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: var(--theme-color-bg-5);
+    border-radius: var(--radius-full);
+
+    &:hover {
+      background: var(--theme-color-fg-muted);
+    }
   }
 }

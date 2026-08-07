@@ -8,7 +8,9 @@ export function ConnectionPopup(props: TSFixme) {
   return (
     <div className={classNames([css.popup, props.disabled && css.disabled])}>
       <div className={classNames([css.popupHeader, props.disabled && css.disabled])}>
-        <span>{props.type === 'from' ? 'STEP 1 - Select output' : 'STEP 2 - Select input'}</span>
+        {/* A rewire (CAN-003) picks one port, not two, so it passes its own
+            title rather than claiming to be step 1 of 2. */}
+        <span>{props.title || (props.type === 'from' ? 'STEP 1 - Select output' : 'STEP 2 - Select input')}</span>
       </div>
       <div className={css.popupScroll}>
         {props.type === 'from' && (

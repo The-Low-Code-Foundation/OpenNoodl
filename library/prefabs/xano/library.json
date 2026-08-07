@@ -1,0 +1,19 @@
+{
+  "label": "Xano",
+  "description": "Connects to Xano and handles queries, users and authTokens. Built by @gmaison.",
+  "type": "prefab",
+  "tags": [
+    "Data",
+    "Auth",
+    "Backend"
+  ],
+  "icon": "icon.png",
+  "docsPath": "/library/prefabs/xano/",
+  "version": "1.0.0",
+  "minEditorVersion": "0.1.0",
+  "runtimeVersion": "2.7.0",
+  "provenance": {
+    "sourceUrl": "https://the-low-code-foundation.github.io/opennoodl-docs/library/prefabs/xano/xano-prefab-1.zip",
+    "importedAt": "2026-07-25"
+  }
+}

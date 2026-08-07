@@ -1,0 +1,32 @@
+{
+  "typeName": "net.noodl.user.SignInWith",
+  "summary": "Signs a user in via an identity provider (Google, GitHub, any OpenID Connect issuer) configured on the backend. Redirects away.",
+  "description": "Sign In With drives BAK-004's redirect flow. Triggering `signIn` (Do, signal) sends the whole browser to the backend's `/oauth/<provider>/start`, which redirects on to the identity provider — so nothing downstream of `Do` runs, and the graph on that page is torn down. The provider sends the user back to the URL given in `redirect` (defaulting to the page they left) carrying a one-time code, which the runtime's user service exchanges for an ordinary session before any node sees it. On that LATER page load this node fires `done` (signal) or `failure` (signal) with `error` (string value); `signingIn` (boolean value) is true while the exchange is in flight. `notice` (string value) is set in the one case where a sign-in succeeds but the user should be told something: the backend linked this identity to an existing account whose email address had never been verified, and removed that account's old password.",
+  "whenToUse": "For 'Sign in with Google/GitHub/SSO' buttons on an app served by a NodeGX backend. Configure the provider first in the Backend Services panel's Auth section (or via MCP) — a provider that is not configured refuses the redirect with an explanation rather than sending the user to a broken provider page. Use Log In for username/password, Request Magic Link for passwordless email, and the User node to read who is signed in.",
+  "ports": {
+    "signIn": "Signal input (displayed 'Do'); NAVIGATES THE BROWSER AWAY after pending input updates. Treat it as the end of the flow, not a step in it.",
+    "provider": "String value; the provider id configured on the backend ('google', 'github', or whatever the operator named their OIDC provider). Read the list from GET /auth/providers.",
+    "redirect": "String value; where the provider should send the browser back to. Defaults to the current page. Must be same-origin with the backend or listed in the backend's redirectAllowList, otherwise the sign-in is refused before it starts.",
+    "done": "Signal; fires on the RETURNING page load once the session exists.",
+    "failure": "Signal; fires on the returning page load when the sign-in was refused, cancelled, or could not be completed.",
+    "signingIn": "Boolean value; true between the return landing and the session being established. Drive a spinner from this.",
+    "error": "String value holding the reason the last sign-in failed.",
+    "notice": "String value; non-empty only when the backend linked to an existing unverified account and revoked its password. Show it."
+  },
+  "patterns": [
+    "Put the node on both the page the user leaves from and the page they come back to — `Do` on the first, `done`/`failure` on the second. Pointing `redirect` at the same page makes one node do both.",
+    "`done` → navigation, `error` → a Text node's `text`: the whole flow in three connections.",
+    "`signingIn` → a Group's `visible`: the return leg is a network round trip, so there is a real moment to cover."
+  ],
+  "antiPatterns": [
+    "Wiring anything downstream of `Do` and expecting it to run — the page is gone.",
+    "Reading logged-in state from `done` alone; the User node's `authenticated` boolean is the state, and it also covers sessions restored on reload.",
+    "Hard-coding an app URL in `redirect` that is not on the backend's redirectAllowList — the refusal happens at the start of the flow, not the end."
+  ],
+  "relatedNodes": [
+    "net.noodl.user.User",
+    "net.noodl.user.LogIn",
+    "net.noodl.user.RequestMagicLink",
+    "net.noodl.user.LogOut"
+  ]
+}

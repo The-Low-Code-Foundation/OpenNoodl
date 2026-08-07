@@ -36,11 +36,17 @@
   margin-left: auto;
 }
 
+/* UIX-011: was a `content` background of editor/up-down-arrows.svg — a baked-white glyph
+   that could not follow the theme. Now a core-ui <Icon> child; the box is
+   pinned to the old 8x10 art's footprint (10x12) so the row height is
+   unchanged, since the Icon has no intrinsic size of its own. */
 .variants-pick-icon {
-  content: url('../assets/icons/editor/up-down-arrows.svg');
+  width: 10px;
+  height: 12px;
   margin-top: 2px;
   opacity: 0.7;
   margin-left: 4px;
+  color: var(--theme-color-fg-default);
 }
 
 .variants-input {
@@ -108,8 +114,8 @@
 }
 
 .variants-name:hover {
-  background-color: #333;
-  color: #fff;
+  background-color: var(--theme-color-bg-5);
+  color: var(--theme-color-fg-highlight);
 }
 
 .variants-input-container {

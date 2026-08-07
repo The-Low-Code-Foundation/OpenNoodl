@@ -1,0 +1,60 @@
+{
+  "id": "vis-wrapper-component-children",
+  "title": "Wrapper component: Component Children marks the insertion point",
+  "description": "Component Children is a placeholder with no ports: whatever children are given to an *instance* of the component are rendered where the placeholder sits. Here '/Media Frame' is a reusable framed panel — title bar on top, content slot below — and the consumer drops a Video inside its instance. The video's play/pause wiring lives at the consumer level; the frame knows nothing about its content.",
+  "demonstrates": ["Component Children", "Video"],
+  "components": [
+    {
+      "name": "/Media Frame",
+      "nodes": [
+        {
+          "id": "frame_root",
+          "type": "Group",
+          "label": "Frame",
+          "parameters": { "flexDirection": "column", "borderRadius": 8, "clip": true },
+          "children": ["frame_title", "content_slot"]
+        },
+        { "id": "frame_title", "type": "Text", "label": "Frame title", "parent": "frame_root" },
+        {
+          "id": "content_slot",
+          "type": "Group",
+          "label": "Content area",
+          "parent": "frame_root",
+          "children": ["children_here"]
+        },
+        { "id": "children_here", "type": "Component Children", "label": "Insert content here", "parent": "content_slot" },
+        { "id": "frame_inputs", "type": "Component Inputs", "label": "Frame props" }
+      ],
+      "connections": [
+        { "fromId": "frame_inputs", "fromProperty": "title", "toId": "frame_title", "toProperty": "text" }
+      ]
+    },
+    {
+      "name": "/Player Screen",
+      "nodes": [
+        {
+          "id": "screen_root",
+          "type": "Group",
+          "label": "Screen",
+          "parameters": { "flexDirection": "column" },
+          "children": ["framed_player"]
+        },
+        {
+          "id": "framed_player",
+          "type": "/Media Frame",
+          "label": "Framed video",
+          "parent": "screen_root",
+          "children": ["trailer_video"]
+        },
+        {
+          "id": "trailer_video",
+          "type": "Video",
+          "label": "Trailer",
+          "parent": "framed_player",
+          "parameters": { "autoplay": false }
+        }
+      ],
+      "connections": []
+    }
+  ]
+}

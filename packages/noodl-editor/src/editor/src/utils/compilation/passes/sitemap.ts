@@ -57,7 +57,7 @@ function encodeXml(value: string): string {
 
 export const SitemapBuildScript: BuildScript = {
   async onPostBuild(context) {
-    const enabled = !!context.project.settings['sitemap.enabled'];
+    const enabled = !!context.project.getSettings()['sitemap.enabled'];
     if (!enabled) {
       return;
     }

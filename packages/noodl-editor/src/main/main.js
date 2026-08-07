@@ -3,15 +3,87 @@ const { app, dialog } = electron;
 const fs = require('fs');
 const path = require('path');
 
+// If Electron was booted as a plain Node process (ELECTRON_RUN_AS_NODE=1, which
+// VS Code sets in integrated terminals and the extension host), `require('electron')`
+// hands back the CLI shim instead of the API object. Every main-process API is then
+// undefined and the app exits 0 without opening a window or printing anything —
+// indistinguishable from a successful launch. The test harness already guards this
+// (test.js, REV-002); the app itself did not, so a packaged build launched from an
+// editor terminal silently did nothing.
+if (!app || typeof app.on !== 'function') {
+  console.error('');
+  console.error('  OpenNoodl must run as the Electron main process, not under Node.');
+  console.error('');
+  console.error(`  ELECTRON_RUN_AS_NODE=${JSON.stringify(process.env.ELECTRON_RUN_AS_NODE)} is set,`);
+  console.error('  so `require("electron").app` is undefined and no window can be opened.');
+  console.error('');
+  console.error('  Launch via `npm run dev` / `npm run dev:debug`, which strip it, or clear it:');
+  console.error('      env -u ELECTRON_RUN_AS_NODE <command>');
+  console.error('');
+  process.exit(1);
+}
+
 const AutoUpdater = require('./src/autoupdater');
 const FloatingWindow = require('./src/floating-window');
 const startServer = require('./src/web-server');
-const { startCloudFunctionServer, closeRuntimeWhenWindowCloses } = require('./src/cloud-function-server');
+const { setupBackendIPC, backendManager } = require('./src/local-backend');
+const { setupExecutionHistoryIPC } = require('./src/execution-history');
 const DesignToolImportServer = require('./src/design-tool-import-server');
 const jsonstorage = require('../shared/utils/jsonstorage');
 const StorageApi = require('./src/StorageApi');
+const { initializeGitHubOAuthHandlers } = require('./github-oauth-handler');
 
 const { handleProjectMerge } = require('./src/merge-driver');
+const { openLegalWindow } = require('./src/legal-window');
+const { setupReportIPC } = require('./src/report-window');
+const {
+  initialiseDebugDirectory,
+  installMainProcessErrorLog,
+  pruneCrashDirectory,
+  setupDebugLogActions
+} = require('./src/debug-log');
+
+// ALPHA-003 criterion 2 — a main-process exception must leave a record.
+//
+// Installed here, at module scope, rather than at `ready`: the interesting
+// failures are the early ones, and by `ready` we have already required a dozen
+// modules that can throw. Node's default (print to stderr, exit 1) leaves
+// nothing behind in a packaged build, where there is no terminal to print to;
+// this writes the stack to `<userData>/debug/main-errors.txt` first and then
+// reproduces that default exactly.
+installMainProcessErrorLog({ app });
+
+// ALPHA-003 §3 — native crashes, captured locally and sent nowhere.
+//
+// A renderer that dies takes the JS error handler with it, so `window.onerror`,
+// `errorTail` and the on-disk log all record exactly nothing about the worst
+// class of failure. A minidump is the only record that survives it.
+//
+// `uploadToServer: false` is not a default we are accepting, it is the whole
+// design. **We have no server.** Electron's crashReporter exists to POST to a
+// Crashpad endpoint, and building one would need a transmission policy that
+// ALPHA-005 does not currently grant — so the dumps land in
+// `app.getPath('crashDumps')`, the Help menu reveals that folder, and a user
+// who wants us to see one attaches it to their own report. That keeps
+// PRIVACY.md §5's "nothing about a crash is transmitted" true as written.
+//
+// Must run before `app.ready`, and before any renderer exists, or the child
+// processes never inherit it. `compress: false` because a gzipped `.dmp` is a
+// worse thing to ask a tester to attach than a plain one, and there is no
+// upload to save bandwidth on.
+try {
+  electron.crashReporter.start({
+    productName: 'NodeGX',
+    companyName: 'NodeGX',
+    submitURL: '',
+    uploadToServer: false,
+    compress: false
+  });
+} catch (e) {
+  // Not fatal, and not worth a dialog: the app runs, it simply will not have
+  // minidumps. Linux without a working Crashpad is the realistic case.
+  console.warn('[crash] Local crash capture is unavailable:', e && e.message);
+}
 
 //fixes problem with reloading the viewer when it's
 //running in a separate browser window (file:// cross origin warning)
@@ -19,15 +91,137 @@ app.commandLine.appendSwitch('disable-site-isolation-trials');
 
 var args = process.argv || [];
 
+const isDev = args.includes('--dev');
+
+// src/editor/index.html loads the renderer bundle from the webpack dev server
+// only when devMode === 'yes'; otherwise it falls back to ./index.bundle.js on
+// disk. Nothing ever set this, so `npm run dev` silently ran whatever stale
+// bundle happened to be lying in src/editor — code changes never took effect,
+// and a leftover production bundle mixed production react-dom with the external
+// development react, which crashes on startup with
+// "dispatcher.getOwner is not a function" and leaves a blank window.
+if (isDev) {
+  process.env.devMode = 'yes';
+}
+
+// React and react-dom are webpack externals, so the packaged app `require()`s them
+// at runtime — and react/index.js picks its development or production build from
+// process.env.NODE_ENV, which is undefined in a packaged Electron app. That paired
+// *development* react with the *production* react-dom the build produced, and
+// React 19's shared internals differ between the two:
+//
+//   TypeError: dispatcher.getOwner is not a function
+//     at getOwner (node_modules/react/cjs/react.development.js:416)
+//     at createDialogLayer (router.tsx:59)
+//
+// It throws before first paint, so the packaged app opened a black window. The
+// renderer inherits this env, which is how index.html reads devMode above.
+// REV-008 — verified with `npm run cdp -- health` against a packaged build.
+// The bracket access is load-bearing. In a production build webpack's
+// DefinePlugin substitutes the literal expression `process.env.NODE_ENV` with
+// "production" at compile time, so the dotted form compiles to `"production" =
+// "production"` and the whole branch is dropped as dead code — the fix silently
+// does not ship. DefinePlugin does not touch computed member access.
+const NODE_ENV = 'NODE_ENV';
+if (!isDev && !process.env[NODE_ENV]) {
+  process.env[NODE_ENV] = 'production';
+}
+
+// Opt-in Chrome DevTools Protocol endpoint. With this set, the renderer can be
+// inspected headlessly — evaluate JS, stream console output, capture
+// screenshots — via scripts/devtools/cdp.js. See dev-docs/reference/DEBUG-INFRASTRUCTURE.md.
+if (process.env.NOODL_REMOTE_DEBUG_PORT) {
+  app.commandLine.appendSwitch('remote-debugging-port', process.env.NOODL_REMOTE_DEBUG_PORT);
+  // Chromium (from ~M132, i.e. Electron 34+) refuses every DevTools Protocol
+  // connection — HTTP /json discovery and the WebSocket upgrade alike — unless
+  // the allowed origins are declared. Without this the endpoint accepts the TCP
+  // connection and then silently drops it, so scripts/devtools/cdp.js hangs.
+  // This is a localhost-only debug port that only exists when the env var is set.
+  app.commandLine.appendSwitch('remote-allow-origins', '*');
+}
+
+// Editor-chrome window background per theme (UIX-008). Matches the resolved
+// theme's ground colour (bg-0) so there is no flash of the wrong theme before
+// the renderer stylesheet paints. These two literals are the only place the
+// main process needs a token value; keep them in sync with colors.css bg-0.
+const THEME_WINDOW_BG = { dark: '#0b0e12', light: '#eef1f5' };
+
+/**
+ * Read the persisted editor theme mode and resolve it to a concrete
+ * light/dark for the window background + native theme, synchronously, at window
+ * creation. Mirrors ThemeManager's logic on the renderer side. Never throws.
+ */
+function resolveStartupTheme() {
+  const { nativeTheme } = electron;
+  let mode = 'system';
+  try {
+    // Same file EditorSettings persists to: <userData>/editorSettings.json.
+    const file = path.join(app.getPath('userData'), 'editorSettings.json');
+    const raw = fs.readFileSync(file, { encoding: 'utf8' });
+    const saved = JSON.parse(raw)?.settings?.['editor.theme'];
+    if (saved === 'light' || saved === 'dark' || saved === 'system') mode = saved;
+  } catch (_e) {
+    // No settings yet / unreadable — fall back to system.
+  }
+  const resolved = mode === 'system' ? (nativeTheme && nativeTheme.shouldUseDarkColors ? 'dark' : 'light') : mode;
+  return { mode, resolved, backgroundColor: THEME_WINDOW_BG[resolved] };
+}
+
 function launchApp() {
-  const { Menu, BrowserWindow, ipcMain, shell } = electron;
+  const { Menu, BrowserWindow, ipcMain, shell, nativeTheme } = electron;
   const Config = require('../shared/config/config');
+
+  // Align Electron's native theme (scrollbars, menus, native dialogs) with the
+  // saved editor theme, and keep it in sync when the renderer changes it.
+  try {
+    nativeTheme.themeSource = resolveStartupTheme().mode;
+  } catch (_e) {
+    /* nativeTheme unavailable — ignore */
+  }
+  ipcMain.on('set-native-theme', (_event, mode) => {
+    if (mode === 'light' || mode === 'dark' || mode === 'system') {
+      try {
+        nativeTheme.themeSource = mode;
+      } catch (_e) {
+        /* ignore */
+      }
+    }
+  });
 
   require('@electron/remote/main').initialize();
 
   const appPath = app.getAppPath();
 
-  app.setAsDefaultProtocolClient('noodl');
+  // macOS takes the dock icon from the running .app bundle, which in development is
+  // Electron's own Electron.app — so the dock shows the Electron logo no matter what
+  // the project ships. BrowserWindow's `icon` option cannot fix it either: that is
+  // Windows/Linux only and has no effect on the macOS dock. The dock has to be set
+  // explicitly, and only the main process can do it.
+  //
+  // Packaged builds are already correct — electron-builder generates the .icns from
+  // build/icon.png — so this is dev-only, and deliberately so: an .icns carries
+  // hand-tuned variants per size, and overwriting it with one flat PNG would be a
+  // downgrade in the one place the icon actually matters.
+  function setDevDockIcon() {
+    if (process.platform !== 'darwin' || app.isPackaged || !app.dock) return;
+
+    // build/ is deliberately absent from electron-builder's `files` list, so this
+    // path resolves only in a dev checkout — which is the only place it is needed.
+    const iconPath = path.join(appPath, 'build', 'icon.png');
+    if (!fs.existsSync(iconPath)) return;
+
+    const image = electron.nativeImage.createFromPath(iconPath);
+    // createFromPath returns an empty image rather than throwing on a bad file.
+    if (!image.isEmpty()) app.dock.setIcon(image);
+  }
+
+  // App deep-link scheme (rebranded to NodeGX in REV-007). `noodl://` is still
+  // registered too — not for OAuth any more (F63's device flow has no redirect),
+  // but because `noodl:import/…` deep links from the design-tool import server
+  // depend on it (editor/index.ts:30). That registration lives in
+  // github-oauth-handler.js for historical reasons and is load-bearing there:
+  // deleting it as OAuth cleanup would silently kill design-tool import.
+  app.setAsDefaultProtocolClient('nodegx');
 
   let win;
 
@@ -120,6 +314,16 @@ function launchApp() {
     }
   }
 
+  // OBS-004 — the editor renderer's copy of the relay token.
+  //
+  // ⚠️ Not `process.env`. `createWindow()` runs before `startServer()`, so a token minted by
+  // the server would already have missed the renderer's process spawn; and the renderer would
+  // have no way to tell an unset variable from one it was too early to see.
+  //
+  // `handle` rather than `on`+`returnValue`: a synchronous IPC blocks the renderer, and
+  // `ViewerConnection` already defers its first connect by a second, so it can await.
+  ipcMain.handle('relay-token', () => require('./src/relay-token').getRelayToken(app));
+
   ipcMain.on('editor-api-response', function (event, args) {
     const token = args.token;
 
@@ -140,24 +344,41 @@ function launchApp() {
     makeEditorAPIRequest('projectGetComponentBundleExport', { name }, callback);
   }
 
-  function cloudServicesGetActive(callback) {
-    makeEditorAPIRequest('cloudServicesGetActive', undefined, callback);
+  function projectGetDesignTokenCss(callback) {
+    makeEditorAPIRequest('projectGetDesignTokenCss', undefined, callback);
   }
 
   process.env.exePath = app.getPath('exe');
   let reopenWindow = false;
 
+  // Windows and Linux draw the window and taskbar icon from BrowserWindow; with no
+  // `icon` they fall back to Electron's default, in packaged builds as well as dev.
+  // macOS ignores this option entirely — its icon comes from the .app bundle, which
+  // is what setDevDockIcon() handles. `src/assets/images/` ships in packaged builds
+  // (electron-builder's `files` list includes `src`), so this resolves there too.
+  const WINDOW_ICON =
+    process.platform === 'darwin' ? undefined : path.join(appPath, 'src', 'assets', 'images', 'icon.png');
+
   function createWindow() {
     win = new BrowserWindow({
       width: 1368,
       height: 900,
+      icon: WINDOW_ICON,
       acceptFirstMouse: true,
-      backgroundColor: '#131313',
+      // Per-theme ground so there is no flash-of-dark when the saved/OS theme is
+      // light (UIX-008). The frameless custom titlebar is DOM chrome and follows
+      // the tokens automatically.
+      backgroundColor: resolveStartupTheme().backgroundColor,
       center: true,
       frame: false,
       minWidth: 600,
       minHeight: 300,
       titleBarStyle: 'hidden',
+      // PAR-001: inset the macOS traffic lights so they sit vertically centered
+      // inside the unified 52px DOM titlebar (launcher AND editor mocks both use
+      // a 52px bar). The launcher header reserves a 120px lights region so the
+      // wordmark never renders under the lights. Ignored on Windows/Linux.
+      trafficLightPosition: { x: 20, y: 20 },
       webPreferences: {
         nodeIntegration: true,
         contextIsolation: false,
@@ -167,6 +388,31 @@ function launchApp() {
     });
 
     require('@electron/remote/main').enable(win.webContents);
+
+    // Renderer output is invisible from the terminal by default, so a renderer
+    // that dies on startup looks identical to one that booted fine. Mirror it
+    // into the main process stdout so `npm run dev` logs tell the whole story.
+    if (isDev || process.env.NOODL_DEV_LOGS === '1') {
+      // Electron 35 deprecated the positional (level, message, line, sourceId)
+      // arguments in favour of details on the event object, and `level` is now a
+      // string ('debug' | 'info' | 'warning' | 'error') rather than an index.
+      win.webContents.on('console-message', ({ level, message, lineNumber, sourceId }) => {
+        const where = sourceId ? ` (${sourceId.split('/').pop()}:${lineNumber})` : '';
+        console.log(`[renderer:${level || 'log'}]${where} ${message}`);
+      });
+
+      win.webContents.on('render-process-gone', (_event, details) => {
+        console.error(`[renderer] process gone: ${details.reason} (exitCode ${details.exitCode})`);
+      });
+
+      win.webContents.on('did-fail-load', (_event, code, description, url) => {
+        console.error(`[renderer] failed to load ${url}: ${description} (${code})`);
+      });
+
+      win.webContents.on('preload-error', (_event, preloadPath, error) => {
+        console.error(`[renderer] preload error in ${preloadPath}: ${error}`);
+      });
+    }
 
     if (!Config.devMode) {
       AutoUpdater.setupAutoUpdate(win);
@@ -184,13 +430,32 @@ function launchApp() {
       win.show();
     });
 
+    // Closing the window destroys the renderer, and with it any project save
+    // still sitting on the 1s debounce. On Windows and Linux this is also the
+    // ordinary route to a quit. Hold the close open for the same flush
+    // handshake `before-quit` uses — and stand down when that handler is
+    // already draining, so ⌘Q costs one round trip rather than two.
+    let closeFlushStarted = false;
+    win.on('close', (event) => {
+      if (closeFlushStarted || quitFlushStarted) return;
+
+      event.preventDefault();
+      closeFlushStarted = true;
+
+      flushRendererProjectSave().then((reason) => {
+        if (reason === 'timeout') {
+          console.log('Timed out waiting for the renderer to flush its pending project save; closing anyway');
+        }
+        if (win && !win.isDestroyed()) win.destroy();
+      });
+    });
+
     win.on('closed', () => {
       win = null;
       clearTimeout(saveWindowSettingsTimeout);
       if (reopenWindow) {
         reopenWindow = false;
         createWindow();
-        closeRuntimeWhenWindowCloses(win);
       }
     });
 
@@ -359,16 +624,72 @@ function launchApp() {
 
   const buildNumber = JSON.parse(fs.readFileSync(appPath + '/package.json')).buildNumber;
 
+  /**
+   * ALPHA-007 §1. Assigned by `setupReportIpc()` before the menu is built.
+   *
+   * A function rather than a direct call because the *capture must happen in
+   * the click handler* — before the composer renders, or the dialog is all the
+   * screenshot shows.
+   */
+  let openReportComposer = () => {};
+
+  /**
+   * ALPHA-003 §2 — assigned at `ready`, used by the Help menu.
+   *
+   * The `debug/` directory has a second writer in a different process (the Git
+   * merge driver), so both the sweep and the reveal live in `debug-log.js`
+   * where they cannot disagree about where things are.
+   */
+  let debugLogActions = { openLogFolder: () => {}, openCrashFolder: () => {}, hasCrashFolder: () => false };
+
+  function setupDebugLog() {
+    debugLogActions = setupDebugLogActions({ app, shell });
+
+    // Creating the directory here is not incidental: `merge-driver.js` writes
+    // into it without `mkdir` and swallows the failure, so before this a first
+    // failed project merge produced no dump at all.
+    const debugSweep = initialiseDebugDirectory(app);
+    const crashSweep = pruneCrashDirectory(app);
+    if (debugSweep.deleted || crashSweep.deleted) {
+      console.log(
+        `[debug] Retention swept ${debugSweep.deleted} log file(s) and ${crashSweep.deleted} crash dump(s).`
+      );
+    }
+  }
+
+  function setupReportIpc() {
+    openReportComposer = setupReportIPC({
+      ipcMain,
+      clipboard: electron.clipboard,
+      nativeImage: electron.nativeImage,
+      shell,
+      app,
+      // Looked up on each call: the editor window is recreated when a project
+      // opens and closes, so a captured reference goes stale.
+      getWindow: () => win
+    });
+  }
+
   let submenu = [
     {
-      label: 'About Application',
+      label: 'About NodeGX',
       click: () => {
         require('about-window').default({
           icon_path: appPath + '/src/assets/images/icon.png',
-          copyright: 'Copyright (c) 2023 Future Platforms AB',
+          copyright: 'GPL-3.0. Forked from Noodl, © Future Platforms AB.',
           description: buildNumber ? 'Build ' + buildNumber : undefined
         });
       }
+    },
+    // ALPHA-005: a policy nobody can find is not a policy. These sit beside
+    // About because that is where people look for "what is this thing".
+    {
+      label: 'Privacy Policy',
+      click: () => openLegalWindow('privacy', resolveStartupTheme().resolved)
+    },
+    {
+      label: 'Alpha Terms',
+      click: () => openLegalWindow('terms', resolveStartupTheme().resolved)
     },
     { type: 'separator' }
   ];
@@ -429,7 +750,85 @@ function launchApp() {
     });
     // }
 
+    // ALPHA-005: on Windows and Linux the Application menu is not where anyone
+    // looks, so the legal documents get a Help menu of their own too.
+    //
+    // ALPHA-007 §1 puts "Report a problem…" at the top of it. No accelerator in
+    // v1: every convenient key is taken in an editor, and picking a bad one is
+    // worse than a menu item.
+    //
+    // ALPHA-003 criterion 1 puts the two diagnostic folders directly under it,
+    // in that order, because that is the order they are needed in: the reporter
+    // is already here, and the next question is "what do I attach". Two clicks,
+    // and the reveal selects the newest file so nobody has to read timestamps.
+    // The wording says "folder" rather than naming a path — `getPath('logs')`
+    // resolves to three different places and none of them is memorable.
+    const helpSubmenu = [
+      { label: 'Report a problem…', click: () => openReportComposer() },
+      { type: 'separator' },
+      { label: 'Open log folder', click: () => debugLogActions.openLogFolder() }
+    ];
+
+    if (debugLogActions.hasCrashFolder()) {
+      helpSubmenu.push({ label: 'Open crash report folder', click: () => debugLogActions.openCrashFolder() });
+    }
+
+    helpSubmenu.push(
+      { type: 'separator' },
+      { label: 'Privacy Policy', click: () => openLegalWindow('privacy', resolveStartupTheme().resolved) },
+      { label: 'Alpha Terms', click: () => openLegalWindow('terms', resolveStartupTheme().resolved) }
+    );
+
+    template.push({ label: 'Help', submenu: helpSubmenu });
+
     Menu.setApplicationMenu(Menu.buildFromTemplate(template));
+  }
+
+  /**
+   * ALPHA-005: the first-run disclosure.
+   *
+   * Shown once, keyed off a flag in `<userData>/firstRunLegal.json`. It states
+   * the one fact a new user most needs — that nothing about their project
+   * leaves the machine unless they turn AI on — and offers both documents
+   * rather than burying them behind an "I agree" nobody reads.
+   *
+   * Deliberately not a blocking gate: this is an alpha of a GPL tool, not a
+   * signup flow, and a modal that must be dismissed before the app is usable
+   * would be the wrong trade for the amount of consent actually at stake.
+   */
+  function showFirstRunLegalNotice() {
+    jsonstorage.get('firstRunLegal', (stored) => {
+      if (stored && stored.shown) return;
+
+      jsonstorage.set('firstRunLegal', { shown: true, version: app.getVersion() });
+
+      dialog
+        .showMessageBox(win, {
+          type: 'info',
+          title: 'Welcome to NodeGX',
+          message: 'NodeGX is alpha software.',
+          detail:
+            'Expect bugs, and keep your work backed up — the project format will change ' +
+            'between alpha versions.\n\n' +
+            'Nothing about your projects leaves this machine unless you turn on the AI ' +
+            'features and supply your own API key. NodeGX has no account and no analytics ' +
+            'server.\n\n' +
+            'Both documents are always available under the Help menu.',
+          buttons: ['Get started', 'Read the privacy policy', 'Read the alpha terms'],
+          defaultId: 0,
+          cancelId: 0,
+          noLink: true
+        })
+        .then(({ response }) => {
+          const theme = resolveStartupTheme().resolved;
+          if (response === 1) openLegalWindow('privacy', theme);
+          if (response === 2) openLegalWindow('terms', theme);
+        })
+        .catch((error) => {
+          // A disclosure that fails to render must not stop the app launching.
+          console.warn('[legal] Could not show the first-run notice.', error);
+        });
+    });
   }
 
   function forwardIpcEventsToEditorWindow(events) {
@@ -530,6 +929,8 @@ function launchApp() {
   // initialization and is ready to create browser windows.
   // Some APIs can only be used after this event occurs.
   app.on('ready', function () {
+    setDevDockIcon();
+
     createWindow();
 
     setupViewerIpc();
@@ -540,14 +941,60 @@ function launchApp() {
 
     setupFloatingWindowIpc();
 
+    setupGitHubOAuthIpc();
+
+    // Initialize Web OAuth handlers for GitHub (with protocol handler)
+    initializeGitHubOAuthHandlers(app);
+
     setupMainWindowControlIpc();
+
+    // Both before setupMenu: they are what give the Help menu items something
+    // to call, and `setupDebugLog` also decides whether the crash-folder item
+    // exists at all.
+    setupDebugLog();
+
+    setupReportIpc();
 
     setupMenu();
 
-    startServer(app, projectGetSettings, projectGetInfo, projectGetComponentBundleExport);
+    showFirstRunLegalNotice();
 
-    startCloudFunctionServer(app, cloudServicesGetActive);
-    closeRuntimeWhenWindowCloses(win);
+    startServer(
+      app,
+      projectGetSettings,
+      projectGetInfo,
+      projectGetComponentBundleExport,
+      projectGetDesignTokenCss
+    );
+
+    // Initialize local backend IPC handlers
+    setupBackendIPC();
+
+    // AAQ-011/F10 — claim ownership of the backends this session spawns, and
+    // reap the ones a previous session left behind.
+    //
+    // This must run before anything can start a backend, and it does: the
+    // renderer cannot ask for one until its window has loaded, and
+    // `startBackend` awaits this sweep regardless. Deliberately not awaited
+    // here — `app.on('ready')` is not an async context, and holding the window
+    // back on a process sweep would trade a rare orphan for a slow launch on
+    // every launch.
+    backendManager.claimAndSweep();
+
+    // WF-006: open the execution-history store and register the IPC handlers
+    // the Execution History Panel's hooks call.
+    setupExecutionHistoryIPC();
+
+    // MCP-001: where the two MCP server bundles are, and whether the open
+    // project is one the authoring server will accept. Both answers need the
+    // filesystem and `app.getAppPath()`, so they cannot be worked out in the
+    // renderer that renders them.
+    require('./src/mcp/mcpFrontDoor').setupMcpIPC(electron.ipcMain);
+
+    // WF-004: executions now happen inside nodegx-backend child processes,
+    // each with its own store — the panel's IPC merges them with the local one.
+    const { executionHistoryManager } = require('./src/execution-history/ExecutionHistoryManager');
+    executionHistoryManager.setRemoteSources(() => backendManager.getRunningEndpoints());
 
     DesignToolImportServer.start(projectGetInfo);
 
@@ -562,9 +1009,13 @@ function launchApp() {
     app.on('open-url', function (event, uri) {
       console.log('open-url', uri);
       event.preventDefault();
+
+      // This used to skip `noodl://github-callback`, which the OAuth
+      // authorization-code flow produced. F63 replaced that flow with the device
+      // flow, which has no redirect and so no callback URL — nothing produces
+      // that scheme any more, and the guard silently swallowed nothing.
       win && win.webContents.send('open-noodl-uri', uri);
       process.env.noodlURI = uri;
-      //  logEverywhere("open-url# " + deeplinkingUrl)
     });
   });
 
@@ -575,6 +1026,100 @@ function launchApp() {
     if (process.platform !== 'darwin') {
       app.quit();
     }
+  });
+
+  // ── Quitting without dropping the user's last edit ────────────────────────
+  //
+  // The renderer debounces project saves by a second (`scheduleProjectSave` in
+  // projectmodel.ts), so an edit followed immediately by a quit used to be lost
+  // silently — nothing here asked it to flush.
+  //
+  // Note this handler was already `async` and already `await`ed `stopAll()`:
+  // that await never did anything, because **Electron does not wait for an
+  // async `before-quit` handler**. The only way to hold a quit open is
+  // `preventDefault()` and quit again later, which is what the handshake below
+  // does — so the backend teardown becomes correct as a side effect.
+  //
+  // The timeouts are not optional, and they cover *both* awaited steps. Holding
+  // the quit open is what makes the flush possible, but it is also what makes a
+  // hang fatal: while `stopAll()` was fire-and-forget, a backend that never
+  // finished stopping could not block anything, and now it could. Nothing here
+  // may cost the user more than a few seconds of their ability to close the app.
+  const PROJECT_FLUSH_TIMEOUT_MS = 5000;
+  const BACKEND_STOP_TIMEOUT_MS = 5000;
+
+  /** Resolve with `onTimeout` if `promise` has not settled in `ms`. */
+  function withTimeout(promise, ms, onTimeout) {
+    return Promise.race([
+      Promise.resolve(promise).catch((e) => {
+        console.log('Error during quit teardown:', e);
+      }),
+      new Promise((resolve) => setTimeout(() => resolve(onTimeout), ms))
+    ]);
+  }
+
+  function flushRendererProjectSave() {
+    return new Promise((resolve) => {
+      // A crashed renderer is checked explicitly, not just a destroyed one: the
+      // crash handler calls `win.close()`, and a dead renderer will never reply,
+      // so without this every crash-restart would sit out the full timeout.
+      if (!win || win.isDestroyed() || win.webContents.isDestroyed() || win.webContents.isCrashed()) {
+        return resolve('no-window');
+      }
+
+      let settled = false;
+      const finish = (reason) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        ipcMain.removeListener('flush-project-save-done', onDone);
+        resolve(reason);
+      };
+
+      const onDone = () => finish('flushed');
+      const timer = setTimeout(() => finish('timeout'), PROJECT_FLUSH_TIMEOUT_MS);
+
+      ipcMain.on('flush-project-save-done', onDone);
+      win.webContents.send('flush-project-save');
+    });
+  }
+
+  let quitFlushStarted = false;
+  let readyToQuit = false;
+
+  app.on('before-quit', (event) => {
+    if (readyToQuit) return;
+
+    event.preventDefault();
+    if (quitFlushStarted) return; // a second ⌘Q while the first is still draining
+    quitFlushStarted = true;
+
+    flushRendererProjectSave()
+      .then((reason) => {
+        if (reason === 'timeout') {
+          console.log('Timed out waiting for the renderer to flush its pending project save; quitting anyway');
+        }
+      })
+      .then(() => withTimeout(backendManager.stopAll(), BACKEND_STOP_TIMEOUT_MS, 'timeout'))
+      .then((reason) => {
+        if (reason === 'timeout') {
+          console.log('Timed out stopping local backends; quitting anyway');
+        }
+      })
+      .catch((e) => console.log('Error stopping backends:', e))
+      .then(() => {
+        // AAQ-011/F10 — drop this session's ownership claim last, after the
+        // stops. Order matters: while the claim stands, every record it owns is
+        // protected from the next launch's reaper, so releasing it before the
+        // backends are actually down would open a window in which a crash here
+        // leaves live children that the next sweep can see but this one can no
+        // longer stop. Releasing after means a `stopAll` timeout leaves the
+        // records unowned, which is exactly what makes the next launch reap
+        // them.
+        backendManager.releaseOwnership();
+        readyToQuit = true;
+        app.quit();
+      });
   });
 
   app.on('activate', () => {
@@ -619,6 +1164,73 @@ function launchApp() {
     });
     ipcMain.on('floating-window-open', function (event, options) {
       openFloatingWindow(options);
+    });
+  }
+
+  // --------------------------------------------------------------------------------------------------------------------
+  // GitHub OAuth
+  // --------------------------------------------------------------------------------------------------------------------
+  function setupGitHubOAuthIpc() {
+    const { safeStorage } = require('electron');
+
+    // Save GitHub token securely
+    ipcMain.handle('github-save-token', async (event, token) => {
+      try {
+        if (safeStorage.isEncryptionAvailable()) {
+          const encrypted = safeStorage.encryptString(token);
+          jsonstorage.set('github.token', encrypted.toString('base64'));
+          console.log('✅ GitHub token saved securely');
+        } else {
+          console.warn('⚠️ Encryption not available, storing token in plain text');
+          jsonstorage.set('github.token', token);
+        }
+      } catch (error) {
+        console.error('Failed to save GitHub token:', error);
+        throw error;
+      }
+    });
+
+    // Load GitHub token
+    ipcMain.handle('github-load-token', async (event) => {
+      try {
+        // Use Promise wrapper for callback-based jsonstorage.get
+        const stored = await new Promise((resolve) => {
+          jsonstorage.get('github.token', (data) => {
+            resolve(data);
+          });
+        });
+
+        if (!stored) return null;
+
+        if (safeStorage.isEncryptionAvailable()) {
+          try {
+            const buffer = Buffer.from(stored, 'base64');
+            const decrypted = safeStorage.decryptString(buffer);
+            console.log('✅ GitHub token loaded');
+            return decrypted;
+          } catch (error) {
+            console.error('Failed to decrypt token, may be corrupted:', error);
+            return null;
+          }
+        } else {
+          // Fallback: token was stored in plain text
+          return stored;
+        }
+      } catch (error) {
+        console.error('Failed to load GitHub token:', error);
+        return null;
+      }
+    });
+
+    // Clear GitHub token
+    ipcMain.handle('github-clear-token', async (event) => {
+      try {
+        jsonstorage.set('github.token', null);
+        console.log('✅ GitHub token cleared');
+      } catch (error) {
+        console.error('Failed to clear GitHub token:', error);
+        throw error;
+      }
     });
   }
 
@@ -680,7 +1292,7 @@ function startUDPMulticast() {
     const hostname = os.hostname();
 
     if (hostname) {
-      const message = new Buffer(
+      const message = Buffer.from(
         jsToArrayBuffer({ https: process.env.ssl ? true : false, hostname, status: 'closed' })
       );
       server.send(message, 0, message.length, 8575, '225.0.0.100');
@@ -692,7 +1304,7 @@ function startUDPMulticast() {
     const httpPort = process.env.NOODLPORT || 8574;
 
     if (hostname) {
-      const message = new Buffer(
+      const message = Buffer.from(
         jsToArrayBuffer({ https: process.env.ssl ? true : false, hostname, httpPort, projectName, status: 'active' })
       );
       server.send(message, 0, message.length, 8575, '225.0.0.100');
@@ -703,9 +1315,7 @@ function startUDPMulticast() {
 // Find domain name argument if existing
 process.env.noodlArgs = JSON.stringify(args);
 for (var i = 0; i < args.length; i++) {
-  if (args[i].indexOf('--api=') === 0) {
-    process.env.apiEndpoint = args[i].split('=')[1];
-  } else if (args[i].indexOf('--autoupdate=') === 0) {
+  if (args[i].indexOf('--autoupdate=') === 0) {
     process.env.autoUpdate = args[i].split('=')[1];
   } else if (args[i].indexOf('--lessons=') === 0) {
     process.env.lessons = path.resolve(args[i].split('=')[1]);

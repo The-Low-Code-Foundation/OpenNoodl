@@ -1,0 +1,17 @@
+{
+  "label": "Lucide Icons",
+  "description": "The Lucide open-source icon set (1998 glyphs, ISC licence) as a bundled webfont iconset — a community-friendly alternative to Material Icons.",
+  "type": "module",
+  "tags": [
+    "UI"
+  ],
+  "icon": "icon.png",
+  "docsPath": "/library/modules/lucide-icons/",
+  "version": "1.0.0",
+  "minEditorVersion": "0.1.0",
+  "runtimeVersion": "2.7.0",
+  "provenance": {
+    "sourceUrl": "https://unpkg.com/lucide-static/font/",
+    "importedAt": "2026-07-25"
+  }
+}

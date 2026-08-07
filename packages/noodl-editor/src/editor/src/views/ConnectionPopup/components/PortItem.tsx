@@ -3,6 +3,8 @@ import React, { useEffect, useRef, useState } from 'react';
 
 import { NodeLibrary } from '@noodl-models/nodelibrary';
 
+import { Icon, IconName } from '@noodl-core-ui/components/common/Icon';
+
 import PopupLayer from '../../popuplayer';
 import css from '../ConnectionPopup.module.scss';
 import { docsParser } from '../DocsParser';
@@ -13,7 +15,14 @@ const _shouldShowDocsForPort = {}; // Ugly fix for not showing duplicate docs on
 export function PortItem(props: TSFixme) {
   const ref = useRef(null);
   const [showDocs, setShowDocs] = useState(false);
-  const [docs, setDocs] = useState();
+  const [docs, setDocs] = useState<string | undefined>(undefined);
+  /*
+   * SPR-003 §4 (F94): the explainer used to have no anchor at all and landed in
+   * the bottom-left corner of the window. It is read here rather than inside
+   * `DocsPopup` because by the time the catalog lookup returns this row is the
+   * only thing that still knows which element was hovered.
+   */
+  const [docsAnchor, setDocsAnchor] = useState<DOMRect | undefined>(undefined);
 
   let tooltipTimeout;
   const onMouseOver = () => {
@@ -32,34 +41,26 @@ export function PortItem(props: TSFixme) {
     const p = props.port;
     _shouldShowDocsForPort[p.name] = true;
 
-    if (p.parent.type.docs) {
-      docsParser.getDocsForType(p.parent.type, (docs) => {
-        if (!_shouldShowDocsForPort[p.name]) return; // Make sure we should still show docs for port
-        const ports = p.section === 'from' ? docs.outputs : docs.inputs;
+    // ALPHA-006 §1: a bundled-catalog lookup on the port's canonical name.
+    // The three-step display-name / name / longest-regexp cascade this replaced
+    // existed because the old markdown markers were hand-keyed and sometimes
+    // wildcards; the catalog's keys are the port names themselves.
+    docsParser.getDocsForType(p.parent?.type, (docs) => {
+      if (!_shouldShowDocsForPort[p.name]) return; // Make sure we should still show docs for port
 
-        const name = (p.displayName || p.name).toLowerCase();
-        let d = ports[name];
+      const ports = p.section === 'from' ? docs.outputs : docs.inputs;
+      const d = ports[p.name];
 
-        if (d === undefined) {
-          // No docs found, try only the port name (not display name)
-          d = ports[p.name];
-        }
-
-        if (d === undefined) {
-          // Still no docs found, try using regexp
-          const keys = Object.keys(ports);
-          keys.sort((a, b) => b.length - a.length); // Match "longest" regexp first, so "*" becomes the last to match
-          const matchingPort = keys.find((key) => p.name.match(new RegExp(key)));
-          if (matchingPort) d = ports[matchingPort];
-        }
-
-        if (d) {
-          // There is documentation for this port
-          setDocs(d);
-          setShowDocs(true);
-        }
-      });
-    }
+      if (d) {
+        // There is documentation for this port
+        setDocs(d);
+        // Measured at show time, not at hover time: the list scrolls itself
+        // (`scrollIntoView` on selection) and the popup follows the node, so a
+        // rect taken earlier can already be stale by the time the docs arrive.
+        setDocsAnchor(ref.current ? ref.current.getBoundingClientRect() : undefined);
+        setShowDocs(true);
+      }
+    });
   };
 
   const onMouseOut = () => {
@@ -67,6 +68,7 @@ export function PortItem(props: TSFixme) {
     PopupLayer.instance.hideTooltip();
     clearTimeout(tooltipTimeout);
     setDocs(undefined);
+    setDocsAnchor(undefined);
     setShowDocs(false);
   };
 
@@ -91,13 +93,17 @@ export function PortItem(props: TSFixme) {
         className={classNames(css.listElementPort, css[state])}
         onClick={props.onClick}
       >
-        {NodeLibrary.nameForPortType(p.type) === 'signal' ? <div className={css.signalIcon} /> : null}
+        {NodeLibrary.nameForPortType(p.type) === 'signal' ? (
+          <div className={css.signalIcon}>
+            <Icon icon={IconName.Lightning} UNSAFE_style={{ width: 15, height: 15 }} />
+          </div>
+        ) : null}
         {p.annotatedName !== undefined ? (
           <span dangerouslySetInnerHTML={{ __html: p.annotatedName }} />
         ) : (
           <span>{p.displayName}</span>
         )}
-        {showDocs ? <DocsPopup name={p.displayName} type={p.type} body={docs} /> : null}
+        {showDocs ? <DocsPopup name={p.displayName} type={p.type} body={docs} anchor={docsAnchor} /> : null}
       </div>
     </div>
   );

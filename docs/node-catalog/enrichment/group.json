@@ -1,0 +1,24 @@
+{
+  "typeName": "Group",
+  "summary": "The universal layout container: a flexbox div that stacks its children in a row or column and is the root of most components.",
+  "description": "Group is the workhorse visual container. It renders as a flexbox element and lays out its visual children (the `children` list in the project file) along `flexDirection`, with alignment, padding, margins, size, scrolling, borders and background as parameters. Nearly every component's visual tree starts with a Group; nesting Groups is how all layout is composed. It also reports interaction (`onClick`, hover and pointer signals) and geometry (`boundingWidth`/`boundingHeight`, screen position), so it doubles as a click surface.",
+  "whenToUse": "Reach for Group whenever you need structure: rows, columns, cards, overlays, scroll areas, click targets. Do not use it for text (use Text), images (Image), or button-like affordances with label/icon styling (net.noodl.controls.button).",
+  "ports": {
+    "flexDirection": "Layout axis for children: 'row' or 'column' (column is the default).",
+    "clip": "When true, children are clipped to the Group's bounds — required for most scroll containers.",
+    "onClick": "Signal; fires on click/tap of the group surface. Any Group can act as a button.",
+    "didMount": "Signal; fires when the group enters the render tree — a common 'component is ready' trigger.",
+    "this": "Reference to the visual object itself, consumed by nodes that need a target reference (e.g. Animation targets).",
+    "onScrollPositionChanged": "Number level with the current scroll offset while scrolling is enabled."
+  },
+  "runtimeBehavior": "Group's port list is largely static, but several port groups are conditional on parameter values (declared-port-groups): scroll-related ports appear when scrolling is enabled, advanced-dimension ports depend on the size mode, and visual-state variants add ports per state. An authoring tool should treat the catalog's input list as the superset and expect the editor to expose subsets based on the node's current parameters.",
+  "examples": ["repeater-query-records", "validate-before-submit"],
+  "patterns": [
+    "Component root: a single Group at the top of every visual component, `flexDirection` column.",
+    "Scroll list: outer Group with scrolling enabled and `clip` true, Repeater inside."
+  ],
+  "antiPatterns": [
+    "Deeply nesting a Group per style tweak; set padding/margins on the existing Group instead."
+  ],
+  "relatedNodes": ["Text", "Image", "For Each", "Component Children", "net.noodl.visual.columns"]
+}

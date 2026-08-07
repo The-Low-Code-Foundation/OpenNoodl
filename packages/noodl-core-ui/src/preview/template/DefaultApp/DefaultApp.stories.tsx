@@ -1,17 +1,20 @@
-import React from "react";
-import { ComponentStory, ComponentMeta } from "@storybook/react";
+import type { Meta, StoryObj } from '@storybook/react';
 
 import { DefaultApp } from "./DefaultApp";
 
-export default {
+const meta: Meta<typeof DefaultApp> = {
   title: "Preview/Template/App",
   component: DefaultApp,
   argTypes: {},
-} as ComponentMeta<typeof DefaultApp>;
+};
 
-const Template: ComponentStory<typeof DefaultApp> = (args) => (
+export default meta;
+type Story = StoryObj<typeof meta>;
+
+const Template: Story = (args) => (
   <DefaultApp {...args}></DefaultApp>
 );
 
-export const Common = Template.bind({});
-Common.args = {};
+export const Common: Story = {
+  args: {},
+};

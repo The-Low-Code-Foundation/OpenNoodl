@@ -39,6 +39,7 @@ const ButtonNode = {
     backgroundColor: {
       index: 100,
       displayName: 'Background Color',
+      description: 'Fill colour behind the label and icon',
       group: 'Style',
       type: 'color',
       default: '#000000',
@@ -49,6 +50,7 @@ const ButtonNode = {
     onClick: {
       displayName: 'Click',
       group: 'Events',
+      description: 'Fires when the button is clicked or tapped, and on Enter or Space while it has keyboard focus',
       type: 'signal'
     }
   }
@@ -61,14 +63,17 @@ NodeSharedPortDefinitions.addDimensions(ButtonNode, {
 NodeSharedPortDefinitions.addTextStyleInputs(ButtonNode);
 NodeSharedPortDefinitions.addAlignInputs(ButtonNode);
 NodeSharedPortDefinitions.addTransformInputs(ButtonNode);
-NodeSharedPortDefinitions.addPaddingInputs(ButtonNode, {
-  defaults: {
-    paddingTop: 5,
-    paddingRight: 20,
-    paddingBottom: 5,
-    paddingLeft: 20
-  }
-});
+// NDA-012 (Visual), DV-ii. Button's padding was specified twice, in two files, by two
+// mechanisms — these declared defaults and `assets/style.css`'s `.ndl-controls-button
+// { padding: 5px 20px 5px 20px }` — and **only the stylesheet was load-bearing**. The two copies
+// carrying the same numbers is why it went unnoticed: change the declaration and nothing moved.
+//
+// ⚠️ Live QA disproved this finding's first version, which said a fresh Button renders with no
+// padding. It does not; the stylesheet supplies exactly these numbers. Deleting the duplicate
+// leaves one source for the base padding and keeps the ports as overrides, which is the honest
+// half of the pair. The alternative — dropping `applyDefault: false` — would have made both
+// copies live instead.
+NodeSharedPortDefinitions.addPaddingInputs(ButtonNode);
 NodeSharedPortDefinitions.addMarginInputs(ButtonNode);
 NodeSharedPortDefinitions.addLabelInputs(ButtonNode, {
   defaults: { useLabel: true }

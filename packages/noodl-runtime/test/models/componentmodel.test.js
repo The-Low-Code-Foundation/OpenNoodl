@@ -1,5 +1,5 @@
-const { ComponentModel } = require('./componentmodel');
-const NodeModel = require('./nodemodel');
+const ComponentModel = require('../../src/models/componentmodel');
+const NodeModel = require('../../src/models/nodemodel');
 
 test('Returns all nodes in the component', ()=>{
    const component = new ComponentModel('testComponent');

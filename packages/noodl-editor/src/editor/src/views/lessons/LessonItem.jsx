@@ -2,7 +2,7 @@ const { ipcRenderer } = require('electron');
 const { useEffect, useRef, useState } = require('react');
 const React = require('react');
 const { default: useOnUnmount } = require('../../hooks/useOnUnmount');
-const PopupLayer = require('../popuplayer');
+const PopupLayer = require('../popuplayer').default;
 
 function LessonItem({
   itemContent,
@@ -45,8 +45,8 @@ function LessonItem({
     PopupLayer.instance.hidePopouts(); //hide all other popouts that might be showing
 
     popoutRef.current = PopupLayer.instance.showPopout({
-      content: { el: $(container) },
-      attachTo: $(ref.current),
+      content: { el: container },
+      attachTo: ref.current,
       position: 'top',
       arrowColor: 'var(--theme-color-secondary)',
       animate: true,

@@ -1,0 +1,25 @@
+{
+  "typeName": "noodl.cloud.request",
+  "summary": "Entry point of a cloud function component: receives the call's parameters and fires Received to start the server-side flow.",
+  "description": "Request is the entry node of a cloud function — it only exists in the cloud runtime, and a component containing one becomes callable from the browser through a Cloud Function (CloudFunction2) node. Declare the function's parameters as a name list in `params`; each name becomes an output carrying the value the caller sent, and a matching `in-<name>` input appears on the browser-side caller. When a call arrives the node checks authentication (rejecting unauthenticated calls unless `allowNoAuth` is true), publishes each parameter, then fires `receive` (Received, signal) — wire that signal into your logic and end the flow at a Response node. The caller's identity, parameters and headers are also placed on a 'Request' model readable elsewhere in the function.",
+  "whenToUse": "Place exactly one at the start of every cloud function component. It is meaningless in browser components — there, use Component Inputs for inputs and CloudFunction2 to call the function.",
+  "ports": {
+    "receive": "Signal; fires once per incoming call, after authentication has been checked and all parameter outputs hold the call's values. Start the function's logic from here.",
+    "allowNoAuth": "Boolean value (default false). When false, calls without a valid user session are rejected before the graph runs.",
+    "auth": "Boolean value; true when the call carried a valid user session.",
+    "userId": "Value holding the authenticated caller's user id (undefined for unauthenticated calls); use it to scope queries to the calling user.",
+    "params": "Edit-only name list declaring the function's parameters; drives both this node's outputs and the caller's inputs. Each name also gets three declaration rows in the Parameter Types group — Type, Required and Default — which together are the function's request contract (CWF-014). Leaving them alone is the behaviour every function had before that task: every parameter is Any, and optional."
+  },
+  "runtimeBehavior": "Each name in the `params` stringlist becomes a runtime-registered output (stored as `pm-<name>`) holding that parameter's value from the current call. The same list is what CloudFunctionAdapter mirrors onto browser-side CloudFunction2 callers as `in-<name>` inputs, so editing `params` changes both sides. CWF-014: a name may also carry `ptype-<name>` (one of *, string, number, boolean, object, array, date), `preq-<name>` and `pdef-<name>`. When any of those is set the node checks the request body BEFORE the graph runs — a missing required field, or a value the declared type cannot take, is answered as HTTP 400 naming the field, and the graph does not run at all. A value the declared type can take losslessly is coerced first, so \"42\" reaches a number-typed output as the number 42, and an omitted parameter with a Default arrives holding it. A declared type also becomes the `pm-<name>` output's port type, so the wire out of it is checked like any other.",
+  "examples": ["fn-cloud-function-roundtrip", "fn-aggregate-stats-function"],
+  "patterns": [
+    "`receive` → your logic → Response `send`: every cloud function is this shape; the reply is not sent until a Response node sends it.",
+    "`userId` → a query filter parameter: trust the session-derived id, never an id passed in `params`, for per-user data."
+  ],
+  "antiPatterns": [
+    "Leaving `allowNoAuth` false and then calling the function from a logged-out browser session — the call is rejected before `receive` ever fires.",
+    "Ticking Required on a parameter and giving it a Default too: the default wins and the request is never refused, which is almost certainly not what the tick meant.",
+    "Checking the request body inside the graph with Condition nodes and answering through a Response node with Status = Failure: that is a graph that ran. Declare the type on the parameter instead, and the request never starts."
+  ],
+  "relatedNodes": ["noodl.cloud.response", "CloudFunction2", "noodl.cloud.aggregate", "net.noodl.user.User"]
+}

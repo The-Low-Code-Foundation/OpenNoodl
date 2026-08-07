@@ -80,6 +80,19 @@ export class UndoActionGroup {
   private actions: UndoActionGroupActions[];
   private ptr: number;
 
+  /**
+   * NB: passing `do`/`undo` here records the action but leaves `ptr` at 0, and
+   * `undo()` loops from `ptr - 1`. So a group built this way and handed to
+   * `UndoQueue.push` **cannot be undone** — the loop runs from -1. It works
+   * with `UndoQueue.pushAndDo` only because `do()` advances the pointer on the
+   * way in, which is why every existing caller of the constructor form is a
+   * `pushAndDo` caller.
+   *
+   * If your change has *already been applied* and you only want to record its
+   * inverse, construct with the label alone and use `push()`, which advances
+   * the pointer without executing. `StyleTokensModel.pushAppliedUndo` is the
+   * worked example; `tests/models/StyleTokensUndo.test.ts` pins the behaviour.
+   */
   constructor(args: UndoActionGroupOptions) {
     this.ptr = 0;
     this.label = args.label;

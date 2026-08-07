@@ -1,0 +1,25 @@
+{
+  "typeName": "Model2",
+  "summary": "Object: binds to one client-side object by id and exposes its properties reactively; the shared store behind repeater items and app state.",
+  "description": "Object (Model2) is a window onto one object in the client-side object store. Bind it via `modelId` (or, per `idSource`, the enclosing repeater item) and the properties declared on the node become value outputs that update whenever anything writes the object — Set Object Properties, cloud-data nodes, scripts. `changed` fires on each such write. Objects are shared by id: every Object node with the same id sees the same data, which is how unconnected parts of a graph stay in sync.",
+  "whenToUse": "Read client-side objects: repeater items, records fetched from the cloud (records are objects whose id is the record id), and structured app state. To write, pair with Set Object Properties or New Object; for lists use Array (Collection2); for scalar state use Variable.",
+  "ports": {
+    "modelId": "The object's id. Wiring a record id here binds to that record's client-side object.",
+    "properties": "The property list declared on the node; each name becomes a value output (and the editor's property inputs).",
+    "changed": "Signal; fires whenever any writer mutates this object.",
+    "fetch": "Signal; re-reads the object and re-emits outputs on demand.",
+    "done": "Signal; a Fetch bound an object and the property outputs are up to date. Distinct from `fetched`, which also fires when the `modelId` input changes — there is no invocation on that path, so it reports no outcome.",
+    "failure": "Signal; Fetch was triggered with no Id to bind to. This used to emit nothing at all, which stopped the chain with no diagnosis anywhere.",
+    "completed": "Signal; fires after every Fetch whatever the outcome — wire it to carry on regardless."
+  },
+  "runtimeBehavior": "Property ports are generated from the `properties` list on the node instance (and the connected schema where one exists) — they are per-instance, not in the catalog. `idSource` swaps the id between an explicit input and the enclosing repeater item (declared-port-groups). NDA-012: an empty Id (null or an empty string) binds nothing and does not fire `fetched`, rather than minting a throwaway object; a real id still springs into existence on first use. Property values that arrive before the Id are held and written the moment an object is bound.",
+  "examples": ["comp-create-object-on-event", "comp-repeater-set-item-object"],
+  "patterns": [
+    "Repeater row: item id → Object → property outputs into the row's visuals.",
+    "Ids travel over wires; Objects resolve them where the data is needed."
+  ],
+  "antiPatterns": [
+    "Duplicating object data into Variables 'for convenience' — bind another Object node to the same id instead; the store already shares it."
+  ],
+  "relatedNodes": ["NewModel", "SetModelProperties", "Collection2", "DbModel2", "net.noodl.ComponentObject"]
+}

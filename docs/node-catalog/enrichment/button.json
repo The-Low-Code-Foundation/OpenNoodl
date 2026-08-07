@@ -1,0 +1,8 @@
+{
+  "typeName": "Button",
+  "summary": "Legacy button visual, hidden from the node picker — superseded by net.noodl.controls.button.",
+  "description": "The original Button visual, kept only so old projects load. The Button control (net.noodl.controls.button) supersedes it with label/icon layout, hover/pressed/focus states and accessibility.",
+  "whenToUse": "Do not use in new graphs — use net.noodl.controls.button instead.",
+  "runtimeBehavior": "Declared-port-groups gate box-shadow and width/height ports on parameter values; irrelevant for new work — the node is hidden from the picker.",
+  "relatedNodes": ["net.noodl.controls.button"]
+}

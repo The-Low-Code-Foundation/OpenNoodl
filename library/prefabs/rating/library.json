@@ -1,0 +1,19 @@
+{
+  "label": "Rating",
+  "description": "An interactive star rating component.",
+  "type": "prefab",
+  "tags": [
+    "UI",
+    "Form",
+    "Input"
+  ],
+  "icon": "icon.png",
+  "docsPath": "/library/prefabs/rating/",
+  "version": "0.2.0",
+  "minEditorVersion": "0.1.0",
+  "runtimeVersion": "2.7.0",
+  "provenance": {
+    "sourceUrl": "https://the-low-code-foundation.github.io/opennoodl-docs/library/prefabs/rating/rating-0-2.zip",
+    "importedAt": "2026-07-25"
+  }
+}

@@ -1,4 +1,5 @@
 import { FileChange, getMediaType } from './status';
+import { DiffLine } from './diff-line';
 
 export enum DiffType {
   /** Changes to a text file, which may be partially selected for commit */
@@ -10,13 +11,38 @@ export enum DiffType {
   /** Change to a repository which is included as a submodule of this repository */
   Submodule,
   /** Diff that will not be rendered */
-  Unrenderable
+  Unrenderable,
+  /** Changes to a large text file */
+  LargeText
+}
+
+/** Hunk header information */
+export interface IDiffHunkHeader {
+  readonly oldStartLine: number;
+  readonly oldLineCount: number;
+  readonly newStartLine: number;
+  readonly newLineCount: number;
+}
+
+/** A hunk in a diff */
+export interface IDiffHunk {
+  readonly header: IDiffHunkHeader;
+  readonly lines: ReadonlyArray<DiffLine>;
+  readonly unifiedDiffStart: number;
 }
 
 export interface ITextDiff {
   readonly kind: DiffType.Text;
   readonly modified?: string;
   readonly original: string;
+  readonly hunks?: ReadonlyArray<IDiffHunk>;
+}
+
+export interface ILargeTextDiff {
+  readonly kind: DiffType.LargeText;
+  readonly modified?: string;
+  readonly original: string;
+  readonly hunks?: ReadonlyArray<IDiffHunk>;
 }
 
 export class Image {
@@ -55,4 +81,4 @@ export interface IUnrenderableDiff {
 }
 
 /** The union of diff types */
-export type IDiff = ITextDiff | IImageDiff | IBinaryDiff | IUnrenderableDiff;
+export type IDiff = ITextDiff | IImageDiff | IBinaryDiff | IUnrenderableDiff | ILargeTextDiff;

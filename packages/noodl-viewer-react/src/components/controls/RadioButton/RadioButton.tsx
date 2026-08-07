@@ -1,9 +1,11 @@
-import React, { useContext } from 'react';
+import React, { useContext, useEffect } from 'react';
 
 import RadioButtonContext from '../../../contexts/radiobuttoncontext';
 import Layout from '../../../layout';
 import Utils from '../../../nodes/controls/utils';
 import { Noodl } from '../../../types';
+import { noodlRootRef } from '../../noodl-root-ref';
+import { IconGlyph } from '../../visual/Icon/IconGlyph';
 
 export interface RadioButtonProps extends Noodl.ReactProps {
   id: string;
@@ -26,7 +28,9 @@ export interface RadioButtonProps extends Noodl.ReactProps {
 
   fillSpacing: string;
 
-  checkedChanged: (value: boolean) => void;
+  checkedChanged: (value: boolean, fromUser: boolean) => void;
+  /** NDA-012 (Visual) F1 — called once when this button renders with no group above it. */
+  groupMissing?: () => void;
 }
 
 function isPercentage(size /* string */) {
@@ -44,7 +48,40 @@ export function RadioButton(props: RadioButtonProps) {
 
   Layout.align(style, props);
 
-  props.checkedChanged && props.checkedChanged(radioButtonGroup ? radioButtonGroup.selected === props.value : false);
+  // Whether this button is the group's selection. A render *output*, so it is computed here and
+  // used below for the `<input>`'s `checked` attribute.
+  //
+  // ⚠️ NDA-012 (Visual) F1. `radioButtonGroup` is `null` outside a group now; it used to be the
+  // context's default *object*, which is truthy — so this took the first branch either way and
+  // compared `undefined === props.value`. A groupless button with no `Value` therefore rendered
+  // **checked**, permanently.
+  const checked = radioButtonGroup ? radioButtonGroup.selected === props.value : false;
+
+  // F1. A Radio Button resolves its group through React context and has no `Group` port, so
+  // there is no way to name one and — until this — no way to find out that none was found. One
+  // rendered outside a group gets `name: undefined`, `checked: false` forever and a click that
+  // short-circuits to nothing: visibly a control, functionally inert. The node raises it on the
+  // runtime error bus, so it is visible in a deployed app too, not just while authoring.
+  const hasGroup = radioButtonGroup !== null;
+  useEffect(() => {
+    if (!hasGroup) props.groupMissing && props.groupMissing();
+  }, [hasGroup, props.groupMissing]);
+
+  // NDA-012 (Visual), A3. This used to call `props.checkedChanged(checked)` right here, from the
+  // render body — and on the node side that reaches `flagOutputDirty('checked')` and
+  // `_updateVisualState()` (`radiobutton.ts:39-46`). So a render React discarded or double-invoked
+  // moved graph state and repainted visual states for a checked-ness the committed tree never had.
+  //
+  // Reporting to the graph is a side effect and belongs after commit. `checkedChanged` already
+  // no-ops when the value has not changed, so the extra render this costs on a real change is the
+  // one the old code needed anyway.
+  useEffect(() => {
+    // A1: the second argument is what lets the node fire `Changed` for a click and stay silent
+    // for the graph setting the group's `Value` — the same distinction `Checkbox` and
+    // `Radio Button Group` already make.
+    props.checkedChanged && props.checkedChanged(checked, radioButtonGroup ? radioButtonGroup.selectionFromUser : false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [checked, props.checkedChanged]);
 
   const inputProps = {
     id: props.id,
@@ -80,20 +117,7 @@ export function RadioButton(props: RadioButtonProps) {
       return <img alt="" src={props.iconImageSource} style={{ width: props.iconSize, height: props.iconSize }} />;
     else if (props.iconSourceType === 'icon' && props.iconIconSource !== undefined) {
       const style = { fontSize: props.iconSize, color: props.iconColor };
-      if (props.iconIconSource.codeAsClass === true) {
-        return (
-          <span
-            className={['ndl-controls-abs-center', props.iconIconSource.class, props.iconIconSource.code].join(' ')}
-            style={style}
-          ></span>
-        );
-      } else {
-        return (
-          <span className={['ndl-controls-abs-center', props.iconIconSource.class].join(' ')} style={style}>
-            {props.iconIconSource.code}
-          </span>
-        );
-      }
+      return <IconGlyph source={props.iconIconSource} style={style} className="ndl-controls-abs-center" />;
     }
 
     return null;
@@ -110,14 +134,19 @@ export function RadioButton(props: RadioButtonProps) {
   };
 
   const radioButton = (
-    <div className="ndl-controls-pointer" style={inputWrapperStyle} noodl-style-tag="radio">
+    <div
+      ref={noodlRootRef(props.noodlNode)}
+      className="ndl-controls-pointer"
+      style={inputWrapperStyle}
+      noodl-style-tag="radio"
+    >
       <div style={fillStyle} noodl-style-tag="fill" />
       {props.useIcon ? _renderIcon() : null}
       <input
         type="radio"
         name={radioButtonGroup ? radioButtonGroup.name : undefined}
         {...inputProps}
-        checked={radioButtonGroup ? radioButtonGroup.selected === props.value : false}
+        checked={checked}
         onChange={(e) => {
           radioButtonGroup && radioButtonGroup.checkedChanged && radioButtonGroup.checkedChanged(props.value);
         }}
@@ -144,7 +173,7 @@ export function RadioButton(props: RadioButtonProps) {
     }
 
     return (
-      <div style={wrapperStyle} {...Utils.controlEvents(props)}>
+      <div ref={noodlRootRef(props.noodlNode)} style={wrapperStyle} {...Utils.controlEvents(props)}>
         {radioButton}
         <label className="ndl-controls-pointer" style={labelStyle} htmlFor={props.id} noodl-style-tag="label">
           {props.label}

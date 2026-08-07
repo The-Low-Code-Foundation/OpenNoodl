@@ -12,7 +12,7 @@ export interface UseConfirmationDialogOptions
 export function useConfirmationDialog(
   options: UseConfirmationDialogOptions,
   skipRejectCallback?: boolean
-): [() => JSX.Element, () => Promise<void>] {
+): [() => React.JSX.Element, () => Promise<void>] {
   const [promise, setPromise] =
     useState<{
       resolve: (value: void | PromiseLike<void>) => void;
@@ -62,7 +62,7 @@ export function useConfirmationDialog(
 
 export function useSimpleConfirmationDialog(
   options: UseConfirmationDialogOptions
-): [() => JSX.Element, (message: string) => Promise<void>] {
+): [() => React.JSX.Element, (message: string) => Promise<void>] {
   const [dialogMessage, setDialogMessage] = useState<string>('');
   const [Dialog, handleConfirmation] = useConfirmationDialog({
     ...options,

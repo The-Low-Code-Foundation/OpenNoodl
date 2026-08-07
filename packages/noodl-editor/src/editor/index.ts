@@ -1,23 +1,31 @@
 import * as remote from '@electron/remote';
 import { ipcRenderer } from 'electron';
 import React from 'react';
-import ReactDOM from 'react-dom';
+import { createRoot } from 'react-dom/client';
 
 import './process-setup';
 
 import { EventDispatcher } from '../shared/utils/EventDispatcher';
 import { NodeLibrary } from './src/models/nodelibrary';
-import { ProjectModel } from './src/models/projectmodel';
+import { flushPendingProjectSave, ProjectModel } from './src/models/projectmodel';
 
-//Design tokens for later
-// import '../../../noodl-core-ui/src/styles/custom-properties/animations.css';
-// import '../../../noodl-core-ui/src/styles/custom-properties/fonts.css';
-// import '../../../noodl-core-ui/src/styles/custom-properties/colors.css';
-import '../editor/src/styles/custom-properties/animations.css';
-import '../editor/src/styles/custom-properties/fonts.css';
-import '../editor/src/styles/custom-properties/colors.css';
+// Design tokens — canonical source lives in noodl-core-ui (UIX-001)
+import '@noodl-core-ui/styles/custom-properties/animations.css';
+import '@noodl-core-ui/styles/custom-properties/fonts.css';
+import '@noodl-core-ui/styles/custom-properties/colors.css';
+import '@noodl-core-ui/styles/custom-properties/spacing.css';
 
+import { ThemeManager } from './src/models/ThemeManager';
 import Router from './src/router';
+
+// Apply a theme (data-theme on <html>) before first paint to avoid a flash of
+// the wrong theme. This uses the OS preference; ThemeManager.init() below then
+// reconciles to the user's saved choice once the settings store has loaded.
+// (UIX-008 — launcher + editor share this one window, so this covers both.)
+ThemeManager.applyProvisional();
+
+// Build canary: Verify fresh code is loading
+console.log('🔥🔥 BUILD TIMESTAMP:', new Date().toISOString());
 
 ipcRenderer.on('open-noodl-uri', async (event, uri) => {
   if (uri.startsWith('noodl:import/http')) {
@@ -28,6 +36,36 @@ ipcRenderer.on('open-noodl-uri', async (event, uri) => {
 
 ipcRenderer.on('import-projectmetadata', (event, data) => {
   ProjectModel.instance.mergeMetadata(data);
+});
+
+// ── Draining the autosave debounce on the way out ───────────────────────────
+//
+// `scheduleProjectSave()` waits a second before writing, and nothing used to
+// drain that timer when the app went away: an edit followed by ⌘Q inside the
+// debounce was lost silently, on every edit path — metadata and every node,
+// connection and component change alike.
+//
+// Two triggers, deliberately overlapping, because neither covers the other's
+// cases:
+//
+//   * the main process holds the quit open and asks for a flush (⌘Q, the app
+//     menu, the dock, and the window close button — see main.js). This is the
+//     only one that can guarantee the *last* keystroke is written;
+//   * `blur` writes whenever the editor stops being the focused window, which
+//     reaches what no quit handler can — a crash, a force-kill, an OS-initiated
+//     shutdown. It bounds the loss to "since you last switched away" rather
+//     than "since you last saved".
+//
+// Registered at module scope rather than inside `DOMContentLoaded` so a quit
+// during startup is handled too. Both are free when nothing is pending:
+// `flushPendingProjectSave()` returns immediately unless an edit is queued.
+ipcRenderer.on('flush-project-save', () => {
+  const reply = () => ipcRenderer.send('flush-project-save-done');
+  flushPendingProjectSave().then(reply, reply);
+});
+
+window.addEventListener('blur', () => {
+  flushPendingProjectSave();
 });
 
 function setupViewerIpc() {
@@ -41,12 +79,19 @@ function setupViewerIpc() {
 }
 
 window.addEventListener('DOMContentLoaded', () => {
+  // Reconcile the theme to the persisted choice + start following the OS in
+  // system mode (UIX-008). applyProvisional() above already prevented a flash.
+  ThemeManager.init();
+
   // Register node adapters
   require('./src/models/NodeTypeAdapters/registeradapters');
 
-  // Disable context menu
-  $('body').on('contextmenu', function () {
-    return false;
+  // Disable context menu. `return false` from the jQuery handler this replaces
+  // meant preventDefault + stopPropagation; PopupLayer's own body-level
+  // contextmenu listener is on the same element, so it still runs.
+  document.body.addEventListener('contextmenu', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
   });
 
   ipcRenderer.on('showAutoUpdatePopup', () => {
@@ -83,5 +128,5 @@ window.addEventListener('DOMContentLoaded', () => {
 
   // Create the main element
   const rootElement = document.getElementById('root');
-  ReactDOM.render(React.createElement(Router, { uri: remote.process.env.noodlURI }), rootElement);
+  createRoot(rootElement).render(React.createElement(Router, { uri: remote.process.env.noodlURI }));
 });

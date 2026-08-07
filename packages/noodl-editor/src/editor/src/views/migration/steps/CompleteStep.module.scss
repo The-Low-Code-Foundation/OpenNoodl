@@ -1,0 +1,105 @@
+/**
+ * CLEANUP-000H: CompleteStep — design token polish
+ */
+
+.StepContainer {
+  padding: var(--spacing-6, 24px);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-4, 16px);
+}
+
+.StepTitle {
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+  color: var(--theme-color-fg-highlight, var(--theme-color-fg-default));
+  margin: 0;
+}
+
+// Success banner
+.SuccessBanner {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-3, 12px);
+  padding: var(--spacing-4, 16px);
+  background-color: color-mix(in srgb, var(--theme-color-success) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--theme-color-success) 30%, transparent);
+  border-radius: var(--radius-default);
+}
+
+.SuccessIcon {
+  width: 24px;
+  height: 24px;
+  color: var(--theme-color-success);
+  flex-shrink: 0;
+}
+
+.SuccessText {
+  font-size: var(--font-size-md);
+  color: var(--theme-color-success);
+  font-weight: 500;
+}
+
+// Stats
+.StatsCard {
+  background-color: var(--theme-color-bg-3);
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: var(--radius-default);
+  padding: var(--spacing-4, 16px);
+  display: flex;
+  gap: var(--spacing-6, 24px);
+  flex-wrap: wrap;
+}
+
+.StatItem {
+  display: flex;
+  align-items: baseline;
+  gap: var(--spacing-2, 8px);
+}
+
+.StatValue {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--theme-color-fg-highlight, var(--theme-color-fg-default));
+  line-height: 1;
+}
+
+.StatLabel {
+  font-size: var(--font-size-base);
+  color: var(--theme-color-fg-default-shy);
+}
+
+// What's next section
+.NextStepsSection {
+  padding-top: var(--spacing-4, 16px);
+  border-top: 1px solid var(--theme-color-border-default);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-3, 12px);
+}
+
+.NextStepsTitle {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: var(--theme-color-fg-default-shy);
+  text-transform: uppercase;
+}
+
+.ChecklistItem {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-2, 8px);
+  padding: var(--spacing-1, 4px) 0;
+  font-size: var(--font-size-md);
+  color: var(--theme-color-fg-default);
+  line-height: 1.5;
+}
+
+.ChecklistIcon {
+  width: 16px;
+  height: 16px;
+  color: var(--theme-color-fg-default-shy);
+  flex-shrink: 0;
+  margin-top: 2px;
+}

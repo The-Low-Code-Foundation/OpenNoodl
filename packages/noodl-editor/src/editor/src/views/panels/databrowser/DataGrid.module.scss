@@ -1,0 +1,152 @@
+/**
+ * DataGrid styles
+ */
+
+.GridContainer {
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+}
+
+.Grid {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.Grid thead {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background-color: var(--theme-color-bg-3);
+}
+
+.Grid th,
+.Grid td {
+  padding: 8px 12px;
+  text-align: left;
+  border-bottom: 1px solid var(--theme-color-border-default);
+}
+
+.HeaderCell {
+  background-color: var(--theme-color-bg-3);
+  font-weight: 500;
+  color: var(--theme-color-fg-default);
+  white-space: nowrap;
+}
+
+.HeaderContent {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.HeaderName {
+  font-weight: 500;
+}
+
+.TypeBadge {
+  font-size: 9px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background-color: var(--theme-color-bg-1);
+  color: var(--theme-color-fg-default-shy);
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+.TypeString {
+  background-color: var(--theme-color-primary);
+  color: var(--theme-color-fg-on-primary);
+}
+
+.TypeNumber {
+  background-color: var(--theme-color-success);
+  color: white;
+}
+
+.TypeBoolean {
+  background-color: var(--theme-color-notice);
+  color: white;
+}
+
+.TypeDate {
+  background-color: var(--theme-color-node-category-component);
+  color: white;
+}
+
+.TypeObject {
+  background-color: var(--theme-color-node-category-function);
+  color: white;
+}
+
+.TypeArray {
+  background-color: var(--theme-color-node-category-visual);
+  color: white;
+}
+
+.TypePointer {
+  background-color: var(--theme-color-danger);
+  color: white;
+}
+
+/* SPR-001/F84 — the ACL column's badge. Its own tone rather than Object's,
+   because it is a system column and not one of the schema's types. */
+.TypeAcl {
+  background-color: var(--theme-color-node-category-data);
+  color: white;
+}
+
+.CheckboxCol {
+  width: 40px;
+  text-align: center;
+  padding: 8px;
+
+  input[type='checkbox'] {
+    cursor: pointer;
+  }
+}
+
+.ActionsCol {
+  width: 60px;
+  text-align: center;
+  padding: 8px;
+  color: var(--theme-color-fg-default);
+}
+
+.Cell {
+  max-width: 250px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--theme-color-fg-default);
+}
+
+.CellValue {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--theme-color-fg-default);
+}
+
+.EditableCell {
+  cursor: pointer;
+
+  &:hover {
+    background-color: var(--theme-color-bg-3);
+  }
+}
+
+.ReadOnlyCell {
+  color: var(--theme-color-fg-default-shy);
+  font-family: monospace;
+  font-size: 11px;
+}
+
+.SelectedRow {
+  background-color: var(--theme-color-primary-muted);
+}
+
+.SelectedRow:hover {
+  background-color: var(--theme-color-primary-muted);
+}

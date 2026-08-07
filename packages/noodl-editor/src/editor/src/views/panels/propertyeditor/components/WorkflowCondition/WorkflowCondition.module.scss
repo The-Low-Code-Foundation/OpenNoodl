@@ -1,0 +1,199 @@
+.Root {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+  padding: 4px 0;
+}
+
+.Group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.GroupHeader {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.Comparison {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* A nested condition is indented and rules off, so the tree is readable
+   without a connector graphic. */
+.Nested {
+  padding-left: 8px;
+  border-left: 1px solid var(--theme-color-bg-3);
+}
+
+.Value {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.ValueRow {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.ModeSelect,
+.OpSelect {
+  background-color: var(--theme-color-bg-1);
+  border: 1px solid var(--theme-color-bg-3);
+  border-radius: 3px;
+  color: var(--theme-color-fg-default);
+  font-size: 11px;
+  padding: 2px 4px;
+  max-width: 130px;
+}
+
+.ModeSelect {
+  flex: 0 0 auto;
+  color: var(--theme-color-fg-default-shy);
+}
+
+.OpRow {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.OpSelect {
+  flex: 1;
+  max-width: none;
+}
+
+.Input {
+  flex: 1;
+  min-width: 0;
+  background-color: var(--theme-color-bg-1);
+  border: 1px solid var(--theme-color-bg-3);
+  border-radius: 3px;
+  color: var(--theme-color-fg-default);
+  font-size: 11px;
+  padding: 2px 5px;
+}
+
+.PathHelpers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+}
+
+.Chip {
+  background: none;
+  border: 1px solid var(--theme-color-bg-3);
+  border-radius: 9px;
+  color: var(--theme-color-fg-default-shy);
+  font-size: 10px;
+  padding: 1px 6px;
+  cursor: pointer;
+
+  &:hover {
+    color: var(--theme-color-fg-default);
+    background-color: var(--theme-color-bg-3);
+  }
+}
+
+.SmallButton,
+.AddButton {
+  background: none;
+  border: 1px solid var(--theme-color-bg-3);
+  border-radius: 3px;
+  color: var(--theme-color-fg-default-shy);
+  font-size: 11px;
+  padding: 2px 6px;
+  cursor: pointer;
+
+  &:hover {
+    color: var(--theme-color-fg-default);
+    background-color: var(--theme-color-bg-3);
+  }
+}
+
+.AddButton {
+  align-self: flex-start;
+}
+
+.RootActions {
+  display: flex;
+  gap: 4px;
+}
+
+.Hint {
+  font-size: 10px;
+  color: var(--theme-color-fg-default-shy);
+}
+
+.Error {
+  font-size: 10px;
+  line-height: 1.4;
+  color: var(--theme-color-danger);
+}
+
+.Notice {
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--theme-color-fg-default-shy);
+  padding: 4px 0;
+}
+
+/* switch cases */
+.Case {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--theme-color-bg-3);
+}
+
+.CaseHeader {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.CaseLabel {
+  flex: 1;
+  min-width: 0;
+}
+
+/* trigger entry nodes (WFA-005) — read-only rows, one of them copyable */
+.TriggerInfo {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  width: 100%;
+  min-width: 0;
+}
+
+.TriggerInfoValue {
+  flex: 1;
+  min-width: 0;
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--theme-color-fg-default);
+  word-break: break-all;
+}
+
+.TriggerInfoCopy {
+  flex: 0 0 auto;
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 3px;
+  border: 1px solid var(--theme-color-border-default);
+  background-color: var(--theme-color-bg-3);
+  color: var(--theme-color-fg-default);
+  cursor: pointer;
+
+  &:hover {
+    background-color: var(--theme-color-bg-2);
+  }
+}

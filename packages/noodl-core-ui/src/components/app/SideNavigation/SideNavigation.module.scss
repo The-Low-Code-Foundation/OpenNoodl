@@ -2,20 +2,49 @@ $_sidebar-hover-enter-offset: 250ms;
 
 .Root {
   height: 100%;
+  width: 100%;
   border-right: 1px solid var(--theme-color-bg-1);
   display: flex;
   position: relative;
   overflow: hidden;
+
+  /* PNL-003: `min-width: 380px` used to live here and silently overrode the
+     divider's own `sizeMin`, so the panel could not be made narrower than 380px
+     no matter what the divider said — and could not be collapsed at all. The
+     width is now owned in one place (useSidePanelLayout) and this element just
+     fills what the divider gives it. */
 }
 
+/* PAR-003: icon rail per the editor mock — 52px wide, bg-1, hairline right
+   border, 10px vertical padding, 4px gaps, centered 34px buttons. */
 .Toolbar {
+  /* POL-003: idle rail glyphs were `fg-muted` "per the mock". Measured, the mock
+     was wrong — and the mock is not the authority on a ratio it did not compute:
+
+       dark   fg-muted   #6b7682 on bg-1 #12161b  =  3.93:1   ← under the floor
+       light  fg-muted   #7c8894 on bg-1 #ffffff  =  3.62:1   ← under the floor
+       dark   fg-default #a6b0bb on bg-1 #12161b  =  8.26:1
+       light  fg-default #4a5663 on bg-1 #ffffff  =  7.49:1
+
+     Both muted values are below the 4.5:1 floor, and they are delivered through
+     a 1.5px stroke, which reads worse than the number. Richard called it "black
+     on black" — not literally true, and fixing what he literally described would
+     have fixed nothing. `fg-default` clears the floor twice over in both themes.
+
+     Hover fg-1 / active accent still come from IconButton's state rules. */
+  --icon-button-idle-fg: var(--theme-color-fg-default);
+
   position: absolute;
   display: flex;
   flex-direction: column;
-  min-width: 40px;
+  align-items: center;
+  width: 52px;
+  min-width: 52px;
   height: 100%;
-  border-right: 2px solid var(--theme-color-bg-1);
-  background-color: var(--theme-color-bg-2);
+  border-right: 1px solid var(--theme-color-border-default);
+  background-color: var(--theme-color-bg-1);
+  padding: 10px 0;
+  gap: 4px;
   transition: box-shadow var(--speed-quick) var(--easing-base);
 
   &:has(.Label.is-tooltip-visible) {
@@ -26,6 +55,62 @@ $_sidebar-hover-enter-offset: 250ms;
 
 .Logo {
   padding-top: 4px;
+}
+
+.BrandExit {
+  width: 34px;
+  height: 34px;
+  border: 0;
+  border-radius: 7px;
+  background: none;
+  padding: 0;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--theme-color-primary);
+
+  &:hover {
+    background: var(--theme-color-bg-3);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--theme-color-primary);
+    outline-offset: 2px;
+  }
+}
+
+.BrandDot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--theme-color-primary);
+  transition: opacity 0.12s ease, transform 0.12s ease;
+}
+
+.BrandArrow {
+  position: absolute;
+  opacity: 0;
+  transform: scale(0.7);
+  transition: opacity 0.12s ease, transform 0.12s ease;
+}
+
+.BrandExit:hover .BrandDot {
+  opacity: 0;
+  transform: scale(0.5);
+}
+
+.BrandExit:hover .BrandArrow {
+  opacity: 1;
+  transform: scale(1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .BrandDot,
+  .BrandArrow {
+    transition: none;
+  }
 }
 
 .ToolbarIcon {
@@ -52,22 +137,67 @@ $_sidebar-hover-enter-offset: 250ms;
   flex: 1;
   min-height: 100%;
   position: relative;
-  margin-left: 40px;
+  margin-left: 52px;
   overflow: hidden;
 
   display: flex;
   flex-direction: column;
 
   background-color: var(--theme-color-bg-2);
-  border-left: 2px solid var(--theme-color-bg-1);
+  border-left: 1px solid var(--theme-color-border-default);
+}
+
+/* PNL-009 — the detached modes.
+ *
+ * Both are CSS only: the panel keeps its parent, so the legacy imperative views
+ * several panels host through `Frame` are never unmounted and remounted. The
+ * rail is a sibling and stays exactly where it is, live, in every mode.
+ *
+ * `position: fixed` is what lets the panel escape `.Root`'s and the frame
+ * divider's `overflow: hidden` without moving in the DOM. It relies on no
+ * ancestor establishing a containing block for fixed positioning (a `transform`,
+ * `filter`, `perspective`, `contain: paint` or `will-change` on any ancestor
+ * would break it) — verified against the live editor, not assumed.
+ */
+.Panel.is-panel-full,
+.Panel.is-panel-floating {
+  position: fixed;
+  margin-left: 0;
+  min-height: 0;
+  z-index: 5;
+}
+
+/* Fills the editor area to the right of the rail. The rail keeps working, so
+   you can switch panels without leaving full mode. The insets come from the
+   host as inline styles — measured off the real editor area, because the panel
+   sits below a window title bar whose height is not a constant worth guessing. */
+.Panel.is-panel-full {
+  border-left: 1px solid var(--theme-color-border-default);
+}
+
+/* A card over the canvas. Position and size come from the layout state as
+   inline styles; everything here is presentation. */
+.Panel.is-panel-floating {
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-float, 0 18px 48px rgba(0, 0, 0, 0.38));
+  overflow: hidden;
+}
+
+/* With the panel detached the rail is all that is left in the flow, so the root
+   must not try to stretch to the divider's width. */
+.Root.is-panel-detached {
+  width: 52px;
+  min-width: 52px;
+  border-right: 0;
 }
 
 .SideNavigationButton {
   display: flex;
   align-items: center;
+  justify-content: center;
   padding-top: 2px;
   padding-bottom: 2px;
-  margin-left: 4px;
   cursor: pointer;
 
   &:hover {
@@ -115,6 +245,16 @@ $_sidebar-hover-enter-offset: 250ms;
 
 .IconButtonContainer {
   position: relative;
+
+  /* PAR-003: rail buttons are 34x34 pills (mock `.rail .icon-btn`), glyph
+     centered. Hover/active treatment (bg-3 pill / accent-soft + accent glyph)
+     lives on the shared IconButton transparent variant (UIX-004); the muted
+     idle glyph comes from the --icon-button-idle-fg hook on IconButton. */
+  button {
+    width: 34px;
+    height: 34px;
+    justify-content: center;
+  }
 }
 
 .NotificationBadge {

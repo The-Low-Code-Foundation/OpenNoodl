@@ -1,6 +1,6 @@
 import React from 'react';
-import ReactDOM from 'react-dom';
-import View from './view';
+import { createRoot, Root } from 'react-dom/client';
+import View from './ListenableView';
 
 export interface ReactViewDefaultProps {
   owner?: TSFixme;
@@ -8,8 +8,9 @@ export interface ReactViewDefaultProps {
 
 export abstract class ReactView<TProps extends ReactViewDefaultProps> extends View {
   private props: TProps;
+  private root: Root | null = null;
 
-  public el: any;
+  public el: HTMLElement;
 
   constructor(props: TProps) {
     super();
@@ -24,21 +25,25 @@ export abstract class ReactView<TProps extends ReactViewDefaultProps> extends Vi
 
   public render() {
     if (!this.el) {
-      this.el = $(document.createElement('div'));
-      this.el.css({
-        width: '100%',
-        height: '100%'
-      });
+      this.el = document.createElement('div');
+      this.el.style.width = '100%';
+      this.el.style.height = '100%';
     }
 
-    ReactDOM.render(React.createElement(this.renderReact.bind(this), this.props), this.el[0]);
+    if (!this.root) {
+      this.root = createRoot(this.el);
+    }
+    this.root.render(React.createElement(this.renderReact.bind(this), this.props));
 
     return this.el;
   }
 
   public dispose() {
-    this.el && ReactDOM.unmountComponentAtNode(this.el[0]);
+    if (this.root) {
+      this.root.unmount();
+      this.root = null;
+    }
   }
 
-  protected abstract renderReact(props: TProps): JSX.Element;
+  protected abstract renderReact(props: TProps): React.JSX.Element;
 }

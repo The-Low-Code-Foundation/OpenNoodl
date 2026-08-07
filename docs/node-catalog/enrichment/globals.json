@@ -1,0 +1,8 @@
+{
+  "typeName": "Globals",
+  "summary": "Deprecated global value bus with user-named ports; superseded by Variable2/Set Variable (and Model2 for objects).",
+  "description": "Globals exposed an open-ended set of user-named, untyped ports where every Globals node in the project shared one value per port name: setting an input on any instance updated the same-named output on all instances. It is deprecated; Variable2 and Set Variable provide the same app-wide shared values with clearer naming, and Model2 covers shared structured objects.",
+  "whenToUse": "Do not use in new graphs — use Variable2 and Set Variable instead (Model2 for shared objects).",
+  "runtimeBehavior": "All ports are user-defined per instance through the editor's port editor: any name can be added as an untyped input or output, and the runtime registers them on demand. No static port list exists.",
+  "relatedNodes": ["Variable2", "Set Variable", "Model2"]
+}

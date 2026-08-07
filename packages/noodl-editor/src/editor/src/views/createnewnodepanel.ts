@@ -1,13 +1,15 @@
 import { ipcRenderer } from 'electron';
 import React from 'react';
-import ReactDOM from 'react-dom';
+import { createRoot, Root } from 'react-dom/client';
 
 import { ComponentModel } from '@noodl-models/componentmodel';
 import { NodeGraphModel, NodeGraphNode } from '@noodl-models/nodegraphmodel';
+import { RuntimeType } from '@noodl-models/nodelibrary/NodeLibraryData';
 
-import View from '../../../shared/view';
+import View from '../../../shared/ListenableView';
 import { NodeLibrary } from '../models/nodelibrary';
 import { IVector2 } from './nodegrapheditor';
+import { getNodePickerSize, NodePickerSize } from './NodePicker/NodePicker.constants';
 import { NodePicker } from './NodePicker/NodePicker';
 
 export interface CreateNewNodePanelOptions {
@@ -15,7 +17,7 @@ export interface CreateNewNodePanelOptions {
   parentModel?: NodeGraphNode;
   attachToRoot?: boolean;
   pos: IVector2;
-  runtimeType: string;
+  runtimeType: RuntimeType;
 }
 
 export class CreateNewNodePanel extends View {
@@ -23,7 +25,9 @@ export class CreateNewNodePanel extends View {
   parentModel: NodeGraphNode;
   attachToRoot: boolean;
   pos: IVector2;
-  runtimeType: string;
+  runtimeType: RuntimeType;
+  size: NodePickerSize = getNodePickerSize();
+  root: Root | null = null;
 
   static shouldShow(context: { component: ComponentModel; parentModel: NodeGraphNode }) {
     const nodeTypes = NodeLibrary.instance.getNodeTypes();
@@ -55,33 +59,49 @@ export class CreateNewNodePanel extends View {
   }
 
   dispose() {
-    ReactDOM.unmountComponentAtNode(this.el[0]);
+    if (this.root) {
+      this.root.unmount();
+      this.root = null;
+    }
     ipcRenderer.send('viewer-show');
   }
 
-  renderReact(div) {
+  renderReact(div: HTMLElement) {
     const props = {
       model: this.model,
       parentModel: this.parentModel,
       pos: this.pos,
       attachToRoot: this.attachToRoot,
-      runtimeType: this.runtimeType
+      runtimeType: this.runtimeType,
+      size: this.size
     };
 
     // hide viwer first...
     ipcRenderer.send('viewer-hide');
 
     // ... then render the picker
-    ReactDOM.unmountComponentAtNode(div);
-    ReactDOM.render(React.createElement(NodePicker, props), div);
+    if (!this.root) {
+      this.root = createRoot(div);
+    }
+    this.root.render(React.createElement(NodePicker, props));
   }
 
   render() {
     const div = document.createElement('div');
 
+    // PopupLayer measures this element before React has rendered into it, so it
+    // needs explicit dimensions. UIX-013: the number comes from
+    // `NodePicker.constants` and is handed to the React tree as a prop, rather
+    // than being written here and again in the stylesheet and kept in sync by
+    // hand. It is clamped to the viewport — the editor window's minimum is
+    // smaller than the panel's preferred size.
+    this.size = getNodePickerSize();
+    div.style.width = `${this.size.width}px`;
+    div.style.height = `${this.size.height}px`;
+
     this.renderReact(div);
 
-    this.el = $(div);
+    this.el = div;
     return this.el;
   }
 }

@@ -1,5 +1,7 @@
 import React from 'react';
-import ReactDOM from 'react-dom';
+import { createRoot, Root } from 'react-dom/client';
+
+import { Icon, IconName } from '@noodl-core-ui/components/common/Icon';
 
 import { TransitionEditor } from './TransitionEditor';
 
@@ -23,6 +25,7 @@ type State = {
 
 export class VisualStates extends React.Component<VisualStatesProps, State> {
   popupAnchor: TSFixme;
+  private popupRoot: Root | null = null;
 
   constructor(props: VisualStatesProps) {
     super(props);
@@ -83,13 +86,20 @@ export class VisualStates extends React.Component<VisualStatesProps, State> {
       model: this.props.model,
       visualState: this.state.selectedVisualState
     };
-    ReactDOM.render(React.createElement(TransitionEditor, props), div);
+    this.popupRoot = createRoot(div);
+    this.popupRoot.render(React.createElement(TransitionEditor, props));
 
     this.props.portsView.showPopout({
       arrowColor: '#444444',
-      content: { el: $(div) },
-      attachTo: $(this.popupAnchor),
-      position: 'right'
+      content: { el: div },
+      attachTo: this.popupAnchor,
+      position: 'right',
+      onClose: () => {
+        if (this.popupRoot) {
+          this.popupRoot.unmount();
+          this.popupRoot = null;
+        }
+      }
     });
 
     evt.stopPropagation();
@@ -100,11 +110,13 @@ export class VisualStates extends React.Component<VisualStatesProps, State> {
       <div
         className="variants-section property-editor-visual-states"
         style={{ position: 'relative', display: 'flex', alignItems: 'center' }}
-        ref={(el) => (this.popupAnchor = el)}
+        ref={(el) => { this.popupAnchor = el; }}
       >
         <div className="variants-name-section" onClick={this.onCurrentStateClicked.bind(this)}>
           <label>{this.state.selectedVisualState.label} state</label>
-          <div className="variants-pick-icon" />
+          <div className="variants-pick-icon">
+            <Icon icon={IconName.CaretDownUp} UNSAFE_style={{ width: 10, height: 12 }} />
+          </div>
 
           {this.state.showStatesSelector ? (
             <div

@@ -22,6 +22,10 @@ function _shallowCompare(o1, o2) {
 const _styleSheets = {};
 
 function updateStylesForClass(_class, props, _styleTemplate) {
+  // Setters call this during graph load, which also happens server-side; the
+  // injected stylesheet is browser-only and re-created at hydration.
+  if (typeof document === 'undefined') return;
+
   if (_styleSheets[_class]) {
     // Check if props have changed
     if (!_shallowCompare(props, _styleSheets[_class].props)) {
@@ -84,6 +88,8 @@ function addControlEventsAndStates(definition, args?) {
       type: 'boolean',
       displayName: 'Enabled',
       group: 'General',
+      description:
+        'Lets the user interact with this control; when off it still renders and occupies its space but ignores clicks, touches and typing',
       default: true,
       set: function (value) {
         value = !!value;
@@ -103,7 +109,27 @@ function addControlEventsAndStates(definition, args?) {
     blockTouch: {
       index: 450,
       displayName: 'Block Pointer Events',
+      // FH-015 finding 3: "anything behind it" read as z-order; what it stops is the event
+      // reaching the nodes this control sits inside.
+      description:
+        'Stops every pointer event that lands on this control from reaching the nodes it sits inside. Blunt: it takes hover and pointer-down with it, so reach for Click Bubbling first if it is only clicks you want to keep in',
       type: 'boolean',
+      group: 'Pointer Events'
+    },
+    clickBubbling: {
+      index: 451,
+      displayName: 'Click Bubbling',
+      description:
+        "Whether a click on this control also fires Click on the nodes it sits inside. Automatic keeps it here as soon as this control's own Click is connected, so a Favourite button inside a clickable card runs Favourite and not the card; Always is the older behaviour where both run; Never keeps every click here, wired or not",
+      type: {
+        name: 'enum',
+        enums: [
+          { label: 'Automatic', value: 'auto' },
+          { label: 'Always', value: 'always' },
+          { label: 'Never', value: 'never' }
+        ]
+      },
+      default: 'auto',
       group: 'Pointer Events'
     }
   });
@@ -129,6 +155,7 @@ function addControlEventsAndStates(definition, args?) {
     focusState: {
       displayName: 'Focused',
       group: 'States',
+      description: 'True while this control holds keyboard focus, so typing and Enter go to it',
       type: 'boolean',
       props: {
         onFocus() {
@@ -146,6 +173,7 @@ function addControlEventsAndStates(definition, args?) {
     onFocus: {
       displayName: 'Focused',
       group: 'Focus Events',
+      description: 'Fires the moment this control takes keyboard focus, whether from a click, a tab or a Focus action',
       type: 'signal',
       props: {
         onFocus() {
@@ -156,6 +184,7 @@ function addControlEventsAndStates(definition, args?) {
     onBlur: {
       displayName: 'Blurred',
       group: 'Focus Events',
+      description: 'Fires when keyboard focus leaves this control, which is the usual place to validate what was entered',
       type: 'signal',
       props: {
         onBlur() {
@@ -168,6 +197,7 @@ function addControlEventsAndStates(definition, args?) {
     hoverState: {
       displayName: 'Hover',
       group: 'States',
+      description: 'True while the pointer is over this control; stays false on touch devices with no pointer',
       type: 'boolean',
       props: {
         onMouseOver() {
@@ -185,6 +215,7 @@ function addControlEventsAndStates(definition, args?) {
     hoverStart: {
       displayName: 'Hover Start',
       group: 'Pointer Events',
+      description: 'Fires when the pointer moves onto this control',
       type: 'signal',
       props: {
         onMouseOver() {
@@ -195,6 +226,7 @@ function addControlEventsAndStates(definition, args?) {
     hoverEnd: {
       displayName: 'Hover End',
       group: 'Pointer Events',
+      description: 'Fires when the pointer leaves this control, including when it leaves while a button is still held',
       type: 'signal',
       props: {
         onMouseLeave() {
@@ -207,6 +239,7 @@ function addControlEventsAndStates(definition, args?) {
     pressedState: {
       displayName: 'Pressed',
       group: 'States',
+      description: 'True while a mouse button or finger is held down on this control, and false again the moment it is released or slides off',
       type: 'boolean',
       props: {
         onMouseDown() {
@@ -244,6 +277,7 @@ function addControlEventsAndStates(definition, args?) {
     pointerDown: {
       displayName: 'Pointer Down',
       group: 'Pointer Events',
+      description: 'Fires as a mouse button or finger goes down on this control, before any click has completed',
       type: 'signal',
       props: {
         onMouseDown() {
@@ -257,6 +291,7 @@ function addControlEventsAndStates(definition, args?) {
     pointerUp: {
       displayName: 'Pointer Up',
       group: 'Pointer Events',
+      description: 'Fires when the mouse button or finger is lifted, and also when a touch is cancelled by the system',
       type: 'signal',
       props: {
         onMouseUp() {
@@ -277,6 +312,7 @@ function addControlEventsAndStates(definition, args?) {
       type: 'boolean',
       displayName: 'Enabled',
       group: 'States',
+      description: 'Reports back whether this control is currently accepting interaction, following the Enabled input',
       getter: function () {
         return this._internal.enabled;
       }

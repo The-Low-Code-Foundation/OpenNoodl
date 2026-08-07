@@ -1,0 +1,118 @@
+{
+  "component": {
+    "$schema": "https://opennoodl.dev/schemas/component-v2.json",
+    "id": "103fe4f8-8ac7-453f-a6cd-ff583a65b1ed",
+    "name": "AIX Orders",
+    "path": "/Pages/AIX Orders",
+    "type": "page",
+    "created": "2026-08-02T17:53:26.792Z",
+    "modified": "2026-08-02T17:53:26.792Z",
+    "modifiedBy": "ai-authoring",
+    "description": "Orders page: shows a summary line (order count and total value) followed by all Orders sorted most-recent-first, each row listing order number, customer name, total, status and date placed."
+  },
+  "nodes": {
+    "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+    "componentId": "103fe4f8-8ac7-453f-a6cd-ff583a65b1ed",
+    "version": 1,
+    "nodes": [
+      {
+        "id": "root",
+        "type": "Group",
+        "label": "Page root",
+        "x": 0,
+        "y": 0,
+        "children": [
+          "summaryText",
+          "rowsText"
+        ],
+        "parameters": {
+          "flexDirection": "column",
+          "paddingTop": "var(--space-8)",
+          "paddingBottom": "var(--space-8)",
+          "paddingLeft": "var(--space-8)",
+          "paddingRight": "var(--space-8)",
+          "rowGap": "var(--space-4)",
+          "backgroundColor": "var(--background)",
+          "sizeMode": "contentHeight"
+        }
+      },
+      {
+        "id": "ordersQuery",
+        "type": "DbCollection2",
+        "label": "Query all Orders",
+        "x": 0,
+        "y": -200,
+        "parameters": {
+          "collectionName": "Order"
+        }
+      },
+      {
+        "id": "compute",
+        "type": "JavaScriptFunction",
+        "label": "Compute summary + sorted rows",
+        "x": 250,
+        "y": -200,
+        "parameters": {
+          "functionScript": "const items = Inputs.items || [];\nconst sorted = [...items].sort((a,b) => new Date(b.datePlaced) - new Date(a.datePlaced));\nconst total = items.reduce((s,o)=>s+(Number(o.total)||0),0);\nOutputs.summary = items.length + ' orders totalling $' + total.toFixed(2);\nconst header = 'Order #\\tCustomer\\tTotal\\tStatus\\tDate placed';\nconst lines = sorted.map(o => (o.orderNumber||'') + '\\t' + (o.customerName||'') + '\\t$' + (Number(o.total)||0).toFixed(2) + '\\t' + (o.status||'') + '\\t' + (o.datePlaced||''));\nOutputs.rows = [header].concat(lines).join('\\n');"
+        }
+      },
+      {
+        "id": "summaryText",
+        "type": "Text",
+        "label": "Order count + total",
+        "x": 500,
+        "y": -100,
+        "parent": "root",
+        "parameters": {
+          "textStyle": "None",
+          "variant": "heading-3",
+          "fontSize": "var(--text-2xl)",
+          "fontWeight": "var(--font-semibold)",
+          "color": "var(--foreground)"
+        }
+      },
+      {
+        "id": "rowsText",
+        "type": "Text",
+        "label": "Order rows table",
+        "x": 500,
+        "y": 100,
+        "parent": "root",
+        "parameters": {
+          "fontFamily": "var(--font-mono)",
+          "fontSize": "var(--text-sm)",
+          "color": "var(--foreground)",
+          "styleCss": "white-space: pre-wrap;"
+        }
+      }
+    ],
+    "visualRoots": [
+      "root"
+    ]
+  },
+  "connections": {
+    "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+    "componentId": "103fe4f8-8ac7-453f-a6cd-ff583a65b1ed",
+    "version": 1,
+    "connections": [
+      {
+        "fromId": "ordersQuery",
+        "fromProperty": "items",
+        "toId": "compute",
+        "toProperty": "items"
+      },
+      {
+        "fromId": "compute",
+        "fromProperty": "summary",
+        "toId": "summaryText",
+        "toProperty": "text"
+      },
+      {
+        "fromId": "compute",
+        "fromProperty": "rows",
+        "toId": "rowsText",
+        "toProperty": "text"
+      }
+    ]
+  }
+}

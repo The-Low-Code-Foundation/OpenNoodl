@@ -1,0 +1,8 @@
+{
+  "typeName": "Form",
+  "summary": "Legacy HTML form container with an onSubmit signal, hidden from the picker. Use a Group and wire actions explicitly.",
+  "description": "Form renders an HTML form element around its children and fires `onSubmit` on native submission (e.g. Enter in a field). It is hidden from the node picker; current graphs wire submission explicitly — button `onClick` / input `onEnter` into the action — inside a plain Group, keeping the trigger visible in the graph.",
+  "whenToUse": "Do not use in new graphs — use Group with explicit click/enter wiring instead.",
+  "runtimeBehavior": "Declared-port-groups: size-mode-dependent layout ports, as on other visual containers.",
+  "relatedNodes": ["Group", "net.noodl.controls.textinput", "net.noodl.controls.button"]
+}

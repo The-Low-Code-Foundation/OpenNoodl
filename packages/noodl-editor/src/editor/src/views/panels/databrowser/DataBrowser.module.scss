@@ -1,0 +1,172 @@
+/**
+ * DataBrowser styles
+ * Uses theme tokens per UI-STYLING-GUIDE.md
+ */
+
+.Root {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  max-height: 80vh;
+  width: 100%;
+  max-width: 1200px;
+  background-color: var(--theme-color-bg-2);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.Header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px;
+  border-bottom: 1px solid var(--theme-color-border-default);
+  background-color: var(--theme-color-bg-3);
+}
+
+.HeaderIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background-color: var(--theme-color-primary);
+  border-radius: 6px;
+  color: var(--theme-color-fg-on-primary);
+}
+
+.Toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--theme-color-border-default);
+  gap: 12px;
+}
+
+.TableSelect {
+  padding: 6px 12px;
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: 4px;
+  background-color: var(--theme-color-bg-3);
+  color: var(--theme-color-fg-default);
+  font-size: 13px;
+  min-width: 150px;
+
+  &:focus {
+    outline: none;
+    border-color: var(--theme-color-primary);
+  }
+
+  option {
+    background-color: var(--theme-color-bg-2);
+    color: var(--theme-color-fg-default);
+  }
+}
+
+.SearchInput {
+  padding: 6px 12px;
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: 4px;
+  background-color: var(--theme-color-bg-3);
+  color: var(--theme-color-fg-default);
+  font-size: 13px;
+  min-width: 200px;
+
+  &:focus {
+    outline: none;
+    border-color: var(--theme-color-primary);
+  }
+
+  &::placeholder {
+    color: var(--theme-color-fg-default-shy);
+  }
+}
+
+.BulkActions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 16px;
+  background-color: var(--theme-color-notice-bg);
+  border-bottom: 1px solid var(--theme-color-border-default);
+}
+
+/* AAQ-011/F11: these banners carry an action now (Try again / Backend Services),
+   so they are a column with a button row rather than a bare paragraph. */
+@mixin banner {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--theme-color-border-default);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.Error {
+  @include banner;
+  background-color: var(--theme-color-danger-bg);
+  color: var(--theme-color-danger);
+}
+
+/* AAQ-011/F11: a backend that is stopped — or still starting — is *news*, not a
+   fault. Phase 23's rule is that red means danger and nothing else, so this
+   state gets the amber notice treatment and `.Error` is kept for a request that
+   genuinely failed against a running backend. */
+.Notice {
+  @include banner;
+  background-color: var(--theme-color-notice-bg);
+  color: var(--theme-color-notice);
+}
+
+.Content {
+  flex: 1;
+  overflow: auto;
+  min-height: 300px;
+}
+
+.Loading,
+.EmptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  min-height: 200px;
+  padding: 40px;
+}
+
+.Pagination {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  border-top: 1px solid var(--theme-color-border-default);
+  background-color: var(--theme-color-bg-3);
+}
+
+.PageControls {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.PageButton {
+  padding: 4px 8px;
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: 4px;
+  background-color: var(--theme-color-bg-2);
+  color: var(--theme-color-fg-default);
+  font-size: 12px;
+  cursor: pointer;
+
+  &:hover:not(:disabled) {
+    background-color: var(--theme-color-bg-3);
+    border-color: var(--theme-color-primary);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}

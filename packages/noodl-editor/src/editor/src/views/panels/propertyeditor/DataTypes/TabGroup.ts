@@ -1,12 +1,28 @@
-import View from '../../../../../../shared/view';
+import React from 'react';
+import { createRoot, Root } from 'react-dom/client';
+
+import View from '../../../../../../shared/ListenableView';
+import { PropertyTabs } from '../components/PropertyTabs';
+
+function setElementVisible(el: HTMLElement, visible: boolean) {
+  if (el) el.style.display = visible ? '' : 'none';
+}
+
+function appendChildEl(parent: HTMLElement, el: HTMLElement) {
+  if (el) parent.appendChild(el);
+}
 
 export class TabGroup extends View {
   tabGroup: TSFixme;
   views: TSFixme[];
-  tabs: TSFixme[];
-  el: TSFixme;
+  tabs: string[];
+  el: HTMLElement;
   group: TSFixme;
   parent: TSFixme;
+
+  private tabsHost: HTMLElement | null = null;
+  private tabsRoot: Root | null = null;
+  private propertiesEl: HTMLElement | null = null;
 
   constructor(args) {
     super();
@@ -16,41 +32,70 @@ export class TabGroup extends View {
     this.views = [];
     this.tabs = [];
   }
+
+  private get selectedTab() {
+    return this.parent._selectedTabForGroup[this.tabGroup] || this.tabs[0];
+  }
+
   render() {
-    this.el = this.bindView(this.parent.cloneTemplate('tab-group'), this);
+    const div = document.createElement('div');
+    div.className = 'property-tab-group';
 
-    this.tabs.forEach((tab, idx) => {
-      const _el = this.bindView(this.parent.cloneTemplate('tab-group-tab'), { tab: tab });
-      _el.find('.property-tab-icon').addClass(tab);
-      _el.attr('data-tab', tab);
-      this.$('.tabs').append(_el);
-    });
+    if (!this.tabsHost) this.tabsHost = document.createElement('div');
+    div.appendChild(this.tabsHost);
 
-    const selectedTab = this.parent._selectedTabForGroup[this.tabGroup] || this.tabs[0];
-    this.$('.property-tab').removeClass('selected');
-    this.$('[data-tab=' + selectedTab + ']').addClass('selected');
+    this.propertiesEl = document.createElement('div');
+    this.propertiesEl.className = 'properties';
+    div.appendChild(this.propertiesEl);
 
+    this.el = div;
+
+    if (!this.tabsRoot) {
+      this.tabsRoot = createRoot(this.tabsHost);
+    }
+    this.renderTabs();
+
+    const selectedTab = this.selectedTab;
     this.views.forEach((v) => {
       v.render();
-      this.$('.properties').append(v.el);
+      appendChildEl(this.propertiesEl, v.el);
 
-      if (v.port.tab.tab !== selectedTab) v.el.hide();
+      if (v.port.tab.tab !== selectedTab) setElementVisible(v.el, false);
     });
 
     return this.el;
   }
-  onTabClicked(scope, el, evt) {
-    const selectedTab = (this.parent._selectedTabForGroup[this.tabGroup] = scope.tab);
+
+  private renderTabs() {
+    if (!this.tabsRoot) return;
+
+    this.tabsRoot.render(
+      React.createElement(PropertyTabs, {
+        tabs: this.tabs,
+        selectedTab: this.selectedTab,
+        onTabClicked: (tab: string) => this.onTabClicked(tab)
+      })
+    );
+  }
+
+  onTabClicked(tab: string) {
+    const selectedTab = (this.parent._selectedTabForGroup[this.tabGroup] = tab);
     this.views.forEach((v) => {
-      if (v.port.tab.tab !== selectedTab) v.el.hide();
-      else v.el.show();
+      setElementVisible(v.el, v.port.tab.tab === selectedTab);
     });
 
-    this.$('.property-tab').removeClass('selected');
-    this.$('[data-tab=' + selectedTab + ']').addClass('selected');
+    this.renderTabs();
   }
+
   addView(view) {
     this.views.push(view);
     if (this.tabs.indexOf(view.port.tab.tab) === -1) this.tabs.push(view.port.tab.tab);
+  }
+
+  dispose() {
+    if (this.tabsRoot) {
+      this.tabsRoot.unmount();
+      this.tabsRoot = null;
+    }
   }
 }

@@ -1,0 +1,33 @@
+{
+  "typeName": "noodl.cloud.addusertorole",
+  "summary": "Adds a user to a named permission role from inside a cloud function, as the system. Cloud-only — the only way an account gains privilege.",
+  "description": "Add User To Role writes a membership row linking `userId` to `role`. `Roles` (every role the user is now in) and `roleCreated` are read back through the same resolver a permission rule's `role:` check uses, so this cannot answer a role the access check would disagree with. A `role` that does not exist is a `failure` unless `createRole` is on — off by default on purpose, because a mistyped role name that silently gets created is a grant that names nobody: the rule that was meant to reference it still says the old, correct name. `userId` is required and there is deliberately no fallback to whoever called the function; wiring a request parameter straight into it turns this into 'grant any role to any account' with an HTTP endpoint in front, so gate the function with a `call` rule (CWF-017) and check the caller's own id before wiring it in.",
+  "whenToUse": "In a cloud function that provisions or escalates privilege: making a newly signed-up user a `member`, promoting someone to `staff`, adding a subscriber to a `pro` role after a payment webhook confirms it. Never reachable from a browser graph — that would be one wire from a button to self-granted admin.",
+  "ports": {
+    "role": "Value; required. Name of the role to add the user to, matching what a permission rule writes after `role:` — letters, digits, underscore and hyphen only.",
+    "userId": "Value; required. Which account to grant the role to. A blank id is a `failure`, never a fallback to the function's own caller.",
+    "createRole": "Edit-only boolean, default off. Creates the role if it does not exist yet instead of failing. Leave off so a typo is a loud Failure naming the bad role, rather than a role no permission rule will ever reference.",
+    "treatUnchangedAs": "Edit-only enum, default Unchanged. Set it to Failure if a signup function re-running and finding the user already a member should stop the chain instead of carrying on.",
+    "add": "Signal (Do); writes the membership. Nothing happens until this fires.",
+    "roles": "Value; every role the user is in once this call settles, read from the same resolver a permission rule's access check uses — this cannot disagree with what a rule sees.",
+    "roleCreated": "Value; true when this call also created the role, worth branching on since a brand-new role is named by no permission rule yet.",
+    "done": "Signal; fires once the user is in the role and Roles lists it.",
+    "unchanged": "Signal; fires when the user was already in this role, with Roles still listing it — so a signup function re-run does not go red. Set Treat Unchanged As to Failure if a repeat should be treated as a bug.",
+    "failure": "Signal; fires when the membership could not be written — a blank Role or User Id, a user id nothing resolves, or a role that does not exist with Create Role If Missing left off.",
+    "completed": "Signal; fires after every attempt, whatever the outcome.",
+    "error": "Value; why the last attempt failed."
+  },
+  "examples": [],
+  "patterns": [
+    "Wire straight after Create User in a signup function to put every new account into a default role like `member` — `unchanged` and `done` both mean the account is now in that role, so wiring both to the same next step covers a re-run cleanly."
+  ],
+  "antiPatterns": [
+    "Wiring a request parameter straight into `userId` (or `role`) on a function anyone may call. That is 'grant any role to any account' with an HTTP endpoint in front of it — give the function a `call` rule (CWF-017) and check inside the graph that the caller is entitled to make this particular grant.",
+    "Leaving Create Role If Missing on as a default habit. It turns a mistyped role name into a role that exists, has one member, and is named by no permission rule — a grant that silently never takes effect."
+  ],
+  "relatedNodes": [
+    "noodl.cloud.removeuserfromrole",
+    "noodl.cloud.getuserroles",
+    "noodl.cloud.createuser"
+  ]
+}

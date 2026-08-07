@@ -1,0 +1,61 @@
+/**
+ * LauncherButton - mock `.btn` styling (PAR-001)
+ */
+
+.Root {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-family: var(--font-family);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.2;
+  border-radius: var(--radius-7);
+  padding: 7px 13px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s, box-shadow 0.12s;
+
+  &:focus-visible {
+    outline: 2px solid var(--theme-color-focus-ring);
+    outline-offset: 2px;
+  }
+
+  &:disabled {
+    opacity: 0.55;
+    cursor: default;
+  }
+
+  svg {
+    flex: none;
+  }
+}
+
+.is-primary {
+  background: var(--theme-color-primary);
+  color: var(--theme-color-on-primary);
+
+  &:hover:not(:disabled) {
+    background: var(--theme-color-primary-highlight);
+  }
+}
+
+.is-secondary {
+  background: var(--theme-color-bg-2);
+  border-color: var(--theme-color-border-strong);
+  color: var(--theme-color-fg-highlight);
+
+  &:hover:not(:disabled) {
+    background: var(--theme-color-bg-3);
+  }
+}
+
+.is-ghost {
+  background: none;
+  color: var(--theme-color-fg-default);
+
+  &:hover:not(:disabled) {
+    background: var(--theme-color-bg-3);
+    color: var(--theme-color-fg-highlight);
+  }
+}

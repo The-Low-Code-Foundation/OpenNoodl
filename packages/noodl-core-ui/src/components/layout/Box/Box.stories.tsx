@@ -1,16 +1,18 @@
-import React from 'react';
-import { ComponentStory, ComponentMeta } from '@storybook/react';
+import type { Meta, StoryObj } from '@storybook/react';
 
 import { Box } from './Box';
 import { Text } from '@noodl-core-ui/components/typography/Text';
 
-export default {
+const meta: Meta<typeof Box> = {
   title: 'Layout/Box',
   component: Box,
   argTypes: {}
-} as ComponentMeta<typeof Box>;
+};
 
-const Template: ComponentStory<typeof Box> = (args) => (
+export default meta;
+type Story = StoryObj<typeof meta>;
+
+const Template: Story = (args) => (
   <div style={{ width: 280 }}>
     <Box {...args}>
       <Text>Text</Text>
@@ -18,5 +20,6 @@ const Template: ComponentStory<typeof Box> = (args) => (
   </div>
 );
 
-export const Common = Template.bind({});
-Common.args = {};
+export const Common: Story = {
+  args: {},
+};

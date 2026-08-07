@@ -3,64 +3,17 @@ import _ from 'underscore';
 import { ComponentModel } from '@noodl-models/componentmodel';
 import { NodeGraphNode } from '@noodl-models/nodegraphmodel';
 import { BasicNodeType } from '@noodl-models/nodelibrary/BasicNodeType';
+// WFA-009: the condition evaluator moved to `dynamicPortRules` so that the
+// `conditionalports/*` filter below and the `namedports/list` generator share
+// exactly one implementation of this small language rather than two dialects
+// of it. Nothing else about the filter changed.
+import { evaluateDynamicPortsCondition } from '@noodl-models/nodelibrary/dynamicPortRules';
+import type { NodeLibraryProjectSettings } from '@noodl-models/nodelibrary/NodeLibraryData';
 import { UnknownNodeType } from '@noodl-models/nodelibrary/UnknownNodeType';
 
 import Model from '../../../../shared/model';
+import { CanvasTheme } from '../../views/nodegrapheditor/canvas/CanvasTheme';
 import { ModelProxy } from '../../views/panels/propertyeditor/models/modelProxy';
-
-const _condFuncCache = {};
-function evaluateDynamicPortsCondition(cond, node) {
-  if (cond.startsWith('#js')) {
-    // This is a JS expression
-    if (_condFuncCache[cond] === undefined)
-      _condFuncCache[cond] = new Function('params', 'return ' + cond.substring('#js'.length));
-
-    return !!_condFuncCache[cond](
-      new Proxy(node.parameters, {
-        get: (target, prop, receiver) => {
-          return node.getParameter(prop);
-        }
-      })
-    );
-  }
-
-  const tokens = cond.match(/(?:[^\s']+|'[^']*')+/g); // Split on whitespace but respect single qoutes
-
-  function evalCond(i) {
-    if (tokens.length < i + 3) return true;
-
-    const paramName = tokens[i + 0].replace(/'/g, ''); // Trim any quotes
-    const op = tokens[i + 1];
-    const value = tokens[i + 2].replace(/'/g, '');
-
-    let res;
-    switch (op) {
-      case '=':
-        res = '' + node.getParameter(paramName) === value;
-        break;
-      case '!=':
-        res = '' + node.getParameter(paramName) !== value;
-        break;
-      case 'NOT':
-        res = node.getParameter(paramName) === undefined;
-        break;
-    }
-
-    if (tokens.length > i + 3) {
-      const logic = tokens[i + 3];
-      switch (logic) {
-        case 'AND':
-          return res && evalCond(i + 4);
-        case 'OR':
-          return res || evalCond(i + 4);
-      }
-    }
-
-    return res;
-  }
-
-  return evalCond(0);
-}
 
 // TODO: Very ugly how we handle nodes in here now
 export type NodeLibraryNodeType = (BasicNodeType | UnknownNodeType) & {
@@ -128,16 +81,17 @@ export class NodeLibrary extends Model {
     }*/
     // Make sure the default color scheme is present
     if (!this.library.colors) this.library.colors = { nodes: {}, connections: {} };
+    // UIX-005: fallbacks match the harmonised palette in nodelibraryexport.js
     if (!this.library.colors.nodes.default) {
       this.library.colors.nodes.default = {
-        base: '#485e65',
-        text: '#93a1a1'
+        base: '#222933',
+        text: '#a6b0bb'
       };
     }
     if (!this.library.colors.connections.default) {
       this.library.colors.connections.default = {
-        normal: '#916311',
-        highlighted: '#ffa300'
+        normal: '#45d08a',
+        highlighted: '#7de0ac'
       };
     }
   }
@@ -152,8 +106,26 @@ export class NodeLibrary extends Model {
   }
 
   registerModule(module) {
+    // Registering twice used to push a second entry and bind a second
+    // 'componentRemoved' listener. `unregisterModule` removes one entry by
+    // `indexOf`, so the duplicate was unremovable: the module stayed visible to
+    // `getComponents()` for the rest of the session, and every project ever
+    // double-registered kept shadowing later projects' same-named components.
+    // The `ProjectModel.instance` setter registers on assignment, so any caller
+    // that also registered explicitly leaked one.
+    if (this.modules.indexOf(module) !== -1) return;
+
     this.modules.push(module);
     module._registered = true;
+
+    // Registering a module changes what `getComponents()` returns, so any cache
+    // built before it is stale by construction — a component name this module
+    // defines may already be cached against a *different* module's component,
+    // and `getNodeTypeWithName` only refills on a miss, so the stale entry wins
+    // indefinitely. `unregisterModule` has always cleared for the mirror-image
+    // reason; this side was missing, which is how three specs in the editor
+    // suite came to pass or fail depending on what ran before them.
+    this.typeCache.clear();
 
     //keep this.typeCache in sync by removing components that are removed from registered modules
     //no need to listen for new components since getNodeTypeWithName handles types that arent in the typeCache
@@ -239,13 +211,19 @@ export class NodeLibrary extends Model {
     return false;
   }
 
+  // UIX-012: node colour schemes come from CanvasTheme (CSS tokens), not from
+  // the runtime's dark-only `colors.nodes` blob — otherwise every DOM surface
+  // that paints node chrome (picker, connection popup, references panel) stays
+  // dark-navy under the light theme. The blob is still shipped by
+  // nodelibraryexport.js for consumers outside the editor; it is simply no
+  // longer what the editor renders from. React callers should prefer the
+  // `useNodeColorScheme` hook, which also re-renders on theme change.
   colorSchemeForNodeColorName(name) {
-    return this.library.colors.nodes[name] || this.library.colors.nodes.default;
+    return CanvasTheme.instance.nodeColorScheme(name);
   }
 
   colorSchemeForNodeType(type) {
-    if (!type.color) return this.library.colors.nodes.default;
-    return this.library.colors.nodes[type.color];
+    return CanvasTheme.instance.nodeColorScheme(type?.color);
   }
 
   colorSchemeForConnectionType(type) {
@@ -418,7 +396,7 @@ export class NodeLibrary extends Model {
   }
 
   // Project settings template from node library
-  getProjectSettingsPorts() {
+  getProjectSettingsPorts(): NodeLibraryProjectSettings {
     return this.library.projectsettings || {};
   }
 

@@ -1,0 +1,25 @@
+{
+  "targets": [
+    "packages/noodl-editor/src",
+    "packages/noodl-core-ui/src"
+  ],
+  "exclude": [
+    "packages/noodl-editor/src/assets/lib/fontawesome/css/font-awesome.css",
+    "packages/noodl-editor/src/assets/lib/fontawesome/css/font-awesome.min.css",
+    "packages/noodl-core-ui/src/styles/custom-properties/colors.css"
+  ],
+  "tsTargets": [
+    "packages/noodl-editor/src/editor/src/views/nodegrapheditor.ts",
+    "packages/noodl-editor/src/editor/src/views/nodegrapheditor"
+  ],
+  "tsExclude": [
+    "packages/noodl-editor/src/editor/src/views/nodegrapheditor/canvas/CanvasTheme.ts"
+  ],
+  "commit": "81aa996",
+  "max": {
+    "noodl-editor": 16
+  },
+  "byFile": {
+    "packages/noodl-editor/src/assets/css/style.css": 16
+  }
+}

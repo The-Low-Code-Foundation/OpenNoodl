@@ -4,42 +4,88 @@
   display: flex;
   align-items: center;
 
+  /* PNL-001: the visually-hidden input below is absolutely positioned. Without
+     a positioned parent its containing block is whatever ancestor happens to be
+     relative — in a side panel that is `BasePanel .Inner`, outside the scroll
+     container — so a checkbox below the fold lands past the panel's bottom and
+     inflates the non-scrolling ancestor's scrollHeight. */
+  position: relative;
+
   &.has-bottom-spacing {
     margin-bottom: 15px;
   }
 }
 
 .Checkbox {
-  display: none;
+  // Visually hidden but still focusable for keyboard users.
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  margin: 0;
+  pointer-events: none;
 }
 
 .FauxCheckbox {
   background-color: var(--theme-color-bg-2);
+  border: 2px solid var(--theme-color-border-strong);
+  border-radius: var(--radius-default);
+  color: var(--theme-color-on-primary);
   display: flex;
   align-items: center;
   justify-content: center;
+  transition: background-color var(--speed-turbo), border-color var(--speed-turbo);
+
+  svg path {
+    stroke: currentColor;
+  }
 
   &.is-size-small {
-    width: 20px;
-    height: 20px;
+    width: 18px;
+    height: 18px;
   }
 
   &.is-size-large {
-    // Placeholder styles here atm, should match the look of checkboxes in the Property Panel
-    width: 33px;
-    height: 33px;
+    width: 22px;
+    height: 22px;
   }
 
   &.has-right-margin {
     margin-right: 10px;
   }
 
-  .Root.is-variant-sidebar & {
+  // Accent-filled on-state (mock contract) — no more invisible dark square.
+  &.is-checked {
+    background-color: var(--theme-color-primary);
+    border-color: var(--theme-color-primary);
+  }
+
+  .Root:hover &:not(.is-checked) {
+    border-color: var(--theme-color-primary);
+  }
+
+  // Keyboard focus lands on the visually-hidden input.
+  .Checkbox:focus-visible + & {
+    outline: 2px solid var(--theme-color-focus-ring);
+    outline-offset: 2px;
+  }
+
+  .Root.is-variant-sidebar &:not(.is-checked) {
     background-color: var(--theme-color-bg-1);
   }
 
-  .Root.is-variant-light & {
+  .Root.is-variant-light &:not(.is-checked) {
     background-color: var(--theme-color-bg-4);
+  }
+
+  .Root.is-disabled & {
+    opacity: 0.5;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .FauxCheckbox {
+    transition: none;
   }
 }
 

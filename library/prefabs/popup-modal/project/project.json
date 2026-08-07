@@ -1,0 +1,1022 @@
+{
+    "name": "Export",
+    "components": [
+        {
+            "name": "/Popup Modal",
+            "id": "b3a36516-42b6-a378-2b4d-37d843b870e1",
+            "graph": {
+                "connections": [
+                    {
+                        "fromId": "c13c476f-89a6-e734-33e4-a797887b97de",
+                        "fromProperty": "Show popup",
+                        "toId": "54160998-d584-d09c-d59f-5bef857e8c3d",
+                        "toProperty": "show"
+                    },
+                    {
+                        "fromId": "54160998-d584-d09c-d59f-5bef857e8c3d",
+                        "fromProperty": "Closed",
+                        "toId": "7166220b-62fe-d3b5-6e3d-9b47ee0c8c00",
+                        "toProperty": "Closed"
+                    },
+                    {
+                        "fromId": "54160998-d584-d09c-d59f-5bef857e8c3d",
+                        "fromProperty": "closeAction-Confirmed",
+                        "toId": "7166220b-62fe-d3b5-6e3d-9b47ee0c8c00",
+                        "toProperty": "Confirm Clicked"
+                    },
+                    {
+                        "fromId": "c13c476f-89a6-e734-33e4-a797887b97de",
+                        "fromProperty": "Title",
+                        "toId": "66eb7dc2-73a4-9a4e-b4fb-5fc18a6e18b2",
+                        "toProperty": "value"
+                    },
+                    {
+                        "fromId": "66eb7dc2-73a4-9a4e-b4fb-5fc18a6e18b2",
+                        "fromProperty": "savedValue",
+                        "toId": "54160998-d584-d09c-d59f-5bef857e8c3d",
+                        "toProperty": "popupParam-Title"
+                    },
+                    {
+                        "fromId": "c13c476f-89a6-e734-33e4-a797887b97de",
+                        "fromProperty": "Description",
+                        "toId": "a81d7663-bda1-e5c9-0dbf-ec58cfd3668e",
+                        "toProperty": "value"
+                    },
+                    {
+                        "fromId": "a81d7663-bda1-e5c9-0dbf-ec58cfd3668e",
+                        "fromProperty": "savedValue",
+                        "toId": "54160998-d584-d09c-d59f-5bef857e8c3d",
+                        "toProperty": "popupParam-Description"
+                    },
+                    {
+                        "fromId": "c13c476f-89a6-e734-33e4-a797887b97de",
+                        "fromProperty": "Primary Button Label",
+                        "toId": "dcdcd858-31d3-97c0-a24a-badc130aea11",
+                        "toProperty": "value"
+                    },
+                    {
+                        "fromId": "dcdcd858-31d3-97c0-a24a-badc130aea11",
+                        "fromProperty": "savedValue",
+                        "toId": "54160998-d584-d09c-d59f-5bef857e8c3d",
+                        "toProperty": "popupParam-Primary Button Label"
+                    },
+                    {
+                        "fromId": "c13c476f-89a6-e734-33e4-a797887b97de",
+                        "fromProperty": "Secondary Button Label",
+                        "toId": "9d4ccbdd-9ab0-6704-e90c-c622a951a392",
+                        "toProperty": "value"
+                    },
+                    {
+                        "fromId": "9d4ccbdd-9ab0-6704-e90c-c622a951a392",
+                        "fromProperty": "savedValue",
+                        "toId": "54160998-d584-d09c-d59f-5bef857e8c3d",
+                        "toProperty": "popupParam-Secondary Button Label"
+                    },
+                    {
+                        "fromId": "c13c476f-89a6-e734-33e4-a797887b97de",
+                        "fromProperty": "Component to show",
+                        "toId": "54160998-d584-d09c-d59f-5bef857e8c3d",
+                        "toProperty": "target"
+                    }
+                ],
+                "roots": [
+                    {
+                        "id": "54160998-d584-d09c-d59f-5bef857e8c3d",
+                        "type": "NavigationShowPopup",
+                        "x": 91.96418347009899,
+                        "y": 135.4363398491261,
+                        "parameters": {
+                            "target": "/Popup Modal/Modal Component"
+                        },
+                        "ports": [],
+                        "dynamicports": [
+                            {
+                                "name": "popupParam-Title",
+                                "displayName": "Title",
+                                "type": "*",
+                                "plug": "input",
+                                "group": "Params",
+                                "index": 3
+                            },
+                            {
+                                "name": "popupParam-Description",
+                                "displayName": "Description",
+                                "type": "*",
+                                "plug": "input",
+                                "group": "Params",
+                                "index": 4
+                            },
+                            {
+                                "name": "popupParam-Primary Button Label",
+                                "displayName": "Primary Button Label",
+                                "type": "*",
+                                "plug": "input",
+                                "group": "Params",
+                                "index": 5
+                            },
+                            {
+                                "name": "popupParam-Secondary Button Label",
+                                "displayName": "Secondary Button Label",
+                                "type": "*",
+                                "plug": "input",
+                                "group": "Params",
+                                "index": 6
+                            },
+                            {
+                                "name": "closeAction-Confirmed",
+                                "displayName": "Confirmed",
+                                "type": "signal",
+                                "plug": "output",
+                                "group": "Close Actions",
+                                "index": 7
+                            }
+                        ],
+                        "children": []
+                    },
+                    {
+                        "id": "c13c476f-89a6-e734-33e4-a797887b97de",
+                        "type": "Component Inputs",
+                        "x": -591.5947745170042,
+                        "y": 133,
+                        "parameters": {},
+                        "ports": [
+                            {
+                                "name": "Show popup",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "index": 4,
+                                "group": "Action"
+                            },
+                            {
+                                "name": "Title",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "group": "Text",
+                                "index": 0
+                            },
+                            {
+                                "name": "Description",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "group": "Text",
+                                "index": 1
+                            },
+                            {
+                                "name": "Primary Button Label",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "group": "Text",
+                                "index": 2
+                            },
+                            {
+                                "name": "Secondary Button Label",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "group": "Text",
+                                "index": 3
+                            },
+                            {
+                                "name": "Component to show",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "group": "General",
+                                "index": 5
+                            }
+                        ],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "7166220b-62fe-d3b5-6e3d-9b47ee0c8c00",
+                        "type": "Component Outputs",
+                        "x": 346.2378145694978,
+                        "y": 169.59043267494678,
+                        "parameters": {},
+                        "ports": [
+                            {
+                                "name": "Closed",
+                                "plug": "input",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "index": 1
+                            },
+                            {
+                                "name": "Confirm Clicked",
+                                "plug": "input",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "index": 2
+                            }
+                        ],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "66eb7dc2-73a4-9a4e-b4fb-5fc18a6e18b2",
+                        "type": "String",
+                        "x": -200.74416819137218,
+                        "y": 64.27295381410153,
+                        "parameters": {},
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "a81d7663-bda1-e5c9-0dbf-ec58cfd3668e",
+                        "type": "String",
+                        "x": -198.18050804049824,
+                        "y": 162.97386962274555,
+                        "parameters": {},
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "dcdcd858-31d3-97c0-a24a-badc130aea11",
+                        "type": "String",
+                        "x": -194.33501781418738,
+                        "y": 271.92942603488507,
+                        "parameters": {},
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "9d4ccbdd-9ab0-6704-e90c-c622a951a392",
+                        "type": "String",
+                        "x": -195.61684788962435,
+                        "y": 369.34851176809235,
+                        "parameters": {},
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": []
+                    }
+                ]
+            }
+        },
+        {
+            "name": "/Popup Modal/Modal Component",
+            "id": "e6828fbc-e39c-5b59-a75a-a5e1caf1fa00",
+            "graph": {
+                "connections": [
+                    {
+                        "fromId": "80aa5728-5a65-e392-4f49-f5603747bdad",
+                        "fromProperty": "onClick",
+                        "toId": "5ae8c815-970a-a332-fc88-38ab1a103606",
+                        "toProperty": "close"
+                    },
+                    {
+                        "fromId": "09e2e4fd-bc81-d110-4c70-b778bc9062e9",
+                        "fromProperty": "onClick",
+                        "toId": "5ae8c815-970a-a332-fc88-38ab1a103606",
+                        "toProperty": "close"
+                    },
+                    {
+                        "fromId": "dfd2be83-35bd-8a0d-5df8-840939bb2b09",
+                        "fromProperty": "onClick",
+                        "toId": "5ae8c815-970a-a332-fc88-38ab1a103606",
+                        "toProperty": "close"
+                    },
+                    {
+                        "fromId": "87a624cf-64c6-cec5-33b8-a948ef0877c4",
+                        "fromProperty": "onClick",
+                        "toId": "5ae8c815-970a-a332-fc88-38ab1a103606",
+                        "toProperty": "closeAction-Confirmed"
+                    },
+                    {
+                        "fromId": "805b987f-8995-a742-9bc4-cc0d9b28887c",
+                        "fromProperty": "didMount",
+                        "toId": "e802c40a-e4ad-1bf5-1364-a636444b65f0",
+                        "toProperty": "to-show"
+                    },
+                    {
+                        "fromId": "e802c40a-e4ad-1bf5-1364-a636444b65f0",
+                        "fromProperty": "size",
+                        "toId": "fb4cea88-187d-f9c0-2750-cf9fa9a6c261",
+                        "toProperty": "transformScale"
+                    },
+                    {
+                        "fromId": "e802c40a-e4ad-1bf5-1364-a636444b65f0",
+                        "fromProperty": "opacity",
+                        "toId": "fb4cea88-187d-f9c0-2750-cf9fa9a6c261",
+                        "toProperty": "opacity"
+                    },
+                    {
+                        "fromId": "8fdb48f0-ec33-740d-b0a6-6aad50bf6414",
+                        "fromProperty": "Title",
+                        "toId": "d7e7a17b-b2bd-9f98-6f1a-11ff0bec3992",
+                        "toProperty": "text"
+                    },
+                    {
+                        "fromId": "8fdb48f0-ec33-740d-b0a6-6aad50bf6414",
+                        "fromProperty": "Description",
+                        "toId": "eea7d56f-9d62-3fdd-bc3c-29cdfcb8fd23",
+                        "toProperty": "text"
+                    },
+                    {
+                        "fromId": "8fdb48f0-ec33-740d-b0a6-6aad50bf6414",
+                        "fromProperty": "Secondary Button Label",
+                        "toId": "dfd2be83-35bd-8a0d-5df8-840939bb2b09",
+                        "toProperty": "label"
+                    },
+                    {
+                        "fromId": "8fdb48f0-ec33-740d-b0a6-6aad50bf6414",
+                        "fromProperty": "Primary Button Label",
+                        "toId": "87a624cf-64c6-cec5-33b8-a948ef0877c4",
+                        "toProperty": "label"
+                    },
+                    {
+                        "fromId": "e802c40a-e4ad-1bf5-1364-a636444b65f0",
+                        "fromProperty": "opacity",
+                        "toId": "80aa5728-5a65-e392-4f49-f5603747bdad",
+                        "toProperty": "opacity"
+                    }
+                ],
+                "roots": [
+                    {
+                        "id": "5ae8c815-970a-a332-fc88-38ab1a103606",
+                        "type": "NavigationClosePopup",
+                        "x": 397,
+                        "y": 349.3146799870558,
+                        "parameters": {
+                            "closeActions": "Confirmed"
+                        },
+                        "ports": [],
+                        "dynamicports": [
+                            {
+                                "type": "signal",
+                                "plug": "input",
+                                "group": "Close Actions",
+                                "name": "closeAction-Confirmed",
+                                "displayName": "Confirmed",
+                                "index": 3
+                            }
+                        ],
+                        "children": []
+                    },
+                    {
+                        "id": "805b987f-8995-a742-9bc4-cc0d9b28887c",
+                        "type": "Group",
+                        "x": -16,
+                        "y": -78,
+                        "parameters": {},
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": [
+                            {
+                                "id": "80aa5728-5a65-e392-4f49-f5603747bdad",
+                                "type": "Group",
+                                "label": "Dark BG Fullscreen",
+                                "parameters": {
+                                    "backgroundColor": "#000000A5"
+                                },
+                                "ports": [],
+                                "dynamicports": [],
+                                "children": []
+                            },
+                            {
+                                "id": "fb4cea88-187d-f9c0-2750-cf9fa9a6c261",
+                                "type": "Group",
+                                "label": "Modal",
+                                "parameters": {
+                                    "position": "absolute",
+                                    "alignY": "center",
+                                    "alignX": "center",
+                                    "width": {
+                                        "value": 420,
+                                        "unit": "px"
+                                    },
+                                    "sizeMode": "contentHeight",
+                                    "backgroundColor": "Grey - 100",
+                                    "boxShadowEnabled": true,
+                                    "blockTouch": true,
+                                    "borderRadius": {
+                                        "value": 4,
+                                        "unit": "px"
+                                    },
+                                    "paddingBottom": {
+                                        "value": 24,
+                                        "unit": "px"
+                                    },
+                                    "paddingTop": {
+                                        "value": 24,
+                                        "unit": "px"
+                                    },
+                                    "paddingRight": {
+                                        "value": 24,
+                                        "unit": "px"
+                                    },
+                                    "paddingLeft": {
+                                        "value": 24,
+                                        "unit": "px"
+                                    },
+                                    "boxShadowBlurRadius": {
+                                        "value": 8,
+                                        "unit": "px"
+                                    },
+                                    "boxShadowSpreadRadius": {
+                                        "value": 0,
+                                        "unit": "px"
+                                    },
+                                    "boxShadowOffsetY": {
+                                        "value": 4,
+                                        "unit": "px"
+                                    },
+                                    "boxShadowColor": "#00000026"
+                                },
+                                "ports": [],
+                                "dynamicports": [],
+                                "children": [
+                                    {
+                                        "id": "09e2e4fd-bc81-d110-4c70-b778bc9062e9",
+                                        "type": "net.noodl.controls.button",
+                                        "label": "Close icon",
+                                        "parameters": {
+                                            "position": "absolute",
+                                            "alignX": "right",
+                                            "alignY": "top",
+                                            "backgroundColor": "#5836F500",
+                                            "useIcon": true,
+                                            "useLabel": false,
+                                            "iconColor": "Grey - 700",
+                                            "iconIconSource": {
+                                                "class": "material-icons",
+                                                "code": "close"
+                                            },
+                                            "iconSize": {
+                                                "value": 24,
+                                                "unit": "px"
+                                            },
+                                            "paddingLeft": {
+                                                "value": 4,
+                                                "unit": "px"
+                                            },
+                                            "paddingRight": {
+                                                "value": 4,
+                                                "unit": "px"
+                                            },
+                                            "iconSpacing": {
+                                                "value": 0,
+                                                "unit": "px"
+                                            },
+                                            "minWidth": {
+                                                "value": 0,
+                                                "unit": "px"
+                                            },
+                                            "sizeMode": "contentSize",
+                                            "paddingTop": {
+                                                "value": 4,
+                                                "unit": "px"
+                                            },
+                                            "paddingBottom": {
+                                                "value": 4,
+                                                "unit": "px"
+                                            },
+                                            "marginRight": {
+                                                "value": 12,
+                                                "unit": "px"
+                                            },
+                                            "marginTop": {
+                                                "value": 12,
+                                                "unit": "px"
+                                            }
+                                        },
+                                        "ports": [],
+                                        "dynamicports": [],
+                                        "children": []
+                                    },
+                                    {
+                                        "id": "d7e7a17b-b2bd-9f98-6f1a-11ff0bec3992",
+                                        "type": "Text",
+                                        "label": "Title",
+                                        "parameters": {
+                                            "textStyle": "Title Medium",
+                                            "text": "Modal Title",
+                                            "marginRight": {
+                                                "value": 24,
+                                                "unit": "px"
+                                            }
+                                        },
+                                        "ports": [],
+                                        "dynamicports": [],
+                                        "children": []
+                                    },
+                                    {
+                                        "id": "eea7d56f-9d62-3fdd-bc3c-29cdfcb8fd23",
+                                        "type": "Text",
+                                        "label": "Description",
+                                        "parameters": {
+                                            "marginTop": {
+                                                "value": 16,
+                                                "unit": "px"
+                                            },
+                                            "text": "Modal description that tells you something you shoul react to."
+                                        },
+                                        "ports": [],
+                                        "dynamicports": [],
+                                        "children": []
+                                    },
+                                    {
+                                        "id": "c4ebdb1b-e3a8-db34-fa36-974f72df8020",
+                                        "type": "Group",
+                                        "label": "Button section",
+                                        "parameters": {
+                                            "flexDirection": "row",
+                                            "justifyContent": "flex-end",
+                                            "marginTop": {
+                                                "value": 24,
+                                                "unit": "px"
+                                            }
+                                        },
+                                        "ports": [],
+                                        "dynamicports": [],
+                                        "children": [
+                                            {
+                                                "id": "dfd2be83-35bd-8a0d-5df8-840939bb2b09",
+                                                "type": "net.noodl.controls.button",
+                                                "label": "Secondary Button",
+                                                "parameters": {
+                                                    "marginRight": {
+                                                        "value": 16,
+                                                        "unit": "px"
+                                                    },
+                                                    "label": "Cancel",
+                                                    "borderStyle": "solid",
+                                                    "borderColor": "Primary",
+                                                    "borderWidth": {
+                                                        "value": 1,
+                                                        "unit": "px"
+                                                    },
+                                                    "backgroundColor": "transparent",
+                                                    "color": "Primary Dark"
+                                                },
+                                                "stateParameters": {
+                                                    "hover": {
+                                                        "borderColor": "Primary Dark"
+                                                    }
+                                                },
+                                                "ports": [],
+                                                "dynamicports": [],
+                                                "children": []
+                                            },
+                                            {
+                                                "id": "87a624cf-64c6-cec5-33b8-a948ef0877c4",
+                                                "type": "net.noodl.controls.button",
+                                                "label": "Primary Button",
+                                                "parameters": {
+                                                    "label": "Confirm"
+                                                },
+                                                "ports": [],
+                                                "dynamicports": [],
+                                                "children": []
+                                            }
+                                        ]
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        "id": "e802c40a-e4ad-1bf5-1364-a636444b65f0",
+                        "type": "States",
+                        "label": "Show animation",
+                        "x": 349.40031396109833,
+                        "y": -164.70626405198828,
+                        "parameters": {
+                            "states": "hide,show",
+                            "values": "size,opacity",
+                            "value-hide-size": 0,
+                            "value-show-size": 1,
+                            "value-hide-opacity": 0,
+                            "value-show-opacity": 1,
+                            "currentState": "hide",
+                            "transitiondef-hide": {
+                                "curve": [
+                                    0,
+                                    0,
+                                    0.58,
+                                    1
+                                ],
+                                "dur": 150,
+                                "delay": 0
+                            },
+                            "transitiondef-show": {
+                                "curve": [
+                                    0,
+                                    0,
+                                    0.58,
+                                    1
+                                ],
+                                "dur": 150,
+                                "delay": 0
+                            }
+                        },
+                        "ports": [],
+                        "dynamicports": [
+                            {
+                                "type": {
+                                    "name": "number",
+                                    "allowConnectionsOnly": true
+                                },
+                                "plug": "output",
+                                "group": "Values",
+                                "name": "size",
+                                "index": 6
+                            },
+                            {
+                                "type": {
+                                    "name": "enum",
+                                    "enums": [
+                                        {
+                                            "label": "Number",
+                                            "value": "number"
+                                        },
+                                        {
+                                            "label": "String",
+                                            "value": "string"
+                                        },
+                                        {
+                                            "label": "Boolean",
+                                            "value": "boolean"
+                                        },
+                                        {
+                                            "label": "Color",
+                                            "value": "color"
+                                        },
+                                        {
+                                            "label": "Text Style",
+                                            "value": "textStyle"
+                                        }
+                                    ],
+                                    "allowEditOnly": true
+                                },
+                                "default": "number",
+                                "plug": "input",
+                                "group": "Types",
+                                "displayName": "size",
+                                "name": "type-size",
+                                "index": 7
+                            },
+                            {
+                                "type": {
+                                    "name": "number",
+                                    "allowConnectionsOnly": true
+                                },
+                                "plug": "output",
+                                "group": "Values",
+                                "name": "opacity",
+                                "index": 8
+                            },
+                            {
+                                "type": {
+                                    "name": "enum",
+                                    "enums": [
+                                        {
+                                            "label": "Number",
+                                            "value": "number"
+                                        },
+                                        {
+                                            "label": "String",
+                                            "value": "string"
+                                        },
+                                        {
+                                            "label": "Boolean",
+                                            "value": "boolean"
+                                        },
+                                        {
+                                            "label": "Color",
+                                            "value": "color"
+                                        },
+                                        {
+                                            "label": "Text Style",
+                                            "value": "textStyle"
+                                        }
+                                    ],
+                                    "allowEditOnly": true
+                                },
+                                "default": "number",
+                                "plug": "input",
+                                "group": "Types",
+                                "displayName": "opacity",
+                                "name": "type-opacity",
+                                "index": 9
+                            },
+                            {
+                                "plug": "input",
+                                "type": "number",
+                                "group": "hide Values",
+                                "name": "value-hide-size",
+                                "displayName": "size",
+                                "editorName": "hide|size",
+                                "index": 10
+                            },
+                            {
+                                "plug": "input",
+                                "type": "number",
+                                "group": "hide Values",
+                                "name": "value-hide-opacity",
+                                "displayName": "opacity",
+                                "editorName": "hide|opacity",
+                                "index": 11
+                            },
+                            {
+                                "plug": "input",
+                                "type": "curve",
+                                "displayName": "Default",
+                                "default": {
+                                    "curve": [
+                                        0,
+                                        0,
+                                        0.58,
+                                        1
+                                    ],
+                                    "dur": 300,
+                                    "delay": 0
+                                },
+                                "group": "hide Transitions",
+                                "name": "transitiondef-hide",
+                                "index": 12
+                            },
+                            {
+                                "plug": "input",
+                                "type": {
+                                    "name": "curve"
+                                },
+                                "default": {
+                                    "curve": [
+                                        0,
+                                        0,
+                                        0.58,
+                                        1
+                                    ],
+                                    "dur": 150,
+                                    "delay": 0
+                                },
+                                "group": "hide Transitions",
+                                "name": "transition-hide-size",
+                                "displayName": "size",
+                                "editorName": "Transition hide|size",
+                                "index": 13
+                            },
+                            {
+                                "plug": "input",
+                                "type": {
+                                    "name": "curve"
+                                },
+                                "default": {
+                                    "curve": [
+                                        0,
+                                        0,
+                                        0.58,
+                                        1
+                                    ],
+                                    "dur": 150,
+                                    "delay": 0
+                                },
+                                "group": "hide Transitions",
+                                "name": "transition-hide-opacity",
+                                "displayName": "opacity",
+                                "editorName": "Transition hide|opacity",
+                                "index": 14
+                            },
+                            {
+                                "plug": "input",
+                                "type": {
+                                    "name": "signal",
+                                    "allowConnectionsOnly": true
+                                },
+                                "displayName": "To hide",
+                                "name": "to-hide",
+                                "group": "Go to state",
+                                "index": 15
+                            },
+                            {
+                                "plug": "output",
+                                "type": "boolean",
+                                "displayName": "At hide",
+                                "name": "at-hide",
+                                "group": "Current state",
+                                "index": 16
+                            },
+                            {
+                                "plug": "output",
+                                "type": "signal",
+                                "displayName": "Has Reached hide",
+                                "name": "reached-hide",
+                                "group": "Current state",
+                                "index": 17
+                            },
+                            {
+                                "plug": "input",
+                                "type": "number",
+                                "group": "show Values",
+                                "name": "value-show-size",
+                                "displayName": "size",
+                                "editorName": "show|size",
+                                "index": 18
+                            },
+                            {
+                                "plug": "input",
+                                "type": "number",
+                                "group": "show Values",
+                                "name": "value-show-opacity",
+                                "displayName": "opacity",
+                                "editorName": "show|opacity",
+                                "index": 19
+                            },
+                            {
+                                "plug": "input",
+                                "type": "curve",
+                                "displayName": "Default",
+                                "default": {
+                                    "curve": [
+                                        0,
+                                        0,
+                                        0.58,
+                                        1
+                                    ],
+                                    "dur": 300,
+                                    "delay": 0
+                                },
+                                "group": "show Transitions",
+                                "name": "transitiondef-show",
+                                "index": 20
+                            },
+                            {
+                                "plug": "input",
+                                "type": {
+                                    "name": "curve"
+                                },
+                                "default": {
+                                    "curve": [
+                                        0,
+                                        0,
+                                        0.58,
+                                        1
+                                    ],
+                                    "dur": 150,
+                                    "delay": 0
+                                },
+                                "group": "show Transitions",
+                                "name": "transition-show-size",
+                                "displayName": "size",
+                                "editorName": "Transition show|size",
+                                "index": 21
+                            },
+                            {
+                                "plug": "input",
+                                "type": {
+                                    "name": "curve"
+                                },
+                                "default": {
+                                    "curve": [
+                                        0,
+                                        0,
+                                        0.58,
+                                        1
+                                    ],
+                                    "dur": 150,
+                                    "delay": 0
+                                },
+                                "group": "show Transitions",
+                                "name": "transition-show-opacity",
+                                "displayName": "opacity",
+                                "editorName": "Transition show|opacity",
+                                "index": 22
+                            },
+                            {
+                                "plug": "input",
+                                "type": {
+                                    "name": "signal",
+                                    "allowConnectionsOnly": true
+                                },
+                                "displayName": "To show",
+                                "name": "to-show",
+                                "group": "Go to state",
+                                "index": 23
+                            },
+                            {
+                                "plug": "output",
+                                "type": "boolean",
+                                "displayName": "At show",
+                                "name": "at-show",
+                                "group": "Current state",
+                                "index": 24
+                            },
+                            {
+                                "plug": "output",
+                                "type": "signal",
+                                "displayName": "Has Reached show",
+                                "name": "reached-show",
+                                "group": "Current state",
+                                "index": 25
+                            },
+                            {
+                                "plug": "input",
+                                "type": {
+                                    "name": "enum",
+                                    "enums": [
+                                        "hide",
+                                        "show"
+                                    ]
+                                },
+                                "group": "States",
+                                "displayName": "State",
+                                "name": "currentState",
+                                "default": "hide",
+                                "index": 26
+                            }
+                        ],
+                        "children": []
+                    },
+                    {
+                        "id": "8fdb48f0-ec33-740d-b0a6-6aad50bf6414",
+                        "type": "Component Inputs",
+                        "x": -284.43267743823577,
+                        "y": 453.2708708053495,
+                        "parameters": {},
+                        "ports": [
+                            {
+                                "name": "Title",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "index": 1
+                            },
+                            {
+                                "name": "Description",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "index": 2
+                            },
+                            {
+                                "name": "Primary Button Label",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "index": 3
+                            },
+                            {
+                                "name": "Secondary Button Label",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "index": 4
+                            }
+                        ],
+                        "dynamicports": [],
+                        "children": []
+                    }
+                ]
+            }
+        }
+    ],
+    "settings": {},
+    "version": "4",
+    "metadata": {
+        "styles": {
+            "text": {
+                "Title Medium": {
+                    "fontFamily": "fonts/Inter/Inter-Medium.ttf",
+                    "fontSize": {
+                        "value": "20",
+                        "unit": "px"
+                    },
+                    "color": "#000000",
+                    "letterSpacing": "Auto",
+                    "lineHeight": {
+                        "value": "120",
+                        "unit": "%"
+                    },
+                    "textTransform": "none"
+                }
+            },
+            "colors": {
+                "Grey - 100": "#FBFBFB",
+                "Grey - 700": "#4C4C4C",
+                "Primary": "#5836F5",
+                "Primary Dark": "#3F22B8"
+            }
+        }
+    },
+    "variants": []
+}

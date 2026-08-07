@@ -44,8 +44,11 @@
       color: var(--theme-color-fg-highlight);
     }
 
+    // POL-017: partner of Text.module.scss `is-type-shy`. `Label` keys off the
+    // same `TextType` enum, so leaving it on `fg-muted` would have left a twin
+    // failing 1.4.3 at the same 3.93:1 dark / 3.62:1 light on bg-1.
     &-shy {
-      color: var(--theme-color-fg-muted);
+      color: var(--theme-color-fg-default-shy);
     }
 
     &-secondary {

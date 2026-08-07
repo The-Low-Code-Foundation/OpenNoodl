@@ -1,0 +1,75 @@
+/**
+ * CLEANUP-000H: WizardProgress — design token polish
+ * All colours via tokens. No hardcoded values.
+ */
+
+.Root {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2, 8px);
+  padding: var(--spacing-3, 12px) var(--spacing-4, 16px);
+  background-color: var(--theme-color-bg-1);
+  border-bottom: 1px solid var(--theme-color-border-subtle, var(--theme-color-border-default));
+}
+
+.StepItem {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2, 8px);
+}
+
+.StepNumber {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  transition: background-color 150ms ease, color 150ms ease;
+
+  // Default (pending) state
+  background-color: var(--theme-color-bg-4, var(--theme-color-bg-3));
+  color: var(--theme-color-fg-default-shy);
+
+  &.is-active {
+    background-color: var(--theme-color-primary);
+    color: var(--theme-color-bg-1);
+  }
+
+  &.is-complete {
+    background-color: var(--theme-color-success);
+    color: var(--theme-color-bg-1);
+  }
+
+  &.is-error {
+    background-color: var(--theme-color-danger);
+    color: var(--theme-color-bg-1);
+  }
+}
+
+.StepLabel {
+  font-size: var(--font-size-base);
+  color: var(--theme-color-fg-default-shy);
+
+  &.is-active {
+    color: var(--theme-color-fg-default);
+    font-weight: 500;
+  }
+
+  &.is-complete {
+    color: var(--theme-color-success);
+  }
+}
+
+.StepConnector {
+  flex: 1;
+  height: 2px;
+  background-color: var(--theme-color-bg-4, var(--theme-color-bg-3));
+  min-width: 20px;
+
+  &.is-complete {
+    background-color: var(--theme-color-success);
+  }
+}

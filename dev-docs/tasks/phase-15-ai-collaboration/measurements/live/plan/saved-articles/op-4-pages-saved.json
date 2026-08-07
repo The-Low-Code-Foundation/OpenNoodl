@@ -1,0 +1,190 @@
+{
+  "component": {
+    "$schema": "https://opennoodl.dev/schemas/component-v2.json",
+    "id": "9b1beeff-cb91-48e3-9c17-a3237e184f87",
+    "name": "Saved",
+    "path": "/Pages/Saved",
+    "type": "page",
+    "created": "2026-07-27T20:38:06.022Z",
+    "modified": "2026-07-27T20:38:06.022Z",
+    "modifiedBy": "ai-authoring",
+    "description": "Page listing the current user's saved articles: gates content on login state via Is user logged in?, fetches saved records via Manage Saved Articles, and repeats a Save Button per saved article so users can unsave directly from the list."
+  },
+  "nodes": {
+    "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+    "componentId": "9b1beeff-cb91-48e3-9c17-a3237e184f87",
+    "version": 1,
+    "nodes": [
+      {
+        "id": "root",
+        "type": "Group",
+        "label": "Page root",
+        "x": 0,
+        "y": 0,
+        "children": [
+          "header",
+          "loginPrompt",
+          "listContainer"
+        ],
+        "parameters": {
+          "flexDirection": "column",
+          "backgroundColor": "var(--background)",
+          "paddingTop": "var(--space-8)",
+          "paddingLeft": "var(--space-8)",
+          "paddingRight": "var(--space-8)",
+          "widthUnit": "%",
+          "width": 100,
+          "heightUnit": "%",
+          "height": 100
+        }
+      },
+      {
+        "id": "header",
+        "type": "Text",
+        "label": "Page title",
+        "x": 200,
+        "y": 0,
+        "parent": "root",
+        "parameters": {
+          "text": "Saved Articles",
+          "variant": "heading-1"
+        }
+      },
+      {
+        "id": "isLoggedIn",
+        "type": "/Logic Components/Is user logged in?",
+        "label": "Auth check",
+        "x": 0,
+        "y": 150
+      },
+      {
+        "id": "manage",
+        "type": "/Logic Components/Manage Saved Articles",
+        "label": "Fetch saved articles",
+        "x": 0,
+        "y": 300
+      },
+      {
+        "id": "boolLoggedIn",
+        "type": "Boolean",
+        "label": "Is logged in flag",
+        "x": 200,
+        "y": 150,
+        "parameters": {
+          "value": true
+        }
+      },
+      {
+        "id": "boolLoggedOut",
+        "type": "Boolean",
+        "label": "Is logged out flag",
+        "x": 200,
+        "y": 230,
+        "parameters": {
+          "value": true
+        }
+      },
+      {
+        "id": "loginPrompt",
+        "type": "Group",
+        "label": "Login prompt",
+        "x": 400,
+        "y": 150,
+        "parent": "root",
+        "children": [
+          "loginText"
+        ],
+        "parameters": {
+          "flexDirection": "column",
+          "paddingTop": "var(--space-8)"
+        }
+      },
+      {
+        "id": "loginText",
+        "type": "Text",
+        "label": "Login prompt text",
+        "x": 600,
+        "y": 150,
+        "parent": "loginPrompt",
+        "parameters": {
+          "text": "Please log in to view your saved articles.",
+          "variant": "body"
+        }
+      },
+      {
+        "id": "listContainer",
+        "type": "Group",
+        "label": "Saved articles list container",
+        "x": 400,
+        "y": 300,
+        "parent": "root",
+        "children": [
+          "repeater"
+        ],
+        "parameters": {
+          "flexDirection": "column",
+          "paddingTop": "var(--space-6)",
+          "columnGap": "var(--space-2)"
+        }
+      },
+      {
+        "id": "repeater",
+        "type": "For Each",
+        "label": "Repeat saved articles",
+        "x": 600,
+        "y": 300,
+        "parent": "listContainer",
+        "parameters": {
+          "template": "/Visual Components/Article/Save Button",
+          "isSaved": true
+        }
+      }
+    ],
+    "visualRoots": [
+      "root"
+    ]
+  },
+  "connections": {
+    "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+    "componentId": "9b1beeff-cb91-48e3-9c17-a3237e184f87",
+    "version": 1,
+    "connections": [
+      {
+        "fromId": "root",
+        "fromProperty": "didMount",
+        "toId": "isLoggedIn",
+        "toProperty": "Do"
+      },
+      {
+        "fromId": "isLoggedIn",
+        "fromProperty": "Success",
+        "toId": "boolLoggedIn",
+        "toProperty": "saveValue"
+      },
+      {
+        "fromId": "isLoggedIn",
+        "fromProperty": "Failure",
+        "toId": "boolLoggedOut",
+        "toProperty": "saveValue"
+      },
+      {
+        "fromId": "boolLoggedIn",
+        "fromProperty": "savedValue",
+        "toId": "listContainer",
+        "toProperty": "visible"
+      },
+      {
+        "fromId": "boolLoggedOut",
+        "fromProperty": "savedValue",
+        "toId": "loginPrompt",
+        "toProperty": "visible"
+      },
+      {
+        "fromId": "manage",
+        "fromProperty": "savedArticles",
+        "toId": "repeater",
+        "toProperty": "items"
+      }
+    ]
+  }
+}

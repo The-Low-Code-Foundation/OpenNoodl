@@ -1,0 +1,189 @@
+@use './panel-bands' as bands;
+
+/* PNL-004 — the one label/control row for the side panel.
+ *
+ * `default` band is written as plain declarations, so a `PanelRow` that finds
+ * itself outside a `panel-body` container (a story, a modal, a panel not yet on
+ * `BasePanel`) still renders as a sane two-column row. Bands only ever *change*
+ * that; nothing here relies on a query to avoid overflowing.
+ */
+.Root {
+  box-sizing: border-box;
+  display: grid;
+  grid-template-columns: bands.$label-column minmax(0, 1fr);
+  grid-template-areas:
+    'label control'
+    '.     help';
+  gap: var(--spacing-2);
+  align-items: center;
+  min-width: 0;
+  margin-bottom: var(--spacing-2);
+  user-select: none;
+}
+
+.Label {
+  grid-area: label;
+  min-width: 0;
+  font-family: var(--font-family);
+  font-size: 12.5px;
+  line-height: 1.35;
+  color: var(--theme-color-fg-default);
+
+  /* A genuinely long label wraps inside its column instead of pushing the
+     control out of the panel. `PropertyPanelRow` clipped at two lines with
+     `max-height: 28px`; a clipped label is a label you cannot read. */
+  overflow-wrap: break-word;
+
+  &.is-changed {
+    color: var(--theme-color-secondary-as-fg);
+  }
+}
+
+/* Present for assistive technology, absent from the layout. Paired with
+   `role="group" aria-label` on the row so the name is still announced — an
+   unassociated hidden label would be no label at all. */
+.Label.is-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+.ResetDot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-left: 6px;
+  border-radius: var(--radius-full);
+  background-color: var(--theme-color-secondary-as-fg);
+  cursor: pointer;
+  flex-shrink: 0;
+  vertical-align: middle;
+
+  &:hover {
+    opacity: 0.6;
+  }
+}
+
+/* The control column. A wrapping flex row so a *cluster* of controls — a colour
+   swatch plus a field, a button row — is the same shape as a single input, and
+   never overflows. This is the `flex-wrap` + `min-width: 0` rule the phase asks
+   for, applied once at the row rather than per panel. */
+.Control {
+  grid-area: control;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--spacing-1-5);
+
+  > * {
+    min-width: 0;
+  }
+}
+
+/* One control fills its column. */
+.Root:not(.is-variant-actions):not(.is-variant-toggle) .Control > *:first-child {
+  flex: 1 1 auto;
+}
+
+.Fx {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+}
+
+.Help {
+  grid-area: help;
+  min-width: 0;
+  font-size: 11.5px;
+  line-height: 1.55;
+  color: var(--theme-color-fg-default-shy);
+  align-self: start;
+}
+
+/* ---------------------------------------------------------------------------
+   Variants
+   --------------------------------------------------------------------------- */
+
+/* A row of buttons. Each takes an equal share of whatever is left and wraps
+   onto the next line rather than scrolling sideways. 84px is the mock's basis:
+   wide enough for "Schema", narrow enough that three fit at 340px. */
+.Root.is-variant-actions .Control > * {
+  flex: 1 1 84px;
+}
+
+/* A label that is present only for assistive technology must not reserve its
+   column — otherwise a hidden label leaves a 104px hole beside every control.
+   Guarded out of every band rule below for the same reason. */
+.Root.is-label-hidden {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas:
+    'control'
+    'help';
+}
+
+/* A toggle keeps its label on the row at every width — stacking a switch under
+   its own label reads as two unrelated rows. */
+.Root.is-variant-toggle:not(.is-label-hidden) {
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    'label control'
+    'help  help';
+
+  .Control {
+    flex-wrap: nowrap;
+    justify-content: flex-end;
+  }
+}
+
+/* Forced stack — a textarea or a code field wants the whole row at every band. */
+.Root.is-stacked:not(.is-label-hidden) {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas:
+    'label'
+    'control'
+    'help';
+  gap: var(--spacing-1);
+  align-items: stretch;
+}
+
+/* ---------------------------------------------------------------------------
+   Bands
+   --------------------------------------------------------------------------- */
+
+@include bands.compact {
+  .Root:not(.is-variant-toggle):not(.is-label-hidden) {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      'label'
+      'control'
+      'help';
+    gap: var(--spacing-1);
+    align-items: stretch;
+  }
+
+  /* Above its control rather than beside it, a label reads better as a quiet
+     caption than as a peer of the value. */
+  .Root:not(.is-variant-toggle) .Label {
+    font-size: 11.5px;
+    font-weight: 600;
+    color: var(--theme-color-fg-default-shy);
+  }
+
+  /* At this width two buttons per line is the most that stays legible. */
+  .Root.is-variant-actions .Control > * {
+    flex: 1 1 96px;
+  }
+}
+
+@include bands.wide {
+  .Root:not(.is-variant-toggle):not(.is-stacked):not(.is-label-hidden) {
+    grid-template-columns: bands.$label-column-wide minmax(0, 1fr);
+  }
+}

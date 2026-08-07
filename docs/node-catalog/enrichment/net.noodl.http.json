@@ -1,0 +1,18 @@
+{
+  "typeName": "net.noodl.HTTP",
+  "summary": "HTTP Request: fetches a URL on demand, delivering the parsed response, status code and an outcome signal.",
+  "description": "The straightforward HTTP client: set `url` (plus method/headers/body via its configuration), fire `fetch`, and read `response` (parsed body, untyped), `responseHeaders`, and `statusCode`. `done`/`failure` split the outcome, with `error` describing failures, and `completed` fires after either so a chain can carry on regardless. `cancel` aborts an in-flight request: the abandoned request reports `unchanged` beside `canceled`, because nothing arrived and nothing changed, and the `cancel` itself reports `done` when it had something to abandon and `unchanged` when it did not.",
+  "whenToUse": "One-off or simple API calls where the response can be consumed directly or handed to a Function/Script for shaping. Prefer the REST node when an endpoint is reused enough to deserve declared ports; prefer a cloud function when credentials must stay off the client.",
+  "ports": {
+    "fetch": "Signal; performs the request.",
+    "response": "Untyped output with the parsed body — being '*', it connects anywhere; downstream correctness is on the author.",
+    "statusCode": "Number level with the HTTP status of the last response.",
+    "failure": "Signal; wire error display/retry here, with `error` carrying the message."
+  },
+  "runtimeBehavior": "Header and body inputs are runtime-registered from the node's method/headers configuration; only the core trigger/result surface is static. Dynamic outputs minted from Response Mapping are all prefixed `out-`, so an author's mapping name can never collide with the node's own ports. NDA-012: exceeding `timeout` fires `failure` with a message naming the timeout — `canceled` fires only for an explicit `cancel`. ERG-001: failures now also reach the runtime error channel, so `On App Error` sees them in a deployed build — codes are `http/no-url`, `http/error-status`, `http/timeout` and `http/network-error`. Requests genuinely overlap: a second `fetch` while one is in flight starts a second request, and each invocation carries its own outcome. `statusCode` and `response` keep the *previous* request's answer when a request never reached the server, because a value output cannot be cleared. Deleting the node does not abandon a request already in flight.",
+  "examples": ["code-http-request-with-error-handling"],
+  "patterns": [
+    "`failure` → Condition `eval` with `result` → error text `visible`: errors as levels, not pulses."
+  ],
+  "relatedNodes": ["REST2", "Javascript2", "JavaScriptFunction", "CloudFunction2"]
+}

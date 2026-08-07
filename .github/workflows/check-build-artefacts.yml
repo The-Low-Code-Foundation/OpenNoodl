@@ -1,0 +1,36 @@
+name: Check build artefacts
+
+# Three guards, all about the source/build-output boundary:
+#
+#  1. Generated webpack output used to be committed under
+#     packages/noodl-editor/src/, which is how a months-old bundle could run
+#     instead of the source beside it (REV-008).
+#  2. Every `extraResources`/`extraFiles` entry resolves: build output names a
+#     package `npm run build:sidecars` actually builds, and a tracked source
+#     (PRIVACY.md, TERMS.md) is present right now (MCP-002/ALPHA-002).
+#  3. Every workflow that packages the app runs `npm run build:sidecars` before
+#     electron-builder. That is what MCP-002 actually was — the packaging
+#     workflows bypass scripts/build-editor.ts, and electron-builder only warns
+#     when an extraResources source is missing, so an app shipped without the
+#     backend service and the job stayed green.
+#
+# All three make a silent regression loud.
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # No npm install: the check shells out to `git ls-files` and reads two
+      # files off the checkout. Nothing has to be built — `--built`, which does
+      # require that, is run from the packaging path instead.
+      - name: Assert no generated bundles are tracked
+        run: node scripts/check-build-artefacts.js

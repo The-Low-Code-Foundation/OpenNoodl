@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import ReactDOM from 'react-dom';
+import { createRoot } from 'react-dom/client';
 import { Git } from '@noodl/git';
 import { platform } from '@noodl/platform';
 
@@ -7,7 +7,7 @@ import { AppRegistry } from '@noodl-models/app_registry';
 import { ProjectModel } from '@noodl-models/projectmodel';
 import { WarningsModel } from '@noodl-models/warningsmodel';
 import { LocalProjectsModel } from '@noodl-utils/LocalProjectsModel';
-import { mergeProject } from '@noodl-utils/projectmerger';
+import { MERGE_CONFLICTS_KEY, mergeProject, mergeV2ComponentFiles, readMergeConflicts } from '@noodl-versioning';
 
 import { IconName, IconSize } from '@noodl-core-ui/components/common/Icon';
 import { IconButton, IconButtonVariant } from '@noodl-core-ui/components/inputs/IconButton';
@@ -27,12 +27,16 @@ import PopupLayer from '../../popuplayer';
 import { useIsActivePanel } from '../useIsActivePanel';
 import { BranchMerge } from './components/BranchMerge';
 import { BranchStatusButton } from './components/BranchStatusButton';
+import { ConnectToGitHubView } from './components/github/ConnectToGitHub';
+import { GitHubSection } from './components/github/GitHubSection';
 import { GitProviderPopout } from './components/GitProviderPopout/GitProviderPopout';
 import { GitStatusButton } from './components/GitStatusButton';
 import { History } from './components/History';
 import { LocalChanges } from './components/LocalChanges';
 import { MergeConflicts } from './components/MergeConflicts';
+import { RepositorySection } from './components/RepositorySection';
 import { useVersionControlContext, VersionControlProvider } from './context';
+import { useGitHubRepository } from './hooks/useGitHubRepository';
 
 enum ViewState {
   Default,
@@ -66,6 +70,13 @@ function BaseVersionControlPanel() {
 
   const isActivePanel = useIsActivePanel(VersionControlPanel_ID);
   const shouldUpdateDiff = useRef(true);
+
+  // AIB-008 — what the remote IS, for the Repository and GitHub sections.
+  // Held here rather than inside either of them because both need the same
+  // answer and two callers would be two `useGitHubRepository` instances, which
+  // is the duplication this merge exists to remove one level up.
+  const { gitState, remoteUrl, owner, repo, provider, refetch: refetchRepo } = useGitHubRepository();
+  const [isConnectingRemote, setIsConnectingRemote] = useState(false);
 
   const settingsButtonRef = useRef<HTMLButtonElement>(null);
 
@@ -126,19 +137,19 @@ function BaseVersionControlPanel() {
 
   function openGitSettingsPopout() {
     const popoutDiv = document.createElement('div');
-
-    ReactDOM.render(React.createElement(GitProviderPopout, { git }), popoutDiv);
+    const root = createRoot(popoutDiv);
+    root.render(React.createElement(GitProviderPopout, { git }));
 
     //the timeout is needed to solve a bug when the popout us opened from the git status button
     //it causes timing issues between native events and react where the popout is instantly closed
     setTimeout(() => {
       PopupLayer.instance.showPopout({
-        content: { el: [popoutDiv] },
-        attachTo: $(settingsButtonRef.current),
+        content: { el: popoutDiv },
+        attachTo: settingsButtonRef.current,
         position: 'right',
         disableDynamicPositioning: true,
         onClose: () => {
-          ReactDOM.unmountComponentAtNode(popoutDiv);
+          root.unmount();
           fetch.fetchRemote();
         }
       });
@@ -184,9 +195,53 @@ function BaseVersionControlPanel() {
           <MergeConflicts />
         ) : (
           <>
+            {/*
+              AIB-008 — Repository, above the sync button rather than in a
+              second panel. This is the section that only exists once the two
+              panels are one: it carries the ahead/behind figure, which was
+              previously computed twice (here in context, and again in
+              `useGitSyncStatus`) and rendered beside the branch in neither.
+            */}
+            <RepositorySection
+              gitState={gitState}
+              remoteUrl={remoteUrl}
+              owner={owner}
+              repo={repo}
+              onConnect={isConnectingRemote ? undefined : () => setIsConnectingRemote(true)}
+            />
             <GitStatusButton openGitSettingsPopout={openGitSettingsPopout} />
             <BranchStatusButton />
             {viewState === ViewState.BranchMerge && <BranchMerge />}
+            {/*
+              AIB-008 slice 3 — the flow Richard actually ran, in the panel that
+              shows his history rather than in one he had to know to look in.
+              `ConnectToGitHubView` is the GitHub panel's own component, moved
+              rather than rewritten: it creates the repo, sets the remote and
+              pushes, and rewriting 300 lines of working OAuth flow to relocate
+              it is how a consolidation becomes a regression.
+            */}
+            {isConnectingRemote && (
+              <Box hasBottomSpacing>
+                <ConnectToGitHubView
+                  isCompact
+                  gitState={gitState}
+                  remoteUrl={remoteUrl}
+                  provider={provider}
+                  onCancel={() => setIsConnectingRemote(false)}
+                  onConnected={() => {
+                    setIsConnectingRemote(false);
+                    refetchRepo();
+                    // The remote is what `fetch` reads ahead/behind from, and it
+                    // has just come into existence. Without this the Repository
+                    // section keeps saying "No remote" until the panel is
+                    // switched away from and back.
+                    fetch.fetchRemote();
+                  }}
+                />
+              </Box>
+            )}
+            {/* AIB-008 — Issues and pull requests. Only for a GitHub remote. */}
+            {gitState === 'github-connected' && <GitHubSection owner={owner} repo={repo} />}
           </>
         )}
 
@@ -220,7 +275,7 @@ export function VersionControlPanel() {
   const [state, setState] = useState<'loading' | 'loaded' | 'not-git'>('loading');
 
   async function createGit() {
-    const gitClient = new Git(mergeProject);
+    const gitClient = new Git(mergeProject, mergeV2ComponentFiles);
     await gitClient.openRepository(ProjectModel.instance._retainedProjectDirectory);
     setGit(gitClient);
   }
@@ -239,7 +294,7 @@ export function VersionControlPanel() {
   }, []);
 
   async function setupGit() {
-    const gitClient = new Git(mergeProject);
+    const gitClient = new Git(mergeProject, mergeV2ComponentFiles);
     await gitClient.initNewRepo(ProjectModel.instance._retainedProjectDirectory);
     await gitClient.commit('Initial commit');
     setGit(gitClient);
@@ -256,9 +311,19 @@ export function VersionControlPanel() {
     );
   }
 
-  // TODO: Loading state? Should be really quick though
+  // PNL-005: this used to be `return null` — a registered panel rendering
+  // *nothing*: no header, no content, a blank column. It is reached whenever
+  // `git` has not been set yet, and the "should be really quick though" above is
+  // only true on the happy path: the `isGitProject` promise below carries no
+  // `.catch()`, so a rejection leaves the panel blank permanently rather than
+  // briefly. PNL-005's live gate caught exactly this state and reported the panel
+  // as never migrated.
+  //
+  // The chrome is not conditional on the content being ready. It renders, with
+  // the activity blocker `BasePanel` already has, and the panel says what it is
+  // while it works.
   if (git === null) {
-    return null;
+    return <BasePanel isFill title="Version Control" hasActivityBlocker />;
   }
 
   return (
@@ -273,23 +338,39 @@ export function useHasConflictsInProject() {
 
   // Listen for changes to conflicts
   useEffect(() => {
-    const checkForWarnings = () => {
-      setHasConflicts(
-        WarningsModel.instance.getTotalNumberOfWarningsMatching(
-          (_key, _ref, warning) =>
-            warning.warning.type === 'conflict' || warning.warning.type === 'conflict-source-code'
-        ) > 0
+    const check = () => {
+      const warningConflicts = WarningsModel.instance.getTotalNumberOfWarningsMatching(
+        (_key, _ref, warning) => warning.warning.type === 'conflict' || warning.warning.type === 'conflict-source-code'
       );
+
+      // Warnings only exist for the seven conflict kinds the legacy merger
+      // stamped onto nodes. SUB-007 raises twelve more — delete-vs-edit,
+      // reparents, rewiring against a deleted node, component renames, project
+      // settings — which have no node to hang a warning on. Those arrive in
+      // the project's own metadata, so a merge producing only structural
+      // conflicts still puts the panel into conflict mode.
+      const structuralConflicts = ProjectModel.instance
+        ? readMergeConflicts({ metadata: { [MERGE_CONFLICTS_KEY]: ProjectModel.instance.getMetaData(MERGE_CONFLICTS_KEY) } })
+            .length
+        : 0;
+
+      setHasConflicts(warningConflicts > 0 || structuralConflicts > 0);
     };
 
     const eventGroup = {};
 
-    WarningsModel.instance.on('warningsChanged', checkForWarnings, eventGroup);
+    WarningsModel.instance.on('warningsChanged', check, eventGroup);
+    EventDispatcher.instance.on(
+      ['ProjectModel.metadataChanged', 'ProjectModel.instanceHasChanged', 'projectChangedOnDisk'],
+      check,
+      eventGroup
+    );
 
-    checkForWarnings();
+    check();
 
     return () => {
       WarningsModel.instance.off(eventGroup);
+      EventDispatcher.instance.off(eventGroup);
     };
   }, []);
 

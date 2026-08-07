@@ -9,8 +9,6 @@
   <link rel="stylesheet" type="text/css" href="lib/jasmine-3.7.1/jasmine.css">
 
   <!-- libs needed for some of the views -->
-  <script type="text/javascript" src="../src/assets/lib/jquery-min.js"></script>
-  <script type="text/javascript" src="../src/assets/lib/jquery.autosize.min.js"></script>
 
   <script type="text/javascript">
     var fs = require('fs');
@@ -30,9 +28,69 @@
 
   <script type="text/javascript">
     jasmine.DEFAULT_TIMEOUT_INTERVAL = 60 * 1000;
+
+    // Randomized order re-enabled by DEBT-005 (2026-07-25). The couplings that
+    // forced REV-002 to pin the order were shared-fixture mutation (fixed in
+    // DEBT-004: componentinstances deep-copies its fixture) and export-bundle
+    // assertions that assumed a prior spec's state (made order-independent by
+    // DEBT-005). The seed is logged by jasmine on failure; set NOODL_SPEC_SEED to
+    // replay that order. Reading it from the environment rather than pinning it in
+    // this file means a reproduction cannot be committed by accident, which is the
+    // failure mode the previous "pin it here temporarily" instruction invited:
+    //   NOODL_SPEC_SEED=63183 npm run test:ci
+    jasmine.getEnv().configure(
+      process.env.NOODL_SPEC_SEED ? { random: true, seed: process.env.NOODL_SPEC_SEED } : { random: true }
+    );
+
+    // Report results back to the main process so the run exits with a real status
+    // code. Without this the harness is silently green no matter what happens.
+    (function () {
+      const { ipcRenderer } = require('electron');
+      const failures = [];
+      let specCount = 0;
+
+      jasmine.getEnv().addReporter({
+        specDone: function (result) {
+          specCount++;
+          if (result.status === 'failed') {
+            failures.push({
+              fullName: result.fullName,
+              messages: (result.failedExpectations || []).map((e) => e.message)
+            });
+          }
+        },
+        jasmineDone: function (result) {
+          ipcRenderer.send('noodl-test-results', {
+            overallStatus: result.overallStatus,
+            totalCount: specCount,
+            failedCount: failures.length,
+            failures,
+            // With randomized order (DEBT-005) the seed is what makes an
+            // order-dependent failure reproducible.
+            seed: result.order && result.order.seed
+          });
+        }
+      });
+    })();
   </script>
 
-  <script defer type="text/javascript" src="http://localhost:8081/index.bundle.js" onload="document.querySelector('#loader').remove()"></script>
+  <script type="text/javascript">
+    // In CI the bundle is written to disk by webpack-cli; locally it is served by
+    // the webpack dev server on :8081.
+    // document.write (not appendChild) so the tag is parser-inserted and `defer`
+    // is honoured — specs must be registered before boot.js runs on window load.
+    (function () {
+      const src = process.env.NOODL_TEST_CI === '1' ? 'index.bundle.js' : 'http://localhost:8081/index.bundle.js';
+      document.write(
+        '<script defer type="text/javascript" src="' +
+          src +
+          '" onload="document.querySelector(\'#loader\')?.remove()"' +
+          ' onerror="require(\'electron\').ipcRenderer.send(\'noodl-test-fatal\', \'Failed to load ' +
+          src +
+          '\')"><\/script>'
+      );
+    })();
+  </script>
 </head>
 
 <body>

@@ -4,11 +4,12 @@ const https = require('https');
 const path = require('path');
 const URL = require('url');
 
-const WebSocket = require('ws');
-const WebSocketServer = WebSocket.Server;
-
-const ProjectModules = require('../../shared/utils/projectmodules');
+// projectmodules is now an ES module (TS default export); under webpack's
+// CJS↔ESM interop the singleton class lives on `.default`.
+const ProjectModules = require('../../shared/utils/projectmodules').default;
 const JSONStorage = require('../../shared/utils/jsonstorage');
+const { getRelayToken, injectRelayToken } = require('./relay-token');
+const { startWebSocketServer } = require('./relay-server');
 
 function parseRangeHeader(range, length) {
   if (!range || range.length === 0) {
@@ -40,7 +41,13 @@ function parseRangeHeader(range, length) {
   return result;
 }
 
-function startServer(app, projectGetSettings, projectGetInfo, projectGetComponentBundleExport) {
+function startServer(
+  app,
+  projectGetSettings,
+  projectGetInfo,
+  projectGetComponentBundleExport,
+  projectGetDesignTokenCss
+) {
   const appPath = app.getAppPath();
 
   //accept any certificate from localhost (e.g. self signed)
@@ -65,15 +72,42 @@ function startServer(app, projectGetSettings, projectGetInfo, projectGetComponen
 
       projectGetInfo((info) => {
         ProjectModules.instance.injectIntoHtml(info.projectDirectory, data, '/', function (injected) {
-          projectGetSettings((settings) => {
-            settings = settings || {};
-            injected = injected.replace('{{#title#}}', settings.htmlTitle || 'Noodl Viewer');
-            injected = injected.replace('{{#customHeadCode#}}', settings.headCode || '');
+          // Optional so an older caller — or a harness that starts the server
+          // with the original four arguments — degrades to the previous
+          // behaviour rather than hanging on a callback nobody will fire.
+          const withTokenCss = projectGetDesignTokenCss
+            ? projectGetDesignTokenCss
+            : (callback) => callback('');
 
-            response.writeHead(200, {
-              'Content-Type': 'text/html'
+          withTokenCss((tokenCss) => {
+            projectGetSettings((settings) => {
+              settings = settings || {};
+              injected = injected.replace('{{#title#}}', settings.htmlTitle || 'Noodl Viewer');
+
+              // Everything served here must resolve the same `var(--token)`
+              // vocabulary the canvas webview and an exported build do. Ahead of
+              // the project's own head code, so a hand-written override still
+              // wins — the same ordering `html-processor` uses for exports.
+              const headCode = tokenCss
+                ? `<style id="noodl-design-tokens">\n${tokenCss}\n</style>\n` + (settings.headCode || '')
+                : settings.headCode || '';
+              injected = injected.replace('{{#customHeadCode#}}', headCode);
+
+              //RUN-001: projects on the React 19 runtime load the react19/ pair instead of the
+              //vendored 18.3.1 default; distinct URLs keep the browser cache honest when switching
+              if (info.runtimeVersion === 'react19') {
+                injected = injected
+                  .replace('src="/react.production.min.js"', 'src="/react19/react.production.min.js"')
+                  .replace('src="/react-dom.production.min.js"', 'src="/react19/react-dom.production.min.js"');
+              }
+
+              injected = injectRelayToken(injected, getRelayToken(app));
+
+              response.writeHead(200, {
+                'Content-Type': 'text/html'
+              });
+              response.end(injected);
             });
-            response.end(injected);
           });
         });
       });
@@ -143,15 +177,67 @@ function startServer(app, projectGetSettings, projectGetInfo, projectGetComponen
     //by this point it must be a static file in either the viewer folder or the project
     //check if it's a viewer file
     const viewerFilePath = appPath + '/src/external/viewer/' + path;
+    
+    // Debug: Log ALL font requests regardless of where they're served from
+    const fontExtensions = ['.ttf', '.otf', '.woff', '.woff2'];
+    const ext = (path.match(/\.[^.]+$/) || [''])[0].toLowerCase();
+    const isFont = fontExtensions.includes(ext);
+    
+    if (isFont) {
+      console.log(`\n======= FONT REQUEST =======`);
+      console.log(`[Font] Requested path: ${path}`);
+      console.log(`[Font] Checking viewer path: ${viewerFilePath}`);
+    }
+    
     if (fs.existsSync(viewerFilePath)) {
+      if (isFont) console.log(`[Font] SERVED from viewer folder`);
       serveFile(viewerFilePath, request, response);
     } else {
       // Check if file exists in project directory
       projectGetInfo((info) => {
         const projectPath = info.projectDirectory + path;
+        
+        if (isFont) {
+          console.log(`[Font] Project dir: ${info.projectDirectory}`);
+          console.log(`[Font] Checking project path: ${projectPath}`);
+          console.log(`[Font] Exists at project path: ${fs.existsSync(projectPath)}`);
+        }
+        
         if (fs.existsSync(projectPath)) {
+          if (isFont) console.log(`[Font] SERVED from project folder`);
           serveFile(projectPath, request, response);
         } else {
+          // For fonts, try common fallback locations
+          // Legacy projects may store fonts without folder prefix, or in different locations
+          const fontExtensions = ['.ttf', '.otf', '.woff', '.woff2'];
+          const ext = (path.match(/\.[^.]+$/) || [''])[0].toLowerCase();
+          
+          if (fontExtensions.includes(ext)) {
+            console.log(`[Font Debug] Request: ${path}`);
+            console.log(`[Font Debug] Project dir: ${info.projectDirectory}`);
+            console.log(`[Font Debug] Primary path NOT found: ${projectPath}`);
+            
+            const filename = path.split('/').pop();
+            const fallbackPaths = [
+              info.projectDirectory + '/fonts' + path,           // /fonts/filename.ttf
+              info.projectDirectory + '/fonts/' + filename,      // /fonts/filename.ttf (when path has no subfolder)
+              info.projectDirectory + '/' + filename,            // /filename.ttf (root level)
+              info.projectDirectory + '/assets/fonts/' + filename // /assets/fonts/filename.ttf
+            ];
+            
+            console.log(`[Font Debug] Trying fallback paths:`);
+            for (const fallbackPath of fallbackPaths) {
+              const exists = fs.existsSync(fallbackPath);
+              console.log(`[Font Debug]   ${exists ? '✓' : '✗'} ${fallbackPath}`);
+              if (exists) {
+                console.log(`[Font Debug] SUCCESS - serving from fallback`);
+                serveFile(fallbackPath, request, response);
+                return;
+              }
+            }
+            console.log(`[Font Debug] FAILED - no fallback found`);
+          }
+          
           serve404(response);
         }
       });
@@ -184,94 +270,14 @@ function startServer(app, projectGetSettings, projectGetInfo, projectGetComponen
       });
   });
 
-  server.on('listening', (e) => {
+  server.on('listening', () => {
     console.log('webserver hustling bytes on port', port);
     process.env.NOODLPORT = port;
 
+    // Mint the token before the first socket can arrive, so an early `register` cannot race it.
+    getRelayToken(app);
+
     startWebSocketServer(server);
-  });
-}
-
-function startWebSocketServer(server) {
-  // Websocket server for sending updates and debugging
-  var connectedSockets = [];
-  var services = {};
-
-  function broadcastMessage(msg, type) {
-    var broadcastToType = type === 'viewer' ? 'editor' : 'viewer';
-    for (var i = 0; i < connectedSockets.length; i++) {
-      var s = connectedSockets[i];
-      if (!type || s.type === broadcastToType) {
-        s.ws.readyState === WebSocket.OPEN && s.ws.send(msg);
-      }
-    }
-  }
-
-  var wss = new WebSocketServer({
-    server: server
-  });
-
-  wss.on('connection', function (ws) {
-    var handle = {
-      ws: ws
-    };
-    connectedSockets.push(handle);
-
-    (function () {
-      var _handle = handle;
-
-      ws.on('message', function (message) {
-        var request = JSON.parse(message);
-        if (request.cmd === 'register') {
-          _handle.type = request.type;
-          _handle.clientId = request.clientId;
-
-          // A viewer is connected, broadcast to editors
-          if (request.type === 'viewer')
-            broadcastMessage(
-              JSON.stringify({
-                cmd: 'registered',
-                type: _handle.type,
-                clientId: _handle.clientId
-              }),
-              _handle.type
-            );
-
-          if (_handle.type === 'service' && request.service)
-            // A new serivce is registered
-            services[request.service] = handle;
-        }
-        // If this is a request to a service, pass it along to the service
-        else if (request.service) {
-          var s = services[request.service];
-          s && s.ws.send(message);
-        } else {
-          // If there is a target client, send the message to that client
-          if (request.target) {
-            for (var i = 0; i < connectedSockets.length; i++)
-              if (connectedSockets[i].clientId === request.target) connectedSockets[i].ws.send(message);
-          }
-          // Broadcast message to other connected sockets
-          // message from viewers should go to connected editors and vice versa
-          else broadcastMessage(message, _handle.type);
-        }
-      });
-
-      ws.on('error', (e) => {
-        console.log('ws error', e);
-      });
-
-      ws.on('close', function () {
-        const idx = connectedSockets.indexOf(_handle);
-        const clientId = connectedSockets[idx].clientId;
-        connectedSockets.splice(idx, 1);
-        const msg = JSON.stringify({
-          cmd: 'disconnect',
-          clientId: clientId
-        });
-        broadcastMessage(msg, 'viewer'); // Notify editor that a viewer disconnected
-      });
-    })();
   });
 }
 
@@ -302,7 +308,7 @@ function getContentType(request) {
       break;
     case '.wav':
       contentType = 'audio/wav';
-    // eslint-disable-next-line no-fallthrough
+      break;
     case '.mp4':
     case '.m4v':
       contentType = 'video/mp4';
@@ -315,6 +321,15 @@ function getContentType(request) {
       break;
     case '.ttf':
       contentType = 'font/ttf';
+      break;
+    case '.otf':
+      contentType = 'font/otf';
+      break;
+    case '.woff':
+      contentType = 'font/woff';
+      break;
+    case '.woff2':
+      contentType = 'font/woff2';
       break;
   }
 

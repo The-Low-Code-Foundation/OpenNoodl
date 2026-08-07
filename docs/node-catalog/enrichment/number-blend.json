@@ -1,0 +1,8 @@
+{
+  "typeName": "Number Blend",
+  "summary": "Deprecated numbered-input number interpolator. Use Number Remapper or Animate To Value in new graphs.",
+  "description": "The legacy Number Blend interpolates across its numbered `value-N` inputs as `blendValue` moves 0→1, with optional clamping — the numeric sibling of Color Blend. Deprecated: Number Remapper covers range mapping and Animate To Value covers animated values.",
+  "whenToUse": "Do not use in new graphs — use Number Remapper (range mapping) or net.noodl.animatetovalue (tweening) instead.",
+  "runtimeBehavior": "The `value-N` inputs are generated from the configured count (numbered-inputs mechanism).",
+  "relatedNodes": ["Number Remapper", "net.noodl.animatetovalue", "Color Blend"]
+}

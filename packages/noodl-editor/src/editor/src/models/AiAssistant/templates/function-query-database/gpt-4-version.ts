@@ -5,7 +5,7 @@ import { extractCodeBlock, wrapInput, wrapOutput } from '@noodl-models/AiAssista
 import { EditorSettings } from '@noodl-utils/editorsettings';
 import { guid } from '@noodl-utils/utils';
 
-import { AI_ASSISTANT_ENABLED_SUGGESTIONS_KEY } from '../../../../views/panels/EditorSettingsPanel/sections/OpenAiSection';
+import { AI_ASSISTANT_ENABLED_SUGGESTIONS_KEY } from '../../../../views/panels/AiSettings/AiSettingsSection';
 
 export async function execute(
   { node, chatHistory, chatStream, chatStreamXml }: IAiCopilotContext,
@@ -41,7 +41,6 @@ export async function execute(
 
   const fullCodeText = await chatStream({
     provider: {
-      model: 'gpt-4o-mini',
       temperature: 0.0,
       max_tokens: 2048
     },
@@ -112,7 +111,6 @@ export async function execute(
       { role: 'user', content: codeText }
     ],
     provider: {
-      model: 'gpt-4o-mini',
       temperature: 0.0,
       max_tokens: 2048
     },
@@ -453,7 +451,7 @@ try {
 ${QUERY_CONTEXT_GENERAL_BACKGROUND}
 
 ###schema###
-Here is the schema of the database:
+What is known about the project database:
 %{database-schema}%
 
 ##Task###
@@ -462,7 +460,7 @@ Make a query from the given task and return only code.`;
 const QUERY_CONTEXT_EDIT = `${QUERY_CONTEXT_GENERAL_RULES}
 ${QUERY_CONTEXT_GENERAL_BACKGROUND}
 
-Here is the schema of the database:
+What is known about the project database:
 %{database-schema}%
 
 We are starting from this code and will only modify it:

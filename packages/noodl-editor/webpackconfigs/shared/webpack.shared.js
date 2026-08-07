@@ -14,6 +14,7 @@ const alias = {
   '@scss-mixins': path.join(editorDir, 'src/editor/src/styles/mixins'),
   '@scss-variables': path.join(editorDir, 'src/editor/src/styles/variables'),
   '@noodl-core-ui': path.join(packagesDir, 'noodl-core-ui/src'),
+  '@noodl-viewer-cloud/execution-history': path.join(packagesDir, 'noodl-viewer-cloud/src/execution-history'),
   '@noodl-hooks': path.join(editorDir, 'src/editor/src/hooks'),
   '@noodl-utils': path.join(editorDir, 'src/editor/src/utils'),
   '@noodl-models': path.join(editorDir, 'src/editor/src/models'),
@@ -21,7 +22,8 @@ const alias = {
   '@noodl-contexts': path.join(editorDir, 'src/editor/src/contexts'),
   '@noodl-types': path.join(editorDir, 'src/editor/src/types'),
   '@noodl-views': path.join(editorDir, 'src/editor/src/views'),
-  '@noodl-store': path.join(editorDir, 'src/editor/src/store')
+  '@noodl-store': path.join(editorDir, 'src/editor/src/store'),
+  '@noodl-versioning': path.join(editorDir, 'src/editor/src/versioning')
 };
 
 console.log('> alias:');

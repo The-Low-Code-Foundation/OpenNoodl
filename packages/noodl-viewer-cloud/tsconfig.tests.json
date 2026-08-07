@@ -1,0 +1,32 @@
+{
+  // Kept separate from tsconfig.json (which `npm run typecheck:cloud` and the
+  // webpack build use) so ts-jest's ambient `jest` globals never leak into the
+  // production compile. Without an explicit "types" list here, TypeScript
+  // pulls in every @types/* package reachable from node_modules — including
+  // @types/jasmine from the editor's test toolchain elsewhere in the repo —
+  // and jasmine's `Matchers<T>` shadows jest's, breaking matchers like
+  // `toHaveLength`/`toContainEqual` that jasmine doesn't define.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "types": ["node", "jest"],
+    // NDA-012: a test that `require`s one of this package's *node modules* reaches
+    // `@noodl/runtime`, whose entry point calls `location.reload()` on a hot reload. That is
+    // browser-only code the cloud runner never executes, but ts-jest still has to compile it,
+    // and without `DOM` here it fails the whole suite on `TS2304: Cannot find name 'location'`
+    // — so before this line the package could test its plain modules and not its nodes.
+    // Tests only; the production compile above still has no DOM lib.
+    // `ES2021.WeakRef` is the second half of the same story: `weak-registry.ts` feature-detects
+    // `WeakRef`/`FinalizationRegistry` at runtime and Node has had both since 14, but the type
+    // names still have to exist for the compile.
+    "lib": ["ES2019", "ES2020.String", "ES2021.WeakRef", "DOM"],
+    "noEmit": true
+  },
+  // WFA-009: a spec that imports `nodes/cloud/request.ts` makes jest load the
+  // `@noodl/runtime` *sources* it depends on (`model.ts` and friends) and
+  // ts-jest diagnoses every file it transforms — so the runtime's ambient
+  // globals (`_noodl_cloudservices`, `_noodl_cloud_runtime_version`) have to be
+  // in this program or the suite fails on TS2304 in a file it does not own. The
+  // production compile above is unaffected; this is the `.js`→`.ts`
+  // ambient-dragging class BCN-002 recorded, met from the other side.
+  "include": ["src", "tests", "../noodl-runtime/src/globals.d.ts"]
+}

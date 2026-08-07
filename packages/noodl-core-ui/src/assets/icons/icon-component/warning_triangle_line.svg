@@ -1,0 +1,7 @@
+<!-- House glyph. The rail's Problems mark.
+     A stroked twin of warning_triangle, which stays FILLED because its eight other
+     call sites are inline severity marks (always FeedbackType.Notice) where a solid
+     amber triangle is the point. In the rail it was the only filled glyph among
+     eleven stroked ones and read about twice as dense. Same shape, same meaning,
+     house weight. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2.6 14.4 13.4H1.6Z"/><path d="M8 6.5v2.6"/><circle cx="8" cy="11.3" r=".7" fill="currentColor" stroke="none"/></svg>

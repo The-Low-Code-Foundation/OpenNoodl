@@ -1,6 +1,12 @@
 {
   "extends": "../../tsconfig.json",
   "compilerOptions": {
+    // The cloud runner targets Node and consumes @noodl/runtime, a CommonJS package whose
+    // TypeScript sources export with `export =` (PLAT-003). The root config's ES2020
+    // modules cannot express that, so this package compiles as CommonJS — which is also
+    // what its webpack `target: 'node'` bundles emit anyway.
+    "module": "CommonJS",
+    "moduleResolution": "node",
     "lib": ["ES2019", "ES2020.String"],
     "outDir": "dist"
   },

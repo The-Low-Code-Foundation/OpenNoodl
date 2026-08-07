@@ -1,15 +1,18 @@
 import React from 'react';
-import { ComponentStory, ComponentMeta } from '@storybook/react';
+import type { Meta, StoryObj } from '@storybook/react';
 
 import { Label } from './Label';
 
-export default {
+const meta: Meta<typeof Label> = {
   title: 'Typography/Label',
   component: Label,
   argTypes: {}
-} as ComponentMeta<typeof Label>;
+};
 
-const Template: ComponentStory<typeof Label> = (args) => (
+export default meta;
+type Story = StoryObj<typeof meta>;
+
+const Template: Story = (args) => (
   <>
     <p>
       This component is a work in progress and will be rolled out in the future to replace Title and
@@ -19,5 +22,6 @@ const Template: ComponentStory<typeof Label> = (args) => (
   </>
 );
 
-export const Common = Template.bind({});
-Common.args = {};
+export const Common: Story = {
+  args: {},
+};

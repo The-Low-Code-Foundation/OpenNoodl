@@ -1,0 +1,9 @@
+/* PNL-005: `.Panel`, `.Header`, `.Title` and `.RefreshButton` are gone — the
+   shell is a `BasePanel` and Refresh is an action-slot `IconButton`. */
+
+.Body {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}

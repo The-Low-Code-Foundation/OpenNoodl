@@ -1,0 +1,19 @@
+{
+  "label": "Date Picker",
+  "description": "A date picker input with a pop-up calendar for selecting a date.",
+  "type": "prefab",
+  "tags": [
+    "UI",
+    "Form",
+    "Input"
+  ],
+  "icon": "icon.png",
+  "docsPath": "/library/prefabs/date-picker/",
+  "version": "1.4.0",
+  "minEditorVersion": "0.1.0",
+  "runtimeVersion": "2.7.0",
+  "provenance": {
+    "sourceUrl": "https://the-low-code-foundation.github.io/opennoodl-docs/library/prefabs/date-picker/date-picker-1-3.zip",
+    "importedAt": "2026-07-25"
+  }
+}

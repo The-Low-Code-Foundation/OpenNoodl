@@ -9,7 +9,11 @@ import { linearMap } from '../../../utils/linearMap';
 import css from './PropertyPanelSliderInput.module.scss';
 
 export interface PropertyPanelSliderInputProps extends Omit<PropertyPanelBaseInputProps, 'type'> {
-  properties: TSFixme;
+  properties: {
+    min: number | string;
+    max: number | string;
+    step: number | string;
+  };
 }
 
 export function PropertyPanelSliderInput({
@@ -46,24 +50,13 @@ export function PropertyPanelSliderInput({
   }
 
   const thumbPercentage = useMemo(
-    () => linearMap(parseInt(value.toString()), properties.min, properties.max, 0, 100),
+    () => linearMap(parseInt(value.toString()), Number(properties.min), Number(properties.max), 0, 100),
     [value, properties]
   );
 
+  // PAR-002 (mock `.slider-row`): slider first, numeric readout at the right.
   return (
     <div className={css['Root']}>
-      <div className={css['NumberContainer']}>
-        <PropertyPanelBaseInput
-          type="text"
-          value={numberInputValue}
-          onChange={setNumberInputValue}
-          onBlur={handleNumberUpdate}
-          isConnected={isConnected}
-          isChanged={isChanged}
-          onKeyDown={(e) => e.key === 'Enter' && handleNumberUpdate()}
-        />
-      </div>
-
       <input
         style={
           {
@@ -78,6 +71,19 @@ export function PropertyPanelSliderInput({
         max={properties.max}
         step={properties.step}
       />
+
+      <div className={css['NumberContainer']}>
+        <PropertyPanelBaseInput
+          type="text"
+          isNumeric
+          value={numberInputValue}
+          onChange={setNumberInputValue}
+          onBlur={handleNumberUpdate}
+          isConnected={isConnected}
+          isChanged={isChanged}
+          onKeyDown={(e) => e.key === 'Enter' && handleNumberUpdate()}
+        />
+      </div>
     </div>
   );
 }

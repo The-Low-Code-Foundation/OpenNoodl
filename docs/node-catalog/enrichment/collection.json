@@ -1,0 +1,7 @@
+{
+  "typeName": "Collection",
+  "summary": "Deprecated all-in-one shared array node. Use Collection2 (Array) plus the CollectionInsert/Remove/Clear/New action nodes.",
+  "description": "The legacy Collection node bundled the shared-list store and all its mutations (add/remove/clear/new/store/fetch) into one node. Its replacement splits reading (Array/Collection2) from the individual mutation nodes, keeping graphs legible. The underlying shared-by-id array store is the same, so legacy and current nodes interoperate on the same `collectionId`s.",
+  "whenToUse": "Do not use in new graphs — use Collection2 with CollectionInsert/CollectionRemove/CollectionClear/CollectionNew instead.",
+  "relatedNodes": ["Collection2", "CollectionInsert", "CollectionRemove", "CollectionClear", "CollectionNew"]
+}

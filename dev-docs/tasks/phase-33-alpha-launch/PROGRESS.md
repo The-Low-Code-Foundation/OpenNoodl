@@ -1,0 +1,967 @@
+# Phase 33 — Progress
+
+**Track R — Alpha Launch**
+**7 tasks specced. ALPHA-005 complete; ALPHA-006 added 2026-07-31; ALPHA-007 added 2026-08-02.**
+**Phase overview:** [README.md](./README.md)
+
+## Status vocabulary
+
+Not started · In progress · **Built–not wired** · Complete · Superseded
+
+## Tasks
+
+| Task | Tier | Status | Notes |
+|---|---|---|---|
+| [ALPHA-001](./ALPHA-001-FIRST-HOUR.md) The cold-install first hour | 1 | 🟢 **Part A complete 2026-08-07 — §1–§6 all walked, two real defects found** | Discharges seven tasks' owed live-QA in one pass. **§1** passed 2026-08-06. **§2/§3** effectively discharged by [LIB-005-NOTES.md](../phase-21-library-and-import/LIB-005-NOTES.md) §7–§10 (see the 2026-08-07 log entry below for detail). **§4 (app-name round trip): PASS**, 2026-08-07 — a real keystroke into App name, followed by a graceful quit *without* blurring the field, followed by reopen, round-trips correctly (the 2026-07-28 quit-flush fix holds). **§5 (PLAT-005 Parts A/B/D): root-caused, not just blocked** — the two-session-old `forEachNode`-only-sees-one-node mystery was a stale/timing artifact, not a real bug (confirmed live: it correctly enumerates all 7 top-level roots once queried properly). Found **F102** (the real reason the variant-suggestion banner never fires — `StyleAnalyzerCore.scanNode` silently drops `borderRadius` overrides because they're object-typed, not strings) and **F103** (a pre-existing deprecated `Button` node type silently loses the entire style-suggestion system with zero indication). **§6 (AI panels, no provider): PASS**, assessed via hybrid live+static — could not live-test a true no-provider state because this dev profile already has a working Anthropic key configured (discovered only after accidentally spending ~$0.06 in real API cost by clicking "Build it"; immediately rejected the staged change, confirmed no trace left in the project). Verified via source read instead: every AI entry point proactively disables its submit action with a clear "No AI provider is configured" message before any network call, with a typed error as defense-in-depth. Bonus: the live accident also confirmed the AI Build feature itself works end-to-end (self-repaired an invalid parameter, staged cleanly for Accept/Reject) — good evidence for AIB-001–009's "built" status. Full gate sweep re-run clean at the end (`Jasmine: 2418 specs, 0 failures`; `test:main` 933/933 in isolation, one flaky-under-parallel-load false alarm; typechecks/runtime/cloud-runtime/backend/observe/mcp all green) — see the 2026-08-07 log entry for the one pre-existing gate gap (catalog enrichment, not caused this session). **§4/§5/§6 are the last of Part A** — Part B (packaged build) still needs ALPHA-002's signed build |
+| [ALPHA-002](./ALPHA-002-RELEASE-CUT.md) A release that reaches a Mac | 1 | 🟡 **Engineering done — credentials human-gated** | 2026-08-06. Everything that must be true *before* the certificates land is now verified statically and gated. Found and fixed **F77** (the Windows leg signing with the Apple `.p12`), **F76** (the artefact check anchored on a file CI never runs), a `merge-mac-update-feed` that exited 0 on "nothing to merge" and shipped a single-arch feed green, and an install guide sending Mac testers after a universal `.dmg` that is not built. Publish target (A8/B3) **now changed** — see 2026-08-06 log entry below. **Still needs A1 + A2 from Richard** |
+| [ALPHA-003](./ALPHA-003-CRASH-AND-FEEDBACK.md) Find out when it breaks | 2 | 🟢 **Built 2026-08-06 — driven live** | **Its premise was wrong and that was the finding.** Packaged *and dev* builds have written `<userData>/debug/log-<date>.txt` since the fork, teeing every `console.log` with 10,000 chars of attached data, un-redacted, un-timestamped, never pruned — nobody was told and nobody asked. So the task was scoping, not adding. Now errors/warnings only through ALPHA-007's `redact`, timestamped, capped; retention 14d/40 files/20 MB swept in **main** (the merge driver is a second writer, in another process); `Help → Open log folder` + `Open crash report folder`; `crashReporter` local-only (`uploadToServer: false` — **there is no server**, and transmission needs a policy that names it); main-process fatals to `main-errors.txt`. `PRIVACY.md` §5 rewritten, criterion 6's apology deleted. 50 tests. **ALPHA-005's gate is satisfied by never transmitting.** Not built: scope §4 (the no-provider state — it belongs to ALPHA-001) |
+| [ALPHA-004](./ALPHA-004-USER-DOCS.md) Documentation for someone who is not us | 2 | 🟡 **Content written and now live in a real site** | **Re-scoped 2026-07-31** — platform half moved to ALPHA-006; retains the authored concept set, getting-started and troubleshooting. Content drafted 2026-08-07 (`fb0cc18f`), and as of ALPHA-006 §2/§3 the same day it's built into `docs-site/` rather than sitting in a staging folder — no longer blocked on the site existing. **Criteria 1 and 4 are unmet and need a human**: criterion 1 wants a person who's never seen NodeGX to actually build the getting-started app from the doc, and criterion 4 (concept vocabulary matches the AI prompts and Learn curriculum) hasn't been cross-checked against either. Criteria 2/3/5 hold — §3's generator satisfies 2, "derive never author twice" was followed for 3, every doc states "Describes NodeGX 0.1.0" for 5 |
+| [ALPHA-005](./ALPHA-005-LEGAL-SURFACE.md) The paperwork that ships with a binary | 2 | ✅ **Complete** | 2026-07-30. `PRIVACY.md` + `TERMS.md` written from the code, licence fields added, both reachable from the Application/Help menus and shown at first run. **Criterion 5 (an outside reader) is owed** — see below |
+| [ALPHA-006](./ALPHA-006-DOCS-PLATFORM.md) The docs platform, and the old site's disposition | 2 | 🟡 **§1–§4, §5 (code half) and §6 complete — only §5's actual repo strip left, and it's sequenced on two GitHub admin actions** | **§1/§6 built 2026-08-03, merged 2026-08-06** (see the log). §1 — `utils/nodeDocs.ts` reads the bundled catalog, `docs-parser.ts` deleted, so no node's help depends on a website. §6 — the Help Center stops shipping Noodl. **§5's code half, §2, §3 done 2026-08-07; §4 and B5 decided 2026-08-08.** §5 — `getContentEndpoint()` split from `getDocsEndpoint()`. §2 — a real Docusaurus 3 site at `docs-site/`, wired into `workspaces`/`lerna.json`. §3 — `scripts/generate-node-docs.js`, one generated page per catalog node, staleness-gated. **§4 — `docs-site/MIGRATION.md`, all 431 `opennoodl-docs` files classified into 5 fates** (112 generated/superseded, 24 ported, 33 salvaged, 193 stay in the payload repo, 69 deleted — zero unclassified). **B5 decided**: payload repo stays separate (renamed), docs publish from this repo's own GitHub Pages — see the 2026-08-07 log entry. **What's left**: the two GitHub admin actions B5 needs (repo rename, enable Pages), then the actual `opennoodl-docs` strip and Help Center repoint, in that order — none of it is an engineering unknown any more, all of it is sequenced on Richard. `docs-site-content/` is still a stale duplicate of `docs-site/docs/`, pending a human `git rm` |
+| [ALPHA-007](./ALPHA-007-FEEDBACK-LOOP.md) A feedback loop that closes | 2 | 🟡 **Criteria 2, 3 (partial) and 4 demonstrated live, 2026-08-07 — F104 found and fixed** | **Built 2026-08-03, merged 2026-08-06; driven live across two 2026-08-07 sessions.** Via the main-process inspector (`Help → Report a problem…` is a native `Menu`/`MenuItem`, invisible to `npm run cdp`). **Criterion 2 confirmed real**: opened over the "All sheets" popup without dismissing it — the popup is visible both live and in the captured screenshot thumbnail. Found and fixed **F104** along the way (the composer's own content was unreachable past 90vh — a general `CoreBaseDialog` defect, not specific to this dialog). Field prefill (criterion 3) verified against real composed data — but GitHub's own dropdown-acceptance behaviour still needs a signed-in browser (B6, unblocked and two minutes of work). **Criterion 4 demonstrated live, not argued**: built a real project (`~/vscode_projects/NodeGX test projects/alpha007-hostile-fixture`) carrying an API key in a node parameter, a backend endpoint in `metadata.cloudservices`, a component named `Acme Legal Client Portal`, and paths outside the project root, then drove the actual composer end to end — the real composed GitHub URL (captured via clipboard after a real, non-submitted browser tab open, then closed), the on-disk `report.md`, and `diagnostics.json` were all decoded and grepped for all twelve secret strings. **None survived.** `appId`/`masterKey`/emails/paths/the endpoint all redacted correctly; the project summary's `nodeTypes` histogram bucketed the private module as `<unknown>` and never named the client component; the screenshot alone is deliberately unredacted (shown to the reporter before send, by design, not an automatic-report leak). Bundle (criterion 5) confirmed written correctly on macOS — `report.md` + `diagnostics.json` + `screenshot.jpg`, matching the spec's schema. **Still owed:** B6's full sign-in check, criterion 1 (packaged build, two platforms), Windows/Linux reveal-in-file-manager |
+
+## Recommended order
+
+1. **ALPHA-002's credential steps** — human-gated and the longest lead time. Start it
+   before anything else, because nothing else can be tested end to end until a
+   signed build exists.
+2. **ALPHA-005** — half a day, unblocks ALPHA-003.
+3. **ALPHA-001 Part A** — as soon as the working tree is clean.
+4. **ALPHA-007** — nothing blocks it, and it is what makes ALPHA-001's findings
+   reproducible by someone other than the person who hit them. Part B first if you
+   want the queue to exist before the reports do.
+5. **ALPHA-003**.
+6. **ALPHA-001 Part B** — needs the build from step 1.
+7. **ALPHA-006 §1** — the help panel off the network. Independent of everything else
+   here, and it closes all 54 undocumented nodes without a website existing.
+8. **ALPHA-006** — the rest, after phase 30 Tier 1 lands so the node reference has
+   something true to generate from.
+9. **ALPHA-004** — once there is a site to write into.
+
+## Findings register
+
+Findings from this phase's tasks are recorded here with file and line. ALPHA-001 is
+expected to be the main contributor. F-numbers continue the shared sequence used by
+phases 25 and 27 — check the highest existing number before allocating.
+
+> ⚠️ **Re-measure a row before you act on it.** On 2026-08-06 every row in this table
+> was re-checked against HEAD in one pass. **Four were already fixed** (F66, F67, F69,
+> and F70's mechanism) and **three understated what they described** (F63, F64, F71).
+> That is the sixth and seventh instance of a pattern this repo keeps repeating: a
+> register row is a claim with a timestamp, not a fact. **Numeric claims are the worst
+> offenders** — F70's "54 of 156" and F71's "10 call sites" both described a tree that
+> had already moved. If you file a number here, file the date and the command that
+> regenerates it, or it will mislead someone within the week.
+
+| # | Finding | Where | Owner |
+|---|---|---|---|
+| F63 | **A hardcoded GitHub OAuth client secret ships in the binary.** `GITHUB_CLIENT_SECRET` falls back to a literal when the env var is unset, so every distributed build contains it and anyone can impersonate the app to GitHub | `packages/noodl-editor/src/main/github-oauth-handler.js:19` | ✅ **Code fixed 2026-08-06** — replaced with the OAuth **device flow** (client id only, no secret): `src/main/src/github-device-flow.js` + `GitHubDeviceCodeDialog`, 19 tests in `tests-main/`. The file is now excluded from the `files` allow-list too. ⚠️ **NOT closed — two human actions remain at GitHub, see B2.** |
+| F64 | **The GitHub token is not stored the way its own docstring claims.** The header says "encrypted using Electron's `safeStorage` … OS-level encryption"; the code uses only `electron-store`'s `encryptionKey`, a literal embedded in the app. Verified: zero `safeStorage` references in the file. AI keys *do* use `safeStorage` — the two credential stores disagree | `packages/noodl-editor/src/editor/src/services/github/GitHubTokenStore.ts:1-31` | Unowned. `PRIVACY.md` §8 documents the real behaviour rather than the docstring. ⚠️ **Understated, re-measured 2026-08-06: there are THREE credential paths, not two.** A *second* GitHub token store exists at `main/main.js:1047-1095` (`github-save-token`/`github-load-token` IPC) which genuinely uses `safeStorage` — **with a silent plaintext fallback when encryption is unavailable** (`main.js:1058-1059`) — and is driven by `services/GitHubOAuthService.ts:271-276`. So a GitHub token lands in one of two different stores depending on which service authenticated, and the disagreement is *inside* the GitHub path, not just GitHub-vs-AI. The plaintext fallback is a finding nobody had filed |
+| F76 | **The `check-build-artefacts` gate could not see the failure it was named for.** Check 2 asserted a `dist/` package was *mentioned in `scripts/build-editor.ts`* — a file CI never runs — and skipped tracked sources unless `--built`, which only happens during a packaged build. `extraFiles` and bare-string `extraResources` entries were never read at all. So MCP-002's actual failure mode (a packaging workflow that never runs `npm run build:sidecars`, shipping an app with a missing sidecar because **electron-builder only warns on a missing `extraResources` source**) was exactly what the gate could not catch | `scripts/check-build-artefacts.js:115`, measured 2026-08-06 | ✅ **Fixed** `8f6c16b0`. New check 3 fails any workflow that packages without `build:sidecars`; four regressions demonstrated red in a fixture repo, green after. **The MCP-002 suspicion itself was already fixed** — all six `extraResources` sources resolve and each `to` matches its runtime consumer. One live remnant: `nodegx-backend/dist/cli.js.map` is shipped to every user and read by nothing (6.6 MB) |
+| F77 | 🔴 **The Windows leg would sign with the Apple certificate the moment `CSC_LINK` lands.** `WIN_CSC_LINK` is not a separate variable to electron-builder: `app-builder-lib/out/platformPackager.js:83` falls back `WIN_CSC_LINK` → `CSC_LINK`, and `winPackager.js:104` does the same for the password. With the Apple `.p12` in `CSC_LINK` and no Windows certificate yet — **the exact interim state A1 creates and A2 leaves open** — `windowsSignToolManager` imports the Apple `.p12` successfully and hands it to signtool | `packages/noodl-editor/scripts/build.ts`, measured 2026-08-06 | ✅ **Fixed** `c12caca1` by scoping signing material per target platform. **This is the class of defect worth naming: it would have fired on the day the credentials landed, not before**, so it cost a round trip through Richard that nothing would have predicted |
+| F65 | **Dead cloud config ships in every build.** `apiEndpoint` (`api.noodlcloud.com`), `domainEndpoint` and `aiEndpoint` (an AWS Lambda URL) are declared in `config.js`/`config-dist.js`/`config-dev.js` and have **zero consumers** anywhere in source. Harmless today, but it reads like a live third-party data flow to anyone auditing the app | `packages/noodl-editor/src/shared/config/` | ✅ **Fixed 2026-08-06** `1bc26877`. Two corrections to the row as filed: it was **four** config files, not three (`config-test.js` declared `apiEndpoint` too), and there was a **fifth site nobody had found** — `main.js` parsed a `--api=` flag into `process.env.apiEndpoint` that no code has ever read. Re-verified zero consumers across all packages, including bracket access and config spreads, before deleting |
+| F66 | ~~**The update check polls GitHub every 60 seconds, forever.**~~ | `packages/noodl-editor/src/main/src/autoupdater.js` | ✅ **Already fixed before this row was re-read, 2026-08-06.** `CHECK_INTERVAL_MS` is 4 hours with exponential backoff (`RETRY_MIN_MS` 5 min → `RETRY_MAX_MS` 4 h), a single-pending-check guard, and the code cites F66 by name. **The row outlived its own fix** — the sixth time in this repo |
+| F67 | ~~`packages/noodl-editor/package.json` is **committed minified onto a single line**~~ | — | ✅ **Already fixed** — the file is 200 formatted lines. Another row that outlived its fix |
+| F68 | The About window read `Copyright (c) 2023 Future Platforms AB` and the menu item said "About Application" | `packages/noodl-editor/src/main/main.js:562-568` | ✅ **Fixed 2026-07-30** — now "About NodeGX", GPL-3.0 with the fork attribution kept |
+| F69 | The Help Center's links still point at **`docs.noodl.net`**, the Noodl forum and the Noodl Discord, and its Algolia index is `docs_2-9` — Noodl's old documentation index | `packages/noodl-editor/src/editor/src/views/HelpCenter/HelpCenter.tsx` | ✅ **Fixed twice, independently, three hours apart.** POL-002 (phase 39, `d9c0f37c`) and ALPHA-006 §6 (`489c670d`) both found it; POL-002's answer was better — it centralised the surviving URLs in `noodl-core-ui`'s `EXTERNAL_LINKS` (shared with the launcher footer) **and** dropped `algoliasearch`/`react-instantsearch` from the lockfile, which ALPHA-006 could not. The 2026-08-06 merge kept POL-002's shape and took ALPHA-006's issue-form links on top. ⚠️ **The lasting lesson is on the other side:** POL-002 removed Algolia and never updated `PRIVACY.md`, so for three days the policy still listed Algolia as a live flow receiving *"anything you typed"*. **The privacy policy was more wrong than the code**, and only the merge caught it |
+| F70 | **54 of 156 nodes (35%) have no working documentation page.** Every `docs` URL in `node-catalog.json` was resolved against the docs repo's file list: 102 hit a real page, **6 point at the wrong path**, **33 point at a page that does not exist**, **15 nodes have no `docs` URL at all**. It is not a random 35% — it is precisely the NodeGX-era library: all five BYOB nodes, the whole realtime family, the entire agentic-UI/state set, Logic Builder, email, magic-link/OAuth. `docs-parser.ts:75` swallows the 404, so the help panel shows nothing rather than an error | `packages/noodl-types/src/node-catalog.json` × `The-Low-Code-Foundation/opennoodl-docs`, measured 2026-07-31 | ✅ **Mechanism fixed 2026-08-06** — ALPHA-006 §1 landed (`3dbd2914`, merged `80d221c0`): `docs-parser.ts` is deleted and `utils/nodeDocs.ts` reads the **bundled catalog**, so no node depends on a website existing. ⚠️ **The row's numbers were stale when re-measured the same day:** the catalog is now **172 nodes, not 156**, and **17 have no `docs` URL, not 15**. The 33-missing/6-wrong split cannot be re-verified without the docs repo. **Do not quote "54 of 156" again** — it described the tree on 2026-07-31 and nothing recorded that it was a snapshot |
+| F71 | **The docs site is the editor's content CDN, not a docs site.** `getDocsEndpoint()` has 10 call sites across **7 payload types**, and 6 are not documentation: the prefab/module library index and zips, the Learn lesson index, the new-project templates, the tutorials list, the what's-new feed. Moving or archiving that origin silently empties the **Library panel, the Learn lesson list and the new-project template picker** — all three fail without an error. Two served paths have no consumer at all (`static/nodepickerdefaults/`, `static/version.json`) | `packages/noodl-editor/src/editor/src/utils/getDocsEndpoint.ts`, **re-counted 2026-08-06** | ALPHA-006 §5. ⚠️ **The row undercounts: 15 call sites across 9 payload types, not 10 across 7.** Two payload types are new since it was filed — the **MCP docs HEAD probe** (`McpSettingsSection.tsx:199`) and the **launcher's Lessons thumbnails** (`ProjectsPage.tsx:166`) — so moving the origin now also breaks the launcher's Lessons tiles and silently disables the MCP docs link. One nuance to keep: `ModuleCard.tsx:29` resolves the endpoint at **module scope**, so a runtime endpoint change never reaches it |
+| F78 | **`Config.devMode` has never been set in any build**, so `bugtracker.ts`'s `enabled = !Config.devMode` has always been true and the diagnostic log has been written from source as well as from a package. `config-dev.js` is referenced by nothing; the only config swap is `build-editor.ts:20-21` copying `config-dist.js`, which does not declare it. **Four places stated the opposite** — `errorTail.ts:16-18`, `collect.ts:107-110`, `PRIVACY.md` §5, and ALPHA-003's own brief | `packages/noodl-editor/src/shared/config/config-dev.js` × `src/editor/src/utils/bugtracker.ts` | ✅ **Found by driving it, 2026-08-06** (`8c37ddc5`). A `npm run dev` launch wrote a log and the new sweep deleted **424 stale files** out of 465. Kept enabled deliberately: a log that only exists in the build nobody develops against is a log nobody tests, which is exactly how it reached 465 files unnoticed. The dead branch is now an explicit `true` with the reason |
+| F79 | **`merge-driver.js` writes into `<userData>/debug/` without creating it** and swallows the failure, so on a fresh install the first failed project merge dumped nothing at all — the one case those dumps exist for | `packages/noodl-editor/src/main/src/merge-driver.js:104-109` | ✅ **Fixed incidentally 2026-08-06** (`1acc1851`) — `initialiseDebugDirectory` mkdirs at startup; the merge driver itself is untouched |
+| F80 | **`bug_report.yml` sent reporters to a menu that does not exist** — *"View → Toggle Developer Tools, or ⌥⌘I / Ctrl+Shift+I"*. `main.js` replaces the default application menu, so there is no View menu and no such accelerator; the only devtools item is **Dev → Open Editor Devtools** on ⌘E. Every tester who followed the bug form's own instructions found nothing | `.github/ISSUE_TEMPLATE/bug_report.yml:118-121` | ✅ **Fixed 2026-08-06** (`17cc1856`), in the same edit that deleted ALPHA-003 criterion 6's "does not write a log file yet" apology |
+| F73 | **The Linux leg of v0.1.0 did not "succeed without a feed" — it failed, after uploading.** electron-builder built and uploaded the AppImage, then aborted building the `.deb`: *"Please specify author 'email' in the application package.json"*. `author` was the bare string `"The Low Code Foundation"`. Publishing stopped there, which is the actual cause of **A2**. The general lesson: **electron-builder uploads as it goes, so a published artifact is not evidence of a green job** | `gh run view --job 89168201500`, measured 2026-08-04 | ✅ **Already fixed** — `author` now carries `<contact@thelowcodefoundation.com>`; `.deb` was never the point, the aborted publish was |
+| F74 | **`latest-linux.yml` was never the right fix for A2.** `autoupdater.js:8` returns early on `process.platform === 'linux'`, so the Linux build never asks for an update feed and would not read one if it existed. A2 is therefore "correct behaviour, undocumented" rather than a defect — but nothing said so, so it read as a bug for a week | `packages/noodl-editor/src/main/src/autoupdater.js:8-10` | ✅ **Closed by documenting it** — `RELEASE-PROCESS.md` now has a "Linux is install-only, deliberately" section, and the early return carries the reason |
+| F75 | **v0.1.0's macOS build shipped the default Electron icon.** The build log says `default Electron icon is used  reason=application icon is not set` — there was no `build/icon.*` and no `mac.icon`, so the one artifact anyone would have installed had a generic icon | v0.1.0 darwin-arm64 job log | ✅ **Already fixed** by `61d45f31` — `build/icon.png` (1024×1024) is auto-discovered; the 2026-08-04 build emits `dist/.icon-icns` |
+| F81 | **Two `tests-unit/erg-005/` suites were committed without the implementation they specify**, so `test:main` — a PR CI gate — was red: `componentContract` did not compile at all (`ports` does not exist on `GraphComponent`; `componentPorts` returns `string[]`, not port objects; `formatComponentPort` does not exist) and `validatorComponentContract` ran 5 green / 3 red. **The gap is larger than the tests suggest:** a component's interface is never written to disk — `ComponentModel.toJSON()` emits `{name, id, graph, metadata}` and 0 of 2 components in `tests/testfs/import_proj5/project.json` carry a `ports` key — so ERG-005 §1 is serialise-then-read, and the serialise half changes the project save path | `packages/noodl-editor/tests-unit/erg-005/` × `src/editor/src/models/componentmodel.ts:359-366`, measured 2026-08-06 | ✅ **Gate restored 2026-08-06** (`dfbfa08b`) — renamed to `*.pending.ts`, which `testMatch` does not collect, with a README stating exactly what is missing and how to turn them on. `test:main` is **63 suites / 873 passing / 0 failing**. Deliberately **not** `describe.skip`: this repo has already shipped a feature that never worked behind eleven skipping assertions (F62), and a skipped test inside a collected file reads as covered. **The feature itself is still unbuilt** and is owed to phase 35 |
+| F72 | **The triage queue the issue forms promise does not exist.** All three forms declare `needs-triage`, and `node_report.yml` also declares `node-library`. **Neither label exists on the repo** — the label set is still GitHub's stock nine. GitHub silently drops labels it cannot resolve, so every report filed since 2026-07-30 is unlabelled beyond `bug`/`enhancement`, and `gh issue list --label needs-triage` returns nothing by construction. Related: there is **no severity vocabulary at all**, neither a form field nor a label, so the queue can only be ranked by date | `.github/ISSUE_TEMPLATE/*.yml` × `gh label list`, measured 2026-08-02 | ALPHA-007 §6 |
+| F102 | 🔴 **The style-suggestion banner (PLAT-005 §2) can structurally never fire for the property that triggers it most often.** `StyleAnalyzerCore.scanNode()` coerces every node-parameter value with `String(rawVal ?? '')`, assuming all style values are strings — but `borderRadius` is stored as a structured `{value, unit}` object in the current project format. `String({value:12,unit:'px'})` → `"[object Object]"`, which silently fails `isTokenisableSpacingValue`'s numeric regex, so a `borderRadius` override is never counted. Confirmed live: a Button with `backgroundColor` (raw, correctly counted) + `borderRadius` (raw, silently dropped) + `paddingTop` (token, correctly excluded) registered only **1** of 3 attempted overrides — one short of `variantCandidateMinOverrides: 3` — so the banner never appeared, reproduced across a full page reload (genuinely fresh `useStyleSuggestions` mount) reading the already-persisted-to-disk override. This is the actual cause behind three separate failed live-QA attempts (2026-07-27, and twice 2026-08-07) that were each previously attributed to driving-tool limitations | `packages/noodl-editor/src/editor/src/services/StyleAnalyzer/StyleAnalyzerCore.ts:237-238`, measured 2026-08-07 | PLAT-005 — unowned |
+| F103 | **A pre-existing (pre-NDA-011) deprecated `Button` node silently loses the entire style-suggestion/variant system, with zero indication.** `ElementConfigRegistry`'s `ButtonConfig.nodeType` is `'net.noodl.controls.button'` (the current node); the deprecated node at `nodes-deprecated/controls/button.tsx` reports `type.name === 'Button'`. `propertyeditor.ts:123`'s `renderElementStyleSection()` early-returns unless `ElementConfigRegistry.has(typeName)`, so any node still carrying the deprecated type never mounts `ElementStyleSectionHost` at all — no variant picker, no size picker, no suggestion banner, no error. Confirmed on the `NodeGX QA Fixture`'s `erg-rig`/`erg001-cloud` Button nodes (deprecated type) vs. `/Content/Changelog`'s Button (current type, correctly renders the full style section). Not a fresh-user risk — `componentmodel.ts:293`'s `isCreatable` blocks creating the deprecated node from the NodePicker today — but silently affects any pre-existing or imported project still carrying one | `packages/noodl-editor/src/editor/src/views/panels/propertyeditor/propertyeditor.ts:121-123` × `packages/noodl-viewer-react/src/nodes-deprecated/controls/button.tsx:86-92`, measured 2026-08-07 | PLAT-005 — unowned |
+| F104 | **Every `CoreBaseDialog`-based dialog silently clips content taller than 90vh, with no way to reach it.** `.VisibleDialog` sets `max-height: 90vh; overflow: hidden;` and nothing inside scrolls — content past the limit just disappears, buttons included. The `::-webkit-scrollbar` rules already authored on the same class were dead code, only ever mattering once this became `auto`. Found live while driving ALPHA-007's composer for the first time: with "What happened" filled in, the form exceeded 90vh and Send/Cancel were unreachable by any means — Richard hit this independently while watching, before the cause was known | `packages/noodl-core-ui/src/components/layout/BaseDialog/BaseDialog.module.scss:41` | ✅ **Fixed same session**, `022fb20a` — `overflow-y: auto`. Verified live: the dialog scrolls, the buttons are reachable, and the underlying popup is still visible behind it (screenshot in the report bundle) |
+
+## Pre-existing findings this phase adopts
+
+Recorded during the 2026-07-30 readiness review, before any task started. These are
+evidence, not speculation — each was measured.
+
+| # | Finding | Evidence | Owner |
+|---|---|---|---|
+| A1 | **The v0.1.0 draft release carries no macOS artifact of any kind** — no `.dmg`, no `.zip`, no `latest-mac.yml`. macOS is the primary development platform | `gh release view v0.1.0`, 2026-07-30 | ALPHA-002 |
+| A2 | **No `latest-linux.yml`.** The AppImage ships with no update feed, so Linux has an installer and no update path | same | ALPHA-002 |
+| A3 | The darwin-x64 leg's failure has a recorded cause (the retired `macos-13` image, since fixed). **The darwin-arm64 leg's failure does not**, and it ran on a supported image | `release.yml` comments vs. the asset list | ALPHA-002 |
+| A4 | ~~**Packaged builds write no log file.**~~ **Wrong — corrected by ALPHA-005.** `app.getPath('logs')` is indeed never used, but the log is written *elsewhere*: `bugtracker.ts` sets `enabled = !Config.devMode`, and `devMode: true` appears **only** in `config-dev.js` — so in every packaged build the BugTracker is live and appends to `<userData>/debug/log-<date>.txt`. It monkey-patches `console.log` and installs a `window.onerror` handler, capturing all console output and every uncaught renderer error with up to 10,000 chars of attached data. The merge driver dumps whole project graphs into the same directory. A user hitting a bug therefore **does** have something to attach; nobody has ever told them so, and nobody asked their permission | `packages/noodl-editor/src/editor/src/utils/bugtracker.ts:93-99`, verified against `config-*.js`, 2026-07-30 | ALPHA-003 — this changes its design: the task is *surfacing and scoping* an existing log, not adding one |
+| A5 | **No crash reporting of any kind.** The only `crashReporter`/`sentry` matches in the tree are inside gitignored webpack bundles | grep, 2026-07-30 | ALPHA-003 |
+| A6 | `mixpanel-browser` was a declared dependency with **zero call sites**, and pulled `@mixpanel/rrweb` (DOM session recording) into every packaged build | grep + lockfile | ✅ **Fixed 2026-07-30** `359bd8f5` — removed with 9 transitive packages |
+| A7 | The repo had **no issue templates**, while the product has no crash reporting — so the feedback channel was a blank text box | — | ✅ **Fixed 2026-07-30** `47219e05` — three issue forms |
+| A8 | The publish target is `The-Low-Code-Foundation/OpenNoodl` for a product called NodeGX, so every download URL and the update feed say the old name | `packages/noodl-editor/package.json` | ALPHA-002 — a decision, not a defect |
+| A9 | The root `package.json` declares **no `license` field**, though `LICENSE` exists | — | ✅ **Fixed 2026-07-30** — `GPL-3.0-only` at the root, and the two MIT packages that had a `LICENSE` file but no field (`noodl-runtime`, `noodl-viewer-react`) now declare `MIT` |
+
+## Log
+
+- **2026-07-30 — Phase created** from a readiness review against the full phase
+  register, scoped explicitly to exclude phases 18, 20, 26, 31 and 32 (post-alpha by
+  decision) and phase 17 (a G3 question). Five tasks specced. A6 and A7 were fixed
+  in the same session rather than filed, being small and self-contained.
+
+- **2026-07-30 — the working tree was landed before any of this.** The primary
+  checkout carried **121 uncommitted files** across four unrelated bodies of work,
+  which is what made ALPHA-001 unrunnable: a live QA pass measures whatever is on
+  disk. Five commits (`61d45f31` brand/icons, `a2db2231` Blockly logic-builder,
+  `22618d2d` devtools process-lifetime fixes, `62e400d4` docs, plus the screenshot
+  corpus) took it to 33 — and the 33 that remain are exactly phase 30's live,
+  actively-being-written set, which was deliberately not touched. Verified before
+  landing: `typecheck:editor` 0, `typecheck:runtime` 0, `typecheck:core-ui` 43
+  errors all pre-existing path-alias failures in files none of the groups touched
+  (baseline 45), and 18 logic-builder tests passing.
+
+- **2026-07-30 — ALPHA-005 complete.** `PRIVACY.md` and `TERMS.md` at the repo root,
+  written by reading the source rather than from a template; every claim in the
+  privacy policy names the file that makes it true, and the policy closes with a
+  table mapping claims to source paths so the next person can re-check it instead of
+  trusting it.
+
+  **The spec asked for six data flows. There are nine**, and the three it did not
+  list are the ones that matter for its own acceptance criterion 5 — *"if I never
+  touch the AI features, does anything leave my machine?"*:
+
+  - the **auto-updater**, which contacts GitHub at launch and every 60s (F66);
+  - the **what's-new feed**, fetched from the docs site on opening a project;
+  - **Algolia**, which receives the text typed into the help search box.
+
+  The honest answer to criterion 5 is therefore *"your project content does not, but
+  the app does talk to three services regardless"* — and the policy says exactly
+  that in a "short answer" section rather than burying it. Two of the six flows the
+  spec did list also turned out to be milder than assumed: the **analytics tracker
+  is a permanent no-op** (`DummyTracker`; `setTracker` has no call site), and
+  **telemetry has no server to send to at all**.
+
+  Checks on the AI claims, since they are the load-bearing ones: opening any AI
+  panel transmits nothing — `verify` is reachable only from the button, and
+  `AiSettingsSection`'s mount effect only migrates local settings. Authoring cannot
+  send the whole project by construction (`ContextBuilder`'s surface). Project
+  review sends the most, and its backend summary carries **schema, not rows**
+  (`review/types.ts:91`) — though it does carry backend endpoint URLs, which the
+  policy flags.
+
+  Wiring: a `Help` menu and two items beside `About NodeGX`, plus a one-time
+  first-run notice. Documents render in a `data:`-URL window with no node
+  integration, where every link opens in the user's browser. They ship via
+  `extraResources` (`legal/`), so the repo-root file and the packaged file are the
+  same file — 18 jest tests in `tests-main/legal-window.test.js` assert the renderer
+  against the **real** documents, so a document that grows a construct the renderer
+  cannot handle fails the suite rather than a reader.
+
+  Gates: `lint:ci` green (828 vs baseline 3916); editor `tests-main` 61/61 passing.
+  `npm run tsfixme` is **RED (+26 TSFixme, +26 any)** and was red before this task —
+  the working tree contains **no `.ts`/`.tsx` files at all**, so every one of the
+  four growing files is already-committed work from phase 30 and the workflow panels.
+  Not touched, not re-baselined.
+
+  **Owed:** acceptance criterion 5 — someone who did not write the documents reading
+  them and answering the question from the documents alone. That cannot be
+  self-certified, and it is the criterion the spec calls "the real test".
+
+  **Also owed:** the contact/entity section of both documents is a marked `TODO` in
+  an HTML comment (stripped before display). Richard needs to supply the publishing
+  entity, a contact address, and governing law before a public build. Everything
+  else in both documents is verified against the code.
+
+- **2026-07-31 — ALPHA-006 specced, ALPHA-004 re-scoped.** Richard asked whether the
+  docs should be rewritten from scratch on a modern framework. Reviewing
+  `The-Low-Code-Foundation/opennoodl-docs` answered half of that: **it is already
+  Docusaurus 3.1** with MDX, SCSS and local search, so there is no framework upgrade
+  to make. The content model is what needs replacing.
+
+  Two findings made this its own task rather than an ALPHA-004 note. **F70** — 35% of
+  the node library has no working page, concentrated entirely in what we built since
+  the revival. **F71** — the docs origin serves seven payload types, six of them not
+  documentation, so "move the docs into the repo" silently empties three panels if
+  done naively.
+
+  The disposition of the old repo's 431 authored files was measured, not estimated:
+  ~41k words of node pages are **superseded** by the enriched catalog (156/156 nodes
+  already carry better prose); `javascript/` (~8k) **ports near-verbatim** — checked
+  against `noodl-js-api.ts`, it accurately covers 13 of the 14 real namespaces, and
+  needs `Config` and `Env` adding; ~52k words of guides yield maybe 10k of salvaged
+  concepts; ~35k words **delete** because they describe the Noodl Cloud Service and
+  Dashboard (deleted by WF-007), Noodl-hosted git, AWS/GCP backend setup (superseded
+  by phases 19/26), and a Figma plugin with **zero** references left in the editor
+  source. The prefab library's 179 files / ~60k words stay on the content host, not
+  in this monorepo — they are coupled to the payload, and they are how the 413 MB
+  gets back in.
+
+  Richard's instinct to drop the assets is right and is the largest single saving:
+  1,621 PNGs and 315 MP4s all show the pre-refresh editor and are wrong after phases
+  23–28.
+
+  **Nothing built.** Four documents touched: ALPHA-006 created, ALPHA-004 re-scoped,
+  README and this file updated.
+
+- **2026-08-02 — ALPHA-007 specced, ALPHA-003 re-scoped.** Richard had built an
+  in-game feedback capture for a side project — screenshot, full state blob, severity,
+  filed to a local queue an agent then works through — and asked whether NodeGX could
+  do the same against GitHub issues for alpha testers.
+
+  It can, but not the obvious way. **A GitHub token cannot ship in an Electron app**
+  (`asar` is not encryption) and this repo is public, so "the app files the issue"
+  means a proxy we host, OAuth, or a pre-filled form the user submits. Working
+  through the four designs produced one non-obvious conclusion worth recording: the
+  pre-filled-form design **transmits nothing from the app** — the user's own browser
+  posts, under their own identity, to a payload they can read first. That is what
+  separates it from ALPHA-003, whose ALPHA-005 gate exists precisely because it
+  transmits. So it split out rather than being folded in, and it is now the only
+  Tier 2 task with no prerequisites.
+
+  Two things sharpened the design against the prior art. The game's report carries
+  the player's own save; **a NodeGX report carries someone else's project**, which can
+  contain a client's proprietary graph and their API keys — onto a public repo,
+  permanently. Hence the review-before-send screen and a redactor with a behavioural
+  acceptance criterion (§3, criterion 4). And Electron removes the prior art's
+  largest dependency outright: `webContents.capturePage()` replaces fetching
+  `html2canvas` from a CDN to rasterise the DOM.
+
+  Richard then added the consuming half — contributors with write access working the
+  queue from Claude Code via `gh`. That is what made it one task rather than two: both
+  halves share the issue body, so it gets a `render: json` **diagnostics fence** that is
+  legible to a human and parseable by an agent. Designing either half alone gets that
+  contract wrong.
+
+  **F72** came out of the scoping: the three issue forms have been declaring a
+  `needs-triage` label since 2026-07-30 that **has never existed**, so the queue they
+  promise is empty by construction and every report filed so far is unlabelled.
+
+  **Nothing built.** Four documents touched: ALPHA-007 created, ALPHA-003 §2 and
+  criterion 3 handed off, README and this file updated. The `/triage` skill's
+  reference implementation lives outside this repo (`~/vscode_projects/dead-weight`)
+  and is cited in ALPHA-007 §7 rather than copied.
+
+- **2026-08-06 — ALPHA-006 and ALPHA-007 were found already built, on branches nobody
+  merged.** The session opened intending to *write* them. Both had been built, tested
+  and committed on 2026-08-03 in worktrees (`wt-alpha-006`, `wt-alpha-007`), branched
+  from `bf35a9f4` — and left there while `cline-dev` moved **215 commits** past them.
+  ~3,858 lines: the bundled-catalog help panel, the whole report composer and
+  redactor, the label script, the prefill probe, ~900 lines of tests. Merged as
+  `80d221c0`.
+
+  **The lesson is not "merge your branches".** It is that a *completed, committed,
+  tested* body of work is as invisible as an uncommitted one if nothing in the
+  handover names the branch. The previous handover listed both tasks under "what an
+  agent can build now" — its highest-confidence instruction was to rebuild something
+  that already existed. **Before building anything a handover recommends, run
+  `git branch -a` and grep the log for the task ID.**
+
+  The merge produced two findings of its own. **Only three files conflicted**, not
+  the dozen predicted, because phase 39's POL-002 had independently found the same
+  Preact `JSX` namespace defect by the same route **three hours later** and made a
+  byte-identical fix — so ALPHA-006's `bc0d15b0` landed as a pure no-op. And POL-002
+  had done ALPHA-006 §6's job better (centralised `EXTERNAL_LINKS`, dropped the
+  Algolia dependency and lockfile) **but never updated `PRIVACY.md`** — which still
+  listed Algolia as a live flow receiving *"anything you typed"* three days after the
+  dependency was gone. **The privacy policy was more wrong than the code**, and only
+  merging the two halves surfaced it.
+
+  Also this session: **F65** deleted (four config files, not the three filed, plus a
+  fifth site — a `--api=` flag parsed into an env var nothing reads). **F63** replaced
+  with the OAuth **device flow** per Richard's decision; the pre-existing
+  `startDeviceFlow` turned out to be a stub that called the web flow and returned an
+  empty device code — *a device-flow API that never ran a device flow*. **ALPHA-002**
+  taken as far as it can go without credentials, yielding **F76** and **F77**. The
+  README stopped offering one-click installers for OpenNoodl 1.1.0, which is what a
+  stranger met first.
+
+  `test:main` went **688 → 878 passing** across the session. ⚠️ The handover's stated
+  baseline of "693 passing" was wrong; the real figure at `251a90f2` was **688**.
+
+  **ALPHA-003** was built and driven live in the same session, and its premise was
+  the finding: the log it was meant to *add* had existed since the fork, teeing every
+  `console.log` un-redacted and never pruned, in dev builds too (**F78** — the
+  `devMode` flag it was gated on has never been set in any build, and four separate
+  places in the tree asserted otherwise). The first sweep deleted **424 stale files**.
+  Three more findings fell out: **F79** (the merge driver dumping into a directory
+  nothing created, so the *first* failed merge on a fresh install recorded nothing)
+  and **F80** (the bug report form directing testers to a View menu that does not
+  exist — every tester who followed its own instructions found nothing).
+
+  **Gate sweep on the settled tree**, run by the orchestrator rather than taken from
+  any agent's report: `typecheck:runtime|cloud|viewer|editor|editor-tests` **clean** ·
+  `catalog:check` (172 nodes) / `cloud-library:check` (81) / `catalog:merge:check`
+  (172/172 enriched) **up to date** · `library:check` **58/58** · runtime **2298** ·
+  cloud-runtime **172** · nodegx-backend **97 suites / 1056** · observe **23** · mcp
+  **196** · **`Jasmine: 2391 specs, 0 failures`** · `test:main` **878 passing, 3
+  failing** — all three in `tests-unit/erg-005/`, a concurrent session's untracked
+  work, deliberately untouched.
+
+  **Still owed, and unmoved: the exit criterion.** Nothing here was demonstrated by
+  someone who is not Richard. **A3 — recruiting testers — remains the long pole, and
+  no amount of engineering shortens it.**
+
+- **2026-08-06 (later same day) — three Tier B decisions closed.** Richard decided
+  B3, B4 and B7 in one pass; all three executed and verified live rather than left
+  as decisions on paper.
+
+  **B3.** `The-Low-Code-Foundation/OpenNoodl` renamed to `.../NodeGX` (`gh repo
+  rename`; old name now redirects). Six files updated to match — `package.json`'s
+  `build.publish.repo`, `issueForm.ts`'s `ISSUE_REPO`, `legal-window.js`'s fallback
+  doc link, the issue template's contact link, the README badge/release link, and
+  `create-labels.sh`'s `REPO` var — `e8a53c94`. `tests-unit/alpha-007` (87) and the
+  `tests-main` suites covering `legal-window`/`issueForm` (210) re-run green.
+  Deliberately not touched: the README's product-name prose and the sibling
+  `opennoodl-hosting.com`/`opennoodl-cloudservice`/`opennoodl-better-backend` repo
+  names — REV-007 already scoped the rebrand to branding + packaging identity, not
+  prose or sibling repos.
+
+  **B4.** `scripts/alpha-007/create-labels.sh` run for real. Nine labels now live:
+  `needs-triage`, `node-library`, four `severity:*`, `triaged`, `needs-info`,
+  `cannot-reproduce`. F72's queue contract (`gh issue list --label needs-triage`) is
+  no longer empty by construction.
+
+  **B7.** Richard confirmed the Discord invite (`discord.gg/dZw4w5pKf9`) is live and
+  staffed — no product change needed. Found in passing: the issue template's
+  "Question or general discussion" link still points at `/discussions`, which is
+  off (`has_discussions: false`) — the same dead-link shape B7 was written to avoid,
+  just on the other channel. Left unowned in `HUMAN-GATED-ITEMS.md`, not filed as an
+  F-number (one-line config choice, not a mechanism defect).
+
+  **Not done this pass, and still the actual gates:** A1/A2 (signing secrets), B1
+  (legal entity/contact/jurisdiction), B2's two GitHub admin actions (revoke the
+  leaked secret, enable device flow), B5 (docs-CDN disposition), B6 (prefill probe —
+  needs a signed-in browser session), and A3 (testers). None of them are engineering.
+
+- **2026-08-07 — ALPHA-001 resumed, ALPHA-006 §1 re-verified, ALPHA-004 drafted.**
+  Three streams, two as background agents, one driven directly.
+
+  **ALPHA-006 §1**, sent to a background agent to re-verify against HEAD: already
+  done (`3dbd2914`, 2026-08-03, predates this session). `nodeDocs.ts` reads the
+  bundled catalog; all four named consumers are wired to it; 18/18 tests pass;
+  `typecheck:editor` clean; spot-checked `net.noodl.SSE`/`net.noodl.WebSocket` (two
+  of the previously-undocumented realtime nodes) both carry real enrichment. Nothing
+  to commit — confirms the phase-33 table row above was already accurate, not stale.
+
+  **ALPHA-004 §1/§2/§4**, also a background agent, genuinely new work (the task was
+  still "Specced", nothing built). Staged in a new `docs-site-content/` directory —
+  not wired into a site because ALPHA-006 §2 (the Docusaurus skeleton) doesn't exist
+  yet — 11 files, ~5,000 words: seven concept-set files (node/port/wire, signal vs
+  value, components, canvas and sheets, preview vs deployed, data, frontend vs
+  backend), a getting-started tutorial, and a sourced troubleshooting doc. Grounded
+  in `REACTIVITY-CONTRACT.md`/`PORT-TYPE-CONTRACT.md` and direct source reads rather
+  than invented — `COMMON-ISSUES.md`, the nominal troubleshooting source, turned out
+  to have zero user-facing content (all contributor/build issues), so the real
+  troubleshooting material came from grepping task NOTES and reading source
+  directly. Committed `fb0cc18f`. Spot-read live against the actual editor during
+  the ALPHA-001 pass below: "Quick Start" in the launcher's create-project modal
+  reads "Blank project with Modern preset" in the UI copy but the doc's claim that
+  it actually starts from an App+Router+Home+"Hello World!" template (not a blank
+  graph) was not independently re-verified this session — worth a two-minute check
+  before trusting the getting-started doc's step 1 literally.
+
+  **ALPHA-001 Part A, resumed** — phase 42bis (the 13-finding interruption) closed,
+  so this picked up at §2. Findings:
+
+  - §2 (import) and §3 (library install) turned out to already be **effectively
+    discharged**, not by ALPHA-001 itself but by LIB-005-NOTES.md §7–§10's live QA
+    (2026-07-26, 2026-08-02) running the identical checklist ALPHA-001 §2 cites
+    verbatim. This wasn't visible from the phase-33 table alone — it took reading
+    LIB-005-NOTES.md directly to see the checklist had already been walked.
+  - §4 and §6 were not reached — time went to §5 instead (see below) and ran out.
+  - §5 (PLAT-005 Parts A/B/D — variant persistence, token suggestions) hit the same
+    canvas-hit-testing wall the original PLAT-005 session recorded. New information
+    this time: `window.__nodeGraphEditor` is a real, live debug hook
+    (`nodegrapheditor.ts:300`), confirmed scoped to the open component via
+    `.model.owner.name === '/erg-rig'`, and the exact graph-to-screen transform was
+    found in source (`CanvasViewport.ts`'s `canvasToGraph`, inverted:
+    `screenCSS = (graphPos + panAndScale) * scale`, plus the canvas element's own
+    `getBoundingClientRect()` offset). None of that was enough: `forEachNode` only
+    ever yielded **one** top-level node (a `Group` with 5 children, all `Text`/one
+    `Button`), while the canvas was visibly rendering `Array Filter`, `Counter` and
+    `Object` nodes that never appeared in that enumeration anywhere. Where those
+    nodes actually live relative to the debug hook is unresolved and worth real
+    investigation — guessing pixel coordinates against a wrong mental model of the
+    node tree is how two harmless-but-unintended clicks happened (see below), not a
+    productive way to spend the next attempt's first hour.
+  - Two accidental clicks, both harmless and both instructive. One landed on the
+    fixture's observability "Record" HUD button, starting a trace with 0 events;
+    stopped cleanly via its own "Stop" button, no data lost. One landed on the
+    fixture's "PRESS" control, firing its signal once (counters 0000→1111) and
+    surfacing two *new* runtime warnings ("Fetch was triggered with no Id", "Nothing
+    to filter — no array is connected") on `Object` and `Array Filter`. Both are
+    the fixture's deliberately-incomplete signal-testing nodes reacting exactly as
+    designed, not defects — filed here as a non-finding so nobody re-discovers the
+    same warnings and mistakes them for a regression.
+  - **No product bugs found or fixed this pass.** The two candidates above resolved
+    to expected behaviour and a driving-tool gap, not defects — so there was nothing
+    to fix, not a missed obligation.
+  - Ran against the **live `userData` profile**, not a fresh one. The automated
+    move-aside of `~/Library/Application Support/NodeGX` was blocked by the
+    permission classifier (a reasonable block — it's outside the repo); offered
+    Richard the choice to do the swap by hand, grant the permission, or skip the
+    fresh-profile requirement, and he chose to skip it. §1's 2026-08-06 PASS result
+    is unchanged and was not re-verified fresh this session.
+
+  Stack stopped cleanly (`npm run dev:stop` — 28 processes, "Nothing left
+  running"). `git status` clean throughout; the only repo changes this session are
+  the ALPHA-004 content commit and this log.
+
+  **Still owed:** §4, §6, all of §5, and Part B (needs ALPHA-002's signed build).
+  The exit criterion is unchanged from 2026-08-06 — still blocked on people, not
+  code.
+
+- **2026-08-07 (later same day) — ALPHA-001 §4/§5/§6 closed, Part A complete.**
+  Measured at `ba682c1e`, tree clean throughout. Verified no concurrent session first
+  (the QA fixture's `project.json` mtime predated this session's `dev:debug` launch by
+  several minutes — stale from an earlier pass, not a live sibling).
+
+  **§4 — app-name round trip: PASS.** Used a disposable existing project
+  (`puppy-test-2`), not the shared QA fixture, to avoid mutating it unnecessarily. A
+  genuine trusted keystroke (`Input.insertText` after a real click + selection-range
+  clear, not a `.value` set) into the App Identity → App name field, confirmed the
+  field commits **on blur, not on every keystroke** — 11+ seconds of polling
+  `nodegx.project.json` with the field still focused showed no write at all. The real
+  test: set a new name, deliberately **never blurred**, then quit the whole app via a
+  real `Cmd+Q` sent through `osascript`/System Events (not `pkill`) to exercise the
+  graceful `before-quit` path. The edit **was** on disk after quit (the 2026-07-28
+  quit-flush fix), and relaunching + reopening the project showed the field correctly
+  populated in the UI, not just on disk. One residual noted, not new: an edit that
+  sits focused-and-unblurred for a long time with no crash and no quit has no
+  periodic autosave protecting it — already the documented, accepted shape of the
+  2026-07-28 fix (blur/quit are the two save triggers; a raw kill mid-edit was never
+  covered by either).
+
+  **§5 — PLAT-005 Parts A/B/D: root cause found, not just blocked again.** Two
+  sessions (2026-07-27, and an earlier pass today) had independently hit the same
+  wall — the suggestion banner never renders — and separately, `forEachNode` was
+  seen returning only one top-level node against a canvas visibly showing more.
+  Both resolved this session:
+
+  - The `forEachNode` mystery: reading `NodeGraphModel.forEachNode` and
+    `NodeGraphEditor.forEachNode` (`nodegrapheditor.ts:470`, delegating to
+    `HitTester.forEachNode(this.roots, …)`) plus `ModelBindings.ts:76-84` (which
+    populates `editor.roots` from *all* of `model.roots`, not a filtered subset)
+    showed no code-level reason for a partial enumeration. Live-tested directly
+    against `/erg-rig` (the same component the prior sessions used): `forEachNode`
+    correctly yielded all **12** nodes (`Group` + 5 `Text` + 4 `Counter` + `Model2` +
+    `Filter Collection`) — the 7 apparent top-level roots include 4 standalone
+    `Counter`s, an `Object` (`Model2`) and an `Array Filter` (`Filter Collection`)
+    that are graph siblings of the `Group`, not descendants — confirmed directly
+    against the project JSON (`roots` has 7 entries; `visualRoots` has only `["g"]`,
+    which is unrelated to what `forEachNode` walks). The prior sessions' one-node
+    reads were a timing/staleness artifact, not a real defect — not reproduced this
+    session under the same conditions.
+  - A reusable node-click helper was built on `cdp.js`'s own exported
+    `elementCentre`/`dispatchClick`/`evaluate`: read a node's `.global` position and
+    `.measuredSize` from the live `NodeGraphEditor`, apply
+    `CanvasViewport.canvasToGraph`'s inverse (`screenCSS = (global + panAndScale) *
+    scale`, plus the canvas element's own `getBoundingClientRect()` offset), and
+    dispatch a real trusted click. Landed pixel-exact on the first attempt against a
+    Button node — the canvas-hit-testing wall that blocked two prior sessions is
+    fully solved and reusable (not committed to `scripts/devtools/` this session;
+    lives only in this session's scratchpad, same caveat the 2026-08-06 handover
+    noted about its own click helper).
+  - **F102** — the actual root cause of the banner never appearing.
+    `StyleAnalyzerCore.scanNode()` (`StyleAnalyzerCore.ts:237-238`) does
+    `String(rawVal ?? '')` on every parameter value, assuming all style values are
+    strings. `borderRadius` is stored as `{value, unit}` (confirmed in the project
+    JSON), so `String({value:12,unit:'px'})` → `"[object Object]"`, which silently
+    fails the spacing-value regex. A Button set to 3 raw values
+    (`backgroundColor` raw hex, `borderRadius` raw px, `paddingTop` left as a token)
+    registered only **1** valid override, not 3 — one short of
+    `variantCandidateMinOverrides`. Reproduced from a **genuinely fresh** mount (full
+    page reload, destroying every React root, then reselecting the node) reading
+    values already persisted to disk — ruling out both candidate causes the
+    2026-07-27 session had separated but not confirmed (programmatic-vs-trusted
+    click, and mount-once staleness). This is why three independent live-QA attempts
+    across two sessions all failed the same way without ever being a tooling
+    problem.
+  - **F103** — found while isolating F102. The QA fixture's `erg-rig` and
+    `erg001-cloud` Buttons report `type.name === 'Button'` — the **deprecated** node
+    (`nodes-deprecated/controls/button.tsx:86-92`, `deprecated: true`), not the
+    current `net.noodl.controls.button` `ElementConfigRegistry` actually keys on.
+    `propertyeditor.ts:123` early-returns for any unregistered type, so the entire
+    `ElementStyleSectionHost` — variant picker, size picker, and the suggestion
+    banner all together — never mounts, with no error or visual sign. Confirmed by
+    contrast: `/Content/Changelog`'s Button (current type) correctly rendered the
+    full Variant/Size UI immediately on selection. Not a fresh-user risk —
+    `componentmodel.ts:293`'s `isCreatable` already blocks creating the deprecated
+    node from the NodePicker — but it means this exact fixture can never validate
+    PLAT-005 Part A no matter how it's driven, and any pre-existing or imported
+    project with old Buttons inherits the same silent gap.
+  - Part D (regression via the plain Variants UI, not the banner): not fully
+    walked, but the Changelog Button already carries a working `_variant: "primary"`
+    and the Variant/Size picker rendered and was interactive — indirect evidence the
+    underlying variant system itself is intact, independent of F102/F103.
+  - Part B (repeated-value token suggestions): not live-tested this session for time;
+    code review shows it shares `scanNode`/`buildRepeatedList` with Part A, and the
+    one live data point (`backgroundColor` as a plain string was correctly detected)
+    suggests the plain-string color path is sound, but the same object-coercion bug
+    would equally affect any spacing property using the object encoding — not fully
+    cleared.
+
+  **§6 — AI panels, no provider configured: PASS, but not the way intended.**
+  Checked `localStorage` and the `userData` root for AI credentials, found nothing,
+  proceeded on the assumption the profile was provider-free. It was not: clicking
+  "Build it" on a throwaway component request actually ran, made three real
+  `anthropic/claude-sonnet-5` API calls (~$0.06 total, visible in `.logs/dev.log` as
+  `[ai] anthropic/claude-sonnet-5 — … $0.025717` etc.), self-repaired an invalid
+  `sizeMode` enum value on its own, and staged a working "Say Hello" button for
+  Accept/Reject. **Settings → Editor → AI confirmed Provider: Anthropic (Claude),
+  Model: Claude Sonnet 5** — a real, working key already configured in this dev
+  profile, almost certainly left over from earlier AI-authoring task sessions
+  (phase 15/38/40), stored somewhere neither `localStorage` nor a shallow `userData`
+  scan reached (not tracked down further — not the point of this task, and not worth
+  more spend to satisfy curiosity). Rejected the staged change immediately;
+  confirmed zero trace in the project JSON afterward. Did **not** attempt to clear or
+  disable the real key to force a no-provider state — that's Richard's credential,
+  not mine to touch without asking. Verified the no-provider UX via source read
+  instead: every entry point (`AiAuthoringPanel.tsx`'s This-component/Project/Docs
+  scopes, and the canvas "Ask AI" pill routing into the same panel) calls
+  `AiClient.isConfigured()` and disables its submit button with an inline "No AI
+  provider is configured. Open Editor Settings to set one up." before any network
+  call; a bypassed check still throws a typed `AiNotConfiguredError` rather than
+  hanging or crashing. One minor gap: the message is plain text, not a clickable
+  deep link into the AI settings tab. Net: a well-handled first-hour experience,
+  confirmed by two independent methods (code path for the unconfigured case, live
+  accident for the configured case) rather than the one originally planned.
+
+  **ALPHA-004 spot-check discharged**: opened "New project → Quick Start", which
+  matches the doc's cited UI copy exactly ("Blank project with Modern preset. Name
+  it, pick a folder, and build."). Direct creation was blocked by the native macOS
+  folder-picker dialog (not reliably drivable via CDP; an `osascript`/System Events
+  attempt navigated but didn't confirm reliably, and the cost was disproportionate to
+  a "two-minute check") — cancelled cleanly, no stray project created. Fell back to
+  indirect evidence: `puppy-test-2`, an existing project, has exactly the
+  App+Router+Home+"Hello World!" shape the doc describes, not a literal blank graph.
+  Moderate-high confidence, not conclusive.
+
+  **Full gate sweep, re-run clean on the settled tree** (no source changes this
+  session — only fixture project files outside the repo were touched):
+  `typecheck:runtime|cloud|viewer|editor|editor-tests` clean · `catalog:check` (175
+  nodes, up to date) · `cloud-library:check` (84 nodes, up to date) · `library:check`
+  58/58 · runtime 2298 (13 skipped) · cloud-runtime 172 · nodegx-backend 1079 (99
+  suites, 10 skipped) · observe 23 · mcp 196 · `test:main` 933/933 in isolation (one
+  `aib-009/turnDeadline` failure under 4-way-parallel load, confirmed flaky —
+  reran clean twice) · **`test:ci` (Jasmine): 2418 specs, 0 failures**, up from 2391.
+  ⚠️ One pre-existing, not-caused-this-session gap: `catalog:merge:check` fails
+  `--require-coverage` — 3 catalog nodes (`noodl.cloud.addusertorole`,
+  `noodl.cloud.getuserroles`, `noodl.cloud.removeuserfromrole`) have no enrichment
+  entry. The catalog is now 175 nodes, up from the 2026-08-06 baseline's 172/172
+  fully-enriched — drift from other work between sessions, unrelated to anything
+  touched here, not investigated further.
+
+  Stack stopped cleanly (`npm run dev:stop` — 26 processes, "Nothing left
+  running").
+
+  **Still owed:** Part B (needs ALPHA-002's signed build) and PLAT-005 Part B's live
+  confirmation. ALPHA-001 Part A is otherwise complete — see the go/no-go verdict
+  this session's handover records.
+
+- **2026-08-07 — ALPHA-006 §5, the endpoint split (code half only).** With ALPHA-001
+  Part A closed, resumed §5 per the suggested order — "a mechanical rename that
+  de-risks everything after it." Measured the real call sites first rather than
+  trusting the spec's counts (which predate §1): `getDocsEndpoint()` had **12** live
+  consumer files (`grep -rl`, excluding the definition and the gitignored bundle),
+  not the spec's implied 10. New `utils/getContentEndpoint.ts` is a byte-for-byte
+  sibling of `getDocsEndpoint.ts` (same `useLocalDocs` override, same origin) —
+  split as its own module rather than wrapping the original, since the two are
+  meant to diverge later.
+
+  Six payload types moved to it (9 files): library (`modulelibrarymodel.ts`,
+  `ModuleCard.tsx`), lessons (`lessontemplatesmodel.js`, `ProjectsPage.tsx`'s lesson
+  thumbnails), tutorials (`tutorialsmodel.js`), what's-new
+  (`whats-new.ts`, `NewsModal.tsx`), and project templates
+  (`noodl-docs-template-provider.ts`, rewired through `forge/index.ts`). Three real
+  documentation consumers stayed on `getDocsEndpoint()`: `NodeLabel.tsx` and
+  `NodePicker.hooks.ts` (both "read more" links to a node's docs page — §1 rewrote
+  their fetch, not their link), and `McpSettingsSection.tsx` (a docs-page HEAD
+  probe not in the spec's original Finding 2 table — added after 2026-07-31).
+
+  Both endpoints still resolve to the same origin — this is the call-site split
+  only, not a hosting change. No data flow changed, so `PRIVACY.md` needed no edit.
+
+  Gates re-run clean: `typecheck:editor` 0 errors, `npx jest` from
+  `packages/noodl-editor` 933/933 (67 suites), `lint:ci` 860 errors vs a 3916
+  baseline, **`test:ci` (Jasmine): 2418 specs, 0 failures** — matching the
+  2026-08-07 ALPHA-001 baseline exactly, so nothing regressed.
+
+  **§5's other half — the actual disposition of `opennoodl-docs` (strip it to the
+  six payload types, decide the 413 MB asset question) — is still B5, unresolved,
+  and genuinely needs Richard.** Not attempted here. §2 (the new Docusaurus site)
+  and §3 (the generator) do not depend on B5 and are the next tractable slice —
+  ALPHA-004's authored content is already staged in `docs-site-content/` waiting
+  for a site to go into.
+
+- **2026-08-07 — ALPHA-006 §2 (the site) and §3 (the generator), both built.**
+  Continued straight on from §5 in the same session.
+
+  **§2.** A fresh Docusaurus 3 site at `docs-site/` (repo root, per spec), wired
+  as a real workspace member — added to root `workspaces` and `lerna.json`
+  `packages`, not just dropped on disk. `npm install` at the root pulled 574
+  packages for it; nothing in the existing 15 packages needed to change (React
+  19 in the editor and React 18 in `docs-site` coexist fine under npm's nested
+  node_modules — no forced hoist). Carried over from `opennoodl-docs` only what
+  §2 asked for: `@easyops-cn/docusaurus-search-local` for offline search (the
+  old site's hardcoded Algolia `docs_2-9` client is gone since §6). Did **not**
+  carry over the old SCSS — restyled as a light-touch pass instead, one
+  `custom.css` overriding Infima's primary-color tokens with the editor's own
+  azure-500/700 (`packages/noodl-core-ui/.../colors.css`), rather than porting
+  five bespoke `.scss` files built for Noodl's now-retired branding. Logo/
+  favicon reuse the existing "Noodle" mark (`Logo.tsx`'s geometry, baked to
+  static SVG since a navbar `<img>` can't inherit `currentColor`).
+
+  ALPHA-004's staged content (`docs-site-content/`) dropped into `docs-site/docs/`
+  almost verbatim, as its own README predicted — one broken cross-link fixed
+  (`concepts/README.md` → `concepts/index.md`, a rename Docusaurus's category
+  convention wants). **`docs-site-content/` still exists on disk, now a stale
+  duplicate — deleting it was blocked by the permission classifier as a
+  destructive action; it needs a human `git rm -r docs-site-content` or explicit
+  sign-off to remove.**
+
+  ⚠️ **`url`/`baseUrl`/`organizationName`/`projectName` in `docusaurus.config.js`
+  are explicitly marked provisional in a comment.** Where this actually
+  publishes to is entangled with B5 (does `opennoodl-docs` keep serving docs at
+  its current URL, or does something else). Not this session's call.
+
+  **§3.** `scripts/generate-node-docs.js`, wired as `npm run docs:nodes` /
+  `docs:nodes:check`. Reads `node-catalog-enriched.json` (172 nodes, 17
+  categories — both counts drift from the spec's 156/whatever and from each
+  other session to session; re-measure, don't inherit) and writes one page per
+  node under `docs-site/docs/nodes/<category-slug>/`, grouped by the catalog's
+  own `category` field — the same field the picker uses, so the old site's
+  Button-is-`ui-controls`-but-`Visual` disagreement is structurally impossible
+  now. Ports split into Values/Signals/Failure outputs (failure = `group ===
+  'Error'` or a name matching `/error|failure/i`); dynamic-port mechanisms,
+  `availableIn`, SSR compatibility, patterns, anti-patterns, examples (from the
+  catalog's own `examples` array) and related-node cross-links all render.
+  Deprecated nodes get a warning admonition instead of being silently omitted,
+  per the spec's rule 3.
+
+  The staleness gate deletes and regenerates `docs-site/docs/nodes/` from
+  scratch on every non-check run (no orphan pages when a node is renamed) and,
+  in `--check` mode, diffs the fresh output against what's on disk — missing,
+  stale and orphaned files are all reported by name, exit 1 on any of them.
+  Committed the generated output rather than gitignoring it, matching
+  `cloud-library:check`'s pattern elsewhere in this repo.
+
+  **One real bug caught by actually building the site, not just eyeballing the
+  generator's output**: Docusaurus 3 parses `.md` files as MDX by default, and
+  the catalog's own prose is full of MDX-breaking sequences it was never
+  written to avoid — `<name>` placeholders read as unclosed JSX tags, `{count}`
+  reads as a bare JS expression. `docusaurus.config.js` now sets
+  `markdown.format: 'detect'` so `.md` parses as plain CommonMark; the generator
+  never had to escape catalog text. Would not have been caught by unit-testing
+  the generator's string output alone — only `docusaurus build` actually runs
+  the MDX compiler.
+
+  Verified past "the code runs": `npm run docs-site:build` succeeds
+  (`onBrokenLinks: 'throw'`, so every internal cross-link — concept-to-concept,
+  node-to-related-node, sidebar — actually resolves), then served the build and
+  `curl`-checked real pages: headings, all 7 tables on a sample node page, the
+  "Generated" info admonition, and the local search index all present in the
+  rendered HTML.
+
+  Gates re-run clean on the settled tree: `typecheck:runtime|cloud|viewer|
+  editor|editor-tests` all clean, `catalog:check` (175 nodes — that's
+  `node-catalog.json`, the *structural* catalog `catalog:check` grades; the
+  *enriched* one this session's generator reads, `node-catalog-enriched.json`,
+  is a separate file at 172. Two different counts, not one drifting number —
+  worth not conflating them again), `cloud-library:check` clean, `library:check`
+  58/58, `docs:nodes:check` clean,
+  jest 933/933, `lint:ci` 860 vs. 3916 baseline (docs-site is outside its
+  target glob, confirmed unaffected), **`test:ci` (Jasmine): 2418 specs, 0
+  failures** — identical to every other measurement today. `catalog:merge:check
+  --require-coverage` still fails on the same pre-existing 3-node gap noted
+  earlier today (`noodl.cloud.addusertorole`/`getuserroles`/`removeuserfromrole`
+  have no enrichment) — not caused here, not re-investigated.
+
+  **Still owed on ALPHA-006:** §4 (the `MIGRATION.md` disposition table for
+  `opennoodl-docs`'s 431 authored files) and the rest of §5 (the actual repo
+  strip) — both need B5. A local clone of `opennoodl-docs` exists at
+  `~/Documents/opennoodl-docs` (outside this repo, not touched), which makes §4
+  more tractable than the spec assumed — it doesn't require a fresh clone,
+  just doesn't resolve B5's decision on its own.
+
+- **2026-08-07 — the coverage gap `catalog:merge:check --require-coverage`
+  had been failing on all day got closed, 172/175 → 175/175.** Richard asked
+  directly whether every node was actually documented; checking properly (not
+  just re-citing the earlier-noted gap) turned up two separate things:
+
+  1. **Three nodes were entirely absent from the generated docs, not just
+     thin** — `noodl.cloud.addusertorole`, `noodl.cloud.getuserroles`,
+     `noodl.cloud.removeuserfromrole` (the F86 role-management family) have
+     no enrichment authored for them at all, so they don't even appear in
+     `node-catalog-enriched.json`'s node list — §3's generator only iterates
+     that file, so it silently produced zero pages for them, no warning.
+  2. **The committed enriched catalog was separately stale relative to its
+     own authored inputs**, independent of the missing 3 — running
+     `node scripts/node-catalog/merge.js` with no `--check` (to see the real
+     diff before touching anything) showed one enrichment sentence, about
+     per-record access-control rules, had been updated in
+     `docs/node-catalog/enrichment/*.json` (to say the NodeGX backend
+     actually enforces them, not the old generic "some backends ignore
+     them") and never landed via `catalog:merge`. Affects `Record`/`db-
+     model2` and `Query Records`/`db-collection2`'s `accessControl` port
+     description on both the docs site and the in-editor help panel. **This
+     is the same failure mode as F76 and the register-drift pattern**: a
+     generation script exists and nobody re-ran it after the source changed.
+
+  Both are pre-existing gaps in the enrichment pipeline, predating this
+  session — not introduced by §3's generator, which is only as correct as
+  the catalog it reads.
+
+  Fixed: wrote three new enrichment files (`docs/node-catalog/enrichment/
+  noodl.cloud.{addusertorole,getuserroles,removeuserfromrole}.json`),
+  grounded in the actual node source (`packages/noodl-viewer-cloud/src/
+  nodes/cloud/{addusertorole,getuserroles,removeuserfromrole,system-
+  roles}.ts`, which is unusually well-commented — F86's own doc comments
+  carry most of the "why", not just the "what") and following
+  `PORT-DESCRIPTION-STYLE.md`'s pattern (verified against the sibling
+  `noodl.cloud.deleteuser.json`). Two summaries needed trimming to the
+  140-char limit `catalog:merge:check` enforces — not obvious from reading
+  the style guide alone, only from the gate rejecting the first draft. One
+  real miss caught by comparing port-name coverage programmatically rather
+  than trusting the prose looked complete: all three files were missing
+  `treatUnchangedAs` (a port every one of these nodes gets from the shared
+  `outcomeInputs` helper) on the first pass — added after counting `ports`
+  dict keys against actual port names and finding a mismatch.
+
+  Ran `catalog:merge` for real once coverage was 175/175 and the port-name
+  check passed, then `docs:nodes` to regenerate (194 files / 175 nodes),
+  then rebuilt the site and `curl`-verified the new `Add User To Role` page
+  end to end — all 7 tables, the "watch out for" list, and its related-node
+  links to `Get User Roles`/`Remove User From Role`/`Create User` all
+  resolving. Full gate sweep re-run clean, `catalog:merge:check` now passing
+  for the first time today: typecheck×5 clean, `catalog:check` clean,
+  `cloud-library:check` clean, `library:check` 58/58, `docs:nodes:check`
+  clean, jest 933/933, `lint:ci` unchanged at 860/3916, **`test:ci` (Jasmine):
+  2418 specs, 0 failures** — identical to every other measurement taken today.
+  The run took noticeably longer than usual (backgrounded past the 480s
+  foreground limit); nothing in this session touched runtime or editor
+  source, so almost certainly the known occluded-Electron timer clamp, not a
+  real slowdown.
+
+  Also started `npm run docs-site:start` (dev server, hot reload) for Richard
+  to look at directly before this lands — left running rather than killed, so
+  it may still be up depending on when this is read.
+
+- **2026-08-07 — B5 decided.** Richard asked "can we just move everything into
+  the main repo and deprecate the docs repo" after looking at the site.
+  Measured before answering rather than assuming: `opennoodl-docs` is 518 MB
+  now (not the spec's 413 MB), and **~336 MB of it is live payload**
+  (`static/library` 217 MB, `static/lessons` 87 MB, `static/projecttemplates`
+  32 MB) the running app actually fetches — only ~174 MB (`static/docs` +
+  `static/nodes`) is dead documentation media that gets deleted regardless of
+  where anything else lives. Answer: **the payload repo stays separate**, not
+  migrated — this repo has no git-lfs configured, so 336 MB of zips would be
+  permanent git history growth, taxing every future clone and worktree.
+  Matches Richard's own stated reasoning too: that repo is meant to take
+  community-contributed templates/lessons over time, and a lighter repo is an
+  easier PR target than the full engineering monorepo.
+
+  Follow-up: should the repo be renamed now that it's not a docs site?
+  Richard: yes, rename it (e.g. `nodegx-content`). That resolved the last open
+  piece — where `docs-site/` itself publishes. Landed on **this repo's own
+  GitHub Pages** rather than a third repo: `docs-site/` already lives here, so
+  a workflow using the repo's own built-in Actions token can deploy it, no
+  cross-repo credential needed. `docusaurus.config.js`'s `url`/`baseUrl` moved
+  from a `nodegx-docs` placeholder to the real target
+  (`the-low-code-foundation.github.io/NodeGX/`) — rebuilt clean with the new
+  baseUrl (`6165691e`). Recorded as two ordered GitHub admin actions in
+  `HUMAN-GATED-ITEMS.md` B5: rename the old repo first, **then** repoint
+  `getContentEndpoint()` at the new name — not before, or the editor fetches a
+  URL that doesn't exist yet. Neither action taken this session; both are
+  Richard's.
+
+- **2026-08-07 — ALPHA-006 §4, the migration table, done.** Unblocked by B5
+  without needing either GitHub action — it's pure classification against the
+  local `opennoodl-docs` clone at `~/Documents/opennoodl-docs`
+  (`7489e81`, 2025-12-06), no repo mutation. Wrote a small classifier script
+  (kept in scratchpad, not committed — this is a one-time disposition record
+  of a decision, not an ongoing sync target like §3's generator) that walked
+  all 431 authored `.md`/`.mdx` files and assigned each a fate by path rule,
+  cross-checked against the spec's own delete-list and folder assignments.
+  **Zero unclassified.** Counts: 112 generated/superseded (matches spec
+  exactly), 24 port-near-verbatim (spec said 23 — `docs/guides/editor/
+  keybindings.md` wasn't in the spec's javascript/ count, added it as its own
+  port-and-verify row), 33 salvage (matches spec exactly, plus 4 more found in
+  `docs/guides/visualizing-data/` the spec's named list didn't cover — same
+  concept-survives/walkthrough-doesn't pattern, applied by analogy), 69 delete
+  (spec said "60+" — the extra ~9 are `docs/build-alongs/*` (5, screenshot
+  tutorials) and `docs/getting-started/*` (8, superseded by ALPHA-004's fresh
+  version, plus `noodl-ai.md` describing a product NodeGX doesn't ship), the
+  spec's rough total absorbed some but not all of these), and a **5th fate the
+  spec's four-fate framing didn't name**: 193 files that are neither migrated
+  nor deleted — `library/` (179, prefab/module prose, phase 21's territory per
+  the spec's own relationship note), `.github/` templates, top-level repo meta
+  (README/LICENSE/CODE_OF_CONDUCT), and a prefab-authoring boilerplate, all of
+  which stay in the (renamed) content repo because they're coupled to payload
+  that also stays there. One exact duplicate caught: `static/docs/guides/
+  navigation/encoding-parameters-in-urls/README.md` is byte-identical to the
+  `docs/` copy already marked for salvage — classified separately as `Delete`
+  so it isn't double-counted as content to migrate.
+
+  `docs-site/MIGRATION.md`: a summary table (5 fates × folder-grouped reasons)
+  plus a collapsed `<details>` appendix listing all 431 exact paths, so the
+  count is auditable rather than asserted. **ALPHA-006 acceptance criterion 5
+  is now met.** Criterion 6 (no `noodl.net`/`docs_2-9` strings outside
+  gitignored bundles) is still not — the two remnants ALPHA-006-NOTES.md
+  already found (`AiSettingsSection.tsx:333`, `projectmodel.editor.ts:44`)
+  are untouched, out of scope for §4 specifically.
+
+  **What's actually left on ALPHA-006**: nothing engineering-shaped. The
+  migration table exists; the actual repo strip and Help Center repoint wait
+  on the two GitHub actions above, in order, same as always.
+
+- **2026-08-07 — the live regression from the prior handover, fixed and
+  verified; ALPHA-007's composer driven live for the first time; F104
+  found and fixed.** Two sessions' work, back to back.
+
+  **The stale-URL fix.** `HelpCenter.tsx:49` and `FailedStep.tsx:94` still
+  read `The-Low-Code-Foundation/OpenNoodl` — B3's rename session grepped for
+  `OpenNoodl` and missed both, which is exactly what produced the blank
+  GitHub issue Richard hit clicking "Report a bug" himself the same day
+  (`d7c3f131`). Fixed both, re-grepped clean across `packages/*/src`
+  (excluding gitignored bundles), and verified the fix **without** risking
+  another real external open: patched `electron.shell.openExternal` in the
+  running renderer to capture the URL instead of launching a browser, then
+  clicked "Report a bug" for real. Captured URL:
+  `https://github.com/The-Low-Code-Foundation/NodeGX/issues/new?template=bug_report.yml`
+  — correct repo, `?template=` intact. The composer's own URL builder
+  (`utils/report/issueForm.ts`'s `ISSUE_REPO`) was already correct; only the
+  two plain-link sites were stale.
+
+  **ALPHA-007, actually driven this time.** The prior session's own handover
+  explained why it never found the composer: `Help → Report a problem…` is a
+  native `Menu`/`MenuItem` in `main.js`, invisible to `npm run cdp` (renderer
+  DOM only). Restarted with `npm run dev:debug -- --inspect-main`, connected
+  to the main-process inspector on `:9229` with a small `ws`-based script
+  (`process.mainModule.require('electron')` — plain `require` is not a global
+  in that context, but `process.mainModule.require` is), and called
+  `Menu.getApplicationMenu()` → find `Help` → find `'Report a problem…'` →
+  `.click()`. That runs the exact same click handler a real menu selection
+  would, without displaying the native menu itself, so it does not exercise
+  the specific macOS-menubar-blur risk the build notes flagged (worth a real
+  mouse-driven pass sometime, but orthogonal to this test).
+
+  Opened the `NodeGX QA Fixture` project, opened the "All sheets" sheet-selector
+  popup, then triggered the composer while it was open: **criterion 2 is
+  real** — the popup was still visible behind the dialog live, and the
+  captured screenshot thumbnail *inside* the dialog shows it too. This was
+  one of the build notes' explicit "could not verify — needs the live editor"
+  items.
+
+  **F104, found and fixed en route.** With "What happened" filled in, the
+  composer's own content exceeded 90vh and the Send/Cancel buttons were
+  unreachable — Richard, watching live, hit this independently before the
+  cause was diagnosed ("I can't scroll the report a problem modal"). Root
+  cause: `packages/noodl-core-ui/.../BaseDialog.module.scss`'s `.VisibleDialog`
+  sets `overflow: hidden` with `max-height: 90vh` and no inner scroll
+  container — the `::-webkit-scrollbar` rules already written on the same
+  class were dead code, only ever mattering once this became `auto`. This is
+  a general `CoreBaseDialog` defect (every dialog built on it, not just this
+  one) — the build notes' own "possible defect, out of scope" section flagged
+  a *different* z-index risk on the same component and explicitly could not
+  test it live; this is a second, unrelated defect on the same component,
+  found by the same kind of live pass. Fixed with `overflow-y: auto` /
+  `overflow-x: hidden` (`022fb20a`), reloaded, and re-verified end to end:
+  dialog scrolls, buttons reachable, popup still visible behind it.
+
+  **Then drove Send itself**, patching `shell.openExternal` in the renderer
+  again (same capture-not-open technique) rather than actually opening a
+  browser — B6 still needs a real signed-in browser pass, which this
+  deliberately did not attempt, to avoid repeating the exact accidental
+  real-issue-filing the prior session hit. The captured URL (3.1KB, under the
+  6KB budget) carried every field correctly: `what-happened`, `surface`,
+  `severity` (with its em dash), `version`, `os`, `fresh-project`, a redacted
+  `errors` tail (an Electron CSP warning's own URL correctly collapsed to
+  `<url>` — a real redaction firing on real output, not just the fixture
+  suite), and the full `diagnostics` JSON matching the spec's schema
+  (`schema: 1`, bucketed `nodeTypes`, no project content). The on-disk bundle
+  (`<userData>/reports/<reportId>/`) held exactly `report.md` +
+  `diagnostics.json` + `screenshot.jpg` as specced, confirmed by reading all
+  three; cleaned up after. Not attempted: criterion 4's hostile-fixture
+  demonstration (the existing 87-test unit suite covers this; this session's
+  QA-fixture project had nothing hostile in it to test against), criterion 1
+  (packaged build), Windows/Linux reveal-in-file-manager.
+
+  Full stack stopped cleanly (`npm run dev:stop`) at the end; `typecheck:editor`
+  clean on both fixes.
+
+- **2026-08-07 (third session) — ALPHA-007 criterion 4, demonstrated live.**
+  The prior two sessions both explicitly deferred this: "the existing 87-test
+  unit suite covers this" is exactly the "argued rather than demonstrated"
+  criterion 4 forbids. This session built the hostile fixture for real and drove
+  it through the actual composer.
+
+  **The fixture.** `~/vscode_projects/NodeGX test projects/alpha007-hostile-fixture`
+  (legacy monolithic `project.json`, generated, not committed — it exists only
+  to be hostile). A component named `Acme Legal Client Portal` holding Text
+  nodes whose parameters carry an Anthropic-shaped API key, an AWS key id, a
+  password, a reporter email, a path outside the project root
+  (`/Volumes/ClientShare/Acme Legal/rates-2026.xlsx`) and one under `$HOME`, plus
+  a node of an unregistered type (`com.acmelegal.internal.BillingWidget`) —
+  and `metadata.cloudservices` pointing at a fictitious
+  `acme-legal-internal.example.com` endpoint with `appId: acme-legal-prod`.
+  `npm run validate:project` passes clean (0 errors, 1 expected warning for the
+  unresolved type). Opened not through the native file dialog (unscriptable)
+  but by patching `dialog.showOpenDialog` on the main-process inspector to
+  return the fixture's path, then clicking the launcher's real "Open project…"
+  button (`[data-test=launcher-open-project]`) — the ordinary `openDialog` →
+  `openProjectFromFolder` → `router.route({to:'editor'})` path ran unmodified.
+
+  **The error tail.** Seven `console.error`/`console.warn` calls from the
+  renderer, mirroring `hostile-fixture.test.ts`'s own fixture almost exactly
+  (a failed fetch carrying the endpoint and API key as a query param, an ENOENT
+  on the outside path, a warn on the home path, a stack frame naming the
+  component-as-filename, a rejected sign-in naming the reporter's email, a
+  Parse-shaped `{"masterKey":...,"appId":...}` line, and an uncaught-error
+  line). Confirmed captured in the live ring buffer via
+  `errorTail.ts`'s `getErrorTail()`, called through the `webpackChunknoodl_editor`
+  require-capture trick already used by `scripts/pol39-live/*`.
+
+  **Drove the real composer, not a mock.** `Menu.getApplicationMenu()` →
+  `Help` → `'Report a problem…'.click()` (same recipe as the prior sessions).
+  Typed a real "what happened", expanded the composer's own "What gets sent"
+  disclosure and read the live-rendered JSON straight out of the DOM — every
+  secret already absent there. Clicked "Open GitHub with this filled in" for
+  real this time (deliberately, to get the actual composed URL rather than
+  arguing from the preview alone) — this **does** open a real browser tab
+  (Firefox, confirmed via `osascript`/System Events), since `platform.openExternal`
+  in `platform-electron.ts` imports `shell` directly into the **renderer**, not
+  the main process; a same-session attempt to intercept it via the main-process
+  inspector patched the wrong process and silently no-opped. Recovered by
+  reading the composed URL off the OS clipboard (`Cmd+L`, `Cmd+C` via System
+  Events) and closing the tab with `Cmd+W` before anything was submitted — no
+  issue was filed. **Correction for future sessions: `shell.openExternal` must
+  be patched in the renderer (`require('electron').shell` via `npm run cdp --
+  eval`), not on the main-process inspector — they are different bindings and
+  patching one does not affect the other.**
+
+  **The verdict.** Decoded and parsed the real captured URL (all nine fields:
+  `template`, `what-happened`, `surface`, `severity`, `version`, `os`,
+  `fresh-project`, `errors`, `diagnostics`), plus the on-disk
+  `report.md`/`diagnostics.json`, and grepped both — raw and decoded/parsed,
+  per the unit test's own discipline against percent-encoding — for all twelve
+  hostile strings (the API key, the AWS key, the endpoint URL and bare host,
+  the client name, both outside paths, the private module name, the password,
+  the email, the app id). **None appeared anywhere.** The `diagnostics.project`
+  block showed `"format": "legacy"`, `"components": 4`, a `nodeTypes` histogram
+  bucketing the private module under `<unknown>` and never naming the
+  component, and `"backendConfigured": true, "backendType": "parse"` with the
+  endpoint itself absent — exactly the allow-list design in `diagnostics.ts`
+  working as documented. The error tail redacted the fetch line to `Failed to
+  fetch <url>` (endpoint and key both gone), both outside paths to `<path>`,
+  the Parse-shaped JSON line to `{"masterKey":[redacted],"appId":[redacted]}`,
+  and the email to `[redacted-email]`. **One observation, not a defect**: the
+  ring buffer actually held 8 entries at capture time, not 7 — the 8th was a
+  genuine, unprompted Electron CSP security warning logged ~4.7 minutes
+  earlier, correctly excluded by `formatErrorTail`'s own documented 5-minute
+  `windowMs` ("the last few minutes" per §3), not by anything redaction-related.
+  The screenshot in the bundle *does* show the hostile project's own on-canvas
+  text (`Welcome, Acme Legal`) in plain sight — deliberate, not a leak: the
+  composer shows the reporter the screenshot before they choose to send, the
+  same human-in-the-loop model B6 already relies on for the rest of the form.
+
+  **Criterion 4 is met.** Cleaned up after: restored both main-process patches
+  (`dialog.showOpenDialog`, `electron.shell.openExternal`) to their originals,
+  deleted the real report bundle from `<userData>/reports/`, cleared the OS
+  clipboard, closed the browser tab, stopped the stack
+  (`npm run dev:stop` — 25 processes, clean). The fixture project itself was
+  left in place (uncommitted, outside the repo) for any future re-verification
+  rather than rebuilt from scratch each time.

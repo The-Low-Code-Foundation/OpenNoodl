@@ -1,0 +1,46 @@
+{
+  "id": "code-http-request-with-error-handling",
+  "title": "HTTP Request with scripted post-processing and error display",
+  "description": "HTTP Request (net.noodl.HTTP) fetches the `url` when `fetch` fires and delivers `response` (parsed body), `statusCode`, and either `done` or `failure` with `error` — plus `completed` after either, to carry on regardless. The response is post-processed by a Script node (Javascript2), whose input/output ports are declared by its own code — here it reads `Inputs.response` and produces a `headline` output. Errors surface as a level: `failure` evaluates a Condition whose `result` shows the error text.",
+  "demonstrates": ["net.noodl.HTTP", "Javascript2"],
+  "components": [
+    {
+      "name": "/News Widget",
+      "nodes": [
+        {
+          "id": "root",
+          "type": "Group",
+          "label": "Widget",
+          "parameters": { "flexDirection": "column" },
+          "children": ["load_btn", "headline_text", "error_text"]
+        },
+        { "id": "load_btn", "type": "net.noodl.controls.button", "label": "Load", "parent": "root", "parameters": { "label": "Load news" } },
+        { "id": "headline_text", "type": "Text", "label": "Headline", "parent": "root" },
+        { "id": "error_text", "type": "Text", "label": "Error", "parent": "root" },
+        {
+          "id": "news_request",
+          "type": "net.noodl.HTTP",
+          "label": "GET news",
+          "parameters": { "url": "https://example.com/api/news/latest" }
+        },
+        {
+          "id": "pick_headline",
+          "type": "Javascript2",
+          "label": "Extract headline",
+          "parameters": {
+            "code": "script.inputs = { response: 'object' };\nscript.outputs = { headline: 'string' };\nscript.run = function (inputs, outputs) {\n  outputs.headline = inputs.response && inputs.response.items ? inputs.response.items[0].title : '';\n};"
+          }
+        },
+        { "id": "failed_gate", "type": "Condition", "label": "Show error" }
+      ],
+      "connections": [
+        { "fromId": "load_btn", "fromProperty": "onClick", "toId": "news_request", "toProperty": "fetch" },
+        { "fromId": "news_request", "fromProperty": "response", "toId": "pick_headline", "toProperty": "response" },
+        { "fromId": "pick_headline", "fromProperty": "headline", "toId": "headline_text", "toProperty": "text" },
+        { "fromId": "news_request", "fromProperty": "error", "toId": "error_text", "toProperty": "text" },
+        { "fromId": "news_request", "fromProperty": "failure", "toId": "failed_gate", "toProperty": "eval" },
+        { "fromId": "failed_gate", "fromProperty": "result", "toId": "error_text", "toProperty": "visible" }
+      ]
+    }
+  ]
+}

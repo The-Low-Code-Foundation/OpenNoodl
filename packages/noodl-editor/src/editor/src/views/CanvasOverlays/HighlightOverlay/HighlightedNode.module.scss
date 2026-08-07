@@ -1,0 +1,71 @@
+/**
+ * HighlightedNode styles
+ *
+ * Styles for node highlight overlays with different visual effects.
+ */
+
+.highlightedNode {
+  position: absolute;
+  pointer-events: none;
+  border: 3px solid;
+  border-radius: 8px;
+  box-sizing: border-box;
+  z-index: 1000;
+
+  // Label styling
+  .label {
+    position: absolute;
+    top: -24px;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 4px 8px;
+    background: rgba(0, 0, 0, 0.8);
+    color: white;
+    font-size: 11px;
+    font-weight: 600;
+    border-radius: 4px;
+    white-space: nowrap;
+    pointer-events: none;
+  }
+}
+
+// Solid style - simple static border
+.solid {
+  // Base styles applied from .highlightedNode
+  // No animations
+}
+
+// Glow style - constant glow effect
+.glow {
+  // Box-shadow applied inline via style prop for dynamic color
+  animation: glow-breathe 2s ease-in-out infinite;
+}
+
+// Pulse style - animated scaling effect
+.pulse {
+  animation: pulse-scale 1.5s ease-in-out infinite;
+}
+
+// Glow breathing animation
+@keyframes glow-breathe {
+  0%,
+  100% {
+    opacity: 0.8;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+// Pulse scaling animation
+@keyframes pulse-scale {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.9;
+  }
+  50% {
+    transform: scale(1.02);
+    opacity: 1;
+  }
+}

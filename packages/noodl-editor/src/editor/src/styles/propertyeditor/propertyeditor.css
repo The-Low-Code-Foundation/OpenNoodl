@@ -7,19 +7,22 @@
   height: 100%;
 }
 
+/* UIX-011: was a `-webkit-mask-image` of editor/reset-to-default.svg tinted by
+   `background`. That mask *did* theme correctly, but it is now a core-ui
+   <Icon> child so a single mechanism covers every chrome glyph and the
+   url()-to-SVG gate can be asserted at zero. Same 16x16 box, same origin;
+   `color` replaces `background` as the paint source. */
 .property-changed-dot {
   position: absolute;
   top: 9px;
   left: 4px;
   height: 16px;
   width: 16px;
-  -webkit-mask-size: contain;
-  -webkit-mask-image: url(../assets/icons/editor/reset-to-default.svg);
-  background: var(--theme-color-fg-default);
+  color: var(--theme-color-fg-default);
 }
 
 .property-changed-dot:hover {
-  background-color: var(--theme-color-fg-highlight);
+  color: var(--theme-color-fg-highlight);
   cursor: pointer;
 }
 
@@ -29,57 +32,109 @@
   top: 12px;
   height: 10px;
   width: 10px;
-  background-color: #555;
+  background-color: var(--theme-color-fg-muted);
   border-radius: 50%;
 }
 
+/* Field-row grid (UIX-004): a compact label column, left-aligned, giving the
+   value a wide, consistent track — matching the mock. Was a 150px
+   right-aligned column that crowded values in the narrow panel.
+
+   FH-013: the label used to be `white-space: nowrap` + ellipsis in an
+   absolutely-positioned 62px box, with `.property-value` pinned at
+   `left: 72px`. That is why "Custom CSS" rendered as "Custom C…" and why
+   widening the panel did not help. The label is now flow text that wraps; the
+   rows that pair a label with a value opt into `.property-row` (below), which
+   is the flex row that used to be faked with two absolutely-positioned boxes.
+   `.property-value` keeps its absolute geometry for the one consumer that
+   positions it itself (MarginPaddingInput's edit box). */
 .property-label {
-  line-height: 35px;
-  padding-right: 10px;
+  line-height: 1.35;
+  padding-left: 10px;
+  padding-right: 8px;
   color: var(--theme-color-fg-default);
-  text-align: right;
-  white-space: nowrap;
-  width: 150px;
-  position: absolute;
+  text-align: left;
+  overflow-wrap: anywhere;
 }
 
 .property-value {
   position: absolute;
-  left: 160px;
+  left: 72px;
   right: 10px;
   top: 1px;
   bottom: 1px;
 }
 
+/* FH-013: a legacy label+value row in flow layout. The label column matches the
+   React rows' behaviour — a 62px floor, proportional growth, a 160px ceiling —
+   and the value takes the rest. `position: relative` is kept on the value so
+   the inputs inside it, which are `position: absolute; width/height: 100%`,
+   still resolve against it; the explicit height gives those percentages
+   something definite to resolve against. */
+.property-row {
+  display: flex;
+  align-items: center;
+  gap: 0;
+}
+
+/* `.property-label-col` is for the rows whose label is wrapped in a <Tooltip>,
+   which inserts two divs between the row and the label — the column has to be
+   the flex item, so it cannot always be the label itself. */
+.property-row > .property-label,
+.property-row > .property-label-col {
+  position: static;
+  flex: 0 0 auto;
+  width: 37%;
+  min-width: 62px;
+  max-width: 160px;
+}
+
+.property-row > .property-value {
+  position: relative;
+  left: auto;
+  right: auto;
+  top: auto;
+  bottom: auto;
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 28px;
+  margin-right: 10px;
+}
+
+/* PAR-002: legacy dropdown lists read as raised cards. */
 .property-input-dropdown {
   position: absolute;
   z-index: 10;
-  /* overflow:scroll;*/
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-popup);
+  overflow: hidden;
+  background-color: var(--theme-color-bg-1);
 }
 
 .property-input-dropdown-arrow {
-  color: #7b7b7b;
+  color: var(--theme-color-fg-muted);
 }
 
 .property-input-dropdown-arrow:hover {
-  color: #f8f8f8;
+  color: var(--theme-color-fg-highlight);
 }
 
 .property-input-enum:hover {
-  background-color: #555555;
+  background-color: var(--theme-color-bg-3);
   cursor: pointer;
 }
 
 .property-input-enum {
-  background-color: #000000;
-  color: #f8f8f8;
+  background-color: var(--theme-color-bg-1);
+  color: var(--theme-color-fg-highlight);
   min-height: 30px;
   line-height: 30px;
   padding-left: 10px;
 }
 
 .property-input-enum + .property-input-enum {
-  border-top: 1px solid #2e2e2e;
+  border-top: 1px solid var(--theme-color-border-subtle);
 }
 
 .property-input-connected {
@@ -92,12 +147,12 @@
 }
 
 .property-input-focused {
-  color: #f8f8f8;
-  background-color: #000000;
+  color: var(--theme-color-fg-highlight);
+  background-color: var(--theme-color-bg-0);
 }
 
 .property-input-color {
-  background-color: #222222;
+  background-color: var(--theme-color-bg-2);
 }
 
 .property-input-color-hidden {
@@ -115,8 +170,8 @@
 }
 
 .property-input-textarea:focus {
-  color: #f8f8f8;
-  background-color: #000000;
+  color: var(--theme-color-fg-highlight);
+  background-color: var(--theme-color-bg-0);
 }
 
 .property-input-textarea-bg {
@@ -125,37 +180,123 @@
   margin-right: 10px;
 }
 
-.property-group-label {
-  padding: 12px 6px;
-  display: block;
-  color: var(--theme-color-fg-highlight);
-  font-weight: var(--font-weight-semibold);
+/* Section rhythm (PAR-002, mock `.section` + `.props-scroll`): the ports
+   groups get the mock's 16px gutter and 13/15px vertical rhythm; hairline
+   between sections, none after the last. */
+.sidebar-property-editor .groups {
+  margin-top: 0;
+  padding: 6px 16px 16px;
+}
+
+.property-group {
+  padding: 13px 0 15px;
 }
 
 .property-group:not(:last-child) {
-  border-bottom: 1px solid var(--theme-color-bg-1);
+  border-bottom: 1px solid var(--theme-color-border-default);
 }
 
-.property-header-bar {
-  background-color: var(--theme-color-bg-2);
-  border-bottom: 1px solid var(--theme-color-bg-1);
-  position: relative;
+/* Section title (UIX-004): uppercase micro-label, muted, with wide tracking —
+   the mock's section rhythm. Reads as a divider label, not body text. */
+.property-group-label {
   display: flex;
   align-items: center;
+  color: var(--theme-color-fg-muted);
+  font-size: 10.5px;
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  margin-bottom: 10px;
 }
 
-.header-name-edit-container {
-  min-height: 35px;
-  font: bold 12px var(--font-family-regular);
+/* Panel header (PAR-002, mock `.props-head`): column layout — name row +
+   type-chip — on the panel ground with a hairline below. */
+.property-header-bar {
+  border-bottom: 1px solid var(--theme-color-border-default);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding: 9px 16px 12px;
 }
 
-.property-header-bar-label {
-  color: #f8f8f8;
-  font: 12px var(--font-family-regular);
-  padding: 10px 0 10px 10px;
+.property-header-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+/* PNL-007: the node name at rest is text, not a field. Editing swaps in a real
+   bordered input; until then this is a span you can double-click, or focus and
+   press Enter/F2. The hover rule is the only affordance it needs. */
+.property-header-name-trigger {
+  flex-grow: 1;
+  min-width: 0;
+}
+
+.property-header-name {
+  display: block;
+  /* Hug the name so the hover rule underlines the text, not the empty space
+     between it and the action rail. */
+  width: fit-content;
+  max-width: 100%;
+  font-family: var(--font-family);
+  font-size: 14.5px;
+  font-weight: var(--font-weight-semibold);
+  color: var(--theme-color-fg-highlight);
+  line-height: 20px;
+  padding: 4px 2px;
+  border-radius: var(--radius-default);
+  border-bottom: 1px solid transparent;
+  cursor: text;
+  user-select: none;
+
+  /* One line, ellipsised, so a long name cannot push the action rail off. */
+  overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  overflow: hidden;
+}
+
+.property-header-name:hover {
+  border-bottom-color: var(--theme-color-border-strong);
+}
+
+.property-header-name:focus-visible {
+  outline: 2px solid var(--theme-color-primary);
+  outline-offset: 1px;
+}
+
+/* The mock's two 26px header icon buttons (docs / delete; edit kept). */
+.property-header-icon-button {
+  width: 26px;
+  height: 26px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex: none;
+}
+
+/* Type-chip (UIX-004b deferral, closed by PAR-002): `TYPE · CATEGORY`,
+   colored by node category. color + background are set inline from the
+   category token (see NodeLabel.tsx). */
+.property-type-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--font-family);
+  font-size: 10.5px;
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  border-radius: var(--radius-default);
+  padding: 2.5px 7px;
+  width: fit-content;
+  white-space: nowrap;
+}
+
+.property-type-chip svg {
+  flex: none;
 }
 
 .property-panel-header-edit-bar {
@@ -163,29 +304,27 @@
   right: 0;
 }
 
-.property-panel-header-edit-button {
-  width: 35px;
-  height: 35px;
-}
-
 .property-editor-highlight {
-  color: #ffa300;
+  color: var(--theme-color-primary);
 }
 
 .property-editor-highlight:hover {
-  background-color: #ffa300;
-  color: #f8f8f8;
+  background-color: var(--theme-color-primary);
+  color: var(--theme-color-on-primary);
 }
 
+/* PAR-002: code-editor launch button adopts the input-box treatment. */
 .property-codeeditor-button {
-  background-color: var(--theme-color-bg-3);
-  border: none;
+  background-color: var(--theme-color-bg-2);
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: var(--radius-md);
   color: var(--theme-color-fg-default);
   margin: 0px;
+  transition: border-color var(--speed-turbo), color var(--speed-turbo);
 }
 
 .property-codeeditor-button:hover {
-  background-color: var(--theme-color-bg-1);
+  border-color: var(--theme-color-border-strong);
   color: var(--theme-color-fg-highlight);
 }
 
@@ -195,19 +334,19 @@
 }
 
 .property-number-unit-enum {
-  background-color: #000000;
-  color: #f8f8f8;
+  background-color: var(--theme-color-bg-1);
+  color: var(--theme-color-fg-highlight);
   height: 30px;
   line-height: 30px;
   cursor: default;
 }
 
 .property-number-unit-enum + .property-number-unit-enum {
-  border-top: 1px solid #2e2e2e;
+  border-top: 1px solid var(--theme-color-border-subtle);
 }
 
 .property-number-unit-enum:hover {
-  background-color: #555555;
+  background-color: var(--theme-color-bg-3);
 }
 
 .property-dimension-fixed-disabled {
@@ -225,47 +364,40 @@
   opacity: 1;
 }
 
+/* UIX-011: the glyph now comes from a core-ui <Icon> child (PropertyTabs.tsx),
+   not a `content: url()` background — the old SVGs had baked white fills and
+   could not follow the theme. The 32x32 box is unchanged. */
 .property-tab-icon {
   width: 32px;
   height: 32px;
+  color: var(--theme-color-fg-default);
 }
 
-.property-tab-icon.borders-all {
-  content: url('../assets/icons/property-tab-borders-all.svg');
+/* BCN-010 — a port the chosen backend cannot serve.
+   The control is dimmed and inert; the sentence under it is the deliverable.
+   Amber rather than red: phase 23's colour law reserves red for danger, and
+   "this backend does not do that" is information, not an error. */
+.property-capability-gated {
+  display: block;
 }
 
-.property-tab-icon.borders-left {
-  content: url('../assets/icons/property-tab-borders-left.svg');
+.property-capability-gated-control {
+  pointer-events: none;
+  opacity: 0.35;
+  filter: saturate(0.4);
 }
 
-.property-tab-icon.borders-right {
-  content: url('../assets/icons/property-tab-borders-right.svg');
+.property-capability-reason {
+  margin: 2px 8px 8px 8px;
+  padding-left: 6px;
+  border-left: 2px solid var(--theme-color-warning);
+  color: var(--theme-color-fg-default);
+  font-size: 10px;
+  line-height: 1.35;
+  opacity: 0.85;
 }
 
-.property-tab-icon.borders-bottom {
-  content: url('../assets/icons/property-tab-borders-bottom.svg');
-}
-
-.property-tab-icon.borders-top {
-  content: url('../assets/icons/property-tab-borders-top.svg');
-}
-
-.property-tab-icon.corners-all {
-  content: url('../assets/icons/property-tab-corners-all.svg');
-}
-
-.property-tab-icon.corners-top-left {
-  content: url('../assets/icons/property-tab-corners-top-left.svg');
-}
-
-.property-tab-icon.corners-top-right {
-  content: url('../assets/icons/property-tab-corners-top-right.svg');
-}
-
-.property-tab-icon.corners-bottom-left {
-  content: url('../assets/icons/property-tab-corners-bottom-left.svg');
-}
-
-.property-tab-icon.corners-bottom-right {
-  content: url('../assets/icons/property-tab-corners-bottom-right.svg');
+/* A `degraded` port still works, so it is not dimmed — only annotated. */
+.property-capability-gated[data-capability-state='degraded'] .property-capability-reason {
+  border-left-color: var(--theme-color-notice-dim);
 }

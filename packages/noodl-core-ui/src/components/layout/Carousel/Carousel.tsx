@@ -45,7 +45,7 @@ export function Carousel({ activeIndex, items, indicator }: CarouselProps) {
       <div style={{ overflow: 'hidden' }}>
         <HStack UNSAFE_style={{ width: items.length * 100 + '%' }}>
           {items.map((item, index) => (
-            <VStack key={index} ref={(ref) => (sliderRefs.current[index] = ref)} UNSAFE_style={{ width: '100%' }}>
+            <VStack key={index} ref={(ref) => { sliderRefs.current[index] = ref; }} UNSAFE_style={{ width: '100%' }}>
               {item.slot}
             </VStack>
           ))}

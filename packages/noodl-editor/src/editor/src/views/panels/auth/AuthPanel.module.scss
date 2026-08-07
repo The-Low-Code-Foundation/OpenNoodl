@@ -1,0 +1,164 @@
+/**
+ * AuthPanel styles (BAK-004). Same token vocabulary and structure as the
+ * Search/Email/Permissions overlays, so the family reads as one design.
+ */
+
+.Root {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  max-height: 80vh;
+  width: 100%;
+  max-width: 900px;
+  background-color: var(--theme-color-bg-2);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.Header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px;
+  border-bottom: 1px solid var(--theme-color-border-default);
+  background-color: var(--theme-color-bg-3);
+}
+
+.HeaderIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background-color: var(--theme-color-primary);
+  border-radius: 6px;
+  color: var(--theme-color-fg-on-primary);
+}
+
+.Body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+}
+
+.Section {
+  padding: 14px;
+  margin-bottom: 14px;
+  background-color: var(--theme-color-bg-1);
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: 6px;
+}
+
+.ErrorBanner {
+  padding: 10px 12px;
+  margin-bottom: 12px;
+  border-radius: 6px;
+  background-color: var(--theme-color-danger-shade, rgba(200, 60, 60, 0.15));
+  border: 1px solid var(--theme-color-danger);
+}
+
+.NoticeBanner {
+  padding: 8px 12px;
+  margin-bottom: 12px;
+  border-radius: 6px;
+  background-color: var(--theme-color-success-shade, rgba(60, 160, 90, 0.15));
+  border: 1px solid var(--theme-color-success);
+}
+
+.WarningBanner {
+  padding: 10px 12px;
+  margin-bottom: 12px;
+  border-radius: 6px;
+  background-color: var(--theme-color-notice-shade, rgba(200, 160, 60, 0.15));
+  border: 1px solid var(--theme-color-notice);
+}
+
+.SpreadRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.ProviderRow {
+  padding: 12px 0;
+  border-top: 1px solid var(--theme-color-border-subtle, var(--theme-color-border-default));
+
+  &:first-of-type {
+    border-top: none;
+  }
+}
+
+.ProviderHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  gap: 8px;
+}
+
+/**
+ * The callback URL. Selectable and wrapping on purpose: the operator has to
+ * copy this exact string into a provider console, and a truncated one is the
+ * most expensive mistake in the whole setup.
+ */
+.CallbackUrl {
+  display: block;
+  padding: 6px 8px;
+  margin: 6px 0;
+  background-color: var(--theme-color-bg-3);
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: 4px;
+  color: var(--theme-color-fg-default);
+  font-family: var(--font-family-code);
+  font-size: 11px;
+  user-select: all;
+  word-break: break-all;
+}
+
+.Field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 10px;
+}
+
+.Grid2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.Input,
+.Select,
+.Textarea {
+  background-color: var(--theme-color-bg-3);
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: 4px;
+  color: var(--theme-color-fg-default);
+  font-size: 11px;
+  padding: 5px 7px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.Textarea {
+  min-height: 64px;
+  font-family: var(--font-family-code);
+  resize: vertical;
+}
+
+.Check {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+
+.RowActions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}

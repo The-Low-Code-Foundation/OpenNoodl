@@ -1,0 +1,26 @@
+{
+  "typeName": "noodl.cloud.removeuserfromrole",
+  "summary": "Takes a user out of a named permission role from inside a cloud function, as the system. Cloud-only — the other half of Add User To Role.",
+  "description": "Remove User From Role deletes the membership row linking `userId` to `role`, so the app can revoke a privilege it once granted — a subscription lapsing, a moderator being stood down. `unchanged` covers two different post-conditions that both mean 'they are not in it': the user was never a member, or the role does not exist at all; `Error` says which, for a function that wants to tell them apart, while `Roles` and every wired-through branch treat them the same. Removing a role membership does **not** end that user's existing sessions — a session token is not a copy of the roles it had at sign-in, so the very next request that token makes already resolves the shorter list. There is no cache to invalidate and nothing to revoke separately.",
+  "whenToUse": "In a cloud function that de-provisions or downgrades access: ending a lapsed subscription's `pro` role, removing a stood-down moderator from `staff`. A de-provisioning job can safely re-run — both `unchanged` branches mean the desired end state already holds, the same reading Delete User gives an account id that is already gone.",
+  "ports": {
+    "role": "Value; required. Name of the role to take the user out of, matching what a permission rule writes after `role:`.",
+    "userId": "Value; required. Which account to remove the role from. A blank id is a `failure`, never a fallback to the function's own caller.",
+    "remove": "Signal (Do); writes the removal. Nothing happens until this fires.",
+    "treatUnchangedAs": "Edit-only enum, default Unchanged. Set it to Failure if a de-provisioning job finding the user already out of the role should stop the chain instead of carrying on.",
+    "roles": "Value; every role the user is in once this call settles, read from the same resolver a permission rule's access check uses.",
+    "done": "Signal; fires once the user is out of the role and Roles no longer lists it.",
+    "unchanged": "Signal; fires when the user was not in this role, or the role does not exist at all — so a de-provisioning job re-run does not go red. Error says which of the two it was.",
+    "failure": "Signal; fires when the membership could not be removed — a blank Role or User Id, or a store that would not write.",
+    "completed": "Signal; fires after every attempt, whatever the outcome.",
+    "error": "Value; why the last attempt failed, or (on Unchanged) which of the two non-membership cases it was."
+  },
+  "examples": [],
+  "patterns": [
+    "Wire a lapsed-subscription webhook straight to this node's `remove`, with `done` and `unchanged` both leading to the same next step — the account ends up without the role either way, which is the only thing that response needs to be true."
+  ],
+  "antiPatterns": [
+    "Assuming removing a role also signs the user out of an active session. It does not — the next request that session's token makes already sees the shorter role list, but the session itself stays valid until it expires or is separately revoked."
+  ],
+  "relatedNodes": ["noodl.cloud.addusertorole", "noodl.cloud.getuserroles", "noodl.cloud.deleteuser"]
+}

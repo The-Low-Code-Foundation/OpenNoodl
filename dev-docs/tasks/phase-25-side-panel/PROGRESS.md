@@ -1,0 +1,651 @@
+# Phase 25 — Side Panel (Track J): Progress
+
+**Status:** ✅ **All 9 tasks complete; all five gates run from the primary checkout** (2026-07-27).
+Tiers 1–4 landed. The closing pass did the thing no worktree agent could — ran the gates against a
+real editor (see *The trap that shaped this whole phase*) — and found **nine defects, F37–F45**, two
+of them in behaviour a task had already described as verified. Four gates are green:
+`panel-geometry` 45/45, `panel-chrome` 36/36, `panel-modes` 13/13, `components-tree` 4/4 both themes.
+The fifth, `settings-consolidation`, was 11/13: its two failures were **F44**.
+
+**Update 2026-07-28 — F21, F41 and F44 are all fixed** by the cross-phase defect batch (batch C);
+the register rows carry the detail. F44 was **not** the "app-name persistence lag ... not a
+side-panel defect" described here: metadata autosave was never armed at all, and the blast radius
+included SEO, PWA, config variables, Styles, design tokens and the DB schema cache. **F20 remains
+open and unowned** (it is a recorded decision, not a defect). Items still needing a human are listed
+under *Still not verified*, and two are added there by batch C.
+**Specced:** 2026-07-27
+**Mock:** [`mocks/nodegx-side-panel-mock.html`](./mocks/nodegx-side-panel-mock.html) (`93cc4da`)
+**Phase overview:** [README.md](./README.md)
+
+## Task status
+
+| ID | Title | Tier | Status | Landed | Notes |
+|---|---|---|---|---|---|
+| [PNL-001](./PNL-001-PANEL-SCROLL-CORRECTNESS.md) | Panel scroll & box-model correctness | 1 | ✅ Complete | 2026-07-27 | [NOTES](./PNL-001-NOTES.md). Both defects reproduced with numbers, then fixed. Global `box-sizing` reset **evaluated and rejected** — it shrinks every TextInput by 18px. Gate: `corpus/panel-geometry.mjs`, 11/11 clean at 620/720/1200px. |
+| [PNL-002](./PNL-002-OUTSIDE-CLICK-GESTURE.md) | Outside-click vs. drag in the popup layer | 1 | ✅ Complete | 2026-07-27 | [NOTES](./PNL-002-NOTES.md) · [matrix](./PNL-002-TEST-MATRIX.md). Mechanism confirmed off the live DOM, but the *felt* symptom had a second cause in the canvas. Fixed in 4 places; caught and fixed a regression the gesture change itself introduced. |
+| [PNL-003](./PNL-003-PANEL-WIDTH-BEHAVIOUR.md) | Panel width: reset, memory, snap & collapse | 1 | ✅ Complete | 2026-07-27 | [NOTES](./PNL-003-NOTES.md). Width per panel, per project, persisted; ⌘\ wide, ⌘B hide, drag-to-collapse. 11/11 acceptance checks driven live. Found a renderer deadlock and F21. |
+| [PNL-004](./PNL-004-CONTAINER-QUERY-LAYOUT.md) | Container-query layout + `PanelRow` | 2 | ✅ Complete | 2026-07-27 | [NOTES](./PNL-004-NOTES.md). `PanelRow` + two named containers + three bands declared once. Band numbers carry a −34px content-box offset so they mean *panel* widths (F29). Gate grew a horizontal axis at five widths — and then had to be taught not to cry wolf (F30). |
+| [PNL-005](./PNL-005-ONE-PANEL-CHROME.md) | One panel chrome, everywhere | 2 | ✅ Complete | 2026-07-27 | [NOTES](./PNL-005-NOTES.md). `PanelHeader` finally styles its own `.Title`. 7 panels migrated, not 14 — the spec's list was wrong in five places (F31). Two panels had chrome-less *states* rather than no chrome (F32). |
+| [PNL-006](./PNL-006-COMPONENTS-PANEL-RESTYLE.md) | Components panel restyle | 3 | ✅ Complete | 2026-07-27 | [NOTES](./PNL-006-NOTES.md). Kind glyphs, indent guides, in-place filter, and the light-mode selection fix that was the reported bug. **Its gate had never been run**; the closing pass ran it and it is now green in both themes — selected-row contrast **12.2:1 dark, 13.72:1 light** against a 4.5:1 bar. Doing so cost F45 (the gate wedged the panel) and F41's coral (2.91:1, now 3.36:1). Four honest SKIPs remain: the warning dot needs a project that carries a warning. |
+| [PNL-007](./PNL-007-INLINE-RENAME.md) | Node label & inline rename | 3 | ✅ Complete | 2026-07-27 | [NOTES](./PNL-007-NOTES.md). Text at rest, real field on double-click, check/cancel, Escape reverts. Phantom-undo guard tested, not assumed. The AiAuthoringPanel half of the spec was a stale premise. |
+| [PNL-008](./PNL-008-SETTINGS-CONSOLIDATION.md) | Three settings panels become one | 3 | ✅ Complete | 2026-07-27 | [NOTES](./PNL-008-NOTES.md). One destination behind a cog; F15's two-owners-of-the-title resolved. **Its live half had never been run**; it now passes 11 of 13 — one rail button, one header, both tabs, all 7 Project groups, one control per title field. The two failures are **F44**, a real and reproducible app-name persistence lag, not a layout defect. |
+| [PNL-009](./PNL-009-FLOAT-AND-FULL-MODES.md) | Floating & full panel modes | 4 | ✅ Complete | 2026-07-27 | [NOTES](./PNL-009-NOTES.md). Modes are **CSS-only** (no re-parenting), so the legacy `Frame`-hosted views survive; the 7 `LocalBackendCard` portals became registered transient panels and the scrim was deleted rather than tokenised. `panel-modes.mjs` is **13/13 green**, including the two behaviours the notes admitted were never verified. Getting there found F39 and F43 — the `⋯` menu had been opening in the window's corner the whole time. |
+
+## Findings register
+
+Everything below was established by reading the code during the 2026-07-27 critique, with the file and
+line confirmed. Executors should re-confirm the live symptom before fixing — if a finding turns out to
+be stale or to have a different cause, correct it here rather than implementing around the description.
+
+| # | Finding | Where | Owner |
+|---|---|---|---|
+| F1 | Panel width resets to 380px on every `activeChanged` **and** every `window.resize`; never persisted | `EditorPage.tsx:77, 83-95` | PNL-003 — ✅ confirmed and fixed |
+| F2 | Scroll-area flex children lack `flex-shrink: 0` and carry `overflow: hidden`, so sections squeeze and clip instead of the container scrolling | `CollapsableSection.module.scss:1-8` | PNL-001 — ✅ **confirmed** (28px, 109px and 221px hidden on Editor Settings) and fixed |
+| F3 | `BasePanel .Root` is 34px taller than its slot: `height: 100%` + 16px padding + 1px border, no global `box-sizing: border-box` | `BasePanel.module.scss:1-18` | PNL-001 — ✅ **confirmed** (exactly 34px, every `BasePanel` panel) and fixed |
+| F19 | `Checkbox .Checkbox` is `position: absolute` with no positioned parent, so its containing block is `BasePanel .Inner` — checkboxes below the fold land past the panel bottom and inflate a non-scrolling ancestor | `Checkbox.module.scss` | PNL-001 — found while fixing F2/F3; fixed |
+| F20 | A global `* { box-sizing: border-box }` is **not** adoptable as-is: it narrows every `TextInput` by 18px, shrinks the checkbox glyph 20→16px and the icon rail by 20px | measured, editor-wide | PNL-001 recorded the full table; unowned |
+| F21 | A focused `<button>` disables **every** editor keyboard shortcut. `KeyboardHandler.getFocusedElement()` treats anything focusable as "a text input or similar", and Chromium focuses buttons on click — so ⌘F/⌘D/⌘R/⌘⇧X/⌘⇧E all die after you click any button | `keyboardhandler.ts:26-32, 63-66` | ✅ **FIXED 2026-07-28** (batch C — [BATCH-C-NOTES.md](./BATCH-C-NOTES.md)). The predicate was fixed rather than opting each shortcut in, and `worksWhenFocused` is **deleted** — it has no remaining meaning. A naive "buttons are fine" fix would have traded one regression for another: the editor binds bare Space (canvas pan) and bare Enter (rename), which are also how the platform presses a focused button — hence an `activatable` tier. **Writing the test found a second bug in the same function:** `getFocusedElement` opened with `if (!document.hasFocus()) return null`, and `hasFocus()` is *false* in the spec runner, so the guard was inert there — and in any unfocused window, typing in a text field **would** fire canvas shortcuts, the exact inverse of F21. An after-state-only run would have been green and shipped it |
+| F22 | The Components panel's header is clipped by the window title bar — it rolls its own header and does not reserve the title-bar height. Present in the PNL-001 "before" corpus, so it predates the phase | `componentspanel` | PNL-005 / PNL-006 |
+| F4 | `click` fires on the common ancestor of mousedown/mouseup, so a drag out of the panel reads as an outside click in all three dismissal pairs | `popuplayer.ts:320-341` | PNL-002 — ✅ **confirmed** (`mousedown → INPUT`, `mouseup → CANVAS`, `click → FrameDivider .Root`) and fixed |
+| F23 | **The felt symptom had a different cause.** The canvas cleared the node selection on *any* left `mouseup` over it, so a drag begun in a panel field rebuilt the property panel and destroyed the focused field. This, not the popup layer, is "it kicks me out" | `InteractionController.ts` | PNL-002 — ✅ found by repro and fixed |
+| F24 | `MenuDialog`/`BaseDialog` render through a portal into `.dialog-layer-portal-target`, so a popout's visible menu is **not** a DOM descendant of `popoutsEl` — the popup layer's inside/outside test was blind to it. Latent before; a hard regression once dismissal moved to `pointerup` | `popuplayer.ts`, `ShowContextMenuInPopup.tsx` | PNL-002 — ✅ fixed |
+| F25 | `BaseDialog .Root` is a full-viewport catcher carrying `onClick={onClose}` — the same common-ancestor bug, in React: press inside a menu, release outside, and the click lands on `.Root` having bypassed the inner `stopPropagation` | `BaseDialog.tsx` | PNL-002 — ✅ fixed (the spec's "extend it there and say so" case) |
+| F5 | `min-width: 380px` on the rail+panel root silently overrides the divider's `sizeMin={200}` | `SideNavigation.module.scss:9` | PNL-003 — ✅ removed; 240px floor now reachable |
+| F6 | Dead `'topology'` references drive an expansion path for a panel whose registration is commented out | `SidePanel.tsx:122`, `EditorPage.tsx:85`, `router.setup.ts:92-100` | PNL-003 — ✅ live references and `SideNavigation.isExpanded` deleted; the commented registration is DEBT-010's |
+| F7 | 14 live panels don't use `BasePanel`; each rolls its own header | `views/panels/**` | PNL-005 |
+| F8 | `PanelHeader` renders a `.Title` div that has **no CSS rule**, so title size is undefined and every panel picks its own | `PanelHeader.tsx:23` + `.module.scss` | PNL-005 |
+| F9 | No `container-type` anywhere in the editor or core-ui; panel content cannot adapt to panel width | codebase-wide | PNL-004 |
+| F10 | Local backend `.Actions` has no `flex-wrap`; the row overflows once the backend is running | `LocalBackendCard.module.scss:72` | PNL-004 |
+| F11 | The endpoint URL row has no `min-width: 0`, so it pushes its card wider than the panel | `LocalBackendCard.tsx` | PNL-004 |
+| F12 | Selected tree row sets both an azure tint **and** azure label text — the least readable row in the tree on light | `ComponentsPanel.module.scss:91-94` | PNL-006 |
+| F13 | The node label is a permanently-rendered `TextInput` with `isDisabled={!isEditingLabel}` | `NodeLabel.tsx:171-184` | PNL-007 — ✅ fixed |
+| F26 | `Tooltip` wraps its child in a trigger `div`, which is the element a flex row actually lays out — without `min-width: 0` on it, ellipsis on the child never engages. Cost the node label its ellipsis until `UNSAFE_triggerClassName` was used | `Tooltip.tsx` (consumers) | PNL-007 found it; worth knowing for PNL-004/005 |
+| F14 | Three rail destinations for settings; `IconName.Setting` renders as a sun | `router.setup.ts:211-280` | PNL-008 |
+| F15 | Two panels both own the app title, writing through different models (`updateAppConfig` vs `ProjectSettingsModel`) | `AppSetupPanel.tsx`, `ProjectSettingsPanel.tsx` | PNL-008 — resolve **before** UI work |
+| F16 | `switch('cloud-functions')` in two places targets an id unregistered since WF-007; `switch()` silently no-ops on unknown ids | `NodeGraphContext.tsx:120`, `sidebarmodel.tsx:337` | PNL-008 (housekeeping) |
+| F17 | Six `createPortal` + `position: fixed` full-screen overlays in one file, with a hardcoded `rgba(0,0,0,.85)` scrim that predates the light theme | `LocalBackendCard.tsx:268-340` | PNL-009 — **still open**; there are **seven**, not six. The full mode they should move onto now exists |
+| F27 | The mode buttons live in `PanelHeader`'s slot, so only `BasePanel` panels can be detached at all — 15 panels have no header. And the property editor can never reach full mode (no header, and full covers the canvas you'd select a node on) | `SidePanel.tsx`, `views/panels/**` | PNL-005 unblocks it |
+| F28 | Every mounted panel renders its own copy of the mode buttons, so their `data-test` ids are not unique. Anything scripted has to filter on a non-zero bounding box | `SidePanel.tsx` | PNL-005 / test hygiene |
+| ~~F18~~ | ~~Two search panel implementations in the tree; only `search-panel/search-panel` is registered~~ **WRONG — do not act on this.** Both are live and neither is a duplicate. `search-panel/search-panel` is the editor's project search; `search/SearchPanel.tsx` is BAK-008's **backend full-text search**, imported at `LocalBackendCard.tsx:25` and one of the seven portal surfaces. Verified twice, 2026-07-27 | `views/panels/search/`, `views/panels/search-panel/` | ~~DEBT-010 to delete~~ — **DEBT-010 must not delete it** |
+| F29 | Band boundaries stated as panel widths are wrong by 34px: a container size query resolves against the *content box*, and `panel-body` sits inside the panel's 16px inset and 1px border. Stating 340/560 verbatim put the boundaries at a ~374px and ~594px panel, so a 560px panel got the default band instead of wide | `PanelRow/panel-bands.scss` | PNL-004 — ✅ offset now carried in one place, with the arithmetic written out |
+| F30 | **Three of four reported overflow failures were the gate, not the code.** An always-mounted legacy tooltip (`reactcomponents/tooltip.tsx`, `position: absolute`, inline `nowrap`) lives inside an `opacity: 0` wrapper — and opacity does not inherit, so an exemption checking the element's own opacity saw 1. An invisible child still inflates its parent's `scrollWidth`, so a "clipped container" must prove a *visible* descendant reaches past its content edge. Editable inputs scrolling their own value are also not defects | `corpus/panel-geometry.mjs` | PNL-004 — ✅ `checkVisibility({opacityProperty:true})`, a form-control bucket, and `data-allow-x-scroll` |
+| F31 | The spec's 14-panel migration list was wrong in five places: `auth`/`email` are portal overlays not sidebar panels, `MigrationNotesPanel` has zero importers, `GraphDiffPanel` is not a panel at all, and `componentports` ("Ports") was **missing** while wearing a fifteenth header | `views/panels/**` | PNL-005 — ✅ 7 migrated, list corrected |
+| F32 | Two panels had a chrome-less **state**, not missing chrome: `VersionControlPanel` returned `null` while `git === null` (and the promise clearing it has no `.catch()`, so a rejection blanks it forever), and `componentports` rendered its header inside `Frame`'s own React root — which also meant `PanelModeSlotContext` could never reach it, so Ports could never show widen/hide/float/full | `VersionControlPanel.tsx`, `componentports.tsx` | PNL-005 — ✅ both fixed; the missing `.catch()` filed, not adopted |
+| F33 | **A rail walk that looks complete isn't.** `router.setup.ts` registers 21 panels; a default-settings rail shows 8 (two canvas-transient, ten experimental, three devMode). This is exactly how `versioncontrol`'s blank state survived a green run | `router.setup.ts` | recorded; `panel-chrome.mjs` now prints reached vs. mounted-but-unreachable and takes `--expect-panels` |
+| F34 | **Version Control crashed into its error boundary on first render.** `CodeDiffDialog` gated with `isVisible={diff !== null}` but read `diff.original` in the children, which React evaluates regardless; `DiffList` renders it with `diff === null` whenever nothing is selected — its resting state. Predates the phase (last touched by DEBT-013). Found because the geometry gate started printing element text: an 877px-wide `<pre>` had been read as a unified diff and exempted as by-design, and was a stack trace | `CodeDiffDialog.tsx` | ✅ fixed `c492fc0d` |
+| F35 | A gate that `process.exit()`s with an injected `<style>` still in the page **leaves the editor wedged** — a socket closing does not undo DOM. A leaked `width: 240px !important` pinned the panel and killed the divider until the app was restarted | `corpus/*.mjs` | PNL-005 — ✅ every override released in a `finally` |
+| F36 | A gate can be green about the wrong thing. `panel-chrome.mjs` asserted "title is single-line and ellipsised" and happily passed a Components panel rendering **"Co…"** — two characters — which is the precise outcome the mock named as the failure the `⋯` menu exists to prevent | `corpus/panel-chrome.mjs` | PNL-005 — ✅ assertion F measures fitted characters with real `measureText`; **now green**, 36/36, on the live editor |
+
+### Found by the closing live-QA pass, 2026-07-27
+
+Everything above F37 was established by reading code. Everything below was found by
+running the three merged-but-never-run tasks (PNL-006, PNL-008, PNL-009) against a real
+editor from the primary checkout — which is the step every worktree agent was structurally
+unable to take.
+
+| # | Finding | Where | Status |
+|---|---|---|---|
+| F37 | **`ListItem` lets an unbreakable string escape the panel.** `.Body` already had `min-width: 0`, but that only lets the *Body* shrink — its own flex children keep `min-width: auto`, i.e. their min-content width. A 101-character changed-file path with no break opportunity (neither `_` nor `.` is one) held its full 506px and stuck up to **325px** out of the panel at the 240px floor. Invisible until F34's fix made Version Control render at all, so it arrived the moment that panel stopped crashing | `ListItem.module.scss` | ✅ fixed — `overflow-wrap: anywhere` + `> * { min-width: 0 }` |
+| F38 | **`SearchInput` cannot shrink.** The `<input>` has `flex-grow: 1` and no `min-width: 0`, so it will not go below an `<input>`'s intrinsic ~20-character width plus the 40px icon gutter. At a 240px panel it overflowed its own Root by 35px and clipped the Search panel's section by 19px | `SearchInput.module.scss` | ✅ fixed — `min-width: 0` |
+| F39 | **The `⋯` menu opened in the window's top-left corner, not under its button** — the one behaviour PNL-009's notes claimed the gate asserted. Two independent causes. (a) `showContextMenuInPopup` gave `MenuDialog` the popup-layer `container` as its positioning trigger, but the menu portals *out* of that container, so it measures 0×0 and PopupLayer positions it *after* `BaseDialog`'s one-shot `useLayoutEffect` has already run. (b) `overflowButtonRef.current` is null after a mode change: the same `modeSlot` element is rendered into more than one header over a panel's life, so the shared ref ends up detached. With `attachTo` empty the code silently fell back to `screen.getCursorScreenPoint()` — which under a synthesised click is wherever the human's mouse is parked, hence (1, 1) | `ShowContextMenuInPopup.tsx`, `SidePanel.tsx` | ✅ fixed — anchor to `event.currentTarget`, and pass `attachTo` through as the dialog's trigger |
+| F40 | **Three instrument defects, one family: a gate green or red about the wrong thing.** `panel-geometry.mjs` measured the whole panel *slot* and filed every finding under the rail button it had just clicked — a Version Control overflow was reported three times as a Problems defect. `panel-chrome.mjs` could measure a panel that had not finished switching and pass anyway: `ai-authoring` was asserted while "Explain" was on screen, and "Explain" fits. `panel-modes.mjs` inherited the previous gate's panel state (11 of 12 checks red against a feature that works), looked for the menu in `.popup-layer-popout` when `MenuDialog` portals into the dialog layer — **F24 again, this time in the instrument** — and then read `BaseDialog`'s *measuring* copy, which sits at the origin, instead of the visible menu | `corpus/*.mjs` | ✅ all four fixed; findings now carry the panel they are in, titles are held to, state is reset in a preflight |
+| F41 | **⌘B on a floating panel returns it docked.** Hiding a floating panel and showing it again drops the floating mode. The spec's acceptance 6 asks only that ⌘B *hides* it, which it does, so this is **recorded rather than fixed** — but it is now printed by `panel-modes.mjs` on every run instead of being something nobody looked at | `SidePanel` layout state | ✅ **FIXED 2026-07-28** (batch C). Was exactly as described; modes stay CSS-only per PNL-009. ⚠️ Its new `panel-modes.mjs` assertion has never executed — syntax-checked only — so F41 is fixed in the state machine and no further until someone runs the corpus from the primary checkout |
+| F42 | **The phase's own gate list names a script that does not exist.** `noodl-core-ui` has no `test:ci`; its scripts are `start` and `build`. The real check is `npm run typecheck:core-ui`. Corrected in *Gates for the phase* below | this file | ✅ corrected |
+| F43 | **`BaseDialog`'s position depended on its animation running.** The positioned variant is `position: absolute; top: 0; left: 0`, and every pixel of where it lands came from the `to` half of the `enter` keyframe plus `animation-fill-mode: both`. Suppress animations and **every menu in the editor** piles up in the window's top-left corner. This is what made the `⋯` anchoring check fail with **byte-identical numbers across three unrelated attempted fixes** — `panel-modes.mjs` injects `animation: none` for determinism, so the harness was suppressing the very thing doing the positioning. The identical numbers were the tell: a live measurement of a changing layout cannot repeat to the pixel | `BaseDialog.module.scss` | ✅ fixed — resting position stated as a rule; the keyframe still wins while it runs |
+| F44 | **The app name does not reach `project.json` when you set it — only when something else saves.** PNL-008's L5 round trip writes the App name, polls the file for 15s and still sees the old value; it then writes the Browser tab title and the *app name* appears on disk alongside it. The lag is exactly one step, twice. The Browser tab title control persists on its own, so the two controls behave differently — which is the part that makes this look like the app rather than the instrument. **Caveat, stated rather than glossed:** the input was driven synthetically (native value setter + `input` + Enter + `blur`), so a real keystroke may commit differently. One human check settles it: rename the app, quit without touching anything else, reopen | `ProjectModel.setMetaData` / `EventDispatcher` | ✅ **FIXED 2026-07-28** (batch C) — **and the recorded cause was wrong.** Not a lag, not a debounce, not the synthetic-input instrument, not an F15 residue, and `AppSetupPanel`/`ProjectSettingsModel`-save-path no longer exist. `setMetaData` dispatches `ProjectModel.metadataChanged`; `EventDispatcher` matches on the first dot-component being *identical*, so the `Model.*` listener — the editor's only autosave — never heard it. **No save was ever armed.** It looked one step behind because `toJSON()` serialises `metadata` unconditionally, so the value rode out with whatever save something else happened to trigger. **The blast radius was never just the app name:** SEO, PWA, config variables, Styles, design tokens and the DB schema cache all persist through the same gap. ⚠️ Still owed: the real-keystroke path and quit-and-reopen against the 1s debounce |
+| F62 | **The Components panel's warning dot could never render, and eleven SKIPs had been hiding it.** `warningCountFor` asked `WarningsModel` for a per-component count with `excludeGlobal: true`, on the reasoning that a row dot should not repeat what the top bar counts. But `showGlobally` means "*also* list this project-wide" — it does not mean "not attached to a component". Every health warning sets it (`node-missing-type`, `node-not-child`, `con-no-source-port`; 18 of the 33 `setWarning` call sites), and every one is raised *against a component*, so the count was zero for exactly the warnings worth pointing at. Measured against the fixture: the top bar read **2** and the tree rendered **0** dots. PNL-006's own notes recorded "❌ the warning dot rendered at all — it needs a project carrying warnings", and the assertion had been skipping ever since; nothing had ever proven the feature worked, and it did not | `useComponentsPanel.ts` `warningCountFor` | ✅ **FIXED 2026-07-28** — `excludeGlobal` dropped, with the reasoning recorded at the call site so it does not come back. Assertion D now executes: two dots, 6×6, `border-radius: 9999px`, `#fdb022`, both inside the panel edge |
+| F46 | **`project.json` was rewritten in response to almost any event in the app, and the biggest single source was a graph that is not in the project.** The autosave listener took every `Model.*` event minus a 22-name denylist; there are **116** distinct `Model.*` events in the editor, so ~94 of them armed a full project write. Two writes in twenty seconds on a cold start with zero user input. **The recorded cause was partly wrong:** the `nodeAdded ×5 / connectionAdded ×5 / graphModelBound` burst was read as load-time reconstruction of the project's graphs, and the project's own load is in fact already silent (`projectFromDirectory` holds `Model._listenersEnabled = false` across `fromJSON`). The burst is `WorkflowComponentModel`, which `extends ComponentModel` — so **opening a workflow tab** runs `bindGraph` and raises a node/connection event per step and wire, for a document that lives in a backend's data directory. Which also means the "genuinely hard edge" — that `nodeAdded`/`connectionAdded`/`labelChanged` are raised by both a real edit and a load, so no name can separate them — **did not need a load/edit state flag.** The discriminator is ownership | `projectmodel.ts` autosave listener | ✅ **FIXED 2026-07-28** — allowlist (47 names, membership rule `ProjectModel.toJSON()`) **plus** an `owner`-chain check requiring the emitting model to reach `ProjectModel.instance`. Five new specs; editor suite 1828/0 |
+| F45 | **A gate can leave the app unusable by *removing* a style, not just by injecting one.** `components-tree.mjs` cleared the inline `width` on the FrameDivider container to take its "wide" measurement. That width is `var(--frame-divider-…-container-1-width)`, owned by PNL-003's layout state, so deleting the declaration left nothing sizing the panel: it collapsed to 4px and **neither the rail icon nor ⌘B brought it back**, because as far as React was concerned nothing had changed. Every gate run afterwards then measured a collapsed panel. F35 said release what you inject; this is the same rule for what you remove | `corpus/components-tree.mjs` | ✅ fixed — saves and restores, and never removes what it did not set |
+
+## Open questions
+
+- **Is the floating mode wanted?** PNL-009 is the speculative one and says so. Poke the mock before it
+  gets built; the phase is coherent without it.
+- **Does wide-ness persist across a panel switch?** The mock treats it as per-session and clears it.
+  PNL-003 ships that as a decision to revisit.
+- **One settings destination or two?** The mock proposes one (Project | Editor tabs). Keeping Editor
+  settings pinned to the bottom rail is the sanctioned fallback; PNL-008 records which shipped.
+- **What is a component's "kind"?** PNL-006 wants kind-carrying glyphs, but kind isn't a first-class
+  property. Ship only what's reliably derivable.
+
+## Gates for the phase
+
+Results are from the closing pass on 2026-07-27, run from the **primary checkout** with a
+dev editor up and `Shine Phase 2` open.
+
+| Gate | Result |
+|---|---|
+| `npx tsc -p packages/noodl-editor --noEmit` | ✅ clean for this work. **Caveat:** a concurrent session (AIX-011) had `PlanRun.ts` / `ProjectAuthoringView.tsx` mid-edit and contributed 4 errors of its own during the run. Confirmed unrelated — this phase's diff is two `.scss` files and two `.tsx` files, all clean |
+| `node scripts/hex-color-ratchet.js` | ✅ `noodl-editor 16 / baseline 16`, holding |
+| `npx lerna exec --scope noodl-editor -- npm run test:ci` | ✅ **1573 specs, 0 failures**. Earlier in this same session it was 1547/1 — *"Project import and export … Expected 8 to be 5"* — which PNL-009 had already recorded as pre-existing and reproduced with all its changes stashed. A concurrent session fixed it while this pass was running. Worth knowing that the count moved by 26 specs mid-session: on this branch the suite is a moving target, so quote the run, not a remembered number |
+| `npm run typecheck:core-ui` | ⚠️ reports pre-existing `Cannot find module '@noodl-viewer-cloud/execution-history'` errors in `noodl-editor/src/main`. Untouched by this phase. (See F42 — there is no `test:ci` for this package) |
+| `corpus/panel-geometry.mjs` | ✅ **9/9 vertical, 45/45 panel×width horizontal** — after F37 and F38 were fixed. It was 39/45 when first run |
+| `corpus/panel-chrome.mjs` | ✅ **36/36** across both themes at wide and 240px. Assertion F is green: the Components title reads "Components", not "Co…". **This closes F36**, which PNL-005 left deliberately red |
+| `corpus/panel-modes.mjs` | see PNL-009 row — the mode system's behaviours, with F39 fixed |
+| `corpus/settings-consolidation.mjs` | ⚠️ **11/13**. Static S1–S4 green; live L1–L4, L6, L7 green — one rail button, one header, both tabs, all 7 Project groups, exactly one control per title field. The two failures are **F44** (app-name persistence), not side-panel defects |
+| `corpus/components-tree.mjs` | ✅ **4/4 theme×width**, 58 rows at depth 4. Selected-row contrast **12.2:1 dark, 13.72:1 light** against a 4.5:1 bar — assertion A is the light-mode complaint this task existed to answer. Four honest SKIPs: the warning dot needs a project that carries a warning |
+
+- Hex ratchet unchanged or improved for both packages (PNL-005 and PNL-009 delete legacy CSS and should
+  improve it — record the numbers). **Recorded, and the expectation was wrong:** the ratchet counts
+  `#hex` only, and the CSS those tasks deleted was `rgba()`. It cannot move on this work.
+- Screenshots per task under `screenshots/pnl-00N/`, both themes. "Before" images must be captured at a
+  **short window height** — the scroll defects don't reproduce on a tall window.
+
+### The trap that shaped this whole phase
+
+Every one of PNL-006, PNL-008 and PNL-009 merged with a *"Could not verify"* section, and every one gave
+the same structural reason: **`npx lerna exec` resolves the package root to the main checkout**, so an
+editor launched from a worktree runs someone else's code and neither a pass nor a fail means anything.
+Three tasks' worth of live verification therefore piled up behind a single step that only the primary
+checkout can take. When it was finally taken it found five defects — two of them (F37, F39) in shipped
+behaviour that had been *described as verified*.
+
+The lesson is not "worktrees are bad". It is that **a task whose acceptance needs a running app cannot be
+closed from a worktree**, and saying so in the notes is not the same as someone running it. Budget the
+primary-checkout pass as part of the task, not as a residual.
+
+### Still not verified
+
+- ~~**The `New record` / `Create table` modals inside a full-mode backend surface.**~~ **VERIFIED
+  2026-07-28.** Driven against a running SQLite backend on 8578: Backend Services → Data → `+ New Record`
+  opens "New Record in Articles" over the full-width Data Browser, dimming it. The PNL-009 regression
+  risk — the modal falling *behind* the panel once it left the `z-index: 9999` portal — did **not**
+  materialise: hit-testing every 18px down the modal's centre line returns a `NewRecordModal-*` element
+  at every point, so nothing occludes it, and it is not clipped out of the viewport.
+  ⚠️ One caveat for whoever looks next: the **screenshot** shows a horizontal seam bisecting the `views`
+  input exactly at the graph canvas's top edge. It is a `Page.captureScreenshot` compositing artefact
+  across the canvas layer boundary, **not** occlusion — the hit-test above is what settles it. Do not
+  re-file it from the image alone.
+- **UIX-011 row 11 (lesson checkmarks, the `#FCCC73` yellow) stays unproven — Richard's call,
+  2026-07-28.** It needs a lesson to exist, and phase 17 (Learn) is deferred except LEARN-006 pilots,
+  so the fixture cannot supply it the way it supplies rows 1–10. Recorded here rather than left to
+  drift a sixth session: it is the flagged highest-risk row and it has still never been seen. Closing
+  it means authoring one minimal lesson purely as a QA fixture — a small job, but a decision, not an
+  oversight.
+
+- **PNL-006's kind glyphs and warning dot against a real project** — ✅ **CLOSED 2026-07-28**, and the
+  warning dot was **broken**: see **F62**. `components-tree` against `nodegx-qa-fixture` goes from 11
+  SKIPs to 1. PNL-008's acceptance 2/4/5 round trips (close-and-reopen, the experimental toggle, the
+  settings-id migration) are still open. All need a project lifecycle rather than a panel walk.
+
+  **Partly closed 2026-07-28, and it found something.** `components-tree.mjs` run against two
+  independent real projects (`VerifyFix4`, `Agent Chat Example`) reports the same **2 failures** in
+  both: *the "default" glyph measures **2.97:1** against its ground, below the 3:1 bar* — dark theme,
+  at both wide and 240px. Project-independent, so it is the token and not the content.
+
+  **Not fixed, deliberately, because the cause is a documented coupling rather than an oversight.**
+  `.Cat-default` is `var(--theme-color-fg-muted)` and its comment says why: *"CanvasTheme's
+  `categoryDefault` is `fg-muted`; so is this, so an uncategorised component looks the same in both
+  places."* Changing the tree alone breaks that parity on purpose-built ground, and changing
+  `CanvasTheme` is UIX-005/UIX-012 territory, not this task's. It is also a **1% miss on a decorative
+  glyph** — the row is identified by its label, which passes at 13.72:1, so the glyph is redundant
+  information rather than the thing carrying meaning. Three ways out, all Richard's call: lift
+  `fg-muted`; give the glyph its own token and accept a deliberate tree/canvas divergence; or record
+  a documented exemption and drop the assertion to match. **Do not "fix" it by editing one side.**
+
+  **✅ DECIDED 2026-07-28 — Richard took the documented exemption.** Neither of the other two was
+  worth 0.03 on a decoration: lifting `fg-muted` moves the canvas as well (it is the same token that
+  `CanvasTheme.categoryDefault` reads), and a private token buys the contrast by breaking the exact
+  tree/canvas parity the coupling exists to guarantee.
+
+  **The exemption is recorded in the gate, not just in prose.** `components-tree.mjs` grew a
+  `GLYPH_CONTRAST_EXEMPT` table and a third finding kind alongside pass/skip:
+
+  | Kind | Means |
+  |---|---|
+  | fail | below the bar, not accepted |
+  | skip | this run could not prove it |
+  | **exempt** | **measured, below the bar, and accepted on the record** |
+
+  This matters because an exemption is *not* a skip — the value is still measured on every pass and
+  printed on every run (`~ EXEMPT …`), so it cannot rot quietly. And it is not a blank cheque: the
+  entry carries a **floor of 2.9**, and a drop below that fails with a distinct message
+  (*"below its recorded exemption floor … a regression beyond what was accepted, not the known
+  miss"*). Lowering `minGlyphContrast` globally would have done neither.
+
+  ⚠️ **Still worth a separate look:** this exemption is justified *because the glyph is redundant*.
+  Wherever `fg-muted` is load-bearing rather than decorative, 2.97:1 is a real problem and this
+  decision says nothing about it. That is a UIX-001 token question, not a PNL-006 one.
+
+  Still NOT PROVEN, and honestly reported as such by the gate: **11 SKIPs** — depth-4 nesting, the
+  warning dot, and label ellipsis. None of the eleven projects on this launcher has four levels of
+  nesting, a component carrying a warning, or a name long enough to ellipsise at 186px. Covering
+  these needs a **purpose-built fixture project**, not another walk.
+
+  ⚠️ **`Shine Phase 2` — this phase's own reference project — no longer opens.** It points at
+  `/private/tmp/.../c4026a28-.../scratchpad/demo-project`, a *previous session's scratchpad*, which
+  has been cleaned up: `ENOENT … project.json`. Every earlier "run against Shine Phase 2 with 58 rows
+  at depth 4" is therefore unrepeatable. The failure itself is handled **well** — a toast reads
+  *"Couldn't load 'Shine Phase 2' — Its project.json is missing or unreadable"* with Show details /
+  Dismiss, which is RUN-004's loud-failure work doing its job. But a reference project used by a
+  phase's gates must not live in a temp directory; the fixture above should replace it.
+
+  ✅ **Built 2026-07-28** — `dev-docs/qa-fixtures/nodegx-qa-fixture`, committed to the repo. See
+  the entry at the end of this file.
+
+### — the 2026-07-28 live-editor pass: F41 and F44 closed, one new defect
+
+Run from the primary checkout, which is the only place it can be run (`lerna exec`
+resolves there, so a worktree agent's "live verification" describes another tree).
+
+**F41 — closed.** `panel-modes.mjs` executed for the first time: **13/13 clean**.
+The assertion that had never run — the floating mode surviving a ⌘B hide → ⌘B show
+round trip — passes (`position: fixed`, `hasDetachedBar: true`). The run also
+closed four PNL-009 acceptance items that were previously recorded but unverified:
+the icon rail stays hit-testable under a full-mode panel (`railHitTakesRail: true`
+at 53px), focus is not trapped in a floating panel (escapes in 7 Tab presses of a
+25 budget), the `⋯` popup is anchored to its button rather than the mouse, and
+PNL-002's drag-out-of-popup is still not treated as an outside click.
+
+**F44 — the synthetic-input caveat is closed, positively.** The register asked for
+a rename "using the keyboard". Driven as real per-character
+`Input.dispatchKeyEvent` with `text` (keydown/keypress/input per character, not an
+inserted string), committed with Enter through `PropertyPanelTextInput`'s real
+`inputValue !== value` gate: the new name reached `project.json` within 3s with
+nothing else touched, and the divergent browser tab title was left alone. The
+starting state was the hard case on purpose — `appName "My Noodl App"` vs
+`htmlTitle "Noodl Viewer"`, i.e. the titles already diverged, which is what the
+title-follow rule used to mask. **10/10.**
+
+**F44's other caveat — "I did not look at the quit path" — turned out to be a real
+defect, and a bigger one than F44.**
+
+> **NEW — pending project saves are dropped on quit (1s silent data-loss window).**
+> `scheduleProjectSave()` (`projectmodel.ts:1418`) is a bare
+> `setTimeout(saveProject, 1000)` in the **renderer**, and it is the single arming
+> point for *both* F44's metadata writes and the `Model.*` autosave — which is
+> every graph edit. `app.on('before-quit')` (`main.js:745`) awaits
+> `backendManager.stopAll()` and nothing else: no IPC asks the renderer to flush,
+> and nothing awaits a save. So any edit followed by a quit inside the debounce is
+> lost, with no error in any log.
+>
+> Observed, not inferred, on both paths — each time with the model confirmed to
+> hold the value and the disk confirmed not to, then `app.quit()` (the app's own
+> path, not a kill, which would have skipped the very handlers under test):
+> - metadata rename → lost, reproduced **twice**;
+> - a node label change on `/#__page__/Home` → lost (disk still `"Hello World!"`).
+>
+> This is **pre-existing and not caused by F44**. F44 made metadata *reach* the
+> timer, so it inherits an exposure the graph path has always had. Blast radius is
+> therefore everything on either path: identity, SEO, PWA, config variables,
+> Styles, design tokens, the DB schema cache, backend services, cloudservices —
+> plus every node, connection and component edit.
+>
+> A fix is not just "call `saveProject` on unload": `toDirectory` is async, so it
+> needs `before-quit` to `preventDefault()`, ask the renderer to flush, await it,
+> then quit — with a timeout so a failing save cannot wedge the quit. That is a
+> design decision with its own hang risk, so it is filed here rather than taken
+> in passing.
+
+**✅ FIXED and live-verified 2026-07-28.** Richard took the design decision: do
+both — hold the quit open *and* save on blur, because neither covers the other's
+cases. Commits `b0a021b8` (the implementation, swept into a WFA-004 commit by a
+concurrent session rather than landing under its own message), `6e88a614` (specs)
+and `1121272a` (the backend-teardown timeout).
+
+What shipped:
+
+| Trigger | Covers |
+|---|---|
+| `before-quit` → `preventDefault()` → flush → stop backends → quit | ⌘Q, the app menu, the dock |
+| window `close` → same handshake, then `destroy()` | ⌘W and the red button; the usual quit route on Windows/Linux. Stands down when `before-quit` is already draining, so ⌘Q costs one round trip |
+| `blur` → flush | what no quit handler can reach — a crash, a force-kill, an OS-initiated shutdown |
+| `flushPendingProjectSave()` | the renderer half: promisified, writes serialised so a flush cannot interleave with the debounced save, `savePending` tracking the edit until it is actually on disk |
+
+**Two things the original write-up had not seen.** The old handler was `async`
+and *appeared* to await `stopAll()` — but **Electron does not wait for an async
+`before-quit` handler**, so that await never did anything and backends were being
+torn down fire-and-forget. `preventDefault()` fixes that as a side effect. And
+because holding the quit open is precisely what makes a hang fatal, `stopAll()`
+had to be bounded too: it was previously un-hangable *because* it was un-awaited.
+
+Also fixed, same family: `setSaveOnModelChange(false)` cleared the timer and
+dropped the queued edit. `savePending` now survives the disable and re-arms on
+re-enable.
+
+**Live verification**, from the primary checkout, against `VerifyFix4`
+(legacy format, one `project.json`, the same `/#__page__/Home` component as the
+original report). Every probe edited, then read `project.json` **synchronously**
+to confirm the edit was genuinely still only in memory, before doing anything:
+
+| Path | Result |
+|---|---|
+| Edit → `app.quit()` 50ms later | model had it, disk did **not**; app exited in **581ms**; label **on disk** afterwards. Reopened: `labelAfterReopen: "QUITFLUSH-PROBE-1"` |
+| Blur (control) — edit, no blur | not on disk at 350ms, on disk at 2500ms, i.e. the ordinary 1s debounce |
+| Blur (treatment) — focus, edit, blur | **on disk at 366ms**, far inside the 1s debounce. The listener wrote it, not the timer |
+| Window `close` | edit not on disk at edit time → on disk after close, and the app correctly stayed alive on macOS |
+| **Hanging save** — `toDirectory` patched to never call back | app **still quit**, in **5284ms**, logging *"Timed out waiting for the renderer to flush its pending project save; quitting anyway"*. The wedge risk is bounded, not theoretical |
+
+Gate: **1766 specs, 0 failures**, on four orders (seeds 63183, 07241, 69768,
+unpinned 70078) — the four new specs touch module globals, and one seed is not
+evidence for a spec that does.
+
+⚠️ **A blur test that does not first take focus proves nothing.** The first
+attempt called `win.blur()` on a window that had never had OS focus (the app was
+launched headlessly while the terminal held focus), so no `blur` event fired at
+all — `blurEventsFired: 0` — and the save that eventually appeared was the
+debounce. `isFocused()` was `false` the whole time. Focus first, then blur, and
+keep the no-blur control alongside it.
+
+Also worth recording, a driving trap one window along from the documented one:
+**`--target=dashboard` silently attaches to the "About NodeGX" window when it is
+open.** `about-window/about.html` is also a `file:` page and sorts ahead of the
+editor, so every query returns normally and only `webpackChunknoodl_editor` being
+undefined gives it away. Match `noodl-editor/src/editor/index.html` specifically.
+
+### — opening a tracked example rewrites it: investigated 2026-07-28, root cause found, fix needs a decision
+
+Filed as *"open `project-examples/agent-chat` and `project.json` goes from 5718
+pretty-printed lines to 1 minified line, keys reordered, `rootComponent` silently
+dropped — with no user edit at all"*. Three separate things, and they have three
+separate answers. Two are settled by reading; the third needs the editor.
+
+**1. `rootComponent` is not lost — it is input-only, by design.** `fromJSON`
+reads `rootNodeId` first and falls back to `rootComponent` (a component *name*,
+which is how templates express it); `toJSON` has no `rootComponent` key at all
+and always emits `rootNodeId`. So any save normalises the one into the other.
+That is lossless **provided `setRootComponent` resolved** — and
+[[new-project-no-home-fix]] records that it silently no-ops when the NodeLibrary
+is empty, in which case `rootNodeId` comes out `undefined` and the root really is
+gone. The reported project kept working and `rootNodeId` was present, so
+resolution succeeded here. **Not a defect. Do not "fix" it by teaching `toJSON`
+to write `rootComponent`** — that would put two sources of truth for the root
+back into the file.
+
+**2. The minification is unconditional.** `filesystem.writeJson` is
+`JSON.stringify(obj)` with no `space` argument, so *every* project save writes
+one line. The tracked example is pretty-printed because it was committed that
+way, not because the editor ever writes that shape. So the reformat is not
+specific to examples — it is what every project on disk already looks like after
+its first save.
+
+⚠️ **This is worth a decision rather than a patch.** A one-line `project.json`
+means every project change is a whole-file git diff, in a product that ships git
+integration, a graph merge driver (SUB-007) and example projects it asks people
+to read. Pretty-printing would fix that, and would cost one large one-time diff
+in every existing project the first time it is saved. Richard's call — not taken
+here.
+
+✅ **Decided 2026-07-28: pretty-print.** `filesystem.writeJson` now writes
+`JSON.stringify(obj, null, 2)`. Two spaces was picked on evidence rather than
+taste — the repo's `prettier.config.js` sets `tabWidth: 2`, `project.json` is not
+in `.prettierignore`, and the projects this repo authored itself (`agent-chat`,
+the phase-16 probes) are already 2-space. The 4-space files are legacy library
+modules imported from upstream Noodl.
+
+Blast radius is three call sites, all human-readable config: `project.json`,
+`.sitemap.metadata.json`, and editor storage via `storage-node.ts`. There is one
+implementation of the `FileSystem` interface, so there is no second writer to
+keep in step.
+
+**3. The save fires with no user edit, and the mechanism is the real bug.**
+`projectmodel.ts` installs a **global wildcard listener**:
+
+```js
+EventDispatcher.instance.on('Model.*', function (event, eventName) {
+  if (ignoreEvents.indexOf(eventName) !== -1) return;
+  scheduleProjectSave();
+});
+```
+
+`ignoreEvents` is a **22-name denylist**. So the project is saved in response to
+*any* `Model.*` event raised anywhere in the app unless someone has previously
+noticed that particular event and added it — an opt-out design, where every new
+event type in any model silently becomes a project-save trigger. That
+`Model.instancePortsChanged` is already on the list is the evidence this has bitten
+before and was patched one name at a time.
+
+`ProjectModel.fromJSON` does guard the load itself (`Model._listenersEnabled =
+false` around it), so the trigger is something that runs *after* the re-enable.
+
+**MEASURED 2026-07-28, live, and it is worse than the hypothesis.** A temporary
+`console.log` inside the wildcard listener, editor launched with `dev:debug`,
+console captured over a cold start into a restored project. The static guess had
+been `Model.typeAdded`; **`typeAdded` never fires at all.** What actually lands:
+
+```
+[save-trigger] Model.changed
+[save-trigger] Model.templatesChanged
+[save-trigger] Model.templatesChanged
+Loaded 0 modules
+[save-trigger] Model.viewerClientsChanged
+Project saved Tue Jul 28 2026 16:57:28          ← save #1
+[nodelib] Received browser (nodes: 151)
+[save-trigger] Model.labelChanged / variantChanged / nodeAdded ×5,
+               connectionAdded ×5, graphModelBound
+Project saved Tue Jul 28 2026 16:57:48          ← save #2
+```
+
+**Two complete project writes in twenty seconds, with zero user input**, and
+neither of them caused by a change to project content:
+
+- `Model.templatesChanged` is the **template list** loading. It fires *before*
+  `Loaded 0 modules`, i.e. before the project is in place at all.
+- `Model.viewerClientsChanged` is a **preview client connecting** — directly
+  after `Connected to viewer server at ws://localhost:8574`. **Connecting a
+  preview rewrites `project.json`.** Nothing about the project changed.
+- The second burst is **load-time graph reconstruction**, arriving right after
+  the node library does (`nodes: 151`) and ending on `Model.graphModelBound` —
+  the event whose literal meaning is "the graph model finished binding".
+
+So this is not one stray event that can be added to the denylist. Three
+different subsystems — templates, viewer presence, and graph binding — each
+raise events that mean "something loaded", and the denylist reads all of them as
+"the user edited the project".
+
+⚠️ **Measurement caveat, stated because it bounds the claim:** this was captured
+against the project the editor happened to restore (a concurrent session's
+`test`, which has a workflow open), so the `nodeAdded`/`connectionAdded` burst
+may partly be WFA-005's workflow-canvas synthesis rather than ordinary graph
+load. The first three events and **save #1 are entirely project-independent** —
+they precede any project graph work — so the finding does not rest on that
+burst.
+
+**The blur-save is not the cause**, though it makes the symptom easier to hit —
+it flushes a save that was already scheduled, so it changes *when*, not *whether*.
+
+**The fix has to be an allowlist, and the measurement is what settles that.**
+Adding three more names to a 22-name denylist would fix today's symptom and
+leave the design that produced it — the next subsystem to raise a "something
+loaded" event becomes a project-save trigger again, silently, exactly as
+`Model.instancePortsChanged` did before. An allowlist of the events that
+genuinely mean *the user changed the project* cannot grow new triggers by
+accident.
+
+The allowlist needs deriving from the model layer rather than guessed, and it
+has one genuinely hard edge: `nodeAdded` / `connectionAdded` / `labelChanged`
+are raised **both** by a real edit and by load-time reconstruction, so the name
+alone cannot separate them. Whatever shape it takes has to distinguish those two
+by state (a load/bind flag, or extending the existing `Model._listenersEnabled`
+guard to cover binding, not just `fromJSON`) rather than by event name. Not
+attempted here — it is a design change in the save path, and the save path was
+only just stabilised by the quit-flush work.
+
+### — the fixture project exists: `dev-docs/qa-fixtures/nodegx-qa-fixture` (2026-07-28)
+
+The keystone the 11 SKIPs were waiting on, and the replacement for `Shine Phase
+2`. Committed to the repo rather than a scratchpad, which is the whole point —
+the project it replaces died because it lived in `/private/tmp`.
+
+**21 components, 28 rows expanded, four levels deep.** It carries, deliberately
+and one-for-one against an assertion: depth-4 nesting (**B**), two components
+holding an unresolved `Markdown` node for the warning dot (**D**), a
+79-character leaf label for the ellipsis (**C**), five uncategorised components
+(**E**), a Router with three pages, four text styles all actually referenced, a
+variant, a visual state, a `DbCollection2`/`FilterDBModels` pair, and one signal
+plus one data connection. `dev-docs/qa-fixtures/README.md` maps each to its row.
+
+**Generated, not hand-written.** `generate.py` builds it from `uuid5` of stable
+labels, so regeneration is byte-identical and a real change shows as a real
+diff; `verify.py` re-derives the properties using the editor's own rules
+(`addComponentToFolderStructure`, `componentKind.categoryFor`,
+`ComponentModel.color`). That paid for itself immediately — the first run failed
+on a `Button Label` text style referenced by nodes but never defined, which
+would have made row 8 read as a bug in the picker.
+
+The semantic validator reports **0 errors, 2 warnings, 45 nodes** — and the two
+warnings *are* the two deliberate `Markdown` nodes. If that count moves,
+something else broke.
+
+⚠️ **The uncategorised components are load-bearing.** `/Logic/*` is built from
+`JavaScriptFunction` and `Expression` roots because `ComponentModel.color` only
+takes a colour from a root with `allowAsChild`. Give any of them a visual root
+and the category stops being `default`, `GLYPH_CONTRAST_EXEMPT` stops executing,
+and the gate goes green having tested nothing — the exact false green recorded
+against `Agent Chat Example`.
+
+**Still not covered: UIX-011 row 11** (lesson checkmarks, the `#FCCC73` yellow).
+It needs a lesson and phase 17 is deferred, so the highest-risk row remains
+unseen. Rows 6 and 10 also keep preconditions the fixture cannot supply — a
+backend class schema and a running preview respectively.
+
+**Not yet run against the gates.** The fixture is proven by the validator and by
+`verify.py`; it has not been opened in the editor, because a concurrent session
+held the dev stack for this whole session. Running `components-tree` against it
+is the first thing to do next, and the SKIP count is the measurement that says
+whether this worked.
+
+### — the autosave becomes an allowlist, and the measured cause was two-thirds right (2026-07-28)
+
+Closes F46. The measurement from earlier in the day stood up in every particular
+except the one it had already flagged as uncertain, and correcting it made the fix
+smaller rather than larger.
+
+**What was confirmed.** The listener really did take any `Model.*` event minus a
+22-name denylist. Counted rather than estimated: there are **116** distinct
+`Model.*` event names in `packages/noodl-editor/src`, so ~94 of them armed a
+complete project write. `Model.templatesChanged` is `lessontemplatesmodel`'s list
+of *lesson templates* loading, and it fires before a project is in place;
+`Model.viewerClientsChanged` is `ViewerConnection` announcing that a preview
+attached. Both wrote `project.json`.
+
+**What was wrong.** The second burst — `nodeAdded ×5`, `connectionAdded ×5`,
+`labelChanged`, `variantChanged`, ending on `graphModelBound` — was recorded as
+load-time reconstruction of the project's own graphs. It is not, and the
+measurement's own caveat was pointing at the answer. The project's load is
+**already silent**: `projectFromDirectory` holds `Model._listenersEnabled = false`
+across `fromJSON`, and `notifyListeners` returns before it dispatches anything at
+all when that flag is down. What survived the guard was
+`WorkflowComponentModel`, which `extends ComponentModel` — so constructing one
+runs `ComponentModel`'s constructor, which calls `bindGraph`, which raises
+`graphModelBound`; and the workflow graph it wraps is a real `NodeGraphModel`, so
+building the canvas raises a `nodeAdded` per step and a `connectionAdded` per
+wire. **Opening a workflow tab rewrote the project**, repeatedly, for a document
+that lives in a backend's data directory and is not part of `project.json`.
+
+That correction is what removed the hard part. The recorded edge was that
+`nodeAdded` / `connectionAdded` / `labelChanged` are raised by *both* a real edit
+and load-time reconstruction, so no list of names separates them, so the fix needs
+a load/bind state flag. With the load already silent, the surviving ambiguity is
+not load-vs-edit at all — it is **whose graph this is**. That is answerable
+structurally, at the moment the event fires, with no flag for a future caller to
+forget to set: `Model.notifyListeners` already dispatches `{ model: <emitter> }`,
+so walk the `owner` chain and require it to reach `ProjectModel.instance`.
+
+**Two gates, and both are load-bearing.**
+
+*The allowlist* (47 names). Membership rule is `ProjectModel.toJSON()` — `name`,
+`components[]`, `settings`, `rootNodeId`, `runtimeVersion`, `lesson`, `metadata`,
+`variants[]`. `metadata` needs no entry of its own because `setMetaData` calls
+`scheduleProjectSave()` directly, which is what F44 fixed and what covers app
+config, styles, design tokens and backend services. Checked mechanically for
+typos: every one of the 47 has an emitter in the source.
+
+*The ownership check*, applied only to `ComponentModel` → `NodeGraphModel` →
+`NodeGraphNode`, the three classes whose chain is known to terminate at the
+project. `VariantModel`, `StylesModel` and `CommentsModel` have **no `owner` at
+all**, so judging them this way would read "unowned" as "foreign" and silently
+stop saving them. The bias throughout is that a redundant write is cheap and a
+dropped edit is not.
+
+Neither gate works alone, and the reason is worth keeping:
+
+- **`Model.change` has to be allowed.** `Model.prototype.set` raises it, and that
+  is how dragging a node persists — `commitMoveNode` does
+  `node.model.set({x, y})`. It is also on the base class, so every model in the
+  app can raise it. Allowing that name without the ownership check re-admits most
+  of what the denylist let through, including a step dragged on a workflow canvas.
+- **`graphModelBound` has to be allowed too**, which was not obvious. Excluding it
+  looks right — its literal meaning is binding — but version control's "reset
+  component to a previous version" replaces a project component's graph wholesale
+  and raises *nothing else*. Excluding the name would have made a reset stop
+  reaching disk: a new data-loss bug, introduced by the fix for a spurious-write
+  bug. Ownership admits the reset and rejects the workflow.
+
+**Five specs, in `tests/project/projectsavetriggers.js`** — and registered in
+`tests/project/index.ts`, which is a barrel: a spec file not exported there never
+runs and never says so. They observe through a sentinel written only to disk, so
+any save at all serialises it away; no spying on internals, and no assertion about
+timing. Two assert that a preview client connecting and the template list loading
+leave the file alone; one builds the unowned-`ComponentModel`-with-a-real-graph
+shape a workflow has and asserts the same. The other two are the counterweight
+that matters more — **moving a node and changing a parameter still write** — because
+an allowlist can only fail by omission, and omission is a silently dropped edit.
+
+Also verified by hand, since an omission is invisible: all 64 events that used to
+trigger a save and no longer do. Three needed checking rather than eyeballing.
+`undo`/`redo` are safe because `UndoQueue` runs the inverse action *first*, which
+raises the real allowlisted model events; the notification is bookkeeping after
+the fact. `backendServicesChanged` is safe because it is raised immediately after
+a `setMetaData` that schedules its own save. `tokensChanged` likewise.
+
+Gates, from the primary checkout: editor `test:ci` **1828/0** on seed `54768`
+(1823 before, plus these five), editor `tsc --noEmit` **0**. The four data-loss
+specs in `projectsaveflush.js` all ran and passed.
+
+⚠️ **Not yet verified live.** The claim that a cold start now performs *zero*
+project writes is the point of the change and has only been tested through the
+spec harness. It wants the same instrument that produced the original
+measurement: a console capture over a cold start into a restored project, plus
+blur / quit / close by hand. The 2-space `writeJson` of `56b086c5` makes a stray
+save easy to see in `git diff` while doing it.
+
+### — the fixture earns its keep: 11 SKIPs → 1, and the warning dot was broken (2026-07-28)
+
+The run the fixture was built for, from the primary checkout against
+`nodegx-qa-fixture`. `components-tree` had reported **11 SKIPs** against the best
+projects available; it now reports **one**, and that one is a *measured* number
+rather than an untested assertion.
+
+| Gate | Result |
+|---|---|
+| `components-tree` | 4/4 theme×width passes, **1 SKIP**. 28 rows, depth 4, selected contrast **12.2:1** dark / **13.72:1** light |
+| `panel-geometry` | **12/12** panels clean vertically, **60/60** panel×width combinations clean horizontally |
+| `panel-chrome` | **48/48** panel×theme×width checks clean |
+
+Both of the latter were unverified since `fb619b39` removed a layer from
+`CanvasShell`; both are green.
+
+**What the fixture caught — F62.** Assertion D (the warning dot) had been skipping
+since PNL-006 shipped, for want of a project carrying a warning. Given one, it
+still found nothing: the top bar counted **2** — the fixture's two unresolved
+`Markdown` nodes, correctly attributed to `/Content/Changelog` and
+`/Content/Release Notes` — while the tree rendered **zero** dots. The cause was
+`excludeGlobal: true` in `warningCountFor`, which reads `showGlobally` as "not a
+component's problem" when it actually means "*also* show this project-wide". 18 of
+the 33 `setWarning` sites set it, all against a component, so the dot could
+essentially never appear. With the flag dropped, assertion D executes and passes in
+both themes at both widths: two dots, 6×6, `9999px` radius, `#fdb022`, each 17px
+inside the panel's right edge.
+
+This is exactly the failure mode the fixture's README calls *the meaningless
+green*, one level deeper — not a gate passing without running an assertion, but an
+assertion skipping for two weeks over a feature that was broken the whole time.
+
+**The last SKIP changed character rather than surviving.** At 900px the 28-row tree
+does not overflow, so scroll cost was NOT MEASURED. Re-run at `--height 520` it
+scrolls, the assertion executes, and it reports **p95 frame 17.5ms over 28 rows**
+against a 16.7ms 60fps budget — reported, not failed, because virtualising the tree
+is explicitly out of PNL-006's scope. Worth filing; it is no longer unknown.
+
+**The two cheap leftovers, closed.** `[class*=Clippy]` matches **0** elements, and
+the canvas pill reads **"Ask AI… ⌘+J"**.
+
+⚠️ **A fixture note that cost a diff.** Opening the fixture rewrites it once: the
+generator emits `ports`, `visual` and `visualStateTransitions` per component and a
+top-level `rootComponent`, none of which `ProjectModel.toJSON()` writes — it writes
+`rootNodeId`. So the first save strips them. `verify.py` mirrors the editor's
+*derivations* but not its *serialisation*, which is why this was invisible until
+the project was opened. The committed fixture is still the pre-open form; a
+regeneration should either emit the canonical shape or the README should say the
+first open normalises it.

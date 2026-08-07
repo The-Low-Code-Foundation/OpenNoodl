@@ -1,0 +1,17 @@
+{
+  "label": "Font Awesome Brands",
+  "description": "The Font Awesome 6 brand icon library.",
+  "type": "module",
+  "tags": [
+    "UI"
+  ],
+  "icon": "icon.png",
+  "docsPath": "/library/modules/font-awesome-brands/",
+  "version": "1.0.0",
+  "minEditorVersion": "0.1.0",
+  "runtimeVersion": "2.7.0",
+  "provenance": {
+    "sourceUrl": "https://the-low-code-foundation.github.io/opennoodl-docs/library/modules/font-awesome-brands/font-awesome-brands-1-0.zip",
+    "importedAt": "2026-07-25"
+  }
+}

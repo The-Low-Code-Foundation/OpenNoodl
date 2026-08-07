@@ -1,0 +1,28 @@
+{
+  "typeName": "net.noodl.controls.textinput",
+  "summary": "Single-line or multi-line text entry control with label, icon, placeholder and focus handling; outputs the text as the user types.",
+  "description": "The Text Input control renders an editable text field (or text area, or email/number/password/URL input, chosen by the `type` enum). Its main product is `onTextChanged` (display name 'Text'), a string output that updates continuously as the user types; the `textChanged` signal fires on every such change and `onEnter` fires when the user presses Enter. Text can also be written programmatically: the `startValue` (Text) input holds the field text, and the `set` signal applies it on demand. Optional label and icon sections, per-state styling and focus control (`focus`/`blur` signals, `focusState` output) are built in.",
+  "whenToUse": "Any free-text entry. Use `type` instead of separate nodes for email/number/password fields. For multi-line text set `type` to textArea. For choosing among fixed options use a Dropdown (net.noodl.controls.options) or Radio Button Group instead. The legacy `Text Input` type is superseded by this control.",
+  "ports": {
+    "onTextChanged": "String output ('Text') with the field's current text; updates on every keystroke.",
+    "textChanged": "Signal; fires each time `onTextChanged` changes.",
+    "onEnter": "Signal; fires when the user presses Enter while the field is focused.",
+    "startValue": "String input ('Text'). When `set` is unconnected a new value applies immediately; when `set` is connected the value is held until `set` fires. While the field has focus, programmatic writes are ignored so they cannot fight the user's typing.",
+    "set": "Signal; applies the pending `startValue` to the field.",
+    "clear": "Signal; empties the field.",
+    "focus": "Signal; gives the field keyboard focus (`blur` removes it).",
+    "type": "Enum: text, textArea, email, number, password or url. textArea renders a multi-line editor."
+  },
+  "runtimeBehavior": "Declared-port-groups: `width`/`height` appear per `sizeMode`, icon ports per `useIcon`/`iconSourceType`, label styling ports when `useLabel` is true, and border/shadow ports per border-style and `boxShadowEnabled` settings. The catalog list is the superset; the editor shows the subset matching current parameters.",
+  "examples": ["ctl-settings-form"],
+  "patterns": [
+    "`onTextChanged` → an Expression or Condition: validate as the user types.",
+    "`onEnter` → the same action as the submit button's `onClick`: keyboard-friendly forms.",
+    "A stored value → `startValue` with a load signal → `set`: prefill a form when data arrives."
+  ],
+  "antiPatterns": [
+    "Polling the text with a timer — `onTextChanged` is already live; wire it directly.",
+    "Wiring `textChanged` (signal) where the text string is wanted; use `onTextChanged`."
+  ],
+  "relatedNodes": ["net.noodl.controls.button", "net.noodl.controls.options", "Condition", "Expression", "Text"]
+}

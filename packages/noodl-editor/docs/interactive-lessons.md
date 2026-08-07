@@ -76,6 +76,14 @@ Example:
 Format is same as above, with two additions. Conditions and a checkmark.
 It's recommended to use `<h3>` in the item.
 
+> **Checkmark markup (UIX-011).** The checkmark used to be an empty span filled
+> by a CSS `content: url(...)`. Those SVGs could not follow the editor theme, so
+> the glyph is now inline markup emitted by `compileStep` in
+> `models/lessonformat.ts`. An empty `<span class="lesson-checkmark"></span>`
+> still works — it degrades to a CSS-drawn ring (filled when complete) — but
+> lessons authored as `lesson.json` and run through the compiler get the real
+> glyph and are the preferred path.
+
 ```html
 <div data-conditions="[ list of conditions as json ]" }>
   <div data-template="item">

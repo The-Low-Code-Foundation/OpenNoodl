@@ -1,0 +1,8 @@
+{
+  "typeName": "Options",
+  "summary": "Legacy dropdown visual, hidden from the node picker — superseded by net.noodl.controls.options (Dropdown).",
+  "description": "The original Options (select) visual, kept only so old projects load. The Dropdown control (net.noodl.controls.options) supersedes it with items/value binding, visual states and accessibility.",
+  "whenToUse": "Do not use in new graphs — use net.noodl.controls.options instead.",
+  "runtimeBehavior": "Declared-port-groups gate box-shadow and width/height ports on parameter values; irrelevant for new work — the node is hidden from the picker.",
+  "relatedNodes": ["net.noodl.controls.options"]
+}

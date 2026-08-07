@@ -1,0 +1,188 @@
+/**
+ * JavaScriptEditor Component Styles
+ * Uses design tokens for consistency with OpenNoodl design system
+ */
+
+.Root {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  background-color: var(--theme-color-bg-1);
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+/* Toolbar */
+.Toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background-color: var(--theme-color-bg-2);
+  border-bottom: 1px solid var(--theme-color-border-default);
+  min-height: 36px;
+}
+
+.ToolbarLeft,
+.ToolbarRight {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.ModeLabel {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--theme-color-fg-default);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.StatusValid {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--theme-color-success);
+}
+
+/*
+  A verdict with a problem behind it is a button — it opens the diagnostics
+  panel. It reads as text on purpose (the toolbar already has three buttons and
+  this is a status first), so the affordance is the underline on hover and a
+  real focus ring, not a box.
+*/
+.StatusInvalid,
+.StatusWarning {
+  font-size: 12px;
+  font-weight: 500;
+  padding: 0;
+  border: none;
+  background: none;
+  font-family: inherit;
+  cursor: pointer;
+  text-decoration-line: underline;
+  text-decoration-style: dotted;
+  text-underline-offset: 3px;
+
+  &:hover {
+    text-decoration-style: solid;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--theme-color-primary);
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+}
+
+.StatusInvalid {
+  color: var(--theme-color-error);
+}
+
+.StatusWarning {
+  color: var(--theme-color-warning);
+}
+
+.FormatButton,
+.SaveButton {
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  border: 1px solid var(--theme-color-border-default);
+  background-color: var(--theme-color-bg-3);
+  color: var(--theme-color-fg-default);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+
+  &:hover:not(:disabled) {
+    background-color: var(--theme-color-bg-4);
+    border-color: var(--theme-color-primary);
+  }
+
+  &:active:not(:disabled) {
+    transform: translateY(1px);
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+  }
+}
+
+.SaveButton {
+  background-color: var(--theme-color-primary);
+  color: var(--theme-color-on-primary);
+  border-color: var(--theme-color-primary);
+
+  &:hover:not(:disabled) {
+    background-color: var(--theme-color-primary-hover, var(--theme-color-primary));
+    border-color: var(--theme-color-primary-hover, var(--theme-color-primary));
+  }
+}
+
+.CloseButton {
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  border: 1px solid var(--theme-color-border-default);
+  background-color: var(--theme-color-bg-4);
+  color: var(--theme-color-fg-default);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+
+  &:hover {
+    background-color: var(--theme-color-bg-5);
+    border-color: var(--theme-color-fg-default-shy);
+  }
+
+  &:active {
+    transform: translateY(1px);
+  }
+}
+
+/* Editor Container with CodeMirror */
+.EditorContainer {
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+  background-color: var(--theme-color-bg-2);
+
+  /* CodeMirror will fill this container */
+  :global(.cm-editor) {
+    height: 100%;
+    font-family: var(--font-family-code);
+  }
+
+  :global(.cm-scroller) {
+    overflow: auto;
+  }
+}
+
+/*
+  The bespoke error panel that used to live here is gone (FH-017 slice 2/3). It
+  could only ever show one problem, and CodeMirror's own diagnostics panel —
+  which lists every one and jumps to it — renders inside `.cm-editor`, styled in
+  `codemirror-theme.ts` with the rest of the editor's panels.
+*/
+
+/* Footer with resize grip */
+.Footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 8px;
+  background-color: var(--theme-color-bg-2);
+  border-top: 1px solid var(--theme-color-border-default);
+  min-height: 24px;
+  flex-shrink: 0;
+}
+
+.FooterLeft,
+.FooterRight {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}

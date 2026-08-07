@@ -1,15 +1,19 @@
 import React from 'react';
-import { ComponentStory, ComponentMeta } from '@storybook/react';
+import type { Meta, StoryObj } from '@storybook/react';
 
 import { LauncherSearchBar } from './LauncherSearchBar';
 
-export default {
+const meta: Meta<typeof LauncherSearchBar> = {
   title: 'CATEGORY_HERE/LauncherSearchBar',
   component: LauncherSearchBar,
   argTypes: {},
-} as ComponentMeta<typeof LauncherSearchBar>;
+};
 
-const Template: ComponentStory<typeof LauncherSearchBar> = (args) => <LauncherSearchBar {...args} />;
+export default meta;
+type Story = StoryObj<typeof meta>;
 
-export const Common = Template.bind({});
-Common.args = {};
+
+
+export const Common: Story = {
+  args: {},
+};

@@ -1,0 +1,39 @@
+/* PNL-008 — the Project | Editor strip.
+ *
+ * It lives inside `BasePanel`'s scroll container, as a sibling of the sections,
+ * for the reasons in SettingsPanel.tsx. Everything here exists to make a sibling
+ * behave like chrome.
+ *
+ * No band numbers are restated: the strip is two buttons that fit at 240px, so
+ * it needs no container query. See `PanelRow/panel-bands.scss` before adding one.
+ */
+
+.TabStrip {
+  /* Sticks under the 44px panel header so the tabs stay reachable eight
+     collapsibles down. Sticky degrades to static if anything upstream ever
+     introduces an `overflow` that breaks it — the strip still renders and still
+     works, it just scrolls away, which is what it did before this rule. */
+  position: sticky;
+  top: 0;
+  z-index: 1;
+
+  /* Full-bleed to the scroll container's padding box, so content scrolling
+     underneath is covered edge to edge rather than showing through a 16px
+     margin on each side. The inner padding puts the buttons back in line with
+     the rows below them.
+
+     `--spacing-panel-padding` is `BasePanel`'s own inset — read, never restated,
+     so the two cannot drift. */
+  margin-inline: calc(-1 * var(--spacing-panel-padding));
+  padding-inline: var(--spacing-panel-padding);
+
+  /* And vertically: cancel the container's top inset, then give it back as our
+     own padding. Statically the strip sits exactly where it would have; stuck,
+     its top edge is the scrollport's top edge and the gap goes with it, so the
+     strip does not appear to jump 16px on the first scroll. */
+  margin-top: calc(-1 * var(--spacing-panel-padding));
+  padding-top: var(--spacing-panel-padding);
+  padding-bottom: var(--spacing-3);
+
+  background-color: var(--theme-color-bg-2);
+}

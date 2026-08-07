@@ -1,0 +1,19 @@
+{
+  "typeName": "Static Data",
+  "summary": "Static Array: inline JSON or CSV authored in the editor, emitted as an array of objects.",
+  "description": "Static Array turns literal data typed into the node — JSON (an array of objects) or CSV with a header row — into an `items` array plus a `count`. Each element becomes a client-side object, so downstream nodes treat the items exactly like query results or shared-array elements.",
+  "whenToUse": "Fixtures, menus, option lists, demo content — any list that ships with the app rather than coming from a backend or user input. For runtime-mutable lists feed an Array (Collection2); for remote data use Query Records or REST.",
+  "ports": {
+    "type": "Chooses the authoring format: 'json' or 'csv'; the matching text input (`json`/`csv`) is shown.",
+    "items": "The parsed array; wire to a Repeater's `items` or into filters/maps."
+  },
+  "runtimeBehavior": "Declared-port-groups only: the `json` and `csv` text inputs swap in based on `type`. No ports depend on the data itself.",
+  "examples": ["data-shared-array-add-remove", "data-static-array-filter-repeater", "comp-repeater-set-item-object"],
+  "patterns": [
+    "Static Array → Array Filter/Array Map → Repeater: fixture-driven UI with real list plumbing."
+  ],
+  "antiPatterns": [
+    "Editing Static Array content from logic at runtime — it is authoring-time data; use an Array for mutable lists."
+  ],
+  "relatedNodes": ["Collection2", "Filter Collection", "Map Collection", "For Each"]
+}

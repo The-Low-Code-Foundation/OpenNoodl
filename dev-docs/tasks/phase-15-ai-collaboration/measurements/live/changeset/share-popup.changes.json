@@ -1,0 +1,102 @@
+{
+  "componentName": "/Pop-ups/Share/Share Popup",
+  "isNewComponent": false,
+  "changes": [
+    {
+      "id": "node-parameters-changed:fada616b-8ce2-958f-5b72-85e1351c34e0",
+      "kind": "node-parameters-changed",
+      "category": "semantic",
+      "requires": [],
+      "excludedWith": [],
+      "requiredWith": []
+    },
+    {
+      "id": "node-type-changed:48709706-1cc8-ceef-d3fe-aacd164c62b3",
+      "kind": "node-type-changed",
+      "category": "semantic",
+      "requires": [],
+      "excludedWith": [],
+      "requiredWith": []
+    },
+    {
+      "id": "node-type-changed:11c6c11e-0c5a-c79a-7181-9e98e94d4856",
+      "kind": "node-type-changed",
+      "category": "semantic",
+      "requires": [],
+      "excludedWith": [],
+      "requiredWith": []
+    },
+    {
+      "id": "node-parameters-changed:11c6c11e-0c5a-c79a-7181-9e98e94d4856",
+      "kind": "node-parameters-changed",
+      "category": "semantic",
+      "requires": [],
+      "excludedWith": [],
+      "requiredWith": []
+    },
+    {
+      "id": "node-type-changed:31d0e853-ddff-d204-af60-b1b5a5048e03",
+      "kind": "node-type-changed",
+      "category": "semantic",
+      "requires": [],
+      "excludedWith": [],
+      "requiredWith": []
+    },
+    {
+      "id": "node-parameters-changed:31d0e853-ddff-d204-af60-b1b5a5048e03",
+      "kind": "node-parameters-changed",
+      "category": "semantic",
+      "requires": [],
+      "excludedWith": [],
+      "requiredWith": []
+    },
+    {
+      "id": "node-type-changed:6f633b6f-e0c8-ec71-08a7-4838227e6449",
+      "kind": "node-type-changed",
+      "category": "semantic",
+      "requires": [],
+      "excludedWith": [],
+      "requiredWith": []
+    },
+    {
+      "id": "node-parameters-changed:6f633b6f-e0c8-ec71-08a7-4838227e6449",
+      "kind": "node-parameters-changed",
+      "category": "semantic",
+      "requires": [],
+      "excludedWith": [],
+      "requiredWith": []
+    },
+    {
+      "id": "node-type-changed:158b8308-c1a6-c26a-1b99-016d3d80b68f",
+      "kind": "node-type-changed",
+      "category": "semantic",
+      "requires": [],
+      "excludedWith": [],
+      "requiredWith": []
+    },
+    {
+      "id": "connection-rewired:342f72e3-2b12-4515-e601-d845f31a49a1:out-result->158b8308-c1a6-c26a-1b99-016d3d80b68f:html->342f72e3-2b12-4515-e601-d845f31a49a1:out-result->158b8308-c1a6-c26a-1b99-016d3d80b68f:text",
+      "kind": "connection-rewired",
+      "category": "semantic",
+      "requires": [],
+      "excludedWith": [],
+      "requiredWith": []
+    },
+    {
+      "id": "connection-rewired:5a5b63c5-450c-da84-5161-79824268618d:formatted->48709706-1cc8-ceef-d3fe-aacd164c62b3:source->5a5b63c5-450c-da84-5161-79824268618d:formatted->48709706-1cc8-ceef-d3fe-aacd164c62b3:text",
+      "kind": "connection-rewired",
+      "category": "semantic",
+      "requires": [],
+      "excludedWith": [],
+      "requiredWith": []
+    },
+    {
+      "id": "connection-added:fada616b-8ce2-958f-5b72-85e1351c34e0:onClick->9e333d4b-59ac-94e0-ecd3-f5b491d0f3e8:close",
+      "kind": "connection-added",
+      "category": "semantic",
+      "requires": [],
+      "excludedWith": [],
+      "requiredWith": []
+    }
+  ]
+}

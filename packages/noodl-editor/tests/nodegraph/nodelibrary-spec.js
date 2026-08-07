@@ -9,7 +9,9 @@ describe('Node library tests', function () {
   beforeEach(() => {
     //reload fresh library for every test
     window.NodeLibraryData = require('../nodegraph/nodelibrary');
-    for (const module of NodeLibrary.instance.modules) {
+    // NB the copy: `unregisterModule` splices the array, so iterating the live
+    // one skipped every other module and left half of them registered.
+    for (const module of [...NodeLibrary.instance.modules]) {
       NodeLibrary.instance.unregisterModule(module);
     }
 
@@ -281,6 +283,46 @@ describe('Node library tests', function () {
     NodeLibrary.instance.unregisterModule(p);
     expect(NodeLibrary.instance.getNodeTypeWithName('comp1')).toBeUndefined();
     expect(NodeLibrary.instance.getNodeTypeWithName('comp2')).toBeUndefined();
+  });
+
+  // These two pin the cause of a long-standing set of order-dependent failures
+  // in this suite: `export.js` and `projectimport.js` resolved component types
+  // against components belonging to projects from *earlier* specs, so the same
+  // assertion produced different node counts depending on the random seed.
+  it('registering the same module twice registers it once', () => {
+    const p = ProjectModel.fromJSON(getProject());
+
+    NodeLibrary.instance.registerModule(p);
+    NodeLibrary.instance.registerModule(p);
+
+    expect(NodeLibrary.instance.modules.filter((m) => m === p).length).toBe(1);
+
+    // One unregister must therefore be enough to make it invisible. It was not:
+    // the second registration left an entry `indexOf` could never reach again,
+    // and the module's components stayed resolvable for the rest of the session.
+    NodeLibrary.instance.unregisterModule(p);
+    expect(NodeLibrary.instance.modules.indexOf(p)).toBe(-1);
+    expect(NodeLibrary.instance.getNodeTypeWithName('comp1')).toBeUndefined();
+  });
+
+  it('registering a module invalidates a type cache built without it', () => {
+    const first = ProjectModel.fromJSON(getProject());
+    NodeLibrary.instance.registerModule(first);
+    const fromFirst = NodeLibrary.instance.getNodeTypeWithName('comp1');
+    expect(fromFirst).toBeInstanceOf(ComponentModel);
+
+    // A second project defining the same component name. Without the cache
+    // clear on register, `comp1` stays bound to the first project's component
+    // even after the first is gone — resolution by whoever got there first.
+    NodeLibrary.instance.unregisterModule(first);
+    const second = ProjectModel.fromJSON(getProject());
+    NodeLibrary.instance.registerModule(second);
+
+    const fromSecond = NodeLibrary.instance.getNodeTypeWithName('comp1');
+    expect(fromSecond).toBeInstanceOf(ComponentModel);
+    expect(fromSecond).not.toBe(fromFirst);
+
+    NodeLibrary.instance.unregisterModule(second);
   });
 
   function getProject() {

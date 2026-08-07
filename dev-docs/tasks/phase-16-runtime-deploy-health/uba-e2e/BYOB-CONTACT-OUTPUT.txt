@@ -1,0 +1,49 @@
+
+──────────────────────────────────────────────────────────────────────────────
+A — REAL BackendServices introspection of live Directus /fields
+──────────────────────────────────────────────────────────────────────────────
+Parsed 31 collections (2 user).
+
+  collection "authors" (pk=id):
+    - id: type=integer  PK required
+    - name: type=string
+    - email: type=string
+
+  collection "articles" (pk=id):
+    - id: type=integer  PK required
+    - title: type=string
+    - body: type=text
+    - status: type=string  enum[draft,published,archived]
+    - rating: type=integer
+    - featured: type=boolean
+    - published_at: type=timestamp
+    - author: type=integer  →authors
+    - hero_image: type=uuid  →directus_files
+
+→ Introspection: WORKS. Enum parsed: true. Relations parsed: yes.
+
+──────────────────────────────────────────────────────────────────────────────
+B — REAL byob-utils runtime query path against live Directus
+──────────────────────────────────────────────────────────────────────────────
+resolveBackend(_active_): url=http://localhost:8055 type=directus hasToken=true
+buildUrl → http://localhost:8055/items/articles
+CREATE items/articles → HTTP 200, id=4
+QUERY items/articles?filter={status=published} → HTTP 200, 4 record(s)
+  first record title: RUN-003 smoke
+
+→ Runtime CRUD path: WORKS end-to-end.
+
+──────────────────────────────────────────────────────────────────────────────
+C — REAL getEnhancedFieldType + shouldShowField on CACHED SchemaFields (the real node flow)
+──────────────────────────────────────────────────────────────────────────────
+    id (integer) → HIDDEN (skipped by shouldShowField)
+    title (string) → port string
+    body (text) → port string
+    status (string) → port enum(draft,published,archived)
+    rating (integer) → port number
+    featured (boolean) → port boolean
+    published_at (timestamp) → port string
+    author (integer) → port number  [relation →authors]
+    hero_image (uuid) → port string  [relation →directus_files]
+
+→ Cached-shape port mapping: enum port WORKS from cached schema.

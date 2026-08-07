@@ -1,0 +1,35 @@
+{
+  "request": "Let readers save articles to read later. I want a \"Saved\" page listing what they have saved, a save/unsave control they can drop onto an article, and the article list should show which ones are already saved.",
+  "operations": [
+    {
+      "id": "op-1",
+      "kind": "create",
+      "target": "Logic Components/Manage Saved Articles",
+      "intent": "Logic component exposing inputs [Do, articleId, action] and outputs [Success, Failure, isSaved, savedArticles] to save/unsave an article for the current user (e.g. persisted list keyed by user) and to query whether a given articleId is currently saved, plus fetch the full list of saved articles."
+    },
+    {
+      "id": "op-2",
+      "kind": "create",
+      "target": "Visual Components/Article/Save Button",
+      "intent": "A toggleable save/unsave control with inputs [articleId, isSaved] and output [Toggled] that visually reflects saved state and can be dropped onto an article; on click it calls Logic Components/Manage Saved Articles to toggle the save state."
+    },
+    {
+      "id": "op-4",
+      "kind": "create",
+      "target": "Pages/Saved",
+      "intent": "New page listing all articles the current user has saved, fetched via Logic Components/Manage Saved Articles, each rendered with a Save Button so users can unsave from this list; requires user to be logged in (use Logic Components/Is user logged in?)."
+    },
+    {
+      "id": "op-3",
+      "kind": "update",
+      "target": "Visual Components/Article/Article",
+      "intent": "Add a Save Button instance (passing articleId/articleObjectId and isSaved) so readers can save/unsave the article directly from the article view, wired to Logic Components/Manage Saved Articles for saved-state lookup and toggling."
+    },
+    {
+      "id": "op-5",
+      "kind": "update",
+      "target": "/App",
+      "intent": "Add navigation/routing entry point to the new Pages/Saved page (e.g. a nav link or menu item to route 'Saved') so readers can reach their saved-articles list from the main app shell."
+    }
+  ]
+}

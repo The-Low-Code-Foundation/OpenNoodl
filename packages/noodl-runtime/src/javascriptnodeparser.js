@@ -2,6 +2,8 @@
 
 const Model = require('./model');
 const { getAbsoluteUrl } = require('./utils');
+const { findAncestorWithComponentObject } = require('./componentwalk');
+const { resolveForEachItem } = require('./foreachitem');
 
 var userFunctionsCache = {};
 
@@ -140,13 +142,17 @@ JavascriptNodeParser.prototype.script = function (userObject) {
 // Node.setOutputs({...})
 // Component.Object, Component.ParentObject
 JavascriptNodeParser.prototype._initializeAPIs = function () {
-  this.apis = {};
-
-  this.apis.Node = {
-    Inputs: {},
-    Outputs: {},
-    Signals: {},
-    Setters: {}
+  // Assigned whole rather than built up field by field: `this.apis = {}` followed by
+  // `this.apis.Node = …` makes TypeScript infer `apis` as `{}` from the first assignment,
+  // and the declaration this package now ships would then contradict every consumer that
+  // reads `apis.Node`. Behaviour is identical.
+  this.apis = {
+    Node: {
+      Inputs: {},
+      Outputs: {},
+      Signals: {},
+      Setters: {}
+    }
   };
 };
 
@@ -205,23 +211,82 @@ JavascriptNodeParser.prototype._afterSourced = function () {
   }
 };
 
+/**
+ * @param {string} code
+ * @param {{ node?: unknown }} [options]
+ * @returns {JavascriptNodeParser}
+ */
 JavascriptNodeParser.createFromCode = function (code, options) {
   return new JavascriptNodeParser(code, options);
 };
 
+/**
+ * A parser that never parsed anything, carrying the reason.
+ *
+ * Shaped like a real one — `error`, `getPorts()`, empty `inputs`/`outputs` — because every
+ * caller already branches on `parser.error`, and handing them `undefined` instead is what
+ * produced the defect below.
+ *
+ * @param {string} message
+ * @returns {JavascriptNodeParser}
+ */
+function failedParser(message) {
+  var parser = Object.create(JavascriptNodeParser.prototype);
+  parser.inputs = {};
+  parser.outputs = {};
+  parser.error = message;
+  parser.code = undefined;
+  parser.apis = { Node: {} };
+  return parser;
+}
+
+/**
+ * NDA-012 (CustomCode). The Script node's `External File` mode had **no failure path at all**.
+ *
+ * `onerror` logged to the console and never called back, so `Javascript2` left
+ * `isWaitingForExternalFileToLoad` set — and its `update()` override clears `_dirty` and skips
+ * `Node.prototype.update` for exactly as long as that flag is true (`javascript.ts:341-347`).
+ * A Script node pointed at a URL that could not be reached was therefore **permanently and
+ * silently inert**: no code, no ports, no warning, no error, and no further updates ever.
+ *
+ * The status check is the second half. `onreadystatechange` fired on *any* completed request,
+ * so a 404 handed the server's error page to the parser as if it were the author's script; the
+ * resulting `SyntaxError` reported a parse failure for code the author never wrote.
+ *
+ * @param {string} url
+ * @param {(parser: JavascriptNodeParser) => void} callback
+ * @param {{ node?: unknown }} [options]
+ */
 JavascriptNodeParser.createFromURL = function (url, callback, options) {
   url = getAbsoluteUrl(url);
+
+  var settled = false;
+  function settle(parser) {
+    if (settled) return;
+    settled = true;
+    callback(parser);
+  }
 
   var xhr = new window.XMLHttpRequest();
   xhr.open('GET', url, true);
   xhr.onreadystatechange = function () {
     // XMLHttpRequest.DONE = 4, but torped runtime doesn't support enum
     if (this.readyState === 4 || this.readyState === XMLHttpRequest.DONE) {
-      callback(new JavascriptNodeParser(this.response));
+      // `status` is 0 for a network-level failure, which `onerror` also reports; whichever
+      // arrives first settles, and `settle` makes the other one a no-op.
+      if (this.status !== 0 && (this.status < 200 || this.status >= 300)) {
+        settle(failedParser('Could not load "' + url + '": the server answered ' + this.status));
+        return;
+      }
+      if (this.status === 0) {
+        settle(failedParser('Could not load "' + url + '": the request failed'));
+        return;
+      }
+      settle(new JavascriptNodeParser(this.response, options));
     }
   };
   xhr.onerror = function () {
-    console.log('Failed to request', url);
+    settle(failedParser('Could not load "' + url + '": the request failed'));
   };
   xhr.send();
 };
@@ -367,55 +432,13 @@ JavascriptNodeParser.prototype.getPorts = function () {
 const _componentScopes = {};
 
 function _findParentComponentStateModelId(node) {
-  function getParentComponent(component) {
-    let parent;
-    if (component.getRoots().length > 0) {
-      //visual
-      const root = component.getRoots()[0];
-
-      if (root.getVisualParentNode) {
-        //regular visual node
-        if (root.getVisualParentNode()) {
-          parent = root.getVisualParentNode().nodeScope.componentOwner;
-        }
-      } else if (root.parentNodeScope) {
-        //component instance node
-        parent = component.parentNodeScope.componentOwner;
-      }
-    } else if (component.parentNodeScope) {
-      parent = component.parentNodeScope.componentOwner;
-    }
-
-    //check that a parent exists and that the component is different
-    if (parent && parent.nodeScope && parent.nodeScope.componentOwner !== component) {
-      //check if parent has a Component State node
-      if (parent.nodeScope.getNodesWithType('net.noodl.ComponentObject').length > 0) {
-        return parent;
-      }
-
-      if (parent.nodeScope.getNodesWithType('Component State').length > 0) {
-        return parent;
-      }
-
-      //if not, continue searching up the tree
-      return getParentComponent(parent);
-    }
-  }
-
-  const parent = getParentComponent(node.nodeScope.componentOwner);
+  // Was a fourth hand-copy of the walk. It happened to accept both Component Object types, so
+  // it agreed with `parentcomponentobject.ts` — but only by coincidence, and the two write-side
+  // copies did not. One implementation now (`componentwalk.ts`).
+  const parent = findAncestorWithComponentObject(node.nodeScope.componentOwner);
   if (!parent) return;
 
-  //this._internal.parentComponentName = parent.name;
-
   return 'componentState' + parent.getInstanceId();
-}
-
-function _findForEachModel(node) {
-  var component = node.nodeScope.componentOwner;
-  while (component !== undefined && component._forEachModel === undefined && component.parentNodeScope) {
-    component = component.parentNodeScope.componentOwner;
-  }
-  return component !== undefined ? component._forEachModel : undefined;
 }
 
 JavascriptNodeParser.getComponentScopeForNode = function (node) {
@@ -438,8 +461,30 @@ JavascriptNodeParser.getComponentScopeForNode = function (node) {
 
   _componentScopes[componentId].ParentObject = parentComponentObject;
 
-  // Set the for each model
-  _componentScopes[componentId].RepeaterObject = _findForEachModel(node);
+  // The for each model — the fifth site of the `_forEachModel` walk (FINDINGS F-ii), and the
+  // only one that has to be **lazy**.
+  //
+  // The other four resolve because an author set `Id Source = From repeater`, which is a
+  // statement of intent: a miss there is worth raising. This one is computed for *every*
+  // Function node in the project, whether or not its script ever mentions `Component
+  // .RepeaterObject`. Resolving eagerly would raise "not inside a Repeater" against every
+  // Function node in every non-repeated component in the project — the exact noise that would
+  // get the whole channel ignored.
+  //
+  // A getter defers both the walk and the report to the moment the script actually reads the
+  // property, so only a script that *asked* for the repeater item can be told it did not get
+  // one. The scope object is handed to the user function by reference (see the `Component`
+  // parameter in `_source` and `simplejavascript.ts`), never spread or serialised, so the
+  // getter survives to the point of use. `configurable` because this runs per node and the
+  // scope object is cached per component — last writer wins, exactly as the plain assignment
+  // it replaces did.
+  Object.defineProperty(_componentScopes[componentId], 'RepeaterObject', {
+    configurable: true,
+    enumerable: true,
+    get: function () {
+      return resolveForEachItem(node);
+    }
+  });
 
   return _componentScopes[componentId];
 };

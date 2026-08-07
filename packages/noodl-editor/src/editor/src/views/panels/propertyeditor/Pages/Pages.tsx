@@ -1,8 +1,9 @@
 import { NodeGraphContextTmp } from '@noodl-contexts/NodeGraphContext/NodeGraphContext';
 import React, { useState, useRef } from 'react';
-import ReactDOM from 'react-dom';
+import { flushSync } from 'react-dom';
+import { createRoot, Root } from 'react-dom/client';
 
-import { IconName, IconSize } from '@noodl-core-ui/components/common/Icon';
+import { Icon, IconName, IconSize } from '@noodl-core-ui/components/common/Icon';
 import { IconButton, IconButtonVariant } from '@noodl-core-ui/components/inputs/IconButton';
 
 import { RouterAdapter } from '../../../../models/NodeTypeAdapters/RouterAdapter';
@@ -65,7 +66,9 @@ function PageItem(props) {
   return (
     <div className="variants-pick-variant-item is-page" onClick={props.onSelectClicked}>
       <div className="variants-pick-variant-inner">
-        <div className="router-pages-icon" style={{ margin: '0px', marginLeft: '7px' }}></div>
+        <div className="router-pages-icon" style={{ margin: '0px', marginLeft: '7px' }}>
+          <Icon icon={IconName.File} UNSAFE_style={{ width: 18, height: 18 }} />
+        </div>
         <div className="variant-item-name" style={{ marginRight: '7px' }}>
           {props.name}
         </div>
@@ -101,7 +104,12 @@ function BigPageItem(props) {
     <div style={{ display: 'flex' }}>
       <div className="router-pages-page" onClick={props.onPageClicked}>
         <div style={{ display: 'flex' }}>
-          <div className={'router-pages-icon' + (props.isStartPage ? ' start-page' : '')}></div>
+          <div className={'router-pages-icon' + (props.isStartPage ? ' start-page' : '')}>
+            <Icon
+              icon={props.isStartPage ? IconName.FileFill : IconName.File}
+              UNSAFE_style={{ width: 18, height: 18 }}
+            />
+          </div>
         </div>
         <div style={{ flexGrow: 1 }}>
           <div className="router-pages-component">{p.title || p.component}</div>
@@ -234,14 +242,20 @@ export class Pages extends React.Component {
       }
     };
     const div = document.createElement('div');
-    ReactDOM.render(React.createElement(AddNewPagePopup, props), div);
+    const root = createRoot(div);
+    // Synchronous: showPopup measures the content to size the popup box, and
+    // root.render alone is async — the box measured 0×0 (DEBT-010, the
+    // StringInputPopup precedent).
+    flushSync(() => root.render(React.createElement(AddNewPagePopup, props)));
 
     PopupLayer.instance.showPopup({
-      content: { el: $(div) },
-      // @ts-expect-error
-      attachTo: $(this.popupAnchor),
+      content: { el: div },
+      // @ts-expect-error - Legacy class component without proper typing
+      attachTo: this.popupAnchor,
       position: 'right',
-      onClose: function () {}
+      onClose: function () {
+        root.unmount();
+      }
     });
   }
 
@@ -268,7 +282,7 @@ export class Pages extends React.Component {
 
     PopupLayer.instance.showPopup({
       content: menu,
-      attachTo: $(popupAnchor),
+      attachTo: popupAnchor,
       position: 'bottom',
       onOpen: function () {
         //   el.removeClass('sidebar-panel-item-show-on-hover');

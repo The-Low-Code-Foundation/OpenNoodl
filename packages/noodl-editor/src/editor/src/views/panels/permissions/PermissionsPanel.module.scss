@@ -1,0 +1,380 @@
+/**
+ * PermissionsPanel styles (BAK-003). Theme tokens per UI-STYLING-GUIDE.md;
+ * structure mirrors DataBrowser so the overlay reads as one family.
+ */
+
+.Root {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  max-height: 80vh;
+  width: 100%;
+  max-width: 900px;
+  background-color: var(--theme-color-bg-2);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.Header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px;
+  border-bottom: 1px solid var(--theme-color-border-default);
+  background-color: var(--theme-color-bg-3);
+}
+
+.HeaderIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background-color: var(--theme-color-primary);
+  border-radius: 6px;
+  color: var(--theme-color-fg-on-primary);
+}
+
+.Body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+}
+
+.Section {
+  padding: 14px;
+  margin-bottom: 14px;
+  background-color: var(--theme-color-bg-1);
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: 6px;
+}
+
+.ErrorBanner {
+  padding: 10px 12px;
+  margin-bottom: 12px;
+  border-radius: 6px;
+  background-color: var(--theme-color-danger-shade, rgba(200, 60, 60, 0.15));
+  border: 1px solid var(--theme-color-danger);
+}
+
+.NoticeBanner {
+  padding: 8px 12px;
+  margin-bottom: 12px;
+  border-radius: 6px;
+  background-color: var(--theme-color-success-shade, rgba(60, 160, 90, 0.15));
+  border: 1px solid var(--theme-color-success);
+}
+
+.SpreadRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.InlineRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.CollectionRow {
+  padding: 10px 0;
+  border-top: 1px solid var(--theme-color-border-subtle, var(--theme-color-border-default));
+
+  &:first-of-type {
+    border-top: none;
+  }
+}
+
+.CollectionName {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.CreatorOwns {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+}
+
+.OpGrid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 8px;
+}
+
+/* ---------------------------------------------------------------------------
+   SPR-001 §3: the collection permission matrix.
+
+   Everything below is drawn from theme tokens only — no literal colours — so
+   the light and dark palettes both come out of the same rules. The two states
+   that need to be distinguishable without colour (inherited, and a role that
+   cannot change the answer) use OPACITY and a dotted underline rather than a
+   hue, because a permission surface that only reads in one theme is a
+   permission surface that gets misread in the other.
+   --------------------------------------------------------------------------- */
+
+.Disclosure {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 4px 2px 0;
+  background: none;
+  border: none;
+  border-radius: 4px;
+  color: var(--theme-color-fg-default);
+  cursor: pointer;
+  text-align: left;
+
+  &:hover {
+    background-color: var(--theme-color-bg-3);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--theme-color-primary);
+    outline-offset: 1px;
+  }
+}
+
+/* One rule, in words. Always visible — collapsed, this row IS the policy. */
+.OpSummary {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 4px 7px;
+  background-color: var(--theme-color-bg-3);
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: 4px;
+  color: var(--theme-color-fg-default);
+  cursor: pointer;
+  text-align: left;
+  overflow: hidden;
+
+  &:hover {
+    border-color: var(--theme-color-primary);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--theme-color-primary);
+    outline-offset: 1px;
+  }
+
+  /* Inheriting: the words are the DEFAULT's, not this collection's. */
+  &[data-inherited='true'] .OpSummaryValue {
+    opacity: 0.65;
+    font-style: italic;
+  }
+}
+
+.OpSummaryValue {
+  font-size: 11px;
+  line-height: 1.3;
+  color: var(--theme-color-fg-default);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.Matrix {
+  margin-top: 10px;
+  padding: 10px;
+  background-color: var(--theme-color-bg-3);
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: 4px;
+  overflow-x: auto;
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 11px;
+    color: var(--theme-color-fg-default);
+  }
+
+  th,
+  td {
+    padding: 4px 6px;
+    text-align: center;
+  }
+
+  thead th {
+    font-weight: 400;
+    color: var(--theme-color-fg-default-shy);
+    border-bottom: 1px solid var(--theme-color-border-default);
+  }
+
+  tbody th {
+    text-align: left;
+    font-weight: 400;
+    white-space: nowrap;
+  }
+
+  input[type='checkbox'] {
+    cursor: pointer;
+    margin: 0;
+  }
+
+  /* A tick that is not this column's own doing: the default's, or a role that
+     `authenticated` already covers. Legible, but visibly not an assertion. */
+  input[data-dimmed='true'] {
+    opacity: 0.45;
+  }
+}
+
+.MatrixCorner {
+  text-align: left !important;
+  width: 40%;
+}
+
+.MatrixRow {
+  border-top: 1px solid var(--theme-color-border-subtle, var(--theme-color-border-default));
+
+  &:hover {
+    background-color: var(--theme-color-bg-2);
+  }
+
+  /* A role a rule names but that does not exist here. */
+  &[data-missing='true'] .MatrixRowLabel {
+    color: var(--theme-color-notice);
+  }
+}
+
+.MatrixRowLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.MatrixRowHint {
+  display: block;
+  font-size: 10px;
+  color: var(--theme-color-fg-default-shy);
+}
+
+.MatrixFooter {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid var(--theme-color-border-default);
+}
+
+/* CWF-017: rule preset, exact rule, and this function's own budget. */
+.FunctionGrid {
+  display: grid;
+  // Five: who may call it, an exact rule, its rate budget, its time limit
+  // (CWF-018) and what a duplicate delivery does (CWF-016). The last three are
+  // all "what this backend will spend on one function and one caller", which is
+  // why they sit together rather than in a second section.
+  grid-template-columns: 1.1fr 1.2fr 0.8fr 0.8fr 1.2fr;
+  gap: 8px;
+}
+
+.OpField {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.RuleInput {
+  background-color: var(--theme-color-bg-3);
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: 4px;
+  color: var(--theme-color-fg-default);
+  font-size: 11px;
+  padding: 5px 7px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.RoleRow {
+  padding: 8px 0;
+  border-top: 1px solid var(--theme-color-border-subtle, var(--theme-color-border-default));
+
+  &:first-of-type {
+    border-top: none;
+  }
+}
+
+.RoleHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.RoleMembers {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.MemberChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px;
+  border-radius: 10px;
+  background-color: var(--theme-color-bg-3);
+  border: 1px solid var(--theme-color-border-default);
+}
+
+.ChipRemove {
+  background: none;
+  border: none;
+  color: var(--theme-color-fg-default-shy);
+  cursor: pointer;
+  font-size: 12px;
+  line-height: 1;
+  padding: 0;
+}
+
+.MemberInput {
+  background-color: var(--theme-color-bg-3);
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: 4px;
+  color: var(--theme-color-fg-default);
+  font-size: 10px;
+  padding: 3px 6px;
+  min-width: 180px;
+}
+
+.KeyRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-top: 1px solid var(--theme-color-border-subtle, var(--theme-color-border-default));
+
+  &:first-of-type {
+    border-top: none;
+  }
+}
+
+.SecretBanner {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+  margin-bottom: 12px;
+  border-radius: 6px;
+  background-color: var(--theme-color-notice-shade, rgba(200, 160, 60, 0.15));
+  border: 1px solid var(--theme-color-notice);
+}
+
+.SecretValue {
+  display: block;
+  font-family: monospace;
+  font-size: 12px;
+  word-break: break-all;
+  padding: 6px 8px;
+  background-color: var(--theme-color-bg-3);
+  border-radius: 4px;
+  color: var(--theme-color-fg-default);
+}

@@ -1,0 +1,93 @@
+{
+  "id": "agent-sse-task-monitor",
+  "title": "Long-running task monitor: progress, batched log lines, and a visible connection",
+  "description": "A backend job streams two kinds of frame on one connection. Pattern Extractor pulls the percentage out of human-readable status text, so a progress bar tracks it without a Function node. JSON Stream Parser turns NDJSON log payloads into values — several may complete in one frame, so `values` rather than `parsed` is what feeds downstream. Stream Buffer batches those into a flush every 250 ms, which keeps a busy log from repainting the list hundreds of times a second, and the stream's `onClose` flushes the tail that never reached a full batch.",
+  "demonstrates": [
+    "net.noodl.SSE",
+    "net.noodl.PatternExtractor",
+    "net.noodl.JSONStreamParser",
+    "net.noodl.StreamBuffer"
+  ],
+  "components": [
+    {
+      "name": "/Task Monitor",
+      "nodes": [
+        {
+          "id": "root",
+          "type": "Group",
+          "label": "Monitor",
+          "parameters": { "flexDirection": "column" },
+          "children": ["progress_bar", "state_text", "log_list"]
+        },
+        { "id": "progress_bar", "type": "Group", "label": "Progress bar", "parent": "root" },
+        { "id": "state_text", "type": "Text", "label": "Connection state", "parent": "root" },
+        {
+          "id": "log_list",
+          "type": "For Each",
+          "label": "Log lines",
+          "parent": "root",
+          "parameters": { "template": "/Log Row" }
+        },
+        {
+          "id": "task_stream",
+          "type": "net.noodl.SSE",
+          "label": "Task stream",
+          "parameters": {
+            "url": "https://api.example.com/tasks/stream",
+            "autoConnect": true,
+            "autoReconnect": true,
+            "reconnectDelay": 1000,
+            "maxReconnectDelay": 15000
+          }
+        },
+        {
+          "id": "progress_extractor",
+          "type": "net.noodl.PatternExtractor",
+          "label": "Percent from status",
+          "parameters": { "pattern": "(\\d+)%" }
+        },
+        {
+          "id": "progress_number",
+          "type": "Number",
+          "label": "Percent"
+        },
+        {
+          "id": "log_parser",
+          "type": "net.noodl.JSONStreamParser",
+          "label": "Parse log lines",
+          "parameters": { "format": "ndjson" }
+        },
+        {
+          "id": "log_buffer",
+          "type": "net.noodl.StreamBuffer",
+          "label": "Batch log lines",
+          "parameters": { "flushInterval": 250, "maxSize": 500 }
+        }
+      ],
+      "connections": [
+        { "fromId": "task_stream", "fromProperty": "connectionState", "toId": "state_text", "toProperty": "text" },
+
+        { "fromId": "task_stream", "fromProperty": "raw", "toId": "progress_extractor", "toProperty": "text" },
+        { "fromId": "task_stream", "fromProperty": "onMessage", "toId": "progress_extractor", "toProperty": "extract" },
+        { "fromId": "progress_extractor", "fromProperty": "firstGroup", "toId": "progress_number", "toProperty": "value" },
+        { "fromId": "progress_number", "fromProperty": "savedValue", "toId": "progress_bar", "toProperty": "width" },
+
+        { "fromId": "task_stream", "fromProperty": "raw", "toId": "log_parser", "toProperty": "chunk" },
+        { "fromId": "task_stream", "fromProperty": "onMessage", "toId": "log_parser", "toProperty": "parse" },
+        { "fromId": "log_parser", "fromProperty": "values", "toId": "log_buffer", "toProperty": "data" },
+        { "fromId": "log_parser", "fromProperty": "success", "toId": "log_buffer", "toProperty": "add" },
+        { "fromId": "task_stream", "fromProperty": "onClose", "toId": "log_buffer", "toProperty": "flush" },
+        { "fromId": "log_buffer", "fromProperty": "flushedData", "toId": "log_list", "toProperty": "items" }
+      ]
+    },
+    {
+      "name": "/Log Row",
+      "nodes": [
+        { "id": "row", "type": "Group", "label": "Row", "parameters": { "flexDirection": "row" }, "children": ["line_text"] },
+        { "id": "line_text", "type": "Text", "label": "Line", "parent": "row" },
+        { "id": "row_inputs", "type": "Component Inputs", "label": "Line in" }
+      ],
+      "connections": [{ "fromId": "row_inputs", "fromProperty": "message", "toId": "line_text", "toProperty": "text" }]
+    }
+  ]
+}

@@ -1,0 +1,35 @@
+/**
+ * TagSelector Styles
+ *
+ * UI for selecting/managing tags for a project.
+ */
+
+.Root {
+  padding: var(--spacing-4);
+  min-width: 240px;
+  max-width: 320px;
+}
+
+/* Tag Item (Checkbox + Pill) */
+.TagItem {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  padding: var(--spacing-2);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+
+  &:hover {
+    background-color: var(--theme-color-bg-3);
+  }
+}
+
+/* Checkbox */
+.Checkbox {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  cursor: pointer;
+  accent-color: var(--theme-color-primary);
+}

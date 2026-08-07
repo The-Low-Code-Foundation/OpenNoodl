@@ -1,0 +1,42 @@
+/**
+ * LauncherFooter - Styling (UIX-006)
+ */
+
+.Root {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  flex: none;
+  height: 42px;
+  padding: 0 20px;
+  background: var(--theme-color-bg-1);
+  border-top: 1px solid var(--theme-color-border-default);
+  color: var(--theme-color-fg-muted);
+  font-size: 12px;
+}
+
+.Link {
+  color: var(--theme-color-fg-muted);
+  text-decoration: none;
+  cursor: pointer;
+
+  &:hover {
+    color: var(--theme-color-fg-highlight);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--theme-color-focus-ring);
+    outline-offset: 2px;
+    border-radius: var(--radius-sm);
+  }
+}
+
+.Spacer {
+  flex: 1;
+}
+
+.Version {
+  font-family: var(--font-family-code);
+  font-size: 11px;
+  color: var(--theme-color-fg-muted);
+}

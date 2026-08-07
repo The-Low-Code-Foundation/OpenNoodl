@@ -1,0 +1,17 @@
+{
+  "label": "PDF Viewer",
+  "description": "A UI component for rendering PDFs from an URL.",
+  "type": "module",
+  "tags": [
+    "UI"
+  ],
+  "icon": "icon.png",
+  "docsPath": "/library/modules/pdf-viewer/",
+  "version": "1.0.0",
+  "minEditorVersion": "0.1.0",
+  "runtimeVersion": "2.7.0",
+  "provenance": {
+    "sourceUrl": "https://the-low-code-foundation.github.io/opennoodl-docs/library/modules/pdf-viewer/pdf-viewer-1.0.0.zip",
+    "importedAt": "2026-07-25"
+  }
+}

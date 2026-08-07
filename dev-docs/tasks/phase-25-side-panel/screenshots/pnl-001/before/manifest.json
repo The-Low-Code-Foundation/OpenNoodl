@@ -1,0 +1,137 @@
+{
+  "stamp": "2026-07-27-09-45",
+  "width": 1280,
+  "height": 720,
+  "manifest": [
+    {
+      "surface": "editor",
+      "theme": "dark",
+      "file": "editor--dark.png"
+    },
+    {
+      "surface": "panel-components-panel",
+      "theme": "dark",
+      "file": "panel-components-panel--dark.png"
+    },
+    {
+      "surface": "panel-search-panel",
+      "theme": "dark",
+      "file": "panel-search-panel--dark.png"
+    },
+    {
+      "surface": "panel-explain-panel",
+      "theme": "dark",
+      "file": "panel-explain-panel--dark.png"
+    },
+    {
+      "surface": "panel-ai-authoring-panel",
+      "theme": "dark",
+      "file": "panel-ai-authoring-panel--dark.png"
+    },
+    {
+      "surface": "panel-problems-panel",
+      "theme": "dark",
+      "file": "panel-problems-panel--dark.png"
+    },
+    {
+      "surface": "panel-versioncontrol-panel",
+      "theme": "dark",
+      "file": "panel-versioncontrol-panel--dark.png"
+    },
+    {
+      "surface": "panel-github-panel",
+      "theme": "dark",
+      "file": "panel-github-panel--dark.png"
+    },
+    {
+      "surface": "panel-backend-services-panel",
+      "theme": "dark",
+      "file": "panel-backend-services-panel--dark.png"
+    },
+    {
+      "surface": "panel-app-setup-panel",
+      "theme": "dark",
+      "file": "panel-app-setup-panel--dark.png"
+    },
+    {
+      "surface": "panel-settings-panel",
+      "theme": "dark",
+      "file": "panel-settings-panel--dark.png"
+    },
+    {
+      "surface": "panel-editor-settings-panel",
+      "theme": "dark",
+      "file": "panel-editor-settings-panel--dark.png"
+    },
+    {
+      "surface": "panel-preview-live-status",
+      "theme": "dark",
+      "file": "panel-preview-live-status--dark.png"
+    },
+    {
+      "surface": "editor",
+      "theme": "light",
+      "file": "editor--light.png"
+    },
+    {
+      "surface": "panel-components-panel",
+      "theme": "light",
+      "file": "panel-components-panel--light.png"
+    },
+    {
+      "surface": "panel-search-panel",
+      "theme": "light",
+      "file": "panel-search-panel--light.png"
+    },
+    {
+      "surface": "panel-explain-panel",
+      "theme": "light",
+      "file": "panel-explain-panel--light.png"
+    },
+    {
+      "surface": "panel-ai-authoring-panel",
+      "theme": "light",
+      "file": "panel-ai-authoring-panel--light.png"
+    },
+    {
+      "surface": "panel-problems-panel",
+      "theme": "light",
+      "file": "panel-problems-panel--light.png"
+    },
+    {
+      "surface": "panel-versioncontrol-panel",
+      "theme": "light",
+      "file": "panel-versioncontrol-panel--light.png"
+    },
+    {
+      "surface": "panel-github-panel",
+      "theme": "light",
+      "file": "panel-github-panel--light.png"
+    },
+    {
+      "surface": "panel-backend-services-panel",
+      "theme": "light",
+      "file": "panel-backend-services-panel--light.png"
+    },
+    {
+      "surface": "panel-app-setup-panel",
+      "theme": "light",
+      "file": "panel-app-setup-panel--light.png"
+    },
+    {
+      "surface": "panel-settings-panel",
+      "theme": "light",
+      "file": "panel-settings-panel--light.png"
+    },
+    {
+      "surface": "panel-editor-settings-panel",
+      "theme": "light",
+      "file": "panel-editor-settings-panel--light.png"
+    },
+    {
+      "surface": "panel-preview-live-status",
+      "theme": "light",
+      "file": "panel-preview-live-status--light.png"
+    }
+  ]
+}

@@ -1,0 +1,32 @@
+{
+  "typeName": "net.noodl.StateSnapshot",
+  "summary": "Saves a named snapshot of a store and restores it later — a checkpoint, rather than the moving history State History keeps.",
+  "description": "Save captures the store as it is now; Restore writes it back as a single commit that subscribers see as an ordinary change. A snapshot is copied in on restore, so **the same snapshot can be restored any number of times** — which is what makes it usable as a reset point rather than a one-shot. `snapshot` outputs the captured value, and `snapshotData` accepts one back, so a snapshot can be round-tripped through JSON: persisted, sent to a server, or restored in another session. As with State History, values that could only be captured by reference are not deep-copied, and `fullyRestorable` / `byReferenceKeys` name them rather than letting the checkpoint quietly under-deliver. Errors are reported on the Error output instead of thrown out of a signal handler.",
+  "whenToUse": "A discrete checkpoint: 'reset this form', 'revert to the last saved version', 'restore the state I shipped this bug report with'. Use State History instead when you want undo/redo over every change; use this when you want one or two named points you return to deliberately. The `snapshot`/`snapshotData` pair is also the straightforward way to persist state across sessions or attach it to a bug report.",
+  "ports": {
+    "storeName": "The store to capture or restore.",
+    "snapshotName": "A label for the snapshot, so several checkpoints are distinguishable in a UI.",
+    "snapshotData": "A snapshot captured earlier, fed back in to be restored — the input side of the round trip through JSON.",
+    "save": "Captures the store's current state.",
+    "restore": "Writes a snapshot back as one commit. Safe to fire repeatedly; the snapshot is copied in, not consumed.",
+    "snapshot": "The captured snapshot, for persisting, transmitting, or feeding into another Restore.",
+    "fullyRestorable": "Whether this snapshot can be fully restored, or holds values captured only by reference.",
+    "byReferenceKeys": "Which keys those are.",
+    "saved": "Fires after a successful capture.",
+    "restored": "Fires after a successful restore.",
+    "done": "Fires after a Save or a Restore you triggered succeeded, whichever it was \u2014 wire this when one chain follows both verbs.",
+    "error": "Carries a refused save or restore — an unknown store, or snapshot data that could not be read."
+  },
+  "patterns": [
+    "Save when a form opens, Restore on the Cancel button — a reset that needs no knowledge of the form's fields.",
+    "`snapshot` → JSON → persisted, then back through `snapshotData` on the next load, for state that survives a reload without a live store.",
+    "Attach a snapshot to a bug report so the state is reproducible rather than described."
+  ],
+  "antiPatterns": [
+    "Using it for undo. It is a checkpoint, not a stack — State History keeps the ordered history.",
+    "Assuming a restore is total when `fullyRestorable` is false: keys in `byReferenceKeys` share their object with the snapshot.",
+    "Saving on every change. That is a history with extra steps, and unbounded — State History bounds itself."
+  ],
+  "examples": ["agent-store-shared-state"],
+  "relatedNodes": ["net.noodl.StateHistory", "net.noodl.StateHistory.Undo", "net.noodl.GlobalStore"]
+}

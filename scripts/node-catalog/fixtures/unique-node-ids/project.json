@@ -1,0 +1,53 @@
+{
+  "name": "unique-node-ids fixture",
+  "_comment": "SUB-012 control. Structurally the same as the duplicate-node-id fixture but with every id distinct, so a self-test failure here means the rule over-reports.",
+  "components": [
+    {
+      "name": "/#Home",
+      "graph": {
+        "roots": [
+          {
+            "id": "home-root",
+            "type": "Group",
+            "children": [
+              { "id": "home-text-1", "type": "Text", "label": "First", "children": [] },
+              { "id": "home-text-2", "type": "Text", "label": "Second", "children": [] }
+            ]
+          }
+        ],
+        "connections": []
+      }
+    },
+    {
+      "name": "/Pages/Three",
+      "graph": {
+        "roots": [
+          {
+            "id": "three-root",
+            "type": "Group",
+            "children": [
+              { "id": "three-a", "type": "Text", "label": "A", "children": [] },
+              { "id": "three-b", "type": "Text", "label": "B", "children": [] },
+              { "id": "three-c", "type": "Text", "label": "C", "children": [] }
+            ]
+          }
+        ],
+        "connections": []
+      }
+    },
+    {
+      "name": "/Pages/CopyA",
+      "graph": {
+        "roots": [{ "id": "copy-a-root", "type": "Group", "children": [] }],
+        "connections": []
+      }
+    },
+    {
+      "name": "/Pages/CopyB",
+      "graph": {
+        "roots": [{ "id": "copy-b-root", "type": "Group", "children": [] }],
+        "connections": []
+      }
+    }
+  ]
+}

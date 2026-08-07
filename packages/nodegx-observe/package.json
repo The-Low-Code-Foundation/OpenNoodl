@@ -1,0 +1,29 @@
+{
+  "name": "@noodl/observe",
+  "version": "0.1.0",
+  "description": "MCP server that observes and drives a running NodeGX app over the editor's local relay. Needs no access to the project on disk.",
+  "main": "src/server.ts",
+  "bin": {
+    "nodegx-observe": "./bin/nodegx-observe.js"
+  },
+  "files": [
+    "bin",
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "node build.mjs",
+    "test": "jest",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@types/jest": "^29.0.1",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.4.1",
+    "ws": "^8.18.0"
+  }
+}

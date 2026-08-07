@@ -1,0 +1,17 @@
+{
+  "label": "Chart.js",
+  "description": "A module with components to build charts.",
+  "type": "module",
+  "tags": [
+    "UI"
+  ],
+  "icon": "icon.png",
+  "docsPath": "/library/modules/chartjs/",
+  "version": "1.4.3",
+  "minEditorVersion": "0.1.0",
+  "runtimeVersion": "2.7.0",
+  "provenance": {
+    "sourceUrl": "https://the-low-code-foundation.github.io/opennoodl-docs/library/modules/chartjs/chartjs-module-1-4-3.zip",
+    "importedAt": "2026-07-25"
+  }
+}

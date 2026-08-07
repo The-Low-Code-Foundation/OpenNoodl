@@ -1,5 +1,12 @@
 [
   {"url":"index.js", "injectExport": true},
+  {"url":"ssg.js", "injectExport": true},
   {"url":"noodl.deploy.js"},
-  {"url":"package.json"}
+  {"url":"package.json"},
+  {"url":"render-gate.js"},
+  {"url":"runtime-globals.js"},
+  {"url":"server-core.js"},
+  {"url":"inject-seo.js"},
+  {"url":"ssg-paths.js"},
+  {"url":"README.md"}
 ]

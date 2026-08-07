@@ -1,0 +1,194 @@
+name: PR
+
+# The merge gates. Every job here is a required check on `main` — see
+# dev-docs/guidelines/GIT-WORKFLOW.md for the branch-protection policy.
+#
+# Everything runs on Linux: it is the cheapest runner and the only one whose
+# minutes are free on public repos. Platform-specific packaging is covered by
+# nightly.yml, not here.
+
+on:
+  pull_request:
+  push:
+    branches: ['main', 'cline-dev']
+  workflow_dispatch:
+
+# A new push supersedes the run in flight for the same ref.
+concurrency:
+  group: pr-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  typecheck:
+    name: Typecheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+      - run: npm run typecheck
+      # The editor's specs are outside its tsconfig so they stay out of the app
+      # bundle, which left them unchecked entirely (PLAT-004). They are clean
+      # today; this keeps them that way, so a type written in a spec means
+      # something.
+      - run: npm run typecheck:editor-tests
+      # The backend's specs had the same hole, and unlike the editor's they were
+      # NOT clean — 32 real reachability/nullability mistakes, fixed in PLAT-004
+      # before this line was added. These specs are the closest thing the
+      # backend has to a contract test for its HTTP wire, so a type written in
+      # one has to mean something.
+      - run: npm run typecheck:backend-tests
+
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+      # A ratchet, not a pass/fail gate: the editor sources carry thousands of
+      # pre-existing errors, so we only block on *new* ones. See
+      # scripts/lint-ratchet.js.
+      - run: npm run lint:ci
+      # Same shape for the type escape hatches (PLAT-004): TSFixme, bare `any`
+      # and the @ts- directives may fall but never rise. All are counted
+      # separately, so silencing one by reaching for another does not pass.
+      - run: npm run tsfixme
+      # Same shape again for hardcoded hex colors in stylesheets (UIX-002):
+      # tracked per package (noodl-editor, noodl-core-ui) so a drop in one
+      # can never mask a silent rise in the other.
+      - run: npm run colors
+      # Not a ratchet — a gate at zero (UIX-011). An SVG referenced from CSS via
+      # url() renders as its own document and cannot inherit the theme colour,
+      # so it silently breaks the light theme. There is no legacy tail left to
+      # burn down, so any reintroduction is a straight regression.
+      - run: npm run icons:css
+      # A gate at zero for the same reason (POL-004). `var(--theme-color-fg-subtle,
+      # #7c7c7c)` names nothing, renders its fallback, and is the most reviewable
+      # way to ship a hardcoded colour — CSS has no undefined-custom-property
+      # error, so nothing anywhere fails. 25 names were in this state when the
+      # check was first run, against the 6 a manual pass had found.
+      - run: npm run tokens:css
+
+  test-editor:
+    name: Test (editor)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+      # Electron needs a display even with a hidden window.
+      - name: Run editor suite headless
+        run: xvfb-run --auto-servernum -s "-screen 0 1280x1024x24" npm run test:ci
+
+  test-platform:
+    name: Test (platform-node)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+      - run: npm run test:platform
+
+  test-packages:
+    name: Test (runtime, backend, viewer, mcp, preview)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+      # `@noodl/preview`'s suite drives the built CLI over HTTP, not source —
+      # `assertPrerequisites()` fails fast, naming these two commands, if either
+      # is missing. This job runs independently of the `build` job (no shared
+      # filesystem between jobs), so it has to produce its own copies. Found
+      # 2026-08-07: this job had never actually reached `@noodl/preview:test`
+      # before — Nx bailed the whole run on an earlier package's failure every
+      # time — so the gap was invisible until that earlier failure was fixed.
+      - name: Build noodl-preview
+        run: npm --prefix packages/noodl-preview run build
+      - name: Build the deployed viewer runtime
+        run: npm run build:editor:_viewer
+      # Six jest suites (~1,050 specs) that ran only on developer machines until
+      # RUN-004's close-out: the runtime (incl. the local-SQLite persistence
+      # integrity test), nodegx-backend, the viewer's SSR/hydration specs, the
+      # MCP server, the preview renderer and the cloud runtime. Serial, because
+      # several of them bind real sockets.
+      - run: npm run test:packages
+
+      # WFA-002: the editor's main-process jest suites (`packages/noodl-editor/
+      # tests-main`) were in no workflow — `test:packages` scopes by package and
+      # noodl-editor's `test` script starts a dev server, so they ran only on
+      # developer machines. They are the gate on execution history, which is
+      # exactly the code a run inspector depends on.
+      - run: npm run test:main
+
+      # RUN-004's last open criterion: the packaged app runs the backend service
+      # under Electron's bundled Node (ELECTRON_RUN_AS_NODE), not the system
+      # Node the suites above use. This spawns the real service bundle that way
+      # and proves a record survives a full restart — so an Electron upgrade
+      # that dropped `node:sqlite` could never reach users as silent data loss.
+      - run: npm run check:persistence
+
+  build:
+    name: Build (viewer + editor bundles)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+      - name: Build viewer bundle
+        run: npm run ci:build:viewer
+      # Renderer + main webpack bundles only. Packaging (electron-builder) is a
+      # nightly concern; it needs per-platform native installs and is far slower.
+      - name: Build editor bundles
+        run: npm run ci:build:editor
+
+  node-catalog:
+    name: Node catalog freshness
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+      # Regenerates the catalog from the live node registries and fails if
+      # the committed artifact (packages/noodl-types/src/node-catalog.*)
+      # doesn't match — i.e. node definitions changed without regenerating.
+      - run: npm run catalog:check
+      # Enrichment (SUB-005): every example fragment must validate clean
+      # against the semantic validator, and the committed enriched catalog
+      # (node-catalog-enriched.*) must match the authored inputs, with every
+      # node documented — new nodes cannot ship without an enrichment entry.
+      - run: npm run catalog:examples
+      - run: npm run catalog:merge:check
+      # WFA-001: the same freshness contract for the cloud node library the
+      # editor ships (models/nodelibrary/cloud-node-library.json). It is what
+      # gives a cloud function's canvas its node types — the cloud runtime has
+      # no viewer client to deliver them — so a cloud node added or renamed
+      # without regenerating leaves the editor painting it as an unknown type.
+      - run: npm run cloud-library:check
+      # SUB-012: the catalog validator's duplicate-node-id rule, against its
+      # committed corrupt/clean fixture pair. A project with two nodes sharing
+      # an id used to pass every gate with zero failures.
+      - run: node scripts/node-catalog/validate-project.js --self-test
+
+  library:
+    name: Library check (LIB-001)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+      # Every entry under library/{prefabs,modules}/<slug>/: library.json
+      # validates against scripts/library/schema.json, the project loads, and
+      # the SUB-006 semantic validator reports zero errors. Warnings are
+      # reported but not gated — seeded content is LIB-002/003's to repair.
+      - run: npm run library:check
+      # POL-006: the icon set every new project starts with is generated from the
+      # library module above, so it goes stale the moment that one is updated —
+      # and the only symptom would be a picker quietly showing the old glyph list.
+      - run: npm run starter-iconset:check
+
+  artefacts:
+    name: Check build artefacts
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # No install: the check only shells out to `git ls-files`.
+      - run: node scripts/check-build-artefacts.js
+      # The release-completeness rules only run on a tag, where there is a draft
+      # to read — so their own logic would otherwise be exercised for the first
+      # time during a release. The self-test runs them against fixtures,
+      # including the measured v0.1.0 asset list, on every PR.
+      - run: node scripts/check-release-assets.js --self-test

@@ -1,0 +1,18 @@
+.List {
+  display: flex;
+  flex-direction: column;
+}
+
+.Empty {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: var(--theme-color-fg-default);
+  font-size: 12px;
+  padding: 12px 0;
+}
+
+.EmptyHint {
+  color: var(--theme-color-fg-default-shy);
+  line-height: 1.5;
+}

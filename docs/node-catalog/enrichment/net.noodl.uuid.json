@@ -1,0 +1,21 @@
+{
+  "typeName": "net.noodl.UUID",
+  "summary": "A random version-4 UUID from the platform's cryptographic random source. Not the same thing as Unique Id.",
+  "description": "UUID emits a standard RFC 4122 version-4 identifier — 36 characters, 122 random bits — generated once when the node is created and again on every New. It uses crypto.randomUUID where that exists and builds the same layout from crypto.getRandomValues where it does not (a browser on a non-secure origin), so it is never weaker, only differently reached. It is deliberately a second node beside Unique Id rather than a replacement: Unique Id is 10 characters from Math.random(), which is right for keying a rendered list and wrong for a record id, an idempotency key or anything an attacker might try to guess.",
+  "whenToUse": "A record id, an idempotency key, a correlation id across services, a filename that must not collide. Anywhere the id leaves this page or has to be unguessable.",
+  "ports": {
+    "generate": "Signal (New); mints a fresh UUID, replacing the one on Id.",
+    "uuid": "The current UUID. Populated at creation, so it is never blank before the first New.",
+    "done": "Fires once Id holds a fresh UUID.",
+    "failure": "Fires when there is no cryptographic random source here, leaving Id as it was.",
+    "error": "Why no UUID could be generated."
+  },
+  "examples": [],
+  "patterns": [
+    "Create Record with Id wired from this node: an id minted client-side lets the same request be retried safely."
+  ],
+  "antiPatterns": [
+    "Using Unique Id where this node is meant. Ten characters of Math.random() is not an identifier to key a database on."
+  ],
+  "relatedNodes": ["Unique Id", "net.noodl.RandomBytes"]
+}

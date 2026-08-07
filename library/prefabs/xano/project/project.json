@@ -1,0 +1,3307 @@
+{
+    "name": "Export",
+    "components": [
+        {
+            "name": "/#Xano Prefab/Xano/Base/Xano - Request",
+            "id": "6e45da09-43f5-40bf-a8cd-d4b4905c8f1b",
+            "graph": {
+                "connections": [
+                    {
+                        "fromId": "11a3e3ab-2236-f92c-a3f9-58a9b42d7030",
+                        "fromProperty": "Request Type",
+                        "toId": "bef2e31d-c858-4f86-9905-962351e7ee7d",
+                        "toProperty": "currentState"
+                    },
+                    {
+                        "fromId": "11a3e3ab-2236-f92c-a3f9-58a9b42d7030",
+                        "fromProperty": "Do",
+                        "toId": "084c35be-c831-ff6a-8377-24d9eebd4cc1",
+                        "toProperty": "run"
+                    },
+                    {
+                        "fromId": "bef2e31d-c858-4f86-9905-962351e7ee7d",
+                        "fromProperty": "Request Type",
+                        "toId": "084c35be-c831-ff6a-8377-24d9eebd4cc1",
+                        "toProperty": "in-RequestType"
+                    },
+                    {
+                        "fromId": "11a3e3ab-2236-f92c-a3f9-58a9b42d7030",
+                        "fromProperty": "Data",
+                        "toId": "084c35be-c831-ff6a-8377-24d9eebd4cc1",
+                        "toProperty": "in-Data"
+                    },
+                    {
+                        "fromId": "11a3e3ab-2236-f92c-a3f9-58a9b42d7030",
+                        "fromProperty": "Endpoint",
+                        "toId": "4f2b7fd3-6fb2-abfa-15c3-42d199eeff84",
+                        "toProperty": "value"
+                    },
+                    {
+                        "fromId": "4f2b7fd3-6fb2-abfa-15c3-42d199eeff84",
+                        "fromProperty": "savedValue",
+                        "toId": "084c35be-c831-ff6a-8377-24d9eebd4cc1",
+                        "toProperty": "in-Endpoint"
+                    },
+                    {
+                        "fromId": "084c35be-c831-ff6a-8377-24d9eebd4cc1",
+                        "fromProperty": "out-Success",
+                        "toId": "0bc4f862-b6ff-f484-bc79-e7380f666735",
+                        "toProperty": "Success"
+                    },
+                    {
+                        "fromId": "084c35be-c831-ff6a-8377-24d9eebd4cc1",
+                        "fromProperty": "out-Failure",
+                        "toId": "0bc4f862-b6ff-f484-bc79-e7380f666735",
+                        "toProperty": "Failure"
+                    },
+                    {
+                        "fromId": "084c35be-c831-ff6a-8377-24d9eebd4cc1",
+                        "fromProperty": "out-Response",
+                        "toId": "0bc4f862-b6ff-f484-bc79-e7380f666735",
+                        "toProperty": "Response"
+                    }
+                ],
+                "roots": [
+                    {
+                        "id": "11a3e3ab-2236-f92c-a3f9-58a9b42d7030",
+                        "type": "Component Inputs",
+                        "x": -505,
+                        "y": -5,
+                        "parameters": {},
+                        "ports": [
+                            {
+                                "name": "Do",
+                                "plug": "output",
+                                "type": "*",
+                                "index": 0
+                            },
+                            {
+                                "name": "Endpoint",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "group": "Request",
+                                "index": 1
+                            },
+                            {
+                                "name": "Request Type",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "group": "Request",
+                                "index": 2
+                            },
+                            {
+                                "name": "Data",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "group": "Request",
+                                "index": 3
+                            }
+                        ],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "0bc4f862-b6ff-f484-bc79-e7380f666735",
+                        "type": "Component Outputs",
+                        "x": 437,
+                        "y": 57,
+                        "parameters": {},
+                        "ports": [
+                            {
+                                "name": "Success",
+                                "plug": "input",
+                                "type": "*",
+                                "index": 1,
+                                "group": "Signals"
+                            },
+                            {
+                                "name": "Failure",
+                                "plug": "input",
+                                "type": "*",
+                                "index": 3,
+                                "group": "Signals"
+                            },
+                            {
+                                "name": "Response",
+                                "plug": "input",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "index": 0
+                            },
+                            {
+                                "name": "Error",
+                                "plug": "input",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "group": "Signals",
+                                "index": 2
+                            },
+                            {
+                                "name": "Done",
+                                "plug": "input",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "group": "Signals",
+                                "index": 4
+                            }
+                        ],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "084c35be-c831-ff6a-8377-24d9eebd4cc1",
+                        "type": "JavaScriptFunction",
+                        "x": 126,
+                        "y": 1,
+                        "parameters": {
+                            "functionScript": "if (!Boolean(Noodl.Variables.xano)) {\n    console.error('XanoClient does not exist! Check \"Setup XanoClient\"')\n    return\n}\n\nif (!Inputs.Endpoint) {\n    console.error('No endpoint provided to Xano Request node')\n    return\n}\n\nNoodl.Variables.xano[Inputs.RequestType](Inputs.Endpoint, Inputs.Data || {}).then(\n    (response) => {\n        Outputs.Response = response\n        Outputs.Success()\n    },\n    (error) => {\n        console.error(error.getResponse())\n        Outputs.Failure()\n    }\n);\n"
+                        },
+                        "ports": [],
+                        "dynamicports": [
+                            {
+                                "name": "in-Endpoint",
+                                "displayName": "Endpoint",
+                                "plug": "input",
+                                "type": "*",
+                                "group": "Inputs",
+                                "index": 4
+                            },
+                            {
+                                "name": "in-RequestType",
+                                "displayName": "RequestType",
+                                "plug": "input",
+                                "type": "*",
+                                "group": "Inputs",
+                                "index": 5
+                            },
+                            {
+                                "name": "in-Data",
+                                "displayName": "Data",
+                                "plug": "input",
+                                "type": "*",
+                                "group": "Inputs",
+                                "index": 6
+                            },
+                            {
+                                "name": "out-Success",
+                                "displayName": "Success",
+                                "plug": "output",
+                                "type": "signal",
+                                "group": "Outputs",
+                                "index": 7
+                            },
+                            {
+                                "name": "out-Failure",
+                                "displayName": "Failure",
+                                "plug": "output",
+                                "type": "signal",
+                                "group": "Outputs",
+                                "index": 8
+                            },
+                            {
+                                "name": "out-Response",
+                                "displayName": "Response",
+                                "plug": "output",
+                                "type": "*",
+                                "group": "Outputs",
+                                "index": 9
+                            }
+                        ],
+                        "children": [],
+                        "metadata": {
+                            "merge": {
+                                "soureCodePorts": [
+                                    "functionScript"
+                                ]
+                            }
+                        }
+                    },
+                    {
+                        "id": "bef2e31d-c858-4f86-9905-962351e7ee7d",
+                        "type": "States",
+                        "label": "Request type",
+                        "x": -129.33333333333337,
+                        "y": -83.33333333333331,
+                        "parameters": {
+                            "states": "GET,POST,PATCH,PUT,DELETE,HEAD",
+                            "values": "Request Type",
+                            "useTransitions": false,
+                            "type-Request Type": "string",
+                            "value-GET-Request Type": "get",
+                            "value-POST-Request Type": "post",
+                            "value-PATCH-Request Type": "patch",
+                            "value-PUT-Request Type": "put",
+                            "value-DELETE-Request Type": "delete",
+                            "value-HEAD-Request Type": "head"
+                        },
+                        "ports": [],
+                        "dynamicports": [
+                            {
+                                "type": {
+                                    "name": "string",
+                                    "allowConnectionsOnly": true
+                                },
+                                "plug": "output",
+                                "group": "Values",
+                                "name": "Request Type",
+                                "index": 6
+                            },
+                            {
+                                "type": {
+                                    "name": "enum",
+                                    "enums": [
+                                        {
+                                            "label": "Number",
+                                            "value": "number"
+                                        },
+                                        {
+                                            "label": "String",
+                                            "value": "string"
+                                        },
+                                        {
+                                            "label": "Boolean",
+                                            "value": "boolean"
+                                        },
+                                        {
+                                            "label": "Color",
+                                            "value": "color"
+                                        },
+                                        {
+                                            "label": "Text Style",
+                                            "value": "textStyle"
+                                        }
+                                    ],
+                                    "allowEditOnly": true
+                                },
+                                "default": "number",
+                                "plug": "input",
+                                "group": "Types",
+                                "displayName": "Request Type",
+                                "name": "type-Request Type",
+                                "index": 7
+                            },
+                            {
+                                "plug": "input",
+                                "type": "string",
+                                "group": "GET Values",
+                                "name": "value-GET-Request Type",
+                                "displayName": "Request Type",
+                                "editorName": "GET|Request Type",
+                                "index": 8
+                            },
+                            {
+                                "plug": "input",
+                                "type": {
+                                    "name": "signal",
+                                    "allowConnectionsOnly": true
+                                },
+                                "displayName": "To GET",
+                                "name": "to-GET",
+                                "group": "Go to state",
+                                "index": 9
+                            },
+                            {
+                                "plug": "output",
+                                "type": "boolean",
+                                "displayName": "At GET",
+                                "name": "at-GET",
+                                "group": "Current state",
+                                "index": 10
+                            },
+                            {
+                                "plug": "output",
+                                "type": "signal",
+                                "displayName": "Has Reached GET",
+                                "name": "reached-GET",
+                                "group": "Current state",
+                                "index": 11
+                            },
+                            {
+                                "plug": "input",
+                                "type": "string",
+                                "group": "POST Values",
+                                "name": "value-POST-Request Type",
+                                "displayName": "Request Type",
+                                "editorName": "POST|Request Type",
+                                "index": 12
+                            },
+                            {
+                                "plug": "input",
+                                "type": {
+                                    "name": "signal",
+                                    "allowConnectionsOnly": true
+                                },
+                                "displayName": "To POST",
+                                "name": "to-POST",
+                                "group": "Go to state",
+                                "index": 13
+                            },
+                            {
+                                "plug": "output",
+                                "type": "boolean",
+                                "displayName": "At POST",
+                                "name": "at-POST",
+                                "group": "Current state",
+                                "index": 14
+                            },
+                            {
+                                "plug": "output",
+                                "type": "signal",
+                                "displayName": "Has Reached POST",
+                                "name": "reached-POST",
+                                "group": "Current state",
+                                "index": 15
+                            },
+                            {
+                                "plug": "input",
+                                "type": "string",
+                                "group": "PATCH Values",
+                                "name": "value-PATCH-Request Type",
+                                "displayName": "Request Type",
+                                "editorName": "PATCH|Request Type",
+                                "index": 16
+                            },
+                            {
+                                "plug": "input",
+                                "type": {
+                                    "name": "signal",
+                                    "allowConnectionsOnly": true
+                                },
+                                "displayName": "To PATCH",
+                                "name": "to-PATCH",
+                                "group": "Go to state",
+                                "index": 17
+                            },
+                            {
+                                "plug": "output",
+                                "type": "boolean",
+                                "displayName": "At PATCH",
+                                "name": "at-PATCH",
+                                "group": "Current state",
+                                "index": 18
+                            },
+                            {
+                                "plug": "output",
+                                "type": "signal",
+                                "displayName": "Has Reached PATCH",
+                                "name": "reached-PATCH",
+                                "group": "Current state",
+                                "index": 19
+                            },
+                            {
+                                "plug": "input",
+                                "type": "string",
+                                "group": "PUT Values",
+                                "name": "value-PUT-Request Type",
+                                "displayName": "Request Type",
+                                "editorName": "PUT|Request Type",
+                                "index": 20
+                            },
+                            {
+                                "plug": "input",
+                                "type": {
+                                    "name": "signal",
+                                    "allowConnectionsOnly": true
+                                },
+                                "displayName": "To PUT",
+                                "name": "to-PUT",
+                                "group": "Go to state",
+                                "index": 21
+                            },
+                            {
+                                "plug": "output",
+                                "type": "boolean",
+                                "displayName": "At PUT",
+                                "name": "at-PUT",
+                                "group": "Current state",
+                                "index": 22
+                            },
+                            {
+                                "plug": "output",
+                                "type": "signal",
+                                "displayName": "Has Reached PUT",
+                                "name": "reached-PUT",
+                                "group": "Current state",
+                                "index": 23
+                            },
+                            {
+                                "plug": "input",
+                                "type": "string",
+                                "group": "DELETE Values",
+                                "name": "value-DELETE-Request Type",
+                                "displayName": "Request Type",
+                                "editorName": "DELETE|Request Type",
+                                "index": 24
+                            },
+                            {
+                                "plug": "input",
+                                "type": {
+                                    "name": "signal",
+                                    "allowConnectionsOnly": true
+                                },
+                                "displayName": "To DELETE",
+                                "name": "to-DELETE",
+                                "group": "Go to state",
+                                "index": 25
+                            },
+                            {
+                                "plug": "output",
+                                "type": "boolean",
+                                "displayName": "At DELETE",
+                                "name": "at-DELETE",
+                                "group": "Current state",
+                                "index": 26
+                            },
+                            {
+                                "plug": "output",
+                                "type": "signal",
+                                "displayName": "Has Reached DELETE",
+                                "name": "reached-DELETE",
+                                "group": "Current state",
+                                "index": 27
+                            },
+                            {
+                                "plug": "input",
+                                "type": "string",
+                                "group": "HEAD Values",
+                                "name": "value-HEAD-Request Type",
+                                "displayName": "Request Type",
+                                "editorName": "HEAD|Request Type",
+                                "index": 28
+                            },
+                            {
+                                "plug": "input",
+                                "type": {
+                                    "name": "signal",
+                                    "allowConnectionsOnly": true
+                                },
+                                "displayName": "To HEAD",
+                                "name": "to-HEAD",
+                                "group": "Go to state",
+                                "index": 29
+                            },
+                            {
+                                "plug": "output",
+                                "type": "boolean",
+                                "displayName": "At HEAD",
+                                "name": "at-HEAD",
+                                "group": "Current state",
+                                "index": 30
+                            },
+                            {
+                                "plug": "output",
+                                "type": "signal",
+                                "displayName": "Has Reached HEAD",
+                                "name": "reached-HEAD",
+                                "group": "Current state",
+                                "index": 31
+                            },
+                            {
+                                "plug": "input",
+                                "type": {
+                                    "name": "enum",
+                                    "enums": [
+                                        "GET",
+                                        "POST",
+                                        "PATCH",
+                                        "PUT",
+                                        "DELETE",
+                                        "HEAD"
+                                    ]
+                                },
+                                "group": "States",
+                                "displayName": "State",
+                                "name": "currentState",
+                                "default": "GET",
+                                "index": 32
+                            }
+                        ],
+                        "children": []
+                    },
+                    {
+                        "id": "4f2b7fd3-6fb2-abfa-15c3-42d199eeff84",
+                        "type": "String",
+                        "x": -162.83333333333337,
+                        "y": 125.16666666666669,
+                        "parameters": {},
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": []
+                    }
+                ],
+                "comments": [
+                    {
+                        "text": "This component allows you to send a request to Xano using the Xano JS SDK.",
+                        "width": 253,
+                        "height": 135,
+                        "fill": true,
+                        "x": -518,
+                        "y": -201,
+                        "id": "ca1fd7ee-bbed-fb93-6302-3de9062e8bd9",
+                        "color": "comment",
+                        "largeFont": true
+                    },
+                    {
+                        "text": "Setting up the different request types supported by the SDK",
+                        "width": 207,
+                        "height": 196,
+                        "fill": true,
+                        "x": -156,
+                        "y": -150,
+                        "id": "7583ca40-db01-dcec-e9d0-4fe76885b517"
+                    }
+                ]
+            }
+        },
+        {
+            "name": "/#Xano Prefab/Xano/Base/Xano - Setup XanoClient",
+            "id": "e9dd8133-6a5d-36af-4058-4638812ee45c",
+            "graph": {
+                "connections": [
+                    {
+                        "fromId": "dbc47df3-0d6d-5a80-4167-ed908fa99a5b",
+                        "fromProperty": "API Group Base URL",
+                        "toId": "1e4a05de-324f-ace8-c273-51307bee51f3",
+                        "toProperty": "in-apiGroupBaseUrl"
+                    },
+                    {
+                        "fromId": "dbc47df3-0d6d-5a80-4167-ed908fa99a5b",
+                        "fromProperty": "Do",
+                        "toId": "1e4a05de-324f-ace8-c273-51307bee51f3",
+                        "toProperty": "run"
+                    },
+                    {
+                        "fromId": "dbc47df3-0d6d-5a80-4167-ed908fa99a5b",
+                        "fromProperty": "Auth Token Storage",
+                        "toId": "aa38fb92-c802-e71d-372a-8db5a822f2cd",
+                        "toProperty": "currentState"
+                    },
+                    {
+                        "fromId": "aa38fb92-c802-e71d-372a-8db5a822f2cd",
+                        "fromProperty": "Storage Type",
+                        "toId": "1e4a05de-324f-ace8-c273-51307bee51f3",
+                        "toProperty": "in-StorageType"
+                    },
+                    {
+                        "fromId": "dbc47df3-0d6d-5a80-4167-ed908fa99a5b",
+                        "fromProperty": "Datasource",
+                        "toId": "1e4a05de-324f-ace8-c273-51307bee51f3",
+                        "toProperty": "in-datasource"
+                    },
+                    {
+                        "fromId": "1e4a05de-324f-ace8-c273-51307bee51f3",
+                        "fromProperty": "out-Success",
+                        "toId": "da4954df-3b8f-14a1-5ffa-83f51ee4e550",
+                        "toProperty": "Success"
+                    },
+                    {
+                        "fromId": "1e4a05de-324f-ace8-c273-51307bee51f3",
+                        "fromProperty": "out-Failure",
+                        "toId": "da4954df-3b8f-14a1-5ffa-83f51ee4e550",
+                        "toProperty": "Failure"
+                    },
+                    {
+                        "fromId": "dbc47df3-0d6d-5a80-4167-ed908fa99a5b",
+                        "fromProperty": "API Group Base URL",
+                        "toId": "ca1ee000-50b6-eaeb-55e0-fc032aa0e6c6",
+                        "toProperty": "in-ApiGroupBaseUrl"
+                    },
+                    {
+                        "fromId": "dbc47df3-0d6d-5a80-4167-ed908fa99a5b",
+                        "fromProperty": "Datasource",
+                        "toId": "ca1ee000-50b6-eaeb-55e0-fc032aa0e6c6",
+                        "toProperty": "in-Datasource"
+                    },
+                    {
+                        "fromId": "dbc47df3-0d6d-5a80-4167-ed908fa99a5b",
+                        "fromProperty": "Auth Signup Path",
+                        "toId": "ca1ee000-50b6-eaeb-55e0-fc032aa0e6c6",
+                        "toProperty": "in-AuthSignupPath"
+                    },
+                    {
+                        "fromId": "dbc47df3-0d6d-5a80-4167-ed908fa99a5b",
+                        "fromProperty": "Auth Login Path",
+                        "toId": "ca1ee000-50b6-eaeb-55e0-fc032aa0e6c6",
+                        "toProperty": "in-AuthLoginPath"
+                    },
+                    {
+                        "fromId": "dbc47df3-0d6d-5a80-4167-ed908fa99a5b",
+                        "fromProperty": "Auth Me Path",
+                        "toId": "ca1ee000-50b6-eaeb-55e0-fc032aa0e6c6",
+                        "toProperty": "in-AuthMePath"
+                    }
+                ],
+                "roots": [
+                    {
+                        "id": "dbc47df3-0d6d-5a80-4167-ed908fa99a5b",
+                        "type": "Component Inputs",
+                        "x": -685,
+                        "y": 10,
+                        "parameters": {},
+                        "ports": [
+                            {
+                                "name": "API Group Base URL",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "index": 1,
+                                "group": "Data"
+                            },
+                            {
+                                "name": "Do",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "index": 0,
+                                "group": "Signals"
+                            },
+                            {
+                                "name": "Auth Token Storage",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "group": "Authentication",
+                                "index": 3
+                            },
+                            {
+                                "name": "Datasource",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "group": "Data",
+                                "index": 2
+                            },
+                            {
+                                "name": "Auto refresh Auth Token",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "group": "Authentication",
+                                "index": 4
+                            },
+                            {
+                                "name": "Auth Login Path",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "group": "Authentication",
+                                "index": 5
+                            },
+                            {
+                                "name": "Auth Signup Path",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "group": "Authentication",
+                                "index": 6
+                            },
+                            {
+                                "name": "Auth Me Path",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "group": "Authentication",
+                                "index": 7
+                            }
+                        ],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "1e4a05de-324f-ace8-c273-51307bee51f3",
+                        "type": "JavaScriptFunction",
+                        "label": "Setup XanoClient",
+                        "x": 75,
+                        "y": 21,
+                        "parameters": {
+                            "functionScript": "if (Boolean(Noodl.Variables.xano)) return\n\nfunction createStorage() {\n    switch (Inputs.StorageType) {\n        case 'sessionStorage':\n            return new XanoSessionStorage()\n        case 'localStorage':\n            return new XanoLocalStorage()\n        case 'cookie':\n            return new XanoCookieStorage()\n        case 'object':\n            return new XanoObjectStorage()\n    }\n}\ntry {\n    Noodl.Variables.xano = new XanoClient({\n        'apiGroupBaseUrl': Inputs.apiGroupBaseUrl,\n        'datasource': (Inputs.datasource||\"live\"),\n        'storage': createStorage()\n    });\n    Outputs.Success()\n} catch (error) {\n    console.error(error)\n    Outputs.Failure()\n}\n"
+                        },
+                        "ports": [],
+                        "dynamicports": [
+                            {
+                                "name": "in-StorageType",
+                                "displayName": "StorageType",
+                                "plug": "input",
+                                "type": "*",
+                                "group": "Inputs",
+                                "index": 4
+                            },
+                            {
+                                "name": "in-apiGroupBaseUrl",
+                                "displayName": "apiGroupBaseUrl",
+                                "plug": "input",
+                                "type": "*",
+                                "group": "Inputs",
+                                "index": 5
+                            },
+                            {
+                                "name": "in-datasource",
+                                "displayName": "datasource",
+                                "plug": "input",
+                                "type": "*",
+                                "group": "Inputs",
+                                "index": 6
+                            },
+                            {
+                                "name": "out-Success",
+                                "displayName": "Success",
+                                "plug": "output",
+                                "type": "signal",
+                                "group": "Outputs",
+                                "index": 7
+                            },
+                            {
+                                "name": "out-Failure",
+                                "displayName": "Failure",
+                                "plug": "output",
+                                "type": "signal",
+                                "group": "Outputs",
+                                "index": 8
+                            }
+                        ],
+                        "children": [],
+                        "metadata": {
+                            "merge": {
+                                "soureCodePorts": [
+                                    "functionScript"
+                                ]
+                            }
+                        }
+                    },
+                    {
+                        "id": "aa38fb92-c802-e71d-372a-8db5a822f2cd",
+                        "type": "States",
+                        "x": -254,
+                        "y": 154,
+                        "parameters": {
+                            "states": "LocalStorage,SessionStorage,Cookies,Object",
+                            "values": "Storage Type",
+                            "useTransitions": false,
+                            "type-Storage Type": "string",
+                            "value-LocalStorage-Storage Type": "localStorage",
+                            "value-SessionStorage-Storage Type": "sessionStorage",
+                            "value-Cookies-Storage Type": "cookie",
+                            "value-Object-Storage Type": "object",
+                            "currentState": "Cookies"
+                        },
+                        "ports": [],
+                        "dynamicports": [
+                            {
+                                "type": {
+                                    "name": "string",
+                                    "allowConnectionsOnly": true
+                                },
+                                "plug": "output",
+                                "group": "Values",
+                                "name": "Storage Type",
+                                "index": 6
+                            },
+                            {
+                                "type": {
+                                    "name": "enum",
+                                    "enums": [
+                                        {
+                                            "label": "Number",
+                                            "value": "number"
+                                        },
+                                        {
+                                            "label": "String",
+                                            "value": "string"
+                                        },
+                                        {
+                                            "label": "Boolean",
+                                            "value": "boolean"
+                                        },
+                                        {
+                                            "label": "Color",
+                                            "value": "color"
+                                        },
+                                        {
+                                            "label": "Text Style",
+                                            "value": "textStyle"
+                                        }
+                                    ],
+                                    "allowEditOnly": true
+                                },
+                                "default": "number",
+                                "plug": "input",
+                                "group": "Types",
+                                "displayName": "Storage Type",
+                                "name": "type-Storage Type",
+                                "index": 7
+                            },
+                            {
+                                "plug": "input",
+                                "type": "string",
+                                "group": "LocalStorage Values",
+                                "name": "value-LocalStorage-Storage Type",
+                                "displayName": "Storage Type",
+                                "editorName": "LocalStorage|Storage Type",
+                                "index": 8
+                            },
+                            {
+                                "plug": "input",
+                                "type": {
+                                    "name": "signal",
+                                    "allowConnectionsOnly": true
+                                },
+                                "displayName": "To LocalStorage",
+                                "name": "to-LocalStorage",
+                                "group": "Go to state",
+                                "index": 9
+                            },
+                            {
+                                "plug": "output",
+                                "type": "boolean",
+                                "displayName": "At LocalStorage",
+                                "name": "at-LocalStorage",
+                                "group": "Current state",
+                                "index": 10
+                            },
+                            {
+                                "plug": "output",
+                                "type": "signal",
+                                "displayName": "Has Reached LocalStorage",
+                                "name": "reached-LocalStorage",
+                                "group": "Current state",
+                                "index": 11
+                            },
+                            {
+                                "plug": "input",
+                                "type": "string",
+                                "group": "SessionStorage Values",
+                                "name": "value-SessionStorage-Storage Type",
+                                "displayName": "Storage Type",
+                                "editorName": "SessionStorage|Storage Type",
+                                "index": 12
+                            },
+                            {
+                                "plug": "input",
+                                "type": {
+                                    "name": "signal",
+                                    "allowConnectionsOnly": true
+                                },
+                                "displayName": "To SessionStorage",
+                                "name": "to-SessionStorage",
+                                "group": "Go to state",
+                                "index": 13
+                            },
+                            {
+                                "plug": "output",
+                                "type": "boolean",
+                                "displayName": "At SessionStorage",
+                                "name": "at-SessionStorage",
+                                "group": "Current state",
+                                "index": 14
+                            },
+                            {
+                                "plug": "output",
+                                "type": "signal",
+                                "displayName": "Has Reached SessionStorage",
+                                "name": "reached-SessionStorage",
+                                "group": "Current state",
+                                "index": 15
+                            },
+                            {
+                                "plug": "input",
+                                "type": "string",
+                                "group": "Cookies Values",
+                                "name": "value-Cookies-Storage Type",
+                                "displayName": "Storage Type",
+                                "editorName": "Cookies|Storage Type",
+                                "index": 16
+                            },
+                            {
+                                "plug": "input",
+                                "type": {
+                                    "name": "signal",
+                                    "allowConnectionsOnly": true
+                                },
+                                "displayName": "To Cookies",
+                                "name": "to-Cookies",
+                                "group": "Go to state",
+                                "index": 17
+                            },
+                            {
+                                "plug": "output",
+                                "type": "boolean",
+                                "displayName": "At Cookies",
+                                "name": "at-Cookies",
+                                "group": "Current state",
+                                "index": 18
+                            },
+                            {
+                                "plug": "output",
+                                "type": "signal",
+                                "displayName": "Has Reached Cookies",
+                                "name": "reached-Cookies",
+                                "group": "Current state",
+                                "index": 19
+                            },
+                            {
+                                "plug": "input",
+                                "type": "string",
+                                "group": "Object Values",
+                                "name": "value-Object-Storage Type",
+                                "displayName": "Storage Type",
+                                "editorName": "Object|Storage Type",
+                                "index": 20
+                            },
+                            {
+                                "plug": "input",
+                                "type": {
+                                    "name": "signal",
+                                    "allowConnectionsOnly": true
+                                },
+                                "displayName": "To Object",
+                                "name": "to-Object",
+                                "group": "Go to state",
+                                "index": 21
+                            },
+                            {
+                                "plug": "output",
+                                "type": "boolean",
+                                "displayName": "At Object",
+                                "name": "at-Object",
+                                "group": "Current state",
+                                "index": 22
+                            },
+                            {
+                                "plug": "output",
+                                "type": "signal",
+                                "displayName": "Has Reached Object",
+                                "name": "reached-Object",
+                                "group": "Current state",
+                                "index": 23
+                            },
+                            {
+                                "plug": "input",
+                                "type": {
+                                    "name": "enum",
+                                    "enums": [
+                                        "LocalStorage",
+                                        "SessionStorage",
+                                        "Cookies",
+                                        "Object"
+                                    ]
+                                },
+                                "group": "States",
+                                "displayName": "State",
+                                "name": "currentState",
+                                "default": "LocalStorage",
+                                "index": 24
+                            }
+                        ],
+                        "children": []
+                    },
+                    {
+                        "id": "da4954df-3b8f-14a1-5ffa-83f51ee4e550",
+                        "type": "Component Outputs",
+                        "x": 360,
+                        "y": 92.16666666666663,
+                        "parameters": {},
+                        "ports": [
+                            {
+                                "name": "Done",
+                                "plug": "input",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "index": 1
+                            },
+                            {
+                                "name": "Success",
+                                "plug": "input",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "index": 2
+                            },
+                            {
+                                "name": "Failure",
+                                "plug": "input",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "index": 3
+                            }
+                        ],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "ca1ee000-50b6-eaeb-55e0-fc032aa0e6c6",
+                        "type": "JavaScriptFunction",
+                        "label": "API Path Configuration",
+                        "x": -254,
+                        "y": 270,
+                        "parameters": {
+                            "functionScript": "if ((!Inputs.ApiGroupBaseUrl) || (Inputs.ApiGroupBaseUrl==\"\")) {\n    console.error(\"The API Group base url is incorrect or empty\")\n    return\n}\n\nNoodl.Variables.xanoApiGroupBaseUrl = Inputs.ApiGroupBaseUrl;\nNoodl.Variables.xanoDatasource = Inputs.Datasource || 'live';\nNoodl.Variables.xanoAuthSignupPath = Inputs.AuthSignupPath || '/auth/signup';\nNoodl.Variables.xanoAuthLoginPath = Inputs.AuthLoginPath || '/auth/login';\nNoodl.Variables.xanoAuthMePath = Inputs.AuthMePath || '/auth/me';\n\nOutputs.Success();\n"
+                        },
+                        "ports": [],
+                        "dynamicports": [
+                            {
+                                "name": "in-ApiGroupBaseUrl",
+                                "displayName": "ApiGroupBaseUrl",
+                                "plug": "input",
+                                "type": "*",
+                                "group": "Inputs",
+                                "index": 4
+                            },
+                            {
+                                "name": "in-Datasource",
+                                "displayName": "Datasource",
+                                "plug": "input",
+                                "type": "*",
+                                "group": "Inputs",
+                                "index": 5
+                            },
+                            {
+                                "name": "in-AuthSignupPath",
+                                "displayName": "AuthSignupPath",
+                                "plug": "input",
+                                "type": "*",
+                                "group": "Inputs",
+                                "index": 6
+                            },
+                            {
+                                "name": "in-AuthLoginPath",
+                                "displayName": "AuthLoginPath",
+                                "plug": "input",
+                                "type": "*",
+                                "group": "Inputs",
+                                "index": 7
+                            },
+                            {
+                                "name": "in-AuthMePath",
+                                "displayName": "AuthMePath",
+                                "plug": "input",
+                                "type": "*",
+                                "group": "Inputs",
+                                "index": 8
+                            },
+                            {
+                                "name": "out-Success",
+                                "displayName": "Success",
+                                "plug": "output",
+                                "type": "signal",
+                                "group": "Outputs",
+                                "index": 9
+                            }
+                        ],
+                        "children": [],
+                        "metadata": {
+                            "merge": {
+                                "soureCodePorts": [
+                                    "functionScript"
+                                ]
+                            }
+                        }
+                    },
+                    {
+                        "id": "90e0aad9-c053-2c30-f287-640c41b52af1",
+                        "type": "Variable2",
+                        "x": 83.74897360773184,
+                        "y": 267.77319160583994,
+                        "parameters": {
+                            "name": "xanoApiGroupBaseUrl"
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "fe7a0960-d614-f30e-2af0-587bba5ca343",
+                        "type": "Variable2",
+                        "x": 84,
+                        "y": 344,
+                        "parameters": {
+                            "name": "xanoDatasource"
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "06dc8aa5-0f8e-e445-84eb-6e4a89046e6e",
+                        "type": "Variable2",
+                        "x": 85,
+                        "y": 404,
+                        "parameters": {
+                            "name": "xanoAuthSignupPath"
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "71a09dd5-ecea-2742-c240-047b34c47cd8",
+                        "type": "Variable2",
+                        "x": 84,
+                        "y": 469,
+                        "parameters": {
+                            "name": "xanoAuthLoginPath"
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "1cb39362-6c2e-c652-eec6-f7dbb31fbfe8",
+                        "type": "Variable2",
+                        "x": 84,
+                        "y": 535,
+                        "parameters": {
+                            "name": "xanoAuthMePath"
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": []
+                    }
+                ],
+                "comments": [
+                    {
+                        "text": "Setup XanoClient. This is the SDK we are using to interface with Xano.\n\nThe XanoClient is created and stored in a Noodl Variable called \"xano\". This allows it to be accessible globally through:\n\nNoodl.Variables.xano",
+                        "width": 292,
+                        "height": 168,
+                        "fill": true,
+                        "x": 68,
+                        "y": -178,
+                        "id": "f35b8951-25bb-d044-c02e-42a8144f4132",
+                        "color": "comment"
+                    },
+                    {
+                        "text": "This component needs to be placed in your Root Component to work properly.",
+                        "width": 315,
+                        "height": 105,
+                        "fill": true,
+                        "x": -369,
+                        "y": -185,
+                        "id": "c744f9f2-11db-fd15-9aec-4cdf3ec68df4",
+                        "color": "comment",
+                        "largeFont": true
+                    }
+                ]
+            }
+        },
+        {
+            "name": "/#Xano Prefab/Xano/User/Auth/Xano - authToken - Check",
+            "id": "c1001b12-a58e-09ff-6f6f-ac04ada90ccf",
+            "graph": {
+                "connections": [
+                    {
+                        "fromId": "b46875b7-4ea9-4e56-3163-3be2b6219650",
+                        "fromProperty": "out-Success",
+                        "toId": "ff0e0483-c45a-30c9-af9c-c7bbe84de8e1",
+                        "toProperty": "Success"
+                    },
+                    {
+                        "fromId": "b46875b7-4ea9-4e56-3163-3be2b6219650",
+                        "fromProperty": "out-Failure",
+                        "toId": "ff0e0483-c45a-30c9-af9c-c7bbe84de8e1",
+                        "toProperty": "Failure"
+                    },
+                    {
+                        "fromId": "6673b414-6abd-c5a8-0840-e7a575f0fb4d",
+                        "fromProperty": "Do",
+                        "toId": "b46875b7-4ea9-4e56-3163-3be2b6219650",
+                        "toProperty": "run"
+                    }
+                ],
+                "roots": [
+                    {
+                        "id": "6673b414-6abd-c5a8-0840-e7a575f0fb4d",
+                        "type": "Component Inputs",
+                        "x": -207,
+                        "y": 26,
+                        "parameters": {},
+                        "ports": [
+                            {
+                                "name": "Do",
+                                "plug": "output",
+                                "type": "*",
+                                "index": 0
+                            }
+                        ],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "ff0e0483-c45a-30c9-af9c-c7bbe84de8e1",
+                        "type": "Component Outputs",
+                        "x": 299,
+                        "y": 21,
+                        "parameters": {},
+                        "ports": [
+                            {
+                                "name": "Success",
+                                "plug": "input",
+                                "type": "*",
+                                "index": 0
+                            },
+                            {
+                                "name": "Failure",
+                                "plug": "input",
+                                "type": "*",
+                                "index": 1
+                            }
+                        ],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "b46875b7-4ea9-4e56-3163-3be2b6219650",
+                        "type": "JavaScriptFunction",
+                        "label": "Check for Xano Auth Token",
+                        "x": 27,
+                        "y": -4,
+                        "parameters": {
+                            "functionScript": "if (!Boolean(Noodl.Variables.xano)) {\n    console.error('XanoClient does not exist! Check \"Setup XanoClient\"')\n    return\n}\n\nconst hasAuthToken = Noodl.Variables.xano.hasAuthToken()\n\nif (hasAuthToken) {\n    Outputs.Success()\n} else {\n    console.log('[XanoAuthTokenRefresh] No token registered')\n    Outputs.Failure()\n}"
+                        },
+                        "ports": [],
+                        "dynamicports": [
+                            {
+                                "name": "out-Success",
+                                "displayName": "Success",
+                                "plug": "output",
+                                "type": "signal",
+                                "group": "Outputs",
+                                "index": 4
+                            },
+                            {
+                                "name": "out-Failure",
+                                "displayName": "Failure",
+                                "plug": "output",
+                                "type": "signal",
+                                "group": "Outputs",
+                                "index": 5
+                            }
+                        ],
+                        "children": [],
+                        "metadata": {
+                            "merge": {
+                                "soureCodePorts": [
+                                    "functionScript"
+                                ]
+                            }
+                        }
+                    }
+                ],
+                "comments": [
+                    {
+                        "text": "Check if a Xano auth token has been set",
+                        "width": 417,
+                        "height": 49,
+                        "fill": true,
+                        "x": -48,
+                        "y": -96,
+                        "id": "73cc0290-44c7-cdb3-963a-62ed5372a7b5",
+                        "color": "comment",
+                        "largeFont": true
+                    }
+                ]
+            }
+        },
+        {
+            "name": "/#Xano Prefab/Xano/User/Auth/Xano - authToken - Set",
+            "id": "c2bcfb1a-1a3a-ed37-4ce0-b35e14430cda",
+            "graph": {
+                "connections": [
+                    {
+                        "fromId": "75ac60b0-df0e-8af3-e6fe-45c52b5f4a28",
+                        "fromProperty": "out-Success",
+                        "toId": "e2225976-3a7d-943e-c2b9-d2c7adefc7d0",
+                        "toProperty": "Success"
+                    },
+                    {
+                        "fromId": "75ac60b0-df0e-8af3-e6fe-45c52b5f4a28",
+                        "fromProperty": "out-Failure",
+                        "toId": "e2225976-3a7d-943e-c2b9-d2c7adefc7d0",
+                        "toProperty": "Failure"
+                    },
+                    {
+                        "fromId": "75ac60b0-df0e-8af3-e6fe-45c52b5f4a28",
+                        "fromProperty": "out-Error",
+                        "toId": "e2225976-3a7d-943e-c2b9-d2c7adefc7d0",
+                        "toProperty": "Failure"
+                    },
+                    {
+                        "fromId": "99ed94e3-d562-5671-bd13-3d78966966e1",
+                        "fromProperty": "Do",
+                        "toId": "75ac60b0-df0e-8af3-e6fe-45c52b5f4a28",
+                        "toProperty": "run"
+                    },
+                    {
+                        "fromId": "99ed94e3-d562-5671-bd13-3d78966966e1",
+                        "fromProperty": "Auth Token",
+                        "toId": "75ac60b0-df0e-8af3-e6fe-45c52b5f4a28",
+                        "toProperty": "in-Token"
+                    },
+                    {
+                        "fromId": "75ac60b0-df0e-8af3-e6fe-45c52b5f4a28",
+                        "fromProperty": "out-Done",
+                        "toId": "e2225976-3a7d-943e-c2b9-d2c7adefc7d0",
+                        "toProperty": "Done"
+                    }
+                ],
+                "roots": [
+                    {
+                        "id": "99ed94e3-d562-5671-bd13-3d78966966e1",
+                        "type": "Component Inputs",
+                        "x": 166,
+                        "y": -26,
+                        "parameters": {},
+                        "ports": [
+                            {
+                                "name": "Do",
+                                "plug": "output",
+                                "type": "*",
+                                "index": 0
+                            },
+                            {
+                                "name": "Auth Token",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "index": 1
+                            }
+                        ],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "e2225976-3a7d-943e-c2b9-d2c7adefc7d0",
+                        "type": "Component Outputs",
+                        "x": 569,
+                        "y": -26,
+                        "parameters": {},
+                        "ports": [
+                            {
+                                "name": "Success",
+                                "plug": "input",
+                                "type": "*",
+                                "index": 0
+                            },
+                            {
+                                "name": "Failure",
+                                "plug": "input",
+                                "type": "*",
+                                "index": 1
+                            },
+                            {
+                                "name": "Done",
+                                "plug": "input",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "index": 2
+                            }
+                        ],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "75ac60b0-df0e-8af3-e6fe-45c52b5f4a28",
+                        "type": "JavaScriptFunction",
+                        "label": "Set Xano Auth Token",
+                        "x": 359,
+                        "y": -40,
+                        "parameters": {
+                            "functionScript": "if (!Boolean(Noodl.Variables.xano)) {\n    console.error('XanoClient does not exist! Check \"Setup XanoClient\"')\n    Outputs.Error()\n    return\n}\n\n// we want to allow \"null\" bc that is the Xano way of logging out the user\nif (Inputs.Token !== null && !Boolean(Inputs.Token)) {\n    console.error('No token was passed to \"Set Xano Auth Token\"')\n    Outputs.Error()\n}\n\nNoodl.Variables.xano.setAuthToken(Inputs.Token)\n\nconst hasAuthToken = Noodl.Variables.xano.hasAuthToken()\n\nif (hasAuthToken) {\n    Outputs.Success()\n    Outputs.Done()\n} else {\n    Outputs.Failure()\n    Outputs.Done()\n}"
+                        },
+                        "ports": [],
+                        "dynamicports": [
+                            {
+                                "name": "in-Token",
+                                "displayName": "Token",
+                                "plug": "input",
+                                "type": "*",
+                                "group": "Inputs",
+                                "index": 4
+                            },
+                            {
+                                "name": "out-Error",
+                                "displayName": "Error",
+                                "plug": "output",
+                                "type": "signal",
+                                "group": "Outputs",
+                                "index": 5
+                            },
+                            {
+                                "name": "out-Success",
+                                "displayName": "Success",
+                                "plug": "output",
+                                "type": "signal",
+                                "group": "Outputs",
+                                "index": 6
+                            },
+                            {
+                                "name": "out-Done",
+                                "displayName": "Done",
+                                "plug": "output",
+                                "type": "signal",
+                                "group": "Outputs",
+                                "index": 7
+                            },
+                            {
+                                "name": "out-Failure",
+                                "displayName": "Failure",
+                                "plug": "output",
+                                "type": "signal",
+                                "group": "Outputs",
+                                "index": 8
+                            }
+                        ],
+                        "children": [],
+                        "metadata": {
+                            "merge": {
+                                "soureCodePorts": [
+                                    "functionScript"
+                                ]
+                            }
+                        }
+                    }
+                ],
+                "comments": [
+                    {
+                        "text": "Set a Xano auth token",
+                        "width": 221,
+                        "height": 49,
+                        "fill": true,
+                        "x": 95,
+                        "y": -108,
+                        "id": "91755284-66e3-54be-08e1-3d8459af95b9",
+                        "color": "comment",
+                        "largeFont": true
+                    }
+                ]
+            }
+        },
+        {
+            "name": "/#Xano Prefab/Xano/User/Xano - authToken - Refresh",
+            "id": "682528b4-dba6-5644-5ac7-1e6b3273ef34",
+            "graph": {
+                "connections": [
+                    {
+                        "fromId": "cc4d1d1a-c05d-3c71-543b-bdc972174d2b",
+                        "fromProperty": "out-Token",
+                        "toId": "b8a44e47-1fec-6dbf-f61d-166d5fe5469a",
+                        "toProperty": "Auth Token"
+                    },
+                    {
+                        "fromId": "b8a44e47-1fec-6dbf-f61d-166d5fe5469a",
+                        "fromProperty": "Success",
+                        "toId": "89f6f884-1b9e-289f-fe31-94227535192b",
+                        "toProperty": "Success"
+                    },
+                    {
+                        "fromId": "b8a44e47-1fec-6dbf-f61d-166d5fe5469a",
+                        "fromProperty": "Failure",
+                        "toId": "89f6f884-1b9e-289f-fe31-94227535192b",
+                        "toProperty": "Failure"
+                    },
+                    {
+                        "fromId": "846b24d7-af56-3ee9-f386-f3eeba056a7e",
+                        "fromProperty": "Response",
+                        "toId": "cc4d1d1a-c05d-3c71-543b-bdc972174d2b",
+                        "toProperty": "in-Data"
+                    },
+                    {
+                        "fromId": "846b24d7-af56-3ee9-f386-f3eeba056a7e",
+                        "fromProperty": "Success",
+                        "toId": "b8a44e47-1fec-6dbf-f61d-166d5fe5469a",
+                        "toProperty": "Do"
+                    },
+                    {
+                        "fromId": "846b24d7-af56-3ee9-f386-f3eeba056a7e",
+                        "fromProperty": "Failure",
+                        "toId": "89f6f884-1b9e-289f-fe31-94227535192b",
+                        "toProperty": "Failure"
+                    },
+                    {
+                        "fromId": "ba5eb16c-5f7c-5723-fba8-bd2066d04ccf",
+                        "fromProperty": "Start",
+                        "toId": "681e75be-8fbe-2b03-0c65-2390141ceb00",
+                        "toProperty": "start"
+                    },
+                    {
+                        "fromId": "ba5eb16c-5f7c-5723-fba8-bd2066d04ccf",
+                        "fromProperty": "Stop",
+                        "toId": "681e75be-8fbe-2b03-0c65-2390141ceb00",
+                        "toProperty": "stop"
+                    },
+                    {
+                        "fromId": "b8a44e47-1fec-6dbf-f61d-166d5fe5469a",
+                        "fromProperty": "Success",
+                        "toId": "681e75be-8fbe-2b03-0c65-2390141ceb00",
+                        "toProperty": "start"
+                    },
+                    {
+                        "fromId": "681e75be-8fbe-2b03-0c65-2390141ceb00",
+                        "fromProperty": "timerFinished",
+                        "toId": "846b24d7-af56-3ee9-f386-f3eeba056a7e",
+                        "toProperty": "Do"
+                    },
+                    {
+                        "fromId": "ba5eb16c-5f7c-5723-fba8-bd2066d04ccf",
+                        "fromProperty": "TTL",
+                        "toId": "5a15e7f2-afb4-11cc-432f-7d3b3861b083",
+                        "toProperty": "in-ttl"
+                    },
+                    {
+                        "fromId": "5a15e7f2-afb4-11cc-432f-7d3b3861b083",
+                        "fromProperty": "out-ttl",
+                        "toId": "681e75be-8fbe-2b03-0c65-2390141ceb00",
+                        "toProperty": "duration"
+                    },
+                    {
+                        "fromId": "ba5eb16c-5f7c-5723-fba8-bd2066d04ccf",
+                        "fromProperty": "Endpoint Path",
+                        "toId": "846b24d7-af56-3ee9-f386-f3eeba056a7e",
+                        "toProperty": "Endpoint"
+                    }
+                ],
+                "roots": [
+                    {
+                        "id": "ba5eb16c-5f7c-5723-fba8-bd2066d04ccf",
+                        "type": "Component Inputs",
+                        "x": -685.106717419426,
+                        "y": -376.046688870999,
+                        "parameters": {},
+                        "ports": [
+                            {
+                                "name": "Start",
+                                "plug": "output",
+                                "type": "*",
+                                "index": 0
+                            },
+                            {
+                                "name": "Stop",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "index": 1
+                            },
+                            {
+                                "name": "TTL",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "index": 2
+                            },
+                            {
+                                "name": "Endpoint Path",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "index": 3
+                            }
+                        ],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "846b24d7-af56-3ee9-f386-f3eeba056a7e",
+                        "type": "/#Xano Prefab/Xano/Base/Xano - Request",
+                        "x": 78.469696969697,
+                        "y": -330.818181818182,
+                        "parameters": {
+                            "Endpoint": "/auth/refreshToken"
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "89f6f884-1b9e-289f-fe31-94227535192b",
+                        "type": "Component Outputs",
+                        "x": 1040.0502803226145,
+                        "y": -173.03591451615313,
+                        "parameters": {},
+                        "ports": [
+                            {
+                                "name": "Success",
+                                "plug": "input",
+                                "type": "*",
+                                "index": 0
+                            },
+                            {
+                                "name": "Failure",
+                                "plug": "input",
+                                "type": "*",
+                                "index": 1
+                            }
+                        ],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "b8a44e47-1fec-6dbf-f61d-166d5fe5469a",
+                        "type": "/#Xano Prefab/Xano/User/Auth/Xano - authToken - Set",
+                        "x": 647.0374537097025,
+                        "y": -290.0210356451754,
+                        "parameters": {},
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "cc4d1d1a-c05d-3c71-543b-bdc972174d2b",
+                        "type": "JavaScriptFunction",
+                        "label": "Grab the token on success",
+                        "x": 404.0210356451754,
+                        "y": -393.0169311290436,
+                        "parameters": {
+                            "functionScript": "if (!Boolean(Inputs.Data)) return\n\nOutputs.Token = Inputs.Data.body.authToken\n"
+                        },
+                        "ports": [],
+                        "dynamicports": [
+                            {
+                                "name": "in-Data",
+                                "displayName": "Data",
+                                "plug": "input",
+                                "type": "*",
+                                "group": "Inputs",
+                                "index": 4
+                            },
+                            {
+                                "name": "out-Token",
+                                "displayName": "Token",
+                                "plug": "output",
+                                "type": "*",
+                                "group": "Outputs",
+                                "index": 5
+                            }
+                        ],
+                        "children": [],
+                        "metadata": {
+                            "merge": {
+                                "soureCodePorts": [
+                                    "functionScript"
+                                ]
+                            }
+                        }
+                    },
+                    {
+                        "id": "681e75be-8fbe-2b03-0c65-2390141ceb00",
+                        "type": "Timer",
+                        "x": -182.76665080642925,
+                        "y": -224.21436580646122,
+                        "parameters": {
+                            "duration": 3600000
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "5a15e7f2-afb4-11cc-432f-7d3b3861b083",
+                        "type": "JavaScriptFunction",
+                        "x": -452.41940561293325,
+                        "y": -153.54458852886452,
+                        "parameters": {
+                            "functionScript": "ttl = Inputs.ttl\n\nif (!Boolean(ttl)) {\n    ttl = 3600\n} \n// Set the ttl from secondes to milliseconds\nttl = ttl * 1000\n\nOutputs.ttl = ttl\n\n"
+                        },
+                        "ports": [],
+                        "dynamicports": [
+                            {
+                                "name": "in-ttl",
+                                "displayName": "ttl",
+                                "plug": "input",
+                                "type": "*",
+                                "group": "Inputs",
+                                "index": 4
+                            },
+                            {
+                                "name": "out-ttl",
+                                "displayName": "ttl",
+                                "plug": "output",
+                                "type": "*",
+                                "group": "Outputs",
+                                "index": 5
+                            }
+                        ],
+                        "children": [],
+                        "metadata": {
+                            "merge": {
+                                "soureCodePorts": [
+                                    "functionScript"
+                                ]
+                            }
+                        }
+                    }
+                ]
+            }
+        },
+        {
+            "name": "/#Xano Prefab/Xano/User/Xano - Current User",
+            "id": "56a66f20-9cd0-8136-6264-397a46dcc0e3",
+            "graph": {
+                "connections": [
+                    {
+                        "fromId": "03f39566-5f2a-179f-b90b-bca4e15c7fa1",
+                        "fromProperty": "Response",
+                        "toId": "27a48a93-5772-a0ea-9ce4-95f420c7ffdf",
+                        "toProperty": "in-Response"
+                    },
+                    {
+                        "fromId": "03f39566-5f2a-179f-b90b-bca4e15c7fa1",
+                        "fromProperty": "Success",
+                        "toId": "27a48a93-5772-a0ea-9ce4-95f420c7ffdf",
+                        "toProperty": "run"
+                    },
+                    {
+                        "fromId": "27a48a93-5772-a0ea-9ce4-95f420c7ffdf",
+                        "fromProperty": "out-Email",
+                        "toId": "f3ab27a9-23b7-f0b1-5133-19e689cef0cd",
+                        "toProperty": "Email"
+                    },
+                    {
+                        "fromId": "27a48a93-5772-a0ea-9ce4-95f420c7ffdf",
+                        "fromProperty": "out-xanoId",
+                        "toId": "f3ab27a9-23b7-f0b1-5133-19e689cef0cd",
+                        "toProperty": "Xano ID"
+                    },
+                    {
+                        "fromId": "27a48a93-5772-a0ea-9ce4-95f420c7ffdf",
+                        "fromProperty": "out-userInformation",
+                        "toId": "f3ab27a9-23b7-f0b1-5133-19e689cef0cd",
+                        "toProperty": "User Data"
+                    },
+                    {
+                        "fromId": "27a48a93-5772-a0ea-9ce4-95f420c7ffdf",
+                        "fromProperty": "out-loggedIn",
+                        "toId": "f3ab27a9-23b7-f0b1-5133-19e689cef0cd",
+                        "toProperty": "Logged In"
+                    },
+                    {
+                        "fromId": "03f39566-5f2a-179f-b90b-bca4e15c7fa1",
+                        "fromProperty": "Failure",
+                        "toId": "27a48a93-5772-a0ea-9ce4-95f420c7ffdf",
+                        "toProperty": "run"
+                    },
+                    {
+                        "fromId": "27a48a93-5772-a0ea-9ce4-95f420c7ffdf",
+                        "fromProperty": "out-Success",
+                        "toId": "f3ab27a9-23b7-f0b1-5133-19e689cef0cd",
+                        "toProperty": "Success"
+                    },
+                    {
+                        "fromId": "27a48a93-5772-a0ea-9ce4-95f420c7ffdf",
+                        "fromProperty": "out-Failure",
+                        "toId": "f3ab27a9-23b7-f0b1-5133-19e689cef0cd",
+                        "toProperty": "Failure"
+                    },
+                    {
+                        "fromId": "545023e6-8696-5061-6dbe-676af8e6f1e1",
+                        "fromProperty": "Fetch",
+                        "toId": "856db7a2-4497-abd5-1b42-0ed71cf3f199",
+                        "toProperty": "Do"
+                    },
+                    {
+                        "fromId": "856db7a2-4497-abd5-1b42-0ed71cf3f199",
+                        "fromProperty": "Success",
+                        "toId": "03f39566-5f2a-179f-b90b-bca4e15c7fa1",
+                        "toProperty": "Do"
+                    },
+                    {
+                        "fromId": "03f39566-5f2a-179f-b90b-bca4e15c7fa1",
+                        "fromProperty": "Success",
+                        "toId": "70493756-755b-a2c5-e0c9-56ee74610927",
+                        "toProperty": "to-Success"
+                    },
+                    {
+                        "fromId": "03f39566-5f2a-179f-b90b-bca4e15c7fa1",
+                        "fromProperty": "Failure",
+                        "toId": "70493756-755b-a2c5-e0c9-56ee74610927",
+                        "toProperty": "to-Failure"
+                    },
+                    {
+                        "fromId": "70493756-755b-a2c5-e0c9-56ee74610927",
+                        "fromProperty": "loggedIn",
+                        "toId": "27a48a93-5772-a0ea-9ce4-95f420c7ffdf",
+                        "toProperty": "in-loggedIn"
+                    },
+                    {
+                        "fromId": "856db7a2-4497-abd5-1b42-0ed71cf3f199",
+                        "fromProperty": "Failure",
+                        "toId": "70493756-755b-a2c5-e0c9-56ee74610927",
+                        "toProperty": "to-Failure"
+                    },
+                    {
+                        "fromId": "856db7a2-4497-abd5-1b42-0ed71cf3f199",
+                        "fromProperty": "Failure",
+                        "toId": "27a48a93-5772-a0ea-9ce4-95f420c7ffdf",
+                        "toProperty": "run"
+                    },
+                    {
+                        "fromId": "c9737f6e-479e-523d-7604-9e08a388f42d",
+                        "fromProperty": "value",
+                        "toId": "03f39566-5f2a-179f-b90b-bca4e15c7fa1",
+                        "toProperty": "Endpoint"
+                    }
+                ],
+                "roots": [
+                    {
+                        "id": "545023e6-8696-5061-6dbe-676af8e6f1e1",
+                        "type": "Component Inputs",
+                        "x": -659,
+                        "y": -19,
+                        "parameters": {},
+                        "ports": [
+                            {
+                                "name": "Fetch",
+                                "plug": "output",
+                                "type": "*",
+                                "index": 0
+                            }
+                        ],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "f3ab27a9-23b7-f0b1-5133-19e689cef0cd",
+                        "type": "Component Outputs",
+                        "x": 882.6808950765799,
+                        "y": 3.829776230855032,
+                        "parameters": {},
+                        "ports": [
+                            {
+                                "name": "Success",
+                                "plug": "input",
+                                "type": "*",
+                                "index": 0,
+                                "group": "Signals"
+                            },
+                            {
+                                "name": "Failure",
+                                "plug": "input",
+                                "type": "*",
+                                "index": 1,
+                                "group": "Signals"
+                            },
+                            {
+                                "name": "Id",
+                                "plug": "input",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "group": "User Data",
+                                "index": 2
+                            },
+                            {
+                                "name": "Email",
+                                "plug": "input",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "group": "User Data",
+                                "index": 4
+                            },
+                            {
+                                "name": "User Data",
+                                "plug": "input",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "group": "User Data",
+                                "index": 5
+                            },
+                            {
+                                "name": "Logged In",
+                                "plug": "input",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "group": "Authentication",
+                                "index": 6
+                            },
+                            {
+                                "name": "Xano ID",
+                                "plug": "input",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "group": "User Data",
+                                "index": 3
+                            }
+                        ],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "03f39566-5f2a-179f-b90b-bca4e15c7fa1",
+                        "type": "/#Xano Prefab/Xano/Base/Xano - Request",
+                        "x": -189.44489127958764,
+                        "y": -151.30236788591878,
+                        "parameters": {
+                            "Endpoint": "/auth/me"
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "27a48a93-5772-a0ea-9ce4-95f420c7ffdf",
+                        "type": "JavaScriptFunction",
+                        "x": 379.66666666666663,
+                        "y": -17.333333333333314,
+                        "parameters": {
+                            "functionScript": "if (Inputs.loggedIn) {\n\n        if (!Boolean(Inputs.Response)) return \n\n        const responseBody = Inputs.Response.getBody()\n\n        Object.defineProperty(responseBody, \"xanoid\",\n                Object.getOwnPropertyDescriptor(responseBody, \"id\"));\n        delete responseBody[\"id\"]\n\n        responseBody.id = \"currentUser\"\n        responseBody.loggedIn = Inputs.loggedIn\n\n        currUser = Noodl.Object.create({\n                id : \"currentUser\",\n                loggedIn:true \n                })\n\n        currUser.setAll(responseBody)\n\n        // Accessing Data : \n        // Noodl.Objects[\"currentUser\"].<name your column>\n\n        // Output common Xano user data\n        Outputs.Id = responseBody.id\n        Outputs.xanoId = responseBody.xanoid\n        Outputs.Email = responseBody.email\n        Outputs.loggedIn = true\n\n        // Output full response\n        Outputs.userInformation = responseBody\n\n        Outputs.Success()\n\n} else {\n\n        currUser = Noodl.Object.create({\n                id : \"currentUser\" ,\n                loggedIn:false\n                })\n\n        Outputs.loggedIn = false\n\n        Outputs.Failure()\n\n}"
+                        },
+                        "ports": [],
+                        "dynamicports": [
+                            {
+                                "name": "in-loggedIn",
+                                "displayName": "loggedIn",
+                                "plug": "input",
+                                "type": "*",
+                                "group": "Inputs",
+                                "index": 4
+                            },
+                            {
+                                "name": "in-Response",
+                                "displayName": "Response",
+                                "plug": "input",
+                                "type": "*",
+                                "group": "Inputs",
+                                "index": 5
+                            },
+                            {
+                                "name": "out-Success",
+                                "displayName": "Success",
+                                "plug": "output",
+                                "type": "signal",
+                                "group": "Outputs",
+                                "index": 6
+                            },
+                            {
+                                "name": "out-Failure",
+                                "displayName": "Failure",
+                                "plug": "output",
+                                "type": "signal",
+                                "group": "Outputs",
+                                "index": 7
+                            },
+                            {
+                                "name": "out-Id",
+                                "displayName": "Id",
+                                "plug": "output",
+                                "type": "*",
+                                "group": "Outputs",
+                                "index": 8
+                            },
+                            {
+                                "name": "out-xanoId",
+                                "displayName": "xanoId",
+                                "plug": "output",
+                                "type": "*",
+                                "group": "Outputs",
+                                "index": 9
+                            },
+                            {
+                                "name": "out-Email",
+                                "displayName": "Email",
+                                "plug": "output",
+                                "type": "*",
+                                "group": "Outputs",
+                                "index": 10
+                            },
+                            {
+                                "name": "out-loggedIn",
+                                "displayName": "loggedIn",
+                                "plug": "output",
+                                "type": "*",
+                                "group": "Outputs",
+                                "index": 11
+                            },
+                            {
+                                "name": "out-userInformation",
+                                "displayName": "userInformation",
+                                "plug": "output",
+                                "type": "*",
+                                "group": "Outputs",
+                                "index": 12
+                            }
+                        ],
+                        "children": [],
+                        "metadata": {
+                            "merge": {
+                                "soureCodePorts": [
+                                    "functionScript"
+                                ]
+                            }
+                        }
+                    },
+                    {
+                        "id": "856db7a2-4497-abd5-1b42-0ed71cf3f199",
+                        "type": "/#Xano Prefab/Xano/User/Auth/Xano - authToken - Check",
+                        "x": -450.0857821372873,
+                        "y": -37.778224612920894,
+                        "parameters": {},
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "70493756-755b-a2c5-e0c9-56ee74610927",
+                        "type": "States",
+                        "x": 117.27820306501212,
+                        "y": 96.42657316584291,
+                        "parameters": {
+                            "states": "Success,Failure",
+                            "values": "loggedIn",
+                            "useTransitions": false,
+                            "type-loggedIn": "boolean",
+                            "value-Success-loggedIn": true
+                        },
+                        "ports": [],
+                        "dynamicports": [
+                            {
+                                "type": {
+                                    "name": "boolean",
+                                    "allowConnectionsOnly": true
+                                },
+                                "plug": "output",
+                                "group": "Values",
+                                "name": "loggedIn",
+                                "index": 6
+                            },
+                            {
+                                "type": {
+                                    "name": "enum",
+                                    "enums": [
+                                        {
+                                            "label": "Number",
+                                            "value": "number"
+                                        },
+                                        {
+                                            "label": "String",
+                                            "value": "string"
+                                        },
+                                        {
+                                            "label": "Boolean",
+                                            "value": "boolean"
+                                        },
+                                        {
+                                            "label": "Color",
+                                            "value": "color"
+                                        },
+                                        {
+                                            "label": "Text Style",
+                                            "value": "textStyle"
+                                        }
+                                    ],
+                                    "allowEditOnly": true
+                                },
+                                "default": "number",
+                                "plug": "input",
+                                "group": "Types",
+                                "displayName": "loggedIn",
+                                "name": "type-loggedIn",
+                                "index": 7
+                            },
+                            {
+                                "plug": "input",
+                                "type": "boolean",
+                                "group": "Success Values",
+                                "name": "value-Success-loggedIn",
+                                "displayName": "loggedIn",
+                                "editorName": "Success|loggedIn",
+                                "index": 8
+                            },
+                            {
+                                "plug": "input",
+                                "type": {
+                                    "name": "signal",
+                                    "allowConnectionsOnly": true
+                                },
+                                "displayName": "To Success",
+                                "name": "to-Success",
+                                "group": "Go to state",
+                                "index": 9
+                            },
+                            {
+                                "plug": "output",
+                                "type": "boolean",
+                                "displayName": "At Success",
+                                "name": "at-Success",
+                                "group": "Current state",
+                                "index": 10
+                            },
+                            {
+                                "plug": "output",
+                                "type": "signal",
+                                "displayName": "Has Reached Success",
+                                "name": "reached-Success",
+                                "group": "Current state",
+                                "index": 11
+                            },
+                            {
+                                "plug": "input",
+                                "type": "boolean",
+                                "group": "Failure Values",
+                                "name": "value-Failure-loggedIn",
+                                "displayName": "loggedIn",
+                                "editorName": "Failure|loggedIn",
+                                "index": 12
+                            },
+                            {
+                                "plug": "input",
+                                "type": {
+                                    "name": "signal",
+                                    "allowConnectionsOnly": true
+                                },
+                                "displayName": "To Failure",
+                                "name": "to-Failure",
+                                "group": "Go to state",
+                                "index": 13
+                            },
+                            {
+                                "plug": "output",
+                                "type": "boolean",
+                                "displayName": "At Failure",
+                                "name": "at-Failure",
+                                "group": "Current state",
+                                "index": 14
+                            },
+                            {
+                                "plug": "output",
+                                "type": "signal",
+                                "displayName": "Has Reached Failure",
+                                "name": "reached-Failure",
+                                "group": "Current state",
+                                "index": 15
+                            },
+                            {
+                                "plug": "input",
+                                "type": {
+                                    "name": "enum",
+                                    "enums": [
+                                        "Success",
+                                        "Failure"
+                                    ]
+                                },
+                                "group": "States",
+                                "displayName": "State",
+                                "name": "currentState",
+                                "default": "Success",
+                                "index": 16
+                            }
+                        ],
+                        "children": []
+                    },
+                    {
+                        "id": "c9737f6e-479e-523d-7604-9e08a388f42d",
+                        "type": "Variable2",
+                        "x": -432.44489127958764,
+                        "y": -297.1539303859188,
+                        "parameters": {
+                            "name": "authMePath"
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": []
+                    }
+                ],
+                "comments": [
+                    {
+                        "text": "Get user data",
+                        "width": 150,
+                        "height": 52,
+                        "fill": true,
+                        "x": -638,
+                        "y": -215,
+                        "id": "1ca4efe1-5fc2-d5e5-014e-073c93a4d613",
+                        "color": "comment",
+                        "largeFont": true
+                    },
+                    {
+                        "text": "/auth/me to check if session is valid",
+                        "width": 195,
+                        "height": 235,
+                        "fill": true,
+                        "x": -212,
+                        "y": -262,
+                        "id": "23b2aa93-d9da-f9a7-5bca-88ffd334d624"
+                    }
+                ]
+            }
+        },
+        {
+            "name": "/#Xano Prefab/Xano/User/Xano - Log in",
+            "id": "5ca9a125-1865-3240-5838-8b872883e90b",
+            "graph": {
+                "connections": [
+                    {
+                        "fromId": "e60087b0-68c9-aa89-5d96-955af054eb36",
+                        "fromProperty": "out-Data",
+                        "toId": "833c3b58-e453-d714-4174-c089d96a36ad",
+                        "toProperty": "Data"
+                    },
+                    {
+                        "fromId": "d8e3b06c-2ff3-787d-a92f-1addd5894c67",
+                        "fromProperty": "out-Token",
+                        "toId": "60324979-1ef3-6e5e-fb7c-7644cd9bc0ac",
+                        "toProperty": "Auth Token"
+                    },
+                    {
+                        "fromId": "833c3b58-e453-d714-4174-c089d96a36ad",
+                        "fromProperty": "Response",
+                        "toId": "d8e3b06c-2ff3-787d-a92f-1addd5894c67",
+                        "toProperty": "in-Data"
+                    },
+                    {
+                        "fromId": "833c3b58-e453-d714-4174-c089d96a36ad",
+                        "fromProperty": "Success",
+                        "toId": "60324979-1ef3-6e5e-fb7c-7644cd9bc0ac",
+                        "toProperty": "Do"
+                    },
+                    {
+                        "fromId": "4c121579-1004-26a4-61ea-7d797f75a472",
+                        "fromProperty": "Email",
+                        "toId": "e60087b0-68c9-aa89-5d96-955af054eb36",
+                        "toProperty": "in-Email"
+                    },
+                    {
+                        "fromId": "4c121579-1004-26a4-61ea-7d797f75a472",
+                        "fromProperty": "Password",
+                        "toId": "e60087b0-68c9-aa89-5d96-955af054eb36",
+                        "toProperty": "in-Password"
+                    },
+                    {
+                        "fromId": "4c121579-1004-26a4-61ea-7d797f75a472",
+                        "fromProperty": "Do",
+                        "toId": "e60087b0-68c9-aa89-5d96-955af054eb36",
+                        "toProperty": "run"
+                    },
+                    {
+                        "fromId": "60324979-1ef3-6e5e-fb7c-7644cd9bc0ac",
+                        "fromProperty": "Success",
+                        "toId": "5e82f5e4-6efd-374f-2e5f-061d05d6851d",
+                        "toProperty": "Success"
+                    },
+                    {
+                        "fromId": "60324979-1ef3-6e5e-fb7c-7644cd9bc0ac",
+                        "fromProperty": "Failure",
+                        "toId": "5e82f5e4-6efd-374f-2e5f-061d05d6851d",
+                        "toProperty": "Failure"
+                    },
+                    {
+                        "fromId": "833c3b58-e453-d714-4174-c089d96a36ad",
+                        "fromProperty": "Failure",
+                        "toId": "5e82f5e4-6efd-374f-2e5f-061d05d6851d",
+                        "toProperty": "Failure"
+                    },
+                    {
+                        "fromId": "60324979-1ef3-6e5e-fb7c-7644cd9bc0ac",
+                        "fromProperty": "Success",
+                        "toId": "666e0fba-66c7-0a07-04e8-96d027fd2c7d",
+                        "toProperty": "sendEvent"
+                    },
+                    {
+                        "fromId": "e60087b0-68c9-aa89-5d96-955af054eb36",
+                        "fromProperty": "out-Done",
+                        "toId": "833c3b58-e453-d714-4174-c089d96a36ad",
+                        "toProperty": "Do"
+                    },
+                    {
+                        "fromId": "33d960cf-3448-46f0-f8ea-7d0687e1ac57",
+                        "fromProperty": "value",
+                        "toId": "833c3b58-e453-d714-4174-c089d96a36ad",
+                        "toProperty": "Endpoint"
+                    }
+                ],
+                "roots": [
+                    {
+                        "id": "4c121579-1004-26a4-61ea-7d797f75a472",
+                        "type": "Component Inputs",
+                        "x": -347,
+                        "y": -111,
+                        "parameters": {},
+                        "ports": [
+                            {
+                                "name": "Do",
+                                "plug": "output",
+                                "type": "*",
+                                "index": 0
+                            },
+                            {
+                                "name": "Email",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "group": "Data",
+                                "index": 1
+                            },
+                            {
+                                "name": "Password",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "group": "Data",
+                                "index": 2
+                            }
+                        ],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "5e82f5e4-6efd-374f-2e5f-061d05d6851d",
+                        "type": "Component Outputs",
+                        "x": 884,
+                        "y": -75,
+                        "parameters": {},
+                        "ports": [
+                            {
+                                "name": "Success",
+                                "plug": "input",
+                                "type": "*",
+                                "index": 0
+                            },
+                            {
+                                "name": "Failure",
+                                "plug": "input",
+                                "type": "*",
+                                "index": 1
+                            }
+                        ],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "833c3b58-e453-d714-4174-c089d96a36ad",
+                        "type": "/#Xano Prefab/Xano/Base/Xano - Request",
+                        "x": 161,
+                        "y": -110,
+                        "parameters": {
+                            "Endpoint": "/auth/login",
+                            "Request Type": "POST"
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "e60087b0-68c9-aa89-5d96-955af054eb36",
+                        "type": "JavaScriptFunction",
+                        "x": -114,
+                        "y": -112,
+                        "parameters": {
+                            "functionScript": "Outputs.Data = {\n    'email': Inputs.Email,\n    'password': Inputs.Password\n}\n\nOutputs.Done()"
+                        },
+                        "ports": [],
+                        "dynamicports": [
+                            {
+                                "name": "in-Email",
+                                "displayName": "Email",
+                                "plug": "input",
+                                "type": "*",
+                                "group": "Inputs",
+                                "index": 4
+                            },
+                            {
+                                "name": "in-Password",
+                                "displayName": "Password",
+                                "plug": "input",
+                                "type": "*",
+                                "group": "Inputs",
+                                "index": 5
+                            },
+                            {
+                                "name": "out-Done",
+                                "displayName": "Done",
+                                "plug": "output",
+                                "type": "signal",
+                                "group": "Outputs",
+                                "index": 6
+                            },
+                            {
+                                "name": "out-Data",
+                                "displayName": "Data",
+                                "plug": "output",
+                                "type": "*",
+                                "group": "Outputs",
+                                "index": 7
+                            }
+                        ],
+                        "children": [],
+                        "metadata": {
+                            "merge": {
+                                "soureCodePorts": [
+                                    "functionScript"
+                                ]
+                            }
+                        }
+                    },
+                    {
+                        "id": "60324979-1ef3-6e5e-fb7c-7644cd9bc0ac",
+                        "type": "/#Xano Prefab/Xano/User/Auth/Xano - authToken - Set",
+                        "x": 621,
+                        "y": -183,
+                        "parameters": {},
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "d8e3b06c-2ff3-787d-a92f-1addd5894c67",
+                        "type": "JavaScriptFunction",
+                        "label": "Grab the token on success",
+                        "x": 395,
+                        "y": -217,
+                        "parameters": {
+                            "functionScript": "if (!Boolean(Inputs.Data)) return\n\nOutputs.Token = Inputs.Data.body.authToken\n"
+                        },
+                        "ports": [],
+                        "dynamicports": [
+                            {
+                                "name": "in-Data",
+                                "displayName": "Data",
+                                "plug": "input",
+                                "type": "*",
+                                "group": "Inputs",
+                                "index": 4
+                            },
+                            {
+                                "name": "out-Token",
+                                "displayName": "Token",
+                                "plug": "output",
+                                "type": "*",
+                                "group": "Outputs",
+                                "index": 5
+                            }
+                        ],
+                        "children": [],
+                        "metadata": {
+                            "merge": {
+                                "soureCodePorts": [
+                                    "functionScript"
+                                ]
+                            }
+                        }
+                    },
+                    {
+                        "id": "666e0fba-66c7-0a07-04e8-96d027fd2c7d",
+                        "type": "Event Sender",
+                        "x": 883,
+                        "y": -218.16666666666663,
+                        "parameters": {
+                            "channelName": "Xano User Logged In"
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "33d960cf-3448-46f0-f8ea-7d0687e1ac57",
+                        "type": "Variable2",
+                        "x": -106,
+                        "y": -337.8515625,
+                        "parameters": {
+                            "name": "authLoginPath"
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": []
+                    }
+                ],
+                "comments": [
+                    {
+                        "text": "Update this if you authenticate with other parameters than Email and Password",
+                        "width": 415,
+                        "height": 262,
+                        "fill": true,
+                        "x": -367,
+                        "y": -214,
+                        "id": "ff178de2-f66b-f259-0d6d-ba3218abb68c"
+                    },
+                    {
+                        "text": "Logging in a user",
+                        "width": 198,
+                        "height": 52,
+                        "fill": true,
+                        "x": -607,
+                        "y": -118,
+                        "id": "6890fbdd-98d3-6bcb-e150-73ba78b3692a",
+                        "color": "comment",
+                        "largeFont": true
+                    },
+                    {
+                        "text": "Send an Event just in case we want to react to the Login somewhere in the app that is not connected to the Component Outputs",
+                        "width": 176,
+                        "height": 229,
+                        "fill": true,
+                        "x": 870,
+                        "y": -346,
+                        "id": "5cfa6e7b-f7c3-fb89-cc7f-1db62987c7a6",
+                        "color": "component"
+                    }
+                ]
+            }
+        },
+        {
+            "name": "/#Xano Prefab/Xano/User/Xano - Log Out",
+            "id": "ca0f90da-bab0-3205-193a-ac124f8d183c",
+            "graph": {
+                "connections": [
+                    {
+                        "fromId": "23edacdc-9f5b-541c-9ebb-bf44c9e226a4",
+                        "fromProperty": "Do",
+                        "toId": "e92b4b41-2ea7-2d11-bdb0-12522052d221",
+                        "toProperty": "Do"
+                    },
+                    {
+                        "fromId": "e92b4b41-2ea7-2d11-bdb0-12522052d221",
+                        "fromProperty": "Failure",
+                        "toId": "ece8ae32-e088-b59b-33c9-d731add4bb91",
+                        "toProperty": "sendEvent"
+                    },
+                    {
+                        "fromId": "e92b4b41-2ea7-2d11-bdb0-12522052d221",
+                        "fromProperty": "Failure",
+                        "toId": "a23767be-0a14-ac01-7a32-dd2fc56f1fe6",
+                        "toProperty": "Success"
+                    },
+                    {
+                        "fromId": "44ff0c35-b1bb-43bb-ca59-dfa2b4651bf4",
+                        "fromProperty": "out-Null",
+                        "toId": "e92b4b41-2ea7-2d11-bdb0-12522052d221",
+                        "toProperty": "Auth Token"
+                    },
+                    {
+                        "fromId": "e92b4b41-2ea7-2d11-bdb0-12522052d221",
+                        "fromProperty": "Done",
+                        "toId": "3741cf50-e368-ed56-028d-a88393d472b7",
+                        "toProperty": "run"
+                    }
+                ],
+                "roots": [
+                    {
+                        "id": "23edacdc-9f5b-541c-9ebb-bf44c9e226a4",
+                        "type": "Component Inputs",
+                        "x": -262,
+                        "y": 9,
+                        "parameters": {},
+                        "ports": [
+                            {
+                                "name": "Do",
+                                "plug": "output",
+                                "type": "*",
+                                "index": 0
+                            }
+                        ],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "a23767be-0a14-ac01-7a32-dd2fc56f1fe6",
+                        "type": "Component Outputs",
+                        "x": 725,
+                        "y": 94,
+                        "parameters": {},
+                        "ports": [
+                            {
+                                "name": "Success",
+                                "plug": "input",
+                                "type": "*",
+                                "index": 0
+                            },
+                            {
+                                "name": "Failure",
+                                "plug": "input",
+                                "type": "*",
+                                "index": 1
+                            }
+                        ],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "e92b4b41-2ea7-2d11-bdb0-12522052d221",
+                        "type": "/#Xano Prefab/Xano/User/Auth/Xano - authToken - Set",
+                        "x": -33,
+                        "y": 27,
+                        "parameters": {},
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "ece8ae32-e088-b59b-33c9-d731add4bb91",
+                        "type": "Event Sender",
+                        "x": 717.6666666666661,
+                        "y": -118.83333333333303,
+                        "parameters": {
+                            "channelName": "Xano User Logged Out"
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "44ff0c35-b1bb-43bb-ca59-dfa2b4651bf4",
+                        "type": "JavaScriptFunction",
+                        "label": "Null value",
+                        "x": -30.33333333333337,
+                        "y": -65.33333333333334,
+                        "parameters": {
+                            "functionScript": "Outputs.Null = null"
+                        },
+                        "ports": [],
+                        "dynamicports": [
+                            {
+                                "name": "out-Null",
+                                "displayName": "Null",
+                                "plug": "output",
+                                "type": "*",
+                                "group": "Outputs",
+                                "index": 4
+                            }
+                        ],
+                        "children": [],
+                        "metadata": {
+                            "merge": {
+                                "soureCodePorts": [
+                                    "functionScript"
+                                ]
+                            }
+                        }
+                    },
+                    {
+                        "id": "3741cf50-e368-ed56-028d-a88393d472b7",
+                        "type": "JavaScriptFunction",
+                        "label": "Emptying currentUser",
+                        "x": 353,
+                        "y": -144,
+                        "parameters": {
+                            "functionScript": "\ncurrUser = Noodl.Object.create({id:\"currentUser\", loggedin:false})\n\n"
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": [],
+                        "metadata": {
+                            "merge": {
+                                "soureCodePorts": [
+                                    "functionScript"
+                                ]
+                            }
+                        }
+                    }
+                ],
+                "comments": [
+                    {
+                        "text": "Setting the token to null clears the token",
+                        "width": 186,
+                        "height": 308,
+                        "fill": true,
+                        "x": -52,
+                        "y": -152,
+                        "id": "f344f9e3-e9f4-95bd-0a20-1f23a7354f3e"
+                    },
+                    {
+                        "text": "Log out a logged in user",
+                        "width": 247,
+                        "height": 53,
+                        "fill": true,
+                        "x": -377,
+                        "y": -116,
+                        "id": "5b8c5104-6e1a-ee9c-5916-ccdcbf34deaf",
+                        "color": "comment",
+                        "largeFont": true
+                    },
+                    {
+                        "text": "Send an Event just in case we want to react to the Logout somewhere in the app that is not connected to the Component Outputs",
+                        "width": 174,
+                        "height": 249,
+                        "fill": true,
+                        "x": 704,
+                        "y": -251,
+                        "id": "6a340d76-cb85-28fb-f908-6cbeae1f85e1",
+                        "color": "component"
+                    }
+                ]
+            }
+        },
+        {
+            "name": "/#Xano Prefab/Xano/User/Xano - Sign up",
+            "id": "27432120-d01e-84d4-8339-d49190398259",
+            "graph": {
+                "connections": [
+                    {
+                        "fromId": "983213cd-b877-feaf-b6c2-390a10db1ca7",
+                        "fromProperty": "out-Data",
+                        "toId": "d2ef31ab-afee-9529-1e01-f3d80669c926",
+                        "toProperty": "Data"
+                    },
+                    {
+                        "fromId": "8e0d32b9-f04c-e5cc-5aa7-78392f6ef487",
+                        "fromProperty": "out-Token",
+                        "toId": "94d7a6a9-0f53-e2d5-5fb4-139478f7f8e7",
+                        "toProperty": "Auth Token"
+                    },
+                    {
+                        "fromId": "d2ef31ab-afee-9529-1e01-f3d80669c926",
+                        "fromProperty": "Response",
+                        "toId": "8e0d32b9-f04c-e5cc-5aa7-78392f6ef487",
+                        "toProperty": "in-Data"
+                    },
+                    {
+                        "fromId": "d2ef31ab-afee-9529-1e01-f3d80669c926",
+                        "fromProperty": "Success",
+                        "toId": "94d7a6a9-0f53-e2d5-5fb4-139478f7f8e7",
+                        "toProperty": "Do"
+                    },
+                    {
+                        "fromId": "17388629-74af-efd2-969c-4c52beab5889",
+                        "fromProperty": "Email",
+                        "toId": "983213cd-b877-feaf-b6c2-390a10db1ca7",
+                        "toProperty": "in-Email"
+                    },
+                    {
+                        "fromId": "17388629-74af-efd2-969c-4c52beab5889",
+                        "fromProperty": "Password",
+                        "toId": "983213cd-b877-feaf-b6c2-390a10db1ca7",
+                        "toProperty": "in-Password"
+                    },
+                    {
+                        "fromId": "17388629-74af-efd2-969c-4c52beab5889",
+                        "fromProperty": "Do",
+                        "toId": "983213cd-b877-feaf-b6c2-390a10db1ca7",
+                        "toProperty": "run"
+                    },
+                    {
+                        "fromId": "94d7a6a9-0f53-e2d5-5fb4-139478f7f8e7",
+                        "fromProperty": "Success",
+                        "toId": "2d7a5f45-910d-0c95-bc06-c6e60d6f011f",
+                        "toProperty": "Success"
+                    },
+                    {
+                        "fromId": "94d7a6a9-0f53-e2d5-5fb4-139478f7f8e7",
+                        "fromProperty": "Failure",
+                        "toId": "2d7a5f45-910d-0c95-bc06-c6e60d6f011f",
+                        "toProperty": "Failure"
+                    },
+                    {
+                        "fromId": "d2ef31ab-afee-9529-1e01-f3d80669c926",
+                        "fromProperty": "Failure",
+                        "toId": "2d7a5f45-910d-0c95-bc06-c6e60d6f011f",
+                        "toProperty": "Failure"
+                    },
+                    {
+                        "fromId": "94d7a6a9-0f53-e2d5-5fb4-139478f7f8e7",
+                        "fromProperty": "Success",
+                        "toId": "8eb4f157-557f-2104-7162-5384d69055fd",
+                        "toProperty": "sendEvent"
+                    },
+                    {
+                        "fromId": "983213cd-b877-feaf-b6c2-390a10db1ca7",
+                        "fromProperty": "out-Done",
+                        "toId": "d2ef31ab-afee-9529-1e01-f3d80669c926",
+                        "toProperty": "Do"
+                    },
+                    {
+                        "fromId": "17388629-74af-efd2-969c-4c52beab5889",
+                        "fromProperty": "First Name",
+                        "toId": "983213cd-b877-feaf-b6c2-390a10db1ca7",
+                        "toProperty": "in-firstName"
+                    },
+                    {
+                        "fromId": "17388629-74af-efd2-969c-4c52beab5889",
+                        "fromProperty": "Last Name",
+                        "toId": "983213cd-b877-feaf-b6c2-390a10db1ca7",
+                        "toProperty": "in-lastName"
+                    },
+                    {
+                        "fromId": "81c2b247-6dd5-2e28-ba41-a5f0e7b96384",
+                        "fromProperty": "value",
+                        "toId": "d2ef31ab-afee-9529-1e01-f3d80669c926",
+                        "toProperty": "Endpoint"
+                    }
+                ],
+                "roots": [
+                    {
+                        "id": "17388629-74af-efd2-969c-4c52beab5889",
+                        "type": "Component Inputs",
+                        "x": -231,
+                        "y": -105,
+                        "parameters": {},
+                        "ports": [
+                            {
+                                "name": "Do",
+                                "plug": "output",
+                                "type": "*",
+                                "index": 0
+                            },
+                            {
+                                "name": "Email",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "group": "Data",
+                                "index": 1
+                            },
+                            {
+                                "name": "Password",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "group": "Data",
+                                "index": 2
+                            },
+                            {
+                                "name": "First Name",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "group": "Data",
+                                "index": 3
+                            },
+                            {
+                                "name": "Last Name",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "group": "Data",
+                                "index": 4
+                            }
+                        ],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "2d7a5f45-910d-0c95-bc06-c6e60d6f011f",
+                        "type": "Component Outputs",
+                        "x": 1124,
+                        "y": -71,
+                        "parameters": {},
+                        "ports": [
+                            {
+                                "name": "Success",
+                                "plug": "input",
+                                "type": "*",
+                                "index": 0
+                            },
+                            {
+                                "name": "Failure",
+                                "plug": "input",
+                                "type": "*",
+                                "index": 1
+                            }
+                        ],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "d2ef31ab-afee-9529-1e01-f3d80669c926",
+                        "type": "/#Xano Prefab/Xano/Base/Xano - Request",
+                        "x": 258,
+                        "y": -71,
+                        "parameters": {
+                            "Endpoint": "/auth/signup",
+                            "Request Type": "POST"
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "983213cd-b877-feaf-b6c2-390a10db1ca7",
+                        "type": "JavaScriptFunction",
+                        "x": -2,
+                        "y": -105,
+                        "parameters": {
+                            "functionScript": "Outputs.Data = {\n    'email': Inputs.Email,\n    'password': Inputs.Password,\n    'firstName': Inputs.firstName,\n    'lastName': Inputs.lastName\n}\n\nOutputs.Done()"
+                        },
+                        "ports": [],
+                        "dynamicports": [
+                            {
+                                "name": "in-Email",
+                                "displayName": "Email",
+                                "plug": "input",
+                                "type": "*",
+                                "group": "Inputs",
+                                "index": 4
+                            },
+                            {
+                                "name": "in-Password",
+                                "displayName": "Password",
+                                "plug": "input",
+                                "type": "*",
+                                "group": "Inputs",
+                                "index": 5
+                            },
+                            {
+                                "name": "in-firstName",
+                                "displayName": "firstName",
+                                "plug": "input",
+                                "type": "*",
+                                "group": "Inputs",
+                                "index": 6
+                            },
+                            {
+                                "name": "in-lastName",
+                                "displayName": "lastName",
+                                "plug": "input",
+                                "type": "*",
+                                "group": "Inputs",
+                                "index": 7
+                            },
+                            {
+                                "name": "out-Done",
+                                "displayName": "Done",
+                                "plug": "output",
+                                "type": "signal",
+                                "group": "Outputs",
+                                "index": 8
+                            },
+                            {
+                                "name": "out-Data",
+                                "displayName": "Data",
+                                "plug": "output",
+                                "type": "*",
+                                "group": "Outputs",
+                                "index": 9
+                            }
+                        ],
+                        "children": [],
+                        "metadata": {
+                            "merge": {
+                                "soureCodePorts": [
+                                    "functionScript"
+                                ]
+                            }
+                        }
+                    },
+                    {
+                        "id": "94d7a6a9-0f53-e2d5-5fb4-139478f7f8e7",
+                        "type": "/#Xano Prefab/Xano/User/Auth/Xano - authToken - Set",
+                        "x": 801,
+                        "y": -173,
+                        "parameters": {},
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "8e0d32b9-f04c-e5cc-5aa7-78392f6ef487",
+                        "type": "JavaScriptFunction",
+                        "label": "Grab the token on success",
+                        "x": 498,
+                        "y": -250,
+                        "parameters": {
+                            "functionScript": "if (!Boolean(Inputs.Data)) return\n\nOutputs.Token = Inputs.Data.body.authToken\n"
+                        },
+                        "ports": [],
+                        "dynamicports": [
+                            {
+                                "name": "in-Data",
+                                "displayName": "Data",
+                                "plug": "input",
+                                "type": "*",
+                                "group": "Inputs",
+                                "index": 4
+                            },
+                            {
+                                "name": "out-Token",
+                                "displayName": "Token",
+                                "plug": "output",
+                                "type": "*",
+                                "group": "Outputs",
+                                "index": 5
+                            }
+                        ],
+                        "children": [],
+                        "metadata": {
+                            "merge": {
+                                "soureCodePorts": [
+                                    "functionScript"
+                                ]
+                            }
+                        }
+                    },
+                    {
+                        "id": "8eb4f157-557f-2104-7162-5384d69055fd",
+                        "type": "Event Sender",
+                        "x": 1116,
+                        "y": -277.16666666666663,
+                        "parameters": {
+                            "channelName": "Xano User Logged In"
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "81c2b247-6dd5-2e28-ba41-a5f0e7b96384",
+                        "type": "Variable2",
+                        "x": 7,
+                        "y": -328.8515625,
+                        "parameters": {
+                            "name": "authSignupPath"
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": []
+                    }
+                ],
+                "comments": [
+                    {
+                        "text": "Update this if you authenticate with other parameters than Email and Password",
+                        "width": 438,
+                        "height": 305,
+                        "fill": true,
+                        "x": -271,
+                        "y": -204,
+                        "id": "ff178de2-f66b-f259-0d6d-ba3218abb68c"
+                    },
+                    {
+                        "text": "Logging in a user",
+                        "width": 198,
+                        "height": 52,
+                        "fill": true,
+                        "x": -479,
+                        "y": -104,
+                        "id": "6890fbdd-98d3-6bcb-e150-73ba78b3692a",
+                        "color": "comment",
+                        "largeFont": true
+                    },
+                    {
+                        "text": "Send an Event just in case we want to react to the Login somewhere in the app that is not connected to the Component Outputs",
+                        "width": 176,
+                        "height": 229,
+                        "fill": true,
+                        "x": 1103,
+                        "y": -409,
+                        "id": "5cfa6e7b-f7c3-fb89-cc7f-1db62987c7a6",
+                        "color": "component"
+                    }
+                ]
+            }
+        },
+        {
+            "name": "/#Xano Prefab/Xano/User/Xano - Update Current User",
+            "id": "e3633ed6-4fd9-413f-7e8f-019821affe3b",
+            "graph": {
+                "connections": [
+                    {
+                        "fromId": "053161ff-b0ee-fba0-49ae-c3380eb737b6",
+                        "fromProperty": "Success",
+                        "toId": "411a5218-1833-2959-4808-dd975cd46f06",
+                        "toProperty": "run"
+                    },
+                    {
+                        "fromId": "053161ff-b0ee-fba0-49ae-c3380eb737b6",
+                        "fromProperty": "Failure",
+                        "toId": "b6b2f106-b8ec-282d-a87b-2fa915433bd8",
+                        "toProperty": "Failure"
+                    },
+                    {
+                        "fromId": "053161ff-b0ee-fba0-49ae-c3380eb737b6",
+                        "fromProperty": "Response",
+                        "toId": "411a5218-1833-2959-4808-dd975cd46f06",
+                        "toProperty": "in-User"
+                    },
+                    {
+                        "fromId": "4cc91e10-5387-d190-2040-2b81e875a42e",
+                        "fromProperty": "Data",
+                        "toId": "053161ff-b0ee-fba0-49ae-c3380eb737b6",
+                        "toProperty": "Data"
+                    },
+                    {
+                        "fromId": "4cc91e10-5387-d190-2040-2b81e875a42e",
+                        "fromProperty": "Do",
+                        "toId": "053161ff-b0ee-fba0-49ae-c3380eb737b6",
+                        "toProperty": "Do"
+                    },
+                    {
+                        "fromId": "4cc91e10-5387-d190-2040-2b81e875a42e",
+                        "fromProperty": "Endpoint Path",
+                        "toId": "053161ff-b0ee-fba0-49ae-c3380eb737b6",
+                        "toProperty": "Endpoint"
+                    },
+                    {
+                        "fromId": "411a5218-1833-2959-4808-dd975cd46f06",
+                        "fromProperty": "out-Success",
+                        "toId": "731655f5-1852-f47f-a72d-98e90233b3d8",
+                        "toProperty": "sendEvent"
+                    },
+                    {
+                        "fromId": "411a5218-1833-2959-4808-dd975cd46f06",
+                        "fromProperty": "out-Success",
+                        "toId": "b6b2f106-b8ec-282d-a87b-2fa915433bd8",
+                        "toProperty": "Success"
+                    }
+                ],
+                "roots": [
+                    {
+                        "id": "4cc91e10-5387-d190-2040-2b81e875a42e",
+                        "type": "Component Inputs",
+                        "x": -410,
+                        "y": -53,
+                        "parameters": {},
+                        "ports": [
+                            {
+                                "name": "Do",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "group": "Signals",
+                                "index": 2
+                            },
+                            {
+                                "name": "Data",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "group": "Data",
+                                "index": 0
+                            },
+                            {
+                                "name": "Endpoint Path",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "group": "Data",
+                                "index": 1
+                            }
+                        ],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "b6b2f106-b8ec-282d-a87b-2fa915433bd8",
+                        "type": "Component Outputs",
+                        "x": 545,
+                        "y": 43,
+                        "parameters": {},
+                        "ports": [
+                            {
+                                "name": "Success",
+                                "plug": "input",
+                                "type": "*",
+                                "index": 0
+                            },
+                            {
+                                "name": "Failure",
+                                "plug": "input",
+                                "type": "*",
+                                "index": 1
+                            },
+                            {
+                                "name": "Done",
+                                "plug": "input",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "index": 2
+                            }
+                        ],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "053161ff-b0ee-fba0-49ae-c3380eb737b6",
+                        "type": "/#Xano Prefab/Xano/Base/Xano - Request",
+                        "x": -29.5,
+                        "y": -50,
+                        "parameters": {
+                            "Endpoint": "/auth/set",
+                            "Request Type": "POST"
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "411a5218-1833-2959-4808-dd975cd46f06",
+                        "type": "JavaScriptFunction",
+                        "x": 283.29166666666663,
+                        "y": -49.33333333333337,
+                        "parameters": {
+                            "functionScript": "responseBody = Inputs.User.body\n\nObject.defineProperty(responseBody, \"xanoid\",\n        Object.getOwnPropertyDescriptor(responseBody, \"id\"));\ndelete responseBody[\"id\"]\n\nresponseBody.id = \"currentUser\"\n\nNoodl.Objects[\"currentUser\"].setAll(responseBody)\n\n// Accessing Data : \n// Noodl.Objects[\"currentUser\"].<name your column>\n//console.log(Noodl.Objects[\"currentUser\"].userInformations)\n\nOutputs.Success()\n"
+                        },
+                        "ports": [],
+                        "dynamicports": [
+                            {
+                                "name": "in-User",
+                                "displayName": "User",
+                                "plug": "input",
+                                "type": "*",
+                                "group": "Inputs",
+                                "index": 4
+                            },
+                            {
+                                "name": "out-Success",
+                                "displayName": "Success",
+                                "plug": "output",
+                                "type": "signal",
+                                "group": "Outputs",
+                                "index": 5
+                            }
+                        ],
+                        "children": [],
+                        "metadata": {
+                            "merge": {
+                                "soureCodePorts": [
+                                    "functionScript"
+                                ]
+                            }
+                        }
+                    },
+                    {
+                        "id": "731655f5-1852-f47f-a72d-98e90233b3d8",
+                        "type": "Event Sender",
+                        "x": 546.7916666666666,
+                        "y": -90.0333333333333,
+                        "parameters": {
+                            "channelName": "Xano currentUser Updated"
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": []
+                    }
+                ]
+            }
+        }
+    ],
+    "settings": {},
+    "version": "4",
+    "metadata": {
+        "styles": {
+            "text": {},
+            "colors": {}
+        }
+    },
+    "variants": []
+}

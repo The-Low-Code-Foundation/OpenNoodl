@@ -3,7 +3,7 @@ import { app } from '@electron/remote';
 import { Git } from '@noodl/git';
 
 import FileSystem from '@noodl-utils/filesystem';
-import { mergeProject } from '@noodl-utils/projectmerger';
+import { mergeProject } from '@noodl-versioning';
 import Utils from '@noodl-utils/utils';
 
 describe('git local misc', () => {

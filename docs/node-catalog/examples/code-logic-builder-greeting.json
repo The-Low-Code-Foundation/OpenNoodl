@@ -1,0 +1,54 @@
+{
+  "id": "code-logic-builder-greeting",
+  "title": "Logic Builder: block-built logic with generated ports",
+  "description": "Logic Builder holds a visual block workspace (`workspace`) from which the editor generates JavaScript (`generatedCode`); the inputs, outputs and signals the blocks declare or use become the node's ports. Here the block program turns a name into a greeting: the text input feeds the block-declared `name` input, `run` executes the program, and the block-declared `greeting` output lands in a Text. Both parameters are editor-managed — author the blocks, never hand-write either string. Use Logic Builder where non-programmers must be able to read and edit the logic; use Function for anything a programmer maintains.",
+  "demonstrates": ["Logic Builder"],
+  "components": [
+    {
+      "name": "/Greeter",
+      "nodes": [
+        {
+          "id": "root",
+          "type": "Group",
+          "label": "Greeter",
+          "parameters": { "flexDirection": "column" },
+          "children": ["name_input", "greet_btn", "greeting_text"]
+        },
+        {
+          "id": "name_input",
+          "type": "net.noodl.controls.textinput",
+          "label": "Name",
+          "parent": "root",
+          "parameters": { "placeholder": "Name" }
+        },
+        {
+          "id": "greet_btn",
+          "type": "net.noodl.controls.button",
+          "label": "Greet",
+          "parent": "root",
+          "parameters": { "label": "Greet" }
+        },
+        { "id": "greeting_text", "type": "Text", "label": "Greeting", "parent": "root" },
+        {
+          "id": "build_greeting",
+          "type": "Logic Builder",
+          "label": "Build greeting",
+          "parameters": {
+            "workspace": "{\"blocks\":{\"languageVersion\":0,\"blocks\":[{\"type\":\"noodl_define_input\",\"x\":20,\"y\":20,\"fields\":{\"NAME\":\"name\",\"TYPE\":\"string\"},\"next\":{\"block\":{\"type\":\"noodl_define_output\",\"fields\":{\"NAME\":\"greeting\",\"TYPE\":\"string\"},\"next\":{\"block\":{\"type\":\"noodl_set_output\",\"fields\":{\"NAME\":\"greeting\"},\"inputs\":{\"VALUE\":{\"block\":{\"type\":\"text_join\",\"extraState\":{\"itemCount\":2},\"inputs\":{\"ADD0\":{\"block\":{\"type\":\"text\",\"fields\":{\"TEXT\":\"Hello, \"}}},\"ADD1\":{\"block\":{\"type\":\"noodl_get_input\",\"fields\":{\"NAME\":\"name\"}}}}}}}}}}}}]}}",
+            "generatedCode": "Outputs[\"greeting\"] = 'Hello, ' + String(Inputs[\"name\"] ?? '');\n"
+          }
+        }
+      ],
+      "connections": [
+        {
+          "fromId": "name_input",
+          "fromProperty": "onTextChanged",
+          "toId": "build_greeting",
+          "toProperty": "name"
+        },
+        { "fromId": "greet_btn", "fromProperty": "onClick", "toId": "build_greeting", "toProperty": "run" },
+        { "fromId": "build_greeting", "fromProperty": "greeting", "toId": "greeting_text", "toProperty": "text" }
+      ]
+    }
+  ]
+}

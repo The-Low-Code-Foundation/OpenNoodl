@@ -22,12 +22,15 @@ import { Label } from '@noodl-core-ui/components/typography/Label';
 
 import { CodeDiffDialog } from '../../../documents/ComponentDiffDocument/CodeDiffDialog';
 import { ImageDiffDialog } from '../../../documents/ComponentDiffDocument/ImageDiffDialog';
+import { ComponentDiffView } from '../../GraphDiffPanel';
+import type { GraphProjectDiff } from '../context/graphDiff';
 import { useVersionControlContext } from '../context';
 import {
   ComponentChange,
   getChangedComponents,
   getChangedObjectProperties,
   getFileStatusIconProps,
+  isProjectSourceFile,
   ObjectPropertyChange
 } from '../context/DiffUtils';
 import { useShowComponentDiffDocument } from '../hooks/useShowComponentDiffDocument';
@@ -41,6 +44,11 @@ interface DiffListProps {
   diff: ProjectDiff;
   fileChanges: readonly FileChange[];
   componentDiffTitle: string;
+  /**
+   * SUB-007 semantic diff for the same two sides. When present, selecting a
+   * component also lists what actually changed in the graph, in words.
+   */
+  graphDiff?: GraphProjectDiff;
   commit?: Commit; //Set this when diffing a component and not local changes
   actions?: {
     component?: DiffListActionProps<ComponentChange>;
@@ -52,7 +60,7 @@ interface DiffListProps {
   };
 }
 
-export function DiffList({ diff, fileChanges, componentDiffTitle, actions, commit }: DiffListProps) {
+export function DiffList({ diff, fileChanges, componentDiffTitle, graphDiff, actions, commit }: DiffListProps) {
   const { repositoryPath, fetch } = useVersionControlContext();
   const { currentCommitSha } = fetch;
 
@@ -61,7 +69,7 @@ export function DiffList({ diff, fileChanges, componentDiffTitle, actions, commi
   const [imageDiff, setImageDiff] = useState<IImageDiff>(null);
 
   const components = diff?.components ? getChangedComponents(diff.components) : [];
-  const files = (fileChanges || [])?.filter((f) => !f.path.endsWith('project.json')) || [];
+  const files = (fileChanges || [])?.filter((f) => !isProjectSourceFile(f.path)) || [];
   const settings = diff?.settings ? getChangedObjectProperties(diff.settings) : [];
   const colorStyles = diff?.styles.colors ? getChangedObjectProperties(diff.styles.colors) : [];
   const textStyles = diff?.styles.text ? getChangedObjectProperties(diff.styles.text) : [];
@@ -100,6 +108,11 @@ export function DiffList({ diff, fileChanges, componentDiffTitle, actions, commi
   }
 
   const numChanges = components.length + files.length + settings.length + colorStyles.length + textStyles.length;
+
+  // The semantic change list for whichever component is open on the canvas.
+  const activeGraphDiff = activeComponent
+    ? graphDiff?.changedComponents.find((entry) => entry.component === activeComponent.fullName)
+    : undefined;
 
   return (
     <ConditionalContainer
@@ -157,6 +170,18 @@ export function DiffList({ diff, fileChanges, componentDiffTitle, actions, commi
                 onClick={() => onComponentClicked(change)}
               />
             ))}
+          </Section>
+        )}
+
+        {Boolean(activeGraphDiff) && (
+          <Section
+            title={`What changed in ${activeComponent.name}`}
+            variant={SectionVariant.PanelShy}
+            hasGutter
+            hasBottomSpacing
+            hasVisibleOverflow
+          >
+            <ComponentDiffView diff={activeGraphDiff} />
           </Section>
         )}
 

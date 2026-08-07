@@ -1,0 +1,158 @@
+# Phase 35 — Authoring Contracts & Ergonomics (Track T)
+
+**Created:** 2026-08-01
+**Origin:** not the roadmap. Phase 30's audit finished, Richard read the five open decisions, and his
+answers turned three of them into design work bigger than the defects that raised them.
+
+## What this phase is
+
+Phase 30 was an audit: 136 nodes, twelve checks each, 188 defects. It closed on 2026-08-01 having
+established five missing contracts and fixed most of what they governed. **Phase 35 is what the
+audit's own open questions turned into once Richard answered them** — one new contract and four
+ergonomics gaps that no per-node fix reaches.
+
+The through-line is the same as phase 30's: *the nodes are not individually bad so much as
+individually inconsistent, because nobody wrote down the rule they all had to satisfy.* Three of the
+five tasks here are a rule being written down for the first time.
+
+## Where the decisions came from
+
+Recorded because the reasoning matters more than the conclusions, and because two of the
+conclusions **overrode my recommendation** and were better for it.
+
+| Question | Richard's answer | What changed |
+|---|---|---|
+| How do we stop triggered nodes evaluating stale inputs? (phase 30 NDA-017 §1) | **A per-input "Run on value change" affordance in the node panel** | Overrode the recommended "detect and warn". The recommendation treated staleness as the defect; Richard identified the real one — *connecting `Run` silently changes what every other port does* — and his fix removes it rather than reporting it. Stays in phase 30 as NDA-017 §2 |
+| Should `Insert Object Into Array` report a duplicate as failure? | **Neither. It needs a third outcome** — and the same is true library-wide | Became `ERG-001`, the Outcome Contract. Richard's framing: a chain breaks when a node emits nothing, and the author wanted it to carry on |
+| Should a Repeater clear when its data goes empty? | **Yes — empty array, `null`, anything falsy** | Phase 30 remediation, no caveats. "We're not catering to existing projects anymore" |
+| Should `shortDesc` exist? | **Delete it** | Phase 30 remediation |
+| What about the 30 deprecated nodes? | **No revivals.** The only one whose *capability* is missed is `Script Downloader`, and it gets solved properly instead | Became `ERG-002` |
+
+## Tasks
+
+| ID | Title | Tier | Focus |
+|---|---|---|---|
+| [ERG-001](./ERG-001-OUTCOME-CONTRACT.md) | The outcome contract | 1 | `Done` / `Unchanged` / `Failure` — exactly one — plus a universal `Completed`. The sixth contract |
+| ↳ [ERG-001 §0](./ERG-001-S0-MEASUREMENT.md) | **§0 measurement — done 2026-08-02** | — | 82 live actions, the collision sweep, the `Unchanged` register. **§0 was blocking; it is now the scope** |
+| [ERG-002](./ERG-002-EXTERNAL-LIBRARIES.md) | External libraries in app config | 1 | Pulling in PocketBase or tinyMCE without knowing what a UMD build is. **The module system already does this; nothing surfaces it** |
+| [ERG-003](./ERG-003-LIST-INPUT-EDITOR.md) | One editor for every list input | 2 | The visual JSON builder already in core-ui, applied to all 69 list-shaped ports. Three-way: visual / code / connect |
+| [ERG-004](./ERG-004-CHANGE-DETECTION.md) | Change detection inside objects and arrays | 2 | `Value Changed` compares identity, so editing an object in place is invisible. **Four of the five signals wanted are already broadcast and nothing listens** |
+| [ERG-005](./ERG-005-COMPONENT-INTERFACE.md) | Component Inputs / Outputs | 2 | The nodes that define every component's public interface, and the only mechanism in the library that **cannot be documented at all** |
+
+**Tiers are stopping points.** Tier 1 is the two that unblock other things — ERG-001 because the
+workflow canvas and the validator both want it, ERG-002 because it is a capability the product does
+not currently have. Tier 2 is ergonomics: real, bounded, and none of it blocking.
+
+## The one thing to confirm before starting
+
+⚠️ **The deprecated-node reading.** Richard said *"The only deprecated node I'm thinking about is the
+Script Downloader"*, which reads as **no revivals**. But the audit found four capabilities with
+**no live equivalent at all**, and they are recorded here so the decision is deliberate rather than
+inherited:
+
+| Capability | Deprecated node | Live equivalent |
+|---|---|---|
+| Blend N numbers by a 0–1 value (multi-stop lerp) | `Number Blend` | **None.** Interpolation ships `Color Blend` and nothing for numbers |
+| "Which of these N signals fired?" → an index | `Signal To Index` | **None** |
+| A real HTML `<form>` with a `Submit` signal, and field grouping | `Form`, `Field Set` | **None.** The control kit has Button/Checkbox/Dropdown/Slider/Text Input but nothing that makes them a form — so native submit-on-enter, autofill grouping and native validation are unreachable |
+| Device gyroscope → rotation X/Y/Z | `Device Orientation` | **None.** ⚠️ Reviving it needs a browser permission flow, not just un-deprecating |
+
+These are **capability gaps, not node revivals**. Nothing in this phase depends on the answer.
+
+## Corrections this phase carries in
+
+⚠️ **`Script Downloader` has no replacement, and an earlier session's claim that it did was wrong.**
+The Script node's *External File* mode looks like the replacement and is not: it fetches a URL and
+parses it as **that node's own body**, scanning it for the node's declared inputs and outputs
+(`javascript.ts:692-694` → `JavascriptNodeParser.createFromURL`). It cannot load an arbitrary
+third-party library. So the deprecated `Script Downloader` was the only node that did that job, and
+the two remaining routes are both project-level: `headCode` and `noodl_modules/`. See ERG-002 §0.
+
+⚠️ **Two of phase 30's twelve checks were being read wrongly and were corrected mid-phase** (`B1`
+last, `B3` on the final day). Before comparing any two categories' find rates, check which pre-fill
+each was audited under. Visual's and Navigation's numbers are not comparable with the rest.
+
+## Corrections this phase carries *out*
+
+🔴 **ERG-001 broke NDA-017 criterion 6, and phase 30's file has been corrected to say so.**
+Measured 2026-08-02 during closeout. The outcome contract made `Done`/`Completed` universal, which
+is exactly the signal NDA-017's `signal-driven-stale-input` rule read as *"this producer is
+asynchronous"*. Node types carrying a completion signal went **53 → 97 of 153**; the rule started
+firing on four shipped examples — including the canonical latched counter, where its suggested fix
+is an infinite loop — and `catalog:examples` went red in CI.
+
+The rule is now `defaultEnabled: false`, its tests read the **real** catalog instead of a
+hand-built one (which is why a green unit suite missed this), and re-enabling needs a structured
+asynchrony marker in the catalog. **That marker is open work and wants a decision on where it
+lives.** See
+[NDA-017 § The asynchrony proxy is dead](../phase-30-node-library-audit/NDA-017-SIGNAL-INPUT-FRESHNESS.md#-the-asynchrony-proxy-is-dead-2026-08-02).
+
+The lesson generalises past this phase: **a contract that makes a port universal destroys the
+information value of that port for everything that was reading it as a discriminator.** Worth
+checking before the next library-wide port addition.
+
+🔴 **Every output-port description in the library was being dropped on the way to the editor.**
+Found 2026-08-02 by ERG-004's live QA, measured against the running editor's `NodeLibrary`:
+**1656 of 1809 input ports carried a description and 0 of 1144 outputs did.** `exportOutput` in
+`nodelibraryexport.ts` was a hand-copied near-duplicate of `formatPort` that omitted
+`description`. Fixed by delegating, verified live (**0 → 1031**), and pinned by
+`packages/noodl-runtime/test/nodelibraryexport.port-descriptions.test.ts` — confirmed to fail
+without the fix, 4 of 6 rows.
+
+⚠️ **The lesson is about the gates, not the bug.** The text was in the node definitions and in
+the committed catalog (1045/1144 outputs documented), because the catalog generator builds its
+ports from its own capture of the definitions and borrows only `typecasts` and the picker index
+from that file. So `catalog:check`, `catalog:merge:check` and the 153/153 enrichment sweep were
+all green over a library the editor could not see. **The defect lived in the one hop no fixture
+covered: runtime → editor. A green catalog is not evidence that an author can read anything.**
+
+A second finding from the same pass is **referred, not fixed**, because it changes the port
+contract of two shipped nodes: `Object Changed` has no producer in the library at all, and the
+wiring the Data category teaches (`Object.Id` → its `Object` port) is accepted by the typecast
+table, `eval`'d as a JavaScript literal, and silently replaced with `{}`. Options in
+[`ERG-004-NOTES.md`](./ERG-004-NOTES.md) §7.4.
+
+## Two decisions Richard took, 2026-08-02
+
+Both were open blockers; neither is built. Recorded here because both **overrode the recommendation
+that was put to him**, and in both cases for a reason worth keeping.
+
+| Question | Richard's answer | Where the work lives |
+|---|---|---|
+| How should `Object Changed` become wireable? | **Add an object-valued output to the `Object` node** — not the recommended "resolve an id string on the input" | [`ERG-004-NOTES.md`](./ERG-004-NOTES.md) §7.4. ⚠️ `Array Changed`/`Collection2` needs the same treatment or the pair is fixed apart; and the id-string path still has to stop silently becoming `{}` |
+| Where does the asynchrony marker live? | **Declared in the node definitions**, not the enrichment catalog | [NDA-017](../phase-30-node-library-audit/NDA-017-SIGNAL-INPUT-FRESHNESS.md#-the-asynchrony-proxy-is-dead-2026-08-02). The file's own reasoning for enrichment was wrong on its own terms and has been corrected: a node knows its own asynchrony, so it is not *"what the source cannot know"* |
+
+## Session of 2026-08-02 (second half) — what closed
+
+| Item | State |
+|---|---|
+| **ERG-005 §0** | ✅ **Met, nothing owed** — all five questions plus Richard's named `Function` case |
+| **ERG-003 C1** | ✅ Rows 3 and 4 and C4 **pass**; C3 measured and **poor** (11% of a 24-entry list visible), named and unowned |
+| **ERG-004 §7.7 item 2** — descriptions unreadable | ✅ **Closed for the property panel.** Signals remain: their description exists and has nowhere to appear |
+| **ERG-004 §7.7 item 3** — the 14-port gap | ✅ Closed. It was a **stale committed artefact**, and `cloud-library:check` had been red for several commits |
+| **ERG-003 `listValueCodec`** | ✅ An orphaned, finished, green fix found uncommitted in the checkout — verified (4 of 45 fail without it) and committed |
+
+**Still open, all unowned:** ERG-004 §4.6's `sendValue` sweep; ERG-002's four remainders and
+ERG-003's Option A; a real surface for **signal**-port descriptions; ERG-003's C3 Easy-mode density;
+and the two decisions Richard took above, neither of which is built.
+
+## ERG-005 §0 is answered (2026-08-02) — and it made §1 bigger
+
+Five questions about how a `Component Input`'s type is inferred, measured against the running editor
+with a purpose-built fixture. Full results in
+[`ERG-005-COMPONENT-INTERFACE.md`](./ERG-005-COMPONENT-INTERFACE.md) §0. The two that change the task:
+
+🔴 **A mixed pair can derive a type neither connection has.** The rule is not "first" and not "most
+recent" — it is recomputed from scratch on every read, and with more than one connection it returns
+the first row of the 16-entry typecast table that casts to all of them. `number` + `boolean` gives
+**`string`**; `signal` + `number` gives **`boolean`**. The type on a component's public interface is
+chosen by the row order of a table in the node library.
+
+🔴 **The derived type never leaves the running editor.** `ProjectModel.toJSON()` writes no `ports`
+key on a component; the only type on disk is the Port Editor's own `{"name": "*"}`. Measured
+consequence: a graph the editor gives **2 errors** for validates **0 errors, 0 warnings** under
+`npm run validate:project`, and the AI authoring loop's context carries port **names with no types**.
+So ERG-005 §1 is not just "add a `description`" — the mechanism has no channel for its *type* either.
+
+The lesson generalises the one above it: **a green catalog was not evidence an author could read a
+port description; a green validator is not evidence a component's interface is checked.**

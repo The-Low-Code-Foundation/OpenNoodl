@@ -37,7 +37,23 @@
         display: flex;
         width: 100%;
         height: 100%;
+        /* NDA-008: defensive, and honestly labelled — this element is NOT the one
+           that caused the reported scroll jump. Measured live: with the app root
+           inside it set to `clip`, focusing an input 2018px below the fold moved
+           this element 0px, because its only child is `height: 100%` so its content
+           never exceeds it. The active fix is in viewer.jsx.
+
+           Kept anyway because it is the same trap one layout change away: `hidden`
+           around taller content is a scroll container the *browser* can scroll (any
+           real DOM focus does) and the user cannot scroll back, since hidden only
+           removes the scrollbars. `clip` creates no scroll container at all.
+
+           Both declared: browsers without `clip` (Safari < 16) keep exactly today's
+           behaviour rather than falling back to `visible` and letting content escape.
+           Dropping `hidden` also drops the block formatting context it implied;
+           `position: fixed` below already provides the positional containment. */
         overflow: hidden;
+        overflow: clip;
         position: fixed;
       }
 

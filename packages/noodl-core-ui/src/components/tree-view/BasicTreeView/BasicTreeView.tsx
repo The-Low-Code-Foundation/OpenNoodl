@@ -96,7 +96,7 @@ function BasicNode({ depth, item, children, onClick }: BasicNodeProps) {
 }
 
 export interface BasicTreeViewProps extends Exclude<TreeViewProps<BasicNodeItem>, 'node'> {
-  itemSlot?: (props: BasicNodeProps) => JSX.Element;
+  itemSlot?: (props: BasicNodeProps) => React.JSX.Element;
 }
 
 export function BasicTreeView({ items, itemSlot, onChanged, onItemDrop }: BasicTreeViewProps) {

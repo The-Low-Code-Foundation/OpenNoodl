@@ -1,11 +1,36 @@
-import { NodeGraphColors } from '@noodl-constants/NodeGraphColors';
 import { Connection } from '@noodl-models/nodegraphmodel';
 import { NodeLibrary } from '@noodl-models/nodelibrary';
 import DebugInspector from '@noodl-utils/debuginspector';
+import { EditorSettings } from '@noodl-utils/editorsettings';
 
 import { IVector2, NodeGraphEditor } from '../nodegrapheditor';
 import PopupLayer from '../popuplayer';
+import { CanvasFonts, CanvasTheme, WireLabel, WIRE_TYPE_ERROR } from './canvas/CanvasTheme';
 import { NodeGraphEditorNode } from './NodeGraphEditorNode';
+import { textWordWrap } from './NodeGraphEditorNodePainter';
+
+/** Editor setting: show every wire's label without hovering (CAN-001). */
+export const ALWAYS_SHOW_WIRE_LABELS = 'nodeGraphEditor.alwaysShowWireLabels';
+
+/**
+ * Break a label into the lines the chip will draw (CAN-002).
+ *
+ * `textWordWrap` from the node painter does the measure-and-break — there is no
+ * second wrapper in this codebase — and this collects its callback instead of
+ * drawing, because the chip has to be sized before anything is painted into it.
+ * Past three lines the text is ellipsised and the full string is available on
+ * hover; a wire label is a phrase, and a paragraph belongs in a node comment.
+ */
+function wrapLabelLines(ctx: CanvasRenderingContext2D, text: string): string[] {
+  const lines: string[] = [];
+  textWordWrap(ctx, text, 0, 0, WireLabel.lineHeight, WireLabel.maxWidth, (line: string) => lines.push(line));
+
+  if (lines.length <= WireLabel.maxLines) return lines.length ? lines : [text];
+
+  const kept = lines.slice(0, WireLabel.maxLines);
+  kept[WireLabel.maxLines - 1] = kept[WireLabel.maxLines - 1] + '…';
+  return kept;
+}
 
 function getPortName(p) {
   return p ? p.editorName || p.displayName : undefined;
@@ -16,8 +41,31 @@ function getPortIndex(p) {
 }
 
 export class NodeGraphEditorConnection {
+  /** Stroke width used for hit-testing the wire (much wider than it paints). */
+  static readonly hitStrokeWidth = 10;
+  /** Painted radius of an endpoint dot; grows to a handle on highlight. */
+  static readonly endpointRadius = 3;
+  static readonly endpointHandleRadius = 4;
+  /** Grab radius for an endpoint handle — larger than it paints, on purpose. */
+  static readonly endpointHitRadius = 8;
+
   ctx: CanvasRenderingContext2D;
   owner: NodeGraphEditor;
+
+  /**
+   * Set while one end of this wire is being dragged (CAN-003). The model is
+   * untouched — the connection stays whole and only *paints* with a loose end,
+   * so a cancelled drag has nothing to restore. `disconnect()` would null
+   * `fromNode`/`toNode` and `paint()` would throw on the next frame.
+   */
+  rerouting: { end: 'from' | 'to'; pos: IVector2 } | undefined;
+
+  /**
+   * The label chip's rect in graph coordinates, written by `paintPortLabel` and
+   * read by the drag hit-test (CAN-001). Undefined when no label was painted
+   * this frame.
+   */
+  labelBounds: { x: number; y: number; width: number; height: number } | undefined;
 
   fromNode: any;
   toNode: any;
@@ -141,38 +189,90 @@ export class NodeGraphEditorConnection {
     );
   }
 
+  /**
+   * Is this point on the wire? (CAN-003 — the stroke test the hover path has
+   * always used, given a name so right-click and the editor can ask too.)
+   *
+   * `isPointInStroke` reads `ctx.lineWidth`, so the test widens the stroke to
+   * the 10px hit width and then puts it back — the old inline version left the
+   * context at 10 and everything painted after it inherited that.
+   */
+  hitTest(pos: IVector2): boolean {
+    if (!this.ctx || !this.curve) return false;
+
+    const previousLineWidth = this.ctx.lineWidth;
+    this.ctx.lineWidth = NodeGraphEditorConnection.hitStrokeWidth;
+    this.drawCurve();
+    const hit = this.ctx.isPointInStroke(pos.x, pos.y);
+    this.ctx.lineWidth = previousLineWidth;
+
+    return hit;
+  }
+
+  /**
+   * Which endpoint handle is under this point, if any (CAN-003).
+   *
+   * Tested against the curve's own ends, which `paint()` computed this frame,
+   * and with a hit radius comfortably larger than the painted dot — the handle
+   * has to be grabbable while sitting on a node's edge.
+   */
+  endpointAt(pos: IVector2): 'from' | 'to' | undefined {
+    if (!this.curve) return undefined;
+
+    const r = NodeGraphEditorConnection.endpointHitRadius;
+    const within = (p: IVector2) => (p.x - pos.x) * (p.x - pos.x) + (p.y - pos.y) * (p.y - pos.y) <= r * r;
+
+    if (within(this.curve[0])) return 'from';
+    if (within(this.curve[3])) return 'to';
+    return undefined;
+  }
+
+  isSelected() {
+    return this.owner?.selectedConnection === this;
+  }
+
   mouse(type, pos: IVector2, evt) {
     if (evt.button !== 0) return; //only interact with left mouse button
 
-    const _this = this;
     if (type === 'move') {
       if (this.ctx) {
-        this.ctx.lineWidth = 10;
-        this.drawCurve();
-        if (this.ctx.isPointInStroke(pos.x, pos.y)) {
+        // FH-016: the chip is asked about FIRST, and independently of the wire
+        // stroke. CAN-001's own spec called this ordering out and it was not
+        // honoured: the hover was decided by `hitTest` alone (±5 units of the
+        // stroke), so the grabbable part of a chip was the *intersection* of
+        // chip and stroke. Stepping onto the wide end of a two- or three-line
+        // chip on a sloped wire left the stroke band, cleared the highlight,
+        // and made the chip vanish out from under the cursor.
+        if (this.isPointInLabel(pos) || this.hitTest(pos)) {
           evt.consumed = true;
           this.owner.setHighlightedConnection(this, pos);
 
-          // Show tooltip if the connection is unhealthy or has annotations
-          if (this.owner.deleteModeConnection !== this) {
-            // annotations takes priority over health
-            if (this.model.annotation) {
+          // annotations takes priority over health
+          if (this.model.annotation) {
+            PopupLayer.instance.showTooltip({
+              x: evt.pageX,
+              y: evt.pageY,
+              position: 'bottom',
+              content: this.model.annotation
+            });
+          } else {
+            const health = this.getHealth();
+            if (!health.healthy) {
               PopupLayer.instance.showTooltip({
                 x: evt.pageX,
                 y: evt.pageY,
                 position: 'bottom',
-                content: this.model.annotation
+                content: health.message
               });
-            } else {
-              const health = this.getHealth();
-              if (!health.healthy) {
-                PopupLayer.instance.showTooltip({
-                  x: evt.pageX,
-                  y: evt.pageY,
-                  position: 'bottom',
-                  content: health.message
-                });
-              }
+            } else if (this.model.label) {
+              // The chip stops at three lines; hovering is where the rest of a
+              // long label lives (CAN-002).
+              PopupLayer.instance.showTooltip({
+                x: evt.pageX,
+                y: evt.pageY,
+                position: 'bottom',
+                content: this.model.label
+              });
             }
           }
           this.owner.repaint();
@@ -182,34 +282,54 @@ export class NodeGraphEditorConnection {
           this.owner.repaint();
         }
       }
-    } else if (type === 'down' && this.owner.highlightedConnection === this) {
+    } else if (type === 'down') {
+      // FH-016: a press on a *painted* chip belongs to this wire however the
+      // chip became visible — an author's label, a `connectionLabel` port type,
+      // the always-on setting, or either end's node being hovered or selected.
+      // CAN-001 put the chip test inside the `highlightedConnection` gate, and
+      // only the stroke hover ever sets that, so every one of those chips was
+      // visible and completely inert.
+      const onLabel = this.isPointInLabel(pos);
+      if (!onLabel && this.owner.highlightedConnection !== this) return;
+
       evt.consumed = true;
+
+      if (this.owner.readOnly === true) return;
+
+      // Double-click writes a label (CAN-002). It is available at all because
+      // CAN-003 retired the arm-then-confirm delete, whose second click this
+      // used to be.
+      if (this.owner.interaction.leftButtonIsDoubleClicked) {
+        PopupLayer.instance.hideTooltip();
+        this.owner.wireLabelEditor.open(this);
+        return;
+      }
+
+      // Grabbing an end detaches it (CAN-003). Tested before anything else on
+      // the wire, so a grab can never select instead.
+      const end = this.endpointAt(pos);
+      if (end) {
+        PopupLayer.instance.hideTooltip();
+        this.owner.interaction.startReroutingConnection(this, end);
+        return;
+      }
+
+      // Grabbing the label chip moves it along the wire (CAN-001).
+      if (onLabel) {
+        PopupLayer.instance.hideTooltip();
+        this.owner.interaction.startDraggingWireLabel(this);
+      }
     } else if (type === 'up' && this.owner.highlightedConnection === this) {
       PopupLayer.instance.hideTooltip();
       evt.consumed = true;
 
+      // A click selects the wire. It used to arm a delete that a second click
+      // anywhere on the wire confirmed — a gesture nothing announced, that made
+      // double-click unusable for anything else, and whose three replacements
+      // (drag an end to empty canvas, right-click → Delete, select + Delete)
+      // all live in this task.
       if (this.model && this.owner.readOnly !== true) {
-        // Don't do delete connection if in read only mode
-        if (this.owner.deleteModeConnection === this) {
-          // Connection is clicked the second time
-          // Delete the connection
-          this.owner.deleteModeConnection = undefined;
-          this.owner.setHighlightedConnection(undefined);
-          this.owner.removeConnection(this.model);
-        } else {
-          // Connection is clicked, turn it into a delete connection
-          this.owner.deleteModeConnection = this;
-          this.owner.repaint();
-
-          // If nothing has happened in 3 seconds clear delete mode
-          this.owner.clearDeleteModeTimer && clearTimeout(this.owner.clearDeleteModeTimer);
-          this.owner.clearDeleteModeTimer = setTimeout(function () {
-            if ((_this.owner.deleteModeConnection = _this)) {
-              _this.owner.deleteModeConnection = undefined;
-              _this.owner.repaint();
-            }
-          }, 3000);
-        }
+        this.owner.selectConnection(this);
       }
     }
   }
@@ -288,6 +408,101 @@ export class NodeGraphEditorConnection {
     return this.getHealth().healthy;
   }
 
+  /** The text on this wire: what the author wrote, else the source port's name. */
+  labelText(): string | undefined {
+    return this.model.label || getPortName(this.fromPort) || this.fromProperty;
+  }
+
+  /**
+   * Should this wire show its label right now? (CAN-001.)
+   *
+   * WFA-004 gated the label on the source port type's `connectionLabel` flag,
+   * which only two workflow port types set — a conservative default, not a
+   * technical boundary. It is a policy now, in this order:
+   *
+   *   1. an author wrote it → always, it is the only text the graph does not
+   *      already contain (CAN-002);
+   *   2. the port type asks for it → always, preserving WFA-004 exactly;
+   *   3. the always-on setting is on → yes;
+   *   4. the wire is highlighted → yes. Note `isHighlighted` is true when
+   *      *either endpoint node* is hovered or selected, so hovering a node
+   *      names every wire attached to it.
+   *
+   * Hover is the default rather than always-on because on a browser graph a
+   * connected port already prints its name on the card at BOTH ends of every
+   * wire — an always-on chip is a third copy, on graphs that routinely carry
+   * 50–100 wires at a fixed 150px card width.
+   */
+  shouldShowPortLabel(): boolean {
+    if (this.model.label) return true;
+
+    const portType = this.fromPort?.type;
+    if (portType && typeof portType === 'object' && portType.connectionLabel) return true;
+
+    if (EditorSettings.instance.get(ALWAYS_SHOW_WIRE_LABELS)) return true;
+
+    return this.isHighlighted();
+  }
+
+  /** Where the label sits on the curve, clamped clear of both node cards. */
+  labelT(): number {
+    const t = typeof this.model.labelT === 'number' ? this.model.labelT : WireLabel.defaultT;
+    return Math.min(WireLabel.maxT, Math.max(WireLabel.minT, t));
+  }
+
+  paintPortLabel(ctx: CanvasRenderingContext2D, strokeColor: string) {
+    this.labelBounds = undefined;
+
+    if (!this.shouldShowPortLabel()) return;
+
+    const label = this.labelText();
+    if (!label) return;
+
+    // A point ON the curve, not the midpoint of two control points — the label
+    // is draggable now, and a position the user picked has to land where they
+    // put it. (This is why WFA-004's workflow captures shift by a pixel or two.)
+    const a = this.pointOnCurve(this.labelT());
+    if (!a) return;
+
+    ctx.save();
+    // Set before measuring: textWordWrap measures with whatever font the
+    // previous paint left on the context.
+    ctx.font = CanvasFonts.portLabel;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+
+    // An author's text wraps and is capped at three lines; a port name is one
+    // short word and comes out of the same code as a single line.
+    const lines = wrapLabelLines(ctx, label);
+    const textWidth = Math.max(...lines.map((line) => ctx.measureText(line).width));
+    const width = Math.min(textWidth, WireLabel.maxWidth) + WireLabel.paddingX * 2;
+    const height = WireLabel.lineHeight * lines.length;
+
+    // A chip behind the text: a bare glyph over a dot-grid at low zoom is
+    // unreadable, and the wire itself runs under it.
+    ctx.fillStyle = CanvasTheme.instance.colors.cardBg;
+    ctx.globalAlpha = WireLabel.chipAlpha;
+    ctx.fillRect(a.x - width / 2, a.y - height / 2, width, height);
+    ctx.globalAlpha = 1;
+
+    ctx.fillStyle = strokeColor;
+    lines.forEach((line, index) => {
+      ctx.fillText(line, a.x, a.y - height / 2 + WireLabel.lineHeight * (index + 0.5));
+    });
+    ctx.restore();
+
+    // Cached for hit-testing the drag. Graph coordinates, this frame only.
+    this.labelBounds = { x: a.x - width / 2, y: a.y - height / 2, width, height };
+  }
+
+  /** Is this point on the label chip? Only meaningful when one was painted. */
+  isPointInLabel(pos: IVector2): boolean {
+    const b = this.labelBounds;
+    if (!b) return false;
+
+    return pos.x >= b.x && pos.x <= b.x + b.width && pos.y >= b.y && pos.y <= b.y + b.height;
+  }
+
   paint(ctx, paintRect) {
     this.ctx = ctx;
 
@@ -341,6 +556,20 @@ export class NodeGraphEditorConnection {
       ];
     }
 
+    // One end is being dragged: rebuild the curve as an elbow between the end
+    // that is still pinned and the cursor (CAN-003). Done after the normal
+    // curve so the pinned end keeps its port anchor exactly.
+    if (this.rerouting) {
+      const pinned = this.rerouting.end === 'to' ? this.curve[0] : this.curve[3];
+      const loose = this.rerouting.pos;
+      const mid = (pinned.x + loose.x) * 0.5;
+
+      this.curve =
+        this.rerouting.end === 'to'
+          ? [pinned, { x: mid, y: pinned.y }, { x: mid, y: loose.y }, loose]
+          : [loose, { x: mid, y: loose.y }, { x: mid, y: pinned.y }, pinned];
+    }
+
     function aabbIntersectTest(connection, paintArea) {
       const minX = Math.min(connection[0].x, connection[1].x, connection[2].x, connection[3].x);
       const maxX = Math.max(connection[0].x, connection[1].x, connection[2].x, connection[3].x);
@@ -360,26 +589,64 @@ export class NodeGraphEditorConnection {
 
     const hoverConnection = this.isHighlighted();
     const type = NodeLibrary.nameForPortType(this.fromPort ? this.fromPort.type : undefined);
-    const connectionColors = NodeLibrary.instance.colorSchemeForConnectionType(type);
+
+    // WFA-004: an error edge is dashed as well as red. Colour alone would not
+    // survive a greyscale screenshot or a colourblind reader, and this is the
+    // one edge whose meaning must be unmistakable. Keyed on the source port's
+    // TYPE, like every other wire treatment here — the canvas does not know
+    // what a workflow is.
+    if (type === WIRE_TYPE_ERROR) {
+      ctx.setLineDash([7, 4]);
+    }
+    // UIX-005: wire colours come from CanvasTheme (signal = cyan pair,
+    // everything else = data/emerald pair) instead of the library blob.
+    const connectionColors = CanvasTheme.instance.connectionColors(type);
 
     const color = hoverConnection ? connectionColors.highlighted : connectionColors.normal;
-    ctx.strokeStyle = this.color ? this.color : color;
+    let strokeColor: string = this.color ? this.color : color;
 
+    const theme = CanvasTheme.instance.colors;
     if (this.model.annotation) {
-      if (this.model.annotation === 'Deleted') ctx.strokeStyle = '#F57569';
-      else if (this.model.annotation === 'Changed') ctx.strokeStyle = '#83B8BA';
-      else if (this.model.annotation === 'Created') ctx.strokeStyle = '#5BF59E';
+      if (this.model.annotation === 'Deleted') strokeColor = theme.annotationDeleted;
+      else if (this.model.annotation === 'Changed') strokeColor = theme.annotationChanged;
+      else if (this.model.annotation === 'Created') strokeColor = theme.annotationCreated;
+
+      // Shape as well as colour (AIX-003): removed routing is dashed; the
+      // dash restore below already runs for all paths.
+      if (this.model.annotation === 'Deleted') ctx.setLineDash([6, 4]);
     }
+    ctx.strokeStyle = strokeColor;
 
     const lineWidth = 1.5;
     ctx.lineWidth = this.lineWidth ? this.lineWidth : lineWidth;
+    // Added routing is thicker (shape cue, AIX-003).
+    if (this.model.annotation === 'Created') ctx.lineWidth = 3;
+    // Selected (CAN-003): a heavier stroke, not a colour. Wire colour already
+    // carries type, health, debug pulse and diff annotation — selection would
+    // be the fifth meaning on one channel.
+    if (this.isSelected()) ctx.lineWidth = Math.max(ctx.lineWidth, 3);
 
     this.drawCurve();
     ctx.stroke();
 
+    // Endpoint dots (mock: 3px wire-coloured dots at both ends). On a
+    // highlighted wire they grow into the grab handles CAN-003 adds; they stay
+    // dots otherwise, because handles on every wire would be a hundred new hit
+    // targets competing with the node cards on a dense graph.
+    const endpointRadius = hoverConnection
+      ? NodeGraphEditorConnection.endpointHandleRadius
+      : NodeGraphEditorConnection.endpointRadius;
+    ctx.fillStyle = strokeColor;
+    ctx.beginPath();
+    ctx.arc(this.curve[0].x, this.curve[0].y, endpointRadius, 0, 2 * Math.PI, false);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(this.curve[3].x, this.curve[3].y, endpointRadius, 0, 2 * Math.PI, false);
+    ctx.fill();
+
     if (DebugInspector.instance.isEnabled() && DebugInspector.instance.isConnectionPulsing(this)) {
       const t = DebugInspector.instance.getPulseAnimationState(this);
-      ctx.strokeStyle = connectionColors.pulsing ? connectionColors.pulsing : '#ffe85d';
+      ctx.strokeStyle = connectionColors.pulsing ? connectionColors.pulsing : theme.wirePulse;
       ctx.setLineDash([5, 15]);
       ctx.lineDashOffset = -t.offset;
       ctx.globalAlpha = t.opacity * 0.7;
@@ -391,26 +658,6 @@ export class NodeGraphEditorConnection {
     ctx.lineDashOffset = 0;
     ctx.setLineDash([]); // Restore line dash if it has been previously set
 
-    // Show the delete marker
-    if (this.owner && this.owner.deleteModeConnection === this) {
-      const a = this.midpoint(this.curve[0], this.curve[1]),
-        b = this.midpoint(this.curve[1], this.curve[2]),
-        c = this.midpoint(this.curve[2], this.curve[3]);
-
-      const mp = this.midpoint(this.midpoint(a, b), this.midpoint(b, c));
-      ctx.fillStyle = NodeGraphColors.red;
-      ctx.beginPath();
-      ctx.arc(mp.x, mp.y, 6, 0, 2 * Math.PI, false);
-      ctx.fill();
-      ctx.lineWidth = 1.5;
-      ctx.strokeStyle = NodeGraphColors.base2;
-      ctx.beginPath();
-      const l = 2.5;
-      ctx.moveTo(mp.x - l, mp.y - l);
-      ctx.lineTo(mp.x + l, mp.y + l);
-      ctx.moveTo(mp.x + l, mp.y - l);
-      ctx.lineTo(mp.x - l, mp.y + l);
-      ctx.stroke();
-    }
+    this.paintPortLabel(ctx, strokeColor);
   }
 }

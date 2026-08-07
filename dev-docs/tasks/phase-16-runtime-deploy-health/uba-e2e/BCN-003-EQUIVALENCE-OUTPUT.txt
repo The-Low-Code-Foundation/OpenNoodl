@@ -1,0 +1,235 @@
+
+══════════════════════════════════════════════════════════════════════════════
+BCN-003 — filter equivalence across five backends
+══════════════════════════════════════════════════════════════════════════════
+corpus: 7 people, 22 filters
+
+
+══════════════════════════════════════════════════════════════════════════════
+seeding
+══════════════════════════════════════════════════════════════════════════════
+  Built-in / nodegx-backend (:8093) — seeded
+  Parse Server 7.3.0 (:8092) — seeded
+  Directus 11 (:8055) — seeded
+  PostgREST 12.2 (:8057) — seeded
+  PocketBase 0.30 (:8091) — seeded
+
+══════════════════════════════════════════════════════════════════════════════
+equivalence
+══════════════════════════════════════════════════════════════════════════════
+
+equalTo city=London
+  expected: ["Ada","Charles","adaline"]
+  Built-in / nodegx-backend (:8093)  ✓ ["Ada","Charles","adaline"]
+  Parse Server 7.3.0 (:8092)         ✓ ["Ada","Charles","adaline"]
+  Directus 11 (:8055)                ✓ ["Ada","Charles","adaline"]
+  PostgREST 12.2 (:8057)             ✓ ["Ada","Charles","adaline"]
+  PocketBase 0.30 (:8091)            ✓ ["Ada","Charles","adaline"]
+
+notEqualTo city=London
+  expected: ["Adam","Grace","Q\"uote && Co","Thousand"]
+  Built-in / nodegx-backend (:8093)  ✓ ["Adam","Grace","Q\"uote && Co","Thousand"]
+  Parse Server 7.3.0 (:8092)         ✓ ["Adam","Grace","Q\"uote && Co","Thousand"]
+  Directus 11 (:8055)                ✓ ["Adam","Grace","Q\"uote && Co","Thousand"]
+  PostgREST 12.2 (:8057)             ✓ ["Adam","Grace","Q\"uote && Co","Thousand"]
+  PocketBase 0.30 (:8091)            ✓ ["Adam","Grace","Q\"uote && Co","Thousand"]
+
+greaterThan age>40
+  expected: ["Adam","Charles","Grace"]
+  Built-in / nodegx-backend (:8093)  ✓ ["Adam","Charles","Grace"]
+  Parse Server 7.3.0 (:8092)         ✓ ["Adam","Charles","Grace"]
+  Directus 11 (:8055)                ✓ ["Adam","Charles","Grace"]
+  PostgREST 12.2 (:8057)             ✓ ["Adam","Charles","Grace"]
+  PocketBase 0.30 (:8091)            ✓ ["Adam","Charles","Grace"]
+
+lessThanOrEqualTo age<=36
+  expected: ["Ada","Q\"uote && Co","Thousand","adaline"]
+  Built-in / nodegx-backend (:8093)  ✓ ["Ada","Q\"uote && Co","Thousand","adaline"]
+  Parse Server 7.3.0 (:8092)         ✓ ["Ada","Q\"uote && Co","Thousand","adaline"]
+  Directus 11 (:8055)                ✓ ["Ada","Q\"uote && Co","Thousand","adaline"]
+  PostgREST 12.2 (:8057)             ✓ ["Ada","Q\"uote && Co","Thousand","adaline"]
+  PocketBase 0.30 (:8091)            ✓ ["Ada","Q\"uote && Co","Thousand","adaline"]
+
+between age 30..45
+  expected: ["Ada","Adam","Grace"]
+  Built-in / nodegx-backend (:8093)  ✓ ["Ada","Adam","Grace"]
+  Parse Server 7.3.0 (:8092)         ✓ ["Ada","Adam","Grace"]
+  Directus 11 (:8055)                ✓ ["Ada","Adam","Grace"]
+  PostgREST 12.2 (:8057)             ✓ ["Ada","Adam","Grace"]
+  PocketBase 0.30 (:8091)            ✓ ["Ada","Adam","Grace"]
+
+notBetween age 30..45
+  expected: ["Charles","Q\"uote && Co","Thousand","adaline"]
+  Built-in / nodegx-backend (:8093)  ✓ ["Charles","Q\"uote && Co","Thousand","adaline"]
+  Parse Server 7.3.0 (:8092)         ✓ ["Charles","Q\"uote && Co","Thousand","adaline"]
+  Directus 11 (:8055)                ✓ ["Charles","Q\"uote && Co","Thousand","adaline"]
+  PostgREST 12.2 (:8057)             ✓ ["Charles","Q\"uote && Co","Thousand","adaline"]
+  PocketBase 0.30 (:8091)            ✓ ["Charles","Q\"uote && Co","Thousand","adaline"]
+
+containedIn city in (London,Bristol)
+  expected: ["Ada","Adam","Charles","adaline"]
+  Built-in / nodegx-backend (:8093)  ✓ ["Ada","Adam","Charles","adaline"]
+  Parse Server 7.3.0 (:8092)         ✓ ["Ada","Adam","Charles","adaline"]
+  Directus 11 (:8055)                ✓ ["Ada","Adam","Charles","adaline"]
+  PostgREST 12.2 (:8057)             ✓ ["Ada","Adam","Charles","adaline"]
+  PocketBase 0.30 (:8091)            ✓ ["Ada","Adam","Charles","adaline"]
+
+notContainedIn city not in (London,Bristol)
+  expected: ["Grace","Q\"uote && Co","Thousand"]
+  Built-in / nodegx-backend (:8093)  ✓ ["Grace","Q\"uote && Co","Thousand"]
+  Parse Server 7.3.0 (:8092)         ✓ ["Grace","Q\"uote && Co","Thousand"]
+  Directus 11 (:8055)                ✓ ["Grace","Q\"uote && Co","Thousand"]
+  PostgREST 12.2 (:8057)             ✓ ["Grace","Q\"uote && Co","Thousand"]
+  PocketBase 0.30 (:8091)            ✓ ["Grace","Q\"uote && Co","Thousand"]
+
+contains name~am
+  expected: ["Adam"]
+  Built-in / nodegx-backend (:8093)  ✓ ["Adam"]
+  Parse Server 7.3.0 (:8092)         ✓ ["Adam"]
+  Directus 11 (:8055)                ✓ ["Adam"]
+  PostgREST 12.2 (:8057)             ✓ ["Adam"]
+  PocketBase 0.30 (:8091)            ✓ ["Adam"]
+
+notContains name!~am
+  expected: ["Ada","Charles","Grace","Q\"uote && Co","Thousand","adaline"]
+  Built-in / nodegx-backend (:8093)  ✓ ["Ada","Charles","Grace","Q\"uote && Co","Thousand","adaline"]
+  Parse Server 7.3.0 (:8092)         ✓ ["Ada","Charles","Grace","Q\"uote && Co","Thousand","adaline"]
+  Directus 11 (:8055)                ✓ ["Ada","Charles","Grace","Q\"uote && Co","Thousand","adaline"]
+  PostgREST 12.2 (:8057)             ✓ ["Ada","Charles","Grace","Q\"uote && Co","Thousand","adaline"]
+  PocketBase 0.30 (:8091)            ✓ ["Ada","Charles","Grace","Q\"uote && Co","Thousand","adaline"]
+
+containsIgnoreCase name~ADA
+  expected: ["Ada","Adam","adaline"]
+  Built-in / nodegx-backend (:8093)  ✓ ["Ada","Adam","adaline"]
+  Parse Server 7.3.0 (:8092)         ✓ ["Ada","Adam","adaline"]
+  Directus 11 (:8055)                ✓ ["Ada","Adam","adaline"]
+  PostgREST 12.2 (:8057)             ✓ ["Ada","Adam","adaline"]
+  PocketBase 0.30 (:8091)            ✓ ["Ada","Adam","adaline"]
+
+startsWith name^Gr
+  expected: ["Grace"]
+  Built-in / nodegx-backend (:8093)  ✓ ["Grace"]
+  Parse Server 7.3.0 (:8092)         ✓ ["Grace"]
+  Directus 11 (:8055)                ✓ ["Grace"]
+  PostgREST 12.2 (:8057)             ✓ ["Grace"]
+  PocketBase 0.30 (:8091)            ✓ ["Grace"]
+
+notStartsWith name!^Ada
+  expected: ["Charles","Grace","Q\"uote && Co","Thousand","adaline"]
+  Built-in / nodegx-backend (:8093)  ✓ ["Charles","Grace","Q\"uote && Co","Thousand","adaline"]
+  Parse Server 7.3.0 (:8092)         ✓ ["Charles","Grace","Q\"uote && Co","Thousand","adaline"]
+  Directus 11 (:8055)                ≠ ["Charles","Grace","Q\"uote && Co","Thousand"]  (declared degraded)
+  PostgREST 12.2 (:8057)             ✓ ["Charles","Grace","Q\"uote && Co","Thousand","adaline"]
+  PocketBase 0.30 (:8091)            ≠ ["Charles","Grace","Q\"uote && Co","Thousand"]  (declared degraded)
+
+endsWith name$ce
+  expected: ["Grace"]
+  Built-in / nodegx-backend (:8093)  ✓ ["Grace"]
+  Parse Server 7.3.0 (:8092)         ✓ ["Grace"]
+  Directus 11 (:8055)                ✓ ["Grace"]
+  PostgREST 12.2 (:8057)             ✓ ["Grace"]
+  PocketBase 0.30 (:8091)            ✓ ["Grace"]
+
+notEndsWith name!$ce
+  expected: ["Ada","Adam","Charles","Q\"uote && Co","Thousand","adaline"]
+  Built-in / nodegx-backend (:8093)  ✓ ["Ada","Adam","Charles","Q\"uote && Co","Thousand","adaline"]
+  Parse Server 7.3.0 (:8092)         ✓ ["Ada","Adam","Charles","Q\"uote && Co","Thousand","adaline"]
+  Directus 11 (:8055)                ✓ ["Ada","Adam","Charles","Q\"uote && Co","Thousand","adaline"]
+  PostgREST 12.2 (:8057)             ✓ ["Ada","Adam","Charles","Q\"uote && Co","Thousand","adaline"]
+  PocketBase 0.30 (:8091)            ✓ ["Ada","Adam","Charles","Q\"uote && Co","Thousand","adaline"]
+
+equalTo name=Q"uote && Co  (the injection case)
+  expected: ["Q\"uote && Co"]
+  Built-in / nodegx-backend (:8093)  ✓ ["Q\"uote && Co"]
+  Parse Server 7.3.0 (:8092)         ✓ ["Q\"uote && Co"]
+  Directus 11 (:8055)                ✓ ["Q\"uote && Co"]
+  PostgREST 12.2 (:8057)             ✓ ["Q\"uote && Co"]
+  PocketBase 0.30 (:8091)            ✓ ["Q\"uote && Co"]
+
+contains bio~100%  (the LIKE-wildcard case)
+  expected: ["Q\"uote && Co"]
+  Built-in / nodegx-backend (:8093)  ✓ ["Q\"uote && Co"]
+  Parse Server 7.3.0 (:8092)         ✓ ["Q\"uote && Co"]
+  Directus 11 (:8055)                ≠ ["Q\"uote && Co","Thousand"]  (declared degraded)
+  PostgREST 12.2 (:8057)             ✓ ["Q\"uote && Co"]
+  PocketBase 0.30 (:8091)            ≠ ["Q\"uote && Co","Thousand"]  (declared degraded)
+
+matchesRegex name=^Ada$
+  expected: ["Ada"]
+  Built-in / nodegx-backend (:8093)  ✓ ["Ada"]
+  Parse Server 7.3.0 (:8092)         ✓ ["Ada"]
+  Directus 11 (:8055)                gated (unsupported): Directus cannot match text with regular expressions. Use "…
+  PostgREST 12.2 (:8057)             ✓ ["Ada"]
+  PocketBase 0.30 (:8091)            gated (unsupported): PocketBase can't match text with regular expressions. Use …
+
+exists bio=false
+  expected: ["Grace"]
+  Built-in / nodegx-backend (:8093)  ✓ ["Grace"]
+  Parse Server 7.3.0 (:8092)         ✓ ["Grace"]
+  Directus 11 (:8055)                ✓ ["Grace"]
+  PostgREST 12.2 (:8057)             ✓ ["Grace"]
+  PocketBase 0.30 (:8091)            ≠ ["Adam","Grace"]  (declared degraded)
+
+exists bio=true
+  expected: ["Ada","Adam","Charles","Q\"uote && Co","Thousand","adaline"]
+  Built-in / nodegx-backend (:8093)  ✓ ["Ada","Adam","Charles","Q\"uote && Co","Thousand","adaline"]
+  Parse Server 7.3.0 (:8092)         ✓ ["Ada","Adam","Charles","Q\"uote && Co","Thousand","adaline"]
+  Directus 11 (:8055)                ✓ ["Ada","Adam","Charles","Q\"uote && Co","Thousand","adaline"]
+  PostgREST 12.2 (:8057)             ✓ ["Ada","Adam","Charles","Q\"uote && Co","Thousand","adaline"]
+  PocketBase 0.30 (:8091)            ≠ ["Ada","Charles","Q\"uote && Co","Thousand","adaline"]  (declared degraded)
+
+isEmpty bio
+  expected: ["Adam"]
+  Built-in / nodegx-backend (:8093)  ✓ ["Adam"]
+  Parse Server 7.3.0 (:8092)         gated (unsupported): Parse Server can't tell an empty value from a missing one.…
+  Directus 11 (:8055)                ≠ ["Adam","Grace"]  (declared degraded)
+  PostgREST 12.2 (:8057)             gated (unsupported): Supabase can't tell an empty value from a missing one from…
+  PocketBase 0.30 (:8091)            ≠ ["Adam","Grace"]  (declared degraded)
+
+and[ city=London, or[ age<30, age>50 ] ]
+  expected: ["Charles","adaline"]
+  Built-in / nodegx-backend (:8093)  ✓ ["Charles","adaline"]
+  Parse Server 7.3.0 (:8092)         ✓ ["Charles","adaline"]
+  Directus 11 (:8055)                ✓ ["Charles","adaline"]
+  PostgREST 12.2 (:8057)             ✓ ["Charles","adaline"]
+  PocketBase 0.30 (:8091)            ✓ ["Charles","adaline"]
+
+══════════════════════════════════════════════════════════════════════════════
+result
+══════════════════════════════════════════════════════════════════════════════
+106 checks across 5 backends
+0 failure(s) — a backend whose cell says "supported" returning the wrong rows
+
+8 divergence(s), each one predicted by a "degraded" cell:
+
+  - notStartsWith name!^Ada / Directus 11 (:8055)
+      got: ["Charles","Grace","Q\"uote && Co","Thousand"]
+      declared: The characters % and _ act as wildcards here, so searching for text containing one will match more than you asked for. Matching also ignores capitals.
+
+  - notStartsWith name!^Ada / PocketBase 0.30 (:8091)
+      got: ["Charles","Grace","Q\"uote && Co","Thousand"]
+      declared: The characters % and _ act as wildcards here, so searching for text containing one will match more than you asked for. Matching also ignores capitals.
+
+  - contains bio~100%  (the LIKE-wildcard case) / Directus 11 (:8055)
+      got: ["Q\"uote && Co","Thousand"]
+      declared: The characters % and _ act as wildcards here, so searching for text containing one will match more than you asked for. Matching also ignores capitals.
+
+  - contains bio~100%  (the LIKE-wildcard case) / PocketBase 0.30 (:8091)
+      got: ["Q\"uote && Co","Thousand"]
+      declared: The characters % and _ act as wildcards here, so searching for text containing one will match more than you asked for. Matching also ignores capitals.
+
+  - exists bio=false / PocketBase 0.30 (:8091)
+      got: ["Adam","Grace"]
+      declared: PocketBase stores an empty value rather than a missing one, so "is set" and "is not empty" are the same question here.
+
+  - exists bio=true / PocketBase 0.30 (:8091)
+      got: ["Ada","Charles","Q\"uote && Co","Thousand","adaline"]
+      declared: PocketBase stores an empty value rather than a missing one, so "is set" and "is not empty" are the same question here.
+
+  - isEmpty bio / Directus 11 (:8055)
+      got: ["Adam","Grace"]
+      declared: On Directus, "is empty" also matches records where the field was never set.
+
+  - isEmpty bio / PocketBase 0.30 (:8091)
+      got: ["Adam","Grace"]
+      declared: PocketBase stores an empty value rather than a missing one, so "is empty" also matches records that were never given a value.

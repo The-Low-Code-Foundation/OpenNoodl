@@ -1,5 +1,7 @@
 //config shared for both regular viewer and deploy versions
 
+const { runtimePath, runtimeTsRule } = require('@noodl/runtime/webpack-ts-rule');
+
 module.exports = {
   externals: {
     react: 'React',
@@ -8,7 +10,7 @@ module.exports = {
   resolve: {
     extensions: ['.tsx', '.ts', '.jsx', '.js'],
     fallback: {
-      events: require.resolve('events/'),
+      events: require.resolve('events/')
     }
   },
   module: {
@@ -20,14 +22,16 @@ module.exports = {
           loader: 'babel-loader',
           options: {
             babelrc: false,
-            cacheDirectory: true,
+            // Disable cache to ensure fresh code loads during development
+            cacheDirectory: false,
             presets: ['@babel/preset-react']
           }
         }
       },
+      runtimeTsRule,
       {
         test: /\.ts(x?)$/,
-        exclude: /node_modules/,
+        exclude: [/node_modules/, runtimePath],
         use: [
           {
             loader: 'ts-loader'

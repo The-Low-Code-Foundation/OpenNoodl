@@ -1,0 +1,16 @@
+{
+  "typeName": "Boolean To String",
+  "summary": "Picks between two strings based on a boolean: outputs String for true or String for false.",
+  "description": "Boolean To String selects one of two configured strings using the boolean `input` (Selector): while the selector is true, `currentValue` (Current Value) is `trueString` (String for true); otherwise it is `falseString` (String for false). The output updates whenever the selector or the currently selected string changes, and `inputChanged` (Selector Changed) fires as a signal each time the selector itself flips. Both strings are usually set as parameters but can also be connected.",
+  "whenToUse": "Use it to turn app state into UI copy: a toggle button's label, an on/off status caption, a yes/no cell. For mapping more than two cases, use String Mapper (string keys) or States; for text with variable parts inside it, use String Format.",
+  "ports": {
+    "input": "Boolean value (displayed as Selector) that chooses which string appears on the output.",
+    "currentValue": "String value: `trueString` while the selector is true, `falseString` otherwise.",
+    "inputChanged": "Signal; fires when the selector changes value — not when the strings themselves are edited."
+  },
+  "examples": ["logic-toggle-details-panel"],
+  "patterns": [
+    "Switch `state` → `input`, `currentValue` → the same toggle button's `label`: the button always names the action it will perform next."
+  ],
+  "relatedNodes": ["String Mapper", "String Format", "Switch", "Condition", "States"]
+}

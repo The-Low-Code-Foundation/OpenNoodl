@@ -11,6 +11,11 @@
 
   &.has-backdrop {
     background-color: var(--theme-color-bg-1-transparent);
+
+    /* Optional: Subtle blur for modern feel */
+    /* Note: May have performance implications on older hardware */
+    /* backdrop-filter: blur(4px); */
+    /* -webkit-backdrop-filter: blur(4px); */
   }
 
   &.is-locking-scroll {
@@ -23,8 +28,26 @@
 }
 
 .VisibleDialog {
-  filter: drop-shadow(0 4px 15px var(--theme-color-bg-1-transparent-2));
-  box-shadow: 0 0 10px -5px var(--theme-color-bg-1-transparent-2);
+  /* Modern elevated shadow */
+  box-shadow: var(--shadow-popup);
+
+  /* Border for definition against backdrop */
+  border: 1px solid var(--theme-color-border-subtle);
+
+  /* Modern rounded corners */
+  border-radius: var(--radius-lg);
+
+  /* Overflow handling. Vertical scroll, not clip: content taller than
+   * max-height must stay reachable rather than silently disappearing behind
+   * it — the webkit-scrollbar rules below only ever did anything once this
+   * was `auto`. Horizontal stays hidden; width is capped by max-width. */
+  overflow-x: hidden;
+  overflow-y: auto;
+
+  /* Size constraints */
+  max-height: 90vh;
+  max-width: 90vw;
+
   position: absolute;
   width: var(--width);
   pointer-events: all;
@@ -37,6 +60,22 @@
 
   .Root:not(.is-centered) &.is-visible {
     &.is-variant-default {
+      // The resting position, stated as a rule rather than left to the `to` half
+      // of the keyframe below.
+      //
+      // This element is `position: absolute; top: 0; left: 0`, so the whole of
+      // where it ends up came from `enter`'s final transform and
+      // `animation-fill-mode: both`. That makes the layout depend on an
+      // animation actually running: suppress animations — a screenshot harness,
+      // a reduced-motion stylesheet, print — and every menu in the editor stacks
+      // up in the window's top-left corner, 300px from the button that opened
+      // it. Found exactly that way, by a gate that injects `animation: none`.
+      //
+      // The keyframe still wins while it is running (an animation overrides the
+      // cascade), so the entrance is unchanged; the difference is only what is
+      // true when it is not running. `.is-variant-select` below already relies
+      // on the static transform alone.
+      transform: translate(var(--offsetX), var(--offsetY));
       animation: enter var(--speed-quick) var(--easing-base) both;
     }
 
@@ -53,8 +92,27 @@
     right: 0;
     bottom: 0;
     background-color: var(--background);
-    border-radius: 2px;
+    border-radius: var(--radius-lg);
     overflow: hidden;
+    pointer-events: none; // Allow clicks to pass through to content
+  }
+
+  /* Custom scrollbar styling for dialog content */
+  &::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: var(--theme-color-bg-3);
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: var(--theme-color-bg-5);
+    border-radius: var(--radius-full);
+
+    &:hover {
+      background: var(--theme-color-fg-muted);
+    }
   }
 }
 

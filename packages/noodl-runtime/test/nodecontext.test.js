@@ -1,7 +1,7 @@
-const NodeContext = require('./nodecontext');
-const NodeDefinition = require('./nodedefinition');
-const ComponentInstance = require('./nodes/componentinstance');
-const { ComponentModel } = require('./models/componentmodel');
+const NodeContext = require('../src/nodecontext');
+const NodeDefinition = require('../src/nodedefinition');
+const ComponentInstance = require('../src/nodes/componentinstance');
+const ComponentModel = require('../src/models/componentmodel');
 
 describe('NodeContext', ()=>{
 

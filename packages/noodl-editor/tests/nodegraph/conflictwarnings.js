@@ -13,6 +13,14 @@ describe('Conflict warnings', function () {
     ProjectModel.instance = p;
   });
 
+  // DEBT-005: setting ProjectModel.instance registers the project as a
+  // NodeLibrary module. Without this cleanup the module leaked into whatever
+  // spec ran next — under randomized order, nodelibrary-spec's
+  // 'can get types by name' found this file's comp1/comp2 in the library.
+  afterEach(() => {
+    ProjectModel.instance = undefined;
+  });
+
   it('can load project', function () {
     expect(p).not.toBe(undefined);
   });

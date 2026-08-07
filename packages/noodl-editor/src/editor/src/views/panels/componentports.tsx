@@ -1,18 +1,21 @@
 /* eslint-disable @typescript-eslint/no-this-alias */
 import { filter as _filter } from 'underscore';
 import React, { useEffect, useState } from 'react';
+import { createRoot, Root } from 'react-dom/client';
 
 import { UndoQueue, UndoActionGroup } from '@noodl-models/undo-queue-model';
 
-import View from '../../../../shared/view';
+import { PanelHeader, usePanelModeSlot } from '@noodl-core-ui/components/sidebar/PanelHeader';
+
+import View from '../../../../shared/ListenableView';
 import { Frame } from '../common/Frame';
 import PopupLayer, { StringInputPopup } from '../popuplayer';
 import { ToastLayer } from '../ToastLayer/ToastLayer';
-
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const ComponentPortsTemplate = require('../../templates/componentports.html');
+import { ComponentPortItem, ComponentPortsView } from './componentports/ComponentPortsView';
 
 export class ComponentPorts extends View {
+  el: HTMLElement;
+
   parent: TSFixme;
   model: TSFixme;
   type: TSFixme;
@@ -22,10 +25,12 @@ export class ComponentPorts extends View {
   lastIndex: number;
   lastGroup: TSFixme;
   canArrangeInGroups: TSFixme;
-  items: TSFixme;
+  items: ComponentPortItem[];
   refreshItemsScheduled: boolean;
   renderScheduled: TSFixme;
   item: TSFixme[];
+
+  private root: Root | null = null;
 
   constructor(args) {
     super();
@@ -42,9 +47,12 @@ export class ComponentPorts extends View {
   }
 
   render() {
-    // Component inputs will have output ports, and vice versa
-    this.el = this.bindView($(ComponentPortsTemplate), this);
-    if (!this.canArrangeInGroups) this.$('.add-group-button').hide();
+    this.el = document.createElement('div');
+    this.el.className = 'sidebar-panel';
+
+    if (!this.root) {
+      this.root = createRoot(this.el);
+    }
 
     this.bindModel();
 
@@ -55,22 +63,37 @@ export class ComponentPorts extends View {
     return this.el;
   }
 
+  dispose() {
+    this.model.off(this);
+
+    if (this.root) {
+      const root = this.root;
+      this.root = null;
+      // dispose runs from a React effect cleanup; unmount cannot be synchronous
+      setTimeout(() => root.unmount(), 0);
+    }
+  }
+
   resize(layout: TSFixme) {
-    this.el.css({
+    Object.assign(this.el.style, {
       position: 'absolute',
-      left: layout.x,
-      top: layout.y,
-      width: layout.width,
-      height: layout.height
+      left: layout.x + 'px',
+      top: layout.y + 'px',
+      width: layout.width + 'px',
+      height: layout.height + 'px'
     });
   }
 
   bindModel() {
     const _this = this;
 
-    this.model.on(['portAdded', 'portRemoved', 'portRenamed', 'portRearranged'], function () {
-      _this.scheduleRender(true);
-    });
+    this.model.on(
+      ['portAdded', 'portRemoved', 'portRenamed', 'portRearranged'],
+      function () {
+        _this.scheduleRender(true);
+      },
+      this
+    );
   }
 
   getPorts(filter) {
@@ -124,7 +147,7 @@ export class ComponentPorts extends View {
     return items;
   }
 
-  getItems() {
+  getItems(): ComponentPortItem[] {
     if (this.canArrangeInGroups) return this.getItemsWithGroups();
     else {
       const ports = this.getPorts(this.plug);
@@ -132,56 +155,6 @@ export class ComponentPorts extends View {
         return { type: 'port', label: p.name, port: p };
       });
     }
-  }
-
-  makeDraggable(el, item) {
-    const _this = this;
-    let mouseDownOnItem = false;
-
-    el.find('.drag-handle').on('mousedown', function (e) {
-      mouseDownOnItem = true;
-    });
-    el.find('.drag-handle').on('mouseup', function (e) {
-      mouseDownOnItem = false;
-    });
-    el.find('.drag-handle').on('mousemove', function (e) {
-      if (mouseDownOnItem) {
-        PopupLayer.instance.startDragging({ label: item.label, item: item });
-        mouseDownOnItem = false;
-      }
-    });
-  }
-
-  makeDroppable(el, item) {
-    const _this = this;
-
-    el.find('.drop-target').on('mouseover', (e) => {
-      if (PopupLayer.instance.isDragging()) {
-        const dragItem = PopupLayer.instance.dragItem;
-
-        const sourceIdx = this.items.indexOf(dragItem.item);
-        const targetIdx = this.items.indexOf(item);
-
-        const renderTop = targetIdx < sourceIdx;
-        el.find('.drop-indicator')
-          .show()
-          .css(renderTop ? { top: 0, bottom: '' } : { top: '', bottom: 0 });
-        PopupLayer.instance.indicateDropType('move');
-      }
-    });
-    el.find('.drop-target').on('mouseout', function (e) {
-      el.find('.drop-indicator').hide();
-      PopupLayer.instance.indicateDropType('none');
-    });
-    el.find('.drop-target').on('mouseup', function (e) {
-      const dragItem = PopupLayer.instance.dragItem;
-
-      if (dragItem) {
-        _this.dropOnItem({ target: item, source: dragItem.item });
-
-        PopupLayer.instance.dragCompleted();
-      }
-    });
   }
 
   arrangePorts(args?: TSFixme) {
@@ -236,34 +209,57 @@ export class ComponentPorts extends View {
   }
 
   renderPorts(refresh?: TSFixme) {
-    this.$('.ports').html('');
+    if (!this.root) return;
 
     if (refresh) this.items = this.getItems();
-    const items = this.items;
-    for (const i in items) {
-      const item = items[i];
 
-      let itemEl: TSFixme = null;
-      if (item.type === 'port') {
-        itemEl = this.bindView(this.cloneTemplate('item'), { port: item.port, label: item.label });
-      } else if (item.type === 'group') {
-        itemEl = this.bindView(this.cloneTemplate('group'), { label: item.label, item: item });
-      }
+    this.root.render(
+      React.createElement(ComponentPortsView, {
+        // A new array each render so React sees the reordering after a drop
+        items: [...this.items],
+        canArrangeInGroups: Boolean(this.canArrangeInGroups),
+        onRenamePort: (item, newName) => {
+          const result = this.performRename({ newName, oldName: item.port.name });
+          if (!result.success) {
+            ToastLayer.showError(result.message);
+          }
+        },
+        onDeletePort: (item) => {
+          const result = this.performDelete(item.port.name);
+          if (!result.success) {
+            ToastLayer.showError(result.message);
+          }
 
-      this.makeDraggable(itemEl, item);
-      this.makeDroppable(itemEl, item);
-      this.$('.ports').append(itemEl);
-    }
+          this.notifyListeners('panelResized');
+        },
+        onRenameGroup: (item, newName) => {
+          const result = this.performRenameGroup({ newName, item });
+          if (!result.success) {
+            ToastLayer.showError(result.message);
+          }
+        },
+        onDeleteGroup: (item) => {
+          this.performDeleteGroup(item);
+          this.notifyListeners('panelResized');
+        },
+        onAddPort: (anchor) => this.onAddPortClicked(anchor),
+        onAddGroup: (anchor) => this.onAddGroupClicked(anchor),
+        onDrop: (target, source) => this.dropOnItem({ target, source })
+      })
+    );
   }
 
   // Add port
-  onAddPortClicked(scope: TSFixme, el: TSFixme, evt: TSFixme) {
+  onAddPortClicked(anchor: HTMLElement) {
     const _this = this;
 
     const popup = new StringInputPopup({
       label: 'New port name',
       okLabel: 'Add',
       cancelLabel: 'Cancel',
+      // `performAdd` splits on commas, so the hint says so — the box is one
+      // line because a list of port names is one line, not eight.
+      placeholder: 'e.g. title, subtitle',
       onOk: function (portName) {
         const result = _this.performAdd(portName);
         if (!result.success) {
@@ -277,11 +273,9 @@ export class ComponentPorts extends View {
 
     PopupLayer.instance.showPopup({
       content: popup,
-      attachTo: el,
+      attachTo: anchor,
       position: 'top'
     });
-
-    evt.stopPropagation();
   }
 
   performAdd(portNames: TSFixme) {
@@ -327,43 +321,6 @@ export class ComponentPorts extends View {
     }
   }
 
-  onRenameClicked(scope: TSFixme, el: TSFixme, evt: TSFixme) {
-    const _this = this;
-
-    const parent = el.parents('.component-ports-item');
-    parent.find('.show-on-edit').show();
-    parent.find('.hide-on-edit').hide();
-
-    function rename() {
-      const newName = input.val();
-      if (newName !== scope.port.name) {
-        const result = _this.performRename({ newName: newName, oldName: scope.port.name });
-
-        if (!result.success) {
-          ToastLayer.showError(result.message);
-        }
-      }
-
-      parent.find('.show-on-edit').hide();
-      parent.find('.hide-on-edit').show();
-      input.off('blur').off('keypress'); // Make sure rename doesn't get called twice
-    }
-
-    const input = parent.find('input');
-    input
-      .focus()
-      .off('blur')
-      .on('blur', function () {
-        rename();
-      })
-      .off('keypress')
-      .on('keypress', function (e) {
-        if (e.which == 13) rename();
-      });
-
-    evt.stopPropagation();
-  }
-
   // Delete port
   performDelete(portname: TSFixme) {
     if (this.model.isPortConnected(portname)) {
@@ -375,26 +332,15 @@ export class ComponentPorts extends View {
     }
   }
 
-  onDeleteClicked(scope: TSFixme, el: TSFixme, evt: TSFixme) {
-    const result = this.performDelete(scope.port.name);
-
-    if (!result.success) {
-      ToastLayer.showError(result.message);
-    }
-
-    this.notifyListeners('panelResized');
-
-    evt.stopPropagation();
-  }
-
   // Add group
-  onAddGroupClicked(scope: TSFixme, el: TSFixme, evt: TSFixme) {
+  onAddGroupClicked(anchor: HTMLElement) {
     const _this = this;
 
     const popup = new StringInputPopup({
       label: 'New group name',
       okLabel: 'Add',
       cancelLabel: 'Cancel',
+      placeholder: 'e.g. Layout',
       onOk: function (groupName) {
         const result = _this.performAddGroup(groupName);
         if (!result.success) {
@@ -408,11 +354,9 @@ export class ComponentPorts extends View {
 
     PopupLayer.instance.showPopup({
       content: popup,
-      attachTo: el,
+      attachTo: anchor,
       position: 'top'
     });
-
-    evt.stopPropagation();
   }
 
   findGroupWithName(groupName: TSFixme) {
@@ -438,7 +382,7 @@ export class ComponentPorts extends View {
           return { success: false, message: 'Group with that name already exist' };
         } else {
           const oldLastGroup = this.lastGroup;
-          const newGroup = { type: 'group', label: groupName };
+          const newGroup: ComponentPortItem = { type: 'group', label: groupName };
 
           // @ts-expect-error TODO: What?
           UndoQueue.instance.pushAndDo({
@@ -477,74 +421,57 @@ export class ComponentPorts extends View {
     }
   }
 
-  onRenameGroupClicked(scope: TSFixme, el: TSFixme, evt: TSFixme) {
-    const _this = this;
-
-    const parent = el.parents('.component-ports-group-item');
-    parent.find('.show-on-edit').show();
-    parent.find('.hide-on-edit').hide();
-
-    function rename() {
-      const newName = input.val();
-      if (newName !== scope.item.label) {
-        const result = _this.performRenameGroup({ newName: newName, item: scope.item });
-
-        if (!result.success) {
-          ToastLayer.showError(result.message);
-        }
-      }
-
-      parent.find('.show-on-edit').hide();
-      parent.find('.hide-on-edit').show();
-      input.off('blur').off('keypress'); // Make sure rename doesn't get called twice
-    }
-
-    const input = parent.find('input');
-    input
-      .focus()
-      .off('blur')
-      .on('blur', function () {
-        rename();
-      })
-      .off('keypress')
-      .on('keypress', function (e) {
-        if (e.which == 13) rename();
-      });
-
-    evt.stopPropagation();
-  }
-
   // Delete group
-  performDeleteGroup(item: TSFixme) {
+  performDeleteGroup(item: ComponentPortItem) {
     const idx = this.items.indexOf(item);
     this.items.splice(idx, 1);
 
     this.arrangePorts({ label: 'delete group' });
     return { success: true };
   }
-
-  onDeleteGroupClicked(scope: TSFixme, el: TSFixme, evt: TSFixme) {
-    const result = this.performDeleteGroup(scope.item);
-
-    if (!result.success) {
-      // @ts-expect-error TODO: What?
-      ToastLayer.showError(result.message);
-    }
-
-    this.notifyListeners('panelResized');
-
-    evt.stopPropagation();
-  }
 }
 
-export function ComponentPortsComponent(props: unknown) {
+export function ComponentPortsComponent(props: { title?: string }) {
   const [instance, setInstance] = useState(null);
+
+  /*
+   * PNL-005 (follow-up): the header moved out of `ComponentPortsView` and up
+   * here, into the *main* React tree.
+   *
+   * It used to live inside the view that `Frame` hosts, which is rendered into
+   * its own React root (`createRoot` in `ComponentPorts.render`). Two
+   * consequences, both real defects the panel-chrome gate's sibling findings
+   * turned up:
+   *
+   *   1. On the first render pass `instance` is still null, so the whole panel —
+   *      header included — was an empty `<div>`. A registered panel rendering no
+   *      chrome at all, which is the exact class of defect this task exists to
+   *      remove (`VersionControlPanel` had the same shape).
+   *   2. `PanelModeSlotContext` does not cross a React root boundary, so the
+   *      Ports panel could never show the side panel's widen / hide / float /
+   *      full controls. Up here it can, and does.
+   *
+   * A plain flex column rather than `BasePanel`: this panel's box model is a
+   * legacy imperative view sized by `Frame`, and wrapping it in `BasePanel`'s
+   * border, radius and insets would change more than the header.
+   */
+  const modeSlot = usePanelModeSlot();
+  const title = props?.title ?? 'Ports';
 
   useEffect(() => {
     const instance = new ComponentPorts(props);
     instance.render();
     setInstance(instance);
+
+    return () => instance.dispose();
   }, []);
 
-  return <Frame instance={instance} isFitWidth />;
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
+      <PanelHeader title={title} modeSlot={modeSlot} />
+      <div style={{ flex: 1, minHeight: 0, position: 'relative' }}>
+        <Frame instance={instance} isFitWidth />
+      </div>
+    </div>
+  );
 }

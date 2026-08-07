@@ -1,7 +1,7 @@
 const { ipcRenderer } = require('electron');
 const { useEffect } = require('react');
 const React = require('react');
-const PopupLayer = require('../popuplayer');
+const PopupLayer = require('../popuplayer').default;
 const LessonItem = require('./LessonItem');
 const { EventDispatcher } = require('../../../../shared/utils/EventDispatcher');
 
@@ -25,7 +25,7 @@ function LessonLayerView({ steps, currentStepIndex }) {
     let videos = [];
 
     PopupLayer.instance.showModal({
-      content: { el: $(popupContainer) },
+      content: { el: popupContainer },
       position: 'screen-center',
       onClose() {
         ipcRenderer.send('viewer-show');

@@ -1,0 +1,18 @@
+{
+  "label": "List With Icons",
+  "description": "A simple list component with icons and labels.",
+  "type": "prefab",
+  "tags": [
+    "UI",
+    "Data"
+  ],
+  "icon": "icon.png",
+  "docsPath": "/library/prefabs/list-with-icons/",
+  "version": "1.0.0",
+  "minEditorVersion": "0.1.0",
+  "runtimeVersion": "2.7.0",
+  "provenance": {
+    "sourceUrl": "https://the-low-code-foundation.github.io/opennoodl-docs/library/prefabs/list-with-icons/list-with-icons-1-0.zip",
+    "importedAt": "2026-07-25"
+  }
+}

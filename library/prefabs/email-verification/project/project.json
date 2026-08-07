@@ -1,0 +1,2462 @@
+{
+    "name": "Export",
+    "components": [
+        {
+            "name": "/#__cloud__/SendGrid/Send Email",
+            "id": "55e43c55-c5ec-c1bb-10ea-fdd520e6dc28",
+            "graph": {
+                "connections": [
+                    {
+                        "fromId": "d1b4b419-db4c-3302-e56c-0f4f1cec4829",
+                        "fromProperty": "Text",
+                        "toId": "2acbfab1-e1a3-5bae-8d1e-4b63c7134e47",
+                        "toProperty": "in-Text"
+                    },
+                    {
+                        "fromId": "d1b4b419-db4c-3302-e56c-0f4f1cec4829",
+                        "fromProperty": "Html",
+                        "toId": "2acbfab1-e1a3-5bae-8d1e-4b63c7134e47",
+                        "toProperty": "in-Html"
+                    },
+                    {
+                        "fromId": "d1b4b419-db4c-3302-e56c-0f4f1cec4829",
+                        "fromProperty": "To",
+                        "toId": "2acbfab1-e1a3-5bae-8d1e-4b63c7134e47",
+                        "toProperty": "in-To"
+                    },
+                    {
+                        "fromId": "2acbfab1-e1a3-5bae-8d1e-4b63c7134e47",
+                        "fromProperty": "out-Success",
+                        "toId": "1c7e2461-bf21-ac23-5437-f64800ba6900",
+                        "toProperty": "Success"
+                    },
+                    {
+                        "fromId": "2acbfab1-e1a3-5bae-8d1e-4b63c7134e47",
+                        "fromProperty": "out-Failure",
+                        "toId": "1c7e2461-bf21-ac23-5437-f64800ba6900",
+                        "toProperty": "Failure"
+                    },
+                    {
+                        "fromId": "d1b4b419-db4c-3302-e56c-0f4f1cec4829",
+                        "fromProperty": "From",
+                        "toId": "2acbfab1-e1a3-5bae-8d1e-4b63c7134e47",
+                        "toProperty": "in-From"
+                    },
+                    {
+                        "fromId": "d1b4b419-db4c-3302-e56c-0f4f1cec4829",
+                        "fromProperty": "Subject",
+                        "toId": "2acbfab1-e1a3-5bae-8d1e-4b63c7134e47",
+                        "toProperty": "in-Subject"
+                    },
+                    {
+                        "fromId": "ce3279c1-cf0e-adeb-8276-033a8bb51fb7",
+                        "fromProperty": "API Key",
+                        "toId": "2acbfab1-e1a3-5bae-8d1e-4b63c7134e47",
+                        "toProperty": "in-APIKey"
+                    },
+                    {
+                        "fromId": "d1b4b419-db4c-3302-e56c-0f4f1cec4829",
+                        "fromProperty": "CC",
+                        "toId": "2acbfab1-e1a3-5bae-8d1e-4b63c7134e47",
+                        "toProperty": "in-CC"
+                    },
+                    {
+                        "fromId": "d1b4b419-db4c-3302-e56c-0f4f1cec4829",
+                        "fromProperty": "BCC",
+                        "toId": "2acbfab1-e1a3-5bae-8d1e-4b63c7134e47",
+                        "toProperty": "in-BCC"
+                    },
+                    {
+                        "fromId": "d1b4b419-db4c-3302-e56c-0f4f1cec4829",
+                        "fromProperty": "Do",
+                        "toId": "ce3279c1-cf0e-adeb-8276-033a8bb51fb7",
+                        "toProperty": "Fetch"
+                    },
+                    {
+                        "fromId": "ce3279c1-cf0e-adeb-8276-033a8bb51fb7",
+                        "fromProperty": "Ready",
+                        "toId": "2acbfab1-e1a3-5bae-8d1e-4b63c7134e47",
+                        "toProperty": "run"
+                    },
+                    {
+                        "fromId": "ce3279c1-cf0e-adeb-8276-033a8bb51fb7",
+                        "fromProperty": "Failure",
+                        "toId": "1c7e2461-bf21-ac23-5437-f64800ba6900",
+                        "toProperty": "Failure"
+                    }
+                ],
+                "roots": [
+                    {
+                        "id": "d1b4b419-db4c-3302-e56c-0f4f1cec4829",
+                        "type": "Component Inputs",
+                        "x": -312,
+                        "y": -62,
+                        "parameters": {},
+                        "ports": [
+                            {
+                                "name": "Do",
+                                "plug": "output",
+                                "type": "*",
+                                "index": 0
+                            },
+                            {
+                                "name": "Text",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "index": 1
+                            },
+                            {
+                                "name": "Html",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "index": 2
+                            },
+                            {
+                                "name": "To",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "index": 3
+                            },
+                            {
+                                "name": "From",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "index": 4
+                            },
+                            {
+                                "name": "Subject",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "index": 5
+                            },
+                            {
+                                "name": "CC",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "index": 6
+                            },
+                            {
+                                "name": "BCC",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "index": 7
+                            }
+                        ],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "1c7e2461-bf21-ac23-5437-f64800ba6900",
+                        "type": "Component Outputs",
+                        "x": 308,
+                        "y": 32,
+                        "parameters": {},
+                        "ports": [
+                            {
+                                "name": "Success",
+                                "plug": "input",
+                                "type": "*",
+                                "index": 0
+                            },
+                            {
+                                "name": "Failure",
+                                "plug": "input",
+                                "type": "*",
+                                "index": 1
+                            }
+                        ],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "2acbfab1-e1a3-5bae-8d1e-4b63c7134e47",
+                        "type": "JavaScriptFunction",
+                        "x": -0.5,
+                        "y": 16,
+                        "parameters": {
+                            "functionScript": "const html = Inputs.Html;\nconst text = Inputs.Text;\nconst to = Inputs.To;\nconst cc = Inputs.CC;\nconst bcc = Inputs.BCC;\nconst from = Inputs.From;\nconst subject = Inputs.Subject;\nconst apiKey = Inputs.APIKey;\n\nif(apiKey === undefined || apiKey === \"\") {\n    Outputs.Failure()\n    throw Error(\"No API Key provided!\")\n}\n\nconst personalizations = [\n    { \"to\": (Array.isArray(to)?to.map(e => ({email:e}) ):[{\"email\": to}]) }\n]\n\nif(cc !== undefined) {\n    personalizations[0][\"cc\"] = (Array.isArray(cc)?cc.map(e => ({email:e}) ):[{\"email\": cc}])\n}\n\nif(bcc !== undefined) {\n    personalizations[0][\"bcc\"] = (Array.isArray(bcc)?bcc.map(e => ({email:e}) ):[{\"email\": bcc}]) \n\n}\n\nconst res = await fetch(\"https://api.sendgrid.com/v3/mail/send\",{\n    method:'POST',\n    headers:{\n        \"Authorization\":\"Bearer \" + apiKey,\n        \"Content-Type\":\"application/json\"\n    },\n    body:JSON.stringify({\n    personalizations,\n    \"from\": {\"email\":from},\n    \"subject\": subject,\n    \"content\": (html!==undefined)?\n     [{\"type\": \"text/html\", \"value\": html}]:\n    [{\"type\": \"text/plain\", \"value\": text}]\n    \n    })\n})\n\nif(res.ok) {\n    Outputs.Success()\n}\nelse {\n    Outputs.Failure()\n    const json = await res.json()\n    throw Error(json.errors.map(e => e.message).join('\\n'))\n}",
+                            "scriptInputs": [
+                                {
+                                    "id": "yg17",
+                                    "label": "From"
+                                },
+                                {
+                                    "id": "0ozg",
+                                    "label": "To"
+                                },
+                                {
+                                    "id": "cc02",
+                                    "label": "Subject"
+                                },
+                                {
+                                    "id": "co1h",
+                                    "label": "Html"
+                                },
+                                {
+                                    "id": "syk9",
+                                    "label": "Text"
+                                },
+                                {
+                                    "id": "5jsc",
+                                    "label": "CC"
+                                },
+                                {
+                                    "id": "9ncu",
+                                    "label": "BCC"
+                                }
+                            ],
+                            "runOnChange-in-Text": false,
+                            "runOnChange-in-Html": false,
+                            "runOnChange-in-To": false,
+                            "runOnChange-in-From": false,
+                            "runOnChange-in-Subject": false,
+                            "runOnChange-in-APIKey": false,
+                            "runOnChange-in-CC": false,
+                            "runOnChange-in-BCC": false
+                        },
+                        "ports": [],
+                        "dynamicports": [
+                            {
+                                "name": "intype-From",
+                                "displayName": "Type",
+                                "editorName": "From | Type",
+                                "plug": "input",
+                                "type": {
+                                    "name": "enum",
+                                    "enums": [
+                                        {
+                                            "value": "string",
+                                            "label": "String"
+                                        },
+                                        {
+                                            "value": "boolean",
+                                            "label": "Boolean"
+                                        },
+                                        {
+                                            "value": "number",
+                                            "label": "Number"
+                                        },
+                                        {
+                                            "value": "object",
+                                            "label": "Object"
+                                        },
+                                        {
+                                            "value": "date",
+                                            "label": "Date"
+                                        },
+                                        {
+                                            "value": "array",
+                                            "label": "Array"
+                                        },
+                                        {
+                                            "value": "color",
+                                            "label": "Color"
+                                        }
+                                    ],
+                                    "allowEditOnly": true
+                                },
+                                "default": "string",
+                                "parent": "scriptInputs",
+                                "parentItemId": "yg17",
+                                "index": 4
+                            },
+                            {
+                                "name": "in-From",
+                                "displayName": "From",
+                                "plug": "input",
+                                "type": "string",
+                                "group": "Inputs",
+                                "index": 5
+                            },
+                            {
+                                "name": "intype-To",
+                                "displayName": "Type",
+                                "editorName": "To | Type",
+                                "plug": "input",
+                                "type": {
+                                    "name": "enum",
+                                    "enums": [
+                                        {
+                                            "value": "string",
+                                            "label": "String"
+                                        },
+                                        {
+                                            "value": "boolean",
+                                            "label": "Boolean"
+                                        },
+                                        {
+                                            "value": "number",
+                                            "label": "Number"
+                                        },
+                                        {
+                                            "value": "object",
+                                            "label": "Object"
+                                        },
+                                        {
+                                            "value": "date",
+                                            "label": "Date"
+                                        },
+                                        {
+                                            "value": "array",
+                                            "label": "Array"
+                                        },
+                                        {
+                                            "value": "color",
+                                            "label": "Color"
+                                        }
+                                    ],
+                                    "allowEditOnly": true
+                                },
+                                "default": "string",
+                                "parent": "scriptInputs",
+                                "parentItemId": "0ozg",
+                                "index": 6
+                            },
+                            {
+                                "name": "in-To",
+                                "displayName": "To",
+                                "plug": "input",
+                                "type": "string",
+                                "group": "Inputs",
+                                "index": 7
+                            },
+                            {
+                                "name": "intype-Subject",
+                                "displayName": "Type",
+                                "editorName": "Subject | Type",
+                                "plug": "input",
+                                "type": {
+                                    "name": "enum",
+                                    "enums": [
+                                        {
+                                            "value": "string",
+                                            "label": "String"
+                                        },
+                                        {
+                                            "value": "boolean",
+                                            "label": "Boolean"
+                                        },
+                                        {
+                                            "value": "number",
+                                            "label": "Number"
+                                        },
+                                        {
+                                            "value": "object",
+                                            "label": "Object"
+                                        },
+                                        {
+                                            "value": "date",
+                                            "label": "Date"
+                                        },
+                                        {
+                                            "value": "array",
+                                            "label": "Array"
+                                        },
+                                        {
+                                            "value": "color",
+                                            "label": "Color"
+                                        }
+                                    ],
+                                    "allowEditOnly": true
+                                },
+                                "default": "string",
+                                "parent": "scriptInputs",
+                                "parentItemId": "cc02",
+                                "index": 8
+                            },
+                            {
+                                "name": "in-Subject",
+                                "displayName": "Subject",
+                                "plug": "input",
+                                "type": "string",
+                                "group": "Inputs",
+                                "index": 9
+                            },
+                            {
+                                "name": "intype-Html",
+                                "displayName": "Type",
+                                "editorName": "Html | Type",
+                                "plug": "input",
+                                "type": {
+                                    "name": "enum",
+                                    "enums": [
+                                        {
+                                            "value": "string",
+                                            "label": "String"
+                                        },
+                                        {
+                                            "value": "boolean",
+                                            "label": "Boolean"
+                                        },
+                                        {
+                                            "value": "number",
+                                            "label": "Number"
+                                        },
+                                        {
+                                            "value": "object",
+                                            "label": "Object"
+                                        },
+                                        {
+                                            "value": "date",
+                                            "label": "Date"
+                                        },
+                                        {
+                                            "value": "array",
+                                            "label": "Array"
+                                        },
+                                        {
+                                            "value": "color",
+                                            "label": "Color"
+                                        }
+                                    ],
+                                    "allowEditOnly": true
+                                },
+                                "default": "string",
+                                "parent": "scriptInputs",
+                                "parentItemId": "co1h",
+                                "index": 10
+                            },
+                            {
+                                "name": "in-Html",
+                                "displayName": "Html",
+                                "plug": "input",
+                                "type": "string",
+                                "group": "Inputs",
+                                "index": 11
+                            },
+                            {
+                                "name": "intype-Text",
+                                "displayName": "Type",
+                                "editorName": "Text | Type",
+                                "plug": "input",
+                                "type": {
+                                    "name": "enum",
+                                    "enums": [
+                                        {
+                                            "value": "string",
+                                            "label": "String"
+                                        },
+                                        {
+                                            "value": "boolean",
+                                            "label": "Boolean"
+                                        },
+                                        {
+                                            "value": "number",
+                                            "label": "Number"
+                                        },
+                                        {
+                                            "value": "object",
+                                            "label": "Object"
+                                        },
+                                        {
+                                            "value": "date",
+                                            "label": "Date"
+                                        },
+                                        {
+                                            "value": "array",
+                                            "label": "Array"
+                                        },
+                                        {
+                                            "value": "color",
+                                            "label": "Color"
+                                        }
+                                    ],
+                                    "allowEditOnly": true
+                                },
+                                "default": "string",
+                                "parent": "scriptInputs",
+                                "parentItemId": "syk9",
+                                "index": 12
+                            },
+                            {
+                                "name": "in-Text",
+                                "displayName": "Text",
+                                "plug": "input",
+                                "type": "string",
+                                "group": "Inputs",
+                                "index": 13
+                            },
+                            {
+                                "name": "intype-CC",
+                                "displayName": "Type",
+                                "editorName": "CC | Type",
+                                "plug": "input",
+                                "type": {
+                                    "name": "enum",
+                                    "enums": [
+                                        {
+                                            "value": "string",
+                                            "label": "String"
+                                        },
+                                        {
+                                            "value": "boolean",
+                                            "label": "Boolean"
+                                        },
+                                        {
+                                            "value": "number",
+                                            "label": "Number"
+                                        },
+                                        {
+                                            "value": "object",
+                                            "label": "Object"
+                                        },
+                                        {
+                                            "value": "date",
+                                            "label": "Date"
+                                        },
+                                        {
+                                            "value": "array",
+                                            "label": "Array"
+                                        },
+                                        {
+                                            "value": "color",
+                                            "label": "Color"
+                                        }
+                                    ],
+                                    "allowEditOnly": true
+                                },
+                                "default": "string",
+                                "parent": "scriptInputs",
+                                "parentItemId": "5jsc",
+                                "index": 14
+                            },
+                            {
+                                "name": "in-CC",
+                                "displayName": "CC",
+                                "plug": "input",
+                                "type": "string",
+                                "group": "Inputs",
+                                "index": 15
+                            },
+                            {
+                                "name": "intype-BCC",
+                                "displayName": "Type",
+                                "editorName": "BCC | Type",
+                                "plug": "input",
+                                "type": {
+                                    "name": "enum",
+                                    "enums": [
+                                        {
+                                            "value": "string",
+                                            "label": "String"
+                                        },
+                                        {
+                                            "value": "boolean",
+                                            "label": "Boolean"
+                                        },
+                                        {
+                                            "value": "number",
+                                            "label": "Number"
+                                        },
+                                        {
+                                            "value": "object",
+                                            "label": "Object"
+                                        },
+                                        {
+                                            "value": "date",
+                                            "label": "Date"
+                                        },
+                                        {
+                                            "value": "array",
+                                            "label": "Array"
+                                        },
+                                        {
+                                            "value": "color",
+                                            "label": "Color"
+                                        }
+                                    ],
+                                    "allowEditOnly": true
+                                },
+                                "default": "string",
+                                "parent": "scriptInputs",
+                                "parentItemId": "9ncu",
+                                "index": 16
+                            },
+                            {
+                                "name": "in-BCC",
+                                "displayName": "BCC",
+                                "plug": "input",
+                                "type": "string",
+                                "group": "Inputs",
+                                "index": 17
+                            },
+                            {
+                                "name": "in-APIKey",
+                                "displayName": "APIKey",
+                                "plug": "input",
+                                "type": "*",
+                                "group": "Inputs",
+                                "index": 18
+                            },
+                            {
+                                "name": "out-Failure",
+                                "displayName": "Failure",
+                                "plug": "output",
+                                "type": "signal",
+                                "group": "Outputs",
+                                "index": 19
+                            },
+                            {
+                                "name": "out-Success",
+                                "displayName": "Success",
+                                "plug": "output",
+                                "type": "signal",
+                                "group": "Outputs",
+                                "index": 20
+                            }
+                        ],
+                        "children": [],
+                        "metadata": {
+                            "merge": {
+                                "soureCodePorts": [
+                                    "functionScript"
+                                ]
+                            }
+                        }
+                    },
+                    {
+                        "id": "ce3279c1-cf0e-adeb-8276-033a8bb51fb7",
+                        "type": "/#__cloud__/SendGrid/Settings",
+                        "x": -265,
+                        "y": 216,
+                        "parameters": {},
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": []
+                    }
+                ]
+            },
+            "metadata": {
+                "isFolderComponent": false
+            }
+        },
+        {
+            "name": "/#__cloud__/SendGrid/Settings",
+            "id": "a038e599-5cae-a881-6970-ad34aab772d5",
+            "graph": {
+                "connections": [
+                    {
+                        "fromId": "4889f2f0-aa4b-eb3e-485d-09dca80c1edc",
+                        "fromProperty": "value",
+                        "toId": "87517111-c775-369b-63b3-c09decc318d3",
+                        "toProperty": "API Key"
+                    },
+                    {
+                        "fromId": "8885a947-f871-9844-edd5-51514dd75f4a",
+                        "fromProperty": "Fetch",
+                        "toId": "4889f2f0-aa4b-eb3e-485d-09dca80c1edc",
+                        "toProperty": "fetch"
+                    },
+                    {
+                        "fromId": "4889f2f0-aa4b-eb3e-485d-09dca80c1edc",
+                        "fromProperty": "done",
+                        "toId": "87517111-c775-369b-63b3-c09decc318d3",
+                        "toProperty": "Ready"
+                    },
+                    {
+                        "fromId": "4889f2f0-aa4b-eb3e-485d-09dca80c1edc",
+                        "fromProperty": "failure",
+                        "toId": "87517111-c775-369b-63b3-c09decc318d3",
+                        "toProperty": "Failure"
+                    }
+                ],
+                "roots": [
+                    {
+                        "id": "87517111-c775-369b-63b3-c09decc318d3",
+                        "type": "Component Outputs",
+                        "x": 703,
+                        "y": 103,
+                        "parameters": {},
+                        "ports": [
+                            {
+                                "name": "API Key",
+                                "plug": "input",
+                                "type": "*",
+                                "index": 0
+                            },
+                            {
+                                "name": "Ready",
+                                "plug": "input",
+                                "type": "*",
+                                "index": 1
+                            },
+                            {
+                                "name": "Failure",
+                                "plug": "input",
+                                "type": "*",
+                                "index": 2
+                            }
+                        ],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "4889f2f0-aa4b-eb3e-485d-09dca80c1edc",
+                        "type": "noodl.cloud.secret",
+                        "x": 426.25,
+                        "y": 51.166666666666686,
+                        "parameters": {
+                            "name": "SENDGRID_API_KEY"
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": [],
+                        "label": "SENDGRID_API_KEY"
+                    },
+                    {
+                        "id": "8885a947-f871-9844-edd5-51514dd75f4a",
+                        "type": "Component Inputs",
+                        "x": 126.25,
+                        "y": 51.166666666666686,
+                        "parameters": {},
+                        "ports": [
+                            {
+                                "name": "Fetch",
+                                "plug": "output",
+                                "type": "*",
+                                "index": 0
+                            }
+                        ],
+                        "dynamicports": [],
+                        "children": []
+                    }
+                ]
+            },
+            "metadata": {
+                "isFolderComponent": false
+            }
+        },
+        {
+            "name": "/#__cloud__/Sign Up/Actions/Format Email",
+            "id": "a6522c10-e38c-e985-2b31-143e61ca2a25",
+            "graph": {
+                "connections": [
+                    {
+                        "fromId": "235a9e48-ff89-d8f4-6b2b-80eda68aca0c",
+                        "fromProperty": "Content",
+                        "toId": "d919db4d-af1d-84e5-e844-2589b3b44962",
+                        "toProperty": "format"
+                    },
+                    {
+                        "fromId": "235a9e48-ff89-d8f4-6b2b-80eda68aca0c",
+                        "fromProperty": "Email",
+                        "toId": "d919db4d-af1d-84e5-e844-2589b3b44962",
+                        "toProperty": "Email"
+                    },
+                    {
+                        "fromId": "235a9e48-ff89-d8f4-6b2b-80eda68aca0c",
+                        "fromProperty": "Token",
+                        "toId": "d919db4d-af1d-84e5-e844-2589b3b44962",
+                        "toProperty": "Token"
+                    },
+                    {
+                        "fromId": "ea7a20ed-5133-0eac-3d39-92c4114a9554",
+                        "fromProperty": "out-Content",
+                        "toId": "f8685a08-3e28-a6b5-b6cc-b3b57915a703",
+                        "toProperty": "Content"
+                    },
+                    {
+                        "fromId": "d919db4d-af1d-84e5-e844-2589b3b44962",
+                        "fromProperty": "formatted",
+                        "toId": "ea7a20ed-5133-0eac-3d39-92c4114a9554",
+                        "toProperty": "in-Content"
+                    },
+                    {
+                        "fromId": "235a9e48-ff89-d8f4-6b2b-80eda68aca0c",
+                        "fromProperty": "Domain",
+                        "toId": "ea7a20ed-5133-0eac-3d39-92c4114a9554",
+                        "toProperty": "in-Domain"
+                    },
+                    {
+                        "fromId": "235a9e48-ff89-d8f4-6b2b-80eda68aca0c",
+                        "fromProperty": "Do",
+                        "toId": "ea7a20ed-5133-0eac-3d39-92c4114a9554",
+                        "toProperty": "run"
+                    },
+                    {
+                        "fromId": "ea7a20ed-5133-0eac-3d39-92c4114a9554",
+                        "fromProperty": "done",
+                        "toId": "f8685a08-3e28-a6b5-b6cc-b3b57915a703",
+                        "toProperty": "Done"
+                    }
+                ],
+                "roots": [
+                    {
+                        "id": "235a9e48-ff89-d8f4-6b2b-80eda68aca0c",
+                        "type": "Component Inputs",
+                        "x": -191.76235387307145,
+                        "y": -12.111306560404557,
+                        "parameters": {},
+                        "ports": [
+                            {
+                                "name": "Email",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "index": 1
+                            },
+                            {
+                                "name": "Token",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "index": 2
+                            },
+                            {
+                                "name": "Content",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "index": 3
+                            },
+                            {
+                                "name": "Do",
+                                "plug": "output",
+                                "type": "*",
+                                "index": 3
+                            },
+                            {
+                                "name": "Domain",
+                                "plug": "output",
+                                "type": "*",
+                                "index": 4
+                            }
+                        ],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "f8685a08-3e28-a6b5-b6cc-b3b57915a703",
+                        "type": "Component Outputs",
+                        "x": 650.2186147050309,
+                        "y": -35.32464413451322,
+                        "parameters": {},
+                        "ports": [
+                            {
+                                "name": "Content",
+                                "plug": "input",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "index": 2
+                            },
+                            {
+                                "name": "Done",
+                                "plug": "input",
+                                "type": "*",
+                                "index": 1
+                            }
+                        ],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "d919db4d-af1d-84e5-e844-2589b3b44962",
+                        "type": "String Format",
+                        "x": 78.54196868086132,
+                        "y": -54.79248465656207,
+                        "parameters": {
+                            "format": "$Domain, {Token}, {Email}"
+                        },
+                        "ports": [],
+                        "dynamicports": [
+                            {
+                                "name": "Token",
+                                "type": "string",
+                                "plug": "input",
+                                "index": 2
+                            },
+                            {
+                                "name": "Email",
+                                "type": "string",
+                                "plug": "input",
+                                "index": 3
+                            }
+                        ],
+                        "children": []
+                    },
+                    {
+                        "id": "ea7a20ed-5133-0eac-3d39-92c4114a9554",
+                        "type": "JavaScriptFunction",
+                        "label": "Add the domain to the links",
+                        "x": 369.2143620431875,
+                        "y": -49.74610692306001,
+                        "parameters": {
+                            "functionScript": "if(Inputs.Domain === undefined) {\n    throw Error(\"You must specify the domain your application is deployed to for email links to work.\")\n}\n\nOutputs.Content = Inputs.Content.replaceAll('$Domain',Inputs.Domain)",
+                            "runOnChange-in-Content": false,
+                            "runOnChange-in-Domain": false
+                        },
+                        "ports": [],
+                        "dynamicports": [
+                            {
+                                "name": "in-Content",
+                                "displayName": "Content",
+                                "plug": "input",
+                                "type": "*",
+                                "group": "Inputs",
+                                "index": 4
+                            },
+                            {
+                                "name": "in-Domain",
+                                "displayName": "Domain",
+                                "plug": "input",
+                                "type": "*",
+                                "group": "Inputs",
+                                "index": 5
+                            },
+                            {
+                                "name": "out-Content",
+                                "displayName": "Content",
+                                "plug": "output",
+                                "type": "*",
+                                "group": "Outputs",
+                                "index": 6
+                            }
+                        ],
+                        "children": [],
+                        "metadata": {
+                            "merge": {
+                                "soureCodePorts": [
+                                    "functionScript"
+                                ]
+                            }
+                        }
+                    }
+                ]
+            },
+            "metadata": {
+                "isFolderComponent": false
+            }
+        },
+        {
+            "name": "/#__cloud__/Sign Up/Actions/Request Email Verification",
+            "id": "24948b22-fae2-87d4-afa5-0eee2d1c15f0",
+            "graph": {
+                "connections": [
+                    {
+                        "fromId": "ff4e2336-144c-dce0-14f7-595f57b1af13",
+                        "fromProperty": "Do",
+                        "toId": "b9b43ca2-a1b4-e675-e793-c6d8efdbbf6a",
+                        "toProperty": "run"
+                    },
+                    {
+                        "fromId": "b9b43ca2-a1b4-e675-e793-c6d8efdbbf6a",
+                        "fromProperty": "out-EmailIsVerified",
+                        "toId": "81d6c0cb-3e7c-ba1e-9ad5-834c147502a3",
+                        "toProperty": "Email Is Verified"
+                    },
+                    {
+                        "fromId": "b9b43ca2-a1b4-e675-e793-c6d8efdbbf6a",
+                        "fromProperty": "out-Done",
+                        "toId": "81d6c0cb-3e7c-ba1e-9ad5-834c147502a3",
+                        "toProperty": "Done"
+                    },
+                    {
+                        "fromId": "b9b43ca2-a1b4-e675-e793-c6d8efdbbf6a",
+                        "fromProperty": "out-Token",
+                        "toId": "81d6c0cb-3e7c-ba1e-9ad5-834c147502a3",
+                        "toProperty": "Token"
+                    },
+                    {
+                        "fromId": "b9b43ca2-a1b4-e675-e793-c6d8efdbbf6a",
+                        "fromProperty": "out-Email",
+                        "toId": "81d6c0cb-3e7c-ba1e-9ad5-834c147502a3",
+                        "toProperty": "Email"
+                    }
+                ],
+                "roots": [
+                    {
+                        "id": "ff4e2336-144c-dce0-14f7-595f57b1af13",
+                        "type": "Component Inputs",
+                        "x": -386,
+                        "y": -6,
+                        "parameters": {},
+                        "ports": [
+                            {
+                                "name": "Do",
+                                "plug": "output",
+                                "type": "*",
+                                "index": 0
+                            }
+                        ],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "81d6c0cb-3e7c-ba1e-9ad5-834c147502a3",
+                        "type": "Component Outputs",
+                        "x": 292,
+                        "y": -15,
+                        "parameters": {},
+                        "ports": [
+                            {
+                                "name": "Done",
+                                "plug": "input",
+                                "type": "*",
+                                "index": 0
+                            },
+                            {
+                                "name": "Email Is Verified",
+                                "plug": "input",
+                                "type": "*",
+                                "index": 1
+                            },
+                            {
+                                "name": "Token",
+                                "plug": "input",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "index": 2
+                            },
+                            {
+                                "name": "Email",
+                                "plug": "input",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "index": 3
+                            }
+                        ],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "b9b43ca2-a1b4-e675-e793-c6d8efdbbf6a",
+                        "type": "JavaScriptFunction",
+                        "x": -55.5,
+                        "y": -32,
+                        "parameters": {
+                            "functionScript": "const user = Noodl.Users.Current\n\n// Check if email is already verified\nif(user.Properties.emailVerified) {\n    Outputs.EmailIsVerified()\n    return;\n}\n\n// Generate token and expiry date\nuser.Properties.emailVerified = false;\nuser.Properties.emailVerificationToken = Math.random().toString(26).slice(2);\nuser.Properties.emailVerificationTokenExpires = (new Date(Date.now() + 24*60*60*1000)).toISOString();\nawait user.save()\n\n// Done\nOutputs.Token = user.Properties.emailVerificationToken;\nOutputs.Email = [user.Properties.email];\nOutputs.Done()"
+                        },
+                        "ports": [],
+                        "dynamicports": [
+                            {
+                                "name": "out-EmailIsVerified",
+                                "displayName": "EmailIsVerified",
+                                "plug": "output",
+                                "type": "signal",
+                                "group": "Outputs",
+                                "index": 4
+                            },
+                            {
+                                "name": "out-Done",
+                                "displayName": "Done",
+                                "plug": "output",
+                                "type": "signal",
+                                "group": "Outputs",
+                                "index": 5
+                            },
+                            {
+                                "name": "out-Token",
+                                "displayName": "Token",
+                                "plug": "output",
+                                "type": "*",
+                                "group": "Outputs",
+                                "index": 6
+                            },
+                            {
+                                "name": "out-Email",
+                                "displayName": "Email",
+                                "plug": "output",
+                                "type": "*",
+                                "group": "Outputs",
+                                "index": 7
+                            }
+                        ],
+                        "children": [],
+                        "metadata": {
+                            "merge": {
+                                "soureCodePorts": [
+                                    "functionScript"
+                                ]
+                            }
+                        }
+                    }
+                ]
+            },
+            "metadata": {
+                "isFolderComponent": false
+            }
+        },
+        {
+            "name": "/#__cloud__/Sign Up/Actions/Request Password Reset",
+            "id": "2fcf7142-c6e6-16aa-dc43-323a957f06bd",
+            "graph": {
+                "connections": [
+                    {
+                        "fromId": "1e028fe9-9c52-997b-3087-0cafaeb37712",
+                        "fromProperty": "Do",
+                        "toId": "ea03865c-6a81-7c56-971c-bfaa39ab109f",
+                        "toProperty": "run"
+                    },
+                    {
+                        "fromId": "ea03865c-6a81-7c56-971c-bfaa39ab109f",
+                        "fromProperty": "out-Token",
+                        "toId": "30d2faa2-5117-81c0-aae5-d7cfcbf7bd16",
+                        "toProperty": "Token"
+                    },
+                    {
+                        "fromId": "ea03865c-6a81-7c56-971c-bfaa39ab109f",
+                        "fromProperty": "out-Failure",
+                        "toId": "30d2faa2-5117-81c0-aae5-d7cfcbf7bd16",
+                        "toProperty": "Failure"
+                    },
+                    {
+                        "fromId": "ea03865c-6a81-7c56-971c-bfaa39ab109f",
+                        "fromProperty": "out-Success",
+                        "toId": "30d2faa2-5117-81c0-aae5-d7cfcbf7bd16",
+                        "toProperty": "Success"
+                    },
+                    {
+                        "fromId": "ea03865c-6a81-7c56-971c-bfaa39ab109f",
+                        "fromProperty": "out-Error",
+                        "toId": "30d2faa2-5117-81c0-aae5-d7cfcbf7bd16",
+                        "toProperty": "Error"
+                    },
+                    {
+                        "fromId": "1e028fe9-9c52-997b-3087-0cafaeb37712",
+                        "fromProperty": "Email",
+                        "toId": "ea03865c-6a81-7c56-971c-bfaa39ab109f",
+                        "toProperty": "in-Email"
+                    },
+                    {
+                        "fromId": "ea03865c-6a81-7c56-971c-bfaa39ab109f",
+                        "fromProperty": "out-Email",
+                        "toId": "30d2faa2-5117-81c0-aae5-d7cfcbf7bd16",
+                        "toProperty": "Email"
+                    }
+                ],
+                "roots": [
+                    {
+                        "id": "1e028fe9-9c52-997b-3087-0cafaeb37712",
+                        "type": "Component Inputs",
+                        "x": -386,
+                        "y": -6,
+                        "parameters": {},
+                        "ports": [
+                            {
+                                "name": "Do",
+                                "plug": "output",
+                                "type": "*",
+                                "index": 0
+                            },
+                            {
+                                "name": "Email",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "index": 1
+                            }
+                        ],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "30d2faa2-5117-81c0-aae5-d7cfcbf7bd16",
+                        "type": "Component Outputs",
+                        "x": 291,
+                        "y": -15,
+                        "parameters": {},
+                        "ports": [
+                            {
+                                "name": "Token",
+                                "plug": "input",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "index": 2
+                            },
+                            {
+                                "name": "Success",
+                                "plug": "input",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "index": 3
+                            },
+                            {
+                                "name": "Failure",
+                                "plug": "input",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "index": 4
+                            },
+                            {
+                                "name": "Error",
+                                "plug": "input",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "index": 5
+                            },
+                            {
+                                "name": "Email",
+                                "plug": "input",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "index": 6
+                            }
+                        ],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "ea03865c-6a81-7c56-971c-bfaa39ab109f",
+                        "type": "JavaScriptFunction",
+                        "x": -56.5,
+                        "y": -32,
+                        "parameters": {
+                            "functionScript": "const users = await Noodl.Records.query(\"_User\",{\n    username:{equalTo:Inputs.Email}\n})\n\nif(users.length === 0) {\n    Outputs.Error = \"No user with that email found.\"\n    Outputs.Failure()\n    return;\n}\n\nconst user = users[0];\n\n// Generate token and expiry date\nuser.passwordResetToken = Math.random().toString(26).slice(2)\nuser.passwordResetTokenExpires = (new Date(Date.now() + 24*60*60*1000)).toISOString()\nawait Noodl.Records.save(user)\n\n// Done\nOutputs.Token = user.passwordResetToken;\nOutputs.Email = [Inputs.Email]\nOutputs.Success()"
+                        },
+                        "ports": [],
+                        "dynamicports": [
+                            {
+                                "name": "in-Email",
+                                "displayName": "Email",
+                                "plug": "input",
+                                "type": "*",
+                                "group": "Inputs",
+                                "index": 4
+                            },
+                            {
+                                "name": "out-Failure",
+                                "displayName": "Failure",
+                                "plug": "output",
+                                "type": "signal",
+                                "group": "Outputs",
+                                "index": 5
+                            },
+                            {
+                                "name": "out-Success",
+                                "displayName": "Success",
+                                "plug": "output",
+                                "type": "signal",
+                                "group": "Outputs",
+                                "index": 6
+                            },
+                            {
+                                "name": "out-Error",
+                                "displayName": "Error",
+                                "plug": "output",
+                                "type": "*",
+                                "group": "Outputs",
+                                "index": 7
+                            },
+                            {
+                                "name": "out-Token",
+                                "displayName": "Token",
+                                "plug": "output",
+                                "type": "*",
+                                "group": "Outputs",
+                                "index": 8
+                            },
+                            {
+                                "name": "out-Email",
+                                "displayName": "Email",
+                                "plug": "output",
+                                "type": "*",
+                                "group": "Outputs",
+                                "index": 9
+                            }
+                        ],
+                        "children": [],
+                        "metadata": {
+                            "merge": {
+                                "soureCodePorts": [
+                                    "functionScript"
+                                ]
+                            }
+                        }
+                    }
+                ]
+            },
+            "metadata": {
+                "isFolderComponent": false
+            }
+        },
+        {
+            "name": "/#__cloud__/Sign Up/Actions/Reset Password",
+            "id": "cb6a682b-10e8-b2ed-2120-56429fc3adaa",
+            "graph": {
+                "connections": [
+                    {
+                        "fromId": "9d23e5c6-260a-af9f-4ea9-f653d49c6686",
+                        "fromProperty": "Do",
+                        "toId": "710f2d0f-dfb6-1873-9b06-6a3b0253b3de",
+                        "toProperty": "run"
+                    },
+                    {
+                        "fromId": "9d23e5c6-260a-af9f-4ea9-f653d49c6686",
+                        "fromProperty": "Token",
+                        "toId": "710f2d0f-dfb6-1873-9b06-6a3b0253b3de",
+                        "toProperty": "in-Token"
+                    },
+                    {
+                        "fromId": "710f2d0f-dfb6-1873-9b06-6a3b0253b3de",
+                        "fromProperty": "out-Success",
+                        "toId": "6475ad73-d68f-e82b-535b-168babe330ed",
+                        "toProperty": "Success"
+                    },
+                    {
+                        "fromId": "710f2d0f-dfb6-1873-9b06-6a3b0253b3de",
+                        "fromProperty": "out-Failure",
+                        "toId": "6475ad73-d68f-e82b-535b-168babe330ed",
+                        "toProperty": "Failure"
+                    },
+                    {
+                        "fromId": "9d23e5c6-260a-af9f-4ea9-f653d49c6686",
+                        "fromProperty": "Email",
+                        "toId": "710f2d0f-dfb6-1873-9b06-6a3b0253b3de",
+                        "toProperty": "in-Email"
+                    },
+                    {
+                        "fromId": "710f2d0f-dfb6-1873-9b06-6a3b0253b3de",
+                        "fromProperty": "out-Error",
+                        "toId": "6475ad73-d68f-e82b-535b-168babe330ed",
+                        "toProperty": "Error"
+                    },
+                    {
+                        "fromId": "9d23e5c6-260a-af9f-4ea9-f653d49c6686",
+                        "fromProperty": "New Password",
+                        "toId": "710f2d0f-dfb6-1873-9b06-6a3b0253b3de",
+                        "toProperty": "in-NewPassword"
+                    }
+                ],
+                "roots": [
+                    {
+                        "id": "9d23e5c6-260a-af9f-4ea9-f653d49c6686",
+                        "type": "Component Inputs",
+                        "x": -297,
+                        "y": -2,
+                        "parameters": {},
+                        "ports": [
+                            {
+                                "name": "Do",
+                                "plug": "output",
+                                "type": "*",
+                                "index": 0
+                            },
+                            {
+                                "name": "Token",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "index": 1
+                            },
+                            {
+                                "name": "Email",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "index": 2
+                            },
+                            {
+                                "name": "New Password",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "index": 3
+                            }
+                        ],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "6475ad73-d68f-e82b-535b-168babe330ed",
+                        "type": "Component Outputs",
+                        "x": 401,
+                        "y": -14,
+                        "parameters": {},
+                        "ports": [
+                            {
+                                "name": "Success",
+                                "plug": "input",
+                                "type": "*",
+                                "index": 0
+                            },
+                            {
+                                "name": "Failure",
+                                "plug": "input",
+                                "type": "*",
+                                "index": 1
+                            },
+                            {
+                                "name": "Error",
+                                "plug": "input",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "index": 2
+                            }
+                        ],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "710f2d0f-dfb6-1873-9b06-6a3b0253b3de",
+                        "type": "JavaScriptFunction",
+                        "x": 43.5,
+                        "y": -12.5,
+                        "parameters": {
+                            "functionScript": "if(Inputs.Token === undefined || Inputs.Email === undefined) {\n    Outputs.Error = \"Must supply token and email\"\n    Outputs.Failure()\n    return\n}\n\nconst users = await Noodl.Records.query(\"_User\",{\n    username:{equalTo:Inputs.Email}\n})\n\nif(users.length === 0) {\n     Outputs.Error = \"No user matched email.\"\n     Outputs.Failure()\n     return\n}\n\nconst user = users[0]\nif(user.passwordResetToken === Inputs.Token &&\n    (new Date(user.passwordResetTokenExpires)).getTime() > Date.now()) {\n    // Successful\n    user.password = Inputs.NewPassword;\n    user.passwordResetToken = null;\n    user.passwordResetTokenExpires = null;\n    await Noodl.Records.save(user)\n    Outputs.Success()\n}\nelse {\n    Outputs.Error = \"Invalid token.\"\n    Outputs.Failure()\n}"
+                        },
+                        "ports": [],
+                        "dynamicports": [
+                            {
+                                "name": "in-Token",
+                                "displayName": "Token",
+                                "plug": "input",
+                                "type": "*",
+                                "group": "Inputs",
+                                "index": 4
+                            },
+                            {
+                                "name": "in-Email",
+                                "displayName": "Email",
+                                "plug": "input",
+                                "type": "*",
+                                "group": "Inputs",
+                                "index": 5
+                            },
+                            {
+                                "name": "in-NewPassword",
+                                "displayName": "NewPassword",
+                                "plug": "input",
+                                "type": "*",
+                                "group": "Inputs",
+                                "index": 6
+                            },
+                            {
+                                "name": "out-Failure",
+                                "displayName": "Failure",
+                                "plug": "output",
+                                "type": "signal",
+                                "group": "Outputs",
+                                "index": 7
+                            },
+                            {
+                                "name": "out-Success",
+                                "displayName": "Success",
+                                "plug": "output",
+                                "type": "signal",
+                                "group": "Outputs",
+                                "index": 8
+                            },
+                            {
+                                "name": "out-Error",
+                                "displayName": "Error",
+                                "plug": "output",
+                                "type": "*",
+                                "group": "Outputs",
+                                "index": 9
+                            }
+                        ],
+                        "children": [],
+                        "metadata": {
+                            "merge": {
+                                "soureCodePorts": [
+                                    "functionScript"
+                                ]
+                            }
+                        }
+                    }
+                ]
+            },
+            "metadata": {
+                "isFolderComponent": false
+            }
+        },
+        {
+            "name": "/#__cloud__/Sign Up/Actions/Verify Email",
+            "id": "37d45fd8-ee57-3501-d4b4-25cab5fa7395",
+            "graph": {
+                "connections": [
+                    {
+                        "fromId": "70285d2b-e596-2db8-8969-de8837e67576",
+                        "fromProperty": "Do",
+                        "toId": "c1a1bfb6-27bf-b2c2-c53e-fd258b05cf03",
+                        "toProperty": "run"
+                    },
+                    {
+                        "fromId": "70285d2b-e596-2db8-8969-de8837e67576",
+                        "fromProperty": "Token",
+                        "toId": "c1a1bfb6-27bf-b2c2-c53e-fd258b05cf03",
+                        "toProperty": "in-Token"
+                    },
+                    {
+                        "fromId": "c1a1bfb6-27bf-b2c2-c53e-fd258b05cf03",
+                        "fromProperty": "out-Success",
+                        "toId": "ae21bd33-1474-c1cb-868a-ef0dd380da2b",
+                        "toProperty": "Success"
+                    },
+                    {
+                        "fromId": "c1a1bfb6-27bf-b2c2-c53e-fd258b05cf03",
+                        "fromProperty": "out-Failure",
+                        "toId": "ae21bd33-1474-c1cb-868a-ef0dd380da2b",
+                        "toProperty": "Failure"
+                    },
+                    {
+                        "fromId": "70285d2b-e596-2db8-8969-de8837e67576",
+                        "fromProperty": "Email",
+                        "toId": "c1a1bfb6-27bf-b2c2-c53e-fd258b05cf03",
+                        "toProperty": "in-Email"
+                    },
+                    {
+                        "fromId": "c1a1bfb6-27bf-b2c2-c53e-fd258b05cf03",
+                        "fromProperty": "out-Error",
+                        "toId": "ae21bd33-1474-c1cb-868a-ef0dd380da2b",
+                        "toProperty": "Error"
+                    }
+                ],
+                "roots": [
+                    {
+                        "id": "70285d2b-e596-2db8-8969-de8837e67576",
+                        "type": "Component Inputs",
+                        "x": -297,
+                        "y": -2,
+                        "parameters": {},
+                        "ports": [
+                            {
+                                "name": "Do",
+                                "plug": "output",
+                                "type": "*",
+                                "index": 0
+                            },
+                            {
+                                "name": "Token",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "index": 1
+                            },
+                            {
+                                "name": "Email",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "index": 2
+                            }
+                        ],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "ae21bd33-1474-c1cb-868a-ef0dd380da2b",
+                        "type": "Component Outputs",
+                        "x": 401,
+                        "y": -14,
+                        "parameters": {},
+                        "ports": [
+                            {
+                                "name": "Success",
+                                "plug": "input",
+                                "type": "*",
+                                "index": 0
+                            },
+                            {
+                                "name": "Failure",
+                                "plug": "input",
+                                "type": "*",
+                                "index": 1
+                            },
+                            {
+                                "name": "Error",
+                                "plug": "input",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "index": 2
+                            }
+                        ],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "c1a1bfb6-27bf-b2c2-c53e-fd258b05cf03",
+                        "type": "JavaScriptFunction",
+                        "x": 42.5,
+                        "y": -12.5,
+                        "parameters": {
+                            "functionScript": "if(Inputs.Token === undefined || Inputs.Email === undefined) {\n    Outputs.Error = \"Must supply token and email\"\n    Outputs.Failure()\n    return\n}\n\nconst users = await Noodl.Records.query(\"_User\",{\n    username:{equalTo:Inputs.Email}\n})\n\nif(users.length === 0) {\n     Outputs.Error = \"No user matched email.\"\n     Outputs.Failure()\n     return\n}\n\nconst user = users[0]\nif(user.emailVerificationToken === Inputs.Token &&\n    (new Date(user.emailVerificationTokenExpires)).getTime() > Date.now()) {\n    // Successful\n    await Noodl.Records.save(user,{\n            emailVerified:true,\n            emailVerificationToken:null,\n            emailVerificationTokenExpires:null\n    })\n\n    Outputs.Success()\n}\nelse {\n    Outputs.Error = \"Invalid token.\"\n    Outputs.Failure()\n}"
+                        },
+                        "ports": [],
+                        "dynamicports": [
+                            {
+                                "name": "in-Token",
+                                "displayName": "Token",
+                                "plug": "input",
+                                "type": "*",
+                                "group": "Inputs",
+                                "index": 4
+                            },
+                            {
+                                "name": "in-Email",
+                                "displayName": "Email",
+                                "plug": "input",
+                                "type": "*",
+                                "group": "Inputs",
+                                "index": 5
+                            },
+                            {
+                                "name": "out-Failure",
+                                "displayName": "Failure",
+                                "plug": "output",
+                                "type": "signal",
+                                "group": "Outputs",
+                                "index": 6
+                            },
+                            {
+                                "name": "out-Success",
+                                "displayName": "Success",
+                                "plug": "output",
+                                "type": "signal",
+                                "group": "Outputs",
+                                "index": 7
+                            },
+                            {
+                                "name": "out-Error",
+                                "displayName": "Error",
+                                "plug": "output",
+                                "type": "*",
+                                "group": "Outputs",
+                                "index": 8
+                            }
+                        ],
+                        "children": [],
+                        "metadata": {
+                            "merge": {
+                                "soureCodePorts": [
+                                    "functionScript"
+                                ]
+                            }
+                        }
+                    }
+                ]
+            },
+            "metadata": {
+                "isFolderComponent": false
+            }
+        },
+        {
+            "name": "/#__cloud__/Sign Up/Request Reset Password",
+            "id": "3b53829a-c55d-8cdc-2184-68a1014f6e80",
+            "graph": {
+                "connections": [
+                    {
+                        "fromId": "939c13c1-ccfb-cba2-ccc6-b37b5346aac3",
+                        "fromProperty": "pm-Email",
+                        "toId": "56c643d4-e344-ea62-62d8-844ab2c889f8",
+                        "toProperty": "Email"
+                    },
+                    {
+                        "fromId": "ee74c698-d559-7cb2-f122-493d680833c7",
+                        "fromProperty": "Failure",
+                        "toId": "db245435-4f8a-505f-e6b1-ffe22ec62163",
+                        "toProperty": "send"
+                    },
+                    {
+                        "fromId": "56c643d4-e344-ea62-62d8-844ab2c889f8",
+                        "fromProperty": "Failure",
+                        "toId": "db245435-4f8a-505f-e6b1-ffe22ec62163",
+                        "toProperty": "send"
+                    },
+                    {
+                        "fromId": "56c643d4-e344-ea62-62d8-844ab2c889f8",
+                        "fromProperty": "Token",
+                        "toId": "9cecd992-6b6d-c0a1-98df-0a255f1ba6b6",
+                        "toProperty": "Token"
+                    },
+                    {
+                        "fromId": "939c13c1-ccfb-cba2-ccc6-b37b5346aac3",
+                        "fromProperty": "pm-Email",
+                        "toId": "9cecd992-6b6d-c0a1-98df-0a255f1ba6b6",
+                        "toProperty": "Email"
+                    },
+                    {
+                        "fromId": "9cecd992-6b6d-c0a1-98df-0a255f1ba6b6",
+                        "fromProperty": "Content",
+                        "toId": "ee74c698-d559-7cb2-f122-493d680833c7",
+                        "toProperty": "Html"
+                    },
+                    {
+                        "fromId": "8c98455e-d315-ceb0-38a7-10051ac50589",
+                        "fromProperty": "From",
+                        "toId": "ee74c698-d559-7cb2-f122-493d680833c7",
+                        "toProperty": "From"
+                    },
+                    {
+                        "fromId": "ee74c698-d559-7cb2-f122-493d680833c7",
+                        "fromProperty": "Success",
+                        "toId": "e7fbb842-21da-8fcd-2505-a436e79976b6",
+                        "toProperty": "send"
+                    },
+                    {
+                        "fromId": "56c643d4-e344-ea62-62d8-844ab2c889f8",
+                        "fromProperty": "Email",
+                        "toId": "ee74c698-d559-7cb2-f122-493d680833c7",
+                        "toProperty": "To"
+                    },
+                    {
+                        "fromId": "939c13c1-ccfb-cba2-ccc6-b37b5346aac3",
+                        "fromProperty": "receive",
+                        "toId": "8c98455e-d315-ceb0-38a7-10051ac50589",
+                        "toProperty": "Fetch"
+                    },
+                    {
+                        "fromId": "8c98455e-d315-ceb0-38a7-10051ac50589",
+                        "fromProperty": "Ready",
+                        "toId": "56c643d4-e344-ea62-62d8-844ab2c889f8",
+                        "toProperty": "Do"
+                    },
+                    {
+                        "fromId": "8c98455e-d315-ceb0-38a7-10051ac50589",
+                        "fromProperty": "Failure",
+                        "toId": "e3f1d45e-d1b1-74da-2f73-869a80f684a9",
+                        "toProperty": "send"
+                    },
+                    {
+                        "fromId": "8c98455e-d315-ceb0-38a7-10051ac50589",
+                        "fromProperty": "Domain",
+                        "toId": "9cecd992-6b6d-c0a1-98df-0a255f1ba6b6",
+                        "toProperty": "Domain"
+                    },
+                    {
+                        "fromId": "56c643d4-e344-ea62-62d8-844ab2c889f8",
+                        "fromProperty": "Success",
+                        "toId": "9cecd992-6b6d-c0a1-98df-0a255f1ba6b6",
+                        "toProperty": "Do"
+                    },
+                    {
+                        "fromId": "9cecd992-6b6d-c0a1-98df-0a255f1ba6b6",
+                        "fromProperty": "Done",
+                        "toId": "ee74c698-d559-7cb2-f122-493d680833c7",
+                        "toProperty": "Do"
+                    }
+                ],
+                "roots": [
+                    {
+                        "id": "939c13c1-ccfb-cba2-ccc6-b37b5346aac3",
+                        "type": "noodl.cloud.request",
+                        "x": -338.5,
+                        "y": -1,
+                        "parameters": {
+                            "params": "Email",
+                            "allowNoAuth": true
+                        },
+                        "ports": [],
+                        "dynamicports": [
+                            {
+                                "type": "*",
+                                "plug": "output",
+                                "group": "Parameters",
+                                "name": "pm-Email",
+                                "displayName": "Email",
+                                "index": 5
+                            }
+                        ],
+                        "children": []
+                    },
+                    {
+                        "id": "56c643d4-e344-ea62-62d8-844ab2c889f8",
+                        "type": "/#__cloud__/Sign Up/Actions/Request Password Reset",
+                        "x": -31.331412334300467,
+                        "y": -85.34539911996973,
+                        "parameters": {},
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "ee74c698-d559-7cb2-f122-493d680833c7",
+                        "type": "/#__cloud__/SendGrid/Send Email",
+                        "x": 516.0041436197805,
+                        "y": 17.789483702787834,
+                        "parameters": {
+                            "Subject": "Reset password!"
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "db245435-4f8a-505f-e6b1-ffe22ec62163",
+                        "type": "noodl.cloud.response",
+                        "label": "Failed to send.",
+                        "x": 803.9548008883562,
+                        "y": -133.9712167400026,
+                        "parameters": {
+                            "status": "failure",
+                            "errorMessage": "Failed to send email."
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "9cecd992-6b6d-c0a1-98df-0a255f1ba6b6",
+                        "type": "/#__cloud__/Sign Up/Actions/Format Email",
+                        "x": 227.34596006273915,
+                        "y": 135.57867635902608,
+                        "parameters": {
+                            "Content": "Follow this <a href=\"$Domain/reset-password?token={Token}&email={Email}\">link</a> to reset your password."
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "8c98455e-d315-ceb0-38a7-10051ac50589",
+                        "type": "/#__cloud__/Sign Up/Settings",
+                        "x": 525.555069558457,
+                        "y": 253.45719202174,
+                        "parameters": {},
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "e7fbb842-21da-8fcd-2505-a436e79976b6",
+                        "type": "noodl.cloud.response",
+                        "x": 819.3380936325054,
+                        "y": 141.58478937059692,
+                        "parameters": {},
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "e3f1d45e-d1b1-74da-2f73-869a80f684a9",
+                        "type": "noodl.cloud.response",
+                        "label": "Backend not configured",
+                        "x": 785.555069558457,
+                        "y": 343.45719202174,
+                        "parameters": {
+                            "status": "failure",
+                            "errorMessage": "This function is not configured on this server. See the prefab README."
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": []
+                    }
+                ]
+            },
+            "metadata": {
+                "isFolderComponent": false
+            }
+        },
+        {
+            "name": "/#__cloud__/Sign Up/Reset Password",
+            "id": "96b94de0-c1f7-ff08-6063-3c4086e56551",
+            "graph": {
+                "connections": [
+                    {
+                        "fromId": "7613f5a7-ca15-296f-6ff4-e98dd5da56f3",
+                        "fromProperty": "pm-Token",
+                        "toId": "9e68e41e-758c-4ffd-0631-d7e1b421a045",
+                        "toProperty": "Token"
+                    },
+                    {
+                        "fromId": "7613f5a7-ca15-296f-6ff4-e98dd5da56f3",
+                        "fromProperty": "pm-Email",
+                        "toId": "9e68e41e-758c-4ffd-0631-d7e1b421a045",
+                        "toProperty": "Email"
+                    },
+                    {
+                        "fromId": "7613f5a7-ca15-296f-6ff4-e98dd5da56f3",
+                        "fromProperty": "pm-New Password",
+                        "toId": "9e68e41e-758c-4ffd-0631-d7e1b421a045",
+                        "toProperty": "New Password"
+                    },
+                    {
+                        "fromId": "7613f5a7-ca15-296f-6ff4-e98dd5da56f3",
+                        "fromProperty": "receive",
+                        "toId": "9e68e41e-758c-4ffd-0631-d7e1b421a045",
+                        "toProperty": "Do"
+                    },
+                    {
+                        "fromId": "9e68e41e-758c-4ffd-0631-d7e1b421a045",
+                        "fromProperty": "Success",
+                        "toId": "af9b0fd5-2288-3529-d96c-26066250ed80",
+                        "toProperty": "send"
+                    },
+                    {
+                        "fromId": "9e68e41e-758c-4ffd-0631-d7e1b421a045",
+                        "fromProperty": "Error",
+                        "toId": "a8c97126-1e8c-0161-fd00-7bcbae30705b",
+                        "toProperty": "errorMessage"
+                    },
+                    {
+                        "fromId": "9e68e41e-758c-4ffd-0631-d7e1b421a045",
+                        "fromProperty": "Failure",
+                        "toId": "a8c97126-1e8c-0161-fd00-7bcbae30705b",
+                        "toProperty": "send"
+                    }
+                ],
+                "roots": [
+                    {
+                        "id": "7613f5a7-ca15-296f-6ff4-e98dd5da56f3",
+                        "type": "noodl.cloud.request",
+                        "x": -303.5,
+                        "y": -1,
+                        "parameters": {
+                            "params": "Token,Email,New Password",
+                            "allowNoAuth": true
+                        },
+                        "ports": [],
+                        "dynamicports": [
+                            {
+                                "type": "*",
+                                "plug": "output",
+                                "group": "Parameters",
+                                "name": "pm-Token",
+                                "displayName": "Token",
+                                "index": 5
+                            },
+                            {
+                                "type": "*",
+                                "plug": "output",
+                                "group": "Parameters",
+                                "name": "pm-Email",
+                                "displayName": "Email",
+                                "index": 6
+                            },
+                            {
+                                "type": "*",
+                                "plug": "output",
+                                "group": "Parameters",
+                                "name": "pm-New Password",
+                                "displayName": "New Password",
+                                "index": 7
+                            }
+                        ],
+                        "children": []
+                    },
+                    {
+                        "id": "af9b0fd5-2288-3529-d96c-26066250ed80",
+                        "type": "noodl.cloud.response",
+                        "x": 288.5,
+                        "y": -52,
+                        "parameters": {},
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "9e68e41e-758c-4ffd-0631-d7e1b421a045",
+                        "type": "/#__cloud__/Sign Up/Actions/Reset Password",
+                        "x": -23.5,
+                        "y": 9,
+                        "parameters": {},
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "a8c97126-1e8c-0161-fd00-7bcbae30705b",
+                        "type": "noodl.cloud.response",
+                        "x": 291.5,
+                        "y": 81,
+                        "parameters": {
+                            "status": "failure"
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": []
+                    }
+                ]
+            },
+            "metadata": {
+                "isFolderComponent": false
+            }
+        },
+        {
+            "name": "/#__cloud__/Sign Up/Send Verification Email",
+            "id": "635c6768-b722-1f41-35c8-ab0ce1fb36e2",
+            "graph": {
+                "connections": [
+                    {
+                        "fromId": "a218dbf7-5d06-b272-a459-c7c86d70e405",
+                        "fromProperty": "Success",
+                        "toId": "a0ffadf8-174a-7f46-0fb2-15395bc5f7b6",
+                        "toProperty": "send"
+                    },
+                    {
+                        "fromId": "adfe2011-3e94-923c-a789-47e21b132efa",
+                        "fromProperty": "Email",
+                        "toId": "a218dbf7-5d06-b272-a459-c7c86d70e405",
+                        "toProperty": "To"
+                    },
+                    {
+                        "fromId": "adfe2011-3e94-923c-a789-47e21b132efa",
+                        "fromProperty": "Email Is Verified",
+                        "toId": "1e24e34e-778f-a1aa-fcdf-894fd34909cd",
+                        "toProperty": "send"
+                    },
+                    {
+                        "fromId": "a218dbf7-5d06-b272-a459-c7c86d70e405",
+                        "fromProperty": "Failure",
+                        "toId": "13c79a81-eb94-3e86-ec32-07caa801cbf4",
+                        "toProperty": "send"
+                    },
+                    {
+                        "fromId": "adfe2011-3e94-923c-a789-47e21b132efa",
+                        "fromProperty": "Token",
+                        "toId": "189f5614-1bf8-5093-3f35-0070c3f2822f",
+                        "toProperty": "Token"
+                    },
+                    {
+                        "fromId": "adfe2011-3e94-923c-a789-47e21b132efa",
+                        "fromProperty": "Email",
+                        "toId": "189f5614-1bf8-5093-3f35-0070c3f2822f",
+                        "toProperty": "Email"
+                    },
+                    {
+                        "fromId": "189f5614-1bf8-5093-3f35-0070c3f2822f",
+                        "fromProperty": "Content",
+                        "toId": "a218dbf7-5d06-b272-a459-c7c86d70e405",
+                        "toProperty": "Html"
+                    },
+                    {
+                        "fromId": "693fe2de-f5cd-804f-2eef-4617309f0af6",
+                        "fromProperty": "From",
+                        "toId": "a218dbf7-5d06-b272-a459-c7c86d70e405",
+                        "toProperty": "From"
+                    },
+                    {
+                        "fromId": "a45c8fe9-d7c8-85f2-f95d-a958f1da17b3",
+                        "fromProperty": "receive",
+                        "toId": "693fe2de-f5cd-804f-2eef-4617309f0af6",
+                        "toProperty": "Fetch"
+                    },
+                    {
+                        "fromId": "693fe2de-f5cd-804f-2eef-4617309f0af6",
+                        "fromProperty": "Ready",
+                        "toId": "adfe2011-3e94-923c-a789-47e21b132efa",
+                        "toProperty": "Do"
+                    },
+                    {
+                        "fromId": "693fe2de-f5cd-804f-2eef-4617309f0af6",
+                        "fromProperty": "Failure",
+                        "toId": "9bbdcff6-2104-592e-1e6f-9439b1dbcf78",
+                        "toProperty": "send"
+                    },
+                    {
+                        "fromId": "693fe2de-f5cd-804f-2eef-4617309f0af6",
+                        "fromProperty": "Domain",
+                        "toId": "189f5614-1bf8-5093-3f35-0070c3f2822f",
+                        "toProperty": "Domain"
+                    },
+                    {
+                        "fromId": "adfe2011-3e94-923c-a789-47e21b132efa",
+                        "fromProperty": "Done",
+                        "toId": "189f5614-1bf8-5093-3f35-0070c3f2822f",
+                        "toProperty": "Do"
+                    },
+                    {
+                        "fromId": "189f5614-1bf8-5093-3f35-0070c3f2822f",
+                        "fromProperty": "Done",
+                        "toId": "a218dbf7-5d06-b272-a459-c7c86d70e405",
+                        "toProperty": "Do"
+                    }
+                ],
+                "roots": [
+                    {
+                        "id": "a45c8fe9-d7c8-85f2-f95d-a958f1da17b3",
+                        "type": "noodl.cloud.request",
+                        "x": -407.5,
+                        "y": -86,
+                        "parameters": {},
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "a0ffadf8-174a-7f46-0fb2-15395bc5f7b6",
+                        "type": "noodl.cloud.response",
+                        "x": 566.5,
+                        "y": -150,
+                        "parameters": {},
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "adfe2011-3e94-923c-a789-47e21b132efa",
+                        "type": "/#__cloud__/Sign Up/Actions/Request Email Verification",
+                        "x": -169.5,
+                        "y": -125,
+                        "parameters": {},
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "a218dbf7-5d06-b272-a459-c7c86d70e405",
+                        "type": "/#__cloud__/SendGrid/Send Email",
+                        "x": 298.5,
+                        "y": -91,
+                        "parameters": {
+                            "Subject": "Email verification!"
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "1e24e34e-778f-a1aa-fcdf-894fd34909cd",
+                        "type": "noodl.cloud.response",
+                        "label": "Email is already verified",
+                        "x": 85.5,
+                        "y": -216,
+                        "parameters": {
+                            "status": "failure",
+                            "errorMessage": "Email already verified."
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "13c79a81-eb94-3e86-ec32-07caa801cbf4",
+                        "type": "noodl.cloud.response",
+                        "x": 575.6666666666666,
+                        "y": -14.333333333333371,
+                        "parameters": {
+                            "status": "failure"
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "189f5614-1bf8-5093-3f35-0070c3f2822f",
+                        "type": "/#__cloud__/Sign Up/Actions/Format Email",
+                        "x": 53.095238095238074,
+                        "y": 39.38095238095235,
+                        "parameters": {
+                            "Content": "Welcome to my app! \n\nPlease <a href=\"$Domain/verify-email?token={Token}&email={Email}\">verify</a> your email.\n\nCheers"
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "693fe2de-f5cd-804f-2eef-4617309f0af6",
+                        "type": "/#__cloud__/Sign Up/Settings",
+                        "x": 306.6802721088435,
+                        "y": 168.14965986394554,
+                        "parameters": {},
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "9bbdcff6-2104-592e-1e6f-9439b1dbcf78",
+                        "type": "noodl.cloud.response",
+                        "label": "Backend not configured",
+                        "x": 566.6802721088435,
+                        "y": 258.14965986394554,
+                        "parameters": {
+                            "status": "failure",
+                            "errorMessage": "This function is not configured on this server. See the prefab README."
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": []
+                    }
+                ]
+            },
+            "metadata": {
+                "isFolderComponent": false
+            }
+        },
+        {
+            "name": "/#__cloud__/Sign Up/Settings",
+            "id": "aad3afdb-1eb9-b910-3c5a-38bbfc1f158f",
+            "graph": {
+                "connections": [
+                    {
+                        "fromId": "af8eb06d-c55d-67b0-56fc-3607001da3e7",
+                        "fromProperty": "value",
+                        "toId": "5da39371-0d29-efce-65b8-bbbf5a07541b",
+                        "toProperty": "Domain"
+                    },
+                    {
+                        "fromId": "aa256ca6-ba6d-4cd7-20e4-6eab452197df",
+                        "fromProperty": "value",
+                        "toId": "5da39371-0d29-efce-65b8-bbbf5a07541b",
+                        "toProperty": "From"
+                    },
+                    {
+                        "fromId": "bcde75a0-c5e7-466c-ba86-4b5a36b76fe2",
+                        "fromProperty": "Fetch",
+                        "toId": "af8eb06d-c55d-67b0-56fc-3607001da3e7",
+                        "toProperty": "fetch"
+                    },
+                    {
+                        "fromId": "af8eb06d-c55d-67b0-56fc-3607001da3e7",
+                        "fromProperty": "done",
+                        "toId": "aa256ca6-ba6d-4cd7-20e4-6eab452197df",
+                        "toProperty": "fetch"
+                    },
+                    {
+                        "fromId": "aa256ca6-ba6d-4cd7-20e4-6eab452197df",
+                        "fromProperty": "done",
+                        "toId": "5da39371-0d29-efce-65b8-bbbf5a07541b",
+                        "toProperty": "Ready"
+                    },
+                    {
+                        "fromId": "af8eb06d-c55d-67b0-56fc-3607001da3e7",
+                        "fromProperty": "failure",
+                        "toId": "5da39371-0d29-efce-65b8-bbbf5a07541b",
+                        "toProperty": "Failure"
+                    },
+                    {
+                        "fromId": "aa256ca6-ba6d-4cd7-20e4-6eab452197df",
+                        "fromProperty": "failure",
+                        "toId": "5da39371-0d29-efce-65b8-bbbf5a07541b",
+                        "toProperty": "Failure"
+                    }
+                ],
+                "roots": [
+                    {
+                        "id": "5da39371-0d29-efce-65b8-bbbf5a07541b",
+                        "type": "Component Outputs",
+                        "x": 681,
+                        "y": -80,
+                        "parameters": {},
+                        "ports": [
+                            {
+                                "name": "Domain",
+                                "plug": "input",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "index": 1
+                            },
+                            {
+                                "name": "From",
+                                "plug": "input",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "index": 2
+                            },
+                            {
+                                "name": "Ready",
+                                "plug": "input",
+                                "type": "*",
+                                "index": 2
+                            },
+                            {
+                                "name": "Failure",
+                                "plug": "input",
+                                "type": "*",
+                                "index": 3
+                            }
+                        ],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "af8eb06d-c55d-67b0-56fc-3607001da3e7",
+                        "type": "noodl.cloud.secret",
+                        "x": 349.9831106025293,
+                        "y": -197.26240695362657,
+                        "parameters": {
+                            "name": "EMAIL_VERIFICATION_DOMAIN"
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": [],
+                        "label": "EMAIL_VERIFICATION_DOMAIN"
+                    },
+                    {
+                        "id": "aa256ca6-ba6d-4cd7-20e4-6eab452197df",
+                        "type": "noodl.cloud.secret",
+                        "x": 350.98413699479727,
+                        "y": -38.09921058299159,
+                        "parameters": {
+                            "name": "EMAIL_VERIFICATION_FROM"
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": [],
+                        "label": "EMAIL_VERIFICATION_FROM"
+                    },
+                    {
+                        "id": "bcde75a0-c5e7-466c-ba86-4b5a36b76fe2",
+                        "type": "Component Inputs",
+                        "x": 49.98311060252928,
+                        "y": -197.26240695362657,
+                        "parameters": {},
+                        "ports": [
+                            {
+                                "name": "Fetch",
+                                "plug": "output",
+                                "type": "*",
+                                "index": 0
+                            }
+                        ],
+                        "dynamicports": [],
+                        "children": []
+                    }
+                ]
+            },
+            "metadata": {
+                "isFolderComponent": false
+            }
+        },
+        {
+            "name": "/#__cloud__/Sign Up/Verify Email",
+            "id": "8d53d699-8d97-6ac0-34cf-cb440764d5d1",
+            "graph": {
+                "connections": [
+                    {
+                        "fromId": "510c0992-9177-b2ff-d448-d0a967ec6675",
+                        "fromProperty": "receive",
+                        "toId": "7485bb51-8c90-9c17-1ffa-ebb59aad4359",
+                        "toProperty": "Do"
+                    },
+                    {
+                        "fromId": "510c0992-9177-b2ff-d448-d0a967ec6675",
+                        "fromProperty": "pm-Token",
+                        "toId": "7485bb51-8c90-9c17-1ffa-ebb59aad4359",
+                        "toProperty": "Token"
+                    },
+                    {
+                        "fromId": "510c0992-9177-b2ff-d448-d0a967ec6675",
+                        "fromProperty": "pm-Email",
+                        "toId": "7485bb51-8c90-9c17-1ffa-ebb59aad4359",
+                        "toProperty": "Email"
+                    },
+                    {
+                        "fromId": "7485bb51-8c90-9c17-1ffa-ebb59aad4359",
+                        "fromProperty": "Success",
+                        "toId": "d06dd513-ffd0-3d00-e4c3-b5421206467d",
+                        "toProperty": "send"
+                    },
+                    {
+                        "fromId": "7485bb51-8c90-9c17-1ffa-ebb59aad4359",
+                        "fromProperty": "Failure",
+                        "toId": "36789ce0-a68a-ec2f-5a8d-5cb511c736e2",
+                        "toProperty": "send"
+                    },
+                    {
+                        "fromId": "7485bb51-8c90-9c17-1ffa-ebb59aad4359",
+                        "fromProperty": "Error",
+                        "toId": "36789ce0-a68a-ec2f-5a8d-5cb511c736e2",
+                        "toProperty": "errorMessage"
+                    }
+                ],
+                "roots": [
+                    {
+                        "id": "510c0992-9177-b2ff-d448-d0a967ec6675",
+                        "type": "noodl.cloud.request",
+                        "x": -253.5,
+                        "y": -34.5,
+                        "parameters": {
+                            "params": "Token,Email",
+                            "allowNoAuth": true
+                        },
+                        "ports": [],
+                        "dynamicports": [
+                            {
+                                "type": "*",
+                                "plug": "output",
+                                "group": "Parameters",
+                                "name": "pm-Token",
+                                "displayName": "Token",
+                                "index": 5
+                            },
+                            {
+                                "type": "*",
+                                "plug": "output",
+                                "group": "Parameters",
+                                "name": "pm-Email",
+                                "displayName": "Email",
+                                "index": 6
+                            }
+                        ],
+                        "children": []
+                    },
+                    {
+                        "id": "7485bb51-8c90-9c17-1ffa-ebb59aad4359",
+                        "type": "/#__cloud__/Sign Up/Actions/Verify Email",
+                        "x": 65.5,
+                        "y": -38.5,
+                        "parameters": {},
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "d06dd513-ffd0-3d00-e4c3-b5421206467d",
+                        "type": "noodl.cloud.response",
+                        "label": "Email verified",
+                        "x": 361.5,
+                        "y": -116.5,
+                        "parameters": {
+                            "status": "success"
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "36789ce0-a68a-ec2f-5a8d-5cb511c736e2",
+                        "type": "noodl.cloud.response",
+                        "label": "Could not verify",
+                        "x": 365.5,
+                        "y": 50.5,
+                        "parameters": {
+                            "status": "failure",
+                            "errorMessage": ""
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": []
+                    }
+                ]
+            },
+            "metadata": {
+                "isFolderComponent": false
+            }
+        }
+    ],
+    "settings": {},
+    "version": "4",
+    "metadata": {
+        "styles": {
+            "text": {},
+            "colors": {}
+        }
+    },
+    "variants": []
+}

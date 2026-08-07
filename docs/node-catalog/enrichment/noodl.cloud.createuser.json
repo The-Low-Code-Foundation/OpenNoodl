@@ -1,0 +1,41 @@
+{
+  "typeName": "noodl.cloud.createuser",
+  "summary": "Creates a user account from inside a cloud function, as the system. Cloud-only — it does not exist in the browser.",
+  "description": "Create User writes a new `_User` row on this backend's own database, with the authority of the server rather than of whoever called the function. Set `username` (the identity Log In looks accounts up by), optionally wire `password` and `email`, list any extra columns in `properties` to get one input per name, then pulse `create` (Do). On success `done` fires and `userId` holds the new account's id. It mints no session and returns no session token, so it is not Sign Up and cannot hand a caller a logged-in session for an account it just made. A password that is never wired means no password hash is stored at all — the invite/passwordless account BAK-004 describes — and no password can match until one is set.",
+  "whenToUse": "In a cloud function that provisions accounts: an invite flow, a bulk import, a signup that has to validate something server-side first, or a partner integration that creates users on your behalf. Do NOT use it for a person signing themselves up in your app — that is the browser's Sign Up node, which sets the session as it goes. ⚠️ A function containing this node must carry a `call` rule in the backend's Permissions panel (CWF-017). With no rule the function's Request node decides: `Allow Unauthenticated` ticked means the open internet may create accounts, and unticked means any signed-in user may.",
+  "ports": {
+    "username": "Value; required. The account's identity. A blank one is a `failure`, never a silently-skipped write.",
+    "email": "Value; optional, and NOT checked for uniqueness — this backend's signup route does not check it either.",
+    "password": "Value, connection-only; optional. Hashed by the backend with the same function Log In verifies against. It cannot be set as a parameter, because a typed password would live in the project file a deploy ships.",
+    "emailVerified": "Value; whether the account counts as verified. This node never sends a verification email. Leave it false for an account that should go through the normal verification flow; tick it for one that must be able to log in immediately on a backend with `requireForLogin` on.",
+    "properties": "Edit-only string list. Each name becomes a `prop-<name>` input for one `_User` column. A protected name is a `failure` naming the key, not a silent drop.",
+    "create": "Signal (Do); creates the account. Nothing is written until this fires.",
+    "userId": "Value; the new account's id after `done`, or the EXISTING account's id after `unchanged`. Blank after `failure`.",
+    "done": "Signal; fires once the account exists.",
+    "unchanged": "Signal; fires when a user with this username already exists. This is the specific 'already exists' branch — `userId` carries the existing account, so a provisioning function is idempotent in one wire.",
+    "failure": "Signal; fires when the account could not be created. `error` says why.",
+    "completed": "Signal; fires after every attempt, whatever the outcome.",
+    "error": "Value; why the last attempt failed. It never contains a password or a hash.",
+    "treatUnchangedAs": "Edit-only enum; set it to Failure in a project whose idiom is that a duplicate signup is a bug."
+  },
+  "runtimeBehavior": "Every name listed in the `properties` parameter mints one input port called `prop-<name>`, in the Properties group, typed `*`. The set is derived from that parameter alone — nothing is discovered from the backend's `_User` schema, and no editor connection or running backend is involved — so an authoring tool can compute the port list from the project file exactly as the editor does. Names are de-duplicated and blanks dropped. A `prop-` name the backend refuses (objectId, createdAt, updatedAt, ACL, password, sessionToken, or anything starting with `_`) still mints a port; the refusal happens at run time, on the `failure` branch, with the key named.",
+  "examples": [],
+  "patterns": [
+    "Request `receive` → Create User `create`, with the Request node's parameter outputs wired into `username` and `password`: the ordinary shape of a server-side provisioning function.",
+    "Wire `unchanged` to the same Response as `done` when the function's job is 'make sure this account exists'. `userId` is correct on both branches.",
+    "Wire `failure` somewhere that answers the caller. A function whose only wired path is the happy one hangs until its timeout (CWF-018) the first time a username is taken."
+  ],
+  "antiPatterns": [
+    "Leaving the function without a `call` rule. A cloud function holding this node and answering `public` is account creation for the open internet.",
+    "Returning `userId` from a `public` function on the `unchanged` branch. That turns the function into a username-enumeration oracle: it answers 'this one exists' for any name a caller tries.",
+    "Reaching for this instead of the browser's Sign Up node. Sign Up signs the person in; this deliberately does not, and bolting a Log In onto the response is how a signup flow ends up with two sources of truth for the session."
+  ],
+  "relatedNodes": [
+    "noodl.cloud.updateuser",
+    "noodl.cloud.deleteuser",
+    "noodl.cloud.verifysessiontoken",
+    "noodl.cloud.request",
+    "noodl.cloud.response",
+    "net.noodl.user.SetUserProperties"
+  ]
+}

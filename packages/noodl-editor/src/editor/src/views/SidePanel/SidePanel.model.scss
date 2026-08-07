@@ -1,5 +1,120 @@
+/* PNL-009 — the header's `⋯`.
+ *
+ * The demotion rule itself lives in core-ui (`PanelHeader.module.scss` hides
+ * `[data-panel-chrome="secondary"]` inside `bands.frame-narrow`). Its inverse —
+ * "show the overflow button exactly when the demotable controls are hidden" —
+ * has to live wherever the button is built, and the button is built here. Both
+ * halves therefore query the same container, `panel-frame`, which `BasePanel`
+ * declares; the band's boundary is imported rather than restated so the two
+ * halves cannot drift apart.
+ *
+ * The import is a relative path across packages rather than the `@noodl-core-ui`
+ * webpack alias: no `.scss` in this package resolves a cross-package `@use`
+ * today, and a sass resolution failure is a blank editor rather than a type
+ * error. Not worth the elegance.
+ */
+@use '../../../../../../noodl-core-ui/src/components/sidebar/PanelRow/panel-bands' as bands;
+
 .PanelItem {
   position: relative;
   width: 100%;
   height: 100%;
+}
+
+/* Wrappers, so the demotion tag sits outside `Tooltip`'s block-level trigger
+   div — hiding the button alone would leave that div and the mode group's gap
+   behind. `display: contents` would be neater but Safari/WebKit drops the
+   element from the a11y tree; the editor is Chromium-only, but flex is the
+   boring answer and costs nothing. */
+.ModeControl,
+.ModeOverflow,
+.HideControl {
+  display: flex;
+  align-items: center;
+}
+
+/* POL-003 measured this row as ragged in both axes — 16x16, 24x24, 24x25, 16x16,
+ * with one control 5px high — and normalised it here, locally, with an explicit
+ * `button > span { width: 20px; height: 20px }`, because `size={IconSize.Large}`
+ * changed no pixels at the time.
+ *
+ * POL-013 deleted that block. `Icon.module.scss` now declares the four
+ * `is-size-*` rules, so the row says `size={IconSize.Large}` (20px, the same box
+ * this override picked by hand) and the component owns the size — which is
+ * criterion 3.
+ *
+ * The wrappers stay. They were doing a second job the size prop does not
+ * replace: `display: flex; align-items: center`, which is what centres these
+ * four against each other, because `Tooltip` renders a block-level trigger div
+ * in between and only two of the four controls had a flex wrapper.
+ */
+
+/* The `⋯` is the *replacement* for float and full, so it exists only where they
+   do not. At wide widths an overflow button that duplicates two visible buttons
+   is clutter. */
+.ModeOverflow {
+  display: none;
+}
+
+@include bands.frame-narrow {
+  .ModeOverflow {
+    display: flex;
+  }
+}
+
+/* PNL-009: the panels' own container. A flex child of `SideNavigation .Panel`
+   so the detached bar above it can take its 34px and this can have the rest —
+   the panels themselves are `height: 100%` and need a parent with a real one. */
+.PanelItems {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+}
+
+/* The bar a detached panel wears: what you grab to move a floating card, and
+   the close route the hand-rolled full-screen overlays never had. */
+.DetachedBar {
+  flex: 0 0 34px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0 6px 0 12px;
+  background-color: var(--theme-color-bg-3);
+  border-bottom: 1px solid var(--theme-color-border-default);
+  user-select: none;
+}
+
+.DetachedTitle {
+  font-family: var(--font-family);
+  font-size: 12px;
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--theme-color-fg-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ResizeGrip {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 16px;
+  height: 16px;
+  cursor: nwse-resize;
+  z-index: 1;
+
+  &::after {
+    content: '';
+    position: absolute;
+    right: 3px;
+    bottom: 3px;
+    width: 7px;
+    height: 7px;
+    border-right: 2px solid var(--theme-color-fg-muted);
+    border-bottom: 2px solid var(--theme-color-fg-muted);
+    border-bottom-right-radius: 2px;
+  }
 }

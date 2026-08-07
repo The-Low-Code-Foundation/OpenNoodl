@@ -2,20 +2,53 @@
    Node Graph Editor
    ------------------------------------------------------------------- */
 .nodegrapgeditor-bg {
-  background-color: var(--theme-color-bg-1);
+  /* UIX-005: canvas ground sits on bg-0; the dot grid is painted on the
+     canvas itself (CanvasRenderer) so it pans/zooms with the graph. */
+  background-color: var(--theme-color-bg-0);
   cursor: default;
   overflow: hidden;
 }
 
+/* PAR-003: the component trail is the mock's full-width 38px bottom bar. */
 .nodegraph-component-trail-root {
   position: absolute;
   bottom: 0;
   left: 0;
-  max-width: calc(100% - 68px);
+  right: 0;
+}
+
+/* PAR-003: HUD layer for the AI pill + zoom cluster. Children re-enable
+   pointer events; the layer itself never eats canvas input. */
+.canvas-hud-root {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
 }
 
 #nodegraph-dom-layer {
   position: absolute;
   top: 0;
   left: 0;
+}
+
+/* CAN-002: the wire-label editor. It lives in the DOM layer, which carries the
+   canvas pan/zoom transform, so every length here is in graph units — the
+   browser scales them with everything else. */
+.nodegraph-wire-label-editor {
+  box-sizing: border-box;
+  resize: none;
+  overflow: hidden;
+  padding: 2px 4px;
+  border: 1px solid var(--theme-color-primary);
+  border-radius: 3px;
+  background-color: var(--theme-color-bg-1);
+  color: var(--theme-color-fg-highlight);
+  font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  font-size: 10.5px;
+  line-height: 13px;
+  text-align: center;
+}
+
+.nodegraph-wire-label-editor:focus {
+  outline: none;
 }

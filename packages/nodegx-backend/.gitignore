@@ -1,0 +1,12 @@
+dist/
+node_modules/
+*.tsbuildinfo
+
+# WF-003 deploy working state. The artifact is a build product (rebuild it with
+# `npm run package:deploy`); .env and .deploy-history are machine-local; and
+# secrets/ is where an operator's admin credential file goes — the one directory
+# in this repo that must never be committed.
+deploy/artifact/
+deploy/.env
+deploy/.deploy-history
+deploy/secrets/

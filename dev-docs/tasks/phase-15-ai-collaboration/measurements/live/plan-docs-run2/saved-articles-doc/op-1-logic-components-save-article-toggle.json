@@ -1,0 +1,219 @@
+{
+  "component": {
+    "$schema": "https://opennoodl.dev/schemas/component-v2.json",
+    "id": "8d16f974-c60b-4ba6-96ae-6f9ab0496b9c",
+    "name": "Save Article Toggle",
+    "path": "/Logic Components/Save Article Toggle",
+    "type": "visual",
+    "created": "2026-08-02T17:24:09.307Z",
+    "modified": "2026-08-02T17:24:09.307Z",
+    "modifiedBy": "ai-authoring",
+    "description": "Toggles a SavedArticle record (keyed by userId + Contentful articleId) for the signed-in reader: on Do it checks via a live query whether a SavedArticle exists, creates one if not or deletes it if it does, and reports Success/Failure plus the resulting isSaved status."
+  },
+  "nodes": {
+    "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+    "componentId": "8d16f974-c60b-4ba6-96ae-6f9ab0496b9c",
+    "version": 1,
+    "nodes": [
+      {
+        "id": "in",
+        "type": "Component Inputs",
+        "label": "Inputs",
+        "x": 0,
+        "y": 200,
+        "ports": [
+          {
+            "name": "Do",
+            "plug": "output",
+            "type": "signal"
+          },
+          {
+            "name": "articleId",
+            "plug": "output",
+            "type": "string"
+          }
+        ]
+      },
+      {
+        "id": "user",
+        "type": "net.noodl.user.User",
+        "label": "Current User",
+        "x": 0,
+        "y": 400
+      },
+      {
+        "id": "query",
+        "type": "DbCollection2",
+        "label": "Query SavedArticle",
+        "x": 300,
+        "y": 200,
+        "parameters": {
+          "collectionName": "SavedArticle",
+          "filterFilter": [
+            "userId",
+            "articleId"
+          ],
+          "filterFilterType-userId": "string",
+          "filterFilterOp-userId": "eq",
+          "filterFilterType-articleId": "string",
+          "filterFilterOp-articleId": "eq"
+        }
+      },
+      {
+        "id": "cond",
+        "type": "Condition",
+        "label": "Already Saved?",
+        "x": 600,
+        "y": 200
+      },
+      {
+        "id": "create",
+        "type": "NewDbModelProperties",
+        "label": "Create SavedArticle",
+        "x": 900,
+        "y": 100,
+        "parameters": {
+          "collectionName": "SavedArticle"
+        }
+      },
+      {
+        "id": "del",
+        "type": "DeleteDbModelProperties",
+        "label": "Delete SavedArticle",
+        "x": 900,
+        "y": 320
+      },
+      {
+        "id": "expr",
+        "type": "Expression",
+        "label": "Is Saved",
+        "x": 600,
+        "y": 420,
+        "parameters": {
+          "expression": "!isEmpty"
+        }
+      },
+      {
+        "id": "out",
+        "type": "Component Outputs",
+        "label": "Outputs",
+        "x": 1200,
+        "y": 200,
+        "ports": [
+          {
+            "name": "Success",
+            "plug": "input",
+            "type": "signal"
+          },
+          {
+            "name": "Failure",
+            "plug": "input",
+            "type": "signal"
+          },
+          {
+            "name": "isSaved",
+            "plug": "input",
+            "type": "boolean"
+          }
+        ]
+      }
+    ]
+  },
+  "connections": {
+    "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+    "componentId": "8d16f974-c60b-4ba6-96ae-6f9ab0496b9c",
+    "version": 1,
+    "connections": [
+      {
+        "fromId": "user",
+        "fromProperty": "id",
+        "toId": "query",
+        "toProperty": "filterFilterValue-userId"
+      },
+      {
+        "fromId": "in",
+        "fromProperty": "articleId",
+        "toId": "query",
+        "toProperty": "filterFilterValue-articleId"
+      },
+      {
+        "fromId": "query",
+        "fromProperty": "isEmpty",
+        "toId": "cond",
+        "toProperty": "condition"
+      },
+      {
+        "fromId": "in",
+        "fromProperty": "Do",
+        "toId": "cond",
+        "toProperty": "eval"
+      },
+      {
+        "fromId": "cond",
+        "fromProperty": "ontrue",
+        "toId": "create",
+        "toProperty": "store"
+      },
+      {
+        "fromId": "user",
+        "fromProperty": "id",
+        "toId": "create",
+        "toProperty": "prop-userId"
+      },
+      {
+        "fromId": "in",
+        "fromProperty": "articleId",
+        "toId": "create",
+        "toProperty": "prop-articleId"
+      },
+      {
+        "fromId": "cond",
+        "fromProperty": "onfalse",
+        "toId": "del",
+        "toProperty": "store"
+      },
+      {
+        "fromId": "query",
+        "fromProperty": "firstItemId",
+        "toId": "del",
+        "toProperty": "modelId"
+      },
+      {
+        "fromId": "query",
+        "fromProperty": "isEmpty",
+        "toId": "expr",
+        "toProperty": "isEmpty"
+      },
+      {
+        "fromId": "expr",
+        "fromProperty": "asBoolean",
+        "toId": "out",
+        "toProperty": "isSaved"
+      },
+      {
+        "fromId": "create",
+        "fromProperty": "done",
+        "toId": "out",
+        "toProperty": "Success"
+      },
+      {
+        "fromId": "del",
+        "fromProperty": "done",
+        "toId": "out",
+        "toProperty": "Success"
+      },
+      {
+        "fromId": "create",
+        "fromProperty": "failure",
+        "toId": "out",
+        "toProperty": "Failure"
+      },
+      {
+        "fromId": "del",
+        "fromProperty": "failure",
+        "toId": "out",
+        "toProperty": "Failure"
+      }
+    ]
+  }
+}

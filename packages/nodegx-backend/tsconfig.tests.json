@@ -1,0 +1,19 @@
+{
+  // The specs are outside `tsconfig.json`'s `include` (and explicitly excluded),
+  // so until PLAT-004 nothing typechecked them — the same hole §9 found in
+  // noodl-editor, in a second package. That matters here because this suite is
+  // the closest thing the backend has to a contract test for its HTTP wire: a
+  // wrong type in a spec compiled silently, and 78 of this package's `any`
+  // markers lived in exactly these files.
+  //
+  // Unlike the editor's equivalent, this gate did NOT start at zero — it started
+  // at 32 errors, every one of them a real reachability or nullability mistake
+  // the specs had been carrying unseen.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "types": ["node", "jest"]
+  },
+  "include": ["tests/**/*.ts", "src/**/*"],
+  "exclude": ["node_modules", "dist"]
+}

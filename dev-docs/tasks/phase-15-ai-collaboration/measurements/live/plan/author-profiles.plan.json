@@ -1,0 +1,29 @@
+{
+  "request": "Add author profiles: a page for one author with their photo, bio and the articles they wrote, and make the author name on an article link through to it.",
+  "operations": [
+    {
+      "id": "op-1",
+      "kind": "create",
+      "target": "/Logic Components/Get Author From Slug",
+      "intent": "Given an author slug/id input (in: Slug, Do), query Contentful GraphQL for the author's name, photo, bio, and the list of articles they wrote, exposing outputs (Success, Failure, author) with author fields (name, photo, bio, articles) for use by the Author Profile page."
+    },
+    {
+      "id": "op-2",
+      "kind": "create",
+      "target": "/Pages/Author Profile",
+      "intent": "New page with input pm-slug identifying the author; uses Get Author From Slug to fetch and display the author's photo, bio, and name, plus a list of the articles they wrote, each linking to /Pages/Article via its pm-slug."
+    },
+    {
+      "id": "op-3",
+      "kind": "update",
+      "target": "/Visual Components/Article/Article",
+      "intent": "Make the author name text clickable, navigating to the new /Pages/Author Profile route with the author's slug as pm-slug; requires the author identifier to be available or passed in alongside existing inputs (author, articleId, etc)."
+    },
+    {
+      "id": "op-4",
+      "kind": "update",
+      "target": "/App",
+      "intent": "Register the route for /Pages/Author Profile (e.g. /author/:slug) mapping the pm-slug parameter, alongside the existing /Pages/Article route, so author profile links resolve correctly."
+    }
+  ]
+}

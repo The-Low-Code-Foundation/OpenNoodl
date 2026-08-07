@@ -1,0 +1,374 @@
+/**
+ * BYOB Filter Builder Styles
+ *
+ * Uses design tokens from theme variables
+ */
+
+.ByobFilterBuilder {
+  display: flex;
+  flex-direction: column;
+  background-color: var(--theme-color-bg-2);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.ByobFilterBuilderHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background-color: var(--theme-color-bg-3);
+  border-bottom: 1px solid var(--theme-color-border-default);
+}
+
+.ByobFilterBuilderActions {
+  display: flex;
+  gap: 4px;
+}
+
+.ByobFilterBuilderContent {
+  padding: 8px;
+}
+
+// Filter Group Styles
+.FilterGroup {
+  background-color: var(--theme-color-bg-3);
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: 4px;
+  overflow: hidden;
+
+  &Root {
+    border: none;
+    background: transparent;
+  }
+
+  // Nested groups get progressively lighter borders
+  &[data-depth='1'] {
+    background-color: var(--theme-color-bg-2);
+  }
+
+  &[data-depth='2'] {
+    background-color: var(--theme-color-bg-1);
+  }
+}
+
+.FilterGroupHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 8px;
+  background-color: var(--theme-color-bg-4);
+  border-bottom: 1px solid var(--theme-color-border-default);
+}
+
+.FilterGroupHeaderLeft {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.FilterGroupDragHandle {
+  cursor: grab;
+  padding: 2px 4px;
+  border-radius: 2px;
+  opacity: 0.5;
+  transition: opacity 0.15s ease, background-color 0.15s ease;
+
+  &:hover {
+    opacity: 1;
+    background-color: var(--theme-color-bg-2);
+  }
+
+  &:active {
+    cursor: grabbing;
+  }
+}
+
+.FilterGroupDragging {
+  opacity: 0.5;
+  border-style: dashed !important;
+}
+
+.FilterGroupDragOver {
+  border-color: var(--theme-color-primary) !important;
+  box-shadow: 0 0 0 2px var(--theme-color-primary-25);
+}
+
+.FilterGroupDropIndicator {
+  background-color: var(--theme-color-primary-10);
+  color: var(--theme-color-primary);
+  padding: 8px 12px;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 500;
+  border-bottom: 1px solid var(--theme-color-primary-25);
+}
+
+.FilterGroupCombinator {
+  background-color: var(--theme-color-primary);
+  color: var(--theme-color-fg-on-primary);
+  border: none;
+  padding: 4px 12px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+
+  &:hover {
+    background-color: var(--theme-color-primary-highlight);
+  }
+}
+
+.FilterGroupDelete {
+  opacity: 0.6;
+
+  &:hover {
+    opacity: 1;
+  }
+}
+
+.FilterGroupConditions {
+  padding: 8px;
+}
+
+.FilterGroupCombinatorLabel {
+  text-align: center;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--theme-color-fg-default-shy);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 4px 0;
+}
+
+.FilterGroupEmpty {
+  padding: 16px;
+  text-align: center;
+  color: var(--theme-color-fg-default-shy);
+  font-size: 12px;
+  font-style: italic;
+}
+
+.FilterGroupActions {
+  display: flex;
+  gap: 8px;
+}
+
+// Filter Condition Styles
+.FilterCondition {
+  background-color: var(--theme-color-bg-2);
+  border-radius: 4px;
+  padding: 4px;
+  border: 1px solid transparent;
+  transition: opacity 0.15s ease, border-color 0.15s ease;
+}
+
+.FilterConditionDragging {
+  opacity: 0.5;
+  border-style: dashed !important;
+  border-color: var(--theme-color-border-default) !important;
+}
+
+.FilterConditionDragHandle {
+  cursor: grab;
+  padding: 2px 4px;
+  border-radius: 2px;
+  opacity: 0.4;
+  flex-shrink: 0;
+  transition: opacity 0.15s ease, background-color 0.15s ease;
+
+  &:hover {
+    opacity: 1;
+    background-color: var(--theme-color-bg-3);
+  }
+
+  &:active {
+    cursor: grabbing;
+  }
+}
+
+.FilterConditionFields {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.FilterConditionField {
+  flex: 1;
+  min-width: 120px;
+  max-width: 200px;
+}
+
+.FilterConditionOperator {
+  flex: 1;
+  min-width: 100px;
+  max-width: 180px;
+}
+
+.FilterConditionValue {
+  flex: 2;
+  min-width: 100px;
+}
+
+.FilterConditionValueSmall {
+  flex: 1;
+  min-width: 60px;
+  max-width: 120px;
+}
+
+.FilterConditionBetweenLabel {
+  color: var(--theme-color-fg-default-shy);
+  font-size: 12px;
+  padding: 0 4px;
+}
+
+.FilterConditionDelete {
+  opacity: 0.5;
+  flex-shrink: 0;
+
+  &:hover {
+    opacity: 1;
+  }
+}
+
+// Connect toggle button - switches between static and connected mode
+.FilterConditionConnectToggle {
+  flex-shrink: 0;
+  opacity: 0.6;
+  transition: opacity 0.15s ease, color 0.15s ease;
+
+  &:hover {
+    opacity: 1;
+  }
+}
+
+// Port indicator for connected mode
+.FilterConditionPortIndicator {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 2;
+  min-width: 100px;
+  padding: 6px 10px;
+  background-color: var(--theme-color-primary-10);
+  border: 1px solid var(--theme-color-primary-25);
+  border-radius: 4px;
+  color: var(--theme-color-primary);
+}
+
+.FilterConditionPortDot {
+  color: var(--theme-color-primary);
+}
+
+// BCN-003b: this is a text input now, not a label. `QueryEditor` let the user
+// name the port a connected value arrives on, and two rules naming the same one
+// shared a single input — an affordance auto-generated names do not have, so it
+// was kept for everybody rather than lost with the builder that had it.
+.FilterConditionPortName {
+  flex: 1;
+  min-width: 0;
+  font-family: 'Fira Code', 'Monaco', 'Consolas', monospace;
+  font-size: 11px;
+  font-weight: 500;
+
+  input {
+    font-family: inherit;
+    font-size: inherit;
+    font-weight: inherit;
+    color: var(--theme-color-primary);
+  }
+}
+
+// The chosen backend's own sentence about the chosen operator, straight from
+// its capability descriptor. Character for character the one the translator
+// throws at runtime — the whole reason BCN-003 put the declaration there.
+.FilterConditionCaveat {
+  margin-top: 4px;
+  padding-left: 26px;
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--theme-color-notice);
+}
+
+// JSON Preview Styles
+.ByobFilterBuilderJson {
+  border-top: 1px solid var(--theme-color-border-default);
+  background-color: var(--theme-color-bg-1);
+}
+
+.ByobFilterBuilderJsonHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 12px;
+  background-color: var(--theme-color-bg-2);
+  border-bottom: 1px solid var(--theme-color-border-default);
+}
+
+.ByobFilterBuilderJsonActions {
+  display: flex;
+  gap: 4px;
+}
+
+.ByobFilterBuilderJsonPreview {
+  margin: 0;
+  padding: 12px;
+  font-family: 'Fira Code', 'Monaco', 'Consolas', monospace;
+  font-size: 11px;
+  color: var(--theme-color-fg-default);
+  overflow-x: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.ByobFilterBuilderJsonEditor {
+  width: 100%;
+  min-height: 150px;
+  padding: 12px;
+  font-family: 'Fira Code', 'Monaco', 'Consolas', monospace;
+  font-size: 11px;
+  color: var(--theme-color-fg-default);
+  background-color: var(--theme-color-bg-1);
+  border: none;
+  resize: vertical;
+  outline: none;
+
+  &:focus {
+    outline: 1px solid var(--theme-color-primary);
+  }
+}
+
+.ByobFilterBuilderJsonError {
+  color: var(--theme-color-danger);
+  font-size: 12px;
+}
+
+// Filter Builder Button (compact property panel view)
+.FilterBuilderButton {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background-color: var(--theme-color-bg-3);
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: 4px;
+  padding: 8px 12px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+
+  &:hover {
+    background-color: var(--theme-color-bg-2);
+    border-color: var(--theme-color-border-highlight);
+  }
+}
+
+.FilterBuilderButtonContent {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}

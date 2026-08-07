@@ -1,0 +1,240 @@
+{
+  "name": "import_collide_source",
+  "components": [
+    {
+      "name": "/Cards/ProfileCard",
+      "graph": {
+        "connections": [],
+        "roots": [
+          {
+            "id": "8ff34739-4772-6f75-7000-000000000000",
+            "type": "Group",
+            "x": 200,
+            "y": 150,
+            "parameters": {
+              "fill": "parent"
+            },
+            "ports": [],
+            "dynamicports": [],
+            "children": [
+              {
+                "id": "17156075-2f53-6861-7265-642f42757474",
+                "type": "/Shared/Button",
+                "x": 200,
+                "y": 150,
+                "parameters": {},
+                "ports": [],
+                "dynamicports": [],
+                "children": []
+              },
+              {
+                "id": "b54cda26-2f53-6861-7265-642f42616467",
+                "type": "/Shared/Badge",
+                "x": 200,
+                "y": 150,
+                "parameters": {},
+                "ports": [],
+                "dynamicports": [],
+                "children": []
+              },
+              {
+                "id": "538453d7-496d-6167-6500-000000000000",
+                "type": "Image",
+                "x": 200,
+                "y": 150,
+                "parameters": {
+                  "image": "assets/qa-image.png"
+                },
+                "ports": [],
+                "dynamicports": [],
+                "children": []
+              },
+              {
+                "id": "f1bbcd88-5465-7874-0000-000000000000",
+                "type": "Text",
+                "x": 200,
+                "y": 150,
+                "parameters": {
+                  "text": "Profile",
+                  "textStyle": "Heading"
+                },
+                "ports": [],
+                "dynamicports": [],
+                "children": []
+              }
+            ],
+            "label": "Card root"
+          }
+        ],
+        "visualRoots": []
+      }
+    },
+    {
+      "name": "/Shared/Button",
+      "graph": {
+        "connections": [],
+        "roots": [
+          {
+            "id": "a708a7ae-4772-6f75-7000-000000000000",
+            "type": "Group",
+            "x": 200,
+            "y": 150,
+            "parameters": {
+              "backgroundColor": "Accent",
+              "borderRadius": {
+                "value": 8,
+                "unit": "px"
+              }
+            },
+            "ports": [],
+            "dynamicports": [],
+            "children": [
+              {
+                "id": "cc623a9b-5465-7874-0000-000000000000",
+                "type": "Text",
+                "x": 200,
+                "y": 150,
+                "parameters": {
+                  "text": "Source button label"
+                },
+                "ports": [],
+                "dynamicports": [],
+                "children": []
+              },
+              {
+                "id": "6a99b44c-5465-7874-0000-000000000000",
+                "type": "Text",
+                "x": 200,
+                "y": 150,
+                "parameters": {
+                  "text": "Subtitle"
+                },
+                "ports": [],
+                "dynamicports": [],
+                "children": []
+              },
+              {
+                "id": "08d12dfd-4369-7263-6c65-000000000000",
+                "type": "Circle",
+                "x": 200,
+                "y": 150,
+                "parameters": {},
+                "ports": [],
+                "dynamicports": [],
+                "children": []
+              }
+            ],
+            "label": "Button root"
+          }
+        ],
+        "visualRoots": []
+      }
+    },
+    {
+      "name": "/Shared/Badge",
+      "graph": {
+        "connections": [],
+        "roots": [
+          {
+            "id": "e3779b10-4772-6f75-7000-000000000000",
+            "type": "Group",
+            "x": 200,
+            "y": 150,
+            "parameters": {
+              "backgroundColor": "Accent"
+            },
+            "ports": [],
+            "dynamicports": [],
+            "children": [
+              {
+                "id": "4540215f-5465-7874-0000-000000000000",
+                "type": "Text",
+                "x": 200,
+                "y": 150,
+                "parameters": {
+                  "text": "NEW"
+                },
+                "ports": [],
+                "dynamicports": [],
+                "children": []
+              }
+            ],
+            "label": "Badge root"
+          }
+        ],
+        "visualRoots": []
+      }
+    },
+    {
+      "name": "/Home",
+      "graph": {
+        "connections": [],
+        "roots": [
+          {
+            "id": "2e2ac0ea-4772-6f75-7000-000000000000",
+            "type": "Group",
+            "x": 200,
+            "y": 150,
+            "parameters": {
+              "fill": "parent"
+            },
+            "ports": [],
+            "dynamicports": [],
+            "children": [],
+            "label": "Root"
+          }
+        ],
+        "visualRoots": []
+      }
+    }
+  ],
+  "settings": {
+    "canvasWidth": 1080,
+    "canvasHeight": 1920
+  },
+  "rootNodeId": "2e2ac0ea-4772-6f75-7000-000000000000",
+  "version": "4",
+  "runtimeVersion": "react19",
+  "metadata": {
+    "styles": {
+      "colors": {
+        "Brand": "#FF00AA",
+        "Accent": "#00AAFF"
+      },
+      "text": {
+        "Heading": {
+          "fontFamily": "fonts/QASource.ttf",
+          "fontSize": {
+            "value": "32",
+            "unit": "px"
+          },
+          "color": "#FF00AA"
+        },
+        "Caption": {
+          "fontFamily": "fonts/QASource.ttf",
+          "fontSize": {
+            "value": "12",
+            "unit": "px"
+          },
+          "color": "#00AAFF"
+        }
+      }
+    }
+  },
+  "variants": [
+    {
+      "typename": "Group",
+      "name": "QA Card",
+      "parameters": {
+        "backgroundColor": "Accent",
+        "borderRadius": {
+          "value": 12,
+          "unit": "px"
+        }
+      },
+      "stateParamaters": {},
+      "stateTransitions": {},
+      "defaultStateTransitions": {}
+    }
+  ]
+}

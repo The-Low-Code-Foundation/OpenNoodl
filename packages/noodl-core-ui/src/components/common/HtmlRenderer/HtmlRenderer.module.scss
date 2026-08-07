@@ -36,21 +36,19 @@
     }
 
     a {
-      //color: #d49517;
       font-weight: var(--font-weight-semibold);
       text-decoration: underline;
       color: var(--theme-color-fg-highlight);
     }
 
     a:hover {
-      //color: #fdb314;
       text-decoration: none;
       color: var(--theme-color-fg-highlight);
     }
 
     .language-javascript {
-      color: #eee;
-      background-color: #444;
+      color: var(--theme-color-fg-highlight);
+      background-color: var(--theme-color-bg-4);
       display: block;
       padding: 5px;
       overflow: scroll;
@@ -87,6 +85,30 @@
 
     .ndl-signal {
       color: var(--theme-color-signal);
+    }
+
+    /* ALPHA-006 §1: the node help now comes from the enriched catalog rather
+       than a fetched markdown page, which brought two constructs the fetched
+       pages never used — bullet lists (patterns / anti-patterns) and a lead
+       paragraph carrying the node's one-line summary. */
+    ul {
+      margin: 0.5em 0;
+      padding-left: 1.25em;
+      list-style: disc;
+    }
+
+    li {
+      margin-bottom: 0.25em;
+      line-height: 1.5;
+    }
+
+    .node-docs-summary {
+      color: var(--theme-color-fg-highlight);
+      font-weight: var(--font-weight-semibold);
+    }
+
+    .node-docs-deprecated {
+      color: var(--theme-color-warning);
     }
 
     code {

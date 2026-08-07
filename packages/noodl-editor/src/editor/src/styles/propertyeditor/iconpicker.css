@@ -1,41 +1,69 @@
 .iconpicker-bg {
-  background-color: #222;
+  background-color: var(--theme-color-bg-2);
 }
 
 .iconpicker-header {
-  background-color: #292929;
+  background-color: var(--theme-color-bg-4);
   flex: 0 0 26px;
   line-height: 30px;
   padding-left: 10px;
 }
 
 .iconpicker-search-header {
-  background-color: #292929;
+  background-color: var(--theme-color-bg-4);
 }
 
 .iconpicker-iconset-header {
-  background-color: #292929;
+  background-color: var(--theme-color-bg-4);
   flex: 0 0 26px;
   line-height: 30px;
   padding-left: 10px;
 }
 
 .iconpicker-label {
-  color: #7a7a7a;
+  color: var(--theme-color-fg-muted);
 }
 
 .iconpicker-search-input {
-  background-color: #333333;
-  color: #dddddd;
+  background-color: var(--theme-color-bg-5);
+  color: var(--theme-color-fg-default-contrast);
   border: none;
   display: block;
   padding: 0 0 0 10px;
   box-sizing: border-box;
-  font: 12px var(--font-family-regular);
+  font: 12px var(--font-family);
+}
+
+/*
+ * POL-006 — the way past the curated set.
+ *
+ * A project ships 212 Lucide glyphs out of the 1998 in the bundled font, so the picker is
+ * eventually a dead end and this is where a person meets it. Sits below the sets, in the picker's
+ * own chrome colour so it reads as the picker talking rather than as another set.
+ */
+.iconpicker-footer {
+  background-color: var(--theme-color-bg-4);
+  color: var(--theme-color-fg-muted);
+  flex: 0 0 auto;
+  padding: 8px 10px;
+  line-height: 1.4;
+  border-top: 1px solid var(--theme-color-bg-2);
+}
+
+.iconpicker-footer code {
+  color: var(--theme-color-fg-default-contrast);
+  font-family: var(--font-mono, monospace);
+  overflow-wrap: anywhere;
+}
+
+.iconpicker-empty {
+  color: var(--theme-color-fg-muted);
+  padding: 16px 12px;
+  line-height: 1.4;
 }
 
 .iconpicker-icon {
-  color: white;
+  color: var(--theme-color-fg-highlight);
   width: 24px;
   height: 24px;
   padding: 5px;

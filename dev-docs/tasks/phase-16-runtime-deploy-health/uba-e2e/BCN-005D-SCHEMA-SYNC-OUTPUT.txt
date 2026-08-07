@@ -1,0 +1,47 @@
+
+=== DIRECTUS ===
+  (directus: /relations -> 200)
+  PASS relations stored
+  PASS M2M under the parent alias "tags"
+  PASS M2M junction named
+  PASS M2M two-hop readPath
+  PASS alias field enriched
+  PASS reverse O2M stored
+  PASS no invented column for the reverse O2M
+  (negative control: /relations unauthenticated -> 403)
+  PASS unauthenticated relation fetch is refused (so it MUST be stored at sync time)
+
+=== POSTGREST ===
+  PASS relations stored
+  PASS junction M2M idempotent (pair is the PK)
+  PASS no invented embed column
+
+=== POCKETBASE ===
+  PASS relations stored
+  PASS relation field target resolved via collectionId
+  PASS maxSelect 1 -> many-to-one
+  PASS maxSelect 99 -> many-to-many
+  PASS password field hidden
+  PASS tokenKey hidden
+  PASS email NOT hidden
+  PASS parser alone (no enrichment) resolves the relation target
+  PASS parser alone reads cardinality from maxSelect
+  PASS the schema request asks for the whole collection list, not page 1 of 30
+  (negative control: ?perPage=5 -> 5 of 13 collections)
+  PASS PocketBase really does truncate a collection list
+  (negative control: /api/collections unauthenticated -> 401)
+  PASS unauthenticated collection list is refused
+
+=== PARSE ===
+  PASS Relation -> op write
+
+=== PURE ===
+  PASS a failed Directus relation fetch is undefined, not []
+  PASS a reverse O2M is labelled one-to-many, not many-to-many
+  PASS custom backends have no relation model
+  PASS admin token stripped from an export
+  PASS basic-auth pair stripped from an export
+  PASS public token kept (published on purpose, disclosed on the card)
+  PASS the editor's own copy is not mutated
+
+31 passed, 0 failed

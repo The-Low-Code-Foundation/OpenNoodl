@@ -1,0 +1,199 @@
+# POL-002 — Three real links, and one tab that goes away
+
+**Status:** ✅ **done** (`d9c0f37c`). **All 6 criteria, no residual.** Criteria 1–5 landed
+2026-08-03; criterion 6 — the packaged build — was carried for four sessions as *"human-gated"*,
+which was **wrong**, and it was run and met in the seventh session on 2026-08-04. See the criterion-6
+section at the foot of this file. One defect was found and fixed on the way (`autoupdater.js`'s
+unhandled rejection on every launch, 2 → 0 verified by repackaging).
+
+Covers reported items **1** (hide the Learn tab), **2** (launcher footer links) and **5** (the `?`
+in the editor's bottom-right).
+
+## What was reported
+
+> The learn tab needs to be hidden. With all the changes the lessons are probably fucked until we do
+> the new learn phase later.
+
+> The links at the bottom left of the launcher need to be changed. […] documentation link can be
+> `https://the-low-code-foundation.github.io/opennoodl-docs/` until I find a better domain. YouTube
+> `https://www.youtube.com/@simple-rick-tutorials` and Discord `https://discord.gg/dZw4w5pKf9`.
+
+> In the editor, there's a question mark icon in the bottom right. Change it to just have the same
+> links as the launcher: docs, youtube, discord.
+
+## The mechanism — confirmed
+
+**The Learn tab** is an unconditional entry in
+[`LauncherHeader.tsx:24-29`](../../../packages/noodl-core-ui/src/preview/launcher/Launcher/components/LauncherHeader/LauncherHeader.tsx#L24-L29).
+It routes to `LearningCenter`, fed by a lesson catalogue loaded in
+[`ProjectsPage.tsx:250`](../../../packages/noodl-editor/src/editor/src/pages/ProjectsPage/ProjectsPage.tsx#L250).
+
+**The footer links** are three hardcoded `<FooterLink>` calls at
+[`LauncherFooter.tsx:40-42`](../../../packages/noodl-core-ui/src/preview/launcher/Launcher/components/LauncherFooter/LauncherFooter.tsx#L40-L42):
+`docs.noodl.net`, `youtube.com/@noodlapp`, `discord.gg/noodl`.
+
+**The `?` menu** is [`HelpCenter.tsx`](../../../packages/noodl-editor/src/editor/src/views/HelpCenter/HelpCenter.tsx),
+and it is in worse shape than the footer. It carries:
+
+- an **Algolia search client with a hardcoded app id, API key and index name `docs_2-9`** — Noodl's
+  documentation index, not ours (line 25/47);
+- `docs.noodl.net/${version}/…` in four places, where `version` is `platform.getVersion().slice(0,3)`
+  — i.e. `"0.1"`, so the URLs are `docs.noodl.net/0.1/...` and would 404 even if the domain were ours;
+- `forum.noodl.net` and `noodl.net/support`;
+- a full search modal (`SearchView`, `Hit`) that exists only to drive that Algolia index.
+
+Nothing in this file survives contact with NodeGX.
+
+## What to build
+
+**Slice 1 — one module owns the three links.**
+
+Create a single exported constant — `packages/noodl-core-ui/src/constants/externalLinks.ts` or
+similar — holding:
+
+```ts
+export const EXTERNAL_LINKS = {
+  docs: 'https://the-low-code-foundation.github.io/opennoodl-docs/',
+  youtube: 'https://www.youtube.com/@simple-rick-tutorials',
+  discord: 'https://discord.gg/dZw4w5pKf9'
+} as const;
+```
+
+Both the launcher footer and the `?` menu read it. The domain is explicitly temporary
+("until I find a better domain") — one constant is what makes the next change a one-line change.
+
+**Slice 2 — the footer.** Three `FooterLink`s pointing at the constant. No other change; the layout
+is already right.
+
+**Slice 3 — the `?` menu.** Reduce to three items: Documentation, YouTube, Discord. That means
+deleting:
+
+- the `algoliasearch` import, the `InstantSearch`/`Configure`/`Hits` tree, `SearchView` and `Hit`;
+- the `Modal` and its `isSearchModalVisible` state;
+- every `docs.noodl.net`, `forum.noodl.net` and `noodl.net` URL.
+
+Check whether `algoliasearch` and `react-instantsearch` have any other consumer; if not, drop them
+from `package.json` too. **Verify the packaged build after removing a dependency** — a green dev
+build proves nothing about externals hoisting.
+
+**Slice 4 — the Learn tab.**
+
+Remove the `learn` entry from `HEADER_TABS`. Prefer removal over a feature flag: a flag implies
+someone will flip it, and the lessons need the rebuild that a later phase owns, not a switch.
+
+Leave `LearningCenter.tsx`, `LauncherContext`'s lesson fields and the catalogue loader **in place
+and compiling** — the same convention `router.setup.ts` uses for the shelved Topology and retired
+Data Lineage panels. Add a comment at the removal site saying why and pointing at the future learn
+phase. Confirm nothing else routes to `'learn'` (e.g. a deep link or a saved `activePageId`); if a
+persisted `activePageId` can still be `'learn'`, it must fall back to `'projects'` rather than
+render an empty page.
+
+## What removing Algolia actually found — 2026-08-03
+
+The spec warned that dropping the dependency could break a **packaged** build without breaking the
+dev build. It broke the **type** build instead, in eighteen files that have nothing to do with the
+help menu:
+
+```
+TS2503: Cannot find namespace 'JSX'.
+  DialogLayerModel.tsx, PopupMenu.tsx, SelectStage.tsx, MigratingStep.tsx,
+  ScanningStep.tsx, VariablesSection.tsx, Card.tsx, TreeView.tsx,
+  BasicTreeView.tsx, ConfirmationDialog.hooks.tsx, LauncherApp.tsx,
+  LauncherPage.tsx, DefaultApp.tsx, ToolbarButton.tsx, ErrorBoundary.stories.tsx
+```
+
+`@types/react` **19 no longer declares a global `JSX` namespace** — it lives at `React.JSX` now. The
+only thing in the entire dependency tree still declaring one was
+`instantsearch-ui-components/dist/es/types/Renderer.d.ts`, a transitive dependency of
+`react-instantsearch`:
+
+```ts
+declare global {
+  namespace JSX {
+    interface Element extends VNode {}   // ← Preact's VNode
+```
+
+So every bare `JSX.Element` annotation in the editor and in `noodl-core-ui` was resolving against
+**Preact's** element type, supplied by a search widget library, because a help menu nobody could use
+imported it. It typechecked. It was wrong the whole time.
+
+Fixed by rewriting all 22 annotations to `React.JSX.Element` — the React 19 form — which removes the
+accidental dependency rather than replacing it with a shim of our own. `npx tsc --noEmit` is clean.
+
+**The generalisation, which is the useful part:** a dependency's *ambient* declarations are part of
+your build whether or not you import them. Removing a package can therefore change types in files
+that never referenced it, and the failure surfaces nowhere near the edit. `grep -rl "declare global"`
+over the removed package's tree is the cheap check before believing a dependency is inert.
+
+## Criteria
+
+1. The launcher footer's three links open the three URLs above in an external browser.
+2. The `?` menu shows exactly three items, opening the same three URLs.
+3. No `noodl.net` URL and no Algolia credential remains under `packages/noodl-editor/src` or
+   `packages/noodl-core-ui/src` (excluding `index.bundle.js`, which is a build artifact).
+4. The launcher shows Projects, Templates, GitHub — no Learn.
+5. A stored `activePageId` of `'learn'` lands on Projects, not on nothing.
+6. The **packaged** build still starts after any dependency removal.
+
+## Traps
+
+- `packages/noodl-editor/src/editor/index.bundle.js` is a committed build artifact and contains all
+  the old URLs. Do not edit it; do not count it as a finding either.
+- `HelpCenter` renders through a `Portal` into `.help-center-layer` and returns `null` if that
+  element is absent. If the menu appears to do nothing after the edit, check the portal root before
+  suspecting the menu.
+- Deleting the Algolia dependency is the one part of this task that can break a packaged build
+  without breaking the dev build. See the packaging-traps note.
+
+## Criterion 6 — run, 2026-08-04 (seventh session). It was never human-gated.
+
+It had been carried as *"not run — human-gated"* since this task landed. That was wrong, and the
+distinction matters: **signing, notarisation and publishing need a human; a packaged build does
+not.** `packages/noodl-editor/scripts/build.ts` has an explicit `DISABLE_SIGNING` path that sets
+`CSC_IDENTITY_AUTO_DISCOVERY=false`, precisely so an unsigned build is unsigned *by contract*
+rather than by accident. Nothing in it needs a credential.
+
+Run headlessly, on this session's code:
+
+| step | result |
+|---|---|
+| `webpack.renderer.production` | compiled successfully, 200s, 14.3 MB — **the half the dependency removal could break** |
+| `webpack.main.production` | compiled successfully, 7s |
+| `electron-builder --mac --arm64` | exit 0 → `NodeGX-0.1.0-mac-arm64.dmg` + `.zip`, 182 MB each, both `extraResources` present |
+| **the app starts** | launched with `--remote-debugging-port`; `reactMounted: true`, launcher rendered, 1022 chars of text |
+
+So criterion 6 is **met**. `HUMAN-GATED-ITEMS.md` already covers the part that genuinely is gated
+(A1, Apple Developer ID + notarisation credentials); nothing needed adding to it.
+
+### Do not run `npm run build:editor` in a shared checkout
+
+Its first step is `npx lerna clean --yes`, which deletes `node_modules` across **every** workspace
+package. With another session holding uncommitted work in this checkout that is not an acceptable
+thing to do for a verification run. The three underlying steps above are equivalent for this
+criterion and are non-destructive; run those.
+
+### Algolia is not in the packaged app
+
+`electron-builder` logs a long `duplicate dependency references` list full of `@algolia/*`,
+`algoliasearch`, `instantsearch.js` and `react-instantsearch-core@7.40.0`, which reads like the
+removal having failed. It has not. Those are stale installs still sitting in the hoisted root
+`node_modules` that nobody has pruned; nothing declares them, and
+`NodeGX.app/Contents/Resources/app/node_modules` contains **none** of them. The log line is
+electron-builder reporting what it *found while scanning*, not what it shipped.
+
+### One defect found on the way, and fixed
+
+The packaged app printed an `UnhandledPromiseRejectionWarning` on **every** launch.
+`autoupdater.js` wrapped `autoUpdater.checkForUpdates()` in a `try/catch` — but that call returns a
+**promise**, so the catch could only ever catch a synchronous throw, which it does not do. Every
+failure rejected straight past it. The very first check 404s, because the v0.1.0 release has no
+`latest-mac.yml` (phase 33's known gap), so this fired for every user on every start.
+
+Node has defaulted to `throw` on an unhandled rejection since v15; Electron currently downgrades it
+to a warning, and that downgrade is the only reason this was noise rather than a crash on startup.
+
+The fix attaches a `.catch` that **deliberately does not retry** — the `error` listener below
+already schedules a retry for the same failure, and retrying from both would spawn two checks per
+failure, each failing and spawning two more. Verified by repackaging and relaunching:
+`UnhandledPromiseRejection` count **2 → 0**, with `Error while auto updating, trying again in a
+while...` still logged, so the reporting and retry path is unchanged.

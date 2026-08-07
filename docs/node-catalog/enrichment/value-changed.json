@@ -1,0 +1,19 @@
+{
+  "typeName": "Value Changed",
+  "summary": "Turns value changes into events: fires a signal every time its input receives a different value.",
+  "description": "Value Changed watches one input of any type (`value`, displayed as Input) and fires the `valueChanged` (Value Changed) signal each time the incoming value differs from the last one it saw — including the very first value it receives. Comparison uses strict equality, so for objects and arrays a change means a different reference, not a mutation of the same object. It is the bridge from the value world (levels) to the signal world (events).",
+  "whenToUse": "Use it when something must happen at the moment data changes: restart a debounce Timer while the user types, re-run a Function when a selection changes, or trigger a save when a field updates. If you only need the value itself downstream, connect the value directly — no node needed. If you care about a boolean becoming true specifically, connect the boolean straight to a signal input (rising-edge trigger) instead.",
+  "ports": {
+    "value": "Value input of any type; each strictly-unequal new value fires the output. Object/array mutations without a new reference do not count as changes.",
+    "valueChanged": "Signal; fires once per detected change, including the first value ever received."
+  },
+  "examples": ["logic-autosave-after-typing"],
+  "patterns": [
+    "A text input's `text` → `value`, `valueChanged` → a Timer's `restart`: debounce — the Timer only finishes once typing pauses.",
+    "`valueChanged` → an Event Sender's `sendEvent`: broadcast that a piece of state changed."
+  ],
+  "antiPatterns": [
+    "Using it to detect a boolean turning true — it also fires on true→false. Connect the boolean directly to the target signal input (edge-triggered) or use Condition."
+  ],
+  "relatedNodes": ["Condition", "Switch", "Timer", "Expression"]
+}

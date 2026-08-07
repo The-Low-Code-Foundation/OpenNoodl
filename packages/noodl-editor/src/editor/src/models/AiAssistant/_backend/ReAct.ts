@@ -39,7 +39,10 @@ export abstract class ReActAgent<TParams = unknown> {
         ...history
       ],
       provider: {
-        model: 'gpt-4o-mini',
+        // No model here on purpose: the user's configured model is used, so a
+        // settings change moves the agent loop with everything else. The agent
+        // grammar needs deterministic output, hence temperature 0 — providers
+        // whose models reject sampling parameters drop it.
         temperature: 0
       },
       onStream: (_, text) => {

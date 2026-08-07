@@ -1,0 +1,25 @@
+{
+  "typeName": "Switch",
+  "summary": "A remembered on/off boolean, driven by On / Off / Flip signals — the graph's toggle and one-bit memory.",
+  "description": "Switch stores a single boolean state. The `on` (On), `off` (Off) and `flip` (Flip) signal inputs change it; `onFromStart` (State) is a boolean value input that sets the state directly and provides its initial value (default false). The current state is always readable on the `state` (Current State) boolean value output, and every state change also fires signals: `switched` (Switched) on any change, plus `switchedToOn` or `switchedToOff` matching the new state. `on` and `off` are ignored when the state already matches, so they never re-fire the signals; `flip` always changes state.",
+  "whenToUse": "The idiomatic node for anything a user toggles: expand/collapse, mute, edit mode. Use `state` (a level) to drive `visible`/`enabled`-style inputs, and the switched signals only when something must happen at the moment of change. For more than two states use States; for deriving a boolean from data rather than events, use Condition or Expression.",
+  "ports": {
+    "flip": "Signal; inverts the state and always fires the switched signals.",
+    "on": "Signal; sets the state to true. Does nothing (and fires nothing) if it is already true.",
+    "off": "Signal; sets the state to false. Does nothing (and fires nothing) if it is already false.",
+    "onFromStart": "Boolean value (displayed as State); sets the state directly and defines the initial state. Changing it also fires the switched signals.",
+    "state": "Boolean value that always reflects the current state — wire this to `visible`/`enabled` style inputs.",
+    "switched": "Signal; fires on every state change, after `state` has been updated.",
+    "switchedToOn": "Signal; fires when a change leaves the state true.",
+    "switchedToOff": "Signal; fires when a change leaves the state false."
+  },
+  "examples": ["logic-toggle-details-panel"],
+  "patterns": [
+    "Button `onClick` → `flip`, `state` → a Group's `visible`: the standard show/hide toggle.",
+    "`state` → Boolean To String `input` → the toggling button's `label`: the button describes what it will do next."
+  ],
+  "antiPatterns": [
+    "Wiring `switchedToOn` (a momentary signal) to a boolean input like `visible` — it delivers only a pulse; use `state` for anything that must stay on."
+  ],
+  "relatedNodes": ["Condition", "States", "Inverter", "Boolean To String", "Value Changed"]
+}

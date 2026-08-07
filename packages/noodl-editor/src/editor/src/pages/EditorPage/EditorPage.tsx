@@ -3,24 +3,23 @@ import { ProjectDesignTokenContextProvider } from '@noodl-contexts/ProjectDesign
 import { useKeyboardCommands } from '@noodl-hooks/useKeyboardCommands';
 import { useModel } from '@noodl-hooks/useModel';
 import { ipcRenderer } from 'electron';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { platform } from '@noodl/platform';
 
+import { peekPendingScopePlan } from '@noodl-models/AiAssistant/scoping/pendingPlan';
 import { App } from '@noodl-models/app';
 import { AppRegistry } from '@noodl-models/app_registry';
-import { CloudService } from '@noodl-models/CloudServices';
 import { NodeLibraryImporter } from '@noodl-models/nodelibrary/NodeLibraryImporter';
 import { ProjectModel } from '@noodl-models/projectmodel';
 import { projectFromDirectory, unzipIntoDirectory } from '@noodl-models/projectmodel.editor';
 import { SidebarModel } from '@noodl-models/sidebar';
 import { SidebarModelEvent } from '@noodl-models/sidebar/sidebarmodel';
 import { UndoQueue } from '@noodl-models/undo-queue-model';
-import { exportProjectComponents } from '@noodl-utils/exportProjectComponets';
+import { exportProjectComponents } from '@noodl-utils/exportProjectComponents';
 import FileSystem from '@noodl-utils/filesystem';
 import { KeyCode, KeyMod } from '@noodl-utils/keyboard/KeyCode';
 import { LocalProjectsModel } from '@noodl-utils/LocalProjectsModel';
-import ParseDashboardServer from '@noodl-utils/parsedashboardserver';
-import ProjectImporter from '@noodl-utils/projectimporter';
+import { migrateExternalBrokersStorage } from '@noodl-utils/migrateExternalBrokersStorage';
 import ProjectValidator from '@noodl-utils/projectvalidator';
 import SchemaHandler from '@noodl-utils/schemahandler';
 import { guid } from '@noodl-utils/utils';
@@ -33,21 +32,18 @@ import { EventDispatcher } from '../../../../shared/utils/EventDispatcher';
 import { installSidePanel, installDocuments } from '../../router.setup';
 import { ViewerConnection } from '../../ViewerConnection';
 import { Frame } from '../../views/common/Frame';
-import ImportPopup from '../../views/importpopup';
+import { ImportFlowCancelled, openImportFlow } from '../../views/ImportFlow';
 import { LessonLayer } from '../../views/lessonlayer2';
-import { NodePickerClearNews } from '../../views/NodePicker/NodePicker.hooks';
 import PopupLayer from '../../views/popuplayer';
+import { AiAuthoringPanel_ID } from '../../views/panels/AiAuthoringPanel';
 import { SidePanel } from '../../views/SidePanel';
 import { ToastLayer } from '../../views/ToastLayer/ToastLayer';
 import { BaseWindow } from '../../views/windows/BaseWindow';
 import { whatsnewRender } from '../../whats-new';
 import { IRouteProps } from '../AppRoute';
 import { useSetupSettings } from './useSetupSettings';
+import { SidePanelLayoutProvider, useSidePanelLayout } from './useSidePanelLayout';
 
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const ImportOverwritePopupTemplate = require('../../templates/importoverwritepopup.html');
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const ImportPopupTemplate = require('../../templates/importpopup.html');
 
 if (import.meta.webpackHot) {
   import.meta.webpackHot.accept('../../router.setup', () => {
@@ -81,28 +77,42 @@ export function EditorPage({ route }: EditorPageProps) {
   const Document = appRegistry.getActiveDocument();
 
   const [lesson, setLesson] = useState(null);
-  const [frameDividerSize, setFrameDividerSize] = useState(undefined);
+
+  // PNL-003: the side panel's width. This replaces an effect that reset the
+  // width to 380px on every `activeChanged` *and* every `window.resize`, and
+  // never persisted it — the reset loop behind "I'm constantly expanding and
+  // shrinking the side panel". Width is now per panel, per project, and stays.
+  const sidePanelLayout = useSidePanelLayout();
+
+  // `useKeyboardCommands` registers once on mount, so the handlers below read
+  // the layout through a ref rather than closing over the first render's copy.
+  const sidePanelLayoutRef = useRef(sidePanelLayout);
+  sidePanelLayoutRef.current = sidePanelLayout;
 
   useEffect(() => {
     // Display latest whats-new-post if the user hasn't seen one after it was last published
     whatsnewRender();
 
-    NodePickerClearNews();
+    // UIX-013: the node picker's news carousel is gone — its right pane
+    // previews the node you are about to place instead of a product promo — so
+    // there is no longer a slide index to reset here.
 
     SchemaHandler.instance = new SchemaHandler();
 
-    if (!ProjectModel.instance.isLesson()) {
-      CloudService.instance.prefetch();
-    }
+    // WF-007: one-time cleanup of the retired Cloud Services panel's local
+    // storage (scrubs stored master keys). Safe to call every editor mount —
+    // it's a no-op after the first run.
+    migrateExternalBrokersStorage();
 
     setupSidePanels();
     installDocuments();
 
+    // AIB-005's "open the Build panel when a plan is waiting" lives in
+    // `useSetupSettings`, which owns the initial panel — putting it here meant
+    // two switch calls in one mount, and this one lost.
+
     const eventGroup = {};
 
-    // Docs layer
-    //DocsLayer.instance.render();
-    //$('body').append(DocsLayer.instance.el);
     //broadcast new project name over udp to noodl-shells on the same network
     ipcRenderer.send('project-opened', ProjectModel.instance.name);
 
@@ -140,11 +150,6 @@ export function EditorPage({ route }: EditorPageProps) {
         SchemaHandler.instance = null;
       }
 
-      //stop parse dashboard if it's running
-      ParseDashboardServer.instance.stop();
-
-      // Reset the cloud services token, since the tokens are per project.
-      CloudService.instance.reset();
       SidebarModel.instance.reset();
 
       UndoQueue.instance.clear();
@@ -161,10 +166,6 @@ export function EditorPage({ route }: EditorPageProps) {
       keybinding: KeyMod.CtrlCmd | KeyCode.KEY_D
     },
     {
-      handler: () => ipcRenderer.send('cloud-runtime-open-devtools'),
-      keybinding: KeyMod.CtrlCmd | KeyMod.Shift | KeyCode.KEY_R
-    },
-    {
       handler: () => EventDispatcher.instance.emit('viewer-refresh'),
       keybinding: KeyMod.CtrlCmd | KeyCode.KEY_R
     },
@@ -173,7 +174,6 @@ export function EditorPage({ route }: EditorPageProps) {
       handler: () => {
         NodeLibraryImporter.instance.clear();
         EventDispatcher.instance.emit('viewer-refresh');
-        ipcRenderer.send('cloud-runtime-refresh');
 
         ToastLayer.showInteraction('Refresh Node Library and viewers');
       },
@@ -184,22 +184,17 @@ export function EditorPage({ route }: EditorPageProps) {
       keybinding: KeyMod.CtrlCmd | KeyMod.Shift | KeyCode.KEY_E
     },
     {
-      handler: async () => {
-        const environment = await CloudService.instance.getActiveEnvironment(ProjectModel.instance);
-        if (environment) {
-          ParseDashboardServer.instance.openInWindow(environment);
-        }
-      },
-      keybinding: KeyMod.CtrlCmd | KeyMod.Shift | KeyCode.KEY_P
+      // PNL-003: widen the panel and back. `KeyboardHandler` declines to run
+      // commands while a *text* field has focus, so this does not fire while
+      // you are typing in a panel field — but it does still fire right after
+      // you clicked the rail icon or the header button, which in Chromium
+      // leaves that button focused (F21).
+      handler: () => sidePanelLayoutRef.current.toggleWide(),
+      keybinding: KeyMod.CtrlCmd | KeyCode.US_BACKSLASH
     },
     {
-      handler: async () => {
-        const environment = await CloudService.instance.getActiveEnvironment(ProjectModel.instance);
-        if (environment) {
-          ParseDashboardServer.instance.openInBrowser(environment);
-        }
-      },
-      keybinding: KeyMod.CtrlCmd | KeyCode.KEY_P
+      handler: () => sidePanelLayoutRef.current.toggleHidden(),
+      keybinding: KeyMod.CtrlCmd | KeyCode.KEY_B
     }
   ]);
 
@@ -227,18 +222,25 @@ export function EditorPage({ route }: EditorPageProps) {
           {isLoading ? (
             <ActivityIndicator />
           ) : (
-            <>
+            <SidePanelLayoutProvider value={sidePanelLayout}>
               <FrameDivider
                 first={<SidePanel />}
                 second={<ErrorBoundary>{Boolean(Document) && <Document />}</ErrorBoundary>}
-                sizeMin={200}
-                size={frameDividerSize}
+                sizeMin={sidePanelLayout.dividerSizeMin}
+                size={sidePanelLayout.dividerSize}
                 horizontal
-                onSizeChanged={setFrameDividerSize}
+                onDragStart={sidePanelLayout.onDividerDragStart}
+                onDragEnd={sidePanelLayout.onDividerDragEnd}
+                onSizeChanged={sidePanelLayout.onDividerSizeChanged}
+                onDividerDoubleClick={sidePanelLayout.toggleWide}
+                // PNL-009: the detached modes are positioned against the real
+                // editor area rather than a guessed title-bar offset. The
+                // divider already measures exactly that rect.
+                onBoundsChanged={sidePanelLayout.setEditorArea}
               />
 
               {Boolean(lesson) && <Frame instance={lesson} isContentSize isFitWidth />}
-            </>
+            </SidePanelLayoutProvider>
           )}
         </BaseWindow>
       </ProjectDesignTokenContextProvider>
@@ -286,97 +288,29 @@ function importFromUrl(url) {
   });
 }
 
-function _importProject(dirEntry) {
-  const activityId = 'import-project';
-  ToastLayer.showActivity('Importing...', activityId);
-  let selectedImports = {};
-
-  ProjectImporter.instance.listComponentsAndDependencies(dirEntry, function (imports) {
-    if (!imports) {
-      ToastLayer.hideActivity(activityId);
-      ToastLayer.showError('Could not load import project');
-      return;
+/**
+ * Import a project unpacked from a URL. LIB-005: the flow owns selection,
+ * collision resolution and the result summary — including, at last, actually
+ * honouring what the user unticked (the legacy URL path built a collision
+ * dialog and then threw its answer away).
+ */
+function _importProject(dirEntry: string) {
+  openImportFlow({
+    title: 'Import project',
+    subtitle: 'From the downloaded archive',
+    sourceDir: dirEntry,
+    // Historic behaviour: components and files start ticked, everything else
+    // arrives through the dependency closure.
+    initialSelection: ['component', 'resource']
+  }).then(
+    (result) => {
+      if (result.result !== 'success') ToastLayer.showError(result.message ?? 'Import failed');
+    },
+    (err: unknown) => {
+      if (err instanceof ImportFlowCancelled) return;
+      ToastLayer.showError(err instanceof Error ? err.message : 'Import failed');
     }
-
-    // Pre check all imports
-    if (imports.components)
-      imports.components.forEach((i) => {
-        i.import = true;
-      });
-
-    if (imports.resources)
-      imports.resources.forEach((r) => {
-        r.import = true;
-      });
-
-    // Show popup and allow the user to choose which components to import
-    var chooseImportsPopup = new ImportPopup({
-      template: ImportPopupTemplate,
-      imports: imports,
-      onOk: function () {
-        // User have made choice of what to import, check if there are any collisions
-        selectedImports = chooseImportsPopup.getSelectedImports();
-        ProjectImporter.instance.checkForCollisions(selectedImports, function (collisions) {
-          ToastLayer.hideActivity(activityId);
-          if (collisions === undefined) {
-            // No collisions
-            PopupLayer.instance.hideAllModalsAndPopups();
-            doImport(selectedImports);
-          } else {
-            // There is a collision for import, promt user if we should overwrite
-            const overwritePopup = new ImportPopup({
-              template: ImportOverwritePopupTemplate,
-              imports: collisions,
-              onOk: function () {
-                PopupLayer.instance.hideAllModalsAndPopups();
-                doImport(selectedImports);
-              },
-              onCancel: function () {
-                PopupLayer.instance.hideAllModalsAndPopups();
-              }
-            });
-            overwritePopup.render();
-            overwritePopup.el.css('width', '500px'); // Make it a little bit wider as a modal
-
-            PopupLayer.instance.showModal({
-              content: overwritePopup
-            });
-          }
-        });
-      },
-      onCancel: function () {
-        PopupLayer.instance.hideModal();
-      }
-    });
-    chooseImportsPopup.render();
-    chooseImportsPopup.el.css('width', '500px'); // Make it a little bit wider as a modal
-
-    ToastLayer.hideActivity(activityId);
-    PopupLayer.instance.showModal({
-      content: chooseImportsPopup
-    });
-  });
-
-  function doImport(imports) {
-    ToastLayer.showActivity('Importing...', activityId);
-
-    ViewerConnection.instance.setWatchModelChangesEnabled(false);
-    ProjectImporter.instance.import(dirEntry, imports, function (r) {
-      ViewerConnection.instance.setWatchModelChangesEnabled(true);
-      ToastLayer.hideActivity(activityId);
-
-      if (r.result !== 'success') {
-        ToastLayer.showError(r.message);
-        return;
-      }
-
-      ToastLayer.showSuccess('Import successful');
-
-      // Reload the viewer
-      EventDispatcher.instance.emit('ProjectModel.importComplete');
-      EventDispatcher.instance.emit('viewer-refresh');
-    });
-  }
+  );
 }
 
 function reloadProjectFromDisk() {

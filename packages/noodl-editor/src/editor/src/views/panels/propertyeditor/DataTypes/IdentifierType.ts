@@ -1,9 +1,10 @@
-import IdentifierPicker from '../identifierpicker';
-import { TypeView } from '../TypeView';
-import { getEditType } from '../utils';
+import { ProjectModel } from '@noodl-models/projectmodel';
 
-export class IdentifierType extends TypeView {
-  el: TSFixme;
+import { ContentPickerItem } from '../components/ContentPicker';
+import { getEditType } from '../utils';
+import { PickerTypeView } from './PickerTypeView';
+
+export class IdentifierType extends PickerTypeView {
   identifierType: TSFixme;
 
   static fromPort(args) {
@@ -25,52 +26,30 @@ export class IdentifierType extends TypeView {
 
     return view;
   }
-  render() {
-    const _this = this;
 
-    this.el = this.bindView(this.parent.cloneTemplate('identifier'), this);
-    TypeView.prototype.render.call(this);
+  protected openPicker() {
+    const picker = this.openContentPicker({
+      title: this.type.identifierDisplayName || 'Identifiers',
+      sortMode: 'nameDesc'
+    });
 
-    let identifierPicker;
-    this.$('input')
-      .on('focus', function (e) {
-        e.stopPropagation();
-      })
-      .on('click', function (e) {
-        identifierPicker = new IdentifierPicker({
-          title: _this.type.identifierDisplayName || 'Identifiers',
-          identifierType: _this.identifierType,
-          onItemSelected: function (name) {
-            _this.$('input').val(name);
-            _this.$('input').trigger('change');
-            _this.parent.hidePopout();
+    // Collect every value used for this identifier type across the project
+    const identifiers: Record<string, boolean> = {};
+    ProjectModel.instance.forEachComponent((c) => {
+      c.forEachNode((n) => {
+        n.getPorts().forEach((p) => {
+          if (typeof p.type === 'object' && p.type.name === 'string' && p.type.identifierOf === this.identifierType) {
+            const _id = n.parameters[p.name];
+            if (_id !== undefined) identifiers[_id] = true;
           }
         });
-        identifierPicker.render();
-
-        const el = $(this);
-        _this.parent.showPopout({
-          content: identifierPicker,
-          attachTo: el,
-          position: 'right'
-        });
-
-        e.stopPropagation(); // Most stop propagation here otherwise the popup will close
-      })
-      .on('keyup', function (e) {
-        identifierPicker && identifierPicker.setFilter($(this).val());
       });
+    });
 
-    return this.el;
-  }
-  onPropertyChanged(scope, el) {
-    this.parent.setParameter(scope.name, el.val() === '' ? undefined : el.val());
-
-    // Update current value and if it is default or not
-    const current = this.getCurrentValue();
-    el.val(current.value);
-    this.isDefault = current.isDefault;
-
-    el.blur();
+    const items: ContentPickerItem[] = Object.keys(identifiers).map((_id) => ({
+      name: _id,
+      fullPath: _id
+    }));
+    picker.addItems(items);
   }
 }

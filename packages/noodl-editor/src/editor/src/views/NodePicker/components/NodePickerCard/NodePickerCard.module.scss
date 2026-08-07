@@ -1,0 +1,138 @@
+@use '../../styles/tints' as tints;
+
+.Root {
+  @include tints.tints;
+
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  min-width: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: var(--radius-lg);
+  background-color: var(--theme-color-bg-2);
+  color: var(--theme-color-fg-default);
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color var(--speed-turbo) var(--easing-base),
+    border-color var(--speed-turbo) var(--easing-base), box-shadow var(--speed-turbo) var(--easing-base);
+
+  &:hover {
+    background-color: var(--theme-color-bg-1);
+    border-color: var(--theme-color-border-strong);
+    box-shadow: var(--shadow-card);
+  }
+
+  &.is-cursored {
+    background-color: var(--theme-color-bg-1);
+    border-color: var(--theme-color-primary);
+    box-shadow: 0 0 0 3px var(--theme-color-primary-bg);
+  }
+}
+
+.Glyph {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 26px;
+  height: 26px;
+  border-radius: var(--radius-7);
+  background: color-mix(in srgb, var(--cat) 14%, transparent);
+  color: var(--cat);
+  font-size: 15px;
+}
+
+.GlyphLetter {
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-semibold);
+  line-height: 1;
+}
+
+.Text {
+  display: block;
+  flex: 1;
+  min-width: 0;
+}
+
+.Name {
+  display: block;
+  overflow: hidden;
+  color: var(--theme-color-fg-highlight);
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-medium);
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.Meta {
+  display: block;
+  overflow: hidden;
+  color: var(--theme-color-fg-muted);
+  font-size: var(--font-size-xs);
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.Mark {
+  padding: 0 1px;
+  border-radius: var(--radius-sm);
+  // `--theme-color-primary-bg` is too faint to read as a highlight at 12.5px on
+  // the light theme; this is the mock's `--mark` strength on both themes.
+  background-color: color-mix(in srgb, var(--theme-color-primary) 20%, transparent);
+  color: inherit;
+}
+
+.Enter {
+  display: none;
+  flex: none;
+  padding: 3px 5px;
+  border: 1px solid var(--theme-color-border-default);
+  border-bottom-width: 2px;
+  border-radius: var(--radius-5);
+  background-color: var(--theme-color-bg-2);
+  color: var(--theme-color-fg-default);
+  font-size: var(--font-size-xs);
+  line-height: 1;
+
+  .Root.is-cursored & {
+    display: inline-block;
+  }
+}
+
+/* BCN-010 — the project's backend cannot serve this node.
+   Dimmed and badged, never removed: the card still inserts, and the reason
+   takes over the meta line so the answer is in the list rather than in silence.
+   Amber, not red — phase 23 reserves red for danger, and a capability gap is
+   information. */
+.is-unavailable {
+  border-style: dashed;
+  border-color: color-mix(in srgb, var(--theme-color-warning) 55%, var(--theme-color-border-default));
+
+  .Glyph {
+    opacity: 0.5;
+  }
+
+  .Name {
+    color: var(--theme-color-fg-default);
+    opacity: 0.75;
+  }
+
+  .Meta {
+    color: var(--theme-color-warning-dim);
+    white-space: normal;
+    overflow: visible;
+  }
+}
+
+.Unavailable {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  color: var(--theme-color-warning);
+  font-size: 14px;
+}

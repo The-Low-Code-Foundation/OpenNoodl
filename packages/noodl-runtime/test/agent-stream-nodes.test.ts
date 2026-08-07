@@ -1,0 +1,800 @@
+/**
+ * AGENT-007 — the four stream utility nodes.
+ *
+ * The parsing is proved in agent-stream-parsers.test.ts; this suite is about the node
+ * behaviour on top of it: signal edges, bounded buffers that report what they dropped,
+ * and — for Stream Buffer, the only one of the four that owns a timer — that nothing
+ * is left ticking after the node is deleted.
+ */
+
+import type { RuntimeEditorConnection } from '../src/internal';
+import type {
+  JsonStreamParserNodeInstance,
+  PatternExtractorNodeInstance,
+  StreamBufferNodeInstance,
+  StreamBufferSeams,
+  TextAccumulatorNodeInstance
+} from '../src/nodes/std-library/agent/node-instances';
+
+import { createGraph, createNode } from './helpers/node-harness';
+
+import accumulatorModule = require('../src/nodes/std-library/agent/text-accumulator');
+import jsonParserModule = require('../src/nodes/std-library/agent/json-stream-parser');
+import patternModule = require('../src/nodes/std-library/agent/pattern-extractor');
+import bufferModule = require('../src/nodes/std-library/agent/stream-buffer');
+
+function makeTimers() {
+  let nextId = 1;
+  const timers = new Map<number, { fn: () => void; ms: number }>();
+  return {
+    setTimeoutImpl: (fn: () => void, ms: number) => {
+      const id = nextId++;
+      timers.set(id, { fn, ms });
+      return id;
+    },
+    clearTimeoutImpl: (id: number) => {
+      timers.delete(id);
+    },
+    pending: () => timers.size,
+    delays: () => Array.from(timers.values()).map((t) => t.ms),
+    run: () => {
+      const entries = Array.from(timers.values());
+      timers.clear();
+      entries.forEach((t) => t.fn());
+    }
+  };
+}
+
+
+// ============================================================================
+
+describe('net.noodl.TextAccumulator', () => {
+  it('declares the documented ports', () => {
+    const { metadata } = createNode(accumulatorModule, 'net.noodl.TextAccumulator');
+    expect(Object.keys(metadata.inputs).sort()).toEqual(
+      ['add', 'chunk', 'clear', 'delimiter', 'maxLength', 'maxMessages'].sort()
+    );
+    expect(Object.keys(metadata.outputs).sort()).toEqual(
+      [
+        // ERG-001 §4 added `done`, `unchanged` and `completed`; `failure` survives with its
+        // meaning intact, because on this node it is *also* the `chunk` setter's announcement.
+        'accumulated',
+        'byteCount',
+        'changed',
+        'characterCount',
+        'cleared',
+        'completed',
+        'done',
+        'unchanged',
+        'droppedCharacters',
+        'droppedMessages',
+        'error',
+        // NDA-012 added `failure`: a mis-wired Chunk used to reach an editor warning and the
+        // `error` string only, and the `Add` after one returned silently.
+        'failure',
+        'lastMessage',
+        'messageCount',
+        'messageReceived',
+        'messages',
+        'overflowed'
+      ].sort()
+    );
+  });
+
+  it('accumulates tokens with no delimiter — the AI-chat case', () => {
+    const { node, out, signals, pulse } = createNode(accumulatorModule, 'net.noodl.TextAccumulator');
+    node.setInputValue('delimiter', '');
+
+    for (const token of ['Hel', 'lo, ', 'world']) {
+      node.setInputValue('chunk', token);
+      pulse('add');
+    }
+
+    expect(out('accumulated')).toBe('Hello, world');
+    expect(out('messages')).toEqual([]);
+    expect(out('characterCount')).toBe(12);
+    // Changed fires per chunk so a Text node can repaint; Message Received does not.
+    expect(signals.filter((s) => s === 'changed').length).toBe(3);
+    expect(signals).not.toContain('messageReceived');
+  });
+
+  it('splits complete messages off the delimiter and holds the partial tail', () => {
+    const { node, out, signals, pulse } = createNode(accumulatorModule, 'net.noodl.TextAccumulator');
+    node.setInputValue('chunk', 'one\ntwo\nthr');
+    pulse('add');
+
+    expect(out('messages')).toEqual(['one', 'two']);
+    expect(out('lastMessage')).toBe('two');
+    expect(out('messageCount')).toBe(2);
+    expect(out('accumulated')).toBe('thr');
+    expect(signals).toContain('messageReceived');
+
+    node.setInputValue('chunk', 'ee\n');
+    pulse('add');
+    expect(out('messages')).toEqual(['one', 'two', 'three']);
+    expect(out('accumulated')).toBe('');
+  });
+
+  it('reassembles a message split across chunk boundaries', () => {
+    const { node, out, pulse } = createNode(accumulatorModule, 'net.noodl.TextAccumulator');
+    for (const piece of ['a', 'b', '\n', 'c']) {
+      node.setInputValue('chunk', piece);
+      pulse('add');
+    }
+    expect(out('messages')).toEqual(['ab']);
+    expect(out('accumulated')).toBe('c');
+  });
+
+  /**
+   * ERG-001 §4 — the outcome contract on `Add` and `Clear`.
+   *
+   * `Message Received`, `Changed`, `Cleared` and `Overflowed` all stay: each is a value-level
+   * announcement about a specific piece of state, and `Overflowed` fires from *inside* an `Add`
+   * that otherwise succeeded, so none of them is this invocation's outcome.
+   *
+   * ⚠️ `failure` is one port doing two jobs. It fires from `reportChunkError`, which is reached
+   * from the **`chunk` input setter** — a mis-wired stream announces itself the moment the value
+   * arrives, before any `Add` — so a port-driven run must not pulse it twice.
+   *
+   * What reverting reddens, predicted before running:
+   *   - empty-chunk branch back to a bare `return` → 2 (the keep-alive row and the outcome row)
+   *   - `Clear`'s `hadSomethingToClear` read *after* the reset → 1 (the empty-Clear row)
+   *   - the `chunk` setter minting a token → 0 visible; the counting row below is what catches it
+   */
+  it('an Add that appends reports Done after Changed', () => {
+    const { signals, pulse, node } = createNode(accumulatorModule, 'net.noodl.TextAccumulator');
+    node.setInputValue('chunk', 'hello');
+    pulse('add');
+
+    expect(signals).toEqual(['changed', 'done', 'completed']);
+  });
+
+  it('a mis-wired chunk announces Failure once, and the Add after it is Unchanged', () => {
+    const { signals, pulse, node } = createNode(accumulatorModule, 'net.noodl.TextAccumulator');
+    node.setInputValue('chunk', { not: 'text' });
+
+    // The setter's own announcement — no invocation, so no `Completed`.
+    expect(signals).toEqual(['failure']);
+
+    pulse('add');
+    // The refused chunk was blanked, so the `Add` has nothing to append. Not silence, and not a
+    // second `Failure` for a mis-wiring already reported.
+    expect(signals).toEqual(['failure', 'unchanged', 'completed']);
+  });
+
+  it('a Clear with nothing to clear is Unchanged, and one with something is Done', () => {
+    const { signals, pulse, node } = createNode(accumulatorModule, 'net.noodl.TextAccumulator');
+
+    pulse('clear');
+    expect(signals).toEqual(['cleared', 'unchanged', 'completed']);
+
+    signals.length = 0;
+    node.setInputValue('chunk', 'hello');
+    pulse('add');
+    signals.length = 0;
+
+    pulse('clear');
+    expect(signals).toEqual(['cleared', 'done', 'completed']);
+  });
+
+  /**
+   * ⚠️ A counting row, not a silence row. A token minted in the `chunk` setter would never be
+   * settled, so nothing would be reported and a silence row would stay green; what catches it is
+   * the next invocation draining the stale token and reporting twice.
+   */
+  it('two Adds report exactly two outcomes, whatever arrived on Chunk in between', () => {
+    const { signals, pulse, node } = createNode(accumulatorModule, 'net.noodl.TextAccumulator');
+
+    node.setInputValue('chunk', 'a');
+    pulse('add');
+    node.setInputValue('chunk', 'b');
+    pulse('add');
+
+    expect(signals.filter((sig) => sig === 'completed')).toHaveLength(2);
+    expect(signals.filter((sig) => sig === 'done')).toHaveLength(2);
+  });
+
+  it('ignores an empty chunk, so keep-alives do not fire Changed', () => {
+    const { node, signals, pulse } = createNode(accumulatorModule, 'net.noodl.TextAccumulator');
+    node.setInputValue('chunk', '');
+    pulse('add');
+    // ⚠️ ERG-001 §4: still no `Changed` — the keep-alive claim this row exists for is intact —
+    // but the `Add` is no longer *silent*. A bare `return` was the dead chain the contract
+    // closes, and an empty chunk is `Unchanged` rather than nothing at all.
+    expect(signals).toEqual(['unchanged', 'completed']);
+  });
+
+  it('caps the buffer and reports what it dropped rather than dropping silently', () => {
+    const { node, out, signals, pulse } = createNode(accumulatorModule, 'net.noodl.TextAccumulator');
+    node.setInputValue('delimiter', '');
+    node.setInputValue('maxLength', 5);
+    node.setInputValue('chunk', 'abcdefgh');
+    pulse('add');
+
+    expect(out('accumulated')).toBe('defgh');
+    expect(out('droppedCharacters')).toBe(3);
+    expect(signals).toContain('overflowed');
+  });
+
+  it('caps retained messages, oldest first', () => {
+    const { node, out, pulse } = createNode(accumulatorModule, 'net.noodl.TextAccumulator');
+    node.setInputValue('maxMessages', 2);
+    node.setInputValue('chunk', 'a\nb\nc\nd\n');
+    pulse('add');
+
+    expect(out('messages')).toEqual(['c', 'd']);
+    expect(out('droppedMessages')).toBe(2);
+  });
+
+  it('counts UTF-8 bytes separately from characters', () => {
+    const { node, out, pulse } = createNode(accumulatorModule, 'net.noodl.TextAccumulator');
+    node.setInputValue('delimiter', '');
+    node.setInputValue('chunk', 'a😀');
+    pulse('add');
+    expect(out('characterCount')).toBe(3); // one surrogate pair
+    expect(out('byteCount')).toBe(5);
+  });
+
+  it('clears everything and says so', () => {
+    const { node, out, signals, pulse } = createNode(accumulatorModule, 'net.noodl.TextAccumulator');
+    node.setInputValue('chunk', 'a\nb\n');
+    pulse('add');
+    pulse('clear');
+
+    expect(out('accumulated')).toBe('');
+    expect(out('messages')).toEqual([]);
+    expect(out('messageCount')).toBe(0);
+    expect(signals).toContain('cleared');
+  });
+
+  // -- a chunk that is not text ---------------------------------------------
+  //
+  // The integration pass found `SSE.data -> chunk` — the wiring the enrichment, the
+  // catalog example and the example project all recommended — rendering `[object Object]`
+  // for an OpenAI-style stream, because `data` is JSON-parsed and this setter used to
+  // `String()` whatever it was given.
+
+  it('refuses an object chunk and names the mistake instead of appending [object Object]', () => {
+    const { node, out, signals, pulse } = createNode(accumulatorModule, 'net.noodl.TextAccumulator');
+    node.setInputValue('delimiter', '');
+    node.setInputValue('chunk', 'Hi');
+    pulse('add');
+
+    node.setInputValue('chunk', { delta: ' there' });
+    pulse('add');
+
+    expect(out('accumulated')).toBe('Hi');
+    expect(out('accumulated')).not.toContain('[object Object]');
+    expect(out('error')).toContain('Chunk must be text');
+    // Names the port that should have been wired, since that is the whole fix.
+    expect(out('error')).toContain('Text output');
+    // Nothing was appended, so nothing repainted: exactly one Changed, from 'Hi'.
+    expect(signals.filter((s) => s === 'changed').length).toBe(1);
+  });
+
+  it('refuses an array chunk too, and says which shape arrived', () => {
+    const { node, out } = createNode(accumulatorModule, 'net.noodl.TextAccumulator');
+    node.setInputValue('chunk', ['a', 'b']);
+    expect(out('error')).toContain('an array');
+  });
+
+  it('accepts numbers and booleans, which read as text', () => {
+    const { node, out, pulse } = createNode(accumulatorModule, 'net.noodl.TextAccumulator');
+    node.setInputValue('delimiter', '');
+    node.setInputValue('chunk', 42);
+    pulse('add');
+    node.setInputValue('chunk', true);
+    pulse('add');
+
+    expect(out('accumulated')).toBe('42true');
+    expect(out('error')).toBe('');
+  });
+
+  it('clears the error on the next good chunk, and on Clear', () => {
+    const { node, out, pulse } = createNode(accumulatorModule, 'net.noodl.TextAccumulator');
+    node.setInputValue('chunk', { delta: 'x' });
+    expect(out('error')).not.toBe('');
+
+    node.setInputValue('chunk', 'ok');
+    expect(out('error')).toBe('');
+
+    node.setInputValue('chunk', { delta: 'x' });
+    expect(out('error')).not.toBe('');
+    pulse('clear');
+    expect(out('error')).toBe('');
+  });
+
+  it('puts the mis-wiring on the canvas as a warning, not only on the output', () => {
+    const graph = createGraph(accumulatorModule);
+    const warnings: { key: string; message: string }[] = [];
+    graph.context.editorConnection = {
+      // NodeContext asks this before it reports a sent value to the editor.
+      isConnected: () => false,
+      sendWarning: (_component: string, _id: string, key: string, warning: { message: string }) =>
+        warnings.push({ key, message: warning.message }),
+      clearWarning: (_component: string, _id: string, key: string) => {
+        const index = warnings.findIndex((w) => w.key === key);
+        if (index !== -1) warnings.splice(index, 1);
+      }
+    } as unknown as RuntimeEditorConnection;
+    const node = graph.make<TextAccumulatorNodeInstance>('net.noodl.TextAccumulator', 'accumulator-warning');
+    node.nodeScope = { componentOwner: { name: '/Chat' } };
+
+    node.setInputValue('chunk', { delta: 'x' });
+    expect(warnings.length).toBe(1);
+    expect(warnings[0].message).toContain('Chunk must be text');
+
+    node.setInputValue('chunk', 'fine now');
+    expect(warnings.length).toBe(0);
+  });
+});
+
+describe('net.noodl.JSONStreamParser', () => {
+  it('declares the documented ports', () => {
+    const { metadata } = createNode(jsonParserModule, 'net.noodl.JSONStreamParser');
+    expect(Object.keys(metadata.inputs).sort()).toEqual(['chunk', 'clear', 'format', 'maxLength', 'parse'].sort());
+    expect(Object.keys(metadata.outputs).sort()).toEqual(
+      // ERG-001 §4 added `done`, `unchanged` and `completed`. ⚠️ `failure` survives but its
+      // *meaning* narrowed: it is the invocation's outcome now and fires once per Parse, not
+      // once per unparseable line.
+      [
+        'cleared',
+        'completed',
+        'done',
+        'error',
+        'errorCount',
+        'failure',
+        'isComplete',
+        'parsed',
+        'pendingCharacters',
+        'success',
+        'unchanged',
+        'valueCount',
+        'values'
+      ].sort()
+    );
+  });
+
+  it('parses NDJSON line by line and holds a partial line', () => {
+    const { node, out, signals, pulse } = createNode(jsonParserModule, 'net.noodl.JSONStreamParser');
+    node.setInputValue('chunk', '{"a":1}\n{"b":2}\n{"c":');
+    pulse('parse');
+
+    expect(out('values')).toEqual([{ a: 1 }, { b: 2 }]);
+    expect(out('parsed')).toEqual({ b: 2 });
+    expect(out('valueCount')).toBe(2);
+    expect(out('pendingCharacters')).toBe('{"c":'.length);
+    expect(out('isComplete')).toBe(false);
+    expect(signals).toContain('success');
+
+    node.setInputValue('chunk', '3}\n');
+    pulse('parse');
+    expect(out('values')).toEqual([{ c: 3 }]);
+    expect(out('valueCount')).toBe(3);
+    expect(out('isComplete')).toBe(true);
+  });
+
+  it('reports a malformed NDJSON line without stopping the stream', () => {
+    const { node, out, signals, pulse } = createNode(jsonParserModule, 'net.noodl.JSONStreamParser');
+    node.setInputValue('chunk', '{"a":1}\nnot json\n{"b":2}\n');
+    pulse('parse');
+
+    expect(out('values')).toEqual([{ a: 1 }, { b: 2 }]);
+    expect(out('errorCount')).toBe(1);
+    expect(out('error')).toMatch(/did not parse/);
+    expect(signals).toContain('failure');
+    expect(signals).toContain('success');
+  });
+
+  it('emits array elements as they arrive in stream format', () => {
+    const { node, out, pulse } = createNode(jsonParserModule, 'net.noodl.JSONStreamParser');
+    node.setInputValue('format', 'stream');
+    node.setInputValue('chunk', '[{"i":1},{"i":2}');
+    pulse('parse');
+    expect(out('values')).toEqual([{ i: 1 }, { i: 2 }]);
+
+    node.setInputValue('chunk', ',{"i":3}]');
+    pulse('parse');
+    expect(out('values')).toEqual([{ i: 3 }]);
+    expect(out('valueCount')).toBe(3);
+  });
+
+  it('waits for the whole document in single format', () => {
+    const { node, out, signals, pulse } = createNode(jsonParserModule, 'net.noodl.JSONStreamParser');
+    node.setInputValue('format', 'single');
+
+    node.setInputValue('chunk', '{"a":[1,2');
+    pulse('parse');
+    expect(out('values')).toEqual([]);
+    expect(out('isComplete')).toBe(false);
+    expect(signals).not.toContain('success');
+
+    node.setInputValue('chunk', ',3]}');
+    pulse('parse');
+    expect(out('parsed')).toEqual({ a: [1, 2, 3] });
+    expect(out('isComplete')).toBe(true);
+    expect(signals).toContain('success');
+  });
+
+  it('gives up loudly on a runaway buffer rather than growing without bound', () => {
+    const { node, out, signals, pulse } = createNode(jsonParserModule, 'net.noodl.JSONStreamParser');
+    node.setInputValue('format', 'single');
+    node.setInputValue('maxLength', 10);
+    node.setInputValue('chunk', '{"a":"12345678901234567890"');
+    pulse('parse');
+
+    expect(out('error')).toMatch(/Gave up/);
+    expect(out('pendingCharacters')).toBe(0);
+    expect(signals).toContain('failure');
+  });
+
+  it('clears its buffer and counters', () => {
+    const { node, out, signals, pulse } = createNode(jsonParserModule, 'net.noodl.JSONStreamParser');
+    node.setInputValue('chunk', '{"a":1}\n{"b":');
+    pulse('parse');
+    pulse('clear');
+
+    expect(out('valueCount')).toBe(0);
+    expect(out('pendingCharacters')).toBe(0);
+    expect(signals).toContain('cleared');
+  });
+});
+
+describe('net.noodl.PatternExtractor', () => {
+  it('declares the documented ports', () => {
+    const { metadata } = createNode(patternModule, 'net.noodl.PatternExtractor');
+    expect(Object.keys(metadata.inputs).sort()).toEqual(
+      ['extract', 'extractAll', 'flags', 'pattern', 'text'].sort()
+    );
+    expect(Object.keys(metadata.outputs).sort()).toEqual(
+      // ERG-001 §4 added `done` and `completed`. ⚠️ No `unchanged`: `Not Found` is a result,
+      // not a post-condition that already held — see the node's own comment.
+      [
+        'completed',
+        'done',
+        'error',
+        'failure',
+        'firstGroup',
+        'found',
+        'groups',
+        'match',
+        'matchCount',
+        'matches',
+        'namedGroups',
+        'notFound'
+      ].sort()
+    );
+  });
+
+  it('extracts a progress percentage — the canonical stream case', () => {
+    const { node, out, signals, pulse } = createNode(patternModule, 'net.noodl.PatternExtractor');
+    node.setInputValue('text', 'Processing... 45% complete');
+    node.setInputValue('pattern', '(\\d+)%');
+    pulse('extract');
+
+    expect(out('match')).toBe('45%');
+    expect(out('firstGroup')).toBe('45');
+    // ERG-001 §4: the outcome follows the result, and Completed follows the outcome.
+    expect(signals).toEqual(['found', 'done', 'completed']);
+  });
+
+  it('collects every match when asked', () => {
+    const { node, out, pulse } = createNode(patternModule, 'net.noodl.PatternExtractor');
+    node.setInputValue('text', 'a1 b2 c3');
+    node.setInputValue('pattern', '[a-z]\\d');
+    node.setInputValue('extractAll', true);
+    pulse('extract');
+
+    expect(out('matches')).toEqual(['a1', 'b2', 'c3']);
+    expect(out('matchCount')).toBe(3);
+  });
+
+  it('exposes named groups', () => {
+    const { node, out, pulse } = createNode(patternModule, 'net.noodl.PatternExtractor');
+    node.setInputValue('text', 'tool=search');
+    node.setInputValue('pattern', 'tool=(?<tool>\\w+)');
+    pulse('extract');
+    expect(out('namedGroups')).toEqual({ tool: 'search' });
+  });
+
+  it('separates "no match" from "bad pattern"', () => {
+    const noMatch = createNode(patternModule, 'net.noodl.PatternExtractor');
+    noMatch.node.setInputValue('text', 'nothing');
+    noMatch.node.setInputValue('pattern', '\\d+');
+    noMatch.pulse('extract');
+    // ⚠️ `done`, not `unchanged` — the extract ran and rewrote every output.
+    expect(noMatch.signals).toEqual(['notFound', 'done', 'completed']);
+    expect(noMatch.out('error')).toBe('');
+
+    const badPattern = createNode(patternModule, 'net.noodl.PatternExtractor');
+    badPattern.node.setInputValue('text', 'anything');
+    badPattern.node.setInputValue('pattern', '([unclosed');
+    badPattern.pulse('extract');
+    expect(badPattern.signals).toEqual(['failure', 'completed']);
+    expect(badPattern.out('error')).not.toBe('');
+  });
+
+  it('applies flags', () => {
+    const { node, out, pulse } = createNode(patternModule, 'net.noodl.PatternExtractor');
+    node.setInputValue('text', 'ABC');
+    node.setInputValue('pattern', 'abc');
+    node.setInputValue('flags', 'i');
+    pulse('extract');
+    expect(out('match')).toBe('ABC');
+  });
+});
+
+describe('net.noodl.StreamBuffer', () => {
+  function createBuffer(seams: StreamBufferSeams = {}) {
+    const created = createNode<StreamBufferNodeInstance>(bufferModule, 'net.noodl.StreamBuffer');
+    created.node._internal.seams = seams;
+    return created;
+  }
+
+  it('declares the documented ports', () => {
+    const { metadata } = createNode(bufferModule, 'net.noodl.StreamBuffer');
+    expect(Object.keys(metadata.inputs).sort()).toEqual(
+      ['add', 'clear', 'data', 'flush', 'flushInterval', 'flushSize', 'maxSize'].sort()
+    );
+    expect(Object.keys(metadata.outputs).sort()).toEqual(
+      // NDA-004 §2 added `failure`/`error`: `Add` with nothing on `Data` used to return bare.
+      [
+        // ERG-001 §4 added `done`, `unchanged` and `completed`.
+        'buffer',
+        'bufferSize',
+        'cleared',
+        'completed',
+        'done',
+        'unchanged',
+        'droppedItems',
+        'error',
+        'failure',
+        'flushCount',
+        'flushed',
+        'flushedData',
+        'overflowed'
+      ].sort()
+    );
+  });
+
+  /**
+   * NDA-004 §2. `Add` with nothing on `Data` returned bare — no item buffered, no signal, no
+   * console line. From the canvas that is indistinguishable from a working buffer, right up until
+   * a `Flush` produces less than the author expected.
+   */
+  it('reports an Add with no Data rather than dropping it silently', () => {
+    const { node, out, signals, pulse } = createBuffer();
+
+    pulse('add');
+
+    // ERG-001 §4 added `Completed` after every outcome, whatever it was.
+    expect(signals).toEqual(['failure', 'completed']);
+    expect(out('bufferSize')).toBe(0);
+    expect(String(out('error'))).toContain('Data input');
+  });
+
+  /**
+   * ✅ Pinned control, and the decision that goes with the fix.
+   *
+   * `Flush` on an empty buffer and `Clear` on an empty buffer are **legitimate empty results** —
+   * a timed flush with nothing to send is exactly what an idle buffer should do — and the Failure
+   * Contract lists those among the things that must not raise. Open File Picker's `Cancelled`
+   * question, asked here and answered the other way round.
+   */
+  it('(pinned control) flushing or clearing an empty buffer is not a failure', () => {
+    const { signals, pulse } = createBuffer();
+
+    pulse('flush');
+    pulse('clear');
+
+    expect(signals).not.toContain('failure');
+  });
+
+  it('buffers items and flushes on demand', () => {
+    const { node, out, signals, pulse } = createBuffer();
+    for (const item of [1, 2, 3]) {
+      node.setInputValue('data', item);
+      pulse('add');
+    }
+    expect(out('bufferSize')).toBe(3);
+
+    pulse('flush');
+    expect(out('flushedData')).toEqual([1, 2, 3]);
+    expect(out('bufferSize')).toBe(0);
+    expect(out('flushCount')).toBe(1);
+    expect(signals).toContain('flushed');
+  });
+
+  it('flushes automatically once Flush Size is reached', () => {
+    const { node, out, pulse } = createBuffer();
+    node.setInputValue('flushSize', 2);
+
+    node.setInputValue('data', 'a');
+    pulse('add');
+    expect(out('bufferSize')).toBe(1);
+
+    node.setInputValue('data', 'b');
+    pulse('add');
+    expect(out('flushedData')).toEqual(['a', 'b']);
+    expect(out('bufferSize')).toBe(0);
+  });
+
+  it('flushes on an interval, and arms the timer only while items are waiting', () => {
+    const timers = makeTimers();
+    const { node, out, pulse } = createBuffer(timers);
+    node.setInputValue('flushInterval', 250);
+
+    expect(timers.pending()).toBe(0); // nothing buffered, nothing scheduled
+
+    node.setInputValue('data', 'x');
+    pulse('add');
+    expect(timers.delays()).toEqual([250]);
+
+    // A second Add reuses the running timer rather than stacking another.
+    node.setInputValue('data', 'y');
+    pulse('add');
+    expect(timers.pending()).toBe(1);
+
+    timers.run();
+    expect(out('flushedData')).toEqual(['x', 'y']);
+    expect(timers.pending()).toBe(0);
+  });
+
+  it('does not leave a stale timer when the interval changes', () => {
+    const timers = makeTimers();
+    const { node, pulse } = createBuffer(timers);
+    node.setInputValue('flushInterval', 1000);
+    node.setInputValue('data', 'x');
+    pulse('add');
+    expect(timers.delays()).toEqual([1000]);
+
+    node.setInputValue('flushInterval', 100);
+    expect(timers.delays()).toEqual([100]);
+  });
+
+  it('cancels the timer on a manual flush', () => {
+    const timers = makeTimers();
+    const { node, pulse } = createBuffer(timers);
+    node.setInputValue('flushInterval', 500);
+    node.setInputValue('data', 'x');
+    pulse('add');
+    expect(timers.pending()).toBe(1);
+
+    pulse('flush');
+    expect(timers.pending()).toBe(0);
+  });
+
+  /**
+   * ERG-001 §4 — the outcome contract on `Add`, `Flush` and `Clear`.
+   *
+   * `Flushed`, `Overflowed` and `Cleared` all stay: value-level announcements about specific
+   * pieces of state, and the interval timer flushes on its own, which is a path nobody invoked.
+   *
+   * What reverting reddens, predicted before running:
+   *   - the empty-`Flush` branch back to a bare `return` → 2 (the no-flush row and the outcome row)
+   *   - an `Add` that triggers a flush settling its token *and* `doFlush` settling again → 1
+   *   - `Clear`'s `hadSomethingToClear` read after the reset → 1 (the empty-Clear row)
+   *   - the interval timer's flush minting a token → 1 (the timer row)
+   */
+  it('an Add that buffers reports Done', () => {
+    const { signals, pulse, node } = createBuffer();
+    node.setInputValue('data', 'x');
+    pulse('add');
+
+    expect(signals).toEqual(['done', 'completed']);
+  });
+
+  /**
+   * ⚠️ One invocation, one outcome. An `Add` that reaches Flush Size flushes inside itself, and
+   * the token travels with it rather than being settled twice — which `reportOutcome` would
+   * report as `outcome/duplicate` rather than quietly allowing.
+   */
+  it('an Add that triggers a flush reports exactly one outcome', () => {
+    const { signals, pulse, node } = createBuffer();
+    node.setInputValue('flushSize', 1);
+    node.setInputValue('data', 'x');
+    pulse('add');
+
+    expect(signals).toEqual(['flushed', 'done', 'completed']);
+  });
+
+  it('a Flush with items reports Done after Flushed', () => {
+    const { signals, pulse, node } = createBuffer();
+    node.setInputValue('data', 'x');
+    pulse('add');
+    signals.length = 0;
+
+    pulse('flush');
+    expect(signals).toEqual(['flushed', 'done', 'completed']);
+  });
+
+  it('a Clear with nothing to clear is Unchanged, and one with something is Done', () => {
+    const { signals, pulse, node } = createBuffer();
+
+    pulse('clear');
+    expect(signals).toEqual(['cleared', 'unchanged', 'completed']);
+
+    signals.length = 0;
+    node.setInputValue('data', 'x');
+    pulse('add');
+    signals.length = 0;
+
+    pulse('clear');
+    expect(signals).toEqual(['cleared', 'done', 'completed']);
+  });
+
+  /** Only the port mints: the interval flush is the node's own timer, not an invocation. */
+  it('the interval timer flushes and reports no outcome', () => {
+    const timers = makeTimers();
+    const { signals, pulse, node } = createBuffer(timers);
+    node.setInputValue('flushInterval', 50);
+    node.setInputValue('data', 'x');
+    pulse('add');
+    signals.length = 0;
+
+    timers.run();
+    expect(signals).toEqual(['flushed']);
+  });
+
+  it('does not flush an empty buffer', () => {
+    const { signals, out, pulse } = createBuffer();
+    pulse('flush');
+    // ⚠️ ERG-001 §4: still no `Flushed` — the claim this row exists for — but the `Flush` is no
+    // longer silent. An idle buffer with nothing to send is `Unchanged`, which is the branch the
+    // contract's `Unchanged` was written for.
+    expect(signals).toEqual(['unchanged', 'completed']);
+    expect(out('flushCount')).toBe(0);
+  });
+
+  it('hands out a detached array, so a later Add cannot mutate it', () => {
+    const { node, out, pulse } = createBuffer();
+    node.setInputValue('data', 1);
+    pulse('add');
+    pulse('flush');
+    const flushed = out('flushedData');
+
+    node.setInputValue('data', 2);
+    pulse('add');
+    expect(flushed).toEqual([1]);
+  });
+
+  it('caps the buffer and reports what it dropped', () => {
+    const { node, out, signals, pulse } = createBuffer();
+    node.setInputValue('maxSize', 2);
+    for (const item of [1, 2, 3, 4]) {
+      node.setInputValue('data', item);
+      pulse('add');
+    }
+    expect(out('buffer')).toEqual([3, 4]);
+    expect(out('droppedItems')).toBe(2);
+    expect(signals).toContain('overflowed');
+  });
+
+  it('clears the timer and the buffer when the node is deleted', () => {
+    const timers = makeTimers();
+    const { node, out, pulse } = createBuffer(timers);
+    node.setInputValue('flushInterval', 1000);
+    node.setInputValue('data', 'x');
+    pulse('add');
+    expect(timers.pending()).toBe(1);
+
+    node._onNodeDeleted();
+
+    expect(timers.pending()).toBe(0);
+    expect(out('bufferSize')).toBe(0);
+  });
+
+  it('runs the base Node teardown as well as its own', () => {
+    const { node } = createBuffer();
+    let baseRan = false;
+    node.addDeleteListener(function () {
+      baseRan = true;
+    });
+    node._onNodeDeleted();
+    expect(baseRan).toBe(true);
+  });
+
+  it('is only partially SSR-capable, because an interval never fires on the server', () => {
+    expect(bufferModule.node.ssr.compat).toBe('partial');
+  });
+});

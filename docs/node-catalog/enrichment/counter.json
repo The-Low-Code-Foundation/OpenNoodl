@@ -1,0 +1,23 @@
+{
+  "typeName": "Counter",
+  "summary": "A number you step up and down with signals, with optional min/max limits and a reset.",
+  "description": "Counter holds a number, exposed on `currentCount` (Current Count). The `increase` (Increase Count) and `decrease` (Decrease Count) signal inputs step it by exactly 1; `reset` (Reset To Start) puts it back to `startValue` (Start Value, default 0), which is also the initial count. When `limitsEnabled` (Limits Enabled) is true, an `increase` at or above `limitsMax` (Max Value) and a `decrease` at or below `limitsMin` (Min Value) are ignored entirely — the count does not change and `countChanged` does not fire. Every actual change fires the `countChanged` (Count Changed) signal after `currentCount` has been updated.",
+  "whenToUse": "Use it for user-driven tallies: quantity steppers, pagination cursors, wizard step tracking. For arbitrary arithmetic (step sizes other than 1, computed values) use Expression or a Function; for a persistent number shared across components use a Variable or an Object.",
+  "ports": {
+    "increase": "Signal; adds 1. Ignored (no change, no `countChanged`) when limits are enabled and the count is already at `limitsMax`.",
+    "decrease": "Signal; subtracts 1. Ignored when limits are enabled and the count is already at `limitsMin`.",
+    "reset": "Signal; sets the count back to `startValue` and fires `countChanged`.",
+    "startValue": "Number value; the initial count, and the value `reset` returns to. The first time it is set it also overwrites the current count.",
+    "limitsEnabled": "Boolean value (default false); turns `limitsMin`/`limitsMax` enforcement on. Enabling it does not clamp an already out-of-range count — it only blocks further steps past a limit.",
+    "countChanged": "Signal; fires once per actual change, after `currentCount` holds the new value."
+  },
+  "examples": ["logic-quantity-stepper"],
+  "patterns": [
+    "Plus/minus buttons' `onClick` → `increase`/`decrease` with limits enabled: a bounded quantity stepper.",
+    "`currentCount` → a String Format input: display the count inside a sentence without a Function node."
+  ],
+  "antiPatterns": [
+    "Polling `currentCount` to react to changes — wire `countChanged` (signal) or `currentCount` (value) directly; the node already pushes updates."
+  ],
+  "relatedNodes": ["Number", "Expression", "Number Remapper", "String Format"]
+}

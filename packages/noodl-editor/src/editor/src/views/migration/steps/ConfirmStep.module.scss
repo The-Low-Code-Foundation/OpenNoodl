@@ -1,0 +1,84 @@
+/**
+ * CLEANUP-000H: ConfirmStep — design token polish
+ */
+
+.StepContainer {
+  padding: var(--spacing-6, 24px);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-4, 16px);
+}
+
+.StepTitle {
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+  color: var(--theme-color-fg-highlight, var(--theme-color-fg-default));
+  margin: 0;
+}
+
+.StepDescription {
+  font-size: var(--font-size-md);
+  color: var(--theme-color-fg-default-shy);
+  line-height: 1.6;
+}
+
+.StepContent {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-4, 16px);
+}
+
+.InfoCard {
+  background-color: var(--theme-color-bg-3);
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: var(--radius-default);
+  padding: var(--spacing-4, 16px);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2, 8px);
+}
+
+.InfoTitle {
+  font-size: var(--font-size-base);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--theme-color-fg-default-shy);
+}
+
+.CheckList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-1, 4px);
+}
+
+.CheckItem {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-2, 8px);
+  font-size: var(--font-size-md);
+  color: var(--theme-color-fg-default);
+  line-height: 1.5;
+}
+
+.CheckIcon {
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: var(--theme-color-fg-default-shy);
+}
+
+.WarningBanner {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-3, 12px);
+  padding: var(--spacing-3, 12px) var(--spacing-4, 16px);
+  background-color: color-mix(in srgb, var(--theme-color-notice) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--theme-color-notice) 30%, transparent);
+  border-radius: var(--radius-default);
+  font-size: var(--font-size-base);
+  color: var(--theme-color-fg-default);
+  line-height: 1.5;
+}

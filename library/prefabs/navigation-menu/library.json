@@ -1,0 +1,18 @@
+{
+  "label": "Navigation Menu",
+  "description": "Component for creating navigation menus.",
+  "type": "prefab",
+  "tags": [
+    "UI",
+    "Navigation"
+  ],
+  "icon": "icon.png",
+  "docsPath": "/library/prefabs/navigation-menu/",
+  "version": "0.1.0",
+  "minEditorVersion": "0.1.0",
+  "runtimeVersion": "2.7.0",
+  "provenance": {
+    "sourceUrl": "https://the-low-code-foundation.github.io/opennoodl-docs/library/prefabs/navigation-menu/navigation-menu-0-1.zip",
+    "importedAt": "2026-07-25"
+  }
+}

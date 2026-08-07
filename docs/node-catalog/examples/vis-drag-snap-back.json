@@ -1,0 +1,48 @@
+{
+  "id": "vis-drag-snap-back",
+  "title": "Draggable chip that snaps back on release",
+  "description": "Drag is a visual container that makes its children draggable. Its `onStop` signal fires when the user releases; wiring it to the `snapToPositionX.do`/`snapToPositionY.do` signal inputs animates the chip back to the configured snap position (0,0 here) over the given duration. `positionX`/`positionY` report the live offset while dragging — here mapped into the label.",
+  "demonstrates": ["Drag", "Circle"],
+  "components": [
+    {
+      "name": "/Snap Chip",
+      "nodes": [
+        {
+          "id": "root",
+          "type": "Group",
+          "label": "Stage",
+          "parameters": { "clip": true },
+          "children": ["drag_area"]
+        },
+        {
+          "id": "drag_area",
+          "type": "Drag",
+          "label": "Draggable chip",
+          "parent": "root",
+          "parameters": { "snapToPositionX.value": 0, "snapToPositionX.duration": 300, "snapToPositionY.value": 0, "snapToPositionY.duration": 300 },
+          "children": ["chip_circle", "offset_text"]
+        },
+        {
+          "id": "chip_circle",
+          "type": "Circle",
+          "label": "Chip",
+          "parent": "drag_area",
+          "parameters": { "size": 48, "fillEnabled": true }
+        },
+        { "id": "offset_text", "type": "Text", "label": "Offset readout", "parent": "drag_area" },
+        {
+          "id": "offset_caption",
+          "type": "String Format",
+          "label": "Offset caption",
+          "parameters": { "format": "x: {x}" }
+        }
+      ],
+      "connections": [
+        { "fromId": "drag_area", "fromProperty": "onStop", "toId": "drag_area", "toProperty": "snapToPositionX.do" },
+        { "fromId": "drag_area", "fromProperty": "onStop", "toId": "drag_area", "toProperty": "snapToPositionY.do" },
+        { "fromId": "drag_area", "fromProperty": "positionX", "toId": "offset_caption", "toProperty": "x" },
+        { "fromId": "offset_caption", "fromProperty": "formatted", "toId": "offset_text", "toProperty": "text" }
+      ]
+    }
+  ]
+}

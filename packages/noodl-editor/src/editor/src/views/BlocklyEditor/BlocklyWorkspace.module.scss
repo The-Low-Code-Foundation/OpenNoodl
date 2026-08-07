@@ -1,0 +1,270 @@
+/**
+ * BlocklyWorkspace Styles
+ * 
+ * Styling for the Blockly visual programming workspace.
+ * Uses theme tokens for consistent integration with Noodl editor.
+ */
+
+.Root {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  background-color: var(--theme-color-bg-1);
+  overflow: hidden;
+}
+
+.BlocklyContainer {
+  flex: 1;
+  width: 100%;
+  height: 100%;
+  position: relative;
+
+  /* Ensure Blockly SVG fills container */
+  & > .injectionDiv {
+    width: 100% !important;
+    height: 100% !important;
+  }
+}
+
+/* Override Blockly default styles to match Noodl theme */
+:global {
+  /* Toolbox styling */
+  .blocklyToolboxDiv {
+    background-color: var(--theme-color-bg-2) !important;
+    border-right: 1px solid var(--theme-color-border-default) !important;
+  }
+
+  .blocklyTreeLabel {
+    color: var(--theme-color-fg-default) !important;
+    font-family: var(--font-family) !important;
+    font-size: 13px !important;
+  }
+
+  .blocklyTreeRow:hover {
+    background-color: var(--theme-color-bg-3) !important;
+  }
+
+  .blocklyTreeSelected {
+    background-color: var(--theme-color-primary) !important;
+  }
+
+  /* Flyout styling */
+  .blocklyFlyoutBackground {
+    fill: var(--theme-color-bg-2) !important;
+    fill-opacity: 0.95 !important;
+  }
+
+  /* Block styling - keep default Blockly colors for now */
+  /* May customize later to match Noodl node colors */
+
+  /* Zoom controls */
+  .blocklyZoom {
+    & image {
+      filter: brightness(0.8);
+    }
+  }
+
+  /* Trashcan */
+  .blocklyTrash {
+    & image {
+      filter: brightness(0.8);
+    }
+  }
+
+  /* Context menu */
+  .blocklyContextMenu {
+    background-color: var(--theme-color-bg-3) !important;
+    border: 1px solid var(--theme-color-border-default) !important;
+    border-radius: 4px !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
+  }
+
+  .blocklyContextMenu .blocklyMenuItem {
+    color: var(--theme-color-fg-default) !important;
+    font-family: var(--font-family) !important;
+    font-size: 13px !important;
+    padding: 6px 12px !important;
+
+    &:hover,
+    &:hover * {
+      background-color: var(--theme-color-bg-4) !important;
+      color: var(--theme-color-fg-default) !important;
+    }
+
+    &.blocklyMenuItemDisabled {
+      color: var(--theme-color-fg-default-shy) !important;
+      opacity: 0.5;
+    }
+  }
+
+  /* Scrollbars */
+  .blocklyScrollbarHandle {
+    fill: var(--theme-color-border-default) !important;
+  }
+
+  /* Field editor backgrounds (dropdowns, text inputs, etc.) */
+  /* NOTE: blocklyWidgetDiv and blocklyDropDownDiv are rendered at document root! */
+  .blocklyWidgetDiv,
+  .blocklyDropDownDiv {
+    z-index: 10000 !important; /* Ensure it's above everything */
+  }
+
+  /* Blockly dropdown container - DARK BACKGROUND */
+  .blocklyDropDownDiv,
+  :global(.blocklyDropDownDiv) {
+    background-color: var(--theme-color-bg-3) !important; /* DARK background */
+    max-height: 400px !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+
+    /* Inner scrollable container */
+    & > div {
+      background-color: var(--theme-color-bg-3) !important;
+      max-height: 400px !important;
+      overflow-y: auto !important;
+    }
+
+    /* SVG containers inside dropdown */
+    & svg {
+      background-color: var(--theme-color-bg-3) !important;
+    }
+  }
+
+  /* Text input fields */
+  .blocklyWidgetDiv input,
+  .blocklyHtmlInput {
+    background-color: var(--theme-color-bg-3) !important;
+    color: var(--theme-color-fg-default) !important;
+    border: 1px solid var(--theme-color-border-default) !important;
+    border-radius: 4px !important;
+    padding: 4px 8px !important;
+    font-family: var(--font-family) !important;
+  }
+
+  /* Dropdown menus - DARK BACKGROUND with WHITE TEXT (matches Noodl theme) */
+  /* Target ACTUAL Blockly classes: .blocklyMenuItem not .goog-menuitem */
+
+  .goog-menu,
+  :global(.goog-menu) {
+    background-color: var(--theme-color-bg-3) !important; /* DARK background */
+    border: 1px solid var(--theme-color-border-default) !important;
+    border-radius: 4px !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
+    max-height: 400px !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    z-index: 10001 !important;
+  }
+
+  /* Target Blockly's ACTUAL menu item class - DROPDOWN MENUS */
+  .blocklyDropDownDiv .blocklyMenuItem,
+  :global(.blocklyDropDownDiv) :global(.blocklyMenuItem) {
+    color: var(--theme-color-fg-highlight) !important; /* WHITE text */
+    background-color: transparent !important;
+    padding: 6px 12px !important;
+    cursor: pointer !important;
+    font-family: var(--font-family) !important;
+    font-size: 13px !important;
+
+    /* ALL children white */
+    & *,
+    & div,
+    & span {
+      color: var(--theme-color-fg-highlight) !important;
+    }
+
+    /* HOVER - Keep white text with lighter background */
+    &:hover,
+    &:hover *,
+    &:hover div,
+    &:hover span {
+      background-color: var(--theme-color-bg-4) !important;
+      color: var(--theme-color-fg-highlight) !important; /* WHITE on hover */
+    }
+
+    &[aria-selected='true'],
+    &[aria-selected='true'] * {
+      background-color: var(--theme-color-primary) !important;
+      color: var(--theme-color-fg-highlight) !important;
+    }
+
+    &[aria-disabled='true'],
+    &[aria-disabled='true'] * {
+      color: var(--theme-color-fg-muted) !important;
+      opacity: 0.5;
+      cursor: not-allowed !important;
+    }
+  }
+
+  /* Target Blockly's ACTUAL content class */
+  .blocklyMenuItemContent,
+  :global(.blocklyMenuItemContent) {
+    color: var(--theme-color-fg-highlight) !important;
+
+    & *,
+    & div,
+    & span {
+      color: var(--theme-color-fg-highlight) !important;
+    }
+  }
+
+  /* Fallback for goog- classes if they exist */
+  .goog-menuitem,
+  .goog-option,
+  :global(.goog-menuitem),
+  :global(.goog-option) {
+    color: var(--theme-color-fg-highlight) !important;
+    background-color: transparent !important;
+    padding: 6px 12px !important;
+    font-family: var(--font-family) !important;
+    font-size: 13px !important;
+
+    & *,
+    & div,
+    & span {
+      color: var(--theme-color-fg-highlight) !important;
+    }
+
+    &:hover,
+    &:hover * {
+      background-color: var(--theme-color-bg-4) !important;
+    }
+  }
+
+  .goog-menuitem-content,
+  :global(.goog-menuitem-content) {
+    color: var(--theme-color-fg-highlight) !important;
+
+    & * {
+      color: var(--theme-color-fg-highlight) !important;
+    }
+  }
+
+  /* Blockly dropdown content container */
+  :global(.blocklyDropDownContent) {
+    max-height: 400px !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+  }
+}
+
+/* Blockly failed to inject — the container below stays empty, so say why. */
+.LoadError {
+  padding: 16px;
+  color: var(--theme-color-fg-muted);
+  font-size: 12px;
+}
+
+/**
+ * Grid colour.
+ *
+ * Blockly draws the grid as an SVG <pattern> whose lines carry a `stroke` presentation
+ * attribute set at injection time, and its setter is private. A CSS `stroke` beats a
+ * presentation attribute, so styling it here both overrides the injected colour and — being
+ * a token reference — re-resolves on its own when the editor theme flips.
+ */
+:global(#blocklyGridPattern) line,
+:global([id^='blocklyGridPattern']) line {
+  stroke: var(--theme-color-border-default);
+}

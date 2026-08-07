@@ -1,0 +1,21 @@
+{
+  "typeName": "Color",
+  "summary": "Per-instance color holder: stores one color locally so many visual inputs can share a single editable source.",
+  "description": "Color holds a single color value that belongs to this node instance alone, defaulting to '#f1f2f4'. The `value` input sets it (via the editor's color picker or a connection) and `savedValue` (Value) reads it back. While the `saveValue` (Set) signal input is unconnected, values written to `value` apply immediately; once `saveValue` is connected the node latches: incoming values are held pending and only applied when Set fires. Unlike the Boolean/Number/String holders it applies no cast — the value passes through unchanged. Browser-only; not available in cloud functions. `changed` fires only when the stored value actually changes; `stored` fires after every Set trigger.",
+  "whenToUse": "Use it as a single source of truth for a color used in several places — wire `savedValue` to every `backgroundColor`, `color` or border input that should match, and edit one node to restyle them all. For project-wide theming prefer style colors; a String can also drive color inputs (any CSS color string casts), but Color gives you the picker.",
+  "ports": {
+    "value": "Color value input with the editor's color picker. Applies immediately while Value is ticked under Run On Value Change (the default); untick it to hold the value until Set fires.",
+    "saveValue": "Signal; applies the most recently received `value`, then reports Done or Unchanged.",
+    "savedValue": "Color level with the currently stored color; fan it out to any number of visual color inputs.",
+    "changed": "Signal; fires only when the stored value actually changes.",
+    "done": "Signal; a Set stored a value the Variable was not already holding.",
+    "unchanged": "Signal; a Set stored the value it already held, so nothing changed. \u26a0\ufe0f With Value left ticked under Run On Value Change this is the common case, because Value has already stored by the time Set fires \u2014 untick it if you want Set to be the only thing that writes.",
+    "completed": "Signal; fires after every Set, whatever the outcome. This is what the old `Stored` port meant, and it replaces it. \u26a0\ufe0f A Value that wrote straight through reports nothing at all \u2014 that is not an invocation of Set."
+  },
+  "examples": ["var-avatar-picker-responsive"],
+  "patterns": [
+    "One accent color: `savedValue` → several nodes' `backgroundColor`/`color` inputs, so a design tweak is one edit.",
+    "Runtime theme switch: a Switch or States feeds `value`, and every connected visual updates together."
+  ],
+  "relatedNodes": ["Boolean", "Number", "String", "Variable2", "Group", "Text"]
+}

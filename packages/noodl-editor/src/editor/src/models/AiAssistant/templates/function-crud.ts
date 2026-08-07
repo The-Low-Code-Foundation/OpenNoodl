@@ -71,9 +71,6 @@ export const template: AiNodeTemplate = {
     const fullText = await chatStreamXml({
       messages,
       provider: {
-        model: 'gpt-4o-mini',
-        // model: 'gpt-3.5-turbo',
-        // The next context doesnt work with GPT-3.5
         temperature: 0.5,
         max_tokens: 2048
       },
@@ -335,7 +332,7 @@ await Records.removeRelation({
 });
 \`\`\`
 
-Here is the schema of the database:
+What is known about the project database:
 %{database-schema}%
 
 Respond only with this specific format, and nothing else:
@@ -502,7 +499,7 @@ await Records.removeRelation({
 });
 \`\`\`
 
-Here is the schema of the database:
+What is known about the project database:
 %{database-schema}%
 
 We are starting from this code and will only modify it:

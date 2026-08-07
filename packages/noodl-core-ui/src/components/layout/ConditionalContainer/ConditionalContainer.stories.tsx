@@ -1,11 +1,16 @@
-import React from 'react';
-import { ComponentStory, ComponentMeta } from '@storybook/react';
+import type { Meta, StoryObj } from '@storybook/react';
 
-export default {
+import { ConditionalContainer } from './ConditionalContainer';
+
+const meta: Meta<typeof ConditionalContainer> = {
   title: 'Layout/Conditional Container',
-  argTypes: {}
+  component: ConditionalContainer,
+  argTypes: {},
 };
 
-const Template = (args) => <div style={{ width: 280 }}>TODO: component exists, write stories</div>;
+export default meta;
+type Story = StoryObj<typeof meta>;
 
-export const Common = Template.bind({});
+export const Common: Story = {
+  render: () => <div style={{ width: 280 }}>TODO: component exists, write stories</div>,
+};

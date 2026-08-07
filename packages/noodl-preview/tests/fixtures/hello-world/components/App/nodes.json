@@ -1,0 +1,22 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "c_app",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "app_router",
+      "type": "Router",
+      "label": "Main Router",
+      "x": 100,
+      "y": 100,
+      "parameters": {
+        "name": "Main",
+        "pages": {
+          "startPage": "/#__page__/Home",
+          "routes": ["/#__page__/Home"]
+        }
+      }
+    }
+  ],
+  "visualRoots": ["app_router"]
+}

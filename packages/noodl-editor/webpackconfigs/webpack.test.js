@@ -32,11 +32,13 @@ module.exports = merge(shared, {
           stdio: 'inherit'
         })
         .on('close', (code) => {
-          devServer.stop();
+          // The dev server is the process the caller is waiting on, so it has to
+          // carry Electron's exit code out — otherwise a failing suite reads green.
+          devServer.stop().then(() => process.exit(code === null ? 1 : code));
         })
         .on('error', (spawnError) => {
           console.error(spawnError);
-          devServer.stop();
+          devServer.stop().then(() => process.exit(1));
         });
     }
   }

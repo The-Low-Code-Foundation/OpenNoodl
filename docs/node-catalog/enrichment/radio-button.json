@@ -1,0 +1,7 @@
+{
+  "typeName": "Radio Button",
+  "summary": "Legacy radio-button visual, hidden from the node picker — superseded by net.noodl.controls.radiobutton.",
+  "description": "The original Radio Button visual, kept only so old projects load. The Radio Button control (net.noodl.controls.radiobutton), used inside a Radio Button Group, supersedes it with group value handling, visual states and accessibility.",
+  "whenToUse": "Do not use in new graphs — use net.noodl.controls.radiobutton instead.",
+  "relatedNodes": ["net.noodl.controls.radiobutton"]
+}

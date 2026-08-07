@@ -1,0 +1,1233 @@
+{
+  "name": "NodeGX QA Fixture",
+  "version": "4",
+  "runtimeVersion": "1",
+  "rootComponent": "App",
+  "rootNodeId": "20be3596-38c4-545c-8698-e51dbc276b3e",
+  "components": [
+    {
+      "name": "App",
+      "id": "61da83cd-1aad-5042-8cec-724be10f1878",
+      "visual": true,
+      "ports": [],
+      "visualStateTransitions": [],
+      "graph": {
+        "roots": [
+          {
+            "id": "20be3596-38c4-545c-8698-e51dbc276b3e",
+            "type": "Router",
+            "x": 40,
+            "y": 40,
+            "parameters": {
+              "name": "Main",
+              "pages": {
+                "startPage": "/#__page__/Home",
+                "routes": [
+                  "/#__page__/Home",
+                  "/#__page__/Catalog",
+                  "/#__page__/Settings"
+                ]
+              }
+            },
+            "ports": [],
+            "children": []
+          }
+        ],
+        "connections": [],
+        "comments": []
+      },
+      "metadata": {}
+    },
+    {
+      "name": "/#__page__/Home",
+      "id": "4c62e3c9-5fb7-5105-b846-a6d20794e0d2",
+      "visual": true,
+      "ports": [],
+      "visualStateTransitions": [],
+      "graph": {
+        "roots": [
+          {
+            "id": "c0c74e0b-5b94-5a23-af6b-a53f190256a8",
+            "type": "Page",
+            "x": 40,
+            "y": 40,
+            "parameters": {
+              "title": "Home"
+            },
+            "ports": [],
+            "children": [
+              {
+                "id": "e5c3ba76-e4eb-56e6-88f6-8a300c1c33af",
+                "type": "Group",
+                "x": 0,
+                "y": 0,
+                "parameters": {
+                  "sizeMode": "contentHeight",
+                  "paddingTop": {
+                    "value": "24",
+                    "unit": "px"
+                  }
+                },
+                "ports": [],
+                "children": [
+                  {
+                    "id": "fd69b295-b2ea-5381-b404-d9c31be5cdd0",
+                    "type": "Text",
+                    "x": 0,
+                    "y": 0,
+                    "parameters": {
+                      "text": "Welcome",
+                      "textStyle": "Heading"
+                    },
+                    "ports": [],
+                    "children": []
+                  },
+                  {
+                    "id": "1e7d1ac7-2d93-53df-ae85-91d1bbb06159",
+                    "type": "Text",
+                    "x": 0,
+                    "y": 0,
+                    "parameters": {
+                      "text": "A fixture project for editor QA.",
+                      "textStyle": "Body Text"
+                    },
+                    "ports": [],
+                    "children": []
+                  },
+                  {
+                    "id": "eb846ebb-4a38-5ebd-89b2-ffca72349c0f",
+                    "type": "Text",
+                    "x": 0,
+                    "y": 0,
+                    "parameters": {
+                      "text": "Go to the catalogue",
+                      "textStyle": "Body Text",
+                      "color": "#2F6FEB"
+                    },
+                    "ports": [],
+                    "children": []
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "c2ce6b7f-91a1-50c6-ba36-cf9ff532ee84",
+            "type": "RouterNavigate",
+            "x": 460,
+            "y": 40,
+            "parameters": {
+              "target": "/#__page__/Catalog"
+            },
+            "ports": [],
+            "children": []
+          }
+        ],
+        "connections": [
+          {
+            "fromId": "eb846ebb-4a38-5ebd-89b2-ffca72349c0f",
+            "fromProperty": "onClick",
+            "toId": "c2ce6b7f-91a1-50c6-ba36-cf9ff532ee84",
+            "toProperty": "navigate"
+          }
+        ],
+        "comments": []
+      },
+      "metadata": {}
+    },
+    {
+      "name": "/#__page__/Catalog",
+      "id": "1bce53ce-53c7-56cd-a63a-e78f983ea170",
+      "visual": true,
+      "ports": [],
+      "visualStateTransitions": [],
+      "graph": {
+        "roots": [
+          {
+            "id": "ab3a4c75-f5ce-5472-a714-c124a90e894d",
+            "type": "Page",
+            "x": 40,
+            "y": 40,
+            "parameters": {
+              "title": "Catalog"
+            },
+            "ports": [],
+            "children": [
+              {
+                "id": "990ec437-3eb7-557d-b243-a7aa97d648bc",
+                "type": "Group",
+                "x": 0,
+                "y": 0,
+                "parameters": {
+                  "sizeMode": "contentHeight"
+                },
+                "ports": [],
+                "children": [
+                  {
+                    "id": "80cce709-6935-5a99-86d5-83b6badbfbc4",
+                    "type": "Text",
+                    "x": 0,
+                    "y": 0,
+                    "parameters": {
+                      "text": "Catalogue",
+                      "textStyle": "Heading"
+                    },
+                    "ports": [],
+                    "children": []
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "9cbea354-666b-56be-9579-59ce28a63e7c",
+            "type": "DbCollection2",
+            "x": 460,
+            "y": 40,
+            "parameters": {
+              "collectionName": "Product"
+            },
+            "ports": [],
+            "children": []
+          },
+          {
+            "id": "b6a3b686-3fd2-5e44-9dda-a1d8e1b06342",
+            "type": "FilterDBModels",
+            "x": 800,
+            "y": 40,
+            "parameters": {},
+            "ports": [],
+            "children": []
+          }
+        ],
+        "connections": [
+          {
+            "fromId": "9cbea354-666b-56be-9579-59ce28a63e7c",
+            "fromProperty": "items",
+            "toId": "b6a3b686-3fd2-5e44-9dda-a1d8e1b06342",
+            "toProperty": "items"
+          }
+        ],
+        "comments": []
+      },
+      "metadata": {}
+    },
+    {
+      "name": "/#__page__/Settings",
+      "id": "3ff79880-ab3d-531a-bb22-2ad9a4d180db",
+      "visual": true,
+      "ports": [],
+      "visualStateTransitions": [],
+      "graph": {
+        "roots": [
+          {
+            "id": "851ddc60-6607-55bb-ac69-0706b00e1107",
+            "type": "Page",
+            "x": 40,
+            "y": 40,
+            "parameters": {
+              "title": "Settings"
+            },
+            "ports": [],
+            "children": [
+              {
+                "id": "37f6e1df-16ac-5000-915d-9d06a269a1c1",
+                "type": "Group",
+                "x": 0,
+                "y": 0,
+                "parameters": {
+                  "sizeMode": "contentHeight"
+                },
+                "ports": [],
+                "children": [
+                  {
+                    "id": "8775d59b-91ee-5152-9b95-0871f662094e",
+                    "type": "Text",
+                    "x": 0,
+                    "y": 0,
+                    "parameters": {
+                      "text": "Settings",
+                      "textStyle": "Heading"
+                    },
+                    "ports": [],
+                    "children": []
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "connections": [],
+        "comments": []
+      },
+      "metadata": {}
+    },
+    {
+      "name": "/Library/Widgets/Controls/Primary Action Button",
+      "id": "394889ba-159c-50d0-a61d-7563862086e6",
+      "visual": true,
+      "ports": [],
+      "visualStateTransitions": [],
+      "graph": {
+        "roots": [
+          {
+            "id": "9596c67b-be38-5bd8-90c6-6243f452c97c",
+            "type": "Group",
+            "x": 40,
+            "y": 40,
+            "parameters": {
+              "sizeMode": "contentHeight",
+              "paddingTop": {
+                "value": "8",
+                "unit": "px"
+              },
+              "paddingBottom": {
+                "value": "8",
+                "unit": "px"
+              },
+              "paddingLeft": {
+                "value": "12",
+                "unit": "px"
+              },
+              "paddingRight": {
+                "value": "12",
+                "unit": "px"
+              },
+              "backgroundColor": "Surface",
+              "borderRadius": {
+                "value": "6",
+                "unit": "px"
+              }
+            },
+            "ports": [],
+            "children": [
+              {
+                "id": "9d8595dc-0a7b-5987-b9fe-cf18a9c02ecd",
+                "type": "Text",
+                "x": 0,
+                "y": 0,
+                "parameters": {
+                  "text": "Primary action",
+                  "textStyle": "Button Label"
+                },
+                "ports": [],
+                "children": []
+              }
+            ]
+          }
+        ],
+        "connections": [],
+        "comments": []
+      },
+      "metadata": {}
+    },
+    {
+      "name": "/Library/Widgets/Controls/Secondary Action Button With A Deliberately Long Name For Ellipsis Verification",
+      "id": "618fd55a-9a51-5122-b21f-e73511f68f61",
+      "visual": true,
+      "ports": [],
+      "visualStateTransitions": [],
+      "graph": {
+        "roots": [
+          {
+            "id": "9ba59640-94b6-5e98-9b39-f80c6afcb5db",
+            "type": "Group",
+            "x": 40,
+            "y": 40,
+            "parameters": {
+              "sizeMode": "contentHeight",
+              "paddingTop": {
+                "value": "8",
+                "unit": "px"
+              },
+              "paddingBottom": {
+                "value": "8",
+                "unit": "px"
+              },
+              "paddingLeft": {
+                "value": "12",
+                "unit": "px"
+              },
+              "paddingRight": {
+                "value": "12",
+                "unit": "px"
+              },
+              "backgroundColor": "Surface",
+              "borderRadius": {
+                "value": "6",
+                "unit": "px"
+              }
+            },
+            "ports": [],
+            "children": [
+              {
+                "id": "55d33e6c-0667-5375-a980-c4e5d9de6ad9",
+                "type": "Text",
+                "x": 0,
+                "y": 0,
+                "parameters": {
+                  "text": "Secondary action",
+                  "textStyle": "Button Label"
+                },
+                "ports": [],
+                "children": []
+              }
+            ]
+          }
+        ],
+        "connections": [],
+        "comments": []
+      },
+      "metadata": {}
+    },
+    {
+      "name": "/Library/Widgets/Controls/Icon Button",
+      "id": "549773c4-75dc-5473-9872-02e6f67bd918",
+      "visual": true,
+      "ports": [],
+      "visualStateTransitions": [],
+      "graph": {
+        "roots": [
+          {
+            "id": "5557c95a-2aa7-5dda-bca4-7d11ab97d65b",
+            "type": "Group",
+            "x": 40,
+            "y": 40,
+            "parameters": {
+              "sizeMode": "contentHeight",
+              "paddingTop": {
+                "value": "8",
+                "unit": "px"
+              },
+              "paddingBottom": {
+                "value": "8",
+                "unit": "px"
+              },
+              "paddingLeft": {
+                "value": "12",
+                "unit": "px"
+              },
+              "paddingRight": {
+                "value": "12",
+                "unit": "px"
+              },
+              "backgroundColor": "Surface",
+              "borderRadius": {
+                "value": "6",
+                "unit": "px"
+              }
+            },
+            "ports": [],
+            "children": [
+              {
+                "id": "6bda8c61-1f83-56fb-a84a-6e1bb2d72776",
+                "type": "Text",
+                "x": 0,
+                "y": 0,
+                "parameters": {
+                  "text": "Icon",
+                  "textStyle": "Button Label"
+                },
+                "ports": [],
+                "children": []
+              }
+            ]
+          }
+        ],
+        "connections": [],
+        "comments": []
+      },
+      "metadata": {}
+    },
+    {
+      "name": "/Library/Widgets/Controls/Toggle Switch",
+      "id": "f5e8a12d-0e39-5aa5-ad1b-541c1917bd14",
+      "visual": true,
+      "ports": [],
+      "visualStateTransitions": [],
+      "graph": {
+        "roots": [
+          {
+            "id": "273b3313-64cd-598c-9914-5d79cd85b84b",
+            "type": "Group",
+            "x": 40,
+            "y": 40,
+            "parameters": {
+              "sizeMode": "contentHeight",
+              "paddingTop": {
+                "value": "8",
+                "unit": "px"
+              },
+              "paddingBottom": {
+                "value": "8",
+                "unit": "px"
+              },
+              "paddingLeft": {
+                "value": "12",
+                "unit": "px"
+              },
+              "paddingRight": {
+                "value": "12",
+                "unit": "px"
+              },
+              "backgroundColor": "Surface",
+              "borderRadius": {
+                "value": "6",
+                "unit": "px"
+              }
+            },
+            "ports": [],
+            "children": [
+              {
+                "id": "5f9ae21c-96ce-5a89-b97b-51ea86c48982",
+                "type": "Text",
+                "x": 0,
+                "y": 0,
+                "parameters": {
+                  "text": "Toggle",
+                  "textStyle": "Caption"
+                },
+                "ports": [],
+                "children": []
+              }
+            ]
+          }
+        ],
+        "connections": [],
+        "comments": []
+      },
+      "metadata": {}
+    },
+    {
+      "name": "/Library/Widgets/Controls/Dropdown Field",
+      "id": "34c6e1da-62e9-50c5-9e2e-cae42acd2d27",
+      "visual": true,
+      "ports": [],
+      "visualStateTransitions": [],
+      "graph": {
+        "roots": [
+          {
+            "id": "89cecdbc-53f9-5428-be80-1a678fd26947",
+            "type": "Group",
+            "x": 40,
+            "y": 40,
+            "parameters": {
+              "sizeMode": "contentHeight",
+              "paddingTop": {
+                "value": "8",
+                "unit": "px"
+              },
+              "paddingBottom": {
+                "value": "8",
+                "unit": "px"
+              },
+              "paddingLeft": {
+                "value": "12",
+                "unit": "px"
+              },
+              "paddingRight": {
+                "value": "12",
+                "unit": "px"
+              },
+              "backgroundColor": "Surface",
+              "borderRadius": {
+                "value": "6",
+                "unit": "px"
+              }
+            },
+            "ports": [],
+            "children": [
+              {
+                "id": "a7f5e573-c6a2-56dd-91c8-8e1966aa50f8",
+                "type": "Text",
+                "x": 0,
+                "y": 0,
+                "parameters": {
+                  "text": "Dropdown",
+                  "textStyle": "Caption"
+                },
+                "ports": [],
+                "children": []
+              }
+            ]
+          }
+        ],
+        "connections": [],
+        "comments": []
+      },
+      "metadata": {}
+    },
+    {
+      "name": "/Library/Widgets/Cards/Product Card",
+      "id": "42fc1a4e-eed4-5541-87a9-e269ba2ea082",
+      "visual": true,
+      "ports": [],
+      "visualStateTransitions": [],
+      "graph": {
+        "roots": [
+          {
+            "id": "a41855f7-768f-5cd1-b43e-e892dd09d46b",
+            "type": "Group",
+            "x": 40,
+            "y": 40,
+            "parameters": {
+              "sizeMode": "contentHeight",
+              "paddingTop": {
+                "value": "8",
+                "unit": "px"
+              },
+              "paddingBottom": {
+                "value": "8",
+                "unit": "px"
+              },
+              "paddingLeft": {
+                "value": "12",
+                "unit": "px"
+              },
+              "paddingRight": {
+                "value": "12",
+                "unit": "px"
+              },
+              "backgroundColor": "Surface",
+              "borderRadius": {
+                "value": "6",
+                "unit": "px"
+              }
+            },
+            "ports": [],
+            "children": [
+              {
+                "id": "36004acb-212a-50c4-9047-631fa8c121b0",
+                "type": "Text",
+                "x": 0,
+                "y": 0,
+                "parameters": {
+                  "text": "Product",
+                  "textStyle": "Heading"
+                },
+                "ports": [],
+                "children": []
+              }
+            ],
+            "variant": "Card Surface",
+            "stateParameters": {
+              "hover": {
+                "backgroundColor": "Surface Raised"
+              }
+            },
+            "stateTransitions": {
+              "hover": {
+                "backgroundColor": {
+                  "curve": [
+                    0,
+                    0,
+                    1,
+                    1
+                  ],
+                  "dur": 120,
+                  "delay": 0
+                }
+              }
+            },
+            "defaultStateTransitions": {}
+          }
+        ],
+        "connections": [],
+        "comments": []
+      },
+      "metadata": {}
+    },
+    {
+      "name": "/Library/Widgets/Cards/Product Card Compact",
+      "id": "c5faf1e1-3d1c-59cb-801f-28c8c3477e58",
+      "visual": true,
+      "ports": [],
+      "visualStateTransitions": [],
+      "graph": {
+        "roots": [
+          {
+            "id": "832eb3e9-ae2a-5d66-a9cd-83718983fc78",
+            "type": "Group",
+            "x": 40,
+            "y": 40,
+            "parameters": {
+              "sizeMode": "contentHeight",
+              "paddingTop": {
+                "value": "8",
+                "unit": "px"
+              },
+              "paddingBottom": {
+                "value": "8",
+                "unit": "px"
+              },
+              "paddingLeft": {
+                "value": "12",
+                "unit": "px"
+              },
+              "paddingRight": {
+                "value": "12",
+                "unit": "px"
+              },
+              "backgroundColor": "Surface",
+              "borderRadius": {
+                "value": "6",
+                "unit": "px"
+              }
+            },
+            "ports": [],
+            "children": [
+              {
+                "id": "be3ba9b0-c697-5c5b-9249-2b5e2fc4211c",
+                "type": "Text",
+                "x": 0,
+                "y": 0,
+                "parameters": {
+                  "text": "Product",
+                  "textStyle": "Caption"
+                },
+                "ports": [],
+                "children": []
+              }
+            ]
+          }
+        ],
+        "connections": [],
+        "comments": []
+      },
+      "metadata": {}
+    },
+    {
+      "name": "/Library/Widgets/Cards/Promo Banner",
+      "id": "e0d28e8b-4cd6-5029-8ff4-bbc6613cbca9",
+      "visual": true,
+      "ports": [],
+      "visualStateTransitions": [],
+      "graph": {
+        "roots": [
+          {
+            "id": "2519ab40-d64f-5131-a756-c92ae89f8941",
+            "type": "Group",
+            "x": 40,
+            "y": 40,
+            "parameters": {
+              "sizeMode": "contentHeight",
+              "paddingTop": {
+                "value": "8",
+                "unit": "px"
+              },
+              "paddingBottom": {
+                "value": "8",
+                "unit": "px"
+              },
+              "paddingLeft": {
+                "value": "12",
+                "unit": "px"
+              },
+              "paddingRight": {
+                "value": "12",
+                "unit": "px"
+              },
+              "backgroundColor": "Surface",
+              "borderRadius": {
+                "value": "6",
+                "unit": "px"
+              }
+            },
+            "ports": [],
+            "children": [
+              {
+                "id": "133b6d42-f3d2-58d6-a12e-09f5d07a7c1e",
+                "type": "Text",
+                "x": 0,
+                "y": 0,
+                "parameters": {
+                  "text": "Promotion",
+                  "textStyle": "Heading"
+                },
+                "ports": [],
+                "children": []
+              }
+            ]
+          }
+        ],
+        "connections": [],
+        "comments": []
+      },
+      "metadata": {}
+    },
+    {
+      "name": "/Library/Layout/Header",
+      "id": "a058c178-ae8c-5ce8-9e6a-3e4dd0241bcc",
+      "visual": true,
+      "ports": [],
+      "visualStateTransitions": [],
+      "graph": {
+        "roots": [
+          {
+            "id": "cab65fb0-47a9-544a-8d54-ac7920343ede",
+            "type": "Group",
+            "x": 40,
+            "y": 40,
+            "parameters": {
+              "sizeMode": "contentHeight",
+              "paddingTop": {
+                "value": "8",
+                "unit": "px"
+              },
+              "paddingBottom": {
+                "value": "8",
+                "unit": "px"
+              },
+              "paddingLeft": {
+                "value": "12",
+                "unit": "px"
+              },
+              "paddingRight": {
+                "value": "12",
+                "unit": "px"
+              },
+              "backgroundColor": "Surface",
+              "borderRadius": {
+                "value": "6",
+                "unit": "px"
+              }
+            },
+            "ports": [],
+            "children": [
+              {
+                "id": "37f7d631-a1f0-5c4f-8c2d-b056e3467284",
+                "type": "Text",
+                "x": 0,
+                "y": 0,
+                "parameters": {
+                  "text": "Header",
+                  "textStyle": "Heading"
+                },
+                "ports": [],
+                "children": []
+              }
+            ]
+          }
+        ],
+        "connections": [],
+        "comments": []
+      },
+      "metadata": {}
+    },
+    {
+      "name": "/Library/Layout/Footer",
+      "id": "bd17ac3c-804f-5cdd-aa52-c492ca8b06cc",
+      "visual": true,
+      "ports": [],
+      "visualStateTransitions": [],
+      "graph": {
+        "roots": [
+          {
+            "id": "9c467983-0277-5417-953b-e64277da0708",
+            "type": "Group",
+            "x": 40,
+            "y": 40,
+            "parameters": {
+              "sizeMode": "contentHeight",
+              "paddingTop": {
+                "value": "8",
+                "unit": "px"
+              },
+              "paddingBottom": {
+                "value": "8",
+                "unit": "px"
+              },
+              "paddingLeft": {
+                "value": "12",
+                "unit": "px"
+              },
+              "paddingRight": {
+                "value": "12",
+                "unit": "px"
+              },
+              "backgroundColor": "Surface",
+              "borderRadius": {
+                "value": "6",
+                "unit": "px"
+              }
+            },
+            "ports": [],
+            "children": [
+              {
+                "id": "894a3b5a-2b3e-5e92-8a13-865f4dca416d",
+                "type": "Text",
+                "x": 0,
+                "y": 0,
+                "parameters": {
+                  "text": "Footer",
+                  "textStyle": "Caption"
+                },
+                "ports": [],
+                "children": []
+              }
+            ]
+          }
+        ],
+        "connections": [],
+        "comments": []
+      },
+      "metadata": {}
+    },
+    {
+      "name": "/Library/Layout/Sidebar",
+      "id": "3ce4ac61-1e71-598d-9e94-f1eea1185e1e",
+      "visual": true,
+      "ports": [],
+      "visualStateTransitions": [],
+      "graph": {
+        "roots": [
+          {
+            "id": "17d80f7c-8eb2-55c9-9e99-f178dc55e2ae",
+            "type": "Group",
+            "x": 40,
+            "y": 40,
+            "parameters": {
+              "sizeMode": "contentHeight",
+              "paddingTop": {
+                "value": "8",
+                "unit": "px"
+              },
+              "paddingBottom": {
+                "value": "8",
+                "unit": "px"
+              },
+              "paddingLeft": {
+                "value": "12",
+                "unit": "px"
+              },
+              "paddingRight": {
+                "value": "12",
+                "unit": "px"
+              },
+              "backgroundColor": "Surface",
+              "borderRadius": {
+                "value": "6",
+                "unit": "px"
+              }
+            },
+            "ports": [],
+            "children": [
+              {
+                "id": "b1d22836-ebf9-5799-b21f-fc596e4c1508",
+                "type": "Text",
+                "x": 0,
+                "y": 0,
+                "parameters": {
+                  "text": "Sidebar",
+                  "textStyle": "Caption"
+                },
+                "ports": [],
+                "children": []
+              }
+            ]
+          }
+        ],
+        "connections": [],
+        "comments": []
+      },
+      "metadata": {}
+    },
+    {
+      "name": "/Library/Layout/Breadcrumbs",
+      "id": "307f6179-e3ab-5115-897f-f6c4aafb85fd",
+      "visual": true,
+      "ports": [],
+      "visualStateTransitions": [],
+      "graph": {
+        "roots": [
+          {
+            "id": "34e7c689-386f-5689-ad97-f82e03194828",
+            "type": "Group",
+            "x": 40,
+            "y": 40,
+            "parameters": {
+              "sizeMode": "contentHeight",
+              "paddingTop": {
+                "value": "8",
+                "unit": "px"
+              },
+              "paddingBottom": {
+                "value": "8",
+                "unit": "px"
+              },
+              "paddingLeft": {
+                "value": "12",
+                "unit": "px"
+              },
+              "paddingRight": {
+                "value": "12",
+                "unit": "px"
+              },
+              "backgroundColor": "Surface",
+              "borderRadius": {
+                "value": "6",
+                "unit": "px"
+              }
+            },
+            "ports": [],
+            "children": [
+              {
+                "id": "bb1123a0-5731-5d5d-b8e7-63cef32a94a6",
+                "type": "Text",
+                "x": 0,
+                "y": 0,
+                "parameters": {
+                  "text": "Breadcrumbs",
+                  "textStyle": "Caption"
+                },
+                "ports": [],
+                "children": []
+              }
+            ]
+          }
+        ],
+        "connections": [],
+        "comments": []
+      },
+      "metadata": {}
+    },
+    {
+      "name": "/Logic/Session Controller",
+      "id": "51a2eacf-d967-54c8-8943-8812cd123e1a",
+      "visual": true,
+      "ports": [],
+      "visualStateTransitions": [],
+      "graph": {
+        "roots": [
+          {
+            "id": "03fc98a8-3e82-57c5-84af-f670e5965226",
+            "type": "JavaScriptFunction",
+            "x": 40,
+            "y": 40,
+            "parameters": {
+              "functionScript": "// Fixture logic node.\nOutputs.Session = { signedIn: false };\n"
+            },
+            "ports": [],
+            "children": [],
+            "dynamicports": [
+              {
+                "name": "out-Session",
+                "displayName": "Session",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs",
+                "index": 4
+              }
+            ]
+          },
+          {
+            "id": "afe67b25-8e12-5492-92bb-07739ed3e218",
+            "type": "Expression",
+            "x": 40,
+            "y": 260,
+            "parameters": {
+              "expression": "a + b"
+            },
+            "ports": [],
+            "children": []
+          }
+        ],
+        "connections": [],
+        "comments": []
+      },
+      "metadata": {}
+    },
+    {
+      "name": "/Logic/Cart Totals",
+      "id": "c0f28768-5011-5221-8793-8d9d904f853a",
+      "visual": true,
+      "ports": [],
+      "visualStateTransitions": [],
+      "graph": {
+        "roots": [
+          {
+            "id": "cb559d21-978d-59e1-af2e-22cb103c80cc",
+            "type": "Expression",
+            "x": 40,
+            "y": 40,
+            "parameters": {
+              "expression": "price * qty"
+            },
+            "ports": [],
+            "children": []
+          }
+        ],
+        "connections": [],
+        "comments": []
+      },
+      "metadata": {}
+    },
+    {
+      "name": "/Logic/Feature Flags",
+      "id": "c9d70019-f7a3-51ba-afc9-5ecca6b15371",
+      "visual": true,
+      "ports": [],
+      "visualStateTransitions": [],
+      "graph": {
+        "roots": [
+          {
+            "id": "56b0aa31-4cad-5c4a-b69b-d32099c29c20",
+            "type": "JavaScriptFunction",
+            "x": 40,
+            "y": 40,
+            "parameters": {
+              "functionScript": "Outputs.Flags = { newCatalogue: true };\n"
+            },
+            "ports": [],
+            "children": []
+          }
+        ],
+        "connections": [],
+        "comments": []
+      },
+      "metadata": {}
+    },
+    {
+      "name": "/Content/Release Notes",
+      "id": "e3e4f519-4a44-5e4b-8946-3cac23005e81",
+      "visual": true,
+      "ports": [],
+      "visualStateTransitions": [],
+      "graph": {
+        "roots": [
+          {
+            "id": "f4200cb2-6794-51f7-8e69-2bbca6c17a5d",
+            "type": "Markdown",
+            "x": 40,
+            "y": 40,
+            "parameters": {
+              "text": "Release notes body"
+            },
+            "ports": [],
+            "children": []
+          }
+        ],
+        "connections": [],
+        "comments": []
+      },
+      "metadata": {}
+    },
+    {
+      "name": "/Content/Changelog",
+      "id": "7c6c528a-e608-57f7-8a6c-eea2a2644cb0",
+      "visual": true,
+      "ports": [],
+      "visualStateTransitions": [],
+      "graph": {
+        "roots": [
+          {
+            "id": "5baadff2-f179-5056-8583-bc28d11d3d7e",
+            "type": "Markdown",
+            "x": 40,
+            "y": 40,
+            "parameters": {
+              "text": "Changelog body"
+            },
+            "ports": [],
+            "children": []
+          }
+        ],
+        "connections": [],
+        "comments": []
+      },
+      "metadata": {}
+    }
+  ],
+  "settings": {},
+  "variants": [
+    {
+      "name": "Card Surface",
+      "typename": "Group",
+      "parameters": {
+        "backgroundColor": "Surface",
+        "borderRadius": {
+          "value": "8",
+          "unit": "px"
+        },
+        "paddingTop": {
+          "value": "12",
+          "unit": "px"
+        },
+        "paddingBottom": {
+          "value": "12",
+          "unit": "px"
+        },
+        "paddingLeft": {
+          "value": "16",
+          "unit": "px"
+        },
+        "paddingRight": {
+          "value": "16",
+          "unit": "px"
+        }
+      },
+      "stateParamaters": {
+        "hover": {
+          "backgroundColor": "Surface Raised"
+        }
+      },
+      "stateTransitions": {
+        "hover": {
+          "backgroundColor": {
+            "curve": [
+              0,
+              0,
+              1,
+              1
+            ],
+            "dur": 120,
+            "delay": 0
+          }
+        }
+      },
+      "defaultStateTransitions": {}
+    }
+  ],
+  "metadata": {
+    "title": "NodeGX QA Fixture",
+    "description": "Editor QA fixture: four-level component nesting, an unresolved node type, an uncategorised component, a long name, a Router with pages, text styles, a variant, a visual state, a Query/Filter pair, and signal and data connections.",
+    "styles": {
+      "colors": {
+        "Surface": "#F5F6F8",
+        "Surface Raised": "#EAECEF",
+        "Ink": "#1F2328",
+        "Accent": "#2F6FEB"
+      },
+      "text": {
+        "Heading": {
+          "fontSize": {
+            "value": "20",
+            "unit": "px"
+          },
+          "color": "Ink"
+        },
+        "Body Text": {
+          "fontSize": {
+            "value": "14",
+            "unit": "px"
+          },
+          "color": "Ink"
+        },
+        "Button Label": {
+          "fontSize": {
+            "value": "14",
+            "unit": "px"
+          },
+          "color": "Accent"
+        },
+        "Caption": {
+          "fontSize": {
+            "value": "12",
+            "unit": "px"
+          },
+          "color": "#6E7781"
+        }
+      }
+    }
+  }
+}

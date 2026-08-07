@@ -1,3 +1,7 @@
+import React from 'react';
+import { createRoot, Root } from 'react-dom/client';
+
+import { VariableInput } from '../components/VariableInput';
 import { TypeView } from '../TypeView';
 import { getEditType } from '../utils';
 import { BasicType } from './BasicType';
@@ -22,6 +26,7 @@ export class VariableType extends TypeView {
   el: TSFixme;
   propertyType: string;
   typeView: TSFixme;
+  private root: Root | null = null;
 
   static fromPort(args) {
     const view = new VariableType();
@@ -44,42 +49,23 @@ export class VariableType extends TypeView {
 
     return view;
   }
-  render() {
-    const _this = this;
-    this.el = this.bindView(this.parent.cloneTemplate('variable-type'), this);
-    TypeView.prototype.render.call(this);
 
-    // Render types dropdown
-    this.$('.property-input-dropdown').html('');
-    const types = this.type.types;
-    for (const i in types) {
-      this.$('.property-input-dropdown').append(
-        this.bindView(
-          $(
-            '<div class="property-number-unit-enum" data-click="onTypeChanged" data-value="' +
-              types[i] +
-              '">' +
-              types[i] +
-              '</div>'
-          )
-        )
-      );
+  render() {
+    const div = document.createElement('div');
+    div.style.width = '100%';
+
+    if (!this.root) {
+      this.root = createRoot(div);
     }
 
-    this.$('.property-input-dropdown').on('mousedown', function (event) {
-      event.preventDefault(); // make sure drop down doesn't blur input until after "onPropertyChanged" has been triggered
-    });
+    this.renderReact();
 
-    this.$('.property-number-units').on('blur', function () {
-      _this.$('.property-input-dropdown').hide();
-    });
-
-    this.renderTypeView();
-
+    this.el = div;
     return this.el;
   }
-  renderTypeView() {
-    this.$('.property-view').html('');
+
+  private createTypeView() {
+    this.typeView && this.typeView.dispose && this.typeView.dispose();
 
     const port = {
       displayName: this.port.displayName,
@@ -104,28 +90,35 @@ export class VariableType extends TypeView {
       this.typeView = BooleanType.fromPort({ port: port, parent: this.parent });
     }
 
-    this.$('.property-view').html(this.typeView.render());
+    this.typeView.render();
   }
-  onTypeDropDownClicked(scope, el) {
-    const showShould = !this.$('.property-input-dropdown').is(':visible');
-    this.parent.$('.property-input-dropdown').hide();
-    if (showShould) {
-      this.$('.property-number-units')[0].focus();
-      this.$('.property-input-dropdown').show();
+
+  renderReact() {
+    if (!this.root) return;
+
+    this.createTypeView();
+
+    this.root.render(
+      React.createElement(VariableInput, {
+        types: this.type.types || [],
+        currentType: this.propertyType,
+        childEl: this.typeView.el,
+        onTypeChange: (type: string) => {
+          this.parent.setParameter(this.name, undefined);
+
+          this.propertyType = type;
+          this.renderReact();
+        }
+      })
+    );
+  }
+
+  dispose() {
+    if (this.root) {
+      this.root.unmount();
+      this.root = null;
     }
-
-    // Hide show the padding so drop downs can be scrolled to if at the bottom of the prop editor
-    this.parent.$('.property-drop-down-padding').hide();
-    showShould && this.parent.$('.property-drop-down-padding').show();
-    this.parent.notifyListeners('panelResized');
-  }
-  onTypeChanged(scope, el) {
-    const type = el.attr('data-value');
-    this.$('[data-text=propertyType]').text(type);
-
-    this.parent.setParameter(this.name, undefined);
-
-    this.propertyType = type;
-    this.renderTypeView();
+    this.typeView && this.typeView.dispose && this.typeView.dispose();
+    super.dispose();
   }
 }

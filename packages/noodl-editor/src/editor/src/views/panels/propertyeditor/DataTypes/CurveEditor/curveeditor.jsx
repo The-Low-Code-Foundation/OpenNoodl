@@ -447,7 +447,8 @@ class CurveEditor extends React.Component {
           {this.renderCurveInputs()}
         </div>
 
-        <div style={{ height: '35px', position: 'relative' }}>
+        {/* FH-013: flow layout, so the label wraps instead of being ellipsised. */}
+        <div className="property-row" style={{ minHeight: '35px', position: 'relative' }}>
           <label className="property-label">Duration (ms)</label>
           <div className="property-value">
             <input
@@ -462,7 +463,7 @@ class CurveEditor extends React.Component {
           </div>
         </div>
 
-        <div style={{ height: '35px', position: 'relative' }}>
+        <div className="property-row" style={{ minHeight: '35px', position: 'relative' }}>
           <label className="property-label">Delay (ms)</label>
           <div className="property-value">
             <input

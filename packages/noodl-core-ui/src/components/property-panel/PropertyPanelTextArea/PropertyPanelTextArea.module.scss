@@ -1,0 +1,40 @@
+@use '../../../styles/scss-variables/length.scss';
+
+/* PAR-002: textarea adopts the mock input box (bg-2, hairline, radius 6). */
+.Root {
+  font-family: var(--font-family);
+  color: var(--theme-color-fg-highlight);
+  background-color: var(--theme-color-bg-2);
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: var(--radius-md);
+  padding: 5.5px 9px;
+  width: 100%;
+  box-sizing: border-box;
+  font-size: 12.5px;
+  line-height: 1.4;
+  resize: none;
+  // Replaces the legacy jquery.autosize behaviour (Chromium >= 123).
+  field-sizing: content;
+  min-height: 33px;
+  max-height: 300px;
+  transition: background-color var(--speed-turbo), color var(--speed-turbo), border-color var(--speed-turbo);
+
+  &:hover {
+    border-color: var(--theme-color-border-strong);
+  }
+
+  &:focus {
+    background-color: var(--theme-color-bg-1);
+    border-color: var(--theme-color-primary);
+    color: var(--theme-color-fg-highlight);
+    outline: none;
+  }
+
+  &.is-changed {
+    color: var(--theme-color-fg-highlight);
+  }
+
+  &.is-connected {
+    outline: 1px solid var(--theme-color-primary-dim);
+  }
+}

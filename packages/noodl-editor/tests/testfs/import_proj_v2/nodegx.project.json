@@ -1,0 +1,16 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/project-v2.json",
+  "name": "proj1",
+  "version": "4",
+  "nodegxVersion": "1.1.0",
+  "modified": "2026-07-25T17:50:27.106Z",
+  "structure": {
+    "componentsDir": "components",
+    "assetsDir": "assets"
+  },
+  "rootNodeId": "2d3ccd33-f1ef-2dc5-3e1a-ca9d61cd222b",
+  "settings": {
+    "canvasWidth": 1080,
+    "canvasHeight": 1920
+  }
+}

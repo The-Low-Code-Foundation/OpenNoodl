@@ -1,0 +1,18 @@
+{
+  "label": "Mail Gun",
+  "description": "Send emails with Mailgun from a cloud function. Configure by provisioning the backend function secrets MAILGUN_API_KEY and MAILGUN_DOMAIN — see the prefab README.",
+  "type": "prefab",
+  "tags": [
+    "Cloud",
+    "Email"
+  ],
+  "icon": "icon.png",
+  "docsPath": "/library/prefabs/mailgun/",
+  "version": "0.3.0",
+  "minEditorVersion": "0.1.0",
+  "runtimeVersion": "2.7.0",
+  "provenance": {
+    "sourceUrl": "https://the-low-code-foundation.github.io/opennoodl-docs/library/prefabs/mailgun/mailgun-0-2.zip",
+    "importedAt": "2026-07-25"
+  }
+}

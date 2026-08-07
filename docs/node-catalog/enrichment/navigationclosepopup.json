@@ -1,0 +1,14 @@
+{
+  "typeName": "NavigationClosePopup",
+  "summary": "Close Popup: dismisses the popup this node lives in, sending named results and a close action back to the opener.",
+  "description": "Close Popup works only inside a component shown via Show Popup: when `close` fires it removes the overlay. The `results` list declares values handed back (each becomes an input here and an output on the Show Popup node), and `closeActions` declares named reasons, each surfacing as its own signal at the opener — the mechanism for confirm/cancel semantics.",
+  "whenToUse": "Every dismissal affordance inside a popup: confirm buttons, cancel crosses, backdrop clicks (via the backdrop Group's onClick). It has no effect outside a popup.",
+  "ports": {
+    "close": "Signal; dismisses the enclosing popup.",
+    "results": "Declared result names; each becomes a value input carried to the opener.",
+    "closeActions": "Named close reasons; each appears as a signal output on the opener's Show Popup node."
+  },
+  "runtimeBehavior": "The result-value inputs are generated from the `results` list on the instance — configuration-determined.",
+  "examples": ["nav-show-close-popup"],
+  "relatedNodes": ["NavigationShowPopup", "PageStackNavigateBack"]
+}

@@ -1,5 +1,5 @@
 const Model = require('../../../shared/model');
-const getDocsEndpoint = require('../utils/getDocsEndpoint').default;
+const getContentEndpoint = require('../utils/getContentEndpoint').default;
 
 const indexFile = 'index.json';
 
@@ -34,7 +34,7 @@ class LessonTemplatesModel extends Model {
 
   // List public modules
   _list(fn) {
-    const endpoint = getDocsEndpoint();
+    const endpoint = getContentEndpoint();
 
     this._makeRequest(endpoint + '/lessons/' + indexFile + '?' + new Date().getTime(), {
       success: (lessons) => {

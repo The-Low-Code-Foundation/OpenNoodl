@@ -1,15 +1,18 @@
 import React, { useState } from 'react';
-import { ComponentStory, ComponentMeta } from '@storybook/react';
+import type { Meta, StoryObj } from '@storybook/react';
 
 import { BaseDialog } from './BaseDialog';
 
-export default {
+const meta: Meta<typeof BaseDialog> = {
   title: 'Layout/Base Dialog',
   component: BaseDialog,
   argTypes: {}
-} as ComponentMeta<typeof BaseDialog>;
+};
 
-const Template: ComponentStory<typeof BaseDialog> = (args) => {
+export default meta;
+type Story = StoryObj<typeof meta>;
+
+const Template: Story = (args) => {
   const [isDialogVisible, setIsDialogVisible] = useState(false);
   const [reload, setReload] = useState(Date.now());
   return (
@@ -31,5 +34,6 @@ const Template: ComponentStory<typeof BaseDialog> = (args) => {
   );
 };
 
-export const Common = Template.bind({});
-Common.args = {};
+export const Common: Story = {
+  args: {},
+};

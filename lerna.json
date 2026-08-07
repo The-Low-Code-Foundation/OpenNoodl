@@ -1,6 +1,7 @@
 {
   "packages": [
-    "packages/*"
+    "packages/*",
+    "docs-site"
   ],
   "version": "2.7.0"
 }

@@ -1,0 +1,139 @@
+/**
+ * ExecutionDataPopup styles
+ *
+ * Floating popup showing input/output data for a selected node step.
+ * Positioned in canvas-space (parent container handles transform).
+ */
+
+.popup {
+  position: absolute;
+  width: 280px;
+  background-color: var(--theme-color-bg-2);
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: 6px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  z-index: 150;
+  pointer-events: all;
+  overflow: hidden;
+}
+
+.popupHeader {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px;
+  background-color: var(--theme-color-bg-3);
+  border-bottom: 1px solid var(--theme-color-border-default);
+}
+
+.popupTitle {
+  flex: 1;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--theme-color-fg-default);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.popupStatus {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 8px;
+
+  &[data-status='success'] {
+    background-color: var(--theme-color-success-bg, rgba(34, 197, 94, 0.15));
+    color: var(--theme-color-success);
+  }
+
+  &[data-status='error'] {
+    background-color: var(--theme-color-error-bg, rgba(239, 68, 68, 0.15));
+    color: var(--theme-color-error);
+  }
+
+  &[data-status='running'],
+  &[data-status='skipped'] {
+    background-color: var(--theme-color-bg-3);
+    color: var(--theme-color-fg-default-shy);
+  }
+}
+
+.closeBtn {
+  background: transparent;
+  border: none;
+  color: var(--theme-color-fg-default-shy);
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  padding: 0 2px;
+
+  &:hover {
+    color: var(--theme-color-fg-default);
+  }
+}
+
+.popupContent {
+  padding: 8px;
+  max-height: 320px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.sectionTitle {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--theme-color-fg-default-shy);
+}
+
+.dataPre {
+  margin: 0;
+  padding: 6px 8px;
+  background-color: var(--theme-color-bg-3);
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: 4px;
+  font-size: 10px;
+  font-family: 'Courier New', monospace;
+  color: var(--theme-color-fg-default);
+  overflow-x: auto;
+  white-space: pre;
+  max-height: 100px;
+  overflow-y: auto;
+}
+
+.errorPre {
+  margin: 0;
+  padding: 6px 8px;
+  background-color: var(--theme-color-error-bg, rgba(239, 68, 68, 0.1));
+  border: 1px solid var(--theme-color-error);
+  border-radius: 4px;
+  font-size: 10px;
+  font-family: 'Courier New', monospace;
+  color: var(--theme-color-error);
+  overflow-x: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-top: 4px;
+  border-top: 1px solid var(--theme-color-border-default);
+}
+
+.metaRow {
+  font-size: 10px;
+  color: var(--theme-color-fg-default-shy);
+}

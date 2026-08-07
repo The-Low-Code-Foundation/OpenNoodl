@@ -4,6 +4,9 @@ const CloudStore = require('@noodl/runtime/src/api/cloudstore'),
   JavascriptNodeParser = require('@noodl/runtime/src/javascriptnodeparser'),
   QueryUtils = require('@noodl/runtime/src/api/queryutils');
 
+/** NDA-004 §2 — see `setError`. Also the editor's warning key; the bus keys by `code`. */
+const AGGREGATE_ERROR_CODE = 'aggregate-records/aggregate-failed';
+
 var AggregateNode = {
   name: 'noodl.cloud.aggregate',
   docs: 'https://docs.noodl.net/nodes/cloud-functions/cloud-data/aggregate-records',
@@ -37,6 +40,8 @@ var AggregateNode = {
         group:"Aggregates",
         type:{name:"stringlist",allowEditOnly:true},
         displayName:"Aggregates",
+        description:
+          'Names of the aggregates to compute, each of which gets its own property and operation inputs',
         set:function(value) {
             this._internal.aggregatesList = value;
         }
@@ -46,17 +51,20 @@ var AggregateNode = {
     fetched: {
       group: 'Events',
       type: 'signal',
-      displayName: 'Success'
+      displayName: 'Success',
+      description: 'Fires once the aggregation has returned and the aggregate outputs are up to date'
     },
     failure: {
       group: 'Events',
       type: 'signal',
-      displayName: 'Failure'
+      displayName: 'Failure',
+      description: 'Fires when the aggregation could not be run, after the reason has been reported on the error channel'
     },
     error: {
       type: 'string',
       displayName: 'Error',
       group: 'Error',
+      description: 'Why the last aggregation failed; empty until one does',
       getter: function () {
         return this._internal.error;
       }
@@ -71,10 +79,27 @@ var AggregateNode = {
     _onNodeDeleted: function () {
       Node.prototype._onNodeDeleted.call(this);
     },
+    /**
+     * NDA-012 (Cloud Services) — two defects, both of them shapes this phase has already
+     * fixed twice in this node's siblings and missed here.
+     *
+     * The write was to `_internal.err` while the `error` output's getter reads
+     * `_internal.error`, so the port had never carried a message and only `Failure` ever
+     * fired. PLAT-003 NOTES §23.4 recorded exactly this in the deprecated `dbcollectionnode`
+     * and §27.3 found it again in the node that replaced it; this is the third instance, in
+     * the one package neither sweep opened.
+     *
+     * And nothing was raised on the error channel, so an aggregation that failed had no
+     * diagnosis anywhere — the same B-iv condition NDA-004 §2 closed across twenty-two
+     * `setError` helpers. This file is in `noodl-viewer-cloud`, which that sweep did not
+     * reach; a criterion met over two packages is not met over three.
+     */
     setError: function (err) {
-      this._internal.err = err;
+      this._internal.error = err;
       this.flagOutputDirty('error');
       this.sendSignalOnOutput('failure');
+
+      this.raiseRuntimeError(AGGREGATE_ERROR_CODE, err);
     },
     scheduleFetch: function () {
       var internal = this._internal;

@@ -1,0 +1,84 @@
+.Root {
+  color: var(--theme-color-fg-default);
+  font-size: 12px;
+  line-height: 1.6;
+  word-break: break-word;
+
+  p {
+    margin: 0 0 8px 0;
+  }
+
+  p:last-child {
+    margin-bottom: 0;
+  }
+
+  ul,
+  ol {
+    margin: 0 0 8px 0;
+    padding-left: 18px;
+  }
+
+  li {
+    margin-bottom: 4px;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    margin: 12px 0 6px 0;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--theme-color-fg-default);
+  }
+
+  code {
+    font-family: var(--font-family-code, monospace);
+    font-size: 11px;
+    padding: 1px 4px;
+    border-radius: 2px;
+    background-color: var(--theme-color-bg-2);
+  }
+
+  pre {
+    margin: 0 0 8px 0;
+    padding: 8px;
+    overflow-x: auto;
+    border-radius: 2px;
+    background-color: var(--theme-color-bg-2);
+
+    code {
+      padding: 0;
+      background: none;
+    }
+  }
+
+  blockquote {
+    margin: 0 0 8px 0;
+    padding-left: 8px;
+    border-left: 2px solid var(--theme-color-bg-3);
+    color: var(--theme-color-fg-muted);
+  }
+
+  /* Node citations. Styled as an affordance rather than a web link: the reader
+     should be able to tell at a glance which words point at their canvas. */
+  a[href^='noodl-node:'] {
+    color: var(--theme-color-primary);
+    text-decoration: none;
+    border-bottom: 1px dashed var(--theme-color-primary);
+    cursor: pointer;
+
+    &:hover {
+      background-color: var(--theme-color-bg-2);
+      border-bottom-style: solid;
+    }
+  }
+
+  /* Any other link the model emits is not clickable — nothing in this feature
+     opens a browser. */
+  a:not([href^='noodl-node:']) {
+    color: var(--theme-color-fg-default);
+    text-decoration: underline;
+    pointer-events: none;
+  }
+}

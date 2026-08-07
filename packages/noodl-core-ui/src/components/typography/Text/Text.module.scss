@@ -27,8 +27,15 @@
     color: var(--theme-color-fg-highlight);
   }
 
+  // POL-017: `fg-muted` is documented in colors.css as "large/secondary text
+  // only". `Text` is 12px (10px at Small), so there is no large-text exemption
+  // and 1.4.3's 4.5:1 applies. Measured on the panel surface it is used on:
+  // fg-muted was 3.93:1 dark / 3.62:1 light on bg-1, and 3.66/3.43 on bg-2.
+  // `fg-default-shy` is the same one step the gutter took (codemirror-theme.ts)
+  // — 5.98/5.34 on bg-1, 5.57/5.06 on bg-2, 4.82/4.67 on bg-3 — and stays
+  // dimmer than `fg-default`, so the hierarchy Shy exists to express survives.
   &-shy {
-    color: var(--theme-color-fg-muted);
+    color: var(--theme-color-fg-default-shy);
   }
 
   &-secondary {

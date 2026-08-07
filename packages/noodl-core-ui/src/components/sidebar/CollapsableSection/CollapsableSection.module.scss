@@ -1,7 +1,13 @@
 .Root {
+  box-sizing: border-box;
   display: flex;
   flex-direction: column;
   overflow: hidden;
+
+  /* PNL-001: a section is a fixed-size item in its scroll container. Without
+     this it shrinks to fit and then clips its own content behind the
+     `overflow: hidden` above — the panel never scrolls, the text just ends. */
+  flex-shrink: 0;
 
   &.has-visible-overflow {
     overflow: visible;
@@ -37,11 +43,15 @@
 }
 
 .Header {
+  box-sizing: border-box;
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 8px;
 
-  /* consistency */
+  /* PNL-005: 36px against the panel header's 44px. The eight-pixel difference is
+     half of what makes a section read as *inside* a panel rather than as another
+     panel; the type below is the other half. */
   flex: 0 0 36px;
   min-height: 36px;
   padding: 0 10px 0 16px;
@@ -49,7 +59,12 @@
   user-select: none;
 
   &.is-variant-panel {
-    background-color: var(--theme-color-bg-3);
+    /* Was `--theme-color-bg-3`, which is *more* prominent than the panel ground
+       (`bg-2`) the panel header sits on — the section header out-shouted its own
+       parent, which is the reported "the column reads as undifferentiated". The
+       mock recesses it instead (`.psec > header`, `--bg-1`): darker than the
+       panel in dark, lighter in light, subordinate in both. */
+    background-color: var(--theme-color-bg-1);
   }
 
   &.is-variant-panel-shy {
@@ -66,9 +81,27 @@
   }
 }
 
+/* PNL-005: the section title, defined here rather than inherited from whichever
+   `LabelSize` happened to be passed — same reasoning as `PanelHeader.Title`.
+   12px/650 under the panel header's 13px/650: the same voice, one step down. */
+.Title {
+  flex: 1 1 auto;
+  min-width: 0;
+
+  font-family: var(--font-family);
+  font-size: var(--font-size-base); /* 12.5px */
+  font-weight: 650;
+  line-height: var(--line-height-tight);
+  color: var(--theme-color-fg-highlight);
+
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .Body {
-  /* allow scrolling */
-  overflow: hidden overlay;
+  /* allow scrolling (`overlay` is a stale alias for `auto` in current Chromium) */
+  overflow: hidden auto;
   padding-top: 8px;
 
   &.is-variant-in-modal {

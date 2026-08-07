@@ -1,0 +1,271 @@
+/**
+ * The outcome contract's port set, declared once.
+ *
+ * See `dev-docs/reference/OUTCOME-CONTRACT.md` for the decision and phase 35 `ERG-001` for the
+ * build. The emit side lives on `Node.prototype` (`node.ts`) so every runtime gets it; this file
+ * is the *declaration* side, so that a node adopting the contract cannot spell a port name
+ * differently from the helper that fires it.
+ *
+ * ⚠️ **Why one place matters here specifically.** Phase 30's clearest structural finding is that a
+ * rule implemented per node diverges: `NDA-015` claimed to have de-duplicated a helper and had in
+ * fact done 1 of 4 call sites (FINDINGS **F-i′**). The same divergence is already visible in the
+ * thing this contract replaces — §0.2 found the eight ports that *display* as "Done" carrying
+ * **four different internal names** (`modified`, `created`, `stored`, `done`), because eight nodes
+ * each picked one.
+ */
+
+import type {
+  InputPortDefinition,
+  NodeInstance,
+  OutcomeFailureOptions,
+  OutcomeToken,
+  OutputPortDefinition
+} from '@noodl/types';
+
+/** The three terminal outcomes. Exactly one per invocation. */
+export type NodeOutcome = 'done' | 'unchanged' | 'failure';
+
+/**
+ * End every invocation in a coalesced batch with the same outcome.
+ *
+ * ERG-001 §4. Several actions defer their work through a `scheduleXxx` guard that drops the
+ * *second* pulse in an update pass — which is deliberate and is how "set the fields, then press
+ * Do" batches. It must not drop the second pulse's **outcome**: two invocations are two
+ * invocations, and Rule 1 is about each of them.
+ *
+ * `foreach.tsx` established the shape (`pendingRefreshOutcomes` is an array for exactly this
+ * reason) and the Cloud Services family needed it eight more times, so it is written once here
+ * rather than eight times. The array is the caller's — drain it into a local before the async
+ * work starts, so a second `Do` arriving mid-flight owns its own batch rather than being settled
+ * by the first request's answer.
+ */
+export function reportOutcomes(
+  node: NodeInstance,
+  tokens: OutcomeToken[],
+  outcome: NodeOutcome,
+  options?: OutcomeFailureOptions
+): void {
+  for (const token of tokens) node.reportOutcome(token, outcome, options);
+}
+
+/** The universal completion signal, which every action emits after its outcome. */
+export const COMPLETED_PORT = 'completed';
+
+/**
+ * Whether an outcome port was asked for.
+ *
+ * `undefined` is "the node never mentioned it"; `false` is "the node said no, explicitly". Both
+ * mean the port is absent, and {@link outcomeOutputs} and {@link outcomeInputs} between them
+ * already spelled this test out three times. It is named here so the *wording* below and the
+ * *port set* can only ever be derived from one predicate — which is the same reason
+ * `outcomeInputs` derives its enum from this options object rather than from the node.
+ */
+function declared(option: string | false | undefined): option is string {
+  return option !== false && option !== undefined;
+}
+
+/** `Completed`'s wording on a node that has somewhere else its outcome could land. */
+export const COMPLETED_WITH_OTHER_OUTCOMES =
+  'Fires after every invocation, whatever the outcome — wire this to carry on regardless. ' +
+  'Failure still fires and still carries its reason, so this cannot hide an error';
+
+/** `Completed`'s wording on a node whose only outcome is `Done`. */
+export const COMPLETED_SOLE_OUTCOME =
+  'Fires after every invocation. This node has no other outcome — no Unchanged and no Failure — ' +
+  'so it always fires together with Done, and wiring either one does the same thing. It is here ' +
+  'on every action so that reaching for it is never a per-node decision';
+
+/**
+ * FH-022 / TALK-006 decision 1 — say when `Completed` is `Done`.
+ *
+ * On the nodes that declare neither `Unchanged` nor `Failure` there is exactly one outcome, so
+ * `Done` and `Completed` fire on the same path every time with nothing between them. Richard hit
+ * this on `Condition` — a Logic node, among the first anyone wires — and read two
+ * identically-behaving ports as the vocabulary doubling up. It is not doubling up; it is the
+ * contract's universality landing on a node with one outcome, which is the price of `Completed`
+ * being the one port with no exemption.
+ *
+ * **Both ports stay, and neither is renamed.** The value of `Completed` is that wiring it is
+ * never a per-node decision. What was missing is that nothing told the author the two are the
+ * same *on this node*: `done` carries 77 distinct descriptions across its 82 nodes and
+ * `completed` carried 1, so on those nodes an author read two different sentences for one pulse.
+ *
+ * ⚠️ **This reads the finished port set, not {@link OutcomePortOptions}, and that is measured
+ * rather than preferred.** Deriving it inside {@link outcomeOutputs} from its own options — the
+ * obvious place, and where FH-022 specified it — produces a *false* sentence on four nodes,
+ * because four callers declare `failure` **beside** the helper rather than through it:
+ * `expression.ts`, `modelcrudbase.ts`'s `addFailure` mixin, `componentutils/base.ts`'s
+ * `canFailToResolve` and `variablenode2.ts`. Three of those really do report a `failure`
+ * outcome, so "it always fires together with Done" would have been untrue on them, and one of
+ * the four is in a package the helper's options cannot reach. Reading the assembled `outputs`
+ * cannot disagree with the port set, because it *is* the port set.
+ *
+ * ⚠️ **Guarded on the exact generic sentence**, so this only ever narrows a `Completed` that
+ * {@link outcomeOutputs} wrote. A node that hand-rolls a port called `completed` — which is what
+ * `GlobalStore.Set` and `ActionDispatcher` did before ERG-001 §4, with a *different* meaning —
+ * is left alone rather than being described by a contract it has not adopted.
+ *
+ * Idempotent: a second call sees the narrowed sentence and returns. `defineNode` runs twice on
+ * the same module object whenever two graphs register the same node.
+ *
+ * ⚠️ **One branch, in one place, zero call sites edited.** Hand-writing the sentence into the
+ * eight definitions is the divergence this whole file exists to prevent — see the module
+ * docstring. The set of nodes it lands on is a *consequence* of the port set, so a node that
+ * gains a `Failure` port later loses the sentence with no edit here, and nothing anywhere can
+ * hold a list of the eight and go stale.
+ */
+export function narrowCompletedDescription(outputs: Record<string, OutputPortDefinition>): void {
+  const completed = outputs[COMPLETED_PORT];
+  if (!completed || completed.description !== COMPLETED_WITH_OTHER_OUTCOMES) return;
+  if (outputs.unchanged || outputs.failure) return;
+
+  completed.description = COMPLETED_SOLE_OUTCOME;
+}
+
+export interface OutcomePortOptions {
+  /**
+   * Omit when the action genuinely cannot fail. "A node that cannot fail gets no `Failure`
+   * port" — NDA-004 established it and the contract keeps it; `Create New Array` builds its own
+   * collection and has nothing to fail at.
+   */
+  failure?: string | false;
+  /**
+   * Omit when the action cannot legitimately no-op. Most actions always change something.
+   */
+  unchanged?: string | false;
+  /** Overrides the `Done` description, which is otherwise generic. */
+  done?: string;
+  /** Port group. `Events` matches the rest of the library. */
+  group?: string;
+}
+
+/**
+ * The contract's outputs, ready to spread into a definition's `outputs`.
+ *
+ * Every port carries a `description` because `description` is canonical (Richard, 2026-08-01):
+ * enrichment `ports` may only add what the source cannot know, and `tooltip` is display-only.
+ */
+export function outcomeOutputs(options: OutcomePortOptions = {}): Record<string, OutputPortDefinition> {
+  const group = options.group || 'Events';
+  // Read out once so the two port blocks below and {@link narrowCompletedDescription} are
+  // answering the same question about the same values.
+  const unchanged = options.unchanged;
+  const failure = options.failure;
+  const hasUnchanged = declared(unchanged);
+  const hasFailure = declared(failure);
+
+  const outputs: Record<string, OutputPortDefinition> = {
+    done: {
+      type: 'signal',
+      displayName: 'Done',
+      group,
+      description: options.done || 'Fires when the action ran and changed something'
+    },
+    [COMPLETED_PORT]: {
+      type: 'signal',
+      displayName: 'Completed',
+      group,
+      description: COMPLETED_WITH_OTHER_OUTCOMES
+    }
+  };
+
+  if (hasUnchanged) {
+    outputs.unchanged = {
+      type: 'signal',
+      displayName: 'Unchanged',
+      group,
+      description: unchanged
+    };
+  }
+
+  if (hasFailure) {
+    outputs.failure = {
+      type: 'signal',
+      displayName: 'Failure',
+      group,
+      description: failure
+    };
+  }
+
+  return outputs;
+}
+
+/**
+ * ERG-001 §3 — the per-node escape hatch, and the contract's one sanctioned setting.
+ *
+ * ```
+ * Treat Unchanged as:  Unchanged (default) | Done | Failure
+ * ```
+ *
+ * Rule 3 is "prefer a port over a setting whenever both would work", and this is the one place
+ * the contract says a setting *is* right: a project whose whole idiom is "a duplicate is a bug"
+ * genuinely wants a different answer, and it is one option on one port rather than a panel of
+ * signal-routing switches. It follows the shape NDA-003 already shipped as `Treat empty as` on
+ * the Variables nodes, which is why it reads the same way in the panel.
+ *
+ * Rule 4 is not violated. That rule forbids a port's behaviour depending on whether a
+ * *different port happens to be connected* — the `Expression`/`Run` defect. This is a declared,
+ * visible, author-chosen mode, which Rule 4 explicitly allows: "where two modes are genuinely
+ * needed, the mode is declared, visible and author-chosen".
+ *
+ * ⚠️ **The default must be correct without the setter ever running.** A declared `default` does
+ * not run its setter — FINDINGS **A-D1**, where `Global Store`, `Subscribe to Store` and
+ * `State History` did nothing at all until an author touched an input, while the property panel
+ * displayed the default the whole time. So the value is stored under {@link TREAT_UNCHANGED_AS}
+ * and read as "anything other than `done`/`failure` means `unchanged`", which is what
+ * `undefined` lands on. {@link reportOutcome}'s remap is written that way round deliberately.
+ *
+ * ⚠️ **`Failure` is offered only when the node has a `Failure` port to route to.** The Variables
+ * family is the spec's named first home and has no `failure` — "a node that cannot fail gets no
+ * `Failure` port" — so an unconditional three-option enum would have let an author select an
+ * outcome with nowhere to land, and `reportOutcome` would answer with `outcome/missing-port`
+ * against a graph the author configured through the panel. The options are derived from the
+ * same `options` object that built the outputs, so the two cannot disagree.
+ *
+ * Spread into a definition's `inputs` alongside {@link outcomeOutputs} in its `outputs`. Pass
+ * the *same* options object to both.
+ */
+export function outcomeInputs(options: OutcomePortOptions = {}): Record<string, InputPortDefinition> {
+  // No `Unchanged` port means no `Unchanged` to reinterpret. Most actions always change
+  // something, and adding a dead setting to them is exactly the test-surface multiplication
+  // Rule 3's first warning is about.
+  if (!declared(options.unchanged)) return {};
+
+  const hasFailure = declared(options.failure);
+
+  const enums = [
+    { label: 'Unchanged', value: 'unchanged' },
+    { label: 'Done', value: 'done' }
+  ];
+  if (hasFailure) enums.push({ label: 'Failure', value: 'failure' });
+
+  return {
+    [TREAT_UNCHANGED_AS_PORT]: {
+      type: { name: 'enum', enums, allowEditOnly: true },
+      displayName: 'Treat Unchanged as',
+      group: 'Advanced',
+      default: 'unchanged',
+      description:
+        'What this node reports when the action was valid and there was nothing to do. ' +
+        'Unchanged (the default) keeps it a third outcome of its own. Done suits a project ' +
+        'whose chains should carry on either way' +
+        (hasFailure ? '; Failure suits one whose idiom is that a no-op is a bug' : '') +
+        '. Completed fires whatever this is set to.',
+      // `allowEditOnly` for the reason `Run Tasks` gives for its template contract: a
+      // connection changing what an outcome *means* while the graph runs has no reading that
+      // helps anyone.
+      set: function (this: NodeInstance, value: unknown) {
+        (this._internal as Record<string, unknown>)[TREAT_UNCHANGED_AS] = value;
+      }
+    } as InputPortDefinition
+  };
+}
+
+/** The input port's name. */
+export const TREAT_UNCHANGED_AS_PORT = 'treatUnchangedAs';
+
+/**
+ * Where {@link outcomeInputs}' setter parks the policy, and where {@link reportOutcome} reads
+ * it. Underscored so it cannot collide with a node's own `_internal` bookkeeping.
+ */
+export const TREAT_UNCHANGED_AS = '_treatUnchangedAs';

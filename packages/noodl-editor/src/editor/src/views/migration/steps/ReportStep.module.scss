@@ -1,0 +1,127 @@
+/**
+ * CLEANUP-000H: ReportStep — design token polish
+ */
+
+.StepContainer {
+  padding: var(--spacing-6, 24px);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-4, 16px);
+}
+
+.StepTitle {
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+  color: var(--theme-color-fg-highlight, var(--theme-color-fg-default));
+  margin: 0;
+}
+
+.StepDescription {
+  font-size: var(--font-size-md);
+  color: var(--theme-color-fg-default-shy);
+  line-height: 1.6;
+}
+
+.SummaryCard {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: var(--spacing-3, 12px);
+}
+
+.SummaryItem {
+  background-color: var(--theme-color-bg-3);
+  border: 1px solid var(--theme-color-border-default);
+  padding: var(--spacing-3, 12px);
+  border-radius: var(--radius-default);
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-1, 4px);
+}
+
+.SummaryValue {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--theme-color-fg-highlight, var(--theme-color-fg-default));
+  line-height: 1;
+}
+
+.SummaryLabel {
+  font-size: 10px;
+  color: var(--theme-color-fg-default-shy);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 500;
+}
+
+// Issue list
+.IssueList {
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: var(--radius-default);
+  overflow: hidden;
+}
+
+.IssueListEmpty {
+  padding: var(--spacing-4, 16px);
+  text-align: center;
+  font-size: var(--font-size-base);
+  color: var(--theme-color-fg-default-shy);
+}
+
+.IssueItem {
+  padding: var(--spacing-3, 12px);
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-3, 12px);
+  border-bottom: 1px solid var(--theme-color-border-default);
+
+  &:last-child {
+    border-bottom: none;
+  }
+
+  &:nth-child(even) {
+    background-color: color-mix(in srgb, var(--theme-color-bg-3) 30%, transparent);
+  }
+}
+
+.IssueIcon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  margin-top: 1px;
+
+  &--warning {
+    color: var(--theme-color-notice);
+  }
+
+  &--error {
+    color: var(--theme-color-danger);
+  }
+
+  &--info {
+    color: var(--theme-color-fg-default-shy);
+  }
+}
+
+.IssueContent {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.IssuePath {
+  font-family: var(--font-family-code);
+  font-size: var(--font-size-base);
+  color: var(--theme-color-fg-default-shy);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.IssueMessage {
+  font-size: var(--font-size-base);
+  color: var(--theme-color-fg-default);
+  line-height: 1.4;
+}

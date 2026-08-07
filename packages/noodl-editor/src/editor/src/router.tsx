@@ -1,6 +1,6 @@
 import { ipcRenderer } from 'electron';
 import React from 'react';
-import ReactDOM from 'react-dom';
+import { createRoot } from 'react-dom/client';
 
 import { EventDispatcher } from '../../shared/utils/EventDispatcher';
 import LessonTemplatesModel from './models/lessontemplatesmodel';
@@ -17,18 +17,28 @@ import { AppRouteOptions, AppRouter } from './pages/AppRouter';
 import { EditorPage } from './pages/EditorPage';
 import { ProjectsPage } from './pages/ProjectsPage';
 import { DialogLayerContainer } from './views/DialogLayer';
+import { installGitHubDeviceFlowDialog } from './views/DialogLayer/components/GitHubDeviceCodeDialog';
+import { installReportProblemListener } from './views/DialogLayer/components/ReportProblemDialog';
 import { ToastLayerContainer } from './views/ToastLayer';
+
+// Store roots globally for HMR reuse
+let toastLayerRoot: ReturnType<typeof createRoot> | null = null;
+let dialogLayerRoot: ReturnType<typeof createRoot> | null = null;
 
 function createToastLayer() {
   const toastLayer = document.createElement('div');
   toastLayer.classList.add('toast-layer');
-  $('body').append(toastLayer);
+  document.body.appendChild(toastLayer);
 
-  ReactDOM.render(React.createElement(ToastLayerContainer), toastLayer);
+  toastLayerRoot = createRoot(toastLayer);
+  toastLayerRoot.render(React.createElement(ToastLayerContainer));
 
   if (import.meta.webpackHot) {
     import.meta.webpackHot.accept('./views/ToastLayer', () => {
-      ReactDOM.render(React.createElement(ToastLayerContainer), toastLayer);
+      // Reuse existing root instead of creating a new one
+      if (toastLayerRoot) {
+        toastLayerRoot.render(React.createElement(ToastLayerContainer));
+      }
     });
   }
 }
@@ -39,21 +49,36 @@ function createDialogLayer() {
   // to be added to the DOM now!
   const dialogLayerPortalTarget = document.createElement('div');
   dialogLayerPortalTarget.classList.add('dialog-layer-portal-target');
-  $('body').append(dialogLayerPortalTarget);
+  document.body.appendChild(dialogLayerPortalTarget);
 
   // ---
   // Add the Dialog Layer
   const dialogLayer = document.createElement('div');
   dialogLayer.classList.add('dialog-layer');
-  $('body').append(dialogLayer);
+  document.body.appendChild(dialogLayer);
 
-  ReactDOM.render(React.createElement(DialogLayerContainer), dialogLayer);
+  dialogLayerRoot = createRoot(dialogLayer);
+  dialogLayerRoot.render(React.createElement(DialogLayerContainer));
 
   if (import.meta.webpackHot) {
     import.meta.webpackHot.accept('./views/DialogLayer', () => {
-      ReactDOM.render(React.createElement(DialogLayerContainer), dialogLayer);
+      // Reuse existing root instead of creating a new one
+      if (dialogLayerRoot) {
+        dialogLayerRoot.render(React.createElement(DialogLayerContainer));
+      }
     });
   }
+
+  // ALPHA-007: listen for `Help → Report a problem…`, and arm the error tail.
+  // Here rather than in the dialog, because the tail has to be collecting
+  // *before* the thing being reported goes wrong.
+  installReportProblemListener();
+
+  // F63: GitHub sign-in is a device flow, and the user code it produces has no
+  // home in any one panel — three separate Connect buttons start the same
+  // flow. Installed here so all of them get the dialog and none of them has to
+  // own it.
+  installGitHubDeviceFlowDialog();
 }
 
 export default class Router
@@ -105,7 +130,7 @@ export default class Router
     );
 
     PopupLayer.instance = new PopupLayer();
-    $('body').append(PopupLayer.instance.render());
+    document.body.appendChild(PopupLayer.instance.render());
 
     createDialogLayer();
     createToastLayer();
@@ -143,25 +168,41 @@ export default class Router
     //Set the global singleton here (and only here) to load the active project for this route
     if (ProjectModel.instance && ProjectModel.instance !== args.project) {
       //new or no project, dispose old one
-      ProjectModel.instance.dispose();
+      const disposed = ProjectModel.instance;
+      disposed.dispose();
       AiAssistantModel.instance.resetContexts();
 
       // HACK: Allow all react components to unmount un unregister the effectsbefore we delete the ProjectModel.
+      //
+      // Only clear the singleton if it is *still* the project we disposed. The
+      // block below assigns `args.project` synchronously, so on a project ->
+      // project route (open one project, go back, open another) this callback
+      // used to run afterwards and null out the project that had just been
+      // loaded — leaving the editor mounted against `ProjectModel.instance ===
+      // undefined`, which throws in the `instanceHasChanged` listeners and
+      // white-screens the window.
       setTimeout(() => {
-        ProjectModel.instance = undefined;
+        if (ProjectModel.instance === disposed) {
+          ProjectModel.instance = undefined;
+        }
       }, 0);
     }
 
     if (args.project && ProjectModel.instance !== args.project) {
       //set new project
       ProjectModel.instance = args.project;
+
+      // Set read-only mode if specified (for legacy projects)
+      if (args.readOnly !== undefined) {
+        args.project._isReadOnly = args.readOnly;
+      }
     }
 
     // Routes
     if (args.to === 'editor') {
       this.setState({
         route: EditorPage,
-        routeArgs: { route }
+        routeArgs: { route, readOnly: args.readOnly }
       });
     } else if (args.to === 'projects') {
       this.setState({
@@ -173,6 +214,6 @@ export default class Router
 
   render() {
     const Route = this.state.route;
-    return Route ? <Route {...this.state.routeArgs} /> : null;
+    return <>{Route ? <Route {...this.state.routeArgs} /> : null}</>;
   }
 }

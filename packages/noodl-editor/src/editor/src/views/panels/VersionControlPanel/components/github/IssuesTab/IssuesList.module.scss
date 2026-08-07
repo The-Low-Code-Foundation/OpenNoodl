@@ -1,0 +1,145 @@
+/**
+ * IssuesList Styles
+ */
+
+.IssuesList {
+  padding: 8px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.LoadingState,
+.ErrorState,
+.EmptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  text-align: center;
+  color: var(--theme-color-fg-default-shy);
+}
+
+.Spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid var(--theme-color-border-default);
+  border-top-color: var(--theme-color-primary);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 16px;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.LoadingState p {
+  color: var(--theme-color-fg-default-shy);
+  font-size: 13px;
+}
+
+.ErrorState {
+  color: var(--theme-color-fg-error);
+}
+
+.ErrorIcon {
+  font-size: 48px;
+  margin-bottom: 16px;
+}
+
+.ErrorState h3 {
+  color: var(--theme-color-fg-default);
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.ErrorState p {
+  color: var(--theme-color-fg-default-shy);
+  font-size: 13px;
+  margin-bottom: 16px;
+}
+
+.RetryButton {
+  padding: 8px 16px;
+  background-color: var(--theme-color-primary);
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+
+  &:hover {
+    opacity: 0.9;
+  }
+
+  &:active {
+    opacity: 0.8;
+  }
+}
+
+.EmptyIcon {
+  font-size: 48px;
+  margin-bottom: 16px;
+}
+
+.EmptyState h3 {
+  color: var(--theme-color-fg-default);
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.EmptyState p {
+  color: var(--theme-color-fg-default-shy);
+  font-size: 13px;
+}
+
+.LoadMoreButton {
+  width: 100%;
+  padding: 10px;
+  margin-top: 8px;
+  background-color: var(--theme-color-bg-3);
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: 4px;
+  color: var(--theme-color-fg-default);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+
+  &:hover:not(:disabled) {
+    background-color: var(--theme-color-bg-4);
+    border-color: var(--theme-color-border-hover);
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+}
+
+.SmallSpinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--theme-color-border-default);
+  border-top-color: var(--theme-color-primary);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+.EndMessage {
+  text-align: center;
+  padding: 16px;
+  color: var(--theme-color-fg-default-shy);
+  font-size: 12px;
+}

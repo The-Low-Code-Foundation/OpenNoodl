@@ -1,5 +1,3 @@
-@use '../../../styles/scss-variables/length.scss';
-
 .Root {
   display: flex;
   position: relative;
@@ -7,45 +5,77 @@
 
 .Checkbox {
   position: absolute;
-  width: length.$property-panel-input-size;
-  height: length.$property-panel-input-size;
+  inset: 0;
+  width: 100%;
+  height: 100%;
   opacity: 0;
   cursor: pointer;
+  margin: 0;
 }
 
+/* PAR-002 (mock `.toggle`): 32×19 switch — accent track when on, strong
+   border color when off, 14px white knob inset 2.5px. Same boolean
+   input/onChange contract as the old faux checkbox. */
 .FauxCheckbox {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  width: length.$property-panel-input-size;
-  height: length.$property-panel-input-size;
-  background-color: var(--theme-color-bg-3);
+  position: relative;
+  /* F57: the visual is NOT the click target — the real <input> is underneath it,
+     transparent and filling the same box. This element needs `position` for its
+     knob `::after`, and that alone put it in the positioned paint layer where,
+     being the later sibling, it covered the input and swallowed every click. The
+     toggle was mouse-dead in the whole app from PAR-002 (2026-07-26) until this
+     line: reachable by keyboard, by nothing else. Before PAR-002 this element had
+     no `position` at all, which is the only reason clicks used to land. */
+  pointer-events: none;
+  width: 32px;
+  height: 19px;
+  border-radius: var(--radius-full);
+  background-color: var(--theme-color-border-strong);
   cursor: pointer;
+  flex: none;
+  transition: background-color var(--speed-turbo);
 
-  svg {
-    pointer-events: none;
+  &::after {
+    content: '';
+    position: absolute;
+    top: 2.5px;
+    left: 2.5px;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background-color: var(--base-color-white);
+    box-shadow: var(--shadow-sm);
+    transition: transform var(--speed-turbo);
+  }
 
-    path {
-      stroke: var(--theme-color-fg-default);
+  &.is-checked {
+    background-color: var(--theme-color-primary);
+
+    &::after {
+      transform: translateX(13px);
     }
   }
 
   &.is-connected {
     outline: 1px solid var(--theme-color-primary-dim);
+    outline-offset: 1px;
   }
 
-  &.is-changed,
-  &:hover {
-    svg path {
-      stroke: var(--theme-color-fg-highlight);
-    }
+  /* Hover follows the input now, not this element — `pointer-events: none` means
+     `&:hover` can never match. Same shape as the `:focus-visible` rule below,
+     which was already written this way. */
+  .Checkbox:hover + &:not(.is-checked) {
+    background-color: var(--theme-color-fg-muted);
   }
 
-  .Checkbox:focus + & {
-    background-color: var(--theme-color-bg-1);
+  .Checkbox:focus-visible + & {
+    outline: 2px solid var(--theme-color-focus-ring);
+    outline-offset: 1px;
+  }
+}
 
-    svg path {
-      stroke: var(--theme-color-fg-highlight);
-    }
+@media (prefers-reduced-motion: reduce) {
+  .FauxCheckbox,
+  .FauxCheckbox::after {
+    transition: none;
   }
 }

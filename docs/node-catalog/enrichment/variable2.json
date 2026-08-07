@@ -1,0 +1,26 @@
+{
+  "typeName": "Variable2",
+  "summary": "Reads and writes one named app-wide variable; every node bound to the same name sees the same value.",
+  "description": "Variable2 (shown as 'Variable' in the editor) binds to one entry in the app-wide variable store — a single shared, untyped key/value map for the running session (in memory only, not persisted across reloads). `name` selects the variable; the `value` output reads it, and the `value` *input* writes it: sending a value in stores it under the current name for every other Variable node to see. When the variable is written anywhere else in the app, `changed` fires and the `value` output updates automatically. Connecting the `fetch` signal input changes this to pull mode: external changes and name changes no longer propagate on their own, and the node only re-reads when `fetch` fires, after which `fetched` fires. This is the shared counterpart of the per-instance Boolean/Number/String/Color holders, which each keep a private value.",
+  "whenToUse": "Use it for state shared across components — the logged-in user's name, a selected id, a UI mode — reading it where needed and writing via its `value` input or, for explicit signal-driven writes with type control, a Set Variable node. For a value used only inside one component prefer a per-instance holder (Boolean/Number/String/Color); for structured data use Model2.",
+  "ports": {
+    "name": "String value input naming the variable; all Variable/Set Variable nodes with the same name share one value. With `fetch` unconnected, changing the name immediately re-reads and fires `fetched`.",
+    "value": "As an input: writes — the received value is stored into the named variable. As an output: the variable's current value (untyped).",
+    "fetch": "Signal; re-reads the named variable on demand. Connecting it disables automatic updates — external changes then reach the outputs only when Fetch fires.",
+    "changed": "Signal; fires when the variable is changed from anywhere in the app (suppressed while `fetch` is connected).",
+    "fetched": "Signal; fires after each read triggered by `fetch` or by a name change.",
+    "done": "Signal; the outcome of a Fetch. A name change fires `fetched` without one, because a value setter is not an invocation.",
+    "completed": "Signal; fires after every Fetch whatever the outcome — wire it to carry on regardless.",
+    "failure": "Signal; a value arrived on the `value` input with no `name` set, so it was refused rather than stored where nothing can read it. ⚠️ This belongs to the `value` input, not to `fetch`: it reports no outcome and does not fire `completed`."
+  },
+  "examples": ["var-remember-name-across-screens"],
+  "patterns": [
+    "Set Variable writes on a user action; Variable2 nodes with the same name anywhere in the app update reactively — the idiomatic shared-state shape.",
+    "`value` output → an Expression → visual inputs: derive display text or booleans from shared state where it is consumed."
+  ],
+  "antiPatterns": [
+    "Expecting each Variable2 instance to hold its own value — the name is the identity, all instances with one name share one value. For private per-node state use Boolean/Number/String/Color.",
+    "Using variables as persistent storage — the store is in-memory and resets on page reload; persist important data in the cloud database or browser storage nodes."
+  ],
+  "relatedNodes": ["Set Variable", "Model2", "Boolean", "Number", "String", "Color"]
+}

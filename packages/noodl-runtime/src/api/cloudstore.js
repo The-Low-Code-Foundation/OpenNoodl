@@ -1,29 +1,113 @@
+/**
+ * `CloudStore` — resolution, and the Noodl `Model` glue. **The wire moved out.**
+ *
+ * BCN-002 put the Parse client behind `IDataAdapter` as
+ * [`ParseWireAdapter`](./backends/ParseWireAdapter.ts). What is left here is the
+ * two jobs that are not the wire's:
+ *
+ * 1. **Resolution.** The adapter takes a `BackendHandle` as its first argument;
+ *    this class is what produces one. Today that is "whatever `cloudservices`
+ *    metadata says", which is the singleton behaviour the runtime has always
+ *    had — see `_handle()` for why that is a floor rather than a design.
+ * 2. **The Model glue.** `_fromJSON`, `_deserializeJSON` and `_serializeObject`
+ *    convert between backend JSON and Noodl `Model`/`Collection` objects. They
+ *    stay because twenty-five nodes reach them through this class, and because
+ *    the serialiser is handed to the adapter as a hook rather than owned by it.
+ *
+ * Every one of the fourteen data methods is now a one-line forward. That is the
+ * point: there is exactly one live copy of the request layer, and the diff that
+ * proves it is this file getting shorter rather than a second one appearing.
+ *
+ * The class keeps its old *shape* deliberately — `query(options)`, not
+ * `query(handle, options)` — so no node call site changed in this task. Nothing
+ * about "no observable behaviour change" would be provable if the callers moved
+ * at the same time as the implementation. BCN-004 and BCN-009 are what repoint
+ * them at a resolver.
+ */
 const NoodlRuntime = require('../../noodl-runtime');
 const Model = require('../model');
 const Collection = require('../collection');
 const CloudFile = require('./cloudfile');
-const EventEmitter = require('../events');
-
-const _protectedFields = {
-  _common: ['_createdAt', '_updatedAt', 'objectId'],
-  _User: ['_email_verify_token']
-};
-
-function _removeProtectedFields(data, className) {
-  const _data = Object.assign({}, data);
-  _protectedFields._common.forEach((f) => delete _data[f]);
-  if (className && _protectedFields[className]) _protectedFields[className].forEach((f) => delete _data[f]);
-
-  return _data;
-}
+const { ParseWireAdapter } = require('./backends/ParseWireAdapter');
+const { RestDataAdapter } = require('./backends/RestDataAdapter');
+const { makeRestSerializer, filterSchemaFor } = require('./backends/restSerialize');
+const { relationsFromCachedCollections } = require('@noodl/backend-contract');
+const { resolveBackendFromRuntime, ACTIVE_BACKEND, hasStoredRelations } = require('./backends/resolveBackend');
 
 class CloudStore {
-  constructor(modelScope) {
+  /**
+   * @param {import('@noodl/types').ModelScopeLike} [modelScope]
+   * @param {import('./backends/resolveBackend').ResolvedBackendTarget} [target]
+   *   The backend this store is bound to. Omitted for the legacy singleton, which
+   *   resolves `cloudservices` itself and is what every non-Record node still uses.
+   */
+  constructor(modelScope, target) {
     this._initCloudServices();
 
-    this.events = new EventEmitter();
-    this.events.setMaxListeners(10000);
     this.modelScope = modelScope;
+    this._target = target;
+
+    /**
+     * Does this store's adapter want a **neutral** filter rather than a Parse `where`?
+     *
+     * BCN-004 step 5. `queryutils.convertVisualFilter` translates all the way to Parse,
+     * which is right for `ParseWireAdapter` and wrong for `RestDataAdapter` — the REST
+     * adapter takes the neutral filter and runs BCN-003's translator for its own dialect.
+     * Handing it a Parse document would translate an already-translated filter. The nodes
+     * read this flag to decide which of the two they compute; see
+     * `queryutils.convertVisualFilterToNeutral`.
+     */
+    this.usesNeutralFilter = Boolean(target && !target.isParseWire);
+
+    this._adapter = this.usesNeutralFilter
+      ? new RestDataAdapter({
+          // ⚠️ The hook `RestDataAdapter` defaults to the identity, and whose absence its
+          // own notes flag as a live defect: without it a `json` column written from an
+          // object-typed port double-encodes, exactly as before RUN-003 fixed it.
+          serializeObject: makeRestSerializer({
+            collections: () => (this._target ? this._target.collections : []),
+            toJSON: _toJSON
+          }),
+          schemaFor: (collectionName) => filterSchemaFor(this._target ? this._target.collections : [], collectionName),
+          // BCN-005. ⚠️ Derived from the **cached** schema, which is a strict
+          // subset of what the backends' relation-metadata endpoints describe —
+          // and it has to be, because those endpoints are admin-only
+          // (Directus 403, PostgREST has none, PocketBase 401) and a running app
+          // holds a user token. A relation this cannot see is one the adapter
+          // refuses by name rather than guessing a junction table for.
+          // BCN-005 schema sync. The editor stores what each backend's relation-metadata
+          // endpoint actually described; `relationsFromCachedCollections` is the strict
+          // subset derivable without it, and stays as the fallback for a project synced
+          // before the editor stored anything. The subset misses PocketBase relation
+          // fields and any junction with an extra column, and names a many-to-many after
+          // the target collection rather than the parent's own alias.
+          //
+          // ⚠️ `relations.length &&`, not just `relations &&`. A `custom` backend and an
+          // unsynced one both want the fallback, and an empty stored array must not
+          // silence it.
+          relationsFor: () => {
+            const target = this._target;
+            if (!target) return [];
+            if (hasStoredRelations(target)) return target.relations;
+            return relationsFromCachedCollections(target.collections);
+          }
+        })
+      : new ParseWireAdapter({
+          // The module-scope serialiser, not the scope-bound `this._serializeObject`
+          // below — which is what `create` and `save` called before this move, so
+          // `modelScope` is ignored during serialisation exactly as it always was.
+          // Pre-existing and preserved; PLAT-006 records the sibling case in
+          // `_fromJSON`.
+          serializeObject: (data, collectionName) => _serializeObject(data, collectionName),
+          // Read per call rather than captured, because `_initCloudServices()` can
+          // re-run (`dbcollectionnode2.ts:913`) and change it under a live adapter.
+          getServerVersionMajor: () => this.dbVersionMajor
+        });
+
+    // The same emitter, reachable at the same property. The adapter owns it now
+    // — `AdapterEvents` implements the contract's event surface once for every
+    // adapter — but `cloudstore.events` is read by name in the wild.
+    this.events = this._adapter.events;
 
     this._fromJSON = (item, collectionName) => CloudStore._fromJSON(item, collectionName, modelScope);
     this._deserializeJSON = (data, type) => CloudStore._deserializeJSON(data, type, modelScope);
@@ -43,6 +127,43 @@ class CloudStore {
     this.dbVersionMajor = dbVersionMajor;
   }
 
+  /**
+   * The resolved backend the adapter is handed, built fresh on every call.
+   *
+   * Fresh because `_initCloudServices()` re-reads project metadata at runtime
+   * and a captured handle would go stale the moment it did.
+   *
+   * `type: 'nodegx'` is an assumption and is marked as one. This class cannot
+   * tell our backend from an upstream Parse Server — both answer the same wire
+   * on the same headers, which is exactly why BCN-001 gave them separate
+   * descriptor columns. Nothing in *this* task reads `type`; BCN-009's picker is
+   * what will make it a fact rather than a default, and BCN-010's gating is what
+   * will make being wrong about it matter.
+   */
+  _handle() {
+    // BCN-004 step 5: a store bound to a resolved backend answers *that* backend. The
+    // legacy singleton keeps the shape below unchanged, including the `nodegx` assumption
+    // — `queryutils.backendType()` reads it to pick the filter builder's capability table
+    // and would narrow every pre-WF-007 project's operator list if this started guessing
+    // `parse`. See `resolveBackend.ts::endpointBackendType`.
+    if (this._target) return this._target.handle;
+
+    return {
+      id: ACTIVE_BACKEND,
+      type: 'nodegx',
+      name: 'Built-in',
+      url: this.endpoint,
+      // The Parse Application Id is precisely what `publicToken` describes: the
+      // non-secret identifier that ships with a deployed app.
+      publicToken: this.appId
+    };
+  }
+
+  /** The contract type of the backend this store talks to. */
+  backendType() {
+    return this._handle().type;
+  }
+
   on() {
     this.events.on.apply(this.events, arguments);
   }
@@ -51,396 +172,87 @@ class CloudStore {
     this.events.off.apply(this.events, arguments);
   }
 
+  /**
+   * Kept as a two-argument method so the handle-binding is the only difference
+   * from the old signature. `test/cloudstore-files.test.ts` drives it directly
+   * and is left untouched on purpose — a wire test that still passes against the
+   * moved wire is the cheapest evidence this task can produce.
+   */
   _makeRequest(path, options) {
-    if (typeof _noodl_cloud_runtime_version === 'undefined') {
-      // Running in browser
-      var xhr = new XMLHttpRequest();
-
-      xhr.onreadystatechange = function () {
-        if (xhr.readyState === 4) {
-          var json;
-          try {
-            // In SSR, we dont have xhr.response
-            json = JSON.parse(xhr.response || xhr.responseText);
-          } catch (e) {}
-
-          if (xhr.status === 200 || xhr.status === 201) {
-            options.success(json);
-          } else options.error(json || { error: xhr.responseText, status: xhr.status });
-        }
-      };
-
-      xhr.open(options.method || 'GET', this.endpoint + path, true);
-
-      xhr.setRequestHeader('X-Parse-Application-Id', this.appId);
-      if (typeof _noodl_cloudservices !== 'undefined')
-        xhr.setRequestHeader('X-Parse-Master-Key', _noodl_cloudservices.masterKey);
-
-      // Check for current users
-      var _cu = localStorage['Parse/' + this.appId + '/currentUser'];
-      if (_cu !== undefined) {
-        try {
-          const currentUser = JSON.parse(_cu);
-          xhr.setRequestHeader('X-Parse-Session-Token', currentUser.sessionToken);
-        } catch (e) {
-          // Failed to extract session token
-        }
-      }
-
-      if (options.onUploadProgress) {
-        xhr.upload.onprogress = (pe) => options.onUploadProgress(pe);
-      }
-
-      if (options.content instanceof File) {
-        xhr.send(options.content);
-      } else {
-        xhr.setRequestHeader('Content-Type', 'application/json');
-        xhr.send(JSON.stringify(options.content));
-      }
-    } else {
-      // Running in cloud runtime
-      const endpoint = typeof _noodl_cloudservices !== 'undefined' ? _noodl_cloudservices.endpoint : this.endpoint;
-      const appId = typeof _noodl_cloudservices !== 'undefined' ? _noodl_cloudservices.appId : this.appId;
-      const masterKey = typeof _noodl_cloudservices !== 'undefined' ? _noodl_cloudservices.masterKey : undefined;
-
-      fetch(endpoint + path, {
-        method: options.method || 'GET',
-        headers: {
-          'X-Parse-Application-Id': appId,
-          'X-Parse-Master-Key': masterKey,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(options.content)
-      })
-        .then((r) => {
-          if (r.status === 200 || r.status === 201) {
-            if (options.method === 'DELETE') {
-              options.success(undefined);
-            } else {
-              r.json()
-                .then((json) => options.success(json))
-                .catch((e) =>
-                  options.error({
-                    error: 'CloudStore: Failed to get json result.'
-                  })
-                );
-            }
-          } else {
-            if (options.method === 'DELETE') {
-              options.error({ error: 'Failed to delete.' });
-            } else {
-              r.json()
-                .then((json) => options.error(json))
-                .catch((e) => options.error({ error: 'Failed to fetch.' }));
-            }
-          }
-        })
-        .catch((e) => {
-          options.error({ error: e.message });
-        });
-    }
+    this._adapter._makeRequest(this._handle(), path, options);
   }
 
+  // ── The fourteen contract methods ────────────────────────────────────────
+  //
+  // Each one binds the resolved handle and forwards. Nothing else happens here:
+  // paths, headers, payload shaping, the `{_method: 'GET'}` tunnel and the
+  // adapter events all live in `ParseWireAdapter`, which is the only live copy.
+
   query(options) {
-    this._makeRequest('/classes/' + options.collection, {
-      method: 'POST',
-      content: {
-        _method: 'GET',
-        where: options.where,
-        limit: options.limit,
-        skip: options.skip,
-        include: Array.isArray(options.include) ? options.include.join(',') : options.include,
-        keys: Array.isArray(options.select) ? options.select.join(',') : options.select,
-        order: Array.isArray(options.sort) ? options.sort.join(',') : options.sort,
-        count: options.count
-      },
-      success: function (response) {
-        options.success(response.results, response.count);
-      },
-      error: function () {
-        options.error();
-      }
-    });
+    this._adapter.query(this._handle(), options);
   }
 
   aggregate(options) {
-    const args = [];
-
-    if (!options.group) {
-      options.error('You need to provide group option.');
-      return;
-    }
-
-    if (options.limit) args.push('limit=' + options.limit);
-    if (options.skip) args.push('skip=' + options.skip);
-
-    const grouping = {};
-
-    Object.keys(options.group).forEach((k) => {
-      const _g = {};
-      const group = options.group[k];
-      if (group['avg'] !== undefined) _g['$avg'] = '$' + group['avg'];
-      else if (group['sum'] !== undefined) _g['$sum'] = '$' + group['sum'];
-      else if (group['max'] !== undefined) _g['$max'] = '$' + group['max'];
-      else if (group['min'] !== undefined) _g['$min'] = '$' + group['min'];
-      else if (group['distinct'] !== undefined) _g['$addToSet'] = '$' + group['distinct'];
-
-      grouping[k] = _g;
-    });
-
-    // I don't know which version the API was changed, lets just say above 4 for now.
-    if (this.dbVersionMajor && this.dbVersionMajor > 4) {
-      grouping._id = null;
-      
-      if (options.where) args.push('$match=' + encodeURIComponent(JSON.stringify(options.where)));
-
-      args.push('$group=' + JSON.stringify(grouping));
-    } else {
-      grouping.objectId = null;
-      
-      if (options.where) args.push('match=' + encodeURIComponent(JSON.stringify(options.where)));
-
-      args.push('group=' + JSON.stringify(grouping));
-    }
-
-    this._makeRequest('/aggregate/' + options.collection + (args.length > 0 ? '?' + args.join('&') : ''), {
-      success: function (response) {
-        const res = {};
-
-        if (!response.results || response.results.length !== 1) {
-          options.success({}); // No result
-          return;
-        }
-
-        Object.keys(options.group).forEach((k) => {
-          res[k] = response.results[0][k];
-        });
-
-        options.success(res);
-      },
-      error: function () {
-        options.error();
-      }
-    });
+    this._adapter.aggregate(this._handle(), options);
   }
 
   count(options) {
-    const args = [];
-
-    if (options.where) args.push('where=' + encodeURIComponent(JSON.stringify(options.where)));
-    args.push('limit=0');
-    args.push('count=1');
-
-    this._makeRequest('/classes/' + options.collection + (args.length > 0 ? '?' + args.join('&') : ''), {
-      success: function (response) {
-        options.success(response.count);
-      },
-      error: function () {
-        options.error();
-      }
-    });
+    this._adapter.count(this._handle(), options);
   }
 
   distinct(options) {
-    const args = [];
-
-    if (options.where) args.push('where=' + encodeURIComponent(JSON.stringify(options.where)));
-    args.push('distinct=' + options.property);
-
-    this._makeRequest('/aggregate/' + options.collection + (args.length > 0 ? '?' + args.join('&') : ''), {
-      success: function (response) {
-        options.success(response.results);
-      },
-      error: function () {
-        options.error();
-      }
-    });
+    this._adapter.distinct(this._handle(), options);
   }
 
   fetch(options) {
-    const args = [];
-
-    if (options.include)
-      args.push('include=' + (Array.isArray(options.include) ? options.include.join(',') : options.include));
-
-    this._makeRequest(
-      '/classes/' + options.collection + '/' + options.objectId + (args.length > 0 ? '?' + args.join('&') : ''),
-      {
-        method: 'GET',
-        success: (response) => {
-          options.success(response);
-          this.events.emit('fetch', {
-            type: 'fetch',
-            objectId: options.objectId,
-            object: response,
-            collection: options.collection
-          });
-        },
-        error: function (res) {
-          options.error(res.error);
-        }
-      }
-    );
+    this._adapter.fetch(this._handle(), options);
   }
 
   create(options) {
-    this._makeRequest('/classes/' + options.collection, {
-      method: 'POST',
-      content: Object.assign(
-        _removeProtectedFields(_serializeObject(options.data, options.collection), options.collection),
-        { ACL: options.acl }
-      ),
-      success: (response) => {
-        const _obj = Object.assign({}, options.data, response);
-        options.success(_obj);
-        this.events.emit('create', {
-          type: 'create',
-          objectId: options.objectId,
-          object: _obj,
-          collection: options.collection
-        });
-      },
-      error: function (res) {
-        options.error(res.error);
-      }
-    });
+    this._adapter.create(this._handle(), options);
   }
 
   increment(options) {
-    const data = {};
-
-    for (let key in options.properties) {
-      data[key] = { __op: 'Increment', amount: options.properties[key] };
-    }
-
-    this._makeRequest('/classes/' + options.collection + '/' + options.objectId, {
-      method: 'PUT',
-      content: data,
-      success: (response) => {
-        options.success(response);
-      },
-      error: function (res) {
-        options.error(res.error);
-      }
-    });
+    this._adapter.increment(this._handle(), options);
   }
 
   save(options) {
-    const _data = Object.assign({}, options.data);
-    delete _data.createdAt;
-    delete _data.updatedAt;
-
-    this._makeRequest('/classes/' + options.collection + '/' + options.objectId, {
-      method: 'PUT',
-      content: Object.assign(_removeProtectedFields(_serializeObject(_data, options.collection), options.collection), {
-        ACL: options.acl
-      }),
-      success: (response) => {
-        options.success(response);
-        this.events.emit('save', {
-          type: 'save',
-          objectId: options.objectId,
-          object: Object.assign({}, options.data, response),
-          collection: options.collection
-        });
-      },
-      error: function (res) {
-        options.error(res.error);
-      }
-    });
+    this._adapter.save(this._handle(), options);
   }
 
   delete(options) {
-    this._makeRequest('/classes/' + options.collection + '/' + options.objectId, {
-      method: 'DELETE',
-      success: () => {
-        options.success();
-        this.events.emit('delete', {
-          type: 'delete',
-          objectId: options.objectId,
-          collection: options.collection
-        });
-      },
-      error: function (res) {
-        options.error(res.error);
-      }
-    });
+    this._adapter.delete(this._handle(), options);
   }
 
   addRelation(options) {
-    const _content = {};
-    _content[options.key] = {
-      __op: 'AddRelation',
-      objects: [
-        {
-          __type: 'Pointer',
-          objectId: options.targetObjectId,
-          className: options.targetClass
-        }
-      ]
-    };
-    this._makeRequest('/classes/' + options.collection + '/' + options.objectId, {
-      method: 'PUT',
-      content: _content,
-      success: function (response) {
-        options.success(response);
-      },
-      error: function (res) {
-        options.error(res.error);
-      }
-    });
+    this._adapter.addRelation(this._handle(), options);
   }
 
   removeRelation(options) {
-    const _content = {};
-    _content[options.key] = {
-      __op: 'RemoveRelation',
-      objects: [
-        {
-          __type: 'Pointer',
-          objectId: options.targetObjectId,
-          className: options.targetClass
-        }
-      ]
-    };
-    this._makeRequest('/classes/' + options.collection + '/' + options.objectId, {
-      method: 'PUT',
-      content: _content,
-      success: function (response) {
-        options.success(response);
-      },
-      error: function (res) {
-        options.error(res.error);
-      }
-    });
+    this._adapter.removeRelation(this._handle(), options);
   }
 
   uploadFile(options) {
-    this._makeRequest('/files/' + options.file.name, {
-      method: 'POST',
-      content: options.file,
-      contentType: options.file.type,
-      success: (response) => options.success(Object.assign({}, options.data, response)),
-      error: (err) => options.error(err),
-      onUploadProgress: options.onUploadProgress
-    });
+    this._adapter.uploadFile(this._handle(), options);
+  }
+
+  signFileUrl(options) {
+    this._adapter.signFileUrl(this._handle(), options);
+  }
+
+  deleteFile(options) {
+    this._adapter.deleteFile(this._handle(), options);
   }
 
   /**
-   * Users holding the master key are allowed to delete files
+   * The signed-in end user's id — **not one of the fourteen**.
    *
-   * @param {{
-   *    file: {
-   *      name: string;
-   *    }
-   * }} options
+   * Forwarded because `dbmodelcrudbase.ts`'s access-control mixin needs it and
+   * used to dig it out of `localStorage` itself. See the adapter's own note for
+   * why it stops at the adapter rather than becoming a contract method.
    */
-  deleteFile(options) {
-    this._makeRequest('/files/' + options.file.name, {
-      method: 'DELETE',
-      success: (response) => options.success(Object.assign({}, options.data, response)),
-      error: (err) => options.error(err)
-    });
+  currentUserId() {
+    return this._adapter.currentUserId(this._handle());
   }
 }
 
@@ -468,6 +280,12 @@ function _toJSON(obj) {
   return obj;
 }
 
+/**
+ * @param {Record<string, unknown>} data
+ * @param {string} collectionName
+ * @param {import('@noodl/types').ModelScopeLike} [modelScope] omit for the process-wide store
+ * @returns {Record<string, unknown>}
+ */
 function _serializeObject(data, collectionName, modelScope) {
   if (CloudStore._collections[collectionName]) var schema = CloudStore._collections[collectionName].schema;
 
@@ -518,6 +336,12 @@ function _serializeObject(data, collectionName, modelScope) {
   return data;
 }
 
+/**
+ * @param {unknown} data
+ * @param {string} [type] the schema type, when the caller knows it
+ * @param {import('@noodl/types').ModelScopeLike} [modelScope] omit for the process-wide store
+ * @returns {unknown}
+ */
 function _deserializeJSON(data, type, modelScope) {
   if (data === undefined) return;
   if (data === null) return null;
@@ -562,6 +386,24 @@ function _deserializeJSON(data, type, modelScope) {
   } else return data;
 }
 
+/**
+ * Turns one backend record into a Noodl Object, recursively.
+ *
+ * `modelScope` is optional by construction — every read of it is `(modelScope || Model)` —
+ * and omitting it puts the record in the process-wide store instead of a sandbox's. The
+ * five call sites in the viewer that omit it are therefore not broken, but a sandboxed
+ * preview driving those nodes shares records with the host page. See PLAT-006 notes.
+ *
+ * ⚠️ `objectId` is `string | number`, not `string` — this declaration said `string` while
+ * Directus and PostgREST have been handing back JSON numbers all along. See the contract's
+ * `RecordId`. `Model.get` keys a plain object, so a numeric id coerces on the way in and
+ * that is the reason the mixture has been harmless.
+ *
+ * @param {{ objectId?: string | number } & Record<string, unknown>} item
+ * @param {string} [collectionName]
+ * @param {import('@noodl/types').ModelScopeLike} [modelScope] omit for the process-wide store
+ * @returns {import('@noodl/types').ModelLike}
+ */
 function _fromJSON(item, collectionName, modelScope) {
   const m = (modelScope || Model).get(item.objectId);
   m._class = collectionName;
@@ -583,6 +425,8 @@ function _fromJSON(item, collectionName, modelScope) {
 CloudStore._fromJSON = _fromJSON;
 CloudStore._deserializeJSON = _deserializeJSON;
 CloudStore._serializeObject = _serializeObject;
+/** Exported for the REST serialiser, which has to unwrap a `Model`/`Collection` too. */
+CloudStore._toJSON = _toJSON;
 
 CloudStore.forScope = (modelScope) => {
   if (modelScope === undefined) return CloudStore.instance;
@@ -590,6 +434,64 @@ CloudStore.forScope = (modelScope) => {
 
   modelScope._cloudStore = new CloudStore(modelScope);
   return modelScope._cloudStore;
+};
+
+/**
+ * The store for one scope **and one backend** — BCN-004 step 5's resolver.
+ *
+ * `forScope` is the singleton path and is left exactly as it was: it resolves nothing,
+ * always speaks the Parse wire, and is what the twenty-odd nodes that have no backend
+ * picker still call. This is the path the six Record nodes take, and the only difference
+ * is that the backend is an argument.
+ *
+ * Three rules, all of them load-bearing:
+ *
+ * 1. **`_active_` and "unset" are the same request**, and both resolve through
+ *    `resolveBackend.ts::defaultBackendId` — which answers the project's `cloudservices`
+ *    endpoint when there is one. That is what makes this a no-op for every project that
+ *    exists today.
+ * 2. **A resolution that lands back on the legacy endpoint returns the legacy store.**
+ *    Not an equivalent one: `dbcollectionnode2` subscribes to save/create/delete events on
+ *    the store it queries through, and two stores for one backend would mean a record
+ *    created by one node never reaching the query node watching for it.
+ * 3. **A backend id that names nothing returns `undefined`**, so the caller can report a
+ *    sentence. Falling back to the default would write to a different backend than the one
+ *    the graph names, silently.
+ *
+ * @param {import('@noodl/types').ModelScopeLike} [modelScope]
+ * @param {string} [backendId] a `backendServices` id, `'_endpoint_'`, or `'_active_'`
+ * @returns {CloudStore | undefined}
+ */
+CloudStore.forBackend = (modelScope, backendId) => {
+  const target = resolveBackendFromRuntime(backendId);
+
+  // Nothing configured at all: a brand-new project, or a runtime with no metadata. The
+  // legacy store is the honest answer — it is what these nodes have always used, and it
+  // reads `cloudservices` for itself when the deploy injects it later.
+  if (!target) {
+    if (!backendId || backendId === ACTIVE_BACKEND) return CloudStore.forScope(modelScope);
+    return undefined;
+  }
+
+  if (target.isParseWire && target.entry.id === '_endpoint_') return CloudStore.forScope(modelScope);
+
+  const owner = modelScope || CloudStore;
+  if (owner._cloudStoresByBackend === undefined) owner._cloudStoresByBackend = {};
+  if (owner._cloudStoresByBackend[target.entry.id] === undefined) {
+    owner._cloudStoresByBackend[target.entry.id] = new CloudStore(modelScope, target);
+  } else {
+    // The metadata can change under a live store — a re-introspection, a new token — and
+    // the handle is read from `_target` on every call, so refreshing it is enough.
+    owner._cloudStoresByBackend[target.entry.id]._target = target;
+  }
+
+  return owner._cloudStoresByBackend[target.entry.id];
+};
+
+/** Drop the per-backend stores. Used by tests; harmless at runtime. */
+CloudStore.invalidateBackends = (modelScope) => {
+  const owner = modelScope || CloudStore;
+  owner._cloudStoresByBackend = undefined;
 };
 
 var _instance;

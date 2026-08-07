@@ -1,31 +1,35 @@
-import { ComponentStory, ComponentMeta } from '@storybook/react';
-import React from 'react';
+import type { Meta, StoryObj } from '@storybook/react';
 
 import { PropertyPanelButton } from '@noodl-core-ui/components/property-panel/PropertyPanelButton';
 
-export default {
+const meta: Meta<typeof PropertyPanelButton> = {
   title: 'Property Panel/Button',
   component: PropertyPanelButton,
   argTypes: {}
-} as ComponentMeta<typeof PropertyPanelButton>;
+};
 
-const Template: ComponentStory<typeof PropertyPanelButton> = (args) => (
+export default meta;
+type Story = StoryObj<typeof meta>;
+
+const Template: Story = (args) => (
   <div style={{ width: 280 }}>
     <PropertyPanelButton {...args} />
   </div>
 );
 
-export const Common = Template.bind({});
-Common.args = {
+export const Common: Story = {
+  args: {
   properties: {
     buttonLabel: 'Verify API Key'
   }
+},
 };
 
-export const Primary = Template.bind({});
-Primary.args = {
+export const Primary: Story = {
+  args: {
   properties: {
     isPrimary: true,
     buttonLabel: 'Verify API Key'
   }
+},
 };

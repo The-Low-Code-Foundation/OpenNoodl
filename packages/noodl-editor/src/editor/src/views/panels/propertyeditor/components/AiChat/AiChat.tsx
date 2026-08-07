@@ -1,13 +1,14 @@
 import { useModernModel } from '@noodl-hooks/useModel';
-import { OpenAiStore } from '@noodl-store/AiAssistantStore';
+import { AiConfigStore } from '@noodl-store/AiAssistantStore';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import ReactDOM from 'react-dom';
+import { createRoot, Root } from 'react-dom/client';
 
 import { AiAssistantModel } from '@noodl-models/AiAssistant/AiAssistantModel';
 import { AiCopilotContext } from '@noodl-models/AiAssistant/AiCopilotContext';
 import { ChatHistoryEvent, ChatMessage } from '@noodl-models/AiAssistant/ChatHistory';
+import { PopupItemType } from '@noodl-models/AiAssistant/PopupItemType';
+import { CodeHistoryStore } from '@noodl-models/CodeHistory';
 import { NodeGraphNode } from '@noodl-models/nodegraphmodel';
-import { createModel } from '@noodl-utils/CodeEditor';
 import { LocalUserIdentity } from '@noodl-utils/LocalUserIdentity';
 import { tracker } from '@noodl-utils/tracker';
 
@@ -26,9 +27,9 @@ import { VStack } from '@noodl-core-ui/components/layout/Stack';
 import { Label, LabelSize } from '@noodl-core-ui/components/typography/Label';
 import { Text, TextType } from '@noodl-core-ui/components/typography/Text';
 
-import { PopupItemType } from '../../../../Clippy/ClippyCommandsMetadata';
-import PopupLayer from '../../../../popuplayer';
-import { CodeEditor, CodeEditorProps } from '../../CodeEditor/CodeEditor';
+import { JavaScriptEditor } from '@noodl-core-ui/components/code-editor';
+
+import PopupLayer, { Popout } from '../../../../popuplayer';
 
 export interface AiChatProps {
   model: NodeGraphNode;
@@ -171,8 +172,8 @@ function AiNodeChat({ context, onUpdated }: AiNodeChatProps) {
 
   // You should not be able to reactivly update this while having this panel open
   // So it will always re-render when opening the panel, and we get the latest version.
-  const version = OpenAiStore.getVersion();
-  const prettyVersion = OpenAiStore.getPrettyVersion();
+  const isAiEnabled = AiConfigStore.isEnabled();
+  const prettyVersion = AiConfigStore.getPrettyProvider();
 
   const activities = context.chatHistory.activities;
   const suggestions = context.chatHistory.suggestions;
@@ -180,7 +181,7 @@ function AiNodeChat({ context, onUpdated }: AiNodeChatProps) {
   return (
     <AiChatBox
       footer={
-        version === 'disabled' ? (
+        !isAiEnabled ? (
           <Center>
             <Text textType={TextType.Shy}>Noodl AI is currently disabled.</Text>
           </Center>
@@ -291,60 +292,77 @@ interface AiMessageFunctionNodeAffixProps {
 
 function AiMessageFunctionNodeAffix({ context, onUpdated }: AiMessageFunctionNodeAffixProps) {
   const rootRef = useRef<HTMLDivElement>(null);
-  const editorRef = useRef(null);
+  const editorRef = useRef<{ root: Root; popoutDiv: HTMLDivElement; popout: Popout } | null>(null);
 
   useEffect(() => {
     return () => {
       if (!editorRef.current) return;
-      editorRef.current.model.dispose();
+      // Defer unmount so it doesn't run during React's own commit teardown.
+      const { root } = editorRef.current;
+      setTimeout(() => root.unmount(), 0);
       editorRef.current = null;
     };
   }, []);
 
   function showEditor() {
     if (editorRef.current !== null) {
-      editorRef.current.model.dispose();
-      editorRef.current = null;
+      PopupLayer.instance.hidePopout(editorRef.current.popout);
     }
 
-    const model = createModel(
-      {
-        // NOTE: Hardcoded for the Function node
-        type: 'string',
-        value: context.node.getParameter('functionScript'),
-        codeeditor: 'javascript'
-      },
-      context.node
-    );
+    // NOTE: Hardcoded for the Function node — same parameter the property panel edits.
+    let currentValue = context.node.getParameter('functionScript') || '';
 
     function save() {
-      const newValue = model.getValue();
-      context.node.setParameter('functionScript', newValue);
+      // Snapshot before the write, matching CodeEditorType — the History button in
+      // this popout is the same one, and it reads the same sidecar.
+      if (currentValue) {
+        void CodeHistoryStore.instance.saveSnapshot(context.node.id, 'functionScript', currentValue);
+      }
+
+      context.node.setParameter('functionScript', currentValue);
 
       // Refresh Property Panel
       onUpdated && onUpdated();
     }
 
-    const props: CodeEditorProps = {
-      nodeId: context.node.id,
-      model: model,
-      onSave: save
-    };
-
     const popoutDiv = document.createElement('div');
-    ReactDOM.render(React.createElement(CodeEditor, props), popoutDiv);
+    const root = createRoot(popoutDiv);
+
+    root.render(
+      React.createElement(JavaScriptEditor, {
+        value: currentValue,
+        validationType: 'function',
+        historyProvider: CodeHistoryStore.instance.isAvailable()
+          ? CodeHistoryStore.instance.providerFor(context.node.id, 'functionScript')
+          : undefined,
+        onChange: (newValue: string) => {
+          currentValue = newValue;
+        },
+        onSave: () => {
+          save();
+        },
+        onClose: () => {
+          if (editorRef.current) {
+            PopupLayer.instance.hidePopout(editorRef.current.popout);
+          }
+        }
+      })
+    );
 
     const popout = PopupLayer.instance.showPopout({
-      content: { el: [popoutDiv] },
-      attachTo: $(rootRef.current),
+      content: { el: popoutDiv },
+      attachTo: rootRef.current,
       position: 'right',
       onClose: function () {
         save();
+        // Defer so the unmount doesn't collide with the popout close pass.
+        setTimeout(() => root.unmount(), 0);
+        editorRef.current = null;
       }
     });
 
     editorRef.current = {
-      model,
+      root,
       popoutDiv,
       popout
     };

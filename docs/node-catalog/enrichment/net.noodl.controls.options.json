@@ -1,0 +1,16 @@
+{
+  "typeName": "net.noodl.controls.options",
+  "summary": "Dropdown control: selects one value from an items list, exposing the selection as a string value.",
+  "description": "The Dropdown renders a select control fed by an items list (label/value pairs, statically configured or bound from an array). The selected entry's value comes out on `value` (string level); `onChange` fires per user selection. Styling, `enabled`, and interaction states follow the standard controls surface.",
+  "whenToUse": "One-of-many choices too numerous or space-constrained for radio buttons: country pickers, sort orders, categories. For two or three visible-at-once options prefer a Radio Button Group.",
+  "ports": {
+    "value": "String level with the selected entry's value (input to preselect, output to read).",
+    "onChange": "Signal; the user picked an entry."
+  },
+  "runtimeBehavior": "Declared-port-groups: the items source (static list vs bound array with label/value mappings), label ports and per-visual-state styling ports appear based on parameters. Bind `items` from an array to populate dynamically.",
+  "examples": ["ctl-settings-form"],
+  "patterns": [
+    "Bind items from a Query Records/Static Array result; wire `value` into a filter input — a data-driven filter bar in three nodes."
+  ],
+  "relatedNodes": ["net.noodl.controls.radiobutton", "Radio Button Group", "Static Data"]
+}

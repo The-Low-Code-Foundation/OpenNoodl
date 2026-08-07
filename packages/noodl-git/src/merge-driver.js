@@ -1,4 +1,5 @@
 const fs = require('fs');
+const path = require('path');
 
 const isRenderer = process && process.type === 'renderer';
 
@@ -6,7 +7,11 @@ const isRenderer = process && process.type === 'renderer';
 const app = isRenderer ? require('@electron/remote').app : require('electron').app;
 const tmpFolder = app.getPath('temp');
 
-const driverOptionsPath = tmpFolder + 'noodl-merge-driver-options.json';
+// `tmpFolder + filename` silently relied on `getPath('temp')` ending in a
+// separator. It does on macOS (e.g. `/var/folders/xx/.../T/`) but not on Linux
+// (`/tmp`), where the unjoined path landed at filesystem root and every write
+// failed with EACCES for a non-root user — invisible until CI ran on Ubuntu.
+const driverOptionsPath = path.join(tmpFolder, 'noodl-merge-driver-options.json');
 
 /**
  *

@@ -1,17 +1,18 @@
-import { ComponentStory, ComponentMeta } from '@storybook/react';
-import React from 'react';
+import type { Meta, StoryObj } from '@storybook/react';
 
 import { Portal } from './Portal';
 
-export default {
+const meta: Meta<typeof Portal> = {
   title: 'Layout/Portal',
   component: Portal,
   argTypes: {}
-} as ComponentMeta<typeof Portal>;
+};
 
-const Template: ComponentStory<typeof Portal> = (args) => <Portal {...args} />;
+export default meta;
+type Story = StoryObj<typeof meta>;
 
-export const Common = Template.bind({});
-Common.args = {
+export const Common: Story = {
+  args: {
   portalRoot: document.querySelector('.dialog-layer-portal-target')
+},
 };

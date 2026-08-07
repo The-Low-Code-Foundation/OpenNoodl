@@ -1,5 +1,4 @@
-var _ = require('underscore'),
-  Path = require('path');
+var Path = require('path');
 var mkdirp = require('mkdirp');
 var JSZip = require('jszip');
 var fs = require('fs');
@@ -7,6 +6,8 @@ var md5File = require('md5-file');
 var fse = require('fs-extra');
 
 const { dialog } = require('@electron/remote');
+// webUtils lives in the renderer process itself, not behind @electron/remote.
+const { webUtils } = require('electron');
 
 //OSX and Windows add trailing slashes to the temp folder, Linux doesn't
 function addTrailingSlash(path) {
@@ -464,16 +465,28 @@ FileSystem.instance = {
     });
   },
   chooseFile: function (callback, options) {
-    $('#__hiddenFileInput__').remove();
-    $('body').append('<input style="display:none" id="__hiddenFileInput__"  type="file" accept="application/json"  />');
+    const previous = document.getElementById('__hiddenFileInput__');
+    previous && previous.remove();
 
-    var hiddenFileInput = $('#__hiddenFileInput__');
-    hiddenFileInput.one('change', function () {
-      var files = _.pluck($('#__hiddenFileInput__')[0].files, 'path');
-      $('#__hiddenFileInput__').remove();
+    const hiddenFileInput = document.createElement('input');
+    hiddenFileInput.id = '__hiddenFileInput__';
+    hiddenFileInput.type = 'file';
+    hiddenFileInput.accept = 'application/json';
+    hiddenFileInput.style.display = 'none';
+    document.body.appendChild(hiddenFileInput);
 
-      callback(files[0]);
-    });
+    hiddenFileInput.addEventListener(
+      'change',
+      function () {
+        // Electron 32 removed the nonstandard `File.path` property; webUtils
+        // is the supported way to get a native path out of a File object.
+        const files = Array.from(hiddenFileInput.files, (file) => webUtils.getPathForFile(file));
+        hiddenFileInput.remove();
+
+        callback(files[0]);
+      },
+      { once: true }
+    );
     hiddenFileInput.click();
   },
   forEachFileRecursive: function (startPath, callback) {

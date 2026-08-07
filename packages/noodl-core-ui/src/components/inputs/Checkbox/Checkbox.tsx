@@ -1,5 +1,5 @@
 import classNames from 'classnames';
-import React, { ChangeEventHandler, cloneElement, FocusEventHandler, MouseEventHandler } from 'react';
+import React, { ChangeEventHandler, cloneElement, FocusEventHandler, isValidElement, MouseEventHandler, ReactElement } from 'react';
 
 import { InputNotification } from '@noodl-types/globalInputTypes';
 
@@ -106,6 +106,7 @@ export function Checkbox({
           className={classNames([
             css['FauxCheckbox'],
             css[`is-size-${checkboxSize}`],
+            isChecked && css['is-checked'],
             Boolean(label) && css['has-right-margin']
           ])}
         >
@@ -113,7 +114,7 @@ export function Checkbox({
         </div>
       )}
 
-      {children && <div className={css['ChildContainer']}>{cloneElement(children as TSFixme, { isChecked })}</div>}
+      {children && isValidElement(children) && <div className={css['ChildContainer']}>{cloneElement(children as ReactElement<{ isChecked?: boolean }>, { isChecked })}</div>}
       {label && <InputLabelSection label={label} />}
     </label>
   );

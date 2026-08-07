@@ -1,18 +1,21 @@
 import { useEffect } from '@storybook/addons';
-import { ComponentStory, ComponentMeta } from '@storybook/react';
+import type { Meta, StoryObj } from '@storybook/react';
 import React, { useState } from 'react';
 
 import { PropertyPanelSection } from '@noodl-core-ui/components/property-panel/PropertyPanelSection';
 
 import { PropertyPanelMarginPadding } from './PropertyPanelMarginPadding';
 
-export default {
+const meta: Meta<typeof PropertyPanelMarginPadding> = {
   title: 'Property Panel/Margin Padding',
   component: PropertyPanelMarginPadding,
   argTypes: {}
-} as ComponentMeta<typeof PropertyPanelMarginPadding>;
+};
 
-const Template: ComponentStory<typeof PropertyPanelMarginPadding> = (args) => {
+export default meta;
+type Story = StoryObj<typeof meta>;
+
+const Template: Story = (args) => {
   const [values, setValues] = useState({
     padding: { top: '10px', bottom: '10px', left: '10px', right: '10px' },
     margin: { top: '10px', bottom: '10px', left: '10px', right: '10px' }
@@ -82,5 +85,6 @@ const Template: ComponentStory<typeof PropertyPanelMarginPadding> = (args) => {
   );
 };
 
-export const Common = Template.bind({});
-Common.args = {};
+export const Common: Story = {
+  args: {},
+};

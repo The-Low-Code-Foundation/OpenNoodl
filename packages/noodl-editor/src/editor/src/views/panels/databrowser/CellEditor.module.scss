@@ -1,0 +1,110 @@
+/**
+ * CellEditor styles
+ */
+
+.CellEditor {
+  position: relative;
+}
+
+.Input,
+.DateInput {
+  width: 100%;
+  padding: 4px 8px;
+  border: 1px solid var(--theme-color-primary);
+  border-radius: 4px;
+  background-color: var(--theme-color-bg-1);
+  color: var(--theme-color-fg-default);
+  font-size: 12px;
+
+  &:focus {
+    outline: none;
+    border-color: var(--theme-color-primary);
+    box-shadow: 0 0 0 2px var(--theme-color-primary-muted);
+  }
+}
+
+.JsonEditor {
+  width: 250px;
+  min-height: 100px;
+  padding: 8px;
+  border: 1px solid var(--theme-color-primary);
+  border-radius: 4px;
+  background-color: var(--theme-color-bg-1);
+  color: var(--theme-color-fg-default);
+  font-family: monospace;
+  font-size: 11px;
+  resize: vertical;
+
+  &:focus {
+    outline: none;
+    border-color: var(--theme-color-primary);
+    box-shadow: 0 0 0 2px var(--theme-color-primary-muted);
+  }
+}
+
+/* SPR-001/F84 — the ACL vocabulary, under the JSON editor that needs it. */
+.Hint {
+  width: 250px;
+  margin-top: 6px;
+  font-size: 10px;
+  line-height: 1.4;
+  color: var(--theme-color-fg-default-shy);
+
+  code {
+    font-family: monospace;
+    color: var(--theme-color-fg-default);
+  }
+}
+
+.JsonActions {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.SaveButton,
+.CancelButton {
+  padding: 4px 12px;
+  border-radius: 4px;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.SaveButton {
+  background-color: var(--theme-color-primary);
+  color: var(--theme-color-fg-on-primary);
+  border: none;
+
+  &:hover {
+    opacity: 0.9;
+  }
+}
+
+.CancelButton {
+  background-color: var(--theme-color-bg-3);
+  color: var(--theme-color-fg-default);
+  border: 1px solid var(--theme-color-border-default);
+
+  &:hover {
+    background-color: var(--theme-color-bg-2);
+  }
+}
+
+.Error {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin-top: 4px;
+  padding: 4px 8px;
+  background-color: var(--theme-color-danger);
+  color: white;
+  font-size: 10px;
+  border-radius: 4px;
+  z-index: 10;
+  /* SPR-001/F84: this was `nowrap`, which clipped every message longer than a
+     cell — including the two that now matter, `Invalid JSON: …` and
+     `ACL flag alice.read must be a boolean`. A refusal nobody can read is the
+     same as a silent one. */
+  max-width: 260px;
+  white-space: pre-wrap;
+}

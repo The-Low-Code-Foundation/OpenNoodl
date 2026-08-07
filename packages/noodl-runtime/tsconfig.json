@@ -1,0 +1,25 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    // The runtime is a CommonJS package (`main: noodl-runtime.js`, `require`
+    // throughout), unlike the ES2020 default the root config sets for the
+    // editor and viewer bundles.
+    "module": "CommonJS",
+    "moduleResolution": "node",
+
+    // PLAT-003 converts this package incrementally. `allowJs` lets the
+    // still-untyped .js majority coexist with converted .ts files; `checkJs`
+    // stays off so unconverted files do not spray errors. Turn `checkJs` on
+    // (or drop `allowJs`) once the conversion is complete.
+    "allowJs": true,
+    "checkJs": false,
+    "noEmit": true,
+
+    // Accurate types are the goal; strictness is tightened per the task plan
+    // only once the shapes are right.
+    "strict": false,
+    "types": ["node", "jest"]
+  },
+  "include": ["src/**/*", "test/**/*", "noodl-runtime.js"],
+  "exclude": ["node_modules"]
+}

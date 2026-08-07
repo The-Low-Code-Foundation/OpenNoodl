@@ -40,7 +40,6 @@ export async function execute({ node, chatHistory, chatStream, chatStreamXml }: 
 
   const fullCodeText = await chatStream({
     provider: {
-      model: 'gpt-3.5-turbo',
       temperature: 0.0,
       max_tokens: 2048
     },
@@ -109,7 +108,6 @@ export async function execute({ node, chatHistory, chatStream, chatStreamXml }: 
       { role: 'user', content: codeText }
     ],
     provider: {
-      model: 'gpt-3.5-turbo',
       temperature: 0.0,
       max_tokens: 2048
     },

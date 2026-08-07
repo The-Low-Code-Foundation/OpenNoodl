@@ -1,0 +1,149 @@
+/**
+ * JSONEditor Main Component Styles
+ * Uses design tokens for consistency with OpenNoodl design system
+ */
+
+.Root {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  background-color: var(--theme-color-bg-1);
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+/* Header */
+.Header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background-color: var(--theme-color-bg-2);
+  border-bottom: 1px solid var(--theme-color-border-default);
+}
+
+.Title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--theme-color-fg-default);
+}
+
+/* Mode Toggle */
+.ModeToggle {
+  display: flex;
+  gap: 4px;
+  background-color: var(--theme-color-bg-1);
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: 4px;
+  padding: 2px;
+
+  button {
+    padding: 6px 12px;
+    font-size: 12px;
+    font-weight: 500;
+    border: none;
+    background: transparent;
+    color: var(--theme-color-fg-default);
+    border-radius: 3px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+
+    &:hover:not(:disabled) {
+      background-color: var(--theme-color-bg-3);
+    }
+
+    &:disabled {
+      cursor: not-allowed;
+      opacity: 0.5;
+    }
+
+    &.Active {
+      background-color: var(--theme-color-primary);
+      color: var(--theme-color-on-primary);
+      font-weight: 600;
+
+      &:hover {
+        background-color: var(--theme-color-primary);
+      }
+    }
+  }
+}
+
+/* Validation Error Banner */
+.ValidationError {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 16px;
+  background-color: var(--theme-color-danger-bg);
+  border-bottom: 1px solid color-mix(in srgb, var(--theme-color-danger) 30%, transparent);
+}
+
+.ErrorIcon {
+  font-size: 20px;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.ErrorContent {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ErrorMessage {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--theme-color-danger);
+  line-height: 1.4;
+}
+
+.ErrorSuggestion {
+  font-size: 12px;
+  color: var(--theme-color-fg-default);
+  line-height: 1.4;
+  padding: 8px 12px;
+  background-color: var(--theme-color-warning-bg);
+  border: 1px solid color-mix(in srgb, var(--theme-color-warning) 30%, transparent);
+  border-radius: 4px;
+  margin-top: 4px;
+}
+
+/* Editor Content */
+.EditorContent {
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+}
+
+/* Advanced Mode Placeholder (temporary) */
+.AdvancedModePlaceholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: 40px 24px;
+  background-color: var(--theme-color-bg-2);
+  text-align: center;
+}
+
+.PlaceholderIcon {
+  font-size: 64px;
+  margin-bottom: 16px;
+  opacity: 0.5;
+}
+
+.PlaceholderText {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--theme-color-fg-default);
+  margin-bottom: 8px;
+}
+
+.PlaceholderDetail {
+  font-size: 13px;
+  color: var(--theme-color-fg-muted);
+}

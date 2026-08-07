@@ -1,0 +1,27 @@
+{
+  "typeName": "FilterDBModels",
+  "summary": "Filter Records: applies a visual filter/sort/limit to an already-fetched array of records, client-side.",
+  "description": "Filter Records narrows and orders an `items` array of records without touching the server: the filter, sorting and limit are configured on the node exactly like Query Records' visual filter, but evaluated locally against the incoming array. The result comes out on `items` with `count` alongside; `modified` fires whenever the output recomputes, including the automatic re-runs an input or a record change starts. Use `filter` (signal) to re-evaluate on demand — that run also reports `done`/`failure` and then `completed` — and `enabled` to bypass.",
+  "whenToUse": "Deriving multiple views from one fetched result set — tabs, local search-as-you-type, secondary sorts — without re-querying. When the full data set should never reach the client, filter in the query itself (Query Records) instead.",
+  "ports": {
+    "items": "Records in (input) and the filtered, sorted subset out (output).",
+    "enabled": "Boolean; when false the input passes through unfiltered.",
+    "modified": "Signal (Filtered); fires after every run, including the automatic ones nobody triggered. For the outcome of a run you triggered, wire `done`.",
+    "done": "Signal; fires only for a run started by `filter`, once `items` is up to date. `completed` follows it, and follows `failure` too."
+  },
+  "runtimeBehavior": "Filter-value inputs are generated from the visual filter you build in the editor (each 'value' placeholder becomes an input port) — runtime-discovered + editor-adapter, same mechanism as Query Records.",
+  "examples": [
+    "cloud-filter-records-tabs"
+  ],
+  "patterns": [
+    "One Query Records fanned into several Filter Records: one fetch, many live views."
+  ],
+  "antiPatterns": [
+    "Client-filtering an unlimited query as a substitute for server-side where/limit — the full class still crosses the network."
+  ],
+  "relatedNodes": [
+    "DbCollection2",
+    "Filter Collection",
+    "For Each"
+  ]
+}

@@ -1,25 +1,28 @@
 import React from 'react';
-import { ComponentStory, ComponentMeta } from '@storybook/react';
+import type { Meta, StoryObj } from '@storybook/react';
 import {
   ContextMenu,
   ContextMenuProps
 } from '@noodl-core-ui/components/popups/ContextMenu/ContextMenu';
 import { IconName } from '@noodl-core-ui/components/common/Icon';
 
-export default {
+const meta: Meta<typeof ContextMenu> = {
   title: 'Popups/Context Menu',
   component: ContextMenu,
   argTypes: {}
-} as ComponentMeta<typeof ContextMenu>;
+};
 
-const Template: ComponentStory<typeof ContextMenu> = (args: ContextMenuProps) => (
+export default meta;
+type Story = StoryObj<typeof meta>;
+
+const Template: Story = (args: ContextMenuProps) => (
   <div style={{ width: '100vw', height: '100vh' }}>
     <ContextMenu {...args} />
   </div>
 );
 
-export const Common = Template.bind({});
-Common.args = {
+export const Common: Story = {
+  args: {
   menuItems: [
     {
       label: 'Action',
@@ -45,4 +48,5 @@ Common.args = {
       endSlot: 'Subtitle goes here'
     }
   ]
+},
 };

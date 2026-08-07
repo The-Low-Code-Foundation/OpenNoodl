@@ -1,0 +1,19 @@
+{
+  "typeName": "RunTasks",
+  "summary": "Run Tasks: runs a worker component once per array element with bounded concurrency, reporting an outcome and completed when the batch ends.",
+  "description": "Run Tasks is batch processing without visuals: for each element of `items` it instantiates `taskTemplate` (a component, not rendered), feeds the element's properties to the worker's Component Inputs, and waits for the worker to signal success or failure through its Component Outputs before scheduling the next, keeping at most `maxRunningTasks` in flight. `stopOnFailure` abandons the rest after the first failure, and `abort` stops the batch mid-run. Both `run` and `abort` are actions and each reports its own outcome: `done` when the run ended having done its work — including an empty `items` list, which is a completed run and not a no-op — `unchanged` for a `run` that arrives while a run is already in progress or an `abort` with nothing to abort, and `failure` when a task failed or the run could not start. `completed` fires after every one of those. `aborted` fires alongside the outcome whenever a run ended early, which is what distinguishes an honoured `abort` (reported `done`, because stopping when told to is the graph working) from an ordinary completion.",
+  "whenToUse": "Sequenced bulk work: importing rows, uploading a list of files, migrating records. For rendering a list use the Repeater; for one async action a Function node suffices.",
+  "ports": {
+    "run": "Signal; starts the batch over the current `items`.",
+    "taskTemplate": "The worker component; it must expose success/failure signal Component Outputs for scheduling to advance.",
+    "maxRunningTasks": "Concurrency ceiling; 1 gives strict sequential processing."
+  },
+  "examples": ["data-run-tasks-batch"],
+  "patterns": [
+    "Build the batch with New Array/Array, then `created` → `run`: data assembly and execution stay separate."
+  ],
+  "antiPatterns": [
+    "Using a Repeater with invisible items as a work queue — Run Tasks exists precisely so batch work needs no render tree."
+  ],
+  "relatedNodes": ["For Each", "Component Inputs", "Component Outputs", "JavaScriptFunction", "CollectionNew"]
+}

@@ -1,17 +1,18 @@
-import React from 'react';
-import { ComponentStory, ComponentMeta } from '@storybook/react';
+import type { Meta, StoryObj } from '@storybook/react';
 
 import { InputLabelSection } from './InputLabelSection';
 
-export default {
+const meta: Meta<typeof InputLabelSection> = {
   title: 'Inputs/Input Label Section',
   component: InputLabelSection,
   argTypes: {},
-} as ComponentMeta<typeof InputLabelSection>;
+};
 
-const Template: ComponentStory<typeof InputLabelSection> = (args) => <InputLabelSection {...args} />;
+export default meta;
+type Story = StoryObj<typeof meta>;
 
-export const Common = Template.bind({});
-Common.args = {
+export const Common: Story = {
+  args: {
   label: 'Hello World',
+},
 };

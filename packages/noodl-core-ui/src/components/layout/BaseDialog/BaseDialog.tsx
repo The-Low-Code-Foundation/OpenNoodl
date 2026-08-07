@@ -22,12 +22,24 @@ export enum BaseDialogVariant {
   Select = 'is-variant-select'
 }
 
+/**
+ * Every member names a SURFACE. POL-004 removed `Secondary`, which named the
+ * neutral *action* colour (`--theme-color-secondary`: `#eef2f6` dark,
+ * `#18212b` light) — a value that is inverted relative to a surface by
+ * construction, so a dialog using it was a white sheet in dark mode and a black
+ * sheet in light. It was theme-aware and wrong in both.
+ *
+ * All four call sites meant "a surface": the code-diff modal Richard reported,
+ * the image-diff modal, the plan-doc review dialog, and `Tooltip` — whose body
+ * sets its own bg-4 while its ARROW took this value, so every tooltip in the
+ * editor had a mismatched arrow. None meant the action colour, so the member is
+ * gone rather than left in the API for the next person to reach for.
+ */
 export enum DialogBackground {
   Default = 'is-background-default',
   Bg1 = 'is-background-bg-1',
   Bg2 = 'is-background-bg-2',
   Bg3 = 'is-background-bg-3',
-  Secondary = 'is-background-secondary',
   Transparent = 'is-background-transparent'
 }
 
@@ -89,7 +101,28 @@ export function CoreBaseDialog({
     }, 50);
   }, [isVisible]);
 
-  const dialogRef = useRef<HTMLDivElement>();
+  const dialogRef = useRef<HTMLDivElement>(null);
+
+  /**
+   * PNL-002: dismissal is a gesture, not a click.
+   *
+   * `.Root` is a full-viewport click catcher and used to carry
+   * `onClick={onClose}`, with the visible dialog stopping propagation. But a
+   * `click` is dispatched to the nearest common ancestor of mousedown and
+   * mouseup — so pressing *inside* the dialog and releasing outside it produces
+   * a click on `.Root` itself, which never passed through the inner
+   * `stopPropagation` and therefore closed the dialog. Drag-selecting a menu
+   * label and releasing over the canvas closed the menu; so did any drag that
+   * started in the dialog and ended past its edge.
+   *
+   * Both ends of the gesture now have to be outside the visible dialog.
+   */
+  const visibleDialogRef = useRef<HTMLDivElement>(null);
+  const pressStartedOutside = useRef(false);
+
+  const isOutsideDialog = (target: EventTarget | null) =>
+    !(target instanceof Node) || !visibleDialogRef.current?.contains(target);
+
   const [dialogPosition, setDialogPosition] = useState({
     x: 0,
     y: 0,
@@ -237,8 +270,6 @@ export function CoreBaseDialog({
         return 'var(--theme-color-bg-3)';
       case DialogBackground.Transparent:
         return 'transparent';
-      case DialogBackground.Secondary:
-        return 'var(--theme-color-secondary)';
       default:
         return 'var(--theme-color-bg-4)';
     }
@@ -254,8 +285,6 @@ export function CoreBaseDialog({
         return 'var(--theme-color-bg-2)';
       case DialogBackground.Transparent:
         return 'transparent';
-      case DialogBackground.Secondary:
-        return 'var(--theme-color-secondary)';
       default:
         return 'var(--theme-color-bg-2)';
     }
@@ -272,7 +301,14 @@ export function CoreBaseDialog({
         typeof triggerRef === 'undefined' && css['is-centered'],
         css[variant]
       )}
-      onClick={onClose}
+      onPointerDown={(e) => {
+        pressStartedOutside.current = isOutsideDialog(e.target);
+      }}
+      onPointerUp={(e) => {
+        const shouldClose = pressStartedOutside.current && isOutsideDialog(e.target);
+        pressStartedOutside.current = false;
+        if (shouldClose) onClose?.();
+      }}
       style={
         {
           '--offsetY': `${Math.floor(dialogPosition.y)}px`,
@@ -286,6 +322,7 @@ export function CoreBaseDialog({
       }
     >
       <div
+        ref={visibleDialogRef}
         className={classNames(css['VisibleDialog'], UNSAFE_className, isVisible && css['is-visible'], css[variant])}
         style={UNSAFE_style}
         onClick={(e) => e.stopPropagation()}

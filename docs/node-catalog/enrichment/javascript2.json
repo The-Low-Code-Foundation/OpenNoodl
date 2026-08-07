@@ -1,0 +1,24 @@
+{
+  "typeName": "Javascript2",
+  "summary": "Script: runs JavaScript that declares its own typed inputs/outputs, named signal handlers and lifecycle (setup/run/destroy) methods.",
+  "description": "The Script node executes the JavaScript in its `code` parameter (or, when `useExternalFile` is `yes`, a file fetched from `externalFile`). Unlike the Function node, the script declares its ports explicitly and gets a lifecycle: `define({ inputs: { price: 'number' }, outputs: { total: 'number' }, setup: fn, run: fn, destroy: fn, mySignal: fn })` creates typed input/output ports from the `inputs`/`outputs` maps, runs `setup` once after the code is parsed, runs `run` (alias `change`) each time any value input changes (it receives `(inputs, outputs, changedInputs)`), runs a function named after a signal input when that signal fires, and runs `destroy` when the node is removed. A newer `script({...})` form adds `signals: {}`, `changed: {}` (per-input change handlers) and `methods: {}` sections. Inside handlers, `this.flagOutputDirty(name)` and `this.sendSignalOnOutput(name)` push results out. Typed ports can also be added from the editor panel via the `scriptInputs`/`scriptOutputs` lists.",
+  "whenToUse": "Use Script when code needs a real lifecycle — initialize a library or subscription in `setup`, tear it down in `destroy` — or several distinct signal entry points with typed ports. For ordinary run-once logic and async calls, prefer JavaScriptFunction (Function): its implicit `Inputs.x`/`Outputs.y` ports and single `run` signal are simpler. For pure one-liners use Expression.",
+  "ports": {
+    "code": "The script source (edit-only). Its declared `inputs`/`outputs` maps and signal-handler names define the node's ports.",
+    "useExternalFile": "Edit-only enum; `yes` swaps the `code` port for `externalFile` and loads the script from a project file at runtime.",
+    "externalFile": "Edit-only path to a script file; the node stays inert until the file has loaded and parsed.",
+    "scriptInputs": "Editor-managed list adding typed input ports (with a Type selector per entry) alongside those declared in code.",
+    "scriptOutputs": "Editor-managed list adding typed output ports alongside those declared in code."
+  },
+  "runtimeBehavior": "All data and signal ports are runtime-discovered by parsing the script (JavascriptNodeParser): the keys of the declared `inputs`/`outputs` maps become ports with the declared types, each `signals` entry (or top-level handler function named like a signal input) becomes a signal input, and entries in the `scriptInputs`/`scriptOutputs` proplist parameters add further typed ports. Nothing about the port set is static — an authoring tool must write the script first and wire only names the script (or the proplists) declares. When `useExternalFile` is `yes` the ports come from the downloaded file, so they are unknowable until it loads.",
+  "examples": ["code-http-request-with-error-handling"],
+  "patterns": [
+    "Wrap a stateful browser library: instantiate it in `setup`, feed it from `changed` handlers, dispose it in `destroy`.",
+    "Declare `mySignal: function (inputs, outputs) {...}` and wire a Button `onClick` to the `mySignal` input for an explicit, named action entry point."
+  ],
+  "antiPatterns": [
+    "Using Script for a simple transform that reruns on input change — the Function node does that with less ceremony.",
+    "Assigning outputs without the declared `outputs` entry: undeclared names never become ports."
+  ],
+  "relatedNodes": ["JavaScriptFunction", "Expression", "Logic Builder"]
+}

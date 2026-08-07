@@ -1,0 +1,166 @@
+{
+  "name": "RUN-001 probe: page stack transitions",
+  "id": "run001-probe-pagestack",
+  "version": "4",
+  "rootNodeId": "root",
+  "settings": { "htmlTitle": "probe-pagestack" },
+  "components": [
+    {
+      "name": "/App",
+      "id": "c_app",
+      "graph": {
+        "roots": [
+          {
+            "id": "root",
+            "type": "Group",
+            "label": "Root",
+            "x": 0,
+            "y": 0,
+            "parameters": { "flexDirection": "column" },
+            "ports": [],
+            "children": [
+              {
+                "id": "stack",
+                "type": "Page Stack",
+                "label": "Main stack",
+                "x": 0,
+                "y": 100,
+                "parameters": {
+                  "name": "Main",
+                  "pages": [
+                    { "id": "p1", "label": "StackA" },
+                    { "id": "p2", "label": "StackB" }
+                  ],
+                  "pageComp-p1": "/StackA",
+                  "pageComp-p2": "/StackB",
+                  "startPageId": "p1"
+                },
+                "ports": [],
+                "children": []
+              }
+            ]
+          }
+        ],
+        "connections": []
+      }
+    },
+    {
+      "name": "/StackA",
+      "id": "c_stack_a",
+      "graph": {
+        "roots": [
+          {
+            "id": "a_root",
+            "type": "Group",
+            "label": "A root",
+            "x": 0,
+            "y": 0,
+            "parameters": { "flexDirection": "column", "backgroundColor": "#e8f0fe" },
+            "ports": [],
+            "children": [
+              {
+                "id": "a_text",
+                "type": "Text",
+                "label": "A text",
+                "x": 0,
+                "y": 100,
+                "parameters": { "text": "STACK-A" },
+                "ports": [],
+                "children": []
+              },
+              {
+                "id": "btn_push",
+                "type": "net.noodl.controls.button",
+                "label": "Push",
+                "x": 0,
+                "y": 200,
+                "parameters": { "label": "Push" },
+                "ports": [],
+                "children": []
+              }
+            ]
+          },
+          {
+            "id": "nav_push",
+            "type": "PageStackNavigate",
+            "label": "Push B",
+            "x": 300,
+            "y": 0,
+            "parameters": { "stack": "Main", "target": "StackB" },
+            "ports": [],
+            "children": []
+          },
+          {
+            "id": "fn_pushed",
+            "type": "JavaScriptFunction",
+            "label": "pushed",
+            "x": 300,
+            "y": 100,
+            "parameters": {
+              "functionScript": "window.__probe = window.__probe || { events: [] };\nwindow.__probe.events.push('pushed');"
+            },
+            "ports": [],
+            "children": []
+          }
+        ],
+        "connections": [
+          { "fromId": "btn_push", "fromProperty": "onClick", "toId": "nav_push", "toProperty": "navigate" },
+          { "fromId": "nav_push", "fromProperty": "navigated", "toId": "fn_pushed", "toProperty": "run" }
+        ]
+      }
+    },
+    {
+      "name": "/StackB",
+      "id": "c_stack_b",
+      "graph": {
+        "roots": [
+          {
+            "id": "b_root",
+            "type": "Group",
+            "label": "B root",
+            "x": 0,
+            "y": 0,
+            "parameters": { "flexDirection": "column", "backgroundColor": "#fee8e8" },
+            "ports": [],
+            "children": [
+              {
+                "id": "b_text",
+                "type": "Text",
+                "label": "B text",
+                "x": 0,
+                "y": 100,
+                "parameters": { "text": "STACK-B" },
+                "ports": [],
+                "children": []
+              },
+              {
+                "id": "btn_pop",
+                "type": "net.noodl.controls.button",
+                "label": "Pop",
+                "x": 0,
+                "y": 200,
+                "parameters": { "label": "Pop" },
+                "ports": [],
+                "children": []
+              }
+            ]
+          },
+          {
+            "id": "nav_back",
+            "type": "PageStackNavigateBack",
+            "label": "Back",
+            "x": 300,
+            "y": 0,
+            "parameters": {},
+            "ports": [],
+            "children": []
+          }
+        ],
+        "connections": [
+          { "fromId": "btn_pop", "fromProperty": "onClick", "toId": "nav_back", "toProperty": "navigate" }
+        ]
+      }
+    }
+  ],
+  "metadata": {}
+}

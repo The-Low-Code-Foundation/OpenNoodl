@@ -1,15 +1,8 @@
 import { ProjectItem, LocalProjectsModel } from '@noodl-utils/LocalProjectsModel';
-import ProjectImporter from '@noodl-utils/projectimporter';
 
 import Model from '../../../shared/model';
-import { EventDispatcher } from '../../../shared/utils/EventDispatcher';
-import { ViewerConnection } from '../ViewerConnection';
-import ImportPopup from '../views/importpopup';
-import PopupLayer from '../views/popuplayer';
+import { ImportFlowCancelled, openImportFlow } from '../views/ImportFlow';
 import { ToastLayer } from '../views/ToastLayer/ToastLayer';
-
-const ImportOverwritePopupTemplate = require('../templates/importoverwritepopup.html');
-const ImportPopupTemplate = require('../templates/importpopup.html');
 
 export class ProjectLibraryModel extends Model {
   static instance: ProjectLibraryModel;
@@ -18,96 +11,40 @@ export class ProjectLibraryModel extends Model {
     super();
   }
 
+  /**
+   * Import from another local project. LIB-005: one surface — browse, review
+   * collisions inline, apply — instead of the two chained checkbox popups this
+   * used to drive by hand.
+   */
   async importProject(projectEntry: ProjectItem, onBeforePopup?: () => void, onAfterPopup?: () => void) {
     const dirEntry = await this.getProjectRootDir(projectEntry)
       .then((project) => project)
-      .catch(console.log);
-
-    // project._retainedProjectDirectory
-
-    const activityId = 'import-activity';
-    ToastLayer.showActivity('Importing...', activityId);
-
-    return new Promise((resolve, reject) => {
-      ProjectImporter.instance.listComponentsAndDependencies(dirEntry, async (imports) => {
-        function doImport(selectedImports) {
-          ViewerConnection.instance.setWatchModelChangesEnabled(false);
-          ProjectImporter.instance.import(dirEntry, selectedImports, function (r) {
-            ViewerConnection.instance.setWatchModelChangesEnabled(true);
-
-            ToastLayer.hideActivity(activityId);
-
-            if (r.result !== 'success') {
-              reject({ message: r.message });
-              PopupLayer.instance.hideAllModalsAndPopups();
-            }
-
-            // Reload the viewer
-            EventDispatcher.instance.emit('viewer-refresh');
-            EventDispatcher.instance.emit('ProjectModel.importComplete');
-
-            resolve(true);
-            PopupLayer.instance.hideAllModalsAndPopups();
-          });
-        }
-
-        onBeforePopup && onBeforePopup();
-
-        const chooseImportsPopup = new ImportPopup({
-          template: ImportPopupTemplate,
-          imports,
-          onOk: function () {
-            // User have made choice of what to import, check if there are any collisions
-            const selectedImports = chooseImportsPopup.getSelectedImports();
-            ProjectImporter.instance.checkForCollisions(selectedImports, function (collisions) {
-              if (collisions === undefined) {
-                // No collisions
-                doImport(selectedImports);
-              } else {
-                ToastLayer.hideActivity(activityId);
-
-                // There is a collision for import, promt user if we should overwrite
-                var overwritePopup = new ImportPopup({
-                  template: ImportOverwritePopupTemplate,
-                  initAllAsImport: true,
-                  ignoreDependencies: true,
-                  imports: collisions,
-                  onOk: function () {
-                    onAfterPopup && onAfterPopup();
-                    ProjectImporter.instance.filterImports(selectedImports, {
-                      remove: overwritePopup.getUnselectedImports()
-                    });
-                    doImport(selectedImports);
-                  },
-                  onCancel: function () {
-                    onAfterPopup && onAfterPopup();
-                    PopupLayer.instance.hideModal(undefined);
-                    reject({ message: 'Cancelled import' });
-                  }
-                });
-                overwritePopup.render();
-
-                PopupLayer.instance.showModal({
-                  content: overwritePopup
-                });
-              }
-            });
-          },
-          onCancel: function () {
-            onAfterPopup && onAfterPopup();
-            PopupLayer.instance.hideModal(undefined);
-            reject({ message: 'Cancelled import' });
-          }
-        });
-
-        chooseImportsPopup.render();
-
-        ToastLayer.hideActivity(activityId);
-        PopupLayer.instance.showModal({
-          content: chooseImportsPopup
-        });
+      .catch((err) => {
+        console.log(err);
+        return undefined;
       });
-    });
+
+    // The engine needs a real source directory; a failed load must not fall
+    // through into an import of `undefined`.
+    if (!dirEntry) {
+      ToastLayer.showError('Couldn’t load project to import');
+      throw new Error('Could not load project to import');
+    }
+
+    try {
+      const result = await openImportFlow({
+        title: `Import from ${projectEntry.name ?? 'project'}`,
+        subtitle: dirEntry,
+        sourceDir: dirEntry,
+        onBeforePopup,
+        onAfterPopup
+      });
+      if (result.result !== 'success') throw { message: result.message };
+      return true;
+    } catch (err) {
+      if (err instanceof ImportFlowCancelled) throw { message: 'Cancelled import' };
+      throw err;
+    }
   }
 
   private async getProjectRootDir(projectItem: ProjectItem) {

@@ -1,0 +1,75 @@
+/**
+ * CLEANUP-000H: MigrationWizard shell — design token polish
+ */
+
+.Root {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  background-color: var(--theme-color-bg-2);
+  color: var(--theme-color-fg-default);
+  overflow: hidden;
+}
+
+.Header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--spacing-4, 16px) var(--spacing-5, 20px);
+  border-bottom: 1px solid var(--theme-color-border-default);
+  background-color: var(--theme-color-bg-1);
+  flex-shrink: 0;
+}
+
+.Title {
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+  color: var(--theme-color-fg-highlight, var(--theme-color-fg-default));
+  margin: 0;
+}
+
+.Body {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.Footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--spacing-2, 8px);
+  padding: var(--spacing-3, 12px) var(--spacing-5, 20px);
+  border-top: 1px solid var(--theme-color-border-default);
+  background-color: var(--theme-color-bg-1);
+  flex-shrink: 0;
+}
+
+// Shared step container — used by all step components
+.StepContainer {
+  padding: var(--spacing-6, 24px);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-4, 16px);
+}
+
+.StepTitle {
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+  color: var(--theme-color-fg-highlight, var(--theme-color-fg-default));
+  margin: 0;
+}
+
+.StepDescription {
+  font-size: var(--font-size-md);
+  color: var(--theme-color-fg-default-shy);
+  line-height: 1.6;
+}
+
+.StepContent {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-4, 16px);
+}

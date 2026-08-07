@@ -1,5 +1,6 @@
 import { each, filter, find, isEqual, some } from 'underscore';
 
+import { stripCodeHistoryMetadata } from '@noodl-models/CodeHistory/codeHistoryMetadata';
 import { ComponentModel } from '@noodl-models/componentmodel';
 import { NodeGraphModel } from '@noodl-models/nodegraphmodel/NodeGraphModel';
 import { NodeGrapPort } from '@noodl-models/NodeGraphPort';
@@ -8,8 +9,10 @@ import { BasicNodeType } from '@noodl-models/nodelibrary/BasicNodeType';
 import { UnknownNodeType } from '@noodl-models/nodelibrary/UnknownNodeType';
 import { UndoActionGroup, UndoQueue } from '@noodl-models/undo-queue-model';
 import { WarningsModel } from '@noodl-models/warningsmodel';
+import { capabilityWarningFor } from '@noodl-utils/capability-gating/nodeWarning';
 
 import Model from '../../../../shared/model';
+import { ParameterValueResolver } from '../../utils/ParameterValueResolver';
 
 export type NodeGraphNodeParameters = {
   [key: string]: any;
@@ -122,6 +125,28 @@ export class NodeGraphNode extends Model {
     this.notifyListeners('labelChanged');
   }
 
+  /**
+   * What a scope-resolving node bound to at runtime — the node card's sub-label.
+   *
+   * See `dev-docs/reference/BINDING-CONTRACT.md` §(b). Pushed by the viewer through
+   * `nodesublabel`; `Parent Component Object` and `Close Popup` set it today.
+   *
+   * **Never persisted.** It is not in `toJSON`, and it must stay out: it describes a running
+   * app, not the project, and writing it would dirty `project.json` on every preview — the
+   * spurious-save class F46 exists for. That is also why it is not `metadata.typeLabelOverride`,
+   * which is otherwise the same slot on the card but *is* saved.
+   */
+  public runtimeSubLabel?: string;
+
+  /** Set the runtime sub-label. `undefined` clears it. */
+  setRuntimeSubLabel(subLabel: string | undefined) {
+    if (this.runtimeSubLabel === subLabel) return;
+    this.runtimeSubLabel = subLabel;
+    // The canvas binds this to relayout-and-repaint: the card's height depends on whether a
+    // sub-label is present, so a repaint alone would paint new text into an old box.
+    this.notifyListeners('runtimeSubLabelChanged');
+  }
+
   constructor(args) {
     super();
 
@@ -149,7 +174,10 @@ export class NodeGraphNode extends Model {
       dynamicports: json.dynamicports,
       conflicts: json.conflicts,
       annotation: json.annotation,
-      metadata: json.metadata,
+      // CED-001 (B2): code history used to be stashed here, up to 20 full copies of
+      // every code parameter. Dropping it on the way in means the next write of the
+      // project sheds it, once, and it never comes back.
+      metadata: stripCodeHistoryMetadata(json.metadata),
       diffData: json.diffData
     });
     for (const i in json.children) {
@@ -162,6 +190,23 @@ export class NodeGraphNode extends Model {
   // Return the module that this node belongs to
   getModule() {
     if (this.owner && this.owner.owner) return this.owner.owner.owner; // graph->component->project
+  }
+
+  /**
+   * Point this node at a different component/node type by name.
+   *
+   * Unlike {@link updateType}, this does not try to keep `typename` in step with
+   * an already-resolved `_type` — the caller is asserting the new name, and the
+   * type it names may not exist yet (on import, the renamed component is grafted
+   * in after its references are re-pointed). So both caches are dropped and the
+   * type re-resolves lazily through the `type` getter.
+   *
+   * Used by {@link NodeGraphModel.rerouteComponentRefs}.
+   */
+  retypeTo(newTypename: string) {
+    this.typename = newTypename;
+    this._type = undefined;
+    this._ports = undefined;
   }
 
   // This method is called by the graph when a potential change in available node
@@ -605,6 +650,45 @@ export class NodeGraphNode extends Model {
     }
   }
 
+  // Get the comment text for this node
+  getComment(): string | undefined {
+    return this.metadata?.comment;
+  }
+
+  // Check if this node has a comment
+  hasComment(): boolean {
+    return !!this.metadata?.comment?.trim();
+  }
+
+  // Set or clear the comment for this node, supports undo
+  setComment(comment: string | undefined, args?: { undo?: any; label?: any }) {
+    const _this = this;
+    const oldComment = this.getComment();
+
+    if (!this.metadata) this.metadata = {};
+
+    // Store trimmed comment or undefined if empty
+    this.metadata.comment = comment?.trim() || undefined;
+
+    // Notify listeners of the change
+    this.notifyListeners('commentChanged', { comment: this.metadata.comment });
+
+    // Undo support
+    if (args && args.undo) {
+      const undo = typeof args.undo === 'object' ? args.undo : UndoQueue.instance;
+
+      undo.push({
+        label: args.label || 'Edit node comment',
+        do: function () {
+          _this.setComment(comment);
+        },
+        undo: function () {
+          _this.setComment(oldComment);
+        }
+      });
+    }
+  }
+
   // Set a parameter for the node instance
   setParameter(name: string, value, args?) {
     const _this = this;
@@ -733,6 +817,34 @@ export class NodeGraphNode extends Model {
     return port ? port.default : undefined;
   }
 
+  /**
+   * Get a parameter value as a string that is safe to put in the UI — never "[object Object]".
+   *
+   * An expression parameter resolves to its **fallback**, which is what a property-panel field
+   * shows (the expression itself has its own fx editor). This is deliberately NOT the same as
+   * `getParameterDisplayValue` in `ExpressionParameter`, which returns the expression TEXT —
+   * that one is what the node's label takes (`BasicNodeType.labelForNode`), because a card
+   * reading `Noodl.Variables.foo` says more than the fallback does. The name here used to be
+   * the same as that function's, with the opposite meaning.
+   *
+   * @param name - The parameter name
+   * @param args - Optional args (same as getParameter)
+   * @returns A string representation of the parameter value, safe for UI display
+   *
+   * @example
+   * ```ts
+   * // Regular value
+   * node.getParameterAsString('width') // '100'
+   *
+   * // Expression parameter object { expression: 'height * 2', fallback: 50 }
+   * node.getParameterAsString('height') // '50' (not '[object Object]')
+   * ```
+   */
+  getParameterAsString(name: string, args?): string {
+    const value = this.getParameter(name, args);
+    return ParameterValueResolver.toString(value);
+  }
+
   // Sets the dynamic instance ports for this node
   setDynamicPorts(ports: NodeGrapPort[], options?: DynamicPortsOptions) {
     if (portsEqual(ports, this.dynamicports)) {
@@ -804,10 +916,19 @@ export class NodeGraphNode extends Model {
   getHealth() {
     const warnings = WarningsModel.instance.getWarnings({ component: this.owner.owner, node: this });
     if (warnings) {
-      return { healthy: false, message: warnings.shortMessage };
+      // BCN-010: which *kind* of unhealthy, so the canvas can honour phase 23's
+      // colour law. Every warning used to be an error in practice — a missing
+      // type, an illegal child — so painting them all in `theme.danger` was
+      // right by accident. A capability gap is the first routine `warning`, and
+      // "Directus has no magic-link login" drawn in red reads as a broken node.
+      // `error` wins whenever any warning on the node is one.
+      const level = warnings.warnings.some((w: TSFixme) => w.warning && w.warning.level === 'error')
+        ? 'error'
+        : 'warning';
+      return { healthy: false, message: warnings.shortMessage, level };
     }
 
-    return { healthy: true };
+    return { healthy: true, level: undefined };
   }
 
   evaluateHealth() {
@@ -902,6 +1023,25 @@ export class NodeGraphNode extends Model {
             level: 'error'
           }
         : undefined
+    );
+
+    // BCN-010 — what the chosen backend cannot do, on the node that would try it.
+    //
+    // Raised through `WarningsModel` rather than as a new canvas affordance
+    // because that is the seam that already reaches every surface a builder
+    // looks at: the titlebar icon, the hover tooltip carrying the sentence, the
+    // component-tree dot and the top-bar count — and `EditorEventBindings`
+    // repaints the canvas on `warningsChanged`, so nothing else has to know.
+    //
+    // ⚠️ `level: 'warning'`, never `'error'`, and `showGlobally: false`. This is
+    // not a broken node: it is a node that will report a refusal at runtime, and
+    // the whole point of saying so here is that the builder finds out *before*
+    // then. Counting it globally would put a permanent number in the top bar for
+    // every project whose backend does not do everything, which is every project.
+    const capabilityWarning = capabilityWarningFor(this);
+    WarningsModel.instance.setWarning(
+      { component: this.owner.owner, node: this, key: 'node-capability' },
+      capabilityWarning ? { message: capabilityWarning, level: 'warning' } : undefined
     );
 
     // Merge conflicts
@@ -1186,18 +1326,31 @@ export class NodeGraphNode extends Model {
     this.notifyListeners('variantCreated', { variant: this.variant });
 
     // Undo
+    //
+    // PLAT-005 fixed this block. It used to call
+    // `project.deleteVariant(variantName, type)` — but `deleteVariant` takes the
+    // variant *object* and locates it with `findIndex(v => v === variant)`, so a
+    // name string never matched and the variant was never removed. Undo left an
+    // orphan variant in the project, and redo then hit
+    // `createNewVariant`'s "already exists" early return and did nothing at all.
+    // Redo is also no longer routed back through `createNewVariant`: that built
+    // a fresh VariantModel each time, stranding the object this closure holds.
     if (args && args.undo) {
       const undo = typeof args.undo === 'object' ? args.undo : UndoQueue.instance;
-
-      const type = this.type;
 
       undo.push({
         label: 'Create new variant',
         do: () => {
-          this.createNewVariant(variantName, this);
+          project.addVariant(variant);
+          this.variant = variant;
+
+          this._setParameters({ parameters: {}, stateParameters: {} });
+          this._setStateTransitions({ stateTransitions: {}, defaultStateTransitions: {} });
+
+          this.notifyListeners('variantCreated', { variant: this.variant });
         },
         undo: () => {
-          project.deleteVariant(variantName, type);
+          project.deleteVariant(variant);
 
           this._setParameters({ parameters: _oldParameters, stateParameters: _oldStateParameters });
           this._setStateTransitions({

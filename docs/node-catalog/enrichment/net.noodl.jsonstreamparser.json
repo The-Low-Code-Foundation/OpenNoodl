@@ -1,0 +1,32 @@
+{
+  "typeName": "net.noodl.JSONStreamParser",
+  "summary": "JSON Stream Parser: turns stream fragments into JSON values as NDJSON, concatenated values, or one whole document.",
+  "description": "Each `parse` appends the current `chunk` to a buffer and extracts whatever is now complete. 'NDJSON' takes one value per line and reports a line that does not parse rather than skipping it silently. 'Stream' accepts any concatenation of complete top-level values — whitespace-separated objects, or a JSON array whose elements are emitted as they close — and is safe at every chunk boundary, including one that falls inside a string. 'Single document' holds everything back until the whole buffer is one complete value, then emits it. Text that is not yet a complete value stays in the buffer and shows on `pendingCharacters`; `maxLength` stops a malformed stream from growing without bound by clearing the buffer and reporting it. `values` carries everything the last parse completed, `parsed` the last of them.",
+  "whenToUse": "A stream whose payloads are JSON but do not arrive one-per-event: NDJSON logs, a chunked HTTP body, an array streamed element by element. Not needed for Server-Sent Events with one JSON object per event — that node already parses each payload onto its Data output.",
+  "ports": {
+    "chunk": "The fragment to append. Empty chunks are ignored, so a Parse with nothing new re-tries the existing buffer.",
+    "format": "'NDJSON' for line-delimited, 'Stream' for concatenated values and streamed arrays, 'Single document' to wait for one whole value.",
+    "maxLength": "Cap on unparsed text. Exceeding it clears the buffer and reports an error, which almost always means the wrong Format.",
+    "parsed": "The last value completed by the most recent Parse.",
+    "values": "Every value completed by the most recent Parse, in order. Wire this to For Each when a chunk can complete several.",
+    "valueCount": "Running total across all parses, not the size of the last batch.",
+    "pendingCharacters": "Text held back because a value is incomplete. Persistently non-zero means the Format does not match the stream.",
+    "isComplete": "True when the last Parse left nothing buffered.",
+    "success": "Fires only when the Parse produced at least one value, so an advancing-but-incomplete chunk stays quiet.",
+    "failure": "Fires once per Parse that could not read part of its input \u2014 not once per bad record; `errorCount` says how many. The stream keeps going rather than stalling.",
+    "unchanged": "Fires when a Parse had nothing pending, or a Clear had nothing to discard \u2014 a valid action with nothing to do.",
+    "done": "Fires when a Parse consumed text or a Clear discarded something. Wider than `success`, which needs a value to have come out."
+  },
+  "patterns": [
+    "Server-Sent Events `data` → `chunk`, `onMessage` → `parse`, format NDJSON: a log stream that arrives several lines per event.",
+    "`values` → For Each `items` renders everything a chunk completed, instead of only the last value.",
+    "`pendingCharacters` on a debug Text output makes a format mismatch obvious instead of looking like a dead stream."
+  ],
+  "antiPatterns": [
+    "Using 'Single document' on a never-ending stream — the buffer grows until Max Pending trips.",
+    "Reading only `parsed` when a chunk can complete several values; the earlier ones are then silently ignored.",
+    "Adding this after Server-Sent Events when each event is already one JSON object — the SSE node's Data output has parsed it."
+  ],
+  "examples": ["agent-sse-task-monitor"],
+  "relatedNodes": ["net.noodl.SSE", "net.noodl.TextAccumulator", "net.noodl.StreamBuffer", "REST2"]
+}

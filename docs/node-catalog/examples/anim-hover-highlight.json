@@ -1,0 +1,41 @@
+{
+  "id": "anim-hover-highlight",
+  "title": "Hover highlight: Animate To Value driving a Color Blend",
+  "description": "The smooth-hover idiom: the card's `hoverStart`/`hoverEnd` signals flip a Switch, whose boolean (cast to 0/1) becomes the `targetValue` of Animate To Value — the node tweens `currentValue` toward the target whenever it changes. That animated 0→1 feeds Color Blend's `blendValue`, interpolating between its configured colors, and the result drives the card background. State, easing and color are three separate concerns in three small nodes.",
+  "demonstrates": ["net.noodl.animatetovalue", "Color Blend", "Switch"],
+  "components": [
+    {
+      "name": "/Hover Card",
+      "nodes": [
+        {
+          "id": "card",
+          "type": "Group",
+          "label": "Card",
+          "parameters": { "flexDirection": "column", "paddingLeft": 16, "paddingTop": 16, "borderRadius": 8 },
+          "children": ["card_text"]
+        },
+        { "id": "card_text", "type": "Text", "label": "Card label", "parent": "card", "parameters": { "text": "Hover me" } },
+        { "id": "hover_switch", "type": "Switch", "label": "Hovered?" },
+        {
+          "id": "hover_anim",
+          "type": "net.noodl.animatetovalue",
+          "label": "Ease hover value",
+          "parameters": { "duration": 200 }
+        },
+        {
+          "id": "bg_blend",
+          "type": "Color Blend",
+          "label": "Base to highlight",
+          "parameters": { "colors": 2, "color-0": "#ffffff", "color-1": "#e8f0fe" }
+        }
+      ],
+      "connections": [
+        { "fromId": "card", "fromProperty": "hoverStart", "toId": "hover_switch", "toProperty": "on" },
+        { "fromId": "card", "fromProperty": "hoverEnd", "toId": "hover_switch", "toProperty": "off" },
+        { "fromId": "hover_switch", "fromProperty": "state", "toId": "hover_anim", "toProperty": "targetValue" },
+        { "fromId": "hover_anim", "fromProperty": "currentValue", "toId": "bg_blend", "toProperty": "blendValue" },
+        { "fromId": "bg_blend", "fromProperty": "result", "toId": "card", "toProperty": "backgroundColor" }
+      ]
+    }
+  ]
+}

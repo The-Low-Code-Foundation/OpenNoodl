@@ -1,0 +1,56 @@
+{
+  // ts-jest config for tests-main/ (see jest.config.js). Kept separate from
+  // tsconfig.json / tsconfig.tests.json — both of those reach code that pulls
+  // in @types/jasmine, whose `Matchers<T>` shadows jest's and breaks
+  // matchers like `toHaveLength` (same issue worked around in
+  // noodl-viewer-cloud/tsconfig.tests.json).
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "types": ["node", "jest"],
+    "noEmit": true,
+    "module": "CommonJS"
+  },
+  // `utils/provenance` is renderer-side but import-free by design (OBS-002); it is
+  // reached from tests-unit/ and pulls none of the renderer in with it.
+  // WFA-009 adds the second of these: `dynamicPortRules` is renderer-side and
+  // import-free by the same design, so `tests-unit/` can grade the port rules
+  // (and the committed `cloud-node-library.json` they are declared in) without
+  // starting Electron. Its one consumer, `nodelibrary.ts`, is not reached.
+  //
+  // `utils/import-engine/legacy` is the same shape (LIB-006): the assessment core,
+  // the report builder and the verdict are pure, and the two files that are NOT —
+  // `catalogQuery.ts` (loads the bundled catalog) and `codePatterns.ts` (pulls
+  // ProjectScanner, and through it @noodl/platform) — are reached only by the
+  // import shell, never by a test here. Keeping that split is what lets these run
+  // without Electron.
+  "include": [
+    "src/main",
+    "tests-main",
+    "tests-unit",
+    "src/editor/src/utils/provenance",
+    "src/editor/src/models/nodelibrary/dynamicPortRules.ts",
+    // SPR-003 §1: `portConnectivity.ts` is the third of these — the shared
+    // "is this port on the node, and may it be wired" predicate, import-free so
+    // the runner can grade it against the real runtime port declarations
+    // (which are themselves type-only-import modules) without Electron.
+    "src/editor/src/models/nodelibrary/portConnectivity.ts",
+    // SPR-003 §4: `docsPopupPlacement.ts` is the same shape once more — the port
+    // explainer's flip-and-clamp arithmetic, lifted out of the React component
+    // so the edge cases are graded here instead of only by hovering the right
+    // port at the right window width.
+    "src/editor/src/views/ConnectionPopup/docsPopupPlacement.ts",
+    "src/editor/src/models/nodelibrary/cloud-node-library.json",
+    "src/editor/src/utils/import-engine/legacy",
+    "src/editor/src/validation",
+    // MCP-001: `mcpCommands.ts` is the same shape again — the settings section's command builder
+    // imports nothing at all, which is what lets the plain-Node runner assert the exact strings
+    // the two Copy buttons put on the clipboard. Its component neighbour is not reached.
+    "src/editor/src/views/panels/SettingsPanel/sections/mcpCommands.ts",
+    // ALPHA-006 §1: `utils/nodeDocs.ts` is the same shape again — it renders the
+    // bundled enriched catalog into help HTML and imports nothing but
+    // `validation/enrichedCatalog` (already here). The docs *origin* is
+    // deliberately resolved by its renderer call sites rather than inside it,
+    // which is exactly what keeps `@electron/remote` out of this runner.
+    "src/editor/src/utils/nodeDocs.ts"
+  ]
+}

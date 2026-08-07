@@ -1,0 +1,18 @@
+{
+  "label": "Image Cropper",
+  "description": "Image Cropper Module. Mainly intended for cropping profile pictures.",
+  "type": "module",
+  "tags": [
+    "UI",
+    "Utility"
+  ],
+  "icon": "icon.png",
+  "docsPath": "/library/modules/image-cropper/",
+  "version": "1.5.0",
+  "minEditorVersion": "0.1.0",
+  "runtimeVersion": "2.7.0",
+  "provenance": {
+    "sourceUrl": "https://the-low-code-foundation.github.io/opennoodl-docs/library/modules/image-cropper/image-cropper-1-4.zip",
+    "importedAt": "2026-07-25"
+  }
+}

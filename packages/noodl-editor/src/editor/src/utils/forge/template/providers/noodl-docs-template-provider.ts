@@ -5,14 +5,21 @@ import { ITemplateProvider, ProgressCallback, TemplateItem, TemplateListFilter }
  * currently saved on GitHub and served via GitHub pages.
  */
 export class NoodlDocsTemplateProvider implements ITemplateProvider {
+  /**
+   * Only ever used to name this provider in `template-registry`'s two
+   * `console.error` messages. It was the legacy Noodl docs host, hardcoded,
+   * naming a site this provider has not fetched from since the fork —
+   * so an error about a failed template list pointed the reader at the wrong
+   * origin. It reports the endpoint it actually used (ALPHA-006 criterion 6).
+   */
   get name(): string {
-    return 'https://docs.noodl.net';
+    return this.getContentEndpoint();
   }
 
-  constructor(private readonly getDocsEndpoint: () => string) {}
+  constructor(private readonly getContentEndpoint: () => string) {}
 
   async list(_options: TemplateListFilter): Promise<readonly TemplateItem[]> {
-    const endpoint = this.getDocsEndpoint();
+    const endpoint = this.getContentEndpoint();
     const templates = await this.makeRequest(endpoint);
     templates.forEach((t) => {
       t.iconURL = endpoint + '/projecttemplates/' + t.iconURL;

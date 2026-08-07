@@ -1,0 +1,18 @@
+{
+  "typeName": "REST2",
+  "summary": "REST node: a scripted request/response pair — request script shapes the call, response script maps the payload onto output ports.",
+  "description": "The REST node wraps one HTTP endpoint in two small scripts. The request script assembles method, resource and body from the node's script-declared `Inputs`; the response script reads `Response.content`/`Response.status` and assigns `Outputs`, and those script-declared names are the node's ports. `fetch` runs the request, `success`/`failure` report the outcome, `cancel` aborts in flight.",
+  "whenToUse": "Recurring API endpoints that deserve a typed port surface — the mapping lives in the node, the graph sees clean ports. For a quick GET with no mapping, HTTP Request is lighter; for secrets or server-side work, call a cloud function instead of embedding keys client-side.",
+  "ports": {
+    "fetch": "Signal; runs the request.",
+    "resource": "The URL (the request script may parameterise it from inputs).",
+    "requestScript": "Script declaring inputs and shaping the outgoing request.",
+    "responseScript": "Script mapping the response onto declared outputs."
+  },
+  "runtimeBehavior": "All data ports are runtime-discovered from the two scripts' Inputs./Outputs. references, exactly like a Function node — write the scripts first, then wire to the names they declare.",
+  "examples": ["code-rest-list"],
+  "antiPatterns": [
+    "Embedding API secrets in the request script — anything client-side ships to the browser; put secrets behind a cloud function."
+  ],
+  "relatedNodes": ["net.noodl.HTTP", "JavaScriptFunction", "CloudFunction2"]
+}

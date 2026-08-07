@@ -1,0 +1,15 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "module": "CommonJS",
+    "moduleResolution": "node",
+    "skipLibCheck": true,
+    "allowJs": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    // Without this, TS pulls in every hoisted @types/* in the monorepo and the
+    // jasmine globals shadow jest's `expect` matchers.
+    "types": ["node", "jest"]
+  },
+  "include": ["src/**/*", "tests/**/*.ts", "../noodl-editor/@include-types/**/*"]
+}

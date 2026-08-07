@@ -1,15 +1,24 @@
+import React from 'react';
+import { createRoot, Root } from 'react-dom/client';
+
 import { NodeLibrary } from '@noodl-models/nodelibrary';
+import { listPortTypeFor } from '@noodl-core-ui/components/json-editor/utils/listValueCodec';
+import { capabilityProbes, gateForPort, resolveGateTarget, type GateTarget } from '@noodl-utils/capability-gating';
+import { decoratePortElement } from '@noodl-utils/capability-gating/portDecoration';
+import { describePortElement } from '@noodl-utils/portDescription';
 
 import { EventDispatcher } from '../../../../../../shared/utils/EventDispatcher';
-import View from '../../../../../../shared/view';
+import View from '../../../../../../shared/ListenableView';
 import PopupLayer from '../../../popuplayer';
 import { CodeEditorType } from '../CodeEditor';
+import { PropertyGroups, PropertyGroupModel } from '../components/PropertyGroups';
 import { ModelProxy } from '../models/modelProxy';
 import { PagesType } from '../Pages';
 import { getEditType } from '../utils';
 import { AlignToolsType } from './AlignTools/AlignToolsType';
 import { BasicType } from './BasicType';
 import { BooleanType } from './BooleanType';
+import { ByobFilterType } from './ByobFilterType';
 import { ColorType } from './ColorPicker/ColorType';
 import { ComponentType } from './ComponentType';
 import { CurveType } from './CurveEditor/CurveType';
@@ -20,11 +29,24 @@ import { FontType } from './FontType';
 import { IconType } from './IconType';
 import { IdentifierType } from './IdentifierType';
 import { ImageType } from './ImageType';
+import { ListValueType } from './ListValueType';
+import { LogicBuilderHiddenType } from './LogicBuilderHiddenType';
+import { LogicBuilderWorkspaceType } from './LogicBuilderWorkspaceType';
 import { MarginPaddingType } from './MarginPaddingType';
 import { NumberWithUnits } from './NumberWithUnits';
 import { PopoutGroup } from './PopoutGroup';
 import { PropListType } from './PropListType';
-import { QueryFilterType } from './QueryFilterType';
+import {
+  WorkflowBackoffType,
+  WorkflowCasesType,
+  WorkflowConditionType,
+  WorkflowFunctionRefType,
+  WorkflowParamsType,
+  WorkflowTransformType,
+  WorkflowTriggerInfoType,
+  WorkflowValidateType,
+  WorkflowValueType
+} from './WorkflowTypes';
 import { QuerySortingType } from './QuerySortingType';
 import { ResizingType } from './ResizingType';
 import { SizeModeType } from './SizeModeType';
@@ -33,9 +55,6 @@ import { TabGroup } from './TabGroup';
 import { TextAreaType } from './TextAreaType';
 import { TextStyleType } from './TextStyleType';
 import { VariableType } from './VariableType';
-
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const PropertyEditorPortsTemplate = require('../../../../templates/propertyeditor/propertyeditorports.html');
 
 const groupExpansions = {};
 
@@ -55,9 +74,12 @@ export class Ports extends View {
   _selectedTabForGroup: TSFixme;
   activePopout: TSFixme;
   _portsHash: TSFixme;
-  views: TSFixme;
+  views: TSFixme = [];
   _toolsType: TSFixme;
   groups: TSFixme[];
+  el: HTMLElement;
+  private root: Root | null = null;
+  private _unsubscribeProbes: (() => void) | null = null;
 
   constructor(args) {
     super();
@@ -66,6 +88,9 @@ export class Ports extends View {
     this._selectedTabForGroup = {};
 
     this.bindModel(this.model);
+
+    // BCN-010: a probe settles asynchronously, so the panel has to be told.
+    this._unsubscribeProbes = capabilityProbes().onChange(() => this.renderGroups());
   }
   showPopout(popout) {
     if (this.activePopout) {
@@ -119,6 +144,8 @@ export class Ports extends View {
       );
   }
   dispose() {
+    this._unsubscribeProbes && this._unsubscribeProbes();
+    this._unsubscribeProbes = null;
     this.model && this.model.off(this);
     // @ts-expect-error
     this.model && this.model.owner && this.model.owner.off(this);
@@ -126,25 +153,90 @@ export class Ports extends View {
 
     this.views.forEach((v) => v.dispose && v.dispose());
 
+    if (this.root) {
+      this.root.unmount();
+      this.root = null;
+    }
+
     this.hidePopout();
   }
-  renderParams(views, appendTo) {
+  /**
+   * Everything the gates would render, as a string, for the re-render hash.
+   *
+   * Computed rather than snapshotted from the cache so it also moves when the
+   * *project's* backend changes, which is the switch the live pass drives.
+   */
+  private capabilitySignature(): string {
+    const typeName = this.model.type && (this.model.type.name || this.model.type.localName);
+    if (!typeName) return '';
+    const target = this.capabilityTarget();
+    const parts = [target.backendId || '', target.type || ''];
+    for (const port of this._getPorts()) {
+      const gate = gateForPort(typeName, port.name, target);
+      if (gate) parts.push(`${port.name}:${gate.effective}:${gate.reason || ''}`);
+    }
+    return parts.join('|');
+  }
+
+  /**
+   * The backend this node's ports are gated against — BCN-010.
+   *
+   * Resolved once per render rather than per row: every port on one node
+   * resolves to the same backend, and `resolveGateTarget` reads project
+   * metadata. The node's own `backendId` parameter wins when it has one (the
+   * six Record and two relation nodes, since BCN-004 step 5); everything else
+   * gets the project's active backend, which is what it resolves to at runtime.
+   */
+  private capabilityTarget(): GateTarget {
+    try {
+      const backendId = this.model.getParameter ? (this.model.getParameter('backendId') as string) : undefined;
+      return resolveGateTarget(backendId);
+    } catch (e) {
+      // A panel that cannot resolve a backend must still render its ports.
+      return {};
+    }
+  }
+
+  /** Render a group's views (and their child views) and collect their elements. */
+  renderParams(views): TSFixme[] {
+    const els = [];
+    const target = this.capabilityTarget();
+    const typeName = this.model.type && (this.model.type.name || this.model.type.localName);
+
+    // ERG-004 §7.7 item 2: the port objects, so a row can be given its own
+    // `description`. Looked up by name rather than read off the view, because
+    // only some `fromPort` implementations keep a `.port` reference — the same
+    // reason the decoration below is a wrapper and not a prop.
+    const portsByName = new Map<string, TSFixme>();
+    for (const port of this._getPorts()) portsByName.set(port.name, port);
+
     for (const j in views) {
       const v = views[j];
       v.childViews && v.childViews.forEach((v) => v.render()); // Render any child views first
-      appendTo.append(v.render());
+
+      // BCN-010: the one place every row's element passes through, whatever
+      // class produced it. See `portDecoration.ts` for why the gate is a wrapper
+      // here rather than two props on twenty-nine row classes. ERG-004's
+      // description hangs off the same seam, for the same reason — see
+      // `portDescription.ts`.
+      const el = describePortElement(v.render(), v.name ? portsByName.get(v.name) : undefined);
+      const gate = typeName && v.name ? gateForPort(typeName, v.name, target) : undefined;
+      els.push(gate ? decoratePortElement(el, gate, target, v.name) : el);
     }
-  }
-  onGroupClicked(group) {
-    // group.isExpanded = !group.isExpanded;
-    // groupExpansions[group.name] = group.isExpanded;
+    return els;
   }
   renderGroups() {
-    const _this = this;
+    if (!this.root) return; // not rendered yet
 
     const inputData = {
       ports: this._getPorts(),
-      variant: this.model.variantName
+      variant: this.model.variantName,
+      // BCN-010: without this, a probe that settles *after* the panel is open
+      // never reaches the screen — the ports have not changed, so the hash has
+      // not changed, and `renderGroups` returns early. Subscribe To Changes on
+      // Directus is exactly that case: it paints closed-because-unprobed and
+      // then a real answer arrives ~200ms later.
+      capabilities: this.capabilitySignature()
     };
 
     const _portsHash = JSON.stringify(inputData);
@@ -156,54 +248,62 @@ export class Ports extends View {
 
     //remember the scrolling so a re-render doesn't reset the scroll position
     let scrollTop = 0;
-    if (this.el[0].parentElement) {
-      scrollTop = this.el[0].parentElement.parentElement.scrollTop;
+    if (this.el.parentElement) {
+      scrollTop = this.el.parentElement.parentElement.scrollTop;
     }
-
-    //this will reset any scrolling that might've occurred
-    //let's set it back later when the the ports have rendered
-    this.el.html('');
 
     const groups = this.getViewGroupsFromPorts();
-    if (groups.length === 1 && groups[0].name === 'Other') {
-      // If only one group then don't render group sections
-      this.renderParams(groups[0].views, this.el);
-    } else {
-      // Render prop groups
-      for (const i in groups) {
-        const g = groups[i];
-        if (groupExpansions.hasOwnProperty(g.name)) {
-          g.isExpanded = groupExpansions[g.name];
-        }
 
-        const groupEl = this.bindView(this.cloneTemplate('group'), g);
-        this.el.append(groupEl);
+    // If only one group then don't render group sections
+    const showHeaders = !(groups.length === 1 && groups[0].name === 'Other');
 
-        this.renderParams(g.views, groupEl.find('.properties'));
+    const groupModels: PropertyGroupModel[] = groups.map((g) => {
+      if (groupExpansions.hasOwnProperty(g.name)) {
+        g.isExpanded = groupExpansions[g.name];
       }
-    }
 
-    //and now the rendering is done. In case any scrolling was done, set the scrolling again
+      return {
+        name: g.name,
+        isExpanded: g.isExpanded,
+        els: this.renderParams(g.views)
+      };
+    });
+
+    this.root.render(React.createElement(PropertyGroups, { groups: groupModels, showHeaders }));
+
+    //and now the rendering is done. In case any scrolling was done, set the scrolling again.
+    //React commits asynchronously, so this has to wait for the rows to be in the DOM.
     if (scrollTop) {
-      this.el[0].parentElement.parentElement.scrollTop = scrollTop;
+      setTimeout(() => {
+        if (this.el.parentElement) {
+          this.el.parentElement.parentElement.scrollTop = scrollTop;
+        }
+      }, 0);
     }
-
-    this.$('input')
-      .on('focus', function () {
-        // Some element in the prop editor has gained focus
-        // move to front
-        _this.el.css({ 'z-index': '1000' });
-      })
-      .on('blur', function () {
-        // Move back when blurred (wait 500ms)
-        setTimeout(function () {
-          _this.el.css({ 'z-index': '' });
-        }, 500);
-      });
   }
   render() {
     this._portsHash = undefined; // Clear cache
-    this.el = this.bindView($(PropertyEditorPortsTemplate), this);
+
+    if (!this.el) {
+      this.el = document.createElement('div');
+
+      // Some element in the prop editor has gained focus — move the ports to
+      // the front so dropdowns are not clipped by the panels below.
+      this.el.addEventListener('focusin', () => {
+        this.el.style.zIndex = '1000';
+      });
+      this.el.addEventListener('focusout', () => {
+        // Move back when blurred (wait 500ms)
+        setTimeout(() => {
+          this.el.style.zIndex = '';
+        }, 500);
+      });
+    }
+
+    if (!this.root) {
+      this.root = createRoot(this.el);
+    }
+
     this.renderGroups();
   }
   setParameterEx(name, newvalue, oldvalue, skipundo) {
@@ -218,6 +318,16 @@ export class Ports extends View {
   }
   viewClassForPort(p) {
     const type = getEditType(p);
+
+    // Check for custom editorType
+    if (typeof type === 'object' && type.editorType === 'logic-builder-workspace') {
+      return LogicBuilderWorkspaceType;
+    }
+
+    // Hidden type for internal Logic Builder parameters (renders nothing)
+    if (typeof type === 'object' && type.editorType === 'logic-builder-hidden') {
+      return LogicBuilderHiddenType;
+    }
 
     // Align tools types
     function isOfAlignToolsType() {
@@ -250,7 +360,29 @@ export class Ports extends View {
       return name === 'string' || name === 'number';
     }
 
-    // Is of text area type
+    /**
+     * ## Which string ports get `fx` — POL-011, decided rather than inherited
+     *
+     * A `string` port can reach four different views, and until POL-011 **only
+     * `BasicType` had heard of expressions**. So Button's `label` offered `fx`
+     * and the Text node's `text` did not, purely because the latter is declared
+     * `multiline` and multiline had its own view. That was never a decision.
+     *
+     * It is one now, per route:
+     *
+     * | Route | `fx` | Why |
+     * |---|---|---|
+     * | `BasicType` — plain `string`/`number` | **yes** | the original, unchanged |
+     * | `TextAreaType` — `multiline` | **yes** | the reported gap; the literal is multiline, the expression is one line |
+     * | `CodeEditorType` — `codeeditor` | **no** | the value already *is* code; an expression producing code is a second language in one field, and nothing asked for it |
+     * | `IdentifierType` — `identifierOf` | **no** | a name chosen from a set the project holds. An expression could name something that does not exist, and the picker could not show it. Same reasoning as `EnumType` |
+     *
+     * The two `no`s are structural rather than a flag: neither view renders
+     * `PropertyPanelInput`, so neither can offer the toggle — `CodeEditorType`
+     * is its own editor and `IdentifierType` is a `PickerTypeView`. A
+     * `supportsExpression: false` on them would be a prop nothing reads. The
+     * decision is recorded here, at the one place that routes them.
+     */
     function isOfTextAreaType() {
       return NodeLibrary.nameForPortType(type) === 'string' && typeof type === 'object' && type.multiline;
     }
@@ -260,8 +392,22 @@ export class Ports extends View {
       return NodeLibrary.nameForPortType(type) === 'string' && typeof type === 'object' && type.codeeditor;
     }
 
-    function isOfArrayType() {
-      return NodeLibrary.nameForPortType(type) === 'array';
+    // Array- and object-typed ports both edit as a literal.
+    //
+    // Without the object branch `viewClassForPort` returned undefined and `_getPorts`
+    // filtered the row out altogether, so an object-typed input was connection-only with
+    // nothing on screen to say why — you could not give a Global Store its starting shape
+    // or an SSE call its headers without wiring a Function node whose whole body was a
+    // literal. `Node.setInputValue` parses a string arriving on either type.
+    //
+    // ERG-003: both now route to `ListValueType` (the shared `JSONEditor`) rather than to
+    // `CodeEditorType`, so they gain a visual builder. The stored form is unchanged, and
+    // `listPortTypeFor` is the one definition of "is this a list-shaped port" — the catalog
+    // test derives its expectation from the same function, so the set of ports the shared
+    // editor covers cannot drift from the set it is claimed to cover.
+    function isOfListValueType() {
+      const t = listPortTypeFor(type);
+      return t === 'array' || t === 'object';
     }
 
     // Image ref type
@@ -344,12 +490,66 @@ export class Ports extends View {
       return NodeLibrary.nameForPortType(type) === 'query-sorting';
     }
 
+    function isOfByobFilterType() {
+      return NodeLibrary.nameForPortType(type) === 'byob-filter';
+    }
+
     // Is of pages type
     function isOfPagesType() {
       return NodeLibrary.nameForPortType(type) === 'pages';
     }
 
     // Is of proplist
+    // WFA-004: workflow step params. Three more port types beside the thirty
+    // above — the registry's intended extension point.
+    function isOfWorkflowConditionType() {
+      return NodeLibrary.nameForPortType(type) === 'workflow-condition';
+    }
+
+    function isOfWorkflowCasesType() {
+      return NodeLibrary.nameForPortType(type) === 'workflow-cases';
+    }
+
+    function isOfWorkflowValueType() {
+      const name = NodeLibrary.nameForPortType(type);
+      return name === 'workflow-value' || name === 'workflow-path';
+    }
+
+    // CWF-001: `call-function`'s param mapping — a dictionary of author-chosen
+    // names, each holding one of the values above.
+    function isOfWorkflowParamsType() {
+      return NodeLibrary.nameForPortType(type) === 'workflow-params';
+    }
+
+    // CWF-004: a transform's `output` — one row per field of the object the
+    // step produces, each row a value or one operation from the served table.
+    function isOfWorkflowTransformType() {
+      return NodeLibrary.nameForPortType(type) === 'workflow-transform';
+    }
+
+    // CWF-004 slice 2: a validate step's `rules` — one row per thing that must
+    // be true, each a path assertion or a condition.
+    function isOfWorkflowValidateType() {
+      return NodeLibrary.nameForPortType(type) === 'workflow-validate';
+    }
+
+    // CWF-005: an attempt count that shows the delay sequence it implies.
+    function isOfWorkflowBackoffType() {
+      return NodeLibrary.nameForPortType(type) === 'workflow-backoff';
+    }
+
+    // WFA-005: a read-only fact about a trigger — a backend object drawn on the
+    // canvas as an entry node. A row, not a control.
+    function isOfWorkflowTriggerInfoType() {
+      return NodeLibrary.nameForPortType(type) === 'workflow-trigger-info';
+    }
+
+    // WFA-006: the cloud function a step calls. A name, plus what it resolves to
+    // in the project and on the backend — which are two different questions.
+    function isOfWorkflowFunctionRefType() {
+      return NodeLibrary.nameForPortType(type) === 'workflow-function-ref';
+    }
+
     function isOfPropListType() {
       return NodeLibrary.nameForPortType(type) === 'proplist';
     }
@@ -361,7 +561,7 @@ export class Ports extends View {
     else if (isOfBooleanType()) return BooleanType;
     else if (isOfTextAreaType()) return TextAreaType;
     else if (isOfCodeEditorType()) return CodeEditorType;
-    else if (isOfArrayType()) return CodeEditorType;
+    else if (isOfListValueType()) return ListValueType;
     else if (isOfMarginPaddingType()) return MarginPaddingType;
     else if (isOfNumberWithUnitsType()) return NumberWithUnits;
     else if (isOfDimensionType()) return Dimension;
@@ -377,10 +577,23 @@ export class Ports extends View {
     else if (isOfResizingType()) return ResizingType;
     else if (isOfVariableType()) return VariableType;
     else if (isOfCurveType()) return CurveType;
-    else if (isOfQueryFilterType()) return QueryFilterType;
+    // BCN-003b: both filter ports render the one builder. `QueryFilterType` and
+    // the `QueryEditor` filter components it rendered are deleted, not
+    // deprecated — a second builder for one idea is what this task retired.
+    else if (isOfQueryFilterType()) return ByobFilterType;
     else if (isOfQuerySortingType()) return QuerySortingType;
+    else if (isOfByobFilterType()) return ByobFilterType;
     else if (isOfPagesType()) return PagesType;
     else if (isOfPropListType()) return PropListType;
+    else if (isOfWorkflowConditionType()) return WorkflowConditionType;
+    else if (isOfWorkflowCasesType()) return WorkflowCasesType;
+    else if (isOfWorkflowValueType()) return WorkflowValueType;
+    else if (isOfWorkflowParamsType()) return WorkflowParamsType;
+    else if (isOfWorkflowTransformType()) return WorkflowTransformType;
+    else if (isOfWorkflowValidateType()) return WorkflowValidateType;
+    else if (isOfWorkflowBackoffType()) return WorkflowBackoffType;
+    else if (isOfWorkflowTriggerInfoType()) return WorkflowTriggerInfoType;
+    else if (isOfWorkflowFunctionRefType()) return WorkflowFunctionRefType;
   }
   _getPorts(): readonly Port[] {
     let ports = this.model.getPorts('input');
@@ -403,7 +616,12 @@ export class Ports extends View {
   getViewGroupsFromPorts() {
     const ports = this._getPorts();
 
-    // Loop over all ports and create views
+    // Loop over all ports and create views.
+    // DEBT-010: dispose the previous render's views before rebuilding — this
+    // used to just drop them (as the legacy `el.html('')` did), leaking every
+    // row's React root on each panel re-render.
+    this.views.forEach((v) => v.dispose && v.dispose());
+
     this._toolsType = {};
     const _viewForPort = {};
     const _tabViews = {};
@@ -435,6 +653,11 @@ export class Ports extends View {
       if (viewClass !== undefined) {
         v = viewClass.fromPort({ port: p, parent: this });
         if (v !== undefined) {
+          // Rows whose default comes from a text style refresh when it changes.
+          // Done here rather than in each row's render() because the converted
+          // (React) rows do not all chain up to TypeView.render().
+          v.bindStyleDefaultWatch && v.bindStyleDefaultWatch();
+
           this.views.push(v);
           _viewForPort[p.name] = v;
         }

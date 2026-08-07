@@ -1,0 +1,18 @@
+{
+  "label": "Tags",
+  "description": "Display a list of tags, with nice auto generated colors.",
+  "type": "prefab",
+  "tags": [
+    "UI",
+    "Data"
+  ],
+  "icon": "icon.png",
+  "docsPath": "/library/prefabs/tags/",
+  "version": "0.2.0",
+  "minEditorVersion": "0.1.0",
+  "runtimeVersion": "2.7.0",
+  "provenance": {
+    "sourceUrl": "https://the-low-code-foundation.github.io/opennoodl-docs/library/prefabs/tags/tags-0-1.zip",
+    "importedAt": "2026-07-25"
+  }
+}

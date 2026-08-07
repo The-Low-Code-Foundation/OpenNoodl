@@ -1,0 +1,89 @@
+{
+  "component": {
+    "$schema": "https://opennoodl.dev/schemas/component-v2.json",
+    "id": "1762a994-52d4-42cd-9e5b-5b7c66a54737",
+    "name": "Notification Preferences",
+    "path": "/Visual Components/Profile/Notification Preferences",
+    "type": "visual",
+    "created": "2026-08-02T18:05:39.689Z",
+    "modified": "2026-08-02T18:05:39.689Z",
+    "modifiedBy": "ai-authoring",
+    "description": "A notification preferences card with a heading, three labelled toggles (email, push, weekly digest), and a Save button disabled until any toggle is changed; emits the updated settings when Save is pressed."
+  },
+  "nodes": {
+    "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+    "componentId": "1762a994-52d4-42cd-9e5b-5b7c66a54737",
+    "version": 1,
+    "nodes": [
+      {
+        "id": "inputs",
+        "type": "Component Inputs",
+        "label": "Current settings in",
+        "x": 0,
+        "y": 0,
+        "ports": [
+          {
+            "name": "email",
+            "plug": "output",
+            "type": "boolean"
+          },
+          {
+            "name": "push",
+            "plug": "output",
+            "type": "boolean"
+          },
+          {
+            "name": "digest",
+            "plug": "output",
+            "type": "boolean"
+          }
+        ]
+      },
+      {
+        "id": "outputs",
+        "type": "Component Outputs",
+        "label": "New settings out",
+        "x": 900,
+        "y": 0,
+        "ports": [
+          {
+            "name": "Save",
+            "plug": "input",
+            "type": "signal"
+          },
+          {
+            "name": "email",
+            "plug": "input",
+            "type": "boolean"
+          },
+          {
+            "name": "push",
+            "plug": "input",
+            "type": "boolean"
+          },
+          {
+            "name": "digest",
+            "plug": "input",
+            "type": "boolean"
+          }
+        ]
+      },
+      {
+        "id": "touched",
+        "type": "Boolean",
+        "label": "Tracks whether any switch was touched",
+        "x": 300,
+        "y": 500,
+        "parameters": {
+          "value": true
+        }
+      }
+    ]
+  },
+  "connections": {
+    "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+    "componentId": "1762a994-52d4-42cd-9e5b-5b7c66a54737",
+    "version": 1,
+    "connections": []
+  }
+}

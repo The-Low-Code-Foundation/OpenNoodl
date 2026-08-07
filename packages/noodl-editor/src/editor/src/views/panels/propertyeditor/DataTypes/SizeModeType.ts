@@ -1,8 +1,13 @@
+import React from 'react';
+import { createRoot, Root } from 'react-dom/client';
+
+import { SizeModeInput } from '../components/SizeModeInput';
 import { TypeView } from '../TypeView';
 import { getEditType } from '../utils';
 
 export class SizeModeType extends TypeView {
   el: TSFixme;
+  private root: Root | null = null;
 
   static fromPort(args) {
     const view = new SizeModeType();
@@ -25,44 +30,56 @@ export class SizeModeType extends TypeView {
   }
 
   render() {
-    const _this = this;
-    this.el = this.bindView(this.parent.cloneTemplate('sizemode'), this);
-    TypeView.prototype.render.call(this);
+    const div = document.createElement('div');
+    div.style.width = '100%';
 
-    this.$('.size-icon').on('click', function () {
-      const _el = this;
+    if (!this.root) {
+      this.root = createRoot(div);
+    }
 
-      const value = $(_el).attr('data-value');
+    this.renderReact();
 
-      _this.parent.setParameter(_this.name, value);
-      _this.value = value;
-      _this.isDefault = false;
-
-      _this.updateState();
-    });
-
-    this.updateState();
-
+    this.el = div;
     return this.el;
   }
 
-  updateState() {
-    const _this = this;
+  renderReact() {
+    if (!this.root) return;
 
-    this.$('.size-icon').each(function () {
-      const _el = this;
-      const value = $(_el).attr('data-value');
-
-      $(_el).removeClass('sel').removeClass('def');
-      if (_this.value === value) {
-        if (!_this.isDefault) $(_el).addClass('sel');
-        else $(_el).addClass('def');
-      }
-    });
+    this.root.render(
+      React.createElement(SizeModeInput, {
+        value: this.value,
+        isDefault: this.isDefault,
+        tooltips: this.tooltip || {},
+        onChange: (value: string) => {
+          this.parent.setParameter(this.name, value);
+          this.value = value;
+          this.isDefault = false;
+          this.renderReact();
+        },
+        onReset: () => {
+          this.parent.model.setParameter(this.name, undefined, {
+            undo: true,
+            label: 'reset parameter'
+          });
+          this.value = this.parent.model.getParameter(this.name);
+          this.isDefault = true;
+          this.renderReact();
+        }
+      })
+    );
   }
 
   resetToDefault() {
     this.value = this.parent.model.getParameter(this.name);
-    this.updateState();
+    this.renderReact();
+  }
+
+  dispose() {
+    if (this.root) {
+      this.root.unmount();
+      this.root = null;
+    }
+    super.dispose();
   }
 }

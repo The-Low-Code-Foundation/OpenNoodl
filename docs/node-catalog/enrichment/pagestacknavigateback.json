@@ -1,0 +1,18 @@
+{
+  "typeName": "PageStackNavigateBack",
+  "summary": "Pop Component Stack: returns to the previous page on the stack, optionally handing result values back to the popper's caller.",
+  "description": "When `navigate` fires, the top page is popped and the one beneath becomes visible with the reverse transition. The `results` list declares named values to pass back: they become inputs on this node, and the corresponding Push node that opened the page exposes them as outputs plus one signal per `backActions` entry — a lightweight way for a pushed page to answer the page that opened it.",
+  "whenToUse": "The back/cancel/done affordance inside any pushed page. Pair result values with distinct back actions ('save' vs 'cancel') when the opener must react differently.",
+  "ports": {
+    "navigate": "Signal; pops the current page.",
+    "done": "Signal; the stack popped this component. ⚠️ This node is destroyed with the component it pops, so sequencing that must survive the pop belongs on the node that pushed it.",
+    "unchanged": "Signal; the Component Stack is already showing its first component, so there was nothing to pop — an ordinary end-stop, not a failure.",
+    "failure": "Signal; this node is not inside a pushed component, or a navigation is still animating.",
+    "completed": "Signal; fires after all three.",
+    "results": "Names of values handed back to the push site; each becomes an input here.",
+    "backActions": "Named back reasons; each appears as a signal output on the corresponding push node."
+  },
+  "runtimeBehavior": "The result-value inputs are generated from the `results`/`backActions` lists on the node instance — runtime-determined by configuration.",
+  "examples": ["nav-page-stack-push-pop"],
+  "relatedNodes": ["Page Stack", "PageStackNavigate", "NavigationClosePopup"]
+}

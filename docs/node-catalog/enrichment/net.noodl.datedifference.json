@@ -1,0 +1,23 @@
+{
+  "typeName": "net.noodl.DateDifference",
+  "summary": "How far apart two dates are, in a unit you choose. Signed, and unrounded for fixed units.",
+  "description": "Date Difference answers To minus From, counted in the chosen unit. It is signed — positive when To is later — so 'days until' and 'days since' are the same node read two ways, and Absolute drops the sign when only the distance matters. Fixed units divide exactly and are NOT rounded: 36 hours is 1.5 days. Months and years are counted in whole calendar steps, because a fractional month is not a quantity anyone can check; the answer is how many whole steps Date Add could take without overshooting, so 31 January to 28 February is 1 month and 31 January to 27 February is 0.",
+  "whenToUse": "Age, elapsed time, 'days remaining', SLA windows, deciding whether something is stale.",
+  "ports": {
+    "from": "The earlier instant, in the reading that makes Difference positive.",
+    "to": "The later instant. Difference is negative when this is actually earlier.",
+    "unit": "What Difference counts. Days by default.",
+    "absolute": "Drop the sign, so the output is a distance rather than a direction.",
+    "difference": "To minus From, in Unit. Unset while either date is missing or unreadable.",
+    "changed": "Fires after Difference has been recomputed.",
+    "failure": "Invalid Date — fires when a date arrived that could not be read."
+  },
+  "examples": [],
+  "patterns": [
+    "Record date → From, Now Date → To, unit Days: how old this record is."
+  ],
+  "antiPatterns": [
+    "Assuming the result is a whole number. Fixed units are deliberately fractional; round it downstream if you need to."
+  ],
+  "relatedNodes": ["net.noodl.DateAdd", "net.noodl.Now", "net.noodl.DateCompare"]
+}

@@ -1,0 +1,350 @@
+{
+  "component": {
+    "$schema": "https://opennoodl.dev/schemas/component-v2.json",
+    "id": "093031b2-c99c-49b7-953f-511ee97bbb26",
+    "name": "AIX Account",
+    "path": "/Pages/AIX Account",
+    "type": "page",
+    "created": "2026-08-02T17:26:13.402Z",
+    "modified": "2026-08-02T17:26:13.402Z",
+    "modifiedBy": "ai-authoring",
+    "description": "Account page showing the signed-in user's avatar, display name and email, plus a list of their saved-for-later articles (title and saved date); shows a short sign-in prompt when nobody is signed in."
+  },
+  "nodes": {
+    "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+    "componentId": "093031b2-c99c-49b7-953f-511ee97bbb26",
+    "version": 1,
+    "nodes": [
+      {
+        "id": "user",
+        "type": "net.noodl.user.User",
+        "label": "Current signed-in user",
+        "x": 0,
+        "y": 0
+      },
+      {
+        "id": "inv",
+        "type": "Inverter",
+        "label": "Not signed in",
+        "x": 0,
+        "y": 150
+      },
+      {
+        "id": "root",
+        "type": "Group",
+        "label": "Page root",
+        "x": 300,
+        "y": 0,
+        "children": [
+          "signedOut",
+          "signedIn"
+        ],
+        "parameters": {
+          "flexDirection": "column",
+          "alignItems": "center",
+          "paddingTop": "var(--space-8)",
+          "paddingBottom": "var(--space-8)",
+          "width": {
+            "value": 100,
+            "unit": "%"
+          }
+        }
+      },
+      {
+        "id": "signedOut",
+        "type": "Group",
+        "label": "Signed-out message",
+        "x": 300,
+        "y": 150,
+        "parent": "root",
+        "children": [
+          "signedOutText"
+        ],
+        "parameters": {
+          "alignItems": "center",
+          "alignX": "center",
+          "paddingTop": "var(--space-8)"
+        }
+      },
+      {
+        "id": "signedOutText",
+        "type": "Text",
+        "label": "Sign in prompt",
+        "x": 300,
+        "y": 250,
+        "parent": "signedOut",
+        "parameters": {
+          "variant": "lead",
+          "text": "Sign in to see your account",
+          "fontSize": "var(--text-xl)",
+          "color": "var(--muted-foreground)"
+        }
+      },
+      {
+        "id": "signedIn",
+        "type": "Group",
+        "label": "Account content",
+        "x": 600,
+        "y": 150,
+        "parent": "root",
+        "children": [
+          "header",
+          "savedSection"
+        ],
+        "parameters": {
+          "flexDirection": "column",
+          "alignItems": "center",
+          "width": {
+            "value": 100,
+            "unit": "%"
+          },
+          "maxWidth": {
+            "value": 480,
+            "unit": "px"
+          }
+        }
+      },
+      {
+        "id": "header",
+        "type": "Group",
+        "label": "Profile header",
+        "x": 600,
+        "y": 250,
+        "parent": "signedIn",
+        "children": [
+          "avatarWrap",
+          "nameEmailCol"
+        ],
+        "parameters": {
+          "flexDirection": "row",
+          "alignItems": "center",
+          "columnGap": "var(--space-4)",
+          "marginBottom": "var(--space-6)",
+          "width": {
+            "value": 100,
+            "unit": "%"
+          }
+        }
+      },
+      {
+        "id": "avatarWrap",
+        "type": "Group",
+        "label": "Avatar circle",
+        "x": 600,
+        "y": 350,
+        "parent": "header",
+        "children": [
+          "avatarIcon"
+        ],
+        "parameters": {
+          "alignItems": "center",
+          "alignX": "center",
+          "width": {
+            "value": 64,
+            "unit": "px"
+          },
+          "height": {
+            "value": 64,
+            "unit": "px"
+          },
+          "borderRadius": "var(--radius-full)",
+          "backgroundColor": "var(--muted)"
+        }
+      },
+      {
+        "id": "avatarIcon",
+        "type": "net.noodl.visual.icon",
+        "label": "Avatar placeholder",
+        "x": 600,
+        "y": 450,
+        "parent": "avatarWrap",
+        "parameters": {
+          "iconIconSource": {
+            "class": "material-icons",
+            "code": "person"
+          },
+          "iconSize": {
+            "value": 32,
+            "unit": "px"
+          },
+          "iconColor": "var(--muted-foreground)"
+        }
+      },
+      {
+        "id": "nameEmailCol",
+        "type": "Group",
+        "label": "Name and email",
+        "x": 900,
+        "y": 350,
+        "parent": "header",
+        "children": [
+          "nameText",
+          "emailText"
+        ],
+        "parameters": {
+          "flexDirection": "column"
+        }
+      },
+      {
+        "id": "nameText",
+        "type": "Text",
+        "label": "Display name",
+        "x": 900,
+        "y": 420,
+        "parent": "nameEmailCol",
+        "parameters": {
+          "variant": "heading-4",
+          "fontSize": "var(--text-xl)",
+          "fontWeight": "var(--font-semibold)",
+          "color": "var(--foreground)"
+        }
+      },
+      {
+        "id": "emailText",
+        "type": "Text",
+        "label": "Email address",
+        "x": 900,
+        "y": 480,
+        "parent": "nameEmailCol",
+        "parameters": {
+          "variant": "muted",
+          "fontSize": "var(--text-sm)",
+          "color": "var(--muted-foreground)"
+        }
+      },
+      {
+        "id": "savedSection",
+        "type": "Group",
+        "label": "Saved articles section",
+        "x": 600,
+        "y": 600,
+        "parent": "signedIn",
+        "children": [
+          "savedHeading",
+          "savedList"
+        ],
+        "parameters": {
+          "flexDirection": "column",
+          "width": {
+            "value": 100,
+            "unit": "%"
+          },
+          "rowGap": "var(--space-2)"
+        }
+      },
+      {
+        "id": "savedHeading",
+        "type": "Text",
+        "label": "Section heading",
+        "x": 600,
+        "y": 700,
+        "parent": "savedSection",
+        "parameters": {
+          "variant": "heading-6",
+          "fontSize": "var(--text-base)",
+          "fontWeight": "var(--font-medium)",
+          "marginBottom": "var(--space-2)",
+          "text": "Saved to read later"
+        }
+      },
+      {
+        "id": "savedList",
+        "type": "Text",
+        "label": "Saved articles list",
+        "x": 600,
+        "y": 800,
+        "parent": "savedSection",
+        "parameters": {
+          "variant": "body",
+          "fontSize": "var(--text-sm)",
+          "color": "var(--foreground)",
+          "styleCss": "white-space:pre-line;"
+        }
+      },
+      {
+        "id": "savedQuery",
+        "type": "DbCollection2",
+        "label": "Query saved articles",
+        "x": 0,
+        "y": 600,
+        "parameters": {
+          "collectionName": "SavedArticle"
+        }
+      },
+      {
+        "id": "formatList",
+        "type": "Javascript2",
+        "label": "Format saved articles as lines",
+        "x": 300,
+        "y": 800,
+        "parameters": {
+          "scriptInputs": [
+            {
+              "name": "items",
+              "type": "array"
+            }
+          ],
+          "scriptOutputs": [
+            {
+              "name": "text",
+              "type": "string"
+            }
+          ],
+          "code": "define({\n  inputs: { items: 'array' },\n  outputs: { text: 'string' },\n  run: function(inputs, outputs) {\n    var items = inputs.items || [];\n    var lines = items.map(function(i){\n      var d = i.savedAt ? new Date(i.savedAt).toLocaleDateString() : '';\n      return (i.title || '') + '  \\u2014  ' + d;\n    });\n    outputs.text = lines.join('\\n');\n  }\n});"
+        }
+      }
+    ],
+    "visualRoots": [
+      "root"
+    ]
+  },
+  "connections": {
+    "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+    "componentId": "093031b2-c99c-49b7-953f-511ee97bbb26",
+    "version": 1,
+    "connections": [
+      {
+        "fromId": "user",
+        "fromProperty": "authenticated",
+        "toId": "signedIn",
+        "toProperty": "mounted"
+      },
+      {
+        "fromId": "user",
+        "fromProperty": "authenticated",
+        "toId": "inv",
+        "toProperty": "value"
+      },
+      {
+        "fromId": "inv",
+        "fromProperty": "result",
+        "toId": "signedOut",
+        "toProperty": "mounted"
+      },
+      {
+        "fromId": "user",
+        "fromProperty": "username",
+        "toId": "nameText",
+        "toProperty": "text"
+      },
+      {
+        "fromId": "user",
+        "fromProperty": "email",
+        "toId": "emailText",
+        "toProperty": "text"
+      },
+      {
+        "fromId": "savedQuery",
+        "fromProperty": "items",
+        "toId": "formatList",
+        "toProperty": "items"
+      },
+      {
+        "fromId": "formatList",
+        "fromProperty": "text",
+        "toId": "savedList",
+        "toProperty": "text"
+      }
+    ]
+  }
+}

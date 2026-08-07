@@ -1,0 +1,206 @@
+BCN-005 relation wire probe — 2026-07-31T21:08:37.988Z
+
+==========================================================================
+DIRECTUS 11 — relations
+==========================================================================
+  · POST /relations (M2O articles.author → authors): 200
+  · POST /fields (alias articles.tags): 200
+  · POST /relations (junction → articles, → tags): 200, 200
+  · seeded ids: {"authorIds":[1,2],"tagIds":[1,2],"articleIds":[1,2]}
+
+  A. GET /relations
+     bcn005_articles.author → bcn005_authors   meta{one_field:"articles", junction_field:null, one_collection:"bcn005_authors"}
+     bcn005_articles_tags.tag_id → bcn005_tags   meta{one_field:null, junction_field:"article_id", one_collection:"bcn005_tags"}
+     bcn005_articles_tags.article_id → bcn005_articles   meta{one_field:"tags", junction_field:"tag_id", one_collection:"bcn005_articles"}
+  · rows for bcn005: 3
+     field id: type=integer special=undefined fk=null
+     field title: type=string special=undefined fk=null
+     field author: type=integer special=undefined fk="bcn005_authors"
+     field tags: type=alias special=["m2m"] fk=undefined
+
+  D. add a relation
+  · POST junction row: 200 {"id":1,"article_id":1,"tag_id":1}
+  · PATCH parent with tags.create: 200
+  · PATCH FK (M2O add): 200
+
+  B. read the parent with the relation included
+  · fields=*,author.*: [{"id":1,"title":"Notes on the Engine","tags":[1,2],"author":{"id":1,"name":"Ada","city":"London"}},{"id":2,"title":"A Compiler Story","tags":[],"author":{"id":1,"name":"Ada","city":"London"}}]
+  · fields=*,tags.*: {"id":1,"title":"Notes on the Engine","author":1,"tags":[{"id":1,"article_id":1,"tag_id":1},{"id":2,"article_id":1,"tag_id":2}]}
+  · fields=*,tags.tag_id.* (through the junction): {"id":1,"title":"Notes on the Engine","author":1,"tags":[{"tag_id":{"id":1,"label":"algebra"}},{"tag_id":{"id":2,"label":"compilers"}}]}
+  · O2M fields=*,articles.*: undefined
+
+  C. filter on a dotted path
+  · filter {author:{city:{_eq:London}}}: 200 [{"id":1,"title":"Notes on the Engine"},{"id":2,"title":"A Compiler Story"}]
+  · flat "author.city" (the RUN-003 403): 403 You don't have permission to access field "author.city" in collection "bcn005_articles" or
+  · filter across M2M via junction: 200 [{"id":1,"title":"Notes on the Engine"}]
+
+  E. remove
+  · find junction row: [{"id":1,"article_id":1,"tag_id":1}]
+  · DELETE junction row: 204
+  · DELETE a junction row that never existed: 204
+  · after remove, article 1 tags: [{"id":2,"article_id":1,"tag_id":2}]
+  · PATCH FK → null (M2O remove): 200
+
+==========================================================================
+POSTGREST v12.2.3 (the Supabase wire) — relations
+==========================================================================
+  seeding bcn005 tables …
+
+  A. the OpenAPI spec is the only relation metadata
+     bcn005_articles.id  PK
+     bcn005_articles.author_id  FK → bcn005_authors.id
+     bcn005_articles_tags.id  PK
+     bcn005_articles_tags.article_id  FK → bcn005_articles.id
+     bcn005_articles_tags.tag_id  FK → bcn005_tags.id
+     bcn005_authors.id  PK
+     bcn005_tags.id  PK
+  · reverse (O2M) or junction described anywhere?: ["bcn005_articles","bcn005_articles_tags","bcn005_authors","bcn005_tags"]
+
+  B. embeds
+  · select=*,bcn005_authors(*): 200 [{"id":1,"title":"Notes on the Engine","author_id":1,"bcn005_authors":{"id": 1, "city": "London", "name": "Ada"}}, 
+ {"id":2,"title":"A Compiler Story","author_id":2,"bcn005_authors":{"id": 2, "city": "New York", "name":
+  · aliased embed author:bcn005_authors(*): 200 [{"id":1,"title":"Notes on the Engine","author_id":1,"author":{"id": 1, "city": "London", "name": "Ada"}}, 
+ {"id":2,"title":"A Compiler Story","author_id":2,"author":{"id": 2, "city": "New York", "na
+  · embed named by the FK COLUMN, author_id(*): 200 [{"id":1,"title":"Notes on the Engine","author_id":1,"author_id":{"id": 1, "city": "London", "name": "Ada"}}, 
+ {"id":2,"title":"A Compiler Story","author_id":2,"author_id":{"id": 2, "city": "New York
+  · O2M select=*,bcn005_articles(*): 200 [{"id":1,"name":"Ada","city":"London","bcn005_articles":[{"id": 1, "title": "Notes on the Engine", "author_id": 1}]}, 
+ {"id":2,"name":"Grace","city":"New York","bcn005_articles":[{"id": 2, "title": "A Compiler Story", "
+  · M2M through the junction, bcn005_tags(*): 400 {"code":"PGRST200","details":"Searched for a foreign key relationship between 'bcn005_articles' and 'bcn005_tags' in the schema 'public', but no matches were found.","hint":"Perhaps you meant 'bcn005_authors' instead of 'bcn005_tags'.","mes
+
+  D. add
+  · POST junction row: 201 [{"id":1,"article_id":1,"tag_id":1}]
+  · POST the SAME pair twice (no unique constraint): 201 [{"id":2,"article_id":1,"tag_id":1}]
+  · PATCH FK (M2O add): 200 [{"id":2,"title":"A Compiler Story","author_id":1}]
+  · M2M after add: 400 {"code":"PGRST200","details":"Searched for a foreign key relationship between 'bcn005_articles' and 'bcn005_tags' in the schema 'public', but no matches were found.","hint":"Perhaps you meant 'bcn005_authors' instead of 'bcn005_tags'.","message":"Could not fin
+
+  C. filter across the relation
+  · dotted filter with NO embed selected: 400 {"code":"PGRST108","details":null,"hint":"Verify that 'bcn005_authors' is included in the 'select' query parameter.","message":"'bcn005_authors' is not an embedded resource in this request"}
+  · with a PLAIN embed (does it narrow the parent?): 200 [{"id":1,"title":"Notes on the Engine","bcn005_authors":{"id": 1, "city": "London", "name": "Ada"}}, 
+ {"id":2,"title":"A Compiler Story","bcn005_authors":{"id": 1, "city": "London", "name": "Ada"}}]
+  · with an !inner embed: 200 [{"id":1,"title":"Notes on the Engine","bcn005_authors":{"id": 1, "city": "London", "name": "Ada"}}, 
+ {"id":2,"title":"A Compiler Story","bcn005_authors":{"id": 1, "city": "London", "name": "Ada"}}]
+  · M2M !inner filter: 400 {"code":"PGRST200","details":"Searched for a foreign key relationship between 'bcn005_articles' and 'bcn005_tags' in the schema 'public', but no matches were found.","hint":"Perhaps you meant 'bcn005_authors' instead of 'bcn005_tags'.","message":"Could not fin
+
+  E. remove
+  · DELETE by the pair: 200 [{"id":1,"article_id":1,"tag_id":1}, 
+ {"id":2,"article_id":1,"tag_id":1}]
+  · DELETE a pair that never existed: 200 []
+  · PATCH FK → null (M2O remove): 200 [{"id":2,"title":"A Compiler Story","author_id":null}]
+
+==========================================================================
+POCKETBASE 0.30.0 — relations (first contact: never exercised before)
+==========================================================================
+  · create bcn005_authors: 200 
+  · create bcn005_tags: 200
+  · create bcn005_articles: 200 
+
+  A. GET /api/collections — what a relation field looks like
+  · does the collection carry `schema` (the parser reads this)?: false
+  · does it carry `fields`?: true
+     field id: type=text collectionId=undefined maxSelect=undefined
+     field title: type=text collectionId=undefined maxSelect=undefined
+     field author: type=relation collectionId="pbc_1390417582" maxSelect=1
+     field tags: type=relation collectionId="pbc_2954701621" maxSelect=99
+  · is the target named by id or by name?: see collectionId above vs {"authorsId":"pbc_1390417582","tagsId":"pbc_2954701621"}
+  · seeded: {"ada":"nqebu62mpoq959g","grace":"0lv4biqo8dz9s9g","alg":"ew2s8l95kudwcb6","comp":"zsfhmskv8ilycxq","a1":"gbysg25kusoozta","a2":"2nthfi42lwhfaqi"}
+
+  D. add to a multi-valued relation
+  · PATCH {"tags+": id} — is the append operator real?: 200 {"author":"nqebu62mpoq959g","collectionId":"pbc_2449683161","collectionName":"bcn005_articles","id":"gbysg25kusoozta","tags":["ew2s8l95kudwcb6"],"title":"Notes on the Engine"}
+
+  · append a second: 200 ["ew2s8l95kudwcb6","zsfhmskv8ilycxq"]
+  · append one that is ALREADY there: 200 ["ew2s8l95kudwcb6","zsfhmskv8ilycxq"]
+  · "+" on a SINGLE-valued relation (maxSelect 1): 200 {"author":"nqebu62mpoq959g","collectionId":"pbc_2449683161","collectionName":"bcn005_articles","id":"2nthfi42lwhfaqi","tags":[],"title":"A Compiler Story"}
+
+
+  B. expand
+  · expand=author,tags: 200 {"items":[{"author":"nqebu62mpoq959g","collectionId":"pbc_2449683161","collectionName":"bcn005_articles","expand":{"author":{"city":"London","collectionId":"pbc_1390417582","collectionName":"bcn005_authors","id":"nqebu62mpoq959g","name":"Ada"}},"id":"2nthfi42lwhfaqi","tags":[],"title":"A Compiler Story"},{"author":"nqebu62mpoq959g","collectionId":"pbc_2449683161","collectionName":"bcn005_articles","expand":{"author":{"city":"London","collectionId":"pbc_1390417582","collectionName":"bcn005_author
+  · without expand: {"items":[{"author":"nqebu62mpoq959g","collectionId":"pbc_2449683161","collectionName":"bcn005_articles","id":"2nthfi42lwhfaqi","tags":[],"title":"A Compiler Story"},{"author":"nqebu62mpoq959g","collectionId":"pbc_2449683161","collectionName":"bcn005_articles","id":"gbysg25kusoozta","tags":["ew2s8l9
+  · back-relation expand (O2M): 200 {"items":[{"city":"London","collectionId":"pbc_1390417582","collectionName":"bcn005_authors","expand":{"bcn005_articles_via_author":[{"author":"nqebu62mpoq959g","collectionId":"pbc_2449683161","collectionName":"bcn005_articles","id":"gbysg25kusoozta","tags":["ew2s8l95kudwcb6","zsfhmskv8ilycxq"],"title":"Notes on the En
+
+  C. filter across the relation
+  · filter author.city='London': 200 {"items":[{"author":"nqebu62mpoq959g","collectionId":"pbc_2449683161","collectionName":"bcn005_articles","id":"2nthfi42lwhfaqi","tags":[],"title":"A Compiler Story"},{"author":"nqebu62mpoq959g","collectionId":"pbc_2449683161","collectionName":"bcn005_articles"
+  · filter tags.label='algebra' (multi-valued): 200 {"items":[],"page":1,"perPage":30,"totalItems":0,"totalPages":0}
+
+
+  E. remove
+  · PATCH {"tags-": id}: 200 ["zsfhmskv8ilycxq"]
+  · remove one that is NOT there: 200 ["zsfhmskv8ilycxq"]
+  · "-" on a single-valued relation: 200 {"author":"nqebu62mpoq959g","collectionId":"pbc_2449683161","collectionName":"bcn005_articles","id":"2nthfi42lwhfaqi","tags":[],"title":"A Compiler Story"}
+
+
+done.
+BCN-005 relation probe round 2 — 2026-07-31T21:10:38.979Z
+
+==========================================================================
+DIRECTUS — O2M read, a discriminating filter, and the unauthenticated case
+==========================================================================
+
+  1. O2M read, with the status this time
+  · GET authors?fields=*,articles.*: 403 {"errors":[{"message":"You don't have permission to access field \"articles\" in collection \"bcn005_authors\" or it does not exist. Queried in root.","extensions":{"reason":"You don't have permission to access field \"articles\" in collection \"bcn005_authors\" or it does not exist. Queried in root.","code":"FORBIDDEN"}}]}
+  · authors fields (is the reverse alias there?): ["id:integer:undefined","name:string:undefined","city:string:undefined"]
+
+  4. nested filter on discriminating data (a1=Ada/London, a2=Grace/New York)
+  · filter {author:{city:{_eq:London}}}: 200 [{"id":1,"title":"Notes on the Engine"}]
+
+  M2M include: what a one-hop `tags.*` returns versus `tags.tag_id.*`
+  · one hop  tags.*: {"data":{"id":1,"title":"Notes on the Engine","author":1,"tags":[{"id":2,"article_id":1,"tag_id":2}]}}
+  · two hops tags.tag_id.*: {"data":{"id":1,"title":"Notes on the Engine","author":1,"tags":[{"tag_id":{"id":2,"label":"compilers"}}]}}
+
+  7. relation metadata without a token
+  · GET /relations unauthenticated: 403 {"errors":[{"message":"You don't have permission to perform \"read\" for collection \"directus_relations\" or it does not exist.","extensions":{"reason":"You do
+  · GET /fields unauthenticated: 403 {"errors":[{"message":"You don't have permission to perform \"read\" for collection \"directus_fields\" or it does not exist.","extensions":{"reason":"You don't
+  · GET /relations/{collection} (scoped, admin): 200 {"data":[{"collection":"bcn005_articles","field":"author","related_collection":"bcn005_authors","schema":{"table":"bcn005_articles","column":"author","foreign_key_table":"bcn005_authors","foreign_key_column":"id","on_update":"NO ACTION","on_delete":"NO ACTION","constraint_name":null},"meta":{"id":1,
+
+==========================================================================
+POSTGREST — the junction primary key, and !inner on discriminating data
+==========================================================================
+  2. rebuild the junction with the PAIR as the primary key
+  · M2M embed with a COMPOSITE-PK junction: 200 [{"id":1,"title":"Notes on the Engine","bcn005_tags":[{"id": 1, "label": "algebra"}]}, 
+ {"id":2,"title":"A Compiler Story","bcn005_tags":[]}]
+  · explicit two-hop through the junction: 200 [{"id":1,"title":"Notes on the Engine","bcn005_articles_tags":[{"bcn005_tags": {"id": 1, "label": "algebra"}}]}, 
+ {"id":2,"title":"A Compiler Story","bcn005_articles_tags":[]}]
+
+  3. !inner versus a plain embed (a1→Ada/London, a2→Grace/New York)
+  · PLAIN embed + a filter on it: 200 [{"id":1,"title":"Notes on the Engine","bcn005_authors":{"id": 1, "city": "London", "name": "Ada"}}, {"id":2,"title":"A Compiler Story","bcn005_authors":null}]
+  · !inner embed + the same filter: 200 [{"id":1,"title":"Notes on the Engine","bcn005_authors":{"id": 1, "city": "London", "name": "Ada"}}]
+  · M2M !inner filter, composite-PK junction: 200 [{"id":1,"title":"Notes on the Engine","bcn005_tags":[{"id": 1, "label": "algebra"}]}]
+
+  duplicate add against a composite PK
+  · POST an existing pair: 409 {"code":"23505","details":"Key (article_id, tag_id)=(1, 1) already exists.","hint":null,"message":"duplicate key value violates unique constraint \"bcn005_articles_tags_pkey\""}
+  · POST with resolution=merge-duplicates (upsert): 200 [{"article_id":1,"tag_id":1}]
+
+  the OpenAPI spec after the PK change — is the junction any more visible?
+  · junction definition: {"required":["article_id","tag_id"],"properties":{"article_id":{"description":"Note:\nThis is a Primary Key.<pk/>\nThis is a Foreign Key to `bcn005_articles.id`.<fk table='bcn005_articles' column='id'/>","format":"integer","type":"integer"},"tag_id":{"description":"Note:\nThis is a Primary Key.<pk/>\nThis is a Foreign Key to `bcn005_tags.id`.<fk table='bcn005_tags' column='id'/>","format":"integer
+
+==========================================================================
+POCKETBASE — ?= versus =, and + / - on a single-valued relation
+==========================================================================
+  · ids: {"a":{"A Compiler Story":"2nthfi42lwhfaqi","Notes on the Engine":"gbysg25kusoozta"},"au":{"Ada":"nqebu62mpoq959g","Grace":"0lv4biqo8dz9s9g"},"tg":{"algebra":"ew2s8l95kudwcb6","compilers":"zsfhmskv8ilycxq"}}
+
+  5. filter across a MULTI-valued relation
+  · filter tags.label='algebra': 200 []
+  · filter tags.label?='algebra': 200 [{"title":"Notes on the Engine"}]
+  · filter tags.label~'alge': 200 []
+  · filter tags.label?~'alge': 200 [{"title":"Notes on the Engine"}]
+
+  and across a SINGLE-valued one (a1→Ada/London, a2→Grace/New York)
+  · filter author.city='London': 200 [{"title":"Notes on the Engine"}]
+  · filter author.city?='London': 200 [{"title":"Notes on the Engine"}]
+
+  6. + and - on a single-valued relation (maxSelect 1)
+  · before: 0lv4biqo8dz9s9g
+  · "author+": Ada while author is Grace: 200 author="nqebu62mpoq959g"
+  · "author-": the current value: 200 author=""
+  · "author-": a value that is not set: 200 author=""
+
+  does + on a multi-valued field respect maxSelect?
+  · append a duplicate (set semantics?): 200 ["ew2s8l95kudwcb6","zsfhmskv8ilycxq"]
+
+  7. relation metadata without an admin token
+  · GET /api/collections unauthenticated: 401 {"data":{},"message":"The request requires valid record authorization token.","status":401}
+
+
+  what the collection field entry looks like in full (the parser input)
+  · bcn005_articles.fields: [{"autogeneratePattern":"[a-z0-9]{15}","hidden":false,"id":"text3208210256","max":15,"min":15,"name":"id","pattern":"^[a-z0-9]+$","presentable":false,"primaryKey":true,"required":true,"system":true,"type":"text"},{"autogeneratePattern":"","hidden":false,"id":"text724990059","max":0,"min":0,"name":"title","pattern":"","presentable":false,"primaryKey":false,"required":false,"system":false,"type":"text"},{"cascadeDelete":false,"collectionId":"pbc_1390417582","hidden":false,"id":"relation3182418120","maxSelect":1,"minSelect":0,"name":"author","presentable":false,"required":false,"system":false,"type":"relation"},{"cascadeDelete":false,"collectionId":"pbc_2954701621","hidden":false,"id":"relation1874629670","maxSelect":99,"minSelect":0,"name":"tags","presentable":false,"required":false,"system":false,"type":"relation"}]
+
+done.

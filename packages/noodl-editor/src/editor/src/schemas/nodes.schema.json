@@ -1,0 +1,156 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "title": "OpenNoodl Component Nodes",
+  "description": "Node graph definitions for a single component (nodes.json) in the v2 format",
+  "type": "object",
+  "required": ["componentId", "nodes"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "componentId": {
+      "type": "string",
+      "description": "ID of the parent component — must match component.json id"
+    },
+    "version": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Schema version for future migrations"
+    },
+    "nodes": {
+      "type": "array",
+      "description": "All nodes in this component's graph (roots and children flattened)",
+      "items": { "$ref": "#/definitions/node" }
+    },
+    "visualRoots": {
+      "type": "array",
+      "description": "IDs of nodes that are visual roots of the component graph (canvas roots)",
+      "items": { "type": "string" }
+    },
+    "comments": {
+      "type": "array",
+      "description": "Free-floating comment/annotation boxes drawn on the graph canvas",
+      "items": { "type": "object", "additionalProperties": true }
+    }
+  },
+  "definitions": {
+    "node": {
+      "type": "object",
+      "required": ["id", "type"],
+      "additionalProperties": true,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Unique node ID within the component"
+        },
+        "type": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Node type name — built-in (e.g. 'Group', 'Text') or component ref (e.g. '/#Header')"
+        },
+        "label": {
+          "type": "string",
+          "description": "User-defined label for the node"
+        },
+        "x": {
+          "type": "number",
+          "description": "Canvas X position"
+        },
+        "y": {
+          "type": "number",
+          "description": "Canvas Y position"
+        },
+        "variant": {
+          "type": "string",
+          "description": "Variant name if this node uses a variant"
+        },
+        "version": {
+          "type": "number",
+          "description": "Node type version"
+        },
+        "parameters": {
+          "type": "object",
+          "description": "Node parameter values (property bag)",
+          "additionalProperties": true
+        },
+        "stateParameters": {
+          "type": "object",
+          "description": "Visual state parameter overrides keyed by state name",
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "stateTransitions": {
+          "type": "object",
+          "description": "Transition curves per state and parameter",
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "defaultStateTransitions": {
+          "type": "object",
+          "description": "Default transition curves per state",
+          "additionalProperties": true
+        },
+        "ports": {
+          "type": "array",
+          "description": "User-defined instance ports on this node",
+          "items": { "$ref": "#/definitions/port" }
+        },
+        "dynamicports": {
+          "type": "array",
+          "description": "Dynamically generated ports (e.g. from StringList inputs)",
+          "items": { "$ref": "#/definitions/port" }
+        },
+        "children": {
+          "type": "array",
+          "description": "IDs of child nodes (visual hierarchy)",
+          "items": { "type": "string" }
+        },
+        "parent": {
+          "type": "string",
+          "description": "ID of parent node (null/absent for root nodes)"
+        },
+        "conflicts": {
+          "type": "array",
+          "description": "Merge conflict data (set by project differ)",
+          "items": { "type": "object", "additionalProperties": true }
+        },
+        "annotation": {
+          "type": "string",
+          "enum": ["Deleted", "Created", "Changed"],
+          "description": "Diff annotation (set by project differ)"
+        },
+        "metadata": {
+          "type": "object",
+          "description": "Arbitrary node metadata (AI prompt history, merge info, comments)",
+          "additionalProperties": true
+        }
+      }
+    },
+    "port": {
+      "type": "object",
+      "required": ["name"],
+      "additionalProperties": true,
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "type": {
+          "oneOf": [
+            { "type": "string" },
+            { "type": "object" }
+          ]
+        },
+        "displayName": { "type": "string" },
+        "plug": { "type": "string" },
+        "group": { "type": "string" },
+        "index": { "type": "number" },
+        "default": {}
+      }
+    }
+  }
+}

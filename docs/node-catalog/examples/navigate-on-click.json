@@ -1,0 +1,71 @@
+{
+  "id": "navigate-on-click",
+  "title": "Router page navigation from a button",
+  "description": "URL-style navigation: a Router hosts the app's pages (each page is a component, configured in the Router's `pages` parameter), and a Navigate node (RouterNavigate) switches it. The Button's `onClick` signal triggers `navigate`; which page to go to, and any path parameters, are set on the Navigate node's parameters — those ports are created from the Router's page configuration at edit time, which is why they are runtime-determined in the catalog.",
+  "demonstrates": ["RouterNavigate", "Router", "net.noodl.controls.button", "Group"],
+  "components": [
+    {
+      "name": "/App Shell",
+      "nodes": [
+        {
+          "id": "shell_root",
+          "type": "Group",
+          "label": "App root",
+          "parameters": { "flexDirection": "column" },
+          "children": ["nav_bar", "main_router"]
+        },
+        {
+          "id": "nav_bar",
+          "type": "Group",
+          "label": "Nav bar",
+          "parent": "shell_root",
+          "parameters": { "flexDirection": "row" },
+          "children": ["about_button"]
+        },
+        {
+          "id": "about_button",
+          "type": "net.noodl.controls.button",
+          "label": "Go to About",
+          "parent": "nav_bar",
+          "parameters": { "label": "About" }
+        },
+        {
+          "id": "main_router",
+          "type": "Router",
+          "label": "Main router",
+          "parent": "shell_root",
+          "parameters": { "name": "Main" }
+        },
+        {
+          "id": "go_about",
+          "type": "RouterNavigate",
+          "label": "Navigate to About",
+          "parameters": { "router": "Main", "target": "/About" }
+        }
+      ],
+      "connections": [
+        { "fromId": "about_button", "fromProperty": "onClick", "toId": "go_about", "toProperty": "navigate" }
+      ]
+    },
+    {
+      "name": "/About",
+      "nodes": [
+        {
+          "id": "about_page",
+          "type": "Page",
+          "label": "About page",
+          "parameters": { "title": "About" },
+          "children": ["about_text"]
+        },
+        {
+          "id": "about_text",
+          "type": "Text",
+          "label": "Heading",
+          "parent": "about_page",
+          "parameters": { "text": "About this app" }
+        }
+      ],
+      "connections": []
+    }
+  ]
+}

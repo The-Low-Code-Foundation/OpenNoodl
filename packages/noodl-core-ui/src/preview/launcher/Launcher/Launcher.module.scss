@@ -1,0 +1,44 @@
+/**
+ * Launcher - Main layout styling
+ */
+
+.Root {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  width: 100vw;
+  /* Mock ground: the window sits on bg-0; titlebar/sidebar/footer are the
+     bg-1 panels on top of it (PAR-001). */
+  background: var(--theme-color-bg-0);
+  color: var(--theme-color-fg-default);
+  font-size: 13px;
+  overflow: hidden;
+}
+
+.ContentArea {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  background: var(--theme-color-bg-0);
+
+  /* Smooth scrolling */
+  scroll-behavior: smooth;
+
+  /* Custom scrollbar styling */
+  &::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: var(--theme-color-bg-1);
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: var(--theme-color-border-default);
+    border-radius: 4px;
+
+    &:hover {
+      background: var(--theme-color-fg-default-shy);
+    }
+  }
+}

@@ -1,0 +1,52 @@
+.Root {
+  width: 100%;
+}
+
+.ChangeRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 3px 0;
+  line-height: 1.4;
+}
+
+.ChangeIcon {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.ChangeText {
+  word-break: break-word;
+}
+
+.GroupTitle {
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin: 8px 0 2px;
+}
+
+.CosmeticToggle {
+  cursor: pointer;
+  user-select: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 0;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+.ComponentHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  cursor: pointer;
+  padding: 4px 0;
+}
+
+.ChangeCount {
+  flex-shrink: 0;
+}

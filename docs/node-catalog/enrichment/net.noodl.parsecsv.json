@@ -1,0 +1,27 @@
+{
+  "typeName": "net.noodl.ParseCSV",
+  "summary": "Turns CSV text that arrived at runtime into an array — records when the first row is a header, rows of cells when it is not.",
+  "description": "Parse CSV reads CSV text into an array. With Has Header ticked (the default) the first row names the properties and Items is an array of records; untick it and Items is an array of rows, each an array of cells. It handles the awkward parts of the format properly: quoted cells, cells containing the delimiter, cells containing newlines, and doubled quotes. Every cell comes out a string — there is no type inference, so a column that looks numeric yields \"42\" and not 42; use an Expression or Array Map if you need numbers. A leading byte-order mark, which is what Excel writes when it saves UTF-8, is stripped so the first column keeps its name. A quote the parser cannot pair is a Failure with the line number, not a half-read file: without that check the text around the stray quote simply disappears and the array looks plausible. This is the same parser Static Array has always used, so an authored CSV and a received one cannot disagree. In a cloud function, remember the request body limit is 10 MB — a bigger file has to arrive through file storage instead.",
+  "whenToUse": "A CSV arriving from anywhere at runtime: a request body, an upload, an HTTP response, a file read from storage. For a CSV you type in yourself, Static Array is the node — it is this parser with an editor field in front of it.",
+  "ports": {
+    "text": "The CSV text to parse. A leading byte-order mark is stripped.",
+    "hasHeader": "When ticked the first row names the columns and Items is records; when unticked Items is rows of cells.",
+    "delimiter": "The character between cells. Default ','; use ';' for many European exports or a tab for TSV.",
+    "items": "The parsed rows. Records when Has Header is ticked, arrays of cells when it is not. Every cell is a string. Left unchanged when a parse fails.",
+    "count": "How many rows the last successful parse produced, not counting the header row.",
+    "changed": "Fires once Items and Count hold the freshly parsed CSV.",
+    "failure": "Fires when the CSV could not be parsed, leaving Items and Count as they were.",
+    "error": "Why the parse failed, naming the line it gave up on. Empty until a parse fails."
+  },
+  "examples": [],
+  "patterns": [
+    "Request `pm-csv` → Parse CSV `text`; Parse CSV `items` → Array Filter → To CSV → Response: the whole 'someone sent us a spreadsheet' shape, with no Function node.",
+    "Wire `failure` somewhere that answers the caller. A function whose only wired path is the happy one hangs forever when the file is malformed (CWF-018)."
+  ],
+  "antiPatterns": [
+    "Expecting numeric columns to arrive as numbers. Every cell is a string; convert explicitly.",
+    "Splitting on commas with a String node instead. That breaks on the first quoted cell containing a comma, which is the first real file you will meet.",
+    "Posting a CSV larger than 10 MB to a cloud function. The body limit rejects it with a 413 before the graph runs."
+  ],
+  "relatedNodes": ["net.noodl.ToCSV", "Static Data", "Filter Collection", "Map Collection"]
+}

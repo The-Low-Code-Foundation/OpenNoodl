@@ -1,6 +1,6 @@
 import _ from 'underscore';
 import React from 'react';
-import ReactDOM from 'react-dom';
+import { createRoot, Root } from 'react-dom/client';
 
 import { Comment, CommentsModel } from '@noodl-models/commentsmodel';
 import KeyboardHandler from '@noodl-utils/keyboardhandler';
@@ -36,6 +36,8 @@ export default class CommentLayer {
   backgroundDiv: HTMLDivElement;
   activeCommentId: string;
   foregroundDiv: HTMLDivElement;
+  backgroundRoot: Root;
+  foregroundRoot: Root;
 
   constructor(nodegraphEditor) {
     this.nodegraphEditor = nodegraphEditor;
@@ -140,14 +142,29 @@ export default class CommentLayer {
       return;
     }
 
-    ReactDOM.render(React.createElement(CommentLayerView.Background, this.props), this.backgroundDiv);
-    ReactDOM.render(React.createElement(CommentLayerView.Foreground, this.props), this.foregroundDiv);
+    // Create roots only once, reuse for subsequent renders
+    if (!this.backgroundRoot) {
+      this.backgroundRoot = createRoot(this.backgroundDiv);
+    }
+    this.backgroundRoot.render(React.createElement(CommentLayerView.Background, this.props));
+    
+    if (!this.foregroundRoot) {
+      this.foregroundRoot = createRoot(this.foregroundDiv);
+    }
+    this.foregroundRoot.render(React.createElement(CommentLayerView.Foreground, this.props));
   }
 
   renderTo(backgroundDiv, foregroundDiv) {
+    // Clean up existing roots if we're switching to new divs
     if (this.backgroundDiv) {
-      ReactDOM.unmountComponentAtNode(this.backgroundDiv);
-      ReactDOM.unmountComponentAtNode(this.foregroundDiv);
+      if (this.backgroundRoot) {
+        this.backgroundRoot.unmount();
+        this.backgroundRoot = null;
+      }
+      if (this.foregroundRoot) {
+        this.foregroundRoot.unmount();
+        this.foregroundRoot = null;
+      }
     }
 
     this.backgroundDiv = backgroundDiv;
@@ -297,12 +314,20 @@ export default class CommentLayer {
   }
 
   dispose() {
-    ReactDOM.unmountComponentAtNode(this.foregroundDiv);
-    ReactDOM.unmountComponentAtNode(this.backgroundDiv);
+    if (this.foregroundRoot) {
+      this.foregroundRoot.unmount();
+      this.foregroundRoot = null;
+    }
+    if (this.backgroundRoot) {
+      this.backgroundRoot.unmount();
+      this.backgroundRoot = null;
+    }
 
     //hack to remove all event listeners without having to keep track of them
-    const newForegroundDiv = this.foregroundDiv.cloneNode(true);
-    this.foregroundDiv.parentNode.replaceChild(newForegroundDiv, this.foregroundDiv);
+    if (this.foregroundDiv && this.foregroundDiv.parentNode) {
+      const newForegroundDiv = this.foregroundDiv.cloneNode(true);
+      this.foregroundDiv.parentNode.replaceChild(newForegroundDiv, this.foregroundDiv);
+    }
 
     if (this.model) {
       this.model.off(this);
@@ -347,7 +372,7 @@ export default class CommentLayer {
 
           //check if we're interacting with something in the canvas. If we aren't, then let the comment layer handle the mouse event
           //otherwise, forward the mouse even to the nodegraph
-          evt.spaceKey = this.nodegraphEditor.spaceKeyDown; // This is set by the KeyboardHandler
+          evt.spaceKey = this.nodegraphEditor.isSpaceKeyDown(); // This is set by the KeyboardHandler
 
           //nodeGraphEditor expects position argument that's relative to the top left of the canvas
           const tl = this.nodegraphEditor.topLeftCanvasPos;

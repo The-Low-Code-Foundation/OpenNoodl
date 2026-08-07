@@ -1,0 +1,17 @@
+{
+  "label": "Confetti",
+  "description": "A celebration trigger node — fire a burst, fireworks, side cannons or falling confetti over the page with one signal (canvas-confetti, MIT). Client-side; styleable count, spread, origin and colours.",
+  "type": "module",
+  "tags": [
+    "UI"
+  ],
+  "icon": "icon.png",
+  "docsPath": "/library/modules/confetti/",
+  "version": "1.0.0",
+  "minEditorVersion": "0.1.0",
+  "runtimeVersion": "2.7.0",
+  "provenance": {
+    "sourceUrl": "https://unpkg.com/canvas-confetti@1.9.3/dist/confetti.browser.js",
+    "importedAt": "2026-07-25"
+  }
+}

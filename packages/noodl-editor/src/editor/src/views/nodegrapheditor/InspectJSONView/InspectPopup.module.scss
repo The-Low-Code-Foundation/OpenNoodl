@@ -1,13 +1,13 @@
 $pin-icon-size: 14px;
 
 .Root {
-  background-color: #383838;
+  background-color: var(--theme-color-bg-4);
   max-height: 300px;
   max-width: 500px;
   display: flex;
   gap: 5px;
   padding: 5px;
-  border: 1px solid #2a2a2a;
+  border: 1px solid var(--theme-color-border-default);
 }
 
 .ValueContainer {
@@ -32,14 +32,14 @@ $pin-icon-size: 14px;
 
     svg,
     path {
-      color: #a0a0a0 !important;
-      fill: #a0a0a0 !important;
+      color: var(--theme-color-fg-default-shy) !important;
+      fill: var(--theme-color-fg-default-shy) !important;
     }
   }
 
   :global(.object-key) {
     span {
-      color: #ffffff;
+      color: var(--theme-color-fg-highlight);
     }
   }
 
@@ -50,7 +50,7 @@ $pin-icon-size: 14px;
 
 .ValueInspector {
   font-family: monospace;
-  color: #f6f6f6;
+  color: var(--theme-color-fg-highlight);
   white-space: pre;
   cursor: text;
   user-select: text;
@@ -63,19 +63,17 @@ $pin-icon-size: 14px;
   }
 }
 
+/* UIX-011: was two `-webkit-mask` SVGs tinted by `background`. The outline /
+   filled swap now happens in InspectPopup.tsx (Pin / PinFill), so `.is-pinned`
+   needs no rule of its own. Same box; `color` replaces `background` as the
+   paint source, and the button loses its own background so the glyph shows. */
 .PinButton {
-  -webkit-mask: url(../assets/icons/editor/push_pin_black_24dp-outline.svg);
-  -webkit-mask-size: $pin-icon-size $pin-icon-size;
   width: $pin-icon-size;
   height: $pin-icon-size;
   margin: 0;
   padding: 0;
   border: none;
-  background: #b9b9b9;
+  background: transparent;
+  color: var(--theme-color-fg-default);
   flex-shrink: 0;
-
-  &.is-pinned {
-    -webkit-mask: url(../assets/icons/editor/push_pin_black_24dp-filled.svg);
-    -webkit-mask-size: $pin-icon-size $pin-icon-size;
-  }
 }

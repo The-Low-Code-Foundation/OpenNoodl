@@ -1,0 +1,8 @@
+{
+  "typeName": "Label",
+  "summary": "Legacy text-label visual, hidden from the node picker — superseded by Text.",
+  "description": "The original Label visual (an HTML label element with a text style), kept only so old projects load. Text supersedes it for all display text; for form-control captions the modern controls carry their own labels.",
+  "whenToUse": "Do not use in new graphs — use Text instead.",
+  "runtimeBehavior": "Declared-port-groups gate width/height and border ports on parameter values; irrelevant for new work — the node is hidden from the picker.",
+  "relatedNodes": ["Text"]
+}

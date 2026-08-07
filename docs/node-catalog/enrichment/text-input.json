@@ -1,0 +1,8 @@
+{
+  "typeName": "Text Input",
+  "summary": "Legacy bare text field, hidden from the picker. Use the Text Input control (net.noodl.controls.textinput) in new graphs.",
+  "description": "The legacy Text Input renders an unstyled input/textarea with the basic text surface (`onTextChanged` string output, focus/blur/clear signals). It remains registered for old projects but is hidden from the node picker; the Text Input control supersedes it with label/icon support, visual states and theming.",
+  "whenToUse": "Do not use in new graphs — use net.noodl.controls.textinput instead.",
+  "runtimeBehavior": "Declared-port-groups: size-mode and option-dependent ports swap by parameters, as on other visual nodes.",
+  "relatedNodes": ["net.noodl.controls.textinput"]
+}

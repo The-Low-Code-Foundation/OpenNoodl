@@ -22,7 +22,7 @@ export function ToggleSwitch({
     <div className={css['Root']}>
       {label && <Label>{label}</Label>}
 
-      <label className={css['Track']}>
+      <label className={classNames(css['Track'], isChecked && css['is-checked'])}>
         <div
           className={classNames(
             css['Indicator'],

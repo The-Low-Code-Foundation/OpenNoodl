@@ -1,0 +1,133 @@
+/* PNL-004: same discipline as `LocalBackendCard` — the card is its own
+ * `panel-body` container, every horizontal group wraps, and the parts that must
+ * give way (the name, the URL, an error message) carry `min-width: 0`. The
+ * action row here has four buttons and had the same overflow as the local
+ * card's.
+ */
+.Root {
+  container-type: inline-size;
+  container-name: panel-body;
+
+  box-sizing: border-box;
+  min-width: 0;
+
+  background-color: var(--theme-color-bg-3);
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: 6px;
+  padding: 12px;
+  margin-bottom: 8px;
+  transition: border-color 0.2s ease;
+
+  &:hover {
+    border-color: var(--theme-color-border-hover);
+  }
+
+  &.Active {
+    border-color: var(--theme-color-primary);
+    background-color: var(--theme-color-bg-2);
+  }
+}
+
+.Header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+  min-width: 0;
+  margin-bottom: 8px;
+}
+
+.Identity {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  flex: 1 1 140px;
+  min-width: 0;
+}
+
+.IdentityText {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+
+  /* The backend URL is unbounded user input; it ellipsises rather than widening
+     the card past the panel. */
+  > * {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+.TypeIcon {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  background-color: var(--theme-color-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.ActiveBadge {
+  flex: 0 0 auto;
+  background-color: var(--theme-color-primary);
+  color: var(--theme-color-fg-on-primary);
+  padding: 2px 6px;
+  border-radius: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.Status {
+  margin-bottom: 8px;
+  padding-top: 8px;
+  min-width: 0;
+  border-top: 1px solid var(--theme-color-border-default);
+}
+
+.StatusLine {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+/* A connection error is a sentence, not a token — it wraps, and it breaks
+   mid-URL rather than pushing the card out of the panel. */
+.StatusError {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.SchemaInfo {
+  margin-bottom: 8px;
+}
+
+.Actions {
+  padding-top: 8px;
+  border-top: 1px solid var(--theme-color-border-default);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-width: 0;
+}
+
+/* "Set active" is the primary action for an external backend and owns its own
+   row, so the two inspection actions below it stay equal and legible. */
+.PrimaryAction {
+  flex: 1 1 100%;
+  min-width: 0;
+}
+
+.SecondaryAction {
+  flex: 1 1 84px;
+  min-width: 0;
+}
+
+.MoreAction {
+  flex: 0 0 auto;
+}

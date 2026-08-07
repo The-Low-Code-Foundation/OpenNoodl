@@ -1,0 +1,1220 @@
+# Cline Development Guidelines for OpenNoodl
+
+## Communication Style
+
+**You are assisting Richard**, an experienced CTO and full-stack developer. Communication should be:
+
+- **Direct and technical** - Skip basic explanations, use proper terminology
+- **Practical and actionable** - Focus on working solutions over theory
+- **Concise but complete** - Respect time while providing necessary context
+- **Honest about limitations** - Say "I don't know" rather than guess
+- **Assumes competence** - Richard understands development fundamentals
+- **Casual and humorous when appropriate** - Use slang, informal expressions, and humor to keep things human
+
+**Tone**: Professional peer who doesn't take themselves too seriously. "Hold the front door" > "Please wait a moment". Explain _why_ when context helps, not _what_ when it's obvious. Be precise about technical details, relaxed about everything else.
+
+---
+
+## 🚨 CRITICAL REQUIREMENTS
+
+### 1. Testing & Verification Are Mandatory
+
+**Code written ≠ Feature working**
+
+- ✅ **ALWAYS prefer unit tests** - Write tests that prove functionality works
+- ✅ **If tests aren't feasible** - Explicitly ask Richard to verify changes before marking complete
+- ❌ **NEVER declare "done" without proof** - Either tests pass or user confirms it works
+
+```markdown
+## Before marking any task complete:
+
+- [ ] Unit tests added and passing, OR
+- [ ] User has verified changes work as expected
+- [ ] No assumptions that "code compiles = feature works"
+```
+
+### 2. NodeGX Is a Fresh Start — Do Not Compromise for Legacy Projects
+
+**Decided 2026-07-30. Full policy: `dev-docs/reference/COMPATIBILITY-POLICY.md` — read it before
+acting on any spec clause about existing projects.**
+
+Existing Noodl 2.x / pre-revival OpenNoodl projects **will not reliably import**. We promise
+best-effort conversion plus an honest report; the rest is the user's AI assistant's problem to fix
+in the new project, or gets deleted and rebuilt.
+
+- ❌ **NEVER** halt, narrow, or dual-path a task to protect projects built before NodeGX
+- ❌ **NEVER** default a fix to the old behaviour "so existing projects don't change"
+- ✅ **DO** ship the correct behaviour and record the break in the task notes
+- ✅ **DO** treat any pre-2026-07-30 "existing projects must keep working" clause as **void** — say
+  so in your notes and proceed
+- ✅ **DO** keep the QA fixture and repo examples green — but **updating the fixture is part of the
+  change**, not evidence the change is wrong
+
+**Still non-negotiable:** never silently corrupt a project you opened (fail loudly instead), and
+never restate this policy in another file — link to it.
+
+**The test:** strike "existing projects" from your justification. Does the decision still stand on
+its own merits? If not, take the decision again.
+
+### 3. Break Out of Loops
+
+**When you're stuck (same error 3+ times, repeated attempts failing):**
+
+```markdown
+I'm hitting a wall with [specific issue]. This needs dedicated research.
+
+Should I create a research task doc to:
+
+1. [Investigate root cause]
+2. [Explore alternatives]
+3. [Document solution for future reference]
+
+This will prevent wasting time on trial-and-error.
+```
+
+**Do NOT** keep trying variations of the same approach. Recognize the pattern and escalate.
+
+### 4. Document Discoveries Systematically
+
+**When you learn something important about the codebase:**
+
+```markdown
+## Discovered: [Brief Title]
+
+**Context**: [What were you trying to do?]
+**Discovery**: [What did you learn?]
+**Location**: [What files/systems does this affect?]
+**Action**: [Added to LEARNINGS.md / COMMON-ISSUES.md]
+```
+
+**Important = Worth documenting:**
+
+- Non-obvious behavior or gotchas
+- Error solutions that took time to figure out
+- Undocumented dependencies between systems
+- Patterns you had to reverse-engineer
+- Anything the next developer shouldn't have to rediscover
+
+**Update these files as you learn:**
+
+- `dev-docs/reference/LEARNINGS.md` - General discoveries
+- `dev-docs/reference/COMMON-ISSUES.md` - Error solutions
+- Task `CHANGELOG.md` - Task-specific progress
+
+---
+
+## Project Context
+
+### What is OpenNoodl
+
+OpenNoodl is an **Electron desktop application** (not a web app) for visual programming. Key facts:
+
+- **Editor**: Electron app (never opens in browser)
+- **Viewer**: Generates web applications
+- **Runtime**: JavaScript execution engine for node graphs
+- Run with `npm run dev` (launches Electron, not a web server)
+- Debug with Electron DevTools (View → Toggle Developer Tools)
+
+### Codebase Structure
+
+```
+packages/
+├── noodl-editor/          # Electron editor application
+│   ├── src/editor/src/    # Main editor code
+│   │   ├── models/        # Data models (ProjectModel, NodeGraph)
+│   │   ├── views/         # React UI components
+│   │   ├── store/         # State management
+│   │   └── utils/         # Utilities
+│   └── tests/             # Test files
+│
+├── noodl-runtime/         # Node execution engine
+│   └── src/nodes/         # Runtime node definitions
+│
+├── noodl-viewer-react/    # React-based visual nodes
+│   └── src/nodes/         # Visual components
+│
+└── noodl-core-ui/         # Shared UI components
+    └── src/components/    # Reusable UI
+```
+
+### Key Documentation
+
+**Read these FIRST for relevant tasks:**
+
+- `dev-docs/reference/COMPATIBILITY-POLICY.md` - **NodeGX is a fresh start; legacy projects are not a constraint (READ BEFORE acting on any "existing projects" clause)**
+- `dev-docs/reference/CODEBASE-MAP.md` - Navigation guide
+- `dev-docs/reference/COMMON-ISSUES.md` - Known problems/solutions
+- `dev-docs/reference/NODE-PATTERNS.md` - How to create/modify nodes
+- `dev-docs/reference/LEARNINGS.md` - Accumulated knowledge
+- `dev-docs/reference/UI-STYLING-GUIDE.md` - Styling rules (NO hardcoded colors!)
+- `dev-docs/reference/PANEL-UI-STYLE-GUIDE.md` - **Panels & Modals (READ BEFORE making UI!)**
+- `dev-docs/reference/LEARNINGS-NODE-CREATION.md` - Node creation gotchas
+
+---
+
+## Development Workflow
+
+### 1. Before Starting Any Task
+
+```bash
+# Check context
+git branch
+git status
+git log --oneline -10
+
+# Read relevant docs
+# - Check LEARNINGS.md for related discoveries
+# - Check COMMON-ISSUES.md for known problems
+# - Review referenced files in dev-docs/
+```
+
+### 2. Understanding Before Coding
+
+- Read JSDoc comments on functions you'll modify
+- Check for existing test files
+- Search for usage patterns: `grep -r "functionName" packages/`
+- Understand dependencies: `grep -r "from.*filename" packages/`
+
+### 3. Implementation Standards
+
+**TypeScript**:
+
+- Explicit types always (no `any`, no `TSFixme`)
+- Use interfaces for complex types
+- Document public APIs with JSDoc
+
+**React**:
+
+- Functional components (no class components unless required)
+- Use hooks properly (`useCallback`, `useMemo` for optimization)
+- NEVER use direct EventDispatcher `.on()` - ALWAYS use `useEventListener` hook
+
+**Node Creation**:
+
+- Signal inputs use `valueChangedToTrue`, not `set`
+- NEVER override `setInputValue` in `prototypeExtensions`
+- Dynamic ports must include static ports when updating
+- Export format: `module.exports = { node: NodeDef, setup: fn }`
+
+### 4. Critical Patterns
+
+**EventDispatcher in React** (Phase 0 Critical):
+
+```typescript
+// ✅ CORRECT - Always use this
+import { useEventListener } from '@noodl-hooks/useEventListener';
+
+useEventListener(ProjectModel.instance, 'componentRenamed', (data) => {
+  // This works!
+});
+
+// ❌ BROKEN - Never do this (silently fails)
+useEffect(() => {
+  ProjectModel.instance.on('event', handler, context);
+  return () => ProjectModel.instance.off(context);
+}, []);
+```
+
+**UI Styling**:
+
+```scss
+// ❌ NEVER - Hardcoded colors
+.Card {
+  background-color: #27272a;
+  color: #b8b8b8;
+}
+
+// ✅ ALWAYS - Design tokens
+.Card {
+  background-color: var(--theme-color-bg-3);
+  color: var(--theme-color-fg-default);
+}
+```
+
+### 5. Testing Requirements
+
+```typescript
+// Test file structure
+import { describe, it, expect, beforeEach } from '@jest/globals';
+
+describe('FeatureName', () => {
+  beforeEach(() => {
+    // Setup
+  });
+
+  describe('when condition X', () => {
+    it('should do Y', () => {
+      // Arrange
+      // Act
+      // Assert
+    });
+  });
+});
+```
+
+**What to test** (Priority order):
+
+1. Utility functions
+2. Data transformations
+3. State management logic
+4. React hooks
+5. Component behavior
+
+### 6. Git Workflow
+
+**Work directly on `cline-dev`. Do not create per-task branches.**
+
+`cline-dev` is the working branch and there is currently a single developer on
+this repo, so a task branch plus a PR is pure ceremony — it adds a merge step and
+a review round-trip with nobody on the other end. Commit to `cline-dev` as you go,
+one commit per logical change, and push when the work is verified.
+
+The task specs under `dev-docs/tasks/` predate this and carry a `Branch:` field
+and a "create branch" checklist item. Ignore both; the rule here wins.
+
+Branch only when there is a concrete reason, and say what it is:
+
+- work that must be reviewed by someone else before it lands
+- an experiment you expect to throw away
+- something that has to sit unmerged while other work continues
+
+In those cases, name it:
+
+```bash
+feature/add-vercel-deployment
+fix/page-router-scroll
+refactor/remove-tsfixme-panels
+docs/update-node-api
+```
+
+**Commit messages** (Conventional Commits):
+
+```bash
+feat(editor): add breakpoint support for node connections
+fix(viewer): resolve scroll position reset in nested Page Router
+refactor(runtime): replace TSFixme with proper types in node processor
+docs(api): add JSDoc to all public node methods
+test(editor): add unit tests for node selection hook
+chore(deps): update react to 19.0.0
+```
+
+**Commit frequency**: After each logical change (tests should pass)
+
+---
+
+## Task Sizing & Context Management
+
+### Recognizing Tasks That Are Too Large
+
+**Signs you'll hit API limits:**
+
+- Modifying 10+ files in one go
+- Reading entire large files multiple times
+- Converting 50+ Storybook stories
+- Refactoring a whole subsystem
+- Adding features across multiple packages
+
+**Size estimation**:
+
+| Scope          | Files | Safety       | Action              |
+| -------------- | ----- | ------------ | ------------------- |
+| Bug fix        | 1-3   | ✅ Safe      | Proceed             |
+| Small feature  | 3-5   | ✅ Safe      | Proceed             |
+| Medium feature | 5-10  | ⚠️ Watch     | Monitor context     |
+| Large feature  | 10-20 | ❌ Risky     | Split into subtasks |
+| Refactoring    | 20+   | ❌ Too large | Must split          |
+
+### When You Hit API Limits
+
+**DO NOT** retry the same scope. **IMMEDIATELY**:
+
+```markdown
+I've hit an API context limit. This task is too large.
+
+I was attempting to: [describe scope]
+
+Breaking into subtasks:
+
+**Subtask 1**: [Specific scope - 2-4 files max]
+
+- File A: [specific changes]
+- File B: [specific changes]
+
+**Subtask 2**: [Next logical chunk]
+
+- File C: [specific changes]
+
+Starting with Subtask 1 now...
+```
+
+### How to Split Tasks
+
+**Strategies**:
+
+1. **By package/module** - Runtime changes, then editor changes, then integration
+2. **By feature slice** - Core logic, then UI, then validation/error handling
+3. **By file groups** - Batch similar components (5-7 at a time)
+4. **By logical phases** - Audit, then core changes, then secondary changes, then verification
+
+**Each subtask must be**:
+
+- Complete and working (no placeholders)
+- Independently testable
+- Fully documented
+- Quality standards maintained
+
+---
+
+## Debugging & Troubleshooting
+
+### Cache Issues
+
+**If code changes don't appear**:
+
+```bash
+# 1. Nuclear option first
+npm run clean:all
+
+# 2. Restart dev server (don't just refresh)
+
+# 3. Check build canary in console
+# Should see: 🔥 BUILD TIMESTAMP: [recent time]
+
+# 4. Add distinctive log to verify code loaded
+console.log('🔥 MY CHANGE LOADED:', Date.now());
+```
+
+**Never debug without verifying fresh code is running.**
+
+### Foundation Health Check
+
+Run when things "feel broken":
+
+```bash
+npm run health:check
+```
+
+Checks:
+
+- Cache state
+- Webpack config
+- useEventListener hook presence
+- Direct EventDispatcher anti-patterns
+- Build canary
+- Package versions
+
+### React Migration Issues
+
+**UI doesn't update after action:**
+
+1. Check if action succeeded (console logs)
+2. Check if event was emitted (log in model method)
+3. Check if event was received (log in useEventListener callback)
+4. Check if component re-rendered (log in component body)
+
+**Usually the problem**:
+
+- Using direct `.on()` instead of `useEventListener`
+- Cached old code running
+- Event name mismatch
+
+---
+
+## Pre-Completion Checklist
+
+Before marking any task complete:
+
+### Code Quality
+
+- [ ] No `TSFixme` types added
+- [ ] All new functions have JSDoc comments
+- [ ] Complex logic has explanatory comments
+- [ ] No console.log statements (except errors/warnings)
+- [ ] No unused imports or variables
+- [ ] No hardcoded colors (use `var(--theme-color-*)` tokens)
+
+### Testing & Verification
+
+- [ ] **Unit tests added and passing, OR user verified changes work**
+- [ ] Existing tests still pass
+- [ ] Manual testing completed (document steps taken)
+
+### React + EventDispatcher (Critical)
+
+- [ ] Using `useEventListener` hook for ALL EventDispatcher subscriptions
+- [ ] Singleton instances in useEffect dependencies
+- [ ] No direct EventDispatcher `.on()` calls in React components
+
+### Node Creation (If applicable)
+
+- [ ] Signal inputs use `valueChangedToTrue` (not `set`)
+- [ ] No `setInputValue` override in `prototypeExtensions`
+- [ ] Dynamic ports include static ports
+- [ ] Config inputs explicitly registered
+
+### Documentation
+
+- [ ] README updated if needed
+- [ ] JSDoc added to public APIs
+- [ ] **Discoveries added to LEARNINGS.md or COMMON-ISSUES.md**
+- [ ] Task CHANGELOG.md updated with progress
+
+### Visual Components (Panels, Modals, Forms)
+
+**MUST read `dev-docs/reference/PANEL-UI-STYLE-GUIDE.md` before building UI!**
+
+- [ ] NO emojis in buttons, labels, or headers
+- [ ] Using CSS variables for ALL colors (`var(--theme-color-*)`)
+- [ ] Using `Text` component with proper `textType` for typography
+- [ ] Using `PrimaryButton` with correct variant (Cta/Muted/Ghost/Danger)
+- [ ] Panel structure: Header → Toolbar → Content → Footer
+- [ ] Modal structure: Overlay → Modal → Header → Body → Footer
+- [ ] Form inputs styled with proper tokens (bg-1, bg-3 borders)
+- [ ] Empty states, loading states, and error states handled
+- [ ] Dark theme first - ensure contrast with light text
+
+### Git
+
+- [ ] Meaningful commit messages (conventional commits format)
+- [ ] No unrelated changes in commits
+- [ ] Committed on `cline-dev` (no task branch — see Git Workflow above)
+
+---
+
+## Quick Reference
+
+### Common Commands
+
+```bash
+# Development
+npm run dev                    # Start Electron editor
+npm run test:editor           # Run tests
+npm run build:editor          # Production build
+npm run clean:all             # Clear all caches
+
+# Code Quality
+npx eslint packages/noodl-editor/src --fix
+npx prettier --write "packages/**/*.{ts,tsx}"
+npx tsc --noEmit              # Type check
+
+# Debugging
+DEBUG=* npm run dev           # Verbose logging
+npm run test:editor -- --verbose
+
+# Finding Issues
+grep -r "TSFixme" packages/
+grep -rn "TODO\|FIXME" packages/noodl-editor/src
+find packages/ -name "*.test.ts"
+```
+
+### Design Token Reference
+
+| Purpose           | Token                          |
+| ----------------- | ------------------------------ |
+| Panel backgrounds | `--theme-color-bg-2`           |
+| Card backgrounds  | `--theme-color-bg-3`           |
+| Normal text       | `--theme-color-fg-default`     |
+| Secondary text    | `--theme-color-fg-default-shy` |
+| Emphasized text   | `--theme-color-fg-highlight`   |
+| Primary buttons   | `--theme-color-primary`        |
+| Borders           | `--theme-color-border-default` |
+
+### Node Input Handler Reference
+
+| Input Type | Handler               | Callback                    |
+| ---------- | --------------------- | --------------------------- |
+| Signal     | `valueChangedToTrue`  | `function() { ... }`        |
+| Value      | `set`                 | `function(value)`           |
+| Enum       | `set`                 | `function(value)`           |
+| StringList | Explicit registration | Via `registerInputIfNeeded` |
+
+---
+
+## When to Ask Richard
+
+- Task scope genuinely unclear (multiple valid approaches)
+- Dependencies block all split strategies
+- Still hitting limits after splitting subtasks
+- Stuck in loop despite trying multiple approaches (offer to create research task doc)
+
+---
+
+_Last Updated: January 2026_
+
+---
+
+# ===== DISHANT (cline-dev-dishant) =====
+
+## Sprint 1 Context
+
+**Developer:** Dishant  
+**Branch:** `cline-dev-dishant`  
+**Other branch:** `cline-dev-richard`  
+**Sprint doc:** `dev-docs/sprints/sprint-1-18-feb-26/SPRINT-001-parallel-dev-protocol.md`
+
+## Assigned Phases
+
+- **Primary:** Phase 11 (Cloud Functions), Phase 10 (AI-Powered Development)
+- **If time permits:** Phase 7 (Code Export)
+
+## Task Order This Sprint
+
+1. CF11-006 — Execution History Panel UI (Phase 11, unblocked)
+2. CF11-007 — Canvas Execution Overlay (Phase 11, after CF11-006)
+3. STRUCT-001 — JSON Schema Definition (Phase 10A, critical path start)
+4. STRUCT-002 — Export Engine Core (Phase 10A, after STRUCT-001)
+
+## Files I Own
+
+- `dev-docs/tasks/phase-11-cloud-functions/PROGRESS-dishant.md` — my progress file
+- `dev-docs/tasks/phase-10-ai-powered-development/PROGRESS-dishant.md` — my progress file
+- All Phase 11 and Phase 10 task files
+
+## Files I Must NOT Touch
+
+- `dev-docs/tasks/phase-9-styles-overhaul/` — Richard's phase
+- `dev-docs/tasks/phase-6-uba-system/` — Richard's phase
+- `PROGRESS-richard.md` files — read only
+
+## Pre-Task Protocol (Sprint 1)
+
+Before each task, run:
+```
+git fetch origin
+git log origin/cline-dev-richard --oneline --since="24 hours ago" --no-pager
+```
+Then read Richard's PROGRESS files for any shared utility/infra changes.
+
+## Communication Style Override
+
+**You are assisting Dishant**, a developer working in parallel with Richard on Sprint 1.
+Same tone as Richard's section — direct, technical, casual, no hand-holding.
+
+# ===== END DISHANT =====
+
+---
+
+## 14. Node Creation Checklist
+
+> **🚨 CRITICAL:** Before creating or modifying runtime nodes, read `dev-docs/reference/LEARNINGS-NODE-CREATION.md`
+
+Creating nodes in OpenNoodl is deceptively tricky. This checklist prevents the most common (and hardest to debug) issues.
+
+### 14.1 Pre-Flight Checklist
+
+Before writing any node code:
+
+- [ ] Read `dev-docs/reference/LEARNINGS-NODE-CREATION.md` (especially the CRITICAL GOTCHAS section)
+- [ ] Check `dev-docs/reference/LEARNINGS.md` for recent node-related discoveries (search for "node", "runtime", "coreNodes")
+- [ ] Study an existing working node of similar complexity (e.g., `restnode.js` for data nodes)
+- [ ] Understand the difference between `inputs` (static) vs `prototypeExtensions` (instance methods)
+- [ ] Know where your node should be registered (noodl-runtime vs noodl-viewer-react)
+
+### 14.2 Input Handler Rules
+
+```javascript
+// ✅ CORRECT: Signal inputs use valueChangedToTrue
+inputs: {
+  fetch: {
+    type: 'signal',
+    valueChangedToTrue: function() {
+      this.scheduleFetch();
+    }
+  }
+}
+
+// ❌ WRONG: Signal inputs with set() - NEVER TRIGGERS
+inputs: {
+  fetch: {
+    type: 'signal',
+    set: function(value) { // ☠️ Never called for signals
+      this.scheduleFetch();
+    }
+  }
+}
+```
+
+### 14.3 Never Override setInputValue
+
+```javascript
+// ❌ BREAKS EVERYTHING - Never define setInputValue in prototypeExtensions
+prototypeExtensions: {
+  setInputValue: function(name, value) { // ☠️ Overrides base - signals stop working
+    // ...
+  }
+}
+
+// ✅ Use a different name for custom storage
+prototypeExtensions: {
+  _storeInputValue: function(name, value) { // ✅ Doesn't override anything
+    this._internal.inputValues[name] = value;
+  }
+}
+```
+
+### 14.4 Dynamic Ports Must Include Static Ports
+
+```javascript
+// ❌ WRONG - Static ports disappear
+function updatePorts(nodeId, parameters, editorConnection) {
+  const ports = [];
+  // Only adds dynamic ports...
+  editorConnection.sendDynamicPorts(nodeId, ports); // Static inputs gone!
+}
+
+// ✅ CORRECT - Include all ports
+function updatePorts(nodeId, parameters, editorConnection) {
+  const ports = [
+    // Re-add static inputs
+    { name: 'url', displayName: 'URL', type: 'string', plug: 'input', group: 'Request' },
+    { name: 'fetch', displayName: 'Fetch', type: 'signal', plug: 'input', group: 'Actions' },
+    // Then add dynamic ports...
+  ];
+  editorConnection.sendDynamicPorts(nodeId, ports);
+}
+```
+
+### 14.5 Register Config Inputs Explicitly
+
+```javascript
+// Config inputs (from stringlist editors) need explicit registration
+registerInputIfNeeded: function(name) {
+  if (this.hasInput(name)) return;
+
+  // Map config names to their setters
+  const configSetters = {
+    'method': this.setMethod.bind(this),
+    'headers': this.setHeaders.bind(this),
+    'queryParams': this.setQueryParams.bind(this)
+  };
+
+  if (configSetters[name]) {
+    return this.registerInput(name, { set: configSetters[name] });
+  }
+
+  // Handle prefixed dynamic inputs
+  if (name.startsWith('header-')) {
+    return this.registerInput(name, {
+      set: this._storeInputValue.bind(this, name)
+    });
+  }
+}
+```
+
+### 14.6 Export Format Matters
+
+```javascript
+// ✅ CORRECT: Export with setup function
+module.exports = {
+  node: MyNode,
+  setup: function (context, graphModel) {
+    // Port management goes here
+  }
+};
+
+// ❌ WRONG: Direct export (setup never runs)
+module.exports = MyNode;
+```
+
+### 14.7 Post-Creation Verification
+
+After creating a node:
+
+1. **Check ports appear**: All static AND dynamic inputs/outputs visible in editor?
+2. **Check signals work**: Add console.log in `valueChangedToTrue` - does it print?
+3. **Check config inputs work**: Change dropdown/stringlist values - does setter get called?
+4. **Clear caches if needed**: `npm run clean:all` and restart
+
+### 14.8 Quick Reference
+
+| Input Type                   | Handler                     | Callback Format             |
+| ---------------------------- | --------------------------- | --------------------------- |
+| Signal                       | `valueChangedToTrue`        | `function() { ... }`        |
+| Value (string, number, etc.) | `set`                       | `function(value) { ... }`   |
+| Enum (dropdown)              | `set`                       | `function(value) { ... }`   |
+| StringList (config)          | Needs explicit registration | Via `registerInputIfNeeded` |
+
+### 14.9 Where to Find Examples
+
+| Pattern                              | Example File                                                     |
+| ------------------------------------ | ---------------------------------------------------------------- |
+| Complex data node with dynamic ports | `noodl-runtime/src/nodes/std-library/data/restnode.js`           |
+| HTTP node (fixed, working)           | `noodl-runtime/src/nodes/std-library/data/httpnode.js`           |
+| Simple value node                    | `noodl-runtime/src/nodes/std-library/variables/numbernode.js`    |
+| Signal-based node                    | `noodl-runtime/src/nodes/std-library/timer.js` (in viewer-react) |
+
+---
+
+---
+
+## 15. Task Sizing & Context Management
+
+### 15.1 Understanding Your Limits
+
+You (Cline) are running on Claude API with hard limits:
+
+- **Context window**: ~200K tokens (~150K words)
+- **Output limit**: ~8K tokens per response
+- **When you exceed these**: You get an API error and must retry
+
+**CRITICAL**: If you hit an API error about context length or output limit, DO NOT retry the same approach. You must split the task.
+
+### 15.2 Recognizing Tasks That Are Too Large
+
+Before starting implementation, estimate task size:
+
+#### Signs a task will exceed limits:
+
+```
+❌ TOO LARGE - Will hit API limits:
+- Modifying 10+ files in one go
+- Reading entire large files multiple times
+- Converting 50+ Storybook stories
+- Refactoring a whole subsystem at once
+- Adding features across runtime + editor + viewer
+
+✅ MANAGEABLE - Can complete in context:
+- Modifying 1-3 related files
+- Adding a single feature to one package
+- Converting 5-10 Storybook stories
+- Fixing a specific bug in one area
+- Writing focused tests for one module
+```
+
+#### Quick size estimation:
+
+| Task Scope     | Estimated Files | Context Safety | Action                    |
+| -------------- | --------------- | -------------- | ------------------------- |
+| Bug fix        | 1-3 files       | ✅ Safe        | Proceed                   |
+| Small feature  | 3-5 files       | ✅ Safe        | Proceed                   |
+| Medium feature | 5-10 files      | ⚠️ Monitor     | Watch context carefully   |
+| Large feature  | 10-20 files     | ❌ Risky       | Split into subtasks first |
+| Refactoring    | 20+ files       | ❌ Too large   | Must split                |
+
+### 15.3 When You Get an API Error
+
+If you receive an error like:
+
+- "Request too large"
+- "Context length exceeded"
+- "Maximum token limit exceeded"
+- Any message about being over limits
+
+**DO NOT** retry the same task at the same scope.
+
+**IMMEDIATELY** follow this protocol:
+
+```markdown
+## Error Recovery Protocol
+
+1. **Acknowledge the error**
+   "I've hit an API context limit. This task is too large to complete in one pass."
+
+2. **Analyze what you were trying to do**
+   "I was attempting to [describe full scope]"
+
+3. **Propose a split**
+   "I'll break this into smaller subtasks:
+
+   **Subtask 1**: [Specific scope - 2-4 files max]
+
+   - File A: [specific changes]
+   - File B: [specific changes]
+
+   **Subtask 2**: [Next logical chunk]
+
+   - File C: [specific changes]
+   - File D: [specific changes]
+
+   **Subtask 3**: [Remaining work]
+
+   - File E: [specific changes]
+
+   Each subtask is independently testable and won't exceed limits."
+
+4. **Start with Subtask 1**
+   "Starting with Subtask 1 now..."
+```
+
+### 15.4 How to Split Tasks Intelligently
+
+#### Strategy 1: By Package/Module
+
+```markdown
+# Original (too large):
+
+"Implement responsive breakpoints across the platform"
+
+# Split:
+
+**Subtask 1**: Runtime changes (noodl-runtime)
+
+- Add breakpoint evaluation to node context
+- Update reactive system for breakpoint changes
+
+**Subtask 2**: Editor changes (noodl-editor)
+
+- Add breakpoint UI to property panel
+- Implement breakpoint selector component
+
+**Subtask 3**: Integration
+
+- Connect editor to runtime
+- Add tests for full flow
+```
+
+#### Strategy 2: By Feature Slice
+
+```markdown
+# Original (too large):
+
+"Add cURL import with parsing, UI, validation, and error handling"
+
+# Split:
+
+**Subtask 1**: Core parsing logic
+
+- Implement cURL parser utility
+- Add unit tests for parser
+- Handle basic HTTP methods
+
+**Subtask 2**: UI integration
+
+- Add import button to HTTP node config
+- Create import modal/dialog
+- Wire up parser to UI
+
+**Subtask 3**: Advanced features
+
+- Add validation and error states
+- Handle complex cURL flags
+- Add user feedback/toasts
+```
+
+#### Strategy 3: By File Groups
+
+```markdown
+# Original (too large):
+
+"Migrate 50 Storybook stories to CSF3"
+
+# Split:
+
+**Subtask 1**: Button components (5 stories)
+
+- PrimaryButton, SecondaryButton, IconButton, etc.
+
+**Subtask 2**: Input components (6 stories)
+
+- TextInput, NumberInput, Select, etc.
+
+**Subtask 3**: Layout components (7 stories)
+
+- Panel, Dialog, Popover, etc.
+
+# Continue until complete
+```
+
+#### Strategy 4: By Logical Phases
+
+```markdown
+# Original (too large):
+
+"Refactor EventDispatcher usage in panels"
+
+# Split:
+
+**Subtask 1**: Audit and preparation
+
+- Find all direct .on() usage
+- Document required changes
+- Create shared hook if needed
+
+**Subtask 2**: Core panels (3-4 files)
+
+- NodeGraphEditor
+- PropertyEditor
+- ComponentPanel
+
+**Subtask 3**: Secondary panels (3-4 files)
+
+- LibraryPanel
+- WarningsPanel
+- NavigatorPanel
+
+**Subtask 4**: Utility panels (remaining)
+
+- All other panels
+- Verification and testing
+```
+
+### 15.5 Maintaining Quality While Splitting
+
+**DO NOT cut corners to fit in context:**
+
+❌ **WRONG approaches**:
+
+- Removing documentation to save tokens
+- Skipping test files
+- Using placeholders instead of real implementation
+- Commenting out code with "// TODO: Implement later"
+- Removing type safety to save space
+
+✅ **CORRECT approaches**:
+
+- Split into complete, working subtasks
+- Each subtask is fully implemented and tested
+- Each subtask can be verified independently
+- Each subtask advances the overall goal
+- Quality standards maintained for every subtask
+
+### 15.6 Progress Tracking for Multi-Subtask Work
+
+When you've split a task, track progress:
+
+```markdown
+## Task Progress: [Feature Name]
+
+**Overall Goal**: [Brief description]
+
+**Subtasks**:
+
+- [x] Subtask 1: [Name] - ✅ Complete
+- [ ] Subtask 2: [Name] - 🔄 In Progress
+- [ ] Subtask 3: [Name] - ⏳ Pending
+- [ ] Subtask 4: [Name] - ⏳ Pending
+
+**Current Status**: Working on Subtask 2
+**Files Modified So Far**: [List]
+**Tests Added**: [Count]
+```
+
+Update this at the start of each subtask session.
+
+### 15.7 When to Ask for Help
+
+You should ask Richard for guidance when:
+
+1. **Task scope is genuinely unclear**
+   - "This could be split 3 different ways - which do you prefer?"
+2. **Dependencies block all split approaches**
+   - "Files A, B, C must change together atomically - can't split safely"
+3. **You've split but still hitting limits on a subtask**
+
+   - "Subtask 1 is still too large. Should I split further or simplify scope?"
+
+4. **Integration approach is ambiguous**
+   - "I can split by feature or by layer - which matches your mental model better?"
+
+### 15.8 Context-Saving Techniques
+
+When context is tight but task is manageable, use these techniques:
+
+#### Read files strategically:
+
+```bash
+# ❌ BAD - Reads entire 2000-line file
+view path/to/huge-component.tsx
+
+# ✅ GOOD - Reads just what you need
+view path/to/huge-component.tsx [50, 100]  # Lines 50-100
+```
+
+#### Use targeted searches:
+
+```bash
+# ❌ BAD - Reads all search results
+grep -r "EventDispatcher" packages/
+
+# ✅ GOOD - Limit scope first
+grep -r "EventDispatcher" packages/noodl-editor/src/views/panels/ --include="*.tsx"
+```
+
+#### Build incrementally:
+
+```typescript
+// ❌ BAD - Write entire 500-line component at once
+create_file(path, [massive-file-content])
+
+// ✅ GOOD - Build in stages
+create_file(path, [minimal-working-version])
+# Test it works
+str_replace(path, old, new)  # Add feature 1
+# Test it works
+str_replace(path, old, new)  # Add feature 2
+# Continue...
+```
+
+### 15.9 Emergency Context Recovery
+
+If you're deep in a task and suddenly hit limits:
+
+1. **Save your current work immediately**
+
+   ```bash
+   git add .
+   git commit -m "WIP: [what you completed]"
+   ```
+
+2. **Document exactly where you are**
+
+   ```markdown
+   ## Current State
+
+   - Completed: [specific changes]
+   - Files modified: [list]
+   - Next step: [exactly what remains]
+   - Blocked by: [if applicable]
+   ```
+
+3. **Propose next steps**
+   "I've completed X and Y. To finish, I need to do Z.
+   Should I continue with Z in the next session?"
+
+### 15.10 Self-Check Before Starting Large Tasks
+
+Before beginning any task that modifies 5+ files:
+
+```markdown
+## Pre-Flight Context Check
+
+**Task**: [Name]
+**Estimated files to modify**: [Count]
+**Estimated LOC to read**: [Rough guess]
+
+**Risk assessment**:
+
+- [ ] Will I need to read multiple large files (>500 lines)?
+- [ ] Does this touch 3+ packages?
+- [ ] Will I need to trace complex dependencies?
+- [ ] Is this a refactor touching 10+ files?
+
+**If 2+ boxes checked**: Propose split BEFORE starting implementation
+
+**My split plan**:
+
+1. [Subtask with 2-4 files]
+2. [Subtask with 2-4 files]
+3. [Remaining work]
+```
+
+---
+
+## Usage Examples
+
+### Example 1: Proactive Split
+
+```markdown
+Richard: "Implement the full HTTP node with cURL import, auth presets, and JSONPath mapping"
+
+Cline: "This task is quite large and would likely exceed API limits if done in one pass. Let me break it down:
+
+**Subtask 1 - Core HTTP Node** (Est: 3 files, 2h)
+
+- Implement basic HTTP node structure
+- Add method/URL/body inputs
+- Handle simple requests/responses
+
+**Subtask 2 - cURL Import** (Est: 2 files, 1.5h)
+
+- Add cURL parser utility
+- Integrate import UI
+- Handle common cURL flags
+
+**Subtask 3 - Auth Presets** (Est: 2 files, 1h)
+
+- Create auth preset system
+- Add Bearer/Basic/Custom options
+- Persist presets in project
+
+**Subtask 4 - JSONPath Mapping** (Est: 2 files, 1.5h)
+
+- Implement JSONPath evaluation
+- Add output port creation
+- Handle mapping UI
+
+Should I start with Subtask 1?"
+```
+
+### Example 2: Error Recovery
+
+```markdown
+[API error occurs]
+
+Cline: "I've hit an API context limit while trying to update all 15 panel components at once.
+
+I was attempting to migrate EventDispatcher usage across:
+
+- NodeGraphEditor, PropertyEditor, ComponentPanel, LibraryPanel... [full list]
+
+This is too large. Let me split it:
+
+**Subtask 1 - Core Panels** (3 files)
+
+- NodeGraphEditor.tsx
+- PropertyEditor.tsx
+- ComponentPanel.tsx
+
+**Subtask 2 - Secondary Panels** (4 files)
+
+- LibraryPanel.tsx
+- WarningsPanel.tsx
+- NavigatorPanel.tsx
+- InspectorPanel.tsx
+
+**Subtask 3 - Remaining Panels** (8 files)
+
+- All other panels
+- Final verification
+
+Starting with Subtask 1 now..."
+
+[Proceeds with focused work]
+```
+
+---
+
+## Key Principles
+
+1. **Recognize limits early** - Better to split proactively than hit errors
+2. **Split logically** - Each subtask should be coherent and testable
+3. **Maintain quality** - Never sacrifice standards to fit in context
+4. **Track progress** - Show what's done and what remains
+5. **Ask when stuck** - Richard can guide unclear splits
+6. **Learn from errors** - If you hit limits, that task was too large
+
+**Remember**: It's better to complete 3 small subtasks successfully than fail on 1 large task repeatedly.
+
+---
+
+## 16. Code Comments Language
+
+**All code comments must be in English**, regardless of the user's language. This ensures:
+
+- Consistent codebase for international collaboration
+- Better compatibility with AI tools
+- Easier code review and maintenance
+
+```typescript
+// ✅ GOOD: English comments
+function calculateTotal(items: Item[]): number {
+  // Sum up all item prices
+  return items.reduce((sum, item) => sum + item.price, 0);
+}
+
+// ❌ BAD: Non-English comments
+function calculateTotal(items: Item[]): number {
+  // Additionner tous les prix des articles
+  return items.reduce((sum, item) => sum + item.price, 0);
+}
+```
+
+This rule applies to:
+
+- Inline comments
+- Function/class documentation (JSDoc)
+- Block comments explaining logic
+- TODO/FIXME notes
+- Commit messages (covered in Git Workflow section)
+
+**Exception**: User-facing strings in UI components may be in any language (they will be localized later).

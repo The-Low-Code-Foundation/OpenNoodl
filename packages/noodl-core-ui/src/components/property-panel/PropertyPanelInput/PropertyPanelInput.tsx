@@ -1,22 +1,51 @@
 import classNames from 'classnames';
 import React, { useMemo } from 'react';
 
+import { BindingChip } from '@noodl-core-ui/components/property-panel/BindingChip';
+import { ExpressionInput } from '@noodl-core-ui/components/property-panel/ExpressionInput';
+import { ExpressionToggle } from '@noodl-core-ui/components/property-panel/ExpressionToggle';
 import { PropertyPanelBaseInputProps } from '@noodl-core-ui/components/property-panel/PropertyPanelBaseInput';
-import { PropertyPanelButton } from '@noodl-core-ui/components/property-panel/PropertyPanelButton';
+import {
+  PropertyPanelButton,
+  PropertyPanelButtonProps
+} from '@noodl-core-ui/components/property-panel/PropertyPanelButton';
 import { PropertyPanelCheckbox } from '@noodl-core-ui/components/property-panel/PropertyPanelCheckbox';
-import { PropertyPanelIconRadioInput } from '@noodl-core-ui/components/property-panel/PropertyPanelIconRadioInput';
+import {
+  PropertyPanelIconRadioInput,
+  PropertyPanelIconRadioProperties
+} from '@noodl-core-ui/components/property-panel/PropertyPanelIconRadioInput';
 import { PropertyPanelLengthUnitInput } from '@noodl-core-ui/components/property-panel/PropertyPanelLengthUnitInput';
 import { PropertyPanelNumberInput } from '@noodl-core-ui/components/property-panel/PropertyPanelNumberInput';
-import { PropertyPanelSelectInput } from '@noodl-core-ui/components/property-panel/PropertyPanelSelectInput';
-import { PropertyPanelSliderInput } from '@noodl-core-ui/components/property-panel/PropertyPanelSliderInput';
+import {
+  PropertyPanelSelectInput,
+  PropertyPanelSelectProperties
+} from '@noodl-core-ui/components/property-panel/PropertyPanelSelectInput';
+import {
+  PropertyPanelSliderInput,
+  PropertyPanelSliderInputProps
+} from '@noodl-core-ui/components/property-panel/PropertyPanelSliderInput';
+import { PropertyPanelTextArea } from '@noodl-core-ui/components/property-panel/PropertyPanelTextArea';
 import { PropertyPanelTextInput } from '@noodl-core-ui/components/property-panel/PropertyPanelTextInput';
-import { PropertyPanelTextRadioInput } from '@noodl-core-ui/components/property-panel/PropertyPanelTextRadioInput';
+import {
+  PropertyPanelTextRadioInput,
+  PropertyPanelTextRadioProperties
+} from '@noodl-core-ui/components/property-panel/PropertyPanelTextRadioInput';
 import { Slot } from '@noodl-core-ui/types/global';
 
 import css from './PropertyPanelInput.module.scss';
 
 export enum PropertyPanelInputType {
   Text = 'text',
+  /**
+   * A multiline string — POL-011.
+   *
+   * Here rather than in a view of its own so a multiline property gets the same
+   * row as every other string: the reset dot, the binding chip, and the `fx`
+   * toggle. `TextAreaType` used to render a bare `PropertyPanelRow`, which is
+   * the entire reason the Text node's `text` had no expression support while
+   * Button's `label` did.
+   */
+  TextArea = 'text-area',
   Number = 'number',
   LengthUnit = 'length-unit',
   Slider = 'slider',
@@ -31,10 +60,45 @@ export enum PropertyPanelInputType {
   // SizeMode = 'size-mode',
 }
 
+export type PropertyPanelProps =
+  | undefined
+  | PropertyPanelIconRadioProperties
+  | PropertyPanelButtonProps['properties']
+  | PropertyPanelSliderInputProps['properties']
+  | PropertyPanelSelectProperties
+  | PropertyPanelTextRadioProperties;
+
 export interface PropertyPanelInputProps extends Omit<PropertyPanelBaseInputProps, 'type'> {
   label: string;
   inputType: PropertyPanelInputType;
-  properties: TSFixme;
+  properties: PropertyPanelProps;
+
+  // Expression support
+  /** Whether this input type supports expression mode (default: true for most types) */
+  supportsExpression?: boolean;
+  /** Current mode: 'fixed' for static values, 'expression' for dynamic expressions */
+  expressionMode?: 'fixed' | 'expression';
+  /** The expression string (when in expression mode) */
+  expression?: string;
+  /** Callback when expression mode changes */
+  onExpressionModeChange?: (mode: 'fixed' | 'expression') => void;
+  /** Callback when expression text changes */
+  onExpressionChange?: (expression: string) => void;
+  /** Whether the expression has an error */
+  expressionError?: string;
+  /** Callback when expand button is clicked (opens expression in full editor) */
+  onExpressionExpand?: () => void;
+
+  /** When set and the value is changed from its default, a dot is shown that resets the value on click */
+  onReset?: () => void;
+
+  /**
+   * Label for the connection source (e.g. "CallCF · Result"). When `isConnected`
+   * is true, the dead input is replaced by an accent-soft binding chip naming this.
+   */
+  connectionLabel?: string;
+  /** Optional click-to-navigate handler on the binding chip. */
+  onConnectionClick?: () => void;
 }
 
 export function PropertyPanelInput({
@@ -44,12 +108,26 @@ export function PropertyPanelInput({
   properties,
   isChanged,
   isConnected,
-  onChange
+  onChange,
+  // Expression props
+  supportsExpression = true,
+  expressionMode = 'fixed',
+  expression = '',
+  onExpressionModeChange,
+  onExpressionChange,
+  expressionError,
+  onExpressionExpand,
+  onReset,
+  connectionLabel,
+  onConnectionClick,
+  dataIdentifier
 }: PropertyPanelInputProps) {
   const Input = useMemo(() => {
     switch (inputType) {
       case PropertyPanelInputType.Text:
         return PropertyPanelTextInput;
+      case PropertyPanelInputType.TextArea:
+        return PropertyPanelTextArea;
       case PropertyPanelInputType.Number:
         return PropertyPanelNumberInput;
       case PropertyPanelInputType.LengthUnit:
@@ -69,28 +147,92 @@ export function PropertyPanelInput({
     }
   }, [inputType]);
 
-  return (
-    <div className={css['Root']}>
-      <div className={classNames(css['Label'], isChanged && css['is-changed'])}>{label}</div>
-      <div className={css['InputContainer']}>
-        {
-          // FIXME: fix below ts-ignore with better typing
-          // this is caused by PropertyPanelBaseInputProps having a generic for "value"
-          // i want to pass a boolan to the checkbox value that will be used in checked for a better API
+  // Determine if we should show expression UI
+  const showExpressionToggle = supportsExpression && !isConnected;
+  const isExpressionMode = expressionMode === 'expression';
 
-          <Input
-            // @ts-expect-error
-            value={value}
-            // @ts-expect-error
-            onChange={onChange}
-            // @ts-expect-error
-            isChanged={isChanged}
-            // @ts-expect-error
-            isConnected={isConnected}
-            // @ts-expect-error
-            properties={properties}
-          />
-        }
+  // Handle toggle between fixed and expression modes
+  const handleToggleMode = () => {
+    if (onExpressionModeChange) {
+      const newMode = isExpressionMode ? 'fixed' : 'expression';
+      onExpressionModeChange(newMode);
+    }
+  };
+
+  // A connection-driven property shows a binding chip naming the source instead
+  // of a dead disabled input (buttons/checkboxes keep their own affordance).
+  const showBindingChip =
+    isConnected &&
+    !isExpressionMode &&
+    inputType !== PropertyPanelInputType.Button &&
+    inputType !== PropertyPanelInputType.Checkbox;
+
+  // Render the appropriate input based on mode
+  const renderInput = () => {
+    if (showBindingChip) {
+      return <BindingChip source={connectionLabel} onClick={onConnectionClick} />;
+    }
+
+    if (isExpressionMode && onExpressionChange) {
+      return (
+        <ExpressionInput
+          expression={expression}
+          onChange={onExpressionChange}
+          hasError={!!expressionError}
+          errorMessage={expressionError}
+          onExpand={onExpressionExpand}
+          UNSAFE_style={{ flex: 1 }}
+        />
+      );
+    }
+
+    // Standard input rendering
+    return (
+      // FIXME: fix below ts-ignore with better typing
+      // this is caused by PropertyPanelBaseInputProps having a generic for "value"
+      // i want to pass a boolan to the checkbox value that will be used in checked for a better API
+      <Input
+        // @ts-expect-error
+        value={value}
+        // @ts-expect-error
+        onChange={onChange}
+        // @ts-expect-error
+        isChanged={isChanged}
+        // @ts-expect-error
+        isConnected={isConnected}
+        // @ts-expect-error
+        properties={properties}
+        // @ts-expect-error
+        dataIdentifier={dataIdentifier}
+      />
+    );
+  };
+
+  // Boolean rows read as the mock's `.toggle-row`: label takes the row,
+  // the toggle sits at the right edge.
+  const isToggleRow = inputType === PropertyPanelInputType.Checkbox;
+
+  return (
+    // ⚠️ `data-property` names the row, not just its input. `data-identifier`
+    // is on the input and therefore **disappears in expression mode**, where
+    // the input is replaced by an `ExpressionInput` — so anything outside React
+    // that wanted "this port's fx toggle" had to guess by position across
+    // dozens of identical toggles. Naming the row survives the mode switch.
+    <div
+      className={classNames(css['Root'], isToggleRow && css['is-toggle-row'])}
+      data-property={dataIdentifier}
+    >
+      <div className={classNames(css['Label'], isChanged && css['is-changed'])}>
+        {label}
+        {isChanged && onReset && <span className={css['ResetDot']} title="Reset to default" onClick={onReset} />}
+      </div>
+      <div className={css['InputContainer']}>
+        <div style={{ display: 'flex', gap: '4px', alignItems: 'center', minWidth: 0 }}>
+          {renderInput()}
+          {showExpressionToggle && (
+            <ExpressionToggle mode={expressionMode} isConnected={isConnected} onToggle={handleToggleMode} />
+          )}
+        </div>
       </div>
     </div>
   );
@@ -100,12 +242,17 @@ export interface PropertyPanelRowProps {
   isChanged?: boolean;
   label: string;
   children: Slot;
+  /** When set and the value is changed from its default, a dot is shown that resets the value on click */
+  onReset?: () => void;
 }
 
-export function PropertyPanelRow({ isChanged, label, children }: PropertyPanelRowProps) {
+export function PropertyPanelRow({ isChanged, label, children, onReset }: PropertyPanelRowProps) {
   return (
     <div className={css['Root']}>
-      <div className={classNames(css['Label'], isChanged && css['is-changed'])}>{label}</div>
+      <div className={classNames(css['Label'], isChanged && css['is-changed'])}>
+        {label}
+        {isChanged && onReset && <span className={css['ResetDot']} title="Reset to default" onClick={onReset} />}
+      </div>
       <div className={css['InputContainer']}>{children}</div>
     </div>
   );

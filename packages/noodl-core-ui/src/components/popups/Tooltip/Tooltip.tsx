@@ -65,7 +65,13 @@ export function Tooltip({
         triggerRef={triggerRef}
         renderDirection={renderDirection}
         hasArrow
-        background={DialogBackground.Secondary}
+        /* POL-004: `Secondary` painted the ARROW near-white in dark mode and
+           near-black in light, while the tooltip body below sets its own
+           `--theme-color-bg-4`. Every tooltip in the editor had a mismatched
+           arrow; nobody reported it because an arrow is 8px. `Default` maps to
+           bg-4, which is exactly what `.Root` uses — so the two now agree by
+           construction rather than by coincidence. */
+        background={DialogBackground.Default}
       >
         <div className={css['Root']} style={{ maxWidth: UNSAFE_tooltipMaxWidth }}>
           {typeof content === 'string' ? (

@@ -1,0 +1,129 @@
+# NodeGX behind Caddy — TLS in about six lines (BAK-009).
+#
+# The backend deliberately does not speak TLS. That is not a gap: certificate
+# issue and renewal is a solved problem that a reverse proxy solves better than
+# a BaaS ever will, and Caddy solves it with no configuration at all.
+#
+# Replace `apps.example.com` with your real hostname, point its DNS at this
+# machine, and Caddy obtains and renews a Let's Encrypt certificate on its own.
+#
+# VERIFIED: this file was run for real against a live backend (Caddy 2 in
+# Docker, `tls internal`) as part of BAK-009 — TLS terminated, the app and API
+# served on one origin, /metrics refused at the edge, SSE streaming
+# unbuffered, and X-Forwarded-For arriving in a form the backend believes. See
+# docs/runtime/BACKEND-OPERATIONS.md for what was checked and how to repeat it.
+
+apps.example.com {
+	# The application bundle exported from the editor.
+	root * /srv/app
+	encode gzip
+
+	# ---------------------------------------------------------------------
+	# NOT EXPOSED: the metrics endpoint.
+	#
+	# It is not secret — counts and durations — but it is an inventory of what
+	# this backend does and how busy it is, and the internet has no use for it.
+	# Scrape it from the machine itself (http://127.0.0.1:8577/metrics), which
+	# the backend's own metrics.allowLoopback setting governs.
+	# ---------------------------------------------------------------------
+	handle /metrics {
+		respond 404
+	}
+
+	# ---------------------------------------------------------------------
+	# Realtime (SSE). Caddy does not buffer proxied responses, so this needs no
+	# special buffering directive — unlike nginx, where the equivalent omission
+	# silently breaks realtime. It does need a long timeout: a stream that is
+	# quiet for an hour is healthy, not stuck.
+	# ---------------------------------------------------------------------
+	handle /realtime* {
+		reverse_proxy 127.0.0.1:8577 {
+			flush_interval -1
+			transport http {
+				read_timeout 24h
+			}
+		}
+	}
+
+	# ---------------------------------------------------------------------
+	# The backend's route families. This list is the backend's own route table
+	# grouped by first segment; `packages/nodegx-backend/tests/deploy-assets.test.ts`
+	# keeps the nginx equivalent honest, and this file mirrors it. If you add a
+	# route family, add it here too.
+	# ---------------------------------------------------------------------
+	handle /_admin* {
+		reverse_proxy 127.0.0.1:8577
+	}
+	handle /admin* {
+		reverse_proxy 127.0.0.1:8577
+	}
+	handle /api* {
+		reverse_proxy 127.0.0.1:8577
+	}
+	handle /classes* {
+		reverse_proxy 127.0.0.1:8577
+	}
+	handle /aggregate* {
+		reverse_proxy 127.0.0.1:8577
+	}
+	handle /apps* {
+		reverse_proxy 127.0.0.1:8577
+	}
+	# BAK-004 sign-in. `/oauth/*` is where identity providers send the browser
+	# back, so it must be reachable at the SAME public origin the callback URL
+	# registered in the provider's console names — a mismatch here is refused by
+	# the provider, not by us, with a message that blames the redirect URI.
+	handle /auth* {
+		reverse_proxy 127.0.0.1:8577
+	}
+	handle /oauth* {
+		reverse_proxy 127.0.0.1:8577
+	}
+	handle /config {
+		reverse_proxy 127.0.0.1:8577
+	}
+	handle /executions* {
+		reverse_proxy 127.0.0.1:8577
+	}
+	handle /files* {
+		reverse_proxy 127.0.0.1:8577
+	}
+	handle /functions* {
+		reverse_proxy 127.0.0.1:8577
+	}
+	handle /health {
+		reverse_proxy 127.0.0.1:8577
+	}
+	handle /hooks* {
+		reverse_proxy 127.0.0.1:8577
+	}
+	handle /login {
+		reverse_proxy 127.0.0.1:8577
+	}
+	handle /logout {
+		reverse_proxy 127.0.0.1:8577
+	}
+	handle /users* {
+		reverse_proxy 127.0.0.1:8577
+	}
+	handle /requestPasswordReset {
+		reverse_proxy 127.0.0.1:8577
+	}
+	handle /verificationEmailRequest {
+		reverse_proxy 127.0.0.1:8577
+	}
+
+	# Everything else is the application, with SPA-history fallback so a deep
+	# link the Router owns resolves to the app rather than a 404.
+	handle {
+		try_files {path} /index.html
+		file_server
+	}
+}
+
+# Caddy sets X-Forwarded-For itself and, because it is reached over loopback
+# here, the backend's DEFAULT trusted-proxy setting (["loopback"]) already
+# believes it. If Caddy runs in a container or on another host, set
+# `rateLimit.trustedProxies` in the backend's ops.json to ["private"] or to
+# that proxy's address — otherwise every request is attributed to the proxy,
+# which means one shared rate-limit bucket and a useless audit origin.

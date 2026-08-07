@@ -1,5 +1,6 @@
 import { NodeGraphNode } from '@noodl-models/nodegraphmodel';
 import { NodeLibraryImporter } from '@noodl-models/nodelibrary/NodeLibraryImporter';
+import { WORKFLOW_NAME_PREFIX } from '@noodl-utils/NodeGraph';
 
 import Model from '../../shared/model';
 import { EventDispatcher } from '../../shared/utils/EventDispatcher';
@@ -9,8 +10,54 @@ import { ProjectModel } from './models/projectmodel';
 import { WarningsModel } from './models/warningsmodel';
 import DebugInspector from './utils/debuginspector';
 import * as Exporter from './utils/exporter';
+import { getIpc } from './utils/ipc';
 
 const port = process.env.NOODLPORT || 8574;
+
+/**
+ * OBS-004 — this window's copy of the relay token, fetched once.
+ *
+ * Cached as a promise rather than a value because `connect()` is called again on every
+ * reconnect: without the cache a flapping socket would issue an IPC round trip per attempt.
+ *
+ * ⚠️ Resolves to `undefined` outside Electron, which is where the editor's Jasmine specs run.
+ * The relay will reject that, and correctly — the specs do not use it — but a *throw* here
+ * would take out `ViewerConnection`'s construction and with it every spec that merely imports
+ * this module.
+ */
+let relayTokenPromise: Promise<string | undefined> | undefined;
+
+function getRelayToken(): Promise<string | undefined> {
+  if (!relayTokenPromise) {
+    const ipc = getIpc();
+    relayTokenPromise = ipc
+      ? (ipc.invoke('relay-token') as Promise<string | undefined>).catch(() => undefined)
+      : Promise.resolve(undefined);
+  }
+  return relayTokenPromise;
+}
+
+/**
+ * WFA-004: is this model event about a workflow graph rather than the project?
+ *
+ * `Model.*` events are broadcast globally by `shared/model.js`, so a workflow's
+ * canvas graph — which is deliberately NOT part of `ProjectModel` — reaches
+ * every handler here. `Model.nodeAdded` already filtered on project ownership;
+ * its siblings checked only that a component existed, which a workflow's canvas
+ * adapter satisfies, so a step edit would have sent the viewer an update naming
+ * a component it has never heard of.
+ *
+ * Written as a positive test for the workflow prefix rather than as "not this
+ * project", because the second would also drop module-component updates, which
+ * these handlers deliberately still send.
+ */
+function isWorkflowModelEvent(model: TSFixme): boolean {
+  // Walk up: node → graph → component, or graph → component.
+  for (let m = model, i = 0; m && i < 3; m = m.owner, i++) {
+    if (typeof m.name === 'string' && m.name.startsWith(WORKFLOW_NAME_PREFIX)) return true;
+  }
+  return false;
+}
 
 export class ViewerConnection extends Model {
   modelChangesListenerGroup: unknown;
@@ -19,6 +66,26 @@ export class ViewerConnection extends Model {
   clientsToExportTo: Set<unknown>;
   registeredRuntimeTypes: Set<unknown>;
   highlightedNode: NodeGraphNode;
+  /** AIX-008: clientId → the export that client gets instead of the project. */
+  sandboxProviders: Map<string, () => object | undefined>;
+
+  /**
+   * This editor window's own id on the relay — HUD-004.
+   *
+   * ⚠️ **Neither editor peer had one.** The editor registered as `{cmd:'register', type:'editor',
+   * token}` and so did `nodegx-observe`, so `clientId` was `undefined` for both, they were
+   * filtered out of the relay's own `clients` listing, and the relay forwards messages verbatim
+   * without ever stamping a sender. There was **no identity in the system to own a switch with** —
+   * which is why an agent's `stop_trace` could disarm a human's recording and an agent's
+   * `start_trace` could destroy one.
+   *
+   * ⚠️ **It is a label and never a credential.** Authorisation is the relay's token gate, checked
+   * per socket on `register`; anything downstream that treats this as proof of anything is a bug.
+   *
+   * Minted once per window and stable across reconnects, so a socket that drops and comes back
+   * re-arms the trace it already owned rather than acquiring a second ownership nothing releases.
+   */
+  readonly clientId: string = 'editor-' + Math.random().toString(36).slice(2, 10);
 
   static instance: ViewerConnection;
   ws: WebSocket;
@@ -34,6 +101,7 @@ export class ViewerConnection extends Model {
     this.lastExports = {};
     this.clientsToExportTo = new Set();
     this.registeredRuntimeTypes = new Set();
+    this.sandboxProviders = new Map();
     this.bindDebugInspectorEvents();
   }
 
@@ -46,8 +114,13 @@ export class ViewerConnection extends Model {
     this.ws = new WebSocket(address);
     this.ws.addEventListener('open', function () {
       console.log('Connected to viewer server at ' + address);
-      _this.send({ cmd: 'register', type: 'editor' });
-      _this.watchAndExportModelChanges();
+      // OBS-004: the register is now the token handshake, so it has to wait for the token.
+      // Nothing else may go out before it — an unauthorised peer is closed on its first
+      // message — and `send()` no-ops unless the socket is OPEN, so the await is safe.
+      getRelayToken().then((token) => {
+        _this.send({ cmd: 'register', type: 'editor', clientId: _this.clientId, token });
+        _this.watchAndExportModelChanges();
+      });
     });
     this.ws.addEventListener('close', function () {
       console.log('Connection to viewer server lost, attemtping to reconnect...');
@@ -82,15 +155,41 @@ export class ViewerConnection extends Model {
   processRequest(request) {
     if (!request) return;
 
+    // OBS-004: the relay refused this peer. The editor cannot self-heal from it the way the
+    // preview can (it has no page to reload), so this is a loud, single, actionable line
+    // rather than a reconnect storm's worth of "Unknown request".
+    if (request.cmd === 'registerRejected') {
+      console.error(
+        'The project relay rejected this editor window: ' +
+          (request.reason || 'unknown reason') +
+          '. The preview will not connect until the editor is restarted.'
+      );
+      return;
+    }
+
     // A new viewer is connected
     if (request.cmd === 'registered' && request.type === 'viewer') {
       WarningsModel.instance.clearWarningsForRefMatching((ref) => ref.isFromViewer);
       this.sendDebugInspectorsEnabled();
+      // FH-011 — a viewer arriving is a viewer that is not tracing, whatever the editor thinks.
+      // Announced rather than handled here: `TraceSession` owns the recording state, and this
+      // file is deliberately transport (same reason the three inbound trace replies below are
+      // re-emitted). Importing the session here would also close an import cycle — it imports
+      // this.
+      EventDispatcher.instance.emit('ViewerRegistered', { clientId: request.clientId });
     }
     //a viewer disconnected
     else if (request.cmd === 'disconnect') {
       this.clientsToExportTo.delete(request.clientId);
+      // A sandbox client keeps its id across reloads (it is derived from the
+      // preview session, not minted per connection), so the "don't send the
+      // same export twice" cache has to be dropped or a reloaded window would
+      // never be fed again.
+      delete this.lastExports[request.clientId];
       NodeLibraryImporter.instance.onClientDisconnect(request.clientId);
+      // PAR-003: client-presence signal for the bottom bar's "Preview live"
+      // status. Pure notification — tracking semantics are unchanged.
+      this.notifyListeners('viewerClientsChanged');
     }
     // A select node request
     else if (request.cmd === 'select' && request.type === 'viewer') {
@@ -102,13 +201,50 @@ export class ViewerConnection extends Model {
       const content = JSON.parse(request.content);
       const node = ProjectModel.instance.findNodeWithId(content.nodeid);
       node && node.setDynamicPorts(content.ports, content.options);
+    }
+    // What a scope-resolving node bound to, for the node card's sub-label.
+    // See `dev-docs/reference/BINDING-CONTRACT.md` §(b). Purely presentational and never
+    // saved — `setRuntimeSubLabel` deliberately does not touch `metadata`.
+    else if (request.cmd === 'nodesublabel' && request.type === 'viewer') {
+      const content = JSON.parse(request.content);
+      const node = ProjectModel.instance && ProjectModel.instance.findNodeWithId(content.nodeId);
+      node && node.setRuntimeSubLabel(content.subLabel);
     } else if (request.cmd === 'connectiondebugpulse' && request.type === 'viewer') {
       const content = JSON.parse(request.content);
       DebugInspector.instance.setConnectionsToPulse(content.connectionsToPulse);
+
+      // The Trigger Chain Debugger used to tap this snapshot too. It is gone (phase 36): the
+      // snapshot is a map keyed by output id, so a wire firing twice inside the linger window
+      // overwrites itself and the second firing is unrecoverable. OBS-001's `TraceBuffer` records
+      // per-edge events instead, and `traceEvents` above is the channel that carries them.
     } else if (request.cmd === 'debuginspectorvalues' && request.type === 'viewer') {
       DebugInspector.instance.setInspectorValues(request.content.inspectors);
     } else if (request.cmd === 'connectionValue' && request.type === 'viewer') {
       EventDispatcher.instance.emit('ConnectionInspector', request.content);
+    }
+    // OBS-002 — the three inbound halves of the trace channel. Each is re-emitted on the
+    // EventDispatcher rather than handled here: `TraceSession` owns the state, and
+    // ViewerConnection is deliberately kept as transport so a second consumer (OBS-004's
+    // agent access) can subscribe to exactly the same events without going through the panel.
+    else if (request.cmd === 'traceDictionary' && request.type === 'viewer') {
+      EventDispatcher.instance.emit('TraceDictionary', {
+        clientId: request.clientId,
+        dictionary: JSON.parse(request.content)
+      });
+    } else if (request.cmd === 'traceEvents' && request.type === 'viewer') {
+      const content = typeof request.content === 'string' ? JSON.parse(request.content) : request.content;
+      EventDispatcher.instance.emit('TraceEvents', { clientId: request.clientId, events: content.events });
+    } else if (request.cmd === 'traceState' && request.type === 'viewer') {
+      // HUD-004 — who holds the trace, and where its buffer has got to.
+      const content = typeof request.content === 'string' ? JSON.parse(request.content) : request.content;
+      EventDispatcher.instance.emit('TraceState', { clientId: request.clientId, state: content });
+    } else if (request.cmd === 'portValues' && request.type === 'viewer') {
+      const content = typeof request.content === 'string' ? JSON.parse(request.content) : request.content;
+      EventDispatcher.instance.emit('TracePortValues', { clientId: request.clientId, values: content.values });
+    } else if (request.cmd === 'inputResult' && request.type === 'viewer') {
+      // OBS-004 — the reply to an injected click or keystroke.
+      const content = typeof request.content === 'string' ? JSON.parse(request.content) : request.content;
+      EventDispatcher.instance.emit('TraceInputResult', { clientId: request.clientId, result: content });
     } else if (request.cmd === 'showwarning' && request.type === 'viewer') {
       const content = JSON.parse(request.content);
       if (ProjectModel.instance !== undefined) {
@@ -161,6 +297,41 @@ export class ViewerConnection extends Model {
     }
   }
 
+  /**
+   * AIX-008 — Sandbox clients.
+   *
+   * A viewer client normally receives the project. A sandbox preview receives
+   * whatever its provider returns instead: the staged AI candidate, rendered as
+   * root, with sample data in the metadata. The client announces itself by
+   * registering as `sandbox-<sessionId>` (see the runtime's EditorConnection),
+   * so nothing in the WS relay had to learn a new message.
+   *
+   * The live project is never involved — the provider builds its export from a
+   * throwaway clone, which is what keeps "reject leaves no trace" structural.
+   */
+  registerSandboxExport(clientId: string, provider: () => object | undefined) {
+    this.sandboxProviders.set(clientId, provider);
+    // The client may already be connected (a refine round re-registers while the
+    // window stays open); push immediately in that case.
+    if (this.clientsToExportTo.has(clientId)) this.exportSandbox(clientId);
+  }
+
+  unregisterSandboxExport(clientId: string) {
+    this.sandboxProviders.delete(clientId);
+    delete this.lastExports[clientId];
+  }
+
+  /** Re-send a sandbox client's export; the runtime reloads on a changed one. */
+  exportSandbox(clientId: string) {
+    const provider = this.sandboxProviders.get(clientId);
+    if (!provider) return;
+
+    const json = provider();
+    if (!json) return;
+
+    this._exportToClient(clientId, JSON.stringify(json));
+  }
+
   _exportToClient(clientId, exportedJSON) {
     //don't send the same export twice
     if (exportedJSON === this.lastExports[clientId]) return;
@@ -202,10 +373,13 @@ export class ViewerConnection extends Model {
     const exportedJSON = JSON.stringify(_export);
 
     if (target) {
-      this._exportToClient(target, exportedJSON);
+      if (this.sandboxProviders.has(target as string)) this.exportSandbox(target as string);
+      else this._exportToClient(target, exportedJSON);
     } else {
       for (const clientId of this.clientsToExportTo.values()) {
-        this._exportToClient(clientId, exportedJSON);
+        // A sandbox client is fed by its provider, never by the project export.
+        if (this.sandboxProviders.has(clientId as string)) this.exportSandbox(clientId as string);
+        else this._exportToClient(clientId, exportedJSON);
       }
     }
   }
@@ -310,19 +484,119 @@ export class ViewerConnection extends Model {
   }
 
   /**
+   * OBS-002 — the outbound half of the trace channel.
+   *
+   * ⚠️ **The editor pulls; the runtime never pushes.** There is deliberately no "stream me the
+   * events" command: shipping 250k events at a renderer is precisely what killed the shelved
+   * Trigger Chain Debugger. The buffer is an index the walk queries.
+   *
+   * Each of these is broadcast to every viewer and carries a `clientId` the runtime matches
+   * against its own before answering — the same self-filtering `getConnectionValue` uses, so
+   * a project with a preview and a cloud runtime attached does not get two replies.
+   */
+  /**
+   * Arm or disarm the trace **on this editor's behalf** — HUD-004.
+   *
+   * ⚠️ `owner` is not optional in practice and stamping it here rather than at the call site is
+   * the point: `TraceSession` should not have to remember to identify itself, and a send that
+   * forgot would fall back to the runtime's single anonymous key and share a switch with
+   * `nodegx-observe` exactly as before.
+   */
+  sendTraceEnabled(enabled: boolean) {
+    this.send({
+      cmd: 'traceEnabled',
+      content: JSON.stringify({ enabled, owner: this.clientId })
+    });
+  }
+
+  /**
+   * Ask a viewer who is tracing it, and how far its buffer has got — HUD-004 slice 4.
+   *
+   * ⚠️ **Sent *before* arming, never after.** The answer is only useful as the state the trace
+   * was in before this editor touched it: `highestSeq` is where a joining recording must start
+   * reading from, and `enabled` is how it knows it joined one rather than started it.
+   */
+  sendGetTraceState(clientId: string) {
+    this.send({
+      cmd: 'getTraceState',
+      content: JSON.stringify({ clientId })
+    });
+  }
+
+  sendGetTraceDictionary(clientId: string) {
+    this.send({
+      cmd: 'getTraceDictionary',
+      content: JSON.stringify({ clientId })
+    });
+  }
+
+  /** `afterSeq` is the tail read: omit it for the whole buffer. */
+  sendGetTraceEvents(clientId: string, afterSeq?: number) {
+    this.send({
+      cmd: 'getTraceEvents',
+      content: JSON.stringify({ clientId, afterSeq })
+    });
+  }
+
+  sendGetPortValues(clientId: string, ports: Array<{ node: string; port: string; direction: 'input' | 'output' }>) {
+    this.send({
+      cmd: 'getPortValues',
+      content: JSON.stringify({ clientId, ports })
+    });
+  }
+
+  /**
+   * OBS-004 — click or type in the running app, addressing the target by **node id**.
+   *
+   * The one command on this channel with side effects on the user's session rather than on
+   * the editor's view of it. The runtime gates it on `isRunningLocally()` for that reason.
+   */
+  sendInjectInput(
+    clientId: string,
+    request: {
+      requestId?: string;
+      nodeId?: string;
+      selector?: string;
+      action: 'click' | 'setText';
+      value?: string;
+      index?: number;
+    }
+  ) {
+    this.send({
+      cmd: 'injectInput',
+      content: JSON.stringify({ clientId, ...request })
+    });
+  }
+
+  /**
    * @param {string} clientId
    * @param {require('@noodl-models/nodelibrary/NodeLibraryData').RuntimeType} runtimeType
    * @param {require('@noodl-models/nodelibrary/NodeLibraryData').NodeLibraryData} newLibrary
    */
   loadNodeLibrary(clientId, runtimeType, newLibrary) {
+    // A changed export makes the runtime call location.reload(), and a sandbox
+    // client comes back under the SAME id — so the "don't send the same export
+    // twice" cache would suppress the very export it just reloaded to receive,
+    // and the window would sit empty. Registering is always a fresh start.
+    if (this.sandboxProviders.has(clientId)) delete this.lastExports[clientId];
+
     this.clientsToExportTo.add(clientId);
     this.registeredRuntimeTypes.add(runtimeType);
+
+    // PAR-003: client-presence signal for the bottom bar's "Preview live"
+    // status. Pure notification — tracking semantics are unchanged.
+    this.notifyListeners('viewerClientsChanged');
 
     NodeLibraryImporter.instance.onClientImport(clientId, runtimeType, newLibrary);
 
     if (NodeLibrary.instance.isLoaded()) {
       this.export();
     }
+  }
+
+  /** PAR-003: true while at least one viewer client is connected and has delivered its node library. */
+  public get hasConnectedViewer(): boolean {
+    return this.clientsToExportTo.size > 0;
   }
 
   stopWatchAndExportModelChanges() {
@@ -421,6 +695,7 @@ export class ViewerConnection extends Model {
         //so no need to send affected connections
 
         if (!e.model.owner) return; //Model is being created, no owner yet. Viewer will use full export
+        if (isWorkflowModelEvent(e.model)) return; // WFA-004: not this project's graph
         if (NodeLibrary.instance.typeIsMissing(e.args.model.type)) return;
 
         _this.send({
@@ -462,6 +737,7 @@ export class ViewerConnection extends Model {
         if (_this.watchModelChangesDisabled) return;
 
         if (!e.model.owner) return; //Model is being created, no owner yet. Viewer will use full export
+        if (isWorkflowModelEvent(e.model)) return; // WFA-004: not this project's graph
 
         _this.send({
           cmd: 'modelUpdate',
@@ -483,6 +759,7 @@ export class ViewerConnection extends Model {
         if (_this.watchModelChangesDisabled) return;
 
         if (!e.model.owner) return; //Model is being created, no owner yet. Viewer will use full export
+        if (isWorkflowModelEvent(e.model)) return; // WFA-004: not this project's graph
 
         _this.send({
           cmd: 'modelUpdate',
@@ -505,6 +782,7 @@ export class ViewerConnection extends Model {
         if (_this.watchModelChangesDisabled) return;
 
         if (!e.model.owner || !e.model.owner.owner) return; //Model is being created, no owner yet. Viewer will use full export
+        if (isWorkflowModelEvent(e.model)) return; // WFA-004: not this project's graph
 
         const c = e.args.model;
 
@@ -542,6 +820,7 @@ export class ViewerConnection extends Model {
         if (_this.watchModelChangesDisabled) return;
 
         if (!e.model.owner || !e.model.owner.owner) return; //Model is being created, no owner yet. Viewer will use full export
+        if (isWorkflowModelEvent(e.model)) return; // WFA-004: not this project's graph
 
         const args = e.args || {};
 
@@ -716,7 +995,16 @@ export class ViewerConnection extends Model {
       function (e) {
         if (_this.watchModelChangesDisabled) return;
 
-        if (!e.model.owner.owner) {
+        if (isWorkflowModelEvent(e.model)) return; // WFA-004: not this project's graph
+
+        // `!e.model.owner` as well as `!e.model.owner.owner`: the comment below
+        // describes a node that has no *component* yet, but a node can also have
+        // no *graph* yet — `setDynamicPorts` before the node is added to one.
+        // Reading through the missing graph threw a TypeError that aborted the
+        // caller, which is how a `switch` step made an entire workflow fail to
+        // open (WFA-004 live pass). Every sibling handler here already spells
+        // the guard both levels deep; this one did not.
+        if (!e.model.owner || !e.model.owner.owner) {
           //node isn't assigned to a component yet
           //this can happen during specific cirumstances like the following:
           //1. ComponentModel.fromJSON is called
@@ -975,6 +1263,8 @@ export class ViewerConnection extends Model {
       'activeComponentChanged',
       ({ component }) => {
         if (component === undefined) return;
+        // WFA-004: a workflow is not a component the viewer can switch to.
+        if (isWorkflowModelEvent(component)) return;
         _this.send({
           cmd: 'activeComponentChanged',
           component: component.fullName

@@ -1,0 +1,18 @@
+{
+  "typeName": "Inverter",
+  "summary": "Logical NOT: outputs the boolean opposite of its input.",
+  "description": "Inverter takes one boolean `value` (Value) input and exposes its negation on the `result` (Result) value output. Until the input has received a value, the result is undefined rather than true — the node does not invent a state before it has one. Any change to the input immediately updates the result. It has no signals and no configuration.",
+  "whenToUse": "Use it wherever you have the boolean you need, but backwards — e.g. a Switch's `state` drives a panel's `visible` and, inverted, a placeholder's `visible`. If the boolean comes from a Condition, prefer its built-in `isfalse` output and skip the Inverter. For combining several booleans, use And/Or or an Expression.",
+  "ports": {
+    "result": "Boolean value: the opposite of `value`. Undefined until `value` first receives data."
+  },
+  "examples": ["logic-toggle-details-panel"],
+  "patterns": [
+    "A 'is loading' boolean → Inverter → a button's `enabled`: disable actions while busy.",
+    "Switch `state` → Inverter → the collapsed view's `visible`: show exactly one of two views from a single boolean."
+  ],
+  "antiPatterns": [
+    "Chaining Condition → Inverter to get 'is false' — Condition already outputs `isfalse` directly."
+  ],
+  "relatedNodes": ["And", "Or", "Condition", "Switch"]
+}

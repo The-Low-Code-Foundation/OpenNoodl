@@ -1,0 +1,31 @@
+{
+  "typeName": "net.noodl.StateHistory.Undo",
+  "summary": "Moves a store backwards, forwards, or to a specific point in the history recorded by a State History node.",
+  "description": "Drives the history that a State History node on the same store is recording; it records nothing itself, so a store with no State History node has nothing to undo and says so on Error rather than failing quietly. Undo and Redo step one entry; Jump To moves straight to `targetIndex`, which is what a timeline UI needs. Each move is an ordinary store commit, so subscribers and bindings update exactly as they do for any other change. After every move, `fullyRestorable` and `byReferenceKeys` describe *the restore that just happened* — not the whole history — so an author can tell the user when a particular step could not be fully reversed instead of leaving them to notice.",
+  "whenToUse": "Wire it to Undo and Redo buttons, a keyboard shortcut, or a timeline UI. One node can serve all three: Undo, Redo and Jump To are separate signals on the same node. Take the buttons' enabled state from the State History node's `canUndo`/`canRedo` rather than from here.",
+  "ports": {
+    "storeName": "The store to move. A State History node must already be tracking it.",
+    "targetIndex": "Where Jump To goes. Out-of-range values are reported on Error rather than clamped silently, so a broken timeline UI is visible.",
+    "undo": "Steps back one entry.",
+    "redo": "Steps forward one entry. Nothing happens if a write has since truncated the redo tail.",
+    "jumpTo": "Moves directly to `targetIndex`.",
+    "undone": "Fires after a successful undo.",
+    "redone": "Fires after a successful redo.",
+    "jumped": "Fires after a successful Jump To.",
+    "fullyRestorable": "Whether the restore that just happened was complete. False means some key could only be restored by reference.",
+    "byReferenceKeys": "Which keys in the restore that just happened could not be deep-restored.",
+    "error": "Carries the reason a move did nothing: no history for that store, nothing to undo or redo, or an out-of-range target."
+  },
+  "patterns": [
+    "State History `canUndo` → the Undo button's enabled state, and this node's `undo` → its click. The recording node owns the availability; this one owns the action.",
+    "`jumpTo` with `targetIndex` from a Repeater index, for a clickable timeline.",
+    "Show `byReferenceKeys` after a move where `fullyRestorable` is false, rather than leaving the user to discover the gap."
+  ],
+  "antiPatterns": [
+    "Expecting it to work without a State History node on the same store — it drives a history, it does not keep one.",
+    "Wiring Undo to a button whose enabled state ignores `canUndo`: the button then does nothing at the end of the history.",
+    "Treating a failed move as impossible. Read `error` — out-of-range jumps and truncated redo tails are both normal."
+  ],
+  "examples": ["agent-store-shared-state"],
+  "relatedNodes": ["net.noodl.StateHistory", "net.noodl.StateSnapshot", "net.noodl.GlobalStore"]
+}

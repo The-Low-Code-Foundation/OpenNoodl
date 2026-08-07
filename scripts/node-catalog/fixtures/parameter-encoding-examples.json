@@ -1,0 +1,76 @@
+{
+  "$comment": [
+    "SUB-013 — real `parameters` objects checked against the derived encodings at generation time.",
+    "",
+    "Criterion 3 says a reader following SCHEMA.md alone can author a valid States node, including",
+    "`value-true-bg color`. That is a claim about a document, and the only way to stop it rotting is",
+    "to check the document's own worked example mechanically, every time the catalog is built.",
+    "",
+    "Two checks run over each entry. `shape` asks whether every key matches a derived pattern or a",
+    "static port — can this key exist on this node at all. `references` asks whether the names",
+    "interpolated into it are actually present in the parameters they are drawn from — does this key",
+    "reach anything. A key can pass the first and fail the second, and that combination is precisely",
+    "the failure the task exists to expose: it reaches the runtime, matches no generated port, and",
+    "silently does nothing.",
+    "",
+    "`expectedOrphans` are keys known to fail the second check. They are listed, not tolerated in",
+    "bulk: an unlisted orphan fails generation, and a listed one that stops being an orphan does too."
+  ],
+
+  "examples": [
+    {
+      "name": "SCHEMA.md worked example",
+      "source": "docs/node-catalog/SCHEMA.md, \"Worked example — authoring a States node\"",
+      "typeName": "States",
+      "why": "The document promises this is authorable from the catalog alone. If it ever stops being valid, the promise is broken and this fails.",
+      "parameters": {
+        "states": "true,false",
+        "values": "pos,bg color",
+        "type-pos": "number",
+        "value-true-pos": 100,
+        "value-false-pos": 0,
+        "type-bg color": "color",
+        "value-true-bg color": "Primary",
+        "transitiondef-on": { "curve": [0, 0, 0.58, 1], "dur": 200, "delay": 0 }
+      },
+      "expectedOrphans": ["transitiondef-on"],
+      "orphanNote": "Carried over verbatim from the shipped prefab the spec quotes, and orphaned there too — there is no state called `on`. Kept because it is what a real file looks like, and because the example is more honest for showing that the format does not stop you writing one."
+    },
+
+    {
+      "name": "toggle-switch prefab, as shipped",
+      "source": "library/prefabs/toggle-switch/project/project.json",
+      "typeName": "States",
+      "why": "The file SUB-013 opens with. Every key is shape-valid, and six of them reach nothing — which is the case neither the editor nor SUB-006 catches today.",
+      "parameters": {
+        "states": "true,false",
+        "values": "pos",
+        "currentState": "on",
+        "type-pos": "number",
+        "value-true-pos": 100,
+        "value-false-pos": 0,
+        "type-bg color": "color",
+        "value-true-bg color": "Primary",
+        "value-false-bg color": "Grey - 200",
+        "type-border color": "color",
+        "value-true-border color": "Primary",
+        "value-false-border color": "#4C4C4C",
+        "transitiondef-on": { "curve": [0, 0, 0.58, 1], "dur": 200, "delay": 0 },
+        "transitiondef-off": { "curve": [0, 0, 0.58, 1], "dur": 200, "delay": 0 },
+        "transitiondef-true": { "curve": [0, 0, 0.58, 1], "dur": 150, "delay": 0 },
+        "transitiondef-false": { "curve": [0, 0, 0.58, 1], "dur": 150, "delay": 0 }
+      },
+      "expectedOrphans": [
+        "type-bg color",
+        "value-true-bg color",
+        "value-false-bg color",
+        "type-border color",
+        "value-true-border color",
+        "value-false-border color",
+        "transitiondef-on",
+        "transitiondef-off"
+      ],
+      "orphanNote": "`values` is `pos` alone and `states` is `true,false`, so every key naming `bg color`, `border color`, `on` or `off` is a leftover from an earlier edit. The node renders correctly — the runtime generates no port for them, so they are simply never read. Nothing in the editor, the runtime or the validator says a word about it."
+    }
+  ]
+}

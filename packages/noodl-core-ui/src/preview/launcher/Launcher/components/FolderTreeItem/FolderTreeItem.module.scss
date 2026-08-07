@@ -1,0 +1,102 @@
+/**
+ * FolderTreeItem - mock side-item styling (PAR-001)
+ */
+
+.Root {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 7px 10px;
+  border-radius: var(--radius-7);
+  color: var(--theme-color-fg-default);
+  font-family: var(--font-family);
+  font-size: 13px;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+  user-select: none;
+
+  &:hover {
+    background: var(--theme-color-bg-3);
+    color: var(--theme-color-fg-highlight);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--theme-color-focus-ring);
+    outline-offset: -2px;
+  }
+
+  &--selected {
+    background: var(--theme-color-primary-bg);
+    color: var(--theme-color-primary);
+
+    &:hover {
+      background: var(--theme-color-primary-bg);
+      color: var(--theme-color-primary);
+    }
+
+    .Count {
+      color: var(--theme-color-primary);
+      opacity: 0.75;
+    }
+
+    .FolderIcon,
+    .Chevron {
+      color: var(--theme-color-primary);
+    }
+  }
+}
+
+.Chevron {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: inherit;
+  flex: none;
+}
+
+.ChevronIcon {
+  display: flex;
+}
+
+.FolderIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+
+  svg {
+    display: block;
+  }
+}
+
+.FolderName {
+  flex: 1;
+  min-width: 0; /* Allow text truncation */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.Count {
+  margin-left: auto;
+  flex: none;
+  color: var(--theme-color-fg-muted);
+  font-size: 11.5px;
+  font-weight: 400;
+
+  &.is-hidden {
+    display: none;
+  }
+}
+
+.ContextMenuTrigger {
+  display: flex;
+  align-items: center;
+  margin-left: auto;
+  flex: none;
+}

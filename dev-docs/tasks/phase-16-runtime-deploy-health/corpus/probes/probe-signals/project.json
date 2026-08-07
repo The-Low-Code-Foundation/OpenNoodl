@@ -1,0 +1,298 @@
+{
+  "name": "RUN-001 probe: signal ordering",
+  "id": "run001-probe-signals",
+  "version": "4",
+  "rootNodeId": "root",
+  "settings": {
+    "htmlTitle": "probe-signals"
+  },
+  "components": [
+    {
+      "name": "/App",
+      "id": "c_app",
+      "graph": {
+        "roots": [
+          {
+            "id": "root",
+            "type": "Group",
+            "label": "Root",
+            "x": 0,
+            "y": 0,
+            "parameters": {
+              "flexDirection": "column"
+            },
+            "ports": [],
+            "children": [
+              {
+                "id": "btn_start",
+                "type": "net.noodl.controls.button",
+                "label": "Start",
+                "x": 0,
+                "y": 100,
+                "parameters": {
+                  "label": "Start"
+                },
+                "ports": [],
+                "children": []
+              },
+              {
+                "id": "txt_count",
+                "type": "Text",
+                "label": "Count",
+                "x": 0,
+                "y": 200,
+                "parameters": {
+                  "text": "count"
+                },
+                "ports": [],
+                "children": []
+              }
+            ]
+          },
+          {
+            "id": "fn_kick",
+            "type": "JavaScriptFunction",
+            "label": "kick",
+            "x": 300,
+            "y": 0,
+            "parameters": {
+              "functionScript": "window.__probe = window.__probe || { events: [] };\nwindow.__probe.events.push('kick');\nOutputs.go();"
+            },
+            "ports": [
+              {
+                "name": "out-go",
+                "plug": "output",
+                "type": "signal",
+                "group": "Outputs"
+              }
+            ],
+            "children": []
+          },
+          {
+            "id": "fn_a",
+            "type": "JavaScriptFunction",
+            "label": "A",
+            "x": 300,
+            "y": 100,
+            "parameters": {
+              "functionScript": "window.__probe = window.__probe || { events: [] };\nwindow.__probe.events.push('A');\nOutputs.next();"
+            },
+            "ports": [
+              {
+                "name": "out-next",
+                "plug": "output",
+                "type": "signal",
+                "group": "Outputs"
+              }
+            ],
+            "children": []
+          },
+          {
+            "id": "fn_b",
+            "type": "JavaScriptFunction",
+            "label": "B",
+            "x": 300,
+            "y": 200,
+            "parameters": {
+              "functionScript": "window.__probe = window.__probe || { events: [] };\nwindow.__probe.events.push('B');\nOutputs.next();"
+            },
+            "ports": [
+              {
+                "name": "out-next",
+                "plug": "output",
+                "type": "signal",
+                "group": "Outputs"
+              }
+            ],
+            "children": []
+          },
+          {
+            "id": "fn_c",
+            "type": "JavaScriptFunction",
+            "label": "C",
+            "x": 300,
+            "y": 300,
+            "parameters": {
+              "functionScript": "window.__probe = window.__probe || { events: [] };\nwindow.__probe.events.push('C');"
+            },
+            "ports": [],
+            "children": []
+          },
+          {
+            "id": "fn_x",
+            "type": "JavaScriptFunction",
+            "label": "X",
+            "x": 500,
+            "y": 0,
+            "parameters": {
+              "functionScript": "window.__probe = window.__probe || { events: [] };\nwindow.__probe.events.push('X');"
+            },
+            "ports": [],
+            "children": []
+          },
+          {
+            "id": "fn_y",
+            "type": "JavaScriptFunction",
+            "label": "Y",
+            "x": 500,
+            "y": 100,
+            "parameters": {
+              "functionScript": "window.__probe = window.__probe || { events: [] };\nwindow.__probe.events.push('Y');"
+            },
+            "ports": [],
+            "children": []
+          },
+          {
+            "id": "counter",
+            "type": "Counter",
+            "label": "Counter",
+            "x": 500,
+            "y": 200,
+            "parameters": {},
+            "ports": [],
+            "children": []
+          },
+          {
+            "id": "fn_count",
+            "type": "JavaScriptFunction",
+            "label": "count logger",
+            "x": 500,
+            "y": 300,
+            "parameters": {
+              "functionScript": "window.__probe = window.__probe || { events: [] };\nwindow.__probe.events.push('count:' + Inputs.c);"
+            },
+            "ports": [],
+            "children": []
+          },
+          {
+            "id": "sw",
+            "type": "Switch",
+            "label": "Switch",
+            "x": 700,
+            "y": 0,
+            "parameters": {},
+            "ports": [],
+            "children": []
+          },
+          {
+            "id": "fn_switch",
+            "type": "JavaScriptFunction",
+            "label": "switch logger",
+            "x": 700,
+            "y": 100,
+            "parameters": {
+              "functionScript": "window.__probe = window.__probe || { events: [] };\nwindow.__probe.events.push('switch:' + Inputs.s);"
+            },
+            "ports": [],
+            "children": []
+          },
+          {
+            "id": "end_timer",
+            "type": "Timer",
+            "label": "End timer",
+            "x": 700,
+            "y": 200,
+            "parameters": {
+              "duration": 300
+            },
+            "ports": [],
+            "children": []
+          },
+          {
+            "id": "fn_done",
+            "type": "JavaScriptFunction",
+            "label": "done",
+            "x": 700,
+            "y": 300,
+            "parameters": {
+              "functionScript": "window.__probe = window.__probe || { events: [] };\nwindow.__probe.events.push('done');\nwindow.__probeDone = true;"
+            },
+            "ports": [],
+            "children": []
+          }
+        ],
+        "connections": [
+          {
+            "fromId": "btn_start",
+            "fromProperty": "onClick",
+            "toId": "fn_kick",
+            "toProperty": "run"
+          },
+          {
+            "fromId": "fn_kick",
+            "fromProperty": "out-go",
+            "toId": "fn_a",
+            "toProperty": "run"
+          },
+          {
+            "fromId": "fn_a",
+            "fromProperty": "out-next",
+            "toId": "fn_b",
+            "toProperty": "run"
+          },
+          {
+            "fromId": "fn_b",
+            "fromProperty": "out-next",
+            "toId": "fn_c",
+            "toProperty": "run"
+          },
+          {
+            "fromId": "fn_kick",
+            "fromProperty": "out-go",
+            "toId": "fn_x",
+            "toProperty": "run"
+          },
+          {
+            "fromId": "fn_kick",
+            "fromProperty": "out-go",
+            "toId": "fn_y",
+            "toProperty": "run"
+          },
+          {
+            "fromId": "fn_kick",
+            "fromProperty": "out-go",
+            "toId": "counter",
+            "toProperty": "increase"
+          },
+          {
+            "fromId": "counter",
+            "fromProperty": "currentCount",
+            "toId": "txt_count",
+            "toProperty": "text"
+          },
+          {
+            "fromId": "counter",
+            "fromProperty": "currentCount",
+            "toId": "fn_count",
+            "toProperty": "in-c"
+          },
+          {
+            "fromId": "fn_kick",
+            "fromProperty": "out-go",
+            "toId": "sw",
+            "toProperty": "flip"
+          },
+          {
+            "fromId": "sw",
+            "fromProperty": "state",
+            "toId": "fn_switch",
+            "toProperty": "in-s"
+          },
+          {
+            "fromId": "fn_kick",
+            "fromProperty": "out-go",
+            "toId": "end_timer",
+            "toProperty": "start"
+          },
+          {
+            "fromId": "end_timer",
+            "fromProperty": "timerFinished",
+            "toId": "fn_done",
+            "toProperty": "run"
+          }
+        ]
+      }
+    }
+  ],
+  "metadata": {}
+}

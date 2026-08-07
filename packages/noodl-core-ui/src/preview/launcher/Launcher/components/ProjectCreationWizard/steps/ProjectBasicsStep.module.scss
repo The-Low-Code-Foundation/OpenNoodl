@@ -1,0 +1,32 @@
+.ProjectBasicsStep {
+  display: flex;
+  flex-direction: column;
+}
+
+.Field {
+  margin-bottom: var(--spacing-5);
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+}
+
+.LocationRow {
+  display: flex;
+  align-items: center;
+  margin-top: var(--spacing-2);
+}
+
+.PathPreview {
+  margin-top: var(--spacing-4);
+  padding: var(--spacing-3);
+  background-color: var(--theme-color-bg-3);
+  border-radius: var(--radius-default);
+  border: 1px solid var(--theme-color-border-default);
+}
+
+.PathText {
+  font-size: 13px;
+  color: var(--theme-color-fg-default-shy);
+  line-height: 1.4;
+}

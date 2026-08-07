@@ -1,8 +1,15 @@
+import { nodeColorNameForModel, useNodeColorScheme } from '@noodl-hooks/useNodeColorScheme';
 import classNames from 'classnames';
 import React, { useEffect, useRef, useState } from 'react';
 
 import { KeyCode } from '@noodl-constants/KeyCode';
 import { NodeLibrary } from '@noodl-models/nodelibrary';
+import {
+  isPortConnectable,
+  omitHiddenPorts,
+  PORT_CONDITION_FILTER_MODES,
+  type PortLike
+} from '@noodl-models/nodelibrary/portConnectivity';
 
 import { Icon, IconName, IconSize } from '@noodl-core-ui/components/common/Icon';
 
@@ -11,24 +18,28 @@ import css from '../ConnectionPopup.module.scss';
 import { PortGroup } from './PortGroup';
 
 function _getPorts(type, model /* NodeGraphNode */) {
-  const ports = type === 'from' ? model.getPorts('output') : model.getPorts('input');
+  // Annotated so `omitHiddenPorts`'s `T` has something to infer from. Left bare,
+  // inference falls back to the generic's own constraint and every row narrows to
+  // `{ name: string }`, which loses `group`, `displayName`, `tab`, `type` and `plug`.
+  const declared: PortLike[] = type === 'from' ? model.getPorts('output') : model.getPorts('input');
   const models = [];
 
-  function isConnectable(p) {
-    return !(typeof p.type === 'object' && p.type.allowEditOnly);
-  }
-
-  // Apply ports condition filter (only use extended filter, i.e. ones that should not be connectable if filtered)
-  const portFilter = NodeLibrary.instance.applyPortConditionsFilterForNode(model, ['extended']);
-  portFilter.forEach((portname) => {
-    const idx = ports.findIndex((p) => p.name === portname);
-    if (idx !== -1) ports.splice(idx, 1);
-  });
+  /*
+   * SPR-003 §1 (F82): both the predicate and the filter scope now come from
+   * `portConnectivity`, which is the *only* place either is written down. This
+   * function and `PortsTab.buildRows` were the two lists that disagreed —
+   * a port marked `allowEditOnly` was missing here and unqualified there.
+   *
+   * `omitHiddenPorts` also returns a copy, where this used to `splice` the
+   * array `getPorts()` handed back.
+   */
+  const hidden = NodeLibrary.instance.applyPortConditionsFilterForNode(model, PORT_CONDITION_FILTER_MODES);
+  const ports = omitHiddenPorts(declared, hidden);
 
   for (const i in ports) {
     const p = ports[i];
 
-    if (isConnectable(p)) {
+    if (isPortConnectable(p)) {
       models.push({
         name: p.name,
         group: p.group,
@@ -54,9 +65,8 @@ export function ConnectionBar(props: TSFixme) {
   const portAmount = useRef(0);
 
   const disabled = props.type === 'to' && (props.fromNode === undefined || props.sourcePort === undefined);
-  const colors = props.model.metadata?.colorOverride
-    ? NodeLibrary.instance.colorSchemeForNodeColorName(props.model.metadata.colorOverride)
-    : NodeLibrary.instance.colorSchemeForNodeType(props.model.type);
+  // UIX-012: theme-derived (light + dark), re-resolved when the theme flips.
+  const colors = useNodeColorScheme(nodeColorNameForModel(props.model));
 
   function focusSearch() {
     if (searchRef?.current && props.isActive) {

@@ -1,0 +1,218 @@
+.Step {
+  border: 1px solid var(--theme-color-bg-3);
+  border-radius: 4px;
+  margin-bottom: 6px;
+  overflow: hidden;
+  background-color: var(--theme-color-bg-2);
+
+  &[data-expanded='true'] {
+    border-color: var(--theme-color-primary);
+  }
+}
+
+.Header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  cursor: default;
+
+  &[role='button'] {
+    cursor: pointer;
+
+    &:hover {
+      background-color: var(--theme-color-bg-3);
+    }
+  }
+}
+
+.Index {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background-color: var(--theme-color-bg-3);
+  color: var(--theme-color-fg-default-shy);
+  font-size: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.StepInfo {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.NodeName {
+  color: var(--theme-color-fg-default);
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.NodeId {
+  font-family: 'Courier New', Courier, monospace;
+
+  &::before {
+    content: '·';
+    margin: 0 4px;
+  }
+}
+
+/* Second line: `wait · start · 2 attempts`. Everything secondary lives here so
+   the name keeps the full width of the first line. */
+.NodeType {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  color: var(--theme-color-fg-default-shy);
+  font-size: 10px;
+}
+
+.Chip {
+  margin-left: 6px;
+  font-size: 10px;
+  color: var(--theme-color-fg-default-shy);
+  background-color: var(--theme-color-bg-3);
+  border-radius: 10px;
+  padding: 1px 6px;
+  white-space: nowrap;
+}
+
+.Status {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: var(--theme-color-fg-default-shy);
+
+  &[data-status='success'] {
+    color: var(--theme-color-success);
+  }
+
+  &[data-status='error'] {
+    color: var(--theme-color-danger);
+  }
+
+  &[data-status='running'] {
+    color: var(--theme-color-notice);
+  }
+}
+
+/* The error-routing / skipped explanation line. Always visible, never behind a
+   disclosure — it is the answer to "why did this run do that". */
+.Routing {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 0 12px 8px 40px;
+  font-size: 11px;
+}
+
+.RoutingHandled {
+  color: var(--theme-color-fg-default-shy);
+}
+
+.RoutingUnhandled {
+  color: var(--theme-color-danger);
+}
+
+.RoutingReceived {
+  color: var(--theme-color-notice);
+}
+
+.RoutingSkipped {
+  color: var(--theme-color-fg-default-shy);
+  font-style: italic;
+}
+
+.StepMeta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.Duration {
+  color: var(--theme-color-fg-default-shy);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.StatusDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+
+  &[data-status='success'] {
+    background-color: var(--theme-color-success);
+  }
+
+  &[data-status='error'] {
+    background-color: var(--theme-color-danger);
+  }
+
+  &[data-status='running'] {
+    background-color: var(--theme-color-notice);
+  }
+
+  &[data-status='skipped'] {
+    background-color: var(--theme-color-fg-default-shy);
+  }
+}
+
+.ExpandIcon {
+  color: var(--theme-color-fg-default-shy);
+  font-size: 9px;
+  flex-shrink: 0;
+}
+
+.Body {
+  padding: 0 12px 12px;
+  background-color: var(--theme-color-bg-1);
+  border-top: 1px solid var(--theme-color-bg-3);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ErrorSection {
+  padding-top: 10px;
+}
+
+.DataSection {
+  padding-top: 10px;
+}
+
+.SectionLabel {
+  display: block;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--theme-color-fg-default-shy);
+  margin-bottom: 4px;
+}
+
+.Pre {
+  margin: 0;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 11px;
+  color: var(--theme-color-fg-default);
+  background-color: var(--theme-color-bg-2);
+  border: 1px solid var(--theme-color-bg-3);
+  border-radius: 3px;
+  padding: 8px;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
+  max-height: 200px;
+  overflow-y: auto;
+}

@@ -1,11 +1,12 @@
-import React from 'react';
-import ReactDOM from 'react-dom';
 import { ipcRenderer } from 'electron';
+import React from 'react';
+import { createRoot } from 'react-dom/client';
 
 import { LocalStorageKey } from '@noodl-constants/LocalStorageKey';
-import getDocsEndpoint from '@noodl-utils/getDocsEndpoint';
-import PopupLayer from './views/popuplayer';
+import getContentEndpoint from '@noodl-utils/getContentEndpoint';
+
 import { NewsModal } from './views/NewsModal';
+import PopupLayer from './views/popuplayer';
 
 /**
  * Display latest whats-new-post if the user hasn't seen one after it was last published
@@ -17,7 +18,7 @@ export async function whatsnewRender() {
   // if user runs an older version the changelog will be irrelevant
   if (newEditorVersionAvailable) return;
 
-  const latestChangelogPost = await fetch(`${getDocsEndpoint()}/whats-new/feed.json`)
+  const latestChangelogPost = await fetch(`${getContentEndpoint()}/whats-new/feed.json`)
     .then((data) => data.json())
     .then((json) => json.items[0]);
 
@@ -32,14 +33,21 @@ export async function whatsnewRender() {
 
   const modalContainer = document.createElement('div');
   modalContainer.classList.add('popup-layer-react-modal');
-  PopupLayer.instance.el.find('.popup-layer-modal').before(modalContainer);
+  const modalEl = PopupLayer.instance.el.querySelector('.popup-layer-modal');
+  PopupLayer.instance.el.insertBefore(modalContainer, modalEl);
 
-  ReactDOM.render(
+  // Create root once and properly unmount when finished
+  const modalRoot = createRoot(modalContainer);
+  modalRoot.render(
     React.createElement(NewsModal, {
       content: latestChangelogPost.content_html,
-      onFinished: () => ipcRenderer.send('viewer-show')
-    }),
-    modalContainer
+      onFinished: () => {
+        ipcRenderer.send('viewer-show');
+        // Properly cleanup React root and DOM element
+        modalRoot.unmount();
+        modalContainer.remove();
+      }
+    })
   );
 
   localStorage.setItem(LocalStorageKey.lastSeenChangelogDate, latestChangelogDate.toString());

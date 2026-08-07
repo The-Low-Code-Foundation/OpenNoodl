@@ -1,0 +1,52 @@
+{
+  "typeName": "DbCollection2",
+  "summary": "Query Records: fetches records of a cloud database class with filter/sort/limit, keeps results live, and outputs them as an array.",
+  "description": "Query Records reads a class from the connected cloud database and exposes the matching records on `items` (an array of record objects), with `count`, `firstItemId` and `isEmpty` alongside. The query — class name, visual or JavaScript filter, sorting, limit and pagination — is configured in the node's parameters. Results are live by default: when a record elsewhere in the app is created, saved or deleted, the node re-checks it against the current query and updates `items` in place. `fetched` fires when a fetch completes, `failure`/`error` report problems.",
+  "whenToUse": "The starting point of every cloud-data list or lookup in browser logic. For writing data use Create/Save/Delete New Record nodes; for a single record by id use Model2/DbModel2; in cloud functions querying is available too (availableIn: cloud).",
+  "ports": {
+    "items": "Array output with the query result; the canonical source for a Repeater's `items`.",
+    "fetched": "Signal; fires each time a fetch (initial or re-run) completes.",
+    "isEmpty": "Boolean level; drive empty-state visuals from here rather than comparing `count` yourself.",
+    "realtime": "Boolean. Turns on Subscribe To Changes: the node holds a live subscription on the collection and re-runs this query when any client creates, updates or deletes a record. Off by default. ⚠️ The port is declared whatever the backend is and is never hidden — a backend that cannot push says why on `realtimeError` instead. For reacting to changes without owning a query, use the standalone Subscribe To Changes node.",
+    "subscribed": "True only while the subscription is confirmed live — false during connect, during backoff, and after a fatal auth failure. Wire it to an indicator's visibility so people can see when live updates are actually running.",
+    "realtimeStatus": "Which state the subscription is in as a string: connecting, subscribed, interrupted or unavailable. `subscribed` alone cannot tell 'reconnecting' from 'never started'.",
+    "realtimeError": "Last connection or protocol error; cleared when a subscription (re)confirms. An invalid token is fatal and the node will not retry until a parameter changes.",
+    "realtimeFailure": "Fires when the subscription fails in a way it will not recover from on its own.",
+    "created": "Fires once per remote create batch, after the Changed outputs have updated.",
+    "updated": "Fires once per remote update batch, after the Changed outputs have updated.",
+    "deleted": "Fires once per remote delete batch. ⚠️ Delete events carry only primary keys, so `changedRecord` is null and `changedRecords` holds key strings.",
+    "changed": "Fires alongside every created/updated/deleted. Wire this when any change should trigger the same reaction — most often back into this node's own `Do` to re-fetch.",
+    "changedEvent": "The last event kind as a string: create, update or delete.",
+    "changedRecord": "First record of the last create/update batch; null for deletes.",
+    "changedRecords": "All records of the last batch; for deletes, an array of primary-key strings.",
+    "changedRecordId": "Primary key of the first affected record, across all three event types."
+  },
+  "runtimeBehavior": "All *inputs* are runtime-determined (runtime-discovered + editor-adapter): the class choice, filter values, sort keys and paging inputs are generated from the project's database schema and the visual filter you build in the editor — e.g. each 'value' placeholder in a filter becomes its own input port, and actions like fetch ('storageFetch') are registered on demand. A generator cannot enumerate them statically; an authoring tool should set `collectionName` and filter parameters, and may wire signals to fetch-related inputs which the runtime registers when used.",
+  "examples": [
+    "repeater-query-records",
+    "send-event-across-components",
+    "cloud-record-live-refresh",
+    "cloud-record-crud",
+    "cloud-subscribe-to-changes"
+  ],
+  "patterns": [
+    "`items` → Repeater `items`, with record properties delivered to the item component via Component Inputs: the canonical list page.",
+    "Event Receiver `eventReceived` → fetch input: re-run a query on demand from anywhere in the app.",
+    "Turn on Subscribe To Changes and wire `Changed` back into this node's own `Do`: the list stays current without polling, on every backend whose descriptor allows it — SSE on the built-in backend and PocketBase, a WebSocket on Directus.",
+    "`Subscribed` → a status indicator's visibility, so people can see when live updates are actually running rather than assuming."
+  ],
+  "antiPatterns": [
+    "Re-querying on a timer to feel 'live' — results already update from cloud events; explicit re-fetch is only needed when the server changed outside those events.",
+    "Treating `Changed Record` as the full record on a delete — delete events carry only primary keys, so it is null and only `Changed Record Id` is populated.",
+    "Polling with a Timer while Subscribe To Changes is available on this backend. Subscribe and re-fetch on `Changed` instead.",
+    "Assuming `Subscribed` distinguishes 'reconnecting' from 'never connected' — it does not. Read `Realtime Status` for that."
+  ],
+  "relatedNodes": [
+    "For Each",
+    "DbModel2",
+    "NewDbModelProperties",
+    "FilterDBModels",
+    "CloudFunction2",
+    "SubscribeToChanges"
+  ]
+}

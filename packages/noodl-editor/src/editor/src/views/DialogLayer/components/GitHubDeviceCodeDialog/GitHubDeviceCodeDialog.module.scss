@@ -1,0 +1,45 @@
+/*
+ * F63. Every colour here is a theme token — `npm run colors` is a ratchet and a
+ * literal hex would fail it, but the real reason is that this dialog is the one
+ * surface a new user meets before they have configured anything, and it has to
+ * be legible in both themes without a second set of values to keep in step.
+ */
+
+/*
+ * The code the whole flow depends on.
+ *
+ * Monospace and wide-tracked because the user is transcribing it character by
+ * character into another window: GitHub's codes mix letters and digits, and
+ * `0`/`O` and `1`/`I` are the whole difference between signing in and being
+ * told the code was wrong. `user-select: all` so a single click takes the lot,
+ * for the people who will never notice the Copy button.
+ */
+.Code {
+  margin: 0 0 12px;
+  padding: 14px 12px;
+  text-align: center;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 28px;
+  line-height: 1.2;
+  letter-spacing: 0.18em;
+  /* The tracking is applied on the right of every glyph, including the last,
+     which shifts a centred string visibly left. Reclaimed. */
+  text-indent: 0.18em;
+  color: var(--theme-color-fg-highlight);
+  background-color: var(--theme-color-bg-1);
+  border: 1px solid var(--theme-color-bg-3);
+  border-radius: 4px;
+  user-select: all;
+}
+
+/*
+ * The verification URL, inline in the sentence. Marked as an address rather
+ * than styled as a link: it is not clickable — the browser is already open on
+ * it — and a fake link that does nothing is worse than none.
+ */
+.Url {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+  color: var(--theme-color-fg-highlight);
+  word-break: break-all;
+}

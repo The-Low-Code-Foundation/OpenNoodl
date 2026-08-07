@@ -1,0 +1,16 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/project-v2.json",
+  "name": "Hello Preview",
+  "id": "hello-preview-0001",
+  "version": "4",
+  "nodegxVersion": "1.1.0",
+  "rootNodeId": "app_router",
+  "settings": {
+    "htmlTitle": "Hello Preview",
+    "navigationPathType": "path"
+  },
+  "structure": {
+    "componentsDir": "components",
+    "assetsDir": "assets"
+  }
+}

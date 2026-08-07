@@ -1,0 +1,19 @@
+{
+  "label": "Form",
+  "description": "Component for creating dynamic forms.",
+  "type": "prefab",
+  "tags": [
+    "UI",
+    "Form",
+    "Data"
+  ],
+  "icon": "icon.png",
+  "docsPath": "/library/prefabs/form/",
+  "version": "0.5.0",
+  "minEditorVersion": "0.1.0",
+  "runtimeVersion": "2.7.0",
+  "provenance": {
+    "sourceUrl": "https://the-low-code-foundation.github.io/opennoodl-docs/library/prefabs/form/form-0-4.zip",
+    "importedAt": "2026-07-25"
+  }
+}

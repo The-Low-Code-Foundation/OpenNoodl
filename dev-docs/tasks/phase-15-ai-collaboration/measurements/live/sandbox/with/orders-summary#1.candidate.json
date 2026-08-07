@@ -1,0 +1,137 @@
+{
+  "component": {
+    "$schema": "https://opennoodl.dev/schemas/component-v2.json",
+    "id": "c6cf3da6-372c-46a4-b238-8dc5de3eb99b",
+    "name": "AIX Orders",
+    "path": "/Pages/AIX Orders",
+    "type": "page",
+    "created": "2026-08-02T17:24:13.278Z",
+    "modified": "2026-08-02T17:24:13.278Z",
+    "modifiedBy": "ai-authoring",
+    "description": "Orders page: shows a summary line with total order count and combined value, followed by every order in the Orders collection (order number, customer, total, status, date placed) sorted most recent first."
+  },
+  "nodes": {
+    "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+    "componentId": "c6cf3da6-372c-46a4-b238-8dc5de3eb99b",
+    "version": 1,
+    "nodes": [
+      {
+        "id": "root",
+        "type": "Group",
+        "label": "Page root",
+        "x": 0,
+        "y": 0,
+        "children": [
+          "summaryText",
+          "rowsText"
+        ],
+        "parameters": {
+          "flexDirection": "column",
+          "paddingTop": "var(--space-8)",
+          "paddingBottom": "var(--space-8)",
+          "paddingLeft": "var(--space-8)",
+          "paddingRight": "var(--space-8)",
+          "backgroundColor": "var(--background)",
+          "rowGap": "var(--space-6)",
+          "sizeMode": "explicit",
+          "width": {
+            "value": 100,
+            "unit": "%"
+          },
+          "height": {
+            "value": 100,
+            "unit": "%"
+          }
+        }
+      },
+      {
+        "id": "orders",
+        "type": "DbCollection2",
+        "label": "Orders collection query",
+        "x": -400,
+        "y": 0,
+        "parameters": {
+          "collectionName": "Orders"
+        }
+      },
+      {
+        "id": "summaryFn",
+        "type": "JavaScriptFunction",
+        "label": "Compute order count & total",
+        "x": -100,
+        "y": -150,
+        "parameters": {
+          "functionScript": "var items = Inputs.items || [];\nvar count = items.length;\nvar total = 0;\nfor (var i = 0; i < items.length; i++) {\n  total += Number(items[i].total) || 0;\n}\nOutputs.summaryText = count + (count === 1 ? ' order' : ' orders') + ', totaling $' + total.toFixed(2);"
+        }
+      },
+      {
+        "id": "rowsFn",
+        "type": "JavaScriptFunction",
+        "label": "Build sorted order rows text",
+        "x": -100,
+        "y": 150,
+        "parameters": {
+          "functionScript": "var items = (Inputs.items || []).slice();\nitems.sort(function(a, b) {\n  return new Date(b.placedAt) - new Date(a.placedAt);\n});\nvar lines = items.map(function(o) {\n  var date = o.placedAt ? new Date(o.placedAt).toLocaleDateString() : '';\n  return (o.orderNumber || '') + '   ' + (o.customerName || '') + '   $' + (Number(o.total) || 0).toFixed(2) + '   ' + (o.status || '') + '   ' + date;\n});\nOutputs.rowsText = lines.join('\\n');"
+        }
+      },
+      {
+        "id": "summaryText",
+        "type": "Text",
+        "label": "Order count & total line",
+        "x": 300,
+        "y": -150,
+        "parent": "root",
+        "parameters": {
+          "variant": "lead",
+          "text": "0 orders, totaling $0.00"
+        }
+      },
+      {
+        "id": "rowsText",
+        "type": "Text",
+        "label": "Order rows list",
+        "x": 300,
+        "y": 150,
+        "parent": "root",
+        "parameters": {
+          "variant": "code",
+          "text": ""
+        }
+      }
+    ],
+    "visualRoots": [
+      "root"
+    ]
+  },
+  "connections": {
+    "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+    "componentId": "c6cf3da6-372c-46a4-b238-8dc5de3eb99b",
+    "version": 1,
+    "connections": [
+      {
+        "fromId": "orders",
+        "fromProperty": "items",
+        "toId": "summaryFn",
+        "toProperty": "items"
+      },
+      {
+        "fromId": "orders",
+        "fromProperty": "items",
+        "toId": "rowsFn",
+        "toProperty": "items"
+      },
+      {
+        "fromId": "summaryFn",
+        "fromProperty": "summaryText",
+        "toId": "summaryText",
+        "toProperty": "text"
+      },
+      {
+        "fromId": "rowsFn",
+        "fromProperty": "rowsText",
+        "toId": "rowsText",
+        "toProperty": "text"
+      }
+    ]
+  }
+}

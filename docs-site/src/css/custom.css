@@ -1,0 +1,38 @@
+/**
+ * ALPHA-006 §2 — a light-touch pass against the editor's own design tokens
+ * (`packages/noodl-core-ui/src/styles/custom-properties/colors.css`), not a
+ * full port. Infima (Docusaurus's own CSS framework) already handles contrast,
+ * spacing and light/dark switching correctly; the only thing worth overriding
+ * is the accent, so NodeGX's docs read as the same product as the editor
+ * rather than a generic Docusaurus site with the serial numbers filed off.
+ */
+
+:root {
+  --ifm-color-primary: #1f6bc4;
+  --ifm-color-primary-dark: #1c60b0;
+  --ifm-color-primary-darker: #1a5aa5;
+  --ifm-color-primary-darkest: #164a88;
+  --ifm-color-primary-light: #2276d8;
+  --ifm-color-primary-lighter: #2c7cdb;
+  --ifm-color-primary-lightest: #4691e2;
+  --ifm-code-font-size: 90%;
+  --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.08);
+}
+
+/* Dark mode: the editor's own azure-500/400, against its near-black backgrounds. */
+[data-theme='dark'] {
+  --ifm-color-primary: #4da3ff;
+  --ifm-color-primary-dark: #2e86e8;
+  --ifm-color-primary-darker: #1f6bc4;
+  --ifm-color-primary-darkest: #17529a;
+  --ifm-color-primary-light: #74b8ff;
+  --ifm-color-primary-lighter: #9dccff;
+  --ifm-color-primary-lightest: #c8e2ff;
+  --ifm-background-color: #0b0e12;
+  --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.3);
+}
+
+.markdown h3 code,
+.markdown p code {
+  white-space: nowrap;
+}

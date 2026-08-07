@@ -1,0 +1,23 @@
+{
+  "typeName": "net.noodl.Now",
+  "summary": "The current date and time, as a Date, a millisecond timestamp and an ISO string. Re-read on demand.",
+  "description": "Now reads the wall clock when the node is created and again on every Read, and publishes the same instant in three shapes: a Date for the other date nodes, a millisecond timestamp for arithmetic and storage, and an ISO-8601 UTC string for a JSON body. The outputs hold the instant of the last Read — they are not a live clock, so a graph that wants a ticking value pairs this with a Timer. It reads Date.now(), which is the same clock in the browser, on the SSR server and in a cloud function.",
+  "whenToUse": "Stamping when something happened, comparing a stored date against the present, or computing a deadline together with Date Add. In a cloud function it is the server's clock, which is the one you want for anything a client should not be able to lie about.",
+  "ports": {
+    "read": "Signal; re-reads the clock and updates all three outputs.",
+    "date": "The instant of the last Read, for wiring into Date Add, Date Compare, Date Parts or Date To String.",
+    "timestamp": "The same instant as milliseconds since 1 January 1970 UTC.",
+    "iso": "The same instant as an ISO-8601 string in UTC — the shape to put in a JSON body or a record.",
+    "done": "Fires once the outputs hold the freshly-read instant.",
+    "completed": "Fires after every Read. This node has no other outcome."
+  },
+  "examples": [],
+  "patterns": [
+    "Request receive → Now Read, then Date → Date Compare: 'is this due date in the past', answered on the server's clock.",
+    "Now Date → Date Add (+30 days) → Date To String: a deadline, rendered."
+  ],
+  "antiPatterns": [
+    "Expecting the outputs to advance on their own. They hold the last Read; wire a Timer if you want them to tick."
+  ],
+  "relatedNodes": ["net.noodl.DateAdd", "net.noodl.DateCompare", "Date To String"]
+}

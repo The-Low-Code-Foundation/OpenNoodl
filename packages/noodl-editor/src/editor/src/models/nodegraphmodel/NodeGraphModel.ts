@@ -16,7 +16,20 @@ export type Connection = {
   fromId: string;
   toProperty: string;
   toId: string;
+  /** Diff/review presentation only — transient, never serialised (AIX-003). */
   annotation: 'Deleted' | 'Changed' | 'Created' | undefined;
+  /**
+   * Author-written text shown on the wire (CAN-002). Absent when never set —
+   * never `undefined` or `''`, so a wire that was clicked and left alone does
+   * not churn `project.json`.
+   *
+   * Flat keys rather than a nested `metadata`, matching the four above, and
+   * separate from `labelT` because they mean different things to version
+   * control: `label` is meaning, `labelT` is where it sits.
+   */
+  label?: string;
+  /** Normalised position of the label along the curve, 0.15–0.85 (CAN-001). */
+  labelT?: number;
 };
 
 type NodeGraphModelJson = {
@@ -34,7 +47,7 @@ export class NodeGraphModel extends Model {
   nodeMap: Map<string, NodeGraphNode>;
 
   public owner: ComponentModel;
-  typeModel: TSFixme;
+  boundTypeModels: Set<TSFixme>;
 
   private evaluatehealthScheduled: boolean;
   private updateTypesScheduled: boolean;
@@ -49,6 +62,7 @@ export class NodeGraphModel extends Model {
 
     //keep track of all nodes in a an id=>model map for better findNodeWithId() performance
     this.nodeMap = new Map();
+    this.boundTypeModels = new Set();
 
     this.bindModels();
   }
@@ -69,7 +83,8 @@ export class NodeGraphModel extends Model {
   dispose() {
     EventDispatcher.instance.off(this);
     NodeLibrary.instance.off(this);
-    this.typeModel?.off(this);
+    this.boundTypeModels.forEach((type) => type.off && type.off(this));
+    this.boundTypeModels.clear();
     this.removeAllListeners();
   }
 
@@ -161,21 +176,22 @@ export class NodeGraphModel extends Model {
     this.scheduleEvaluateHealth();
   }
 
-  // When a node instances of a ceratain type is used the type
-  // is bound, if port names are changed both connections and
-  // parameters must be updated
+  // When a node instance of a certain type is used the type is bound; if port
+  // names are changed both connections and parameters must be updated.
+  //
+  // A graph contains nodes of many types, so every distinct type stays bound
+  // (DEBT-004). The previous single `typeModel` slot meant each bind evicted
+  // the last one — whichever node type resolved most recently was the only one
+  // whose port renames propagated, which is why renaming a component port
+  // silently broke existing instance wirings.
   bindTypeModel(type) {
     const _this = this;
 
-    if (this.typeModel) {
-      this.typeModel.off(this);
-      this.typeModel = null;
-    }
-
     if (!type) return;
+    if (this.boundTypeModels.has(type)) return;
+    this.boundTypeModels.add(type);
 
-    this.typeModel = type;
-    this.typeModel.on(
+    type.on(
       'portRenamed',
       function (args) {
         // Rename all parameters for all nodes referencing
@@ -238,12 +254,38 @@ export class NodeGraphModel extends Model {
     });
   }
 
+  /**
+   * Re-point every reference to `oldPathPrefix` at `newPathPrefix`.
+   *
+   * A graph refers to a component in two different ways, and both have to move:
+   *
+   *  - **As a parameter value** — a `component`-typed port, e.g. a Router's
+   *    page. This is what the method originally handled.
+   *  - **As a node's type** — a component *instance*, where the reference lives
+   *    in `node.typename`. This was missed, so renaming a component on import
+   *    left instances of it pointing at the old name. That is worse than a
+   *    dangling reference when the old name still exists in the target (the
+   *    usual reason to rename rather than overwrite): the instance silently
+   *    binds to the target's unrelated component of that name. LIB-005 Success
+   *    Criterion 3, found by `tests/project/projectimportapply.js`.
+   */
   rerouteComponentRefs(oldPathPrefix, newPathPrefix) {
+    const reroute = (path: string) => newPathPrefix + path.substring(oldPathPrefix.length);
+
     this.forEachNode((n) => {
+      // Component instances carry the reference in their type name.
+      if (typeof n.typename === 'string' && n.typename.startsWith(oldPathPrefix)) {
+        // `type` is memoised off `typename`, so this goes through `retypeTo`,
+        // which drops the cache and lets it re-resolve against the new name.
+        n.retypeTo(reroute(n.typename));
+      }
+
       n.getPorts().forEach((p) => {
-        if (NodeLibrary.nameForPortType(p.type) === 'component' && n.parameters[p.name].startsWith(oldPathPrefix)) {
-          const oldPath = n.parameters[p.name];
-          n.parameters[p.name] = newPathPrefix + oldPath.substring(oldPathPrefix.length);
+        // A `component`-typed port with no value is legal — guard before
+        // reaching for `startsWith` on it.
+        const value = n.parameters[p.name];
+        if (NodeLibrary.nameForPortType(p.type) === 'component' && typeof value === 'string' && value.startsWith(oldPathPrefix)) {
+          n.parameters[p.name] = reroute(value);
         }
       });
     });
@@ -403,6 +445,46 @@ export class NodeGraphModel extends Model {
           }
         });
       }
+    }
+  }
+
+  /**
+   * Change a connection's own fields — its label and where that label sits
+   * (CAN-001/CAN-002). The third connection verb, beside add and remove.
+   *
+   * A change to `undefined` **deletes** the key rather than storing it: an
+   * empty label has to be indistinguishable from never having had one, or
+   * every wire that was ever clicked accumulates a dead key in `project.json`.
+   */
+  updateConnection(model: Connection, changes: Partial<Connection>, args?: TSFixme) {
+    const _this = this;
+    const keys = Object.keys(changes) as (keyof Connection)[];
+
+    const previous: Partial<Connection> = {};
+    for (const key of keys) previous[key] = model[key] as never;
+
+    function apply(values: Partial<Connection>) {
+      for (const key of Object.keys(values) as (keyof Connection)[]) {
+        if (values[key] === undefined) delete model[key];
+        else (model[key] as unknown) = values[key];
+      }
+      _this.notifyListeners('connectionUpdated', { model });
+    }
+
+    apply(changes);
+
+    if (args && args.undo) {
+      const undo = typeof args.undo === 'object' ? args.undo : UndoQueue.instance;
+
+      undo.push({
+        label: args.label,
+        do: function () {
+          apply(changes);
+        },
+        undo: function () {
+          apply(previous);
+        }
+      });
     }
   }
 

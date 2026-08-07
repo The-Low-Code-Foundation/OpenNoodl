@@ -1,0 +1,17 @@
+{
+  "typeName": "net.noodl.animatetovalue",
+  "summary": "Animate To Value: tweens its output toward whatever targetValue currently is, with duration, delay and easing.",
+  "description": "Animate To Value is the current general-purpose tween. Whenever `targetValue` changes, `currentValue` animates from wherever it is to the new target over `duration` ms with the chosen `easingCurve`; `atTargetValue` fires on arrival. It is retarget-safe: changing the target mid-flight redirects the animation smoothly instead of jumping.",
+  "whenToUse": "Smoothing any numeric change: positions, opacity, blend values for Color Blend. It supersedes the deprecated Transition/Animation nodes. For multi-property, state-shaped animation use States with transitions.",
+  "ports": {
+    "targetValue": "Number level; each change starts (or redirects) the tween toward it.",
+    "currentValue": "Number level streaming the animated value — wire to the visual input being animated.",
+    "atTargetValue": "Signal; the tween arrived. Sequence follow-ups here."
+  },
+  "examples": ["anim-hover-highlight"],
+  "patterns": [
+    "Boolean state → (boolean→number cast) → `targetValue`: a two-state tween in one wire.",
+    "`currentValue` → Color Blend `blendValue`: animated color transitions."
+  ],
+  "relatedNodes": ["States", "Color Blend", "Switch", "Number Remapper"]
+}

@@ -1,0 +1,1772 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NodeGX — Side panel concept</title>
+</head>
+<body>
+<style>
+/* =============================================================================
+   Tokens — identical values to nodegx-editor-mock.html / UIX-001 colors.css.
+   Light is the default; dark comes from the OS preference or [data-theme].
+   ========================================================================== */
+:root {
+  --page: #E7EBF1;
+  --bg-0: #EEF1F5; --bg-1: #FFFFFF; --bg-2: #F7F9FB; --bg-3: #ECF0F4; --bg-4: #E2E8EF;
+  --border-1: #E0E5EB; --border-2: #C9D2DC;
+  --fg-1: #18212B; --fg-2: #4A5663; --fg-3: #7C8894;
+  --accent: #1570EF; --accent-hover: #0E5FD0; --accent-fg: #FFFFFF; --accent-soft: rgba(21,112,239,.09);
+  --brand: #FF5A50;
+  --success: #12915B; --success-bg: rgba(18,145,91,.10);
+  --warning: #B54708; --warning-bg: rgba(247,144,9,.13);
+  --error: #D92D20; --error-bg: rgba(217,45,32,.10);
+  --node-visual: #2E7CD6; --node-data: #1E9E63; --node-logic: #B87E14; --node-function: #D6479A; --node-component: #7C5CE0;
+  --grid: rgba(23,32,43,.05);
+  --shadow-win: 0 24px 70px rgba(23,32,43,.18), 0 2px 8px rgba(23,32,43,.08);
+  --shadow-card: 0 1px 2px rgba(23,32,43,.06);
+  --shadow-pop: 0 10px 32px rgba(23,32,43,.16);
+  --shadow-float: 0 18px 48px rgba(23,32,43,.20), 0 2px 6px rgba(23,32,43,.10);
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --page: #07090C;
+    --bg-0: #0B0E12; --bg-1: #12161B; --bg-2: #181D24; --bg-3: #222933; --bg-4: #2B3441;
+    --border-1: #232A33; --border-2: #37404C;
+    --fg-1: #EEF2F6; --fg-2: #A6B0BB; --fg-3: #6B7682;
+    --accent: #4DA3FF; --accent-hover: #74B8FF; --accent-fg: #071627; --accent-soft: rgba(77,163,255,.13);
+    --brand: #FF6A5F;
+    --success: #3CCB7F; --success-bg: rgba(60,203,127,.12);
+    --warning: #FDB022; --warning-bg: rgba(253,176,34,.12);
+    --error: #F97066; --error-bg: rgba(249,112,102,.12);
+    --node-visual: #5CA9FF; --node-data: #45D08A; --node-logic: #F5B843; --node-function: #F776C4; --node-component: #A78BFA;
+    --grid: rgba(255,255,255,.045);
+    --shadow-win: 0 28px 80px rgba(0,0,0,.55), 0 2px 8px rgba(0,0,0,.4);
+    --shadow-card: 0 1px 2px rgba(0,0,0,.25);
+    --shadow-pop: 0 10px 36px rgba(0,0,0,.5);
+    --shadow-float: 0 20px 56px rgba(0,0,0,.6), 0 2px 6px rgba(0,0,0,.4);
+  }
+}
+:root[data-theme="light"] {
+  --page: #E7EBF1;
+  --bg-0: #EEF1F5; --bg-1: #FFFFFF; --bg-2: #F7F9FB; --bg-3: #ECF0F4; --bg-4: #E2E8EF;
+  --border-1: #E0E5EB; --border-2: #C9D2DC;
+  --fg-1: #18212B; --fg-2: #4A5663; --fg-3: #7C8894;
+  --accent: #1570EF; --accent-hover: #0E5FD0; --accent-fg: #FFFFFF; --accent-soft: rgba(21,112,239,.09);
+  --brand: #FF5A50;
+  --success: #12915B; --success-bg: rgba(18,145,91,.10);
+  --warning: #B54708; --warning-bg: rgba(247,144,9,.13);
+  --error: #D92D20; --error-bg: rgba(217,45,32,.10);
+  --node-visual: #2E7CD6; --node-data: #1E9E63; --node-logic: #B87E14; --node-function: #D6479A; --node-component: #7C5CE0;
+  --grid: rgba(23,32,43,.05);
+  --shadow-win: 0 24px 70px rgba(23,32,43,.18), 0 2px 8px rgba(23,32,43,.08);
+  --shadow-card: 0 1px 2px rgba(23,32,43,.06);
+  --shadow-pop: 0 10px 32px rgba(23,32,43,.16);
+  --shadow-float: 0 18px 48px rgba(23,32,43,.20), 0 2px 6px rgba(23,32,43,.10);
+}
+:root[data-theme="dark"] {
+  --page: #07090C;
+  --bg-0: #0B0E12; --bg-1: #12161B; --bg-2: #181D24; --bg-3: #222933; --bg-4: #2B3441;
+  --border-1: #232A33; --border-2: #37404C;
+  --fg-1: #EEF2F6; --fg-2: #A6B0BB; --fg-3: #6B7682;
+  --accent: #4DA3FF; --accent-hover: #74B8FF; --accent-fg: #071627; --accent-soft: rgba(77,163,255,.13);
+  --brand: #FF6A5F;
+  --success: #3CCB7F; --success-bg: rgba(60,203,127,.12);
+  --warning: #FDB022; --warning-bg: rgba(253,176,34,.12);
+  --error: #F97066; --error-bg: rgba(249,112,102,.12);
+  --node-visual: #5CA9FF; --node-data: #45D08A; --node-logic: #F5B843; --node-function: #F776C4; --node-component: #A78BFA;
+  --grid: rgba(255,255,255,.045);
+  --shadow-win: 0 28px 80px rgba(0,0,0,.55), 0 2px 8px rgba(0,0,0,.4);
+  --shadow-card: 0 1px 2px rgba(0,0,0,.25);
+  --shadow-pop: 0 10px 36px rgba(0,0,0,.5);
+  --shadow-float: 0 20px 56px rgba(0,0,0,.6), 0 2px 6px rgba(0,0,0,.4);
+}
+
+/* ---------- page ---------------------------------------------------------- */
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--page); color: var(--fg-1);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  font-size: 13px; -webkit-font-smoothing: antialiased;
+}
+.page { max-width: 1440px; margin: 0 auto; padding: 40px 24px 96px; display: flex; flex-direction: column; gap: 56px; }
+
+.mast { display: flex; align-items: flex-end; gap: 24px; flex-wrap: wrap; }
+.mast h1 { margin: 0; font-size: 30px; font-weight: 650; letter-spacing: -.02em; text-wrap: balance; }
+.mast .sub { margin: 8px 0 0; color: var(--fg-2); font-size: 14.5px; line-height: 1.55; max-width: 66ch; }
+.mast .spacer { flex: 1; }
+.eyebrow { font-size: 10.5px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--fg-3); }
+.eyebrow .dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--brand); margin-right: 7px; vertical-align: 1px; }
+
+.themeToggle {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: var(--bg-1); border: 1px solid var(--border-1); border-radius: 8px;
+  padding: 6px 12px; color: var(--fg-2); font: inherit; font-size: 12.5px; font-weight: 600; cursor: pointer;
+  box-shadow: var(--shadow-card);
+}
+.themeToggle:hover { color: var(--fg-1); border-color: var(--border-2); }
+
+section > h2 {
+  margin: 0 0 6px; font-size: 20px; font-weight: 650; letter-spacing: -.01em;
+}
+section > .lede { margin: 0 0 22px; color: var(--fg-2); font-size: 14px; line-height: 1.6; max-width: 74ch; }
+section > .lede code, .mono { font-family: ui-monospace, 'SF Mono', SFMono-Regular, Menlo, monospace; font-size: .92em; }
+section > .lede code { background: var(--bg-3); border-radius: 4px; padding: 1px 5px; color: var(--fg-1); }
+.hr { height: 1px; background: var(--border-1); border: 0; margin: 0; }
+
+/* ---------- findings ----------------------------------------------------- */
+.findings { display: grid; gap: 10px; }
+.finding {
+  display: grid; grid-template-columns: 4px 1fr; gap: 0;
+  background: var(--bg-1); border: 1px solid var(--border-1); border-radius: 10px;
+  overflow: hidden; box-shadow: var(--shadow-card);
+}
+.finding > .stripe { background: var(--fg-3); }
+.finding.sev-bug > .stripe { background: var(--error); }
+.finding.sev-friction > .stripe { background: var(--warning); }
+.finding.sev-polish > .stripe { background: var(--accent); }
+.finding > .fbody { padding: 13px 16px 14px; display: grid; gap: 5px; }
+.finding .ftop { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.finding h3 { margin: 0; font-size: 13.5px; font-weight: 650; }
+.finding .tag {
+  font-size: 10px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+  padding: 2px 6px; border-radius: 5px;
+}
+.sev-bug .tag { background: var(--error-bg); color: var(--error); }
+.sev-friction .tag { background: var(--warning-bg); color: var(--warning); }
+.sev-polish .tag { background: var(--accent-soft); color: var(--accent); }
+.finding p { margin: 0; color: var(--fg-2); font-size: 12.8px; line-height: 1.58; max-width: 96ch; }
+.finding .where {
+  font-family: ui-monospace, 'SF Mono', SFMono-Regular, Menlo, monospace;
+  font-size: 11.5px; color: var(--fg-3);
+}
+
+/* ---------- window frame ------------------------------------------------- */
+.stage { display: flex; flex-direction: column; gap: 14px; }
+.stageBar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.seg {
+  display: inline-flex; background: var(--bg-3); border-radius: 8px; padding: 3px; gap: 2px;
+}
+.seg button {
+  border: 0; background: none; font: inherit; font-size: 12.5px; font-weight: 600; color: var(--fg-2);
+  padding: 6px 12px; border-radius: 6px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;
+}
+.seg button:hover { color: var(--fg-1); }
+.seg button[aria-pressed="true"] { background: var(--bg-1); color: var(--fg-1); box-shadow: var(--shadow-card); }
+.readout {
+  font-family: ui-monospace, 'SF Mono', SFMono-Regular, Menlo, monospace; font-size: 11.5px;
+  color: var(--fg-2); background: var(--bg-1); border: 1px solid var(--border-1);
+  border-radius: 7px; padding: 5px 10px; font-variant-numeric: tabular-nums;
+}
+.readout b { color: var(--fg-1); font-weight: 650; }
+.hint { color: var(--fg-3); font-size: 12px; }
+.kbd {
+  font-family: ui-monospace, 'SF Mono', SFMono-Regular, Menlo, monospace; font-size: 11px;
+  background: var(--bg-1); border: 1px solid var(--border-2); border-bottom-width: 2px;
+  border-radius: 5px; padding: 1px 5px; color: var(--fg-2);
+}
+
+.win {
+  height: 700px; background: var(--bg-0);
+  border: 1px solid var(--border-1); border-radius: 12px;
+  box-shadow: var(--shadow-win); overflow: hidden;
+  display: flex; flex-direction: column;
+}
+.toolbar {
+  height: 50px; flex: none; background: var(--bg-1); border-bottom: 1px solid var(--border-1);
+  display: flex; align-items: center; gap: 8px; padding: 0 14px;
+}
+.lights { display: flex; gap: 8px; margin-right: 8px; }
+.lights i { width: 11px; height: 11px; border-radius: 50%; display: block; }
+.lights i:nth-child(1) { background: #FF5F57; } .lights i:nth-child(2) { background: #FEBC2E; } .lights i:nth-child(3) { background: #28C840; }
+.route {
+  display: inline-flex; align-items: center; gap: 8px; background: var(--bg-2);
+  border: 1px solid var(--border-1); border-radius: 8px; padding: 6px 12px; color: var(--fg-2); min-width: 280px;
+}
+.route .proj { font-weight: 650; color: var(--fg-1); }
+.route .path { font-family: ui-monospace, 'SF Mono', SFMono-Regular, Menlo, monospace; font-size: 12px; }
+.toolbar .spacer { flex: 1; }
+.btnPrimary {
+  background: var(--accent); color: var(--accent-fg); border: 0; border-radius: 7px;
+  padding: 7px 14px; font: inherit; font-size: 12.5px; font-weight: 650; cursor: pointer;
+}
+.btnPrimary:hover { background: var(--accent-hover); }
+.chipWarn {
+  display: inline-flex; align-items: center; gap: 5px; background: var(--warning-bg); color: var(--warning);
+  border-radius: 7px; padding: 5px 9px; font-weight: 650; font-size: 12px; border: 0; font-family: inherit;
+}
+
+/* ---------- window body / modes ------------------------------------------ */
+.wbody { flex: 1; min-height: 0; display: flex; position: relative; }
+
+.rail {
+  width: 52px; flex: none; background: var(--bg-1); border-right: 1px solid var(--border-1);
+  display: flex; flex-direction: column; align-items: center; padding: 10px 0; gap: 4px; z-index: 3;
+}
+.rail .railSpacer { flex: 1; }
+.brand {
+  width: 34px; height: 34px; border-radius: 7px; border: 0; background: none; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; margin-bottom: 6px;
+}
+.brand span { width: 10px; height: 10px; border-radius: 50%; background: var(--brand); display: block; }
+.brand:hover { background: var(--bg-3); }
+.ibtn {
+  width: 34px; height: 34px; border-radius: 7px; border: 0; background: none; color: var(--fg-3);
+  display: inline-flex; align-items: center; justify-content: center; cursor: pointer; flex: none;
+  position: relative;
+}
+.ibtn:hover { background: var(--bg-3); color: var(--fg-1); }
+.ibtn[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent); }
+.ibtn:focus-visible, .seg button:focus-visible, .themeToggle:focus-visible, .btnPrimary:focus-visible,
+.tbtn:focus-visible, .row input:focus-visible, .sbtn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+/* bg-1 as the badge's text colour keeps it legible in both themes: white on the
+   dark amber of light mode, near-black on the bright amber of dark mode. */
+.ibtn .badge {
+  position: absolute; top: 3px; right: 2px; min-width: 15px; height: 15px; border-radius: 8px;
+  background: var(--warning); color: var(--bg-1); font-size: 9.5px; font-weight: 700; line-height: 15px;
+  padding: 0 3px; box-shadow: 0 0 0 2px var(--bg-1);
+}
+
+/* the panel itself */
+.panel {
+  width: var(--pw, 380px); flex: none; min-width: 0;
+  background: var(--bg-2); border-right: 1px solid var(--border-1);
+  display: flex; flex-direction: column; position: relative; z-index: 2;
+  /* the header is width-aware too, not just the body */
+  container-type: inline-size; container-name: panelframe;
+}
+.divider {
+  width: 8px; margin: 0 -4px; flex: none; cursor: col-resize; z-index: 4; position: relative;
+  background: none; border: 0; padding: 0;
+}
+.divider::after {
+  content: ''; position: absolute; inset: 0 3px; background: transparent; transition: background 120ms ease;
+}
+.divider:hover::after, .divider.dragging::after { background: var(--accent); }
+.canvas { flex: 1; min-width: 0; position: relative; overflow: hidden; background: var(--bg-0); }
+
+/* mode: wide — just a bigger --pw (set in JS), no structural change */
+
+/* mode: float */
+.wbody[data-mode="float"] .panel {
+  position: absolute; top: 14px; left: 66px; height: calc(100% - 28px);
+  border: 1px solid var(--border-1); border-radius: 10px; box-shadow: var(--shadow-float);
+  overflow: hidden; z-index: 5;
+}
+.wbody[data-mode="float"] .divider { display: none; }
+.wbody[data-mode="float"] .panel .phead { cursor: grab; }
+.wbody[data-mode="float"] .panel .phead:active { cursor: grabbing; }
+.wbody[data-mode="float"] .floatGrip { display: block; }
+.floatGrip {
+  display: none; position: absolute; right: 0; top: 44px; bottom: 0; width: 8px; cursor: col-resize; z-index: 6;
+}
+.floatGrip:hover { background: var(--accent); opacity: .5; }
+
+/* mode: full */
+.wbody[data-mode="full"] .panel {
+  position: absolute; inset: 0 0 0 52px; width: auto; height: 100%; border-right: 0; z-index: 5;
+}
+.wbody[data-mode="full"] .divider { display: none; }
+
+/* mode: collapsed */
+.wbody[data-mode="collapsed"] .panel { display: none; }
+.wbody[data-mode="collapsed"] .divider { display: none; }
+
+/* ---------- panel chrome ------------------------------------------------- */
+.phead {
+  height: 44px; flex: none; display: flex; align-items: center; gap: 4px;
+  padding: 0 6px 0 14px; background: var(--bg-2); border-bottom: 1px solid var(--border-1);
+  user-select: none;
+}
+.phead .ptitle {
+  font-size: 13px; font-weight: 650; color: var(--fg-1); letter-spacing: -.005em;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.phead .pspacer { flex: 1; min-width: 4px; }
+.tbtn {
+  width: 27px; height: 27px; border-radius: 6px; border: 0; background: none; color: var(--fg-3);
+  display: inline-flex; align-items: center; justify-content: center; cursor: pointer; flex: none;
+}
+.tbtn:hover { background: var(--bg-3); color: var(--fg-1); }
+.tbtn[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent); }
+.modeGroup { display: flex; gap: 2px; padding-left: 6px; margin-left: 2px; border-left: 1px solid var(--border-1); }
+/* Narrow panels keep only the two controls you reach for — widen and hide.
+   Float and Full move into the overflow menu rather than squeezing the title. */
+#btnMore { display: none; }
+@container panelframe (max-width: 359px) {
+  #btnFloat, #btnFull { display: none; }
+  #btnMore { display: inline-flex; }
+}
+
+.pbody {
+  flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain;
+  container-type: inline-size; container-name: panel;
+  scrollbar-gutter: stable;
+}
+.pbody > .pinner { padding: 12px 12px 32px; display: flex; flex-direction: column; gap: 14px; }
+.pbody > .pinner > * { flex: 0 0 auto; }
+.pbody::-webkit-scrollbar { width: 10px; }
+.pbody::-webkit-scrollbar-track { background: transparent; }
+.pbody::-webkit-scrollbar-thumb { background: var(--border-2); border-radius: 99px; border: 3px solid var(--bg-2); }
+.pbody::-webkit-scrollbar-thumb:hover { background: var(--fg-3); }
+
+/* section inside a panel */
+.psec { border: 1px solid var(--border-1); border-radius: 9px; background: var(--bg-1); overflow: hidden; }
+.psec > header {
+  height: 36px; display: flex; align-items: center; gap: 8px; padding: 0 6px 0 12px; cursor: pointer;
+  background: var(--bg-1); border-bottom: 1px solid var(--border-1);
+}
+.psec > header h4 { margin: 0; font-size: 12px; font-weight: 650; color: var(--fg-1); flex: 1; }
+.psec > header .caret { color: var(--fg-3); transition: transform 140ms ease; }
+.psec[data-open="false"] > header { border-bottom-color: transparent; }
+.psec[data-open="false"] > header .caret { transform: rotate(-90deg); }
+.psec[data-open="false"] > .psecBody { display: none; }
+.psecBody { padding: 12px; display: flex; flex-direction: column; gap: 10px; }
+.psecBody > * { flex: 0 0 auto; }
+.groupLabel {
+  font-size: 10.5px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--fg-3);
+  padding: 2px 0;
+}
+
+/* the responsive row — this is the whole responsiveness answer */
+.row { display: grid; grid-template-columns: 104px minmax(0, 1fr); gap: 8px; align-items: center; }
+.row > .rlabel { font-size: 12px; color: var(--fg-2); min-width: 0; overflow-wrap: break-word; }
+.row > .rctl { min-width: 0; display: flex; align-items: center; gap: 6px; }
+@container panel (max-width: 339px) {
+  .row { grid-template-columns: minmax(0, 1fr); gap: 4px; }
+  .row > .rlabel { font-size: 11.5px; color: var(--fg-3); font-weight: 600; }
+}
+@container panel (min-width: 560px) {
+  .row { grid-template-columns: 132px minmax(0, 1fr); }
+  .cardGrid { grid-template-columns: 1fr 1fr; }
+}
+.help { font-size: 11.5px; color: var(--fg-3); line-height: 1.55; }
+.input {
+  width: 100%; min-width: 0; background: var(--bg-1); border: 1px solid var(--border-1); border-radius: 6px;
+  padding: 6px 9px; font: inherit; font-size: 12.5px; color: var(--fg-1);
+}
+.input:focus { border-color: var(--accent); outline: 0; box-shadow: 0 0 0 3px var(--accent-soft); }
+select.input { appearance: none; background-image: none; cursor: pointer; }
+.toggle {
+  width: 36px; height: 20px; border-radius: 99px; background: var(--bg-4); border: 0; cursor: pointer;
+  position: relative; flex: none; transition: background 140ms ease;
+}
+.toggle::after {
+  content: ''; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%;
+  background: var(--bg-1); box-shadow: var(--shadow-card); transition: transform 140ms ease;
+}
+.toggle[aria-pressed="true"] { background: var(--accent); }
+.toggle[aria-pressed="true"]::after { transform: translateX(16px); }
+.sbtn {
+  border: 1px solid var(--border-1); background: var(--bg-1); color: var(--fg-1); border-radius: 6px;
+  padding: 6px 11px; font: inherit; font-size: 12px; font-weight: 600; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 6px; justify-content: center; min-width: 0;
+}
+.sbtn:hover { background: var(--bg-3); }
+.sbtn.accent { background: var(--accent); border-color: var(--accent); color: var(--accent-fg); }
+.sbtn.accent:hover { background: var(--accent-hover); }
+.sbtn.danger { color: var(--error); border-color: var(--border-1); }
+.sbtn.danger:hover { background: var(--error-bg); }
+
+/* status pill */
+.pill {
+  display: inline-flex; align-items: center; gap: 5px; border-radius: 99px; padding: 3px 9px;
+  font-size: 11px; font-weight: 650; flex: none;
+}
+.pill.ok { background: var(--success-bg); color: var(--success); }
+.pill.off { background: var(--bg-3); color: var(--fg-3); }
+.pill i { width: 6px; height: 6px; border-radius: 50%; background: currentColor; display: block; }
+
+/* ---------- components tree --------------------------------------------- */
+.tree { display: flex; flex-direction: column; }
+.tfilter { padding: 8px 10px 6px; position: sticky; top: 0; background: var(--bg-2); z-index: 1; }
+.tfilterInner { position: relative; }
+.tfilterInner svg { position: absolute; left: 8px; top: 50%; transform: translateY(-50%); color: var(--fg-3); }
+.tfilterInner input { padding-left: 28px; }
+.trow {
+  display: flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px 0 6px;
+  cursor: pointer; color: var(--fg-2); font-size: 12px; position: relative; border-radius: 0;
+}
+.trow:hover { background: var(--bg-3); }
+.trow .caret { width: 14px; flex: none; color: var(--fg-3); display: flex; align-items: center; justify-content: center; }
+.trow .caret svg { transition: transform 120ms ease; }
+.trow.open > .caret svg { transform: rotate(90deg); }
+.trow .tglyph { width: 16px; flex: none; display: flex; align-items: center; justify-content: center; }
+.trow .tlabel { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.trow.folder .tlabel { font-weight: 600; color: var(--fg-2); }
+.trow.sel { background: var(--accent-soft); color: var(--fg-1); }
+.trow.sel .tlabel { font-weight: 650; }
+.trow.sel::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 2px; background: var(--accent); }
+.trow .tdot { width: 6px; height: 6px; border-radius: 50%; background: var(--warning); flex: none; }
+.trow .thome { color: var(--brand); flex: none; display: flex; }
+.g-visual { color: var(--node-visual); } .g-data { color: var(--node-data); }
+.g-logic { color: var(--node-logic); } .g-comp { color: var(--node-component); } .g-fn { color: var(--node-function); }
+.indent-1 { padding-left: 20px; } .indent-2 { padding-left: 34px; } .indent-3 { padding-left: 48px; }
+.tguide { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--border-1); }
+
+/* ---------- canvas ------------------------------------------------------- */
+.canvasGrid {
+  position: absolute; inset: 0;
+  background-image: radial-gradient(var(--grid) 1px, transparent 1px);
+  background-size: 22px 22px;
+}
+.node {
+  position: absolute; width: 158px; background: var(--bg-1); border: 1px solid var(--border-1);
+  border-radius: 8px; box-shadow: var(--shadow-card); overflow: hidden;
+}
+.node .nbar { height: 3px; }
+.node .nbody { padding: 8px 10px; display: flex; align-items: center; gap: 7px; }
+.node .nname { font-size: 12px; font-weight: 600; color: var(--fg-1); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.node.sel { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft), var(--shadow-card); }
+.wire { position: absolute; pointer-events: none; overflow: visible; }
+.canvasHint {
+  position: absolute; bottom: 14px; left: 50%; transform: translateX(-50%);
+  background: var(--bg-1); border: 1px solid var(--border-1); border-radius: 8px;
+  padding: 7px 13px; font-size: 12px; color: var(--fg-2); box-shadow: var(--shadow-card); white-space: nowrap;
+}
+
+/* ---------- comparison pairs -------------------------------------------- */
+.pairs { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 22px; align-items: start; }
+.pair { display: flex; flex-direction: column; gap: 9px; }
+.pairHead { display: flex; align-items: baseline; gap: 8px; }
+.pairHead h3 { margin: 0; font-size: 13px; font-weight: 650; }
+.pairHead .badge2 {
+  font-size: 10px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase;
+  padding: 2px 7px; border-radius: 5px; background: var(--bg-3); color: var(--fg-3);
+}
+.pairHead .badge2.now { background: var(--error-bg); color: var(--error); }
+.pairHead .badge2.next { background: var(--success-bg); color: var(--success); }
+.frame {
+  background: var(--bg-2); border: 1px solid var(--border-1); border-radius: 10px;
+  box-shadow: var(--shadow-card); overflow: hidden; display: flex; flex-direction: column;
+}
+.frame.h280 { height: 300px; }
+.frame.hauto { }
+.pair .note { color: var(--fg-3); font-size: 12px; line-height: 1.55; }
+.pair .note b { color: var(--fg-2); font-weight: 650; }
+
+/* legacy re-creations (deliberately faithful to today's editor) */
+.oldHead {
+  height: 36px; flex: none; display: flex; align-items: center; justify-content: space-between;
+  padding: 0 10px; background: var(--bg-3); border-bottom: 1px solid var(--bg-2);
+  color: var(--fg-1); font-size: 12px;
+}
+.oldRow { display: flex; align-items: center; gap: 6px; padding: 6px 10px; font-size: 11px; color: var(--fg-2); cursor: pointer; }
+.oldRow:hover { background: var(--bg-3); }
+.oldRow.sel { background: var(--accent-soft); color: var(--accent); }
+.oldRow .oldGlyph { width: 16px; color: var(--fg-2); display: flex; }
+.oldFakeField {
+  border: 1px solid var(--border-1); background: var(--bg-1); border-radius: 6px; padding: 7px 9px;
+  font-size: 14.5px; font-weight: 600; color: var(--fg-1); flex: 1; min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.overflowDemo { display: flex; gap: 6px; overflow: hidden; }
+.overflowDemo .sbtn { flex: none; }
+.clip { position: relative; }
+.clipEdge {
+  position: absolute; left: 0; right: 0; bottom: 0; height: 34px;
+  background: repeating-linear-gradient(-45deg, var(--error-bg) 0 6px, transparent 6px 12px);
+  border-top: 1px dashed var(--error); pointer-events: none;
+}
+.clipEdge span {
+  position: absolute; right: 8px; bottom: 6px; font-size: 10.5px; font-weight: 700; color: var(--error);
+  letter-spacing: .04em; text-transform: uppercase;
+}
+
+/* ---------- responsive triptych ---------------------------------------- */
+.triptych { display: flex; gap: 22px; align-items: start; flex-wrap: wrap; }
+.trip { display: flex; flex-direction: column; gap: 9px; }
+.trip .tripHead { display: flex; align-items: baseline; gap: 8px; }
+.trip .tripHead b { font-size: 13px; font-weight: 650; }
+.trip .tripHead span { font-family: ui-monospace, 'SF Mono', SFMono-Regular, Menlo, monospace; font-size: 11.5px; color: var(--fg-3); }
+.trip .frame { height: 540px; }
+
+/* ---------- build order ------------------------------------------------- */
+.steps { display: grid; gap: 2px; background: var(--border-1); border: 1px solid var(--border-1); border-radius: 10px; overflow: hidden; }
+.step { background: var(--bg-1); padding: 14px 16px; display: grid; grid-template-columns: 92px 1fr; gap: 16px; align-items: baseline; }
+.step .sk { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--fg-3); }
+.step .sv { display: grid; gap: 4px; }
+.step h4 { margin: 0; font-size: 13.5px; font-weight: 650; }
+.step p { margin: 0; color: var(--fg-2); font-size: 12.8px; line-height: 1.58; }
+@media (max-width: 640px) { .step { grid-template-columns: 1fr; gap: 4px; } }
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; animation: none !important; }
+}
+</style>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-grid" viewBox="0 0 16 16"><g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><rect x="2" y="2" width="5" height="5" rx="1.2"/><rect x="9" y="2" width="5" height="5" rx="1.2"/><rect x="2" y="9" width="5" height="5" rx="1.2"/><rect x="9" y="9" width="5" height="5" rx="1.2"/></g></symbol>
+  <symbol id="i-search" viewBox="0 0 16 16"><g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="7" cy="7" r="4.3"/><path d="M10.2 10.2 14 14"/></g></symbol>
+  <symbol id="i-wand" viewBox="0 0 16 16"><g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 13 11 5"/><path d="m10 3 .8 1.7L12.5 5.5l-1.7.8L10 8l-.8-1.7L7.5 5.5l1.7-.8z"/><path d="M13 9.5l.5 1 1 .5-1 .5-.5 1-.5-1-1-.5 1-.5z"/></g></symbol>
+  <symbol id="i-pencil" viewBox="0 0 16 16"><g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M11.4 2.6a1.6 1.6 0 0 1 2.2 2.2L5.5 12.9 2.5 13.5l.6-3z"/></g></symbol>
+  <symbol id="i-warn" viewBox="0 0 16 16"><g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2.4 14.4 13.4H1.6z"/><path d="M8 6.4v3.1"/><circle cx="8" cy="11.5" r=".55" fill="currentColor" stroke="none"/></g></symbol>
+  <symbol id="i-branch" viewBox="0 0 16 16"><g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="4.5" cy="3.5" r="1.8"/><circle cx="4.5" cy="12.5" r="1.8"/><circle cx="11.5" cy="6.5" r="1.8"/><path d="M4.5 5.3v5.4M4.5 9.5h4a3 3 0 0 0 3-1.2"/></g></symbol>
+  <symbol id="i-link" viewBox="0 0 16 16"><g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M6.6 9.4 9.4 6.6"/><path d="M7.6 4.6 9 3.2a2.7 2.7 0 0 1 3.8 3.8L11.4 8.4"/><path d="M8.4 11.4 7 12.8A2.7 2.7 0 0 1 3.2 9L4.6 7.6"/></g></symbol>
+  <symbol id="i-braces" viewBox="0 0 16 16"><g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2.5C4.3 2.5 4.6 6 3 8c1.6 2 1.3 5.5 3 5.5"/><path d="M10 2.5c1.7 0 1.4 3.5 3 5.5-1.6 2-1.3 5.5-3 5.5"/></g></symbol>
+  <!-- A cog, not a sun: thick ring, short fat teeth, visible hub. -->
+  <symbol id="i-gear" viewBox="0 0 16 16"><g fill="none" stroke="currentColor"><circle cx="8" cy="8" r="4.4" stroke-width="1.7"/><circle cx="8" cy="8" r="1.6" stroke-width="1.5"/><g stroke-width="2.1" stroke-linecap="butt"><path d="M12.4 8h1.9M1.7 8h1.9M8 12.4v1.9M8 1.7v1.9M11.11 11.11l1.34 1.34M3.55 3.55l1.34 1.34M4.89 11.11l-1.34 1.34M11.11 4.89l1.34-1.34"/></g></g></symbol>
+  <symbol id="i-sun" viewBox="0 0 16 16"><g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="8" cy="8" r="2.8"/><path d="M8 1.4v1.5M8 13.1v1.5M2.3 2.3l1.1 1.1M12.6 12.6l1.1 1.1M1.4 8h1.5M13.1 8h1.5M2.3 13.7l1.1-1.1M12.6 3.4l1.1-1.1"/></g></symbol>
+  <symbol id="i-sliders" viewBox="0 0 16 16"><g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M2.5 4.5h11M2.5 11.5h11"/><circle cx="6" cy="4.5" r="1.7" fill="var(--bg-1)"/><circle cx="10.5" cy="11.5" r="1.7" fill="var(--bg-1)"/></g></symbol>
+  <symbol id="i-chevR" viewBox="0 0 16 16"><path d="m6.2 4 4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-chevD" viewBox="0 0 16 16"><path d="m4 6.2 4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <!-- Widen / narrow: arrows leaving (or meeting) a fixed centre line, so the
+       gesture reads as "make this column wider", not as code brackets. -->
+  <symbol id="i-wide" viewBox="0 0 16 16"><g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2.6v10.8"/><path d="M5.4 8H1.9M3.6 5.9 1.5 8l2.1 2.1"/><path d="M10.6 8h3.5M12.4 5.9 14.5 8l-2.1 2.1"/></g></symbol>
+  <symbol id="i-narrow" viewBox="0 0 16 16"><g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2.6v10.8"/><path d="M1.9 8h3.5M3.3 5.9 5.4 8l-2.1 2.1"/><path d="M14.1 8h-3.5M12.7 5.9 10.6 8l2.1 2.1"/></g></symbol>
+  <symbol id="i-float" viewBox="0 0 16 16"><g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><rect x="1.8" y="1.8" width="9" height="9" rx="1.5"/><rect x="5.2" y="5.2" width="9" height="9" rx="1.5" fill="var(--bg-2)"/></g></symbol>
+  <symbol id="i-full" viewBox="0 0 16 16"><g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 6V2.5H6M10 2.5h3.5V6M13.5 10v3.5H10M6 13.5H2.5V10"/></g></symbol>
+  <symbol id="i-collapse" viewBox="0 0 16 16"><g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 4 5.5 8l4 4"/><path d="M12.5 3v10"/></g></symbol>
+  <symbol id="i-dots" viewBox="0 0 16 16"><g fill="currentColor"><circle cx="4" cy="8" r="1.3"/><circle cx="8" cy="8" r="1.3"/><circle cx="12" cy="8" r="1.3"/></g></symbol>
+  <symbol id="i-trash" viewBox="0 0 16 16"><g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2.8 4.5h10.4M6 4.5V3h4v1.5M4.4 4.5l.7 8.2h5.8l.7-8.2"/></g></symbol>
+  <symbol id="i-q" viewBox="0 0 16 16"><g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="8" cy="8" r="6"/><path d="M6.3 6.2a1.8 1.8 0 1 1 2.6 1.6c-.6.3-.9.7-.9 1.3"/><circle cx="8" cy="11.3" r=".55" fill="currentColor" stroke="none"/></g></symbol>
+  <symbol id="i-check" viewBox="0 0 16 16"><path d="m3.5 8.4 3 3 6-6.4" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-x" viewBox="0 0 16 16"><path d="m4.2 4.2 7.6 7.6M11.8 4.2l-7.6 7.6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 16 16"><path d="M8 3.2v9.6M3.2 8h9.6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></symbol>
+  <symbol id="i-copy" viewBox="0 0 16 16"><g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><rect x="5.5" y="5.5" width="8" height="8" rx="1.5"/><path d="M10.5 3.2A1.7 1.7 0 0 0 8.8 2.5h-5A1.3 1.3 0 0 0 2.5 3.8v5c0 .7.4 1.3 1 1.6"/></g></symbol>
+  <symbol id="i-folder" viewBox="0 0 16 16"><path d="M2 4.4c0-.6.5-1.1 1.1-1.1h2.6l1.3 1.5h5c.6 0 1 .5 1 1.1v6c0 .6-.4 1.1-1 1.1H3.1c-.6 0-1.1-.5-1.1-1.1z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></symbol>
+  <symbol id="i-page" viewBox="0 0 16 16"><g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><rect x="2.5" y="2.5" width="11" height="11" rx="1.6"/><path d="M2.5 6h11"/></g></symbol>
+  <symbol id="i-popup" viewBox="0 0 16 16"><g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><rect x="2.2" y="3.6" width="11.6" height="8.8" rx="1.6"/><path d="M5.4 7.2h5.2M5.4 9.8h3.2"/></g></symbol>
+  <symbol id="i-logic" viewBox="0 0 16 16"><g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="4.2" cy="4.2" r="1.6"/><circle cx="4.2" cy="11.8" r="1.6"/><circle cx="11.8" cy="8" r="1.6"/><path d="M5.8 4.8l4.6 2.4M5.8 11.2l4.6-2.4"/></g></symbol>
+  <symbol id="i-comp" viewBox="0 0 16 16"><path d="M8 2.2 13.8 8 8 13.8 2.2 8z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></symbol>
+  <symbol id="i-home" viewBox="0 0 16 16"><path d="M8 2.2 2.4 6.8v6.4h4.2V9.9h2.8v3.3h4.2V6.8z" fill="currentColor"/></symbol>
+  <symbol id="i-db" viewBox="0 0 16 16"><g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><ellipse cx="8" cy="4" rx="5.2" ry="2.1"/><path d="M2.8 4v8c0 1.2 2.3 2.1 5.2 2.1s5.2-.9 5.2-2.1V4"/></g></symbol>
+  <symbol id="i-key" viewBox="0 0 16 16"><g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="5.4" cy="10.6" r="2.6"/><path d="M7.3 8.7 13 3M10.6 5.4l1.6 1.6"/></g></symbol>
+</svg>
+
+<div class="page">
+
+  <!-- ===================================================================== -->
+  <header class="mast">
+    <div>
+      <p class="eyebrow"><span class="dot"></span>NodeGX · editor concept</p>
+      <h1>The side panel, reconsidered</h1>
+      <p class="sub">
+        Six real defects, one structural idea, and a per-panel restyle. Everything below is built on the
+        UIX-001 tokens already in <span class="mono">colors.css</span> — same azure accent, same coral brand
+        dot, same light/dark ladder. The editor window in the next section is live: click the rail, drag the
+        divider, switch modes.
+      </p>
+    </div>
+    <div class="spacer"></div>
+    <button class="themeToggle" id="themeBtn" type="button">
+      <svg width="15" height="15" aria-hidden="true"><use href="#i-sun"/></svg>
+      <span id="themeLabel">Dark</span>
+    </button>
+  </header>
+
+  <!-- ===================================================================== -->
+  <section>
+    <h2>What's actually wrong</h2>
+    <p class="lede">
+      Two of these are bugs with a single root cause each — worth fixing before any restyle, because they're
+      why the panel <em>feels</em> broken rather than just plain.
+    </p>
+
+    <div class="findings">
+
+      <article class="finding sev-bug">
+        <div class="stripe"></div>
+        <div class="fbody">
+          <div class="ftop"><h3>Settings panels get squeezed instead of scrolling</h3><span class="tag">Bug</span></div>
+          <p>
+            The last section's help text is clipped mid-sentence and the panel appears to end early. Cause:
+            collapsable sections are flex children with <span class="mono">overflow: hidden</span> and no
+            <span class="mono">flex-shrink: 0</span>, so when the content is taller than the panel the sections
+            <em>compress</em> — the scroll container never overflows, so it never scrolls. Fix is one line:
+            <span class="mono">flex: 0 0 auto</span> on every direct child of the scroll area.
+          </p>
+          <p class="where">noodl-core-ui/src/components/sidebar/CollapsableSection/CollapsableSection.module.scss:1</p>
+        </div>
+      </article>
+
+      <article class="finding sev-bug">
+        <div class="stripe"></div>
+        <div class="fbody">
+          <div class="ftop"><h3>Every panel is 34px taller than the space it sits in</h3><span class="tag">Bug</span></div>
+          <p>
+            <span class="mono">BasePanel .Root</span> sets <span class="mono">height: 100%</span> plus 16px
+            padding and a 1px border — and the editor has no global
+            <span class="mono">box-sizing: border-box</span>, so the box is 34px taller than its slot and the
+            ancestor's <span class="mono">overflow: hidden</span> eats the bottom. This is the "couple of dozen
+            pixels" and it happens on every screen height, not just 13-inch.
+          </p>
+          <p class="where">noodl-core-ui/src/components/sidebar/BasePanel/BasePanel.module.scss:1</p>
+        </div>
+      </article>
+
+      <article class="finding sev-friction">
+        <div class="stripe"></div>
+        <div class="fbody">
+          <div class="ftop"><h3>Drag-selecting text past the panel edge cancels the gesture</h3><span class="tag">Friction</span></div>
+          <p>
+            A <span class="mono">click</span> event fires on the <em>common ancestor</em> of mousedown and
+            mouseup — so a drag that starts in a panel field and ends over the canvas produces a click whose
+            target is <span class="mono">&lt;body&gt;</span>, and every "clicked outside → close" rule in the
+            popup layer treats it as an outside click. Fix: decide on pointerdown, act on pointerup, and check
+            the pointerup target too — or capture the pointer for the duration of the drag, which is what the
+            divider in the prototype below does.
+          </p>
+          <p class="where">noodl-editor/src/editor/src/views/popuplayer.ts:320</p>
+        </div>
+      </article>
+
+      <article class="finding sev-friction">
+        <div class="stripe"></div>
+        <div class="fbody">
+          <div class="ftop"><h3>The panel can never be narrower than 380px, or wider without a drag</h3><span class="tag">Friction</span></div>
+          <p>
+            <span class="mono">SideNavigation .Root</span> hard-floors the whole rail+panel at
+            <span class="mono">min-width: 380px</span>, so the divider's <span class="mono">sizeMin={200}</span>
+            never applies. There is no collapse, no snap, no keyboard shortcut, and no per-panel memory — one
+            width serves the 240px-wide component tree and the 560px-wide backend card alike. Hence the constant
+            manual resizing.
+          </p>
+          <p class="where">SideNavigation.module.scss:9 · EditorPage.tsx:229</p>
+        </div>
+      </article>
+
+      <article class="finding sev-friction">
+        <div class="stripe"></div>
+        <div class="fbody">
+          <div class="ftop"><h3>Three settings panels, one of them behind a sun</h3><span class="tag">Friction</span></div>
+          <p>
+            <b>App Setup</b> (sliders icon, order 8.5), <b>Project settings</b> (a sun — it's
+            <span class="mono">IconName.Setting</span>, order 9) and <b>Editor settings</b> (horizontal sliders,
+            bottom of the rail) are three rail destinations for one question. App Setup and Project settings are
+            both project-scoped and already overlap on title and SEO.
+          </p>
+          <p class="where">noodl-editor/src/editor/src/router.setup.ts:211–280</p>
+        </div>
+      </article>
+
+      <article class="finding sev-polish">
+        <div class="stripe"></div>
+        <div class="fbody">
+          <div class="ftop"><h3>Panel content isn't width-aware</h3><span class="tag">Layout</span></div>
+          <p>
+            Local backend action buttons overflow horizontally the moment the backend starts; two-column
+            label/field rows keep their fixed label column at any width, so "API Key (saved)" wraps to two lines
+            next to a field that has room to spare. No panel declares a container query, so nothing can adapt.
+          </p>
+          <p class="where">LocalBackendCard.module.scss:72 · panel-wide</p>
+        </div>
+      </article>
+
+      <article class="finding sev-polish">
+        <div class="stripe"></div>
+        <div class="fbody">
+          <div class="ftop"><h3>The component name looks like a field you can't type in</h3><span class="tag">Layout</span></div>
+          <p>
+            The property header renders a real <span class="mono">TextInput</span> with
+            <span class="mono">isDisabled</span> whenever you're not editing — full border, full field
+            affordance, no cursor. Double-click already works; nothing says so. Restore the old behaviour: plain
+            text until you edit it.
+          </p>
+          <p class="where">propertyeditor/components/NodeLabel/NodeLabel.tsx:171</p>
+        </div>
+      </article>
+
+      <article class="finding sev-polish">
+        <div class="stripe"></div>
+        <div class="fbody">
+          <div class="ftop"><h3>The components panel is the only panel with its own chrome</h3><span class="tag">Layout</span></div>
+          <p>
+            It rolls a 36px <span class="mono">bg-3</span> header bar with a 12px title instead of using
+            <span class="mono">PanelHeader</span>, and its rows are 11px on a tinted selection that turns the
+            label accent-coloured — which is the part that goes soft in light mode. Every other panel has a 36px
+            <span class="mono">PanelHeader</span>; none of them agree on title size either, because
+            <span class="mono">PanelHeader.module.scss</span> never styles its own <span class="mono">.Title</span>.
+          </p>
+          <p class="where">ComponentsPanelNew/ComponentsPanel.module.scss:15 · PanelHeader.module.scss</p>
+        </div>
+      </article>
+
+    </div>
+  </section>
+
+  <!-- ===================================================================== -->
+  <section>
+    <h2>One rail, four modes</h2>
+    <p class="lede">
+      The rail stays where it is — it's the only part of the layout that should never move. What changes is
+      that the panel beside it stops being a single fixed column. It has four states, each one keystroke away,
+      and it remembers a width <em>per panel</em>, so switching from Components to Backend Services widens the
+      column for you.
+    </p>
+
+    <div class="stage">
+      <div class="stageBar">
+        <div class="seg" role="group" aria-label="Panel mode">
+          <button type="button" data-mode="dock" aria-pressed="true">
+            <svg width="14" height="14" aria-hidden="true"><use href="#i-collapse"/></svg>Docked
+          </button>
+          <button type="button" data-mode="wide">
+            <svg width="14" height="14" aria-hidden="true"><use href="#i-wide"/></svg>Wide
+          </button>
+          <button type="button" data-mode="float">
+            <svg width="14" height="14" aria-hidden="true"><use href="#i-float"/></svg>Floating
+          </button>
+          <button type="button" data-mode="full">
+            <svg width="14" height="14" aria-hidden="true"><use href="#i-full"/></svg>Full
+          </button>
+          <button type="button" data-mode="collapsed">
+            <svg width="14" height="14" aria-hidden="true"><use href="#i-narrow"/></svg>Hidden
+          </button>
+        </div>
+        <span class="readout">panel <b id="wOut">280</b>px · container <b id="cqOut">narrow</b></span>
+        <span class="hint">Click the rail or a canvas node. Drag or double-click the divider. <span class="kbd">⌘\</span> wide · <span class="kbd">⌘B</span> hide</span>
+      </div>
+
+      <div class="win">
+        <div class="toolbar">
+          <span class="lights"><i></i><i></i><i></i></span>
+          <div class="route">
+            <span class="proj">Shine</span>
+            <span class="path">/Pages/Article</span>
+            <svg width="14" height="14" style="margin-left:auto;color:var(--fg-3)" aria-hidden="true"><use href="#i-chevD"/></svg>
+          </div>
+          <button class="chipWarn" type="button">
+            <svg width="13" height="13" aria-hidden="true"><use href="#i-warn"/></svg>13 warnings
+          </button>
+          <span class="spacer"></span>
+          <button class="ibtn" type="button" title="Preview"><svg width="16" height="16" aria-hidden="true"><use href="#i-page"/></svg></button>
+          <button class="btnPrimary" type="button">Deploy</button>
+        </div>
+
+        <div class="wbody" id="wbody" data-mode="dock" style="--pw:280px">
+
+          <nav class="rail" aria-label="Panels">
+            <button class="brand" type="button" title="Back to projects"><span></span></button>
+            <button class="ibtn railBtn" type="button" data-panel="components" aria-pressed="true" title="Components"><svg width="17" height="17" aria-hidden="true"><use href="#i-grid"/></svg></button>
+            <button class="ibtn railBtn" type="button" data-panel="search" title="Search"><svg width="17" height="17" aria-hidden="true"><use href="#i-search"/></svg></button>
+            <button class="ibtn railBtn" type="button" data-panel="explain" title="Explain"><svg width="17" height="17" aria-hidden="true"><use href="#i-wand"/></svg></button>
+            <button class="ibtn railBtn" type="button" data-panel="build" title="Build"><svg width="17" height="17" aria-hidden="true"><use href="#i-pencil"/></svg></button>
+            <button class="ibtn railBtn" type="button" data-panel="problems" title="Problems">
+              <svg width="17" height="17" aria-hidden="true"><use href="#i-warn"/></svg><span class="badge">13</span>
+            </button>
+            <button class="ibtn railBtn" type="button" data-panel="vcs" title="Version control"><svg width="17" height="17" aria-hidden="true"><use href="#i-branch"/></svg></button>
+            <button class="ibtn railBtn" type="button" data-panel="github" title="GitHub"><svg width="17" height="17" aria-hidden="true"><use href="#i-link"/></svg></button>
+            <button class="ibtn railBtn" type="button" data-panel="backend" title="Backend services"><svg width="17" height="17" aria-hidden="true"><use href="#i-braces"/></svg></button>
+            <span class="railSpacer"></span>
+            <button class="ibtn railBtn" type="button" data-panel="settings" title="Settings"><svg width="17" height="17" aria-hidden="true"><use href="#i-gear"/></svg></button>
+          </nav>
+
+          <div class="panel" id="panel">
+            <div class="phead" id="phead">
+              <span class="ptitle" id="ptitle">Components</span>
+              <span class="pspacer"></span>
+              <span id="pactions" style="display:flex;gap:2px"></span>
+              <span class="modeGroup">
+                <button class="tbtn" type="button" id="btnWide" title="Snap wide (⌘\)"><svg width="15" height="15" aria-hidden="true"><use href="#i-wide"/></svg></button>
+                <button class="tbtn" type="button" id="btnFloat" title="Float over the canvas"><svg width="15" height="15" aria-hidden="true"><use href="#i-float"/></svg></button>
+                <button class="tbtn" type="button" id="btnFull" title="Fill the editor"><svg width="15" height="15" aria-hidden="true"><use href="#i-full"/></svg></button>
+                <button class="tbtn" type="button" id="btnMore" title="Float, Full, and panel options"><svg width="15" height="15" aria-hidden="true"><use href="#i-dots"/></svg></button>
+                <button class="tbtn" type="button" id="btnHide" title="Hide the panel (⌘B)"><svg width="15" height="15" aria-hidden="true"><use href="#i-collapse"/></svg></button>
+              </span>
+            </div>
+            <div class="pbody" id="pbody"></div>
+            <span class="floatGrip" id="floatGrip"></span>
+          </div>
+
+          <button class="divider" id="divider" type="button" aria-label="Resize panel" title="Drag to resize · double-click to snap wide"></button>
+
+          <div class="canvas">
+            <div class="canvasGrid"></div>
+            <svg class="wire" style="inset:0" width="100%" height="100%" aria-hidden="true">
+              <path d="M210 132 C 260 132, 250 218, 300 218" fill="none" stroke="var(--border-2)" stroke-width="1.8"/>
+              <path d="M210 132 C 265 132, 275 60, 330 60" fill="none" stroke="var(--border-2)" stroke-width="1.8"/>
+              <path d="M458 218 C 505 218, 500 300, 548 300" fill="none" stroke="var(--border-2)" stroke-width="1.8"/>
+            </svg>
+            <div class="node" style="left:52px; top:112px" data-kind="Component · component" data-glyph="comp">
+              <div class="nbar" style="background:var(--node-component)"></div>
+              <div class="nbody"><span class="g-comp" style="display:flex"><svg width="13" height="13" aria-hidden="true"><use href="#i-comp"/></svg></span><span class="nname">Article Page</span></div>
+            </div>
+            <div class="node sel" style="left:300px; top:196px" data-kind="Group · visual" data-glyph="page">
+              <div class="nbar" style="background:var(--node-visual)"></div>
+              <div class="nbody"><span class="g-visual" style="display:flex"><svg width="13" height="13" aria-hidden="true"><use href="#i-page"/></svg></span><span class="nname">Bottom Button Section</span></div>
+            </div>
+            <div class="node" style="left:330px; top:38px" data-kind="Query Records · data" data-glyph="db">
+              <div class="nbar" style="background:var(--node-data)"></div>
+              <div class="nbody"><span class="g-data" style="display:flex"><svg width="13" height="13" aria-hidden="true"><use href="#i-db"/></svg></span><span class="nname">Query Records</span></div>
+            </div>
+            <div class="node" style="left:548px; top:278px" data-kind="Navigate · logic" data-glyph="logic">
+              <div class="nbar" style="background:var(--node-logic)"></div>
+              <div class="nbody"><span class="g-logic" style="display:flex"><svg width="13" height="13" aria-hidden="true"><use href="#i-logic"/></svg></span><span class="nname">Navigate To Article</span></div>
+            </div>
+            <p class="canvasHint" id="canvasHint">Docked — the canvas keeps every pixel the panel isn't using.</p>
+          </div>
+
+        </div>
+      </div>
+
+      <div class="pairs" style="grid-template-columns:repeat(auto-fit,minmax(260px,1fr))">
+        <div class="pair">
+          <div class="pairHead"><h3>Width belongs to the panel</h3></div>
+          <p class="note">
+            Components wants ~280px. Backend Services wants ~560px. Storing the width against the panel id and
+            restoring it on switch removes most of the resizing entirely — <b>switch the panel, get the right
+            width</b>. Try clicking through the rail with the readout visible.
+          </p>
+        </div>
+        <div class="pair">
+          <div class="pairHead"><h3>Wide is a toggle, not a drag</h3></div>
+          <p class="note">
+            <span class="kbd">⌘\</span>, the header button, or a double-click on the divider snaps to
+            <b>min(760px, 55vw)</b> and back to the panel's own width. The topology panel already does exactly
+            this by hand at <span class="mono">55vw</span>; this generalises it instead of special-casing one panel.
+          </p>
+        </div>
+        <div class="pair">
+          <div class="pairHead"><h3>Floating for the panels you watch</h3></div>
+          <p class="note">
+            Explain, Build and the data browser are read-while-you-work panels. Floating puts them over the
+            canvas, draggable by the header, so the graph stays where you left it. Position is remembered per panel.
+          </p>
+        </div>
+        <div class="pair">
+          <div class="pairHead"><h3>Full replaces the portal hack</h3></div>
+          <p class="note">
+            Data, Schema and Permissions already go full-screen today — via
+            <span class="mono">position: fixed</span> overlays rendered through
+            <span class="mono">createPortal</span> from inside a card. Making Full a panel mode means one code
+            path, an escape route, and a rail that still works.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="hr">
+
+  <!-- ===================================================================== -->
+  <section>
+    <h2>One panel, any width</h2>
+    <p class="lede">
+      If the panel's width is going to move constantly, panel content has to be width-aware — and it can't be
+      the window's width that decides, because the panel is a fraction of it. Container queries on the panel
+      body give every panel three layouts for free. Below is the same Backend Services panel at three widths;
+      note the action row and the label columns. The header is a container too — under 360px it keeps only
+      <em>widen</em> and <em>hide</em>, and Float and Full move into <span class="mono">⋯</span> rather than
+      squeezing the panel title down to "Compo…".
+    </p>
+
+    <div class="triptych">
+      <div class="trip">
+        <div class="tripHead"><b>Compact</b><span>&lt; 340px</span></div>
+        <div class="frame" style="width:268px" id="tripA"></div>
+        <p class="note" style="max-width:26ch">Labels sit above their control. Buttons fill the row and wrap. Secondary actions collapse into a menu.</p>
+      </div>
+      <div class="trip">
+        <div class="tripHead"><b>Default</b><span>340 – 559px</span></div>
+        <div class="frame" style="width:380px" id="tripB"></div>
+        <p class="note" style="max-width:34ch">104px label column, controls beside them. Two actions per row.</p>
+      </div>
+      <div class="trip">
+        <div class="tripHead"><b>Wide</b><span>≥ 560px</span></div>
+        <div class="frame" style="width:600px" id="tripC"></div>
+        <p class="note" style="max-width:44ch">132px label column, help text inline, cards two-up, every action visible.</p>
+      </div>
+    </div>
+  </section>
+
+  <hr class="hr">
+
+  <!-- ===================================================================== -->
+  <section>
+    <h2>Panel by panel</h2>
+    <p class="lede">
+      The structural change above is worth nothing if the panels inside it still look like four different
+      products. Each pair below is today's rendering on the left, rebuilt faithfully, and the proposal on the right.
+    </p>
+
+    <div class="pairs">
+
+      <!-- Components: now -->
+      <div class="pair">
+        <div class="pairHead"><h3>Components</h3><span class="badge2 now">Today</span></div>
+        <div class="frame h280">
+          <div class="oldHead"><span>Components</span><span style="color:var(--fg-2)">All ⌄</span></div>
+          <div style="padding:4px 0;overflow:auto">
+            <div class="oldRow"><span style="width:12px;color:var(--fg-3);font-size:8px">▶</span><span class="oldGlyph"><svg width="14" height="14"><use href="#i-folder"/></svg></span>Logic Components</div>
+            <div class="oldRow"><span style="width:12px;color:var(--fg-3);font-size:8px">▶</span><span class="oldGlyph"><svg width="14" height="14"><use href="#i-folder"/></svg></span>Pages</div>
+            <div class="oldRow"><span style="width:12px;color:var(--fg-3);font-size:8px">▼</span><span class="oldGlyph"><svg width="14" height="14"><use href="#i-folder"/></svg></span>Pop-ups</div>
+            <div class="oldRow" style="padding-left:26px"><span style="width:12px;color:var(--fg-3);font-size:8px">▼</span><span class="oldGlyph"><svg width="14" height="14"><use href="#i-folder"/></svg></span>Privacy</div>
+            <div class="oldRow" style="padding-left:44px"><span class="oldGlyph"><svg width="14" height="14"><use href="#i-popup"/></svg></span>Terms of Use Popup</div>
+            <div class="oldRow" style="padding-left:26px"><span style="width:12px;color:var(--fg-3);font-size:8px">▼</span><span class="oldGlyph"><svg width="14" height="14"><use href="#i-folder"/></svg></span>Share</div>
+            <div class="oldRow sel" style="padding-left:44px"><span class="oldGlyph" style="color:inherit"><svg width="14" height="14"><use href="#i-popup"/></svg></span>Share Popup</div>
+            <div class="oldRow" style="padding-left:44px"><span class="oldGlyph"><svg width="14" height="14"><use href="#i-popup"/></svg></span>Share Item</div>
+            <div class="oldRow"><span style="width:12px"></span><span class="oldGlyph"><svg width="14" height="14"><use href="#i-home"/></svg></span>App</div>
+            <div class="oldRow"><span style="width:12px"></span><span class="oldGlyph"><svg width="14" height="14"><use href="#i-page"/></svg></span>ArticleProjectAppComponent</div>
+          </div>
+        </div>
+        <p class="note">
+          11px labels, a <b>bg-3</b> header bar no other panel has, one folder glyph for every kind of thing,
+          and a selection that recolours the label to accent — the combination that goes soft in light mode.
+          Every level of nesting costs 18px of indent with nothing to follow.
+        </p>
+      </div>
+
+      <!-- Components: next -->
+      <div class="pair">
+        <div class="pairHead"><h3>Components</h3><span class="badge2 next">Proposed</span></div>
+        <div class="frame h280">
+          <div class="phead" style="padding-right:6px">
+            <span class="ptitle">Components</span>
+            <span class="pspacer"></span>
+            <button class="tbtn" type="button" title="All sheets"><svg width="15" height="15"><use href="#i-chevD"/></svg></button>
+            <button class="tbtn" type="button" title="New component"><svg width="15" height="15"><use href="#i-plus"/></svg></button>
+          </div>
+          <div class="tfilter">
+            <div class="tfilterInner">
+              <svg width="13" height="13" aria-hidden="true"><use href="#i-search"/></svg>
+              <input class="input" type="text" placeholder="Filter components" aria-label="Filter components">
+            </div>
+          </div>
+          <div class="tree" style="overflow:auto;padding-bottom:8px">
+            <div class="trow folder"><span class="caret"><svg width="12" height="12"><use href="#i-chevR"/></svg></span><span class="tglyph"><svg width="14" height="14"><use href="#i-folder"/></svg></span><span class="tlabel">Logic Components</span></div>
+            <div class="trow folder"><span class="caret"><svg width="12" height="12"><use href="#i-chevR"/></svg></span><span class="tglyph"><svg width="14" height="14"><use href="#i-folder"/></svg></span><span class="tlabel">Pages</span></div>
+            <div class="trow folder open"><span class="caret"><svg width="12" height="12"><use href="#i-chevR"/></svg></span><span class="tglyph"><svg width="14" height="14"><use href="#i-folder"/></svg></span><span class="tlabel">Pop-ups</span></div>
+            <div class="trow folder open indent-1"><span class="tguide" style="left:13px"></span><span class="caret"><svg width="12" height="12"><use href="#i-chevR"/></svg></span><span class="tglyph"><svg width="14" height="14"><use href="#i-folder"/></svg></span><span class="tlabel">Privacy</span></div>
+            <div class="trow indent-2"><span class="tguide" style="left:13px"></span><span class="tguide" style="left:27px"></span><span class="tglyph g-visual"><svg width="14" height="14"><use href="#i-popup"/></svg></span><span class="tlabel">Terms of Use Popup</span><span class="tdot" title="2 warnings"></span></div>
+            <div class="trow folder open indent-1"><span class="tguide" style="left:13px"></span><span class="caret"><svg width="12" height="12"><use href="#i-chevR"/></svg></span><span class="tglyph"><svg width="14" height="14"><use href="#i-folder"/></svg></span><span class="tlabel">Share</span></div>
+            <div class="trow sel indent-2"><span class="tguide" style="left:13px"></span><span class="tguide" style="left:27px"></span><span class="tglyph g-visual"><svg width="14" height="14"><use href="#i-popup"/></svg></span><span class="tlabel">Share Popup</span></div>
+            <div class="trow indent-2"><span class="tguide" style="left:13px"></span><span class="tguide" style="left:27px"></span><span class="tglyph g-visual"><svg width="14" height="14"><use href="#i-popup"/></svg></span><span class="tlabel">Share Item</span></div>
+            <div class="trow"><span class="tglyph thome"><svg width="14" height="14"><use href="#i-home"/></svg></span><span class="tlabel" style="font-weight:650;color:var(--fg-1)">App</span></div>
+            <div class="trow"><span class="tglyph g-comp"><svg width="14" height="14"><use href="#i-comp"/></svg></span><span class="tlabel">ArticleProjectAppComponent</span></div>
+          </div>
+        </div>
+        <p class="note">
+          The shared <b>PanelHeader</b> at 44px, with the sheet selector and New demoted to header actions.
+          12px labels; 26px rows; indent guides so depth is readable at 4 levels. Glyphs carry the component
+          kind in the canvas category colours — page, popup, logic, component — so the tree scans like the
+          graph. Selection is <b>accent-soft fill + a 2px accent rail + fg-1 label</b>: the label stays black in
+          light mode. Filtering lives here instead of sending you to the Search panel. Warnings are an amber dot
+          you can click through to Problems.
+        </p>
+      </div>
+
+      <!-- Node label: now -->
+      <div class="pair">
+        <div class="pairHead"><h3>Component name</h3><span class="badge2 now">Today</span></div>
+        <div class="frame hauto" style="padding:16px 14px 18px">
+          <div style="display:flex;align-items:center;gap:6px">
+            <div class="oldFakeField">Bottom Button Section</div>
+            <button class="tbtn" type="button"><svg width="14" height="14"><use href="#i-q"/></svg></button>
+            <button class="tbtn" type="button"><svg width="14" height="14"><use href="#i-pencil"/></svg></button>
+            <button class="tbtn" type="button"><svg width="14" height="14"><use href="#i-trash"/></svg></button>
+          </div>
+          <p class="note" style="margin-top:12px">
+            A real <span class="mono">&lt;input&gt;</span>, disabled. It reads as editable, refuses the caret,
+            and gives no hint that a double-click is what you wanted.
+          </p>
+        </div>
+        <p class="note">Same in the AI panels: the "Component" box in <b>Build</b> is a filled field you can't type in either.</p>
+      </div>
+
+      <!-- Node label: next -->
+      <div class="pair">
+        <div class="pairHead"><h3>Component name</h3><span class="badge2 next">Proposed</span></div>
+        <div class="frame hauto" style="padding:16px 14px 18px">
+          <div id="labelDemo" style="display:flex;align-items:center;gap:4px;min-height:30px">
+            <span id="labelText" tabindex="0" role="button"
+              style="flex:1;min-width:0;font-size:14.5px;font-weight:650;color:var(--fg-1);padding:4px 2px;border-radius:5px;cursor:text;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"
+              title="Double-click to rename · F2">Bottom Button Section</span>
+            <button class="tbtn" type="button" title="Node docs"><svg width="14" height="14"><use href="#i-q"/></svg></button>
+            <button class="tbtn" type="button" id="labelEdit" title="Rename (F2)"><svg width="14" height="14"><use href="#i-pencil"/></svg></button>
+            <button class="tbtn" type="button" title="Delete node"><svg width="14" height="14"><use href="#i-trash"/></svg></button>
+          </div>
+          <div style="margin-top:9px">
+            <span class="pill" style="background:color-mix(in srgb, var(--node-visual) 12%, transparent);color:var(--node-visual)">
+              <svg width="10" height="10" aria-hidden="true"><use href="#i-page"/></svg>Group · visual
+            </span>
+          </div>
+          <p class="note" style="margin-top:14px">
+            <b>Try it</b> — double-click the name, or press the pencil. Enter commits, Escape reverts, the check
+            confirms. Nothing is editing until you say so.
+          </p>
+        </div>
+        <p class="note">
+          Plain text at rest, with a hover underline and a tooltip naming the gesture. Editing swaps in a bordered
+          field with check/cancel — the behaviour the old editor had, minus the permanent field.
+          The type chip (already shipped in PAR-002) moves under the name where it doesn't fight the actions.
+        </p>
+      </div>
+
+      <!-- Backend actions: now -->
+      <div class="pair">
+        <div class="pairHead"><h3>Local backend actions</h3><span class="badge2 now">Today</span></div>
+        <div class="frame hauto" style="padding:14px">
+          <div style="border:1px solid var(--border-1);border-radius:9px;background:var(--bg-1);padding:12px;overflow:hidden">
+            <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:10px">
+              <span style="width:34px;height:34px;border-radius:7px;background:var(--success);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;flex:none">L</span>
+              <div style="min-width:0;flex:1">
+                <div style="font-weight:650;color:var(--fg-1)">SQLite backend</div>
+                <div style="font-size:11.5px;color:var(--fg-3)">Local SQLite · Port 8578</div>
+              </div>
+              <span class="pill ok"><i></i>Running</span>
+            </div>
+            <div style="border-top:1px solid var(--border-1);padding-top:8px" class="overflowDemo">
+              <button class="sbtn" type="button">Stop</button>
+              <button class="sbtn" type="button">Data</button>
+              <button class="sbtn" type="button">Schema</button>
+              <button class="sbtn" type="button">Permissions</button>
+              <button class="sbtn" type="button">Export</button>
+            </div>
+          </div>
+          <p class="note" style="margin-top:12px">
+            Five buttons in a non-wrapping row. Stopped, the row fits; the moment it's running the label grows
+            and the row scrolls sideways out of the panel.
+          </p>
+        </div>
+        <p class="note">Same class of problem on the endpoint URL, which has no <span class="mono">min-width: 0</span> and so pushes the card wider than the panel.</p>
+      </div>
+
+      <!-- Backend actions: next -->
+      <div class="pair">
+        <div class="pairHead"><h3>Local backend actions</h3><span class="badge2 next">Proposed</span></div>
+        <div class="frame hauto" style="padding:14px">
+          <div style="border:1px solid var(--border-1);border-radius:9px;background:var(--bg-1);padding:12px;container-type:inline-size;container-name:panel">
+            <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:10px">
+              <span style="width:34px;height:34px;border-radius:7px;background:var(--success-bg);color:var(--success);display:flex;align-items:center;justify-content:center;flex:none"><svg width="17" height="17"><use href="#i-db"/></svg></span>
+              <div style="min-width:0;flex:1">
+                <div style="font-weight:650;color:var(--fg-1)">SQLite backend</div>
+                <div style="font-size:11.5px;color:var(--fg-3)">Local SQLite · port 8578 · created 16 Jan 2026</div>
+              </div>
+              <span class="pill ok"><i></i>Running</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:6px;background:var(--bg-2);border:1px solid var(--border-1);border-radius:6px;padding:5px 6px 5px 9px;margin-bottom:10px">
+              <span class="mono" style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11.5px;color:var(--fg-2)">http://localhost:8578</span>
+              <button class="tbtn" type="button" title="Copy endpoint"><svg width="14" height="14"><use href="#i-copy"/></svg></button>
+            </div>
+            <div style="border-top:1px solid var(--border-1);padding-top:10px;display:flex;flex-wrap:wrap;gap:6px">
+              <button class="sbtn accent" type="button" style="flex:1 1 100%">Stop backend</button>
+              <button class="sbtn" type="button" style="flex:1 1 84px"><svg width="13" height="13"><use href="#i-db"/></svg>Data</button>
+              <button class="sbtn" type="button" style="flex:1 1 84px"><svg width="13" height="13"><use href="#i-grid"/></svg>Schema</button>
+              <button class="sbtn" type="button" style="flex:1 1 84px"><svg width="13" height="13"><use href="#i-key"/></svg>Access</button>
+              <button class="sbtn" type="button" title="More" style="flex:0 0 34px"><svg width="14" height="14"><use href="#i-dots"/></svg></button>
+            </div>
+          </div>
+          <p class="note" style="margin-top:12px">
+            <span class="mono">flex-wrap</span> plus <span class="mono">flex: 1 1 84px</span> means the row
+            reflows instead of overflowing, at any width, without a media query. Start/Stop is the primary action
+            and owns its own row. Export and Delete move into the <span class="mono">⋯</span> menu, where
+            destructive actions belong.
+          </p>
+        </div>
+        <p class="note">
+          The card is its own container too, so a backend card inside a 268px panel and one inside a floating
+          600px panel both lay out correctly.
+        </p>
+      </div>
+
+    </div>
+  </section>
+
+  <hr class="hr">
+
+  <!-- ===================================================================== -->
+  <section>
+    <h2>Three settings panels become one</h2>
+    <p class="lede">
+      App Setup and Project settings are both project-scoped and already share ground — both own the app title,
+      both own SEO. Editor settings is a different scope (this machine, all projects) but it's the same question
+      from the user's side: <em>where do I change things?</em> One gear, two tabs, and the sun goes away.
+    </p>
+
+    <div class="pairs" style="grid-template-columns:repeat(auto-fit,minmax(300px,1fr))">
+      <div class="pair">
+        <div class="pairHead"><h3>Rail today</h3><span class="badge2 now">3 destinations</span></div>
+        <div class="frame hauto" style="padding:14px;background:var(--bg-1)">
+          <div style="display:grid;gap:8px">
+            <div style="display:flex;align-items:center;gap:10px"><span class="ibtn" style="color:var(--fg-3)"><svg width="17" height="17"><use href="#i-sliders"/></svg></span><div><div style="font-weight:650">App Setup</div><div class="help">Identity · SEO · PWA · Variables</div></div></div>
+            <div style="display:flex;align-items:center;gap:10px"><span class="ibtn" style="color:var(--fg-3)"><svg width="17" height="17"><use href="#i-sun"/></svg></span><div><div style="font-weight:650">Project settings</div><div class="help">Title · Head code · Navigation · Runtime · Sitemap · Deploy</div></div></div>
+            <div style="display:flex;align-items:center;gap:10px"><span class="ibtn" style="color:var(--fg-3)"><svg width="17" height="17"><use href="#i-sliders"/></svg></span><div><div style="font-weight:650">Editor settings</div><div class="help">Theme · Experimental · AI provider — pinned to the bottom of the rail</div></div></div>
+          </div>
+          <p class="note" style="margin-top:14px">
+            Two near-identical slider glyphs, a sun that means "project", and the app title editable in two of
+            the three.
+          </p>
+        </div>
+      </div>
+
+      <div class="pair">
+        <div class="pairHead"><h3>Proposed</h3><span class="badge2 next">1 destination</span></div>
+        <div class="frame hauto" style="background:var(--bg-2)">
+          <div class="phead">
+            <span class="ptitle">Settings</span><span class="pspacer"></span>
+            <span class="modeGroup"><button class="tbtn" type="button"><svg width="15" height="15"><use href="#i-wide"/></svg></button><button class="tbtn" type="button"><svg width="15" height="15"><use href="#i-collapse"/></svg></button></span>
+          </div>
+          <div style="padding:10px 12px 0">
+            <div class="seg" style="width:100%">
+              <button type="button" aria-pressed="true" style="flex:1;justify-content:center">Project</button>
+              <button type="button" style="flex:1;justify-content:center">Editor</button>
+            </div>
+          </div>
+          <div style="padding:12px;display:grid;gap:8px">
+            <div class="groupLabel">Project · identity</div>
+            <div class="row"><span class="rlabel">App title</span><span class="rctl"><input class="input" value="Shine"></span></div>
+            <div class="row"><span class="rlabel">URL path type</span><span class="rctl"><select class="input"><option>Path</option><option>Hash</option></select></span></div>
+            <div class="groupLabel" style="margin-top:6px">Project · runtime</div>
+            <div class="row"><span class="rlabel">React version</span><span class="rctl"><select class="input"><option>React 18.3 (default)</option><option>React 19</option></select></span></div>
+            <div class="row"><span class="rlabel">Rendering</span><span class="rctl"><select class="input"><option>Client (SPA)</option><option>Server (SSR)</option><option>Static (SSG)</option></select></span></div>
+          </div>
+          <p class="note" style="padding:0 14px 14px">
+            App Setup's four sections become groups under <b>Project</b> — identity, SEO, PWA, variables — next
+            to navigation, runtime, sitemap and deploy. <b>Editor</b> keeps appearance, experimental flags and
+            the AI provider. A gear, not a sun.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="hr">
+
+  <!-- ===================================================================== -->
+  <section>
+    <h2>What I'd build, in order</h2>
+    <p class="lede">
+      The first two steps are small and fix things that are actively wrong. Nothing after that depends on
+      agreeing to the whole mode system — each step stands alone.
+    </p>
+
+    <div class="steps">
+      <div class="step">
+        <span class="sk">Step 1</span>
+        <div class="sv">
+          <h4>Make panels scroll</h4>
+          <p>
+            <span class="mono">box-sizing: border-box</span> on the panel root, <span class="mono">min-height: 0</span>
+            on the flex chain, <span class="mono">flex: 0 0 auto</span> on every direct child of a scroll area,
+            32px of bottom padding inside it. Replace the stale <span class="mono">overflow-y: overlay</span>
+            (a Chromium alias for <span class="mono">auto</span> now) while in there. Two files, and the
+            bottom-cut-off and mid-sentence clipping both go.
+          </p>
+        </div>
+      </div>
+      <div class="step">
+        <span class="sk">Step 2</span>
+        <div class="sv">
+          <h4>Stop the popup layer treating a drag as an outside click</h4>
+          <p>
+            Gate the outside-close rules on the pointerup target as well as the pointerdown one. Fixes
+            drag-selecting text out of the panel, and the same gesture in every popout and dialog.
+          </p>
+        </div>
+      </div>
+      <div class="step">
+        <span class="sk">Step 3</span>
+        <div class="sv">
+          <h4>Panel width: per-panel memory, a wide toggle, and a real collapse</h4>
+          <p>
+            Drop <span class="mono">min-width: 380px</span> so the divider's own 200px floor applies. Persist
+            width per panel id in editor settings; add <span class="kbd">⌘\</span> / double-click-divider to
+            snap wide and <span class="kbd">⌘B</span> to hide. Retire the topology panel's hardcoded 55vw
+            special case in <span class="mono">EditorPage.tsx</span> — it becomes "this panel's remembered width
+            is wide".
+          </p>
+        </div>
+      </div>
+      <div class="step">
+        <span class="sk">Step 4</span>
+        <div class="sv">
+          <h4>Container queries, one shared row component</h4>
+          <p>
+            <span class="mono">container-type: inline-size</span> on the panel body, three breakpoints, and one
+            <span class="mono">&lt;PanelRow label&gt;</span> that every panel uses instead of hand-rolled grids.
+            Fixes the backend action overflow and the wrapping labels together, and means new panels are
+            responsive by default rather than by discipline.
+          </p>
+        </div>
+      </div>
+      <div class="step">
+        <span class="sk">Step 5</span>
+        <div class="sv">
+          <h4>Panel chrome: one header, everywhere</h4>
+          <p>
+            Give <span class="mono">PanelHeader</span> an actual <span class="mono">.Title</span> rule (44px bar,
+            13px/650 title, action slot, mode group) and move the components panel onto it. Restyle the tree —
+            26px rows, 12px labels, indent guides, category glyphs, accent-rail selection.
+          </p>
+        </div>
+      </div>
+      <div class="step">
+        <span class="sk">Step 6</span>
+        <div class="sv">
+          <h4>Consolidate settings, then float and full</h4>
+          <p>
+            Merge App Setup into Project settings, put Project/Editor behind one gear. Then floating and full
+            modes, with the Data/Schema/Permissions portals moved onto Full so there's one full-screen path
+            instead of five ad-hoc ones.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <p class="hint" style="text-align:center;max-width:70ch;margin:0 auto">
+    Everything here is a proposal, not a decision — the mode system in particular is the part I'd most want you
+    to poke at before it gets built. Steps 1 and 2 I'd do regardless.
+  </p>
+
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  /* ---------------- theme ------------------------------------------------ */
+  var root = document.documentElement;
+  var themeBtn = document.getElementById('themeBtn');
+  var themeLabel = document.getElementById('themeLabel');
+  function currentTheme() {
+    return root.getAttribute('data-theme') ||
+      (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+  }
+  function syncThemeLabel() { themeLabel.textContent = currentTheme() === 'dark' ? 'Light' : 'Dark'; }
+  themeBtn.addEventListener('click', function () {
+    root.setAttribute('data-theme', currentTheme() === 'dark' ? 'light' : 'dark');
+    syncThemeLabel();
+  });
+  syncThemeLabel();
+
+  /* ---------------- panel content --------------------------------------- */
+  function row(label, ctl) {
+    return '<div class="row"><span class="rlabel">' + label + '</span><span class="rctl">' + ctl + '</span></div>';
+  }
+  function sec(title, body, open) {
+    return '<section class="psec" data-open="' + (open === false ? 'false' : 'true') + '">' +
+      '<header><h4>' + title + '</h4><span class="caret"><svg width="13" height="13" aria-hidden="true">' +
+      '<use href="#i-chevD"/></svg></span></header><div class="psecBody">' + body + '</div></section>';
+  }
+  function icon(id, size) { return '<svg width="' + (size || 14) + '" height="' + (size || 14) + '" aria-hidden="true"><use href="#i-' + id + '"/></svg>'; }
+
+  var TREE = [
+    ['folder', 0, 'Logic Components', ''],
+    ['folder', 0, 'Pages', ''],
+    ['folder', 0, 'Pop-ups', 'open'],
+    ['folder', 1, 'Privacy', 'open'],
+    ['popup',  2, 'Terms of Use Popup', 'warn'],
+    ['folder', 1, 'Rating', ''],
+    ['folder', 1, 'Share', 'open'],
+    ['popup',  2, 'Copied - Periodic', ''],
+    ['popup',  2, 'Share Item', ''],
+    ['popup',  2, 'Share Popup', 'sel'],
+    ['folder', 1, 'Sign in or Sign up', ''],
+    ['folder', 0, 'Visual Components', ''],
+    ['home',   0, 'App', ''],
+    ['comp',   0, 'ArticleProjectAppComponent', '']
+  ];
+  var GLYPH = { folder: ['folder', ''], popup: ['popup', 'g-visual'], page: ['page', 'g-visual'],
+                logic: ['logic', 'g-logic'], comp: ['comp', 'g-comp'], home: ['home', 'thome'] };
+
+  function componentsPanel() {
+    var rows = TREE.map(function (t) {
+      var kind = t[0], depth = t[1], label = t[2], flag = t[3];
+      var g = GLYPH[kind];
+      var cls = ['trow'];
+      if (kind === 'folder') cls.push('folder');
+      if (flag === 'open') cls.push('open');
+      if (flag === 'sel') cls.push('sel');
+      if (depth) cls.push('indent-' + depth);
+      var guides = '';
+      for (var d = 0; d < depth; d++) guides += '<span class="tguide" style="left:' + (13 + d * 14) + 'px"></span>';
+      var caret = kind === 'folder' ? '<span class="caret">' + icon('chevR', 12) + '</span>' : '';
+      return '<div class="' + cls.join(' ') + '">' + guides + caret +
+        '<span class="tglyph ' + g[1] + '">' + icon(g[0], 14) + '</span>' +
+        '<span class="tlabel"' + (kind === 'home' ? ' style="font-weight:650;color:var(--fg-1)"' : '') + '>' + label + '</span>' +
+        (flag === 'warn' ? '<span class="tdot" title="2 warnings"></span>' : '') + '</div>';
+    }).join('');
+    return '<div class="tfilter"><div class="tfilterInner">' + icon('search', 13) +
+      '<input class="input" type="text" placeholder="Filter components" aria-label="Filter components"></div></div>' +
+      '<div class="tree">' + rows + '</div>';
+  }
+
+  var selectedNode = { name: 'Bottom Button Section', kind: 'Group · visual', color: 'var(--node-visual)', glyph: 'page' };
+
+  function propertiesPanel() {
+    return '<div class="pinner">' +
+      /* the node label at rest: plain text, no field chrome */
+      '<div style="display:grid;gap:8px">' +
+        '<div style="display:flex;align-items:center;gap:4px;min-height:30px">' +
+          '<span style="flex:1;min-width:0;font-size:14.5px;font-weight:650;color:var(--fg-1);padding:4px 2px;' +
+          'overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="Double-click to rename · F2">' + selectedNode.name + '</span>' +
+          '<button class="tbtn" type="button" title="Node docs">' + icon('q', 14) + '</button>' +
+          '<button class="tbtn" type="button" title="Rename (F2)">' + icon('pencil', 14) + '</button>' +
+          '<button class="tbtn" type="button" title="Delete node">' + icon('trash', 14) + '</button>' +
+        '</div>' +
+        '<div><span class="pill" style="background:color-mix(in srgb, ' + selectedNode.color + ' 12%, transparent);color:' + selectedNode.color + '">' +
+        icon(selectedNode.glyph, 10) + selectedNode.kind + '</span></div>' +
+      '</div>' +
+      sec('Layout',
+        row('Position', '<select class="input"><option>Relative</option><option>Absolute</option></select>') +
+        row('Align X', '<div style="display:flex;gap:4px;width:100%"><button class="sbtn" style="flex:1">Left</button><button class="sbtn accent" style="flex:1">Center</button><button class="sbtn" style="flex:1">Right</button></div>') +
+        row('Width', '<input class="input" value="100"><span class="help">%</span>') +
+        row('Height', '<input class="input" value="40"><span class="help">px</span>')
+      ) +
+      sec('Style',
+        row('Background', '<span style="width:20px;height:20px;border-radius:5px;background:var(--node-visual);border:1px solid var(--border-2);flex:none"></span><input class="input" value="#2E7CD6">') +
+        row('Corner radius', '<input class="input" value="7">') +
+        row('Label', '<input class="input" value="Back" id="dragMe">') +
+        '<p class="help">Try drag-selecting the value in <b>Label</b> and releasing over the canvas. The panel keeps focus — that gesture is a pointer capture, not a click outside.</p>'
+      ) +
+      sec('Advanced', row('Visible', '<button class="toggle" type="button" aria-pressed="true"></button>') +
+        row('Pointer events', '<button class="toggle" type="button" aria-pressed="true"></button>'), false) +
+      '</div>';
+  }
+
+  function problemsPanel() {
+    function p(sev, title, where) {
+      return '<article class="psec"><div style="display:flex;gap:10px;padding:11px 12px;align-items:flex-start">' +
+        '<span style="color:var(--' + sev + ');flex:none;display:flex;margin-top:1px">' + icon('warn', 15) + '</span>' +
+        '<div style="min-width:0;display:grid;gap:3px"><div style="font-size:12.5px;font-weight:600;color:var(--fg-1)">' + title + '</div>' +
+        '<div class="help mono">' + where + '</div></div></div></article>';
+    }
+    return '<div class="pinner">' +
+      '<div style="display:flex;align-items:center;gap:8px"><span class="pill off">0 errors</span>' +
+      '<span class="pill" style="background:var(--warning-bg);color:var(--warning)"><i></i>13 warnings</span>' +
+      '<span class="pspacer" style="flex:1"></span><button class="tbtn" type="button" title="Re-check">' + icon('chevD', 14) + '</button></div>' +
+      '<div class="groupLabel">/Pop-ups/Privacy/Terms of Use Popup</div>' +
+      p('warning', 'Unknown node type “Markdown”', 'Markdown · #2e877cb1') +
+      p('warning', 'Unknown node type “Markdown”', 'Markdown · #a7e20047') +
+      '<div class="groupLabel">/Pop-ups/Share/Share Popup</div>' +
+      p('warning', 'Connection to a port that no longer exists', 'CSS Definition → styleCss') +
+      '<p class="help">Click a warning to jump to the node. Unknown types are usually a module that isn’t installed.</p>' +
+      '</div>';
+  }
+
+  function backendPanel(compact) {
+    var card =
+      '<div class="psec" style="padding:12px;display:grid;gap:10px">' +
+        '<div style="display:flex;align-items:flex-start;gap:10px">' +
+          '<span style="width:32px;height:32px;border-radius:7px;background:var(--success-bg);color:var(--success);display:flex;align-items:center;justify-content:center;flex:none">' + icon('db', 16) + '</span>' +
+          '<div style="min-width:0;flex:1"><div style="font-weight:650;color:var(--fg-1);font-size:12.5px">SQLite backend</div>' +
+          '<div class="help">Local SQLite · port 8578</div></div>' +
+          '<span class="pill ok"><i></i>Running</span>' +
+        '</div>' +
+        '<div style="display:flex;align-items:center;gap:6px;background:var(--bg-2);border:1px solid var(--border-1);border-radius:6px;padding:4px 5px 4px 9px">' +
+          '<span class="mono" style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11.5px;color:var(--fg-2)">http://localhost:8578</span>' +
+          '<button class="tbtn" type="button" title="Copy">' + icon('copy', 13) + '</button>' +
+        '</div>' +
+        '<div style="border-top:1px solid var(--border-1);padding-top:10px;display:flex;flex-wrap:wrap;gap:6px">' +
+          '<button class="sbtn accent" type="button" style="flex:1 1 100%">Stop backend</button>' +
+          '<button class="sbtn" type="button" style="flex:1 1 84px">' + icon('db', 13) + 'Data</button>' +
+          '<button class="sbtn" type="button" style="flex:1 1 84px">' + icon('grid', 13) + 'Schema</button>' +
+          '<button class="sbtn" type="button" style="flex:1 1 84px">' + icon('key', 13) + 'Access</button>' +
+          '<button class="sbtn" type="button" title="More" style="flex:0 0 34px">' + icon('dots', 14) + '</button>' +
+        '</div>' +
+      '</div>';
+    return '<div class="pinner">' +
+      '<div class="groupLabel">Cloud services endpoint</div>' +
+      sec('backend.noodl.cloud',
+        row('App ID', '<input class="input mono" value="6ae45db63015260c">') +
+        row('Type', '<select class="input"><option>NodeGX backend</option><option>External</option></select>') +
+        row('Master key', '<input class="input mono" type="password" value="••••••••••••">') +
+        '<div style="display:flex;gap:6px;flex-wrap:wrap"><button class="sbtn" type="button" style="flex:1 1 90px">Edit</button>' +
+        '<button class="sbtn danger" type="button" style="flex:1 1 90px">Disconnect</button></div>'
+      ) +
+      '<div style="display:flex;align-items:center;gap:6px"><span class="groupLabel" style="flex:1">Local backends</span>' +
+      '<button class="tbtn" type="button" title="Add">' + icon('plus', 14) + '</button></div>' +
+      card +
+      '<div class="cardGrid" style="display:grid;gap:10px">' +
+      '<div class="psec" style="padding:12px"><div style="display:flex;align-items:center;gap:10px">' +
+      '<span style="width:32px;height:32px;border-radius:7px;background:var(--bg-3);color:var(--fg-3);display:flex;align-items:center;justify-content:center;flex:none">' + icon('db', 16) + '</span>' +
+      '<div style="min-width:0;flex:1"><div style="font-weight:650;color:var(--fg-1);font-size:12.5px">Staging copy</div><div class="help">Local SQLite · port 8579</div></div>' +
+      '<span class="pill off"><i></i>Stopped</span></div>' +
+      '<div style="border-top:1px solid var(--border-1);padding-top:10px;margin-top:10px;display:flex;flex-wrap:wrap;gap:6px">' +
+      '<button class="sbtn accent" type="button" style="flex:1 1 100%">Start backend</button>' +
+      '<button class="sbtn" type="button" style="flex:1 1 84px">' + icon('db', 13) + 'Data</button>' +
+      '<button class="sbtn" type="button" style="flex:1 1 84px">' + icon('grid', 13) + 'Schema</button>' +
+      '<button class="sbtn" type="button" title="More" style="flex:0 0 34px">' + icon('dots', 14) + '</button></div></div>' +
+      '</div>' +
+      '<div class="groupLabel">External backends</div>' +
+      '<p class="help">Nothing connected yet. Add a Directus, Supabase or custom REST backend to query it from the graph.</p>' +
+      '<button class="sbtn" type="button">' + icon('plus', 13) + 'Add external backend</button>' +
+      '</div>';
+  }
+
+  function settingsPanel() {
+    return '<div class="pinner">' +
+      '<div class="seg" style="width:100%"><button type="button" aria-pressed="true" style="flex:1;justify-content:center">Project</button>' +
+      '<button type="button" style="flex:1;justify-content:center">Editor</button></div>' +
+      sec('Identity',
+        row('App title', '<input class="input" value="Shine">') +
+        row('Description', '<input class="input" value="Read something good">') +
+        row('Icon', '<button class="sbtn" type="button" style="width:100%">Choose image…</button>')
+      ) +
+      sec('Navigation', row('URL path type', '<select class="input"><option>Path</option><option>Hash</option></select>')) +
+      sec('Runtime',
+        row('React version', '<select class="input"><option>React 18.3 (default)</option><option>React 19</option></select>') +
+        row('Rendering', '<select class="input"><option>Client (SPA)</option><option>Server (SSR)</option><option>Static (SSG)</option></select>') +
+        '<p class="help">Already-deployed apps keep the React they were deployed with until you redeploy.</p>'
+      ) +
+      sec('SEO', row('Sitemap', '<button class="toggle" type="button" aria-pressed="true"></button>') +
+        row('Canonical host', '<input class="input" value="https://shine.app">'), false) +
+      sec('Progressive web app', row('Installable', '<button class="toggle" type="button"></button>'), false) +
+      sec('Variables', '<p class="help">No project variables yet.</p><button class="sbtn" type="button">' + icon('plus', 13) + 'Add variable</button>', false) +
+      sec('Deploy', row('Target', '<select class="input"><option>Managed (Docker)</option><option>Folder</option></select>') +
+        '<button class="sbtn accent" type="button" style="width:100%">Deploy project</button>', false) +
+      '</div>';
+  }
+
+  function explainPanel() {
+    return '<div class="pinner">' +
+      '<div class="psec" style="padding:11px 12px;display:flex;gap:9px;align-items:flex-start">' +
+      '<span style="color:var(--fg-3);flex:none;display:flex">' + icon('q', 15) + '</span>' +
+      '<p class="help" style="margin:0">Read-only — asking never changes your project. 1 node selected in <b>/Visual Components/Bottom Button Section</b>.</p></div>' +
+      row('Detail', '<select class="input"><option>Standard</option><option>Brief</option><option>Deep</option></select>') +
+      '<button class="sbtn accent" type="button" style="width:100%">' + icon('wand', 14) + 'Explain this node</button>' +
+      '<div class="psec" style="padding:13px 14px"><p style="margin:0 0 9px;font-size:12.8px;line-height:1.6;color:var(--fg-2)">' +
+      'This is the <b style="color:var(--fg-1)">Back</b> button in a footer bar — its whole purpose is to turn a click into a signal ' +
+      'the parent component can react to.</p>' +
+      '<p style="margin:0;font-size:12.8px;line-height:1.6;color:var(--fg-2)">It sits inside ' +
+      '<a href="#" style="color:var(--accent)">Group</a>, laid out as a row with <span class="mono">space-between</span>, ' +
+      'pushing this button and <a href="#" style="color:var(--accent)">Next Button</a> to opposite ends.</p></div>' +
+      '<input class="input" placeholder="Ask a follow-up…">' +
+      '</div>';
+  }
+
+  function simplePanel(title, body) { return '<div class="pinner">' + body + '</div>'; }
+
+  var PANELS = {
+    components: { title: 'Components', w: 280, render: componentsPanel,
+      actions: ['chevD:All sheets', 'plus:New component'] },
+    search:     { title: 'Search', w: 340,
+      render: function () { return simplePanel('Search',
+        '<input class="input" value="back" style="font-size:13px">' +
+        '<div class="groupLabel">Terms of Use Popup · 3 results</div>' +
+        '<div class="psec" style="padding:10px 12px"><div style="font-weight:600;color:var(--fg-1);font-size:12.5px">Group</div>' +
+        '<div class="help mono">CSS style: cursor: pointer;</div></div>' +
+        '<div class="psec" style="padding:10px 12px"><div style="font-weight:600;color:var(--fg-1);font-size:12.5px">Markdown</div>' +
+        '<div class="help mono">source: &lt;div class="richText"&gt;…</div></div>' +
+        '<div class="groupLabel">Share Popup · 1 result</div>' +
+        '<div class="psec" style="padding:10px 12px"><div style="font-weight:600;color:var(--fg-1);font-size:12.5px">CSS Definition</div>' +
+        '<div class="help mono">.share-item { margin: 0 }</div></div>'); },
+      actions: [] },
+    explain:    { title: 'Explain', w: 400, render: explainPanel, actions: [] },
+    build:      { title: 'Build', w: 400,
+      render: function () { return simplePanel('Build',
+        row('Component', '<input class="input" value="Profile">') +
+        '<div><div class="groupLabel" style="margin-bottom:5px">What should change?</div>' +
+        '<textarea class="input" rows="3" style="resize:vertical">Add a search field above the list</textarea></div>' +
+        '<p class="help">This component exists — the agent will propose a revision you review as a diff before anything changes.</p>' +
+        '<button class="sbtn accent" type="button" style="width:100%">' + icon('wand', 14) + 'Update it</button>' +
+        '<p class="help">Name a component and describe what it should do. Nothing changes until you accept.</p>'); },
+      actions: [] },
+    problems:   { title: 'Problems', w: 420, render: problemsPanel, actions: [] },
+    vcs:        { title: 'Version control', w: 400,
+      render: function () { return simplePanel('VCS',
+        '<div style="display:flex;gap:6px"><input class="input" placeholder="Commit message"><button class="sbtn accent" type="button">Commit</button></div>' +
+        '<div class="groupLabel">4 changed components</div>' +
+        '<div class="psec" style="padding:9px 12px;font-size:12.5px;color:var(--fg-1)">/Pages/Article</div>' +
+        '<div class="psec" style="padding:9px 12px;font-size:12.5px;color:var(--fg-1)">/Pop-ups/Share/Share Popup</div>'); },
+      actions: [] },
+    github:     { title: 'GitHub', w: 400,
+      render: function () { return simplePanel('GitHub',
+        '<div class="groupLabel">Open pull requests</div>' +
+        '<div class="psec" style="padding:10px 12px"><div style="font-weight:600;color:var(--fg-1);font-size:12.5px">Fix repeater template</div>' +
+        '<div class="help">#412 · richard · 2 days ago</div></div>'); },
+      actions: [] },
+    backend:    { title: 'Backend services', w: 560, render: backendPanel, actions: ['plus:Add backend'] },
+    settings:   { title: 'Settings', w: 460, render: settingsPanel, actions: [] },
+    properties: { title: 'Properties', w: 380, render: propertiesPanel, actions: [] }
+  };
+
+  /* ---------------- panel state machine --------------------------------- */
+  var wbody = document.getElementById('wbody');
+  var panel = document.getElementById('panel');
+  var pbody = document.getElementById('pbody');
+  var ptitle = document.getElementById('ptitle');
+  var pactions = document.getElementById('pactions');
+  var wOut = document.getElementById('wOut');
+  var cqOut = document.getElementById('cqOut');
+  var hint = document.getElementById('canvasHint');
+  var divider = document.getElementById('divider');
+
+  var active = 'components';
+  var mode = 'dock';
+  var wideOn = false;
+  var WIDE = 760;
+  var MIN = 200, MAX = 900;
+  var lastNonHidden = 'dock';
+
+  var HINTS = {
+    dock: 'Docked — the canvas keeps every pixel the panel isn’t using.',
+    wide: 'Wide — one keystroke, no drag. Press it again to go back to this panel’s own width.',
+    float: 'Floating — drag the panel by its header. The graph stays exactly where you left it.',
+    full: 'Full — the panel owns the editor area. This replaces the fixed-position portals in the data browser.',
+    collapsed: 'Hidden — the rail is still there. Click any icon, or ⌘B, to bring the panel back.'
+  };
+
+  function effectiveWidth() {
+    if (mode === 'collapsed') return 0;
+    if (mode === 'full') return wbody.clientWidth - 52;
+    if (wideOn) return Math.min(WIDE, Math.round(wbody.clientWidth * 0.55));
+    return PANELS[active].w;
+  }
+
+  function cqBand(w) { return w < 340 ? 'compact' : (w < 560 ? 'default' : 'wide'); }
+
+  function paint() {
+    var w = effectiveWidth();
+    wbody.style.setProperty('--pw', w + 'px');
+    wbody.setAttribute('data-mode', mode === 'wide' ? 'dock' : mode);
+    wOut.textContent = mode === 'collapsed' ? '0' : String(w);
+    cqOut.textContent = mode === 'collapsed' ? '—' : cqBand(w);
+    hint.textContent = HINTS[mode === 'dock' && wideOn ? 'wide' : mode];
+
+    document.getElementById('btnWide').setAttribute('aria-pressed', String(wideOn));
+    document.getElementById('btnFloat').setAttribute('aria-pressed', String(mode === 'float'));
+    document.getElementById('btnFull').setAttribute('aria-pressed', String(mode === 'full'));
+
+    Array.prototype.forEach.call(document.querySelectorAll('.seg [data-mode]'), function (b) {
+      var m = b.getAttribute('data-mode');
+      var on = (m === 'wide') ? (wideOn && mode === 'dock')
+             : (m === 'dock') ? (mode === 'dock' && !wideOn)
+             : (mode === m);
+      b.setAttribute('aria-pressed', String(on));
+    });
+    Array.prototype.forEach.call(document.querySelectorAll('.railBtn'), function (b) {
+      b.setAttribute('aria-pressed', String(b.getAttribute('data-panel') === active && mode !== 'collapsed'));
+    });
+  }
+
+  function renderPanel() {
+    var p = PANELS[active];
+    ptitle.textContent = p.title;
+    pbody.innerHTML = p.render();
+    pactions.innerHTML = (p.actions || []).map(function (a) {
+      var parts = a.split(':');
+      return '<button class="tbtn" type="button" title="' + parts[1] + '">' + icon(parts[0], 15) + '</button>';
+    }).join('');
+    paint();
+  }
+
+  function switchPanel(id) {
+    active = id;
+    if (mode === 'collapsed') mode = lastNonHidden;
+    wideOn = false;
+    renderPanel();
+  }
+
+  Array.prototype.forEach.call(document.querySelectorAll('.railBtn'), function (b) {
+    b.addEventListener('click', function () { switchPanel(b.getAttribute('data-panel')); });
+  });
+
+  /* selecting a node on the canvas opens Properties — a transient panel with no
+     rail entry, exactly as it works today */
+  Array.prototype.forEach.call(document.querySelectorAll('.canvas .node'), function (n) {
+    n.style.cursor = 'pointer';
+    n.addEventListener('click', function () {
+      Array.prototype.forEach.call(document.querySelectorAll('.canvas .node'), function (o) { o.classList.remove('sel'); });
+      n.classList.add('sel');
+      var bar = n.querySelector('.nbar').style.background;
+      selectedNode = {
+        name: n.querySelector('.nname').textContent,
+        kind: n.getAttribute('data-kind') || 'Node',
+        color: bar,
+        glyph: n.getAttribute('data-glyph') || 'page'
+      };
+      switchPanel('properties');
+    });
+  });
+
+  Array.prototype.forEach.call(document.querySelectorAll('.seg [data-mode]'), function (b) {
+    b.addEventListener('click', function () {
+      var m = b.getAttribute('data-mode');
+      if (m === 'wide') { mode = 'dock'; wideOn = true; }
+      else { mode = m; if (m !== 'dock') wideOn = false; }
+      if (m !== 'collapsed') lastNonHidden = mode;
+      panel.style.left = ''; panel.style.top = '';
+      paint();
+    });
+  });
+
+  document.getElementById('btnWide').addEventListener('click', function () {
+    if (mode !== 'dock') mode = 'dock';
+    wideOn = !wideOn; lastNonHidden = 'dock'; paint();
+  });
+  document.getElementById('btnFloat').addEventListener('click', function () {
+    mode = mode === 'float' ? 'dock' : 'float'; wideOn = false; lastNonHidden = mode; paint();
+  });
+  document.getElementById('btnFull').addEventListener('click', function () {
+    mode = mode === 'full' ? 'dock' : 'full'; wideOn = false; lastNonHidden = mode; paint();
+  });
+  document.getElementById('btnHide').addEventListener('click', function () {
+    mode = 'collapsed'; paint();
+  });
+
+  /* divider drag — pointer capture, so leaving the panel never cancels it */
+  divider.addEventListener('pointerdown', function (e) {
+    if (mode !== 'dock') return;
+    e.preventDefault();
+    divider.setPointerCapture(e.pointerId);
+    divider.classList.add('dragging');
+    var railRight = wbody.getBoundingClientRect().left + 52;
+    function move(ev) {
+      var w = Math.max(MIN, Math.min(MAX, Math.round(ev.clientX - railRight)));
+      wideOn = false;
+      PANELS[active].w = w;
+      paint();
+    }
+    function up(ev) {
+      divider.classList.remove('dragging');
+      divider.releasePointerCapture(e.pointerId);
+      divider.removeEventListener('pointermove', move);
+      divider.removeEventListener('pointerup', up);
+      divider.removeEventListener('pointercancel', up);
+    }
+    divider.addEventListener('pointermove', move);
+    divider.addEventListener('pointerup', up);
+    divider.addEventListener('pointercancel', up);
+  });
+  divider.addEventListener('dblclick', function () { wideOn = !wideOn; paint(); });
+
+  /* float drag by header */
+  (function () {
+    var phead = document.getElementById('phead');
+    phead.addEventListener('pointerdown', function (e) {
+      if (mode !== 'float') return;
+      if (e.target.closest('button')) return;
+      e.preventDefault();
+      var startX = e.clientX, startY = e.clientY;
+      var r = panel.getBoundingClientRect(), br = wbody.getBoundingClientRect();
+      var ox = r.left - br.left, oy = r.top - br.top;
+      phead.setPointerCapture(e.pointerId);
+      function move(ev) {
+        panel.style.left = Math.max(56, Math.min(br.width - 120, ox + ev.clientX - startX)) + 'px';
+        panel.style.top = Math.max(6, Math.min(br.height - 60, oy + ev.clientY - startY)) + 'px';
+      }
+      function up() {
+        phead.releasePointerCapture(e.pointerId);
+        phead.removeEventListener('pointermove', move);
+        phead.removeEventListener('pointerup', up);
+      }
+      phead.addEventListener('pointermove', move);
+      phead.addEventListener('pointerup', up);
+    });
+  })();
+
+  /* float right-edge resize */
+  (function () {
+    var grip = document.getElementById('floatGrip');
+    grip.addEventListener('pointerdown', function (e) {
+      if (mode !== 'float') return;
+      e.preventDefault();
+      grip.setPointerCapture(e.pointerId);
+      var left = panel.getBoundingClientRect().left;
+      function move(ev) {
+        PANELS[active].w = Math.max(MIN, Math.min(MAX, Math.round(ev.clientX - left)));
+        wideOn = false; paint();
+      }
+      function up() {
+        grip.releasePointerCapture(e.pointerId);
+        grip.removeEventListener('pointermove', move);
+        grip.removeEventListener('pointerup', up);
+      }
+      grip.addEventListener('pointermove', move);
+      grip.addEventListener('pointerup', up);
+    });
+  })();
+
+  /* collapsable sections inside the prototype */
+  pbody.addEventListener('click', function (e) {
+    var h = e.target.closest('.psec > header');
+    if (!h) return;
+    var s = h.parentElement;
+    s.setAttribute('data-open', s.getAttribute('data-open') === 'false' ? 'true' : 'false');
+  });
+
+  /* keyboard */
+  document.addEventListener('keydown', function (e) {
+    var meta = e.metaKey || e.ctrlKey;
+    if (!meta) return;
+    if (e.key === '\\') { e.preventDefault(); if (mode !== 'dock') mode = 'dock'; wideOn = !wideOn; paint(); }
+    if (e.key.toLowerCase() === 'b') {
+      e.preventDefault();
+      if (mode === 'collapsed') { mode = lastNonHidden; } else { lastNonHidden = mode; mode = 'collapsed'; }
+      paint();
+    }
+  });
+
+  window.addEventListener('resize', paint);
+
+  /* the node-label rename demo */
+  (function () {
+    var wrap = document.getElementById('labelDemo');
+    var text = document.getElementById('labelText');
+    var editBtn = document.getElementById('labelEdit');
+    var value = text.textContent;
+    var editing = false;
+
+    function toRest(commit, input) {
+      if (commit && input) value = input.value.trim() || value;
+      editing = false;
+      wrap.innerHTML = '';
+      var span = document.createElement('span');
+      span.id = 'labelText'; span.tabIndex = 0; span.setAttribute('role', 'button');
+      span.title = 'Double-click to rename · F2';
+      span.style.cssText = 'flex:1;min-width:0;font-size:14.5px;font-weight:650;color:var(--fg-1);padding:4px 2px;border-radius:5px;cursor:text;overflow:hidden;text-overflow:ellipsis;white-space:nowrap';
+      span.textContent = value;
+      span.addEventListener('dblclick', toEdit);
+      span.addEventListener('mouseenter', function () { span.style.boxShadow = 'inset 0 -1px 0 var(--border-2)'; });
+      span.addEventListener('mouseleave', function () { span.style.boxShadow = 'none'; });
+      span.addEventListener('keydown', function (ev) { if (ev.key === 'F2' || ev.key === 'Enter') toEdit(); });
+      wrap.appendChild(span);
+      ['q:Node docs', 'pencil:Rename (F2)', 'trash:Delete node'].forEach(function (a) {
+        var parts = a.split(':');
+        var b = document.createElement('button');
+        b.className = 'tbtn'; b.type = 'button'; b.title = parts[1];
+        b.innerHTML = icon(parts[0], 14);
+        if (parts[0] === 'pencil') b.addEventListener('click', toEdit);
+        wrap.appendChild(b);
+      });
+    }
+
+    function toEdit() {
+      if (editing) return;
+      editing = true;
+      wrap.innerHTML = '';
+      var input = document.createElement('input');
+      input.className = 'input';
+      input.value = value;
+      input.style.cssText = 'flex:1;min-width:0;font-size:14.5px;font-weight:650;padding:5px 8px';
+      var ok = document.createElement('button');
+      ok.className = 'tbtn'; ok.type = 'button'; ok.title = 'Save (Enter)';
+      ok.innerHTML = icon('check', 15); ok.style.color = 'var(--success)';
+      var no = document.createElement('button');
+      no.className = 'tbtn'; no.type = 'button'; no.title = 'Cancel (Esc)';
+      no.innerHTML = icon('x', 15);
+      wrap.appendChild(input); wrap.appendChild(ok); wrap.appendChild(no);
+      input.focus(); input.select();
+      ok.addEventListener('click', function () { toRest(true, input); });
+      no.addEventListener('click', function () { toRest(false, input); });
+      input.addEventListener('keydown', function (ev) {
+        if (ev.key === 'Enter') toRest(true, input);
+        if (ev.key === 'Escape') toRest(false, input);
+      });
+    }
+
+    text.addEventListener('dblclick', toEdit);
+    text.addEventListener('mouseenter', function () { text.style.boxShadow = 'inset 0 -1px 0 var(--border-2)'; });
+    text.addEventListener('mouseleave', function () { text.style.boxShadow = 'none'; });
+    editBtn.addEventListener('click', toEdit);
+  })();
+
+  /* the responsive triptych */
+  ['tripA', 'tripB', 'tripC'].forEach(function (id) {
+    var host = document.getElementById(id);
+    host.innerHTML =
+      '<div class="phead"><span class="ptitle">Backend services</span><span class="pspacer"></span>' +
+      '<button class="tbtn" type="button" title="Add">' + icon('plus', 15) + '</button>' +
+      '<span class="modeGroup"><button class="tbtn" type="button">' + icon('wide', 15) + '</button>' +
+      '<button class="tbtn" type="button">' + icon('collapse', 15) + '</button></span></div>' +
+      '<div class="pbody">' + backendPanel() + '</div>';
+  });
+
+  renderPanel();
+})();
+</script>
+</body>
+</html>

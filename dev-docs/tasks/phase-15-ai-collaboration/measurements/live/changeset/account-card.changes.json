@@ -1,0 +1,142 @@
+{
+  "componentName": "/Visual Components/Profile/Account Info Card",
+  "isNewComponent": false,
+  "changes": [
+    {
+      "id": "node-added:joinDateText",
+      "kind": "node-added",
+      "category": "semantic",
+      "requires": [],
+      "excludedWith": [
+        "connection-added:a23fb1e3-7c0f-eecb-90e3-5d2abcb80129:prop-createdAt->joinDateText:text"
+      ],
+      "requiredWith": []
+    },
+    {
+      "id": "node-added:actionsRow",
+      "kind": "node-added",
+      "category": "semantic",
+      "requires": [],
+      "excludedWith": [
+        "node-reparented:41d03b13-e79b-37c1-c72f-a5c67241e700",
+        "node-added:signOutText",
+        "connection-added:signOutText:onClick->signOutLogout:login"
+      ],
+      "requiredWith": []
+    },
+    {
+      "id": "node-added:signOutText",
+      "kind": "node-added",
+      "category": "semantic",
+      "requires": [
+        "node-added:actionsRow"
+      ],
+      "excludedWith": [
+        "connection-added:signOutText:onClick->signOutLogout:login"
+      ],
+      "requiredWith": [
+        "node-added:actionsRow"
+      ]
+    },
+    {
+      "id": "node-added:signOutLogout",
+      "kind": "node-added",
+      "category": "semantic",
+      "requires": [],
+      "excludedWith": [
+        "connection-added:signOutText:onClick->signOutLogout:login"
+      ],
+      "requiredWith": []
+    },
+    {
+      "id": "node-added:dobCondition",
+      "kind": "node-added",
+      "category": "semantic",
+      "requires": [],
+      "excludedWith": [
+        "connection-added:dobCondition:result->984be19e-e7c4-066f-198c-884837c16d55:visible",
+        "connection-added:a23fb1e3-7c0f-eecb-90e3-5d2abcb80129:prop-dob->dobCondition:condition"
+      ],
+      "requiredWith": []
+    },
+    {
+      "id": "node-parameters-changed:858e064a-3f6d-8fed-f62c-8b60339a8fe1",
+      "kind": "node-parameters-changed",
+      "category": "semantic",
+      "requires": [],
+      "excludedWith": [],
+      "requiredWith": []
+    },
+    {
+      "id": "node-parameters-changed:41d03b13-e79b-37c1-c72f-a5c67241e700",
+      "kind": "node-parameters-changed",
+      "category": "semantic",
+      "requires": [],
+      "excludedWith": [],
+      "requiredWith": []
+    },
+    {
+      "id": "node-reparented:41d03b13-e79b-37c1-c72f-a5c67241e700",
+      "kind": "node-reparented",
+      "category": "semantic",
+      "requires": [
+        "node-added:actionsRow"
+      ],
+      "excludedWith": [],
+      "requiredWith": [
+        "node-added:actionsRow"
+      ]
+    },
+    {
+      "id": "connection-added:a23fb1e3-7c0f-eecb-90e3-5d2abcb80129:prop-createdAt->joinDateText:text",
+      "kind": "connection-added",
+      "category": "semantic",
+      "requires": [
+        "node-added:joinDateText"
+      ],
+      "excludedWith": [],
+      "requiredWith": [
+        "node-added:joinDateText"
+      ]
+    },
+    {
+      "id": "connection-added:signOutText:onClick->signOutLogout:login",
+      "kind": "connection-added",
+      "category": "semantic",
+      "requires": [
+        "node-added:signOutText",
+        "node-added:signOutLogout"
+      ],
+      "excludedWith": [],
+      "requiredWith": [
+        "node-added:signOutLogout",
+        "node-added:signOutText",
+        "node-added:actionsRow"
+      ]
+    },
+    {
+      "id": "connection-added:a23fb1e3-7c0f-eecb-90e3-5d2abcb80129:prop-dob->dobCondition:condition",
+      "kind": "connection-added",
+      "category": "semantic",
+      "requires": [
+        "node-added:dobCondition"
+      ],
+      "excludedWith": [],
+      "requiredWith": [
+        "node-added:dobCondition"
+      ]
+    },
+    {
+      "id": "connection-added:dobCondition:result->984be19e-e7c4-066f-198c-884837c16d55:visible",
+      "kind": "connection-added",
+      "category": "semantic",
+      "requires": [
+        "node-added:dobCondition"
+      ],
+      "excludedWith": [],
+      "requiredWith": [
+        "node-added:dobCondition"
+      ]
+    }
+  ]
+}

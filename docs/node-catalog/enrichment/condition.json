@@ -1,0 +1,23 @@
+{
+  "typeName": "Condition",
+  "summary": "Boolean gate: routes an evaluation into On True / On False signals and holds Is True / Is False as readable booleans.",
+  "description": "Condition watches a single boolean input and exposes it in two forms: as level outputs (`result`/Is True and `isfalse`/Is False, plain booleans that always reflect the current state) and as event outputs (`ontrue`/On True and `onfalse`/On False, signals that fire when the condition is evaluated). Evaluation happens when the `condition` input changes, or on demand when the `eval` (Evaluate) signal is triggered — the idiomatic way to gate an action behind a check at the moment a user acts.",
+  "whenToUse": "Use it to branch signal flow ('when clicked, proceed only if valid') or to derive a visible/enabled boolean and its inverse from one condition. For choosing between more than two cases use Switch or States; for combining several booleans first, feed it from And/Or or an Expression.",
+  "ports": {
+    "condition": "Boolean value input. Changing it re-evaluates and fires the matching signal output.",
+    "eval": "Signal input; re-evaluates the current `condition` on demand and fires `ontrue` or `onfalse` accordingly. Wire a user action here to use Condition as a gate.",
+    "ontrue": "Signal; fires on evaluation while the condition is true — not a level, it will not re-fire until evaluated again.",
+    "onfalse": "Signal; fires on evaluation while the condition is false.",
+    "result": "Boolean level mirroring the condition; wire to inputs like `visible` or `enabled`.",
+    "isfalse": "Boolean level, inverse of `result`; saves an Inverter when driving 'error shown' style inputs."
+  },
+  "examples": ["validate-before-submit"],
+  "patterns": [
+    "Button `onClick` → `eval`, with `ontrue` driving the action: gate an action behind a validity check at click time.",
+    "`isfalse` → a message's `visible`: show an error as a level rather than pulsing it with a signal."
+  ],
+  "antiPatterns": [
+    "Wiring `ontrue` (signal) to a boolean input like `visible` delivers only a momentary pulse — use `result` for anything that must stay on."
+  ],
+  "relatedNodes": ["And", "Or", "Inverter", "Switch", "Expression", "States"]
+}

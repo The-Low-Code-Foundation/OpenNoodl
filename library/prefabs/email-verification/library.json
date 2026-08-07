@@ -1,0 +1,19 @@
+{
+  "label": "Email Verification",
+  "description": "Cloud functions for email verification and reset password. Configure by provisioning the backend function secrets SENDGRID_API_KEY, EMAIL_VERIFICATION_DOMAIN and EMAIL_VERIFICATION_FROM — see the prefab README.",
+  "type": "prefab",
+  "tags": [
+    "Cloud",
+    "Auth",
+    "Email"
+  ],
+  "icon": "icon.png",
+  "docsPath": "/library/prefabs/email-verification/",
+  "version": "0.5.0",
+  "minEditorVersion": "0.1.0",
+  "runtimeVersion": "2.7.0",
+  "provenance": {
+    "sourceUrl": "https://the-low-code-foundation.github.io/opennoodl-docs/library/prefabs/email-verification/email-verification-0-4.zip",
+    "importedAt": "2026-07-25"
+  }
+}

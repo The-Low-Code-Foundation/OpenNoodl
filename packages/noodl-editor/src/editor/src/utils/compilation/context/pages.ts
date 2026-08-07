@@ -1,3 +1,4 @@
+import { readNameList } from '@noodl-models/NodeTypeAdapters/nameListParameter.warnings';
 import { ProjectModel } from '@noodl-models/projectmodel';
 import { NodeGraphTraverser, TraverseNode } from '@noodl-utils/node-graph-traverser';
 
@@ -99,10 +100,13 @@ function getRoutePages(x: TraverseNode): PageRouteObject {
   // Read all the path variables from the page inputs node
   // NOTE: The tag might not always be there.
   // @ts-expect-error TODO: Solve tag type
-  const pathParams = x.tag?.pageInputs?.parameters.pathParams;
-  if (pathParams) {
-    const pathParamsArray: string[] = pathParams.split(',');
-    pathParamsArray.forEach((x) => {
+  const pageInputs = x.tag?.pageInputs;
+  if (pageInputs) {
+    // AIB-001: this called `.split(',')` on the raw parameter. It is the one of
+    // the six sites that runs at *build* time rather than from a model event,
+    // so a bad value here failed a deploy instead of an apply — the same class,
+    // discovered later and further from its cause.
+    readNameList(pageInputs, 'pathParams').forEach((x) => {
       // Remove all the variables that are already added
       if (variables.findIndex((b) => b.name == x) !== -1) {
         return;
@@ -153,6 +157,11 @@ export async function getPageRoutes(project: ProjectModel, options: IndexedPages
       return null;
     }
   });
+
+  // Check if traverser has valid root (empty project case)
+  if (!traverser.root) {
+    return { routes: [], pages: [], dynamicHash: {} };
+  }
 
   // Fetch all the Page nodes.
   const pages: TraverseNode[] = traverser.filter((node) => node.node.typename === 'Page');

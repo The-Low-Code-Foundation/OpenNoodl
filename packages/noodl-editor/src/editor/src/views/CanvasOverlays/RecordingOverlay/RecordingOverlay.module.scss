@@ -1,0 +1,406 @@
+/**
+ * HUD-001 styles.
+ *
+ * ⚠️ **Bottom centre, not "a corner" as the task doc had it.** All four corners are taken and
+ * the doc's premise that one was free is wrong: PAR-003's AI pill owns bottom-left and its zoom
+ * cluster bottom-right, and `ExecutionOverlay` spans the *whole* top edge with its header and
+ * notice and the whole bottom edge with its timeline whenever a workflow run is pinned. Bottom
+ * centre is the only place a recording control can sit without covering one of them, and it
+ * lands on the same 52px baseline as the other two HUD pills, which is what makes the three
+ * read as one row rather than as three unrelated widgets.
+ *
+ * Theme tokens throughout: the canvas repalettes on `nodegx:themechanged` (UIX-005), and this
+ * sits on top of it in both themes.
+ */
+
+.Overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+/* HUD-002: canvas-space container — children position with raw graph coordinates and the
+   transform here does pan and zoom, exactly as the execution overlay's does. */
+.TransformContainer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform-origin: 0 0;
+  pointer-events: none;
+}
+
+/**
+ * HUD-003: the bottom-centre stack — note, interactions list, pill, in that order.
+ *
+ * ⚠️ **The three were independently `position: absolute` with hand-picked offsets**, which held
+ * for exactly as long as there were two of them. A column that lays itself out cannot have the
+ * note and the list land on the same 90px.
+ *
+ * `pointer-events: none` on the stack and `all` on the children that want a click: the canvas
+ * owns every gesture over it and this dock spans the width of whatever it contains.
+ */
+.Dock {
+  position: absolute;
+  left: 50%;
+  bottom: 52px;
+  transform: translateX(-50%);
+  pointer-events: none;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  max-width: calc(100% - 32px);
+}
+
+.Control {
+  pointer-events: all;
+
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 100%;
+
+  background-color: var(--theme-color-bg-1);
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: var(--radius-full);
+  box-shadow: var(--shadow-popup);
+  padding: 5px 6px 5px 14px;
+
+  font-family: var(--font-family);
+  font-size: 12.5px;
+  line-height: 1.2;
+  color: var(--theme-color-fg-muted);
+  white-space: nowrap;
+}
+
+/* The one state a user is trying to read: is it on? */
+.Dot {
+  flex: 0 0 auto;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: var(--theme-color-fg-muted);
+
+  .Control[data-recording='true'] & {
+    background-color: var(--theme-color-danger);
+    animation: recording-pulse 1.6s ease-in-out infinite;
+  }
+}
+
+@keyframes recording-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+
+/* ⚠️ Not a "muted" borderless button. POL-013 measured those at 1.00:1 against their own
+   surface across 143 call sites — a control nobody could see was a control. Both of these
+   carry their own border. */
+.Record,
+.Stop {
+  flex: 0 0 auto;
+  border-radius: var(--radius-full);
+  padding: 3px 12px;
+  font-family: var(--font-family);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.3;
+  cursor: pointer;
+
+  &:focus-visible {
+    outline: 2px solid var(--theme-color-primary);
+    outline-offset: 2px;
+  }
+}
+
+.Record {
+  background-color: transparent;
+  border: 1px solid var(--theme-color-border-strong);
+  color: var(--theme-color-fg-highlight);
+
+  &:hover {
+    background-color: var(--theme-color-bg-3);
+    border-color: var(--theme-color-primary);
+    color: var(--theme-color-primary);
+  }
+}
+
+.Stop {
+  background-color: var(--theme-color-danger-bg);
+  border: 1px solid var(--theme-color-danger);
+  color: var(--theme-color-danger);
+
+  &:hover {
+    background-color: var(--theme-color-danger);
+    color: var(--theme-color-bg-1);
+  }
+}
+
+/**
+ * HUD-003: the disclosure.
+ *
+ * Borderless, unlike Record and Stop, and that is not a POL-013 regression — it is a glyph
+ * inside a bordered pill rather than a control on a bare surface, so its contrast is measured
+ * against `--theme-color-bg-1` where the muted-button problem was a control against its own
+ * identical panel. It also carries a hover fill and a real focus ring.
+ */
+.Expand {
+  flex: 0 0 auto;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-full);
+  background-color: transparent;
+  color: var(--theme-color-fg-default);
+  font-size: 11px;
+  line-height: 1;
+  cursor: pointer;
+
+  &:hover {
+    background-color: var(--theme-color-bg-3);
+    color: var(--theme-color-fg-highlight);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--theme-color-primary);
+    outline-offset: 2px;
+  }
+}
+
+/**
+ * The expanded list — HUD-003.
+ *
+ * ⚠️ **This one takes clicks, and it is the only thing in the recording HUD that does apart from
+ * the pill's own buttons.** The badges deliberately do not (HUD-002): they are canvas-space, they
+ * appear and fade on their own schedule, and a click target that materialises under the cursor
+ * for three seconds during a recording would eat the drag, the marquee and the right-click the
+ * user is recording *with*. This panel is screen-space, stationary, and only exists while the
+ * user has explicitly opened it.
+ */
+.Interactions {
+  pointer-events: all;
+
+  display: flex;
+  flex-direction: column;
+  width: min(360px, 100%);
+  max-height: 232px;
+  overflow-y: auto;
+
+  padding: 6px;
+  border-radius: var(--radius-default);
+  background-color: var(--theme-color-bg-1);
+  border: 1px solid var(--theme-color-border-default);
+  box-shadow: var(--shadow-popup);
+
+  font-family: var(--font-family);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.InteractionsTitle {
+  padding: 2px 6px 6px;
+  color: var(--theme-color-fg-muted);
+  font-size: 11px;
+}
+
+.InteractionsMore {
+  padding: 6px;
+  color: var(--theme-color-fg-muted);
+  font-size: 11px;
+}
+
+.Interaction {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 4px 6px;
+  border-radius: var(--radius-default);
+  color: var(--theme-color-fg-default);
+  cursor: pointer;
+
+  &:hover {
+    background-color: var(--theme-color-bg-3);
+    color: var(--theme-color-fg-highlight);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--theme-color-primary);
+    outline-offset: -2px;
+  }
+}
+
+.InteractionArrow {
+  flex: 0 0 auto;
+  color: var(--theme-color-primary);
+}
+
+.InteractionLabel {
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.InteractionSize {
+  flex: 0 0 auto;
+  color: var(--theme-color-fg-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.Label {
+  color: var(--theme-color-fg-highlight);
+  font-weight: 600;
+}
+
+.Separator {
+  color: var(--theme-color-fg-muted);
+}
+
+.Count {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--theme-color-fg-default);
+  font-variant-numeric: tabular-nums;
+}
+
+/**
+ * HUD-004: who else holds the trace.
+ *
+ * Muted rather than a warning tone — an agent tracing alongside you is a normal state of the
+ * system, not a fault, and red is danger only (phase 23's one hard colour rule).
+ */
+.Owners {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--theme-color-fg-muted);
+}
+
+/**
+ * F91 — the receipt, and the door out of it.
+ *
+ * ⚠️ **Sits in the same dock column as everything else, on purpose.** The whole finding is that
+ * the recording control and the results had no relationship on screen; a receipt anywhere but
+ * directly above the button that produced it would restate the problem in a new position.
+ *
+ * ⚠️ **`bg-2` against the pill's `bg-1`**, so the two read as two things rather than as one
+ * control that grew. Same treatment the note above it already has, and the same reason.
+ */
+.Result {
+  pointer-events: all;
+
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  max-width: min(520px, 100%);
+
+  padding: 6px 6px 6px 14px;
+  border-radius: var(--radius-full);
+  background-color: var(--theme-color-bg-2);
+  border: 1px solid var(--theme-color-border-default);
+  box-shadow: var(--shadow-popup);
+
+  font-family: var(--font-family);
+  font-size: 12.5px;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.ResultText {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--theme-color-fg-highlight);
+  font-variant-numeric: tabular-nums;
+}
+
+/**
+ * The one action the end of a recording has.
+ *
+ * ⚠️ **Filled, not a muted borderless button.** POL-013 measured those at 1.00:1 against their
+ * own surface across 143 call sites; this is the primary next step of the whole feature and it
+ * is the thing the finding says was missing, so it is drawn as one. The fill is the azure action
+ * accent in both themes, with the surface colour as its label — the same pairing `.Stop:hover`
+ * uses, which is what keeps light theme legible without a second rule.
+ */
+.ResultOpen {
+  flex: 0 0 auto;
+  border: 1px solid var(--theme-color-primary);
+  border-radius: var(--radius-full);
+  background-color: var(--theme-color-primary);
+  color: var(--theme-color-bg-1);
+  padding: 3px 12px;
+  font-family: var(--font-family);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.3;
+  cursor: pointer;
+
+  &:hover {
+    background-color: var(--theme-color-primary-highlight);
+    border-color: var(--theme-color-primary-highlight);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--theme-color-primary);
+    outline-offset: 2px;
+  }
+}
+
+/* Borderless by the same argument the disclosure glyph is: a glyph inside a bordered surface,
+   measured against `bg-2`, with a hover fill and a real focus ring of its own. */
+.ResultDismiss {
+  flex: 0 0 auto;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-full);
+  background-color: transparent;
+  color: var(--theme-color-fg-default);
+  font-size: 11px;
+  line-height: 1;
+  cursor: pointer;
+
+  &:hover {
+    background-color: var(--theme-color-bg-3);
+    color: var(--theme-color-fg-highlight);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--theme-color-primary);
+    outline-offset: 2px;
+  }
+}
+
+/**
+ * The second line — "recording, and nothing is happening *here*".
+ *
+ * An empty canvas under a live counter is indistinguishable from a HUD that failed to mount,
+ * which is the failure `renderSlot`'s silent no-op makes easy to ship.
+ */
+.Note {
+  pointer-events: none;
+
+  max-width: min(520px, 100%);
+  padding: 6px 12px;
+  border-radius: var(--radius-default);
+
+  background-color: var(--theme-color-bg-2);
+  border: 1px solid var(--theme-color-border-default);
+  box-shadow: var(--shadow-sm);
+
+  font-family: var(--font-family);
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--theme-color-fg-default-shy);
+  text-align: center;
+}

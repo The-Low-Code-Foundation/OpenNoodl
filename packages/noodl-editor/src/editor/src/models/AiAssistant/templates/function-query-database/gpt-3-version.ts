@@ -4,7 +4,7 @@ import { IAiCopilotContext } from '@noodl-models/AiAssistant/interfaces';
 import { extractCodeBlock, wrapInput, wrapOutput } from '@noodl-models/AiAssistant/templates/helper';
 import { guid } from '@noodl-utils/utils';
 
-export async function generate(
+export async function execute(
   { node, chatHistory, chatStream, chatStreamXml }: IAiCopilotContext,
   dbCollectionsSource
 ) {
@@ -39,7 +39,6 @@ export async function generate(
 
   const fullCodeText = await chatStream({
     provider: {
-      model: 'gpt-3.5-turbo',
       temperature: 0.0,
       max_tokens: 2048
     },
@@ -113,7 +112,6 @@ export async function generate(
       { role: 'user', content: codeText }
     ],
     provider: {
-      model: 'gpt-3.5-turbo',
       temperature: 0.0,
       max_tokens: 2048
     },
@@ -441,7 +439,7 @@ Outputs.error = error
 ${FUNCTION_QUERY_DATABASE_CONTEXT_GPT3_GENERAL_BACKGROUND}
 
 ###schema###
-Here is the schema of the database:
+What is known about the project database:
 %{database-schema}%
 
 ##Task###
@@ -452,7 +450,7 @@ const FUNCTION_QUERY_DATABASE_CONTEXT_EDIT_GPT3 = `${FUNCTION_QUERY_DATABASE_CON
 ${FUNCTION_QUERY_DATABASE_CONTEXT_GPT3_GENERAL_BACKGROUND}
 
 ###schema###
-Here is the schema of the database:
+What is known about the project database:
 %{database-schema}%
 
 We are starting from this code and will only modify it:

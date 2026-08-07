@@ -1,0 +1,202 @@
+.Root {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+/*
+ * AIB-004 live QA: this was `height: 36px` with no wrapping, and the row had
+ * only ever held a title, three view buttons and three short verbs. Adding the
+ * Preview view, the plan chip and the longer plan-level verbs pushed it past the
+ * document width at 1368px — `Close` was entirely off-screen and `Drop from
+ * plan` was clipped mid-word. A control you cannot reach is worse than an ugly
+ * row, and this editor's panels are resizable well below that, so it wraps
+ * (the F20 precedent) rather than relying on any particular width fitting.
+ */
+.Topbar {
+  min-height: 36px;
+  flex-shrink: 0;
+  background-color: var(--theme-color-bg-2);
+  border-bottom: 2px solid var(--theme-color-bg-1);
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 4px 8px 4px 0;
+}
+
+/* The one elastic thing in the row: it gives way before anything wraps. */
+.Title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.Body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+.Canvas {
+  flex: 1;
+  min-width: 0;
+  position: relative;
+}
+
+/* AIB-004: Preview and Changes are stacked panes, not swapped ones — see the
+   comment at the call site for why the hidden one must keep its box. */
+.Pane {
+  position: absolute;
+  inset: 0;
+  min-width: 0;
+}
+
+.PaneHidden {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+/* AIB-004: the plan context, as a chip that survives scrolling rather than a
+   suffix on a title nobody re-reads. */
+.Chip {
+  flex-shrink: 0;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background-color: var(--theme-color-bg-3);
+  white-space: nowrap;
+}
+
+.Rail {
+  width: 340px;
+  flex-shrink: 0;
+  border-left: 2px solid var(--theme-color-bg-1);
+  background-color: var(--theme-color-bg-2);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.Summary {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--theme-color-bg-1);
+}
+
+.GroupHeader {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 10px 12px 2px;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+
+  &:hover,
+  &:focus-visible {
+    background-color: var(--theme-color-bg-3);
+  }
+}
+
+.Walkthrough {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.Row {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  width: 100%;
+  padding: 6px 12px;
+  border: 0;
+  background: none;
+  text-align: left;
+  color: inherit;
+  font: inherit;
+}
+
+.RowClickable {
+  cursor: pointer;
+
+  &:hover,
+  &:focus-visible {
+    background-color: var(--theme-color-bg-3);
+  }
+}
+
+.RowIcon {
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.Params {
+  padding: 0 12px 6px 34px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.RowLine {
+  display: flex;
+  align-items: stretch;
+
+  &:hover .ExcludeButton,
+  &:focus-within .ExcludeButton {
+    opacity: 1;
+  }
+}
+
+.RowLine .Row {
+  flex: 1;
+  min-width: 0;
+}
+
+.RowText {
+  min-width: 0;
+}
+
+.ExcludeButton {
+  flex-shrink: 0;
+  width: 28px;
+  border: 0;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+  opacity: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  &:hover,
+  &:focus-visible {
+    background-color: var(--theme-color-bg-3);
+    opacity: 1;
+  }
+}
+
+.RowRejected {
+  opacity: 0.45;
+
+  .RowText {
+    text-decoration: line-through;
+  }
+
+  // Keep the restore affordance discoverable on excluded rows.
+  .ExcludeButton {
+    opacity: 1;
+  }
+}
+
+.ApplyError {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin-top: 6px;
+}

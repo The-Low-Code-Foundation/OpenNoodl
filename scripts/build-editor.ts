@@ -65,6 +65,29 @@ execSync('npm run build:editor:_viewer', {
   }
 });
 
+// Build everything electron-builder copies via `extraResources`: the standalone
+// backend service (WF-004) and the two MCP servers (MCP-002). All three live in
+// gitignored `dist/` directories, so they exist only where someone ran the
+// build — and `extraResources` is what puts them OUTSIDE the asar, which is the
+// only reason an external process can read them at all.
+//
+// ⚠️ It must happen *here*, not by hand beforehand: `lerna clean` above removes
+// anything built earlier.
+//
+// ⚠️ **One list, in `npm run build:sidecars`, not a copy here.** The CI release
+// and nightly workflows package the app *without* going through this file —
+// they call `build:editor:_viewer` and `build:editor:_editor` directly — so a
+// list that lived only here would be silently absent from every shipped build.
+// It has been: electron-builder only *warns* on a missing `extraResources`
+// source (`fileMatcher.js`: `file source doesn't exist`) and ships the app
+// anyway. The script also runs `check-build-artefacts.js --built`, which turns
+// that warning into a failure.
+console.log('---> build packaged sidecars (nodegx-backend, noodl-mcp, nodegx-observe)');
+execSync('npm run build:sidecars', {
+  stdio: 'inherit',
+  env: process.env
+});
+
 try {
   // Build Editor
   console.log('---> build editor');
@@ -81,8 +104,9 @@ try {
   // it could be useful for debugging.
 
   if (process.platform === 'darwin') {
-    // NOTE: /node_modules/app-builder-lib/templates/entitlements.mac.plist is missing
-    execSync(`ls /node_modules/app-builder-lib/templates`, {
+    // NOTE: helps diagnose a missing entitlements.mac.plist template
+    const appBuilderLibDir = path.dirname(require.resolve('app-builder-lib/package.json'));
+    execSync(`ls ${path.join(appBuilderLibDir, 'templates')}`, {
       stdio: 'inherit',
       env: process.env
     });

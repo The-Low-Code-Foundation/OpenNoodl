@@ -1,66 +1,102 @@
+// UIX-007: Icons are token-driven via `currentColor`. The component hardcodes
+// no color value — it sets `color`, and every glyph paints with `currentColor`
+// (fill for solid glyphs, stroke for the 1.5px line glyphs), so one mechanism
+// drives both. State colors (default fg / hover fg-highlight / active accent)
+// are applied by the host — see IconButton — by setting `color` on context.
+// POL-013: `IconSize` is real. Until now `Icon.module.scss` declared no
+// `is-size-*` rule at all, so `css[size]` resolved to `undefined`, `classNames`
+// dropped it, and `size={IconSize.Large}` was a no-op at all 441 call sites —
+// the class was not even in the DOM. What actually sized a glyph was the SVG
+// file's own `width`/`height` attributes, and the set has two eras that do not
+// agree: 71 files are 16x16, and the older imported ones are 20, 24, 25, 30 or
+// 31. Measured live before this landed: 878 rendered icons, 543 at 16x16 and
+// the rest spread across nine other boxes.
+//
+// The scale is defined here because nothing anywhere had numbers attached to
+// these names. It sits on Label's 10/12/14 type scale — an icon reads one step
+// above the text it labels:
+//
+//     tiny 12   small 14   default 16   large 20
+//
+// `default` is 16 because that is what 543 of 878 icons already were and what
+// the house glyphs are drawn at; `large` is 20 because that is the box POL-003
+// picked by hand when Richard asked for the hide-panel glyph to be bigger.
 .Root {
   display: block;
 
-  path {
-    transition: fill var(--speed-turbo) var(--easing-base);
-  }
+  // An icon is not a squeezable box. Without this, `Icon`'s auto-width span is
+  // an ordinary flex item and `flex-shrink: 1` lets an overflowing row crush it:
+  // the baseline census found 47 visible glyphs squeezed under 10px, eight of
+  // them at 0.48px, inside `IconButton` (inline-flex, 4px padding) and the
+  // topbar's zoom select. They are not small, they are destroyed, and no call
+  // site asked for it.
+  flex: 0 0 auto;
 
-  &.is-size-default {
-    width: 24px;
-    height: 24px;
-  }
-
-  &.is-size-large {
-    width: 28px;
-    height: 28px;
+  &.is-size-tiny {
+    width: 12px;
+    height: 12px;
   }
 
   &.is-size-small {
-    width: 20px;
-    height: 20px;
+    width: 14px;
+    height: 14px;
   }
 
-  &.is-size-tiny {
+  &.is-size-default {
     width: 16px;
     height: 16px;
   }
 
+  &.is-size-large {
+    width: 20px;
+    height: 20px;
+  }
+  // Inherit the ambient token-driven color by default (currentColor). Hosts that
+  // color their glyph — IconButton, list/tree/menu rows — set `color` on context
+  // (or a matching `color` beside their legacy `path { fill }`), and both the
+  // 1.5px stroke glyphs and the solid glyphs follow it. No color is hardcoded here.
+  color: inherit;
+  transition: color var(--speed-turbo) var(--easing-base);
+
+  // Variants opt into a semantic token; still delivered through `color`, so
+  // both stroke and fill glyphs respond.
   &.is-variant {
-    &-default path {
-      fill: var(--theme-color-fg-default);
+    &-default {
+      color: var(--theme-color-fg-default);
     }
 
-    &-default-contrast path {
-      fill: var(--theme-color-fg-default-contrast) !important;
+    &-default-contrast {
+      color: var(--theme-color-fg-default-contrast);
     }
 
-    &-proud path {
-      fill: var(--theme-color-fg-highlight) !important;
+    &-proud {
+      color: var(--theme-color-fg-highlight);
     }
 
-    &-shy path {
-      fill: var(--theme-color-fg-muted) !important;
+    &-shy {
+      color: var(--theme-color-fg-muted);
     }
 
-    &-success path {
-      fill: var(--theme-color-success) !important;
+    &-success {
+      color: var(--theme-color-success);
     }
 
-    &-notice path {
-      fill: var(--theme-color-notice) !important;
+    &-notice {
+      color: var(--theme-color-notice);
     }
 
-    &-danger path {
-      fill: var(--theme-color-danger) !important;
+    &-danger {
+      color: var(--theme-color-danger);
     }
 
-    &-secondary path {
-      fill: var(--theme-color-secondary-as-fg) !important;
+    &-secondary {
+      color: var(--theme-color-secondary-as-fg);
     }
   }
 
   svg {
     width: 100%;
     height: 100%;
+    display: block;
   }
 }

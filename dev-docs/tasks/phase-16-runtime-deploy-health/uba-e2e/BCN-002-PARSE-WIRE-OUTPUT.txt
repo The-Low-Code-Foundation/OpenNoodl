@@ -1,0 +1,106 @@
+
+══════════════════════════════════════════════════════════════════════════
+nodegx-backend (ours, :8093)
+══════════════════════════════════════════════════════════════════════════
+
+── create ────────────────────────────────────────────────────────────────
+  create                         OK   {"title":"first","views":10,"tag":"red","objectId":"52b3e961-d9f6-4459-94ca-634291215fb3","createdAt":"2026-07-31T10:14:23.861Z"}
+  create (second row)            OK   {"title":"second","views":25,"tag":"blue","objectId":"effe6853-7f1e-4dd4-9bb2-a8c5911b768d","createdAt":"2026-07-31T10:14:23.870Z"}
+
+── read ──────────────────────────────────────────────────────────────────
+  fetch                          OK   {"objectId":"52b3e961-d9f6-4459-94ca-634291215fb3","createdAt":"2026-07-31T10:14:23.861Z","updatedAt":"2026-07-31T10:14:23.861Z","ACL":null,"title":"first","vie …
+  identity is `objectId`         OK   contract name present
+  query (filtered, $gt)          OK   [[{"objectId":"effe6853-7f1e-4dd4-9bb2-a8c5911b768d","createdAt":"2026-07-31T10:14:23.870Z","updatedAt":"2026-07-31T10:14:23.870Z","ACL":null,"title":"second"," …
+  count                          OK   2
+  distinct                       OK   ["red","blue"]
+  aggregate (no master key)      OK   {"total":35}
+
+── write ─────────────────────────────────────────────────────────────────
+  save                           OK   {"updatedAt":"2026-07-31T10:14:23.882Z"}
+  increment                      OK   {"updatedAt":"2026-07-31T10:14:23.884Z","views":15}
+
+── relations ─────────────────────────────────────────────────────────────
+  create (relation target)       OK   {"name":"Ada","objectId":"25c25359-06f4-48fc-bc6d-edf6493cf315","createdAt":"2026-07-31T10:14:23.887Z"}
+  addRelation                    OK   {"updatedAt":"2026-07-31T10:14:23.889Z"}
+  removeRelation                 OK   {"updatedAt":"2026-07-31T10:14:23.890Z"}
+
+── files ─────────────────────────────────────────────────────────────────
+  uploadFile                     OK   {"url":"http://127.0.0.1:8093/files/18d348960c2ad4d2_bcn002.txt","name":"18d348960c2ad4d2_bcn002.txt","size":41,"contentType":"application/json"}
+  signFileUrl                    OK   {"url":"http://127.0.0.1:8093/files/18d348960c2ad4d2_bcn002.txt?exp=1785493163&sig=6f6edc5613bd05d67d30c06af2c482c706dfa9a888b1ce3ae75877a9c6d6b2e8","expiresAt" …
+  deleteFile                     OK   {}
+
+── delete ────────────────────────────────────────────────────────────────
+  delete                         OK   undefined
+
+── events fired by the adapter ───────────────────────────────────────────
+  create emits `create`          OK   create:Bcn002Post
+
+══════════════════════════════════════════════════════════════════════════
+parse-server 7.3.0 (upstream, :8092)
+══════════════════════════════════════════════════════════════════════════
+
+── create ────────────────────────────────────────────────────────────────
+  create                         OK   {"title":"first","views":10,"tag":"red","objectId":"vVAQCeflXA","createdAt":"2026-07-31T10:14:23.934Z"}
+  create (second row)            OK   {"title":"second","views":25,"tag":"blue","objectId":"ETrv9JB5eK","createdAt":"2026-07-31T10:14:23.969Z"}
+
+── read ──────────────────────────────────────────────────────────────────
+  fetch                          OK   {"objectId":"vVAQCeflXA","title":"first","views":10,"tag":"red","createdAt":"2026-07-31T10:14:23.934Z","updatedAt":"2026-07-31T10:14:23.934Z"}
+  identity is `objectId`         OK   contract name present
+  query (filtered, $gt)          OK   [[{"objectId":"ETrv9JB5eK","title":"second","views":25,"tag":"blue","createdAt":"2026-07-31T10:14:23.969Z","updatedAt":"2026-07-31T10:14:23.969Z"}],null]
+  count                          OK   2
+  distinct                       ERR  undefined
+  aggregate (no master key)      ERR  undefined
+
+── write ─────────────────────────────────────────────────────────────────
+  save                           OK   {"updatedAt":"2026-07-31T10:14:24.014Z"}
+  increment                      OK   {"views":15,"updatedAt":"2026-07-31T10:14:24.020Z"}
+
+── relations ─────────────────────────────────────────────────────────────
+  create (relation target)       OK   {"name":"Ada","objectId":"wMdQwsgTr1","createdAt":"2026-07-31T10:14:24.026Z"}
+  addRelation                    OK   {"updatedAt":"2026-07-31T10:14:24.041Z"}
+  removeRelation                 OK   {"updatedAt":"2026-07-31T10:14:24.054Z"}
+
+── files ─────────────────────────────────────────────────────────────────
+  uploadFile                     OK   {"url":"http://localhost:8092/parse/files/uba-e2e-app/2b54967895422797336f47a80b88a21a_bcn002.txt","name":"2b54967895422797336f47a80b88a21a_bcn002.txt"}
+  signFileUrl                    ERR  {"code":119,"error":"Invalid application ID."}
+  deleteFile                     ERR  {"error":"Failed to delete."}
+
+── delete ────────────────────────────────────────────────────────────────
+  delete                         OK   undefined
+
+── events fired by the adapter ───────────────────────────────────────────
+  create emits `create`          OK   create:Bcn002Post
+
+══════════════════════════════════════════════════════════════════════════
+records.js — the server-side path, in the cloud runtime
+══════════════════════════════════════════════════════════════════════════
+  records.create                 OK   "068dea95-0c52-494c-b67c-9084f1872f97"
+  records.query (neutral filter) OK   1 row(s)
+  records.count (greaterThan)    OK   1
+  records.query (no match)       OK   0 row(s)
+
+══════════════════════════════════════════════════════════════════════════
+The delta — which is the whole reason the second server exists
+══════════════════════════════════════════════════════════════════════════
+
+  capability                   nodegx     parse
+≠ aggregate, app-id only       yes        no
+≠ distinct, app-id only        yes        no
+  uploadFile, app-id only      yes        yes
+≠ signFileUrl                  yes        no
+  increment                    yes        yes
+  addRelation                  yes        yes
+
+── upstream Parse, WITH the master key — the separate-columns question ───
+  aggregate            200 {"results":[{"total":25,"objectId":null,"authors":{"__type":"Relation","className":"Bcn002Author"}}]}
+  distinct             200 {"results":["blue"]}
+  files/:name/sign     403 {"code":119,"error":"Invalid application ID."}
+
+══════════════════════════════════════════════════════════════════════════
+Summary
+══════════════════════════════════════════════════════════════════════════
+  40 checks run.
+  3 difference(s): aggregate, app-id only, distinct, app-id only, signFileUrl
+
+  Every row above is evidence for one descriptor cell. A cell flipped
+  without a line here is the failure mode the table exists to prevent.

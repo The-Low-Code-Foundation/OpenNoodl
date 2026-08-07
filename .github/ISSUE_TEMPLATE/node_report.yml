@@ -1,0 +1,76 @@
+name: A node behaves wrongly
+description: One of NodeGX's built-in nodes does the wrong thing, or nothing.
+labels: ['bug', 'node-library', 'needs-triage']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        A separate form because node defects are triaged differently: they are checked against
+        the node library's written contracts (reactivity, empty values, failure) and land in the
+        node-library audit rather than the editor backlog.
+
+        Reports like this are not a formality — at least one audit task exists solely because
+        someone filed one.
+
+  - type: input
+    id: node-name
+    attributes:
+      label: Which node
+      description: The name as it appears in the node picker.
+      placeholder: 'Repeater'
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected it to do
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: What it did instead
+      description: If it did *nothing*, say so explicitly — a node that silently no-ops is its own category of defect and easy to under-report.
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: shape
+    attributes:
+      label: Does it look like any of these?
+      description: Optional, and guesses are fine. These map onto contracts we already have written down.
+      options:
+        - label: A value changed but nothing downstream updated
+        - label: An output signal never fired
+        - label: It failed and there was no way to detect the failure
+        - label: An empty value (blank, null, nothing connected) was handled oddly
+        - label: A port's name or type does not match what it seems to do
+        - label: It works, but nothing documents what a port is for
+
+  - type: textarea
+    id: graph
+    attributes:
+      label: The smallest graph that shows it
+      description: A screenshot of the nodes and wires, or a zipped project. Smaller is far more useful than complete.
+
+  - type: input
+    id: version
+    attributes:
+      label: NodeGX version
+      placeholder: '0.1.0'
+    validations:
+      required: true
+
+  - type: dropdown
+    id: where-running
+    attributes:
+      label: Where were you running it
+      options:
+        - Preview inside the editor
+        - A deployed or exported app
+        - A cloud function or workflow
+        - Both preview and deployed
+    validations:
+      required: true

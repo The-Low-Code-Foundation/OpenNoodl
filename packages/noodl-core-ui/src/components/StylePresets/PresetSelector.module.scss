@@ -1,0 +1,27 @@
+.PresetSelector {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.PresetSelector-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--theme-color-fg-default);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.PresetSelector-grid {
+  display: flex;
+  flex-direction: row;
+  gap: 4px;
+}
+
+.PresetSelector-description {
+  font-size: 11px;
+  color: var(--theme-color-fg-default-shy);
+  margin: 0;
+  line-height: 1.4;
+  min-height: 1.4em; /* reserve height to prevent layout shift */
+}

@@ -1,0 +1,246 @@
+/* OBS-002 — the walk. Deliberately dense: the whole claim is "read it in one glance".
+
+   POL-004 raised every `--theme-color-fg-muted` in this file to
+   `--theme-color-fg-default-shy`. Measured live against the panel's own bg-1:
+
+       fg-muted        dark #6b7682 on #12161b  = 3.93:1   light #7c8894 on #ffffff = 3.62:1
+       fg-default-shy  dark #8b95a1 on #12161b  = 5.98:1   light #616c79 on #ffffff = 5.34:1
+
+   Every row in this panel is 10-11px, so `fg-muted` — documented as being for
+   "large or secondary text only" — was under the 4.5:1 floor for all of it.
+   `fg-default-shy` still reads as visibly quieter than the values beside it,
+   which is the whole point of the key column, without being unreadable. */
+
+.Root {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.Toolbar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--theme-color-bg-3);
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+}
+
+.Empty {
+  padding: 16px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/*
+ * ⚠️ `overflow-x: hidden`, not `auto`. A row is a flex line as wide as the panel, so anything
+ * that does not fit is clipped rather than scrolled to — `auto` produced no scrollbar and lost
+ * the right-hand end of the deepest rows in silence. Every child that can be long now shrinks
+ * or ellipsises instead, which is what makes hiding the axis honest.
+ */
+.Rows {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 6px 0 12px 0;
+}
+
+.Summary {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--theme-color-bg-3);
+  flex: 0 0 auto;
+}
+
+.Row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 3px 10px 3px 0;
+  cursor: pointer;
+  font-size: 11px;
+  line-height: 16px;
+  border-left: 2px solid transparent;
+}
+
+.Row:hover {
+  background-color: var(--theme-color-bg-2);
+}
+
+/* The frontier. The one thing the user is meant to land on without scanning. */
+.RowBoundary {
+  background-color: var(--theme-color-notice-bg);
+  border-left-color: var(--theme-color-notice);
+}
+
+.RowBoundary:hover {
+  background-color: var(--theme-color-notice-bg-hover);
+}
+
+.Status {
+  flex: 0 0 auto;
+  width: 12px;
+  text-align: center;
+  font-weight: 700;
+}
+
+.StatusFired {
+  color: var(--theme-color-success);
+}
+
+.StatusNever {
+  color: var(--theme-color-danger);
+}
+
+.StatusUnknown {
+  color: var(--theme-color-fg-default-shy);
+}
+
+/*
+ * The label is the one thing worth keeping whole, so it shrinks last and ellipsises rather than
+ * pushing the row wider — it was `flex: 0 0 auto`, which cannot shrink at all, and a node named
+ * by the author rather than by its type is as long as they made it.
+ */
+.Label {
+  flex: 0 1 auto;
+  min-width: 3em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--theme-color-fg-default);
+  white-space: nowrap;
+}
+
+.Component {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--theme-color-fg-default-shy);
+  font-size: 10px;
+}
+
+/*
+ * ⚠️ `flex-basis: 0`, not `auto`. With `auto` the value's own length joined the row's natural
+ * width, so a long value made the row overflow before anything got a chance to shrink. At 0 it
+ * only ever occupies space nothing else claimed.
+ */
+.Value {
+  flex: 1 1 0;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  /* POL-004: was `--theme-color-secondary` — the neutral ACTION colour, which is
+     `#eef2f6` in dark and `#18212b` in light. As text it is inverted relative to
+     the surface by construction: near-white text on a light row, near-black on a
+     dark one. This is the black-on-dark Richard photographed. A value is emphasised
+     content, so it takes the emphasised foreground. */
+  color: var(--theme-color-fg-highlight);
+  font-family: var(--font-family-code);
+}
+
+.Meta {
+  flex: 0 0 auto;
+  color: var(--theme-color-fg-default-shy);
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+/* The row carries a diagnosis. Click it to read the sentence. */
+.Warned {
+  flex: 0 0 auto;
+  color: var(--theme-color-notice);
+  font-size: 11px;
+}
+
+/*
+ * The jump to the canvas, split off the row click.
+ *
+ * Held at low contrast until the row is hovered: it is on every row, and a column of arrows
+ * competes with the ✓/✕ the walk is actually about.
+ */
+.Reveal {
+  flex: 0 0 auto;
+  width: 14px;
+  text-align: center;
+  color: var(--theme-color-fg-default-shy);
+  opacity: 0;
+  cursor: pointer;
+}
+
+.Row:hover .Reveal {
+  opacity: 1;
+}
+
+.Reveal:hover,
+.Reveal:focus {
+  color: var(--theme-color-primary);
+  opacity: 1;
+}
+
+/* The expanded row. Distinct from the boundary highlight, which means something else. */
+.RowSelected {
+  background-color: var(--theme-color-bg-2);
+  border-left-color: var(--theme-color-primary);
+}
+
+.Note {
+  padding: 2px 10px 6px 0;
+  font-size: 10px;
+  color: var(--theme-color-fg-default-shy);
+}
+
+/*
+ * The expanded detail, inline under its row rather than pinned to the foot of the panel — so
+ * `margin-left` follows the row's indent and the block visibly belongs to it.
+ */
+.Detail {
+  margin: 2px 10px 6px 0;
+  padding: 6px 8px;
+  border-left: 2px solid var(--theme-color-primary);
+  background-color: var(--theme-color-bg-2);
+  overflow: hidden;
+}
+
+.DetailRow {
+  display: flex;
+  gap: 8px;
+  font-size: 11px;
+  line-height: 18px;
+}
+
+.DetailKey {
+  flex: 0 0 68px;
+  color: var(--theme-color-fg-default-shy);
+}
+
+.DetailValue {
+  flex: 1 1 auto;
+  min-width: 0;
+  word-break: break-all;
+  /* POL-004: this declared NO colour and inherited from whatever ancestor last
+     set one, which is why the detail values and the `.DetailKey` beside them
+     disagreed. An explicit token, not inheritance — the whole point of the row
+     is that the key is quiet and the value is the thing you came to read. */
+  color: var(--theme-color-fg-highlight);
+  font-family: var(--font-family-code);
+}
+
+/*
+ * Layer 3 — the sentence that says *why*. Full width and wrapping as prose, not in the key/value
+ * grid: a diagnosis is written to be read ("Items expects an array, received a number (0).
+ * Nothing will render…"), and `word-break: break-all` in a 68px-labelled column shreds it.
+ */
+.DetailWarning {
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid var(--theme-color-bg-3);
+  font-size: 11px;
+  line-height: 16px;
+  color: var(--theme-color-notice);
+  white-space: pre-wrap;
+}

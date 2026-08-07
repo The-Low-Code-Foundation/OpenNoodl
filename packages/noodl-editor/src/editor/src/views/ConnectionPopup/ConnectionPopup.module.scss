@@ -1,5 +1,3 @@
-@use '@scss-variables/color';
-
 %overlay {
   content: '';
   position: absolute;
@@ -9,11 +7,14 @@
   bottom: 0;
 }
 
+/* UIX-011: was a `content` background of flash.svg — a `fill="white"` bolt frozen against
+   the theme. Migrated to core-ui `lightning` and rendered as an <Icon> child;
+   same 15x15 box and 3px gutter. */
 .signalIcon {
-  content: url('../assets/icons/flash.svg');
   width: 15px;
   height: 15px;
   margin-right: 3px;
+  color: var(--theme-color-fg-default);
 }
 
 .popup {
@@ -36,7 +37,8 @@
   position: relative;
 
   &.disabled {
-    color: #ffffff80;
+    /* UIX-012: was rgba(255,255,255,.5) — invisible on a light backdrop. */
+    color: var(--theme-color-fg-disabled);
   }
 }
 
@@ -67,13 +69,14 @@
 
   &.disabled::after {
     @extend %overlay;
-    background-color: #00000060;
+    /* UIX-012: theme-flipping scrim (black on dark, white on light). */
+    background-color: var(--theme-color-bg-1-transparent-2);
   }
 }
 
 .noPortsMessage {
   padding: 10px;
-  color: #ccc;
+  color: var(--theme-color-fg-default-contrast);
 }
 
 .listElement {
@@ -96,7 +99,7 @@
   }
 
   &.disabled {
-    color: #ffffff40;
+    color: var(--theme-color-fg-disabled);
 
     .signalIcon {
       opacity: 0.3;
@@ -108,14 +111,13 @@
 
     &::before {
       @extend %overlay;
-      background-color: #ffffff33;
+      background-color: var(--theme-color-fg-transparent);
     }
   }
 }
 
 .listElementPort {
   @extend .listElement;
-  //background-color: #ffffff33;
   color: var(--theme-color-fg-highlight);
   opacity: 0.7;
 
@@ -134,7 +136,7 @@
   display: flex;
   align-items: center;
   position: relative;
-  color: #ffffffaa;
+  color: var(--theme-color-fg-default);
 }
 
 .groupLabel {
@@ -146,16 +148,27 @@
   margin-top: 2px;
 }
 
+/* SPR-003 §4 (F94): positioned by `DocsPopup` against the hovered port row.
+   ⚠️ `width` is duplicated as `WIDTH` in `DocsPopup.tsx` — it decides which side
+   of the anchor the box goes on, before the box exists to be measured. Change
+   one and change the other.
+   The border and shadow are new: at the bottom-left corner of the window it did
+   not have to read as a floating layer, and beside a port row it does. */
 .docsPopup {
+  position: fixed;
   width: 300px;
-  background-color: #171717;
+  overflow-y: auto;
+  background-color: var(--theme-color-bg-2);
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-card-hover);
   padding: 10px;
-  color: #fff;
+  color: var(--theme-color-fg-highlight);
 }
 
 .docsType {
   margin-left: 5px;
-  color: #72babb;
+  color: var(--theme-color-primary);
 }
 
 .docsHeader {
@@ -163,7 +176,7 @@
 }
 
 .docsBody {
-  color: #ccc;
+  color: var(--theme-color-fg-default-contrast);
 }
 
 .docsEnumValue {
@@ -184,7 +197,7 @@
 
   &,
   &::placeholder {
-    color: rgba(255,255,255,0.6);
+    color: var(--theme-color-fg-default);
   }
 }
 

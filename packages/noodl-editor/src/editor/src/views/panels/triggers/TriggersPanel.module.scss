@@ -1,0 +1,176 @@
+/**
+ * TriggersPanel styles (WF-005). Mirrors PermissionsPanel/DataBrowser so the
+ * overlay reads as one family. Theme tokens per UI-STYLING-GUIDE.md.
+ */
+
+.Root {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  max-height: 80vh;
+  width: 100%;
+  max-width: 900px;
+  background-color: var(--theme-color-bg-2);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.Header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px;
+  border-bottom: 1px solid var(--theme-color-border-default);
+  background-color: var(--theme-color-bg-3);
+}
+
+.HeaderIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background-color: var(--theme-color-primary);
+  border-radius: 6px;
+  color: var(--theme-color-fg-on-primary);
+}
+
+.Body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+}
+
+.Section {
+  padding: 14px;
+  margin-bottom: 14px;
+  background-color: var(--theme-color-bg-1);
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: 6px;
+}
+
+.ErrorBanner {
+  padding: 10px 12px;
+  margin-bottom: 12px;
+  border-radius: 6px;
+  background-color: var(--theme-color-danger-shade, rgba(200, 60, 60, 0.15));
+  border: 1px solid var(--theme-color-danger);
+}
+
+.NoticeBanner {
+  padding: 8px 12px;
+  margin-bottom: 12px;
+  border-radius: 6px;
+  background-color: var(--theme-color-success-shade, rgba(60, 160, 90, 0.15));
+  border: 1px solid var(--theme-color-success);
+}
+
+.SecretBanner {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+  margin-bottom: 12px;
+  border-radius: 6px;
+  background-color: var(--theme-color-notice-shade, rgba(200, 160, 60, 0.15));
+  border: 1px solid var(--theme-color-notice);
+}
+
+.SecretValue {
+  display: block;
+  font-family: monospace;
+  font-size: 12px;
+  word-break: break-all;
+  padding: 6px 8px;
+  background-color: var(--theme-color-bg-3);
+  border-radius: 4px;
+  color: var(--theme-color-fg-default);
+}
+
+.InlineRow {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.Field {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.Input {
+  background-color: var(--theme-color-bg-3);
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: 4px;
+  color: var(--theme-color-fg-default);
+  font-size: 11px;
+  padding: 5px 7px;
+  box-sizing: border-box;
+}
+
+.TriggerRow {
+  padding: 10px 0;
+  border-top: 1px solid var(--theme-color-border-subtle, var(--theme-color-border-default));
+
+  &:first-of-type {
+    border-top: none;
+  }
+}
+
+.TriggerHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.TypeBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 7px;
+  border-radius: 10px;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  background-color: var(--theme-color-bg-3);
+  border: 1px solid var(--theme-color-border-default);
+  color: var(--theme-color-fg-default-shy);
+}
+
+/**
+ * The edit form, opened inside the row it belongs to (WFA-008).
+ *
+ * Indented and on its own ground so it reads as "this trigger, being changed"
+ * rather than as a second Add form — the two are the same fields, and the row is
+ * what tells them apart.
+ */
+.EditForm {
+  margin: 8px 0 4px 8px;
+  padding: 10px;
+  border-left: 2px solid var(--theme-color-primary);
+  border-radius: 0 6px 6px 0;
+  background-color: var(--theme-color-bg-2);
+}
+
+.StatusLine {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-top: 4px;
+}
+
+.Controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.Toggle {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+}

@@ -1,0 +1,138 @@
+.TokenList {
+  padding: 4px 0;
+}
+
+.TokenRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 12px;
+  min-height: 28px;
+  border-radius: 4px;
+  transition: background-color var(--duration-100) var(--ease-out);
+
+  &:hover {
+    background-color: var(--theme-color-bg-3);
+  }
+
+  &.isOverridden {
+    .TokenName {
+      color: var(--theme-color-fg-highlight);
+    }
+  }
+}
+
+// ─── Color swatch ─────────────────────────────────────────────────────────────
+
+.ColorSwatch {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  border-radius: 3px;
+  border: 1px solid var(--theme-color-border-default);
+  background-color: var(--theme-color-bg-3);
+}
+
+// ─── Token info ───────────────────────────────────────────────────────────────
+
+.TokenInfo {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  gap: 1px;
+}
+
+.TokenName {
+  font-size: 11px;
+  color: var(--theme-color-fg-default);
+  font-family: var(--font-family-code);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.TokenValue {
+  font-size: 10px;
+  color: var(--theme-color-fg-default-shy);
+  font-family: var(--font-family-code);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+// ─── Override reset button ────────────────────────────────────────────────────
+
+.ResetButton {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  color: var(--theme-color-fg-default-shy);
+  cursor: pointer;
+  font-size: 13px;
+  padding: 0 2px;
+  line-height: 1;
+  opacity: 0;
+  transition: opacity var(--duration-100) var(--ease-out);
+
+  .TokenRow:hover & {
+    opacity: 1;
+  }
+
+  &:hover {
+    color: var(--theme-color-fg-default);
+  }
+}
+
+// ─── Non-color previews ───────────────────────────────────────────────────────
+
+.SpacingPreview {
+  flex-shrink: 0;
+  width: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+}
+
+.SpacingBar {
+  height: 4px;
+  background-color: var(--theme-color-primary);
+  border-radius: 2px;
+  min-width: 1px;
+}
+
+.RadiusPreview {
+  flex-shrink: 0;
+  width: 14px;
+  height: 14px;
+  border: 1.5px solid var(--theme-color-fg-default-shy);
+  background: transparent;
+}
+
+.ShadowPreview {
+  flex-shrink: 0;
+  width: 14px;
+  height: 14px;
+  border-radius: 2px;
+  background: var(--theme-color-bg-2);
+}
+
+.FontSizePreview {
+  flex-shrink: 0;
+  width: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--theme-color-fg-default);
+  line-height: 1;
+  overflow: hidden;
+}
+
+.DotPreview {
+  flex-shrink: 0;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: var(--theme-color-fg-default-shy);
+  margin: 5px;
+}

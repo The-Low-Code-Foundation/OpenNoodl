@@ -17,14 +17,67 @@
 }
 
 .Image {
-  background-position: center;
   position: absolute;
-  background-repeat: no-repeat;
-  background-size: cover;
   top: 0;
   bottom: 0;
   left: 0;
   right: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* Deterministic placeholder art, mirroring the launcher grid: a name-hash
+   gradient bucket on the container plus a ghosted initial. Shown whenever the
+   stored capture is missing, dead, or decodes blank. */
+.Ghost {
+  position: absolute;
+  right: -8px;
+  bottom: -26px;
+  font-family: var(--font-family-display);
+  font-weight: 600;
+  font-size: 96px;
+  line-height: 1;
+  color: var(--base-color-white-transparent-16);
+  pointer-events: none;
+  user-select: none;
+}
+
+.hue-0 {
+  background: linear-gradient(
+    135deg,
+    var(--theme-color-node-category-visual),
+    color-mix(in srgb, var(--theme-color-node-category-visual) 62%, black)
+  );
+}
+.hue-1 {
+  background: linear-gradient(
+    135deg,
+    var(--theme-color-node-category-data),
+    color-mix(in srgb, var(--theme-color-node-category-data) 62%, black)
+  );
+}
+.hue-2 {
+  background: linear-gradient(
+    135deg,
+    var(--theme-color-node-category-component),
+    color-mix(in srgb, var(--theme-color-node-category-component) 62%, black)
+  );
+}
+.hue-3 {
+  background: linear-gradient(
+    135deg,
+    var(--theme-color-node-category-function),
+    color-mix(in srgb, var(--theme-color-node-category-function) 62%, black)
+  );
+}
+.hue-4 {
+  background: linear-gradient(
+    135deg,
+    var(--theme-color-node-category-logic),
+    color-mix(in srgb, var(--theme-color-node-category-logic) 62%, black)
+  );
 }
 
 .Content {

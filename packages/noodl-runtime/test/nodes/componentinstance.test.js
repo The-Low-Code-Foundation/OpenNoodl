@@ -1,10 +1,10 @@
-const ComponentInstance = require('./componentinstance');
-const { ComponentModel } = require('../models/componentmodel');
-const GraphModel = require('../models/graphmodel');
-const NodeContext = require('../nodecontext');
-const ComponentInputs = require('./componentinputs');
-const ComponentOutputs = require('./componentoutputs');
-const NodeDefinition = require('../nodedefinition');
+const ComponentInstance = require('../../src/nodes/componentinstance');
+const ComponentModel = require('../../src/models/componentmodel');
+const GraphModel = require('../../src/models/graphmodel');
+const NodeContext = require('../../src/nodecontext');
+const ComponentInputs = require('../../src/nodes/componentinputs');
+const ComponentOutputs = require('../../src/nodes/componentoutputs');
+const NodeDefinition = require('../../src/nodedefinition');
 
 async function setupComponent() {
   const context = new NodeContext();

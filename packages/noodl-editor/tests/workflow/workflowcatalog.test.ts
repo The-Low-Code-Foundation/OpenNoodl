@@ -1,0 +1,374 @@
+/**
+ * WFA-004 — the served catalog, translated into node types.
+ *
+ * The catalog's own SHAPE is asserted against a real running backend, in
+ * `packages/nodegx-backend/tests/workflow-canvas-contract.test.ts` — the WF-003
+ * pattern, so nothing here has to stand in for a served contract. What these
+ * specs cover is the other half: given a catalog, does the translation produce
+ * ports the canvas and the property editor can actually use.
+ */
+
+import {
+  buildWorkflowNodeLibrary,
+  isRoutePort,
+  kindFromTypeName,
+  PORT_IN,
+  PORT_NEXT,
+  PORT_ON_ERROR,
+  PORT_PARAM_MAPPING,
+  PORT_TYPE_CONDITION,
+  PORT_TYPE_TRANSFORM,
+  PORT_TYPE_VALIDATE,
+  routeNameFromPort,
+  routePortName,
+  typeNameForKind,
+  WORKFLOW_TYPE_PREFIX
+} from '../../src/editor/src/models/workflow/workflowNodeLibrary';
+import { WIRE_TYPE_ERROR } from '../../src/editor/src/views/nodegrapheditor/canvas/CanvasTheme';
+
+import type { StepKindCatalog } from '../../src/editor/src/models/workflow/types';
+
+const CATALOG: StepKindCatalog = {
+  version: 'test',
+  source: 'test',
+  docs: 'test',
+  valueLanguage: {},
+  // The condition operators, served. Kept to one so the specs that read a port
+  // type's `ops` are asserting what was SERVED rather than a bundled list.
+  conditionLanguage: {
+    summary: '',
+    ops: [{ name: 'eq', label: 'is', unary: false }]
+  },
+  transformLanguage: {
+    summary: '',
+    notes: [],
+    ops: [
+      { name: '$lower', label: 'lowercase', arity: 1, args: ['text'], description: '' },
+      { name: '$concat', label: 'join text', arity: 'variadic', args: ['parts'], description: '' }
+    ]
+  },
+  // CWF-004 slice 2. Two types, deliberately NOT the five the real backend
+  // serves — the specs below assert the picker offers exactly what was SERVED,
+  // which is only meaningful while the fixture and the backend differ.
+  validateLanguage: {
+    summary: '',
+    notes: [],
+    ruleForms: [],
+    types: [
+      { name: 'string', label: 'text', description: '' },
+      { name: 'array', label: 'a list', description: '' }
+    ]
+  },
+  kinds: [
+    {
+      kind: 'call-function',
+      displayName: 'Call Function',
+      category: 'Workflow',
+      source: 'WF-001',
+      summary: 'Invokes a cloud function.',
+      whenToUse: 'The workhorse step.',
+      invokesFunction: true,
+      params: [{ name: 'ref', type: 'string', required: true, description: 'The cloud function.' }],
+      paramMapping: {
+        displayName: 'Params',
+        description: 'What this step passes the function.',
+        reserved: ['previous'],
+        shadows: ['body']
+      },
+      routes: [],
+      output: ''
+    },
+    {
+      kind: 'branch',
+      displayName: 'Branch (IF)',
+      category: 'Workflow Logic',
+      source: 'CF11-001',
+      summary: '',
+      whenToUse: '',
+      invokesFunction: false,
+      params: [{ name: 'condition', type: 'condition', raw: true, required: true, description: 'A condition.' }],
+      routes: [
+        { name: 'ontrue', description: 'true' },
+        { name: 'onfalse', description: 'false' }
+      ],
+      output: ''
+    },
+    {
+      kind: 'switch',
+      displayName: 'Switch',
+      category: 'Workflow Logic',
+      source: 'CF11-001',
+      summary: '',
+      whenToUse: '',
+      invokesFunction: false,
+      params: [
+        { name: 'value', type: 'any', description: '' },
+        { name: 'cases', type: 'array', raw: true, required: true, description: '' }
+      ],
+      routes: [
+        { name: '<case label>', description: '', dynamic: true },
+        { name: 'default', description: '' }
+      ],
+      output: ''
+    },
+    {
+      kind: 'transform',
+      displayName: 'Transform',
+      category: 'Workflow Data',
+      source: 'CWF-004',
+      summary: '',
+      whenToUse: '',
+      invokesFunction: false,
+      params: [
+        {
+          name: 'output',
+          type: 'object',
+          raw: true,
+          required: true,
+          control: 'transform-output',
+          displayName: 'Fields',
+          description: 'The object this step produces.'
+        }
+      ],
+      routes: [],
+      output: ''
+    },
+    {
+      kind: 'validate',
+      displayName: 'Validate',
+      category: 'Workflow Data',
+      source: 'CWF-004',
+      summary: '',
+      whenToUse: '',
+      invokesFunction: false,
+      params: [
+        {
+          name: 'rules',
+          type: 'array',
+          raw: true,
+          required: true,
+          control: 'validate-rules',
+          displayName: 'Rules',
+          description: 'What must be true.'
+        },
+        { name: 'mode', type: 'enum', enums: ['all', 'first'], default: 'all', description: '' }
+      ],
+      routes: [],
+      output: ''
+    },
+    {
+      kind: 'filter',
+      displayName: 'Filter',
+      category: 'Workflow Data',
+      source: 'CWF-004',
+      summary: '',
+      whenToUse: '',
+      invokesFunction: false,
+      params: [
+        { name: 'items', type: 'any', default: { $path: 'previous.items' }, description: '' },
+        { name: 'condition', type: 'condition', raw: true, required: true, description: '' }
+      ],
+      routes: [
+        { name: 'empty', description: '' },
+        { name: 'nonempty', description: '' }
+      ],
+      output: ''
+    },
+    {
+      kind: 'merge',
+      displayName: 'Merge',
+      category: 'Workflow Logic',
+      source: 'CF11-001',
+      summary: '',
+      whenToUse: '',
+      invokesFunction: false,
+      params: [{ name: 'mode', type: 'enum', enums: ['all', 'any'], default: 'all', description: '' }],
+      routes: [],
+      output: ''
+    }
+  ]
+};
+
+function library() {
+  return buildWorkflowNodeLibrary(CATALOG);
+}
+
+function typeFor(kind: string) {
+  return library().nodetypes.find((t) => t.name === typeNameForKind(kind));
+}
+
+/**
+ * ⚠️ `displayName` is optional here and load-bearing: CWF-001's synthetic param-mapping port
+ * carries one, and this local shape is a hand-written cast rather than the real port type — so
+ * leaving it out compiles the source and breaks the *suite build*, which takes every other
+ * spec down with it.
+ */
+function portsOf(kind: string): { name: string; plug: string; displayName?: string; type: unknown }[] {
+  return (
+    typeFor(kind) as unknown as {
+      ports: { name: string; plug: string; displayName?: string; type: unknown }[];
+    }
+  ).ports;
+}
+
+describe('WFA-004 step kinds become node types', () => {
+  it('namespaces every type name so nothing can collide with a runtime node', () => {
+    for (const type of library().nodetypes) {
+      expect(type.name.startsWith(WORKFLOW_TYPE_PREFIX)).toBe(true);
+    }
+    expect(kindFromTypeName(typeNameForKind('branch'))).toBe('branch');
+    expect(kindFromTypeName('Text')).toBeUndefined();
+  });
+
+  it('gives every step one input, so an edge always has somewhere to land', () => {
+    for (const kind of CATALOG.kinds) {
+      const inputs = portsOf(kind.kind).filter((p) => p.plug === 'input' && p.name === PORT_IN);
+      expect(inputs.length).toBe(1);
+    }
+  });
+
+  it('gives every step a next and an onError output', () => {
+    for (const kind of CATALOG.kinds) {
+      const outputs = portsOf(kind.kind)
+        .filter((p) => p.plug === 'output')
+        .map((p) => p.name);
+      expect(outputs).toContain(PORT_NEXT);
+      expect(outputs).toContain(PORT_ON_ERROR);
+    }
+  });
+
+  it('paints the error edge with the danger wire type — the one legitimate red', () => {
+    const onError = portsOf('branch').find((p) => p.name === PORT_ON_ERROR);
+    expect((onError.type as { name: string }).name).toBe(WIRE_TYPE_ERROR);
+  });
+
+  it('asks for the route name to be drawn on the wire, but not for the plain next edge', () => {
+    // A card only grows a port row for a port that is ALREADY connected, so an
+    // unlabelled branch would be unreadable. `next` stays unlabelled on purpose
+    // — labelling every edge would drown the ones that carry meaning.
+    const ontrue = portsOf('branch').find((p) => p.name === routePortName('ontrue'));
+    expect((ontrue.type as { connectionLabel?: boolean }).connectionLabel).toBe(true);
+
+    const next = portsOf('branch').find((p) => p.name === PORT_NEXT);
+    expect(typeof next.type).toBe('string');
+  });
+
+  it('namespaces route ports, so a route may safely be called `next`', () => {
+    expect(isRoutePort(routePortName('next'))).toBe(true);
+    expect(routeNameFromPort(routePortName('next'))).toBe('next');
+    expect(isRoutePort(PORT_NEXT)).toBe(false);
+  });
+
+  it('skips the dynamic route placeholder — those ports come per node, from its params', () => {
+    const outputs = portsOf('switch')
+      .filter((p) => p.plug === 'output')
+      .map((p) => p.name);
+    expect(outputs).toContain(routePortName('default'));
+    expect(outputs).not.toContain(routePortName('<case label>'));
+  });
+
+  it('gives a condition param its own port type, so it never renders as a JSON textarea', () => {
+    const condition = portsOf('branch').find((p) => p.name === 'condition');
+    expect((condition.type as { name: string }).name).toBe(PORT_TYPE_CONDITION);
+  });
+
+  it('turns an enum param into an enum port with its values', () => {
+    const mode = portsOf('merge').find((p) => p.name === 'mode');
+    expect((mode.type as { name: string; enums: string[] }).name).toBe('enum');
+    expect((mode.type as { enums: string[] }).enums).toEqual(['all', 'any']);
+  });
+
+  it('lifts `ref` out of the params into a first, named function port', () => {
+    const inputs = portsOf('call-function').filter((p) => p.plug === 'input');
+    const refPorts = inputs.filter((p) => p.name === 'ref');
+    // Exactly one: the catalog lists it as a param AND it is a step field.
+    expect(refPorts.length).toBe(1);
+    expect(inputs[1].name).toBe('ref');
+  });
+
+  it('adds ONE synthetic port for a kind that takes author-named params (CWF-001)', () => {
+    const inputs = portsOf('call-function').filter((p) => p.plug === 'input');
+    const mapping = inputs.filter((p) => p.name === PORT_PARAM_MAPPING);
+    expect(mapping.length).toBe(1);
+    expect(mapping[0].displayName).toBe('Params');
+
+    // The control has to subtract the kind's OWN params from the node's
+    // parameters to find the author's, so the declared names ride on the port
+    // type — the same place `enum` carries its values.
+    const type = mapping[0].type as { name: string; declared: string[]; reserved: string[]; shadows: string[] };
+    expect(type.name).toBe('workflow-params');
+    expect(type.declared).toContain('ref');
+    expect(type.reserved).toEqual(['previous']);
+    expect(type.shadows).toEqual(['body']);
+  });
+
+  it('gives a transform its own port type, carrying the SERVED operation set (CWF-004)', () => {
+    const output = portsOf('transform').find((p) => p.name === 'output');
+    const type = output.type as { name: string; ops: { name: string }[]; scope: unknown };
+    // Keyed on the served `control`, not on the param being called "output" —
+    // the rest of CWF-004's family (Validate, Filter, Sort) wants that word too.
+    expect(type.name).toBe(PORT_TYPE_TRANSFORM);
+    // The picker is built from THIS, so an operation the backend does not serve
+    // can never appear in it, and one it stops serving disappears with no
+    // editor change at all.
+    expect(type.ops.map((o) => o.name)).toEqual(['$lower', '$concat']);
+    // The row's label is the served displayName, not the wire name.
+    expect(output.displayName).toBe('Fields');
+  });
+
+  it("gives validate's rules its own port type, carrying BOTH served vocabularies (CWF-004 slice 2)", () => {
+    const rules = portsOf('validate').find((p) => p.name === 'rules');
+    const type = rules.type as { name: string; ops: { name: string }[]; types: { name: string }[]; scope: unknown };
+    // Keyed on the served `control`, not on the param being called "rules".
+    expect(type.name).toBe(PORT_TYPE_VALIDATE);
+    // A rule is one of exactly two things, so the row needs both lists: the
+    // operators (a `when` rule is a condition) and the closed type list (a
+    // `path` rule asserts one). Both come from the SERVED catalog, which is what
+    // makes "remove a type from the backend and it leaves the dropdown" true
+    // with no editor change at all.
+    expect(type.types.map((t) => t.name)).toEqual(['string', 'array']);
+    expect(type.ops.map((o) => o.name)).toEqual(['eq']);
+    expect(rules.displayName).toBe('Rules');
+  });
+
+  it("gives filter's condition the ordinary condition control, and its two routes", () => {
+    // The point of the slice: four of the five new kinds needed NO new editor.
+    // `condition` is a condition wherever it appears, and `items` is a value.
+    const condition = portsOf('filter').find((p) => p.name === 'condition');
+    expect((condition.type as { name: string }).name).toBe(PORT_TYPE_CONDITION);
+    const items = portsOf('filter').find((p) => p.name === 'items') as unknown as {
+      type: { name: string };
+      default: unknown;
+    };
+    expect(items.type.name).toBe('workflow-value');
+    expect(items.default).toEqual({ $path: 'previous.items' });
+
+    const routes = portsOf('filter')
+      .filter((p) => isRoutePort(p.name))
+      .map((p) => routeNameFromPort(p.name));
+    expect(routes).toEqual(['empty', 'nonempty']);
+  });
+
+  it('adds no mapping port to a kind that does not declare one', () => {
+    // A pre-1.3.0 backend serves no `paramMapping` at all, and this is the same
+    // shape: no row, and the definitions that already carry a mapping still run.
+    expect(portsOf('branch').some((p) => p.name === PORT_PARAM_MAPPING)).toBe(false);
+  });
+
+  it('colours by the served category, using only the canvas taxonomy', () => {
+    expect(typeFor('call-function').color).toBe('component');
+    expect(typeFor('branch').color).toBe('logic');
+    // CWF-004's new family. `data` from the existing taxonomy — no new colour.
+    expect(typeFor('transform').color).toBe('data');
+    expect(typeFor('validate').color).toBe('data');
+    expect(typeFor('filter').color).toBe('data');
+  });
+
+  it('builds a picker category per served category, listing its kinds', () => {
+    const index = library().nodeIndex.coreNodes;
+    const logic = index.find((c) => c.name === 'Workflow Logic');
+    expect(logic).toBeDefined();
+    expect(logic.subCategories[0].items).toContain(typeNameForKind('branch'));
+    expect(logic.subCategories[0].items).toContain(typeNameForKind('switch'));
+  });
+});

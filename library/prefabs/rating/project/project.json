@@ -1,0 +1,1190 @@
+{
+    "name": "Export",
+    "components": [
+        {
+            "name": "/Rating",
+            "id": "6bdaa146-9ab0-bed7-1860-544ff5ae41fc",
+            "graph": {
+                "connections": [
+                    {
+                        "fromId": "756edcb7-79eb-b5e6-c0b2-65ced19de883",
+                        "fromProperty": "value-saved index",
+                        "toId": "25b23ad0-89cd-c781-1541-d63b7a4d8b9f",
+                        "toProperty": "prop-index hover"
+                    },
+                    {
+                        "fromId": "5fedd788-d09a-86c9-7036-27fddc54d2d8",
+                        "fromProperty": "hoverEnd",
+                        "toId": "25b23ad0-89cd-c781-1541-d63b7a4d8b9f",
+                        "toProperty": "store"
+                    },
+                    {
+                        "fromId": "756edcb7-79eb-b5e6-c0b2-65ced19de883",
+                        "fromProperty": "value-saved index",
+                        "toId": "0e144b78-1954-718d-f3f7-c17b794df38e",
+                        "toProperty": "savedIndex"
+                    },
+                    {
+                        "fromId": "0e144b78-1954-718d-f3f7-c17b794df38e",
+                        "fromProperty": "result",
+                        "toId": "dfb8912f-07b5-7a08-2b94-f106abdb9c0b",
+                        "toProperty": "Rating"
+                    },
+                    {
+                        "fromId": "9e20675c-fe8d-1c2d-64d0-aa3c5eab6081",
+                        "fromProperty": "Star Size (px)",
+                        "toId": "af83346c-6be1-9c8b-77b4-169ddd793143",
+                        "toProperty": "value"
+                    },
+                    {
+                        "fromId": "af83346c-6be1-9c8b-77b4-169ddd793143",
+                        "fromProperty": "savedValue",
+                        "toId": "756edcb7-79eb-b5e6-c0b2-65ced19de883",
+                        "toProperty": "value-Icon size"
+                    },
+                    {
+                        "fromId": "5fedd788-d09a-86c9-7036-27fddc54d2d8",
+                        "fromProperty": "didMount",
+                        "toId": "25b23ad0-89cd-c781-1541-d63b7a4d8b9f",
+                        "toProperty": "store"
+                    },
+                    {
+                        "fromId": "185cb8f0-6026-1a3c-b688-2920133377c6",
+                        "fromProperty": "savedValue",
+                        "toId": "25b23ad0-89cd-c781-1541-d63b7a4d8b9f",
+                        "toProperty": "prop-index hover"
+                    },
+                    {
+                        "fromId": "9e20675c-fe8d-1c2d-64d0-aa3c5eab6081",
+                        "fromProperty": "Rating",
+                        "toId": "47dcc010-028f-5e1d-809e-6d5b08489107",
+                        "toProperty": "val"
+                    },
+                    {
+                        "fromId": "47dcc010-028f-5e1d-809e-6d5b08489107",
+                        "fromProperty": "result",
+                        "toId": "185cb8f0-6026-1a3c-b688-2920133377c6",
+                        "toProperty": "value"
+                    },
+                    {
+                        "fromId": "185cb8f0-6026-1a3c-b688-2920133377c6",
+                        "fromProperty": "changed",
+                        "toId": "25b23ad0-89cd-c781-1541-d63b7a4d8b9f",
+                        "toProperty": "store"
+                    },
+                    {
+                        "fromId": "185cb8f0-6026-1a3c-b688-2920133377c6",
+                        "fromProperty": "savedValue",
+                        "toId": "f7aa4f3d-748d-a23b-6db1-5efbd436758d",
+                        "toProperty": "prop-saved index"
+                    },
+                    {
+                        "fromId": "185cb8f0-6026-1a3c-b688-2920133377c6",
+                        "fromProperty": "changed",
+                        "toId": "f7aa4f3d-748d-a23b-6db1-5efbd436758d",
+                        "toProperty": "store"
+                    },
+                    {
+                        "fromId": "756edcb7-79eb-b5e6-c0b2-65ced19de883",
+                        "fromProperty": "changed-saved index",
+                        "toId": "dfb8912f-07b5-7a08-2b94-f106abdb9c0b",
+                        "toProperty": "Rating Changed"
+                    },
+                    {
+                        "fromId": "9e20675c-fe8d-1c2d-64d0-aa3c5eab6081",
+                        "fromProperty": "Margin Top",
+                        "toId": "5fedd788-d09a-86c9-7036-27fddc54d2d8",
+                        "toProperty": "marginTop"
+                    },
+                    {
+                        "fromId": "9e20675c-fe8d-1c2d-64d0-aa3c5eab6081",
+                        "fromProperty": "Margin Left",
+                        "toId": "5fedd788-d09a-86c9-7036-27fddc54d2d8",
+                        "toProperty": "marginLeft"
+                    },
+                    {
+                        "fromId": "9e20675c-fe8d-1c2d-64d0-aa3c5eab6081",
+                        "fromProperty": "Margin Bottom",
+                        "toId": "5fedd788-d09a-86c9-7036-27fddc54d2d8",
+                        "toProperty": "marginBottom"
+                    },
+                    {
+                        "fromId": "9e20675c-fe8d-1c2d-64d0-aa3c5eab6081",
+                        "fromProperty": "Margin Right",
+                        "toId": "5fedd788-d09a-86c9-7036-27fddc54d2d8",
+                        "toProperty": "marginRight"
+                    },
+                    {
+                        "fromId": "9e20675c-fe8d-1c2d-64d0-aa3c5eab6081",
+                        "fromProperty": "Position",
+                        "toId": "5fedd788-d09a-86c9-7036-27fddc54d2d8",
+                        "toProperty": "position"
+                    },
+                    {
+                        "fromId": "9e20675c-fe8d-1c2d-64d0-aa3c5eab6081",
+                        "fromProperty": "Align X",
+                        "toId": "5fedd788-d09a-86c9-7036-27fddc54d2d8",
+                        "toProperty": "alignX"
+                    },
+                    {
+                        "fromId": "9e20675c-fe8d-1c2d-64d0-aa3c5eab6081",
+                        "fromProperty": "Align Y",
+                        "toId": "5fedd788-d09a-86c9-7036-27fddc54d2d8",
+                        "toProperty": "alignY"
+                    }
+                ],
+                "roots": [
+                    {
+                        "id": "5fedd788-d09a-86c9-7036-27fddc54d2d8",
+                        "type": "Group",
+                        "x": 0,
+                        "y": 0,
+                        "parameters": {
+                            "flexDirection": "row",
+                            "sizeMode": "contentSize"
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": [
+                            {
+                                "id": "1d325ead-5572-e9b6-5e2d-4050be4fc281",
+                                "type": "/Rating/Rating Star Item",
+                                "parameters": {},
+                                "ports": [],
+                                "dynamicports": [],
+                                "children": []
+                            },
+                            {
+                                "id": "e7e0648a-3597-5f4a-c6b1-9666a20a810a",
+                                "type": "/Rating/Rating Star Item",
+                                "parameters": {},
+                                "ports": [],
+                                "dynamicports": [],
+                                "children": []
+                            },
+                            {
+                                "id": "bc57b735-5cba-e089-81eb-0c5610faf835",
+                                "type": "/Rating/Rating Star Item",
+                                "parameters": {},
+                                "ports": [],
+                                "dynamicports": [],
+                                "children": []
+                            },
+                            {
+                                "id": "594f2cfe-85e3-b66f-c5e6-5b0553281c8e",
+                                "type": "/Rating/Rating Star Item",
+                                "parameters": {},
+                                "ports": [],
+                                "dynamicports": [],
+                                "children": []
+                            },
+                            {
+                                "id": "36ba6dd7-bab5-5bfa-f1c6-af065e5c8cad",
+                                "type": "/Rating/Rating Star Item",
+                                "parameters": {},
+                                "ports": [],
+                                "dynamicports": [],
+                                "children": []
+                            }
+                        ]
+                    },
+                    {
+                        "id": "756edcb7-79eb-b5e6-c0b2-65ced19de883",
+                        "type": "net.noodl.ComponentObject",
+                        "x": 390.24391614903476,
+                        "y": -132.82544538791268,
+                        "parameters": {
+                            "properties": "index hover,saved index,Icon size"
+                        },
+                        "ports": [],
+                        "dynamicports": [
+                            {
+                                "type": {
+                                    "name": "*",
+                                    "allowConnectionsOnly": true
+                                },
+                                "plug": "input/output",
+                                "group": "Properties",
+                                "name": "value-index hover",
+                                "displayName": "index hover",
+                                "index": 4
+                            },
+                            {
+                                "type": "signal",
+                                "plug": "output",
+                                "group": "Changed Events",
+                                "displayName": "index hover Changed",
+                                "name": "changed-index hover",
+                                "index": 5
+                            },
+                            {
+                                "type": {
+                                    "name": "*",
+                                    "allowConnectionsOnly": true
+                                },
+                                "plug": "input/output",
+                                "group": "Properties",
+                                "name": "value-saved index",
+                                "displayName": "saved index",
+                                "index": 6
+                            },
+                            {
+                                "type": "signal",
+                                "plug": "output",
+                                "group": "Changed Events",
+                                "displayName": "saved index Changed",
+                                "name": "changed-saved index",
+                                "index": 7
+                            },
+                            {
+                                "type": {
+                                    "name": "*",
+                                    "allowConnectionsOnly": true
+                                },
+                                "plug": "input/output",
+                                "group": "Properties",
+                                "name": "value-Icon size",
+                                "displayName": "Icon size",
+                                "index": 8
+                            },
+                            {
+                                "type": "signal",
+                                "plug": "output",
+                                "group": "Changed Events",
+                                "displayName": "Icon size Changed",
+                                "name": "changed-Icon size",
+                                "index": 9
+                            }
+                        ],
+                        "children": []
+                    },
+                    {
+                        "id": "25b23ad0-89cd-c781-1541-d63b7a4d8b9f",
+                        "type": "net.noodl.SetComponentObjectProperties",
+                        "x": 1.2352798105167437,
+                        "y": -153.6991588463153,
+                        "parameters": {
+                            "properties": "index hover"
+                        },
+                        "ports": [],
+                        "dynamicports": [
+                            {
+                                "type": {
+                                    "name": "*"
+                                },
+                                "plug": "input",
+                                "group": "Property Values",
+                                "displayName": "index hover",
+                                "name": "prop-index hover",
+                                "index": 3
+                            },
+                            {
+                                "type": {
+                                    "name": "enum",
+                                    "enums": [
+                                        {
+                                            "label": "String",
+                                            "value": "string"
+                                        },
+                                        {
+                                            "label": "Boolean",
+                                            "value": "boolean"
+                                        },
+                                        {
+                                            "label": "Number",
+                                            "value": "number"
+                                        },
+                                        {
+                                            "label": "Date",
+                                            "value": "date"
+                                        },
+                                        {
+                                            "label": "Array",
+                                            "value": "array"
+                                        },
+                                        {
+                                            "label": "Object",
+                                            "value": "object"
+                                        },
+                                        {
+                                            "label": "Any",
+                                            "value": "*"
+                                        }
+                                    ],
+                                    "allowEditOnly": true
+                                },
+                                "default": "*",
+                                "plug": "input",
+                                "group": "Property Types",
+                                "displayName": "index hover",
+                                "name": "type-index hover",
+                                "index": 4
+                            }
+                        ],
+                        "children": []
+                    },
+                    {
+                        "id": "0e144b78-1954-718d-f3f7-c17b794df38e",
+                        "type": "Expression",
+                        "x": 392.95002859127914,
+                        "y": -244.99675720913223,
+                        "parameters": {
+                            "expression": "savedIndex + 1 "
+                        },
+                        "ports": [],
+                        "dynamicports": [
+                            {
+                                "group": "Parameters",
+                                "name": "savedIndex",
+                                "type": {
+                                    "name": "*",
+                                    "editAsType": "string"
+                                },
+                                "plug": "input",
+                                "index": 7
+                            }
+                        ],
+                        "children": []
+                    },
+                    {
+                        "id": "dfb8912f-07b5-7a08-2b94-f106abdb9c0b",
+                        "type": "Component Outputs",
+                        "x": 623.0140000908949,
+                        "y": -245.04503315951894,
+                        "parameters": {},
+                        "ports": [
+                            {
+                                "name": "Rating",
+                                "plug": "input",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "index": 1
+                            },
+                            {
+                                "name": "Rating Changed",
+                                "plug": "input",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "index": 3
+                            }
+                        ],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "9e20675c-fe8d-1c2d-64d0-aa3c5eab6081",
+                        "type": "Component Inputs",
+                        "x": -332.09613925309054,
+                        "y": 262.77629136888953,
+                        "parameters": {},
+                        "ports": [
+                            {
+                                "name": "Star Size (px)",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "index": 1
+                            },
+                            {
+                                "name": "Rating",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "index": 2
+                            },
+                            {
+                                "name": "Margin Top",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "group": "Margins",
+                                "index": 3
+                            },
+                            {
+                                "name": "Margin Left",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "group": "Margins",
+                                "index": 4
+                            },
+                            {
+                                "name": "Margin Bottom",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "group": "Margins",
+                                "index": 5
+                            },
+                            {
+                                "name": "Margin Right",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "group": "Margins",
+                                "index": 6
+                            },
+                            {
+                                "name": "Position",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "group": "Layout",
+                                "index": 7
+                            },
+                            {
+                                "name": "Align X",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "group": "Alignment",
+                                "index": 8
+                            },
+                            {
+                                "name": "Align Y",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "group": "Alignment",
+                                "index": 9
+                            }
+                        ],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "af83346c-6be1-9c8b-77b4-169ddd793143",
+                        "type": "Number",
+                        "x": 396.3206427647657,
+                        "y": 109.01134935277531,
+                        "parameters": {
+                            "value": 32
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "185cb8f0-6026-1a3c-b688-2920133377c6",
+                        "type": "Number",
+                        "x": 398.77002959241196,
+                        "y": 219.2337565968627,
+                        "parameters": {
+                            "value": 4
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "47dcc010-028f-5e1d-809e-6d5b08489107",
+                        "type": "Expression",
+                        "x": 147.7078797586564,
+                        "y": 448.25142498180054,
+                        "parameters": {
+                            "expression": "val-1"
+                        },
+                        "ports": [],
+                        "dynamicports": [
+                            {
+                                "group": "Parameters",
+                                "name": "val",
+                                "type": {
+                                    "name": "*",
+                                    "editAsType": "string"
+                                },
+                                "plug": "input",
+                                "index": 7
+                            }
+                        ],
+                        "children": []
+                    },
+                    {
+                        "id": "f7aa4f3d-748d-a23b-6db1-5efbd436758d",
+                        "type": "net.noodl.SetComponentObjectProperties",
+                        "x": 679.3950560455929,
+                        "y": 210.33498294156914,
+                        "parameters": {
+                            "properties": "saved index"
+                        },
+                        "ports": [],
+                        "dynamicports": [
+                            {
+                                "type": {
+                                    "name": "*"
+                                },
+                                "plug": "input",
+                                "group": "Property Values",
+                                "displayName": "saved index",
+                                "name": "prop-saved index",
+                                "index": 3
+                            },
+                            {
+                                "type": {
+                                    "name": "enum",
+                                    "enums": [
+                                        {
+                                            "label": "String",
+                                            "value": "string"
+                                        },
+                                        {
+                                            "label": "Boolean",
+                                            "value": "boolean"
+                                        },
+                                        {
+                                            "label": "Number",
+                                            "value": "number"
+                                        },
+                                        {
+                                            "label": "Date",
+                                            "value": "date"
+                                        },
+                                        {
+                                            "label": "Array",
+                                            "value": "array"
+                                        },
+                                        {
+                                            "label": "Object",
+                                            "value": "object"
+                                        },
+                                        {
+                                            "label": "Any",
+                                            "value": "*"
+                                        }
+                                    ],
+                                    "allowEditOnly": true
+                                },
+                                "default": "*",
+                                "plug": "input",
+                                "group": "Property Types",
+                                "displayName": "saved index",
+                                "name": "type-saved index",
+                                "index": 4
+                            }
+                        ],
+                        "children": []
+                    }
+                ]
+            }
+        },
+        {
+            "name": "/Rating/Rating Star Item",
+            "id": "0dd79ab0-fd91-0a27-2515-ae3c717e5c36",
+            "graph": {
+                "connections": [
+                    {
+                        "fromId": "e0519a2e-30ed-af9c-f7fd-7d2d8a2efa42",
+                        "fromProperty": "value-index hover",
+                        "toId": "4485ae25-c0d5-9d04-f536-66f4858e3618",
+                        "toProperty": "hoverIndex"
+                    },
+                    {
+                        "fromId": "e42e43dc-cf93-9cfc-b3ee-73e784cace79",
+                        "fromProperty": "childIndex",
+                        "toId": "4485ae25-c0d5-9d04-f536-66f4858e3618",
+                        "toProperty": "thisIndex"
+                    },
+                    {
+                        "fromId": "dac8cb7a-b377-6aa6-d59c-c3f1fc102def",
+                        "fromProperty": "at-outlined",
+                        "toId": "c08a3766-8d32-71ea-80e3-55f95fdc6efe",
+                        "toProperty": "mounted"
+                    },
+                    {
+                        "fromId": "dac8cb7a-b377-6aa6-d59c-c3f1fc102def",
+                        "fromProperty": "at-filled",
+                        "toId": "dc5b6926-66cd-d760-679b-7d7ff24afee2",
+                        "toProperty": "mounted"
+                    },
+                    {
+                        "fromId": "4485ae25-c0d5-9d04-f536-66f4858e3618",
+                        "fromProperty": "result",
+                        "toId": "415d0521-721b-7121-0f2b-0362360106fa",
+                        "toProperty": "condition"
+                    },
+                    {
+                        "fromId": "415d0521-721b-7121-0f2b-0362360106fa",
+                        "fromProperty": "ontrue",
+                        "toId": "dac8cb7a-b377-6aa6-d59c-c3f1fc102def",
+                        "toProperty": "to-outlined"
+                    },
+                    {
+                        "fromId": "415d0521-721b-7121-0f2b-0362360106fa",
+                        "fromProperty": "onfalse",
+                        "toId": "dac8cb7a-b377-6aa6-d59c-c3f1fc102def",
+                        "toProperty": "to-filled"
+                    },
+                    {
+                        "fromId": "e42e43dc-cf93-9cfc-b3ee-73e784cace79",
+                        "fromProperty": "hoverStart",
+                        "toId": "85379839-78da-f04b-a02e-6ec1c1449246",
+                        "toProperty": "store"
+                    },
+                    {
+                        "fromId": "e42e43dc-cf93-9cfc-b3ee-73e784cace79",
+                        "fromProperty": "childIndex",
+                        "toId": "85379839-78da-f04b-a02e-6ec1c1449246",
+                        "toProperty": "prop-index hover"
+                    },
+                    {
+                        "fromId": "e42e43dc-cf93-9cfc-b3ee-73e784cace79",
+                        "fromProperty": "onClick",
+                        "toId": "69557e03-96ee-507e-a7a8-5afbc8ca542e",
+                        "toProperty": "store"
+                    },
+                    {
+                        "fromId": "e42e43dc-cf93-9cfc-b3ee-73e784cace79",
+                        "fromProperty": "childIndex",
+                        "toId": "69557e03-96ee-507e-a7a8-5afbc8ca542e",
+                        "toProperty": "prop-saved index"
+                    },
+                    {
+                        "fromId": "4f3df9b2-411f-045f-489b-7f5350223096",
+                        "fromProperty": "savedValue",
+                        "toId": "c08a3766-8d32-71ea-80e3-55f95fdc6efe",
+                        "toProperty": "iconSize"
+                    },
+                    {
+                        "fromId": "4f3df9b2-411f-045f-489b-7f5350223096",
+                        "fromProperty": "savedValue",
+                        "toId": "dc5b6926-66cd-d760-679b-7d7ff24afee2",
+                        "toProperty": "iconSize"
+                    },
+                    {
+                        "fromId": "e0519a2e-30ed-af9c-f7fd-7d2d8a2efa42",
+                        "fromProperty": "value-Icon size",
+                        "toId": "4f3df9b2-411f-045f-489b-7f5350223096",
+                        "toProperty": "value"
+                    }
+                ],
+                "roots": [
+                    {
+                        "id": "e42e43dc-cf93-9cfc-b3ee-73e784cace79",
+                        "type": "Group",
+                        "label": "Group",
+                        "x": 0,
+                        "y": 0,
+                        "parameters": {
+                            "sizeMode": "contentSize",
+                            "styleCss": "cursor:pointer;"
+                        },
+                        "stateParameters": {
+                            "hover": {
+                                "transformScale": 1.2
+                            }
+                        },
+                        "defaultStateTransitions": {
+                            "hover": {
+                                "curve": [
+                                    0,
+                                    0,
+                                    0.58,
+                                    1
+                                ],
+                                "dur": 150,
+                                "delay": 0
+                            },
+                            "neutral": {
+                                "curve": [
+                                    0,
+                                    0,
+                                    0.58,
+                                    1
+                                ],
+                                "dur": 150,
+                                "delay": 0
+                            }
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": [
+                            {
+                                "id": "c08a3766-8d32-71ea-80e3-55f95fdc6efe",
+                                "type": "net.noodl.visual.icon",
+                                "label": "Icon Outlined",
+                                "parameters": {
+                                    "iconSize": {
+                                        "value": 32,
+                                        "unit": "px"
+                                    },
+                                    "iconColor": "Rating/Star",
+                                    "iconIconSource": {
+                                        "class": "material-icons",
+                                        "code": "star_border"
+                                    }
+                                },
+                                "ports": [],
+                                "dynamicports": [],
+                                "children": []
+                            },
+                            {
+                                "id": "dc5b6926-66cd-d760-679b-7d7ff24afee2",
+                                "type": "net.noodl.visual.icon",
+                                "label": "Icon Filled",
+                                "parameters": {
+                                    "iconSize": {
+                                        "value": 32,
+                                        "unit": "px"
+                                    },
+                                    "iconColor": "Rating/Star",
+                                    "iconIconSource": {
+                                        "class": "material-icons",
+                                        "code": "star"
+                                    }
+                                },
+                                "ports": [],
+                                "dynamicports": [],
+                                "children": []
+                            }
+                        ]
+                    },
+                    {
+                        "id": "e0519a2e-30ed-af9c-f7fd-7d2d8a2efa42",
+                        "type": "net.noodl.ParentComponentObject",
+                        "x": -355,
+                        "y": -328,
+                        "parameters": {
+                            "properties": "index hover,Icon size"
+                        },
+                        "ports": [],
+                        "dynamicports": [
+                            {
+                                "type": {
+                                    "name": "*",
+                                    "allowConnectionsOnly": true
+                                },
+                                "plug": "input/output",
+                                "group": "Properties",
+                                "name": "value-index hover",
+                                "displayName": "index hover",
+                                "index": 4
+                            },
+                            {
+                                "type": "signal",
+                                "plug": "output",
+                                "group": "Changed Events",
+                                "displayName": "index hover Changed",
+                                "name": "changed-index hover",
+                                "index": 5
+                            },
+                            {
+                                "type": {
+                                    "name": "*",
+                                    "allowConnectionsOnly": true
+                                },
+                                "plug": "input/output",
+                                "group": "Properties",
+                                "name": "value-Icon size",
+                                "displayName": "Icon size",
+                                "index": 6
+                            },
+                            {
+                                "type": "signal",
+                                "plug": "output",
+                                "group": "Changed Events",
+                                "displayName": "Icon size Changed",
+                                "name": "changed-Icon size",
+                                "index": 7
+                            }
+                        ],
+                        "children": []
+                    },
+                    {
+                        "id": "4485ae25-c0d5-9d04-f536-66f4858e3618",
+                        "type": "Expression",
+                        "x": 18,
+                        "y": -183,
+                        "parameters": {
+                            "expression": "thisIndex > hoverIndex\n"
+                        },
+                        "ports": [],
+                        "dynamicports": [
+                            {
+                                "group": "Parameters",
+                                "name": "thisIndex",
+                                "type": {
+                                    "name": "*",
+                                    "editAsType": "string"
+                                },
+                                "plug": "input",
+                                "index": 7
+                            },
+                            {
+                                "group": "Parameters",
+                                "name": "hoverIndex",
+                                "type": {
+                                    "name": "*",
+                                    "editAsType": "string"
+                                },
+                                "plug": "input",
+                                "index": 8
+                            }
+                        ],
+                        "children": []
+                    },
+                    {
+                        "id": "dac8cb7a-b377-6aa6-d59c-c3f1fc102def",
+                        "type": "States",
+                        "x": 311.9622338999046,
+                        "y": 35.27196085098535,
+                        "parameters": {
+                            "states": "filled,outlined",
+                            "currentState": "outlined"
+                        },
+                        "ports": [],
+                        "dynamicports": [
+                            {
+                                "plug": "input",
+                                "type": {
+                                    "name": "signal",
+                                    "allowConnectionsOnly": true
+                                },
+                                "displayName": "To filled",
+                                "name": "to-filled",
+                                "group": "Go to state",
+                                "index": 6
+                            },
+                            {
+                                "plug": "output",
+                                "type": "boolean",
+                                "displayName": "At filled",
+                                "name": "at-filled",
+                                "group": "Current state",
+                                "index": 7
+                            },
+                            {
+                                "plug": "output",
+                                "type": "signal",
+                                "displayName": "Has Reached filled",
+                                "name": "reached-filled",
+                                "group": "Current state",
+                                "index": 8
+                            },
+                            {
+                                "plug": "input",
+                                "type": {
+                                    "name": "signal",
+                                    "allowConnectionsOnly": true
+                                },
+                                "displayName": "To outlined",
+                                "name": "to-outlined",
+                                "group": "Go to state",
+                                "index": 9
+                            },
+                            {
+                                "plug": "output",
+                                "type": "boolean",
+                                "displayName": "At outlined",
+                                "name": "at-outlined",
+                                "group": "Current state",
+                                "index": 10
+                            },
+                            {
+                                "plug": "output",
+                                "type": "signal",
+                                "displayName": "Has Reached outlined",
+                                "name": "reached-outlined",
+                                "group": "Current state",
+                                "index": 11
+                            },
+                            {
+                                "plug": "input",
+                                "type": {
+                                    "name": "enum",
+                                    "enums": [
+                                        "filled",
+                                        "outlined"
+                                    ]
+                                },
+                                "group": "States",
+                                "displayName": "State",
+                                "name": "currentState",
+                                "default": "filled",
+                                "index": 12
+                            }
+                        ],
+                        "children": []
+                    },
+                    {
+                        "id": "415d0521-721b-7121-0f2b-0362360106fa",
+                        "type": "Condition",
+                        "x": 307.089204462954,
+                        "y": -154.34948398658258,
+                        "parameters": {},
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "85379839-78da-f04b-a02e-6ec1c1449246",
+                        "type": "net.noodl.SetParentComponentObjectProperties",
+                        "x": -341.4697505607924,
+                        "y": -162.0978993872003,
+                        "parameters": {
+                            "properties": "index hover"
+                        },
+                        "ports": [],
+                        "dynamicports": [
+                            {
+                                "type": {
+                                    "name": "*"
+                                },
+                                "plug": "input",
+                                "group": "Property Values",
+                                "displayName": "index hover",
+                                "name": "prop-index hover",
+                                "index": 3
+                            },
+                            {
+                                "type": {
+                                    "name": "enum",
+                                    "enums": [
+                                        {
+                                            "label": "String",
+                                            "value": "string"
+                                        },
+                                        {
+                                            "label": "Boolean",
+                                            "value": "boolean"
+                                        },
+                                        {
+                                            "label": "Number",
+                                            "value": "number"
+                                        },
+                                        {
+                                            "label": "Date",
+                                            "value": "date"
+                                        },
+                                        {
+                                            "label": "Array",
+                                            "value": "array"
+                                        },
+                                        {
+                                            "label": "Object",
+                                            "value": "object"
+                                        },
+                                        {
+                                            "label": "Any",
+                                            "value": "*"
+                                        }
+                                    ],
+                                    "allowEditOnly": true
+                                },
+                                "default": "*",
+                                "plug": "input",
+                                "group": "Property Types",
+                                "displayName": "index hover",
+                                "name": "type-index hover",
+                                "index": 4
+                            }
+                        ],
+                        "children": []
+                    },
+                    {
+                        "id": "69557e03-96ee-507e-a7a8-5afbc8ca542e",
+                        "type": "net.noodl.SetParentComponentObjectProperties",
+                        "x": -337.52888838019396,
+                        "y": -3.604420580385181,
+                        "parameters": {
+                            "properties": "index hover,saved index,Icon size"
+                        },
+                        "ports": [],
+                        "dynamicports": [
+                            {
+                                "type": {
+                                    "name": "*"
+                                },
+                                "plug": "input",
+                                "group": "Property Values",
+                                "displayName": "index hover",
+                                "name": "prop-index hover",
+                                "index": 3
+                            },
+                            {
+                                "type": {
+                                    "name": "enum",
+                                    "enums": [
+                                        {
+                                            "label": "String",
+                                            "value": "string"
+                                        },
+                                        {
+                                            "label": "Boolean",
+                                            "value": "boolean"
+                                        },
+                                        {
+                                            "label": "Number",
+                                            "value": "number"
+                                        },
+                                        {
+                                            "label": "Date",
+                                            "value": "date"
+                                        },
+                                        {
+                                            "label": "Array",
+                                            "value": "array"
+                                        },
+                                        {
+                                            "label": "Object",
+                                            "value": "object"
+                                        },
+                                        {
+                                            "label": "Any",
+                                            "value": "*"
+                                        }
+                                    ],
+                                    "allowEditOnly": true
+                                },
+                                "default": "*",
+                                "plug": "input",
+                                "group": "Property Types",
+                                "displayName": "index hover",
+                                "name": "type-index hover",
+                                "index": 4
+                            },
+                            {
+                                "type": {
+                                    "name": "*"
+                                },
+                                "plug": "input",
+                                "group": "Property Values",
+                                "displayName": "saved index",
+                                "name": "prop-saved index",
+                                "index": 5
+                            },
+                            {
+                                "type": {
+                                    "name": "enum",
+                                    "enums": [
+                                        {
+                                            "label": "String",
+                                            "value": "string"
+                                        },
+                                        {
+                                            "label": "Boolean",
+                                            "value": "boolean"
+                                        },
+                                        {
+                                            "label": "Number",
+                                            "value": "number"
+                                        },
+                                        {
+                                            "label": "Date",
+                                            "value": "date"
+                                        },
+                                        {
+                                            "label": "Array",
+                                            "value": "array"
+                                        },
+                                        {
+                                            "label": "Object",
+                                            "value": "object"
+                                        },
+                                        {
+                                            "label": "Any",
+                                            "value": "*"
+                                        }
+                                    ],
+                                    "allowEditOnly": true
+                                },
+                                "default": "*",
+                                "plug": "input",
+                                "group": "Property Types",
+                                "displayName": "saved index",
+                                "name": "type-saved index",
+                                "index": 6
+                            },
+                            {
+                                "type": {
+                                    "name": "*"
+                                },
+                                "plug": "input",
+                                "group": "Property Values",
+                                "displayName": "Icon size",
+                                "name": "prop-Icon size",
+                                "index": 7
+                            },
+                            {
+                                "type": {
+                                    "name": "enum",
+                                    "enums": [
+                                        {
+                                            "label": "String",
+                                            "value": "string"
+                                        },
+                                        {
+                                            "label": "Boolean",
+                                            "value": "boolean"
+                                        },
+                                        {
+                                            "label": "Number",
+                                            "value": "number"
+                                        },
+                                        {
+                                            "label": "Date",
+                                            "value": "date"
+                                        },
+                                        {
+                                            "label": "Array",
+                                            "value": "array"
+                                        },
+                                        {
+                                            "label": "Object",
+                                            "value": "object"
+                                        },
+                                        {
+                                            "label": "Any",
+                                            "value": "*"
+                                        }
+                                    ],
+                                    "allowEditOnly": true
+                                },
+                                "default": "*",
+                                "plug": "input",
+                                "group": "Property Types",
+                                "displayName": "Icon size",
+                                "name": "type-Icon size",
+                                "index": 8
+                            }
+                        ],
+                        "children": []
+                    },
+                    {
+                        "id": "4f3df9b2-411f-045f-489b-7f5350223096",
+                        "type": "Number",
+                        "x": -333.50063300843,
+                        "y": 202.91388881253545,
+                        "parameters": {
+                            "value": 32
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": []
+                    }
+                ]
+            }
+        }
+    ],
+    "settings": {},
+    "version": "4",
+    "metadata": {
+        "styles": {
+            "text": {},
+            "colors": {
+                "Rating/Star": "#F2C441"
+            }
+        }
+    },
+    "variants": []
+}

@@ -1,0 +1,7 @@
+{
+  "typeName": "Transition",
+  "summary": "Deprecated single-value tween. Use Animate To Value (net.noodl.animatetovalue) in new graphs.",
+  "description": "The legacy Transition node tweens `currentValue` toward `targetValue` with duration/delay/easing — the same contract Animate To Value now provides, plus an override-current-value pair for jumping mid-flight. Deprecated and hidden from the picker.",
+  "whenToUse": "Do not use in new graphs — use net.noodl.animatetovalue instead.",
+  "relatedNodes": ["net.noodl.animatetovalue", "States"]
+}

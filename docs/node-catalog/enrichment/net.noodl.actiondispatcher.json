@@ -1,0 +1,70 @@
+{
+  "typeName": "net.noodl.ActionDispatcher",
+  "summary": "Action Dispatcher: executes actions a backend sent, restricted to a vocabulary this graph explicitly registered.",
+  "description": "Turns messages like `{ \"type\": \"OPEN_SESSION\", \"sessionId\": \"123\" }` into things that actually happen in the app, so a server-side agent can drive the UI instead of only sending data to display. The vocabulary is **closed**: an action runs only if an Action Handler node registered its type, or it is one of the four built-in store actions (`SET_STORE`, `MERGE_STORE`, `DELETE_STORE_KEY`, `CLEAR_STORE`) and the author listed that name in `builtIns`, which is empty by default. Everything else is refused with a reason on `refusalReason` and a `refused` signal — never silently ignored, and never executed. Actions run strictly one at a time in arrival order, so an array of actions is a multi-step flow; the queue is bounded and overflow refuses the newest rather than reordering what was accepted. An action whose handler has not mounted yet waits up to `waitForHandler` milliseconds rather than losing a mount race, and `waitingFor` names it while it waits.",
+  "whenToUse": "Whenever a backend needs to cause something rather than just report something: an AI agent that says \"let me open that for you\", a guided tour driven from the server, a workflow whose steps arrive over a stream. Wire a Server-Sent Events or WebSocket node's `data` to `action` and its `onMessage` to `dispatch`. Do not use it as a general message router for data you are simply going to display — wire that straight to its consumer.",
+  "ports": {
+    "channel": "Names the handler registry this dispatcher draws on. Only handlers on the same channel are reachable. Leave as `default` unless two independent flows must not see each other.",
+    "action": "One action object, an array of them to run in order, or JSON text holding either. A frame's raw text works as well as its parsed value.",
+    "dispatch": "Admits the current action. Acts immediately rather than at end of frame, so several actions arriving in one frame all run instead of coalescing to the last.",
+    "cancel": "Discards everything queued and abandons anything in flight, reporting the count on `cancelledCount`.",
+    "builtIns": "Comma-separated built-in action names this dispatcher may execute. Empty — the default — means a server cannot write the store at all. A name that is not a built-in is reported on `lastError` and grants nothing.",
+    "storeName": "The only store the built-in actions can write. A `storeName` inside an incoming action is ignored: the graph chooses the store, not the server.",
+    "allowedKeys": "Comma-separated keys the built-in store actions may write. Blank means any key of the configured store. Setting any key also refuses `CLEAR_STORE`, which would remove keys outside the list.",
+    "handlerTimeout": "How long a handler has to signal Complete or Fail before the action fails and the queue moves on. 0 waits forever.",
+    "waitForHandler": "How long an action waits for its handler to appear before being refused as unknown. Everything behind it waits too, because order is preserved. 0 refuses immediately.",
+    "maxQueueSize": "Bound on queued actions; overflow refuses the newest. 0 is unbounded, which a hostile or looping server can grow without limit.",
+    "rateLimit": "Max actions executed per window; excess is refused, not delayed. 0 is unlimited.",
+    "rateLimitWindow": "The window `rateLimit` counts over.",
+    "actionType": "Type of the action currently executing, or the last one that did.",
+    "actionId": "The action's `id` if it carried one, else a generated one. Useful for acknowledging back to the server.",
+    "payload": "The action's `payload`, else its `data`, else the whole action object.",
+    "result": "What the completing handler or built-in returned.",
+    "dispatched": "Fires when an action starts executing — after it passed every check.",
+    "actionCompleted": "Fires when one action's handlers have all completed. Per *action*: one Dispatch of an array fires this once per member.",
+    "done": "Fires once per invocation: a Dispatch that admitted at least one action, or a Cancel All that dropped at least one.",
+    "unchanged": "Fires once per invocation when there was nothing to do — a Cancel All with an empty queue.",
+    "failure": "Fires once per invocation when a Dispatch admitted nothing at all, because every action in it was refused.",
+    "completed": "Fires after `done`, `unchanged` or `failure`, once per invocation of Dispatch or Cancel All. Not to be confused with `actionCompleted`, which counts actions rather than invocations.",
+    "failed": "Fires when a handler failed, threw, or timed out. The action was allowed; it just did not work.",
+    "idle": "Fires when the queue drains. This is how a multi-step flow knows it finished.",
+    "refused": "Fires when an action was **not** executed. Wire this — it is the only way an author sees that a server asked for something disallowed.",
+    "refusedType": "The type that was refused, or empty when the message was too malformed to have one.",
+    "refusalReason": "One of `invalid`, `unknown`, `not-allowed`, `rate-limited`, `queue-full`.",
+    "refusalMessage": "The human-readable reason, safe to show in a debug panel.",
+    "lastError": "The most recent failure or refusal message.",
+    "queueSize": "Actions waiting behind the one in flight.",
+    "isExecuting": "Whether an action is running right now.",
+    "waitingFor": "The action type held at the head of the queue because no handler has registered for it yet.",
+    "completedCount": "Actions completed since the node was created.",
+    "failedCount": "Actions that were allowed but did not work.",
+    "refusedCount": "Actions refused. A number that climbs unexpectedly means the server and the graph disagree about the vocabulary.",
+    "cancelledCount": "Actions discarded by `cancel`.",
+    "cancelled": "Fires after a cancel."
+  },
+  "patterns": [
+    "Server-Sent Events `data` → `action`, `onMessage` → `dispatch`: an agent stream that drives the UI.",
+    "One Action Handler per thing the server may do, each wired to the nodes that do it — that set of handlers *is* the permission list, visible on the canvas.",
+    "`refusalReason` and `refusalMessage` → a Text node in a debug group: the fastest way to find out that the server is sending `OPEN_VIEW` while the graph registered `OPEN_SESSION`.",
+    "Send an array of actions for a guided tour; set `autoComplete` off on the handlers that must finish before the next step starts, and wire `idle` to whatever runs at the end.",
+    "Enable `SET_STORE` with `allowedKeys` naming just the view keys the agent may steer, so a store write cannot reach an auth token that happens to live in the same store.",
+    "A built-in's own fields may sit on the envelope (`{type:'SET_STORE', key, value}`) or inside `payload` (`{type:'SET_STORE', payload:{key, value}}`) — the same resolution a handler's `payload` output uses, envelope first on a collision. `MERGE_STORE` wants `values` either way. A `storeName` in the message is always ignored in favour of the node's own."
+  ],
+  "antiPatterns": [
+    "Enabling built-ins with `allowedKeys` blank on a store that also holds credentials or ids — a server can then overwrite any key in it.",
+    "Registering a catch-all handler that reads `payload.command` and switches on it: that re-opens the open vocabulary this node exists to close. One handler per action type.",
+    "Leaving `refused` unwired. A dispatcher that refuses everything looks identical to a dead stream if nothing shows the refusals.",
+    "Wiring `dispatch` from a signal that fires before `action` is set — the previous action runs again.",
+    "Setting `maxQueueSize` to 0 on a stream you do not control."
+  ],
+  "examples": [
+    "agent-server-driven-actions"
+  ],
+  "relatedNodes": [
+    "net.noodl.ActionHandler",
+    "net.noodl.SSE",
+    "net.noodl.WebSocket",
+    "net.noodl.GlobalStore",
+    "net.noodl.GlobalStore.Set"
+  ]
+}

@@ -1,4 +1,4 @@
-const OutputProperty = require('./outputproperty');
+const OutputProperty = require('../src/outputproperty');
 
 test('Throws an exception if no owner is specified', () => {
     expect(()=>{

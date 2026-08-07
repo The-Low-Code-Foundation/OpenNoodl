@@ -1,0 +1,186 @@
+{
+  "id": "acceptance-b",
+  "title": "Task list page backed by Query Records",
+  "description": "A cloud-data task list. Query Records (DbCollection2) fetches the 'Task' class and feeds its `items` array into a Repeater (For Each) whose template component renders one row per record, receiving the record's `title` through an identically named Component Inputs port. A Text Input and Button form the minimal create flow: the input's text drives Create Record's schema-generated `prop-title` input, and the button's `onClick` (plus the input's `onEnter`, for keyboard-friendly submits) triggers `store`. The live query picks the new record up automatically, so no re-fetch is wired; `done` clears the input field. The empty state is a Group gated by the query's `isEmpty` boolean into `mounted`, following the corpus pattern of removing conditional UI from layout rather than merely hiding it.",
+  "components": [
+    {
+      "name": "/Task List Page",
+      "nodes": [
+        {
+          "id": "page_root",
+          "type": "Group",
+          "label": "Page",
+          "parameters": {
+            "flexDirection": "column",
+            "paddingLeft": 16,
+            "paddingRight": 16,
+            "paddingTop": 16,
+            "rowGap": 12
+          },
+          "children": ["input_row", "empty_state", "list_container"]
+        },
+        {
+          "id": "input_row",
+          "type": "Group",
+          "label": "New task form",
+          "parent": "page_root",
+          "parameters": {
+            "flexDirection": "row",
+            "columnGap": 8
+          },
+          "children": ["task_input", "add_button"]
+        },
+        {
+          "id": "task_input",
+          "type": "net.noodl.controls.textinput",
+          "label": "New task title",
+          "parent": "input_row",
+          "parameters": {
+            "placeholder": "What needs doing?"
+          }
+        },
+        {
+          "id": "add_button",
+          "type": "net.noodl.controls.button",
+          "label": "Add task",
+          "parent": "input_row",
+          "parameters": {
+            "label": "Add Task"
+          }
+        },
+        {
+          "id": "empty_state",
+          "type": "Group",
+          "label": "Empty state",
+          "parent": "page_root",
+          "parameters": {
+            "flexDirection": "column",
+            "paddingTop": 24
+          },
+          "children": ["empty_text"]
+        },
+        {
+          "id": "empty_text",
+          "type": "Text",
+          "label": "No tasks message",
+          "parent": "empty_state",
+          "parameters": {
+            "text": "No tasks yet — add your first one above."
+          }
+        },
+        {
+          "id": "list_container",
+          "type": "Group",
+          "label": "Task list",
+          "parent": "page_root",
+          "parameters": {
+            "flexDirection": "column",
+            "scrollEnabled": true,
+            "clip": true
+          },
+          "children": ["task_repeater"]
+        },
+        {
+          "id": "task_repeater",
+          "type": "For Each",
+          "label": "One row per task",
+          "parent": "list_container",
+          "parameters": {
+            "template": "/Task Row"
+          }
+        },
+        {
+          "id": "tasks_query",
+          "type": "DbCollection2",
+          "label": "Fetch tasks",
+          "parameters": {
+            "collectionName": "Task"
+          }
+        },
+        {
+          "id": "create_task",
+          "type": "NewDbModelProperties",
+          "label": "Create task record",
+          "parameters": {
+            "collectionName": "Task"
+          }
+        }
+      ],
+      "connections": [
+        {
+          "fromId": "tasks_query",
+          "fromProperty": "items",
+          "toId": "task_repeater",
+          "toProperty": "items"
+        },
+        {
+          "fromId": "tasks_query",
+          "fromProperty": "isEmpty",
+          "toId": "empty_state",
+          "toProperty": "mounted"
+        },
+        {
+          "fromId": "task_input",
+          "fromProperty": "onTextChanged",
+          "toId": "create_task",
+          "toProperty": "prop-title"
+        },
+        {
+          "fromId": "add_button",
+          "fromProperty": "onClick",
+          "toId": "create_task",
+          "toProperty": "store"
+        },
+        {
+          "fromId": "task_input",
+          "fromProperty": "onEnter",
+          "toId": "create_task",
+          "toProperty": "store"
+        },
+        {
+          "fromId": "create_task",
+          "fromProperty": "done",
+          "toId": "task_input",
+          "toProperty": "clear"
+        }
+      ]
+    },
+    {
+      "name": "/Task Row",
+      "nodes": [
+        {
+          "id": "row_root",
+          "type": "Group",
+          "label": "Task row",
+          "parameters": {
+            "flexDirection": "row",
+            "paddingLeft": 12,
+            "paddingRight": 12,
+            "paddingTop": 8,
+            "paddingBottom": 8
+          },
+          "children": ["title_text"]
+        },
+        {
+          "id": "title_text",
+          "type": "Text",
+          "label": "Task title",
+          "parent": "row_root"
+        },
+        {
+          "id": "row_inputs",
+          "type": "Component Inputs",
+          "label": "Record properties in"
+        }
+      ],
+      "connections": [
+        {
+          "fromId": "row_inputs",
+          "fromProperty": "title",
+          "toId": "title_text",
+          "toProperty": "text"
+        }
+      ]
+    }
+  ]
+}

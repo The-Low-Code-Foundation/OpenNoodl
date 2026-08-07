@@ -1,0 +1,14 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "c_home",
+  "version": 1,
+  "nodes": [
+    { "id": "page", "type": "Page", "label": "Home", "parameters": { "title": "Home" }, "children": ["layout"] },
+    { "id": "layout", "type": "Group", "label": "Layout", "parent": "page", "children": ["title", "card", "btn"] },
+    { "id": "title", "type": "Text", "label": "Title", "parent": "layout", "parameters": { "text": "Welcome home" } },
+    { "id": "card", "type": "/Card", "label": "Info Card", "parent": "layout" },
+    { "id": "btn", "type": "net.noodl.controls.button", "label": "Go Button", "parent": "layout", "parameters": { "label": "Go" } },
+    { "id": "nav", "type": "RouterNavigate", "label": "Navigate Away" }
+  ],
+  "visualRoots": ["page"]
+}

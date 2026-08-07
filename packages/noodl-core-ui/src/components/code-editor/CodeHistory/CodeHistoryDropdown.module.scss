@@ -1,0 +1,166 @@
+/**
+ * CodeHistoryDropdown Styles
+ */
+
+.Root {
+  display: flex;
+  flex-direction: column;
+  max-height: 500px;
+}
+
+.Header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px;
+  border-bottom: 1px solid var(--theme-color-border-default);
+}
+
+.Title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--theme-color-fg-default);
+}
+
+.CloseButton {
+  background: none;
+  border: none;
+  color: var(--theme-color-fg-default-shy);
+  font-size: 24px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: all 0.15s ease;
+
+  &:hover {
+    background: var(--theme-color-bg-3);
+    color: var(--theme-color-fg-default);
+  }
+}
+
+.List {
+  overflow-y: auto;
+  max-height: 400px;
+  padding: 8px;
+}
+
+.Item {
+  padding: 12px;
+  border-radius: 6px;
+  margin-bottom: 4px;
+  border: 1px solid transparent;
+  transition: all 0.15s ease;
+
+  &:hover {
+    background: var(--theme-color-bg-2);
+    border-color: var(--theme-color-border-default);
+  }
+}
+
+.ItemCurrent {
+  background: var(--theme-color-primary);
+  color: white;
+  opacity: 0.9;
+
+  &:hover {
+    background: var(--theme-color-primary);
+    opacity: 1;
+  }
+
+  .ItemIcon {
+    color: white;
+  }
+
+  .ItemTime {
+    color: white;
+    font-weight: 600;
+  }
+}
+
+.ItemHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.ItemIcon {
+  font-size: 16px;
+  width: 20px;
+  text-align: center;
+  color: var(--theme-color-fg-default-shy);
+}
+
+.ItemTime {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--theme-color-fg-default);
+}
+
+.ItemSummary {
+  font-size: 12px;
+  color: var(--theme-color-fg-default-shy);
+  margin-left: 28px;
+  margin-bottom: 8px;
+}
+
+.ItemActions {
+  display: flex;
+  gap: 8px;
+  margin-left: 28px;
+}
+
+.PreviewButton {
+  padding: 4px 12px;
+  background: var(--theme-color-bg-3);
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: 4px;
+  color: var(--theme-color-fg-default);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+
+  &:hover {
+    background: var(--theme-color-primary);
+    border-color: var(--theme-color-primary);
+    color: white;
+  }
+}
+
+/* Empty state */
+.Empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 24px;
+  text-align: center;
+}
+
+.EmptyIcon {
+  color: var(--theme-color-fg-default-shy);
+  opacity: 0.5;
+  margin-bottom: 16px;
+}
+
+.EmptyText {
+  margin: 0 0 8px 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--theme-color-fg-default);
+}
+
+.EmptyHint {
+  margin: 0;
+  font-size: 13px;
+  color: var(--theme-color-fg-default-shy);
+  max-width: 280px;
+}

@@ -1,15 +1,16 @@
-import React from 'react';
-import { ComponentStory, ComponentMeta } from '@storybook/react';
+import type { Meta, StoryObj } from '@storybook/react';
 
 import { ToggleSwitch } from './ToggleSwitch';
 
-export default {
+const meta: Meta<typeof ToggleSwitch> = {
   title: 'Inputs/Toggle Switch',
   component: ToggleSwitch,
-  argTypes: {}
-} as ComponentMeta<typeof ToggleSwitch>;
+  argTypes: {},
+};
 
-const Template: ComponentStory<typeof ToggleSwitch> = (args) => <ToggleSwitch {...args} />;
+export default meta;
+type Story = StoryObj<typeof meta>;
 
-export const Common = Template.bind({});
-Common.args = {};
+export const Common: Story = {
+  args: {},
+};

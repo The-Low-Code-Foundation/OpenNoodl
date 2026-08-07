@@ -1,0 +1,428 @@
+{
+  "componentName": "/Visual Components/Profile/Notification Preferences",
+  "isNewComponent": true,
+  "changes": [
+    {
+      "id": "node-added:inputs",
+      "kind": "node-added",
+      "category": "semantic",
+      "requires": [],
+      "excludedWith": [
+        "connection-added:inputs:digest->cbDigest:checked",
+        "connection-added:inputs:push->cbPush:checked",
+        "connection-added:inputs:email->cbEmail:checked"
+      ],
+      "requiredWith": []
+    },
+    {
+      "id": "node-added:outputs",
+      "kind": "node-added",
+      "category": "semantic",
+      "requires": [],
+      "excludedWith": [
+        "connection-added:saveBtn:onClick->outputs:Save",
+        "connection-added:cbDigest:checked->outputs:digest",
+        "connection-added:cbPush:checked->outputs:push",
+        "connection-added:cbEmail:checked->outputs:email"
+      ],
+      "requiredWith": []
+    },
+    {
+      "id": "node-added:touched",
+      "kind": "node-added",
+      "category": "semantic",
+      "requires": [],
+      "excludedWith": [
+        "connection-added:touched:savedValue->saveBtn:enabled",
+        "connection-added:cbDigest:onChange->touched:saveValue",
+        "connection-added:cbPush:onChange->touched:saveValue",
+        "connection-added:cbEmail:onChange->touched:saveValue"
+      ],
+      "requiredWith": []
+    },
+    {
+      "id": "node-added:card",
+      "kind": "node-added",
+      "category": "semantic",
+      "requires": [],
+      "excludedWith": [
+        "node-added:saveBtn",
+        "connection-added:saveBtn:onClick->outputs:Save",
+        "connection-added:touched:savedValue->saveBtn:enabled",
+        "node-added:rowDigest",
+        "node-added:cbDigest",
+        "connection-added:cbDigest:checked->outputs:digest",
+        "connection-added:cbDigest:onChange->touched:saveValue",
+        "connection-added:inputs:digest->cbDigest:checked",
+        "node-added:labelDigest",
+        "node-added:rowPush",
+        "node-added:cbPush",
+        "connection-added:cbPush:checked->outputs:push",
+        "connection-added:cbPush:onChange->touched:saveValue",
+        "connection-added:inputs:push->cbPush:checked",
+        "node-added:labelPush",
+        "node-added:rowEmail",
+        "node-added:cbEmail",
+        "connection-added:cbEmail:checked->outputs:email",
+        "connection-added:cbEmail:onChange->touched:saveValue",
+        "connection-added:inputs:email->cbEmail:checked",
+        "node-added:labelEmail",
+        "node-added:heading"
+      ],
+      "requiredWith": []
+    },
+    {
+      "id": "node-added:heading",
+      "kind": "node-added",
+      "category": "semantic",
+      "requires": [
+        "node-added:card"
+      ],
+      "excludedWith": [],
+      "requiredWith": [
+        "node-added:card"
+      ]
+    },
+    {
+      "id": "node-added:rowEmail",
+      "kind": "node-added",
+      "category": "semantic",
+      "requires": [
+        "node-added:card"
+      ],
+      "excludedWith": [
+        "node-added:cbEmail",
+        "connection-added:cbEmail:checked->outputs:email",
+        "connection-added:cbEmail:onChange->touched:saveValue",
+        "connection-added:inputs:email->cbEmail:checked",
+        "node-added:labelEmail"
+      ],
+      "requiredWith": [
+        "node-added:card"
+      ]
+    },
+    {
+      "id": "node-added:labelEmail",
+      "kind": "node-added",
+      "category": "semantic",
+      "requires": [
+        "node-added:rowEmail"
+      ],
+      "excludedWith": [],
+      "requiredWith": [
+        "node-added:rowEmail",
+        "node-added:card"
+      ]
+    },
+    {
+      "id": "node-added:cbEmail",
+      "kind": "node-added",
+      "category": "semantic",
+      "requires": [
+        "node-added:rowEmail"
+      ],
+      "excludedWith": [
+        "connection-added:cbEmail:checked->outputs:email",
+        "connection-added:cbEmail:onChange->touched:saveValue",
+        "connection-added:inputs:email->cbEmail:checked"
+      ],
+      "requiredWith": [
+        "node-added:rowEmail",
+        "node-added:card"
+      ]
+    },
+    {
+      "id": "node-added:rowPush",
+      "kind": "node-added",
+      "category": "semantic",
+      "requires": [
+        "node-added:card"
+      ],
+      "excludedWith": [
+        "node-added:cbPush",
+        "connection-added:cbPush:checked->outputs:push",
+        "connection-added:cbPush:onChange->touched:saveValue",
+        "connection-added:inputs:push->cbPush:checked",
+        "node-added:labelPush"
+      ],
+      "requiredWith": [
+        "node-added:card"
+      ]
+    },
+    {
+      "id": "node-added:labelPush",
+      "kind": "node-added",
+      "category": "semantic",
+      "requires": [
+        "node-added:rowPush"
+      ],
+      "excludedWith": [],
+      "requiredWith": [
+        "node-added:rowPush",
+        "node-added:card"
+      ]
+    },
+    {
+      "id": "node-added:cbPush",
+      "kind": "node-added",
+      "category": "semantic",
+      "requires": [
+        "node-added:rowPush"
+      ],
+      "excludedWith": [
+        "connection-added:cbPush:checked->outputs:push",
+        "connection-added:cbPush:onChange->touched:saveValue",
+        "connection-added:inputs:push->cbPush:checked"
+      ],
+      "requiredWith": [
+        "node-added:rowPush",
+        "node-added:card"
+      ]
+    },
+    {
+      "id": "node-added:rowDigest",
+      "kind": "node-added",
+      "category": "semantic",
+      "requires": [
+        "node-added:card"
+      ],
+      "excludedWith": [
+        "node-added:cbDigest",
+        "connection-added:cbDigest:checked->outputs:digest",
+        "connection-added:cbDigest:onChange->touched:saveValue",
+        "connection-added:inputs:digest->cbDigest:checked",
+        "node-added:labelDigest"
+      ],
+      "requiredWith": [
+        "node-added:card"
+      ]
+    },
+    {
+      "id": "node-added:labelDigest",
+      "kind": "node-added",
+      "category": "semantic",
+      "requires": [
+        "node-added:rowDigest"
+      ],
+      "excludedWith": [],
+      "requiredWith": [
+        "node-added:rowDigest",
+        "node-added:card"
+      ]
+    },
+    {
+      "id": "node-added:cbDigest",
+      "kind": "node-added",
+      "category": "semantic",
+      "requires": [
+        "node-added:rowDigest"
+      ],
+      "excludedWith": [
+        "connection-added:cbDigest:checked->outputs:digest",
+        "connection-added:cbDigest:onChange->touched:saveValue",
+        "connection-added:inputs:digest->cbDigest:checked"
+      ],
+      "requiredWith": [
+        "node-added:rowDigest",
+        "node-added:card"
+      ]
+    },
+    {
+      "id": "node-added:saveBtn",
+      "kind": "node-added",
+      "category": "semantic",
+      "requires": [
+        "node-added:card"
+      ],
+      "excludedWith": [
+        "connection-added:saveBtn:onClick->outputs:Save",
+        "connection-added:touched:savedValue->saveBtn:enabled"
+      ],
+      "requiredWith": [
+        "node-added:card"
+      ]
+    },
+    {
+      "id": "connection-added:inputs:email->cbEmail:checked",
+      "kind": "connection-added",
+      "category": "semantic",
+      "requires": [
+        "node-added:inputs",
+        "node-added:cbEmail"
+      ],
+      "excludedWith": [],
+      "requiredWith": [
+        "node-added:cbEmail",
+        "node-added:rowEmail",
+        "node-added:card",
+        "node-added:inputs"
+      ]
+    },
+    {
+      "id": "connection-added:inputs:push->cbPush:checked",
+      "kind": "connection-added",
+      "category": "semantic",
+      "requires": [
+        "node-added:inputs",
+        "node-added:cbPush"
+      ],
+      "excludedWith": [],
+      "requiredWith": [
+        "node-added:cbPush",
+        "node-added:rowPush",
+        "node-added:card",
+        "node-added:inputs"
+      ]
+    },
+    {
+      "id": "connection-added:inputs:digest->cbDigest:checked",
+      "kind": "connection-added",
+      "category": "semantic",
+      "requires": [
+        "node-added:inputs",
+        "node-added:cbDigest"
+      ],
+      "excludedWith": [],
+      "requiredWith": [
+        "node-added:cbDigest",
+        "node-added:rowDigest",
+        "node-added:card",
+        "node-added:inputs"
+      ]
+    },
+    {
+      "id": "connection-added:cbEmail:onChange->touched:saveValue",
+      "kind": "connection-added",
+      "category": "semantic",
+      "requires": [
+        "node-added:cbEmail",
+        "node-added:touched"
+      ],
+      "excludedWith": [],
+      "requiredWith": [
+        "node-added:touched",
+        "node-added:cbEmail",
+        "node-added:rowEmail",
+        "node-added:card"
+      ]
+    },
+    {
+      "id": "connection-added:cbPush:onChange->touched:saveValue",
+      "kind": "connection-added",
+      "category": "semantic",
+      "requires": [
+        "node-added:cbPush",
+        "node-added:touched"
+      ],
+      "excludedWith": [],
+      "requiredWith": [
+        "node-added:touched",
+        "node-added:cbPush",
+        "node-added:rowPush",
+        "node-added:card"
+      ]
+    },
+    {
+      "id": "connection-added:cbDigest:onChange->touched:saveValue",
+      "kind": "connection-added",
+      "category": "semantic",
+      "requires": [
+        "node-added:cbDigest",
+        "node-added:touched"
+      ],
+      "excludedWith": [],
+      "requiredWith": [
+        "node-added:touched",
+        "node-added:cbDigest",
+        "node-added:rowDigest",
+        "node-added:card"
+      ]
+    },
+    {
+      "id": "connection-added:touched:savedValue->saveBtn:enabled",
+      "kind": "connection-added",
+      "category": "semantic",
+      "requires": [
+        "node-added:touched",
+        "node-added:saveBtn"
+      ],
+      "excludedWith": [],
+      "requiredWith": [
+        "node-added:saveBtn",
+        "node-added:card",
+        "node-added:touched"
+      ]
+    },
+    {
+      "id": "connection-added:cbEmail:checked->outputs:email",
+      "kind": "connection-added",
+      "category": "semantic",
+      "requires": [
+        "node-added:cbEmail",
+        "node-added:outputs"
+      ],
+      "excludedWith": [],
+      "requiredWith": [
+        "node-added:outputs",
+        "node-added:cbEmail",
+        "node-added:rowEmail",
+        "node-added:card"
+      ]
+    },
+    {
+      "id": "connection-added:cbPush:checked->outputs:push",
+      "kind": "connection-added",
+      "category": "semantic",
+      "requires": [
+        "node-added:cbPush",
+        "node-added:outputs"
+      ],
+      "excludedWith": [],
+      "requiredWith": [
+        "node-added:outputs",
+        "node-added:cbPush",
+        "node-added:rowPush",
+        "node-added:card"
+      ]
+    },
+    {
+      "id": "connection-added:cbDigest:checked->outputs:digest",
+      "kind": "connection-added",
+      "category": "semantic",
+      "requires": [
+        "node-added:cbDigest",
+        "node-added:outputs"
+      ],
+      "excludedWith": [],
+      "requiredWith": [
+        "node-added:outputs",
+        "node-added:cbDigest",
+        "node-added:rowDigest",
+        "node-added:card"
+      ]
+    },
+    {
+      "id": "connection-added:saveBtn:onClick->outputs:Save",
+      "kind": "connection-added",
+      "category": "semantic",
+      "requires": [
+        "node-added:saveBtn",
+        "node-added:outputs"
+      ],
+      "excludedWith": [],
+      "requiredWith": [
+        "node-added:outputs",
+        "node-added:saveBtn",
+        "node-added:card"
+      ]
+    },
+    {
+      "id": "component-metadata-changed:componentType",
+      "kind": "component-metadata-changed",
+      "category": "semantic",
+      "requires": [],
+      "excludedWith": [],
+      "requiredWith": []
+    }
+  ]
+}

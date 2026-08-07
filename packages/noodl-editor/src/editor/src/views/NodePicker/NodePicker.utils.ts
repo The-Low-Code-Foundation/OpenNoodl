@@ -1,62 +1,8 @@
 import { NodeGraphModel, NodeGraphNode } from '@noodl-models/nodegraphmodel';
-import { INodeIndexCategory } from '@noodl-utils/createnodeindex';
 import { guid } from '@noodl-utils/utils';
 
+import { ElementConfigRegistry } from '../../models/ElementConfigs';
 import { CommentFillStyle } from '../CommentLayer/CommentLayerView';
-
-export function parseNodeObject(nodeTypes: TSFixme[], model: TSFixme, parentModel: TSFixme) {
-  const resultTree: INodeIndexCategory[] = [];
-
-  for (const i in nodeTypes) {
-    const nodeType = nodeTypes[i];
-
-    // Check if node can be created with the current parent
-    const status = model.owner.getCreateStatus({
-      parent: parentModel,
-      type: nodeType
-    });
-
-    if (!status.creatable) continue;
-
-    // Add to result if allowed, build the tree if necessary
-    let currentCategoryInTree = resultTree?.find((item) => item.name === nodeType.category);
-
-    if (!currentCategoryInTree) {
-      resultTree.push({
-        name: nodeType.category,
-        type: nodeType.color,
-        description: 'TODO',
-        subCategories: [],
-        items: []
-      });
-
-      currentCategoryInTree = resultTree.find((item) => item.name === nodeType.category);
-    }
-
-    let currentSubCategoryInTree = currentCategoryInTree?.subCategories?.find(
-      (subCategory) => subCategory.name === nodeType?.subCategory
-    );
-
-    if (typeof nodeType.subCategory !== 'undefined') {
-      if (!currentSubCategoryInTree) {
-        currentCategoryInTree.subCategories.push({
-          name: nodeType.subCategory,
-          items: []
-        });
-
-        currentSubCategoryInTree = currentCategoryInTree.subCategories?.find(
-          (subCategory) => subCategory.name === nodeType?.subCategory
-        );
-      }
-
-      currentSubCategoryInTree.items.push(nodeType);
-    } else {
-      currentCategoryInTree.items.push(nodeType);
-    }
-  }
-
-  return resultTree;
-}
 
 export function createNodeFunction(
   model: NodeGraphModel,
@@ -72,6 +18,10 @@ export function createNodeFunction(
       y: pos.y,
       id: guid()
     });
+
+    // STYLE-002: Apply element config defaults (token-based styles + initial variant)
+    // Only affects nodes with a registered ElementConfig — no-op for all others.
+    ElementConfigRegistry.applyDefaults(node, type.name);
 
     if (parentModel) {
       parentModel.addChild(node, { undo: true, label: 'create' });

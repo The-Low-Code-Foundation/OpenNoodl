@@ -1,15 +1,18 @@
-import { ComponentStory, ComponentMeta } from '@storybook/react';
-import React from 'react';
+import type { Meta, StoryObj } from '@storybook/react';
 
 import { Group } from './Group';
 
-export default {
+const meta: Meta<typeof Group> = {
   title: 'Preview/Property Panel/[WIP] Group',
   component: Group,
   argTypes: {}
-} as ComponentMeta<typeof Group>;
+};
 
-const Template: ComponentStory<typeof Group> = (args) => <Group></Group>;
+export default meta;
+type Story = StoryObj<typeof meta>;
 
-export const Primary = Template.bind({});
-Primary.args = {};
+const Template: Story = (args) => <Group></Group>;
+
+export const Primary: Story = {
+  args: {},
+};

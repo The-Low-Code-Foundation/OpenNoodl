@@ -2,6 +2,15 @@
    Popup layer
 
    TODO: Clean up order of layers
+
+   FH-012: `.popup-layer` is a child of <body> (router.tsx) and everything the
+   layer shows — popups, popouts, modals, toasts, tooltips, the dimmed backdrop
+   — is inside it, so this ONE number is what the rest of the editor has to
+   stay under to be covered by a popup. Anything drawing over the canvas that
+   needs to be beaten by the node picker must therefore both live in its own
+   stacking context and carry a z-index below 10; the canvas overlay layer does
+   that in `CanvasShell.ts` (5). Raise this number to win an argument and the
+   next overlay simply outbids it again.
    ------------------------------------------------------------------- */
 .popup-layer {
   pointer-events: none;
@@ -15,8 +24,14 @@
 }
 
 .popup-layer.dim {
-  background-color: #0000007f;
+  background-color: var(--base-color-black-transparent-50);
   transition: background-color 0.2s linear;
+  pointer-events: all;
+}
+
+/* Enable pointer events when popouts are active (without dimming background)
+   This allows clicking outside popouts to close them */
+.popup-layer.has-popouts {
   pointer-events: all;
 }
 
@@ -28,6 +43,7 @@
   background-color: var(--theme-color-bg-4);
   filter: drop-shadow(0 4px 15px var(--theme-color-bg-1-transparent-2));
   box-shadow: 0 0 10px -5px var(--theme-color-bg-1-transparent-2);
+  border-radius: var(--radius-lg);
   pointer-events: all;
   z-index: 2;
 }
@@ -93,14 +109,14 @@
 }
 
 .popup-layer-popup-arrow.dark {
-  border-bottom-color: rgba(0, 0, 0, 0.7);
+  border-bottom-color: var(--base-color-black-transparent-70);
 }
 
 /** popout **/
 
 .popup-layer-popout {
   background-color: var(--theme-color-bg-4);
-  /* This filter breaks Chromium? causes an internal div in monaco to not be clipped by it's parent correctly, breaking mouse event when resizing */
+  /* This filter breaks Chromium? causes an internal div in the popout editor to not be clipped by it's parent correctly, breaking mouse event when resizing */
   /* filter: drop-shadow(0 4px 15px var(--theme-color-bg-1-transparent-2)); */
   box-shadow: 0 5px 20px 5px var(--theme-color-bg-1-transparent);
   pointer-events: all;
@@ -122,9 +138,10 @@
   width: 0;
   position: absolute;
   pointer-events: none;
-  border-bottom-color: #333;
+  border-bottom-color: var(--theme-color-bg-4);
   border-width: 10px;
   margin-left: -10px;
+  transform: translateX(0);
 }
 
 .popup-layer-popout-arrow.right {
@@ -136,7 +153,7 @@
   width: 0;
   position: absolute;
   pointer-events: none;
-  border-left-color: #333;
+  border-left-color: var(--theme-color-bg-5);
   border-width: 10px;
   margin-top: -10px;
 }
@@ -150,7 +167,7 @@
   width: 0;
   position: absolute;
   pointer-events: none;
-  border-top-color: #333;
+  border-top-color: var(--theme-color-bg-5);
   border-width: 10px;
   margin-left: -10px;
 }
@@ -164,7 +181,7 @@
   width: 0;
   position: absolute;
   pointer-events: none;
-  border-right-color: #333;
+  border-right-color: var(--theme-color-bg-5);
   border-width: 10px;
   margin-top: -10px;
 }
@@ -176,6 +193,7 @@
   background-color: var(--theme-color-bg-3);
   filter: drop-shadow(0 4px 15px var(--theme-color-bg-1-transparent-2));
   box-shadow: 0 0 10px -5px var(--theme-color-bg-1-transparent-2);
+  border-radius: var(--radius-lg);
   pointer-events: all;
   z-index: 21;
   top: 50%;
@@ -190,35 +208,60 @@
 .popup-layer-popup-menu {
   min-width: 208px;
   cursor: default;
+  background-color: var(--theme-color-bg-3);
+  border-radius: 4px;
+  padding: 4px 0;
 }
 
 .popup-layer-popup-menu-divider {
   height: 0px;
-  border-top: 2px #333 solid;
+  border-top: 2px var(--theme-color-border-default) solid;
   margin-top: 3px;
   margin-bottom: 3px;
 }
 
+/*
+ * AAQ-011 F1, the same defect one rule up: a theme-invariant
+ * `--base-color-black-transparent-70` background under a theme-flipping
+ * `fg-highlight`. `showToast` is deprecated but not dead —
+ * `EditorClipboard.ts:267` still raises it when a node cannot be copied.
+ * Was 1.92:1 light / 17.94:1 dark; fg-highlight on bg-4 is 11.04:1 dark /
+ * 13.18:1 light.
+ */
 .popup-layer-toast {
   position: absolute;
-  background-color: rgba(0, 0, 0, 0.7);
+  background-color: var(--theme-color-bg-4);
   border-radius: 3px;
-  border-color: rgba(0, 0, 0, 0.7);
-  border-width: 3px;
+  border: 1px solid var(--theme-color-border-strong);
   padding: 5px;
-  color: white;
+  color: var(--theme-color-fg-highlight);
   opacity: 0;
   transition: opacity 500ms;
   font-size: 15px;
   z-index: 90;
 }
 
+/*
+ * The drag ghost — one permanently-mounted singleton (`popuplayer.ts:289`) that
+ * every drag in the editor borrows: the components panel, component-port
+ * reordering and the property-editor prop list all call `startDragging()`.
+ *
+ * AAQ-011 F1: this rule used to pair a `--base-color-*` primitive background
+ * (`black-transparent-80`, defined once and never redefined for light) with a
+ * `--theme-color-*` foreground that does flip. The two halves painted for
+ * different themes, so in light mode the pill was near-black text on near-black
+ * — measured 1.29:1 in the running editor. `bg-4` is the raised-surface step and
+ * flips with the theme, so the pill now reads on both: fg-highlight on bg-4 is
+ * 11.04:1 dark / 13.18:1 light. The border replaces a dead `border-width: 3px`
+ * (no `border-style`, so it never painted) and keeps the pill a distinct shape
+ * now that its background is close to the panels it floats over.
+ */
 .popup-layer-dragger {
   position: absolute;
-  background-color: rgba(0, 0, 0, 0.8);
+  background-color: var(--theme-color-bg-4);
   border-radius: 3px;
-  border-width: 3px;
-  color: white;
+  border: 1px solid var(--theme-color-border-strong);
+  color: var(--theme-color-fg-highlight);
   font-size: 12px;
   -webkit-transition: opacity 0.25s ease-out;
   padding: 5px;
@@ -228,8 +271,8 @@
 }
 
 :root {
-  --popup-layer-tooltip-border-color: var(--theme-color-secondary);
-  --popup-layer-tooltip-background-color: var(--theme-color-secondary);
+  --popup-layer-tooltip-border-color: var(--theme-color-border-default);
+  --popup-layer-tooltip-background-color: var(--theme-color-bg-3);
 }
 
 .popup-layer-tooltip {
@@ -240,13 +283,13 @@
   border-color: var(--popup-layer-tooltip-border-color);
   border-width: 1px;
   padding: 12px 16px;
-  color: white;
+  color: var(--theme-color-fg-default);
   position: absolute;
   opacity: 0;
   -webkit-transition: opacity 0.3s;
   pointer-events: none;
   z-index: 2000;
-  box-shadow: -4px 4px 16px rgba(0, 0, 0, 0.3);
+  box-shadow: -4px 4px 16px var(--base-color-black-transparent-30);
 }
 
 .popup-layer-tooltip-content {
@@ -340,7 +383,7 @@
 
 .popup {
   padding-bottom: 3px;
-  color: #aaaaaa;
+  color: var(--theme-color-fg-default-shy);
 }
 
 .popup p {
@@ -350,20 +393,20 @@
 
 .popup-group-label {
   display: block;
-  color: #cccccc;
-  background-color: #272727;
+  color: var(--theme-color-fg-default);
+  background-color: var(--theme-color-bg-4);
   padding: 5px;
 }
 
 .popup-text {
   display: block;
-  color: #777777;
+  color: var(--theme-color-fg-muted);
   margin-left: 5px;
   margin-right: 5px;
 }
 
 .popup-file-drop {
-  background-color: #000000;
+  background-color: var(--theme-color-bg-0);
   opacity: 0.7;
   width: 100%;
   height: 100%;
@@ -371,10 +414,10 @@
 
 .popup-file-drop-msg {
   margin: auto;
-  color: #eeeeee;
+  color: var(--theme-color-fg-default-contrast);
   width: 400px;
   background-color: transparent;
-  border-color: #aaaaaa;
+  border-color: var(--theme-color-fg-default-shy);
   border-width: 2px;
   border-style: dashed;
   font-size: 20px;
@@ -388,14 +431,19 @@
   height: 25px;
 }
 
+/*
+ * AAQ-011 F1, third instance of the same pairing. `PopupLayer.showActivity` has
+ * no caller left — `ToastLayer` replaced it — so this one was not reachable and
+ * is corrected rather than "fixed": a rule that is wrong in exactly the way its
+ * two neighbours were is what the next person copies.
+ */
 .popup-layer-activity {
   position: absolute;
-  background-color: rgba(0, 0, 0, 0.7);
+  background-color: var(--theme-color-bg-4);
   border-radius: 3px;
-  border-color: rgba(0, 0, 0, 0.7);
-  border-width: 3px;
+  border: 1px solid var(--theme-color-border-strong);
   padding: 10px;
-  color: white;
+  color: var(--theme-color-fg-highlight);
   opacity: 0;
   transition: opacity 500ms;
   font-size: 15px;
@@ -414,7 +462,7 @@
 .popup-layer-activity-progress {
   margin-left: 10px;
   margin-right: 10px;
-  background-color: black;
+  background-color: var(--theme-color-bg-0);
   opacity: 0.5;
   height: 10px;
   display: none;
@@ -423,69 +471,79 @@
 .popup-layer-activity-progress-bar {
   width: 0%;
   height: 100%;
-  background-color: #cccccc;
+  background-color: var(--theme-color-fg-default);
 }
 
 .popup-title {
   display: block;
-  color: #aaaaaa;
+  color: var(--theme-color-fg-default-shy);
   margin-left: 5px;
   margin-right: 5px;
 }
 
 .popup-title > strong {
-  color: #cccccc;
+  color: var(--theme-color-fg-default);
 }
 
 .popup-message {
   display: block;
-  color: #aaa;
+  color: var(--theme-color-fg-default-shy);
   margin-left: 5px;
   margin-right: 5px;
 }
 
 .popup-message > strong {
-  color: #ddd;
+  color: var(--theme-color-fg-default-contrast);
 }
 
 .popup-button {
   border: none;
   padding: 0px;
-  background-color: #d49517;
-  color: #171717;
+  background-color: var(--theme-color-primary);
+  color: var(--theme-color-on-primary);
   padding: 2px 15px 2px 15px;
   font-size: 12px;
   text-transform: uppercase;
 }
 
 .popup-button:hover {
-  background-color: #fdb314;
+  background-color: var(--theme-color-primary-highlight);
 }
 
 .popup-button-grey {
   border: none;
   padding: 0px;
-  background-color: #333333;
-  color: #999999;
+  background-color: var(--theme-color-bg-5);
+  color: var(--theme-color-fg-default-shy);
   padding: 2px 15px 2px 15px;
   font-size: 12px;
   text-transform: uppercase;
 }
 
 .popup-button-grey:hover {
-  background-color: #555555;
+  background-color: var(--theme-color-border-strong);
 }
 
+/* SPR-003 §4 (F94): a zero-size positioning host, nothing more.
+
+   It used to be `position: absolute; bottom: 2px` with no `left` or `right`.
+   Both auto means the used value is the static position, and as the first child
+   of a full-viewport containing block that is 0 — so the port explainer drew in
+   the bottom-left corner of the window whatever port was hovered. `DocsPopup`
+   now positions itself against the hovered row with `position: fixed`, so this
+   host must contribute no box of its own and clip nothing. */
 .popup-small-docs {
-  position: absolute;
-  background-color: #171717;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 0;
+  height: 0;
   z-index: 2;
-  bottom: 2px;
 }
 
 /* Confim modal */
 .confirm-modal {
-  color: #c4c4c4;
+  color: var(--theme-color-fg-default);
   max-width: 70vw;
   max-height: 70vh;
   overflow-y: auto;
@@ -493,7 +551,7 @@
 
 .confirm-modal label {
   display: block;
-  background-color: #272727;
+  background-color: var(--theme-color-bg-4);
   padding: 5px 10px;
 }
 
@@ -502,33 +560,195 @@
   padding: 0;
 }
 
+/* Dialog button convention (UIX-004): primary on the right. Uses flex `order`
+   so the DOM/tab order (confirm first) is unchanged — presentation only. */
 .confirm-modal .confirm-buttons {
   display: flex;
   gap: 16px;
   margin: 16px 16px;
+  justify-content: flex-end;
 }
 
 .confirm-modal button {
   line-height: 24px;
   border: none;
-  padding: 0px 16px;
+  border-radius: var(--radius-md);
+  padding: 4px 16px;
   font-weight: 600;
 }
 
 .confirm-modal .confirm-button {
-  background-color: #f67465;
-  color: #1d1f20;
-}
-
-.confirm-modal .confirm-button:hover {
-  background-color: #f89387;
+  order: 2;
+  background-color: var(--theme-color-primary);
+  color: var(--theme-color-on-primary);
 }
 
 .confirm-modal .cancel-button {
-  background-color: #1d1f20;
-  color: #c4c4c4;
+  order: 1;
+}
+
+.confirm-modal .confirm-button:hover {
+  background-color: var(--theme-color-primary-hover);
+}
+
+.confirm-modal .cancel-button {
+  background-color: var(--theme-color-bg-2);
+  color: var(--theme-color-fg-default);
 }
 
 .confirm-modal .cancel-button:hover {
-  background-color: #2f3335;
+  background-color: var(--theme-color-bg-3);
+}
+
+/* String Input Popup */
+.string-input-popup {
+  padding: 16px;
+  width: 500px;
+  min-width: 400px;
+  max-width: 600px;
+}
+
+.string-input-popup-label {
+  display: block;
+  color: var(--theme-color-fg-default);
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+
+/*
+ * F26: the single-line name prompt. A prompt asking for one short name is not
+ * 500px wide and has no room for a 200px code box; the wrapper/gutter rules
+ * below belong to the comment editor alone.
+ */
+.string-input-popup--single {
+  width: 320px;
+  min-width: 320px;
+  max-width: 320px;
+}
+
+.string-input-popup-singleline {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  height: 32px;
+  padding: 0 10px;
+  background-color: var(--theme-color-bg-1);
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: 4px;
+  color: var(--theme-color-fg-default);
+  font-size: 13px;
+  outline: none;
+}
+
+.string-input-popup-singleline:focus {
+  border-color: var(--theme-color-primary);
+  box-shadow: 0 0 0 2px var(--theme-color-primary-transparent);
+}
+
+.string-input-popup-singleline::placeholder {
+  color: var(--theme-color-fg-muted);
+}
+
+.string-input-popup-editor-wrapper {
+  position: relative;
+  display: flex;
+  background-color: var(--theme-color-bg-1);
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: 4px;
+  overflow: hidden;
+  /* Fixed height to prevent modal from growing */
+  height: 200px;
+  max-height: 200px;
+}
+
+.string-input-popup-line-numbers {
+  flex-shrink: 0;
+  /* Match textarea padding exactly for alignment */
+  padding: 12px 8px 12px 12px;
+  background-color: var(--theme-color-bg-2);
+  border-right: 1px solid var(--theme-color-border-default);
+  color: var(--theme-color-fg-muted);
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', 'source-code-pro', monospace;
+  font-size: 13px;
+  line-height: 20.8px;
+  text-align: right;
+  user-select: none;
+  pointer-events: none;
+  min-width: 36px;
+  /* Allow scroll sync - hide scrollbar but allow scrollTop changes */
+  overflow-y: scroll;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE/Edge */
+  white-space: pre;
+}
+
+/* Hide scrollbar for line numbers in WebKit browsers */
+.string-input-popup-line-numbers::-webkit-scrollbar {
+  display: none;
+}
+
+.string-input-popup-textarea {
+  flex: 1;
+  /* Fill the fixed-height wrapper */
+  height: 100%;
+  padding: 12px;
+  background-color: transparent;
+  border: none;
+  border-radius: 0;
+  color: var(--theme-color-fg-default);
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', 'source-code-pro', monospace;
+  font-size: 13px;
+  line-height: 20.8px;
+  resize: none;
+  box-sizing: border-box;
+  outline: none;
+  overflow-y: auto;
+}
+
+.string-input-popup-textarea:focus {
+  outline: none;
+  border-color: var(--theme-color-primary);
+  box-shadow: 0 0 0 2px var(--theme-color-primary-transparent);
+}
+
+.string-input-popup-textarea::placeholder {
+  color: var(--theme-color-fg-muted);
+  font-style: italic;
+}
+
+.string-input-popup-buttons {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  margin-top: 16px;
+}
+
+.string-input-popup-button-ok,
+.string-input-popup-button-cancel {
+  padding: 8px 20px;
+  border: none;
+  border-radius: 4px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.string-input-popup-button-ok {
+  background-color: var(--theme-color-primary);
+  color: var(--theme-color-on-primary);
+}
+
+.string-input-popup-button-ok:hover {
+  background-color: var(--theme-color-primary-hover);
+}
+
+.string-input-popup-button-cancel {
+  background-color: var(--theme-color-bg-4);
+  color: var(--theme-color-fg-default);
+}
+
+.string-input-popup-button-cancel:hover {
+  background-color: var(--theme-color-bg-5);
 }

@@ -1,0 +1,67 @@
+.Root {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ExpressionActive {
+  background-color: var(--theme-color-primary);
+  color: white;
+
+  &:hover {
+    background-color: var(--theme-color-primary-hover);
+  }
+
+  &:active {
+    background-color: var(--theme-color-primary-active);
+  }
+}
+
+.ConnectionIndicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  opacity: 0.5;
+  cursor: default;
+}
+
+.FxButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', 'Courier New', monospace;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--theme-color-fg-default-shy, rgba(255, 255, 255, 0.5));
+  cursor: pointer;
+  border-radius: 4px;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+
+  &:hover {
+    background-color: var(--theme-color-bg-1, rgba(255, 255, 255, 0.1));
+    color: var(--theme-color-primary);
+  }
+
+  &:focus {
+    outline: none;
+    background-color: var(--theme-color-bg-1, rgba(255, 255, 255, 0.1));
+  }
+
+  &.is-disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+
+    &:hover {
+      background: transparent;
+      color: var(--theme-color-fg-default-shy, rgba(255, 255, 255, 0.5));
+    }
+  }
+}

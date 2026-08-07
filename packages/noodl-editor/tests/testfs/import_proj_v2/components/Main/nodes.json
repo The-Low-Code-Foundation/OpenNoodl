@@ -1,0 +1,48 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "2d3ccd33-f1ef-2dc5-3e1a-ca9d61cd222b",
+      "type": "Group",
+      "label": "Root",
+      "x": 238,
+      "y": 237,
+      "parameters": {
+        "fill": "parent"
+      },
+      "children": [
+        "fa90ea16-1232-0437-deea-5dd6263d8247",
+        "189062e3-73dc-05ee-617c-55a3c2f1cc31",
+        "7c192e4c-cecc-b064-5bdc-d10f07b79426"
+      ]
+    },
+    {
+      "id": "fa90ea16-1232-0437-deea-5dd6263d8247",
+      "type": "Rectangle",
+      "label": "Background",
+      "parameters": {
+        "color": "#ffffff"
+      },
+      "parent": "2d3ccd33-f1ef-2dc5-3e1a-ca9d61cd222b"
+    },
+    {
+      "id": "189062e3-73dc-05ee-617c-55a3c2f1cc31",
+      "type": "Text",
+      "parameters": {
+        "alignX": "center",
+        "alignY": "center",
+        "text": "Hello World",
+        "fontSize": 150,
+        "color": "#000000",
+        "fontFamily": "Fontfabric - Nexa-Bold.otf"
+      },
+      "parent": "2d3ccd33-f1ef-2dc5-3e1a-ca9d61cd222b"
+    },
+    {
+      "id": "7c192e4c-cecc-b064-5bdc-d10f07b79426",
+      "type": "/comp1",
+      "parent": "2d3ccd33-f1ef-2dc5-3e1a-ca9d61cd222b"
+    }
+  ]
+}

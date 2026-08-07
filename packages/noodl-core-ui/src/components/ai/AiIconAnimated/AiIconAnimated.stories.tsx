@@ -1,15 +1,17 @@
-import { ComponentStory, ComponentMeta } from '@storybook/react';
-import React from 'react';
+import type { Meta, StoryObj } from '@storybook/react';
 
 import { AiIconAnimated } from './AiIconAnimated';
 
-export default {
+const meta: Meta<typeof AiIconAnimated> = {
   title: 'Ai/Ai Icon Animated',
   component: AiIconAnimated,
   argTypes: {}
-} as ComponentMeta<typeof AiIconAnimated>;
+};
 
-const Template: ComponentStory<typeof AiIconAnimated> = (args) => (
+export default meta;
+type Story = StoryObj<typeof meta>;
+
+const Template: Story = (args) => (
   <div
     style={{
       // A background is required for the mask to work
@@ -20,10 +22,12 @@ const Template: ComponentStory<typeof AiIconAnimated> = (args) => (
   </div>
 );
 
-export const Common = Template.bind({});
-Common.args = {};
+export const Common: Story = {
+  args: {},
+};
 
-export const Listening = Template.bind({});
-Listening.args = {
+export const Listening: Story = {
+  args: {
   isListening: true
+},
 };

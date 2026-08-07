@@ -1,0 +1,145 @@
+name: Bug report
+description: Something in the NodeGX editor, preview, or a deployed app behaves wrongly.
+labels: ['bug', 'needs-triage']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. NodeGX is in alpha and has **no automatic crash reporting** —
+        nothing is sent anywhere unless you type it here, so a report you take the time to
+        write is genuinely the only way we learn a thing is broken.
+
+        You do not need to fill in every field. A half-filled report beats a missing one.
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What you did, and what the app did instead of what you expected.
+      placeholder: |
+        I dragged a Text node onto the canvas and set its Text input. The canvas
+        showed the new label but the preview kept the old one until I reopened the project.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Where
+      description: Which part of NodeGX. Pick the one closest — we will re-file it if it belongs elsewhere.
+      options:
+        - The editor (canvas, panels, menus)
+        - Preview (the live app inside the editor)
+        - A deployed or exported app
+        - The backend (data, cloud functions, workflows)
+        - The AI features (authoring, explain, review)
+        - Install, launch, or auto-update
+        - Not sure
+    validations:
+      required: true
+
+  # ALPHA-007 §4 (F72): there was no severity anywhere — not a field, not a
+  # label — so the queue could only be ranked by date, which is the wrong axis.
+  #
+  # It has to be a form field rather than a `labels=` URL parameter: applying a
+  # label needs triage permission on the repository, and a reporter is not a
+  # collaborator. Triage reads this field and applies the label.
+  #
+  # Every option is phrased as a consequence to *you*, because that is the only
+  # question a reporter can answer honestly. Do not reword them without changing
+  # `SEVERITY_OPTIONS` in `utils/report/issueForm.ts` — the editor prefills this
+  # dropdown by matching the option text exactly, and a copy edit here silently
+  # empties the field. A test checks the two agree.
+  - type: dropdown
+    id: severity
+    attributes:
+      label: How bad is it
+      options:
+        - Blocks me — I cannot work around it
+        - Serious — there is a workaround, but it costs me
+        - Annoying — wrong, but I can carry on
+        - Cosmetic — it looks wrong but works
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: NodeGX version
+      description: 'Find it in the launcher footer, or the About window. If you built from source, paste the commit instead.'
+      placeholder: '0.1.0'
+    validations:
+      required: true
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options:
+        - macOS (Apple Silicon)
+        - macOS (Intel)
+        - Windows
+        - Linux
+    validations:
+      required: true
+
+  - type: dropdown
+    id: fresh-project
+    attributes:
+      label: Does it happen in a brand-new project?
+      description: |
+        The single most useful thing you can tell us. A defect that survives into an empty
+        project is a NodeGX defect; one that does not is usually about your project's
+        specific graph, and we will ask for that instead.
+      options:
+        - "Yes — a new project does it too"
+        - "No — only my existing project"
+        - "Haven't tried"
+        - "Can't tell (the bug is about creating/opening projects)"
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Numbered, starting from a state we can reach — "new project" or "open the attached project".
+      placeholder: |
+        1. New project from the Hello World template
+        2. Drag a Text node into the root component
+        3. Type into its Text input
+        4. Look at the preview pane
+
+  - type: textarea
+    id: errors
+    attributes:
+      label: Any error text
+      description: |
+        Released builds keep a log of errors and warnings. **Help → Open log folder** reveals
+        it and selects the newest file; paste the lines from around the time it broke.
+        Paths, addresses and anything key-shaped are already redacted, but read it before
+        you paste it. Alternatively open the developer console (**Dev → Open Editor
+        Devtools**, or ⌘E / Ctrl+E), reproduce the bug, and paste anything red.
+        Screenshots of the editor are just as welcome.
+      render: text
+
+  # ALPHA-007 §4. `render: json` fences the content, which makes it a stable
+  # region a human can skim and an agent can locate without parsing prose:
+  # `gh issue view <n> --json body`, then read the first ```json fence.
+  #
+  # This is the join between the editor's "Report a problem" dialog and triage.
+  # The payload is built by an allow-list — counts, booleans and a bucketed node
+  # type histogram — and carries no project content, no parameter values, no
+  # component names and no endpoint. See `utils/report/diagnostics.ts`.
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Diagnostics
+      description: Filled in automatically by "Report a problem" in the editor. Leave blank if you are filing by hand.
+      render: json
+
+  - type: textarea
+    id: anything-else
+    attributes:
+      label: Anything else
+      description: Screenshots, a zipped project, how often it happens, what you tried.

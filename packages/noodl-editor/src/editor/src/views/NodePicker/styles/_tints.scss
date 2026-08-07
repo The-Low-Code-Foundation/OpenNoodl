@@ -1,0 +1,44 @@
+/**
+ * Category tint (UIX-013).
+ *
+ * One `--cat` custom property per node category, resolved from the UIX-001
+ * `--theme-color-node-category-*` tokens. Because it is a plain CSS variable,
+ * a theme flip re-tints every card and rail dot with no JavaScript and no
+ * re-render — which is what makes the picker survive `nodegx:themechanged`
+ * while it is open.
+ *
+ * The colour *resolution* stays where UIX-012 put it (`CanvasTheme`); this only
+ * names the tokens for CSS consumers, and must not become a second palette.
+ */
+@mixin tints {
+  --cat: var(--theme-color-fg-muted);
+
+  &--tint-visual {
+    --cat: var(--theme-color-node-category-visual);
+  }
+
+  &--tint-data {
+    --cat: var(--theme-color-node-category-data);
+  }
+
+  &--tint-logic {
+    --cat: var(--theme-color-node-category-logic);
+  }
+
+  &--tint-javascript {
+    --cat: var(--theme-color-node-category-function);
+  }
+
+  &--tint-component {
+    --cat: var(--theme-color-node-category-component);
+  }
+
+  &--tint-default {
+    --cat: var(--theme-color-fg-muted);
+  }
+}
+
+/** The soft fill behind a tinted glyph. */
+@function tint-fill($percent: 14%) {
+  @return color-mix(in srgb, var(--cat) #{$percent}, transparent);
+}

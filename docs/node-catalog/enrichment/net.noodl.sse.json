@@ -1,0 +1,57 @@
+{
+  "typeName": "net.noodl.SSE",
+  "summary": "Server-Sent Events: consumes a streaming HTTP endpoint, with connection state, retries and errors as graph outputs.",
+  "description": "Opens a `text/event-stream` connection and turns each event into outputs plus an `onMessage` signal. Two transports: Fetch (the default under 'Auto') can send headers, a method and a body, receives every event type, resumes with an explicit `Last-Event-ID`, and can tell a finished stream from a dropped one; EventSource is the browser's own client, which cannot set headers or POST, needs named event types declared up front on `eventTypes`, and reconnects on its own schedule. Failures never disappear: `connectionState` moves through idle/connecting/open/reconnecting/closed/error, `retryCount` counts consecutive failures, `lastError` carries the message and `onError` fires. Retries use exponential backoff from `reconnectDelay` up to `maxReconnectDelay`, honouring a server `retry:` field when one arrives. A 4xx is terminal (retrying cannot help); 5xx, 408 and 429 are retried. Deleting the node or navigating away aborts the request and clears every timer.",
+  "whenToUse": "Any server-push stream: AI/agent responses streamed token by token, progress on a long-running job, live notifications, dashboard metrics. Use the Fetch transport whenever the endpoint needs an Authorization header or a request body — the usual shape for an AI backend. Use REST2 or HTTP Request for ordinary request/response, and a WebSocket node when the client must also send on the same connection. Client-only: the node stays inert during server-side rendering and connects after hydration.",
+  "ports": {
+    "url": "Stream endpoint. Required before Connect does anything; an empty URL reports an error rather than failing silently.",
+    "transport": "'Auto' picks Fetch wherever fetch exists. Choose 'EventSource' only to get the browser's own reconnection behaviour.",
+    "method": "Fetch transport only. POST is the common case for an AI endpoint that takes a prompt.",
+    "headers": "Fetch transport only — an object of header name to value. EventSource cannot send headers at all.",
+    "body": "Fetch transport only. An object is JSON-encoded and Content-Type is set unless Headers already sets it.",
+    "eventTypes": "Comma-separated named event types. Only needed for EventSource, which delivers a named event only to a listener registered in advance.",
+    "textPath": "Where the text lives inside a JSON payload, as a dot path — `choices.0.delta.content` for an OpenAI-compatible endpoint. Blank for a stream that sends bare text. Whatever it names appears on `text`.",
+    "autoConnect": "Connects once the URL and the rest of the inputs have landed, without needing a Connect signal.",
+    "autoReconnect": "Retry after a failure. Off means a single failure goes straight to the error state.",
+    "reconnectOnStreamEnd": "Off by default. An agent response stream is finite, and reconnecting would re-issue the request and start the response again.",
+    "maxRetries": "0 keeps retrying. Otherwise the connection reports an error naming the budget it spent.",
+    "dedupeById": "Drops events whose id was already seen, so a resumed reconnect cannot re-deliver messages. Turn off only if the server reuses ids for distinct events.",
+    "connectionState": "idle, connecting, open, reconnecting, closed or error. 'error' is terminal; 'reconnecting' means another attempt is coming.",
+    "connected": "True only while the stream is open — false during connect, backoff and after a terminal failure.",
+    "data": "The event payload, parsed as JSON when it parses and left as the raw string when it does not (so a `[DONE]` sentinel arrives intact). An *object* for a JSON payload — feed a Text node or a Text Accumulator from `text`, not from here.",
+    "raw": "The payload exactly as sent, before any JSON parsing.",
+    "text": "The one data output that is always a string: the payload as sent when `textPath` is blank, or the field at that path when it is set. A missing field, a non-JSON sentinel or a path landing on an object all read as empty rather than as `[object Object]`.",
+    "eventType": "The `event:` field of the last event, or 'message' when the server sent none.",
+    "lastEventId": "The furthest `id:` the server has sent; this is what a reconnect resumes from.",
+    "deliverySemantics": "'at-most-once' when the server sends no ids (gap events are lost), 'at-least-once' when it does, 'at-least-once-deduped' when ids are present and Dedupe By Id is on.",
+    "duplicatesSuppressed": "How many replayed events were dropped after a resume. Non-zero is normal after a reconnect.",
+    "onMessage": "Fires once per event, after the Data outputs have updated — so an accumulator wired `text` → `chunk` and `onMessage` → `add` sees the chunk first.",
+    "onClose": "Fires when the stream stops, whether cleanly or with a terminal error, so a Close handler always runs.",
+    "onError": "Fires on every failure, including ones the node is about to retry.",
+    "done": "Signal; this invocation finished \u2014 a Connect whose stream opened, or a Disconnect that stopped one that was running. \u26a0\ufe0f A first attempt that fails and a retry that then opens is one Done, not a Failure and then a Done: the invocation is not over until the stream is up or the connection has given up.",
+    "unchanged": "Signal; there was nothing to do \u2014 a Disconnect with no stream running, or a Connect that a later Connect, a Disconnect or a URL change superseded before it opened.",
+    "failure": "Signal; the stream could not be opened, or gave up retrying. Last Error carries the reason.",
+    "completed": "Signal; fires after every Connect and Disconnect the author triggered, whatever the outcome. \u26a0\ufe0f Auto Connect and a URL change also open streams, and neither reports."
+  },
+  "patterns": [
+    "SSE `text` → Text Accumulator `chunk` and SSE `onMessage` → Text Accumulator `add`, with an empty delimiter, renders an AI response as it is written. Set `textPath` to `choices.0.delta.content` for an OpenAI-compatible endpoint and leave it blank for a stream of bare tokens; either way `text` is a string.",
+    "`data` is for the payloads that are meant to be objects: a JSON Stream Parser, or an Action Dispatcher's `action` input.",
+    "SSE `connectionState` → String Mapper → a status label makes reconnection visible instead of leaving the UI apparently frozen.",
+    "POST the prompt in `body` with an Authorization header rather than putting a token in the query string, which the EventSource-only approach forces."
+  ],
+  "antiPatterns": [
+    "Turning on Reconnect On Stream End for a finite agent response — the request is re-issued and the answer regenerates in a loop.",
+    "Ignoring `connectionState` and wiring only the data outputs: a silently failing reconnection then looks identical to a slow server.",
+    "Wiring `data` into anything that expects text. `data` is JSON-parsed, so for the commonest agent shape (`data: {\"delta\":\"Hi\"}`) it is an object; a Text Accumulator refuses it and reports the mis-wiring rather than appending `[object Object]`. Use `text`.",
+    "Leaving `textPath` blank on a JSON-envelope stream and wiring `raw` instead — the answer then reads as a run of JSON fragments.",
+    "Using the EventSource transport when the endpoint needs an Authorization header, then smuggling the token through the URL."
+  ],
+  "examples": ["agent-sse-chat-stream", "agent-sse-task-monitor"],
+  "relatedNodes": [
+    "net.noodl.TextAccumulator",
+    "net.noodl.JSONStreamParser",
+    "net.noodl.StreamBuffer",
+    "net.noodl.HTTP",
+    "REST2"
+  ]
+}

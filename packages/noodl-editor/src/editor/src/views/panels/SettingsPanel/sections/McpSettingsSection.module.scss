@@ -1,0 +1,73 @@
+/* MCP-001 — the "Connect an AI agent" section.
+ *
+ * Everything here is theme-token only: this section sits under the AI one in a
+ * panel that is rendered in both themes, and a hard-coded colour is the way a
+ * section looks correct in the theme it was written in and nowhere else.
+ */
+
+.Server {
+  min-width: 0;
+  margin-bottom: 20px;
+}
+
+/* The command itself, shown as well as copied.
+ *
+ * It is a wall of absolute path with no spaces to break at, so it wraps
+ * anywhere rather than pushing the panel's scroll container sideways — the
+ * same problem `.Breakable` solves in `sections.module.scss`, which this
+ * cannot reuse because it also needs the monospace/box treatment. */
+.Command {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  margin: 0 0 8px;
+  padding: 8px;
+  font-family: monospace;
+  font-size: 11px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  user-select: text;
+  color: var(--theme-color-fg-default);
+  background-color: var(--theme-color-bg-2);
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: var(--radius-default);
+}
+
+/* Why there is no command. Not a disabled button with no explanation — it is
+   the paths the resolver tried, or the server's own refusal, in full. */
+.Unavailable {
+  min-width: 0;
+  padding: 10px;
+  font-size: 12px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+  color: var(--theme-color-fg-default);
+  background-color: var(--theme-color-bg-2);
+  border: 1px dashed var(--theme-color-border-default);
+  border-radius: var(--radius-default);
+}
+
+.ProbedList {
+  margin: 6px 0 0;
+  padding: 0;
+  list-style: none;
+  font-family: monospace;
+  font-size: 11px;
+  color: var(--theme-color-fg-muted);
+
+  li {
+    overflow-wrap: anywhere;
+    margin-bottom: 2px;
+  }
+}
+
+/* The path the command was built from, under the command, so a stale one is
+   visible rather than merely wrong. */
+.Provenance {
+  margin: 0 0 8px;
+  font-size: 11px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+  color: var(--theme-color-fg-muted);
+}

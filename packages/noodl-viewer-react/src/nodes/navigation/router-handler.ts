@@ -1,12 +1,34 @@
 import NoodlRuntime from '@noodl/runtime';
 
-import type { NodeConstructor } from '../../../typings/global';
+import type { ReactNodeInstance } from '../../react-component-node';
 
 export type NavigateArgs = {
   target: string;
   params: Record<string, string | number | boolean>;
   openInNewTab?: boolean;
-  hasNavigated: () => void;
+  /**
+   * Optional. Both call sites in `router.tsx` guard it
+   * (`args.hasNavigated && args.hasNavigated()`), and the analogous type in
+   * `navigation-handler.ts` already declared it optional — only the Navigate and
+   * Router Navigate *nodes* supply it. `Noodl.Navigation.navigate` from a project's
+   * own JavaScript never has, which is what made the required marking wrong.
+   */
+  hasNavigated?: () => void;
+  /**
+   * ERG-001 §4. The third outcome: the Router is already showing that page with those
+   * parameters, so it did not rebuild it. Optional for the same reason the other two are.
+   *
+   * ⚠️ Distinct from `hasNavigated` on purpose. `_navigateInCurrentWindow` used to have no
+   * already-showing check and re-mounted the page; folding the no-op into `hasNavigated` once
+   * it did would be `Insert Object Into Array`'s lie in a third node.
+   */
+  hasUnchanged?: () => void;
+  /**
+   * NDA-004 §2. The counterpart to `hasNavigated`, for the two ways `navigateAsync` drops a
+   * navigation — no target set, and a target that is not a page of this router. Optional for
+   * the same reason `hasNavigated` is: only the Navigate *node* supplies one.
+   */
+  hasFailed?: (code: string, message: string) => void;
 };
 
 export type ComponentPageInfo = {
@@ -44,7 +66,7 @@ export class RouterHandler {
     }, 1);
   }
 
-  registerRouter(name: string, router: NodeConstructor) {
+  registerRouter(name: string, router: ReactNodeInstance) {
     name = name || 'Main';
     if (!this._routers[name]) {
       this._routers[name] = [];
@@ -71,7 +93,7 @@ export class RouterHandler {
     }
   }
 
-  deregisterRouter(name: string, router: NodeConstructor) {
+  deregisterRouter(name: string, router: ReactNodeInstance) {
     name = name || 'Main';
 
     if (!this._routers[name]) {
@@ -125,8 +147,12 @@ export class RouterHandler {
    * @param page
    */
   onNavigated(routerName: string, page: ComponentPageInfo) {
-    // @ts-expect-error window.Noodl is not defined
-    window.Noodl.Events.emit('NoodlApp_Navigated', {
+    // The Noodl API object lives on globalThis in every environment (the SSR
+    // server included, where the router navigates during render and `window`
+    // does not exist).
+    // @ts-expect-error Noodl is not typed on globalThis
+    const noodlApi = globalThis.Noodl;
+    noodlApi && noodlApi.Events.emit('NoodlApp_Navigated', {
       routerName,
       ...page
     });

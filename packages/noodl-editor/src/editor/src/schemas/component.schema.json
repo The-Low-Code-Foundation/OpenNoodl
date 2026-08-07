@@ -1,0 +1,144 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://opennoodl.dev/schemas/component-v2.json",
+  "title": "OpenNoodl Component",
+  "description": "Component metadata file (component.json) in the v2 multi-file format",
+  "type": "object",
+  "required": ["id", "name", "type"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Unique component identifier (preserved from legacy project.json)"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Component folder name (last segment of the path)"
+    },
+    "displayName": {
+      "type": "string",
+      "description": "Human-readable display name"
+    },
+    "path": {
+      "type": "string",
+      "description": "Original Noodl legacy path (e.g. '/#Header') — preserved for cross-component references"
+    },
+    "type": {
+      "type": "string",
+      "enum": ["root", "page", "visual", "logic", "cloud"],
+      "description": "Component classification"
+    },
+    "description": {
+      "type": "string"
+    },
+    "category": {
+      "type": "string",
+      "description": "UI category for the component type (e.g. 'visual', 'logic')"
+    },
+    "tags": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Searchable tags"
+    },
+    "ports": {
+      "type": "object",
+      "description": "Component input/output port definitions",
+      "properties": {
+        "inputs": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/port" }
+        },
+        "outputs": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/port" }
+        }
+      },
+      "additionalProperties": false
+    },
+    "dependencies": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Paths to other components this component uses (for dependency graph)"
+    },
+    "settings": {
+      "type": "object",
+      "description": "Component-level settings",
+      "properties": {
+        "canHaveChildren": { "type": "boolean" },
+        "allowedInRoutes": { "type": "boolean" },
+        "defaultDimensions": {
+          "type": "object",
+          "properties": {
+            "width": { "type": "string" },
+            "height": { "type": "string" }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": true
+    },
+    "created": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "modified": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "modifiedBy": {
+      "type": "string"
+    },
+    "metadata": {
+      "type": "object",
+      "description": "Arbitrary component metadata (AI history, migration notes, etc.)",
+      "additionalProperties": true
+    }
+  },
+  "definitions": {
+    "port": {
+      "type": "object",
+      "required": ["name", "type"],
+      "additionalProperties": true,
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "type": {
+          "description": "Port type — can be a string ('string', 'boolean', 'number', 'signal', '*') or a type object",
+          "oneOf": [
+            { "type": "string" },
+            { "type": "object" }
+          ]
+        },
+        "displayName": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "default": {
+          "description": "Default value for this port"
+        },
+        "required": {
+          "type": "boolean"
+        },
+        "group": {
+          "type": "string"
+        },
+        "index": {
+          "type": "number"
+        },
+        "plug": {
+          "type": "string",
+          "enum": ["input", "output", "input/output"]
+        }
+      }
+    }
+  }
+}

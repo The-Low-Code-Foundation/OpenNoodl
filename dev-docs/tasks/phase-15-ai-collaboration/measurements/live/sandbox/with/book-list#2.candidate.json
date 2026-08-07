@@ -1,0 +1,197 @@
+{
+  "component": {
+    "$schema": "https://opennoodl.dev/schemas/component-v2.json",
+    "id": "99ae5410-68c9-4090-8942-792c18b6e505",
+    "name": "AIX Book List",
+    "path": "/Pages/AIX Book List",
+    "type": "page",
+    "created": "2026-08-02T17:28:08.696Z",
+    "modified": "2026-08-02T17:28:08.696Z",
+    "modifiedBy": "ai-authoring",
+    "description": "A single book-list row: cover image on the left, and title (bold), author, and rating out of five on the right. Used as the repeater template for the AIX Book List page."
+  },
+  "nodes": {
+    "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+    "componentId": "99ae5410-68c9-4090-8942-792c18b6e505",
+    "version": 1,
+    "nodes": [
+      {
+        "id": "in",
+        "type": "Component Inputs",
+        "x": 0,
+        "y": 0,
+        "ports": [
+          {
+            "name": "coverImage",
+            "plug": "output",
+            "type": "string"
+          },
+          {
+            "name": "title",
+            "plug": "output",
+            "type": "string"
+          },
+          {
+            "name": "author",
+            "plug": "output",
+            "type": "string"
+          },
+          {
+            "name": "rating",
+            "plug": "output",
+            "type": "number"
+          }
+        ]
+      },
+      {
+        "id": "root",
+        "type": "Group",
+        "label": "Book row",
+        "x": 300,
+        "y": 0,
+        "children": [
+          "cover",
+          "col"
+        ],
+        "parameters": {
+          "flexDirection": "row",
+          "alignItems": "flex-start",
+          "columnGap": "var(--space-4)",
+          "paddingTop": "var(--space-3)",
+          "paddingBottom": "var(--space-3)",
+          "paddingLeft": "var(--space-4)",
+          "paddingRight": "var(--space-4)",
+          "borderBottomWidth": "var(--border-1)",
+          "borderBottomStyle": "solid",
+          "borderBottomColor": "var(--border-subtle)",
+          "width": "100%",
+          "sizeMode": "explicit",
+          "height": 100,
+          "heightMode": "contentHeight"
+        }
+      },
+      {
+        "id": "cover",
+        "type": "Image",
+        "label": "Cover image",
+        "x": 600,
+        "y": -80,
+        "parent": "root",
+        "parameters": {
+          "sizeMode": "explicit",
+          "width": 64,
+          "height": 90,
+          "objectFit": "cover",
+          "borderRadius": "var(--radius-md)"
+        }
+      },
+      {
+        "id": "col",
+        "type": "Group",
+        "label": "Text column",
+        "x": 600,
+        "y": 80,
+        "parent": "root",
+        "children": [
+          "titleText",
+          "authorText",
+          "ratingText"
+        ],
+        "parameters": {
+          "flexDirection": "column",
+          "rowGap": "var(--space-1)",
+          "alignItems": "flex-start",
+          "width": "100%",
+          "sizeMode": "explicit"
+        }
+      },
+      {
+        "id": "titleText",
+        "type": "Text",
+        "label": "Title",
+        "x": 900,
+        "y": -40,
+        "parent": "col",
+        "parameters": {
+          "variant": "heading-5",
+          "text": "",
+          "textAlignX": "left"
+        }
+      },
+      {
+        "id": "authorText",
+        "type": "Text",
+        "label": "Author",
+        "x": 900,
+        "y": 40,
+        "parent": "col",
+        "parameters": {
+          "variant": "muted",
+          "text": ""
+        }
+      },
+      {
+        "id": "ratingFmt",
+        "type": "String Format",
+        "label": "Rating format",
+        "x": 900,
+        "y": 140,
+        "parameters": {
+          "format": "{rating} / 5"
+        }
+      },
+      {
+        "id": "ratingText",
+        "type": "Text",
+        "label": "Rating",
+        "x": 1200,
+        "y": 140,
+        "parent": "col",
+        "parameters": {
+          "variant": "small",
+          "text": ""
+        }
+      }
+    ],
+    "visualRoots": [
+      "root"
+    ]
+  },
+  "connections": {
+    "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+    "componentId": "99ae5410-68c9-4090-8942-792c18b6e505",
+    "version": 1,
+    "connections": [
+      {
+        "fromId": "in",
+        "fromProperty": "coverImage",
+        "toId": "cover",
+        "toProperty": "src"
+      },
+      {
+        "fromId": "in",
+        "fromProperty": "title",
+        "toId": "titleText",
+        "toProperty": "text"
+      },
+      {
+        "fromId": "in",
+        "fromProperty": "author",
+        "toId": "authorText",
+        "toProperty": "text"
+      },
+      {
+        "fromId": "in",
+        "fromProperty": "rating",
+        "toId": "ratingFmt",
+        "toProperty": "rating"
+      },
+      {
+        "fromId": "ratingFmt",
+        "fromProperty": "formatted",
+        "toId": "ratingText",
+        "toProperty": "text"
+      }
+    ]
+  }
+}

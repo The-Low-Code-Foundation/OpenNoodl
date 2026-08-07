@@ -2,20 +2,25 @@
 
 .Root {
   border: 0;
-  font-size: 14px;
-  font-weight: var(--font-weight-semibold);
-  padding-left: 12px;
-  padding-right: 12px;
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--line-height-tight);
+  padding: var(--spacing-button-padding-y) var(--spacing-button-padding-x);
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: var(--spacing-button-gap);
   cursor: pointer;
   min-height: length.$global-input-size;
   min-width: 70px;
   flex-grow: 0;
   flex-shrink: 0;
   position: relative;
-  transition: background-color var(--speed-turbo) var(--easing-base), color var(--speed-turbo) var(--easing-base);
+  border-radius: var(--radius-md);
+  transition: background-color var(--transition-default) var(--transition-ease),
+    color var(--transition-default) var(--transition-ease),
+    border-color var(--transition-default) var(--transition-ease),
+    box-shadow var(--transition-default) var(--transition-ease), transform var(--transition-fast) var(--transition-ease);
 
   &.is-size-small {
     min-height: length.$global-input-size-small;
@@ -25,50 +30,61 @@
   &.is-variant-cta {
     color: var(--theme-color-on-primary);
     background-color: var(--theme-color-primary);
+    box-shadow: var(--shadow-sm);
 
     path {
       fill: var(--theme-color-on-primary);
     }
 
-    &:hover {
+    &:hover:not(:disabled) {
       background-color: var(--theme-color-primary-highlight);
+      box-shadow: var(--shadow-default);
+      transform: translateY(-1px);
+    }
+
+    &:active:not(:disabled) {
+      background-color: var(--theme-color-primary-dim);
+      box-shadow: none;
+      transform: translateY(0);
+    }
+  }
+
+  // POL-016. Both muted variants paint a background token off the same ladder
+  // the surfaces beneath them use, so each one lands on a panel painted bg-1,
+  // bg-2 or bg-3 and measures 1.00–1.24:1 against it — `muted` on a bg-2 panel
+  // is the *same token*, exactly 1.00:1. Only the label had contrast, so a muted
+  // button read as a line of text rather than as a control, everywhere, in both
+  // themes. The ring is what makes it a control; see `--theme-color-border-control`.
+  //
+  // An inset shadow rather than `border`, deliberately: nothing in this repo sets
+  // a global `box-sizing`, so a 1px border would grow all 143 call sites by 2px
+  // in each dimension — the trap `BasePanel.module.scss` already records. An
+  // inset ring paints on the same edge and costs no layout.
+  &.is-variant-muted,
+  &.is-variant-muted-on-low-bg {
+    color: var(--theme-color-fg-default);
+    box-shadow: inset 0 0 0 1px var(--theme-color-border-control);
+
+    path {
+      fill: var(--theme-color-fg-default);
+    }
+
+    &:hover {
+      color: var(--theme-color-fg-highlight);
+      background-color: var(--theme-color-bg-1);
+
+      path {
+        fill: var(--theme-color-fg-highlight);
+      }
     }
   }
 
   &.is-variant-muted {
-    color: var(--theme-color-fg-default);
     background-color: var(--theme-color-bg-2);
-
-    path {
-      fill: var(--theme-color-fg-default);
-    }
-
-    &:hover {
-      color: var(--theme-color-fg-highlight);
-      background-color: var(--theme-color-bg-1);
-
-      path {
-        fill: var(--theme-color-fg-highlight);
-      }
-    }
   }
 
   &.is-variant-muted-on-low-bg {
-    color: var(--theme-color-fg-default);
     background-color: var(--theme-color-bg-3);
-
-    path {
-      fill: var(--theme-color-fg-default);
-    }
-
-    &:hover {
-      color: var(--theme-color-fg-highlight);
-      background-color: var(--theme-color-bg-1);
-
-      path {
-        fill: var(--theme-color-fg-highlight);
-      }
-    }
   }
 
   &.is-variant-ghost {
@@ -105,12 +121,29 @@
 
   &:disabled {
     cursor: not-allowed;
+    opacity: 0.5;
     background-color: var(--theme-color-bg-3) !important;
     color: var(--theme-color-fg-muted);
+    transform: none !important;
+    box-shadow: none !important;
 
     path {
       fill: var(--theme-color-fg-muted);
     }
+  }
+
+  // The rule above kills the CTA drop shadow on a disabled button, and would take
+  // the muted ring with it — leaving `Save policy` to vanish for as long as it
+  // reads `Saving…`, which is the one moment a user is looking at it. Restate it,
+  // dimmed by the inherited 0.5 opacity rather than by a second colour.
+  &:disabled.is-variant-muted,
+  &:disabled.is-variant-muted-on-low-bg {
+    box-shadow: inset 0 0 0 1px var(--theme-color-border-control) !important;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--theme-color-focus-ring);
+    outline-offset: 2px;
   }
 
   &.has-left-spacing {
@@ -157,6 +190,15 @@
 
 .Icon {
   margin-right: 4px;
+
+  // The `path { fill }` rules on each variant above exist for the legacy filled
+  // glyphs, whose paths carry no paint of their own. The house 16/1.5 glyphs do
+  // carry their own — they stroke, and rely on `fill="none"` — and a CSS `fill`
+  // beats that inherited presentation attribute, flooding every open shape (the
+  // Deploy tray, for one). Opt the stroked set back out; `color` still drives it.
+  svg[stroke='currentColor'] path {
+    fill: none;
+  }
 }
 
 .Spinner {

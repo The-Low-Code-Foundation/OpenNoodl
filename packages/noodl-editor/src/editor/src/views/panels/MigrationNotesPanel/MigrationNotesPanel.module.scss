@@ -1,0 +1,285 @@
+// =============================================================================
+// Migration Notes Panel
+// =============================================================================
+// Displays detailed migration information for a component including issues,
+// AI suggestions, and actions. Matches the design system from Session 1.
+// =============================================================================
+
+// Design System Variables
+$success: var(--theme-color-success);
+$warning: var(--theme-color-warning);
+$danger: var(--theme-color-danger);
+$ai-primary: var(--theme-color-node-category-component);
+
+$spacing-xs: 8px;
+$spacing-sm: 12px;
+$spacing-md: 16px;
+$spacing-lg: 24px;
+$spacing-xl: 32px;
+
+$radius-md: 6px;
+$radius-lg: 8px;
+
+$transition-base: 250ms ease;
+
+$shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.08);
+$shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1), 0 2px 4px rgba(0, 0, 0, 0.06);
+
+// Main Container
+.MigrationNotesPanel {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-lg;
+  padding: $spacing-xl;
+  max-width: 600px;
+  min-width: 500px;
+}
+
+// Status Header
+.StatusHeader {
+  display: flex;
+  gap: $spacing-md;
+  align-items: flex-start;
+  padding: $spacing-lg;
+  background: var(--theme-color-bg-2);
+  border: 1px solid var(--theme-color-bg-3);
+  border-radius: $radius-lg;
+  transition: all $transition-base;
+
+  &[data-status='needs-review'] {
+    border-left: 3px solid $warning;
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.05) 0%, transparent 100%);
+  }
+
+  &[data-status='ai-migrated'] {
+    border-left: 3px solid $ai-primary;
+    background: linear-gradient(135deg, rgba(139, 92, 246, 0.05) 0%, transparent 100%);
+  }
+
+  &[data-status='auto'],
+  &[data-status='manually-fixed'] {
+    border-left: 3px solid $success;
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.05) 0%, transparent 100%);
+  }
+}
+
+.StatusIcon {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--theme-color-bg-3);
+
+  svg {
+    [data-status='needs-review'] & {
+      color: $warning;
+    }
+
+    [data-status='ai-migrated'] & {
+      color: $ai-primary;
+    }
+
+    [data-status='auto'] &,
+    [data-status='manually-fixed'] & {
+      color: $success;
+    }
+  }
+}
+
+.StatusText {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-xs;
+}
+
+// Content Sections
+.Section {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-md;
+  padding: $spacing-lg;
+  background: var(--theme-color-bg-2);
+  border: 1px solid var(--theme-color-bg-3);
+  border-radius: $radius-lg;
+
+  h4 {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--theme-color-fg-highlight);
+    display: flex;
+    align-items: center;
+    gap: $spacing-xs;
+
+    &::before {
+      content: '';
+      display: inline-block;
+      width: 3px;
+      height: 14px;
+      background: var(--theme-color-primary);
+      border-radius: 2px;
+    }
+  }
+}
+
+.SectionTitleAI {
+  display: flex;
+  align-items: center;
+  gap: $spacing-xs;
+  color: $ai-primary;
+
+  svg {
+    flex-shrink: 0;
+    color: $ai-primary;
+  }
+
+  &::before {
+    background: $ai-primary !important;
+  }
+}
+
+// Issues List
+.IssuesList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-sm;
+}
+
+.IssueItem {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-xs;
+  padding: $spacing-sm;
+  background: var(--theme-color-bg-3);
+  border-radius: $radius-md;
+  transition: all $transition-base;
+
+  &:hover {
+    background: var(--theme-color-bg-2);
+    transform: translateX(2px);
+  }
+}
+
+.IssueType {
+  display: inline-block;
+  padding: 2px 8px;
+  background: var(--theme-color-bg-1);
+  border: 1px solid var(--theme-color-bg-3);
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--theme-color-fg-default);
+  width: fit-content;
+}
+
+.IssueDescription {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--theme-color-fg-default);
+}
+
+// AI Suggestion
+.AISuggestion {
+  padding: $spacing-md;
+  background: var(--theme-color-bg-3);
+  border-left: 3px solid $ai-primary;
+  border-radius: $radius-md;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--theme-color-fg-default);
+
+  pre {
+    margin: 0;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
+    font-size: 12px;
+  }
+
+  code {
+    background: var(--theme-color-bg-1);
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 12px;
+  }
+
+  p {
+    margin: 0 0 $spacing-sm 0;
+
+    &:last-child {
+      margin-bottom: 0;
+    }
+  }
+
+  ul,
+  ol {
+    margin: $spacing-sm 0;
+    padding-left: $spacing-lg;
+  }
+
+  li {
+    margin: $spacing-xs 0;
+  }
+
+  strong {
+    color: var(--theme-color-fg-highlight);
+    font-weight: 600;
+  }
+
+  em {
+    color: var(--theme-color-fg-highlight);
+    font-style: italic;
+  }
+}
+
+// Help Section
+.HelpSection {
+  padding: $spacing-md;
+  background: var(--theme-color-bg-3);
+  border-radius: $radius-md;
+}
+
+.HelpLink {
+  color: var(--theme-color-primary);
+  text-decoration: none;
+  font-weight: 500;
+  transition: all $transition-base;
+  position: relative;
+
+  &::after {
+    content: '';
+    position: absolute;
+    bottom: -2px;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: var(--theme-color-primary);
+    transform: scaleX(0);
+    transition: transform $transition-base;
+  }
+
+  &:hover {
+    color: var(--theme-color-primary);
+
+    &::after {
+      transform: scaleX(1);
+    }
+  }
+}
+
+// Actions
+.Actions {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: $spacing-md;
+  border-top: 1px solid var(--theme-color-bg-3);
+}

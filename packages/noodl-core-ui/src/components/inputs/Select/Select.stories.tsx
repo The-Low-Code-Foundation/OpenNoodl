@@ -1,9 +1,9 @@
-import { ComponentStory, ComponentMeta } from '@storybook/react';
+import type { Meta, StoryObj } from '@storybook/react';
 import React, { useState } from 'react';
 
 import { Select } from './Select';
 
-export default {
+const meta: Meta<typeof Select> = {
   title: 'Inputs/Select',
   component: Select,
   argTypes: {
@@ -28,18 +28,23 @@ export default {
       ]
     }
   }
-} as ComponentMeta<typeof Select>;
+};
 
-const Template: ComponentStory<typeof Select> = (args) => {
+export default meta;
+type Story = StoryObj<typeof meta>;
+
+const Template: Story = (args) => {
   const [value, setValue] = useState(null);
 
   return <Select {...args} value={value} onChange={setValue} />;
 };
 
-export const Common = Template.bind({});
-Common.args = {};
+export const Common: Story = {
+  args: {},
+};
 
-export const InFlexColumn: ComponentStory<typeof Select> = (args) => (
+export const InFlexColumn: Story = {
+  render: (args) => (
   <div
     style={{
       display: 'flex',
@@ -54,7 +59,8 @@ export const InFlexColumn: ComponentStory<typeof Select> = (args) => (
   </div>
 );
 
-export const AtBottom: ComponentStory<typeof Select> = (args) => (
+export const AtBottom: Story = {
+  render: (args) => (
   <div
     style={{
       display: 'flex',

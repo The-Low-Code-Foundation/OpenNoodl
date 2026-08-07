@@ -1,0 +1,24 @@
+{
+  "typeName": "Number",
+  "summary": "Per-instance numeric holder: stores one number locally, optionally latching new values until a Set signal fires.",
+  "description": "Number holds a single numeric value that belongs to this node instance alone — it is not named or shared (for an app-wide named value use Variable2). The `value` input sets it and `savedValue` (Value) reads it back. While the `saveValue` (Set) signal input is unconnected, values written to `value` apply immediately; once `saveValue` is connected the node latches: incoming values are held pending and only applied when Set fires. Incoming values are cast with JavaScript Number(), so non-numeric strings become NaN. `changed` fires only when the stored value actually changes; `stored` fires after every Set trigger.",
+  "whenToUse": "Use it to hold a local number — a counter, an index, a captured measurement — especially with the latch: feed a computed value into `value` and commit it with Set at the moment of an action. For simple increment/decrement a Counter is less wiring; for app-wide numbers use Variable2 + Set Variable.",
+  "ports": {
+    "value": "Number value input. Applies immediately while Value is ticked under Run On Value Change (the default); untick it to hold the value until Set fires.",
+    "saveValue": "Signal; applies the most recently received `value`, then reports Done or Unchanged. Connecting it switches the node from pass-through to latch mode.",
+    "savedValue": "Number level with the currently stored value.",
+    "changed": "Signal; fires only when the stored value actually changes.",
+    "done": "Signal; a Set stored a value the Variable was not already holding.",
+    "unchanged": "Signal; a Set stored the value it already held, so nothing changed. \u26a0\ufe0f With Value left ticked under Run On Value Change this is the common case, because Value has already stored by the time Set fires \u2014 untick it if you want Set to be the only thing that writes.",
+    "completed": "Signal; fires after every Set, whatever the outcome. This is what the old `Stored` port meant, and it replaces it. \u26a0\ufe0f A Value that wrote straight through reports nothing at all \u2014 that is not an invocation of Set."
+  },
+  "examples": ["var-click-counter"],
+  "patterns": [
+    "Counter loop: `savedValue` → an Expression (`count + 1`) → `value`, with a click signal on `saveValue` — each click commits the incremented value. The latch prevents an infinite feedback loop.",
+    "`savedValue` → a Text's `text`: numbers cast to strings on delivery, so the count renders directly."
+  ],
+  "antiPatterns": [
+    "Wiring `savedValue` through an Expression back into `value` without connecting `saveValue` — with no latch the loop applies immediately and the value is unstable. Connect Set and drive it from a signal."
+  ],
+  "relatedNodes": ["Counter", "Expression", "Number Remapper", "Boolean", "String", "Variable2"]
+}

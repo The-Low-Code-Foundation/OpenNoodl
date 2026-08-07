@@ -1,18 +1,21 @@
 import React, { useState } from 'react';
-import { ComponentStory, ComponentMeta } from '@storybook/react';
+import type { Meta, StoryObj } from '@storybook/react';
 
 import { ConfirmationDialog } from './ConfirmationDialog';
 import { Text } from '@noodl-core-ui/components/typography/Text';
 import { PrimaryButton } from '@noodl-core-ui/components/inputs/PrimaryButton';
 import { useConfirmationDialog } from '@noodl-core-ui/components/popups/ConfirmationDialog/ConfirmationDialog.hooks';
 
-export default {
+const meta: Meta<typeof ConfirmationDialog> = {
   title: 'Popups/Confirmation Dialog',
   component: ConfirmationDialog,
   argTypes: {}
-} as ComponentMeta<typeof ConfirmationDialog>;
+};
 
-const Template: ComponentStory<typeof ConfirmationDialog> = (args) => {
+export default meta;
+type Story = StoryObj<typeof meta>;
+
+const Template: Story = (args) => {
   const [isDialogVisible, setIsDialogVisible] = useState(args.isVisible);
 
   return (
@@ -28,10 +31,11 @@ const Template: ComponentStory<typeof ConfirmationDialog> = (args) => {
   );
 };
 
-export const Common = Template.bind({});
-Common.args = {};
+export const Common: Story = {
+  args: {},
+};
 
-export const Usage: ComponentStory<typeof ConfirmationDialog> = (args) => {
+export const Usage: Story = (args) => {
   const [Dialog, handleConfirmation] = useConfirmationDialog({
     title: args.title || 'Please confirm your actions',
     message: args.message || 'Do you want to see an alert after this popup has been closed?',

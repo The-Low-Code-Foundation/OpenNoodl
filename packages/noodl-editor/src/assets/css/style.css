@@ -2,6 +2,33 @@
    Global stuff
    ------------------------------------------------------------------- */
 
+/* F20 — the global box-sizing reset, adopted 2026-07-28.
+ *
+ * Lives here rather than in noodl-core-ui/styles/global.css because that file
+ * is not imported by the editor at all (only mentioned in a comment); this is
+ * the sheet index.html actually links, and it covers the launcher too — they
+ * share one window.
+ *
+ * Adopting this CHANGES rendering, and that is the point. The phase-24 mock
+ * specifies OUTER dimensions the way design tools report them — "Sidebar
+ * (224px, bg-1, border-r, padding 16px 10px)", "search flex max-width 380px …
+ * padding 8px 12px", "Toast … width 340 … padding 13px 14px". Read as
+ * border-box, which is how they were written. Under content-box the padding
+ * and border were added ON TOP, so those elements have been rendering wider
+ * than the mock ever asked for: the sidebar at 245px against a specified 224,
+ * the search box at 406 against 380. The reset does not break mock parity, it
+ * is what delivers it.
+ *
+ * Zero specificity, so any component rule still wins. Measured by
+ * dev-docs/tasks/phase-23-visual-refresh/corpus/boxsizing-impact.mjs, whose
+ * job after adoption is to report ~nothing left to change.
+ */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
 /* Open sans specified as one family per weight */
 @font-face {
   font-family: 'OpenSans-Light';
@@ -138,6 +165,14 @@
   font-style: normal;
   font-weight: 600;
   src: url('../Inter/Inter-SemiBold.ttf');
+}
+
+/* Display face (wordmark + large headings only) — see custom-properties/fonts.css */
+@font-face {
+  font-family: 'Bricolage Grotesque';
+  font-style: normal;
+  font-weight: 600;
+  src: url('../fonts/Bricolage/BricolageGrotesque-SemiBold.woff2') format('woff2');
 }
 
 html {
@@ -400,7 +435,7 @@ button {
   color: var(--theme-color-fg-muted);
   font-size: 14px;
   padding: 5px;
-  background-color: #755000;
+  background-color: var(--theme-color-warning-bg);
 }
 
 .page-contact-us-banner {
@@ -451,7 +486,7 @@ button {
 .setup-main {
   width: 100%;
   height: 100%;
-  background-color: #171717;
+  background-color: var(--theme-color-bg-1);
   position: absolute;
   top: 0px;
   left: 0px;
@@ -477,14 +512,14 @@ button {
 }
 
 .setup-spinner > div {
-  background-color: #222222;
+  background-color: var(--theme-color-bg-2);
 }
 
 /* -------------------------------------------------------------------
    Frames view
    ------------------------------------------------------------------- */
 .frames-divider {
-  background-color: white;
+  background-color: var(--theme-color-border-strong);
   opacity: 0;
 }
 
@@ -543,19 +578,13 @@ button {
   border-left: 2px solid var(--theme-color-bg-1);
 }
 
+/* PAR-002: panels sit on bg-1 (mock `.props`); inputs/cards read bg-2 on top. */
 .sidebar-panel {
   height: 100%;
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  background-color: var(--theme-color-bg-2);
-}
-
-.sidebar-add-icon {
-  content: url('../icons/editor/Plus.svg');
-  width: 20px;
-  height: 20px;
-  margin-left: -4px;
+  background-color: var(--theme-color-bg-1);
 }
 
 .sidebar-panel-title {
@@ -619,7 +648,7 @@ button {
 .sidebar-panel-header-label {
   color: var(--theme-color-fg-default);
   padding-left: 10px;
-  font: 12px var(--font-family-regular);
+  font: 12px var(--font-family);
   line-height: 33px;
   text-transform: capitalize;
 }
@@ -652,25 +681,25 @@ button {
   width: 100%;
   height: 35px;
   cursor: default;
-  color: #f8f8f8;
+  color: var(--theme-color-fg-highlight);
   position: relative;
-  border-bottom: 1px solid #222222;
+  border-bottom: 1px solid var(--theme-color-border-default);
 }
 
 .sidebar-panel-folder {
-  background-color: #222222;
-  border-bottom: 1px solid #222222;
+  background-color: var(--theme-color-bg-2);
+  border-bottom: 1px solid var(--theme-color-border-default);
 }
 
 .sidebar-panel-item-selected {
-  background-color: #14606e;
+  background-color: var(--theme-color-primary-dim);
   position: absolute;
   width: 100%;
   height: 35px;
 }
 
 .sidebar-panel-item-dropdown {
-  background-color: #222222;
+  background-color: var(--theme-color-bg-2);
   border-radius: 5px;
   color: white;
   border: none;
@@ -690,8 +719,8 @@ button {
 }
 
 .sidebar-input {
-  background-color: #1f1f1f;
-  color: #f8f8f8;
+  background-color: var(--theme-color-bg-2);
+  color: var(--theme-color-fg-highlight);
   border: none;
   display: block;
   padding: 0px;
@@ -703,7 +732,7 @@ button {
 }
 
 .sidebar-panel-footer {
-  background-color: #000000;
+  background-color: var(--theme-color-bg-page);
   height: 35px;
   width: 100%;
   bottom: 0px;
@@ -713,11 +742,11 @@ button {
 }
 
 .sidebar-panel-footer-button {
-  background-color: #222222;
-  color: #7a7a7a;
+  background-color: var(--theme-color-bg-2);
+  color: var(--theme-color-fg-muted);
   height: 100%;
   flex-grow: 1;
-  border: 1px solid #000000;
+  border: 1px solid var(--base-color-neutral-0);
   /* border-top-width: 2px;*/
 }
 
@@ -726,8 +755,8 @@ button {
 }
 
 .sidebar-panel-footer-button:hover {
-  background-color: #555555;
-  color: #f8f8f8;
+  background-color: var(--theme-color-bg-4);
+  color: var(--theme-color-fg-highlight);
 }
 
 /* -------------------------------------------------------------------
@@ -742,7 +771,7 @@ button {
 
 .string-input-popup-label {
   display: block;
-  color: #dddddd;
+  color: var(--theme-color-fg-default-contrast);
   margin: 5px;
   margin-bottom: 0px;
 }
@@ -760,9 +789,9 @@ button {
 }
 
 .string-input-popup-button-ok {
-  background-color: #d3942b;
+  background-color: var(--theme-color-primary);
   border: none;
-  color: black;
+  color: var(--theme-color-on-primary);
   height: 100%;
   margin: 0px;
   padding-left: 7px;
@@ -771,13 +800,13 @@ button {
 }
 
 .string-input-popup-button-ok:hover {
-  background-color: #dfa138;
+  background-color: var(--theme-color-primary-highlight);
 }
 
 .string-input-popup-button-cancel {
-  background-color: #1f1f1f;
+  background-color: var(--theme-color-bg-2);
   border: none;
-  color: #ccc;
+  color: var(--theme-color-fg-default-contrast);
   height: 100%;
   margin: 0px;
   padding-left: 7px;
@@ -785,58 +814,15 @@ button {
 }
 
 .string-input-popup-button-cancel:hover {
-  background-color: #292929;
-}
-
-/* -------------------------------------------------------------------
-   Yes no popup
-   ------------------------------------------------------------------- */
-.yes-no-popup {
-  width: 250px;
-}
-
-.yes-no-popup-label {
-  display: block;
-  color: #dddddd;
-  margin: 5px;
-}
-
-.yes-no-popup-buttons {
-  height: 30px;
-  padding: 5px;
-  padding-bottom: 10px;
-}
-
-.yes-no-popup-button-yes {
-  background-color: #222222;
-  border: none;
-  color: #aaaaaa;
-  height: 100%;
-  margin: 0px;
-}
-
-.yes-no-popup-button-yes:hover {
-  background-color: #333333;
-}
-
-.yes-no-popup-button-no {
-  background-color: #222222;
-  border: none;
-  color: #aaaaaa;
-  height: 100%;
-  margin: 0px;
-}
-
-.yes-no-popup-button-no:hover {
-  background-color: #333333;
+  background-color: var(--theme-color-bg-3);
 }
 
 .search-bg {
-  background-color: #2e2e2e;
+  background-color: var(--theme-color-bg-3);
 }
 
 .search-icon {
-  color: #aaaaaa;
+  color: var(--theme-color-fg-default);
 }
 
 .create-node-path-item {
@@ -859,7 +845,7 @@ button {
 }
 
 .viewer-mobile-text {
-  color: #cccccc;
+  color: var(--theme-color-fg-default-contrast);
 }
 
 .viewer-mobile-text > strong {
@@ -874,36 +860,45 @@ button {
    Component ports
    ------------------------------------------------------------------- */
 .component-ports-label {
-  color: #f8f8f8;
+  color: var(--theme-color-fg-highlight);
   position: absolute;
   padding-left: 10px;
 }
 
 .component-ports-item {
-  /*background-color: #2e2e2e;*/
   line-height: 35px;
-  color: #f8f8f8;
+  color: var(--theme-color-fg-highlight);
   border-bottom: none;
 }
 
 .component-ports-group-label {
-  color: #666666;
+  color: var(--theme-color-fg-muted);
   position: absolute;
   padding-left: 10px;
 }
 
 .component-ports-group-item {
-  background-color: #292929;
+  background-color: var(--theme-color-bg-3);
   line-height: 35px;
   height: 50px;
 }
 
 .component-ports-group-button {
-  background-color: #292929;
+  background-color: var(--theme-color-bg-3);
 }
 
 /* -------------------------------------------------------------------
    Lesson layer
+
+   UIX-002 EXEMPTION: the Lessons tutorial popup is its own light cream
+   card with a sage-teal brand accent, floating over the dark app chrome.
+   It predates the token system and doesn't map
+   onto --theme-color-bg-*/--theme-color-primary without inverting its look
+   (dark tokens on what must stay a light card) — that would be a visual
+   redesign, out of scope here. Left as literal hex, tracked in the hex
+   ratchet's baseline. Candidate for a dedicated "light card" + brand-accent
+   token pair when the light theme (UIX-008) or the Lessons feature itself
+   gets revisited.
    ------------------------------------------------------------------- */
 .lesson-bg {
   background-color: #eceae3;
@@ -920,7 +915,7 @@ button {
 }
 
 .lesson-count {
-  color: #aaaaaa;
+  color: var(--theme-color-fg-default);
   text-align: right;
 }
 
@@ -947,7 +942,7 @@ div.lesson-content::-webkit-scrollbar-thumb {
 }
 
 .lesson-not-checked {
-  color: #aaaaaa;
+  color: var(--theme-color-fg-default);
   opacity: 0.7;
   font-size: 18px;
   margin-left: 5px;
@@ -963,7 +958,7 @@ div.lesson-content::-webkit-scrollbar-thumb {
 .lesson-button {
   border: none;
   background-color: #779988;
-  color: #dddddd;
+  color: var(--theme-color-fg-default-contrast);
   font-size: 15px;
   padding: 10px;
   border-radius: 3px;
@@ -1069,12 +1064,13 @@ div.lesson-content::-webkit-scrollbar-thumb {
 }
 
 .lesson-spinner > div {
-  background-color: #222222;
+  background-color: var(--theme-color-bg-2);
 }
 
 .lesson-bg * strong {
   color: #000000;
-  font-family: var(--font-family-bold);
+  font-family: var(--font-family);
+  font-weight: var(--font-weight-bold);
 }
 
 .lesson-title-bar {
@@ -1090,7 +1086,7 @@ div.lesson-content::-webkit-scrollbar-thumb {
 .content-picker {
   width: 250px;
   height: 420px;
-  background-color: #2e2e2e;
+  background-color: var(--theme-color-bg-3);
   overflow-y: auto;
 }
 
@@ -1099,22 +1095,22 @@ div.lesson-content::-webkit-scrollbar-thumb {
   display: flex;
   align-items: center;
   padding-left: 10px;
-  background-color: #383838;
-  color: #f8f8f8;
+  background-color: var(--theme-color-bg-4);
+  color: var(--theme-color-fg-highlight);
 }
 
 .content-picker-item.disabled {
   background: none;
   border: none;
-  color: #7a7a7a;
+  color: var(--theme-color-fg-muted);
 }
 
 .content-picker-list-item:hover {
-  background-color: #555555;
+  background-color: var(--theme-color-bg-4);
 }
 
 .content-picker-list-item + .content-picker-list-item {
-  border-top: 1px solid #222222;
+  border-top: 1px solid var(--theme-color-border-default);
 }
 
 .content-picker-items {
@@ -1123,35 +1119,40 @@ div.lesson-content::-webkit-scrollbar-thumb {
 
 .content-picker-header-label {
   display: block;
-  color: #7a7a7a;
-  background-color: #2e2e2e;
+  color: var(--theme-color-fg-muted);
+  background-color: var(--theme-color-bg-3);
   height: 30px;
   line-height: 30px;
   padding-left: 10px;
 }
 
 .content-picker-group-label {
-  background-color: #222222;
-  color: #7a7a7a;
+  background-color: var(--theme-color-bg-2);
+  color: var(--theme-color-fg-muted);
   padding-left: 10px;
   min-height: 30px;
   display: flex;
   align-items: center;
 }
 
+/* PAR-002: swatch matches the input kit — hairline border, radius 6. */
 .color-thumbnail {
   width: 33px;
   height: 33px;
   flex-shrink: 0;
   position: relative;
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  box-sizing: border-box;
 
   /* checkered background */
-  background-image: linear-gradient(45deg, #cacaca 25%, transparent 25%),
-    linear-gradient(-45deg, #cacaca 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #cacaca 75%),
-    linear-gradient(-45deg, transparent 75%, #cacaca 75%);
+  background-image: linear-gradient(45deg, var(--base-color-neutral-900) 25%, transparent 25%),
+    linear-gradient(-45deg, var(--base-color-neutral-900) 25%, transparent 25%), linear-gradient(45deg, transparent 75%, var(--base-color-neutral-900) 75%),
+    linear-gradient(-45deg, transparent 75%, var(--base-color-neutral-900) 75%);
   background-size: 8px 8px;
   background-position: 0 0, 0 4px, 4px -4px, -4px 0px;
-  background-color: white;
+  background-color: var(--base-color-white);
 }
 
 .color-thumbnail-content {
@@ -1168,7 +1169,7 @@ div.lesson-content::-webkit-scrollbar-thumb {
 }
 
 .image-picker-thumb-bg {
-  background-color: #222222;
+  background-color: var(--theme-color-bg-2);
 }
 
 /* -------------------------------------------------------------------
@@ -1187,7 +1188,7 @@ div.lesson-content::-webkit-scrollbar-thumb {
 }
 
 .font-picker-list-item:hover {
-  background-color: #555555;
+  background-color: var(--theme-color-bg-4);
 }
 
 .font-picker-filtered-out {
@@ -1207,7 +1208,7 @@ div.lesson-content::-webkit-scrollbar-thumb {
 }
 
 .text-style-picker-list-item:hover {
-  background-color: #555555;
+  background-color: var(--theme-color-bg-4);
 }
 
 /* -------------------------------------------------------------------
@@ -1218,56 +1219,8 @@ div.lesson-content::-webkit-scrollbar-thumb {
 }
 
 /* -------------------------------------------------------------------
-   Import popup
+   Misc
    ------------------------------------------------------------------- */
-.import-popup-button {
-  background-color: #222222;
-  border: none;
-  color: #aaaaaa;
-  height: 100%;
-  margin: 0px;
-}
-
-.import-popup-button:hover {
-  background-color: #333333;
-}
-
-.import-popup-text {
-  display: block;
-  color: #aaa;
-  margin-left: 10px;
-  margin-right: 10px;
-  margin-bottom: 10px;
-  margin-top: 5px;
-}
-
-.import-popup-item {
-  color: #bbbbbb;
-  background-color: #3a3a3a;
-  font: 12px var(--font-family-light);
-}
-
-.import-popup-folder {
-  color: #cecece;
-  font: bold 12px var(--font-family-regular);
-  background-color: #3a3a3a;
-}
-
-.import-popup-folder .sidebar-panel-dark-input,
-.import-popup-item .sidebar-panel-dark-input {
-  background-color: var(--theme-color-bg-1);
-}
-
-.import-popup-implicit-check {
-  display: block;
-  color: #666666;
-}
-
-.import-popup-import-check {
-  display: block;
-  color: #dddddd;
-}
-
 .show-on-edit {
   display: none;
 }
@@ -1281,12 +1234,12 @@ div.lesson-content::-webkit-scrollbar-thumb {
 }
 
 .stringlist-default-label {
-  color: #666666;
+  color: var(--theme-color-fg-muted);
 }
 
 .name-edit {
-  background-color: #000000;
-  color: #f8f8f8;
+  background-color: var(--theme-color-bg-page);
+  color: var(--theme-color-fg-highlight);
   height: 100%;
   width: 100%;
   padding-left: 10px;
@@ -1313,7 +1266,7 @@ div.lesson-content::-webkit-scrollbar-thumb {
 
 .noodl-icon-container:hover {
   opacity: 1;
-  background-color: #555555;
+  background-color: var(--theme-color-bg-4);
 }
 
 .noodl-icon-container.selected {
@@ -1321,7 +1274,7 @@ div.lesson-content::-webkit-scrollbar-thumb {
 }
 
 .noodl-icon-container.selected:hover {
-  background-color: #14606e;
+  background-color: var(--theme-color-primary-dim);
 }
 
 /**
@@ -1339,9 +1292,9 @@ div.lesson-content::-webkit-scrollbar-thumb {
    Node Panel
    ------------------------------------------------------------------- */
 .node-panel-item {
-  background-color: #383838;
+  background-color: var(--theme-color-bg-4);
   padding-left: 10px;
-  color: #f8f8f8;
+  color: var(--theme-color-fg-highlight);
   cursor: default;
 }
 
@@ -1357,76 +1310,170 @@ div.lesson-content::-webkit-scrollbar-thumb {
     Margin padding view
    ------------------------------------------------------------------- */
 .marginpadding-outer {
-  border: 1px dotted #555;
+  border: 1px dashed var(--theme-color-border-strong);
+  border-radius: var(--radius-lg);
 }
 
 .marginpadding-border {
-  border: 2px solid #777;
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: var(--radius-md);
+  background-color: var(--theme-color-bg-2);
 }
 
 .marginpadding-inner {
-  border: 1px dotted #555;
+  border: 1px dashed var(--theme-color-border-strong);
+  border-radius: var(--radius-md);
 }
 
+/* MARGIN / PADDING section tags */
+.marginpadding-tag {
+  color: var(--theme-color-fg-muted);
+  font: 600 9.5px var(--font-family);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  pointer-events: none;
+}
+
+/* PAR-002 (mock `.bm-input`): 40px mono value boxes, centered; zero values
+   read muted; padding-side boxes sit on bg-1 inside the bg-2 inner block. */
 .marginpadding-label {
-  color: var(--theme-color-fg-default);
-  font: 10px var(--font-family-regular);
-  background-color: var(--theme-color-bg-3);
-  padding: 6px 8px;
+  box-sizing: border-box;
+  width: 40px;
+  color: var(--theme-color-fg-highlight);
+  font: 11px ui-monospace, 'SF Mono', SFMono-Regular, Menlo, monospace;
+  text-align: center;
+  background-color: var(--theme-color-bg-2);
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: var(--radius-default);
+  padding: 3.5px 0;
+  cursor: pointer;
+  overflow: hidden;
+  transition: color var(--speed-turbo), border-color var(--speed-turbo), background-color var(--speed-turbo);
+}
+
+.marginpadding-label.inner-box {
+  background-color: var(--theme-color-bg-1);
+}
+
+.marginpadding-label.zero {
+  color: var(--theme-color-fg-muted);
 }
 
 .marginpadding-label.changed {
-  color: var(--theme-color-fg-highlight);
+  border-color: var(--theme-color-border-strong);
 }
 
 .marginpadding-label:hover {
-  color: #eee;
-  background-color: #333;
+  color: var(--theme-color-fg-highlight);
+  border-color: var(--theme-color-primary);
+}
+
+/* POL-012: the per-group "set all four at once" lock. Sits beside its own
+   group's tag, so which group it locks is a matter of position rather than of
+   a label the box has no room for. */
+.marginpadding-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 16px;
+  border-radius: var(--radius-default);
+  color: var(--theme-color-fg-muted);
+  cursor: pointer;
+  transition: color var(--speed-turbo), background-color var(--speed-turbo);
+}
+
+.marginpadding-link:hover {
+  color: var(--theme-color-fg-highlight);
+  background-color: var(--theme-color-bg-2);
+}
+
+/* ⚠️ Colour is not the only signal: the linked state also carries a filled
+   background, so the control still reads as on under a colour-vision
+   difference and at the 12px the glyph actually renders at. */
+.marginpadding-link.is-linked {
+  color: var(--theme-color-fg-on-primary);
+  background-color: var(--theme-color-primary);
+}
+
+.marginpadding-link.is-linked:hover {
+  background-color: var(--theme-color-primary-hover);
 }
 
 .marginpadding-dim {
-  background-color: #131313;
-  opacity: 0.5;
+  background-color: var(--theme-color-bg-1-transparent-2);
 }
 
 .marginpadding-editbox {
-  background-color: #131313;
+  background-color: var(--theme-color-bg-1);
+  border: 1px solid var(--theme-color-border-strong);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-popup);
 }
 
 /* -------------------------------------------------------------------
-    Align tools
+    Align tools (PAR-002: the mock's `.seg-icons` segmented control)
    ------------------------------------------------------------------- */
+.align-tools-seg {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  background-color: var(--theme-color-bg-2);
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: var(--radius-md);
+  padding: 2px;
+  gap: 1px;
+}
+
 .align-icon {
-  width: 25px;
-  height: 25px;
-  display: inline-block;
-  padding: 3px;
-  margin-left: 5px;
-  margin-right: 5px;
+  flex: 1;
+  min-width: 0;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 5px 0;
+  box-sizing: border-box;
+  border-radius: var(--radius-default);
   cursor: pointer;
+  transition: background-color var(--speed-turbo);
 }
 
 .align-icon svg {
   fill: var(--theme-color-fg-muted);
+  transition: fill var(--speed-turbo);
 }
 
-.align-icon-rotate {
+.align-icon-rotate svg {
   transform: rotate(90deg);
 }
-.align-icon-rotate2 {
+.align-icon-rotate2 svg {
   transform: rotate(270deg);
 }
 
+/* Effective (default) value: legible but not pressed. */
 .align-icon.def svg {
   fill: var(--theme-color-fg-default);
 }
 
+/* Pressed segment: accent-soft fill + accent icon (mock contract). */
+.align-icon.sel {
+  background-color: var(--theme-color-primary-bg);
+}
+
 .align-icon.sel svg {
+  fill: var(--theme-color-primary);
+}
+
+.align-icon:hover:not(.sel) svg {
   fill: var(--theme-color-fg-highlight);
 }
 
-.align-icon:hover {
-  background-color: var(--theme-color-bg-3);
+@media (prefers-reduced-motion: reduce) {
+  .align-icon,
+  .align-icon svg {
+    transition: none;
+  }
 }
 
 /* -------------------------------------------------------------------
@@ -1440,6 +1487,12 @@ div.lesson-content::-webkit-scrollbar-thumb {
   margin-left: 5px;
   margin-right: 5px;
   cursor: pointer;
+  border-radius: var(--radius-default);
+}
+
+/* PAR-002: pressed segment convention — accent-soft fill + accent strokes. */
+.size-icon.sel {
+  background-color: var(--theme-color-primary-bg);
 }
 
 .size-icon.def .resizing-vline:after,
@@ -1459,7 +1512,7 @@ div.lesson-content::-webkit-scrollbar-thumb {
 .size-icon.sel .resizing-right,
 .size-icon.sel .resizing-bottom,
 .size-icon.sel .resizing-left {
-  border-color: var(--theme-color-fg-highlight) !important;
+  border-color: var(--theme-color-primary) !important;
 }
 
 .size-icon:hover {

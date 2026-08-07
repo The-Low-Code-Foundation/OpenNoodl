@@ -5,6 +5,5 @@ module.exports = {
   },
   PreviewServer: {
     port: 8574
-  },
-  apiEndpoint: 'https://apidev.noodlcloud.com'
+  }
 };

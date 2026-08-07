@@ -1,0 +1,113 @@
+/**
+ * IssueItem Styles
+ */
+
+.IssueItem {
+  background-color: var(--theme-color-bg-3);
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: 4px;
+  padding: 12px;
+  margin-bottom: 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+
+  &:hover {
+    background-color: var(--theme-color-bg-4);
+    border-color: var(--theme-color-border-hover);
+  }
+
+  &:active {
+    transform: scale(0.99);
+  }
+}
+
+.Header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.TitleRow {
+  flex: 1;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  min-width: 0;
+}
+
+.Number {
+  color: var(--theme-color-fg-default-shy);
+  font-size: 12px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.Title {
+  color: var(--theme-color-fg-default);
+  font-size: 13px;
+  font-weight: 500;
+  flex: 1;
+  word-break: break-word;
+}
+
+.StatusBadge {
+  flex-shrink: 0;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: capitalize;
+
+  &[data-state='open'] {
+    background-color: rgba(46, 160, 67, 0.15);
+    color: var(--theme-color-success);
+  }
+
+  &[data-state='closed'] {
+    background-color: rgba(177, 24, 24, 0.15);
+    color: var(--theme-color-danger);
+  }
+}
+
+.Meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.Author {
+  color: var(--theme-color-fg-default-shy);
+  font-size: 12px;
+}
+
+.Comments {
+  color: var(--theme-color-fg-default-shy);
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.Labels {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.Label {
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  display: inline-block;
+}
+
+.MoreLabels {
+  color: var(--theme-color-fg-default-shy);
+  font-size: 11px;
+  font-weight: 600;
+}

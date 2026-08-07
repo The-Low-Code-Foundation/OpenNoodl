@@ -2,7 +2,7 @@ const NodeGraphNode = require('@noodl-models/nodegraphmodel').NodeGraphNode;
 const NodeGraphEditor = require('@noodl-views/nodegrapheditor').NodeGraphEditor;
 const { ProjectModel } = require('@noodl-models/projectmodel');
 const NodeLibrary = require('@noodl-models/nodelibrary').NodeLibrary;
-const PopupLayer = require('@noodl-views/popuplayer');
+const PopupLayer = require('@noodl-views/popuplayer').default;
 const DebugInspector = require('@noodl-utils/debuginspector');
 const ViewerConnection = require('../../src/editor/src/ViewerConnection');
 
@@ -118,13 +118,18 @@ describe('Node graph editor auto tests', function () {
 
   // Sets up a fresh node graph editor
   function setup() {
-    $('body').append(
-      '<div id="node-graph-editor" style="position:absolute; top:0px; right:0px; width:400px; height:800px; background-color:white;"></div>'
+    const host = document.createElement('div');
+    host.id = 'node-graph-editor';
+    host.setAttribute(
+      'style',
+      'position:absolute; top:0px; right:0px; width:400px; height:800px; background-color:white;'
     );
+    document.body.appendChild(host);
 
     // Disable context menu
-    $('body').on('contextmenu', function () {
-      return false;
+    document.body.addEventListener('contextmenu', function (e) {
+      e.preventDefault();
+      e.stopPropagation();
     });
 
     // NodeLibrary.instance = new NodeLibrary();
@@ -166,7 +171,7 @@ describe('Node graph editor auto tests', function () {
       y: 0
     });
     NodeGraphEditor.instance.render();
-    $('#node-graph-editor').append(NodeGraphEditor.instance.el);
+    document.getElementById('node-graph-editor').appendChild(NodeGraphEditor.instance.el);
     NodeGraphEditor.instance.resize({
       x: 0,
       y: 0,
@@ -266,13 +271,19 @@ describe('Node graph editor auto tests', function () {
 
   // Closes and tears the node graph editor down
   function teardown() {
-    $('#node-graph-editor').remove();
+    document.getElementById('node-graph-editor').remove();
     NodeGraphEditor.instance = undefined;
   }
 
-  it('can setup view', function () {
+  // DEBT-005: setup and teardown were separate specs that only passed in
+  // declaration order; with randomized order 'can tear down' could run first
+  // and remove() a DOM node that was never created. One self-contained spec.
+  it('can set up and tear down the view', function () {
     setup();
     expect(NodeGraphEditor.instance).not.toBe(undefined);
+
+    teardown();
+    expect(NodeGraphEditor.instance).toBe(undefined);
   });
 
   /* it('can record events',function(done) {
@@ -566,9 +577,4 @@ describe('Node graph editor auto tests', function () {
     ); // Play in real time
   });
 
-  // Multi select and mode nodes
-  it('can tear down', function () {
-    teardown();
-    expect(NodeGraphEditor.instance).toBe(undefined);
-  });
 });

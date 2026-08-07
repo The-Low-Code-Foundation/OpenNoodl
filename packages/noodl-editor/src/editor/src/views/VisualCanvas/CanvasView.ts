@@ -1,10 +1,11 @@
 import { ipcRenderer } from 'electron';
 import React from 'react';
-import ReactDOM from 'react-dom';
+import { createRoot, Root } from 'react-dom/client';
 import { platform } from '@noodl/platform';
 
 import { EventDispatcher } from '../../../../shared/utils/EventDispatcher';
-import View from '../../../../shared/view';
+import View from '../../../../shared/ListenableView';
+import { PreviewTokenInjector } from '../../services/PreviewTokenInjector';
 import { VisualCanvas } from './VisualCanvas';
 
 export class CanvasView extends View {
@@ -18,6 +19,8 @@ export class CanvasView extends View {
 
   inspectMode: boolean;
   selectedNodeId: string | null;
+
+  private root: Root | null = null;
 
   props: {
     deviceName?: string;
@@ -106,6 +109,9 @@ export class CanvasView extends View {
         this.webview.executeJavaScript(`NoodlEditorHighlightAPI.selectNode('${this.selectedNodeId}')`);
       }
 
+      // Inject project design tokens into the preview so var(--token-name) resolves correctly.
+      PreviewTokenInjector.instance.notifyDomReady(this.webview);
+
       this.updateViewportSize();
     });
 
@@ -136,7 +142,7 @@ export class CanvasView extends View {
     div.style.height = '100%';
     div.style.overflow = 'hidden';
 
-    this.el = $(div);
+    this.el = div;
 
     // If there is an api response from the main thread, pass it along to the webview
     this._onEditorApiResponse = (event, args) => {
@@ -152,7 +158,10 @@ export class CanvasView extends View {
     return this.el;
   }
   renderReact() {
-    ReactDOM.render(React.createElement(VisualCanvas, this.props), this.el[0]);
+    if (!this.root) {
+      this.root = createRoot(this.el as HTMLElement);
+    }
+    this.root.render(React.createElement(VisualCanvas, this.props as any));
   }
   setCurrentRoute(route: string) {
     const protocol = process.env.ssl ? 'https://' : 'http://';
@@ -171,7 +180,11 @@ export class CanvasView extends View {
       });
     }
 
-    ReactDOM.unmountComponentAtNode(this.el[0]);
+    if (this.root) {
+      this.root.unmount();
+      this.root = null;
+    }
+    PreviewTokenInjector.instance.clearWebview(this.webview);
     ipcRenderer.off('editor-api-response', this._onEditorApiResponse);
   }
   refresh() {

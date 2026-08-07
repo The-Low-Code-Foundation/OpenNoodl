@@ -1,5 +1,5 @@
 .queryeditor-popup {
-  background-color: #333;
+  background-color: var(--theme-color-bg-5);
   padding: 8px;
   display: flex;
   flex-direction: column;
@@ -13,27 +13,27 @@
 
 .queryeditor-add-filter-group {
   margin: 5px;
-  border: 1px solid #393939;
+  border: 1px solid var(--theme-color-border-default);
   padding: 3px;
 }
 
 .queryeditor-add-filter-group-inner {
-  background-color: #222;
-  color: #999;
+  background-color: var(--theme-color-bg-2);
+  color: var(--theme-color-fg-default-shy);
   padding: 10px;
   text-align: center;
   flex-grow: 1;
 }
 
 .queryeditor-add-filter-group-inner:hover {
-  background-color: #333;
-  color: #ccc;
+  background-color: var(--theme-color-bg-5);
+  color: var(--theme-color-fg-default);
 }
 
 .queryeditor-group {
   display: flex;
   flex-direction: column;
-  border: 1px solid #393939;
+  border: 1px solid var(--theme-color-border-default);
   padding: 5px;
   margin-right: 3px;
   margin-left: 2px;
@@ -56,21 +56,21 @@
 
 .queryeditor-remove-icon {
   margin-left: 10px;
-  color: #999;
+  color: var(--theme-color-fg-default-shy);
   width: 20px;
   height: 20px;
 }
 
 .queryeditor-remove-icon:hover {
-  color: #ccc;
+  color: var(--theme-color-fg-default);
 }
 
 .queryeditor-and-toggle {
-  color: #999;
-  background-color: #333;
-  border-left: 1px solid #999;
-  border-top: 1px solid #999;
-  border-bottom: 1px solid #999;
+  color: var(--theme-color-fg-default-shy);
+  background-color: var(--theme-color-bg-5);
+  border-left: 1px solid var(--theme-color-fg-default-shy);
+  border-top: 1px solid var(--theme-color-fg-default-shy);
+  border-bottom: 1px solid var(--theme-color-fg-default-shy);
   border-radius: 5px 0px 0px 5px;
   padding: 3px;
   padding-left: 5px;
@@ -78,20 +78,20 @@
 }
 
 .queryeditor-and-toggle:hover {
-  color: #fff;
+  color: var(--theme-color-fg-highlight);
 }
 
 .queryeditor-and-toggle.selected {
-  background-color: #777;
-  color: #fff;
+  background-color: var(--theme-color-fg-muted);
+  color: var(--theme-color-fg-highlight);
 }
 
 .queryeditor-or-toggle {
-  color: #999;
-  background-color: #333;
-  border-right: 1px solid #999;
-  border-top: 1px solid #999;
-  border-bottom: 1px solid #999;
+  color: var(--theme-color-fg-default-shy);
+  background-color: var(--theme-color-bg-5);
+  border-right: 1px solid var(--theme-color-fg-default-shy);
+  border-top: 1px solid var(--theme-color-fg-default-shy);
+  border-bottom: 1px solid var(--theme-color-fg-default-shy);
   border-radius: 0px 5px 5px 0px;
   padding: 3px;
   padding-right: 5px;
@@ -99,23 +99,23 @@
 }
 
 .queryeditor-or-toggle.selected {
-  background-color: #777;
-  color: #fff;
+  background-color: var(--theme-color-fg-muted);
+  color: var(--theme-color-fg-highlight);
 }
 
 .queryeditor-or-toggle:hover {
-  color: #fff;
+  color: var(--theme-color-fg-highlight);
 }
 
 .queryeditor-add-rule {
   display: flex;
-  color: #999;
+  color: var(--theme-color-fg-default-shy);
   align-items: center;
   margin-right: 10px;
 }
 
 .queryeditor-add-rule:hover {
-  color: #ccc;
+  color: var(--theme-color-fg-default);
 }
 
 .queryeditor-add-icon {
@@ -129,19 +129,19 @@
 
 .queryeditor-add-group {
   display: flex;
-  color: #999;
+  color: var(--theme-color-fg-default-shy);
   align-items: center;
 }
 
 .queryeditor-add-group:hover {
-  color: #ccc;
+  color: var(--theme-color-fg-default);
 }
 
 .queryeditor-rule {
   display: flex;
   padding: 10px;
   align-items: flex-start;
-  background-color: #222;
+  background-color: var(--theme-color-bg-2);
   flex-shrink: 0;
 }
 
@@ -155,11 +155,11 @@
 
 .queryeditor-component {
   position: relative;
-  background-color: #333;
+  background-color: var(--theme-color-bg-5);
   padding: 5px;
   padding-left: 10px;
   padding-right: 10px;
-  color: #ccc;
+  color: var(--theme-color-fg-default);
   display: flex;
   align-items: flex-start;
   min-height: 32px;
@@ -168,7 +168,7 @@
 }
 
 .queryeditor-component.hoverable:hover {
-  color: #fff;
+  color: var(--theme-color-fg-highlight);
 }
 
 .queryeditor-property-inner {
@@ -179,7 +179,7 @@
 }
 
 .queryeditor-property-label {
-  color: #999;
+  color: var(--theme-color-fg-default-shy);
   font-size: 10px;
   font-weight: bold;
 }
@@ -190,7 +190,7 @@
   outline: none;
   border: none;
   background-color: transparent;
-  color: #fff;
+  color: var(--theme-color-fg-highlight);
 }
 
 .queryeditor-caret-icon {
@@ -202,8 +202,8 @@
 .queryeditor-dropdown {
   position: absolute;
   top: 47px;
-  background-color: #181818;
-  color: #ccc;
+  background-color: var(--theme-color-bg-2);
+  color: var(--theme-color-fg-default);
   border-radius: 3px;
   margin-left: -10px;
   z-index: 10;
@@ -218,32 +218,32 @@
 }
 
 .queryeditor-dropdown-item:hover {
-  color: #fff;
-  background-color: #333;
+  color: var(--theme-color-fg-highlight);
+  background-color: var(--theme-color-bg-5);
 }
 
 .queryeditor-value-type-icon {
   padding: 5px;
   padding-left: 10px;
   padding-right: 10px;
-  color: #ccc;
+  color: var(--theme-color-fg-default);
   margin-right: 10px;
 }
 
 .queryeditor-value-type-icon:hover {
-  color: #fff;
+  color: var(--theme-color-fg-highlight);
 }
 
 .queryeditor-header {
   display: flex;
   font-size: 12px;
-  color: #999;
+  color: var(--theme-color-fg-default-shy);
   margin-left: 5px;
   margin-bottom: 8px;
 }
 
 .queryeditor-desc {
-  color: #999;
+  color: var(--theme-color-fg-default-shy);
   margin-right: 10px;
   line-height: 12px;
   flex-grow: 0;
@@ -251,16 +251,16 @@
 
 .queryeditor-combinator-label {
   padding: 5px;
-  color: #999;
+  color: var(--theme-color-fg-default-shy);
 }
 
 .queryeditor-combinator-label:hover {
-  color: #ccc;
+  color: var(--theme-color-fg-default);
 }
 
 .queryeditor-add-button {
-  background-color: #222;
-  color: #ccc;
+  background-color: var(--theme-color-bg-2);
+  color: var(--theme-color-fg-default);
   padding: 3px;
   padding-left: 7px;
   padding-right: 7px;
@@ -268,14 +268,14 @@
 }
 
 .queryeditor-add-button:hover {
-  background-color: #292929;
-  color: #fff;
+  background-color: var(--theme-color-bg-4);
+  color: var(--theme-color-fg-highlight);
 }
 
 .queryeditor-sorting {
   display: flex;
   flex-direction: column;
-  border: 1px solid #666;
+  border: 1px solid var(--theme-color-border-strong);
   padding: 5px;
 }
 
@@ -286,32 +286,34 @@
 }
 
 .queryeditor-span {
-  color: #999;
+  color: var(--theme-color-fg-default-shy);
 }
 
 .queryeditor-strong {
-  color: #ccc;
+  color: var(--theme-color-fg-default);
   font-weight: bold;
 }
 
 .queryeditor-span-strong {
-  color: #ccc;
+  color: var(--theme-color-fg-default);
   font-weight: bold;
   margin-left: 5px;
   margin-right: 5px;
 }
 
 .queryeditor-text-rule {
-  background-color: #222;
+  background-color: var(--theme-color-bg-2);
   padding: 3px;
 }
 
 .queryeditor-text-rule:hover {
-  background-color: #333;
+  background-color: var(--theme-color-bg-5);
 }
 
+/* UIX-011: was a `content` background of queryeditor-trash.svg (baked white fill, could
+   not theme). Same 20x20 box, glyph is now a core-ui <Icon> child. */
 .queryeditor-trash-icon {
-  content: url('../assets/icons/queryeditor-trash.svg');
+  color: var(--theme-color-fg-default);
   width: 20px;
   height: 20px;
   opacity: 0.6;
@@ -327,7 +329,7 @@
 .queryeditor-sorting-rules {
   display: flex;
   flex-direction: column;
-  border: 1px solid #393939;
+  border: 1px solid var(--theme-color-border-default);
   padding: 5px;
   margin-right: 3px;
   margin-left: 2px;

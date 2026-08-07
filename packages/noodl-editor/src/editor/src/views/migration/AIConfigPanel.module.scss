@@ -1,0 +1,655 @@
+// =============================================================================
+// AI Configuration Panel
+// =============================================================================
+// Enhanced styling for AI setup: API key configuration, budget settings,
+// and security information. Uses purple AI theming with modern animations.
+// =============================================================================
+
+// Design System Variables
+$ai-primary: var(--base-color-node-purple-500);
+$ai-primary-light: var(--theme-color-node-category-component);
+$ai-primary-dark: var(--base-color-node-purple-700);
+$success: var(--theme-color-success);
+$danger: var(--theme-color-danger);
+$warning: var(--theme-color-warning);
+
+$spacing-xs: 8px;
+$spacing-sm: 12px;
+$spacing-md: 16px;
+$spacing-lg: 24px;
+$spacing-xl: 32px;
+
+$radius-sm: 4px;
+$radius-md: 6px;
+$radius-lg: 8px;
+$radius-xl: 12px;
+
+$transition-fast: 150ms ease;
+$transition-base: 250ms ease;
+$transition-slow: 400ms ease;
+
+$shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.08);
+$shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1), 0 2px 4px rgba(0, 0, 0, 0.06);
+$shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1), 0 4px 6px rgba(0, 0, 0, 0.05);
+$shadow-ai: 0 0 20px rgba(139, 92, 246, 0.15);
+
+// Animations
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes sparkle {
+  0%,
+  100% {
+    opacity: 0.3;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.05);
+  }
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% center;
+  }
+  100% {
+    background-position: 200% center;
+  }
+}
+
+@keyframes checkBounce {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.2);
+  }
+}
+
+@keyframes shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  10%,
+  30%,
+  50%,
+  70%,
+  90% {
+    transform: translateX(-4px);
+  }
+  20%,
+  40%,
+  60%,
+  80% {
+    transform: translateX(4px);
+  }
+}
+
+// Main Container
+.AIConfigPanel {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-lg;
+  max-width: 600px;
+  padding: $spacing-xl;
+  animation: fadeInUp 0.4s ease;
+}
+
+// Header Section
+.Header {
+  display: flex;
+  gap: $spacing-md;
+  align-items: flex-start;
+  padding: $spacing-lg;
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.1) 0%, rgba(167, 139, 250, 0.05) 100%);
+  border: 1px solid rgba(139, 92, 246, 0.2);
+  border-radius: $radius-lg;
+  box-shadow: $shadow-ai;
+  animation: sparkle 3s ease-in-out infinite;
+
+  svg {
+    flex-shrink: 0;
+    width: 32px;
+    height: 32px;
+    color: $ai-primary;
+    filter: drop-shadow(0 2px 4px rgba(139, 92, 246, 0.3));
+    animation: pulse 2s ease-in-out infinite;
+  }
+}
+
+.HeaderText {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-xs;
+  flex: 1;
+
+  h3 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--theme-color-fg-highlight);
+    background: linear-gradient(135deg, $ai-primary 0%, $ai-primary-light 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  p {
+    margin: 0;
+    font-size: 14px;
+    line-height: 1.5;
+    color: var(--theme-color-fg-default);
+    opacity: 0.9;
+  }
+}
+
+// Section Container
+.Section {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-md;
+  padding: $spacing-lg;
+  background: var(--theme-color-bg-2);
+  border: 1px solid var(--theme-color-bg-3);
+  border-radius: $radius-lg;
+  transition: all $transition-base;
+
+  &:hover {
+    border-color: rgba(139, 92, 246, 0.3);
+    box-shadow: $shadow-sm;
+  }
+
+  h4 {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--theme-color-fg-highlight);
+    display: flex;
+    align-items: center;
+    gap: $spacing-xs;
+
+    &::before {
+      content: '';
+      display: inline-block;
+      width: 3px;
+      height: 16px;
+      background: linear-gradient(180deg, $ai-primary 0%, $ai-primary-light 100%);
+      border-radius: 2px;
+    }
+  }
+
+  a {
+    color: $ai-primary;
+    text-decoration: none;
+    font-weight: 500;
+    transition: all $transition-fast;
+    position: relative;
+
+    &::after {
+      content: '';
+      position: absolute;
+      bottom: -2px;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: $ai-primary;
+      transform: scaleX(0);
+      transition: transform $transition-fast;
+    }
+
+    &:hover {
+      color: $ai-primary-dark;
+
+      &::after {
+        transform: scaleX(1);
+      }
+    }
+  }
+}
+
+// Input Group
+.InputGroup {
+  display: flex;
+  gap: $spacing-sm;
+  align-items: flex-start;
+
+  > :first-child {
+    flex: 1;
+  }
+
+  button {
+    margin-top: 24px; // Align with input field
+    min-width: 100px;
+    transition: all $transition-base;
+
+    &:hover {
+      transform: translateY(-1px);
+      box-shadow: $shadow-md;
+    }
+
+    &:active {
+      transform: translateY(0);
+    }
+  }
+}
+
+// Validation Messages
+.ValidationSuccess {
+  display: flex;
+  gap: $spacing-sm;
+  align-items: center;
+  padding: $spacing-sm $spacing-md;
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(16, 185, 129, 0.05) 100%);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  border-radius: $radius-md;
+  color: $success;
+  font-size: 13px;
+  font-weight: 500;
+  animation: checkBounce 0.5s ease;
+
+  svg {
+    flex-shrink: 0;
+    width: 18px;
+    height: 18px;
+    filter: drop-shadow(0 2px 4px rgba(16, 185, 129, 0.3));
+  }
+}
+
+.ValidationError {
+  display: flex;
+  gap: $spacing-sm;
+  align-items: center;
+  padding: $spacing-sm $spacing-md;
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(239, 68, 68, 0.05) 100%);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: $radius-md;
+  color: $danger;
+  font-size: 13px;
+  font-weight: 500;
+  animation: shake 0.5s ease;
+
+  svg {
+    flex-shrink: 0;
+    width: 18px;
+    height: 18px;
+  }
+}
+
+// Security Note
+.SecurityNote {
+  display: flex;
+  gap: $spacing-sm;
+  align-items: flex-start;
+  padding: $spacing-md;
+  background: linear-gradient(135deg, var(--theme-color-bg-3) 0%, var(--theme-color-bg-2) 100%);
+  border-left: 3px solid $ai-primary;
+  border-radius: $radius-md;
+  font-size: 13px;
+  line-height: 1.6;
+  box-shadow: $shadow-sm;
+
+  svg {
+    flex-shrink: 0;
+    width: 20px;
+    height: 20px;
+    margin-top: 2px;
+    color: $ai-primary;
+    opacity: 0.8;
+  }
+
+  p {
+    margin: 0;
+    color: var(--theme-color-fg-default);
+    opacity: 0.9;
+  }
+
+  strong {
+    color: var(--theme-color-fg-highlight);
+    font-weight: 600;
+  }
+}
+
+// Form Field
+.Field {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-sm;
+
+  > label:first-child {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--theme-color-fg-highlight);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    display: flex;
+    align-items: center;
+    gap: $spacing-xs;
+
+    &::before {
+      content: '';
+      display: inline-block;
+      width: 4px;
+      height: 4px;
+      background: $ai-primary;
+      border-radius: 50%;
+    }
+  }
+
+  input[type='text'],
+  input[type='password'] {
+    width: 100%;
+    padding: 10px 14px;
+    background: var(--theme-color-bg-1);
+    border: 2px solid var(--theme-color-bg-3);
+    border-radius: $radius-md;
+    color: var(--theme-color-fg-highlight);
+    font-size: 14px;
+    font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
+    transition: all $transition-base;
+
+    &::placeholder {
+      color: var(--theme-color-fg-default);
+      opacity: 0.5;
+    }
+
+    &:focus {
+      outline: none;
+      border-color: $ai-primary;
+      box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1), $shadow-md;
+      transform: translateY(-1px);
+    }
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+  }
+
+  .FieldDescription {
+    font-size: 12px;
+    color: var(--theme-color-fg-default);
+    opacity: 0.7;
+    line-height: 1.5;
+  }
+}
+
+// Budget Configuration
+.BudgetRow {
+  display: flex;
+  gap: $spacing-sm;
+  align-items: center;
+  padding: $spacing-md;
+  background: var(--theme-color-bg-3);
+  border-radius: $radius-md;
+  transition: all $transition-base;
+
+  &:hover {
+    background: var(--theme-color-bg-2);
+  }
+
+  span {
+    color: var(--theme-color-fg-default);
+    font-size: 14px;
+    font-weight: 500;
+  }
+
+  .BudgetValue {
+    color: var(--theme-color-fg-highlight);
+    font-weight: 600;
+    font-size: 16px;
+  }
+}
+
+.BudgetInput {
+  width: 90px;
+  padding: 8px 12px;
+  background: var(--theme-color-bg-1);
+  border: 2px solid var(--theme-color-bg-3);
+  border-radius: $radius-md;
+  color: var(--theme-color-fg-highlight);
+  font-size: 15px;
+  font-weight: 600;
+  text-align: center;
+  transition: all $transition-base;
+
+  &:focus {
+    outline: none;
+    border-color: $ai-primary;
+    box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
+    transform: scale(1.05);
+  }
+
+  &:hover:not(:focus) {
+    border-color: rgba(139, 92, 246, 0.3);
+  }
+}
+
+// Checkbox
+.Checkbox {
+  display: flex;
+  gap: $spacing-sm;
+  align-items: center;
+  padding: $spacing-sm;
+  cursor: pointer;
+  font-size: 13px;
+  border-radius: $radius-md;
+  transition: all $transition-fast;
+  user-select: none;
+
+  &:hover {
+    background: var(--theme-color-bg-3);
+  }
+
+  input[type='checkbox'] {
+    cursor: pointer;
+    width: 18px;
+    height: 18px;
+    accent-color: $ai-primary;
+    transition: all $transition-fast;
+
+    &:focus {
+      outline: 2px solid rgba(139, 92, 246, 0.3);
+      outline-offset: 2px;
+    }
+  }
+
+  span {
+    color: var(--theme-color-fg-default);
+    line-height: 1.5;
+  }
+}
+
+// Actions
+.Actions {
+  display: flex;
+  gap: $spacing-md;
+  justify-content: flex-end;
+  margin-top: $spacing-md;
+  padding-top: $spacing-lg;
+  border-top: 1px solid var(--theme-color-bg-3);
+
+  button {
+    min-width: 120px;
+    transition: all $transition-base;
+
+    &:hover {
+      transform: translateY(-2px);
+      box-shadow: $shadow-md;
+    }
+
+    &:active {
+      transform: translateY(0);
+    }
+
+    // Primary action (Continue button)
+    &:last-child {
+      background: linear-gradient(135deg, $ai-primary 0%, $ai-primary-dark 100%);
+      position: relative;
+      overflow: hidden;
+
+      &::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+        transition: left 0.5s ease;
+      }
+
+      &:hover::before {
+        left: 100%;
+      }
+    }
+  }
+}
+
+// Budget Warning (when close to limit)
+.BudgetWarning {
+  display: flex;
+  gap: $spacing-sm;
+  align-items: flex-start;
+  padding: $spacing-md;
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.1) 0%, rgba(245, 158, 11, 0.05) 100%);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  border-left: 3px solid $warning;
+  border-radius: $radius-md;
+  font-size: 13px;
+  line-height: 1.6;
+  animation: pulse 2s ease-in-out infinite;
+
+  svg {
+    flex-shrink: 0;
+    width: 18px;
+    height: 18px;
+    color: $warning;
+    margin-top: 2px;
+  }
+
+  p {
+    margin: 0;
+    color: var(--theme-color-fg-default);
+  }
+
+  strong {
+    color: var(--theme-color-fg-highlight);
+    font-weight: 600;
+  }
+}
+
+// API Key Preview (masked display)
+.APIKeyPreview {
+  padding: $spacing-md;
+  background: var(--theme-color-bg-1);
+  border: 1px solid var(--theme-color-bg-3);
+  border-radius: $radius-md;
+  font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
+  font-size: 13px;
+  color: var(--theme-color-fg-default);
+  letter-spacing: 1px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: $spacing-md;
+
+  .KeyText {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  button {
+    flex-shrink: 0;
+    padding: 4px 8px;
+    font-size: 11px;
+    opacity: 0.7;
+    transition: opacity $transition-fast;
+
+    &:hover {
+      opacity: 1;
+    }
+  }
+}
+
+// Loading State
+.Loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: $spacing-sm;
+  padding: $spacing-lg;
+  color: var(--theme-color-fg-default);
+  font-size: 14px;
+
+  svg {
+    animation: spin 1s linear infinite;
+  }
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+// Feature List (benefits of AI migration)
+.FeatureList {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-sm;
+  padding: $spacing-md 0;
+
+  .FeatureItem {
+    display: flex;
+    gap: $spacing-sm;
+    align-items: flex-start;
+    padding: $spacing-sm;
+    border-radius: $radius-md;
+    transition: all $transition-fast;
+
+    &:hover {
+      background: var(--theme-color-bg-3);
+      transform: translateX(4px);
+    }
+
+    svg {
+      flex-shrink: 0;
+      width: 16px;
+      height: 16px;
+      color: $success;
+      margin-top: 2px;
+    }
+
+    span {
+      font-size: 13px;
+      color: var(--theme-color-fg-default);
+      line-height: 1.5;
+    }
+  }
+}

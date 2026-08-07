@@ -4,7 +4,7 @@ import { ComponentIconType, getComponentIconType } from '@noodl-models/nodelibra
 import { isComponentModel_CloudRuntime } from '@noodl-utils/NodeGraph';
 
 import { IVector2, NodeGraphEditor } from './nodegrapheditor';
-import { ComponentsPanelFolder } from './panels/componentspanel/ComponentsPanelFolder';
+import { ComponentsPanelFolder } from './panels/ComponentsPanelNew/ComponentsPanelFolder';
 import PopupLayer from './popuplayer';
 
 // TODO: Write a full typings around this

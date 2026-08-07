@@ -1,0 +1,23 @@
+{
+  "request": "I want to build an app for my book club. We pick a book each month and everyone leaves a short review with a rating out of five.",
+  "operations": [
+    {
+      "id": "op-1",
+      "kind": "create",
+      "target": "Pages/Library",
+      "intent": "Lists all books picked so far; where a new monthly book is added Works with the Book record described in docs/ARCHITECTURE.md. Sibling pages in this app: Book detail, Sign in / Sign up. Follow docs/CONVENTIONS.md; docs/BRIEF.md says what this app deliberately does not do."
+    },
+    {
+      "id": "op-2",
+      "kind": "create",
+      "target": "Pages/Book detail",
+      "intent": "Shows one book and all its reviews; where a signed-in member leaves their own review Works with the Member and Book and Review records described in docs/ARCHITECTURE.md. Sibling pages in this app: Library, Sign in / Sign up. Follow docs/CONVENTIONS.md; docs/BRIEF.md says what this app deliberately does not do."
+    },
+    {
+      "id": "op-3",
+      "kind": "create",
+      "target": "Pages/Sign in Sign up",
+      "intent": "Email/password authentication for members Works with the Member record described in docs/ARCHITECTURE.md. Sibling pages in this app: Library, Book detail. Follow docs/CONVENTIONS.md; docs/BRIEF.md says what this app deliberately does not do."
+    }
+  ]
+}

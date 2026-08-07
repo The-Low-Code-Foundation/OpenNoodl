@@ -1,0 +1,70 @@
+{
+  "name": "RUN-002 probe: cloud query records (auto-fetch, XHR transport)",
+  "id": "run002-probe-cloud-query",
+  "version": "4",
+  "rootNodeId": "root",
+  "settings": { "htmlTitle": "probe-cloud-query" },
+  "components": [
+    {
+      "name": "/App",
+      "id": "c_app",
+      "graph": {
+        "roots": [
+          {
+            "id": "root",
+            "type": "Group",
+            "label": "Root",
+            "x": 0,
+            "y": 0,
+            "parameters": { "flexDirection": "column" },
+            "ports": [],
+            "children": [
+              {
+                "id": "list_text",
+                "type": "Text",
+                "label": "Records",
+                "x": 0,
+                "y": 100,
+                "parameters": { "text": "WAITING_FOR_RECORDS" },
+                "ports": [],
+                "children": []
+              }
+            ]
+          },
+          {
+            "id": "query",
+            "type": "DbCollection2",
+            "label": "Query Messages",
+            "x": 300,
+            "y": 0,
+            "parameters": { "collectionName": "Message" },
+            "ports": [],
+            "children": []
+          },
+          {
+            "id": "fn_join",
+            "type": "JavaScriptFunction",
+            "label": "join record titles",
+            "x": 300,
+            "y": 200,
+            "parameters": {
+              "functionScript": "const items = Inputs.items;\nif (!items || !items.size || items.size() === 0) return;\nconst parts = [];\nfor (let i = 0; i < items.size(); i++) {\n  const m = items.get(i);\n  parts.push(m && m.get ? m.get('title') : String(m && m.title));\n}\nOutputs.label = 'RECORDS:' + parts.join('|');"
+            },
+            "ports": [
+              { "name": "in-items", "plug": "input", "type": "array" },
+              { "name": "out-label", "plug": "output", "type": "string" }
+            ],
+            "children": []
+          }
+        ],
+        "connections": [
+          { "fromId": "query", "fromProperty": "items", "toId": "fn_join", "toProperty": "in-items" },
+          { "fromId": "fn_join", "fromProperty": "out-label", "toId": "list_text", "toProperty": "text" }
+        ]
+      }
+    }
+  ],
+  "metadata": {
+    "cloudservices": { "endpoint": "http://localhost:4821", "appId": "ssr-probe-app" }
+  }
+}

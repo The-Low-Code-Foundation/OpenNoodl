@@ -2,6 +2,7 @@ import { NodeGraphNode } from '@noodl-models/nodegraphmodel';
 import { WarningsModel } from '@noodl-models/warningsmodel';
 
 import { ProjectModel } from '../projectmodel';
+import { readNameList } from './nameListParameter.warnings';
 import NodeTypeAdapter from './NodeTypeAdapter';
 
 export class RouterNavigateAdapter extends NodeTypeAdapter {
@@ -74,10 +75,9 @@ export class RouterNavigateAdapter extends NodeTypeAdapter {
           const uniqueNames = {};
 
           pageInputs.forEach((pi) => {
-            if (pi.parameters['pathParams'] !== undefined)
-              pi.parameters['pathParams'].split(',').forEach((p) => (uniqueNames[p] = true));
-            if (pi.parameters['queryParams'] !== undefined)
-              pi.parameters['queryParams'].split(',').forEach((p) => (uniqueNames[p] = true));
+            // AIB-001: `.split(',')` on the raw parameter — see `readNameList`.
+            for (const p of readNameList(pi, 'pathParams')) uniqueNames[p] = true;
+            for (const p of readNameList(pi, 'queryParams')) uniqueNames[p] = true;
           });
 
           Object.keys(uniqueNames).forEach((inputName) => {

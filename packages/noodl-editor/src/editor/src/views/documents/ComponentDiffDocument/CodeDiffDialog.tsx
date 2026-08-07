@@ -1,13 +1,11 @@
-import * as monaco from 'monaco-editor/esm/vs/editor/editor.api';
-import React, { useEffect, useRef } from 'react';
+import React from 'react';
 import { ITextDiff } from '@noodl/git/src/core/models/diff-data';
 
+import { CodeDiffView } from '@noodl-core-ui/components/code-editor';
 import { IconName } from '@noodl-core-ui/components/common/Icon';
 import { IconButton } from '@noodl-core-ui/components/inputs/IconButton';
 import { BaseDialog, DialogBackground } from '@noodl-core-ui/components/layout/BaseDialog';
 import { Container, ContainerDirection } from '@noodl-core-ui/components/layout/Container';
-
-import { getTheme } from '../../panels/propertyeditor/CodeEditor/actions';
 
 export interface CodeDiffDialogProps {
   diff: ITextDiff;
@@ -15,63 +13,33 @@ export interface CodeDiffDialogProps {
 }
 
 function anyToString(value: unknown) {
-  if (value && typeof value === 'object') {
+  if (value === undefined || value === null) {
+    return undefined;
+  }
+  if (typeof value === 'object') {
     return JSON.stringify(value, null, 2);
   }
   return String(value);
 }
 
 export function CodeDiffDialog({ diff, onClose }: CodeDiffDialogProps) {
-  const codeEditorRef = useRef();
-
-  useEffect(() => {
-    if (!codeEditorRef.current) {
-      return;
-    }
-
-    const originalModel = monaco.editor.createModel(anyToString(diff.original), 'text/plain');
-    const modifiedModel = monaco.editor.createModel(anyToString(diff.modified), 'text/plain');
-
-    let editor: monaco.editor.IEditor;
-
-    if (diff.original && !diff.modified) {
-      editor = monaco.editor.create(codeEditorRef.current, {
-        model: originalModel,
-        theme: getTheme(),
-        readOnly: true
-      });
-    } else if (!diff.original && diff.modified) {
-      editor = monaco.editor.create(codeEditorRef.current, {
-        model: modifiedModel,
-        theme: getTheme(),
-        readOnly: true
-      });
-    } else {
-      editor = monaco.editor.createDiffEditor(codeEditorRef.current, {
-        theme: getTheme()
-      });
-      editor.setModel({
-        original: originalModel,
-        modified: modifiedModel
-      });
-    }
-
-    const onResize = () => editor.layout();
-    window.addEventListener('resize', onResize);
-
-    return () => {
-      window.removeEventListener('resize', onResize);
-
-      editor.dispose();
-      originalModel.dispose();
-      modifiedModel.dispose();
-    };
-  }, [codeEditorRef, diff]);
+  // `isVisible` decides whether the dialog *shows*, but the children below are
+  // evaluated either way — and `DiffList` renders this with `diff === null` for
+  // as long as nothing is selected, which is its resting state. So reading
+  // `diff.original` threw on the panel's very first render and the whole of
+  // Version Control fell into its error boundary.
+  if (diff === null || diff === undefined) {
+    return null;
+  }
 
   return (
     <BaseDialog
-      background={DialogBackground.Secondary}
-      isVisible={diff !== null}
+      // POL-004: was DialogBackground.Secondary, which is the neutral ACTION
+      // colour (#eef2f6 dark / #18212b light) — inverted relative to a surface
+      // by construction, so it produced a white sheet in dark mode and a black
+      // one in light. This is the modal Richard reported. Bg1 is a real surface.
+      background={DialogBackground.Bg1}
+      isVisible
       hasBackdrop
       onClose={onClose}
       UNSAFE_style={{ width: '80vw' }}
@@ -80,7 +48,7 @@ export function CodeDiffDialog({ diff, onClose }: CodeDiffDialogProps) {
         <div style={{ display: 'flex', justifyContent: 'flex-end', zIndex: 100 }}>
           <IconButton icon={IconName.Close} onClick={onClose} />
         </div>
-        <div ref={codeEditorRef} style={{ height: '80vh' }} />
+        <CodeDiffView original={anyToString(diff.original)} modified={anyToString(diff.modified)} height="80vh" />
       </Container>
     </BaseDialog>
   );

@@ -1,4 +1,7 @@
-import { NodeGraphContextTmp } from '@noodl-contexts/NodeGraphContext/NodeGraphContext';
+// PNL-008: `NodeGraphContextTmp` was imported for `hidePanels`'s frontend/backend
+// branch alone. With the dead `cloud-functions` branch gone the import goes too,
+// which also takes out a circular edge between the sidebar model and the node
+// graph context.
 import React from 'react';
 
 import { NodeGraphNode } from '@noodl-models/nodegraphmodel';
@@ -24,6 +27,16 @@ export interface SidebarItem<TProps = Record<string, unknown>> {
   transient?: boolean;
 
   placement?: 'top' | 'bottom';
+
+  /**
+   * PNL-003: the width this panel opens at the first time, in pixels, **not**
+   * counting the 52px icon rail. After that the width the user set is
+   * remembered per panel, per project. Omit for the 328px default.
+   *
+   * It lives here rather than in a table in `EditorPage` so that the number sits
+   * next to the panel that has to live with it.
+   */
+  defaultWidth?: number;
 
   isDisabled?: boolean /** Default: false */;
 
@@ -333,9 +346,16 @@ export class SidebarModel extends Model<SidebarModelEvent, SidebarModelEventEven
       this.switch(this.previousActiveId);
       this.previousActiveId = undefined;
     } else {
-      const isFrontend = NodeGraphContextTmp.active === 'frontend';
-      const newPanel = isFrontend ? 'components' : 'cloud-functions';
-      this.switch(newPanel);
+      /*
+       * PNL-008: the backend branch used to switch to `cloud-functions`, which
+       * has not been a registered panel since WF-007 retired Cloud Services.
+       * `switch()` no-ops silently on an unknown id, so deselecting a node while
+       * inside a backend component left the transient property editor showing
+       * instead of falling back to anything. `components` is the fallback for
+       * both graphs now — it is registered, and it is what the frontend branch
+       * always did.
+       */
+      this.switch('components');
     }
   }
 

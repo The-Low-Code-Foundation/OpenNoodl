@@ -1,10 +1,89 @@
+/* =============================================================================
+   NODEGX DESIGN SYSTEM - TYPOGRAPHY
+   CANONICAL token file — the only definition of typography tokens.
+   (The former duplicate in noodl-editor was collapsed into this file in UIX-001.)
+
+   Faces:
+   - UI face: native system stack (fast, crisp on every OS, no bundling)
+   - Mono face: system monospace for values, ports, versions, code
+   - Display face: Bricolage Grotesque 600 (bundled woff2, OFL license) for the
+     wordmark and large headings ONLY — falls back to the UI stack.
+     The @font-face lives in the statically-linked stylesheets
+     (noodl-editor/src/assets/css/style.css, noodl-core-ui/src/styles/global.css)
+     because webpack's css-loader runs with url:false here.
+   ============================================================================= */
+
 :root {
-  --font-family: 'Inter';
+  /* ---------------------------------------------------------------------------
+     FONT FAMILIES
+     --------------------------------------------------------------------------- */
+  --font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  --font-family-code: ui-monospace, 'SF Mono', Menlo, Monaco, 'Courier New', monospace;
+  --font-family-display: 'Bricolage Grotesque', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
 
-  --font-family-code: Menlo, Monaco, 'Courier New', monospace;
-
-  --font-weight-light: 200;
+  /* ---------------------------------------------------------------------------
+     FONT WEIGHTS
+     --------------------------------------------------------------------------- */
+  --font-weight-light: 300;
   --font-weight-regular: 400;
+  --font-weight-medium: 500;
   --font-weight-semibold: 600;
   --font-weight-bold: 700;
+
+  /* ---------------------------------------------------------------------------
+     FONT SIZES
+     Scale from the phase-23 mocks. Use these; do not hardcode px sizes.
+     --------------------------------------------------------------------------- */
+  --font-size-xs: 10px; /* Micro labels, badges */
+  --font-size-sm: 11px; /* Secondary text, captions */
+  --font-size-base: 12.5px; /* Default body text */
+  --font-size-md: 13px; /* Emphasized body text */
+  --font-size-lg: 14.5px; /* Section titles, important */
+  --font-size-xl: 17px; /* Panel titles */
+  --font-size-2xl: 18px; /* Dialog titles */
+  --font-size-3xl: 24px; /* Page titles, hero text */
+
+  /* ---------------------------------------------------------------------------
+     LINE HEIGHTS
+     --------------------------------------------------------------------------- */
+  --line-height-none: 1;
+  --line-height-tight: 1.2;
+  --line-height-snug: 1.375;
+  --line-height-normal: 1.5;
+  --line-height-relaxed: 1.625;
+  --line-height-loose: 2;
+
+  /* ---------------------------------------------------------------------------
+     LETTER SPACING
+     --------------------------------------------------------------------------- */
+  --letter-spacing-tighter: -0.05em;
+  --letter-spacing-tight: -0.025em;
+  --letter-spacing-normal: 0;
+  --letter-spacing-wide: 0.025em;
+  --letter-spacing-wider: 0.05em;
+  --letter-spacing-widest: 0.1em;
+
+  /* ---------------------------------------------------------------------------
+     SEMANTIC TEXT STYLES
+     Pre-composed styles for common use cases
+     --------------------------------------------------------------------------- */
+
+  /* Body text */
+  --text-body-size: var(--font-size-base);
+  --text-body-weight: var(--font-weight-regular);
+  --text-body-line-height: var(--line-height-normal);
+
+  /* Small text */
+  --text-small-size: var(--font-size-sm);
+  --text-small-weight: var(--font-weight-regular);
+  --text-small-line-height: var(--line-height-normal);
+
+  /* Labels */
+  --text-label-size: var(--font-size-xs);
+  --text-label-weight: var(--font-weight-medium);
+  --text-label-letter-spacing: var(--letter-spacing-wide);
+
+  /* Code */
+  --text-code-size: var(--font-size-sm);
+  --text-code-family: var(--font-family-code);
 }

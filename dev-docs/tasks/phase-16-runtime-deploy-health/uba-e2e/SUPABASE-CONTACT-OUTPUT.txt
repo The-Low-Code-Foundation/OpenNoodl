@@ -1,0 +1,36 @@
+
+──────────────────────────────────────────────────────────────────────────────
+A — REAL parseSupabaseSchema on live PostgREST OpenAPI (what Supabase serves)
+──────────────────────────────────────────────────────────────────────────────
+OpenAPI fetched: HTTP 200, 2 definitions
+
+  collection "articles" (pk=id):
+    - id: type=integer native=integer
+    - title: type=string native=text
+    - body: type=string native=text
+    - status: type=string native=public.article_status
+    - rating: type=integer native=integer
+    - featured: type=boolean native=boolean
+    - published_at: type=string native=timestamp with time zone
+    - author_id: type=integer native=integer
+
+  collection "authors" (pk=id):
+    - id: type=integer native=integer
+    - name: type=string native=text
+    - email: type=string native=text
+
+→ Parser: WORKS (collections=articles,authors).
+  boolean mapped: true
+  enum (postgres ENUM "article_status"): enumValues=["draft","published","archived"] default="draft" → WORKS
+  pk from <pk/> annotation: articles.primaryKey=id → WORKS
+  M2O from <fk/> annotation: author_id → authors (many-to-one) → WORKS
+  required from required[]: title=true
+
+──────────────────────────────────────────────────────────────────────────────
+B — Supabase preset endpoints + PostgREST filter syntax, live
+──────────────────────────────────────────────────────────────────────────────
+preset list endpoint: /rest/v1/{table} | dataPath: ""
+GET /articles?status=eq.published → HTTP 200, 1 row(s)
+  first row title: Seeded article
+
+→ Query path: WORKS — response is a BARE ARRAY, matching the preset's dataPath "" (Directus-style {data:[…]} unwrap must NOT be applied).

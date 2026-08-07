@@ -41,6 +41,21 @@ function addSuffix(url: string, suffix: string) {
   return parts.join('.');
 }
 
+/**
+ * RUN-001: the vendored React pair exists in two variants — the 18.3.1 default at the
+ * runtime folder root, and the React 19 set under `react19/`. Projects opted in via
+ * `runtimeVersion: 'react19'` source the 19 files; the deployed filenames stay identical,
+ * so index.html and every external-module contract are untouched.
+ */
+const REACT_RUNTIME_FILES = ['react.production.min.js', 'react-dom.production.min.js'];
+
+function resolveSourceUrl(project: ProjectModel, url: string): string {
+  if (project?.runtimeVersion === 'react19' && REACT_RUNTIME_FILES.includes(url)) {
+    return 'react19/' + url;
+  }
+  return url;
+}
+
 type WriteFileToFolderArgs = {
   project: ProjectModel;
   direntry: string;
@@ -52,6 +67,8 @@ type WriteFileToFolderArgs = {
   enableHash?: boolean;
   envVariables?: Record<string, string>;
   runtimeType: string;
+  /** Path to read from within the runtime folder, when it differs from the written `url`. */
+  sourceUrl?: string;
 };
 
 async function _writeFileToFolder({
@@ -64,9 +81,10 @@ async function _writeFileToFolder({
   baseUrl,
   enableHash = true,
   envVariables,
-  runtimeType
+  runtimeType,
+  sourceUrl
 }: WriteFileToFolderArgs) {
-  const fullPath = filesystem.join(getExternalFolderPath(), runtimeType, url);
+  const fullPath = filesystem.join(getExternalFolderPath(), runtimeType, sourceUrl ?? url);
   let content = await filesystem.readFile(fullPath);
   let filename = url;
 
@@ -98,7 +116,9 @@ type WriteIndexFilesArgs = {
   project;
   direntry;
   exportJson;
-  indexJsFile: DeployIndexItem;
+  /** Every file that receives the project export splice. The first one is the
+   *  entry index.html points at (the SSR manifest also lists ssg.js here). */
+  injectExportFiles: DeployIndexItem[];
   indexHtmlFile: DeployIndexItem;
   baseUrl: string;
   enableHash?: boolean;
@@ -110,22 +130,26 @@ async function writeIndexFiles({
   project,
   direntry,
   exportJson,
-  indexJsFile,
+  injectExportFiles,
   indexHtmlFile,
   baseUrl,
   enableHash,
   envVariables,
   runtimeType
 }: WriteIndexFilesArgs) {
-  //write index.js file, with a hashed name
-  const indexJsPath = await _writeFileToFolder({
-    project,
-    direntry,
-    url: indexJsFile.url,
-    exportJson,
-    enableHash,
-    runtimeType
-  });
+  //write the export-carrying files (hashed names when enabled)
+  const [indexJsPath] = await Promise.all(
+    injectExportFiles.map((file) =>
+      _writeFileToFolder({
+        project,
+        direntry,
+        url: file.url,
+        exportJson,
+        enableHash,
+        runtimeType
+      })
+    )
+  );
 
   if (indexHtmlFile) {
     //and write the index.html file with the correct path
@@ -163,12 +187,19 @@ export async function copyDeployFilesToFolder({
   envVariables,
   runtimeType
 }: CopyDeployFilesToFolderArgs) {
-  const indexJsFile = files.find((file) => file.injectExport);
+  const injectExportFiles = files.filter((file) => file.injectExport);
   const indexHtmlFile = files.find((file) => file.injectHTML);
-  const otherFiles = files.filter((f) => f !== indexJsFile && f !== indexHtmlFile);
+  const otherFiles = files.filter((f) => !f.injectExport && f !== indexHtmlFile);
 
   const otherFilesPromises = otherFiles.map((file) =>
-    _writeFileToFolder({ project, direntry, url: file.url, envVariables, runtimeType })
+    _writeFileToFolder({
+      project,
+      direntry,
+      url: file.url,
+      envVariables,
+      runtimeType,
+      sourceUrl: resolveSourceUrl(project, file.url)
+    })
   );
 
   await Promise.all([
@@ -177,7 +208,7 @@ export async function copyDeployFilesToFolder({
       project,
       direntry,
       exportJson,
-      indexJsFile,
+      injectExportFiles,
       indexHtmlFile,
       baseUrl,
       // TODO: Make enableHash a global option? I dont want it for SSR

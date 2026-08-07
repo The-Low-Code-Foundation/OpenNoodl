@@ -1,0 +1,6 @@
+{
+  "name": "Sprite With No Sheet",
+  "type": "iconset",
+  "iconSource": "sprite",
+  "icons": ["home"]
+}

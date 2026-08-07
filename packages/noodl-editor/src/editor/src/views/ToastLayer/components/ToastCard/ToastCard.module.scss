@@ -1,47 +1,152 @@
 @use '@scss-variables/animation';
 
 .Root {
-  padding: 6px 12px;
   position: relative;
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  animation: show 300ms animation.$easing-base both;
-  min-width: 250px;
+  gap: 11px;
+  align-items: flex-start;
+  width: 340px;
   max-width: 50vw;
-  line-height: 12px;
-  background-color: var(--theme-color-fg-highlight);
-  color: var(--theme-color-bg-1);
+  padding: 13px 14px;
+  border-radius: var(--radius-10);
+  background-color: var(--theme-color-bg-1);
+  border: 1px solid var(--theme-color-border-default);
+  color: var(--theme-color-fg-highlight);
+  box-shadow: var(--shadow-toast);
+  overflow: hidden;
+  animation: show 300ms animation.$easing-base both;
+}
 
-  &.is-danger {
-    background-color: var(--theme-color-danger);
-    padding-right: 6px;
-  }
-
-  &.is-success {
-    background-color: var(--theme-color-success);
+@media (prefers-reduced-motion: reduce) {
+  .Root {
+    animation: none;
   }
 }
 
-.Message {
+.IconChip {
+  flex: none;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-lg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  // Default (neutral/info): azure accent chip
+  background-color: var(--theme-color-primary-bg);
+  color: var(--theme-color-primary);
+
+  .Root.is-success & {
+    background-color: var(--theme-color-success-bg);
+    color: var(--theme-color-success);
+  }
+
+  .Root.is-warning & {
+    background-color: var(--theme-color-warning-bg);
+    color: var(--theme-color-warning);
+  }
+
+  .Root.is-danger & {
+    background-color: var(--theme-color-danger-bg);
+    color: var(--theme-color-danger);
+  }
+}
+
+.Body {
+  flex: 1;
+  min-width: 0;
+}
+
+.Title {
   font-weight: 600;
-  position: relative;
-  z-index: 1;
-  padding: 6px 0;
-  padding-right: 4px;
+  font-size: 13px;
+  line-height: 1.35;
+  margin-bottom: 2px;
+  color: var(--theme-color-fg-highlight);
+}
+
+.Message {
+  color: var(--theme-color-fg-default);
+  font-size: 12.5px;
+  line-height: 1.45;
+  word-break: break-word;
+
+  code {
+    font-family: ui-monospace, 'SF Mono', SFMono-Regular, Menlo, monospace;
+    font-size: 11px;
+    background-color: var(--theme-color-bg-3);
+    padding: 1px 4px;
+    border-radius: var(--radius-default);
+  }
+}
+
+.Actions {
+  margin-top: 8px;
+  display: flex;
+  gap: 14px;
+}
+
+.ActionButton {
+  border: 0;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+  font-family: var(--font-family);
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--theme-color-primary);
+
+  &:hover {
+    color: var(--theme-color-primary-highlight);
+  }
+
+  &.is-quiet {
+    color: var(--theme-color-fg-muted);
+    font-weight: 500;
+
+    &:hover {
+      color: var(--theme-color-fg-highlight);
+    }
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--theme-color-focus-ring);
+    outline-offset: 2px;
+    border-radius: var(--radius-sm);
+  }
+}
+
+.Close {
+  flex: none;
+  border: 0;
+  background: none;
+  color: var(--theme-color-fg-muted);
+  cursor: pointer;
+  width: 22px;
+  height: 22px;
+  border-radius: var(--radius-5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color var(--speed-turbo), color var(--speed-turbo);
+
+  &:hover {
+    background-color: var(--theme-color-bg-3);
+    color: var(--theme-color-fg-highlight);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--theme-color-focus-ring);
+    outline-offset: 2px;
+  }
 }
 
 .ProgressBar {
   position: absolute;
-  top: 0;
   bottom: 0;
   left: 0;
+  height: 2px;
   background-color: var(--theme-color-primary);
   transition: width animation.$speed-turbo animation.$easing-base;
-}
-
-.ActivityIndicatorContainer {
-  padding-left: 30px;
 }
 
 @keyframes show {

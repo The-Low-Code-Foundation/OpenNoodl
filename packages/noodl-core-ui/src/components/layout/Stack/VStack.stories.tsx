@@ -1,26 +1,29 @@
-import { ComponentStory, ComponentMeta } from '@storybook/react';
-import React from 'react';
+import type { Meta, StoryObj } from '@storybook/react';
 
 import { Text } from '@noodl-core-ui/components/typography/Text';
 
 import { VStack } from '../Stack/Stack';
 
-export default {
+const meta: Meta<typeof VStack> = {
   title: 'Layout/VStack',
   component: VStack,
   argTypes: {}
-} as ComponentMeta<typeof VStack>;
+};
 
-const Template: ComponentStory<typeof VStack> = (args) => (
+export default meta;
+type Story = StoryObj<typeof meta>;
+
+const Template: Story = (args) => (
   <div style={{ width: 280 }}>
     <VStack {...args}></VStack>
   </div>
 );
 
-export const Common = Template.bind({});
-Common.args = {};
+export const Common: Story = {
+  args: {},
+};
 
-const ListTemplate: ComponentStory<typeof VStack> = (args) => (
+const ListTemplate: Story = (args) => (
   /* Showcase how it is when the size is set on the parent */
   <div style={{ width: 500, height: 500 }}>
     <VStack {...args}>

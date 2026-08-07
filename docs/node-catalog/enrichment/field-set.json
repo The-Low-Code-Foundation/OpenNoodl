@@ -1,0 +1,8 @@
+{
+  "typeName": "Field Set",
+  "summary": "Legacy fieldset grouping container, hidden from the picker. Use a plain Group (or Form for submit semantics).",
+  "description": "Field Set renders an HTML fieldset-style container for grouping form controls. It is hidden from the node picker; a plain Group provides the same layout role, with CSS Definition covering fieldset-specific styling if genuinely needed.",
+  "whenToUse": "Do not use in new graphs — use Group instead.",
+  "runtimeBehavior": "Declared-port-groups: size-mode-dependent layout ports, as on other visual containers.",
+  "relatedNodes": ["Group", "Form"]
+}

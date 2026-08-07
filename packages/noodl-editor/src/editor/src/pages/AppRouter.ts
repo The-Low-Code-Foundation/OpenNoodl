@@ -5,6 +5,7 @@ export interface AppRouteOptions {
   from?: string;
   uri?: string;
   project?: ProjectModel;
+  readOnly?: boolean; // Flag to open project in read-only mode (for legacy projects)
 }
 
 /** TODO: This will replace Router later */

@@ -1,121 +1,36 @@
-import async from 'async';
-import { Remarkable } from 'remarkable';
+/**
+ * Per-port help for the connection popup.
+ *
+ * ALPHA-006 §1: this used to fetch the node's markdown page over HTTP and scrape
+ * `##input:<name>##` / `##output:<name>##` marker pairs out of it, keyed on the
+ * lower-cased *display* name with a longest-first regexp fallback for wildcard
+ * markers. It now reads the enriched catalog that ships in the binary, keyed on
+ * the port's canonical `name` — which is what the popup already has in hand, and
+ * what the port actually declares.
+ *
+ * The name survives the rewrite because the call site does; there is no parsing
+ * left in it. See `@noodl-utils/nodeDocs` for why the catalog and not a page.
+ */
 
-import getDocsEndpoint from '@noodl-utils/getDocsEndpoint';
+import { getPortDocs, type NodePortDocs } from '@noodl-utils/nodeDocs';
 
-// Fetch and parse out documentation for inputs and outputs
-const _pages = {};
+export type { NodePortDocs };
 
 class DocsParser {
-  baseUrl: URL;
-  md: Remarkable;
-
-  constructor() {
-    this.md = new Remarkable({
-      html: true,
-      breaks: true
-    });
+  /**
+   * Documentation for a node type's ports, keyed by canonical port name.
+   *
+   * Still takes a callback rather than returning, because the popup's hover
+   * handler was written against one and a synchronous read is a strict
+   * improvement on an awaited one — the callback simply fires immediately.
+   */
+  getDocsForType(type: { name?: string } | undefined, cb: (docs: NodePortDocs) => void) {
+    cb(getPortDocs(type?.name));
   }
 
-  getDocsForType(type, cb) {
-    let docsUrl = type.docs.replace('#/', ''); // + '-short.md';
-
-    if (!docsUrl.endsWith('.md')) docsUrl = docsUrl += '.md';
-
-    // Update no version tag with version tag (and potentially switch to local docs)
-    docsUrl = docsUrl.replace('https://docs.noodl.net', getDocsEndpoint());
-
-    if (docsUrl.includes('localhost:3000') === false) {
-      // See if the page is in the cache
-      if (_pages[docsUrl] !== undefined) return cb(_pages[docsUrl]);
-    }
-
-    this.fetchPage(docsUrl, (md) => {
-      if (!md) return;
-
-      const page = {
-        inputs: {},
-        outputs: {}
-      };
-
-      // Find all input and output references
-      const inputMatches = md.matchAll(/{\*\/##input:([A-Za-z0-9\s\.\*\-]+)##\*\\}(.*?){\*\/##input##\*\\}/g);
-      for (const _s of inputMatches) {
-        const inputName = _s[1];
-        if (inputName === undefined) continue;
-
-        const docs = _s[2];
-        page.inputs[inputName] = this.md.render(docs);
-      }
-
-      const outputMatches = md.matchAll(/{\*\/##output:([A-Za-z0-9\s\.\*\-]+)##\*\\}(.*?){\*\/##output##\*\\}/g);
-      for (const _s of outputMatches) {
-        const outputName = _s[1];
-        if (outputName === undefined) continue;
-
-        const docs = _s[2];
-        page.outputs[outputName] = this.md.render(docs);
-      }
-
-      _pages[docsUrl] = page;
-      cb(page);
-    });
-  }
-
-  fetchPage(url: string, callback) {
-    this.baseUrl = new URL(url);
-
-    $.ajax({
-      url: url,
-      headers: {
-        Accept: 'text/html'
-      },
-      success: function (md) {
-        // Find all filename references
-        const matches = md.matchAll(/\[filename\]\((.*?)\'\:include\'\)/g);
-        const refs = [];
-        for (const m of matches) {
-          let ref = m[1];
-          if (ref !== undefined) {
-            ref = ref.trim();
-
-            const absoluteUrl = new URL(ref, url);
-            refs.push({ anchor: m[0], url: absoluteUrl.href });
-          }
-        }
-
-        async.each(
-          refs,
-          function (ref, cb) {
-            $.ajax({
-              url: ref.url,
-              headers: {
-                Accept: 'text/html'
-              },
-              success: function (refMd) {
-                md = md.replace(ref.anchor, refMd);
-                cb();
-              },
-              error: function () {
-                cb(); // Ignore error
-              }
-            });
-          },
-          function () {
-            // All done
-            callback(md);
-          }
-        );
-      },
-      error: function (err) {
-        if (err.status === 401) {
-          /* Access denied */
-        } else {
-          console.warn(err);
-          callback();
-        }
-      }
-    });
+  /** Same lookup, for call sites that would rather just have the value. */
+  getDocs(type: { name?: string } | undefined): NodePortDocs {
+    return getPortDocs(type?.name);
   }
 }
 

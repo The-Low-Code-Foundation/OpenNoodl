@@ -1,0 +1,4 @@
+project.json merge=noodl
+components/**/component.json merge=noodl
+components/**/nodes.json merge=noodl
+components/**/connections.json merge=noodl

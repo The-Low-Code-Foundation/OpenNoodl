@@ -1,18 +1,18 @@
-import { ComponentStory, ComponentMeta } from '@storybook/react';
-import React from 'react';
+import type { Meta, StoryObj } from '@storybook/react';
 
 import { UserBadgeList } from './UserBadgeList';
 
-export default {
+const meta: Meta<typeof UserBadgeList> = {
   title: 'User/UserBadgeList',
   component: UserBadgeList,
   argTypes: {}
-} as ComponentMeta<typeof UserBadgeList>;
+};
 
-const Template: ComponentStory<typeof UserBadgeList> = (args) => <UserBadgeList {...args} />;
+export default meta;
+type Story = StoryObj<typeof meta>;
 
-export const Common = Template.bind({});
-Common.args = {
+export const Common: Story = {
+  args: {
   badges: [
     {
       email: 'kotte@noodl.net',
@@ -30,4 +30,5 @@ Common.args = {
       name: 'Michael Cartner'
     }
   ]
+},
 };

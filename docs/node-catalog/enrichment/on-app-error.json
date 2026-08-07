@@ -1,0 +1,22 @@
+{
+  "typeName": "On App Error",
+  "summary": "App-wide error boundary: fires whenever any node reports a failure, with the code, message and the node it came from.",
+  "description": "The catch-all half of the Failure Contract. Per-node `Failure` outputs cover the errors an author expects and wants to branch on where they happen; this node covers everything else, which is most of them — the library will never carry complete failure ports on all 155 node types, and without a boundary the only record of an unwired error is a console line nobody sees in a deployed app. It subscribes as soon as it is created, so errors raised while the graph is still starting up are caught too. `Filter` narrows it by code prefix: blank catches everything, `run-tasks` catches every failure Run Tasks can report, `run-tasks/no-completion-output` catches exactly one. Several instances can coexist and all of them fire — this is a boundary, not a handler chain, so one node logging every error never stops another from showing a toast for the subset it cares about.",
+  "whenToUse": "Put one in the app's root component to make failures visible at all — log them, show a message, or forward `Error Object` to an error-reporting service. Add narrower ones with a `Filter` where a particular area needs its own handling. Use a node's own `Failure` output instead when you want to branch on an error at the point it happens.",
+  "ports": {
+    "filter": "Blank is the useful default for a boundary; a code prefix narrows it to one node type or one specific error.",
+    "error": "Value outputs are updated before this fires, so reading Message or Code on the pulse always describes this error.",
+    "errorObject": "Wireable straight into a string input, which renders it as JSON."
+  },
+  "patterns": [
+    "One unfiltered On App Error in the root component, with `Message` into a Text and `Error` showing a popup — the minimum that makes a deployed app's failures visible.",
+    "`Error Object` into an HTTP Request body to forward failures to an error-reporting service.",
+    "A second, `Filter`ed instance beside a specific feature, handling that area's errors without stopping the app-wide one from logging them."
+  ],
+  "antiPatterns": [
+    "Matching on `Message` — it is free to be reworded between releases; match on `Code`.",
+    "Expecting one instance to consume an error so another does not see it; every instance whose Filter matches fires.",
+    "Using it in place of a node's own `Failure` output when the error is expected and the graph should branch on it where it happens."
+  ],
+  "relatedNodes": ["RunTasks", "Expression", "JavaScriptFunction"]
+}

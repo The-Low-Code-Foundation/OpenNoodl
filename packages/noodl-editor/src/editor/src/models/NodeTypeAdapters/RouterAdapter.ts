@@ -2,6 +2,7 @@ import Utils from '../../utils/utils';
 import { ComponentModel } from '../componentmodel';
 import { NodeGraphModel } from '../nodegraphmodel';
 import { ProjectModel } from '../projectmodel';
+import { readNameList } from './nameListParameter.warnings';
 import NodeTypeAdapter from './NodeTypeAdapter';
 
 export class RouterAdapter extends NodeTypeAdapter {
@@ -158,8 +159,8 @@ export class RouterAdapter extends NodeTypeAdapter {
       const pageInputs = _c.getNodesWithType('PageInputs');
       const pathParams = [];
       pageInputs.forEach((pi) => {
-        if (pi.parameters['pathParams'])
-          pi.parameters['pathParams'].split(',').forEach((p) => pathParams.indexOf(p) === -1 && pathParams.push(p));
+        // AIB-001: `.split(',')` on the raw parameter — see `readNameList`.
+        readNameList(pi, 'pathParams').forEach((p) => pathParams.indexOf(p) === -1 && pathParams.push(p));
       });
 
       pathParams.forEach((p) => {

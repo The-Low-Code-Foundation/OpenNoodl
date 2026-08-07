@@ -26,8 +26,10 @@ export enum IconName {
   BorderDown = 'border_down',
   BorderLeft = 'border_left',
   BorderRight = 'border_right',
+  BookOpen = 'book_open',
   BorderUp = 'border_up',
   Bug = 'bug',
+  BuildAi = 'build_ai',
   Cards = 'cards',
   CaretUp = 'caret_up',
   CaretDown = 'caret_down',
@@ -37,6 +39,8 @@ export enum IconName {
   Chat = 'chat',
   ChatFill = 'chat_fill',
   Check = 'check',
+  CheckCircle = 'check_circle',
+  CheckCircleFill = 'check_circle_fill',
   Close = 'close',
   CloudCheck = 'cloud_check',
   CloudData = 'cloud_data',
@@ -51,6 +55,8 @@ export enum IconName {
   ComponentsFill = 'components_fill',
   Copy = 'copy',
   Columns = 'columns',
+  Database = 'database',
+  Deploy = 'deploy',
   DeviceDesktop = 'device_desktop',
   DeviceLaptop = 'device_laptop',
   DevicePhone = 'device_phone',
@@ -61,11 +67,19 @@ export enum IconName {
   DimenstionWidth = 'dimenstion_width',
   DotsThree = 'dots_three',
   DotsThreeHorizontal = 'dots_three_horizontal',
+  Explain = 'explain',
   ExternalLink = 'external_link',
   File = 'file',
   FileFill = 'file_fill',
+  /** Lucide `fold-horizontal` — POL-003. Narrow the side panel. */
+  FoldHorizontal = 'fold_horizontal',
   FolderOpen = 'folder_open',
   FolderClosed = 'folder_closed',
+  GitBranch = 'git_branch',
+  GitPullRequest = 'git_pull_request',
+  /** Lucide `hammer` — POL-003. The AI Build panel. */
+  Hammer = 'hammer',
+  History = 'history',
   Home = 'home',
   HomeFill = 'home_fill',
   HorizontalSplit = 'horizontal_split',
@@ -75,8 +89,11 @@ export enum IconName {
   JustifyContentSpaceBetween = 'justify_content_space_between',
   JustifyContentSpaceEvenly = 'justify_content_space_evenly',
   JustifyContentStart = 'justify_content_start',
+  Lightning = 'lightning',
   Logo = 'logo',
   MagicWand = 'magic_wand',
+  /** Lucide `message-circle-question-mark` — POL-003. The Explain panel. */
+  MessageCircleQuestion = 'message_circle_question',
   Minus = 'minus',
   NestedComponent = 'nested_component',
   NotePencil = 'note_pencil',
@@ -85,6 +102,8 @@ export enum IconName {
   PauseCircle = 'pause_circle',
   Pencil = 'pencil',
   PencilLine = 'pencil_line',
+  Pin = 'pin',
+  PinFill = 'pin_fill',
   Play = 'play',
   PlayCircle = 'play_circle',
   Plus = 'plus',
@@ -111,6 +130,10 @@ export enum IconName {
   SettingFill = 'setting_fill',
   Sliders = 'sliders',
   SlidersHorizontal = 'sliders_horizontal',
+  /** Lucide `spline-pointer` — POL-003. The Provenance panel: a curve traced
+      back to a point, which is what the walk does. Was a magnifier, which is
+      Search's mark and said "find" rather than "trace". */
+  SplinePointer = 'spline_pointer',
   Stash = 'stash',
   StructureCircle = 'structure_circle',
   Square = 'square',
@@ -120,6 +143,8 @@ export enum IconName {
   TextAlignLeft = 'text_align_left',
   TextAlignRight = 'text_align_right',
   Trash = 'trash',
+  /** Lucide `unfold-horizontal` — POL-003. Widen the side panel. */
+  UnfoldHorizontal = 'unfold_horizontal',
   User = 'user',
   UI = 'ui',
   VerticalSplit = 'vertical_split',
@@ -129,6 +154,9 @@ export enum IconName {
   WarningCircle = 'warning_circle',
   WarningCircleFilled = 'warning_circle_filled',
   WarningTriangle = 'warning_triangle',
+  /** Stroked twin of {@link WarningTriangle}, for navigation surfaces. The filled
+   *  one stays the inline severity mark; see warning_triangle_line.svg. */
+  WarningTriangleLine = 'warning_triangle_line',
   ImportDown = 'import_down',
   ImportLeft = 'import_left',
   ImportSlanted = 'import_slanted',
@@ -155,7 +183,8 @@ export enum IconName {
   SlidersFilled = 'sliders_filled',
   Navigate = 'navigate',
   Link = 'link',
-  SEO = 'seo'
+  SEO = 'seo',
+  Workflow = 'workflow'
 }
 
 export enum IconSize {

@@ -5,16 +5,87 @@ import { getRouterIndex } from './router';
 import { exportComponent, exportSettings, exportVariant } from './util';
 
 import { createHash } from './hash/xxhash64';
-import { Environment } from '@noodl-models/CloudServices';
+import { DeployEnvironment } from '@noodl-utils/compilation/build-context';
 
 export type ExportToJSONOptions = {
   useBundles?: boolean;
   useBundleHashes?: boolean;
 
-  environment?: Environment | undefined;
+  environment?: DeployEnvironment | undefined;
 
   ignoreComponentFilter?: (component: ComponentModel) => boolean;
 };
+
+/**
+ * Take the export's copy of the project metadata, with editor-only credentials removed.
+ *
+ * ## Why this exists
+ *
+ * `json.metadata` is a deep copy of the *whole* project metadata block, and only
+ * `cloudservices` is overridden below. Everything else rides along verbatim — including
+ * `backendServices`, which holds one entry per configured backend, each with an `auth`
+ * object. `BackendServices/types.ts` says of one of its fields:
+ *
+ * > Admin token for schema introspection (editor-only).
+ * > **This token is NOT published to the deployed app.**
+ *
+ * That was a promise nothing kept. The export JSON becomes `window.projectData` in the
+ * deployed app, so the admin token of every backend the user ever configured was readable
+ * from the browser console of the shipped site — measured, in a real browser, against a
+ * real deploy bundle (BCN orchestrator pass, phase 34).
+ *
+ * ## An allow-list, and why it is not a deny-list
+ *
+ * The first version of this deleted `adminToken` and kept `username`/`password`, reasoning
+ * that *"a backend configured for basic auth needs them at runtime"*. **That was wrong, and
+ * wrong in the same way the original bug was** — it inferred a runtime need from the type's
+ * declared `AuthMethod: 'basic'` rather than from a reader. There is no reader.
+ * `resolveBackend.ts::handleFor` is the only bridge from a stored entry to a
+ * {@link BackendHandle}, and it copies exactly two credential fields:
+ *
+ * ```ts
+ * publicToken: entry.auth?.publicToken,
+ * sessionToken: entry.auth?.sessionToken
+ * ```
+ *
+ * So an adapter **cannot** see a basic-auth credential even when one is published. The only
+ * reader of `auth.username`/`auth.password` anywhere is `BackendServices.ts`, editor-side,
+ * for schema introspection — precisely what `adminToken` is for. The `Basic` header the
+ * runtime does build belongs to the HTTP Request node, from that node's *own* input ports.
+ *
+ * Hence an allow-list rather than a deny-list. We have now been wrong twice about which
+ * fields are safe to publish, and a deny-list is wrong by default: a credential field added
+ * to `BackendAuthConfig` later would ship until someone remembered this file. An allow-list
+ * withholds it until someone deliberately adds it here.
+ *
+ * What is on it:
+ *
+ * - `publicToken` — the same file documents it as *"WILL be published"*, and `handleFor`
+ *   hands it to every adapter.
+ * - `sessionToken` — the other field `handleFor` reads.
+ * - `method`, `apiKeyHeader` — not credentials. A method name and a header name (`X-API-Key`).
+ *   Kept so the published entry keeps its shape for anything that inspects it generically.
+ *
+ * Everything else — `adminToken`, `username`, `password`, and anything added later — is
+ * withheld from the deployed app.
+ */
+const PUBLISHABLE_AUTH_FIELDS = ['publicToken', 'sessionToken', 'method', 'apiKeyHeader'];
+
+function exportMetadata(project: ProjectModel | undefined): TSFixme {
+  const metadata = project?.metadata ? JSON.parse(JSON.stringify(project.metadata)) : {};
+
+  const backends = metadata?.backendServices?.backends;
+  if (Array.isArray(backends)) {
+    for (const backend of backends) {
+      if (!backend?.auth) continue;
+      for (const field of Object.keys(backend.auth)) {
+        if (!PUBLISHABLE_AUTH_FIELDS.includes(field)) delete backend.auth[field];
+      }
+    }
+  }
+
+  return metadata;
+}
 
 export function exportComponentsToJSON(
   projectModel: ProjectModel,
@@ -36,10 +107,9 @@ export function exportComponentsToJSON(
   json.components = components.map((component) => exportComponent(component));
   json.componentIndex = {};
 
-  json.metadata = project ? project.metadata : undefined;
-
-  // Take a copy of metadata so that it can be modified without affecting the original
-  json.metadata = project?.metadata ? JSON.parse(JSON.stringify(project.metadata)) : {};
+  // A copy, so it can be modified without affecting the original — and with the
+  // editor-only credentials removed. See `exportMetadata`.
+  json.metadata = exportMetadata(project);
 
   // Override the cloud services metadata
   if (args?.environment === null) {
@@ -53,6 +123,7 @@ export function exportComponentsToJSON(
       instanceId: args.environment.id,
       endpoint: args.environment.url,
       appId: args.environment.appId,
+      type: args.environment.type,
       deployVersion: json.metadata['cloudfunctions']?.version
     };
   }
@@ -115,10 +186,9 @@ export function exportToJSON(projectModel: ProjectModel, args?: ExportToJSONOpti
   json.rootComponent = rootComponent.name;
   json.rootNode = root.id;
 
-  json.metadata = project ? project.metadata : undefined;
-
-  // Take a copy of metadata so that it can be modified without affecting the original
-  json.metadata = project?.metadata ? JSON.parse(JSON.stringify(project.metadata)) : {};
+  // A copy, so it can be modified without affecting the original — and with the
+  // editor-only credentials removed. See `exportMetadata`.
+  json.metadata = exportMetadata(project);
 
   // Override the cloud services metadata
   if (args?.environment === null) {
@@ -132,6 +202,7 @@ export function exportToJSON(projectModel: ProjectModel, args?: ExportToJSONOpti
       instanceId: args.environment.id,
       endpoint: args.environment.url,
       appId: args.environment.appId,
+      type: args.environment.type,
       deployVersion: json.metadata['cloudfunctions']?.version
     };
   }

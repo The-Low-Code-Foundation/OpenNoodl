@@ -1,73 +1,86 @@
-import React from 'react';
-import { ComponentStory, ComponentMeta } from '@storybook/react';
+import type { Meta, StoryObj } from '@storybook/react';
 
 import { TextButton } from './TextButton';
 import { FeedbackType } from '@noodl-constants/FeedbackType';
 import { TextType } from '@noodl-core-ui/components/typography/Text';
 
-export default {
+const meta: Meta<typeof TextButton> = {
   title: 'Inputs/Text Button',
   component: TextButton,
   argTypes: {},
-} as ComponentMeta<typeof TextButton>;
+};
 
-const Template: ComponentStory<typeof TextButton> = (args) => (
+export default meta;
+type Story = StoryObj<typeof meta>;
+
+const Template: Story = (args) => (
   <TextButton {...args} />
 );
 
-export const Common = Template.bind({});
-Common.args = {};
+export const Common: Story = {
+  args: {},
+};
 
-export const Submit = Template.bind({});
-Submit.args = {
+export const Submit: Story = {
+  args: {
   label: 'Submit',
+},
 };
 
 //
 // variant: FeedbackType
 //
 
-export const Danger = Template.bind({});
-Danger.args = {
+export const Danger: Story = {
+  args: {
   label: 'Submit',
   variant: FeedbackType.Danger,
+},
 };
 
-export const Notice = Template.bind({});
-Notice.args = {
+export const Notice: Story = {
+  args: {
   label: 'Submit',
   variant: FeedbackType.Notice,
+},
 };
 
-export const Success = Template.bind({});
-Success.args = {
+export const Success: Story = {
+  args: {
   label: 'Submit',
   variant: FeedbackType.Success,
+},
 };
 
 //
 // variant: TextType
 //
 
-export const DefaultContrast = Template.bind({});
-DefaultContrast.args = {
+export const DefaultContrast: Story = {
+  args: {
   label: 'Submit',
   variant: TextType.DefaultContrast,
+},
 };
 
-export const Disabled = Template.bind({});
-Disabled.args = {
+export const Disabled: Story = {
+  args: {
   label: 'Submit',
   variant: TextType.Disabled,
+},
 };
 
-export const Proud = Template.bind({});
+export const Proud: Story = {
+  args: {},
+};
 Disabled.args = {
   label: 'Submit',
   variant: TextType.Proud,
 };
 
-export const Shy = Template.bind({});
+export const Shy: Story = {
+  args: {},
+};
 Disabled.args = {
   label: 'Submit',
   variant: TextType.Shy,

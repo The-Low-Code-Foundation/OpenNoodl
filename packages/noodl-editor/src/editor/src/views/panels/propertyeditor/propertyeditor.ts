@@ -1,21 +1,20 @@
 import { NodeGraphContextTmp } from '@noodl-contexts/NodeGraphContext/NodeGraphContext';
 import _ from 'underscore';
 import React from 'react';
-import ReactDOM from 'react-dom';
+import { createRoot, Root } from 'react-dom/client';
 
 import { NodeGraphNode } from '@noodl-models/nodegraphmodel';
 import { UndoQueue, UndoActionGroup } from '@noodl-models/undo-queue-model';
 
-import View from '../../../../../shared/view';
+import View from '../../../../../shared/ListenableView';
+import { ElementConfigRegistry } from '../../../models/ElementConfigs/ElementConfigRegistry';
 import { ProjectModel } from '../../../models/projectmodel';
 import { ToastLayer } from '../../ToastLayer/ToastLayer';
+import { ElementStyleSectionHost } from './components/ElementStyleSectionHost';
 import { VariantsEditor } from './components/VariantStates';
 import { VisualStates } from './components/VisualStates';
 import { Ports } from './DataTypes/Ports';
 import { ModelProxy } from './models/modelProxy';
-
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const PropertyEditorTemplate = require('../../../templates/propertyeditor/propertyeditor.html');
 
 // Styles
 require('../../../styles/propertyeditor/propertyeditor.css');
@@ -27,6 +26,19 @@ export class PropertyEditor extends View {
   allowAsRoot: TSFixme;
   portsView: TSFixme;
   renderPortsViewScheduled: TSFixme;
+  el: HTMLElement;
+  /** The scrolling body — carries the variant edit-mode class. */
+  private bodyEl: HTMLElement;
+  private variantsEl: HTMLElement;
+  private elementStyleEl: HTMLElement;
+  private visualStatesEl: HTMLElement;
+  private groupsEl: HTMLElement;
+  variantsRoot: Root | null = null;
+  visualStatesRoot: Root | null = null;
+  /** React root for the ElementStyleSection (variant + size picker). */
+  elementStyleRoot: Root | null = null;
+  /** Stable group object used to manage undo/redo event subscriptions. */
+  private readonly _elementStyleGroup: Record<string, never> = {};
 
   constructor(args) {
     super();
@@ -55,28 +67,30 @@ export class PropertyEditor extends View {
   }
   renderPortsView() {
     this.portsView.render();
-    this.$('.groups').html(this.portsView.el);
+    if (this.portsView.el.parentElement !== this.groupsEl) {
+      this.groupsEl.replaceChildren(this.portsView.el);
+    }
   }
   renderVariantsEditor() {
     if (this.model.type.useVariants) {
       const props = {
         model: this.model,
         onEditVariant: () => {
-          // Hide top panel when editing variant
-          this.$('.property-editor-label-and-buttons').hide();
           this.modelProxy.setEditMode('variant');
           this.scheduleRenderPortsView();
 
-          this.$('.sidebar-property-editor').addClass('variants-sidepanel-edit-mode');
+          this.bodyEl.classList.add('variants-sidepanel-edit-mode');
         },
         onDoneEditingVariant: () => {
-          this.$('.property-editor-label-and-buttons').show();
           this.modelProxy.setEditMode('node');
           this.scheduleRenderPortsView();
-          this.$('.sidebar-property-editor').removeClass('variants-sidepanel-edit-mode');
+          this.bodyEl.classList.remove('variants-sidepanel-edit-mode');
         }
       };
-      ReactDOM.render(React.createElement(VariantsEditor, props), this.$('.variants')[0]);
+      if (!this.variantsRoot) {
+        this.variantsRoot = createRoot(this.variantsEl);
+      }
+      this.variantsRoot.render(React.createElement(VariantsEditor, props));
     }
   }
   renderVisualStates() {
@@ -86,7 +100,10 @@ export class PropertyEditor extends View {
         onVisualStateChanged: this.onVisualStateChanged.bind(this),
         portsView: this.portsView
       };
-      ReactDOM.render(React.createElement(VisualStates, props), this.$('.visual-states')[0]);
+      if (!this.visualStatesRoot) {
+        this.visualStatesRoot = createRoot(this.visualStatesEl);
+      }
+      this.visualStatesRoot.render(React.createElement(VisualStates, props));
     }
   }
   onVisualStateChanged(state) {
@@ -95,8 +112,120 @@ export class PropertyEditor extends View {
     // Interaction state changed, schedule
     this.scheduleRenderPortsView();
   }
+
+  /**
+   * STYLE-004: Render the ElementStyleSection (variant + size picker) for nodes
+   * that have an ElementConfig registered. Safe to call multiple times — reuses
+   * the existing React root.
+   */
+  renderElementStyleSection() {
+    const typeName: string | undefined = this.model.type?.name;
+    if (!typeName || !ElementConfigRegistry.has(typeName)) return;
+
+    const variants = ElementConfigRegistry.getVariantNames(typeName);
+    const sizes = ElementConfigRegistry.getSizeNames(typeName);
+    const currentVariant = this.model.parameters['_variant'] as string | undefined;
+    const currentSize = this.model.parameters['_size'] as string | undefined;
+
+    const props = {
+      variants,
+      currentVariant,
+      onVariantChange: this.onElementVariantChange.bind(this),
+      sizes,
+      currentSize,
+      onSizeChange: sizes.length > 0 ? this.onElementSizeChange.bind(this) : undefined
+    };
+
+    if (!this.elementStyleEl) return;
+
+    if (!this.elementStyleRoot) {
+      this.elementStyleRoot = createRoot(this.elementStyleEl);
+    }
+    this.elementStyleRoot.render(React.createElement(ElementStyleSectionHost, props));
+  }
+
+  /**
+   * STYLE-004: Apply a new variant to the node with full undo support.
+   * All property changes are batched into a single UndoActionGroup.
+   */
+  onElementVariantChange(variantName: string) {
+    const typeName: string | undefined = this.model.type?.name;
+    if (!typeName) return;
+
+    const resolved = ElementConfigRegistry.resolveVariant(typeName, variantName);
+    if (!resolved) return;
+
+    const undo = new UndoActionGroup({ label: 'change variant' });
+
+    for (const [key, value] of Object.entries(resolved.baseStyles)) {
+      this.model.setParameter(key, value, { undo, label: 'change variant' });
+    }
+    // Persist the active variant marker
+    this.model.setParameter('_variant', variantName, { undo, label: 'change variant' });
+
+    UndoQueue.instance.push(undo);
+
+    // Refresh port list (style changes may affect visible ports)
+    this.scheduleRenderPortsView();
+    // Refresh the picker to reflect the new selection
+    this.renderElementStyleSection();
+  }
+
+  /**
+   * STYLE-004: Apply a size preset to the node with full undo support.
+   * Size overrides are batched into a single UndoActionGroup.
+   */
+  onElementSizeChange(sizeName: string) {
+    const typeName: string | undefined = this.model.type?.name;
+    if (!typeName) return;
+
+    const config = ElementConfigRegistry.get(typeName);
+    if (!config?.sizes) return;
+
+    const sizePreset = config.sizes[sizeName];
+    if (!sizePreset) return;
+
+    const undo = new UndoActionGroup({ label: 'change size' });
+
+    for (const [key, value] of Object.entries(sizePreset)) {
+      this.model.setParameter(key, value, { undo, label: 'change size' });
+    }
+    this.model.setParameter('_size', sizeName, { undo, label: 'change size' });
+
+    UndoQueue.instance.push(undo);
+
+    this.scheduleRenderPortsView();
+    this.renderElementStyleSection();
+  }
+
+  /** Build the panel shell (legacy `propertyeditor.html`). */
+  private buildShell() {
+    const root = document.createElement('div');
+    root.className = 'sidebar-panel';
+
+    this.bodyEl = document.createElement('div');
+    this.bodyEl.className = 'sidebar-property-editor';
+    root.appendChild(this.bodyEl);
+
+    const section = (className: string) => {
+      const el = document.createElement('div');
+      el.className = className;
+      this.bodyEl.appendChild(el);
+      return el;
+    };
+
+    this.variantsEl = section('variants');
+    this.elementStyleEl = section('element-style-section');
+    this.visualStatesEl = section('visual-states');
+    this.groupsEl = section('groups');
+
+    return root;
+  }
+
   render() {
-    this.el = this.bindView($(PropertyEditorTemplate), this);
+    if (!this.el) {
+      this.el = this.buildShell();
+    }
 
     this.portsView = new Ports({
       model: this.modelProxy
@@ -106,6 +235,18 @@ export class PropertyEditor extends View {
     this.renderVariantsEditor();
 
     this.renderVisualStates();
+
+    // STYLE-004: Re-render ElementStyleSection on undo/redo so the picker
+    // reflects the restored parameter values.
+    this.model.off(this._elementStyleGroup);
+    this.model.on(
+      ['modelParameterUndo', 'modelParameterRedo'],
+      () => {
+        this.renderElementStyleSection();
+      },
+      this._elementStyleGroup
+    );
+    this.renderElementStyleSection();
 
     this.parent && this.parent.append(this.el);
 
@@ -136,8 +277,7 @@ export class PropertyEditor extends View {
             input.click();
 
             // if the button click opens a code editor we want to focus that
-            const codeEditor =
-              (document.querySelector('.monaco-editor .inputarea') as HTMLTextAreaElement) || undefined;
+            const codeEditor = (document.querySelector('.cm-editor .cm-content') as HTMLElement) || undefined;
 
             if (codeEditor) {
               codeEditor.focus();
@@ -170,7 +310,7 @@ export class PropertyEditor extends View {
       if (aiButton) {
         setTimeout(() => {
           aiButton.click();
-          $('.monaco-editor .inputarea')[0].focus();
+          document.querySelector<HTMLElement>('.cm-editor .cm-content')?.focus();
         }, 1);
       }
     } else if (node.type.name === 'CloudFunction2') {

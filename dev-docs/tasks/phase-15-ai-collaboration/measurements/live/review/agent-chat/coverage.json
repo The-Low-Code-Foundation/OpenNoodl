@@ -1,0 +1,112 @@
+{
+  "componentsTotal": 7,
+  "nodesTotal": 262,
+  "read": [
+    {
+      "name": "App",
+      "reason": "the root component — where the app starts",
+      "chars": 1032
+    },
+    {
+      "name": "/#__page__/Chat",
+      "reason": "the start page",
+      "chars": 9221
+    },
+    {
+      "name": "/#__page__/State",
+      "reason": "a page",
+      "chars": 16481
+    },
+    {
+      "name": "/#__page__/Live",
+      "reason": "a page",
+      "chars": 13421
+    },
+    {
+      "name": "/#__page__/Tools",
+      "reason": "a page",
+      "chars": 11744
+    },
+    {
+      "name": "/Nav",
+      "reason": "used by 4 other components",
+      "chars": 2614
+    },
+    {
+      "name": "/Message Row",
+      "reason": "not referenced by any other component",
+      "chars": 1118
+    }
+  ],
+  "notRead": [],
+  "sources": [
+    {
+      "name": "Component list and interfaces",
+      "status": "included",
+      "detail": "7 components"
+    },
+    {
+      "name": "Pages and navigation",
+      "status": "included",
+      "detail": "4 page(s), from Router and Page nodes"
+    },
+    {
+      "name": "Backend and data model",
+      "status": "absent",
+      "detail": "not collected"
+    },
+    {
+      "name": "Style tokens and variants",
+      "status": "absent",
+      "detail": "no style vocabulary was supplied"
+    }
+  ],
+  "charsUsed": 60843,
+  "charsBudget": 160000,
+  "log": [
+    {
+      "source": "project-overview",
+      "chars": 224
+    },
+    {
+      "source": "review:page-map",
+      "chars": 505
+    },
+    {
+      "source": "review:backend",
+      "chars": 140
+    },
+    {
+      "source": "review:component:App",
+      "chars": 1032
+    },
+    {
+      "source": "review:component:/#__page__/Chat",
+      "chars": 9221
+    },
+    {
+      "source": "review:component:/#__page__/State",
+      "chars": 16481
+    },
+    {
+      "source": "review:component:/#__page__/Live",
+      "chars": 13421
+    },
+    {
+      "source": "review:component:/#__page__/Tools",
+      "chars": 11744
+    },
+    {
+      "source": "review:component:/Nav",
+      "chars": 2614
+    },
+    {
+      "source": "review:component:/Message Row",
+      "chars": 1118
+    },
+    {
+      "source": "review:node-vocabulary",
+      "chars": 4343
+    }
+  ]
+}

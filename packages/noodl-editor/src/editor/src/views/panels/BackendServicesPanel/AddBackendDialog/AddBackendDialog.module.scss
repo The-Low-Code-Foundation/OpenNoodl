@@ -1,0 +1,151 @@
+/**
+ * Add Backend Dialog Styles
+ * 
+ * @module BackendServicesPanel
+ */
+
+.PresetGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.PresetCard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 12px;
+  background-color: var(--theme-color-bg-3);
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-align: center;
+
+  &:hover {
+    background-color: var(--theme-color-bg-2);
+    border-color: var(--theme-color-border-highlight);
+  }
+
+  &.Selected {
+    border-color: var(--theme-color-primary);
+    background-color: var(--theme-color-primary-bg);
+  }
+}
+
+.PresetIcon {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--theme-color-bg-1);
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--theme-color-fg-highlight);
+  margin-bottom: 4px;
+}
+
+.TestResult {
+  padding: 8px 12px;
+  border-radius: 4px;
+  border: 1px solid;
+}
+
+// Field note with icon
+.FieldNote {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  padding: 4px 0;
+}
+
+.LockIcon,
+.WarningIcon {
+  font-size: 12px;
+  line-height: 1;
+}
+
+// Help Popup Overlay
+.HelpPopupOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+}
+
+// Help Popup Content
+.HelpPopup {
+  background-color: var(--theme-color-bg-2);
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: 8px;
+  max-width: 480px;
+  max-height: 80vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+}
+
+.HelpPopupHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--theme-color-border-default);
+  background-color: var(--theme-color-bg-3);
+}
+
+.HelpPopupContent {
+  padding: 16px;
+  overflow-y: auto;
+  line-height: 1.6;
+
+  p {
+    margin: 0 0 12px 0;
+    color: var(--theme-color-fg-default);
+    font-size: 13px;
+
+    &:last-child {
+      margin-bottom: 0;
+    }
+
+    &:empty {
+      margin-bottom: 8px;
+    }
+  }
+
+  strong {
+    color: var(--theme-color-fg-highlight);
+    font-weight: 600;
+  }
+}
+
+.HelpHeading {
+  font-size: 14px !important;
+  margin-top: 16px !important;
+  margin-bottom: 8px !important;
+
+  &:first-child {
+    margin-top: 0 !important;
+  }
+}
+
+.InlineCode {
+  background-color: var(--theme-color-bg-1);
+  color: var(--theme-color-primary);
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-family: 'Monaco', 'Menlo', monospace;
+  font-size: 12px;
+}

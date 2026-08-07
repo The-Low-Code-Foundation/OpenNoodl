@@ -1,0 +1,86 @@
+{
+  "id": "nav-show-close-popup",
+  "title": "Show a popup and close it from inside with a close action",
+  "description": "The popup pair: a Show Popup node (NavigationShowPopup) opens the /Confirm Delete Dialog component as an overlay when the Delete-account button is clicked. The Close Popup node (NavigationClosePopup) lives INSIDE the popup component — it is the only way the popup ends itself. Its `closeActions` parameter declares 'confirm,cancel', which registers `closeAction-confirm` and `closeAction-cancel` signal inputs on Close Popup and matching signal outputs on the Show Popup node that opened it: the host reacts to `closeAction-confirm` without knowing anything about the dialog's internals. A close action both closes the popup and routes the outcome; plain `close` (not used here) would fire Show Popup's generic `Closed` output instead.",
+  "demonstrates": ["NavigationShowPopup", "NavigationClosePopup"],
+  "components": [
+    {
+      "name": "/Profile Page",
+      "nodes": [
+        {
+          "id": "profile_root",
+          "type": "Group",
+          "label": "Profile layout",
+          "parameters": { "flexDirection": "column", "paddingLeft": 16, "paddingTop": 16 },
+          "children": ["delete_button"]
+        },
+        {
+          "id": "delete_button",
+          "type": "net.noodl.controls.button",
+          "label": "Delete account",
+          "parent": "profile_root",
+          "parameters": { "label": "Delete account" }
+        },
+        {
+          "id": "show_dialog",
+          "type": "NavigationShowPopup",
+          "label": "Show confirm dialog",
+          "parameters": { "target": "/Confirm Delete Dialog" }
+        },
+        {
+          "id": "on_confirmed",
+          "type": "Event Sender",
+          "label": "Deletion confirmed",
+          "parameters": { "channelName": "DeleteConfirmed" }
+        }
+      ],
+      "connections": [
+        { "fromId": "delete_button", "fromProperty": "onClick", "toId": "show_dialog", "toProperty": "show" },
+        { "fromId": "show_dialog", "fromProperty": "closeAction-confirm", "toId": "on_confirmed", "toProperty": "sendEvent" }
+      ]
+    },
+    {
+      "name": "/Confirm Delete Dialog",
+      "nodes": [
+        {
+          "id": "dialog_root",
+          "type": "Group",
+          "label": "Dialog card",
+          "parameters": { "flexDirection": "column", "paddingLeft": 24, "paddingTop": 24 },
+          "children": ["dialog_text", "cancel_button", "confirm_button"]
+        },
+        {
+          "id": "dialog_text",
+          "type": "Text",
+          "label": "Question",
+          "parent": "dialog_root",
+          "parameters": { "text": "Delete your account? This cannot be undone." }
+        },
+        {
+          "id": "cancel_button",
+          "type": "net.noodl.controls.button",
+          "label": "Cancel",
+          "parent": "dialog_root",
+          "parameters": { "label": "Cancel" }
+        },
+        {
+          "id": "confirm_button",
+          "type": "net.noodl.controls.button",
+          "label": "Delete",
+          "parent": "dialog_root",
+          "parameters": { "label": "Delete" }
+        },
+        {
+          "id": "close_dialog",
+          "type": "NavigationClosePopup",
+          "label": "Close this dialog",
+          "parameters": { "closeActions": "confirm,cancel" }
+        }
+      ],
+      "connections": [
+        { "fromId": "cancel_button", "fromProperty": "onClick", "toId": "close_dialog", "toProperty": "closeAction-cancel" },
+        { "fromId": "confirm_button", "fromProperty": "onClick", "toId": "close_dialog", "toProperty": "closeAction-confirm" }
+      ]
+    }
+  ]
+}

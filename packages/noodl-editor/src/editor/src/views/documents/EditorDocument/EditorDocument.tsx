@@ -1,7 +1,6 @@
 import { useNodeGraphContext } from '@noodl-contexts/NodeGraphContext/NodeGraphContext';
 import { useKeyboardCommands } from '@noodl-hooks/useKeyboardCommands';
 import usePrevious from '@noodl-hooks/usePrevious';
-import { OpenAiStore } from '@noodl-store/AiAssistantStore';
 import { ipcRenderer } from 'electron';
 import React, { useCallback, useEffect, useState } from 'react';
 
@@ -18,11 +17,12 @@ import { FrameDivider, FrameDividerOwner } from '@noodl-core-ui/components/layou
 import { MenuDialogWidth } from '@noodl-core-ui/components/popups/MenuDialog';
 
 import { EventDispatcher } from '../../../../../shared/utils/EventDispatcher';
-import Clippy from '../../Clippy/Clippy';
 import { Frame } from '../../common/Frame';
 import { EditorTopbar } from '../../EditorTopbar';
 import { HelpCenter } from '../../HelpCenter';
 import { NodeGraphEditor } from '../../nodegrapheditor';
+import { panelHoldsCanvasSelection } from '../../nodegrapheditor/EditorEventBindings';
+import { ScopePlanStrip } from '../../panels/AiAuthoringPanel/ScopePlanStrip';
 import { showContextMenuInPopup } from '../../ShowContextMenuInPopup';
 import { useCanvasView } from './hooks/UseCanvasView';
 import { useCaptureThumbnails } from './hooks/UseCaptureThumbnails';
@@ -52,28 +52,9 @@ function EditorDocument() {
   const [viewportSize, setViewportSize] = useState({ width: null, height: null, deviceName: null });
   const [frameDividerSize, setFrameDividerSize] = useState(undefined);
 
-  const [enableAi, setEnableAi] = useState(OpenAiStore.getVersion() !== 'disabled');
-
-  useEffect(() => {
-    const group = {};
-    EditorSettings.instance.on(
-      'updated',
-      () => {
-        console.log('ai', OpenAiStore.getVersion());
-        setEnableAi(OpenAiStore.getVersion() !== 'disabled');
-      },
-      group
-    );
-    return function () {
-      EditorSettings.instance.off(group);
-    };
-  }, []);
-
   const [selectedNodeId, setSelectedNodeId] = useState(null); //The ID of the selected node, as highlighted by the viewer
 
   const [hasLoadedEditorSettings, setHasLoadedEditorSettings] = useState(false);
-
-  const [_forceUpdate, setForceUpdate] = useState(0);
 
   const [navigationState, setNavigationState] = useState({
     canGoBack: false,
@@ -86,14 +67,6 @@ function EditorDocument() {
   const viewerDetached = documentLayout === 'detachedPreview';
 
   const canvasView = useCanvasView(setNavigationState);
-
-  useEffect(() => {
-    if (import.meta.webpackHot) {
-      import.meta.webpackHot.accept('../../Clippy/Clippy', () => {
-        setForceUpdate(performance.now());
-      });
-    }
-  });
 
   useKeyboardCommands(() => [
     {
@@ -133,8 +106,10 @@ function EditorDocument() {
     SidebarModel.instance.on(
       SidebarModelEvent.activeChanged,
       (activeId) => {
-        const isNodePanel = activeId === 'PropertyEditor' || activeId === 'PortEditor';
-        if (isNodePanel === false) {
+        // Same allow-list as the canvas deselect, deliberately shared: this is
+        // what the detached viewer highlights, and it drifting from what is
+        // selected on canvas is how the two used to disagree (FH-008).
+        if (panelHoldsCanvasSelection(activeId) === false) {
           setSelectedNodeId(null);
         }
       },
@@ -323,7 +298,8 @@ function EditorDocument() {
 
     return () => {
       EventDispatcher.instance.off(eventGroup);
-      ProjectModel.instance.off(ProjectModel);
+      // Cleared-not-replaced singleton: see ProjectDesignTokenContext.
+      ProjectModel.instance?.off(ProjectModel);
     };
   }, [documentLayout, canvasView, previewMode, nodeGraph]);
 
@@ -390,8 +366,6 @@ function EditorDocument() {
       setFrameDividerSize(settings.frameDividerSize);
     }
 
-    // setEnableAi(settings[AI_ASSISTANT_ENABLED_KEY]);
-
     if (settings.selectedComponentName) {
       const component = ProjectModel.instance.getComponentWithName(settings.selectedComponentName);
       if (component) {
@@ -402,18 +376,6 @@ function EditorDocument() {
     setPreviewMode(settings.previewMode ? true : false);
   }, [nodeGraph]);
 
-  // useEffect(() => {
-  //   const func = () => {
-  //     setEnableAi(!!EditorSettings.instance.get(AI_ASSISTANT_ENABLED_KEY));
-  //   };
-  //
-  //   func();
-  //
-  //   EditorSettings.instance.on('updated', func, group);
-  //   return function () {
-  //     EditorSettings.instance.off(group);
-  //   };
-  // }, []);
 
   useCaptureThumbnails(canvasView, viewerDetached);
 
@@ -437,6 +399,13 @@ function EditorDocument() {
         nodeGraph={nodeGraph}
         deployIsDisabled={ProjectModel.instance.isLesson()}
       />
+      {/*
+        AIB-005: a project created from a scoping conversation opens on an empty
+        hello-world page, which reads as the plan having failed. The user's eye
+        is here, not on the sidebar rail. Renders nothing for every other
+        project — see `scopePlanAnnouncement`.
+      */}
+      <ScopePlanStrip />
       {hasLoadedEditorSettings && (
         <ViewComponent
           documentLayout={documentLayout}
@@ -450,7 +419,6 @@ function EditorDocument() {
       )}
 
       <HelpCenter />
-      {enableAi && <Clippy />}
     </Container>
   );
 }
@@ -545,8 +513,8 @@ function createKeyboardCommands(nodeGraph: NodeGraphEditor) {
           fill: true,
           width: 150,
           height: 100,
-          x: nodeGraph.latestMousePos.x,
-          y: nodeGraph.latestMousePos.y
+          x: nodeGraph.getLatestMousePos().x,
+          y: nodeGraph.getLatestMousePos().y
         },
         { undo: true, label: 'add comment', focusComment: true }
       ),

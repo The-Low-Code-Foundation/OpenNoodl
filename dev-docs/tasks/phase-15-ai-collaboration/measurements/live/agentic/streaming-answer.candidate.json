@@ -1,0 +1,152 @@
+{
+  "component": {
+    "$schema": "https://opennoodl.dev/schemas/component-v2.json",
+    "id": "14435d16-7c55-40fb-99c7-d6b5e2106af2",
+    "name": "AIX Streaming Answer",
+    "path": "/Visual Components/AIX Streaming Answer",
+    "type": "visual",
+    "created": "2026-07-27T20:32:47.803Z",
+    "modified": "2026-07-27T20:32:47.803Z",
+    "modifiedBy": "ai-authoring",
+    "description": "Panel that connects to a streaming chat endpoint via SSE, accumulates tokens into growing answer text (showing 'Thinking…' until the first token arrives), and provides a Stop button that disconnects the stream while keeping whatever text has arrived."
+  },
+  "nodes": {
+    "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+    "componentId": "14435d16-7c55-40fb-99c7-d6b5e2106af2",
+    "version": 1,
+    "nodes": [
+      {
+        "id": "sse",
+        "type": "net.noodl.SSE",
+        "label": "Chat stream",
+        "x": 0,
+        "y": 0,
+        "parameters": {
+          "url": "http://localhost:8791/chat",
+          "method": "POST",
+          "autoConnect": true,
+          "reconnectOnStreamEnd": false
+        }
+      },
+      {
+        "id": "acc",
+        "type": "net.noodl.TextAccumulator",
+        "label": "Token accumulator",
+        "x": 300,
+        "y": 0,
+        "parameters": {
+          "delimiter": ""
+        }
+      },
+      {
+        "id": "expr",
+        "type": "Expression",
+        "label": "Thinking / answer text",
+        "x": 600,
+        "y": 0,
+        "parameters": {
+          "expression": "characterCount > 0 ? accumulated : \"Thinking…\""
+        }
+      },
+      {
+        "id": "panel",
+        "type": "Group",
+        "label": "Panel root",
+        "x": 0,
+        "y": 300,
+        "children": [
+          "answerText",
+          "stopBtn"
+        ],
+        "parameters": {
+          "flexDirection": "column",
+          "alignItems": "flex-start",
+          "backgroundColor": "var(--surface)",
+          "borderRadius": "var(--radius-lg)",
+          "borderWidth": "var(--border-1)",
+          "borderColor": "var(--border)",
+          "borderStyle": "solid",
+          "paddingTop": "var(--space-4)",
+          "paddingBottom": "var(--space-4)",
+          "paddingLeft": "var(--space-4)",
+          "paddingRight": "var(--space-4)",
+          "columnGap": "var(--space-3)"
+        }
+      },
+      {
+        "id": "answerText",
+        "type": "Text",
+        "label": "Answer text",
+        "x": 0,
+        "y": 400,
+        "parent": "panel",
+        "parameters": {
+          "variant": "body",
+          "text": "Thinking…",
+          "textStyle": "body"
+        }
+      },
+      {
+        "id": "stopBtn",
+        "type": "net.noodl.controls.button",
+        "label": "Stop button",
+        "x": 0,
+        "y": 500,
+        "parent": "panel",
+        "parameters": {
+          "label": "Stop",
+          "backgroundColor": "var(--secondary)",
+          "color": "var(--secondary-foreground)",
+          "borderWidth": 0,
+          "boxShadow": "var(--shadow-sm)"
+        }
+      }
+    ],
+    "visualRoots": [
+      "panel"
+    ]
+  },
+  "connections": {
+    "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+    "componentId": "14435d16-7c55-40fb-99c7-d6b5e2106af2",
+    "version": 1,
+    "connections": [
+      {
+        "fromId": "sse",
+        "fromProperty": "text",
+        "toId": "acc",
+        "toProperty": "chunk"
+      },
+      {
+        "fromId": "sse",
+        "fromProperty": "onMessage",
+        "toId": "acc",
+        "toProperty": "add"
+      },
+      {
+        "fromId": "acc",
+        "fromProperty": "accumulated",
+        "toId": "expr",
+        "toProperty": "accumulated"
+      },
+      {
+        "fromId": "acc",
+        "fromProperty": "characterCount",
+        "toId": "expr",
+        "toProperty": "characterCount"
+      },
+      {
+        "fromId": "expr",
+        "fromProperty": "asString",
+        "toId": "answerText",
+        "toProperty": "text"
+      },
+      {
+        "fromId": "stopBtn",
+        "fromProperty": "onClick",
+        "toId": "sse",
+        "toProperty": "disconnect"
+      }
+    ]
+  }
+}

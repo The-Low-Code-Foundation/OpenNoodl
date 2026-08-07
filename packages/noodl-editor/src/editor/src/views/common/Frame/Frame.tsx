@@ -3,7 +3,7 @@ import React, { useRef, useEffect, RefObject } from 'react';
 import { useTrackBounds } from '@noodl-core-ui/hooks/useTrackBounds';
 import { UnsafeStyleProps } from '@noodl-core-ui/types/global';
 
-import View from '../../../../../shared/view';
+import View from '../../../../../shared/ListenableView';
 
 /**
  * Frame Component is a temporary solution
@@ -69,8 +69,9 @@ export function Frame({
       rootRef.current.removeChild(rootRef.current.firstChild);
     }
 
-    if (instance && instance.el && instance.el[0]) {
-      rootRef.current.appendChild(instance.el[0]);
+    const el = instance?.el;
+    if (el) {
+      rootRef.current.appendChild(el);
       bounds && onResize && onResize(bounds);
     }
   }, [rootRef, instance, refresh]);

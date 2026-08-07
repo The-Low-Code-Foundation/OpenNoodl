@@ -8,11 +8,11 @@
   align-items: center;
   white-space: nowrap;
   cursor: default;
-  
+
   &.actionable {
-    color: #9F9F9F !important;
+    color: var(--theme-color-fg-default) !important;
     cursor: pointer;
-    
+
     &:hover {
       background-color: rgba(0, 0, 0, 0.2);
     }
@@ -21,12 +21,12 @@
 
 .Text {
   /* Color is slightly different in the popout */
-  color: #7a7a7a;
+  color: var(--theme-color-fg-muted);
 
   /* TODO: Bug there Text doesnt have a font family */
   font-family: 'OpenSans';
 
   &.actionable {
-    color: #9F9F9F !important;
+    color: var(--theme-color-fg-default) !important;
   }
 }

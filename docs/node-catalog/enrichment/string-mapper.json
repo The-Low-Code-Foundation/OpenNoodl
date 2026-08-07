@@ -1,0 +1,20 @@
+{
+  "typeName": "String Mapper",
+  "summary": "Looks a string up in a configured key list and outputs the matching mapping — a wirable lookup table with a default.",
+  "description": "String Mapper compares `inputString` (Input String) against its numbered \"input N\" entries (displayed Input 0, Input 1, …) using exact string equality. On a match, the `mappedString` (Mapped String) output takes the value of the \"output N\" entry with the same N (displayed Mapping 0, Mapping 1, … — these mappings are themselves inputs, despite the port name); with no match it takes `defaultMapping` (Default). All values are coerced to strings before comparison, and the mapping re-runs once per update cycle after any of its inputs change. Keys and mappings are usually typed in as parameters but can also be connected.",
+  "whenToUse": "Use it to translate machine values into display text: status codes to labels, option keys to descriptions, locale keys to phrases. For just true/false use Boolean To String; for composing text with variables inside use String Format; for mappings that live in data rather than in the graph, use an Object or a Function.",
+  "runtimeBehavior": "Two numbered port series, both inputs, indexed from 0: keys are named \"input 0\", \"input 1\", … (group Inputs) and their mapped values are named \"output 0\", \"output 1\", … (group Mappings) — pair N maps key N to value N. The editor always offers the next unused index. An authoring tool typically writes both series as parameters (e.g. \"input 0\": \"S\", \"output 0\": \"Small\"), and may connect any of them.",
+  "ports": {
+    "inputString": "String value to look up; compared with strict equality after toString coercion.",
+    "defaultMapping": "String value used whenever no key matches — also the output before `inputString` first matches anything.",
+    "mappedString": "String value output: the mapping paired with the matched key, or `defaultMapping`."
+  },
+  "examples": ["logic-quantity-stepper"],
+  "patterns": [
+    "A Radio Button Group's `value` → `inputString`, mappings to human copy → a Text's `text`: option keys stay short and stable while the UI text stays editable in one place."
+  ],
+  "antiPatterns": [
+    "Using it for numeric ranges ('0-9' → 'low') — matching is exact equality only; use Expression or Condition chains for ranges."
+  ],
+  "relatedNodes": ["Boolean To String", "String Format", "States", "Expression"]
+}

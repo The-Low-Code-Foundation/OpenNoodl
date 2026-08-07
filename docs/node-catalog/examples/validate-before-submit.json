@@ -1,0 +1,65 @@
+{
+  "id": "validate-before-submit",
+  "title": "Validate an input before acting on a click",
+  "description": "The idiomatic gate shape: a Button click does not act directly — it evaluates a Condition. The Condition's boolean comes from an Expression that checks the text input's current value, so the same click either proceeds (ontrue) or reveals an error message (isfalse drives the error Text's visibility as a level, not a pulse). Note the two kinds of flow: text/booleans are values, onClick/eval/ontrue are momentary signals.",
+  "demonstrates": ["Condition", "Expression", "net.noodl.controls.button", "Text", "Group"],
+  "components": [
+    {
+      "name": "/Signup Form",
+      "nodes": [
+        {
+          "id": "root",
+          "type": "Group",
+          "label": "Form layout",
+          "parameters": { "flexDirection": "column", "paddingLeft": 16, "paddingTop": 16 },
+          "children": ["email_input", "error_text", "submit_button"]
+        },
+        {
+          "id": "email_input",
+          "type": "net.noodl.controls.textinput",
+          "label": "Email field",
+          "parent": "root",
+          "parameters": { "placeholder": "you@example.com" }
+        },
+        {
+          "id": "error_text",
+          "type": "Text",
+          "label": "Error message",
+          "parent": "root",
+          "parameters": { "text": "Please enter a valid email address." }
+        },
+        {
+          "id": "submit_button",
+          "type": "net.noodl.controls.button",
+          "label": "Submit",
+          "parent": "root",
+          "parameters": { "label": "Sign up" }
+        },
+        {
+          "id": "is_valid",
+          "type": "Expression",
+          "label": "Email looks valid?",
+          "parameters": { "expression": "email.includes('@') && email.length > 3" }
+        },
+        {
+          "id": "gate",
+          "type": "Condition",
+          "label": "Only submit when valid"
+        },
+        {
+          "id": "do_signup",
+          "type": "Event Sender",
+          "label": "Proceed",
+          "parameters": { "channelName": "SignupRequested" }
+        }
+      ],
+      "connections": [
+        { "fromId": "email_input", "fromProperty": "onTextChanged", "toId": "is_valid", "toProperty": "email" },
+        { "fromId": "is_valid", "fromProperty": "result", "toId": "gate", "toProperty": "condition" },
+        { "fromId": "submit_button", "fromProperty": "onClick", "toId": "gate", "toProperty": "eval" },
+        { "fromId": "gate", "fromProperty": "ontrue", "toId": "do_signup", "toProperty": "sendEvent" },
+        { "fromId": "gate", "fromProperty": "isfalse", "toId": "error_text", "toProperty": "visible" }
+      ]
+    }
+  ]
+}

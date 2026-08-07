@@ -1,0 +1,132 @@
+/**
+ * STYLE-002: VariantSelector styles
+ * All colors use design tokens — no hardcoded values.
+ */
+
+.VariantSelector {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-1, 4px);
+  width: 100%;
+}
+
+// Label above the trigger
+.VariantSelector-label {
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  color: var(--theme-color-fg-default-shy);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  user-select: none;
+}
+
+// Dropdown trigger button
+.VariantSelector-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-1, 4px);
+  width: 100%;
+  padding: var(--spacing-1, 4px) var(--spacing-2, 8px);
+  background: var(--theme-color-bg-3);
+  color: var(--theme-color-fg-default);
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: var(--radius-default);
+  font-size: var(--font-size-base);
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 100ms ease, background 100ms ease;
+
+  &:hover:not(:disabled) {
+    background: var(--theme-color-bg-2);
+    border-color: var(--theme-color-primary);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--theme-color-primary);
+    outline-offset: 1px;
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+.VariantSelector-triggerText {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.VariantSelector-chevron {
+  flex-shrink: 0;
+  font-size: 10px;
+  color: var(--theme-color-fg-default-shy);
+  line-height: 1;
+  pointer-events: none;
+}
+
+// Dropdown list
+.VariantSelector-dropdown {
+  position: absolute;
+  top: calc(100% + var(--spacing-1, 4px));
+  left: 0;
+  right: 0;
+  z-index: 200;
+  background: var(--theme-color-bg-2);
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: var(--radius-default);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+// Individual option
+.VariantSelector-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-2, 8px);
+  padding: var(--spacing-1, 4px) var(--spacing-2, 8px);
+  background: transparent;
+  color: var(--theme-color-fg-default);
+  border: none;
+  font-size: var(--font-size-base);
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+  transition: background 80ms ease;
+
+  &:hover {
+    background: var(--theme-color-bg-3);
+  }
+
+  &--active {
+    color: var(--theme-color-primary);
+    background: color-mix(in srgb, var(--theme-color-primary) 10%, transparent);
+
+    &:hover {
+      background: color-mix(in srgb, var(--theme-color-primary) 15%, transparent);
+    }
+  }
+}
+
+.VariantSelector-optionLabel {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.VariantSelector-checkmark {
+  flex-shrink: 0;
+  font-size: 10px;
+  color: var(--theme-color-primary);
+  line-height: 1;
+}

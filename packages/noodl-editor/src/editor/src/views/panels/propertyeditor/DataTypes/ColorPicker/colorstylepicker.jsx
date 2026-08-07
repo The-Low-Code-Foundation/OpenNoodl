@@ -136,8 +136,9 @@ function ColorStylePicker(props) {
 
     const popout = PopupLayer.instance.showPopout({
       content: colorPicker,
-      attachTo: $(popupAnchor),
-      position: 'right'
+      attachTo: popupAnchor,
+      position: 'right',
+      onClose: () => colorPicker.dispose()
     });
 
     return () => {

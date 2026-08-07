@@ -1,0 +1,230 @@
+{
+  "name": "RUN-001 probe: router navigation",
+  "id": "run001-probe-router",
+  "version": "4",
+  "rootNodeId": "app_router",
+  "settings": {
+    "htmlTitle": "probe-router",
+    "navigationPathType": "path"
+  },
+  "components": [
+    {
+      "name": "/App",
+      "id": "c_app",
+      "graph": {
+        "roots": [
+          {
+            "id": "app_router",
+            "type": "Router",
+            "label": "Main Router",
+            "x": 100,
+            "y": 100,
+            "parameters": {
+              "name": "Main",
+              "pages": {
+                "startPage": "/#__page__/Home",
+                "routes": [
+                  "/#__page__/Home",
+                  "/#__page__/Second"
+                ]
+              }
+            },
+            "ports": [],
+            "children": []
+          },
+          {
+            "id": "fn_bounds",
+            "type": "JavaScriptFunction",
+            "label": "bounds logger",
+            "x": 400,
+            "y": 100,
+            "parameters": {
+              "functionScript": "window.__probe = window.__probe || { events: [] };\nwindow.__probe.events.push('routerWidth:' + (Number(Inputs.w) > 0));"
+            },
+            "ports": [],
+            "children": []
+          }
+        ],
+        "connections": [
+          {
+            "fromId": "app_router",
+            "fromProperty": "boundingWidth",
+            "toId": "fn_bounds",
+            "toProperty": "in-w"
+          }
+        ]
+      }
+    },
+    {
+      "name": "/#__page__/Home",
+      "id": "c_home",
+      "graph": {
+        "roots": [
+          {
+            "id": "home_page",
+            "type": "Page",
+            "label": "Home",
+            "x": 100,
+            "y": 100,
+            "parameters": {
+              "title": "Home",
+              "urlPath": "home"
+            },
+            "ports": [],
+            "children": [
+              {
+                "id": "home_text",
+                "type": "Text",
+                "label": "Home text",
+                "x": 100,
+                "y": 200,
+                "parameters": {
+                  "text": "HOME"
+                },
+                "ports": [],
+                "children": []
+              },
+              {
+                "id": "btn_go",
+                "type": "net.noodl.controls.button",
+                "label": "Go",
+                "x": 100,
+                "y": 300,
+                "parameters": {
+                  "label": "Go"
+                },
+                "ports": [],
+                "children": []
+              }
+            ]
+          },
+          {
+            "id": "nav_second",
+            "type": "RouterNavigate",
+            "label": "To second",
+            "x": 400,
+            "y": 100,
+            "parameters": {
+              "router": "Main",
+              "target": "/#__page__/Second"
+            },
+            "ports": [],
+            "children": []
+          },
+          {
+            "id": "fn_navigated",
+            "type": "JavaScriptFunction",
+            "label": "navigated",
+            "x": 400,
+            "y": 200,
+            "parameters": {
+              "functionScript": "window.__probe = window.__probe || { events: [] };\nwindow.__probe.events.push('navigated-to-second');"
+            },
+            "ports": [],
+            "children": []
+          }
+        ],
+        "connections": [
+          {
+            "fromId": "btn_go",
+            "fromProperty": "onClick",
+            "toId": "nav_second",
+            "toProperty": "navigate"
+          },
+          {
+            "fromId": "nav_second",
+            "fromProperty": "navigated",
+            "toId": "fn_navigated",
+            "toProperty": "run"
+          }
+        ]
+      }
+    },
+    {
+      "name": "/#__page__/Second",
+      "id": "c_second",
+      "graph": {
+        "roots": [
+          {
+            "id": "second_page",
+            "type": "Page",
+            "label": "Second",
+            "x": 100,
+            "y": 100,
+            "parameters": {
+              "title": "Second",
+              "urlPath": "second"
+            },
+            "ports": [],
+            "children": [
+              {
+                "id": "second_text",
+                "type": "Text",
+                "label": "Second text",
+                "x": 100,
+                "y": 200,
+                "parameters": {
+                  "text": "SECOND"
+                },
+                "ports": [],
+                "children": []
+              },
+              {
+                "id": "btn_back",
+                "type": "net.noodl.controls.button",
+                "label": "Back",
+                "x": 100,
+                "y": 300,
+                "parameters": {
+                  "label": "Back"
+                },
+                "ports": [],
+                "children": []
+              }
+            ]
+          },
+          {
+            "id": "nav_home",
+            "type": "RouterNavigate",
+            "label": "To home",
+            "x": 400,
+            "y": 100,
+            "parameters": {
+              "router": "Main",
+              "target": "/#__page__/Home"
+            },
+            "ports": [],
+            "children": []
+          },
+          {
+            "id": "fn_back",
+            "type": "JavaScriptFunction",
+            "label": "back",
+            "x": 400,
+            "y": 200,
+            "parameters": {
+              "functionScript": "window.__probe = window.__probe || { events: [] };\nwindow.__probe.events.push('navigated-back-home');\nwindow.__probeDone = true;"
+            },
+            "ports": [],
+            "children": []
+          }
+        ],
+        "connections": [
+          {
+            "fromId": "btn_back",
+            "fromProperty": "onClick",
+            "toId": "nav_home",
+            "toProperty": "navigate"
+          },
+          {
+            "fromId": "nav_home",
+            "fromProperty": "navigated",
+            "toId": "fn_back",
+            "toProperty": "run"
+          }
+        ]
+      }
+    }
+  ],
+  "metadata": {}
+}

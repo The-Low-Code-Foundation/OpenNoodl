@@ -1,10 +1,11 @@
 import { filesystem } from '@noodl/platform';
 
-import { Environment } from '@noodl-models/CloudServices';
 import { ProjectModel } from '@noodl-models/projectmodel';
 
 import * as Exporter from '../../exporter';
-import { copyProjectFilesToFolder } from './copy';
+import { isCloudFunctionComponent } from '../../exporter/cloudFunctions';
+import { DeployEnvironment } from '../build-context';
+import { copyProjectFilesToFolder, formatCopyReportSummary, ProjectCopyReport } from './copy';
 import { loadDeployIndex, copyDeployFilesToFolder, getExternalFolderPath } from './deploy-index';
 import { HtmlProcessor, HtmlProcessorParameters } from './processors/html-processor';
 
@@ -19,7 +20,7 @@ export type DeployToFolderOptions = {
   /**
    * The environment we want to publish with.
    */
-  environment: Environment | undefined;
+  environment: DeployEnvironment | undefined;
 
   baseUrl: string;
 
@@ -33,6 +34,14 @@ export type DeployToFolderOptions = {
  * This is also used when deploying to the Cloud
  * where it just copies over the built files.
  */
+export type DeployToFolderResult = {
+  /**
+   * What the verbatim project-file copy included and excluded (DEP-008).
+   * Surfaced to the user so an ignored asset is distinguishable from a lost one.
+   */
+  copyReport: ProjectCopyReport;
+};
+
 export async function deployToFolder({
   project,
   direntry,
@@ -40,7 +49,7 @@ export async function deployToFolder({
   baseUrl,
   envVariables,
   runtimeType = 'deploy'
-}: DeployToFolderOptions) {
+}: DeployToFolderOptions): Promise<DeployToFolderResult> {
   // Check if this is a project folder
   try {
     const projectContent = await filesystem.readJson(direntry + '/project.json');
@@ -53,27 +62,30 @@ export async function deployToFolder({
     // noop; file doesn't exist
   }
 
-  // Start by copying all files from the project folder to the deploy directory
-  await copyProjectFilesToFolder(project._retainedProjectDirectory, direntry);
+  // Start by copying all files from the project folder to the deploy directory.
+  // Everything not excluded by the ignore rules ships — see ./copy.ts.
+  const copyReport = await copyProjectFilesToFolder(project._retainedProjectDirectory, direntry);
+  logCopyReport(copyReport, direntry);
 
   // Export project
   const exportJson = Exporter.exportToJSON(project, {
     useBundles: true,
     useBundleHashes: true,
     environment,
-    // Remove all the cloud function components
-    ignoreComponentFilter: (component) => !component.name.startsWith('/#__cloud__/')
+    // Remove all the cloud function components. WFA-001: the shared predicate,
+    // negated — `exportCloudFunctionsToJSON` keeps exactly what this drops, and
+    // a spec asserts the two partition the component set.
+    ignoreComponentFilter: (component) => !isCloudFunctionComponent(component)
   });
 
   if (!exportJson) {
     return Promise.reject({ result: 'failure', message: 'Failed to export project.' });
   }
 
-  // Remove all keys from config that require master key
-  const configSchema = exportJson.metadata['dbConfigSchema'];
-  for (const key in configSchema) {
-    if (configSchema[key].masterKeyOnly) delete configSchema[key];
-  }
+  // FH-018: the `dbConfigSchema` strip that used to run here is gone with the
+  // Config node. It only ever hid *key names* from an exported bundle, never a
+  // value — the values were served by a public `GET /config`, which is where the
+  // real filter now lives.
 
   // Read deploy description
   const index = await loadDeployIndex(`${runtimeType}/index.json`);
@@ -99,6 +111,41 @@ export async function deployToFolder({
       }
 
       await filesystem.writeFile(dir + bundleId + '.json', json);
+    }
+  }
+
+  return { copyReport };
+}
+
+/**
+ * DEP-008 criterion 5: the deploy report states the excluded count and the rule
+ * that excluded each path. The toast carries the count; the per-path list goes
+ * here, where it survives the toast and can be copied out of the console.
+ */
+function logCopyReport(report: ProjectCopyReport, direntry: string): void {
+  console.log(`[deploy] ${direntry}: ${report.copiedCount} project file(s) copied. ${formatCopyReportSummary(report)}`);
+
+  if (report.excluded.length === 0) return;
+
+  if (!report.hasIgnoreFile) {
+    console.log('[deploy] No .noodlignore in the project — default rules only. See docs/runtime/DEPLOY-IGNORE.md.');
+  }
+
+  if (report.staleExclusions.length > 0) {
+    console.warn(
+      `[deploy] ${report.staleExclusions.length} excluded path(s) ALREADY EXIST in ${direntry} — left in place, ` +
+        'almost certainly copied there by an earlier deploy. Delete them by hand if they must not be public:'
+    );
+    for (const stale of report.staleExclusions) {
+      console.warn(`[deploy]       ${filesystem.join(direntry, stale)}`);
+    }
+  }
+
+  for (const rule of report.excludedByRule) {
+    const why = rule.reason ? ` — ${rule.reason}` : '';
+    console.log(`[deploy]   ${rule.count}× excluded by ${rule.source} rule \`${rule.rule}\`${why}`);
+    for (const file of report.excluded.filter((f) => f.rule === rule.rule && f.source === rule.source)) {
+      console.log(`[deploy]       ${file.path}`);
     }
   }
 }

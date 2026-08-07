@@ -1,0 +1,159 @@
+/* =============================================================================
+   NOODL DESIGN SYSTEM - SPACING
+   ============================================================================= */
+
+:root {
+  /* ---------------------------------------------------------------------------
+     SPACING SCALE
+     4px base unit system
+     --------------------------------------------------------------------------- */
+  --spacing-0: 0;
+  --spacing-px: 1px;
+  --spacing-0-5: 2px;
+  --spacing-1: 4px;
+  --spacing-1-5: 6px;
+  --spacing-2: 8px;
+  --spacing-2-5: 10px;
+  --spacing-3: 12px;
+  --spacing-3-5: 14px;
+  --spacing-4: 16px;
+  --spacing-5: 20px;
+  --spacing-6: 24px;
+  --spacing-7: 28px;
+  --spacing-8: 32px;
+  --spacing-9: 36px;
+  --spacing-10: 40px;
+  --spacing-11: 44px;
+  --spacing-12: 48px;
+  --spacing-14: 56px;
+  --spacing-16: 64px;
+  --spacing-20: 80px;
+  --spacing-24: 96px;
+
+  /* ---------------------------------------------------------------------------
+     SEMANTIC SPACING
+     Component-specific spacing aliases
+     --------------------------------------------------------------------------- */
+
+  /* Panel spacing */
+  --spacing-panel-padding: var(--spacing-4);
+  --spacing-panel-gap: var(--spacing-3);
+
+  /* Card spacing */
+  --spacing-card-padding: var(--spacing-3);
+  --spacing-card-gap: var(--spacing-2);
+
+  /* Section spacing */
+  --spacing-section-gap: var(--spacing-6);
+  --spacing-section-padding: var(--spacing-4);
+
+  /* Input spacing */
+  --spacing-input-padding-x: var(--spacing-2);
+  --spacing-input-padding-y: var(--spacing-1-5);
+  --spacing-input-gap: var(--spacing-2);
+
+  /* Button spacing */
+  --spacing-button-padding-x: var(--spacing-3);
+  --spacing-button-padding-y: var(--spacing-2);
+  --spacing-button-gap: var(--spacing-2);
+
+  /* Icon spacing */
+  --spacing-icon-gap: var(--spacing-2);
+
+  /* ---------------------------------------------------------------------------
+     BORDER RADIUS
+     --------------------------------------------------------------------------- */
+  --radius-none: 0;
+  --radius-sm: 2px;
+  --radius-default: 4px;
+  --radius-5: 5px; /* PAR-001: mock chip/close radius */
+  --radius-md: 6px;
+  --radius-7: 7px; /* PAR-001: mock button/side-item radius */
+  --radius-lg: 8px;
+  --radius-10: 10px; /* PAR-001: mock card/toast radius */
+  --radius-xl: 12px;
+  --radius-2xl: 16px;
+  --radius-3xl: 24px;
+  --radius-full: 9999px;
+
+  /* ---------------------------------------------------------------------------
+     SHADOWS
+     --------------------------------------------------------------------------- */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-default: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+  --shadow-2xl: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  --shadow-inner: inset 0 2px 4px 0 rgba(0, 0, 0, 0.05);
+
+  /* Dialog/popup shadow */
+  --shadow-popup: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 10px 15px -3px rgba(0, 0, 0, 0.2),
+    0 20px 25px -5px rgba(0, 0, 0, 0.15);
+
+  /* Card + toast shadows (PAR-001) — mock-normative dark values; light values in
+     the [data-theme='light'] block below. */
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.2);
+  --shadow-card-hover: 0 10px 28px rgba(0, 0, 0, 0.38);
+  --shadow-toast: 0 12px 44px rgba(0, 0, 0, 0.6);
+  /* POL-004: the rail's lift when a panel floats over the canvas. It was in use
+     with an inline fallback and had never been defined, so it was a hardcoded
+     dark-only shadow wearing a token's clothes — it would have stayed pitch
+     black on a white light-theme rail. Value is the one the fallback carried. */
+  --shadow-float: 0 18px 48px rgba(0, 0, 0, 0.38);
+
+  /* ---------------------------------------------------------------------------
+     TRANSITIONS
+     --------------------------------------------------------------------------- */
+  --transition-fast: 100ms;
+  --transition-default: 150ms;
+  --transition-slow: 300ms;
+  --transition-ease: cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --transition-ease-out: cubic-bezier(0, 0, 0.2, 1);
+  --transition-ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* ---------------------------------------------------------------------------
+     Z-INDEX SCALE
+     --------------------------------------------------------------------------- */
+  --z-base: 0;
+  --z-dropdown: 100;
+  --z-sticky: 200;
+  --z-fixed: 300;
+  --z-modal-backdrop: 400;
+  --z-modal: 500;
+  --z-popover: 600;
+  --z-tooltip: 700;
+
+  /* ---------------------------------------------------------------------------
+     LAYOUT CONSTANTS
+     Chrome dimensions that more than one surface has to agree on. A banner that
+     positions itself under the top bar has to know how tall the top bar is, and
+     the only alternative to a shared name is two copies of a number that drift.
+     --------------------------------------------------------------------------- */
+  /* POL-004: EditorBanner read this with a `40px` fallback and nothing defined
+     it, so the value was the fallback and the token was decoration. */
+  --topbar-height: 40px;
+}
+
+/* =============================================================================
+   LIGHT THEME SHADOWS (UIX-008)
+   The default `:root` shadows are tuned for dark, where elevation reads mostly
+   from the bg ladder and shadows are near-invisible. On light, elevation relies
+   on shadow — panels/cards/popups must not disappear into the page. These
+   ink-tinted (rgba 23,32,43) shadows match the mock and give visible separation.
+   ============================================================================= */
+:root[data-theme='light'] {
+  --shadow-sm: 0 1px 2px rgba(23, 32, 43, 0.06);
+  --shadow-default: 0 1px 2px rgba(23, 32, 43, 0.08), 0 1px 3px rgba(23, 32, 43, 0.06);
+  --shadow-md: 0 2px 6px rgba(23, 32, 43, 0.08), 0 4px 12px rgba(23, 32, 43, 0.06);
+  --shadow-lg: 0 6px 16px rgba(23, 32, 43, 0.1), 0 12px 32px rgba(23, 32, 43, 0.08);
+  --shadow-xl: 0 12px 32px rgba(23, 32, 43, 0.12), 0 20px 48px rgba(23, 32, 43, 0.1);
+  --shadow-2xl: 0 24px 70px rgba(23, 32, 43, 0.18), 0 2px 8px rgba(23, 32, 43, 0.08);
+  --shadow-inner: inset 0 2px 4px rgba(23, 32, 43, 0.06);
+  --shadow-popup: 0 10px 32px rgba(23, 32, 43, 0.16), 0 2px 8px rgba(23, 32, 43, 0.08);
+  --shadow-card: 0 1px 2px rgba(23, 32, 43, 0.05);
+  --shadow-card-hover: 0 8px 24px rgba(23, 32, 43, 0.1);
+  --shadow-toast: 0 12px 40px rgba(23, 32, 43, 0.22);
+  --shadow-float: 0 16px 40px rgba(23, 32, 43, 0.16);
+}

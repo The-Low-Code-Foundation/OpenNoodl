@@ -1,9 +1,13 @@
 {
   "extends": "../../tsconfig.json",
   "compilerOptions": {
+    "skipLibCheck": true,
     "moduleResolution": "node",
     "module": "es2020",
+    "baseUrl": ".",
     "paths": {
+      "@noodl/git": ["../noodl-git/src/index.ts"],
+      "@noodl-viewer-cloud/execution-history": ["../noodl-viewer-cloud/src/execution-history/index.ts"],
       "@noodl-core-ui/*": ["../noodl-core-ui/src/*"],
       "@noodl-hooks/*": ["./src/editor/src/hooks/*"],
       "@noodl-utils/*": ["./src/editor/src/utils/*"],
@@ -11,7 +15,9 @@
       "@noodl-constants/*": ["./src/editor/src/constants/*"],
       "@noodl-contexts/*": ["./src/editor/src/contexts/*"],
       "@noodl-types/*": ["./src/editor/src/types/*"],
-      "@noodl-store/*": ["./src/editor/src/store/*"]
+      "@noodl-store/*": ["./src/editor/src/store/*"],
+      "@noodl-versioning": ["./src/editor/src/versioning/index.ts"],
+      "@noodl-versioning/*": ["./src/editor/src/versioning/*"]
     }
   },
   "include": ["src/editor", "src/shared", "src/main", "@include-types"],

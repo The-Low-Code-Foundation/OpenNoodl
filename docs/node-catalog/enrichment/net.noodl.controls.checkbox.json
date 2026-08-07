@@ -1,0 +1,17 @@
+{
+  "typeName": "net.noodl.controls.checkbox",
+  "summary": "Checkbox control: a styled boolean toggle exposing checked as a level and onChange as an edge.",
+  "description": "The Checkbox control renders a toggle with full style/state theming. `checked` is both an input (set programmatically) and an output level holding the current value; `onChange` fires on each user toggle. Interaction state (`hoverState`, `pressedState`, `focusState`) and `enabled` behave as on the other controls, with per-visual-state styling ports.",
+  "whenToUse": "Boolean choices the user flips directly: settings, consent, done flags. For one-of-many choices use Radio Buttons in a Radio Button Group; for an on/off in logic without UI, use a Switch node.",
+  "ports": {
+    "checked": "Boolean level, input and output — bind data in, read the current value out.",
+    "onChange": "Signal; a user toggle happened (fires after `checked` updated). Trigger persistence here.",
+    "enabled": "Boolean level; false shows the disabled state and blocks interaction."
+  },
+  "runtimeBehavior": "Declared-port-groups: label ports appear when the label is enabled, and each visual state (hover, pressed, disabled, focused) adds state-scoped styling ports. The catalog list is the superset the editor filters by current parameters.",
+  "examples": ["comp-repeater-set-item-object", "ctl-settings-form"],
+  "patterns": [
+    "`checked` → Set Object Properties value + `onChange` → its `store`: level carries the data, edge commits it."
+  ],
+  "relatedNodes": ["net.noodl.controls.radiobutton", "Switch", "net.noodl.controls.button"]
+}

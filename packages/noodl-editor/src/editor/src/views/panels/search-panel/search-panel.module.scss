@@ -17,10 +17,10 @@
   }
 
   &.is-active {
-    background-color: var(--theme-color-secondary);
+    background-color: var(--theme-color-bg-4);
 
     &:hover {
-      background-color: var(--theme-color-secondary-highlight);
+      background-color: var(--theme-color-bg-5);
     }
   }
 }

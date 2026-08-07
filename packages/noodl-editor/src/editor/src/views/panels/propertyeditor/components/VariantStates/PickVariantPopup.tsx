@@ -45,7 +45,8 @@ export class PickVariantPopup extends React.Component<PickVariantPopupProps, Sta
   }
 
   componentWillUnmount() {
-    ProjectModel.instance.off(this);
+    // May unmount after the project singleton has been cleared.
+    ProjectModel.instance?.off(this);
   }
 
   onPickVariant(variant) {
@@ -135,7 +136,7 @@ export class PickVariantPopup extends React.Component<PickVariantPopupProps, Sta
           <div className="variants-input-container">
             <input
               className="variants-input"
-              ref={(ref) => ref && setTimeout(() => ref.focus(), 10)}
+              ref={(ref) => { if (ref) setTimeout(() => ref.focus(), 10); }}
               autoFocus
               onKeyUp={this.onKeyUp.bind(this)}
               onChange={(e) => (this.newVariantName = e.target.value)}

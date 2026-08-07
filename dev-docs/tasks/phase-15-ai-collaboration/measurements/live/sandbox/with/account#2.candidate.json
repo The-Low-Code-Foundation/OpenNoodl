@@ -1,0 +1,312 @@
+{
+  "component": {
+    "$schema": "https://opennoodl.dev/schemas/component-v2.json",
+    "id": "140d3a6b-17fe-462e-9306-c537ba1ca522",
+    "name": "AIX Account",
+    "path": "/Pages/AIX Account",
+    "type": "page",
+    "created": "2026-08-02T17:32:22.984Z",
+    "modified": "2026-08-02T17:32:22.984Z",
+    "modifiedBy": "ai-authoring",
+    "description": "Account page: shows the signed-in user's avatar, name and email plus their saved-for-later articles (title + saved date); shows a sign-in prompt when nobody is signed in."
+  },
+  "nodes": {
+    "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+    "componentId": "140d3a6b-17fe-462e-9306-c537ba1ca522",
+    "version": 1,
+    "nodes": [
+      {
+        "id": "user",
+        "type": "net.noodl.user.User",
+        "label": "Signed-in user",
+        "x": 0,
+        "y": 0
+      },
+      {
+        "id": "cond",
+        "type": "Condition",
+        "label": "Gate on authenticated",
+        "x": 0,
+        "y": 160
+      },
+      {
+        "id": "saved",
+        "type": "DbCollection2",
+        "label": "Query Records: SavedArticle",
+        "x": 0,
+        "y": 320,
+        "parameters": {
+          "collectionName": "SavedArticle"
+        }
+      },
+      {
+        "id": "listjs",
+        "type": "Javascript2",
+        "label": "Filter to this user's saved articles and format as text",
+        "x": 260,
+        "y": 320,
+        "parameters": {
+          "code": "define({\n  inputs: { items: 'array', userId: 'string' },\n  outputs: { listText: 'string' },\n  run: function(inputs, outputs) {\n    var items = inputs.items || [];\n    var uid = inputs.userId;\n    var filtered = items.filter(function(a){ return a.userId === uid; });\n    filtered.sort(function(a,b){ return new Date(b.savedAt) - new Date(a.savedAt); });\n    var lines = filtered.map(function(a){\n      var d = new Date(a.savedAt);\n      var dateStr = d.toLocaleDateString();\n      return a.title + '  —  saved ' + dateStr;\n    });\n    outputs.listText = lines.length ? lines.join('\\n\\n') : 'No saved articles yet.';\n  }\n});"
+        }
+      },
+      {
+        "id": "root",
+        "type": "Group",
+        "label": "Page root",
+        "x": 0,
+        "y": 0,
+        "children": [
+          "signedOut",
+          "signedIn"
+        ],
+        "parameters": {
+          "flexDirection": "column",
+          "paddingTop": "var(--space-8)",
+          "paddingBottom": "var(--space-8)",
+          "paddingLeft": "var(--space-6)",
+          "paddingRight": "var(--space-6)",
+          "backgroundColor": "var(--background)",
+          "sizeMode": "contentHeight"
+        }
+      },
+      {
+        "id": "signedOut",
+        "type": "Group",
+        "label": "Sign-in prompt (shown when not authenticated)",
+        "x": 0,
+        "y": 0,
+        "parent": "root",
+        "children": [
+          "signedOutText"
+        ],
+        "parameters": {
+          "alignX": "center",
+          "alignItems": "center",
+          "sizeMode": "contentHeight"
+        }
+      },
+      {
+        "id": "signedOutText",
+        "type": "Text",
+        "label": "Sign-in prompt text",
+        "x": 0,
+        "y": 0,
+        "parent": "signedOut",
+        "parameters": {
+          "text": "Sign in to see your account",
+          "variant": "heading-4",
+          "textAlignX": "center",
+          "color": "var(--muted-foreground)"
+        }
+      },
+      {
+        "id": "signedIn",
+        "type": "Group",
+        "label": "Account content (shown when authenticated)",
+        "x": 0,
+        "y": 300,
+        "parent": "root",
+        "children": [
+          "headerRow",
+          "savedHeading",
+          "listContainer"
+        ],
+        "parameters": {
+          "flexDirection": "column",
+          "rowGap": "var(--space-8)",
+          "sizeMode": "contentHeight"
+        }
+      },
+      {
+        "id": "headerRow",
+        "type": "Group",
+        "label": "Avatar + name/email row",
+        "x": 0,
+        "y": 0,
+        "parent": "signedIn",
+        "children": [
+          "avatar",
+          "userInfo"
+        ],
+        "parameters": {
+          "flexDirection": "row",
+          "alignItems": "center",
+          "columnGap": "var(--space-4)",
+          "sizeMode": "contentHeight"
+        }
+      },
+      {
+        "id": "avatar",
+        "type": "Image",
+        "label": "User avatar",
+        "x": 0,
+        "y": 0,
+        "parent": "headerRow",
+        "parameters": {
+          "width": {
+            "value": 64,
+            "unit": "px"
+          },
+          "height": {
+            "value": 64,
+            "unit": "px"
+          },
+          "sizeMode": "explicit",
+          "objectFit": "cover",
+          "borderRadius": "var(--radius-full)"
+        }
+      },
+      {
+        "id": "userInfo",
+        "type": "Group",
+        "label": "Name and email column",
+        "x": 150,
+        "y": 0,
+        "parent": "headerRow",
+        "children": [
+          "nameText",
+          "emailText"
+        ],
+        "parameters": {
+          "flexDirection": "column",
+          "rowGap": "var(--space-1)",
+          "sizeMode": "contentHeight"
+        }
+      },
+      {
+        "id": "nameText",
+        "type": "Text",
+        "label": "Display name",
+        "x": 0,
+        "y": 0,
+        "parent": "userInfo",
+        "parameters": {
+          "variant": "heading-4"
+        }
+      },
+      {
+        "id": "emailText",
+        "type": "Text",
+        "label": "Email address",
+        "x": 0,
+        "y": 60,
+        "parent": "userInfo",
+        "parameters": {
+          "variant": "muted"
+        }
+      },
+      {
+        "id": "savedHeading",
+        "type": "Text",
+        "label": "Saved articles section heading",
+        "x": 0,
+        "y": 200,
+        "parent": "signedIn",
+        "parameters": {
+          "text": "Saved for later",
+          "variant": "heading-3"
+        }
+      },
+      {
+        "id": "listContainer",
+        "type": "Group",
+        "label": "Saved articles list container",
+        "x": 0,
+        "y": 300,
+        "parent": "signedIn",
+        "children": [
+          "listText"
+        ],
+        "parameters": {
+          "flexDirection": "column",
+          "backgroundColor": "var(--surface)",
+          "borderRadius": "var(--radius-lg)",
+          "paddingTop": "var(--space-4)",
+          "paddingBottom": "var(--space-4)",
+          "paddingLeft": "var(--space-4)",
+          "paddingRight": "var(--space-4)",
+          "sizeMode": "contentHeight"
+        }
+      },
+      {
+        "id": "listText",
+        "type": "Text",
+        "label": "Saved articles list text",
+        "x": 0,
+        "y": 0,
+        "parent": "listContainer",
+        "parameters": {
+          "variant": "body",
+          "lineHeight": {
+            "value": 24,
+            "unit": "px"
+          }
+        }
+      }
+    ],
+    "visualRoots": [
+      "root"
+    ]
+  },
+  "connections": {
+    "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+    "componentId": "140d3a6b-17fe-462e-9306-c537ba1ca522",
+    "version": 1,
+    "connections": [
+      {
+        "fromId": "user",
+        "fromProperty": "authenticated",
+        "toId": "cond",
+        "toProperty": "condition"
+      },
+      {
+        "fromId": "cond",
+        "fromProperty": "result",
+        "toId": "signedIn",
+        "toProperty": "mounted"
+      },
+      {
+        "fromId": "cond",
+        "fromProperty": "isfalse",
+        "toId": "signedOut",
+        "toProperty": "mounted"
+      },
+      {
+        "fromId": "user",
+        "fromProperty": "username",
+        "toId": "nameText",
+        "toProperty": "text"
+      },
+      {
+        "fromId": "user",
+        "fromProperty": "email",
+        "toId": "emailText",
+        "toProperty": "text"
+      },
+      {
+        "fromId": "user",
+        "fromProperty": "prop-avatar",
+        "toId": "avatar",
+        "toProperty": "src"
+      },
+      {
+        "fromId": "saved",
+        "fromProperty": "items",
+        "toId": "listjs",
+        "toProperty": "items"
+      },
+      {
+        "fromId": "user",
+        "fromProperty": "id",
+        "toId": "listjs",
+        "toProperty": "userId"
+      },
+      {
+        "fromId": "listjs",
+        "fromProperty": "listText",
+        "toId": "listText",
+        "toProperty": "text"
+      }
+    ]
+  }
+}

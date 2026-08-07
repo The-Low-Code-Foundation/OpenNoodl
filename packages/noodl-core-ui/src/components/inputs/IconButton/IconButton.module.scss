@@ -1,37 +1,42 @@
+// UIX-007: icon color is delivered through `color` on the icon span (`.Icon`),
+// which the glyph inherits as `currentColor`. This drives BOTH the 1.5px stroke
+// glyphs and the solid status glyphs with one mechanism. Token VALUES are
+// unchanged from UIX-004 (rail: default fg / hover fg-highlight / active accent);
+// only the CSS property carrying them changed from `path { fill }` to `color`.
 .Root {
   padding: 4px;
   border: 0;
-  border-radius: 2px;
+  border-radius: var(--radius-md);
   display: inline-flex;
   align-items: center;
   cursor: pointer;
   transition: background-color var(--speed-turbo) var(--easing-base);
 
-  path {
-    transition: fill var(--speed-turbo) var(--easing-base);
+  .Icon {
+    transition: color var(--speed-turbo) var(--easing-base);
   }
 
   &:disabled {
     background-color: var(--theme-color-bg-2);
 
-    path {
-      fill: var(--theme-color-fg-default-shy);
+    .Icon {
+      color: var(--theme-color-fg-default-shy);
     }
   }
 
   &.is-variant-default {
     background-color: var(--theme-color-bg-3);
 
-    path {
-      fill: var(--theme-color-fg-default);
+    .Icon {
+      color: var(--theme-color-fg-default);
     }
 
     &.is-state-active,
     &:not(:disabled):hover {
       background-color: var(--theme-color-bg-1);
 
-      path {
-        fill: var(--theme-color-fg-highlight);
+      .Icon {
+        color: var(--theme-color-fg-highlight);
       }
     }
   }
@@ -39,16 +44,16 @@
   &.is-variant-semi-transparent {
     background-color: var(--theme-color-fg-transparent);
 
-    path {
-      fill: var(--theme-color-fg-highlight);
+    .Icon {
+      color: var(--theme-color-fg-highlight);
     }
 
     &.is-state-active,
     &:not(:disabled):hover {
       background-color: var(--theme-color-bg-1-transparent);
 
-      path {
-        fill: var(--theme-color-fg-highlight);
+      .Icon {
+        color: var(--theme-color-fg-highlight);
       }
     }
   }
@@ -56,22 +61,35 @@
   &.is-variant-transparent {
     background-color: transparent !important;
 
-    path {
-      fill: var(--theme-color-fg-default);
+    .Icon {
+      // PAR-003: hosts can tune the idle glyph tone (the side-navigation rail
+      // sets --icon-button-idle-fg to fg-muted per the mock). Hover/active
+      // colors below are unaffected.
+      color: var(--icon-button-idle-fg, var(--theme-color-fg-default));
     }
 
     &:disabled {
-      path {
-        fill: var(--theme-color-bg-4);
+      .Icon {
+        color: var(--theme-color-bg-4);
       }
     }
 
-    &.is-state-active,
+    // Hover (UIX-004): neutral bg-3 pill + highlighted glyph.
     &:not(:disabled):hover {
-      background-color: var(--theme-color-bg-1-transparent);
+      background-color: var(--theme-color-bg-3) !important;
 
-      path {
-        fill: var(--theme-color-fg-highlight);
+      .Icon {
+        color: var(--theme-color-fg-highlight);
+      }
+    }
+
+    // Active (UIX-004): accent-soft pill + accent glyph, so the selected rail
+    // panel (and active toolbar toggle) is identifiable at a glance.
+    &.is-state-active {
+      background-color: var(--theme-color-primary-bg) !important;
+
+      .Icon {
+        color: var(--theme-color-primary);
       }
     }
   }
@@ -79,21 +97,21 @@
   &.is-variant-opaque-on-hover {
     background-color: transparent;
 
-    path {
-      fill: var(--theme-color-fg-default);
+    .Icon {
+      color: var(--theme-color-fg-default);
     }
 
     &:not(:disabled):hover {
       background-color: var(--theme-color-bg-3);
 
-      path {
-        fill: var(--theme-color-fg-highlight);
+      .Icon {
+        color: var(--theme-color-fg-highlight);
       }
     }
 
     &:disabled {
-      path {
-        fill: var(--theme-color-bg-4);
+      .Icon {
+        color: var(--theme-color-bg-4);
       }
     }
   }
@@ -111,9 +129,7 @@
   }
 
   .Root.is-icon-variant-notice:hover & {
-    path {
-      fill: var(--theme-color-primary-highlight) !important;
-    }
+    color: var(--theme-color-primary-highlight) !important;
   }
 }
 

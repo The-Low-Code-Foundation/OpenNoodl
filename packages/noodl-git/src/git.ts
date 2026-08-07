@@ -15,7 +15,7 @@ import { createCommit } from './core/commit';
 import { getConfigValue, setConfigValue } from './core/config';
 import { getBranchesOld } from './core/for-each-ref';
 import { appendGitIgnore } from './core/ignore';
-import { init, installMergeDriver } from './core/init';
+import { init, installMergeDriver, NOODL_MERGE_ATTRIBUTES } from './core/init';
 import { getChangedFiles, getCommits } from './core/logs';
 import { merge, getMergeBase, mergeTree, mergeTreeCommit } from './core/merge';
 import { BranchType } from './core/models/branch';
@@ -33,7 +33,7 @@ import { popStashEntry, createStashEntry, getStashes, popStashEntryToBranch } fr
 import { getStatus } from './core/status';
 import { deleteRef } from './core/update-ref';
 import { cleanMergeDriverOptionsSync, writeMergeDriverOptions } from './merge-driver';
-import { MergeStrategy, MergeStrategyFunc } from './merge-strategy';
+import { MergeStrategy, MergeStrategyFunc, MergeV2ComponentFunc } from './merge-strategy';
 import {
   GitStatus,
   GitCommit,
@@ -88,7 +88,14 @@ export class Git {
     return this.originUrl;
   }
 
-  constructor(private readonly mergeProject: MergeStrategyFunc) {}
+  constructor(
+    private readonly mergeProject: MergeStrategyFunc,
+    /**
+     * SUB-007: merges a decomposed v2 component with all three of its files at
+     * once. Optional — without it v2 files fall back to taking one side.
+     */
+    private readonly mergeV2Component?: MergeV2ComponentFunc
+  ) {}
 
   /**
    * Initialize a new git repository in the given path.
@@ -106,11 +113,17 @@ export class Git {
    * Open a git repository in the given path.
    *
    * @param baseDir
+   * @throws Error if the path is not a git repository
    */
   async openRepository(baseDir: string): Promise<void> {
     if (this.baseDir) return;
 
-    this.baseDir = await open(baseDir);
+    const repositoryPath = await open(baseDir);
+    if (!repositoryPath) {
+      throw new Error(`Not a git repository: ${baseDir}`);
+    }
+
+    this.baseDir = repositoryPath;
     await this._setupRepository();
   }
 
@@ -259,6 +272,15 @@ export class Git {
         // this will also checkout the branch
         await popStashEntryToBranch(this.baseDir, stash.name, stashBranchName);
 
+        // Commit the stash contents to the stash branch to clean the working tree.
+        // Without this, git refuses to merge when both branches have modifications to the
+        // same file (e.g. .gitignore added by appendGitIgnore in _setupRepository).
+        const stashBranchStatus = await this.status();
+        if (stashBranchStatus.length > 0) {
+          await addAll(this.baseDir);
+          await createCommit(this.baseDir, 'Stash contents');
+        }
+
         // Merge our working branch into the stash branch
         await this._merge({
           theirsBranchName: previousBranch,
@@ -309,7 +331,7 @@ export class Git {
     if (tree.kind === ComputedAction.Conflicts) {
       // Solve any conflicts if there are any after reapplying the stash
       // NOTE(?): "ours" and "theirs" are reveresed, since our changes are the incoming one from the stash
-      const solver = new MergeStrategy(this.baseDir, this.mergeProject);
+      const solver = new MergeStrategy(this.baseDir, this.mergeProject, 'our', this.mergeV2Component);
       await solver.solveConflicts(tree);
     } else if (tree.kind !== ComputedAction.Clean) {
       throw new Error('Failed to merge stash, ' + tree.kind);
@@ -369,6 +391,35 @@ export class Git {
     const mergeBaseId = await this.getMergeBaseCommitId(headCommitId, remoteHeadCommitId);
     await this.resetToCommitWithId(mergeBaseId);
     await cleanUntrackedFiles(this.baseDir);
+  }
+
+  /**
+   * Fetch remote changes and merge them into the current branch using Noodl's
+   * custom merge strategy (handles project.json conflicts).
+   *
+   * Equivalent to `git fetch` + `git merge origin/<currentBranch>`.
+   */
+  async pull(options: PullOptions = {}): Promise<void> {
+    // 1. Fetch latest remote state
+    await this.fetch({ onProgress: options.onProgress });
+
+    // 2. Nothing to merge if remote has no commits yet
+    const remoteHeadId = await this.getRemoteHeadCommitId();
+    if (!remoteHeadId) {
+      return;
+    }
+
+    // 3. Merge origin/<currentBranch> into current branch
+    const currentBranch = await this.getCurrentBranchName();
+    const remoteName = await this.getRemoteName();
+    const remoteRef = `${remoteName}/${currentBranch}`;
+
+    await this._mergeToCurrentBranch({
+      theirsBranchName: remoteRef,
+      squash: false,
+      message: `Merge ${remoteRef} into ${currentBranch}`,
+      allowFastForward: true
+    });
   }
 
   /**
@@ -615,8 +666,6 @@ export class Git {
 
     try {
       await this.checkoutBranch(branchName);
-    } catch (err) {
-      throw err;
     } finally {
       if (needsStash) {
         await this.stashPopChanges(currentBranchName);
@@ -793,7 +842,7 @@ export class Git {
     await appendGitIgnore(this.baseDir, ['project-tmp.json*', '.DS_Store', '__MACOSX']);
 
     // Create or append the .gitattributes file
-    await appendGitAttributes(this.baseDir, ['project.json merge=noodl']);
+    await appendGitAttributes(this.baseDir, NOODL_MERGE_ATTRIBUTES);
 
     const remoteName = await this.getRemoteName();
     if (remoteName) {
@@ -887,7 +936,7 @@ export class Git {
     const tree = await mergeTree(this.baseDir, ours, theirs);
     if (tree.kind === ComputedAction.Conflicts) {
       // Run our solve strategy
-      const solver = new MergeStrategy(this.baseDir, this.mergeProject);
+      const solver = new MergeStrategy(this.baseDir, this.mergeProject, 'our', this.mergeV2Component);
       await solver.solveConflicts(tree);
 
       // Create a merge commit
@@ -925,12 +974,26 @@ export class Git {
     //if there's no existing remote, add one called origin
     if (!remoteName) {
       await addRemote(this.repositoryPath, 'origin', url);
-      return;
+    } else {
+      await setRemoteURL(this.repositoryPath, remoteName, url);
     }
 
+    // AIB-008 criterion 7, found live. Both branches, and *after* the write —
+    // a cache set before a failed git call would be a lie.
+    //
+    // Adding the FIRST remote returned early and set neither of these, which is
+    // precisely the flow the merged panel exists for: connect a local project to
+    // GitHub. `getRemoteName()` then reported an origin while `OriginUrl` stayed
+    // null, so `useGitHubRepository` classified a freshly connected GitHub repo
+    // as `remote-not-github` with a null url — and the Repository section read
+    // **"No remote" beside an "Up to date" figure it could only have computed
+    // from one**, with the Issues and pull requests section absent because that
+    // is gated on `github-connected`.
+    //
+    // It self-healed on the next `fetch()` or on reopening the project, which is
+    // why a flow that is only run once per project never showed it.
     this.originUrl = url;
     this.originProvider = this.getProviderForRemote(url);
-    await setRemoteURL(this.repositoryPath, remoteName, url);
   }
 
   public async tryHandleRebaseState() {

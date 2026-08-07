@@ -1,0 +1,8 @@
+{
+  "typeName": "Component State",
+  "summary": "Deprecated per-component-instance state store. Use Component Object (net.noodl.ComponentObject).",
+  "description": "The legacy Component State node held named values scoped to the component instance — the role now filled by Component Object, which shares the same instance-scoped store semantics with a clearer read/write split. Deprecated and hidden from the picker.",
+  "whenToUse": "Do not use in new graphs — use net.noodl.ComponentObject (with Set Component Object Properties) instead.",
+  "runtimeBehavior": "Property ports are generated from the per-instance `properties` list (runtime-discovered).",
+  "relatedNodes": ["net.noodl.ComponentObject", "net.noodl.SetComponentObjectProperties"]
+}

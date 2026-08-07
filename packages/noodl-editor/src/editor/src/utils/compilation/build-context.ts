@@ -1,10 +1,28 @@
-import { Environment } from '@noodl-models/CloudServices';
 import { NodeGraphNode } from '@noodl-models/nodegraphmodel';
 import { ProjectModel } from '@noodl-models/projectmodel';
 import { NodeGraphTraverser, NodeGraphTraverserOptions } from '@noodl-utils/node-graph-traverser';
 
 import { HtmlProcessorParameters } from './build/processors/html-processor';
 import { IndexedPagesOptions } from './context/pages';
+
+/**
+ * A minimal pointer to a Parse-wire-compatible backend endpoint, baked into an
+ * exported/deployed project's `cloudservices` metadata.
+ *
+ * WF-007: this replaces the old `Environment` model from the (now deleted)
+ * `@noodl-models/CloudServices` — which also carried a `name`/`description`/
+ * `masterKey` used only by the deleted CloudServicePanel CRUD UI and the
+ * deleted master-key deploy pass. Nothing left in the deploy pipeline needs
+ * those fields; `{id, appId, url}` is exactly what `exporter/json.ts` writes
+ * into `cloudservices` metadata.
+ */
+export interface DeployEnvironment {
+  id?: string;
+  appId: string;
+  url: string;
+  /** See `CloudServiceType` in `models/projectmodel.ts`. */
+  type?: 'nodegx' | 'external';
+}
 
 interface BasePageObject {
   componentName: string;
@@ -44,7 +62,7 @@ export enum NotifyType {
 
 export interface CoreContext {
   project: ProjectModel;
-  environment: Environment | undefined;
+  environment: DeployEnvironment | undefined;
 
   getHostname(): string | undefined;
 
@@ -111,7 +129,7 @@ export interface PostPackageContext extends PackageContext {
 
 export type DeployContext = CoreContext;
 export interface PreDeployContext extends DeployContext {
-  environment: Environment;
+  environment: DeployEnvironment;
 }
 
 export interface PostDeployContext extends DeployContext {

@@ -41,7 +41,10 @@ function useSwitchToSameComponentAfterProjectReload(nodeGraph: NodeGraphEditor) 
             () => {
               EventDispatcher.instance.off(hasChangedEventGroup);
 
-              const component = ProjectModel.instance.getComponentWithName(activeComponentName);
+              // The instance can be cleared rather than replaced (routing back
+              // to the launcher). Nothing to switch to in that case, and
+              // throwing here unmounts the whole editor.
+              const component = ProjectModel.instance?.getComponentWithName(activeComponentName);
               if (component) {
                 nodeGraph.switchToComponent(component);
               }

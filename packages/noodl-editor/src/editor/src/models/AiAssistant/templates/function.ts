@@ -1,8 +1,10 @@
-import { OpenAiStore } from '@noodl-store/AiAssistantStore';
-
+import { AiClient } from '@noodl-models/AiAssistant/client/AiClient';
 import { AiNodeTemplate } from '@noodl-models/AiAssistant/interfaces';
-import * as GPT3 from '@noodl-models/AiAssistant/templates/function/gpt-3-version';
-import * as GPT4 from '@noodl-models/AiAssistant/templates/function/gpt-4-version';
+// The historical gpt-3/gpt-4 filenames are kept so the prompt history stays
+// diffable; what they mean now is "single-shot" and "multi-step agent", which
+// is what the capability flag selects between.
+import * as SimpleVersion from '@noodl-models/AiAssistant/templates/function/gpt-3-version';
+import * as AgentVersion from '@noodl-models/AiAssistant/templates/function/gpt-4-version';
 
 import { ToastLayer } from '../../../views/ToastLayer/ToastLayer';
 
@@ -10,7 +12,7 @@ export const template: AiNodeTemplate = {
   type: 'pink',
   name: 'JavaScriptFunction',
   onMessage: async (context) => {
-    const version = OpenAiStore.getVersion();
+    const useAgentFlow = AiClient.supportsAgentFlow();
 
     const activityId = 'processing';
 
@@ -20,13 +22,13 @@ export const template: AiNodeTemplate = {
     });
 
     // ---
-    console.log('using version: ', version);
+    console.log('[ai] function template, agent flow:', useAgentFlow);
 
     try {
-      if ((version === 'enterprise' && OpenAiStore.getModel() === 'gpt-4o-mini') || version === 'full-beta') {
-        await GPT4.execute(context);
+      if (useAgentFlow) {
+        await AgentVersion.execute(context);
       } else {
-        await GPT3.execute(context);
+        await SimpleVersion.execute(context);
       }
 
       context.chatHistory.removeActivity(activityId);

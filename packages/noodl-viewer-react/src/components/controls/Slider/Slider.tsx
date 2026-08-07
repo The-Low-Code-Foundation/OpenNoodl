@@ -3,6 +3,7 @@ import React, { useEffect, useState } from 'react';
 import Layout from '../../../layout';
 import Utils from '../../../nodes/controls/utils';
 import { Noodl } from '../../../types';
+import { noodlRootRef } from '../../noodl-root-ref';
 
 export interface SliderProps extends Noodl.ReactProps {
   _nodeId: string;
@@ -108,7 +109,10 @@ export function Slider(props: SliderProps) {
       width: '100%',
       opacity: 0
     },
-    onClick: props.onClick,
+    // FH-015 slice 1. `onClick: props.onClick` used to live here, and `inputProps` is spread
+    // *after* `controlEvents` below — so the raw sender replaced the handler `pointerProps`
+    // built, discarding the `blockTouch` `stopPropagation` wrapper for the one event authors
+    // block. `controlEvents` supplies `onClick` already.
     min: props.min,
     max: props.max
   };
@@ -166,7 +170,7 @@ export function Slider(props: SliderProps) {
   setShadow(thumbStyle, 'thumb', props);
 
   return (
-    <div style={divStyle}>
+    <div ref={noodlRootRef(props.noodlNode)} style={divStyle}>
       <div style={trackStyle} />
       <div style={thumbStyle} />
       <input

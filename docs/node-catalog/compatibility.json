@@ -1,0 +1,76 @@
+{
+  "$comment": "Connection-compatibility semantics (SUB-005). The permitted-cast TABLE lives in the structural catalog (node-catalog.json#/typecasts) and is exported by the runtime itself (packages/noodl-runtime/src/nodelibraryexport.js); this file documents what the rules and each cast MEAN. scripts/node-catalog/merge.js fails if castSemantics ever drifts from the catalog table, and asserts every verifiedPairs entry against the rule implementation.",
+  "rules": {
+    "gate": "The editor permits a connection from output type F to input type T iff: F === T, or F === '*', or T === '*', or the typecast table has an entry {from: F, to: [... T ...]}. This is NodeLibrary.canCastPortTypes (packages/noodl-editor/src/editor/src/models/nodelibrary/nodelibrary.ts).",
+    "wildcard": "The type '*' (untyped) connects to and from anything. Many dynamic ports (Function/Expression outputs, Object properties) are untyped; the editor will accept any wiring to them, so correctness is the author's responsibility.",
+    "delivery": "The runtime performs no central value conversion on delivery: the raw output value is handed to the receiving input, whose setter coerces it (usually with plain JavaScript semantics). A permitted cast means 'the receiver knows what to do with this', not 'a converter runs on the wire'.",
+    "allowConnectionsOnly": "Ports typed with allowConnectionsOnly can only be driven by a connection, never set statically via parameters.",
+    "allowEditOnly": "Ports typed with allowEditOnly can only be set via parameters, never connected."
+  },
+  "signalSemantics": {
+    "firing": "A signal output fires by sending the value true immediately followed by false (Node.prototype.sendSignalOnOutput, packages/noodl-runtime/src/node.js). A signal is a momentary event with no payload.",
+    "receiving": "A signal input triggers when its incoming value transitions to true (valueChangedToTrue) — it is edge-triggered, not level-sensitive. Holding a value at true does not re-trigger.",
+    "suppression": "A signal output that already fired in the current update cycle is suppressed from firing again until the cycle completes, preventing infinite loops within one frame.",
+    "authoring": "Wire signals to signals ('On Click' → 'Do'). Wiring a boolean to a signal input is legal and means 'trigger once on the rising edge'. Wiring a signal to a boolean input is legal and delivers a true-then-false pulse — useful for momentary states, wrong for latching ones."
+  },
+  "castSemantics": {
+    "string→number": "Receiver coerces with JavaScript numeric conversion; non-numeric strings become NaN. Prefer a Number value if the source is numeric to begin with.",
+    "string→boolean": "JavaScript truthiness: empty string is false, any other string (including 'false') is true.",
+    "string→image": "The string is used as an image source: a project asset path or a URL.",
+    "string→color": "The string is used as a color value: a project style-color name or any CSS color string ('#ff0000', 'rgba(0,0,0,0.5)').",
+    "string→enum": "The string must equal one of the input's enum values (the value, not the label); anything else leaves the input unchanged or misconfigured.",
+    "string→textStyle": "The string names a project text style.",
+    "string→dimension": "Parsed as a CSS dimension: a bare number is treated as px; '50%' selects percent units.",
+    "string→array": "The string is passed through unchanged. This cast exists for inputs that accept a named/shared collection id in place of an actual array (legacy Collection semantics). Do not expect JSON parsing.",
+    "string→object": "The string is passed through unchanged. This cast exists for inputs that accept a Model/Object id in place of the object itself; the receiver resolves the id to the shared object.",
+    "boolean→number": "true → 1, false → 0 by JavaScript coercion in the receiver.",
+    "boolean→string": "'true' or 'false'.",
+    "boolean→signal": "Edge trigger: the signal input fires once each time the boolean transitions from false to true. A boolean that is already true when connected does not fire it retroactively.",
+    "number→boolean": "JavaScript truthiness: 0 and NaN are false, everything else true.",
+    "number→string": "Decimal string form of the number.",
+    "number→dimension": "The number is used as a pixel value.",
+    "date→string": "The receiver converts the Date with JavaScript string coercion.",
+    "signal→boolean": "The boolean input receives a true-then-false pulse each time the signal fires. Use for momentary behaviour only; the value does not stay true.",
+    "signal→number": "The number input receives 1 then 0 each firing (boolean pulse coerced numerically). Rarely what you want; prefer States or a Counter.",
+    "cloudfile→string": "The cloud file's URL as a string.",
+    "cloudfile→image": "The cloud file is used as an image source (its URL).",
+    "textStyle→string": "The text style's name as a string.",
+    "collection→array": "Collection (legacy shared-list type) and array are interchangeable: the same underlying list object flows through unchanged.",
+    "array→collection": "Array and collection (legacy shared-list type) are interchangeable: the same underlying list object flows through unchanged.",
+    "object→string": "The runtime serialises with JSON.stringify before the receiver's cast runs (NDA-014, PORT-TYPE-CONTRACT.md). Values with their own toString (e.g. Date) keep that rendering; circular structures deliver '' and raise a warning.",
+    "array→string": "The runtime serialises with JSON.stringify before the receiver's cast runs (NDA-014, PORT-TYPE-CONTRACT.md). Circular structures deliver '' and raise a warning.",
+    "color→string": "The resolved color string — a style name resolves to its value (context.styles.resolveColor) before crossing the wire."
+  },
+  "verifiedPairs": {
+    "$comment": "Sampled pairs asserted by scripts/node-catalog/merge.js against the gate rule + the catalog typecast table on every merge/check. 'permitted' must pass canCastPortTypes; 'rejected' must fail it.",
+    "permitted": [
+      { "from": "boolean", "to": "signal", "note": "rising-edge trigger — the idiomatic 'run when this becomes true'" },
+      { "from": "signal", "to": "boolean", "note": "momentary pulse" },
+      { "from": "string", "to": "number", "note": "numeric coercion in receiver" },
+      { "from": "number", "to": "string" },
+      { "from": "number", "to": "dimension", "note": "pixels" },
+      { "from": "string", "to": "color" },
+      { "from": "string", "to": "enum", "note": "must match an enum value exactly" },
+      { "from": "array", "to": "collection", "note": "legacy alias" },
+      { "from": "collection", "to": "array", "note": "legacy alias" },
+      { "from": "cloudfile", "to": "image" },
+      { "from": "*", "to": "boolean", "note": "untyped output connects anywhere" },
+      { "from": "object", "to": "*", "note": "untyped input accepts anything" },
+      { "from": "object", "to": "object", "note": "same type always connects" },
+      { "from": "object", "to": "string", "note": "NDA-014: JSON on the wire" },
+      { "from": "array", "to": "string", "note": "NDA-014: JSON on the wire" },
+      { "from": "color", "to": "string", "note": "NDA-014: the resolved color string" }
+    ],
+    "rejected": [
+      { "from": "number", "to": "signal", "note": "numbers do not edge-trigger; go via boolean" },
+      { "from": "object", "to": "array" },
+      { "from": "array", "to": "object" },
+      { "from": "image", "to": "string" },
+      { "from": "signal", "to": "string" },
+      { "from": "date", "to": "number", "note": "date only casts to string; use an Expression for timestamps" },
+      { "from": "enum", "to": "string" },
+      { "from": "dimension", "to": "number" },
+      { "from": "string", "to": "signal", "note": "strings never trigger signals; go via boolean" }
+    ]
+  }
+}

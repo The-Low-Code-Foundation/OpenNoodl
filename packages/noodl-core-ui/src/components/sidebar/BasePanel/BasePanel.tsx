@@ -2,7 +2,7 @@ import classNames from 'classnames';
 import React from 'react';
 
 import { ActivityIndicator } from '@noodl-core-ui/components/common/ActivityIndicator';
-import { PanelHeader, PanelHeaderProps } from '@noodl-core-ui/components/sidebar/PanelHeader';
+import { PanelHeader, PanelHeaderProps, usePanelModeSlot } from '@noodl-core-ui/components/sidebar/PanelHeader';
 import { Slot } from '@noodl-core-ui/types/global';
 
 import css from './BasePanel.module.scss';
@@ -16,7 +16,13 @@ export interface BasePanelProps extends PanelHeaderProps {
   isFill?: boolean;
   headerSlot?: Slot;
   footerSlot?: Slot;
-  children: Slot;
+
+  /**
+   * PNL-005: optional. A panel that is still loading has no content yet, and it
+   * must not have to choose between `{null}` boilerplate and rendering no chrome
+   * at all — the second is what `VersionControlPanel` was doing.
+   */
+  children?: Slot;
 
   /** TODO: Only used for testing Copilot */
   UNSAFE_content_style?: React.CSSProperties;
@@ -37,10 +43,16 @@ export function BasePanel({
   UNSAFE_style,
   UNSAFE_content_style
 }: BasePanelProps) {
+  const modeSlot = usePanelModeSlot();
+  const hasHeader = Boolean(title);
+
   return (
-    <div className={classNames(css['Root'], UNSAFE_className)} style={UNSAFE_style}>
-      {Boolean(title) && (
-        <PanelHeader hasNoHeaderDivider={hasNoHeaderDivider} title={title}>
+    <div
+      className={classNames(css['Root'], hasHeader && css['has-panel-header'], UNSAFE_className)}
+      style={UNSAFE_style}
+    >
+      {hasHeader && (
+        <PanelHeader hasNoHeaderDivider={hasNoHeaderDivider} title={title} modeSlot={modeSlot}>
           {headerSlot}
         </PanelHeader>
       )}

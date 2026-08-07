@@ -1,0 +1,139 @@
+{
+  "id": "cloud-create-record-with-upload",
+  "title": "Create a record with an uploaded file attachment",
+  "description": "The create-with-attachment flow: Open File Picker hands the picked browser file to Upload File, which stores it in cloud storage and outputs a `cloudFile`. Cloud File exposes that file's `url`, previewed in an Image (the cloudfile→image cast). When the upload succeeds, Create Record (NewDbModelProperties) writes a new 'Attachment' record whose properties — including the file — are set on the node's schema-generated inputs.",
+  "demonstrates": [
+    "Upload File",
+    "Cloud File",
+    "NewDbModelProperties",
+    "Open File Picker"
+  ],
+  "components": [
+    {
+      "name": "/Attachment Uploader",
+      "nodes": [
+        {
+          "id": "root",
+          "type": "Group",
+          "label": "Uploader",
+          "parameters": {
+            "flexDirection": "column"
+          },
+          "children": [
+            "pick_btn",
+            "preview_image",
+            "saved_text"
+          ]
+        },
+        {
+          "id": "pick_btn",
+          "type": "net.noodl.controls.button",
+          "label": "Pick file",
+          "parent": "root",
+          "parameters": {
+            "label": "Choose a file"
+          }
+        },
+        {
+          "id": "preview_image",
+          "type": "Image",
+          "label": "Preview",
+          "parent": "root"
+        },
+        {
+          "id": "saved_text",
+          "type": "Text",
+          "label": "Saved note",
+          "parent": "root",
+          "parameters": {
+            "text": "Attachment saved."
+          }
+        },
+        {
+          "id": "file_picker",
+          "type": "Open File Picker",
+          "label": "Pick"
+        },
+        {
+          "id": "upload",
+          "type": "Upload File",
+          "label": "Upload to storage"
+        },
+        {
+          "id": "stored_file",
+          "type": "Cloud File",
+          "label": "Uploaded file"
+        },
+        {
+          "id": "create_attachment",
+          "type": "NewDbModelProperties",
+          "label": "Create Attachment record",
+          "parameters": {
+            "collectionName": "Attachment"
+          }
+        },
+        {
+          "id": "saved_gate",
+          "type": "Condition",
+          "label": "Show saved note"
+        }
+      ],
+      "connections": [
+        {
+          "fromId": "pick_btn",
+          "fromProperty": "onClick",
+          "toId": "file_picker",
+          "toProperty": "open"
+        },
+        {
+          "fromId": "file_picker",
+          "fromProperty": "file",
+          "toId": "upload",
+          "toProperty": "file"
+        },
+        {
+          "fromId": "file_picker",
+          "fromProperty": "done",
+          "toId": "upload",
+          "toProperty": "upload"
+        },
+        {
+          "fromId": "upload",
+          "fromProperty": "cloudFile",
+          "toId": "stored_file",
+          "toProperty": "file"
+        },
+        {
+          "fromId": "stored_file",
+          "fromProperty": "url",
+          "toId": "preview_image",
+          "toProperty": "src"
+        },
+        {
+          "fromId": "upload",
+          "fromProperty": "cloudFile",
+          "toId": "create_attachment",
+          "toProperty": "file"
+        },
+        {
+          "fromId": "upload",
+          "fromProperty": "done",
+          "toId": "create_attachment",
+          "toProperty": "store"
+        },
+        {
+          "fromId": "create_attachment",
+          "fromProperty": "done",
+          "toId": "saved_gate",
+          "toProperty": "eval"
+        },
+        {
+          "fromId": "saved_gate",
+          "fromProperty": "result",
+          "toId": "saved_text",
+          "toProperty": "visible"
+        }
+      ]
+    }
+  ]
+}

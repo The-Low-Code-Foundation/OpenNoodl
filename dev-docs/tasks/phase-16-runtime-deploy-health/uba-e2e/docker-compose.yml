@@ -1,0 +1,252 @@
+services:
+  directus:
+    image: directus/directus:11
+    ports:
+      - "8055:8055"
+    environment:
+      KEY: "uba-e2e-key-please-change"
+      SECRET: "uba-e2e-secret-please-change"
+      ADMIN_EMAIL: "admin@example.com"
+      ADMIN_PASSWORD: "directus-admin-pw"
+      DB_CLIENT: "sqlite3"
+      DB_FILENAME: "/directus/database/data.db"
+      WEBSOCKETS_ENABLED: "true"
+      PUBLIC_URL: "http://localhost:8055"
+
+  # ── Supabase-shaped stack (profile: supabase) ────────────────────────────
+  # Supabase's REST layer IS PostgREST, and its /rest/v1/ root serves the same
+  # OpenAPI document PostgREST serves at /. This pair verifies the Supabase
+  # schema parser against a real spec (auth headers differ; parser input is
+  # identical). Start with: docker compose --profile supabase up -d
+  supabase-db:
+    profiles: ["supabase"]
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_PASSWORD: "supabase-e2e-pw"
+      POSTGRES_DB: "app"
+    volumes:
+      - ./supabase-seed.sql:/docker-entrypoint-initdb.d/seed.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d app"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+
+  supabase-rest:
+    profiles: ["supabase"]
+    image: postgrest/postgrest:v12.2.3
+    ports:
+      - "8056:3000"
+    environment:
+      PGRST_DB_URI: "postgres://postgres:supabase-e2e-pw@supabase-db:5432/app"
+      PGRST_DB_SCHEMA: "public"
+      PGRST_DB_ANON_ROLE: "web_anon"
+      PGRST_OPENAPI_MODE: "ignore-privileges"
+    depends_on:
+      supabase-db:
+        condition: service_healthy
+
+  # ── Supabase STORAGE (profile: supabase) — BCN-007 ───────────────────────
+  #
+  # ⚠️ **Supabase Storage had never been in this rig**, and two tasks in a row
+  # noticed. BCN-006 found every `/auth/v1/*` was a plain 404 from PostgREST and
+  # correctly refused to flip its Supabase auth cells, moving four to
+  # `conditional`. BCN-007 found the same of every `/storage/v1/*` — the probe
+  # output is in `BCN-007-FILES-PROBE-OUTPUT.txt` §2 — and rather than implement
+  # a file adapter from documentation and flip five cells, added this.
+  #
+  # Storage is a **separate service from PostgREST**, which is the spec's own
+  # trap: *"a file 403 will look like a data 403 and have a different cause"*. In
+  # a real Supabase project both sit behind one origin; here they are two ports,
+  # which is why the live driver points a second handle at 8112.
+  #
+  #   docker compose --profile supabase up -d
+  #   node bcn-007-supabase-storage-probe.mjs
+  #
+  # The keys are HS256 JWTs signed with JWT_SECRET below, `{"role":"anon"}` and
+  # `{"role":"service_role"}`. They are development fixtures for a loopback
+  # container and are checked in for the same reason every other password in
+  # this file is.
+  supabase-storage:
+    profiles: ["supabase"]
+    image: supabase/storage-api:v1.11.13
+    ports:
+      - "8112:5000"
+    environment:
+      # ⚠️ `JWT_SECRET` is the one the image actually reads. The first attempt
+      # set only `AUTH_JWT_SECRET`/`PGRST_JWT_SECRET` — both documented names —
+      # and every request answered `403 "invalid signature"`, which reads
+      # exactly like a wrong key rather than a wrong env var. All three are set.
+      JWT_SECRET: "bcn007-supabase-storage-jwt-secret-at-least-32-chars"
+      AUTH_JWT_SECRET: "bcn007-supabase-storage-jwt-secret-at-least-32-chars"
+      PGRST_JWT_SECRET: "bcn007-supabase-storage-jwt-secret-at-least-32-chars"
+      ANON_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzg1NTcwNDM1LCJleHAiOjE4MTcxMDY0MzV9.hUQcMWJhqUohRH-QETm6PaOV_BfWrLe_ilQBtd_b8eg"
+      SERVICE_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoic2VydmljZV9yb2xlIiwiaXNzIjoic3VwYWJhc2UiLCJpYXQiOjE3ODU1NzA0MzUsImV4cCI6MTgxNzEwNjQzNX0.Bhz31eOF0V-CoEhYeFL_lF-jhxg42FPFO6pa6RjgaGY"
+      DATABASE_URL: "postgres://postgres:supabase-e2e-pw@supabase-db:5432/app"
+      # storage-api creates its own `storage` schema and roles on first run. It
+      # touches nothing in `public`, so the BCN-001/003/004/005 fixtures in this
+      # database are unaffected.
+      DB_INSTALL_ROLES: "true"
+      POSTGREST_URL: "http://supabase-rest:3000"
+      STORAGE_BACKEND: "file"
+      FILE_STORAGE_BACKEND_PATH: "/var/lib/storage"
+      FILE_SIZE_LIMIT: "52428800"
+      TENANT_ID: "bcn007"
+      REGION: "local"
+      GLOBAL_S3_BUCKET: "bcn007"
+      # `sharp` is an optional dependency in our own subsystem and image
+      # transformation is explicitly out of BCN-007's scope; off here so the
+      # service does not need an imgproxy sidecar to start.
+      ENABLE_IMAGE_TRANSFORMATION: "false"
+    depends_on:
+      supabase-db:
+        condition: service_healthy
+
+  # ── Aggregate-capability probe stack (profile: aggregate) ────────────────
+  # BCN-001 §5.3 left two descriptor cells unverified because they are facts
+  # about other people's products: can PocketBase and Supabase aggregate?
+  #
+  # For Supabase the question is really "what does PostgREST do", and the
+  # honest answer needs BOTH configurations of the same server against the
+  # same rows — hence two postgrest containers on one database. Reading the
+  # docs is not enough: the db-aggregates-enabled default has moved.
+  #
+  # Kept separate from the `supabase` profile above so RUN-003's recorded
+  # SUPABASE-CONTACT-OUTPUT.txt stays reproducible.
+  #
+  #   docker compose --profile aggregate up -d
+  #   node bcn-001-aggregate-probe.mjs
+  #   docker compose --profile aggregate down -v
+  agg-db:
+    profiles: ["aggregate"]
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_PASSWORD: "agg-e2e-pw"
+      POSTGRES_DB: "app"
+    volumes:
+      - ./bcn-001-agg-seed.sql:/docker-entrypoint-initdb.d/seed.sql:ro
+      # BCN-003's equivalence corpus. Runs after the file above (name order) and
+      # touches nothing it created, so BCN-001's recorded output is unaffected.
+      - ./bcn-003-people-seed.sql:/docker-entrypoint-initdb.d/zz-bcn-003-people.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d app"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+
+  # Stock configuration — nothing set beyond what the supabase-shaped stack
+  # above sets. Whatever this one does IS the PostgREST 12.2 default.
+  agg-rest-default:
+    profiles: ["aggregate"]
+    image: postgrest/postgrest:v12.2.3
+    ports:
+      - "8057:3000"
+    environment:
+      PGRST_DB_URI: "postgres://postgres:agg-e2e-pw@agg-db:5432/app"
+      PGRST_DB_SCHEMA: "public"
+      PGRST_DB_ANON_ROLE: "web_anon"
+      PGRST_OPENAPI_MODE: "ignore-privileges"
+    depends_on:
+      agg-db:
+        condition: service_healthy
+
+  # Identical, plus the one setting. The delta between 8057 and 8058 is the
+  # entire evidence for marking Supabase aggregate `conditional`.
+  agg-rest-enabled:
+    profiles: ["aggregate"]
+    image: postgrest/postgrest:v12.2.3
+    ports:
+      - "8058:3000"
+    environment:
+      PGRST_DB_URI: "postgres://postgres:agg-e2e-pw@agg-db:5432/app"
+      PGRST_DB_SCHEMA: "public"
+      PGRST_DB_ANON_ROLE: "web_anon"
+      PGRST_OPENAPI_MODE: "ignore-privileges"
+      PGRST_DB_AGGREGATES_ENABLED: "true"
+    depends_on:
+      agg-db:
+        condition: service_healthy
+
+  # PocketBase. No seeding hook exists in the image, so the probe creates its
+  # own collection and rows over the API after authenticating as superuser.
+  pocketbase:
+    profiles: ["aggregate"]
+    image: ghcr.io/muchobien/pocketbase:0.30.0
+    # 8090 is PocketBase's own default and is often already taken by a local
+    # instance; 8091 keeps this rig out of its way.
+    ports:
+      - "8091:8090"
+    # PB_ADMIN_* are the image's entrypoint variables, not PocketBase's own —
+    # it shells out to `pocketbase superuser upsert` before serving. PocketBase
+    # itself has no env-var path to a first superuser; without this the only
+    # route is the one-time installer link printed in the container log.
+    environment:
+      PB_ADMIN_EMAIL: "admin@example.com"
+      PB_ADMIN_PASSWORD: "pocketbase-admin-pw"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8090/api/health"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+
+  # ── Upstream Parse Server (profile: parse) ───────────────────────────────
+  # BCN-001 shipped every `parse` descriptor cell reading "documented, not
+  # probed", because no Parse Server existed in this repo or this rig — which
+  # also made BCN-002's success criterion ("live pass against an external Parse
+  # server") unmeetable as written. Decision 2026-07-31: stand one up.
+  #
+  # This is the ONLY thing in the rig that can tell our backend from the wire it
+  # speaks. `nodegx-backend` answers the same Parse routes on the same headers,
+  # so a green pass against it proves adapter shape and nothing about upstream
+  # Parse — the safety net and the trap are the same object. The two exist as
+  # separate descriptor columns precisely because BCN-001 found them differing
+  # on `/aggregate`, and this service is what turns that from a reading of the
+  # Parse docs into a measurement.
+  #
+  #   docker compose --profile parse up -d
+  #   node bcn-002-parse-wire-probe.mjs
+  #   docker compose --profile parse down -v
+  parse-db:
+    profiles: ["parse"]
+    image: mongo:7
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping')"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  parse:
+    profiles: ["parse"]
+    # Pinned, not `latest`: the point of this service is to be a fixed thing the
+    # descriptor's evidence strings can name. Parse Server 7 is the current
+    # major at the time of writing.
+    image: parseplatform/parse-server:7.3.0
+    # 1337 is Parse's own default and is often already taken; 8092 keeps this
+    # rig out of its way and beside the other probe ports.
+    ports:
+      - "8092:1337"
+    environment:
+      PARSE_SERVER_APPLICATION_ID: "uba-e2e-app"
+      PARSE_SERVER_MASTER_KEY: "uba-e2e-master-key"
+      # Parse Server restricts master-key use to loopback by default, and a
+      # request published through Docker arrives from the bridge gateway — so
+      # without this every master-key probe 403s for a reason that has nothing
+      # to do with the route being probed. Opened so that a refusal is evidence
+      # about the route. (The default is itself a finding, and a good one: it is
+      # a second reason a browser can never reach a master-key-only route.)
+      PARSE_SERVER_MASTER_KEY_IPS: "0.0.0.0/0,::/0"
+      PARSE_SERVER_DATABASE_URI: "mongodb://parse-db:27017/dev"
+      PARSE_SERVER_MOUNT_PATH: "/parse"
+      # Off by default since Parse Server 5, and the probe wants to create its
+      # own classes without the master key to see what an ordinary client can
+      # do. Turned on here so that "an ordinary client cannot X" is a finding
+      # about X rather than about this setting.
+      PARSE_SERVER_ALLOW_CLIENT_CLASS_CREATION: "true"
+      # Parse Server disables ALL file upload by default — public, anonymous and
+      # authenticated alike. That default is itself a descriptor fact, so the
+      # probe checks the disabled case first and this only opens the public path
+      # afterwards.
+      PARSE_SERVER_FILE_UPLOAD_OPTIONS: '{"enableForPublic":true,"enableForAnonymousUser":true,"enableForAuthenticatedUser":true}'
+    depends_on:
+      parse-db:
+        condition: service_healthy

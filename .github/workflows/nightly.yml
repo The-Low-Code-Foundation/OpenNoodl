@@ -1,0 +1,80 @@
+name: Nightly packaged build
+
+# Unsigned packaged builds for all three platforms, so packaging breakage
+# surfaces within a day instead of at release time. Signing and publishing
+# arrive with REV-007; this job only proves electron-builder still produces an
+# installer.
+#
+# Deliberately not a PR gate: it wipes node_modules and reinstalls per target
+# architecture, which is far too slow (and too expensive on macOS/Windows
+# runners) to sit in front of every merge.
+
+on:
+  schedule:
+    # 03:00 UTC daily.
+    - cron: '0 3 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: nightly
+  cancel-in-progress: true
+
+jobs:
+  package:
+    name: ${{ matrix.platform }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 90
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            platform: linux-x64
+          - os: windows-latest
+            platform: win32-x64
+          - os: macos-latest
+            platform: darwin-arm64
+          # macos-13 was retired by GitHub (Dec 2025); macos-15-intel is the
+          # supported Intel image (DEBT-007).
+          - os: macos-15-intel
+            platform: darwin-x64
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # electron-builder shells out to python on some paths.
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - uses: ./.github/actions/setup
+
+      - name: Build viewer bundles
+        run: npm run build:editor:_viewer
+        env:
+          WORKSPACE_PATH: .
+
+      # See release.yml: this path bypasses scripts/build-editor.ts, and a
+      # missing extraResources source is only a warning to electron-builder.
+      # (MCP-002)
+      - name: Build packaged sidecars
+        run: npm run build:sidecars
+
+      - name: Build and package the editor
+        run: npm run build:editor:_editor
+        env:
+          WORKSPACE_PATH: .
+          TARGET_PLATFORM: ${{ matrix.platform }}
+          DISABLE_SIGNING: true
+
+      - name: Collect installers
+        run: npm run build:editor:pack
+
+      - name: Upload installers
+        uses: actions/upload-artifact@v4
+        with:
+          name: opennoodl-${{ matrix.platform }}-${{ github.sha }}
+          path: publish
+          retention-days: 7
+          if-no-files-found: error

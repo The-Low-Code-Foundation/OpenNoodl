@@ -1,0 +1,48 @@
+{
+  "id": "ctl-settings-form",
+  "title": "Settings form: the standard input controls bound to values",
+  "description": "One of each core control: Text Input's live string comes out of `onTextChanged`, Checkbox exposes `checked` (level) plus `onChange` (edge), Dropdown (net.noodl.controls.options) takes an items list and emits the selected `value`, Slider (net.noodl.controls.range) emits a numeric `value` between `min`/`max`, and a Radio Button Group reports the `value` of whichever child Radio Button is selected. Values flow into a live summary — no submit step needed for value binding.",
+  "demonstrates": ["net.noodl.controls.textinput", "net.noodl.controls.checkbox", "net.noodl.controls.options", "net.noodl.controls.range", "net.noodl.controls.radiobutton", "Radio Button Group"],
+  "components": [
+    {
+      "name": "/Settings Form",
+      "nodes": [
+        {
+          "id": "form_root",
+          "type": "Group",
+          "label": "Form",
+          "parameters": { "flexDirection": "column" },
+          "children": ["name_input", "notify_checkbox", "theme_dropdown", "volume_slider", "plan_group", "summary_text"]
+        },
+        { "id": "name_input", "type": "net.noodl.controls.textinput", "label": "Display name", "parent": "form_root", "parameters": { "label": "Display name", "placeholder": "Your name" } },
+        { "id": "notify_checkbox", "type": "net.noodl.controls.checkbox", "label": "Notifications", "parent": "form_root" },
+        { "id": "theme_dropdown", "type": "net.noodl.controls.options", "label": "Theme", "parent": "form_root" },
+        { "id": "volume_slider", "type": "net.noodl.controls.range", "label": "Volume", "parent": "form_root", "parameters": { "min": 0, "max": 100, "step": 1 } },
+        {
+          "id": "plan_group",
+          "type": "Radio Button Group",
+          "label": "Plan choice",
+          "parent": "form_root",
+          "parameters": { "flexDirection": "row" },
+          "children": ["plan_free", "plan_pro"]
+        },
+        { "id": "plan_free", "type": "net.noodl.controls.radiobutton", "label": "Free plan", "parent": "plan_group" },
+        { "id": "plan_pro", "type": "net.noodl.controls.radiobutton", "label": "Pro plan", "parent": "plan_group" },
+        { "id": "summary_text", "type": "Text", "label": "Summary", "parent": "form_root" },
+        {
+          "id": "summary_fmt",
+          "type": "String Format",
+          "label": "Summary line",
+          "parameters": { "format": "{name} · {plan} · volume {volume}" }
+        }
+      ],
+      "connections": [
+        { "fromId": "name_input", "fromProperty": "onTextChanged", "toId": "summary_fmt", "toProperty": "name" },
+        { "fromId": "plan_group", "fromProperty": "value", "toId": "summary_fmt", "toProperty": "plan" },
+        { "fromId": "volume_slider", "fromProperty": "value", "toId": "summary_fmt", "toProperty": "volume" },
+        { "fromId": "summary_fmt", "fromProperty": "formatted", "toId": "summary_text", "toProperty": "text" },
+        { "fromId": "notify_checkbox", "fromProperty": "checked", "toId": "theme_dropdown", "toProperty": "enabled" }
+      ]
+    }
+  ]
+}

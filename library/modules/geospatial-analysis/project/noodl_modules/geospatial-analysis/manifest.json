@@ -1,0 +1,5 @@
+{
+  "name": "geospatial-analysis",
+  "main": "index.js",
+  "dependencies": []
+}

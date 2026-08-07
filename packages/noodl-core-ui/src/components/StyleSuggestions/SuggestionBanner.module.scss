@@ -1,0 +1,93 @@
+/* PAR-002: token-hint card restyled to the panel's section rhythm — bg-2
+   card, hairline + accent edge, radius 6, aligned to the 16px gutter. */
+.Banner {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-2);
+  padding: var(--spacing-2) var(--spacing-3);
+  background-color: var(--theme-color-bg-2);
+  border: 1px solid var(--theme-color-border-default);
+  border-left: 3px solid var(--theme-color-primary);
+  border-radius: var(--radius-md, 6px);
+  margin: 0 16px var(--spacing-2);
+}
+
+.Indicator {
+  flex-shrink: 0;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: var(--theme-color-primary);
+  margin-top: 5px;
+}
+
+.Body {
+  flex: 1;
+  min-width: 0;
+}
+
+.Message {
+  margin: 0 0 6px;
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--theme-color-fg-default);
+}
+
+.Actions {
+  display: flex;
+  gap: var(--spacing-1);
+}
+
+.AcceptButton {
+  padding: 3px 8px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--theme-color-on-primary);
+  background-color: var(--theme-color-primary);
+  border: none;
+  border-radius: var(--radius-sm, 3px);
+  cursor: pointer;
+  transition: opacity 0.15s;
+
+  &:hover {
+    opacity: 0.85;
+  }
+}
+
+.DismissButton {
+  padding: 3px 8px;
+  font-size: 11px;
+  color: var(--theme-color-fg-default-shy);
+  background: transparent;
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: var(--radius-sm, 3px);
+  cursor: pointer;
+  transition: color 0.15s;
+
+  &:hover {
+    color: var(--theme-color-fg-default);
+  }
+}
+
+.CloseButton {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  line-height: 1;
+  color: var(--theme-color-fg-default-shy);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  margin-top: 1px;
+  border-radius: 2px;
+
+  &:hover {
+    color: var(--theme-color-fg-default);
+    background-color: var(--theme-color-bg-2);
+  }
+}

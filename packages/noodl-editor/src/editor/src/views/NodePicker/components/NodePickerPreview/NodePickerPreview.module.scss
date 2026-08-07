@@ -1,0 +1,228 @@
+@use '../../styles/tints' as tints;
+
+.Root {
+  @include tints.tints;
+
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  width: 292px;
+  overflow: hidden;
+  border-left: 1px solid var(--theme-color-border-default);
+  background-color: var(--theme-color-bg-2);
+}
+
+.Head {
+  flex: none;
+  padding: 16px 16px 12px;
+  border-bottom: 1px solid var(--theme-color-border-default);
+}
+
+.HeadRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 9px;
+}
+
+.Glyph {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 30px;
+  height: 30px;
+  border-radius: var(--radius-lg);
+  background: color-mix(in srgb, var(--cat) 14%, transparent);
+  color: var(--cat);
+  font-size: 17px;
+}
+
+.GlyphLetter {
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
+  line-height: 1;
+}
+
+.Name {
+  margin: 0;
+  overflow: hidden;
+  color: var(--theme-color-fg-highlight);
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  text-overflow: ellipsis;
+}
+
+.Chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  width: fit-content;
+  max-width: 100%;
+  overflow: hidden;
+  padding: 3px 7px;
+  border-radius: var(--radius-5);
+  background: color-mix(in srgb, var(--cat) 12%, transparent);
+  color: var(--cat);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.04em;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.Body {
+  flex: 1;
+  padding: 14px 16px;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+.Docs {
+  margin-bottom: 12px;
+  color: var(--theme-color-fg-default);
+  font-size: var(--font-size-base);
+  line-height: 1.6;
+
+  // The docs HTML is authored for a full-width page; keep it inside the column.
+  :global(img),
+  :global(video),
+  :global(table) {
+    max-width: 100%;
+  }
+
+  :global(pre) {
+    overflow-x: auto;
+  }
+}
+
+.Placeholder {
+  margin: 0 0 12px;
+  color: var(--theme-color-fg-muted);
+  font-size: var(--font-size-base);
+  line-height: 1.6;
+}
+
+.Ports {
+  flex: none;
+  max-height: 45%;
+  padding: 12px 16px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  border-top: 1px solid var(--theme-color-border-default);
+}
+
+.SubTitle {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin: 0 0 8px;
+  color: var(--theme-color-fg-muted);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.SubCount {
+  color: var(--theme-color-fg-muted);
+  font-family: var(--font-family-code);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-regular);
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.Port {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+  color: var(--theme-color-fg-default);
+  font-size: var(--font-size-sm);
+}
+
+/** Pin colours match the canvas wires (UIX-005), not the mock's category tint. */
+.Pin {
+  flex: none;
+  width: 7px;
+  height: 7px;
+
+  &--is-signal {
+    border-radius: var(--radius-sm);
+    background-color: var(--theme-color-wire-signal);
+  }
+
+  &--is-data {
+    border-radius: 50%;
+    background-color: var(--theme-color-wire-data);
+  }
+}
+
+.PortName {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--theme-color-fg-highlight);
+  font-family: var(--font-family-code);
+  font-size: var(--font-size-sm);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.PortDirection {
+  flex: none;
+  color: var(--theme-color-fg-muted);
+  font-size: var(--font-size-xs);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.Foot {
+  flex: none;
+  padding: 12px 16px;
+  border-top: 1px solid var(--theme-color-border-default);
+}
+
+.DocsButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  width: 100%;
+  padding: 7px 13px;
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: var(--radius-7);
+  background-color: var(--theme-color-bg-1);
+  color: var(--theme-color-fg-default);
+  font-family: inherit;
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+
+  &:hover {
+    border-color: var(--theme-color-border-strong);
+    color: var(--theme-color-fg-highlight);
+  }
+}
+
+.Empty {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 24px;
+  color: var(--theme-color-fg-muted);
+  font-size: 24px;
+  text-align: center;
+
+  p {
+    max-width: 26ch;
+    margin: 0;
+    font-size: var(--font-size-base);
+    line-height: 1.6;
+  }
+}

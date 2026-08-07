@@ -1,0 +1,24 @@
+{
+  "typeName": "Page Stack",
+  "summary": "Component Stack: push/pop navigation container — pages stack on top of each other with transitions, ideal for wizards and drill-in flows.",
+  "description": "The Component Stack is the second navigation model, alongside Router. It holds a configured set of pages (components) and shows one at a time, but keeps history as a stack: Push Component To Stack adds a page on top (with a transition), Pop Component Stack returns to the one beneath, optionally handing back result values. `stackDepth` and `topPageName` expose the current state; `reset` unwinds to the start page. Unlike Router it is not URL-driven by default (`useRoutes` opts pages into routing).",
+  "whenToUse": "Flows with a natural back relationship: wizards, mobile-style master→detail drill-ins, modal sequences that return results. For top-level app sections addressed by URL, use Router + Page.",
+  "ports": {
+    "pages": "The stack's page components and the start page (editor-configured).",
+    "reset": "Signal; unwinds the stack to its start page.",
+    "done": "Signal; the stack was emptied and the start component rebuilt.",
+    "failure": "Signal; the stack has no components configured, or its start component does not resolve. ⚠️ Reset is also called on mount, and that call reports nothing.",
+    "completed": "Signal; fires after every Reset the author triggered, whatever the outcome. There is no Unchanged port: reset always tears the stack down and rebuilds it.",
+    "topPageName": "String level naming the currently visible page.",
+    "stackDepth": "Number level; 1 means at the root, >1 means back is meaningful."
+  },
+  "runtimeBehavior": "Runtime-determined ports follow the configured pages: page components' inputs surface where relevant, and the pages list itself is a proplist the editor manages. Navigation nodes reference the stack by its `name`.",
+  "examples": ["nav-page-stack-push-pop"],
+  "patterns": [
+    "`stackDepth` → an Expression (`depth > 1`) → the back button's `visible`: back affordance only when back exists."
+  ],
+  "antiPatterns": [
+    "Using a stack for top-level sections users expect to deep-link — that is Router territory."
+  ],
+  "relatedNodes": ["PageStackNavigate", "PageStackNavigateBack", "Router", "NavigationShowPopup"]
+}

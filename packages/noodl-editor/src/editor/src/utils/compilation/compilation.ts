@@ -1,23 +1,21 @@
 import { sortBy } from 'underscore';
 import { filesystem } from '@noodl/platform';
 
-import { Environment } from '@noodl-models/CloudServices';
-import { getGitStats } from '@noodl-models/CloudServices/GitStats';
 import { ProjectModel } from '@noodl-models/projectmodel';
 import { HtmlProcessorParameters } from '@noodl-utils/compilation/build/processors/html-processor';
+import { getGitStats } from '@noodl-utils/compilation/GitStats';
 import { SitemapBuildScript } from '@noodl-utils/compilation/passes/sitemap';
 import { NodeGraphTraverser } from '@noodl-utils/node-graph-traverser';
 
 import Model from '../../../../shared/model';
-import { BuildScript, CoreContext, NotifyType } from './build-context';
-import { createIndexPage, deployToFolder } from './build/deployer';
+import { BuildScript, CoreContext, DeployEnvironment, NotifyType } from './build-context';
+import { createIndexPage, deployToFolder, DeployToFolderResult } from './build/deployer';
 import { getIndexedPages } from './context/pages';
-import { deployCloudFunctionBuildScript } from './passes/deploy-cloud-functions';
 
 export interface DeployOptions {
   /** Default: true */
   useBundles?: boolean;
-  environment: Environment | undefined;
+  environment: DeployEnvironment | undefined;
   runtimeType?: string;
 }
 
@@ -73,11 +71,10 @@ export class Compilation {
     if (!project) throw 'ProjectModel is not defined';
 
     // Add our build scripts
-    this.addBuildScript(deployCloudFunctionBuildScript);
     this.addBuildScript(SitemapBuildScript);
   }
 
-  private createCoreContext(environment: Environment): CoreContext {
+  private createCoreContext(environment: DeployEnvironment): CoreContext {
     let projectClone = this.project;
 
     if (this.options.cloneProject) {
@@ -177,7 +174,7 @@ export class Compilation {
    * @param options
    * @returns
    */
-  deployToFolder(filePath: string, options: DeployOptions): Promise<void> {
+  deployToFolder(filePath: string, options: DeployOptions): Promise<DeployToFolderResult> {
     return this.deployToFolderWithContext(filePath, options, this.createCoreContext(options.environment));
   }
 
@@ -188,14 +185,25 @@ export class Compilation {
    * @param options
    * @param coreContext
    */
-  private async deployToFolderWithContext(filePath: string, options: DeployOptions, coreContext: CoreContext) {
+  private async deployToFolderWithContext(
+    filePath: string,
+    options: DeployOptions,
+    coreContext: CoreContext
+  ): Promise<DeployToFolderResult> {
     await this.loadProjectBuildScripts();
 
     const projectSettings = this.project.getSettings();
 
+    // RUN-002: an SSR deploy is layered — the Node server at the root, the full
+    // browser app in public/. Build scripts (sitemap, user scripts) target the
+    // web root, which for SSR is public/ (that's what express.static serves and
+    // what the SSG build copies into its output).
+    const isSSR = options.runtimeType === 'ssr';
+    const webRootPath = isSSR ? filesystem.join(filePath, 'public') : filePath;
+
     const common = {
       ...coreContext,
-      outputPath: filePath
+      outputPath: webRootPath
     };
 
     await this.callBuildScripts('onPreBuild', common);
@@ -213,7 +221,10 @@ export class Compilation {
     }
 
     try {
-      await deployToFolder({
+      // DEP-008: the copy report of the *root* deploy is the one the user sees.
+      // For SSR the second pass copies the same project folder through the same
+      // rules into public/, so its report is identical by construction.
+      const result = await deployToFolder({
         project: coreContext.project,
         direntry: filePath,
         environment: options.environment,
@@ -222,7 +233,23 @@ export class Compilation {
         envVariables
       });
 
+      if (isSSR) {
+        // The browser layer: a complete CSR deploy the server hydrates (and the
+        // SSG build copies). The server loads bundles from the deploy root, the
+        // browser from public/ — both copies are required (see static/ssr docs).
+        await deployToFolder({
+          project: coreContext.project,
+          direntry: webRootPath,
+          environment: options.environment,
+          baseUrl: coreContext.getHostname(),
+          runtimeType: 'deploy',
+          envVariables
+        });
+      }
+
       await this.callBuildScripts('onPostBuild', { ...common, status: 'success' });
+
+      return result;
     } catch (error) {
       await this.callBuildScripts('onPostBuild', { ...common, status: 'failure' });
       throw error;

@@ -1,0 +1,209 @@
+import type { StyleObject } from './react-component-node';
+
+/** How a node's parent lays its children out. `'none'` means absolute positioning. */
+export type ParentLayout = 'none' | 'row' | 'column' | (string & {});
+
+/** The props `size`/`align` read. These arrive from the node's React props. */
+export interface LayoutProps {
+  parentLayout?: ParentLayout;
+  sizeMode?: 'explicit' | 'contentHeight' | 'contentWidth' | (string & {});
+  width?: string | number;
+  height?: string | number;
+  /** Set when the width is pinned, which suppresses percentage → flex-grow. */
+  fixedWidth?: boolean;
+  fixedHeight?: boolean;
+  alignX?: 'left' | 'center' | 'right';
+  alignY?: 'top' | 'center' | 'bottom';
+  [prop: string]: any;
+}
+
+function isPercentage(size: unknown): boolean {
+  return Boolean(size) && typeof size === 'string' && size[size.length - 1] === '%';
+}
+
+function getPercentage(size: string): number {
+  return Number(size.slice(0, -1));
+}
+
+function getSizeWithMargins(size: string, startMargin?: string, endMargin?: string): string {
+  if (!startMargin && !endMargin) {
+    return size;
+  }
+
+  let css = `calc(${size}`;
+  if (startMargin) {
+    css += ` - ${startMargin}`;
+  }
+  if (endMargin) {
+    css += ` - ${endMargin}`;
+  }
+  css += ')';
+
+  return css;
+}
+
+/**
+ * Translates Noodl's size/alignment model onto CSS, mutating `style` in place.
+ *
+ * The central trick is that a percentage size means two different things depending
+ * on axis: along the parent's flex direction it becomes `flexGrow` (so siblings
+ * share the space proportionally), and across it, it stays a percentage but has the
+ * node's own margins subtracted via `calc()` — otherwise margins would push a
+ * 100%-wide node out of its parent.
+ */
+const Layout = {
+  size(style: StyleObject, props: LayoutProps): void {
+    if (props.parentLayout === 'none') {
+      style.position = 'absolute';
+    }
+
+    if (props.sizeMode === 'explicit') {
+      style.width = props.width;
+      style.height = props.height;
+    } else if (props.sizeMode === 'contentHeight') {
+      style.width = props.width;
+    } else if (props.sizeMode === 'contentWidth') {
+      style.height = props.height;
+    } else {
+      // `contentSize` — both axes come from the content, so neither is assigned.
+      //
+      // Anything else landing here is a value the enum does not define, and it
+      // is sized from content too. It used to be *unset* that landed here, which
+      // silently left the node at whatever `defaultCss` had given it; the port
+      // now restores its declared default when a connection abstains and reports
+      // a value that is not a mode at all (`addDimensions`, NDA-016). Reporting
+      // from here instead would repeat on every render of every visual node.
+    }
+
+    // Noodl nodes never shrink below their stated size unless they are sharing a
+    // row or column with siblings — the percentage paths below opt back in to
+    // shrinking when they convert a percentage to flex-grow. Without this, a
+    // node given an explicit width would silently lose it to a crowded parent.
+    style.flexShrink = 0;
+
+    if (props.parentLayout === 'row' && style.position === 'relative') {
+      if (isPercentage(style.width) && !props.fixedWidth) {
+        style.flexGrow = getPercentage(style.width);
+        style.flexShrink = 1;
+      }
+
+      if (isPercentage(style.height) && !props.fixedHeight) {
+        style.height = getSizeWithMargins(style.height, style.marginTop, style.marginBottom);
+      }
+    } else if (props.parentLayout === 'column' && style.position === 'relative') {
+      if (isPercentage(style.width) && !props.fixedWidth) {
+        style.width = getSizeWithMargins(style.width, style.marginLeft, style.marginRight);
+      }
+
+      if (isPercentage(style.height) && !props.fixedHeight) {
+        style.flexGrow = getPercentage(style.height);
+        style.flexShrink = 1;
+      }
+    } else if (style.position !== 'relative') {
+      if (isPercentage(style.width)) {
+        style.width = getSizeWithMargins(style.width, style.marginLeft, style.marginRight);
+      }
+      if (isPercentage(style.height)) {
+        style.height = getSizeWithMargins(style.height, style.marginTop, style.marginBottom);
+      }
+    }
+  },
+
+  align(style: StyleObject, props: LayoutProps): void {
+    const { position } = style;
+    let { alignX, alignY } = props;
+
+    //Elements with position absolute get's a default alignment.
+    //This keeps backward compability, and makes sense for most use cases of
+    //absolutely positioned elements
+    if (position !== 'relative') {
+      alignX = alignX || 'left';
+      alignY = alignY || 'top';
+    }
+
+    let transform = '';
+
+    const parentFlexDirection = props.parentLayout || 'column';
+    if (alignX) {
+      if (position !== 'relative') {
+        if (alignX === 'left') {
+          style.left = 0;
+        } else if (alignX === 'center') {
+          style.left = '50%';
+          transform += 'translateX(-50%) ';
+        } else {
+          style.right = 0;
+        }
+      } else if (position === 'relative' && parentFlexDirection === 'row') {
+        switch (alignX) {
+          case 'left':
+            style.marginRight = style.marginRight ? style.marginRight : 'auto';
+            break;
+          case 'center':
+            style.marginRight = style.marginRight ? style.marginRight : 'auto';
+            style.marginLeft = style.marginLeft ? style.marginLeft : 'auto';
+            break;
+          case 'right':
+            style.marginLeft = style.marginLeft ? style.marginLeft : 'auto';
+            break;
+        }
+      } else if (position === 'relative' && parentFlexDirection === 'column') {
+        switch (alignX) {
+          case 'left':
+            style.alignSelf = 'flex-start';
+            break;
+          case 'center':
+            style.alignSelf = 'center';
+            break;
+          case 'right':
+            style.alignSelf = 'flex-end';
+            break;
+        }
+      }
+    }
+
+    if (alignY) {
+      if (position !== 'relative') {
+        if (alignY === 'top') {
+          style.top = 0;
+        } else if (alignY === 'center') {
+          style.top = '50%';
+          transform += 'translateY(-50%)';
+        } else {
+          style.bottom = 0;
+        }
+      } else if (position === 'relative' && parentFlexDirection === 'column') {
+        switch (alignY) {
+          case 'top':
+            style.marginBottom = style.marginBottom ? style.marginBottom : 'auto';
+            break;
+          case 'center':
+            style.marginTop = style.marginTop ? style.marginTop : 'auto';
+            style.marginBottom = style.marginBottom ? style.marginBottom : 'auto';
+            break;
+          case 'bottom':
+            style.marginTop = style.marginTop ? style.marginTop : 'auto';
+            break;
+        }
+      } else if (position === 'relative' && parentFlexDirection === 'row') {
+        switch (alignY) {
+          case 'top':
+            style.alignSelf = 'flex-start';
+            break;
+          case 'center':
+            style.alignSelf = 'center';
+            break;
+          case 'bottom':
+            style.alignSelf = 'flex-end';
+            break;
+        }
+      }
+    }
+
+    if (transform) {
+      style.transform = transform + (style.transform || '');
+    }
+  }
+};
+
+export default Layout;

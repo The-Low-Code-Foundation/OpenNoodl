@@ -1,9 +1,9 @@
 import React from 'react';
-import { ComponentStory, ComponentMeta } from '@storybook/react';
+import type { Meta, StoryObj } from '@storybook/react';
 
 import { EditorNode } from './EditorNode';
 
-export default {
+const meta: Meta<typeof EditorNode> = {
   title: 'Common/EditorNode',
   component: EditorNode,
   argTypes: {
@@ -25,9 +25,13 @@ export default {
       }
     }
   }
-} as ComponentMeta<typeof EditorNode>;
+};
 
-const Template: ComponentStory<typeof EditorNode> = (args) => <EditorNode {...args} />;
+export default meta;
+type Story = StoryObj<typeof meta>;
 
-export const Common = Template.bind({});
-Common.args = {};
+
+
+export const Common: Story = {
+  args: {},
+};

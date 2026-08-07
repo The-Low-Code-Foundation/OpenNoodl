@@ -2,7 +2,6 @@ import BScroll from '@better-scroll/core';
 import MouseWheel from '@better-scroll/mouse-wheel';
 import ScrollBar from '@better-scroll/scroll-bar';
 import React from 'react';
-import ReactDOM from 'react-dom';
 
 import Layout from '../../../layout';
 import PointerListeners from '../../../pointerlisteners';
@@ -17,7 +16,7 @@ BScroll.use(MouseWheel);
 BScroll.use(Slide);
 
 export interface GroupProps extends Noodl.ReactProps {
-  as?: keyof JSX.IntrinsicElements | React.ComponentType<unknown>;
+  as?: keyof React.JSX.IntrinsicElements | React.ComponentType<unknown>;
 
   scrollSnapEnabled: boolean;
   showScrollbar: boolean;
@@ -34,6 +33,8 @@ export interface GroupProps extends Noodl.ReactProps {
   onScrollPositionChanged?: (value: number) => void;
   onScrollStart?: () => void;
   onScrollEnd?: () => void;
+
+  children?: React.ReactNode;
 }
 
 type ScrollRef = HTMLDivElement & { noodlNode?: Noodl.ReactProps['noodlNode'] };
@@ -48,6 +49,11 @@ export class Group extends React.Component<GroupProps> {
     this.scrollNeedsToInit = false;
     this.scrollRef = React.createRef();
   }
+
+  rootRef = (el: ScrollRef | null) => {
+    (this.scrollRef as React.MutableRefObject<ScrollRef | null>).current = el;
+    this.props.noodlNode?.setDOMElement(el);
+  };
 
   componentDidMount() {
     if (this.props.scrollEnabled && this.props.nativeScroll !== true) {
@@ -67,47 +73,91 @@ export class Group extends React.Component<GroupProps> {
     this.props.noodlNode.context.setNodeFocused(this.props.noodlNode, false);
   }
 
-  componentDidUpdate() {
-    if (this.scrollNeedsToInit) {
-      this.setupIScroll();
-      this.scrollNeedsToInit = false;
+  /**
+   * NDA-012 (Visual) B1/B2. Both scroll actions return the reason they did nothing, or
+   * `undefined` when they scrolled.
+   *
+   * Every failure here used to be a `child && …` or an `if (element && …)` with no else: a
+   * `Scroll To Index` past the end of the list and a `Scroll To Element` pointing at something
+   * the Group does not contain were both indistinguishable from success. The node raises the
+   * returned reason on the runtime error bus (`group.ts`), so — unlike the editor-only
+   * `sendWarning` this category is full of — the diagnosis survives into a deployed app.
+   *
+   * The reason is produced here rather than in the node because only the component knows which
+   * scroll implementation is live: with iScroll the children hang off an inner wrapper element,
+   * without it they are direct children, and "index 5 of 3" has to be counted against whichever
+   * of those is actually in the DOM.
+   */
+  scrollToIndex(index, duration): string | undefined {
+    const container = this.scrollRef.current;
+    if (!container) return 'the Group has no scrollable element';
+
+    // iScroll wraps the children in one scroller element; the plain path does not.
+    const scrollParent = (this.iScroll ? container.children[0] : container) as HTMLElement | undefined;
+    if (!scrollParent) return 'the Group has no scrollable element';
+
+    const child = scrollParent.children[index] as HTMLElement | undefined;
+    if (!child) {
+      return `there is no child at index ${JSON.stringify(index)} — the Group has ${scrollParent.children.length}`;
     }
 
     if (this.iScroll) {
-      setTimeout(() => {
-        this.iScroll && this.iScroll.refresh();
-      }, 0);
-    }
-  }
-
-  scrollToIndex(index, duration) {
-    if (this.iScroll) {
-      const child = this.scrollRef.current.children[0].children[index] as HTMLElement;
-      if (child) {
-        this.iScroll.scrollToElement(child, duration, 0, 0);
-      }
+      this.iScroll.scrollToElement(child, duration, 0, 0);
     } else {
-      const child = this.scrollRef.current.children[index];
-      child &&
-        child.scrollIntoView({
-          behavior: 'smooth'
-        });
+      child.scrollIntoView({ behavior: 'smooth' });
     }
+
+    return undefined;
   }
 
-  scrollToElement(noodlChild, duration) {
-    if (!noodlChild) return;
-    // eslint-disable-next-line react/no-find-dom-node
-    const element = ReactDOM.findDOMNode(noodlChild.getRef()) as HTMLElement;
-    if (element && element.scrollIntoView) {
-      if (this.iScroll) {
-        this.iScroll.scrollToElement(element, duration, 0, 0);
-      } else {
-        element.scrollIntoView({
-          behavior: 'smooth'
-        });
-      }
+  scrollToElement(noodlChild, duration): string | undefined {
+    // An unwired `Element` is a port with no opinion, not a failure — Empty-Value Contract.
+    if (!noodlChild) return undefined;
+
+    /**
+     * ⚠️ This was `noodlChild.getRef()`, and for an ordinary target it resolved to nothing —
+     * **always**, mounted or not.
+     *
+     * `getRef` returns `reactComponentRef`, the pre-React-19 field. The React 19 runtime reports
+     * a node's root through `setDOMElement`/`getDOMElement` instead (RUN-001), so a Text or
+     * Group on `Element` handed back a ref object whose `current` was permanently `undefined`
+     * and every `Scroll To Element` returned "no rendered DOM element — it may not be mounted".
+     * That reason is plausible and wrong: the element was mounted, and had been for as long as
+     * the page had. `getDOMElement` is a strict superset of the resolution this did by hand —
+     * `_domElement`, then a host-element inner ref, then `getRef` and (on React 18) findDOMNode.
+     *
+     * Found by driving stream C's own pre-mount fix in the editor. The queue flushed and the
+     * action reached the Group exactly as designed, and then could not find what to scroll to;
+     * the B2 diagnosis this category added is the only reason it was visible at all.
+     *
+     * ⚠️ The SSR guard the old `instanceof HTMLElement` line carried has moved into
+     * `getDOMElement` rather than been dropped — `instanceof` against an undeclared global is a
+     * `ReferenceError`, not `false`, and this node declares SSR `safe`. Guarding it at the
+     * accessor fixes it for every caller instead of only this one.
+     */
+    const element = (
+      typeof noodlChild.getDOMElement === 'function' ? noodlChild.getDOMElement() : null
+    ) as HTMLElement | null;
+
+    if (!element || !element.scrollIntoView) {
+      return 'the node on Element has no rendered DOM element — it may not be mounted';
     }
+
+    const container = this.scrollRef.current;
+    // `scrollIntoView` scrolls the nearest scrollable *ancestor* of the target, so an element
+    // outside this Group does not fail — it silently scrolls something else, which is the
+    // hardest version of this defect to spot. Say so rather than move an unrelated container.
+    if (container && !container.contains(element)) {
+      return 'the node on Element is not inside this Group, so scrolling it would move a different container';
+    }
+
+    if (this.iScroll) {
+      this.iScroll.scrollToElement(element, duration, 0, 0);
+    } else {
+      element.scrollIntoView({ behavior: 'smooth' });
+    }
+
+    return undefined;
   }
 
   setupIScroll() {
@@ -167,19 +217,19 @@ export class Group extends React.Component<GroupProps> {
     }
   }
 
-  UNSAFE_componentWillReceiveProps(nextProps: GroupProps) {
+  componentDidUpdate(prevProps: GroupProps) {
     const scrollHasUpdated =
-      this.props.scrollSnapEnabled !== nextProps.scrollSnapEnabled ||
-      this.props.onScrollPositionChanged !== nextProps.onScrollPositionChanged ||
-      this.props.onScrollStart !== nextProps.onScrollStart ||
-      this.props.onScrollEnd !== nextProps.onScrollEnd ||
-      this.props.showScrollbar !== nextProps.showScrollbar ||
-      this.props.scrollEnabled !== nextProps.scrollEnabled ||
-      this.props.nativeScroll !== nextProps.nativeScroll ||
-      this.props.scrollSnapToEveryItem !== nextProps.scrollSnapToEveryItem ||
-      this.props.layout !== nextProps.layout ||
-      this.props.flexWrap !== nextProps.flexWrap ||
-      this.props.scrollBounceEnabled !== nextProps.scrollBounceEnabled;
+      prevProps.scrollSnapEnabled !== this.props.scrollSnapEnabled ||
+      prevProps.onScrollPositionChanged !== this.props.onScrollPositionChanged ||
+      prevProps.onScrollStart !== this.props.onScrollStart ||
+      prevProps.onScrollEnd !== this.props.onScrollEnd ||
+      prevProps.showScrollbar !== this.props.showScrollbar ||
+      prevProps.scrollEnabled !== this.props.scrollEnabled ||
+      prevProps.nativeScroll !== this.props.nativeScroll ||
+      prevProps.scrollSnapToEveryItem !== this.props.scrollSnapToEveryItem ||
+      prevProps.layout !== this.props.layout ||
+      prevProps.flexWrap !== this.props.flexWrap ||
+      prevProps.scrollBounceEnabled !== this.props.scrollBounceEnabled;
 
     if (scrollHasUpdated) {
       if (this.iScroll) {
@@ -187,7 +237,19 @@ export class Group extends React.Component<GroupProps> {
         this.iScroll = undefined;
       }
 
-      this.scrollNeedsToInit = nextProps.scrollEnabled && !nextProps.nativeScroll;
+      this.scrollNeedsToInit = this.props.scrollEnabled && !this.props.nativeScroll;
+    }
+
+    // Handle scroll initialization (moved from the old componentDidUpdate)
+    if (this.scrollNeedsToInit) {
+      this.setupIScroll();
+      this.scrollNeedsToInit = false;
+    }
+
+    if (this.iScroll) {
+      setTimeout(() => {
+        this.iScroll && this.iScroll.refresh();
+      }, 0);
     }
   }
 
@@ -235,10 +297,10 @@ export class Group extends React.Component<GroupProps> {
   }
 
   render() {
-    const {
-      as: Component = 'div',
-      ...props
-    } = this.props;
+    // React.ElementType collapses the intrinsic-elements union; with the ref prop added,
+    // the raw union exceeds the compiler's representation limit (TS2590).
+    const { as = 'div', ...props } = this.props;
+    const Component = as as React.ElementType;
 
     const children = props.scrollEnabled && !props.nativeScroll ? this.renderIScroll() : props.children;
     
@@ -269,12 +331,11 @@ export class Group extends React.Component<GroupProps> {
 
     return (
       <Component
-        // @ts-expect-error Lets hope that the type passed here is always static!
         className={props.className}
         {...props.dom}
         {...PointerListeners(props)}
         style={style}
-        ref={this.scrollRef}
+        ref={this.rootRef}
       >
         {children}
       </Component>

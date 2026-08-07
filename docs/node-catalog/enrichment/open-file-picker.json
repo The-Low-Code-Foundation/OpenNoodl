@@ -1,0 +1,33 @@
+{
+  "typeName": "Open File Picker",
+  "summary": "Opens the browser's native file dialog on a signal and outputs the picked file plus its name, size and MIME type.",
+  "description": "When the `open` (Open) signal fires, the node clicks a hidden HTML file input, showing the browser's native file dialog. When the user picks a file, the `file` output delivers the browser File object (the value upload nodes expect), the Metadata outputs update, and `done` fires. If the user closes the dialog with nothing chosen — or a later `open` supersedes this one — `unchanged` fires instead, which is a legitimate empty result and not a failure. The selection is reset after each pick, so choosing the same file again still reports `done`. `acceptedFileTypes` maps to the file input's accept attribute; `capture` maps to the capture attribute, which on mobile devices requests a camera or microphone as the source.",
+  "whenToUse": "Use it whenever the user must supply a file from their device — avatar upload, CSV import — typically firing `open` from a Button's `onClick` and passing `file` to an Upload File node. It is browser-only; there is no folder or multi-file selection.",
+  "ports": {
+    "open": "Signal; opens the file dialog. Must come from a user-initiated signal such as a click — browsers block programmatic file dialogs outside user gestures.",
+    "acceptedFileTypes": "String value; the accept attribute, e.g. 'image/*' or '.png,.csv'. Filters the dialog but is not validation — verify `type` if it matters.",
+    "capture": "String value; the capture attribute ('user' or 'environment'). On mobile, requests capturing from the front or rear camera instead of browsing files.",
+    "file": "Untyped value; the picked browser File object — wire this to Upload File.",
+    "name": "String value; the picked file's filename.",
+    "sizeInBytes": "Number value; the picked file's size in bytes.",
+    "type": "String value; the picked file's MIME type, e.g. 'image/png'.",
+    "path": "String value; read from the File object's path property, which standard browsers do not provide — usually undefined. Use `name` instead."
+  },
+  "examples": [
+    "var-avatar-picker-responsive"
+  ],
+  "patterns": [
+    "Button `onClick` → `open`, then `file` → Upload File and `done` → the upload's trigger: the standard upload flow.",
+    "Latch `done` into a Boolean (value pinned true, `done` → Set) to reveal post-pick UI as a level."
+  ],
+  "antiPatterns": [
+    "Treating `acceptedFileTypes` as a guarantee — users can often override the filter; check `type`/`sizeInBytes` before acting on the file."
+  ],
+  "relatedNodes": [
+    "Upload File",
+    "Image",
+    "Boolean",
+    "String"
+  ],
+  "commonMistakes": []
+}

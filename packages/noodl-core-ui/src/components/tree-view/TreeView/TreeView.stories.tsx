@@ -1,5 +1,4 @@
-import React from 'react';
-import { ComponentStory, ComponentMeta } from '@storybook/react';
+import type { Meta, StoryObj } from '@storybook/react';
 
 import {
   TreeView,
@@ -8,11 +7,14 @@ import {
 } from '@noodl-core-ui/components/tree-view/TreeView';
 import { Text } from '@noodl-core-ui/components/typography/Text';
 
-export default {
+const meta: Meta<typeof TreeView> = {
   title: 'Tree View/Tree View',
   component: TreeView,
   argTypes: {}
-} as ComponentMeta<typeof TreeView>;
+};
+
+export default meta;
+type Story = StoryObj<typeof meta>;
 
 interface NodeProps extends TreeViewChildProps<SimpleTreeViewItem> {}
 function Node({ depth, item, children, onClick }: NodeProps) {
@@ -31,10 +33,8 @@ function Node({ depth, item, children, onClick }: NodeProps) {
   );
 }
 
-const Template: ComponentStory<typeof TreeView> = (args) => <TreeView {...args} />;
-
-export const Common = Template.bind({});
-Common.args = {
+export const Common: Story = {
+  args: {
   node: Node,
   items: [
     {
@@ -62,4 +62,5 @@ Common.args = {
       ]
     }
   ]
+},
 };

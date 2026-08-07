@@ -1,0 +1,93 @@
+{
+  "$comment": [
+    "SUB-013 §4 — authoring tasks for the encoding evaluation.",
+    "",
+    "Each task asks a model to write one node's `parameters` object given only that node's catalog",
+    "entry. The entry is served twice: once as the catalog was before this task (dynamicPorts prose,",
+    "no parameterEncoding) and once with the encodings. Nothing else differs.",
+    "",
+    "Grading needs no expected answer. The model's own output is fed to the node's real dynamic-port",
+    "hook, and a key is correct when the hook generates a port with that name — the same test the",
+    "runtime applies, which is to say none at all: a wrong key generates nothing and is silently",
+    "ignored. `requires` names the ports the task cannot be considered done without, so a model",
+    "cannot score well by emitting only the seeds.",
+    "",
+    "`States` is first because it is the hardest: four key formulas, one of them two-variable, and a",
+    "value name with a space in it."
+  ],
+
+  "tasks": [
+    {
+      "id": "states-toggle",
+      "typeName": "States",
+      "instruction": "A toggle with two states called `true` and `false`, animating one number called `pos` between 100 when true and 0 when false.",
+      "requires": ["type-pos", "value-true-pos", "value-false-pos"]
+    },
+    {
+      "id": "states-spaced-value",
+      "typeName": "States",
+      "instruction": "Two states `on` and `off`, animating a colour called `bg color` — Primary when on, Grey when off.",
+      "requires": ["type-bg color", "value-on-bg color", "value-off-bg color"]
+    },
+    {
+      "id": "states-three",
+      "typeName": "States",
+      "instruction": "Three states `idle`, `hover` and `pressed`, animating one number called `scale`: 1, 1.1 and 0.95 respectively.",
+      "requires": ["type-scale", "value-idle-scale", "value-hover-scale", "value-pressed-scale"]
+    },
+    {
+      "id": "string-format",
+      "typeName": "String Format",
+      "instruction": "Format the string `Hello {firstName} {lastName}`, setting `firstName` to 'Ada' and `lastName` to 'Lovelace'.",
+      "requires": ["firstName", "lastName"]
+    },
+    {
+      "id": "component-state",
+      "typeName": "Component State",
+      "instruction": "A component state holding two properties: `isOpen`, starting true, and `selectedId`, starting 0. Set a starting value for each.",
+      "requires": ["value-isOpen", "value-selectedId"]
+    },
+    {
+      "id": "object-props",
+      "typeName": "Model2",
+      "instruction": "An Object node with the properties `title` and `price`, giving `title` the value 'Widget' and `price` the value 9.99.",
+      "requires": ["prop-title", "prop-price"]
+    },
+    {
+      "id": "set-object-props",
+      "typeName": "SetModelProperties",
+      "instruction": "Set two properties on an object: `title` to 'Widget' and `price` to 9.99.",
+      "requires": ["prop-title", "prop-price"]
+    },
+    {
+      "id": "event-sender",
+      "typeName": "Event Sender",
+      "instruction": "Send an event on the channel `cart-updated` with a payload of `itemId` and `quantity`, setting `itemId` to 'abc' and `quantity` to 2.",
+      "requires": ["itemId", "quantity"]
+    },
+    {
+      "id": "expression",
+      "typeName": "Expression",
+      "instruction": "An expression computing `width * scale`, with `width` set to 100 and `scale` set to 2.",
+      "requires": ["width", "scale"]
+    },
+    {
+      "id": "and-node",
+      "typeName": "And",
+      "instruction": "An And node combining three boolean inputs, all set to true.",
+      "requires": ["input 0", "input 1", "input 2"]
+    },
+    {
+      "id": "close-popup",
+      "typeName": "NavigationClosePopup",
+      "instruction": "A Close Popup node with two close actions, `save` and `discard`. Wire nothing; just declare the actions and give each its signal input.",
+      "requires": ["closeAction-save", "closeAction-discard"]
+    },
+    {
+      "id": "cloud-function-params",
+      "typeName": "Cloud Function",
+      "instruction": "Call a cloud function with two parameters, `userId` set to 'u1' and `token` set to 't1'.",
+      "requires": ["pm-userId", "pm-token"]
+    }
+  ]
+}

@@ -3,6 +3,7 @@ import React from 'react';
 import { NoHomeError } from './components/common/NoHomeError';
 import GraphWarnings from './graph-warnings';
 import { Highlighter } from './highlighter';
+import { bindInputInjector } from './inputinjector';
 import Inspector from './inspector';
 import NoodlJSAPI from './noodl-js-api';
 import projectSettings from './project-settings';
@@ -81,8 +82,14 @@ export function ssrSetupRuntime(noodlRuntime, noodlModules, projectData) {
   //make the styles available to all nodes via `this.context.styles`
   noodlRuntime.context.styles = styles;
 
-  noodlRuntime.setData(projectData);
+  // The load is async (bundle fetches, root component creation). The SSR server
+  // doesn't await it — it waits for 'rootComponentUpdated' and settles — but the
+  // client hydration path must, so it can render the settled tree synchronously
+  // into hydrateRoot. _disableLoad makes the Viewer constructor's own setData a
+  // no-op (it only guards the entry, not this already-running call).
+  const dataLoaded = noodlRuntime.setData(projectData);
   noodlRuntime._disableLoad = true;
+  return dataLoaded;
 }
 
 export default class Viewer extends React.Component {
@@ -251,6 +258,14 @@ export default class Viewer extends React.Component {
       noodlRuntime.setDebugInspectorsEnabled(enabled);
     });
 
+    // OBS-004 — let an authorised peer click and type in the running app.
+    //
+    // Bound here rather than inside the `window.NoodlEditor` branch above, deliberately: that
+    // branch is the editor's *own* webview, and the whole point of this channel is that an
+    // agent can drive a preview it did not open — a second browser window, or one reached
+    // over the relay with no editor UI in front of it at all.
+    bindInputInjector(noodlRuntime, noodlRuntime.editorConnection);
+
     this.graphWarnings = new GraphWarnings(noodlRuntime.graphModel, noodlRuntime.editorConnection);
   }
 
@@ -340,7 +355,25 @@ export default class Viewer extends React.Component {
           style={{
             margin: 0,
             padding: 0,
-            overflow: 'hidden',
+            // `clip`, not `hidden` — NDA-008 §0.
+            //
+            // This div is pinned to the viewport and routinely holds taller content. With
+            // `overflow: hidden` it is still a *scroll container*: the browser can scroll it
+            // (any real DOM focus does, and `TextInput` is the library's one focus call), while
+            // the user cannot scroll it back, because hidden only removes the scrollbars. That
+            // asymmetry is the reported "the page jumps and the header never comes back" — the
+            // Component Stack, long blamed for it, moves the scroll position 0 px.
+            //
+            // `overflow: clip` creates no scroll container at all, so there is nothing to
+            // scroll in either direction and the two sides agree again. A deliberate `Focus`
+            // still scrolls the nearest ancestor that genuinely *is* scrollable — a Group with
+            // scroll enabled — which is why `TextInput` keeps its plain `.focus()` rather than
+            // `preventScroll: true`. Richard's call, 2026-07-29: fix the box, keep the feature.
+            //
+            // Note this drops the block formatting context `hidden` implied. Nothing here
+            // relies on one: the tree below is flex and absolutely positioned throughout, and
+            // `#root` above is `position: fixed`, which already provides positional containment.
+            overflow: 'clip',
             width: '100%',
             height: '100%'
           }}

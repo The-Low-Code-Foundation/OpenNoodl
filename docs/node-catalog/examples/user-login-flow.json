@@ -1,0 +1,57 @@
+{
+  "id": "user-login-flow",
+  "title": "Log in, show the user, log out",
+  "description": "The authentication triangle: Log In takes `username`/`password` values and a `login` signal, firing `success` or `failure` (+`error`). The User node is the session's single source of truth — its `authenticated` boolean and profile outputs update on login/logout, so UI binds to it rather than to the action nodes. Log Out ends the session from anywhere. Gate visible areas on `authenticated`, not on the login node's `success` pulse.",
+  "demonstrates": ["net.noodl.user.LogIn", "net.noodl.user.LogOut", "net.noodl.user.User"],
+  "components": [
+    {
+      "name": "/Login Screen",
+      "nodes": [
+        {
+          "id": "root",
+          "type": "Group",
+          "label": "Screen",
+          "parameters": { "flexDirection": "column" },
+          "children": ["login_form", "welcome_area"]
+        },
+        {
+          "id": "login_form",
+          "type": "Group",
+          "label": "Login form",
+          "parent": "root",
+          "parameters": { "flexDirection": "column" },
+          "children": ["username_input", "password_input", "login_btn", "error_text"]
+        },
+        { "id": "username_input", "type": "net.noodl.controls.textinput", "label": "Username", "parent": "login_form", "parameters": { "placeholder": "Username" } },
+        { "id": "password_input", "type": "net.noodl.controls.textinput", "label": "Password", "parent": "login_form", "parameters": { "placeholder": "Password", "type": "password" } },
+        { "id": "login_btn", "type": "net.noodl.controls.button", "label": "Log in", "parent": "login_form", "parameters": { "label": "Log in" } },
+        { "id": "error_text", "type": "Text", "label": "Login error", "parent": "login_form" },
+        {
+          "id": "welcome_area",
+          "type": "Group",
+          "label": "Welcome area",
+          "parent": "root",
+          "parameters": { "flexDirection": "row" },
+          "children": ["welcome_text", "logout_btn"]
+        },
+        { "id": "welcome_text", "type": "Text", "label": "Welcome", "parent": "welcome_area" },
+        { "id": "logout_btn", "type": "net.noodl.controls.button", "label": "Log out", "parent": "welcome_area", "parameters": { "label": "Log out" } },
+        { "id": "do_login", "type": "net.noodl.user.LogIn", "label": "Log in action" },
+        { "id": "do_logout", "type": "net.noodl.user.LogOut", "label": "Log out action" },
+        { "id": "session_user", "type": "net.noodl.user.User", "label": "Current user" },
+        { "id": "not_logged_in", "type": "Inverter", "label": "Not authenticated" }
+      ],
+      "connections": [
+        { "fromId": "username_input", "fromProperty": "onTextChanged", "toId": "do_login", "toProperty": "username" },
+        { "fromId": "password_input", "fromProperty": "onTextChanged", "toId": "do_login", "toProperty": "password" },
+        { "fromId": "login_btn", "fromProperty": "onClick", "toId": "do_login", "toProperty": "login" },
+        { "fromId": "do_login", "fromProperty": "error", "toId": "error_text", "toProperty": "text" },
+        { "fromId": "logout_btn", "fromProperty": "onClick", "toId": "do_logout", "toProperty": "login" },
+        { "fromId": "session_user", "fromProperty": "authenticated", "toId": "welcome_area", "toProperty": "visible" },
+        { "fromId": "session_user", "fromProperty": "authenticated", "toId": "not_logged_in", "toProperty": "value" },
+        { "fromId": "not_logged_in", "fromProperty": "result", "toId": "login_form", "toProperty": "visible" },
+        { "fromId": "session_user", "fromProperty": "username", "toId": "welcome_text", "toProperty": "text" }
+      ]
+    }
+  ]
+}

@@ -1,7 +1,26 @@
 .Root {
+  /* Typography */
   font-family: var(--font-family);
-  padding: 14px;
-  max-width: 160px;
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-normal);
+
+  /* Background and styling */
+  background-color: var(--theme-color-bg-4);
+  color: var(--theme-color-fg-default);
+
+  /* Spacing */
+  padding: var(--spacing-3-5);
+  border-radius: var(--radius-default);
+
+  /* Elevated appearance */
+  box-shadow: var(--shadow-md);
+  border: 1px solid var(--theme-color-border-default);
+
+  /* Ensure tooltip is above everything */
+  z-index: var(--z-tooltip);
+
+  /* Size constraint */
+  max-width: 250px;
 
   span {
     text-align: center;
@@ -10,9 +29,11 @@
 }
 
 .FineType {
-  padding: 0 8px 8px;
-  margin-top: -6px;
+  padding: 0 var(--spacing-2) var(--spacing-2);
+  margin-top: calc(-1 * var(--spacing-1-5));
   text-align: center;
+  font-size: var(--font-size-xs);
+  color: var(--theme-color-fg-default-shy);
 }
 
 .Trigger {

@@ -6,7 +6,7 @@ import {
 } from '@noodl-core-ui/components/property-panel/PropertyPanelBaseInput';
 
 export interface PropertyPanelPasswordInputProps extends Omit<PropertyPanelBaseInputProps<string>, 'type'> {
-  properties?: TSFixme;
+  value: string;
 }
 
 export function PropertyPanelPasswordInput({
@@ -20,8 +20,12 @@ export function PropertyPanelPasswordInput({
   const [focused, setFocused] = useState(false);
 
   function handleUpdate(inputValue: string) {
-    onChange && onChange(inputValue);
     setDisplayedInputValue(inputValue);
+    // Only commit real edits — committing unconditionally would push a
+    // spurious undo entry on every mount/blur and neutralize app undo
+    if (inputValue !== value) {
+      onChange && onChange(inputValue);
+    }
   }
 
   function handleBlur() {
@@ -34,7 +38,7 @@ export function PropertyPanelPasswordInput({
   }
 
   useEffect(() => {
-    handleUpdate(value);
+    setDisplayedInputValue(value);
   }, [value]);
 
   return (

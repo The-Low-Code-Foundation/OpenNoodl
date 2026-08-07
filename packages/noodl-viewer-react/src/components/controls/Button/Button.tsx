@@ -3,6 +3,8 @@ import React from 'react';
 import Layout from '../../../layout';
 import Utils from '../../../nodes/controls/utils';
 import { Noodl, Slot } from '../../../types';
+import { noodlRootRef } from '../../noodl-root-ref';
+import { IconGlyph } from '../../visual/Icon/IconGlyph';
 
 export interface ButtonProps extends Noodl.ReactProps {
   enabled: boolean;
@@ -59,17 +61,7 @@ export function Button(props: ButtonProps) {
       iconStyle.fontSize = props.iconSize;
       iconStyle.color = props.iconColor;
 
-      if (props.iconIconSource.codeAsClass === true) {
-        return (
-          <span className={[props.iconIconSource.class, props.iconIconSource.code].join(' ')} style={iconStyle}></span>
-        );
-      } else {
-        return (
-          <span className={props.iconIconSource.class} style={iconStyle}>
-            {props.iconIconSource.code}
-          </span>
-        );
-      }
+      return <IconGlyph source={props.iconIconSource} style={iconStyle} />;
     }
 
     return null;
@@ -94,14 +86,21 @@ export function Button(props: ButtonProps) {
     content = _renderIcon();
   }
 
+  // FH-015 slice 1. There used to be a trailing `onClick={props.onClick}` here, after the
+  // `controlEvents` spread. JSX later-wins, so it replaced the handler `pointerProps` had
+  // built — which is the one that carries the `blockTouch` `stopPropagation` wrapper and the
+  // `updateDirtyNodes()` flush. The consequence: "Block Pointer Events" on a Button blocked
+  // mousedown/mouseup/touchstart and let the click through to the parent Group anyway, which
+  // is exactly the "it doesn't work" report. `controlEvents` already supplies `onClick`
+  // (`pointerProps` picks `props.onClick` up off the props root), so the line was pure loss.
   return (
     <button
+      ref={noodlRootRef(props.noodlNode)}
       className={className}
       disabled={!props.enabled}
       {...Utils.controlEvents(props)}
       type={props.buttonType}
       style={style}
-      onClick={props.onClick}
     >
       {content}
       {props.children}

@@ -1,0 +1,6 @@
+{
+  "typeName": "Variable",
+  "summary": "Deprecated first-generation named app-wide variable node; superseded by Variable2 and Set Variable.",
+  "description": "The original read/write node for the named app-wide variable store, with an explicit `store` (Set) signal to commit its `value` input. It is superseded by Variable2 (shown as 'Variable' in the picker), which writes whenever its value input receives data, together with Set Variable for explicit signal-driven writes with type control. Both read and write the same underlying store as this node.",
+  "whenToUse": "Do not use in new graphs — use Variable2 to read and write a named variable, and Set Variable for explicit signal-driven writes."
+}

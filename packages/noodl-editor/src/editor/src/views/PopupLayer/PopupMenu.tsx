@@ -21,7 +21,7 @@ export class PopupMenu extends ReactView<PopupMenuProps> {
     super(props);
   }
 
-  protected renderReact({ items, owner }: PopupMenuProps): JSX.Element {
+  protected renderReact({ items, owner }: PopupMenuProps): React.JSX.Element {
     return (
       <div className="popup-layer-popup-menu">
         {items.map((item, index) => {

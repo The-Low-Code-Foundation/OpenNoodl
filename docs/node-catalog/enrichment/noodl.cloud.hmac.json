@@ -1,0 +1,26 @@
+{
+  "typeName": "noodl.cloud.hmac",
+  "summary": "Keyed SHA-2 signature of a string. Cloud-only, because it takes a shared secret.",
+  "description": "HMAC signs the text on Value with the secret on Key and puts the result on Signature, rendered in the chosen encoding. It is the primitive behind webhook signature verification (compute the HMAC of the raw request body and compare it to the header the sender supplied) and behind signing an outbound API request. It is registered only in the cloud runtime, and that is the point: every real use holds a shared secret, and a browser node whose Key input can only be filled from a literal or a fetch is a secret in the page. It shares one implementation with JWT Sign and JWT Verify, so a token this backend mints and a signature this node checks cannot drift apart.",
+  "whenToUse": "Verifying a Stripe, GitHub or supplier webhook; signing a request some API requires signed; minting a tamper-evident download token. Wire Key from a Secret node.",
+  "ports": {
+    "value": "The message to sign. For a webhook signature this must be the RAW body, byte for byte, not a re-serialised object.",
+    "key": "The shared secret. Wire this from a Secret node.",
+    "algorithm": "SHA-256 (default), SHA-384 or SHA-512. Almost every webhook uses SHA-256.",
+    "encoding": "hex (default), base64 or base64url. Match whatever the other side sends.",
+    "sign": "Signal (Do); computes the signature.",
+    "signature": "The HMAC, valid once Done has fired.",
+    "done": "Fires once Signature holds the result.",
+    "failure": "Fires when the signature could not be computed — most often no Key.",
+    "error": "Why no signature was produced. It names the problem, never the key."
+  },
+  "examples": [],
+  "patterns": [
+    "Secret Done → HMAC Do, with Value wired from the Request node's raw body: the standard webhook-verification shape."
+  ],
+  "antiPatterns": [
+    "Re-serialising the request body before signing it. Any difference in key order or whitespace changes the signature.",
+    "Typing the key into the graph. It ends up in the exported project; use a Secret node."
+  ],
+  "relatedNodes": ["noodl.cloud.secret", "net.noodl.Hash", "noodl.cloud.jwtsign"]
+}

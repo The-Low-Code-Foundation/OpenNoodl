@@ -1,0 +1,571 @@
+# Phase 42 — First Hour, second pass
+
+**Created:** 2026-08-05
+**Origin:** Richard drove the alpha "first hour" again — deeper than phase 39's pass — and wrote
+down 21 items: signal semantics, the props panel, the cloud-workflow surface, MCP onboarding, the
+code editor, provenance Record, pointer events, and a tail of visual defects. Every item was
+researched against the code before a single doc was written; several "bugs" turned out to be
+built-features-behind-broken-affordances, and several "features we built" turned out to be
+decisions still waiting to be made.
+
+Three kinds of doc in this folder:
+
+- **FH-*** — bug-fix task docs. Mechanism confirmed with file:line, slices, criteria, traps.
+- **TALK-*** — brainstorm docs for the conversations Richard asked for. Each states what the code
+  actually does, the real options, and a recommendation to argue with.
+- **CWF-***, **HUD-*** — the build tasks that came *out* of a TALK conversation once it was had.
+
+## The triage table
+
+| # | What Richard reported | What research found | Doc |
+|---|---|---|---|
+| 0 | Done/Completed/Unchanged "doubling up" | Semantics are real and your guess was backwards (**Completed** always fires; **Done** = changed something; **Unchanged** = valid no-op). Real problems: signal-port descriptions render **nowhere** in the editor, and on 48/82 nodes the distinction collapses (8 nodes: Done ≡ Completed). ✅ **Talked 2026-08-05: keep both ports, no rename, and the surface is a read-only Ports tab in the props panel.** Verifying it corrected the doc three times — the canvas has no port hit-testing to hang a hover on, pruning `Done` would restore nothing to the validator, and a display-only rename would have been *one line*. | [TALK-006](TALK-006-THE-THREE-SIGNALS.md) + [FH-020](FH-020-THE-PORTS-TAB.md) + [FH-022](FH-022-WHEN-COMPLETED-IS-DONE.md) |
+| 0.1 | "Didn't we add nodes to watch arrays?" | **Yes — built and shipped.** `Array Changed` + `Object Changed` (category Logic, ERG-004): Item Added/Removed/Changed (in-place edits via per-member subscriptions), Array Replaced, Index/Item/Key/Count. No "choose what to watch" selector **by design** — you choose by which output you wire. Known blocker: no Data node emits a live object → FH-004. Reorders (sort/reverse) deliberately fire no signal. | answer + [FH-004](FH-004-THE-OBJECT-NODE-EMITS-AN-OBJECT.md) |
+| 1 | `[object Object]` as auto-name | Diagnosed in phase 3 (TASK-006B), chosen fix half-applied: `labelForNode` returns the raw expression object; the resolver built for it has zero call sites. Three collateral bugs (cache poisoning, spurious sub-label, latent crash). | [FH-003](FH-003-OBJECT-OBJECT-ON-THE-CANVAS.md) |
+| 2 | WebSocket node bound to the selected backend | Not just the wrong abstraction — **our backend has no WebSocket server at all** (SSE `/realtime` only, per BAK-001), so the mode had nothing to connect to. A five-transport realtime layer already exists with exactly **one door** (Query Records' checkbox). ✅ **Talked 2026-08-05: build the standalone Subscribe To Changes node**, which is `_active_` by default and so *is* the easy path to our backend. | [TALK-005](TALK-005-BACKEND-BOUND-REALTIME.md) + [FH-021](FH-021-SUBSCRIBE-TO-CHANGES.md) |
+| 3 | Object node has no Object output | **Never built — and Richard already decided it should be** (2026-08-02, ERG-004 §7.4, recorded "unowned and not started"). Unblocks `Object Changed`. `Array.Items` may already serve the array side — verify first. | [FH-004](FH-004-THE-OBJECT-NODE-EMITS-AN-OBJECT.md) |
+| 4 | Popout editor opens at the button's Y, off-screen | React-18 measurement race: positioned against a 0×0 box because the two editors skip the `flushSync` five other popouts use (DEBT-010 pattern), **plus** `_positionPopout` genuinely has no flip logic. Same as phase-40 AAQ-011 F2 (open, unowned — superseded here). | [FH-005](FH-005-THE-POPOUT-OPENS-OFFSCREEN.md) |
+| 5 | Roboto Medium in text styles | Appears nowhere in the repo. Comes from **library prefab imports** (16 prefabs ship `Roboto-Medium.ttf`) via the font picker — or from that project's own styles metadata. One measurement in the project settles which. | [FH-006](FH-006-ROBOTO-MEDIUM.md) |
+| 6 | Type selection on Component Inputs/Outputs | **Never built, and ERG-005 explicitly forbade building it yet** — §2 is a decision written up *for Richard*, still unanswered. §1 is mid-flight in another session (untracked tests-first). | [FH-007](FH-007-COMPONENT-IO-TYPES-STATUS.md) |
+| 7 | Explain panel steals focus, loses selection | Panel doesn't steal focus — the property editor does (by design); Explain then pays twice: showing it **deliberately deselects** (missing from an allow-list), and it never re-reads on becoming visible. Both fixes are small; turning it off is a settings toggle, no code. | [FH-008](FH-008-THE-EXPLAIN-PANEL-CANT-HOLD-A-SELECTION.md) |
+| 8, 9b | Docs panel + VC rows dark-on-dark in light mode | One shared bug: `ListItem`'s Active variant paints `--theme-color-secondary` (an **action** colour, inverted by construction) as a surface — POL-004's class. ~1.9:1 in light; broken in dark too. Three call sites, one fix. | [FH-009](FH-009-THE-ACTIVE-LIST-ITEM-IS-UNREADABLE.md) |
+| 9a | Create/Connect Repository: overlay, no dialog | `position: fixed` modals rendered **in-tree** inside `BasePanel`'s CSS container (`container-type` makes the panel the containing block) — violating the contract BasePanel's own comments document. Portal/BaseDialog them; two more instances in the same panel. | [FH-010](FH-010-THE-DIALOG-TRAPPED-IN-THE-PANEL.md) |
+| 10 | Record records nothing | **Structural**: nothing pulls the trace buffer unless a walk is on screen; `stop()` never pulls; preview reload silently disarms with no re-arm; Record arms with no viewer connected. Capture itself works. ✅ **Talked 2026-08-05: the HUD is an alpha feature and Record moves to the canvas** — the HUD track below. | [FH-011](FH-011-RECORD-RECORDS-NOTHING.md) + [TALK-003](TALK-003-A-RECORDING-HUD.md) |
+| 11 | The whole cloud-workflow audit | Nine step kinds **by design** ("workflows orchestrate, functions compute"; conditions are data because eval'd strings = RCE behind an admin credential). Real holes: `call-function` **params have engine support and no UI** (you can't pass data into functions at all); workflow output is computed then **dropped** before the caller sees it; modern HTTP node is browser-only so the cloud picker has only deprecated REST2; POL-015 first-workflow still broken. | [TALK-001](TALK-001-THE-CLOUD-WORKFLOW-AUDIT.md) |
+| 12 | Pin from another workflow + z-order | POL-009's slice-2 warning ignored: the pin captures identity from the open canvas, not the execution. Auto-navigate + tag from `workflowId`. Overlay bars z=200 vs picker's popup layer z=10 with no intervening stacking context. | [FH-012](FH-012-PIN-NAVIGATION-AND-Z-ORDER.md) |
+| 13 | Where's the MCP server / URL? | **There is no URL and no door**: both servers are stdio (client-spawned), the editor has zero MCP UI (37 grep hits, all comments), and neither binary ships in the packaged app. ✅ **Talked 2026-08-05: settings section, two captioned buttons, per-project server names** — the MCP track below. Verifying it found two things the doc lacked: `nodegx-observe` **never reconnects** and its token is per-launch, so a copied command dies at the next editor restart; and the proposed commands **collide across projects**. | [TALK-004](TALK-004-THE-MCP-FRONT-DOOR.md) |
+| 14 | Props labels cut off even when panel widened | Hard **62px** label column in both label implementations (React row + legacy row), `flex-shrink: 0` — panel width is irrelevant. Cloud-workflow steps use the same component; fixed together. | [FH-013](FH-013-PROPS-LABELS-WRAP.md) |
+| 15 | Unit menus open empty | The select **removes the selected option from its own menu**, and ≈27 of 59 unit ports declare exactly one unit → one option, filtered out, empty bordered sliver. | [FH-014](FH-014-THE-EMPTY-UNIT-MENU.md) |
+| 16 | Block pointer events doesn't work | Click-through is the default (handlers installed on every visual node whether connected or not; nothing stops propagation). The blockTouch option **works everywhere except Button** — one JSX line re-assigns `onClick` after the blocking wrapper. Plus a right-default question (auto-stop when Click is connected). | [FH-015](FH-015-BLOCK-POINTER-EVENTS.md) |
+| 17 | Can't drag connection labels | **Built** (CAN-001) — but the grab is gated on the wire-stroke hover, the exact ordering trap the spec warned about; selection-lit chips are fully inert; zero cursor affordance; no drag test. | [FH-016](FH-016-WIRE-LABELS-ARE-DRAGGABLE-IN-THEORY.md) |
+| 18, 19 | Code editor: autocomplete, linting, selection, "DIY mistake?" | **It's not DIY — it's CodeMirror 6**, and all six symptoms are located config gaps (a bad guard, a duplicate un-debounced error system, a hardcoded `dark: true`, a hover-only gutter). ~A day, mostly deletion. The real ask underneath is typed intellisense — reachable on CM6. ✅ **Talked 2026-08-05: no switch.** | [TALK-002](TALK-002-THE-CODE-EDITOR-IS-NOT-DIY.md) + [FH-017](FH-017-CODE-EDITOR-FIXES.md) + [FH-019](FH-019-TYPED-INTELLISENSE.md) |
+| 20 | Execution history / data explorer for deployed apps | Noted for the deployment phase as asked: execution history is coupled by *address* (cheap to remote), the Data Browser by *architecture* (needs a BackendHandle route); the admin-credential tier must be decided first; BAK-005's served `/_admin` already exists as the v1 answer. | [phase-26 NOTE-REMOTE-PANELS](../phase-26-deployment/NOTE-REMOTE-PANELS.md) |
+
+## Where this phase stands (updated 2026-08-06)
+
+**Shipped, 2026-08-05 — the twelve-task FH batch:** FH-003, 004, 005, 006, 008, 009, 012, 013,
+014, 015, 016, 017, 022 (commits `7a9ddc30`…`328a025d`). Five of those docs' stated mechanisms
+turned out to be wrong — the docs here are researched, not infallible; verify at file:line before
+building on one.
+
+**Shipped, 2026-08-06 — the second batch (six parallel agents, eleven commits `9b1e8ca5`…`9b2de481`):**
+
+| Task | What landed | Notable |
+|---|---|---|
+| **FH-010** | The VC dialogs portal their **backdrop** out of the panel subtree (`PanelOverlay`) | The stacking context is `container-type`'s implied `contain: layout` — one property, not the three the doc named. `isolation: isolate` appears nowhere in the repo. A drag started inside a dialog and released outside used to close it. |
+| **FH-011** | Record actually records — the poll lives in `TraceSession`, `stop()` pulls *before* disarming, re-arm on `ViewerRegistered` | The disarm **drops the runtime's TraceBuffer outright**, so pulling after it would have pulled nothing. And Stop un-recorded the recording: every `✕ never fired` reverted to `· unknown` the moment you released Record. |
+| **FH-020** | A read-only **Ports** tab in the property panel — where anyone finally reads FH-022's wording | The cast table says `signal → boolean, number`; `ConnectionBar` then refuses those wires by a rule that is *nowhere in the table*. Built to the doc, the tab would have taught the exact wrong answer. |
+| **CWF-017** | You can say who may call each cloud function, and how often (+ a Permissions panel section) | A `call-function` step runs **in process** and never reaches the dispatcher — so `nobody` still runs from a workflow step. The doc's stated trap was backwards. |
+| **CWF-008** | The cloud picker goes 48 → 62: the whole Array family, Variable, Component Object, Switch, Number Remapper | The move was the easy half. All four state nodes used the module-level `Model`, not `nodeScope.modelScope` — **Variable was a live cross-request leak** between concurrent function calls. |
+| **CWF-003** | HTTP Request works in a cloud function (multipart included) | Before this a cloud author could reach **no** HTTP node at all — REST2 is `deprecated: true` and never offered. |
+| **MCP-003** | `nodegx-observe` reconnects and re-reads its token, so a copied command survives an editor restart | — |
+| **MCP-002** | Both MCP servers actually build and ship (`npm run build:sidecars`) | ⚠️ **electron-builder only *warns* on a missing `extraResources` source.** Every published NodeGX artifact is almost certainly missing `Resources/nodegx-backend/cli.js` today — green build and all. Fixed as a side effect; deserves its own look. |
+
+**Decisions taken 2026-08-06 (Richard):**
+- **FH-018 → delete the Config node outright** (option (a)). Front-end config that holds secrets is
+  unsafe by construction. The server-side `/config` filter lands regardless.
+- **ERG-005 §2 → add explicit type selection on Component I/O, inference stays the default.**
+  Blocked on sequencing only: the other session's §1 changes the same seams.
+- **NDA-017 → migrate pre-existing projects on load.** Write `runOnChange-*: false` for the value
+  inputs of any node that has `Run` connected. ✅ **BUILT the same day** —
+  [NDA-017 §4](../phase-30-node-library-audit/NDA-017-SIGNAL-INPUT-FRESHNESS.md#4--the-migration-built),
+  and the filed-not-fixed row below is closed.
+
+**Decisions taken 2026-08-06, second sitting (Richard) — the last three that were owed:**
+
+- **FH-024 → fix it now, options (a) + (b), and drive it first.** ✅ **DONE 2026-08-06** — driven
+  before and after (the write case reproduced too, see the row below), fixed, 93 suites green.
+  Never send CORS headers on
+  `admin/*`, **and** stop `devOpen` relaxing `admin/*` (it keeps its ergonomics on data and function
+  routes, where hitting your own collections without a token is the point). Slice 0 is a **real
+  cross-origin `fetch` at a real running backend** before any fix — the doc's own rule is that a
+  threat model read off source proves what the source says, not what the browser does. Option (d)
+  (random port + per-launch token) was weighed and rejected as too large for what it buys: two
+  spawners (the editor and `noodl-mcp`) share one record format and would both have to learn the
+  token.
+- **AAQ-011 F12 → do NOT widen the write gate to project scope. Fix `duplicate-node-id`
+  specifically** — make id allocation collision-proof at write time so the rule has nothing to
+  report. This deliberately **leaves the gate-scope class open** for the next project-wide rule;
+  that is the decision, not an oversight, and the F12 row must say so rather than claiming the class
+  is closed.
+- **AAQ-011 F3 → remove the second prose turn entirely.** After `record_scope` the tool result *is*
+  the answer; stop asking for prose. ⚠️ The case to handle is a turn where `record_scope` is the
+  model's **only** output — removing the second turn there leaves the user with silence, and
+  AAQ-004 keeping the first answer does not help when there was no first answer.
+
+**Shipped, 2026-08-06 — the third batch (seven parallel agents, fourteen commits `54298d59`…`51f00310`):**
+
+| Task | What landed | Notable |
+|---|---|---|
+| **FH-018** | The Config node is **deleted**, and `GET /config` filters server-side — secrets are *omitted*, not blanked, so an anonymous caller cannot learn a key exists | The endpoint **stayed**: already-deployed artifacts `await getConfig()` on every request, so deleting the route would fail every request to a live cloud function. And "the node is inert" was true of *authoring* only — the dropdown is behind `isRunningLocally()`, so **four shipped prefabs hold nine live Config nodes reading real API keys**. |
+| **FH-019** | Autocomplete that knows your project: `Inputs.` completes from the ports the script itself declares | The spike killed the design. A TS language service on the **renderer thread** costs 3 ms/keystroke; a worker loads from `file://` in 97 ms. What broke Monaco was reusing the *renderer* webpack config for a worker chunk — it fails *after* top-level code runs, so you get a half-working worker that still replies. Three shipped completion lists were wrong: `Props`/`State` are in scope **nowhere**, and there are two different `Noodl` objects (4 properties vs 19). |
+| **FH-021** | A standalone **Subscribe To Changes** node — active by default, no query needed | `RealtimeSubscribeOptions.where` was typed as the *neutral* filter; the backend evaluates subscription filters in the Parse `$` grammar and **fails closed**. A filtered subscription connected, reported `Subscribed`, and delivered nothing, silently. The existing test asserted pass-through and was green either way. |
+| **HUD-001/002** | Record is a canvas control with a live counter; nodes light up as they fire | `TraceEvent.t` is `performance.now()` from the *preview page's* load, not a wall clock — the specified fade computes ~56 years, so every badge would be born faded and nothing would ever draw. Same bug means the Provenance panel prints confident nonsense clock times. |
+| **CWF-009** | A cloud function can ask for a secret by name; the value never leaves the backend | `functions` is the one namespace a graph can read, and the *resolver* supplies it — so `auth`/`webhooks`/`adminToken` are unnameable, not merely forbidden. Leak paths asserted by scanning every file the service wrote, sqlite included. |
+| **CWF-010** | Hash, Random Bytes, UUID, HMAC, JWT Sign/Verify — no new dependency | `Unique Id` is **not** a UUID: `Model.guid()` is 10 characters of `Math.random()`, described as "a globally unique identifier". And `Random Bytes` used `length \|\| 32`, so `Length: 0` silently produced 32 valid-looking bytes. |
+| **CWF-011** | Now, Date Add, Date Difference, Date Compare, Date Parts, and a Timezone on Date To String | `platform.getCurrentTime()` is the **frame** clock (`performance.now()`, and `() => 0` under SSR) — building `Now` on it as specified would have shipped 1970. |
+| **CWF-018** | A function that never answers returns a **504 naming the function**, and tears the graph down | The unbounded await was in `WorkflowRunner.run`, not the `HttpServer` line the doc cited. Closed a second pre-existing leak on the "no Request node" path. |
+| **MCP-001/004** | A "Connect an AI agent" settings section with two filled-in Copy buttons, and READMEs that agree with it | The commands were **verified by running them** — two projects registered side by side. Paths need shell-quoting (the default project location has a space), and a directory named `observe` would have overwritten the other button's registration. |
+
+**Shipped, 2026-08-06 — the fourth batch (seven parallel agents):**
+
+| Task | What landed | Notable |
+|---|---|---|
+| **CWF-001** | A **Params** section on Call Function — say what a step passes the function | **The headline was false**: you could pass data since WFA-003, with a test proving it end to end. The *declaration* was missing, so the editor had no row to draw. And the specified `raw: true` is the flag that tells the engine **not** to resolve a param. |
+| **CWF-002** | A workflow's answer reaches the caller (`sync`/`async` per trigger + a visible `return` step) | **Backwards**: the dispatcher already awaits and always has — a webhook has held the connection for a 10-minute `wait` since WF-005. `sync` is the only mode that ever had a bound. The deepest unbounded await is `WorkflowEngine.run`'s `acquire()`. The editor's **Test fire** was dropping the body. |
+| **CWF-005** | Retry folds into a policy on Call Function — eight step kinds, not nine | The defaults trap fired in the half the doc didn't name: the *executor's* fallbacks were what ever applied, so migrating without materialising `maxAttempts` would have silently turned three attempts into one. **Three readers, not two** — the proposal review reads off *disk*, so it announced a semantic change for a proposal making none. |
+| **CWF-012** | Parse CSV / To CSV, on the parser Static Array has had all along | The specified integrity check was the wrong check: an unterminated quote does **not** truncate — `exec` with `g` scans forward, so every row arrives and one word vanishes. Contiguity is the check. The doc's body limit was **160× too small**. |
+| **CWF-013** | A Log node whose line carries the request id, and a logged secret comes out redacted | `redact()` is **key-based** and a log message is a bare string — the Log node is the first thing in the product to break the mitigation everything else relies on. Value-based scrubbing added. ⚠️ The "use the Send Email seam" advice was **wrong**: that seam is a process global, and a log line's value *is* the request id. |
+| **CWF-014** | A Request parameter can say what it is; a body that doesn't match never reaches the graph | **The three-debts claim does not hold** — AIB-001 shipped 2026-08-03 and was never this hole; ERG-005's defect is a component interface written nowhere. One debt paid, **so the design was made smaller**. The typecast table declares which *wires* are legal and converts nothing. |
+| **CWF-015** | Create/Update/Delete User and Verify Session Token, as the system | The doc's stated foundation was unusable: **`POST /users` mints a session and returns its token**, so a node built on it could hand a caller a session for the account it just made. There is **no session expiry** — `_Session` declares no `expiresAt`. |
+| **HUD-003/004** | Expand the pill to see what you just did; per-peer trace ownership | **The data-loss bug is fixed**: an agent's `start_trace` used to destroy a human's recording outright. `start_trace`/`stop_trace`'s tool descriptions were lies. Giving editors a `clientId` would have regressed the relay's disconnect broadcast — it ran for every socket type and got away with it only because editors had none. |
+| **FH-023** | The four prefabs read their keys from the backend again | **`library:check` reported 58/58 clean while the library shipped nine typeless nodes** — `unknownNodeType` was a warning, contradicting the script's own comment. Now a real gate, including the first check that a wire to a component instance names a port that component declares. A double-send was one hop away (NDA-017's run-on-change default vs a key that now arrives mid-request). |
+
+### Caught in verification, not by any agent's gates
+
+- **HEAD advertised a node it did not register.** CWF-013's `require('./src/nodes/std-library/log')` sat in the working tree while the generated catalog and the cloud picker snapshot naming `net.noodl.Log` were both committed. `catalog:check` and `cloud-library:check` **both passed** — they compare the snapshot to the *working tree* source. Per CWF-003's drive, an unregistered type hangs the request rather than failing it. Fixed in `1456c78a`.
+- **`tests/email-flows.test.ts` had been red for days as "known flake."** See below — three sessions each cleared themselves of it correctly and none diagnosed it.
+
+**Gates at the end of the day:** `typecheck:runtime|cloud|viewer|editor|editor-tests` green · `catalog:check`, `cloud-library:check`, `catalog:merge:check` green · `library:check` 58/58 · runtime 2284 · cloud-runtime 172 · **nodegx-backend 86 suites / 887** · observe 23 · mcp 161 · **`Jasmine: 2295 specs, 0 failures`**. Cloud picker: **48 → 81 node types** in one day.
+
+**Shipped, 2026-08-06 — the fifth batch (four parallel agents; two were cut off mid-flight and their
+work was verified and committed by the orchestrator):**
+
+| Task | What landed | Notable |
+|---|---|---|
+| **FH-024** (`fb0f0470`) | The local admin API is no longer readable — or writable — cross-origin | **The drive found it worse than filed.** See the row below. |
+| **CWF-004 slice 2** (`0e7a8df4`) | Validate, Filter, Sort, Deduplicate, Split; `$parseJson`/`$stringifyJson` as **operations** | `compareOrdered` is now shared with the condition language, so a `sort` and a `gt` cannot disagree about `"10"` vs `"9"`. **Aggregate deliberately not built** — Richard's call, with four inputs written into the task doc. |
+| **AAQ-011 F12** (`029711f5`) | A node id written through `noodl-mcp` cannot collide | Reproduced first: `errors: 0` from the write, then `3` from `validate_project --strict`. **Allocation, not refusal** — safe because a node id is never referenced from outside its own component. |
+| **AAQ-011 F3** (`4c53950d`, `e49a1fda`) | The redundant second prose turn is gone | **The row's own remedy was wrong** — suppressing the turn from the *transcript* hides a round already streamed. It had to stop being *issued*, with a guard for the turn where `record_scope` is the only output. |
+
+⚠️ **Two agents were interrupted before committing.** Their work sat uncommitted in a shared
+checkout alongside a sibling session's — the orchestrator attributed each file by reading its diff
+(FH-024's test changes all carry `adminHeaders`; CWF-004's are all `workflow-*`), verified the whole
+tree, and committed each by explicit pathspec. **Nothing was taken from an agent's report.** The
+lesson worth carrying: an agent that has not committed has produced nothing durable, and the file
+ownership only stayed recoverable because each change carried a marker naming its task.
+
+**Gates at the end of the fifth batch, re-run by the orchestrator on the settled tree:**
+`typecheck:cloud` · `typecheck:editor` clean · `catalog:check`, `cloud-library:check`,
+`catalog:merge:check` all **up to date** · `library:check` **58/58** · nodegx-backend
+**93 suites / 1019** · mcp **196** · **`Jasmine: 2352 specs, 0 failures`**.
+
+**Shipped, 2026-08-06 — the sixth batch:**
+
+| Task | What landed | Notable |
+|---|---|---|
+| **CWF-004 S6** (`9b402605`, `4ab54f32`, `793ac902`, `ff72d6ca`) | **"New cloud function from this step"** — CWF-004 now CLOSED | **Most of the gesture already existed.** WFA-006 (phase 27) built the descent, the five-state resolution, the warning ring and the `ref` row in full, so this is the *create* half and `descendInto` is called unchanged at the end of it. Offered for exactly two of the five resolution states — `unresolved` and `unnamed` — and refused for `deployed-only` (a local function of that name would overwrite another project's on the next push) and `unknown` (an unanswered question is the wrong ground to mint a colliding name on). The payoff is CWF-001 → CWF-014: a step's **undeclared** params are what the engine merges into the request body, and CWF-014's `params` is a list of names, so the mapping keys go straight across and the author lands in a graph whose input ports are already the values the step sends. **Two of this page's premises were wrong** — "a step with **no target**" is the rarer half of the case (and the offer is keyed on the resolution state, so `for-each` is covered without being named), and "the step's **resolved input**" does not exist in the editor and cannot: input is resolved at run time on the server, so the Request node is declared from the *mapping's keys*. ⚠️ **Types are deliberately not written** (`ptype-`/`preq-`/`pdef-`): a declared type is a claim about every caller of an HTTP endpoint, made from what one step happens to send today. ⚠️ **The jasmine half was written but NOT RUN** — another session held the editor on 9222 all session. 21 jest specs did run. |
+| **CWF-016 slices 2–4** (`f6a22fc9`, `94b2b5e7`, `2b2ad2a5`) | **The same webhook delivered twice runs the graph once** — a durable claim table, the `functions/:name` gate, and one field in CWF-017's Permissions panel. CWF-016 is now CLOSED. | **The concurrency test was written before the store and the store was made to satisfy it**, per the doc's own slice order — and it had to be staged, because `node:sqlite` is synchronous, so two awaited claims in one process would pass against a plain `Set`. Two connections to one file (the PK is the only arbiter), and a claim held across an await while four HTTP deliveries land during it. ⚠️ **The doc's corrected line reference had drifted again** — the route is `HttpServer.ts:560`, not the `:511` that corrected `:488`. ⚠️ **`ExecutionHistory.prune()` would not have swept anything** on a backend with `executions.retentionDays: 0`: its first line returns early, so the new `registerSweep` seam deliberately runs *outside* that guard — "keep every execution forever" must not silently mean "keep every idempotency key forever". ⚠️ **Nothing scrubs the stored body, and that is the decision, not an omission**: `redact()` is key-based (CWF-013's finding) so it would not catch a secret in a bare response anyway, and the value-based scrubber *would* — which is the problem, because a replay whose bytes differ from the original answer is not a replay. **The CWF-005 hole is pinned by a test rather than papered over**: two `invokeFunction` calls return two different tokens, because a `call-function` step never reaches this endpoint and teaching it to send a key would turn a deliberate retry into a silent no-op. |
+| **CWF-004 Aggregate** (doc) | **DECIDED — not built.** Richard, 2026-08-06 | Aggregation is the only entry in the family table that **computes**, and `VALUE_LANGUAGE.limits` — *"No arithmetic… Compute in a cloud function"* — **stays true, unedited, in all three served places**. The accepted cost is stated rather than hidden: an in-flight supplier array that is never stored still needs a `call-function` hop to be summed, because `Aggregate Records` is a database aggregation over data **at rest** and cannot see a payload passing through a workflow. Reopening it means editing the served sentence in three places **first**. |
+| **CWF-007** (doc, `e92e18eb`) | **All four questions decided.** Channel first · session-bound · after alpha | The task moves from "a design doc to argue with" to **a scheduled build with one open sub-question**. ⚠️ **Q1 and Q2 do not compose**, and that is recorded rather than absorbed: channels were chosen partly because they work when no caller is waiting (a scheduled workflow), and read access was bound to the session that started the channel — which such a run does not have. The build owes *"who may read a channel that no session created?"*, with a warning not to settle it by widening Q2, since a "system channels are public" branch is instance three of the FH-024 class arriving through the one case nobody was looking at. |
+
+**Gates at the end of the sixth batch, re-run by the orchestrator on the settled tree** (not taken
+from any agent's report): `typecheck:runtime|cloud|viewer|editor|editor-tests` **all clean** ·
+`catalog:check`, `cloud-library:check`, `catalog:merge:check` all **up to date** ·
+`library:check` **58/58** · runtime **2298** · cloud-runtime **172** · nodegx-backend
+**97 suites / 1056** · observe **23** · mcp **196** · **`Jasmine: 2391 specs, 0 failures`**.
+
+### ⚠️ Caught in verification: `test:main` is a PR CI gate and it was red, twice over
+
+Neither red was found by looking for it — two agents ran the gate for unrelated reasons on the same
+day. **Nothing watches it**, which is the finding worth more than either bug.
+
+- **`tests-unit/aib-007/backendRequirement.test.ts`, 3 of 10 failing.** FH-018's deletion of the
+  Config node left the type named in **two** rows, not the one FH-023's loose end recorded — and a
+  completeness guard had been reporting **nine unclassified cloud nodes** to nobody, one of which was
+  `noodl.cloud.secret`, the remedy for the very row being closed. Fixed in `92279281`; 11/11.
+- **`tests-unit/workflow/workflowChangeSet.test.ts` had not compiled since CWF-005**, so it reported
+  `Tests: 0 total` for days. ⚠️ **The first diagnosis — "picking a replacement kind is a decision" —
+  was wrong, and so was "it is a rename".** A `retry` step is still legal *on the wire*
+  (`WorkflowProposalClient` migrates it on the way in, and says so at `:80`); it simply cannot reach
+  `buildWorkflowChangeSet` un-migrated. The fixtures were **pre-migration input fed to a
+  post-migration module**. Migrating them is what CWF-005 always implied. One assertion genuinely
+  changed meaning and was not quietly dropped: post-CWF-005 a retry *is* a call-function, so
+  `node-type-changed` on that step is now 0, and the kind-change path — which would otherwise have
+  lost its only coverage in the file — got its own case. Nothing was hidden underneath: 20/20 first
+  run, and `test:main` went 673 → **693** passing.
+- **What is still red, and is nobody's this session:** the two `tests-unit/erg-005/` suites fail to
+  compile against **another session's uncommitted work**. They were red before this session started
+  and were not touched. If that session is dead, its uncommitted work is holding a CI gate red.
+
+### Filed, not fixed
+
+| What | Where it bites |
+|---|---|
+| ~~**Nine Config nodes in four shipped prefabs** (send-grid, mail-gun, stripe, email-verification) now paint as missing-type~~ | ✅ **STALE WHEN WRITTEN, and the tail it hid is FIXED 2026-08-06 — [FH-025](FH-025-THE-PREFABS-STILL-HOLD-CONFIG-NODES.md), `92279281`.** [FH-023](FH-023-THE-PREFABS-LOST-THEIR-KEYS.md) (`4b3c95f7`) shipped this row's repair **the same day the row was filed**; the register recorded the filing and not the shipping. Re-measured from the four `project/project.json` files rather than the doc: **zero `DbConfig`, nine `noodl.cloud.secret` under eight names**, all **14** Settings instances inside `/#__cloud__/` (so `Secret`'s `availableIn: ["cloud"]` is never violated and the brief's "is this a browser graph?" question was already answered *no*, four times, by measurement), `runOnChange-in-*: false` on **11** Function nodes, all four `library.json` descriptions and READMEs naming their secrets, `library:check` **58/58**. **What the `DbConfig` deletion actually left behind is three rows naming a type that no longer exists** — `DELIBERATELY_BACKEND_FREE` ([backendRequirement.ts:115](../../../packages/noodl-editor/src/editor/src/validation/backendRequirement.ts)), `DELIBERATELY_UNBOUND` ([nodeCapabilities.ts:158](../../../packages/nodegx-backend-contract/src/nodeCapabilities.ts), FH-023's own loose end 4, which named only one of the two) and a test fixture. ⚠️ **And a PR CI gate has been red about it**: `tests-unit/aib-007/backendRequirement.test.ts` runs under `npm run test:main` ([pr.yml:107](../../../.github/workflows/pr.yml#L107)) and was failing **3 of 10** — the ghost, plus the completeness guard doing its job unheard on **nine unclassified cloud nodes**: TALK-005's `SubscribeToChanges` (bound `realtime.subscribe`, classified nowhere) and eight from the CWF-008…018 vocabulary, **one of which is `noodl.cloud.secret` itself** — the row's own remedy arrived without a classification. All nine decided per node, **not** swept: `SubscribeToChanges` → `'backend'` (a subscription with no backend reports nothing, the silent-success failure the file's own Users note calls "worse than an error"); the four CWF-015 user nodes → backend-free by the deploy-target argument already on `sendemail`; CWF-010's three crypto nodes → backend-free by the *stronger* claim that they reach nothing; `Secret` → backend-free with its own reason (it reads the **hosting process's** secret store, so "you have no backend" names the wrong thing). A category-wide rule was rejected because it is **already false in the file** — `noodl.cloud.aggregate` is cloud-only *and* requires a backend — and because it would pass forever and destroy the property the guard exists for. Slice 3 gives `DELIBERATELY_UNBOUND` the ghost check it could never have had in `@noodl/backend-contract` (that package cannot see the catalog and must not — importing it inverts BCN-001's dependency), proven red by a phantom row. **aib-007 11/11**, backend-contract 199/199, `typecheck:editor` clean. ⚠️ **Left for Richard** (in FH-025 §7): `noodl.cloud.aggregate`'s `'backend'` classification now visibly disagrees with the eight beside it — defensible either way, changes a diagnostic users see, and belongs to AIB-007's owner; and the `Cloud` category's classifications may be guarding something inert, since `checkBackendRequirements` may never reach a cloud-function component at all. |
+| ~~`Array Filter`'s `enabled` and `Array Map`'s `mapScript` are inert `default`s~~ | ✅ **FIXED 2026-08-06 — `9446e6fc`.** The mechanism was right and **only one of the two nodes had the defect**. Both `default`s are inert (`initializeDefaultValues` fills `_inputValues` and returns, `nodedefinition.ts:161`, called at `:481`) — but **Array Filter's `initialize` sets `this._internal.enabled = true` itself** ([filtercollectionnode.ts:168](../../../packages/noodl-runtime/src/nodes/std-library/data/filtercollectionnode.ts#L168)), so a hand-authored filter has always filtered: measured, 3 records in and 1 out with no `enabled` parameter anywhere. That line is now commented as load-bearing and asserted, because deleting it as "redundant beside the `default`" is precisely how this node would acquire the defect. **Array Map was real**: `mapScript`'s setter is what *compiles*, so an untouched Script left `mapFunc` undefined and failed every run with "could not be compiled: **unknown error**" — unknown because nothing had ever compiled — while the editor rendered the template into the field the node was refusing to run. Fixed by compiling the declared default in `initialize` (Array Filter's own answer), not by a `?? fallback` at the read site. ⚠️ **The behaviour change**: an Array Map whose Script was never edited stops raising and now emits **one empty record per source record** (`Count`, `Changed`, and `Done` on a `Refresh`), so a Repeater bound to one renders N empty items instead of nothing. Nothing could have depended on the old path — it produced no items at all — and any project that ever touched the field stores `mapScript` and is unaffected. Red-then-green in [`test/nodes/array-family-declared-defaults.test.ts`](../../../packages/noodl-runtime/test/nodes/array-family-declared-defaults.test.ts); catalog untouched (no port, description or default changed) and its three checks green unregenerated. |
+| ~~`ProvenancePanel`'s `timeOf()` does `new Date(row.event.t)`~~ | ✅ **ALREADY FIXED — this row was stale when written.** HUD-003's criterion 7 demanded exactly the relative render this row asks for, and shipped it: [ProvenancePanel.tsx:650-656](../../../packages/noodl-editor/src/editor/src/views/panels/ProvenancePanel/ProvenancePanel.tsx#L650) is now `+${seconds}s` / `+${minutes}m SSs`, and `new Date(row.event.t)` appears nowhere. **Confirmed live 2026-08-06**: a walk on the QA fixture rendered `fired 3× · +9m 38s`. The row survived into the register because it was filed from a different task's notes than the one that fixed it. |
+| ✅ **[FH-024](FH-024-THE-LOCAL-ADMIN-API-IS-CROSS-ORIGIN-READABLE.md) — any web page could read AND WRITE a developer's local backend admin API** | **DRIVEN, then FIXED 2026-08-06 (a)+(b).** Three defaults composed: `devOpen` defaults **true**, `devOpenActive` made **every** admin gate return early with no token checked, and CORS defaults to `origins: ['*']` applied **before routing**. **The drive found it worse than filed.** A real page in a real browser on an unrelated origin read `/admin/ops`, `/admin/permissions`, `/admin/schema`, `/admin/keys`, `/admin/secrets` and `/_admin/whoami` — and the write case the filing called unmeasured works: a **preflighted `PUT /admin/ops` passed its preflight and changed the running config**, a simple `text/plain` `POST /admin/roles` **created a role**. §8's "a fix resting on `cors.origins` is reachable through the hole it closes" was the exact request that landed. **Fix:** (a) admin routes send no CORS headers — decided from the **route table, not a path prefix**, because `GET /api/_schema` and `GET /executions` are admin routes that do not start with `admin/` and `/%61dmin/ops` reaches `admin/ops` (the router splits *then* decodes); (b) `devOpen` no longer relaxes the admin gate, which is what stops the blind simple write a browser still sends. **Both are needed** — (a) alone leaves the write, (b) alone leaves nothing readable but is one comparison away from being re-relaxed. Deployed backends unchanged; the interlock has its own spec case; `/api/*` keeps dev-open **and** CORS, which is the ergonomic and is named as a residual. **Given up:** the BAK-005 dashboard no longer enters password-free on a dev-open backend — the sign-in form appears and the token is in `secrets.json`. Spec: `tests/admin-cors-devopen.test.ts` (25 cases). ⚠️ **The doc's own §8 trap was half wrong**: `HttpServer.ts:1639` is `assertDataAccess`, not a second `checkAccess` return, and gates no admin route. |
+| ~~A node whose graph **id** is `add` fails the whole bundle load~~ | ✅ **FIXED 2026-08-06 — `7f933c12`.** Row confirmed exactly, blast radius included: driven over HTTP, the `add` function 500s *and so does the innocent neighbour in the same file*. `ComponentModel.nodes` was `[]` used as an id-keyed map, `collection.ts` installs the collection vocabulary on `Array.prototype` as `writable: false`, and strict mode makes `this.nodes['add'] = node` **throw** (`Cannot assign to read only property 'add'`) out of `addNode` — so the component never imports and the opaque message comes from the *next* caller ([nodecontext.ts:525](../../../packages/noodl-runtime/src/nodecontext.ts#L525)). **Fixed by the map, not the name**: `Object.create(null)`, which closes the whole class (`add`, `get`, `set`, `size`, `each`, `items`, `id`, `length`, `constructor`, `toString`…) rather than one word. ⚠️ **Two findings.** The second candidate fix was unnecessary — the real message *was* already logged at load (`[WorkflowRunner] Failed to load workflow …: Cannot assign to read only property 'add'`); only the HTTP answer was opaque. And **the same class exists one layer down**: `NodeScope.nodes`/`componentInstanceChildren` were `{}`, where `add` is harmless but `__proto__` silently swallows the node (measured: the fix reverted turns that case's answer from `41` to `null`) and `hasOwnProperty` shadows the method the scope calls on the map — both also prototypeless now, with a `hasNode` helper because a prototypeless map has no `.hasOwnProperty`. Incidentally closed: `reset()`'s PLAT-003 §31 DEFECT loop, which could never remove anything. **Still `{}`, deliberately:** `nodecontext.ts`'s two diagnostic maps (`getSessionDictionary`, `getPortValues`) — same class, read-only walks behind try/catch. Red-then-green in [`test/models/reserved-node-ids.test.ts`](../../../packages/noodl-runtime/test/models/reserved-node-ids.test.ts) (5) and [`tests/reserved-node-id.test.ts`](../../../packages/nodegx-backend/tests/reserved-node-id.test.ts) (3, end to end). |
+| ~~CWF-009 has no admin route, so an editor Secrets panel has nothing to call~~ | ✅ **FIXED 2026-08-06 — `4aba4eb2`.** Row confirmed exactly: nothing in `HttpServer.ts` mentioned a secret but a webhook's own. `GET /admin/secrets` + `PUT`/`DELETE /admin/secrets/:name` ([admin-secrets.ts](../../../packages/nodegx-backend/src/server/admin-secrets.ts)), on the existing `access: { kind: 'admin' }` declaration, with `backend:listSecrets` / `setSecret` / `deleteSecret` proxying them. **The namespace policy is not widened and cannot be**: no `:namespace` segment, `FUNCTION_SECRETS_NAMESPACE` supplied by the handler exactly as `service.ts` supplies it to a graph — so a caller naming `adminToken` writes `functions.adminToken` and the real credential is untouched (asserted). **No route returns a value** — no read-back, no length, no fingerprint — and the spec holds it to CWF-009's own bar: the value reaches an outgoing header from a real Secret node, and appears in no file the service wrote (`executions.sqlite` included) and no log line. ⚠️ Two findings: **dev-open relaxes every admin gate on loopback** (`checkAccess` step 2 — the posture the editor's own spawned backend runs in), which is survivable only because nothing hands a value back; and the listing must report the `NODEGX_SECRET_*` names too, because the resolver has **two doors** and a names-only list of the first calls an env-provisioned secret missing. |
+| ~~CWF-018's `timeoutMs` has no row in the Permissions panel~~ | ✅ **FIXED 2026-08-06 — `25e9696c`.** Row confirmed: the admin API already returned `timeoutMs` per function *and* `defaultTimeoutMs` for the service ([admin-security.ts:234](../../../packages/nodegx-backend/src/server/admin-security.ts#L234)), `PUT` already accepted it, and the IPC proxy is a pass-through — the control was the whole gap, so this is one field on CWF-017's seam and not a second surface. Authored in **seconds**, stored as ms: the engine already spells every bound `timeoutMs` and a second word is how two bounds disagree, but nobody should type `45000` beside a rate of `60/min`. Blank clears the entry (service default); a declared **`0` is no limit**, CWF-007 streaming's honest opt-out and deliberately not the same as blank — which is why the row is `number \| null` rather than a number with a falsy default. |
+| ~~**`runRetentionCleanup()` / `cleanupByAge` have zero call sites**~~ | ✅ **FIXED 2026-08-06 — `edb8661b`.** The row was right about the consequence and imprecise about the mechanism, in two ways worth keeping: both functions live in **`noodl-viewer-cloud/src/execution-history`**, not in the backend (the backend consumes them through the `@cloud-runtime` bundle), and `cleanupByAge` did have two callers — `runRetentionCleanup()` and `applyRetentionPolicy()` — which were themselves uncalled, so the whole feature was reachable only from its own unit tests. `ExecutionHistory.prune()` is now the production caller: once at service start, then write-driven at most hourly off `createLogger` (`AuditLog`'s pattern — no fourth timer to clear at shutdown, which matters beside the SSE handle that already hangs `server.close()`). Retention is `ops.json` → `executions.retentionDays`, default **30**, `0` = keep forever, live over `PUT /admin/ops`. Steps go with their run via the schema's `ON DELETE CASCADE`, which node:sqlite enforces — asserted, not assumed. CWF-013's per-run 200-line cap is untouched. |
+| ~~**NDA-017 changed the run-on-value-change default and migrated nothing**~~ | ✅ **FIXED 2026-08-06.** Migrated on load, per Richard's decision, as a pure function in `ProjectPatches/runOnValueChangeMigration.ts` wired into `applyPatches` — the one load-time pass that holds the whole document, which this rule needs because it turns on whether a *connection* exists, not on anything a per-node patch can see. **Blast radius measured before building: 7,196 parameters on 3,507 nodes across 55 of 81 real projects — 29% of every node in the class had been running the opposite of its authored contract since §2.** ⚠️ Both stated traps were half right. The declared-`default` one holds exactly and the migration writes `false` explicitly. The other is **not** the ordering that bit: §3's port-exists race is already fixed centrally in `defineNode`, and jest *can* reach it (the corpus harness applies `data…parameters` the same way a saved project does). The live one is a **drain-order** defect one layer down — queued parameters drain in key order, so a governed value landing before its own checkbox is read against *absent means ticked* and **runs the node at load**. That is §2's bug, not the migration's: every hand-untick has had it on any governed input that also carries a stored parameter (`Text Input.startValue`, `Condition.condition`, `Variable.value`). Closed twice — the migration emits the checkbox keys first, and `NodeScope.setNodeParameters` now gives `runOnChange-…` absolute priority (`inputPriority` could not, since the four dynamic-port families' checkboxes never reach the register). ⚠️ And **"fifteen families" is fourteen and a half**: `createNodeFromReactComponent` drops `runOnValueChange`, so **Text Input has no checkbox at all** and has answered *ticked* since §2 — the migration incidentally mints it. Full write-up: [NDA-017 §4](../phase-30-node-library-audit/NDA-017-SIGNAL-INPUT-FRESHNESS.md#4--the-migration-built). |
+| ~~`impersonate()` writes `_Session` rows with `expiresAt`; `findSession` never reads it~~ | ✅ **FIXED 2026-08-06 — `edb8661b`.** Row confirmed exactly, including CWF-015's own note that `_Session` declared no `expiresAt` at all ([users.ts:138 / :197](../../../packages/nodegx-backend/src/server/users.ts), `ensureSystemTables`). `findSession` now judges the row. ⚠️ The half that needed the care is the *other* direction: **every session this backend has ever minted has no `expiresAt`**, so absent / null / empty / unparseable must mean *never expires* — reading absent as expired would have signed out every account on every existing backend at deploy. Only a readable past instant refuses (and the dead row is deleted). The column is declared for new data dirs and `addColumn`-ed into existing ones, since `createTable` does nothing to a table that already exists. ~~Still open and NOT in scope here: `impersonate()` writes a `user` **pointer** where this backend reads `userId`~~ → ✅ **FIXED 2026-08-06 — `77ff6832`**, and **worse than this row said**. The row claimed the session rows "would not resolve to a user even once they are found"; in fact **`impersonate()` never minted one at all**. Its reuse query `{ user: { pointsTo: id } }` is refused by the filter translator *before any write* — *"Filtering \"user\" by the record it points to needs the collection schema"* — because there is no `user` column for a schema to describe. So impersonation has never worked against this backend in any form. Both halves say `userId` now (`requireUser`, `SystemUsers.verifyToken` and the two revocation sweeps all read it). ⚠️ **The existing-rows question is answered the OPPOSITE way to `expiresAt`, and it is measured**: a `user`-pointer row 209s on `/users/me`, so nothing in the wild depends on one and there is deliberately **no compatibility read** — reusing such a row would hand back a token that cannot be used. Red-then-green end to end through `POST /functions/:name` in [`tests/impersonate-session.test.ts`](../../../packages/nodegx-backend/tests/impersonate-session.test.ts). |
+| ~~`fireWorkflow` never calls `recordTriggerFire`~~ | ✅ **FIXED 2026-08-06 — `edb8661b`.** Row confirmed exactly: `fire()` and `recordRejection()` counted, `fireWorkflow` did not, so a backend whose triggers point at workflows scraped `nodegx_trigger_fires_total` as zero while the History Panel showed every run. The invariant now written into the module doc: **every `registry.recordFire` in `dispatcher.ts` is paired with exactly one `recordTriggerFire`, same verdict** — which also settles the `sync`-cap case for free (the 504 stamps nothing because the run is still going; the late completion stamps once). |
+| ~~The Execution History panel's empty state says a function call is recorded "not node by node"~~ | ✅ **FIXED 2026-08-06 — `98096162`.** Row confirmed at [NodeStepList.tsx:31](../../../packages/noodl-editor/src/editor/src/views/panels/ExecutionHistoryPanel/components/ExecutionDetail/NodeStepList.tsx#L31), and CWF-013's own page had already filed the wrinkle as an observation and left the wording. WFA-002 wrote the sentence when it was unconditionally true; CWF-013 made it conditional the same day. Now: *"Workflow runs record every step. A cloud function records only what its Log nodes report — this call reached none, so it is one execution with nothing inside it."* — true in both cases, and it names the case the reader is actually in rather than describing cloud functions in general. |
+| ~~**The editor's own AI write path allocates node ids the way `noodl-mcp` used to**~~ | ✅ **MEASURED, then FIXED 2026-08-06 — `ef95e9b1` (the drive) + `d15c841f` (the fix).** The row was filed as a question and the question had a definite answer: **it is a live defect**. None of the four `rekeyAllIds()` callers is on the AI path — `duplicateComponent` ([projectmodel.ts:341](../../../packages/noodl-editor/src/editor/src/models/projectmodel.ts#L341)) is *duplicate*, the other three are templates, the Router adapter and the import engine — the apply path is `reconstructLegacyComponent` → `ComponentModel.fromJSON` → `project.addComponent`, and none of those touches an id. **The drive landed FIRST, as a commit, asserting the collisions**, so the defect is on the record as measured rather than as claimed: two pages authored in ONE plan transaction both landed carrying `page`/`layout`/`title`, and so did two sequential accepts. ⚠️ **The consequence is bigger than a validator complaint.** `ProjectModel.findNodeWithId` ([projectmodel.ts:428](../../../packages/noodl-editor/src/editor/src/models/projectmodel.ts#L428)) is **project-wide and FIRST-MATCH**, and it is what `ViewerConnection`, the debug inspector and the Provenance panel resolve a runtime node id through — so the second page's nodes were unreachable and the first page's answered in their place. The editor highlights, inspects and labels the **wrong node**. And the editor's write gate said the candidate was clean while a project-wide check of the same project reported `duplicate-node-id`: `SemanticValidator.validateComponent` filters diagnostics to one component, and the cross-component rule locates itself on the FIRST carrier — F12's gate-scope hole, in the editor's own gate. **Fixed as F12 fixed it: allocation, not refusal** ([nodeIds.ts](../../../packages/noodl-editor/src/editor/src/models/AiAssistant/authoring/nodeIds.ts)) — `title` → `title-2`, with `parent`, `children[]`, `visualRoots[]` and `connections[].fromId/toId` rewritten. **The safety claim was re-verified on the editor side, not inherited**: `rekeyAllIds()` itself rewrites node ids, recursed children and connection endpoints and *nothing else*, so every editor copy path already depends on that closure being complete; `visualRoots` is derived in the live model (`getVisualRootIds()`) and stored only in the v2 files; cross-component references are by component **name**. The one project-level pointer at a node id is `project.rootNodeId` — resolved through the same first-match lookup, which argues *for* uniqueness, and never at risk here because an update preserves every id the component already had. **Placed at the apply seam, not the authoring gate** (the difference from `noodl-mcp`, deliberately): the session validates against an `ExplainGraph` snapshot taken when authoring started, while the apply is the only moment that sees the project as it is — and it is where a plan session restored from disk days later arrives without re-authoring. It also makes the multi-operation case free, since operations apply in sequence. ⚠️ **A pre-existing spec was itself planting the collision and nobody had noticed** — `authoring-plan-staging.test.ts`'s 3-component plan wrote `upd-root`/`upd-text` into BOTH updated components, the same thing F12 found in `noodl-mcp`'s `roundtrip.test.ts`. ⚠️ **Two things left open on purpose**: the gate-scope class (still component-scoped, now *asserted* by a spec rather than assumed), and the fact that `noodl-mcp/src/project/nodeIds.ts` is a **twin** of this algorithm rather than a shared import — the editor module is deliberately Electron-free so the MCP side can import it along the `plan.ts`/`editor-deps.ts` seam, which is a two-line change in a package this task was scoped out of. Jasmine 2359 → **2382 specs, 0 failures**. |
+| 🆕 **`tests-unit/workflow/workflowChangeSet.test.ts` does not compile, so a `test:main` suite has been silently red since CWF-005** — ⚠️ **measured, not fixed** | Found 2026-08-06 while running the adjacent suite for CWF-004 S6. Three lines still write `kind: 'retry'` ([126](../../../packages/noodl-editor/tests-unit/workflow/workflowChangeSet.test.ts#L126), [256](../../../packages/noodl-editor/tests-unit/workflow/workflowChangeSet.test.ts#L256), 263) and CWF-005 removed `retry` from `StepKind` — so ts-jest fails the **whole suite to run**: `Tests: 0 total`, which reads as a compile error rather than as thirty missing assertions. `npm run test:main` is a PR CI gate ([pr.yml:107](../../../.github/workflows/pr.yml#L107)), and this is the **second** red in it found this week. **Not fixed here deliberately**: it is WFA-007's spec, and the first case needs a step whose *kind* differs from `BASE`'s while still carrying `ref` and `maxAttempts` — so the replacement kind is a decision about what that case is testing, not a rename. Whoever owns WFA-007 or CWF-005 should take it; it is minutes of work with the file in front of them and a guess without it. |
+| 🆕 **A test run rewrites `tests/testfs/import_proj5/project.json`** | Noticed 2026-08-06 when it appeared dirty mid-session having been clean at the start. The change is a **pure reformat** — byte-identical JSON, minified → pretty-printed — so nothing is semantically at risk, which is exactly why it will keep happening unnoticed. Some editor spec (or the sibling session's `ProjectImporter`/`analyze.ts` work) re-serialises the fixture through a project save. **Left uncommitted and unreverted** rather than guessed at: reverting a file this session did not write is the rule this repo keeps for good reason. Whoever owns the import specs should decide whether the fixture should be pretty-printed on disk or the writer should stop touching it. |
+| ✅ **FH-024 (b) broke the Execution History panel — the one admin caller in the editor with no token** | **FOUND BY DRIVING AND FIXED 2026-08-06 — `cd644628`.** Against a running editor-spawned backend the panel rendered *"SQLite backend is running but could not be read: HTTP 401."* and nothing else. `GET /executions` and `GET /executions/:id` are `access: { kind: 'admin' }` routes that **do not start with `admin/`** — the exact fact that made FH-024 answer the CORS suppression from the route table — and until (b) they answered anyway because dev-open relaxed every admin gate on loopback. [`ExecutionHistoryManager`](../../../packages/noodl-editor/src/main/src/execution-history/ExecutionHistoryManager.ts) fetches those two paths **directly** rather than through `ServiceSupervisor.request`, so it was the only admin call in the editor without a bearer token; every other backend panel (Backend Services, Data Browser, Permissions, the secrets listing) goes through the supervisor and was **never affected**. Fixed by putting the credential on `RemoteExecutionSource`, supplied by `BackendManager.getRunningEndpoints()` — the injection point that already exists to keep the manager free of a module cycle. A source with no token is still **asked** and still reported unreachable **with its 401**: "no runs" and "cannot read the runs" are different facts and the panel says which. ⚠️ Second half worth keeping: `ServiceSupervisor.adminToken()` cached `null` on a *failed* read as eagerly as a successful one — and secrets.json is minted by the backend on its **first** start, so a read landing before the child wrote it pinned `null` for the whole session, a permanent silent 401 on every admin surface. It now caches only a successful read. Red-then-green in `ExecutionHistoryManager.merge.test.ts` against a stand-in server that enforces exactly as a post-FH-024 backend does; 46/46 in `tests-main/execution-history`. **The lesson generalises past this row: a fix decided from a route table has to be checked against every caller that does not go through the one client that knows the table.** |
+| 🆕 **A preview whose webview navigates away cannot be brought back from the editor** | Found 2026-08-06 while driving HUD-001 step 2. Once the preview guest is on another URL, **nothing in the editor re-navigates it**: the topbar reload reloads the *project*, and the Design/Preview segmented control re-lays-out the pane without touching the guest's location. `Preview live` stays off and the recording HUD keeps refusing, correctly, forever. ⚠️ **Reached by a driver** (`location.href='about:blank'` on the webview target) rather than by a user, which is why it is a row and not a defect claim — but a user's own app navigating to an external URL is the same state, and there is no way out of it short of reopening the project. Whoever owns the preview should decide whether the reload control should re-point the guest. |
+| 🆕 **Every icon button in the side navigation has no accessible name** | Found 2026-08-06 while driving: all eleven panel buttons in `SideNavigation-module__Toolbar` return `null` for both `aria-label` and `title`, and carry no text — only `BrandExit` ("Back to projects") has one. So a screen reader announces eleven unlabelled buttons, and a driver cannot address a panel except by pixel position, which is how this was noticed. Not filed as its own task because it is squarely **[phase 41](../phase-41-accessibility/README.md)** material and its Part B is retroactive by design — but it gets a row here so the phase-41 session does not have to rediscover it. |
+| Badges stay `pointer-events: none` even now HUD-003 gives the click a destination | A badge is canvas-space, arrives on a 1.5s poll and fades after 3s — a live target under the cursor at unpredictable moments during the exact interaction being recorded. Revisit if the canvas grows hit-testing. |
+
+### Fixed on the way, worth knowing
+
+`tests/email-flows.test.ts`'s Send Email fixture wired `sent`/`failed` — ports ERG-001 §4 renamed to
+`done`/`failure`. `addConnection` accepts a wire to a port that does not exist **without a word**, so
+both wires went nowhere, no Response node was reached, and the two specs hung to jest's limit
+instead of failing. Three separate sessions independently classified them as known flake. The node
+was always fine. Backend suite is now 79/79 green.
+
+**Still open, and it is now a short list:**
+
+| Task | Why it is still open |
+|---|---|
+| ~~**CWF-004** — Transform + data steps~~ | ✅ **Slice 1 SHIPPED 2026-08-06** — the `transform` step kind, a closed 12-operation vocabulary served as `transformLanguage` (catalog `1.6.0`), write-time refusal of an unknown `$op`, and a rows-plus-op-picker property row built on CWF-001's value control. Three of CWF-004's own design questions answered in code: **no arithmetic** (the served value language already promises there is none, in three places), **no path wildcards** (they are a change to the walker conditions share), and **ops are NOT in the shared resolver** — the op table is a *parameter* of `resolveValueDeep`, so a condition still cannot compute. **Slice 2 SHIPPED 2026-08-06** — the rest of the family: `validate` (two rule forms, a closed served type vocabulary, and no `invalid` route because `onError` already is one), `filter`, `sort`, `deduplicate` and `split`, plus `$parseJson` / `$stringifyJson` as transform **operations** rather than a step. Catalog `1.7.0` serves `validateLanguage`; four of the five kinds needed no shape change and no new editor control at all, because `filter` borrows the condition language whole and `sort` borrows its *ordering* (`compareOrdered` is now shared, so a sort and a `gt` can never disagree). **S6 SHIPPED 2026-08-06** — "New cloud function from this step": the create half of a gesture whose descent half WFA-006 already built, keyed on the resolution state, declaring the step's param-mapping keys as the new function's Request parameters. **Aggregate DECIDED and NOT built** (Richard, 2026-08-06) — it is the one entry in the family table that computes, and the served sentence "no arithmetic" stays true, unedited, in all three places. **CWF-004 is CLOSED.** |
+| **CWF-006** — triggers + entry step | A **subset of [phase 43](../phase-43-backend-authoring-clarity/README.md)**, which supersedes it if that lands first. CWF-002 deferred its entry-card indicator here for the same reason. |
+| **CWF-007** — streaming | Still a design doc to argue with, not a build — but **the trap that decided whether it is possible at all is now measured** (`390b880e`). It said to check early whether a cloud function can consume a *streaming* upstream API. It can: the trap is accurate about the isolate (`sandbox.isolate.js:101` hands over a finished string), but **`nodegx-backend` does not use the isolate** — zero references, and `@cloud-runtime` resolves to `noodl-viewer-cloud/src/index.ts`, which shadows no globals. Functions run in host Node 22 with the real `fetch`, whose `Response.body` *is* a `ReadableStream`. So layer 2 is a **vocabulary** decision, not an engine limit. ⚠️ The isolate path stays real for whatever deploys through it — a streaming node must refuse there loudly or the two paths differ silently. ✅ **ALL FOUR QUESTIONS ANSWERED 2026-08-06 (Richard) — `e92e18eb`.** **Q1 channel first** (survives a reload, works with no caller, inherits the SSE transport's auth/reconnect/shutdown; the HTTP-response variant is not ruled out and is not first). **Q2 the authenticated session that started it** — the capability-URL option is rejected **by name**, because it is the OBS-004 relay and the FH-024 admin API pattern and would be the third instance of one class. **Q4 after alpha**; phase 41 accessibility keeps its place ahead of it. ⚠️ **Q1 and Q2 do not compose, and the build owes the gap rather than discovering it:** Q1 was chosen partly because a channel works when *no caller is waiting* — a scheduled workflow — and Q2 binds read access to a session such a run does not have. **"Who may read a channel that no session created?"** is written into the task doc with three unranked candidates and an explicit warning not to settle it by widening Q2. **So this is no longer a design doc awaiting decisions — it is a scheduled build with one open sub-question.** |
+| ~~**CWF-016** — idempotency keys~~ | ✅ **CLOSED 2026-08-06 — all four slices** (`c87c120f` design, `f6a22fc9` store, `94b2b5e7` endpoint, `2b2ad2a5` panel). Explicit `Idempotency-Key`, key **and** response stored, per-function scope, 24h TTL from `executions.idempotencyTtlHours` swept on `ExecutionHistory.prune`'s existing write-driven pass so there is **no fourth timer**, a `idempotency_keys` table in `executions.sqlite` on the history's **own connection**, claim-then-run under a PRIMARY KEY, and a claim **provisional until the run succeeds** — a non-2xx or a throw DELETES the row, and a claim whose process died is released at the next start (WF-001's doctrine) or taken over after a stale window. **31 tests** across `idempotency-store.test.ts` (15) and `cwf-016-idempotency.test.ts` (16). ⚠️ **The CWF-005 trap was BACKWARDS and the correction stands**: a `call-function` step never reaches the endpoint (`invokeCloudFunction` → `WorkflowRunner.invokeFunction` → `cloudRunner.run`, in process, `headers: {}`), so **our own retries are the one duplicate path this cannot protect** — documented as a limit, pinned by a test, and deliberately NOT closed by teaching the step to send a key, which would make a *deliberate* retry a silent no-op. It generalises: **no endpoint feature applies to a workflow step.** |
+| **FH-007** / ERG-005 §2 | **Decided** (explicit types, inference default). Blocked on sequencing only — the other session's §1 changes the same seams. |
+| **FH-019 slice 3** — the language service | Blocked on **a dependency call from Richard**: `typescript` is a devDependency and everything in `node_modules` is externalised, so it resolves in dev and would silently not in the packaged app. Moving it to `dependencies` is ~11 MB on a 23 MB package. Slices 1–2 shipped and are useful without it. |
+| **MCP-004** — the docs page | ⚠️ A change to the **docs repo**, not this one. MCP-001 already probes the URL once per session and renders the link only if it answers, so the page turns itself on when published — no editor release needed. The exact path, sidebar entry and content are specified at the foot of MCP-004. |
+
+## The live-QA pass — 2026-08-06
+
+**The "nothing has been driven in the editor" debt is now mostly paid.** Driven against the
+**NodeGX QA Fixture** in a real editor with a real preview, in **both themes**, across **two full
+editor restarts** (not HMR). What follows is what was actually observed, not what was expected.
+
+### Driven and passing
+
+| What | Evidence |
+|---|---|
+| **HUD-001** criterion 1 — Record works with the Provenance panel never opened | Restarted the editor with the **Components** panel active, confirmed `provenanceMounted: false`, then pressed Record: `recording · 0 events · Stop` + *"Nothing has fired yet — use the app in the preview."* The poll lives in `TraceSession`, exactly as FH-011's amended slice 2 requires. |
+| **HUD-001** step 7 / criterion 4 | Stop → pill returns to `Record` immediately, `pollTimer: false` (idle really is free). |
+| **HUD-002** criteria 1–5 | 5 clicks → rig counters `5 5 5 5`, `traceEvents: 50`, badges rendered as **one per `data-node-id` with a count** (`18×`, `27×`, `9×`…). Badges fade and are gone (criterion 4 — a later sample read 0). Navigating mid-recording: header held at **130 events** and gained `· 150 on /erg-rig` (criterion 2); on a component where nothing fired it read *"Nothing has fired on this component. Open /erg-rig to watch it happen."* (criterion 5). |
+| **HUD-003** criteria 1, 3, 4, 7 | `▴` opens *"Interactions — click one to see where it went"*, rows naming cause and blast radius. Clicking a root opened Provenance **on that root's forward walk**, with **"Back to interactions"** — criterion 4's new case. Rows read `fired 3× · +9m 38s`, the relative render criterion 7 demands. |
+| **HUD-004 — the data-loss fix, proven** | Editor recording at **60 events**; agent `start_trace` from a real `nodegx-observe` on the same relay → **count did not drop** (before this it went to 0, unrecoverably), `otherOwners: ["observe-…"]`, header `also traced by an agent`. Kept clicking → 60 → **90**. Agent `stop_trace` → *"Stopped. 30 event(s) captured"* (its own share only), editor header `the agent has stopped tracing · still recording`. Editor Stop → **90 events kept**, 20 root rows in Provenance including everything from before the agent joined. |
+| **FH-011** | Stop pulls *before* disarming: events went **150 → 160** across the Stop. "Recorded interactions" populated (`PRESS.onClick · 2 events`, `Object.failure`, `Array Filter.completed`), and **no Record button in the panel toolbar**. |
+| **MCP-003 — reconnect, proven** | An `nodegx-observe` launched from an unrelated cwd, held open across a full editor restart. Its own log: `connected` → `lost the editor connection (code 1006)` → backoff `500→1000→2000→4000→8000→10000ms` → **`reconnected`**. `list_nodes` worked afterwards, under a **new token** (`6b1d5bc2…` → `0dcd23b4…`) re-read from disk. Before MCP-003 all tools threw `Not connected to the NodeGX relay.` forever. |
+| **MCP-001** | The "Connect an AI agent" settings section renders with its captions and a filled-in Copy command. |
+| **FH-020 + FH-022 together** | The **Ports** tab is there (`Properties \| Ports`), reading *"Every port on this node, whether or not it has a property. Read-only"*, `INPUTS 42`, each port with a description, a type chip, an **`Accepts …`** cast line and **"Nothing drives this yet"**. The cast line for a signal reads **`Accepts signal, boolean`** — the corrected rule, not the wrong `signal → boolean, number` the doc warned about. And FH-022's wording is live: `Completed` = *"Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error."* **Triage item 0 is closed.** |
+| **The cloud vocabulary** | Counted from the live `NodeLibrary`: **81** cloud-allowed node types of 172 total (browser 160). The 48 → 81 claim holds. |
+| **AAQ-011 F2** | **Closed as superseded** — see below. |
+
+### Found by driving
+
+- **AAQ-011 F1 is confirmed, and its mechanism is now certain.** `getComputedStyle('.popup-layer-dragger')`: light → background `rgba(0,0,0,0.8)`, colour `rgb(24,33,43)` (**≈1.2:1**); dark → same background, colour `rgb(238,242,246)`. The background is a **`--base-color-*` primitive** that never flips ([popuplayer.css:239](../../../packages/noodl-editor/src/editor/src/styles/popuplayer.css#L239)) paired with a **`--theme-color-*` semantic** foreground that does (`:242`). One rule; it is the *same singleton element* for all three drag surfaces (components panel, component ports, prop-list reorder).
+- **AAQ-011 F2 is dead — both halves, driven.** Label: reads the full `"CSS Style"`, `clipped: false`, no `nowrap`, no ellipsis (FH-013). Popup: trigger at `y=852` in a 900px viewport, popout rendered `y=337 → bottom=890`, **fits on screen** (FH-005's `flushSync` + clamp). Close the row.
+- ⚠️ **A fixture trap worth knowing.** `erg-rig`'s root-level nodes (`c1–c4`, `obj`, `filt`) all report `getNodeBounds → (0,0)` because the component was never laid out, so their badges pile on one pixel and the canvas draws the nodes overlapping too. That is the *fixture*, not the HUD — but it makes `erg-rig` a poor surface for judging badge layout by eye. Lay it out, or use a different component.
+- **The topbar crowds at wide side-panel widths.** At ~458px the topbar measures clean (breadcrumb `528→835`, warnings chip `849→885`, zoom `952→984`); with the wider Settings panel open the zoom readout and the fit-zoom control visibly paint over each other. **Observed in a screenshot, not yet measured at the wide width** — owned and being measured now.
+
+## The live-QA pass, second session — 2026-08-06
+
+A second pass, in a **fresh editor against a real editor-spawned backend**, taking FH-024's fix
+first because it had never been driven through the editor at all — the drive that found the hole was
+against a hand-spawned backend. **It found one regression, shipped the previous day, and fixed it.**
+
+### FH-024 through the editor — the supervisor's claim, checked
+
+The claim being tested: *"the supervisor already attaches the admin token, so the editor's panels are
+unaffected by (b)."* **It is true of four surfaces out of five.** Every panel that talks to a backend
+goes through `ServiceSupervisor.request`, which has attached a bearer since BAK-003 — except the
+Execution History panel, which fetches `/executions` itself.
+
+First, the posture on the **editor's own** backend (`SQLite backend`, port 8578, started from the
+panel, `devOpen: true` per `/health`):
+
+| Probe | Result |
+|---|---|
+| `GET /admin/schema`, no credential | **401** |
+| same, with the `adminToken` from `<dataDir>/secrets.json` | **200** |
+| same, `Origin: http://evil.example` | 200 — and **no `Access-Control-Allow-Origin` at all** |
+| `GET /api/Articles`, `Origin: http://evil.example` | 200 with `ACAO: *` — the residual, unchanged |
+
+So (a) and (b) both hold on the backend a developer actually runs, not only on the one the fix was
+driven against.
+
+| Panel | Verdict |
+|---|---|
+| **Backend Services** | ✅ Lists three backends; **Start** brought `SQLite backend` up (`/health` 200 in ~9s); the card flipped to `ACTIVE ✓ Running` with its endpoint, and the **Cloud functions** section rendered `chargeCard` plus *"chargeCard — on this backend, not in the project"*. |
+| **Data Browser** | ✅ Table picker, `Articles`, 2 rows with typed column chips (`objectId STRING`, `createdAt DATE`, `views NUMBER`). **Edited a cell**: `views` 10 → 1017, committed on blur, and confirmed *at the wire* — `GET /api/Articles` returns `"views":1017` with `updatedAt` moved to `2026-08-06T15:36:30.397Z`. Reads and writes both hold. |
+| **Permissions** (the card's *Access*) | ✅ Dev-open notice + *"Turn enforcement on"*, six collections with `creator-owns` and their five verbs, the cloud-function section (`chargeCard — from the graph: public`, rule/limit/timeout controls), Roles and API keys. |
+| **Secrets** | ⚠️ **There is no Secrets panel.** CWF-009 shipped the route and the IPC and no UI. The door works — `ipcRenderer.invoke('backend:listSecrets', …)` from the renderer answers `{"namespace":"functions","secrets":[],"environment":[],"readable":false,"envPrefix":"NODEGX_SECRET_"}` — so this is an unbuilt panel, **not** an FH-024 regression. |
+| **Execution History** | ❌ **BROKEN — regression, fixed. See below.** |
+
+### The regression: *"SQLite backend is running but could not be read: HTTP 401"*
+
+Opening Execution History against a running local backend rendered exactly that sentence and an
+empty list. **`GET /executions` and `GET /executions/:id` are `access: { kind: 'admin' }` routes that
+do not start with `admin/`** — the very fact that made FH-024 decide the CORS suppression from the
+route table rather than the path. Until (b) they answered anyway, because dev-open relaxed every
+admin gate on loopback and the editor's backends are dev-open.
+`ExecutionHistoryManager.fetchRemoteList` / `fetchRemoteGet` fetch those two paths **directly**, not
+through `ServiceSupervisor.request`, so they were the only admin calls in the editor with no bearer
+token. Both the list and *opening a run* were dead.
+
+**Fixed in `cd644628`**: the credential rides on `RemoteExecutionSource`, supplied by
+`BackendManager.getRunningEndpoints()` — the injection point that already exists to keep the manager
+free of a module cycle. A source with no token is still asked and still reported unreachable *with
+its 401*, because "no runs" and "cannot read the runs" are different facts. Also:
+`ServiceSupervisor.adminToken()` now caches only a **successful** read — secrets.json is minted by
+the backend on its first start, so a read landing before the child wrote it used to pin `null` for
+the whole session, a permanent silent 401 on every admin surface.
+
+**Red-then-green** in `ExecutionHistoryManager.merge.test.ts` against a stand-in server that enforces
+exactly as a post-FH-024 backend does (without the header the two credentialed cases fail; with it,
+46/46 in `tests-main/execution-history`). **Driven live after a full restart**: the panel lists runs
+(`chargeCard`, six `Order Pipeline`, `orderPipeline`, `Both Ways`, …) and opening one renders
+`chargeCard · SUCCESS · 25ms · manual · Ran on SQLite backend` with its trigger data — so
+`fetchRemoteGet`, the second fetch, works too.
+
+### BAK-005's `/_admin` dashboard — reachable, and the token signs in
+
+FH-024 §11 gave up password-free entry on a dev-open backend. Re-checked against the running
+editor-spawned backend:
+
+| Probe | Result |
+|---|---|
+| `GET /_admin` | **200** `text/html` — the page still serves |
+| `GET /_admin/whoami`, no credential (the boot probe) | **401** — so the sign-in form appears, as §11 says |
+| `GET /_admin/whoami` with the `adminToken` from `secrets.json` | **200**, full payload: `ok:true`, `readonly:false`, `backend{id,name,host,port}`, `security{devOpen:true,enforced:false}`, `firstRun:false`, and the 16-key `features` block |
+| the same with a wrong token | **401** |
+
+That *is* the sign-in path, not a proxy for it: `signIn(token)` sets `S.token` and calls
+`api('GET','/_admin/whoami')`, and `api()` sends `authorization: 'Bearer ' + S.token`
+(`admin/ui/index.html:1781-1788`, `:147-149`). **The dashboard is not lost.** ⚠️ Stated precisely:
+this was exercised **at the wire this session**, not by typing into the form — FH-024 §9 did that
+half, in a real browser, and it agreed.
+
+### The HUD one-shots
+
+| What | Evidence |
+|---|---|
+| **HUD-003 criterion 2 — PASS** | A genuinely fresh editor with Provenance never opened: `!!document.querySelector('[class*=ProvenancePanel]')` read **`false`** immediately before the click. Recorded, clicked the app, pressed `▴` → *"Interactions — click one to see where it went"* with 12 rows. **One click** on the top row → the panel mounted on that root's **forward** walk: *"Text.text is where the chain ends."*, `2 rows · cause chain`, `Counter.increase` and `Text.text` on `/erg-rig`, with **"Back to interactions"** (criterion 4's new case) and `fired 3× · +2m 09s` (criterion 7's relative render). First time, no second click — so `provenanceRequest`'s stash-then-switch is being used. |
+| **HUD-001 step 2 — PASS** | Preview stopped (`Preview live` gone, no viewer target). Pressing Record left `data-recording="false"` and the pill on `Record`, with the line *"No preview is running — open the app, then press Record."* above it. |
+| **HUD-001 step 3 — PASS** | Bringing the preview back cleared that line **by itself**, with no further click — the `ViewerRegistered` listener at `RecordingOverlay.tsx:159`. |
+| **The HUD counting, again** | 3 clicks → `30 events`, and the interaction rows name cause and blast radius (`PRESS.onClick · 1 event`, `Object.completed · 2 events`, `Array Filter.completed · 2 events`). |
+
+### ⚠️ Four driving traps, each of which cost time here
+
+- **`cdp --target=editor` can attach to the LAUNCHER.** They are the same file — `appTarget` matches
+  `/src/editor/index.html` and takes whichever `/json/list` returns first. A full page of DOM was
+  read as the editor's while it was the launcher's. Check for `LauncherHeader-module__Tab` before
+  believing a query, or assert on something only the editor has.
+- **A sibling's edit full-reloads the editor and closes the project.** Three times in ~90 minutes:
+  `[HMR] Aborted because ./…/newFunctionFromStep.ts is not accepted`, then two
+  `[HMR] Waiting for update signal from WDS...`. Every one-shot state — a recording, an unopened
+  Provenance panel, an armed session — dies with it. **In a shared checkout, drive a one-shot the
+  minute the editor is up, not after the other measurements.**
+- **An occluded preview repaints late, and reading its DOM is not measuring the graph.**
+  `document.body.innerText` on the preview read `PRESS 0 0 0 0` for several minutes while the
+  Counter's own `_internal.currentValue` was already `5`. That cost the better part of an hour
+  chasing a runtime defect that did not exist. **Read the node, not the text**: walk `__reactFiber`
+  to `memoizedProps.noodlNode` and inspect `getOutput('onClick').connections[n].node._internal`.
+- **`cdp screenshot --target=viewer` hung past 120s** against that same occluded preview, and
+  `cdp reload --target=viewer` twice coincided with the editor returning to the launcher. Neither is
+  a safe way to simulate a user reloading their app.
+
+### Still owed
+
+**FH-011's preview-reload re-arm** — attempted twice and *not established* either time: the
+recording held at `30 events` up to the reload, and both runs were destroyed before the after-count
+could be read (once by a sibling's HMR full reload, once by `cdp reload --target=viewer` taking the
+editor back to the launcher). It needs a preview reloaded the way a user does it, from the app.
+Then: **HUD-004's crashed-agent (slice 3) and legacy paths**, **FH-010** (the VC dialogs),
+**FH-019** (completions in a Function vs an Expression popout), **FH-023** (the four prefabs).
+
+### Both themes
+
+The four backend panels were re-opened in **light** after the dark pass (`ThemeManager` + the
+`nodegx:themechanged` event, the same switch `pol004-doc-diff.js` uses). **Backend Services**
+(`ACTIVE ✓ Running`, cloud functions, all six controls), **Data Browser** (typed column chips, and
+`views 1017` / `updatedAt 06/08/2026, 17:36:30` still there — the cell edit survived a full backend
+restart), **Execution History** (the run list with its green/red status dots — the fix holds in both
+themes) and **Permissions** all render legibly with nothing lost. `pol004-doc-diff.js` measured both
+themes in its own right and passed both.
+
+The **HUD** one-shots above were driven in **dark only** — they are one-shot per editor session and
+the session was spent on them. HUD-001's own recipe asks for both, so the light pass on the pill,
+the interactions list and the disclosure is still owed with the rest of the HUD work.
+
+## The six conversations, in the order I'd have them
+
+1. 🔄 **[TALK-001](TALK-001-THE-CLOUD-WORKFLOW-AUDIT.md) — cloud workflows. HAD 2026-08-05, then
+   REOPENED the same day.** Decisions recorded at the foot of the doc; seven build tasks written
+   (the CWF track below). Reopened because it audited the workflow *steps* and never audited what a
+   cloud *function* can compute with — that is
+   [TALK-007](TALK-007-WHAT-CLOUD-FUNCTIONS-SHOULD-HAVE.md), now annotated end to end and awaiting
+   one decision (Pile B) plus anything Richard wants to add. **The cloud picker offers 57 nodes and
+   not one array type — but a Function node is a Node 22 script with `crypto.subtle`, `fetch`,
+   `FormData` and all 79 env vars**, so almost nothing on the wish list is a runtime problem; it is
+   a node-and-door problem. CWF-003 shrank as a result.
+2. ✅ **[TALK-002](TALK-002-THE-CODE-EDITOR-IS-NOT-DIY.md) — code editor. HAD 2026-08-05.**
+   **No editor switch** (we are stock CM6 minus six rows of config). Slice 3 **takes the
+   `eslint-linter-browserify` dependency** — the doc had mis-costed it as free, it is installed by
+   nobody. Typed intellisense is promoted out of future-projects into
+   [FH-019](FH-019-TYPED-INTELLISENSE.md). FH-017 unblocked and started.
+3. ✅ **[TALK-004](TALK-004-THE-MCP-FRONT-DOOR.md) — MCP onboarding. HAD 2026-08-05.**
+   Settings section beside the AI one, **two** captioned Copy buttons, and the registration is
+   **named after the project** so multiple projects coexist. Q3 went to (a) — the editor creates the
+   project — against the doc's lean, because [TAB-006](../phase-37-project-tabs/TAB-006-TAB-AWARE-AGENT-ACCESS.md)
+   records that tabs affect `nodegx-observe` (bound to a port) and explicitly **not** `noodl-mcp`
+   (bound to the path in argv, *"none — it works unchanged"*). Four build tasks (the MCP track
+   below); the observe reconnect fix gates the observe button.
+4. ✅ **[TALK-006](TALK-006-THE-THREE-SIGNALS.md) — the three signals. HAD 2026-08-05.**
+   **Keep both ports on all 82** and make the generated `Completed` description say when it is
+   redundant ([FH-022](FH-022-WHEN-COMPLETED-IS-DONE.md)); **no rename**; and the surface is a
+   read-only **`Ports` tab** in the property panel ([FH-020](FH-020-THE-PORTS-TAB.md)) — Richard's
+   argument: the connection popup filters by what you dragged from, which is right for wiring and
+   useless for discovery. Every count re-derived from the generated catalog held (82/34/48/8), and
+   verifying the doc corrected it three times: the canvas has **no port hit-testing at all** to hang
+   a hover on; pruning `Done` would have restored nothing to the validator (`completed` is in the
+   same proxy set); and a display-only rename would have been **one line**, because
+   `displayName: 'Done'` is set in exactly one place. Both mechanisms the tab needs already exist —
+   the tab strip is in this panel on the AI path only, and the connected-source chip is on 5 row
+   classes of ~29 and reads inputs only.
+5. ✅ **[TALK-003](TALK-003-A-RECORDING-HUD.md) — recording HUD. HAD 2026-08-05.** **Alpha, not
+   fast-follow**, and **Record leaves the Provenance panel** for a canvas control. Four build tasks
+   (the HUD track below), all gated on FH-011. Q4 went the expensive way — per-peer trace
+   ownership — and the research for it found a **live data-loss bug**: an agent's `start_trace`
+   destroys a recording a human is in the middle of.
+6. ✅ **[TALK-005](TALK-005-BACKEND-BOUND-REALTIME.md) — backend realtime. HAD 2026-08-05.**
+   **Build the standalone node** — [FH-021](FH-021-SUBSCRIBE-TO-CHANGES.md), unblocked. The
+   WebSocket node keeps its raw identity because **our backend has no WebSocket at all**; the
+   "easy path to our backend" is the new node's `_active_` default instead. The filter port ships
+   **nodegx-only and disclosed** (one dialect of five sends `where`). Two of the doc's own
+   proposals were wrong: it asked for `realtimeSupportFor` port *gating*, which is the exact
+   opposite of the shipped decision, and it missed that the code contains an argument against the
+   standalone node. **This also closes [CWF-007](CWF-007-STREAMING-RESPONSES.md) Q3** — two
+   deliberate nodes, one shared subscription layer.
+
+Plus one embedded decision: **ERG-005 §2** (explicit types on component I/O) inside FH-007.
+
+## ⚠️ Read this before any CWF task
+
+[**BACKEND-AUTHORING-MODEL.md**](../../reference/BACKEND-AUTHORING-MODEL.md) is the canonical
+statement of what a workflow is, what a cloud function is, and why the split exists. It was written
+after half of TALK-001's conversation turned out to rest on a misunderstanding of exactly that.
+Everything below derives from it.
+
+**A workflow orchestrates; a cloud function computes; the workflow calls the function.** Data nodes,
+HTTP and code belong in cloud functions — never as workflow steps. Q2 and Q4 are closed on those
+grounds, and the orientation problem that made the confusion possible is its own phase
+([phase 43](../phase-43-backend-authoring-clarity/README.md)).
+
+## The CWF track (out of TALK-001, 2026-08-05)
+
+Build in this order — CWF-001 gates the rest of the track:
+
+| # | Task | Why |
+|---|---|---|
+| 1 | [CWF-001](CWF-001-CALL-FUNCTION-PARAMS.md) — Call Function params | You cannot pass data into a cloud function at all. Engine + `$path` control both exist; the catalog declares nothing, so no UI can author a mapping. |
+| 2 | [CWF-002](CWF-002-THE-WORKFLOW-RETURN.md) — the return | Output is computed then dropped at [dispatcher.ts:217](../../../packages/nodegx-backend/src/triggers/dispatcher.ts#L217). Sync/async per trigger **+** a visible Return step (Q3). |
+| 3 | [CWF-003](CWF-003-HTTP-IN-THE-CLOUD-RUNTIME.md) — HTTP in cloud | **Promoted.** Under the correct model this *is* the answer to "how do I call an API", not an ergonomic nicety. One line in the cloud viewer's list — plus two checks that could make it not-one-line. |
+| 4 | [CWF-005](CWF-005-RETRY-IS-A-POLICY.md) — Retry folds in | Q7: Retry *is* a call-function with backoff. Fold it as a policy group, delete the kind, migrate on read. Presentation fixes ship first, alone. |
+| 5 | [CWF-004](CWF-004-THE-TRANSFORM-STEP.md) — Transform + data steps | ✅ **CLOSED 2026-08-06 — all three slices.** Rewritten 2026-08-05 on Richard's argument: without a workflow-level reshape, every function carries its caller's mess. The whole declarative data family is in — `transform`, `validate`, `filter`, `sort`, `deduplicate`, `split` — plus JSON parse/stringify as transform operations, and **S6's "new cloud function from this step"** gesture. **Aggregate is DECIDED and not built** (Richard, 2026-08-06): it is the one candidate that computes, and the served "no arithmetic" sentence stays true. A free Function step remains advised against — and now has a two-second alternative. |
+| 6 | [CWF-006](CWF-006-TRIGGERS-AND-THE-ENTRY-STEP.md) — triggers + entry | Pile 2. Nothing is broken; the picker just never says so. Cheap affordances — and a **subset of [phase 43](../phase-43-backend-authoring-clarity/README.md)**, which supersedes it if that lands first. |
+| — | [FH-018](FH-018-THE-CONFIG-NODE-IS-INERT-AND-ITS-ENDPOINT-IS-PUBLIC.md) — the Config node | Filed 2026-08-05. Inert since WF-007 (`configSchema` declared, never assigned) **and** `GET /config` is public and unfiltered. Needs a decision before slices. |
+| — | [CWF-007](CWF-007-STREAMING-RESPONSES.md) — streaming | Q5: a design doc to argue with, not a build. **Q3 answered 2026-08-05 with [TALK-005](TALK-005-BACKEND-BOUND-REALTIME.md): two deliberate nodes**, sharing `RealtimeSubscription` but not a node definition — different payloads, different auth postures (`GET /realtime` is `public` today). Not a twin, and not a deferral. |
+
+Deferred with reasons in the decisions table: data steps (Q2), an HTTP *step* (Q4), workflow-calls-
+workflow (Q6). Pile 1.4 keeps its existing owners (POL-015, OPEN-WORK F62).
+
+## The CWF track, second half (out of TALK-007, validated 2026-08-05)
+
+CWF-001…007 are all **workflow-side**. These are the **cloud-function** side — the vocabulary audit
+TALK-001 never did. Richard walked the list node by node and approved it; §6b of TALK-007 records
+what the validation found, which was mostly that five of six things asked for were **already
+registered and invisible**.
+
+| # | Task | Why |
+|---|---|---|
+| 7 | [CWF-008](CWF-008-THE-CLOUD-VOCABULARY.md) — the cloud vocabulary | **The only one that removes a *cannot*.** A function cannot build, filter or reshape a list. Arrays ×8, Variable ×2, **Component Object ×2** (per-request state), Switch, Number Remapper — all pure `@noodl/runtime`, a move not a build. Plus the Cloud Function node, which is *not* a move (`XMLHttpRequest` + no session store). Value Changed struck by Richard. |
+| 8 | [CWF-009](CWF-009-THE-SECRET-NODE.md) — the Secret node | `process.env` is already readable from any function; `SecretsStore` is the proper door and the runtime cannot see it. **Gates CWF-010, payments and every third-party API.** The work is the namespace policy, not the node. |
+| 9 | [CWF-010](CWF-010-THE-CRYPTO-KIT.md) — hash, random, UUID, JWT | Engine measured present (`crypto.subtle`, `randomUUID`, `Buffer`). No dependency. JWT Verify is for *other people's* tokens — our own caller is already on the Request node. |
+| 10 | [CWF-011](CWF-011-DATE-AND-TIME.md) — date & time | `Date To String` is the entire vocabulary. Now / Add / Difference / Compare / timezone. **Shared runtime — the browser wants it equally.** |
+| 11 | [CWF-012](CWF-012-CSV.md) — CSV | We already ship a real CSV parser inside Static Array, authoring-time only. Lift it; don't write a second one. |
+| 12 | [CWF-013](CWF-013-THE-LOG-NODE.md) — the Log node | Small node, real question: three log destinations exist and the only one an author can reach is the one with **no redaction**. |
+| 13 | [CWF-014](CWF-014-TYPED-REQUEST-BODIES.md) — typed Request bodies | `params` is a comma-separated string minting `'*'` ports. **One design against three debts** (AIB-001, ERG-005, here) — and the difference between a function and an API. |
+| 14 | [CWF-015](CWF-015-SERVER-SIDE-USERS.md) — server-side users | Genuinely absent, unlike the rest. Create/administer users as the *system*, plus Verify Token. Ships with CWF-017 or it ships a privilege escalation. |
+| 15 | [CWF-016](CWF-016-IDEMPOTENCY.md) — idempotency keys | The only item with **nothing built behind it**, and the only capability a Function node cannot fake (needs state across requests). Design first, concurrency test first. |
+| 16 | [CWF-017](CWF-017-FUNCTION-ACCESS-AND-LIMITS.md) — who may call, how often | **Cheapest high-value item on the track.** `public\|authenticated\|role:\|nobody` + `runAs` is built and has no editor door; per-function rate limiting is one field beside it. Richard: *"i love it"*. |
+
+| — | [CWF-018](CWF-018-A-FUNCTION-THAT-NEVER-ANSWERS.md) — the hang | **Found by driving, 2026-08-05, filed not fixed.** `CloudRunner.run` settles only when a Response node fires, and `POST /functions/:name` awaits it with **no timeout** — while workflows have had per-step and per-run timeouts all along. Wiring only the happy path off an outcome node hangs the connection forever, leaks the component instance, and logs nothing. |
+
+✅ **Both open questions answered 2026-08-05.** The loop Richard wanted — "a list of new users comes
+in, register each one" — **already works**: array → Run Tasks → a cloud helper component per item,
+driven and kept as [`cloud-run-tasks-loop.test.ts`](../../../packages/nodegx-backend/tests/cloud-run-tasks-loop.test.ts).
+What is missing is the *name* (nobody searches for "Run Tasks" looking for a loop) and any sign that
+the per-item unit is a helper component — CWF-008 slice 4b. The **Script** node stays out of the
+cloud for now.
+
+## The HUD track (out of TALK-003, 2026-08-05)
+
+**[FH-011](FH-011-RECORD-RECORDS-NOTHING.md) gates all four** — a HUD over a recorder that records
+nothing is a prettier version of the same defect. FH-011's slice 2 is **amended** by this
+conversation: the poll moves out of `ProvenancePanel` and into `TraceSession`, because a sidebar
+panel is not constructed until it is first opened and Record no longer lives there.
+
+| # | Task | Why |
+|---|---|---|
+| 1 | [HUD-001](HUD-001-THE-RECORDING-OVERLAY.md) — the overlay, the control, the counter | Record becomes one canvas control with two states. The `execution-overlay` slot is already taken, so this gets its own layer. |
+| 2 | [HUD-002](HUD-002-NODE-BADGES.md) — badges as nodes fire | The demo. `getNodeBounds` × the event's `from`/`to` (**not** `fromNode`/`toNode` — no such fields), POL-009-scoped, honest about what is off-canvas. |
+| 3 | [HUD-003](HUD-003-EXPAND-TO-THE-WALK.md) — expand → roots → walk | Joins the halves. Must go through `provenanceRequest`'s stash-then-switch, and is *more* exposed to that trap than the canvas right-click was. |
+| 4 | [HUD-004](HUD-004-THE-TRACE-HAS-OWNERS.md) — per-peer trace ownership | Two peers share one global boolean and **neither editor peer registers a clientId**, so there is no identity to own a switch with. Includes the data-loss fix. |
+| — | replay scrubber | v2. `ExecutionTimeline` is reusable when we want it. |
+
+## The MCP track (out of TALK-004, 2026-08-05)
+
+Build in this order — the first two gate the third, and the ordering is the point: a front door
+that hands out a command which stops working, or points at a file only contributors have, is worse
+than today's no-door.
+
+| # | Task | Why |
+|---|---|---|
+| 1 | [MCP-003](MCP-003-OBSERVE-RECONNECTS.md) — observe reconnects | **Gates MCP-001's observe button.** [relayClient.ts:129-171](../../../packages/nodegx-observe/src/relayClient.ts#L129) connects once, with every handler behind `if (settled) return`; the token is minted per editor launch. Restart the editor and all nine tools throw `Not connected to the NodeGX relay.` forever. Also puts `@noodl/observe` into `test:packages`, which scopes `@noodl/mcp` and not it. |
+| 2 | [MCP-002](MCP-002-SHIP-THE-SERVERS.md) — ship both servers | `extraResources` has four entries and no MCP binary; `dist` is gitignored. Two build steps + two entries + one resolver, on the exact `nodegx-backend` precedent ([build-editor.ts:69](../../../scripts/build-editor.ts#L69), [ServiceSupervisor.js:65](../../../packages/noodl-editor/src/main/src/local-backend/ServiceSupervisor.js#L65)). |
+| 3 | [MCP-001](MCP-001-CONNECT-AN-AI-AGENT.md) — the front door | The settings section. Reuses ExecutionDetail's clipboard pattern verbatim. **Slug the directory basename, not `ProjectModel.name`** — it is optional and falls back to `'Untitled'`, which re-creates the collision the per-project naming exists to prevent. |
+| 4 | [MCP-004](MCP-004-THE-MCP-DOCS-PAGE.md) — the page and the READMEs | ⚠️ The page is a change to the **docs repo**, not this one — `docs/` here is reference material, and the user-facing origin is `getDocsEndpoint()`'s GitHub Pages site. Both package READMEs currently contradict the buttons; observe's config does not work off-PATH. |
+
+Deferred with a reason in the decisions table: the preview button (`npm run preview` →
+`127.0.0.1:8575`), a merged single server (phase-36's open question, stays closed), `npm publish`,
+and making `noodl-mcp` startable with no project directory.
+
+## Suggested build order for the FH tasks
+
+Cheap-and-visible first, grouped by shared surface:
+
+1. **FH-009** (ListItem — one fix, three panels) → **FH-014** (unit menu) → **FH-013** (label
+   wrap). All noodl-core-ui; sequence them, don't parallelise (core-ui worktree trap).
+2. **FH-005** (popout flushSync — two small edits + optional flip), **FH-010** (portal the
+   dialogs), **FH-012** (pin identity + stacking context).
+3. **FH-003** ([object Object]), **FH-004** (Object output — unblocks Object Changed),
+   **FH-015** slice 1 (the Button one-liner) then the default-behaviour slices.
+4. **FH-011** (Record — now also the gate for the whole HUD track, so it moved up in practice),
+   **FH-016** (label drag), **FH-008** (Explain), ~~**FH-017**~~ (code editor —
+   ✅ **DONE 2026-08-05**, all five slices, driven live in both themes), then
+   **FH-019** (typed intellisense, same files — sequence them, don't parallelise).
+5. **FH-006** (Roboto — after the one measurement), **FH-007** (blocked on ERG-005 §2 + the
+   other session's §1).
+6. **FH-022** (the `Completed` wording — one branch in `outcome.ts`, then *explicitly* run
+   `catalog:check`, `cloud-library:check` and `catalog:merge:check`; its Counter slice is a
+   behaviour change and gets its own commit) → **FH-020** (the Ports tab). Either order works, but
+   neither alone closes item 0: FH-022 makes the words right, FH-020 is where anyone reads them.
+
+## ⚠️ Concurrent-session note
+
+At the time of writing, another session has uncommitted work in `projectmodel*`,
+`ProjectImporter`, `LocalProjectsModel`, `featureFlags.ts` (v2-format flip),
+**`VersionControlPanel/**`** and untracked `tests-unit/erg-005/`. Affected here: **FH-010** must
+not touch `DiffList.tsx` and commits by explicit pathspec; **FH-007** is partly *their* workstream
+— do not start §1/§2 build without checking whether that session is live. Never `git add -A`,
+never stash.
+
+## What this phase deliberately is not
+
+Phase 41 (accessibility) stays the current scheduled phase; this folder is triage + specs so that
+each item can be picked up in a session with full context, the way phase 39's fifteen were. The
+TALK docs are inputs to conversations with Richard, not commitments.

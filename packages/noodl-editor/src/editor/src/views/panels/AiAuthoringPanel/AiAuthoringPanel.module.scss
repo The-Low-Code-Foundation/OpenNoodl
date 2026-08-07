@@ -1,0 +1,148 @@
+.User {
+  padding: 6px 8px;
+  border-left: 2px solid var(--theme-color-primary);
+  background-color: var(--theme-color-bg-2);
+  border-radius: 0 2px 2px 0;
+}
+
+.Assistant {
+  white-space: pre-wrap;
+}
+
+.Event {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+/*
+ * POL-007 — the Build panel fits inside the Build panel.
+ *
+ * The panel registers with `defaultWidth: 400` and its layout was only ever
+ * driven wider than that. An operation row put status, target, elapsed and two
+ * ungrowing, unshrinking buttons on one flex line; `PrimaryButton` is
+ * `min-width: 70px; flex-shrink: 0`, so "Review" + "Drop from plan" alone are
+ * ~190px before the target is considered, and the row's min-content exceeded
+ * the panel. Nothing established `overflow-x`, so the excess scrolled the whole
+ * panel sideways and took the run headline off screen to the left.
+ *
+ * These rules are the layout that used to live in `UNSAFE_style` objects. A
+ * layout that has to respond to width cannot be expressed 25 inline objects at
+ * a time.
+ */
+
+.Body {
+  /*
+   * ⚠️ `hidden`, not `auto`. `ScrollArea` sets `overflow-y: auto` and leaves
+   * `overflow-x` at `visible`, which CSS then computes to `auto` — that is
+   * where the horizontal scrollbar came from. Same call, and the same reason,
+   * as `ProvenancePanel.module.scss`: every child below either ellipsises or
+   * wraps, so there is nothing left to scroll to and a scrollbar would only be
+   * a way to lose the headline again.
+   */
+  overflow-x: hidden;
+
+  /*
+   * Every flex item defaults to `min-width: auto` — its min-content width —
+   * and a component path, an endpoint or a diagnostic line has no spaces to
+   * break at, so its min-content IS the whole string. `anywhere` lets those
+   * break, and unlike `break-word` it also shrinks the measured min-content,
+   * which is what the flex parent reads.
+   */
+  p {
+    overflow-wrap: anywhere;
+  }
+}
+
+/*
+ * One operation in a run. At 400px this is two lines, not one:
+ *
+ *   ✓  create /Pages/Profile — 6 nodes            11s
+ *      [ Review ]  [ Drop from plan ]
+ *
+ * The actions get their own line so their labels never compete with the target
+ * name for width. There is deliberately no wide-width variant: the same shape
+ * reads correctly at 700px and in full mode, and one layout that always works
+ * beats two that each work sometimes.
+ */
+.OperationHead {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  /* The icon is `flex: 0 0 auto` by its own sizing; this stops the row itself
+     from being stretched by its text child. */
+  min-width: 0;
+}
+
+.OperationTarget {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  /* Beats the `.Body p` rule above: this one line ellipsises rather than
+     wrapping, so that the elapsed time stays pinned to the right of it. */
+  overflow-wrap: normal;
+}
+
+.OperationElapsed {
+  flex: 0 0 auto;
+}
+
+.OperationActions {
+  display: flex;
+  gap: 6px;
+  /* Indented to the icon's width plus its gap, so the actions read as
+     belonging to the row above rather than as a new one. */
+  padding-left: 22px;
+  padding-top: 4px;
+  /* Below ~240px even two ghost buttons no longer share a line. Wrapping keeps
+     the labels readable where shrinking would ellipsize them to nothing — the
+     same call F20 made for the scope tabs. */
+  flex-wrap: wrap;
+}
+
+/* An operation's detail lines, disclosure and activity feed sit under the
+   target, not under the status icon. */
+.OperationDetail {
+  padding-left: 22px;
+}
+
+/*
+ * The scope tabs. They used to grow via `isGrowing`, which is `flex: 1` — basis
+ * 0 — so the three shared the row in equal thirds whatever their labels said.
+ * At 400px that gave "This component" (120px of label and padding) 106, and it
+ * wrapped onto a second line while "Docs" (70) kept 36px it had no use for.
+ *
+ * `flex: 1 1 auto` starts from each label's own width and shares only the
+ * slack, so all three stay on one line and the row still fills. F20's
+ * `flex-wrap` above it is untouched and still does its job further down: below
+ * ~300px the natural widths stop fitting and the row wraps, which is what it
+ * was for.
+ *
+ * ⚠️ The buttons must NOT also carry `isGrowing`. `.is-growing` is a second
+ * class on the same element, so it outranks this rule and the row goes back to
+ * equal thirds — which is how the first version of this fix passed a
+ * stylesheet check and changed nothing on screen.
+ */
+.ScopeTabs button {
+  flex: 1 1 auto;
+}
+
+/*
+ * A row in the plan preview, before anything is authored. Same failure as the
+ * run row — `op.target` is a path with no spaces, so the text column's
+ * min-content was the whole path and it pushed "Drop" out of the panel.
+ */
+.PlanRowBody {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.PlanRowKind {
+  flex: 0 0 auto;
+  min-width: 44px;
+}

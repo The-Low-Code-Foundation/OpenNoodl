@@ -1,0 +1,45 @@
+name: Setup
+description: Node toolchain, npm cache, Electron binary cache, and `npm ci`.
+
+inputs:
+  install:
+    description: Run `npm ci`. Set to 'false' for jobs that only need the checkout.
+    required: false
+    default: 'true'
+
+runs:
+  using: composite
+  steps:
+    # The editor's Git test fixtures make real commits via dugite (stash, status,
+    # commit-and-update specs). GitHub-hosted runners carry no default identity,
+    # so those specs fail with "Author identity unknown" — not a git-nodes bug,
+    # just a fresh runner with nobody logged in.
+    - name: Configure git identity for test fixtures
+      shell: bash
+      run: |
+        git config --global user.email "ci@opennoodl.local"
+        git config --global user.name "OpenNoodl CI"
+
+    - name: Set up Node
+      uses: actions/setup-node@v4
+      with:
+        # Pinned in .nvmrc so CI and local development cannot drift.
+        node-version-file: .nvmrc
+        cache: npm
+
+    # electron's postinstall downloads a ~100 MB binary per install. Without this
+    # every job re-downloads it and the "under 15 minutes" target is gone.
+    - name: Cache Electron binaries
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cache/electron
+          ~/Library/Caches/electron
+          ~\AppData\Local\electron\Cache
+        key: electron-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+        restore-keys: electron-${{ runner.os }}-
+
+    - name: Install dependencies
+      if: inputs.install == 'true'
+      shell: bash
+      run: npm ci

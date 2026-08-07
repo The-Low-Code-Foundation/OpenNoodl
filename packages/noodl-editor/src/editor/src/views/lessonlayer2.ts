@@ -1,5 +1,5 @@
 import React from 'react';
-import ReactDOM from 'react-dom';
+import { createRoot, Root } from 'react-dom/client';
 
 import { App } from '@noodl-models/app';
 import { KeyCode, KeyMod } from '@noodl-utils/keyboard/KeyCode';
@@ -30,6 +30,7 @@ export class LessonLayer {
   steps: ILessonStep[];
   el: TSFixme;
   refreshTimeout: NodeJS.Timeout;
+  root: Root | null = null;
 
   constructor() {
     this.keyboardCommands = [
@@ -116,12 +117,16 @@ export class LessonLayer {
       }
     };
 
-    ReactDOM.render(React.createElement(LessonLayerView, props), this.div);
+    if (!this.root) {
+      this.root = createRoot(this.div);
+    }
+    this.root.render(React.createElement(LessonLayerView, props));
   }
 
   _render() {
-    if (this.div) {
-      ReactDOM.unmountComponentAtNode(this.div);
+    if (this.root) {
+      this.root.unmount();
+      this.root = null;
     }
 
     this.div = document.createElement('div');
@@ -129,7 +134,7 @@ export class LessonLayer {
 
     this._renderReact();
 
-    this.el = $(this.div);
+    this.el = this.div;
     return this.el;
   }
 
@@ -254,7 +259,7 @@ export class LessonLayer {
         const mediaContainer = document.createElement('div');
         mediaContainer.classList.add('popup-media');
         root.appendChild(mediaContainer);
-        const mediaRenderContainer = root.querySelector('.popup-media');
+        const mediaRenderContainer = root.querySelector<HTMLElement>('.popup-media');
 
         this._loadImages(popupContent, mediaRenderContainer);
         this._loadVideos(popupContent, mediaRenderContainer);
@@ -320,71 +325,63 @@ export class LessonLayer {
     this.model.off(this);
     EventDispatcher.instance.off(this);
 
-    ReactDOM.unmountComponentAtNode(this.div);
+    if (this.root) {
+      this.root.unmount();
+      this.root = null;
+    }
   }
 
   resize() {}
 
-  _loadImages(el, renderContainer = undefined) {
-    const _this = this;
-
+  _loadImages(el: HTMLElement, renderContainer: HTMLElement = undefined) {
     // Iterate over all images and load the src as a dataurl
-    $(el)
-      .find('img')
-      .each(function () {
-        const _el = $(this);
-        const url = _el.attr('src');
+    el.querySelectorAll('img').forEach((img) => {
+      const url = img.getAttribute('src');
 
-        loadSrcAsset(_el, _this.model.baseURL + url, 'image/*', renderContainer);
-      });
+      loadSrcAsset(img, this.model.baseURL + url, 'image/*', renderContainer);
+    });
   }
 
-  _loadVideos(el, renderContainer = undefined) {
-    const _this = this;
+  _loadVideos(el: HTMLElement, renderContainer: HTMLElement = undefined) {
+    // Iterate over all videos and load the src as a dataurl
+    el.querySelectorAll('video').forEach((video) => {
+      const url = video.getAttribute('src');
 
-    // Iterate over all images and load the src as a dataurl
-    $(el)
-      .find('video')
-      .each(function () {
-        const _el = $(this);
-        const url = _el.attr('src');
+      //having autoplay here will make the video run in the background, which can cause performance issues, so remove it if it's there
+      video.removeAttribute('autoplay');
+      video.setAttribute('loop', '');
+      video.setAttribute('muted', '');
 
-        //having autoplay here will make the video run in the background, which can cause performance issues, so remove it if it's there
-        _el.removeAttr('autoplay');
-        //_el.attr('autoplay', '');
-        _el.attr('loop', '');
-        _el.attr('muted', '');
-
-        loadSrcAsset(_el, _this.model.baseURL + url, 'video/*', renderContainer);
-      });
+      loadSrcAsset(video, this.model.baseURL + url, 'video/*', renderContainer);
+    });
   }
 }
 
 //download the asset and show a load indicator while fetching it
 let dataurls = {};
 
-function loadSrcAsset(el, url, acceptType, renderContainer) {
-  el.addClass('unselectable');
+function loadSrcAsset(el: HTMLElement, url: string, acceptType: string, renderContainer: HTMLElement) {
+  el.classList.add('unselectable');
 
   const _hash = url;
   if (dataurls[_hash]) {
     // This image has been loaded
-    el.attr('src', dataurls[_hash]);
+    el.setAttribute('src', dataurls[_hash]);
 
     if (renderContainer) {
-      renderContainer.append(el[0]);
+      renderContainer.append(el);
     }
   } else {
     // Request image and show spinner
-    el.attr('src', '');
+    el.setAttribute('src', '');
 
-    const spinner = $(
-      '<div class="spinner lesson-spinner"><div class="bounce1"></div><div class="bounce2"></div><div class="bounce3"></div></div>'
-    );
+    const spinner = document.createElement('div');
+    spinner.className = 'spinner lesson-spinner';
+    spinner.innerHTML = '<div class="bounce1"></div><div class="bounce2"></div><div class="bounce3"></div>';
 
     if (renderContainer) {
-      el.replaceWith('');
-      renderContainer.appendChild(spinner[0]);
+      el.remove();
+      renderContainer.appendChild(spinner);
     } else {
       el.replaceWith(spinner);
     }
@@ -393,16 +390,16 @@ function loadSrcAsset(el, url, acceptType, renderContainer) {
     xhr.open('GET', url, true);
     xhr.setRequestHeader('Accept', acceptType);
     xhr.responseType = 'blob';
-    xhr.onload = function (e) {
+    xhr.onload = function () {
       const dataurl = window.URL.createObjectURL(this.response);
       dataurls[_hash] = dataurl;
-      el.attr('src', dataurl);
+      el.setAttribute('src', dataurl);
       if (renderContainer) {
         const spinners = Array.from(renderContainer.querySelectorAll('.lesson-spinner'));
         spinners.forEach((spinner) => {
           renderContainer.removeChild(spinner);
         });
-        renderContainer.append(el[0]);
+        renderContainer.append(el);
       } else {
         spinner.replaceWith(el);
       }

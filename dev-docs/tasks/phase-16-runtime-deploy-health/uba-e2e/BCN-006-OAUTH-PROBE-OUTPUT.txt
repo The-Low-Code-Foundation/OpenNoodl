@@ -1,0 +1,60 @@
+═══ Directus provider discovery ═══
+
+list SSO providers
+  GET http://localhost:8055/auth
+  -> 200
+  body: {"data":[],"disableDefault":false}
+
+server info (public_registration, sso)
+  GET http://localhost:8055/server/info
+  -> 200
+  body: {"data":{"project":{"project_name":"Directus","project_descriptor":null,"project_logo":null,"project_color":"#6644FF","default_appearance":"auto","default_theme_light":null,"default_theme_dark":null,"theme_light_overrides":null,"theme_dark_overrides":null,"default_language":"en-US","public_foreground":null,"public_favicon":null,"public_note":null,"custom_css":null,"public_registration":false,"public_registration_verify_email":true,"public_background":null},"setupCompleted":true}}
+
+start a flow for a provider that is not configured
+  GET http://localhost:8055/auth/login/google
+  -> 404
+  body: {"errors":[{"message":"Route /auth/login/google doesn't exist.","extensions":{"path":"/auth/login/google","code":"ROUTE_NOT_FOUND"}}]}
+
+start a flow with a redirect
+  GET http://localhost:8055/auth/login/google?redirect=http%3A%2F%2Flocalhost%3A8574%2F
+  -> 404
+  body: {"errors":[{"message":"Route /auth/login/google doesn't exist.","extensions":{"path":"/auth/login/google","code":"ROUTE_NOT_FOUND"}}]}
+
+
+═══ PocketBase provider discovery ═══
+
+auth-methods (the documented discovery call)
+  GET http://localhost:8091/api/collections/users/auth-methods
+  -> 200
+  body: {"password":{"identityFields":["email"],"enabled":true},"oauth2":{"providers":[],"enabled":false},"mfa":{"enabled":false,"duration":0},"otp":{"enabled":false,"duration":0},"authProviders":null,"usernamePassword":false,"emailPassword":true}
+
+
+exchange with a bogus code
+  POST http://localhost:8091/api/collections/users/auth-with-oauth2
+  -> 403
+  body: {"data":{},"message":"The collection is not configured to allow OAuth2 authentication.","status":403}
+
+
+exchange with no provider at all
+  POST http://localhost:8091/api/collections/users/auth-with-oauth2
+  -> 403
+  body: {"data":{},"message":"The collection is not configured to allow OAuth2 authentication.","status":403}
+
+
+
+═══ Parse (for comparison — the one return leg that exists) ═══
+
+parse auth providers
+  GET http://localhost:8092/auth/providers
+  -> 404
+  body: <!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Error</title>
+</head>
+<body>
+<pre>Cannot GET /auth/providers</pre>
+</body>
+</html>
+

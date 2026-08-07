@@ -1,0 +1,80 @@
+/**
+ * TagPill Styles
+ *
+ * Small colored pill displaying a tag name.
+ * Uses tag.color for background, white text for readability.
+ */
+
+.Root {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  border-radius: 12px;
+  transition: opacity 0.15s ease;
+  user-select: none;
+  flex-shrink: 0;
+
+  &.Clickable {
+    cursor: pointer;
+
+    &:hover {
+      opacity: 0.85;
+    }
+
+    &:active {
+      opacity: 0.7;
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--theme-color-primary);
+      outline-offset: 2px;
+    }
+  }
+}
+
+/* Size Variants */
+.Size-small {
+  padding: 2px 8px;
+  min-height: 20px;
+}
+
+.Size-medium {
+  padding: 4px 10px;
+  min-height: 24px;
+}
+
+/* Label */
+.Label {
+  color: white;
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+/* Remove Button */
+.RemoveButton {
+  all: unset;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  margin-left: 2px;
+  cursor: pointer;
+  color: white;
+  opacity: 0.7;
+  transition: opacity 0.15s ease;
+  border-radius: 4px;
+
+  &:hover {
+    opacity: 1;
+  }
+
+  &:active {
+    opacity: 0.6;
+  }
+
+  &:focus-visible {
+    outline: 1px solid white;
+    outline-offset: 1px;
+  }
+}

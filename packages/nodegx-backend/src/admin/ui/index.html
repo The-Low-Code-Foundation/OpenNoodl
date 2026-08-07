@@ -1,0 +1,1877 @@
+<!--
+  The NodeGX backend admin dashboard (BAK-005).
+
+  One self-contained document: markup here, styles.css inlined into the empty
+  <style> block below, client script at the bottom. No framework, no bundler,
+  no external origin — see AdminDashboardRoutes' module doc and BAK-005-NOTES
+  for why this is vanilla rather than the editor's React panel.
+
+  The two substitution markers this file carries must each appear EXACTLY where
+  they are meant to and nowhere else (the injector counts them and refuses
+  otherwise), so do not quote them in prose.
+
+  Rules this file holds itself to:
+    - Backend data reaches the DOM through `textContent` / `el()` only. There is
+      no innerHTML path for a record value, so a hostile string in a row is
+      inert even before the CSP gets involved.
+    - Every mutation is issued by an explicit action and reports its outcome.
+      Nothing fails quietly (RUN-004): a refused request surfaces the server's
+      own message verbatim, including the read-only tier's refusal.
+    - A section whose backing subsystem is absent is not rendered at all; it
+      never renders and then errors.
+-->
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="robots" content="noindex, nofollow" />
+<title>NodeGX Backend — Admin</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='6' fill='%234da3ff'/%3E%3C/svg%3E" />
+
+<style nonce="__CSP_NONCE__">
+  /*__ADMIN_CSS__*/
+</style>
+
+<div id="login">
+  <form id="login-form">
+    <h1><span class="dot" style="width: 7px; height: 7px; border-radius: 50%; background: #4da3ff; display: inline-block"></span> NodeGX Backend</h1>
+    <p class="sub">Sign in with this backend&rsquo;s admin credential.</p>
+    <div id="login-hint" class="notice accent hidden"></div>
+    <div class="field-row">
+      <input id="login-token" type="password" autocomplete="current-password" placeholder="Admin credential" aria-label="Admin credential" />
+      <button class="btn primary" type="submit">Sign in</button>
+    </div>
+    <label class="check" style="margin-top: 10px"><input id="login-remember" type="checkbox" /> Keep me signed in on this tab</label>
+    <div id="login-error" class="notice bad hidden" style="margin-top: 14px"></div>
+    <p class="sub" style="margin: 16px 0 0; font-size: 11px">
+      The credential is the <code>adminToken</code> in the backend&rsquo;s <code>secrets.json</code>,
+      or whatever was passed to <code>--token</code>. A read-only credential signs in here too.
+    </p>
+  </form>
+</div>
+
+<div id="app" class="hidden">
+  <div class="brand"><span class="dot"></span> <b>NodeGX</b> <span style="color: #6b7682">admin</span></div>
+  <div class="topbar">
+    <span id="backend-name" class="mono"></span>
+    <span id="tier-chip"></span>
+    <span id="enforce-chip"></span>
+    <span class="spacer"></span>
+    <span id="live-chip"></span>
+    <button id="signout" class="btn tiny" type="button">Sign out</button>
+  </div>
+  <nav id="nav"></nav>
+  <main id="main"></main>
+</div>
+
+<div id="toasts"></div>
+<div id="modal-root"></div>
+
+<script nonce="__CSP_NONCE__">
+  (function () {
+    'use strict';
+
+    // =========================================================================
+    // State
+    // =========================================================================
+
+    var S = {
+      token: null,
+      readonly: false,
+      whoami: null,
+      features: {},
+      view: null,
+      // Per-view scratch state (selected table, filters, paging…).
+      ctx: {},
+      sse: null,
+      sseClientId: null,
+      sseCollection: null
+    };
+
+    var STORAGE_KEY = 'nodegx.admin.token';
+
+    // =========================================================================
+    // Tiny DOM helper. `el('div.card', {}, child, child)`.
+    // =========================================================================
+
+    function el(spec, attrs) {
+      var parts = String(spec).split('.');
+      var node = document.createElement(parts[0] || 'div');
+      for (var i = 1; i < parts.length; i++) node.classList.add(parts[i]);
+      attrs = attrs || {};
+      Object.keys(attrs).forEach(function (key) {
+        var value = attrs[key];
+        if (value === null || value === undefined || value === false) return;
+        if (key === 'text') node.textContent = String(value);
+        else if (key === 'onclick') node.addEventListener('click', value);
+        else if (key === 'onchange') node.addEventListener('change', value);
+        else if (key === 'oninput') node.addEventListener('input', value);
+        else if (key === 'onsubmit') node.addEventListener('submit', value);
+        else if (key === 'value') node.value = value;
+        else if (key === 'checked') node.checked = !!value;
+        else node.setAttribute(key, value === true ? '' : String(value));
+      });
+      for (var a = 2; a < arguments.length; a++) {
+        var child = arguments[a];
+        if (child === null || child === undefined || child === false) continue;
+        if (Array.isArray(child)) child.forEach(function (c) { if (c) node.appendChild(c); });
+        else if (typeof child === 'string') node.appendChild(document.createTextNode(child));
+        else node.appendChild(child);
+      }
+      return node;
+    }
+
+    function clear(node) {
+      while (node.firstChild) node.removeChild(node.firstChild);
+      return node;
+    }
+
+    // =========================================================================
+    // Toasts — every action reports, success or failure.
+    // =========================================================================
+
+    function toast(message, kind) {
+      var box = el('div.toast' + (kind ? '.' + kind : ''), { text: message });
+      document.getElementById('toasts').appendChild(box);
+      setTimeout(function () {
+        if (box.parentNode) box.parentNode.removeChild(box);
+      }, kind === 'bad' ? 12000 : 4500);
+    }
+
+    function fail(error) {
+      toast(error && error.message ? error.message : String(error), 'bad');
+    }
+
+    // =========================================================================
+    // API — one client, one credential, one error convention.
+    // =========================================================================
+
+    function api(method, path, body) {
+      var headers = {};
+      if (S.token) headers.authorization = 'Bearer ' + S.token;
+      if (body !== undefined) headers['content-type'] = 'application/json';
+      return fetch(path, {
+        method: method,
+        headers: headers,
+        body: body !== undefined ? JSON.stringify(body) : undefined
+      }).then(function (res) {
+        return res
+          .json()
+          .catch(function () { return null; })
+          .then(function (json) {
+            if (res.status === 401) {
+              // Only tear down a session we actually had. The boot-time
+              // "is this backend dev-open?" probe deliberately sends no
+              // credential, and its 401 is an answer, not a failure.
+              if (S.whoami) signOut('The admin credential was rejected. Sign in again.');
+              var unauthorized = new Error('Unauthorized');
+              unauthorized.status = 401;
+              throw unauthorized;
+            }
+            if (res.status >= 400) {
+              // The server's own message, verbatim — including the read-only
+              // tier's refusal, which must never look like a generic failure.
+              var message = (json && (json.error || json.message)) || 'HTTP ' + res.status;
+              var err = new Error(message);
+              err.status = res.status;
+              throw err;
+            }
+            return json;
+          });
+      });
+    }
+
+    // =========================================================================
+    // Modal + confirmation
+    // =========================================================================
+
+    function modal(title, bodyNodes, actions) {
+      var root = document.getElementById('modal-root');
+      var backdrop = el('div.backdrop');
+      var box = el('div.modal');
+      box.appendChild(el('h3', { text: title }));
+      bodyNodes.forEach(function (n) { if (n) box.appendChild(n); });
+      var foot = el('div.foot');
+      actions.forEach(function (a) { foot.appendChild(a); });
+      box.appendChild(foot);
+      backdrop.appendChild(box);
+      backdrop.addEventListener('click', function (e) { if (e.target === backdrop) close(); });
+      root.appendChild(backdrop);
+      function close() { if (backdrop.parentNode) backdrop.parentNode.removeChild(backdrop); }
+      return { close: close, box: box };
+    }
+
+    function cancelButton(dialogRef) {
+      return el('button.btn', { type: 'button', text: 'Cancel', onclick: function () { dialogRef.ref.close(); } });
+    }
+
+    /**
+     * A destructive confirmation that cannot be muscle-memoried away: the
+     * operator types the exact name of the thing being destroyed.
+     */
+    function confirmDestructive(title, warning, expected, onConfirm) {
+      var ref = {};
+      var input = el('input', { type: 'text', placeholder: expected, style: 'width:100%;margin-top:8px' });
+      var go = el('button.btn.danger', {
+        type: 'button',
+        text: 'Delete',
+        disabled: true,
+        onclick: function () { ref.ref.close(); onConfirm(); }
+      });
+      input.addEventListener('input', function () { go.disabled = input.value !== expected; });
+      ref.ref = modal(
+        title,
+        [
+          el('div.notice.bad', { text: warning }),
+          el('p.sub', { text: 'Type "' + expected + '" to confirm. This cannot be undone.' }),
+          input
+        ],
+        [cancelButton(ref), go]
+      );
+      setTimeout(function () { input.focus(); }, 0);
+    }
+
+    // =========================================================================
+    // Formatting
+    // =========================================================================
+
+    function cellText(value) {
+      if (value === null || value === undefined) return '';
+      if (typeof value === 'object') return JSON.stringify(value);
+      return String(value);
+    }
+
+    function when(value) {
+      if (!value) return '—';
+      var d = new Date(typeof value === 'number' ? value : String(value));
+      return isNaN(d.getTime()) ? String(value) : d.toLocaleString();
+    }
+
+    function chip(text, kind) {
+      return el('span.chip' + (kind ? '.' + kind : ''), { text: text });
+    }
+
+    function emptyState(message) {
+      return el('div.empty', { text: message });
+    }
+
+    function table(columns, rows, renderRow) {
+      var head = el('tr');
+      columns.forEach(function (c) { head.appendChild(el('th', { text: c })); });
+      var body = el('tbody');
+      rows.forEach(function (row, index) { body.appendChild(renderRow(row, index)); });
+      var node = el('div.scroller', {}, el('table', {}, el('thead', {}, head), body));
+      if (!rows.length) return el('div.scroller', {}, emptyState('Nothing here yet.'));
+      return node;
+    }
+
+    function actionCell() {
+      var cell = el('td.actions');
+      for (var i = 0; i < arguments.length; i++) if (arguments[i]) cell.appendChild(arguments[i]);
+      return cell;
+    }
+
+    /** A button that is disabled, with an explanation, for read-only admins. */
+    function writeButton(label, kind, onClick) {
+      var button = el('button.btn.tiny' + (kind ? '.' + kind : ''), {
+        type: 'button',
+        text: label,
+        onclick: onClick
+      });
+      if (S.readonly) {
+        button.disabled = true;
+        button.title = 'The read-only admin credential cannot make changes.';
+      }
+      return button;
+    }
+
+    // =========================================================================
+    // Views
+    // =========================================================================
+
+    var VIEWS = [];
+
+    function view(id, label, group, feature, render) {
+      VIEWS.push({ id: id, label: label, group: group, feature: feature, render: render });
+    }
+
+    function page(title, subtitle) {
+      var node = el('div');
+      node.appendChild(el('h1', { text: title }));
+      if (subtitle) node.appendChild(el('p.sub', { text: subtitle }));
+      return node;
+    }
+
+    // ---------------------------------------------------------- collections --
+
+    view('collections', 'Collections', 'Data', 'collections', function (root) {
+      var node = page('Collections', 'Browse and edit records. Live updates arrive over the backend’s own SSE stream.');
+      root.appendChild(node);
+
+      var toolbar = el('div.row');
+      var picker = el('select', { onchange: function () { selectCollection(picker.value); } });
+      var whereInput = el('input', {
+        type: 'text',
+        placeholder: '{"status":"open"} — filter (JSON)',
+        style: 'min-width:280px',
+        value: S.ctx.where || ''
+      });
+      var liveToggle = el('input', { type: 'checkbox', checked: !!S.ctx.live });
+      var results = el('div');
+
+      toolbar.appendChild(el('label.field', {}, document.createTextNode('Collection'), picker));
+      toolbar.appendChild(el('label.field', {}, document.createTextNode('Filter'), whereInput));
+      toolbar.appendChild(el('button.btn', { type: 'button', text: 'Refresh', onclick: function () { load(); } }));
+      if (S.features.realtime) {
+        toolbar.appendChild(el('label.check', {}, liveToggle, document.createTextNode('Live')));
+        liveToggle.addEventListener('change', function () {
+          S.ctx.live = liveToggle.checked;
+          if (S.ctx.live) openLive(S.ctx.collection, load);
+          else closeLive();
+        });
+      }
+      toolbar.appendChild(writeButton('New record', 'primary', newRecord));
+      node.appendChild(toolbar);
+      node.appendChild(el('div', { style: 'height:12px' }));
+      node.appendChild(results);
+
+      whereInput.addEventListener('keydown', function (e) { if (e.key === 'Enter') { S.ctx.where = whereInput.value; load(); } });
+
+      api('GET', '/admin/schema')
+        .then(function (data) {
+          var tables = (data.tables || []).map(function (t) { return t.name; });
+          if (!tables.length) {
+            clear(results).appendChild(el('div.notice', { text: 'This backend has no collections yet. Create one from the Schema section.' }));
+            return;
+          }
+          if (!S.ctx.collection || tables.indexOf(S.ctx.collection) === -1) S.ctx.collection = tables[0];
+          tables.forEach(function (name) {
+            picker.appendChild(el('option', { value: name, text: name, selected: name === S.ctx.collection }));
+          });
+          load();
+        })
+        .catch(fail);
+
+      function selectCollection(name) {
+        S.ctx.collection = name;
+        S.ctx.skip = 0;
+        if (S.ctx.live) openLive(name, load);
+        load();
+      }
+
+      function load() {
+        var collection = S.ctx.collection;
+        if (!collection) return;
+        var query = ['limit=50', 'count=1', 'skip=' + (S.ctx.skip || 0)];
+        var where = (S.ctx.where || '').trim();
+        if (where) {
+          try {
+            JSON.parse(where);
+          } catch (e) {
+            clear(results).appendChild(el('div.notice.bad', { text: 'Filter is not valid JSON: ' + e.message }));
+            return;
+          }
+          query.push('where=' + encodeURIComponent(where));
+        }
+        api('GET', '/api/' + encodeURIComponent(collection) + '?' + query.join('&'))
+          .then(function (data) { renderRows(collection, data); })
+          .catch(function (e) { clear(results).appendChild(el('div.notice.bad', { text: e.message })); });
+      }
+
+      function renderRows(collection, data) {
+        var rows = data.results || [];
+        clear(results);
+        var columns = [];
+        rows.forEach(function (row) {
+          Object.keys(row).forEach(function (key) { if (columns.indexOf(key) === -1) columns.push(key); });
+        });
+        if (!columns.length) columns = ['objectId'];
+
+        results.appendChild(
+          el('div.row', {},
+            chip(collection + ' · ' + (data.count !== undefined ? data.count : rows.length) + ' record(s)', 'accent'),
+            el('span.spacer', { style: 'flex:1' }),
+            el('button.btn.tiny', {
+              type: 'button', text: 'Prev', disabled: !(S.ctx.skip > 0),
+              onclick: function () { S.ctx.skip = Math.max(0, (S.ctx.skip || 0) - 50); load(); }
+            }),
+            el('button.btn.tiny', {
+              type: 'button', text: 'Next', disabled: rows.length < 50,
+              onclick: function () { S.ctx.skip = (S.ctx.skip || 0) + 50; load(); }
+            })
+          )
+        );
+        results.appendChild(el('div', { style: 'height:8px' }));
+        results.appendChild(
+          table(columns.concat(['']), rows, function (row) {
+            var tr = el('tr');
+            columns.forEach(function (key) {
+              var td = el('td', { text: cellText(row[key]) });
+              td.title = cellText(row[key]);
+              tr.appendChild(td);
+            });
+            tr.appendChild(
+              actionCell(
+                writeButton('Edit', null, function () { editRecord(collection, row); }),
+                writeButton('Delete', 'danger', function () {
+                  confirmDestructive('Delete record', 'Deleting ' + collection + '/' + row.objectId + ' removes it permanently.', String(row.objectId), function () {
+                    api('DELETE', '/api/' + encodeURIComponent(collection) + '/' + encodeURIComponent(row.objectId))
+                      .then(function () { toast('Record deleted.', 'ok'); load(); })
+                      .catch(fail);
+                  });
+                })
+              )
+            );
+            return tr;
+          })
+        );
+      }
+
+      function recordEditor(collection, row) {
+        var initial = {};
+        Object.keys(row || {}).forEach(function (key) {
+          if (key === 'objectId' || key === 'createdAt' || key === 'updatedAt') return;
+          initial[key] = row[key];
+        });
+        var area = el('textarea', { value: JSON.stringify(initial, null, 2) });
+        area.style.minHeight = '220px';
+        return area;
+      }
+
+      function newRecord() {
+        var ref = {};
+        var area = recordEditor(S.ctx.collection, {});
+        area.value = '{\n  \n}';
+        ref.ref = modal('New record in ' + S.ctx.collection, [el('p.sub', { text: 'The record body, as JSON.' }), area], [
+          cancelButton(ref),
+          el('button.btn.primary', {
+            type: 'button', text: 'Create',
+            onclick: function () {
+              var parsed;
+              try { parsed = JSON.parse(area.value); } catch (e) { return fail(new Error('Not valid JSON: ' + e.message)); }
+              api('POST', '/api/' + encodeURIComponent(S.ctx.collection), parsed)
+                .then(function () { ref.ref.close(); toast('Record created.', 'ok'); load(); })
+                .catch(fail);
+            }
+          })
+        ]);
+      }
+
+      function editRecord(collection, row) {
+        var ref = {};
+        var area = recordEditor(collection, row);
+        ref.ref = modal('Edit ' + collection + '/' + row.objectId, [
+          el('p.sub', { text: 'objectId, createdAt and updatedAt are managed by the backend and are not editable.' }),
+          area
+        ], [
+          cancelButton(ref),
+          el('button.btn.primary', {
+            type: 'button', text: 'Save',
+            onclick: function () {
+              var parsed;
+              try { parsed = JSON.parse(area.value); } catch (e) { return fail(new Error('Not valid JSON: ' + e.message)); }
+              api('PUT', '/api/' + encodeURIComponent(collection) + '/' + encodeURIComponent(row.objectId), parsed)
+                .then(function () { ref.ref.close(); toast('Record saved.', 'ok'); load(); })
+                .catch(fail);
+            }
+          })
+        ]);
+      }
+
+      // Live updates: reuse BAK-001's SSE stream. The dashboard is just another
+      // subscriber — no dashboard-specific realtime path exists.
+      function openLive(collection, onChange) {
+        closeLive();
+        if (!collection || !S.features.realtime) return;
+        var url = '/realtime?authToken=' + encodeURIComponent(S.token);
+        var source = new EventSource(url);
+        S.sse = source;
+        setLiveChip('connecting');
+        source.addEventListener('connected', function (e) {
+          try { S.sseClientId = JSON.parse(e.data).clientId; } catch (err) { return; }
+          api('POST', '/realtime/subscriptions', {
+            clientId: S.sseClientId,
+            subscriptions: [{ collection: collection }]
+          }).then(function () { setLiveChip('live'); }).catch(function (err) { setLiveChip('off'); fail(err); });
+        });
+        var debounce = null;
+        function bump() {
+          if (debounce) clearTimeout(debounce);
+          debounce = setTimeout(onChange, 180);
+        }
+        source.addEventListener('change', bump);
+        source.addEventListener('resync', bump);
+        source.addEventListener('error', function () { setLiveChip('reconnecting'); });
+        S.sseCollection = collection;
+      }
+    });
+
+    function closeLive() {
+      if (S.sse) { S.sse.close(); S.sse = null; }
+      S.sseClientId = null;
+      S.sseCollection = null;
+      setLiveChip('off');
+    }
+
+    function setLiveChip(state) {
+      var host = document.getElementById('live-chip');
+      if (!host) return;
+      clear(host);
+      if (state === 'off') return;
+      host.appendChild(chip(state === 'live' ? 'live' : state, state === 'live' ? 'ok' : 'warn'));
+    }
+
+    // -------------------------------------------------------------- schema --
+
+    view('schema', 'Schema', 'Data', 'schema', function (root) {
+      var node = page('Schema', 'Tables and columns. Deleting a table destroys its data.');
+      root.appendChild(node);
+      var body = el('div');
+      node.appendChild(el('div.row', {}, writeButton('New table', 'primary', createTable), el('button.btn', { type: 'button', text: 'Refresh', onclick: load })));
+      node.appendChild(el('div', { style: 'height:12px' }));
+      node.appendChild(body);
+      load();
+
+      function load() {
+        api('GET', '/admin/schema')
+          .then(function (data) {
+            clear(body);
+            var tables = data.tables || [];
+            if (!tables.length) return void body.appendChild(el('div.notice', { text: 'No tables yet.' }));
+            tables.forEach(function (t) { body.appendChild(tableCard(t)); });
+          })
+          .catch(fail);
+      }
+
+      function tableCard(t) {
+        var card = el('div.card');
+        var system = t.name.charAt(0) === '_';
+        card.appendChild(
+          el('div.row', {},
+            el('b', { text: t.name, style: 'color:#eef2f6' }),
+            system ? chip('system', 'warn') : null,
+            chip((t.columns || []).length + ' column(s)'),
+            el('span', { style: 'flex:1' }),
+            writeButton('Add column', null, function () { addColumn(t.name); }),
+            system ? null : writeButton('Delete table', 'danger', function () { deleteTable(t.name); })
+          )
+        );
+        var columns = t.columns || [];
+        if (columns.length) {
+          card.appendChild(el('div', { style: 'height:8px' }));
+          card.appendChild(
+            table(['Column', 'Type', 'Target class'], columns, function (c) {
+              return el('tr', {},
+                el('td', { text: c.name }),
+                el('td', { text: c.type || '' }),
+                el('td', { text: c.targetClass || '' })
+              );
+            })
+          );
+        }
+        return card;
+      }
+
+      function createTable() {
+        var ref = {};
+        var name = el('input', { type: 'text', placeholder: 'Collection name', style: 'width:100%' });
+        ref.ref = modal('New table', [el('p.sub', { text: 'Columns can be added afterwards; the backend also infers them from the first records you write.' }), name], [
+          cancelButton(ref),
+          el('button.btn.primary', {
+            type: 'button', text: 'Create',
+            onclick: function () {
+              api('POST', '/admin/schema', { action: 'createTable', table: name.value.trim(), columns: [] })
+                .then(function () { ref.ref.close(); toast('Table created.', 'ok'); load(); })
+                .catch(fail);
+            }
+          })
+        ]);
+      }
+
+      function addColumn(tableName) {
+        var ref = {};
+        var name = el('input', { type: 'text', placeholder: 'Column name' });
+        var type = el('select');
+        ['String', 'Number', 'Boolean', 'Date', 'Object', 'Array', 'Pointer', 'Relation', 'File', 'GeoPoint'].forEach(function (t) {
+          type.appendChild(el('option', { value: t, text: t }));
+        });
+        var target = el('input', { type: 'text', placeholder: 'Target class (Pointer/Relation)' });
+        ref.ref = modal('Add column to ' + tableName, [
+          el('div.grid2', {},
+            el('label.field', {}, document.createTextNode('Name'), name),
+            el('label.field', {}, document.createTextNode('Type'), type),
+            el('label.field', {}, document.createTextNode('Target class'), target))
+        ], [
+          cancelButton(ref),
+          el('button.btn.primary', {
+            type: 'button', text: 'Add',
+            onclick: function () {
+              var column = { name: name.value.trim(), type: type.value };
+              if (target.value.trim()) column.targetClass = target.value.trim();
+              api('POST', '/admin/schema', { action: 'addColumn', table: tableName, column: column })
+                .then(function () { ref.ref.close(); toast('Column added.', 'ok'); load(); })
+                .catch(fail);
+            }
+          })
+        ]);
+      }
+
+      // The spec's named item: `backend:deleteTable` existed as a handler with
+      // no caller. This is the caller — behind a typed confirmation.
+      function deleteTable(tableName) {
+        confirmDestructive(
+          'Delete table ' + tableName,
+          'Every record in "' + tableName + '" is destroyed along with the table. Permissions and triggers that reference it are NOT removed and will start failing.',
+          tableName,
+          function () {
+            api('POST', '/admin/schema', { action: 'deleteTable', table: tableName })
+              .then(function (result) {
+                if (result && result.deleted === false) toast('The backend reported that "' + tableName + '" was not deleted.', 'bad');
+                else toast('Table "' + tableName + '" deleted.', 'ok');
+                load();
+              })
+              .catch(fail);
+          }
+        );
+      }
+    });
+
+    // --------------------------------------------------------------- users --
+
+    view('users', 'Users', 'Access', 'users', function (root) {
+      var node = page('Users', 'The _User collection, plus the account actions the backend actually implements.');
+      root.appendChild(node);
+      var body = el('div');
+      node.appendChild(el('div.row', {}, writeButton('New user', 'primary', createUser), el('button.btn', { type: 'button', text: 'Refresh', onclick: load })));
+      node.appendChild(el('div', { style: 'height:12px' }));
+      node.appendChild(body);
+      load();
+
+      function load() {
+        Promise.all([
+          api('GET', '/api/_User?limit=200&count=1'),
+          S.features.roles ? api('GET', '/admin/roles').catch(function () { return { roles: [] }; }) : Promise.resolve({ roles: [] })
+        ])
+          .then(function (both) {
+            var users = both[0].results || [];
+            var roles = both[1].roles || [];
+            clear(body);
+            body.appendChild(
+              table(['objectId', 'username', 'email', 'verified', 'roles', 'created', ''], users, function (u) {
+                var memberships = roles.filter(function (r) { return (r.users || []).indexOf(u.objectId) !== -1; }).map(function (r) { return r.name; });
+                return el('tr', {},
+                  el('td', { text: u.objectId }),
+                  el('td', { text: cellText(u.username) }),
+                  el('td', { text: cellText(u.email) }),
+                  el('td', {}, u.emailVerified ? chip('yes', 'ok') : chip('no')),
+                  el('td', { text: memberships.join(', ') }),
+                  el('td', { text: when(u.createdAt) }),
+                  actionCell(
+                    S.features.email ? writeButton('Send reset', null, function () { sendReset(u); }) : null,
+                    writeButton('Delete', 'danger', function () {
+                      confirmDestructive('Delete user', 'Deleting ' + (u.username || u.objectId) + ' removes the account. Existing sessions are NOT revoked by this action.', String(u.objectId), function () {
+                        api('DELETE', '/api/_User/' + encodeURIComponent(u.objectId))
+                          .then(function () { toast('User deleted.', 'ok'); load(); })
+                          .catch(fail);
+                      });
+                    })
+                  )
+                );
+              })
+            );
+          })
+          .catch(fail);
+      }
+
+      function createUser() {
+        var ref = {};
+        var username = el('input', { type: 'text', placeholder: 'username' });
+        var email = el('input', { type: 'email', placeholder: 'email' });
+        var password = el('input', { type: 'password', placeholder: 'password' });
+        ref.ref = modal('New user', [
+          el('div.grid2', {},
+            el('label.field', {}, document.createTextNode('Username'), username),
+            el('label.field', {}, document.createTextNode('Email'), email),
+            el('label.field', {}, document.createTextNode('Password'), password))
+        ], [
+          cancelButton(ref),
+          el('button.btn.primary', {
+            type: 'button', text: 'Create',
+            onclick: function () {
+              api('POST', '/users', { username: username.value, email: email.value, password: password.value })
+                .then(function () { ref.ref.close(); toast('User created.', 'ok'); load(); })
+                .catch(fail);
+            }
+          })
+        ]);
+      }
+
+      function sendReset(user) {
+        if (!user.email) return fail(new Error('This user has no email address, so a reset link cannot be sent.'));
+        // Deliberately honest: this is the PUBLIC reset endpoint, which is
+        // uniform by design (BAK-002 anti-enumeration). It cannot tell us
+        // whether the mail actually went out.
+        api('POST', '/requestPasswordReset', { email: user.email })
+          .then(function () {
+            toast(
+              'Password-reset requested for ' + user.email + '.\nThat endpoint answers identically whether or not the send succeeded ' +
+                '(anti-enumeration); check the Email section and the service log to confirm delivery.',
+              'ok'
+            );
+          })
+          .catch(fail);
+      }
+    });
+
+    // --------------------------------------------------------------- roles --
+
+    view('roles', 'Roles', 'Access', 'roles', function (root) {
+      var node = page('Roles', 'Flat roles. Permissions reference them as "role:<name>".');
+      root.appendChild(node);
+      var body = el('div');
+      node.appendChild(el('div.row', {}, writeButton('New role', 'primary', createRole), el('button.btn', { type: 'button', text: 'Refresh', onclick: load })));
+      node.appendChild(el('div', { style: 'height:12px' }));
+      node.appendChild(body);
+      load();
+
+      function load() {
+        api('GET', '/admin/roles')
+          .then(function (data) {
+            clear(body);
+            body.appendChild(
+              table(['Role', 'Members', ''], data.roles || [], function (r) {
+                return el('tr', {},
+                  el('td', { text: r.name }),
+                  el('td', { text: (r.users || []).join(', ') }),
+                  actionCell(
+                    writeButton('Add member', null, function () { addMember(r); }),
+                    writeButton('Delete', 'danger', function () {
+                      confirmDestructive('Delete role', 'Rules that name "role:' + r.name + '" will stop matching anyone.', r.name, function () {
+                        api('DELETE', '/admin/roles/' + encodeURIComponent(r.name))
+                          .then(function () { toast('Role deleted.', 'ok'); load(); })
+                          .catch(fail);
+                      });
+                    })
+                  )
+                );
+              })
+            );
+          })
+          .catch(fail);
+      }
+
+      function createRole() {
+        var ref = {};
+        var name = el('input', { type: 'text', placeholder: 'role-name', style: 'width:100%' });
+        ref.ref = modal('New role', [name], [
+          cancelButton(ref),
+          el('button.btn.primary', {
+            type: 'button', text: 'Create',
+            onclick: function () {
+              api('POST', '/admin/roles', { name: name.value.trim() })
+                .then(function () { ref.ref.close(); toast('Role created.', 'ok'); load(); })
+                .catch(fail);
+            }
+          })
+        ]);
+      }
+
+      function addMember(role) {
+        var ref = {};
+        var picker = el('select', { style: 'width:100%' });
+        api('GET', '/api/_User?limit=200').then(function (data) {
+          (data.results || []).forEach(function (u) {
+            picker.appendChild(el('option', { value: u.objectId, text: (u.username || '(no username)') + ' — ' + u.objectId }));
+          });
+        }).catch(fail);
+        ref.ref = modal('Add a member to ' + role.name, [picker], [
+          cancelButton(ref),
+          el('button.btn.primary', {
+            type: 'button', text: 'Add',
+            onclick: function () {
+              api('POST', '/admin/roles/' + encodeURIComponent(role.name) + '/users', { userId: picker.value })
+                .then(function () { ref.ref.close(); toast('Member added.', 'ok'); load(); })
+                .catch(fail);
+            }
+          })
+        ]);
+      }
+    });
+
+    // --------------------------------------------------------- permissions --
+
+    view('permissions', 'Permissions', 'Access', 'permissions', function (root) {
+      var node = page('Permissions', 'Collection-level permissions (BAK-003). Rules are "public", "authenticated", "nobody" or "role:<name>".');
+      root.appendChild(node);
+      var body = el('div');
+      node.appendChild(body);
+      load();
+
+      var OPS = ['find', 'get', 'create', 'update', 'delete'];
+
+      function load() {
+        Promise.all([api('GET', '/admin/permissions'), api('GET', '/admin/schema')])
+          .then(function (both) {
+            var data = both[0];
+            var tables = (both[1].tables || []).map(function (t) { return t.name; });
+            clear(body);
+
+            if (data.config.devOpen) {
+              body.appendChild(el('div.notice.warn', {
+                text:
+                  'DEV-OPEN is on: every permission below is bypassed and this backend enforces nothing. ' +
+                  'It is only ever active on a loopback bind — the service refuses to start dev-open on a public bind.'
+              }));
+            } else {
+              body.appendChild(el('div.notice', { text: 'Enforcement is ACTIVE. Rules below are applied to every request.' }));
+            }
+
+            body.appendChild(el('h2', { text: 'Defaults' }));
+            body.appendChild(defaultsCard(data.config));
+
+            body.appendChild(el('h2', { text: 'Collections' }));
+            tables.forEach(function (name) {
+              body.appendChild(collectionCard(name, (data.config.collections || {})[name] || {}));
+            });
+          })
+          .catch(fail);
+      }
+
+      function defaultsCard(config) {
+        var card = el('div.card');
+        card.appendChild(el('div.row', {}, el('b', { text: 'Backend defaults', style: 'color:#eef2f6' })));
+        var grid = el('div.grid2', { style: 'margin-top:8px' });
+        OPS.forEach(function (op) {
+          grid.appendChild(el('label.field', {}, document.createTextNode('default ' + op), el('input', {
+            type: 'text', value: cellText((config.defaults || {})[op]), disabled: true
+          })));
+        });
+        card.appendChild(grid);
+        card.appendChild(el('p.sub', {
+          style: 'margin:10px 0 0',
+          text: 'Defaults, signup, file and function rules are edited through the whole-config route (PUT /admin/permissions) or MCP; this dashboard edits per-collection rules, which is where day-to-day operation lives.'
+        }));
+        return card;
+      }
+
+      function collectionCard(name, entry) {
+        var card = el('div.card');
+        var inputs = {};
+        var grid = el('div.grid2', { style: 'margin-top:8px' });
+        OPS.forEach(function (op) {
+          var value = (entry.permissions || {})[op];
+          inputs[op] = el('input', { type: 'text', value: Array.isArray(value) ? value.join(',') : cellText(value), placeholder: '(default)' });
+          if (S.readonly) inputs[op].disabled = true;
+          grid.appendChild(el('label.field', {}, document.createTextNode(op), inputs[op]));
+        });
+        var owns = el('input', { type: 'checkbox', checked: !!entry.creatorOwns });
+        if (S.readonly) owns.disabled = true;
+
+        card.appendChild(el('div.row', {},
+          el('b', { text: name, style: 'color:#eef2f6' }),
+          entry.permissions || entry.creatorOwns !== undefined ? chip('overridden', 'accent') : chip('defaults'),
+          el('span', { style: 'flex:1' }),
+          writeButton('Save', 'primary', save),
+          writeButton('Reset to defaults', null, reset)
+        ));
+        card.appendChild(grid);
+        card.appendChild(el('label.check', { style: 'margin-top:10px' }, owns, document.createTextNode('creator-owns (stamp owner + a private ACL on create)')));
+        return card;
+
+        function save() {
+          var permissions = {};
+          OPS.forEach(function (op) {
+            var raw = inputs[op].value.trim();
+            if (!raw) return;
+            permissions[op] = raw.indexOf(',') === -1 ? raw : raw.split(',').map(function (s) { return s.trim(); });
+          });
+          api('PUT', '/admin/permissions/collections/' + encodeURIComponent(name), {
+            permissions: permissions,
+            creatorOwns: owns.checked
+          })
+            .then(function () { toast('Permissions saved for ' + name + '.', 'ok'); load(); })
+            .catch(fail);
+        }
+
+        function reset() {
+          api('DELETE', '/admin/permissions/collections/' + encodeURIComponent(name))
+            .then(function () { toast(name + ' reverted to defaults.', 'ok'); load(); })
+            .catch(fail);
+        }
+      }
+    });
+
+    // ------------------------------------------------------------ API keys --
+
+    view('keys', 'API keys', 'Access', 'apiKeys', function (root) {
+      var node = page('API keys', 'Scoped, revocable credentials for server-to-server callers. Secrets are shown once.');
+      root.appendChild(node);
+      var body = el('div');
+      node.appendChild(el('div.row', {}, writeButton('New key', 'primary', createKey), el('button.btn', { type: 'button', text: 'Refresh', onclick: load })));
+      node.appendChild(el('div', { style: 'height:12px' }));
+      node.appendChild(body);
+      load();
+
+      function load() {
+        api('GET', '/admin/keys')
+          .then(function (data) {
+            clear(body);
+            body.appendChild(
+              table(['Name', 'Scopes', 'Status', 'Created', 'Last used', ''], data.keys || [], function (k) {
+                return el('tr', {},
+                  el('td', { text: k.name }),
+                  el('td', { text: (k.scopes || []).join(', ') }),
+                  el('td', {}, k.revoked ? chip('revoked', 'bad') : chip('active', 'ok')),
+                  el('td', { text: when(k.createdAt) }),
+                  el('td', { text: when(k.lastUsedAt) }),
+                  actionCell(k.revoked ? null : writeButton('Revoke', 'danger', function () {
+                    confirmDestructive('Revoke key', 'Anything using "' + k.name + '" stops working immediately.', k.name, function () {
+                      api('DELETE', '/admin/keys/' + encodeURIComponent(k.objectId))
+                        .then(function () { toast('Key revoked.', 'ok'); load(); })
+                        .catch(fail);
+                    });
+                  }))
+                );
+              })
+            );
+          })
+          .catch(fail);
+      }
+
+      function createKey() {
+        var ref = {};
+        var name = el('input', { type: 'text', placeholder: 'Label for this key' });
+        var scopes = el('input', { type: 'text', placeholder: 'classes:read, functions:*', value: 'classes:read' });
+        ref.ref = modal('New API key', [
+          el('div.grid2', {},
+            el('label.field', {}, document.createTextNode('Name'), name),
+            el('label.field', {}, document.createTextNode('Scopes (comma separated)'), scopes))
+        ], [
+          cancelButton(ref),
+          el('button.btn.primary', {
+            type: 'button', text: 'Create',
+            onclick: function () {
+              api('POST', '/admin/keys', {
+                name: name.value.trim(),
+                scopes: scopes.value.split(',').map(function (s) { return s.trim(); }).filter(Boolean)
+              })
+                .then(function (result) {
+                  ref.ref.close();
+                  var secretRef = {};
+                  secretRef.ref = modal('Copy this secret now', [
+                    el('div.notice.warn', { text: 'This is the only time the secret is shown. It is stored hashed and cannot be recovered.' }),
+                    el('textarea', { value: result.secret, readonly: true })
+                  ], [el('button.btn.primary', { type: 'button', text: 'Done', onclick: function () { secretRef.ref.close(); load(); } })]);
+                })
+                .catch(fail);
+            }
+          })
+        ]);
+      }
+    });
+
+    // ------------------------------------------------------------- sign-in --
+
+    /**
+     * BAK-004. The single most valuable thing this view does is DISPLAY THE
+     * CALLBACK URL: the redirect-URI mismatch is the most expensive mistake in
+     * setting up an OAuth client, and it is entirely avoidable by never asking
+     * the operator to assemble that string themselves.
+     */
+    view('signin', 'Sign-in', 'Access', 'auth', function (root) {
+      var node = page('Sign-in', 'How end users of your app sign in: identity providers and passwordless email links.');
+      root.appendChild(node);
+      var body = el('div');
+      node.appendChild(body);
+      load();
+
+      function load() {
+        api('GET', '/admin/auth')
+          .then(function (data) {
+            clear(body);
+            var config = data.config || {};
+            var presets = data.presets || {};
+
+            if (data.baseUrl && data.baseUrl.usedFallback) {
+              body.appendChild(el('div.notice.warn', { text: data.baseUrl.warning }));
+            }
+
+            body.appendChild(el('div.row', {},
+              writeButton('Add provider', 'primary', function () { editProvider(null, presets); }),
+              el('button.btn', { type: 'button', text: 'Refresh', onclick: load })));
+            body.appendChild(el('div', { style: 'height:12px' }));
+
+            body.appendChild(
+              table(['Provider', 'Kind', 'Status', 'Callback URL to register', ''], config.providers || [], function (p) {
+                return el('tr', {},
+                  el('td', {}, el('b', { text: p.displayName || p.id }), el('div.sub', { text: p.id })),
+                  el('td', { text: p.kind === 'github' ? 'GitHub' : 'OpenID Connect' }),
+                  el('td', {},
+                    p.enabled ? chip('enabled', 'ok') : chip('disabled'),
+                    p.ready ? chip('ready', 'ok') : chip('incomplete', 'warn')),
+                  el('td', {},
+                    el('code', { text: p.callbackUrl, style: 'word-break:break-all' }),
+                    p.notReadyReason ? el('div.sub', { text: p.notReadyReason }) : null),
+                  actionCell(
+                    el('button.btn.tiny', { type: 'button', text: 'Copy URL', onclick: function () { copy(p.callbackUrl); } }),
+                    writeButton('Edit', null, function () { editProvider(p, presets); }),
+                    writeButton('Remove', 'danger', function () {
+                      confirmDestructive(
+                        'Remove provider',
+                        'Users with no password and no other provider will not be able to sign in. Their linked ' +
+                          'identities are kept, so re-adding "' + p.id + '" restores access.',
+                        p.id,
+                        function () {
+                          api('DELETE', '/admin/auth/providers/' + encodeURIComponent(p.id))
+                            .then(function () { toast('Provider removed.', 'ok'); load(); })
+                            .catch(fail);
+                        }
+                      );
+                    }))
+                );
+              })
+            );
+
+            // ---- policy ----
+            body.appendChild(el('h2', { text: 'Magic links' }));
+            var magic = config.magicLink || {};
+            var magicEnabled = el('input', { type: 'checkbox', checked: !!magic.enabled });
+            var magicTtl = el('input', { type: 'number', value: magic.ttlMinutes === undefined ? 15 : magic.ttlMinutes });
+            var magicSignup = el('input', { type: 'checkbox', checked: magic.allowSignup !== false });
+            var autoLink = el('input', { type: 'checkbox', checked: (config.linking || {}).autoLinkVerifiedEmail !== false });
+            var allowList = el('textarea', { value: (config.redirectAllowList || []).join('\n') });
+            allowList.placeholder = 'https://app.example.com';
+            [magicEnabled, magicTtl, magicSignup, autoLink, allowList].forEach(function (i) { if (S.readonly) i.disabled = true; });
+
+            var magicCard = el('div.card');
+            if (!data.magicLinkReady && data.magicLinkNotReadyReason) {
+              magicCard.appendChild(el('div.notice.warn', { text: data.magicLinkNotReadyReason }));
+            }
+            magicCard.appendChild(el('label.check', {}, magicEnabled, document.createTextNode('Magic-link sign-in enabled')));
+            magicCard.appendChild(el('div.grid2', { style: 'margin-top:10px' },
+              el('label.field', {}, document.createTextNode('Link lifetime (minutes)'), magicTtl)));
+            magicCard.appendChild(el('div.row', { style: 'margin-top:10px' },
+              el('label.check', {}, magicSignup, document.createTextNode('An unknown address may create an account'))));
+            body.appendChild(magicCard);
+
+            body.appendChild(el('h2', { text: 'Redirect allow-list' }));
+            var redirectCard = el('div.card');
+            redirectCard.appendChild(el('p.sub', {
+              style: 'margin:0 0 8px',
+              text:
+                'One app origin per line. A completed sign-in may only be redirected to this backend’s own origin ' +
+                'or to one of these — which is what stops the callback being used as an open redirect. If your app ' +
+                'is served from a different origin than this backend, add it here or every sign-in is refused ' +
+                'before it starts.'
+            }));
+            redirectCard.appendChild(allowList);
+            body.appendChild(redirectCard);
+
+            body.appendChild(el('h2', { text: 'Account linking' }));
+            var linkCard = el('div.card');
+            linkCard.appendChild(el('label.check', {}, autoLink,
+              document.createTextNode('Link a provider sign-in to an existing account with the same VERIFIED address')));
+            linkCard.appendChild(el('p.sub', {
+              style: 'margin:8px 0 0',
+              text:
+                'Only a provider-verified address ever matches, and if the local account had never verified its own ' +
+                'address, its password and sessions are revoked at the moment of linking — that is what stops ' +
+                'someone registering your address before you do and keeping access afterwards. Every such event is ' +
+                'in the audit trail as auth.link.credentials-revoked. Turning this off means such a sign-in is ' +
+                'refused rather than linked.'
+            }));
+            body.appendChild(linkCard);
+
+            body.appendChild(el('div.row', { style: 'margin-top:12px' }, writeButton('Save policy', 'primary', savePolicy)));
+
+            function savePolicy() {
+              api('PUT', '/admin/auth', {
+                magicLink: {
+                  enabled: magicEnabled.checked,
+                  ttlMinutes: Number(magicTtl.value) || 15,
+                  allowSignup: magicSignup.checked
+                },
+                redirectAllowList: allowList.value.split('\n').map(function (s) { return s.trim(); }).filter(Boolean),
+                linking: { autoLinkVerifiedEmail: autoLink.checked }
+              })
+                .then(function () { toast('Sign-in policy saved.', 'ok'); load(); })
+                .catch(fail);
+            }
+          })
+          .catch(fail);
+      }
+
+      function copy(text) {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(text).then(function () { toast('Callback URL copied.', 'ok'); }, function () {
+            toast('Could not copy — select the URL in the table instead.', 'bad');
+          });
+          return;
+        }
+        toast('Copying is unavailable here — select the URL in the table instead.', 'bad');
+      }
+
+      function editProvider(existing, presets) {
+        var ref = {};
+        var isNew = !existing;
+        var id = el('input', { type: 'text', value: existing ? existing.id : '', placeholder: 'google' });
+        if (!isNew) id.disabled = true;
+
+        var presetSelect = el('select');
+        ['', 'google', 'github', 'oidc'].forEach(function (name) {
+          presetSelect.appendChild(el('option', { value: name, text: name || '(keep current settings)' }));
+        });
+        if (isNew) presetSelect.value = 'google';
+
+        var displayName = el('input', { type: 'text', value: existing ? existing.displayName : '' });
+        var issuer = el('input', { type: 'text', value: existing ? existing.issuer : '', placeholder: 'https://accounts.google.com' });
+        var clientId = el('input', { type: 'text', value: existing ? existing.clientId : '' });
+        var clientSecret = el('input', {
+          type: 'password',
+          placeholder: existing && existing.hasClientSecret ? '(unchanged)' : '(not set)'
+        });
+        var scopes = el('input', { type: 'text', value: existing ? (existing.scopes || []).join(' ') : '' });
+        var enabled = el('input', { type: 'checkbox', checked: existing ? !!existing.enabled : true });
+        var allowSignup = el('input', { type: 'checkbox', checked: existing ? existing.allowSignup !== false : true });
+
+        var hint = el('p.sub', { text: '' });
+        function applyPresetHint() {
+          var preset = presets[presetSelect.value];
+          hint.textContent = preset ? preset.note : '';
+          if (!preset || !isNew) return;
+          // Fill the form from the preset so the operator sees what will be
+          // saved rather than discovering it afterwards.
+          if (!id.value) id.value = presetSelect.value === 'oidc' ? '' : presetSelect.value;
+          displayName.value = preset.displayName;
+          issuer.value = preset.issuer;
+          scopes.value = preset.scopes.join(' ');
+        }
+        presetSelect.onchange = applyPresetHint;
+        applyPresetHint();
+
+        ref.ref = modal(isNew ? 'Add sign-in provider' : 'Edit ' + (existing.displayName || existing.id), [
+          el('div.grid2', {},
+            el('label.field', {}, document.createTextNode('Preset'), presetSelect),
+            el('label.field', {}, document.createTextNode('Provider id (appears in the callback URL)'), id),
+            el('label.field', {}, document.createTextNode('Button label'), displayName),
+            el('label.field', {}, document.createTextNode('Issuer URL (OIDC only)'), issuer),
+            el('label.field', {}, document.createTextNode('Client id'), clientId),
+            el('label.field', {}, document.createTextNode('Client secret'), clientSecret),
+            el('label.field', {}, document.createTextNode('Scopes (space separated)'), scopes)),
+          el('div.row', { style: 'margin-top:10px' },
+            el('label.check', {}, enabled, document.createTextNode('Enabled')),
+            el('label.check', {}, allowSignup, document.createTextNode('May create new accounts'))),
+          hint,
+          existing ? el('p.sub', { text: 'Callback URL: ' + existing.callbackUrl }) : null
+        ], [
+          cancelButton(ref),
+          el('button.btn.primary', {
+            type: 'button',
+            text: 'Save',
+            onclick: function () {
+              var providerId = (isNew ? id.value : existing.id).trim();
+              if (!providerId) { toast('A provider id is required.', 'bad'); return; }
+              var payload = {
+                displayName: displayName.value.trim(),
+                issuer: issuer.value.trim(),
+                clientId: clientId.value.trim(),
+                scopes: scopes.value.split(/\s+/).filter(Boolean),
+                enabled: enabled.checked,
+                allowSignup: allowSignup.checked
+              };
+              if (presetSelect.value) payload.preset = presetSelect.value;
+              if (clientSecret.value) payload.clientSecret = clientSecret.value;
+              api('PUT', '/admin/auth/providers/' + encodeURIComponent(providerId), payload)
+                .then(function (result) {
+                  ref.ref.close();
+                  toast(
+                    result.provider && result.provider.ready
+                      ? 'Provider saved. Register this callback URL with the provider: ' + result.provider.callbackUrl
+                      : 'Provider saved, but not usable yet: ' + (result.provider && result.provider.notReadyReason),
+                    result.provider && result.provider.ready ? 'ok' : 'bad'
+                  );
+                  load();
+                })
+                .catch(fail);
+            }
+          })
+        ]);
+      }
+    });
+
+    // ------------------------------------------------------------ triggers --
+
+    view('triggers', 'Triggers', 'Automation', 'triggers', function (root) {
+      var node = page('Triggers', 'Schedules, webhooks and db-change hooks (WF-005). Authoring the functions they call is the editor’s job.');
+      root.appendChild(node);
+      var body = el('div');
+      node.appendChild(el('div.row', {}, el('button.btn', { type: 'button', text: 'Refresh', onclick: load })));
+      node.appendChild(el('div', { style: 'height:12px' }));
+      node.appendChild(body);
+      load();
+
+      function load() {
+        api('GET', '/admin/triggers')
+          .then(function (data) {
+            clear(body);
+            body.appendChild(
+              table(['Name', 'Type', 'Target', 'Enabled', 'Last fired', 'Last result', ''], data.triggers || [], function (t) {
+                var last = t.status || t;
+                return el('tr', {},
+                  el('td', { text: t.name || t.id }),
+                  el('td', { text: t.type }),
+                  el('td', { text: (t.target && (t.target.kind + ':' + t.target.name)) || '' }),
+                  el('td', {}, t.enabled ? chip('on', 'ok') : chip('off')),
+                  el('td', { text: when(last.lastFiredAt) }),
+                  el('td', {}, lastResultChip(last.lastResult)),
+                  actionCell(
+                    writeButton(t.enabled ? 'Disable' : 'Enable', null, function () {
+                      api('POST', '/admin/triggers/' + encodeURIComponent(t.id) + '/enabled', { enabled: !t.enabled })
+                        .then(function () { toast('Trigger ' + (t.enabled ? 'disabled' : 'enabled') + '.', 'ok'); load(); })
+                        .catch(fail);
+                    }),
+                    writeButton('Fire now', null, function () {
+                      api('POST', '/admin/triggers/' + encodeURIComponent(t.id) + '/fire', {})
+                        .then(function () { toast('Trigger fired — see Executions for the record.', 'ok'); load(); })
+                        .catch(fail);
+                    })
+                  )
+                );
+              })
+            );
+          })
+          .catch(fail);
+      }
+
+      function lastResultChip(result) {
+        if (!result) return chip('—');
+        if (result === 'ok' || result.ok === true) return chip('ok', 'ok');
+        return chip(typeof result === 'string' ? result : (result.error || 'failed'), 'bad');
+      }
+    });
+
+    // ----------------------------------------------------------- workflows --
+
+    view('workflows', 'Workflows', 'Automation', 'workflows', function (root) {
+      var node = page('Workflows', 'WF-001 step DAGs. Run and cancel here; author them in the editor.');
+      root.appendChild(node);
+      var body = el('div');
+      node.appendChild(el('div.row', {}, el('button.btn', { type: 'button', text: 'Refresh', onclick: load })));
+      node.appendChild(el('div', { style: 'height:12px' }));
+      node.appendChild(body);
+      load();
+
+      function load() {
+        api('GET', '/admin/workflow-defs')
+          .then(function (data) {
+            clear(body);
+            var list = data.workflows || data.definitions || [];
+            body.appendChild(
+              table(['Id', 'Name', 'Entry', 'Steps', ''], list, function (w) {
+                return el('tr', {},
+                  el('td', { text: w.id }),
+                  el('td', { text: cellText(w.name) }),
+                  el('td', { text: cellText(w.entry) }),
+                  el('td', { text: String((w.steps || []).length) }),
+                  actionCell(writeButton('Run', 'primary', function () { run(w); }))
+                );
+              })
+            );
+          })
+          .catch(fail);
+      }
+
+      function run(workflow) {
+        var ref = {};
+        var payload = el('textarea', { value: '{}' });
+        ref.ref = modal('Run ' + workflow.id, [el('p.sub', { text: 'Run payload (JSON) — becomes each step’s base input.' }), payload], [
+          cancelButton(ref),
+          el('button.btn.primary', {
+            type: 'button', text: 'Run',
+            onclick: function () {
+              var parsed;
+              try { parsed = JSON.parse(payload.value); } catch (e) { return fail(new Error('Not valid JSON: ' + e.message)); }
+              api('POST', '/admin/workflow-defs/' + encodeURIComponent(workflow.id) + '/run', { payload: parsed })
+                .then(function (result) {
+                  ref.ref.close();
+                  toast('Run finished: ' + (result && result.status ? result.status : 'see Executions') + '.', 'ok');
+                })
+                .catch(fail);
+            }
+          })
+        ]);
+      }
+    });
+
+    // ---------------------------------------------------------- executions --
+
+    view('executions', 'Executions', 'Automation', 'executions', function (root) {
+      var node = page('Executions', 'Every function, trigger, workflow and backup run this backend has recorded.');
+      root.appendChild(node);
+      var status = el('select');
+      ['', 'success', 'failed', 'running', 'cancelled'].forEach(function (s) {
+        status.appendChild(el('option', { value: s, text: s || 'any status' }));
+      });
+      status.addEventListener('change', load);
+      var body = el('div');
+      node.appendChild(el('div.row', {}, el('label.field', {}, document.createTextNode('Status'), status), el('button.btn', { type: 'button', text: 'Refresh', onclick: load })));
+      node.appendChild(el('div', { style: 'height:12px' }));
+      node.appendChild(body);
+      load();
+
+      function load() {
+        var query = 'limit=100' + (status.value ? '&status=' + encodeURIComponent(status.value) : '');
+        api('GET', '/executions?' + query)
+          .then(function (data) {
+            clear(body);
+            var rows = data.executions || data.results || [];
+            body.appendChild(
+              table(['Started', 'Workflow / function', 'Trigger', 'Status', 'Duration', ''], rows, function (x) {
+                return el('tr', {},
+                  el('td', { text: when(x.startedAt) }),
+                  el('td', { text: cellText(x.workflowId || x.functionName) }),
+                  el('td', { text: cellText(x.triggerType) }),
+                  el('td', {}, chip(cellText(x.status), x.status === 'success' ? 'ok' : x.status === 'failed' ? 'bad' : 'warn')),
+                  el('td', { text: x.durationMs !== undefined && x.durationMs !== null ? x.durationMs + ' ms' : '—' }),
+                  actionCell(el('button.btn.tiny', { type: 'button', text: 'Detail', onclick: function () { detail(x.id); } }))
+                );
+              })
+            );
+          })
+          .catch(fail);
+      }
+
+      function detail(id) {
+        api('GET', '/executions/' + encodeURIComponent(id))
+          .then(function (data) {
+            var ref = {};
+            var pre = el('textarea', { value: JSON.stringify(data, null, 2), readonly: true });
+            pre.style.minHeight = '380px';
+            ref.ref = modal('Execution ' + id, [pre], [el('button.btn', { type: 'button', text: 'Close', onclick: function () { ref.ref.close(); } })]);
+          })
+          .catch(fail);
+      }
+    });
+
+    // --------------------------------------------------------------- email --
+
+    view('email', 'Email', 'Config', 'email', function (root) {
+      var node = page('Email', 'SMTP, the verification policy, and a real test send.');
+      root.appendChild(node);
+      var body = el('div');
+      node.appendChild(body);
+      load();
+
+      function load() {
+        api('GET', '/admin/email/config')
+          .then(function (data) {
+            clear(body);
+            var config = data.config || {};
+            var smtp = config.smtp || {};
+
+            body.appendChild(
+              data.configured
+                ? el('div.notice', { text: 'Email is configured and enabled.' })
+                : el('div.notice.warn', { text: 'Email is NOT configured: ' + (data.notConfiguredReason || 'unknown reason') + '. Sends fail loudly into execution records rather than queueing.' })
+            );
+
+            var enabled = el('input', { type: 'checkbox', checked: !!config.enabled });
+            var host = el('input', { type: 'text', value: cellText(smtp.host) });
+            var port = el('input', { type: 'number', value: smtp.port === undefined ? '' : smtp.port });
+            var secure = el('input', { type: 'checkbox', checked: !!smtp.secure });
+            var username = el('input', { type: 'text', value: cellText(smtp.username) });
+            var password = el('input', { type: 'password', placeholder: data.hasSmtpPassword ? '(unchanged)' : '(not set)' });
+            var fromAddress = el('input', { type: 'text', value: cellText(config.fromAddress) });
+            var fromName = el('input', { type: 'text', value: cellText(config.fromName) });
+            var baseUrl = el('input', { type: 'text', value: cellText(config.baseUrl), placeholder: 'https://api.example.com' });
+            var sendOnSignup = el('input', { type: 'checkbox', checked: !!(config.verification && config.verification.sendOnSignup) });
+            var requireForLogin = el('input', { type: 'checkbox', checked: !!(config.verification && config.verification.requireForLogin) });
+            [enabled, host, port, secure, username, password, fromAddress, fromName, baseUrl, sendOnSignup, requireForLogin].forEach(function (i) {
+              if (S.readonly) i.disabled = true;
+            });
+
+            var card = el('div.card');
+            card.appendChild(el('label.check', {}, enabled, document.createTextNode('Sending enabled')));
+            card.appendChild(el('div.grid2', { style: 'margin-top:10px' },
+              el('label.field', {}, document.createTextNode('SMTP host'), host),
+              el('label.field', {}, document.createTextNode('SMTP port'), port),
+              el('label.field', {}, document.createTextNode('Username'), username),
+              el('label.field', {}, document.createTextNode('Password'), password),
+              el('label.field', {}, document.createTextNode('From address'), fromAddress),
+              el('label.field', {}, document.createTextNode('From name'), fromName),
+              el('label.field', {}, document.createTextNode('Base URL (links in emails)'), baseUrl)));
+            card.appendChild(el('div.row', { style: 'margin-top:10px' },
+              el('label.check', {}, secure, document.createTextNode('Implicit TLS (port 465)')),
+              el('label.check', {}, sendOnSignup, document.createTextNode('Send verification on signup')),
+              el('label.check', {}, requireForLogin, document.createTextNode('Require verified email to log in'))));
+            card.appendChild(el('div.row', { style: 'margin-top:12px' },
+              writeButton('Save', 'primary', save),
+              writeButton('Send test email', null, testSend)));
+            body.appendChild(card);
+
+            body.appendChild(el('h2', { text: 'Templates' }));
+            var templates = el('div');
+            body.appendChild(templates);
+            api('GET', '/admin/email/templates')
+              .then(function (result) {
+                (result.templates || []).forEach(function (t) {
+                  templates.appendChild(el('div.card', {},
+                    el('div.row', {},
+                      el('b', { text: t.id, style: 'color:#eef2f6' }),
+                      t.overridden ? chip('overridden', 'accent') : chip('default'),
+                      el('span', { style: 'flex:1' }),
+                      writeButton('Reset to default', null, function () {
+                        api('DELETE', '/admin/email/templates/' + encodeURIComponent(t.id))
+                          .then(function () { toast('Template reset.', 'ok'); load(); })
+                          .catch(fail);
+                      })),
+                    el('p.sub', { style: 'margin:8px 0 0', text: 'Subject: ' + cellText((t.effective || {}).subject) })));
+                });
+              })
+              .catch(function () { templates.appendChild(el('div.notice', { text: 'Templates are unavailable on this backend.' })); });
+
+            function save() {
+              var patch = {
+                enabled: enabled.checked,
+                smtp: {
+                  host: host.value.trim(),
+                  port: port.value ? Number(port.value) : undefined,
+                  secure: secure.checked,
+                  username: username.value.trim()
+                },
+                fromAddress: fromAddress.value.trim(),
+                fromName: fromName.value.trim(),
+                baseUrl: baseUrl.value.trim(),
+                verification: { sendOnSignup: sendOnSignup.checked, requireForLogin: requireForLogin.checked }
+              };
+              var payload = { config: patch };
+              if (password.value) payload.smtpPassword = password.value;
+              api('PUT', '/admin/email/config', payload)
+                .then(function () { toast('Email settings saved.', 'ok'); load(); })
+                .catch(fail);
+            }
+
+            function testSend() {
+              var ref = {};
+              var to = el('input', { type: 'email', placeholder: 'you@example.com', style: 'width:100%' });
+              ref.ref = modal('Send a test email', [el('p.sub', { text: 'This sends a real message through the configured SMTP right now, and reports the failure reason if it cannot.' }), to], [
+                cancelButton(ref),
+                el('button.btn.primary', {
+                  type: 'button', text: 'Send',
+                  onclick: function () {
+                    api('POST', '/admin/email/test', { to: to.value.trim() })
+                      .then(function () { ref.ref.close(); toast('Test email sent.', 'ok'); })
+                      .catch(fail);
+                  }
+                })
+              ]);
+            }
+          })
+          .catch(fail);
+      }
+    });
+
+    // ------------------------------------------------------------- backups --
+
+    view('backups', 'Backups', 'Config', 'backups', function (root) {
+      var node = page('Backups', 'Archive status, schedule, and a backup you can run right now (BAK-007).');
+      root.appendChild(node);
+      var body = el('div');
+      node.appendChild(body);
+      load();
+
+      function load() {
+        api('GET', '/admin/backups')
+          .then(function (data) {
+            clear(body);
+            var config = data.config || {};
+            var schedule = config.schedule || null;
+            var status = config.status || data.status || {};
+
+            body.appendChild(el('div.card', {},
+              el('div.row', {},
+                schedule && schedule.enabled ? chip('scheduled: ' + schedule.cron, 'ok') : chip('no schedule', 'warn'),
+                status.lastSuccessAt ? chip('last ok ' + when(status.lastSuccessAt), 'ok') : chip('never succeeded', 'warn'),
+                status.lastFailureAt ? chip('last failure ' + when(status.lastFailureAt), 'bad') : null,
+                el('span', { style: 'flex:1' }),
+                writeButton('Back up now', 'primary', function () {
+                  toast('Backup started…');
+                  api('POST', '/admin/backups', {})
+                    .then(function (result) { toast('Backup written: ' + result.archive + ' (' + result.bytes + ' bytes).', 'ok'); load(); })
+                    .catch(fail);
+                })),
+              el('p.sub', { style: 'margin:10px 0 0', text: 'Destination: ' + cellText((config.destination || {}).path) })));
+
+            body.appendChild(el('h2', { text: 'Archives' }));
+            body.appendChild(
+              table(['Archive', 'Created', 'Bytes'], data.backups || [], function (b) {
+                return el('tr', {},
+                  el('td', { text: cellText(b.path || b.name) }),
+                  el('td', { text: when(b.createdAt || b.mtime) }),
+                  el('td', { text: cellText(b.bytes || b.size) })
+                );
+              })
+            );
+            body.appendChild(el('p.sub', {
+              style: 'margin-top:10px',
+              text: 'Restoring is deliberately not a dashboard button: the blessed path is the `nodegx-backend restore` CLI with the service stopped.'
+            }));
+          })
+          .catch(fail);
+      }
+    });
+
+    // --------------------------------------------------------------- files --
+
+    view('files', 'Files', 'Config', 'files', function (root) {
+      var node = page('Files', 'Upload limits, content-type policy, the storage driver, thumbnail presets, and the orphan sweep (BAK-006).');
+      root.appendChild(node);
+      var body = el('div');
+      node.appendChild(body);
+      load();
+
+      function load() {
+        api('GET', '/admin/files/config')
+          .then(function (data) {
+            clear(body);
+            var config = data.config || {};
+
+            body.appendChild(el('div.row', {},
+              chip('driver: ' + data.driverKind, 'accent'),
+              data.transformsAvailable
+                ? chip('thumbnails available', 'ok')
+                : chip('thumbnails unavailable — ' + cellText(data.transformUnavailableReason), 'warn')));
+
+            var maxMb = el('input', { type: 'number', min: '1', value: String(Math.round((config.maxUploadBytes || 0) / (1024 * 1024))) });
+            var denyList = el('input', { type: 'text', value: (config.contentTypes && config.contentTypes.denyList || []).join(', '), placeholder: 'application/x-msdownload, ...' });
+            var ttl = el('input', { type: 'number', min: '1', value: String(config.signedUrlTtlSeconds || 300) });
+            [maxMb, denyList, ttl].forEach(function (i) { if (S.readonly) i.disabled = true; });
+
+            var card = el('div.card', { style: 'margin-top:12px' });
+            card.appendChild(el('div.grid2', {},
+              el('label.field', {}, document.createTextNode('Max upload size (MB)'), maxMb),
+              el('label.field', {}, document.createTextNode('Signed URL TTL (seconds)'), ttl),
+              el('label.field', { style: 'grid-column:1/-1' }, document.createTextNode('Denied content types (comma-separated)'), denyList)));
+            card.appendChild(el('div.row', { style: 'margin-top:12px' }, writeButton('Save limits', 'primary', saveLimits)));
+            body.appendChild(card);
+
+            body.appendChild(el('h2', { text: 'Thumbnail presets' }));
+            var presetsBody = el('div');
+            Object.keys(config.thumbnails && config.thumbnails.presets || {}).forEach(function (name) {
+              var p = config.thumbnails.presets[name];
+              presetsBody.appendChild(el('div.row', {}, el('b', { text: name }), document.createTextNode(p.width + '×' + p.height + ' (' + p.fit + ')')));
+            });
+            body.appendChild(el('div.card', {}, presetsBody,
+              el('p.sub', { style: 'margin-top:8px', text: 'Named presets are public; arbitrary "?thumb=WxH" sizes are admin-only. Edit presets via the configure_backend_files MCP tool or the Backend Services panel.' })));
+
+            body.appendChild(el('h2', { text: 'Orphan sweep' }));
+            var sweep = config.orphanSweep || { enabled: false, cron: '0 3 * * *' };
+            var sweepEnabled = el('input', { type: 'checkbox', checked: !!sweep.enabled });
+            var sweepCron = el('input', { type: 'text', value: cellText(sweep.cron) });
+            [sweepEnabled, sweepCron].forEach(function (i) { if (S.readonly) i.disabled = true; });
+            var sweepCard = el('div.card');
+            var status = config.sweepStatus || {};
+            var lastReport = status.lastReport;
+            sweepCard.appendChild(el('div.row', {},
+              lastReport
+                ? chip('last swept ' + when(lastReport.at) + ' — ' + lastReport.orphanBlobs.length + ' orphan blob(s), ' + lastReport.orphanRows.length + ' orphan row(s)', lastReport.error ? 'bad' : (lastReport.orphanBlobs.length || lastReport.orphanRows.length ? 'warn' : 'ok'))
+                : chip('never run'),
+              el('span', { style: 'flex:1' }),
+              writeButton('Run now (report only)', null, function () { runSweep(false); }),
+              writeButton('Run now + delete orphan blobs', 'danger', function () { runSweep(true); })));
+            sweepCard.appendChild(el('div.row', { style: 'margin-top:10px' },
+              el('label.check', {}, sweepEnabled, document.createTextNode('Scheduled')),
+              el('label.field', {}, document.createTextNode('Cron'), sweepCron),
+              writeButton('Save schedule', null, saveSweepSchedule)));
+            sweepCard.appendChild(el('p.sub', { style: 'margin-top:8px', text: 'Report-only by default: the schedule finds and reports orphans, it never auto-deletes. Orphan METADATA ROWS (a row whose blob went missing) are never auto-deleted either way — that is a data-integrity signal for a human.' }));
+            body.appendChild(sweepCard);
+
+            function saveLimits() {
+              api('PUT', '/admin/files/config', {
+                maxUploadBytes: Math.max(1, Number(maxMb.value) || 1) * 1024 * 1024,
+                contentTypes: { denyList: denyList.value.split(',').map(function (s) { return s.trim(); }).filter(Boolean) },
+                signedUrlTtlSeconds: Math.max(1, Number(ttl.value) || 300)
+              })
+                .then(function () { toast('File limits saved.', 'ok'); load(); })
+                .catch(fail);
+            }
+
+            function saveSweepSchedule() {
+              api('PUT', '/admin/files/config', { orphanSweep: { enabled: sweepEnabled.checked, cron: sweepCron.value.trim() } })
+                .then(function () { toast('Orphan-sweep schedule saved.', 'ok'); load(); })
+                .catch(fail);
+            }
+
+            function runSweep(deleteOrphans) {
+              toast('Running the orphan sweep…');
+              api('POST', '/admin/files/sweep', { deleteOrphans: deleteOrphans })
+                .then(function (result) {
+                  var r = result.report;
+                  toast('Sweep done: ' + r.orphanBlobs.length + ' orphan blob(s), ' + r.orphanRows.length + ' orphan row(s)' + (r.deleted ? ' (orphan blobs deleted).' : ' (report only).'), 'ok');
+                  load();
+                })
+                .catch(fail);
+            }
+          })
+          .catch(fail);
+      }
+    });
+
+    // --------------------------------------------------------------- audit --
+
+    view('audit', 'Audit', 'Ops', 'ops', function (root) {
+      var node = page('Audit trail', 'Who changed what, when, and from where — permissions, roles, keys, schema, backups, config, and admin logins (BAK-009).');
+      root.appendChild(node);
+
+      var action = el('select');
+      var outcome = el('select');
+      ['', 'success', 'failure'].forEach(function (o) {
+        outcome.appendChild(el('option', { value: o, text: o || 'any outcome' }));
+      });
+      action.addEventListener('change', load);
+      outcome.addEventListener('change', load);
+
+      var meta = el('div.row');
+      var body = el('div');
+      node.appendChild(el('div.row', {},
+        el('label.field', {}, document.createTextNode('Action'), action),
+        el('label.field', {}, document.createTextNode('Outcome'), outcome),
+        el('button.btn', { type: 'button', text: 'Refresh', onclick: load })));
+      node.appendChild(meta);
+      node.appendChild(el('div', { style: 'height:12px' }));
+      node.appendChild(body);
+      load();
+
+      function load() {
+        var query = 'limit=200';
+        if (action.value) query += '&action=' + encodeURIComponent(action.value);
+        if (outcome.value) query += '&outcome=' + encodeURIComponent(outcome.value);
+        api('GET', '/admin/audit?' + query)
+          .then(function (data) {
+            // Populate the action filter once, from the server's declared list
+            // rather than from whatever happens to be in the visible rows.
+            if (action.options.length === 0) {
+              action.appendChild(el('option', { value: '', text: 'any action' }));
+              (data.actions || []).forEach(function (a) {
+                action.appendChild(el('option', { value: a, text: a }));
+              });
+            }
+            clear(meta);
+            meta.appendChild(data.enabled ? chip('recording', 'ok') : chip('disabled in ops.json', 'warn'));
+            meta.appendChild(chip(data.retentionDays ? 'kept ' + data.retentionDays + ' days' : 'kept forever'));
+            meta.appendChild(chip(data.count + ' entr' + (data.count === 1 ? 'y' : 'ies')));
+
+            clear(body);
+            body.appendChild(
+              table(['When', 'Action', 'Actor', 'Target', 'Outcome', ''], data.entries || [], function (x) {
+                return el('tr', {},
+                  el('td', { text: when(x.at) }),
+                  el('td', { text: cellText(x.action) }),
+                  el('td', { text: cellText(x.actor ? x.actorKind + ' ' + x.actor : x.actorKind) }),
+                  el('td', { text: x.target ? JSON.stringify(x.target) : '—' }),
+                  el('td', {}, chip(cellText(x.outcome), x.outcome === 'success' ? 'ok' : 'bad')),
+                  actionCell(el('button.btn.tiny', { type: 'button', text: 'Detail', onclick: function () { detail(x); } }))
+                );
+              })
+            );
+            body.appendChild(el('p.sub', { style: 'margin-top:10px', text: 'The trail is a plain table in this backend’s database: whoever can reach the file can edit it. Ship the structured logs off-box if you need a copy an attacker on this machine cannot rewrite — every entry here has a matching log line with the same request id.' }));
+          })
+          .catch(fail);
+      }
+
+      function detail(entry) {
+        var ref = {};
+        var pre = el('textarea', { value: JSON.stringify(entry, null, 2), readonly: true });
+        pre.style.minHeight = '320px';
+        ref.ref = modal('Audit entry', [pre], [el('button.btn', { type: 'button', text: 'Close', onclick: function () { ref.ref.close(); } })]);
+      }
+    });
+
+    // =========================================================================
+    // Chrome
+    // =========================================================================
+
+    function renderNav() {
+      var nav = clear(document.getElementById('nav'));
+      var groups = [];
+      VIEWS.forEach(function (v) {
+        if (!S.features[v.feature]) return;
+        if (groups.indexOf(v.group) === -1) groups.push(v.group);
+      });
+      groups.forEach(function (group) {
+        nav.appendChild(el('div.group', { text: group }));
+        VIEWS.forEach(function (v) {
+          if (v.group !== group || !S.features[v.feature]) return;
+          nav.appendChild(el('button', {
+            type: 'button',
+            text: v.label,
+            'aria-current': S.view === v.id ? 'true' : 'false',
+            onclick: function () { location.hash = '#/' + v.id; }
+          }));
+        });
+      });
+    }
+
+    function renderView() {
+      var main = clear(document.getElementById('main'));
+      var target = VIEWS.filter(function (v) { return v.id === S.view && S.features[v.feature]; })[0];
+      if (!target) {
+        target = VIEWS.filter(function (v) { return S.features[v.feature]; })[0];
+        if (!target) {
+          main.appendChild(el('div.notice.bad', { text: 'This backend reports no available admin sections.' }));
+          return;
+        }
+        S.view = target.id;
+      }
+      if (S.whoami && S.whoami.security && !S.whoami.security.enforced) main.appendChild(devOpenNotice());
+      if (S.whoami && S.whoami.firstRun) main.appendChild(firstRunNotice());
+      target.render(main);
+      renderNav();
+    }
+
+    /**
+     * First run, told honestly. BAK-003 mints an admin credential before
+     * anything can be served, so there is no safe "create the first admin"
+     * page — an unauthenticated setup route on a provisioned backend is a
+     * takeover. What we CAN say is that nobody has ever chosen this credential.
+     */
+    /**
+     * Dev-open, told honestly. When it is on, the backend relaxes EVERY gate —
+     * including this dashboard's. Showing a password box in front of that
+     * would be theatre, so we say what is actually true instead.
+     */
+    function devOpenNotice() {
+      return el('div.notice.warn', {},
+        el('b', { text: 'This backend enforces nothing. ' }),
+        document.createTextNode(
+          'dev-open is enabled in security.json, so collection permissions, row ACLs and this dashboard’s own ' +
+            'credential are all bypassed. It is only ever active on a loopback bind — the service refuses to start ' +
+            'dev-open while bound beyond localhost. Set "devOpen": false to test real enforcement.'
+        ));
+    }
+
+    function firstRunNotice() {
+      return el('div.notice.accent', {},
+        el('b', { text: 'First run. ' }),
+        document.createTextNode(
+          'This backend generated its own admin credential on this start — no operator has chosen one. ' +
+            'It is the "adminToken" in the backend’s secrets.json (mode 0600). To set your own, restart the ' +
+            'service with --token <your-secret>. To hand someone look-but-don’t-touch access, restart with ' +
+            '--readonly-token <another-secret>.'
+        ));
+    }
+
+    function renderTopbar() {
+      var backend = S.whoami.backend || {};
+      document.getElementById('backend-name').textContent = backend.name + ' · ' + backend.id;
+
+      var tier = clear(document.getElementById('tier-chip'));
+      tier.appendChild(S.readonly ? chip('read-only', 'warn') : chip('admin', 'accent'));
+
+      var enforce = clear(document.getElementById('enforce-chip'));
+      enforce.appendChild(
+        S.whoami.security && S.whoami.security.enforced
+          ? chip('enforcing', 'ok')
+          : chip('dev-open — nothing enforced', 'warn')
+      );
+    }
+
+    // =========================================================================
+    // Session
+    // =========================================================================
+
+    function signIn(token, remember) {
+      S.token = token;
+      return api('GET', '/_admin/whoami').then(function (data) {
+        S.whoami = data;
+        S.readonly = !!data.readonly;
+        S.features = data.features || {};
+        if (remember) {
+          try { sessionStorage.setItem(STORAGE_KEY, token); } catch (e) { /* private mode */ }
+        }
+        document.getElementById('login').classList.add('hidden');
+        document.getElementById('app').classList.remove('hidden');
+        renderTopbar();
+        route();
+      });
+    }
+
+    function signOut(message) {
+      closeLive();
+      S.token = null;
+      S.whoami = null;
+      try { sessionStorage.removeItem(STORAGE_KEY); } catch (e) { /* ignore */ }
+      document.getElementById('app').classList.add('hidden');
+      document.getElementById('login').classList.remove('hidden');
+      var box = document.getElementById('login-error');
+      if (message) { box.textContent = message; box.classList.remove('hidden'); }
+      else box.classList.add('hidden');
+    }
+
+    function route() {
+      var id = (location.hash || '').replace(/^#\/?/, '');
+      S.view = id || S.view;
+      closeLive();
+      S.ctx = {};
+      renderView();
+    }
+
+    // =========================================================================
+    // Boot
+    // =========================================================================
+
+    document.getElementById('login-form').addEventListener('submit', function (e) {
+      e.preventDefault();
+      var box = document.getElementById('login-error');
+      box.classList.add('hidden');
+      var token = document.getElementById('login-token').value;
+      if (!token) return;
+      S.token = token;
+      api('GET', '/_admin/whoami')
+        .then(function () { return signIn(token, document.getElementById('login-remember').checked); })
+        .catch(function (err) {
+          S.token = null;
+          box.textContent =
+            err.status === 429
+              ? err.message
+              : 'That credential was rejected. It is the "adminToken" in the backend’s secrets.json, or the value passed to --token.';
+          box.classList.remove('hidden');
+        });
+    });
+
+    document.getElementById('signout').addEventListener('click', function () { signOut(null); });
+    window.addEventListener('hashchange', route);
+
+    // Boot order, and why:
+    //
+    //  1. A token kept for this tab signs straight back in; a rejected one
+    //     falls back to the form rather than looping.
+    //  2. Otherwise probe with NO credential, and expect that to fail.
+    //
+    //     ⚠️ FH-024 changed what this probe means. It used to SUCCEED on a
+    //     dev-open backend — dev-open relaxed every gate — and the dashboard
+    //     went straight in on the reasoning that a password box in front of a
+    //     backend enforcing nothing is theatre. It was not theatre: dev-open
+    //     plus `Access-Control-Allow-Origin: *` meant any web page on the
+    //     machine could read this backend's admin API, so dev-open no longer
+    //     relaxes the admin gate. The probe therefore 401s on EVERY backend
+    //     now, and the sign-in form is what every operator sees. The kept
+    //     branch above is what makes that cost one paste per tab, and the
+    //     form's own error text names secrets.json as where the token lives.
+    //
+    //     It is left in place rather than deleted: it costs one request, and a
+    //     backend that answers it is a backend that has regressed FH-024.
+    var stored = null;
+    try { stored = sessionStorage.getItem(STORAGE_KEY); } catch (e) { stored = null; }
+    if (stored) {
+      signIn(stored, true).catch(function () { probeOpenBackend(); });
+    } else {
+      probeOpenBackend();
+    }
+
+    function probeOpenBackend() {
+      S.token = null;
+      api('GET', '/_admin/whoami')
+        .then(function () { return signIn(null, false); })
+        .catch(function () { /* enforcing — the login form is already showing */ });
+    }
+  })();
+</script>

@@ -1,0 +1,2172 @@
+{
+    "name": "Export",
+    "components": [
+        {
+            "name": "/#__cloud__/TOTP/Complete Connect",
+            "id": "ee1d31f9-4756-5747-7a95-bf987dd5a3cf",
+            "graph": {
+                "connections": [
+                    {
+                        "fromId": "0327a4b7-9f35-4320-7cf1-d4b392445170",
+                        "fromProperty": "pm-Token",
+                        "toId": "30c5f7ca-7f4d-df60-238d-200f924dec43",
+                        "toProperty": "Token"
+                    },
+                    {
+                        "fromId": "30c5f7ca-7f4d-df60-238d-200f924dec43",
+                        "fromProperty": "Failure",
+                        "toId": "889d4d8f-e71c-f844-0fb6-556bf1c934b4",
+                        "toProperty": "send"
+                    },
+                    {
+                        "fromId": "0327a4b7-9f35-4320-7cf1-d4b392445170",
+                        "fromProperty": "receive",
+                        "toId": "30c5f7ca-7f4d-df60-238d-200f924dec43",
+                        "toProperty": "Do"
+                    },
+                    {
+                        "fromId": "0327a4b7-9f35-4320-7cf1-d4b392445170",
+                        "fromProperty": "userId",
+                        "toId": "26f507de-09b5-9839-f299-7b75fe6bbda4",
+                        "toProperty": "modelId"
+                    },
+                    {
+                        "fromId": "26f507de-09b5-9839-f299-7b75fe6bbda4",
+                        "fromProperty": "prop-totp_secret",
+                        "toId": "30c5f7ca-7f4d-df60-238d-200f924dec43",
+                        "toProperty": "Secret"
+                    },
+                    {
+                        "fromId": "30c5f7ca-7f4d-df60-238d-200f924dec43",
+                        "fromProperty": "Success",
+                        "toId": "23a6feba-aa34-91c2-c94e-b105a09b10a9",
+                        "toProperty": "Do"
+                    },
+                    {
+                        "fromId": "23a6feba-aa34-91c2-c94e-b105a09b10a9",
+                        "fromProperty": "Success",
+                        "toId": "963206bb-7755-1c7d-585e-5d396c4b4947",
+                        "toProperty": "send"
+                    },
+                    {
+                        "fromId": "23a6feba-aa34-91c2-c94e-b105a09b10a9",
+                        "fromProperty": "Failure",
+                        "toId": "889d4d8f-e71c-f844-0fb6-556bf1c934b4",
+                        "toProperty": "send"
+                    }
+                ],
+                "roots": [
+                    {
+                        "id": "0327a4b7-9f35-4320-7cf1-d4b392445170",
+                        "type": "noodl.cloud.request",
+                        "x": -375,
+                        "y": 83,
+                        "parameters": {
+                            "params": "Token"
+                        },
+                        "ports": [],
+                        "dynamicports": [
+                            {
+                                "type": "*",
+                                "plug": "output",
+                                "group": "Parameters",
+                                "name": "pm-Token",
+                                "displayName": "Token",
+                                "index": 5
+                            }
+                        ],
+                        "children": []
+                    },
+                    {
+                        "id": "963206bb-7755-1c7d-585e-5d396c4b4947",
+                        "type": "noodl.cloud.response",
+                        "x": 495,
+                        "y": -91,
+                        "parameters": {},
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "30c5f7ca-7f4d-df60-238d-200f924dec43",
+                        "type": "/#__cloud__/TOTP/Verify Token",
+                        "x": -36,
+                        "y": -20,
+                        "parameters": {},
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "889d4d8f-e71c-f844-0fb6-556bf1c934b4",
+                        "type": "noodl.cloud.response",
+                        "x": 504.5,
+                        "y": 121.5,
+                        "parameters": {
+                            "status": "failure",
+                            "errorMessage": "Failed to verify token."
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "26f507de-09b5-9839-f299-7b75fe6bbda4",
+                        "type": "Model2",
+                        "x": -284.48,
+                        "y": -70.27333333333331,
+                        "parameters": {
+                            "properties": "totp_secret"
+                        },
+                        "ports": [],
+                        "dynamicports": [
+                            {
+                                "type": {
+                                    "name": "*",
+                                    "allowConnectionsOnly": true
+                                },
+                                "plug": "input/output",
+                                "group": "Properties",
+                                "name": "prop-totp_secret",
+                                "displayName": "totp_secret",
+                                "index": 7
+                            },
+                            {
+                                "type": "signal",
+                                "plug": "output",
+                                "group": "Changed Events",
+                                "displayName": "totp_secret Changed",
+                                "name": "changed-totp_secret",
+                                "index": 8
+                            }
+                        ],
+                        "children": []
+                    },
+                    {
+                        "id": "23a6feba-aa34-91c2-c94e-b105a09b10a9",
+                        "type": "/#__cloud__/TOTP/Disable Log In",
+                        "x": 226.01999999999998,
+                        "y": -64.10666666666668,
+                        "parameters": {},
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": []
+                    }
+                ]
+            },
+            "metadata": {
+                "isFolderComponent": false
+            }
+        },
+        {
+            "name": "/#__cloud__/TOTP/Complete Log In",
+            "id": "7762bcf8-c8fb-725e-205c-5c882f139008",
+            "graph": {
+                "connections": [
+                    {
+                        "fromId": "8dd4999f-f8cd-7afb-6cbb-73bede3311c9",
+                        "fromProperty": "out-SessionToken",
+                        "toId": "54035527-ef7d-acbd-4cec-3182d755208a",
+                        "toProperty": "pm-Session Token"
+                    },
+                    {
+                        "fromId": "8dd4999f-f8cd-7afb-6cbb-73bede3311c9",
+                        "fromProperty": "out-Failure",
+                        "toId": "aee665b4-6b0e-da29-1b3c-4f24e29591e1",
+                        "toProperty": "send"
+                    },
+                    {
+                        "fromId": "f09bac84-f60a-0d7f-af2b-672f69bd3f6f",
+                        "fromProperty": "pm-Token",
+                        "toId": "06a88d69-72da-994e-a8d0-46aa285e3d02",
+                        "toProperty": "Token"
+                    },
+                    {
+                        "fromId": "06a88d69-72da-994e-a8d0-46aa285e3d02",
+                        "fromProperty": "Success",
+                        "toId": "8dd4999f-f8cd-7afb-6cbb-73bede3311c9",
+                        "toProperty": "run"
+                    },
+                    {
+                        "fromId": "06a88d69-72da-994e-a8d0-46aa285e3d02",
+                        "fromProperty": "Failure",
+                        "toId": "aee665b4-6b0e-da29-1b3c-4f24e29591e1",
+                        "toProperty": "send"
+                    },
+                    {
+                        "fromId": "f09bac84-f60a-0d7f-af2b-672f69bd3f6f",
+                        "fromProperty": "pm-Username",
+                        "toId": "8dd4999f-f8cd-7afb-6cbb-73bede3311c9",
+                        "toProperty": "in-Username"
+                    },
+                    {
+                        "fromId": "f09bac84-f60a-0d7f-af2b-672f69bd3f6f",
+                        "fromProperty": "pm-Password",
+                        "toId": "8dd4999f-f8cd-7afb-6cbb-73bede3311c9",
+                        "toProperty": "in-Password"
+                    },
+                    {
+                        "fromId": "8dd4999f-f8cd-7afb-6cbb-73bede3311c9",
+                        "fromProperty": "out-Success",
+                        "toId": "54035527-ef7d-acbd-4cec-3182d755208a",
+                        "toProperty": "send"
+                    },
+                    {
+                        "fromId": "f09bac84-f60a-0d7f-af2b-672f69bd3f6f",
+                        "fromProperty": "receive",
+                        "toId": "19753216-0e43-507c-2400-61398c4796c2",
+                        "toProperty": "storageFetch"
+                    },
+                    {
+                        "fromId": "f09bac84-f60a-0d7f-af2b-672f69bd3f6f",
+                        "fromProperty": "pm-Username",
+                        "toId": "19753216-0e43-507c-2400-61398c4796c2",
+                        "toProperty": "qp-Username"
+                    },
+                    {
+                        "fromId": "19753216-0e43-507c-2400-61398c4796c2",
+                        "fromProperty": "fetched",
+                        "toId": "06a88d69-72da-994e-a8d0-46aa285e3d02",
+                        "toProperty": "Do"
+                    },
+                    {
+                        "fromId": "19753216-0e43-507c-2400-61398c4796c2",
+                        "fromProperty": "failure",
+                        "toId": "e435458b-1e6e-d4b6-0482-9c9a43ad25a3",
+                        "toProperty": "send"
+                    },
+                    {
+                        "fromId": "77c743c0-1032-ba83-f30a-db982b621ce1",
+                        "fromProperty": "prop-totp_secret",
+                        "toId": "06a88d69-72da-994e-a8d0-46aa285e3d02",
+                        "toProperty": "Secret"
+                    },
+                    {
+                        "fromId": "19753216-0e43-507c-2400-61398c4796c2",
+                        "fromProperty": "firstItemId",
+                        "toId": "77c743c0-1032-ba83-f30a-db982b621ce1",
+                        "toProperty": "modelId"
+                    }
+                ],
+                "roots": [
+                    {
+                        "id": "f09bac84-f60a-0d7f-af2b-672f69bd3f6f",
+                        "type": "noodl.cloud.request",
+                        "x": -476,
+                        "y": 113,
+                        "parameters": {
+                            "params": "Username,Password,Token",
+                            "allowNoAuth": true
+                        },
+                        "ports": [],
+                        "dynamicports": [
+                            {
+                                "type": "*",
+                                "plug": "output",
+                                "group": "Parameters",
+                                "name": "pm-Username",
+                                "displayName": "Username",
+                                "index": 5
+                            },
+                            {
+                                "type": "*",
+                                "plug": "output",
+                                "group": "Parameters",
+                                "name": "pm-Password",
+                                "displayName": "Password",
+                                "index": 6
+                            },
+                            {
+                                "type": "*",
+                                "plug": "output",
+                                "group": "Parameters",
+                                "name": "pm-Token",
+                                "displayName": "Token",
+                                "index": 7
+                            }
+                        ],
+                        "children": []
+                    },
+                    {
+                        "id": "54035527-ef7d-acbd-4cec-3182d755208a",
+                        "type": "noodl.cloud.response",
+                        "x": 718,
+                        "y": 167,
+                        "parameters": {
+                            "params": "Session Token"
+                        },
+                        "ports": [],
+                        "dynamicports": [
+                            {
+                                "type": "*",
+                                "plug": "input",
+                                "group": "Parameters",
+                                "name": "pm-Session Token",
+                                "displayName": "Session Token",
+                                "index": 4
+                            }
+                        ],
+                        "children": []
+                    },
+                    {
+                        "id": "8dd4999f-f8cd-7afb-6cbb-73bede3311c9",
+                        "type": "JavaScriptFunction",
+                        "x": 499.5,
+                        "y": 107,
+                        "parameters": {
+                            "functionScript": "let user\ntry {\n    user = await Noodl.Users.logIn(Inputs.Username,Inputs.Password)\n}\ncatch(e) {\n    Outputs.Failure();\n}\n\nOutputs.SessionToken = user.sessionToken\nOutputs.Success();"
+                        },
+                        "ports": [],
+                        "dynamicports": [
+                            {
+                                "name": "in-Username",
+                                "displayName": "Username",
+                                "plug": "input",
+                                "type": "*",
+                                "group": "Inputs",
+                                "index": 4
+                            },
+                            {
+                                "name": "in-Password",
+                                "displayName": "Password",
+                                "plug": "input",
+                                "type": "*",
+                                "group": "Inputs",
+                                "index": 5
+                            },
+                            {
+                                "name": "out-Failure",
+                                "displayName": "Failure",
+                                "plug": "output",
+                                "type": "signal",
+                                "group": "Outputs",
+                                "index": 6
+                            },
+                            {
+                                "name": "out-Success",
+                                "displayName": "Success",
+                                "plug": "output",
+                                "type": "signal",
+                                "group": "Outputs",
+                                "index": 7
+                            },
+                            {
+                                "name": "out-SessionToken",
+                                "displayName": "SessionToken",
+                                "plug": "output",
+                                "type": "*",
+                                "group": "Outputs",
+                                "index": 8
+                            }
+                        ],
+                        "children": [],
+                        "metadata": {
+                            "merge": {
+                                "soureCodePorts": [
+                                    "functionScript"
+                                ]
+                            }
+                        }
+                    },
+                    {
+                        "id": "aee665b4-6b0e-da29-1b3c-4f24e29591e1",
+                        "type": "noodl.cloud.response",
+                        "x": 484.5,
+                        "y": -119,
+                        "parameters": {
+                            "status": "failure",
+                            "errorMessage": "Failed to log in."
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "06a88d69-72da-994e-a8d0-46aa285e3d02",
+                        "type": "/#__cloud__/TOTP/Verify Token",
+                        "x": 212.5,
+                        "y": 74.1328125,
+                        "parameters": {},
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "19753216-0e43-507c-2400-61398c4796c2",
+                        "type": "DbCollection2",
+                        "x": -242,
+                        "y": -10.477864583333314,
+                        "parameters": {
+                            "collectionName": "_User",
+                            "storageFilterType": "simple",
+                            "visualFilter": {
+                                "combinator": "or",
+                                "rules": [
+                                    {
+                                        "combinator": "and",
+                                        "rules": [
+                                            {
+                                                "property": "username",
+                                                "operator": "equal to",
+                                                "input": "Username"
+                                            }
+                                        ]
+                                    }
+                                ]
+                            }
+                        },
+                        "ports": [],
+                        "dynamicports": [
+                            {
+                                "name": "collectionName",
+                                "type": {
+                                    "name": "enum",
+                                    "enums": [
+                                        {
+                                            "label": "User",
+                                            "value": "_User"
+                                        },
+                                        {
+                                            "label": "Role",
+                                            "value": "_Role"
+                                        }
+                                    ],
+                                    "allowEditOnly": true
+                                },
+                                "displayName": "Class",
+                                "plug": "input",
+                                "group": "General",
+                                "index": 6
+                            },
+                            {
+                                "name": "storageFilterType",
+                                "type": {
+                                    "name": "enum",
+                                    "allowEditOnly": true,
+                                    "enums": [
+                                        {
+                                            "value": "simple",
+                                            "label": "Visual"
+                                        },
+                                        {
+                                            "value": "json",
+                                            "label": "Javascript"
+                                        }
+                                    ]
+                                },
+                                "displayName": "Filter",
+                                "default": "simple",
+                                "plug": "input",
+                                "group": "General",
+                                "index": 7
+                            },
+                            {
+                                "type": "boolean",
+                                "plug": "input",
+                                "group": "Limit",
+                                "name": "storageEnableLimit",
+                                "displayName": "Use limit",
+                                "index": 8
+                            },
+                            {
+                                "type": "signal",
+                                "plug": "input",
+                                "group": "Actions",
+                                "name": "storageFetch",
+                                "displayName": "Do",
+                                "index": 9
+                            },
+                            {
+                                "name": "visualFilter",
+                                "plug": "input",
+                                "type": {
+                                    "name": "query-filter",
+                                    "schema": {
+                                        "properties": {
+                                            "createdAt": {
+                                                "type": "Date"
+                                            },
+                                            "updatedAt": {
+                                                "type": "Date"
+                                            },
+                                            "username": {
+                                                "type": "String"
+                                            },
+                                            "password": {
+                                                "type": "String"
+                                            },
+                                            "email": {
+                                                "type": "String"
+                                            },
+                                            "emailVerified": {
+                                                "type": "Boolean"
+                                            },
+                                            "authData": {
+                                                "type": "Object"
+                                            },
+                                            "sessionToken": {
+                                                "type": "String"
+                                            },
+                                            "totp_secret": {
+                                                "type": "String"
+                                            },
+                                            "logInDisabled": {
+                                                "type": "Boolean"
+                                            }
+                                        },
+                                        "relations": {
+                                            "_Role": [
+                                                {
+                                                    "property": "users"
+                                                }
+                                            ]
+                                        }
+                                    },
+                                    "allowEditOnly": true
+                                },
+                                "displayName": "Filter",
+                                "group": "Filter",
+                                "index": 10
+                            },
+                            {
+                                "name": "visualSort",
+                                "plug": "input",
+                                "type": {
+                                    "name": "query-sorting",
+                                    "schema": {
+                                        "properties": {
+                                            "createdAt": {
+                                                "type": "Date"
+                                            },
+                                            "updatedAt": {
+                                                "type": "Date"
+                                            },
+                                            "username": {
+                                                "type": "String"
+                                            },
+                                            "password": {
+                                                "type": "String"
+                                            },
+                                            "email": {
+                                                "type": "String"
+                                            },
+                                            "emailVerified": {
+                                                "type": "Boolean"
+                                            },
+                                            "authData": {
+                                                "type": "Object"
+                                            },
+                                            "sessionToken": {
+                                                "type": "String"
+                                            },
+                                            "totp_secret": {
+                                                "type": "String"
+                                            },
+                                            "logInDisabled": {
+                                                "type": "Boolean"
+                                            }
+                                        },
+                                        "relations": {
+                                            "_Role": [
+                                                {
+                                                    "property": "users"
+                                                }
+                                            ]
+                                        }
+                                    },
+                                    "allowEditOnly": true
+                                },
+                                "displayName": "Sort",
+                                "group": "Sorting",
+                                "index": 11
+                            },
+                            {
+                                "name": "qp-Username",
+                                "plug": "input",
+                                "type": "*",
+                                "displayName": "Username",
+                                "group": "Query Parameters",
+                                "index": 12
+                            }
+                        ],
+                        "children": []
+                    },
+                    {
+                        "id": "e435458b-1e6e-d4b6-0482-9c9a43ad25a3",
+                        "type": "noodl.cloud.response",
+                        "x": 14,
+                        "y": -163.47786458333331,
+                        "parameters": {
+                            "status": "failure",
+                            "errorMessage": "Could not find user."
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "77c743c0-1032-ba83-f30a-db982b621ce1",
+                        "type": "Model2",
+                        "x": -10.9375,
+                        "y": 2.96240234375,
+                        "parameters": {
+                            "properties": "totp_secret"
+                        },
+                        "ports": [],
+                        "dynamicports": [
+                            {
+                                "type": {
+                                    "name": "*",
+                                    "allowConnectionsOnly": true
+                                },
+                                "plug": "input/output",
+                                "group": "Properties",
+                                "name": "prop-totp_secret",
+                                "displayName": "totp_secret",
+                                "index": 7
+                            },
+                            {
+                                "type": "signal",
+                                "plug": "output",
+                                "group": "Changed Events",
+                                "displayName": "totp_secret Changed",
+                                "name": "changed-totp_secret",
+                                "index": 8
+                            }
+                        ],
+                        "children": []
+                    }
+                ]
+            },
+            "metadata": {
+                "isFolderComponent": false
+            }
+        },
+        {
+            "name": "/#__cloud__/TOTP/Disable Log In",
+            "id": "3fb37be9-1f42-10c2-7a6e-96c7222cd8be",
+            "graph": {
+                "connections": [
+                    {
+                        "fromId": "78c6eca5-c452-9467-f62a-f295d59cb452",
+                        "fromProperty": "Do",
+                        "toId": "85948a48-99b3-b80c-05c7-92062cabaf9f",
+                        "toProperty": "run"
+                    },
+                    {
+                        "fromId": "85948a48-99b3-b80c-05c7-92062cabaf9f",
+                        "fromProperty": "out-Failure",
+                        "toId": "9d2b7a06-666a-8ee3-ba0d-23e91d597132",
+                        "toProperty": "Failure"
+                    },
+                    {
+                        "fromId": "85948a48-99b3-b80c-05c7-92062cabaf9f",
+                        "fromProperty": "out-Success",
+                        "toId": "9d2b7a06-666a-8ee3-ba0d-23e91d597132",
+                        "toProperty": "Success"
+                    }
+                ],
+                "roots": [
+                    {
+                        "id": "78c6eca5-c452-9467-f62a-f295d59cb452",
+                        "type": "Component Inputs",
+                        "x": -196,
+                        "y": 9,
+                        "parameters": {},
+                        "ports": [
+                            {
+                                "name": "Do",
+                                "plug": "output",
+                                "type": "*",
+                                "index": 0
+                            }
+                        ],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "9d2b7a06-666a-8ee3-ba0d-23e91d597132",
+                        "type": "Component Outputs",
+                        "x": 300,
+                        "y": 0,
+                        "parameters": {},
+                        "ports": [
+                            {
+                                "name": "Success",
+                                "plug": "input",
+                                "type": "*",
+                                "index": 0
+                            },
+                            {
+                                "name": "Failure",
+                                "plug": "input",
+                                "type": "*",
+                                "index": 1
+                            }
+                        ],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "85948a48-99b3-b80c-05c7-92062cabaf9f",
+                        "type": "JavaScriptFunction",
+                        "x": 30.5,
+                        "y": 11,
+                        "parameters": {
+                            "functionScript": "try {\n    await Noodl.Records.save(Noodl.Users.Current.UserId,{\n        logInDisabled: true\n    })\n}\ncatch(e) {\n    Outputs.Failure()\n    throw e;\n}\n\nOutputs.Success()"
+                        },
+                        "ports": [],
+                        "dynamicports": [
+                            {
+                                "name": "out-Failure",
+                                "displayName": "Failure",
+                                "plug": "output",
+                                "type": "signal",
+                                "group": "Outputs",
+                                "index": 4
+                            },
+                            {
+                                "name": "out-Success",
+                                "displayName": "Success",
+                                "plug": "output",
+                                "type": "signal",
+                                "group": "Outputs",
+                                "index": 5
+                            }
+                        ],
+                        "children": [],
+                        "metadata": {
+                            "merge": {
+                                "soureCodePorts": [
+                                    "functionScript"
+                                ]
+                            }
+                        }
+                    }
+                ]
+            },
+            "metadata": {
+                "isFolderComponent": false
+            }
+        },
+        {
+            "name": "/#__cloud__/TOTP/Disconnect",
+            "id": "9147900b-2732-aa23-fed9-ba00553705c7",
+            "graph": {
+                "connections": [
+                    {
+                        "fromId": "a3638a9b-aae5-04c0-f79d-bbe67b863682",
+                        "fromProperty": "receive",
+                        "toId": "2b708cd0-85f2-bfc5-005e-63286d43fc6b",
+                        "toProperty": "Do"
+                    },
+                    {
+                        "fromId": "2b708cd0-85f2-bfc5-005e-63286d43fc6b",
+                        "fromProperty": "Success",
+                        "toId": "f44a1fa4-fdf3-9811-e616-9ebf63995f5c",
+                        "toProperty": "send"
+                    },
+                    {
+                        "fromId": "2b708cd0-85f2-bfc5-005e-63286d43fc6b",
+                        "fromProperty": "Failure",
+                        "toId": "c6ec5f91-241c-1c75-cbd8-0493629aba21",
+                        "toProperty": "send"
+                    }
+                ],
+                "roots": [
+                    {
+                        "id": "a3638a9b-aae5-04c0-f79d-bbe67b863682",
+                        "type": "noodl.cloud.request",
+                        "x": -265,
+                        "y": 39,
+                        "parameters": {},
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "f44a1fa4-fdf3-9811-e616-9ebf63995f5c",
+                        "type": "noodl.cloud.response",
+                        "x": 281,
+                        "y": -54,
+                        "parameters": {},
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "2b708cd0-85f2-bfc5-005e-63286d43fc6b",
+                        "type": "/#__cloud__/TOTP/Remove Token And Enabled Log In",
+                        "x": -24,
+                        "y": 23.5,
+                        "parameters": {},
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "c6ec5f91-241c-1c75-cbd8-0493629aba21",
+                        "type": "noodl.cloud.response",
+                        "x": 266,
+                        "y": 106.5,
+                        "parameters": {
+                            "status": "failure",
+                            "errorMessage": "Failed to disconnect."
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": []
+                    }
+                ]
+            },
+            "metadata": {
+                "isFolderComponent": false
+            }
+        },
+        {
+            "name": "/#__cloud__/TOTP/Generate Secret",
+            "id": "73c877b0-74f9-3a27-a126-cd259cc4ab55",
+            "graph": {
+                "connections": [
+                    {
+                        "fromId": "e29218be-0fcb-ad60-1acc-1c9d30cc0041",
+                        "fromProperty": "Name",
+                        "toId": "bdc50448-1936-a7ce-ee4b-21099c83a956",
+                        "toProperty": "in-Name"
+                    },
+                    {
+                        "fromId": "e29218be-0fcb-ad60-1acc-1c9d30cc0041",
+                        "fromProperty": "Do",
+                        "toId": "bdc50448-1936-a7ce-ee4b-21099c83a956",
+                        "toProperty": "run"
+                    },
+                    {
+                        "fromId": "bdc50448-1936-a7ce-ee4b-21099c83a956",
+                        "fromProperty": "out-QRCode",
+                        "toId": "c4fa180e-71b2-16e3-b8b0-75e870ae2b71",
+                        "toProperty": "QRCode"
+                    },
+                    {
+                        "fromId": "bdc50448-1936-a7ce-ee4b-21099c83a956",
+                        "fromProperty": "out-Base32",
+                        "toId": "c4fa180e-71b2-16e3-b8b0-75e870ae2b71",
+                        "toProperty": "Secret"
+                    },
+                    {
+                        "fromId": "bdc50448-1936-a7ce-ee4b-21099c83a956",
+                        "fromProperty": "out-Success",
+                        "toId": "c4fa180e-71b2-16e3-b8b0-75e870ae2b71",
+                        "toProperty": "Success"
+                    },
+                    {
+                        "fromId": "bdc50448-1936-a7ce-ee4b-21099c83a956",
+                        "fromProperty": "out-Failure",
+                        "toId": "c4fa180e-71b2-16e3-b8b0-75e870ae2b71",
+                        "toProperty": "Failure"
+                    }
+                ],
+                "roots": [
+                    {
+                        "id": "e29218be-0fcb-ad60-1acc-1c9d30cc0041",
+                        "type": "Component Inputs",
+                        "x": -277,
+                        "y": -61,
+                        "parameters": {},
+                        "ports": [
+                            {
+                                "name": "Do",
+                                "plug": "output",
+                                "type": "*",
+                                "index": 0
+                            },
+                            {
+                                "name": "Name",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "index": 1
+                            }
+                        ],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "c4fa180e-71b2-16e3-b8b0-75e870ae2b71",
+                        "type": "Component Outputs",
+                        "x": 299,
+                        "y": -1,
+                        "parameters": {},
+                        "ports": [
+                            {
+                                "name": "Success",
+                                "plug": "input",
+                                "type": "*",
+                                "index": 0
+                            },
+                            {
+                                "name": "Secret",
+                                "plug": "input",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "index": 2
+                            },
+                            {
+                                "name": "QRCode",
+                                "plug": "input",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "index": 3
+                            },
+                            {
+                                "name": "Failure",
+                                "plug": "input",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "index": 4
+                            }
+                        ],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "bdc50448-1936-a7ce-ee4b-21099c83a956",
+                        "type": "JavaScriptFunction",
+                        "x": -13,
+                        "y": -51,
+                        "parameters": {
+                            "functionScript": "const endpoint = \"https://toolbox.noodl.cloud/speakeasy\"\n\nconst res = await fetch(endpoint + \"/generate-secret\",{\n    method:'POST',\n    headers:{\n        'content-type':'application/json'\n    },\n    body:JSON.stringify({name:Inputs.Name})\n})\n\nif(res.ok) {\n    const json = await res.json();\n\n    Outputs.QRCode = json.qrcode;\n    Outputs.Base32 = json.base32;\n\n    Outputs.Success()\n}\nelse Outputs.Failure()",
+                            "scriptInputs": [
+                                {
+                                    "id": "5n0z",
+                                    "label": "Name"
+                                }
+                            ]
+                        },
+                        "ports": [],
+                        "dynamicports": [
+                            {
+                                "name": "intype-Name",
+                                "displayName": "Type",
+                                "editorName": "Name | Type",
+                                "plug": "input",
+                                "type": {
+                                    "name": "enum",
+                                    "enums": [
+                                        {
+                                            "value": "string",
+                                            "label": "String"
+                                        },
+                                        {
+                                            "value": "boolean",
+                                            "label": "Boolean"
+                                        },
+                                        {
+                                            "value": "number",
+                                            "label": "Number"
+                                        },
+                                        {
+                                            "value": "object",
+                                            "label": "Object"
+                                        },
+                                        {
+                                            "value": "date",
+                                            "label": "Date"
+                                        },
+                                        {
+                                            "value": "array",
+                                            "label": "Array"
+                                        },
+                                        {
+                                            "value": "color",
+                                            "label": "Color"
+                                        }
+                                    ],
+                                    "allowEditOnly": true
+                                },
+                                "default": "string",
+                                "parent": "scriptInputs",
+                                "parentItemId": "5n0z",
+                                "index": 4
+                            },
+                            {
+                                "name": "in-Name",
+                                "displayName": "Name",
+                                "plug": "input",
+                                "type": "string",
+                                "group": "Inputs",
+                                "index": 5
+                            },
+                            {
+                                "name": "out-Success",
+                                "displayName": "Success",
+                                "plug": "output",
+                                "type": "signal",
+                                "group": "Outputs",
+                                "index": 6
+                            },
+                            {
+                                "name": "out-Failure",
+                                "displayName": "Failure",
+                                "plug": "output",
+                                "type": "signal",
+                                "group": "Outputs",
+                                "index": 7
+                            },
+                            {
+                                "name": "out-QRCode",
+                                "displayName": "QRCode",
+                                "plug": "output",
+                                "type": "*",
+                                "group": "Outputs",
+                                "index": 8
+                            },
+                            {
+                                "name": "out-Base32",
+                                "displayName": "Base32",
+                                "plug": "output",
+                                "type": "*",
+                                "group": "Outputs",
+                                "index": 9
+                            }
+                        ],
+                        "children": [],
+                        "metadata": {
+                            "merge": {
+                                "soureCodePorts": [
+                                    "functionScript"
+                                ]
+                            }
+                        }
+                    }
+                ]
+            },
+            "metadata": {
+                "isFolderComponent": false
+            }
+        },
+        {
+            "name": "/#__cloud__/TOTP/Remove Token And Enabled Log In",
+            "id": "97e531b8-48d5-ad5e-ae4e-307ab7458f87",
+            "graph": {
+                "connections": [
+                    {
+                        "fromId": "08112164-37ec-7453-71e0-186c640ffd37",
+                        "fromProperty": "Do",
+                        "toId": "0ad590ca-93a5-b7d6-82ac-4241e8656980",
+                        "toProperty": "run"
+                    },
+                    {
+                        "fromId": "0ad590ca-93a5-b7d6-82ac-4241e8656980",
+                        "fromProperty": "out-Failure",
+                        "toId": "c775d2ca-c61e-63da-76b7-292c08a64490",
+                        "toProperty": "Failure"
+                    },
+                    {
+                        "fromId": "0ad590ca-93a5-b7d6-82ac-4241e8656980",
+                        "fromProperty": "out-Success",
+                        "toId": "c775d2ca-c61e-63da-76b7-292c08a64490",
+                        "toProperty": "Success"
+                    }
+                ],
+                "roots": [
+                    {
+                        "id": "08112164-37ec-7453-71e0-186c640ffd37",
+                        "type": "Component Inputs",
+                        "x": -196,
+                        "y": 9,
+                        "parameters": {},
+                        "ports": [
+                            {
+                                "name": "Do",
+                                "plug": "output",
+                                "type": "*",
+                                "index": 0
+                            }
+                        ],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "c775d2ca-c61e-63da-76b7-292c08a64490",
+                        "type": "Component Outputs",
+                        "x": 300,
+                        "y": 0,
+                        "parameters": {},
+                        "ports": [
+                            {
+                                "name": "Success",
+                                "plug": "input",
+                                "type": "*",
+                                "index": 0
+                            },
+                            {
+                                "name": "Failure",
+                                "plug": "input",
+                                "type": "*",
+                                "index": 1
+                            }
+                        ],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "0ad590ca-93a5-b7d6-82ac-4241e8656980",
+                        "type": "JavaScriptFunction",
+                        "x": 30.5,
+                        "y": 11,
+                        "parameters": {
+                            "functionScript": "try {\n    await Noodl.Records.save(Noodl.Users.Current.UserId,{\n        totp_secret: null,\n        logInDisabled: false\n    })\n}\ncatch(e) {\n    Outputs.Failure()\n    throw e;\n}\n\nOutputs.Success()"
+                        },
+                        "ports": [],
+                        "dynamicports": [
+                            {
+                                "name": "out-Failure",
+                                "displayName": "Failure",
+                                "plug": "output",
+                                "type": "signal",
+                                "group": "Outputs",
+                                "index": 4
+                            },
+                            {
+                                "name": "out-Success",
+                                "displayName": "Success",
+                                "plug": "output",
+                                "type": "signal",
+                                "group": "Outputs",
+                                "index": 5
+                            }
+                        ],
+                        "children": [],
+                        "metadata": {
+                            "merge": {
+                                "soureCodePorts": [
+                                    "functionScript"
+                                ]
+                            }
+                        }
+                    }
+                ]
+            },
+            "metadata": {
+                "isFolderComponent": false
+            }
+        },
+        {
+            "name": "/#__cloud__/TOTP/Start Connect",
+            "id": "22cc86ce-68df-e148-0762-b3efbb1301f7",
+            "graph": {
+                "connections": [
+                    {
+                        "fromId": "13b14af7-b592-19e9-40c3-cebff2a5bdd3",
+                        "fromProperty": "receive",
+                        "toId": "78a206b5-bf3a-f355-e62c-aaa8f0e44ade",
+                        "toProperty": "Do"
+                    },
+                    {
+                        "fromId": "78a206b5-bf3a-f355-e62c-aaa8f0e44ade",
+                        "fromProperty": "QRCode",
+                        "toId": "d2a1e4f4-e428-c0be-6fae-83de9a13c009",
+                        "toProperty": "pm-QRCode"
+                    },
+                    {
+                        "fromId": "78a206b5-bf3a-f355-e62c-aaa8f0e44ade",
+                        "fromProperty": "Failure",
+                        "toId": "13de4903-770f-4db4-cc52-0f83f99c9abb",
+                        "toProperty": "send"
+                    },
+                    {
+                        "fromId": "78a206b5-bf3a-f355-e62c-aaa8f0e44ade",
+                        "fromProperty": "Success",
+                        "toId": "4ca60e8b-72bb-7b8f-ac10-10253a15f1c4",
+                        "toProperty": "run"
+                    },
+                    {
+                        "fromId": "78a206b5-bf3a-f355-e62c-aaa8f0e44ade",
+                        "fromProperty": "Secret",
+                        "toId": "4ca60e8b-72bb-7b8f-ac10-10253a15f1c4",
+                        "toProperty": "in-Secret"
+                    },
+                    {
+                        "fromId": "4ca60e8b-72bb-7b8f-ac10-10253a15f1c4",
+                        "fromProperty": "out-Success",
+                        "toId": "d2a1e4f4-e428-c0be-6fae-83de9a13c009",
+                        "toProperty": "send"
+                    },
+                    {
+                        "fromId": "4ca60e8b-72bb-7b8f-ac10-10253a15f1c4",
+                        "fromProperty": "out-Failure",
+                        "toId": "13de4903-770f-4db4-cc52-0f83f99c9abb",
+                        "toProperty": "send"
+                    }
+                ],
+                "roots": [
+                    {
+                        "id": "13b14af7-b592-19e9-40c3-cebff2a5bdd3",
+                        "type": "noodl.cloud.request",
+                        "x": -370,
+                        "y": -79,
+                        "parameters": {},
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "d2a1e4f4-e428-c0be-6fae-83de9a13c009",
+                        "type": "noodl.cloud.response",
+                        "x": 482,
+                        "y": -107,
+                        "parameters": {
+                            "params": "QRCode"
+                        },
+                        "ports": [],
+                        "dynamicports": [
+                            {
+                                "type": "*",
+                                "plug": "input",
+                                "group": "Parameters",
+                                "name": "pm-QRCode",
+                                "displayName": "QRCode",
+                                "index": 4
+                            }
+                        ],
+                        "children": []
+                    },
+                    {
+                        "id": "78a206b5-bf3a-f355-e62c-aaa8f0e44ade",
+                        "type": "/#__cloud__/TOTP/Generate Secret",
+                        "x": -91,
+                        "y": -115,
+                        "parameters": {
+                            "Name": "Noodl Test"
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "13de4903-770f-4db4-cc52-0f83f99c9abb",
+                        "type": "noodl.cloud.response",
+                        "x": 269,
+                        "y": 62,
+                        "parameters": {
+                            "status": "failure",
+                            "errorMessage": "Failed to sign up."
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "4ca60e8b-72bb-7b8f-ac10-10253a15f1c4",
+                        "type": "JavaScriptFunction",
+                        "label": "Store Secret",
+                        "x": 217.25,
+                        "y": -174.75,
+                        "parameters": {
+                            "functionScript": "Noodl.Users.Current.Properties.totp_secret = Inputs.Secret;\n\ntry {\n    await Noodl.Users.Current.save()\n}\ncatch(e) {\n    Outputs.Failure()\n    throw e;\n}\n\nOutputs.Success()"
+                        },
+                        "ports": [],
+                        "dynamicports": [
+                            {
+                                "name": "in-Secret",
+                                "displayName": "Secret",
+                                "plug": "input",
+                                "type": "*",
+                                "group": "Inputs",
+                                "index": 4
+                            },
+                            {
+                                "name": "out-Failure",
+                                "displayName": "Failure",
+                                "plug": "output",
+                                "type": "signal",
+                                "group": "Outputs",
+                                "index": 5
+                            },
+                            {
+                                "name": "out-Success",
+                                "displayName": "Success",
+                                "plug": "output",
+                                "type": "signal",
+                                "group": "Outputs",
+                                "index": 6
+                            }
+                        ],
+                        "children": [],
+                        "metadata": {
+                            "merge": {
+                                "soureCodePorts": [
+                                    "functionScript"
+                                ]
+                            }
+                        }
+                    }
+                ]
+            },
+            "metadata": {
+                "isFolderComponent": false
+            }
+        },
+        {
+            "name": "/#__cloud__/TOTP/Start Log In",
+            "id": "c689cf1e-a924-c8ec-0336-89edb9fc21b8",
+            "graph": {
+                "connections": [
+                    {
+                        "fromId": "909f0358-41c3-0b58-0b38-9da2e5d6c6b0",
+                        "fromProperty": "receive",
+                        "toId": "dbfdeb53-c4ad-b9d7-a6c9-43666f4e1d37",
+                        "toProperty": "run"
+                    },
+                    {
+                        "fromId": "909f0358-41c3-0b58-0b38-9da2e5d6c6b0",
+                        "fromProperty": "pm-Username",
+                        "toId": "dbfdeb53-c4ad-b9d7-a6c9-43666f4e1d37",
+                        "toProperty": "in-Username"
+                    },
+                    {
+                        "fromId": "909f0358-41c3-0b58-0b38-9da2e5d6c6b0",
+                        "fromProperty": "pm-Password",
+                        "toId": "dbfdeb53-c4ad-b9d7-a6c9-43666f4e1d37",
+                        "toProperty": "in-Password"
+                    },
+                    {
+                        "fromId": "dbfdeb53-c4ad-b9d7-a6c9-43666f4e1d37",
+                        "fromProperty": "out-Success",
+                        "toId": "2d6f5f92-e762-40bd-8a07-7795753b2a82",
+                        "toProperty": "send"
+                    },
+                    {
+                        "fromId": "dbfdeb53-c4ad-b9d7-a6c9-43666f4e1d37",
+                        "fromProperty": "out-Failure",
+                        "toId": "91dc5e45-c815-5590-200a-432bd8f8b79f",
+                        "toProperty": "send"
+                    },
+                    {
+                        "fromId": "dbfdeb53-c4ad-b9d7-a6c9-43666f4e1d37",
+                        "fromProperty": "out-SessionToken",
+                        "toId": "2d6f5f92-e762-40bd-8a07-7795753b2a82",
+                        "toProperty": "pm-Session Token"
+                    }
+                ],
+                "roots": [
+                    {
+                        "id": "909f0358-41c3-0b58-0b38-9da2e5d6c6b0",
+                        "type": "noodl.cloud.request",
+                        "x": -287,
+                        "y": -1,
+                        "parameters": {
+                            "params": "Username,Password",
+                            "allowNoAuth": true
+                        },
+                        "ports": [],
+                        "dynamicports": [
+                            {
+                                "type": "*",
+                                "plug": "output",
+                                "group": "Parameters",
+                                "name": "pm-Username",
+                                "displayName": "Username",
+                                "index": 5
+                            },
+                            {
+                                "type": "*",
+                                "plug": "output",
+                                "group": "Parameters",
+                                "name": "pm-Password",
+                                "displayName": "Password",
+                                "index": 6
+                            }
+                        ],
+                        "children": []
+                    },
+                    {
+                        "id": "2d6f5f92-e762-40bd-8a07-7795753b2a82",
+                        "type": "noodl.cloud.response",
+                        "x": 245,
+                        "y": 79,
+                        "parameters": {
+                            "params": "Session Token"
+                        },
+                        "ports": [],
+                        "dynamicports": [
+                            {
+                                "type": "*",
+                                "plug": "input",
+                                "group": "Parameters",
+                                "name": "pm-Session Token",
+                                "displayName": "Session Token",
+                                "index": 4
+                            }
+                        ],
+                        "children": []
+                    },
+                    {
+                        "id": "dbfdeb53-c4ad-b9d7-a6c9-43666f4e1d37",
+                        "type": "JavaScriptFunction",
+                        "x": -29,
+                        "y": -17,
+                        "parameters": {
+                            "functionScript": "let user;\ntry {\n    user = await Noodl.Users.logIn(Inputs.Username,Inputs.Password)\n}\ncatch(e) {\n    Outputs.Failure();\n    throw e;\n}\n\nif(user.totp_secret) {\n    // TOTP is enabled, need extra login step\n    Outputs.SessionToken = null;\n    Outputs.Success();\n}\nelse {\n    // TOTP is not enabled, return session token\n    Outputs.SessionToken = user.sessionToken;\n    Outputs.Success();\n}"
+                        },
+                        "ports": [],
+                        "dynamicports": [
+                            {
+                                "name": "in-Username",
+                                "displayName": "Username",
+                                "plug": "input",
+                                "type": "*",
+                                "group": "Inputs",
+                                "index": 4
+                            },
+                            {
+                                "name": "in-Password",
+                                "displayName": "Password",
+                                "plug": "input",
+                                "type": "*",
+                                "group": "Inputs",
+                                "index": 5
+                            },
+                            {
+                                "name": "out-Failure",
+                                "displayName": "Failure",
+                                "plug": "output",
+                                "type": "signal",
+                                "group": "Outputs",
+                                "index": 6
+                            },
+                            {
+                                "name": "out-Success",
+                                "displayName": "Success",
+                                "plug": "output",
+                                "type": "signal",
+                                "group": "Outputs",
+                                "index": 7
+                            },
+                            {
+                                "name": "out-SessionToken",
+                                "displayName": "SessionToken",
+                                "plug": "output",
+                                "type": "*",
+                                "group": "Outputs",
+                                "index": 8
+                            }
+                        ],
+                        "children": [],
+                        "metadata": {
+                            "merge": {
+                                "soureCodePorts": [
+                                    "functionScript"
+                                ]
+                            }
+                        }
+                    },
+                    {
+                        "id": "91dc5e45-c815-5590-200a-432bd8f8b79f",
+                        "type": "noodl.cloud.response",
+                        "x": 237.66666666666663,
+                        "y": -68.33333333333331,
+                        "parameters": {
+                            "status": "failure",
+                            "errorMessage": "Wrong username / password"
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": []
+                    }
+                ]
+            },
+            "metadata": {
+                "isFolderComponent": false
+            }
+        },
+        {
+            "name": "/#__cloud__/TOTP/Verify Token",
+            "id": "e73fb7de-ec83-4cd3-c880-4594f7aabcf5",
+            "graph": {
+                "connections": [
+                    {
+                        "fromId": "e6cd1a50-ecee-9f87-6775-6a3fb0a5234b",
+                        "fromProperty": "Do",
+                        "toId": "a09a3b0b-8722-31b4-24f7-c4deb458237c",
+                        "toProperty": "run"
+                    },
+                    {
+                        "fromId": "e6cd1a50-ecee-9f87-6775-6a3fb0a5234b",
+                        "fromProperty": "Secret",
+                        "toId": "a09a3b0b-8722-31b4-24f7-c4deb458237c",
+                        "toProperty": "in-Base32"
+                    },
+                    {
+                        "fromId": "e6cd1a50-ecee-9f87-6775-6a3fb0a5234b",
+                        "fromProperty": "Token",
+                        "toId": "a09a3b0b-8722-31b4-24f7-c4deb458237c",
+                        "toProperty": "in-Token"
+                    },
+                    {
+                        "fromId": "a09a3b0b-8722-31b4-24f7-c4deb458237c",
+                        "fromProperty": "out-Success",
+                        "toId": "9638a79b-509e-4ae4-cbbb-6039ffdbf262",
+                        "toProperty": "Success"
+                    },
+                    {
+                        "fromId": "a09a3b0b-8722-31b4-24f7-c4deb458237c",
+                        "fromProperty": "out-Failure",
+                        "toId": "9638a79b-509e-4ae4-cbbb-6039ffdbf262",
+                        "toProperty": "Failure"
+                    }
+                ],
+                "roots": [
+                    {
+                        "id": "e6cd1a50-ecee-9f87-6775-6a3fb0a5234b",
+                        "type": "Component Inputs",
+                        "x": -293,
+                        "y": -43,
+                        "parameters": {},
+                        "ports": [
+                            {
+                                "name": "Do",
+                                "plug": "output",
+                                "type": "*",
+                                "index": 0
+                            },
+                            {
+                                "name": "Secret",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "index": 1
+                            },
+                            {
+                                "name": "Token",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "index": 2
+                            }
+                        ],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "9638a79b-509e-4ae4-cbbb-6039ffdbf262",
+                        "type": "Component Outputs",
+                        "x": 248,
+                        "y": -49,
+                        "parameters": {},
+                        "ports": [
+                            {
+                                "name": "Success",
+                                "plug": "input",
+                                "type": "*",
+                                "index": 0
+                            },
+                            {
+                                "name": "Failure",
+                                "plug": "input",
+                                "type": "*",
+                                "index": 1
+                            }
+                        ],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "a09a3b0b-8722-31b4-24f7-c4deb458237c",
+                        "type": "JavaScriptFunction",
+                        "x": -12,
+                        "y": -41,
+                        "parameters": {
+                            "functionScript": "const endpoint = \"https://toolbox.noodl.cloud/speakeasy\"\n\nconst res = await fetch(endpoint + \"/verify-token\",{\n    method:'POST',\n    headers:{\n        'content-type':'application/json'\n    },\n    body:JSON.stringify({base32:Inputs.Base32,token:Inputs.Token})\n})\n\nif(res.ok) {\n    Outputs.Success()\n}\nelse Outputs.Failure()"
+                        },
+                        "ports": [],
+                        "dynamicports": [
+                            {
+                                "name": "in-Base32",
+                                "displayName": "Base32",
+                                "plug": "input",
+                                "type": "*",
+                                "group": "Inputs",
+                                "index": 4
+                            },
+                            {
+                                "name": "in-Token",
+                                "displayName": "Token",
+                                "plug": "input",
+                                "type": "*",
+                                "group": "Inputs",
+                                "index": 5
+                            },
+                            {
+                                "name": "out-Success",
+                                "displayName": "Success",
+                                "plug": "output",
+                                "type": "signal",
+                                "group": "Outputs",
+                                "index": 6
+                            },
+                            {
+                                "name": "out-Failure",
+                                "displayName": "Failure",
+                                "plug": "output",
+                                "type": "signal",
+                                "group": "Outputs",
+                                "index": 7
+                            }
+                        ],
+                        "children": [],
+                        "metadata": {
+                            "merge": {
+                                "soureCodePorts": [
+                                    "functionScript"
+                                ]
+                            }
+                        }
+                    }
+                ]
+            },
+            "metadata": {
+                "isFolderComponent": false
+            }
+        },
+        {
+            "name": "/TOTP/Complete Log In",
+            "id": "5c10d70d-0c7c-820c-c33a-2634e24cb7db",
+            "graph": {
+                "connections": [
+                    {
+                        "fromId": "30303931-270f-1563-f3e6-82f1ddadf833",
+                        "fromProperty": "out-Session Token",
+                        "toId": "a53f922a-b06e-67e2-083b-d0203f660144",
+                        "toProperty": "in-SessionToken"
+                    },
+                    {
+                        "fromId": "30303931-270f-1563-f3e6-82f1ddadf833",
+                        "fromProperty": "done",
+                        "toId": "a53f922a-b06e-67e2-083b-d0203f660144",
+                        "toProperty": "run"
+                    },
+                    {
+                        "fromId": "8e3d403d-80f3-783e-bcf5-e2e9c20fcf1f",
+                        "fromProperty": "Do",
+                        "toId": "30303931-270f-1563-f3e6-82f1ddadf833",
+                        "toProperty": "call"
+                    },
+                    {
+                        "fromId": "8e3d403d-80f3-783e-bcf5-e2e9c20fcf1f",
+                        "fromProperty": "Username",
+                        "toId": "30303931-270f-1563-f3e6-82f1ddadf833",
+                        "toProperty": "in-Username"
+                    },
+                    {
+                        "fromId": "8e3d403d-80f3-783e-bcf5-e2e9c20fcf1f",
+                        "fromProperty": "Password",
+                        "toId": "30303931-270f-1563-f3e6-82f1ddadf833",
+                        "toProperty": "in-Password"
+                    },
+                    {
+                        "fromId": "8e3d403d-80f3-783e-bcf5-e2e9c20fcf1f",
+                        "fromProperty": "Token",
+                        "toId": "30303931-270f-1563-f3e6-82f1ddadf833",
+                        "toProperty": "in-Token"
+                    },
+                    {
+                        "fromId": "a53f922a-b06e-67e2-083b-d0203f660144",
+                        "fromProperty": "out-Failure",
+                        "toId": "e6e6e2b8-691a-2992-ce9d-e994f9d7aecf",
+                        "toProperty": "Failure"
+                    },
+                    {
+                        "fromId": "a53f922a-b06e-67e2-083b-d0203f660144",
+                        "fromProperty": "out-Success",
+                        "toId": "e6e6e2b8-691a-2992-ce9d-e994f9d7aecf",
+                        "toProperty": "Success"
+                    },
+                    {
+                        "fromId": "30303931-270f-1563-f3e6-82f1ddadf833",
+                        "fromProperty": "failure",
+                        "toId": "e6e6e2b8-691a-2992-ce9d-e994f9d7aecf",
+                        "toProperty": "Failure"
+                    }
+                ],
+                "roots": [
+                    {
+                        "id": "8e3d403d-80f3-783e-bcf5-e2e9c20fcf1f",
+                        "type": "Component Inputs",
+                        "x": -407,
+                        "y": 3,
+                        "parameters": {},
+                        "ports": [
+                            {
+                                "name": "Do",
+                                "plug": "output",
+                                "type": "*",
+                                "index": 0
+                            },
+                            {
+                                "name": "Username",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "index": 1
+                            },
+                            {
+                                "name": "Password",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "index": 2
+                            },
+                            {
+                                "name": "Token",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "index": 3
+                            }
+                        ],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "e6e6e2b8-691a-2992-ce9d-e994f9d7aecf",
+                        "type": "Component Outputs",
+                        "x": 318,
+                        "y": 22,
+                        "parameters": {},
+                        "ports": [
+                            {
+                                "name": "Success",
+                                "plug": "input",
+                                "type": "*",
+                                "index": 0
+                            },
+                            {
+                                "name": "Failure",
+                                "plug": "input",
+                                "type": "*",
+                                "index": 1
+                            }
+                        ],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "30303931-270f-1563-f3e6-82f1ddadf833",
+                        "type": "CloudFunction2",
+                        "x": -164.5,
+                        "y": -20.5,
+                        "parameters": {
+                            "function": "TOTP/Complete Log In"
+                        },
+                        "ports": [],
+                        "dynamicports": [
+                            {
+                                "plug": "input",
+                                "type": {
+                                    "name": "enum",
+                                    "enums": [
+                                        {
+                                            "label": "OAuth2/Authorize",
+                                            "value": "OAuth2/Authorize"
+                                        },
+                                        {
+                                            "label": "OAuth2/Log In",
+                                            "value": "OAuth2/Log In"
+                                        },
+                                        {
+                                            "label": "TOTP/Complete Connect",
+                                            "value": "TOTP/Complete Connect"
+                                        },
+                                        {
+                                            "label": "TOTP/Complete Log In",
+                                            "value": "TOTP/Complete Log In"
+                                        },
+                                        {
+                                            "label": "TOTP/Disconnect",
+                                            "value": "TOTP/Disconnect"
+                                        },
+                                        {
+                                            "label": "TOTP/Start Connect",
+                                            "value": "TOTP/Start Connect"
+                                        },
+                                        {
+                                            "label": "TOTP/Start Log In",
+                                            "value": "TOTP/Start Log In"
+                                        }
+                                    ],
+                                    "allowEditOnly": true
+                                },
+                                "group": "General",
+                                "displayName": "Function",
+                                "name": "function",
+                                "index": 4
+                            },
+                            {
+                                "name": "in-Username",
+                                "displayName": "Username",
+                                "type": "*",
+                                "plug": "input",
+                                "group": "Parameters",
+                                "index": 5
+                            },
+                            {
+                                "name": "in-Password",
+                                "displayName": "Password",
+                                "type": "*",
+                                "plug": "input",
+                                "group": "Parameters",
+                                "index": 6
+                            },
+                            {
+                                "name": "in-Token",
+                                "displayName": "Token",
+                                "type": "*",
+                                "plug": "input",
+                                "group": "Parameters",
+                                "index": 7
+                            },
+                            {
+                                "name": "out-Session Token",
+                                "displayName": "Session Token",
+                                "type": "*",
+                                "plug": "output",
+                                "group": "Results",
+                                "index": 8
+                            }
+                        ],
+                        "children": []
+                    },
+                    {
+                        "id": "a53f922a-b06e-67e2-083b-d0203f660144",
+                        "type": "JavaScriptFunction",
+                        "label": "Become",
+                        "x": 102.5,
+                        "y": -7.5,
+                        "parameters": {
+                            "functionScript": "try {\n    await Noodl.Users.become(Inputs.SessionToken)\n}\ncatch(e) {\n    Outputs.Failure()\n    throw e;\n}\n\nOutputs.Success()"
+                        },
+                        "ports": [],
+                        "dynamicports": [
+                            {
+                                "name": "in-SessionToken",
+                                "displayName": "SessionToken",
+                                "plug": "input",
+                                "type": "*",
+                                "group": "Inputs",
+                                "index": 4
+                            },
+                            {
+                                "name": "out-Failure",
+                                "displayName": "Failure",
+                                "plug": "output",
+                                "type": "signal",
+                                "group": "Outputs",
+                                "index": 5
+                            },
+                            {
+                                "name": "out-Success",
+                                "displayName": "Success",
+                                "plug": "output",
+                                "type": "signal",
+                                "group": "Outputs",
+                                "index": 6
+                            }
+                        ],
+                        "children": [],
+                        "metadata": {
+                            "merge": {
+                                "soureCodePorts": [
+                                    "functionScript"
+                                ]
+                            }
+                        }
+                    }
+                ]
+            },
+            "metadata": {
+                "isFolderComponent": false
+            }
+        },
+        {
+            "name": "/TOTP/Start Log In",
+            "id": "848e7a81-f9af-82fb-3c4a-cfda283eb85f",
+            "graph": {
+                "connections": [
+                    {
+                        "fromId": "4bdd5a21-1af6-b5f7-e01e-01939ed0b7d1",
+                        "fromProperty": "Do",
+                        "toId": "e014e55f-9595-2483-86bf-0cd54b449bee",
+                        "toProperty": "call"
+                    },
+                    {
+                        "fromId": "4bdd5a21-1af6-b5f7-e01e-01939ed0b7d1",
+                        "fromProperty": "Username",
+                        "toId": "e014e55f-9595-2483-86bf-0cd54b449bee",
+                        "toProperty": "in-Username"
+                    },
+                    {
+                        "fromId": "4bdd5a21-1af6-b5f7-e01e-01939ed0b7d1",
+                        "fromProperty": "Password",
+                        "toId": "e014e55f-9595-2483-86bf-0cd54b449bee",
+                        "toProperty": "in-Password"
+                    },
+                    {
+                        "fromId": "e014e55f-9595-2483-86bf-0cd54b449bee",
+                        "fromProperty": "out-Session Token",
+                        "toId": "da268c12-11e3-7765-3d7a-532ee71e14e3",
+                        "toProperty": "in-SessionToken"
+                    },
+                    {
+                        "fromId": "da268c12-11e3-7765-3d7a-532ee71e14e3",
+                        "fromProperty": "out-Failure",
+                        "toId": "7f0cd183-f7ef-6ee4-9c5a-7897a06303ba",
+                        "toProperty": "Failure"
+                    },
+                    {
+                        "fromId": "da268c12-11e3-7765-3d7a-532ee71e14e3",
+                        "fromProperty": "out-Success",
+                        "toId": "7f0cd183-f7ef-6ee4-9c5a-7897a06303ba",
+                        "toProperty": "Success"
+                    },
+                    {
+                        "fromId": "e014e55f-9595-2483-86bf-0cd54b449bee",
+                        "fromProperty": "failure",
+                        "toId": "7f0cd183-f7ef-6ee4-9c5a-7897a06303ba",
+                        "toProperty": "Failure"
+                    },
+                    {
+                        "fromId": "e014e55f-9595-2483-86bf-0cd54b449bee",
+                        "fromProperty": "done",
+                        "toId": "da268c12-11e3-7765-3d7a-532ee71e14e3",
+                        "toProperty": "run"
+                    },
+                    {
+                        "fromId": "da268c12-11e3-7765-3d7a-532ee71e14e3",
+                        "fromProperty": "out-TOTPNeeded",
+                        "toId": "7f0cd183-f7ef-6ee4-9c5a-7897a06303ba",
+                        "toProperty": "TOTP Needed"
+                    }
+                ],
+                "roots": [
+                    {
+                        "id": "4bdd5a21-1af6-b5f7-e01e-01939ed0b7d1",
+                        "type": "Component Inputs",
+                        "x": -222,
+                        "y": -7,
+                        "parameters": {},
+                        "ports": [
+                            {
+                                "name": "Do",
+                                "plug": "output",
+                                "type": "*",
+                                "index": 0
+                            },
+                            {
+                                "name": "Username",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "index": 1
+                            },
+                            {
+                                "name": "Password",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "index": 2
+                            }
+                        ],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "7f0cd183-f7ef-6ee4-9c5a-7897a06303ba",
+                        "type": "Component Outputs",
+                        "x": 631,
+                        "y": -40,
+                        "parameters": {},
+                        "ports": [
+                            {
+                                "name": "Success",
+                                "plug": "input",
+                                "type": "*",
+                                "index": 0
+                            },
+                            {
+                                "name": "Failure",
+                                "plug": "input",
+                                "type": "*",
+                                "index": 1
+                            },
+                            {
+                                "name": "TOTP Needed",
+                                "plug": "input",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "index": 2
+                            }
+                        ],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "e014e55f-9595-2483-86bf-0cd54b449bee",
+                        "type": "CloudFunction2",
+                        "x": 5,
+                        "y": -41,
+                        "parameters": {
+                            "function": "TOTP/Start Log In"
+                        },
+                        "ports": [],
+                        "dynamicports": [
+                            {
+                                "plug": "input",
+                                "type": {
+                                    "name": "enum",
+                                    "enums": [
+                                        {
+                                            "label": "OAuth2/Authorize",
+                                            "value": "OAuth2/Authorize"
+                                        },
+                                        {
+                                            "label": "OAuth2/Log In",
+                                            "value": "OAuth2/Log In"
+                                        },
+                                        {
+                                            "label": "TOTP/Complete Connect",
+                                            "value": "TOTP/Complete Connect"
+                                        },
+                                        {
+                                            "label": "TOTP/Complete Log In",
+                                            "value": "TOTP/Complete Log In"
+                                        },
+                                        {
+                                            "label": "TOTP/Disconnect",
+                                            "value": "TOTP/Disconnect"
+                                        },
+                                        {
+                                            "label": "TOTP/Start Connect",
+                                            "value": "TOTP/Start Connect"
+                                        },
+                                        {
+                                            "label": "TOTP/Start Log In",
+                                            "value": "TOTP/Start Log In"
+                                        }
+                                    ],
+                                    "allowEditOnly": true
+                                },
+                                "group": "General",
+                                "displayName": "Function",
+                                "name": "function",
+                                "index": 4
+                            },
+                            {
+                                "name": "in-Username",
+                                "displayName": "Username",
+                                "type": "*",
+                                "plug": "input",
+                                "group": "Parameters",
+                                "index": 5
+                            },
+                            {
+                                "name": "in-Password",
+                                "displayName": "Password",
+                                "type": "*",
+                                "plug": "input",
+                                "group": "Parameters",
+                                "index": 6
+                            },
+                            {
+                                "name": "out-Session Token",
+                                "displayName": "Session Token",
+                                "type": "*",
+                                "plug": "output",
+                                "group": "Results",
+                                "index": 7
+                            }
+                        ],
+                        "children": []
+                    },
+                    {
+                        "id": "da268c12-11e3-7765-3d7a-532ee71e14e3",
+                        "type": "JavaScriptFunction",
+                        "label": "Become if possible",
+                        "x": 352,
+                        "y": 64,
+                        "parameters": {
+                            "functionScript": "if(Inputs.SessionToken === null || Inputs.SessionToken === undefined) {\n    Outputs.TOTPNeeded();\n    return;\n}\n\ntry {\n    await Noodl.Users.become(Inputs.SessionToken)\n}\ncatch(e) {\n    Outputs.Failure()\n    throw e;\n}\n\nOutputs.Success();"
+                        },
+                        "ports": [],
+                        "dynamicports": [
+                            {
+                                "name": "in-SessionToken",
+                                "displayName": "SessionToken",
+                                "plug": "input",
+                                "type": "*",
+                                "group": "Inputs",
+                                "index": 4
+                            },
+                            {
+                                "name": "out-TOTPNeeded",
+                                "displayName": "TOTPNeeded",
+                                "plug": "output",
+                                "type": "signal",
+                                "group": "Outputs",
+                                "index": 5
+                            },
+                            {
+                                "name": "out-Failure",
+                                "displayName": "Failure",
+                                "plug": "output",
+                                "type": "signal",
+                                "group": "Outputs",
+                                "index": 6
+                            },
+                            {
+                                "name": "out-Success",
+                                "displayName": "Success",
+                                "plug": "output",
+                                "type": "signal",
+                                "group": "Outputs",
+                                "index": 7
+                            }
+                        ],
+                        "children": [],
+                        "metadata": {
+                            "merge": {
+                                "soureCodePorts": [
+                                    "functionScript"
+                                ]
+                            }
+                        }
+                    }
+                ]
+            },
+            "metadata": {
+                "isFolderComponent": false
+            }
+        }
+    ],
+    "settings": {},
+    "version": "4",
+    "metadata": {
+        "styles": {
+            "text": {},
+            "colors": {}
+        }
+    },
+    "variants": []
+}

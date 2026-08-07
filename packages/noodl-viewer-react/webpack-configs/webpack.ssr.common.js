@@ -1,16 +1,11 @@
 const path = require('path');
 const { outPath } = require('./constants.js');
 
-const CleanWebpackPlugin = require('clean-webpack-plugin');
 const CopyWebpackPlugin = require('copy-webpack-plugin');
 
-const noodlEditorExternalDeployPath = path.join(outPath, 'ssr');
+const { runtimePath, runtimeTsRule } = require('@noodl/runtime/webpack-ts-rule');
 
-function stripStartDirectories(targetPath, numDirs) {
-  const p = targetPath.split('/');
-  p.splice(0, numDirs);
-  return p.join(path.sep);
-}
+const noodlEditorExternalDeployPath = path.join(outPath, 'ssr');
 
 module.exports = {
   entry: {
@@ -18,22 +13,20 @@ module.exports = {
   },
   output: {
     filename: 'noodl.[name].js',
-    path: noodlEditorExternalDeployPath
+    path: noodlEditorExternalDeployPath,
+    clean: true
   },
   plugins: [
-    new CleanWebpackPlugin(noodlEditorExternalDeployPath, {
-      allowExternal: true
-    }),
-    new CopyWebpackPlugin([
-      // {
-      //   from: 'static/shared/**/*',
-      //   transformPath: (targetPath) => stripStartDirectories(targetPath, 2)
-      // },
-      {
-        from: 'static/ssr/**/*',
-        transformPath: (targetPath) => stripStartDirectories(targetPath, 2)
-      }
-    ])
+    new CopyWebpackPlugin({
+      patterns: [
+        {
+          from: 'static/ssr',
+          to: '.',
+          noErrorOnMissing: true,
+          info: { minimized: true }
+        }
+      ]
+    })
   ],
   externals: {
     react: 'React',
@@ -59,9 +52,10 @@ module.exports = {
           }
         }
       },
+      runtimeTsRule,
       {
         test: /\.ts(x?)$/,
-        exclude: /node_modules/,
+        exclude: [/node_modules/, runtimePath],
         use: [
           {
             loader: 'ts-loader'

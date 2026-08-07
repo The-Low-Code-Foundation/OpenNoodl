@@ -1,0 +1,933 @@
+{
+  "component": {
+    "$schema": "https://opennoodl.dev/schemas/component-v2.json",
+    "id": "78dd9fc2-12fc-e90b-f4c3-71fa2a8823bc",
+    "name": "Share Popup",
+    "path": "/Pop-ups/Share/Share Popup",
+    "type": "visual",
+    "modified": "1970-01-01T00:00:00.000Z",
+    "metadata": {
+      "canvasPos": {
+        "x": 7679.381198466383,
+        "y": -67.2481602635614
+      }
+    }
+  },
+  "nodes": {
+    "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+    "componentId": "78dd9fc2-12fc-e90b-f4c3-71fa2a8823bc",
+    "version": 1,
+    "nodes": [
+      {
+        "id": "fada616b-8ce2-958f-5b72-85e1351c34e0",
+        "type": "Group",
+        "x": -23.5,
+        "y": -97.5,
+        "parameters": {
+          "backgroundColor": "Pop-up Grey Overlay",
+          "zIndex": 6,
+          "alignItems": "center"
+        },
+        "children": [
+          "c8af4d06-7797-e8c3-c4ea-70f5cca08309"
+        ]
+      },
+      {
+        "id": "c8af4d06-7797-e8c3-c4ea-70f5cca08309",
+        "type": "Group",
+        "parameters": {
+          "backgroundColor": "#FFFFFF",
+          "alignItems": "center",
+          "paddingTop": {
+            "value": 24,
+            "unit": "px"
+          },
+          "paddingRight": {
+            "value": 24,
+            "unit": "px"
+          },
+          "paddingBottom": {
+            "value": 24,
+            "unit": "px"
+          },
+          "paddingLeft": {
+            "value": 24,
+            "unit": "px"
+          },
+          "sizeMode": "contentHeight",
+          "position": "relative",
+          "alignY": "center",
+          "borderRadius": {
+            "value": 16,
+            "unit": "px"
+          },
+          "zIndex": 6,
+          "maxWidth": {
+            "value": 560,
+            "unit": "px"
+          },
+          "maxHeight": {
+            "value": 640,
+            "unit": "px"
+          },
+          "marginRight": {
+            "value": 0,
+            "unit": "px"
+          },
+          "marginLeft": {
+            "value": 0,
+            "unit": "px"
+          },
+          "alignX": "center",
+          "boxShadowEnabled": true,
+          "width": {
+            "value": 95,
+            "unit": "%"
+          }
+        },
+        "children": [
+          "982babae-08ae-3542-94b8-db2c810309eb",
+          "6d9b46a4-9f7e-3294-aeca-a0dc5381a254",
+          "07732858-146d-339f-b914-f1cac4bd39a1",
+          "cdfce885-e4bb-dac0-53eb-9f4a6c95eedf",
+          "2df0fa77-e62e-6f31-e734-b2eebce06d46"
+        ],
+        "parent": "fada616b-8ce2-958f-5b72-85e1351c34e0"
+      },
+      {
+        "id": "982babae-08ae-3542-94b8-db2c810309eb",
+        "type": "Group",
+        "parameters": {
+          "alignItems": "flex-end",
+          "sizeMode": "contentSize",
+          "alignX": "right",
+          "cssClassName": "pointer"
+        },
+        "children": [
+          "89d69684-61a2-1607-8a54-c93e225f13d0"
+        ],
+        "parent": "c8af4d06-7797-e8c3-c4ea-70f5cca08309"
+      },
+      {
+        "id": "89d69684-61a2-1607-8a54-c93e225f13d0",
+        "type": "net.noodl.visual.icon",
+        "parameters": {
+          "iconIconSource": {
+            "class": "material-icons",
+            "code": "close"
+          },
+          "iconColor": "Cyan Dark",
+          "iconSize": {
+            "value": 24,
+            "unit": "px"
+          }
+        },
+        "parent": "982babae-08ae-3542-94b8-db2c810309eb"
+      },
+      {
+        "id": "6d9b46a4-9f7e-3294-aeca-a0dc5381a254",
+        "type": "Text",
+        "label": "Profile created",
+        "variant": "Large Cyan Text",
+        "parameters": {
+          "text": "Share this article",
+          "textAlignX": "center",
+          "marginBottom": {
+            "value": 24,
+            "unit": "px"
+          },
+          "fontFamily": "Inter-Bold.ttf",
+          "fontSize": {
+            "value": 19,
+            "unit": "px"
+          }
+        },
+        "parent": "c8af4d06-7797-e8c3-c4ea-70f5cca08309"
+      },
+      {
+        "id": "07732858-146d-339f-b914-f1cac4bd39a1",
+        "type": "Group",
+        "label": "Image container",
+        "parameters": {
+          "sizeMode": "contentHeight",
+          "alignItems": "flex-start",
+          "marginBottom": {
+            "value": 24,
+            "unit": "px"
+          },
+          "paddingTop": {
+            "value": 16,
+            "unit": "px"
+          },
+          "paddingLeft": {
+            "value": 16,
+            "unit": "px"
+          },
+          "paddingRight": {
+            "value": 16,
+            "unit": "px"
+          },
+          "paddingBottom": {
+            "value": 16,
+            "unit": "px"
+          },
+          "borderStyle": "solid",
+          "borderWidth": {
+            "value": 1,
+            "unit": "px"
+          },
+          "borderRadius": {
+            "value": 10,
+            "unit": "px"
+          },
+          "borderColor": "#D6D6D6",
+          "flexDirection": "row"
+        },
+        "children": [
+          "2e96ecf4-3940-a0f7-ee4d-9d8c2e5918f2",
+          "4d229aee-e083-c7ad-eec3-7371fb37dd53"
+        ],
+        "parent": "c8af4d06-7797-e8c3-c4ea-70f5cca08309"
+      },
+      {
+        "id": "2e96ecf4-3940-a0f7-ee4d-9d8c2e5918f2",
+        "type": "Image",
+        "label": "Mail icon",
+        "parameters": {
+          "src": "mail.svg",
+          "sizeMode": "explicit",
+          "width": {
+            "value": 120,
+            "unit": "px"
+          },
+          "height": {
+            "value": 120,
+            "unit": "px"
+          },
+          "objectFit": "cover"
+        },
+        "parent": "07732858-146d-339f-b914-f1cac4bd39a1"
+      },
+      {
+        "id": "4d229aee-e083-c7ad-eec3-7371fb37dd53",
+        "type": "Group",
+        "parameters": {
+          "marginLeft": {
+            "value": 16,
+            "unit": "px"
+          }
+        },
+        "children": [
+          "2aa7ce4f-53ef-8a5f-dc4e-21d8a475b82b",
+          "48709706-1cc8-ceef-d3fe-aacd164c62b3",
+          "00a25f65-d528-db0e-3cdc-d8878e4eb4d9"
+        ],
+        "parent": "07732858-146d-339f-b914-f1cac4bd39a1"
+      },
+      {
+        "id": "2aa7ce4f-53ef-8a5f-dc4e-21d8a475b82b",
+        "type": "Text",
+        "parameters": {
+          "fontSize": {
+            "value": 14,
+            "unit": "px"
+          },
+          "fontFamily": "Inter-Bold.ttf",
+          "color": "#379EA5"
+        },
+        "parent": "4d229aee-e083-c7ad-eec3-7371fb37dd53"
+      },
+      {
+        "id": "48709706-1cc8-ceef-d3fe-aacd164c62b3",
+        "type": "Markdown",
+        "parameters": {
+          "cssClassName": "info"
+        },
+        "parent": "4d229aee-e083-c7ad-eec3-7371fb37dd53"
+      },
+      {
+        "id": "00a25f65-d528-db0e-3cdc-d8878e4eb4d9",
+        "type": "Text",
+        "parameters": {
+          "fontFamily": "Inter-Bold.ttf",
+          "fontSize": {
+            "value": 13,
+            "unit": "px"
+          },
+          "color": "#505758",
+          "marginLeft": {
+            "value": 0,
+            "unit": "px"
+          },
+          "marginTop": {
+            "value": 8,
+            "unit": "px"
+          }
+        },
+        "parent": "4d229aee-e083-c7ad-eec3-7371fb37dd53"
+      },
+      {
+        "id": "cdfce885-e4bb-dac0-53eb-9f4a6c95eedf",
+        "type": "Group",
+        "label": "FB Preshare",
+        "parameters": {
+          "sizeMode": "contentSize",
+          "width": {
+            "value": 0,
+            "unit": "px"
+          },
+          "height": {
+            "value": 0,
+            "unit": "px"
+          }
+        },
+        "children": [
+          "11c6c11e-0c5a-c79a-7181-9e98e94d4856"
+        ],
+        "parent": "c8af4d06-7797-e8c3-c4ea-70f5cca08309"
+      },
+      {
+        "id": "11c6c11e-0c5a-c79a-7181-9e98e94d4856",
+        "type": "module.inlineHtml",
+        "parameters": {
+          "html": "<div id=\"fb-root\"></div>\r\n<script async defer crossorigin=\"anonymous\" src=\"https://connect.facebook.net/sv_SE/sdk.js#xfbml=1&version=v13.0\" nonce=\"fEi2ZGA2\"></script>",
+          "runJs": true,
+          "mounted": true
+        },
+        "parent": "cdfce885-e4bb-dac0-53eb-9f4a6c95eedf"
+      },
+      {
+        "id": "2df0fa77-e62e-6f31-e734-b2eebce06d46",
+        "type": "Group",
+        "parameters": {
+          "flexDirection": "row",
+          "justifyContent": "space-around",
+          "alignItems": "center",
+          "marginBottom": {
+            "value": 24,
+            "unit": "px"
+          },
+          "cssClassName": "share-btns-container"
+        },
+        "children": [
+          "f8ed3001-ba8c-23d9-45c0-485b31a711d3",
+          "5c72610c-2a7f-978d-2cda-c768fce16d91",
+          "cec43a2e-30e9-4395-b3cf-95a61ecefdd5",
+          "a83227ea-bc80-a38a-3bcb-bddee858a197"
+        ],
+        "parent": "c8af4d06-7797-e8c3-c4ea-70f5cca08309"
+      },
+      {
+        "id": "f8ed3001-ba8c-23d9-45c0-485b31a711d3",
+        "type": "Group",
+        "label": "Facebook",
+        "parameters": {
+          "cssClassName": "fb-share",
+          "sizeMode": "contentSize"
+        },
+        "children": [
+          "31d0e853-ddff-d204-af60-b1b5a5048e03"
+        ],
+        "parent": "2df0fa77-e62e-6f31-e734-b2eebce06d46"
+      },
+      {
+        "id": "31d0e853-ddff-d204-af60-b1b5a5048e03",
+        "type": "module.inlineHtml",
+        "parameters": {
+          "html": "<div \n    class=\"share-button\" \n    data-href=\"https://shinearticles.sandbox.noodl.app/article/&#123;slug&#125;\" \n    data-layout=\"button\" \n    data-size=\"large\">\n    \n    <a \n        target=\"_blank\" \n        href=\"https://www.facebook.com/sharer/sharer.php?u=https%3A%2F%2Fshinearticles.sandbox.noodl.app%2Farticle%2F%257Bslug%257D&amp;src=sdkpreparse\" \n        class=\"fb-xfbml-parse-ignore\"\n        onclick=\"wasClicked()\">\n        <img srcset=\"/FBShare.png 2x\" />\n        Facebook\n    </a>\n</div>",
+          "runJs": true
+        },
+        "parent": "f8ed3001-ba8c-23d9-45c0-485b31a711d3"
+      },
+      {
+        "id": "5c72610c-2a7f-978d-2cda-c768fce16d91",
+        "type": "Group",
+        "label": "Twitter",
+        "parameters": {
+          "sizeMode": "contentSize",
+          "alignY": "center",
+          "cssClassName": "twt-share"
+        },
+        "children": [
+          "6f633b6f-e0c8-ec71-08a7-4838227e6449"
+        ],
+        "parent": "2df0fa77-e62e-6f31-e734-b2eebce06d46"
+      },
+      {
+        "id": "6f633b6f-e0c8-ec71-08a7-4838227e6449",
+        "type": "module.inlineHtml",
+        "parameters": {
+          "html": "<a \n    href=\"https://twitter.com/share?ref_src=twsrc%5Etfw\" \n    class=\"share-button\" \n    data-text=\"Check out this article from Shine\" \n    data-url=\"https://shinearticles.sandbox.noodl.app/article/{slug}\" \n    data-hashtags=\"Shine\" \n    data-related=\"Shine\" \n    data-lang=\"en\" \n    data-show-count=\"false\"\n    target=\"_blank\"\n    onclick=\"wasClicked()\">\n    <img srcset=\"/TwitterShare.png 2x\" />\n    Twitter\n</a>\n<script async src=\"https://platform.twitter.com/widgets.js\" charset=\"utf-8\"></script>",
+          "runJs": true
+        },
+        "parent": "5c72610c-2a7f-978d-2cda-c768fce16d91"
+      },
+      {
+        "id": "cec43a2e-30e9-4395-b3cf-95a61ecefdd5",
+        "type": "Group",
+        "label": "Link Share",
+        "parameters": {
+          "sizeMode": "contentSize",
+          "alignItems": "center"
+        },
+        "children": [
+          "dcf4d07a-73ac-93fa-93ed-80e517fcccde",
+          "c1b3e8e9-76e7-f090-9faf-dd3d05970409"
+        ],
+        "parent": "2df0fa77-e62e-6f31-e734-b2eebce06d46"
+      },
+      {
+        "id": "dcf4d07a-73ac-93fa-93ed-80e517fcccde",
+        "type": "Image",
+        "parameters": {
+          "srcSet": "/LinkShare.png 2x",
+          "marginBottom": {
+            "value": 8,
+            "unit": "px"
+          }
+        },
+        "parent": "cec43a2e-30e9-4395-b3cf-95a61ecefdd5"
+      },
+      {
+        "id": "c1b3e8e9-76e7-f090-9faf-dd3d05970409",
+        "type": "Text",
+        "label": "Copy",
+        "parameters": {
+          "text": "Copy Link",
+          "fontSize": {
+            "value": 14,
+            "unit": "px"
+          },
+          "color": "#545454"
+        },
+        "parent": "cec43a2e-30e9-4395-b3cf-95a61ecefdd5"
+      },
+      {
+        "id": "a83227ea-bc80-a38a-3bcb-bddee858a197",
+        "type": "Group",
+        "label": "Mailto",
+        "parameters": {
+          "sizeMode": "contentSize",
+          "cssClassName": "share-item mail-share"
+        },
+        "children": [
+          "158b8308-c1a6-c26a-1b99-016d3d80b68f"
+        ],
+        "parent": "2df0fa77-e62e-6f31-e734-b2eebce06d46"
+      },
+      {
+        "id": "158b8308-c1a6-c26a-1b99-016d3d80b68f",
+        "type": "module.inlineHtml",
+        "parent": "a83227ea-bc80-a38a-3bcb-bddee858a197"
+      },
+      {
+        "id": "9e333d4b-59ac-94e0-ecd3-f5b491d0f3e8",
+        "type": "NavigationClosePopup",
+        "x": 252.52707245701254,
+        "y": -41.07419850448096
+      },
+      {
+        "id": "e2100ed9-4889-1421-1d57-7e5e2751bbd8",
+        "type": "String Format",
+        "x": 423.43422832349273,
+        "y": 244.9523979155394,
+        "parameters": {
+          "format": "https://www.facebook.com/sharer/sharer.php?u=https://shinearticles.sandbox.noodl.app/article/{slug}"
+        },
+        "dynamicports": [
+          {
+            "name": "slug",
+            "type": "string",
+            "plug": "input",
+            "index": 2
+          }
+        ]
+      },
+      {
+        "id": "b9698eae-d6e5-9a4d-362e-49aa02543893",
+        "type": "net.noodl.externallink",
+        "x": 412.6843878224411,
+        "y": 355.1382630513189
+      },
+      {
+        "id": "827b30c8-8fd8-d0c2-3104-a582a732188b",
+        "type": "Variable2",
+        "x": 432.8403387619131,
+        "y": 129.391612529234,
+        "parameters": {
+          "name": "Current Slug"
+        }
+      },
+      {
+        "id": "323aac13-c6f5-def0-1ab2-be46cb704641",
+        "type": "Model2",
+        "x": -490.3022142658987,
+        "y": 53.10906749149433,
+        "parameters": {
+          "properties": "article"
+        },
+        "dynamicports": [
+          {
+            "type": {
+              "name": "*",
+              "allowConnectionsOnly": true
+            },
+            "plug": "input/output",
+            "group": "Properties",
+            "name": "prop-article",
+            "displayName": "article",
+            "index": 7
+          },
+          {
+            "type": "signal",
+            "plug": "output",
+            "group": "Changed Events",
+            "displayName": "article Changed",
+            "name": "changed-article",
+            "index": 8
+          }
+        ]
+      },
+      {
+        "id": "ca502e99-0511-363e-700e-0babda36a6a9",
+        "type": "JavaScriptFunction",
+        "x": -277.4823876500813,
+        "y": 80.78687166721625,
+        "parameters": {
+          "functionScript": "Outputs.bodyText = Inputs.article.articleBodyText;\nOutputs.articleTitle = Inputs.article.articleTitle;\nOutputs.coverImage = Inputs.article.coverImage.url;\nOutputs.articleAuthor = Inputs.article.author;\nOutputs.publishedAt = Inputs.article.sys.publishedAt;\nOutputs.verified = Inputs.article.verifiedBy;\nOutputs.references = Inputs.article.refernces;\nOutputs.articleId = Inputs.article.sys.id;"
+        },
+        "dynamicports": [
+          {
+            "name": "in-article",
+            "displayName": "article",
+            "plug": "input",
+            "type": "*",
+            "group": "Inputs",
+            "index": 4
+          },
+          {
+            "name": "out-bodyText",
+            "displayName": "bodyText",
+            "plug": "output",
+            "type": "*",
+            "group": "Outputs",
+            "index": 5
+          },
+          {
+            "name": "out-articleTitle",
+            "displayName": "articleTitle",
+            "plug": "output",
+            "type": "*",
+            "group": "Outputs",
+            "index": 6
+          },
+          {
+            "name": "out-coverImage",
+            "displayName": "coverImage",
+            "plug": "output",
+            "type": "*",
+            "group": "Outputs",
+            "index": 7
+          },
+          {
+            "name": "out-articleAuthor",
+            "displayName": "articleAuthor",
+            "plug": "output",
+            "type": "*",
+            "group": "Outputs",
+            "index": 8
+          },
+          {
+            "name": "out-publishedAt",
+            "displayName": "publishedAt",
+            "plug": "output",
+            "type": "*",
+            "group": "Outputs",
+            "index": 9
+          },
+          {
+            "name": "out-verified",
+            "displayName": "verified",
+            "plug": "output",
+            "type": "*",
+            "group": "Outputs",
+            "index": 10
+          },
+          {
+            "name": "out-references",
+            "displayName": "references",
+            "plug": "output",
+            "type": "*",
+            "group": "Outputs",
+            "index": 11
+          },
+          {
+            "name": "out-articleId",
+            "displayName": "articleId",
+            "plug": "output",
+            "type": "*",
+            "group": "Outputs",
+            "index": 12
+          }
+        ]
+      },
+      {
+        "id": "997702c7-e624-e2f5-b68a-874b78d7c9a5",
+        "type": "Variable2",
+        "x": -543.0879798254496,
+        "y": 192.5469254729124,
+        "parameters": {
+          "name": "Article Object Id"
+        }
+      },
+      {
+        "id": "5a5b63c5-450c-da84-5161-79824268618d",
+        "type": "String Format",
+        "x": -258.09357248989824,
+        "y": 470.28804873160993,
+        "parameters": {
+          "format": "By <span>{author}</span> <br>\n<br>Verified by  <span>{verifiedBy}</span></br>"
+        },
+        "dynamicports": [
+          {
+            "name": "author",
+            "type": "string",
+            "plug": "input",
+            "index": 2
+          },
+          {
+            "name": "verifiedBy",
+            "type": "string",
+            "plug": "input",
+            "index": 3
+          }
+        ]
+      },
+      {
+        "id": "1eb7eeee-702b-6f54-3ff8-ffc983a39774",
+        "type": "JavaScriptFunction",
+        "x": -232.9162100158337,
+        "y": 320.1237759570563,
+        "parameters": {
+          "functionScript": "Outputs.formattedDate = moment(Inputs.date).format(\"MMM Do YYYY\")\n"
+        },
+        "dynamicports": [
+          {
+            "name": "in-date",
+            "displayName": "date",
+            "plug": "input",
+            "type": "*",
+            "group": "Inputs",
+            "index": 4
+          },
+          {
+            "name": "out-formattedDate",
+            "displayName": "formattedDate",
+            "plug": "output",
+            "type": "*",
+            "group": "Outputs",
+            "index": 5
+          }
+        ]
+      },
+      {
+        "id": "01b60442-f8ed-7d17-903d-77fe87fc5fa8",
+        "type": "CSS Definition",
+        "x": -255.7371272533187,
+        "y": 734.5000932378744,
+        "parameters": {
+          "style": ".share-item {\n    margin:0px;   \n    padding:0px;\n}\n\n.fb-share .share-button a{\n    display:flex;\n    flex-direction: column;\n    align-items: center;\n    text-align: center; \n    transition: ease-in-out 0.3s !important;\n    text-decoration: none !important;\n    font-size: 14px !important;\n    color: #545454 !important;\n    font-family: Inter !important;\n}\n\n.fb-share .share-button img {\n    vertical-align: middle;\n    margin-bottom:8px;\n}\n\n\n.twt-share a{\n    display:flex;\n    flex-direction: column;\n    align-items: center;\n    transition: ease-in-out 0.3s !important;\n    text-decoration: none !important;\n    font-size: 14px !important;\n    color: #545454 !important;\n    font-family: Inter !important;\n}\n\n.twt-share img {\n    width:100%;\n    vertical-align: middle;\n    margin-bottom:8px;\n}\n\n\n.mail-share a{\n    display:flex;\n    flex-direction: column;\n    align-items: center;\n    transition: ease-in-out 0.3s !important;\n    text-decoration: none !important;\n    font-size: 14px !important;\n    color: #545454 !important;\n    font-family: Inter !important;\n}\n\n.mail-share img {\n    width:100%;\n    vertical-align: middle;\n    margin-bottom:8px;\n}\n\n\n.link-share div{\n    border: 1px solid #efefef !important;\n    \n    transition: ease-in-out 0.3s !important;\n    text-decoration: none !important;\n    border-radius: 8px !important;\n    font-size: 16px !important;\n    color: #333 !important;\n    font-family: Inter !important;\n}\n.link-share div:hover{\n    background: #333 !important;\n    color: #fff !important;\n}"
+        }
+      },
+      {
+        "id": "9c8643b9-0531-f3cc-43da-71ed696faef5",
+        "type": "NavigationShowPopup",
+        "x": -274.4137603320643,
+        "y": 1565.5035074924845,
+        "parameters": {
+          "target": "/Pop-ups/Share/Copied - Periodic"
+        }
+      },
+      {
+        "id": "a34fe61c-3eab-6dce-808f-6554f2d0d750",
+        "type": "JavaScriptFunction",
+        "label": "copyToClipboard",
+        "x": -272.4137603320643,
+        "y": 1403.503507492484,
+        "parameters": {
+          "functionScript": "if(Inputs.link){\n    navigator.clipboard.writeText(Inputs.link);\n    Outputs.doShowCopiedPopup();\n}"
+        },
+        "dynamicports": [
+          {
+            "name": "in-link",
+            "displayName": "link",
+            "plug": "input",
+            "type": "*",
+            "group": "Inputs",
+            "index": 4
+          },
+          {
+            "name": "out-doShowCopiedPopup",
+            "displayName": "doShowCopiedPopup",
+            "plug": "output",
+            "type": "signal",
+            "group": "Outputs",
+            "index": 5
+          }
+        ]
+      },
+      {
+        "id": "daac7c16-ad41-5385-ed2d-622b0dff16e2",
+        "type": "String Format",
+        "x": -269.4137603320643,
+        "y": 1288.0642928787897,
+        "parameters": {
+          "format": "https://shinearticles.sandbox.noodl.app/article/{slug}"
+        },
+        "dynamicports": [
+          {
+            "name": "slug",
+            "type": "string",
+            "plug": "input",
+            "index": 2
+          }
+        ]
+      },
+      {
+        "id": "86bb125b-f5b4-4ba4-587f-0afef3ea918a",
+        "type": "Variable2",
+        "x": -261.007649893644,
+        "y": 1172.5035074924842,
+        "parameters": {
+          "name": "Current Slug"
+        }
+      },
+      {
+        "id": "342f72e3-2b12-4515-e601-d845f31a49a1",
+        "type": "JavaScriptFunction",
+        "label": "generateMailTo",
+        "x": -274.6694123385711,
+        "y": 954.5895909192393,
+        "parameters": {
+          "functionScript": "if(Inputs.title && Inputs.body && Inputs.link){\n    var mailto = '<a onclick=\"wasClicked()\" href=\"mailto:';\n    mailto += '?subject=' + Inputs.title;\n    mailto += '&body=' + Inputs.body.slice(0, 255) + '...';\n    mailto += '%0D%0A%0D%0AClick on this link to view the full article: ' + Inputs.link;\n    mailto += '%0D%0A%0D%0AAbout Shine - some text about shine goes here.%0D%0A%0D%0A\"><img srcset=\"/EmailShare.png 2x\" />Email</a>';\n    \n    var htmlObj = document.createElement('div');\n    htmlObj.innerHTML = mailto;\n    \n    Outputs.result = mailto;\n}"
+        },
+        "dynamicports": [
+          {
+            "name": "in-title",
+            "displayName": "title",
+            "plug": "input",
+            "type": "*",
+            "group": "Inputs",
+            "index": 4
+          },
+          {
+            "name": "in-body",
+            "displayName": "body",
+            "plug": "input",
+            "type": "*",
+            "group": "Inputs",
+            "index": 5
+          },
+          {
+            "name": "in-link",
+            "displayName": "link",
+            "plug": "input",
+            "type": "*",
+            "group": "Inputs",
+            "index": 6
+          },
+          {
+            "name": "out-result",
+            "displayName": "result",
+            "plug": "output",
+            "type": "*",
+            "group": "Outputs",
+            "index": 7
+          }
+        ]
+      },
+      {
+        "id": "8ef1a1e5-d02f-5109-5560-2f7a8c57df91",
+        "type": "JavaScriptFunction",
+        "x": 447.35955383116027,
+        "y": 474.4219568737351,
+        "parameters": {
+          "functionScript": "window.wasClicked = function(type) {\n  Outputs.clicked();\n  Outputs.outlink = type;\n};"
+        },
+        "dynamicports": [
+          {
+            "name": "out-clicked",
+            "displayName": "clicked",
+            "plug": "output",
+            "type": "signal",
+            "group": "Outputs",
+            "index": 4
+          },
+          {
+            "name": "out-outlink",
+            "displayName": "outlink",
+            "plug": "output",
+            "type": "*",
+            "group": "Outputs",
+            "index": 5
+          }
+        ]
+      },
+      {
+        "id": "a51ee561-d479-6274-84fa-f2228be00bde",
+        "type": "Event Sender",
+        "label": "outlink clicked",
+        "x": 670.5343139113978,
+        "y": 470.6387834869101,
+        "parameters": {
+          "channelName": "outlink clicked"
+        }
+      }
+    ]
+  },
+  "connections": {
+    "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+    "componentId": "78dd9fc2-12fc-e90b-f4c3-71fa2a8823bc",
+    "version": 1,
+    "connections": [
+      {
+        "fromId": "982babae-08ae-3542-94b8-db2c810309eb",
+        "fromProperty": "onClick",
+        "toId": "9e333d4b-59ac-94e0-ecd3-f5b491d0f3e8",
+        "toProperty": "close"
+      },
+      {
+        "fromId": "e2100ed9-4889-1421-1d57-7e5e2751bbd8",
+        "fromProperty": "formatted",
+        "toId": "b9698eae-d6e5-9a4d-362e-49aa02543893",
+        "toProperty": "link"
+      },
+      {
+        "fromId": "827b30c8-8fd8-d0c2-3104-a582a732188b",
+        "fromProperty": "value",
+        "toId": "e2100ed9-4889-1421-1d57-7e5e2751bbd8",
+        "toProperty": "slug"
+      },
+      {
+        "fromId": "323aac13-c6f5-def0-1ab2-be46cb704641",
+        "fromProperty": "prop-article",
+        "toId": "ca502e99-0511-363e-700e-0babda36a6a9",
+        "toProperty": "in-article"
+      },
+      {
+        "fromId": "323aac13-c6f5-def0-1ab2-be46cb704641",
+        "fromProperty": "fetched",
+        "toId": "ca502e99-0511-363e-700e-0babda36a6a9",
+        "toProperty": "run"
+      },
+      {
+        "fromId": "997702c7-e624-e2f5-b68a-874b78d7c9a5",
+        "fromProperty": "value",
+        "toId": "323aac13-c6f5-def0-1ab2-be46cb704641",
+        "toProperty": "modelId"
+      },
+      {
+        "fromId": "ca502e99-0511-363e-700e-0babda36a6a9",
+        "fromProperty": "out-coverImage",
+        "toId": "2e96ecf4-3940-a0f7-ee4d-9d8c2e5918f2",
+        "toProperty": "src"
+      },
+      {
+        "fromId": "ca502e99-0511-363e-700e-0babda36a6a9",
+        "fromProperty": "out-articleTitle",
+        "toId": "2aa7ce4f-53ef-8a5f-dc4e-21d8a475b82b",
+        "toProperty": "text"
+      },
+      {
+        "fromId": "5a5b63c5-450c-da84-5161-79824268618d",
+        "fromProperty": "formatted",
+        "toId": "48709706-1cc8-ceef-d3fe-aacd164c62b3",
+        "toProperty": "source"
+      },
+      {
+        "fromId": "ca502e99-0511-363e-700e-0babda36a6a9",
+        "fromProperty": "out-articleAuthor",
+        "toId": "5a5b63c5-450c-da84-5161-79824268618d",
+        "toProperty": "author"
+      },
+      {
+        "fromId": "ca502e99-0511-363e-700e-0babda36a6a9",
+        "fromProperty": "out-verified",
+        "toId": "5a5b63c5-450c-da84-5161-79824268618d",
+        "toProperty": "verifiedBy"
+      },
+      {
+        "fromId": "1eb7eeee-702b-6f54-3ff8-ffc983a39774",
+        "fromProperty": "out-formattedDate",
+        "toId": "00a25f65-d528-db0e-3cdc-d8878e4eb4d9",
+        "toProperty": "text"
+      },
+      {
+        "fromId": "ca502e99-0511-363e-700e-0babda36a6a9",
+        "fromProperty": "out-publishedAt",
+        "toId": "1eb7eeee-702b-6f54-3ff8-ffc983a39774",
+        "toProperty": "in-date"
+      },
+      {
+        "fromId": "a34fe61c-3eab-6dce-808f-6554f2d0d750",
+        "fromProperty": "out-doShowCopiedPopup",
+        "toId": "9c8643b9-0531-f3cc-43da-71ed696faef5",
+        "toProperty": "show"
+      },
+      {
+        "fromId": "86bb125b-f5b4-4ba4-587f-0afef3ea918a",
+        "fromProperty": "value",
+        "toId": "daac7c16-ad41-5385-ed2d-622b0dff16e2",
+        "toProperty": "slug"
+      },
+      {
+        "fromId": "daac7c16-ad41-5385-ed2d-622b0dff16e2",
+        "fromProperty": "formatted",
+        "toId": "a34fe61c-3eab-6dce-808f-6554f2d0d750",
+        "toProperty": "in-link"
+      },
+      {
+        "fromId": "342f72e3-2b12-4515-e601-d845f31a49a1",
+        "fromProperty": "out-result",
+        "toId": "158b8308-c1a6-c26a-1b99-016d3d80b68f",
+        "toProperty": "html"
+      },
+      {
+        "fromId": "ca502e99-0511-363e-700e-0babda36a6a9",
+        "fromProperty": "out-articleTitle",
+        "toId": "342f72e3-2b12-4515-e601-d845f31a49a1",
+        "toProperty": "in-title"
+      },
+      {
+        "fromId": "ca502e99-0511-363e-700e-0babda36a6a9",
+        "fromProperty": "out-bodyText",
+        "toId": "342f72e3-2b12-4515-e601-d845f31a49a1",
+        "toProperty": "in-body"
+      },
+      {
+        "fromId": "daac7c16-ad41-5385-ed2d-622b0dff16e2",
+        "fromProperty": "formatted",
+        "toId": "342f72e3-2b12-4515-e601-d845f31a49a1",
+        "toProperty": "in-link"
+      },
+      {
+        "fromId": "8ef1a1e5-d02f-5109-5560-2f7a8c57df91",
+        "fromProperty": "out-clicked",
+        "toId": "a51ee561-d479-6274-84fa-f2228be00bde",
+        "toProperty": "sendEvent"
+      },
+      {
+        "fromId": "c1b3e8e9-76e7-f090-9faf-dd3d05970409",
+        "fromProperty": "onClick",
+        "toId": "a51ee561-d479-6274-84fa-f2228be00bde",
+        "toProperty": "sendEvent"
+      },
+      {
+        "fromId": "cec43a2e-30e9-4395-b3cf-95a61ecefdd5",
+        "fromProperty": "onClick",
+        "toId": "a34fe61c-3eab-6dce-808f-6554f2d0d750",
+        "toProperty": "run"
+      }
+    ]
+  }
+}

@@ -1,28 +1,61 @@
-import algoliasearch from 'algoliasearch/lite';
+/**
+ * The `?` button in the editor's bottom-right.
+ *
+ * Two tasks arrived at this file independently and reached the same verdict:
+ * POL-002 (phase 39) and ALPHA-006 §6 / finding F69 (phase 33). What it used to
+ * be: eleven menu items, a full Algolia search modal wired to index `docs_2-9`
+ * (Noodl's documentation index, with Noodl's app id and API key hardcoded here),
+ * `docs.noodl.net/${version}/…` URLs built from `platform.getVersion().slice(0, 3)`
+ * — which is `"0.1"`, so they would have 404'd even on a domain we owned — plus
+ * `forum.noodl.net` and `noodl.net/support`. None of it was ours, none of it
+ * resolved, and the search box was the only data flow in PRIVACY.md that ever
+ * carried text the user typed.
+ *
+ * POL-002 landed first and owns the shape: three destinations, one source of
+ * truth (`EXTERNAL_LINKS`, shared with the launcher footer), no search. A docs
+ * search is worth having back once there is an index of our own to search; it is
+ * not worth keeping a dependency on someone else's.
+ *
+ * ALPHA-006 §6 adds the second group: the repository's issue forms. Those are
+ * the product's only working feedback channel that lives on our side of the
+ * fence, so they belong in the one menu a user actually finds. Deliberately
+ * *not* deep links into the docs site — POL-002 removed the last set of
+ * versioned docs paths precisely because nothing verified they resolved, and
+ * `EXTERNAL_LINKS.docs` is the one URL that is known to.
+ *
+ * Note that this is not the richer report path: ALPHA-007 §1 puts
+ * `Help → Report a problem…` in the *native* menu, where the main process can
+ * screenshot the editor in the click handler before any dialog paints over the
+ * evidence. That capture cannot be triggered from the renderer, so it is not
+ * offered here; these entries open the plain GitHub forms.
+ */
+
 import React, { useRef, useState } from 'react';
-import { InstantSearch, Hits, Highlight, useSearchBox, Configure } from 'react-instantsearch-hooks-web';
 import { platform } from '@noodl/platform';
 
 import { IconName, IconSize } from '@noodl-core-ui/components/common/Icon';
 import { IconButton, IconButtonVariant } from '@noodl-core-ui/components/inputs/IconButton';
-import { PrimaryButton, PrimaryButtonSize } from '@noodl-core-ui/components/inputs/PrimaryButton';
-import { SearchInput } from '@noodl-core-ui/components/inputs/SearchInput';
-import Modal from '@noodl-core-ui/components/layout/Modal/Modal';
 import { Portal } from '@noodl-core-ui/components/layout/Portal';
 import { MenuDialog } from '@noodl-core-ui/components/popups/MenuDialog';
-import { Label, LabelSize } from '@noodl-core-ui/components/typography/Label';
-import { Text, TextType } from '@noodl-core-ui/components/typography/Text';
-import { Title, TitleSize } from '@noodl-core-ui/components/typography/Title';
+import { EXTERNAL_LINKS } from '@noodl-core-ui/constants/externalLinks';
 
 import css from './HelpCenter.module.scss';
 
-export function HelpCenter() {
-  const rootRef = useRef();
-  const [version] = useState(platform.getVersion().slice(0, 3));
-  const [isDialogVisible, setIsDialogVisible] = useState(false);
-  const [isSearchModalVisible, setIsSearchModalVisible] = useState(false);
+/**
+ * This repository. The issue forms below live in `.github/ISSUE_TEMPLATE/`;
+ * `blank_issues_enabled` is on, so `issues/new/choose` is a valid fallback if a
+ * form is ever renamed.
+ */
+const REPO_URL = 'https://github.com/The-Low-Code-Foundation/NodeGX';
 
-  const searchClient = algoliasearch('D29X2LNM4J', '7984d5feef068e1161527316bb9a1a4d');
+/** File an issue against one of `.github/ISSUE_TEMPLATE/`'s forms. */
+function issueForm(template: string): string {
+  return `${REPO_URL}/issues/new?template=${template}`;
+}
+
+export function HelpCenter() {
+  const rootRef = useRef<HTMLDivElement>(null);
+  const [isDialogVisible, setIsDialogVisible] = useState(false);
 
   const portalRoot = document.querySelector('.help-center-layer');
 
@@ -34,137 +67,23 @@ export function HelpCenter() {
         <IconButton icon={IconName.QuestionFree} variant={IconButtonVariant.OpaqueOnHover} size={IconSize.Large} />
       </div>
 
-      <Modal
-        isVisible={isSearchModalVisible}
-        onClose={() => {
-          // small hack to prevent some memory leaks when closing modal
-          // while InstantSearch is still running
-          // not the best solution ever, but at least its quick and dirty
-          setTimeout(() => setIsSearchModalVisible(false), 100);
-        }}
-        title="Search Help Center"
-      >
-        <InstantSearch searchClient={searchClient} indexName="docs_2-9">
-          <SearchView />
-        </InstantSearch>
-      </Modal>
-
       <MenuDialog
         triggerRef={rootRef}
         isVisible={isDialogVisible}
         onClose={() => setIsDialogVisible(false)}
         items={[
-          { label: 'Quick search docs', icon: IconName.Search, onClick: () => setIsSearchModalVisible(true) },
+          { label: 'Documentation', onClick: () => platform.openExternal(EXTERNAL_LINKS.docs) },
+          { label: 'YouTube', onClick: () => platform.openExternal(EXTERNAL_LINKS.youtube) },
+          { label: 'Discord', onClick: () => platform.openExternal(EXTERNAL_LINKS.discord) },
           'divider',
+          { label: 'Report a bug', onClick: () => platform.openExternal(issueForm('bug_report.yml')) },
           {
-            label: 'Getting started',
-            onClick: () => platform.openExternal(`https://docs.noodl.net/${version}/docs/getting-started/overview`)
+            label: 'Report a node behaving wrongly',
+            onClick: () => platform.openExternal(issueForm('node_report.yml'))
           },
-          {
-            label: 'YouTube videos',
-            onClick: () => platform.openExternal('https://www.youtube.com/channel/UCLkJ8XYV1J1RqrZKY-o1YWg/playlists')
-          },
-          {
-            label: 'Guides',
-            onClick: () => platform.openExternal(`https://docs.noodl.net/${version}/docs/learn`)
-          },
-          'divider',
-          {
-            label: 'Ask the community (Discord)',
-            onClick: () => platform.openExternal('https://discord.com/invite/23xU2hYrSJ')
-          },
-          { label: 'Support forum', onClick: () => platform.openExternal('https://forum.noodl.net/') },
-          'divider',
-          {
-            label: 'Release notes',
-            onClick: () => platform.openExternal(`https://docs.noodl.net/${version}/whats-new/`)
-          },
-          { label: 'Contact support', onClick: () => platform.openExternal('https://www.noodl.net/support') }
+          { label: 'Suggest a feature', onClick: () => platform.openExternal(issueForm('feature_request.yml')) }
         ]}
       />
     </Portal>
-  );
-}
-
-function SearchView(props) {
-  const { query, refine } = useSearchBox(props);
-
-  return (
-    <>
-      <SearchInput value={query} onChange={(value) => refine(value)} isAutoFocus />
-
-      <Configure
-        restrictSearchableAttributes={['content']}
-        attributesToRetrieve={['content', 'hierarchy', 'url']}
-        hitsPerPage={10}
-      />
-      {Boolean(query) && (
-        <div className={css['ResultContainer']}>
-          <Hits hitComponent={Hit} />
-        </div>
-      )}
-
-      <div className={css['MessageContainer']}>
-        <div className={css['Message']}>
-          <Title hasBottomSpacing size={TitleSize.Large}>
-            {query ? "Can't find what you're looking for?" : "Don't know what you're looking for?"}
-          </Title>
-          <Label>Browse our docs or reach out on Discord</Label>
-
-          <div className={css['Buttons']}>
-            <PrimaryButton label="Visit docs" href="https://docs.noodl.net" hasRightSpacing />
-            <PrimaryButton label="Join our Discord" href="https://discord.com/invite/23xU2hYrSJ" />
-          </div>
-        </div>
-      </div>
-    </>
-  );
-}
-
-type Hit = {
-  url?: string;
-  hierarchy?: {
-    lvl0?: string;
-    lvl1?: string;
-    lvl2?: string;
-    lvl3?: string;
-    lvl4?: string;
-    lvl5?: string;
-    lvl6?: string;
-  };
-};
-
-interface HitProps {
-  hit: Hit;
-  sendEvent: (eventType: string, hits: Hit | Hit[], eventName?: string) => void;
-}
-
-function Hit({ hit, sendEvent }: HitProps) {
-  return (
-    <div className={css['SearchHit']}>
-      <div className={css['HitTitle']}>
-        <div>
-          <Label size={LabelSize.Small} variant={TextType.Secondary} hasBottomSpacing>
-            {hit.hierarchy.lvl1}
-          </Label>
-          <Title size={TitleSize.Large} hasBottomSpacing>
-            {hit.hierarchy.lvl2}
-            {!hit.hierarchy.lvl2 && hit.hierarchy.lvl1}
-          </Title>
-        </div>
-
-        <PrimaryButton
-          label="Read full docs"
-          size={PrimaryButtonSize.Small}
-          onClick={() => {
-            platform.openExternal(hit.url);
-            sendEvent('clickedObjectIDsAfterSearch', hit, 'editor-docs-search');
-          }}
-        />
-      </div>
-      <Text>
-        <Highlight attribute="content" hit={hit as any} />
-      </Text>
-    </div>
   );
 }

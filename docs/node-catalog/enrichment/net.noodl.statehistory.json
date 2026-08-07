@@ -1,0 +1,38 @@
+{
+  "typeName": "net.noodl.StateHistory",
+  "summary": "Records a bounded history of a store's state so it can be undone, redone or stepped through, and reports what it cannot fully restore.",
+  "description": "Watches a store and records an entry per commit, keeping `entries[currentIndex]` always equal to live state. History is bounded by `maxHistory` (default 50): the oldest entry is dropped first, never the current one, and lowering the bound while you are mid-travel drops the redo tail instead. A new write truncates the redo stack, as undo/redo everywhere does. An undo is an ordinary store commit — every other subscriber sees it as a normal change, not a special replay — so nothing in the graph needs to know time travel exists. Where it is honest rather than magical: values that can only be captured by reference (Models, Collections, functions, cyclic objects) are *not* deep-copied, so undoing does not restore their internal state. `fullyRestorable` and `byReferenceKeys` say exactly which keys those are, rather than letting the feature quietly under-deliver. Coalescing (`coalesceMs`, off by default) folds rapid same-key writes into one entry so undo steps match user intent instead of keystrokes — and never folds into the entry a navigation just landed on, which would destroy the state you had just undone to.",
+  "whenToUse": "Undo/redo over shared state — a form, an editor, a builder, a drawing surface — and stepping back through state while debugging. Place one per store you want tracked; wire the Undo / Redo node to the buttons. For a single named checkpoint rather than a moving history, use State Snapshot. Check `fullyRestorable` before advertising undo over state that holds Collections or Models.",
+  "ports": {
+    "storeName": "The store to track. Tracking is reference-counted, so a second State History node on the same store does not wipe the first one's history.",
+    "trackKeys": "Comma-separated keys to track; empty tracks the whole store. Only tracked keys are restored, so a filtered history leaves everything else alone.",
+    "maxHistory": "Entries kept, default 50, floor 2. This is a memory bound: an unbounded history in a long-running app grows without limit.",
+    "coalesceMs": "Window in which consecutive writes to the same keys fold into one entry. 0 (default) records every commit separately. Set it to roughly a typing pause when undo should step by word rather than by character.",
+    "enabled": "False pauses recording without discarding history. Resuming records an entry if state drifted while paused, so the history never claims a change did not happen.",
+    "clearHistory": "Discards every entry and starts again from live state.",
+    "done": "Signal; the history was thrown away and re-baselined.",
+    "unchanged": "Signal; there was nothing to throw away, because the history was already just its baseline.",
+    "completed": "Signal; fires after either outcome. There is no Failure port — this node is the tracker for its own store name, so there is no store it can be asked for and fail to find.",
+    "historySize": "How many entries exist.",
+    "currentIndex": "Where in the history live state sits. Not at the end means you are mid-travel and a new write will truncate the redo tail.",
+    "canUndo": "Whether an earlier entry exists — wire it to the Undo button's enabled state rather than guessing.",
+    "canRedo": "Whether a later entry exists.",
+    "fullyRestorable": "False when any tracked key in the history could only be captured by reference, so undo cannot fully restore it.",
+    "byReferenceKeys": "Which keys those are. Show this rather than letting an author believe undo is total.",
+    "history": "Entry descriptors (not the states themselves) for building a timeline UI, each flagged with whether it is partial.",
+    "historyChanged": "Fires when an entry is added, dropped, or the current position moves."
+  },
+  "patterns": [
+    "`canUndo`/`canRedo` → the buttons' enabled state, so the affordance matches reality.",
+    "`coalesceMs` around 300–500 for text input, so an undo removes a word rather than a letter.",
+    "`history` → a Repeater for a visible timeline, with `currentIndex` marking where you are.",
+    "Surface `byReferenceKeys` in a developer-facing view when the store holds Collections, instead of discovering the limit through a confusing undo."
+  ],
+  "antiPatterns": [
+    "Leaving `maxHistory` unbounded-by-intent in a long-running app: every entry is retained state.",
+    "Assuming undo restores everything. A key listed in `byReferenceKeys` shares its object with the entry, so its internal state was never copied.",
+    "Tracking the whole store when only a form's keys need undoing — unrelated writes then become undo steps the user did not make."
+  ],
+  "examples": ["agent-store-shared-state"],
+  "relatedNodes": ["net.noodl.StateHistory.Undo", "net.noodl.StateSnapshot", "net.noodl.GlobalStore", "net.noodl.OptimisticUpdate"]
+}

@@ -1,25 +1,25 @@
-import React from 'react';
+import classNames from 'classnames';
+import React, { useState } from 'react';
 
-import { FeedbackType } from '@noodl-constants/FeedbackType';
-
-import { Card, CardBackground } from '@noodl-core-ui/components/common/Card';
-import { Icon, IconName, IconSize } from '@noodl-core-ui/components/common/Icon';
-import { IconButton } from '@noodl-core-ui/components/inputs/IconButton';
-import { PrimaryButton, PrimaryButtonSize, PrimaryButtonVariant } from '@noodl-core-ui/components/inputs/PrimaryButton';
-import { TextButton, TextButtonSize } from '@noodl-core-ui/components/inputs/TextButton';
+import { Chip, ChipVariant } from '@noodl-core-ui/components/common/Chip';
 import { DialogRenderDirection } from '@noodl-core-ui/components/layout/BaseDialog';
-import { Box } from '@noodl-core-ui/components/layout/Box';
-import { Columns } from '@noodl-core-ui/components/layout/Columns';
-import { HStack, Stack, VStack } from '@noodl-core-ui/components/layout/Stack';
 import { ContextMenu, ContextMenuProps } from '@noodl-core-ui/components/popups/ContextMenu';
-import { Tooltip } from '@noodl-core-ui/components/popups/Tooltip';
-import { Label, LabelSize, LabelSpacingSize } from '@noodl-core-ui/components/typography/Label';
-import { Text, TextSize, TextType } from '@noodl-core-ui/components/typography/Text';
-import { Title, TitleSize } from '@noodl-core-ui/components/typography/Title';
-import { UserBadgeProps, UserBadgeSize } from '@noodl-core-ui/components/user/UserBadge';
-import { UserBadgeList } from '@noodl-core-ui/components/user/UserBadgeList';
+import { UserBadgeProps } from '@noodl-core-ui/components/user/UserBadge';
+import {
+  hasUsableCapture,
+  isBlankCapture,
+  placeholderBucket,
+  projectInitial
+} from '@noodl-core-ui/utils/projectThumbnail';
 
 import css from './LauncherProjectCard.module.scss';
+
+// Runtime version detection types
+export interface RuntimeVersionInfo {
+  version: 'react17' | 'react19' | 'unknown';
+  confidence: 'high' | 'medium' | 'low';
+  indicators: string[];
+}
 
 // FIXME: Use the timeSince function from the editor package when this is moved there
 function timeSince(date: Date | number) {
@@ -69,141 +69,97 @@ export interface LauncherProjectData {
   uncommittedChangesAmount?: number;
   imageSrc: string;
   contributors?: UserBadgeProps[];
+  runtimeInfo?: RuntimeVersionInfo;
 }
 
 export interface LauncherProjectCardProps extends LauncherProjectData {
   contextMenuItems: ContextMenuProps[];
+  onClick?: () => void;
+  runtimeInfo?: RuntimeVersionInfo;
+  onMigrateProject?: () => void;
+  onOpenReadOnly?: () => void;
 }
 
+
+const WarningTriangle = (
+  <svg width="10" height="10" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+    <path d="M8 1.6 15 14H1L8 1.6Zm0 4.1c-.5 0-.8.3-.8.8l.2 3h1.2l.2-3c0-.5-.3-.8-.8-.8Zm0 6.6a.9.9 0 1 0 0-1.8.9.9 0 0 0 0 1.8Z" />
+  </svg>
+);
+
 export function LauncherProjectCard({
-  id,
   title,
   cloudSyncMeta,
   lastOpened,
-  pullAmount,
-  pushAmount,
-  uncommittedChangesAmount,
   imageSrc,
   contextMenuItems,
-  contributors
+  runtimeInfo,
+  onClick
 }: LauncherProjectCardProps) {
+  // Start from whether the incoming capture is usable; an <img> load error flips
+  // this off at runtime so a dead URL still resolves to the placeholder.
+  const [showCapture, setShowCapture] = useState(() => hasUsableCapture(imageSrc));
+
+  const bucket = placeholderBucket(title);
+  const isLocal = cloudSyncMeta.type === CloudSyncType.None;
+  const isReact17 = runtimeInfo?.version === 'react17';
+
+  function handleKeyDown(e: React.KeyboardEvent) {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      onClick?.();
+    }
+  }
+
   return (
-    <Card
-      background={CardBackground.Bg2}
-      hoverBackground={CardBackground.Bg3}
-      onClick={() => alert('FIXME: open project')}
+    <div
+      className={css['Card']}
+      role="button"
+      tabIndex={0}
+      onClick={onClick}
+      onKeyDown={handleKeyDown}
+      data-test="launcher-project-card"
     >
-      <Stack direction="row">
-        <div className={css.Image} style={{ backgroundImage: `url(${imageSrc})` }} />
+      <div className={classNames(css['Thumb'], !showCapture && css[`hue-${bucket}`])}>
+        {showCapture ? (
+          <img
+            className={css['ThumbImage']}
+            src={imageSrc}
+            alt=""
+            onError={() => setShowCapture(false)}
+            onLoad={(e) => {
+              if (isBlankCapture(e.currentTarget)) setShowCapture(false);
+            }}
+          />
+        ) : (
+          <span className={css['Ghost']} aria-hidden="true">
+            {projectInitial(title)}
+          </span>
+        )}
+      </div>
 
-        <div className={css.Details}>
-          <Columns layoutString="1 1 1" hasXGap={4}>
-            <div>
-              <Title hasBottomSpacing size={TitleSize.Medium}>
-                {title}
-              </Title>
-              <Label variant={TextType.Shy}>Last opened {timeSince(new Date(lastOpened))} ago</Label>
-            </div>
-
-            <div>
-              {cloudSyncMeta.type === CloudSyncType.None && (
-                <div>
-                  <Label hasBottomSpacing>None</Label>
-                  <HStack UNSAFE_style={{ alignItems: 'center' }} hasSpacing={1}>
-                    <Icon icon={IconName.WarningCircle} variant={TextType.Shy} size={IconSize.Tiny} />
-                    <Label variant={TextType.Shy}>Project is only local</Label>
-                  </HStack>
-                </div>
-              )}
-
-              {cloudSyncMeta.type === CloudSyncType.Git && (
-                <div className={css.TypeDisplay}>
-                  <TextButton
-                    label="Open Git repo"
-                    size={TextButtonSize.Small}
-                    icon={IconName.ExternalLink}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      alert('FIXME: Link to repo?');
-                    }}
-                  />
-                </div>
-              )}
-
-              <HStack hasSpacing={4} UNSAFE_style={{ paddingLeft: 4 }}>
-                {Boolean(pullAmount) && (
-                  <Tooltip
-                    content={`${pullAmount} unpulled commits`}
-                    showAfterMs={200}
-                    UNSAFE_className={css.VersionControlTooltip}
-                  >
-                    <HStack UNSAFE_style={{ alignItems: 'center' }}>
-                      <Icon icon={IconName.CloudDownload} variant={FeedbackType.Notice} size={IconSize.Tiny} />
-                      <Label hasLeftSpacing={LabelSpacingSize.Small} variant={FeedbackType.Notice}>
-                        {pullAmount}
-                      </Label>
-                    </HStack>
-                  </Tooltip>
-                )}
-
-                {Boolean(pushAmount) && (
-                  <Tooltip
-                    content={`${pushAmount} unpushed local commits`}
-                    showAfterMs={200}
-                    UNSAFE_className={css.VersionControlTooltip}
-                  >
-                    <HStack UNSAFE_style={{ alignItems: 'center' }}>
-                      <Icon icon={IconName.CloudUpload} variant={FeedbackType.Danger} size={IconSize.Tiny} />
-                      <Label hasLeftSpacing={LabelSpacingSize.Small} variant={FeedbackType.Danger}>
-                        {pushAmount}
-                      </Label>
-                    </HStack>
-                  </Tooltip>
-                )}
-
-                {Boolean(uncommittedChangesAmount) && (
-                  <Tooltip
-                    content={`${uncommittedChangesAmount} uncommitted changes`}
-                    showAfterMs={200}
-                    UNSAFE_className={css.VersionControlTooltip}
-                  >
-                    <HStack UNSAFE_style={{ alignItems: 'center' }}>
-                      <Icon
-                        icon={IconName.WarningCircle}
-                        variant={FeedbackType.Danger}
-                        size={IconSize.Tiny}
-                        UNSAFE_className={css.VersionControlTooltip}
-                      />
-                      <Label hasLeftSpacing={LabelSpacingSize.Small} variant={FeedbackType.Danger}>
-                        {uncommittedChangesAmount}
-                      </Label>
-                    </HStack>
-                  </Tooltip>
-                )}
-              </HStack>
-            </div>
-
-            <HStack UNSAFE_style={{ justifyContent: 'space-between', alignItems: 'center' }} hasSpacing={4}>
-              <HStack UNSAFE_style={{ alignItems: 'center' }} hasSpacing={2}>
-                {/* FIXME: get default user data from user object */}
-                <UserBadgeList
-                  badges={contributors || [{ name: 'Tore Knudsen', email: 'tore@noodl.net', id: 'Tore' }]}
-                  size={UserBadgeSize.Medium}
-                  maxVisible={4}
-                />
-
-                {!Boolean(contributors) && <Label variant={TextType.Shy}>(Only you)</Label>}
-              </HStack>
-
-              {Boolean(contextMenuItems) && (
-                <div>
-                  <ContextMenu renderDirection={DialogRenderDirection.Below} menuItems={contextMenuItems} />
-                </div>
-              )}
-            </HStack>
-          </Columns>
+      <div className={css['Meta']}>
+        <div className={css['Info']}>
+          <span className={css['Name']} title={title}>
+            {title}
+          </span>
+          <span className={css['Sub']}>
+            <span className={css['Edited']}>Edited {timeSince(new Date(lastOpened))} ago</span>
+            {isLocal && <Chip label="Local only" variant={ChipVariant.Neutral} />}
+            {isReact17 && <Chip label="React 17 runtime" variant={ChipVariant.Warning} icon={WarningTriangle} />}
+          </span>
         </div>
-      </Stack>
-    </Card>
+
+        {Boolean(contextMenuItems) && (
+          <div
+            className={css['Kebab']}
+            onClick={(e) => e.stopPropagation()}
+            onKeyDown={(e) => e.stopPropagation()}
+          >
+            <ContextMenu renderDirection={DialogRenderDirection.Below} menuItems={contextMenuItems} />
+          </div>
+        )}
+      </div>
+    </div>
   );
 }

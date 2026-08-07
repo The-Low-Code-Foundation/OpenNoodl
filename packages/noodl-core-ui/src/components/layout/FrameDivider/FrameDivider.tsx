@@ -52,6 +52,8 @@ export interface FrameDividerProps {
   onResize?: (bounds: FrameDividerRects) => void;
   onSizeChanged: (size: number) => void;
   onBoundsChanged?: (bounds: DOMRect) => void;
+  /** PNL-003: double-clicking the handle is the mouse equivalent of the wide toggle. */
+  onDividerDoubleClick?: () => void;
 }
 
 function setCssVariables(
@@ -209,7 +211,8 @@ export function FrameDivider({
   onDragEnd,
   onResize,
   onSizeChanged,
-  onBoundsChanged
+  onBoundsChanged,
+  onDividerDoubleClick
 }: FrameDividerProps) {
   // TODO: Create a custom hook for this? (hash)
   const [hash] = useState(() =>
@@ -436,6 +439,7 @@ export function FrameDivider({
           !horizontal && css['is-vertical']
         ])}
         onMouseDown={startDragging}
+        onDoubleClick={onDividerDoubleClick}
       >
         <div className={classNames([css['DividerBorder']])}></div>
         <div className={classNames([css['DividerHighlight']])}></div>

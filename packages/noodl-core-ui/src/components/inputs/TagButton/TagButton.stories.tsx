@@ -1,17 +1,18 @@
-import React from 'react';
-import { ComponentStory, ComponentMeta } from '@storybook/react';
+import type { Meta, StoryObj } from '@storybook/react';
 
 import { TagButton } from './TagButton';
 
-export default {
+const meta: Meta<typeof TagButton> = {
   title: 'Inputs/Tag Button',
   component: TagButton,
   argTypes: {},
-} as ComponentMeta<typeof TagButton>;
+};
 
-const Template: ComponentStory<typeof TagButton> = (args) => <TagButton {...args} />;
+export default meta;
+type Story = StoryObj<typeof meta>;
 
-export const Common = Template.bind({});
-Common.args = {
-  label: 'Hello World',
+export const Common: Story = {
+  args: {
+    label: 'Hello World',
+  },
 };

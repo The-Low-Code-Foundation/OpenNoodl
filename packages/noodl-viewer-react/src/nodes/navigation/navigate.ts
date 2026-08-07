@@ -1,0 +1,459 @@
+import type {
+  EditorConnectionLike,
+  GraphModelLike,
+  GraphNodeModel,
+  NodeContextLike,
+  NodeDefinitionOptions,
+  NodeInstance,
+  NodeModule,
+  NodeOutcome,
+  OutcomeFailureOptions,
+  OutcomeToken
+} from '@noodl/types';
+import { outcomeOutputs } from '@noodl/runtime/src/outcome';
+
+import NavigationHandler from './navigation-handler';
+import Transitions from './transitions';
+
+/** A port in the editor's wire format, as pushed by `sendDynamicPorts`. */
+interface DynamicPort {
+  name: string;
+  plug: 'input' | 'output';
+  type?: unknown;
+  displayName?: string;
+  group?: string;
+  default?: unknown;
+}
+
+/** One row of the Component Stack's `pages` proplist parameter. */
+interface PageListItem {
+  id: string;
+  label: string;
+}
+
+/** One `Navigate` invocation's worth of tokens, and whether it has been settled. */
+interface PendingNavigation {
+  tokens: OutcomeToken[];
+  settled: boolean;
+}
+
+interface NavigateInstance extends NodeInstance {
+  _internal: {
+    transitionParams: Record<string, unknown>;
+    pageParams: Record<string, unknown>;
+    backResults: Record<string, unknown>;
+    stack?: string;
+    navigationMode?: string;
+    target?: string;
+    transition?: string;
+    hasScheduledNavigate?: boolean;
+    /** ERG-001 §4 — tokens for the presses this frame; see `scheduleNavigate`. */
+    pendingOutcomes?: OutcomeToken[];
+    /** Message for the `Error` output; see NDA-004. */
+    lastError?: string;
+  };
+  scheduleNavigate(outcome: OutcomeToken): void;
+  navigate(pending: PendingNavigation): void;
+  settle(pending: PendingNavigation, outcome: NodeOutcome, options?: OutcomeFailureOptions): void;
+  reportFailure(pending: PendingNavigation, code: string, message: string): void;
+  setTransitionParam(param: string, value: unknown): void;
+  setPageParam(param: string, value: unknown): void;
+  getBackResult(param: string): unknown;
+  setTargetPageId(pageId: string): void;
+  setTransition(value: string): void;
+}
+
+const Navigate: NodeDefinitionOptions = {
+  name: 'PageStackNavigate',
+  displayNodeName: 'Push Component To Stack',
+  category: 'Navigation',
+  docs: 'https://docs.noodl.net/nodes/component-stack/push-component',
+  initialize: function (this: NavigateInstance) {
+    this._internal.transitionParams = {};
+    this._internal.pageParams = {};
+    this._internal.backResults = {};
+  },
+  inputs: {
+    stack: {
+      type: { name: 'string', identifierOf: 'PackStack' },
+      displayName: 'Stack',
+      group: 'General',
+      default: 'Main',
+      description: 'Name of the Component Stack to navigate; leave blank for the one named Main',
+      set: function (this: NavigateInstance, value: string) {
+        this._internal.stack = value;
+      }
+    },
+    mode: {
+      type: {
+        name: 'enum',
+        enums: [
+          { label: 'Push', value: 'push' },
+          { label: 'Replace', value: 'replace' }
+        ]
+      },
+      displayName: 'Mode',
+      default: 'push',
+      group: 'General',
+      description: 'Push adds the target on top of the stack, Replace swaps it for the component currently showing',
+      set: function (this: NavigateInstance, value: string) {
+        this._internal.navigationMode = value;
+      }
+    },
+    navigate: {
+      displayName: 'Navigate',
+      group: 'Actions',
+      description: 'Navigates the Component Stack to Target Page',
+      valueChangedToTrue: function (this: NavigateInstance) {
+        this.scheduleNavigate(this.beginOutcome());
+      }
+    }
+  },
+  // NDA-004 §2: `Navigated` had no counterpart, so a push that the stack dropped — no
+  // components configured, a Target Page that does not resolve, a navigation already
+  // animating — was indistinguishable from one that worked. The trigger is an author `Do`
+  // (`Navigate`, group `Actions`), so this port cannot fire on the boot path.
+  //
+  // ⚠️ ERG-001 §4 renamed `navigated` to `done` — see `router-navigate.ts` for the decision; it
+  // applies to the whole navigation family or to none of it.
+  outputs: {
+    ...outcomeOutputs({
+      done:
+        'Fires once the stack has switched to the target component. ⚠️ If this node lives on the ' +
+        'component being replaced it is destroyed with it, so sequence anything that must survive ' +
+        'the navigation from a node outside the stack',
+      unchanged:
+        'Fires when the stack is already showing that component with those parameters, so it was not pushed again',
+      failure:
+        'Fires when no Target Page is set, the stack has no components configured, or a navigation is still animating'
+    }),
+    error: {
+      type: 'string',
+      displayName: 'Error',
+      group: 'Events',
+      description: 'Why the navigation did not happen, set just before Failure fires',
+      getter: function (this: NavigateInstance) {
+        return this._internal.lastError;
+      }
+    }
+  },
+  methods: {
+    /**
+     * End this invocation, at most once.
+     *
+     * ⚠️ `NavigationHandler._performNavigation` fans out over every stack registered under the
+     * name, so without this guard one press against two same-named stacks would report twice and
+     * `reportOutcome` would raise `outcome/duplicate` at an author whose app is merely unusual.
+     */
+    settle(this: NavigateInstance, pending: PendingNavigation, outcome: NodeOutcome, options?: OutcomeFailureOptions) {
+      if (pending.settled) return;
+      pending.settled = true;
+      for (const token of pending.tokens) this.reportOutcome(token, outcome, options);
+    },
+    reportFailure(this: NavigateInstance, pending: PendingNavigation, code: string, message: string) {
+      this._internal.lastError = message;
+      // Value first, signal last. `reportOutcome` raises the reason on the NDA-004 channel, so
+      // `raiseRuntimeError` is not called here as well.
+      this.flagOutputDirty('error');
+      this.settle(pending, 'failure', { code, message });
+    },
+    scheduleNavigate: function (this: NavigateInstance, outcome: OutcomeToken) {
+      const _this = this;
+      const internal = this._internal;
+      if (internal.pendingOutcomes === undefined) internal.pendingOutcomes = [];
+      internal.pendingOutcomes.push(outcome);
+
+      if (!internal.hasScheduledNavigate) {
+        internal.hasScheduledNavigate = true;
+        this.scheduleAfterInputsHaveUpdated(function () {
+          internal.hasScheduledNavigate = false;
+          const pending: PendingNavigation = { tokens: internal.pendingOutcomes || [], settled: false };
+          internal.pendingOutcomes = undefined;
+          _this.navigate(pending);
+        });
+      }
+    },
+    navigate(this: NavigateInstance, pending: PendingNavigation) {
+      if (this._internal.navigationMode === 'push' || this._internal.navigationMode === undefined) {
+        NavigationHandler.instance.navigate(this._internal.stack, {
+          target: this._internal.target,
+          transition: { ...{ type: this._internal.transition }, ...this._internal.transitionParams },
+          params: this._internal.pageParams,
+          backCallback: (action, results) => {
+            this._internal.backResults = results;
+
+            for (const key in results) {
+              if (this.hasOutput('backResult-' + key)) {
+                this.flagOutputDirty('backResult-' + key);
+              }
+            }
+
+            if (action !== undefined) this.sendSignalOnOutput(action);
+          },
+          hasNavigated: () => {
+            this.settle(pending, 'done');
+          },
+          hasUnchanged: () => {
+            this.settle(pending, 'unchanged');
+          },
+          hasFailed: (code, message) => {
+            this.reportFailure(pending, code, message);
+          }
+        });
+      } else if (this._internal.navigationMode === 'replace') {
+        NavigationHandler.instance.replace(this._internal.stack, {
+          target: this._internal.target,
+          // NDA-008 §1: replace used to forward no transition at all, which is half of why it
+          // could not animate. It defaults to `None` rather than push's `Push`, so every
+          // replace already out there behaves exactly as it did.
+          transition: { ...{ type: this._internal.transition || 'None' }, ...this._internal.transitionParams },
+          params: this._internal.pageParams,
+          hasNavigated: () => {
+            this.scheduleAfterInputsHaveUpdated(() => {
+              this.settle(pending, 'done');
+            });
+          },
+          hasUnchanged: () => {
+            this.scheduleAfterInputsHaveUpdated(() => {
+              this.settle(pending, 'unchanged');
+            });
+          },
+          hasFailed: (code, message) => {
+            this.reportFailure(pending, code, message);
+          }
+        });
+      }
+    },
+    setTransitionParam: function (this: NavigateInstance, param: string, value: unknown) {
+      this._internal.transitionParams[param] = value;
+    },
+    setPageParam: function (this: NavigateInstance, param: string, value: unknown) {
+      this._internal.pageParams[param] = value;
+    },
+    getBackResult: function (this: NavigateInstance, param: string) {
+      return this._internal.backResults[param];
+    },
+    setTargetPageId: function (this: NavigateInstance, pageId: string) {
+      this._internal.target = pageId;
+    },
+    setTransition: function (this: NavigateInstance, value: string) {
+      this._internal.transition = value;
+    },
+    registerInputIfNeeded: function (this: NavigateInstance, name: string) {
+      if (this.hasInput(name)) {
+        return;
+      }
+
+      if (name === 'target') {
+        return this.registerInput(name, {
+          set: this.setTargetPageId.bind(this)
+        });
+      } else if (name === 'transition') {
+        return this.registerInput(name, {
+          set: this.setTransition.bind(this)
+        });
+      } else if (name.startsWith('tr-')) {
+        return this.registerInput(name, {
+          set: this.setTransitionParam.bind(this, name.substring('tr-'.length))
+        });
+      } else if (name.startsWith('pm-')) {
+        return this.registerInput(name, {
+          set: this.setPageParam.bind(this, name.substring('pm-'.length))
+        });
+      }
+    }
+  }
+};
+
+function setup(context: NodeContextLike, graphModel: GraphModelLike) {
+  if (!context.editorConnection || !context.editorConnection.isRunningLocally()) {
+    return;
+  }
+  const editorConnection: EditorConnectionLike = context.editorConnection;
+
+  function _managePortsForNode(node: GraphNodeModel) {
+    function _updatePorts() {
+      let ports: DynamicPort[] = [];
+
+      // NDA-008 §1: both modes have transitions now. This used to read "Only push mode have
+      // transition", which was the split stated out loud — the animation capability came
+      // bundled with the choice of semantics instead of being an independent axis.
+      //
+      // The *default* still differs, and that is deliberate rather than an oversight: push has
+      // always animated by default, replace has never animated at all. Matching them would
+      // silently add an animation to every replace node already in every project. So the
+      // default is per mode, and existing graphs are untouched either way.
+      {
+        const isReplace = node.parameters['mode'] === 'replace';
+        const defaultTransition = isReplace ? 'None' : 'Push';
+
+        ports.push({
+          name: 'transition',
+          plug: 'input',
+          type: { name: 'enum', enums: Object.keys(Transitions) },
+          default: defaultTransition,
+          displayName: 'Transition',
+          group: 'Transition'
+        });
+
+        const transition = (node.parameters['transition'] as string) || defaultTransition;
+        if (Transitions[transition])
+          ports = ports.concat(Transitions[transition].ports(node.parameters) as DynamicPort[]);
+      }
+
+      const pageStacks = graphModel.getNodesWithType('Page Stack');
+      const pageStack = pageStacks.find(
+        (ps) => (ps.parameters['name'] || 'Main') === (node.parameters['stack'] || 'Main')
+      );
+
+      if (pageStack !== undefined) {
+        const pages = pageStack.parameters['pages'] as PageListItem[] | undefined;
+        if (pages !== undefined && pages.length > 0) {
+          ports.push({
+            plug: 'input',
+            type: {
+              name: 'enum',
+              enums: pages.map((p) => ({
+                label: p.label,
+                value: p.id
+              }))
+            },
+            group: 'General',
+            displayName: 'Target Page',
+            name: 'target',
+            default: pages[0].id
+          });
+
+          // See if there is a target page with component
+          const targetPageId = (node.parameters['target'] as string) || pages[0].id;
+          const targetComponentName = pageStack.parameters['pageComp-' + targetPageId] as string | undefined;
+          if (targetComponentName !== undefined) {
+            const component = graphModel.components[targetComponentName];
+
+            if (component !== undefined) {
+              // Make all inputs of the component to inputs of this navigation node
+              for (const inputName in component.inputPorts) {
+                ports.push({
+                  name: 'pm-' + inputName,
+                  displayName: inputName,
+                  type: '*',
+                  plug: 'input',
+                  group: 'Parameters'
+                });
+              }
+
+              // Find all navigate back nodes and compile the back actions as
+              // outputs of this node
+              for (const backNode of component.getNodesWithType('PageStackNavigateBack')) {
+                if (backNode.parameters['backActions'] !== undefined) {
+                  (backNode.parameters['backActions'] as string).split(',').forEach((a) => {
+                    if (ports.find((_p) => _p.name === 'backAction-' + a)) return;
+
+                    ports.push({
+                      name: 'backAction-' + a,
+                      displayName: a,
+                      type: 'signal',
+                      plug: 'output',
+                      group: 'Back Actions'
+                    });
+                  });
+                }
+
+                if (backNode.parameters['results']) {
+                  (backNode.parameters['results'] as string).split(',').forEach((p) => {
+                    if (ports.find((_p) => _p.name === 'backResult-' + p)) return;
+
+                    ports.push({
+                      name: 'backResult-' + p,
+                      displayName: p,
+                      type: '*',
+                      plug: 'output',
+                      group: 'Back Results'
+                    });
+                  });
+                }
+              }
+            }
+          }
+        }
+      }
+
+      editorConnection.sendDynamicPorts(node.id, ports);
+    }
+
+    function _trackTargetComponent() {
+      const pageStacks = graphModel.getNodesWithType('Page Stack');
+      const pageStack = pageStacks.find((ps) => ps.parameters['name'] === node.parameters['stack']);
+      if (pageStack === undefined) return;
+
+      const pages = pageStack.parameters['pages'] as PageListItem[] | undefined;
+      if (pages === undefined || pages.length === 0) return;
+
+      const targetCompoment = pageStack.parameters[
+        'pageComp-' + ((node.parameters['target'] as string) || pages[0].id)
+      ] as string | undefined;
+      if (targetCompoment === undefined) return;
+      const c = graphModel.components[targetCompoment];
+      if (c === undefined) return;
+
+      c.on('inputPortAdded', _updatePorts);
+      c.on('inputPortRemoved', _updatePorts);
+
+      // Also track all back navigate for changes
+      for (const _n of c.getNodesWithType('PageStackNavigateBack')) {
+        _n.on('parameterUpdated', _updatePorts);
+      }
+
+      // Track back navigate added and removed
+      c.on('nodeAdded', (_n: GraphNodeModel) => {
+        if (_n.type === 'PageStackNavigateBack') {
+          _n.on('parameterUpdated', _updatePorts);
+          _updatePorts();
+        }
+      });
+
+      c.on('nodeWasRemoved', (_n: GraphNodeModel) => {
+        if (_n.type === 'PageStackNavigateBack') _updatePorts();
+      });
+    }
+
+    _updatePorts();
+    _trackTargetComponent();
+    node.on('parameterUpdated', function (ev) {
+      if (ev.name === 'target') {
+        _trackTargetComponent();
+        _updatePorts();
+      } else if (ev.name === 'stack' || ev.name === 'mode' || ev.name === 'transition' || ev.name.startsWith('tr-')) _updatePorts();
+    });
+
+    // Track all page stacks for changes (if there are any changes to the pages of the name of a stack we might have to update)
+    function _trackPageStack(node: GraphNodeModel) {
+      node.on('parameterUpdated', function (ev) {
+        if (ev.name === 'pages' || ev.name === 'name') _updatePorts();
+      });
+    }
+    graphModel.on('nodeAdded.Page Stack', _trackPageStack);
+    graphModel.on('nodeWasRemoved.Page Stack', _updatePorts);
+
+    for (const node of graphModel.getNodesWithType('Page Stack')) {
+      _trackPageStack(node);
+    }
+  }
+
+  graphModel.on('editorImportComplete', () => {
+    graphModel.on('nodeAdded.PageStackNavigate', function (node: GraphNodeModel) {
+      _managePortsForNode(node);
+    });
+
+    for (const node of graphModel.getNodesWithType('PageStackNavigate')) {
+      _managePortsForNode(node);
+    }
+  });
+}
+
+const NavigateModule: NodeModule = {
+  node: Navigate,
+  setup: setup
+};
+
+export default NavigateModule;

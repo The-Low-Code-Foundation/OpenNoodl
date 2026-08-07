@@ -1,15 +1,16 @@
-import { ComponentStory, ComponentMeta } from '@storybook/react';
-import React from 'react';
+import type { Meta, StoryObj } from '@storybook/react';
 
 import { ModalSection } from './ModalSection';
 
-export default {
+const meta: Meta<typeof ModalSection> = {
   title: 'Layout/Modal Section',
   component: ModalSection,
   argTypes: {}
-} as ComponentMeta<typeof ModalSection>;
+};
 
-const Template: ComponentStory<typeof ModalSection> = (args) => <ModalSection {...args} />;
+export default meta;
+type Story = StoryObj<typeof meta>;
 
-export const Common = Template.bind({});
-Common.args = {};
+export const Common: Story = {
+  args: {},
+};

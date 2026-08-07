@@ -1,16 +1,11 @@
-import { NodeLibrary } from '@noodl-models/nodelibrary';
+import { ProjectModel } from '@noodl-models/projectmodel';
 
-import { TypeView } from '../../TypeView';
+import { ContentPickerItem } from '../../components/ContentPicker';
 import { getEditType } from '../../utils';
-import FilePicker from './filepicker';
+import { folderForProjectPath } from '../../components/fontItems';
+import { PickerTypeView } from '../PickerTypeView';
 
-function firstType(type) {
-  return NodeLibrary.nameForPortType(type);
-}
-
-export class SourceCodeType extends TypeView {
-  el: TSFixme;
-
+export class SourceCodeType extends PickerTypeView {
   static fromPort(args) {
     const view = new SourceCodeType();
 
@@ -29,51 +24,22 @@ export class SourceCodeType extends TypeView {
 
     return view;
   }
-  render() {
-    const _this = this;
 
-    this.el = this.bindView(this.parent.cloneTemplate(firstType(this.type)), this);
-    TypeView.prototype.render.call(this);
+  protected openPicker() {
+    const picker = this.openContentPicker({ title: 'Choose file' });
 
-    let filePicker;
-    this.$('input')
-      .on('focus', function (e) {
-        e.stopPropagation();
-      })
-      .on('click', function (e) {
-        filePicker = new FilePicker({
-          onItemSelected: function (name) {
-            _this.$('input').val(name);
-            _this.$('input').trigger('change');
-            _this.parent.hidePopout();
-          },
-          fileTypes: ['js']
-        });
-        filePicker.render();
-
-        const el = $(this);
-        _this.parent.showPopout({
-          content: filePicker,
-          attachTo: el,
-          position: 'right'
-        });
-
-        e.stopPropagation(); // Most stop propagation here otherwise the popup will close
-      })
-      .on('keyup', function (e) {
-        filePicker && filePicker.setFilter($(this).val());
+    ProjectModel.instance.listFilesInProjectDirectory((files) => {
+      const items: ContentPickerItem[] = files.map((fileEntry) => {
+        const pathInProjectFolder = fileEntry.fullPath.substring(
+          ProjectModel.instance._retainedProjectDirectory.length + 1
+        );
+        return {
+          name: fileEntry.name,
+          fullPath: pathInProjectFolder,
+          folder: folderForProjectPath(pathInProjectFolder)
+        };
       });
-
-    return this.el;
-  }
-  onPropertyChanged(scope, el) {
-    this.parent.setParameter(scope.name, el.val() === '' ? undefined : el.val());
-
-    // Update current value and if it is default or not
-    const current = this.getCurrentValue();
-    el.val(current.value);
-    this.isDefault = current.isDefault;
-
-    el.blur();
+      picker.addItems(items);
+    }, ['js']);
   }
 }

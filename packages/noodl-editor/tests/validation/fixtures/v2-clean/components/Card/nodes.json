@@ -1,0 +1,6 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "c_card",
+  "version": 1,
+  "nodes": [ { "id": "card_root", "type": "Group", "children": ["card_label"] }, { "id": "card_label", "type": "Text", "parent": "card_root" } ]
+}

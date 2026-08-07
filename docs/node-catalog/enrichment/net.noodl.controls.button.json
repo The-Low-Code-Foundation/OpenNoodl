@@ -1,0 +1,22 @@
+{
+  "typeName": "net.noodl.controls.button",
+  "summary": "The standard clickable button control, with label, optional icon, and hover/pressed/focus states.",
+  "description": "The Button control renders a styled, accessible button with a text `label` and optional icon. Its main product is the `onClick` signal; it also exposes its interaction state as boolean levels (`hoverState`, `pressedState`, `focusState`) for styling reactions, and an `enabled` input to disable it. Visual-state variants let hover/pressed/disabled styling be defined per state.",
+  "whenToUse": "Any tap/click affordance with a caption. For a custom-drawn clickable area, a Group's `onClick` works; prefer the Button control when you want built-in states, label/icon layout and accessibility. The legacy `Button` type is superseded by this control.",
+  "ports": {
+    "label": "The button caption string.",
+    "onClick": "Signal; the click event — wire this to the action (Condition `eval`, Navigate `navigate`, Send Event `sendEvent`, …).",
+    "enabled": "Boolean level input; false renders the disabled state and suppresses `onClick`. The current value is also mirrored as an output of the same name."
+  },
+  "runtimeBehavior": "Declared-port-groups: icon ports appear when an icon source is chosen, and each visual state (hover, pressed, disabled, focused) contributes state-scoped styling ports. The catalog list is the superset; the editor shows the subset matching current parameters.",
+  "examples": ["validate-before-submit", "navigate-on-click"],
+  "patterns": [
+    "onClick → Condition `eval`: validate before acting.",
+    "onClick → RouterNavigate `navigate`: page navigation.",
+    "A boolean derived from form state → `enabled`: prevent invalid submits at the source."
+  ],
+  "antiPatterns": [
+    "Simulating disabled state by hiding the button; drive `enabled` instead so layout and accessibility stay intact."
+  ],
+  "relatedNodes": ["Group", "net.noodl.controls.textinput", "Condition", "RouterNavigate"]
+}

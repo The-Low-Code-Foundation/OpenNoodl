@@ -1,0 +1,20 @@
+{
+  "typeName": "Number Remapper",
+  "summary": "Linearly maps a number from one range to another, optionally clamped — e.g. 0–100 progress to 0–1 opacity.",
+  "description": "Number Remapper converts `inputValue` (Input Value) from the input range [`minInputValue` (Input Minimum), `maxInputValue` (Input Maximum)] to the output range [`minOutputValue` (Output Minimum, default 0), `maxOutputValue` (Output Maximum, default 1)] with straight linear interpolation, writing the result to the `remappedValue` (Remapped Value) number output. With `clamp` (Clamp Output, default true) the normalized position is limited to 0…1 so the output never leaves the output range; with clamping off, values outside the input range extrapolate. Ranges may be inverted (min greater than max) to reverse direction. If the input range is empty (minimum equals maximum) the output is pinned to `minOutputValue`. Every input recomputes the output immediately.",
+  "whenToUse": "The no-code way to scale a value between domains: a count to a progress-bar width, a scroll position to an opacity, a slider value to a rotation. For non-linear curves or multi-input math use Expression or a Function.",
+  "ports": {
+    "inputValue": "Number value to remap; connection-only, it cannot be set as a parameter.",
+    "clamp": "Boolean, parameter-only (default true): keeps the output inside the output range. Disable to extrapolate beyond it.",
+    "remappedValue": "Number value output; equals `minOutputValue` whenever the input range is empty (Input Minimum = Input Maximum)."
+  },
+  "examples": ["logic-quantity-stepper"],
+  "patterns": [
+    "Counter `currentCount` → `inputValue` with the output range sized in pixels → a Group's `width`: a value-driven fill bar.",
+    "Scroll position → `inputValue`, output range 1…0 → `opacity`: fade an element out as the user scrolls."
+  ],
+  "antiPatterns": [
+    "Leaving Input Minimum and Input Maximum both at 0 — the output sits at Output Minimum no matter what comes in; set a real input range."
+  ],
+  "relatedNodes": ["Counter", "Expression", "Animation", "Number"]
+}

@@ -1,116 +1,1091 @@
-import { ipcRenderer } from 'electron';
-import React, { useEffect, useState } from 'react';
-import { platform } from '@noodl/platform';
+/**
+ * ProjectsPage - Entry point for the launcher dashboard
+ *
+ * This page displays the new React-based Launcher component
+ * with horizontal tab navigation.
+ */
 
-import { ProjectModel } from '@noodl-models/projectmodel';
-import getDocsEndpoint from '@noodl-utils/getDocsEndpoint';
-import { LocalProjectsModel } from '@noodl-utils/LocalProjectsModel';
+import { ipcRenderer, shell } from 'electron';
+import React, { useCallback, useEffect, useState, useMemo, useRef } from 'react';
+import { clone } from '@noodl/git/src/core/clone';
+import { filesystem, platform } from '@noodl/platform';
 
-import { Logo, LogoSize } from '@noodl-core-ui/components/common/Logo';
-import { TextButton } from '@noodl-core-ui/components/inputs/TextButton';
-import { HStack } from '@noodl-core-ui/components/layout/Stack';
+import {
+  CloudSyncType,
+  LauncherProjectData
+} from '@noodl-core-ui/preview/launcher/Launcher/components/LauncherProjectCard';
+import {
+  AiAvailability,
+  ProjectCreationWizard,
+  ReviewPlanRow,
+  ScopingMessage,
+  ScopingState,
+  WizardMode
+} from '@noodl-core-ui/preview/launcher/Launcher/components/ProjectCreationWizard';
+import {
+  useGitHubRepos,
+  NoodlGitHubRepo,
+  GitHubClientInterface
+} from '@noodl-core-ui/preview/launcher/Launcher/hooks/useGitHubRepos';
+import { Launcher } from '@noodl-core-ui/preview/launcher/Launcher/Launcher';
+import { LauncherLessonData } from '@noodl-core-ui/preview/launcher/Launcher/LauncherContext';
 
-import { EventDispatcher } from '../../../../shared/utils/EventDispatcher';
+import { useEventListener } from '../../hooks/useEventListener';
+import type { AuthoringPlan } from '../../models/AiAssistant/authoring/plan';
+import { provisionSummary } from '../../models/AiAssistant/authoring/plan';
+import {
+  DOC_INITIAL_SCOPE,
+  ProjectScope,
+  ScopingSession,
+  backendNameForProject,
+  emptyScope,
+  planFromScope,
+  scopeHasContent,
+  scopeOutline,
+  setPendingScopePlan,
+  writeScopeDocs
+} from '../../models/AiAssistant/scoping';
+import { DialogLayerModel } from '../../models/DialogLayerModel';
+import { LessonsProjectsModel } from '../../models/LessonsProjectModel';
+import LessonTemplatesModel from '../../models/lessontemplatesmodel';
+import { ProjectDocsModel } from '../../models/ProjectDocs/ProjectDocsModel';
+import type { ProjectModel } from '../../models/projectmodel';
+import { getAllPresets, setPendingPresetId } from '../../models/StylePresets';
 import { IRouteProps } from '../../pages/AppRoute';
-import { Frame } from '../../views/common/Frame';
-import { ProjectsView } from '../../views/projectsview';
-import { BaseWindow } from '../../views/windows/BaseWindow';
+// Relative, not the `@noodl-store` alias: this file is inside noodl-core-ui's
+// typecheck include glob (it imports the launcher preview), and that project
+// does not carry the editor's path aliases.
+import { AiConfigStore } from '../../store/AiAssistantStore';
+import { GitHubOAuthService, GitHubClient } from '../../services/github';
+import { ProjectOrganizationService } from '../../services/ProjectOrganizationService';
+// Relative for the same reason `AiConfigStore` above is.
+import { EditorSettings } from '../../utils/editorsettings';
+import getContentEndpoint from '../../utils/getContentEndpoint';
+import { LocalProjectsModel, ProjectItemWithRuntime } from '../../utils/LocalProjectsModel';
+import { tracker } from '../../utils/tracker';
+import { getLessonsState } from '../../views/projectsview.lessonstate';
+import { MigrationWizard } from '../../views/migration/MigrationWizard';
+import { ToastLayer } from '../../views/ToastLayer/ToastLayer';
+import { LauncherSettingsDialog, LauncherSettingsSection } from './LauncherSettingsDialog';
 
 export interface ProjectsPageProps extends IRouteProps {
   from: TSFixme;
 }
 
-export function ProjectsPage({ route, from }: ProjectsPageProps) {
-  const [view, setView] = useState<ProjectsView>(null);
-  const [showSpinner, setShowSpinner] = useState(false);
+/** Built-in presets computed once at module level — never changes at runtime. */
+const STYLE_PRESETS = getAllPresets();
 
+/**
+ * AIX-012 — the components a brand-new project has before anything is built,
+ * from `EmbeddedTemplateProvider`'s hello-world template.
+ *
+ * Used ONLY to preview the plan on the review step, which renders before the
+ * project exists. The plan that is actually written to disk and handed over is
+ * re-derived from the created project's real component list, so a template
+ * change can make the preview and the record disagree about create-vs-update on
+ * a page named "Home" — and the record, not the preview, is the one that counts.
+ */
+const NEW_PROJECT_COMPONENTS: ReadonlySet<string> = new Set(['/App', '/#__page__/Home']);
+
+/** The plan as the review step lists it. */
+function toPlanRows(plan: AuthoringPlan): ReviewPlanRow[] {
+  return plan.operations.map((op) => ({
+    kind: op.kind,
+    target: op.target,
+    intent: op.intent,
+    // AIB-007 slice 4 — "provision App backend (3 collections, sign-in)".
+    ...(op.provision ? { detail: provisionSummary(op.provision) } : {})
+  }));
+}
+
+/**
+ * Why "Start with AI" can or cannot be offered right now.
+ *
+ * The launcher genuinely does not host AI settings — the settings panel is part
+ * of the editor's panel system and there is no project open here — so the route
+ * out is a dialog carrying the real `AiSettingsSection`. That is the same
+ * component the editor shows and it writes the same `EditorSettings`, so
+ * configuring here configures everywhere; a launcher-only copy of the settings
+ * form would be a second source of truth for credentials, which is the last
+ * thing that should have two.
+ */
+function readAiAvailability(onConfigure: () => void): AiAvailability {
+  const provider = AiConfigStore.getProvider();
+  if (provider === 'disabled') {
+    return {
+      available: false,
+      reason: 'AI is turned off. Pick a provider and add a key to use it.',
+      actionLabel: 'Set up AI…',
+      onAction: onConfigure
+    };
+  }
+  if (!AiConfigStore.isConfigured()) {
+    return {
+      available: false,
+      reason:
+        provider === 'openai-compatible'
+          ? 'No endpoint is set for the custom AI provider.'
+          : `No API key is saved for ${AiConfigStore.getPrettyProvider() ?? provider}.`,
+      actionLabel: 'Finish setup…',
+      onAction: onConfigure
+    };
+  }
+  return { available: true };
+}
+
+/**
+ * Map LocalProjectsModel ProjectItemWithRuntime to LauncherProjectData format
+ */
+function mapProjectToLauncherData(project: ProjectItemWithRuntime): LauncherProjectData {
+  return {
+    id: project.id,
+    title: project.name || 'Untitled',
+    localPath: project.retainedProjectDirectory,
+    lastOpened: new Date(project.latestAccessed).toISOString(),
+    // No empty-SVG fallback: an unusable value makes the card render its
+    // deterministic placeholder (UIX-006) instead of a blank white thumbnail.
+    imageSrc: project.thumbURI || '',
+    cloudSyncMeta: {
+      type: CloudSyncType.None // TODO: Detect git repos in future
+    },
+    // Include runtime info for legacy detection
+    runtimeInfo: project.runtimeInfo
+    // Git-related fields will be populated in future tasks
+  };
+}
+
+/**
+ * Map hosted lesson templates + saved progress to the launcher's lesson cards.
+ * Reuses getLessonsState (LEARN-001: previously orphaned) to derive state and
+ * percent from the per-lesson progress the LessonsProjectsModel persists.
+ */
+function mapLessonsToLauncherData(
+  templates: TSFixme[],
+  lessonsModel: LessonsProjectsModel
+): LauncherLessonData[] {
+  const endpoint = getContentEndpoint();
+  const progressList = templates.map(
+    (t) => lessonsModel.getLessonProjectProgress(t.name) || { index: 0, end: 0 }
+  );
+  const states = getLessonsState(progressList);
+
+  return templates.map((t, i) => ({
+    id: t.name,
+    title: t.title || t.name,
+    description: t.header,
+    imageSrc: t.thumb ? `${endpoint}/${t.thumb}` : undefined,
+    category: t.category,
+    progressPercent: states[i].progressPercent,
+    state: (states[i].name as LauncherLessonData['state']) || 'not-started'
+  }));
+}
+
+/**
+ * Load-failure toast per the UIX-006 mock: named title, the actual reason, a
+ * Show-details action (reveals the folder so the user can fix project.json), and
+ * the always-present quiet Dismiss. Sticky until dismissed; red only here.
+ */
+function showLoadFailureToast(projectName: string | undefined, projectDir?: string) {
+  const actions = projectDir
+    ? [
+        {
+          label: 'Show details',
+          onClick: () => {
+            try {
+              shell.showItemInFolder(projectDir);
+            } catch (error) {
+              console.error('Failed to reveal project folder:', error);
+            }
+          }
+        }
+      ]
+    : undefined;
+
+  ToastLayer.showError('Its project.json is missing or unreadable. The project stays in your list — fix the file and try again.', {
+    title: `Couldn't load "${projectName || 'project'}"`,
+    actions
+  });
+}
+
+export function ProjectsPage(props: ProjectsPageProps) {
+  // Real projects from LocalProjectsModel
+  const [realProjects, setRealProjects] = useState<LauncherProjectData[]>([]);
+
+  // Lessons for the Learn tab (LEARN-001 entry/discovery UI)
+  const [lessons, setLessons] = useState<LauncherLessonData[]>([]);
+  const [lessonsProjectsModel] = useState(() => new LessonsProjectsModel());
+
+  // Create project modal state
+  const [isCreateModalVisible, setIsCreateModalVisible] = useState(false);
+
+  // AIX-012 — the scoping conversation. The session lives in a ref because it
+  // is a long-lived object with an in-flight request, not render state; what
+  // React re-renders on is the transcript and the recorded scope it produces.
+  const scopingSessionRef = useRef<ScopingSession | null>(null);
+  const [scopingMessages, setScopingMessages] = useState<ScopingMessage[]>([]);
+  const [scopingScope, setScopingScope] = useState<ProjectScope>(() => emptyScope());
+  const [isScopingBusy, setIsScopingBusy] = useState(false);
+  const [scopingError, setScopingError] = useState<string | undefined>(undefined);
+  /** AIB-009 F7 — the reply of the turn in flight, as it streams in. */
+  const [scopingStreaming, setScopingStreaming] = useState('');
+  /**
+   * AAQ-002/F4 — the project name as typed in the wizard's first step, so the
+   * plan preview can name the backend the same thing the apply will.
+   */
+  const [draftProjectName, setDraftProjectName] = useState('');
+  const [aiConfigVersion, setAiConfigVersion] = useState(0);
+
+  // GitHub OAuth state
+  const [githubIsAuthenticated, setGithubIsAuthenticated] = useState(false);
+  const [githubIsConnecting, setGithubIsConnecting] = useState(false);
+  const [githubUser, setGithubUser] = useState<ReturnType<typeof GitHubOAuthService.instance.getCurrentUser>>(null);
+  const oauthService = GitHubOAuthService.instance;
+
+  // Initialize GitHub OAuth state on mount
   useEffect(() => {
-    const eventGroup = {};
+    console.log('🔧 [ProjectsPage] Initializing GitHub OAuth...');
+    oauthService.initialize().then(() => {
+      const isAuth = oauthService.isAuthenticated();
+      const user = oauthService.getCurrentUser();
+      console.log('🔧 [ProjectsPage] GitHub auth state:', isAuth, user?.login);
+      setGithubIsAuthenticated(isAuth);
+      setGithubUser(user);
+    });
+  }, [oauthService]);
 
-    // Switch main window size
-    ipcRenderer.send('main-window-resize', { size: 'editor', center: true });
+  // Load the lesson catalogue for the Learn tab, and keep it in sync with
+  // saved progress. LessonTemplatesModel.instance.fetch() is already kicked off
+  // at app start (router.tsx); we consume its result here rather than into the
+  // void, which is what left the whole discovery UI orphaned.
+  useEffect(() => {
+    const templatesModel = LessonTemplatesModel.instance;
+    const lessonsModel = lessonsProjectsModel;
+    const group = {}; // listener group token for clean teardown
 
-    const instance = new ProjectsView({ from });
-    instance.render();
+    const rebuild = () => {
+      const templates = templatesModel.getTemplates();
+      if (templates && templates.length) {
+        setLessons(mapLessonsToLauncherData(templates, lessonsModel));
+      }
+    };
 
-    setView(instance);
+    templatesModel.on('templatesChanged', rebuild, group);
+    lessonsModel.on('lessonProgressChanged', rebuild, group);
 
-    instance.on(
-      'projectLoaded',
-      (project: ProjectModel) => {
-        LocalProjectsModel.instance.setCurrentGlobalGitAuth(project.id);
-        route.router.route({ to: 'editor', project });
-      },
-      eventGroup
-    );
+    if (templatesModel.getTemplates()?.length) rebuild();
+    else templatesModel.fetch();
 
-    EventDispatcher.instance.on(
-      'importFromUrl',
-      (url: string) => {
-        instance.importFromUrl(url);
-      },
-      eventGroup
-    );
-
-    return function () {
-      EventDispatcher.instance.off(eventGroup);
-      instance?.off(eventGroup);
-      instance?.dispose();
+    return () => {
+      templatesModel.off(group);
+      lessonsModel.off(group);
     };
   }, []);
 
-  return (
-    <BaseWindow title="">
-      <TopBar showSpinner={showSpinner} setShowSpinner={setShowSpinner} />
-      <div style={{ position: 'relative', flex: 1 }}>
-        <Frame instance={view} isAbsolute />
-        {showSpinner && (
-          <div
-            className="spinner page-spinner"
-            style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}
-          >
-            <div className="bounce1"></div>
-            <div className="bounce2"></div>
-            <div className="bounce3"></div>
-          </div>
-        )}
-      </div>
-    </BaseWindow>
+  // Listen for GitHub auth state changes
+  useEventListener(oauthService, 'auth-state-changed', (event: { authenticated: boolean }) => {
+    console.log('🔔 [ProjectsPage] GitHub auth state changed:', event.authenticated);
+    setGithubIsAuthenticated(event.authenticated);
+    if (event.authenticated) {
+      setGithubUser(oauthService.getCurrentUser());
+    } else {
+      setGithubUser(null);
+    }
+  });
+
+  // Listen for OAuth success
+  useEventListener(oauthService, 'oauth-success', () => {
+    setGithubIsConnecting(false);
+  });
+
+  useEventListener(oauthService, 'oauth-error', () => {
+    setGithubIsConnecting(false);
+    ToastLayer.showError('GitHub authentication failed');
+  });
+
+  // GitHub OAuth handlers
+  const handleGitHubConnect = useCallback(async () => {
+    console.log('🔘 [ProjectsPage] handleGitHubConnect called');
+    setGithubIsConnecting(true);
+    try {
+      await oauthService.initiateOAuth();
+      console.log('✅ [ProjectsPage] OAuth initiated');
+    } catch (error) {
+      console.error('❌ [ProjectsPage] OAuth error:', error);
+      setGithubIsConnecting(false);
+      ToastLayer.showError('Failed to connect GitHub');
+    }
+  }, [oauthService]);
+
+  const handleGitHubDisconnect = useCallback(async () => {
+    console.log('🔘 [ProjectsPage] handleGitHubDisconnect called');
+    await oauthService.disconnect();
+    ToastLayer.showSuccess('GitHub account disconnected');
+  }, [oauthService]);
+
+  // Create GitHubClient adapter for useGitHubRepos hook
+  const githubClient = useMemo((): GitHubClientInterface | null => {
+    if (!githubIsAuthenticated) return null;
+
+    const client = GitHubClient.instance;
+    return {
+      listRepositories: async (options?: { per_page?: number; sort?: string }) => {
+        const result = await client.listRepositories(options as TSFixme);
+        return result;
+      },
+      listOrganizations: async () => {
+        const result = await client.listOrganizations();
+        return result;
+      },
+      listOrganizationRepositories: async (org, options) => {
+        const result = await client.listOrganizationRepositories(org, options);
+        return result;
+      },
+      isNoodlProject: async (owner, repo) => {
+        return client.isNoodlProject(owner, repo);
+      }
+    };
+  }, [githubIsAuthenticated]);
+
+  // Use the GitHub repos hook
+  const githubRepos = useGitHubRepos(githubClient, githubIsAuthenticated);
+
+  /**
+   * Handle cloning a GitHub repository
+   * Follows the same legacy detection flow as handleOpenProject
+   */
+  const handleCloneRepo = useCallback(
+    async (repo: NoodlGitHubRepo) => {
+      console.log('🔵 [handleCloneRepo] Starting clone for:', repo.full_name);
+
+      // Ask user where to clone
+      try {
+        const targetDir = await filesystem.openDialog({
+          allowCreateDirectory: true
+        });
+
+        if (!targetDir) {
+          console.log('🔵 [handleCloneRepo] User cancelled');
+          return;
+        }
+
+        // Create path with repo name
+        const clonePath = filesystem.join(targetDir, repo.name);
+
+        // Check if directory already exists
+        if (await filesystem.exists(clonePath)) {
+          ToastLayer.showError(`A folder named "${repo.name}" already exists at that location`);
+          return;
+        }
+
+        const activityId = 'cloning-repo';
+        ToastLayer.showActivity(`Cloning ${repo.name}...`, activityId);
+
+        // Get clone URL (prefer HTTPS with token for authenticated access)
+        const token = await oauthService.getToken();
+        const cloneUrl = repo.html_url.replace('https://', `https://x-access-token:${token}@`) + '.git';
+
+        await clone(cloneUrl, clonePath, {
+          singleBranch: false,
+          defaultBranch: repo.default_branch
+        });
+
+        ToastLayer.hideActivity(activityId);
+        ToastLayer.showSuccess(`Cloned "${repo.name}" successfully!`);
+
+        tracker.track('GitHub Repository Cloned', {
+          repoName: repo.name,
+          isPrivate: repo.private
+        });
+
+        // Any project the editor can open runs on the default (React 18.3)
+        // runtime unless it explicitly opts into React 19 — there is no
+        // compatibility gate to pass. Add it to the list and ask to open.
+        const project = await LocalProjectsModel.instance.openProjectFromFolder(clonePath);
+
+        if (project) {
+          if (!project.name) {
+            project.name = repo.name;
+          }
+
+          await LocalProjectsModel.instance.fetch();
+          LocalProjectsModel.instance.detectAllProjectRuntimes();
+
+          const shouldOpen = confirm(`Project "${repo.name}" cloned successfully!\n\nWould you like to open it now?`);
+
+          if (shouldOpen) {
+            const projects = LocalProjectsModel.instance.getProjects();
+            const projectEntry = projects.find((p) => p.id === project.id);
+
+            if (projectEntry) {
+              const loaded = await LocalProjectsModel.instance.loadProject(projectEntry);
+              if (loaded) {
+                props.route.router.route({ to: 'editor', project: loaded });
+              }
+            }
+          }
+        }
+      } catch (error) {
+        ToastLayer.hideActivity('cloning-repo');
+        console.error('Failed to clone repository:', error);
+        ToastLayer.showError(`Failed to clone repository: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      }
+    },
+    [oauthService, props.route]
   );
-}
 
-interface TopBarProps {
-  showSpinner: boolean;
-  setShowSpinner: (value: boolean) => void;
-}
+  // Initialize and fetch projects on mount
+  useEffect(() => {
+    // Switch main window size to editor size
+    ipcRenderer.send('main-window-resize', { size: 'editor', center: true });
 
-function TopBar({ showSpinner, setShowSpinner }: TopBarProps) {
+    // Load projects with runtime detection
+    const loadProjects = async () => {
+      await LocalProjectsModel.instance.fetch();
+
+      // Trigger background runtime detection for all projects
+      LocalProjectsModel.instance.detectAllProjectRuntimes();
+
+      // Get projects (detection runs in background, will update via events)
+      const projects = LocalProjectsModel.instance.getProjectsWithRuntime();
+      console.log('🔵 Projects loaded, triggering runtime detection for:', projects.length);
+      setRealProjects(projects.map(mapProjectToLauncherData));
+    };
+
+    loadProjects();
+  }, []);
+
+  // Subscribe to project list changes
+  useEventListener(LocalProjectsModel.instance, 'myProjectsChanged', () => {
+    console.log('🔔 Projects list changed, updating dashboard with runtime detection');
+    const projects = LocalProjectsModel.instance.getProjectsWithRuntime();
+    setRealProjects(projects.map(mapProjectToLauncherData));
+  });
+
+  // Subscribe to runtime detection completion to update UI
+  useEventListener(LocalProjectsModel.instance, 'runtimeDetectionComplete', (projectPath: string, runtimeInfo) => {
+    console.log('🎯 Runtime detection complete for:', projectPath, runtimeInfo);
+    const projects = LocalProjectsModel.instance.getProjectsWithRuntime();
+    setRealProjects(projects.map(mapProjectToLauncherData));
+  });
+
+  const handleCreateProject = useCallback(() => {
+    // Every open starts a fresh conversation. Reusing the previous one would
+    // scope a new project against the last one's answers.
+    scopingSessionRef.current = null;
+    setScopingMessages([]);
+    setScopingScope(emptyScope());
+    setScopingError(undefined);
+    setIsScopingBusy(false);
+    setIsCreateModalVisible(true);
+  }, []);
+
+  /**
+   * AIX-012 — the route out of "AI is not configured". The launcher has no
+   * settings panel, so the real settings section is shown in a dialog; when it
+   * closes, availability is recomputed so the entry card reflects what the user
+   * just did without needing the modal reopened.
+   */
+  const openSettingsDialog = useCallback((initialSection?: LauncherSettingsSection) => {
+    DialogLayerModel.instance.showDialog(
+      (close) => <LauncherSettingsDialog onClose={close} initialSection={initialSection} />,
+      {
+        // One dialog, whichever door was used: the gear and the entry card's
+        // setup action must not be able to stack two of these.
+        id: 'launcher-settings',
+        onClose: () => setAiConfigVersion((n) => n + 1)
+      }
+    );
+  }, []);
+
+  /** The gear in the launcher header — settings with nothing pre-selected. */
+  const handleOpenSettings = useCallback(() => openSettingsDialog(), [openSettingsDialog]);
+
+  /** The route out of "AI is not configured", from the entry card. */
+  const handleConfigureAi = useCallback(() => openSettingsDialog('ai'), [openSettingsDialog]);
+
+  /**
+   * AIB-009 F12 — read it again once the settings exist.
+   *
+   * `EditorSettings` loads from disk asynchronously and `get()` returns
+   * `undefined` until it lands, so `AiConfigStore.getProvider()` answers
+   * `'disabled'` for the first moments of a launch. This memo runs in the first
+   * render and its only other trigger is the settings dialog closing — so a
+   * launcher that lost that race told the user **"AI is turned off"** on the
+   * first screen of the product, over a perfectly good API key, for the rest of
+   * the session. Found live: the card was disabled while
+   * `AiConfigStore.getProvider()` returned `anthropic` in the same renderer, and
+   * opening and closing Settings — changing nothing — enabled it.
+   *
+   * `ready` is the seam `EditorSettings` documents for exactly this. Bumping the
+   * version once it resolves costs one re-read and is a no-op when the race was
+   * won.
+   */
+  useEffect(() => {
+    let cancelled = false;
+    void EditorSettings.instance.ready.then(() => {
+      if (!cancelled) setAiConfigVersion((n) => n + 1);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const aiAvailability = useMemo(
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- aiConfigVersion is the re-read trigger
+    () => readAiAvailability(handleConfigureAi),
+    [handleConfigureAi, aiConfigVersion]
+  );
+
+  /** One user turn of the scoping conversation. */
+  const handleScopingSend = useCallback(async (text: string) => {
+    if (!scopingSessionRef.current) scopingSessionRef.current = new ScopingSession();
+    const session = scopingSessionRef.current;
+
+    setScopingError(undefined);
+    setIsScopingBusy(true);
+    setScopingStreaming('');
+    // Show the user's own words immediately; a chat that waits for the model
+    // before echoing what you typed reads as dropped input.
+    setScopingMessages((prev) => [...prev, { role: 'user', text }]);
+
+    try {
+      // AIB-009 F7. `send` has always taken stream callbacks and passed them to
+      // every round; nothing here passed any, so the launcher's wizard was the
+      // one AI surface in the product that showed a static `Thinking…` for the
+      // whole turn. `onText` hands back the accumulated text of the round in
+      // flight, which is exactly what a bubble wants.
+      const turn = await session.send(text, { onText: (fullText) => setScopingStreaming(fullText) });
+      setScopingScope(turn.scope);
+      if (turn.status === 'ok' || turn.status === 'cancelled') {
+        if (turn.reply) setScopingMessages([...session.transcript]);
+      } else {
+        setScopingError(turn.note ?? 'The assistant could not answer.');
+      }
+    } catch (error) {
+      setScopingError(error instanceof Error ? error.message : String(error));
+    } finally {
+      setIsScopingBusy(false);
+      // The streamed copy is only ever the turn in flight; the transcript is
+      // what stands afterwards. Leaving it set would double the last reply.
+      setScopingStreaming('');
+    }
+  }, []);
+
+  /**
+   * The plan the review step previews. Derived from the agreed scope, so it
+   * cannot contain a page nobody agreed to.
+   */
+  const previewPlan = useMemo(
+    () =>
+      planFromScope(scopingScope, {
+        existingComponents: NEW_PROJECT_COMPONENTS,
+        // AAQ-002/F4. The same derivation `finishScopedProject` uses, from the
+        // same string — `newProject` is called with this name verbatim, so the
+        // row the user approves names the backend the apply will create.
+        backendName: backendNameForProject(draftProjectName)
+      }),
+    [scopingScope, draftProjectName]
+  );
+
+  const scopingState: ScopingState = useMemo(
+    () => ({
+      messages: scopingMessages,
+      isBusy: isScopingBusy,
+      streamingReply: scopingStreaming,
+      outline: scopeOutline(scopingScope),
+      isAgreed: scopingScope.agreed,
+      error: scopingError,
+      planRows: toPlanRows(previewPlan),
+      onSend: (text: string) => {
+        void handleScopingSend(text);
+      },
+      onDraftNameChange: setDraftProjectName
+    }),
+    [
+      scopingMessages,
+      isScopingBusy,
+      scopingStreaming,
+      scopingScope,
+      scopingError,
+      previewPlan,
+      handleScopingSend
+    ]
+  );
+
+  const handleChooseLocation = useCallback(async (): Promise<string | null> => {
+    try {
+      const direntry = await filesystem.openDialog({
+        allowCreateDirectory: true
+      });
+      return direntry || null;
+    } catch (error) {
+      console.error('Failed to choose location:', error);
+      return null;
+    }
+  }, []);
+
+  /**
+   * AIX-012 — everything that happens to an AI-scoped project *after* it has
+   * been created by the ordinary path, and nothing that happens before.
+   *
+   * The spec's third criterion exists because new projects once shipped with no
+   * Home component, and the fix lives inside `newProject` /
+   * `EmbeddedTemplateProvider`. So there is no second creation path here: the
+   * project is created exactly as a blank one is, and this only writes files
+   * into the folder afterwards. A failure here costs the docs, never the
+   * project.
+   */
+  const finishScopedProject = useCallback(async (project: ProjectModel, scope: ProjectScope) => {
+    const docs = ProjectDocsModel.forProject(project);
+    if (!docs) {
+      ToastLayer.showError('The project was created, but its folder could not be found to write docs/ into.');
+      return;
+    }
+
+    // Re-derived against what the project actually has, not against the
+    // template we assume it came from.
+    const existingComponents = new Set<string>(project.getComponents().map((c) => c.name));
+    // AAQ-002/F4 — named from the project, because the provision reuses by name
+    // and "App backend" is a constant. Read from the project rather than from
+    // the wizard's draft so it is the name the project actually has.
+    const plan = planFromScope(scope, {
+      existingComponents,
+      backendName: backendNameForProject(project.name)
+    });
+
+    const session = scopingSessionRef.current;
+    const result = await writeScopeDocs(docs, {
+      scope,
+      transcript: session ? [...session.transcript] : [],
+      plan,
+      // "Abandoned" is a statement about agreement, not about effort: a user who
+      // talked for ten minutes and never said yes still gets a record that says
+      // nothing here was inferred to fill the gaps.
+      abandoned: !scope.agreed
+    });
+
+    if (plan.operations.length > 0) {
+      setPendingScopePlan({ projectId: project.id, plan, recordPath: DOC_INITIAL_SCOPE });
+    }
+
+    if (result.failed.length > 0) {
+      console.error('[AIX-012] Some scoping documents could not be written:', result.failed);
+      ToastLayer.showError(
+        `The project was created, but ${result.failed.length} of ${
+          result.failed.length + result.written.length
+        } scoping documents could not be written. See the console for details.`
+      );
+    }
+  }, []);
+
+  const handleCreateProjectConfirm = useCallback(
+    async (name: string, location: string, presetId: string, mode: WizardMode) => {
+      setIsCreateModalVisible(false);
+
+      // Store the chosen preset — StyleTokensModel will consume it on editor startup.
+      setPendingPresetId(presetId);
+
+      // Snapshot the scope now: the modal is closing and its state is about to
+      // be reset, and the docs must record what was agreed, not what is left.
+      const scope = scopingScope;
+      const withScope = mode === 'ai' && (scopeHasContent(scope) || Boolean(scope.request));
+
+      try {
+        const path = filesystem.makeUniquePath(filesystem.join(location, name));
+
+        const activityId = 'creating-project';
+        ToastLayer.showActivity('Creating new project', activityId);
+
+        LocalProjectsModel.instance.newProject(
+          (project) => {
+            if (!project) {
+              ToastLayer.hideActivity(activityId);
+              // Clear pending preset if project creation failed
+              setPendingPresetId(null);
+              setPendingScopePlan(null);
+              ToastLayer.showError('Could not create project');
+              return;
+            }
+
+            if (!withScope) {
+              ToastLayer.hideActivity(activityId);
+              // Navigate to editor — StyleTokensModel will apply preset on load
+              props.route.router.route({ to: 'editor', project });
+              return;
+            }
+
+            // The docs are written before the editor opens so the authoring
+            // loop's very first turn already sees CONVENTIONS.md — a rule the
+            // assistant has to be told about later is a rule it has already
+            // broken once.
+            finishScopedProject(project, scope)
+              .catch((error) => {
+                console.error('[AIX-012] Failed to write scoping documents:', error);
+                ToastLayer.showError('The project was created, but its docs/ could not be written.');
+              })
+              .finally(() => {
+                ToastLayer.hideActivity(activityId);
+                props.route.router.route({ to: 'editor', project });
+              });
+          },
+          { name, path, projectTemplate: '' }
+        );
+      } catch (error) {
+        setPendingPresetId(null);
+        console.error('Failed to create project:', error);
+        ToastLayer.showError('Failed to create project');
+      }
+    },
+    [props.route, scopingScope, finishScopedProject]
+  );
+
+  const handleCreateModalClose = useCallback(() => {
+    // Cancel is cancel: an in-flight scoping turn is aborted rather than left
+    // to resolve into a closed modal.
+    scopingSessionRef.current?.cancel();
+    setIsCreateModalVisible(false);
+  }, []);
+
+  const handleOpenProject = useCallback(async () => {
+    console.log('🔵 [handleOpenProject] Starting...');
+    try {
+      console.log('🔵 [handleOpenProject] Opening file dialog...');
+      const direntry = await filesystem.openDialog({
+        allowCreateDirectory: false
+      });
+      console.log('🔵 [handleOpenProject] Selected folder:', direntry);
+
+      if (!direntry) {
+        console.log('🔵 [handleOpenProject] User cancelled');
+        return;
+      }
+
+      // Any project the editor can open runs on the default (React 18.3)
+      // runtime unless it explicitly opts into React 19 — there is no
+      // compatibility gate to pass, so open it like any other project.
+      const activityId = 'opening-project';
+      ToastLayer.showActivity('Opening project', activityId);
+
+      const project = await LocalProjectsModel.instance.openProjectFromFolder(direntry);
+
+      if (!project) {
+        ToastLayer.hideActivity(activityId);
+        ToastLayer.showError('Could not open project');
+        return;
+      }
+
+      if (!project.name) {
+        project.name = filesystem.basename(direntry);
+      }
+
+      const projects = LocalProjectsModel.instance.getProjects();
+      const projectEntry = projects.find((p) => p.id === project.id);
+
+      if (!projectEntry) {
+        ToastLayer.hideActivity(activityId);
+        ToastLayer.showError('Could not find project in recent list');
+        console.error('Project was added but not found in list:', project.id);
+        return;
+      }
+
+      const loaded = await LocalProjectsModel.instance.loadProject(projectEntry);
+      ToastLayer.hideActivity(activityId);
+
+      if (!loaded) {
+        showLoadFailureToast(project.name, projectEntry.retainedProjectDirectory);
+      } else {
+        props.route.router.route({ to: 'editor', project: loaded });
+      }
+    } catch (error) {
+      ToastLayer.hideActivity('opening-project');
+      console.error('Failed to open project:', error);
+      ToastLayer.showError('Could not open project');
+    }
+  }, [props.route]);
+
+  /**
+   * Clone (or resume) a lesson project and open it. Routing sets
+   * ProjectModel.instance = project (router.tsx), and the cloned project
+   * carries the synthesised `lesson` field, so EditorPage's isLesson() check
+   * lights up the lesson layer.
+   */
+  const openLesson = useCallback(
+    (lessonId: string, restart: boolean) => {
+      const template = LessonTemplatesModel.instance.getTemplates().find((t: TSFixme) => t.name === lessonId);
+      if (!template) {
+        ToastLayer.showError('Could not find that lesson');
+        return;
+      }
+
+      const activityId = 'loading-lesson';
+      ToastLayer.showActivity(restart ? 'Restarting lesson' : 'Loading lesson', activityId);
+
+      const onLoaded = (project?: TSFixme) => {
+        ToastLayer.hideActivity(activityId);
+        if (!project) {
+          ToastLayer.showError('Could not load lesson');
+          return;
+        }
+        tracker.track('Lesson Opened', { lesson: template.name, restart });
+        props.route.router.route({ to: 'editor', project });
+      };
+
+      const lessonsModel = lessonsProjectsModel;
+      if (restart) lessonsModel.restartLessonProject(template, onLoaded, undefined);
+      else lessonsModel.loadLessonProject(template, onLoaded, undefined);
+    },
+    [props.route]
+  );
+
+  const handleStartLesson = useCallback((lessonId: string) => openLesson(lessonId, false), [openLesson]);
+  const handleRestartLesson = useCallback((lessonId: string) => openLesson(lessonId, true), [openLesson]);
+
+  const handleLaunchProject = useCallback(
+    async (projectId: string) => {
+      const projects = LocalProjectsModel.instance.getProjects();
+      const project = projects.find((p) => p.id === projectId);
+      if (!project) return;
+
+      const activityId = 'launching-project';
+      ToastLayer.showActivity('Opening project', activityId);
+
+      try {
+        const loaded = await LocalProjectsModel.instance.loadProject(project);
+        ToastLayer.hideActivity(activityId);
+
+        if (!loaded) {
+          showLoadFailureToast(project.name, project.retainedProjectDirectory);
+        } else {
+          // Navigate to editor with the loaded project
+          props.route.router.route({ to: 'editor', project: loaded });
+        }
+      } catch (error) {
+        ToastLayer.hideActivity(activityId);
+        console.error('Failed to launch project:', error);
+        ToastLayer.showError('Could not load project');
+      }
+    },
+    [props.route]
+  );
+
+  const handleOpenProjectFolder = useCallback(async (projectId: string) => {
+    const projects = LocalProjectsModel.instance.getProjects();
+    const project = projects.find((p) => p.id === projectId);
+    if (!project || !project.retainedProjectDirectory) {
+      ToastLayer.showError('Project folder not found');
+      return;
+    }
+
+    try {
+      shell.showItemInFolder(project.retainedProjectDirectory);
+    } catch (error) {
+      console.error('Failed to open project folder:', error);
+      ToastLayer.showError('Could not open project folder');
+    }
+  }, []);
+
+  const handleDeleteProject = useCallback((projectId: string) => {
+    const projects = LocalProjectsModel.instance.getProjects();
+    const project = projects.find((p) => p.id === projectId);
+    if (!project) return;
+
+    // Confirm deletion
+    if (
+      confirm(
+        `Remove project "${project.name}" from the list?\n\nNote: The project folder will remain on disk and can be opened again later.`
+      )
+    ) {
+      LocalProjectsModel.instance.removeProject(projectId);
+      ToastLayer.showSuccess('Project removed from list');
+    }
+  }, []);
+
+  /**
+   * Handle "Migrate Project" button click - opens the migration wizard
+   */
+  const handleMigrateProject = useCallback(
+    (projectId: string) => {
+      const projects = LocalProjectsModel.instance.getProjects();
+      const project = projects.find((p) => p.id === projectId);
+      if (!project || !project.retainedProjectDirectory) {
+        ToastLayer.showError('Cannot migrate project: path not found');
+        return;
+      }
+
+      const projectPath = project.retainedProjectDirectory;
+
+      // Show the migration wizard as a dialog
+      DialogLayerModel.instance.showDialog(
+        (close) =>
+          React.createElement(MigrationWizard, {
+            sourcePath: projectPath,
+            projectName: project.name,
+            onComplete: async (targetPath: string) => {
+              close();
+              // Clear runtime cache for the source project
+              LocalProjectsModel.instance.clearRuntimeCache(projectPath);
+
+              // Show activity indicator
+              const activityId = 'adding-migrated-project';
+              ToastLayer.showActivity('Adding migrated project to list', activityId);
+
+              try {
+                // Add the migrated project to the projects list
+                const migratedProject = await LocalProjectsModel.instance.openProjectFromFolder(targetPath);
+
+                if (!migratedProject.name) {
+                  migratedProject.name = project.name + ' (React 19)';
+                }
+
+                // Refresh the projects list to show both projects
+                await LocalProjectsModel.instance.fetch();
+
+                // Trigger runtime detection for both projects to update UI immediately
+                await LocalProjectsModel.instance.detectProjectRuntime(projectPath);
+                await LocalProjectsModel.instance.detectProjectRuntime(targetPath);
+
+                // Force a full re-detection to update the UI with correct runtime info
+                LocalProjectsModel.instance.detectAllProjectRuntimes();
+
+                ToastLayer.hideActivity(activityId);
+
+                // Ask user if they want to archive the original
+                const shouldArchive = confirm(
+                  `Migration successful!\n\n` +
+                    `Would you like to move the original project to a "Legacy Projects" folder?\n\n` +
+                    `The original will be preserved but organized separately. You can access it anytime from the Legacy Projects category.`
+                );
+
+                if (shouldArchive) {
+                  // Get or create "Legacy Projects" folder
+                  let legacyFolder = ProjectOrganizationService.instance
+                    .getFolders()
+                    .find((f) => f.name === 'Legacy Projects');
+
+                  if (!legacyFolder) {
+                    legacyFolder = ProjectOrganizationService.instance.createFolder('Legacy Projects');
+                  }
+
+                  // Move original project to Legacy folder
+                  ProjectOrganizationService.instance.moveProjectToFolder(projectPath, legacyFolder.id);
+
+                  ToastLayer.showSuccess(
+                    `"${migratedProject.name}" is ready! Original moved to Legacy Projects folder.`
+                  );
+
+                  tracker.track('Legacy Project Archived', {
+                    projectName: project.name
+                  });
+                } else {
+                  ToastLayer.showSuccess(`"${migratedProject.name}" is now in your projects list!`);
+                }
+
+                // Stay in launcher - user can now see both projects and choose which to open
+                tracker.track('Migration Completed', {
+                  projectName: project.name,
+                  archivedOriginal: shouldArchive
+                });
+              } catch (error) {
+                ToastLayer.hideActivity(activityId);
+                ToastLayer.showError('Project migrated but could not be added to list. Try opening it manually.');
+                console.error('Failed to add migrated project:', error);
+                // Refresh project list anyway
+                LocalProjectsModel.instance.fetch();
+              }
+            },
+            onCancel: () => {
+              close();
+            }
+          }),
+        {
+          onClose: () => {
+            // Refresh project list when dialog closes
+            LocalProjectsModel.instance.fetch();
+          }
+        }
+      );
+
+      tracker.track('Migration Wizard Opened', {
+        projectName: project.name
+      });
+    },
+    [props.route]
+  );
+
+  /**
+   * Handle "Open Read-Only" button click - opens legacy project without migration
+   */
+  const handleOpenReadOnly = useCallback(
+    async (projectId: string) => {
+      const projects = LocalProjectsModel.instance.getProjects();
+      const project = projects.find((p) => p.id === projectId);
+      if (!project) return;
+
+      const activityId = 'opening-project-readonly';
+      ToastLayer.showActivity('Opening project in read-only mode', activityId);
+
+      try {
+        const loaded = await LocalProjectsModel.instance.loadProject(project);
+        ToastLayer.hideActivity(activityId);
+
+        if (!loaded) {
+          ToastLayer.showError("Couldn't load project.");
+          return;
+        }
+
+        tracker.track('Legacy Project Opened Read-Only', {
+          projectName: project.name
+        });
+
+        // Show persistent warning about read-only mode (stays forever with Infinity default)
+        ToastLayer.showError('⚠️  READ-ONLY MODE - No changes will be saved to this project');
+
+        // Open the project in read-only mode
+        props.route.router.route({ to: 'editor', project: loaded, readOnly: true });
+      } catch (error) {
+        ToastLayer.hideActivity(activityId);
+        ToastLayer.showError('Could not open project');
+        console.error('Failed to open legacy project:', error);
+      }
+    },
+    [props.route]
+  );
+
   return (
-    <div
-      style={{
-        height: '52px',
-        display: 'flex',
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        backgroundColor: 'var(--theme-color-bg-2)'
-      }}
-    >
-      <HStack
-        UNSAFE_style={{
-          alignItems: 'center',
-          height: '100%'
-        }}
-        hasSpacing={6}
-      >
-        <Logo
-          size={LogoSize.Small}
-          UNSAFE_style={{
-            marginLeft: '24px'
-          }}
-        />
-        <TextButton label="Docs" onClick={() => platform.openExternal(getDocsEndpoint())} />
-        <TextButton label="Community" onClick={() => platform.openExternal('https://www.noodl.net/community')} />
-      </HStack>
-    </div>
+    <>
+      <Launcher
+        projects={realProjects}
+        appVersion={platform.getVersion()}
+        onCreateProject={handleCreateProject}
+        onOpenProject={handleOpenProject}
+        onLaunchProject={handleLaunchProject}
+        onOpenProjectFolder={handleOpenProjectFolder}
+        onDeleteProject={handleDeleteProject}
+        onMigrateProject={handleMigrateProject}
+        onOpenReadOnly={handleOpenReadOnly}
+        lessons={lessons}
+        onStartLesson={handleStartLesson}
+        onRestartLesson={handleRestartLesson}
+        projectOrganizationService={ProjectOrganizationService.instance}
+        githubUser={githubUser}
+        githubIsAuthenticated={githubIsAuthenticated}
+        githubIsConnecting={githubIsConnecting}
+        onGitHubConnect={handleGitHubConnect}
+        onGitHubDisconnect={handleGitHubDisconnect}
+        githubRepos={githubRepos}
+        onCloneRepo={handleCloneRepo}
+        onOpenSettings={handleOpenSettings}
+      />
+
+      <ProjectCreationWizard
+        isVisible={isCreateModalVisible}
+        onClose={handleCreateModalClose}
+        onConfirm={handleCreateProjectConfirm}
+        onChooseLocation={handleChooseLocation}
+        presets={STYLE_PRESETS}
+        aiAvailability={aiAvailability}
+        scoping={scopingState}
+      />
+    </>
   );
 }

@@ -1,0 +1,114 @@
+# CWF-005 — Retry is a Call Function wearing a different hat
+
+**From:** [TALK-001](TALK-001-THE-CLOUD-WORKFLOW-AUDIT.md) Pile 1.5 + **Q7, decided 2026-08-05**:
+fold Retry into Call Function as a policy group and delete the standalone kind.
+**Status:** **SHIPPED** 2026-08-06 — S1 alone in `1451bce5` (presentation), then the fold in `d10c5a33`. Sequenced
+after [CWF-001](CWF-001-CALL-FUNCTION-PARAMS.md) as written; `case 'call-function'` was there to
+move the validator into.
+
+## ⚠️ CORRECTIONS, 2026-08-06
+
+1. **The trap fired, and the doc pointed at the wrong half of it.** "Retry's defaults live in the
+   catalog and are applied by the executor's own fallbacks — check which." It is the executor's,
+   always: `numberParam(p.maxAttempts, 3)`. The catalog `default` never set anything, which is the
+   repo's most-repeated trap. The consequence the doc did not draw: the folded policy is gated on
+   `maxAttempts > 1`, so migrating a `{"kind":"retry","ref":"charge"}` step **without writing the
+   number in** would have turned three attempts into one, silently, on every retry step whose author
+   never touched the field. `migrateStep` materialises it; a deliberate `1` is left alone.
+2. **"Validate `1` with a *warning*" has no channel in the backend.** `validateStepShape` returns
+   error strings and any non-empty result REJECTS the write — a warning would have to be a new
+   return shape threaded through the registry, the HTTP layer and MCP. `1` is legal and occasionally
+   meant, so the warning ships where the author is: the property panel says "1 means no retry — the
+   function is called once" beside the field.
+3. **"A collapsed section" is not available.** `Ports.getViewGroupsFromPorts` creates every group
+   with `isExpanded: true`; only a user's own toggle (remembered in `groupExpansions`) collapses one.
+   The policy ships as a named **Retry policy** group, expanded, with the backoff preview making it
+   readable at a glance instead.
+4. Line-number drift: the validator's `case 'retry'` was at **670-683**, not 669-683.
+5. **S3 named two readers; there were three.** "Migrate on read" was written for the backend
+   registry, and MCP's `refuseUnservedKinds` was the second. The third is the editor's **proposal
+   review**, which nobody listed because it does not look like a reader: a proposal comes off DISK
+   from `noodl-mcp` and never passes through the backend read path. Caught by `test:ci`, not by any
+   gate in the task. Measured consequence: a proposal restating exactly what is stored reported
+   `node-type-changed: call-function → retry` — a semantic change announced for a change not being
+   made, which the backend would migrate straight back on save. Note the shape of the trap: an
+   editor-side conversion that migrated only the KIND would have been worse than the bug, because
+   the backend's migration then does not fire on save and the step is stored with the policy off.
+   Closed by having the dry run (`POST /admin/workflow-defs/validate`) return the definition it
+   would store, so there is still exactly one authority on the rule.
+
+## What shipped
+
+- Catalog `1.4.0` — `displayName` and `control` on a param; `1.5.0` — `group`, the fold, and
+  `migratedKinds` in the served catalog.
+- `steps/retryPolicy.ts` (the loop, unchanged, reached from `FunctionStepExecutor` when the policy
+  is on) and `steps/migrate.ts` (read + write path, and the three cases spelled out).
+- `RetryBackoffRow` + `models/workflow/retryBackoff.ts` — the delay-sequence preview, pinned by
+  `tests-unit/cwf-005/backoffPreview.test.ts` against the executor's formula and **the executor's
+  fallbacks, not the catalog's**.
+- MCP's `refuseUnservedKinds` reads `migratedKinds`, so an agent that writes `retry` is converted
+  rather than refused.
+
+## The mechanism, exactly
+
+`retry` takes `REF_PARAM` and `invokesFunction: true`
+([kinds.ts:323-367](../../../packages/nodegx-backend/src/workflow/steps/kinds.ts#L323-L367)). It
+*is* a call-function with backoff — it does not wrap a neighbouring step, it replaces it. On the
+canvas that reads as "a retry card that mysteriously needs to know a function name", and the author
+who wants to retry an existing Call Function has to delete it and rebuild it as a Retry.
+
+Two of its seven knobs also lie in their descriptions:
+
+- **`maxAttempts` includes the first attempt.** `1` means "no retries" and is accepted in silence
+  ([kinds.ts:335](../../../packages/nodegx-backend/src/workflow/steps/kinds.ts#L335) — the text
+  does say "including the first", but the *name* says otherwise and the name is what people read).
+- **`retryOnStatus` silently inverts the semantics.** Unset = retry any failure; set = retry
+  **only** those statuses, so adding `503` to be helpful makes every other failure fail immediately
+  ([kinds.ts:350-356](../../../packages/nodegx-backend/src/workflow/steps/kinds.ts#L350-L356)).
+  The description says it; the field does not feel like it.
+
+## Slices
+
+**S1 — Presentation fixes, shippable alone and immediately.**
+- Rename the displayed label to make the arithmetic obvious — `maxAttempts` → "Total attempts
+  (including the first)", and validate `1` with a *warning* that says "1 means no retry".
+- Reword `retryOnStatus` as an allow-list in the label itself: "Retry only these statuses (leave
+  empty to retry any failure)".
+- A **backoff preview line** in the property panel: given the four numbers, render the actual delay
+  sequence ("1s, 2s, 4s — 3 attempts over 7s"). This is the fix that makes the seven knobs stop
+  being seven knobs. Jitter shows as a range.
+
+**S2 — The fold.** Move the six retry params onto `call-function` as a **policy group** (a
+collapsed section in the property panel; the group is off until `maxAttempts` > 1). The executor
+path is unchanged — it already knows how to invoke with backoff; it now reads the policy off the
+call-function step.
+
+**S3 — Migration.** Existing `retry` steps in saved workflow definitions become `call-function`
+steps with the policy set. ⚠️ Retry's output includes `attempts` and `retried`
+([kinds.ts:359](../../../packages/nodegx-backend/src/workflow/steps/kinds.ts#L359)) — a downstream
+`$path` into `previous.attempts` must keep resolving, so call-function's output gains those two
+fields **when the policy is active**. Migrate on read (definitions are JSON on disk/in the DB), and
+keep the reader accepting `kind: "retry"` forever — a deployed backend may hold old definitions.
+
+**S4 — Delete the kind** from the catalog and picker, bump `STEP_KIND_CATALOG_VERSION`, update
+`docs/runtime/WORKFLOW-NODES.md`, and tell MCP: an agent that has learned `retry` will keep writing
+it, so the write path must accept-and-migrate rather than reject.
+
+## Done when
+
+- The picker has eight kinds, not nine, and Call Function has a Retry policy section.
+- A saved workflow authored with the old `retry` kind opens, runs, and retries — driven live, not
+  asserted from a unit test.
+- The backoff preview matches the observed delays in a real failing run.
+- `noodl-mcp` suite green (it is a gate).
+
+## Traps
+
+- ⚠️ **A declared `default` never runs its setter.** Retry's defaults (`3`, `1000`, `2`, `60000`)
+  live in the catalog and are applied by the executor's own fallbacks — check which, before moving
+  them, or the fold quietly changes every existing retry's behaviour.
+- ⚠️ Backoff waits are cancellable today ([kinds.ts:362-363](../../../packages/nodegx-backend/src/workflow/steps/kinds.ts#L362-L363)).
+  Whatever the fold does, cancelling a run must still abort the wait rather than sleeping it out.
+- The validator's `case 'retry'` ([kinds.ts:669-683](../../../packages/nodegx-backend/src/workflow/steps/kinds.ts#L669-L683))
+  moves to `case 'call-function'`, which currently has **no case at all** — CWF-001 adds one. Land
+  them in that order.

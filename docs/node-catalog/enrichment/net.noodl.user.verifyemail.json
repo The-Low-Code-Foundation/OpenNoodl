@@ -1,0 +1,6 @@
+{
+  "typeName": "net.noodl.user.VerifyEmail",
+  "summary": "Deprecated: confirms a user's email address using an emailed token. Superseded by cloud-function-based flows.",
+  "description": "Verify Email submits `username` and `token` (string values, the token coming from the verification email) to the backend when `verify` (Do, signal) is triggered; `success`/`failure` (signals) and `error` (string value) report the outcome. It is marked deprecated in the runtime — the source directs new work to cloud functions, where a component called via CloudFunction2 verifies the token and marks the address confirmed server-side.",
+  "whenToUse": "Do not use in new graphs — implement email verification in a cloud function called via CloudFunction2 instead."
+}

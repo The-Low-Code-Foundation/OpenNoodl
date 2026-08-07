@@ -1,15 +1,16 @@
-import { ComponentStory, ComponentMeta } from '@storybook/react';
-import React from 'react';
+import type { Meta, StoryObj } from '@storybook/react';
 
 import { ToolbarGrip } from './ToolbarGrip';
 
-export default {
+const meta: Meta<typeof ToolbarGrip> = {
   title: 'Toolbar/Toolbar Grip',
   component: ToolbarGrip,
   argTypes: {}
-} as ComponentMeta<typeof ToolbarGrip>;
+};
 
-const Template: ComponentStory<typeof ToolbarGrip> = (args) => <ToolbarGrip {...args} />;
+export default meta;
+type Story = StoryObj<typeof meta>;
 
-export const Common = Template.bind({});
-Common.args = {};
+export const Common: Story = {
+  args: {},
+};

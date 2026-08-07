@@ -1,6 +1,6 @@
-const handleEvent = require('./editormodeleventshandler').handleEvent;
-const GraphModel = require('./models/graphmodel');
-const NodeContext = require('./nodecontext');
+const handleEvent = require('../src/editormodeleventshandler').handleEvent;
+const GraphModel = require('../src/models/graphmodel');
+const NodeContext = require('../src/nodecontext');
 
 describe('Component ports update when on the componentPortsUpdated event', ()=>{
     let graphModel;

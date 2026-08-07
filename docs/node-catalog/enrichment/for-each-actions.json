@@ -1,0 +1,19 @@
+{
+  "typeName": "For Each Actions",
+  "summary": "Repeater Item: inside a repeater's item component, exposes this row's item id and its add/remove lifecycle.",
+  "description": "Repeater Item gives an item component access to its own position in the enclosing Repeater. `itemId` outputs the id of the object this instance renders — the key that lets row-level actions target row-level data. `added` fires when the instance enters the list; `tryRemove` initiates this row's removal, with `removeCompleted` letting an exit animation finish before the instance is destroyed.",
+  "whenToUse": "Any per-row behaviour in a repeated component: writing back to the row's object, removal buttons, staggered entrance/exit animation. Outside a repeater item component the node has nothing to bind to.",
+  "ports": {
+    "itemId": "The id of this row's item object; wire into Object/Set Object Properties `modelId` or bubble it out via Component Outputs.",
+    "tryRemove": "Signal output firing when removal of this row is requested — run your exit animation, then confirm.",
+    "removeCompleted": "Signal input; confirms removal after `tryRemove`, letting the repeater delete the instance.",
+    "done": "Signal; a removal really was waiting on this handshake and has now been released.",
+    "unchanged": "Signal; no removal was waiting \u2014 Try Remove had not been raised, or this handshake was already completed. Pulsing Remove Completed unconditionally beside an exit animation is a reasonable graph, so this is not an error and there is no Failure port.",
+    "completed": "Signal; fires after every Remove Completed, whatever the outcome."
+  },
+  "examples": ["comp-repeater-set-item-object"],
+  "patterns": [
+    "`itemId` → Set Object Properties `modelId`: row edits write to exactly this row (27 occurrences in the real-project corpus)."
+  ],
+  "relatedNodes": ["For Each", "Model2", "SetModelProperties", "CollectionRemove"]
+}

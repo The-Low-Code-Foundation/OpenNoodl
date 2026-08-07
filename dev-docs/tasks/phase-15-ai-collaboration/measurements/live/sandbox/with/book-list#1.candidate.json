@@ -1,0 +1,174 @@
+{
+  "component": {
+    "$schema": "https://opennoodl.dev/schemas/component-v2.json",
+    "id": "24f04da1-ea02-4537-84ba-c7093bc85e1b",
+    "name": "AIX Book List",
+    "path": "/Pages/AIX Book List",
+    "type": "page",
+    "created": "2026-08-02T17:23:03.745Z",
+    "modified": "2026-08-02T17:23:03.745Z",
+    "modifiedBy": "ai-authoring",
+    "description": "A single book list row: cover image on the left, title/author/rating stacked on the right."
+  },
+  "nodes": {
+    "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+    "componentId": "24f04da1-ea02-4537-84ba-c7093bc85e1b",
+    "version": 1,
+    "nodes": [
+      {
+        "id": "in",
+        "type": "Component Inputs",
+        "x": 0,
+        "y": 0,
+        "ports": [
+          {
+            "name": "coverImage",
+            "plug": "output",
+            "type": "string"
+          },
+          {
+            "name": "title",
+            "plug": "output",
+            "type": "string"
+          },
+          {
+            "name": "author",
+            "plug": "output",
+            "type": "string"
+          },
+          {
+            "name": "rating",
+            "plug": "output",
+            "type": "string"
+          }
+        ]
+      },
+      {
+        "id": "root",
+        "type": "Group",
+        "label": "Row",
+        "x": 300,
+        "y": 0,
+        "children": [
+          "cover",
+          "info"
+        ],
+        "parameters": {
+          "flexDirection": "row",
+          "alignItems": "center",
+          "columnGap": "var(--space-4)",
+          "paddingTop": "var(--space-3)",
+          "paddingBottom": "var(--space-3)",
+          "paddingLeft": "var(--space-4)",
+          "paddingRight": "var(--space-4)",
+          "borderBottomWidth": "var(--border-1)",
+          "borderBottomColor": "var(--border-subtle)",
+          "borderBottomStyle": "solid",
+          "sizeMode": "contentHeight",
+          "width": "100%"
+        }
+      },
+      {
+        "id": "cover",
+        "type": "Image",
+        "label": "Cover",
+        "x": 600,
+        "y": -100,
+        "parent": "root",
+        "parameters": {
+          "sizeMode": "explicit",
+          "width": 64,
+          "height": 90,
+          "objectFit": "cover",
+          "borderRadius": "var(--radius-md)"
+        }
+      },
+      {
+        "id": "info",
+        "type": "Group",
+        "label": "Info",
+        "x": 600,
+        "y": 100,
+        "parent": "root",
+        "children": [
+          "title",
+          "author",
+          "rating"
+        ],
+        "parameters": {
+          "flexDirection": "column",
+          "rowGap": "var(--space-1)",
+          "sizeMode": "contentHeight"
+        }
+      },
+      {
+        "id": "title",
+        "type": "Text",
+        "label": "Title",
+        "x": 900,
+        "y": 0,
+        "parent": "info",
+        "parameters": {
+          "textStyle": "heading-6",
+          "fontWeight": "var(--font-bold)"
+        }
+      },
+      {
+        "id": "author",
+        "type": "Text",
+        "label": "Author",
+        "x": 900,
+        "y": 100,
+        "parent": "info",
+        "parameters": {
+          "textStyle": "muted"
+        }
+      },
+      {
+        "id": "rating",
+        "type": "Text",
+        "label": "Rating",
+        "x": 900,
+        "y": 200,
+        "parent": "info",
+        "parameters": {
+          "textStyle": "small"
+        }
+      }
+    ],
+    "visualRoots": [
+      "root"
+    ]
+  },
+  "connections": {
+    "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+    "componentId": "24f04da1-ea02-4537-84ba-c7093bc85e1b",
+    "version": 1,
+    "connections": [
+      {
+        "fromId": "in",
+        "fromProperty": "coverImage",
+        "toId": "cover",
+        "toProperty": "src"
+      },
+      {
+        "fromId": "in",
+        "fromProperty": "title",
+        "toId": "title",
+        "toProperty": "text"
+      },
+      {
+        "fromId": "in",
+        "fromProperty": "author",
+        "toId": "author",
+        "toProperty": "text"
+      },
+      {
+        "fromId": "in",
+        "fromProperty": "rating",
+        "toId": "rating",
+        "toProperty": "text"
+      }
+    ]
+  }
+}

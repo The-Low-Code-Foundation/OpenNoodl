@@ -1,0 +1,19 @@
+{
+  "label": "Selection Pills",
+  "description": "A list of selection pills, select one or many.",
+  "type": "prefab",
+  "tags": [
+    "UI",
+    "Form",
+    "Input"
+  ],
+  "icon": "icon.png",
+  "docsPath": "/library/prefabs/selection-pills/",
+  "version": "0.2.0",
+  "minEditorVersion": "0.1.0",
+  "runtimeVersion": "2.7.0",
+  "provenance": {
+    "sourceUrl": "https://the-low-code-foundation.github.io/opennoodl-docs/library/prefabs/selection-pills/selection-pills-0-1.zip",
+    "importedAt": "2026-07-25"
+  }
+}

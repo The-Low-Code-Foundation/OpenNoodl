@@ -1,0 +1,18 @@
+{
+  "label": "Send Grid",
+  "description": "Send emails with SendGrid from a cloud function. Configure by provisioning the backend function secret SENDGRID_API_KEY — see the prefab README.",
+  "type": "prefab",
+  "tags": [
+    "Cloud",
+    "Email"
+  ],
+  "icon": "icon.png",
+  "docsPath": "/library/prefabs/sendgrid/",
+  "version": "0.3.0",
+  "minEditorVersion": "0.1.0",
+  "runtimeVersion": "2.7.0",
+  "provenance": {
+    "sourceUrl": "https://the-low-code-foundation.github.io/opennoodl-docs/library/prefabs/sendgrid/sendgrid-0-2.zip",
+    "importedAt": "2026-07-25"
+  }
+}

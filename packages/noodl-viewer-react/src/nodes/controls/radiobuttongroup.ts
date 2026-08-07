@@ -4,7 +4,7 @@ import guid from '../../guid';
 import NodeSharedPortDefinitions from '../../node-shared-port-definitions';
 import { createNodeFromReactComponent } from '../../react-component-node';
 
-let RadioButtonGroupNode = {
+const RadioButtonGroupNode = {
   name: 'Radio Button Group',
   displayName: 'Radio Button Group',
   docs: 'https://docs.noodl.net/nodes/ui-controls/radio-button-group',
@@ -41,6 +41,7 @@ let RadioButtonGroupNode = {
       //don't rename for backwards compat
       index: 11,
       displayName: 'Layout',
+      description: 'Stacks the radio buttons inside this group vertically or lays them out in a row',
       group: 'Layout',
       type: {
         name: 'enum',
@@ -51,7 +52,7 @@ let RadioButtonGroupNode = {
       },
       default: 'column',
       set(value) {
-        this.props.layout = value;
+        this.setLayout(value);
 
         if (value !== 'none') {
           this.setStyle({ flexDirection: value });
@@ -78,8 +79,14 @@ let RadioButtonGroupNode = {
       type: 'string',
       displayName: 'Value',
       group: 'General',
+      description:
+        'Selects the radio button whose own Value matches this; setting it from the graph does not fire Changed',
       set: function (value) {
-        if (typeof value !== 'string' && value.toString !== undefined) value = value.toString();
+        // NDA-012 (Visual), G1: this read `value.toString`, which throws on the `null` it is
+        // meant to defend against — the check reads a property *of* the value it is guarding.
+        // `null` on a `Value` port is what a cleared selection looks like, so it is an ordinary
+        // arrival. With the optional chain it falls through to the guard below and abstains.
+        if (typeof value !== 'string' && value?.toString !== undefined) value = value.toString();
         if (typeof value !== 'string') return;
 
         const changed = value !== this._internal.value;
@@ -97,6 +104,7 @@ let RadioButtonGroupNode = {
       type: 'string',
       displayName: 'Value',
       group: 'States',
+      description: 'Value of the radio button currently selected, or nothing if none is',
       getter: function () {
         return this._internal.value;
       }
@@ -104,7 +112,8 @@ let RadioButtonGroupNode = {
     onChange: {
       type: 'signal',
       displayName: 'Changed',
-      group: 'Events'
+      group: 'Events',
+      description: 'Fires when the user picks a different radio button; a value arriving on the Value input does not fire it'
     }
   },
   inputProps: {},
@@ -121,5 +130,4 @@ NodeSharedPortDefinitions.addMarginInputs(RadioButtonGroupNode);
 NodeSharedPortDefinitions.addPaddingInputs(RadioButtonGroupNode);
 NodeSharedPortDefinitions.addSharedVisualInputs(RadioButtonGroupNode);
 
-RadioButtonGroupNode = createNodeFromReactComponent(RadioButtonGroupNode);
-export default RadioButtonGroupNode;
+export default createNodeFromReactComponent(RadioButtonGroupNode);

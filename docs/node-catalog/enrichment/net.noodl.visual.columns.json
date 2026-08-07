@@ -1,0 +1,18 @@
+{
+  "typeName": "net.noodl.visual.columns",
+  "summary": "Responsive multi-column layout: distributes its children into columns whose relative widths come from a layout string.",
+  "description": "Columns lays out its visual children in a grid of columns described by `layoutString`: a space-separated list of relative widths, so '1 2 1' means three columns where the middle one is twice as wide as the outer ones (default '1 2 1'). Children fill the columns in order and wrap into further rows when there are more children than columns. `marginX` (Horizontal Gap) and `marginY` (Vertical Gap) set the spacing in pixels (default 16), and `minWidth` (Min Column Width) makes the layout responsive: when the container gets too narrow to honour the minimum, columns fold away and content reflows into fewer, wider columns. `direction` flips the fill order between row and column, and `justifyContent` aligns partial rows. The node warns in the editor if `layoutString` is bound to a non-string.",
+  "whenToUse": "Card grids, dashboards, magazine-style layouts — anywhere content should reflow across a variable number of columns. For a fixed row or column of items a plain Group with `flexDirection` is simpler; for one instance per data record put a For Each inside the Columns.",
+  "ports": {
+    "layoutString": "String value of space-separated relative widths, e.g. '1 2 1'. The number of entries is the column count; each entry is that column's share of the width.",
+    "minWidth": "Number value in px (Min Column Width, default 0): below this per-column width the layout folds columns away and reflows — this is what makes the grid responsive.",
+    "marginX": "Number value in px (Horizontal Gap) between columns.",
+    "marginY": "Number value in px (Vertical Gap) between wrapped rows."
+  },
+  "examples": ["vis-columns-media-cards"],
+  "patterns": [
+    "Responsive card grid: layoutString '1 1 1' + `minWidth` ~200 so three columns collapse to two, then one, as the viewport narrows.",
+    "For Each inside Columns: repeated component instances distribute across the columns automatically."
+  ],
+  "relatedNodes": ["Group", "For Each"]
+}

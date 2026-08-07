@@ -1,0 +1,11 @@
+.StylePresetStep {
+  display: flex;
+  flex-direction: column;
+}
+
+.StylePresetStep-hint {
+  font-size: 13px;
+  color: var(--theme-color-fg-default-shy);
+  margin: 0 0 var(--spacing-4) 0;
+  line-height: 1.5;
+}

@@ -1,0 +1,65 @@
+{
+  "id": "fn-cloud-function-roundtrip",
+  "title": "Cloud function round trip: browser call → request → response",
+  "description": "A cloud function is a component that runs server-side: Request is its entry (its `params` become outputs carrying the caller's inputs; `receive` fires per invocation) and Response is its exit (its `params` become inputs; `send` returns them). In the browser, Call Cloud Function (CloudFunction2) names the function; the function's request params appear as inputs and its response params as outputs. Here two numbers are summed server-side: the browser sends a and b, the function computes with an Expression, and `sum` comes back on `success`.",
+  "demonstrates": ["CloudFunction2", "noodl.cloud.request", "noodl.cloud.response"],
+  "components": [
+    {
+      "name": "/Calculator Screen",
+      "nodes": [
+        {
+          "id": "root",
+          "type": "Group",
+          "label": "Screen",
+          "parameters": { "flexDirection": "column" },
+          "children": ["a_input", "b_input", "sum_btn", "sum_text"]
+        },
+        { "id": "a_input", "type": "net.noodl.controls.textinput", "label": "A", "parent": "root", "parameters": { "placeholder": "First number" } },
+        { "id": "b_input", "type": "net.noodl.controls.textinput", "label": "B", "parent": "root", "parameters": { "placeholder": "Second number" } },
+        { "id": "sum_btn", "type": "net.noodl.controls.button", "label": "Sum", "parent": "root", "parameters": { "label": "Add on server" } },
+        { "id": "sum_text", "type": "Text", "label": "Result", "parent": "root" },
+        {
+          "id": "call_add",
+          "type": "CloudFunction2",
+          "label": "Call AddNumbers",
+          "parameters": { "function": "AddNumbers" }
+        }
+      ],
+      "connections": [
+        { "fromId": "a_input", "fromProperty": "onTextChanged", "toId": "call_add", "toProperty": "a" },
+        { "fromId": "b_input", "fromProperty": "onTextChanged", "toId": "call_add", "toProperty": "b" },
+        { "fromId": "sum_btn", "fromProperty": "onClick", "toId": "call_add", "toProperty": "call" },
+        { "fromId": "call_add", "fromProperty": "sum", "toId": "sum_text", "toProperty": "text" }
+      ]
+    },
+    {
+      "name": "/Cloud Functions/Add Numbers",
+      "nodes": [
+        {
+          "id": "fn_request",
+          "type": "noodl.cloud.request",
+          "label": "Request",
+          "parameters": { "params": "a,b" }
+        },
+        {
+          "id": "fn_sum",
+          "type": "Expression",
+          "label": "a + b",
+          "parameters": { "expression": "Number(a) + Number(b)" }
+        },
+        {
+          "id": "fn_response",
+          "type": "noodl.cloud.response",
+          "label": "Response",
+          "parameters": { "params": "sum" }
+        }
+      ],
+      "connections": [
+        { "fromId": "fn_request", "fromProperty": "a", "toId": "fn_sum", "toProperty": "a" },
+        { "fromId": "fn_request", "fromProperty": "b", "toId": "fn_sum", "toProperty": "b" },
+        { "fromId": "fn_sum", "fromProperty": "result", "toId": "fn_response", "toProperty": "sum" },
+        { "fromId": "fn_request", "fromProperty": "receive", "toId": "fn_response", "toProperty": "send" }
+      ]
+    }
+  ]
+}

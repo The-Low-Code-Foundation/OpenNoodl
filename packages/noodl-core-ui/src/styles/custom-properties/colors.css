@@ -1,191 +1,626 @@
-/* BASE COLORS. DO NOT USE. USE THE THEME COLORS INSTEAD. */
+/* =============================================================================
+   NODEGX DESIGN SYSTEM - COLORS
+   CANONICAL token file — the only definition of the palette.
+   (The former duplicate at noodl-editor/src/editor/src/styles/custom-properties/
+   was collapsed into this file in UIX-001. Do not recreate it.)
+
+   Rules (see dev-docs/guidelines/DESIGN-TOKENS.md):
+   - `--theme-color-primary` is the azure ACTION accent. It is never used for
+     destructive or error UI.
+   - `--theme-color-danger` is the only red in chrome. Danger is never a CTA.
+   - Elevation: page < bg-0 (canvas) < bg-1 (panels) < bg-2 (cards/inputs)
+     < bg-3 (hover/active). Steps are deliberately distinct.
+
+   THEME STRUCTURE (UIX-008):
+   - `:root` carries the DARK theme values — the compat default. Any window that
+     never had a theme applied (pre-boot flash, headless render, tests) is dark.
+   - `:root[data-theme='light']` overrides the semantic tokens with the light
+     palette. The editor's ThemeManager stamps `data-theme` on the document root
+     of every window; `data-theme='dark'` simply inherits the `:root` defaults.
+   - To add a theme-dependent value: define its DARK value in `:root` and its
+     LIGHT value in the `[data-theme='light']` block below. Never hardcode a
+     color a light surface would need to override — expose a token instead.
+   ============================================================================= */
 
 :root {
-  /* Success */
-  --base-color-success-100: #e8f9ee;
-  --base-color-success-200: #9ce4b9;
-  --base-color-success-300: #62cb91;
-  --base-color-success-400: #41ac74;
-  --base-color-success-500: #1b8f59;
-  --base-color-success-600: #007442;
-  --base-color-success-700: #005c2c;
-  --base-color-success-800: #004619;
-  --base-color-success-900: #003001;
-  --base-color-success-1000: #001900;
+  /* ---------------------------------------------------------------------------
+     BASE COLORS
+     --------------------------------------------------------------------------- */
 
-  /* Error */
-  --base-color-error-100: #fff2f0;
-  --base-color-error-200: #fcc8c0;
-  --base-color-error-300: #f4a196;
-  --base-color-error-400: #e8786b;
-  --base-color-error-500: #cc594f;
-  --base-color-error-600: #af3f38;
-  --base-color-error-700: #942725;
-  --base-color-error-800: #7c0a13;
-  --base-color-error-900: #590000;
-  --base-color-error-1000: #000000;
+  /* Neutrals - cool blue-gray ramp, dark end = elevation steps, light end = text */
+  --base-color-neutral-0: #07090c;
+  --base-color-neutral-50: #0b0e12;
+  --base-color-neutral-100: #12161b;
+  --base-color-neutral-200: #181d24;
+  --base-color-neutral-300: #222933;
+  --base-color-neutral-400: #2c3540;
+  --base-color-neutral-500: #4a5560;
+  --base-color-neutral-600: #6b7682;
+  --base-color-neutral-700: #8b95a1;
+  --base-color-neutral-800: #a6b0bb;
+  --base-color-neutral-900: #cbd3dc;
+  --base-color-neutral-950: #eef2f6;
+  --base-color-neutral-1000: #ffffff;
 
-  /* Node-Pink */
-  --base-color-node-pink-100: #f9f4f6;
-  --base-color-node-pink-200: #e4cfd9;
-  --base-color-node-pink-300: #d0adbe;
-  --base-color-node-pink-400: #bb8ba3;
-  --base-color-node-pink-500: #a66b8b;
-  --base-color-node-pink-600: #944e74;
-  --base-color-node-pink-700: #7e3660;
-  --base-color-node-pink-800: #67214b;
-  --base-color-node-pink-900: #500837;
-  --base-color-node-pink-1000: #30001b;
+  /* Azure - the action accent */
+  --base-color-azure-100: #eaf4ff;
+  --base-color-azure-200: #c8e2ff;
+  --base-color-azure-300: #9dccff;
+  --base-color-azure-400: #74b8ff;
+  --base-color-azure-500: #4da3ff;
+  --base-color-azure-600: #2e86e8;
+  --base-color-azure-700: #1f6bc4;
+  --base-color-azure-800: #17529a;
+  --base-color-azure-900: #123e75;
+  --base-color-azure-950: #0a2138;
 
-  /* Node-Purple */
-  --base-color-node-purple-100: #f8f5f9;
-  --base-color-node-purple-200: #dbd0e4;
-  --base-color-node-purple-300: #c2b0d1;
-  --base-color-node-purple-400: #a98fbe;
-  --base-color-node-purple-500: #8f71ab;
-  --base-color-node-purple-600: #79559b;
-  --base-color-node-purple-700: #643d8b;
-  --base-color-node-purple-800: #4e2877;
-  --base-color-node-purple-900: #371360;
-  --base-color-node-purple-1000: #1d0047;
+  /* Red - danger/error ONLY (never a CTA) */
+  --base-color-red-100: #fef3f2;
+  --base-color-red-200: #fee4e2;
+  --base-color-red-300: #fda29b;
+  --base-color-red-400: #f97066;
+  --base-color-red-500: #f04438;
+  --base-color-red-600: #d92d20;
+  --base-color-red-700: #b42318;
+  --base-color-red-800: #912018;
+  --base-color-red-900: #7a271a;
+  --base-color-red-950: #55160c;
 
-  /* Node-Green */
-  --base-color-node-green-100: #f6f6f3;
-  --base-color-node-green-200: #d2d6c5;
-  --base-color-node-green-300: #b3ba9e;
-  --base-color-node-green-400: #939e77;
-  --base-color-node-green-500: #758353;
-  --base-color-node-green-600: #5b6a37;
-  --base-color-node-green-700: #465524;
-  --base-color-node-green-800: #314110;
-  --base-color-node-green-900: #1f2c00;
-  --base-color-node-green-1000: #0c1700;
+  /* Amber - warning */
+  --base-color-amber-100: #fffaeb;
+  --base-color-amber-200: #fef0c7;
+  --base-color-amber-300: #fec84b;
+  --base-color-amber-400: #fdb022;
+  --base-color-amber-500: #f79009;
+  --base-color-amber-600: #dc6803;
+  --base-color-amber-700: #b54708;
+  --base-color-amber-800: #93370d;
+  --base-color-amber-900: #7a2e0e;
+  --base-color-amber-950: #4e1d09;
 
-  /* Node-Gray */
+  /* Brand coral. Originally the wordmark dot only; PNL-006 added one more
+     sanctioned use — the Components tree's home glyph, the single non-danger
+     coral the phase-23 de-red rule allows — so this is now a UI colour and has
+     to clear WCAG 1.4.11's 3:1 for non-text, not merely look right.
+
+     The light-theme value was tuned against pure white, where #ff5a50 measures
+     3.07:1. Panel grounds are not white: on the Components panel it measures
+     2.91:1 and PNL-006's own gate fails it. #f5493f measures 3.36:1 there and
+     3.55:1 on white, and is the smallest darkening that clears the bar with
+     margin. The dark-theme value is 6.03:1 and is untouched. */
+  --base-color-brand-coral: #ff6a5f;
+  --base-color-brand-coral-light-theme: #f5493f;
+
+  /* Absolute white — theme-invariant surfaces (e.g. toggle knob, mock `.toggle::after`) */
+  --base-color-white: #ffffff;
+
+  /* Transparent variants */
+  --base-color-black-transparent-90: rgba(0, 0, 0, 0.9);
+  --base-color-black-transparent-80: rgba(0, 0, 0, 0.8);
+  /* POL-004: -70 and -30 were already in use by popuplayer.css and had never
+     been defined, so both scrims rendered as nothing at all — the var() had no
+     fallback either. */
+  --base-color-black-transparent-70: rgba(0, 0, 0, 0.7);
+  --base-color-black-transparent-50: rgba(0, 0, 0, 0.5);
+  --base-color-black-transparent-30: rgba(0, 0, 0, 0.3);
+  --base-color-white-transparent-10: rgba(255, 255, 255, 0.1);
+  --base-color-white-transparent-15: rgba(255, 255, 255, 0.15);
+  --base-color-white-transparent-16: rgba(255, 255, 255, 0.16); /* PAR-001: card ghost initial */
+  --base-color-white-transparent-50: rgba(255, 255, 255, 0.5);
+
+  /* ---------------------------------------------------------------------------
+     SEMANTIC COLORS (Status indicators)
+     --------------------------------------------------------------------------- */
+
+  /* Success - emerald */
+  --base-color-success-100: #ecfdf3;
+  --base-color-success-200: #d1fadf;
+  --base-color-success-300: #a6f4c5;
+  --base-color-success-400: #6ce9a6;
+  --base-color-success-500: #3ccb7f;
+  --base-color-success-600: #12915b;
+  --base-color-success-700: #027a48;
+  --base-color-success-800: #05603a;
+  --base-color-success-900: #054f31;
+  --base-color-success-1000: #03301e;
+
+  /* Error - the danger red */
+  --base-color-error-100: var(--base-color-red-100);
+  --base-color-error-200: var(--base-color-red-200);
+  --base-color-error-300: var(--base-color-red-300);
+  --base-color-error-400: var(--base-color-red-400);
+  --base-color-error-500: var(--base-color-red-500);
+  --base-color-error-600: var(--base-color-red-600);
+  --base-color-error-700: var(--base-color-red-700);
+  --base-color-error-800: var(--base-color-red-800);
+  --base-color-error-900: var(--base-color-red-900);
+  --base-color-error-1000: var(--base-color-red-950);
+
+  /* ---------------------------------------------------------------------------
+     NODE TYPE COLORS
+     Desaturated scales, live in the current canvas/pickers.
+     UIX-005 repalettes the canvas onto the node-category tokens below;
+     these scales stay until then.
+     --------------------------------------------------------------------------- */
+
+  /* Node-Pink - For Custom/User nodes */
+  --base-color-node-pink-100: #fdf2f8;
+  --base-color-node-pink-200: #f5d0e5;
+  --base-color-node-pink-300: #e8a8ca;
+  --base-color-node-pink-400: #d87caa;
+  --base-color-node-pink-500: #c2578a;
+  --base-color-node-pink-600: #a63d6f;
+  --base-color-node-pink-700: #862d56;
+  --base-color-node-pink-800: #6b2445;
+  --base-color-node-pink-900: #521c35;
+  --base-color-node-pink-1000: #2d0e1c;
+
+  /* Node-Purple - For Component nodes */
+  --base-color-node-purple-100: #f8f5fa;
+  --base-color-node-purple-200: #e8dff0;
+  --base-color-node-purple-300: #d4c4e3;
+  --base-color-node-purple-400: #b8a0cf;
+  --base-color-node-purple-500: #9a7bb8;
+  --base-color-node-purple-600: #7d5a9e;
+  --base-color-node-purple-700: #624382;
+  --base-color-node-purple-800: #4b3366;
+  --base-color-node-purple-900: #37264b;
+  --base-color-node-purple-1000: #1e1429;
+
+  /* Node-Green - For Data nodes */
+  --base-color-node-green-100: #f4f7f4;
+  --base-color-node-green-200: #d8e5d8;
+  --base-color-node-green-300: #b5cfb5;
+  --base-color-node-green-400: #8eb58e;
+  --base-color-node-green-500: #6a996a;
+  --base-color-node-green-600: #4d7d4d;
+  --base-color-node-green-700: #3a613a;
+  --base-color-node-green-800: #2c4a2c;
+  --base-color-node-green-900: #203520;
+  --base-color-node-green-1000: #111c11;
+
+  /* Node-Gray - For Logic nodes */
   --base-color-node-grey-100: #f5f5f5;
-  --base-color-node-grey-200: #d3d4d6;
-  --base-color-node-grey-300: #b6b7bb;
-  --base-color-node-grey-400: #97999f;
-  --base-color-node-grey-500: #7b7d85;
-  --base-color-node-grey-600: #62656e;
-  --base-color-node-grey-700: #4c4f59;
-  --base-color-node-grey-800: #373b45;
-  --base-color-node-grey-900: #252832;
-  --base-color-node-grey-1000: #11141d;
+  --base-color-node-grey-200: #e0e0e0;
+  --base-color-node-grey-300: #c2c2c2;
+  --base-color-node-grey-400: #9e9e9e;
+  --base-color-node-grey-500: #757575;
+  --base-color-node-grey-600: #5c5c5c;
+  --base-color-node-grey-700: #454545;
+  --base-color-node-grey-800: #333333;
+  --base-color-node-grey-900: #212121;
+  --base-color-node-grey-1000: #0d0d0d;
 
-  /* Node-Blue */
-  --base-color-node-blue-100: #f5f6f8;
-  --base-color-node-blue-200: #cfd5de;
-  --base-color-node-blue-300: #adb8c6;
-  --base-color-node-blue-400: #8b9bae;
-  --base-color-node-blue-500: #6b7f98;
-  --base-color-node-blue-600: #4d6784;
-  --base-color-node-blue-700: #315272;
-  --base-color-node-blue-800: #173e5d;
-  --base-color-node-blue-900: #002a47;
-  --base-color-node-blue-1000: #00142f;
+  /* Node-Blue - For Visual nodes */
+  --base-color-node-blue-100: #f4f6f8;
+  --base-color-node-blue-200: #dce3eb;
+  --base-color-node-blue-300: #bccad9;
+  --base-color-node-blue-400: #96adc2;
+  --base-color-node-blue-500: #7090a9;
+  --base-color-node-blue-600: #53758f;
+  --base-color-node-blue-700: #3e5a72;
+  --base-color-node-blue-800: #2f4557;
+  --base-color-node-blue-900: #22323f;
+  --base-color-node-blue-1000: #121b22;
 
-  /* Secondary */
-  --base-color-teal-100: #f0f7f9;
-  --base-color-teal-200: #b6dbe3;
-  --base-color-teal-300: #7ec2cf;
-  --base-color-teal-400: #2ba7ba;
-  --base-color-teal-500: #008a9d;
-  --base-color-teal-600: #006f82;
-  --base-color-teal-700: #005769;
-  --base-color-teal-800: #004153;
-  --base-color-teal-900: #002c3d;
-  --base-color-teal-1000: #001623;
+  /* ---------------------------------------------------------------------------
+     LEGACY ALIASES - For backwards compatibility
+     --------------------------------------------------------------------------- */
 
-  /* Primary */
-  --base-color-yellow-100: #fff4e2;
-  --base-color-yellow-200: #fccd75;
-  --base-color-yellow-300: #e5ae32;
-  --base-color-yellow-400: #c39108;
-  --base-color-yellow-500: #a37500;
-  --base-color-yellow-600: #875d00;
-  --base-color-yellow-700: #6d4800;
-  --base-color-yellow-800: #583400;
-  --base-color-yellow-900: #431e00;
-  --base-color-yellow-1000: #330000;
+  /* Grey -> Neutral */
+  --base-color-grey-100: var(--base-color-neutral-950);
+  --base-color-grey-100-transparent: var(--base-color-white-transparent-10);
+  --base-color-grey-200: var(--base-color-neutral-800);
+  --base-color-grey-300: var(--base-color-neutral-700);
+  --base-color-grey-400: var(--base-color-neutral-600);
+  --base-color-grey-500: var(--base-color-neutral-500);
+  --base-color-grey-600: var(--base-color-neutral-400);
+  --base-color-grey-700: var(--base-color-neutral-300);
+  --base-color-grey-800: var(--base-color-neutral-200);
+  --base-color-grey-900: var(--base-color-neutral-100);
+  --base-color-grey-1000: var(--base-color-neutral-50);
+  --base-color-grey-1000-transparent: var(--base-color-black-transparent-80);
+  --base-color-grey-1000-transparent-2: var(--base-color-black-transparent-50);
 
-  /* UI Greys */
-  --base-color-grey-100: #f5f5f5;
-  --base-color-grey-100-transparent: #f5f5f522;
-  --base-color-grey-200: #d4d4d4;
-  --base-color-grey-300: #b8b8b8;
-  --base-color-grey-400: #9a9999;
-  --base-color-grey-500: #7e7d7d;
-  --base-color-grey-600: #666565;
-  --base-color-grey-700: #504f4f;
-  --base-color-grey-800: #3c3c3c;
-  --base-color-grey-900: #292828;
-  --base-color-grey-1000: #151414;
-  --base-color-grey-1000-transparent: #151414b3;
-  --base-color-grey-1000-transparent-2: #00000069;
+  /* Teal -> Neutral (secondary is fg-neutral) */
+  --base-color-teal-100: var(--base-color-neutral-1000);
+  --base-color-teal-200: var(--base-color-neutral-900);
+  --base-color-teal-300: var(--base-color-neutral-800);
+  --base-color-teal-400: var(--base-color-neutral-700);
+  --base-color-teal-500: var(--base-color-neutral-600);
+  --base-color-teal-600: var(--base-color-neutral-500);
+  --base-color-teal-700: var(--base-color-neutral-400);
+  --base-color-teal-800: var(--base-color-neutral-300);
+  --base-color-teal-900: var(--base-color-neutral-200);
+  --base-color-teal-1000: var(--base-color-neutral-100);
+
+  /* Yellow -> Azure (yellow was the original primary; primary is now azure) */
+  --base-color-yellow-100: var(--base-color-azure-100);
+  --base-color-yellow-200: var(--base-color-azure-200);
+  --base-color-yellow-300: var(--base-color-azure-400);
+  --base-color-yellow-400: var(--base-color-azure-500);
+  --base-color-yellow-500: var(--base-color-azure-600);
+  --base-color-yellow-600: var(--base-color-azure-700);
+  --base-color-yellow-700: var(--base-color-azure-800);
+  --base-color-yellow-800: var(--base-color-azure-900);
+  --base-color-yellow-900: var(--base-color-azure-950);
+  --base-color-yellow-1000: var(--base-color-azure-950);
 }
 
-/* THEME COLOR TOKENS. USE THESE. */
+/* =============================================================================
+   THEME COLOR TOKENS - USE THESE IN COMPONENTS
+   ============================================================================= */
 
 :root {
-  --theme-color-bg-0: #000000;
-  --theme-color-bg-1: var(--base-color-grey-1000);
-  --theme-color-bg-1-transparent: var(--base-color-grey-1000-transparent);
-  --theme-color-bg-1-transparent-2: var(--base-color-grey-1000-transparent-2);
-  --theme-color-bg-2: var(--base-color-grey-900);
-  --theme-color-bg-3: var(--base-color-grey-800);
-  --theme-color-bg-4: var(--base-color-grey-700);
+  /* ---------------------------------------------------------------------------
+     BACKGROUNDS - elevation ladder (each step visibly lighter)
+     page (behind everything) < bg-0 (canvas ground) < bg-1 (panels)
+     < bg-2 (cards/inputs) < bg-3 (hover/active) < bg-4/5 (raised extremes)
+     --------------------------------------------------------------------------- */
+  --theme-color-bg-page: var(--base-color-neutral-0);
+  --theme-color-bg-0: var(--base-color-neutral-50);
+  --theme-color-bg-1: var(--base-color-neutral-100);
+  --theme-color-bg-1-transparent: var(--base-color-black-transparent-80);
+  --theme-color-bg-1-transparent-2: var(--base-color-black-transparent-50);
+  --theme-color-bg-2: var(--base-color-neutral-200);
+  --theme-color-bg-3: var(--base-color-neutral-300);
+  --theme-color-bg-4: var(--base-color-neutral-400);
+  --theme-color-bg-5: #37424f;
+  --theme-color-bg-hover: var(--base-color-white-transparent-10);
 
-  --theme-color-fg-highlight: var(--base-color-grey-100);
-  --theme-color-fg-default-contrast: var(--base-color-grey-200);
-  --theme-color-fg-default: var(--base-color-grey-300);
-  --theme-color-fg-default-shy: var(--base-color-grey-400);
-  --theme-color-fg-muted: var(--base-color-grey-500);
-  --theme-color-fg-transparent: var(--base-color-grey-100-transparent);
+  /* ---------------------------------------------------------------------------
+     FOREGROUNDS
+     highlight = emphasized, default = body, muted = large/secondary text only
+     --------------------------------------------------------------------------- */
+  --theme-color-fg-highlight: var(--base-color-neutral-950);
+  --theme-color-fg-default-contrast: var(--base-color-neutral-900);
+  --theme-color-fg-default: var(--base-color-neutral-800);
+  --theme-color-fg-default-shy: var(--base-color-neutral-700);
+  --theme-color-fg-muted: var(--base-color-neutral-600);
+  --theme-color-fg-transparent: var(--base-color-white-transparent-15);
 
-  --theme-color-primary: var(--base-color-yellow-300);
-  --theme-color-primary-highlight: var(--base-color-yellow-200);
-  --theme-color-primary-dim: var(--base-color-yellow-500);
-  --theme-color-on-primary: var(--base-color-grey-1000);
+  /* ---------------------------------------------------------------------------
+     PRIMARY - Azure action accent
+     CTAs, active tabs, selection, links. NEVER destructive/error UI.
+     --------------------------------------------------------------------------- */
+  --theme-color-primary: var(--base-color-azure-500);
+  --theme-color-primary-highlight: var(--base-color-azure-400);
+  --theme-color-primary-dim: var(--base-color-azure-700);
+  --theme-color-primary-bg: rgba(77, 163, 255, 0.13);
+  --theme-color-on-primary: #071627;
 
-  --theme-color-secondary: var(--base-color-teal-700);
-  --theme-color-secondary-dim: var(--base-color-teal-800);
-  --theme-color-secondary-highlight: var(--base-color-teal-600);
-  --theme-color-secondary-bright: var(--base-color-teal-500);
-  --theme-color-secondary-as-fg: var(--base-color-teal-300);
-  --theme-color-on-secondary: var(--base-color-teal-100);
+  /* ---------------------------------------------------------------------------
+     SECONDARY - Neutral fg-toned actions
+     --------------------------------------------------------------------------- */
+  --theme-color-secondary: var(--base-color-neutral-950);
+  --theme-color-secondary-dim: var(--base-color-neutral-700);
+  --theme-color-secondary-highlight: var(--base-color-neutral-1000);
+  --theme-color-secondary-bright: var(--base-color-neutral-1000);
+  --theme-color-secondary-as-fg: var(--base-color-neutral-800);
+  --theme-color-on-secondary: var(--base-color-neutral-100);
 
-  --theme-color-node-data-1: var(--base-color-node-green-800);
-  --theme-color-node-data-2: var(--base-color-node-green-700);
-  --theme-color-node-data-3: var(--base-color-node-green-600);
-  --theme-color-node-data-dim: var(--base-color-node-green-1000);
+  /* ---------------------------------------------------------------------------
+     BRAND - coral. Wordmark dot ONLY; never chrome, never a button.
+     --------------------------------------------------------------------------- */
+  --theme-color-brand: var(--base-color-brand-coral);
 
-  --theme-color-node-visual-1: var(--base-color-node-blue-800);
-  --theme-color-node-visual-2: var(--base-color-node-blue-700);
-  --theme-color-node-visual-2-highlight: var(--base-color-node-blue-600);
-  --theme-color-node-visual-highlight: var(--base-color-node-blue-100);
-  --theme-color-node-visual-default: var(--base-color-node-blue-200);
-  --theme-color-node-visual-shy: var(--base-color-node-blue-300);
-  --theme-color-node-visual-dim: var(--base-color-node-blue-1000);
+  /* ---------------------------------------------------------------------------
+     AVATAR - launcher/user avatar circle gradient (PAR-001, mock-normative).
+     Same in both themes (the mock does not retint it on light); the initials/
+     glyph on it are always white.
+     --------------------------------------------------------------------------- */
+  --theme-color-avatar-gradient: linear-gradient(135deg, #7c5cff, #4da3ff);
+  --theme-color-avatar-fg: #ffffff;
 
-  --theme-color-node-custom-1: var(--base-color-node-pink-800);
-  --theme-color-node-custom-2: var(--base-color-node-pink-700);
-  --theme-color-node-custom-dim: var(--base-color-node-pink-1000);
+  /* ---------------------------------------------------------------------------
+     NODE COLORS (legacy scales; UIX-005 moves canvas to category tokens)
+     --------------------------------------------------------------------------- */
 
-  --theme-color-node-logic-1: var(--base-color-node-grey-800);
-  --theme-color-node-logic-2: var(--base-color-node-grey-700);
-  --theme-color-node-logic-dim: var(--base-color-node-grey-1000);
+  /* Data nodes - Muted Green */
+  --theme-color-node-data-1: var(--base-color-node-green-700);
+  --theme-color-node-data-2: var(--base-color-node-green-600);
+  --theme-color-node-data-3: var(--base-color-node-green-500);
+  --theme-color-node-data-dim: var(--base-color-node-green-900);
 
-  --theme-color-node-component-1: var(--base-color-node-purple-800);
-  --theme-color-node-component-2: var(--base-color-node-purple-700);
-  --theme-color-node-component-dim: var(--base-color-node-purple-1000);
+  /* Visual nodes - Muted Blue */
+  --theme-color-node-visual-1: var(--base-color-node-blue-700);
+  --theme-color-node-visual-2: var(--base-color-node-blue-600);
+  --theme-color-node-visual-2-highlight: var(--base-color-node-blue-500);
+  --theme-color-node-visual-highlight: var(--base-color-node-blue-200);
+  --theme-color-node-visual-default: var(--base-color-node-blue-300);
+  --theme-color-node-visual-shy: var(--base-color-node-blue-400);
+  --theme-color-node-visual-dim: var(--base-color-node-blue-900);
 
-  /* TODO: Ask for dim and highlight colors for statuses */
-  --theme-color-success: #5bf59e;
-  --theme-color-notice: var(--base-color-yellow-300);
-  --theme-color-danger: #f57569;
-  --theme-color-danger-light: #f89387;
+  /* Custom nodes - Muted Pink */
+  --theme-color-node-custom-1: var(--base-color-node-pink-700);
+  --theme-color-node-custom-2: var(--base-color-node-pink-600);
+  --theme-color-node-custom-dim: var(--base-color-node-pink-900);
 
-  --theme-color-signal: var(--base-color-yellow-300);
-  --theme-color-data: var(--base-color-teal-600);
+  /* Logic nodes - Gray */
+  --theme-color-node-logic-1: var(--base-color-node-grey-700);
+  --theme-color-node-logic-2: var(--base-color-node-grey-600);
+  --theme-color-node-logic-dim: var(--base-color-node-grey-900);
+
+  /* Component nodes - Muted Purple */
+  --theme-color-node-component-1: var(--base-color-node-purple-700);
+  --theme-color-node-component-2: var(--base-color-node-purple-600);
+  --theme-color-node-component-dim: var(--base-color-node-purple-900);
+
+  /* ---------------------------------------------------------------------------
+     NODE CATEGORY TOKENS (UIX-005 consumes; inert until then)
+     One hue per category; wires get their own pair.
+     --------------------------------------------------------------------------- */
+  --theme-color-node-category-visual: #5ca9ff;
+  --theme-color-node-category-data: #45d08a;
+  --theme-color-node-category-logic: #f5b843;
+  --theme-color-node-category-function: #f776c4;
+  --theme-color-node-category-component: #a78bfa;
+  --theme-color-wire-signal: #35c3e8;
+  --theme-color-wire-data: var(--theme-color-node-category-data);
+
+  /* ---------------------------------------------------------------------------
+     STATUS COLORS
+     danger = errors + destructive actions. warning = caution. success = good.
+     `notice` is the legacy name for warning and aliases onto it.
+     --------------------------------------------------------------------------- */
+  --theme-color-success: var(--base-color-success-500);
+  --theme-color-success-dim: var(--base-color-success-600);
+  --theme-color-success-bg: rgba(60, 203, 127, 0.12);
+
+  --theme-color-warning: var(--base-color-amber-400);
+  --theme-color-warning-dim: var(--base-color-amber-600);
+  --theme-color-warning-bg: rgba(253, 176, 34, 0.12);
+
+  --theme-color-notice: var(--theme-color-warning);
+  --theme-color-notice-dim: var(--theme-color-warning-dim);
+  --theme-color-notice-bg: var(--theme-color-warning-bg);
+  /* POL-004: the hover step for a notice-tinted row. `notice-bg` existed and
+     this did not, so the Provenance panel's hover state painted a hardcoded
+     amber that neither theme could reach. Derived from the same amber so the
+     pair moves together; the light block below overrides it alongside its
+     partner. */
+  --theme-color-notice-bg-hover: rgba(253, 176, 34, 0.2);
+
+  --theme-color-danger: var(--base-color-red-400);
+  --theme-color-danger-light: var(--base-color-red-300);
+  --theme-color-danger-dim: var(--base-color-red-600);
+  --theme-color-danger-bg: rgba(249, 112, 102, 0.12);
+
+  /* ---------------------------------------------------------------------------
+     CONNECTION COLORS
+     --------------------------------------------------------------------------- */
+  --theme-color-signal: var(--theme-color-wire-signal);
+  --theme-color-data: var(--theme-color-wire-data);
+
+  /* ---------------------------------------------------------------------------
+     BORDERS
+     --------------------------------------------------------------------------- */
+  --theme-color-border-default: #232a33;
+  --theme-color-border-subtle: #1a2029;
+  --theme-color-border-strong: #37404c;
+  /* POL-016. The three above are DIVIDER tones: against bg-1/2/3 they measure
+     1.01–1.73:1, which is right for a hairline between two regions and far under
+     the 3:1 WCAG 1.4.11 asks of anything that has to be identified as a control.
+     A muted button's fill is 1.00–1.16:1 against every surface it lands on, so
+     without a ring at THIS weight it reads as a label, not a button. Partner of
+     the light-block definition; both measure >=3.17:1 on bg-1, bg-2 and bg-3. */
+  --theme-color-border-control: var(--base-color-neutral-600);
+
+  /* ---------------------------------------------------------------------------
+     FOCUS - azure ring, visible on every bg step
+     --------------------------------------------------------------------------- */
+  --theme-color-focus-ring: var(--base-color-azure-500);
+  --theme-color-focus-ring-offset: var(--base-color-neutral-100);
+
+  /* ---------------------------------------------------------------------------
+     CODE SYNTAX (CodeMirror) — dark values (VSCode Dark+ lineage).
+     The code editor theme (noodl-core-ui/.../codemirror-theme.ts) reads these
+     via var() so it flips with the app. Light values in the [data-theme='light']
+     block. Add a syntax colour here + its light counterpart — never inline a hex
+     in the CodeMirror theme.
+     --------------------------------------------------------------------------- */
+  --theme-color-syntax-keyword: #569cd6;
+  --theme-color-syntax-control: #c586c0;
+  --theme-color-syntax-comment: #6a9955;
+  --theme-color-syntax-string: #ce9178;
+  --theme-color-syntax-string-special: #d16969;
+  --theme-color-syntax-number: #b5cea8;
+  --theme-color-syntax-variable: #9cdcfe;
+  --theme-color-syntax-function: #dcdcaa;
+  --theme-color-syntax-property: #9cdcfe;
+  --theme-color-syntax-property-special: #4fc1ff;
+  --theme-color-syntax-operator: #d4d4d4;
+  --theme-color-syntax-punctuation: #d4d4d4;
+  --theme-color-syntax-type: #4ec9b0;
+  --theme-color-syntax-meta: #808080;
+  --theme-color-syntax-escape: #d7ba7d;
+  --theme-color-syntax-label: #c8c8c8;
+  --theme-color-syntax-invalid: #f44747;
+  --theme-color-syntax-paren: #ffd700;
+  --theme-color-syntax-bracket: #87ceeb;
+  --theme-color-syntax-brace: #98fb98;
+  --theme-color-syntax-angle: #dda0dd;
+
+  /* ---------------------------------------------------------------------------
+     COMPAT ALIASES
+     Token names referenced by existing call sites but never previously defined
+     (they silently fell back). Defined here so those styles resolve; prefer the
+     canonical names above in new code. UIX-002 may migrate call sites off these.
+     --------------------------------------------------------------------------- */
+  --theme-color-accent: var(--theme-color-primary);
+  --theme-color-accent-blue: var(--base-color-azure-500);
+  --theme-color-accent-orange: var(--base-color-amber-400);
+  --theme-color-border-highlight: var(--theme-color-border-strong);
+  --theme-color-border-hover: var(--theme-color-border-strong);
+  --theme-color-danger-10: rgba(249, 112, 102, 0.1);
+  --theme-color-danger-dark: var(--base-color-red-600);
+  --theme-color-danger-hover: var(--base-color-red-300);
+  --theme-color-danger-shade: var(--theme-color-danger-bg);
+  --theme-color-danger-transparent: rgba(249, 112, 102, 0.25);
+  --theme-color-error: var(--theme-color-danger);
+  --theme-color-error-bg: var(--theme-color-danger-bg);
+  --theme-color-fg-disabled: var(--theme-color-fg-muted);
+  --theme-color-fg-error: var(--theme-color-danger);
+  --theme-color-fg-on-accent: var(--theme-color-on-primary);
+  --theme-color-fg-on-primary: var(--theme-color-on-primary);
+  --theme-color-fg-on-warning: var(--base-color-neutral-0);
+  --theme-color-node-visual-3: var(--base-color-node-blue-500);
+  --theme-color-node-custom-3: var(--base-color-node-pink-500);
+  --theme-color-node-logic-3: var(--base-color-node-grey-500);
+  --theme-color-node-component-3: var(--base-color-node-purple-500);
+  --theme-color-notice-dark: var(--base-color-amber-600);
+  --theme-color-notice-shade: var(--theme-color-warning-bg);
+  --theme-color-primary-10: rgba(77, 163, 255, 0.1);
+  --theme-color-primary-25: rgba(77, 163, 255, 0.25);
+  --theme-color-primary-active: var(--base-color-azure-600);
+  --theme-color-primary-hover: var(--base-color-azure-400);
+  --theme-color-primary-muted: rgba(77, 163, 255, 0.35);
+  --theme-color-primary-rgb: 77, 163, 255;
+  --theme-color-primary-transparent: rgba(77, 163, 255, 0.15);
+  --theme-color-success-dark: var(--base-color-success-600);
+  --theme-color-success-shade: var(--theme-color-success-bg);
+}
+
+/* =============================================================================
+   LIGHT THEME (UIX-008)
+   Active when the ThemeManager stamps `data-theme="light"` on the document root
+   (see packages/noodl-editor/.../models/ThemeManager). `data-theme="dark"` (or
+   no attribute) inherits the `:root` dark defaults above, so there is no
+   separate dark override block.
+   ============================================================================= */
+
+:root[data-theme='light'] {
+  --theme-color-bg-page: #e7ebf1;
+  --theme-color-bg-0: #eef1f5;
+  --theme-color-bg-1: #ffffff;
+  --theme-color-bg-1-transparent: rgba(255, 255, 255, 0.85);
+  --theme-color-bg-1-transparent-2: rgba(255, 255, 255, 0.5);
+  --theme-color-bg-2: #f7f9fb;
+  --theme-color-bg-3: #ecf0f4;
+  --theme-color-bg-4: #e2e8ef;
+  --theme-color-bg-5: #d8dfe8;
+  --theme-color-bg-hover: rgba(23, 32, 43, 0.06);
+
+  --theme-color-fg-highlight: #18212b;
+  --theme-color-fg-default-contrast: #2e3945;
+  --theme-color-fg-default: #4a5663;
+  --theme-color-fg-default-shy: #616c79;
+  --theme-color-fg-muted: #7c8894;
+  --theme-color-fg-transparent: rgba(23, 32, 43, 0.15);
+
+  --theme-color-primary: #1570ef;
+  --theme-color-primary-highlight: #0e5fd0;
+  --theme-color-primary-dim: #0b4daa;
+  --theme-color-primary-bg: rgba(21, 112, 239, 0.09);
+  --theme-color-on-primary: #ffffff;
+
+  --theme-color-secondary: #18212b;
+  --theme-color-secondary-dim: #616c79;
+  --theme-color-secondary-highlight: #07090c;
+  --theme-color-secondary-bright: #07090c;
+  --theme-color-secondary-as-fg: #4a5663;
+  --theme-color-on-secondary: #ffffff;
+
+  --theme-color-brand: var(--base-color-brand-coral-light-theme);
+
+  --theme-color-node-category-visual: #2e7cd6;
+  --theme-color-node-category-data: #1e9e63;
+  --theme-color-node-category-logic: #b87e14;
+  --theme-color-node-category-function: #d6479a;
+  --theme-color-node-category-component: #7c5ce0;
+  --theme-color-wire-signal: #0e9cc4;
+
+  --theme-color-success: #12915b;
+  --theme-color-success-dim: #027a48;
+  --theme-color-success-bg: rgba(18, 145, 91, 0.1);
+
+  --theme-color-warning: #b54708;
+  --theme-color-warning-dim: #93370d;
+  --theme-color-warning-bg: rgba(247, 144, 9, 0.13);
+  /* POL-004: partner of the dark-block definition. `notice-bg` reaches its light
+     value through `warning-bg`; this one has to be restated because it is not an
+     alias. */
+  --theme-color-notice-bg-hover: rgba(247, 144, 9, 0.22);
+
+  --theme-color-danger: #d92d20;
+  --theme-color-danger-light: #f04438;
+  --theme-color-danger-dim: #b42318;
+  --theme-color-danger-bg: rgba(240, 68, 56, 0.1);
+
+  --theme-color-border-default: #e0e5eb;
+  --theme-color-border-subtle: #eaeef3;
+  --theme-color-border-strong: #c9d2dc;
+  /* POL-016: partner of the dark-block definition. Not an alias, so it has to be
+     restated. Same value as this theme's `fg-muted` — the lightest tone that
+     still clears 3:1 on bg-1 (3.62), bg-2 (3.43) and bg-3 (3.16). */
+  --theme-color-border-control: #7c8894;
+
+  --theme-color-focus-ring: #1570ef;
+  --theme-color-focus-ring-offset: #ffffff;
+
+  /* Legacy node-category semantic tokens (DOM consumers: CommentLayer,
+     NodePickerNode, ConnectionBar, NodeReferencesPanel). The dark values are
+     deep desaturated node hues that smear on a light panel; retint to the light
+     node-category family so DOM node chrome reads on light. Canvas paint reads
+     the category tokens above, not these. */
+  --theme-color-node-data-1: #147a49;
+  --theme-color-node-data-2: #1e9e63;
+  --theme-color-node-data-3: #2bb877;
+  --theme-color-node-data-dim: #d8f0e4;
+  --theme-color-node-visual-1: #1f68b8;
+  --theme-color-node-visual-2: #2e7cd6;
+  --theme-color-node-visual-2-highlight: #4a94e6;
+  --theme-color-node-visual-highlight: #cfe4fb;
+  --theme-color-node-visual-default: #2e7cd6;
+  --theme-color-node-visual-shy: #6aa3dd;
+  --theme-color-node-visual-dim: #dcebfb;
+  --theme-color-node-visual-3: #4a94e6;
+  --theme-color-node-custom-1: #b02f7e;
+  --theme-color-node-custom-2: #d6479a;
+  --theme-color-node-custom-3: #e06bb0;
+  --theme-color-node-custom-dim: #f7dced;
+  --theme-color-node-logic-1: #916012;
+  --theme-color-node-logic-2: #b87e14;
+  --theme-color-node-logic-3: #cf9a2e;
+  --theme-color-node-logic-dim: #f3e6c9;
+  --theme-color-node-component-1: #5f3fc4;
+  --theme-color-node-component-2: #7c5ce0;
+  --theme-color-node-component-3: #9a7eea;
+  --theme-color-node-component-dim: #e7defb;
+
+  /* Code syntax — light values (VSCode Light+ lineage; all AA on bg-1/bg-2). */
+  --theme-color-syntax-keyword: #0000ff;
+  --theme-color-syntax-control: #af00db;
+  --theme-color-syntax-comment: #008000;
+  --theme-color-syntax-string: #a31515;
+  --theme-color-syntax-string-special: #811f3f;
+  --theme-color-syntax-number: #098658;
+  --theme-color-syntax-variable: #001080;
+  --theme-color-syntax-function: #795e26;
+  --theme-color-syntax-property: #001080;
+  --theme-color-syntax-property-special: #0070c1;
+  --theme-color-syntax-operator: #24292e;
+  --theme-color-syntax-punctuation: #24292e;
+  --theme-color-syntax-type: #267f99;
+  --theme-color-syntax-meta: #6e7781;
+  --theme-color-syntax-escape: #795e26;
+  --theme-color-syntax-label: #24292e;
+  --theme-color-syntax-invalid: #cf222e;
+  --theme-color-syntax-paren: #795e26;
+  --theme-color-syntax-bracket: #0070c1;
+  --theme-color-syntax-brace: #098658;
+  --theme-color-syntax-angle: #af00db;
+
+  /* Compat aliases with literal values (see dark-theme compat block) */
+  --theme-color-danger-10: rgba(240, 68, 56, 0.08);
+  --theme-color-danger-hover: #b42318;
+  --theme-color-danger-transparent: rgba(240, 68, 56, 0.2);
+  --theme-color-primary-10: rgba(21, 112, 239, 0.08);
+  --theme-color-primary-25: rgba(21, 112, 239, 0.2);
+  --theme-color-primary-active: #0b4daa;
+  --theme-color-primary-hover: #0e5fd0;
+  --theme-color-primary-muted: rgba(21, 112, 239, 0.3);
+  --theme-color-primary-rgb: 21, 112, 239;
+  --theme-color-primary-transparent: rgba(21, 112, 239, 0.12);
+  --theme-color-fg-on-warning: #ffffff;
 }

@@ -1,0 +1,118 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://opennoodl.dev/schemas/project-v2.json",
+  "title": "OpenNoodl Project",
+  "description": "Root project metadata file for the v2 multi-file project format",
+  "type": "object",
+  "required": ["name", "version", "nodegxVersion"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "JSON Schema reference"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Human-readable project name"
+    },
+    "id": {
+      "type": "string",
+      "description": "Unique project identifier"
+    },
+    "version": {
+      "type": "string",
+      "description": "Project data format version (e.g. '2.0')"
+    },
+    "nodegxVersion": {
+      "type": "string",
+      "description": "OpenNoodl editor version that created/last saved this project"
+    },
+    "runtimeVersion": {
+      "type": "string",
+      "enum": ["react17", "react19"],
+      "description": "React runtime version for the viewer"
+    },
+    "created": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 creation timestamp"
+    },
+    "modified": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 last-modified timestamp"
+    },
+    "settings": {
+      "type": "object",
+      "description": "Project-level settings",
+      "properties": {
+        "rootComponent": {
+          "type": "string",
+          "description": "Name of the root component"
+        },
+        "defaultRoute": {
+          "type": "string",
+          "description": "Default navigation route"
+        },
+        "bodyScroll": {
+          "type": "boolean"
+        },
+        "headCode": {
+          "type": "string"
+        },
+        "htmlTitle": {
+          "type": "string"
+        },
+        "navigationPathType": {
+          "type": "string"
+        },
+        "responsive": {
+          "type": "object",
+          "properties": {
+            "breakpoints": {
+              "type": "array",
+              "items": { "type": "string" }
+            }
+          }
+        }
+      },
+      "additionalProperties": true
+    },
+    "structure": {
+      "type": "object",
+      "description": "Directory layout configuration",
+      "properties": {
+        "componentsDir": {
+          "type": "string",
+          "default": "components"
+        },
+        "modelsDir": {
+          "type": "string",
+          "default": "models"
+        },
+        "assetsDir": {
+          "type": "string",
+          "default": "assets"
+        }
+      },
+      "additionalProperties": false
+    },
+    "rootNodeId": {
+      "type": "string",
+      "description": "ID of the NODE the runtime mounts as the app root (not a component id). Names one top-level node inside one component, typically the Page Router in /App; the export derives rootComponent from whichever component owns it. Without it the export produces nothing and the app renders blank, so a tool authoring a project from scratch must set it."
+    },
+    "lesson": {
+      "description": "Lesson/tutorial payload attached to the project (interactive-lesson projects)"
+    },
+    "thumbnailURI": {
+      "type": "string",
+      "description": "Data-URI or path to the project thumbnail shown in the launcher"
+    },
+    "metadata": {
+      "type": "object",
+      "description": "Arbitrary project metadata (styles, cloudservices, appConfig, etc.)",
+      "additionalProperties": true
+    }
+  }
+}

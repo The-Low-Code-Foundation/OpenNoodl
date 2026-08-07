@@ -11,7 +11,8 @@ module.exports = {
           loader: 'babel-loader',
           options: {
             babelrc: false,
-            cacheDirectory: true,
+            // Disable cache in development to ensure fresh code loads
+            cacheDirectory: false,
             presets: ['@babel/preset-react']
           }
         }
@@ -49,18 +50,6 @@ module.exports = {
             loader: 'file-loader'
           }
         ]
-      },
-      //requiring html-files will return a string of the html
-      {
-        test: /\.(html)$/,
-        exclude: /node_modules/,
-        use: {
-          loader: 'html-loader',
-          options: {
-            sources: false,
-            esModule: false
-          }
-        }
       },
       {
         test: /(\.module)?.(sass|scss)$/,

@@ -1,4 +1,4 @@
-var ProjectMerger = require('@noodl-utils/projectmerger');
+var ProjectMerger = require('@noodl-versioning');
 
 function mergeComments(base, ours, theirs) {
   const baseComponent = {
@@ -288,15 +288,13 @@ describe('Project merger - comments', function () {
     ];
     const res = mergeComments(base, ours, theirs);
 
-    expect(res.components[0].graph.comments).toEqual([
-      {
-        id: 'c1',
-        text: 'hopp',
-        x: 0,
-        y: 0,
-        width: 100,
-        height: 100
-      }
-    ]);
+    // SUB-007: we deleted the comment, they edited it. Legacy silently
+    // restored their edit. The graph merger keeps our deletion and reports the
+    // conflict, matching how it treats delete-vs-edit everywhere else.
+    expect(res.components[0].graph.comments).toEqual([]);
+
+    const commentConflicts = res.metadata.mergeConflicts.filter((c) => c.kind === 'comment');
+    expect(commentConflicts.length).toBe(1);
+    expect(commentConflicts[0].deletedBy).toBe('ours');
   });
 });

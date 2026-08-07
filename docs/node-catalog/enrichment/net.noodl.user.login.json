@@ -1,0 +1,21 @@
+{
+  "typeName": "net.noodl.user.LogIn",
+  "summary": "Logs a user into the cloud backend with username and password, establishing the session the User node reflects.",
+  "description": "Log In sends the current `username` and `password` (string values) to the cloud backend when `login` (Do, signal) is triggered. On success the returned session is stored in the browser (it persists across reloads), the app-wide user service switches to the logged-in user — which updates every User node and fires their Logged In signal — and `done` (signal) fires. On a bad login or network problem `error` (string value) is set with the message and `failure` (signal) fires; nothing about the current session changes.",
+  "whenToUse": "The action node behind a login form. To read who is logged in, or to react to session changes, use the User node; to create an account use Sign Up (which also logs the new user in); to end the session use Log Out.",
+  "ports": {
+    "login": "Signal input (displayed 'Do'); performs the login after pending input updates, so username/password wired from inputs are current.",
+    "done": "Signal; fires once the session is established. Typical next step: navigate to the logged-in page.",
+    "failure": "Signal; fires on rejected credentials or request failure. Show `error` to the user.",
+    "error": "String value holding the backend's error message from the last failed attempt."
+  },
+  "examples": ["user-login-flow"],
+  "patterns": [
+    "Text Input `text` → `username`/`password`, Button `onClick` → `login`, `done` → navigation: the standard login form.",
+    "`error` → a Text node's `text`: surface backend messages like 'Invalid username/password' directly."
+  ],
+  "antiPatterns": [
+    "Driving logged-in UI from this node's `done` signal alone — state belongs to the User node's `authenticated` boolean, which also covers sessions restored on reload."
+  ],
+  "relatedNodes": ["net.noodl.user.User", "net.noodl.user.SignUp", "net.noodl.user.LogOut"]
+}

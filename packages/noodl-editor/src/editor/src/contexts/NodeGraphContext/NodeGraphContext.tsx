@@ -1,11 +1,12 @@
 import React, { createContext, useContext, useCallback, useState, useEffect } from 'react';
 
 import { ComponentModel } from '@noodl-models/componentmodel';
-import { SidebarModel } from '@noodl-models/sidebar';
+import { ProjectModel } from '@noodl-models/projectmodel';
 import { isComponentModel_CloudRuntime } from '@noodl-utils/NodeGraph';
 
 import { Slot } from '@noodl-core-ui/types/global';
 
+import { EventDispatcher } from '../../../../shared/utils/EventDispatcher';
 import { CenterToFitMode, NodeGraphEditor } from '../../views/nodegrapheditor';
 
 type NodeGraphID = 'frontend' | 'backend';
@@ -72,6 +73,29 @@ export function NodeGraphContextProvider({ children }: NodeGraphContextProviderP
     };
   }, []);
 
+  // Detect and apply read-only mode from ProjectModel
+  useEffect(() => {
+    if (!nodeGraph) return;
+
+    const eventGroup = {};
+
+    // Apply read-only mode when project instance changes
+    const updateReadOnlyMode = () => {
+      const isReadOnly = ProjectModel.instance?._isReadOnly || false;
+      nodeGraph.setReadOnly(isReadOnly);
+    };
+
+    // Listen for project changes
+    EventDispatcher.instance.on('ProjectModel.instanceHasChanged', updateReadOnlyMode, eventGroup);
+
+    // Apply immediately if project is already loaded
+    updateReadOnlyMode();
+
+    return () => {
+      EventDispatcher.instance.off(eventGroup);
+    };
+  }, [nodeGraph]);
+
   const switchToComponent: NodeGraphControlContext['switchToComponent'] = useCallback(
     (component, options) => {
       if (!component) return;
@@ -86,17 +110,19 @@ export function NodeGraphContextProvider({ children }: NodeGraphContextProviderP
     if (!nodeGraph) return;
 
     function _update(model: ComponentModel) {
-      if (isComponentModel_CloudRuntime(model)) {
-        setActive('backend');
-        if (SidebarModel.instance.ActiveId === 'components') {
-          SidebarModel.instance.switch('cloud-functions');
-        }
-      } else {
-        setActive('frontend');
-        if (SidebarModel.instance.ActiveId === 'cloud-functions') {
-          SidebarModel.instance.switch('components');
-        }
-      }
+      // Guard against undefined model (happens on empty projects)
+      if (!model) return;
+
+      /*
+       * PNL-008: this used to `switch('cloud-functions')` on entering a backend
+       * component and back to `components` on leaving it. No panel with that id
+       * has been registered since WF-007 retired Cloud Services, and `switch()`
+       * no-ops silently on an unknown id — so the first branch has done nothing
+       * for two releases and the second could never fire (`ActiveId` can never
+       * equal an id that cannot be switched to). Both are gone; what remains is
+       * the `setActive` call, which is the part that was actually working.
+       */
+      setActive(isComponentModel_CloudRuntime(model) ? 'backend' : 'frontend');
     }
 
     const eventGroup = {};

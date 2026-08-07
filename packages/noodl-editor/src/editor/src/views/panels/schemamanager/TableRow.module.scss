@@ -1,0 +1,155 @@
+/**
+ * TableRow styles
+ * Uses theme tokens from UI-STYLING-GUIDE.md
+ */
+
+.Root {
+  background-color: var(--theme-color-bg-3);
+  border-radius: 6px;
+  margin-bottom: 4px;
+  overflow: hidden;
+  transition: background-color 0.15s ease;
+
+  &:hover {
+    background-color: var(--theme-color-bg-4);
+  }
+
+  &[data-expanded='true'] {
+    background-color: var(--theme-color-bg-4);
+  }
+}
+
+.Header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.ExpandIcon {
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.TableIcon {
+  width: 24px;
+  height: 24px;
+  background-color: var(--theme-color-primary);
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.TableName {
+  margin-left: 4px;
+}
+
+.Stats {
+  display: flex;
+  align-items: center;
+}
+
+.Columns {
+  padding: 0 12px 12px 12px;
+  border-top: 1px solid var(--theme-color-border-default);
+}
+
+.ColumnTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+
+  th {
+    text-align: left;
+    padding: 8px 12px;
+    color: var(--theme-color-fg-default-shy);
+    font-weight: 500;
+    border-bottom: 1px solid var(--theme-color-border-default);
+  }
+
+  td {
+    padding: 6px 12px;
+    color: var(--theme-color-fg-default);
+  }
+
+  tr:hover td {
+    background-color: var(--theme-color-bg-3);
+  }
+}
+
+.SystemColumn {
+  td {
+    color: var(--theme-color-fg-default-shy);
+    font-style: italic;
+  }
+}
+
+.TypeBadge {
+  display: inline-block;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: 10px;
+  font-weight: 500;
+  color: white;
+  text-transform: capitalize;
+}
+
+.TargetClass {
+  color: var(--theme-color-fg-default-shy);
+  font-size: 10px;
+  margin-left: 4px;
+}
+
+.NoColumns {
+  text-align: center;
+  color: var(--theme-color-fg-default-shy);
+  font-style: italic;
+  padding: 16px !important;
+}
+
+// F88 — schema edit mode.
+
+// A field name becomes a rename target. Styled as text rather than a button so
+// the table does not visibly reflow when Edit is pressed; the dotted underline
+// and the pointer are what say it is now clickable, and the focus ring is kept
+// because this is the only keyboard route into the rename input.
+.RenameTrigger {
+  appearance: none;
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  color: var(--theme-color-fg-default);
+  cursor: pointer;
+  text-decoration: underline dotted var(--theme-color-fg-default-shy);
+  text-underline-offset: 3px;
+
+  &:hover {
+    color: var(--theme-color-primary);
+    text-decoration-color: var(--theme-color-primary);
+  }
+
+  &:focus-visible {
+    outline: 1px solid var(--theme-color-primary);
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+}
+
+.EditActions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  border-top: 1px solid var(--theme-color-border-default);
+}

@@ -1,0 +1,747 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>NodeGX — Node picker concept</title>
+<style>
+/* =============================================================================
+   Tokens — identical values to nodegx-editor-mock.html / UIX-001 colors.css.
+   Light is the default; dark comes from the OS preference or [data-theme].
+   ========================================================================== */
+:root {
+  --page: #E7EBF1;
+  --bg-0: #EEF1F5; --bg-1: #FFFFFF; --bg-2: #F7F9FB; --bg-3: #ECF0F4;
+  --border-1: #E0E5EB; --border-2: #C9D2DC;
+  --fg-1: #18212B; --fg-2: #4A5663; --fg-3: #7C8894;
+  --accent: #1570EF; --accent-hover: #0E5FD0; --accent-fg: #FFFFFF; --accent-soft: rgba(21,112,239,.09);
+  --brand: #FF5A50;
+  --success: #12915B;
+  --warning: #B54708; --warning-bg: rgba(247,144,9,.13);
+  --error: #D92D20;
+  --node-visual: #2E7CD6; --node-data: #1E9E63; --node-logic: #B87E14; --node-function: #D6479A; --node-component: #7C5CE0;
+  --mark: rgba(21,112,239,.16);
+  --shadow-win: 0 24px 70px rgba(23,32,43,.18), 0 2px 8px rgba(23,32,43,.08);
+  --shadow-card: 0 1px 2px rgba(23,32,43,.06);
+  --shadow-pop: 0 10px 32px rgba(23,32,43,.16);
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --page: #07090C;
+    --bg-0: #0B0E12; --bg-1: #12161B; --bg-2: #181D24; --bg-3: #222933;
+    --border-1: #232A33; --border-2: #37404C;
+    --fg-1: #EEF2F6; --fg-2: #A6B0BB; --fg-3: #6B7682;
+    --accent: #4DA3FF; --accent-hover: #74B8FF; --accent-fg: #071627; --accent-soft: rgba(77,163,255,.13);
+    --brand: #FF6A5F;
+    --success: #3CCB7F;
+    --warning: #FDB022; --warning-bg: rgba(253,176,34,.12);
+    --error: #F97066;
+    --node-visual: #5CA9FF; --node-data: #45D08A; --node-logic: #F5B843; --node-function: #F776C4; --node-component: #A78BFA;
+    --mark: rgba(77,163,255,.22);
+    --shadow-win: 0 28px 80px rgba(0,0,0,.55), 0 2px 8px rgba(0,0,0,.4);
+    --shadow-card: 0 1px 2px rgba(0,0,0,.25);
+    --shadow-pop: 0 10px 36px rgba(0,0,0,.5);
+  }
+}
+:root[data-theme="light"] {
+  --page: #E7EBF1;
+  --bg-0: #EEF1F5; --bg-1: #FFFFFF; --bg-2: #F7F9FB; --bg-3: #ECF0F4;
+  --border-1: #E0E5EB; --border-2: #C9D2DC;
+  --fg-1: #18212B; --fg-2: #4A5663; --fg-3: #7C8894;
+  --accent: #1570EF; --accent-hover: #0E5FD0; --accent-fg: #FFFFFF; --accent-soft: rgba(21,112,239,.09);
+  --brand: #FF5A50;
+  --success: #12915B;
+  --warning: #B54708; --warning-bg: rgba(247,144,9,.13);
+  --error: #D92D20;
+  --node-visual: #2E7CD6; --node-data: #1E9E63; --node-logic: #B87E14; --node-function: #D6479A; --node-component: #7C5CE0;
+  --mark: rgba(21,112,239,.16);
+  --shadow-win: 0 24px 70px rgba(23,32,43,.18), 0 2px 8px rgba(23,32,43,.08);
+  --shadow-card: 0 1px 2px rgba(23,32,43,.06);
+  --shadow-pop: 0 10px 32px rgba(23,32,43,.16);
+}
+:root[data-theme="dark"] {
+  --page: #07090C;
+  --bg-0: #0B0E12; --bg-1: #12161B; --bg-2: #181D24; --bg-3: #222933;
+  --border-1: #232A33; --border-2: #37404C;
+  --fg-1: #EEF2F6; --fg-2: #A6B0BB; --fg-3: #6B7682;
+  --accent: #4DA3FF; --accent-hover: #74B8FF; --accent-fg: #071627; --accent-soft: rgba(77,163,255,.13);
+  --brand: #FF6A5F;
+  --success: #3CCB7F;
+  --warning: #FDB022; --warning-bg: rgba(253,176,34,.12);
+  --error: #F97066;
+  --node-visual: #5CA9FF; --node-data: #45D08A; --node-logic: #F5B843; --node-function: #F776C4; --node-component: #A78BFA;
+  --mark: rgba(77,163,255,.22);
+  --shadow-win: 0 28px 80px rgba(0,0,0,.55), 0 2px 8px rgba(0,0,0,.4);
+  --shadow-card: 0 1px 2px rgba(0,0,0,.25);
+  --shadow-pop: 0 10px 36px rgba(0,0,0,.5);
+}
+
+/* ---------- page ---------- */
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--page);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  font-size: 13px;
+  color: var(--fg-1);
+  -webkit-font-smoothing: antialiased;
+  padding: 44px 24px 40px;
+  display: flex; flex-direction: column; align-items: center; gap: 14px;
+}
+.stage { max-width: 100%; overflow-x: auto; padding: 4px; }
+.caption { color: var(--fg-3); font-size: 12.5px; max-width: 74ch; text-align: center; line-height: 1.65; margin: 0 0 22px; }
+.caption strong { color: var(--fg-2); font-weight: 600; }
+.eyebrow {
+  font-size: 10.5px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase;
+  color: var(--fg-3); margin: 26px 0 0;
+}
+mark { background: var(--mark); color: inherit; border-radius: 3px; padding: 0 1px; }
+
+/* =============================================================================
+   The picker surface
+   ========================================================================== */
+.picker {
+  width: 1000px; height: 660px;
+  background: var(--bg-1);
+  border: 1px solid var(--border-1);
+  border-radius: 14px;
+  box-shadow: var(--shadow-win);
+  overflow: hidden;
+  display: flex; flex-direction: column;
+}
+
+/* ---------- head: tabs + search ---------- */
+.head { flex: none; padding: 12px 14px 0; border-bottom: 1px solid var(--border-1); background: var(--bg-1); }
+.tabrow { display: flex; align-items: center; gap: 8px; }
+.seg { display: inline-flex; background: var(--bg-2); border: 1px solid var(--border-1); border-radius: 9px; padding: 2px; gap: 2px; }
+.seg button {
+  border: 0; border-radius: 7px; padding: 6px 14px; font-family: inherit; font-size: 12.5px;
+  font-weight: 500; color: var(--fg-3); background: none; cursor: pointer; line-height: 1.3;
+}
+.seg button:hover { color: var(--fg-1); }
+.seg button[aria-selected="true"] { background: var(--bg-1); color: var(--fg-1); box-shadow: var(--shadow-card); font-weight: 600; }
+.tabrow .spacer { flex: 1; }
+.esc {
+  display: inline-flex; align-items: center; gap: 6px; color: var(--fg-3); font-size: 11.5px;
+}
+.kbd {
+  font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: 10.5px; line-height: 1;
+  background: var(--bg-2); border: 1px solid var(--border-1); border-bottom-width: 2px;
+  border-radius: 5px; padding: 3px 5px; color: var(--fg-2); min-width: 17px; text-align: center;
+  display: inline-block;
+}
+
+.searchrow { display: flex; align-items: center; gap: 10px; padding: 12px 2px 13px; }
+.search {
+  flex: 1; display: flex; align-items: center; gap: 10px;
+  background: var(--bg-2); border: 1px solid var(--border-1); border-radius: 9px;
+  padding: 9px 12px; color: var(--fg-3);
+}
+.search.is-active { border-color: var(--accent); background: var(--bg-1); box-shadow: 0 0 0 3px var(--accent-soft); }
+.search input {
+  flex: 1; border: 0; background: none; outline: 0; font-family: inherit;
+  font-size: 14px; color: var(--fg-1); padding: 0; min-width: 0;
+}
+.search input::placeholder { color: var(--fg-3); }
+.clear-btn {
+  border: 0; background: var(--bg-3); color: var(--fg-2); border-radius: 50%;
+  width: 18px; height: 18px; display: inline-flex; align-items: center; justify-content: center;
+  cursor: pointer; flex: none; padding: 0;
+}
+.result-count { color: var(--fg-3); font-size: 12px; white-space: nowrap; }
+.result-count b { color: var(--fg-1); font-weight: 600; }
+
+/* ---------- body: 3 columns ---------- */
+.body { flex: 1; display: flex; min-height: 0; }
+
+/* nav column */
+.nav {
+  width: 194px; flex: none; border-right: 1px solid var(--border-1);
+  background: var(--bg-2); padding: 12px 10px; overflow: hidden;
+  display: flex; flex-direction: column; gap: 3px;
+}
+.nav-title {
+  font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--fg-3); padding: 6px 8px 5px;
+}
+.nav-title.spaced { margin-top: 10px; border-top: 1px solid var(--border-1); padding-top: 13px; }
+.nav-item {
+  display: flex; align-items: center; gap: 9px; width: 100%;
+  border: 0; background: none; font-family: inherit; font-size: 12.5px; color: var(--fg-2);
+  border-radius: 7px; padding: 6.5px 8px; cursor: pointer; text-align: left; line-height: 1.3;
+}
+.nav-item:hover { background: var(--bg-3); color: var(--fg-1); }
+.nav-item[aria-current="true"] { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+.nav-item .dot { width: 7px; height: 7px; border-radius: 50%; flex: none; background: var(--fg-3); }
+.nav-item .label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.nav-item .count {
+  font-family: ui-monospace, 'SF Mono', monospace; font-size: 10.5px; color: var(--fg-3);
+  flex: none; font-weight: 500;
+}
+.nav-item[aria-current="true"] .count { color: var(--accent); }
+.nav-item.is-empty { opacity: .38; }
+.nav-item.is-empty:hover { background: none; color: var(--fg-2); cursor: default; }
+
+/* results column */
+.results { flex: 1; min-width: 0; overflow: hidden; padding: 6px 0 0; display: flex; flex-direction: column; }
+.results-scroll { flex: 1; overflow: hidden; padding: 8px 16px 16px; }
+.group { margin-bottom: 18px; }
+.group:last-child { margin-bottom: 0; }
+.group-head { display: flex; align-items: baseline; gap: 8px; margin: 0 0 9px; padding-left: 2px; }
+.group-head h3 {
+  margin: 0; font-size: 11px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase;
+  color: var(--fg-2);
+}
+.group-head .rule { flex: 1; height: 1px; background: var(--border-1); }
+.group-head .n { font-family: ui-monospace, 'SF Mono', monospace; font-size: 10.5px; color: var(--fg-3); }
+
+.grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; }
+
+/* the node card — the piece that replaces the dark-navy blocks */
+.node {
+  display: flex; align-items: center; gap: 9px;
+  background: var(--bg-2); border: 1px solid var(--border-1); border-radius: 8px;
+  padding: 8px 10px; cursor: pointer; text-align: left; font-family: inherit;
+  min-width: 0; position: relative;
+}
+.node:hover { background: var(--bg-1); border-color: var(--border-2); box-shadow: var(--shadow-card); }
+.node.is-cursor {
+  border-color: var(--accent); background: var(--bg-1);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+.node .glyph {
+  width: 26px; height: 26px; border-radius: 7px; flex: none;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: color-mix(in srgb, var(--cat) 14%, transparent);
+  color: var(--cat);
+}
+.node .txt { min-width: 0; flex: 1; display: block; }
+.node .name {
+  display: block;
+  font-size: 12.5px; font-weight: 500; color: var(--fg-1); line-height: 1.35;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.node .meta {
+  display: block;
+  font-size: 10.5px; color: var(--fg-3); line-height: 1.35;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.node .enter { display: none; }
+.node.is-cursor .enter { display: inline-block; }
+
+/* category tints */
+.cat-visual { --cat: var(--node-visual); }
+.cat-data { --cat: var(--node-data); }
+.cat-logic { --cat: var(--node-logic); }
+.cat-function { --cat: var(--node-function); }
+.cat-component { --cat: var(--node-component); }
+
+/* docs column */
+.docs {
+  width: 292px; flex: none; border-left: 1px solid var(--border-1);
+  background: var(--bg-2); overflow: hidden; display: flex; flex-direction: column;
+}
+.docs-head { padding: 16px 16px 12px; border-bottom: 1px solid var(--border-1); }
+.docs-head .row { display: flex; align-items: center; gap: 10px; margin-bottom: 9px; }
+.docs-head .glyph {
+  width: 30px; height: 30px; border-radius: 8px; flex: none;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: color-mix(in srgb, var(--cat) 14%, transparent); color: var(--cat);
+}
+.docs-head h2 { margin: 0; font-size: 15px; font-weight: 600; }
+.type-chip {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 10px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase;
+  color: var(--cat); background: color-mix(in srgb, var(--cat) 12%, transparent);
+  border-radius: 5px; padding: 3px 7px; width: fit-content;
+}
+.docs-body { flex: 1; overflow: hidden; padding: 14px 16px; }
+.docs-body p { margin: 0 0 12px; color: var(--fg-2); font-size: 12.5px; line-height: 1.6; }
+.docs-sub {
+  font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--fg-3); margin: 0 0 8px;
+}
+.port { display: flex; align-items: center; gap: 8px; padding: 4px 0; font-size: 11.5px; color: var(--fg-2); }
+.port .pin { width: 7px; height: 7px; border-radius: 50%; flex: none; }
+.port .pin.sig { background: var(--node-logic); border-radius: 2px; }
+.port .pin.dat { background: var(--node-data); }
+.port code { font-family: ui-monospace, 'SF Mono', monospace; font-size: 11px; color: var(--fg-1); }
+.port .dir { margin-left: auto; font-size: 10px; color: var(--fg-3); text-transform: uppercase; letter-spacing: .05em; }
+.docs-foot { padding: 12px 16px; border-top: 1px solid var(--border-1); }
+.btn {
+  font-family: inherit; font-size: 12.5px; font-weight: 600;
+  border-radius: 7px; padding: 7px 13px; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+  border: 1px solid var(--border-1); background: var(--bg-1); color: var(--fg-2); width: 100%;
+}
+.btn:hover { border-color: var(--border-2); color: var(--fg-1); }
+
+/* empty docs state */
+.docs-empty {
+  flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 10px; padding: 24px; text-align: center; color: var(--fg-3);
+}
+.docs-empty svg { color: var(--border-2); }
+.docs-empty p { margin: 0; font-size: 12px; line-height: 1.6; max-width: 26ch; }
+
+/* ---------- footer hint bar ---------- */
+.foot {
+  flex: none; height: 38px; border-top: 1px solid var(--border-1); background: var(--bg-2);
+  display: flex; align-items: center; gap: 16px; padding: 0 16px; color: var(--fg-3); font-size: 11.5px;
+}
+.hint { display: inline-flex; align-items: center; gap: 5px; }
+.foot .spacer { flex: 1; }
+
+/* ---------- no-results state ---------- */
+.noresults {
+  height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 12px; text-align: center; color: var(--fg-3); padding: 30px;
+}
+.noresults h3 { margin: 0; font-size: 14px; font-weight: 600; color: var(--fg-1); }
+.noresults p { margin: 0; font-size: 12.5px; line-height: 1.6; max-width: 40ch; }
+.noresults .sugg { display: flex; gap: 7px; margin-top: 4px; }
+.sugg button {
+  border: 1px solid var(--border-1); background: var(--bg-1); color: var(--fg-2);
+  border-radius: 999px; padding: 5px 12px; font-family: inherit; font-size: 11.5px; cursor: pointer;
+}
+.sugg button:hover { border-color: var(--accent); color: var(--accent); }
+</style>
+</head>
+<body>
+
+<!-- ========================================================================
+     Shared icon sprite
+     ===================================================================== -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <g id="i-search"><circle cx="7.5" cy="7.5" r="5.5"/><path d="M11.5 11.5 L14.5 14.5"/></g>
+    <g id="i-group"><rect x="2.5" y="2.5" width="11" height="11" rx="1.5" stroke-dasharray="2.4 2"/></g>
+    <g id="i-columns"><rect x="2.5" y="2.5" width="11" height="11" rx="1.5"/><path d="M6.2 2.5v11M9.8 2.5v11"/></g>
+    <g id="i-text"><path d="M3 4.2V3h10v1.2M8 3v10M6 13h4"/></g>
+    <g id="i-image"><rect x="2.5" y="3" width="11" height="10" rx="1.5"/><circle cx="6" cy="6.4" r="1.1"/><path d="M3 11l3-2.6 3 2.2 2-1.6 2.5 2"/></g>
+    <g id="i-video"><rect x="2" y="3.5" width="8.5" height="9" rx="1.5"/><path d="M10.5 7.4l3.5-2.2v5.6l-3.5-2.2z"/></g>
+    <g id="i-circle"><circle cx="8" cy="8" r="5.5"/></g>
+    <g id="i-icon"><path d="M8 2.2l5 2.9v5.8L8 13.8 3 10.9V5.1z"/></g>
+    <g id="i-button"><rect x="2" y="5" width="12" height="6" rx="3"/><path d="M5.6 8h4.8"/></g>
+    <g id="i-input"><rect x="2" y="4.5" width="12" height="7" rx="1.5"/><path d="M5 6.6v2.8"/></g>
+    <g id="i-check"><rect x="2.5" y="2.5" width="11" height="11" rx="2"/><path d="M5.2 8.2l2 2 3.6-4"/></g>
+    <g id="i-list"><path d="M3 4.5h10M3 8h10M3 11.5h6"/></g>
+    <g id="i-repeat"><rect x="2.5" y="2.5" width="5" height="5" rx="1"/><rect x="8.5" y="2.5" width="5" height="5" rx="1"/><rect x="2.5" y="8.5" width="5" height="5" rx="1"/><rect x="8.5" y="8.5" width="5" height="5" rx="1"/></g>
+    <g id="i-fn"><path d="M9.6 3.2a1.8 1.8 0 0 0-1.8 1.8v6a1.8 1.8 0 0 1-1.8 1.8M4.6 8h5.4"/></g>
+    <g id="i-db"><ellipse cx="8" cy="4.2" rx="5" ry="2"/><path d="M3 4.2v7.6c0 1.1 2.2 2 5 2s5-.9 5-2V4.2M3 8c0 1.1 2.2 2 5 2s5-.9 5-2"/></g>
+    <g id="i-cloud"><path d="M4.6 12a2.9 2.9 0 0 1-.3-5.8 3.8 3.8 0 0 1 7.3-.7A2.9 2.9 0 0 1 11.4 12z"/></g>
+    <g id="i-nav"><path d="M2.5 8h11M10 4.5L13.5 8 10 11.5"/></g>
+    <g id="i-comp"><path d="M8 2.2l5 2.9v5.8L8 13.8 3 10.9V5.1z"/><path d="M8 8v5.8M3 5.1L8 8l5-2.9"/></g>
+    <g id="i-lightning"><path d="M8.8 2.2L4.4 9h3.2l-.4 4.8L11.6 7H8.4z"/></g>
+    <g id="i-book"><path d="M2.5 3.5h4.2c.9 0 1.3.6 1.3 1.3v8c0-.7-.4-1.3-1.3-1.3H2.5zM13.5 3.5H9.3c-.9 0-1.3.6-1.3 1.3v8c0-.7.4-1.3 1.3-1.3h4.2z"/></g>
+    <g id="i-x"><path d="M4.5 4.5l7 7M11.5 4.5l-7 7"/></g>
+    <g id="i-clock"><circle cx="8" cy="8" r="5.8"/><path d="M8 4.6V8l2.3 1.4"/></g>
+  </defs>
+</svg>
+
+<p class="caption" style="margin-top:0">
+  <strong>Node picker concept.</strong> Three problems drive this: dark-navy node blocks that ignore the theme,
+  a search that filters but leaves you staring at collapsed categories, and a right pane spent on a product ad
+  instead of the node you are about to place. The picker becomes search-first and keyboard-first, node cards get
+  category-tinted glyphs that work on both themes, and the docs pane always previews the node under the cursor.
+  Toggle your OS theme to preview light and dark from the same tokens.
+</p>
+
+<!-- ========================================================================
+     STATE 1 — browse (empty search)
+     ===================================================================== -->
+<p class="eyebrow">State 1 · Browse — no query</p>
+<div class="stage">
+<div class="picker">
+
+  <div class="head">
+    <div class="tabrow">
+      <div class="seg" role="tablist">
+        <button role="tab" aria-selected="true">Nodes</button>
+        <button role="tab" aria-selected="false">Prefabs</button>
+        <button role="tab" aria-selected="false">Modules</button>
+        <button role="tab" aria-selected="false">From project</button>
+      </div>
+      <div class="spacer"></div>
+      <span class="esc"><span class="kbd">esc</span> to close</span>
+    </div>
+
+    <div class="searchrow">
+      <label class="search">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><use href="#i-search"/></svg>
+        <input placeholder="Search nodes, prefabs and components…" readonly>
+      </label>
+      <span class="result-count"><b>128</b> nodes</span>
+    </div>
+  </div>
+
+  <div class="body">
+
+    <!-- nav -->
+    <nav class="nav">
+      <div class="nav-title">Categories</div>
+      <button class="nav-item" aria-current="true"><span class="dot" style="background:var(--fg-3)"></span><span class="label">All nodes</span><span class="count">128</span></button>
+      <button class="nav-item"><span class="dot" style="background:var(--node-visual)"></span><span class="label">UI Elements</span><span class="count">34</span></button>
+      <button class="nav-item"><span class="dot" style="background:var(--node-visual)"></span><span class="label">Navigation</span><span class="count">9</span></button>
+      <button class="nav-item"><span class="dot" style="background:var(--node-logic)"></span><span class="label">Logic &amp; Utilities</span><span class="count">31</span></button>
+      <button class="nav-item"><span class="dot" style="background:var(--node-component)"></span><span class="label">Component Utils</span><span class="count">12</span></button>
+      <button class="nav-item"><span class="dot" style="background:var(--node-data)"></span><span class="label">Read &amp; Write Data</span><span class="count">26</span></button>
+      <button class="nav-item"><span class="dot" style="background:var(--node-function)"></span><span class="label">Custom Code</span><span class="count">6</span></button>
+      <button class="nav-item"><span class="dot" style="background:var(--node-component)"></span><span class="label">Project components</span><span class="count">10</span></button>
+
+      <div class="nav-title spaced">Recent</div>
+      <button class="nav-item"><span class="dot" style="background:var(--node-visual)"></span><span class="label">Text</span></button>
+      <button class="nav-item"><span class="dot" style="background:var(--node-data)"></span><span class="label">Query Records</span></button>
+      <button class="nav-item"><span class="dot" style="background:var(--node-logic)"></span><span class="label">Condition</span></button>
+    </nav>
+
+    <!-- results -->
+    <div class="results">
+      <div class="results-scroll">
+
+        <section class="group">
+          <div class="group-head"><h3>Basic Elements</h3><span class="n">7</span><span class="rule"></span></div>
+          <div class="grid">
+            <div class="node cat-visual is-cursor">
+              <span class="glyph"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><use href="#i-group"/></svg></span>
+              <span class="txt"><span class="name">Group</span><span class="meta">Container</span></span>
+              <span class="kbd enter">⏎</span>
+            </div>
+            <div class="node cat-visual">
+              <span class="glyph"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><use href="#i-columns"/></svg></span>
+              <span class="txt"><span class="name">Columns</span><span class="meta">Container</span></span>
+            </div>
+            <div class="node cat-visual">
+              <span class="glyph"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><use href="#i-text"/></svg></span>
+              <span class="txt"><span class="name">Text</span><span class="meta">Visual</span></span>
+            </div>
+            <div class="node cat-visual">
+              <span class="glyph"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><use href="#i-image"/></svg></span>
+              <span class="txt"><span class="name">Image</span><span class="meta">Visual</span></span>
+            </div>
+            <div class="node cat-visual">
+              <span class="glyph"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><use href="#i-video"/></svg></span>
+              <span class="txt"><span class="name">Video</span><span class="meta">Visual</span></span>
+            </div>
+            <div class="node cat-visual">
+              <span class="glyph"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5"><use href="#i-circle"/></svg></span>
+              <span class="txt"><span class="name">Circle</span><span class="meta">Visual</span></span>
+            </div>
+            <div class="node cat-visual">
+              <span class="glyph"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><use href="#i-icon"/></svg></span>
+              <span class="txt"><span class="name">Icon</span><span class="meta">Visual</span></span>
+            </div>
+          </div>
+        </section>
+
+        <section class="group">
+          <div class="group-head"><h3>UI Controls</h3><span class="n">6</span><span class="rule"></span></div>
+          <div class="grid">
+            <div class="node cat-visual">
+              <span class="glyph"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><use href="#i-button"/></svg></span>
+              <span class="txt"><span class="name">Button</span><span class="meta">Control</span></span>
+            </div>
+            <div class="node cat-visual">
+              <span class="glyph"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><use href="#i-input"/></svg></span>
+              <span class="txt"><span class="name">Text Input</span><span class="meta">Control</span></span>
+            </div>
+            <div class="node cat-visual">
+              <span class="glyph"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><use href="#i-check"/></svg></span>
+              <span class="txt"><span class="name">Checkbox</span><span class="meta">Control</span></span>
+            </div>
+            <div class="node cat-visual">
+              <span class="glyph"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><use href="#i-list"/></svg></span>
+              <span class="txt"><span class="name">Options</span><span class="meta">Control</span></span>
+            </div>
+            <div class="node cat-visual">
+              <span class="glyph"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5"><use href="#i-circle"/></svg></span>
+              <span class="txt"><span class="name">Radio Button</span><span class="meta">Control</span></span>
+            </div>
+            <div class="node cat-visual">
+              <span class="glyph"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><use href="#i-list"/></svg></span>
+              <span class="txt"><span class="name">Range</span><span class="meta">Control</span></span>
+            </div>
+          </div>
+        </section>
+
+        <section class="group">
+          <div class="group-head"><h3>Read &amp; Write Data</h3><span class="n">26</span><span class="rule"></span></div>
+          <div class="grid">
+            <div class="node cat-data">
+              <span class="glyph"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><use href="#i-db"/></svg></span>
+              <span class="txt"><span class="name">Query Records</span><span class="meta">Backend</span></span>
+            </div>
+            <div class="node cat-data">
+              <span class="glyph"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><use href="#i-repeat"/></svg></span>
+              <span class="txt"><span class="name">Repeater</span><span class="meta">Data</span></span>
+            </div>
+            <div class="node cat-data">
+              <span class="glyph"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><use href="#i-cloud"/></svg></span>
+              <span class="txt"><span class="name">REST</span><span class="meta">Networking</span></span>
+            </div>
+          </div>
+        </section>
+
+      </div>
+    </div>
+
+    <!-- docs -->
+    <aside class="docs cat-visual">
+      <div class="docs-head">
+        <div class="row">
+          <span class="glyph"><svg width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><use href="#i-group"/></svg></span>
+          <h2>Group</h2>
+        </div>
+        <span class="type-chip">Visual · UI Elements</span>
+      </div>
+      <div class="docs-body">
+        <p>A layout container. Children are arranged along its layout axis; use it to build rows, columns and cards.</p>
+        <p class="docs-sub">Key ports</p>
+        <div class="port"><span class="pin dat"></span><code>Layout</code><span class="dir">in</span></div>
+        <div class="port"><span class="pin dat"></span><code>Width</code><span class="dir">in</span></div>
+        <div class="port"><span class="pin dat"></span><code>Height</code><span class="dir">in</span></div>
+        <div class="port"><span class="pin sig"></span><code>Click</code><span class="dir">out</span></div>
+        <div class="port"><span class="pin sig"></span><code>Hover Start</code><span class="dir">out</span></div>
+      </div>
+      <div class="docs-foot">
+        <button class="btn">
+          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><use href="#i-book"/></svg>
+          Open full docs
+        </button>
+      </div>
+    </aside>
+
+  </div>
+
+  <div class="foot">
+    <span class="hint"><span class="kbd">↑</span><span class="kbd">↓</span> navigate</span>
+    <span class="hint"><span class="kbd">⏎</span> insert</span>
+    <span class="hint"><span class="kbd">⌥</span><span class="kbd">⏎</span> insert &amp; connect</span>
+    <span class="spacer"></span>
+    <span class="hint">Showing all categories</span>
+  </div>
+
+</div>
+</div>
+
+<p class="caption">
+  <strong>Browse.</strong> Categories move to a persistent left rail with live counts, so nothing has to be
+  expanded or collapsed to see what exists — the accordion is gone. Node cards carry a category-tinted glyph on a
+  neutral surface rather than a saturated block, which is what makes them legible on both themes. The right pane
+  previews the node under the cursor, replacing the fixed product promo. Recent nodes sit under the categories.
+</p>
+
+<!-- ========================================================================
+     STATE 2 — search
+     ===================================================================== -->
+<p class="eyebrow">State 2 · Search — results are flat and ranked, nothing stays collapsed</p>
+<div class="stage">
+<div class="picker">
+
+  <div class="head">
+    <div class="tabrow">
+      <div class="seg" role="tablist">
+        <button role="tab" aria-selected="true">Nodes</button>
+        <button role="tab" aria-selected="false">Prefabs</button>
+        <button role="tab" aria-selected="false">Modules</button>
+        <button role="tab" aria-selected="false">From project</button>
+      </div>
+      <div class="spacer"></div>
+      <span class="esc"><span class="kbd">esc</span> to close</span>
+    </div>
+
+    <div class="searchrow">
+      <label class="search is-active">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" style="color:var(--accent)"><use href="#i-search"/></svg>
+        <input value="text" readonly>
+        <button class="clear-btn"><svg width="9" height="9" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><use href="#i-x"/></svg></button>
+      </label>
+      <span class="result-count"><b>9</b> results in 4 categories</span>
+    </div>
+  </div>
+
+  <div class="body">
+
+    <nav class="nav">
+      <div class="nav-title">Matching categories</div>
+      <button class="nav-item" aria-current="true"><span class="dot" style="background:var(--fg-3)"></span><span class="label">All results</span><span class="count">9</span></button>
+      <button class="nav-item"><span class="dot" style="background:var(--node-visual)"></span><span class="label">UI Elements</span><span class="count">4</span></button>
+      <button class="nav-item"><span class="dot" style="background:var(--node-logic)"></span><span class="label">Logic &amp; Utilities</span><span class="count">3</span></button>
+      <button class="nav-item"><span class="dot" style="background:var(--node-data)"></span><span class="label">Read &amp; Write Data</span><span class="count">1</span></button>
+      <button class="nav-item"><span class="dot" style="background:var(--node-component)"></span><span class="label">Project components</span><span class="count">1</span></button>
+      <button class="nav-item is-empty"><span class="dot"></span><span class="label">Navigation</span><span class="count">0</span></button>
+      <button class="nav-item is-empty"><span class="dot"></span><span class="label">Component Utils</span><span class="count">0</span></button>
+      <button class="nav-item is-empty"><span class="dot"></span><span class="label">Custom Code</span><span class="count">0</span></button>
+    </nav>
+
+    <div class="results">
+      <div class="results-scroll">
+
+        <section class="group">
+          <div class="group-head"><h3>UI Elements</h3><span class="n">4</span><span class="rule"></span></div>
+          <div class="grid">
+            <div class="node cat-visual is-cursor">
+              <span class="glyph"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><use href="#i-text"/></svg></span>
+              <span class="txt"><span class="name"><mark>Text</mark></span><span class="meta">Basic Elements</span></span>
+              <span class="kbd enter">⏎</span>
+            </div>
+            <div class="node cat-visual">
+              <span class="glyph"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><use href="#i-input"/></svg></span>
+              <span class="txt"><span class="name"><mark>Text</mark> Input</span><span class="meta">UI Controls</span></span>
+            </div>
+            <div class="node cat-visual">
+              <span class="glyph"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><use href="#i-input"/></svg></span>
+              <span class="txt"><span class="name"><mark>Text</mark> Area</span><span class="meta">UI Controls</span></span>
+            </div>
+            <div class="node cat-visual">
+              <span class="glyph"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><use href="#i-text"/></svg></span>
+              <span class="txt"><span class="name">Rich <mark>Text</mark></span><span class="meta">Basic Elements</span></span>
+            </div>
+          </div>
+        </section>
+
+        <section class="group">
+          <div class="group-head"><h3>Logic &amp; Utilities</h3><span class="n">3</span><span class="rule"></span></div>
+          <div class="grid">
+            <div class="node cat-logic">
+              <span class="glyph"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><use href="#i-fn"/></svg></span>
+              <span class="txt"><span class="name">String Format</span><span class="meta">tag · <mark>text</mark></span></span>
+            </div>
+            <div class="node cat-logic">
+              <span class="glyph"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><use href="#i-fn"/></svg></span>
+              <span class="txt"><span class="name">Substring</span><span class="meta">tag · <mark>text</mark></span></span>
+            </div>
+            <div class="node cat-logic">
+              <span class="glyph"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><use href="#i-list"/></svg></span>
+              <span class="txt"><span class="name">String Compare</span><span class="meta">tag · <mark>text</mark></span></span>
+            </div>
+          </div>
+        </section>
+
+        <section class="group">
+          <div class="group-head"><h3>Read &amp; Write Data</h3><span class="n">1</span><span class="rule"></span></div>
+          <div class="grid">
+            <div class="node cat-data">
+              <span class="glyph"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><use href="#i-cloud"/></svg></span>
+              <span class="txt"><span class="name">Send Email</span><span class="meta">port · body <mark>text</mark></span></span>
+            </div>
+          </div>
+        </section>
+
+        <section class="group">
+          <div class="group-head"><h3>Project components</h3><span class="n">1</span><span class="rule"></span></div>
+          <div class="grid">
+            <div class="node cat-component">
+              <span class="glyph"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><use href="#i-comp"/></svg></span>
+              <span class="txt"><span class="name"><mark>Text</mark>Field</span><span class="meta">/Gen/Forms</span></span>
+            </div>
+          </div>
+        </section>
+
+      </div>
+    </div>
+
+    <aside class="docs cat-visual">
+      <div class="docs-head">
+        <div class="row">
+          <span class="glyph"><svg width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><use href="#i-text"/></svg></span>
+          <h2>Text</h2>
+        </div>
+        <span class="type-chip">Visual · Basic Elements</span>
+      </div>
+      <div class="docs-body">
+        <p>Renders a string. Style it from the properties panel or bind <code>Text</code> to a data source to make it dynamic.</p>
+        <p class="docs-sub">Key ports</p>
+        <div class="port"><span class="pin dat"></span><code>Text</code><span class="dir">in</span></div>
+        <div class="port"><span class="pin dat"></span><code>Text Style</code><span class="dir">in</span></div>
+        <div class="port"><span class="pin sig"></span><code>Click</code><span class="dir">out</span></div>
+      </div>
+      <div class="docs-foot">
+        <button class="btn">
+          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><use href="#i-book"/></svg>
+          Open full docs
+        </button>
+      </div>
+    </aside>
+
+  </div>
+
+  <div class="foot">
+    <span class="hint"><span class="kbd">↑</span><span class="kbd">↓</span> navigate</span>
+    <span class="hint"><span class="kbd">⏎</span> insert</span>
+    <span class="hint"><span class="kbd">⌥</span><span class="kbd">⏎</span> insert &amp; connect</span>
+    <span class="spacer"></span>
+    <span class="hint">Ranked by match · exact names first</span>
+  </div>
+
+</div>
+</div>
+
+<p class="caption">
+  <strong>Search.</strong> The reported bug, designed away: with a query there are no collapsed containers left to
+  open. Every match is visible, grouped under its category heading and ranked with exact name matches first; the
+  left rail becomes a result-count filter with non-matching categories dimmed rather than hidden, so you can see
+  at a glance that “text” has nothing under Navigation. Matches beyond the name — a search tag or a port — say
+  <em>why</em> the node matched instead of appearing unexplained. The keyboard cursor starts on the top result.
+</p>
+
+<!-- ========================================================================
+     STATE 3 — no results
+     ===================================================================== -->
+<p class="eyebrow">State 3 · No results</p>
+<div class="stage">
+<div class="picker" style="height:400px">
+
+  <div class="head">
+    <div class="tabrow">
+      <div class="seg" role="tablist">
+        <button role="tab" aria-selected="true">Nodes</button>
+        <button role="tab" aria-selected="false">Prefabs</button>
+        <button role="tab" aria-selected="false">Modules</button>
+        <button role="tab" aria-selected="false">From project</button>
+      </div>
+      <div class="spacer"></div>
+      <span class="esc"><span class="kbd">esc</span> to close</span>
+    </div>
+    <div class="searchrow">
+      <label class="search is-active">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" style="color:var(--accent)"><use href="#i-search"/></svg>
+        <input value="websocket" readonly>
+        <button class="clear-btn"><svg width="9" height="9" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><use href="#i-x"/></svg></button>
+      </label>
+      <span class="result-count"><b>0</b> results</span>
+    </div>
+  </div>
+
+  <div class="body">
+    <div class="results">
+      <div class="results-scroll">
+        <div class="noresults">
+          <svg width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" style="color:var(--border-2)"><use href="#i-search"/></svg>
+          <h3>No nodes match “websocket”</h3>
+          <p>Nothing in the core library or this project. It may exist as a module, or as a prefab you can clone.</p>
+          <div class="sugg">
+            <button>Search Modules</button>
+            <button>Search Prefabs</button>
+            <button>Clear search</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="foot">
+    <span class="hint"><span class="kbd">esc</span> clear</span>
+    <span class="spacer"></span>
+  </div>
+
+</div>
+</div>
+
+<p class="caption" style="margin-bottom:0">
+  <strong>No results.</strong> Today an empty query leaves the categories sitting there looking broken. The dead
+  end becomes a routing decision instead: the other tabs are the most likely place the thing actually lives, so
+  offer them directly rather than making the user re-run the same search by hand.
+</p>
+
+</body>
+</html>

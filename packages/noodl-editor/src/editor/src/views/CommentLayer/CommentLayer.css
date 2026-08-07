@@ -48,7 +48,7 @@
 
 .comment-layer-comment.background.fill:not(.selected),
 .comment-layer-comment.background.transparent:not(.selected) {
-  border: 2px solid #00000020;
+  border: 2px solid rgba(0, 0, 0, 0.125);
 }
 
 .comment-layer-comment.background.selected.fill,
@@ -77,16 +77,25 @@
   outline-offset: 4px;
 }
 
+/*
+  AIX-003 residual 3. The three annotation outlines are the comment layer's half
+  of the diff canvas, and `created`/`deleted` already agreed with the node
+  painter (`CanvasTheme.annotationCreated` → success, `annotationDeleted` →
+  danger). `changed` did not: it was `--theme-color-primary`, so on the same
+  read-only canvas a changed node was outlined amber and a changed comment
+  azure — two colours for one meaning, and azure is the accent this editor uses
+  for "act on this" everywhere else. `annotationChanged` is the warning token.
+*/
 .comment-layer-comment.background.has-annotation.changed {
-  outline: 2px solid #83b8ba;
+  outline: 2px solid var(--theme-color-warning);
 }
 
 .comment-layer-comment.background.has-annotation.deleted {
-  outline: 2px solid #f57569;
+  outline: 2px solid var(--theme-color-danger);
 }
 
 .comment-layer-comment.background.has-annotation.created {
-  outline: 2px solid #5bf59e;
+  outline: 2px solid var(--theme-color-success);
 }
 
 .comment-drag-area {

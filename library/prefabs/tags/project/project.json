@@ -1,0 +1,1050 @@
+{
+    "name": "Export",
+    "components": [
+        {
+            "name": "/Tags",
+            "id": "b553d4dc-316e-18ef-a20a-62046673ca5e",
+            "graph": {
+                "connections": [
+                    {
+                        "fromId": "0cd61caf-de4e-dec2-2db8-67bfc994976b",
+                        "fromProperty": "Items",
+                        "toId": "95659ec5-d2d3-5c0c-af42-a7d68fc25fdc",
+                        "toProperty": "items"
+                    },
+                    {
+                        "fromId": "0cd61caf-de4e-dec2-2db8-67bfc994976b",
+                        "fromProperty": "Direction",
+                        "toId": "f94bc6ee-6e71-8008-ecfa-8467e0e29af3",
+                        "toProperty": "flexDirection"
+                    },
+                    {
+                        "fromId": "95659ec5-d2d3-5c0c-af42-a7d68fc25fdc",
+                        "fromProperty": "itemActionItemId",
+                        "toId": "328541ca-173f-9a5b-8ba6-3d47444c8746",
+                        "toProperty": "Tag Id"
+                    },
+                    {
+                        "fromId": "0cd61caf-de4e-dec2-2db8-67bfc994976b",
+                        "fromProperty": "Removable",
+                        "toId": "84f5eae1-2de1-d5a0-249c-29032c02181a",
+                        "toProperty": "value"
+                    },
+                    {
+                        "fromId": "84f5eae1-2de1-d5a0-249c-29032c02181a",
+                        "fromProperty": "savedValue",
+                        "toId": "f0eef9f5-f13c-bbf6-225e-48f120deb1c5",
+                        "toProperty": "value-Removable"
+                    },
+                    {
+                        "fromId": "2f29f304-60c3-5bd0-b53e-695eef2d0a4b",
+                        "fromProperty": "out-Colors",
+                        "toId": "f0eef9f5-f13c-bbf6-225e-48f120deb1c5",
+                        "toProperty": "value-Colors"
+                    },
+                    {
+                        "fromId": "0cd61caf-de4e-dec2-2db8-67bfc994976b",
+                        "fromProperty": "Generate colors",
+                        "toId": "a93dcd84-c8c0-e29f-807f-006306f575af",
+                        "toProperty": "value"
+                    },
+                    {
+                        "fromId": "0cd61caf-de4e-dec2-2db8-67bfc994976b",
+                        "fromProperty": "Clickable",
+                        "toId": "dc47b7cb-1121-afb7-3b75-fd751297d4e6",
+                        "toProperty": "value"
+                    },
+                    {
+                        "fromId": "a93dcd84-c8c0-e29f-807f-006306f575af",
+                        "fromProperty": "savedValue",
+                        "toId": "f0eef9f5-f13c-bbf6-225e-48f120deb1c5",
+                        "toProperty": "value-Generate colors"
+                    },
+                    {
+                        "fromId": "dc47b7cb-1121-afb7-3b75-fd751297d4e6",
+                        "fromProperty": "savedValue",
+                        "toId": "f0eef9f5-f13c-bbf6-225e-48f120deb1c5",
+                        "toProperty": "value-Clickable"
+                    },
+                    {
+                        "fromId": "0cd61caf-de4e-dec2-2db8-67bfc994976b",
+                        "fromProperty": "Default color",
+                        "toId": "a663c8ba-244c-ef29-8e62-5ab646029fb7",
+                        "toProperty": "value"
+                    },
+                    {
+                        "fromId": "a663c8ba-244c-ef29-8e62-5ab646029fb7",
+                        "fromProperty": "savedValue",
+                        "toId": "f0eef9f5-f13c-bbf6-225e-48f120deb1c5",
+                        "toProperty": "value-Default color"
+                    },
+                    {
+                        "fromId": "0cd61caf-de4e-dec2-2db8-67bfc994976b",
+                        "fromProperty": "Default color",
+                        "toId": "f0eef9f5-f13c-bbf6-225e-48f120deb1c5",
+                        "toProperty": "value-Default color"
+                    },
+                    {
+                        "fromId": "0cd61caf-de4e-dec2-2db8-67bfc994976b",
+                        "fromProperty": "Margin Top",
+                        "toId": "f94bc6ee-6e71-8008-ecfa-8467e0e29af3",
+                        "toProperty": "marginTop"
+                    },
+                    {
+                        "fromId": "0cd61caf-de4e-dec2-2db8-67bfc994976b",
+                        "fromProperty": "Margin Right",
+                        "toId": "f94bc6ee-6e71-8008-ecfa-8467e0e29af3",
+                        "toProperty": "marginRight"
+                    },
+                    {
+                        "fromId": "0cd61caf-de4e-dec2-2db8-67bfc994976b",
+                        "fromProperty": "Margin Bottom",
+                        "toId": "f94bc6ee-6e71-8008-ecfa-8467e0e29af3",
+                        "toProperty": "marginBottom"
+                    },
+                    {
+                        "fromId": "0cd61caf-de4e-dec2-2db8-67bfc994976b",
+                        "fromProperty": "Margin Left",
+                        "toId": "f94bc6ee-6e71-8008-ecfa-8467e0e29af3",
+                        "toProperty": "marginLeft"
+                    },
+                    {
+                        "fromId": "0cd61caf-de4e-dec2-2db8-67bfc994976b",
+                        "fromProperty": "Position",
+                        "toId": "f94bc6ee-6e71-8008-ecfa-8467e0e29af3",
+                        "toProperty": "position"
+                    },
+                    {
+                        "fromId": "0cd61caf-de4e-dec2-2db8-67bfc994976b",
+                        "fromProperty": "Align X",
+                        "toId": "f94bc6ee-6e71-8008-ecfa-8467e0e29af3",
+                        "toProperty": "alignX"
+                    },
+                    {
+                        "fromId": "0cd61caf-de4e-dec2-2db8-67bfc994976b",
+                        "fromProperty": "Align Y",
+                        "toId": "f94bc6ee-6e71-8008-ecfa-8467e0e29af3",
+                        "toProperty": "alignY"
+                    },
+                    {
+                        "fromId": "0cd61caf-de4e-dec2-2db8-67bfc994976b",
+                        "fromProperty": "Width",
+                        "toId": "f94bc6ee-6e71-8008-ecfa-8467e0e29af3",
+                        "toProperty": "width"
+                    },
+                    {
+                        "fromId": "95659ec5-d2d3-5c0c-af42-a7d68fc25fdc",
+                        "fromProperty": "itemOutputSignal-Remove clicked",
+                        "toId": "328541ca-173f-9a5b-8ba6-3d47444c8746",
+                        "toProperty": "Remove clicked"
+                    },
+                    {
+                        "fromId": "95659ec5-d2d3-5c0c-af42-a7d68fc25fdc",
+                        "fromProperty": "itemOutputSignal-Tag clicked",
+                        "toId": "328541ca-173f-9a5b-8ba6-3d47444c8746",
+                        "toProperty": "Tag Clicked"
+                    }
+                ],
+                "roots": [
+                    {
+                        "id": "f94bc6ee-6e71-8008-ecfa-8467e0e29af3",
+                        "type": "Group",
+                        "x": -71.82902203804292,
+                        "y": -420.29351042701643,
+                        "parameters": {
+                            "sizeMode": "contentHeight",
+                            "flexDirection": "row",
+                            "flexWrap": "wrap"
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": [
+                            {
+                                "id": "95659ec5-d2d3-5c0c-af42-a7d68fc25fdc",
+                                "type": "For Each",
+                                "parameters": {
+                                    "template": "/Tags/Tag Item"
+                                },
+                                "ports": [],
+                                "dynamicports": [
+                                    {
+                                        "name": "itemOutputSignal-Remove clicked",
+                                        "displayName": "Remove clicked",
+                                        "type": "signal",
+                                        "plug": "output",
+                                        "group": "Item Signals",
+                                        "index": 6
+                                    },
+                                    {
+                                        "name": "itemOutputSignal-Tag clicked",
+                                        "displayName": "Tag clicked",
+                                        "type": "signal",
+                                        "plug": "output",
+                                        "group": "Item Signals",
+                                        "index": 7
+                                    },
+                                    {
+                                        "name": "inputMappingScript",
+                                        "type": {
+                                            "name": "string",
+                                            "codeeditor": "javascript"
+                                        },
+                                        "displayName": "Script",
+                                        "group": "Input Mapping",
+                                        "default": "// Here you add mappings between the properties of the item objects and the inputs of the components.\n// 'myComponentInput': 'myObjectProperty',\n// 'anotherComponentInput': function () { return object.get('someProperty') + ' ' + object.get('otherProp') }\n// These are the default mappings based on the selected template component.\nmap({\n})\n",
+                                        "plug": "input",
+                                        "index": 8
+                                    }
+                                ],
+                                "children": []
+                            }
+                        ]
+                    },
+                    {
+                        "id": "0cd61caf-de4e-dec2-2db8-67bfc994976b",
+                        "type": "Component Inputs",
+                        "x": -354.8290220380429,
+                        "y": -423.2935104270165,
+                        "parameters": {},
+                        "ports": [
+                            {
+                                "name": "Items",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "index": 3,
+                                "group": "General"
+                            },
+                            {
+                                "name": "Direction",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "index": 1,
+                                "group": "Layout"
+                            },
+                            {
+                                "name": "Removable",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "index": 5,
+                                "group": "Type"
+                            },
+                            {
+                                "name": "Generate colors",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "group": "Type",
+                                "index": 6
+                            },
+                            {
+                                "name": "Clickable",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "group": "Type",
+                                "index": 7
+                            },
+                            {
+                                "name": "Default color",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "group": "General",
+                                "index": 4
+                            },
+                            {
+                                "name": "Margin Top",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "group": "Margin",
+                                "index": 8
+                            },
+                            {
+                                "name": "Margin Right",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "group": "Margin",
+                                "index": 9
+                            },
+                            {
+                                "name": "Margin Bottom",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "group": "Margin",
+                                "index": 10
+                            },
+                            {
+                                "name": "Margin Left",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "group": "Margin",
+                                "index": 11
+                            },
+                            {
+                                "name": "Position",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "group": "Layout",
+                                "index": 2
+                            },
+                            {
+                                "name": "Align X",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "group": "Alignment",
+                                "index": 12
+                            },
+                            {
+                                "name": "Align Y",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "group": "Alignment",
+                                "index": 13
+                            },
+                            {
+                                "name": "Width",
+                                "plug": "output",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "group": "Layout",
+                                "index": 0
+                            }
+                        ],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "f0eef9f5-f13c-bbf6-225e-48f120deb1c5",
+                        "type": "net.noodl.ComponentObject",
+                        "x": -24.36615038480329,
+                        "y": 93.06934991119931,
+                        "parameters": {
+                            "properties": "Removable,Colors,Clickable,Generate colors,Default color"
+                        },
+                        "ports": [],
+                        "dynamicports": [
+                            {
+                                "type": {
+                                    "name": "*",
+                                    "allowConnectionsOnly": true
+                                },
+                                "plug": "input/output",
+                                "group": "Properties",
+                                "name": "value-Removable",
+                                "displayName": "Removable",
+                                "index": 4
+                            },
+                            {
+                                "type": "signal",
+                                "plug": "output",
+                                "group": "Changed Events",
+                                "displayName": "Removable Changed",
+                                "name": "changed-Removable",
+                                "index": 5
+                            },
+                            {
+                                "type": {
+                                    "name": "*",
+                                    "allowConnectionsOnly": true
+                                },
+                                "plug": "input/output",
+                                "group": "Properties",
+                                "name": "value-Colors",
+                                "displayName": "Colors",
+                                "index": 6
+                            },
+                            {
+                                "type": "signal",
+                                "plug": "output",
+                                "group": "Changed Events",
+                                "displayName": "Colors Changed",
+                                "name": "changed-Colors",
+                                "index": 7
+                            },
+                            {
+                                "type": {
+                                    "name": "*",
+                                    "allowConnectionsOnly": true
+                                },
+                                "plug": "input/output",
+                                "group": "Properties",
+                                "name": "value-Clickable",
+                                "displayName": "Clickable",
+                                "index": 8
+                            },
+                            {
+                                "type": "signal",
+                                "plug": "output",
+                                "group": "Changed Events",
+                                "displayName": "Clickable Changed",
+                                "name": "changed-Clickable",
+                                "index": 9
+                            },
+                            {
+                                "type": {
+                                    "name": "*",
+                                    "allowConnectionsOnly": true
+                                },
+                                "plug": "input/output",
+                                "group": "Properties",
+                                "name": "value-Generate colors",
+                                "displayName": "Generate colors",
+                                "index": 10
+                            },
+                            {
+                                "type": "signal",
+                                "plug": "output",
+                                "group": "Changed Events",
+                                "displayName": "Generate colors Changed",
+                                "name": "changed-Generate colors",
+                                "index": 11
+                            },
+                            {
+                                "type": {
+                                    "name": "*",
+                                    "allowConnectionsOnly": true
+                                },
+                                "plug": "input/output",
+                                "group": "Properties",
+                                "name": "value-Default color",
+                                "displayName": "Default color",
+                                "index": 12
+                            },
+                            {
+                                "type": "signal",
+                                "plug": "output",
+                                "group": "Changed Events",
+                                "displayName": "Default color Changed",
+                                "name": "changed-Default color",
+                                "index": 13
+                            }
+                        ],
+                        "children": []
+                    },
+                    {
+                        "id": "328541ca-173f-9a5b-8ba6-3d47444c8746",
+                        "type": "Component Outputs",
+                        "x": 181.17097796195708,
+                        "y": -259.2935104270165,
+                        "parameters": {},
+                        "ports": [
+                            {
+                                "name": "Tag Id",
+                                "plug": "input",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "index": 1
+                            },
+                            {
+                                "name": "Remove clicked",
+                                "plug": "input",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "index": 2
+                            },
+                            {
+                                "name": "Tag Clicked",
+                                "plug": "input",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "index": 3
+                            }
+                        ],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "84f5eae1-2de1-d5a0-249c-29032c02181a",
+                        "type": "Boolean",
+                        "x": -294.2677558055133,
+                        "y": 357.430593513681,
+                        "parameters": {},
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "2f29f304-60c3-5bd0-b53e-695eef2d0a4b",
+                        "type": "JavaScriptFunction",
+                        "label": "Color Palette",
+                        "x": -295.5058696829372,
+                        "y": 444.5784054194832,
+                        "parameters": {
+                            "functionScript": "Outputs.Colors = [\r\n    \"#E47915\",\r\n    \"#9B62BC\",\r\n    \"#5C3ABE\",\r\n    \"#6A6EDC\",\r\n    \"#3C87CD\",\r\n    \"#32A4AE\",\r\n    \"#3CB96C\",\r\n    \"#B27D2E\",\r\n    \"#948061\",\r\n    \"#6A6562\",\r\n    \"#DC5686\",\r\n    \"#DC5656\",\r\n]"
+                        },
+                        "ports": [],
+                        "dynamicports": [
+                            {
+                                "name": "out-Colors",
+                                "displayName": "Colors",
+                                "plug": "output",
+                                "type": "*",
+                                "group": "Outputs",
+                                "index": 4
+                            }
+                        ],
+                        "children": [],
+                        "metadata": {
+                            "merge": {
+                                "soureCodePorts": [
+                                    "functionScript"
+                                ]
+                            }
+                        }
+                    },
+                    {
+                        "id": "a93dcd84-c8c0-e29f-807f-006306f575af",
+                        "type": "Boolean",
+                        "x": -294.0979878632552,
+                        "y": 272.82838507096494,
+                        "parameters": {
+                            "value": false
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "dc47b7cb-1121-afb7-3b75-fd751297d4e6",
+                        "type": "Boolean",
+                        "x": -291.90766564761066,
+                        "y": 187.40581866083386,
+                        "parameters": {},
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "a663c8ba-244c-ef29-8e62-5ab646029fb7",
+                        "type": "Color",
+                        "label": "Default color",
+                        "x": -291.90766564761054,
+                        "y": 87.74615784901445,
+                        "parameters": {
+                            "value": "Primary"
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": []
+                    }
+                ],
+                "comments": [
+                    {
+                        "text": "Setting up type defnitions for the Component Input Properties. This is a way to make custom properties visible on the Tags node.",
+                        "width": 525,
+                        "height": 542,
+                        "fill": true,
+                        "x": -356,
+                        "y": 17,
+                        "id": "d60fbe1d-6de4-a368-521c-88cf127c159c"
+                    }
+                ]
+            }
+        },
+        {
+            "name": "/Tags/Tag Item",
+            "id": "b694557f-6dbb-13cf-299d-4277897c2454",
+            "graph": {
+                "connections": [
+                    {
+                        "fromId": "85a92c04-4c83-08de-fb8c-3d3234364d66",
+                        "fromProperty": "prop-Label",
+                        "toId": "97774bea-3206-6b03-7ec3-5edd37450bcf",
+                        "toProperty": "text"
+                    },
+                    {
+                        "fromId": "85a92c04-4c83-08de-fb8c-3d3234364d66",
+                        "fromProperty": "prop-Label",
+                        "toId": "f74bd58e-4e48-894f-9064-506274845dbe",
+                        "toProperty": "in-Text"
+                    },
+                    {
+                        "fromId": "f74bd58e-4e48-894f-9064-506274845dbe",
+                        "fromProperty": "out-Color",
+                        "toId": "7fff228e-2569-d90b-8a4b-c3e2c6721b02",
+                        "toProperty": "backgroundColor"
+                    },
+                    {
+                        "fromId": "026aab61-080f-5e55-7c7a-d550ac6c1a80",
+                        "fromProperty": "value-Colors",
+                        "toId": "f74bd58e-4e48-894f-9064-506274845dbe",
+                        "toProperty": "in-Colors"
+                    },
+                    {
+                        "fromId": "026aab61-080f-5e55-7c7a-d550ac6c1a80",
+                        "fromProperty": "value-Generate colors",
+                        "toId": "f74bd58e-4e48-894f-9064-506274845dbe",
+                        "toProperty": "in-generateColor"
+                    },
+                    {
+                        "fromId": "6710e9c3-3b48-0f08-6ccf-6a2f90b09c4e",
+                        "fromProperty": "onClick",
+                        "toId": "60017ce0-b3b6-56cf-d5ef-96fb627abb2c",
+                        "toProperty": "Remove clicked"
+                    },
+                    {
+                        "fromId": "026aab61-080f-5e55-7c7a-d550ac6c1a80",
+                        "fromProperty": "value-Removable",
+                        "toId": "6710e9c3-3b48-0f08-6ccf-6a2f90b09c4e",
+                        "toProperty": "mounted"
+                    },
+                    {
+                        "fromId": "026aab61-080f-5e55-7c7a-d550ac6c1a80",
+                        "fromProperty": "value-Clickable",
+                        "toId": "3cd3985c-9088-c11f-7076-9edeebf55f1e",
+                        "toProperty": "mounted"
+                    },
+                    {
+                        "fromId": "3cd3985c-9088-c11f-7076-9edeebf55f1e",
+                        "fromProperty": "onClick",
+                        "toId": "60017ce0-b3b6-56cf-d5ef-96fb627abb2c",
+                        "toProperty": "Tag clicked"
+                    },
+                    {
+                        "fromId": "026aab61-080f-5e55-7c7a-d550ac6c1a80",
+                        "fromProperty": "value-Default color",
+                        "toId": "f74bd58e-4e48-894f-9064-506274845dbe",
+                        "toProperty": "in-defaultColor"
+                    }
+                ],
+                "roots": [
+                    {
+                        "id": "026aab61-080f-5e55-7c7a-d550ac6c1a80",
+                        "type": "net.noodl.ParentComponentObject",
+                        "x": -238.27644820293023,
+                        "y": 298.16037958906327,
+                        "parameters": {
+                            "properties": "Removable,Colors,Generate colors,Clickable,Default color"
+                        },
+                        "ports": [],
+                        "dynamicports": [
+                            {
+                                "type": {
+                                    "name": "*",
+                                    "allowConnectionsOnly": true
+                                },
+                                "plug": "input/output",
+                                "group": "Properties",
+                                "name": "value-Removable",
+                                "displayName": "Removable",
+                                "index": 4
+                            },
+                            {
+                                "type": "signal",
+                                "plug": "output",
+                                "group": "Changed Events",
+                                "displayName": "Removable Changed",
+                                "name": "changed-Removable",
+                                "index": 5
+                            },
+                            {
+                                "type": {
+                                    "name": "*",
+                                    "allowConnectionsOnly": true
+                                },
+                                "plug": "input/output",
+                                "group": "Properties",
+                                "name": "value-Colors",
+                                "displayName": "Colors",
+                                "index": 6
+                            },
+                            {
+                                "type": "signal",
+                                "plug": "output",
+                                "group": "Changed Events",
+                                "displayName": "Colors Changed",
+                                "name": "changed-Colors",
+                                "index": 7
+                            },
+                            {
+                                "type": {
+                                    "name": "*",
+                                    "allowConnectionsOnly": true
+                                },
+                                "plug": "input/output",
+                                "group": "Properties",
+                                "name": "value-Generate colors",
+                                "displayName": "Generate colors",
+                                "index": 8
+                            },
+                            {
+                                "type": "signal",
+                                "plug": "output",
+                                "group": "Changed Events",
+                                "displayName": "Generate colors Changed",
+                                "name": "changed-Generate colors",
+                                "index": 9
+                            },
+                            {
+                                "type": {
+                                    "name": "*",
+                                    "allowConnectionsOnly": true
+                                },
+                                "plug": "input/output",
+                                "group": "Properties",
+                                "name": "value-Clickable",
+                                "displayName": "Clickable",
+                                "index": 10
+                            },
+                            {
+                                "type": "signal",
+                                "plug": "output",
+                                "group": "Changed Events",
+                                "displayName": "Clickable Changed",
+                                "name": "changed-Clickable",
+                                "index": 11
+                            },
+                            {
+                                "type": {
+                                    "name": "*",
+                                    "allowConnectionsOnly": true
+                                },
+                                "plug": "input/output",
+                                "group": "Properties",
+                                "name": "value-Default color",
+                                "displayName": "Default color",
+                                "index": 12
+                            },
+                            {
+                                "type": "signal",
+                                "plug": "output",
+                                "group": "Changed Events",
+                                "displayName": "Default color Changed",
+                                "name": "changed-Default color",
+                                "index": 13
+                            }
+                        ],
+                        "children": []
+                    },
+                    {
+                        "id": "60017ce0-b3b6-56cf-d5ef-96fb627abb2c",
+                        "type": "Component Outputs",
+                        "x": 639.9586028973795,
+                        "y": 329.29999179011753,
+                        "parameters": {},
+                        "ports": [
+                            {
+                                "name": "Remove clicked",
+                                "plug": "input",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "index": 1
+                            },
+                            {
+                                "name": "Tag clicked",
+                                "plug": "input",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "index": 2
+                            }
+                        ],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "7fff228e-2569-d90b-8a4b-c3e2c6721b02",
+                        "type": "Group",
+                        "label": "Pill",
+                        "x": 340.0377860556095,
+                        "y": 21.871949977491568,
+                        "parameters": {
+                            "backgroundColor": "Grey - 500",
+                            "borderRadius": {
+                                "value": 2,
+                                "unit": "px"
+                            },
+                            "sizeMode": "contentWidth",
+                            "flexDirection": "row",
+                            "paddingLeft": {
+                                "value": 8,
+                                "unit": "px"
+                            },
+                            "height": {
+                                "value": 28,
+                                "unit": "px"
+                            },
+                            "alignItems": "center",
+                            "paddingRight": {
+                                "value": 8,
+                                "unit": "px"
+                            },
+                            "marginBottom": {
+                                "value": 4,
+                                "unit": "px"
+                            },
+                            "marginRight": {
+                                "value": 4,
+                                "unit": "px"
+                            },
+                            "visible": true,
+                            "pointerEventsEnabled": false
+                        },
+                        "stateParameters": {
+                            "hover": {}
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": [
+                            {
+                                "id": "3cd3985c-9088-c11f-7076-9edeebf55f1e",
+                                "type": "Group",
+                                "label": "bg to hover",
+                                "parameters": {
+                                    "position": "absolute",
+                                    "backgroundColor": "#FFFFFF00",
+                                    "pointerEventsMode": "explicit",
+                                    "styleCss": "cursor:pointer;"
+                                },
+                                "stateParameters": {
+                                    "hover": {
+                                        "backgroundColor": "#FFFFFF33"
+                                    }
+                                },
+                                "ports": [],
+                                "dynamicports": [],
+                                "children": []
+                            },
+                            {
+                                "id": "97774bea-3206-6b03-7ec3-5edd37450bcf",
+                                "type": "Text",
+                                "label": "Label",
+                                "parameters": {
+                                    "alignY": "center",
+                                    "color": "White",
+                                    "textStyle": "Label Medium",
+                                    "pointerEventsMode": "explicit",
+                                    "pointerEventsEnabled": false
+                                },
+                                "ports": [],
+                                "dynamicports": [],
+                                "children": []
+                            },
+                            {
+                                "id": "3d4221ab-3666-4cd3-ae3e-29dc76696006",
+                                "type": "Group",
+                                "parameters": {
+                                    "sizeMode": "contentSize",
+                                    "pointerEventsMode": "explicit"
+                                },
+                                "ports": [],
+                                "dynamicports": [],
+                                "children": [
+                                    {
+                                        "id": "6710e9c3-3b48-0f08-6ccf-6a2f90b09c4e",
+                                        "type": "net.noodl.controls.button",
+                                        "label": "Cancel Icon",
+                                        "parameters": {
+                                            "useIcon": true,
+                                            "useLabel": false,
+                                            "iconIconSource": {
+                                                "class": "material-icons",
+                                                "code": "close"
+                                            },
+                                            "sizeMode": "contentSize",
+                                            "minWidth": {
+                                                "value": 0,
+                                                "unit": "px"
+                                            },
+                                            "paddingLeft": {
+                                                "value": 4,
+                                                "unit": "px"
+                                            },
+                                            "paddingRight": {
+                                                "value": 4,
+                                                "unit": "px"
+                                            },
+                                            "paddingTop": {
+                                                "value": 4,
+                                                "unit": "px"
+                                            },
+                                            "paddingBottom": {
+                                                "value": 4,
+                                                "unit": "px"
+                                            },
+                                            "iconSize": {
+                                                "value": 16,
+                                                "unit": "px"
+                                            },
+                                            "marginRight": {
+                                                "value": -6,
+                                                "unit": "px"
+                                            },
+                                            "borderRadius": {
+                                                "value": 2,
+                                                "unit": "px"
+                                            },
+                                            "marginLeft": {
+                                                "value": 4,
+                                                "unit": "px"
+                                            },
+                                            "iconColor": "White",
+                                            "backgroundColor": "#5836F500"
+                                        },
+                                        "stateParameters": {
+                                            "hover": {
+                                                "backgroundColor": "#00000033"
+                                            }
+                                        },
+                                        "ports": [],
+                                        "dynamicports": [],
+                                        "children": []
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        "id": "85a92c04-4c83-08de-fb8c-3d3234364d66",
+                        "type": "Model2",
+                        "x": 93.28173964166717,
+                        "y": 98.40163161069495,
+                        "parameters": {
+                            "idSource": "foreach",
+                            "properties": "Label"
+                        },
+                        "ports": [],
+                        "dynamicports": [
+                            {
+                                "type": {
+                                    "name": "*",
+                                    "allowConnectionsOnly": true
+                                },
+                                "plug": "input/output",
+                                "group": "Properties",
+                                "name": "prop-Label",
+                                "displayName": "Label",
+                                "index": 7
+                            },
+                            {
+                                "type": "signal",
+                                "plug": "output",
+                                "group": "Changed Events",
+                                "displayName": "Label Changed",
+                                "name": "changed-Label",
+                                "index": 8
+                            }
+                        ],
+                        "children": []
+                    },
+                    {
+                        "id": "f74bd58e-4e48-894f-9064-506274845dbe",
+                        "type": "JavaScriptFunction",
+                        "x": 97.4777253673281,
+                        "y": -111.89347355721657,
+                        "parameters": {
+                            "functionScript": "\r\n\r\nif(Inputs.generateColor){\r\n    const palette = Inputs.Colors;\r\n    const text = Inputs.Text;\r\n\r\n    function hashCode(str) {\r\n        var hash = 0, i, chr;\r\n        if (str.length === 0) return hash;\r\n        for (i = 0; i < str.length; i++) {\r\n            chr = str.charCodeAt(i);\r\n            hash = (hash << 5) - hash + chr;\r\n            hash |= 0;\r\n        }\r\n        return hash;\r\n    }\r\n\r\n    Outputs.Color = palette[hashCode(text) % palette.length];\r\n} \r\n\r\nelse{\r\n    Outputs.Color = Inputs.defaultColor;\r\n}\r\n\r\n\r\n"
+                        },
+                        "ports": [],
+                        "dynamicports": [
+                            {
+                                "name": "in-generateColor",
+                                "displayName": "generateColor",
+                                "plug": "input",
+                                "type": "*",
+                                "group": "Inputs",
+                                "index": 4
+                            },
+                            {
+                                "name": "in-Colors",
+                                "displayName": "Colors",
+                                "plug": "input",
+                                "type": "*",
+                                "group": "Inputs",
+                                "index": 5
+                            },
+                            {
+                                "name": "in-Text",
+                                "displayName": "Text",
+                                "plug": "input",
+                                "type": "*",
+                                "group": "Inputs",
+                                "index": 6
+                            },
+                            {
+                                "name": "in-defaultColor",
+                                "displayName": "defaultColor",
+                                "plug": "input",
+                                "type": "*",
+                                "group": "Inputs",
+                                "index": 7
+                            },
+                            {
+                                "name": "out-Color",
+                                "displayName": "Color",
+                                "plug": "output",
+                                "type": "*",
+                                "group": "Outputs",
+                                "index": 8
+                            }
+                        ],
+                        "children": [],
+                        "metadata": {
+                            "merge": {
+                                "soureCodePorts": [
+                                    "functionScript"
+                                ]
+                            }
+                        }
+                    }
+                ]
+            }
+        }
+    ],
+    "settings": {},
+    "version": "4",
+    "metadata": {
+        "styles": {
+            "text": {
+                "Label Medium": {
+                    "fontFamily": "fonts/Inter/Inter-Medium.ttf",
+                    "fontSize": {
+                        "value": "14",
+                        "unit": "px"
+                    },
+                    "color": "#000000",
+                    "letterSpacing": "Auto",
+                    "lineHeight": {
+                        "value": "120",
+                        "unit": "%"
+                    },
+                    "textTransform": "none"
+                }
+            },
+            "colors": {
+                "Grey - 500": "#A5A5A5",
+                "Primary": "#5836F5",
+                "White": "#FFFFFF"
+            }
+        }
+    },
+    "variants": []
+}

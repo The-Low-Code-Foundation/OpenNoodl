@@ -1,0 +1,42 @@
+{
+  "id": "cloud-filter-records-tabs",
+  "title": "One query, two tabs: client-side Filter Records views",
+  "description": "One Query Records fetch fans out into two Filter Records nodes — 'open' and 'done' — each feeding its own Repeater. The filtering happens client-side against the already-fetched array, so switching tabs costs nothing and both views stay live as the underlying query updates. Filter in the query itself only when the excluded data shouldn't reach the client at all.",
+  "demonstrates": ["FilterDBModels", "DbCollection2"],
+  "components": [
+    {
+      "name": "/Task Tabs",
+      "nodes": [
+        {
+          "id": "root",
+          "type": "Group",
+          "label": "Tabs page",
+          "parameters": { "flexDirection": "column" },
+          "children": ["open_list", "done_list"]
+        },
+        { "id": "open_list", "type": "For Each", "label": "Open tasks", "parent": "root", "parameters": { "template": "/Task Line" } },
+        { "id": "done_list", "type": "For Each", "label": "Done tasks", "parent": "root", "parameters": { "template": "/Task Line" } },
+        { "id": "all_tasks", "type": "DbCollection2", "label": "All tasks", "parameters": { "collectionName": "Task" } },
+        { "id": "only_open", "type": "FilterDBModels", "label": "done == false" },
+        { "id": "only_done", "type": "FilterDBModels", "label": "done == true" }
+      ],
+      "connections": [
+        { "fromId": "all_tasks", "fromProperty": "items", "toId": "only_open", "toProperty": "items" },
+        { "fromId": "all_tasks", "fromProperty": "items", "toId": "only_done", "toProperty": "items" },
+        { "fromId": "only_open", "fromProperty": "items", "toId": "open_list", "toProperty": "items" },
+        { "fromId": "only_done", "fromProperty": "items", "toId": "done_list", "toProperty": "items" }
+      ]
+    },
+    {
+      "name": "/Task Line",
+      "nodes": [
+        { "id": "line", "type": "Group", "label": "Line", "parameters": { "flexDirection": "row" }, "children": ["line_text"] },
+        { "id": "line_text", "type": "Text", "label": "Title", "parent": "line" },
+        { "id": "line_inputs", "type": "Component Inputs", "label": "Record in" }
+      ],
+      "connections": [
+        { "fromId": "line_inputs", "fromProperty": "title", "toId": "line_text", "toProperty": "text" }
+      ]
+    }
+  ]
+}

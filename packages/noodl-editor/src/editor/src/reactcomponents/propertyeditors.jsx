@@ -1,9 +1,13 @@
 const React = require('react');
 const { useState, useEffect, useRef } = require('react');
 
+const { flushSync } = require('react-dom');
+const { createRoot } = require('react-dom/client');
+
 const ColorPicker = require('../views/panels/propertyeditor/DataTypes/ColorPicker/colorpicker').default;
-const FontPicker = require('../views/panels/propertyeditor/fontpicker').default;
-const PopupLayer = require('../views/popuplayer');
+const { ContentPicker } = require('../views/panels/propertyeditor/components/ContentPicker');
+const { loadFontItems } = require('../views/panels/propertyeditor/components/fontItems');
+const PopupLayer = require('../views/popuplayer').default;
 
 require('./propertyeditors.css');
 
@@ -116,7 +120,7 @@ function ColorProperty(props) {
 
     const popout = PopupLayer.instance.showPopout({
       content: colorPicker,
-      attachTo: $(popupAnchor.current),
+      attachTo: popupAnchor.current,
       position: 'right',
       onClose: () => {
         colorPicker.dispose();
@@ -163,20 +167,44 @@ function FontProperty(props) {
   useEffect(() => {
     if (!showFontPicker) return;
 
-    const fontPicker = new FontPicker({
-      onItemSelected: onChange
+    const div = document.createElement('div');
+    const root = createRoot(div);
+    const state = { items: [], filter: '' };
+    const rerender = () => {
+      // Synchronous so the popup layer can measure real content (DEBT-010).
+      flushSync(() =>
+        root.render(
+          React.createElement(ContentPicker, {
+            title: 'Choose font',
+            items: [...state.items],
+            filter: state.filter,
+            onSelect: (item) => onChange(item.fullPath)
+          })
+        )
+      );
+    };
+    rerender();
+    loadFontItems((items) => {
+      state.items.push(...items);
+      rerender();
     });
-    fontPicker.render();
-    fontPickerRef.current = fontPicker;
+
+    fontPickerRef.current = {
+      setFilter: (filter) => {
+        state.filter = filter;
+        rerender();
+      }
+    };
 
     const popout = PopupLayer.instance.showPopout({
-      content: fontPicker,
-      attachTo: $(ref.current),
+      content: { el: div },
+      attachTo: ref.current,
       position: 'right'
     });
 
     return () => {
       PopupLayer.instance.hidePopout(popout);
+      root.unmount();
       fontPickerRef.current = null;
     };
   }, [showFontPicker, onChange]);

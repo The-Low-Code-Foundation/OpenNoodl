@@ -1,0 +1,68 @@
+{
+  "name": "Hello Preview (legacy)",
+  "id": "hello-preview-legacy",
+  "version": "4",
+  "rootNodeId": "app_router",
+  "settings": {
+    "htmlTitle": "Hello Preview (legacy)",
+    "navigationPathType": "path"
+  },
+  "components": [
+    {
+      "name": "/App",
+      "id": "c_app",
+      "graph": {
+        "roots": [
+          {
+            "id": "app_router",
+            "type": "Router",
+            "label": "Main Router",
+            "x": 100,
+            "y": 100,
+            "parameters": {
+              "name": "Main",
+              "pages": {
+                "startPage": "/#__page__/Home",
+                "routes": ["/#__page__/Home"]
+              }
+            },
+            "ports": [],
+            "children": []
+          }
+        ],
+        "connections": []
+      }
+    },
+    {
+      "name": "/#__page__/Home",
+      "id": "c_home",
+      "graph": {
+        "roots": [
+          {
+            "id": "page",
+            "type": "Page",
+            "label": "Home",
+            "x": 100,
+            "y": 100,
+            "parameters": { "title": "Home", "urlPath": "home" },
+            "ports": [],
+            "children": [
+              {
+                "id": "greeting",
+                "type": "Text",
+                "label": "Greeting",
+                "x": 100,
+                "y": 200,
+                "parameters": { "text": "Hello from a legacy project" },
+                "ports": [],
+                "children": []
+              }
+            ]
+          }
+        ],
+        "connections": []
+      }
+    }
+  ],
+  "metadata": {}
+}

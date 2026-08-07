@@ -1,0 +1,19 @@
+{
+  "label": "Multi Choice",
+  "description": "A component that allows for multi selection in a group of checkboxes.",
+  "type": "prefab",
+  "tags": [
+    "UI",
+    "Form",
+    "Input"
+  ],
+  "icon": "icon.png",
+  "docsPath": "/library/prefabs/multi-choice/",
+  "version": "0.6.0",
+  "minEditorVersion": "0.1.0",
+  "runtimeVersion": "2.7.0",
+  "provenance": {
+    "sourceUrl": "https://the-low-code-foundation.github.io/opennoodl-docs/library/prefabs/multi-choice/multi-choice-0-5.zip",
+    "importedAt": "2026-07-25"
+  }
+}

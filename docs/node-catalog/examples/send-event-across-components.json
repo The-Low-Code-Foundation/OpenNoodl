@@ -1,0 +1,63 @@
+{
+  "id": "send-event-across-components",
+  "title": "Decoupled communication with Send Event / Receive Event",
+  "description": "Events carry a signal (and optional payload values) between components with no wire between them: every Receive Event listening on the same `channelName` fires when a Send Event on that channel sends. Here a toolbar button broadcasts 'RefreshRequested', and a separate component re-runs its data fetch when it receives the event. Use events when the sender must not know who reacts; for parent↔child data flow prefer Component Inputs/Outputs.",
+  "demonstrates": ["Event Sender", "Event Receiver"],
+  "components": [
+    {
+      "name": "/Toolbar",
+      "nodes": [
+        {
+          "id": "toolbar_root",
+          "type": "Group",
+          "label": "Toolbar",
+          "parameters": { "flexDirection": "row" },
+          "children": ["refresh_button"]
+        },
+        {
+          "id": "refresh_button",
+          "type": "net.noodl.controls.button",
+          "label": "Refresh",
+          "parent": "toolbar_root",
+          "parameters": { "label": "Refresh" }
+        },
+        {
+          "id": "announce_refresh",
+          "type": "Event Sender",
+          "label": "Broadcast refresh",
+          "parameters": { "channelName": "RefreshRequested" }
+        }
+      ],
+      "connections": [
+        { "fromId": "refresh_button", "fromProperty": "onClick", "toId": "announce_refresh", "toProperty": "sendEvent" }
+      ]
+    },
+    {
+      "name": "/Task Panel",
+      "nodes": [
+        {
+          "id": "panel_root",
+          "type": "Group",
+          "label": "Panel",
+          "parameters": { "flexDirection": "column" },
+          "children": []
+        },
+        {
+          "id": "on_refresh",
+          "type": "Event Receiver",
+          "label": "On refresh requested",
+          "parameters": { "channelName": "RefreshRequested" }
+        },
+        {
+          "id": "tasks_query",
+          "type": "DbCollection2",
+          "label": "Fetch tasks",
+          "parameters": { "collectionName": "Task" }
+        }
+      ],
+      "connections": [
+        { "fromId": "on_refresh", "fromProperty": "eventReceived", "toId": "tasks_query", "toProperty": "storageFetch" }
+      ]
+    }
+  ]
+}

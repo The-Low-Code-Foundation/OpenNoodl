@@ -1,0 +1,94 @@
+/* PAR-003: canvas HUD overlays per the editor mock (`.ai-pill`, `.zoom-cluster`).
+   The host layer (.canvas-hud-root) is pointer-events: none; each element
+   re-enables pointer events. Both sit 14px above the 38px bottom bar. */
+
+.AiPill {
+  position: absolute;
+  left: 16px;
+  bottom: 52px; /* mock: 14px above the bottom bar (38px) */
+  pointer-events: all;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background-color: var(--theme-color-bg-1);
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: var(--radius-full);
+  padding: 8px 14px;
+  color: var(--theme-color-fg-muted);
+  box-shadow: var(--shadow-popup);
+  font-family: var(--font-family);
+  font-size: 12.5px;
+  line-height: 1.2;
+  cursor: pointer;
+
+  &:hover {
+    color: var(--theme-color-fg-highlight);
+    border-color: var(--theme-color-border-strong);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--theme-color-primary);
+    outline-offset: 2px;
+  }
+
+  kbd {
+    font-family: var(--font-family-code);
+    font-size: 10px;
+    background-color: var(--theme-color-bg-3);
+    border: 1px solid var(--theme-color-border-default);
+    border-radius: var(--radius-default);
+    padding: 1px 5px;
+    color: var(--theme-color-fg-muted);
+  }
+}
+
+.AiPillSpark {
+  color: var(--theme-color-primary);
+  display: flex;
+}
+
+.ZoomCluster {
+  position: absolute;
+  right: 14px;
+  bottom: 52px; /* mock: 14px above the bottom bar (38px) */
+  pointer-events: all;
+  display: inline-flex;
+  align-items: center;
+  background-color: var(--theme-color-bg-1);
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+
+  button {
+    border: 0;
+    background: none;
+    color: var(--theme-color-fg-default);
+    cursor: pointer;
+    padding: 6px 10px;
+    font-family: var(--font-family);
+    font-size: 12px;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+
+    &:hover {
+      background-color: var(--theme-color-bg-3);
+      color: var(--theme-color-fg-highlight);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--theme-color-primary);
+      outline-offset: -2px;
+    }
+  }
+}
+
+.ZoomValue {
+  color: var(--theme-color-fg-default);
+  font-family: var(--font-family-code);
+  font-size: 11px;
+  padding: 6px 4px;
+  min-width: 38px;
+  text-align: center;
+}

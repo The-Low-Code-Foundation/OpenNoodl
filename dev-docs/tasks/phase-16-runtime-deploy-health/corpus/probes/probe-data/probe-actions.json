@@ -1,0 +1,7 @@
+[
+  { "wait": 300 },
+  { "click": "button" },
+  { "wait": 400 },
+  { "click": "button" },
+  { "wait": 400 }
+]

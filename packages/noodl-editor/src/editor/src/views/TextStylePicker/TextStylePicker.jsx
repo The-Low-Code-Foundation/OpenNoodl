@@ -1,9 +1,10 @@
 import React, { useState, useRef, useLayoutEffect, useEffect } from 'react';
-import ReactDOM from 'react-dom';
+import { flushSync } from 'react-dom';
+import { createRoot } from 'react-dom/client';
 
 import { StylesModel } from '@noodl-models/StylesModel';
 
-import { IconName, IconSize } from '../../../../../../noodl-core-ui/src/components/common/Icon';
+import { Icon, IconName, IconSize } from '../../../../../../noodl-core-ui/src/components/common/Icon';
 import { IconButton, IconButtonVariant } from '../../../../../../noodl-core-ui/src/components/inputs/IconButton';
 import FontLoader from '../../utils/fontloader';
 import PopupLayer from '../popuplayer';
@@ -41,21 +42,23 @@ function TextStylePicker(props) {
     if (!styleToEdit || !popupAnchor) return;
 
     const div = document.createElement('div');
-    ReactDOM.render(<TextStylePopup style={styleToEdit} stylesModel={stylesModel} />, div);
+    const root = createRoot(div);
+    // Synchronous so showPopout can measure real content (DEBT-010).
+    flushSync(() => root.render(<TextStylePopup style={styleToEdit} stylesModel={stylesModel} />));
 
     const popout = PopupLayer.instance.showPopout({
-      content: { el: $(div) },
-      attachTo: $(popupAnchor),
+      content: { el: div },
+      attachTo: popupAnchor,
       position: 'right',
       onClose: () => {
-        ReactDOM.unmountComponentAtNode(div);
+        root.unmount();
       }
     });
 
     return () => {
       PopupLayer.instance.hidePopout(popout);
     };
-  }, [styleToEdit, popupAnchor]);
+  }, [styleToEdit, popupAnchor, stylesModel]);
 
   let filteredStyles = textStyles;
 
@@ -242,7 +245,9 @@ function TextStyleItem(props) {
       <div className="variants-item-icon" onClick={onDeleteClicked}>
         <i className="fa fa-trash" />
       </div>
-      <div className="textstyles-edit-style" onClick={onEditStyleClicked} ref={popupAnchorRef} />
+      <div className="textstyles-edit-style" onClick={onEditStyleClicked} ref={popupAnchorRef}>
+        <Icon icon={IconName.Sliders} UNSAFE_style={{ width: 20, height: 20 }} />
+      </div>
     </div>
   );
 }
