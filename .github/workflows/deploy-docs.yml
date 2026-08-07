@@ -1,0 +1,51 @@
+name: Deploy docs site
+
+# B5: docs-site/ already lives in this monorepo, so this workflow deploys it
+# to this repo's own GitHub Pages using the repo's built-in Actions token —
+# no cross-repo credential needed, unlike the old opennoodl-docs arrangement.
+# Triggers on `main` only: this publishes to a public URL, and `main` is the
+# branch that's supposed to reflect what's actually shipping.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'docs-site/**'
+      - 'packages/noodl-types/src/node-catalog.json'
+      - 'docs/node-catalog/enrichment/**'
+      - '.github/workflows/deploy-docs.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Only one deploy in flight at a time; a newer push should win rather than
+# queue behind an older one still building.
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+      # Regenerates docs/node-catalog/enrichment's generated pages from the
+      # bundled catalog, then the Docusaurus build itself.
+      - run: npm run docs-site:build
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs-site/build
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
