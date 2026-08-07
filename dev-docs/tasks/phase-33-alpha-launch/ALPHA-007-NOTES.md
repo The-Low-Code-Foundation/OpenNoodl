@@ -191,17 +191,20 @@ the editor's constants, so a rename on either side is a red test.
 
 ### B. Criterion 2 — the composer over an open menu
 
-Asserted at the level a test can reach (the capture happens before the renderer
-is told anything; the dialog has no `onClose` so a backdrop click cannot dismiss
-it), but the visual claim needs doing, not reading:
+**Verified live, 2026-08-07.** Opened the sheet-selector's "All sheets" popup
+in the `NodeGX QA Fixture` project, then triggered `Help → Report a
+problem…` via `Menu.getApplicationMenu()`'s `MenuItem.click()` over the
+main-process inspector (`npm run dev:debug -- --inspect-main`, connect on
+`:9229`). The popup was still visible behind the dialog, and the captured
+screenshot thumbnail *inside* the dialog showed it too. See
+`PROGRESS.md`'s 2026-08-07 log entry for the full recipe.
 
-1. Open an in-app popup — a node's property dropdown, or the components panel
-   context menu.
-2. Without closing it, use **Help → Report a problem…**.
-3. The popup should still be there behind the composer, and the screenshot
-   thumbnail in the dialog should show it.
-
-Two specific risks I could not rule out:
+One risk from this list survives, not ruled out by the above: `.click()` on
+the `MenuItem` runs the same handler a real menu selection would, but does
+not display the native menu itself — so it does not exercise whichever
+macOS focus/blur behaviour happens when a human actually opens the menubar.
+That specific risk is still open, worth a real mouse-driven pass if it
+matters:
 - On macOS, opening the native menubar may blur the renderer and close the
   in-app popup by itself, before the capture runs. If that happens the menu item
   is not the right trigger for that case and the Help Center entry is.
@@ -211,19 +214,35 @@ Two specific risks I could not rule out:
 
 ### C. Criterion 5 — Reveal in Finder, on three platforms
 
-The bundle write and the `showItemInFolder` target are unit-tested; the actual
-file-manager behaviour is not. Windows and Linux are unverified by anyone.
+**Bundle write confirmed live on macOS, 2026-08-07** — `<userData>/reports/<reportId>/`
+held exactly `report.md` + `diagnostics.json` + `screenshot.jpg`, all three read
+and matching spec. `Reveal in file manager` itself (the actual Finder/Explorer
+call) was not clicked, to avoid an unnecessary OS side effect in an
+unattended pass. Windows and Linux still unverified by anyone.
 
 ### D. Layering of the composer itself
 
-`.dialog-layer > .Root` is `z-index: 666`; `.popup-layer` is `10`. Should be
-fine. Not seen.
+`.dialog-layer > .Root` is `z-index: 666`; `.popup-layer` is `10`. Confirmed
+fine live, 2026-08-07 — the composer painted over an open `PopupLayer` popup
+correctly (see criterion 2 above), so no z-index conflict at this pairing.
+The core-ui `Select`-inside-`BaseDialog` z-index question below is separate
+and still unconfirmed — this composer sidesteps it with a native `<select>`,
+so driving it live never exercised that path.
 
 ### E. The whole dialog, rendered
 
-I have never seen it. Widths, the screenshot thumbnail's aspect handling, and
-whether the "What gets sent" block scrolls rather than pushing the buttons off
-the bottom, are all reasoned rather than observed.
+**Seen live, 2026-08-07.** Widths and the screenshot thumbnail rendered as
+expected. The "What gets sent" concern was real but different from what was
+guessed: it wasn't the `.Payload` block's own internal scroll (`max-height:
+220px; overflow: auto` — that part was always fine) — it was the *outer*
+dialog itself. `CoreBaseDialog`'s `.VisibleDialog` clips at `max-height: 90vh`
+with `overflow: hidden` and no inner scroll container, so once the form's
+total content (preview image + 4 fields + optional payload) exceeded 90vh,
+the Send/Cancel buttons fell off the bottom with **no way to reach them at
+all** — worse than "pushed off", genuinely unreachable. Filed and fixed as
+**F104** (`PROGRESS.md`), a general `CoreBaseDialog` defect affecting every
+dialog built on it, not just this one. Richard hit this independently, live,
+before the cause was known.
 
 ### F. Criterion 1 — end to end from a packaged build, on two platforms
 

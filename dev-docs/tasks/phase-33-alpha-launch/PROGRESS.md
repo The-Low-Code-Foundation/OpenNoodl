@@ -18,7 +18,7 @@ Not started · In progress · **Built–not wired** · Complete · Superseded
 | [ALPHA-004](./ALPHA-004-USER-DOCS.md) Documentation for someone who is not us | 2 | 🟡 **Content written and now live in a real site** | **Re-scoped 2026-07-31** — platform half moved to ALPHA-006; retains the authored concept set, getting-started and troubleshooting. Content drafted 2026-08-07 (`fb0cc18f`), and as of ALPHA-006 §2/§3 the same day it's built into `docs-site/` rather than sitting in a staging folder — no longer blocked on the site existing. **Criteria 1 and 4 are unmet and need a human**: criterion 1 wants a person who's never seen NodeGX to actually build the getting-started app from the doc, and criterion 4 (concept vocabulary matches the AI prompts and Learn curriculum) hasn't been cross-checked against either. Criteria 2/3/5 hold — §3's generator satisfies 2, "derive never author twice" was followed for 3, every doc states "Describes NodeGX 0.1.0" for 5 |
 | [ALPHA-005](./ALPHA-005-LEGAL-SURFACE.md) The paperwork that ships with a binary | 2 | ✅ **Complete** | 2026-07-30. `PRIVACY.md` + `TERMS.md` written from the code, licence fields added, both reachable from the Application/Help menus and shown at first run. **Criterion 5 (an outside reader) is owed** — see below |
 | [ALPHA-006](./ALPHA-006-DOCS-PLATFORM.md) The docs platform, and the old site's disposition | 2 | 🟡 **§1–§4, §5 (code half) and §6 complete — only §5's actual repo strip left, and it's sequenced on two GitHub admin actions** | **§1/§6 built 2026-08-03, merged 2026-08-06** (see the log). §1 — `utils/nodeDocs.ts` reads the bundled catalog, `docs-parser.ts` deleted, so no node's help depends on a website. §6 — the Help Center stops shipping Noodl. **§5's code half, §2, §3 done 2026-08-07; §4 and B5 decided 2026-08-08.** §5 — `getContentEndpoint()` split from `getDocsEndpoint()`. §2 — a real Docusaurus 3 site at `docs-site/`, wired into `workspaces`/`lerna.json`. §3 — `scripts/generate-node-docs.js`, one generated page per catalog node, staleness-gated. **§4 — `docs-site/MIGRATION.md`, all 431 `opennoodl-docs` files classified into 5 fates** (112 generated/superseded, 24 ported, 33 salvaged, 193 stay in the payload repo, 69 deleted — zero unclassified). **B5 decided**: payload repo stays separate (renamed), docs publish from this repo's own GitHub Pages — see the 2026-08-07 log entry. **What's left**: the two GitHub admin actions B5 needs (repo rename, enable Pages), then the actual `opennoodl-docs` strip and Help Center repoint, in that order — none of it is an engineering unknown any more, all of it is sequenced on Richard. `docs-site-content/` is still a stale duplicate of `docs-site/docs/`, pending a human `git rm` |
-| [ALPHA-007](./ALPHA-007-FEEDBACK-LOOP.md) A feedback loop that closes | 2 | 🟡 **Parts A and B built; owed a live drive + B4/B6** | **Built 2026-08-03, merged 2026-08-06.** `utils/report/{collect,compose,diagnostics,errorTail,issueForm,redact}.ts`, `ReportProblemDialog`, `main/src/report-window.js`, `scripts/alpha-007/{create-labels.sh,prefill-probe.js}`, ~900 lines of tests. **Owed: B6** (verify the prefill by hand — it can still change the field contract) and **B4** (permission to run the label script). Never driven in a real editor |
+| [ALPHA-007](./ALPHA-007-FEEDBACK-LOOP.md) A feedback loop that closes | 2 | 🟡 **Driven live for the first time, 2026-08-07 — criterion 2 confirmed, F104 found and fixed** | **Built 2026-08-03, merged 2026-08-06; driven live 2026-08-07** via the main-process inspector (`Help → Report a problem…` is a native `Menu`/`MenuItem`, invisible to `npm run cdp`). **Criterion 2 confirmed real**: opened over the "All sheets" popup without dismissing it — the popup is visible both live and in the captured screenshot thumbnail. Found and fixed **F104** along the way (the composer's own content was unreachable past 90vh — a general `CoreBaseDialog` defect, not specific to this dialog). Field prefill (criterion 3) verified against real composed data — `what-happened`/`surface`/`severity`/`os`/`version`/`fresh-project`/`diagnostics`/`errors` all landed correctly and matched the dropdown selections, URL 3.1KB (well under the 6KB budget) — but GitHub's own dropdown-acceptance behaviour still needs a signed-in browser, deliberately not attempted here to avoid risking a real issue filing (a prior session's own live click did exactly that). Redaction spot-checked on real console output: an Electron security-warning URL was correctly collapsed to `<url>`. Bundle (criterion 5) confirmed written correctly on macOS — `report.md` + `diagnostics.json` + `screenshot.jpg`, matching the spec's schema. **Still owed:** B6's full sign-in check, B4 (label script permission), criterion 4's hostile-fixture demonstration (covered today only by the existing 87-test unit suite, not re-run live), criterion 1 (packaged build, two platforms) |
 
 ## Recommended order
 
@@ -76,6 +76,7 @@ phases 25 and 27 — check the highest existing number before allocating.
 | F72 | **The triage queue the issue forms promise does not exist.** All three forms declare `needs-triage`, and `node_report.yml` also declares `node-library`. **Neither label exists on the repo** — the label set is still GitHub's stock nine. GitHub silently drops labels it cannot resolve, so every report filed since 2026-07-30 is unlabelled beyond `bug`/`enhancement`, and `gh issue list --label needs-triage` returns nothing by construction. Related: there is **no severity vocabulary at all**, neither a form field nor a label, so the queue can only be ranked by date | `.github/ISSUE_TEMPLATE/*.yml` × `gh label list`, measured 2026-08-02 | ALPHA-007 §6 |
 | F102 | 🔴 **The style-suggestion banner (PLAT-005 §2) can structurally never fire for the property that triggers it most often.** `StyleAnalyzerCore.scanNode()` coerces every node-parameter value with `String(rawVal ?? '')`, assuming all style values are strings — but `borderRadius` is stored as a structured `{value, unit}` object in the current project format. `String({value:12,unit:'px'})` → `"[object Object]"`, which silently fails `isTokenisableSpacingValue`'s numeric regex, so a `borderRadius` override is never counted. Confirmed live: a Button with `backgroundColor` (raw, correctly counted) + `borderRadius` (raw, silently dropped) + `paddingTop` (token, correctly excluded) registered only **1** of 3 attempted overrides — one short of `variantCandidateMinOverrides: 3` — so the banner never appeared, reproduced across a full page reload (genuinely fresh `useStyleSuggestions` mount) reading the already-persisted-to-disk override. This is the actual cause behind three separate failed live-QA attempts (2026-07-27, and twice 2026-08-07) that were each previously attributed to driving-tool limitations | `packages/noodl-editor/src/editor/src/services/StyleAnalyzer/StyleAnalyzerCore.ts:237-238`, measured 2026-08-07 | PLAT-005 — unowned |
 | F103 | **A pre-existing (pre-NDA-011) deprecated `Button` node silently loses the entire style-suggestion/variant system, with zero indication.** `ElementConfigRegistry`'s `ButtonConfig.nodeType` is `'net.noodl.controls.button'` (the current node); the deprecated node at `nodes-deprecated/controls/button.tsx` reports `type.name === 'Button'`. `propertyeditor.ts:123`'s `renderElementStyleSection()` early-returns unless `ElementConfigRegistry.has(typeName)`, so any node still carrying the deprecated type never mounts `ElementStyleSectionHost` at all — no variant picker, no size picker, no suggestion banner, no error. Confirmed on the `NodeGX QA Fixture`'s `erg-rig`/`erg001-cloud` Button nodes (deprecated type) vs. `/Content/Changelog`'s Button (current type, correctly renders the full style section). Not a fresh-user risk — `componentmodel.ts:293`'s `isCreatable` blocks creating the deprecated node from the NodePicker today — but silently affects any pre-existing or imported project still carrying one | `packages/noodl-editor/src/editor/src/views/panels/propertyeditor/propertyeditor.ts:121-123` × `packages/noodl-viewer-react/src/nodes-deprecated/controls/button.tsx:86-92`, measured 2026-08-07 | PLAT-005 — unowned |
+| F104 | **Every `CoreBaseDialog`-based dialog silently clips content taller than 90vh, with no way to reach it.** `.VisibleDialog` sets `max-height: 90vh; overflow: hidden;` and nothing inside scrolls — content past the limit just disappears, buttons included. The `::-webkit-scrollbar` rules already authored on the same class were dead code, only ever mattering once this became `auto`. Found live while driving ALPHA-007's composer for the first time: with "What happened" filled in, the form exceeded 90vh and Send/Cancel were unreachable by any means — Richard hit this independently while watching, before the cause was known | `packages/noodl-core-ui/src/components/layout/BaseDialog/BaseDialog.module.scss:41` | ✅ **Fixed same session**, `022fb20a` — `overflow-y: auto`. Verified live: the dialog scrolls, the buttons are reachable, and the underlying popup is still visible behind it (screenshot in the report bundle) |
 
 ## Pre-existing findings this phase adopts
 
@@ -806,3 +807,78 @@ evidence, not speculation — each was measured.
   **What's actually left on ALPHA-006**: nothing engineering-shaped. The
   migration table exists; the actual repo strip and Help Center repoint wait
   on the two GitHub actions above, in order, same as always.
+
+- **2026-08-07 — the live regression from the prior handover, fixed and
+  verified; ALPHA-007's composer driven live for the first time; F104
+  found and fixed.** Two sessions' work, back to back.
+
+  **The stale-URL fix.** `HelpCenter.tsx:49` and `FailedStep.tsx:94` still
+  read `The-Low-Code-Foundation/OpenNoodl` — B3's rename session grepped for
+  `OpenNoodl` and missed both, which is exactly what produced the blank
+  GitHub issue Richard hit clicking "Report a bug" himself the same day
+  (`d7c3f131`). Fixed both, re-grepped clean across `packages/*/src`
+  (excluding gitignored bundles), and verified the fix **without** risking
+  another real external open: patched `electron.shell.openExternal` in the
+  running renderer to capture the URL instead of launching a browser, then
+  clicked "Report a bug" for real. Captured URL:
+  `https://github.com/The-Low-Code-Foundation/NodeGX/issues/new?template=bug_report.yml`
+  — correct repo, `?template=` intact. The composer's own URL builder
+  (`utils/report/issueForm.ts`'s `ISSUE_REPO`) was already correct; only the
+  two plain-link sites were stale.
+
+  **ALPHA-007, actually driven this time.** The prior session's own handover
+  explained why it never found the composer: `Help → Report a problem…` is a
+  native `Menu`/`MenuItem` in `main.js`, invisible to `npm run cdp` (renderer
+  DOM only). Restarted with `npm run dev:debug -- --inspect-main`, connected
+  to the main-process inspector on `:9229` with a small `ws`-based script
+  (`process.mainModule.require('electron')` — plain `require` is not a global
+  in that context, but `process.mainModule.require` is), and called
+  `Menu.getApplicationMenu()` → find `Help` → find `'Report a problem…'` →
+  `.click()`. That runs the exact same click handler a real menu selection
+  would, without displaying the native menu itself, so it does not exercise
+  the specific macOS-menubar-blur risk the build notes flagged (worth a real
+  mouse-driven pass sometime, but orthogonal to this test).
+
+  Opened the `NodeGX QA Fixture` project, opened the "All sheets" sheet-selector
+  popup, then triggered the composer while it was open: **criterion 2 is
+  real** — the popup was still visible behind the dialog live, and the
+  captured screenshot thumbnail *inside* the dialog shows it too. This was
+  one of the build notes' explicit "could not verify — needs the live editor"
+  items.
+
+  **F104, found and fixed en route.** With "What happened" filled in, the
+  composer's own content exceeded 90vh and the Send/Cancel buttons were
+  unreachable — Richard, watching live, hit this independently before the
+  cause was diagnosed ("I can't scroll the report a problem modal"). Root
+  cause: `packages/noodl-core-ui/.../BaseDialog.module.scss`'s `.VisibleDialog`
+  sets `overflow: hidden` with `max-height: 90vh` and no inner scroll
+  container — the `::-webkit-scrollbar` rules already written on the same
+  class were dead code, only ever mattering once this became `auto`. This is
+  a general `CoreBaseDialog` defect (every dialog built on it, not just this
+  one) — the build notes' own "possible defect, out of scope" section flagged
+  a *different* z-index risk on the same component and explicitly could not
+  test it live; this is a second, unrelated defect on the same component,
+  found by the same kind of live pass. Fixed with `overflow-y: auto` /
+  `overflow-x: hidden` (`022fb20a`), reloaded, and re-verified end to end:
+  dialog scrolls, buttons reachable, popup still visible behind it.
+
+  **Then drove Send itself**, patching `shell.openExternal` in the renderer
+  again (same capture-not-open technique) rather than actually opening a
+  browser — B6 still needs a real signed-in browser pass, which this
+  deliberately did not attempt, to avoid repeating the exact accidental
+  real-issue-filing the prior session hit. The captured URL (3.1KB, under the
+  6KB budget) carried every field correctly: `what-happened`, `surface`,
+  `severity` (with its em dash), `version`, `os`, `fresh-project`, a redacted
+  `errors` tail (an Electron CSP warning's own URL correctly collapsed to
+  `<url>` — a real redaction firing on real output, not just the fixture
+  suite), and the full `diagnostics` JSON matching the spec's schema
+  (`schema: 1`, bucketed `nodeTypes`, no project content). The on-disk bundle
+  (`<userData>/reports/<reportId>/`) held exactly `report.md` +
+  `diagnostics.json` + `screenshot.jpg` as specced, confirmed by reading all
+  three; cleaned up after. Not attempted: criterion 4's hostile-fixture
+  demonstration (the existing 87-test unit suite covers this; this session's
+  QA-fixture project had nothing hostile in it to test against), criterion 1
+  (packaged build), Windows/Linux reveal-in-file-manager.
+
+  Full stack stopped cleanly (`npm run dev:stop`) at the end; `typecheck:editor`
+  clean on both fixes.
