@@ -37,8 +37,12 @@
   /* Modern rounded corners */
   border-radius: var(--radius-lg);
 
-  /* Overflow handling */
-  overflow: hidden;
+  /* Overflow handling. Vertical scroll, not clip: content taller than
+   * max-height must stay reachable rather than silently disappearing behind
+   * it — the webkit-scrollbar rules below only ever did anything once this
+   * was `auto`. Horizontal stays hidden; width is capped by max-width. */
+  overflow-x: hidden;
+  overflow-y: auto;
 
   /* Size constraints */
   max-height: 90vh;
