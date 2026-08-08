@@ -4,6 +4,12 @@
  *
  * Usage:
  *   node scripts/devtools/render-from-disk.js <project-dir> [--port 8593]
+ *   node scripts/devtools/render-from-disk.js <project-dir> --print-project
+ *
+ * `--print-project` skips the server entirely and writes the reconstructed
+ * `projectData` to stdout, which is the only way to test the export-contract
+ * reconstruction below without a browser. `scripts/devtools/render-report.js`
+ * drives the server half.
  *
  * Then point a browser — or headless Chrome over CDP — at the printed URL and
  * read computed styles. That last part is the point: three of the layout
@@ -38,7 +44,9 @@
  *  - connections are `sourceId/sourcePort/targetId/targetPort`, **not** the
  *    file's `fromId/fromProperty/toId/toProperty`
  *  - a component's interface lives on its `Component Inputs`/`Component Outputs`
- *    NODE and must be lifted to component level, or a Repeater binds nothing
+ *    NODE and must be lifted to component level, **inverting the plug** — see
+ *    `liftInterface` below; getting this wrong is how this harness spent two
+ *    phases certifying a page the editor cannot render
  *  - nodes must be NESTED (`children` as objects); only roots go top-level
  *  - design tokens are stamped in by the editor or the html-processor, never by
  *    the bundle — without them every `var()` resolves to nothing
@@ -52,14 +60,31 @@ const VIEWER = path.join(REPO, 'packages/noodl-editor/src/external/viewer');
 const TOKENS_SRC = path.join(REPO, 'packages/noodl-editor/src/editor/src/models/StyleTokensModel/DefaultTokens.ts');
 
 const argv = process.argv.slice(2);
+/** Flags that consume the following argument, so it is never mistaken for the project dir. */
+const VALUE_FLAGS = new Set(['--port', '--backend-port', '--editor-port']);
 const flag = (name, fallback) => {
   const i = argv.indexOf(name);
   return i === -1 ? fallback : argv[i + 1];
 };
-const PROJECT = argv.find((a) => !a.startsWith('--') && argv[argv.indexOf(a) - 1] !== '--port') || process.env.PROJECT;
+const PROJECT =
+  argv.find((a, i) => !a.startsWith('--') && !VALUE_FLAGS.has(argv[i - 1])) || process.env.PROJECT;
 const PORT = Number(flag('--port', process.env.PORT || 8593));
 const BACKEND = { host: '127.0.0.1', port: Number(flag('--backend-port', process.env.BACKEND_PORT || 8581)) };
-const EDITOR_PORT = Number(flag('--editor-port', 8574));
+const PRINT_PROJECT = argv.includes('--print-project');
+/**
+ * The running editor's `:root` block, only when asked for.
+ *
+ * This used to be probed unconditionally, and that is an active source of wrong
+ * measurements rather than a nicety: the editor serves the tokens of whatever
+ * project **it** has open, so rendering project B while the editor holds project
+ * A stamps A's palette onto B. The phase-55 audit's own `haiku-full.png` is a
+ * casualty — the replay project carries no `metadata` at all, yet that shot is
+ * in `ecommerce-example`'s terracotta. A project's real tokens are its
+ * `metadata.designTokens` over the shipped defaults, which is what the fallback
+ * builds and what the editor would itself show for that project. Opt in with
+ * `--editor-tokens` when you deliberately want to mirror a running editor.
+ */
+const EDITOR_PORT = argv.includes('--editor-tokens') ? Number(flag('--editor-port', 8574)) : 0;
 
 if (!PROJECT || !fs.existsSync(path.join(PROJECT, 'nodegx.project.json'))) {
   console.error('Usage: node scripts/devtools/render-from-disk.js <project-dir> [--port 8593]');
@@ -68,6 +93,48 @@ if (!PROJECT || !fs.existsSync(path.join(PROJECT, 'nodegx.project.json'))) {
 }
 
 const readJSON = (p) => JSON.parse(fs.readFileSync(p, 'utf8'));
+
+/** The only two node types carrying `haveComponentPorts`, so the only two with an interface. */
+const COMPONENT_PORT_TYPES = new Set(['Component Inputs', 'Component Outputs']);
+
+/**
+ * Lift one interface node's ports to component level — **inverting the plug**.
+ *
+ * This harness used to force every `Component Inputs` port to `plug: 'input'`
+ * and every `Component Outputs` port to `plug: 'output'`, ignoring what the
+ * project actually declared. That is not what the product does, and the gap was
+ * not cosmetic: `ecommerce-example` — phase 54's reference build — declares all
+ * eleven of its `ProductCard` ports `plug: "input"`, and rendered here only
+ * because this file rewrote them. In the editor it has never worked.
+ *
+ * `componentmodel.getPorts()` is the authority
+ * ([componentmodel.ts:91](../../packages/noodl-editor/src/editor/src/models/componentmodel.ts#L91)).
+ * It walks the nodes carrying `haveComponentPorts`, reads `node.getPorts(dir)`
+ * — which selects on `p.plug.indexOf(dir) !== -1` — and republishes:
+ *
+ *     node port plugged "output"  ->  component port plug "input"   (an INPUT)
+ *     node port plugged "input"   ->  component port plug "output"  (an OUTPUT)
+ *
+ * so a component input is a port whose own plug says `output`: values flow *out
+ * of* the `Component Inputs` node into the graph. A plugless port is returned by
+ * neither filter and joins the interface at all — `PortWithoutPlug` owns that.
+ *
+ * The node's *type* does not enter into it; both types are walked identically.
+ * A port plugged `"input,output"` therefore publishes both directions, which is
+ * why this is a flatMap and not a ternary.
+ * `validation/componentInterface.ts` derives the same fact for the gate, and the
+ * two must not drift.
+ */
+function liftInterface(node) {
+  if (!COMPONENT_PORT_TYPES.has(node.type) || !Array.isArray(node.ports)) return [];
+  return node.ports.flatMap((p) => {
+    if (!p || typeof p.plug !== 'string') return [];
+    const lifted = [];
+    if (p.plug.includes('output')) lifted.push({ ...p, plug: 'input' });
+    if (p.plug.includes('input')) lifted.push({ ...p, plug: 'output' });
+    return lifted;
+  });
+}
 
 function buildProjectData() {
   const project = readJSON(path.join(PROJECT, 'nodegx.project.json'));
@@ -104,16 +171,7 @@ function buildProjectData() {
         targetPort: c.targetPort ?? c.toProperty
       })),
       roots: nodesFile.visualRoots || [],
-      ports: [
-        ...(nodesFile.ports || []),
-        ...flat.flatMap((n) =>
-          n.type === 'Component Inputs'
-            ? (n.ports || []).map((p) => ({ ...p, plug: 'input' }))
-            : n.type === 'Component Outputs'
-              ? (n.ports || []).map((p) => ({ ...p, plug: 'output' }))
-              : []
-        )
-      ],
+      ports: [...(nodesFile.ports || []), ...flat.flatMap(liftInterface)],
       metadata: nodesFile.metadata || undefined
     });
   }
@@ -164,14 +222,6 @@ function buildProjectData() {
   };
 }
 
-/**
- * The `:root` token block.
- *
- * Preferred from a running editor, because that reflects the project's own
- * overrides. Falls back to the shipped defaults parsed out of `DefaultTokens.ts`
- * — a page rendered with no tokens at all is not a smaller problem than a page
- * rendered with the wrong ones, it just fails less visibly.
- */
 /**
  * This project's own token overrides, from `metadata.designTokens` — the block
  * `set_project_tokens` writes and the editor reads back verbatim.
@@ -225,6 +275,9 @@ function tokenCss(cb) {
     );
   };
 
+  // `--editor-tokens` off (the default): the project's own tokens, nobody else's.
+  if (!EDITOR_PORT) return fallback();
+
   const req = http.get({ host: '127.0.0.1', port: EDITOR_PORT, path: '/' }, (r) => {
     let d = '';
     r.on('data', (c) => (d += c));
@@ -242,7 +295,10 @@ const MIME = {
   '.svg': 'image/svg+xml', '.json': 'application/json', '.woff2': 'font/woff2', '.woff': 'font/woff', '.ttf': 'font/ttf'
 };
 
-tokenCss((tokens) => {
+if (PRINT_PROJECT) {
+  process.stdout.write(JSON.stringify(buildProjectData(), null, 2) + '\n');
+} else
+  tokenCss((tokens) => {
   const projectData = buildProjectData();
 
   const html = `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"/>

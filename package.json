@@ -48,6 +48,7 @@
     "dev:debug": "node ./scripts/devtools/dev-debug.js",
     "dev:stop": "node ./scripts/devtools/stop-dev.js",
     "cdp": "node ./scripts/devtools/cdp.js",
+  "render:report": "node ./scripts/devtools/measure-from-disk.js",
     "dev:clean": "npm run clean:all && npm run dev",
     "start": "ts-node -P ./scripts/tsconfig.json ./scripts/start.ts -- --build-viewer",
     "test:editor": "ts-node -P ./scripts/tsconfig.json ./scripts/test-editor.ts",

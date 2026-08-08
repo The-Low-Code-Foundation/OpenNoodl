@@ -134,7 +134,7 @@ two cold-replay Homes (7 and 8 nodes) pass untouched.
 The loop that found every real defect in two phases is unreachable from the surface agents use;
 doctrine §11 is unfollowable. Sonnet improvised 80% of it through sandboxed Bash and still shipped
 a motorcycle; haiku improvised nothing. Meanwhile the whole loop costs **7.5 s** headless
-([measurements/measure-project.js](measurements/measure-project.js)).
+(promoted to [scripts/devtools/measure-from-disk.js](../../../scripts/devtools/measure-from-disk.js)).
 
 **Build:**
 
