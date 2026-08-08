@@ -147,6 +147,27 @@ gone from both Claude runs, sonnet's page went from unusable to shippable, and t
 the phase opened with. That is a better position than the phase started in, and it is not the same
 thing as passing.
 
+## Step 5 — Richard's verdict
+
+Put to him 2026-08-08 as a side-by-side judging page (all three rendered pages, the matrix, and the
+two remaining defects): <https://claude.ai/code/artifact/ca1ecdea-eb95-457f-8606-342fbc8fd9b1>,
+against the artifact baseline <https://claude.ai/code/artifact/af9ec57b-bfe5-4cea-af65-cac99b6adb74>.
+
+The three questions asked, because the phase's claim depends on the answers:
+
+1. Does **sonnet's** page clear the bar — "a real shop, not a template"?
+2. If **LAS-012** lands and haiku's lists draw, would that page clear it too? That one gate is the
+   whole difference between its current state and a complete page.
+3. Is **"any competent LLM"** still the claim, or does it narrow — and to what? On today's evidence
+   the honest answer is not 27B.
+
+> **Richard's verdict, in his words:**
+>
+> *(awaiting — record verbatim, do not paraphrase)*
+
+⚠️ **The phase is not closed until this block is filled.** An empty verdict here means the exit
+criterion was never met, whatever the gates say — that is the whole point of the criterion.
+
 ## Acceptance (of the phase itself)
 
 - Matrix complete, all cells evidenced (screenshots in `measurements/`, transcripts kept).
