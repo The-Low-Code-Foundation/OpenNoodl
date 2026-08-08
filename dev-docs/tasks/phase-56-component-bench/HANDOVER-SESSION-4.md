@@ -12,6 +12,12 @@ that is exactly right and has no consequence** — or worse, has a consequence s
 Read [HANDOVER-SESSION-3.md](HANDOVER-SESSION-3.md) first; its traps still govern, and B10 and B16
 are now the same family with three cases.
 
+⚠️ **A second session went live partway through this one** — `315ab985` and `439ab76c`, phase 58
+(`AWP-*`, `packages/noodl-mcp`), landed on `cline-dev` between this session's third and fourth
+commits. No overlap with anything here: every `git add` was pathspec-scoped, and `git show --stat`
+confirms the two sets of commits touch disjoint files. **Check again next session rather than
+inheriting this** — it was false at the start of this one and true by the end.
+
 ## What is on the branch
 
 | Commit | What |
