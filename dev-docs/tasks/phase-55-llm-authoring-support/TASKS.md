@@ -20,6 +20,23 @@ every new rule against the ~95-project corpus before deciding severity (the
 `repeated-sibling-subtree` precedent: 17 hits/95 projects → warning, authored-blocking is a
 separate decision); a graph is a claim, a render is evidence.
 
+**Each task has its own file — the files carry the mechanism detail, acceptance criteria and a
+register; the sections below are the summary and the dependency map:**
+
+| Task | File | One line |
+|---|---|---|
+| LAS-001 ⭐ | [LAS-001-INTERFACE-GATE.md](LAS-001-INTERFACE-GATE.md) | instance parameters must match `Component Inputs` (F2) |
+| LAS-002 | [LAS-002-STAGING-SPEAKS.md](LAS-002-STAGING-SPEAKS.md) | authoring doors return diagnostics, not counts (F6) |
+| LAS-003 | [LAS-003-VALUE-FORMAT-GATES.md](LAS-003-VALUE-FORMAT-GATES.md) | layoutString grammar, unsized absolute Group, raw hex (F3, F7) |
+| LAS-004 | [LAS-004-PROMOTE-ARCHITECTURE-WARNINGS.md](LAS-004-PROMOTE-ARCHITECTURE-WARNINGS.md) | sibling rule blocks authored output; page-size info backstop |
+| LAS-005 ⭐ | [LAS-005-RENDER-REPORT.md](LAS-005-RENDER-REPORT.md) | the 7.5s measure loop as an MCP tool with screenshots (F5) |
+| LAS-006 | [LAS-006-STRUCTURED-PLANS.md](LAS-006-STRUCTURED-PLANS.md) | plans carry interfaces/repeats; the plan becomes a contract |
+| LAS-007 | [LAS-007-PUSH-RETRIEVAL.md](LAS-007-PUSH-RETRIEVAL.md) | recipes attached inside rejections; the traps preamble |
+| LAS-008 | [LAS-008-PROMPT-DRIFT.md](LAS-008-PROMPT-DRIFT.md) | fix `DESIGN_AUTHORING` + a tripwire spec (F1) |
+| LAS-009 | [LAS-009-PER-ROLE-MODELS.md](LAS-009-PER-ROLE-MODELS.md) | design/plan/act model selection (Richard's request) |
+| LAS-010 | [LAS-010-OPEN-WEIGHT-LEG.md](LAS-010-OPEN-WEIGHT-LEG.md) | the open-weight rig — model pull is human-gated |
+| LAS-011 | [LAS-011-ACCEPTANCE-MATRIX.md](LAS-011-ACCEPTANCE-MATRIX.md) | the exit matrix the phase closes on |
+
 ---
 
 ## Track 1 — Gates. The failures that shipped are the gates that don't exist.
