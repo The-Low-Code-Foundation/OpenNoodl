@@ -266,11 +266,59 @@ export interface ExampleCitationRow {
   title: string;
 }
 
+/**
+ * Longest inline enum list, in characters of joined values. Above it the line
+ * carries a count instead. 96 keeps every port on one readable line while still
+ * spelling out the enums a model actually sets (`flexDirection`, `alignItems`,
+ * `sizeMode`); only the long editor-facing pickers collapse to a count.
+ */
+const MAX_INLINE_ENUM_CHARS = 96;
+
+/**
+ * AWP-005 §1 — a port's `type` is an object (`{name, enums?, units?, …}`), never
+ * a string. `String()` on it rendered `[object Object]` for **3,217 of 3,217**
+ * ports across all 175 catalog types, so `detail: "summary"` conveyed port names
+ * and no types at all — which is why no model used the mode the tool description
+ * recommends, and every model paid full price for `detail: "full"`.
+ *
+ * Renders the type `name`, plus the discriminating detail a caller needs to set
+ * the port: enum values inline while they are short, and a number's units.
+ */
+export function portTypeLabel(type: unknown): string {
+  if (type === null || type === undefined) return 'unknown';
+  if (typeof type === 'string') return type;
+  if (typeof type !== 'object') return String(type);
+
+  const t = type as { name?: unknown; enums?: unknown; units?: unknown; defaultUnit?: unknown };
+  const base = typeof t.name === 'string' && t.name ? t.name : 'unknown';
+
+  if (Array.isArray(t.enums) && t.enums.length) {
+    const values = t.enums
+      .map((e) => (e !== null && typeof e === 'object' ? (e as { value?: unknown }).value : e))
+      .filter((v) => v !== undefined && v !== null)
+      .map(String);
+    if (!values.length) return base;
+    const inline = values.join('|');
+    return inline.length <= MAX_INLINE_ENUM_CHARS ? `${base}(${inline})` : `${base}(${values.length} options)`;
+  }
+
+  if (Array.isArray(t.units) && t.units.length) {
+    // Default unit first — a units port writes a STRING ("10px"), so which unit
+    // is implied when the model writes a bare number is the load-bearing fact.
+    const units = t.units.map(String);
+    const def = typeof t.defaultUnit === 'string' ? t.defaultUnit : undefined;
+    const ordered = def && units.includes(def) ? [def, ...units.filter((u) => u !== def)] : units;
+    return `${base}(${ordered.join('|')})`;
+  }
+
+  return base;
+}
+
 export function getNodeTypeSummary(typeName: string): NodeTypeSummary | NodeTypeLookupMiss {
   const full = getNodeTypeDetail(typeName);
   if ('error' in full) return full;
   const portLine = (p: PortDetail, dir: 'in' | 'out') =>
-    `${dir} ${p.name}: ${String(p.type)}${p.isSignal ? ' (signal)' : ''}`;
+    `${dir} ${p.name}: ${portTypeLabel(p.type)}${p.isSignal ? ' (signal)' : ''}`;
   const s: NodeTypeSummary = {
     typeName: full.typeName,
     displayName: full.displayName,

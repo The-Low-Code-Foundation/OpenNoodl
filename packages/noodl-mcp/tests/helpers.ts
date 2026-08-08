@@ -76,6 +76,23 @@ export async function call<T>(
   return { isError: !!res.isError, data };
 }
 
+/**
+ * The tool's response *as it goes on the wire* — `JSON.stringify(payload, null, 2)`,
+ * whitespace included. `call()` parses and discards this, which is right for
+ * asserting on content and wrong for asserting on cost: pretty-printing is
+ * roughly half the bytes a client is billed for. AWP-005's budgets measure this.
+ */
+export async function callRawText(
+  session: TestSession,
+  name: string,
+  args: Record<string, unknown> = {}
+): Promise<string> {
+  const res = (await session.client.callTool({ name, arguments: args })) as {
+    content: Array<{ type: string; text: string }>;
+  };
+  return res.content?.[0]?.text ?? '';
+}
+
 export function readJson<T>(projectDir: string, rel: string): T {
   return JSON.parse(fs.readFileSync(path.join(projectDir, rel), 'utf8')) as T;
 }

@@ -1,6 +1,7 @@
 # AWP-005 — The node-doc budget: `Group` costs 11,000 tokens
 
-**Status:** 📋 open · **Track: the context** · out of **F44** · Richard asked for this directly:
+**Status:** 🟡 **§1 DONE 2026-08-08** — §2 and §3 open · **Track: the context** · out of **F44** ·
+Richard asked for this directly:
 
 > *"I'm a bit worried that Kimi described our node docs as 'enormous', are we feeding too much context
 > into the calls? Or is that necessary to keep the Noodl framework in the forefront of the LLM's
@@ -109,9 +110,44 @@ make this unnecessary, and this is the most invasive of the three.
 - Fixture: a spec that fails if any single `get_node_type` response exceeds a stated token budget, so
   the next port added to `Group` does not silently push it past a client's limit.
 
+## §1 as built — 2026-08-08
+
+`portTypeLabel()` in [catalog.ts](../../../packages/noodl-mcp/src/catalog.ts) replaces `String(p.type)`.
+It renders the type `name`, plus the detail a caller needs to *set* the port: enum values inline while
+the joined list is ≤ 96 chars, a count above it (`enum(12 options)`), and a number's units with the
+default first — because a units port writes a string, so which unit is implied by a bare number is the
+load-bearing fact.
+
+Gated by [`tests/nodeDocBudget.test.ts`](../../../packages/noodl-mcp/tests/nodeDocBudget.test.ts),
+10 specs. **Seen failing before it was seen passing**: with `String(p.type)` restored, 3 of the 10 go
+red, the sweep naming offenders. The catalog-wide assertion is deliberately two-sided — `0` offenders
+*over ≥ 2,400 port lines* — because "zero `[object Object]`" alone passes forever if the suite quietly
+stops loading ports.
+
+**Measured on the wire** (the registered handler over an in-memory transport, so the numbers are
+`JSON.stringify(payload, null, 2)` and directly comparable to the table above — measuring compact JSON
+understates every figure by about half, which is a trap worth naming):
+
+| call | before | after | |
+|---|---|---|---|
+| catalog sweep | **2,455 of 2,455** port lines `[object Object]` (142 types) | **0 of 2,455** | ✅ |
+| `Group`, full | 11,018 tok | 11,018 tok — untouched | §3's territory |
+| `Group`, summary | 1,240 tok, **no types** | **1,598 tok, with types** | usable at last |
+| 8-type basket, full | 30,862 tok | 30,862 tok | |
+| 8-type basket, summary | 6,741 tok, no types | **6,169 tok, with types** | **5.0× cheaper than full**, under the 8,000 bar |
+
+The costed mode is now *cheaper than the broken one and actually carries the types* — a real port line
+reads `in width: dimension(%|px|vw|vh)`, `in flexDirection: enum(none|column|row)`.
+
+⚠️ **§2 is deliberately not done.** Flipping the default needs the live authoring check this task
+demands, not inspection — and that needs an MCP rebuild plus a model run. The budget ratchets
+(≤ 3,000 tok per summary, ≤ 12,500 per full response) are in and will fire when the next port is added
+to `Group`.
+
 ## Register
 
 | # | Finding | State |
 |---|---|---|
-| A9 | The tool description actively recommends a mode that has never worked. **Check the other `detail`/`summary` affordances in the surface for the same** — this one was invisible because nobody used it | 📋 to check |
+| A9 | The tool description actively recommends a mode that has never worked. **Check the other `detail`/`summary` affordances in the surface for the same** — this one was invisible because nobody used it | ✅ **checked 2026-08-08** — `String(p.type)` at catalog.ts:273 was the **only** instance in the package; the sole other affordance, `get_style_vocabulary`'s `detail: full\|prompt`, is sound |
+| A11 | **`noodl-mcp`'s own `npm run typecheck` is red at HEAD** — 6 errors, all `res.text` on `ToolCallResult` in `interfaceGate.test.ts` and `stagingDiagnostics.test.ts`, which declares only `isError` and `data`. Invisible because jest runs ts-jest with **`diagnostics: false`**, so the green 281-spec gate cannot see it, and `test:packages` runs `test` and never `typecheck`. Pre-dates this task — verified against HEAD, not inferred | 🔴 **OPEN**, filed not fixed — out of AWP-005's scope, but it is the same shape as the phase-55 register's "a gate omitted from CI" |
 | A10 | The 24,000-char driver truncation is a *rig* setting, not a product one, but it interacts: any payload above it arrives as broken JSON. After §1, re-measure the largest response against common client limits | ⚠️ interaction |
