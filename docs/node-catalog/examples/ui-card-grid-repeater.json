@@ -268,27 +268,27 @@
           "ports": [
             {
               "name": "name",
-              "plug": "input",
+              "plug": "output",
               "type": "*"
             },
             {
               "name": "tagline",
-              "plug": "input",
+              "plug": "output",
               "type": "*"
             },
             {
               "name": "image",
-              "plug": "input",
+              "plug": "output",
               "type": "*"
             },
             {
               "name": "imageAlt",
-              "plug": "input",
+              "plug": "output",
               "type": "*"
             },
             {
               "name": "badge",
-              "plug": "input",
+              "plug": "output",
               "type": "*"
             }
           ]

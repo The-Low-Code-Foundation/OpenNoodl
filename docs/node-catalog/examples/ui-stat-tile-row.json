@@ -165,17 +165,17 @@
           "ports": [
             {
               "name": "label",
-              "plug": "input",
+              "plug": "output",
               "type": "*"
             },
             {
               "name": "value",
-              "plug": "input",
+              "plug": "output",
               "type": "*"
             },
             {
               "name": "delta",
-              "plug": "input",
+              "plug": "output",
               "type": "*"
             }
           ]

@@ -7,8 +7,9 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 
 import { ProjectStore } from './project/ProjectStore';
+import { createExampleBudget } from './tools/attachments';
 import { registerAuthorTools } from './tools/author';
-import { registerPlanTools } from './tools/planTools';
+import { createPlanRegistry, registerPlanTools } from './tools/planTools';
 import { registerBackendReadTools, registerBackendWriteTools } from './tools/backendTools';
 import { registerCatalogTools } from './tools/catalogTools';
 import { registerDocsReadTools, registerDocsWriteTools } from './tools/docsTools';
@@ -44,8 +45,22 @@ export function createServer(options: ServerOptions): CreatedServer {
         (options.allowWrites ? 'read-write' : 'read-only (writes require restarting with --allow-writes)') +
         '. Start with get_project_info. Component identifiers accept path form ("Pages/Home") or legacy name ' +
         '("/Pages/Home"); a node instantiating a project component uses the legacyName as its node type. ' +
-        'When authoring: read the parent/pattern component, fetch the node types you need with get_node_type, ' +
-        'call get_style_vocabulary for the on-system tokens/variants (set colour/spacing params as ' +
+        // LAS-006 §4. The order was the finding: both measured models planned
+        // correctly and then built something the plan never described, because
+        // nothing in the tool shape asked for the tree first. This paragraph now
+        // states the order as the workflow, and names the two primitives nobody
+        // finds — haiku found neither `Static Data` nor `Component Inputs` in 42
+        // turns; sonnet needed 75 exploration calls to find both.
+        'THE ORDER, FOR ANYTHING BIGGER THAN A TWO-NODE FIX: decide the component tree FIRST with create_plan — ' +
+        'one operation per component, and on every component another one will place, fill its `inputs` with the ' +
+        'port names the instances will set (and `repeats` where it draws a row per item). Then author leaves, ' +
+        'then the sections that place them, then the page. A component\'s interface is a `Component Inputs` node ' +
+        'whose ports are plugged "output" — that is the ONLY thing that makes an instance parameter arrive, and ' +
+        'a component without one renders identically however many times you place it. Inline row data is a ' +
+        '`Static Data` node (a JSON array), fed to a `For Each`. Both are easy to miss and there is no ' +
+        'substitute for either. ' +
+        'When authoring one component: read the parent/pattern component, fetch the node types you need with ' +
+        'get_node_type, call get_style_vocabulary for the on-system tokens/variants (set colour/spacing params as ' +
         '"var(--token)", never raw hex/px), then create_component / update_component — every write is ' +
         'validated and rejections return diagnostics with suggested fixes. ' +
         // AAQ-005. The word "Router" appeared nowhere in any guidance a model
@@ -97,8 +112,16 @@ export function createServer(options: ServerOptions): CreatedServer {
   // server is exactly where "is this page actually right?" gets asked.
   registerRenderTools(server, store);
   if (options.allowWrites) {
-    registerAuthorTools(server, store);
-    registerPlanTools(server, store);
+    // LAS-006 §4 — one plan registry, shared by the two write groups that both
+    // have an opinion about it: the plan tools own the plans, and
+    // `create_component` needs only to know whether any exist.
+    const planRegistry = createPlanRegistry();
+    // LAS-007 §1 — one example budget per server process, so the first
+    // rejection of a code carries the recipe and the fifth carries its id. A
+    // repair loop must not be re-sent the same fragment every turn.
+    const exampleBudget = createExampleBudget();
+    registerAuthorTools(server, store, planRegistry, exampleBudget);
+    registerPlanTools(server, store, planRegistry, exampleBudget);
     registerStyleWriteTools(server, store);
     registerDocsWriteTools(server, store);
     registerBackendWriteTools(server);

@@ -32,18 +32,25 @@ import { z } from 'zod';
 
 import type {
   AuthoringPlan,
-  PlanOperation
+  PlanOperation,
+  PlanPortDeclaration,
+  PlanRepeatSpec
 } from '../../../noodl-editor/src/editor/src/models/AiAssistant/authoring/plan';
 import {
   orderPlanOperations,
+  planAdvisories,
   planExcludedWith,
+  planInterfaceContract,
   planOperationRequires,
+  PLAN_REPEAT_SOURCES,
+  PLAN_STRUCTURE_DESCRIPTIONS,
   validatePlan
 } from '../../../noodl-editor/src/editor/src/models/AiAssistant/authoring/plan';
 import type { Diagnostic, NormProject } from '../editor-deps';
 import {
   assertInsideDocs,
   buildComponentRefs,
+  componentInterfaces,
   diagnosticKey,
   isComponentRef,
   DocPathError,
@@ -74,7 +81,54 @@ import { assembleCreateFiles, assembleSetFiles, ensureIds } from './author';
 // second hand-written copy.
 import { connectionSchema, nodeSchema } from '../vocabulary';
 import { writeProjectDocFile } from './docsTools';
+import type { ExampleBudget } from './attachments';
+import { examplesBlock } from './attachments';
 import { guarded, jsonResult } from './util';
+
+// ─── LAS-006: the structured operation fields, in this client's dialect ───────
+//
+// The words come from the shared plan model (`PLAN_STRUCTURE_DESCRIPTIONS`); the
+// editor renders the same ones into `submit_plan`'s JSON Schema. Two tool
+// protocols, one set of descriptions — the `decomposition.ts` rule applied to a
+// schema instead of a doctrine.
+
+const D = PLAN_STRUCTURE_DESCRIPTIONS;
+
+const planPortSchema = z.object({
+  name: z.string().describe(D.portName),
+  type: z.string().optional().describe(D.portType),
+  description: z.string().optional().describe(D.portDescription)
+});
+
+const planStructureShape = {
+  inputs: z.array(planPortSchema).optional().describe(D.inputs),
+  outputs: z.array(planPortSchema).optional().describe(D.outputs),
+  repeats: z
+    .object({
+      source: z.enum(PLAN_REPEAT_SOURCES).describe(D.repeatSource),
+      rowFields: z.array(z.string()).describe(D.repeatRowFields)
+    })
+    .optional()
+    .describe(D.repeats),
+  instantiates: z.array(z.string()).optional().describe(D.instantiates)
+};
+
+/** The structured half of one incoming operation, as the plan model holds it. */
+interface PlanStructureInput {
+  inputs?: PlanPortDeclaration[];
+  outputs?: PlanPortDeclaration[];
+  repeats?: PlanRepeatSpec;
+  instantiates?: string[];
+}
+
+function structureOf(op: PlanStructureInput): PlanStructureInput {
+  return {
+    ...(op.inputs?.length ? { inputs: op.inputs } : {}),
+    ...(op.outputs?.length ? { outputs: op.outputs } : {}),
+    ...(op.repeats ? { repeats: op.repeats } : {}),
+    ...(op.instantiates?.length ? { instantiates: op.instantiates } : {})
+  };
+}
 
 // ─── In-memory plan registry (per server process) ─────────────────────────────
 
@@ -85,6 +139,33 @@ interface ServerPlan {
   staged: Map<string, ComponentFiles>;
   /** Staged doc bodies by operation id — memory only, never disk. */
   stagedDocs: Map<string, string>;
+}
+
+/**
+ * LAS-006 §4 — the plans of one server, as much of them as another tool group
+ * may ask about.
+ *
+ * `create_component` of a page wants to say "there is a plan door and you did
+ * not use it", and must not say it to someone who *did* — an agent applying a
+ * plan and then refining one page has already heard the advice. That is one bit
+ * of state, and it belongs to whoever owns the plans.
+ *
+ * Created by `createServer` and handed to both registrations rather than held at
+ * module scope: the specs stand up several servers in one process, and a
+ * module-level map would leak one test's plans into the next.
+ */
+export interface PlanRegistry {
+  hasPlans(): boolean;
+}
+
+interface PlanRegistryInternal extends PlanRegistry {
+  plans: Map<string, ServerPlan>;
+}
+
+export function createPlanRegistry(): PlanRegistry {
+  const plans = new Map<string, ServerPlan>();
+  const registry: PlanRegistryInternal = { plans, hasPlans: () => plans.size > 0 };
+  return registry;
 }
 
 /**
@@ -180,6 +261,12 @@ interface StagedValidation {
   warnings: number;
   /** Non-error diagnostics: warnings and infos, as objects. */
   diagnostics: Diagnostic[];
+  /**
+   * LAS-007 — the diagnostics that caused the refusal, as objects. `errors` is
+   * the same set already formatted into lines, which is what a human reads and
+   * what the example table cannot match on.
+   */
+  blocking: Diagnostic[];
   summary: WriteValidation['summary'];
 }
 
@@ -295,7 +382,7 @@ function validateStaged(
   if (structural.length > 0) {
     // A schema failure means the semantic pass never ran, so there is nothing
     // non-blocking to report — not "no warnings", but "not asked yet".
-    return { ok: false, errors: structural, warnings: 0, diagnostics: [], summary: EMPTY_SUMMARY };
+    return { ok: false, errors: structural, warnings: 0, diagnostics: [], blocking: [], summary: EMPTY_SUMMARY };
   }
 
   const legacyName = pathToLegacyName(operation.target);
@@ -306,6 +393,16 @@ function validateStaged(
   const views = authoredProjectViews(store, stagedOverlay(plan, { opId: operation.id, files: candidate }));
   const diagnostics = [...report.diagnostics, ...preconditionDiagnostics(legacyName, candidate, views)];
   let errors = diagnostics.filter(isBlockingForAuthoredOutput);
+
+  // LAS-006 §3 — the plan as a contract. LAS-001's index does the reading: what
+  // a component's inputs *are* is one derivation, in `componentInterface.ts`,
+  // and this compares its answer to what the operation promised. Deliberately
+  // outside the baseline exemption below: an update that declared an interface
+  // is judged on the interface it produced, not on the one it inherited.
+  const contract = planInterfaceContract(
+    operation,
+    componentInterfaces([{ name: legacyName, nodes: candidate.nodes.nodes }]).get(legacyName)?.inputs ?? []
+  );
 
   if (operation.kind === 'update' && errors.length > 0) {
     const stored = store.readComponent(operation.target);
@@ -325,8 +422,9 @@ function validateStaged(
   }
 
   return {
-    ok: errors.length === 0,
-    errors: errors.map(formatDiagnosticLine),
+    ok: errors.length === 0 && contract.length === 0,
+    errors: [...errors.map(formatDiagnosticLine), ...contract],
+    blocking: errors,
     warnings: diagnostics.filter((d) => d.severity === 'warning').length,
     // Exactly `successPayload`'s filter in author.ts — the two doors decide
     // "what survives a successful write" the same way or they are two dialects.
@@ -354,8 +452,13 @@ function stagingProgress(plan: ServerPlan): string {
 
 // ─── Registration ─────────────────────────────────────────────────────────────
 
-export function registerPlanTools(server: McpServer, store: ProjectStore): void {
-  const plans = new Map<string, ServerPlan>();
+export function registerPlanTools(
+  server: McpServer,
+  store: ProjectStore,
+  registry: PlanRegistry,
+  examples: ExampleBudget
+): void {
+  const plans = (registry as PlanRegistryInternal).plans;
 
   const mustGetPlan = (planId: string): ServerPlan => {
     const plan = plans.get(planId);
@@ -395,7 +498,8 @@ export function registerPlanTools(server: McpServer, store: ProjectStore): void 
               // clients, and refused below with a reason — see the refusal.
               kind: z.enum(['create', 'update', 'doc', 'provision']),
               target: z.string().describe('Component path ("Pages/Checkout"); for doc, a doc path'),
-              intent: z.string().describe('One or two sentences: what this operation accomplishes')
+              intent: z.string().describe('One or two sentences: what this operation accomplishes'),
+              ...planStructureShape
             })
           )
           .min(1)
@@ -404,7 +508,9 @@ export function registerPlanTools(server: McpServer, store: ProjectStore): void 
     guarded((args: {
       request: string;
       scroll?: 'page' | 'app';
-      operations: Array<{ kind: 'create' | 'update' | 'doc' | 'provision'; target: string; intent: string }>;
+      operations: Array<
+        { kind: 'create' | 'update' | 'doc' | 'provision'; target: string; intent: string } & PlanStructureInput
+      >;
     }) => {
       // AAQ-005 — one vocabulary, an honest capability. The editor's plan model
       // has carried `provision` since AIB-007 and this package imports that very
@@ -437,7 +543,8 @@ export function registerPlanTools(server: McpServer, store: ProjectStore): void 
         // Component targets are normalised to path form ("Pages/Home") so both
         // accepted identifier forms behave identically downstream.
         target: op.kind === 'doc' ? op.target.trim() : toPathForm(op.target.trim()),
-        intent: op.intent.trim()
+        intent: op.intent.trim(),
+        ...structureOf(op)
       }));
       const existing = new Set<string>();
       for (const [key, entry] of Object.entries(store.readRegistry().components)) {
@@ -473,17 +580,30 @@ export function registerPlanTools(server: McpServer, store: ProjectStore): void 
       }
 
       const ordered = orderPlanOperations(operations);
+      const orderedPlan: AuthoringPlan = { ...plan, operations: ordered };
       const id = crypto.randomUUID();
       plans.set(id, {
         id,
-        plan: { ...plan, operations: ordered },
+        plan: orderedPlan,
         staged: new Map(),
         stagedDocs: new Map()
       });
+      // LAS-006 §2 — advice on an accepted plan, at the one moment amending it
+      // is free. Not a refusal: a plan without declared interfaces is legal, and
+      // the primitive-only decision protects the two-node fix from ceremony.
+      const advisories = planAdvisories(orderedPlan);
       return jsonResult({
         planId: id,
         operations: ordered,
         ...(args.scroll ? { scroll: args.scroll } : {}),
+        ...(advisories.length > 0
+          ? {
+              advisories,
+              advisoryNote:
+                'The plan is accepted as it stands. These are cheap to fix now and expensive later — call ' +
+                'create_plan again with the amended operations if you want to, then stage against that plan.'
+            }
+          : {}),
         note:
           'Nothing is written yet. Stage every operation with stage_plan_operation (in the order given — ' +
           'creates first, so updates can instantiate them; docs last, so you write them knowing what the ' +
@@ -607,7 +727,10 @@ export function registerPlanTools(server: McpServer, store: ProjectStore): void 
           throw new ToolError(
             'validation-failed',
             `stage_plan_operation "${operation.target}" rejected — nothing was staged.`,
-            { readable: validation.errors }
+            // LAS-007 — the recipe travels with the refusal. This is the moment
+            // the audit measured a mid-tier model getting stuck for seven turns
+            // beside recipes it never fetched.
+            { readable: validation.errors, ...examplesBlock(examples.attach(validation.blocking)) }
           );
         }
 
@@ -721,7 +844,7 @@ export function registerPlanTools(server: McpServer, store: ProjectStore): void 
             'validation-failed',
             `Operation ${op.id} ("${op.target}") no longer validates — the project changed since staging. ` +
               'Nothing was written.',
-            { readable: validation.errors }
+            { readable: validation.errors, ...examplesBlock(examples.attach(validation.blocking)) }
           );
         }
         surviving.push(...validation.diagnostics);

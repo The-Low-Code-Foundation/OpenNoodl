@@ -23,6 +23,9 @@ import { componentIsPage, registerPages, registrationSummary } from '../project/
 import type { NodeIdRemap } from '../project/nodeIds';
 import { deconflictNodeIds, remapNote } from '../project/nodeIds';
 import type { ProjectStore } from '../project/ProjectStore';
+import type { ExampleBudget } from './attachments';
+import { examplesBlock } from './attachments';
+import type { PlanRegistry } from './planTools';
 import type { WriteValidation } from '../validate';
 import { validateCandidate, validateDeletion } from '../validate';
 import { CREATE_COMPONENT_SHAPE, connectionSchema, nodeSchema, portSchema } from '../vocabulary';
@@ -182,7 +185,7 @@ function backfillIds(files: ComponentFiles): void {
   if (!files.connections.componentId) files.connections.componentId = files.component.id;
 }
 
-function rejectWith(validation: WriteValidation, intent: string): never {
+function rejectWith(validation: WriteValidation, intent: string, budget: ExampleBudget): never {
   const lines = [
     ...validation.newErrors.map(formatDiagnosticLine),
     ...(validation.structural ?? []).flatMap((f) => f.errors.map((e) => `SCHEMA ${f.file} ${e.path}: ${e.message}`))
@@ -191,7 +194,12 @@ function rejectWith(validation: WriteValidation, intent: string): never {
     readable: lines,
     structural: validation.structural,
     newErrors: validation.newErrors,
-    allDiagnostics: validation.diagnostics
+    allDiagnostics: validation.diagnostics,
+    // LAS-007 — the recipe, in the rejection. Keyed on the errors that caused
+    // the refusal, not on every diagnostic in the candidate: the attachment
+    // answers "what do I do about this", and a warning nobody was refused for
+    // is not that question.
+    ...examplesBlock(budget.attach(validation.newErrors))
   };
   throw new ToolError('validation-failed', `${intent} rejected — nothing was written.`, { ...details });
 }
@@ -220,7 +228,24 @@ function successPayload(validation: WriteValidation): WriteValidationSummary {
 
 // ─── Registration ─────────────────────────────────────────────────────────────
 
-export function registerAuthorTools(server: McpServer, store: ProjectStore): void {
+/**
+ * LAS-006 §4 — the line a page written without a plan gets, once, in its own
+ * success payload. Deliberately about the *next* page rather than this one: the
+ * component is already written and correct, and telling someone to undo a
+ * successful write is how advice gets ignored.
+ */
+const PAGE_WITHOUT_PLAN_ADVISORY =
+  'You built this page without a plan. That is fine for one page — but a page assembled top-to-bottom in one ' +
+  'call is how a 66-node graph happens, and nothing in it can be reused or varied. For the next one, call ' +
+  'create_plan first: one operation per section and per repeated card, each declaring the `inputs` its ' +
+  'instances will set. The page operation then places them.';
+
+export function registerAuthorTools(
+  server: McpServer,
+  store: ProjectStore,
+  plans: PlanRegistry,
+  examples: ExampleBudget
+): void {
   // Rendered from the shared vocabulary (AAQ-005), so the two doors describe a
   // node with one set of words and `update_component` cannot drift from
   // `create_component`.
@@ -283,7 +308,7 @@ export function registerAuthorTools(server: McpServer, store: ProjectStore): voi
         const validation = validateCandidate(store, args.path, candidate, undefined, {
           allowUnknownTypes: args.allow_unknown_types
         });
-        if (!validation.ok) rejectWith(validation, `create_component "${args.path}"`);
+        if (!validation.ok) rejectWith(validation, `create_component "${args.path}"`, examples);
 
         const { revision } = store.writeComponent(args.path, candidate, { expectNew: true });
         // AAQ-005: a page component is not a page until a Router lists it. The
@@ -291,9 +316,8 @@ export function registerAuthorTools(server: McpServer, store: ProjectStore): voi
         // every page Claude Code created was unreachable. After the write, so
         // "is the current start page still an empty placeholder" is asked of the
         // project as it now stands.
-        const registration = componentIsPage(legacyName, candidate)
-          ? registerPages(store, [legacyName])
-          : undefined;
+        const isPage = componentIsPage(legacyName, candidate);
+        const registration = isPage ? registerPages(store, [legacyName]) : undefined;
         const payload: CreateComponentResponse = {
           created: args.path,
           legacyName,
@@ -302,7 +326,13 @@ export function registerAuthorTools(server: McpServer, store: ProjectStore): voi
           registry: 'updated',
           ...registrationSummary(registration),
           ...remapPayload(remapped),
-          ...successPayload(validation)
+          ...successPayload(validation),
+          // LAS-006 §4 — one line, on the door a page most often comes through
+          // without a plan. Advisory and not a refusal: the bag-of-nodes door
+          // stays open by decision (primitive-only, no ceremony for a two-node
+          // fix), and LAS-011 measures whether one line was enough before
+          // anything harder is considered. Silent for anyone who did use a plan.
+          ...(isPage && !plans.hasPlans() ? { planAdvisory: PAGE_WITHOUT_PLAN_ADVISORY } : {})
         };
         return jsonResult(payload);
       }
@@ -387,7 +417,7 @@ export function registerAuthorTools(server: McpServer, store: ProjectStore): voi
         const validation = validateCandidate(store, stored.key, candidate, baseline, {
           allowUnknownTypes: args.allow_unknown_types
         });
-        if (!validation.ok) rejectWith(validation, `update_component "${stored.key}"`);
+        if (!validation.ok) rejectWith(validation, `update_component "${stored.key}"`, examples);
 
         const { revision } = store.writeComponent(stored.key, candidate, { ifRevision: args.if_revision });
         // Updates register too, exactly as the editor's apply does: a page that

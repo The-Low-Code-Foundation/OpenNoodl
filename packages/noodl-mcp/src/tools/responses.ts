@@ -14,7 +14,15 @@
 
 import type { CatalogExample, ExampleRow, NodeTypeDetail, NodeTypeLookupMiss, NodeTypeRow, NodeTypeSummary } from '../catalog';
 import type { ComponentDescription } from '../describe';
-import type { ComponentV2File, ConnectionV2, Diagnostic, NodeV2, RegistryV2File, ValidationReport } from '../editor-deps';
+import type {
+  AttachedExample,
+  ComponentV2File,
+  ConnectionV2,
+  Diagnostic,
+  NodeV2,
+  RegistryV2File,
+  ValidationReport
+} from '../editor-deps';
 import type { ToolError } from '../errors';
 import type { NodeIdRemap } from '../project/nodeIds';
 import type { ComponentListRow, Usage } from '../project/ProjectStore';
@@ -40,6 +48,17 @@ export interface ValidationFailureDetails {
   /** The errors this change would have introduced — the reason for the refusal. */
   newErrors: Diagnostic[];
   allDiagnostics: Diagnostic[];
+  /**
+   * LAS-007 §1 — validated graphs that already do what the rejection is asking
+   * for, attached rather than offered. Present only when the shared
+   * `DIAGNOSTIC_EXAMPLES` table has an entry for one of the blocking codes; the
+   * graph itself appears on the first rejection of a code per session and its id
+   * alone thereafter.
+   */
+  examples?: {
+    note: string;
+    recipes: AttachedExample[];
+  };
 }
 
 /** `details` when delete_component refuses because the component is still used. */
@@ -61,6 +80,11 @@ export interface ProjectInfoResponse {
   stats: RegistryV2File['stats'] | { totalComponents: number };
   mode: 'read-write' | 'read-only';
   note: string;
+  /**
+   * LAS-007 §3 — the seven silent failures, ahead of both doctrines. Same
+   * read-write gate and the same shared-module rule as the two below.
+   */
+  authoringTraps?: string;
   /**
    * AAQ-008 — the decomposition doctrine, verbatim from the shared module the
    * in-editor planner is prompted with. Present only on a read-write server:
@@ -206,6 +230,12 @@ export interface CreateComponentResponse extends WriteValidationSummary, PageReg
   type: string;
   revision: string;
   registry: 'updated';
+  /**
+   * LAS-006 §4 — present only when this write created a **page** and no plan
+   * exists in this server process. One sentence pointing at the plan door, on
+   * the door a page most often comes through without one.
+   */
+  planAdvisory?: string;
 }
 
 export interface UpdateComponentResponse extends WriteValidationSummary, PageRegistrationSummary, NodeIdRemapSummary {

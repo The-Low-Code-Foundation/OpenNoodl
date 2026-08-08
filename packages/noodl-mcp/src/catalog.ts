@@ -183,8 +183,17 @@ export interface NodeTypeDetail {
   /** Present when the node creates ports at runtime — the validator skips
    * unknown-port errors for such nodes; ports listed here are the static ones. */
   dynamicPorts?: { mechanisms: string[]; note?: string };
-  /** Ids of validated examples demonstrating this type (fetch via get_example). */
-  exampleIds: string[];
+  /**
+   * LAS-007 §2 — validated examples demonstrating this type, with their titles.
+   *
+   * This was `exampleIds: string[]` — a bare list like
+   * `["repeater-query-records", "ui-card-grid-repeater"]`. The audit verified
+   * the citation existed and did NOT verify it was actionable, and haiku fetched
+   * node types without ever following one: an id says nothing about which of
+   * four to spend a call on, so the rational move is to spend none. The title
+   * costs ~60 bytes and turns the list into a choice.
+   */
+  examples: ExampleCitationRow[];
   /** Hints for children rules of visual containment, when declared. */
   allowAsChild?: unknown;
   allowChildrenWithCategory?: unknown;
@@ -248,7 +257,13 @@ export interface NodeTypeSummary {
   /** `"in name: type"` / `"out name: type (signal)"` one-liners. */
   ports: string[];
   hasDynamicPorts?: boolean;
-  exampleIds: string[];
+  examples: ExampleCitationRow[];
+}
+
+/** LAS-007 §2 — an example the caller can decide about without fetching it. */
+export interface ExampleCitationRow {
+  id: string;
+  title: string;
 }
 
 export function getNodeTypeSummary(typeName: string): NodeTypeSummary | NodeTypeLookupMiss {
@@ -261,7 +276,7 @@ export function getNodeTypeSummary(typeName: string): NodeTypeSummary | NodeType
     displayName: full.displayName,
     isVisual: full.isVisual,
     ports: [...full.inputs.map((p) => portLine(p, 'in')), ...full.outputs.map((p) => portLine(p, 'out'))],
-    exampleIds: full.exampleIds
+    examples: full.examples
   };
   if (full.category) s.category = full.category;
   if (full.deprecated) s.deprecated = true;
@@ -281,9 +296,9 @@ export function getNodeTypeDetail(typeName: string): NodeTypeDetail | NodeTypeLo
     };
   }
   const e = n.enrichment;
-  const exampleIds = allExamples()
+  const examples: ExampleCitationRow[] = allExamples()
     .filter((ex) => ex.demonstrates.includes(typeName))
-    .map((ex) => ex.id);
+    .map((ex) => ({ id: ex.id, title: ex.title }));
   const detail: NodeTypeDetail = {
     typeName: n.typeName,
     displayName: n.displayName,
@@ -292,7 +307,7 @@ export function getNodeTypeDetail(typeName: string): NodeTypeDetail | NodeTypeLo
     availableIn: n.availableIn as unknown as string[],
     inputs: (n.inputs ?? []).map((p) => portDetail(p, e?.ports)),
     outputs: (n.outputs ?? []).map((p) => portDetail(p, e?.ports)),
-    exampleIds
+    examples
   };
   if (n.isDeprecated) detail.deprecated = true;
   if (n.ssr) detail.ssr = n.ssr;

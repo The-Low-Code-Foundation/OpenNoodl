@@ -63,6 +63,10 @@ export type {
   ComponentInterfaceIndex,
   ComponentInterfaceView
 } from './componentInterface';
+// LAS-007 — the recipe that fixes a rejection, attached to the rejection. Lives
+// beside the checks that produce the diagnostics so both clients read one table.
+export { citationFor, DIAGNOSTIC_EXAMPLES, exampleAttachments } from './diagnosticExamples';
+export type { AttachedExample, CatalogExampleLike, ExampleCitation } from './diagnosticExamples';
 // AAQ-005 — the one authoring vocabulary, rendered into both clients' schemas.
 export {
   AUTHORED_CONNECTION_FIELDS,

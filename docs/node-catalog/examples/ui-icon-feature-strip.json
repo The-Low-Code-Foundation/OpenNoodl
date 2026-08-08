@@ -209,17 +209,17 @@
           "ports": [
             {
               "name": "title",
-              "plug": "input",
+              "plug": "output",
               "type": "*"
             },
             {
               "name": "body",
-              "plug": "input",
+              "plug": "output",
               "type": "*"
             },
             {
               "name": "iconName",
-              "plug": "input",
+              "plug": "output",
               "type": "*"
             }
           ]

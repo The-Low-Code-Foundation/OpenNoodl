@@ -1,7 +1,8 @@
 # LAS-007 — Push, not pull: retrieval into the failure moment
 
-**Status:** 📋 open · **Track 2 (surface)** · depends on LAS-001/002/003 (the rejections it
-decorates) · implements README candidate direction 5, the clearest weak-model finding
+**Status:** ✅ **done** 2026-08-08 (session 4) · **Track 2 (surface)** · depended on LAS-001/002/003
+(the rejections it decorates) · implements README candidate direction 5, the clearest weak-model
+finding
 
 ## The evidence
 
@@ -59,8 +60,23 @@ clients speak it — content drawn from the audit's measured failures, phrased i
 - `npm run catalog:examples` + `catalog:check` + `catalog:merge:check` green; noodl-mcp jest pins
   the mapping table (an entry naming a nonexistent example id must fail the suite).
 
+## What shipped
+
+| § | Where | What |
+|---|---|---|
+| 1 | `validation/diagnosticExamples.ts` (shared) + `noodl-mcp/tools/attachments.ts` | `DIAGNOSTIC_EXAMPLES`, keyed on **code + nodeType + port**; `exampleAttachments()` with the first-full/then-cite budget; attached to every `create_component`, `update_component`, `stage_plan_operation` and `apply_plan` rejection |
+| 2 | `catalog.ts` | `exampleIds: string[]` → `examples: [{id, title}]`. A bare id says nothing about which of four to spend a call on, so the rational move was to spend none |
+| 3 | `prompts/traps.ts` → `get_project_info.authoringTraps` | seven silent failures, ahead of both doctrines, in the one channel the audit measured a mid-tier model actually reading |
+
+**Gates at close:** `noodl-mcp` jest **24 suites / 250 specs**; `catalog:examples` **57/57** under the
+new interface checks; `catalog:check` / `catalog:merge:check` green.
+
 ## Register
 
 | # | Finding | State |
 |---|---|---|
-| — | | |
+| F23 ⭐ | **The recipe library taught the exact defect LAS-001 blocks.** All **11** `Component Inputs` ports in the three phase-54 composition recipes (`ui-card-grid-repeater`, `ui-icon-feature-strip`, `ui-stat-tile-row`) were declared `plug: "input"` — backwards, so the ports join no interface and the **12** connections drawn out of them are dropped by the exporter as unhealthy. This is F8 verbatim, sitting in the graphs an agent is told to imitate; attaching one to an interface rejection would have taught the defect it was being refused for. Only 3 of 57 examples declare interface ports at all, and all 3 were wrong | ✅ **CLOSED** — 11 ports corrected, enriched catalog regenerated. Measured consequence: the 11 `component-port-direction` **and** the 2 `interfaceless-instance` findings both cleared (13 of 24, one edit) |
+| F24 ⭐ | **`catalog:examples` could not have caught F23, and reported `57/57 clean` throughout.** It ran the `rules/` validator only (the F14 shape) and its `toNormProject` mapped every port to `instancePorts: [name]`, discarding `plug` before any check could read it — its `ExampleFile` type did not even declare the field. A gate cannot find what its own model deletes | ✅ **CLOSED** — the gate now runs `checkInstancePorts` + `checkComponentPortDirection` + `checkInstanceInterfaces` and carries `plug`. Watched failing at 54/57 on the pre-fix recipes before the fix landed |
+| F29 | **A `Map<DiagnosticCode, exampleId>` would have been wrong.** The `layoutString` grammar error (LAS-003/1) is reported as the generic `InvalidParameterValue`, shared with every unit, enum and encoding problem in `parameterValues.ts` — keyed on code alone, a Columns recipe gets stapled to "opacity must be between 0 and 1". Entries narrow by `nodeType` and `port`, most-specific wins | ✅ designed that way, specced both directions |
+| F30 | Scope of the example gate chosen from a measurement, not ambition: the full precondition set would also surface **7** `inactive-conditional-parameter` (`ctl-settings-form`, `logic-consent-gate`, `ui-empty-state`, `ui-split-hero`), **2** `invalid-parameter-value` (`cloud-record-crud`), **1** `unsized-absolute-box` (`ui-card-grid-repeater`) and **1** `raw-color-literal` (`var-avatar-picker-responsive`) | 🔴 **OPEN, filed not fixed** — real, pre-existing, a different task's blast radius (the F14 argument). 11 findings across 7 examples |
+| F31 | The plug tripwire reads the **enriched** catalog (what the attachment actually serves), not `docs/node-catalog/examples/`. A source-only regression is caught by `catalog:merge:check` instead — the chain is source → merge:check → enriched → tripwire, and it is only complete because all three run | ✅ verified by breaking each end in turn |

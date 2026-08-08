@@ -50,7 +50,8 @@ export function registerCatalogTools(server: McpServer): void {
         'Full enriched entries for up to ' +
         MAX_TYPES_PER_CALL +
         ' named node types: every input/output port with type, signal flag and authored semantics, when to use ' +
-        'the node, runtime behavior, related nodes, and ids of validated examples (fetch via get_example). ' +
+        'the node, runtime behavior, related nodes, and validated examples with their titles (fetch one with ' +
+        'get_example — the title says which is worth the call). ' +
         'Unknown names return a nearest-match suggestion. Pass detail: "summary" for a compact per-type shape ' +
         'when surveying several types; oversized full responses degrade the tail to summaries in-band ' +
         '(see `summarized` in the response) — re-request those types individually for full detail.',

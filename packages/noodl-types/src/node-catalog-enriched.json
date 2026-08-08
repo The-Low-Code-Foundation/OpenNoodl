@@ -66393,27 +66393,27 @@
               "ports": [
                 {
                   "name": "name",
-                  "plug": "input",
+                  "plug": "output",
                   "type": "*"
                 },
                 {
                   "name": "tagline",
-                  "plug": "input",
+                  "plug": "output",
                   "type": "*"
                 },
                 {
                   "name": "image",
-                  "plug": "input",
+                  "plug": "output",
                   "type": "*"
                 },
                 {
                   "name": "imageAlt",
-                  "plug": "input",
+                  "plug": "output",
                   "type": "*"
                 },
                 {
                   "name": "badge",
-                  "plug": "input",
+                  "plug": "output",
                   "type": "*"
                 }
               ]
@@ -66809,17 +66809,17 @@
               "ports": [
                 {
                   "name": "title",
-                  "plug": "input",
+                  "plug": "output",
                   "type": "*"
                 },
                 {
                   "name": "body",
-                  "plug": "input",
+                  "plug": "output",
                   "type": "*"
                 },
                 {
                   "name": "iconName",
-                  "plug": "input",
+                  "plug": "output",
                   "type": "*"
                 }
               ]
@@ -67497,17 +67497,17 @@
               "ports": [
                 {
                   "name": "label",
-                  "plug": "input",
+                  "plug": "output",
                   "type": "*"
                 },
                 {
                   "name": "value",
-                  "plug": "input",
+                  "plug": "output",
                   "type": "*"
                 },
                 {
                   "name": "delta",
-                  "plug": "input",
+                  "plug": "output",
                   "type": "*"
                 }
               ]

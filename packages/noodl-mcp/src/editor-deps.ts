@@ -60,6 +60,17 @@ export type {
 // port schema did not even declare the field until AAQ-005.
 export { checkInstancePorts } from '../../noodl-editor/src/editor/src/validation';
 
+// ─── LAS-007: retrieval into the failure moment ───────────────────────────────
+// The DiagnosticCode → example table, beside the checks that produce the
+// diagnostics rather than in this client. Haiku never retrieved a recipe in 42
+// turns; what is pushed gets read, what is offered does not.
+export { citationFor, DIAGNOSTIC_EXAMPLES, exampleAttachments } from '../../noodl-editor/src/editor/src/validation';
+export type {
+  AttachedExample,
+  CatalogExampleLike,
+  ExampleCitation
+} from '../../noodl-editor/src/editor/src/validation';
+
 // ─── The authoring vocabulary (AAQ-005) ───────────────────────────────────────
 // What an agent may say about a node, a port, a connection and a submission —
 // one table, rendered into this package's zod schemas by `src/vocabulary.ts` and
@@ -246,6 +257,10 @@ export {
   DESIGN_DOCTRINE_MD,
   DESIGN_PLANNING
 } from '../../noodl-editor/src/editor/src/models/AiAssistant/authoring/prompts/design';
+
+// LAS-007 §3 — the traps, ahead of the doctrine, in the one channel a mid-tier
+// model measurably reads. Same containment rule: `prompts/traps` imports nothing.
+export { AUTHORING_TRAPS } from '../../noodl-editor/src/editor/src/models/AiAssistant/authoring/prompts/traps';
 
 // ─── Project review (AIX-010) ─────────────────────────────────────────────────
 // The pure half of the docs retrofit only. `review/assembleProject`,
