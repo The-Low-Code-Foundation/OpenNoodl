@@ -36,7 +36,7 @@ register; the sections below are the summary and the dependency map:**
 | LAS-009 ✅ | [LAS-009-PER-ROLE-MODELS.md](LAS-009-PER-ROLE-MODELS.md) | design/plan/act model selection (Richard's request) |
 | LAS-010 ✅ | [LAS-010-OPEN-WEIGHT-LEG.md](LAS-010-OPEN-WEIGHT-LEG.md) | the open-weight rig — **done**; the settled model could not tool-call (F36) and our surface did not fit its context (F37) |
 | LAS-011 ✅ | [LAS-011-ACCEPTANCE-MATRIX.md](LAS-011-ACCEPTANCE-MATRIX.md) | the exit matrix — **complete**; the phase misses its own bar, two successors filed |
-| LAS-012 📋 | [LAS-012-REPEATER-CONTRACT.md](LAS-012-REPEATER-CONTRACT.md) | ⭐ the repeater contract gate (F38) — a `For Each` with no `template` renders nothing, unchecked everywhere |
+| LAS-012 ✅ | [LAS-012-REPEATER-CONTRACT.md](LAS-012-REPEATER-CONTRACT.md) | the repeater contract gate (F38 + F41) — **done**, session 7. Three codes off `authoredPreconditionDiagnostics`, `empty-list` in the render report, and the skeleton create absorbed. Found F38's own attribution wrong: haiku nested its item content too (F42) |
 | LAS-013 📋 | [LAS-013-SMALL-MODEL-HEADROOM.md](LAS-013-SMALL-MODEL-HEADROOM.md) | the refactor cliff (F40) and the 89-tool door (F37) |
 
 ---
@@ -323,21 +323,26 @@ register edits (pathspec-commit trap); commit per slice.
 phase ends with two filed successors rather than a tick:
 
 ```
-LAS-012 (repeater contract, F38+F41) ── the one unchecked port that cost haiku its content
+LAS-012 (repeater contract, F38+F41) ── ✅ DONE, session 7
 LAS-013 (small-model headroom, F40+F37) ── the refactor cliff, and the 89-tool door
 ```
 
-Do **LAS-012 first**: it is one precondition check of a shape already built five times, it has a
-fixture sitting on disk (`NodeGX test projects/phase55-s6-haiku`, three expected errors), and it is
-the difference between "architecturally correct" and "a page with its lists drawn".
+~~Do **LAS-012 first**~~ — **done, session 7** (`ebfa578d`, `85a39388`, `00c59ceb`). It was one
+precondition check of a shape already built five times, its fixture was on disk, and it was the
+difference between "architecturally correct" and "a page with its lists drawn". It produced three
+errors on that fixture as predicted — but `repeater-with-visual-children`, not
+`repeater-without-template`, because haiku had nested its item content as well (F42). **LAS-013 is
+what remains.**
 
 ## Gates for every session
 
 `npm run catalog:examples`, `catalog:check`, `catalog:merge:check`, `typecheck:editor`, `npx jest`
-in `packages/noodl-editor` (**77 suites / 1048 specs** at session-4 close; 76/1029 at sessions 2–3,
+in `packages/noodl-editor` (**80 suites / 1085 specs** at session-7 close; 79/1068 at session 6,
+77/1048 at session-4 close; 76/1029 at sessions 2–3,
 74/1001 at session 1, 71/973 at phase-54 close — compare the passing COUNT and
 `Tests: 0` is a compile failure), plus `packages/noodl-mcp` jest (its suite is a gate —
-**24 suites / 250 specs** at session-4 close; 22/230 at session 3, 20/208 at session 2).
+**26 suites / 271 specs** at session-7 close; 24/250 at sessions 4–6, 22/230 at session 3,
+20/208 at session 2).
 
 ⚠️ **Two runners, and they are not the same gate.** `npx jest` in `noodl-editor` is
 `tests-main/` + `tests-unit/` — plain Node, the counts above, green. `npm run test:ci` is the

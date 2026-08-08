@@ -15,9 +15,11 @@ which is the seam LAS-009 built and left unused. That recommendation now lives o
 and the settings role pickers read it (`recommendedFor`, pinned by 8 specs). Local ollama is out as
 an authoring target; open weights are in, hosted behind an API.
 
-Two successors filed with the evidence: **[LAS-012](LAS-012-REPEATER-CONTRACT.md)** (the repeater
-contract — the one unchecked port that cost haiku its content, ⭐ do first) and
-**[LAS-013](LAS-013-SMALL-MODEL-HEADROOM.md)** (the refactor cliff and the 89-tool door).
+Two successors were filed with the evidence. **[LAS-012](LAS-012-REPEATER-CONTRACT.md)** (the
+repeater contract) is ✅ **done** — session 7, three commits, and it found that F38's own
+attribution was wrong (haiku nested its item content as well as omitting `template`; see F42).
+**[LAS-013](LAS-013-SMALL-MODEL-HEADROOM.md)** (the refactor cliff and the 89-tool door) is still
+open.
 Artifact baseline: <https://claude.ai/code/artifact/af9ec57b-bfe5-4cea-af65-cac99b6adb74>.
 Judging page: <https://claude.ai/code/artifact/ca1ecdea-eb95-457f-8606-342fbc8fd9b1>.
 
@@ -27,9 +29,10 @@ Judging page: <https://claude.ai/code/artifact/ca1ecdea-eb95-457f-8606-342fbc8fd
   a page of blobs and a motorcycle to a clean, responsive shop — and the gates made it **cheaper**
   (147 turns/$7.86 → 92/$5.10, 3 rejections in 91 calls), contradicting the fear that blocking
   gates would make models loop.
-- **What is left, narrowly:** one unchecked port (`For Each.template`, F38) and one refactor a 27B
-  model cannot perform (F40). Both are named and filed, which is a better position than the diffuse
-  "AI is bad at NodeGX" the phase opened with.
+- **What is left, narrowly:** one refactor a 27B model cannot perform (F40) and a tool surface that
+  locks out every 32k client (F37) — both LAS-013. The unchecked port (`For Each.template`, F38) is
+  now gated at both write doors, and the render report can see an empty list. Named and filed beats
+  the diffuse "AI is bad at NodeGX" the phase opened with.
 - **What is honest:** on the wording below, *"if only a strong model produces a beautiful page, it
   did not [succeed]"* — only the strong model did.
 
@@ -221,8 +224,12 @@ open ones are mirrored here so a grep finds them.
 | F30 | The example gate's remaining findings, deliberately out of scope: 7 `inactive-conditional-parameter`, 2 `invalid-parameter-value`, 1 `unsized-absolute-box`, 1 `raw-color-literal` across seven examples | 🔴 OPEN, filed in LAS-007 |
 | F36 | **LAS-010's settled model could never have run.** `Qwen/Qwen2.5-Coder-32B-Instruct` on DeepInfra is tagged `openai,completion` — **no `tools` tag**; the whole `qwen2.5-coder` family is superseded there. Caught against the public catalog before any spend | ✅ **CLOSED** — Richard re-chose `Qwen/Qwen3.5-27B` |
 | F37 | **Our write-mode MCP surface does not fit a 32k-context client.** 89 tools; **measured on the wire, turn one billed 27,322 prompt tokens** (100,512 chars of schema + 2,855 of instructions + a 1,235-char brief), resent every turn — qwen's 32-turn run billed 2.19M input tokens. **60 of 89 tools and 63% of the schema bytes are backend admin.** The baselines never met it: the `claude` CLI defers tools behind `ToolSearch` (haiku opened session 1 with 11 such calls) | 🔴 OPEN — filed as **LAS-013 §2** |
-| F38 | ⭐ **A `For Each` with no `template` renders nothing and every instrument reports a pass.** Haiku's post-gates run: 3 repeaters, correct `items` arrays, no `template` → no products, no categories, no footer links. `validate:project` 0/0; `render_report` 0 errors; a census reads "For Each 3". Qwen failed the same contract from the other side (template as a *child*), down an `invalid-argument` path that carries no recipe. Sonnet, which set `template`, is the only one whose page is whole | 🔴 OPEN — filed as **LAS-012** |
+| F38 | ⭐ **A `For Each` with no `template` renders nothing and every instrument reports a pass.** Haiku's post-gates run: 3 repeaters, correct `items` arrays, no `template` → no products, no categories, no footer links. `validate:project` 0/0; `render_report` 0 errors; a census reads "For Each 3". Qwen failed the same contract from the other side (template as a *child*), down an `invalid-argument` path that carries no recipe. Sonnet, which set `template`, is the only one whose page is whole | ✅ **CLOSED** — LAS-012 `ebfa578d` (three codes, both write doors and the plan gate) + `85a39388` (`empty-list` in the render report). ⚠️ **Its attribution was wrong: haiku did BOTH** — see F42 |
 | F39 | LAS-011's own sonnet connections cell was in endpoints (102) where haiku's was in connections (0). Measured 56 / 101 | ✅ **CLOSED** — normalised; `score-run.js` reports both |
 | F40 | **LAS-004's authored-blocking `repeated-sibling-subtree` is a wall for a 27B model.** `Qwen/Qwen3.5-27B` saw 19, discarded its plan, stopped at turn 32 with one component and **named the rule as its reason**. Not a loop, not a tool-calling failure. Capability class, on the model's own words. Both Claude models cleared the same rule again (5 and 3 hits) | 🔴 OPEN — filed as **LAS-013 §1** |
-| F41 | `create_project` mints `Pages/Home`; `create_plan` then rejects a plan that creates it. Haiku and qwen each burned a turn; sonnet did not. Knowledge given and dropped, but self-inflicted | 🔴 OPEN, low severity — **LAS-012 §4** |
+| F41 | `create_project` mints `Pages/Home`; `create_plan` then rejects a plan that creates it. Haiku and qwen each burned a turn; sonnet did not. Knowledge given and dropped, but self-inflicted | ✅ **CLOSED** — LAS-012 §4, `00c59ceb`. A create aimed at the *untouched* skeleton is coerced to an update and reported as `absorbedCreates`; one node added and it is somebody's work again |
+| F42 | **F38's attribution was wrong, and reading the project off disk was all it took.** Session 6 recorded haiku as omitting `template` and qwen as nesting a child — "the same joint from opposite directions". Haiku did **both**: all three of its repeaters nest their item content (`/Components/ProductCard`, `/Components/CategoryCard`, a bare `Group`). One mistake, two models; qwen's was visible only because its child id dangled | ✅ **CLOSED** by LAS-012, whose load-bearing code is `repeater-with-visual-children` as a result |
+| F43 | **The render harness makes any page look complete to a text check.** `render-from-disk` injects the whole project as `window.projectData` in a `<script>` inside `<body>`, so `document.body.textContent` carries every authored string — including content that never rendered. The first `empty-list` probe found all six of haiku's missing strings on a page showing none of them | ✅ **CLOSED** — reads visible leaf text elements only (`85a39388`). Any future page-text check must do the same |
+| F44 | **A short common word is not evidence.** Matching any readable item value found "Ceramics"/"Coffee" in the section's own copy and "Home"/"Shop" in the nav, reporting two genuinely empty lists as rendered. Probe strings must be multi-word or long, and a list with nothing distinctive abstains | ✅ **CLOSED** in `85a39388`; the abstentions are covered by the gate |
+| F45 | `store.resolve` answers `{ key, entry }`; `listComponents()` answers rows with `.path`. Two shapes for one idea, and a broad `catch` turned the resulting TypeError into a silent negative answer — LAS-012 §4 shipped inert in its first version and its own specs caught it | ✅ **CLOSED** in `00c59ceb`. Filed because the *shape* recurs, not the instance |
 | F32 | **The editor's jasmine suite is RED at session-3's close commit and the handover said it was green.** `npm run test:ci` in `noodl-editor`: 2418 assertions, **4 failures**, all in `AIX-006 style vocabulary` — its fixture sets `color` on a `Group`, which `unknown-parameter` blocks, so the candidate is refused before the style pass it is testing. Measured **both ways** at `b550b750` (revert my changes → identical 4; restore → identical 4), so this is inherited, not session-4's. Note the two runners are different things and the handover conflated them: `npx jest` (tests-main + tests-unit) is the 76/1029 number and is green; `npm run test:ci` is the jasmine/Electron suite and is the red one | 🔴 OPEN, needs its own task — a fixture teaching a refused shape, the `PageWithoutPageNode` class |
