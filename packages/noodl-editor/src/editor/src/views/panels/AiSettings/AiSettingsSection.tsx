@@ -4,7 +4,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { platform } from '@noodl/platform';
 
 import { AiAssistantApi } from '@noodl-models/AiAssistant/api';
-import { getModelsForProvider, PRICING_AS_OF } from '@noodl-models/AiAssistant/client/models';
+import { getModelsForProvider, getRecommendedModels, PRICING_AS_OF } from '@noodl-models/AiAssistant/client/models';
 import {
   AI_ROLES,
   AI_ROLE_DESCRIPTIONS,
@@ -107,12 +107,25 @@ function RoleRow({ role, mainProvider }: { role: AiRole; mainProvider: AiProvide
   );
 
   const modelOptions = useMemo(() => {
-    const rows = registryModels.map((entry) => ({ label: entry.displayName, value: entry.id }));
+    // LAS-011: mark the model the phase-55 acceptance matrix settled on for
+    // this role. The recommendation lives on the registry entry, so this label
+    // cannot drift from the docs the way a second hardcoded list would.
+    const recommended = new Set(getRecommendedModels(role).map((entry) => entry.id));
+    const rows = registryModels.map((entry) => ({
+      label: recommended.has(entry.id) ? `${entry.displayName} — recommended` : entry.displayName,
+      value: entry.id
+    }));
     if (selection.model && !rows.some((row) => row.value === selection.model)) {
       rows.unshift({ label: `${selection.model} (custom)`, value: selection.model });
     }
     return rows;
-  }, [registryModels, selection.model]);
+  }, [registryModels, selection.model, role]);
+
+  /** One line naming the recommended pick, shown whether or not it is pickable here. */
+  const recommendationHint = useMemo(() => {
+    const top = getRecommendedModels(role)[0];
+    return top ? `Recommended: ${top.displayName}.` : undefined;
+  }, [role]);
 
   function write(next: { provider?: AiProviderId; model?: string }) {
     setSelection(next);
@@ -125,7 +138,10 @@ function RoleRow({ role, mainProvider }: { role: AiRole; mainProvider: AiProvide
 
   return (
     <>
-      <PanelRow label={AI_ROLE_LABELS[role]} helpText={AI_ROLE_DESCRIPTIONS[role]}>
+      <PanelRow
+        label={AI_ROLE_LABELS[role]}
+        helpText={[AI_ROLE_DESCRIPTIONS[role], recommendationHint].filter(Boolean).join(' ')}
+      >
         <PropertyPanelSelectInput
           value={selection.provider ?? INHERIT}
           properties={{ options: providerOptions }}

@@ -161,12 +161,75 @@ The three questions asked, because the phase's claim depends on the answers:
 3. Is **"any competent LLM"** still the claim, or does it narrow — and to what? On today's evidence
    the honest answer is not 27B.
 
-> **Richard's verdict, in his words:**
+> **Richard's verdict, in his words (2026-08-08):**
 >
-> *(awaiting — record verbatim, do not paraphrase)*
+> *"Sonnet is the only one that clears the bar, which confirms that we should recommend Opus for
+> scoping larger creations and doing high level design, Sonnet for the creation work and basic
+> designs. We can allow open weight models via API like DeepSeek v4 or the latest Qwen, the big
+> ones, but local Ollama looks to be a waste of time. You can add the OpenAI / Grok / Google
+> equivalents we recommend at the same capability level of Sonnet, we don't need to test them I
+> think it's well known."*
 
-⚠️ **The phase is not closed until this block is filled.** An empty verdict here means the exit
-criterion was never met, whatever the gates say — that is the whole point of the criterion.
+### What the verdict settles
+
+1. **Sonnet's page clears the bar; the other two do not.** The matrix's own reading stands.
+2. **The claim narrows, deliberately.** Not "any competent LLM" — a **recommended model per role**,
+   which is exactly the seam LAS-009 built and left unused. Opus for scoping and high-level design,
+   Sonnet-class for the creation work.
+3. **Open weights stay supported, hosted only.** DeepSeek V4 / large Qwen via API are in.
+   **Local ollama is out** as a serious authoring target — consistent with everything measured:
+   the machine caps at ~10.7 GB of Metal working set, the only pull present is a 3B model, and the
+   89-tool surface alone is 27,322 tokens (F37).
+4. **Peer models are recommended without testing, on Richard's explicit instruction.** Any entry
+   added on that basis must be **labelled as untested here**, because this phase's whole method is
+   that measured and assumed claims are not the same thing.
+
+This does **not** close F38 or F40 — LAS-012 and LAS-013 remain filed. It changes what the product
+should *recommend* today, not what it still gets wrong.
+
+## The recommendation, as shipped
+
+Richard's verdict is a decision about which models to point people at, so it lives in the model
+registry (`AiAssistant/client/models.ts`) rather than only in prose — the settings role pickers read
+it from there and label the recommended pick, so the UI and this document cannot drift apart.
+Pinned by `tests-unit/phase-55/recommendedModels.test.ts` (8 specs, both tripwires watched failing).
+
+| Role | Recommended | Why |
+|---|---|---|
+| **design** — scoping, high-level architecture | `claude-opus-5` | Richard: *"Opus for scoping larger creations and doing high level design"* |
+| **plan** — the component tree | `claude-opus-5` | same call; planning is where the architecture is decided |
+| **act** — authoring the graph | `claude-sonnet-5` | the only model that cleared the bar: whole brief, clean render, 92 turns / $5.10 |
+
+**Open weights are allowed, hosted only.** `openai-compatible` now carries its own entries —
+`deepseek-ai/DeepSeek-V4-Pro` (1,048,576 ctx) and `Qwen/Qwen3-Coder-480B-A35B-Instruct-Turbo`
+(262,144 ctx) — which also closes the practical half of **F35**: the provider used to fall through
+to the OpenAI catalogue and offer a DeepInfra user `gpt-4.1`, an id that gateway does not serve.
+They carry **no pricing**, deliberately: the same weights cost different amounts on different
+gateways, and a confident wrong number is worse than a null.
+
+**Local ollama is not recommended for authoring**, and a test enforces it. Measured basis: the only
+pull on the reference machine is a 3B model, `qwen2.5-coder:32b` needs ~20 GB against a ~10.7 GB
+Metal ceiling, and the write-mode MCP surface alone is 27,322 prompt tokens (F37).
+
+### The peers — recommended on reputation, deliberately *not* in the registry
+
+Richard: *"You can add the OpenAI / Grok / Google equivalents we recommend at the same capability
+level of Sonnet, we don't need to test them I think it's well known."* Recorded here with the ids
+verified live, and **not** added as registry rows — a row needs a context window, an output cap and
+a price, and inventing those is exactly the failure this phase spent six sessions documenting.
+
+| Vendor | Sonnet-class pick | Verified how | Reachable today |
+|---|---|---|---|
+| OpenAI | `gpt-5.5` (`gpt-5.5-2026-04-23`); `gpt-5.3-codex` for coding | live `GET /v1/models` on Richard's key | ✅ `openai` provider |
+| xAI | `grok-4.5` — 500k ctx, $2/$6 per MTok | docs.x.ai/docs/models | via `openai-compatible`, `https://api.x.ai/v1` |
+| Google | `gemini-3.6-flash` (stable, agentic/coding); `gemini-3.1-pro-preview` is the flagship | ai.google.dev model list | via `openai-compatible` OpenAI-compat endpoint |
+
+⚠️ **None of the three was replayed against the storefront benchmark**, and neither were Opus 5 or
+the open-weight entries. Only `claude-sonnet-5` and `claude-haiku-4-5` carry `measured: true` in the
+registry, and a tripwire fails if anything else claims it. The editor has no first-class xAI or
+Google adapter; both are OpenAI-compatible, so they work through that provider without new plumbing
+— and their context and output limits are gateway-dependent, which is the other reason they are not
+registry rows.
 
 ## Acceptance (of the phase itself)
 
