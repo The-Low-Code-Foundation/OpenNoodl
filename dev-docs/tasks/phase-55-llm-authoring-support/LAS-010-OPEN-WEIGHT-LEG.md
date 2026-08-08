@@ -1,6 +1,14 @@
 # LAS-010 — The open-weight leg
 
-**Status:** 📋 open · **Track 4 (models)** · ⚠️ **step 1 is human-gated** · required by LAS-011
+**Status:** ✅ **DONE** 2026-08-08 (session 6) · **Track 4 (models)** · step 1 decided by Richard ·
+row delivered to LAS-011
+
+**Outcome in one line:** the rig works and the model is not the limit — `Qwen/Qwen3.5-27B`
+tool-called correctly from turn one and was stopped by one of this phase's own gates, not by its
+own competence. The run cost **$0.68** (32 turns, 2.19M in / 42.8k out, 636 s) and produced one
+component. Full analysis and the row itself are in
+[LAS-011](LAS-011-ACCEPTANCE-MATRIX.md); the capability finding is **F40**, filed as
+[LAS-013](LAS-013-SMALL-MODEL-HEADROOM.md).
 
 ## The gap, stated honestly (audit §A)
 
@@ -131,11 +139,28 @@ AUDIT-SESSION-1 did for haiku.
 
 ## Acceptance
 
-- An open-weight row in the scoring table with the same columns as haiku/sonnet (components,
+- ✅ An open-weight row in the scoring table with the same columns as haiku/sonnet (components,
   page node count, connections, For Each/Static Data, Columns, warnings, render report, cost,
-  turns).
-- The driver committed, documented in STOREFRONT-BRIEF.md's protocol section as the third rig.
-- The model/hardware decision recorded here with Richard's sign-off.
+  turns). — in LAS-011, all cells measured.
+- ✅ The driver committed, documented in STOREFRONT-BRIEF.md's protocol section as the third rig.
+- ✅ The model/hardware decision recorded here with Richard's sign-off — twice: the original
+  hardware decision, then the F36/F37 correction and his re-choice of `Qwen/Qwen3.5-27B`.
+
+### What the run proved, and what it did not
+
+**Proved:** an open-weight mid-tier model can drive the real `noodl-mcp` surface. It found the
+right opening moves unaided, planned a component tree, and self-corrected `unknown-node-type` and
+parameter-encoding rejections. LAS-011's contingency — *"if the open-weight model cannot reliably
+tool-call at all"* — **did not trigger**, so the phase's claim does not have to narrow to
+"tool-calling LLMs" on those grounds.
+
+**Did not prove:** that such a model can finish. It stopped at turn 32 with one component, blocked
+by `repeated-sibling-subtree` (19 hits), and said so in its own words. See F40 / LAS-013.
+
+**A note for whoever runs the next one.** The driver's `--tools` flag can narrow the surface and it
+was deliberately **not** used here — narrowing is an operator intervention the baselines did not
+get, and comparability was the point. If LAS-013 changes the served surface, re-run all three rows
+rather than comparing across surfaces.
 
 ## Register
 

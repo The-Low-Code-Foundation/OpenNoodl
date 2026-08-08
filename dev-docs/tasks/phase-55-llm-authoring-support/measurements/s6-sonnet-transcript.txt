@@ -1,0 +1,107 @@
+# success turns=92 costUsd=5.10 durS=1046
+ToolSearch
+mcp__nodegx__get_project_info
+mcp__nodegx__list_components
+mcp__nodegx__get_style_vocabulary
+ToolSearch
+mcp__nodegx__get_component
+mcp__nodegx__get_component
+mcp__nodegx__list_node_types
+mcp__nodegx__list_node_types
+mcp__nodegx__list_node_types
+mcp__nodegx__list_node_types
+mcp__nodegx__get_node_type
+ToolSearch
+mcp__nodegx__get_example
+mcp__nodegx__get_example
+mcp__nodegx__get_example
+mcp__nodegx__get_example
+mcp__nodegx__get_example
+mcp__nodegx__get_example
+mcp__nodegx__get_example
+mcp__nodegx__list_node_types
+mcp__nodegx__get_node_type
+mcp__nodegx__list_node_types
+mcp__nodegx__list_node_types
+mcp__nodegx__get_node_type
+mcp__nodegx__get_example
+mcp__nodegx__get_node_type
+mcp__nodegx__get_node_type
+Read
+Bash
+Bash
+Bash
+Bash
+mcp__nodegx__create_plan
+mcp__nodegx__stage_plan_operation
+mcp__nodegx__stage_plan_operation
+mcp__nodegx__stage_plan_operation
+mcp__nodegx__stage_plan_operation
+mcp__nodegx__stage_plan_operation
+mcp__nodegx__stage_plan_operation
+mcp__nodegx__stage_plan_operation
+mcp__nodegx__stage_plan_operation
+mcp__nodegx__stage_plan_operation
+mcp__nodegx__stage_plan_operation
+mcp__nodegx__stage_plan_operation
+mcp__nodegx__stage_plan_operation
+mcp__nodegx__get_node_type
+mcp__nodegx__create_component
+mcp__nodegx__stage_plan_operation
+mcp__nodegx__stage_plan_operation
+mcp__nodegx__stage_plan_operation
+mcp__nodegx__stage_plan_operation
+mcp__nodegx__stage_plan_operation
+mcp__nodegx__stage_plan_operation
+mcp__nodegx__stage_plan_operation
+mcp__nodegx__apply_plan
+mcp__nodegx__get_component
+mcp__nodegx__get_component
+mcp__nodegx__get_component
+mcp__nodegx__get_component
+mcp__nodegx__get_component
+mcp__nodegx__get_component
+mcp__nodegx__update_component
+mcp__nodegx__update_component
+mcp__nodegx__update_component
+mcp__nodegx__update_component
+mcp__nodegx__update_component
+mcp__nodegx__update_component
+mcp__nodegx__update_component
+mcp__nodegx__update_component
+mcp__nodegx__update_component
+mcp__nodegx__render_report
+mcp__nodegx__get_component
+mcp__nodegx__update_component
+mcp__nodegx__update_component
+mcp__nodegx__render_report
+mcp__nodegx__update_component
+mcp__nodegx__render_report
+mcp__nodegx__validate_component
+mcp__nodegx__validate_component
+mcp__nodegx__validate_component
+mcp__nodegx__validate_component
+mcp__nodegx__validate_component
+mcp__nodegx__validate_component
+mcp__nodegx__validate_component
+mcp__nodegx__validate_component
+mcp__nodegx__get_component
+mcp__nodegx__update_component
+mcp__nodegx__validate_component
+mcp__nodegx__validate_component
+mcp__nodegx__render_report
+
+# --- rejections: 3 of 91 calls (0 carried a LAS-007 recipe) ---
+2	mcp__nodegx__stage_plan_operation
+1	Read
+
+# --- diagnostic codes seen by the model ---
+5	inactive-conditional-parameter
+4	unsized-absolute-box
+3	repeated-sibling-subtree
+1	invalid-parameter-value
+
+# --- what each rejection actually said ---
+[Read] File does not exist. Note: your current working directory is /private/tmp/claude-501/-Users-richardosborne-vscode-projects-OpenNoodl/8d8da684-52f5-432f-ace3-41fb1b2be8ee/scratchpad.
+[mcp__nodegx__stage_plan_operation] validation-failed · stage_plan_operation "Components/ProductCard" rejected — nothing was staged. · 2 diag: ERROR [invalid-parameter-value] /Components/ProductCard › node priceRow "Price row" (Group) › input "alignItems": parameter "alignItems" (enum) "basel
+[mcp__nodegx__stage_plan_operation] validation-failed · stage_plan_operation "Components/NavBar" rejected — nothing was staged. · 5 diag: WARN [unresolved-navigation] /Components/NavBar › node navShop › port "target": "Go to Shop" navigates to "/Pages/Shop", which is not a component in t

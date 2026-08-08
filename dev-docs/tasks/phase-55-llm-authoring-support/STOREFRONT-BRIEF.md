@@ -48,6 +48,30 @@ section named below corresponds to a piece of Richard's own decomposition.
 4. Let it finish or stall. Do not rescue it; a stall is data.
 5. Score the artefact, not the transcript (see below).
 
+## The three rigs
+
+Added session 6, so a replay is reproducible rather than remembered.
+
+1. **`claude` CLI** (haiku, sonnet). `claude -p "$(cat prompt.txt)" --strict-mcp-config
+   --mcp-config <cfg> --allowedTools "mcp__nodegx__*" --model <id> --output-format stream-json
+   --verbose`, where `<cfg>` is `{"mcpServers":{"nodegx":{"command":"node","args":[
+   "packages/noodl-mcp/bin/noodl-mcp.js","<project-dir>","--allow-writes"]}}}`.
+   ⚠️ This rig defers tools behind `ToolSearch` and permits sandboxed read-only `Bash` — both
+   baselines used both. That is *not* the surface a plain MCP client presents (F37).
+2. **`scripts/devtools/mcp-model-driver.js`** (anything with an OpenAI-compatible endpoint —
+   DeepInfra, ollama at `/v1`, any gateway). Advertises all 89 tools up front. Reads the key from
+   the environment; `--list-tools` prints the served surface and its token cost.
+3. *(fallback, never needed)* the phase-15 in-editor harnesses.
+
+**Scoring is scripted** — `measurements/score-run.js <project-dir>` for every mechanical cell,
+`measurements/extract-transcript.js <transcript>` for the call sequence and every rejection by
+code. Both read either rig's output. Then `npm run render:report -- <project-dir>` for the eyes.
+
+⚠️ **A clean render report does not mean a built page.** It checks for content that is present and
+wrong (dead placeholders, broken images), not for content that was never drawn. Session 6 produced
+two "Rendered clean" verdicts on pages missing most or all of their content. Read the `texts` and
+`images` counts and look at the screenshot.
+
 ## Scoring — architecture first, taste second
 
 Mechanical checks (run them, do not eyeball):

@@ -1,0 +1,64 @@
+# model-finished turns=32 costUsd=0.68 durS=636
+get_project_info
+get_style_vocabulary
+create_plan
+create_plan
+get_node_type
+get_node_type
+stage_plan_operation
+get_node_type
+stage_plan_operation
+stage_plan_operation
+stage_plan_operation
+list_node_types
+list_node_types
+get_node_type
+stage_plan_operation
+get_node_type
+stage_plan_operation
+stage_plan_operation
+stage_plan_operation
+stage_plan_operation
+stage_plan_operation
+discard_plan
+create_component
+create_component
+get_node_type
+create_component
+create_component
+get_component
+update_component
+update_component
+update_component
+
+# --- rejections: 16 of 31 calls (4 carried a LAS-007 recipe) ---
+8	stage_plan_operation
+3	create_component
+3	update_component
+1	create_plan
+1	get_node_type
+
+# --- diagnostic codes seen by the model ---
+50	unknown-parameter
+19	repeated-sibling-subtree
+17	inactive-conditional-parameter
+1	raw-color-literal
+1	oversized-page
+
+# --- what each rejection actually said ---
+[create_plan] invalid-argument · The plan is not executable — nothing was created. · 1 diag: Operation op-9 creates "Pages/Home", but that component already exists — use an update.
+[get_node_type] MCP error -32602: Input validation error: Invalid arguments for tool get_node_type: [ { "code": "too_big", "maximum": 8, "type": "array", "inclusive": true, "exact": false, "message": "Array must contain at most 8 elemen
+[stage_plan_operation] validation-failed · stage_plan_operation "Components/Navbar" rejected — nothing was staged. · 19 diag: ERROR [connection-only-parameter] /Components/Navbar › node link-shop (net.noodl.controls.button) › input "variant": "variant" on net.noodl.controls.b
+[stage_plan_operation] validation-failed · stage_plan_operation "Components/Navbar" rejected — nothing was staged. · 1 diag: WARN [unknown-parameter] /Components/Navbar › node basket-btn (net.noodl.controls.button) › input "alignItems": net.noodl.controls.button has no input
+[stage_plan_operation] validation-failed · stage_plan_operation "Components/Hero" rejected — nothing was staged. · 2 diag: ERROR [unknown-node-type] /Components/Hero › node hero-columns (Columns): Unknown node type "Columns" — not found in the node catalog. If this is a mo
+[stage_plan_operation] validation-failed · stage_plan_operation "Components/Hero" rejected — nothing was staged. · 2 diag: WARN [unknown-parameter] /Components/Hero › node hero-columns (net.noodl.visual.columns) › input "rowGap": net.noodl.visual.columns has no input port 
+[stage_plan_operation] validation-failed · stage_plan_operation "Components/Hero" rejected — nothing was staged. · 2 diag: WARN [unknown-parameter] /Components/Hero › node hero-columns (net.noodl.visual.columns) › input "columnGap": net.noodl.visual.columns has no input po
+[stage_plan_operation] validation-failed · stage_plan_operation "Components/FeatureStrip" rejected — nothing was staged. · 1 diag: WARN [repeated-sibling-subtree] /Components/FeatureStrip › node feature-1 (Group): 3 sibling subtrees here are structurally identical (5 nodes each, r · +1 recipe(s)
+[stage_plan_operation] invalid-argument · Node hierarchy is inconsistent. · 1 diag: Node "repeater" lists unknown child "feature-item".
+[stage_plan_operation] validation-failed · stage_plan_operation "Components/FeatureStrip" rejected — nothing was staged. · 1 diag: WARN [repeated-sibling-subtree] /Components/FeatureStrip › node feature-1 (Group): 3 sibling subtrees here are structurally identical (5 nodes each, r · +1 recipe(s)
+[create_component] validation-failed · create_component "Components/ProductCard" rejected — nothing was written. · 8 diag: WARN [unknown-parameter] /Components/ProductCard › node card (Group) › input "overflow": Group has no input port "overflow", so this parameter is neve
+[create_component] validation-failed · create_component "Components/ProductCard" rejected — nothing was written. · 2 diag: WARN [unknown-parameter] /Components/ProductCard › node badges (Group) › input "top": Group has no input port "top", so this parameter is never read.
+[create_component] validation-failed · create_component "Components/Footer" rejected — nothing was written. · 1 diag: WARN [repeated-sibling-subtree] /Components/Footer › node shop-col (Group): 3 sibling subtrees here are structurally identical (6 nodes each, rooted a · +1 recipe(s)
+[update_component] MCP error -32602: Input validation error: Invalid arguments for tool update_component: [ { "code": "invalid_type", "expected": "object", "received": "string", "path": [ "set" ], "message": "Expected object, received stri
+[update_component] invalid-argument · Node hierarchy is inconsistent. · 1 diag: Node "products-repeater" lists unknown child "product-card".
+[update_component] validation-failed · update_component "Pages/Home" rejected — nothing was written. · 3 diag: WARN [repeated-sibling-subtree] /Pages/Home › node feature-1 (Group): 3 sibling subtrees here are structurally identical (5 nodes each, rooted at Grou · +1 recipe(s)
