@@ -5,11 +5,18 @@
  * is. The runtime only serves what it is given (plus a generic fallback for a
  * class nobody predicted).
  *
- * Two sources, in this order of authority:
+ * Four sources, in this order of authority:
  *
+ * 0. **The user's own records** (BEN-006) — the only source that is not a
+ *    guess. Everything below infers what the data probably looks like; this one
+ *    is a person saying what they want to see. It wins over all of them, per
+ *    class: overriding `Products` must leave `Categories` exactly as inference
+ *    built it, because a user who edits one collection has said nothing at all
+ *    about the others.
  * 1. **The authoring model's `sample_data`** — it knows it built a book list,
  *    so it can say "The Left Hand of Darkness" where inference can only say
- *    "Northern Atlas 1". Always wins.
+ *    "Northern Atlas 1". Wins over everything it is asked about except the
+ *    user.
  * 2. **The graph itself** — every `prop-<field>` connection endpoint names a
  *    field something reads, and every `collectionName`/`collection` parameter
  *    names a class. Fields are attributed to a class when the node carrying
@@ -397,9 +404,20 @@ export function discoverDataShape(components: ComponentModel[]): Discovery {
   return discovery;
 }
 
-function recordsFor(fields: string[], supplied: Array<Record<string, unknown>> | undefined): SandboxRecord[] {
-  if (!supplied || supplied.length === 0) return synthesizeRecords(fields, RECORDS_PER_CLASS);
-  // Agent values win; inference only fills the gaps it left.
+/**
+ * @param exact BEN-006 — the supply is the user's, so it is the answer and not
+ *   a starting point. An agent that ships `{ Products: [] }` has told us
+ *   nothing and gets the usual five synthesized rows; a *user* who deletes
+ *   every row has asked to see the empty state, which is one of the states most
+ *   worth looking at and the one no preview has ever been able to show.
+ */
+function recordsFor(
+  fields: string[],
+  supplied: Array<Record<string, unknown>> | undefined,
+  exact = false
+): SandboxRecord[] {
+  if (!supplied || (supplied.length === 0 && !exact)) return synthesizeRecords(fields, RECORDS_PER_CLASS);
+  // Supplied values win; inference only fills the gaps they left.
   return supplied.map((partial, index) => completeRecord(partial, fields, index));
 }
 
@@ -408,6 +426,18 @@ export interface BuildSandboxDatasetOptions {
   components: ComponentModel[];
   /** `sample_data` from the authoring model, when it supplied any. */
   sampleData?: AgentSampleData;
+  /**
+   * BEN-006 — records the user typed, layered above the agent's.
+   *
+   * Per class, and replacing rather than merging: a user who writes two rows of
+   * `Products` gets two rows of `Products`, not two of theirs merged into five
+   * of the agent's. A merge would put rows on screen that the user did not
+   * write and cannot account for, which is the failure this whole feature
+   * exists to end.
+   *
+   * Preview state, never project state (R5). Nothing here is written anywhere.
+   */
+  userData?: AgentSampleData;
   /**
    * POL-008 — whether the preview runs as the sample user or signed out.
    *
@@ -427,17 +457,28 @@ export interface BuildSandboxDatasetOptions {
 export function buildSandboxDataset({
   components,
   sampleData,
+  userData,
   signedIn = true
 }: BuildSandboxDatasetOptions): SandboxDataset {
   const discovery = discoverDataShape(components);
 
-  const classNames = new Set<string>([...discovery.byClass.keys(), ...Object.keys(sampleData ?? {})]);
+  const classNames = new Set<string>([
+    ...discovery.byClass.keys(),
+    ...Object.keys(sampleData ?? {}),
+    ...Object.keys(userData ?? {})
+  ]);
   const classes: Record<string, SandboxClass> = {};
   const unknownShape: string[] = [];
+  const overridden: string[] = [];
 
   for (const className of classNames) {
     const attributed = discovery.byClass.get(className) ?? new Set<string>();
-    const supplied = sampleData?.[className];
+    // BEN-006: the user's records replace the agent's for this class, and only
+    // for this class. `??` and not `||`, so an empty array is a real answer —
+    // "show me this collection with no rows" is one of the states worth seeing.
+    const fromUser = userData?.[className];
+    const supplied = fromUser ?? sampleData?.[className];
+    if (fromUser) overridden.push(className);
     const suppliedFields = new Set((supplied ?? []).flatMap((record) => Object.keys(record)));
     // Unattributed code reads are a last resort, used only for a class that
     // would otherwise be served empty. This is what keeps the code scan
@@ -451,22 +492,48 @@ export function buildSandboxDataset({
     );
 
     if (fields.length === 0) unknownShape.push(className);
-    classes[className] = { fields, records: recordsFor(fields, supplied) };
+
+    // BEN-006 risk row: a user's records will not carry every field the graph
+    // reads, and `completeRecord` fills the rest in — which is right, or the row
+    // renders half-blank. But filling in silently is how a preview starts
+    // lying about whose data it is showing, so name them and let the panel say
+    // so. Only for a class the user actually wrote: for the agent's own data
+    // this would be noise on every class, every time.
+    const completed = fromUser
+      ? fields.filter((field) => !fromUser.every((record) => record[field] !== undefined))
+      : [];
+
+    classes[className] = {
+      fields,
+      records: recordsFor(fields, supplied, fromUser !== undefined),
+      ...(completed.length > 0 ? { completed } : {})
+    };
   }
 
   const user = sandboxUser();
   for (const field of [...discovery.user, ...discovery.pooled]) {
     if (!(field in user)) user[field] = synthesizeRecords([field], 1)[0][field];
   }
-  // A user-supplied record for the _User class stands in for the session user.
-  const suppliedUser = sampleData?._User?.[0] ?? sampleData?.User?.[0];
+  // A supplied record for the _User class stands in for the session user. The
+  // user's own wins over the agent's, the same way it does for every other
+  // class — but it is merged onto `sandboxUser()` rather than replacing it,
+  // because the session needs `objectId` and `sessionToken` to exist whatever
+  // anyone typed.
+  const suppliedUser =
+    userData?._User?.[0] ?? userData?.User?.[0] ?? sampleData?._User?.[0] ?? sampleData?.User?.[0];
   if (suppliedUser) Object.assign(user, suppliedUser);
 
   // ⚠️ **The strip must say which auth state the preview is in.** POL-008's
   // whole finding was a toolbar promising "signed in as a sample user" over a
   // preview that was not signed in; a strip that keeps saying it while the user
   // has *asked* to be signed out is the same defect with the sign reversed.
-  const counts = Object.entries(classes).map(([name, klass]) => `${klass.records.length} ${name}`);
+  // BEN-006: say which counts are the user's. A toolbar that reads the same
+  // whether you are looking at inference or at what you typed is the POL-008
+  // defect again — the strip has to say what state the preview is actually in.
+  const yours = new Set(overridden);
+  const counts = Object.entries(classes).map(
+    ([name, klass]) => `${klass.records.length} ${name}${yours.has(name) ? ' (yours)' : ''}`
+  );
   const who = signedIn ? 'signed in as a sample user' : 'signed out';
   const summary = counts.length > 0 ? `Sample data — ${counts.join(', ')}, ${who}` : `Sample data — ${who}`;
 

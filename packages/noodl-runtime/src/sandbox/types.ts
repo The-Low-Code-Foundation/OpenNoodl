@@ -22,6 +22,17 @@ export interface SandboxClass {
   fields: string[];
   /** Records to serve. Agent-authored where available, synthesized otherwise. */
   records: SandboxRecord[];
+  /**
+   * BEN-006 — fields the *user* wrote records for but did not fill in, which
+   * the editor completed with synthesized values so the row does not render
+   * half-blank.
+   *
+   * Informational only: the runtime serves the records either way. It exists so
+   * the data editor can say which values on screen are the user's and which are
+   * made up, because filling gaps in silently is how a preview starts lying
+   * about whose data it is showing. Absent unless the user overrode this class.
+   */
+  completed?: string[];
 }
 
 export interface SandboxDataset {

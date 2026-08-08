@@ -99,6 +99,27 @@ function ordersPayload(): SubmitPayload {
   };
 }
 
+/** Two collections on one page — BEN-006 exists to override one and not the other. */
+function twoClassPayload(): SubmitPayload {
+  return {
+    nodes: [
+      { id: 'root', type: 'Group' },
+      { id: 'products', type: 'DbCollection2', parameters: { collectionName: 'Products' } },
+      { id: 'product', type: 'DbModel2', parameters: { collectionName: 'Products' } },
+      { id: 'categories', type: 'DbCollection2', parameters: { collectionName: 'Categories' } },
+      { id: 'category', type: 'DbModel2', parameters: { collectionName: 'Categories' } },
+      { id: 'text', type: 'Text', parent: 'root' },
+      { id: 'label', type: 'Text', parent: 'root' }
+    ],
+    connections: [
+      { fromId: 'product', fromProperty: 'prop-name', toId: 'text', toProperty: 'text' },
+      { fromId: 'product', fromProperty: 'prop-price', toId: 'text', toProperty: 'visible' },
+      { fromId: 'category', fromProperty: 'prop-label', toId: 'label', toProperty: 'text' }
+    ],
+    visualRoots: ['root']
+  };
+}
+
 /** A page that queries a class and reads nothing off any record, anywhere. */
 function shapelessPayload(): SubmitPayload {
   return {
@@ -464,5 +485,207 @@ describe('AIB-004 sandbox export with sibling candidates', () => {
 
     expect(candidateIsRenderable(listFiles())).toBe(true);
     expect(buildSandboxExport({ project: loadProject(), files: listFiles() }).json).toBeDefined();
+  });
+});
+
+/**
+ * BEN-006 — the fourth source, and the only one that is not a guess.
+ *
+ * Sources 1–3 all infer what the data *probably* looks like. This one is a
+ * person saying what they want to see, which is why it outranks them — and why
+ * it has to be surgical: a user who edits `Products` has said nothing at all
+ * about `Categories`, and blanking the second because they touched the first is
+ * how an editing feature becomes one people stop using.
+ */
+describe('BEN-006 the user’s own sample data', () => {
+  function twoClasses() {
+    return [candidateComponent(files(twoClassPayload())).component];
+  }
+
+  it('overrides the class the user wrote and leaves the others exactly as they were', () => {
+    const components = twoClasses();
+    const before = buildSandboxDataset({ components });
+    const after = buildSandboxDataset({
+      components,
+      userData: { Products: [{ name: 'Enamel mug' }, { name: 'Cast iron pan' }] }
+    });
+
+    expect(after.classes.Products.records.length).toBe(2);
+    expect(after.classes.Products.records[0].name).toBe('Enamel mug');
+    expect(after.classes.Products.records[1].name).toBe('Cast iron pan');
+    // The untouched class is byte-for-byte what inference built.
+    expect(JSON.stringify(after.classes.Categories)).toEqual(JSON.stringify(before.classes.Categories));
+  });
+
+  it('outranks the agent’s sample_data for the same class', () => {
+    const dataset = buildSandboxDataset({
+      components: twoClasses(),
+      sampleData: { Products: [{ name: 'Northern Atlas' }, { name: 'Quiet Signal' }] },
+      userData: { Products: [{ name: 'Enamel mug' }] }
+    });
+
+    // Replaced, not merged: one row, and none of the agent's survive. A merge
+    // would put rows on screen the user did not write and cannot account for.
+    expect(dataset.classes.Products.records.length).toBe(1);
+    expect(dataset.classes.Products.records[0].name).toBe('Enamel mug');
+  });
+
+  it('leaves the agent’s data alone for a class the user did not touch', () => {
+    const dataset = buildSandboxDataset({
+      components: twoClasses(),
+      sampleData: { Products: [{ name: 'Northern Atlas' }], Categories: [{ label: 'Kitchen' }] },
+      userData: { Products: [{ name: 'Enamel mug' }] }
+    });
+
+    expect(dataset.classes.Products.records[0].name).toBe('Enamel mug');
+    expect(dataset.classes.Categories.records.length).toBe(1);
+    expect(dataset.classes.Categories.records[0].label).toBe('Kitchen');
+  });
+
+  it('changes nothing at all when the user has written none', () => {
+    // The criterion this whole task is allowed to keep: additive, exactly as
+    // the code scan was. Byte-identical, both with and without agent data.
+    const components = twoClasses();
+    const sampleData = { Products: [{ name: 'Northern Atlas' }] };
+
+    expect(JSON.stringify(buildSandboxDataset({ components, userData: undefined }))).toEqual(
+      JSON.stringify(buildSandboxDataset({ components }))
+    );
+    expect(JSON.stringify(buildSandboxDataset({ components, sampleData, userData: undefined }))).toEqual(
+      JSON.stringify(buildSandboxDataset({ components, sampleData }))
+    );
+  });
+
+  it('fills the fields the user left out, and says which ones it filled', () => {
+    // Completing is right — a row missing `price` renders half-blank otherwise.
+    // Doing it silently is not: the panel has to be able to say which values on
+    // screen are the user's and which the editor made up.
+    const dataset = buildSandboxDataset({
+      components: twoClasses(),
+      userData: { Products: [{ name: 'Enamel mug' }] }
+    });
+
+    expect(dataset.classes.Products.records[0].name).toBe('Enamel mug');
+    expect(dataset.classes.Products.records[0].price === undefined).toBe(false);
+    expect(dataset.classes.Products.completed).toEqual(['price']);
+  });
+
+  it('does not synthesize over a value the user actually wrote', () => {
+    // `completeRecord` is documented as "supplied values win"; this pins it for
+    // the user's half, including a deliberately empty string, which is a real
+    // answer and not a missing one.
+    const dataset = buildSandboxDataset({
+      components: twoClasses(),
+      userData: { Products: [{ name: '', price: 0 }] }
+    });
+
+    expect(dataset.classes.Products.records[0].name).toBe('');
+    expect(dataset.classes.Products.records[0].price).toBe(0);
+    expect(dataset.classes.Products.completed).toBeUndefined();
+  });
+
+  it('serves one row when the user asks for one row', () => {
+    // "What does this look like with a single result" is the question that
+    // finds every layout that quietly assumed three.
+    const dataset = buildSandboxDataset({
+      components: twoClasses(),
+      userData: { Products: [{ name: 'Enamel mug' }] }
+    });
+
+    expect(dataset.classes.Products.records.length).toBe(1);
+    expect(dataset.classes.Categories.records.length).toBe(5);
+  });
+
+  it('serves no rows when the user deletes them all, which the agent’s empty array does not', () => {
+    // An agent shipping `[]` has told us nothing and gets the usual five. A
+    // *user* deleting every row has asked for the empty state — the one state
+    // no preview in this product has ever been able to show.
+    const components = twoClasses();
+
+    expect(buildSandboxDataset({ components, sampleData: { Products: [] } }).classes.Products.records.length).toBe(5);
+    expect(buildSandboxDataset({ components, userData: { Products: [] } }).classes.Products.records.length).toBe(0);
+  });
+
+  it('lets a class whose shape could not be inferred be filled in by hand', () => {
+    // The "Fields unknown" chip turns from a warning into an invitation: this
+    // is precisely the case where inference failed and a human knows the answer.
+    const components = [candidateComponent(files(shapelessPayload())).component];
+
+    expect(buildSandboxDataset({ components }).unknownShape).toEqual(['Orders']);
+
+    const filled = buildSandboxDataset({
+      components,
+      userData: { Orders: [{ orderNumber: 'A-1001', customerName: 'Ada Beck' }] }
+    });
+    expect(filled.unknownShape).toEqual([]);
+    expect(filled.classes.Orders.fields.sort()).toEqual(['customerName', 'orderNumber']);
+    expect(filled.classes.Orders.records[0].orderNumber).toBe('A-1001');
+  });
+
+  it('serves a class the graph never named, because the user asked for it', () => {
+    const dataset = buildSandboxDataset({
+      components: twoClasses(),
+      userData: { Wishlist: [{ title: 'Later' }] }
+    });
+
+    expect(dataset.classes.Wishlist.records[0].title).toBe('Later');
+  });
+
+  it('says in the toolbar which counts are the user’s', () => {
+    // A strip that reads identically whether you are looking at inference or at
+    // what you typed is POL-008 again: the preview has to say what state it is
+    // actually in.
+    const summary = buildSandboxDataset({
+      components: twoClasses(),
+      userData: { Products: [{ name: 'Enamel mug' }] }
+    }).summary!;
+
+    expect(summary).toContain('1 Products (yours)');
+    expect(summary).toContain('5 Categories');
+    expect(summary.indexOf('Categories (yours)')).toBe(-1);
+  });
+
+  it('lets the user stand in for the signed-in user, over the agent’s version', () => {
+    const dataset = buildSandboxDataset({
+      components: twoClasses(),
+      sampleData: { _User: [{ name: 'Agent User' }] },
+      userData: { _User: [{ name: 'Richard' }] }
+    });
+
+    expect(dataset.user.name).toBe('Richard');
+    // Merged onto the sandbox user, not replacing it: the seeded session needs
+    // these to exist whatever anyone typed.
+    expect(dataset.user.objectId).toBe('sandbox-user');
+    expect(String(dataset.user.sessionToken)).toContain('sandbox');
+  });
+
+  it('carries the user’s records into the export the preview window is fed', () => {
+    const project = loadProject();
+    const before = JSON.stringify(project.toJSON());
+    const result = buildSandboxExport({
+      project,
+      files: files(twoClassPayload()),
+      userData: { Products: [{ name: 'Enamel mug' }] }
+    });
+
+    const shipped = (result.json!.metadata as Record<string, SandboxDataset>).sandbox;
+    expect(shipped.classes.Products.records[0].name).toBe('Enamel mug');
+    // Handed back too, so the data editor prefills with what is actually being
+    // served rather than an empty box.
+    expect(result.dataset).toEqual(shipped);
+    // R5: preview state, never project state.
+    expect(JSON.stringify(project.toJSON())).toEqual(before);
+  });
+
+  it('has nothing to edit against a real backend', () => {
+    const result = buildSandboxExport({
+      project: loadProject(),
+      files: files(twoClassPayload()),
+      userData: { Products: [{ name: 'Enamel mug' }] },
+      useSampleData: false
+    });
+
+    expect(result.dataset).toBeUndefined();
+    expect((result.json!.metadata as Record<string, unknown>).sandbox).toBeUndefined();
   });
 });
