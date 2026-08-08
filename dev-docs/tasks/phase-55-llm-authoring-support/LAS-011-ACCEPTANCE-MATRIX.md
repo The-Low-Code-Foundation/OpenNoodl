@@ -69,8 +69,31 @@ move:
 - README status updated to the outcome; HANDOVER.md for any successor phase names what was
   accepted-with-reason.
 
+## Session 6 — the instruments, built before the runs
+
+Session 1 scored by hand, which is why its numbers cost a session and cannot be re-derived. Three
+scripts now do it, each calibrated against the published baselines *before* being trusted:
+
+| Instrument | What it answers | Calibration |
+|---|---|---|
+| `measurements/score-run.js` | every mechanical cell of the matrix, off disk | reproduces haiku's published 9/7 and sonnet's 17/8 exactly |
+| `measurements/extract-transcript.js` | the call sequence, and every rejection by code, tool and whether a LAS-007 recipe rode along | reads both rigs' dialects; the payload shape was read off a live transcript after a guessed one printed `[object Object]` |
+| `scripts/devtools/mcp-model-driver.js` | the third rig (LAS-010 §2) | driven end-to-end against local ollama before any spend |
+
+**A units bug in this document, found by the scorer (F39).** The sonnet cell below read `102`
+against haiku's `0` in the same row — but `102` is *connection endpoints* and `0` reads as
+*connections*. Measured on the baseline: **56 connections / 101 distinct endpoints**. Zero is zero
+in both units, so the mismatch was unfalsifiable until a run put a non-zero number in the other
+column. The matrix below is normalised to **connections / endpoints**, both stated.
+
+**And `validate:project`'s error count cannot be read as "clean" (F14, already open).** It reports
+`0 error(s)` on the session-1 haiku baseline whose every card is dead, because it runs `rules/`
+only and never the precondition checks. The row is kept for continuity; the interface question is
+answered by the scorer's `varying instances w/o input` line instead.
+
 ## Register
 
 | # | Finding | State |
 |---|---|---|
-| — | | |
+| F38 | **A `For Each` with no `template` renders nothing, and not one instrument notices.** Haiku's post-gates run created 3 repeaters, each with a correct inline `items` array and **no `template` parameter** — so the featured products, the category browser and the footer link columns are all absent from the page. `validate:project`: **0 errors, 0 warnings**. `render_report`: **0 errors**. The node census: `For Each 3 ✓`. The page renders *clean* because its content is *missing* — the render report counts dead placeholders and broken images, and has no check for content that was never drawn. Not a `rules/` rule: `NormNode` carries no `parameters` (verified again in `validation/model.ts`), so this belongs where LAS-001's interface gate lives | 🔴 **OPEN** — the highest-value gate the phase can still add; candidate **LAS-012** |
+| F39 | **This matrix's own sonnet connections cell was in different units from haiku's.** `102` endpoints vs `0` connections. Baseline measured at 56 / 101 | ✅ **CLOSED** — matrix normalised, `score-run.js` reports both |
