@@ -31,6 +31,7 @@ import { typeIncompatibleConnection } from './typeIncompatibleConnection';
 import { signalDrivenStaleInput } from './signalDrivenStaleInput';
 import { unwiredOutcome } from './unwiredOutcome';
 import { repeatedSiblingSubtree } from './repeatedSiblingSubtree';
+import { oversizedPage } from './oversizedPage';
 
 export const ALL_RULES: Rule[] = [
   duplicateNodeId,
@@ -44,7 +45,8 @@ export const ALL_RULES: Rule[] = [
   typeIncompatibleConnection,
   signalDrivenStaleInput,
   unwiredOutcome,
-  repeatedSiblingSubtree
+  repeatedSiblingSubtree,
+  oversizedPage
 ];
 
 export {
@@ -58,7 +60,9 @@ export {
   detachedPageContent,
   typeIncompatibleConnection,
   signalDrivenStaleInput,
-  unwiredOutcome
+  unwiredOutcome,
+  repeatedSiblingSubtree,
+  oversizedPage
 };
 
 export * from './types';

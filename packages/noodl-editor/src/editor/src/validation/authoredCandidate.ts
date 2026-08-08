@@ -182,7 +182,17 @@ export const AUTHORED_BLOCKING_WARNINGS: ReadonlySet<string> = new Set([
   // page that renders.
   DiagnosticCode.InstanceUnknownParameter,
   DiagnosticCode.InterfacelessInstance,
-  DiagnosticCode.ComponentPortDirection
+  DiagnosticCode.ComponentPortDirection,
+  // LAS-004 — the only architecture gate in the system, and until now it blocked
+  // nothing anywhere. It fired correctly on every measured build (3 warnings on
+  // the reference build's exact failure, 2 on haiku's, 1 on sonnet's) and was
+  // ignored by all three, which is what advice gets under pressure. The audit's
+  // other measurement is the reason to expect this to work: hard rejections
+  // carrying a suggestion were self-corrected at a 100% rate even by the mid-tier
+  // model, and this rule's message already offers both exits. With LAS-002
+  // landed, the text now actually reaches a staging agent instead of arriving as
+  // the integer 1.
+  DiagnosticCode.RepeatedSiblingSubtree
 ]);
 
 /** Whether a diagnostic rejects an authored submission. */

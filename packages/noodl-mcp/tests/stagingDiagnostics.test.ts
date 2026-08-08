@@ -14,6 +14,16 @@
  * fires, so these specs pin the TEXT reaching the caller — code, message and
  * location — on every authoring door, and pin the silence on a clean candidate,
  * because a door that always says something is a door nobody reads.
+ *
+ * ⚠️ **LAS-004 changed what the trio does, and these specs were corrected, not
+ * relaxed.** `repeated-sibling-subtree` is now in `AUTHORED_BLOCKING_WARNINGS`,
+ * so a hand-laid trio is *rejected* rather than accepted-with-a-warning. Three
+ * specs here were asserting that the door accepts it — the `PageWithoutPageNode`
+ * lesson exactly: a fixture teaching a shape the gate refuses was asserting the
+ * wrong thing. They now pin the same text arriving in the rejection, which is
+ * the stronger claim, and LAS-002's actual contract (a *non-blocking* warning
+ * comes back as a diagnostic OBJECT rather than an integer) is pinned on
+ * `raw-color-literal`, which is a warning everywhere and blocks nothing.
  */
 import * as fs from 'fs';
 
@@ -68,6 +78,18 @@ const CLEAN_NODES = [
   { id: 'only', type: 'Text', parent: 'row', parameters: { text: 'One of a kind' } }
 ];
 
+/**
+ * A page carrying one **non-blocking** warning: `raw-color-literal`, which the
+ * corpus hits 553 times and which therefore stays advisory everywhere. This is
+ * what LAS-002 is actually about — a warning that survives into a successful
+ * write must arrive as a diagnostic object, not as `{"warnings": 1}`.
+ */
+const RAW_COLOR_NODES = [
+  { id: 'page', type: 'Page', parameters: { title: 'Untokenised' } },
+  { id: 'row', type: 'Group', parent: 'page' },
+  { id: 'only', type: 'Text', parent: 'row', parameters: { text: 'Hello', color: '#ff0000' } }
+];
+
 describe('LAS-002 — every authoring door returns the warning text', () => {
   let dir: string;
   let session: TestSession;
@@ -91,7 +113,7 @@ describe('LAS-002 — every authoring door returns the warning text', () => {
     return res.data;
   }
 
-  it('stage_plan_operation returns the repeated-sibling-subtree message, not just a count', async () => {
+  it('stage_plan_operation rejects a hand-laid trio, in words (LAS-004)', async () => {
     const plan = await planFor('Pages/Trio');
     const res = await call<StageResponse>(session, 'stage_plan_operation', {
       plan_id: plan.planId,
@@ -100,20 +122,39 @@ describe('LAS-002 — every authoring door returns the warning text', () => {
       visual_roots: ['page']
     });
 
+    // Blocking since LAS-004. The rule fired correctly on all three measured
+    // builds and stopped none of them; a gate that only whispers is advice.
+    expect(res.isError).toBe(true);
+    const text = JSON.stringify(res.data ?? res.text);
+    expect(text).toContain('repeated-sibling-subtree');
+    expect(text).toContain('structurally identical');
+    // Both exits, in the rejection: the message is the repair instruction.
+    expect(text).toContain('Make one component and instantiate it');
+    expect(text).toContain('Repeater');
+  });
+
+  it('stage_plan_operation returns a surviving warning as an object, not a count', async () => {
+    const plan = await planFor('Pages/Untokenised');
+    const res = await call<StageResponse>(session, 'stage_plan_operation', {
+      plan_id: plan.planId,
+      operation_id: plan.operations[0].id,
+      nodes: RAW_COLOR_NODES,
+      visual_roots: ['page']
+    });
+
     expect(res.isError).toBe(false);
     // The count stays — anything already parsing it keeps working.
     expect(res.data.warnings).toBeGreaterThanOrEqual(1);
 
     const diagnostics = res.data.validation?.diagnostics ?? [];
-    const sibling = diagnostics.find((d) => d.code === 'repeated-sibling-subtree');
-    expect(sibling).toBeDefined();
+    const raw = diagnostics.find((d) => d.code === 'raw-color-literal');
+    expect(raw).toBeDefined();
 
     // Structured entries, not a pre-joined string: LAS-007 keys its example
     // attachments on `code`, and a location is what makes a warning actionable.
-    expect(sibling!.severity).toBe('warning');
-    expect(sibling!.message).toContain('structurally identical');
-    expect(sibling!.message).toContain('Make one component and instantiate it');
-    expect(sibling!.location.nodeId).toBeTruthy();
+    expect(raw!.severity).toBe('warning');
+    expect(raw!.message).toContain('var(--token)');
+    expect(raw!.location.nodeId).toBeTruthy();
   });
 
   it('stays silent on a clean candidate', async () => {
@@ -131,11 +172,11 @@ describe('LAS-002 — every authoring door returns the warning text', () => {
   });
 
   it('apply_plan reports the warnings that survived into the written project', async () => {
-    const plan = await planFor('Pages/Trio');
+    const plan = await planFor('Pages/Untokenised');
     await call<StageResponse>(session, 'stage_plan_operation', {
       plan_id: plan.planId,
       operation_id: plan.operations[0].id,
-      nodes: trioOfSiblings(),
+      nodes: RAW_COLOR_NODES,
       visual_roots: ['page']
     });
 
@@ -143,23 +184,29 @@ describe('LAS-002 — every authoring door returns the warning text', () => {
     expect(res.isError).toBe(false);
     expect(res.data.applied.length).toBe(1);
 
-    const sibling = (res.data.validation?.diagnostics ?? []).find((d) => d.code === 'repeated-sibling-subtree');
-    expect(sibling).toBeDefined();
+    const raw = (res.data.validation?.diagnostics ?? []).find((d) => d.code === 'raw-color-literal');
+    expect(raw).toBeDefined();
     // Which component it landed in — an apply writes a set, so a bare message
     // would leave the caller guessing which of them it is about.
-    expect(sibling!.location.component).toBe('/Pages/Trio');
+    expect(raw!.location.component).toBe('/Pages/Untokenised');
   });
 
-  it('create_component already speaks, and speaks the same dialect', async () => {
-    const res = await call<CreateComponentResponse>(session, 'create_component', {
+  it('create_component speaks the same dialect, on both verdicts', async () => {
+    const accepted = await call<CreateComponentResponse>(session, 'create_component', {
+      path: 'Pages/Untokenised',
+      nodes: RAW_COLOR_NODES,
+      visual_roots: ['page']
+    });
+    expect(accepted.isError).toBe(false);
+    const raw = (accepted.data.validation.diagnostics ?? []).find((d) => d.code === 'raw-color-literal');
+    expect(raw).toBeDefined();
+
+    const rejected = await call<CreateComponentResponse>(session, 'create_component', {
       path: 'Pages/Trio',
       nodes: trioOfSiblings(),
       visual_roots: ['page']
     });
-
-    expect(res.isError).toBe(false);
-    const sibling = (res.data.validation.diagnostics ?? []).find((d) => d.code === 'repeated-sibling-subtree');
-    expect(sibling).toBeDefined();
-    expect(sibling!.message).toContain('structurally identical');
+    expect(rejected.isError).toBe(true);
+    expect(JSON.stringify(rejected.data ?? rejected.text)).toContain('structurally identical');
   });
 });

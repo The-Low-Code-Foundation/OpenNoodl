@@ -338,7 +338,23 @@ export enum DiagnosticCode {
    * Warning severity, blocking for authored output. 22 corpus hits, all of them
    * that one component and its copy.
    */
-  ComponentPortDirection = 'component-port-direction'
+  ComponentPortDirection = 'component-port-direction',
+  /**
+   * LAS-004 — a page component whose own graph is large enough that it has
+   * almost certainly inlined sections that wanted to be components.
+   *
+   * **Info, and it never blocks.** `repeated-sibling-subtree` catches a page
+   * that duplicated a subtree; this catches the more common shape of the same
+   * mistake — a page written top to bottom, which is the order a model naturally
+   * works in. The audit showed cold models already decompose once the doctrine
+   * reaches them (both replay Homes: 7 and 8 nodes), so this is a backstop
+   * against the 66-node regression, not pressure toward over-factoring.
+   *
+   * The threshold is the corpus's, not the doctrine's ~25 — see
+   * `rules/oversizedPage.ts` for the census and why 25 would have nagged a
+   * legitimately dense login form.
+   */
+  OversizedPage = 'oversized-page'
 }
 
 // ─── Location ─────────────────────────────────────────────────────────────────
