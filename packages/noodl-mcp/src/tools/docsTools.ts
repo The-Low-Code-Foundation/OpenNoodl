@@ -25,7 +25,8 @@ import * as path from 'path';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 
-import { assertInsideDocs, DocPathError, DOCS_DIR, DOC_TEMPLATES, KNOWN_DOCS } from '../editor-deps';
+import { assertInsideDocs, describeDoc, DocPathError, DOCS_DIR, DOC_TEMPLATES, KNOWN_DOCS } from '../editor-deps';
+import type { DocInjection } from '../editor-deps';
 import { ToolError } from '../errors';
 import type { ProjectStore } from '../project/ProjectStore';
 import { guarded, jsonResult } from './util';
@@ -37,10 +38,19 @@ export interface DocRow {
   path: string;
   bytes: number;
   modified: string;
-  /** Set for the three files the authoring loop knows about. */
+  /** Set for the three files the system ships a template for. */
   kind?: string;
-  /** How the in-editor loop treats it: injected every turn, or on request. */
-  injection?: 'default' | 'pull';
+  /**
+   * BLD-007 — how the in-editor loop treats it: injected on every turn, or
+   * fetched on request. Now resolved per file through `describeDoc`, the same
+   * function the editor uses, so this server cannot report an injection the
+   * panel disagrees with.
+   */
+  injection?: DocInjection;
+  /** BLD-007 — declared title, else first heading, else the filename. */
+  title?: string;
+  /** BLD-007 — hints from the doc's `when:` front matter. */
+  when?: string[];
 }
 
 export interface ListProjectDocsResponse {
@@ -93,10 +103,12 @@ export function registerDocsReadTools(server: McpServer, store: ProjectStore): v
     {
       title: 'List project docs',
       description:
-        "The project's own written context, under docs/. Three files are known to the system: CONVENTIONS.md " +
+        "The project's own written context, under docs/. Three files ship as templates: CONVENTIONS.md " +
         '(the rules an assistant must follow here — read it before authoring anything), BRIEF.md (what the app ' +
         'is for) and ARCHITECTURE.md (page map, data model, backend contracts, and the reasons behind them). ' +
-        'Any other markdown under docs/ is listed too. Missing known files are reported as missing.',
+        'Any other markdown under docs/ is listed too, and is a first-class document: each row carries the ' +
+        "`injection` its own front matter declared — `always` (in every authoring turn's prompt) or `pull` " +
+        '(fetched when relevant). Missing template files are reported as missing.',
       inputSchema: {}
     },
     guarded(() => {
@@ -105,13 +117,25 @@ export function registerDocsReadTools(server: McpServer, store: ProjectStore): v
       const found = walkDocs(docsDir, store.projectDir);
 
       const docs: DocRow[] = found.map((rel) => {
-        const stat = fs.statSync(path.join(store.projectDir, rel));
+        const abs = path.join(store.projectDir, rel);
+        const stat = fs.statSync(abs);
         const meta = known.get(rel);
+        // BLD-007: the declaration comes from the file, through the editor's own
+        // `describeDoc`. Reporting `KNOWN_DOCS`' static table here is what made
+        // this server tell an agent its own doc would be read when it never was.
+        let described: { injection?: DocInjection; title?: string; when?: string[] } = {};
+        try {
+          const d = describeDoc(rel, fs.readFileSync(abs, 'utf8'));
+          described = { injection: d.inject, title: d.title, ...(d.when.length > 0 ? { when: d.when } : {}) };
+        } catch {
+          /* unreadable — the row still lists, without a declaration */
+        }
         return {
           path: rel,
           bytes: stat.size,
           modified: stat.mtime.toISOString(),
-          ...(meta ? { kind: meta.kind, injection: meta.injection } : {})
+          ...(meta ? { kind: meta.kind } : {}),
+          ...described
         };
       });
 

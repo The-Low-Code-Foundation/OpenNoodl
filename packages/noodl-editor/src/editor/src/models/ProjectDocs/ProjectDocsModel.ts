@@ -29,11 +29,15 @@ import Model from '../../../../shared/model';
 import type { ProjectModel } from '../projectmodel';
 import {
   assertInsideDocs,
+  describeDoc,
+  docBody,
   DOCS_DIR,
   DOC_ARCHITECTURE,
   DOC_BRIEF,
   DOC_CONVENTIONS,
   KNOWN_DOCS,
+  type DiscoveredDoc,
+  type DocInjection,
   type KnownDocKind,
   type ProjectDocsContent
 } from './docsText';
@@ -47,11 +51,19 @@ export interface DocEntry {
   path: string;
   /** Basename for display. */
   name: string;
-  /** One of the three top-level files the system knows about. */
+  /** One of the three seed files the system ships a template for. */
   kind?: KnownDocKind;
-  /** False when the file does not exist yet (known docs are listed either way). */
+  /** False when the file does not exist yet (seed docs are listed either way). */
   exists: boolean;
   chars: number;
+  /** BLD-007 — how this doc reaches the model, declared or defaulted. */
+  inject?: DocInjection;
+  /** BLD-007 — declared title, else first heading, else the filename. */
+  title?: string;
+  /** BLD-007 — true when the file carries front matter of its own. */
+  declared?: boolean;
+  /** BLD-007 — front-matter lines this format could not use. */
+  problems?: string[];
 }
 
 /** The one event this model emits; the payload names the changed paths. */
@@ -151,7 +163,25 @@ export class ProjectDocsModel extends Model {
         } catch {
           /* raced with a delete — reported as an empty file, not a crash */
         }
-        entries.set(rel, { path: rel, name: file.name, kind: known.get(rel), exists: true, chars });
+        // BLD-007: the row carries the doc's own declaration, so the panel can
+        // show how it reaches the model without a second read per row. Reading
+        // it costs one file read each; `docs/` is a handful of small files, and
+        // a listing that cannot say "this one is ignored" is the listing that
+        // let D9 hide for a whole phase.
+        let declaration: Partial<DocEntry> = {};
+        try {
+          const source = await filesystem.readFile(file.fullPath);
+          const described = describeDoc(rel, source);
+          declaration = {
+            inject: described.inject,
+            title: described.title,
+            declared: described.declared,
+            ...(described.problems.length > 0 ? { problems: described.problems } : {})
+          };
+        } catch {
+          /* raced with a delete, or unreadable — the row still lists */
+        }
+        entries.set(rel, { path: rel, name: file.name, kind: known.get(rel), exists: true, chars, ...declaration });
       }
     }
 
@@ -159,9 +189,19 @@ export class ProjectDocsModel extends Model {
   }
 
   /**
-   * The three injectable doc bodies, read fresh. Absent files are absent fields
-   * — never empty strings, so "no BRIEF.md" and "an empty BRIEF.md" stay
+   * Everything the authoring loop may see, read fresh. Absent files are absent
+   * fields — never empty strings, so "no BRIEF.md" and "an empty BRIEF.md" stay
    * distinguishable to the context builder.
+   *
+   * BLD-007 — the three seed docs keep their named fields (that is the route
+   * whose bytes are already in every project's cached prefix), and everything
+   * else under `docs/` arrives in `extra` carrying the injection it declared. A
+   * seed doc that *overrides* its default travels through `extra` too, which is
+   * how `KNOWN_DOCS` stops gating injection without any pre-BLD-007 project
+   * changing by a byte.
+   *
+   * Front matter is stripped here and only here: `read()` returns the file as it
+   * is on disk, because the panel and the doc-authoring turn edit the real file.
    */
   async content(): Promise<ProjectDocsContent> {
     const [conventions, brief, architecture] = await Promise.all([
@@ -169,11 +209,71 @@ export class ProjectDocsModel extends Model {
       this.read(DOC_BRIEF),
       this.read(DOC_ARCHITECTURE)
     ]);
-    return {
-      ...(conventions !== undefined ? { conventions } : {}),
-      ...(brief !== undefined ? { brief } : {}),
-      ...(architecture !== undefined ? { architecture } : {})
-    };
+
+    const seeds: Array<[string, string | undefined, 'conventions' | 'brief' | 'architecture']> = [
+      [DOC_CONVENTIONS, conventions, 'conventions'],
+      [DOC_BRIEF, brief, 'brief'],
+      [DOC_ARCHITECTURE, architecture, 'architecture']
+    ];
+
+    const content: ProjectDocsContent = {};
+    const extra: DiscoveredDoc[] = [];
+
+    for (const [path, source, field] of seeds) {
+      if (source === undefined) continue;
+      const described = describeDoc(path, source);
+      const defaultInjection = KNOWN_DOCS.find((d) => d.path === path)!.injection;
+      if (described.inject === defaultInjection) {
+        content[field] = docBody(source);
+      } else {
+        extra.push({ path, title: described.title, inject: described.inject, when: described.when, body: docBody(source) });
+      }
+    }
+
+    extra.push(...(await this.discover()));
+    if (extra.length > 0) content.extra = extra;
+    return content;
+  }
+
+  /**
+   * BLD-007 — every markdown doc under `docs/` that is not one of the three
+   * seeds, with the injection it declared.
+   *
+   * Top level only, matching `list()`: `docs/decisions/` is a log of decisions
+   * already taken, and injecting a folder that grows without bound is how a
+   * project's every turn quietly gets more expensive.
+   */
+  private async discover(): Promise<DiscoveredDoc[]> {
+    if (!filesystem.exists(this.docsDir)) return [];
+    const seedPaths = new Set(KNOWN_DOCS.map((d) => d.path));
+    const out: DiscoveredDoc[] = [];
+
+    const files = await filesystem.listDirectoryFiles(this.docsDir);
+    for (const file of files) {
+      if (file.isDirectory || !file.name.toLowerCase().endsWith('.md')) continue;
+      const rel = toRelative(this.projectDir, file.fullPath);
+      if (!rel || seedPaths.has(rel)) continue;
+      let source: string;
+      try {
+        source = await filesystem.readFile(file.fullPath);
+      } catch {
+        continue; // raced with a delete; the next refresh sees the result
+      }
+      this.cache.set(rel, source);
+      const described = describeDoc(rel, source);
+      out.push({
+        path: rel,
+        title: described.title,
+        inject: described.inject,
+        when: described.when,
+        body: docBody(source)
+      });
+    }
+
+    // Stable order: the tool definition built from this list lives in the cached
+    // prefix, and a filesystem that returns files in a different order between
+    // two sessions would invalidate it for no reason at all.
+    return out.sort((a, b) => a.path.localeCompare(b.path));
   }
 
   /** The last content read for a doc, without touching disk. */
@@ -267,6 +367,21 @@ export class ProjectDocsModel extends Model {
     this.polling = true;
     try {
       const watched = new Set<string>([...this.cache.keys(), ...KNOWN_DOCS.map((d) => d.path)]);
+      // BLD-007: a doc the user has just created has never been read, so it is
+      // in neither set — and before this, writing `docs/uk-vat.md` in VS Code
+      // produced no change event and the next build never saw it. Listing is one
+      // directory read per poll against a handful of files.
+      if (filesystem.exists(this.docsDir)) {
+        try {
+          for (const file of await filesystem.listDirectoryFiles(this.docsDir)) {
+            if (file.isDirectory || !file.name.toLowerCase().endsWith('.md')) continue;
+            const rel = toRelative(this.projectDir, file.fullPath);
+            if (rel) watched.add(rel);
+          }
+        } catch {
+          /* the per-file reads below still report what they can */
+        }
+      }
       const changed: string[] = [];
       for (const rel of watched) {
         const abs = filesystem.join(this.projectDir, rel);

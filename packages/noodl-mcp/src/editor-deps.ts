@@ -229,6 +229,8 @@ export type { StylePreset } from '../../noodl-editor/src/editor/src/models/Style
 // ones the MCP write tool enforces are literally the same function.
 export {
   assertInsideDocs,
+  describeDoc,
+  docBody,
   DocPathError,
   DOCS_DIR,
   DOC_ARCHITECTURE,
@@ -236,9 +238,15 @@ export {
   DOC_CONVENTIONS,
   DOC_DECISIONS_DIR,
   KNOWN_DOCS,
-  normalizeDocPath
+  normalizeDocPath,
+  parseDocFrontMatter
 } from '../../noodl-editor/src/editor/src/models/ProjectDocs/docsText';
-export type { KnownDoc, KnownDocKind } from '../../noodl-editor/src/editor/src/models/ProjectDocs/docsText';
+export type {
+  DocDescriptor,
+  DocInjection,
+  KnownDoc,
+  KnownDocKind
+} from '../../noodl-editor/src/editor/src/models/ProjectDocs/docsText';
 export { DOC_TEMPLATES } from '../../noodl-editor/src/editor/src/models/ProjectDocs/templates';
 
 // ─── Decomposition doctrine (AAQ-008) ─────────────────────────────────────────

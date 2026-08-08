@@ -111,3 +111,43 @@ export const DOC_TEMPLATES: Record<KnownDocKind, string> = {
   architecture: ARCHITECTURE,
   conventions: CONVENTIONS
 };
+
+/**
+ * BLD-007 — the seed for a document the user invented.
+ *
+ * It leads with the front matter because the front matter is the part that is
+ * new and the part nobody would guess: the whole defect this closes is a doc
+ * that looked finished and was never read. The prose under it says what a good
+ * context doc contains, in the same voice as the three above — questions the
+ * graph cannot answer for itself.
+ */
+export function newDocTemplate(options: { title: string; purpose?: string; inject: 'always' | 'pull' }): string {
+  const hints =
+    options.inject === 'pull'
+      ? '\nwhen:   # words that should make the assistant reach for this — e.g. tax, pricing, invoices'
+      : '';
+  return `---
+title:  ${options.title}
+inject: ${options.inject}${hints}
+---
+
+# ${options.title}
+
+${options.purpose?.trim() || 'What this document is for, in one sentence.'}
+
+<!--
+  ${
+    options.inject === 'always'
+      ? 'This document is sent with every build in this project. Keep it short and keep it true.'
+      : 'The assistant fetches this when the task looks related. The `when:` hints above are how it decides.'
+  }
+
+  Good context is what the graph cannot say for itself: outside facts and rules
+  (a tax rate, an API's quirks, a brand voice), decisions and what was rejected,
+  and the things you would otherwise have to repeat in every prompt.
+
+  Not a description of the graph — Explain Mode narrates the live version, and a
+  prose copy of it is wrong by the next node drag.
+-->
+`;
+}
