@@ -76,6 +76,8 @@ import type { WriteValidation } from '../validate';
 import type { WriteValidationSummary } from './responses';
 import type { NodeInput } from './author';
 import { assembleCreateFiles, assembleSetFiles, ensureIds } from './author';
+// LAS-012 §4 — the skeleton's own writer owns the predicate for "untouched".
+import { isUntouchedSkeletonPage } from './createProject';
 // AAQ-005: one authoring vocabulary — the same node/connection shapes
 // `create_component` takes, rendered from the shared table rather than from a
 // second hand-written copy.
@@ -551,6 +553,37 @@ export function registerPlanTools(
         existing.add(pathToLegacyName(key));
         existing.add(pathToLegacyName(entry.path));
       }
+
+      // LAS-012 §4 / F41 — a create aimed at the untouched skeleton is an
+      // update. `create_project` mints /Pages/Home and this door then rejected
+      // the model for planning it; haiku and qwen each spent a turn on that in
+      // session 6. The create_project result does say the skeleton was made, so
+      // the knowledge was given and dropped — and "structure over gate" says
+      // the door absorbs it rather than charging for the lapse. Only a page
+      // that is still exactly Page + placeholder Text qualifies, so a plan can
+      // never quietly overwrite work someone did.
+      const absorbed: Array<{ id: string; target: string }> = [];
+      for (const op of operations) {
+        if (op.kind !== 'create') continue;
+        const row = store.resolve(op.target);
+        if (!row) continue;
+        // `resolve` answers `{ key, entry }` — NOT a row with `.path`, which is
+        // what `listComponents()` returns and what the first version of this
+        // read. It threw inside the catch below and every plan simply kept its
+        // rejection, silently. The specs in `skeletonCreate.test.ts` are what
+        // caught it; the catch stays for a registry entry whose files are
+        // genuinely unreadable, which is a real state and not this one.
+        let untouched = false;
+        try {
+          untouched = isUntouchedSkeletonPage(store.readComponent(row.entry.path).files.nodes.nodes);
+        } catch {
+          untouched = false;
+        }
+        if (!untouched) continue;
+        op.kind = 'update';
+        absorbed.push({ id: op.id, target: op.target });
+      }
+
       const plan: AuthoringPlan = {
         request: args.request,
         operations,
@@ -596,6 +629,18 @@ export function registerPlanTools(
         planId: id,
         operations: ordered,
         ...(args.scroll ? { scroll: args.scroll } : {}),
+        // LAS-012 §4 / F41. Reported, not silent: the kind an operation ends up
+        // with is not the kind the caller asked for, and a plan that changed
+        // shape without saying so is a surprise waiting for apply_plan.
+        ...(absorbed.length > 0
+          ? {
+              absorbedCreates: absorbed,
+              absorbedNote:
+                `${absorbed.length === 1 ? 'One operation' : `${absorbed.length} operations`} asked to create a ` +
+                'page that already exists as the untouched project skeleton, so it is an update instead. ' +
+                'Stage it the same way — the placeholder content is replaced by whatever you stage.'
+            }
+          : {}),
         ...(advisories.length > 0
           ? {
               advisories,

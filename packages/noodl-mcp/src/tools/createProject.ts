@@ -72,6 +72,49 @@ const PKG_VERSION: string = require('../../package.json').version;
 /** Legacy names the skeleton ships with. `planFromScope` needs these to know create from update. */
 export const SKELETON_COMPONENTS: ReadonlySet<string> = new Set(['/App', '/Pages/Home']);
 
+/**
+ * LAS-012 §4 / F41 — the sentence that marks a page nobody has built yet.
+ *
+ * `create_project` mints `/Pages/Home`; `create_plan` then rejected a plan
+ * containing an operation creating `Pages/Home` — *"that component already
+ * exists — use an update"*. Haiku and qwen each burned a turn on it in session
+ * 6 (sonnet did not). The `create_project` result **does** say a Home skeleton
+ * was made, so this is knowledge given and dropped rather than withheld; but
+ * "structure over gate" says the door absorbs it, and a create aimed at an
+ * untouched skeleton is an update by any reading that matters.
+ *
+ * The marker lives next to the writer that emits it so a reworded placeholder
+ * changes both in one edit, which is the only thing keeping
+ * {@link isUntouchedSkeletonPage} from going quietly stale.
+ */
+export const SKELETON_PLACEHOLDER_MARKER =
+  ' — nothing built yet. Review the plan in docs/ and start when you are ready.';
+
+/** As much of a stored node as {@link isUntouchedSkeletonPage} reads. */
+interface SkeletonNodeLike {
+  type: string;
+  parameters?: Record<string, unknown> | null;
+}
+
+/**
+ * Whether a component is the `Page` + placeholder `Text` this file writes, with
+ * nothing added.
+ *
+ * Deliberately exact rather than heuristic: two nodes, one `Page`, one `Text`
+ * carrying the marker sentence. A page an author has touched — even to delete
+ * the placeholder — is a page whose content a coerced update would silently
+ * replace, and "the plan overwrote my work because it said create" is a much
+ * worse turn than the one this saves.
+ */
+export function isUntouchedSkeletonPage(nodes: readonly SkeletonNodeLike[]): boolean {
+  if (nodes.length !== 2) return false;
+  const page = nodes.find((n) => n.type === 'Page');
+  const text = nodes.find((n) => n.type === 'Text');
+  if (!page || !text) return false;
+  const value = text.parameters?.['text'];
+  return typeof value === 'string' && value.endsWith(SKELETON_PLACEHOLDER_MARKER);
+}
+
 function newId(): string {
   return crypto.randomUUID();
 }
@@ -194,7 +237,7 @@ export function writeProjectSkeleton(projectDir: string, name: string): Skeleton
         type: 'Text',
         label: 'Placeholder',
         parent: pageId,
-        parameters: { text: `${name} — nothing built yet. Review the plan in docs/ and start when you are ready.` }
+        parameters: { text: `${name}${SKELETON_PLACEHOLDER_MARKER}` }
       }
     ],
     visualRoots: [pageId]
