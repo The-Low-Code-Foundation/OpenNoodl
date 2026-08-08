@@ -25,10 +25,10 @@ register; the sections below are the summary and the dependency map:**
 
 | Task | File | One line |
 |---|---|---|
-| LAS-001 ⭐ | [LAS-001-INTERFACE-GATE.md](LAS-001-INTERFACE-GATE.md) | instance parameters must match `Component Inputs` (F2) |
-| LAS-002 | [LAS-002-STAGING-SPEAKS.md](LAS-002-STAGING-SPEAKS.md) | authoring doors return diagnostics, not counts (F6) |
-| LAS-003 | [LAS-003-VALUE-FORMAT-GATES.md](LAS-003-VALUE-FORMAT-GATES.md) | layoutString grammar, unsized absolute Group, raw hex (F3, F7) |
-| LAS-004 | [LAS-004-PROMOTE-ARCHITECTURE-WARNINGS.md](LAS-004-PROMOTE-ARCHITECTURE-WARNINGS.md) | sibling rule blocks authored output; page-size info backstop |
+| LAS-001 ⭐ ✅ | [LAS-001-INTERFACE-GATE.md](LAS-001-INTERFACE-GATE.md) | instance parameters must match `Component Inputs` (F2) — **done**, 3 codes; found F8, the reference build's dead interface |
+| LAS-002 ✅ | [LAS-002-STAGING-SPEAKS.md](LAS-002-STAGING-SPEAKS.md) | authoring doors return diagnostics, not counts (F6) |
+| LAS-003 ✅ | [LAS-003-VALUE-FORMAT-GATES.md](LAS-003-VALUE-FORMAT-GATES.md) | layoutString grammar, unsized absolute Group, raw hex (F3, F7) |
+| LAS-004 ✅ | [LAS-004-PROMOTE-ARCHITECTURE-WARNINGS.md](LAS-004-PROMOTE-ARCHITECTURE-WARNINGS.md) | sibling rule blocks authored output; page-size info at **40** nodes, not the doctrine's 25 |
 | LAS-005 ⭐ | [LAS-005-RENDER-REPORT.md](LAS-005-RENDER-REPORT.md) | the 7.5s measure loop as an MCP tool with screenshots (F5) |
 | LAS-006 | [LAS-006-STRUCTURED-PLANS.md](LAS-006-STRUCTURED-PLANS.md) | plans carry interfaces/repeats; the plan becomes a contract |
 | LAS-007 | [LAS-007-PUSH-RETRIEVAL.md](LAS-007-PUSH-RETRIEVAL.md) | recipes attached inside rejections; the traps preamble |
@@ -304,15 +304,16 @@ LAS-010 (open-weight rig) ── needs Richard's pull decision; parallel to ever
 LAS-011 (exit matrix) ── last; needs 001–008 + 010
 ```
 
-Suggested sessions: **(1)** LAS-008 + LAS-002 + LAS-003 (small, sharp, all spec-pinned) · **(2)**
-LAS-001 + LAS-004 (the validator pair, one corpus calibration run) · **(3)** LAS-005 · **(4)**
+Suggested sessions: ✅ **(1)** LAS-008 + LAS-002 + LAS-003 (small, sharp, all spec-pinned) ·
+✅ **(2)** LAS-001 + LAS-004 (the validator pair, one corpus calibration run) · **(3)** LAS-005 · **(4)**
 LAS-006 + LAS-007 · **(5)** LAS-009 · **(6)** LAS-010 + LAS-011. Registers per task; serialise
 register edits (pathspec-commit trap); commit per slice.
 
 ## Gates for every session
 
 `npm run catalog:examples`, `catalog:check`, `catalog:merge:check`, `typecheck:editor`, `npx jest`
-in `packages/noodl-editor` (71 suites / 973 specs at phase-54 close — compare the passing COUNT,
+in `packages/noodl-editor` (**76 suites / 1029 specs** at session-2 close; 74/1001 at session 1,
+71/973 at phase-54 close — compare the passing COUNT,
 `Tests: 0` is a compile failure, and only the `Jasmine:` line counts in the editor suite), plus
-`packages/noodl-mcp` jest (its suite is a gate). `pr.yml`'s `Lint` and `Test (editor)` are red on
+`packages/noodl-mcp` jest (its suite is a gate — **20 suites / 208 specs** at session-2 close). `pr.yml`'s `Lint` and `Test (editor)` are red on
 push for pre-existing reasons — check WHICH job before reading a red run as yours.
