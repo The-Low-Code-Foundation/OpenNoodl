@@ -10,8 +10,20 @@ are done. The phase does not clear its own bar, and that is recorded rather than
 | LAS-001…011 | ✅ all done |
 | The acceptance matrix | ✅ complete, all cells measured — [LAS-011](LAS-011-ACCEPTANCE-MATRIX.md) |
 | The phase's success line | ❌ **not met** — only the strong model produced a good page |
-| Richard's verdict (the actual exit) | ⏳ **outstanding** — the phase is not closed until it is recorded |
+| Richard's verdict (the actual exit) | ✅ **recorded 2026-08-08** — the phase is closed |
 | Successors filed | [LAS-012](LAS-012-REPEATER-CONTRACT.md) ⭐, [LAS-013](LAS-013-SMALL-MODEL-HEADROOM.md) |
+
+**The verdict changed what ships.** Richard settled a recommended model per role rather than a
+claim about LLMs in general: **Opus 5** for design and plan (scoping, high-level architecture),
+**Sonnet 5** for act (the creation work). Open weights allowed *hosted behind an API*; **local
+ollama ruled out** for authoring. That decision is now data on the model registry
+(`recommendedFor`), read by the settings role pickers, pinned by
+`tests-unit/phase-55/recommendedModels.test.ts`.
+
+⚠️ **`measured` is a required field on every registry entry** and only `claude-sonnet-5` and
+`claude-haiku-4-5` are `true`. Opus 5, the open-weight entries, and the OpenAI/Grok/Google peers
+Richard waived testing for are recommendations on reputation. A tripwire fails if a later edit
+upgrades any of them to evidence — do not "tidy" that flag.
 
 **Do LAS-012 first.** It is one precondition check of a shape already built five times, its fixture
 is already on disk (`NodeGX test projects/phase55-s6-haiku` must produce three
@@ -106,8 +118,7 @@ session-1 numbers cost a session to produce by hand and could not be re-derived:
 
 ## What the next session should do
 
-1. **Get Richard's verdict recorded** in LAS-011 §"Step 5", verbatim. The phase does not close
-   without it, and an empty block means the exit criterion was never met.
+1. ~~Get Richard's verdict recorded~~ — ✅ done, LAS-011 §"Step 5", verbatim.
 2. **LAS-012.** One check, one fixture already on disk, the highest-value gate left.
 3. **LAS-013** if the claim "any competent LLM" is to survive. Its strongest candidate is an
    `extract_component` tool — structure over gate, the phase's own preference order: the model then

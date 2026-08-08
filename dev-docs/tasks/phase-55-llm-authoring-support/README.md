@@ -1,16 +1,25 @@
 # Phase 55 — Any LLM can build in NodeGX (Track E: the support system)
 
 **Created:** 2026-08-08
-**Status:** 🟡 **LAS-001…011 all done; the acceptance matrix is complete and the phase does not
-clear its own bar.** Three cold replays measured against the finished stack
-([LAS-011](LAS-011-ACCEPTANCE-MATRIX.md)): sonnet is an unqualified pass, haiku is architecturally
-correct but renders half a page, and the open-weight model was stopped by one of this phase's own
-gates. Two successor tasks filed with the evidence:
-**[LAS-012](LAS-012-REPEATER-CONTRACT.md)** (the repeater contract — the one unchecked port that
-cost haiku its content) and **[LAS-013](LAS-013-SMALL-MODEL-HEADROOM.md)** (the refactor cliff and
-the 89-tool door). **Awaiting Richard's verdict** against the artifact baseline
-(<https://claude.ai/code/artifact/af9ec57b-bfe5-4cea-af65-cac99b6adb74>) — the phase closes on that,
-not on the gates.
+**Status:** ✅ **CLOSED 2026-08-08 on Richard's verdict.** LAS-001…011 all done; the acceptance
+matrix complete ([LAS-011](LAS-011-ACCEPTANCE-MATRIX.md)); the phase **did not clear its own
+success line**, and closed on the verdict rather than on the gates, exactly as specified.
+
+> *"Sonnet is the only one that clears the bar, which confirms that we should recommend Opus for
+> scoping larger creations and doing high level design, Sonnet for the creation work and basic
+> designs. We can allow open weight models via API like DeepSeek v4 or the latest Qwen, the big
+> ones, but local Ollama looks to be a waste of time."* — Richard, 2026-08-08
+
+**The claim narrows deliberately.** Not "any competent LLM" — a **recommended model per role**,
+which is the seam LAS-009 built and left unused. That recommendation now lives on the model registry
+and the settings role pickers read it (`recommendedFor`, pinned by 8 specs). Local ollama is out as
+an authoring target; open weights are in, hosted behind an API.
+
+Two successors filed with the evidence: **[LAS-012](LAS-012-REPEATER-CONTRACT.md)** (the repeater
+contract — the one unchecked port that cost haiku its content, ⭐ do first) and
+**[LAS-013](LAS-013-SMALL-MODEL-HEADROOM.md)** (the refactor cliff and the 89-tool door).
+Artifact baseline: <https://claude.ai/code/artifact/af9ec57b-bfe5-4cea-af65-cac99b6adb74>.
+Judging page: <https://claude.ai/code/artifact/ca1ecdea-eb95-457f-8606-342fbc8fd9b1>.
 
 ### The result in three lines
 
