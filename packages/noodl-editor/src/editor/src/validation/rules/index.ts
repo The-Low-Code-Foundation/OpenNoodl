@@ -30,6 +30,7 @@ import { detachedPageContent } from './detachedPageContent';
 import { typeIncompatibleConnection } from './typeIncompatibleConnection';
 import { signalDrivenStaleInput } from './signalDrivenStaleInput';
 import { unwiredOutcome } from './unwiredOutcome';
+import { repeatedSiblingSubtree } from './repeatedSiblingSubtree';
 
 export const ALL_RULES: Rule[] = [
   duplicateNodeId,
@@ -42,7 +43,8 @@ export const ALL_RULES: Rule[] = [
   detachedPageContent,
   typeIncompatibleConnection,
   signalDrivenStaleInput,
-  unwiredOutcome
+  unwiredOutcome,
+  repeatedSiblingSubtree
 ];
 
 export {

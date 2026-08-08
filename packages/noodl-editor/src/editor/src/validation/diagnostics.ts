@@ -124,6 +124,22 @@ export enum DiagnosticCode {
    */
   ConnectionOnlyParameter = 'connection-only-parameter',
   /**
+   * Three or more structurally identical sibling subtrees — a component that
+   * was written out by hand instead of being made once and instantiated.
+   *
+   * The decomposition doctrine has said this in prose to both clients since
+   * AAQ-008, and prose alone did not hold: the reference build that produced
+   * this rule reached a 66-node page carrying three hand-duplicated trust items,
+   * three section heads and three category cards. A doctrine with no check
+   * behind it is advice, and advice is what gets skipped under pressure.
+   *
+   * Matched on STRUCTURE (types and arrangement), never on parameter values —
+   * instances are supposed to differ in their values, so comparing them would
+   * fire only on literal copy-paste and miss the case worth reporting. A
+   * warning, always: the graph renders correctly and the repair is a refactor.
+   */
+  RepeatedSiblingSubtree = 'repeated-sibling-subtree',
+  /**
    * A bare number on a units-typed port that is read as a **percentage** —
    * `width`, `height`, `maxWidth`, `minWidth`. `{ value, unit }` is the form
    * real content uses: across the whole repository these ports are written in
