@@ -1,11 +1,34 @@
 # Phase 55 — Any LLM can build in NodeGX (Track E: the support system)
 
 **Created:** 2026-08-08
-**Status:** 🚧 Audit DONE ([AUDIT-SESSION-1.md](AUDIT-SESSION-1.md), two cold replays measured);
-tasks specced as **[TASKS.md](TASKS.md)** (LAS-001…011). The audit partially overturned the
-premise below: cold models with the doctrine + `create_plan` decompose correctly — the dominant
-failures are the missing interface gate (LAS-001) and the unreachable render loop (LAS-005), not
-ordering. Exit = the LAS-011 acceptance matrix.
+**Status:** 🟡 **LAS-001…011 all done; the acceptance matrix is complete and the phase does not
+clear its own bar.** Three cold replays measured against the finished stack
+([LAS-011](LAS-011-ACCEPTANCE-MATRIX.md)): sonnet is an unqualified pass, haiku is architecturally
+correct but renders half a page, and the open-weight model was stopped by one of this phase's own
+gates. Two successor tasks filed with the evidence:
+**[LAS-012](LAS-012-REPEATER-CONTRACT.md)** (the repeater contract — the one unchecked port that
+cost haiku its content) and **[LAS-013](LAS-013-SMALL-MODEL-HEADROOM.md)** (the refactor cliff and
+the 89-tool door). **Awaiting Richard's verdict** against the artifact baseline
+(<https://claude.ai/code/artifact/af9ec57b-bfe5-4cea-af65-cac99b6adb74>) — the phase closes on that,
+not on the gates.
+
+### The result in three lines
+
+- **What worked, measured:** every F2-class defect is gone from both Claude runs. Sonnet went from
+  a page of blobs and a motorcycle to a clean, responsive shop — and the gates made it **cheaper**
+  (147 turns/$7.86 → 92/$5.10, 3 rejections in 91 calls), contradicting the fear that blocking
+  gates would make models loop.
+- **What is left, narrowly:** one unchecked port (`For Each.template`, F38) and one refactor a 27B
+  model cannot perform (F40). Both are named and filed, which is a better position than the diffuse
+  "AI is bad at NodeGX" the phase opened with.
+- **What is honest:** on the wording below, *"if only a strong model produces a beautiful page, it
+  did not [succeed]"* — only the strong model did.
+
+**Earlier status, kept for the record:** Audit DONE ([AUDIT-SESSION-1.md](AUDIT-SESSION-1.md), two
+cold replays measured); tasks specced as **[TASKS.md](TASKS.md)** (LAS-001…011). The audit partially
+overturned the premise below: cold models with the doctrine + `create_plan` decompose correctly —
+the dominant failures were the missing interface gate (LAS-001) and the unreachable render loop
+(LAS-005), not ordering.
 **Origin:** Richard, after reviewing the phase-54 storefront. It was the first AI-authored NodeGX page
 anyone thought was pretty, and it was still architected wrongly — one 66-node page with its sections
 inlined and its repeated rows hand-duplicated.
@@ -187,4 +210,10 @@ open ones are mirrored here so a grep finds them.
 | F35 | **The model registry has zero `openai-compatible` entries**, so any picker built from `getModelsForProvider` is empty for a custom gateway — the provider LAS-010's DeepInfra leg needs. Ollama is half the same story: 2 registry models vs whatever was actually pulled | ✅ **CLOSED** 2026-08-08 by **LAS-009** for the role pickers (text field, not a picker). The main model picker still needs a **Test connection** pass to fill in |
 | F34 | **LAS-009 §3's cost premise was broken in two ways.** The usage log it proposed tagging feeds nothing — `getUsageLog()`/`getSessionCostUsd()` have **zero callers**; the visible cost line is `PlanRun.costUsd`. And `PlanningSession`'s `outcome.costUsd` is discarded at its call site, so **plan-role spend reaches no line at all**. The log is now role-tagged and `getSessionCostByRole()` exists, but the visible per-run split needs a run boundary the log does not have | 🔴 OPEN, filed in LAS-009 |
 | F30 | The example gate's remaining findings, deliberately out of scope: 7 `inactive-conditional-parameter`, 2 `invalid-parameter-value`, 1 `unsized-absolute-box`, 1 `raw-color-literal` across seven examples | 🔴 OPEN, filed in LAS-007 |
+| F36 | **LAS-010's settled model could never have run.** `Qwen/Qwen2.5-Coder-32B-Instruct` on DeepInfra is tagged `openai,completion` — **no `tools` tag**; the whole `qwen2.5-coder` family is superseded there. Caught against the public catalog before any spend | ✅ **CLOSED** — Richard re-chose `Qwen/Qwen3.5-27B` |
+| F37 | **Our write-mode MCP surface does not fit a 32k-context client.** 89 tools; **measured on the wire, turn one billed 27,322 prompt tokens** (100,512 chars of schema + 2,855 of instructions + a 1,235-char brief), resent every turn — qwen's 32-turn run billed 2.19M input tokens. **60 of 89 tools and 63% of the schema bytes are backend admin.** The baselines never met it: the `claude` CLI defers tools behind `ToolSearch` (haiku opened session 1 with 11 such calls) | 🔴 OPEN — filed as **LAS-013 §2** |
+| F38 | ⭐ **A `For Each` with no `template` renders nothing and every instrument reports a pass.** Haiku's post-gates run: 3 repeaters, correct `items` arrays, no `template` → no products, no categories, no footer links. `validate:project` 0/0; `render_report` 0 errors; a census reads "For Each 3". Qwen failed the same contract from the other side (template as a *child*), down an `invalid-argument` path that carries no recipe. Sonnet, which set `template`, is the only one whose page is whole | 🔴 OPEN — filed as **LAS-012** |
+| F39 | LAS-011's own sonnet connections cell was in endpoints (102) where haiku's was in connections (0). Measured 56 / 101 | ✅ **CLOSED** — normalised; `score-run.js` reports both |
+| F40 | **LAS-004's authored-blocking `repeated-sibling-subtree` is a wall for a 27B model.** `Qwen/Qwen3.5-27B` saw 19, discarded its plan, stopped at turn 32 with one component and **named the rule as its reason**. Not a loop, not a tool-calling failure. Capability class, on the model's own words. Both Claude models cleared the same rule again (5 and 3 hits) | 🔴 OPEN — filed as **LAS-013 §1** |
+| F41 | `create_project` mints `Pages/Home`; `create_plan` then rejects a plan that creates it. Haiku and qwen each burned a turn; sonnet did not. Knowledge given and dropped, but self-inflicted | 🔴 OPEN, low severity — **LAS-012 §4** |
 | F32 | **The editor's jasmine suite is RED at session-3's close commit and the handover said it was green.** `npm run test:ci` in `noodl-editor`: 2418 assertions, **4 failures**, all in `AIX-006 style vocabulary` — its fixture sets `color` on a `Group`, which `unknown-parameter` blocks, so the candidate is refused before the style pass it is testing. Measured **both ways** at `b550b750` (revert my changes → identical 4; restore → identical 4), so this is inherited, not session-4's. Note the two runners are different things and the handover conflated them: `npx jest` (tests-main + tests-unit) is the 76/1029 number and is green; `npm run test:ci` is the jasmine/Electron suite and is the red one | 🔴 OPEN, needs its own task — a fixture teaching a refused shape, the `PageWithoutPageNode` class |

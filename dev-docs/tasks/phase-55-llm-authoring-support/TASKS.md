@@ -33,9 +33,11 @@ register; the sections below are the summary and the dependency map:**
 | LAS-006 ✅ | [LAS-006-STRUCTURED-PLANS.md](LAS-006-STRUCTURED-PLANS.md) | plans carry interfaces/repeats; the plan becomes a contract — **done**; the corpus killed the path-prefix predicate (F25) |
 | LAS-007 ⭐ ✅ | [LAS-007-PUSH-RETRIEVAL.md](LAS-007-PUSH-RETRIEVAL.md) | recipes attached inside rejections; the traps preamble — **done**; found F23/F24, the recipes taught the refused shape |
 | LAS-008 ✅ | [LAS-008-PROMPT-DRIFT.md](LAS-008-PROMPT-DRIFT.md) | fix `DESIGN_AUTHORING` + a tripwire spec (F1) |
-| LAS-009 | [LAS-009-PER-ROLE-MODELS.md](LAS-009-PER-ROLE-MODELS.md) | design/plan/act model selection (Richard's request) |
-| LAS-010 | [LAS-010-OPEN-WEIGHT-LEG.md](LAS-010-OPEN-WEIGHT-LEG.md) | the open-weight rig — model pull is human-gated |
-| LAS-011 | [LAS-011-ACCEPTANCE-MATRIX.md](LAS-011-ACCEPTANCE-MATRIX.md) | the exit matrix the phase closes on |
+| LAS-009 ✅ | [LAS-009-PER-ROLE-MODELS.md](LAS-009-PER-ROLE-MODELS.md) | design/plan/act model selection (Richard's request) |
+| LAS-010 ✅ | [LAS-010-OPEN-WEIGHT-LEG.md](LAS-010-OPEN-WEIGHT-LEG.md) | the open-weight rig — **done**; the settled model could not tool-call (F36) and our surface did not fit its context (F37) |
+| LAS-011 ✅ | [LAS-011-ACCEPTANCE-MATRIX.md](LAS-011-ACCEPTANCE-MATRIX.md) | the exit matrix — **complete**; the phase misses its own bar, two successors filed |
+| LAS-012 📋 | [LAS-012-REPEATER-CONTRACT.md](LAS-012-REPEATER-CONTRACT.md) | ⭐ the repeater contract gate (F38) — a `For Each` with no `template` renders nothing, unchecked everywhere |
+| LAS-013 📋 | [LAS-013-SMALL-MODEL-HEADROOM.md](LAS-013-SMALL-MODEL-HEADROOM.md) | the refactor cliff (F40) and the 89-tool door (F37) |
 
 ---
 
@@ -314,8 +316,20 @@ LAS-011 (exit matrix) ── last; needs 001–008 + 010
 
 Suggested sessions: ✅ **(1)** LAS-008 + LAS-002 + LAS-003 (small, sharp, all spec-pinned) ·
 ✅ **(2)** LAS-001 + LAS-004 (the validator pair, one corpus calibration run) · ✅ **(3)** LAS-005 · ✅ **(4)**
-LAS-006 + LAS-007 · ✅ **(5)** LAS-009 · **(6)** LAS-010 + LAS-011. Registers per task; serialise
+LAS-006 + LAS-007 · ✅ **(5)** LAS-009 · ✅ **(6)** LAS-010 + LAS-011. Registers per task; serialise
 register edits (pathspec-commit trap); commit per slice.
+
+**All eleven are done. The matrix they exist for is complete and does not clear the bar**, so the
+phase ends with two filed successors rather than a tick:
+
+```
+LAS-012 (repeater contract, F38+F41) ── the one unchecked port that cost haiku its content
+LAS-013 (small-model headroom, F40+F37) ── the refactor cliff, and the 89-tool door
+```
+
+Do **LAS-012 first**: it is one precondition check of a shape already built five times, it has a
+fixture sitting on disk (`NodeGX test projects/phase55-s6-haiku`, three expected errors), and it is
+the difference between "architecturally correct" and "a page with its lists drawn".
 
 ## Gates for every session
 
