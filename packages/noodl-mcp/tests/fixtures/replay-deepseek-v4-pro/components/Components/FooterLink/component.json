@@ -1,0 +1,11 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/component-v2.json",
+  "id": "166d2b5d-3d96-46c9-9baa-6ffffd5dce20",
+  "name": "FooterLink",
+  "path": "/Components/FooterLink",
+  "type": "visual",
+  "created": "2026-08-08T20:27:00.182Z",
+  "modified": "2026-08-08T20:27:00.182Z",
+  "modifiedBy": "noodl-mcp",
+  "description": "A single footer text link — used as the template for the For Each repeater in FooterLinkColumn."
+}

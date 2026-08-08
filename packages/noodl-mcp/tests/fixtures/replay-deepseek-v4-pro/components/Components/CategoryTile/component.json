@@ -1,0 +1,11 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/component-v2.json",
+  "id": "67efa155-7606-446f-aef2-3c1b7fbfb32c",
+  "name": "CategoryTile",
+  "path": "/Components/CategoryTile",
+  "type": "visual",
+  "created": "2026-08-08T20:26:47.580Z",
+  "modified": "2026-08-08T20:26:47.580Z",
+  "modifiedBy": "noodl-mcp",
+  "description": "A browse-by-category tile with a photo, category name, and piece count."
+}

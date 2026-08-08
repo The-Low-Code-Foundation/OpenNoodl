@@ -145,6 +145,16 @@ export function listNodeTypes(filter: ListNodeTypesFilter = {}): NodeTypeRow[] {
   return rows;
 }
 
+/**
+ * Does a node of this type draw anything? — the catalog's half of the
+ * `visualRoots` derivation (AWP-001). Returns `false` for a component instance,
+ * whose type is a project legacyName the catalog has never heard of; see
+ * `deriveVisualRootIdsInProject` for the recursive answer.
+ */
+export function isVisualNodeType(typeName: string): boolean {
+  return byType().get(typeName)?.isVisual === true;
+}
+
 export function listCategories(): string[] {
   const set = new Set<string>();
   for (const n of catalogFile.nodes) if (n.category) set.add(n.category);

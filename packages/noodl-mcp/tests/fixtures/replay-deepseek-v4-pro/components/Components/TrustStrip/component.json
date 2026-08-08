@@ -1,0 +1,11 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/component-v2.json",
+  "id": "08d43ed8-3fe3-4195-bee8-22a4ce9747a8",
+  "name": "TrustStrip",
+  "path": "/Components/TrustStrip",
+  "type": "visual",
+  "created": "2026-08-08T20:28:29.807Z",
+  "modified": "2026-08-08T20:28:29.807Z",
+  "modifiedBy": "noodl-mcp",
+  "description": "A horizontal strip of three InfoStripItems: free delivery, 30-day returns, secure checkout."
+}

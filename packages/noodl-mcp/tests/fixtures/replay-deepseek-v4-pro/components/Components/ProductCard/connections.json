@@ -1,0 +1,55 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "34c7ec70-9181-4806-8b9b-35c1b1371989",
+  "version": 1,
+  "connections": [
+    {
+      "fromId": "pc-inputs",
+      "fromProperty": "image",
+      "toId": "pc-image",
+      "toProperty": "src"
+    },
+    {
+      "fromId": "pc-inputs",
+      "fromProperty": "name",
+      "toId": "pc-name",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "pc-inputs",
+      "fromProperty": "description",
+      "toId": "pc-desc",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "pc-inputs",
+      "fromProperty": "price",
+      "toId": "pc-price",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "pc-inputs",
+      "fromProperty": "compareAtPrice",
+      "toId": "pc-compare-at",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "pc-inputs",
+      "fromProperty": "compareAtPrice",
+      "toId": "pc-compare-at",
+      "toProperty": "visible"
+    },
+    {
+      "fromId": "pc-inputs",
+      "fromProperty": "isBestSeller",
+      "toId": "pc-badge-bestseller",
+      "toProperty": "visible"
+    },
+    {
+      "fromId": "pc-inputs",
+      "fromProperty": "reviewCount",
+      "toId": "pc-reviews",
+      "toProperty": "text"
+    }
+  ]
+}

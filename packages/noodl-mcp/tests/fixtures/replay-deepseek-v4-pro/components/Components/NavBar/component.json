@@ -1,0 +1,11 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/component-v2.json",
+  "id": "f0ae0e81-df8b-4993-b8b6-5b044f10dd6f",
+  "name": "NavBar",
+  "path": "/Components/NavBar",
+  "type": "visual",
+  "created": "2026-08-08T20:27:48.483Z",
+  "modified": "2026-08-08T20:27:48.483Z",
+  "modifiedBy": "noodl-mcp",
+  "description": "Top navigation bar with shop name, nav links, a search input, and a basket icon with item count."
+}

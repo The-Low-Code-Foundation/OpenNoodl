@@ -1,0 +1,11 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/component-v2.json",
+  "id": "bbd82f9e-25bb-415d-8ff3-0a2b6d72b4ea",
+  "name": "HeroSection",
+  "path": "/Components/HeroSection",
+  "type": "visual",
+  "created": "2026-08-08T20:28:07.904Z",
+  "modified": "2026-08-08T20:28:07.904Z",
+  "modifiedBy": "noodl-mcp",
+  "description": "Full-width hero with a background photo, headline, supporting text, and two CTA buttons."
+}

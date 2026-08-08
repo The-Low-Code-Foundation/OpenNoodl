@@ -115,6 +115,9 @@ export interface GetComponentResponse {
   revision: string;
   nodes: NodeV2[];
   visualRoots?: string[];
+  /** AWP-001 §3 — true when the file had no `visualRoots` and the server derived
+   * it, so an agent can tell "this is what renders" from "this is what was written". */
+  visualRootsDerived?: boolean;
   comments?: unknown[];
   connections: ConnectionV2[];
   /** Only when `include_usages` was set. */
@@ -224,7 +227,27 @@ export interface NodeIdRemapSummary {
   remapNote?: string;
 }
 
-export interface CreateComponentResponse extends WriteValidationSummary, PageRegistrationSummary, NodeIdRemapSummary {
+/**
+ * AWP-001 §2 — what actually renders, reported back on every successful write.
+ *
+ * `visual_roots` had no `.describe()`, appeared in no tool description, and was
+ * optional on all three doors: a model had no way to learn the field existed and
+ * no consequence when it omitted one. Fifteen tokens in a result — `"visualRoots":
+ * ["card"], "visualRootsDerived": true` — teach the concept at the only moment it
+ * is relevant, which is the documentation this field should always have had.
+ */
+export interface VisualRootsSummary {
+  /** The ids that will draw. Absent when the component has no visual node at all. */
+  visualRoots?: string[];
+  /** True when the server computed the list; absent when the caller supplied it. */
+  visualRootsDerived?: boolean;
+}
+
+export interface CreateComponentResponse
+  extends WriteValidationSummary,
+    PageRegistrationSummary,
+    NodeIdRemapSummary,
+    VisualRootsSummary {
   created: string;
   legacyName: string;
   type: string;
@@ -238,7 +261,11 @@ export interface CreateComponentResponse extends WriteValidationSummary, PageReg
   planAdvisory?: string;
 }
 
-export interface UpdateComponentResponse extends WriteValidationSummary, PageRegistrationSummary, NodeIdRemapSummary {
+export interface UpdateComponentResponse
+  extends WriteValidationSummary,
+    PageRegistrationSummary,
+    NodeIdRemapSummary,
+    VisualRootsSummary {
   updated: string;
   revision: string;
   /** Present for the `operations` form; absent for `set`. */

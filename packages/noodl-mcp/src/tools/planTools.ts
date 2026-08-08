@@ -75,7 +75,7 @@ import { authoredProjectViews, preconditionDiagnostics } from '../validate';
 import type { WriteValidation } from '../validate';
 import type { WriteValidationSummary } from './responses';
 import type { NodeInput } from './author';
-import { assembleCreateFiles, assembleSetFiles, ensureIds } from './author';
+import { assembleCreateFiles, assembleSetFiles, ensureIds, projectVisualPredicate } from './author';
 // LAS-012 §4 — the skeleton's own writer owns the predicate for "untouched".
 import { isUntouchedSkeletonPage } from './createProject';
 // AAQ-005: one authoring vocabulary — the same node/connection shapes
@@ -741,15 +741,16 @@ export function registerPlanTools(
             nodes: reconciled.nodes,
             connections: args.connections,
             visualRoots: args.visual_roots,
-            description: args.description
+            description: args.description,
+            isVisualType: projectVisualPredicate(store)
           });
         } else {
           baseline = store.readComponent(operation.target).files;
-          candidate = assembleSetFiles(baseline, {
-            nodes: reconciled.nodes,
-            connections: args.connections,
-            visualRoots: args.visual_roots
-          });
+          candidate = assembleSetFiles(
+            baseline,
+            { nodes: reconciled.nodes, connections: args.connections, visualRoots: args.visual_roots },
+            projectVisualPredicate(store)
+          );
         }
 
         // AAQ-011/F12 — same allocation rule as the direct doors, and it has to

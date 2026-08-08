@@ -1,0 +1,33 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "166d2b5d-3d96-46c9-9baa-6ffffd5dce20",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "fl-inputs",
+      "type": "Component Inputs",
+      "label": "FooterLink Inputs",
+      "x": 0,
+      "y": 0,
+      "ports": [
+        {
+          "name": "label",
+          "plug": "output",
+          "type": "string"
+        }
+      ]
+    },
+    {
+      "id": "fl-text",
+      "type": "Text",
+      "label": "Link Text",
+      "x": 300,
+      "y": 0,
+      "parameters": {
+        "fontSize": "var(--text-sm)",
+        "color": "var(--muted-foreground)",
+        "lineHeight": "var(--leading-normal)"
+      }
+    }
+  ]
+}

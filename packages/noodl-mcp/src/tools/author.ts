@@ -29,6 +29,8 @@ import type { PlanRegistry } from './planTools';
 import type { WriteValidation } from '../validate';
 import { validateCandidate, validateDeletion } from '../validate';
 import { CREATE_COMPONENT_SHAPE, connectionSchema, nodeSchema, portSchema } from '../vocabulary';
+import type { VisualTypePredicate } from '../visualRoots';
+import { catalogVisualPredicate, makeProjectVisualPredicate, resolveVisualRoots } from '../visualRoots';
 import type {
   CreateComponentResponse,
   DeletionRefusalDetails,
@@ -98,6 +100,33 @@ export function ensureIds(nodes: NodeInput[]): NodeV2[] {
 }
 
 /**
+ * AWP-001 — the visual predicate with the project in hand.
+ *
+ * A node's type is either a catalog type or the legacyName of a component in
+ * this project. An instance draws exactly when the component it points at has
+ * visual roots of its own, so a page whose top-level node is `/Components/NavBar`
+ * needs the project to answer at all — the catalog has never heard of it.
+ */
+export function projectVisualPredicate(store: ProjectStore): VisualTypePredicate {
+  return makeProjectVisualPredicate((legacyName) => {
+    if (!store.resolve(legacyName)) return undefined;
+    return store.readComponent(legacyName).files.nodes.nodes ?? [];
+  });
+}
+
+/**
+ * AWP-001 §2 — what the write actually decided about rendering, for the result.
+ *
+ * `derived` distinguishes "we computed this" from "you asked for this", which is
+ * the difference between teaching the model the concept and merely echoing it.
+ */
+function visualRootsPayload(candidate: ComponentFiles, explicit: string[] | undefined) {
+  const visualRoots = candidate.nodes.visualRoots;
+  if (!visualRoots?.length) return {};
+  return { visualRoots, ...(explicit === undefined ? { visualRootsDerived: true } : {}) };
+}
+
+/**
  * Assemble the three v2 files for a brand-new component — the exact shape
  * `create_component` writes. Shared with the plan tools (AIX-011) so a staged
  * plan create and a direct create can never drift. Hierarchy must already be
@@ -112,6 +141,10 @@ export function assembleCreateFiles(args: {
   visualRoots?: string[];
   description?: string;
   modifiedBy?: string;
+  /** AWP-001 — how to tell a drawing node from a logic one. Defaults to the
+   * catalog alone, which answers `false` for a component instance; pass
+   * `projectVisualPredicate(store)` to resolve those too. */
+  isVisualType?: VisualTypePredicate;
 }): ComponentFiles {
   const now = new Date().toISOString();
   const componentId = crypto.randomUUID();
@@ -126,12 +159,19 @@ export function assembleCreateFiles(args: {
     modifiedBy: args.modifiedBy ?? 'noodl-mcp',
     ...(args.description ? { description: args.description } : {})
   };
+  // AWP-001/F43 — derive rather than require. This was
+  // `...(args.visualRoots?.length ? { visualRoots: args.visualRoots } : {})`:
+  // absent in, absent out, and a component with no `visualRoots` renders nothing
+  // because the runtime draws a component instance from `componentModel.roots`.
+  // The editor cannot produce such a file — it derives the field on every
+  // serialize — so only an agent could, and one did.
+  const resolved = resolveVisualRoots(args.nodes, args.visualRoots, args.isVisualType ?? catalogVisualPredicate);
   const nodes: NodesV2File = {
     $schema: 'https://opennoodl.dev/schemas/nodes-v2.json',
     componentId,
     version: 1,
     nodes: args.nodes,
-    ...(args.visualRoots?.length ? { visualRoots: args.visualRoots } : {})
+    ...(resolved.visualRoots ? { visualRoots: resolved.visualRoots } : {})
   };
   const connections: ConnectionsV2File = {
     $schema: 'https://opennoodl.dev/schemas/connections-v2.json',
@@ -149,14 +189,19 @@ export function assembleCreateFiles(args: {
  */
 export function assembleSetFiles(
   baseline: ComponentFiles,
-  set: { nodes: NodeV2[]; connections?: ConnectionV2[]; visualRoots?: string[] }
+  set: { nodes: NodeV2[]; connections?: ConnectionV2[]; visualRoots?: string[] },
+  isVisualType: VisualTypePredicate = catalogVisualPredicate
 ): ComponentFiles {
   const candidate: ComponentFiles = JSON.parse(JSON.stringify(baseline));
   candidate.nodes.nodes = set.nodes;
-  if (set.visualRoots !== undefined) {
-    if (set.visualRoots.length > 0) candidate.nodes.visualRoots = set.visualRoots;
-    else delete candidate.nodes.visualRoots;
-  }
+  // AWP-001 — always recompute unless the caller said otherwise. Leaving the
+  // baseline's list in place was the second half of F43: `set` replaces the whole
+  // graph, so the inherited ids can name nodes that no longer exist. Re-deriving
+  // is also what the editor does — `getVisualRootIds()` runs on every save — so a
+  // deliberate subset never survived an editor save either.
+  const resolved = resolveVisualRoots(set.nodes, set.visualRoots, isVisualType);
+  if (resolved.visualRoots) candidate.nodes.visualRoots = resolved.visualRoots;
+  else delete candidate.nodes.visualRoots;
   if (set.connections !== undefined) {
     candidate.connections.connections = set.connections;
   }
@@ -296,7 +341,8 @@ export function registerAuthorTools(
           nodes: reconciled.nodes,
           connections: args.connections,
           visualRoots: args.visual_roots,
-          description: args.description
+          description: args.description,
+          isVisualType: projectVisualPredicate(store)
         });
 
         // AAQ-011/F12: before validating, move any id this project already uses
@@ -327,6 +373,7 @@ export function registerAuthorTools(
           ...registrationSummary(registration),
           ...remapPayload(remapped),
           ...successPayload(validation),
+          ...visualRootsPayload(candidate, args.visual_roots),
           // LAS-006 §4 — one line, on the door a page most often comes through
           // without a plan. Advisory and not a refusal: the bag-of-nodes door
           // stays open by decision (primitive-only, no ceremony for a two-node
@@ -387,11 +434,11 @@ export function registerAuthorTools(
           if (reconciled.errors.length > 0) {
             throw new ToolError('invalid-argument', 'Node hierarchy is inconsistent.', { errors: reconciled.errors });
           }
-          candidate = assembleSetFiles(baseline, {
-            nodes: reconciled.nodes,
-            connections: args.set.connections,
-            visualRoots: args.set.visual_roots
-          });
+          candidate = assembleSetFiles(
+            baseline,
+            { nodes: reconciled.nodes, connections: args.set.connections, visualRoots: args.set.visual_roots },
+            projectVisualPredicate(store)
+          );
         } else {
           const result = applyOperations(baseline, normalizeOperations(args.operations!));
           if (result.errors.length > 0) {
@@ -432,7 +479,8 @@ export function registerAuthorTools(
           ...(applied ? { applied } : {}),
           ...registrationSummary(registration),
           ...remapPayload(remapped),
-          ...successPayload(validation)
+          ...successPayload(validation),
+          ...visualRootsPayload(candidate, args.set?.visual_roots)
         };
         return jsonResult(payload);
       }

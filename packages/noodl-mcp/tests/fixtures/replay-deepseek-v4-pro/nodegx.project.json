@@ -1,0 +1,20 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/project-v2.json",
+  "name": "Kiln & Co.",
+  "id": "62a47fc5-3579-409f-a691-8a577e2538b2",
+  "version": "4",
+  "nodegxVersion": "0.1.0",
+  "runtimeVersion": "react19",
+  "created": "2026-08-08T20:23:30.794Z",
+  "modified": "2026-08-08T20:29:34.149Z",
+  "settings": {
+    "htmlTitle": "Kiln & Co.",
+    "navigationPathType": "path",
+    "bodyScroll": true
+  },
+  "structure": {
+    "componentsDir": "components",
+    "assetsDir": "assets"
+  },
+  "rootNodeId": "817eb3fa-3686-4101-8ef0-039041650ed6"
+}

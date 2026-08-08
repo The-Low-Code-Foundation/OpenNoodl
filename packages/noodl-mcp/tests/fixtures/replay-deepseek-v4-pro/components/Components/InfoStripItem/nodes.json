@@ -1,0 +1,134 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "61be71fb-e306-4be7-94f3-a03b4275eb94",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "isi-inputs",
+      "type": "Component Inputs",
+      "label": "InfoStripItem Inputs",
+      "x": 0,
+      "y": 0,
+      "ports": [
+        {
+          "name": "icon",
+          "plug": "output",
+          "type": "string"
+        },
+        {
+          "name": "title",
+          "plug": "output",
+          "type": "string"
+        },
+        {
+          "name": "description",
+          "plug": "output",
+          "type": "string"
+        }
+      ]
+    },
+    {
+      "id": "isi-root",
+      "type": "Group",
+      "label": "Item Root",
+      "x": 300,
+      "y": 0,
+      "children": [
+        "isi-icon-wrap",
+        "isi-text-col"
+      ],
+      "parameters": {
+        "flexDirection": "row",
+        "alignItems": "center",
+        "columnGap": {
+          "value": 16,
+          "unit": "px"
+        }
+      }
+    },
+    {
+      "id": "isi-icon-wrap",
+      "type": "Group",
+      "label": "Icon Circle",
+      "x": 300,
+      "y": 100,
+      "parent": "isi-root",
+      "children": [
+        "isi-icon"
+      ],
+      "parameters": {
+        "flexDirection": "none",
+        "width": {
+          "value": 48,
+          "unit": "px"
+        },
+        "height": {
+          "value": 48,
+          "unit": "px"
+        },
+        "borderRadius": {
+          "value": 24,
+          "unit": "px"
+        },
+        "backgroundColor": "var(--primary)",
+        "alignX": "center",
+        "alignY": "center"
+      }
+    },
+    {
+      "id": "isi-icon",
+      "type": "Text",
+      "label": "Icon Emoji",
+      "x": 300,
+      "y": 200,
+      "parent": "isi-icon-wrap",
+      "parameters": {
+        "fontSize": "var(--text-xl)"
+      }
+    },
+    {
+      "id": "isi-text-col",
+      "type": "Group",
+      "label": "Text Column",
+      "x": 300,
+      "y": 300,
+      "parent": "isi-root",
+      "children": [
+        "isi-title",
+        "isi-desc"
+      ],
+      "parameters": {
+        "flexDirection": "column",
+        "rowGap": {
+          "value": 2,
+          "unit": "px"
+        }
+      }
+    },
+    {
+      "id": "isi-title",
+      "type": "Text",
+      "label": "Title",
+      "x": 300,
+      "y": 400,
+      "parent": "isi-text-col",
+      "parameters": {
+        "fontSize": "var(--text-base)",
+        "fontWeight": "var(--font-semibold)",
+        "color": "var(--foreground)"
+      }
+    },
+    {
+      "id": "isi-desc",
+      "type": "Text",
+      "label": "Description",
+      "x": 300,
+      "y": 460,
+      "parent": "isi-text-col",
+      "parameters": {
+        "fontSize": "var(--text-sm)",
+        "color": "var(--muted-foreground)"
+      }
+    }
+  ]
+}

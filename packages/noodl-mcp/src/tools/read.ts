@@ -19,6 +19,8 @@ import type {
   SearchProjectResponse
 } from './responses';
 import { guarded, jsonResult } from './util';
+import { projectVisualPredicate } from './author';
+import { readVisualRoots } from '../visualRoots';
 
 const SEARCH_RESULT_CAP = 200;
 
@@ -129,6 +131,12 @@ export function registerReadTools(server: McpServer, store: ProjectStore, option
     guarded((args: { path: string; include_usages?: boolean }) => {
       const stored = store.readComponent(args.path);
       const c = stored.files.component;
+      // AWP-001 §3 — an agent inspecting a project written before the derivation
+      // landed must see what will actually render, not the absent field. Reading
+      // the raw value here is how F43 stayed invisible: the file said nothing and
+      // so did we.
+      const visualRoots = readVisualRoots(stored.files.nodes, projectVisualPredicate(store));
+      const derived = stored.files.nodes.visualRoots === undefined;
       const payload: GetComponentResponse = {
         path: stored.key,
         legacyName: stored.legacyName,
@@ -138,7 +146,8 @@ export function registerReadTools(server: McpServer, store: ProjectStore, option
         ports: c.ports,
         revision: stored.revision,
         nodes: stored.files.nodes.nodes,
-        visualRoots: stored.files.nodes.visualRoots,
+        visualRoots,
+        ...(derived && visualRoots.length > 0 ? { visualRootsDerived: true } : {}),
         comments: stored.files.nodes.comments,
         connections: stored.files.connections.connections,
         ...(args.include_usages ? { usages: store.findUsages(stored.key) } : {})

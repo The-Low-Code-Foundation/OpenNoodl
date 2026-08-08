@@ -1,0 +1,162 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "67efa155-7606-446f-aef2-3c1b7fbfb32c",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "ct-inputs",
+      "type": "Component Inputs",
+      "label": "CategoryTile Inputs",
+      "x": 0,
+      "y": 0,
+      "ports": [
+        {
+          "name": "image",
+          "plug": "output",
+          "type": "string"
+        },
+        {
+          "name": "name",
+          "plug": "output",
+          "type": "string"
+        },
+        {
+          "name": "count",
+          "plug": "output",
+          "type": "number"
+        }
+      ]
+    },
+    {
+      "id": "ct-root",
+      "type": "Group",
+      "label": "Tile Root",
+      "x": 300,
+      "y": 0,
+      "children": [
+        "ct-image-wrap",
+        "ct-body"
+      ],
+      "parameters": {
+        "flexDirection": "column",
+        "backgroundColor": "var(--surface)",
+        "borderRadius": {
+          "value": 12,
+          "unit": "px"
+        },
+        "borderStyle": "solid",
+        "borderWidth": {
+          "value": 1,
+          "unit": "px"
+        },
+        "borderColor": "var(--border)",
+        "clip": true
+      }
+    },
+    {
+      "id": "ct-image-wrap",
+      "type": "Group",
+      "label": "Image Wrap",
+      "x": 300,
+      "y": 100,
+      "parent": "ct-root",
+      "children": [
+        "ct-image"
+      ],
+      "parameters": {
+        "flexDirection": "none",
+        "height": {
+          "value": 200,
+          "unit": "px"
+        },
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "backgroundColor": "var(--muted)",
+        "clip": true
+      }
+    },
+    {
+      "id": "ct-image",
+      "type": "Image",
+      "label": "Category Photo",
+      "x": 300,
+      "y": 200,
+      "parent": "ct-image-wrap",
+      "parameters": {
+        "sizeMode": "explicit",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "height": {
+          "value": 100,
+          "unit": "%"
+        },
+        "objectFit": "cover"
+      }
+    },
+    {
+      "id": "ct-body",
+      "type": "Group",
+      "label": "Tile Body",
+      "x": 300,
+      "y": 340,
+      "parent": "ct-root",
+      "children": [
+        "ct-name",
+        "ct-count"
+      ],
+      "parameters": {
+        "flexDirection": "column",
+        "paddingLeft": {
+          "value": 20,
+          "unit": "px"
+        },
+        "paddingRight": {
+          "value": 20,
+          "unit": "px"
+        },
+        "paddingTop": {
+          "value": 20,
+          "unit": "px"
+        },
+        "paddingBottom": {
+          "value": 20,
+          "unit": "px"
+        },
+        "rowGap": {
+          "value": 4,
+          "unit": "px"
+        }
+      }
+    },
+    {
+      "id": "ct-name",
+      "type": "Text",
+      "label": "Category Name",
+      "x": 300,
+      "y": 440,
+      "parent": "ct-body",
+      "parameters": {
+        "fontSize": "var(--text-xl)",
+        "fontWeight": "var(--font-semibold)",
+        "color": "var(--foreground)",
+        "lineHeight": "var(--leading-snug)"
+      }
+    },
+    {
+      "id": "ct-count",
+      "type": "Text",
+      "label": "Piece Count",
+      "x": 300,
+      "y": 500,
+      "parent": "ct-body",
+      "parameters": {
+        "fontSize": "var(--text-sm)",
+        "color": "var(--muted-foreground)"
+      }
+    }
+  ]
+}

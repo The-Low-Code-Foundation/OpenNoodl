@@ -170,11 +170,54 @@ function buildProjectData() {
         targetId: c.targetId ?? c.toId,
         targetPort: c.targetPort ?? c.toProperty
       })),
-      roots: nodesFile.visualRoots || [],
+      // AWP-001 §3 — `visualRoots` absent is not `visualRoots` empty. This read
+      // was `nodesFile.visualRoots || []`, which rendered an agent-authored
+      // component as nothing at all and disagreed with `ProjectImporter`, whose
+      // roots come from the node tree. Two readers, one file, two answers — F43.
+      // `undefined` here means "derive below"; `[]` means a writer said empty.
+      roots: nodesFile.visualRoots,
       ports: [...(nodesFile.ports || []), ...flat.flatMap(liftInterface)],
       metadata: nodesFile.metadata || undefined
     });
   }
+
+  // ── AWP-001 §3: derive `visualRoots` for any component that declared none ────
+  // The predicate is READ from the catalog, not restated here — this file's own
+  // header records that paraphrasing the export contract cost two phases of
+  // certifying a page the editor cannot render, and this is that same contract.
+  const visualTypeNames = (() => {
+    try {
+      const catalog = require(path.join(REPO, 'packages/noodl-types/src/node-catalog-enriched.json'));
+      return new Set((catalog.nodes || []).filter((n) => n.isVisual === true).map((n) => n.typeName));
+    } catch {
+      return null; // no catalog in this checkout — leave declared roots alone
+    }
+  })();
+  if (visualTypeNames) {
+    const byComponentName = new Map(components.map((c) => [c.name, c]));
+    const memo = new Map();
+    const inFlight = new Set();
+    const drawsAnything = (name) => {
+      if (memo.has(name)) return memo.get(name);
+      if (inFlight.has(name)) return false; // cyclic instantiation is already invalid
+      const c = byComponentName.get(name);
+      if (!c) return false;
+      inFlight.add(name);
+      const draws = c.nodes.some((n) => isVisualType(n.type));
+      inFlight.delete(name);
+      memo.set(name, draws);
+      return draws;
+    };
+    // A node is either a catalog type, or an instance of a project component —
+    // and an instance draws exactly when the component it points at does.
+    const isVisualType = (type) =>
+      visualTypeNames.has(type) ? true : byComponentName.has(type) ? drawsAnything(type) : false;
+
+    for (const c of components) {
+      if (c.roots === undefined) c.roots = c.nodes.filter((n) => isVisualType(n.type)).map((n) => n.id);
+    }
+  }
+  for (const c of components) if (c.roots === undefined) c.roots = [];
 
   let rootComponent;
   for (const c of components) {

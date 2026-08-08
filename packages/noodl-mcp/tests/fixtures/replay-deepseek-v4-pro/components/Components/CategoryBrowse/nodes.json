@@ -1,0 +1,206 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "9b4a85b8-f73d-40c4-857b-6b4d44a2550b",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "cb-root",
+      "type": "Group",
+      "label": "Category Band",
+      "x": 0,
+      "y": 0,
+      "children": [
+        "cb-shell"
+      ],
+      "parameters": {
+        "flexDirection": "column",
+        "alignItems": "center",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "paddingLeft": {
+          "value": 48,
+          "unit": "px"
+        },
+        "paddingRight": {
+          "value": 48,
+          "unit": "px"
+        },
+        "paddingTop": {
+          "value": 80,
+          "unit": "px"
+        },
+        "paddingBottom": {
+          "value": 80,
+          "unit": "px"
+        },
+        "backgroundColor": "var(--background)"
+      }
+    },
+    {
+      "id": "cb-shell",
+      "type": "Group",
+      "label": "Shell",
+      "x": 0,
+      "y": 100,
+      "parent": "cb-root",
+      "children": [
+        "cb-head",
+        "cb-grid"
+      ],
+      "parameters": {
+        "flexDirection": "column",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "maxWidth": {
+          "value": 1100,
+          "unit": "px"
+        },
+        "rowGap": {
+          "value": 40,
+          "unit": "px"
+        }
+      }
+    },
+    {
+      "id": "cb-head",
+      "type": "Group",
+      "label": "Section Head",
+      "x": 0,
+      "y": 200,
+      "parent": "cb-shell",
+      "children": [
+        "cb-eyebrow",
+        "cb-heading",
+        "cb-sub"
+      ],
+      "parameters": {
+        "flexDirection": "column",
+        "alignItems": "center",
+        "rowGap": {
+          "value": 12,
+          "unit": "px"
+        }
+      }
+    },
+    {
+      "id": "cb-eyebrow",
+      "type": "Text",
+      "label": "Eyebrow",
+      "x": 0,
+      "y": 300,
+      "parent": "cb-head",
+      "parameters": {
+        "text": "BROWSE",
+        "fontSize": "var(--text-xs)",
+        "fontWeight": "var(--font-semibold)",
+        "color": "var(--primary)",
+        "letterSpacing": "var(--tracking-widest)"
+      }
+    },
+    {
+      "id": "cb-heading",
+      "type": "Text",
+      "label": "Heading",
+      "x": 0,
+      "y": 360,
+      "parent": "cb-head",
+      "parameters": {
+        "text": "Shop by category",
+        "fontSize": "var(--text-3xl)",
+        "fontWeight": "var(--font-semibold)",
+        "color": "var(--foreground)",
+        "lineHeight": "var(--leading-tight)",
+        "letterSpacing": "var(--tracking-tight)"
+      }
+    },
+    {
+      "id": "cb-sub",
+      "type": "Text",
+      "label": "Subtext",
+      "x": 0,
+      "y": 420,
+      "parent": "cb-head",
+      "parameters": {
+        "text": "Everything we make falls into one of three collections. Start where your interest takes you.",
+        "fontSize": "var(--text-lg)",
+        "color": "var(--muted-foreground)",
+        "lineHeight": "var(--leading-relaxed)",
+        "maxWidth": {
+          "value": 560,
+          "unit": "px"
+        }
+      }
+    },
+    {
+      "id": "cb-grid",
+      "type": "net.noodl.visual.columns",
+      "label": "Category Grid",
+      "x": 0,
+      "y": 480,
+      "parent": "cb-shell",
+      "children": [
+        "cb-tile1",
+        "cb-tile2",
+        "cb-tile3"
+      ],
+      "parameters": {
+        "sizing": "autoFit",
+        "minWidth": {
+          "value": 300,
+          "unit": "px"
+        },
+        "marginX": {
+          "value": 24,
+          "unit": "px"
+        },
+        "marginY": {
+          "value": 24,
+          "unit": "px"
+        }
+      }
+    },
+    {
+      "id": "cb-tile1",
+      "type": "/Components/CategoryTile",
+      "label": "Ceramics",
+      "x": 0,
+      "y": 580,
+      "parent": "cb-grid",
+      "parameters": {
+        "image": "https://images.unsplash.com/photo-1565193566173-7a0ee3dbe261?w=600&q=80",
+        "name": "Ceramics",
+        "count": 42
+      }
+    },
+    {
+      "id": "cb-tile2",
+      "type": "/Components/CategoryTile",
+      "label": "Coffee",
+      "x": 0,
+      "y": 640,
+      "parent": "cb-grid",
+      "parameters": {
+        "image": "https://images.unsplash.com/photo-1497935586351-b67a49e012bf?w=600&q=80",
+        "name": "Coffee",
+        "count": 18
+      }
+    },
+    {
+      "id": "cb-tile3",
+      "type": "/Components/CategoryTile",
+      "label": "Home",
+      "x": 0,
+      "y": 700,
+      "parent": "cb-grid",
+      "parameters": {
+        "image": "https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?w=600&q=80",
+        "name": "Home",
+        "count": 27
+      }
+    }
+  ]
+}

@@ -1,7 +1,6 @@
 # AWP-001 — Derive `visualRoots`, so it cannot be omitted
 
-**Status:** 📋 open · **Track: the writer** · out of **F43** · blocks nothing, but every hour it is
-open is an hour an agent can author an invisible app
+**Status:** ✅ **DONE 2026-08-08** · **Track: the writer** · out of **F43**
 
 ## The defect, verified by consequence
 
@@ -119,9 +118,61 @@ A sweeping rewrite of the corpus would also rewrite the session-8 artefacts, and
 - Unit specs in `packages/noodl-mcp/tests`, and the fixture assertion wherever the render harness is
   exercised.
 
+## As built — 2026-08-08
+
+One derivation, in [`src/visualRoots.ts`](../../../packages/noodl-mcp/src/visualRoots.ts), used by every
+door on both sides of the file:
+
+| | where | what changed |
+|---|---|---|
+| §1 write | `assembleCreateFiles`, `assembleSetFiles` | `resolveVisualRoots` replaces `...(args.visualRoots?.length ? … : {})`. Finding A1 held — two functions, **all three doors**. |
+| §1 write | `assembleSetFiles` | also **re-derives when `set` replaces the graph**. The baseline's list was left in place, so a `set` could carry ids naming nodes that no longer exist — the second half of F43, unnoticed. |
+| §2 report | `create_component`, `update_component` | `visualRoots` + `visualRootsDerived` on every success. |
+| §3 read | `get_component` | derives when the file has none, and says `visualRootsDerived: true`. |
+| §3 read | `render-from-disk.js:174` | `roots: nodesFile.visualRoots \|\| []` → `undefined` means derive, `[]` means a writer said empty. |
+
+**The predicate was measured, not assumed.** This file said the MCP equivalent of the editor's
+`root.type.allowAsChild` is the catalog's `isVisual`. Across the enriched catalog: `allowAsChild === true`
+selects **29** types, `isVisual === true` selects the same **29**, and the symmetric difference is **empty**
+— `Component Inputs`/`Component Outputs` outside the set under both. Re-measured by §3 of the AWP-002
+suite, so drift fails a gate instead of blanking an app.
+
+**A component instance needed the recursion this file did not mention.** A node whose type is
+`/Components/NavBar` is not in the catalog at all, and it draws exactly when *that* component has visual
+roots — so the predicate is `makeProjectVisualPredicate` (memoised, cycle-guarded) and a page whose root
+is an instance derives correctly. The catalog-only predicate is the default for callers with no project.
+
+### ⚠️ Verified by consequence, both ways
+
+The instruments here have passed an unbuilt page three times, so the fix was run rather than inspected —
+one variable, on a scratchpad copy, `NavBar` and `HeroSection` put back on DeepSeek's page:
+
+| | texts | images |
+|---|---|---|
+| derivation **on** | **15** | **1** |
+| derivation **off** (catalog require broken, nothing else) | 0 | 0 |
+
+### ⚠️ This task's own regression fixture does not exist
+
+Acceptance said: *"`phase55-s8-deepseek-v4-pro` must render 91 texts / 8 images without any hand-editing.
+Today it renders 0/0."* **It cannot.** The on-disk artefact is the **post-dismantling end state** —
+`Pages/Home` holds exactly one bare `Page` node, because DeepSeek deleted the Group holding its six
+sections at turn 60. The 91-texts measurement was taken on the project *as `apply_plan` staged it*, which
+is a reconstruction and not the directory. **A page with nothing on it renders nothing however good the
+derivation is**, so "0/0 → 91/8" was never a check this fixture could pass.
+
+What replaces it: the project is vendored at
+[`packages/noodl-mcp/tests/fixtures/replay-deepseek-v4-pro`](../../../packages/noodl-mcp/tests/fixtures/replay-deepseek-v4-pro)
+(45 files, 204 KB, unmodified evidence) and its **11 components lacking `visualRoots` are asserted by
+count** in the AWP-002 suite, independently reproducing §3's corpus census. The render claim is the
+consequence table above.
+
 ## Register
 
 | # | Finding | State |
 |---|---|---|
 | A1 | `assembleCreateFiles`/`assembleSetFiles` are shared by all three write doors, so §1 is one change and not three. The comment at author.ts:100 says this was a deliberate anti-drift decision — it now pays for itself | 📋 to build on |
 | A2 | The editor repairs the file on open+save, so **any project a human has touched will look fine** and the defect only survives in purely agent-authored projects. Do not conclude from "it works in the editor" that it is fixed | ⚠️ trap, recorded |
+| A15 | **This task's stated regression fixture cannot pass its stated check.** `phase55-s8-deepseek-v4-pro` on disk is the state *after* the model dismantled its own page — one bare `Page` node — not the state the 91-texts figure was measured on. A criterion written from a measurement taken on a reconstruction, checked against a directory | ⚠️ **corrected**, see above |
+| A16 | `assembleSetFiles` kept the **baseline's** `visualRoots` through a whole-graph `set`, so the ids could name deleted nodes. Nobody had looked: F43 was framed entirely as "absent on create" | ✅ fixed, same change |
+| A17 | A top-level **component instance** is invisible to a catalog-only predicate — the type is a legacyName the catalog has never heard of, so a naive derivation returns `[]` for a page built the recommended way. The task file's one-line predicate would have shipped this | ✅ fixed by `makeProjectVisualPredicate` |

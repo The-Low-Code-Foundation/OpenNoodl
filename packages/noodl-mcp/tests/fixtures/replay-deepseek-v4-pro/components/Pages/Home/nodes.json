@@ -1,0 +1,21 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "c5fa8e0b-477d-4fb9-a68d-653613192544",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "home-page",
+      "type": "Page",
+      "label": "Home",
+      "x": 0,
+      "y": 0,
+      "parameters": {
+        "title": "Kiln & Co. — Ceramics, Coffee & Home",
+        "urlPath": "home"
+      }
+    }
+  ],
+  "visualRoots": [
+    "home-page"
+  ]
+}

@@ -1,0 +1,236 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "0dd202b3-479e-48c3-ae44-1c42620ddd6d",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "fp-root",
+      "type": "Group",
+      "label": "Featured Band",
+      "x": 0,
+      "y": 0,
+      "children": [
+        "fp-shell"
+      ],
+      "parameters": {
+        "flexDirection": "column",
+        "alignItems": "center",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "paddingLeft": {
+          "value": 48,
+          "unit": "px"
+        },
+        "paddingRight": {
+          "value": 48,
+          "unit": "px"
+        },
+        "paddingTop": {
+          "value": 80,
+          "unit": "px"
+        },
+        "paddingBottom": {
+          "value": 80,
+          "unit": "px"
+        },
+        "backgroundColor": "var(--surface)"
+      }
+    },
+    {
+      "id": "fp-shell",
+      "type": "Group",
+      "label": "Shell",
+      "x": 0,
+      "y": 100,
+      "parent": "fp-root",
+      "children": [
+        "fp-head",
+        "fp-grid"
+      ],
+      "parameters": {
+        "flexDirection": "column",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "maxWidth": {
+          "value": 1100,
+          "unit": "px"
+        },
+        "rowGap": {
+          "value": 40,
+          "unit": "px"
+        }
+      }
+    },
+    {
+      "id": "fp-head",
+      "type": "Group",
+      "label": "Section Head",
+      "x": 0,
+      "y": 200,
+      "parent": "fp-shell",
+      "children": [
+        "fp-eyebrow",
+        "fp-heading",
+        "fp-sub"
+      ],
+      "parameters": {
+        "flexDirection": "column",
+        "alignItems": "center",
+        "rowGap": {
+          "value": 12,
+          "unit": "px"
+        }
+      }
+    },
+    {
+      "id": "fp-eyebrow",
+      "type": "Text",
+      "label": "Eyebrow",
+      "x": 0,
+      "y": 300,
+      "parent": "fp-head",
+      "parameters": {
+        "text": "THIS WEEK'S PICKS",
+        "fontSize": "var(--text-xs)",
+        "fontWeight": "var(--font-semibold)",
+        "color": "var(--primary)",
+        "letterSpacing": "var(--tracking-widest)"
+      }
+    },
+    {
+      "id": "fp-heading",
+      "type": "Text",
+      "label": "Heading",
+      "x": 0,
+      "y": 360,
+      "parent": "fp-head",
+      "parameters": {
+        "text": "Featured products",
+        "fontSize": "var(--text-3xl)",
+        "fontWeight": "var(--font-semibold)",
+        "color": "var(--foreground)",
+        "lineHeight": "var(--leading-tight)",
+        "letterSpacing": "var(--tracking-tight)"
+      }
+    },
+    {
+      "id": "fp-sub",
+      "type": "Text",
+      "label": "Subtext",
+      "x": 0,
+      "y": 420,
+      "parent": "fp-head",
+      "parameters": {
+        "text": "The pieces our regulars keep coming back for — each one made in a run of 60 or fewer.",
+        "fontSize": "var(--text-lg)",
+        "color": "var(--muted-foreground)",
+        "lineHeight": "var(--leading-relaxed)",
+        "maxWidth": {
+          "value": 560,
+          "unit": "px"
+        }
+      }
+    },
+    {
+      "id": "fp-grid",
+      "type": "net.noodl.visual.columns",
+      "label": "Product Grid",
+      "x": 0,
+      "y": 480,
+      "parent": "fp-shell",
+      "children": [
+        "fp-card1",
+        "fp-card2",
+        "fp-card3",
+        "fp-card4"
+      ],
+      "parameters": {
+        "sizing": "autoFit",
+        "minWidth": {
+          "value": 260,
+          "unit": "px"
+        },
+        "marginX": {
+          "value": 24,
+          "unit": "px"
+        },
+        "marginY": {
+          "value": 24,
+          "unit": "px"
+        }
+      }
+    },
+    {
+      "id": "fp-card1",
+      "type": "/Components/ProductCard",
+      "label": "Speckle Mug",
+      "x": 0,
+      "y": 580,
+      "parent": "fp-grid",
+      "parameters": {
+        "image": "https://images.unsplash.com/photo-1514228742587-6b1558fcca3d?w=600&q=80",
+        "name": "Speckle Mug",
+        "description": "Stoneware mug with a toasted-speckle glaze. Holds 350ml — the sweet spot for a flat white.",
+        "price": "£22",
+        "compareAtPrice": "£28",
+        "isBestSeller": true,
+        "reviewCount": 34
+      }
+    },
+    {
+      "id": "fp-card2",
+      "type": "/Components/ProductCard",
+      "label": "Pour-Over Set",
+      "x": 0,
+      "y": 640,
+      "parent": "fp-grid",
+      "parameters": {
+        "image": "https://images.unsplash.com/photo-1497935586351-b67a49e012bf?w=600&q=80",
+        "name": "Pour-Over Set",
+        "description": "Single-origin dripper and carafe in matte white porcelain. Comes with 30 paper filters.",
+        "price": "£48",
+        "compareAtPrice": "",
+        "isBestSeller": false,
+        "reviewCount": 18
+      }
+    },
+    {
+      "id": "fp-card3",
+      "type": "/Components/ProductCard",
+      "label": "Pinch Bowl Set",
+      "x": 0,
+      "y": 700,
+      "parent": "fp-grid",
+      "parameters": {
+        "image": "https://images.unsplash.com/photo-1578749556568-bc2c40e68b61?w=600&q=80",
+        "name": "Pinch Bowl Set",
+        "description": "Set of four small bowls in alternating glazes. Perfect for mis en place or nibbles.",
+        "price": "£34",
+        "compareAtPrice": "",
+        "isBestSeller": true,
+        "reviewCount": 0
+      }
+    },
+    {
+      "id": "fp-card4",
+      "type": "/Components/ProductCard",
+      "label": "Studio Vase",
+      "x": 0,
+      "y": 760,
+      "parent": "fp-grid",
+      "parameters": {
+        "image": "https://images.unsplash.com/photo-1612196808214-b8e1d6145a8c?w=600&q=80",
+        "name": "Studio Vase",
+        "description": "Tall thrown vase with a dipped reactive glaze. Each one comes out slightly different.",
+        "price": "£56",
+        "compareAtPrice": "£68",
+        "isBestSeller": false,
+        "reviewCount": 7
+      }
+    }
+  ]
+}

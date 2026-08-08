@@ -1,7 +1,7 @@
 # AWP-002 ⭐ — The conformance gate: MCP must not write what the editor could not
 
-**Status:** 📋 open · **Track: the writer** · **the flagship** · generalises **F43** · depends on
-AWP-001 only for its first fixture
+**Status:** ✅ **DONE 2026-08-08** — §1, §2 and §3 built; §2's "delete the second reader" option
+**decided and deferred**, reasoning below · **Track: the writer** · **the flagship** · generalises **F43**
 
 ## Why this is the flagship and AWP-001 is not
 
@@ -106,9 +106,78 @@ The point of the gate is that this table stops needing to be maintained by hand.
 - §2's render-equivalence assertion runs without a browser.
 - A written decision on §2's "delete the second reader" option: do it, or record why not.
 
+## As built — 2026-08-08
+
+[`tests/writePathConformance.test.ts`](../../../packages/noodl-mcp/tests/writePathConformance.test.ts),
+9 specs in `noodl-mcp`'s own jest gate. Fixtures: 3 authored **live** through the real
+`create_component` door (page / visual / logic-only) plus all **13** components of the vendored
+`replay-deepseek-v4-pro`. The suite asserts its own census both ways.
+
+### ⚠️ §1 does not catch F43, and this task said it would
+
+> *"On today's code this fails immediately and correctly: MCP writes no `visualRoots`, the editor's
+> re-export adds it, and the diff names the field."*
+
+**Measured: it does not.** `reconstructLegacyComponent → buildComponentV2Files` is a **fixed point** for
+`visualRoots` — the reader copies `nodesFile.visualRoots` onto `graph.visualRoots` and the writer copies
+it back, so absent-in is absent-out. The derivation lives in `NodeGraphModel.toJSON()`, which sits
+*between* those two in the real editor pipeline and is unreachable from node (it imports NodeLibrary,
+UndoQueue, WarningsModel, EventDispatcher).
+
+So the structural diff is necessary and **not sufficient**, and §2 is not the optional half — it is the
+half that catches F43. Had this been built as specced, the flagship gate would have shipped green while
+blind to the defect it was named for.
+
+### What §1 found instead — four fields, all drift toward the editor
+
+Every one of these is the **editor's writer dropping something MCP wrote**, so each is allow-listed with
+a written reason and filed rather than fixed here (the fix is in `ProjectExporter`, which this package
+must not be the one to change):
+
+| field | consequence of an editor open+save |
+|---|---|
+| `description` | **authored prose deleted.** A component's own documentation, written by the agent, gone. The most consequential of the four |
+| `created` | creation timestamp dropped on every MCP-authored component |
+| `modifiedBy` | provenance dropped; harmless, nothing reads it to decide anything |
+| `type` | `inferComponentType` recognises a root only by `%rootcomponent`, so a project rooted at `/App` is relabelled **`root` → `visual`**. Its declared return union also includes `logic`, which no branch can return |
+
+The allow-list is enforced in both directions: an unlisted difference fails, **and a listed entry that
+nothing exercises fails too** — a dead entry is a claim nobody is checking.
+
+### §2, and being seen to fail
+
+Two readers, one file: the harness reads `nodesFile.visualRoots || []`, `ProjectImporter` builds roots
+from the node tree. Run against the writer as it stood **before AWP-001**, §2 named **13** components —
+both authored live, and 11 of the replay project's 13, independently reproducing AWP-001 §3's corpus
+census without being told it. Runs without a browser; "the same set of visual root ids" is the whole
+assertion.
+
+### §2's stronger form: decided, and deferred
+
+**Not done, and the reason is not scope.** Making `render-from-disk` import
+`reconstructLegacyComponent` instead of paraphrasing it would make this class of defect structurally
+impossible, and finding A3 argues for it. But the harness is standalone plain JS *by constraint* — it
+runs from a fresh checkout with no build step — and the editor's reader is TypeScript. Importing it
+means a build step in front of the one tool that deliberately has none.
+
+Interim: the harness now derives, reading the **predicate from the catalog JSON** rather than restating
+it, so the paraphrase surface is the tree walk alone. **Revisit when something else already forces a
+build step in front of the harness** — do not add one for this.
+
+### The fourth component type is not covered, and says so
+
+`cloud` is asked for by §3 and is **absent**: `inferComponentType` derives it from a `__cloud__` path
+segment that `create_component` does not mint. The fixture spec asserts the types it actually has
+(`page`, `root`, `visual`) so the omission fails loudly if someone assumes otherwise, rather than
+passing as covered.
+
 ## Register
 
 | # | Finding | State |
 |---|---|---|
 | A3 | `render-from-disk`'s header already documents that paraphrasing the export contract cost two phases of false certification. **The same class of defect has now fired twice.** That is the argument for §2's stronger form | 📋 decide in §2 |
-| A4 | `noodl-mcp` is the *only* producer for agent-authored projects, and the only one with no format conformance test. Phase 13 built the guard for the editor; nobody built the mirror when the second producer arrived | 📋 the premise |
+| A4 | `noodl-mcp` is the *only* producer for agent-authored projects, and the only one with no format conformance test. Phase 13 built the guard for the editor; nobody built the mirror when the second producer arrived | ✅ the premise, now gated |
+| A12 | An editor save **drops `created`** from every MCP-authored component — `buildComponentV2Files` never emits it | 🔴 filed not fixed (ProjectExporter) |
+| A13 | An editor save **deletes a component's `description`** — authored documentation, silently discarded | 🔴 filed not fixed (ProjectExporter) |
+| A14 | `inferComponentType` relabels a project rooted at `/App` from **`root` to `visual`** on save, and its return union declares a `logic` no branch can produce | 🔴 filed not fixed (ProjectExporter) |
+| A18 | **The task's own §1 prediction was wrong** — the pure round trip is a fixed point for `visualRoots`, so the flagship gate as specced would have shipped green and blind. Verified by running it | ⚠️ **corrected**, the suite's header records it |

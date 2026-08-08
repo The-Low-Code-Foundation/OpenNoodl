@@ -19,11 +19,11 @@ was defeated by a field our writer omits and the editor derives; the other was p
 
 | Task | File | One line | State |
 |---|---|---|---|
-| AWP-001 | [AWP-001-DERIVE-VISUAL-ROOTS.md](AWP-001-DERIVE-VISUAL-ROOTS.md) | derive `visualRoots` in the writer so it cannot be omitted; report it back; derive on read | 📋 open |
-| AWP-002 ⭐ | [AWP-002-WRITE-PATH-CONFORMANCE.md](AWP-002-WRITE-PATH-CONFORMANCE.md) | **the flagship** — MCP output must survive the editor's own round trip; the gate that catches the *next* F43 | 📋 open |
+| AWP-001 | [AWP-001-DERIVE-VISUAL-ROOTS.md](AWP-001-DERIVE-VISUAL-ROOTS.md) | derive `visualRoots` in the writer so it cannot be omitted; report it back; derive on read | ✅ **done 08-08** |
+| AWP-002 ⭐ | [AWP-002-WRITE-PATH-CONFORMANCE.md](AWP-002-WRITE-PATH-CONFORMANCE.md) | **the flagship** — MCP output must survive the editor's own round trip; the gate that catches the *next* F43 | ✅ **done 08-08** |
 | AWP-003 | [AWP-003-DIAGNOSE-THE-BLANK-PAGE.md](AWP-003-DIAGNOSE-THE-BLANK-PAGE.md) | a blank page must be diagnosed and the component named, not guessed at from a list of causes | 📋 open |
 | AWP-004 | [AWP-004-EYES-THAT-FAIL-AN-INVISIBLE-PAGE.md](AWP-004-EYES-THAT-FAIL-AN-INVISIBLE-PAGE.md) | stop calling a page "clean" because no known check fired; three checks these runs earned | 📋 open |
-| AWP-005 | [AWP-005-NODE-DOC-BUDGET.md](AWP-005-NODE-DOC-BUDGET.md) | `Group` costs 11,000 tokens and `detail:"summary"` is broken for 100% of ports | 📋 open |
+| AWP-005 | [AWP-005-NODE-DOC-BUDGET.md](AWP-005-NODE-DOC-BUDGET.md) | `Group` costs 11,000 tokens and `detail:"summary"` is broken for 100% of ports | 🟡 **§1 done 08-08** |
 | AWP-006 | [AWP-006-PROGRESSIVE-TOOL-DISCLOSURE.md](AWP-006-PROGRESSIVE-TOOL-DISCLOSURE.md) | 22,968 tokens of tool schemas resent every turn, ~30% of every bill, 63% of it backend admin | 📋 open |
 
 ## Suggested order, and why

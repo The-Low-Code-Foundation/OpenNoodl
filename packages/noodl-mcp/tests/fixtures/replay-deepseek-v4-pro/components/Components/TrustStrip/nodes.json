@@ -1,0 +1,135 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "08d43ed8-3fe3-4195-bee8-22a4ce9747a8",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "ts-root",
+      "type": "Group",
+      "label": "Trust Strip Band",
+      "x": 0,
+      "y": 0,
+      "children": [
+        "ts-shell"
+      ],
+      "parameters": {
+        "flexDirection": "column",
+        "alignItems": "center",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "paddingLeft": {
+          "value": 48,
+          "unit": "px"
+        },
+        "paddingRight": {
+          "value": 48,
+          "unit": "px"
+        },
+        "paddingTop": {
+          "value": 48,
+          "unit": "px"
+        },
+        "paddingBottom": {
+          "value": 48,
+          "unit": "px"
+        },
+        "backgroundColor": "var(--background)",
+        "borderBottomStyle": "solid",
+        "borderBottomWidth": {
+          "value": 1,
+          "unit": "px"
+        },
+        "borderBottomColor": "var(--border)"
+      }
+    },
+    {
+      "id": "ts-shell",
+      "type": "Group",
+      "label": "Shell",
+      "x": 0,
+      "y": 100,
+      "parent": "ts-root",
+      "children": [
+        "ts-columns"
+      ],
+      "parameters": {
+        "flexDirection": "column",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "maxWidth": {
+          "value": 1100,
+          "unit": "px"
+        }
+      }
+    },
+    {
+      "id": "ts-columns",
+      "type": "net.noodl.visual.columns",
+      "label": "Trust Columns",
+      "x": 0,
+      "y": 200,
+      "parent": "ts-shell",
+      "children": [
+        "ts-item1",
+        "ts-item2",
+        "ts-item3"
+      ],
+      "parameters": {
+        "layoutString": "1 1 1",
+        "marginX": {
+          "value": 32,
+          "unit": "px"
+        },
+        "smallBreakpoint": {
+          "value": 700,
+          "unit": "px"
+        },
+        "smallLayout": "1",
+        "sizing": "layoutString"
+      }
+    },
+    {
+      "id": "ts-item1",
+      "type": "/Components/InfoStripItem",
+      "label": "Free Delivery",
+      "x": 0,
+      "y": 300,
+      "parent": "ts-columns",
+      "parameters": {
+        "icon": "🚚",
+        "title": "Free delivery over £40",
+        "description": "We ship across the UK with free standard delivery on orders over £40."
+      }
+    },
+    {
+      "id": "ts-item2",
+      "type": "/Components/InfoStripItem",
+      "label": "30-Day Returns",
+      "x": 0,
+      "y": 360,
+      "parent": "ts-columns",
+      "parameters": {
+        "icon": "↩️",
+        "title": "30-day returns",
+        "description": "Not quite right? Return any piece within 30 days, no questions asked."
+      }
+    },
+    {
+      "id": "ts-item3",
+      "type": "/Components/InfoStripItem",
+      "label": "Secure Checkout",
+      "x": 0,
+      "y": 420,
+      "parent": "ts-columns",
+      "parameters": {
+        "icon": "🔒",
+        "title": "Secure checkout",
+        "description": "Your payment details are encrypted and we never store your card number."
+      }
+    }
+  ]
+}

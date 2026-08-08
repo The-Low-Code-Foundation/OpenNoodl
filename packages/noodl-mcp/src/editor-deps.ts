@@ -191,6 +191,27 @@ export type {
 // ─── io helpers (STRUCT-002) ──────────────────────────────────────────────────
 export { legacyNameToPath, inferComponentType } from '../../noodl-editor/src/editor/src/io/ProjectExporter';
 
+// ─── The round trip itself (AWP-002) ──────────────────────────────────────────
+// The editor's own reader and writer for a component's three v2 files. Both are
+// pure — they import *types* from `../schemas` and nothing else — so the
+// conformance gate can run the editor's real reconstruct-and-re-export in a node
+// process rather than paraphrasing it, which is the whole point: `render-from-disk`
+// paraphrased this contract by hand and its own header records that doing so cost
+// two phases of certifying a page the editor cannot render.
+//
+// ⚠️ These two are *not* the editor's full pipeline, and the gap is load-bearing.
+// A real editor save runs the legacy component through `NodeGraphModel`, whose
+// `toJSON()` derives `visualRoots` via `getVisualRootIds()`. That model imports
+// NodeLibrary, UndoQueue, WarningsModel and EventDispatcher, so it cannot be
+// reached from here — which means `reconstructLegacyComponent → buildComponentV2Files`
+// is a **fixed point for `visualRoots`** (absent in, absent out) and the structural
+// diff alone is blind to F43. Verified by running it, 2026-08-08. That is why
+// AWP-002 §2's reader-agreement check exists and is not optional.
+export { reconstructLegacyComponent, unflattenNodes } from '../../noodl-editor/src/editor/src/io/ProjectImporter';
+export { buildComponentV2Files } from '../../noodl-editor/src/editor/src/io/ProjectExporter';
+export type { ComponentV2Files } from '../../noodl-editor/src/editor/src/io/ProjectExporter';
+export type { LegacyComponent, LegacyNode } from '../../noodl-editor/src/editor/src/io/ProjectExporter';
+
 // ─── Style vocabulary (AIX-006) ───────────────────────────────────────────────
 // Pure submodules only (StyleVocabulary/ProjectTokenCss/DefaultTokens/
 // ElementConfigs) — never the StyleTokensModel barrel, which pulls ProjectModel

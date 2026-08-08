@@ -1,0 +1,342 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "f0ae0e81-df8b-4993-b8b6-5b044f10dd6f",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "nav-root",
+      "type": "Group",
+      "label": "Nav Bar",
+      "x": 0,
+      "y": 0,
+      "children": [
+        "nav-left",
+        "nav-center",
+        "nav-right"
+      ],
+      "parameters": {
+        "flexDirection": "row",
+        "alignItems": "center",
+        "justifyContent": "space-between",
+        "paddingLeft": {
+          "value": 32,
+          "unit": "px"
+        },
+        "paddingRight": {
+          "value": 32,
+          "unit": "px"
+        },
+        "paddingTop": {
+          "value": 16,
+          "unit": "px"
+        },
+        "paddingBottom": {
+          "value": 16,
+          "unit": "px"
+        },
+        "backgroundColor": "var(--background)",
+        "borderBottomStyle": "solid",
+        "borderBottomWidth": {
+          "value": 1,
+          "unit": "px"
+        },
+        "borderBottomColor": "var(--border)",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        }
+      }
+    },
+    {
+      "id": "nav-left",
+      "type": "Group",
+      "label": "Left: Brand",
+      "x": 0,
+      "y": 100,
+      "parent": "nav-root",
+      "children": [
+        "nav-brand-icon",
+        "nav-brand-name"
+      ],
+      "parameters": {
+        "flexDirection": "row",
+        "alignItems": "center",
+        "columnGap": {
+          "value": 8,
+          "unit": "px"
+        }
+      }
+    },
+    {
+      "id": "nav-brand-icon",
+      "type": "Text",
+      "label": "Brand Icon",
+      "x": 0,
+      "y": 200,
+      "parent": "nav-left",
+      "parameters": {
+        "text": "🏺",
+        "fontSize": "var(--text-2xl)"
+      }
+    },
+    {
+      "id": "nav-brand-name",
+      "type": "Text",
+      "label": "Kiln & Co.",
+      "x": 0,
+      "y": 260,
+      "parent": "nav-left",
+      "parameters": {
+        "text": "Kiln & Co.",
+        "fontSize": "var(--text-xl)",
+        "fontWeight": "var(--font-bold)",
+        "color": "var(--foreground)",
+        "letterSpacing": "var(--tracking-tight)"
+      }
+    },
+    {
+      "id": "nav-center",
+      "type": "Group",
+      "label": "Center: Links",
+      "x": 0,
+      "y": 320,
+      "parent": "nav-root",
+      "children": [
+        "nav-link-shop",
+        "nav-link-ceramics",
+        "nav-link-coffee",
+        "nav-link-about"
+      ],
+      "parameters": {
+        "flexDirection": "row",
+        "alignItems": "center",
+        "columnGap": {
+          "value": 32,
+          "unit": "px"
+        }
+      }
+    },
+    {
+      "id": "nav-link-shop",
+      "type": "Text",
+      "label": "Shop",
+      "x": 0,
+      "y": 420,
+      "parent": "nav-center",
+      "parameters": {
+        "text": "Shop",
+        "fontSize": "var(--text-sm)",
+        "fontWeight": "var(--font-medium)",
+        "color": "var(--foreground)"
+      }
+    },
+    {
+      "id": "nav-link-ceramics",
+      "type": "Text",
+      "label": "Ceramics",
+      "x": 0,
+      "y": 480,
+      "parent": "nav-center",
+      "parameters": {
+        "text": "Ceramics",
+        "fontSize": "var(--text-sm)",
+        "fontWeight": "var(--font-medium)",
+        "color": "var(--foreground)"
+      }
+    },
+    {
+      "id": "nav-link-coffee",
+      "type": "Text",
+      "label": "Coffee",
+      "x": 0,
+      "y": 540,
+      "parent": "nav-center",
+      "parameters": {
+        "text": "Coffee",
+        "fontSize": "var(--text-sm)",
+        "fontWeight": "var(--font-medium)",
+        "color": "var(--foreground)"
+      }
+    },
+    {
+      "id": "nav-link-about",
+      "type": "Text",
+      "label": "About",
+      "x": 0,
+      "y": 600,
+      "parent": "nav-center",
+      "parameters": {
+        "text": "About",
+        "fontSize": "var(--text-sm)",
+        "fontWeight": "var(--font-medium)",
+        "color": "var(--foreground)"
+      }
+    },
+    {
+      "id": "nav-right",
+      "type": "Group",
+      "label": "Right: Search + Basket",
+      "x": 0,
+      "y": 660,
+      "parent": "nav-root",
+      "children": [
+        "nav-search-wrap",
+        "nav-basket-wrap"
+      ],
+      "parameters": {
+        "flexDirection": "row",
+        "alignItems": "center",
+        "columnGap": {
+          "value": 16,
+          "unit": "px"
+        }
+      }
+    },
+    {
+      "id": "nav-search-wrap",
+      "type": "Group",
+      "label": "Search Box",
+      "x": 0,
+      "y": 760,
+      "parent": "nav-right",
+      "children": [
+        "nav-search-icon",
+        "nav-search-text"
+      ],
+      "parameters": {
+        "flexDirection": "row",
+        "alignItems": "center",
+        "backgroundColor": "var(--muted)",
+        "borderRadius": {
+          "value": 8,
+          "unit": "px"
+        },
+        "paddingLeft": {
+          "value": 12,
+          "unit": "px"
+        },
+        "paddingRight": {
+          "value": 12,
+          "unit": "px"
+        },
+        "paddingTop": {
+          "value": 8,
+          "unit": "px"
+        },
+        "paddingBottom": {
+          "value": 8,
+          "unit": "px"
+        },
+        "columnGap": {
+          "value": 8,
+          "unit": "px"
+        }
+      }
+    },
+    {
+      "id": "nav-search-icon",
+      "type": "Text",
+      "label": "Search Icon",
+      "x": 0,
+      "y": 860,
+      "parent": "nav-search-wrap",
+      "parameters": {
+        "text": "🔍",
+        "fontSize": "var(--text-sm)"
+      }
+    },
+    {
+      "id": "nav-search-text",
+      "type": "Text",
+      "label": "Search placeholder",
+      "x": 0,
+      "y": 920,
+      "parent": "nav-search-wrap",
+      "parameters": {
+        "text": "Search...",
+        "fontSize": "var(--text-sm)",
+        "color": "var(--muted-foreground)"
+      }
+    },
+    {
+      "id": "nav-basket-wrap",
+      "type": "Group",
+      "label": "Basket",
+      "x": 0,
+      "y": 980,
+      "parent": "nav-right",
+      "children": [
+        "nav-basket-icon",
+        "nav-basket-badge"
+      ],
+      "parameters": {
+        "flexDirection": "row",
+        "alignItems": "center",
+        "columnGap": {
+          "value": 4,
+          "unit": "px"
+        }
+      }
+    },
+    {
+      "id": "nav-basket-icon",
+      "type": "Text",
+      "label": "Basket Icon",
+      "x": 0,
+      "y": 1080,
+      "parent": "nav-basket-wrap",
+      "parameters": {
+        "text": "🛒",
+        "fontSize": "var(--text-xl)"
+      }
+    },
+    {
+      "id": "nav-basket-badge",
+      "type": "Group",
+      "label": "Count Badge",
+      "x": 0,
+      "y": 1140,
+      "parent": "nav-basket-wrap",
+      "children": [
+        "nav-basket-count"
+      ],
+      "parameters": {
+        "backgroundColor": "var(--primary)",
+        "borderRadius": {
+          "value": 10,
+          "unit": "px"
+        },
+        "paddingLeft": {
+          "value": 6,
+          "unit": "px"
+        },
+        "paddingRight": {
+          "value": 6,
+          "unit": "px"
+        },
+        "paddingTop": {
+          "value": 1,
+          "unit": "px"
+        },
+        "paddingBottom": {
+          "value": 1,
+          "unit": "px"
+        }
+      }
+    },
+    {
+      "id": "nav-basket-count",
+      "type": "Text",
+      "label": "Item Count",
+      "x": 0,
+      "y": 1240,
+      "parent": "nav-basket-badge",
+      "parameters": {
+        "text": "0",
+        "fontSize": "var(--text-xs)",
+        "fontWeight": "var(--font-bold)",
+        "color": "var(--primary-foreground)"
+      }
+    }
+  ]
+}

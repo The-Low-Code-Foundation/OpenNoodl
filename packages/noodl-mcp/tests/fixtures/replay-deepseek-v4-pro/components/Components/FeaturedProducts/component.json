@@ -1,0 +1,11 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/component-v2.json",
+  "id": "0dd202b3-479e-48c3-ae44-1c42620ddd6d",
+  "name": "FeaturedProducts",
+  "path": "/Components/FeaturedProducts",
+  "type": "visual",
+  "created": "2026-08-08T20:28:52.569Z",
+  "modified": "2026-08-08T20:28:52.569Z",
+  "modifiedBy": "noodl-mcp",
+  "description": "Section with heading, subtext, and a responsive grid of 4 ProductCards with varied badges."
+}
