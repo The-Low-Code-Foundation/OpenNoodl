@@ -10,7 +10,14 @@ export enum TextType {
   Disabled = 'disabled',
   Shy = 'shy',
   Proud = 'proud',
-  Secondary = 'secondary'
+  Secondary = 'secondary',
+  // The stylesheet has carried `is-type-success|notice|danger` all along with
+  // no enum member able to select one, so every caller needing a red line of
+  // text inlined a colour instead — which is how a palette stops being one
+  // file. Red stays danger-only (phase 23).
+  Success = 'success',
+  Notice = 'notice',
+  Danger = 'danger'
 }
 
 export enum TextSize {

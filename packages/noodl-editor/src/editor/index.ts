@@ -94,10 +94,9 @@ window.addEventListener('DOMContentLoaded', () => {
     e.stopPropagation();
   });
 
-  ipcRenderer.on('showAutoUpdatePopup', () => {
-    //@ts-expect-error
-    window._hasNewAutoUpdateAvailable = true;
-  });
+  // `showAutoUpdatePopup` set a `window._hasNewAutoUpdateAvailable` global that
+  // nothing ever read. Update state now lives in the main process and reaches
+  // the renderer as `update:state`; see `views/UpdateManager`.
 
   setupViewerIpc();
 

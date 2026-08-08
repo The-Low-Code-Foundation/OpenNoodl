@@ -20,6 +20,7 @@ let updaterListeners;
 let appListeners;
 let checkForUpdates;
 let ipcHandlers;
+let mockUpdater;
 
 function loadModule({ platform = 'darwin' } = {}) {
   jest.resetModules();
@@ -36,6 +37,7 @@ function loadModule({ platform = 'darwin' } = {}) {
     'electron',
     () => ({
       app: {
+        getVersion: () => '0.1.4',
         on: (event, fn) => {
           appListeners[event] = fn;
         }
@@ -43,25 +45,33 @@ function loadModule({ platform = 'darwin' } = {}) {
       ipcMain: {
         on: (event, fn) => {
           ipcHandlers[event] = fn;
+        },
+        handle: (event, fn) => {
+          ipcHandlers[event] = fn;
         }
-      }
+      },
+      // No windows, so `broadcast()` is a no-op and no state reaches a
+      // renderer. These tests are about the main process's own behaviour.
+      BrowserWindow: { getAllWindows: () => [] },
+      net: { request: () => ({ on: () => {}, end: () => {} }) }
     }),
     { virtual: true }
   );
 
-  jest.doMock(
-    'electron-updater',
-    () => ({
-      autoUpdater: {
-        checkForUpdates,
-        quitAndInstall: jest.fn(),
-        addListener: (event, fn) => {
-          updaterListeners[event] = fn;
-        }
-      }
-    }),
-    { virtual: true }
-  );
+  mockUpdater = {
+    checkForUpdates,
+    downloadUpdate: jest.fn(() => Promise.resolve(null)),
+    quitAndInstall: jest.fn(),
+    setFeedURL: jest.fn(),
+    on: (event, fn) => {
+      updaterListeners[event] = fn;
+    },
+    addListener: (event, fn) => {
+      updaterListeners[event] = fn;
+    }
+  };
+
+  jest.doMock('electron-updater', () => ({ autoUpdater: mockUpdater }), { virtual: true });
 
   // `process.platform` is read inside setupAutoUpdate, not at require time, so
   // the override has to outlive this function. afterEach puts it back.
@@ -219,5 +229,128 @@ describe('setupAutoUpdate — platforms that opt out', () => {
 
     jest.advanceTimersByTime(24 * HOUR);
     expect(checkForUpdates).not.toHaveBeenCalled();
+  });
+});
+
+describe('nothing happens without the user asking', () => {
+  it('neither downloads nor installs on its own — the consent finding', () => {
+    // Both defaulted to true, and together they meant a 169MB download began on
+    // launch and the app was replaced on quit, with no prompt and no progress.
+    // The first real upgrade was reported as "it doesn't show anything about
+    // updating" by someone who was being silently updated as they said it.
+    const { setupAutoUpdate } = loadModule();
+    setupAutoUpdate(fakeWindow);
+
+    expect(mockUpdater.autoDownload).toBe(false);
+    expect(mockUpdater.autoInstallOnAppQuit).toBe(false);
+  });
+
+  it('does not start a download when a new version is found', () => {
+    const { setupAutoUpdate } = loadModule();
+    setupAutoUpdate(fakeWindow);
+
+    updaterListeners['update-available']({ version: '0.1.5' });
+
+    expect(mockUpdater.downloadUpdate).not.toHaveBeenCalled();
+  });
+
+  it('allows a downgrade, or the version picker could only ever go forwards', () => {
+    const { setupAutoUpdate } = loadModule();
+    setupAutoUpdate(fakeWindow);
+
+    expect(mockUpdater.allowDowngrade).toBe(true);
+  });
+
+  it('downloads only when the renderer asks, and installs only when it asks again', async () => {
+    const { setupAutoUpdate } = loadModule();
+    setupAutoUpdate(fakeWindow);
+
+    await ipcHandlers['update:download'](null, undefined);
+    expect(mockUpdater.downloadUpdate).toHaveBeenCalledTimes(1);
+    expect(mockUpdater.quitAndInstall).not.toHaveBeenCalled();
+
+    ipcHandlers['update:install']();
+    jest.advanceTimersByTime(1);
+    expect(mockUpdater.quitAndInstall).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('ordering the versions offered', () => {
+  it('sorts newest first and ranks a release above its own pre-releases', () => {
+    const { __internal } = loadModule();
+    const sorted = ['0.1.3', '0.2.0', '0.1.10', '0.2.0-beta.1', '0.1.4'].sort(__internal.compareVersions);
+
+    // 0.1.10 above 0.1.4 is the point: string ordering puts it below.
+    expect(sorted).toEqual(['0.2.0', '0.2.0-beta.1', '0.1.10', '0.1.4', '0.1.3']);
+  });
+
+  it('reads the feed file this platform can actually install', () => {
+    expect(loadModule({ platform: 'darwin' }).__internal.FEED_FILE).toBe('latest-mac.yml');
+    expect(loadModule({ platform: 'win32' }).__internal.FEED_FILE).toBe('latest.yml');
+  });
+});
+
+describe('which releases the picker may offer', () => {
+  // Shaped as the GitHub releases API really returns them. `v0.1.2` is the case
+  // that matters: a real, published, newer-than-some release with no macOS feed,
+  // because it predates signing. Offering it would offer a guaranteed 404.
+  const RELEASES = [
+    {
+      tag_name: 'v0.1.4',
+      name: '0.1.4',
+      body: 'notes for 4',
+      draft: false,
+      prerelease: false,
+      assets: [{ name: 'latest-mac.yml' }, { name: 'latest.yml' }]
+    },
+    {
+      tag_name: 'v0.2.0-beta.1',
+      name: 'beta',
+      body: 'beta notes',
+      draft: false,
+      prerelease: true,
+      assets: [{ name: 'latest-mac.yml' }]
+    },
+    {
+      tag_name: 'v0.1.3',
+      name: '0.1.3',
+      body: 'notes for 3',
+      draft: false,
+      prerelease: false,
+      assets: [{ name: 'latest-mac.yml' }, { name: 'latest.yml' }]
+    },
+    { tag_name: 'v0.1.2', name: '0.1.2', body: '', draft: false, prerelease: false, assets: [{ name: 'NodeGX.dmg' }] },
+    {
+      tag_name: 'v0.9.9',
+      name: 'unreleased',
+      body: '',
+      draft: true,
+      prerelease: false,
+      assets: [{ name: 'latest-mac.yml' }]
+    },
+    { tag_name: 'release', name: 'stray', body: '', draft: false, prerelease: false, assets: [{ name: 'source.zip' }] }
+  ];
+
+  it('offers only releases carrying a feed this platform can read', () => {
+    const { __internal } = loadModule();
+    const offered = __internal.installableFrom(RELEASES, 'latest-mac.yml').map((v) => v.version);
+
+    // 0.1.2 has artifacts but no feed; 0.9.9 is a draft; `release` is neither.
+    expect(offered).toEqual(['0.2.0-beta.1', '0.1.4', '0.1.3']);
+  });
+
+  it('drops a release whose feed exists for another platform only', () => {
+    const { __internal } = loadModule();
+    const offered = __internal.installableFrom(RELEASES, 'latest.yml').map((v) => v.version);
+
+    // The beta publishes a mac feed and no Windows one.
+    expect(offered).toEqual(['0.1.4', '0.1.3']);
+  });
+
+  it('carries the release notes through, because consenting to an update means reading them', () => {
+    const { __internal } = loadModule();
+    const [newest] = __internal.installableFrom(RELEASES, 'latest-mac.yml');
+
+    expect(newest).toMatchObject({ version: '0.2.0-beta.1', tag: 'v0.2.0-beta.1', notes: 'beta notes', prerelease: true });
   });
 });

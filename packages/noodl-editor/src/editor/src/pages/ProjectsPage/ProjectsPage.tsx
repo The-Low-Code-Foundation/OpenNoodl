@@ -66,6 +66,7 @@ import { tracker } from '../../utils/tracker';
 import { getLessonsState } from '../../views/projectsview.lessonstate';
 import { MigrationWizard } from '../../views/migration/MigrationWizard';
 import { ToastLayer } from '../../views/ToastLayer/ToastLayer';
+import { UpdateManager } from '../../views/UpdateManager';
 import { LauncherSettingsDialog, LauncherSettingsSection } from './LauncherSettingsDialog';
 
 export interface ProjectsPageProps extends IRouteProps {
@@ -1086,6 +1087,12 @@ export function ProjectsPage(props: ProjectsPageProps) {
         aiAvailability={aiAvailability}
         scoping={scopingState}
       />
+
+      {/* The launcher had no update surface at all: `BaseWindow`, which owned
+          the old popup, wraps only `EditorPage`. So an update could be offered
+          only to someone already inside a project — the one place a restart
+          costs the most. */}
+      <UpdateManager />
     </>
   );
 }

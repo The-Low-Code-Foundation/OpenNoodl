@@ -1,5 +1,4 @@
-import { ipcRenderer } from 'electron';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { platform } from '@noodl/platform';
 
 import { App } from '@noodl-models/app';
@@ -7,7 +6,8 @@ import { ProjectModel } from '@noodl-models/projectmodel';
 
 import { TitleBar, TitleBarVariant, TitleBarState } from '@noodl-core-ui/components/app/TitleBar';
 import { VStack } from '@noodl-core-ui/components/layout/Stack';
-import { useConfirmationDialog } from '@noodl-core-ui/components/popups/ConfirmationDialog/ConfirmationDialog.hooks';
+
+import { UpdateManager } from '../../UpdateManager';
 
 export enum BaseWindowVariant {
   Default = 'default',
@@ -27,36 +27,21 @@ export function BaseWindow({
   children
 }: BaseWindowProps) {
   const [newVersionAvailable, setNewVersionAvailable] = useState<boolean>(undefined);
+  const [isDialogRequested, setIsDialogRequested] = useState(false);
 
-  const [AutoUpdateDialog, autoUpdateConfirmation] = useConfirmationDialog({
-    title: 'New auto update available',
-    message: 'A new version has been downloaded. Restart the application to apply the updates.',
-    confirmButtonLabel: 'Restart',
-    cancelButtonLabel: 'Later'
-  });
-
-  useEffect(() => {
-    const func = () => setNewVersionAvailable(true);
-
-    ipcRenderer.on('showAutoUpdatePopup', func);
-    return function () {
-      ipcRenderer.off('showAutoUpdatePopup', func);
-    };
-  }, []);
-
-  function onNewVersionAvailableClicked() {
-    autoUpdateConfirmation()
-      .then(() => {
-        ipcRenderer.send('autoUpdatePopupClosed', true);
-      })
-      .catch(() => {
-        ipcRenderer.send('autoUpdatePopupClosed', false);
-      });
-  }
+  // The title bar's update affordance now opens the real dialog — release
+  // notes, a version to choose, and progress — instead of a confirm box that
+  // could only appear *after* a silent download had already finished.
+  const onNewVersionAvailableClicked = useCallback(() => setIsDialogRequested(true), []);
+  const onDialogRequestHandled = useCallback(() => setIsDialogRequested(false), []);
 
   return (
     <div style={{ position: 'absolute', top: 0, bottom: 0, left: 0, right: 0 }}>
-      <AutoUpdateDialog />
+      <UpdateManager
+        isDialogRequested={isDialogRequested}
+        onDialogRequestHandled={onDialogRequestHandled}
+        onAvailabilityChange={setNewVersionAvailable}
+      />
 
       <VStack UNSAFE_style={{ height: '100%' }}>
         <TitleBar
