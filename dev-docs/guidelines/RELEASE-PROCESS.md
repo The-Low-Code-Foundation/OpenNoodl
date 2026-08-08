@@ -2,20 +2,42 @@
 
 How to cut, verify, publish, and roll back a signed NodeGX release.
 
-> **Status (REV-007):** the release *infrastructure* is complete and wired —
-> tag-triggered CI, per-platform signing hooks, notarisation, auto-update feed,
-> draft-then-publish. What is **not** done, and cannot be done in code, is the
-> **credential provisioning**: an Apple Developer account, a Windows
-> code-signing certificate, and the CI secrets built from them. Until a human
-> completes [§1](#1-one-time-credential-setup-human-required), releases produced
-> by CI are **unsigned** (they still build and publish as drafts, but macOS
-> Gatekeeper will warn and Windows SmartScreen will block).
+> **Status (updated 2026-08-08, after shipping v0.1.4).**
 >
-> **Distributing unsigned test builds is fully supported** in the meantime —
-> that is the current v0 plan. Point testers at
-> [INSTALLING-UNSIGNED-BUILDS.md](./INSTALLING-UNSIGNED-BUILDS.md) (copy it into
-> the GitHub Release notes) for the one-step "open it anyway" instructions per
-> OS. Signing just removes that friction; it is not required to ship.
+> **macOS is signed and notarised.** The five Apple secrets were added to the
+> repository on 2026-08-07 and both v0.1.3 and v0.1.4 built with them. From a
+> release log:
+>
+> ```
+> • signing  file=dist/mac-arm64/NodeGX.app type=distribution
+>            identityName=Developer ID Application: Osborne Solutions (…)
+> • notarization successful
+> [notarize] Notarisation complete — ticket will be stapled by electron-builder.
+> ```
+>
+> **macOS auto-update therefore works from v0.1.4 onward**, and this section used
+> to say the opposite. Squirrel.Mac requires a signed app, so the in-app updater
+> had nothing it could install for as long as builds were unsigned; that is no
+> longer the case. v0.1.3 → v0.1.4 is the first pair where both ends are signed
+> and so the first upgrade that can be tested end to end — see §"Auto-update
+> (needs two releases)".
+>
+> **Do not paste [INSTALLING-UNSIGNED-BUILDS.md](./INSTALLING-UNSIGNED-BUILDS.md)
+> into macOS release notes any more.** It tells users to bypass Gatekeeper, which
+> is now both unnecessary and bad advice. It remains correct for Windows until
+> the item below is closed.
+>
+> **Windows signing is NOT confirmed.** `WIN_CSC_LINK` is unset, so no certificate
+> is provisioned — but electron-builder still logged `signing with signtool.exe`
+> and raised no error, which is ambiguous rather than reassuring. Nobody has run
+> a Windows artifact on a clean machine to see whether SmartScreen blocks it.
+> Treat Windows as unsigned until someone checks, and keep the unsigned-install
+> instructions in the notes for that platform.
+>
+> The infrastructure itself has been complete since REV-007: tag-triggered CI,
+> per-platform signing hooks, notarisation, auto-update feed, draft-then-publish.
+> [§1](#1-one-time-credential-setup-human-required) is now only outstanding for
+> Windows.
 
 ---
 
@@ -123,16 +145,23 @@ dispatch):
 
 ### Linux is install-only, deliberately
 
-There is **no `latest-linux.yml`, and there is not meant to be.**
 `src/main/src/autoupdater.js` returns early on `process.platform === 'linux'`,
 so the Linux build never asks for an update feed and would not read one if it
 were published: electron-updater cannot replace an AppImage it did not itself
 launch, and a `.deb` belongs to the package manager. Linux users update by
 downloading the next AppImage.
 
-This is written down because an absent feed and a broken feed look identical
-from the outside — the v0.1.0 draft had no `latest-linux.yml` and it was read as
-a bug for over a week. It was a bug, but a different one: see below.
+**A `latest-linux.yml` *is* published, and it is inert.** This section used to
+say there was none and none was intended; electron-builder emits one for the
+Linux targets regardless, and v0.1.4 shipped with it. Nothing reads it — the
+early return above is what makes Linux install-only, not the absence of a feed.
+Corrected here because the file's presence looks like a promise the app does not
+keep.
+
+The distinction is worth writing down because an absent feed and a broken feed
+look identical from the outside — the v0.1.0 draft had no `latest-linux.yml` and
+it was read as a bug for over a week. It was a bug, but a different one: see
+below.
 
 > **What actually happened to Linux in v0.1.0.** The leg is recorded as
 > "succeeded, no update feed". It did not succeed — it **failed**, after the
@@ -267,18 +296,20 @@ These are documented deliberately rather than silently shipped:
   universal app, so a real universal build needs each arch's natives built
   separately and lipo-merged — a CI change worth doing later, not required for
   distribution now.
-- **macOS multi-arch auto-update feed (future, signed phase only).** Once
-  signing + auto-update are live, the two mac jobs each write `latest-mac.yml`
-  and the later one wins, so the feed would point at one arch. This is **moot
-  today** — macOS auto-update (Squirrel.Mac) requires a *signed* app, so
-  auto-update does not run at all in the current unsigned phase. It becomes a
-  must-fix the moment an Apple Developer ID is added: resolve it then with a
-  universal build or arch-scoped update channels.
-- **Signing is credential-gated, not verified end-to-end.** No Apple/Windows
-  certificates exist yet, so the signed/notarised path has never actually run.
-  The hooks are wired and will engage the moment the secrets in §1 are present,
-  but the first real signed build is where notarisation/entitlement problems
-  surface — expect to iterate there.
+- ~~**macOS multi-arch auto-update feed.**~~ **Resolved.** The two mac jobs each
+  write a `latest-mac.yml` and the later upload would have won, leaving the feed
+  pointing at one arch. The `merge mac update feed` job now rebuilds it from both
+  legs' artifacts and re-uploads; v0.1.4's published feed lists all four mac
+  files (arm64 and x64, `.zip` and `.dmg`) under one `version: 0.1.4`.
+- ~~**Signing is credential-gated, not verified end-to-end.**~~ **Done for
+  macOS** as of 2026-08-07 — see the status banner. Notarisation ran clean on the
+  first attempt, so the entitlement problems anticipated here did not materialise.
+  **Still open for Windows:** `WIN_CSC_LINK` is unset and no artifact has been run
+  past SmartScreen on a clean machine.
+- **The auto-update *upgrade path* has still never been exercised.** Signing was
+  the blocker and it is gone, but "0.1.3 installs 0.1.4 by itself" has not been
+  observed. It cannot be tested from CI — it needs a machine with the older
+  version actually installed.
 - **AppImage build is CI-verified only.** AppImage cannot be built on macOS, so
   it is exercised by the Linux runner, not locally. Local verification here
   covered the macOS packaging path only.

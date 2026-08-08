@@ -14,7 +14,28 @@ of a human step, that is noted.
 
 ## Tier A — longest lead time, start today
 
-### A1. Apple Developer ID + notarisation credentials → ALPHA-002
+### ~~A1. Apple Developer ID + notarisation credentials → ALPHA-002~~ ✅ DONE 2026-08-07
+
+> **CLOSED.** All five secrets are set on the repository (`CSC_LINK`,
+> `CSC_KEY_PASSWORD`, `APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD`, `APPLE_TEAM_ID`,
+> added 14:16–15:51 on 2026-08-07). Both **v0.1.3 and v0.1.4 built signed and
+> notarised**, first time, with no entitlement problems:
+>
+> ```
+> • signing  file=dist/mac-arm64/NodeGX.app type=distribution
+>            identityName=Developer ID Application: Osborne Solutions (…)
+> • notarization successful
+> ```
+>
+> The knock-on that was not obvious from this item: **macOS auto-update was
+> blocked on exactly this.** Squirrel.Mac will not install an update to an
+> unsigned app, so the whole in-app updater — built and wired since REV-007 — had
+> never been able to do anything. It is live as of v0.1.4.
+>
+> Still open, tracked at **A2**: Windows. `WIN_CSC_LINK` is unset and no artifact
+> has been past SmartScreen on a clean machine.
+>
+> The original write-up follows, for the record.
 
 > **Updated 2026-08-04 — this is far smaller than it was written up as.** The
 > certificate this item was waiting weeks for **already exists on Richard's
@@ -52,25 +73,28 @@ of a human step, that is noted.
 
 **The CI half is already built.** `.github/workflows/release.yml:80-89` already reads
 every secret it needs and is written so that an absent secret produces an *unsigned*
-artifact rather than a failed job — deliberately, so a human sees it. What is missing
-is only the credentials.
+artifact rather than a failed job — deliberately, so a human sees it. ~~What is
+missing is only the credentials.~~ The credentials are in place; this held for
+exactly as long as it took someone to export the certificate.
 
-Needed as GitHub repository secrets:
+Needed as GitHub repository secrets — **all present:**
 
 | Secret | What it is | Status |
 |---|---|---|
-| `CSC_LINK` | base64 of a **Developer ID Application** `.p12` | **cert exists — needs exporting** |
-| `CSC_KEY_PASSWORD` | that `.p12`'s password | chosen at export time |
-| `APPLE_ID` | the Apple ID used for notarisation | Richard knows it |
-| `APPLE_APP_SPECIFIC_PASSWORD` | app-specific password for that Apple ID (or swap the workflow to an App Store Connect API key) | ~1 minute to generate |
-| `APPLE_TEAM_ID` | the 10-character team ID | **`Y35J975HXR`** |
+| `CSC_LINK` | base64 of a **Developer ID Application** `.p12` | ✅ set 2026-08-07 |
+| `CSC_KEY_PASSWORD` | that `.p12`'s password | ✅ set 2026-08-07 |
+| `APPLE_ID` | the Apple ID used for notarisation | ✅ set 2026-08-07 |
+| `APPLE_APP_SPECIFIC_PASSWORD` | app-specific password for that Apple ID (or swap the workflow to an App Store Connect API key) | ✅ set 2026-08-07 |
+| `APPLE_TEAM_ID` | the 10-character team ID | ✅ set 2026-08-07 (`Y35J975HXR`) |
 
 ⚠️ *"Ship unsigned for the alpha" is not the shortcut it sounds like.* Gatekeeper
 blocks unsigned macOS builds outright. ALPHA-002 §3 allows a deliberate unsigned
 release **only** if paired with `dev-docs/guidelines/INSTALLING-UNSIGNED-BUILDS.md`
-linked from the download page — never discovered by the user. Given that the
-certificate already exists, taking that route now would be a choice, not a
-constraint.
+linked from the download page — never discovered by the user. **Moot for macOS
+now** (builds are signed and notarised, and that guide should *not* go in macOS
+release notes any more), and the real cost of having taken that route is now
+visible: it also silently disabled auto-update, which nobody connected at the
+time. The warning stands for **Windows**, which is still in exactly this position.
 
 ### A2. Windows code-signing certificate → ALPHA-002
 
