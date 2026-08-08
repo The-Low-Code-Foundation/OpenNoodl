@@ -5,6 +5,12 @@ import { platform } from '@noodl/platform';
 
 import { AiAssistantApi } from '@noodl-models/AiAssistant/api';
 import { getModelsForProvider, PRICING_AS_OF } from '@noodl-models/AiAssistant/client/models';
+import {
+  AI_ROLES,
+  AI_ROLE_DESCRIPTIONS,
+  AI_ROLE_LABELS,
+  type AiRole
+} from '@noodl-models/AiAssistant/client/roles';
 import { authoringTelemetry } from '@noodl-models/AiAssistant/telemetry';
 import { OLLAMA_DEFAULT_BASE_URL } from '@noodl-models/AiAssistant/client/providers/ollama';
 import { OPENAI_DEFAULT_BASE_URL } from '@noodl-models/AiAssistant/client/providers/openai';
@@ -41,6 +47,92 @@ const KEY_HELP: Partial<Record<AiProviderId, { label: string; url: string }>> = 
   anthropic: { label: 'Get an Anthropic API key', url: 'https://console.anthropic.com/settings/keys' },
   openai: { label: 'Get an OpenAI API key', url: 'https://platform.openai.com/account/api-keys' }
 };
+
+/**
+ * LAS-009 — the value encoding for a role picker.
+ *
+ * Provider and model are one control rather than two, deliberately. A model id
+ * only means anything to the provider it belongs to, so two independent
+ * pickers would let a user leave `claude-opus-5` selected while switching the
+ * provider to Ollama — a configuration that looks set and fails at the endpoint.
+ * One control means the pair always moves together, which is also what
+ * `AiConfigStore.setRole` needs to avoid leaving half a selection behind.
+ *
+ * The empty string is "same as the main model", which is what every role ships
+ * as and what most users will keep.
+ */
+const INHERIT = '';
+
+function encodeRole(provider: AiProviderId, model: string): string {
+  return `${provider}:${model}`;
+}
+
+function decodeRole(value: string): { provider?: AiProviderId; model?: string } {
+  if (!value) return {};
+  const separator = value.indexOf(':');
+  if (separator < 0) return {};
+  const provider = value.slice(0, separator) as AiProviderId;
+  const model = value.slice(separator + 1);
+  return AI_PROVIDER_IDS.includes(provider) && model ? { provider, model } : {};
+}
+
+/**
+ * One row per role. Only providers that are actually configured are offered:
+ * choosing an unconfigured one would resolve straight back to the global pair
+ * with a console warning, which is a setting that reads as applied and is not.
+ * A role already pointing at a provider that has since lost its credentials is
+ * still shown — labelled — so it can be seen and cleared rather than silently
+ * disappearing from the list that explains the behaviour.
+ */
+function RoleRow({ role, mainProvider }: { role: AiRole; mainProvider: AiProviderSelection }) {
+  const [value, setValue] = useState(() => {
+    const selection = AiConfigStore.getRole(role);
+    return selection.provider && selection.model ? encodeRole(selection.provider, selection.model) : INHERIT;
+  });
+
+  const options = useMemo(() => {
+    const rows = [{ label: 'Same as main model', value: INHERIT }];
+
+    for (const provider of AI_PROVIDER_IDS) {
+      if (!AiConfigStore.isConfigured(provider)) continue;
+      for (const model of getModelsForProvider(provider)) {
+        rows.push({
+          label: `${AI_PROVIDER_LABELS[provider]} — ${model.displayName}`,
+          value: encodeRole(provider, model.id)
+        });
+      }
+    }
+
+    // Whatever is currently selected must always be selectable, or the control
+    // would render blank and the next change would look like a fresh choice.
+    if (value !== INHERIT && !rows.some((row) => row.value === value)) {
+      const { provider, model } = decodeRole(value);
+      rows.push({
+        label: provider
+          ? `${AI_PROVIDER_LABELS[provider]} — ${model} ${AiConfigStore.isConfigured(provider) ? '(custom)' : '(not configured)'}`
+          : value,
+        value
+      });
+    }
+
+    return rows;
+    // `mainProvider` is not read here, but changing it changes which providers
+    // are configured — so it is what makes this list reload.
+  }, [value, mainProvider]);
+
+  return (
+    <PanelRow label={AI_ROLE_LABELS[role]} helpText={AI_ROLE_DESCRIPTIONS[role]}>
+      <PropertyPanelSelectInput
+        value={value}
+        properties={{ options }}
+        onChange={(next: string) => {
+          setValue(next);
+          AiConfigStore.setRole(role, decodeRole(next));
+        }}
+      />
+    </PanelRow>
+  );
+}
 
 export function AiSettingsSection() {
   const [provider, setProviderState] = useState<AiProviderSelection>(AiConfigStore.getProvider());
@@ -259,6 +351,24 @@ export function AiSettingsSection() {
                   }}
                 />
               </PanelRow>
+
+              {/* LAS-009: below the connection controls, because a role can
+                  only name a provider that is already set up above. Ships
+                  unset — the measured replays put the hard step at *acting*,
+                  not designing, so no preset is suggested until LAS-011's
+                  matrix says which way round it actually goes. */}
+              <Box hasTopSpacing={3}>
+                <Title size={TitleSize.Medium} hasBottomSpacing>
+                  Model per role
+                </Title>
+                <Text hasBottomSpacing>
+                  Point each stage of a build at a different model, the way you would in Claude Code. Anything left on
+                  &quot;Same as main model&quot; follows the picker above.
+                </Text>
+              </Box>
+              {AI_ROLES.map((role) => (
+                <RoleRow key={role} role={role} mainProvider={provider} />
+              ))}
 
               {provider === 'ollama' && (
                 <Box hasYSpacing>
