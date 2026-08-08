@@ -1,6 +1,94 @@
 # BEN-003 — The outputs read-out: what the component *emits*
 
-**Status:** 📋 not started · depends on **BEN-001**
+**Status:** 🟡 channel established, live · depends on **BEN-001**
+
+## The channel, answered — 2026-08-08, against a live bench client
+
+§1 required this in writing, with the probe's actual output, before any UI. The probe ran as a third
+relay peer (the launch token at `~/Library/Application Support/NodeGX/relay-token`), so nothing had to
+be instrumented and the raw wire shape is visible. Fixtures authored for it: `/Components/BenchEmitter`
+(a value output and a signal output) and `/Components/BenchLogicProbe` (no visual root at all) — **the
+corpus contained no component with a declared output**, exactly as it contained none with typed inputs.
+
+**The answer is one channel, not two.** The task expected `getPortValues` for values and the trace for
+signals. The trace carries *both*, and carries them better.
+
+### 1. A sandbox client answers `getPortValues` — but it cannot ever show a signal
+
+```
+{"values":[{"node":"bench-subject","port":"Count","direction":"output","exists":true,"value":"0"},
+           {"node":"bench-subject","port":"Pressed","direction":"output","exists":true,"value":"undefined"},
+           {"node":"bench-subject","port":"Label","direction":"input","exists":true,"value":"\"emitter\""},
+           {"node":"bench-subject","port":"Nope","direction":"output","exists":false}]}
+```
+
+So the command works on a `sandbox-<id>` client, a component **instance**'s outputs are readable by
+name, and an undeclared port comes back `exists: false` rather than silently as `undefined`. But
+`Pressed` — a signal output — reads `"undefined"` before, during and after firing, because a signal
+has no state to read. **`getPortValues` can never answer the half of the task that matters most.**
+
+### 2. `getTraceEvents` carries both kinds, and says which is which
+
+Armed, then `Bump` pulsed and the fixture's button clicked:
+
+```
+seq=1 cause=0 kind=value  be-ci.Bump             -> be-counter.increase = true
+seq=2 cause=0 kind=value  be-ci.Bump             -> be-counter.increase = false
+seq=3 cause=1 kind=value  be-counter.currentCount-> be-count.text       = 5
+seq=4 cause=1 kind=value  be-counter.currentCount-> be-co.Count         = 5
+seq=5 cause=0 kind=signal be-button.onClick      -> be-counter.increase = true
+seq=6 cause=0 kind=signal be-button.onClick      -> be-co.Pressed       = true
+seq=7 cause=5 kind=value  be-counter.currentCount-> be-count.text       = 6
+seq=8 cause=5 kind=value  be-counter.currentCount-> be-co.Count         = 6
+```
+
+A component output is **an edge whose `to.node` is a `Component Outputs` node of the mounted
+component**, and `getTraceDictionary` supplies exactly that mapping (`{node: {name, type, component}}`
+plus the edge list). `kind` separates the signal from the value; `seq` gives exact ordering.
+
+Decisively: `getTraceEvents(afterSeq)` is a **tail read**, not a sample. Nothing that happens between
+two pulls is lost — which is the whole of the Risks table's *"a signal that fires between polls is
+missed and the rail lies by omission"*. A `getPortValues` poll has that defect by construction.
+
+### 3. The trace can be armed on ONE client — B2's finding, a second time
+
+`sendTraceEnabled` is a broadcast, and the first probe measured the collateral: both viewers armed,
+and the app preview answered `enabled:true`. Adding `target` to that same message fixes it with **no
+runtime change**, because the relay routes any message carrying one:
+
+```
+armed with target=<bench>   →  bench traceState {"enabled":true,"owners":["ben003-probe2"]}
+                               app   traceState {"enabled":false,"owners":[]}
+```
+
+So the bench never disturbs the live preview, and TALK-003's *"an agent's `start_trace` destroys a
+human's recording"* is avoided by not reaching the human's runtime at all. `getTraceState` is still
+sent before arming, as §1 requires, and it answered `{"enabled":false,"owners":[],"highestSeq":0}`.
+
+### 4. ⚠️ Two defects the probe found, both of which must be fixed first
+
+- **No reply on this channel says who sent it.** Measured across all eight replies of the first probe:
+  `portValues`, `traceState`, `traceDictionary` and `traceEvents` all arrive with
+  `clientId: undefined`. The relay forwards viewer messages verbatim and the runtime does not stamp
+  its own id. `TraceSession` already knows the relay broadcasts to every editor peer and de-duplicates
+  by `seq` — but that only defends against re-delivery of *its own* client's buffer. A **second**
+  client's events are numbered from 1 independently, so `highest < lastSeq` takes the buffer-reset
+  branch and **replaces a human's recording with the bench's**. See register B15.
+- **A read on an occluded window is stale, and looks broken.** Count=3, `Bump` pulsed, read again:
+  still 3. Force a frame with a screenshot, read again: 4. The queued parameter is applied on a frame,
+  and an occluded renderer runs none (B10). The read was never wrong. See register B16.
+
+### The decision
+
+| | |
+|---|---|
+| **Seed** | one `getPortValues` for the declared **value** outputs, so a value set before the bench armed is shown rather than blank |
+| **Follow** | `getTraceEvents(afterSeq)` on a tail pull, filtered to edges landing on the mounted component's `Component Outputs` nodes |
+| **Arm** | `traceEnabled` **targeted at the bench client**, after `getTraceState`, and disarmed when the bench is not the active mode |
+| **Not built** | a second polling route for signals. It would lie by omission, and the trace already answers |
+
+---
+
 
 ## Why this is not optional
 

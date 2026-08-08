@@ -496,6 +496,7 @@ EditorConnection.prototype.sendTraceDictionary = function (this: EditorConnectio
   this.send({
     cmd: 'traceDictionary',
     type: 'viewer',
+    clientId: this.clientId,
     content: JSON.stringify(dictionary)
   });
 };
@@ -506,10 +507,21 @@ EditorConnection.prototype.sendTraceDictionary = function (this: EditorConnectio
  * Batched by the caller rather than sent per event: `send` already coalesces on a 200ms timer
  * and chunks at 50 messages, and one event per message would defeat both.
  */
+/**
+ * ⚠️ **`clientId` here is not decoration — its absence corrupted the consumer.**
+ *
+ * The relay forwards viewer traffic to *every* editor peer verbatim, so a reply that does not
+ * say who sent it is indistinguishable from one that did. Every other reply on this socket
+ * already stamps it (`sendInputResult`, `sendNodeLibrary`); these four did not, and BEN-003
+ * measured the consequence: with a second traced client — the component bench — a batch
+ * numbered from 1 hits `TraceSession`'s `highest < lastSeq` branch and **replaces a human's
+ * recording with the bench's**. Register B15.
+ */
 EditorConnection.prototype.sendTraceEvents = function (this: EditorConnection, events) {
   this.send({
     cmd: 'traceEvents',
     type: 'viewer',
+    clientId: this.clientId,
     content: JSON.stringify({ events })
   });
 };
@@ -525,6 +537,7 @@ EditorConnection.prototype.sendTraceState = function (this: EditorConnection, st
   this.send({
     cmd: 'traceState',
     type: 'viewer',
+    clientId: this.clientId,
     content: JSON.stringify(state)
   });
 };
@@ -538,6 +551,7 @@ EditorConnection.prototype.sendTraceState = function (this: EditorConnection, st
 EditorConnection.prototype.sendPortValues = function (this: EditorConnection, values) {
   this.send({
     cmd: 'portValues',
+    clientId: this.clientId,
     type: 'viewer',
     content: JSON.stringify({ values })
   });

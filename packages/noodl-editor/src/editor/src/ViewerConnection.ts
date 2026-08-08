@@ -532,11 +532,19 @@ export class ViewerConnection extends Model {
    * the point: `TraceSession` should not have to remember to identify itself, and a send that
    * forgot would fall back to the runtime's single anonymous key and share a switch with
    * `nodegx-observe` exactly as before.
+   *
+   * `target` arms **one** client instead of every viewer, and needs no runtime change for the
+   * same reason `sendModelUpdateToClient` did not (register B2): the relay routes any message
+   * carrying one and broadcasts only the rest. It exists for the component bench, which must
+   * be able to watch its own sandbox without switching on the trace in the app preview the
+   * user is running beside it — measured before it was built, and the broadcast did exactly
+   * that (register B17). Omitting it broadcasts, so every existing caller is unaffected.
    */
-  sendTraceEnabled(enabled: boolean) {
+  sendTraceEnabled(enabled: boolean, target?: string) {
     this.send({
       cmd: 'traceEnabled',
-      content: JSON.stringify({ enabled, owner: this.clientId })
+      content: JSON.stringify({ enabled, owner: this.clientId }),
+      ...(target ? { target } : {})
     });
   }
 

@@ -158,11 +158,35 @@ export class TraceSession extends Model {
    */
   private get clientId(): string | undefined {
     const clients = NodeLibraryImporter.instance.clientsWithRuntime(RuntimeType.Browser);
-    return clients.length ? clients[0] : undefined;
+    // ⚠️ A **sandbox** window is a browser runtime too, and there can now be several: the AI
+    // preview (AIX-008) and the component bench (BEN-004) both register one. They are not the
+    // preview the user is walking, and which of them landed in `_clients` first is an accident
+    // of ordering — so they are excluded by name rather than left to luck. Falls back to the
+    // first client of any kind so a project that somehow has only a sandbox still answers.
+    const real = clients.filter((id) => !id.startsWith('sandbox-'));
+    const preferred = real.length ? real : clients;
+    return preferred.length ? preferred[0] : undefined;
   }
 
   public get isPreviewRunning(): boolean {
     return this.clientId !== undefined;
+  }
+
+  /**
+   * Whether a reply that arrived on the broadcast channel is *this session's*.
+   *
+   * ⚠️ **The relay broadcasts every viewer reply to every editor peer**, and until BEN-003 the
+   * four trace/port replies carried no `clientId` at all — so this could not be asked, and the
+   * `seq` filter below was the only defence. That filter only recognises re-delivery of *this*
+   * client's buffer: a second traced client numbers from 1 independently, takes the
+   * buffer-reset branch, and replaces the recording wholesale. Register B15.
+   *
+   * An **absent** id still passes. An older runtime does not stamp one, and dropping its
+   * replies would break the walk against a preview built before this change.
+   */
+  private isMine(clientId: unknown): boolean {
+    if (typeof clientId !== 'string' || clientId === '') return true;
+    return clientId === this.clientId;
   }
 
   private listen() {
@@ -184,7 +208,8 @@ export class TraceSession extends Model {
 
     EventDispatcher.instance.on(
       'TraceDictionary',
-      ({ dictionary }) => {
+      ({ clientId, dictionary }) => {
+        if (!this.isMine(clientId)) return;
         this.topology = withEditorLabels(dictionary);
         this.hasTopology = true;
         this.notifyListeners('topologyChanged');
@@ -214,7 +239,8 @@ export class TraceSession extends Model {
 
     EventDispatcher.instance.on(
       'TraceEvents',
-      ({ events }) => {
+      ({ clientId, events }) => {
+        if (!this.isMine(clientId)) return;
         if (!Array.isArray(events)) return;
 
         // ⚠️ **An empty pull is an answer, and it has to be delivered as one.** Every read here
@@ -270,7 +296,8 @@ export class TraceSession extends Model {
     // header honest about an agent that joined or left after the fact.
     EventDispatcher.instance.on(
       'TraceState',
-      ({ state }) => {
+      ({ clientId, state }) => {
+        if (!this.isMine(clientId)) return;
         if (!state || typeof state !== 'object') return;
         const owners: string[] = Array.isArray(state.owners) ? state.owners : [];
         const mine = ViewerConnection.instance?.clientId;
@@ -294,7 +321,8 @@ export class TraceSession extends Model {
 
     EventDispatcher.instance.on(
       'TracePortValues',
-      ({ values }) => {
+      ({ clientId, values }) => {
+        if (!this.isMine(clientId)) return;
         if (!Array.isArray(values)) return;
         for (const entry of values as PortValueResult[]) {
           // An absent port is left out of the map entirely rather than stored as undefined,
