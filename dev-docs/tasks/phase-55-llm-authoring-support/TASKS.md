@@ -1,0 +1,301 @@
+# Phase 55 — the tasks (LAS: LLM Authoring Support)
+
+**Created:** 2026-08-08, out of [AUDIT-SESSION-1.md](AUDIT-SESSION-1.md). Every task here traces to
+a failure that was **measured**, not assumed — the audit's rule ("read the mechanism in source
+before trusting any stated fact") stays in force for these documents too.
+
+**The bar, restated as an exit test:** LAS-011 replays the storefront brief cold on a mid-tier
+hosted model AND a mid-tier open-weight model, and both produce an app that is *architecturally*
+correct — components with real interfaces, repeaters over data, signals, responsive, nothing dead
+in the render report. Haiku already gets the architecture right; the tasks close the gap between
+"architecturally right" and "renders as built". If that lands, the phase is done. "Perfect" means
+the exit test, not a feeling.
+
+**Standing constraints (settled, from the README):** primitive-only; one authoring substrate, two
+clients (every change reaches the editor loop and `noodl-mcp` from one module — the
+`decomposition.ts` shape); structure > gate > example > prose; doctrine text is Richard's.
+
+**Working habits that already paid off:** write the check before the fix (phase 39); calibrate
+every new rule against the ~95-project corpus before deciding severity (the
+`repeated-sibling-subtree` precedent: 17 hits/95 projects → warning, authored-blocking is a
+separate decision); a graph is a claim, a render is evidence.
+
+---
+
+## Track 1 — Gates. The failures that shipped are the gates that don't exist.
+
+The audit's central measurement: every hard rejection with a suggestion was self-corrected, even
+by the mid-tier model (7/42 turns of encoding rejections, all recovered). Prose was dropped;
+rejections were obeyed. So the cheapest capability upgrade available is turning known silent
+failures into speaking ones.
+
+### LAS-001 — The interface gate ⭐ highest value in the phase (audit F2)
+
+**The defect:** a component instantiated with per-instance parameters (`name`, `price`, `image`)
+that its graph exposes no `Component Inputs` for validates with **0 errors** and renders every
+instance as dead placeholder chrome. This single gap is what separated haiku's replay from a
+shippable page.
+
+**Build:** one new validator rule (`validation/rules/`), two halves sharing one index of component
+interfaces:
+
+1. **Unknown instance parameter.** A parameter set on a component-instance node must name a port
+   the target component's `Component Inputs` node exposes (plus the built-ins every instance
+   carries — `mounted` etc.; enumerate them from source, not memory). Diagnostic names the sent
+   parameter, the component, and its actual input list — the "did you mean" shape that measured
+   well.
+2. **Interface-less variance.** Two or more instances of the same component whose parameter sets
+   differ, where the component exposes no inputs at all → one diagnostic on the component ("N
+   instances vary but nothing can receive the variance — add Component Inputs whose names match").
+
+**Severity:** calibrate on the corpus first. Expected: legitimately rare project-wide → promote to
+`AUTHORED_BLOCKING_WARNINGS`
+([authoredCandidate.ts:149](../../../packages/noodl-editor/src/editor/src/validation/authoredCandidate.ts#L149)),
+the `PageWithoutPageNode` precedent — including correcting any fixtures that were teaching the
+broken shape (that precedent too).
+
+**Acceptance:** re-stage haiku's exact `Components/ProductCard` + `Sections/FeaturedProducts`
+candidates (preserved in `phase55-replay-haiku`) → rejected with the interface diagnostic. Jest
+specs both halves; corpus run documented in the task's register row.
+
+### LAS-002 — Staging speaks (audit F6, phase-54 F6)
+
+`stage_plan_operation` returns `warnings: 1` and no way to read the text
+([planTools.ts:504](../../../packages/noodl-mcp/src/tools/planTools.ts#L504)) — the decomposition
+warning whispered through all three measured builds at exactly the moment the agent could act.
+
+**Build:** every authoring door (`stage_plan_operation`, `create_component`, `update_component`,
+`apply_plan`) returns the warning **diagnostics themselves** (code, message, location), not a
+count. Same formatting module the rejection path uses — no second dialect. Editor loop gets the
+same payload through the shared validate module.
+
+**Acceptance:** stage a trio-of-siblings candidate → response contains the
+`repeated-sibling-subtree` text verbatim. Spec pins the response shape.
+
+### LAS-003 — Value-format gates (audit F3, F7, + the hex rule)
+
+Three checks, one task, all in the semantic validator's value layer (phase 38's "nothing validates
+parameter VALUES" — closing the measured holes, not boiling the ocean):
+
+1. **`layoutString` grammar** (F3): integers and spaces (`"1 1 2"`), same for
+   `mediumLayout`/`smallLayout`. `"1fr 1fr"` → error with the corrected string in the message.
+   This is authored-blocking from day one — no legitimate corpus population can exist for a string
+   the runtime cannot parse.
+2. **Unsized absolute Group** (F7): `position: absolute` with neither `width` nor `height` →
+   warning ("dimensions default to %, this fills its parent — the badge-pill trap"). Corpus-
+   calibrate before deciding authored-blocking.
+3. **Raw hex/px on token-typed ports:** colour parameters matching `#…`/`rgb(` and
+   spacing/radius carrying bare px where the style vocabulary offers tokens → warning. The server
+   instructions already say "never raw hex"; this makes it checkable. Corpus-calibrate (imported
+   projects will hit — likely stays authored-blocking only).
+
+**Acceptance:** haiku's `"1fr 1fr 1fr 1fr"` candidate rejects with the fix in the message;
+sonnet's Badge group draws the warning; specs for all three.
+
+### LAS-004 — Promote the architecture warning + the page-size rule
+
+`repeated-sibling-subtree` fired correctly on every measured build and blocked nothing.
+
+1. Promote it to `AUTHORED_BLOCKING_WARNINGS`. Corpus stays untouched (the authored policy never
+   applies to `validate:project`) — but sweep the AI-suite fixtures first for hand-laid trios, the
+   `PageWithoutPageNode` lesson: fixtures teaching the refused shape get corrected, not the gate
+   weakened.
+2. New info-severity rule: a **page** component whose own graph exceeds ~25 nodes ("this page
+   wanted to be several components"). Info, not warning — the audit showed cold models already
+   decompose; this is the backstop, and it must not nag a legitimate dense page into
+   over-factoring. Threshold from the corpus, not from the doctrine's prose.
+
+**Acceptance:** the ecommerce-example Home (66 nodes, 3 trios) rejects as authored output; the
+two cold-replay Homes (7 and 8 nodes) pass untouched.
+
+---
+
+## Track 2 — The surface. Give agents eyes and make the right order the easy order.
+
+### LAS-005 — `render_report`: the feedback loop as a tool ⭐ (audit F5)
+
+The loop that found every real defect in two phases is unreachable from the surface agents use;
+doctrine §11 is unfollowable. Sonnet improvised 80% of it through sandboxed Bash and still shipped
+a motorcycle; haiku improvised nothing. Meanwhile the whole loop costs **7.5 s** headless
+([measurements/measure-project.js](measurements/measure-project.js)).
+
+**Build:**
+
+1. Promote `measure-project.js` into `scripts/devtools/` — parameterise ports, free-port
+   allocation, `--json`.
+2. New MCP tool **`render_report`** (read tools, registered unconditionally): renders the project
+   from disk exactly as the script does, returns the numeric report (per-viewport overflow +
+   minimum layout width, font-weight/size sets, broken images, empty decorated boxes, dead-
+   placeholder texts) **and the screenshots as MCP image content** — a multimodal agent can then
+   *look*, which is the only fix wrong-subject images can ever have. Requires the built viewer
+   bundle; report its absence as an actionable error, not a crash.
+3. `apply_plan` gains `render: true` (default **on** when the plan touches any visual component):
+   the response appends the report summary. The agent that just applied a plan is told, in the
+   same turn, "your grid is one column and five images are broken".
+4. Editor client: the same report module behind the AIX-008 sandbox preview, so the in-editor
+   agent gets machine-readable render feedback too — one substrate, two clients.
+
+**Acceptance:** replay-haiku's project through `render_report` → the report itself flags the dead
+"Text" placeholders, the one-column grid and the 5 broken images (the three defects the audit
+found by hand). Jest for the report module; live QA per the run-editor recipe for the tool.
+
+### LAS-006 — Structured plans: the tree as a form, not an essay
+
+The plan step worked cold on both models — but its operations are prose intents, and what the
+intents never said (interfaces, repeats), no downstream turn built. Weak models fill forms better
+than they follow essays (audit §D3).
+
+**Build:**
+
+1. `create_plan` operations gain optional structured fields: `inputs`/`outputs` (name + type),
+   `repeats` (data source kind + row fields) and `instantiates` (component targets). Optional at
+   the schema so old callers don't break —
+2. — but plan validation gains teeth: a `create` under `Components/`|`Cards/`|`Sections/` with no
+   `inputs`/`outputs` and no declared reason → warning in the create_plan response ("an interface
+   stated vaguely is an interface that will not line up"); a plan whose only operation is one page
+   → the static critic's one-liner ("plan the sections as create operations").
+3. Staged-candidate cross-check: a staged component whose plan operation declared `inputs` must
+   expose exactly those Component Inputs — the plan becomes a contract, LAS-001 does the checking.
+4. Rewrite the server `instructions` authoring paragraph to lead with the order: *decide the
+   component tree (create_plan with interfaces and repeats) → leaves → sections → page* — and name
+   `Static Data` and `Component Inputs` by name in it (the two primitives nobody finds). The
+   bag-of-nodes door stays open (primitive-only, no ceremony for a two-node fix) but
+   `create_component` of a **page**-typed component when no plan exists gets one advisory line in
+   its response pointing at the plan door.
+
+**Acceptance:** replay transcript comparison — a cold haiku run with the new schema produces plan
+operations carrying interfaces, and the ProductCard staged against it either exposes them or is
+rejected by the LAS-001 contract check.
+
+### LAS-007 — Push, not pull (retrieval into the failure moment)
+
+Haiku never called `list_examples`/`get_example`/docs once — the recipes existed and were never
+retrieved (audit §D1). Retrieval advice does nothing; attachment does.
+
+**Build:**
+
+1. Rejection responses attach the fix's example: LAS-001 interface rejections inline the
+   Component-Inputs pattern fragment (from the existing `comp-*`/`ui-*` recipes, rendered small);
+   `layoutString` rejections inline the two Columns modes; sizeMode/encoding rejections cite their
+   recipe id. One mapping table, in the shared validate module, from DiagnosticCode → example id.
+2. `get_node_type` for the nine page-drawing types already cross-references `ui-*` recipes —
+   verify it actually inlines enough to act on (the audit verified the citation exists, not its
+   sufficiency), and add the "conditional ports" style hints where thin.
+3. `get_project_info` doctrine payload gains a 10-line **"the traps"** preamble (Component Inputs
+   are the interface; Static Data is the inline-JSON array; Columns is the only reflow; unsized
+   absolute Groups fill their parent; verify images by looking) — the audit shows the doctrine
+   that is pushed gets read.
+
+**Acceptance:** a cold mid-tier replay's transcript shows the recipe text arriving inside a
+rejection and the following attempt using it (this is measurable: haiku's F2/F3 failures become
+one-retry recoveries).
+
+---
+
+## Track 3 — Drift. The doctrine must not disagree with itself.
+
+### LAS-008 — Fix `DESIGN_AUTHORING` and pin the pattern (audit F1)
+
+The 556-char per-turn preamble still teaches the wrapped-row percentage-width pattern and never
+says `Columns`
+([design.ts:246](../../../packages/noodl-editor/src/editor/src/models/AiAssistant/authoring/prompts/design.ts#L246)) —
+shipped into every in-editor authoring turn, contradicting §7/§8 of the very doctrine it fronts.
+
+**Build:** rewrite the paragraph (Richard's voice — derive from his §7, do not invent taste);
+sweep every prompt string for the deprecated advice; add a small spec that greps the exported
+prompt constants for the known-bad phrasing so the drift cannot silently return (a unit test as a
+tripwire, the "write the check before the fix" habit).
+
+---
+
+## Track 4 — Models. Choice at the top, proof at the bottom.
+
+### LAS-009 — design / plan / act per-role model selection (Richard's request, 2026-08-08)
+
+The seam exists and is unused: every request honours an explicit `model`
+([AiClient.ts:157](../../../packages/noodl-editor/src/editor/src/models/AiAssistant/client/AiClient.ts#L157)),
+`getProvider(providerId)` takes an override
+([AiClient.ts:135](../../../packages/noodl-editor/src/editor/src/models/AiAssistant/client/AiClient.ts#L135)).
+
+**Build:**
+
+1. Settings: `ai.role.design`, `ai.role.plan`, `ai.role.act` — each an optional
+   `{provider, model}` falling back to the global pair. Design = scoping + token/identity turns;
+   plan = `PlanningSession`; act = `AuthoringSession` + apply/refine turns. Map each session to
+   its role in one table, not scattered conditionals.
+2. Sessions pass their role's model (and provider override where it differs) on every request.
+   Cost log already records per-model usage — surface per-role spend in the session cost line.
+3. Settings UI: one row in the AI settings panel — three dropdowns defaulting to "Same as main
+   model", reusing the existing provider/model picker components. Local/OpenAI-compatible
+   providers appear exactly as they do in the main picker (they already work — phase-15
+   provider layer).
+4. Default mapping ships **unset** (everything = global). The audit's caution stands: the data so
+   far says planning is the *cheap* step and acting the hard one — LAS-011's matrix decides any
+   recommended preset, not intuition.
+
+**Acceptance:** jest on the role→model resolution (fallbacks, cross-provider); a live editor run
+with plan=haiku/act=sonnet visibly logging both models in the usage line.
+
+### LAS-010 — The open-weight leg (audit's honest gap)
+
+**Build:**
+
+1. **Human gate first:** `ollama pull qwen2.5-coder:32b` (~20 GB) — Richard says yes/no, or names
+   the machine/model he prefers. Nothing else in this task starts until a real mid-tier
+   open-weight model is reachable.
+2. An MCP-capable driver for local models: ~200 lines — ollama `/api/chat` (tool calling) bridged
+   to the `noodl-mcp` stdio server, transcript to JSONL, same shape as the claude-CLI rig in
+   STOREFRONT-BRIEF.md. (Repairing phase-15 `aix15-live` is the *editor-loop* alternative; the MCP
+   driver is the one that tests the same surface as the other replays — prefer it, keep the repair
+   as a fallback note.)
+3. Replay the brief cold; score with the standard fixture.
+
+**Acceptance:** an open-weight row in the scoring table with the same columns as haiku/sonnet.
+
+### LAS-011 — The exit: the acceptance matrix
+
+After Tracks 1–3 land (LAS-009 optional for the matrix, LAS-010 required):
+
+1. Re-replay the storefront brief **cold** on: mid-tier hosted (haiku), strong hosted (sonnet),
+   mid-tier open-weight — same protocol, one run each, no rescues.
+2. Score every run with the STOREFRONT-BRIEF.md table + `render_report`. Publish the
+   before/after table against the session-1 numbers (haiku: dead cards, 1-col grid, 5 broken
+   images; sonnet: blobs, motorcycle).
+3. **Richard judges** the rendered pages side-by-side against a Claude artifact of the same brief
+   (the phase-40 bench, unchanged). The phase's own success line: the mid-tier and open-weight
+   runs are architecturally correct and nothing in their render reports is dead — even where the
+   taste is weaker than Opus's.
+
+Failures found here get classified (knowledge/ordering/capability/seam) and either spawn LAS-012+
+or are accepted with a written reason. **The phase does not close on green gates; it closes on
+this matrix.**
+
+---
+
+## Order and dependencies
+
+```
+LAS-001 (interface gate) ──┐
+LAS-002 (staging speaks) ──┤
+LAS-003 (value gates)    ──┼──► LAS-007 (attach examples to the new rejections)
+LAS-004 (promote+page)   ──┘            │
+LAS-005 (render_report) ── independent ─┤
+LAS-006 (structured plans; §3 needs LAS-001)
+LAS-008 (prompt drift) ── independent, small, do first or between
+LAS-009 (per-role models) ── independent (editor-side)
+LAS-010 (open-weight rig) ── needs Richard's pull decision; parallel to everything
+LAS-011 (exit matrix) ── last; needs 001–008 + 010
+```
+
+Suggested sessions: **(1)** LAS-008 + LAS-002 + LAS-003 (small, sharp, all spec-pinned) · **(2)**
+LAS-001 + LAS-004 (the validator pair, one corpus calibration run) · **(3)** LAS-005 · **(4)**
+LAS-006 + LAS-007 · **(5)** LAS-009 · **(6)** LAS-010 + LAS-011. Registers per task; serialise
+register edits (pathspec-commit trap); commit per slice.
+
+## Gates for every session
+
+`npm run catalog:examples`, `catalog:check`, `catalog:merge:check`, `typecheck:editor`, `npx jest`
+in `packages/noodl-editor` (71 suites / 973 specs at phase-54 close — compare the passing COUNT,
+`Tests: 0` is a compile failure, and only the `Jasmine:` line counts in the editor suite), plus
+`packages/noodl-mcp` jest (its suite is a gate). `pr.yml`'s `Lint` and `Test (editor)` are red on
+push for pre-existing reasons — check WHICH job before reading a red run as yours.
