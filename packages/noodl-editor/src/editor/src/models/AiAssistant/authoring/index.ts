@@ -168,8 +168,9 @@ export {
   BENCH_COMPONENT_NAME,
   BENCH_NODE_ID,
   benchHarness,
+  benchInstanceUsage,
   benchInterface,
   benchParameters,
   buildBenchExport
 } from './componentBench';
-export type { BenchExport, BenchInterface, BenchMount, BenchPort } from './componentBench';
+export type { BenchExport, BenchInstanceUsage, BenchInterface, BenchMount, BenchPort } from './componentBench';

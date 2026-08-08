@@ -36,17 +36,25 @@
  */
 
 import { useThrottle } from '@noodl-hooks/useThrottleState';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-import { buildBenchExport, type AgentSampleData, type BenchExport } from '@noodl-models/AiAssistant/authoring';
+import {
+  benchInstanceUsage,
+  buildBenchExport,
+  type AgentSampleData,
+  type BenchExport
+} from '@noodl-models/AiAssistant/authoring';
 import { ProjectModel } from '@noodl-models/projectmodel';
 
 import { Text, TextType } from '@noodl-core-ui/components/typography/Text';
 import { useTrackBounds } from '@noodl-core-ui/hooks/useTrackBounds';
 
 import { EventDispatcher } from '../../../../shared/utils/EventDispatcher';
+import { ViewerConnection } from '../../ViewerConnection';
 import { SandboxDataEditor } from '../documents/AuthoringPreviewDocument/SandboxDataEditor';
 import { SandboxToolbar, SANDBOX_PARTITION, SANDBOX_WEBVIEW_ATTRIBUTES, useSandboxViewer } from '../SandboxSurface';
+import { benchParameterContent, benchSignalContents } from './benchInputs';
+import { BenchInputsRail } from './BenchInputsRail';
 import css from './ComponentBench.module.scss';
 import { resolveBenchWidth, type BenchFrame } from './previewScope';
 
@@ -74,6 +82,15 @@ export function ComponentBench({ target, frame, onFrameMeasured }: ComponentBenc
   const [dataOpen, setDataOpen] = useState(false);
   const [result, setResult] = useState<BenchExport | undefined>(undefined);
   const [revision, setRevision] = useState(0);
+  /**
+   * BEN-002 — the values the user has set on the mounted component's inputs.
+   *
+   * Preview state, never project state (R5), like everything else on this
+   * surface. An absent key means *unset*, which is not the same as set to
+   * nothing: the harness then falls back to the port's derived default, exactly
+   * as a page that left the port unwired would.
+   */
+  const [inputs, setInputs] = useState<Record<string, unknown>>({});
 
   /**
    * The export is a snapshot of the project taken when it was built, so an edit
@@ -82,14 +99,43 @@ export function ComponentBench({ target, frame, onFrameMeasured }: ComponentBenc
    * It rebuilds on the topbar's existing Refresh instead of on a new signal of
    * its own: R1 says one preview surface, and a surface with a second refresh
    * button that means something slightly different is the confusion this phase
-   * is about. (Whether the bench should follow `modelUpdate` live is register
-   * B2, and it is BEN-002's decision to make, not this one's.)
+   * is about.
+   *
+   * ⚠️ **This is still true after BEN-002 decided B2.** The bench now sends
+   * *its own* parameter updates to *its own* client, which is the opposite
+   * direction: it does not follow the project's `modelUpdate` stream. Editing
+   * the mounted component in the graph still needs a Refresh. Whether it should
+   * is a separate question, and a bigger one — the harness would have to
+   * survive its target's interface changing underneath it.
    */
   useEffect(() => {
     const eventGroup = {};
     EventDispatcher.instance.on('viewer-refresh', () => setRevision((n) => n + 1), eventGroup);
     return () => EventDispatcher.instance.off(eventGroup);
   }, []);
+
+  /**
+   * ⚠️ **The export must not be rebuilt when an input changes**, which is why
+   * this is a ref and not a dependency.
+   *
+   * A changed export makes the runtime call `location.reload()`. Rebuilding per
+   * keystroke would flash the preview on every letter and throw away the open
+   * dropdown, the hover state, the half-filled form — the state someone opened
+   * the bench to look at. Values reach the running component as targeted
+   * `modelUpdate`s instead (B2). The ref still carries them into the *next*
+   * rebuild, whenever one happens for an honest reason, so a Refresh or a data
+   * change does not silently blank the rail's work.
+   */
+  const inputsRef = useRef(inputs);
+  inputsRef.current = inputs;
+
+  // A different component has a different interface, so the previous one's
+  // values are not merely stale, they name ports that do not exist. Declared
+  // before the build effect so the clear lands first on a target change.
+  useEffect(() => {
+    inputsRef.current = {};
+    setInputs({});
+  }, [target]);
 
   useEffect(() => {
     if (!ProjectModel.instance) {
@@ -100,6 +146,7 @@ export function ComponentBench({ target, frame, onFrameMeasured }: ComponentBenc
       buildBenchExport({
         project: ProjectModel.instance,
         target,
+        inputs: inputsRef.current,
         userData,
         useSampleData,
         signedIn
@@ -108,6 +155,51 @@ export function ComponentBench({ target, frame, onFrameMeasured }: ComponentBenc
   }, [target, userData, useSampleData, signedIn, revision]);
 
   const viewer = useSandboxViewer({ json: result?.json, useSampleData, signedIn });
+  const clientId = viewer.clientId;
+
+  /**
+   * One input changed. `undefined` unsets it — `JSON.stringify` drops the key,
+   * the runtime's `setParameter` deletes the parameter, and the node falls back
+   * to its default. That is what Reset is.
+   */
+  const applyInput = useCallback(
+    (name: string, value: unknown) => {
+      setInputs((previous) => {
+        const next = { ...previous };
+        if (value === undefined) delete next[name];
+        else next[name] = value;
+        return next;
+      });
+      ViewerConnection.instance.sendModelUpdateToClient(clientId, benchParameterContent(name, value));
+    },
+    [clientId]
+  );
+
+  const resetInputs = useCallback(() => {
+    const names = Object.keys(inputsRef.current);
+    setInputs({});
+    for (const name of names) {
+      ViewerConnection.instance.sendModelUpdateToClient(clientId, benchParameterContent(name, undefined));
+    }
+  }, [clientId]);
+
+  /** A pulse is two updates; see `benchSignalContents` for why one is not enough. */
+  const sendSignal = useCallback(
+    (name: string) => {
+      for (const content of benchSignalContents(name)) {
+        ViewerConnection.instance.sendModelUpdateToClient(clientId, content);
+      }
+    },
+    [clientId]
+  );
+
+  // Only ever read by the empty state, and only worth walking the project for
+  // when the mounted component or the project itself has changed.
+  const usage = useMemo(
+    () => (ProjectModel.instance ? benchInstanceUsage(ProjectModel.instance, target) : undefined),
+    [target, revision]
+  );
+
   const width = resolveBenchWidth(frame);
 
   const frameRef = useRef(null);
@@ -152,26 +244,39 @@ export function ComponentBench({ target, frame, onFrameMeasured }: ComponentBenc
         Keeping it mounted is also the better behaviour: you see the frame you
         asked for even while there is nothing to draw in it.
       */}
-      <div className={css.Stage}>
-        <div ref={frameRef} className={css.Frame} style={{ width: width === null ? '100%' : `${width}px` }}>
-          {result?.json ? (
-            <webview
-              className={css.Webview}
-              ref={viewer.attachWebview}
-              // `partition` is a real `<webview>` attribute — it is what keeps the
-              // bench's fake session out of the live preview's — and the React DOM
-              // rule has no way to know that.
-              // eslint-disable-next-line react/no-unknown-property
-              partition={SANDBOX_PARTITION}
-              src={viewer.src}
-              {...SANDBOX_WEBVIEW_ATTRIBUTES}
-            />
-          ) : (
-            <div className={css.Empty}>
-              <Text textType={TextType.Secondary}>{result?.unrenderable ?? 'Building the bench…'}</Text>
-            </div>
-          )}
+      <div className={css.Body}>
+        <div className={css.Stage}>
+          <div ref={frameRef} className={css.Frame} style={{ width: width === null ? '100%' : `${width}px` }}>
+            {result?.json ? (
+              <webview
+                className={css.Webview}
+                ref={viewer.attachWebview}
+                // `partition` is a real `<webview>` attribute — it is what keeps the
+                // bench's fake session out of the live preview's — and the React DOM
+                // rule has no way to know that.
+                // eslint-disable-next-line react/no-unknown-property
+                partition={SANDBOX_PARTITION}
+                src={viewer.src}
+                {...SANDBOX_WEBVIEW_ATTRIBUTES}
+              />
+            ) : (
+              <div className={css.Empty}>
+                <Text textType={TextType.Secondary}>{result?.unrenderable ?? 'Building the bench…'}</Text>
+              </div>
+            )}
+          </div>
         </div>
+
+        {/* Beside the stage, not above it: you change a value to watch the
+            component change, so both have to be on screen at once. */}
+        <BenchInputsRail
+          iface={result?.interface}
+          usage={usage}
+          values={inputs}
+          onChange={applyInput}
+          onSignal={sendSignal}
+          onResetAll={resetInputs}
+        />
       </div>
     </div>
   );

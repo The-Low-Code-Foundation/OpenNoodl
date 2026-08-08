@@ -13,6 +13,7 @@ import {
   BENCH_COMPONENT_NAME,
   BENCH_NODE_ID,
   benchHarness,
+  benchInstanceUsage,
   benchInterface,
   benchParameters,
   buildBenchExport,
@@ -317,5 +318,58 @@ describe('BEN-001 the harness itself', () => {
     expect(harness.graph.roots[0].id).toBe(BENCH_NODE_ID);
     expect(harness.graph.roots[0].parameters.title).toBe('Hello');
     expect(harness.owner).toBeFalsy();
+  });
+});
+
+/**
+ * BEN-002 — the evidence the empty inputs rail shows instead of nothing.
+ *
+ * "This component declares no inputs" is true and useless on its own. If places
+ * in the project are already passing parameters to it, the component does not
+ * lack an interface — its interface is backwards (LAS-001), those parameters are
+ * landing on ports that do not exist, and the emptiness is a symptom.
+ */
+describe('BEN-002 how the project already uses the mounted component', () => {
+  const PILL = '/Visual Components/Pills/Other Symptom Pill';
+  const TRACKING = '/Logic Components/Tracking';
+
+  it('counts the instances passing parameters, and names the parameters', () => {
+    const usage = benchInstanceUsage(loadProject(), PILL);
+
+    expect(usage.instances).toBe(3);
+    expect(usage.withParameters).toBe(3);
+    expect(usage.parameterNames).toContain('Symptom Bucket');
+  });
+
+  it('counts instances that pass nothing without claiming they pass something', () => {
+    const usage = benchInstanceUsage(loadProject(), TRACKING);
+
+    expect(usage.instances).toBe(2);
+    expect(usage.withParameters).toBe(0);
+    expect(usage.parameterNames).toEqual([]);
+  });
+
+  it('accepts either spelling, like everything else that resolves a component', () => {
+    expect(benchInstanceUsage(loadProject(), PILL.slice(1)).instances).toBe(3);
+  });
+
+  it('reports nothing rather than throwing for a component that is not there', () => {
+    expect(benchInstanceUsage(loadProject(), '/Nope/Not Here')).toEqual({
+      instances: 0,
+      withParameters: 0,
+      parameterNames: []
+    });
+  });
+
+  it('does not count the component inside itself', () => {
+    // A self-instantiating component would otherwise inflate its own usage
+    // count, and the number exists to say "other places rely on this".
+    const project = loadProject();
+    const target = project.getComponentWithName(PILL);
+    target.graph.addRoot(
+      NodeGraphNode.fromJSON({ id: 'self', type: PILL, x: 0, y: 0, parameters: { 'Symptom Bucket': 'x' } } as TSFixme)
+    );
+
+    expect(benchInstanceUsage(project, PILL).instances).toBe(3);
   });
 });

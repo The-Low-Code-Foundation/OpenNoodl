@@ -26,10 +26,18 @@ it, no spec could have), **B10** (two driving traps that make working things loo
 **read it before driving anything**). The drive also confirmed **B4** live on the very first
 component mounted.
 
+**Session 3 (2026-08-08):** BEN-002 is built. **B2 is decided and it needed no runtime change** —
+the relay already routes any message carrying a `target`, so a bench input reaches one client at
+transport level and the task file's proposed mechanism (a `clientId` inside `content`, matched by the
+runtime) was the wrong shape. Two new register rows: **B11** (`stringlist` cannot be a select) and
+**B12** (a signal is two updates, not one). The corpus had **no component with typed inputs at all**,
+so the drive needed a fixture — `Components/BenchProbe` in *Puppy test 3*, authored through MCP, one
+input per control kind, every one of them wired so `getPorts` derives a real type.
+
 | Task | File | One line | State |
 |---|---|---|---|
 | BEN-001 ⭐ | [BEN-001-HARNESS-MOUNT.md](BEN-001-HARNESS-MOUNT.md) | the synthetic harness: mount any component as root *with* its inputs set | 🟡 built, 19 specs; **Live 6 closed** (320 measures 320), Live 5 needs BEN-002's rail |
-| BEN-002 ⭐ | [BEN-002-INPUT-FORM.md](BEN-002-INPUT-FORM.md) | the inputs rail, generated from the component interface — and live update without reload | 📋 not started — use `benchInterface()`, see B5 |
+| BEN-002 ⭐ | [BEN-002-INPUT-FORM.md](BEN-002-INPUT-FORM.md) | the inputs rail, generated from the component interface — and live update without reload | 🟡 built, 26 specs; **B2 decided** — see the correction in the task file |
 | BEN-003 | [BEN-003-OUTPUT-READOUT.md](BEN-003-OUTPUT-READOUT.md) | what the component emits, as a live log. Makes logic-only components previewable | 📋 not started |
 | BEN-004 ⭐ | [BEN-004-BENCH-SURFACE.md](BEN-004-BENCH-SURFACE.md) | the mode selector, the stage chrome, the way back — R1–R5 live here | ✅ **built and driven**, 18 specs; see B6–B10 |
 | BEN-005 | [BEN-005-SCENARIOS.md](BEN-005-SCENARIOS.md) | named input sets saved to component metadata (Empty / Loaded / Error) | 📋 not started |

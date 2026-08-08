@@ -7,6 +7,15 @@
   background-color: var(--theme-color-bg-2);
 }
 
+/* BEN-002 — the stage and the inputs rail, side by side. */
+.Body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: row;
+  min-width: 0;
+}
+
 /* R2 — the bench never renders full-bleed, and it is not the app's surface.
    The app preview is a checkerboarded canvas (`VisualCanvas.module.scss`); this
    is flat and darker. That difference is what makes the two modes tellable
@@ -16,6 +25,10 @@
 .Stage {
   flex: 1;
   min-height: 0;
+  /* The stage is now a flex *item* in a row (the rail is its sibling), and a
+     flex item's default `min-width: auto` would let a wide frame push the rail
+     off the panel instead of scrolling inside the stage. */
+  min-width: 0;
   display: flex;
   /* ⚠️ NOT `justify-content: center`. Measured, live: with the frame at 1280 in
      a 916 stage, centring put the frame's left edge 182px outside the scroll

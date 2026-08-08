@@ -214,6 +214,58 @@ export function benchInterface(component: ComponentModel): BenchInterface {
   return { inputs, outputs, backwards };
 }
 
+/** How the rest of the project already uses the component on the bench. */
+export interface BenchInstanceUsage {
+  /** Nodes in the project that instantiate the target. */
+  instances: number;
+  /** Of those, how many pass at least one parameter. */
+  withParameters: number;
+  /** The parameter names they pass, deduplicated — the interface they believe in. */
+  parameterNames: string[];
+}
+
+/**
+ * BEN-002 — what the empty inputs rail says instead of nothing.
+ *
+ * "This component declares no inputs" is true and useless on its own. If eleven
+ * places in the project are already passing `name` and `price` to it, then the
+ * component does not lack an interface — its interface is **backwards**
+ * (LAS-001), every one of those parameters is landing on a port that does not
+ * exist, and the rail's emptiness is the symptom rather than the fact.
+ *
+ * This is the number that turns the first into the second, and the bench is the
+ * only surface in the product where a human is looking at exactly the right
+ * thing at exactly the right moment to be told it.
+ *
+ * ⚠️ A truthy return from `forEachNode` aborts the walk — the callbacks below
+ * deliberately return nothing.
+ */
+export function benchInstanceUsage(project: ProjectModel, target: string): BenchInstanceUsage {
+  const component = findComponent(project, target);
+  if (!component) return { instances: 0, withParameters: 0, parameterNames: [] };
+
+  const legacyName = component.name;
+  const parameterNames = new Set<string>();
+  let instances = 0;
+  let withParameters = 0;
+
+  for (const owner of project.getComponents()) {
+    if (owner.name === legacyName || owner.name === BENCH_COMPONENT_NAME) continue;
+
+    owner.graph.forEachNode((node: NodeGraphNode) => {
+      if (String(node.typename ?? '') !== legacyName) return;
+      instances += 1;
+
+      const names = Object.keys(node.parameters ?? {});
+      if (names.length === 0) return;
+      withParameters += 1;
+      for (const name of names) parameterNames.add(name);
+    });
+  }
+
+  return { instances, withParameters, parameterNames: Array.from(parameterNames) };
+}
+
 /**
  * The parameter set for the harness instance, built from the interface.
  *
