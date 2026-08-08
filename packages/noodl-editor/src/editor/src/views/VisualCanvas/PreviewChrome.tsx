@@ -25,6 +25,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Icon, IconName, IconSize } from '@noodl-core-ui/components/common/Icon';
 import { Text, TextType } from '@noodl-core-ui/components/typography/Text';
 
+import { revealBenchTarget } from './benchRequest';
 import {
   APP_SCOPE,
   BENCH_FRAME_PRESETS,
@@ -87,6 +88,13 @@ export function PreviewScopeControl({ scope, onScopeChange, getComponents }: Pre
     setIsOpen(false);
     setQuery('');
     onScopeChange(next);
+    // Picking a component here means the same thing as "Preview in isolation"
+    // does in the components panel, so it does the same thing to the canvas:
+    // the graph you can edit is the graph you are looking at. Switching *back*
+    // to the app preview navigates nowhere — there is no one component to show,
+    // and a canvas that jumped somewhere arbitrary would be worse than one that
+    // stayed put.
+    if (next.mode === 'bench') revealBenchTarget(next.target);
   }
 
   const isBench = scope.mode === 'bench';

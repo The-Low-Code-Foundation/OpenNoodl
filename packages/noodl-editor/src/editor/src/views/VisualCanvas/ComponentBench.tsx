@@ -40,9 +40,11 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import {
   benchInstanceUsage,
+  benchInterfaceFor,
   buildBenchExport,
   type AgentSampleData,
-  type BenchExport
+  type BenchExport,
+  type BenchInterface
 } from '@noodl-models/AiAssistant/authoring';
 import { ProjectModel } from '@noodl-models/projectmodel';
 
@@ -55,8 +57,10 @@ import { SandboxDataEditor } from '../documents/AuthoringPreviewDocument/Sandbox
 import { SandboxToolbar, SANDBOX_PARTITION, SANDBOX_WEBVIEW_ATTRIBUTES, useSandboxViewer } from '../SandboxSurface';
 import { benchParameterContent, benchSignalContents } from './benchInputs';
 import { BenchInputsRail } from './BenchInputsRail';
+import { BenchOutputsRail } from './BenchOutputsRail';
 import css from './ComponentBench.module.scss';
 import { resolveBenchWidth, type BenchFrame } from './previewScope';
+import { useBenchOutputs } from './useBenchOutputs';
 
 export interface ComponentBenchProps {
   /** Legacy name of the component to mount. */
@@ -101,12 +105,15 @@ export function ComponentBench({ target, frame, onFrameMeasured }: ComponentBenc
    * button that means something slightly different is the confusion this phase
    * is about.
    *
-   * ⚠️ **This is still true after BEN-002 decided B2.** The bench now sends
-   * *its own* parameter updates to *its own* client, which is the opposite
-   * direction: it does not follow the project's `modelUpdate` stream. Editing
-   * the mounted component in the graph still needs a Refresh. Whether it should
-   * is a separate question, and a bigger one — the harness would have to
-   * survive its target's interface changing underneath it.
+   * ⚠️ **"The export" is the part that needs a Refresh — not the component.**
+   * The bench sends *its own* parameter updates to *its own* client (B2), which
+   * is the opposite direction and does not follow the project's stream. But the
+   * running bench still *receives* that stream like any other viewer, because
+   * its export contains the component being edited — so editing the mounted
+   * component in the graph reaches it without a Refresh, and `liveInterface`
+   * below keeps the rail in step with it. What a Refresh is still for is
+   * everything the export froze that no delta describes: a component the
+   * closure did not reach, a changed dataset, a new global style.
    */
   useEffect(() => {
     const eventGroup = {};
@@ -155,6 +162,70 @@ export function ComponentBench({ target, frame, onFrameMeasured }: ComponentBenc
   }, [target, userData, useSampleData, signedIn, revision]);
 
   /**
+   * The mounted component's interface, kept current while its graph is edited.
+   *
+   * The point of the bench is to change the component and watch what happens,
+   * and until this existed the *rail* was the one thing that could not: it was
+   * built once with the export, so a port added to the `Component Inputs` node
+   * did not appear until a Refresh, while the running preview had already been
+   * told about it. The graph edit reaches the runtime on the editor's ordinary
+   * broadcast `modelUpdate` stream — the bench's export contains the component
+   * being edited, so it applies the delta like any other viewer.
+   *
+   * ⚠️ **Re-derived, never rebuilt.** Rebuilding the export would reload the
+   * window and throw away exactly the state someone is mid-way through
+   * inspecting; `benchInterfaceFor` is one `getPorts()` call and reloads
+   * nothing.
+   *
+   * ⚠️ **The identity is held stable when nothing changed**, and that is
+   * load-bearing rather than an optimisation. `Model.parametersChanged` fires
+   * on every keystroke anywhere in the editor, and each row's draft state is
+   * reset by an effect keyed on `port` — so handing the rail a fresh object per
+   * event would wipe whatever the user was typing into it from a property edit
+   * three panels away.
+   */
+  const [liveInterface, setLiveInterface] = useState<BenchInterface | undefined>(undefined);
+
+  const refreshInterface = useCallback(() => {
+    const next = ProjectModel.instance ? benchInterfaceFor(ProjectModel.instance, target) : undefined;
+    setLiveInterface((previous) => (JSON.stringify(previous) === JSON.stringify(next) ? previous : next));
+  }, [target]);
+
+  useEffect(() => {
+    refreshInterface();
+  }, [refreshInterface, revision]);
+
+  useEffect(() => {
+    const eventGroup = {};
+    // Everything `getPorts()` reads: the declared ports themselves, and the
+    // connections and parameters it derives type and default from.
+    EventDispatcher.instance.on(
+      [
+        'Model.portAdded',
+        'Model.portRemoved',
+        'Model.nodePortRenamed',
+        'Model.instancePortsChanged',
+        'Model.connectionAdded',
+        'Model.connectionRemoved',
+        'Model.connectionPortChanged',
+        'Model.nodeAdded',
+        'Model.nodeRemoved',
+        'Model.parametersChanged'
+      ],
+      refreshInterface,
+      eventGroup
+    );
+    return () => EventDispatcher.instance.off(eventGroup);
+  }, [refreshInterface]);
+
+  /**
+   * The export's interface is the fallback for one render only — the effect
+   * above has not run yet on the very first commit, and an empty rail that
+   * fills in a frame later reads as a component with no inputs.
+   */
+  const iface = liveInterface ?? result?.interface;
+
+  /**
    * Bumped only by a Reset that cannot be expressed as a value. See
    * {@link resetInput} and `useSandboxViewer`'s `remountKey`.
    */
@@ -163,13 +234,25 @@ export function ComponentBench({ target, frame, onFrameMeasured }: ComponentBenc
   const viewer = useSandboxViewer({ json: result?.json, useSampleData, signedIn, remountKey });
   const clientId = viewer.clientId;
 
+  /**
+   * BEN-003 — what the component emits, read off a trace armed on this client
+   * alone. Unmounting the bench disarms it, which is also how "polling stops
+   * when the bench is not the active mode" is satisfied: `VisualCanvas` renders
+   * this component only in bench mode.
+   */
+  const outputs = useBenchOutputs({ clientId, target, outputs: iface?.outputs });
+
   /** One input changed. Sent to this client only; nothing is rebuilt. */
   const applyInput = useCallback(
     (name: string, value: unknown) => {
       setInputs((previous) => ({ ...previous, [name]: value }));
       ViewerConnection.instance.sendModelUpdateToClient(clientId, benchParameterContent(name, value));
+      // The read-out is a pull, so an interaction pulls. Without this the user
+      // waits out an interval to see the consequence of their own click, which
+      // on an occluded window (B10) can be a very long interval indeed.
+      outputs.pullNow();
     },
-    [clientId]
+    [clientId, outputs]
   );
 
   /**
@@ -206,7 +289,7 @@ export function ComponentBench({ target, frame, onFrameMeasured }: ComponentBenc
    */
   const resetInput = useCallback(
     (name: string) => {
-      const port = result?.interface?.inputs.find((candidate) => candidate.name === name);
+      const port = iface?.inputs.find((candidate) => candidate.name === name);
       setInputs((previous) => {
         const next = { ...previous };
         delete next[name];
@@ -219,7 +302,7 @@ export function ComponentBench({ target, frame, onFrameMeasured }: ComponentBenc
         setRemountKey((n) => n + 1);
       }
     },
-    [clientId, result]
+    [clientId, iface]
   );
 
   /** Every set input at once, each by whichever of the two routes applies. */
@@ -229,7 +312,7 @@ export function ComponentBench({ target, frame, onFrameMeasured }: ComponentBenc
 
     let remount = false;
     for (const name of names) {
-      const port = result?.interface?.inputs.find((candidate) => candidate.name === name);
+      const port = iface?.inputs.find((candidate) => candidate.name === name);
       if (port && port.default !== undefined) {
         ViewerConnection.instance.sendModelUpdateToClient(clientId, benchParameterContent(name, port.default));
       } else {
@@ -237,7 +320,7 @@ export function ComponentBench({ target, frame, onFrameMeasured }: ComponentBenc
       }
     }
     if (remount) setRemountKey((n) => n + 1);
-  }, [clientId, result]);
+  }, [clientId, iface]);
 
   /** A pulse is two updates; see `benchSignalContents` for why one is not enough. */
   const sendSignal = useCallback(
@@ -245,8 +328,9 @@ export function ComponentBench({ target, frame, onFrameMeasured }: ComponentBenc
       for (const content of benchSignalContents(name)) {
         ViewerConnection.instance.sendModelUpdateToClient(clientId, content);
       }
+      outputs.pullNow();
     },
-    [clientId]
+    [clientId, outputs]
   );
 
   // Only ever read by the empty state, and only worth walking the project for
@@ -324,16 +408,28 @@ export function ComponentBench({ target, frame, onFrameMeasured }: ComponentBenc
         </div>
 
         {/* Beside the stage, not above it: you change a value to watch the
-            component change, so both have to be on screen at once. */}
-        <BenchInputsRail
-          iface={result?.interface}
-          usage={usage}
-          values={inputs}
-          onChange={applyInput}
-          onReset={resetInput}
-          onSignal={sendSignal}
-          onResetAll={resetInputs}
-        />
+            component change, so both have to be on screen at once. The outputs
+            read-out is under the inputs in the same column for the same reason
+            — set something, see what comes out, without either scrolling away. */}
+        <div className={css.Rail}>
+          <BenchInputsRail
+            iface={iface}
+            usage={usage}
+            values={inputs}
+            onChange={applyInput}
+            onReset={resetInput}
+            onSignal={sendSignal}
+            onResetAll={resetInputs}
+          />
+          <BenchOutputsRail
+            iface={iface}
+            values={outputs.values}
+            log={outputs.log}
+            origin={outputs.origin}
+            armed={outputs.armed}
+            onClear={outputs.clearLog}
+          />
+        </div>
       </div>
     </div>
   );

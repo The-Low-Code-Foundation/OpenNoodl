@@ -170,6 +170,7 @@ export {
   benchHarness,
   benchInstanceUsage,
   benchInterface,
+  benchInterfaceFor,
   benchParameters,
   buildBenchExport
 } from './componentBench';

@@ -214,6 +214,27 @@ export function benchInterface(component: ComponentModel): BenchInterface {
   return { inputs, outputs, backwards };
 }
 
+/**
+ * The mounted component's interface, re-derived from the live project.
+ *
+ * Separate from {@link buildBenchExport} because the two have different costs.
+ * Rebuilding the export re-serialises the whole project and, if the bytes
+ * changed, makes the runtime call `location.reload()` — so a component whose
+ * graph is being edited beside the bench would flash and lose its state on
+ * every port added. Re-deriving the *interface* is one `getPorts()` call on one
+ * component and reloads nothing.
+ *
+ * That split is what lets a new `Component Inputs` port appear in the rail
+ * while the running bench keeps its state: the runtime already learned about
+ * the graph edit from the editor's ordinary broadcast `modelUpdate` stream
+ * (`Model.portAdded` and its siblings), because the bench's export contains the
+ * component being edited. The rail was the only half that had no way to know.
+ */
+export function benchInterfaceFor(project: ProjectModel, target: string): BenchInterface | undefined {
+  const component = findComponent(project, target);
+  return component ? benchInterface(component) : undefined;
+}
+
 /** How the rest of the project already uses the component on the bench. */
 export interface BenchInstanceUsage {
   /** Nodes in the project that instantiate the target. */
