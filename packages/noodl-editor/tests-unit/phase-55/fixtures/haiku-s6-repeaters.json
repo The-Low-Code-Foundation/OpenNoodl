@@ -1,0 +1,165 @@
+{
+  "/Components/FeaturedProducts": [
+    {
+      "id": "repeater",
+      "type": "For Each",
+      "label": "Product repeater",
+      "parent": "grid",
+      "children": [
+        "card"
+      ],
+      "parameters": {
+        "items": [
+          {
+            "image": "https://images.unsplash.com/photo-1595428774223-ef52624120d2?w=500&h=500&fit=crop",
+            "name": "Handmade Ceramic Bowl",
+            "description": "Rustic ceramic serving bowl",
+            "price": "\u00a335.00",
+            "originalPrice": "",
+            "badge": ""
+          }
+        ]
+      }
+    },
+    {
+      "id": "card",
+      "type": "/Components/ProductCard",
+      "label": "Product card",
+      "parent": "repeater",
+      "parameters": {
+        "image": "",
+        "name": "",
+        "description": "",
+        "price": "",
+        "originalPrice": "",
+        "badge": ""
+      }
+    }
+  ],
+  "/Components/BrowseCategories": [
+    {
+      "id": "repeater-8",
+      "type": "For Each",
+      "label": "Category repeater",
+      "parent": "grid-8",
+      "children": [
+        "card-8"
+      ],
+      "parameters": {
+        "items": [
+          {
+            "name": "Ceramics",
+            "count": 142
+          }
+        ]
+      }
+    },
+    {
+      "id": "card-8",
+      "type": "/Components/CategoryCard",
+      "label": "Category card",
+      "parent": "repeater-8",
+      "parameters": {
+        "name": "",
+        "count": ""
+      }
+    }
+  ],
+  "/Components/Footer": [
+    {
+      "id": "linkRepeater",
+      "type": "For Each",
+      "label": "Link columns",
+      "parent": "links",
+      "children": [
+        "linkColumn"
+      ],
+      "parameters": {
+        "items": [
+          {
+            "heading": "Shop",
+            "links": [
+              "New Arrivals",
+              "Sale",
+              "About"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "linkColumn",
+      "type": "Group",
+      "label": "Link column",
+      "children": [
+        "heading",
+        "links-list"
+      ],
+      "parameters": {
+        "flexDirection": "column",
+        "rowGap": "var(--space-2)"
+      },
+      "parent": "linkRepeater"
+    },
+    {
+      "id": "heading",
+      "type": "Text",
+      "label": "Column heading",
+      "parent": "linkColumn",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-sm)",
+        "fontWeight": "var(--font-semibold)",
+        "color": "var(--foreground)"
+      }
+    },
+    {
+      "id": "links-list",
+      "type": "Group",
+      "label": "Links list",
+      "parent": "linkColumn",
+      "children": [
+        "link1",
+        "link2",
+        "link3"
+      ],
+      "parameters": {
+        "flexDirection": "column",
+        "rowGap": "var(--space-1)"
+      }
+    },
+    {
+      "id": "link1",
+      "type": "Text",
+      "label": "Link 1",
+      "parent": "links-list",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-sm)",
+        "color": "var(--muted-foreground)"
+      }
+    },
+    {
+      "id": "link2",
+      "type": "Text",
+      "label": "Link 2",
+      "parent": "links-list",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-sm)",
+        "color": "var(--muted-foreground)"
+      }
+    },
+    {
+      "id": "link3",
+      "type": "Text",
+      "label": "Link 3",
+      "parent": "links-list",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-sm)",
+        "color": "var(--muted-foreground)"
+      }
+    }
+  ]
+}

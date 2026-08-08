@@ -124,6 +124,27 @@ export const DIAGNOSTIC_EXAMPLES: readonly ExampleCitation[] = [
     code: DiagnosticCode.PageWithoutPageNode,
     examples: ['ui-page-shell-bands'],
     why: 'a page component built around a Page node at its root, which is what makes the router able to render it'
+  },
+  // LAS-012 — the repeater contract, from both directions. The same recipe
+  // answers all three codes because all three are one misunderstanding: the
+  // template is a component *named on a port*, and the Repeater holds nothing.
+  // `data-static-array-filter-repeater` shows the whole shape and is already the
+  // `RepeatedSiblingSubtree` recipe, which is the rejection a model is most
+  // likely to have met just before this one.
+  {
+    code: DiagnosticCode.RepeaterWithoutTemplate,
+    examples: ['data-static-array-filter-repeater', 'ui-card-grid-repeater'],
+    why: 'a For Each whose template names a separate component, and that component reading each item through its Component Object'
+  },
+  {
+    code: DiagnosticCode.RepeaterTemplateUnresolved,
+    examples: ['data-static-array-filter-repeater'],
+    why: 'the template path and the component it names, spelled the same way — "/Product Row" and the component called Product Row'
+  },
+  {
+    code: DiagnosticCode.RepeaterWithVisualChildren,
+    examples: ['data-static-array-filter-repeater', 'ui-card-grid-repeater'],
+    why: 'the item markup living in its own component with nothing nested under the For Each, which is the only arrangement that renders'
   }
 ];
 

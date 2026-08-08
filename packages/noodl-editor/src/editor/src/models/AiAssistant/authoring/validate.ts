@@ -20,6 +20,7 @@ import {
   authoredPreconditionDiagnostics,
   buildComponentRefs,
   componentInterfaces,
+  connectedInputs,
   declaredUrlPaths as collectUrlPaths,
   diagnosticKey,
   isBlockingForAuthoredOutput,
@@ -231,6 +232,9 @@ function preconditionDiagnostics(
     // adding in this very submission counts. `GraphNode.ports` carries the plug
     // this needs; `instancePorts` alone cannot tell an input from a backwards one.
     interfaces: componentInterfaces(views),
+    // LAS-012 — a `template` fed by a wire is a working list, and only the
+    // candidate's own connections can say so.
+    connections: connectedInputs(files.connections.connections),
     catalog: loadDefaultCatalog(),
     backend: options.backend
   });

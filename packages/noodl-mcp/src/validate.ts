@@ -31,6 +31,7 @@ import {
   authoredNodes,
   authoredPreconditionDiagnostics,
   componentInterfaces,
+  connectedInputs,
   declaredUrlPaths,
   diagnosticKey,
   isBlockingForAuthoredOutput,
@@ -139,6 +140,9 @@ export function preconditionDiagnostics(
     // what makes a correct multi-component plan validate instead of being
     // charged for the order its operations happened to run in.
     interfaces: componentInterfaces(views),
+    // LAS-012 — a `template` fed by a wire is a working list, and only the
+    // candidate's own connections can say so.
+    connections: connectedInputs(candidate.connections.connections),
     catalog: catalogIndex()
   });
 }

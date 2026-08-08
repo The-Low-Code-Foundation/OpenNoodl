@@ -36,6 +36,7 @@ export {
   authoredNodes,
   authoredPreconditionDiagnostics,
   componentInterfaces,
+  connectedInputs,
   declaredUrlPaths,
   diagnosticKey,
   isBlockingForAuthoredOutput
@@ -44,6 +45,7 @@ export type {
   AuthoredNode,
   AuthoredPreconditionOptions,
   ComponentNodesView,
+  StoredConnectionLike,
   StoredNodeLike
 } from './authoredCandidate';
 // AAQ-005 — an instance port with no `plug` is inert, and nothing checked it.
@@ -100,6 +102,9 @@ export {
   WIRE_FORMAT_LEGEND
 } from './parameterValues';
 export type { ParameterizedNode, PortTypeShape, WireFormat } from './parameterValues';
+// LAS-012 — a Repeater that names a template component, and holds no children.
+export { checkRepeaterTemplate, REPEATER_TYPE } from './repeaterTemplate';
+export type { CheckRepeaterTemplateOptions, RepeaterNode } from './repeaterTemplate';
 export { SemanticValidator, validateProject } from './SemanticValidator';
 export { ALL_RULES } from './rules';
 export type { Rule, RuleContext, ValidatorOptions } from './rules';

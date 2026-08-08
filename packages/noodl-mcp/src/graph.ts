@@ -18,6 +18,31 @@ export interface ComponentFiles {
 // ─── Hierarchy reconciliation ─────────────────────────────────────────────────
 
 /**
+ * LAS-012 — the one door in this file that a model walks into believing a
+ * Repeater is a container.
+ *
+ * Qwen's session-6 replay tried twice to nest the item component under the
+ * repeater and got `Node "products-repeater" lists unknown child
+ * "product-card"` — a shape error, thrown as `invalid-argument`, which is a
+ * path that carries **no LAS-007 recipe** and says nothing about what a
+ * repeater's template actually is. It gave up on the list. Haiku made the same
+ * mistake with a child that *did* exist, so it sailed through here and shipped
+ * three sections that never drew (`checkRepeaterTemplate` is that half).
+ *
+ * The attachment machinery is diagnostic-keyed and these errors are plain
+ * strings on a different path, so rather than plumb it here the knowledge goes
+ * in the message. One sentence, at the only moment it matters.
+ */
+function repeaterChildHint(parent: NodeV2): string {
+  if (parent.type !== 'For Each') return '';
+  return (
+    ' A For Each is not a container: it instantiates the component named on its "template" parameter once' +
+    ' per item and inserts each copy as its own next sibling, so item markup is never nested under it.' +
+    ' Create the item component separately and set template to its path, e.g. "/Components/ProductCard".'
+  );
+}
+
+/**
  * Normalises the parent/children double-bookkeeping of nodes.json.
  *
  * Agents may author with `parent` only, `children` only, or both. Policy:
@@ -50,7 +75,7 @@ export function reconcileHierarchy(inputNodes: NodeV2[]): { nodes: NodeV2[]; err
     for (const childId of n.children) {
       const child = byId.get(childId);
       if (!child) {
-        errors.push(`Node "${n.id}" lists unknown child "${childId}".`);
+        errors.push(`Node "${n.id}" lists unknown child "${childId}".${repeaterChildHint(n)}`);
         continue;
       }
       if (child.parent !== undefined && child.parent !== n.id) {

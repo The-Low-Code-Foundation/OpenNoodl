@@ -41,6 +41,9 @@ export {
   authoredNodes,
   authoredPreconditionDiagnostics,
   componentInterfaces,
+  // LAS-012 — which input ports carry a wire. The one thing this layer needs
+  // that is not a value: a `template` fed by a connection is a working list.
+  connectedInputs,
   declaredUrlPaths,
   diagnosticKey,
   isBlockingForAuthoredOutput,
@@ -52,6 +55,7 @@ export type {
   AuthoredPreconditionOptions,
   ComponentNodesView,
   ProjectBackendFacts,
+  StoredConnectionLike,
   StoredNodeLike
 } from '../../noodl-editor/src/editor/src/validation';
 // AAQ-005 — the fifth precondition check. A declared instance port with no

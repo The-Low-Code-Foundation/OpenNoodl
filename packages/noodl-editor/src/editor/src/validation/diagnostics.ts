@@ -354,7 +354,71 @@ export enum DiagnosticCode {
    * `rules/oversizedPage.ts` for the census and why 25 would have nagged a
    * legitimately dense login form.
    */
-  OversizedPage = 'oversized-page'
+  OversizedPage = 'oversized-page',
+  /**
+   * LAS-012 — a `For Each` that names no template component, so it instantiates
+   * nothing and the list is simply absent from the page.
+   *
+   * `template` is a `component`-typed input, active whenever `templateType` is
+   * `explicit` or unset (`foreach.tsx`'s `dynamicports` condition, and
+   * `getTemplateForModel` reads `internal.template` on exactly that branch).
+   * Without it the node raises `repeater/no-template` at runtime — *"The
+   * Repeater has no Template, so there is nothing to build each item from"* —
+   * and nothing before runtime says so.
+   *
+   * **Error.** Not a style opinion and not a near-miss: the node cannot render,
+   * measured. Haiku's session-6 replay is architecturally correct on every axis
+   * the phase measures and its page draws a header, a hero, an info strip and
+   * then nothing — `render:report` counts **0 images** on a page whose three
+   * repeaters all carry product photography. `validate:project` said
+   * `0 error(s)`, `render_report` said `0 errors`, and a node census said
+   * `For Each: 3`.
+   *
+   * Corpus (`measurements/scan-repeaters.js`, 2026-08-08): 89 repeaters across
+   * 122 projects, **8** without a template — 3 haiku's, 5 in hand-built QA
+   * fixtures — and **0** of the 12 in the recipe library. No legitimate
+   * population, so no `UnknownParameter`-shaped argument for a warning.
+   */
+  RepeaterWithoutTemplate = 'repeater-without-template',
+  /**
+   * LAS-012 — a `For Each` whose `template` names no component in the project.
+   *
+   * The same class as {@link UnresolvedComponentRef} and the same fix shape,
+   * but that rule reads node *types* and a template is a parameter value, which
+   * is why it needs its own code and its own check. At runtime this settles
+   * `repeater/template-component-not-found` per item; before runtime, nothing.
+   *
+   * Warning, blocking for authored output — 2 corpus hits, both in one legacy
+   * merge fixture whose components were moved under `/Old/`, which is a real
+   * population of the `InstanceUnknownParameter` shape. `./` and `../` prefixes
+   * are resolved against the owning component at runtime and are not checked.
+   */
+  RepeaterTemplateUnresolved = 'repeater-template-unresolved',
+  /**
+   * LAS-012 — item content nested **under** a `For Each` instead of named on its
+   * `template` port.
+   *
+   * A Repeater is not a container. `addItem` calls
+   * `internal.target.addChild(itemNode, index)` where `target` is the node's
+   * *parent*, so item nodes are inserted as the repeater's later siblings and
+   * the repeater itself renders nothing of its own. Children authored under it
+   * never reach the DOM.
+   *
+   * Both mid-tier models in session 6 failed this joint, from opposite sides.
+   * Qwen nested a template that did not exist as a node and was rejected with
+   * `Node "products-repeater" lists unknown child "product-card"` — an
+   * `invalid-argument` hierarchy error carrying no recipe and teaching nothing.
+   * Haiku nested one that *did* exist, and shipped: three repeaters, three
+   * nested children, three sections that never drew.
+   *
+   * **Error when the repeater also has no template** — that is the whole
+   * mistake, and one diagnostic naming the child it should have promoted is a
+   * better repair instruction than two. **Warning** when `template` is set, the
+   * list renders and the children are merely inert.
+   *
+   * Corpus: 3 hits in 89 repeaters, all three haiku's. Zero legitimate use.
+   */
+  RepeaterWithVisualChildren = 'repeater-with-visual-children'
 }
 
 // ─── Location ─────────────────────────────────────────────────────────────────

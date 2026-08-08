@@ -62,6 +62,7 @@ import { DiagnosticCode, type Diagnostic } from './diagnostics';
 import { checkInstancePorts, type AuthoredPortLike } from './instancePorts';
 import { checkNavigation, checkPageShape, looksLikePageComponent, PAGE_NODE_TYPE } from './navigation';
 import { checkParameterValues } from './parameterValues';
+import { checkRepeaterTemplate } from './repeaterTemplate';
 
 /**
  * The node shape every precondition check reads. The three checks take three
@@ -76,6 +77,13 @@ export interface AuthoredNode {
   parameters?: Record<string, unknown> | null;
   /** Declared instance ports, for `checkInstancePorts`. */
   ports?: readonly AuthoredPortLike[] | null;
+  /**
+   * Child node ids, for `checkRepeaterTemplate` (LAS-012). Hierarchy was until
+   * now a `rules/` concern — `NormNode` carries `children` and the semantic
+   * validator reasons about it — but "a `For Each` with children" is a question
+   * about a *parameter and* a child at once, and only this layer sees both.
+   */
+  children?: readonly string[] | null;
 }
 
 /**
@@ -89,6 +97,33 @@ export interface StoredNodeLike {
   label?: string;
   parameters?: Record<string, unknown> | null;
   ports?: readonly AuthoredPortLike[] | null;
+  children?: readonly string[] | null;
+}
+
+/**
+ * A stored v2 connection, as much of it as {@link connectedInputs} reads.
+ */
+export interface StoredConnectionLike {
+  toId: string;
+  toProperty: string;
+}
+
+/**
+ * Which input ports carry a wire, as `` `${nodeId}::${port}` ``.
+ *
+ * LAS-012 needs it and it is the first thing in this layer that does: every
+ * other precondition asks about a value, and "is this port driven instead"
+ * is the one question that can turn a true finding into a false one. A
+ * `template` fed by a connection is a working list, and rejecting it would be
+ * the gate reporting the app's own working links as broken — the failure mode
+ * `urlPaths`' "omitted means do not check" convention exists to prevent.
+ */
+export function connectedInputs(connections: readonly StoredConnectionLike[]): Set<string> {
+  const set = new Set<string>();
+  for (const c of connections) {
+    if (typeof c?.toId === 'string' && typeof c?.toProperty === 'string') set.add(`${c.toId}::${c.toProperty}`);
+  }
+  return set;
 }
 
 /**
@@ -108,7 +143,8 @@ export function authoredNodes(nodes: readonly StoredNodeLike[]): AuthoredNode[] 
     type: n.type,
     ...(typeof n.label === 'string' && n.label ? { label: n.label } : {}),
     parameters: (n.parameters ?? null) as Record<string, unknown> | null,
-    ...(n.ports ? { ports: n.ports } : {})
+    ...(n.ports ? { ports: n.ports } : {}),
+    ...(n.children ? { children: n.children } : {})
   }));
 }
 
@@ -192,7 +228,19 @@ export const AUTHORED_BLOCKING_WARNINGS: ReadonlySet<string> = new Set([
   // model, and this rule's message already offers both exits. With LAS-002
   // landed, the text now actually reaches a staging agent instead of arriving as
   // the integer 1.
-  DiagnosticCode.RepeatedSiblingSubtree
+  DiagnosticCode.RepeatedSiblingSubtree,
+  // LAS-012 — the two non-fatal halves of the repeater contract. The fatal half
+  // (`RepeaterWithoutTemplate`, and `RepeaterWithVisualChildren` on a repeater
+  // that also has no template) is an error and needs no entry here.
+  //
+  // `RepeaterTemplateUnresolved` has the `InstanceUnknownParameter` shape
+  // exactly: 2 corpus hits in one legacy merge fixture whose components moved,
+  // nothing authored. `RepeaterWithVisualChildren` at warning severity means the
+  // list does render and the nested children are merely inert — project-wide
+  // that is a tidy-up, and for a graph an agent just wrote it is the mental
+  // model that produced haiku's three blank sections.
+  DiagnosticCode.RepeaterTemplateUnresolved,
+  DiagnosticCode.RepeaterWithVisualChildren
 ]);
 
 /** Whether a diagnostic rejects an authored submission. */
@@ -257,6 +305,14 @@ export interface AuthoredPreconditionOptions {
    * what makes a multi-component plan validate correctly.
    */
   interfaces?: ComponentInterfaceIndex;
+  /**
+   * LAS-012 — the candidate's wired input ports, from {@link connectedInputs}.
+   * **Omitted means "no connection information"**, and a `template` fed by a
+   * wire then reads as unset. Zero of the corpus's 89 repeaters are wired that
+   * way, so omitting it costs nothing measured; supplying it is what keeps the
+   * one that eventually is from being rejected for it.
+   */
+  connections?: ReadonlySet<string>;
 }
 
 /**
@@ -282,9 +338,14 @@ export interface AuthoredPreconditionOptions {
  * sharpest version of the same reason: an instance's parameters are values, and
  * the target component's interface is a project-wide fact. `NormNode` carries
  * neither, so no `rules/` rule can ask the question at all.
+ *
+ * The eighth is LAS-012's, and it is the first here to read *hierarchy* as well
+ * as values: a `For Each` fails its contract by omitting a `template`, by naming
+ * one that does not resolve, or by nesting the item content as a child, and
+ * telling those three apart needs the parameters and the children in one place.
  */
 export function authoredPreconditionDiagnostics(options: AuthoredPreconditionOptions): Diagnostic[] {
-  const { component, nodes, components, urlPaths, catalog, backend, interfaces } = options;
+  const { component, nodes, components, urlPaths, catalog, backend, interfaces, connections } = options;
   return [
     ...checkParameterValues(nodes, catalog, { component }),
     ...(backend ? checkBackendRequirements(nodes, { ...backend, component }) : []),
@@ -292,7 +353,8 @@ export function authoredPreconditionDiagnostics(options: AuthoredPreconditionOpt
     ...checkPageShape(nodes, { component, isRoutedPage: looksLikePageComponent(component) }),
     ...checkInstancePorts(nodes, { component }),
     ...(interfaces ? checkInstanceInterfaces(nodes, { component, interfaces }) : []),
-    ...checkComponentPortDirection(nodes, { component })
+    ...checkComponentPortDirection(nodes, { component }),
+    ...checkRepeaterTemplate(nodes, { component, components, connectedInputs: connections })
   ];
 }
 
