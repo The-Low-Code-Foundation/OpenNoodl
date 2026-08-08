@@ -526,6 +526,14 @@ const LAYOUT_STRING_PORTS = new Set(['layoutString', 'mediumLayout', 'smallLayou
 const UNIT_SUFFIXED_TRACK = /^(\d+(?:\.\d+)?)(fr|px|%|em|rem|vw|vh)$/;
 
 /**
+ * A colour written as a literal rather than as a token. Anchored, so a
+ * `var(--primary)` string — which is what the system wants — never matches, and
+ * neither does a named colour like `transparent` (legitimate, and no token
+ * replaces it).
+ */
+const RAW_COLOR = /^\s*(#[0-9a-fA-F]{3,8}|rgba?\(|hsla?\()/;
+
+/**
  * Mirrors `readLayoutToken` in the runtime
  * (`noodl-viewer-react/src/components/visual/Columns/Columns.tsx`), which is the
  * authority on this grammar. Deliberately `Number`, not `parseInt` — the
@@ -587,6 +595,85 @@ function layoutStringProblem(value: unknown): { message: string; suggestion?: st
   };
 }
 
+// ─── The unsized absolute box ────────────────────────────────────────────────
+
+/**
+ * Parameters that mean "this box is drawn", not merely "this box positions
+ * something". An absolute Group with no paint is a layout device; one with a
+ * background or a border is a *thing on the page*, and a thing on the page that
+ * silently becomes parent-sized is the defect.
+ */
+const DECORATION = ['backgroundColor', 'borderColor', 'borderRadius', 'boxShadowColor', 'borderStyle'];
+
+/** Set to anything at all — a `var()` string, a `{value,unit}`, a number. */
+function parameterIsSet(parameters: Record<string, unknown>, name: string): boolean {
+  const value = parameters[name];
+  return value !== undefined && value !== null && value !== '';
+}
+
+/**
+ * The badge-pill trap (audit F7).
+ *
+ * `width` and `height` are `dimension` ports declaring `default: 100` with
+ * `defaultUnit: '%'`. A box taken out of flow with `position: absolute` and
+ * given no dimensions is therefore **100% × 100% of its parent**. In flow that
+ * is invisible, because the parent's layout sizes it; out of flow nothing does,
+ * and the box quietly becomes its parent. Sonnet's cold replay authored a badge
+ * this way: a `--primary` ellipse over four of six product photos, and a basket
+ * count stretched across the whole navbar, under a clean report.
+ *
+ * ⚠️ **The decoration half of the predicate is the whole calibration**, measured
+ * across the corpus before the severity was chosen:
+ *
+ * | Predicate | Hits |
+ * |---|---|
+ * | `absolute` + no `width` + no `height` | **151** |
+ * | …carrying no decoration | 122 |
+ * | …carrying decoration | **29** (21 of them editor test fixtures) |
+ *
+ * The 122 are not defects — a full-bleed absolute box IS the overlay/scrim
+ * pattern, authored on purpose — and reporting them would cost a repair round
+ * each time, the expensive failure here because diagnostics feed an automated
+ * repair and the agent is told never to argue with one.
+ *
+ * A **warning**, not authored-blocking: `popup-modal` in the shipped prefab
+ * library is a decorated full-bleed scrim, this exact shape on purpose.
+ * Promotion is the kind of decision LAS-004 exists to make, with its own
+ * evidence.
+ *
+ * A node-level check rather than a per-parameter one — the defect is the
+ * *combination*, and no single parameter is wrong on its own. It lives here
+ * rather than in `rules/` for a reason the type system enforces: `NormNode`
+ * carries no `parameters` at all, because the normalized model is structural.
+ * Values are this module's business.
+ */
+function unsizedAbsoluteBox(
+  component: string,
+  node: ParameterizedNode,
+  parameters: Record<string, unknown>
+): Diagnostic | undefined {
+  if (parameters.position !== 'absolute') return undefined;
+  if (parameterIsSet(parameters, 'width') || parameterIsSet(parameters, 'height')) return undefined;
+
+  const decoration = DECORATION.filter((name) => parameterIsSet(parameters, name));
+  if (decoration.length === 0) return undefined;
+
+  return {
+    code: DiagnosticCode.UnsizedAbsoluteBox,
+    severity: 'warning',
+    message:
+      `this ${node.type} is "position": "absolute" with no width or height, and both default to 100% — so it ` +
+      `fills its parent instead of sizing to itself, and its ${decoration.join('/')} is painted across the ` +
+      'whole of it. Give it a width and a height, or put it back in flow.',
+    location: {
+      component,
+      nodeId: node.id,
+      nodeType: node.type,
+      ...(node.label ? { nodeLabel: node.label } : {})
+    }
+  };
+}
+
 /**
  * Check every node's parameter values against the wire format its port type
  * demands.
@@ -627,6 +714,11 @@ export function checkParameterValues(
     // at weight 400 because no node in the runtime has a `fontWeight` port.
     const dynamic = catalog.hasRuntimeDynamicPorts(node.type);
     const portGroups = catalog.declaredPortGroups(node.type);
+
+    // LAS-003/F7 — node-level, because the defect is the combination of
+    // parameters and no single one of them is wrong on its own.
+    const unsized = unsizedAbsoluteBox(component, node, parameters);
+    if (unsized) diagnostics.push(unsized);
 
     for (const [name, value] of Object.entries(parameters)) {
       // "Not set". `undefined` is what the editor writes for a cleared field;
@@ -746,6 +838,23 @@ export function checkParameterValues(
           });
           continue;
         }
+      }
+
+      // LAS-003/3 — a raw colour literal where a token is what the system
+      // expects. A warning, never an error: the corpus carries 553 of these and
+      // imported content is not wrong for being untokenised, it is just
+      // untokenised. Warnings do not block `validate:project`.
+      if (CatalogIndex.portTypeName(port) === 'color' && RAW_COLOR.test(String(value))) {
+        diagnostics.push({
+          code: DiagnosticCode.RawColorLiteral,
+          severity: 'warning',
+          message:
+            `"${name}" is the literal ${JSON.stringify(value)}. Colours come from the project's design tokens — ` +
+            'write "var(--token)" so the page can be re-themed and stays consistent with the identity the ' +
+            'project already decided. get_style_vocabulary lists the token names that resolve.',
+          location: locate(component, node, name)
+        });
+        continue;
       }
 
       const problem = wireFormatFor(port)?.check(value, portTypeShape(port)!);

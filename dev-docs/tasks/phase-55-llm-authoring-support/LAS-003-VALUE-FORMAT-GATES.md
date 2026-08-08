@@ -1,6 +1,7 @@
 # LAS-003 — Value-format gates: layoutString, the unsized absolute Group, raw hex
 
-**Status:** 🟡 check 1 done 2026-08-08 (F3) · checks 2 (F7) and 3 (hex) open · **Track 1 (gates)**
+**Status:** ✅ done 2026-08-08 — all three checks · **Track 1 (gates)** · closes audit **F3** and
+**F7**, and makes "never raw hex" checkable
 
 ## The defects, measured
 
@@ -126,3 +127,72 @@ previously unrecorded). Haiku made the same mistake twice; hand-inspection caugh
 | 3 | `net.noodl.visual.columns` occurs **0 times in 91 corpus projects**. No shipped content teaches the only responsive node in the runtime | 📌 raises LAS-007's priority |
 | 4 | The suggestion is offered only when *every* token repairs by stripping a unit. `repeat(2, minmax(0, 1fr))` gets an error with no suggestion — an agent is told never to argue with a diagnostic, so a partial guess would be auto-applied and wrong | 📌 design decision |
 | 5 | The check lives in `parameterValues.ts` beside `unitSuffixTrap` rather than in the `FORMATS` table: `layoutString` is typed `string`, so every string passes the per-port-type layer. The constraint is the **node's**, not the port type's | 📌 shape decision |
+
+---
+
+# Check 2 — the unsized absolute box (F7) ✅ · Check 3 — raw colour literals ✅
+
+## The mechanism behind F7, confirmed rather than inferred
+
+The audit inferred "an unsized absolute Group fills its parent" from a screenshot. The catalog
+confirms it exactly: `width` and `height` on `Group` are
+
+```json
+{"type":{"name":"dimension","defaultUnit":"%","units":["%","px","vw","vh"]},"default":100}
+```
+
+— **`default: 100` with `defaultUnit: "%"`**, so an absolutely-positioned box with neither is
+literally 100% × 100% of its parent. In flow this is invisible because the parent's layout sizes the
+box; out of flow nothing does, and the box quietly becomes its parent. The diagnostic says that,
+rather than restating the symptom.
+
+## Corpus calibration — the measurement changed both designs
+
+| Check | Naive predicate | Hits | Shipped predicate | Hits |
+|---|---|---|---|---|
+| 2 | `absolute` + no `width` + no `height` | **151** | …**and carrying decoration** (background / border / radius / shadow) | **29** (21 in editor test fixtures) |
+| 3 | colour literal on a colour-typed port | **553** | unchanged — severity is what moved | 553, all warnings |
+
+**Check 2's narrowing is the rule, not a tuning knob.** The 122 undecorated hits are not defects: a
+full-bleed absolute box *is* the overlay/scrim pattern, authored on purpose. Reporting them would
+cost a repair round each time — the expensive failure mode here, since diagnostics feed an automated
+repair and the agent is told never to argue with one. What survives is sonnet's badge pill (the
+measured F7), the ecommerce-example `ProductCard`, `ecom-responsive-probe`, and a few prefabs.
+
+**Severity for both is `warning`, and neither is authored-blocking.** For check 2 the reason is
+concrete and lives in the shipped library: `library/prefabs/popup-modal` is a decorated full-bleed
+scrim — this exact shape, deliberately. For check 3 it is the 553. Legacy and imported content is
+untokenised, not wrong, and warnings do not block `validate:project`. Promotion of either is
+LAS-004's kind of decision, made with its own evidence rather than folded in here.
+
+## ⚠️ Where these checks live, and why the task doc was right
+
+Check 2 was first written as a rule in `validation/rules/` — it *reads* like a structural rule — and
+the type system refused it. **`NormNode` has no `parameters` field**: the normalized model every
+rule sees is deliberately structural, which is precisely why a whole separate module exists for
+values. A cross-parameter check has exactly one home. The task's instruction ("add these checks
+there, **NOT** as new standalone rules") was correct, and second-guessing it cost a file.
+
+## Acceptance — checks 2 and 3
+
+- ✅ Sonnet's `Cards/Product Card` Badge group is in the 29, and after LAS-002 the staging response
+  shows the text.
+- ✅ A `backgroundColor: "#B3542E"` candidate warns and points at `get_style_vocabulary`.
+- ✅ 9 specs in
+  [`tests-unit/phase-55/unsizedAbsoluteAndRawColor.test.ts`](../../../packages/noodl-editor/tests-unit/phase-55/unsizedAbsoluteAndRawColor.test.ts)
+  — five of them pin the **silence** (undecorated overlay, in-flow decorated box, cleared field,
+  `var(--token)`, `transparent`), which for a rule feeding automated repair matters more than the
+  catches.
+- ✅ Editor jest **74 suites / 1001 specs**; `typecheck:editor` clean; noodl-mcp 19/200 unaffected;
+  the AIB-001 corpus spec unaffected (it asserts on errors and `UnknownParameter`, and both new
+  codes are warnings).
+
+## Register — checks 2 and 3
+
+| # | Finding | State |
+|---|---|---|
+| 6 | The naive F7 predicate hits **151** corpus nodes, 122 of them legitimate overlays. Shipping it as stated would have been a false-positive machine | ✅ narrowed to decorated boxes (29) before shipping |
+| 7 | `library/prefabs/popup-modal` is a decorated full-bleed absolute scrim — a legitimate instance of the shape. This is the concrete reason check 2 is not authored-blocking | 📌 decision recorded; revisit under LAS-004 |
+| 8 | **`NormNode` carries no `parameters`.** A cross-parameter check cannot be a rule, however structural it reads. The task doc said so and was second-guessed | 📌 architectural constraint, now documented in the code |
+| 9 | Raw colour literals: **553** corpus hits (374 in editor test fixtures, 111 in `project-examples/agent-chat`). Error was never viable; the rule reports the truth about legacy content without failing it | ✅ shipped as a warning |
+| 10 | `transparent` and other named colours are deliberately exempt — no token replaces them, and a diagnostic with no fix is noise | 📌 design decision, spec-pinned |

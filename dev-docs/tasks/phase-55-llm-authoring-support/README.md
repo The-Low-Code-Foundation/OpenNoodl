@@ -169,10 +169,10 @@ open ones are mirrored here so a grep finds them.
 
 | # | Finding | State |
 |---|---|---|
-| F1 | `DESIGN_AUTHORING` per-turn preamble still teaches the deprecated wrapped-row pattern, never names `Columns` (`design.ts:246`) | 🔴 OPEN → **LAS-008** |
+| F1 | `DESIGN_AUTHORING` per-turn preamble still teaches the deprecated wrapped-row pattern, never names `Columns` (`design.ts:246`) | ✅ **CLOSED** 2026-08-08 by **LAS-008**, tripwire-pinned |
 | F2 | Instance parameters vs component interface: **no check anywhere** — a component instantiated with parameters it has no `Component Inputs` for renders dead placeholders with 0 errors | 🔴 OPEN → **LAS-001** |
-| F3 | `layoutString` value format unvalidated — `"1fr 1fr 1fr 1fr"` silently renders one column | 🔴 OPEN → **LAS-003** |
+| F3 | `layoutString` value format unvalidated — `"1fr 1fr 1fr 1fr"` silently renders one column | ✅ **CLOSED** 2026-08-08 by **LAS-003/1** — authored-blocking error, 0 corpus hits |
 | F4 | "Strands TS harness" was decided, never built (AAQ-006 still open); the phase-40 memory implied otherwise | ✅ documented, memory corrected |
 | F5 | No render/measure tool on the MCP surface — doctrine §11 unfollowable externally; `measure-project.js` (7.5 s, headless) built, in `measurements/` | 🔴 OPEN → **LAS-005** |
 | F6 | Phase-54 F6 re-confirmed: `stage_plan_operation` returns warning counts with no text | ✅ **CLOSED** 2026-08-08 by **LAS-002** |
-| F7 | Unsized absolute Group fills its parent (`%` dimension defaults) — badge pills render as parent-sized blobs; no check | 🔴 OPEN → **LAS-003** |
+| F7 | Unsized absolute Group fills its parent (`%` dimension defaults) — badge pills render as parent-sized blobs; no check | ✅ **CLOSED** 2026-08-08 by **LAS-003/2** — warning, narrowed to *decorated* boxes (151 hits → 29) |

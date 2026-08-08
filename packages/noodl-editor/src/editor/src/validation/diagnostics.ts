@@ -140,6 +140,47 @@ export enum DiagnosticCode {
    */
   RepeatedSiblingSubtree = 'repeated-sibling-subtree',
   /**
+   * LAS-003/F7 — a `position: absolute` box with neither `width` nor `height`,
+   * carrying decoration (background, border, radius, shadow).
+   *
+   * `width` and `height` are `dimension` ports whose default is **`100` with a
+   * `defaultUnit` of `%`**, so an unsized absolute box is 100% × 100% of its
+   * parent. Sonnet's cold replay authored a badge pill this way: a
+   * `--primary`-filled ellipse stretched over four of six product photos, and
+   * the basket count spread across the full navbar. The graph was perfect.
+   *
+   * ⚠️ **The decoration half of the predicate is not incidental** — it is the
+   * whole calibration. Unsized-absolute alone hits 151 nodes across the corpus,
+   * because a full-bleed absolute box IS the overlay/scrim pattern and 122 of
+   * those are legitimate. Requiring decoration narrows it to 29, of which 21
+   * are editor test fixtures: what is left is sonnet's badge, the
+   * ecommerce-example card, and a handful of prefabs. A rule is only as good as
+   * its false-positive rate.
+   *
+   * A warning, not authored-blocking, and deliberately so: `popup-modal` in the
+   * shipped prefab library is a decorated full-bleed scrim, which is exactly
+   * this shape authored on purpose. Promotion is LAS-004's kind of decision and
+   * gets made with its own evidence, not folded in here.
+   */
+  UnsizedAbsoluteBox = 'unsized-absolute-box',
+  /**
+   * LAS-003 — a raw colour literal on a colour-typed port where the project's
+   * design tokens are what the system expects.
+   *
+   * The MCP server instructions have said "set colour params as `var(--token)`,
+   * never raw hex" since AAQ-005, and until now nothing checked it — prose with
+   * no gate behind it, which the phase-54 audit showed is prose that gets
+   * dropped. A page whose colours are literals cannot be re-themed, and drifts
+   * from the identity the project decided once.
+   *
+   * A warning everywhere rather than an error, because the corpus carries 553
+   * of them: legacy and imported projects are full of hex by construction and
+   * are not wrong, they are just not tokenised. Warnings do not block
+   * `validate:project`, so this reports the truth about that content without
+   * failing it.
+   */
+  RawColorLiteral = 'raw-color-literal',
+  /**
    * A bare number on a units-typed port that is read as a **percentage** —
    * `width`, `height`, `maxWidth`, `minWidth`. `{ value, unit }` is the form
    * real content uses: across the whole repository these ports are written in
