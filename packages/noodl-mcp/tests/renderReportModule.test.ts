@@ -28,7 +28,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const { summarise, placeholderStrings, measureExpression, RenderFinding } = require(
+const { summarise, placeholderStrings, measureExpression, listProbes, RenderFinding } = require(
   path.resolve(__dirname, '..', '..', '..', 'scripts', 'devtools', 'render-report.js')
 );
 
@@ -221,5 +221,110 @@ describe('the shapes no real build produced', () => {
     }));
     const { findings } = summarise(viewport({ repeatedGroups: three }));
     expect(findings.filter((f: Finding) => f.code === RenderFinding.SingleColumnGrid)).toHaveLength(1);
+  });
+});
+
+/**
+ * LAS-012 §3 — the shape this report was structurally unable to see.
+ *
+ * Every other finding is about content **present and wrong**: a dead
+ * placeholder, a broken image, a decorated box with nothing in it. A repeater
+ * that instantiates nothing emits no elements, so there was nothing to count.
+ * Haiku's session-6 build reported `0 errors, 1 warning` with three of its five
+ * sections missing; qwen's reported *"Rendered clean"* on a page carrying one
+ * text element.
+ *
+ * The two fixtures here are recorded measurements of the two session-6 builds
+ * that disagree — `phase55-s6-haiku`, whose repeaters drew nothing, and
+ * `phase55-s6-sonnet`, whose repeater drew correctly from a `Static Data` node.
+ */
+describe('LAS-012 §3 — an empty list, which the report could not see before', () => {
+  it("names haiku's dead product list, at both viewports", () => {
+    const { findings, summary } = report('phase55-s6-haiku');
+    const empty = findings.filter((f) => f.code === RenderFinding.EmptyList);
+    expect(empty.map((f) => f.viewport).sort()).toEqual(['desktop', 'phone']);
+    expect(empty[0].severity).toBe('error');
+    expect(empty[0].message).toContain('/Components/FeaturedProducts');
+    expect(empty[0].message).toContain('Handmade Ceramic Bowl');
+    expect(empty[0].relatedDiagnostic).toBe('repeater-without-template');
+    // The summary is the line a human and an agent both read first. It used to
+    // say "0 errors, 1 warning" for this page.
+    expect(summary).toContain('empty-list');
+    expect(summary).not.toContain('Rendered clean');
+  });
+
+  it("says nothing about sonnet's list, which drew from a Static Data node", () => {
+    const { findings } = report('phase55-s6-sonnet');
+    expect(codes(findings)).not.toContain(RenderFinding.EmptyList);
+  });
+
+  it('abstains rather than guesses when a partial match is possible', () => {
+    // Sonnet's probe found 5 of its 6 strings — the sixth is an image `alt`
+    // that is never rendered as text. `found === 0` is the predicate precisely
+    // so a template that renders a subset of an item's fields is not a defect.
+    const desktop = measurements('phase55-s6-sonnet').desktop as { lists: Array<{ found: number }> };
+    expect(desktop.lists[0].found).toBeGreaterThan(0);
+    expect(desktop.lists[0].found).toBeLessThan(6);
+  });
+
+  it('leaves a report with no probes exactly as it was', () => {
+    // Every fixture recorded before this check carries no `lists` field, and a
+    // project whose lists are query-fed produces no probes. Neither may change
+    // what the report says.
+    expect(codes(report('phase55-replay-sonnet').findings)).not.toContain(RenderFinding.EmptyList);
+    expect(codes(report('ecommerce-example').findings)).not.toContain(RenderFinding.EmptyList);
+  });
+});
+
+/**
+ * LAS-012 §3, the other half: which lists are knowable off disk at all.
+ *
+ * `fixtures/render/probe-project` is a four-repeater v2 project carrying one of
+ * each case, written to make the abstentions visible rather than inferred. The
+ * strings are haiku's and sonnet's real ones so the shapes are the measured
+ * ones, but the project is vendored — the two builds themselves live outside the
+ * repo and a spec that reads them passes on one machine.
+ */
+describe('LAS-012 §3 — which lists are knowable off disk at all', () => {
+  const probes: Array<{ component: string; label: string; source: string; rows: number; strings: string[] }> =
+    listProbes(path.join(__dirname, 'fixtures', 'render', 'probe-project'));
+
+  it('probes exactly the two lists whose rows are both knowable and distinctive', () => {
+    expect(probes.map((p) => p.label)).toEqual(['Product repeater', 'Direct list']);
+  });
+
+  it('reads an inline items array off the repeater itself', () => {
+    const inline = probes[0];
+    expect(inline.source).toBe('inline items');
+    expect(inline.rows).toBe(2);
+    expect(inline.strings).toEqual(['Handmade Ceramic Bowl', 'Specialty Coffee Blend']);
+    // Not "£35.00": a string with no letters is a price, a date or an id, and
+    // matching one proves nothing about whether a row drew.
+    expect(inline.strings).not.toContain('£35.00');
+  });
+
+  it('follows a Static Data node wired straight into items, parsing its json', () => {
+    const fromData = probes[1];
+    expect(fromData.source).toContain('Static Data');
+    expect(fromData.strings).toContain('Stoneware Dinner Bowl');
+  });
+
+  it('abstains on a list whose rows are all single common words', () => {
+    // "Shop", "Home", "Help". Matching these found them in the page's own nav and
+    // reported two genuinely empty lists as rendered — the measurement that put
+    // the distinctiveness rule here in the first place.
+    expect(probes.map((p) => p.label)).not.toContain('Tab strip');
+  });
+
+  it('abstains on a list fed through a transform', () => {
+    // A Filter Collection that matches nothing is a legitimately empty list and
+    // a Map Collection may rewrite every string. One hop, no transform, or
+    // nothing — a probe that guesses reports a working page as broken.
+    expect(probes.map((p) => p.label)).not.toContain('Filtered list');
+  });
+
+  it('returns nothing for a directory that is not a project', () => {
+    expect(listProbes(path.resolve(__dirname, 'fixtures'))).toEqual([]);
+    expect(listProbes('/nonexistent')).toEqual([]);
   });
 });

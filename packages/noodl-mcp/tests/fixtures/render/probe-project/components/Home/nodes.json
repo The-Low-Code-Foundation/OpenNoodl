@@ -1,0 +1,54 @@
+{
+  "componentId": "c1",
+  "nodes": [
+    {
+      "id": "root",
+      "type": "Group",
+      "children": [
+        "products",
+        "tabs"
+      ]
+    },
+    {
+      "id": "products",
+      "type": "For Each",
+      "label": "Product repeater",
+      "parent": "root",
+      "parameters": {
+        "template": "/Cards/Product",
+        "items": [
+          {
+            "name": "Handmade Ceramic Bowl",
+            "price": "\u00a335.00",
+            "image": "https://example.com/a.jpg"
+          },
+          {
+            "name": "Specialty Coffee Blend",
+            "price": "\u00a318.00",
+            "image": "https://example.com/b.jpg"
+          }
+        ]
+      }
+    },
+    {
+      "id": "tabs",
+      "type": "For Each",
+      "label": "Tab strip",
+      "parent": "root",
+      "parameters": {
+        "template": "/Cards/Tab",
+        "items": [
+          {
+            "name": "Shop"
+          },
+          {
+            "name": "Home"
+          },
+          {
+            "name": "Help"
+          }
+        ]
+      }
+    }
+  ]
+}

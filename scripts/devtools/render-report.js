@@ -119,6 +119,180 @@ function placeholderStrings(catalogPath = CATALOG_JSON) {
   return [...found];
 }
 
+// ── List probes: content the graph declares, looked for on the page ─────────
+
+/**
+ * LAS-012 §3 — the half of the report that could not see an empty list.
+ *
+ * Every other finding here is about content that is **present and wrong**: a
+ * dead placeholder, a broken image, a box with a border and nothing in it. A
+ * repeater that instantiates nothing emits no elements, so there is nothing to
+ * count and nothing to judge. Haiku's session-6 build reported `0 errors` with
+ * three of its five sections missing, and qwen's reported *"Rendered clean"* on
+ * a page carrying one text element.
+ *
+ * ## What this can and cannot do, honestly
+ *
+ * Relating a DOM element to the graph node that produced it is not possible
+ * today: the viewer stamps no node id on anything it renders, and
+ * `window.Noodl` exposes only `_viewerReact.renderDeployed` — no runtime handle
+ * to ask. Both routes are viewer changes plus a bundle rebuild, which is a
+ * bigger and riskier task than this one, and the general check ("this `For Each`
+ * produced zero children") waits for it.
+ *
+ * What is possible without either is to relate by **content**, which is what a
+ * human checking the page does: when the graph says a list's rows contain the
+ * words "Handmade Ceramic Bowl", those words must be somewhere on the page.
+ *
+ * So a probe is only built where the item data is knowable off disk and its
+ * rendering is not conditional:
+ *
+ *  - an inline `items` array on the `For Each` itself — what a model writes when
+ *    it has no backend, and all three of haiku's;
+ *  - a `Static Data` node wired **directly** into `items`, its `json` parsed —
+ *    the recipe library's shape and sonnet's.
+ *
+ * Anything through a `Filter Collection` or `Map Collection` is deliberately not
+ * probed: a filter that matches nothing is a legitimately empty list and a map
+ * may rewrite every string, so a probe there would report a working page as
+ * broken. A query-fed repeater is not probed either, for the same reason. The
+ * check abstains rather than guesses, and says so in the report's shape by
+ * simply producing no probe.
+ */
+/**
+ * A probe string has to be **distinctive**, and that is the whole difficulty.
+ *
+ * Measured on haiku's build: matching any readable item value found "Ceramics"
+ * and "Coffee" in the section's own static copy and "Home" and "Shop" in the
+ * nav, so two of three genuinely empty lists reported as rendered. A single
+ * common word is not evidence that a list drew — it is evidence that the word is
+ * on the page.
+ *
+ * Multi-word, or long. `"Handmade Ceramic Bowl"` and `"Medium roast, single
+ * origin"` qualify; `"Shop"`, `"Home"` and `"£35.00"` do not. A probe with
+ * nothing distinctive left **abstains** — it produces no probe at all rather
+ * than a guess, which is why haiku's category and footer lists are not reported
+ * here even though they are equally empty. The gate (`repeater-with-visual-
+ * children`) is what catches those; this is the backstop for a list that passes
+ * the gate and still draws nothing.
+ */
+const PROBE_MIN_WORDS = 2;
+const PROBE_MIN_LENGTH = 8;
+const PROBE_MIN_LENGTH_SINGLE_WORD = 12;
+/** How many strings one probe carries. More is not more evidence. */
+const PROBE_MAX_STRINGS = 6;
+
+function isDistinctive(s) {
+  if (/^[^A-Za-z]*$/.test(s)) return false; // prices, dates, ids
+  const words = s.split(/\s+/).filter(Boolean).length;
+  if (words >= PROBE_MIN_WORDS) return s.length >= PROBE_MIN_LENGTH;
+  return s.length >= PROBE_MIN_LENGTH_SINGLE_WORD;
+}
+
+/** A value a human would read on the page, rather than a URL, token or number. */
+function readableStrings(items) {
+  const out = [];
+  for (const item of items) {
+    if (!item || typeof item !== 'object') {
+      if (typeof item === 'string' && isDistinctive(item.trim())) out.push(item.trim());
+      continue;
+    }
+    for (const value of Object.values(item)) {
+      if (typeof value !== 'string') continue;
+      const s = value.trim();
+      if (/^(https?:|data:|\/|#|var\()/.test(s)) continue;
+      if (!isDistinctive(s)) continue;
+      out.push(s);
+    }
+  }
+  return [...new Set(out)];
+}
+
+/** A `Static Data` node's inline rows, or nothing if it holds none. */
+function staticDataItems(node) {
+  const p = node.parameters || {};
+  if (Array.isArray(p.items)) return p.items;
+  if (typeof p.json !== 'string' || !p.json.trim()) return null;
+  try {
+    const parsed = JSON.parse(p.json);
+    return Array.isArray(parsed) && parsed.length ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Read a v2 project off disk and build one probe per repeater whose rows are
+ * knowable. Returns `[]` for anything it cannot read — an unreadable project is
+ * the render's problem to report, not this function's.
+ */
+function listProbes(projectDir) {
+  const probes = [];
+  let project;
+  try {
+    project = JSON.parse(fs.readFileSync(path.join(projectDir, 'nodegx.project.json'), 'utf8'));
+  } catch {
+    return probes;
+  }
+  const componentsDir = path.join(projectDir, (project.structure && project.structure.componentsDir) || 'components');
+  let registry;
+  try {
+    registry = JSON.parse(fs.readFileSync(path.join(componentsDir, '_registry.json'), 'utf8'));
+  } catch {
+    return probes;
+  }
+
+  for (const key of Object.keys(registry.components || {})) {
+    const dir = path.join(componentsDir, registry.components[key].path);
+    let nodes;
+    let connections = [];
+    let name = '/' + key;
+    try {
+      nodes = JSON.parse(fs.readFileSync(path.join(dir, 'nodes.json'), 'utf8')).nodes || [];
+      const meta = JSON.parse(fs.readFileSync(path.join(dir, 'component.json'), 'utf8'));
+      name = meta.path || name;
+      const connPath = path.join(dir, 'connections.json');
+      if (fs.existsSync(connPath)) {
+        connections = JSON.parse(fs.readFileSync(connPath, 'utf8')).connections || [];
+      }
+    } catch {
+      continue;
+    }
+
+    const byId = new Map(nodes.map((n) => [n.id, n]));
+    for (const node of nodes) {
+      if (node.type !== 'For Each') continue;
+      const parameters = node.parameters || {};
+
+      let items = Array.isArray(parameters.items) && parameters.items.length ? parameters.items : null;
+      let source = 'inline items';
+      if (!items) {
+        // A Static Data node wired straight in — one hop, no transform.
+        const feed = connections.find((c) => (c.toId ?? c.targetId) === node.id && (c.toProperty ?? c.targetPort) === 'items');
+        const from = feed ? byId.get(feed.fromId ?? feed.sourceId) : undefined;
+        if (from && from.type === 'Static Data') {
+          items = staticDataItems(from);
+          source = `Static Data "${from.label || from.id}"`;
+        }
+      }
+      if (!items) continue;
+
+      const strings = readableStrings(items).slice(0, PROBE_MAX_STRINGS);
+      if (!strings.length) continue;
+
+      probes.push({
+        component: name,
+        nodeId: node.id,
+        label: node.label || node.id,
+        rows: items.length,
+        source,
+        strings
+      });
+    }
+  }
+  return probes;
+}
+
 // ── The browser-side measurement ────────────────────────────────────────────
 
 /**
@@ -126,9 +300,10 @@ function placeholderStrings(catalogPath = CATALOG_JSON) {
  * judgement about what they mean lives in {@link summarise}, on this side, where
  * it can be unit-tested without a browser.
  */
-function measureExpression(placeholders) {
+function measureExpression(placeholders, probes = []) {
   return `(() => {
   const PLACEHOLDERS = ${JSON.stringify(placeholders)};
+  const PROBES = ${JSON.stringify(probes)};
   const round = (n) => Math.round(n);
   const cls = (el) => String(el.className || '').trim().slice(0, 60);
   const all = [...document.querySelectorAll('body *')];
@@ -213,7 +388,24 @@ function measureExpression(placeholders) {
     for (const set of bySignature.values()) record(parent, set, 'siblings');
   }
 
+  // LAS-012 §3. Content the graph declares for a list, looked for on the page.
+  //
+  // Built from the visible leaf text elements, NOT \`document.body.textContent\`
+  // — measured, not assumed: render-from-disk injects the whole project as
+  // \`window.projectData\` in a <script> inside <body>, so body text contains
+  // every items array verbatim and the first version of this check found all
+  // six of haiku's missing strings on a page showing none of them.
+  //
+  // \`textContent\` is unaffected by text-transform, so an uppercased heading
+  // still matches its source string.
+  const pageText = textEls.map((el) => el.textContent).join('\\n');
+  const lists = PROBES.map((p) => {
+    const found = p.strings.filter((s) => pageText.indexOf(s) !== -1);
+    return { ...p, found: found.length, missing: p.strings.filter((s) => found.indexOf(s) === -1).slice(0, 3) };
+  });
+
   return {
+    lists,
     layoutWidth: window.innerWidth,
     clientWidth: vw,
     scrollWidth: document.documentElement.scrollWidth,
@@ -263,6 +455,13 @@ function measureExpression(placeholders) {
  */
 const RenderFinding = {
   BlankRender: 'blank-render',
+  /**
+   * LAS-012 §3 — a list whose rows the graph spells out, and the page does not
+   * contain a single one of them. The one shape this report was structurally
+   * unable to see: every other finding is about content present and wrong, and
+   * a repeater that instantiates nothing emits no elements to judge.
+   */
+  EmptyList: 'empty-list',
   DeadPlaceholderText: 'dead-placeholder-text',
   BrokenImage: 'broken-image',
   SingleColumnGrid: 'single-column-grid',
@@ -306,6 +505,23 @@ function summarise(viewports) {
           'without a Page node at its root, and a route no Router lists is never reached.'
       });
       continue;
+    }
+
+    for (const list of v.lists || []) {
+      if (list.found > 0) continue;
+      add({
+        code: RenderFinding.EmptyList,
+        severity: 'error',
+        viewport: name,
+        relatedDiagnostic: 'repeater-without-template',
+        message:
+          `The Repeater "${list.label}" in ${list.component} has ${plural(list.rows, 'row', 'rows')} of ` +
+          `${list.source}, and none of that content is on the page — so it built nothing. A For Each ` +
+          'instantiates the component named on its "template" port once per item and inserts each copy as its ' +
+          'own next sibling; with no template, or with the item markup nested underneath it instead, it ' +
+          `renders nothing at all. Looked for: ${list.missing.map((s) => `"${s}"`).join(', ')}.`,
+        evidence: { component: list.component, nodeId: list.nodeId, rows: list.rows, missing: list.missing }
+      });
     }
 
     if (v.placeholders.count > 0) {
@@ -718,7 +934,7 @@ async function renderReport(options) {
     await client.send('Page.navigate', { url: `http://127.0.0.1:${servePort}/` });
     await wait(BOOT_MS);
 
-    const expression = measureExpression(placeholderStrings());
+    const expression = measureExpression(placeholderStrings(), listProbes(projectDir));
     const measured = {};
     const screenshots = [];
 
@@ -789,6 +1005,7 @@ module.exports = {
   renderReport,
   summarise,
   measureExpression,
+  listProbes,
   placeholderStrings,
   checkPrerequisites,
   findChrome,

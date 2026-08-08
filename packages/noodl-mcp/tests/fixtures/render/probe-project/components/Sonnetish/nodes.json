@@ -1,0 +1,47 @@
+{
+  "componentId": "c2",
+  "nodes": [
+    {
+      "id": "root",
+      "type": "Group",
+      "children": [
+        "list",
+        "filtered"
+      ]
+    },
+    {
+      "id": "data",
+      "type": "Static Data",
+      "label": "Products",
+      "parameters": {
+        "type": "json",
+        "json": "[{\"title\": \"Stoneware Dinner Bowl\"}, {\"title\": \"Speckled Ceramic Mug\"}]"
+      }
+    },
+    {
+      "id": "list",
+      "type": "For Each",
+      "label": "Direct list",
+      "parent": "root",
+      "parameters": {
+        "template": "/Cards/Row"
+      }
+    },
+    {
+      "id": "narrowed",
+      "type": "Filter Collection",
+      "parameters": {
+        "filterScript": "filter(true)"
+      }
+    },
+    {
+      "id": "filtered",
+      "type": "For Each",
+      "label": "Filtered list",
+      "parent": "root",
+      "parameters": {
+        "template": "/Cards/Row"
+      }
+    }
+  ]
+}
