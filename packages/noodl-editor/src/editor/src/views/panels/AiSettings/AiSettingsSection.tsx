@@ -48,89 +48,121 @@ const KEY_HELP: Partial<Record<AiProviderId, { label: string; url: string }>> = 
   openai: { label: 'Get an OpenAI API key', url: 'https://platform.openai.com/account/api-keys' }
 };
 
-/**
- * LAS-009 — the value encoding for a role picker.
- *
- * Provider and model are one control rather than two, deliberately. A model id
- * only means anything to the provider it belongs to, so two independent
- * pickers would let a user leave `claude-opus-5` selected while switching the
- * provider to Ollama — a configuration that looks set and fails at the endpoint.
- * One control means the pair always moves together, which is also what
- * `AiConfigStore.setRole` needs to avoid leaving half a selection behind.
- *
- * The empty string is "same as the main model", which is what every role ships
- * as and what most users will keep.
- */
+/** "Same as main model" — what every role ships as, and what most users keep. */
 const INHERIT = '';
 
-function encodeRole(provider: AiProviderId, model: string): string {
-  return `${provider}:${model}`;
-}
-
-function decodeRole(value: string): { provider?: AiProviderId; model?: string } {
-  if (!value) return {};
-  const separator = value.indexOf(':');
-  if (separator < 0) return {};
-  const provider = value.slice(0, separator) as AiProviderId;
-  const model = value.slice(separator + 1);
-  return AI_PROVIDER_IDS.includes(provider) && model ? { provider, model } : {};
-}
+/**
+ * Providers whose model list is "whatever you installed or your gateway
+ * serves", so the registry cannot enumerate it and the model has to be typed.
+ *
+ * This is the case that matters for mixing vendors: `openai-compatible` is how
+ * a hosted open-weight gateway (DeepInfra and friends) is configured, and the
+ * registry has **zero** models for it — a picker alone would offer a user
+ * nothing to select, which is precisely the configuration this feature exists
+ * to allow. Ollama is the same story: the registry knows two models, and the
+ * one actually pulled is whatever `ollama pull` fetched.
+ */
+const PROVIDERS_WITH_TYPED_MODEL: AiProviderId[] = ['openai-compatible', 'ollama'];
 
 /**
- * One row per role. Only providers that are actually configured are offered:
- * choosing an unconfigured one would resolve straight back to the global pair
- * with a console warning, which is a setting that reads as applied and is not.
- * A role already pointing at a provider that has since lost its credentials is
- * still shown — labelled — so it can be seen and cleared rather than silently
- * disappearing from the list that explains the behaviour.
+ * LAS-009 — one role, two controls: a provider and a model.
+ *
+ * Provider and model are separate controls because they are separate choices —
+ * the point of the feature is mixing vendors, so "Anthropic for planning,
+ * DeepInfra for acting" has to be expressible. They are still written together
+ * by `AiConfigStore.setRole`, and changing the provider clears the model rather
+ * than carrying it across: a `claude-opus-5` id left behind on an Ollama role
+ * would read as configured and fail at the endpoint.
+ *
+ * Only configured providers are offered. Choosing an unconfigured one would
+ * resolve straight back to the global pair with a console warning — a setting
+ * that reads as applied and is not. A role already pointing at a provider that
+ * has since lost its credentials is still shown, labelled, so it can be seen
+ * and cleared rather than vanishing from the list that explains its behaviour.
  */
 function RoleRow({ role, mainProvider }: { role: AiRole; mainProvider: AiProviderSelection }) {
-  const [value, setValue] = useState(() => {
-    const selection = AiConfigStore.getRole(role);
-    return selection.provider && selection.model ? encodeRole(selection.provider, selection.model) : INHERIT;
-  });
+  const [selection, setSelection] = useState(() => AiConfigStore.getRole(role));
 
-  const options = useMemo(() => {
-    const rows = [{ label: 'Same as main model', value: INHERIT }];
+  const providerOptions = useMemo(() => {
+    const rows: { label: string; value: string }[] = [{ label: 'Same as main model', value: INHERIT }];
 
-    for (const provider of AI_PROVIDER_IDS) {
-      if (!AiConfigStore.isConfigured(provider)) continue;
-      for (const model of getModelsForProvider(provider)) {
-        rows.push({
-          label: `${AI_PROVIDER_LABELS[provider]} — ${model.displayName}`,
-          value: encodeRole(provider, model.id)
-        });
-      }
+    for (const id of AI_PROVIDER_IDS) {
+      if (AiConfigStore.isConfigured(id)) rows.push({ label: AI_PROVIDER_LABELS[id], value: id });
     }
 
-    // Whatever is currently selected must always be selectable, or the control
-    // would render blank and the next change would look like a fresh choice.
-    if (value !== INHERIT && !rows.some((row) => row.value === value)) {
-      const { provider, model } = decodeRole(value);
-      rows.push({
-        label: provider
-          ? `${AI_PROVIDER_LABELS[provider]} — ${model} ${AiConfigStore.isConfigured(provider) ? '(custom)' : '(not configured)'}`
-          : value,
-        value
-      });
+    // A provider that has lost its credentials stays selectable so the user can
+    // see what the role is still set to, and clear it.
+    if (selection.provider && !rows.some((row) => row.value === selection.provider)) {
+      rows.push({ label: `${AI_PROVIDER_LABELS[selection.provider]} (not configured)`, value: selection.provider });
     }
 
     return rows;
     // `mainProvider` is not read here, but changing it changes which providers
     // are configured — so it is what makes this list reload.
-  }, [value, mainProvider]);
+  }, [selection.provider, mainProvider]);
+
+  const registryModels = useMemo(
+    () => (selection.provider ? getModelsForProvider(selection.provider) : []),
+    [selection.provider]
+  );
+
+  const modelOptions = useMemo(() => {
+    const rows = registryModels.map((entry) => ({ label: entry.displayName, value: entry.id }));
+    if (selection.model && !rows.some((row) => row.value === selection.model)) {
+      rows.unshift({ label: `${selection.model} (custom)`, value: selection.model });
+    }
+    return rows;
+  }, [registryModels, selection.model]);
+
+  function write(next: { provider?: AiProviderId; model?: string }) {
+    setSelection(next);
+    AiConfigStore.setRole(role, next);
+  }
+
+  // Typed rather than picked, either because the provider has no registry (a
+  // custom gateway) or because it has one that cannot be complete (Ollama).
+  const typesModel = Boolean(selection.provider && PROVIDERS_WITH_TYPED_MODEL.includes(selection.provider));
 
   return (
-    <PanelRow label={AI_ROLE_LABELS[role]} helpText={AI_ROLE_DESCRIPTIONS[role]}>
-      <PropertyPanelSelectInput
-        value={value}
-        properties={{ options }}
-        onChange={(next: string) => {
-          setValue(next);
-          AiConfigStore.setRole(role, decodeRole(next));
-        }}
-      />
-    </PanelRow>
+    <>
+      <PanelRow label={AI_ROLE_LABELS[role]} helpText={AI_ROLE_DESCRIPTIONS[role]}>
+        <PropertyPanelSelectInput
+          value={selection.provider ?? INHERIT}
+          properties={{ options: providerOptions }}
+          onChange={(next: string) => {
+            // Changing provider drops the model: an id from the old vendor is
+            // meaningless to the new one, and leaving it is how a role ends up
+            // pointing at a model its endpoint has never heard of.
+            if (!next) write({});
+            else write({ provider: next as AiProviderId });
+          }}
+        />
+      </PanelRow>
+
+      {selection.provider && (
+        <PanelRow
+          label={`${AI_ROLE_LABELS[role]} model`}
+          helpText={
+            typesModel
+              ? `Model id as ${AI_PROVIDER_LABELS[selection.provider]} names it. Leave blank to use that provider's configured model.`
+              : undefined
+          }
+        >
+          {typesModel ? (
+            <PropertyPanelTextInput
+              value={selection.model ?? ''}
+              onChange={(next: string) => write({ provider: selection.provider, model: next || undefined })}
+            />
+          ) : (
+            <PropertyPanelSelectInput
+              value={selection.model ?? ''}
+              properties={{ options: modelOptions }}
+              onChange={(next: string) => write({ provider: selection.provider, model: next || undefined })}
+            />
+          )}
+        </PanelRow>
+      )}
+    </>
   );
 }
 
