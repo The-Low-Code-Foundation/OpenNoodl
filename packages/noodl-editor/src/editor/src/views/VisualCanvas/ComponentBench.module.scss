@@ -1,0 +1,54 @@
+.Root {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  background-color: var(--theme-color-bg-2);
+}
+
+/* R2 — the bench never renders full-bleed, and it is not the app's surface.
+   The app preview is a checkerboarded canvas (`VisualCanvas.module.scss`); this
+   is flat and darker. That difference is what makes the two modes tellable
+   apart in a screenshot with the window title cropped out, which is BEN-004's
+   acceptance criterion. Phase 23: red is danger only — a bench is not an error,
+   so nothing here is red. */
+.Stage {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  justify-content: center;
+  align-items: stretch;
+  padding: 16px;
+  overflow: auto;
+  background-color: var(--theme-color-bg-0);
+}
+
+/* The frame edge, visible on purpose: you are looking at a box of a width you
+   chose, not at a page. `flex: none` so a frame wider than the stage scrolls
+   rather than being quietly squeezed into a width you did not ask for — a
+   silently-wrong width is the exact lie the control exists to stop. */
+.Frame {
+  flex: none;
+  display: flex;
+  min-width: 0;
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm), 0 0 0 1px var(--theme-color-border-default);
+  overflow: hidden;
+}
+
+.Webview {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background-color: white;
+}
+
+.Empty {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px;
+  text-align: center;
+}

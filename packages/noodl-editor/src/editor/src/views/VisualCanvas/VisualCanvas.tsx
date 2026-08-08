@@ -1,5 +1,37 @@
+/**
+ * The preview surface — one surface, two modes (BEN-004).
+ *
+ * Mode `app` is the live preview this file has always been: the project's own
+ * viewer, filling a checkerboarded canvas. Mode `bench` mounts a single
+ * component in isolation with its inputs settable (BEN-001), on a stage that is
+ * visibly a bench.
+ *
+ * The four anti-disorientation rules from the phase README are load-bearing
+ * here, not decoration:
+ *
+ * - **R1** one preview surface, two modes. This component. There is no second
+ *   preview panel anywhere in the editor, and there must not be one — two live
+ *   previews in two panels is the arrangement that guarantees a builder does
+ *   not know which of them is the app.
+ * - **R2** the bench never renders full-bleed. See `ComponentBench.module.scss`.
+ * - **R3** the app preview is *not torn down* when you switch. Both stages are
+ *   absolutely positioned siblings and the inactive one is hidden with
+ *   `visibility`, so the app webview keeps running with its route, its scroll
+ *   position and its half-filled form intact, and its layout box keeps a real
+ *   size — which matters, because `CanvasView.updateViewportSize` computes
+ *   zoom-to-fit from `getBoundingClientRect()` and a `display: none` ancestor
+ *   would hand it a zero and a zero-width preview to come back to.
+ *   ⚠️ Hiding, never closing: closing a webview CDP target white-screens the
+ *   editor (POL-012).
+ * - **R4** one always-present way back, in the same place in both modes. The
+ *   scope chip is the leftmost control of the strip in both.
+ */
+
 import { useThrottle } from '@noodl-hooks/useThrottleState';
+import classNames from 'classnames';
 import React, { useEffect, useRef, useState } from 'react';
+
+import { ProjectModel } from '@noodl-models/projectmodel';
 
 import { PrimaryButton, PrimaryButtonSize } from '@noodl-core-ui/components/inputs/PrimaryButton';
 import { Box } from '@noodl-core-ui/components/layout/Box';
@@ -7,6 +39,18 @@ import { Label, LabelSize } from '@noodl-core-ui/components/typography/Label';
 import { Text } from '@noodl-core-ui/components/typography/Text';
 import { useTrackBounds } from '@noodl-core-ui/hooks/useTrackBounds';
 
+import { EventDispatcher } from '../../../../shared/utils/EventDispatcher';
+import { BENCH_MOUNT_EVENT, clearPendingBenchMount, takePendingBenchMount } from './benchRequest';
+import { ComponentBench } from './ComponentBench';
+import { BenchFrameControl, PreviewScopeControl } from './PreviewChrome';
+import {
+  APP_SCOPE,
+  DEFAULT_BENCH_FRAME,
+  benchSizeLabel,
+  benchTargetLabel,
+  type BenchFrame,
+  type PreviewScope
+} from './previewScope';
 import css from './VisualCanvas.module.scss';
 
 export interface VisualCanvasProps {
@@ -25,6 +69,47 @@ export function VisualCanvas({ onWebView, deviceName, zoom }: VisualCanvasProps)
   const [crashed, setCrashed] = useState(false);
   const [style, setStyle] = useState({});
   const [showViewportSize, setShowViewportSize] = useState(false);
+
+  /**
+   * Which of the two modes is showing, and the frame the bench renders into.
+   *
+   * Both are **preview state, never project state** (R5) and neither is
+   * persisted: reopening a project into a component bench, with no memory of
+   * having asked for one, is the disorientation this phase is about.
+   */
+  const [scope, setScope] = useState<PreviewScope>(APP_SCOPE);
+  const [frame, setFrame] = useState<BenchFrame>(DEFAULT_BENCH_FRAME);
+  /** The bench frame's measured box — see `ComponentBench`'s `onFrameMeasured`. */
+  const [benchMeasured, setBenchMeasured] = useState<{ width: number; height: number } | undefined>(undefined);
+  const isBench = scope.mode === 'bench';
+
+  /**
+   * BEN-004 §6 — the entry the feature will actually be used through:
+   * components panel → right-click → "Preview in isolation". The panel is a
+   * different React root, so the existing global bus carries it.
+   *
+   * The claim on mount is the other half: a request made while the preview was
+   * detached fires before this surface exists, so `benchRequest` parks it and
+   * this picks it up once `EditorDocument` has re-attached.
+   */
+  useEffect(() => {
+    const eventGroup = {};
+    EventDispatcher.instance.on(
+      BENCH_MOUNT_EVENT,
+      (args: { target?: string }) => {
+        if (!args?.target) return;
+        // Handled live, so nothing is left parked for the next mount.
+        clearPendingBenchMount();
+        setScope({ mode: 'bench', target: args.target });
+      },
+      eventGroup
+    );
+
+    const parked = takePendingBenchMount();
+    if (parked) setScope({ mode: 'bench', target: parked });
+
+    return () => EventDispatcher.instance.off(eventGroup);
+  }, []);
 
   useEffect(() => {
     onWebView(webviewRef.current);
@@ -76,21 +161,67 @@ export function VisualCanvas({ onWebView, deviceName, zoom }: VisualCanvasProps)
   }, [containerBounds, webviewBounds]);
 
   return (
-    <div className={css.Background}>
-      {/* PAR-003: size tag per mock — `1280 × 800 · 100%`, mono, top-right. */}
-      {showViewportSize && (
-        <div className={css.ViewportInfo}>{`${deviceName ? deviceName + ' · ' : ''}${Math.floor(
-          webviewBounds.width
-        )} × ${Math.floor(webviewBounds.height)} · ${Math.floor(zoom * 100)}%`}</div>
-      )}
-      <div className={css.WebviewContainer} style={style} ref={containerRef}>
-        <webview
-          className={css.Webview}
-          ref={webviewRef}
-          // @ts-expect-error. Typings think this is a boolean. It's not, html attributes are strings.
-          disablewebsecurity="true"
-          webpreferences="allowRunningInsecureContent, enableRemoteModule"
+    <div className={css.Background} data-preview-mode={scope.mode}>
+      {/* R1/R4: the scope control is the leftmost thing in the strip, and the
+          strip is in the same place in both modes. It is how you get into the
+          bench and it is the only way out — a second "exit" affordance would be
+          a second answer to the same question. */}
+      <div className={classNames(css.Chrome, isBench && css['is-bench'])} data-test="preview-chrome">
+        <PreviewScopeControl
+          scope={scope}
+          onScopeChange={setScope}
+          getComponents={() => ProjectModel.instance?.getComponents() ?? []}
         />
+
+        {isBench && (
+          <>
+            {/* R2's persistent strip: what is mounted, and that it is isolated.
+                Said in words as well as drawn, because the words are what a
+                user repeats when they file a bug about it. */}
+            <div className={css.BenchCaption} data-test="bench-caption">
+              <strong>{benchTargetLabel(scope.target)}</strong>
+              <span>&nbsp;— isolated component, not the app</span>
+            </div>
+            <BenchFrameControl frame={frame} onFrameChange={setFrame} />
+            <div className={css.BenchSize} data-test="bench-size">
+              {benchSizeLabel(frame, benchMeasured)}
+            </div>
+          </>
+        )}
+      </div>
+
+      <div className={css.Stages}>
+        {/* PAR-003: size tag per mock — `1280 × 800 · 100%`, mono, top-right.
+            Lives inside the stage so it floats over the preview rather than
+            over the chrome strip above it. */}
+        {showViewportSize && !isBench && webviewBounds && (
+          <div className={css.ViewportInfo}>{`${deviceName ? deviceName + ' · ' : ''}${Math.floor(
+            webviewBounds.width
+          )} × ${Math.floor(webviewBounds.height)} · ${Math.floor(zoom * 100)}%`}</div>
+        )}
+
+        {/*
+          R3 — hidden, never unmounted. `visibility: hidden` keeps the element's
+          layout box, so the route, the scroll position and the half-filled form
+          all survive a round trip *and* the zoom-to-fit arithmetic keeps
+          measuring a real rectangle.
+        */}
+        <div
+          className={classNames(css.WebviewContainer, isBench && css['is-hidden'])}
+          style={style}
+          ref={containerRef}
+          data-test="app-preview"
+        >
+          <webview
+            className={css.Webview}
+            ref={webviewRef}
+            // @ts-expect-error. Typings think this is a boolean. It's not, html attributes are strings.
+            disablewebsecurity="true"
+            webpreferences="allowRunningInsecureContent, enableRemoteModule"
+          />
+        </div>
+
+        {isBench && <ComponentBench target={scope.target} frame={frame} onFrameMeasured={setBenchMeasured} />}
       </div>
 
       {Boolean(crashed) && (

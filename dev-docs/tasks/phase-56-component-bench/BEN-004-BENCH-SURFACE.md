@@ -1,6 +1,21 @@
 # BEN-004 — The bench surface: one preview, two modes, no confusion
 
-**Status:** 📋 not started · ⭐ · owns **R1–R5** · can start in parallel with BEN-001
+**Status:** 🟡 **built** (2026-08-08, session 2) · ⭐ · owns **R1–R5** · Live criteria: see Acceptance
+
+Built as a **mode of `VisualCanvas`**, which is the preview surface itself — not a new panel, not a
+new document. Where each rule landed:
+
+| File | What |
+|---|---|
+| [`previewScope.ts`](../../../packages/noodl-editor/src/editor/src/views/VisualCanvas/previewScope.ts) | the scope/frame model, pure and specced — which components may be mounted, what the width field does with junk, what the read-out claims |
+| [`VisualCanvas.tsx`](../../../packages/noodl-editor/src/editor/src/views/VisualCanvas/VisualCanvas.tsx) | the mode, the strip, R3's hide-don't-unmount |
+| [`PreviewChrome.tsx`](../../../packages/noodl-editor/src/editor/src/views/VisualCanvas/PreviewChrome.tsx) | the scope control (searchable) and the frame control |
+| [`ComponentBench.tsx`](../../../packages/noodl-editor/src/editor/src/views/VisualCanvas/ComponentBench.tsx) | the bench stage — `buildBenchExport` + the sandbox webview |
+| [`views/SandboxSurface/`](../../../packages/noodl-editor/src/editor/src/views/SandboxSurface/) | §7's shared toolbar and viewer plumbing; `SandboxPreview` now uses both |
+| [`benchRequest.ts`](../../../packages/noodl-editor/src/editor/src/views/VisualCanvas/benchRequest.ts) | §6's entry point channel, including the detached case |
+
+**Deviations and open questions are registered — B6, B7, B8 in the [README](README.md).** Read them
+before extending this.
 
 ## The constraint this task exists to satisfy
 
@@ -28,6 +43,17 @@ mode; the control then reads `[ ProductCard ▾ ]` and is the same control in th
 
 Two live previews in two panels is the design that guarantees the confusion. There is one preview
 surface with a mode.
+
+> **Built as:** a 30px strip at the top of `VisualCanvas`, present in both modes. The mock above is
+> the tell — `1280 × 800 · 100%` is `VisualCanvas`'s own `.ViewportInfo` string, so "the existing
+> preview toolbar" is the *preview surface's* chrome and not `EditorTopbar`. That reading was taken
+> deliberately: the topbar's two layout breakpoints are measured arithmetic (POL-019, `1010` and
+> `710`, derived from the widths of the controls in them), and a wide new leftmost control there
+> would have broken both. Register **B6**.
+>
+> The picker is an ordinary absolutely-positioned panel inside the surface rather than a
+> `MenuDialog`: it needs a search field, and a portalled menu opened by a synthesised `.click()`
+> never closes, which has cost a live-QA session here before.
 
 ### 2. The bench never renders full-bleed (R2)
 
@@ -59,6 +85,22 @@ worrying about which one is authoritative, because checking is free.
 a **third** surface. Verify the tokens actually reach it; an unstyled bench is the phase-55
 `var()`-unresolved failure wearing a new hat.
 
+> **Built as:** both stages are absolutely-positioned siblings of one `.Stages` box, and the inactive
+> one is hidden with `visibility: hidden` — never `display: none` and never unmounted. Two reasons,
+> and the second is the one that would have bitten: hiding is not closing (POL-012), *and*
+> `CanvasView.updateViewportSize` computes zoom-to-fit from `getBoundingClientRect()`, so a
+> `display: none` ancestor would hand it a zero and the user would come back to a zero-width preview.
+>
+> The **bench** stage is unmounted on the way back to app mode, which is not symmetric and is
+> deliberate: R3 names the app preview, and keeping a second live runtime resident forever is the
+> memory cost the Risks table below says to measure rather than assume. Register **B7** — the round
+> trip is lossless in the direction the criterion names and reloads in the other.
+>
+> Token injection reaches the bench through `useSandboxViewer`, which registers the webview with
+> `PreviewTokenInjector` exactly as the AI preview does. It is a **callback ref**, not the
+> `[ref.current]` effect dependency the AI preview used to use — that dependency is evaluated during
+> *render*, when the ref still holds the previous element.
+
 ### 4. One way back (R4)
 
 The mode selector itself is the way back, in the same position in both modes. No second "exit"
@@ -73,6 +115,23 @@ its viewport size ([VisualCanvas.tsx:78-81](../../../packages/noodl-editor/src/e
 Plus a **stretch** toggle, which answers the commonest isolation lie: "it only looked right because a
 flex parent stretched it".
 
+> **Built as:** Small 360 / Medium 768 / Large 1280 chips, a numeric field committing on blur or
+> Enter, and a Stretch toggle. The width is applied to the **webview element**, so it is measurable
+> in the rendered document rather than inferred from a parameter — that is B3's whole argument, and
+> it is why no Group wrapper was injected into the graph.
+>
+> Two rules the field follows that only a spec can check. Junk keeps the current width instead of
+> becoming `NaN` — a `NaN` reaching a style property is phase-55's `"NaNpx"` defect, where the
+> property was *deleted* and the styling vanished with no message. And the read-out prints the width
+> that was **measured**, never the width that was asked for: the stage has padding, a stretched frame
+> is narrower than the stage by it, and a frame wider than the stage scrolls. A read-out that echoed
+> the request would be the tool built to catch a wrong width quietly reporting one.
+>
+> ⚠️ **What `stretch` does to a *rendered* component is still unmeasured** (register B3). What it
+> does at this end is exact and is all the control claims: the frame stops being a fixed width and
+> becomes the stage. Register **B8** — whether that is the same thing a flex parent does to a child
+> is BEN-007's to settle, live.
+
 ### 6. Entry points
 
 - **Components panel → right-click → "Preview in isolation"**, which switches the preview surface to
@@ -81,6 +140,19 @@ flex parent stretched it".
 - The AI build panel's component mode already lands on this preview surface (AIX-008) — BEN-006
   extends what it can do there; this task must not disturb it.
 
+> **Built as:** `benchRequest.requestBenchMount(legacyName)`, which both emits on the global bus and
+> **parks** the target. The parking is not belt-and-braces: in the `detachedPreview` layout the
+> preview is its own window and `VisualCanvas` is not rendered at all, so an event fired at it lands
+> nowhere and the menu item does nothing. `EditorDocument` re-attaches the preview when it sees the
+> request, and the surface claims the parked target when it mounts — which is after that state
+> change, not during it. Re-attaching someone's window layout is intrusive; doing nothing at all is
+> worse, and a menu item that only sometimes works is worse still.
+>
+> The item is not offered for a cloud function: `/#__cloud__/…` executes in the cloud runtime
+> (WFA-001) and the bench is a browser viewer, so mounting one would fail and read as the
+> component's fault. `benchTargets()` filters the picker on the same rule, in the same place it is
+> written down.
+
 ### 7. Inherit the existing toolbar for free
 
 The sandbox toolbar already carries **Sample data / Real backend** and **Sign in / Sign out**
@@ -88,6 +160,13 @@ The sandbox toolbar already carries **Sample data / Real backend** and **Sign in
 The bench gets both by using the same component. Do not build a second toolbar; do not offer
 "signed out" against a real backend — the existing code already declines that, correctly, and the
 comment explains why.
+
+> **Built as:** [`views/SandboxSurface/`](../../../packages/noodl-editor/src/editor/src/views/SandboxSurface/) —
+> `SandboxToolbar` (summary, notice chip, Sign in/out, Data, Sample/Real) and `useSandboxViewer` (the
+> client id, the export provider, token injection, the URL). `SandboxPreview` was refactored onto
+> both; its behaviour is unchanged and its own module shrank by the same amount. The bench therefore
+> gets BEN-006's **Data** panel for free, which makes BEN-006 a two-client feature rather than a
+> one-surface one — and that is the standing constraint doing its job rather than a bonus.
 
 ## Acceptance
 

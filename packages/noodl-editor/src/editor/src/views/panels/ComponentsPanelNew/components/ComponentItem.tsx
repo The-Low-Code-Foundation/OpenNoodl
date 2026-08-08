@@ -11,6 +11,7 @@ import { Icon, IconName, IconSize } from '@noodl-core-ui/components/common/Icon'
 import { MenuDialogWidth } from '@noodl-core-ui/components/popups/MenuDialog';
 
 import { showContextMenuInPopup } from '../../../ShowContextMenuInPopup';
+import { requestBenchMount } from '../../../VisualCanvas/benchRequest';
 import { iconForKind, labelForKind } from '../componentKind';
 import css from '../ComponentsPanel.module.scss';
 import { buildCreateMenuItems, createMenuTitle } from '../createMenu';
@@ -204,6 +205,25 @@ export function ComponentItem({
         label: 'Open',
         onClick: () => onOpen?.(node)
       });
+
+      /**
+       * BEN-004 §6 — the entry the component bench will actually be used
+       * through. It switches the *existing* preview surface to bench mode on
+       * this component; it does not open a panel, because R1 is that there is
+       * one preview surface with a mode and never two of them.
+       *
+       * Not offered for a cloud function: `/#__cloud__/…` executes in the cloud
+       * runtime (WFA-001), and the bench is a browser viewer — mounting one
+       * would fail and read as the component's fault.
+       */
+      if (!component.isCloudFunction) {
+        items.push({
+          label: 'Preview in isolation',
+          icon: IconName.PlayCircle,
+          onClick: () => requestBenchMount(component.name)
+        });
+      }
+
       items.push('divider');
 
       // Only show "Make Home" for pages or visual components (not logic/cloud functions)

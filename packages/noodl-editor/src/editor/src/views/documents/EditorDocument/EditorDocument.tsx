@@ -24,6 +24,7 @@ import { NodeGraphEditor } from '../../nodegrapheditor';
 import { panelHoldsCanvasSelection } from '../../nodegrapheditor/EditorEventBindings';
 import { ScopePlanStrip } from '../../panels/AiAuthoringPanel/ScopePlanStrip';
 import { showContextMenuInPopup } from '../../ShowContextMenuInPopup';
+import { BENCH_MOUNT_EVENT } from '../../VisualCanvas/benchRequest';
 import { useCanvasView } from './hooks/UseCanvasView';
 import { useCaptureThumbnails } from './hooks/UseCaptureThumbnails';
 import { useImportNodeset } from './hooks/UseImportNodeset';
@@ -220,6 +221,26 @@ function EditorDocument() {
     );
 
     EventDispatcher.instance.on('viewer-refresh', () => canvasView?.refresh(), eventGroup);
+
+    /**
+     * BEN-004 — the bench is a mode of the *docked* preview surface (R1), so
+     * "Preview in isolation" cannot be honoured while the preview is its own
+     * window: `VisualCanvas` is not rendered at all, and the request would land
+     * nowhere and read as a dead menu item.
+     *
+     * Re-attaching is intrusive, and it is still the only way to show what was
+     * asked for. `benchRequest` parks the target so the surface picks it up
+     * when it mounts, which is after this state change rather than during it.
+     */
+    EventDispatcher.instance.on(
+      BENCH_MOUNT_EVENT,
+      () => {
+        if (documentLayout === 'detachedPreview') {
+          setDocumentLayout(previousDocumentLayout === 'vertical' ? 'vertical' : 'horizontal');
+        }
+      },
+      eventGroup
+    );
 
     //refresh viewer when cloud services are changed
     ProjectModel.instance.on(

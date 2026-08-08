@@ -15,6 +15,58 @@
   overflow: hidden;
 }
 
+/* BEN-004 — the preview surface's own strip. Present in both modes and in the
+   same place in both (R4). Deliberately shallow: it is chrome the app preview
+   never had, and Richard's constraint was "without messing up the existing
+   preview display too much". */
+.Chrome {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 30px;
+  padding: 0 8px;
+  background-color: var(--theme-color-bg-2);
+  border-bottom: 1px solid var(--theme-color-bg-1);
+
+  &.is-bench {
+    /* One more at-a-glance cue that the surface below is not the app. Accent,
+       not danger — phase 23: red means danger only, and a bench is not one. */
+    box-shadow: inset 0 -2px 0 var(--theme-color-primary);
+  }
+}
+
+.BenchCaption {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--theme-color-fg-muted);
+  font-size: 11px;
+
+  strong {
+    color: var(--theme-color-fg-default);
+  }
+}
+
+.BenchSize {
+  margin-left: auto;
+  flex-shrink: 0;
+  color: var(--theme-color-fg-muted);
+  font-family: var(--font-family-code);
+  font-size: 10.5px;
+}
+
+/* R3 — both stages are absolutely positioned siblings of the same box, so the
+   inactive one keeps a real layout rectangle while hidden. That is what lets
+   the app preview survive a round trip with its zoom-to-fit arithmetic intact. */
+.Stages {
+  position: relative;
+  flex: 1;
+  align-self: stretch;
+  min-height: 0;
+}
+
 .ViewportInfo {
   /* Size/zoom tag (UIX-004/PAR-003): plain muted mono at top-right per the
      mock (`.size-tag`: right 14 / top 10, 10.5px, fg-3, no chip). */
@@ -30,10 +82,19 @@
 }
 
 .WebviewContainer {
+  position: absolute;
+  inset: 0;
   display: flex;
-  align-self: stretch;
-  flex-grow: 1;
   overflow: auto;
+
+  /* ⚠️ `visibility`, not `display: none`: the element keeps its layout box, so
+     `CanvasView.updateViewportSize` still measures a real rectangle, and the
+     webview is hidden rather than closed — closing a webview CDP target
+     white-screens the editor (POL-012). */
+  &.is-hidden {
+    visibility: hidden;
+    pointer-events: none;
+  }
 
   &::-webkit-scrollbar-thumb {
     background: var(--base-color-grey-500);
