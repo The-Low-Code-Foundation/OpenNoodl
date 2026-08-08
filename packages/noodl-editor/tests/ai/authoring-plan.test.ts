@@ -244,14 +244,23 @@ describe('AIX-011 planning session', () => {
       { operations: [{ kind: 'create', target: 'Pages/Checkout', intent: 'The checkout page.' }] }
     ];
     const seen: string[] = [];
+    // LAS-006 — the repaired plan is a single page create, which now draws the
+    // "plan its sections as their own operations" advisory and therefore one
+    // extra turn. The script repeats its last submission rather than running
+    // dry: a model that stands by its plan is the documented path through the
+    // advisory, and this spec is about the *repair* round, which is unchanged.
+    let last = submissions[0];
     const chat = async (request: AiChatRequest): Promise<AiChatResponse> => {
-      const last = request.messages[request.messages.length - 1];
-      if (last.role === 'tool') seen.push(last.content);
-      return toolResponse('submit_plan', submissions.shift()!);
+      const previous = request.messages[request.messages.length - 1];
+      if (previous.role === 'tool') seen.push(previous.content);
+      last = submissions.shift() ?? last;
+      return toolResponse('submit_plan', last);
     };
     const outcome = await new PlanningSession(loadGraph(), 'wire checkout in', { chat }).run();
     expect(outcome.status).toBe('planned');
     expect(seen.some((s) => s.includes('no such component'))).toBe(true);
+    // And the advisory reached the model, at the one moment amending was free.
+    expect(seen.some((s) => s.includes('plan its sections as their own create operations'))).toBe(true);
   });
 
   it('prose without a plan is a decline, not an error', async () => {

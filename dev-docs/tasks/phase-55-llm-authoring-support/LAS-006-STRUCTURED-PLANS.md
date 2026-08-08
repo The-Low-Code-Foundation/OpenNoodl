@@ -1,6 +1,6 @@
 # LAS-006 — Structured plans: the tree as a form, not an essay
 
-**Status:** 📋 open · **Track 2 (surface)** · §3 depends on LAS-001
+**Status:** ✅ **done** 2026-08-08 (session 4) · **Track 2 (surface)** · §3 depended on LAS-001
 
 ## The evidence
 
@@ -71,8 +71,23 @@ LAS-011 before considering anything harder.
 - Editor planning loop still green (shared model change — run the editor jest suite and compare
   counts).
 
+## What shipped
+
+| § | Where | What |
+|---|---|---|
+| 1 | `authoring/plan.ts` | `inputs`/`outputs`/`repeats`/`instantiates` on `PlanOperation`, all optional; `PLAN_STRUCTURE_DESCRIPTIONS` written once and rendered into **both** clients' schemas (editor JSON Schema, MCP zod). `renderPlanContext` puts the declared interface under the intent, so the operation that *places* a card reads its input names verbatim |
+| 2 | `planAdvisories()` | non-blocking advice on an accepted plan, returned by `create_plan` and put to the editor's planner once |
+| 3 | `planInterfaceContract()` + `validateStaged` | a staged component must expose the inputs its operation promised; extra inputs allowed |
+| 4 | `server.ts` instructions, `create_component` | the order stated as the workflow, `Static Data` and `Component Inputs` named; one advisory line on a page written with no plan |
+
+**Gates at close:** `noodl-mcp` jest **24 suites / 250 specs** (22/230 at session-3 close); `noodl-editor`
+jest **77 / 1048** (76/1029); `typecheck:editor` clean; all three catalog gates green.
+
 ## Register
 
 | # | Finding | State |
 |---|---|---|
-| — | | |
+| F25 | **The §2 prefix allowlist was wrong and the corpus said so.** The task file proposed keying the interface advisory on `Components/`\|`Cards/`\|`Sections/`. Measured over both corpora (`measurements/scan-component-paths.js`: 107 legacy + 12 v2, 613 components), those folders hold **16 of the 256** interface-bearing components; the other 240 live in "UI Components", "Product Details Page", "Search", "Checkout" and ~30 other ad-hoc folders, and 27 sit at the project root with no folder at all. A prefix gate would have been silent on **94%** of its own population | ✅ **CLOSED** — re-keyed on *shape*: **0 of 51** pages declare an input, **178 of 236 (75%)** instantiated non-pages do. Predicate is `looksLikePageComponent`, the existing single derivation, not a fourth copy |
+| F26 | `instantiates` is checked, not just recorded: a declared target that neither exists nor is created by the plan is a plan-time **error**, the same class as an `update` of a nonexistent component. Decision recorded: the staged check is asymmetric — a candidate may instantiate more than it declared (the plan is a floor), but everything it declares must resolve | ✅ decided and specced |
+| F27 | **The editor's advisory turn could have eaten an accepted plan.** `PlanningSession` returns `declined` on prose-without-a-tool-call; adding an advisory turn that invites "say so in prose if it is right" would have routed a valid plan into that branch. Found by reading the loop before writing it, not by a failing spec | ✅ the accepted plan is held and returned from every exit — prose, exhausted submits, and turn budget |
+| F28 | One existing jasmine spec's chat script ran dry on the new advisory turn (its repaired plan is a single page create, which now draws the one-page advisory). **Fixture corrected, not gate weakened** — the script repeats its last submission, which is the documented path through an advisory, and now also asserts the advisory arrived | ✅ corrected in `authoring-plan.test.ts` |
