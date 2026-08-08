@@ -43,7 +43,7 @@ input per control kind, every one of them wired so `getPorts` derives a real typ
 |---|---|---|---|
 | BEN-001 ⭐ | [BEN-001-HARNESS-MOUNT.md](BEN-001-HARNESS-MOUNT.md) | the synthetic harness: mount any component as root *with* its inputs set | ✅ **built and driven**, 19 specs; Live 6 closed (320 measures 320) and **Live 5 closed by BEN-002's drive** — a value set on the harness reaches the mounted component's DOM |
 | BEN-002 ⭐ | [BEN-002-INPUT-FORM.md](BEN-002-INPUT-FORM.md) | the inputs rail, generated from the component interface — and live update without reload | ✅ **built and driven**, 26 specs; **B2 decided** — see B13/B14 and the task file's correction |
-| BEN-003 | [BEN-003-OUTPUT-READOUT.md](BEN-003-OUTPUT-READOUT.md) | what the component emits, as a live log. Makes logic-only components previewable | 📋 not started |
+| BEN-003 | [BEN-003-OUTPUT-READOUT.md](BEN-003-OUTPUT-READOUT.md) | what the component emits, as a live log. Makes logic-only components previewable | ✅ **DONE and driven** — one channel (the trace), not two; every criterion measured live |
 | BEN-004 ⭐ | [BEN-004-BENCH-SURFACE.md](BEN-004-BENCH-SURFACE.md) | the mode selector, the stage chrome, the way back — R1–R5 live here | ✅ **built and driven**, 18 specs; see B6–B10 |
 | BEN-005 | [BEN-005-SCENARIOS.md](BEN-005-SCENARIOS.md) | named input sets saved to component metadata (Empty / Loaded / Error) | 📋 not started |
 | BEN-006 ⭐ | [BEN-006-AUTHORED-SAMPLE-DATA.md](BEN-006-AUTHORED-SAMPLE-DATA.md) | **Richard's ask**: the user edits the sample data in the AI preview and re-renders | 🟡 §1–§6 built, 26 specs; every Live criterion open |

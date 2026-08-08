@@ -1,6 +1,22 @@
 # BEN-003 — The outputs read-out: what the component *emits*
 
-**Status:** 🟡 channel established, live · depends on **BEN-001**
+**Status:** ✅ **DONE and driven**, 2026-08-08 · depends on **BEN-001**
+
+## Acceptance, as measured
+
+| Criterion | Evidence |
+|---|---|
+| The channel question answered in writing, with the probe's output, before any UI | the section below, and register B17 |
+| **Live:** a click inside a benched component appends its signal | clicked `Press me` inside `/Components/BenchEmitter`; `+4.8s Pressed` appeared after **1.2s**, on the interval pull alone — nothing in the editor knew the click had happened |
+| **Live:** a value output updates when an input that feeds it changes | three `Bump` pulses from the rail moved `Count` **0 → 3**; the in-component click made it **4** |
+| **Live:** a logic-only component mounts, accepts inputs, shows outputs | `/Components/BenchLogicProbe` has no visual root. It mounts, the summary says *"nothing to draw — feed it inputs and watch the outputs rail"*, and `Go` ×3 gives `Count` **0 → 3** with three `Changed` rows. ⚠️ `Seed` is wired to `startValue`, which the runtime only reads at init — setting it after mount correctly changes nothing |
+| Polling stops when the bench is not the active mode | counted on the wire from a third relay peer: **15** `getTraceEvents` in 10s while benched, **0** in 12s after switching to App preview. A pull carries `afterSeq`, so it is a tail read |
+| Arming does not disturb a recording in progress | a third peer armed the app preview as `human-hud`; after the bench mounted, ran and tore down, the app preview still answered `{"enabled":true,"owners":["human-hud"],"highestSeq":37}` |
+
+⚠️ **The disarm is not observable from outside, and that is the targeting working.** A third-party
+spy sees only broadcasts — a message carrying a `target` is routed to that socket alone. Zero
+`traceEnabled` messages were seen at teardown, which is the same evidence as the app preview being
+untouched. What *is* observable is the consequence: polling stops, and the human's recording survives.
 
 ## The channel, answered — 2026-08-08, against a live bench client
 
