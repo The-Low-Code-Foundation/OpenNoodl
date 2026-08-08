@@ -4,14 +4,14 @@
    change a value and watch the component change, so the control and its
    consequence have to be visible at the same time. A rail above the stage would
    push the component down every time an error line appeared under a field. */
+/* BEN-003: the width, border and background moved up to `ComponentBench`'s
+   `.Rail`, which is now the column holding this and the outputs read-out. This
+   is one of two panes in it and takes the space the other does not. */
 .Root {
-  flex: none;
-  width: 260px;
+  flex: 1;
   display: flex;
   flex-direction: column;
   min-height: 0;
-  border-left: 1px solid var(--theme-color-border-subtle);
-  background-color: var(--theme-color-bg-2);
 }
 
 .Header {

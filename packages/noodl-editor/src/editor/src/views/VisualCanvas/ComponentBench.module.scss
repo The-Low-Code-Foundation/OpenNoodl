@@ -16,6 +16,20 @@
   min-width: 0;
 }
 
+/* BEN-003 — the right-hand column: inputs above, what came out below. One
+   column rather than two panels, because they are one thought — you change
+   something on the left of the stage and read the consequence on the right, and
+   a layout that made you choose which to look at would defeat both. */
+.Rail {
+  flex: none;
+  width: 260px;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border-left: 1px solid var(--theme-color-border-subtle);
+  background-color: var(--theme-color-bg-2);
+}
+
 /* R2 — the bench never renders full-bleed, and it is not the app's surface.
    The app preview is a checkerboarded canvas (`VisualCanvas.module.scss`); this
    is flat and darker. That difference is what makes the two modes tellable
