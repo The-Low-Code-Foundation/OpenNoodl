@@ -15,12 +15,15 @@ How to cut, verify, publish, and roll back a signed NodeGX release.
 > [notarize] Notarisation complete — ticket will be stapled by electron-builder.
 > ```
 >
-> **macOS auto-update therefore works from v0.1.4 onward**, and this section used
-> to say the opposite. Squirrel.Mac requires a signed app, so the in-app updater
-> had nothing it could install for as long as builds were unsigned; that is no
-> longer the case. v0.1.3 → v0.1.4 is the first pair where both ends are signed
-> and so the first upgrade that can be tested end to end — see §"Auto-update
-> (needs two releases)".
+> **macOS auto-update works, and has now been observed doing so** — 0.1.3 → 0.1.4,
+> unattended, on 2026-08-08. This section used to say the opposite. Squirrel.Mac
+> requires a signed app, so the in-app updater had nothing it could install for as
+> long as builds were unsigned.
+>
+> ⚠️ **It installs on quit and shows nothing while downloading**, so it reads as
+> broken to the person it is working for. Know this before debugging a report of
+> "it isn't updating" — see the auto-update entry under §Known limitations for the
+> three places the evidence actually lives.
 >
 > **Do not paste [INSTALLING-UNSIGNED-BUILDS.md](./INSTALLING-UNSIGNED-BUILDS.md)
 > into macOS release notes any more.** It tells users to bypass Gatekeeper, which
@@ -306,10 +309,35 @@ These are documented deliberately rather than silently shipped:
   first attempt, so the entitlement problems anticipated here did not materialise.
   **Still open for Windows:** `WIN_CSC_LINK` is unset and no artifact has been run
   past SmartScreen on a clean machine.
-- **The auto-update *upgrade path* has still never been exercised.** Signing was
-  the blocker and it is gone, but "0.1.3 installs 0.1.4 by itself" has not been
-  observed. It cannot be tested from CI — it needs a machine with the older
-  version actually installed.
+- ~~**The auto-update *upgrade path* has never been exercised.**~~ **Proven
+  2026-08-08**, 0.1.3 → 0.1.4, unattended on macOS arm64. Feed read, 169MB zip
+  downloaded, Squirrel swapped the bundle, signature still verifies after the
+  in-place replacement.
+
+  **It looks broken while it is working, and that is the finding.** The update
+  applies on **quit**, not on a prompt (`autoInstallOnAppQuit` defaults true;
+  `ShipItState.plist` carries `launchAfterInstallation => false`), and
+  `autoupdater.js` messages the renderer only on `update-downloaded` — nothing on
+  `update-available`, no `download-progress`. So the app sits silent for the
+  ~90 seconds it downloads, and a user who restarts inside that window sees
+  nothing at all and concludes auto-update is broken. That is exactly what
+  happened on the first real run. `update-available` and `download-progress` are
+  both available and unused; wiring them is the fix.
+
+  **Where to look when someone reports it "not updating"** — there is no
+  app-level update log, so do not go hunting for one:
+
+  | | |
+  |---|---|
+  | `~/Library/Caches/com.nodegx.app.ShipIt/ShipIt_stderr.log` | the real story. `Aborting update attempt because there are 1 running instances` → `Installation completed successfully` once the app quits |
+  | `~/Library/Caches/noodl-editor-updater/` | `update.zip` and `pending/`. Its byte size matching `latest-mac.yml` proves the download finished |
+  | `defaults read /Applications/NodeGX.app/Contents/Info.plist CFBundleShortVersionString` | ground truth for what is installed |
+
+- **`releaseType: draft` in the shipped `app-update.yml` is inert.** It is the
+  publish-side setting copied into the read-side config, and it looks alarming
+  when debugging an update that is not appearing. `GitHubProvider` never reads
+  it — it goes straight to `releases.atom`, then `/releases/latest` for the tag.
+  Noted because it was the first thing suspected and it cost time.
 - **AppImage build is CI-verified only.** AppImage cannot be built on macOS, so
   it is exercised by the Linux runner, not locally. Local verification here
   covered the macOS packaging path only.
