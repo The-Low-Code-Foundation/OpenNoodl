@@ -15,10 +15,15 @@
  * - it runs in its own Electron partition, so the fake session it signs into
  *   cannot touch the session the real preview is using.
  *
+ * BEN-004 moved the plumbing and the toolbar into `views/SandboxSurface`, where
+ * the component bench uses the same two. Nothing about this document's
+ * behaviour changed; it now has a sibling, and the phase's standing constraint
+ * is that the two share a substrate rather than a resemblance.
+ *
  * @module noodl-editor/views/documents/AuthoringPreviewDocument/SandboxPreview
  */
 
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 
 import {
   buildSandboxExport,
@@ -28,17 +33,14 @@ import {
 } from '@noodl-models/AiAssistant/authoring';
 import { ProjectModel } from '@noodl-models/projectmodel';
 
-import { guid } from '@noodl-utils/utils';
-
-import { PreviewTokenInjector } from '../../../services/PreviewTokenInjector';
-
-import { FeedbackType } from '@noodl-constants/FeedbackType';
-
-import { Icon, IconName, IconSize } from '@noodl-core-ui/components/common/Icon';
-import { PrimaryButton, PrimaryButtonSize, PrimaryButtonVariant } from '@noodl-core-ui/components/inputs/PrimaryButton';
 import { Text, TextType } from '@noodl-core-ui/components/typography/Text';
 
-import { ViewerConnection } from '../../../ViewerConnection';
+import {
+  SandboxToolbar,
+  SANDBOX_PARTITION,
+  SANDBOX_WEBVIEW_ATTRIBUTES,
+  useSandboxViewer
+} from '../../SandboxSurface';
 import { SandboxDataEditor } from './SandboxDataEditor';
 import css from './SandboxPreview.module.scss';
 
@@ -63,29 +65,7 @@ export interface SandboxPreviewProps {
   unrenderableHint?: string;
 }
 
-/** Its own storage jar: the sandbox signs in as a fake user and must not leak that. */
-const PARTITION = 'persist:nodegx-authoring-sandbox';
-
-/**
- * Same webview settings the live preview uses. Passed as a spread because the
- * React typings declare these as booleans and HTML attributes are strings.
- */
-const WEBVIEW_ATTRIBUTES: Record<string, string> = {
-  disablewebsecurity: 'true',
-  webpreferences: 'allowRunningInsecureContent'
-};
-
-function viewerOrigin(): string {
-  const protocol = process.env.ssl ? 'https://' : 'http://';
-  const port = process.env.NOODLPORT || 8574;
-  return `${protocol}localhost:${port}`;
-}
-
 export function SandboxPreview({ files, siblings, sampleData, revision, unrenderableHint }: SandboxPreviewProps) {
-  const sessionId = useMemo(() => guid(), []);
-  const clientId = `sandbox-${sessionId}`;
-  const webviewRef = useRef<Electron.WebviewTag>(null);
-
   const [useSampleData, setUseSampleData] = useState(true);
   /**
    * POL-008 — signed in by default.
@@ -113,15 +93,7 @@ export function SandboxPreview({ files, siblings, sampleData, revision, unrender
   const [userData, setUserData] = useState<AgentSampleData | undefined>(undefined);
   const [dataOpen, setDataOpen] = useState(false);
 
-  // The provider is called whenever the client (re)connects, which is not when
-  // this component renders — it reads the latest build through a ref.
-  const latest = useRef<SandboxExport | undefined>(undefined);
-  latest.current = result;
-
-  useEffect(() => {
-    ViewerConnection.instance.registerSandboxExport(clientId, () => latest.current?.json);
-    return () => ViewerConnection.instance.unregisterSandboxExport(clientId);
-  }, [clientId]);
+  const viewer = useSandboxViewer({ json: result?.json, useSampleData, signedIn });
 
   // Build eagerly rather than on connect: the empty state ("nothing visual to
   // render") should appear immediately, not once a window has booted.
@@ -143,37 +115,6 @@ export function SandboxPreview({ files, siblings, sampleData, revision, unrender
     );
   }, [files, siblings, sampleData, userData, revision, useSampleData, signedIn]);
 
-  useEffect(() => {
-    if (result?.json) ViewerConnection.instance.exportSandbox(clientId);
-  }, [clientId, result]);
-
-  // Design tokens live in the editor, not the export: without this the preview
-  // renders every `var(--token)` unresolved, which is exactly the styling
-  // AIX-006 taught the agent to write.
-  useEffect(() => {
-    const webview = webviewRef.current;
-    if (!webview) return;
-
-    const onReady = () => PreviewTokenInjector.instance.notifyDomReady(webview);
-    webview.addEventListener('dom-ready', onReady);
-    return () => {
-      webview.removeEventListener('dom-ready', onReady);
-      PreviewTokenInjector.instance.clearWebview(webview);
-    };
-  }, [webviewRef.current]);
-
-  // The network shim is installed from the URL before the runtime exists, so
-  // switching data sources reloads the window rather than toggling in place.
-  //
-  // ⚠️ The auth state rides in the URL for the same reason, and it must: the
-  // session is read once, in `UserService`'s constructor, and that service is a
-  // singleton that is never rebuilt. Clearing the key under a running preview
-  // would change storage and change nothing on screen.
-  const src =
-    `${viewerOrigin()}/?noodl-sandbox=${sessionId}` +
-    `&noodl-sandbox-data=${useSampleData ? 'sample' : 'real'}` +
-    `&noodl-sandbox-auth=${signedIn ? 'in' : 'out'}`;
-
   const message = !files
     ? 'Nothing staged yet — the preview appears as soon as the agent submits.'
     : result?.unrenderable
@@ -182,67 +123,17 @@ export function SandboxPreview({ files, siblings, sampleData, revision, unrender
 
   return (
     <div className={css.Root}>
-      <div className={css.Bar}>
-        <Icon icon={IconName.Play} size={IconSize.Small} />
-        <div className={css.Summary}>
-          <Text textType={TextType.Secondary}>{result?.summary ?? 'Preview'}</Text>
-        </div>
-        {/*
-          A class whose field shape could not be inferred renders as blank rows
-          under a heading that claims results — indistinguishable, to the user,
-          from a component that does not work. Saying so is the same rule the
-          logic-only candidate follows, applied to the data instead of the graph.
-        */}
-        {result?.notice ? (
-          <div className={css.Notice} title={result.notice}>
-            <Icon icon={IconName.WarningTriangle} size={IconSize.Small} />
-            <Text textType={FeedbackType.Notice}>Fields unknown</Text>
-          </div>
-        ) : null}
-        {/*
-          POL-008: one button, not a second pair. It is a toggle between two
-          states of the same thing, and it only exists while the sandbox is
-          serving sample data — "signed out" against a real backend is whatever
-          the real backend says, and offering to change it there would be a
-          claim this preview cannot honour.
-        */}
-        {useSampleData && (
-          <PrimaryButton
-            label={signedIn ? 'Sign out' : 'Sign in'}
-            size={PrimaryButtonSize.Small}
-            variant={PrimaryButtonVariant.MutedOnLowBg}
-            onClick={() => setSignedIn((current) => !current)}
-          />
-        )}
-        {/*
-          BEN-006 — the same gating `Sign out` uses, and for the same reason:
-          offering to edit the data against a real backend would be a claim this
-          preview cannot honour. There is nothing to edit until the export has
-          been built, either.
-        */}
-        {useSampleData && result?.dataset && (
-          <PrimaryButton
-            label="Data"
-            size={PrimaryButtonSize.Small}
-            variant={dataOpen ? undefined : PrimaryButtonVariant.MutedOnLowBg}
-            onClick={() => setDataOpen((current) => !current)}
-          />
-        )}
-        <div className={css.Modes}>
-          <PrimaryButton
-            label="Sample data"
-            size={PrimaryButtonSize.Small}
-            variant={useSampleData ? undefined : PrimaryButtonVariant.MutedOnLowBg}
-            onClick={() => setUseSampleData(true)}
-          />
-          <PrimaryButton
-            label="Real backend"
-            size={PrimaryButtonSize.Small}
-            variant={useSampleData ? PrimaryButtonVariant.MutedOnLowBg : undefined}
-            onClick={() => setUseSampleData(false)}
-          />
-        </div>
-      </div>
+      <SandboxToolbar
+        summary={result?.summary}
+        notice={result?.notice}
+        useSampleData={useSampleData}
+        onUseSampleDataChange={setUseSampleData}
+        signedIn={signedIn}
+        onSignedInChange={setSignedIn}
+        hasDataset={Boolean(result?.dataset)}
+        dataOpen={dataOpen}
+        onDataOpenChange={setDataOpen}
+      />
 
       {/*
         Kept mounted across the reload an Apply causes. The dataset rides in the
@@ -265,7 +156,13 @@ export function SandboxPreview({ files, siblings, sampleData, revision, unrender
             <Text textType={TextType.Secondary}>{message}</Text>
           </div>
         ) : (
-          <webview className={css.Webview} ref={webviewRef} partition={PARTITION} src={src} {...WEBVIEW_ATTRIBUTES} />
+          <webview
+            className={css.Webview}
+            ref={viewer.attachWebview}
+            partition={SANDBOX_PARTITION}
+            src={viewer.src}
+            {...SANDBOX_WEBVIEW_ATTRIBUTES}
+          />
         )}
       </div>
     </div>
