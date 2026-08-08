@@ -1,6 +1,6 @@
 # LAS-005 — `render_report`: the feedback loop as a tool
 
-**Status:** 📋 open · **Track 2 (surface)** · ⭐ · fixes audit **F5**
+**Status:** ✅ **done** 2026-08-08 (session 3) · **Track 2 (surface)** · ⭐ · closes audit **F5** and **F9** · §5 descoped with its blocker named (**F22**)
 
 ## The evidence
 
@@ -8,8 +8,9 @@
   external agent: no render/measure/screenshot capability exists anywhere on the MCP surface
   (verified over all 88 tools).
 - The loop that found every real defect across phases 54 and 55 costs **7.5 seconds** headless —
-  [measurements/measure-project.js](measurements/measure-project.js), ~180 lines, built and
-  proven in the audit (it independently re-found all three haiku defects from the DOM).
+  `measurements/measure-project.js`, ~180 lines, built and proven in the audit (it independently
+  re-found all three haiku defects from the DOM). Now
+  [scripts/devtools/measure-from-disk.js](../../../scripts/devtools/measure-from-disk.js).
 - The asymmetry that makes this the weak-model equalizer: sonnet improvised 80% of a verification
   loop through sandboxed Bash (curl-verifying 16 image URLs) and still shipped a motorcycle for a
   bud vase, because HTTP status is not looking. Haiku improvised nothing. The strong model brings

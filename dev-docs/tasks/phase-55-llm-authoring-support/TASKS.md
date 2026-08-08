@@ -29,7 +29,7 @@ register; the sections below are the summary and the dependency map:**
 | LAS-002 ✅ | [LAS-002-STAGING-SPEAKS.md](LAS-002-STAGING-SPEAKS.md) | authoring doors return diagnostics, not counts (F6) |
 | LAS-003 ✅ | [LAS-003-VALUE-FORMAT-GATES.md](LAS-003-VALUE-FORMAT-GATES.md) | layoutString grammar, unsized absolute Group, raw hex (F3, F7) |
 | LAS-004 ✅ | [LAS-004-PROMOTE-ARCHITECTURE-WARNINGS.md](LAS-004-PROMOTE-ARCHITECTURE-WARNINGS.md) | sibling rule blocks authored output; page-size info at **40** nodes, not the doctrine's 25 |
-| LAS-005 ⭐ | [LAS-005-RENDER-REPORT.md](LAS-005-RENDER-REPORT.md) | the 7.5s measure loop as an MCP tool with screenshots (F5) |
+| LAS-005 ⭐ ✅ | [LAS-005-RENDER-REPORT.md](LAS-005-RENDER-REPORT.md) | the measure loop as an MCP tool with screenshots (F5) — **done**; §5 (editor client) descoped with its blocker named (F22) |
 | LAS-006 | [LAS-006-STRUCTURED-PLANS.md](LAS-006-STRUCTURED-PLANS.md) | plans carry interfaces/repeats; the plan becomes a contract |
 | LAS-007 | [LAS-007-PUSH-RETRIEVAL.md](LAS-007-PUSH-RETRIEVAL.md) | recipes attached inside rejections; the traps preamble |
 | LAS-008 | [LAS-008-PROMPT-DRIFT.md](LAS-008-PROMPT-DRIFT.md) | fix `DESIGN_AUTHORING` + a tripwire spec (F1) |
@@ -129,7 +129,7 @@ two cold-replay Homes (7 and 8 nodes) pass untouched.
 
 ## Track 2 — The surface. Give agents eyes and make the right order the easy order.
 
-### LAS-005 — `render_report`: the feedback loop as a tool ⭐ (audit F5)
+### LAS-005 ✅ — `render_report`: the feedback loop as a tool ⭐ (audit F5)
 
 The loop that found every real defect in two phases is unreachable from the surface agents use;
 doctrine §11 is unfollowable. Sonnet improvised 80% of it through sandboxed Bash and still shipped
@@ -296,7 +296,7 @@ LAS-001 (interface gate) ──┐
 LAS-002 (staging speaks) ──┤
 LAS-003 (value gates)    ──┼──► LAS-007 (attach examples to the new rejections)
 LAS-004 (promote+page)   ──┘            │
-LAS-005 (render_report) ── independent ─┤
+LAS-005 ✅ (render_report) ─ independent ┤
 LAS-006 (structured plans; §3 needs LAS-001)
 LAS-008 (prompt drift) ── independent, small, do first or between
 LAS-009 (per-role models) ── independent (editor-side)
@@ -305,15 +305,16 @@ LAS-011 (exit matrix) ── last; needs 001–008 + 010
 ```
 
 Suggested sessions: ✅ **(1)** LAS-008 + LAS-002 + LAS-003 (small, sharp, all spec-pinned) ·
-✅ **(2)** LAS-001 + LAS-004 (the validator pair, one corpus calibration run) · **(3)** LAS-005 · **(4)**
+✅ **(2)** LAS-001 + LAS-004 (the validator pair, one corpus calibration run) · ✅ **(3)** LAS-005 · **(4)**
 LAS-006 + LAS-007 · **(5)** LAS-009 · **(6)** LAS-010 + LAS-011. Registers per task; serialise
 register edits (pathspec-commit trap); commit per slice.
 
 ## Gates for every session
 
 `npm run catalog:examples`, `catalog:check`, `catalog:merge:check`, `typecheck:editor`, `npx jest`
-in `packages/noodl-editor` (**76 suites / 1029 specs** at session-2 close; 74/1001 at session 1,
-71/973 at phase-54 close — compare the passing COUNT,
+in `packages/noodl-editor` (**76 suites / 1029 specs** at session-3 close, unchanged from session 2;
+74/1001 at session 1, 71/973 at phase-54 close — compare the passing COUNT,
 `Tests: 0` is a compile failure, and only the `Jasmine:` line counts in the editor suite), plus
-`packages/noodl-mcp` jest (its suite is a gate — **20 suites / 208 specs** at session-2 close). `pr.yml`'s `Lint` and `Test (editor)` are red on
+`packages/noodl-mcp` jest (its suite is a gate — **22 suites / 230 specs** at session-3 close;
+20/208 at session 2). `pr.yml`'s `Lint` and `Test (editor)` are red on
 push for pre-existing reasons — check WHICH job before reading a red run as yours.
