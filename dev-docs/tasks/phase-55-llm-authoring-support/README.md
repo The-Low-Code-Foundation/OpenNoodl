@@ -160,6 +160,15 @@ succeeded; if a strong model produces a beautiful 66-node page, it has not.
 
 ## Register
 
+Session-1 audit findings live in [AUDIT-SESSION-1.md](AUDIT-SESSION-1.md) with full evidence; the
+open ones are mirrored here so a grep finds them.
+
 | # | Finding | State |
 |---|---|---|
-| — | (none yet) | — |
+| F1 | `DESIGN_AUTHORING` per-turn preamble still teaches the deprecated wrapped-row pattern, never names `Columns` (`design.ts:246`) | 🔴 OPEN |
+| F2 | Instance parameters vs component interface: **no check anywhere** — a component instantiated with parameters it has no `Component Inputs` for renders dead placeholders with 0 errors | 🔴 OPEN — highest-value gate |
+| F3 | `layoutString` value format unvalidated — `"1fr 1fr 1fr 1fr"` silently renders one column | 🔴 OPEN |
+| F4 | "Strands TS harness" was decided, never built (AAQ-006 still open); the phase-40 memory implied otherwise | ✅ documented, memory corrected |
+| F5 | No render/measure tool on the MCP surface — doctrine §11 unfollowable externally; `measure-project.js` (7.5 s, headless) built in scratchpad, needs promoting | 🔴 OPEN |
+| F6 | Phase-54 F6 re-confirmed: `stage_plan_operation` returns warning counts with no text | 🔴 OPEN |
+| F7 | Unsized absolute Group fills its parent (`%` dimension defaults) — badge pills render as parent-sized blobs; no check | 🔴 OPEN |
