@@ -47,6 +47,26 @@ how editing a node property updates the live preview without a reload.
 does no clientId matching for it. A synthetic `parameterChanged` for the harness would also reach the
 app preview, naming a component that does not exist in its export.
 
+> ⚠️ **CORRECTION, 2026-08-08 (session 3). Option 1 below describes the wrong mechanism, and
+> the right one needs no runtime change at all.**
+>
+> The relay already routes on `target`: any message carrying one goes to that socket alone,
+> and only messages without one are broadcast
+> ([relay-server.js:154-163](../../../packages/noodl-editor/src/main/src/relay-server.js#L154-L163)).
+> That is how `export` has always reached a single sandbox client. So the fix is
+> `ViewerConnection.sendModelUpdateToClient(clientId, content)` — four lines, transport-level,
+> and the message never reaches the other clients at all rather than reaching them and being
+> filtered. `content.clientId` matched by the runtime is the right shape for a *request* every
+> viewer receives and one answers (`getPortValues`, the trace commands); it is the wrong shape
+> for an update meant for one client, and it would have put the filtering in runtime code that
+> could get it wrong.
+>
+> ⚠️ Note what a broadcast would have done instead of erroring loudly: the runtime **silently
+> ignores a delta naming a component it does not have** (`editormodeleventshandler.ts` returns
+> early on an unknown `componentName`). So option 2 would have *looked* like it worked, and
+> the crossing that does bite — two bench clients, which share the harness name `/#bench` and
+> the node id `bench-subject` — would have shown up as one bench driving another.
+
 **Decide this first, and record the decision in the phase register (B2).** Two options:
 
 1. **Add client targeting to `modelUpdate`** — mirror the self-filtering `getPortValues` and the

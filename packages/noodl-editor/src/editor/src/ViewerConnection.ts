@@ -332,6 +332,37 @@ export class ViewerConnection extends Model {
     this._exportToClient(clientId, JSON.stringify(json));
   }
 
+  /**
+   * BEN-002 / register B2 — a model update aimed at **one** client.
+   *
+   * Every other `modelUpdate` on this connection is a broadcast, because every
+   * other one is a fact about the project and true of every viewer attached to
+   * it. A component bench's input is not: it is a value someone typed into a
+   * synthetic harness that exists in exactly one client's export, and sending it
+   * to the app preview names a component that preview has never heard of.
+   *
+   * ⚠️ **The runtime needed no change for this, and the task file said it would.**
+   * BEN-002 proposed mirroring the trace channel's `content.clientId`, which the
+   * runtime matches against its own. That is the right shape for a *request*
+   * every viewer must receive and only one must answer. It is the wrong shape
+   * here: the relay already routes on `target` for any message that carries one
+   * (`relay-server.js` — `request.target` picks the socket, and only the
+   * `else` broadcasts), which is how `export` has always reached a single
+   * sandbox client. So this is transport-level addressing, the message never
+   * reaches the other clients at all, and there is no runtime code that could
+   * get the filtering wrong.
+   *
+   * Existing behaviour is untouched by construction: a send with no `target`
+   * still broadcasts, and nothing that broadcast before now passes one.
+   */
+  sendModelUpdateToClient(clientId: string, content: object) {
+    this.send({
+      cmd: 'modelUpdate',
+      content,
+      target: clientId
+    });
+  }
+
   _exportToClient(clientId, exportedJSON) {
     //don't send the same export twice
     if (exportedJSON === this.lastExports[clientId]) return;

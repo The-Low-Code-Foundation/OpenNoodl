@@ -12,3 +12,8 @@ export * from './WireLabels.test';
 // bench may be pointed at, and what the frame width control does with the
 // strings a text input hands back.
 export * from './preview-scope.test';
+
+// BEN-002: which control an input gets, what the thing you typed becomes, and
+// the one rule that would break something — a bench input is addressed to one
+// client and never broadcast at the app preview.
+export * from './bench-inputs.test';
