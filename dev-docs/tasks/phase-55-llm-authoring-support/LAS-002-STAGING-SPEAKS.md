@@ -1,7 +1,7 @@
 # LAS-002 — Staging speaks: diagnostics, not counts
 
-**Status:** 📋 open · **Track 1 (gates)** · fixes audit **F6** (= phase-54 register F6, filed
-2026-08-08 and confirmed unfixed by this phase's audit)
+**Status:** ✅ done 2026-08-08 · **Track 1 (gates)** · fixes audit **F6** (= phase-54 register F6,
+filed 2026-08-08 and confirmed unfixed by this phase's audit — both rows now closed)
 
 ## The defect, measured
 
@@ -35,18 +35,40 @@ integer. Haiku shipped two trios; the baseline shipped three; nothing ever saw t
    structured entries (`{ code, message, location }`), not a pre-joined string, so the mapping
    table can key on `code`.
 
+## What was actually broken — half of the build was already done
+
+The task said "verify what `successPayload` includes today" and "verify whether the in-editor refine
+loop already surfaces warning text". Both verifications came back **already correct**, which is the
+finding:
+
+| Door | Before | Change |
+|---|---|---|
+| `stage_plan_operation` | `warnings: 1` — a count | ✅ gains the `validation` block |
+| `apply_plan` | said nothing about surviving warnings at all | ✅ gains the aggregated block |
+| `create_component` / `update_component` | already returned the full `Diagnostic[]` via `successPayload` ([author.ts:205](../../../packages/noodl-mcp/src/tools/author.ts#L205)) | none needed — now pinned by a spec so it stays that way |
+| editor refine loop | already formats every warning back to the model with `formatDiagnosticLine` ([AuthoringSession.ts:905-920](../../../packages/noodl-editor/src/editor/src/models/AiAssistant/authoring/AuthoringSession.ts#L905)) | none needed |
+
+**So the editor client was never the one that whispered — only the MCP plan path was.** That is the
+same asymmetry LAS-008 found from the other side (the retrievable recipes were right, the pushed
+prompt was wrong): the seam a human watches got fixed, the one only an agent reads did not.
+
 ## Acceptance
 
-- Stage a trio-of-siblings candidate → the response contains the `repeated-sibling-subtree`
+- ✅ Stage a trio-of-siblings candidate → the response contains the `repeated-sibling-subtree`
   message text verbatim, with node location.
-- A clean candidate stages with an empty array — no noise.
-- Jest pins the response shape for all four doors (the noodl-mcp suite is a gate —
-  `packages/noodl-mcp` jest).
-- Update phase-54's README register row F6 to ✅ with the commit hash, and this phase's README row
-  F6 likewise. Registers outlive their fixes — close both.
+- ✅ A clean candidate stages with no `validation` block at all — omitted rather than emitted empty,
+  because a door that always speaks is a door nobody reads.
+- ✅ Jest pins the response shape for all four doors:
+  [`tests/stagingDiagnostics.test.ts`](../../../packages/noodl-mcp/tests/stagingDiagnostics.test.ts)
+  — 2 failed / 2 passed before (the two that passed are the two doors that were already correct),
+  4/4 after. noodl-mcp suite **19 suites / 200 specs**.
+- ✅ phase-54 README F6 and this phase's README F6 both closed.
 
 ## Register
 
 | # | Finding | State |
 |---|---|---|
-| — | | |
+| 1 | `stage_plan_operation` threw the diagnostic objects away in `validateStaged` and returned a count — the only architecture gate in the system reached three measured builds as the integer `1` | ✅ fixed |
+| 2 | `apply_plan` re-validated the whole applied set and then discarded every non-blocking diagnostic it had just computed. Not in the task's list; found while wiring `validateStaged` | ✅ fixed — aggregated across the set, each entry carrying `location.component` so a five-component apply stays legible |
+| 3 | `create_component`/`update_component` and the editor's refine loop were **already** speaking full diagnostics. Half of this task did not need building — it needed checking, and the checks are now specs | 📌 verified, pinned |
+| 4 | The `validation` block is typed as the same `WriteValidationSummary` the author doors return, so the two paths cannot drift into two dialects without failing to compile | 📌 shape decision, for LAS-007 |

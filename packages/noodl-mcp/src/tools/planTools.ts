@@ -63,6 +63,8 @@ import { pathToLegacyName, toPathForm, validateComponentPath } from '../paths';
 import { componentIsPage, registerPages, registrationSummary } from '../project/pageRegistration';
 import type { ProjectStore } from '../project/ProjectStore';
 import { authoredProjectViews, preconditionDiagnostics } from '../validate';
+import type { WriteValidation } from '../validate';
+import type { WriteValidationSummary } from './responses';
 import type { NodeInput } from './author';
 import { assembleCreateFiles, assembleSetFiles, ensureIds } from './author';
 // AAQ-005: one authoring vocabulary — the same node/connection shapes
@@ -166,6 +168,45 @@ function stagedOverlay(plan: ServerPlan, extra?: { opId: string; files: Componen
 }
 
 /**
+ * LAS-002 — what one staged candidate's validation yields. `warnings` is the
+ * pre-LAS-002 count, kept because it is public API; `diagnostics` is what a
+ * caller can actually act on.
+ */
+interface StagedValidation {
+  ok: boolean;
+  errors: string[];
+  warnings: number;
+  /** Non-error diagnostics: warnings and infos, as objects. */
+  diagnostics: Diagnostic[];
+  summary: WriteValidation['summary'];
+}
+
+const EMPTY_SUMMARY: WriteValidation['summary'] = { errors: 0, warnings: 0, infos: 0 };
+
+function summarize(diagnostics: readonly Diagnostic[]): WriteValidation['summary'] {
+  return {
+    errors: diagnostics.filter((d) => d.severity === 'error').length,
+    warnings: diagnostics.filter((d) => d.severity === 'warning').length,
+    infos: diagnostics.filter((d) => d.severity === 'info').length
+  };
+}
+
+/**
+ * The `validation` block, in the one shape every authoring door speaks — the
+ * same `WriteValidationSummary` `create_component` and `update_component`
+ * return, so LAS-007 can key its example attachments on `code` without caring
+ * which door produced the diagnostic. Omitted entirely when there is nothing to
+ * say: a door that always speaks is a door nobody reads.
+ */
+function validationBlock(
+  diagnostics: readonly Diagnostic[],
+  summary: WriteValidation['summary']
+): WriteValidationSummary | Record<string, never> {
+  if (diagnostics.length === 0) return {};
+  return { validation: { summary, diagnostics: [...diagnostics] } };
+}
+
+/**
  * Validate one staged candidate against the overlay. Same policy as the
  * write-gate — which since AAQ-005 means the *shared* policy: structural first,
  * semantic strict, then the four precondition checks, gated on errors plus the
@@ -177,6 +218,13 @@ function stagedOverlay(plan: ServerPlan, extra?: { opId: string; files: Componen
  * and `src/validate.ts`, each with its own copy of `diagnosticKey` — the exact
  * three-twins shape BCN-003 taught us to look for, inside the task written to
  * prevent it. It now composes the same pieces the other two do.
+ *
+ * LAS-002: it also returns the surviving diagnostics as OBJECTS. It used to
+ * return `warnings` as a count, and that count was the whole of what
+ * `stage_plan_operation` could say — so `repeated-sibling-subtree`, the only
+ * architecture gate in the system, reached three separate measured builds as
+ * the integer `1`, at the one moment the agent could still have acted on it.
+ * The count stays for anything already parsing it; the objects are the point.
  */
 function validateStaged(
   store: ProjectStore,
@@ -184,9 +232,13 @@ function validateStaged(
   operation: PlanOperation,
   candidate: ComponentFiles,
   options: { allowUnknownTypes?: boolean }
-): { ok: boolean; errors: string[]; warnings: number } {
+): StagedValidation {
   const structural = structuralErrors(candidate);
-  if (structural.length > 0) return { ok: false, errors: structural, warnings: 0 };
+  if (structural.length > 0) {
+    // A schema failure means the semantic pass never ran, so there is nothing
+    // non-blocking to report — not "no warnings", but "not asked yet".
+    return { ok: false, errors: structural, warnings: 0, diagnostics: [], summary: EMPTY_SUMMARY };
+  }
 
   const legacyName = pathToLegacyName(operation.target);
   const project = overlayProject(store, plan, { opId: operation.id, files: candidate });
@@ -217,7 +269,11 @@ function validateStaged(
   return {
     ok: errors.length === 0,
     errors: errors.map(formatDiagnosticLine),
-    warnings: diagnostics.filter((d) => d.severity === 'warning').length
+    warnings: diagnostics.filter((d) => d.severity === 'warning').length,
+    // Exactly `successPayload`'s filter in author.ts — the two doors decide
+    // "what survives a successful write" the same way or they are two dialects.
+    diagnostics: diagnostics.filter((d) => d.severity !== 'error'),
+    summary: summarize(diagnostics)
   };
 }
 
@@ -502,6 +558,9 @@ export function registerPlanTools(server: McpServer, store: ProjectStore): void 
           staged: operation.id,
           target: operation.target,
           warnings: validation.warnings,
+          // LAS-002 — the words, not the integer. This is the moment the agent
+          // can still act: the candidate is in memory and nothing is on disk.
+          ...validationBlock(validation.diagnostics, validation.summary),
           ...(deconflicted.remapped.length > 0
             ? { remappedNodeIds: deconflicted.remapped, remapNote: remapNote(deconflicted.remapped) }
             : {}),
@@ -579,6 +638,11 @@ export function registerPlanTools(server: McpServer, store: ProjectStore): void 
         staged: new Map([...serverPlan.staged].filter(([id]) => !skip.has(id))),
         stagedDocs: new Map([...serverPlan.stagedDocs].filter(([id]) => !skip.has(id)))
       };
+      // LAS-002 — collected across the whole applied SET, because that is what
+      // an apply writes. A caller who staged five components and reads one
+      // aggregate list still needs each entry's `location.component` to know
+      // which of the five it is about; the diagnostics carry it.
+      const surviving: Diagnostic[] = [];
       for (const op of componentOps) {
         const files = serverPlan.staged.get(op.id);
         if (!files) continue;
@@ -591,6 +655,7 @@ export function registerPlanTools(server: McpServer, store: ProjectStore): void 
             { readable: validation.errors }
           );
         }
+        surviving.push(...validation.diagnostics);
       }
 
       // Commit: components first, then the docs that record them. Validation
@@ -647,6 +712,7 @@ export function registerPlanTools(server: McpServer, store: ProjectStore): void 
         skipped: [...skip],
         ...registrationSummary(registration),
         ...(settingsWritten.length > 0 ? { settings: settingsWritten } : {}),
+        ...validationBlock(surviving, summarize(surviving)),
         note: 'Plan applied and discarded. Re-read components with get_component for fresh revisions.'
       });
     })
