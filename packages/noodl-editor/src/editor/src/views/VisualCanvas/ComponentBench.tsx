@@ -140,9 +140,21 @@ export function ComponentBench({ target, frame, onFrameMeasured }: ComponentBenc
         />
       )}
 
+      {/*
+        ⚠️ The frame is rendered **unconditionally**, and that is load-bearing
+        rather than tidy. `useTrackBounds` calls `observer.observe(ref.current)`
+        with no null guard, so a ref attached to a conditionally-rendered element
+        throws on the first layout and takes the whole preview surface's React
+        tree down with it — the editor loses its preview panel entirely, which is
+        exactly what happened the first time this was driven. Nothing in a spec
+        could have caught it; it needed a running editor.
+
+        Keeping it mounted is also the better behaviour: you see the frame you
+        asked for even while there is nothing to draw in it.
+      */}
       <div className={css.Stage}>
-        {result?.json ? (
-          <div ref={frameRef} className={css.Frame} style={{ width: width === null ? '100%' : `${width}px` }}>
+        <div ref={frameRef} className={css.Frame} style={{ width: width === null ? '100%' : `${width}px` }}>
+          {result?.json ? (
             <webview
               className={css.Webview}
               ref={viewer.attachWebview}
@@ -154,14 +166,12 @@ export function ComponentBench({ target, frame, onFrameMeasured }: ComponentBenc
               src={viewer.src}
               {...SANDBOX_WEBVIEW_ATTRIBUTES}
             />
-          </div>
-        ) : (
-          <div className={css.Empty}>
-            <Text textType={TextType.Secondary}>
-              {result?.unrenderable ?? 'Building the bench…'}
-            </Text>
-          </div>
-        )}
+          ) : (
+            <div className={css.Empty}>
+              <Text textType={TextType.Secondary}>{result?.unrenderable ?? 'Building the bench…'}</Text>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

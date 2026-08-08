@@ -17,17 +17,21 @@ R1–R5 are acceptance criteria.
 in a live editor** — see [HANDOVER-SESSION-1.md](HANDOVER-SESSION-1.md). It also found that the plug
 inversion is *two* inversions and that this file's own siblings describe one of them (register B5).
 
-**Session 2 (2026-08-08):** BEN-004 is built — the preview surface now has two modes, and BEN-001 and
-BEN-006 have a surface to be driven on for the first time. Three new register rows: **B6** (where
-"the existing preview toolbar" turned out to be), **B7** (the round trip is lossless in one direction
-only, deliberately), **B8** (`stretch`, the half of B3 nobody has measured).
+**Session 2 (2026-08-08):** BEN-004 is built **and driven in a live editor** — the preview surface
+has two modes, and every one of BEN-004's Live criteria is closed with measured evidence. Five new
+register rows: **B6** (where "the existing preview toolbar" turned out to be), **B7** (the round trip
+is lossless in one direction only, deliberately), **B8** (`stretch`, the half of B3 nobody has
+measured), **B9** (`useTrackBounds` threw the whole React tree away on a null ref — the drive found
+it, no spec could have), **B10** (two driving traps that make working things look broken —
+**read it before driving anything**). The drive also confirmed **B4** live on the very first
+component mounted.
 
 | Task | File | One line | State |
 |---|---|---|---|
-| BEN-001 ⭐ | [BEN-001-HARNESS-MOUNT.md](BEN-001-HARNESS-MOUNT.md) | the synthetic harness: mount any component as root *with* its inputs set | 🟡 built, 19 specs; both Live criteria open |
+| BEN-001 ⭐ | [BEN-001-HARNESS-MOUNT.md](BEN-001-HARNESS-MOUNT.md) | the synthetic harness: mount any component as root *with* its inputs set | 🟡 built, 19 specs; **Live 6 closed** (320 measures 320), Live 5 needs BEN-002's rail |
 | BEN-002 ⭐ | [BEN-002-INPUT-FORM.md](BEN-002-INPUT-FORM.md) | the inputs rail, generated from the component interface — and live update without reload | 📋 not started — use `benchInterface()`, see B5 |
 | BEN-003 | [BEN-003-OUTPUT-READOUT.md](BEN-003-OUTPUT-READOUT.md) | what the component emits, as a live log. Makes logic-only components previewable | 📋 not started |
-| BEN-004 ⭐ | [BEN-004-BENCH-SURFACE.md](BEN-004-BENCH-SURFACE.md) | the mode selector, the stage chrome, the way back — R1–R5 live here | 🟡 built, 17 specs; see B6/B7/B8 |
+| BEN-004 ⭐ | [BEN-004-BENCH-SURFACE.md](BEN-004-BENCH-SURFACE.md) | the mode selector, the stage chrome, the way back — R1–R5 live here | ✅ **built and driven**, 18 specs; see B6–B10 |
 | BEN-005 | [BEN-005-SCENARIOS.md](BEN-005-SCENARIOS.md) | named input sets saved to component metadata (Empty / Loaded / Error) | 📋 not started |
 | BEN-006 ⭐ | [BEN-006-AUTHORED-SAMPLE-DATA.md](BEN-006-AUTHORED-SAMPLE-DATA.md) | **Richard's ask**: the user edits the sample data in the AI preview and re-renders | 🟡 §1–§6 built, 26 specs; every Live criterion open |
 | BEN-007 | [BEN-007-ACCEPTANCE.md](BEN-007-ACCEPTANCE.md) | the live-driving pass the phase closes on | 📋 not started |

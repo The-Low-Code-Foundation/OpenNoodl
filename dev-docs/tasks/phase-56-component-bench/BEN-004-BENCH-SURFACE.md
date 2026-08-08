@@ -14,8 +14,11 @@ new document. Where each rule landed:
 | [`views/SandboxSurface/`](../../../packages/noodl-editor/src/editor/src/views/SandboxSurface/) | §7's shared toolbar and viewer plumbing; `SandboxPreview` now uses both |
 | [`benchRequest.ts`](../../../packages/noodl-editor/src/editor/src/views/VisualCanvas/benchRequest.ts) | §6's entry point channel, including the detached case |
 
-**Deviations and open questions are registered — B6, B7, B8 in the [README](README.md).** Read them
-before extending this.
+**Driven in a live editor** on 2026-08-08 against `ecommerce-example`; every criterion below is
+ticked with measured evidence, and the drive found two real defects and confirmed register **B4**.
+
+**Deviations and open questions are registered — B6, B7, B8, and the drive's B9/B10 — in the
+[README](README.md).** Read them before extending this, and read **B10 before driving anything**.
 
 ## The constraint this task exists to satisfy
 
@@ -170,16 +173,65 @@ comment explains why.
 
 ## Acceptance
 
-- [ ] There is exactly one preview surface in the editor after this task. Grep proves no second
-      persistent preview panel was added.
-- [ ] **Live:** switch app → bench → app with the app preview navigated to a non-home route and a
-      text field typed into. Both survive. This is R3 and it is the acceptance criterion that matters
-      most.
-- [ ] **Live:** a screenshot of bench mode and one of app mode are unmistakable at a glance, with the
-      window title cropped out. If a reviewer has to read text to tell them apart, R2 failed.
-- [ ] **Live:** design tokens resolve in the bench — a token-coloured component is not grey.
-- [ ] Right-click → Preview in isolation works from the components panel.
-- [ ] The frame width control changes the measured document width.
+Driven 2026-08-08 against `ecommerce-example` in a real editor, over CDP. Evidence is the read DOM
+and the measured document, not the export JSON.
+
+- [x] There is exactly one preview surface in the editor after this task. `grep '<webview'` over
+      `packages/noodl-editor/src` returns three: the app preview (`VisualCanvas`), the AI review
+      document's (`SandboxPreview`, pre-existing, AIX-008, a *document* rather than a panel), and the
+      bench — which is a mode of the first and mounts only in bench mode. **No new persistent preview
+      panel.** State it that way; "exactly one preview surface" was already untrue before this task.
+- [x] **Live:** R3, and by stronger evidence than the criterion asks for. A `window` global and a
+      scroll position were planted in the app preview, then app → bench (ProductCard) → bench
+      (SiteHeader) → app. Afterwards: `window.__benchR3` still held its *original* value and
+      `scrollY` was still `900`. A window global cannot survive a reload, so this proves the webview
+      was never torn down — which a restored form value would not have. ⚠️ The project had no text
+      input on its home page and only one route, so the criterion's own two artefacts were not the
+      ones used.
+- [x] **Live:** the two screenshots are unmistakable — app mode is a full-bleed page edge to edge;
+      bench mode is a framed card inset on a flat black stage under a strip reading
+      *"ProductCard — isolated component, not the app"*. No text needs reading to tell them apart.
+- [x] **Live:** design tokens resolve. `<style id="noodl-design-tokens">` is injected into the bench
+      webview (4921 chars) and `var(--primary)` computes to `rgb(180, 82, 47)` = the project's
+      `#b4522f`. Not grey.
+- [x] Right-click → **Preview in isolation** works from the components panel, and switches the
+      existing surface rather than opening anything.
+- [x] The frame width control changes the **measured** document width. `document.documentElement.clientWidth`
+      inside the bench webview, per setting: Small → `360`, Medium → `768`, Large → `1280`, field
+      `320` → `320`, Stretch → `884` in a 916 stage. The strip's read-out matched the measurement in
+      every case. This also closes **BEN-001**'s "frame width set to 320 measures 320".
+- [x] Bonus, and the standing constraint paying off: BEN-006's **Data** panel opens on the bench with
+      no bench-specific code, and correctly reports *"This preview reads no collections, so there is
+      no data to stand in for"* for a component that reads none.
+
+### What the drive found that a spec could not
+
+1. **`useTrackBounds` calls `observer.observe(ref.current)` with no null guard**, in a *layout*
+   effect. A ref on a conditionally-rendered element therefore did not degrade to "no measurements" —
+   it threw and took down the whole React tree it was used in, and the editor lost its entire preview
+   panel. Fixed in two places: the frame is now rendered unconditionally, and the hook guards (the
+   two lines below it already used `ref.current?.`, so the guard is a consistency fix). ⚠️ The guard
+   is not a substitute for mounting the element — the effect keys on `[ref]`, which never changes.
+2. **Flex centring clipped the frame's left edge when it was wider than the stage.** Measured: frame
+   at 1280 in a 916 stage sat at `x = -1138` with `scrollLeft` unable to reach it, and only 1114 of
+   1280 was ever visible. A frame you set to 1280 and can only see 1114 of is exactly the wrong-width
+   lie this control exists to catch. `justify-content: center` → `margin: auto` on the item.
+3. **B4 is confirmed, on the first component ever mounted.** `ProductCard` reports **0 inputs,
+   11 outputs**, and the summary names all eleven: they are declared on a `Component Inputs` node
+   with plug `"input"`, which publishes them as component *outputs*. The card renders as an almost
+   empty box with placeholder text, and the bench is the first surface in this product that says why
+   rather than leaving a builder to conclude the component is broken. See the register.
+
+### Observations for BEN-007, not defects
+
+- `SiteHeader` renders `Text | Text | Text | Text | Text | Text` on the bench while the app shows
+  *KILN & CO. / Shop / Ceramics / Coffee / Table*. It declares 0 inputs and 0 outputs, so nothing can
+  be feeding it from a parent — the cause was **not** established. This is the README's own "a
+  component isolated from its page can lie" arriving on cue, and it is what BEN-007 should chase.
+- Driving traps, both costly and both recorded in the handover: an **occluded** Electron renderer
+  delivers no `requestAnimationFrame` and therefore **no `ResizeObserver` callbacks**, which makes
+  every measured read-out look frozen; and `MenuDialog` renders each row **twice**, only the second
+  of which handles the click.
 
 ## Risks
 

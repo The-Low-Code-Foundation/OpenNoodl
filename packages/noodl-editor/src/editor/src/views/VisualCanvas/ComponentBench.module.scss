@@ -17,7 +17,14 @@
   flex: 1;
   min-height: 0;
   display: flex;
-  justify-content: center;
+  /* ⚠️ NOT `justify-content: center`. Measured, live: with the frame at 1280 in
+     a 916 stage, centring put the frame's left edge 182px outside the scroll
+     container and `scrollLeft` could not reach it — the overflow was clipped on
+     the left and unreachable. `margin: auto` on the item centres identically
+     while it fits and pins the start edge when it does not. A frame you set to
+     1280 and can only see 1114 of is precisely the wrong-width lie this control
+     exists to catch. */
+  justify-content: flex-start;
   align-items: stretch;
   padding: 16px;
   overflow: auto;
@@ -32,6 +39,9 @@
   flex: none;
   display: flex;
   min-width: 0;
+  /* Centres while it fits; keeps the left edge reachable when it does not.
+     See the note on `.Stage`. */
+  margin: auto;
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-sm), 0 0 0 1px var(--theme-color-border-default);
   overflow: hidden;
