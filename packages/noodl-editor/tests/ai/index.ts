@@ -45,6 +45,16 @@ export * from './aix007-cost.test';
 // preview window is fed (which must never touch the project).
 export * from './authoring-sandbox.test';
 
+// BEN-001: the component bench's harness — the synthetic parent that gives a
+// root-mounted component's `Component Inputs` ports a source, which is the one
+// thing the sandbox preview could never do.
+export * from './component-bench.test';
+
+// BEN-006 §2: the data editor's rules about values — table and JSON edit one
+// value, a number typed into a text cell stays a number, unparseable text is
+// kept rather than thrown away.
+export * from './sandbox-data-draft.test';
+
 // AIX-009: project context documents. The text transforms, path containment,
 // context charging, the cache-stable ordering the doc blocks must keep, and the
 // model's disk behaviour (including the external-edit clobber guard).

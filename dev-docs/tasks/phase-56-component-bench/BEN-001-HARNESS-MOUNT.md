@@ -1,6 +1,9 @@
 # BEN-001 — The harness: mount one component *with its inputs set*
 
-**Status:** 📋 not started · ⭐ prerequisite for the phase · owns the export mechanism
+**Status:** 🟡 **mechanism built** (2026-08-08) — [`componentBench.ts`](../../../packages/noodl-editor/src/editor/src/models/AiAssistant/authoring/componentBench.ts),
+specs in [`tests/ai/component-bench.test.ts`](../../../packages/noodl-editor/tests/ai/component-bench.test.ts).
+The two **Live** criteria below are unmet and stay unmet until BEN-004 gives it a surface to render on;
+§3's Group wrapper was deliberately not built — see register **B3**. · ⭐ prerequisite for the phase
 
 ## The evidence
 

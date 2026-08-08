@@ -1,6 +1,8 @@
 # BEN-006 — Your own sample data, in the AI preview
 
-**Status:** 📋 not started · ⭐ **Richard's specific ask** · independent of the rest of the phase — can ship first
+**Status:** 🟡 **§1 built** (2026-08-08) — the fourth layer is in `buildSandboxDataset` and reaches both
+`buildSandboxExport` and `buildBenchExport`, with 14 specs. **§2 (the editor) is not built**, so nothing
+in the UI can reach it yet and every Live criterion below is unmet. · ⭐ **Richard's specific ask**
 
 > *"It would be cool if we could extend the 'set your own static data' to the AI preview with the
 > dummy data existing option, so users can set their own data ideas and see what they render like."*

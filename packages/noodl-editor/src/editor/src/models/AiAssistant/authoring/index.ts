@@ -161,3 +161,15 @@ export { buildSandboxDataset, codeFields, discoverDataShape, unknownShapeNotice 
 export type { BuildSandboxDatasetOptions } from './sandboxData';
 export { buildSandboxExport, candidateComponent, candidateIsRenderable, componentClosure } from './sandboxExport';
 export type { SandboxExport, SandboxExportOptions } from './sandboxExport';
+// BEN-001 — the same substrate, mounting a project component instead of a
+// candidate. One module, both callers: if a change only helps one of them it is
+// in the wrong file.
+export {
+  BENCH_COMPONENT_NAME,
+  BENCH_NODE_ID,
+  benchHarness,
+  benchInterface,
+  benchParameters,
+  buildBenchExport
+} from './componentBench';
+export type { BenchExport, BenchInterface, BenchMount, BenchPort } from './componentBench';
