@@ -9,7 +9,12 @@
     "enabled": "Boolean level input; false renders the disabled state and suppresses `onClick`. The current value is also mirrored as an output of the same name."
   },
   "runtimeBehavior": "Declared-port-groups: icon ports appear when an icon source is chosen, and each visual state (hover, pressed, disabled, focused) contributes state-scoped styling ports. The catalog list is the superset; the editor shows the subset matching current parameters.",
-  "examples": ["validate-before-submit", "navigate-on-click"],
+  "examples": [
+    "validate-before-submit",
+    "navigate-on-click",
+    "ui-split-hero",
+    "ui-empty-state"
+  ],
   "patterns": [
     "onClick → Condition `eval`: validate before acting.",
     "onClick → RouterNavigate `navigate`: page navigation.",
@@ -18,5 +23,10 @@
   "antiPatterns": [
     "Simulating disabled state by hiding the button; drive `enabled` instead so layout and accessibility stay intact."
   ],
-  "relatedNodes": ["Group", "net.noodl.controls.textinput", "Condition", "RouterNavigate"]
+  "relatedNodes": [
+    "Group",
+    "net.noodl.controls.textinput",
+    "Condition",
+    "RouterNavigate"
+  ]
 }

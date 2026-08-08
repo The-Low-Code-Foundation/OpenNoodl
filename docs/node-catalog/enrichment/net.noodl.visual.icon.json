@@ -10,10 +10,19 @@
     "iconSize": "Number value in px: font size for glyphs, width and height for image sources."
   },
   "runtimeBehavior": "Declared-port-groups keyed on `iconSourceType`: 'icon' exposes `iconIconSource` and `iconColor`, 'image' exposes `iconImageSource`; `iconSize` and `iconSourceType` are always shown. (An internal `useIcon` flag defaults to true and has no editor input on this node.)",
-  "examples": ["vis-columns-media-cards"],
+  "examples": [
+    "vis-columns-media-cards",
+    "ui-icon-feature-strip",
+    "ui-empty-state"
+  ],
   "patterns": [
     "Icon + Text in a row Group: the standard labeled-metadata row in cards and lists.",
     "Bind `iconColor` from state (e.g. a Condition's boolean via a Switch/States color) to reflect status."
   ],
-  "relatedNodes": ["Image", "Text", "Circle", "net.noodl.controls.button"]
+  "relatedNodes": [
+    "Image",
+    "Text",
+    "Circle",
+    "net.noodl.controls.button"
+  ]
 }

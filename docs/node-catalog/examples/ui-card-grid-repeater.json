@@ -1,0 +1,340 @@
+{
+  "id": "ui-card-grid-repeater",
+  "title": "Card grid: Query Records into a Repeater, with track widths that survive a resize",
+  "description": "A three-across card grid fed by the database. THE trap this exists to teach: a wrapped flex row does NOT shrink its children the way an unwrapped one does, so every grid item needs an explicit track width — items left at width 100% render one per row at full container width, which is the single most common reason an AI card grid comes out as a stack. State the track in PERCENT and the gap in PERCENT (32% + 2% + 32% + 2% + 32% = 100%); a percent track with a px gap only adds up at one viewport width. Repeater items are direct flex children of the grid Group, so the width belongs on the item component root. Record fields reach the item through Component Inputs whose names match the record properties.",
+  "demonstrates": [
+    "For Each",
+    "DbCollection2",
+    "Group",
+    "Component Inputs",
+    "Image",
+    "Text"
+  ],
+  "components": [
+    {
+      "name": "/Pages/Catalogue",
+      "nodes": [
+        {
+          "id": "page",
+          "type": "Page",
+          "label": "Catalogue",
+          "parameters": {
+            "title": "Catalogue",
+            "urlPath": "catalogue"
+          },
+          "children": [
+            "band"
+          ]
+        },
+        {
+          "id": "band",
+          "type": "Group",
+          "label": "Band",
+          "parameters": {
+            "width": {
+              "value": 100,
+              "unit": "%"
+            },
+            "flexDirection": "column",
+            "alignItems": "center",
+            "paddingTop": "var(--space-20)",
+            "paddingBottom": "var(--space-20)"
+          },
+          "parent": "page",
+          "children": [
+            "shell"
+          ]
+        },
+        {
+          "id": "shell",
+          "type": "Group",
+          "label": "Shell",
+          "parameters": {
+            "width": {
+              "value": 100,
+              "unit": "%"
+            },
+            "maxWidth": {
+              "value": 1200,
+              "unit": "px"
+            },
+            "flexDirection": "column",
+            "paddingLeft": "var(--space-6)",
+            "paddingRight": "var(--space-6)"
+          },
+          "parent": "band",
+          "children": [
+            "grid"
+          ]
+        },
+        {
+          "id": "grid",
+          "type": "Group",
+          "label": "Card grid",
+          "parameters": {
+            "width": {
+              "value": 100,
+              "unit": "%"
+            },
+            "flexDirection": "row",
+            "flexWrap": "wrap",
+            "columnGap": {
+              "value": 2,
+              "unit": "%"
+            },
+            "rowGap": "var(--space-10)",
+            "alignItems": "stretch"
+          },
+          "parent": "shell",
+          "children": [
+            "repeater"
+          ]
+        },
+        {
+          "id": "repeater",
+          "type": "For Each",
+          "label": "One card per record",
+          "parameters": {
+            "template": "/Components/ProductCard"
+          },
+          "parent": "grid"
+        },
+        {
+          "id": "query",
+          "type": "DbCollection2",
+          "label": "Fetch products",
+          "parameters": {
+            "collectionName": "Product"
+          }
+        }
+      ],
+      "connections": [
+        {
+          "fromId": "query",
+          "fromProperty": "items",
+          "toId": "repeater",
+          "toProperty": "items"
+        }
+      ]
+    },
+    {
+      "name": "/Components/ProductCard",
+      "nodes": [
+        {
+          "id": "card",
+          "type": "Group",
+          "label": "Card",
+          "parameters": {
+            "backgroundColor": "var(--surface)",
+            "borderRadius": "var(--radius-xl)",
+            "borderStyle": "solid",
+            "borderWidth": "var(--border-1)",
+            "borderColor": "var(--border)",
+            "clip": true,
+            "flexDirection": "column",
+            "width": {
+              "value": 32,
+              "unit": "%"
+            }
+          },
+          "children": [
+            "media",
+            "body"
+          ]
+        },
+        {
+          "id": "media",
+          "type": "Group",
+          "label": "Media",
+          "parameters": {
+            "width": {
+              "value": 100,
+              "unit": "%"
+            },
+            "position": "relative",
+            "clip": true
+          },
+          "parent": "card",
+          "children": [
+            "photo",
+            "badge"
+          ]
+        },
+        {
+          "id": "photo",
+          "type": "Image",
+          "label": "Photo",
+          "parameters": {
+            "sizeMode": "explicit",
+            "objectFit": "cover",
+            "width": {
+              "value": 100,
+              "unit": "%"
+            },
+            "height": {
+              "value": 300,
+              "unit": "px"
+            },
+            "src": "",
+            "alt": ""
+          },
+          "parent": "media"
+        },
+        {
+          "id": "badge",
+          "type": "Group",
+          "label": "Badge",
+          "parameters": {
+            "position": "absolute",
+            "alignX": "left",
+            "alignY": "top",
+            "marginTop": "var(--space-3)",
+            "marginLeft": "var(--space-3)",
+            "sizeMode": "contentSize",
+            "backgroundColor": "var(--accent)",
+            "borderRadius": "var(--radius-full)",
+            "paddingLeft": "var(--space-3)",
+            "paddingRight": "var(--space-3)",
+            "paddingTop": "var(--space-1)",
+            "paddingBottom": "var(--space-1)"
+          },
+          "parent": "media",
+          "children": [
+            "badge_text"
+          ]
+        },
+        {
+          "id": "badge_text",
+          "type": "Text",
+          "label": "Badge label",
+          "parameters": {
+            "text": "",
+            "fontSize": "var(--text-xs)",
+            "fontWeight": "var(--font-semibold)",
+            "color": "var(--accent-foreground)",
+            "sizeMode": "contentSize"
+          },
+          "parent": "badge"
+        },
+        {
+          "id": "body",
+          "type": "Group",
+          "label": "Body",
+          "parameters": {
+            "width": {
+              "value": 100,
+              "unit": "%"
+            },
+            "flexDirection": "column",
+            "rowGap": "var(--space-2)",
+            "paddingLeft": "var(--space-5)",
+            "paddingRight": "var(--space-5)",
+            "paddingTop": "var(--space-5)",
+            "paddingBottom": "var(--space-5)"
+          },
+          "parent": "card",
+          "children": [
+            "title",
+            "sub"
+          ]
+        },
+        {
+          "id": "title",
+          "type": "Text",
+          "label": "Title",
+          "parameters": {
+            "text": "Title",
+            "fontSize": "var(--text-xl)",
+            "fontWeight": "var(--font-semibold)",
+            "lineHeight": "var(--leading-snug)",
+            "color": "var(--foreground)"
+          },
+          "parent": "body"
+        },
+        {
+          "id": "sub",
+          "type": "Text",
+          "label": "Tagline",
+          "parameters": {
+            "text": "Tagline",
+            "fontSize": "var(--text-sm)",
+            "color": "var(--muted-foreground)"
+          },
+          "parent": "body"
+        },
+        {
+          "id": "card_inputs",
+          "type": "Component Inputs",
+          "label": "Record fields in",
+          "x": 40,
+          "y": 40,
+          "ports": [
+            {
+              "name": "name",
+              "plug": "input",
+              "type": "*"
+            },
+            {
+              "name": "tagline",
+              "plug": "input",
+              "type": "*"
+            },
+            {
+              "name": "image",
+              "plug": "input",
+              "type": "*"
+            },
+            {
+              "name": "imageAlt",
+              "plug": "input",
+              "type": "*"
+            },
+            {
+              "name": "badge",
+              "plug": "input",
+              "type": "*"
+            }
+          ]
+        }
+      ],
+      "connections": [
+        {
+          "fromId": "card_inputs",
+          "fromProperty": "name",
+          "toId": "title",
+          "toProperty": "text"
+        },
+        {
+          "fromId": "card_inputs",
+          "fromProperty": "tagline",
+          "toId": "sub",
+          "toProperty": "text"
+        },
+        {
+          "fromId": "card_inputs",
+          "fromProperty": "image",
+          "toId": "photo",
+          "toProperty": "src"
+        },
+        {
+          "fromId": "card_inputs",
+          "fromProperty": "imageAlt",
+          "toId": "photo",
+          "toProperty": "alt"
+        },
+        {
+          "fromId": "card_inputs",
+          "fromProperty": "badge",
+          "toId": "badge_text",
+          "toProperty": "text"
+        },
+        {
+          "fromId": "card_inputs",
+          "fromProperty": "badge",
+          "toId": "badge",
+          "toProperty": "visible"
+        }
+      ]
+    }
+  ]
+}

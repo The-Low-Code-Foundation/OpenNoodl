@@ -4,7 +4,12 @@
   "description": "Component Inputs defines the receiving half of a component's port surface. Every port added on this node becomes an input of the component itself: a parent graph wires values or signals into the component instance, and they emerge inside the component as this node's outputs. Inside a Repeater item component the same mechanism delivers item data — each property of the item object feeds the identically-named Component Input.",
   "whenToUse": "Whenever a component needs data or triggers from its parent: item templates, reusable controls, page components. Use events (Send/Receive Event) only when sender and receiver are unrelated; parent→child always goes through Component Inputs.",
   "runtimeBehavior": "All ports are author-declared on the node instance (component-ports mechanism): the catalog lists none because each component defines its own. The instance's ports also define the component's external inputs — tools should read them from the node instance's `ports`, never from the catalog.",
-  "examples": ["repeater-query-records", "data-run-tasks-batch", "cloud-record-relations"],
+  "examples": [
+    "repeater-query-records",
+    "data-run-tasks-batch",
+    "cloud-record-relations",
+    "ui-card-grid-repeater"
+  ],
   "patterns": [
     "Repeater item: declare inputs named after the item object's properties and bind them straight to visuals.",
     "Signal inputs ('Show', 'Reset') let a parent drive behaviour without exposing internals."
@@ -12,5 +17,10 @@
   "antiPatterns": [
     "Reaching for global Variables to pass parent data into a child; that hides the dependency the port surface would document."
   ],
-  "relatedNodes": ["Component Outputs", "For Each", "net.noodl.ComponentObject", "Event Receiver"]
+  "relatedNodes": [
+    "Component Outputs",
+    "For Each",
+    "net.noodl.ComponentObject",
+    "Event Receiver"
+  ]
 }

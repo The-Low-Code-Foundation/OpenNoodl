@@ -27,7 +27,8 @@
     "send-event-across-components",
     "cloud-record-live-refresh",
     "cloud-record-crud",
-    "cloud-subscribe-to-changes"
+    "cloud-subscribe-to-changes",
+    "ui-card-grid-repeater"
   ],
   "patterns": [
     "`items` → Repeater `items`, with record properties delivered to the item component via Component Inputs: the canonical list page.",

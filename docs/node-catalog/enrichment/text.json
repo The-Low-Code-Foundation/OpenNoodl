@@ -10,10 +10,21 @@
     "visible": "Boolean level; hides/shows without removing layout logic elsewhere."
   },
   "runtimeBehavior": "Text's ports are conditional on parameter values (declared-port-groups): explicit width/height ports appear only in the matching size mode, and advanced text ports depend on chosen options. Treat the catalog's list as the superset the editor filters contextually.",
-  "examples": ["repeater-query-records", "validate-before-submit"],
+  "examples": [
+    "repeater-query-records",
+    "validate-before-submit",
+    "ui-page-shell-bands",
+    "ui-split-hero",
+    "ui-stat-tile-row"
+  ],
   "patterns": [
     "Bind `text` from Component Inputs inside a Repeater item component to show per-record fields.",
     "Drive `visible` from a Condition's `result`/`isfalse` for inline error or empty-state messages."
   ],
-  "relatedNodes": ["Group", "net.noodl.controls.textinput", "String Format", "Label"]
+  "relatedNodes": [
+    "Group",
+    "net.noodl.controls.textinput",
+    "String Format",
+    "Label"
+  ]
 }

@@ -11,5 +11,13 @@
     "urlPath": "String value; the URL pattern that routes to this page, e.g. \"product/{productId}\" — placeholders become path parameters readable via PageInputs. Defaults to the title, lowercased and hyphenated."
   },
   "runtimeBehavior": "Runtime-determined inputs (runtime-discovered): `title` and `urlPath` are registered per instance by the editor connection, with defaults derived from the component name. The static catalog lists only the meta-tag, sitemap and padding inputs.",
-  "relatedNodes": ["Router", "RouterNavigate", "PageInputs"]
+  "relatedNodes": [
+    "Router",
+    "RouterNavigate",
+    "PageInputs"
+  ],
+  "examples": [
+    "ui-page-shell-bands",
+    "ui-card-grid-repeater"
+  ]
 }

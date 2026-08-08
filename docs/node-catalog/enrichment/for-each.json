@@ -9,12 +9,15 @@
     "templateScript": "JavaScript choosing a component per item (visible when `templateType` is dynamic): set `component` using the `item` variable.",
     "refresh": "Signal; tears down and rebuilds all instances. Rarely needed — the repeater tracks array changes itself.",
     "itemActionItemId": "Outputs the id of the item whose instance triggered a For Each Actions flow.",
-    "done": "Signal; a Refresh has torn the list down and rebuilt it from the current Items, including when that leaves the list empty. \u26a0\ufe0f Wire this rather than Items Rendered when you are sequencing off a Refresh \u2014 Items Rendered follows the operation queue draining and currently lands before a Refresh's items exist.",
-    "failure": "Signal; the Repeater could not rebuild \u2014 no Items bound, no Template set, or nothing to render into. Each raises its own code on the error channel.",
-    "completed": "Signal; fires after every Refresh the author triggered, whatever the outcome. \u26a0\ufe0f A rebuild driven by Items arriving or a Template changing reports nothing at all \u2014 those are not invocations of a port."
+    "done": "Signal; a Refresh has torn the list down and rebuilt it from the current Items, including when that leaves the list empty. ⚠️ Wire this rather than Items Rendered when you are sequencing off a Refresh — Items Rendered follows the operation queue draining and currently lands before a Refresh's items exist.",
+    "failure": "Signal; the Repeater could not rebuild — no Items bound, no Template set, or nothing to render into. Each raises its own code on the error channel.",
+    "completed": "Signal; fires after every Refresh the author triggered, whatever the outcome. ⚠️ A rebuild driven by Items arriving or a Template changing reports nothing at all — those are not invocations of a port."
   },
   "runtimeBehavior": "Two dynamic mechanisms: `template`/`templateScript` swap in and out based on `templateType` (declared-port-groups), and outputs named after signals sent by item components are registered on demand (runtime-discovered) — an item component's Component Outputs signal appears as an output port here so a list can bubble events up.",
-  "examples": ["repeater-query-records"],
+  "examples": [
+    "repeater-query-records",
+    "ui-card-grid-repeater"
+  ],
   "patterns": [
     "Query Records `items` → Repeater `items`: the canonical data-driven list.",
     "Item component declares Component Inputs matching record property names — no explicit per-field wiring at the list level."
@@ -23,5 +26,11 @@
     "Triggering `refresh` whenever data changes: the repeater already diffs `items`; refresh forces a full rebuild and loses instance state.",
     "Binding huge unpaged query results into a repeater; page or limit the query instead."
   ],
-  "relatedNodes": ["DbCollection2", "Component Inputs", "Component Outputs", "For Each Actions", "Static Data"]
+  "relatedNodes": [
+    "DbCollection2",
+    "Component Inputs",
+    "Component Outputs",
+    "For Each Actions",
+    "Static Data"
+  ]
 }
