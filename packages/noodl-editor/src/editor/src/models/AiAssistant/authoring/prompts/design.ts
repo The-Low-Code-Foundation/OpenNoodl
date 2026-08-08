@@ -169,7 +169,7 @@ page that is arranged in more than one column must therefore be a \`net.noodl.vi
   behaves correctly inside a sidebar, a modal or a repeater cell.
 - A \`Columns\` node handles a Repeater child correctly: the Repeater itself is not a layout
   participant, and its items each get a column box.
-- Use \`marginX\` for the gutter between columns; a percentage gap on a wrapped Group is a
+- Use \`marginX\` for the gutter between \`Columns\` tracks; a percentage gap on a wrapped Group is a
   desktop-only trick and stops being one the moment the layout must collapse.
 
 **Type does not scale.** \`fontSize\` has no responsive form, so a \`--text-6xl\` display headline is
@@ -246,7 +246,9 @@ Anything repeated from a data source is one component plus a Repeater, never dup
 export const DESIGN_AUTHORING = `DESIGN
 Follow the design doctrine: bands and a centred shell, an announced section head, three or more font
 weights, one accent colour, images with sizeMode "explicit", and gap ports rather than margins.
-Two failures are specific to authoring one component at a time: a grid item needs its own percentage
-width (a wrapped flex row does not shrink its children), and any parameter that varies per record
-should be a connection, including into the "visible" port — wiring an empty string or a 0 there is
-how optional chrome hides itself without a logic node.`;
+Two failures are specific to authoring one component at a time. Anything arranged in more than one
+column must be a Columns node — a Group never responds to width: sizing "autoFit" with a minWidth of
+260-320px for repeats, or layoutString ("1 1", "2 1") plus mediumLayout/smallLayout for a fixed
+arrangement. And any parameter that varies per record should be a connection, including into the
+"visible" port — an empty string or a 0 there is how optional chrome hides itself without a logic
+node.`;

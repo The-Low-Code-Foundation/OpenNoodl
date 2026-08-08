@@ -27,6 +27,24 @@ be the more honest "mid-tier" bar), a different machine, or a hosted open-weight
 open, not that it ran locally; fine for the architecture question, say so in the matrix). **Ask;
 record the choice here.**
 
+#### ✅ DECIDED 2026-08-08 — Richard: hosted 32B on **DeepInfra**
+
+The local pull was ruled out on measured hardware, not preference. Richard's machine is a
+**MacBook Air (MacBookAir10,1), M1, 16 GB unified memory**, `iogpu.wired_limit_mb: 0` (default →
+Metal working set caps at ~10.7 GB), 91 GB disk free, ollama 0.13.5 with only `llama3.2:latest`.
+
+- `qwen2.5-coder:32b` ≈ 20 GB at Q4 — above *total* RAM and roughly double the GPU ceiling. Ollama
+  cannot fully offload it; the fallback is CPU inference with swap, on a fanless chassis. Disk was
+  never the constraint; RAM is. **Not pulled.**
+- `qwen2.5-coder:14b` ≈ 9 GB — fits under the ceiling with ~1.6 GB headroom, which the MCP tool
+  schemas plus KV cache consume. Runs, but a 40-turn replay is an hours-long throttled run.
+- **Chosen: hosted `qwen2.5-coder-32b`-class via DeepInfra**, through the existing
+  `openai-compatible` provider path. Richard supplies the API key when the task runs — **do not
+  ask for it before then, and never commit it**; read it from the environment.
+
+The matrix row must be labelled **"open weights, hosted (DeepInfra)"** — the weights are open, the
+run was not local. That distinction is the phase's own honesty rule, not a footnote.
+
 ### 2. The driver — MCP surface, not the editor loop
 
 ~200 lines, modelled on the rig that already worked: ollama `/api/chat` (native tool-calling)
