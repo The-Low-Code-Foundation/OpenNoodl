@@ -32,22 +32,24 @@
         },
         {
           "id": "shell",
-          "type": "Group",
-          "label": "Shell",
+          "type": "net.noodl.visual.columns",
+          "label": "Shell (2-up, collapses)",
           "parameters": {
-            "width": {
-              "value": 100,
-              "unit": "%"
-            },
-            "maxWidth": {
-              "value": 1200,
+            "layoutString": "1 1",
+            "marginX": {
+              "value": 48,
               "unit": "px"
             },
-            "flexDirection": "row",
-            "paddingLeft": "var(--space-6)",
-            "paddingRight": "var(--space-6)",
-            "columnGap": "var(--space-16)",
-            "alignItems": "center"
+            "mediumBreakpoint": {
+              "value": 900,
+              "unit": "px"
+            },
+            "mediumLayout": "1",
+            "smallBreakpoint": {
+              "value": 640,
+              "unit": "px"
+            },
+            "smallLayout": "1"
           },
           "parent": "band",
           "children": [

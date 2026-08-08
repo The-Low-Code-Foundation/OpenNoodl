@@ -1,305 +1,212 @@
 {
   "id": "ui-stat-tile-row",
-  "title": "Stat tile row: the top of an admin screen",
-  "description": "Four tiles across the shell, unwrapped so they share the width evenly. Each tile is a card with a muted uppercase label, one large --text-3xl semibold value, and a small delta line in the success or muted colour. The value is the only large thing in the tile — a tile where the label competes with the number reads as a form, not a dashboard. Wire each value from a Query Records count or a Cloud Function output; the label and unit are static.",
+  "title": "Stat tile row: one tile component, four instances, collapsing to two then one",
+  "description": "The top of an admin screen. The tile is its own component — four hand-written copies is a `repeated-sibling-subtree` warning — and the row is a Columns node that folds 4 -> 2 -> 1 as the container narrows. Inside a tile the VALUE is the only large thing: a muted uppercase label, one --text-3xl semibold number, and a small delta line. A tile whose label competes with its number reads as a form, not a dashboard. Wire each value from a Query Records count or a Cloud Function output.",
   "demonstrates": [
+    "net.noodl.visual.columns",
     "Group",
-    "Text"
+    "Text",
+    "Component Inputs"
   ],
   "components": [
     {
       "name": "/Components/StatRow",
       "nodes": [
         {
-          "id": "row",
-          "type": "Group",
-          "label": "Stat row",
+          "id": "cols",
+          "type": "net.noodl.visual.columns",
+          "label": "Four up, folding",
           "parameters": {
-            "width": {
-              "value": 100,
-              "unit": "%"
+            "layoutString": "1 1 1 1",
+            "marginX": {
+              "value": 20,
+              "unit": "px"
             },
-            "flexDirection": "row",
-            "columnGap": "var(--space-5)",
-            "alignItems": "stretch"
+            "mediumBreakpoint": {
+              "value": 900,
+              "unit": "px"
+            },
+            "mediumLayout": "1 1",
+            "smallBreakpoint": {
+              "value": 560,
+              "unit": "px"
+            },
+            "smallLayout": "1"
           },
           "children": [
-            "s1",
-            "s2",
-            "s3",
-            "s4"
+            "t1",
+            "t2",
+            "t3",
+            "t4"
           ]
         },
         {
-          "id": "s1",
-          "type": "Group",
-          "label": "Tile — Revenue, 30 days",
+          "id": "t1",
+          "type": "/Components/StatTile",
+          "label": "Revenue",
           "parameters": {
-            "backgroundColor": "var(--surface)",
-            "borderRadius": "var(--radius-xl)",
-            "borderStyle": "solid",
-            "borderWidth": "var(--border-1)",
-            "borderColor": "var(--border)",
-            "clip": true,
-            "flexDirection": "column",
-            "width": {
-              "value": 100,
-              "unit": "%"
-            },
-            "rowGap": "var(--space-2)",
-            "paddingTop": "var(--space-5)",
-            "paddingBottom": "var(--space-5)",
-            "paddingLeft": "var(--space-5)",
-            "paddingRight": "var(--space-5)"
+            "label": "Revenue, 30 days",
+            "value": "£548",
+            "delta": "+12% on last month"
           },
-          "parent": "row",
-          "children": [
-            "s1_l",
-            "s1_v",
-            "s1_d"
-          ]
+          "parent": "cols"
         },
         {
-          "id": "s1_l",
-          "type": "Text",
-          "label": "Label",
+          "id": "t2",
+          "type": "/Components/StatTile",
+          "label": "Orders",
           "parameters": {
-            "text": "Revenue, 30 days",
-            "fontSize": "var(--text-xs)",
-            "fontWeight": "var(--font-semibold)",
-            "letterSpacing": "var(--tracking-widest)",
-            "textTransform": "uppercase",
-            "color": "var(--muted-foreground)"
+            "label": "Orders",
+            "value": "6",
+            "delta": "2 awaiting packing"
           },
-          "parent": "s1"
+          "parent": "cols"
         },
         {
-          "id": "s1_v",
-          "type": "Text",
-          "label": "Value",
+          "id": "t3",
+          "type": "/Components/StatTile",
+          "label": "Live",
           "parameters": {
-            "text": "£548",
-            "fontSize": "var(--text-3xl)",
-            "fontWeight": "var(--font-semibold)",
-            "letterSpacing": "var(--tracking-tight)",
-            "color": "var(--foreground)"
+            "label": "Products live",
+            "value": "9",
+            "delta": "Across 3 categories"
           },
-          "parent": "s1"
+          "parent": "cols"
         },
         {
-          "id": "s1_d",
-          "type": "Text",
-          "label": "Delta",
+          "id": "t4",
+          "type": "/Components/StatTile",
+          "label": "Low stock",
           "parameters": {
-            "text": "+12% on last month",
-            "fontSize": "var(--text-sm)",
-            "color": "var(--muted-foreground)"
+            "label": "Low stock",
+            "value": "2",
+            "delta": "Kettle, Ora vase"
           },
-          "parent": "s1"
-        },
-        {
-          "id": "s2",
-          "type": "Group",
-          "label": "Tile — Orders",
-          "parameters": {
-            "backgroundColor": "var(--surface)",
-            "borderRadius": "var(--radius-xl)",
-            "borderStyle": "solid",
-            "borderWidth": "var(--border-1)",
-            "borderColor": "var(--border)",
-            "clip": true,
-            "flexDirection": "column",
-            "width": {
-              "value": 100,
-              "unit": "%"
-            },
-            "rowGap": "var(--space-2)",
-            "paddingTop": "var(--space-5)",
-            "paddingBottom": "var(--space-5)",
-            "paddingLeft": "var(--space-5)",
-            "paddingRight": "var(--space-5)"
-          },
-          "parent": "row",
-          "children": [
-            "s2_l",
-            "s2_v",
-            "s2_d"
-          ]
-        },
-        {
-          "id": "s2_l",
-          "type": "Text",
-          "label": "Label",
-          "parameters": {
-            "text": "Orders",
-            "fontSize": "var(--text-xs)",
-            "fontWeight": "var(--font-semibold)",
-            "letterSpacing": "var(--tracking-widest)",
-            "textTransform": "uppercase",
-            "color": "var(--muted-foreground)"
-          },
-          "parent": "s2"
-        },
-        {
-          "id": "s2_v",
-          "type": "Text",
-          "label": "Value",
-          "parameters": {
-            "text": "6",
-            "fontSize": "var(--text-3xl)",
-            "fontWeight": "var(--font-semibold)",
-            "letterSpacing": "var(--tracking-tight)",
-            "color": "var(--foreground)"
-          },
-          "parent": "s2"
-        },
-        {
-          "id": "s2_d",
-          "type": "Text",
-          "label": "Delta",
-          "parameters": {
-            "text": "2 awaiting packing",
-            "fontSize": "var(--text-sm)",
-            "color": "var(--muted-foreground)"
-          },
-          "parent": "s2"
-        },
-        {
-          "id": "s3",
-          "type": "Group",
-          "label": "Tile — Products live",
-          "parameters": {
-            "backgroundColor": "var(--surface)",
-            "borderRadius": "var(--radius-xl)",
-            "borderStyle": "solid",
-            "borderWidth": "var(--border-1)",
-            "borderColor": "var(--border)",
-            "clip": true,
-            "flexDirection": "column",
-            "width": {
-              "value": 100,
-              "unit": "%"
-            },
-            "rowGap": "var(--space-2)",
-            "paddingTop": "var(--space-5)",
-            "paddingBottom": "var(--space-5)",
-            "paddingLeft": "var(--space-5)",
-            "paddingRight": "var(--space-5)"
-          },
-          "parent": "row",
-          "children": [
-            "s3_l",
-            "s3_v",
-            "s3_d"
-          ]
-        },
-        {
-          "id": "s3_l",
-          "type": "Text",
-          "label": "Label",
-          "parameters": {
-            "text": "Products live",
-            "fontSize": "var(--text-xs)",
-            "fontWeight": "var(--font-semibold)",
-            "letterSpacing": "var(--tracking-widest)",
-            "textTransform": "uppercase",
-            "color": "var(--muted-foreground)"
-          },
-          "parent": "s3"
-        },
-        {
-          "id": "s3_v",
-          "type": "Text",
-          "label": "Value",
-          "parameters": {
-            "text": "9",
-            "fontSize": "var(--text-3xl)",
-            "fontWeight": "var(--font-semibold)",
-            "letterSpacing": "var(--tracking-tight)",
-            "color": "var(--foreground)"
-          },
-          "parent": "s3"
-        },
-        {
-          "id": "s3_d",
-          "type": "Text",
-          "label": "Delta",
-          "parameters": {
-            "text": "Across 3 categories",
-            "fontSize": "var(--text-sm)",
-            "color": "var(--muted-foreground)"
-          },
-          "parent": "s3"
-        },
-        {
-          "id": "s4",
-          "type": "Group",
-          "label": "Tile — Low stock",
-          "parameters": {
-            "backgroundColor": "var(--surface)",
-            "borderRadius": "var(--radius-xl)",
-            "borderStyle": "solid",
-            "borderWidth": "var(--border-1)",
-            "borderColor": "var(--border)",
-            "clip": true,
-            "flexDirection": "column",
-            "width": {
-              "value": 100,
-              "unit": "%"
-            },
-            "rowGap": "var(--space-2)",
-            "paddingTop": "var(--space-5)",
-            "paddingBottom": "var(--space-5)",
-            "paddingLeft": "var(--space-5)",
-            "paddingRight": "var(--space-5)"
-          },
-          "parent": "row",
-          "children": [
-            "s4_l",
-            "s4_v",
-            "s4_d"
-          ]
-        },
-        {
-          "id": "s4_l",
-          "type": "Text",
-          "label": "Label",
-          "parameters": {
-            "text": "Low stock",
-            "fontSize": "var(--text-xs)",
-            "fontWeight": "var(--font-semibold)",
-            "letterSpacing": "var(--tracking-widest)",
-            "textTransform": "uppercase",
-            "color": "var(--muted-foreground)"
-          },
-          "parent": "s4"
-        },
-        {
-          "id": "s4_v",
-          "type": "Text",
-          "label": "Value",
-          "parameters": {
-            "text": "2",
-            "fontSize": "var(--text-3xl)",
-            "fontWeight": "var(--font-semibold)",
-            "letterSpacing": "var(--tracking-tight)",
-            "color": "var(--foreground)"
-          },
-          "parent": "s4"
-        },
-        {
-          "id": "s4_d",
-          "type": "Text",
-          "label": "Delta",
-          "parameters": {
-            "text": "Kettle, Ora vase",
-            "fontSize": "var(--text-sm)",
-            "color": "var(--muted-foreground)"
-          },
-          "parent": "s4"
+          "parent": "cols"
         }
       ],
       "connections": []
+    },
+    {
+      "name": "/Components/StatTile",
+      "nodes": [
+        {
+          "id": "tile",
+          "type": "Group",
+          "label": "Tile",
+          "parameters": {
+            "backgroundColor": "var(--surface)",
+            "borderRadius": "var(--radius-xl)",
+            "borderStyle": "solid",
+            "borderWidth": "var(--border-1)",
+            "borderColor": "var(--border)",
+            "clip": true,
+            "flexDirection": "column",
+            "width": {
+              "value": 100,
+              "unit": "%"
+            },
+            "rowGap": "var(--space-2)",
+            "paddingTop": "var(--space-5)",
+            "paddingBottom": "var(--space-5)",
+            "paddingLeft": "var(--space-5)",
+            "paddingRight": "var(--space-5)"
+          },
+          "children": [
+            "l",
+            "v",
+            "d"
+          ]
+        },
+        {
+          "id": "l",
+          "type": "Text",
+          "label": "Label",
+          "parameters": {
+            "text": "Label",
+            "fontSize": "var(--text-xs)",
+            "fontWeight": "var(--font-semibold)",
+            "letterSpacing": "var(--tracking-widest)",
+            "textTransform": "uppercase",
+            "color": "var(--muted-foreground)"
+          },
+          "parent": "tile"
+        },
+        {
+          "id": "v",
+          "type": "Text",
+          "label": "Value",
+          "parameters": {
+            "text": "0",
+            "fontSize": "var(--text-3xl)",
+            "fontWeight": "var(--font-semibold)",
+            "letterSpacing": "var(--tracking-tight)",
+            "color": "var(--foreground)"
+          },
+          "parent": "tile"
+        },
+        {
+          "id": "d",
+          "type": "Text",
+          "label": "Delta",
+          "parameters": {
+            "text": "",
+            "fontSize": "var(--text-sm)",
+            "color": "var(--muted-foreground)"
+          },
+          "parent": "tile"
+        },
+        {
+          "id": "inputs",
+          "type": "Component Inputs",
+          "label": "What varies per tile",
+          "x": 40,
+          "y": 40,
+          "ports": [
+            {
+              "name": "label",
+              "plug": "input",
+              "type": "*"
+            },
+            {
+              "name": "value",
+              "plug": "input",
+              "type": "*"
+            },
+            {
+              "name": "delta",
+              "plug": "input",
+              "type": "*"
+            }
+          ]
+        }
+      ],
+      "connections": [
+        {
+          "fromId": "inputs",
+          "fromProperty": "label",
+          "toId": "l",
+          "toProperty": "text"
+        },
+        {
+          "fromId": "inputs",
+          "fromProperty": "value",
+          "toId": "v",
+          "toProperty": "text"
+        },
+        {
+          "fromId": "inputs",
+          "fromProperty": "delta",
+          "toId": "d",
+          "toProperty": "text"
+        },
+        {
+          "fromId": "inputs",
+          "fromProperty": "delta",
+          "toId": "d",
+          "toProperty": "visible"
+        }
+      ]
     }
   ]
 }

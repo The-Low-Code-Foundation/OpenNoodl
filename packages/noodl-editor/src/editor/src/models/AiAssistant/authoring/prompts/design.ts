@@ -29,9 +29,18 @@
  * Not from taste asserted in the abstract. Every rule below was either applied
  * or discovered while building `ecommerce-example` (Kiln & Co.) end to end and
  * MEASURING the result in `scripts/devtools/render-from-disk.js`. The mechanical
- * rules in §7 are each a defect that was found in a rendered DOM and could not
+ * rules in §8 are each a defect that was found in a rendered DOM and could not
  * have been found by reading the graph — the cards that were all 1152px wide,
  * the thirteen empty text boxes, the page that computed to Times.
+ *
+ * §0 and §7 were added after Richard reviewed the reference build and found the
+ * two things this file had missed. §0 because the page he was shown was 66
+ * nodes of inlined sections — the decomposition doctrine broken three commits
+ * after this one shipped beside it, which is now also a validator warning
+ * (`repeated-sibling-subtree`). §7 because the page did not survive a narrow
+ * viewport, and the reason is structural: `Columns` is the ONLY node in the
+ * runtime with any breakpoint concept, so every multi-column arrangement built
+ * from Groups is frozen at the width it was authored at.
  *
  * ## Why a shared module rather than two prompt strings
  *
@@ -59,6 +68,26 @@ export const DESIGN_DOCTRINE_MD = `## What a designed page is made of
 
 A page that looks designed is not a styled version of a page that does not. It has a different
 STRUCTURE. Build the structure first and the styling has somewhere to land.
+
+### 0. A page is an assembly of components, not a graph of nodes
+
+Everything below describes named, repeatable objects — a band, a section head, a card, a stat tile.
+**Each of those is a COMPONENT**, authored once and instantiated, not a subtree typed out again.
+This is the decomposition doctrine applied to layout, and it is the rule most often lost the moment
+a page starts looking good: the page ends up correct, handsome, and 66 nodes long.
+
+- A finished page component should read as a short list of instances — header, hero, feature strip,
+  listing, footer — and is usually **under ~15 nodes**. If a page graph is past ~25, it wanted to
+  be several components.
+- **Three structurally identical siblings is a validation warning**
+  (\`repeated-sibling-subtree\`), not a style preference. Three feature items, three pricing tiers,
+  three category cards: make one component and instantiate it three times, or drive a Repeater from
+  a data source when the copies differ only in their values.
+- A section that varies only by its words — an eyebrow, a heading, a sub-line — is one component
+  with Component Inputs, not three hand-written copies.
+
+Build the leaf components first, then the sections, then assemble the page from them. Doing it the
+other way round produces one long column that nobody can reuse a piece of.
 
 ### 1. Every page is bands and a shell
 
@@ -123,14 +152,44 @@ cards disagree about their own radius reads as careless even when each card is d
 variant exists in the style vocabulary, copy its concrete parameters — \`variant\` and \`size\` are
 connection-only ports and setting them as parameters is discarded AND rejected.
 
-### 7. The mechanics that silently undo layout
+### 7. Responsive: \`Columns\` is the only thing that reflows
+
+**A \`Group\` never responds to width. There are no media queries and no breakpoints anywhere in the
+runtime except on one node.** A row of Groups is frozen at whatever proportions you authored, so a
+two-column hero stays two columns at 390px and a 32%-wide card becomes 120px wide. Everything on a
+page that is arranged in more than one column must therefore be a \`net.noodl.visual.columns\` node.
+
+- **Grid of unknown length** (products, posts, tiles): \`sizing: "autoFit"\` with a \`minWidth\` of
+  260–320px. No breakpoints to maintain — it fits as many columns as will hold that width and
+  reflows on its own. This is the right default for anything fed by a Repeater.
+- **A fixed arrangement** (a 2-up hero, a 3-up feature strip, a 4-up footer): \`layoutString\`
+  (\`"1 1"\`, \`"1 1 1"\`, \`"2 1"\` for an uneven split), plus \`mediumBreakpoint\`/\`mediumLayout\` and
+  \`smallBreakpoint\`/\`smallLayout\` to collapse it — typically \`"1"\` under about 700px.
+- Breakpoints are measured against the **container**, not the viewport, so the same component
+  behaves correctly inside a sidebar, a modal or a repeater cell.
+- A \`Columns\` node handles a Repeater child correctly: the Repeater itself is not a layout
+  participant, and its items each get a column box.
+- Use \`marginX\` for the gutter between columns; a percentage gap on a wrapped Group is a
+  desktop-only trick and stops being one the moment the layout must collapse.
+
+**Type does not scale.** \`fontSize\` has no responsive form, so a \`--text-6xl\` display headline is
+60px on a phone too. Pick the display size that still works at 390px — usually \`--text-4xl\` or
+\`--text-5xl\` — rather than the one that looks best at 1440px.
+
+Check the narrow width before saying it is done: nothing should exceed the viewport
+(\`el.getBoundingClientRect().width > window.innerWidth\`), and a multi-column band should have
+become one column.
+
+### 8. The mechanics that silently undo layout
 
 Each of these was found by measuring a rendered DOM, and none is visible in a graph:
 
-- **A wrapped flex row does not shrink its children; an unwrapped one does.** So a grid
-  (\`flexWrap: "wrap"\`) needs an explicit track width on each item, and the only version that
-  survives a change of viewport is percentages on both: three columns is \`width: 32%\` with
-  \`columnGap: 2%\`. A percent track with a px gap adds up at exactly one window size.
+- **A wrapped flex row does not shrink its children; an unwrapped one does.** This is why a row of
+  Groups appears to work and a wrapped grid of them does not: without wrapping, children shrink to
+  share the width; with it, each item keeps whatever width it was given. If you must use a wrapped
+  Group at all, every item needs an explicit percentage track width AND a percentage gap
+  (\`width: 32%\` with \`columnGap: 2%\`). **Prefer \`Columns\` — see §7 — because a wrapped Group
+  cannot collapse at any width.**
 - **\`sizeMode\` gates other ports.** On \`Image\`, \`net.noodl.controls.button\` and \`textinput\`,
   \`width\`/\`height\`/\`objectFit\` are INERT unless \`sizeMode: "explicit"\`. A \`width: 100%\` input that
   renders 170px wide is this, every time.
@@ -145,19 +204,19 @@ Each of these was found by measuring a rendered DOM, and none is visible in a gr
 - Use the gap ports (\`rowGap\`, \`columnGap\`) for spacing between siblings, never margins on the
   children — margins do not collapse the way a designer expects and leave the last item uneven.
 
-### 8. Design the empty and the loading state
+### 9. Design the empty and the loading state
 
 A list with no rows should say what it is and what to do, not render nothing. An empty state is a
 small designed object: icon, one line of explanation, one action.
 
-### 9. Words are part of the visual design
+### 10. Words are part of the visual design
 
 Placeholder copy makes a competent layout look like a template. Write the real thing: specific,
 concrete, and in the product's own voice — "Between 20 and 60 of a thing, then we move on" rather
 than "High quality products". Numbers, materials and constraints read as designed; adjectives do
 not. Never ship "Lorem ipsum", "Welcome to our store", or "Card title".
 
-### 10. You have not finished until you have looked at it
+### 11. You have not finished until you have looked at it
 
 A graph is a claim; a render is evidence. Render the project, screenshot it, and measure the DOM
 before saying it is done. Three checks catch most of what goes wrong:

@@ -66125,12 +66125,12 @@
     },
     {
       "id": "ui-card-grid-repeater",
-      "title": "Card grid: Query Records into a Repeater, with track widths that survive a resize",
-      "description": "A three-across card grid fed by the database. THE trap this exists to teach: a wrapped flex row does NOT shrink its children the way an unwrapped one does, so every grid item needs an explicit track width — items left at width 100% render one per row at full container width, which is the single most common reason an AI card grid comes out as a stack. State the track in PERCENT and the gap in PERCENT (32% + 2% + 32% + 2% + 32% = 100%); a percent track with a px gap only adds up at one viewport width. Repeater items are direct flex children of the grid Group, so the width belongs on the item component root. Record fields reach the item through Component Inputs whose names match the record properties.",
+      "title": "Card grid: Query Records into a Repeater, in a Columns node that reflows on its own",
+      "description": "The canonical data grid, and the layout decision most often got wrong. Use a Columns node with sizing \"autoFit\" and a minWidth of 260-320px: it fits as many columns as the CONTAINER holds and reflows by itself, with no breakpoints to maintain. Columns handles a Repeater child correctly — the Repeater draws nothing and adds its items as siblings, so Columns skips it and gives each real item a column box. The card component is width 100% and lets the column size it, which is what makes the SAME card work in this grid, in a 2-up related row, and in a sidebar. Do NOT reach for a Group with flexWrap: a wrapped flex row does not shrink its children, so each item needs a hardcoded percentage track, and — the part that matters — no Group anywhere in the runtime has a breakpoint, so that layout can never collapse on a narrow screen. Record fields reach the item through Component Inputs whose names match the record properties, and wiring a field straight into a Group's visible port is conditional rendering with no logic node.",
       "demonstrates": [
+        "net.noodl.visual.columns",
         "For Each",
         "DbCollection2",
-        "Group",
         "Component Inputs",
         "Image",
         "Text"
@@ -66194,21 +66194,18 @@
             },
             {
               "id": "grid",
-              "type": "Group",
+              "type": "net.noodl.visual.columns",
               "label": "Card grid",
               "parameters": {
-                "width": {
-                  "value": 100,
-                  "unit": "%"
+                "sizing": "autoFit",
+                "minWidth": {
+                  "value": 280,
+                  "unit": "px"
                 },
-                "flexDirection": "row",
-                "flexWrap": "wrap",
-                "columnGap": {
-                  "value": 2,
-                  "unit": "%"
-                },
-                "rowGap": "var(--space-10)",
-                "alignItems": "stretch"
+                "marginX": {
+                  "value": 12,
+                  "unit": "px"
+                }
               },
               "parent": "shell",
               "children": [
@@ -66258,7 +66255,7 @@
                 "clip": true,
                 "flexDirection": "column",
                 "width": {
-                  "value": 32,
+                  "value": 100,
                   "unit": "%"
                 }
               },
@@ -66603,12 +66600,14 @@
     },
     {
       "id": "ui-icon-feature-strip",
-      "title": "Icon feature strip: three reassurances on a bordered band",
-      "description": "A short horizontal band that breaks up a long page and carries the three things a visitor wants to know. Each item is an Icon plus a two-line copy stack, and the row is UNWRAPPED so the three items shrink to share the shell evenly. The icons are the accent colour and small (18–20px); the titles are --text-sm semibold and the bodies --text-sm muted. The band sits on --surface with hairlines top and bottom so it reads as a rule across the page rather than another section.",
+      "title": "Icon feature strip: one item component, instantiated three times inside a Columns",
+      "description": "Three reassurances on a bordered band — and the shape this recipe is really about. The item is its OWN component with Component Inputs for its icon, title and body, instantiated three times; writing the subtree out three times is a `repeated-sibling-subtree` warning, not a style preference. The row is a Columns node so it collapses to one column under 700px: a Group row cannot, because no Group in the runtime has a breakpoint. The band sits on --surface with hairlines top and bottom so it reads as a rule across the page rather than another section.",
       "demonstrates": [
-        "Group",
+        "net.noodl.visual.columns",
         "net.noodl.visual.icon",
-        "Text"
+        "Text",
+        "Component Inputs",
+        "Group"
       ],
       "components": [
         {
@@ -66652,13 +66651,32 @@
                   "value": 1200,
                   "unit": "px"
                 },
-                "flexDirection": "row",
+                "flexDirection": "column",
                 "paddingLeft": "var(--space-6)",
-                "paddingRight": "var(--space-6)",
-                "columnGap": "var(--space-12)",
-                "alignItems": "flex-start"
+                "paddingRight": "var(--space-6)"
               },
               "parent": "band",
+              "children": [
+                "cols"
+              ]
+            },
+            {
+              "id": "cols",
+              "type": "net.noodl.visual.columns",
+              "label": "Three up, collapsing",
+              "parameters": {
+                "layoutString": "1 1 1",
+                "marginX": {
+                  "value": 48,
+                  "unit": "px"
+                },
+                "smallBreakpoint": {
+                  "value": 700,
+                  "unit": "px"
+                },
+                "smallLayout": "1"
+              },
+              "parent": "shell",
               "children": [
                 "i1",
                 "i2",
@@ -66667,8 +66685,47 @@
             },
             {
               "id": "i1",
+              "type": "/Components/TrustItem",
+              "label": "Delivery",
+              "parameters": {
+                "title": "Free UK delivery",
+                "body": "On every order over £75, sent next working day.",
+                "iconName": "truck"
+              },
+              "parent": "cols"
+            },
+            {
+              "id": "i2",
+              "type": "/Components/TrustItem",
+              "label": "Small runs",
+              "parameters": {
+                "title": "Made in small runs",
+                "body": "Between 20 and 60 of a thing, then we move on.",
+                "iconName": "hammer"
+              },
+              "parent": "cols"
+            },
+            {
+              "id": "i3",
+              "type": "/Components/TrustItem",
+              "label": "Returns",
+              "parameters": {
+                "title": "30-day returns",
+                "body": "Use it, live with it. Send it back if it is not right.",
+                "iconName": "rotate-ccw"
+              },
+              "parent": "cols"
+            }
+          ],
+          "connections": []
+        },
+        {
+          "name": "/Components/TrustItem",
+          "nodes": [
+            {
+              "id": "root",
               "type": "Group",
-              "label": "Item — Free UK delivery",
+              "label": "Item",
               "parameters": {
                 "width": {
                   "value": 100,
@@ -66678,14 +66735,13 @@
                 "columnGap": "var(--space-3)",
                 "alignItems": "flex-start"
               },
-              "parent": "shell",
               "children": [
-                "i1_icon",
-                "i1_copy"
+                "icon",
+                "copy"
               ]
             },
             {
-              "id": "i1_icon",
+              "id": "icon",
               "type": "net.noodl.visual.icon",
               "label": "Icon",
               "parameters": {
@@ -66700,10 +66756,10 @@
                 },
                 "iconColor": "var(--primary)"
               },
-              "parent": "i1"
+              "parent": "root"
             },
             {
-              "id": "i1_copy",
+              "id": "copy",
               "type": "Group",
               "label": "Copy",
               "parameters": {
@@ -66714,196 +66770,75 @@
                 "flexDirection": "column",
                 "rowGap": "var(--space-1)"
               },
-              "parent": "i1",
+              "parent": "root",
               "children": [
-                "i1_t",
-                "i1_b"
+                "t",
+                "b"
               ]
             },
             {
-              "id": "i1_t",
+              "id": "t",
               "type": "Text",
               "label": "Title",
               "parameters": {
-                "text": "Free UK delivery",
+                "text": "Title",
                 "fontSize": "var(--text-sm)",
                 "fontWeight": "var(--font-semibold)",
                 "color": "var(--foreground)"
               },
-              "parent": "i1_copy"
+              "parent": "copy"
             },
             {
-              "id": "i1_b",
+              "id": "b",
               "type": "Text",
               "label": "Body",
               "parameters": {
-                "text": "On every order over £75, sent next working day.",
+                "text": "Body",
                 "fontSize": "var(--text-sm)",
                 "lineHeight": "var(--leading-normal)",
                 "color": "var(--muted-foreground)"
               },
-              "parent": "i1_copy"
+              "parent": "copy"
             },
             {
-              "id": "i2",
-              "type": "Group",
-              "label": "Item — Made in small runs",
-              "parameters": {
-                "width": {
-                  "value": 100,
-                  "unit": "%"
+              "id": "inputs",
+              "type": "Component Inputs",
+              "label": "What varies per item",
+              "x": 40,
+              "y": 40,
+              "ports": [
+                {
+                  "name": "title",
+                  "plug": "input",
+                  "type": "*"
                 },
-                "flexDirection": "row",
-                "columnGap": "var(--space-3)",
-                "alignItems": "flex-start"
-              },
-              "parent": "shell",
-              "children": [
-                "i2_icon",
-                "i2_copy"
+                {
+                  "name": "body",
+                  "plug": "input",
+                  "type": "*"
+                },
+                {
+                  "name": "iconName",
+                  "plug": "input",
+                  "type": "*"
+                }
               ]
-            },
-            {
-              "id": "i2_icon",
-              "type": "net.noodl.visual.icon",
-              "label": "Icon",
-              "parameters": {
-                "iconIconSource": {
-                  "class": "lucide",
-                  "code": "icon-hammer",
-                  "codeAsClass": true
-                },
-                "iconSize": {
-                  "value": 20,
-                  "unit": "px"
-                },
-                "iconColor": "var(--primary)"
-              },
-              "parent": "i2"
-            },
-            {
-              "id": "i2_copy",
-              "type": "Group",
-              "label": "Copy",
-              "parameters": {
-                "width": {
-                  "value": 100,
-                  "unit": "%"
-                },
-                "flexDirection": "column",
-                "rowGap": "var(--space-1)"
-              },
-              "parent": "i2",
-              "children": [
-                "i2_t",
-                "i2_b"
-              ]
-            },
-            {
-              "id": "i2_t",
-              "type": "Text",
-              "label": "Title",
-              "parameters": {
-                "text": "Made in small runs",
-                "fontSize": "var(--text-sm)",
-                "fontWeight": "var(--font-semibold)",
-                "color": "var(--foreground)"
-              },
-              "parent": "i2_copy"
-            },
-            {
-              "id": "i2_b",
-              "type": "Text",
-              "label": "Body",
-              "parameters": {
-                "text": "Between 20 and 60 of a thing, then we move on.",
-                "fontSize": "var(--text-sm)",
-                "lineHeight": "var(--leading-normal)",
-                "color": "var(--muted-foreground)"
-              },
-              "parent": "i2_copy"
-            },
-            {
-              "id": "i3",
-              "type": "Group",
-              "label": "Item — 30-day returns",
-              "parameters": {
-                "width": {
-                  "value": 100,
-                  "unit": "%"
-                },
-                "flexDirection": "row",
-                "columnGap": "var(--space-3)",
-                "alignItems": "flex-start"
-              },
-              "parent": "shell",
-              "children": [
-                "i3_icon",
-                "i3_copy"
-              ]
-            },
-            {
-              "id": "i3_icon",
-              "type": "net.noodl.visual.icon",
-              "label": "Icon",
-              "parameters": {
-                "iconIconSource": {
-                  "class": "lucide",
-                  "code": "icon-rotate-ccw",
-                  "codeAsClass": true
-                },
-                "iconSize": {
-                  "value": 20,
-                  "unit": "px"
-                },
-                "iconColor": "var(--primary)"
-              },
-              "parent": "i3"
-            },
-            {
-              "id": "i3_copy",
-              "type": "Group",
-              "label": "Copy",
-              "parameters": {
-                "width": {
-                  "value": 100,
-                  "unit": "%"
-                },
-                "flexDirection": "column",
-                "rowGap": "var(--space-1)"
-              },
-              "parent": "i3",
-              "children": [
-                "i3_t",
-                "i3_b"
-              ]
-            },
-            {
-              "id": "i3_t",
-              "type": "Text",
-              "label": "Title",
-              "parameters": {
-                "text": "30-day returns",
-                "fontSize": "var(--text-sm)",
-                "fontWeight": "var(--font-semibold)",
-                "color": "var(--foreground)"
-              },
-              "parent": "i3_copy"
-            },
-            {
-              "id": "i3_b",
-              "type": "Text",
-              "label": "Body",
-              "parameters": {
-                "text": "Use it, live with it. Send it back if it is not right.",
-                "fontSize": "var(--text-sm)",
-                "lineHeight": "var(--leading-normal)",
-                "color": "var(--muted-foreground)"
-              },
-              "parent": "i3_copy"
             }
           ],
-          "connections": []
+          "connections": [
+            {
+              "fromId": "inputs",
+              "fromProperty": "title",
+              "toId": "t",
+              "toProperty": "text"
+            },
+            {
+              "fromId": "inputs",
+              "fromProperty": "body",
+              "toId": "b",
+              "toProperty": "text"
+            }
+          ]
         }
       ]
     },
@@ -67202,22 +67137,24 @@
             },
             {
               "id": "shell",
-              "type": "Group",
-              "label": "Shell",
+              "type": "net.noodl.visual.columns",
+              "label": "Shell (2-up, collapses)",
               "parameters": {
-                "width": {
-                  "value": 100,
-                  "unit": "%"
-                },
-                "maxWidth": {
-                  "value": 1200,
+                "layoutString": "1 1",
+                "marginX": {
+                  "value": 48,
                   "unit": "px"
                 },
-                "flexDirection": "row",
-                "paddingLeft": "var(--space-6)",
-                "paddingRight": "var(--space-6)",
-                "columnGap": "var(--space-16)",
-                "alignItems": "center"
+                "mediumBreakpoint": {
+                  "value": 900,
+                  "unit": "px"
+                },
+                "mediumLayout": "1",
+                "smallBreakpoint": {
+                  "value": 640,
+                  "unit": "px"
+                },
+                "smallLayout": "1"
               },
               "parent": "band",
               "children": [
@@ -67395,306 +67332,213 @@
     },
     {
       "id": "ui-stat-tile-row",
-      "title": "Stat tile row: the top of an admin screen",
-      "description": "Four tiles across the shell, unwrapped so they share the width evenly. Each tile is a card with a muted uppercase label, one large --text-3xl semibold value, and a small delta line in the success or muted colour. The value is the only large thing in the tile — a tile where the label competes with the number reads as a form, not a dashboard. Wire each value from a Query Records count or a Cloud Function output; the label and unit are static.",
+      "title": "Stat tile row: one tile component, four instances, collapsing to two then one",
+      "description": "The top of an admin screen. The tile is its own component — four hand-written copies is a `repeated-sibling-subtree` warning — and the row is a Columns node that folds 4 -> 2 -> 1 as the container narrows. Inside a tile the VALUE is the only large thing: a muted uppercase label, one --text-3xl semibold number, and a small delta line. A tile whose label competes with its number reads as a form, not a dashboard. Wire each value from a Query Records count or a Cloud Function output.",
       "demonstrates": [
+        "net.noodl.visual.columns",
         "Group",
-        "Text"
+        "Text",
+        "Component Inputs"
       ],
       "components": [
         {
           "name": "/Components/StatRow",
           "nodes": [
             {
-              "id": "row",
-              "type": "Group",
-              "label": "Stat row",
+              "id": "cols",
+              "type": "net.noodl.visual.columns",
+              "label": "Four up, folding",
               "parameters": {
-                "width": {
-                  "value": 100,
-                  "unit": "%"
+                "layoutString": "1 1 1 1",
+                "marginX": {
+                  "value": 20,
+                  "unit": "px"
                 },
-                "flexDirection": "row",
-                "columnGap": "var(--space-5)",
-                "alignItems": "stretch"
+                "mediumBreakpoint": {
+                  "value": 900,
+                  "unit": "px"
+                },
+                "mediumLayout": "1 1",
+                "smallBreakpoint": {
+                  "value": 560,
+                  "unit": "px"
+                },
+                "smallLayout": "1"
               },
               "children": [
-                "s1",
-                "s2",
-                "s3",
-                "s4"
+                "t1",
+                "t2",
+                "t3",
+                "t4"
               ]
             },
             {
-              "id": "s1",
-              "type": "Group",
-              "label": "Tile — Revenue, 30 days",
+              "id": "t1",
+              "type": "/Components/StatTile",
+              "label": "Revenue",
               "parameters": {
-                "backgroundColor": "var(--surface)",
-                "borderRadius": "var(--radius-xl)",
-                "borderStyle": "solid",
-                "borderWidth": "var(--border-1)",
-                "borderColor": "var(--border)",
-                "clip": true,
-                "flexDirection": "column",
-                "width": {
-                  "value": 100,
-                  "unit": "%"
-                },
-                "rowGap": "var(--space-2)",
-                "paddingTop": "var(--space-5)",
-                "paddingBottom": "var(--space-5)",
-                "paddingLeft": "var(--space-5)",
-                "paddingRight": "var(--space-5)"
+                "label": "Revenue, 30 days",
+                "value": "£548",
+                "delta": "+12% on last month"
               },
-              "parent": "row",
-              "children": [
-                "s1_l",
-                "s1_v",
-                "s1_d"
-              ]
+              "parent": "cols"
             },
             {
-              "id": "s1_l",
-              "type": "Text",
-              "label": "Label",
+              "id": "t2",
+              "type": "/Components/StatTile",
+              "label": "Orders",
               "parameters": {
-                "text": "Revenue, 30 days",
-                "fontSize": "var(--text-xs)",
-                "fontWeight": "var(--font-semibold)",
-                "letterSpacing": "var(--tracking-widest)",
-                "textTransform": "uppercase",
-                "color": "var(--muted-foreground)"
+                "label": "Orders",
+                "value": "6",
+                "delta": "2 awaiting packing"
               },
-              "parent": "s1"
+              "parent": "cols"
             },
             {
-              "id": "s1_v",
-              "type": "Text",
-              "label": "Value",
+              "id": "t3",
+              "type": "/Components/StatTile",
+              "label": "Live",
               "parameters": {
-                "text": "£548",
-                "fontSize": "var(--text-3xl)",
-                "fontWeight": "var(--font-semibold)",
-                "letterSpacing": "var(--tracking-tight)",
-                "color": "var(--foreground)"
+                "label": "Products live",
+                "value": "9",
+                "delta": "Across 3 categories"
               },
-              "parent": "s1"
+              "parent": "cols"
             },
             {
-              "id": "s1_d",
-              "type": "Text",
-              "label": "Delta",
+              "id": "t4",
+              "type": "/Components/StatTile",
+              "label": "Low stock",
               "parameters": {
-                "text": "+12% on last month",
-                "fontSize": "var(--text-sm)",
-                "color": "var(--muted-foreground)"
+                "label": "Low stock",
+                "value": "2",
+                "delta": "Kettle, Ora vase"
               },
-              "parent": "s1"
-            },
-            {
-              "id": "s2",
-              "type": "Group",
-              "label": "Tile — Orders",
-              "parameters": {
-                "backgroundColor": "var(--surface)",
-                "borderRadius": "var(--radius-xl)",
-                "borderStyle": "solid",
-                "borderWidth": "var(--border-1)",
-                "borderColor": "var(--border)",
-                "clip": true,
-                "flexDirection": "column",
-                "width": {
-                  "value": 100,
-                  "unit": "%"
-                },
-                "rowGap": "var(--space-2)",
-                "paddingTop": "var(--space-5)",
-                "paddingBottom": "var(--space-5)",
-                "paddingLeft": "var(--space-5)",
-                "paddingRight": "var(--space-5)"
-              },
-              "parent": "row",
-              "children": [
-                "s2_l",
-                "s2_v",
-                "s2_d"
-              ]
-            },
-            {
-              "id": "s2_l",
-              "type": "Text",
-              "label": "Label",
-              "parameters": {
-                "text": "Orders",
-                "fontSize": "var(--text-xs)",
-                "fontWeight": "var(--font-semibold)",
-                "letterSpacing": "var(--tracking-widest)",
-                "textTransform": "uppercase",
-                "color": "var(--muted-foreground)"
-              },
-              "parent": "s2"
-            },
-            {
-              "id": "s2_v",
-              "type": "Text",
-              "label": "Value",
-              "parameters": {
-                "text": "6",
-                "fontSize": "var(--text-3xl)",
-                "fontWeight": "var(--font-semibold)",
-                "letterSpacing": "var(--tracking-tight)",
-                "color": "var(--foreground)"
-              },
-              "parent": "s2"
-            },
-            {
-              "id": "s2_d",
-              "type": "Text",
-              "label": "Delta",
-              "parameters": {
-                "text": "2 awaiting packing",
-                "fontSize": "var(--text-sm)",
-                "color": "var(--muted-foreground)"
-              },
-              "parent": "s2"
-            },
-            {
-              "id": "s3",
-              "type": "Group",
-              "label": "Tile — Products live",
-              "parameters": {
-                "backgroundColor": "var(--surface)",
-                "borderRadius": "var(--radius-xl)",
-                "borderStyle": "solid",
-                "borderWidth": "var(--border-1)",
-                "borderColor": "var(--border)",
-                "clip": true,
-                "flexDirection": "column",
-                "width": {
-                  "value": 100,
-                  "unit": "%"
-                },
-                "rowGap": "var(--space-2)",
-                "paddingTop": "var(--space-5)",
-                "paddingBottom": "var(--space-5)",
-                "paddingLeft": "var(--space-5)",
-                "paddingRight": "var(--space-5)"
-              },
-              "parent": "row",
-              "children": [
-                "s3_l",
-                "s3_v",
-                "s3_d"
-              ]
-            },
-            {
-              "id": "s3_l",
-              "type": "Text",
-              "label": "Label",
-              "parameters": {
-                "text": "Products live",
-                "fontSize": "var(--text-xs)",
-                "fontWeight": "var(--font-semibold)",
-                "letterSpacing": "var(--tracking-widest)",
-                "textTransform": "uppercase",
-                "color": "var(--muted-foreground)"
-              },
-              "parent": "s3"
-            },
-            {
-              "id": "s3_v",
-              "type": "Text",
-              "label": "Value",
-              "parameters": {
-                "text": "9",
-                "fontSize": "var(--text-3xl)",
-                "fontWeight": "var(--font-semibold)",
-                "letterSpacing": "var(--tracking-tight)",
-                "color": "var(--foreground)"
-              },
-              "parent": "s3"
-            },
-            {
-              "id": "s3_d",
-              "type": "Text",
-              "label": "Delta",
-              "parameters": {
-                "text": "Across 3 categories",
-                "fontSize": "var(--text-sm)",
-                "color": "var(--muted-foreground)"
-              },
-              "parent": "s3"
-            },
-            {
-              "id": "s4",
-              "type": "Group",
-              "label": "Tile — Low stock",
-              "parameters": {
-                "backgroundColor": "var(--surface)",
-                "borderRadius": "var(--radius-xl)",
-                "borderStyle": "solid",
-                "borderWidth": "var(--border-1)",
-                "borderColor": "var(--border)",
-                "clip": true,
-                "flexDirection": "column",
-                "width": {
-                  "value": 100,
-                  "unit": "%"
-                },
-                "rowGap": "var(--space-2)",
-                "paddingTop": "var(--space-5)",
-                "paddingBottom": "var(--space-5)",
-                "paddingLeft": "var(--space-5)",
-                "paddingRight": "var(--space-5)"
-              },
-              "parent": "row",
-              "children": [
-                "s4_l",
-                "s4_v",
-                "s4_d"
-              ]
-            },
-            {
-              "id": "s4_l",
-              "type": "Text",
-              "label": "Label",
-              "parameters": {
-                "text": "Low stock",
-                "fontSize": "var(--text-xs)",
-                "fontWeight": "var(--font-semibold)",
-                "letterSpacing": "var(--tracking-widest)",
-                "textTransform": "uppercase",
-                "color": "var(--muted-foreground)"
-              },
-              "parent": "s4"
-            },
-            {
-              "id": "s4_v",
-              "type": "Text",
-              "label": "Value",
-              "parameters": {
-                "text": "2",
-                "fontSize": "var(--text-3xl)",
-                "fontWeight": "var(--font-semibold)",
-                "letterSpacing": "var(--tracking-tight)",
-                "color": "var(--foreground)"
-              },
-              "parent": "s4"
-            },
-            {
-              "id": "s4_d",
-              "type": "Text",
-              "label": "Delta",
-              "parameters": {
-                "text": "Kettle, Ora vase",
-                "fontSize": "var(--text-sm)",
-                "color": "var(--muted-foreground)"
-              },
-              "parent": "s4"
+              "parent": "cols"
             }
           ],
           "connections": []
+        },
+        {
+          "name": "/Components/StatTile",
+          "nodes": [
+            {
+              "id": "tile",
+              "type": "Group",
+              "label": "Tile",
+              "parameters": {
+                "backgroundColor": "var(--surface)",
+                "borderRadius": "var(--radius-xl)",
+                "borderStyle": "solid",
+                "borderWidth": "var(--border-1)",
+                "borderColor": "var(--border)",
+                "clip": true,
+                "flexDirection": "column",
+                "width": {
+                  "value": 100,
+                  "unit": "%"
+                },
+                "rowGap": "var(--space-2)",
+                "paddingTop": "var(--space-5)",
+                "paddingBottom": "var(--space-5)",
+                "paddingLeft": "var(--space-5)",
+                "paddingRight": "var(--space-5)"
+              },
+              "children": [
+                "l",
+                "v",
+                "d"
+              ]
+            },
+            {
+              "id": "l",
+              "type": "Text",
+              "label": "Label",
+              "parameters": {
+                "text": "Label",
+                "fontSize": "var(--text-xs)",
+                "fontWeight": "var(--font-semibold)",
+                "letterSpacing": "var(--tracking-widest)",
+                "textTransform": "uppercase",
+                "color": "var(--muted-foreground)"
+              },
+              "parent": "tile"
+            },
+            {
+              "id": "v",
+              "type": "Text",
+              "label": "Value",
+              "parameters": {
+                "text": "0",
+                "fontSize": "var(--text-3xl)",
+                "fontWeight": "var(--font-semibold)",
+                "letterSpacing": "var(--tracking-tight)",
+                "color": "var(--foreground)"
+              },
+              "parent": "tile"
+            },
+            {
+              "id": "d",
+              "type": "Text",
+              "label": "Delta",
+              "parameters": {
+                "text": "",
+                "fontSize": "var(--text-sm)",
+                "color": "var(--muted-foreground)"
+              },
+              "parent": "tile"
+            },
+            {
+              "id": "inputs",
+              "type": "Component Inputs",
+              "label": "What varies per tile",
+              "x": 40,
+              "y": 40,
+              "ports": [
+                {
+                  "name": "label",
+                  "plug": "input",
+                  "type": "*"
+                },
+                {
+                  "name": "value",
+                  "plug": "input",
+                  "type": "*"
+                },
+                {
+                  "name": "delta",
+                  "plug": "input",
+                  "type": "*"
+                }
+              ]
+            }
+          ],
+          "connections": [
+            {
+              "fromId": "inputs",
+              "fromProperty": "label",
+              "toId": "l",
+              "toProperty": "text"
+            },
+            {
+              "fromId": "inputs",
+              "fromProperty": "value",
+              "toId": "v",
+              "toProperty": "text"
+            },
+            {
+              "fromId": "inputs",
+              "fromProperty": "delta",
+              "toId": "d",
+              "toProperty": "text"
+            },
+            {
+              "fromId": "inputs",
+              "fromProperty": "delta",
+              "toId": "d",
+              "toProperty": "visible"
+            }
+          ]
         }
       ]
     },

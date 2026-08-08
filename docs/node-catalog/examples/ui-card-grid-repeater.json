@@ -1,11 +1,11 @@
 {
   "id": "ui-card-grid-repeater",
-  "title": "Card grid: Query Records into a Repeater, with track widths that survive a resize",
-  "description": "A three-across card grid fed by the database. THE trap this exists to teach: a wrapped flex row does NOT shrink its children the way an unwrapped one does, so every grid item needs an explicit track width — items left at width 100% render one per row at full container width, which is the single most common reason an AI card grid comes out as a stack. State the track in PERCENT and the gap in PERCENT (32% + 2% + 32% + 2% + 32% = 100%); a percent track with a px gap only adds up at one viewport width. Repeater items are direct flex children of the grid Group, so the width belongs on the item component root. Record fields reach the item through Component Inputs whose names match the record properties.",
+  "title": "Card grid: Query Records into a Repeater, in a Columns node that reflows on its own",
+  "description": "The canonical data grid, and the layout decision most often got wrong. Use a Columns node with sizing \"autoFit\" and a minWidth of 260-320px: it fits as many columns as the CONTAINER holds and reflows by itself, with no breakpoints to maintain. Columns handles a Repeater child correctly — the Repeater draws nothing and adds its items as siblings, so Columns skips it and gives each real item a column box. The card component is width 100% and lets the column size it, which is what makes the SAME card work in this grid, in a 2-up related row, and in a sidebar. Do NOT reach for a Group with flexWrap: a wrapped flex row does not shrink its children, so each item needs a hardcoded percentage track, and — the part that matters — no Group anywhere in the runtime has a breakpoint, so that layout can never collapse on a narrow screen. Record fields reach the item through Component Inputs whose names match the record properties, and wiring a field straight into a Group's visible port is conditional rendering with no logic node.",
   "demonstrates": [
+    "net.noodl.visual.columns",
     "For Each",
     "DbCollection2",
-    "Group",
     "Component Inputs",
     "Image",
     "Text"
@@ -69,21 +69,18 @@
         },
         {
           "id": "grid",
-          "type": "Group",
+          "type": "net.noodl.visual.columns",
           "label": "Card grid",
           "parameters": {
-            "width": {
-              "value": 100,
-              "unit": "%"
+            "sizing": "autoFit",
+            "minWidth": {
+              "value": 280,
+              "unit": "px"
             },
-            "flexDirection": "row",
-            "flexWrap": "wrap",
-            "columnGap": {
-              "value": 2,
-              "unit": "%"
-            },
-            "rowGap": "var(--space-10)",
-            "alignItems": "stretch"
+            "marginX": {
+              "value": 12,
+              "unit": "px"
+            }
           },
           "parent": "shell",
           "children": [
@@ -133,7 +130,7 @@
             "clip": true,
             "flexDirection": "column",
             "width": {
-              "value": 32,
+              "value": 100,
               "unit": "%"
             }
           },
