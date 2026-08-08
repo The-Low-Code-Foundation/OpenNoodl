@@ -75,6 +75,17 @@ component and the parameter set.
 
 ### 2. Interface-driven parameters
 
+> ⚠️ **CORRECTION, 2026-08-08, paid for with a red suite.** The line below says
+> `plug === 'output'` and it is **wrong** — that filter returns the component's
+> *outputs*, so the inputs rail comes back empty. There are **two** inversions:
+> a port *declared* on a `Component Inputs` node carries `plug: 'output'` (that
+> is LAS-001), and `getPorts()` then *republishes* it as `plug: 'input'`,
+> because to an instance of the component it is an input. The runtime settles
+> it — [`noodl-runtime/src/models/componentmodel.ts:478`](../../../packages/noodl-runtime/src/models/componentmodel.ts#L478)
+> reads the exported ports array (which is `getPorts()` verbatim) and calls
+> `addInputPort` for `plug === 'input'`. Reasoning that stops at the first
+> inversion gets the answer exactly backwards, which is what happened here.
+
 Read the target's inputs via `ComponentModel.getPorts()` filtered to `plug === 'output'`
 ([componentmodel.ts:91](../../../packages/noodl-editor/src/editor/src/models/componentmodel.ts#L91)),
 cross-checked against `validation/componentInterface.ts` where a declared interface exists (it is the

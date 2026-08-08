@@ -19,10 +19,29 @@
  *
  * — and the runtime then feeds the instance exactly as a page would.
  *
- * ⚠️ **A component input port is declared `plug: 'output'`** (`componentmodel`
- * `getPorts`): it is an output *of the Component Inputs node*, which is an
- * input *of the instance*. Phase-55 F8 and F23 are both this inversion and both
- * shipped. Setting values as instance `parameters` is the right side of it.
+ * ## The plug inversion, which is **two** inversions and not one
+ *
+ * This cost a red suite, so it is written down in full:
+ *
+ * 1. A port **declared** on a `Component Inputs` node carries `plug: 'output'`.
+ *    It is an output *of that node*, feeding the graph around it. LAS-001 is
+ *    this fact; phase-55 F8 and F23 are both it, and both shipped.
+ * 2. `ComponentModel.getPorts()` then **republishes** it as `plug: 'input'` —
+ *    because from the point of view of an *instance* of the component it is an
+ *    input, which is the direction that matters to everyone downstream.
+ *
+ * So the two `plug` values describe the same port from opposite ends, and the
+ * one this module wants is the second. The runtime settles it:
+ * `noodl-runtime/src/models/componentmodel.ts` reads the exported `ports` array
+ * — which is `getPorts()` verbatim — and calls `addInputPort` for
+ * `plug === 'input'`. Verified against the corpus fixture too: `Share Item`
+ * declares `Icon Src Set`/`Label` as `output` on its Component Inputs node and
+ * `Click` as `input` on its Component Outputs node, and `getPorts()` returns
+ * the first two as `'input'` and `Click` as `'output'`.
+ *
+ * ⚠️ **The BEN-001 task file says `plug === 'output'` and is wrong.** So is any
+ * reasoning that stops at inversion 1. Setting the values as instance
+ * `parameters` is the right side of both.
  *
  * ⚠️ **A component instance carries zero built-in ports** (LAS-001). Every
  * parameter the harness sets must name a real declared input or it is the exact
@@ -72,6 +91,12 @@ export const BENCH_COMPONENT_NAME = '/#bench';
 
 /** The id of the instance node inside the harness — stable, so `rootNode` is predictable. */
 export const BENCH_NODE_ID = 'bench-subject';
+
+/**
+ * How `getPorts()` publishes a component **input**. See the module note: this
+ * is the *second* of the two inversions, and it is the one the runtime reads.
+ */
+const PUBLISHED_AS_INPUT = 'input';
 
 /** One input the bench can offer a control for. Shaped as `getPorts()` publishes it. */
 export interface BenchPort {
@@ -150,9 +175,10 @@ function findComponent(project: ProjectModel, target: string): ComponentModel | 
  * nothing comes back `'*'` with no default, which on the corpus is the normal
  * path and not an edge case. The form degrades — it does not guess.
  *
- * `backwards` is read the way `validation/componentInterface` reads it, off the
- * raw declared ports, because a port plugged the wrong way is absent from
- * `getPorts`' input side entirely and its absence is the thing worth naming.
+ * `backwards` is read off the **raw declared** ports instead, the way
+ * `validation/componentInterface` reads them, because a port pointed the wrong
+ * way does not appear on `getPorts()`' input side at all — it silently crosses
+ * to the output side, and its absence from the rail is the thing worth naming.
  */
 export function benchInterface(component: ComponentModel): BenchInterface {
   const ports = component.getPorts() ?? [];
@@ -168,8 +194,8 @@ export function benchInterface(component: ComponentModel): BenchInterface {
       index: port.index
     };
     // The inversion, and the only line in this module that depends on it.
-    if (port.plug === 'output') inputs.push(entry);
-    else if (port.plug === 'input') outputs.push(entry);
+    if (port.plug === PUBLISHED_AS_INPUT) inputs.push(entry);
+    else if (port.plug === 'output') outputs.push(entry);
   }
 
   const declared = new Set(inputs.map((p) => p.name));

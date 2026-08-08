@@ -46,14 +46,33 @@ function rootNodeOf(json: { components: Array<{ name: string; nodes?: TSFixme[] 
 
 describe('BEN-001 the component interface, as the bench reads it', () => {
   it('reads declared inputs off the plug the runtime agrees with', () => {
-    // ⚠️ The inversion: a component INPUT is a port on a Component Inputs node
-    // whose own plug is "output". Phase-55 F8 and F23 are both this, and both
-    // shipped. If this spec ever inverts, the rail goes empty and the outputs
-    // rail fills up with things you are supposed to be able to type into.
-    const iface = benchInterface(loadProject().getComponentWithName(SHARE_ITEM));
+    // ⚠️ TWO inversions, not one, and the first draft of this module got it
+    // wrong because it stopped at the first — as does the BEN-001 task file.
+    //
+    //   1. the port DECLARED on the Component Inputs node carries plug
+    //      "output" — it is an output of that node (LAS-001, phase-55 F8/F23);
+    //   2. `getPorts()` REPUBLISHES it as plug "input", because to an instance
+    //      of the component it is an input.
+    //
+    // The runtime settles which one anything downstream means:
+    // `noodl-runtime/src/models/componentmodel.ts` reads the exported ports
+    // array — `getPorts()` verbatim — and calls `addInputPort` for
+    // plug === 'input'. Get this backwards and the inputs rail goes empty while
+    // the outputs rail fills with the things you are meant to type into.
+    const component = loadProject().getComponentWithName(SHARE_ITEM);
 
+    // What the fixture declares, so the two ends are visible in one place.
+    const declared: Record<string, string> = {};
+    component.graph.forEachNode((node: TSFixme) => {
+      for (const port of node.ports ?? []) declared[`${node.typename} ${port.name}`] = port.plug;
+    });
+    expect(declared['Component Inputs Label']).toBe('output');
+    expect(declared['Component Outputs Click']).toBe('input');
+
+    // …and what `getPorts()` makes of them: the other way round, both times.
+    const iface = benchInterface(component);
     expect(iface.inputs.map((p) => p.name).sort()).toEqual(['Icon Src Set', 'Label']);
-    expect(iface.inputs.map((p) => p.name)).not.toContain('Do');
+    expect(iface.outputs.map((p) => p.name)).toEqual(['Click']);
     expect(iface.backwards).toEqual([]);
   });
 

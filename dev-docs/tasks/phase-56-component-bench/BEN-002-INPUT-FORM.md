@@ -12,6 +12,14 @@ The schema for this form already exists and nobody has ever rendered it as a for
 ```
 — [componentmodel.ts:167-198](../../../packages/noodl-editor/src/editor/src/models/componentmodel.ts#L167-L198)
 
+> ⚠️ **CORRECTION, 2026-08-08.** The next sentence is wrong about which end it is
+> describing. On a port **declared** on a `Component Inputs` node, `plug: 'output'`
+> means a component input (LAS-001). But `getPorts()` — the function this section
+> is about — **republishes** it as `plug: 'input'`. The rail must filter
+> `getPorts()` on `plug === 'input'`; see BEN-001's correction and register **B5**.
+> Use `benchInterface()` from `componentBench.ts`, which already does this and is
+> the only place in the phase that should have to know.
+
 `plug: 'output'` means an **input** of the component (the inversion; see BEN-001). `group` is already
 populated and already used by the component ports panel, so the rail gets grouping for free.
 
