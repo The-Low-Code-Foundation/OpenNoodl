@@ -3,6 +3,7 @@ module.exports = {
   preset: 'ts-jest',
   testEnvironment: 'node',
   testMatch: ['<rootDir>/tests/**/*.test.ts'],
+  setupFiles: ['<rootDir>/tests/setupEnv.js'],
   // The enriched catalog import makes the first transform slow; keep workers modest.
   maxWorkers: 2,
   transform: {

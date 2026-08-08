@@ -14,6 +14,7 @@ import { registerCatalogTools } from './tools/catalogTools';
 import { registerDocsReadTools, registerDocsWriteTools } from './tools/docsTools';
 import { registerImportReportTool } from './tools/importReportTool';
 import { registerReadTools } from './tools/read';
+import { registerRenderTools } from './tools/renderTools';
 import { registerStyleReadTools, registerStyleWriteTools } from './tools/styleTools';
 import { registerValidateTools } from './tools/validateTools';
 import { registerCreateProjectTools } from './tools/createProject';
@@ -67,7 +68,15 @@ export function createServer(options: ServerOptions): CreatedServer {
         '(it creates, starts and binds a local backend and pre-seeds the collections you name — declare their ' +
         'columns, or the Record nodes get no prop-* ports), then plan the components against it. It is ' +
         'deliberately not a plan operation: it starts a process and creates a database, which a plan cannot ' +
-        'roll back.'
+        'roll back. ' +
+        // LAS-005. Push, not pull: the audit measured a mid-tier model that
+        // never once retrieved a recipe it was told existed, and a strong one
+        // that improvised a verification loop through Bash and still shipped the
+        // wrong photograph. Retrieval advice does nothing; naming the tool here,
+        // where every session reads it, is the only thing that has worked.
+        'VERIFY BY LOOKING: when you have written anything visual, call render_report. It renders the project ' +
+        'headless (~8s) and returns the numbers AND screenshots — a graph is a claim, a render is evidence, ' +
+        'and an image URL that returns 200 can still be a picture of the wrong thing.'
     }
   );
 
@@ -83,6 +92,10 @@ export function createServer(options: ServerOptions): CreatedServer {
   // AIX-010 — read-only: assembles the docs-retrofit context. The caller drafts
   // and writes back through write_project_doc.
   registerReviewTools(server, store);
+  // LAS-005 — read-only and unconditional, the same posture as the rest of the
+  // read surface: rendering a project changes nothing about it, and a read-only
+  // server is exactly where "is this page actually right?" gets asked.
+  registerRenderTools(server, store);
   if (options.allowWrites) {
     registerAuthorTools(server, store);
     registerPlanTools(server, store);

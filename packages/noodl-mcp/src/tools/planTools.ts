@@ -45,6 +45,7 @@ import {
   assertInsideDocs,
   buildComponentRefs,
   diagnosticKey,
+  isComponentRef,
   DocPathError,
   formatDiagnosticLine,
   isBlockingForAuthoredOutput,
@@ -56,6 +57,7 @@ import {
 import type { ConnectionV2 } from '../editor-deps';
 import { catalogIndex } from '../catalog';
 import { ToolError } from '../errors';
+import { automaticRenderDisabled, runRenderReport } from '../render';
 import type { ComponentFiles } from '../graph';
 import { reconcileHierarchy } from '../graph';
 import { deconflictNodeIds, remapNote } from '../project/nodeIds';
@@ -204,6 +206,62 @@ function validationBlock(
 ): WriteValidationSummary | Record<string, never> {
   if (diagnostics.length === 0) return {};
   return { validation: { summary, diagnostics: [...diagnostics] } };
+}
+
+/**
+ * Did this operation put anything on a screen?
+ *
+ * The question decides whether `apply_plan` renders by default, so it errs
+ * toward yes: a component that declares visual roots, holds a node the catalog
+ * calls visual, or instantiates another project component (whose visual-ness
+ * this cannot see from here) counts. A plan that only writes logic or cloud
+ * functions renders nothing worth eight seconds.
+ */
+function wroteSomethingVisual(plan: ServerPlan, operation: PlanOperation): boolean {
+  const files = plan.staged.get(operation.id);
+  if (!files) return false;
+  if (files.nodes.visualRoots && files.nodes.visualRoots.length > 0) return true;
+  const catalog = catalogIndex();
+  return files.nodes.nodes.some((node) => isComponentRef(node.type) || catalog.getNode(node.type)?.isVisual === true);
+}
+
+/**
+ * The numeric half of a render report, or a note saying why there is none.
+ *
+ * A failure here is never a failure of the apply — the plan is already on disk
+ * and discarded by the time this runs. So the environment problems that make
+ * `render_report` throw (no viewer bundle, no Chrome) come back as a sentence
+ * inside the response instead, naming the fix. Anything else is swallowed to a
+ * short note for the same reason: "your write succeeded but the optional
+ * screenshot tool crashed" must not read like "your write failed".
+ */
+async function renderSummaryFor(store: ProjectStore): Promise<Record<string, unknown>> {
+  try {
+    const { report } = await runRenderReport(store.projectDir, { screenshot: 'none' });
+    return {
+      summary: report.summary,
+      findings: report.findings,
+      viewports: Object.fromEntries(
+        Object.entries(report.viewports).map(([name, v]) => [
+          name,
+          {
+            layoutWidth: v.layoutWidth,
+            pageHeight: v.pageHeight,
+            texts: v.text.elements,
+            images: v.images.total,
+            brokenImages: v.images.broken,
+            placeholderTexts: v.placeholders.count
+          }
+        ])
+      ),
+      note: 'Numbers only. Call render_report for the screenshots — a picture that loads is not a picture of the right thing.'
+    };
+  } catch (err) {
+    return {
+      skipped: err instanceof ToolError ? err.message : `The render did not run: ${(err as Error).message}`,
+      note: 'The plan was applied. Only the render check was skipped; call render_report to retry it.'
+    };
+  }
 }
 
 /**
@@ -586,10 +644,21 @@ export function registerPlanTools(server: McpServer, store: ProjectStore): void 
         skip: z
           .array(z.string())
           .optional()
-          .describe('Operation ids deliberately left out — the explicit partial apply')
+          .describe('Operation ids deliberately left out — the explicit partial apply'),
+        // LAS-005 §4. Default on for anything visual: the turn that just wrote
+        // the page is the turn that can still fix it, and an agent that has to
+        // decide to look is an agent that does not.
+        render: z
+          .enum(['summary', 'off'])
+          .optional()
+          .describe(
+            'summary (the default when the plan wrote anything visual) renders the project and appends the ' +
+              'numbers — broken images, dead placeholder texts, one-column grids. Call render_report for the ' +
+              'screenshots.'
+          )
       }
     },
-    guarded((args: { plan_id: string; skip?: string[] }) => {
+    guarded(async (args: { plan_id: string; skip?: string[]; render?: 'summary' | 'off' }) => {
       const serverPlan = mustGetPlan(args.plan_id);
       const skip = new Set(args.skip ?? []);
 
@@ -706,6 +775,19 @@ export function registerPlanTools(server: McpServer, store: ProjectStore): void 
       }
 
       plans.delete(serverPlan.id);
+
+      // LAS-005 §4 — the loop closed where it costs nothing to close it. The
+      // agent that just applied a plan is told, in the same turn, that its grid
+      // is one column and five images are broken; without this it has to decide
+      // to go and look, and the audit measured that a mid-tier model never does.
+      // Screenshots are deliberately NOT here: they belong to `render_report`,
+      // which the caller reaches for when the numbers say something is wrong.
+      const wantsRender =
+        args.render !== 'off' &&
+        !automaticRenderDisabled() &&
+        componentOps.some((op) => wroteSomethingVisual(serverPlan, op));
+      const render = wantsRender ? await renderSummaryFor(store) : undefined;
+
       return jsonResult({
         applied,
         docs: docsWritten,
@@ -713,6 +795,7 @@ export function registerPlanTools(server: McpServer, store: ProjectStore): void 
         ...registrationSummary(registration),
         ...(settingsWritten.length > 0 ? { settings: settingsWritten } : {}),
         ...validationBlock(surviving, summarize(surviving)),
+        ...(render ? { render } : {}),
         note: 'Plan applied and discarded. Re-read components with get_component for fresh revisions.'
       });
     })

@@ -11,9 +11,20 @@
 import { ToolError } from '../errors';
 import type { ToolErrorPayload } from './responses';
 
+/**
+ * MCP content blocks a tool may return.
+ *
+ * Image blocks arrived with LAS-005's `render_report`: the report's numbers say
+ * five images failed to load, and only the picture says the sixth is a
+ * motorcycle. Everything else in this server returns one text block.
+ */
+export type ToolContent =
+  | { type: 'text'; text: string }
+  | { type: 'image'; data: string; mimeType: string };
+
 export interface ToolResult {
   [key: string]: unknown;
-  content: Array<{ type: 'text'; text: string }>;
+  content: ToolContent[];
   isError?: boolean;
 }
 

@@ -6,6 +6,7 @@
  *   node scripts/devtools/measure-from-disk.js <project-dir> [options]
  *
  *   --json                   the full report as JSON on stdout, nothing else
+ *   --inline-screenshots     with --json, include the PNGs as base64 in it
  *   --out <prefix>           write <prefix>-<viewport>.png (default: no files)
  *   --viewports <list>       "desktop,phone" or "1280x900,390x844"
  *   --screenshot <mode>      full | viewport | none        (default: full)
@@ -91,8 +92,15 @@ async function main() {
     }
   }
 
-  if (asJson) console.log(JSON.stringify(report, null, 2));
-  else printHuman(report, files);
+  if (asJson) {
+    // `--inline-screenshots` is how the MCP `render_report` tool gets the
+    // pictures: it runs this CLI as a child process rather than importing the
+    // module, so a Chrome that wedges cannot take the server down with it.
+    const payload = argv.includes('--inline-screenshots') ? { ...report, screenshots } : report;
+    console.log(JSON.stringify(payload, null, 2));
+  } else {
+    printHuman(report, files);
+  }
 
   // Exit 0 regardless of findings: the report is the verdict, and a non-zero
   // exit would make every driving harness treat "the page has a defect" as
@@ -100,7 +108,17 @@ async function main() {
 }
 
 main().catch((e) => {
-  if (e.actionable) {
+  // In --json mode the failure has to be machine-readable too, or the caller
+  // that asked for JSON gets prose on a channel it does not read.
+  if (asJson) {
+    console.log(
+      JSON.stringify(
+        { error: { actionable: Boolean(e.actionable), message: e.message, problems: e.problems ?? [e.message] } },
+        null,
+        2
+      )
+    );
+  } else if (e.actionable) {
     console.error('Cannot render:');
     for (const problem of e.problems) console.error(`  - ${problem}`);
   } else {
