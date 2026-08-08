@@ -1,0 +1,61 @@
+# model-finished turns=34 costUsd=7.86 durS=487
+get_project_info
+list_components
+list_project_docs
+get_style_vocabulary
+get_project_doc
+get_project_doc
+get_project_doc
+get_component
+get_component
+list_node_types
+list_node_types
+list_node_types
+get_node_type
+get_node_type
+list_node_types
+list_node_types
+get_example
+get_example
+get_example
+get_example
+get_node_type
+list_node_types
+get_node_type
+list_node_types
+get_example
+get_example
+get_example
+get_node_type
+list_node_types
+get_node_type
+get_style_vocabulary
+get_node_type
+get_node_type
+get_node_type
+get_node_type
+get_node_type
+get_node_type
+list_examples
+list_examples
+list_examples
+list_node_types
+get_project_doc
+get_node_type
+get_example
+get_node_type
+get_node_type
+get_node_type
+get_example
+get_node_type
+get_node_type
+get_node_type
+get_node_type
+get_node_type
+
+# --- rejections: 0 of 53 calls (0 carried a LAS-007 recipe) ---
+
+# --- diagnostic codes seen by the model ---
+3	repeated-sibling-subtree
+
+# --- what each rejection actually said ---

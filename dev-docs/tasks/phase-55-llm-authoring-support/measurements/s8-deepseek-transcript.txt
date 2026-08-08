@@ -1,0 +1,88 @@
+# max-turns turns=60 costUsd=5.83 durS=642
+get_project_info
+get_style_vocabulary
+list_project_docs
+get_project_doc
+get_project_doc
+get_project_doc
+get_component
+get_component
+create_plan
+get_node_type
+get_node_type
+get_node_type
+stage_plan_operation
+stage_plan_operation
+stage_plan_operation
+stage_plan_operation
+stage_plan_operation
+stage_plan_operation
+stage_plan_operation
+discard_plan
+create_plan
+stage_plan_operation
+stage_plan_operation
+stage_plan_operation
+stage_plan_operation
+stage_plan_operation
+stage_plan_operation
+stage_plan_operation
+stage_plan_operation
+stage_plan_operation
+stage_plan_operation
+stage_plan_operation
+stage_plan_operation
+stage_plan_operation
+stage_plan_operation
+apply_plan
+get_component
+update_component
+render_report
+get_component
+get_component
+validate_component
+validate_project
+update_component
+update_component
+render_report
+get_component
+create_component
+render_report
+update_component
+render_report
+list_components
+update_component
+update_component
+render_report
+validate_project
+update_component
+render_report
+get_component
+get_node_type
+update_component
+render_report
+delete_component
+update_component
+update_component
+update_component
+
+# --- rejections: 8 of 66 calls (1 carried a LAS-007 recipe) ---
+6	stage_plan_operation
+1	get_node_type
+1	update_component
+
+# --- diagnostic codes seen by the model ---
+10	unknown-parameter
+5	invalid-parameter-value
+2	inactive-conditional-parameter
+1	repeated-sibling-subtree
+
+# --- what each rejection actually said ---
+[get_node_type] MCP error -32602: Input validation error: Invalid arguments for tool get_node_type: [ { "code": "too_big", "maximum": 8, "type": "array", "inclusive": true, "exact": false, "message": "Array must contain at most 8 elemen
+[stage_plan_operation] MCP error -32602: Input validation error: Invalid arguments for tool stage_plan_operation: [ { "code": "invalid_type", "expected": "array", "received": "string", "path": [ "nodes" ], "message": "Expected array, received 
+[stage_plan_operation] validation-failed · stage_plan_operation "Components/ProductCard" rejected — nothing was staged. · 4 diag: WARN [unknown-parameter] /Components/ProductCard › node pc-badges "Badges" (Group) › input "top": Group has no input port "top", so this parameter is 
+[stage_plan_operation] validation-failed · stage_plan_operation "Components/FooterLinkColumn" rejected — nothing was staged. · 1 diag: ERROR [repeater-with-visual-children] /Components/FooterLinkColumn › node flc-repeater "Link Repeater" (For Each) › input "template": This Repeater ha · +2 recipe(s)
+[stage_plan_operation] validation-failed · stage_plan_operation "Components/FooterLinkColumn" rejected — nothing was staged. · 1 diag: Operation op-4 planned Components/FooterLinkColumn with inputs "heading", "links", but it exposes "heading", "link1", "link2", "link3", "link4". Missi
+[stage_plan_operation] validation-failed · stage_plan_operation "Components/NavBar" rejected — nothing was staged. · 6 diag: WARN [unknown-parameter] /Components/NavBar › node nav-basket-count "Item Count" (Text) › input "backgroundColor": Text has no input port "backgroundC
+[stage_plan_operation] validation-failed · stage_plan_operation "Components/TrustStrip" rejected — nothing was staged. · 2 diag: WARN [unknown-parameter] /Components/TrustStrip › node ts-columns "Trust Columns" (net.noodl.visual.columns) › input "width": net.noodl.visual.columns
+[update_component] validation-failed · update_component "Components/NavBar" rejected — nothing was written. · 1 diag: ERROR [invalid-parameter-value] /Components/NavBar › node nav-root "Nav Bar" (Group) › input "height": parameter "height" (dimension) expects a number

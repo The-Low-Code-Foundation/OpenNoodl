@@ -261,6 +261,91 @@ column. The matrix below is normalised to **connections / endpoints**, both stat
 only and never the precondition checks. The row is kept for continuity; the interface question is
 answered by the scorer's `varying instances w/o input` line instead.
 
+## Session 8 — the 2026-class open-weight models, and the defect they both found
+
+**Asked for by Richard 2026-08-08**, after the verdict: replay the brief on two current open-weight
+models rather than the 27B that session 6 could only get blocked. Both were picked off DeepInfra's
+live catalog and both carry the `tools` tag and a **1,048,576-token context**, so **F37's
+32k-context lockout does not apply to either** — the 89-tool floor fits with room to spare.
+
+⚠️ **These two rows are NOT on session 6's stack, and the difference is named.** Session 6 pinned
+`67284cc5`; these ran at `6ad5c3ca`, which includes **LAS-012's repeater-contract gate** (three new
+authored-blocking codes) and **F41's create→update coercion**. The *tool surface* is identical —
+both runs report `tools=89 schemaChars=100512`, the same numbers session 6 measured — so the
+comparison holds on cost and turn count; the gates are stricter, which if anything is a harder bar.
+The prompt was the **byte-identical `prompt.txt` from session 6**, not a reconstruction.
+
+| | DeepSeek V4 Pro | Kimi K3 |
+|---|---|---|
+| model / price | `deepseek-ai/DeepSeek-V4-Pro` · $1.30/$2.60 per MTok | `moonshotai/Kimi-K3` · $2.85/$14.25 per MTok |
+| stop reason | **max-turns (60)** — still working | model-finished at 57 |
+| components / page-own nodes | 12 / 8 | **11 / 25** |
+| Component Inputs where instances vary | ✓ 5 components, 16 ports | ✓ 4 components, 19 ports |
+| varying instances with no port to land on | none ✓ | none ✓ |
+| repeaters over data | **1 For Each, `template` set** | **2 For Each + 2 Static Data** |
+| Columns where layout must reflow | 4 | 5 |
+| connections / endpoints | 17 / 33 | **75 / 140** |
+| States / Component Outputs | 0 / 0 | 0 / **8** |
+| validate: errors / warnings | 0 / 0 (108 nodes) | 0 / 0 (149 nodes) |
+| render report, **as run** | **blank-render, 0 texts** (F43) | "Rendered clean", 83 texts, 10 images |
+| render report, **defect undone** | **clean: 91 texts, 8 images**, desktop 2704px, phone 6128px | — |
+| turns / cost | 60 / **$5.83** | 57 / **$17.01** (+$7.86 void run, F42) |
+| rejections / calls | 8 / 66 (1 carried a recipe) | **5 / 91** (0 carried a recipe) |
+| **the page actually built** | **the whole brief** — nav, hero, trust strip, 4 product cards with sale/best-seller badges and struck prices, category counts, three footer columns. Invisible until F43 is undone, then dismantled by its own turn-60 edit | **the whole brief in the graph, and almost none of it on screen**: an always-mounted `NoticeDialog` takes the layout, desktop is clipped at 900px, and at 390px the page is *only* the dialog |
+
+**Neither is blocked the way Qwen3.5-27B was.** `repeated-sibling-subtree` — the wall that stopped
+the 27B at turn 32 — was hit **once** by DeepSeek and **twice** by Kimi, and both recovered without
+comment. **F40's cliff is a small-model cliff, not an open-weight cliff**, which is the thing
+session 6 could not distinguish and this session can.
+
+**And both are cheap in rejections.** Kimi took **5 rejections in 91 calls** — a better ratio than
+sonnet's 3/91 is not, but far better than the 27B's 16/31, and it never looped.
+
+### What actually happened: both models were defeated by the same defect in our own write path
+
+Both built a correct storefront. Both rendered blank. **Neither failure is a model failure** — see
+**F43**. The two runs differ only in whether the model escaped it:
+
+- **Kimi escaped.** At turn 38 it saw `blank-render`, added a probe `Text` **to the existing page**,
+  saw it render, correctly concluded the fault was in its *components*, and issued
+  `set_visual_roots` for **all ten of them in a single turn**. 83 texts and 10 images appeared.
+- **DeepSeek did not.** It ran the *same* experiment at turn 42 — but created a **new** component
+  (`Pages/Test`, a `Page` node and one "Hello World" `Text`) to hold the probe. That component was
+  born without visual roots too, so its control also rendered blank, and it concluded: *"this is
+  almost certainly a viewer/build issue."* It then spent turns 42→60 on `urlPath`, `startPage`,
+  `clip` and `flexDirection`, and at turn 60 removed the Group holding its six sections — leaving
+  the `Page` node alone on disk, which is the artefact scored above.
+
+One placement difference in the same debugging move, opposite conclusions. Scored on the artefact
+alone, DeepSeek looks like the worst run of the phase; scored on what it built, it is the second
+most complete page any model has produced here.
+
+### Reading the two rows against the phase's success line
+
+> *"If a weak model produces a well-architected app with mediocre spacing, the phase succeeded."*
+
+On architecture **both clear it**: real interfaces, repeaters with data behind them, `Columns` on
+everything that must reflow, no varying instance without a port, `validate:project` clean on 108 and
+149 nodes. Kimi's 75 connections / 140 endpoints and 8 Component Outputs are the richest wiring of
+any run in the phase, sonnet included.
+
+On the *page*, neither is sonnet:
+
+- **DeepSeek's** desktop page is complete and well-proportioned. At 390px the nav links squeeze to
+  one letter per line and the hero photo collapses to a sliver — it reflows the grids and not the
+  nav. `render_report` calls that clean.
+- **Kimi's** page is unusable at both viewports for one reason: a dialog component mounted
+  unconditionally into the layout instead of over it. Everything else it built is behind it.
+
+So the honest addition to Richard's verdict is narrow: **hosted open weights are no longer the
+blocked leg**. Both models tool-call, plan, recover from gates and self-verify with `render_report`;
+what neither did is get a *page* to sonnet's standard, and one of the two was stopped by us.
+
+**Cost note.** $30.70 total: DeepSeek $5.83, Kimi $17.01, plus $7.86 for the void Kimi run (F42).
+Kimi is 11× DeepSeek's per-token output price and used a comparable number of turns, which is most
+of the gap. DeepSeek V4 Pro built the more complete page for **a third of sonnet's $5.10-adjacent
+cost** — $5.83 including 27 wasted turns it should never have spent.
+
 ## Register
 
 | # | Finding | State |
@@ -269,3 +354,7 @@ answered by the scorer's `varying instances w/o input` line instead.
 | F39 | **This matrix's own sonnet connections cell was in different units from haiku's.** `102` endpoints vs `0` connections. Baseline measured at 56 / 101 | ✅ **CLOSED** — matrix normalised, `score-run.js` reports both |
 | F40 | **LAS-004's authored-blocking `repeated-sibling-subtree` is a wall for a 27B model.** `Qwen/Qwen3.5-27B` saw 19 of them, discarded its plan, and stopped at turn 32 having built one component — stating the rule by name as its reason. Not a loop and not a tool-calling failure: it opened exactly as sonnet did and recovered from its other rejections. **Capability**, on the model's own words. Both Claude models cleared the same rule again in this session (5 and 3 hits). Per LAS-011's own instruction this argues for smaller turns or better attachments, **not** for weakening the gate | 🔴 **OPEN** — filed as **LAS-013** |
 | F41 | **`create_project` mints `Pages/Home`, and the very next tool rejects the model for planning it.** Both mid-tier models (haiku and qwen, not sonnet) burned a turn on *"Operation op-N creates 'Pages/Home', but that component already exists — use an update."* The `create_project` result does say it made a Home skeleton, so this is knowledge-the-model-was-given-and-dropped, and both recovered in one turn — but it is self-inflicted friction on our own on-ramp, and "structure > gate" says `create_plan` should absorb a create of an existing *empty skeleton* as an update | 🔴 OPEN, low severity — noted in LAS-012 |
+| F42 | **The driver read a truncated reply as a voluntary stop, and voided a $7.86 run.** Kimi K3 deliberates in `content` before acting; on turn 34 DeepInfra cut its reply at `--max-tokens 4096` mid-plan. With no `tool_calls` in that message the driver recorded `stop: 'model-finished'` — a `run-end` claiming the model chose to stop after 53 read-only calls, when it had been interrupted mid-sentence. Every other turn was `finish_reason: "tool_calls"`; that one was `"length"`, and nothing looked | ✅ **CLOSED** 2026-08-08 — `mcp-model-driver.js` now records `stop: 'response-truncated'` plus a `warning` event when `finish_reason === 'length'` with no tool call. Re-run at `--max-tokens 16384` completed 57 turns. Non-binding for the other rows: DeepSeek's 60 turns are all `tool_calls`, and the 27B stopped with a written explanation |
+| F43 ⭐ | **Every write door treats `visual_roots` as optional, nothing derives it, and a component without it is invisible.** `create_component`, `update_component.set` and `stage_plan_operation` all declare `visual_roots` as `.optional()` with **no `.describe()`** — the string never appears in any tool description. Omit it and the file has no `visualRoots`; the runtime renders a component instance from `componentModel.roots` and empty means nothing (`componentinstance.ts:322`). **The editor cannot produce such a file**: `visualRoots` is *derived* there, recomputed by `getVisualRootIds()` on every serialize, and `ProjectImporter` builds roots from the node tree regardless. So MCP writes a shape the editor never would, and `render-from-disk` (`roots: nodesFile.visualRoots \|\| []`) renders it empty. **Two compounding failures:** (1) the `blank-render` message blames the *page* — *"renders blank without a Page node at its root, and a route no Router lists is never reached"* — when the Page node and Router are correct, sending DeepSeek to `urlPath`/`startPage`/`clip` for 18 turns; (2) it **poisons the control experiment**: a probe placed in a *new* component is invisible for the same reason, so DeepSeek's "does anything render at all" test returned a false negative and it concluded the viewer bundle was stale. Verified by consequence on a copy: restore the page → blank; plain `Text` on the existing page → renders; derive `visualRoots` for its 12 components, change nothing else → **clean, 91 texts, 8 images, both viewports**, `validate:project` 0/0 on 108 nodes. Invisible until now because haiku, sonnet and qwen all happened to pass it (21, 21 and 17 mentions in their transcripts) | 🔴 **OPEN — the highest-value defect this session found.** Candidate fix is *derivation, not documentation*: `assembleCreateFiles` should default `visualRoots` to the visual top-level nodes exactly as `getVisualRootIds()` does, and the render harness should do the same when the field is absent. "Structure > gate", the phase's own preference order |
+| F44 | **`get_node_type`'s `detail: "summary"` conveys no type information at all — 100% of the catalog.** `catalog.ts:273` builds each port line as `` `${dir} ${p.name}: ${String(p.type)}` ``, but a port's `type` is an object (`{name:'enum',enums:[…]}`), so every line reads `in alignContent: [object Object]`. **Measured across all 142 node types: 2,455 of 2,455 port one-liners (100%).** The mode exists to save context and is 4.5× cheaper — 6,741 vs 30,815 tokens for the 8 types a storefront needs — so the one lever we have against doc bulk is unusable, and every model pays full price. Full detail is not small: **`Group` alone is 44,070 chars ≈ 11,000 tokens**, and the 8 common visual types are **30,815 tokens — more than all 89 tool schemas combined (22,968)**. Because input is resent every turn, a doc read on turn 8 is re-billed on every turn after it: the fixed surface alone was **29%** of Kimi's 2.72M and **31%** of DeepSeek's 4.41M billed input | 🔴 **OPEN** — one-line cause. Fix `String(p.type)`, then consider making `summary` the default with full detail opt-in per port. Note the doc volume is **not** what keeps the framework salient: sonnet produced the only unqualified pass on the rig that *defers* tools behind `ToolSearch`, DeepSeek read 4 node types and built a complete app, Kimi read 21 and had authored nothing by turn 34 |
+| F45 | **`render_report` passed a page whose content is entirely off-screen.** Kimi's final artefact reports *"Rendered clean: desktop 1280×900px, 83 texts, 10 images; phone 390×844px, 83 texts, 10 images"* and `findings: []`. On screen: a `NoticeDialog` with `Title` / `Body` / `Got it`, and at 390px **nothing else at all**. Two signals were in the report and neither raised a finding — desktop `pageHeight` is **exactly 900**, i.e. the viewport, so the page is clipped rather than scrolling; and phone `overflowingCount` is **43**. `scrollWidth <= clientWidth` held, so the page-level overflow check passed while 43 elements overflowed their own containers. This is the third distinct way the eyes have passed an unbuilt page (F38 was content never drawn, session 6's two "clean on 1 text element", this is content drawn and pushed out of view) | 🔴 **OPEN** — candidates: raise a finding when `pageHeight` equals the viewport height exactly, when `overflowingCount` is non-zero, or when the visible text is a small fraction of the counted text. Also `Title`/`Body` should be in `placeholderStrings` |

@@ -499,7 +499,29 @@ async function main() {
       });
 
       if (!assistant.tool_calls || !assistant.tool_calls.length) {
-        stop = 'model-finished';
+        // A turn with no tool calls has two completely different meanings, and
+        // reading them as one silently voids a run. `stop` means the model chose
+        // to answer instead of calling a tool — it is done, or it has given up,
+        // and either way that is data. `length` means the gateway cut the reply
+        // off at `--max-tokens` mid-sentence: the model neither finished nor
+        // gave up, it was interrupted, and the tool call it was about to make
+        // never got emitted.
+        //
+        // Measured, not theorised: Kimi-K3 deliberates in `content` before it
+        // acts, hit the 4096-token default on turn 34 while writing its build
+        // plan, and the original code recorded `model-finished` — a run that
+        // read as a voluntary stop after 53 read-only calls. A verbose model is
+        // the normal case now, so this must be named rather than inferred.
+        stop = choice.finish_reason === 'length' ? 'response-truncated' : 'model-finished';
+        if (stop === 'response-truncated') {
+          record({
+            kind: 'warning',
+            turn: turns,
+            message:
+              `assistant reply truncated at --max-tokens (${opts.maxTokens}) with no tool call — ` +
+              `the model was interrupted, not finished. Re-run with a larger --max-tokens.`
+          });
+        }
         break;
       }
 
