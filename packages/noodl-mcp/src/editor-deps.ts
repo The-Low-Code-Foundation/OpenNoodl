@@ -237,6 +237,15 @@ export {
   DECOMPOSITION_PLANNING
 } from '../../noodl-editor/src/editor/src/models/AiAssistant/authoring/prompts/decomposition';
 
+// Phase 54, same containment rule and the same reason: the design doctrine an
+// external agent reads out of `get_project_info` must be the same bytes the
+// in-editor prompts carry, or "make it look designed" becomes two dialects.
+export {
+  DESIGN_AUTHORING,
+  DESIGN_DOCTRINE_MD,
+  DESIGN_PLANNING
+} from '../../noodl-editor/src/editor/src/models/AiAssistant/authoring/prompts/design';
+
 // ─── Project review (AIX-010) ─────────────────────────────────────────────────
 // The pure half of the docs retrofit only. `review/assembleProject`,
 // `review/pageMap`, `review/selection` and `review/prompts` import nothing

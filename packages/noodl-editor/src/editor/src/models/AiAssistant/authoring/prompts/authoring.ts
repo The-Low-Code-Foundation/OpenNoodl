@@ -20,6 +20,7 @@
  */
 
 import { DECOMPOSITION_AUTHORING } from './decomposition';
+import { DESIGN_AUTHORING } from './design';
 import type { AuthoringMode, AuthoringRequest } from '../types';
 
 const FRAMING: Record<AuthoringMode, string> = {
@@ -158,7 +159,9 @@ WHAT NOT TO DO
 - Do not add nodes the task does not need. A node that is wired to nothing and changes nothing is
   dead weight — but do not read this as "keep the graph flat": see COMPOSITION.
 
-${DECOMPOSITION_AUTHORING}`;
+${DECOMPOSITION_AUTHORING}
+
+${DESIGN_AUTHORING}`;
 
 export function systemPrompt(mode: AuthoringMode = 'create'): string {
   return systemPromptFor(mode);

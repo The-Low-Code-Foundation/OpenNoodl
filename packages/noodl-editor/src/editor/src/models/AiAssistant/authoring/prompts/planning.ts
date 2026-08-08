@@ -12,6 +12,7 @@
  */
 
 import { DECOMPOSITION_PLANNING } from './decomposition';
+import { DESIGN_PLANNING } from './design';
 import type { AiToolDefinition } from '../../client/types';
 
 export const SUBMIT_PLAN = 'submit_plan';
@@ -82,6 +83,8 @@ HOW TO SCOPE
   the other half of this rule and outranks any instinct to keep the number of operations down.
 
 ${DECOMPOSITION_PLANNING}
+
+${DESIGN_PLANNING}
 
 PAGES ARE REGISTERED, OR THEY DO NOT EXIST
 A page component is only reachable when a Page Router node lists it — the router's "pages" parameter

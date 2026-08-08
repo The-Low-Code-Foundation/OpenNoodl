@@ -7,7 +7,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 
 import { describeComponent } from '../describe';
-import { DECOMPOSITION_DOCTRINE_MD, isComponentRef, refToPath } from '../editor-deps';
+import { DECOMPOSITION_DOCTRINE_MD, DESIGN_DOCTRINE_MD, isComponentRef, refToPath } from '../editor-deps';
 import { ToolError } from '../errors';
 import type { ProjectStore } from '../project/ProjectStore';
 import type {
@@ -62,7 +62,9 @@ export function registerReadTools(server: McpServer, store: ProjectStore, option
         // AAQ-008: an external agent gets no system prompt, so this response is
         // the only orientation surface that reaches it before it authors. Sent
         // only when writes are allowed — see ProjectInfoResponse.
-        ...(options.allowWrites ? { authoringDoctrine: DECOMPOSITION_DOCTRINE_MD } : {})
+        ...(options.allowWrites
+          ? { authoringDoctrine: DECOMPOSITION_DOCTRINE_MD, designDoctrine: DESIGN_DOCTRINE_MD }
+          : {})
       };
       return jsonResult(payload);
     })

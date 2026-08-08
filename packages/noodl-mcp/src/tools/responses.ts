@@ -67,6 +67,12 @@ export interface ProjectInfoResponse {
    * a read-only client has nothing to apply it to, and it is not small.
    */
   authoringDoctrine?: string;
+  /**
+   * Phase 54 — the design doctrine, verbatim from the same shared module. Same
+   * read-write gate and the same reason as `authoringDoctrine`: it is the only
+   * orientation an external agent gets before it draws anything.
+   */
+  designDoctrine?: string;
 }
 
 export interface ListComponentsResponse {
