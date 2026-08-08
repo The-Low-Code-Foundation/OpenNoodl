@@ -115,13 +115,44 @@ is the precedent to copy.
 
 ## Acceptance
 
-- [ ] Spec: the rail renders one control per declared input, of the mapped kind, grouped and ordered.
-- [ ] Spec: an underived (`'*'`) input renders the raw field and is labelled untyped.
-- [ ] Spec: nothing in the form path calls `setMetaData` or marks the project dirty.
-- [ ] **Live:** typing a value changes the rendered DOM **without the preview reloading** — proven by
-      leaving an unrelated element in a hovered/typed state across the change and finding it intact.
-- [ ] **Live (option 1 only):** the app preview client does not receive the bench's parameter update.
-- [ ] **Live:** a signal input's button visibly does something in the component.
+All closed on a live drive, 2026-08-08. The corpus had **no component with typed inputs at all**, so
+the drive needed a fixture: `Components/BenchProbe` in *Puppy test 3*, authored through MCP, one
+input per control kind, each wired so `getPorts` derives a real type.
+
+- [x] Spec: the rail renders one control per declared input, of the mapped kind, grouped and ordered.
+      21 specs on the rules; the rendering itself was **driven** — all six rows, and every one of the
+      six derived the right type and got the right control:
+      `Title string→field · Accent color→select · Align enum→select · Big boolean→toggle ·
+      Start number→field · Ping signal→button`.
+- [x] Spec: an underived (`'*'`) input renders the raw field and is labelled untyped.
+      ⚠️ Spec only, and the drive is why it stayed spec-only: a port wired to *anything* inherits
+      that port's type **and its default**, because the editor's `getParameter` falls back to the
+      port definition. Only a port wired to nothing is untyped, and one of those renders nothing to
+      look at.
+- [x] Spec: nothing in the form path calls `setMetaData` or marks the project dirty.
+      **Measured, not read:** mtimes of all 44 files in the project before and after setting an
+      input through the rail — the component re-rendered and **not one file changed**.
+- [x] **Live:** typing a value changes the rendered DOM **without the preview reloading**.
+      `(no title)` → `Hello bench` in the bench document, with a `window` global planted beforehand
+      still holding the same value afterwards. A window global cannot survive a reload. The same
+      marker then survived a toggle, an enum pick, a colour pick, three signal pulses and a rejected
+      number — every edit in the session.
+- [x] **Live (option 1):** the app preview client does not receive the bench's parameter update.
+      Proven two-sided with a **third relay client** (a spy registering as a `viewer` with the launch
+      token): typing in the bench produced **zero** messages at the spy, and an ordinary project edit
+      immediately produced `modelUpdate | target: (none) | parameterChanged | /Pages/Landing`.
+      Broadcasts still broadcast; the bench's update reached nobody else.
+- [x] **Live:** a signal input's button visibly does something in the component.
+      Three clicks, counter `0 → 1 → 2 → 3`. This also settles **B12**: the falling edge really is
+      needed, and it really does rearm.
+
+Two more, both measured because the mechanism is not the consequence:
+
+- [x] **Live:** a colour input emits `var(--token)` and the token *resolves*. Inline style
+      `var(--primary)`, computed `rgb(24, 24, 27)` = the project's `#18181b`. Not a hex, and not the
+      phase-55 `NaNpx` class of silently-deleted property.
+- [x] **Live:** junk in a number field is refused rather than sent. `768320px oops` → the row shows
+      *"768320px oops" is not a number*, the spy saw nothing, and the component kept its value.
 
 ## Risks
 

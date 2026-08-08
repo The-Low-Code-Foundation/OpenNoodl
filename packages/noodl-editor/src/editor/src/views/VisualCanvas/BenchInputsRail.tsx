@@ -60,8 +60,17 @@ export interface BenchInputsRailProps {
   usage?: BenchInstanceUsage;
   /** Values the user has set. Absent key = unset, so the port keeps its default. */
   values: Record<string, unknown>;
-  /** One input changed. `undefined` unsets it. */
+  /** One input changed. */
   onChange: (name: string, value: unknown) => void;
+  /**
+   * One input back to its default.
+   *
+   * Separate from `onChange(name, undefined)` because unsetting is not a value:
+   * the runtime will not restore anything when a parameter is merely deleted
+   * (see `ComponentBench.resetInput`), so the surface has to decide between
+   * sending the derived default and remounting. The rail does not know which.
+   */
+  onReset: (name: string) => void;
   /** A signal input's button was pressed. */
   onSignal: (name: string) => void;
   /** Every input back to its default. */
@@ -316,7 +325,7 @@ function BenchInputsEmpty({ iface, usage }: { iface?: BenchInterface; usage?: Be
   );
 }
 
-export function BenchInputsRail({ iface, usage, values, onChange, onSignal, onResetAll }: BenchInputsRailProps) {
+export function BenchInputsRail({ iface, usage, values, onChange, onReset, onSignal, onResetAll }: BenchInputsRailProps) {
   const inputs = iface?.inputs ?? [];
   const groups = useMemo(() => benchInputGroups(inputs), [inputs]);
   const colors = useColorOptions();
@@ -355,7 +364,7 @@ export function BenchInputsRail({ iface, usage, values, onChange, onSignal, onRe
                   colors={colors}
                   onChange={(next) => onChange(port.name, next)}
                   onSignal={() => onSignal(port.name)}
-                  onReset={() => onChange(port.name, undefined)}
+                  onReset={() => onReset(port.name)}
                 />
               ))}
             </div>

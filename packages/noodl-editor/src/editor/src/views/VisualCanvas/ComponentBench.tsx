@@ -154,34 +154,90 @@ export function ComponentBench({ target, frame, onFrameMeasured }: ComponentBenc
     );
   }, [target, userData, useSampleData, signedIn, revision]);
 
-  const viewer = useSandboxViewer({ json: result?.json, useSampleData, signedIn });
+  /**
+   * Bumped only by a Reset that cannot be expressed as a value. See
+   * {@link resetInput} and `useSandboxViewer`'s `remountKey`.
+   */
+  const [remountKey, setRemountKey] = useState(0);
+
+  const viewer = useSandboxViewer({ json: result?.json, useSampleData, signedIn, remountKey });
   const clientId = viewer.clientId;
 
-  /**
-   * One input changed. `undefined` unsets it — `JSON.stringify` drops the key,
-   * the runtime's `setParameter` deletes the parameter, and the node falls back
-   * to its default. That is what Reset is.
-   */
+  /** One input changed. Sent to this client only; nothing is rebuilt. */
   const applyInput = useCallback(
     (name: string, value: unknown) => {
-      setInputs((previous) => {
-        const next = { ...previous };
-        if (value === undefined) delete next[name];
-        else next[name] = value;
-        return next;
-      });
+      setInputs((previous) => ({ ...previous, [name]: value }));
       ViewerConnection.instance.sendModelUpdateToClient(clientId, benchParameterContent(name, value));
     },
     [clientId]
   );
 
+  /**
+   * ⚠️ **Deleting the parameter does not put the old value back, and the first
+   * implementation of Reset assumed it did.**
+   *
+   * Sending `parameterValue: undefined` is mechanically exactly right: the key
+   * is dropped by `JSON.stringify`, the runtime's `setParameter` deletes the
+   * parameter, and `_onNodeModelParameterUpdated` takes its reset-to-default
+   * branch. That branch ends at
+   * `context.getDefaultValueForInput(this.model.type, name)` — and the type here
+   * is a **component**, whose input ports are declared by the user with no
+   * default at all. So it queues `undefined`, nothing is restored, and the
+   * component keeps the last value it was handed.
+   *
+   * Measured live, 2026-08-08: after Reset the rail was empty and correct while
+   * the rendered component still showed every value that had been set — text,
+   * colour, alignment and visibility all unchanged. The mechanism worked and
+   * had no consequence, which is the whole reason this phase drives things.
+   *
+   * So Reset uses whichever of the two honest routes applies:
+   *
+   * - the port has a **derived default** — send it. That is the value the
+   *   harness would have given the port at mount (`benchParameters`), so it is
+   *   the same state, and it costs no reload. This is the common case: an input
+   *   wired to a real port inherits that port's own default, because the
+   *   editor's `getParameter` falls back to it;
+   * - it has none — **remount the window**. Rebuilding the export is *not*
+   *   enough and the second attempt at this shipped believing it was: a value
+   *   set through a targeted update never entered the export, so the rebuild
+   *   produces identical bytes, `_exportToClient` drops it, and the runtime
+   *   keeps the value. Measured live: Reset all cleared the rail and changed
+   *   nothing on screen. Only the `src` reloads.
+   */
+  const resetInput = useCallback(
+    (name: string) => {
+      const port = result?.interface?.inputs.find((candidate) => candidate.name === name);
+      setInputs((previous) => {
+        const next = { ...previous };
+        delete next[name];
+        return next;
+      });
+
+      if (port && port.default !== undefined) {
+        ViewerConnection.instance.sendModelUpdateToClient(clientId, benchParameterContent(name, port.default));
+      } else {
+        setRemountKey((n) => n + 1);
+      }
+    },
+    [clientId, result]
+  );
+
+  /** Every set input at once, each by whichever of the two routes applies. */
   const resetInputs = useCallback(() => {
     const names = Object.keys(inputsRef.current);
     setInputs({});
+
+    let remount = false;
     for (const name of names) {
-      ViewerConnection.instance.sendModelUpdateToClient(clientId, benchParameterContent(name, undefined));
+      const port = result?.interface?.inputs.find((candidate) => candidate.name === name);
+      if (port && port.default !== undefined) {
+        ViewerConnection.instance.sendModelUpdateToClient(clientId, benchParameterContent(name, port.default));
+      } else {
+        remount = true;
+      }
     }
-  }, [clientId]);
+    if (remount) setRemountKey((n) => n + 1);
+  }, [clientId, result]);
 
   /** A pulse is two updates; see `benchSignalContents` for why one is not enough. */
   const sendSignal = useCallback(
@@ -274,6 +330,7 @@ export function ComponentBench({ target, frame, onFrameMeasured }: ComponentBenc
           usage={usage}
           values={inputs}
           onChange={applyInput}
+          onReset={resetInput}
           onSignal={sendSignal}
           onResetAll={resetInputs}
         />

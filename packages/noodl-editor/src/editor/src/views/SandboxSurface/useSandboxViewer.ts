@@ -58,6 +58,23 @@ export interface SandboxViewerOptions {
   useSampleData: boolean;
   /** POL-008: whether the window runs as the seeded sample user. */
   signedIn: boolean;
+  /**
+   * Bump to force the window to reload even though the export has not changed.
+   *
+   * ⚠️ **There is no other way to do it, and BEN-002 shipped a Reset that did
+   * nothing before finding that out.** `_exportToClient` drops an export
+   * identical to the last one it sent that client, which is right — it is what
+   * stops an unchanged project reloading a preview. But a bench input set
+   * through a targeted `modelUpdate` never entered the export, so rebuilding
+   * after clearing it produces the *same bytes*, the send is dropped, and the
+   * runtime keeps the value. Rebuilding is therefore not a remount, and only
+   * the `src` is.
+   *
+   * Reloading also clears the dedupe on the way back: the reconnecting client
+   * re-imports its node library, and `loadNodeLibrary` deletes
+   * `lastExports[clientId]` for a sandbox client.
+   */
+  remountKey?: number;
 }
 
 export interface SandboxViewer {
@@ -76,7 +93,12 @@ export interface SandboxViewer {
   attachWebview: (element: Electron.WebviewTag | null) => void;
 }
 
-export function useSandboxViewer({ json, useSampleData, signedIn }: SandboxViewerOptions): SandboxViewer {
+export function useSandboxViewer({
+  json,
+  useSampleData,
+  signedIn,
+  remountKey = 0
+}: SandboxViewerOptions): SandboxViewer {
   const sessionId = useMemo(() => guid(), []);
   const clientId = `sandbox-${sessionId}`;
 
@@ -123,7 +145,10 @@ export function useSandboxViewer({ json, useSampleData, signedIn }: SandboxViewe
   const src =
     `${viewerOrigin()}/?noodl-sandbox=${sessionId}` +
     `&noodl-sandbox-data=${useSampleData ? 'sample' : 'real'}` +
-    `&noodl-sandbox-auth=${signedIn ? 'in' : 'out'}`;
+    `&noodl-sandbox-auth=${signedIn ? 'in' : 'out'}` +
+    // Only ever appended, so the URL a normal sandbox loads is byte-identical
+    // to the one it loaded before this option existed.
+    (remountKey > 0 ? `&noodl-sandbox-remount=${remountKey}` : '');
 
   return { clientId, src, attachWebview };
 }
