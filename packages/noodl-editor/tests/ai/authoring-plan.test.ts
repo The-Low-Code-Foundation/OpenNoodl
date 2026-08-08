@@ -12,6 +12,7 @@
  * accept unrepresentable at plan level.
  */
 
+import { asText } from '../../src/editor/src/models/AiAssistant/client/content';
 import { buildComponentV2Files } from '../../src/editor/src/io/ProjectExporter';
 import { buildCandidate } from '../../src/editor/src/models/AiAssistant/authoring/candidate';
 import {
@@ -81,7 +82,7 @@ const ARTICLE_SUBMISSION = {
 /** Route a session's chat by the component named in its opening task. */
 function planChatScript(log: string[]) {
   return async (request: AiChatRequest): Promise<AiChatResponse> => {
-    const opening = request.messages.find((m) => m.role === 'user')?.content ?? '';
+    const opening = asText(request.messages.find((m) => m.role === 'user')?.content ?? '');
     if (opening.includes('"Pages/Checkout"')) {
       log.push('Pages/Checkout');
       return toolResponse('submit_component', CHECKOUT_SUBMISSION);
@@ -252,7 +253,7 @@ describe('AIX-011 planning session', () => {
     let last = submissions[0];
     const chat = async (request: AiChatRequest): Promise<AiChatResponse> => {
       const previous = request.messages[request.messages.length - 1];
-      if (previous.role === 'tool') seen.push(previous.content);
+      if (previous.role === 'tool') seen.push(asText(previous.content));
       last = submissions.shift() ?? last;
       return toolResponse('submit_plan', last);
     };
@@ -283,7 +284,7 @@ describe('AIX-011 plan run', () => {
     const openings: string[] = [];
     const chat = planChatScript(log);
     const spyChat = async (request: AiChatRequest): Promise<AiChatResponse> => {
-      const opening = request.messages.find((m) => m.role === 'user')?.content ?? '';
+      const opening = asText(request.messages.find((m) => m.role === 'user')?.content ?? '');
       openings.push(opening);
       return chat(request);
     };
@@ -338,7 +339,7 @@ describe('AIX-011 plan run', () => {
   it('one operation failing the gate stages nothing for it and leaves the rest staged (criterion 5)', async () => {
     const log: string[] = [];
     const chat = async (request: AiChatRequest): Promise<AiChatResponse> => {
-      const opening = request.messages.find((m) => m.role === 'user')?.content ?? '';
+      const opening = asText(request.messages.find((m) => m.role === 'user')?.content ?? '');
       if (opening.includes('"Pages/Checkout"')) {
         log.push('Pages/Checkout');
         // Never valid: the gate rejects every attempt.
@@ -398,7 +399,7 @@ describe('AIX-011 criterion 7 — the planner can see the project docs', () => {
   it('names the docs the project has, and says nothing when it has none', async () => {
     let opening = '';
     const chat = async (request: AiChatRequest): Promise<AiChatResponse> => {
-      opening = request.messages[1].content;
+      opening = asText(request.messages[1].content);
       return toolResponse('submit_plan', {
         operations: [{ kind: 'update', target: 'Pages/Article', intent: 'x' }]
       });
@@ -420,7 +421,7 @@ describe('AIX-011 criterion 7 — the planner can see the project docs', () => {
   it('ignores a doc whose file is present but empty', async () => {
     let opening = '';
     const chat = async (request: AiChatRequest): Promise<AiChatResponse> => {
-      opening = request.messages[1].content;
+      opening = asText(request.messages[1].content);
       return toolResponse('submit_plan', {
         operations: [{ kind: 'update', target: 'Pages/Article', intent: 'x' }]
       });
@@ -463,7 +464,7 @@ describe('AIB-001 — retrying one operation of a plan', () => {
     const openings: string[] = [];
     const chat = planChatScript([]);
     const spyChat = async (request: AiChatRequest): Promise<AiChatResponse> => {
-      openings.push(request.messages.find((m) => m.role === 'user')?.content ?? '');
+      openings.push(asText(request.messages.find((m) => m.role === 'user')?.content ?? ''));
       return chat(request);
     };
     const run = new PlanRun(loadGraph(), THREE_OP_PLAN, { baseFilesFor, session: { chat: spyChat } });
@@ -613,7 +614,7 @@ describe('AIB-002 — what a run publishes about itself', () => {
       baseFilesFor,
       session: {
         chat: async (request: AiChatRequest) => {
-          openings.push(request.messages.find((m) => m.role === 'user')?.content ?? '');
+          openings.push(asText(request.messages.find((m) => m.role === 'user')?.content ?? ''));
           return chat(request);
         }
       }

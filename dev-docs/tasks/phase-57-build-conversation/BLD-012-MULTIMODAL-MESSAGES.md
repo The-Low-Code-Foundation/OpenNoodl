@@ -1,6 +1,12 @@
 # BLD-012 — Messages can carry images
 
-**Status:** 📋 not started · **Track B** · ⭐ **the long pole** · after BLD-011
+**Status:** ✅ **model layer built and jest-verified** · **Track B** · ⭐ **the long pole** · after BLD-011
+
+> **Built 2026-08-08.** The waist is widened, `cacheBoundary` is redefined and pinned by a golden,
+> and all three adapters carry an image or declare a substitution. **Nothing was driven** — the
+> editor was owned by a concurrent phase-56 session, so this landed from a worktree with jest and
+> tsc only. The one piece deliberately not built is the **chip**: BLD-011 has not shipped, so there
+> is no reference and no chip row to mark. See the register.
 
 ## The defect, measured
 
@@ -84,18 +90,52 @@ screenshots, because *"the JSON report is what a text-only agent can act on"*
    chip, and state the substitution in the injected text so the model knows it is reading a
    description rather than looking at a picture.
 
+## What was decided
+
+**`cacheBoundary` keeps character-offset semantics for string content only; block content carries
+`cache: true` on the last stable block.** The alternative — a block index — was rejected for three
+reasons, recorded in full on `cacheBlockIndex`
+([content.ts](../../../packages/noodl-editor/src/editor/src/models/AiAssistant/client/content.ts)):
+it would have given one field two meanings, an index is positional and drifts silently when a block
+is inserted ahead of it, and a marker maps 1:1 onto Anthropic's own `cache_control`.
+
+**The text twin is required, not optional.** That single type-level choice is what makes `degrade`
+total: there is no image the module can be handed that it cannot render as text, so no adapter needs
+a silent-drop branch and none has one.
+
 ## Acceptance
 
-- [ ] An image reference reaches Anthropic and OpenAI as a real image block; a fixture request is
-      pinned for both.
-- [ ] The same reference against Ollama produces the text twin, and **the chip says so** before send.
-- [ ] `cacheBoundary` behaviour is pinned by a spec for both string and block content, and a
-      text-only turn produces a byte-identical request to before this task.
-- [ ] Every existing call site compiles unchanged (the widening is additive).
-- [ ] No path exists that drops an image silently. Grep the adapters for it.
+- [x] An image reference reaches Anthropic and OpenAI as a real image block; a fixture request is
+      pinned for both. — `providers.test.ts`: Anthropic `source.type: base64` + `media_type`,
+      OpenAI `image_url` with a `data:` URL.
+- [~] The same reference against Ollama produces the text twin — **verified**; and *the chip says
+      so* — **not built, blocked on BLD-011** (register #1). The substitution is declared in the
+      injected text, which is the half that exists below the UI.
+- [x] `cacheBoundary` behaviour is pinned by a spec for both string and block content, and a
+      text-only turn produces a byte-identical request to before this task. —
+      `anthropicRequest.golden.test.ts`, golden recorded from the adapter *before* the widening.
+- [~] Every existing call site compiles unchanged — **true for producers, false for readers, and
+      that is the correct outcome** (register #2).
+- [x] No path exists that drops an image silently. — asserted as a test rather than a grep:
+      one image turn through all three text-only paths, twin required in every serialized request.
+
+## Verification
+
+`typecheck:editor` 0 errors · `typecheck:editor-tests` 0 errors · `npx jest tests-unit` **885/885,
+64 suites** (19 of them new here). Both load-bearing claims were mutation-tested: disabling the
+Anthropic degrade path fails 2 specs, flipping `cacheBlockIndex` to first-match fails 1.
+`noodl-mcp` unchanged at its 6 inherited tsc errors and 226 passing.
+
+**Not driven.** No editor, no live provider call. A green check proves the request *shape*; it does
+not prove a real endpoint accepts it, and it says nothing about a panel.
 
 ## Register
 
 | # | Finding | State |
 |---|---|---|
-| | | |
+| 1 | **The chip is not built.** BLD-012's step 5 says degradation is "marked on the chip", but BLD-011 (`Reference` + the chip row) has not shipped, so there is no chip and no reference object to hang one on. Built instead: the substitution is *declared in the injected text*, so the model always knows it is reading a description. **Blocker: BLD-011.** The UI half is a two-line change once the chip row exists — read `capabilities.vision` for the turn's resolved model and render it. | 🚧 filed, blocked |
+| 2 | **The widening is additive for producers, not for readers** — the task doc predicted "every existing call site compiles unchanged". Producers do; 20 readers across 6 Jasmine specs did not, because `content.slice(…)` no longer typechecks. All 20 fixed with `asText`. This is the widening working as intended: the compiler named every place that had to decide what an image means. | ✅ fixed |
+| 3 | ⚠️ **`transcriptChars` counted blocks, not characters** — `AuthoringSession.ts` reduced over `m.content.length`, and **both branches of the union have `.length`**, so tsc could not catch it. A multimodal transcript would have under-reported by three orders of magnitude into the authoring metrics. Found by grepping readers after the typecheck came back clean, not by the typecheck. | ✅ fixed |
+| 4 | **The two hosted open-weight models shared the `frontier` capability band**, which now carries `vision: true`. Left alone they would have claimed image input their endpoints reject. Split into `frontierTextOnly`. | ✅ fixed |
+| 5 | ⚠️ **`findModel` maps `openai-compatible` → `openai`, so the two registered `openai-compatible` models never resolve to their own entries** ([models.ts](../../../packages/noodl-editor/src/editor/src/models/AiAssistant/client/models.ts), `findModel`). DeepSeek V4 Pro and Qwen3-Coder always fall through to `unknownModel` — which also means they silently run with `tools: false`. Harmless for BLD-012 (unknown ⇒ no vision ⇒ degrade, the safe direction) and it makes the task doc's "the registry has zero `openai-compatible` models" note effectively still true. **Not fixed: out of scope.** Fixing it changes `tools` and pricing for those two ids, which is a behaviour change belonging to whoever owns LAS-011. | 📋 filed, not fixed |
+| 6 | **Ollama's native `/api/chat` takes a sibling `images: [base64]` array, not content parts and not data URLs.** The wire shape is implemented and asserted below the vision gate, but no seeded Ollama model is flagged for vision, so in practice every Ollama request degrades today. Registering a vision model (e.g. a llava/qwen-vl pull) is the only thing needed to exercise it. | ✅ built, unexercised |

@@ -27,6 +27,13 @@ import {
   AiToolCall
 } from '@noodl-models/AiAssistant/client/types';
 import { readNdjson } from '@noodl-models/AiAssistant/client/providers/stream-utils';
+import {
+  AiContentBlock,
+  asText,
+  assertCacheBoundary,
+  degradeImages,
+  isBlockContent
+} from '@noodl-models/AiAssistant/client/content';
 
 import { errorMessage, isAbortError } from './errors';
 import { finalizeUsage } from './usage';
@@ -70,30 +77,59 @@ export interface OllamaTagsResponse {
 export interface OllamaRequestMessage {
   role: string;
   content: string;
+  /**
+   * BLD-012 — Ollama's native shape for images: a sibling array of bare base64
+   * strings, not content parts and not data URLs. Present only when the model
+   * is flagged for vision, which no seeded model is.
+   */
+  images?: string[];
   /** Ollama matches tool results to calls by name, not by id. */
   tool_name?: string;
   tool_calls?: { function: { name: string; arguments: Record<string, unknown> } }[];
 }
 
+/**
+ * Text and images split apart, which is the shape Ollama's `/api/chat` wants.
+ *
+ * The text half keeps the surrounding prose in order; only the image bytes move
+ * to the sibling array.
+ */
+function toOllamaContent(content: AiContentBlock[]): { content: string; images: string[] } {
+  const text: string[] = [];
+  const images: string[] = [];
+  for (const block of content) {
+    if (block.type === 'image') images.push(block.data);
+    else if (block.text) text.push(block.text);
+  }
+  return { content: text.join('\n\n'), images };
+}
+
 export function toOllamaMessages(messages: AiMessage[]): OllamaRequestMessage[] {
   return messages.map((message) => {
+    assertCacheBoundary(message);
+
     if (message.role === 'tool') {
       return {
         role: 'tool',
         // Ollama matches results to calls by name, not by id.
         ...(message.name ? { tool_name: message.name } : {}),
-        content: message.content
+        content: asText(message.content)
       };
     }
 
     if (message.role === 'assistant' && message.toolCalls?.length) {
       return {
         role: 'assistant',
-        content: message.content || '',
+        content: asText(message.content),
         tool_calls: message.toolCalls.map((call) => ({
           function: { name: call.name, arguments: call.arguments }
         }))
       };
+    }
+
+    if (isBlockContent(message.content)) {
+      const { content, images } = toOllamaContent(message.content);
+      return { role: message.role, content, ...(images.length ? { images } : {}) };
     }
 
     return { role: message.role, content: message.content };
@@ -149,9 +185,19 @@ export class OllamaProvider implements AiProvider {
     if (typeof request.temperature === 'number') options.temperature = request.temperature;
     if (request.maxTokens) options.num_predict = Math.min(request.maxTokens, model.maxOutputTokens);
 
+    // BLD-012 — vision is model-dependent on Ollama and the answer is no
+    // unless the registry says otherwise. Neither seeded model is flagged, and
+    // a model pulled at runtime resolves through `unknownModel`, so in practice
+    // this degrades every time until someone registers a vision model
+    // deliberately. That is the intended default: sending image bytes to a
+    // text-only local model is the failure this branch exists to prevent.
+    const messagesIn = model.capabilities.vision
+      ? request.messages
+      : request.messages.map((message) => ({ ...message, content: degradeImages(message.content) }));
+
     const body: Record<string, unknown> = {
       model: modelId,
-      messages: toOllamaMessages(request.messages),
+      messages: toOllamaMessages(messagesIn),
       stream
     };
 

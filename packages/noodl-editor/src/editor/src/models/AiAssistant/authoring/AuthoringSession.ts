@@ -39,6 +39,7 @@ import type { ProjectDocsContent } from '../../ProjectDocs/docsText';
 import type { StyleVocabulary } from '../../StyleTokensModel/StyleVocabulary';
 import type { StyleTokenRecord } from '../../StyleTokensModel/TokenCategories';
 import { AiClient } from '../client';
+import { asText } from '../client/content';
 import type { AiRoleRequestFields } from '../client/roles';
 import { withTurnDeadline } from '../client/turnDeadline';
 import type {
@@ -848,7 +849,12 @@ export class AuthoringSession {
   private finish(status: AuthoringStatus, files?: ComponentFiles, error?: string): AuthoringOutcome {
     this.lastStatus = status;
     this.lastError = error;
-    const transcriptChars = this.messages.reduce((sum, m) => sum + m.content.length, 0);
+    // BLD-012: `.length` on the widened content type is the block *count* when
+    // a turn carries blocks, not its character count — and both branches
+    // typecheck, so nothing but this comment stops it silently under-reporting
+    // a multimodal transcript by three orders of magnitude. `asText` measures
+    // what actually went on the wire, image twins included.
+    const transcriptChars = this.messages.reduce((sum, m) => sum + asText(m.content).length, 0);
     const metrics: AuthoringMetrics = {
       turns: this.turns,
       usageByTurn: [...this.usageByTurn],
