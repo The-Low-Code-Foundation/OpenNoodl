@@ -1,8 +1,18 @@
 # BEN-006 — Your own sample data, in the AI preview
 
-**Status:** 🟡 **§1 built** (2026-08-08) — the fourth layer is in `buildSandboxDataset` and reaches both
-`buildSandboxExport` and `buildBenchExport`, with 14 specs. **§2 (the editor) is not built**, so nothing
-in the UI can reach it yet and every Live criterion below is unmet. · ⭐ **Richard's specific ask**
+**Status:** 🟡 **§1–§6 built, none of it driven** (2026-08-08).
+
+| Part | Where | State |
+|---|---|---|
+| §1 the fourth layer | [`sandboxData.ts`](../../../packages/noodl-editor/src/editor/src/models/AiAssistant/authoring/sandboxData.ts) | ✅ 14 specs; reaches `buildSandboxExport` **and** `buildBenchExport` |
+| §2 the editor | [`SandboxDataEditor.tsx`](../../../packages/noodl-editor/src/editor/src/views/documents/AuthoringPreviewDocument/SandboxDataEditor.tsx) + [`sandboxDataDraft.ts`](../../../packages/noodl-editor/src/editor/src/views/documents/AuthoringPreviewDocument/sandboxDataDraft.ts) | ✅ built, 12 specs on the value rules; **the panel itself has never been opened** |
+| §3 unknown shape → invitation | same | ✅ built |
+| §4 Apply, not keystroke | same | ✅ built; the panel is kept mounted across the reload |
+| §5 both surfaces | `buildBenchExport` takes `userData` | ✅ for the mechanism; the bench has no surface yet (BEN-004) |
+| §6 session-scoped | `SandboxPreview` `useState` | ✅ nothing is written anywhere |
+
+**Every Live criterion below is unmet.** The panel typechecks, lints and has its
+value rules pinned; nobody has clicked Apply. · ⭐ **Richard's specific ask**
 
 > *"It would be cool if we could extend the 'set your own static data' to the AI preview with the
 > dummy data existing option, so users can set their own data ideas and see what they render like."*

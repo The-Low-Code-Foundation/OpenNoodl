@@ -39,6 +39,7 @@ import { PrimaryButton, PrimaryButtonSize, PrimaryButtonVariant } from '@noodl-c
 import { Text, TextType } from '@noodl-core-ui/components/typography/Text';
 
 import { ViewerConnection } from '../../../ViewerConnection';
+import { SandboxDataEditor } from './SandboxDataEditor';
 import css from './SandboxPreview.module.scss';
 
 export interface SandboxPreviewProps {
@@ -101,6 +102,16 @@ export function SandboxPreview({ files, siblings, sampleData, revision, unrender
    */
   const [signedIn, setSignedIn] = useState(true);
   const [result, setResult] = useState<SandboxExport | undefined>(undefined);
+  /**
+   * BEN-006 — the records the user typed, layered above the agent's.
+   *
+   * Preview state under the same rule as `signedIn`, and for the same reason:
+   * nothing about what someone wanted to *look at* belongs in `project.json`.
+   * If it should survive, it survives as a scenario (BEN-005) — one explicit
+   * save, one storage mechanism, not two.
+   */
+  const [userData, setUserData] = useState<AgentSampleData | undefined>(undefined);
+  const [dataOpen, setDataOpen] = useState(false);
 
   // The provider is called whenever the client (re)connects, which is not when
   // this component renders — it reads the latest build through a ref.
@@ -120,9 +131,17 @@ export function SandboxPreview({ files, siblings, sampleData, revision, unrender
       return;
     }
     setResult(
-      buildSandboxExport({ project: ProjectModel.instance, files, siblings, sampleData, useSampleData, signedIn })
+      buildSandboxExport({
+        project: ProjectModel.instance,
+        files,
+        siblings,
+        sampleData,
+        userData,
+        useSampleData,
+        signedIn
+      })
     );
-  }, [files, siblings, sampleData, revision, useSampleData, signedIn]);
+  }, [files, siblings, sampleData, userData, revision, useSampleData, signedIn]);
 
   useEffect(() => {
     if (result?.json) ViewerConnection.instance.exportSandbox(clientId);
@@ -195,6 +214,20 @@ export function SandboxPreview({ files, siblings, sampleData, revision, unrender
             onClick={() => setSignedIn((current) => !current)}
           />
         )}
+        {/*
+          BEN-006 — the same gating `Sign out` uses, and for the same reason:
+          offering to edit the data against a real backend would be a claim this
+          preview cannot honour. There is nothing to edit until the export has
+          been built, either.
+        */}
+        {useSampleData && result?.dataset && (
+          <PrimaryButton
+            label="Data"
+            size={PrimaryButtonSize.Small}
+            variant={dataOpen ? undefined : PrimaryButtonVariant.MutedOnLowBg}
+            onClick={() => setDataOpen((current) => !current)}
+          />
+        )}
         <div className={css.Modes}>
           <PrimaryButton
             label="Sample data"
@@ -210,6 +243,21 @@ export function SandboxPreview({ files, siblings, sampleData, revision, unrender
           />
         </div>
       </div>
+
+      {/*
+        Kept mounted across the reload an Apply causes. The dataset rides in the
+        export's metadata, so a data change is a changed export and the runtime
+        calls `location.reload()` — an unexplained white flash with the panel
+        gone reads as a crash, which is a bug report rather than a feature.
+      */}
+      {useSampleData && dataOpen && result?.dataset && (
+        <SandboxDataEditor
+          dataset={result.dataset}
+          userData={userData}
+          onApply={setUserData}
+          onClose={() => setDataOpen(false)}
+        />
+      )}
 
       <div className={css.Stage}>
         {message ? (

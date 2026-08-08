@@ -1,0 +1,175 @@
+/* BEN-006 — the data editor. Shares the preview's surface tokens so it reads as
+   part of the preview rather than as a dialog over it: it edits what is on
+   screen, and a modal would imply it edits something else. */
+
+.Root {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  max-height: 55%;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--theme-color-bg-1);
+  background-color: var(--theme-color-bg-2);
+}
+
+.Head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  flex-shrink: 0;
+}
+
+.HeadNote {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.Classes {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0 8px 8px;
+}
+
+.Empty {
+  padding: 16px 0;
+}
+
+.Class {
+  border-top: 1px solid var(--theme-color-bg-1);
+  padding: 8px 0;
+}
+
+.ClassHead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.ClassActions {
+  margin-left: auto;
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.Invite {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--theme-color-notice);
+}
+
+.Fields {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 4px 0 6px;
+}
+
+.TableScroll {
+  /* Wide data scrolls inside its own box; the panel itself never does. */
+  overflow-x: auto;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.Table {
+  border-collapse: collapse;
+  width: 100%;
+
+  th {
+    text-align: left;
+    font-weight: 400;
+    padding: 2px 6px;
+    white-space: nowrap;
+    color: var(--theme-color-fg-muted);
+    border-bottom: 1px solid var(--theme-color-bg-1);
+  }
+
+  td {
+    padding: 1px 2px;
+    vertical-align: top;
+  }
+}
+
+.RowNumber {
+  width: 24px;
+  text-align: right !important;
+  color: var(--theme-color-fg-muted);
+  padding-right: 6px !important;
+}
+
+.Cell {
+  width: 100%;
+  min-width: 96px;
+  box-sizing: border-box;
+  padding: 3px 6px;
+  border: 1px solid var(--theme-color-bg-1);
+  border-radius: 2px;
+  background-color: var(--theme-color-bg-3);
+  color: var(--theme-color-fg-default);
+  font-family: inherit;
+  font-size: inherit;
+
+  &:focus {
+    outline: none;
+    border-color: var(--theme-color-primary);
+  }
+}
+
+.Json {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 140px;
+  max-height: 220px;
+  resize: vertical;
+  padding: 6px 8px;
+  border: 1px solid var(--theme-color-bg-1);
+  border-radius: 2px;
+  background-color: var(--theme-color-bg-3);
+  color: var(--theme-color-fg-default);
+  font-family: var(--font-family-code);
+  font-size: 12px;
+
+  &:focus {
+    outline: none;
+    border-color: var(--theme-color-primary);
+  }
+}
+
+.NoRows {
+  padding: 8px 0;
+}
+
+/* Red is danger only (phase 23), and unparseable JSON is exactly that: it is the
+   one state in this panel where pressing the button would do the wrong thing. */
+.Error {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding-top: 4px;
+  color: var(--theme-color-danger);
+}
+
+.Foot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  flex-shrink: 0;
+  border-top: 1px solid var(--theme-color-bg-1);
+
+  > :first-child {
+    min-width: 0;
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
