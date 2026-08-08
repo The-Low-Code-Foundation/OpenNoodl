@@ -108,7 +108,8 @@ session-1 numbers cost a session to produce by hand and could not be re-derived:
 
 ## Gates at this session's close — all green, all at the expected counts
 
-- `npx jest` in `packages/noodl-editor` — **78 suites / 1060 specs** (unchanged from session 5).
+- `npx jest` in `packages/noodl-editor` — **79 suites / 1068 specs** (78/1060 at session 5; +1 suite
+  and +8 specs are `recommendedModels.test.ts`, added for the verdict).
 - `npx jest` in `packages/noodl-mcp` — **24 suites / 250 specs**.
 - `npm run catalog:examples` 57/57 · `catalog:check` up to date · `catalog:merge:check` up to date ·
   `typecheck:editor` clean.
