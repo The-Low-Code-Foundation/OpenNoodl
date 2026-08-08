@@ -1,0 +1,206 @@
+{
+  "desktop": {
+    "requested": {
+      "width": 1280,
+      "height": 900
+    },
+    "layoutWidth": 1280,
+    "clientWidth": 1280,
+    "scrollWidth": 1280,
+    "pageHeight": 2373,
+    "overflowing": [],
+    "overflowingCount": 0,
+    "text": {
+      "elements": 49,
+      "fontWeights": {
+        "400": 23,
+        "500": 6,
+        "600": 17,
+        "700": 3
+      },
+      "fontSizes": {
+        "16px": 5,
+        "14px": 30,
+        "12px": 8,
+        "60px": 1,
+        "18px": 2,
+        "30px": 3
+      },
+      "distinctFontSizes": 6,
+      "bodyFontFamily": "Inter, ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoj"
+    },
+    "placeholders": {
+      "count": 0,
+      "byText": {},
+      "samples": []
+    },
+    "images": {
+      "total": 4,
+      "broken": 0,
+      "brokenSources": []
+    },
+    "emptyDecoratedBoxes": {
+      "count": 0,
+      "samples": []
+    },
+    "repeatedGroups": [
+      {
+        "kind": "siblings",
+        "count": 3,
+        "columns": 1,
+        "rows": 3,
+        "itemWidth": 1152,
+        "itemHeight": 15,
+        "parentWidth": 1152,
+        "tag": "DIV",
+        "cls": "ndl-visual-text"
+      },
+      {
+        "kind": "siblings",
+        "count": 3,
+        "columns": 1,
+        "rows": 3,
+        "itemWidth": 544,
+        "itemHeight": 15,
+        "parentWidth": 544,
+        "tag": "DIV",
+        "cls": "ndl-visual-text"
+      },
+      {
+        "kind": "siblings",
+        "count": 5,
+        "columns": 1,
+        "rows": 5,
+        "itemWidth": 252,
+        "itemHeight": 15,
+        "parentWidth": 252,
+        "tag": "DIV",
+        "cls": "ndl-visual-text"
+      },
+      {
+        "kind": "siblings",
+        "count": 5,
+        "columns": 1,
+        "rows": 5,
+        "itemWidth": 252,
+        "itemHeight": 15,
+        "parentWidth": 252,
+        "tag": "DIV",
+        "cls": "ndl-visual-text"
+      },
+      {
+        "kind": "siblings",
+        "count": 5,
+        "columns": 1,
+        "rows": 5,
+        "itemWidth": 252,
+        "itemHeight": 15,
+        "parentWidth": 252,
+        "tag": "DIV",
+        "cls": "ndl-visual-text"
+      },
+      {
+        "kind": "siblings",
+        "count": 3,
+        "columns": 3,
+        "rows": 1,
+        "itemWidth": 368,
+        "itemHeight": 315,
+        "parentWidth": 1152,
+        "tag": "DIV",
+        "cls": ""
+      },
+      {
+        "kind": "siblings",
+        "count": 3,
+        "columns": 3,
+        "rows": 1,
+        "itemWidth": 352,
+        "itemHeight": 42,
+        "parentWidth": 1200,
+        "tag": "DIV",
+        "cls": ""
+      },
+      {
+        "kind": "siblings",
+        "count": 3,
+        "columns": 3,
+        "rows": 1,
+        "itemWidth": 252,
+        "itemHeight": 147,
+        "parentWidth": 1152,
+        "tag": "DIV",
+        "cls": ""
+      }
+    ]
+  },
+  "phone": {
+    "requested": {
+      "width": 390,
+      "height": 844
+    },
+    "layoutWidth": 525,
+    "clientWidth": 390,
+    "scrollWidth": 525,
+    "pageHeight": 3080,
+    "overflowing": [],
+    "overflowingCount": 0,
+    "text": {
+      "elements": 49,
+      "fontWeights": {
+        "400": 23,
+        "500": 6,
+        "600": 17,
+        "700": 3
+      },
+      "fontSizes": {
+        "16px": 5,
+        "14px": 30,
+        "12px": 8,
+        "60px": 1,
+        "18px": 2,
+        "30px": 3
+      },
+      "distinctFontSizes": 6,
+      "bodyFontFamily": "Inter, ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoj"
+    },
+    "placeholders": {
+      "count": 0,
+      "byText": {},
+      "samples": []
+    },
+    "images": {
+      "total": 4,
+      "broken": 0,
+      "brokenSources": []
+    },
+    "emptyDecoratedBoxes": {
+      "count": 0,
+      "samples": []
+    },
+    "repeatedGroups": [
+      {
+        "kind": "siblings",
+        "count": 3,
+        "columns": 1,
+        "rows": 3,
+        "itemWidth": 342,
+        "itemHeight": 15,
+        "parentWidth": 342,
+        "tag": "DIV",
+        "cls": "ndl-visual-text"
+      },
+      {
+        "kind": "siblings",
+        "count": 3,
+        "columns": 1,
+        "rows": 3,
+        "itemWidth": 210,
+        "itemHeight": 30,
+        "parentWidth": 210,
+        "tag": "DIV",
+        "cls": "ndl-visual-text"
+      }
+    ]
+  }
+}
