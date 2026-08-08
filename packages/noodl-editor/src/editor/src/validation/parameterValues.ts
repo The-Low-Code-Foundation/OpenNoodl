@@ -516,6 +516,77 @@ function unitSuffixTrap(
   };
 }
 
+// ─── The Columns layout string ───────────────────────────────────────────────
+
+/** The three ports that take a layout string. All on the one node that reflows. */
+const COLUMNS_TYPE = 'net.noodl.visual.columns';
+const LAYOUT_STRING_PORTS = new Set(['layoutString', 'mediumLayout', 'smallLayout']);
+
+/** A trailing CSS unit on an otherwise-numeric track: `1fr`, `260px`, `50%`. */
+const UNIT_SUFFIXED_TRACK = /^(\d+(?:\.\d+)?)(fr|px|%|em|rem|vw|vh)$/;
+
+/**
+ * Mirrors `readLayoutToken` in the runtime
+ * (`noodl-viewer-react/src/components/visual/Columns/Columns.tsx`), which is the
+ * authority on this grammar. Deliberately `Number`, not `parseInt` — the
+ * runtime's own docblock records that `parseInt` truncated `'1 2.5 1'` to
+ * `1 2 1`, and nothing downstream assumes integers because `_calcAutofold` only
+ * sums and divides. **Fractional proportions are legal**, whatever the recipes
+ * say. And `Number` rather than `parseFloat`, because `parseFloat` reads a
+ * *prefix* and would turn `'1abc'` into `1`.
+ */
+function usableTrack(token: string): boolean {
+  const fraction = Number(token);
+  return Number.isFinite(fraction) && fraction > 0;
+}
+
+/**
+ * The `"1fr 1fr 1fr 1fr"` trap (audit F3).
+ *
+ * CSS Grid's dialect is what a model has seen a million times and what nothing
+ * in this runtime speaks. `parseLayout` drops every token that is not a
+ * positive finite number and falls back to `[1]` when nothing survives — so the
+ * grid renders as ONE COLUMN at every width, on the one node in the runtime
+ * that exists to reflow, and the graph looks perfect. That is the whole failure
+ * mode: not a crash, not a warning, a silently correct-looking single column.
+ *
+ * An error rather than a warning, from day one: no legitimate population can
+ * exist for a string the thing that reads it cannot parse.
+ */
+function layoutStringProblem(value: unknown): { message: string; suggestion?: string } | undefined {
+  if (typeof value !== 'string') return undefined;
+
+  // An empty layout string is how a breakpoint is deliberately made inert —
+  // the port's own description says so — and a double space is dropped by the
+  // runtime on purpose. Neither is a mistake, and a gate that disagrees with
+  // `describeLayoutString` about the same string is the drift, not the fix.
+  const tokens = value.split(' ').filter((token) => token !== '');
+  if (tokens.length === 0) return undefined;
+
+  const unusable = tokens.filter((token) => !usableTrack(token));
+  if (unusable.length === 0) return undefined;
+
+  // Only offer a repair when EVERY token can be recovered — stripping a unit is
+  // the one transformation that provably preserves the author's ratios. A
+  // partial guess would be auto-applied by an agent told never to argue with a
+  // diagnostic, and would be wrong.
+  const repaired = tokens.map((token) => UNIT_SUFFIXED_TRACK.exec(token)?.[1]);
+  const suggestion = repaired.every((n) => n !== undefined && usableTrack(n)) ? repaired.join(' ') : undefined;
+
+  const listed = unusable.map((token) => JSON.stringify(token)).join(', ');
+  const survivors = tokens.length - unusable.length;
+  const rendered = survivors === 0 ? 1 : survivors;
+
+  return {
+    message:
+      `a layout string is space-separated proportions ("1 1", "2 1", "1 2.5 1"), so ${listed} ` +
+      `${unusable.length === 1 ? 'is not a positive number and is' : 'are not positive numbers and are'} ` +
+      `dropped — ${tokens.length} column(s) authored, ${rendered} rendered. Columns is the only node in the ` +
+      'runtime that reflows, and a layout string it cannot parse silently voids that.',
+    ...(suggestion ? { suggestion } : {})
+  };
+}
+
 /**
  * Check every node's parameter values against the wire format its port type
  * demands.
@@ -658,6 +729,23 @@ export function checkParameterValues(
           ]
         });
         continue;
+      }
+
+      // LAS-003/F3 — before the generic format check, because `layoutString` is
+      // typed `string` and every string passes that. The constraint is the
+      // node's, not the port type's, so it cannot live in the FORMATS table.
+      if (node.type === COLUMNS_TYPE && LAYOUT_STRING_PORTS.has(name)) {
+        const layout = layoutStringProblem(value);
+        if (layout) {
+          diagnostics.push({
+            code: DiagnosticCode.InvalidParameterValue,
+            severity: 'error',
+            message: `"${name}" — ${layout.message}`,
+            location: locate(component, node, name),
+            ...(layout.suggestion !== undefined ? { suggestion: layout.suggestion } : {})
+          });
+          continue;
+        }
       }
 
       const problem = wireFormatFor(port)?.check(value, portTypeShape(port)!);
