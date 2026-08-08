@@ -39,12 +39,14 @@ import type { ProjectDocsContent } from '../../ProjectDocs/docsText';
 import type { StyleVocabulary } from '../../StyleTokensModel/StyleVocabulary';
 import type { StyleTokenRecord } from '../../StyleTokensModel/TokenCategories';
 import { AiClient } from '../client';
+import type { AiRoleRequestFields } from '../client/roles';
 import { withTurnDeadline } from '../client/turnDeadline';
 import type {
   AiChatRequest,
   AiChatResponse,
   AiEffort,
   AiMessage,
+  AiRole,
   AiStreamCallbacks,
   AiToolCall,
   AiToolDefinition
@@ -118,6 +120,13 @@ export interface AuthoringSessionOptions {
    * `AUTHORING_EFFORT`; the measurement harness overrides it to sweep.
    */
   effort?: AiEffort;
+  /**
+   * LAS-009: which per-role model selection this session runs under. Defaults
+   * to the `act` role — authoring *is* acting. Pass `'global'` to opt out and
+   * follow the main model, which is what the measurement harness wants when it
+   * is sweeping one variable at a time.
+   */
+  role?: AiRole | 'global';
   /**
    * AIX-009: the project's `docs/` bodies. Defaults to whatever the editor's
    * installed docs provider holds for the open project, so the panel needs no
@@ -314,6 +323,8 @@ export class AuthoringSession {
   private readonly maxTurns: number;
   private readonly maxSubmits: number;
   private readonly effort: AiEffort;
+  /** LAS-009: the resolved role's request fields, decided once at session start. */
+  private readonly roleFields: AiRoleRequestFields;
   /** AIX-011: rendered sibling-intent block when part of a plan, else undefined. */
   private readonly planContext?: string;
   /** AAQ-001: components the plan will create, so a link to one is not "unresolved". */
@@ -373,6 +384,8 @@ export class AuthoringSession {
     this.maxTurns = options.maxTurns ?? DEFAULT_MAX_TURNS;
     this.maxSubmits = options.maxSubmits ?? DEFAULT_MAX_SUBMITS;
     this.effort = options.effort ?? AUTHORING_EFFORT;
+    // LAS-009: resolved once, here, and carried for the life of the session.
+    this.roleFields = AiClient.roleRequestFields(options.role ?? 'act');
     this.planContext = options.planContext;
     this.plannedComponents = options.plannedComponents;
     this.backend = options.backend;
@@ -650,6 +663,7 @@ export class AuthoringSession {
             tools: this.docTools.length > 0 ? [...AUTHORING_TOOLS, ...this.docTools] : AUTHORING_TOOLS,
             toolChoice: 'auto',
             effort: this.effort,
+            ...this.roleFields,
             abortController
           },
           {

@@ -15,7 +15,8 @@
  */
 
 import { AiClient } from '../client';
-import type { AiEffort, AiMessage, AiToolCall } from '../client/types';
+import type { AiRoleRequestFields } from '../client/roles';
+import type { AiEffort, AiMessage, AiRole, AiToolCall } from '../client/types';
 import type { ExplainGraph } from '../explain/types';
 // Pure ProjectDocs submodules only, for the same reason `AuthoringSession`
 // imports them this way: the barrel would drag ProjectModel and the platform
@@ -53,6 +54,13 @@ export interface PlanningOptions {
   maxTurns?: number;
   maxSubmits?: number;
   effort?: AiEffort;
+  /**
+   * LAS-009: defaults to the `plan` role. ⚠️ The measured replays say planning
+   * is the step a mid-tier model did *well* — this is the role a user can most
+   * safely point at a cheap model, and the opposite of the intuition that the
+   * thinking step needs the strongest model.
+   */
+  role?: AiRole | 'global';
   /**
    * AIX-011 criterion 7: the open project's `docs/` bodies, so the plan can
    * contain a `doc` operation. Defaults to the installed provider's snapshot —
@@ -174,6 +182,8 @@ export class PlanningSession {
   private readonly maxTurns: number;
   private readonly maxSubmits: number;
   private readonly effort: AiEffort;
+  /** LAS-009: the resolved role's request fields, decided once at session start. */
+  private readonly roleFields: AiRoleRequestFields;
   readonly context: AuthoringContextBuilder;
   private readonly existingComponents: ReadonlySet<string>;
 
@@ -183,6 +193,7 @@ export class PlanningSession {
     this.maxTurns = options.maxTurns ?? DEFAULT_MAX_TURNS;
     this.maxSubmits = options.maxSubmits ?? DEFAULT_MAX_SUBMITS;
     this.effort = options.effort ?? AUTHORING_EFFORT;
+    this.roleFields = AiClient.roleRequestFields(options.role ?? 'plan');
     this.context = new AuthoringContextBuilder(
       graph,
       options.budget,
@@ -223,6 +234,7 @@ export class PlanningSession {
           tools: PLANNING_TOOLS,
           toolChoice: 'auto',
           effort: this.effort,
+          ...this.roleFields,
           abortController
         });
       } catch (error) {

@@ -27,7 +27,8 @@
 
 import { AiClient } from '../client';
 import { withTurnDeadline } from '../client/turnDeadline';
-import type { AiChatRequest, AiChatResponse, AiEffort, AiMessage, AiStreamCallbacks } from '../client/types';
+import type { AiRoleRequestFields } from '../client/roles';
+import type { AiChatRequest, AiChatResponse, AiEffort, AiMessage, AiRole, AiStreamCallbacks } from '../client/types';
 import {
   RECORD_SCOPE,
   SCOPE_RECORDED,
@@ -97,6 +98,11 @@ function withProsePrefix(callbacks: AiStreamCallbacks, before: () => string): Ai
 export interface ScopingOptions {
   chat?: ScopingChatFn;
   effort?: AiEffort;
+  /**
+   * LAS-009: defaults to the `design` role — scoping is where the app is
+   * decided, before anything is planned or built.
+   */
+  role?: AiRole | 'global';
   maxToolRounds?: number;
   /**
    * AIB-009 F11: how long one turn may deliver nothing before it is ended.
@@ -123,6 +129,8 @@ export interface ScopingTurn {
 export class ScopingSession {
   private readonly chat: ScopingChatFn;
   private readonly effort: AiEffort;
+  /** LAS-009: the resolved role's request fields, decided once at session start. */
+  private readonly roleFields: AiRoleRequestFields;
   private readonly maxToolRounds: number;
   private readonly messages: AiMessage[] = [{ role: 'system', content: scopingSystemPrompt() }];
   private readonly entries: ScopeTranscriptEntry[] = [];
@@ -136,6 +144,7 @@ export class ScopingSession {
       { stallMs: options.stallMs }
     );
     this.effort = options.effort ?? SCOPING_EFFORT;
+    this.roleFields = AiClient.roleRequestFields(options.role ?? 'design');
     this.maxToolRounds = options.maxToolRounds ?? MAX_TOOL_ROUNDS;
   }
 
@@ -232,6 +241,7 @@ export class ScopingSession {
               tools: SCOPING_TOOLS,
               toolChoice: 'auto',
               effort: this.effort,
+              ...this.roleFields,
               abortController
             },
             // `onText` reports the accumulated text of the round in flight, so

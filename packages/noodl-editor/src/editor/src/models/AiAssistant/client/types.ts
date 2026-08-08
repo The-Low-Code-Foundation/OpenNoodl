@@ -20,6 +20,14 @@ export const AI_PROVIDER_IDS: readonly AiProviderId[] = [
 
 export type AiMessageRole = 'system' | 'user' | 'assistant' | 'tool';
 
+/**
+ * LAS-009 — the three jobs a build is made of, which a user may point at
+ * different models. Defined here rather than in `roles.ts` so that a request
+ * can carry one without `types.ts` and `roles.ts` importing each other;
+ * `roles.ts` re-exports it and owns everything else about roles.
+ */
+export type AiRole = 'design' | 'plan' | 'act';
+
 export interface AiToolCall {
   /** Provider-assigned id, echoed back on the matching tool result. */
   id: string;
@@ -79,6 +87,23 @@ export interface AiChatRequest {
    * normally omit it, so a single settings change moves every feature.
    */
   model?: string;
+  /**
+   * LAS-009 — send this request to a provider other than the active one.
+   * Omit for everything except a per-role override, which is the only thing
+   * that should ever contradict the user's chosen provider.
+   *
+   * Set this and you almost always want `model` set too: the two are resolved
+   * together by `resolveRole`, because the active provider's model id means
+   * nothing to a different provider.
+   */
+  provider?: AiProviderId;
+  /**
+   * LAS-009 — which of design/plan/act issued this request. Purely a label:
+   * it tags the usage log and the `[ai]` console line so a split configuration
+   * can be read back, and it never affects routing. Routing is `provider` and
+   * `model`, both already resolved by the time a request is built.
+   */
+  role?: AiRole;
   temperature?: number;
   maxTokens?: number;
   tools?: AiToolDefinition[];

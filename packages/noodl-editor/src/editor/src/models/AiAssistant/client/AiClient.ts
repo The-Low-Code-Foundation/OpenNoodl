@@ -12,6 +12,13 @@
 import { AiConfigStore } from '@noodl-store/AiAssistantStore';
 
 import { AiModelDefinition, resolveModel } from '@noodl-models/AiAssistant/client/models';
+import {
+  bindRoleConfig,
+  resolveRole,
+  roleRequestFields,
+  type AiRoleRequestFields,
+  type ResolvedRole
+} from '@noodl-models/AiAssistant/client/roles';
 import { AnthropicProvider } from '@noodl-models/AiAssistant/client/providers/anthropic';
 import { OllamaProvider } from '@noodl-models/AiAssistant/client/providers/ollama';
 import { OpenAiProvider } from '@noodl-models/AiAssistant/client/providers/openai';
@@ -23,6 +30,7 @@ import {
   AiProviderConfig,
   AiProviderId,
   AiProviderVerification,
+  AiRole,
   AiStreamCallbacks,
   AiUsage
 } from '@noodl-models/AiAssistant/client/types';
@@ -32,6 +40,8 @@ export interface AiUsageRecord {
   model: string;
   usage: AiUsage;
   at: number;
+  /** LAS-009 — which of design/plan/act issued it, when the caller said. */
+  role?: AiRole;
 }
 
 /**
@@ -59,14 +69,17 @@ export function createProvider(providerId: AiProviderId, config: AiProviderConfi
 /** In-memory usage log for the current editor session. */
 const usageLog: AiUsageRecord[] = [];
 
-function record(provider: AiProviderId, response: AiChatResponse) {
-  usageLog.push({ provider, model: response.model, usage: response.usage, at: Date.now() });
+function record(provider: AiProviderId, response: AiChatResponse, role?: AiRole) {
+  usageLog.push({ provider, model: response.model, usage: response.usage, at: Date.now(), ...(role ? { role } : {}) });
   const { promptTokens, completionTokens, cacheReadTokens, cacheWriteTokens, costUsd } = response.usage;
   // AIX-007: `promptTokens` is the uncached remainder, so the cached share is
   // logged beside it — otherwise a cached turn reads as a tiny prompt.
   const cached = cacheReadTokens > 0 || cacheWriteTokens > 0 ? ` (+${cacheReadTokens} cached, ${cacheWriteTokens} written)` : '';
+  // LAS-009: the role prefix is what makes a split configuration readable at
+  // all — it is the difference between "two models ran" and knowing which one
+  // planned and which one built.
   console.debug(
-    `[ai] ${provider}/${response.model} — ${promptTokens} in${cached} / ` +
+    `[ai] ${role ? `${role}: ` : ''}${provider}/${response.model} — ${promptTokens} in${cached} / ` +
       `${completionTokens} out, ${costUsd === null ? 'cost unknown' : `$${costUsd.toFixed(6)}`}`
   );
 }
@@ -95,38 +108,73 @@ export const AiClient = {
     return this.getActiveModel()?.capabilities.agentFlow ?? false;
   },
 
-  async getProvider(): Promise<AiProvider> {
-    const providerId = AiConfigStore.getActiveProvider();
-    if (!providerId) {
+  /**
+   * LAS-009 — resolve a role against the user's settings. Call once, when a
+   * session starts, and spread the result onto every request that session
+   * sends: resolving per request would let a settings change move the model
+   * mid-conversation, which makes a transcript impossible to read back.
+   *
+   * An unset role (the shipped default, and what almost every user will have)
+   * contributes only the `role` label, so the request is otherwise identical
+   * to the one that would have been sent before this existed.
+   */
+  resolveRole(role: AiRole): ResolvedRole {
+    return resolveRole(role, bindRoleConfig(AiConfigStore));
+  },
+
+  /**
+   * The request fields a role contributes, or nothing at all for `'global'` —
+   * the opt-out that reproduces the exact pre-LAS-009 request, which is what
+   * the measurement harness wants when it is sweeping one variable at a time.
+   * See {@link AiClient.resolveRole}.
+   */
+  roleRequestFields(role: AiRole | 'global'): AiRoleRequestFields {
+    if (role === 'global') return {};
+    return roleRequestFields(this.resolveRole(role));
+  },
+
+  /**
+   * The adapter a request will be served by. Defaults to the active provider;
+   * LAS-009 passes an override so a per-role selection can send one session's
+   * turns somewhere else entirely (Opus plans, a local model acts).
+   *
+   * Note the override is still checked against that provider's own
+   * credentials — a role pointing at an unconfigured provider fails here with
+   * the same message the user would get from the main picker, not silently on
+   * the active one's key.
+   */
+  async getProvider(providerId?: AiProviderId): Promise<AiProvider> {
+    const target = providerId || AiConfigStore.getActiveProvider();
+    if (!target) {
       throw new AiNotConfiguredError();
     }
 
-    if (!AiConfigStore.isConfigured()) {
+    if (!AiConfigStore.isConfigured(target)) {
       throw new AiNotConfiguredError(
-        providerId === 'openai-compatible'
+        target === 'openai-compatible'
           ? 'No endpoint is set for the custom AI provider. Open Editor Settings to add one.'
-          : `No API key is set for ${providerId}. Open Editor Settings to add one.`
+          : `No API key is set for ${target}. Open Editor Settings to add one.`
       );
     }
 
-    const endpoint = AiConfigStore.getEndpoint(providerId);
-    return createProvider(providerId, {
-      apiKey: (await AiConfigStore.getApiKey(providerId)) || undefined,
+    const endpoint = AiConfigStore.getEndpoint(target);
+    return createProvider(target, {
+      apiKey: (await AiConfigStore.getApiKey(target)) || undefined,
       baseUrl: endpoint || undefined
     });
   },
 
   async chat(request: AiChatRequest): Promise<AiChatResponse> {
-    const provider = await this.getProvider();
+    const provider = await this.getProvider(request.provider);
     const response = await provider.chat(withConfiguredModel(request));
-    record(provider.id, response);
+    record(provider.id, response, request.role);
     return response;
   },
 
   async chatStream(request: AiChatRequest, callbacks: AiStreamCallbacks = {}): Promise<AiChatResponse> {
-    const provider = await this.getProvider();
+    const provider = await this.getProvider(request.provider);
     const response = await provider.chatStream(withConfiguredModel(request), callbacks);
-    record(provider.id, response);
+    record(provider.id, response, request.role);
     return response;
   },
 
@@ -150,11 +198,36 @@ export const AiClient = {
   /** Total spend this editor session, ignoring models with unknown pricing. */
   getSessionCostUsd(): number {
     return usageLog.reduce((total, entry) => total + (entry.usage.costUsd ?? 0), 0);
+  },
+
+  /**
+   * LAS-009 — spend this editor session, split by role, so a user running a
+   * strong planner and a cheap builder can see what the split actually costs.
+   * Untagged turns (explain, review, the legacy copilot) are grouped under
+   * `global`.
+   *
+   * ⚠️ Editor-session totals, not per-run: this log spans the whole editor
+   * lifetime and has no run boundary in it. The per-run cost line in the
+   * authoring panel is fed by `PlanRun`, not by this — see F34.
+   */
+  getSessionCostByRole(): Record<AiRole | 'global', number> {
+    const totals: Record<AiRole | 'global', number> = { design: 0, plan: 0, act: 0, global: 0 };
+    for (const entry of usageLog) {
+      totals[entry.role ?? 'global'] += entry.usage.costUsd ?? 0;
+    }
+    return totals;
   }
 };
 
-/** Features may omit `model`; the user's configured model is filled in here. */
+/**
+ * Features may omit `model`; the user's configured model is filled in here.
+ *
+ * LAS-009: when the request names a provider, the model has to come from *that*
+ * provider's settings. Filling from the active one instead is how a Claude
+ * model id gets sent to Ollama — the request would reach the right endpoint
+ * carrying a model that endpoint has never heard of.
+ */
 function withConfiguredModel(request: AiChatRequest): AiChatRequest {
   if (request.model) return request;
-  return { ...request, model: AiConfigStore.getModel() };
+  return { ...request, model: AiConfigStore.getModel(request.provider) };
 }
