@@ -227,12 +227,17 @@ tripwire, the "write the check before the fix" habit).
 
 ## Track 4 — Models. Choice at the top, proof at the bottom.
 
-### LAS-009 — design / plan / act per-role model selection (Richard's request, 2026-08-08)
+### LAS-009 — design / plan / act per-role model selection ✅ **DONE** 2026-08-08
 
-The seam exists and is unused: every request honours an explicit `model`
-([AiClient.ts:157](../../../packages/noodl-editor/src/editor/src/models/AiAssistant/client/AiClient.ts#L157)),
-`getProvider(providerId)` takes an override
-([AiClient.ts:135](../../../packages/noodl-editor/src/editor/src/models/AiAssistant/client/AiClient.ts#L135)).
+Richard's request, 2026-08-08, extended mid-session to *provider* **and** model per role
+("mix DeepInfra with Anthropic"). See
+[LAS-009-PER-ROLE-MODELS.md](LAS-009-PER-ROLE-MODELS.md).
+
+⚠️ The premise below was **half wrong** (F33) and is kept only so the correction is legible:
+per-request `model` was real, but `getProvider()` took **no arguments** — the cited
+`(providerId, override)` signature belongs to `verify()`. Cross-provider was new plumbing, and
+LAS-009 built it. Driven live: `[ai] plan: anthropic/claude-haiku-4-5` beside
+`[ai] act: ollama/llama3.2:latest` in one plan→author run.
 
 **Build:**
 
@@ -250,8 +255,11 @@ The seam exists and is unused: every request honours an explicit `model`
    far says planning is the *cheap* step and acting the hard one — LAS-011's matrix decides any
    recommended preset, not intuition.
 
-**Acceptance:** jest on the role→model resolution (fallbacks, cross-provider); a live editor run
-with plan=haiku/act=sonnet visibly logging both models in the usage line.
+**Acceptance:** ✅ met — 12 jest specs (`tests-unit/phase-55/roleModels.test.ts`), plus a live
+editor run logging plan=haiku beside act=sonnet, and a second run logging plan=anthropic beside
+act=ollama. Two findings filed: **F34** (the cost line §3 named reads nothing from the usage log,
+and planning cost reaches no line at all) and **F35** (the registry has **zero**
+`openai-compatible` models, so a picker cannot configure a DeepInfra role).
 
 ### LAS-010 — The open-weight leg (audit's honest gap)
 
@@ -299,14 +307,14 @@ LAS-004 (promote+page)   ──┘            │
 LAS-005 ✅ (render_report) ─ independent ┤
 LAS-006 ✅ (structured plans; §3 needed LAS-001)
 LAS-008 (prompt drift) ── independent, small, do first or between
-LAS-009 (per-role models) ── independent (editor-side)
+LAS-009 ✅ (per-role models; provider AND model, cross-provider proven live)
 LAS-010 (open-weight rig) ── needs Richard's pull decision; parallel to everything
 LAS-011 (exit matrix) ── last; needs 001–008 + 010
 ```
 
 Suggested sessions: ✅ **(1)** LAS-008 + LAS-002 + LAS-003 (small, sharp, all spec-pinned) ·
 ✅ **(2)** LAS-001 + LAS-004 (the validator pair, one corpus calibration run) · ✅ **(3)** LAS-005 · ✅ **(4)**
-LAS-006 + LAS-007 · **(5)** LAS-009 · **(6)** LAS-010 + LAS-011. Registers per task; serialise
+LAS-006 + LAS-007 · ✅ **(5)** LAS-009 · **(6)** LAS-010 + LAS-011. Registers per task; serialise
 register edits (pathspec-commit trap); commit per slice.
 
 ## Gates for every session
