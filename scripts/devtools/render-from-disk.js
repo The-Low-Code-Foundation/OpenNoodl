@@ -172,15 +172,57 @@ function buildProjectData() {
  * — a page rendered with no tokens at all is not a smaller problem than a page
  * rendered with the wrong ones, it just fails less visibly.
  */
+/**
+ * This project's own token overrides, from `metadata.designTokens` — the block
+ * `set_project_tokens` writes and the editor reads back verbatim.
+ *
+ * Without these the fallback renders a bespoke palette in the SHIPPED colours,
+ * which is the worst of the three outcomes: it looks deliberate, so you measure
+ * it, believe it, and go fixing things that were never wrong. Appended after the
+ * defaults so the later declaration wins — the same order the editor produces.
+ */
+function projectOverrideDecls() {
+  try {
+    const project = readJSON(path.join(PROJECT, 'nodegx.project.json'));
+    const stored = project.metadata?.designTokens;
+    const custom = stored?.customTokens || [];
+    return custom.filter((t) => t && t.name && t.value).map((t) => `  ${t.name}: ${t.value};`);
+  } catch {
+    return [];
+  }
+}
+
 function tokenCss(cb) {
+  const overrides = projectOverrideDecls();
   const done = (css, source) => {
+    if (overrides.length) {
+      css = css.replace(/<\/style>$/, `\n:root {\n${overrides.join('\n')}\n}\n</style>`);
+      source += ` + ${overrides.length} project override(s)`;
+    }
     console.error(`[render] design tokens: ${source}`);
     cb(css);
   };
   const fallback = () => {
     const src = fs.readFileSync(TOKENS_SRC, 'utf8');
-    const decls = [...src.matchAll(/name:\s*'(--[\w-]+)',\s*value:\s*'([^']*)'/g)].map(([, n, v]) => `  ${n}: ${v};`);
-    done(`<style id="noodl-design-tokens">:root {\n${decls.join('\n')}\n}</style>`, `${decls.length} shipped defaults`);
+    // Both quote styles. A single-quote-only pattern silently dropped every
+    // token whose value CONTAINS an apostrophe — which is exactly the font
+    // stacks: `--font-sans` is "Inter, …, 'Apple Color Emoji', …". So
+    // `body { font-family: var(--font-sans) }` resolved to nothing and the whole
+    // page fell back to Times. The tell was `--font-sans` reading empty at
+    // :root, not anything about fonts.
+    const decls = [...src.matchAll(/name:\s*'(--[\w-]+)',\s*value:\s*(?:'([^']*)'|"([^"]*)")/g)].map(
+      ([, n, sq, dq]) => `  ${n}: ${sq !== undefined ? sq : dq};`
+    );
+    // ⚠️ Mirrors `TokenResolver.generateCss` — which emits the `:root` block AND
+    // a `body { font-family: var(--font-sans) }` floor. Reconstructing only the
+    // first half made every page render in the browser's default SERIF, and a
+    // serif single column is the exact signature of "the styling was discarded".
+    // The harness looked like it had found the product's biggest defect; the
+    // product was fine and the harness was lying. Keep these two in step.
+    done(
+      `<style id="noodl-design-tokens">:root {\n${decls.join('\n')}\n}\n\nbody {\n  font-family: var(--font-sans);\n}</style>`,
+      `${decls.length} shipped defaults`
+    );
   };
 
   const req = http.get({ host: '127.0.0.1', port: EDITOR_PORT, path: '/' }, (r) => {
