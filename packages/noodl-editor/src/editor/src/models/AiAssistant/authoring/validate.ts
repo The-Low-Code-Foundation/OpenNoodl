@@ -19,6 +19,7 @@ import {
   authoredNodes,
   authoredPreconditionDiagnostics,
   buildComponentRefs,
+  componentInterfaces,
   declaredUrlPaths as collectUrlPaths,
   diagnosticKey,
   isBlockingForAuthoredOutput,
@@ -218,12 +219,18 @@ function preconditionDiagnostics(
   const projectViews: ComponentNodesView[] = graph.components
     .filter((c) => c.name !== legacyName)
     .map((c) => ({ name: c.name, nodes: c.nodes }));
+  const views = [...projectViews, candidateView];
 
   return authoredPreconditionDiagnostics({
     component: legacyName,
     nodes: authoredNodes(files.nodes.nodes),
     components: [...graph.components.map((c) => c.name), legacyName, ...(options.plannedComponents ?? [])],
-    urlPaths: collectUrlPaths([...projectViews, candidateView]),
+    urlPaths: collectUrlPaths(views),
+    // LAS-001 — from the same views as the url paths, and for the same reason:
+    // the candidate replaces its own stale on-disk copy, so an interface it is
+    // adding in this very submission counts. `GraphNode.ports` carries the plug
+    // this needs; `instancePorts` alone cannot tell an input from a backwards one.
+    interfaces: componentInterfaces(views),
     catalog: loadDefaultCatalog(),
     backend: options.backend
   });

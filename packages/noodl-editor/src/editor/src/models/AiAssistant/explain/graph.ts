@@ -34,6 +34,8 @@ import type { ExplainGraph, GraphComponent, GraphConnection, GraphNode } from '.
  */
 interface EditorPortLike {
   name?: unknown;
+  /** LAS-001 — the direction, which `instancePorts` throws away. */
+  plug?: unknown;
 }
 
 interface EditorNodeLike {
@@ -89,6 +91,16 @@ function instancePortNames(node: EditorNodeLike): string[] {
   return names;
 }
 
+/** The same ports with their direction — LAS-001; see `GraphNode.ports`. */
+function declaredPorts(ports: readonly EditorPortLike[] | undefined | null): { name: string; plug?: string }[] {
+  const out: { name: string; plug?: string }[] = [];
+  for (const port of ports ?? []) {
+    if (!port || typeof port.name !== 'string') continue;
+    out.push({ name: port.name, ...(typeof port.plug === 'string' ? { plug: port.plug } : {}) });
+  }
+  return out;
+}
+
 /**
  * Parameters as authored. `node.parameters` is the raw authored map — reading it
  * directly (rather than `getParameter`, which falls back to port defaults) keeps
@@ -112,6 +124,7 @@ function fromEditorNode(node: EditorNodeLike, parentId: string | undefined, out:
     parent: parentId,
     children: children.map((c) => c.id),
     instancePorts: instancePortNames(node),
+    ports: declaredPorts(node.getPorts?.()),
     comment: node.getComment?.() || undefined
   });
   for (const child of children) fromEditorNode(child, node.id, out);
@@ -144,6 +157,7 @@ export function fromProjectModel(project: { components?: EditorComponentLike[] }
 
 interface SerialisedPort {
   name?: string;
+  plug?: string;
 }
 
 interface SerialisedNode {
@@ -191,6 +205,7 @@ function fromSerialisedNode(node: SerialisedNode, parentId: string | undefined, 
     parent: parentId,
     children: children.map((c) => c.id),
     instancePorts: serialisedPortNames(node),
+    ports: declaredPorts([...(node.ports ?? []), ...(node.dynamicports ?? [])]),
     comment: serialisedComment(node)
   });
   for (const child of children) fromSerialisedNode(child, node.id, out);

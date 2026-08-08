@@ -34,6 +34,18 @@ export interface GraphNode {
    * the interesting ones.
    */
   instancePorts: string[];
+  /**
+   * The same declared ports as {@link instancePorts}, with their `plug` — the
+   * direction `instancePorts` throws away.
+   *
+   * LAS-001 needed it and could not get it here: a component's inputs are the
+   * ports on its `Component Inputs` node whose plug contains `"output"`
+   * (`componentmodel.getPorts()` republishes those as the component's inputs),
+   * so a names-only view cannot tell an input from a port pointed the wrong way
+   * — which is precisely how `ecommerce-example` shipped eleven "inputs" that
+   * are outputs. Optional because not every adapter can supply it.
+   */
+  ports?: readonly { name: string; plug?: string }[];
   /** A user comment attached to the node, when present. */
   comment?: string;
 }

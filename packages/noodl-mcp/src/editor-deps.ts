@@ -40,6 +40,7 @@ export {
   AUTHORED_BLOCKING_WARNINGS,
   authoredNodes,
   authoredPreconditionDiagnostics,
+  componentInterfaces,
   declaredUrlPaths,
   diagnosticKey,
   isBlockingForAuthoredOutput,

@@ -459,6 +459,11 @@ export function graphComponentFromFiles(legacyName: string, files: ComponentFile
     parent: node.parent,
     children: node.children ? [...node.children] : childrenOf.get(node.id) ?? [],
     instancePorts: (node.ports ?? []).map((p) => p.name).filter((n): n is string => typeof n === 'string'),
+    // LAS-001 — with the plug, which is what decides whether a Component Inputs
+    // port is an input of the component or an output pointed the wrong way.
+    ports: (node.ports ?? [])
+      .filter((p): p is typeof p & { name: string } => typeof p.name === 'string')
+      .map((p) => ({ name: p.name, ...(typeof p.plug === 'string' ? { plug: p.plug } : {}) })),
     comment: undefined
   }));
   return {

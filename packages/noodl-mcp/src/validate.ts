@@ -30,6 +30,7 @@ import type { Diagnostic, ValidationReport } from './editor-deps';
 import {
   authoredNodes,
   authoredPreconditionDiagnostics,
+  componentInterfaces,
   declaredUrlPaths,
   diagnosticKey,
   isBlockingForAuthoredOutput,
@@ -78,10 +79,11 @@ export interface WriteValidation {
  * Every component in the project as "name + nodes", with `overlay` (keyed by
  * legacy name) standing in for what is about to be written.
  *
- * The precondition checks need two project-wide facts the `NormProject` cannot
- * carry: which component names a navigation may resolve to, and which `urlPath`
- * values exist — and the second one needs node *parameters*, which normalization
- * deliberately drops.
+ * The precondition checks need three project-wide facts the `NormProject` cannot
+ * carry: which component names a navigation may resolve to, which `urlPath`
+ * values exist, and (LAS-001) what each component's `Component Inputs` node
+ * declares. The second needs node *parameters* and the third needs node *ports*,
+ * neither of which normalization keeps.
  *
  * A component the registry lists but whose files will not read is skipped rather
  * than fatal, matching `review.ts`: a corrupt neighbour is not a reason to refuse
@@ -131,6 +133,12 @@ export function preconditionDiagnostics(
     nodes: authoredNodes(candidate.nodes.nodes),
     components: [...views.map((v) => v.name), legacyName],
     urlPaths: declaredUrlPaths(views),
+    // LAS-001 — from the same views, so a component this plan is about to create
+    // resolves as an interface exactly when it resolves as a navigation target.
+    // `authoredProjectViews` already overlays the staged candidates, which is
+    // what makes a correct multi-component plan validate instead of being
+    // charged for the order its operations happened to run in.
+    interfaces: componentInterfaces(views),
     catalog: catalogIndex()
   });
 }

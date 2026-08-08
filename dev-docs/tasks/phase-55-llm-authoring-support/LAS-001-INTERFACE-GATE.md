@@ -1,6 +1,7 @@
 # LAS-001 — The interface gate
 
-**Status:** 📋 open · **Track 1 (gates)** · ⭐ highest-value task in the phase · fixes audit **F2**
+**Status:** ✅ **DONE** 2026-08-08 (session 2) · **Track 1 (gates)** · ⭐ highest-value task in the
+phase · fixes audit **F2**
 **Blocks:** LAS-006 §3 (plan-as-contract), LAS-007 §1 (attach the recipe to this rejection), LAS-011
 
 ## The defect, measured
@@ -83,8 +84,66 @@ view — the rule must read interfaces from it, not from disk).
   [planTools.ts:200](../../../packages/noodl-mcp/src/tools/planTools.ts#L200)).
 - Corpus run documented. All standard gates green (see TASKS.md §Gates).
 
+## What was built
+
+`validation/componentInterface.ts` — a **precondition check**, not a `rules/` rule. The task file
+proposed `validation/rules/`; the type system settled it, exactly as the handover predicted:
+`NormNode` carries no `parameters`, and the check also needs a project-wide interface index, so no
+rule could ask the question at all. It composes into `authoredPreconditionDiagnostics` as the sixth
+and seventh checks, which means all three doors (editor loop, MCP write gate, MCP plan gate) get it
+from one definition — `preconditionDiagnostics` in `noodl-mcp/src/validate.ts` is shared by the
+write gate *and* `validateStaged`, so the plan overlay came for free.
+
+`ComponentNodesView` gained an optional `ports`, and `componentInterfaces(views)` builds the index
+from the **same** view list `declaredUrlPaths` already reads — so a component a plan is about to
+create resolves as an interface exactly when it resolves as a navigation target.
+
+`ExplainGraph`'s `GraphNode` gained an optional `ports` carrying the **plug**. `instancePorts` is
+names-only, and the plug is the whole answer (see F8 below); all three adapters
+(`fromEditorNode`, `fromSerialisedNode`, `graphComponentFromFiles`) now supply it.
+
+Three diagnostics, all warning-severity project-wide and all in `AUTHORED_BLOCKING_WARNINGS`:
+
+| Code | Fires when |
+|---|---|
+| `interfaceless-instance` | the target declares **no** `Component Inputs` and instances set parameters — **one** diagnostic per target component, not one per parameter per instance |
+| `instance-unknown-parameter` | the target has an interface and a parameter names none of it; carries the actual input list as `alternatives` and the nearest name as `suggestion` |
+| `component-port-direction` | a `Component Inputs` port not plugged `output` (or `Component Outputs` not plugged `input`) — F8 |
+
+**Deviation from the task text, with the measurement behind it.** LAS-001 §2 specified
+`InterfacelessVariance` as "≥2 instances whose parameter **sets** differ". Haiku's four cards carry
+*identical* parameter names and four different products, so that predicate scores 0 and misses the
+exact case the task was written for. The shipped predicate is "≥1 instance of an inputs-less target
+carrying any parameter", which the corpus says costs nothing: **2 hits, both haiku's replay.**
+
+## Corpus calibration
+
+`measurements/scan-interfaces.js`, run 2026-08-08 over **both** corpora — 107 legacy `project.json`
++ 12 v2 projects, 730 component instances carrying 810 parameters.
+
+| Finding | Hits | Where |
+|---|---|---|
+| `interfaceless-instance` | **2** | both `phase55-replay-haiku`. Zero legacy, zero prefabs, zero fixtures |
+| `instance-unknown-parameter` | **65** | 58 `tests/testfs/big-merge-test-mine` (a real app carrying stale parameters for renamed inputs) · 6 `phase55-replay-sonnet` · 1 `library/prefabs/supabase` |
+| `component-port-direction` | **22** | `ecommerce-example` (11) + its copy `ecom-responsive-probe` (11) — see F8 |
+| ports on a `Component Inputs` node plugged `output` | **920 of 942** | the other 22 are F8 |
+| unknown parameters covered by an instance-declared port | **0** | so honouring instance ports costs nothing and is kept for safety |
+
+`interfaceless-instance` is a cleaner population than `PageWithoutPageNode` (6 hits) was when it was
+promoted, and `instance-unknown-parameter`'s 58-hit legacy population is the same argument
+`UnknownParameter` was given: real, not authored, and warnings do not fail `validate:project`.
+
 ## Register
 
 | # | Finding | State |
 |---|---|---|
-| — | | |
+| F8 | **`ecommerce-example` — phase 54's reference build — does not actually work.** All 11 of `/Components/ProductCard`'s "inputs" are declared `plug: "input"` on its `Component Inputs` node. `componentmodel.getPorts()` reads `getPorts('output')` there and republishes those as the component's **inputs**, so plugged `"input"` they become component *outputs*: no instance can set them, and the 12 connections drawn out of that node name an output port `getPorts('output')` does not return, which `utils/exporter/util.ts` drops as unhealthy. It renders only in `scripts/devtools/render-from-disk.js`, which rewrites every Component Inputs port to `plug: 'input'` before handing the project to the viewer — **the measuring instrument disagrees with the thing it measures.** Nothing reported it: `PortWithoutPlug` asks whether a port has a direction, not whether it has the right one, and `nonexistentPort` accepts any name in `instancePorts`, which are collected plug-blind. | ✅ gated by `component-port-direction`; **the project itself is still broken and the renderer still lies** — see F9/F10 |
+| F9 | `scripts/devtools/render-from-disk.js` forces `plug: 'input'` on every `Component Inputs` port, so it will render a project the editor cannot. LAS-005 promotes this script to the `render_report` tool — **fix the derivation there**, or the render report will keep certifying pages that are dead in the editor. | 🔴 OPEN → **LAS-005** |
+| F10 | `explain/graph.ts::componentPorts` has the same plug-blind derivation and is a second reader of the same fact. Not corrected here because its consumers *describe* a graph to a model rather than gate a write, and changing it changes what every explanation says. | 🔴 OPEN, filed |
+| F11 | **A component instance carries no built-in ports at all.** The task file said to enumerate "the built-ins every instance carries — `mounted` etc." from source; there are none. `ComponentInstanceNode` extends `Node`, not a visual node, and `componentmodel.getPorts()` is the whole of its port list — so `width`/`minWidth` on a card instance (sonnet's real mistake, 6 corpus hits) is discarded exactly like a misspelling. | ✅ verified, no allow-list needed |
+
+## Gates at close
+
+`catalog:examples` 57/57 · `catalog:check` · `catalog:merge:check` 175/175 · `typecheck:editor`
+clean · editor jest **75 suites / 1021 specs** (was 74/1001) · noodl-mcp jest **20 suites / 207
+specs** (was 19/200).

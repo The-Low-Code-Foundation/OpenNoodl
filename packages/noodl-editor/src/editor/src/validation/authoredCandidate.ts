@@ -51,6 +51,13 @@
 
 import { checkBackendRequirements, type ProjectBackendFacts } from './backendRequirement';
 import type { CatalogIndex } from './CatalogIndex';
+import {
+  checkComponentPortDirection,
+  checkInstanceInterfaces,
+  componentInterfaceIndex,
+  type ComponentInterfaceIndex,
+  type ComponentInterfaceView
+} from './componentInterface';
 import { DiagnosticCode, type Diagnostic } from './diagnostics';
 import { checkInstancePorts, type AuthoredPortLike } from './instancePorts';
 import { checkNavigation, checkPageShape, looksLikePageComponent, PAGE_NODE_TYPE } from './navigation';
@@ -105,10 +112,23 @@ export function authoredNodes(nodes: readonly StoredNodeLike[]): AuthoredNode[] 
   }));
 }
 
-/** A component seen only as "what nodes, with what parameters" — enough to find `Page` nodes. */
+/**
+ * A component seen only as "what nodes, with what parameters and ports" — enough
+ * to find `Page` nodes (`declaredUrlPaths`) and to derive its interface
+ * (`componentInterfaceIndex`, LAS-001).
+ *
+ * `ports` is optional because one of the three callers could not supply it until
+ * LAS-001 widened `ExplainGraph`'s node shape, and because a view built from a
+ * source that does not carry ports is still a perfectly good answer to the
+ * url-path question. A view without ports simply contributes an empty interface.
+ */
 export interface ComponentNodesView {
   name: string;
-  nodes: readonly { type: string; parameters?: Record<string, unknown> | null }[];
+  nodes: readonly {
+    type: string;
+    parameters?: Record<string, unknown> | null;
+    ports?: readonly AuthoredPortLike[] | null;
+  }[];
 }
 
 /**
@@ -150,7 +170,19 @@ export const AUTHORED_BLOCKING_WARNINGS: ReadonlySet<string> = new Set([
   DiagnosticCode.UnknownParameter,
   DiagnosticCode.UnitlessDimension,
   DiagnosticCode.UnresolvedNavigation,
-  DiagnosticCode.PageWithoutPageNode
+  DiagnosticCode.PageWithoutPageNode,
+  // LAS-001 — the three halves of the interface gate, all promoted on the same
+  // corpus run and the same argument as `PageWithoutPageNode`. Project-wide each
+  // has a legitimate population (58 stale instance parameters in one real merge
+  // fixture; 22 backwards ports in the reference build) and none of it is
+  // authored today. For a graph an agent just wrote, an instance parameter that
+  // names no input is a value it believes it set and did not — the exact
+  // mechanism that shipped haiku's four identical "Text" cards under a clean
+  // report, and the single gap between an architecturally correct replay and a
+  // page that renders.
+  DiagnosticCode.InstanceUnknownParameter,
+  DiagnosticCode.InterfacelessInstance,
+  DiagnosticCode.ComponentPortDirection
 ]);
 
 /** Whether a diagnostic rejects an authored submission. */
@@ -202,6 +234,19 @@ export interface AuthoredPreconditionOptions {
    * would report a missing backend on every project that has one.
    */
   backend?: ProjectBackendFacts;
+  /**
+   * LAS-001 — every component's interface, keyed by both name forms. **Omitted
+   * means "do not check"**, the same convention `urlPaths` and `backend` follow:
+   * a caller that cannot enumerate the project's components cannot tell a
+   * parameter that names no input from one whose component it simply has not
+   * read, and guessing reports a working page as broken.
+   *
+   * Build it with {@link componentInterfaces} from the same views
+   * `declaredUrlPaths` reads, so the two can never disagree about which
+   * components exist — including the ones a plan is about to create, which is
+   * what makes a multi-component plan validate correctly.
+   */
+  interfaces?: ComponentInterfaceIndex;
 }
 
 /**
@@ -222,16 +267,36 @@ export interface AuthoredPreconditionOptions {
  * `checkInstancePorts` is the fifth, added by AAQ-005: converging the two tool
  * vocabularies showed that `plug` was undeclared on one door and unchecked on
  * both, and that a port without it is inert rather than wrong.
+ *
+ * The sixth and seventh are LAS-001's, and they are preconditions for the
+ * sharpest version of the same reason: an instance's parameters are values, and
+ * the target component's interface is a project-wide fact. `NormNode` carries
+ * neither, so no `rules/` rule can ask the question at all.
  */
 export function authoredPreconditionDiagnostics(options: AuthoredPreconditionOptions): Diagnostic[] {
-  const { component, nodes, components, urlPaths, catalog, backend } = options;
+  const { component, nodes, components, urlPaths, catalog, backend, interfaces } = options;
   return [
     ...checkParameterValues(nodes, catalog, { component }),
     ...(backend ? checkBackendRequirements(nodes, { ...backend, component }) : []),
     ...checkNavigation(nodes, { component, components, urlPaths }),
     ...checkPageShape(nodes, { component, isRoutedPage: looksLikePageComponent(component) }),
-    ...checkInstancePorts(nodes, { component })
+    ...checkInstancePorts(nodes, { component }),
+    ...(interfaces ? checkInstanceInterfaces(nodes, { component, interfaces }) : []),
+    ...checkComponentPortDirection(nodes, { component })
   ];
+}
+
+/**
+ * LAS-001 — the interface index, built from the views every client already
+ * assembles for {@link declaredUrlPaths}.
+ *
+ * One builder rather than three, and built from the *same* list, so a component
+ * a plan is about to create resolves as an interface exactly when it resolves as
+ * a navigation target. Three copies of an index that agree are still three
+ * copies; this is the one.
+ */
+export function componentInterfaces(components: readonly ComponentNodesView[]): ComponentInterfaceIndex {
+  return componentInterfaceIndex(components as readonly ComponentInterfaceView[]);
 }
 
 /**

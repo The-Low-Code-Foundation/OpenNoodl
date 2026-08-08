@@ -266,7 +266,79 @@ export enum DiagnosticCode {
    * the 15 AI spec files, and `noodl-mcp`'s fixtures — it fires zero times. A
    * plug-less instance port is not a thing anyone has ever meant to write.
    */
-  PortWithoutPlug = 'port-without-plug'
+  PortWithoutPlug = 'port-without-plug',
+
+  /**
+   * LAS-001 — a parameter set on a component-instance node that names no input
+   * of the target component.
+   *
+   * A component instance carries **only** the ports its `Component Inputs` node
+   * declares. It has no layout, style or lifecycle ports of its own —
+   * `ComponentInstanceNode` extends `Node`, not a visual node, and
+   * `componentmodel.getPorts()` is the whole of its port list — so `width` on a
+   * card instance is discarded exactly as a misspelled input name is. Sonnet's
+   * cold replay set `width`/`minWidth` on three category-card instances and got
+   * neither.
+   *
+   * `checkParameterValues` cannot see any of this: its first line returns for a
+   * node whose type is not in the catalog, and a component reference never is.
+   *
+   * A warning, on the `UnknownParameter` precedent and for the same reason —
+   * the corpus carries 58 of them in one real merge fixture, an app whose
+   * components were renamed out from under their instances. Blocking for
+   * *authored* output, where every name the agent used came from a component it
+   * wrote minutes earlier.
+   */
+  InstanceUnknownParameter = 'instance-unknown-parameter',
+  /**
+   * LAS-001 — instances of a component that declares no inputs at all, carrying
+   * parameters. The whole audit finding F2, and the single gap between "haiku
+   * got the architecture right" and "the page renders".
+   *
+   * Haiku's replay instantiated `ProductCard` four times with `image`, `name`,
+   * `description`, `price`, `originalPrice`, `badge` per instance, and
+   * `ProductCard` exposed no `Component Inputs` — it had declared those six
+   * ports on the card's root `Group`, where they are ordinary instance ports and
+   * never become an interface. Four identical cards of the literal word "Text",
+   * under a clean validation report.
+   *
+   * One diagnostic per target component rather than one per parameter per
+   * instance: the repair is a single edit to a single component, and 30
+   * rejections for it is a repair round spent reading. The message carries the
+   * parameter names — which are exactly the interface the component should have
+   * had — plus, where it can tell, *why* the interface looks empty: the ports
+   * were declared on the wrong node, or with the wrong plug.
+   *
+   * Warning severity, and blocking for authored output. Across both corpora it
+   * fires **twice**, both in haiku's replay: cleaner than `PageWithoutPageNode`
+   * was when it was promoted.
+   */
+  InterfacelessInstance = 'interfaceless-instance',
+  /**
+   * LAS-001 — a component-interface port declared in the wrong direction.
+   *
+   * `componentmodel.getPorts()` reads `getPorts('output')` on the nodes carrying
+   * `haveComponentPorts` and republishes those as the component's **inputs**, so
+   * a port on a `Component Inputs` node must be plugged `"output"`. Plugged
+   * `"input"` it becomes a component output instead: no instance can set it, and
+   * every connection drawn out of it names an endpoint `getPorts('output')` does
+   * not return, which the exporter drops as unhealthy.
+   *
+   * Found while calibrating {@link InterfacelessInstance}, in the last place
+   * anyone would look for it: `ecommerce-example`, phase 54's reference build
+   * and the prettiest page this project has produced, declares all eleven of
+   * `ProductCard`'s inputs `plug: "input"`. It renders in
+   * `scripts/devtools/render-from-disk.js` only because that harness rewrites
+   * every Component Inputs port before handing the project to the viewer.
+   *
+   * Nothing reported it. `PortWithoutPlug` asks whether a port has a direction;
+   * nothing asked whether it has the right one, and `nonexistentPort` accepts
+   * any name present in `instancePorts`, which are collected plug-blind.
+   *
+   * Warning severity, blocking for authored output. 22 corpus hits, all of them
+   * that one component and its copy.
+   */
+  ComponentPortDirection = 'component-port-direction'
 }
 
 // ─── Location ─────────────────────────────────────────────────────────────────

@@ -35,6 +35,7 @@ export {
   AUTHORED_BLOCKING_WARNINGS,
   authoredNodes,
   authoredPreconditionDiagnostics,
+  componentInterfaces,
   declaredUrlPaths,
   diagnosticKey,
   isBlockingForAuthoredOutput
@@ -48,6 +49,20 @@ export type {
 // AAQ-005 — an instance port with no `plug` is inert, and nothing checked it.
 export { checkInstancePorts } from './instancePorts';
 export type { AuthoredPortLike, CheckInstancePortsOptions, PortDeclaringNode } from './instancePorts';
+// LAS-001 — an instance parameter that reaches a port that exists.
+export {
+  checkComponentPortDirection,
+  checkInstanceInterfaces,
+  componentInterfaceIndex,
+  COMPONENT_PORT_TYPES
+} from './componentInterface';
+export type {
+  CheckComponentPortDirectionOptions,
+  CheckInstanceInterfacesOptions,
+  ComponentInterface,
+  ComponentInterfaceIndex,
+  ComponentInterfaceView
+} from './componentInterface';
 // AAQ-005 — the one authoring vocabulary, rendered into both clients' schemas.
 export {
   AUTHORED_CONNECTION_FIELDS,
