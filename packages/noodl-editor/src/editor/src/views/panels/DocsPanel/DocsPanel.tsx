@@ -31,8 +31,10 @@ import {
   DocProposalStore,
   DocsConflictError,
   KNOWN_DOCS,
+  newDocTemplate,
   ProjectDocsModel,
   type DocEntry,
+  type DocInjection,
   type DocProposal
 } from '@noodl-models/ProjectDocs';
 import { ProjectModel } from '@noodl-models/projectmodel';
@@ -45,6 +47,8 @@ import { CodeDiffView, MarkdownEditor } from '@noodl-core-ui/components/code-edi
 import { Icon, IconName } from '@noodl-core-ui/components/common/Icon';
 import { Markdown } from '@noodl-core-ui/components/common/Markdown';
 import { PrimaryButton, PrimaryButtonSize, PrimaryButtonVariant } from '@noodl-core-ui/components/inputs/PrimaryButton';
+import { Select } from '@noodl-core-ui/components/inputs/Select';
+import { TextInput, TextInputVariant } from '@noodl-core-ui/components/inputs/TextInput';
 import { Box } from '@noodl-core-ui/components/layout/Box';
 import { ListItem, ListItemVariant } from '@noodl-core-ui/components/layout/ListItem';
 import { HStack, VStack } from '@noodl-core-ui/components/layout/Stack';
@@ -108,6 +112,13 @@ export function DocsPanel() {
   const [draft, setDraft] = useState<string | null>(null);
   const [notice, setNotice] = useState<{ text: string; type: FeedbackType } | null>(null);
   const [proposals, setProposals] = useState<readonly DocProposal[]>(() => DocProposalStore.instance.list());
+  // BLD-007: the new-doc form. Inline rather than a dialog — the panel is
+  // already the place you make docs, and a modal to create a markdown file
+  // would be heavier than the thing it creates.
+  const [creating, setCreating] = useState(false);
+  const [newName, setNewName] = useState('');
+  const [newPurpose, setNewPurpose] = useState('');
+  const [newInject, setNewInject] = useState<DocInjection>('pull');
   const [reviewing, setReviewing] = useState<string | null>(null);
 
   const dirty = draft !== null && draft !== baseline;
@@ -221,6 +232,56 @@ export function DocsPanel() {
     void reload(selected);
   }, [docs, reload, selected]);
 
+  /**
+   * BLD-007 — create a doc of the user's own invention.
+   *
+   * The file is written with its front matter already declaring how it reaches
+   * the model, because the declaration is the whole point: before this, a doc
+   * created here was carried, editable and never read.
+   */
+  const createDoc = useCallback(async () => {
+    if (!docs) return;
+    const title = newName.trim();
+    if (!title) return;
+    const slug = title
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '');
+    const path = `docs/${slug || 'untitled'}.md`;
+
+    if (entries.some((e) => e.path === path && e.exists)) {
+      setNotice({ text: `${path} already exists — open it from the list.`, type: FeedbackType.Danger });
+      return;
+    }
+
+    try {
+      // `baseline: null` is "I have read disk and there is nothing there", which
+      // is exactly true here and still refuses to clobber a file that appeared
+      // between the check above and this write.
+      await docs.write(path, newDocTemplate({ title, purpose: newPurpose, inject: newInject }), { baseline: null });
+      setCreating(false);
+      setNewName('');
+      setNewPurpose('');
+      setNewInject('pull');
+      setSelected(path);
+      setMode('source');
+      setEntries(await docs.list());
+      void reload(path);
+      setNotice({
+        text:
+          newInject === 'always'
+            ? `Created ${path}. It is sent with every build in this project.`
+            : `Created ${path}. The assistant will fetch it when the task looks related.`,
+        type: FeedbackType.Success
+      });
+    } catch (error) {
+      setNotice({
+        text: error instanceof DocsConflictError ? error.message : String(error),
+        type: FeedbackType.Danger
+      });
+    }
+  }, [docs, entries, newInject, newName, newPurpose, reload]);
+
   const acceptProposal = useCallback(
     async (id: string) => {
       if (!docs) return;
@@ -289,7 +350,74 @@ export function DocsPanel() {
               }}
             />
           ))}
+          <ListItem
+            text="New doc…"
+            icon={IconName.Plus}
+            variant={ListItemVariant.Default}
+            onClick={() => {
+              setCreating(true);
+              setNotice(null);
+              setReviewing(null);
+            }}
+          />
         </div>
+
+        {creating && (
+          <Box hasXSpacing hasYSpacing>
+            <VStack UNSAFE_style={{ gap: 8 }}>
+              <TextInput
+                label="Name"
+                value={newName}
+                placeholder="UK VAT rules"
+                variant={TextInputVariant.InModal}
+                isAutoFocus
+                onChange={(event) => setNewName(event.target.value)}
+              />
+              <TextInput
+                label="What it is for"
+                value={newPurpose}
+                placeholder="How VAT applies to the prices this app shows"
+                variant={TextInputVariant.InModal}
+                onChange={(event) => setNewPurpose(event.target.value)}
+              />
+              <Select
+                label="How the assistant reads it"
+                value={newInject}
+                options={[
+                  { label: 'When it looks relevant', value: 'pull' },
+                  { label: 'On every build', value: 'always' }
+                ]}
+                onChange={(value) => setNewInject(value as DocInjection)}
+              />
+              {/* Rule 5 of the phase: never withhold a cost you can state. The
+                  estimate is the template's own size; the doc will grow, and
+                  the row on the selected doc keeps the number honest after. */}
+              <Text textType={TextType.Shy}>
+                {newInject === 'always'
+                  ? `Sent with every build in this project — about ${estimateTokens(
+                      newDocTemplate({ title: newName || 'Untitled', purpose: newPurpose, inject: 'always' }).length
+                    )} tokens per turn to start, and more as you write.`
+                  : 'Fetched only on turns where it looks relevant. Nothing is added to the standing prompt.'}
+              </Text>
+              <HStack UNSAFE_style={{ gap: 6 }}>
+                <PrimaryButton
+                  label="Create"
+                  size={PrimaryButtonSize.Small}
+                  isDisabled={!newName.trim()}
+                  isFitContent
+                  onClick={() => void createDoc()}
+                />
+                <PrimaryButton
+                  label="Cancel"
+                  size={PrimaryButtonSize.Small}
+                  variant={PrimaryButtonVariant.Ghost}
+                  isFitContent
+                  onClick={() => setCreating(false)}
+                />
+              </HStack>
+            </VStack>
+          </Box>
+        )}
 
         {!hasAnyDoc && (
           <Box hasXSpacing hasYSpacing>
@@ -364,7 +492,7 @@ export function DocsPanel() {
         {!proposal && (
           <div className={css['Body']}>
             <div className={css['Toolbar']}>
-              <Text textType={TextType.Shy}>{selected}</Text>
+              <Text textType={TextType.Shy}>{injectionLine(selectedEntry)}</Text>
               <HStack UNSAFE_style={{ gap: 6 }}>
                 {mode === 'source' && (
                   <PrimaryButton
@@ -425,4 +553,27 @@ export function DocsPanel() {
       </div>
     </BasePanel>
   );
+}
+
+/**
+ * BLD-007 — how this doc reaches the model, on the doc itself.
+ *
+ * D9's whole shape was a file that looked like context and was not, so the one
+ * place that cannot be silent about it is the surface you are looking at when
+ * you write one. An always-injected doc states its per-turn cost in tokens,
+ * because that is the number the user is agreeing to and nothing else showed it.
+ */
+function injectionLine(entry: DocEntry | undefined): string {
+  if (!entry) return '';
+  if (!entry.exists) return `${entry.path} — not created yet`;
+  if (entry.inject === 'always') {
+    return `${entry.path} — sent with every build, about ${estimateTokens(entry.chars)} tokens per turn`;
+  }
+  return `${entry.path} — fetched when relevant`;
+}
+
+/** Characters → tokens, the usual ~4:1, rounded so it reads as an estimate. */
+function estimateTokens(chars: number): number {
+  const tokens = Math.round(chars / 4);
+  return tokens < 100 ? Math.max(50, Math.round(tokens / 10) * 10) : Math.round(tokens / 50) * 50;
 }

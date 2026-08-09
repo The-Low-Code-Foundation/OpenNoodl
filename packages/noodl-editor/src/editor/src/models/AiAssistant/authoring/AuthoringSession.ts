@@ -64,7 +64,8 @@ import {
   styleAdvisoryMessage,
   systemPrompt,
   updateUserMessage,
-  type OpeningTurn
+  type OpeningTurn,
+  type PromptProjectDocs
 } from './prompts/authoring';
 import { styleLintCandidate } from './styleLint';
 import {
@@ -295,7 +296,10 @@ type Listener = (state: AuthoringSessionState) => void;
 
 function readToolLabel(call: AiToolCall): string {
   if (call.name === GET_PROJECT_DOC) {
-    return projectDocToolLabel();
+    // BLD-007: the label names the doc that was actually asked for — with more
+    // than one fetchable doc, "Read project doc docs/ARCHITECTURE.md" on every
+    // row would be a feed that lies.
+    return projectDocToolLabel(call);
   }
   if (call.name === GET_NODE_TYPES) {
     const names = Array.isArray(call.arguments.typeNames) ? call.arguments.typeNames.map(String) : [];
@@ -335,6 +339,14 @@ export class AuthoringSession {
   readonly legacyName: string;
   /** AIX-009: `get_project_doc`, present only when the project has an ARCHITECTURE.md. */
   private readonly docTools: AiToolDefinition[];
+
+  /**
+   * BLD-007: the docs snapshot this session was constructed with. Held, not
+   * re-read: the tool list built from it is part of the cached prefix, so the
+   * set the dispatcher resolves against must be the set the definition
+   * advertised. A doc added mid-session is picked up by the next one.
+   */
+  private readonly projectDocs: ProjectDocsContent;
 
   // Conversation state, cumulative across run() and every refine().
   private readonly messages: AiMessage[] = [];
@@ -404,6 +416,7 @@ export class AuthoringSession {
       importReport,
       options.collections
     );
+    this.projectDocs = projectDocs;
     this.docTools = projectDocTools(projectDocs);
     this.legacyName = pathToLegacyName(request.componentPath);
   }
@@ -519,11 +532,18 @@ export class AuthoringSession {
    * the opening turn — these blocks live in the cache-stable half of the prompt
    * and must not vary within a session.
    */
-  private promptDocs(): { conventions?: string; brief?: string } | undefined {
+  private promptDocs(): PromptProjectDocs | undefined {
     const conventions = this.context.projectConventions();
     const brief = this.context.projectBrief();
-    if (!conventions && !brief) return undefined;
-    return { ...(conventions ? { conventions } : {}), ...(brief ? { brief } : {}) };
+    // BLD-007: docs the user declared `inject: always` on. A project that
+    // declared none gets an empty list and the pre-BLD-007 bytes.
+    const always = this.context.projectAlwaysDocs();
+    if (!conventions && !brief && always.length === 0) return undefined;
+    return {
+      ...(conventions ? { conventions } : {}),
+      ...(brief ? { brief } : {}),
+      ...(always.length > 0 ? { always } : {})
+    };
   }
 
   /** Abort the in-flight round. A previously staged candidate survives. */
@@ -812,7 +832,8 @@ export class AuthoringSession {
             role: 'tool',
             toolCallId: call.id,
             name: call.name,
-            content: dispatchProjectDocTool(call, this.context) ?? dispatchReadTool(call, this.context)
+            content:
+              dispatchProjectDocTool(call, this.context, this.projectDocs) ?? dispatchReadTool(call, this.context)
           });
           this.publish();
         }

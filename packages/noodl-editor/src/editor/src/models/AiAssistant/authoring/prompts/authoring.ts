@@ -215,6 +215,12 @@ export interface PromptProjectDocs {
   conventions?: string;
   /** Rendered docs/BRIEF.md, already capped and charged. */
   brief?: string;
+  /**
+   * BLD-007 — the project's own documents that declared `inject: always`,
+   * already capped and charged. Empty for every project that has not opted in,
+   * which is what keeps the note above true for everyone else.
+   */
+  always?: Array<{ path: string; title: string; text: string }>;
 }
 
 function docBlocks(docs?: PromptProjectDocs): string[] {
@@ -230,6 +236,11 @@ function docBlocks(docs?: PromptProjectDocs): string[] {
       docs.conventions,
       '--- END PROJECT CONVENTIONS ---'
     );
+  }
+  // Last of the doc blocks, and last for the same reason the whole group is
+  // last: a project that adds one invalidates only the tail of its prefix.
+  for (const doc of docs?.always ?? []) {
+    lines.push('', `--- ${doc.title.toUpperCase()} (${doc.path}) ---`, doc.text, `--- END ${doc.title.toUpperCase()} ---`);
   }
   return lines;
 }

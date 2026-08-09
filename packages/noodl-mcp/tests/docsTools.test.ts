@@ -82,10 +82,38 @@ describe('AIX-009 project docs MCP tools', () => {
 
     const conventions = data.docs.find((d) => d.path === 'docs/CONVENTIONS.md');
     expect(conventions?.kind).toBe('conventions');
-    expect(conventions?.injection).toBe('default');
+    // BLD-007: one vocabulary for both clients. `always` is what the editor
+    // panel says of the same file; this used to be a second word, `default`.
+    expect(conventions?.injection).toBe('always');
     // ARCHITECTURE is pull-only, which is a fact the agent needs to plan around.
     const architecture = data.missing.find((m) => m.path === 'docs/ARCHITECTURE.md');
     expect(architecture).toBeDefined();
+  });
+
+  it('BLD-007 — reports the injection a doc declared for itself, not a table lookup', async () => {
+    writeDoc(projectDir, 'docs/CONVENTIONS.md', '# Conventions\n');
+    writeDoc(
+      projectDir,
+      'docs/uk-vat.md',
+      ['---', 'title: UK VAT rules', 'inject: always', 'when: tax, invoices', '---', '', '# VAT', '20% standard.'].join('\n')
+    );
+    writeDoc(projectDir, 'docs/brand-voice.md', '# Brand voice\n\nPlain words.\n');
+
+    const { data } = await call<ListProjectDocsResponse>(session, 'list_project_docs');
+
+    const vat = data.docs.find((d) => d.path === 'docs/uk-vat.md');
+    expect(vat?.injection).toBe('always');
+    expect(vat?.title).toBe('UK VAT rules');
+    expect(vat?.when).toEqual(['tax', 'invoices']);
+
+    // No front matter: the default that cannot cost an unrelated project
+    // anything, and a title taken from the doc's own first heading.
+    const voice = data.docs.find((d) => d.path === 'docs/brand-voice.md');
+    expect(voice?.injection).toBe('pull');
+    expect(voice?.title).toBe('Brand voice');
+    // A user doc is no longer reported as a second-class file with no kind and
+    // no injection at all — which is how D9 read on the wire.
+    expect(voice?.kind).toBeUndefined();
   });
 
   it('reads a doc by full path and by bare name', async () => {

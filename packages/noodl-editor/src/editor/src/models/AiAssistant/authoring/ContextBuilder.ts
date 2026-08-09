@@ -27,7 +27,13 @@ import {
 import { enrichedNode, portDescription } from '../../../validation/enrichedCatalog';
 // Pure ProjectDocs submodule, for the same reason as StyleVocabulary above —
 // the barrel would drag ProjectModel and the platform filesystem in.
-import { KNOWN_DOCS, renderDocForPrompt, type ProjectDocsContent } from '../../ProjectDocs/docsText';
+import {
+  describeDoc,
+  KNOWN_DOCS,
+  renderDocForPrompt,
+  type DiscoveredDoc,
+  type ProjectDocsContent
+} from '../../ProjectDocs/docsText';
 // Pure StyleVocabulary submodule (never the StyleTokensModel barrel — it would
 // pull ProjectModel/Electron into the headless harness bundle).
 import {
@@ -309,6 +315,37 @@ export class AuthoringContextBuilder {
     return this.charge(`doc-source:${path}`, rendered);
   }
 
+  /**
+   * BLD-007 — a doc the user wrote, fetched through `get_project_doc`.
+   *
+   * Charged under its own path rather than a shared bucket, so the context log
+   * answers "what did this turn spend on prose" per document. Capped with
+   * `DEFAULT_DOC_CAP` through the same heading-boundary truncator as the seed
+   * docs — a silently short user doc is the failure the format exists to avoid,
+   * and writing a second truncator is how the two drift.
+   */
+  projectExtraDoc(doc: DiscoveredDoc): string {
+    return this.charge(`project-doc:${doc.path}`, renderDocForPrompt(describeDoc(doc.path, doc.body), doc.body));
+  }
+
+  /**
+   * BLD-007 — the docs that declared `inject: always`, rendered for the
+   * always-block.
+   *
+   * Empty for every project that has not opted in, which is what keeps the
+   * cache-stable prefix identical for everyone else. The user has chosen a real
+   * per-turn cost here; the Docs panel states it in tokens before they choose.
+   */
+  projectAlwaysDocs(): Array<{ path: string; title: string; text: string }> {
+    const out: Array<{ path: string; title: string; text: string }> = [];
+    for (const doc of this.docs.extra ?? []) {
+      if (doc.inject !== 'always' || !doc.body.trim()) continue;
+      const text = this.charge(`project-doc:${doc.path}`, renderDocForPrompt(describeDoc(doc.path, doc.body), doc.body));
+      out.push({ path: doc.path, title: doc.title, text });
+    }
+    return out;
+  }
+
   /** Cap, render and charge one known doc. */
   private docHandout(kind: 'conventions' | 'brief' | 'architecture', source: string): string | undefined {
     const body = this.docs[kind];
@@ -463,10 +500,17 @@ export class AuthoringContextBuilder {
       const body = this.docs[doc.kind];
       return body !== undefined && body.trim().length > 0;
     });
-    if (present.length === 0) return undefined;
+    const extra = (this.docs.extra ?? []).filter((doc) => doc.body.trim().length > 0);
+    if (present.length === 0 && extra.length === 0) return undefined;
     const lines = ['This project keeps written documents. A doc operation may update one of these:'];
     for (const doc of present) {
       lines.push(`- ${doc.path} — ${doc.purpose} (${this.docs[doc.kind]!.length} chars today)`);
+    }
+    // BLD-007: the user's own documents are plannable subjects too. Without
+    // this the plan step could propose a change to CONVENTIONS.md and never to
+    // the doc the user wrote specifically to be acted on.
+    for (const doc of extra) {
+      lines.push(`- ${doc.path} — ${doc.title} (${doc.body.length} chars today)`);
     }
     return this.charge('docs-overview', lines.join('\n'));
   }
