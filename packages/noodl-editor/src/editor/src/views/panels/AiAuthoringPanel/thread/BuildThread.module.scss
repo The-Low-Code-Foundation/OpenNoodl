@@ -96,16 +96,81 @@
  */
 
 /*
+ * ⚠️ BLD-017 — the token map for everything below, and the one rule that makes
+ * copying the approved mockup safe.
+ *
+ * The mockup draws its panels in **NodeGX's own dark tokens, verbatim** — it
+ * says so in its own stylesheet — so nothing here is a new visual language. Its
+ * raw hexes and the tokens they stand for:
+ *
+ *   mockup            token                        dark      light
+ *   --gx-bg-1         --theme-color-bg-1           #12161b   #ffffff
+ *   --gx-bg-2         --theme-color-bg-2           #181d24   #f7f9fb
+ *   --gx-bg-3         --theme-color-bg-3           #222933   #ecf0f4
+ *   --gx-fg-hi        --theme-color-fg-highlight   #eef2f6   #18212b
+ *   --gx-shy          --theme-color-fg-default-shy #8b95a1   #616c79
+ *   --gx-success      --theme-color-success        #3ccb7f   #12915b
+ *   #232a33 (rules)   --theme-color-border-default #232a33   #e0e5eb  ← exact
+ *
+ * **Copy the intent; name the token. Never copy the hex.** The mockup is
+ * dark-only, so a copied `#232a33` hairline is a near-black rule on a *white*
+ * panel in light mode. Every value below resolves in both themes.
+ *
+ * ⚠️ **`#2c3540` has no single answer, and this file and `InterviewCard` give
+ * it two on purpose.** The mockup uses it for every 1px edge that is not a
+ * divider, and it falls exactly between our two border tokens —
+ * `border-default` (#232a33) below it, `border-strong` (#37404c) above. It is
+ * also `bg-4`'s exact value, which is the clue: in the mockup it is not one
+ * colour with one meaning, it is *the next step of the elevation ladder*, and
+ * which of our tokens is right depends on which way the edge is going.
+ *
+ *   - `.User` here is a bubble **raised** off the panel ground, so its edge is
+ *     the brighter `border-strong` — a lift.
+ *   - `InterviewCard`'s `.Guess` is a well **recessed** into its card, so its
+ *     edge is the dimmer `border-default` — a groove.
+ *
+ * A single mapping would have made one of the two read inside-out. Recorded
+ * here rather than left as two silent disagreements between neighbouring files.
+ *
+ * ⚠️ **Two of the mockup's own colour choices are NOT copied, because they fail
+ * AA.** `.acts` and `.runbar-line2` are `--gx-muted`, which is
+ * `--theme-color-fg-muted` — and measured on the surface this task moves them
+ * onto it is **3.66:1 dark / 3.43:1 on bg-2 light**, under the 4.5:1 that binds
+ * at 11.5px. That is the same figure POL-017 moved `Text`'s Shy role off, and
+ * the same one BLD-002 cited when it refused `fg-muted` for this exact strip.
+ * `fg-default-shy` is used instead: **5.57:1 dark / 5.06:1 light on bg-2**,
+ * still a step below `fg-default`, so the hierarchy the mockup drew survives at
+ * a colour a person can read. A mockup is not a contrast measurement.
+ */
+
+/*
  * The user's own words. A bubble, aligned to the writer, on the panel's lightest
  * surface — not a left-bordered quote on bg-2, which is the visual language of
  * something being cited *at* you. It is the thing you scroll to find.
  */
 .User {
   align-self: flex-end;
-  max-width: 85%;
-  padding: 7px 10px;
+
+  /*
+   * BLD-017 F6. The mockup's `.m-you`: 88% rather than 85%, a little more
+   * padding, a tighter corner radius, and — the part that actually changes how
+   * it reads — an edge. On `bg-3` a borderless bubble is a 1.07:1 step off the
+   * panel ground, which at small sizes is a slightly different grey rather than
+   * a shape; the border is what makes it an object.
+   */
+  max-width: 88%;
+  padding: 9px 11px;
   background-color: var(--theme-color-bg-3);
-  border-radius: 10px 10px 2px 10px;
+  border: 1px solid var(--theme-color-border-strong);
+  border-radius: 8px 8px 2px 8px;
+
+  /*
+   * ⚠️ Required, not tidiness. Nothing in this repo sets a global `box-sizing`
+   * (the mockup gets it from `.panel * { box-sizing: border-box }`, which has no
+   * counterpart here), so the 2px of new border would otherwise be added
+   * *outside* the 88% measure.
+   */
+  box-sizing: border-box;
 
   p {
     font-size: 13px;
@@ -150,25 +215,70 @@
 }
 
 /*
+ * BLD-017 F3 — the mockup's `.receipt`: what an accepted card collapses to.
+ *
+ * A success-coloured left rule, so the two outcomes that actually reached the
+ * project are findable by shape when you scroll back through a long thread. It
+ * is the settled counterpart of `.Question`'s accent rule one block down, and
+ * deliberately the same device at a different hue: a rule in the left gutter is
+ * this thread's mark for *"this exchange concluded"*.
+ *
+ * ⚠️ **The check glyph stays**, though the mockup's receipt has none. Colour is
+ * the only thing separating this rule from `.Question`'s, and phase-41's rule is
+ * that colour may not be the sole carrier of a state. The mockup was drawn to
+ * show a treatment, not to pass an a11y audit; keeping the icon costs 14px of a
+ * 400px row and makes the outcome legible without hue.
+ */
+.Receipt {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 3px 0 3px 11px;
+  border-left: 2px solid var(--theme-color-success);
+
+  p {
+    font-size: 11.5px;
+    line-height: 1.45;
+  }
+}
+
+/*
  * A collapsed run of activity. One line standing for a span of context reads and
  * passing validations — see `thread/messages.ts` for what may never be inside
  * one.
+ *
+ * BLD-017 F1 — the mockup's `.acts`, and the change its own notes call *"the
+ * single biggest legibility win"*. It was a bare text row on the panel ground:
+ * one of five things in a turn with no surface of its own, so a twenty-minute
+ * build read as an undifferentiated column. As a filled chip it is one object
+ * that can be counted at a glance and clicked without aiming.
  */
 .Run {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 2px 0;
-  background: none;
-  border: 0;
+  gap: 7px;
+  padding: 6px 9px;
+  background-color: var(--theme-color-bg-2);
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: 4px;
   cursor: pointer;
   text-align: left;
   width: 100%;
+
+  /* ⚠️ See `.User` — there is no global `box-sizing`, and `width: 100%` beside
+     18px of padding and 2px of border overflows the turn without it. */
+  box-sizing: border-box;
   color: inherit;
 
   p {
     font-size: 11.5px;
     line-height: 1.45;
+  }
+
+  /* bg-3 is the ladder's hover step, and it keeps the text legible: Shy on bg-3
+     is 4.82:1 dark / 4.67:1 light, both still over AA. */
+  &:hover {
+    background-color: var(--theme-color-bg-3);
   }
 
   &:hover p {
@@ -178,8 +288,21 @@
   &:focus-visible {
     outline: 2px solid var(--theme-color-focus-ring);
     outline-offset: 2px;
-    border-radius: 2px;
   }
+}
+
+/*
+ * The duration, pushed to the right edge — the mockup's `.acts .grow`.
+ *
+ * `tabular-nums` because this number changes between runs and a proportional
+ * "1" is narrower than a "4": without it a column of chips has its durations
+ * ending at a different x each row, which is the thing right-aligning them was
+ * for. `flex: 0 0 auto` so the counts wrap before the clock is squeezed.
+ */
+.RunDuration {
+  margin-left: auto;
+  flex: 0 0 auto;
+  font-variant-numeric: tabular-nums;
 }
 
 .RunCaret {

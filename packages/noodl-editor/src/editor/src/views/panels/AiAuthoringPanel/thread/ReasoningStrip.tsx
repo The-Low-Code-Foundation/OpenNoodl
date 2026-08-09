@@ -92,10 +92,25 @@ export function ReasoningStrip({ text, streaming, at, lastAt }: ReasoningStripPr
           finished duration and says so — "Thinking…" against a frozen number is
           how the same lie gets back in through the wording after the arithmetic
           has been fixed.
+
+          BLD-017 F5 split the clock out to the right edge (the mockup's
+          `.think .grow`), and ⚠️ **the wording had to change with the layout.**
+          Inline, the label carried the number's tense — "Thinking… 14s" against
+          "Thought for 14s" — and separating them without rewording would leave
+          the preposition of "Thought for" dangling at the end of one box with
+          its object in another. The tense stays on the verb; the number becomes
+          what it always was, a measurement in its own column. Absent a clock
+          there is nothing to right-align and the strip still says only what it
+          can evidence.
         */}
         <Text textType={TextType.Shy}>
-          {elapsed === undefined ? 'Thought about this' : thinking ? `Thinking… ${elapsed}` : `Thought for ${elapsed}`}
+          {elapsed === undefined ? 'Thought about this' : thinking ? 'Thinking…' : 'Thought'}
         </Text>
+        {elapsed !== undefined && (
+          <Text textType={TextType.Shy} className={css['Elapsed']}>
+            {elapsed}
+          </Text>
+        )}
       </button>
       {expanded && (
         <div className={css['Body']}>

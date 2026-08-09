@@ -61,6 +61,30 @@
 }
 
 /*
+ * BLD-017 F5 — the clock, at the right edge. The mockup's `.think .grow`.
+ *
+ * `font-style: normal` is the load-bearing declaration, not the alignment: the
+ * strip's italic marks *the model's voice*, and the elapsed time is the panel
+ * measuring, not the model speaking. Leaving it italic would attribute the
+ * number to the thing it is about. Same reason the collapsed run chip's duration
+ * is set apart, and the same `tabular-nums` so a live clock does not reflow the
+ * row on every tick from "9s" to "10s".
+ */
+/*
+ * ⚠️ Nested under `.Toggle` for **specificity**, not for tidiness. The italic
+ * above is set by `.Toggle p`, which is (0,1,1); a bare `.Elapsed` is (0,1,0)
+ * and loses, so the clock would have rendered italic with a stylesheet that
+ * plainly says `normal` — a defect `tsc` cannot see, no spec mounts, and a
+ * screenshot shows only if someone knows to look at the slant of a number.
+ */
+.Toggle .Elapsed {
+  margin-left: auto;
+  flex: 0 0 auto;
+  font-style: normal;
+  font-variant-numeric: tabular-nums;
+}
+
+/*
  * The reasoning itself. Indented under its strip so it reads as that strip's
  * detail rather than as a second voice in the turn, and `pre-wrap` because the
  * model's summary arrives with its own paragraphing.

@@ -84,7 +84,27 @@ export type ThreadItem =
   | {
       kind: 'run';
       activities: TurnActivity[];
+      /**
+       * The whole line as one sentence: counts, then the duration.
+       *
+       * ⚠️ **Still the accessible name**, even though BLD-017 stopped drawing it
+       * as one string. The mockup's `.acts` right-aligns the duration with
+       * `margin-left: auto`, so the chip is two boxes — and two boxes announce as
+       * *"3 steps · validated once, 14s"*, with the comma and the pause of a list
+       * rather than of a measurement. The button carries this as its `aria-label`
+       * so the split is a visual arrangement and not a change to what the strip
+       * says. See {@link counts} for the visible half.
+       */
       summary: string;
+      /**
+       * The counts alone — what the chip prints on the left.
+       *
+       * Derived here rather than in the component, and that is the point: the
+       * alternative is a view calling `summariseRun(span)` a second time to get
+       * the same string without its duration, which is one fact with two authors
+       * — the failure BLD-007 already paid for in this phase.
+       */
+      counts: string;
       startIndex: number;
       /** How long the run took, when the stamps support saying. See the module header. */
       durationMs?: number;
@@ -192,6 +212,9 @@ export function collapseActivities(activities: readonly TurnActivity[]): ThreadI
         kind: 'run',
         activities: span,
         summary: summariseRun(span, durationMs),
+        // The same function, without the clock — so the visible half and the
+        // spoken half can never describe different runs.
+        counts: summariseRun(span),
         startIndex: i,
         ...(durationMs === undefined ? {} : { durationMs })
       });

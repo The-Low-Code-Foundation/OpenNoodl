@@ -29,7 +29,7 @@
 import React, { useRef } from 'react';
 
 import type { PlanRunState } from '@noodl-models/AiAssistant/authoring';
-import { authoringDetail, liveness, runHeadline } from '@noodl-models/AiAssistant/thread';
+import { authoringDetail, liveness, runHeadline, runTrack } from '@noodl-models/AiAssistant/thread';
 
 import { Text, TextType } from '@noodl-core-ui/components/typography/Text';
 
@@ -64,6 +64,7 @@ export function RunHeader({ state }: RunHeaderProps) {
    * failure BLD-005's correction 2 exists to fix, and it is why this component
    * shipped with accent and weight and deliberately no motion until now.
    */
+  const track = runTrack(state);
   const session = current?.session;
   const beat = liveness({
     busy: Boolean(session?.busy),
@@ -92,6 +93,18 @@ export function RunHeader({ state }: RunHeaderProps) {
       {beat.state === 'silent' && (
         <Heartbeat busy lastActivityAt={session?.lastActivityAt} stallMs={session?.stallMs} />
       )}
+      {/*
+        BLD-017 F4 — the same position the headline states, as a shape.
+
+        `aria-hidden` and no role: "Building 3 of 7" is already the first thing
+        this header says, so announcing the bar as a progressbar would make a
+        screen reader read the position twice. It is decorative *because* it is
+        redundant — which is the only condition under which decoration is safe.
+      */}
+      <div className={css['Track']} aria-hidden="true">
+        <span className={css['TrackDone']} style={{ width: `${track.done * 100}%` }} />
+        <span className={css['TrackNow']} style={{ width: `${track.now * 100}%` }} />
+      </div>
     </div>
   );
 }

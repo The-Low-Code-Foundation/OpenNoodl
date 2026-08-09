@@ -38,6 +38,8 @@ export {
 export type { Liveness, LivenessInput, LivenessState } from './liveness';
 export { collapseActivities, isCollapsible, MIN_RUN_LENGTH, runDuration, summariseRun } from './messages';
 export type { MessageKind, ThreadItem } from './messages';
+export { outcomeSentence, stagedComponentCard } from './outcomeCard';
+export type { OutcomeCardText } from './outcomeCard';
 export {
   authoringDetail,
   completedDurations,
@@ -49,9 +51,10 @@ export {
   operationRole,
   runHeadline,
   runPosition,
+  runTrack,
   stopCost
 } from './runProgress';
-export type { OperationRole } from './runProgress';
+export type { OperationRole, RunTrack } from './runProgress';
 export {
   byRecency,
   emptyThread,

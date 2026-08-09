@@ -14,9 +14,34 @@
   flex: 0 0 auto;
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  padding: 8px 12px;
-  border-bottom: 1px solid var(--theme-color-bg-3);
+
+  /*
+   * BLD-017 F4 — the mockup's `.runbar`.
+   *
+   * Placement was BLD-005's fix and it was the right one; what it never got was
+   * a *surface*. On the panel ground it is two lines of text with a hairline
+   * under them, which reads as the top of the transcript rather than as chrome
+   * that outlives it. `bg-2` is the same step the collapsed run chip takes one
+   * element down, and it is what makes the boundary between "the run" and "the
+   * thread" a place rather than a rule.
+   *
+   * ⚠️ No `position: sticky`. The mockup needs it because its mockup panel is
+   * one scrolling column; here `.Thread` is a three-row flex grid whose middle
+   * row is the only scroller, so this element is already outside it and sticky
+   * would be inert at best. See `BuildThread.module.scss`.
+   *
+   * ⚠️ Every text role was re-measured on the new ground, because moving text
+   * onto bg-2 is exactly where BLD-002 found `fg-muted` failing: the headline is
+   * `fg-highlight` (15.05:1 dark / 15.41:1 light), the current target
+   * `fg-default` (7.70 / 7.10), the detail and the silence sentence
+   * `fg-default-shy` (5.57 / 5.06). All clear AA. `.Current`'s accent reaches
+   * only the dot — `Text` sets its own colour — and a dot is a non-text
+   * affordance, so its 6.45 / 4.33 is measured against 3:1, not 4.5:1.
+   */
+  gap: 7px;
+  padding: 10px 12px;
+  background-color: var(--theme-color-bg-2);
+  border-bottom: 1px solid var(--theme-color-border-default);
 
   /*
    * ⚠️ POL-007's rule, and this task's acceptance criterion. A component path
@@ -86,4 +111,66 @@
 
 .CurrentTarget {
   font-weight: 600;
+}
+
+/*
+ * BLD-017 F4 — the mockup's `.track`: 3px, segmented, under the two lines.
+ *
+ * The header already said *"Building 3 of 7"* in words. This is the same fact as
+ * a shape, and the reason it is worth 3px is that a position read from a
+ * sentence costs a parse: at a glance a bar answers "nearly done or barely
+ * started" before any of the words are read. It is redundant with the headline
+ * **on purpose** — that redundancy is what makes it safe to be decorative, so it
+ * carries `aria-hidden` and no role.
+ *
+ * ⚠️ The widths come from `runTrack` in `runProgress.ts`, not from arithmetic
+ * here. A bar whose segments are computed in a `.tsx` is a bar whose rounding
+ * behaviour has no spec, and "the green never quite reaches the end of a
+ * finished run" is precisely the kind of defect a screenshot of a *mid*-run
+ * panel cannot show.
+ */
+.Track {
+  display: flex;
+  height: 3px;
+  border-radius: 2px;
+  overflow: hidden;
+
+  /* The unfinished remainder. `bg-4` is the ladder's raised step and reads as a
+     groove against the bg-2 header — the mockup's `#2a323d` sits between our
+     bg-3 and bg-4, and bg-4 is the one that stays visible in light. */
+  background-color: var(--theme-color-bg-4);
+}
+
+.TrackDone,
+.TrackNow {
+  display: block;
+  height: 100%;
+
+  /*
+   * The segments are widened by inline `width`, so a 0% segment must occupy no
+   * space at all. Without `min-width: 0` a flex item's `auto` basis would floor
+   * it at its content width — which is 0 here, but only because the element is
+   * empty, and a later change that puts anything inside it would silently give
+   * an empty run a green tip.
+   */
+  min-width: 0;
+  transition: width var(--transition-default, 200ms) ease;
+}
+
+/* Measured as graphics, not text: success on bg-4 is 5.94:1 dark / 3.26:1 light
+   and primary is 4.73 / 3.70 — all over the 3:1 that WCAG 1.4.11 asks of a
+   meaningful non-text element. */
+.TrackDone {
+  background-color: var(--theme-color-success);
+}
+
+.TrackNow {
+  background-color: var(--theme-color-primary);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .TrackDone,
+  .TrackNow {
+    transition: none;
+  }
 }

@@ -79,6 +79,7 @@ import {
   ON_REVIEW_NOTE,
   retiredTurns,
   REVIEW_LABEL,
+  stagedComponentCard,
   THREADS_CHANGED,
   ThreadStore,
   type BuildIntent,
@@ -110,6 +111,10 @@ import { AuthoringPreviewDocumentProvider } from '../../documents/AuthoringPrevi
 import { ChangeReviewDocumentProvider } from '../../documents/ChangeReviewDocument';
 import { EditorDocumentProvider } from '../../documents/EditorDocument';
 import { adoptScopePlan } from './adoptScopePlan';
+// Shared with `ProjectAuthoringView`, which imports the same module — BLD-017's
+// outcome card is rendered here, and the panel's layout rules already lived
+// there under this name.
+import css from './AiAuthoringPanel.module.scss';
 import { ProjectAuthoringView } from './ProjectAuthoringView';
 import { ProjectReviewBanner } from './ProjectReviewBanner';
 import { ProjectReviewView } from './ProjectReviewView';
@@ -875,23 +880,38 @@ export function AiAuthoringPanel({ width = 'panel' }: AiAuthoringPanelProps = {}
       }
 
       if (turn.id.startsWith('component-') && turn.outcome?.kind === 'staged-component' && canDecide) {
+        /*
+         * BLD-017 F2 — the mockup's `.card`: a bordered object with its
+         * decisions in a footer band, instead of a paragraph followed by three
+         * buttons that happened to be underneath it.
+         *
+         * ⚠️ The two lines come from `stagedComponentCard`, not from here. This
+         * sentence and `OutcomeSummary`'s were character-for-character
+         * duplicates before this task, and splitting it into a title and a sub
+         * would have made that two copies of two strings — see `outcomeCard.ts`.
+         */
+        const card = stagedComponentCard(turn.outcome);
         return (
-          <VStack UNSAFE_style={{ gap: 8 }}>
-            <Text textType={TextType.Default}>
-              Staged: {turn.outcome.legacyName} — {turn.outcome.nodeCount} node
-              {turn.outcome.nodeCount === 1 ? '' : 's'}, {turn.outcome.connectionCount} connection
-              {turn.outcome.connectionCount === 1 ? '' : 's'}.{' '}
-              {turn.outcome.mode === 'update'
-                ? 'Your component is untouched until you accept.'
-                : 'Nothing is in your project yet.'}
-            </Text>
-            <TextInput
-              value={refineText}
-              placeholder="Ask for changes…"
-              isDisabled={state?.busy}
-              onChange={(event) => setRefineText(event.target.value)}
-              onEnter={refine}
-            />
+          <div className={css['OutcomeCard']}>
+            <div className={css['OutcomeTop']}>
+              <Text textType={TextType.Proud} className={css['OutcomeTitle']}>
+                {card.title}
+              </Text>
+              {card.detail && (
+                <Text textType={TextType.Shy} className={css['OutcomeSub']}>
+                  {card.detail}
+                </Text>
+              )}
+            </div>
+            <div className={css['OutcomeRefine']}>
+              <TextInput
+                value={refineText}
+                placeholder="Ask for changes…"
+                isDisabled={state?.busy}
+                onChange={(event) => setRefineText(event.target.value)}
+                onEnter={refine}
+              />
+            </div>
             {/* BLD-003 D2: exactly one surface owns these at a time, and it is
                 whichever one is showing the candidate. With the preview canvas
                 up, the decision belongs beside the graph it is about — the card
@@ -899,22 +919,24 @@ export function AiAuthoringPanel({ width = 'panel' }: AiAuthoringPanelProps = {}
                 card that simply dropped them reads as a candidate that can no
                 longer be accepted. */}
             {owner === 'thread' ? (
-              <HStack UNSAFE_style={{ gap: 8, flexWrap: 'wrap' }}>
+              <div className={css['OutcomeActions']}>
                 <PrimaryButton label={acceptLabel(turn.outcome.mode)} icon={IconName.Check} onClick={accept} />
                 <PrimaryButton label={REVIEW_LABEL} variant={PrimaryButtonVariant.Ghost} onClick={openReview} />
                 {/* D3: nothing has been written, so discarding destroys nothing
                     — and red means danger. The Docs panel already got this
                     right one screen over. */}
                 <PrimaryButton label={DISCARD_LABEL} variant={PrimaryButtonVariant.Ghost} onClick={discard} />
-              </HStack>
+              </div>
             ) : (
-              <Text textType={TextType.Shy}>
-                {AppRegistry.instance.CurrentDocumentId === ChangeReviewDocumentProvider.ID
-                  ? ON_REVIEW_NOTE
-                  : ON_CANVAS_NOTE}
-              </Text>
+              <div className={css['OutcomeNote']}>
+                <Text textType={TextType.Shy}>
+                  {AppRegistry.instance.CurrentDocumentId === ChangeReviewDocumentProvider.ID
+                    ? ON_REVIEW_NOTE
+                    : ON_CANVAS_NOTE}
+                </Text>
+              </div>
             )}
-          </VStack>
+          </div>
         );
       }
 

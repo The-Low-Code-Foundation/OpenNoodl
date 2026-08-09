@@ -215,6 +215,50 @@ export function authoringDetail(session: AuthoringSessionState | undefined): str
   return building.complete ? `Validating — ${nodes}${attempt}` : `Writing — ${nodes} so far${attempt}`;
 }
 
+/**
+ * BLD-017 F4 — the mockup's 3px segmented track, as three numbers.
+ *
+ * `.track` draws `done` in success and `now` in accent over a neutral ground,
+ * and the widths are the only thing in it that can be wrong. So they are decided
+ * here: the shares sum to 1 exactly, which is what stops a rounding drift from
+ * leaving a hairline of ground showing at the right edge of a finished run.
+ *
+ * ⚠️ **`done` counts `staged`, not "everything before the current one".** A run
+ * that built five of seven and failed twice has two operations that are behind
+ * the playhead and are not done, and painting them green would be the run map
+ * telling a comfortable lie about the thing the user is watching for. Failed and
+ * skipped operations fall into the remainder with the pending ones — the track
+ * is a progress bar, not a status legend, and `operationRole` already gives the
+ * per-row treatment that distinguishes them.
+ *
+ * ⚠️ **And `now` is 0 when nothing is authoring**, including for a finished run.
+ * A track that keeps an accent segment after the run ends is the same class of
+ * defect as {@link estimateRemaining}'s countdown that reaches zero and keeps
+ * going: a claim that was true once and is now visibly false.
+ */
+export interface RunTrack {
+  /** Share of the width that is finished work. 0–1. */
+  done: number;
+  /** Share of the width that is the operation being built right now. 0–1. */
+  now: number;
+}
+
+export function runTrack(state: PlanRunState): RunTrack {
+  const total = state.operations.length;
+  // An empty plan has no width to divide. Zero rather than NaN, because `NaN%`
+  // is an invalid declaration that CSS drops — the segment would silently keep
+  // whatever width it had last render.
+  if (total === 0) return { done: 0, now: 0 };
+
+  const staged = state.operations.filter((operation) => operation.status === 'staged').length;
+  const authoring = state.operations.filter((operation) => operation.status === 'authoring').length;
+
+  // `min` rather than trusting the statuses to be disjoint: two operations
+  // reported as `authoring` at once is a producer bug, and it must not be able
+  // to push the accent segment past the end of the bar.
+  return { done: staged / total, now: Math.min(authoring, total - staged) / total };
+}
+
 /** "4m 12s", "38s" — a duration read at a glance, not parsed. */
 export function formatDuration(ms: number): string {
   const seconds = Math.max(0, Math.round(ms / 1000));

@@ -40,7 +40,12 @@
 import React, { useEffect, useRef, useState } from 'react';
 
 import type { AuthoringActivity } from '@noodl-models/AiAssistant/authoring';
-import { collapseActivities } from '@noodl-models/AiAssistant/thread';
+import {
+  collapseActivities,
+  formatDuration,
+  outcomeSentence,
+  stagedComponentCard
+} from '@noodl-models/AiAssistant/thread';
 import type { Turn, TurnActivity, TurnOutcome } from '@noodl-models/AiAssistant/thread';
 
 import { FeedbackType } from '@noodl-constants/FeedbackType';
@@ -147,7 +152,17 @@ export function ActivityRow({ activity }: { activity: AuthoringActivity }) {
  * the state that is right after twenty minutes, not the one that is tolerable
  * after ten seconds.
  */
-function ActivityRun({ activities, summary }: { activities: readonly TurnActivity[]; summary: string }) {
+function ActivityRun({
+  activities,
+  summary,
+  counts,
+  durationMs
+}: {
+  activities: readonly TurnActivity[];
+  summary: string;
+  counts: string;
+  durationMs?: number;
+}) {
   const [expanded, setExpanded] = useState(false);
 
   return (
@@ -156,12 +171,25 @@ function ActivityRun({ activities, summary }: { activities: readonly TurnActivit
         type="button"
         className={css['Run']}
         aria-expanded={expanded}
+        /*
+         * BLD-017 F1 splits the strip into two boxes so the duration can sit at
+         * the right edge, and two boxes announce as a list — *"3 steps ·
+         * validated once, 14s"*. `summary` is the same facts composed as one
+         * sentence by `messages.ts`, so the accessible name is unchanged by a
+         * decision that was purely about where the number is drawn.
+         */
+        aria-label={summary}
         onClick={() => setExpanded((value) => !value)}
       >
         <span className={`${css['RunCaret']} ${expanded ? css['is-expanded'] : ''}`}>
           <Icon icon={IconName.CaretRight} size={IconSize.Small} />
         </span>
-        <Text textType={TextType.Shy}>{summary}</Text>
+        <Text textType={TextType.Shy}>{counts}</Text>
+        {durationMs !== undefined && (
+          <Text textType={TextType.Shy} className={css['RunDuration']}>
+            {formatDuration(durationMs)}
+          </Text>
+        )}
       </button>
       {expanded && (
         <div className={css['RunItems']}>
@@ -186,16 +214,18 @@ function ActivityRun({ activities, summary }: { activities: readonly TurnActivit
 function OutcomeSummary({ outcome }: { outcome: TurnOutcome }) {
   switch (outcome.kind) {
     case 'staged-component':
-      return (
-        <Text textType={TextType.Default}>
-          Staged: {outcome.legacyName} — {outcome.nodeCount} node{outcome.nodeCount === 1 ? '' : 's'},{' '}
-          {outcome.connectionCount} connection{outcome.connectionCount === 1 ? '' : 's'}.{' '}
-          {outcome.mode === 'update' ? 'Your component is untouched until you accept.' : 'Nothing is in your project yet.'}
-        </Text>
-      );
+      /*
+       * ⚠️ One author, shared with the live card. This sentence and
+       * `renderOutcome`'s were character-for-character duplicates until BLD-017
+       * needed to split it into the mockup's title and sub — see
+       * `outcomeCard.ts` for why that made a pure module unavoidable rather than
+       * optional.
+       */
+      return <Text textType={TextType.Default}>{outcomeSentence(stagedComponentCard(outcome))}</Text>;
     case 'accepted-component':
+      // BLD-017 F3 — the receipt: this one reached the project.
       return (
-        <div className={css['Event']}>
+        <div className={css['Receipt']}>
           <Icon icon={IconName.Check} variant={FeedbackType.Success} size={IconSize.Small} />
           <Text textType={TextType.Default}>
             {outcome.mode === 'update'
@@ -212,8 +242,9 @@ function OutcomeSummary({ outcome }: { outcome: TurnOutcome }) {
         </Text>
       );
     case 'plan-applied':
+      // The other outcome that reached the project, so the same receipt.
       return (
-        <div className={css['Event']}>
+        <div className={css['Receipt']}>
           <Icon icon={IconName.Check} variant={FeedbackType.Success} size={IconSize.Small} />
           <Text textType={TextType.Default}>
             Applied — {outcome.componentCount} component{outcome.componentCount === 1 ? '' : 's'} changed
@@ -371,7 +402,13 @@ export function BuildThread({
                 {turn.activities.length > 0 && <div className={css['Speaker']}>Assistant</div>}
                 {collapseActivities(turn.activities).map((item) =>
                   item.kind === 'run' ? (
-                    <ActivityRun key={`run-${item.startIndex}`} activities={item.activities} summary={item.summary} />
+                    <ActivityRun
+                      key={`run-${item.startIndex}`}
+                      activities={item.activities}
+                      summary={item.summary}
+                      counts={item.counts}
+                      {...(item.durationMs === undefined ? {} : { durationMs: item.durationMs })}
+                    />
                   ) : (
                     <ActivityRow key={item.index} activity={item.activity} />
                   )

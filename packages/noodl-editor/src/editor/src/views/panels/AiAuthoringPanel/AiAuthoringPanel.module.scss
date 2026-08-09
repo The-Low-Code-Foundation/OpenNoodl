@@ -221,3 +221,112 @@
   flex: 0 0 auto;
   min-width: 44px;
 }
+
+/*
+ * ═══════════════════════════════════════════════════════════════════════════
+ * BLD-017 F2 — the outcome card.
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * The mockup's `.card` / `.card-top` / `.card-acts`, and the row this task calls
+ * the one that makes a decision read as a decision. Shipped, a staged component
+ * was a paragraph with three buttons after it — the same treatment as the prose
+ * two elements above and the tool events two elements below, in a panel whose
+ * whole complaint is that everything looks like everything else. The three
+ * buttons were the *only* thing marking it as the point of the turn, and buttons
+ * are what a panel has most of.
+ *
+ * A bordered card with a footer band says it before anything is read: this is an
+ * object, it is finished, and the things along its bottom edge are what you may
+ * do to it.
+ *
+ * Token map is in `thread/BuildThread.module.scss`'s header — **copy the intent,
+ * name the token, never copy the hex**; the mockup is dark-only.
+ *
+ * ⚠️ **The mockup's `rgba(255, 255, 255, 0.014)` on `.card-acts` is not copied.**
+ * It is the one value in the whole stylesheet with no token behind it, and it is
+ * *white*: a lift on a dark card and a literal no-op on a light one, so copying
+ * it would import a treatment that exists in exactly one theme. The top rule
+ * carries the band alone, as it does in `InterviewCard.module.scss` — which made
+ * this same call first and is the worked example this row follows.
+ */
+.OutcomeCard {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: 6px;
+  background-color: var(--theme-color-bg-2);
+}
+
+.OutcomeTop {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 11px 12px;
+  min-width: 0;
+}
+
+/*
+ * The headline. 620 rather than 600 and `fg-highlight` — the mockup's
+ * `.card-title`, and the second-loudest thing in a turn after the user's own
+ * words.
+ *
+ * ⚠️ Two classes deep so it beats `Text`'s own `.is-type-*` colour rule, which
+ * is the same trick `.Operation-pending .OperationTarget` above relies on for
+ * the same reason. A single-class override here would be silently ignored.
+ */
+.OutcomeCard .OutcomeTitle {
+  font-size: 12.5px;
+  line-height: 1.4;
+  font-weight: 620;
+  letter-spacing: -0.005em;
+  color: var(--theme-color-fg-highlight);
+}
+
+/* The shape of it, and what it has not yet cost you. `fg-default-shy` on bg-2 is
+   5.57:1 dark / 5.06:1 light — the mockup's own `--gx-shy`, and one of the two
+   roles it picked that does clear AA. */
+.OutcomeCard .OutcomeSub {
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--theme-color-fg-default-shy);
+}
+
+/*
+ * The footer band.
+ *
+ * `flex-wrap` because at 400px three labels — "Add to project", "See the
+ * changes", "Discard" — do not share a row, and B8's lesson from BLD-007 is that
+ * a control which wrapped is strictly better than one that was pushed out of
+ * reach. `PrimaryButton` is `flex-shrink: 0; min-width: 70px`, so without this
+ * they overflow rather than compress.
+ */
+.OutcomeActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  padding: 10px 12px;
+  border-top: 1px solid var(--theme-color-border-default);
+}
+
+/*
+ * The refine field, in its own band above the decisions.
+ *
+ * ⚠️ It is **not** in the footer with the buttons, and that is the one place
+ * this card departs from the mockup's structure — because the mockup never drew
+ * it. "Ask for changes…" is not a decision about the candidate; it is a way to
+ * produce a *different* candidate, so grouping it with Add / See / Discard would
+ * put a fourth option in a row of three that are mutually exclusive. Its own
+ * band, with the same rule, keeps the footer's three the answer to one question.
+ */
+.OutcomeRefine {
+  padding: 10px 12px;
+  border-top: 1px solid var(--theme-color-border-default);
+}
+
+/* Where the buttons went, when the preview document owns them (BLD-003 D2).
+   Same band, so the card does not change shape when the decision moves. */
+.OutcomeNote {
+  padding: 10px 12px;
+  border-top: 1px solid var(--theme-color-border-default);
+}
