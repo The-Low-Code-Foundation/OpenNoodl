@@ -68,7 +68,7 @@ change needs a full-surface pass.
 | `typecheck:editor` | clean |
 | `typecheck:editor-tests` | clean |
 | `test:main` | **88 suites, 1211 tests** — +25 over 1186, exactly the new spec |
-| `test:ci` | see the table in TASKS.md — **re-run and read, never predict** |
+| `test:ci` | **2582 specs, 6 failures** — read in session 7 on exactly this tree. The six are the inherited baseline: four `AIX-006 style vocabulary` and two `AI model registry`. Nothing new. |
 
 ⚠️ **Never `tail` a `test:ci` run you intend to read a verdict from** — redirect to a file and grep
 `^Jasmine:`. ~20 minutes.

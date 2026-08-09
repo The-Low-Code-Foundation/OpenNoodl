@@ -134,6 +134,15 @@ full-surface pass — see step 3.
 - [x] The user message is the highest-contrast element in the turn (13.03 dark / 14.20 light, against
       7.70 / 7.10 for everything else in the turn).
 
+## Gates
+
+| Gate | Result |
+|---|---|
+| `typecheck:editor` | clean |
+| `typecheck:editor-tests` | clean |
+| `test:main` | **88 suites, 1211 tests** — +25 over 1186, exactly the new spec file |
+| `test:ci` | **2582 specs, 6 failures** — the inherited baseline (four `AIX-006 style vocabulary`, two `AI model registry`). Read from the log with `grep -E "^Jasmine:"`; ⚠️ the FAILED list prints *after* the verdict line, so read the whole block, not a fixed offset. |
+
 ## Register
 
 | # | Finding | State |
