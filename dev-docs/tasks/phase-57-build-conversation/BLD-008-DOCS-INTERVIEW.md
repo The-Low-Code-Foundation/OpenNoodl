@@ -1,6 +1,6 @@
 # BLD-008 — Docs are a conversation
 
-**Status:** 📋 not started · **Track A** · ⭐ · after BLD-001, BLD-007 · closes **D8**
+**Status:** 🟡 built, not driven · **Track A** · ⭐ · after BLD-001, BLD-007 · closes **D8**
 
 ## The defect, measured
 
@@ -35,6 +35,22 @@ anything about the rest is inference
 ([ProjectReviewView.tsx:62-110](../../../packages/noodl-editor/src/editor/src/views/panels/AiAuthoringPanel/ProjectReviewView.tsx#L62)).
 **Keep it, unchanged in spirit.** It becomes the first thing the interview reports.
 
+## What was built, and where
+
+| Module | What it is |
+|---|---|
+| `review/interviewQuestions.ts` | Pure. Parses the `##` headings out of `DOC_TEMPLATES` and decides, per heading, whether the graph can answer it. **The set has nowhere else to come from** — that is criterion 4. An unclassified heading is *asked*, and a spec makes it red as well. |
+| `review/interviewState.ts` | Pure. The answer record, the resume rule, `insertSkipTodos`, and `interviewActivities` — the author BLD-002 reserved the `question` kind for. |
+| `review/interviewPrompts.ts` | The asking prompt and `answersBlock`, which hands the answers to the drafting turn as facts and forbids `> TODO:` on that path. |
+| `review/InterviewSession.ts` | One turn, one tool, `design` role. Degrades to the plain questions rather than failing the pass. |
+| `review/InterviewSidecar.ts` | `.nodegx/review/interview.json`, debounced + queued, on the `flushAiSidecars` quit handshake **from the day it was written**. |
+| `review/ProjectReviewRun.ts` | Two calls now: `run()` assembles and asks; `draft()` writes. The gap between them is a person. |
+| `AiAuthoringPanel/InterviewCard.tsx` | The controls. Draws **no question text** — the thread does that. |
+
+Everything else is edits: `docsTurns` emits the questions, `ProjectReviewStore` owns the run,
+`prompts.ts` gained the answers block and a `proposed` brief, `ProjectReviewView` lost a ref that was
+never filled.
+
 ## Build
 
 1. **Invert the flow: read → ask → draft.** The assemble step already exists and produces coverage;
@@ -68,19 +84,38 @@ anything about the rest is inference
 
 ## Acceptance
 
-- [ ] A project with no docs → the agent reports coverage, then asks ≥ 4 questions before writing a
-      single character of draft.
-- [ ] Answering every question produces drafts with **zero** TODOs; skipping three produces exactly
-      three, each naming the skipped question.
-- [ ] Leaving the panel mid-interview and returning resumes at the same question with prior answers
-      intact.
-- [ ] The question set changes when `templates.ts` changes — proving they share a source. Pin with a
-      spec.
-- [ ] Rejecting every draft leaves the project byte-identical (existing property — pin it).
-- [ ] The Docs panel is never *required* to complete a docs run.
+- [x] A project with no docs → the agent reports coverage, then asks ≥ 4 questions before writing a
+      single character of draft. — **7 questions**; pinned by
+      `tests/ai/project-review.test.ts` *"stops at the questions, having drafted nothing"*, which also
+      asserts exactly one provider call has happened and it was the interview.
+- [x] Answering every question produces drafts with **zero** TODOs; skipping three produces exactly
+      three, each naming the skipped question. — both halves pinned. ⚠️ See R3: the zero is a
+      property of the code *plus* a prompt prohibition, and the one way it can be exceeded has its
+      own spec.
+- [x] Leaving the panel mid-interview and returning resumes at the same question with prior answers
+      intact. — the store gives this on its own (it outlives the panel); `.nodegx/review/interview.json`
+      extends it across a restart, and resumes **without a second billed call**. Not yet driven.
+- [x] The question set changes when `templates.ts` changes — proving they share a source. Pinned by
+      `tests-unit/bld-008/interviewQuestions.test.ts`, in both directions: an unclassified heading is
+      red, and so is a rule for a heading that no longer exists.
+- [x] Rejecting every draft leaves the project byte-identical — pinned again **on the interview
+      path**, with a skipped question and an invented fourth document, because that path rewrites
+      draft content and adds a model-supplied file name.
+- [x] The Docs panel is never *required* to complete a docs run. — already true after BLD-003; each
+      draft carries its own Accept / Review changes / Discard in the thread. Verified by reading, not
+      driven.
 
 ## Register
 
 | # | Finding | State |
 |---|---|---|
-| | | |
+| R1 | ⚠️ **`ProjectReviewView`'s run ref was never filled, so its Stop button has done nothing since BLD-001.** `start()` sets the ref; `start()` is reachable only from the `!isEmbedded` button and `startImmediately`; the sole mount since BLD-001 is `renderOutcome`'s embedded one, started by `AiAuthoringPanel`. `Stop` was calling `null?.cancel()`. Found because the interview's controls need the same reference. The run now lives on `ProjectReviewStore` beside the state it produces. | ✅ fixed |
+| R2 | ⚠️ **A busy flag guarded the work instead of the door.** `run()` publishes `busy: true`, then the no-interview path delegated to `draft()`, whose guard saw its own caller's flag and returned at once — `phase: 'assembling'`, three pending drafts. **Every pre-BLD-008 run spec failed on it**, which is what a suite written against the old flow is for. Guard moved to the public entry point; the loop is a private `runDrafts()`. | ✅ fixed |
+| R3 | ⚠️ **The TODO advisory was a mechanism inside the feature arguing against it.** `todoAdvisoryMessage` is sent when a draft carries *no* TODO lines and asks the model to add some. On a fully answered interview "no TODO lines" is acceptance criterion 2's first half, so the advisory is switched off whenever nothing was declined. The residual: a model that ignores the prohibition can still add a line, and the count then exceeds the number of skips. Pinned as a spec rather than fixed — the only fix is deleting the model's own words. | 🟡 stated |
+| R4 | ⚠️ **`ReviewDocKind` gained a member and two lookup tables had to be narrowed to stay honest.** `REVIEW_DOC_PATHS` and `DOC_TEMPLATES` are `Record<KnownDocKind, …>`, not `Record<ReviewDocKind, …>`, so indexing them with `proposed` is a compile error rather than an `undefined` that becomes the string `"undefined"` in a file path. A proposed document's path is carried on the draft. | ✅ built |
+| R5 | **The interview is the `design` role; the drafting turns stay global.** Deciding what to ask a person about their own product is the act `ScopingSession` performs, and it sets the ceiling on all three documents. `tests-unit/phase-55/roleModels.test.ts` is what caught the new call site — a gate worth knowing about before adding an AI session. | ✅ built |
+| R6 | ⚠️ **Sending a new request while an interview is open retires it**, because `retire()` calls `ProjectReviewStore.clear()` and that is AIB-003's contract (a new request *is* the user saying so). The answers are not lost — the sidecar file survives and the next docs request resumes it — but nothing on screen says so at the moment of the send. Worth a sentence in the switcher's vocabulary. | 📋 filed |
+| R7 | **The question set is seven, not the task's estimated six.** Three from BRIEF (all of it), three from ARCHITECTURE (data model *why*, backend contracts, decisions), one from CONVENTIONS (what not to do). Pinned exactly rather than as a range, so growth is a decision rather than a drift. | ✅ built |
+| R9 | 🔴 **The first cut of the question did not follow the approved mockup, and nobody would have noticed.** It split the question (a `question` activity in the thread) from its controls (a bare box beneath) — which kept the no-duplication property and lost the mockup's `.qcard`: one card holding the eyebrow, the question, its evidence, the guess in an inset well and the answers in a footer band. Rebuilt to the mockup. ⚠️ **The general version is [BLD-017](BLD-017-MOCKUP-FIDELITY.md)** — eight more surfaces where nine tasks were built against the mockup's *structure* without anyone diffing its *CSS*. Raised by Richard, not by a gate. | ✅ fixed |
+| R10 | ⚠️ **BLD-002's reservation for `question` was right about its old subject** — "the loudest thing in the thread, because it is the only activity that blocks", written when a question was assumed to be one line of text. Once the controls need a card, the loud treatment belongs to the card and the activity becomes the **transcript** of settled exchanges. `.Question` is now a quiet accent rule; seven accent-ringed boxes stacked would be noise. The phase's recurring shape, for the sixth time. | ✅ built |
+| R8 | 📋 **Not driven.** Every criterion above is a spec, not a measurement. The interview has never been on screen: the phrasing, the guess quality, the length of the sit-down at 400px, and the `.Question` treatment's contrast are all unmeasured. **BLD-010 or a session-12 drive.** ⚠️ The editor has a live Anthropic key, so a drive costs money. | 📋 open |

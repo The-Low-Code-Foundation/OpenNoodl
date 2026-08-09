@@ -30,14 +30,44 @@ box — its header is inside the scroll area.
 | BLD-005 ⭐ ✅ | [BLD-005-LEGIBLE-LONG-RUN.md](BLD-005-LEGIBLE-LONG-RUN.md) | pin the run header out of the scroll area; plan-as-map; honest estimate | **corr. 2 ✅** |
 | BLD-006 ✅ | [BLD-006-THREADS-PERSIST.md](BLD-006-THREADS-PERSIST.md) | threads survive accept, navigation and restart; a switcher | **D5 ✅** |
 | BLD-007 ⭐ ✅ | [BLD-007-DOCS-ARE-OPEN.md](BLD-007-DOCS-ARE-OPEN.md) | front-matter `inject`; the one-value enum becomes a discovered list | **D9 ✅** |
-| BLD-008 ⭐ | [BLD-008-DOCS-INTERVIEW.md](BLD-008-DOCS-INTERVIEW.md) | the agent asks before it drafts; TODO count stops being a feature | D8 |
+| BLD-008 ⭐ 🟡 | [BLD-008-DOCS-INTERVIEW.md](BLD-008-DOCS-INTERVIEW.md) | the agent asks before it drafts; TODO count stops being a feature | D8 (built, not driven) |
 | BLD-009 | [BLD-009-EXPANDED-MODE.md](BLD-009-EXPANDED-MODE.md) | the same thread as a document, two-pane with the live preview | D10 |
+| BLD-017 ⭐ | [BLD-017-MOCKUP-FIDELITY.md](BLD-017-MOCKUP-FIDELITY.md) | the panel does not look like the mockup it was approved from | — |
 | BLD-010 | [BLD-010-ACCEPTANCE-PASS.md](BLD-010-ACCEPTANCE-PASS.md) | drive every state live, both widths, both themes, and measure | — |
 
 ᵃ BLD-003 closes the *duplicate-bar* half of D8 (the Docs panel hand-off); BLD-008 closes the rest.
 
 ✅ = built **and on `cline-dev`** (BLD-007 and BLD-012 merged 2026-08-09; **BLD-001 built, driven and
 closed 2026-08-09** — `a93720b3`, `02c3072c`, `458e189f`).
+
+**Session 11 (2026-08-09) — BLD-008 built, all six acceptance criteria pinned as specs, none
+driven.** **10 of 16 built, 8 driven.** The docs pass is inverted: `startProjectReview` now returns
+with **questions on screen and nothing drafted**, and `run.draft()` is a second call the card makes
+once they are settled. The question set is parsed out of `templates.ts` — there is nowhere else for
+it to come from — and the TODO lines are written by `insertSkipTodos`, one per declined question, so
+"exactly three" is arithmetic rather than a hope about a prompt.
+
+🔴 **And one finding that is not about BLD-008 at all: BLD-017 is new.** Richard, looking at the
+shipped panel: *"why does the interface still look like a CS student's winter project?"* The mockup
+this phase was approved from is specific about **surfaces** — the collapsed run is a filled chip, an
+outcome is a bordered card with a footer band for its actions, an accepted card collapses to a
+success-ruled receipt — and **nine tasks were built against its structure without anyone diffing its
+CSS.** It is not a redesign: the mockup uses NodeGX's own dark tokens verbatim and says so. Eight
+gaps are measured in [BLD-017](BLD-017-MOCKUP-FIDELITY.md); the ninth, the interview's question
+card, was closed in this session as the worked example.
+
+⚠️ **Three findings, and the first two are the same shape as the phase's running theme — a
+mechanism that was right about its old subject:**
+
+- ⚠️ **`ProjectReviewView`'s Stop button has done nothing since BLD-001.** Its run came from a
+  `useRef` filled only by `start()`, and `start()` is unreachable from the one mount that ships. The
+  run lives on `ProjectReviewStore` now, beside the state it produces.
+- ⚠️ **A busy flag guarded the work instead of the door.** `run()` sets `busy`, then delegated to
+  `draft()`, whose guard saw its caller's own flag — every pre-BLD-008 run spec went red, which is
+  exactly what a suite written against the old flow is for.
+- ⚠️ **The TODO advisory was a mechanism inside the feature arguing against it.**
+  `todoAdvisoryMessage` asks a draft with no TODO lines to add some; on a fully answered interview
+  that is the acceptance criterion. Switched off whenever nothing was declined.
 
 **Session 10 (2026-08-09) — BLD-006 built, driven and closed. D5 is closed.** **9 of 16 built, 8
 driven.** The conversation now lives in `ThreadStore` (per project, injected persistence) and on disk
