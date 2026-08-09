@@ -9,9 +9,19 @@ regression BLD-007 itself shipped**, in code that `tsc` and 21/21 unit specs had
 The suite went `2574 / 6` → **`2581 / 8`** on the merge, and is **`2582 / 6`** now. Details in
 [BLD-007](BLD-007-DOCS-ARE-OPEN.md) register **B7**.
 
-✅ **No second session was live.** `git log --since="8 hours ago"` held only phase-56 session 7's
-commits at the start, and `git status` was clean before the first merge. **Check again next session
-rather than inheriting this.**
+⚠️ **A second session went live part-way through this one.** The checkout was clean at the start —
+`git log --since="8 hours ago"` held only phase-56 session 7's commits and `git status` was empty —
+and it stayed that way through both merges. Then
+`dev-docs/tasks/phase-46-verification/VER-009-A-SCENARIO-GROWS-AN-EXPECTATION.md` appeared
+**untracked at 11:55**, one minute before this session's last commit. It is phase 46 (VER-009,
+depends on BEN-005) and has nothing to do with phase 57.
+
+**It was not swept, and the reason is the rule:** every commit here used
+`git commit -- <explicit path>`, so a file outside `dev-docs/tasks/phase-57-build-conversation/` and
+`packages/noodl-editor/**` could not be picked up. **Leave it alone** — it is someone else's
+in-flight work. This is the standing hazard on this checkout, and "clean at the start" is not a
+finding that stays true; **re-check `git status` immediately before every commit**, not once at the
+beginning.
 
 ## What is on the branch
 
