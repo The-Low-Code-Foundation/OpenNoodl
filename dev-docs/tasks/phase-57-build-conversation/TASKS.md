@@ -27,7 +27,7 @@ box — its header is inside the scroll area.
 | BLD-002 ✅ | [BLD-002-MESSAGE-HIERARCHY.md](BLD-002-MESSAGE-HIERARCHY.md) | five message kinds, five treatments; collapsed activity runs | **D4 ✅** |
 | BLD-003 ⭐ ✅ | [BLD-003-DECISIONS-ON-THE-CARD.md](BLD-003-DECISIONS-ON-THE-CARD.md) | actions attach to their subject; one owner; Discard, not red Reject | **D2 ✅ D3 ✅** D8ᵃ |
 | BLD-004 | [BLD-004-THINKING-AND-HEARTBEAT.md](BLD-004-THINKING-AND-HEARTBEAT.md) | surface `onActivity`; add a reasoning channel the XML parser cannot see | D6 D7 |
-| BLD-005 ⭐ | [BLD-005-LEGIBLE-LONG-RUN.md](BLD-005-LEGIBLE-LONG-RUN.md) | pin the run header out of the scroll area; plan-as-map; honest estimate | corr. 2 |
+| BLD-005 ⭐ ✅ | [BLD-005-LEGIBLE-LONG-RUN.md](BLD-005-LEGIBLE-LONG-RUN.md) | pin the run header out of the scroll area; plan-as-map; honest estimate | **corr. 2 ✅** |
 | BLD-006 | [BLD-006-THREADS-PERSIST.md](BLD-006-THREADS-PERSIST.md) | threads survive accept, navigation and restart; a switcher | D5 |
 | BLD-007 ✅ | [BLD-007-DOCS-ARE-OPEN.md](BLD-007-DOCS-ARE-OPEN.md) | front-matter `inject`; the one-value enum becomes a discovered list | D9 |
 | BLD-008 ⭐ | [BLD-008-DOCS-INTERVIEW.md](BLD-008-DOCS-INTERVIEW.md) | the agent asks before it drafts; TODO count stops being a feature | D8 |
@@ -153,8 +153,11 @@ re-read [`no-concurrent-session-on-opennoodl`] discipline: pathspec-scope every 
 1. **BLD-001** — nothing else is safe to start.
 2. **BLD-003 + BLD-002** — together they are most of what Richard actually complained about, and they
    are visible immediately.
-3. **BLD-005 + BLD-004** — the long-run legibility pair. BLD-005 is small (a sticky header and an
-   estimate); BLD-004 is the one that makes it feel alive.
+3. ~~**BLD-005** + **BLD-004** — the long-run legibility pair.~~ **BLD-005 is closed**, and it was
+   built *before* BLD-004 rather than after: only step 4's motion needed the heartbeat, and motion is
+   the one thing there that must not be faked (a pulse driven by `busy` animates hardest when the
+   provider has hung). **BLD-004 now owns two filed items** — C8 (the collapsed run claims no
+   duration) and BLD-005's R2 (the current operation does not move).
 4. **BLD-006** — cheap, and it is the difference between a tool and a form.
 5. **BLD-007 → BLD-008** — the docs pair. 007 is mechanical, 008 is the interesting one.
 6. **BLD-011 → BLD-012 → BLD-014** — the context spine. 014 is the payoff and should be prioritised
