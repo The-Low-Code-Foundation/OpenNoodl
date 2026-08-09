@@ -113,7 +113,35 @@ not invent one.
 | `typecheck:editor` | clean |
 | `typecheck:editor-tests` | clean |
 | `test:main` | **92 suites, 1268 tests**, zero failures |
-| `test:ci` | see the closing commit — run this session for the first time since BLD-002 |
+| `test:ci` | **`Jasmine: 2582 specs, 6 failures`** — the inherited baseline, confirmed **by name**: four `AIX-006 style vocabulary`, two `AI model registry`. Run for the first time since BLD-002. |
+
+### ⚠️ The first `test:ci` run said **11**, and 3 of the 5 extra were phantoms
+
+Two of the five were real and mine, both fixed:
+
+- `AnthropicProvider.chatStream` pinned `display: 'omitted'`. Updated with the reason beside it.
+- `AIX-002 authoring session published state` asserted activities with **exact-shape `toEqual`**,
+  which the new `at` stamp breaks. Switched to `objectContaining` — matching the two assertions
+  directly below it — and **added** an assertion that every activity is stamped, so losing the
+  stamps is a failure rather than a quieter panel.
+
+That is the **third** time this phase that specs nobody touched caught a change (BLD-012's golden
+was the second, BLD-007's defaulted parameter the first).
+
+The other three were `BEN-001 the component interface, as the bench reads it`, all reporting an
+**empty** interface. **They disappeared on a clean re-run with no code change to the bench.**
+
+> ⚠️ **`test:ci` run while a dev stack is up produces phantom failures.** The first run happened
+> with `npm run dev:debug` live and a project open in the editor I was driving; the second ran after
+> `dev:stop`, and the three went away. **Stop the stack before running `test:ci`.**
+
+And the reasoning that was wrong, recorded because it was nearly convincing: I had built a case that
+these were the sibling's `4020ff80 fix(runtime)` (105 lines of `noodl-runtime/src/node.ts`, landed
+after the last baseline, and BEN-001 reads ports *"off the plug the runtime agrees with"*). It fit,
+it named a real commit, and it was **wrong** — the specs import the runtime for *types* only, which
+was the one piece of evidence that did not fit and that I noticed but under-weighted. **A hypothesis
+that explains the failure is not a diagnosis; re-running under a changed condition is.** Attribution
+was withheld pending a bisect, and the re-run made the bisect unnecessary.
 
 ⚠️ The +31 over session 7's 1237 is **29 new specs plus 2**: BLD-002's `it.each(FILES)` sweep
 enumerates the panel directory and picked up `Heartbeat.tsx` and `ReasoningStrip.tsx` by itself. A
@@ -142,6 +170,8 @@ Sessions 5–7 hold. Four more:
   clicked Stop believing it was Send, twice.
 - **Read animations from `getComputedStyle(el).animationName`, not from the class list.** The class
   is what you asked for; the animation is what the compositor is doing.
+- ⚠️ **`dev:stop` before `test:ci`** — see the gates section. A live dev stack cost a 20-minute run
+  and three phantom failures with a plausible false explanation attached.
 
 ## What to do next
 

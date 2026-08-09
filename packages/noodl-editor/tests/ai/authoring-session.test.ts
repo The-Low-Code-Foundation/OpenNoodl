@@ -300,8 +300,19 @@ describe('AIX-002 authoring session', () => {
 
       // Empty assistant bubbles are dropped; everything else is in order.
       expect(state.activities.map((a) => a.kind)).toEqual(['user', 'assistant', 'tool', 'submit', 'submit']);
-      expect(state.activities[0]).toEqual({ kind: 'user', text: REQUEST.description });
-      expect(state.activities[2]).toEqual({ kind: 'tool', label: 'Read node documentation: Group' });
+      // `objectContaining`, matching the two assertions below it: BLD-004 stamps
+      // every activity with `at`, and an exact-shape assertion here would break
+      // on any field a later task adds without saying anything about the feed.
+      expect(state.activities[0]).toEqual(jasmine.objectContaining({ kind: 'user', text: REQUEST.description }));
+      expect(state.activities[2]).toEqual(
+        jasmine.objectContaining({ kind: 'tool', label: 'Read node documentation: Group' })
+      );
+
+      // BLD-004: the stamp is part of the published contract now — the collapsed
+      // run's duration is derived from it, and an unstamped producer silently
+      // loses the duration rather than reporting a wrong one. Asserted here so
+      // that losing the stamps is a failure rather than a quieter panel.
+      expect(state.activities.every((a) => typeof a.at === 'number')).toBe(true);
       expect(state.activities[3]).toEqual(jasmine.objectContaining({ kind: 'submit', ok: false }));
       expect((state.activities[3] as { errorLines: string[] }).errorLines.length).toBeGreaterThan(0);
       expect(state.activities[4]).toEqual(jasmine.objectContaining({ kind: 'submit', ok: true, errorLines: [] }));
