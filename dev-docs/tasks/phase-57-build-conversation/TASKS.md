@@ -23,7 +23,7 @@ box — its header is inside the scroll area.
 
 | Task | File | One line | Closes |
 |---|---|---|---|
-| BLD-001 ⭐ | [BLD-001-ONE-THREAD.md](BLD-001-ONE-THREAD.md) | one thread, one composer; scope inferred, not chosen | D1 |
+| BLD-001 ⭐ ✅ | [BLD-001-ONE-THREAD.md](BLD-001-ONE-THREAD.md) | one thread, one composer; scope inferred, not chosen | D1 |
 | BLD-002 | [BLD-002-MESSAGE-HIERARCHY.md](BLD-002-MESSAGE-HIERARCHY.md) | five message kinds, five treatments; collapsed activity runs | D4 |
 | BLD-003 ⭐ | [BLD-003-DECISIONS-ON-THE-CARD.md](BLD-003-DECISIONS-ON-THE-CARD.md) | actions attach to their subject; one owner; Discard, not red Reject | D2 D3 D8ᵃ |
 | BLD-004 | [BLD-004-THINKING-AND-HEARTBEAT.md](BLD-004-THINKING-AND-HEARTBEAT.md) | surface `onActivity`; add a reasoning channel the XML parser cannot see | D6 D7 |
@@ -36,8 +36,15 @@ box — its header is inside the scroll area.
 
 ᵃ BLD-003 closes the *duplicate-bar* half of D8 (the Docs panel hand-off); BLD-008 closes the rest.
 
-✅ = built **and merged to `cline-dev`** (BLD-007 and BLD-012, merged 2026-08-09). Neither has been
-driven in a real editor; both carry an open live-QA criterion in their own file.
+✅ = built **and on `cline-dev`** (BLD-007 and BLD-012 merged 2026-08-09; **BLD-001 built 2026-08-09**).
+⚠️ **None of the three has been driven in a real editor**, and each carries an open live-QA criterion
+in its own file. That is now the phase's single largest debt: BLD-001 changes what is on screen in
+*every* state of the panel, and its only evidence is offline.
+
+**The frame is up, so Track A is unblocked.** Everything below renders inside `BuildThread`
+(`views/panels/AiAuthoringPanel/thread/`) over the pure turn model
+(`models/AiAssistant/thread/`) — read both before starting any of them; between them they are ~600
+lines and they are the vocabulary the rest of the track speaks.
 
 ## Track B — what the agent can see
 

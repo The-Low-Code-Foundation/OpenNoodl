@@ -1,10 +1,17 @@
 # Phase 57 — The Build panel is a conversation
 
 **Created:** 2026-08-08
-**Status:** 🟡 **2 of 16 built and merged** — **BLD-007** (Track A) and **BLD-012** (Track B), both
-built 2026-08-08 in worktrees beside a live phase-56 session and **merged to `cline-dev`
-2026-08-09**. Neither has been driven in a real editor. The other fourteen are specced only.
+**Status:** 🟡 **3 of 16 built** — **BLD-007** and **BLD-012** (merged 2026-08-09, built the day
+before in worktrees beside a live phase-56 session) and **BLD-001 ⭐ the frame** (built 2026-08-09).
+⚠️ **None of the three has been driven in a real editor.** The other thirteen are specced only.
 Tasks are **[TASKS.md](TASKS.md)** (BLD-001…016, two tracks).
+
+**BLD-001 landing changes how you read the rest of this file.** The panel is now one thread of
+turns with one composer, and the scope tabs are gone — so every defect below that says "the panel
+switches subtrees" is describing history. D1 is closed. D2, D3, D4, D5, D6, D7, D8, D9 (closed by
+BLD-007) and D10 are **not**: BLD-001 moved the panel's Accept/Discard onto the outcome card, which
+means the preview document's copy is now the *second* one on screen rather than one of two peers.
+**Do not count live controls until BLD-003 lands.**
 
 ⚠️ **Both were finished work that produced nothing for a day**, because a committed branch in a
 scratchpad worktree is invisible to `git log cline-dev`. If you build in a worktree, the merge is
