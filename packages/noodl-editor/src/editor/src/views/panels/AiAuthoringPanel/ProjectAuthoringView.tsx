@@ -52,11 +52,10 @@ import {
   type PlanSessionSnapshot
 } from '@noodl-models/AiAssistant/authoring';
 import { fromProjectModel } from '@noodl-models/AiAssistant/explain/graph';
-// Imported from the module rather than the `scoping` barrel: the barrel pulls
-// `ScopingSession` (the AI client) and `scopeDocs` (the platform filesystem),
-// and this seam is a plain-data handover that needs neither.
-import { takePendingScopePlan, type PendingScopePlan } from '@noodl-models/AiAssistant/scoping/pendingPlan';
-// Same reason as the line above — the pure submodule, never the `scoping`
+// BLD-001 moved the scope-plan take into `adoptScopePlan`, which keeps the
+// same rule: the module, never the `scoping` barrel, because the barrel pulls
+// `ScopingSession` (the AI client) and `scopeDocs` (the platform filesystem).
+// The pure submodule, never the `scoping`
 // barrel, which would drag `ScopingSession` (the AI client) in behind it.
 import { recoverScopePlan, type RecoveredScopePlan } from '@noodl-models/AiAssistant/scoping/recoverPlan';
 import { AppRegistry } from '@noodl-models/app_registry';
@@ -79,18 +78,18 @@ import { FeedbackType } from '@noodl-constants/FeedbackType';
 import { Icon, IconName, IconSize } from '@noodl-core-ui/components/common/Icon';
 import { PrimaryButton, PrimaryButtonVariant } from '@noodl-core-ui/components/inputs/PrimaryButton';
 import { TextArea } from '@noodl-core-ui/components/inputs/TextArea';
-import { Box } from '@noodl-core-ui/components/layout/Box';
-import { ScrollArea } from '@noodl-core-ui/components/layout/ScrollArea';
 import { HStack, VStack } from '@noodl-core-ui/components/layout/Stack';
 import { Section, SectionVariant } from '@noodl-core-ui/components/sidebar/Section';
 import { Text, TextType } from '@noodl-core-ui/components/typography/Text';
 
 import { SandboxPreview } from '../../documents/AuthoringPreviewDocument/SandboxPreview';
 import { ChangeReviewDocumentProvider } from '../../documents/ChangeReviewDocument';
-import { ActivityRow } from './AiAuthoringPanel';
 // POL-007 — the panel's layout at the 400px it is actually given. See the
 // comment block in the stylesheet for what each rule is holding back.
 import css from './AiAuthoringPanel.module.scss';
+import { adoptScopePlan } from './adoptScopePlan';
+import { ActivityRow } from './thread/BuildThread';
+import { ThreadBody } from './thread/ThreadBody';
 import { PlanDocReviewDialog } from './PlanDocReviewDialog';
 
 /**
@@ -315,9 +314,22 @@ function planRunOptions(
 export interface ProjectAuthoringViewProps {
   isConfigured: boolean;
   hasProject: boolean;
+  /**
+   * BLD-001 — this view is an outcome card inside the thread, not the panel.
+   *
+   * Two things change and nothing else does: the thread owns the scrolling (a
+   * scroller nested in a scroller eats the wheel event), and the thread owns
+   * the request. The plan arrives through `PlanSessionStore` exactly as it
+   * always did — the difference is only who put it there.
+   *
+   * ⚠️ The AIB-003 durability guarantees are untouched. This view is still a
+   * *view* of the store; it did not become its owner, and nothing here reaches
+   * a `ProjectModel`.
+   */
+  isEmbedded?: boolean;
 }
 
-export function ProjectAuthoringView({ isConfigured, hasProject }: ProjectAuthoringViewProps) {
+export function ProjectAuthoringView({ isConfigured, hasProject, isEmbedded }: ProjectAuthoringViewProps) {
   // AIB-003: everything worth more than a re-render lives in `PlanSessionStore`,
   // keyed by project, because the Build panel CONDITIONALLY RENDERS this view —
   // switching the scope toggle unmounts it. It used to hold the plan, the run
@@ -330,47 +342,34 @@ export function ProjectAuthoringView({ isConfigured, hasProject }: ProjectAuthor
   const store = PlanSessionStore.instance;
 
   /**
-   * The session, seeded once — and, on the very first mount for a project, the
-   * AIX-012 handover taken into it.
+   * The session, seeded once — and, if nothing has taken it yet, the AIX-012
+   * handover taken into it.
    *
-   * The take happens **inside the initialiser** rather than in the body or an
-   * effect, and both alternatives are worse. In the body it would notify the
-   * store's subscribers during render; in an effect the panel would paint its
-   * empty state for a frame before the plan appeared, which reads as "the thing
-   * I just agreed to was lost" — the exact impression this task exists to
-   * remove. An initialiser runs before anything is subscribed, so it can write
-   * to the store freely, and it runs at most once per mount.
+   * ⚠️ **BLD-001 moved the primary take to `AiAuthoringPanel`, and this is now
+   * the fallback rather than the owner.** It had to move, and the reason is a
+   * circularity the thread introduced: this view mounts as the outcome card of
+   * a *plan turn*, a plan turn exists only when the store holds a plan, and the
+   * store held one only because this initialiser had already run. A launcher
+   * handover would have arrived at a panel that never mounted the thing that
+   * consumes it — a silent, total loss of a plan the user agreed to minutes
+   * earlier.
    *
-   * `takePendingScopePlan` is destructive on purpose — a plan that survived
-   * consumption would reappear against the wrong project — which is what made
-   * the FIRST consumption final in a component that unmounts on a tab click.
-   * Landing it in the store fixes that at the root: still taken exactly once,
-   * but into something that outlives every mount. The guard is the store's own
-   * content, so a remount (or React's double-invoked initialiser) finds the plan
-   * already there and does not take again.
+   * It stays because it costs nothing and the guard is real: the take is
+   * gated on the store's own content, so once the panel has taken it this
+   * branch is unreachable. Two callers of a destructive read are worth being
+   * uneasy about; two callers where the *store's content* is the guard are the
+   * same shape as React's double-invoked initialiser, which this already
+   * survived.
+   *
+   * The take happens inside the initialiser rather than in the body or an
+   * effect: in the body it would notify the store's subscribers during render;
+   * in an effect the panel would paint its empty state for a frame before the
+   * plan appeared, which reads as "the thing I just agreed to was lost".
    *
    * It arrives as an ordinary proposed plan, not an approved one: every row is
    * prunable and nothing reaches the project until Apply.
    */
-  const [session, setSession] = useState<PlanSession>(() => {
-    const existing = store.get(projectId);
-    if (existing.plan || existing.run || existing.applied) return existing;
-    const scopePlan: PendingScopePlan | undefined = takePendingScopePlan(projectId);
-    if (!scopePlan) return existing;
-    return store.update(projectId, {
-      plan: scopePlan.plan,
-      // AIB-005: what earns this plan an announcement outside the Build panel.
-      origin: 'scoping',
-      note: {
-        text:
-          `From the scoping conversation that created this project — ${scopePlan.plan.operations.length} ` +
-          `operation${scopePlan.plan.operations.length === 1 ? '' : 's'}. Nothing has been built yet. Drop ` +
-          `anything you have changed your mind about, then author it. The conversation is recorded in ` +
-          `${scopePlan.recordPath}.`,
-        type: 'notice'
-      }
-    });
-  });
+  const [session, setSession] = useState<PlanSession>(() => adoptScopePlan(projectId));
 
   // Re-read on any change, from any mount of this view. The store notifies
   // rather than the view polling, because a `PlanRun` publishing from a
@@ -1030,7 +1029,11 @@ export function ProjectAuthoringView({ isConfigured, hasProject }: ProjectAuthor
     <>
       <Section variant={SectionVariant.PanelShy} hasGutter>
         <VStack UNSAFE_style={{ gap: 8 }}>
-          {!plan && !runState && (
+          {/* BLD-001: the "What should change?" box and its Plan-it button used
+              to live here. They are the thread's composer now — one field, in
+              one place, in every state. The request reaches this view the way
+              it always did, through `PlanSessionStore`. */}
+          {!isEmbedded && !plan && !runState && (
             <>
               <TextArea
                 value={description}
@@ -1088,8 +1091,7 @@ export function ProjectAuthoringView({ isConfigured, hasProject }: ProjectAuthor
         </VStack>
       </Section>
 
-      <ScrollArea UNSAFE_className={css['Body']}>
-        <Box hasXSpacing hasYSpacing UNSAFE_style={{ width: '100%' }}>
+      <ThreadBody isEmbedded={isEmbedded} className={css['Body']}>
           <VStack UNSAFE_style={{ gap: 10 }}>
             {note && (
               <HStack UNSAFE_style={{ alignItems: 'flex-start', gap: 6 }}>
@@ -1597,8 +1599,7 @@ export function ProjectAuthoringView({ isConfigured, hasProject }: ProjectAuthor
               </VStack>
             )}
           </VStack>
-        </Box>
-      </ScrollArea>
+      </ThreadBody>
 
       {reviewedDoc && reviewingDoc && (
         <PlanDocReviewDialog

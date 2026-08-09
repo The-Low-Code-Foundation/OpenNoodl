@@ -37,13 +37,12 @@ import { ProjectModel } from '@noodl-models/projectmodel';
 import { FeedbackType } from '@noodl-constants/FeedbackType';
 import { Icon, IconName, IconSize } from '@noodl-core-ui/components/common/Icon';
 import { PrimaryButton, PrimaryButtonSize, PrimaryButtonVariant } from '@noodl-core-ui/components/inputs/PrimaryButton';
-import { Box } from '@noodl-core-ui/components/layout/Box';
-import { ScrollArea } from '@noodl-core-ui/components/layout/ScrollArea';
 import { HStack, VStack } from '@noodl-core-ui/components/layout/Stack';
 import { Section, SectionVariant } from '@noodl-core-ui/components/sidebar/Section';
 import { Text, TextType } from '@noodl-core-ui/components/typography/Text';
 
 import css from './ProjectReviewBanner.module.scss';
+import { ThreadBody } from './thread/ThreadBody';
 
 // No module-level group constant here: a shared string is the bug
 // `ProjectReviewBanner.subscribeReviewVisibility` documents — `Model.off(group)`
@@ -139,17 +138,31 @@ export interface ProjectReviewViewProps {
   isConfigured: boolean;
   hasProject: boolean;
   /**
-   * Start immediately on mount, once.
+   * BLD-001 removed the only caller.
    *
-   * Set only when the user arrived by clicking the recommendation banner —
-   * their click *is* the start. Nothing else sets it, so "the banner never
-   * auto-runs" survives: there is no path to a review that a person did not
-   * ask for.
+   * It meant "the user arrived by clicking the recommendation banner, so their
+   * click *is* the start". With no scope tabs there is no mount to trigger on,
+   * and the banner now prefills the composer instead — the request is visible
+   * before it runs, which is strictly more of what the flag was protecting
+   * ("no path to a review a person did not ask for"). Kept because the
+   * behaviour is still correct and BLD-009's second host may want it; the day
+   * nothing plausibly wants it, delete it rather than leaving it inert.
    */
   startImmediately?: boolean;
+  /**
+   * BLD-001 — rendered as an outcome card in the thread rather than as the
+   * panel. The thread owns the scrolling and the request; the run, the
+   * coverage summary and the per-file staging are unchanged.
+   */
+  isEmbedded?: boolean;
 }
 
-export function ProjectReviewView({ isConfigured, hasProject, startImmediately }: ProjectReviewViewProps) {
+export function ProjectReviewView({
+  isConfigured,
+  hasProject,
+  startImmediately,
+  isEmbedded
+}: ProjectReviewViewProps) {
   const [state, setState] = useState<ProjectReviewState | null>(() => ProjectReviewStore.instance.getState());
   const [note, setNote] = useState<{ text: string; type: FeedbackType } | null>(null);
   const [staged, setStaged] = useState<number | null>(null);
@@ -233,7 +246,10 @@ export function ProjectReviewView({ isConfigured, hasProject, startImmediately }
           )}
           {!hasProject && <Text textType={TextType.Secondary}>Open a project to review it.</Text>}
 
-          {!busy && (
+          {/* BLD-001: "Review this project" is the thread's composer now —
+              asking for the docs is a request like any other, and a start
+              button that only appears in one of three modes was D1. */}
+          {!isEmbedded && !busy && (
             <PrimaryButton
               label={state ? 'Review again' : 'Review this project'}
               icon={IconName.MagicWand}
@@ -253,8 +269,7 @@ export function ProjectReviewView({ isConfigured, hasProject, startImmediately }
         </VStack>
       </Section>
 
-      <ScrollArea>
-        <Box hasXSpacing hasYSpacing UNSAFE_style={{ width: '100%' }}>
+      <ThreadBody isEmbedded={isEmbedded}>
           <VStack UNSAFE_style={{ gap: 12 }}>
             {!state && !note && (
               <Text textType={TextType.Shy}>
@@ -337,8 +352,7 @@ export function ProjectReviewView({ isConfigured, hasProject, startImmediately }
               </HStack>
             )}
           </VStack>
-        </Box>
-      </ScrollArea>
+      </ThreadBody>
     </>
   );
 }

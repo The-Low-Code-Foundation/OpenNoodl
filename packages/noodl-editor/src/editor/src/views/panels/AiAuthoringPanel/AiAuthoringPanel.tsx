@@ -1,17 +1,41 @@
 /**
- * AIX-002 — Authoring panel
+ * BLD-001 — the Build panel is one thread.
  *
- * Describe a component, watch the agent build it, then accept, refine, or
- * reject. The panel owns no logic beyond presentation: the loop, the
- * validation gate, and the staged candidate all live in `AuthoringSession`;
- * accept is the one call that touches the project (`acceptAuthoredComponent`,
- * undoable), and reject is nothing but dropping the session.
+ * It used to be three applications wearing one panel. `AuthoringScope` was a
+ * three-value union picked by a segmented control, and a three-way ternary
+ * switched whole subtrees — each branch with its own start button, its own stop
+ * button, its own state and its own result treatment. Nothing told a user that
+ * *"add a basket popup"* was one branch and *"wire checkout into the app"* was
+ * another, and **the choice was demanded before they had typed a word**, which
+ * is the moment they know least.
+ *
+ * This panel has one composer, one thread, and no modes. What the request *is*
+ * gets decided after it is written, by the thing that has the information.
+ *
+ * ## The planning turn is the classifier
+ *
+ * Every send starts a `PlanningSession`. Its plan decides the path — one
+ * component operation is a component build, anything that fans out or creates a
+ * backend is a plan, all-documents is the docs pass — and `decideIntent` turns
+ * that into the agent's first sentence with a one-click override. See
+ * `AiAssistant/thread/intent` for why this is reused rather than a separate
+ * classification call, and for the second reason that matters more than cost:
+ * **a single composer needs a target from somewhere**, and the old component
+ * scope got it from a text field the user typed a component path into by hand.
+ *
+ * ## Who owns what, unchanged
+ *
+ * `acceptAuthoredComponent` / `updateAuthoredComponent` / `applyAuthoredPlan`
+ * remain the only code that touches a `ProjectModel`. `PlanSessionStore` and
+ * `ProjectReviewStore` keep their durability guarantees — the thread is a
+ * *view* of them and did not become their owner. No authoring logic moved; the
+ * three sessions became turn producers, not three views.
  *
  * @module noodl-editor/views/panels/AiAuthoringPanel/AiAuthoringPanel
  */
 
 import { NodeGraphContextTmp } from '@noodl-contexts/NodeGraphContext/NodeGraphContext';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import {
   acceptAuthoredComponent,
@@ -20,21 +44,40 @@ import {
   buildChangeSet,
   materializeSelection,
   pathToLegacyName,
+  PlanningSession,
+  PlanSessionStore,
+  PLAN_SESSION_CHANGED,
   StagingError,
   updateAuthoredComponent,
   validateCandidateComponent,
-  type AuthoringActivity,
-  type AuthoringMode,
+  type AuthoringPlan,
   type AuthoringSessionState,
-  type ComponentFiles
+  type ComponentFiles,
+  type PlanRunState,
+  type PlanSession
 } from '@noodl-models/AiAssistant/authoring';
 import { AiClient } from '@noodl-models/AiAssistant/client';
 import { fromProjectModel } from '@noodl-models/AiAssistant/explain/graph';
-import { ProjectReviewStore } from '@noodl-models/AiAssistant/review';
-// The module, not the `scoping` barrel — the barrel pulls the AI client and the
-// platform filesystem, and this is a plain-data peek.
-import { peekPendingScopePlan } from '@noodl-models/AiAssistant/scoping/pendingPlan';
+import {
+  PROJECT_REVIEW_CHANGED,
+  ProjectReviewStore,
+  startProjectReview,
+  type ProjectReviewRun,
+  type ProjectReviewState
+} from '@noodl-models/AiAssistant/review';
 import { authoringTelemetry } from '@noodl-models/AiAssistant/telemetry';
+import {
+  acceptedTurn,
+  componentTurns,
+  composeThread,
+  decideIntent,
+  docsTurns,
+  freezeTurns,
+  planTurns,
+  type BuildIntent,
+  type IntentDecision,
+  type Turn
+} from '@noodl-models/AiAssistant/thread';
 import { AppRegistry } from '@noodl-models/app_registry';
 import { ProjectModel } from '@noodl-models/projectmodel';
 import { buildEffectiveTokens, buildStyleVocabulary, readStoredTokens } from '@noodl-models/StyleTokensModel';
@@ -45,246 +88,306 @@ import { formatDiagnosticLine } from '../../../validation';
 import { FeedbackType } from '@noodl-constants/FeedbackType';
 import { Icon, IconName, IconSize } from '@noodl-core-ui/components/common/Icon';
 import { PrimaryButton, PrimaryButtonVariant } from '@noodl-core-ui/components/inputs/PrimaryButton';
-import { TextArea } from '@noodl-core-ui/components/inputs/TextArea';
 import { TextInput } from '@noodl-core-ui/components/inputs/TextInput';
-import { Box } from '@noodl-core-ui/components/layout/Box';
-import { ScrollArea } from '@noodl-core-ui/components/layout/ScrollArea';
 import { HStack, VStack } from '@noodl-core-ui/components/layout/Stack';
 import { BasePanel } from '@noodl-core-ui/components/sidebar/BasePanel';
 import { ExperimentalFlag } from '@noodl-core-ui/components/sidebar/ExperimentalFlag';
-import { Section, SectionVariant } from '@noodl-core-ui/components/sidebar/Section';
 import { Text, TextType } from '@noodl-core-ui/components/typography/Text';
 
 import { AuthoringPreviewDocumentProvider } from '../../documents/AuthoringPreviewDocument';
 import { ChangeReviewDocumentProvider } from '../../documents/ChangeReviewDocument';
 import { EditorDocumentProvider } from '../../documents/EditorDocument';
-import css from './AiAuthoringPanel.module.scss';
+import { adoptScopePlan } from './adoptScopePlan';
 import { ProjectAuthoringView } from './ProjectAuthoringView';
 import { ProjectReviewBanner } from './ProjectReviewBanner';
 import { ProjectReviewView } from './ProjectReviewView';
-
-/**
- * The panel's scopes. Component stays the default — and unchanged.
- *
- * AIX-011 added `project` (plan, then fan out). AIX-010 adds `review`, which is
- * the read-only inverse: it authors no nodes at all, only the `docs/` set, and
- * it is the permanent home for the "our docs have drifted" re-run as well as
- * the destination the recommendation banner sends people to.
- */
-type AuthoringScope = 'component' | 'project' | 'review';
+import { BuildThread, type ThreadWidth } from './thread/BuildThread';
 
 export const AiAuthoringPanel_ID = 'ai-authoring';
 
-export function ActivityRow({ activity }: { activity: AuthoringActivity }) {
-  switch (activity.kind) {
-    case 'user':
-      return (
-        <div className={css['User']}>
-          <Text textType={TextType.Secondary}>{activity.text}</Text>
-        </div>
-      );
-    case 'assistant':
-      return (
-        <div className={css['Assistant']}>
-          <Text textType={TextType.Default}>
-            {activity.text}
-            {activity.streaming ? '…' : ''}
-          </Text>
-        </div>
-      );
-    case 'tool':
-      return (
-        <div className={css['Event']}>
-          <Icon icon={IconName.File} size={IconSize.Small} />
-          <Text textType={TextType.Shy}>{activity.label}</Text>
-        </div>
-      );
-    case 'submit':
-      return activity.ok ? (
-        <div className={css['Event']}>
-          <Icon icon={IconName.Check} variant={FeedbackType.Success} size={IconSize.Small} />
-          <Text textType={TextType.Secondary}>Submitted — passed validation.</Text>
-        </div>
-      ) : (
-        <VStack UNSAFE_style={{ gap: 2 }}>
-          <div className={css['Event']}>
-            <Icon icon={IconName.WarningTriangle} variant={FeedbackType.Notice} size={IconSize.Small} />
-            <Text textType={TextType.Secondary}>
-              Submitted — rejected with {activity.errorLines.length} problem
-              {activity.errorLines.length === 1 ? '' : 's'}. Repairing…
-            </Text>
-          </div>
-          {activity.errorLines.slice(0, 3).map((line, index) => (
-            <Text key={index} textType={TextType.Shy}>
-              {line}
-            </Text>
-          ))}
-          {activity.errorLines.length > 3 && (
-            <Text textType={TextType.Shy}>… {activity.errorLines.length - 3} more</Text>
-          )}
-        </VStack>
-      );
-  }
+/**
+ * The turn that exists while the planning call is in flight.
+ *
+ * It carries the user's words and nothing else, which is the honest thing to
+ * show: the request has been sent and the agent has not yet said what it is.
+ * Rule 5 — never claim progress you cannot evidence.
+ */
+function pendingTurn(request: string): Turn {
+  return { id: 'pending', request, activities: [], busy: true };
 }
 
-/** What the feed's tail says when the loop has stopped. */
-function outcomeNote(state: AuthoringSessionState): { text: string; type: FeedbackType } | null {
-  switch (state.phase) {
-    case 'staged':
-      return null; // The staged summary and the accept bar say it better.
-    case 'exhausted':
-      return state.staged
-        ? {
-            text: 'This refinement did not produce a valid revision — the previous candidate is still staged.',
-            type: FeedbackType.Notice
-          }
-        : {
-            text: 'The agent could not produce a valid component within its budget. Reword the description and try again.',
-            type: FeedbackType.Notice
-          };
-    case 'cancelled':
-      return {
-        text: state.staged
-          ? 'Cancelled — the previously staged candidate is untouched.'
-          : 'Cancelled. Nothing was written.',
-        type: FeedbackType.Notice
-      };
-    case 'error':
-      return { text: state.error ?? 'Something went wrong.', type: FeedbackType.Danger };
-    default:
-      return null;
-  }
+function noteTurn(id: string, request: string, text: string, tone: 'notice' | 'danger'): Turn {
+  return { id, request, activities: [], outcome: { kind: 'note', text, tone } };
 }
 
-export function AiAuthoringPanel() {
-  // AIX-010: the Docs panel's banner sets a one-shot request rather than
-  // driving this panel, so arriving from there opens on the review and starts
-  // it — the user already clicked once and should not have to click again.
-  // Consumed once, in one place, so the two `useState`s cannot disagree.
-  const arrivedFromBanner = useRef<boolean | undefined>(undefined);
-  if (arrivedFromBanner.current === undefined) {
-    arrivedFromBanner.current = ProjectReviewStore.instance.consumeReviewRequest();
-  }
-  // AIX-012: a project created from a scoping conversation arrives with a plan
-  // waiting. Peeked, never consumed — `ProjectAuthoringView` owns the plan
-  // state and does the destructive `take`; this only decides which scope opens.
+/**
+ * What the docs suggestion puts in the composer.
+ *
+ * One constant, because it arrives from two places — the empty state's chip and
+ * the Docs panel's banner — and the whole point of the request being ordinary
+ * text is that both take the same path through `send`. Two near-identical
+ * strings would classify differently on some model, some day.
+ */
+const DOCS_SUGGESTION = "Write this project's documents — read the app and draft them for me to correct.";
+
+export interface AiAuthoringPanelProps {
+  /** BLD-009 renders the same thread as a document. One implementation, two hosts. */
+  width?: ThreadWidth;
+}
+
+export function AiAuthoringPanel({ width = 'panel' }: AiAuthoringPanelProps = {}) {
+  // ── The thread ─────────────────────────────────────────────────────────────
   //
-  // A banner click still wins, on the reading that it is the more recent of the
-  // two intents. In practice they barely overlap: the review banner shows only
-  // when a project has no `docs/CONVENTIONS.md`, and a scoped project is
-  // created with one.
-  const scopePlanWaiting = useRef<boolean | undefined>(undefined);
-  if (scopePlanWaiting.current === undefined) {
-    scopePlanWaiting.current = Boolean(peekPendingScopePlan(ProjectModel.instance?.id));
-  }
-  const [scope, setScope] = useState<AuthoringScope>(
-    arrivedFromBanner.current ? 'review' : scopePlanWaiting.current ? 'project' : 'component'
+  // D5: accepting used to call `setState(null)` and `session.dispose()` — what
+  // you asked, what it read and what it repaired, gone at the moment it became
+  // part of your project. Finished turns move here instead. Surviving a restart
+  // is BLD-006; surviving an accept is this.
+  const [history, setHistory] = useState<Turn[]>([]);
+  /**
+   * The one input, seeded from the Docs panel's banner when that is how the
+   * user arrived.
+   *
+   * ⚠️ It **prefills rather than runs**. AIX-010's banner used to set a one-shot
+   * request that a second piece of state consumed to pick the opening tab, and
+   * the review then started on mount — the click was the start. With no tabs
+   * there is nothing to open, and starting a build from a panel switch is
+   * exactly the "acts before it says what it will do" this task removes. The
+   * user sees the request, in the composer, and presses Send.
+   *
+   * Consumed in the initialiser so the two `useState`s cannot disagree — the
+   * same reason the old code consumed it in a `useRef` guard.
+   */
+  const [composer, setComposer] = useState(() =>
+    ProjectReviewStore.instance.consumeReviewRequest() ? DOCS_SUGGESTION : ''
   );
-  /** True only when a banner sent the user here — see ProjectReviewView. */
-  const [reviewFromBanner, setReviewFromBanner] = useState(arrivedFromBanner.current);
-  const [componentPath, setComponentPath] = useState('');
-  const [description, setDescription] = useState('');
+
+  /** What the current live work is, and what the agent said it was. */
+  const [route, setRoute] = useState<BuildIntent | null>(null);
+  const [decision, setDecision] = useState<IntentDecision | null>(null);
+  /** The plan the decision was made from — the override needs it. */
+  const lastPlanRef = useRef<AuthoringPlan | null>(null);
+
+  const [planningRequest, setPlanningRequest] = useState<string | null>(null);
+  const planAbortRef = useRef<AbortController | null>(null);
+
   const [state, setState] = useState<AuthoringSessionState | null>(null);
   const [setupError, setSetupError] = useState<string | null>(null);
-  const [accepted, setAccepted] = useState<{ name: string; mode: AuthoringMode } | null>(null);
   const [refineText, setRefineText] = useState('');
-
   const sessionRef = useRef<AuthoringSession | null>(null);
-  const scrollAnchorRef = useRef<HTMLDivElement | null>(null);
+
+  const [reviewState, setReviewState] = useState<ProjectReviewState | null>(() =>
+    ProjectReviewStore.instance.getState()
+  );
+  const reviewRunRef = useRef<ProjectReviewRun | null>(null);
+
   // Stable identities for the preview document's buttons — the document is
   // mounted once per build, the handlers re-bind every render.
-  const handlersRef = useRef({ accept: () => {}, reject: () => {}, openReview: () => {} });
+  const handlersRef = useRef({ accept: () => {}, discard: () => {}, openReview: () => {} });
 
   const isConfigured = AiClient.isConfigured();
   const hasProject = Boolean(ProjectModel.instance);
 
-  // A path naming an existing component flips the form into update mode — the
-  // button label announces it, so a typo'd "new" name cannot silently revise.
-  const existingTarget =
-    hasProject && componentPath.trim()
-      ? ProjectModel.instance.getComponentWithName(pathToLegacyName(componentPath.trim()))
-      : undefined;
+  // ── The plan session, read from the store ──────────────────────────────────
+  //
+  // AIB-003's store is the owner and stays the owner. The panel subscribes for
+  // the same reason `ProjectAuthoringView` does: a `PlanRun` publishing from a
+  // background turn has no idea whether anyone is looking at it.
+  //
+  // ⚠️ The initialiser **takes** the AIX-012 launcher handover rather than
+  // peeking at it, and that is not an optimisation. This view mounts
+  // `ProjectAuthoringView` as the outcome card of a *plan turn*; a plan turn
+  // exists only when the store holds a plan; and until BLD-001 the only thing
+  // that put a launcher plan in the store was `ProjectAuthoringView`'s own
+  // initialiser. A project created from a scoping conversation would have
+  // opened to an empty thread and the agreed plan would have been consumed by
+  // nobody — silently. `adoptScopePlan` is the one implementation, and the
+  // guard is the store's own content, so the view's fallback call is a no-op.
+  const store = PlanSessionStore.instance;
+  const [planSession, setPlanSession] = useState<PlanSession>(() => adoptScopePlan(ProjectModel.instance?.id));
+  useEffect(() => {
+    const context = {};
+    store.on(PLAN_SESSION_CHANGED, () => setPlanSession({ ...store.get(ProjectModel.instance?.id) }), context);
+    return () => {
+      store.off(context);
+    };
+  }, [store]);
+
+  const [runState, setRunState] = useState<PlanRunState | null>(planSession.run?.state ?? null);
+  useEffect(() => {
+    setRunState(planSession.run?.state ?? null);
+    if (!planSession.run) return;
+    return planSession.run.onChange(setRunState);
+  }, [planSession.run]);
+
+  useEffect(() => {
+    const context = {};
+    const reviewStore = ProjectReviewStore.instance;
+    reviewStore.on(PROJECT_REVIEW_CHANGED, () => setReviewState(reviewStore.getState()), context);
+    return () => {
+      reviewStore.off(context);
+    };
+  }, []);
 
   useEffect(() => () => sessionRef.current?.dispose(), []);
 
-  // Follow the stream, but only while the user is already near the bottom —
-  // same rule as the Explain panel, same reason.
-  useEffect(() => {
-    const anchor = scrollAnchorRef.current;
-    if (!anchor || !state?.busy) return;
+  // ── Sending ────────────────────────────────────────────────────────────────
 
-    let scroller: HTMLElement | null = anchor.parentElement;
-    while (scroller && scroller.scrollHeight <= scroller.clientHeight) {
-      scroller = scroller.parentElement;
-    }
-    if (!scroller) return;
+  /**
+   * Hand a plan to the path it belongs to.
+   *
+   * The `plan` branch writes to the store and nothing else: the plan is
+   * proposed, prunable, and nothing is built until the user approves it. That
+   * is the pre-existing AIX-011 contract, reached now by describing the work
+   * rather than by picking a tab first.
+   */
+  const routePlan = useCallback(
+    async (intent: BuildIntent, plan: AuthoringPlan, request: string) => {
+      const project = ProjectModel.instance;
+      if (!project) return;
+      setRoute(intent);
 
-    const distanceFromBottom = scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight;
-    if (distanceFromBottom < 80) anchor.scrollIntoView({ block: 'end' });
-  }, [state?.activities]);
+      if (intent === 'plan') {
+        store.update(project.id, {
+          description: request,
+          plan,
+          note: null,
+          excluded: new Set(),
+          applied: null,
+          applyFailure: null,
+          run: null
+        });
+        return;
+      }
 
-  const start = useCallback(async () => {
+      if (intent === 'docs') {
+        try {
+          const { run } = await startProjectReview(project);
+          reviewRunRef.current = run;
+        } catch (e) {
+          setSetupError(e instanceof Error ? e.message : String(e));
+        }
+        return;
+      }
+
+      // component — the fast path, with the plan's target rather than a path the
+      // user had to type correctly.
+      const operation = plan.operations[0];
+      sessionRef.current?.dispose();
+      setSetupError(null);
+      try {
+        const styleOptions = {
+          styleVocabulary: buildStyleVocabulary(project),
+          styleTokenRecords: Array.from(buildEffectiveTokens(readStoredTokens(project)).values())
+        };
+        const existing = project.getComponentWithName(pathToLegacyName(operation.target));
+        const authoringRequest = { description: request, componentPath: operation.target };
+        // An existing component is revised, not recreated: the session gets the
+        // exporter's own serialization of it as the base.
+        const session = existing
+          ? AuthoringSession.createUpdate(
+              fromProjectModel(project),
+              authoringRequest,
+              buildComponentV2Files(existing.toJSON(), new Date().toISOString()),
+              styleOptions
+            )
+          : AuthoringSession.create(fromProjectModel(project), authoringRequest, styleOptions);
+        sessionRef.current = session;
+        session.onChange(setState);
+        setState(session.state);
+
+        // The payoff moment is watching the graph form — put the preview canvas
+        // up before the first token arrives.
+        AppRegistry.instance.openDocument(AuthoringPreviewDocumentProvider.ID, {
+          session,
+          onAccept: () => handlersRef.current.accept(),
+          onReject: () => handlersRef.current.discard(),
+          onOpenReview: () => handlersRef.current.openReview()
+        });
+
+        const startedAt = Date.now();
+        const outcome = await session.run();
+        authoringTelemetry().record({
+          event: 'authoring-round',
+          mode: session.mode,
+          kind: 'initial',
+          status: outcome.status,
+          turnsTotal: outcome.metrics.turns,
+          submitsTotal: outcome.metrics.submits,
+          costUsdTotal: outcome.metrics.costUsd,
+          durationMs: Date.now() - startedAt
+        });
+      } catch (e) {
+        sessionRef.current = null;
+        setState(null);
+        setSetupError(e instanceof AuthoringSetupError ? e.message : e instanceof Error ? e.message : String(e));
+      }
+    },
+    [store]
+  );
+
+  const send = useCallback(async () => {
     const project = ProjectModel.instance;
-    if (!project) return;
+    const request = composer.trim();
+    if (!project || !request) return;
 
-    sessionRef.current?.dispose();
+    setComposer('');
+    setDecision(null);
     setSetupError(null);
-    setAccepted(null);
-
+    setPlanningRequest(request);
     try {
-      const request = {
-        description: description.trim(),
-        componentPath: componentPath.trim()
-      };
-      const existing = project.getComponentWithName(pathToLegacyName(request.componentPath));
-      // AIX-006: hand the agent the project's actual style vocabulary (defaults
-      // + this project's token overrides) and lint candidates against the same.
-      const styleOptions = {
-        styleVocabulary: buildStyleVocabulary(project),
-        styleTokenRecords: Array.from(buildEffectiveTokens(readStoredTokens(project)).values())
-      };
-      // An existing component is revised, not recreated: the session gets the
-      // exporter's own serialization of it as the base — the source the agent
-      // starts from, and the identity the candidate keeps.
-      const session = existing
-        ? AuthoringSession.createUpdate(
-            fromProjectModel(project),
-            request,
-            buildComponentV2Files(existing.toJSON(), new Date().toISOString()),
-            styleOptions
-          )
-        : AuthoringSession.create(fromProjectModel(project), request, styleOptions);
-      sessionRef.current = session;
-      session.onChange(setState);
-      setState(session.state);
+      const session = new PlanningSession(fromProjectModel(project), request);
+      planAbortRef.current = new AbortController();
+      const outcome = await session.run({ abortController: planAbortRef.current });
 
-      // The payoff moment is watching the graph form — put the preview canvas
-      // up before the first token arrives.
-      AppRegistry.instance.openDocument(AuthoringPreviewDocumentProvider.ID, {
-        session,
-        onAccept: () => handlersRef.current.accept(),
-        onReject: () => handlersRef.current.reject(),
-        onOpenReview: () => handlersRef.current.openReview()
-      });
+      if (outcome.status === 'planned' && outcome.plan) {
+        lastPlanRef.current = outcome.plan;
+        const next = decideIntent(outcome.plan);
+        setDecision(next);
+        await routePlan(next.intent, outcome.plan, request);
+        return;
+      }
 
-      const startedAt = Date.now();
-      const outcome = await session.run();
-      authoringTelemetry().record({
-        event: 'authoring-round',
-        mode: session.mode,
-        kind: 'initial',
-        status: outcome.status,
-        turnsTotal: outcome.metrics.turns,
-        submitsTotal: outcome.metrics.submits,
-        costUsdTotal: outcome.metrics.costUsd,
-        durationMs: Date.now() - startedAt
-      });
+      // Nothing was planned, so nothing is live — the request becomes a turn in
+      // history with the agent's reason on it, rather than vanishing.
+      const text =
+        outcome.status === 'declined'
+          ? outcome.note ?? 'The agent declined to plan this request.'
+          : outcome.status === 'cancelled'
+            ? 'Cancelled. Nothing happened.'
+            : outcome.note ?? 'Could not produce a plan for this request.';
+      setHistory((turns) => [
+        ...turns,
+        noteTurn(`declined-${turns.length}`, request, text, outcome.status === 'declined' ? 'notice' : 'danger')
+      ]);
     } catch (e) {
-      sessionRef.current = null;
-      setState(null);
-      setSetupError(e instanceof AuthoringSetupError ? e.message : e instanceof Error ? e.message : String(e));
+      const text = e instanceof Error ? e.message : String(e);
+      setHistory((turns) => [...turns, noteTurn(`failed-${turns.length}`, request, text, 'danger')]);
+    } finally {
+      planAbortRef.current = null;
+      setPlanningRequest(null);
     }
-  }, [componentPath, description]);
+  }, [composer, routePlan]);
+
+  /**
+   * The one-click override on the agent's own sentence.
+   *
+   * Only ever component → plan: the plan path already shows its work, so there
+   * is nothing to override there, and offering the reverse would let one click
+   * discard operations the user has not read. The typed request is not lost —
+   * it is the plan's `request`, and the plan is what the store receives.
+   */
+  const applyOverride = useCallback(() => {
+    const plan = lastPlanRef.current;
+    if (!plan || !decision?.override) return;
+    sessionRef.current?.dispose();
+    sessionRef.current = null;
+    setState(null);
+    if (AppRegistry.instance.CurrentDocumentId === AuthoringPreviewDocumentProvider.ID) {
+      AppRegistry.instance.openDocument(EditorDocumentProvider.ID);
+    }
+    setDecision({ ...decision, intent: decision.override.intent, override: null });
+    void routePlan(decision.override.intent, plan, plan.request);
+  }, [decision, routePlan]);
 
   const refine = useCallback(async () => {
     const session = sessionRef.current;
@@ -305,11 +408,13 @@ export function AiAuthoringPanel() {
     });
   }, [refineText, state?.busy]);
 
+  // ── Decisions on the component candidate ───────────────────────────────────
+
   /**
-   * Stage the given files into the project. The whole-candidate path (Accept
-   * in the panel) was validated by the session's gate already; a partial
-   * selection from the review document is re-validated through the same gate
-   * here. Returns an error message, or null on success.
+   * Stage the given files into the project. The whole-candidate path was
+   * validated by the session's gate already; a partial selection from the
+   * review document is re-validated through the same gate here. Returns an
+   * error message, or null on success.
    */
   const acceptFiles = useCallback((files: ComponentFiles, selection?: { rejectedCount: number }): string | null => {
     const session = sessionRef.current;
@@ -328,13 +433,10 @@ export function AiAuthoringPanel() {
     }
 
     try {
-      // The mode is the session's, decided at creation — never re-inferred
-      // here, so a component created meanwhile still fails create-accept
-      // loudly instead of silently becoming an update.
+      // The mode is the session's, decided at creation — never re-inferred here,
+      // so a component created meanwhile still fails create-accept loudly.
       const component =
         session.mode === 'update' ? updateAuthoredComponent(project, files) : acceptAuthoredComponent(project, files);
-      // Accept navigates to the real component on the live canvas — leave the
-      // preview document first so the reveal is visible.
       if (AppRegistry.instance.CurrentDocumentId === AuthoringPreviewDocumentProvider.ID) {
         AppRegistry.instance.openDocument(EditorDocumentProvider.ID);
       }
@@ -346,41 +448,61 @@ export function AiAuthoringPanel() {
         nodeCount: files.nodes.nodes.length,
         connectionCount: files.connections.connections.length
       });
-      setAccepted({ name: session.legacyName, mode: session.mode });
+
+      // D5's fix: the conversation becomes history and the accept appends a
+      // receipt. The session is still disposed — it holds a candidate, and the
+      // candidate is in the project now — but the record of it outlives it.
+      const live = componentTurns(session.state, {
+        idPrefix: `history-${history.length}`,
+        ...(decision ? { sentence: decision.sentence, intent: decision.intent } : {})
+      });
+      setHistory((turns) => [
+        ...turns,
+        ...freezeTurns(live),
+        acceptedTurn(session.legacyName, session.mode, `accepted-${turns.length}`)
+      ]);
       session.dispose();
       sessionRef.current = null;
       setState(null);
-      // The path stays: describing another change to the same component is the
-      // natural next step, and the form is already in update mode for it.
-      setDescription('');
+      setRoute(null);
+      setDecision(null);
       return null;
     } catch (e) {
       const message = e instanceof StagingError ? e.message : e instanceof Error ? e.message : String(e);
       setSetupError(message);
       return message;
     }
-  }, []);
+  }, [decision, history.length]);
 
   const accept = useCallback(() => {
     const files = sessionRef.current?.stagedFiles;
     if (files) acceptFiles(files);
   }, [acceptFiles]);
 
-  const reject = useCallback(() => {
-    // Reject is the absence of an accept call: drop the session, nothing was written.
+  const discard = useCallback(() => {
+    // Discard is the absence of an accept call: drop the session, nothing was
+    // written. The turns still become history — what you asked and what it did
+    // are worth keeping whether or not you took the result.
     const session = sessionRef.current;
-    // Only a decision against a staged candidate is worth a record — "Start
-    // over" after a failed run is not a rejection.
     if (session?.stagedFiles) {
       authoringTelemetry().record({ event: 'authoring-reject', mode: session.mode });
+    }
+    if (session) {
+      const live = componentTurns(session.state, {
+        idPrefix: `history-${history.length}`,
+        ...(decision ? { sentence: decision.sentence, intent: decision.intent } : {})
+      });
+      setHistory((turns) => [...turns, ...freezeTurns(live)]);
     }
     session?.dispose();
     sessionRef.current = null;
     setState(null);
+    setRoute(null);
+    setDecision(null);
     if (AppRegistry.instance.CurrentDocumentId === AuthoringPreviewDocumentProvider.ID) {
       AppRegistry.instance.openDocument(EditorDocumentProvider.ID);
     }
-  }, []);
+  }, [decision, history.length]);
 
   const openReview = useCallback(() => {
     const session = sessionRef.current;
@@ -389,9 +511,7 @@ export function AiAuthoringPanel() {
     if (!session || !project || !files) return;
 
     // WFA-007 moved materialisation out of the review document: it is the
-    // COMPONENT materializer, and the document had to stop knowing that a
-    // component is three JSON files before it could review anything else.
-    // Behaviour here is unchanged.
+    // COMPONENT materializer. Behaviour here is unchanged.
     const changeSet = buildChangeSet(project, files);
     AppRegistry.instance.openDocument(ChangeReviewDocumentProvider.ID, {
       changeSet,
@@ -400,231 +520,105 @@ export function AiAuthoringPanel() {
         const selection = materializeSelection(changeSet, files, rejected);
         return acceptFiles(selection.files, { rejectedCount: selection.rejected.size });
       },
-      onReject: reject
+      onReject: discard
     });
-  }, [acceptFiles, reject]);
+  }, [acceptFiles, discard]);
 
   // Keep the preview document's stable handlers pointed at the live closures.
-  handlersRef.current = { accept, reject, openReview };
+  handlersRef.current = { accept, discard, openReview };
 
-  const note = state ? outcomeNote(state) : null;
+  // ── The thread ─────────────────────────────────────────────────────────────
+
+  // A plan turn exists whenever the store holds a plan — whether this session
+  // planned it, a previous one left it, or the launcher handed it over.
+  const showPlan = route === 'plan' || Boolean(planSession.plan);
+  const showDocs = route === 'docs' || Boolean(reviewState && reviewState.phase !== 'idle');
+
+  const turns = useMemo(
+    () =>
+      composeThread(
+        history,
+        planningRequest ? [pendingTurn(planningRequest)] : [],
+        route === 'component'
+          ? componentTurns(state, {
+              idPrefix: 'component',
+              ...(decision ? { sentence: decision.sentence, intent: decision.intent } : {})
+            })
+          : [],
+        showPlan
+          ? planTurns(planSession, runState, { ...(decision?.intent === 'plan' ? { sentence: decision.sentence } : {}) })
+          : [],
+        showDocs
+          ? docsTurns(reviewState, { ...(decision?.intent === 'docs' ? { sentence: decision.sentence } : {}) })
+          : []
+      ),
+    [history, planningRequest, route, state, decision, showPlan, planSession, runState, showDocs, reviewState]
+  );
+
+  /** The turn the live plan view attaches to. See `renderOutcome`. */
+  const lastPlanTurnId = useMemo(() => {
+    const planIds = turns.filter((turn) => turn.id.startsWith('plan-')).map((turn) => turn.id);
+    return planIds.length > 0 ? planIds[planIds.length - 1] : null;
+  }, [turns]);
+
   const canDecide = Boolean(state && !state.busy && state.staged);
+  const busy = Boolean(planningRequest || state?.busy || runState?.busy || reviewState?.busy);
 
-  return (
-    <BasePanel title="Build" isFill>
-      <ExperimentalFlag />
+  const stop = useCallback(() => {
+    if (planningRequest) planAbortRef.current?.abort();
+    else if (state?.busy) sessionRef.current?.cancel();
+    else if (runState?.busy) planSession.run?.cancel();
+    else if (reviewState?.busy) reviewRunRef.current?.cancel();
+  }, [planningRequest, state?.busy, runState?.busy, reviewState?.busy, planSession.run]);
 
-      {/* AIX-010: surface one of two. The banner appears only while the project
-          has no docs/CONVENTIONS.md and only until this user dismisses it. */}
-      {scope !== 'review' && (
-        <ProjectReviewBanner
-          onStart={() => {
-            setReviewFromBanner(true);
-            setScope('review');
-          }}
-        />
-      )}
+  /**
+   * The rich card for the live turn.
+   *
+   * Exactly one surface owns a decision at a time, and it is whichever surface
+   * is showing the candidate — so these attach to the turn that produced them
+   * rather than to a pinned bar at the bottom of the panel. BLD-003 finishes
+   * that job (the preview document still renders its own copy of Accept); this
+   * is the half that had to move for the thread to exist at all.
+   */
+  const renderOutcome = useCallback(
+    (turn: Turn): React.ReactNode | undefined => {
+      if (turn.id.startsWith('plan-')) {
+        /*
+         * ONE mount, on the LAST plan turn — the view is a single component
+         * holding the plan editor, the run and the apply, and mounting it twice
+         * would run two subscriptions against one store.
+         *
+         * ⚠️ It must be the last turn including `plan-applied`, and that is not
+         * cosmetic: the view renders its own applied summary, with the backend
+         * endpoint, the registered pages and the settings it wrote (AIB-007,
+         * AAQ-001, AAQ-003). Attaching the view to `plan-run` instead would put
+         * that beside `OutcomeSummary`'s shorter version of the same sentence —
+         * the duplicated-message defect this phase is measured on, reintroduced
+         * by a rendering detail rather than by a control.
+         *
+         * Returning `null` for the others suppresses their fallback summary,
+         * which is deliberate: while the session is live the view is the record.
+         */
+        return turn.id === lastPlanTurnId ? (
+          <ProjectAuthoringView isConfigured={isConfigured} hasProject={hasProject} isEmbedded />
+        ) : null;
+      }
 
-      {/* AIX-011: scope toggle. Component scope is the default and behaves
-          exactly as before; project scope plans, then fans out. AIX-010 adds
-          review, which writes docs and never touches the graph. */}
-      <Section variant={SectionVariant.PanelShy} hasGutter>
-        {/* F20: wraps at narrow panel widths. These three are `isGrowing`, but a
-            flex item still cannot go below its min-content width, and "This
-            component" + "Project" + "Docs" need 242px against the 204px a
-            240px-wide panel actually offers. It only ever fitted because
-            content-box was quietly giving the Section 38px more than its CSS
-            asked for; with the box-sizing reset adopted the shortfall is real.
-            Wrapping (as ProjectReviewBanner already does) keeps the labels
-            readable, where shrinking would ellipsize them to nothing.
+      if (turn.id === 'docs-run') {
+        return <ProjectReviewView isConfigured={isConfigured} hasProject={hasProject} isEmbedded />;
+      }
 
-            POL-007: `isGrowing` also split the row into equal thirds at *any*
-            width — its flex-basis is 0, so the labels have no say — and at the
-            400px default that gave "This component" 106px for a 120px label,
-            wrapping it onto a second line, while "Docs" kept 36px it had no use
-            for. The growth now comes from `ScopeTabs` rather than `isGrowing`,
-            starting each button at its own width and sharing only the slack.
-            The wrap above still fires when the natural widths genuinely stop
-            fitting, which is what F20 was about. */}
-        <HStack UNSAFE_className={css['ScopeTabs']} UNSAFE_style={{ gap: 8, flexWrap: 'wrap' }}>
-          <PrimaryButton
-            label="This component"
-            variant={scope === 'component' ? PrimaryButtonVariant.Muted : PrimaryButtonVariant.Ghost}
-            onClick={() => setScope('component')}
-          />
-          <PrimaryButton
-            label="Project"
-            variant={scope === 'project' ? PrimaryButtonVariant.Muted : PrimaryButtonVariant.Ghost}
-            onClick={() => setScope('project')}
-          />
-          <PrimaryButton
-            label="Docs"
-            variant={scope === 'review' ? PrimaryButtonVariant.Muted : PrimaryButtonVariant.Ghost}
-            onClick={() => {
-              setReviewFromBanner(false);
-              setScope('review');
-            }}
-          />
-        </HStack>
-      </Section>
-
-      {scope === 'review' ? (
-        <ProjectReviewView
-          isConfigured={isConfigured}
-          hasProject={hasProject}
-          startImmediately={reviewFromBanner}
-        />
-      ) : scope === 'project' ? (
-        <ProjectAuthoringView isConfigured={isConfigured} hasProject={hasProject} />
-      ) : (
-        <>
-      <Section variant={SectionVariant.PanelShy} hasGutter>
-        <VStack UNSAFE_style={{ gap: 8 }}>
-          {!isConfigured && (
-            <HStack UNSAFE_style={{ alignItems: 'center', gap: 6 }}>
-              <Icon icon={IconName.WarningTriangle} variant={FeedbackType.Notice} size={IconSize.Small} />
-              <Text textType={TextType.Secondary}>
-                No AI provider is configured. Open Editor Settings to set one up.
-              </Text>
-            </HStack>
-          )}
-          {!hasProject && <Text textType={TextType.Secondary}>Open a project to build components in it.</Text>}
-
-          {!state && !accepted && (
-            <>
-              <TextInput
-                value={componentPath}
-                label="Component"
-                placeholder="Pages/Customers"
-                onChange={(event) => setComponentPath(event.target.value)}
-              />
-              <TextArea
-                value={description}
-                label={existingTarget ? 'What should change?' : 'What should it do?'}
-                placeholder={
-                  existingTarget
-                    ? 'Add a search field above the list…'
-                    : 'A page listing customers from the Customers collection, with a search field…'
-                }
-                onChange={(event) => setDescription(event.target.value)}
-              />
-              {existingTarget && (
-                <HStack UNSAFE_style={{ alignItems: 'flex-start', gap: 6 }}>
-                  <Icon icon={IconName.Pencil} size={IconSize.Small} />
-                  <Text textType={TextType.Shy}>
-                    This component exists — the agent will propose a revision, which you review as a diff before
-                    anything changes.
-                  </Text>
-                </HStack>
-              )}
-            </>
-          )}
-
-          {!state && !accepted && (
-            <PrimaryButton
-              label={existingTarget ? 'Update it' : 'Build it'}
-              icon={IconName.MagicWand}
-              isDisabled={!hasProject || !isConfigured || !componentPath.trim() || !description.trim()}
-              isGrowing
-              onClick={start}
-            />
-          )}
-
-          {state?.busy && (
-            <PrimaryButton
-              label="Stop"
-              variant={PrimaryButtonVariant.Ghost}
-              isGrowing
-              onClick={() => sessionRef.current?.cancel()}
-            />
-          )}
-        </VStack>
-      </Section>
-
-      <ScrollArea>
-        <Box hasXSpacing hasYSpacing UNSAFE_style={{ width: '100%' }}>
-          {setupError && (
-            <HStack UNSAFE_style={{ alignItems: 'flex-start', gap: 6 }}>
-              <Icon icon={IconName.WarningCircleFilled} variant={FeedbackType.Danger} size={IconSize.Small} />
-              <Text textType={TextType.Secondary}>{setupError}</Text>
-            </HStack>
-          )}
-
-          {accepted && (
-            <VStack UNSAFE_style={{ gap: 8 }}>
-              <HStack UNSAFE_style={{ alignItems: 'flex-start', gap: 6 }}>
-                <Icon icon={IconName.Check} variant={FeedbackType.Success} size={IconSize.Small} />
-                <Text textType={TextType.Secondary}>
-                  {accepted.mode === 'update'
-                    ? `Updated ${accepted.name} — it is open on canvas. Accepting is a normal edit: one undo restores the previous version.`
-                    : `Added ${accepted.name} to your project — it is open on canvas. Accepting is a normal edit: undo removes it.`}
-                </Text>
-              </HStack>
-              <PrimaryButton
-                label="Make more changes"
-                variant={PrimaryButtonVariant.Ghost}
-                onClick={() => setAccepted(null)}
-              />
-              <PrimaryButton
-                label="Build another"
-                variant={PrimaryButtonVariant.Ghost}
-                onClick={() => {
-                  setAccepted(null);
-                  setComponentPath('');
-                }}
-              />
-            </VStack>
-          )}
-
-          {!state && !accepted && !setupError && (
-            <Text textType={TextType.Shy}>
-              Name a component and describe what it should do — the agent builds it as nodes, validated against
-              your project before you ever see it. Name an existing component to revise it instead. Nothing
-              changes until you accept.
-            </Text>
-          )}
-
-          {state && (
-            <VStack UNSAFE_style={{ gap: 12 }}>
-              {state.activities.map((activity, index) => (
-                <ActivityRow key={index} activity={activity} />
-              ))}
-
-              {note && (
-                <HStack UNSAFE_style={{ alignItems: 'flex-start', gap: 6 }}>
-                  <Icon
-                    icon={note.type === FeedbackType.Danger ? IconName.WarningCircleFilled : IconName.WarningTriangle}
-                    variant={note.type}
-                    size={IconSize.Small}
-                  />
-                  <Text textType={TextType.Secondary}>{note.text}</Text>
-                </HStack>
-              )}
-
-              {!state.busy && !state.staged && (
-                <PrimaryButton label="Start over" variant={PrimaryButtonVariant.Ghost} onClick={reject} />
-              )}
-
-              {canDecide && state.staged && (
-                <Text textType={TextType.Secondary}>
-                  Staged: {state.legacyName} — {state.staged.nodeCount} node
-                  {state.staged.nodeCount === 1 ? '' : 's'}, {state.staged.connectionCount} connection
-                  {state.staged.connectionCount === 1 ? '' : 's'}.{' '}
-                  {state.mode === 'update'
-                    ? 'Your component is untouched until you accept.'
-                    : 'Nothing is in your project yet.'}
-                </Text>
-              )}
-
-              <div ref={scrollAnchorRef} />
-            </VStack>
-          )}
-        </Box>
-      </ScrollArea>
-
-      {canDecide && (
-        <Section variant={SectionVariant.PanelShy} hasGutter>
+      if (turn.outcome?.kind === 'staged-component' && canDecide) {
+        return (
           <VStack UNSAFE_style={{ gap: 8 }}>
+            <Text textType={TextType.Secondary}>
+              Staged: {turn.outcome.legacyName} — {turn.outcome.nodeCount} node
+              {turn.outcome.nodeCount === 1 ? '' : 's'}, {turn.outcome.connectionCount} connection
+              {turn.outcome.connectionCount === 1 ? '' : 's'}.{' '}
+              {turn.outcome.mode === 'update'
+                ? 'Your component is untouched until you accept.'
+                : 'Nothing is in your project yet.'}
+            </Text>
             <TextInput
               value={refineText}
               placeholder="Ask for changes…"
@@ -632,22 +626,79 @@ export function AiAuthoringPanel() {
               onChange={(event) => setRefineText(event.target.value)}
               onEnter={refine}
             />
-            <PrimaryButton
-              label="Review changes"
-              icon={IconName.Search}
-              variant={PrimaryButtonVariant.Ghost}
-              isGrowing
-              onClick={openReview}
-            />
-            <HStack UNSAFE_style={{ gap: 8 }}>
-              <PrimaryButton label="Accept" icon={IconName.Check} isGrowing onClick={accept} />
-              <PrimaryButton label="Reject" variant={PrimaryButtonVariant.Danger} isGrowing onClick={reject} />
+            <HStack UNSAFE_style={{ gap: 8, flexWrap: 'wrap' }}>
+              <PrimaryButton label="Accept" icon={IconName.Check} onClick={accept} />
+              <PrimaryButton label="Review changes" variant={PrimaryButtonVariant.Ghost} onClick={openReview} />
+              {/* BLD-003 D3: nothing has been written, so discarding destroys
+                  nothing — and red means danger. The Docs panel already got
+                  this right one screen over. */}
+              <PrimaryButton label="Discard" variant={PrimaryButtonVariant.Ghost} onClick={discard} />
             </HStack>
           </VStack>
-        </Section>
-      )}
-        </>
-      )}
+        );
+      }
+
+      return undefined;
+    },
+    [lastPlanTurnId, isConfigured, hasProject, canDecide, refineText, state?.busy, refine, accept, openReview, discard]
+  );
+
+  return (
+    <BasePanel title="Build" isFill>
+      <BuildThread
+        width={width}
+        turns={turns}
+        renderOutcome={renderOutcome}
+        header={
+          <>
+            {/* The flag moves to the header, out of the turn list, where it
+                stops competing with the task. It is honest and it stays. */}
+            <ExperimentalFlag />
+            {setupError && (
+              <HStack UNSAFE_style={{ alignItems: 'flex-start', gap: 6, padding: '0 12px' }}>
+                <Icon icon={IconName.WarningCircleFilled} variant={FeedbackType.Danger} size={IconSize.Small} />
+                <Text textType={TextType.Secondary}>{setupError}</Text>
+              </HStack>
+            )}
+            {decision?.override && route === 'component' && (
+              <HStack UNSAFE_style={{ gap: 8, padding: '0 12px 8px' }}>
+                <PrimaryButton
+                  label={decision.override.label}
+                  variant={PrimaryButtonVariant.Ghost}
+                  onClick={applyOverride}
+                />
+              </HStack>
+            )}
+          </>
+        }
+        emptyState={
+          <VStack UNSAFE_style={{ gap: 12 }}>
+            {!isConfigured && (
+              <HStack UNSAFE_style={{ alignItems: 'center', gap: 6 }}>
+                <Icon icon={IconName.WarningTriangle} variant={FeedbackType.Notice} size={IconSize.Small} />
+                <Text textType={TextType.Secondary}>
+                  No AI provider is configured. Open Editor Settings to set one up.
+                </Text>
+              </HStack>
+            )}
+            {!hasProject && <Text textType={TextType.Secondary}>Open a project to build in it.</Text>}
+            <Text textType={TextType.Shy}>
+              Describe what you want. One component, a change spanning several, or the project's documents — the
+              agent works out which, says so before it acts, and nothing reaches your project until you accept it.
+            </Text>
+            {/* The review banner is a suggestion, not a mode: it fills the
+                composer rather than switching the panel to a third application. */}
+            <ProjectReviewBanner onStart={() => setComposer(DOCS_SUGGESTION)} />
+          </VStack>
+        }
+        value={composer}
+        onChange={setComposer}
+        onSend={() => void send()}
+        canSend={hasProject && isConfigured && composer.trim().length > 0 && !busy}
+        placeholder="Describe a component, a change across the app, or ask for the project docs…"
+        busy={busy}
+        onStop={stop}
+      />
     </BasePanel>
   );
 }

@@ -51,6 +51,14 @@
     // `validation/enrichedCatalog` (already here). The docs *origin* is
     // deliberately resolved by its renderer call sites rather than inside it,
     // which is exactly what keeps `@electron/remote` out of this runner.
-    "src/editor/src/utils/nodeDocs.ts"
+    "src/editor/src/utils/nodeDocs.ts",
+    // BLD-001: `AiAssistant/thread/` is the same shape once more — the turn model that
+    // maps the three session states onto one thread. Every edge it has to `../authoring`
+    // and `../review` is an `import type`, so nothing of the renderer (or of
+    // `AuthoringSession`, which reaches ProjectModel) survives compilation. That is what
+    // lets the 37 specs in `tests-unit/bld-001/` grade the mapping without Electron —
+    // and it is a boundary worth keeping: a single value import here moves these specs
+    // into the jasmine runner.
+    "src/editor/src/models/AiAssistant/thread"
   ]
 }

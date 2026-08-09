@@ -1,0 +1,111 @@
+/*
+ * BLD-001 — the thread's layout.
+ *
+ * Three rows: a header that does not scroll, a turn list that does, and a
+ * composer that does not. That grid is the structural half of README
+ * correction 2 — the run headline is currently INSIDE the scroll area, so
+ * within thirty seconds of a seven-operation run the one element answering
+ * "where am I" is off screen. BLD-005 pins the run header into the header row
+ * this creates; it could not, before, because there was no row to pin it to.
+ *
+ * ⚠️ No colour tokens are reached for here, deliberately. The panel's
+ * legibility complaint is NOT a contrast problem (measured: 8.26:1 and 5.98:1
+ * on the panel ground) — it is that nothing has a size. Type scale is BLD-002's
+ * and brightening anything would destroy the last of the hierarchy.
+ */
+
+.Thread {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.Header {
+  flex: 0 0 auto;
+}
+
+.Body {
+  flex: 1 1 auto;
+  min-height: 0;
+
+  /*
+   * ⚠️ `hidden`, not `auto` — the POL-007 call, for the same reason and with
+   * the same evidence. `ScrollArea` sets `overflow-y: auto` and leaves
+   * `overflow-x` at `visible`, which CSS computes to `auto`; a component path
+   * or an endpoint has no spaces to break at, so its min-content is the whole
+   * string and the excess scrolled the entire panel sideways.
+   */
+  overflow-x: hidden;
+
+  p {
+    overflow-wrap: anywhere;
+  }
+}
+
+.Turns {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 12px;
+}
+
+/*
+ * One turn: the request, what the agent did, and what it produced.
+ *
+ * The gap inside a turn is deliberately smaller than the gap between turns
+ * (`.Turns`) — that ratio is the only hierarchy this task adds, and it is
+ * structural rather than chromatic, so BLD-002 can build the type scale on top
+ * of it without undoing anything.
+ */
+.Turn {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.User {
+  padding: 6px 8px;
+  border-left: 2px solid var(--theme-color-primary);
+  background-color: var(--theme-color-bg-2);
+  border-radius: 0 2px 2px 0;
+}
+
+.Assistant {
+  white-space: pre-wrap;
+}
+
+.Event {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.Composer {
+  flex: 0 0 auto;
+  padding: 12px;
+  border-top: 1px solid var(--theme-color-bg-3);
+}
+
+/*
+ * The expanded host (BLD-009) is a document, not a 400px rail: a thread line
+ * that runs the full width of a 1400px window is unreadable for the same reason
+ * a newspaper has columns. The measure is capped and centred; nothing else
+ * about the component changes, which is the point of the variant existing at
+ * all.
+ */
+.is-expanded {
+  .Turns,
+  .Composer {
+    max-width: 780px;
+    margin-left: auto;
+    margin-right: auto;
+    width: 100%;
+  }
+}
+
+.is-panel {
+  /* No overrides — the panel is the design's native width. Named anyway so the
+     variant is a real choice at the call site rather than "expanded or not". */
+}
