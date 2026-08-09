@@ -22,12 +22,25 @@
  * long the sidebar had this panel hidden — and hidden is the normal state of a
  * panel during a long run.
  *
+ * ## ⚠️ And why it stops on the deltas, not on the turn
+ *
+ * **Found by driving.** The first build ran the clock while `streaming` was set,
+ * which sounds right and is not: `streaming` is cleared when the *turn* ends,
+ * and a hung turn does not end until the deadline fires three minutes later. A
+ * provider that thought for one second and then stopped answering showed
+ * **"Thinking… 3m 2s"** — this task's own defect, a clock outliving the thing it
+ * measures, reappearing inside the fix for it.
+ *
+ * So the upper bound is `lastAt`, moved by each delta. While deltas are arriving
+ * the clock is live; once they stop it freezes at the last one and the label
+ * changes tense, because what it now reports is a finished duration.
+ *
  * @module noodl-editor/views/panels/AiAuthoringPanel/thread/ReasoningStrip
  */
 
 import React, { useRef, useState } from 'react';
 
-import { formatDuration } from '@noodl-models/AiAssistant/thread';
+import { ALIVE_MS, formatDuration } from '@noodl-models/AiAssistant/thread';
 
 import { Icon, IconName, IconSize } from '@noodl-core-ui/components/common/Icon';
 import { Text, TextType } from '@noodl-core-ui/components/typography/Text';
@@ -37,22 +50,31 @@ import css from './ReasoningStrip.module.scss';
 
 export interface ReasoningStripProps {
   text: string;
-  /** True while deltas are still arriving. Drives the clock, not the disclosure. */
+  /** True until the turn ends. Not the clock's authority — see the module header. */
   streaming?: boolean;
   /** When the first reasoning delta landed. Absent from a producer with no clock. */
   at?: number;
+  /** When the most recent one did. The clock's upper bound once they stop. */
+  lastAt?: number;
 }
 
-export function ReasoningStrip({ text, streaming, at }: ReasoningStripProps) {
+export function ReasoningStrip({ text, streaming, at, lastAt }: ReasoningStripProps) {
   const [expanded, setExpanded] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const now = useElapsedClock(Boolean(streaming), ref);
+
+  // Deltas count as recent by the same measure the heartbeat's pulse uses —
+  // one constant, so the strip and the dot cannot disagree about whether the
+  // model is currently thinking.
+  const thinking = streaming && lastAt !== undefined && now - lastAt < ALIVE_MS;
 
   // Absent `at`, there is no elapsed time to report and the strip says so by
   // saying nothing — the same rule as the collapsed run's duration in
   // `messages.ts`. `formatDuration` rather than a local `m:ss`, because the
   // panel already has one author for durations and two would drift.
-  const elapsed = streaming && at !== undefined ? formatDuration(Math.max(0, now - at)) : undefined;
+  const spanEnd = thinking ? now : lastAt;
+  const elapsed =
+    at !== undefined && spanEnd !== undefined ? formatDuration(Math.max(0, spanEnd - at)) : undefined;
 
   return (
     <div className={css['Reasoning']} ref={ref}>
@@ -65,7 +87,15 @@ export function ReasoningStrip({ text, streaming, at }: ReasoningStripProps) {
         <span className={`${css['Caret']} ${expanded ? css['is-expanded'] : ''}`}>
           <Icon icon={IconName.CaretRight} size={IconSize.Small} />
         </span>
-        <Text textType={TextType.Shy}>{elapsed ? `Thinking… ${elapsed}` : 'Thought about this'}</Text>
+        {/*
+          Present tense only while it is true. Once the deltas stop this is a
+          finished duration and says so — "Thinking…" against a frozen number is
+          how the same lie gets back in through the wording after the arithmetic
+          has been fixed.
+        */}
+        <Text textType={TextType.Shy}>
+          {elapsed === undefined ? 'Thought about this' : thinking ? `Thinking… ${elapsed}` : `Thought for ${elapsed}`}
+        </Text>
       </button>
       {expanded && (
         <div className={css['Body']}>

@@ -83,7 +83,14 @@ export function ActivityRow({ activity }: { activity: AuthoringActivity }) {
     case 'reasoning':
       // BLD-004. Its own component and its own channel — never merged into the
       // prose above, which is the string the authoring XML templates parse.
-      return <ReasoningStrip text={activity.text} streaming={activity.streaming} at={activity.at} />;
+      return (
+        <ReasoningStrip
+          text={activity.text}
+          streaming={activity.streaming}
+          at={activity.at}
+          lastAt={activity.lastAt}
+        />
+      );
     case 'tool':
       return (
         <div className={css['Event']}>

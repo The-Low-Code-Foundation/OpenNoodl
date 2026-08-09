@@ -284,7 +284,24 @@ export type AuthoringActivity =
    * in `providers/anthropic.ts`. A separate kind is what makes the two paths
    * impossible to confuse at the type level as well as at the call site.
    */
-  | ({ kind: 'reasoning'; text: string; streaming?: boolean } & Stamped)
+  | ({
+      kind: 'reasoning';
+      text: string;
+      streaming?: boolean;
+      /**
+       * When the most recent reasoning delta landed.
+       *
+       * ⚠️ **Found by driving, not by reasoning about it.** With only `at`, the
+       * strip counted from the first delta to *now* for as long as the turn was
+       * open — so a provider that thought for one second and then hung showed
+       * "Thinking… 3m 2s", a clock outliving the thing it measures, which is the
+       * exact failure this task exists to remove reappearing inside the fix for
+       * it. `streaming` cannot stand in: a hung turn is neither finished nor
+       * cancelled, so nothing clears it until the deadline fires three minutes
+       * later.
+       */
+      lastAt?: number;
+    } & Stamped)
   /** A context read, as a one-line event. */
   | ({ kind: 'tool'; label: string } & Stamped)
   /** A submission and the gate's verdict. */
@@ -827,7 +844,11 @@ export class AuthoringSession {
               // ⚠️ `reasoning.text`, and the narrowing is what keeps it honest:
               // assigning to `prose.text` here compiles and would feed the
               // model's private thinking to the XML templates.
-              if (reasoning.kind === 'reasoning') reasoning.text = fullReasoning;
+              if (reasoning.kind === 'reasoning') {
+                reasoning.text = fullReasoning;
+                // The clock's upper bound, moved by the deltas themselves.
+                reasoning.lastAt = this.now();
+              }
               this.publish();
             },
             onToolCallPartial: (partial) => {
@@ -1014,7 +1035,8 @@ export class AuthoringSession {
   }
 
   private insertReasoningBefore(anchor: AuthoringActivity): AuthoringActivity {
-    const entry: AuthoringActivity = { kind: 'reasoning', text: '', streaming: true, at: this.now() };
+    const at = this.now();
+    const entry: AuthoringActivity = { kind: 'reasoning', text: '', streaming: true, at, lastAt: at };
     const index = this.activities.indexOf(anchor);
     if (index === -1) this.activities.push(entry);
     else this.activities.splice(index, 0, entry);

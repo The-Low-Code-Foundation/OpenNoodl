@@ -62,8 +62,8 @@ export function HeartbeatDot({
   return (
     <span
       key={lastActivityAt ?? 'none'}
-      className={`${css['Dot']} ${state === 'alive' ? css['is-alive'] : ''} ${
-        state === 'silent' ? css['SilentDot'] : ''
+      className={`${css['Dot']} ${state === 'alive' ? css['DotBeating'] : ''} ${
+        state === 'silent' ? css['DotSilent'] : ''
       }`}
     />
   );
