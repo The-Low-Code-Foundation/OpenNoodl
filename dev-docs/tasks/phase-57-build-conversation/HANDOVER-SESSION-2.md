@@ -28,8 +28,25 @@ out to be a data dependency nobody had written down.*
 
 | Commit | What |
 |---|---|
-| (this session) | BLD-001 — one thread, one composer; the intent comes from the planning turn |
-| (this session) | Task/README/TASKS status, this file |
+| `a93720b3` | BLD-001 — one thread, one composer; the intent comes from the planning turn |
+| `e474dd7a` | Task/README/TASKS status, this file |
+| (this one) | this table, corrected — and the concurrency note below |
+
+⚠️ **The first two were committed by a sibling session, not by the one that wrote the code.** The
+work is this session's, the commit messages are accurate and the file sets are correctly
+pathspec-scoped (nothing of phase 46's was swept). One change in `a93720b3` is **not** this
+session's and was not gated by it: `tsconfig.tests-main.json` gains
+`src/editor/src/models/AiAssistant/thread` in its allowlist. It is a correct addition and it has
+since been verified — `typecheck:editor-tests` clean, `test:main` unchanged at 86 / 1162 — but it
+is a reminder that **you can end up owning a line you did not write.** Re-run the gates after a
+sibling commits over your tree; do not inherit a green board.
+
+**The concurrency lesson is new and worth carrying:** the documented hazard on this checkout has
+always been *a sibling sweeps or destroys your work*. This was the inverse — **a sibling committed
+this session's work, completely and correctly, while it was still verifying.** The failure mode is
+not lost work; it is a session that believes it still has something to commit, and a `git status`
+that is clean for a reason it did not expect. **Check `git log`, not just `git status`, before
+concluding anything about your own uncommitted work.**
 
 ## What was built
 
@@ -78,10 +95,12 @@ failed round below it.
 | `typecheck:editor` | clean |
 | `typecheck:editor-tests` | clean |
 | `test:main` | **86 suites, 1162 tests, all passing** |
-| `test:ci` | **`Jasmine: …`** — see below |
+| `test:ci` | **`Jasmine: 2582 specs, 6 failures`** — the inherited six, confirmed by name |
 
 **The counts reconcile:** `test:main` `84 / 1125 → 86 / 1162` = +2 suites / +37 tests, which is
-exactly `tests-unit/bld-001/intent.test.ts` (14) and `turns.test.ts` (23). Nothing else moved.
+exactly `tests-unit/bld-001/intent.test.ts` and `turns.test.ts`. Nothing else moved. `test:ci` is
+**unchanged at 2582 / 6** — the phase-56 baseline — and the six are the inherited pair of files
+(4 × `AIX-006 style vocabulary`, 2 × `AI model registry`), **confirmed by name, not by arithmetic**.
 
 ⚠️ **A `test:ci` run piped through `tail -40` is not a verdict.** The first run of this session was,
 and the captured output held five `FAILED:` names, no `Jasmine:` line and no summary — which reads
