@@ -283,7 +283,29 @@ describe('AIX-009 get_project_doc', () => {
       { id: '4', name: GET_PROJECT_DOC, arguments: { path: 'docs/SECRETS.md' } },
       context
     );
-    expect(result).toContain('can only read');
+    // BLD-007 replaced the scolding "can only read ARCHITECTURE.md" — correct
+    // when one file was the whole vocabulary — with the list the project
+    // actually has. The refusal must still name what was asked for, so the
+    // agent can tell a typo from a file that is not offered.
+    expect(result).toContain('SECRETS.md');
+    expect(result).toContain('ARCHITECTURE.md');
+    expect(result).not.toContain('no fetchable documents');
+  });
+
+  // Regression: the dispatcher must read the doc set from the context it was
+  // handed. BLD-007 briefly took it as a defaulted third argument, so a caller
+  // that passed only the context resolved against `{}` and denied the existence
+  // of a doc the same context was holding — with no type error to show for it.
+  it('answers from the context it was given, not from a doc set passed alongside it', () => {
+    const context = new AuthoringContextBuilder(GRAPH, {}, undefined, undefined, { architecture: ARCHITECTURE });
+    expect(
+      dispatchProjectDocTool({ id: '5', name: GET_PROJECT_DOC, arguments: { path: 'ARCHITECTURE.md' } }, context)
+    ).toBe(ARCHITECTURE);
+
+    const empty = new AuthoringContextBuilder(GRAPH, {}, undefined, undefined, {});
+    expect(
+      dispatchProjectDocTool({ id: '6', name: GET_PROJECT_DOC, arguments: { path: 'ARCHITECTURE.md' } }, empty)
+    ).toContain('no fetchable documents');
   });
 });
 

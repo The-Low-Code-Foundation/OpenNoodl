@@ -38,9 +38,17 @@ function pathEnum(tool: AiToolDefinition): string[] {
   return (tool.parameters.properties as Record<string, { enum: string[] }>).path.enum;
 }
 
-/** A context builder stand-in: the tool only ever calls back into these. */
-function stubContext(bodies: Record<string, string> = {}) {
+/**
+ * A context builder stand-in: the tool only ever calls back into these.
+ *
+ * ⚠️ `docs` is part of the stand-in because the dispatcher resolves the doc set
+ * from the context, not from an argument beside it. It was briefly a defaulted
+ * third parameter, which let a caller hand over a context holding an
+ * ARCHITECTURE.md and still be told the project had no fetchable documents.
+ */
+function stubContext(bodies: Record<string, string> = {}, docs: ProjectDocsContent = {}) {
   return {
+    docs,
     projectArchitecture: () => bodies['docs/ARCHITECTURE.md'] ?? 'no architecture',
     projectExtraDoc: (doc: { path: string }) => bodies[doc.path] ?? `no ${doc.path}`
   } as never;
@@ -107,8 +115,7 @@ describe('BLD-007 — dispatch', () => {
   it('still routes ARCHITECTURE.md to the architecture handout', () => {
     const out = dispatchProjectDocTool(
       { id: '1', name: 'get_project_doc', arguments: { path: 'ARCHITECTURE.md' } },
-      stubContext({ 'docs/ARCHITECTURE.md': 'ARCH BODY' }),
-      docs
+      stubContext({ 'docs/ARCHITECTURE.md': 'ARCH BODY' }, docs)
     );
     expect(out).toBe('ARCH BODY');
   });
@@ -117,8 +124,7 @@ describe('BLD-007 — dispatch', () => {
     for (const asked of ['uk-vat.md', 'docs/uk-vat.md', './docs/uk-vat.md']) {
       const out = dispatchProjectDocTool(
         { id: '1', name: 'get_project_doc', arguments: { path: asked } },
-        stubContext({ 'docs/uk-vat.md': 'VAT BODY' }),
-        docs
+        stubContext({ 'docs/uk-vat.md': 'VAT BODY' }, docs)
       );
       expect(out).toBe('VAT BODY');
     }
@@ -127,8 +133,7 @@ describe('BLD-007 — dispatch', () => {
   it('answers an unknown path by naming what it does have, not by scolding', () => {
     const out = dispatchProjectDocTool(
       { id: '1', name: 'get_project_doc', arguments: { path: 'NOPE.md' } },
-      stubContext(),
-      docs
+      stubContext({}, docs)
     );
 
     expect(out).toContain('uk-vat.md');
@@ -136,6 +141,6 @@ describe('BLD-007 — dispatch', () => {
   });
 
   it('leaves a call for another tool alone', () => {
-    expect(dispatchProjectDocTool({ id: '1', name: 'read_component', arguments: {} }, stubContext(), docs)).toBeUndefined();
+    expect(dispatchProjectDocTool({ id: '1', name: 'read_component', arguments: {} }, stubContext({}, docs))).toBeUndefined();
   });
 });

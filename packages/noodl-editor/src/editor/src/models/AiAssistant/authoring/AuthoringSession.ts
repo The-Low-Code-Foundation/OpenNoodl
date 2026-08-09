@@ -340,14 +340,6 @@ export class AuthoringSession {
   /** AIX-009: `get_project_doc`, present only when the project has an ARCHITECTURE.md. */
   private readonly docTools: AiToolDefinition[];
 
-  /**
-   * BLD-007: the docs snapshot this session was constructed with. Held, not
-   * re-read: the tool list built from it is part of the cached prefix, so the
-   * set the dispatcher resolves against must be the set the definition
-   * advertised. A doc added mid-session is picked up by the next one.
-   */
-  private readonly projectDocs: ProjectDocsContent;
-
   // Conversation state, cumulative across run() and every refine().
   private readonly messages: AiMessage[] = [];
   private readonly rounds: SubmitRound[] = [];
@@ -416,7 +408,13 @@ export class AuthoringSession {
       importReport,
       options.collections
     );
-    this.projectDocs = projectDocs;
+    // BLD-007: one docs snapshot, taken once and held for the session — the
+    // context keeps it as `context.docs`, which is what `dispatchProjectDocTool`
+    // resolves against. The tool list below is part of the cached prefix, so the
+    // set the dispatcher answers from must be the set this definition
+    // advertised; sharing the one snapshot is what makes that true by
+    // construction rather than by two call sites agreeing. A doc added
+    // mid-session is picked up by the next one, deliberately.
     this.docTools = projectDocTools(projectDocs);
     this.legacyName = pathToLegacyName(request.componentPath);
   }
@@ -832,8 +830,7 @@ export class AuthoringSession {
             role: 'tool',
             toolCallId: call.id,
             name: call.name,
-            content:
-              dispatchProjectDocTool(call, this.context, this.projectDocs) ?? dispatchReadTool(call, this.context)
+            content: dispatchProjectDocTool(call, this.context) ?? dispatchReadTool(call, this.context)
           });
           this.publish();
         }

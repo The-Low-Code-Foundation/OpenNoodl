@@ -120,13 +120,22 @@ function normalizeArg(requested: string): string {
  * An unrecognised path answers with **the list this project actually has**.
  * The previous behaviour — a scolding string naming one file — was the right
  * answer when there was one file and is a dead end now.
+ *
+ * ⚠️ The doc set is read from `context.docs` and is deliberately NOT a separate
+ * parameter. BLD-007 first took it as a third argument defaulting to `{}`, which
+ * gave "what docs exist" two sources that could disagree: every pre-BLD-007
+ * caller kept compiling, silently resolving against an empty set, and answered
+ * *"this project has no fetchable documents"* for a project holding an
+ * ARCHITECTURE.md. Two AIX-009 specs caught it only because `test:ci` finally
+ * ran. The context is built once per session with the same snapshot
+ * `projectDocTools` was handed, so reading it here keeps the set the dispatcher
+ * resolves against identical to the set the tool definition advertised — which
+ * was the property the third argument existed to guarantee.
  */
-export function dispatchProjectDocTool(
-  call: AiToolCall,
-  context: AuthoringContextBuilder,
-  docs: ProjectDocsContent = {}
-): string | undefined {
+export function dispatchProjectDocTool(call: AiToolCall, context: AuthoringContextBuilder): string | undefined {
   if (call.name !== GET_PROJECT_DOC) return undefined;
+
+  const docs = context.docs;
 
   const requested = typeof call.arguments.path === 'string' ? call.arguments.path : ARCHITECTURE_ARG;
   const asked = normalizeArg(requested).toLowerCase();
