@@ -53,6 +53,7 @@ import type { SandboxDataset } from '@noodl/runtime/src/sandbox/types';
 
 import css from './SandboxDataEditor.module.scss';
 import {
+  INTERNAL_FIELDS,
   ROW_COUNTS,
   cellText,
   draftFrom,
@@ -139,6 +140,10 @@ export function SandboxDataEditor({ dataset, userData, onApply, onClose }: Sandb
           const draft = drafts[name];
           const klass = dataset.classes[name];
           const fields = visibleFields(klass.fields, draft.records);
+          // `?? klass.fields` for a dataset built before `inferred` existed:
+          // with nothing supplied the two are the same set, which is exactly
+          // the case an older dataset can be in.
+          const inferred = (klass.inferred ?? klass.fields).filter((field) => !INTERNAL_FIELDS.has(field));
           const completed = new Set(klass.completed ?? []);
 
           return (
@@ -197,9 +202,18 @@ export function SandboxDataEditor({ dataset, userData, onApply, onClose }: Sandb
                 component will actually look at, which is not a thing any other
                 surface in the editor tells you.
               */}
+              {/*
+                ⚠️ Sourced from `inferred`, never from `fields`. `fields` is
+                what the dataset *serves* — inference plus whatever the records
+                carry — so captioning it "read by the graph" states something
+                nobody established: on a class whose shape could not be inferred
+                it named the sandbox's own bookkeeping keys, and on one the user
+                typed by hand it named the user's keys back at them. The columns
+                below are still everything, because everything is editable.
+              */}
               <div className={css.Fields}>
                 <Text textType={TextType.Secondary}>
-                  Read by the graph: {fields.length > 0 ? fields.join(', ') : '— nothing inferable'}
+                  Read by the graph: {inferred.length > 0 ? inferred.join(', ') : '— nothing inferable'}
                 </Text>
                 {completed.size > 0 && (
                   <Text textType={TextType.Secondary}>
@@ -257,6 +271,21 @@ export function SandboxDataEditor({ dataset, userData, onApply, onClose }: Sandb
                     <div className={css.NoRows}>
                       <Text textType={TextType.Secondary}>
                         No rows — this is the empty state your component will render.
+                      </Text>
+                    </div>
+                  )}
+                  {/*
+                    A table with no columns has nothing to type into, so the
+                    invitation above has to say where to go instead. This is the
+                    §3 case in full: nothing was inferred, so there is no column
+                    to offer until the user names one, and JSON is the only
+                    place a *new* key can be written.
+                  */}
+                  {fields.length === 0 && draft.records.length > 0 && (
+                    <div className={css.NoRows}>
+                      <Text textType={TextType.Secondary}>
+                        No columns yet — switch to JSON and write a row like {'{ "name": "…" }'}. What you name there
+                        becomes the columns here.
                       </Text>
                     </div>
                   )}

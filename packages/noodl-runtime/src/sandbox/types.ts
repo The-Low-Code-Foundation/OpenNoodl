@@ -33,6 +33,20 @@ export interface SandboxClass {
    * about whose data it is showing. Absent unless the user overrode this class.
    */
   completed?: string[];
+  /**
+   * BEN-006 — the subset of `fields` that was **inferred from the graph**,
+   * before anything the agent or the user supplied was merged in.
+   *
+   * `fields` is what the dataset serves, which is inference *plus* whatever the
+   * records carry — so it cannot answer "what does this component actually
+   * look at". The data editor captions its column list with that question, and
+   * sourcing the caption from `fields` made it overclaim: a class nobody could
+   * infer anything about still listed the bookkeeping keys, and a class the
+   * user typed by hand listed the user's own keys as though the graph had been
+   * found to read them. Absent means "no separate answer" — treat `fields` as
+   * the inference, which is what it is when nothing was supplied.
+   */
+  inferred?: string[];
 }
 
 export interface SandboxDataset {

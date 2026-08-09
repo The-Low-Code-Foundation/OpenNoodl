@@ -49,6 +49,29 @@ describe('BEN-006 the draft the data editor holds', () => {
     expect(draft.error).toBe('');
   });
 
+  it('treats the sandbox’s timestamps as bookkeeping too, not as columns', () => {
+    // `createdAt`/`updatedAt` are stamped on every synthesized record and are
+    // `NOT_A_FIELD` in the dataset builder, so they can never be something the
+    // graph was found to read — and `completeRecord` reassigns them whatever
+    // anyone types, so a cell over them offers an edit that does nothing.
+    //
+    // Driven live 2026-08-09: on a class whose shape could not be inferred they
+    // were the *only* columns, so the panel invited the user to edit two fields
+    // that mean nothing on the one screen whose job is to say nothing was found.
+    const stamped = [
+      {
+        objectId: 'sandbox-1',
+        id: 'sandbox-1',
+        [SANDBOX_RECORD_FLAG]: true,
+        createdAt: '2025-12-16T09:30:00.000Z',
+        updatedAt: '2026-01-15T09:30:00.000Z'
+      }
+    ] as SandboxRecord[];
+
+    expect(draftFrom(stamped).records).toEqual([{}]);
+    expect(visibleFields([], editableRecords(stamped))).toEqual([]);
+  });
+
   it('keeps the table and the JSON view on one value', () => {
     // If these two ever drift, the escape hatch has become a second dialect.
     const draft = withRecords(draftFrom(served()), [{ name: 'Something else' }]);

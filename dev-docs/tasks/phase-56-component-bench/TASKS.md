@@ -48,6 +48,16 @@ than the applied ones (**B21**). Also **B23** (a v2 save deletes `description`, 
 arriving by a new route) and **B24** (a driving race that presses the control underneath).
 **Only BEN-006's Live criteria and BEN-007 remain.**
 
+**Session 6 (2026-08-09):** **BEN-006's Live criteria are closed** — see
+[HANDOVER-SESSION-6.md](HANDOVER-SESSION-6.md). Driven in the AI authoring preview itself, on a real
+`For Each` list, with the rendered strings read out of the sandbox webview's DOM. The drive found
+that this task's own panel captioned the sandbox's bookkeeping as *"read by the graph"* (**B25**,
+fixed and re-driven), and two things that are **not** this task's to fix: a `For Each` over a query
+infers **zero** fields, so an ordinary list previews as *"Fields unknown"* and renders literal `Text`
+placeholders (**B26** — and it is almost certainly session 4's unexplained `SiteHeader` loose end);
+and closing the change-review document makes the AI preview unreachable for the rest of the session,
+taking the user's typed sample data with it (**B27**). **Only BEN-007 remains.**
+
 | Task | File | One line | State |
 |---|---|---|---|
 | BEN-001 ⭐ | [BEN-001-HARNESS-MOUNT.md](BEN-001-HARNESS-MOUNT.md) | the synthetic harness: mount any component as root *with* its inputs set | ✅ **built and driven**, 19 specs; Live 6 closed (320 measures 320) and **Live 5 closed by BEN-002's drive** — a value set on the harness reaches the mounted component's DOM |
@@ -55,7 +65,7 @@ arriving by a new route) and **B24** (a driving race that presses the control un
 | BEN-003 | [BEN-003-OUTPUT-READOUT.md](BEN-003-OUTPUT-READOUT.md) | what the component emits, as a live log. Makes logic-only components previewable | ✅ **DONE and driven** — one channel (the trace), not two; every criterion measured live |
 | BEN-004 ⭐ | [BEN-004-BENCH-SURFACE.md](BEN-004-BENCH-SURFACE.md) | the mode selector, the stage chrome, the way back — R1–R5 live here | ✅ **built and driven**, 18 specs; see B6–B10 |
 | BEN-005 | [BEN-005-SCENARIOS.md](BEN-005-SCENARIOS.md) | named input sets saved to component metadata (Empty / Loaded / Error) | ✅ **built and driven**, 34 specs; every criterion measured live, and B13's remount branch finally has a case (B21) |
-| BEN-006 ⭐ | [BEN-006-AUTHORED-SAMPLE-DATA.md](BEN-006-AUTHORED-SAMPLE-DATA.md) | **Richard's ask**: the user edits the sample data in the AI preview and re-renders | 🟡 §1–§6 built, 26 specs; every Live criterion open |
+| BEN-006 ⭐ | [BEN-006-AUTHORED-SAMPLE-DATA.md](BEN-006-AUTHORED-SAMPLE-DATA.md) | **Richard's ask**: the user edits the sample data in the AI preview and re-renders | ✅ **built and driven**, 28 specs; every Live criterion closed, and the drive fixed B25 and filed B26/B27 |
 | BEN-007 | [BEN-007-ACCEPTANCE.md](BEN-007-ACCEPTANCE.md) | the live-driving pass the phase closes on | 📋 not started |
 
 ## Dependency map

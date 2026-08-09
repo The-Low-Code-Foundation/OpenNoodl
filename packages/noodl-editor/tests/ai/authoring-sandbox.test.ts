@@ -620,6 +620,34 @@ describe('BEN-006 the user’s own sample data', () => {
     expect(filled.unknownShape).toEqual([]);
     expect(filled.classes.Orders.fields.sort()).toEqual(['customerName', 'orderNumber']);
     expect(filled.classes.Orders.records[0].orderNumber).toBe('A-1001');
+
+    // …and filling it in does not turn the user's own keys into a claim about
+    // the graph. `fields` is what the dataset serves; `inferred` is what was
+    // actually found in the graph, and here that is still nothing. The data
+    // editor captions its column list from this one — see the note on
+    // `SandboxClass.inferred`.
+    expect(filled.classes.Orders.inferred).toEqual([]);
+  });
+
+  it('keeps what the graph reads apart from what the records happen to carry', () => {
+    // Driven live on `/Pages/Landing` 2026-08-09: the caption read "Read by the
+    // graph: createdAt, updatedAt" on a class nothing had been inferred about,
+    // because it was sourced from `fields` — which is inference *plus* every
+    // key the served records carry.
+    const components = twoClasses();
+
+    const inferredOnly = buildSandboxDataset({ components });
+    expect(inferredOnly.classes.Products.inferred?.sort()).toEqual(['name', 'price']);
+    expect(inferredOnly.classes.Products.inferred).toEqual(inferredOnly.classes.Products.fields);
+
+    const withSupplied = buildSandboxDataset({
+      components,
+      userData: { Products: [{ name: 'Enamel mug', sku: 'MUG-1' }] }
+    });
+    // `sku` is served, so it is a field…
+    expect(withSupplied.classes.Products.fields).toContain('sku');
+    // …but nothing in the graph reads it, so it is not inference.
+    expect(withSupplied.classes.Products.inferred?.sort()).toEqual(['name', 'price']);
   });
 
   it('serves a class the graph never named, because the user asked for it', () => {

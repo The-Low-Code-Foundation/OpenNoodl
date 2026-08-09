@@ -487,9 +487,14 @@ export function buildSandboxDataset({
       attributed.size === 0 && discovery.pooled.size === 0 && suppliedFields.size === 0
         ? discovery.codePooled
         : new Set<string>();
-    const fields = [...new Set([...attributed, ...discovery.pooled, ...rescue, ...suppliedFields])].filter(
+    // What the *graph* was found to read, kept apart from what the records
+    // happen to carry. Both go into `fields` — the dataset has to serve every
+    // key either way — but only this half answers "what will this component
+    // look at", which is the question the data editor's column caption asks.
+    const inferred = [...new Set([...attributed, ...discovery.pooled, ...rescue])].filter(
       (field) => !NOT_A_FIELD.has(field)
     );
+    const fields = [...new Set([...inferred, ...suppliedFields])].filter((field) => !NOT_A_FIELD.has(field));
 
     if (fields.length === 0) unknownShape.push(className);
 
@@ -505,6 +510,7 @@ export function buildSandboxDataset({
 
     classes[className] = {
       fields,
+      inferred,
       records: recordsFor(fields, supplied, fromUser !== undefined),
       ...(completed.length > 0 ? { completed } : {})
     };

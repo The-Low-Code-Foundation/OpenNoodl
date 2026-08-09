@@ -20,11 +20,27 @@ export const ROW_COUNTS = [1, 3, 5, 20];
 /**
  * Keys the sandbox puts on every record for its own bookkeeping.
  *
- * Editing them is meaningless — `completeRecord` reassigns `objectId`/`id`
- * whatever anyone types — and showing them buries the two fields the user
- * actually came here for under three they did not.
+ * Editing them is meaningless — `completeRecord` reassigns them whatever anyone
+ * types — and showing them buries the two fields the user actually came here
+ * for under three they did not.
+ *
+ * ⚠️ `createdAt`/`updatedAt`/`ACL` are here because they are `NOT_A_FIELD` in
+ * `sandboxData`: the dataset builder can never attribute them to a class, so
+ * they are never something the graph was found to read. Leaving them out was
+ * worst in exactly the case §3 exists for — a class whose shape could not be
+ * inferred has no other columns, so the panel showed `createdAt`/`updatedAt`
+ * and captioned them *"Read by the graph"*, naming two fields the graph does
+ * not read on the one screen whose whole job is to say that nothing was found.
+ * Measured live on `/Pages/Landing`, 2026-08-09.
  */
-export const INTERNAL_FIELDS: ReadonlySet<string> = new Set(['objectId', 'id', SANDBOX_RECORD_FLAG]);
+export const INTERNAL_FIELDS: ReadonlySet<string> = new Set([
+  'objectId',
+  'id',
+  'createdAt',
+  'updatedAt',
+  'ACL',
+  SANDBOX_RECORD_FLAG
+]);
 
 export interface ClassDraft {
   /** The records, as the panel and the export both understand them. */

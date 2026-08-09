@@ -1,18 +1,19 @@
 # BEN-006 — Your own sample data, in the AI preview
 
-**Status:** 🟡 **§1–§6 built, none of it driven** (2026-08-08).
+**Status:** ✅ **CLOSED — built and driven** (§1–§6 built 2026-08-08, every Live criterion closed
+2026-08-09).
 
 | Part | Where | State |
 |---|---|---|
-| §1 the fourth layer | [`sandboxData.ts`](../../../packages/noodl-editor/src/editor/src/models/AiAssistant/authoring/sandboxData.ts) | ✅ 14 specs; reaches `buildSandboxExport` **and** `buildBenchExport` |
-| §2 the editor | [`SandboxDataEditor.tsx`](../../../packages/noodl-editor/src/editor/src/views/documents/AuthoringPreviewDocument/SandboxDataEditor.tsx) + [`sandboxDataDraft.ts`](../../../packages/noodl-editor/src/editor/src/views/documents/AuthoringPreviewDocument/sandboxDataDraft.ts) | ✅ built, 12 specs on the value rules; **the panel itself has never been opened** |
-| §3 unknown shape → invitation | same | ✅ built |
-| §4 Apply, not keystroke | same | ✅ built; the panel is kept mounted across the reload |
-| §5 both surfaces | `buildBenchExport` takes `userData` | ✅ for the mechanism; the bench has no surface yet (BEN-004) |
-| §6 session-scoped | `SandboxPreview` `useState` | ✅ nothing is written anywhere |
+| §1 the fourth layer | [`sandboxData.ts`](../../../packages/noodl-editor/src/editor/src/models/AiAssistant/authoring/sandboxData.ts) | ✅ 15 specs; reaches `buildSandboxExport` **and** `buildBenchExport` |
+| §2 the editor | [`SandboxDataEditor.tsx`](../../../packages/noodl-editor/src/editor/src/views/documents/AuthoringPreviewDocument/SandboxDataEditor.tsx) + [`sandboxDataDraft.ts`](../../../packages/noodl-editor/src/editor/src/views/documents/AuthoringPreviewDocument/sandboxDataDraft.ts) | ✅ built + driven, 13 specs on the value rules |
+| §3 unknown shape → invitation | same | ✅ driven — and it is the case the fixture actually lands in |
+| §4 Apply, not keystroke | same | ✅ driven: the panel survives the reload, the marker does not |
+| §5 both surfaces | `buildBenchExport` takes `userData` | ✅ mechanism; the AI preview is the surface driven |
+| §6 session-scoped | `SandboxPreview` `useState` | ✅ nothing is written anywhere — 0 project files touched |
 
-**Every Live criterion below is unmet.** The panel typechecks, lints and has its
-value rules pinned; nobody has clicked Apply. · ⭐ **Richard's specific ask**
+**The drive found one defect in this task's own panel (B25, fixed) and two things that are not this
+task's to fix (B26, B27, filed).** · ⭐ **Richard's specific ask**
 
 > *"It would be cool if we could extend the 'set your own static data' to the AI preview with the
 > dummy data existing option, so users can set their own data ideas and see what they render like."*
@@ -113,16 +114,56 @@ Session-scoped by default, per R5. If it should survive, it survives as part of 
 
 ## Acceptance
 
-- [ ] Spec: `userData` for one class overrides that class and leaves others untouched.
-- [ ] Spec: absent `userData` produces a byte-identical dataset to today's — this must not change the
+- [x] Spec: `userData` for one class overrides that class and leaves others untouched.
+- [x] Spec: absent `userData` produces a byte-identical dataset to today's — this must not change the
       existing preview.
-- [ ] Spec: user records survive the `completeRecord`/`synthesizeRecords` path without having
+- [x] Spec: user records survive the `completeRecord`/`synthesizeRecords` path without having
       synthesized fields injected over the top of what the user wrote.
-- [ ] **Live:** edit a product name in the AI preview's data editor, Apply, and read the new string
+- [x] **Live:** edit a product name in the AI preview's data editor, Apply, and read the new string
       out of the rendered DOM.
-- [ ] **Live:** set row count to 1 on a list component and see one row.
-- [ ] **Live:** a class flagged `unknownShape` can be filled in by hand and renders populated.
-- [ ] The Data control is absent in Real backend mode.
+- [x] **Live:** set row count to 1 on a list component and see one row.
+- [x] **Live:** a class flagged `unknownShape` can be filled in by hand and renders populated.
+- [x] The Data control is absent in Real backend mode.
+
+## The drive, 2026-08-09
+
+Driven in the **AI authoring preview** — the surface the ask names — on a copy of *Puppy test 3*,
+with `/Pages/Landing` replayed through the real Build panel by
+[`scripted-session.js`](../../../packages/noodl-editor/scripts/aix15-live/scripted-session.js) (no
+provider, no API key). Every number came out of the running editor; the rendered strings were read
+from the sandbox webview's own DOM, not from the panel.
+
+The fixture is a genuine list: `For Each` → `/Components/PuppyCard`, over
+`DbCollection2 collectionName=Puppy`.
+
+| Claim | Evidence |
+|---|---|
+| The preview opens on inference alone | Toolbar: `Sample data — 5 Puppy, signed in as a sample user`, chip `Fields unknown` |
+| ⚠️ **and inference found nothing** | The rendered sandbox carried **20 leaves reading the literal `Text`** — 5 cards × 4 text nodes. **B26** |
+| §3: the invitation appears on that class | *"Nothing here could be inferred from the graph — write a row and it will render."* |
+| **Live 3** — filled in by hand, renders populated | 3 records typed as JSON → `Biscuit / Marlow / Pip` with breed, age and description each rendered; **0** literal `Text` left |
+| §4: Apply reloads, deliberately | Planted marker `mk-2dn04i` → **null**; the panel is still open on the other side |
+| The strip says whose data it is | `Sample data — 3 Puppy (yours), …`; the `Fields unknown` chip is **gone** |
+| **Live 1** — a table edit reaches the DOM | `name` cell → a **57-character** name; after Apply the sandbox DOM reads `Bartholomew Wigglesworth the Third, Esquire of Muddy Paws`. Richard's *"show me a 60-character product name"*, answered |
+| **Live 2** — one row | Row count `1` → draft `1 row`, and the rendered page holds **1** card, **0** placeholders |
+| **Live 4** — absent against a real backend | `Real backend` → Data **and** Sign out both gone, summary `Real backend — this preview uses your project's live data.` |
+| …and the open panel goes with it | Panel open, switch → panel unmounted. Switching back re-shows it: `dataOpen` survives the round trip |
+| §6: nothing is written | R5 holds by construction — `userData` never leaves `useState` |
+
+### What the drive changed (B25)
+
+The panel captioned the sandbox's **own bookkeeping** as fields the graph reads, and did it worst in
+the `unknownShape` case this feature exists for:
+
+```
+before   Read by the graph: createdAt, updatedAt      2 columns, 10 editable cells
+after    Read by the graph: — nothing inferable       0 columns, 0 cells
+         No columns yet — switch to JSON and write a row like { "name": "…" }.
+```
+
+`SandboxClass` gains `inferred` so the caption can never again name a key merely because the served
+records carry it — verified live, it still reads `— nothing inferable` *after* the user has supplied
+`name, breed, age, description`, which is the honest answer.
 
 ## Risks
 
