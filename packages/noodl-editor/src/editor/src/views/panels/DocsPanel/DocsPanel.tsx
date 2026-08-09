@@ -520,7 +520,14 @@ export function DocsPanel() {
         {!proposal && (
           <div className={css['Body']}>
             <div className={css['Toolbar']}>
-              <Text textType={TextType.Shy}>{injectionLine(selectedEntry)}</Text>
+              <div className={css['Injection']}>
+                <Text isSpan textType={TextType.Shy} className={css['InjectionPath']}>
+                  {selectedEntry?.path ?? ''}
+                </Text>
+                <Text isSpan textType={TextType.Shy} className={css['InjectionDetail']}>
+                  {injectionDetail(selectedEntry)}
+                </Text>
+              </div>
               <HStack UNSAFE_style={{ gap: 6 }}>
                 {mode === 'source' && (
                   <PrimaryButton
@@ -590,14 +597,26 @@ export function DocsPanel() {
  * place that cannot be silent about it is the surface you are looking at when
  * you write one. An always-injected doc states its per-turn cost in tokens,
  * because that is the number the user is agreeing to and nothing else showed it.
+ *
+ * ⚠️ This is the *detail* only — the path is rendered beside it and the split is
+ * load-bearing rather than cosmetic. It used to be one string, `${path} — ${detail}`,
+ * inside the toolbar label that F20 had made shrinkable: F20 was correct, because
+ * back then the label *was* a path and a long one shoved the buttons off the
+ * panel at the 240px floor. BLD-007 then appended the cost to that same label
+ * without moving the rule, so the ellipsis went on truncating the label it was
+ * written for and started eating the number the sentence exists to show. Measured
+ * live at the shipped 400px panel: 378px of text in a 290px box, rendering
+ * *"docs/uk-vat.md — sent with every build, about 4…"*. The path is still the
+ * expendable half and still ellipsizes; the cost now sits in its own element and
+ * never shrinks.
  */
-function injectionLine(entry: DocEntry | undefined): string {
+function injectionDetail(entry: DocEntry | undefined): string {
   if (!entry) return '';
-  if (!entry.exists) return `${entry.path} — not created yet`;
+  if (!entry.exists) return '— not created yet';
   if (entry.inject === 'always') {
-    return `${entry.path} — sent with every build, about ${estimateTokens(entry.chars)} tokens per turn`;
+    return `— sent with every build, about ${estimateTokens(entry.chars)} tokens per turn`;
   }
-  return `${entry.path} — fetched when relevant`;
+  return '— fetched when relevant';
 }
 
 /** Characters → tokens, the usual ~4:1, rounded so it reads as an estimate. */
