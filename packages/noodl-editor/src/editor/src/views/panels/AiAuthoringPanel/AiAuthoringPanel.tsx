@@ -68,12 +68,18 @@ import {
 import { authoringTelemetry } from '@noodl-models/AiAssistant/telemetry';
 import {
   acceptedTurn,
+  acceptLabel,
   componentTurns,
   composeThread,
   decideIntent,
+  decisionOwner,
+  DISCARD_LABEL,
   freezeTurns,
   liveTurns,
+  ON_CANVAS_NOTE,
+  ON_REVIEW_NOTE,
   retireLive,
+  REVIEW_LABEL,
   type BuildIntent,
   type IntentDecision,
   type LiveSources,
@@ -83,6 +89,7 @@ import { AppRegistry } from '@noodl-models/app_registry';
 import { ProjectModel } from '@noodl-models/projectmodel';
 import { buildEffectiveTokens, buildStyleVocabulary, readStoredTokens } from '@noodl-models/StyleTokensModel';
 
+import { useModel } from '../../../hooks/useModel';
 import { buildComponentV2Files } from '../../../io/ProjectExporter';
 import { formatDiagnosticLine } from '../../../validation';
 
@@ -354,7 +361,7 @@ export function AiAuthoringPanel({ width = 'panel' }: AiAuthoringPanelProps = {}
         AppRegistry.instance.openDocument(AuthoringPreviewDocumentProvider.ID, {
           session,
           onAccept: () => handlersRef.current.accept(),
-          onReject: () => handlersRef.current.discard(),
+          onDiscard: () => handlersRef.current.discard(),
           onOpenReview: () => handlersRef.current.openReview()
         });
 
@@ -573,6 +580,19 @@ export function AiAuthoringPanel({ width = 'panel' }: AiAuthoringPanelProps = {}
     AppRegistry.instance.openDocument(ChangeReviewDocumentProvider.ID, {
       changeSet,
       title: `Review ${session.legacyName}`,
+      // BLD-003 D3 — the third surface in this flow, and the one the acceptance
+      // grep would have missed if it only looked at the two that render the
+      // decision side by side. `ChangeReviewDocument` is shared (plan
+      // operations, workflow proposals), so the correction goes on the *caller*
+      // rather than on its defaults: these flags exist for exactly this, and
+      // AIB-004 already used them one screen over for the same reason.
+      //
+      // ⚠️ `acceptLabel` is deliberately NOT overridden here. This document's
+      // Accept composes with a selection — "Accept all", "Accept 3 of 5" — so
+      // it answers *how much of this?*, not *what happens to my project?*.
+      // "Add to project all" would be worse copy, not better.
+      rejectLabel: DISCARD_LABEL,
+      isRejectDangerous: false,
       onAccept: (rejected: ReadonlySet<string>) => {
         const selection = materializeSelection(changeSet, files, rejected);
         return acceptFiles(selection.files, { rejectedCount: selection.rejected.size });
@@ -601,6 +621,30 @@ export function AiAuthoringPanel({ width = 'panel' }: AiAuthoringPanelProps = {}
 
   const canDecide = Boolean(state && !state.busy && state.staged);
   const busy = Boolean(planningRequest || state?.busy || runState?.busy || reviewState?.busy);
+
+  /**
+   * BLD-003 D2 — which surface owns Accept / Review changes / Discard.
+   *
+   * ⚠️ This subscription is the whole fix. Both surfaces already knew how to
+   * render the buttons; what neither knew was whether the *other* one was. The
+   * derivation is one function over one fact — the document the editor is
+   * showing — so there is no second opinion to disagree with, which is what
+   * "one piece of state on the thread, not two components each guessing" means
+   * in code.
+   *
+   * `useModel` re-renders on `documentChanged`, which is what makes closing the
+   * preview hand the buttons back to the card immediately rather than at the
+   * next unrelated render.
+   */
+  useModel(AppRegistry.instance, ['documentChanged']);
+  const owner = decisionOwner(AppRegistry.instance.CurrentDocumentId, [
+    AuthoringPreviewDocumentProvider.ID,
+    // ⚠️ The review diff counts too, and missing it is the easy mistake: it is
+    // reached *from* this card's own "Review changes" button, it carries its own
+    // Accept, and a document sits beside the sidebar rather than over it — so
+    // leaving it out would mean this task's own control opened a second Accept.
+    ChangeReviewDocumentProvider.ID
+  ]);
 
   const stop = useCallback(() => {
     if (planningRequest) planAbortRef.current?.abort();
@@ -672,21 +716,47 @@ export function AiAuthoringPanel({ width = 'panel' }: AiAuthoringPanelProps = {}
               onChange={(event) => setRefineText(event.target.value)}
               onEnter={refine}
             />
-            <HStack UNSAFE_style={{ gap: 8, flexWrap: 'wrap' }}>
-              <PrimaryButton label="Accept" icon={IconName.Check} onClick={accept} />
-              <PrimaryButton label="Review changes" variant={PrimaryButtonVariant.Ghost} onClick={openReview} />
-              {/* BLD-003 D3: nothing has been written, so discarding destroys
-                  nothing — and red means danger. The Docs panel already got
-                  this right one screen over. */}
-              <PrimaryButton label="Discard" variant={PrimaryButtonVariant.Ghost} onClick={discard} />
-            </HStack>
+            {/* BLD-003 D2: exactly one surface owns these at a time, and it is
+                whichever one is showing the candidate. With the preview canvas
+                up, the decision belongs beside the graph it is about — the card
+                says where the buttons went rather than going quiet, because a
+                card that simply dropped them reads as a candidate that can no
+                longer be accepted. */}
+            {owner === 'thread' ? (
+              <HStack UNSAFE_style={{ gap: 8, flexWrap: 'wrap' }}>
+                <PrimaryButton label={acceptLabel(turn.outcome.mode)} icon={IconName.Check} onClick={accept} />
+                <PrimaryButton label={REVIEW_LABEL} variant={PrimaryButtonVariant.Ghost} onClick={openReview} />
+                {/* D3: nothing has been written, so discarding destroys nothing
+                    — and red means danger. The Docs panel already got this
+                    right one screen over. */}
+                <PrimaryButton label={DISCARD_LABEL} variant={PrimaryButtonVariant.Ghost} onClick={discard} />
+              </HStack>
+            ) : (
+              <Text textType={TextType.Shy}>
+                {AppRegistry.instance.CurrentDocumentId === ChangeReviewDocumentProvider.ID
+                  ? ON_REVIEW_NOTE
+                  : ON_CANVAS_NOTE}
+              </Text>
+            )}
           </VStack>
         );
       }
 
       return undefined;
     },
-    [lastPlanTurnId, isConfigured, hasProject, canDecide, refineText, state?.busy, refine, accept, openReview, discard]
+    [
+      lastPlanTurnId,
+      isConfigured,
+      hasProject,
+      canDecide,
+      owner,
+      refineText,
+      state?.busy,
+      refine,
+      accept,
+      openReview,
+      discard
+    ]
   );
 
   return (

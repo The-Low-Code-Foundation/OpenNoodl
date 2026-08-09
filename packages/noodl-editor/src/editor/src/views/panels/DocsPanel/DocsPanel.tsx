@@ -60,8 +60,14 @@ import { AiAuthoringPanel_ID } from '../AiAuthoringPanel/AiAuthoringPanel';
 import { ProjectReviewBanner } from '../AiAuthoringPanel/ProjectReviewBanner';
 import { ReviewCoverageSummary } from '../AiAuthoringPanel/ProjectReviewView';
 import css from './DocsPanel.module.scss';
+import { DOCS_PATH_EVENT, takeRequestedDocPath } from './docsPanelRoute';
 
-export const DocsPanel_ID = 'project-docs';
+/**
+ * BLD-003 moved the id into `docsPanelRoute` so that module can route here
+ * without importing the panel. Re-exported under the name the rest of the
+ * editor already uses.
+ */
+export { DOCS_PANEL_ID as DocsPanel_ID } from './docsPanelRoute';
 
 const EVENT_GROUP = 'docs-panel';
 
@@ -104,7 +110,9 @@ export function DocsPanel() {
   const docs = useProjectDocs();
 
   const [entries, setEntries] = useState<DocEntry[]>([]);
-  const [selected, setSelected] = useState<string>(KNOWN_DOCS[0].path);
+  // BLD-003: a route request wins over the default, and it is read in the
+  // initialiser so a first mount never renders the wrong file first.
+  const [selected, setSelected] = useState<string>(() => takeRequestedDocPath() ?? KNOWN_DOCS[0].path);
   const [mode, setMode] = useState<ViewMode>('rendered');
   const [content, setContent] = useState<string | undefined>(undefined);
   /** The exact bytes the buffer was loaded from — the write's drift baseline. */
@@ -172,6 +180,26 @@ export function DocsPanel() {
       docs.off(EVENT_GROUP + ':changed');
     };
   }, [docs, selected]);
+
+  /**
+   * BLD-003 — an already-mounted panel follows the route too.
+   *
+   * ⚠️ Sidebar panels are hidden, not unmounted, so the initialiser above runs
+   * once per editor session and every route request after the first would be
+   * dropped without this. `reviewing` is cleared with it: that is the *other*
+   * way this panel picks a proposal (a click in its own list), and leaving a
+   * stale one set would show the diff for a file the user did not ask for.
+   */
+  useEffect(() => {
+    const onRequested = () => {
+      const path = takeRequestedDocPath();
+      if (!path) return;
+      setReviewing(null);
+      setSelected(path);
+    };
+    window.addEventListener(DOCS_PATH_EVENT, onRequested);
+    return () => window.removeEventListener(DOCS_PATH_EVENT, onRequested);
+  }, []);
 
   useEffect(() => {
     const store = DocProposalStore.instance;

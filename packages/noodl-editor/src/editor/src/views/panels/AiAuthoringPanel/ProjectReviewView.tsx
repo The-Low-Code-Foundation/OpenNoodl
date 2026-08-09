@@ -32,7 +32,16 @@ import {
   type ProjectReviewState
 } from '@noodl-models/AiAssistant/review';
 import type { ProjectReviewRun } from '@noodl-models/AiAssistant/review';
+import { acceptLabel, DISCARD_LABEL, REVIEW_LABEL } from '@noodl-models/AiAssistant/thread';
 import { ProjectModel } from '@noodl-models/projectmodel';
+
+import {
+  currentProjectDocsModel,
+  DOC_PROPOSALS_CHANGED,
+  DocProposalStore,
+  type DocProposal
+} from '../../../models/ProjectDocs';
+import { openDocsPanelAt } from '../DocsPanel/docsPanelRoute';
 
 import { FeedbackType } from '@noodl-constants/FeedbackType';
 import { Icon, IconName, IconSize } from '@noodl-core-ui/components/common/Icon';
@@ -165,8 +174,19 @@ export function ProjectReviewView({
 }: ProjectReviewViewProps) {
   const [state, setState] = useState<ProjectReviewState | null>(() => ProjectReviewStore.instance.getState());
   const [note, setNote] = useState<{ text: string; type: FeedbackType } | null>(null);
-  const [staged, setStaged] = useState<number | null>(null);
   const runRef = useRef<ProjectReviewRun | null>(null);
+
+  // ── BLD-003 D8: the drafts are decided here, not handed to another panel ────
+  //
+  // What was here was a button reading "Review 3 drafts in the Docs panel" and,
+  // after it, the sentence "3 documents are waiting in the Docs panel". Both
+  // are the same instruction: go somewhere else to decide something you are
+  // already looking at. The drafts are now staged as soon as the run finishes
+  // and each one carries its own Accept / Review changes / Discard.
+  const [proposals, setProposals] = useState<readonly DocProposal[]>(() => DocProposalStore.instance.list());
+  /** What the user did with each path, since an answered proposal leaves the store. */
+  const [decided, setDecided] = useState<Record<string, 'accepted' | 'discarded'>>({});
+  const stagingRef = useRef(false);
 
   useEffect(() => {
     const store = ProjectReviewStore.instance;
@@ -179,11 +199,21 @@ export function ProjectReviewView({
 
   useEffect(() => () => runRef.current?.dispose(), []);
 
+  useEffect(() => {
+    const store = DocProposalStore.instance;
+    const context = {};
+    store.on(DOC_PROPOSALS_CHANGED, () => setProposals([...store.list()]), context);
+    return () => {
+      store.off(context);
+    };
+  }, []);
+
   const start = useCallback(async () => {
     const project = ProjectModel.instance;
     if (!project) return;
     setNote(null);
-    setStaged(null);
+    setDecided({});
+    stagingRef.current = false;
     try {
       const { run } = await startProjectReview(project);
       runRef.current = run;
@@ -211,26 +241,64 @@ export function ProjectReviewView({
     void start();
   }, [startImmediately, hasProject, isConfigured, start]);
 
-  const stage = useCallback(async () => {
-    if (!state) return;
-    try {
-      const result = await stageReviewDrafts(state);
-      setStaged(result.length);
-      setNote({
-        text:
-          result.length === 0
-            ? 'Nothing to review — no document was drafted.'
-            : `${result.length} document${result.length === 1 ? '' : 's'} are waiting in the Docs panel. Accept or reject each one; nothing is written until you do.`,
-        type: FeedbackType.Success
-      });
-    } catch (error) {
-      setNote({ text: error instanceof Error ? error.message : String(error), type: FeedbackType.Danger });
-    }
-  }, [state]);
-
   const busy = Boolean(state?.busy);
   const authored = state?.drafts.filter((d) => d.status === 'authored') ?? [];
   const finished = state?.phase === 'done' || state?.phase === 'cancelled';
+
+  /**
+   * Stage the drafts the moment the run finishes, rather than behind a button.
+   *
+   * ⚠️ Staging writes nothing. `proposeDocChange` reads the file to get a
+   * truthful baseline and holds the proposal in memory — the AIX-009 guarantee
+   * is that *reject leaves the file byte-identical*, and it holds because
+   * nothing on this path touches disk. So there is no decision to gate behind a
+   * click here, which is why the click could go: it was asking permission to
+   * prepare a diff.
+   *
+   * The ref guard is not belt-and-braces. This effect depends on `state`, which
+   * changes identity on every store notification, and `proposeDocChange`
+   * replaces the pending proposal for a path — so an unguarded second pass
+   * would silently swap the proposal the user is mid-decision on for a fresh
+   * one with a new id.
+   */
+  useEffect(() => {
+    if (!finished || !state || authored.length === 0 || stagingRef.current) return;
+    stagingRef.current = true;
+    void (async () => {
+      try {
+        await stageReviewDrafts(state);
+      } catch (error) {
+        setNote({ text: error instanceof Error ? error.message : String(error), type: FeedbackType.Danger });
+      }
+    })();
+  }, [finished, state, authored.length]);
+
+  const proposalFor = useCallback(
+    (path: string) => proposals.find((proposal) => proposal.path === path),
+    [proposals]
+  );
+
+  const acceptDraft = useCallback(async (proposal: DocProposal) => {
+    const docs = currentProjectDocsModel();
+    if (!docs) {
+      setNote({ text: 'There is no docs folder to write to.', type: FeedbackType.Danger });
+      return;
+    }
+    try {
+      await DocProposalStore.instance.accept(proposal.id, docs);
+      setDecided((previous) => ({ ...previous, [proposal.path]: 'accepted' }));
+    } catch (error) {
+      // A `DocsConflictError` means the file moved under the proposal. It stays
+      // pending and the file is untouched, so the honest thing is to say so and
+      // leave the buttons where they are.
+      setNote({ text: error instanceof Error ? error.message : String(error), type: FeedbackType.Danger });
+    }
+  }, []);
+
+  const discardDraft = useCallback((proposal: DocProposal) => {
+    DocProposalStore.instance.reject(proposal.id);
+    setDecided((previous) => ({ ...previous, [proposal.path]: 'discarded' }));
+  }, []);
 
   return (
     <>
@@ -289,6 +357,8 @@ export function ProjectReviewView({
                   const { icon, variant } = draftIcon(draft);
                   const detail = draftDetail(draft);
                   const isCurrent = state.current === draft.kind && state.busy;
+                  const proposal = draft.status === 'authored' ? proposalFor(draft.path) : undefined;
+                  const outcome = decided[draft.path];
                   return (
                     <VStack key={draft.kind} UNSAFE_style={{ gap: 2 }}>
                       <HStack UNSAFE_style={{ alignItems: 'center', gap: 6 }}>
@@ -306,6 +376,45 @@ export function ProjectReviewView({
                           the diff.
                         </Text>
                       )}
+
+                      {/* BLD-003 — the decision on this draft, on this draft.
+                          `proposal` is the subject: while one is pending the
+                          file is untouched and both answers are still open, so
+                          the controls belong here and nowhere else. */}
+                      {proposal && (
+                        <HStack UNSAFE_style={{ gap: 8, flexWrap: 'wrap', marginTop: 4 }}>
+                          <PrimaryButton
+                            label={acceptLabel(proposal.baseline === null ? 'create' : 'update')}
+                            size={PrimaryButtonSize.Small}
+                            icon={IconName.Check}
+                            isFitContent
+                            onClick={() => void acceptDraft(proposal)}
+                          />
+                          <PrimaryButton
+                            label={REVIEW_LABEL}
+                            size={PrimaryButtonSize.Small}
+                            variant={PrimaryButtonVariant.Ghost}
+                            isFitContent
+                            onClick={() => openDocsPanelAt(proposal.path)}
+                          />
+                          <PrimaryButton
+                            label={DISCARD_LABEL}
+                            size={PrimaryButtonSize.Small}
+                            variant={PrimaryButtonVariant.Ghost}
+                            isFitContent
+                            onClick={() => discardDraft(proposal)}
+                          />
+                        </HStack>
+                      )}
+                      {!proposal && outcome === 'accepted' && (
+                        <HStack UNSAFE_style={{ alignItems: 'center', gap: 6 }}>
+                          <Icon icon={IconName.Check} variant={FeedbackType.Success} size={IconSize.Small} />
+                          <Text textType={TextType.Shy}>Written — one undo puts the previous version back.</Text>
+                        </HStack>
+                      )}
+                      {!proposal && outcome === 'discarded' && (
+                        <Text textType={TextType.Shy}>Discarded — the file is untouched.</Text>
+                      )}
                     </VStack>
                   );
                 })}
@@ -319,19 +428,14 @@ export function ProjectReviewView({
               </HStack>
             )}
 
-            {finished && authored.length > 0 && staged === null && (
-              <VStack UNSAFE_style={{ gap: 6 }}>
-                <Text textType={TextType.Shy}>
-                  Read the coverage above before you read the drafts — every TODO line is a question the graph
-                  could not answer.
-                </Text>
-                <PrimaryButton
-                  label={`Review ${authored.length} draft${authored.length === 1 ? '' : 's'} in the Docs panel`}
-                  icon={IconName.File}
-                  isGrowing
-                  onClick={() => void stage()}
-                />
-              </VStack>
+            {/* The hand-off's remaining half: the advice, without the errand.
+                It sits above the drafts' own controls rather than replacing
+                them, because it is about how to read them, not where to go. */}
+            {finished && authored.length > 0 && (
+              <Text textType={TextType.Shy}>
+                Read the coverage above before you read the drafts — every TODO line is a question the graph
+                could not answer. Nothing is written until you accept each file.
+              </Text>
             )}
 
             {finished && authored.length === 0 && (

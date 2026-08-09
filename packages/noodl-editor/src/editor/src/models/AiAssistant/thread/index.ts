@@ -9,6 +9,15 @@
  * @module AiAssistant/thread
  */
 
+export {
+  acceptLabel,
+  decisionOwner,
+  DISCARD_LABEL,
+  ON_CANVAS_NOTE,
+  ON_REVIEW_NOTE,
+  REVIEW_LABEL
+} from './decisions';
+export type { DecisionOwner } from './decisions';
 export { classifyPlan, decideIntent, summarisePlan } from './intent';
 export type { IntentDecision } from './intent';
 export {

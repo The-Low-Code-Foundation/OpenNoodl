@@ -29,6 +29,7 @@ import {
   type RevealItem
 } from '@noodl-models/AiAssistant/authoring';
 import { AppRegistry, IDocumentProvider } from '@noodl-models/app_registry';
+import { acceptLabel, DISCARD_LABEL, REVIEW_LABEL } from '@noodl-models/AiAssistant/thread';
 
 import { FeedbackType } from '@noodl-constants/FeedbackType';
 import { ActivityIndicator } from '@noodl-core-ui/components/common/ActivityIndicator';
@@ -48,7 +49,16 @@ import { SandboxPreview } from './SandboxPreview';
 export interface AuthoringPreviewDocumentProps {
   session: AuthoringSession;
   onAccept: () => void;
-  onReject: () => void;
+  /**
+   * BLD-003 D3 — `onDiscard`, not `onReject`.
+   *
+   * The rename is not cosmetic. The two surfaces offering this decision had
+   * drifted to different words for it — the thread said "Discard", this bar
+   * still said "Reject" — and one of the two places that drift lives is the
+   * name the code uses for the callback. The labels now come from
+   * `AiAssistant/thread/decisions`; this makes the prop agree with them.
+   */
+  onDiscard: () => void;
   onOpenReview: () => void;
 }
 
@@ -89,7 +99,7 @@ function statusLine(state: AuthoringSessionState): { text: string; type: Feedbac
   }
 }
 
-function AuthoringPreviewDocument({ session, onAccept, onReject, onOpenReview }: AuthoringPreviewDocumentProps) {
+function AuthoringPreviewDocument({ session, onAccept, onDiscard, onOpenReview }: AuthoringPreviewDocumentProps) {
   const [nodeGraph] = useState<NodeGraphEditor>(() => {
     const ng = new NodeGraphEditor({});
     ng.setReadOnly(true);
@@ -190,11 +200,22 @@ function AuthoringPreviewDocument({ session, onAccept, onReject, onOpenReview }:
           {state.busy && (
             <PrimaryButton label="Stop" variant={PrimaryButtonVariant.Ghost} onClick={() => session.cancel()} />
           )}
+          {/*
+            * BLD-003 — the same three decisions the thread's card offers, in the
+            * same words, from the same module. This bar renders them because the
+            * document is open, and `decisionOwner` is what tells the card to
+            * stand down while it is; the two are one rule read from one fact,
+            * not two components agreeing by luck.
+            *
+            * D3: Discard is `Ghost`, not `Danger`. Discarding is the absence of
+            * an accept call — nothing has been written — and per phase 23 red
+            * means danger.
+            */}
           {canDecide && (
             <>
-              <PrimaryButton label="Review changes" variant={PrimaryButtonVariant.MutedOnLowBg} onClick={onOpenReview} />
-              <PrimaryButton label="Accept" onClick={onAccept} />
-              <PrimaryButton label="Reject" variant={PrimaryButtonVariant.Danger} onClick={onReject} />
+              <PrimaryButton label={REVIEW_LABEL} variant={PrimaryButtonVariant.Ghost} onClick={onOpenReview} />
+              <PrimaryButton label={acceptLabel(state.mode)} onClick={onAccept} />
+              <PrimaryButton label={DISCARD_LABEL} variant={PrimaryButtonVariant.Ghost} onClick={onDiscard} />
             </>
           )}
           <PrimaryButton label="Close" variant={PrimaryButtonVariant.MutedOnLowBg} onClick={exit} />
