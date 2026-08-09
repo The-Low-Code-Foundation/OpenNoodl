@@ -58,6 +58,17 @@ placeholders (**B26** — and it is almost certainly session 4's unexplained `Si
 and closing the change-review document makes the AI preview unreachable for the rest of the session,
 taking the user's typed sample data with it (**B27**). **Only BEN-007 remains.**
 
+**Session 7 (2026-08-09):** **BEN-007 is driven and the phase is complete, 7 of 7** — see
+[HANDOVER-SESSION-7.md](HANDOVER-SESSION-7.md). Twelve of thirteen criteria closed with a measured
+number or a screenshot; **§C is a human gate** (two cropped screenshots are committed for it) and is
+the only thing in the phase a machine cannot close. No source file changed. **B3 and B8 finally have
+their measurement** (**B28** — stretch behaves like a flex parent, and the frame is exact to the
+pixel), **B16 turns out to be every preview surface's trap, not the bench's** (a read is *one edit
+behind*), and two things happened **once each** with two hypotheses apiece refuted: the app preview
+reloaded mid-session (**B29**) and one Apply in four rendered a broken AI preview (**B30**). Also
+**B31** (a bench input can arrive, be saved, and be ignored — and the bench is right both times) and
+**B32** (R2 has a number, and the *default* frame is its weakest case).
+
 | Task | File | One line | State |
 |---|---|---|---|
 | BEN-001 ⭐ | [BEN-001-HARNESS-MOUNT.md](BEN-001-HARNESS-MOUNT.md) | the synthetic harness: mount any component as root *with* its inputs set | ✅ **built and driven**, 19 specs; Live 6 closed (320 measures 320) and **Live 5 closed by BEN-002's drive** — a value set on the harness reaches the mounted component's DOM |
@@ -66,7 +77,7 @@ taking the user's typed sample data with it (**B27**). **Only BEN-007 remains.**
 | BEN-004 ⭐ | [BEN-004-BENCH-SURFACE.md](BEN-004-BENCH-SURFACE.md) | the mode selector, the stage chrome, the way back — R1–R5 live here | ✅ **built and driven**, 18 specs; see B6–B10 |
 | BEN-005 | [BEN-005-SCENARIOS.md](BEN-005-SCENARIOS.md) | named input sets saved to component metadata (Empty / Loaded / Error) | ✅ **built and driven**, 34 specs; every criterion measured live, and B13's remount branch finally has a case (B21) |
 | BEN-006 ⭐ | [BEN-006-AUTHORED-SAMPLE-DATA.md](BEN-006-AUTHORED-SAMPLE-DATA.md) | **Richard's ask**: the user edits the sample data in the AI preview and re-renders | ✅ **built and driven**, 28 specs; every Live criterion closed, and the drive fixed B25 and filed B26/B27 |
-| BEN-007 | [BEN-007-ACCEPTANCE.md](BEN-007-ACCEPTANCE.md) | the live-driving pass the phase closes on | 📋 not started |
+| BEN-007 | [BEN-007-ACCEPTANCE.md](BEN-007-ACCEPTANCE.md) | the live-driving pass the phase closes on | ✅ **driven, 12 of 13** — every criterion but §C has a number or a screenshot; **§C is a human gate** and its two screenshots are committed. B3/B8 closed, B28–B32 filed |
 
 ## Dependency map
 

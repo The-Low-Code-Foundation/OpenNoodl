@@ -1,6 +1,20 @@
 # BEN-007 — The acceptance pass the phase closes on
 
-**Status:** 📋 not started · runs last, on a live editor · depends on everything
+**Status:** ✅ **DRIVEN 2026-08-09, 12 of 13** — every criterion below except **§C** has a measured
+number or a screenshot behind it, recorded in [HANDOVER-SESSION-7.md](HANDOVER-SESSION-7.md).
+**§C is a human gate and stays open**: it needs someone who did not build this, which is the whole
+reason it is written that way. Its two screenshots are committed under `screenshots/`.
+
+⚠️ **Criterion 5 says "no reload" and that is true only in the common case.** Applying a scenario
+reloads the bench window **on purpose** when a name being cleared has no derived default (register
+B21) — `applyValueSet` bumps `revision` *and* `remountKey` there. The two scenarios driven here carry
+the same key set, so nothing was cleared and nothing reloaded. Do not read the criterion as a
+promise that a scenario switch never reloads.
+
+⚠️ **Criterion 6's stated evidence is weaker than it looks.** The route lives in the URL hash, so it
+survives a reload — "the route is still there" would read green on a preview that had been torn down
+and rebuilt. The drive planted a JS marker and typed form values as well, and that is what caught
+**B29**. Anything re-running this criterion should do the same.
 
 ## Why this is a task and not a checkbox
 
@@ -78,8 +92,14 @@ Both runners, and **do not conflate them** — the phase-55 handover did:
 
 ## Closing
 
-- [ ] Every criterion above has its evidence recorded, not asserted.
-- [ ] Anything filed-not-fixed has a **row** in the phase README register, with its blocker named.
-      Phase-55 **B1/F22** in particular: if the shared render-report module still cannot be imported
-      by the editor bundle, say so and use screenshots — do not quietly drop the evidence standard.
-- [ ] A handover written for whoever picks this up, stating what was measured and what was inferred.
+- [x] Every criterion above has its evidence recorded, not asserted — **except §C/9 and §C/10**,
+      which are a human gate and are recorded as open.
+- [x] Anything filed-not-fixed has a **row** in the phase README register, with its blocker named:
+      **B28** (stretch and the frame, closing B3 and B8), **B29** (an unattributed app-preview
+      reload), **B30** (an unattributed broken Apply), **B31** (a delivered-and-ignored bench input),
+      **B32** (R2 measured, and where it is weakest). **B1/F22 is still open** — the shared
+      render-report module is unchanged CJS under `scripts/` and nothing in the editor bundle imports
+      it, so this drive read the sandbox webview's own DOM over CDP and took screenshots, and says so
+      in B1 rather than quietly dropping the standard.
+- [x] A handover written for whoever picks this up, stating what was measured and what was inferred:
+      [HANDOVER-SESSION-7.md](HANDOVER-SESSION-7.md).
