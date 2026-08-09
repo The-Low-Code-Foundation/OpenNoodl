@@ -109,6 +109,11 @@ const Node = function Node(this: RuntimeNode, context: RuntimeNodeContext, id: s
 
   // Expression subscriptions: { [portName]: { unsub: unsubscribeFn, expression: string } }
   this._expressionSubscriptions = {};
+
+  // Ports currently showing an `expression-error-<port>` warning in the editor. Lazily
+  // created, because most nodes never raise one and this is allocated per node instance.
+  // See `_clearExpressionError` for why the subscription map above cannot answer this.
+  this._expressionErrorPorts = null;
 } as unknown as NodeConstructor;
 
 Node.prototype.getInputValue = function (name) {
@@ -201,6 +206,53 @@ Node.prototype.deregisterRunOnValueChangeInput = function (inputName) {
   delete this._runOnValueChange[inputName];
 };
 
+/** Raise (or refresh) the expression error the editor draws on this port. */
+Node.prototype._raiseExpressionError = function (portName, message) {
+  if (!this.context || !this.context.editorConnection) return;
+
+  this.context.editorConnection.sendWarning(
+    this.nodeScope.componentOwner.name,
+    this.id,
+    'expression-error-' + portName,
+    {
+      showGlobally: true,
+      message
+    }
+  );
+
+  if (this._expressionErrorPorts === null) this._expressionErrorPorts = {};
+  this._expressionErrorPorts[portName] = true;
+};
+
+/**
+ * Take back the expression error on this port, if one is up.
+ *
+ * ⚠️ Guarded on a marker rather than cleared unconditionally, because the caller that
+ * matters is the *plain value* path — every input set in the runtime, several per frame
+ * for anything animated. Unguarded, each one would build the `'expression-error-' + port`
+ * key and call through to `EditorConnection`, for a node that has never seen an
+ * expression. `ActiveWarnings` would swallow the message, but only after the work.
+ *
+ * The marker is its own state because `_expressionSubscriptions` cannot stand in for it:
+ * an expression is only subscribed when it has dependencies to watch, and an expression
+ * that fails to *compile* — the case this whole path exists for — never gets that far.
+ */
+Node.prototype._clearExpressionError = function (portName) {
+  if (this._expressionErrorPorts === null || !this._expressionErrorPorts[portName]) return;
+
+  delete this._expressionErrorPorts[portName];
+
+  // `nodeScope` is checked because this also runs during teardown, where a throw would
+  // take the rest of the delete handling with it.
+  if (this.context && this.context.editorConnection && this.nodeScope && this.nodeScope.componentOwner) {
+    this.context.editorConnection.clearWarning(
+      this.nodeScope.componentOwner.name,
+      this.id,
+      'expression-error-' + portName
+    );
+  }
+};
+
 /**
  * Evaluate an expression parameter and return the coerced result.
  * Also sets up reactive subscriptions so the node updates when dependencies change.
@@ -218,6 +270,17 @@ Node.prototype._evaluateExpressionParameter = function (paramValue, portName) {
       }
       delete this._expressionSubscriptions[portName];
     }
+
+    // ⚠️ And take back the error, which used to outlive the expression that caused it.
+    // Pressing `fx` on a field that already holds prose makes that prose the expression,
+    // and prose does not parse — so the error is right, and the author's fix is to press
+    // `fx` again. That writes the literal back through here, where the early return above
+    // used to end the story: the warning stayed raised, so the node kept its dotted ring
+    // and the Problems panel kept quoting a JavaScript error about a field that is no
+    // longer JavaScript. The same door lets a *deleted* parameter out — it comes back as
+    // the port's default, which is also a plain value.
+    this._clearExpressionError(portName);
+
     return paramValue; // Simple value, return as-is
   }
 
@@ -232,17 +295,11 @@ Node.prototype._evaluateExpressionParameter = function (paramValue, portName) {
     const compiled = compileExpression(paramValue.expression);
     if (!compiled) {
       console.warn(`Expression compilation failed for ${this.name}.${portName}: ${paramValue.expression}`);
+      // Guarded, not left to `_raiseExpressionError`: re-parsing the source just to name
+      // the syntax error is only worth doing for an editor that will show it.
       if (this.context && this.context.editorConnection) {
         const syntax = validateExpression(paramValue.expression);
-        this.context.editorConnection.sendWarning(
-          this.nodeScope.componentOwner.name,
-          this.id,
-          'expression-error-' + portName,
-          {
-            showGlobally: true,
-            message: `Expression error: ${syntax.error || 'could not compile expression'}`
-          }
-        );
+        this._raiseExpressionError(portName, `Expression error: ${syntax.error || 'could not compile expression'}`);
       }
       return paramValue.fallback;
     }
@@ -297,13 +354,7 @@ Node.prototype._evaluateExpressionParameter = function (paramValue, portName) {
     }
 
     // Clear any previous expression errors
-    if (this.context && this.context.editorConnection) {
-      this.context.editorConnection.clearWarning(
-        this.nodeScope.componentOwner.name,
-        this.id,
-        'expression-error-' + portName
-      );
-    }
+    this._clearExpressionError(portName);
 
     return coercedValue;
   } catch (error) {
@@ -311,17 +362,7 @@ Node.prototype._evaluateExpressionParameter = function (paramValue, portName) {
     console.warn(`Expression evaluation failed for ${this.name}.${portName}:`, error);
 
     // Show warning in editor
-    if (this.context && this.context.editorConnection) {
-      this.context.editorConnection.sendWarning(
-        this.nodeScope.componentOwner.name,
-        this.id,
-        'expression-error-' + portName,
-        {
-          showGlobally: true,
-          message: `Expression error: ${(error as Error).message}`
-        }
-      );
-    }
+    this._raiseExpressionError(portName, `Expression error: ${(error as Error).message}`);
 
     // Return fallback value
     return paramValue.fallback;
@@ -1100,6 +1141,16 @@ Node.prototype._onNodeDeleted = function () {
     }
   }
   this._expressionSubscriptions = {};
+
+  // ⚠️ And take the expression errors down with the instance that raised them. Warnings are
+  // keyed by node *id*, which outlives any one instance — an unmounted node with a broken
+  // expression used to leave its error in the Problems panel with nothing left to fix it on.
+  // It also keeps `_expressionErrorPorts` honest: because nothing survives the instance, a
+  // fresh instance starting with an empty marker is starting with an empty warning list too,
+  // which is what lets `_clearExpressionError` trust the marker instead of always clearing.
+  for (const portName in this._expressionErrorPorts) {
+    this._clearExpressionError(portName);
+  }
 
   for (const deleteListener of this._deleteListeners) {
     deleteListener.call(this);

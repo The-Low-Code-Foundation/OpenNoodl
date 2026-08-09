@@ -186,15 +186,85 @@ describe('Node Expression Evaluation', () => {
         );
       });
 
-      it('clears warnings on successful evaluation', () => {
-        const expr = createExpressionParameter('10 + 5', 0);
-        node._evaluateExpressionParameter(expr, 'numberInput');
+      // This used to assert the clear on *every* successful evaluation, which the code did
+      // do — and which `EditorConnection.clearWarning` then dropped, because `ActiveWarnings`
+      // had no such warning recorded and returned false before reaching the wire. So the call
+      // was never observable; what is observable is that a fixed expression stops warning.
+      it('clears the warning when a failing expression starts evaluating', () => {
+        node._evaluateExpressionParameter(createExpressionParameter('10 +', 0), 'numberInput');
+        mockContext.editorConnection.clearWarning.mockClear();
+
+        node._evaluateExpressionParameter(createExpressionParameter('10 + 5', 0), 'numberInput');
 
         expect(mockContext.editorConnection.clearWarning).toHaveBeenCalledWith(
           'TestComponent',
           'test-node-1',
           'expression-error-numberInput'
         );
+      });
+
+      // The node id outlives the node *instance*, so an error left raised by an unmounted
+      // node had nothing left to clear it and sat in the Problems panel indefinitely.
+      it('clears the expression error when the node is deleted', () => {
+        node._evaluateExpressionParameter(createExpressionParameter('undefined.foo', 0), 'numberInput');
+        mockContext.editorConnection.clearWarning.mockClear();
+
+        node._onNodeDeleted();
+
+        expect(mockContext.editorConnection.clearWarning).toHaveBeenCalledWith(
+          'TestComponent',
+          'test-node-1',
+          'expression-error-numberInput'
+        );
+      });
+
+      // The reported bug: `fx` on a field that already holds prose turns that prose into
+      // the expression, which of course does not parse — that error is correct. Turning
+      // `fx` back off writes the literal back, and the literal is not JavaScript, so the
+      // error describing it is no longer about anything. It used to survive anyway: the
+      // early return for a non-expression value cleaned up the subscription and returned,
+      // leaving `expression-error-<port>` raised. The node stayed dotted, and the Problems
+      // panel kept quoting a syntax error for a field the author was typing plain text into.
+      it('clears the expression error when the port goes back to a plain value', () => {
+        node.setInputValue('stringInput', createExpressionParameter('Hello world', 'Hello world'));
+        expect(mockContext.editorConnection.sendWarning).toHaveBeenCalledWith(
+          'TestComponent',
+          'test-node-1',
+          'expression-error-stringInput',
+          expect.anything()
+        );
+
+        mockContext.editorConnection.clearWarning.mockClear();
+        node.setInputValue('stringInput', 'Hello world');
+
+        expect(mockContext.editorConnection.clearWarning).toHaveBeenCalledWith(
+          'TestComponent',
+          'test-node-1',
+          'expression-error-stringInput'
+        );
+      });
+
+      // Same escape, different door: removing the parameter altogether resets the port to
+      // its default, which arrives here as a plain value too.
+      it('clears the expression error when the parameter is reset to its default', () => {
+        node.setInputValue('numberInput', createExpressionParameter('10 +', 0));
+        mockContext.editorConnection.clearWarning.mockClear();
+
+        node.setInputValue('numberInput', 0);
+
+        expect(mockContext.editorConnection.clearWarning).toHaveBeenCalledWith(
+          'TestComponent',
+          'test-node-1',
+          'expression-error-numberInput'
+        );
+      });
+
+      // The clear is not free — it is a WebSocket message and a Problems-panel re-render —
+      // and every plain input set in the runtime passes through the same early return.
+      it('does not clear anything for a port that never carried an expression', () => {
+        node.setInputValue('stringInput', 'just text');
+
+        expect(mockContext.editorConnection.clearWarning).not.toHaveBeenCalled();
       });
     });
 

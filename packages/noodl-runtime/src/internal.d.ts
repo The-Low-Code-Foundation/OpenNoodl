@@ -206,6 +206,8 @@ export interface RuntimeNode extends NodeInstance {
   _isFirstUpdate: boolean;
   _valuesFromConnections: Record<string, unknown>;
   _expressionSubscriptions: Record<string, ExpressionSubscription>;
+  /** Ports with an `expression-error-<port>` warning currently raised. Null until the first one. */
+  _expressionErrorPorts: Record<string, true> | null;
   /** NDA-017 §2. Deliberate answers only; absent reads as ticked. */
   _runOnValueChange: Record<string, boolean>;
   /**
@@ -254,6 +256,8 @@ export interface RuntimeNode extends NodeInstance {
   removeInputConnection(inputName: string, sourceNodeId: string, sourcePortName: string): void;
 
   _evaluateExpressionParameter(paramValue: unknown, portName: string): unknown;
+  _raiseExpressionError(portName: string, message: string): void;
+  _clearExpressionError(portName: string): void;
   _updateDependencies(): void;
   _performDirtyUpdate(): void;
   /** `causeSeq` is OBS-001's trace id for the edge that carried this value; omitted when not tracing. */
