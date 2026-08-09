@@ -32,7 +32,7 @@ group.
 |---|---|---|---|
 | [44 — The Compute Ceiling](phase-44-compute-ceiling/README.md) | M | ~6 | A cloud function can't import anything, **and two functions can't share a line of code**. Curated kit + danger mode + project `lib/`. |
 | [45 — Streaming](phase-45-streaming/README.md) | S | ~3 | A cloud function can't emit a stream. Gates the entire AI-app category. |
-| [46 — Verification](phase-46-verification/README.md) | V | ~7.5 (3.5 + 4) | Nothing can be proven. The one that makes the AI story honest. |
+| [46 — Verification](phase-46-verification/README.md) | V | **~11 (3.5 + 3.5 + 4)** | Nothing can be proven. The one that makes the AI story honest. ⚠️ **Re-scoped 2026-08-09: Tier 1.5 added** (VER-009…013, ~3.5 wks) — phase 56 shipped the component mount, the outputs read-out and named input scenarios, so *a scenario is a test case missing one field*. The cheap slice is **VER-009+011 at ~1.5 wks**. |
 | [47 — Internationalisation](phase-47-internationalisation/README.md) | I | ~7 | No i18n at all — and the one axis where the graph beats code structurally. |
 | [48 — The Data Ceiling](phase-48-data-ceiling/README.md) | D | **~12** | No vector search, no multi-collection reads, no schema history. ⚠️ DAT-002/006 re-estimated. |
 | [49 — Discovery](phase-49-discovery/README.md) | W | **~6–7** | Sitemap, robots, JSON-LD — and ⚠️ **rewriting the SSR server**, which races on process globals and caches forever. |

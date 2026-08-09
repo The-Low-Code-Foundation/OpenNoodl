@@ -1,7 +1,8 @@
 # Phase 46 — Verification (Track V)
 
 **Created:** 2026-08-06
-**Status:** 📋 Specced, not started — 8 tasks. Post-alpha.
+**Status:** 📋 Specced, not started — **13 tasks**. Post-alpha. Tasks are **[TASKS.md](TASKS.md)**.
+**Amended 2026-08-09:** Tier 1.5 added (VER-009…013, the component half). See below.
 **Origin:** [NODEGX-VS-CODE-A-REAL-APP.md](../../reviews/NODEGX-VS-CODE-A-REAL-APP.md) §4.2, which
 called this *"the one I would put first if I could only keep one"*.
 
@@ -92,6 +93,49 @@ eyesight.
 
 **Tier 1 total: ~3 weeks.** Ships alone and is worth shipping alone.
 
+## Tier 1.5 — components (added 2026-08-09)
+
+**Origin:** Richard, 2026-08-09, on how AI-built projects accumulate a regression suite:
+
+> *"When you build a new visual or logic component, part of the 'checklist' of that component is to
+> design and run a test to make sure the component does what you intended it to do… Every time you
+> make a new component, all the previous component tests run when you declare it done and it flags up
+> which components are now not working the way you intended them to."*
+
+Tier 1 covers cloud functions because a cloud function is already a pure function. **But most of a
+NodeGX project is not a cloud function — it is components**, and Tier 3 below defers the component
+half as Playwright-shaped and expensive.
+
+That was the right call when it was written and it is no longer the situation, because
+**[phase 56](../phase-56-component-bench/README.md) shipped 80% of this without calling it testing.**
+The Component Bench mounts one component in a real runtime, feeds it declared inputs, and — BEN-003 —
+**reads its outputs back rather than only its pixels**. BEN-005 persists a named set of inputs on the
+component as a **scenario**, round-tripped through the project format.
+
+> **A scenario is a test case missing exactly one field.** It has a name, inputs, a declared frame,
+> and it diffs and merges with the component it belongs to. It has no `expect`.
+
+BEN-005 §4 filed the gap itself — *"needs an assertion language this task does not have"* — and this
+tier is that language plus the runner, the reporting and the agent surface around it.
+
+**The authoring model is the differentiator, and it is only available to us.** The builder does not
+write an expectation: they run the scenario, look at the outputs the bench already renders, and press
+**Pin these as expected**. Nobody types a matcher. For an audience that will not write test files
+under any circumstances, that is the only version of this that ever gets used — and it is possible
+only because the platform owns both the runtime and the component's declared interface.
+
+| ID | Title | Est. | Notes |
+|---|---|---|---|
+| **[VER-009](VER-009-A-SCENARIO-GROWS-AN-EXPECTATION.md)** | A scenario grows an expectation | 1 wk | `expect: { outputs, signals }` on BEN-005's scenario, using **VER-001's matchers, imported**. Pinned by looking, never typed. ⚠️ **Its §1 is the load-bearing finding**: the bench's output channel is `previewValue`, a **display dialect capped at 200 characters**, so it cannot carry an assertion — a fidelity read path is the first thing this task builds |
+| **[VER-010](VER-010-THE-COMPONENT-RUNNER.md)** | The component runner: no editor, no display | 1 wk | Three of its four pieces already exist: `render-from-disk.js` mounts a component by name from node, `benchHarness()` is a pure JSON transform, `editor-deps.ts` proves the imports are Electron-free. ⚠️ **Hard-ordered behind VER-002** — a component calling `Now` is as nondeterministic as a function calling it |
+| **[VER-011](VER-011-COVERAGE-IS-INFORMATION.md)** | Coverage is information; only failure is a warning | 3 d | The corrected version of *"an untested component gets an error badge"*. It would light up every component on day one and **teach people to ignore the warning colour** — which is already carrying real defects. Failing warns; untested informs; untestable is silent and out of the denominator |
+| **[VER-012](VER-012-WHAT-DID-I-JUST-BREAK.md)** | What did I just break | 1 wk | Newly-failing vs still-failing, and the part a code suite cannot do: **the blast radius is computable**, because the instance graph is written down. *"You changed Card; 14 components embed it; 6 have scenarios; 2 now fail; 8 were not checked."* ⚠️ The last clause is mandatory |
+| **[VER-013](VER-013-THE-AGENT-PROPOSES-THE-HUMAN-PINS.md)** | The agent proposes the states; the human pins the truth | 3 d | The agent enumerates states from the interface and the graph (`Empty`, `Loaded`, `Long name`, both sides of a condition). It **never** authors an `expect` — an AI that writes the component and the assertion has proved only that the graph does what the graph does. Extends VER-007's tools; adds none |
+
+**Tier 1.5 total: ~3.5 weeks**, and the cheap slice is **VER-009 + VER-011 at ~1.5 weeks** — pinning
+and verdicts in the bench, no CLI, no CI. That is enough to find out whether builders pin anything at
+all, which is worth knowing before spending the other two.
+
 ## Tier 2 — traces (the differentiated part)
 
 [OBS-001](../phase-36-runtime-observability/OBS-001-TRACE-SUBSTRATE.md) already replaced the
@@ -119,9 +163,22 @@ argument for building it.
 
 ## Tier 3 — explicitly not now
 
-Driving the running app and asserting on rendered output. Playwright-shaped, expensive, and the
-value/cost is poor while Tiers 1 and 2 are unbuilt. The platform already has CDP drivers for its own
-QA; app-level E2E for *users* can wait for evidence that anyone wants it.
+Driving the running **app** — navigating routes, filling forms across pages, asserting on the
+assembled result. Playwright-shaped, expensive, and the value/cost is poor while the other tiers are
+unbuilt. The platform already has CDP drivers for its own QA; app-level E2E for *users* can wait for
+evidence that anyone wants it.
+
+⚠️ **Amended 2026-08-09: Tier 1.5 is not this.** A benched component is a single component at a
+declared width in a real runtime, driven by data rather than by clicks — no routing, no page
+assembly, no user journey. It is closer to a unit test than to an E2E one, and phase 56 already
+built the mount. The distinction matters because "assert on rendered output" was the phrase that put
+the entire component half in the not-now bucket.
+
+**Pixel diffing stays out**, and the reason is not cost. Screenshot comparison fails on font hinting,
+antialiasing, a scrollbar and a different OS — so most of its failures are not defects, and a suite
+whose failures are usually noise gets re-run until it goes green. That is worse than no suite,
+because it launders untested code as verified. Tier 1.5 asserts *structurally* instead (something was
+drawn, N rows, no overflow at the declared width, the bound text is in the DOM) — see VER-010 §5.
 
 ## Exit criteria
 
@@ -132,3 +189,7 @@ QA; app-level E2E for *users* can wait for evidence that anyone wants it.
 3. A recorded session from a real bug replays as a failing test, and passes after the fix.
 4. An agent, via MCP, makes a change, runs the tests, sees a failure, and fixes it **without a human
    in the loop** — the first time an agent has been able to prove anything about a NodeGX project.
+5. *(Tier 1.5)* A builder pins expectations on a component by **looking at its outputs and pressing a
+   button**, having written nothing. Weeks later a change to a shared component turns that scenario
+   red, and the report names the component they changed, the consumer that broke, and **how much of
+   the blast radius was never checked at all**.
