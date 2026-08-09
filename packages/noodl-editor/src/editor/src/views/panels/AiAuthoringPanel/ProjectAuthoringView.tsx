@@ -40,7 +40,6 @@ import {
   StagingError,
   validateCandidateComponent,
   type AuthoringPlan,
-  type AuthoringSessionState,
   type ComponentFiles,
   type PlanApplyFailure,
   type PlanOperationState,
@@ -59,6 +58,10 @@ import { fromProjectModel } from '@noodl-models/AiAssistant/explain/graph';
 // barrel, which would drag `ScopingSession` (the AI client) in behind it.
 import { recoverScopePlan, type RecoveredScopePlan } from '@noodl-models/AiAssistant/scoping/recoverPlan';
 import { AppRegistry } from '@noodl-models/app_registry';
+// BLD-005 — the run's own vocabulary: the formatters, the current-operation
+// clause, the honest estimate and the stop sentence, all decided in one pure
+// module so the pinned header and these rows cannot disagree.
+import { authoringDetail, formatCost, formatDuration, operationRole, stopCost } from '@noodl-models/AiAssistant/thread';
 // AIB-007 — the provisioner and the project's current backend pointer.
 import { editorBackendProvisioner } from '@noodl-models/BackendServices/provisionBackend';
 import { createPlanDocWriter, ProjectDocsModel } from '@noodl-models/ProjectDocs';
@@ -90,6 +93,7 @@ import css from './AiAuthoringPanel.module.scss';
 import { adoptScopePlan } from './adoptScopePlan';
 import { ActivityRow } from './thread/BuildThread';
 import { ThreadBody } from './thread/ThreadBody';
+import { useElapsedClock } from './thread/useElapsedClock';
 import { PlanDocReviewDialog } from './PlanDocReviewDialog';
 
 /**
@@ -149,26 +153,11 @@ function operationDetail(state: PlanOperationState): string | undefined {
   return undefined;
 }
 
-/** "4m 12s", "38s" — a duration read at a glance, not parsed. */
-export function formatDuration(ms: number): string {
-  const seconds = Math.max(0, Math.round(ms / 1000));
-  const minutes = Math.floor(seconds / 60);
-  return minutes > 0 ? `${minutes}m ${seconds % 60}s` : `${seconds}s`;
-}
-
-/**
- * AIB-002 — cost, or the honest absence of one.
- *
- * `costUsd` is null when *any* turn had unknown pricing, and rendering that as
- * `$0.00` would tell a user bringing their own key that the plan was free. In
- * an alpha where the cost of a plan is the only thing standing between a user
- * and a surprise invoice, that is not a rounding error.
+/*
+ * BLD-005 — `formatDuration`, `formatCost` and `authoringDetail` moved to
+ * `models/AiAssistant/thread/runProgress.ts`. The pinned header renders the same
+ * three, and a formatter with two copies is a sentence with two authors.
  */
-export function formatCost(costUsd: number | null): string {
-  if (costUsd === null) return 'cost unknown';
-  // Sub-cent totals are real during testing; $0.00 reads as "nothing happened".
-  return costUsd > 0 && costUsd < 0.01 ? `$${costUsd.toFixed(4)}` : `$${costUsd.toFixed(2)}`;
-}
 
 /**
  * AIB-007 — what a Cloud Data or User node can count on, as the *run* sees it.
@@ -223,49 +212,6 @@ function planBackendCollections(project: ProjectModel, plan: AuthoringPlan): Sch
 function appliedBackendFacts(project: ProjectModel, operations: readonly AppliedPlanOperation[]): ProjectBackendFacts {
   const provision = operations.find((op) => op.kind === 'provision');
   return backendFacts(project, provision?.kind === 'provision' ? provision.provision : undefined);
-}
-
-/**
- * AIB-002 — what an authoring operation is doing *right now*, in one clause.
- *
- * The attempt number is the single most reassuring thing on screen during a
- * long turn: a run that has silently been repairing its third submission for
- * four minutes is indistinguishable, without it, from one that has hung.
- */
-function authoringDetail(session: AuthoringSessionState | undefined): string | undefined {
-  if (!session) return undefined;
-  const building = session.building;
-  if (!building) return 'Reading context…';
-  const nodes = `${building.nodes.length} node${building.nodes.length === 1 ? '' : 's'}`;
-  const attempt = building.submission > 1 ? ` · attempt ${building.submission}` : '';
-  return building.complete ? `Validating — ${nodes}${attempt}` : `Writing — ${nodes} so far${attempt}`;
-}
-
-/**
- * AIB-002 — a clock that re-renders once a second while the run is working, and
- * only while this panel is actually on screen.
- *
- * Elapsed is always *derived* from the timestamps `PlanRun` publishes, never
- * accumulated here, which is what makes both halves of the WFA-002 trap fall
- * out for free: a hidden panel stops re-rendering (nobody is reading it) and a
- * panel that comes back computes the right number on its first frame instead of
- * restarting from zero.
- */
-function useElapsedClock(active: boolean, ref: React.RefObject<HTMLElement>): number {
-  const [now, setNow] = useState(() => Date.now());
-  useEffect(() => {
-    if (!active) return;
-    setNow(Date.now());
-    const timer = setInterval(() => {
-      // `offsetParent` is null when this element or an ancestor is
-      // `display: none` — which is how the sidebar hides a panel it has not
-      // unmounted.
-      if (ref.current && ref.current.offsetParent === null) return;
-      setNow(Date.now());
-    }, 1000);
-    return () => clearInterval(timer);
-  }, [active, ref]);
-  return now;
 }
 
 /**
@@ -956,8 +902,8 @@ export function ProjectAuthoringView({ isConfigured, hasProject, isEmbedded }: P
    * same render as everything else it sits beside.
    */
   const docsSkippedByStop = runState?.operations.filter((op) => op.skippedByCancel) ?? [];
-  /** Doc operations that have not been written yet, while the run is still going. */
-  const docsPending = runState?.operations.filter((op) => op.operation.kind === 'doc' && op.status !== 'staged') ?? [];
+  // BLD-005 — `docsPending` counted the unwritten documents for the Stop
+  // sentence. `stopCost` counts them itself, from the same operation list.
   /** AIB-007 — is a backend among the things Apply would create? */
   const stagedProvision = runState?.operations.some(
     (op) => op.status === 'staged' && op.operation.kind === 'provision' && !excluded.has(op.operation.id)
@@ -989,26 +935,21 @@ export function ProjectAuthoringView({ isConfigured, hasProject, isEmbedded }: P
   const totalOps = runState?.operations.length ?? 0;
   const reviewedDoc = reviewingDoc ? runRef.current?.docFor(reviewingDoc) : undefined;
 
-  // AIB-002 slice 3 — the run header. Ticks only while something is working,
-  // and only while this panel is on screen; see `useElapsedClock`.
+  /*
+   * AIB-002 slice 3's clock, kept — but BLD-005 took the headline it fed.
+   *
+   * ⚠️ The headline used to render here, a few lines into the scroll area, and
+   * **that placement was the defect**: thirty seconds into a seven-operation run
+   * the one element answering "where am I" had scrolled off. It is now pinned in
+   * the thread's header row (`RunHeader`). Leaving a copy here as well would be
+   * the duplicated-message defect this phase is measured on — the same sentence
+   * twice, once where it can be read and once where it cannot.
+   *
+   * This clock still ticks for the *rows*, each of which shows its own elapsed
+   * time. `headerRef` is what tells it the sidebar has hidden this panel.
+   */
   const headerRef = useRef<HTMLDivElement>(null);
   const clockNow = useElapsedClock(Boolean(runState?.busy), headerRef);
-  const activeIndex = runState?.activeOperationId
-    ? runState.operations.findIndex((op) => op.operation.id === runState.activeOperationId)
-    : -1;
-  const runElapsed =
-    runState?.startedAt !== undefined ? (runState.endedAt ?? clockNow) - runState.startedAt : undefined;
-  const runHeadline = !runState
-    ? undefined
-    : [
-        runState.busy
-          ? `Building ${activeIndex >= 0 ? activeIndex + 1 : 1} of ${totalOps}`
-          : `${stagedCount + stagedDocOps.length} of ${totalOps} built`,
-        runElapsed !== undefined ? formatDuration(runElapsed) : undefined,
-        formatCost(runState.costUsd)
-      ]
-        .filter(Boolean)
-        .join(' · ');
 
   /**
    * Which finished operations have their activity feed open. Transient by the
@@ -1067,25 +1008,22 @@ export function ProjectAuthoringView({ isConfigured, hasProject, isEmbedded }: P
                 onClick={() => runRef.current?.cancel()}
               />
               {/*
-                AIB-009 F4. Stopping keeps every component already built — that
-                part was always true and never said. What was also never said is
-                that the documents are written in a second pass, after the
-                components, so stopping skips all of them. Said here, before the
-                click, because afterwards it is a fact rather than a choice.
+                AIB-009 F4, now with one author — `stopCost`, which is specced.
 
-                "The 1 document are written last" is what the first version of
-                this said on screen, because the count was interpolated and the
-                verb was not.
+                What was here said "Stopping keeps everything built so far" and
+                rendered **only when documents were pending**, so a plan of five
+                components offered Stop with no statement of its cost at all. F4's
+                care about the document clause is kept exactly; what is added is
+                the count (step 6: "keeps the 2 built so far") and the fact that
+                the sentence now exists for every run.
+
+                ⚠️ "The 1 document are written last" is what the first version of
+                this said on screen — the count was interpolated and the verb was
+                not. That is why the phrasing is a function with a spec that
+                sweeps every count from 0 to 4 through both halves, and not a
+                ternary here.
               */}
-              {docsPending.length > 0 && !writingDocs && (
-                <Text textType={TextType.Shy}>
-                  Stopping keeps everything built so far.{' '}
-                  {docsPending.length === 1
-                    ? 'The document is written last, so it will be skipped — you can write it'
-                    : `The ${docsPending.length} documents are written last, so they will be skipped — you can write them`}{' '}
-                  afterwards without re-running the build.
-                </Text>
-              )}
+              {!writingDocs && <Text textType={TextType.Shy}>{stopCost(runState.operations)}</Text>}
             </>
           )}
         </VStack>
@@ -1301,19 +1239,13 @@ export function ProjectAuthoringView({ isConfigured, hasProject, isEmbedded }: P
             )}
 
             {runState && (
-              <VStack UNSAFE_style={{ gap: 8 }}>
+              <VStack UNSAFE_style={{ gap: 8 }} ref={headerRef}>
                 {/*
-                  AIB-002 slice 3 — position, elapsed and cumulative cost, live.
-                  Cost during an alpha where every user brings their own key is
-                  not decoration: it is the only feedback loop anyone has on what
-                  a plan costs before committing to one.
+                  BLD-005 — the headline that was here is pinned above the scroll
+                  area now. This list is the *map*: every operation from the first
+                  second, so "which component is it building" is a glance down a
+                  column rather than a read.
                 */}
-                {runHeadline && (
-                  <div ref={headerRef}>
-                    <Text textType={TextType.Proud}>{runHeadline}</Text>
-                  </div>
-                )}
-
                 {runState.operations.map((op) => {
                   const { icon, variant } = statusIcon(op);
                   const isExcluded = excluded.has(op.operation.id);
@@ -1337,7 +1269,22 @@ export function ProjectAuthoringView({ isConfigured, hasProject, isEmbedded }: P
                   const hasActions =
                     op.status === 'staged' || (done && op.status === 'failed' && !isDoc && !isProvision);
                   return (
-                    <VStack key={op.operation.id} UNSAFE_style={{ gap: 2, opacity: isExcluded ? 0.5 : 1 }}>
+                    <VStack
+                      key={op.operation.id}
+                      /*
+                       * BLD-005 — the row's role, for the stylesheet. `current`
+                       * is the one that matters: the complaint this task answers
+                       * is that an authoring row renders the same static wand as
+                       * the row above it, so the map costs a read instead of a
+                       * glance. Pending rows dim; the current one takes the
+                       * accent.
+                       *
+                       * ⚠️ Exclusion still wins on opacity — a dropped operation
+                       * must read as dropped whatever its status is.
+                       */
+                      UNSAFE_className={css[`Operation-${operationRole(op)}`]}
+                      UNSAFE_style={{ gap: 2, opacity: isExcluded ? 0.5 : undefined }}
+                    >
                       {/*
                         POL-007 — two lines at 400px, not one. Status, target and
                         elapsed here; the actions on their own line below.

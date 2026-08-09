@@ -110,6 +110,7 @@ import { ProjectAuthoringView } from './ProjectAuthoringView';
 import { ProjectReviewBanner } from './ProjectReviewBanner';
 import { ProjectReviewView } from './ProjectReviewView';
 import { BuildThread, type ThreadWidth } from './thread/BuildThread';
+import { RunHeader } from './thread/RunHeader';
 
 export const AiAuthoringPanel_ID = 'ai-authoring';
 
@@ -765,6 +766,7 @@ export function AiAuthoringPanel({ width = 'panel' }: AiAuthoringPanelProps = {}
         width={width}
         turns={turns}
         renderOutcome={renderOutcome}
+        runHeader={<RunHeader state={runState} />}
         header={
           <>
             {/* The flag moves to the header, out of the turn list, where it

@@ -23,6 +23,20 @@ export type { IntentDecision } from './intent';
 export { collapseActivities, isCollapsible, MIN_RUN_LENGTH, summariseRun } from './messages';
 export type { MessageKind, ThreadItem } from './messages';
 export {
+  authoringDetail,
+  completedDurations,
+  estimateRemaining,
+  formatCost,
+  formatDuration,
+  formatEstimate,
+  MIN_ESTIMATE_SAMPLES,
+  operationRole,
+  runHeadline,
+  runPosition,
+  stopCost
+} from './runProgress';
+export type { OperationRole } from './runProgress';
+export {
   acceptedTurn,
   componentTurns,
   composeThread,

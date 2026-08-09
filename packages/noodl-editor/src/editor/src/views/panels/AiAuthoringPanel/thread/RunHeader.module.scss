@@ -1,0 +1,52 @@
+/*
+ * BLD-005 — the run header, pinned.
+ *
+ * This sits in `.Thread`'s non-scrolling header row (see `BuildThread.module.scss`),
+ * which is the entire fix for README correction 2: AIB-002 already built
+ * position, elapsed, cost and a per-operation clock, and they read as "no
+ * progress reporting" only because they scrolled away thirty seconds into a
+ * seven-operation run.
+ */
+
+.RunHeader {
+  /* `.Thread` is a flex column whose middle row scrolls; without this the header
+     is a shrinkable item and gets squeezed as the turn list grows. */
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--theme-color-bg-3);
+
+  /*
+   * ⚠️ POL-007's rule, and this task's acceptance criterion. A component path
+   * ("Pages/Checkout") has no spaces to break at, so its min-content is the
+   * whole string — without this it sets the width of a header that cannot
+   * scroll, and pushes the panel sideways.
+   */
+  p {
+    overflow-wrap: anywhere;
+  }
+}
+
+/*
+ * The current operation.
+ *
+ * ⚠️ **Accent and weight, and deliberately no motion.** The obvious thing is to
+ * pulse this while the run is busy, and it is wrong for the reason BLD-004
+ * exists: `busy` stays true when the provider has hung, so a pulse driven by it
+ * animates most confidently at exactly the moment nothing is happening. Motion
+ * here has to be driven by `onActivity` — a real heartbeat — which is BLD-004's
+ * to add. Until then this distinguishes the current row without claiming
+ * anything about it.
+ */
+.Current {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  color: var(--theme-color-primary);
+}
+
+.CurrentTarget {
+  font-weight: 600;
+}

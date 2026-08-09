@@ -248,6 +248,17 @@ export interface BuildThreadProps {
 
   /** Shown above the turn list, in the header. The experimental flag lives here. */
   header?: React.ReactNode;
+  /**
+   * BLD-005 — pinned between the header and the scroll area, for as long as a
+   * run is live.
+   *
+   * A separate slot rather than more `header`, because the two have opposite
+   * lifetimes: `header` is chrome that is always there (and BLD-006's thread
+   * switcher will want it), while this exists only while something is running.
+   * Folding them together would mean the caller re-deciding, on every render,
+   * which half of one node is currently allowed to exist.
+   */
+  runHeader?: React.ReactNode;
   /** Shown in place of the turn list when there are no turns. */
   emptyState?: React.ReactNode;
 
@@ -269,6 +280,7 @@ export function BuildThread({
   turns,
   renderOutcome,
   header,
+  runHeader,
   emptyState,
   value,
   onChange,
@@ -303,6 +315,16 @@ export function BuildThread({
   return (
     <div className={`${css['Thread']} ${css[width === 'expanded' ? 'is-expanded' : 'is-panel']}`}>
       {header && <div className={css['Header']}>{header}</div>}
+      {/*
+        BLD-005. Outside the `ScrollArea` on purpose — that placement IS the fix,
+        and putting it one element lower would restore the defect exactly.
+
+        Rendered bare, with no wrapper of its own: the node passed here is a
+        component that renders `null` when no run is live, so a wrapper would be
+        truthy whenever the *element* existed rather than whenever it drew
+        anything, and would leave an empty box above every idle thread.
+      */}
+      {runHeader}
 
       <ScrollArea UNSAFE_className={css['Body']}>
         <div className={css['Turns']}>

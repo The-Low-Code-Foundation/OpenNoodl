@@ -109,6 +109,81 @@
 }
 
 /*
+ * BLD-005 — the run map's five roles.
+ *
+ * The complaint this answers: a seven-operation run rendered as a column of
+ * identical wand glyphs, so "which component is it building" cost a read of
+ * every row. The statuses always differed; nothing said so.
+ *
+ * ⚠️ **Weight and colour, and deliberately no motion on `current`.** Pulsing it
+ * while the run is busy is the obvious move and it is wrong for the reason
+ * BLD-004 exists: `busy` stays true when the provider has hung, so the animation
+ * would be most confident exactly when nothing is happening. Motion here has to
+ * come from `onActivity`, and that is BLD-004's to add.
+ */
+.Operation-current {
+  color: var(--theme-color-primary);
+
+  /* The target, not the whole row — the elapsed time and the detail line stay
+     shy so the name is what the eye lands on. */
+  .OperationTarget {
+    font-weight: 600;
+  }
+}
+
+/*
+ * Pending work is present but not yet news. It is listed from the first second
+ * — that is step 2, the plan as a map — and it has to read as *not yet* without
+ * becoming unreadable.
+ *
+ * ⚠️ **This was `opacity: 0.55` and that was measured, not reasoned, into the
+ * bin.** Opacity dims by blending the text toward whatever is behind it, so it
+ * changes contrast without ever appearing in a colour token. Swept on the real
+ * composited pixels, `fg-default` on this surface gives:
+ *
+ *   opacity   0.55   0.65   0.70   0.75   0.80   0.85
+ *   dark      3.27   4.03   4.46   4.92   5.41   5.93
+ *   light     2.53   3.10   3.46   3.87   4.34   4.89
+ *
+ * Every value that reads as dimmed fails AA in light mode, and the first value
+ * that passes in both (0.85) is too subtle to read as dimming at all. There is
+ * no opacity that is both — which is the muted-button trap in a new place, and
+ * the reason this is a token instead.
+ *
+ * `fg-default-shy` is a real step down in emphasis at **5.57 dark / 5.06 light**
+ * (BLD-002's measured figures), and the status icon — a caret, against a tick or
+ * a wand — carries the rest.
+ */
+.Operation-pending,
+.Operation-skipped {
+  /* Two classes deep, so it beats `Text`'s own single-class colour rule. */
+  .OperationTarget {
+    color: var(--theme-color-fg-default-shy);
+  }
+}
+
+/*
+ * `done` and `failed` carry no declarations, and are declared anyway.
+ *
+ * A CSS-module lookup for a class the stylesheet does not define returns
+ * `undefined`, so the row renders with **no class at all** — which is how, while
+ * driving this, a five-row map reported four roles the moment the first
+ * operation staged. The row was fine; it had simply become unmeasurable, and a
+ * role that vanishes from the DOM when it changes is one no spec, no drive and
+ * no future task can see.
+ *
+ * Their appearance is already carried by `statusIcon` — a success tick, a danger
+ * triangle — which is why there is nothing to add here beyond the hook itself.
+ */
+.Operation-done {
+  /* Full weight, full opacity: finished work is the run's result, not its noise. */
+}
+
+.Operation-failed {
+  /* The danger triangle says it. Dimming a failure would be the wrong instinct. */
+}
+
+/*
  * The scope tabs. They used to grow via `isGrowing`, which is `flex: 1` — basis
  * 0 — so the three shared the row in equal thirds whatever their labels said.
  * At 400px that gave "This component" (120px of label and padding) 106, and it
