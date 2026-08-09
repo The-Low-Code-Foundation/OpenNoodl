@@ -115,10 +115,34 @@ describe('BLD-001 — decideIntent', () => {
     expect(decision.sentence).not.toContain('1 documents');
   });
 
-  it('names the documents it will draft', () => {
-    const decision = decideIntent(plan([op({ kind: 'doc', target: 'docs/BRIEF.md' })]));
+  /*
+   * ⚠️ This assertion used to read `decideIntent(plan([doc('docs/BRIEF.md')]))`
+   * → `sentence` contains `docs/BRIEF.md`, and it passed for the wrong reason:
+   * the sentence echoed whatever the planning model put in `op.target`. The
+   * docs route discards the plan (`routePlan` calls `startProjectReview` and
+   * never reads it again), so the echo was a claim about something that does
+   * not happen. Driving BLD-008 produced the proof — the model proposed
+   * `docs/COMPONENTS.md` and `docs/PAGES.md`, the panel announced them, and the
+   * review wrote BRIEF / ARCHITECTURE / CONVENTIONS.
+   *
+   * So the spec now pins the opposite property: the sentence names the three
+   * seeds **whatever the plan said**, and does not repeat an invented target.
+   */
+  it('names the three documents a review actually writes, not the targets the plan proposed', () => {
+    const decision = decideIntent(
+      plan([op({ kind: 'doc', target: 'docs/COMPONENTS.md' }), op({ kind: 'doc', target: 'docs/PAGES.md' })])
+    );
     expect(decision.intent).toBe('docs');
     expect(decision.sentence).toContain('docs/BRIEF.md');
+    expect(decision.sentence).toContain('docs/ARCHITECTURE.md');
+    expect(decision.sentence).toContain('docs/CONVENTIONS.md');
+    expect(decision.sentence).not.toContain('docs/COMPONENTS.md');
+    expect(decision.sentence).not.toContain('docs/PAGES.md');
+  });
+
+  it('says the interview comes first, because after BLD-008 it does', () => {
+    const decision = decideIntent(plan([op({ kind: 'doc', target: 'docs/BRIEF.md' })]));
+    expect(decision.sentence).toMatch(/ask you/i);
   });
 });
 

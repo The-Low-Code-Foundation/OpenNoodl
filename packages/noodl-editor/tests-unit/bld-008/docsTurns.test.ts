@@ -14,6 +14,14 @@
  *    finished either: it is waiting on a person. The `done` branch would report
  *    "Drafted 0 documents" over a thread of unanswered questions, and `busy`
  *    would put a heartbeat on a turn that is not working.
+ *
+ *    ⚠️ That property is correct and it has a consequence the assertion below
+ *    cannot show: `BuildThread`'s follow-the-tail effect is guarded on `busy`,
+ *    so the one turn state that **blocks** is the one it will not scroll to.
+ *    Driven at 400px, the questions arrived with the thread at `scrollTop: 26`
+ *    of `547` and the card below the fold. The fix is `InterviewCard`'s own
+ *    `scrollIntoView({ block: 'start' })` — if this expectation is ever
+ *    relaxed to set `busy`, that fix is what to re-check, not this file.
  */
 
 import { collapseActivities, isCollapsible } from '../../src/editor/src/models/AiAssistant/thread/messages';

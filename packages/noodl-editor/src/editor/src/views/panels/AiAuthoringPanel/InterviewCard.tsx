@@ -33,7 +33,7 @@
  * @module noodl-editor/views/panels/AiAuthoringPanel/InterviewCard
  */
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 
 import {
   currentQuestion,
@@ -94,6 +94,41 @@ export function InterviewCard({
     setDraftAnswer('');
   }, [question?.id]);
 
+  /**
+   * Put the open question on screen.
+   *
+   * ⚠️ Measured, not assumed. Driving the interview at the shipped 400px panel:
+   * the questions arrive and the thread sits at `scrollTop: 26` of a possible
+   * `547`, showing the eyebrow and the first line — `why`, the guess and all
+   * three answer buttons below the fold, with nothing saying a decision is
+   * waiting 500px down. The one card in this panel that *blocks* was the one
+   * thing you had to go looking for.
+   *
+   * The cause is two correct decisions meeting. `BuildThread` follows the tail
+   * only while a turn is `busy` — right, because scrolling up to read must not
+   * be undone by the next token — and `docsTurns` deliberately marks the
+   * interviewing phase **neither busy nor finished**, because it is waiting on
+   * a person. So the sole blocking state is the sole state the follow rule
+   * declines to follow. The phase's recurring shape again: a rule that was
+   * right about its old subject.
+   *
+   * It is fixed *here* rather than in `BuildThread` because only this component
+   * knows which element is the question. `block: 'start'` and not the thread's
+   * `'end'`: the card is **501px tall in a 419px viewport** at 400px (877px at
+   * 248px — it does not fit at any width this panel ships at), so anchoring the
+   * bottom would scroll the question itself off the top and leave three buttons
+   * with nothing above them. The top is the half you must read.
+   *
+   * Keyed on the question id, so it fires once per question rather than on
+   * every re-render, and re-running on remount is deliberate: coming back to
+   * the panel should land on the thing that is waiting for you.
+   */
+  const cardRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (!question || isDrafting) return;
+    cardRef.current?.scrollIntoView({ block: 'start' });
+  }, [question?.id, isDrafting]);
+
   if (interview.questions.length === 0) return null;
 
   return (
@@ -115,7 +150,7 @@ export function InterviewCard({
       )}
 
       {question && !isDrafting && (
-        <div className={css['QCard']}>
+        <div className={css['QCard']} ref={cardRef}>
           <div className={css['QTop']}>
             <span className={css['Tag']}>Question</span>
             <div className={css['Text']}>

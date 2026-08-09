@@ -55,13 +55,36 @@
  * The eyebrow. Mono and tracked-out, the same device `.Speaker` uses one
  * element up — it says what kind of thing this is without spending a line of
  * prose on it, which at 400px is a line that has somewhere better to be.
+ *
+ * ⚠️ `primary-highlight`, NOT `primary`, and the reason is the wash above.
+ * Tinting a surface with the accent moves the surface toward the accent, so the
+ * accent is the one colour that pays the most to sit on it. Measured on this
+ * card, in the running editor:
+ *
+ *              on bg-2      on the washed card
+ *   primary    6.45 / 4.33  5.23 / 3.85   ← light FAILS at 9.5px
+ *   fg-shy     5.57 / 5.06  4.52 / 4.51
+ *
+ * (dark / light.) `primary` in light was already 4.33 on plain bg-2 — the same
+ * figure the `Ghost` button is on the design-system list for — so the wash had
+ * only 0.33 of margin to eat and it ate 0.48. `primary-highlight` is the ramp's
+ * more-contrasting azure in *both* themes (azure-400 dark, #0e5fd0 light) and
+ * measures **6.56 / 4.97** here, which is the same accent identity above the
+ * floor rather than a different colour.
+ *
+ * ⚠️ `.Why` at 4.51 light / 4.52 dark passes with 0.01 to spare, and is left
+ * alone deliberately: `fg-default` is what `.Guess` already uses, so darkening
+ * the evidence would collide the two roles the mockup drew apart. Recorded as a
+ * measurement, not a change — but it means this card has no margin left, and
+ * anything further laid over it has to be re-measured rather than reasoned
+ * about. A mockup is not a contrast measurement; neither is a token name.
  */
 .Tag {
   font-family: var(--font-family-code);
   font-size: 9.5px;
   letter-spacing: 0.11em;
   text-transform: uppercase;
-  color: var(--theme-color-primary);
+  color: var(--theme-color-primary-highlight);
 }
 
 /*

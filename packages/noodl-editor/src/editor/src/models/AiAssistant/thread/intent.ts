@@ -35,8 +35,19 @@
  * @module AiAssistant/thread/intent
  */
 
+import { DOC_ARCHITECTURE, DOC_BRIEF, DOC_CONVENTIONS } from '../../ProjectDocs/docsText';
 import type { AuthoringPlan, PlanOperation } from '../authoring';
 import type { BuildIntent, TurnPlanSummary } from './types';
+
+/**
+ * The documents a review actually writes, in the order it writes them.
+ *
+ * Taken from `ProjectDocs/docsText` rather than from `review/prompts`'s
+ * `REVIEW_DOC_PATHS`, which is built from these same three constants: it is the
+ * same fact without a thread → review dependency, and both sides break loudly
+ * if a seed document is ever added or renamed.
+ */
+const REVIEW_DOC_PATHS = [DOC_BRIEF, DOC_ARCHITECTURE, DOC_CONVENTIONS] as const;
 
 /** The agent's first sentence, and the one alternative reading worth offering. */
 export interface IntentDecision {
@@ -114,11 +125,30 @@ export function decideIntent(plan: AuthoringPlan): IntentDecision {
   }
 
   if (intent === 'docs') {
+    /*
+     * ⚠️ Deliberately NOT `operations.map(op => op.target)`, and this is the one
+     * branch where echoing the plan is wrong.
+     *
+     * `routePlan`'s docs case calls `startProjectReview(project)` and **never
+     * looks at the plan again**. The documents a review writes are fixed —
+     * `REVIEW_DOC_PATHS`, the three seeds — so a sentence built from the
+     * planning model's targets is a claim about a plan that is discarded one
+     * line later. It is free to disagree with what happens, and on the first
+     * live drive it did: the model proposed `docs/ARCHITECTURE.md`,
+     * `docs/COMPONENTS.md`, `docs/PAGES.md`, the panel said so, and then wrote
+     * BRIEF / ARCHITECTURE / CONVENTIONS. Two of the three names were invented.
+     *
+     * ⚠️ And "I'll draft" was the second falsehood, from the same drive. BLD-008
+     * inverted this route to read → **ask** → draft, so the next thing that
+     * happens is questions, not a draft. This function's own header says it
+     * exists to make "I'll get started" impossible because it is uninformative;
+     * a sentence that names the wrong files and the wrong next step is worse
+     * than uninformative. The phase's recurring shape once more — a sentence
+     * that was right about its old subject.
+     */
     return {
       intent,
-      sentence: `I'll draft ${countLabel(operations.length, 'project document')} — ${operations
-        .map((op) => op.target)
-        .join(', ')}.`,
+      sentence: `I'll read the project and ask you about it, then draft ${REVIEW_DOC_PATHS.join(', ')}.`,
       override: null
     };
   }

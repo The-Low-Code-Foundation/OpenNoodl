@@ -350,6 +350,16 @@ export function BuildThread({
   // Follow the stream, but only while the user is already near the bottom —
   // same rule as the Explain panel, same reason: scrolling up to read something
   // must not be undone by the next token.
+  //
+  // ⚠️ `busy` is the whole scope of this rule, and it therefore does **not**
+  // cover the one state in this panel that blocks: BLD-008's open question,
+  // which `docsTurns` marks neither busy nor finished because it is waiting on
+  // a person (pinned in `tests-unit/bld-008/docsTurns.test.ts`). Driving it
+  // showed the thread parked at `scrollTop: 26` of `547` with the question
+  // below the fold. That is fixed in `InterviewCard`, not here, because only it
+  // knows which element the question is — and it wants `block: 'start'`, the
+  // opposite end from this rule's, since a question card is taller than the
+  // viewport and anchoring its bottom hides the question itself.
   const lastTurn = turns.length > 0 ? turns[turns.length - 1] : undefined;
   const tailLength = lastTurn ? lastTurn.activities.length : 0;
   useEffect(() => {
