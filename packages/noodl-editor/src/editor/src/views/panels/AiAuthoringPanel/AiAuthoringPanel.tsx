@@ -701,7 +701,7 @@ export function AiAuthoringPanel({ width = 'panel' }: AiAuthoringPanelProps = {}
       if (turn.id.startsWith('component-') && turn.outcome?.kind === 'staged-component' && canDecide) {
         return (
           <VStack UNSAFE_style={{ gap: 8 }}>
-            <Text textType={TextType.Secondary}>
+            <Text textType={TextType.Default}>
               Staged: {turn.outcome.legacyName} — {turn.outcome.nodeCount} node
               {turn.outcome.nodeCount === 1 ? '' : 's'}, {turn.outcome.connectionCount} connection
               {turn.outcome.connectionCount === 1 ? '' : 's'}.{' '}
@@ -770,14 +770,35 @@ export function AiAuthoringPanel({ width = 'panel' }: AiAuthoringPanelProps = {}
             {/* The flag moves to the header, out of the turn list, where it
                 stops competing with the task. It is honest and it stays. */}
             <ExperimentalFlag />
+            {/*
+             * ⚠️ C5, and the reason every `HStack` in this header carries an
+             * explicit `height`. `Stack` sets `height: 100%` on any row that does
+             * not declare one ([Stack.tsx:38]), and these rows sit in a *block*
+             * container — so `100%` resolved against the whole header (104px),
+             * not against the row's own line (44px). Measured live: this header
+             * is 104px tall because the experimental flag above is 60px, so each
+             * row became 104px starting 60px down, and overflowed its parent by
+             * exactly the flag's height. The header's `overflow` is `visible`, so
+             * the excess painted *over* the thread — the override button's 96px
+             * box struck a line through the first turn's text.
+             *
+             * The button's own 96px is the second half: a 104px row with
+             * `align-items: normal` stretches its children, so a 36px button grew
+             * to 104px minus this row's padding. Both halves come from the one
+             * declaration, which is why one word fixes both.
+             *
+             * ⚠️ This is a trap at every `HStack` inside a block parent, not a
+             * defect of this panel — filed on the register for a UIX task, since
+             * changing `Stack` reaches several hundred call sites.
+             */}
             {setupError && (
-              <HStack UNSAFE_style={{ alignItems: 'flex-start', gap: 6, padding: '0 12px' }}>
+              <HStack UNSAFE_style={{ height: 'auto', alignItems: 'flex-start', gap: 6, padding: '0 12px' }}>
                 <Icon icon={IconName.WarningCircleFilled} variant={FeedbackType.Danger} size={IconSize.Small} />
-                <Text textType={TextType.Secondary}>{setupError}</Text>
+                <Text textType={TextType.Default}>{setupError}</Text>
               </HStack>
             )}
             {decision?.override && route === 'component' && (
-              <HStack UNSAFE_style={{ gap: 8, padding: '0 12px 8px' }}>
+              <HStack UNSAFE_style={{ height: 'auto', gap: 8, padding: '0 12px 8px' }}>
                 <PrimaryButton
                   label={decision.override.label}
                   variant={PrimaryButtonVariant.Ghost}
@@ -792,12 +813,12 @@ export function AiAuthoringPanel({ width = 'panel' }: AiAuthoringPanelProps = {}
             {!isConfigured && (
               <HStack UNSAFE_style={{ alignItems: 'center', gap: 6 }}>
                 <Icon icon={IconName.WarningTriangle} variant={FeedbackType.Notice} size={IconSize.Small} />
-                <Text textType={TextType.Secondary}>
+                <Text textType={TextType.Default}>
                   No AI provider is configured. Open Editor Settings to set one up.
                 </Text>
               </HStack>
             )}
-            {!hasProject && <Text textType={TextType.Secondary}>Open a project to build in it.</Text>}
+            {!hasProject && <Text textType={TextType.Default}>Open a project to build in it.</Text>}
             <Text textType={TextType.Shy}>
               Describe what you want. One component, a change spanning several, or the project's documents — the
               agent works out which, says so before it acts, and nothing reaches your project until you accept it.

@@ -74,7 +74,7 @@ export function ReviewCoverageSummary({ coverage }: { coverage: ProjectReviewCov
 
   return (
     <div className={css['Coverage']}>
-      <Text textType={TextType.Secondary}>{summariseCoverage(coverage)}</Text>
+      <Text textType={TextType.Default}>{summariseCoverage(coverage)}</Text>
       {notRead.length > 0 && (
         <Text textType={TextType.Shy}>
           {notRead.length} component{notRead.length === 1 ? ' was' : 's were'} not read — anything the drafts say
@@ -330,12 +330,12 @@ export function ProjectReviewView({
           {!isConfigured && (
             <HStack UNSAFE_style={{ alignItems: 'center', gap: 6 }}>
               <Icon icon={IconName.WarningTriangle} variant={FeedbackType.Notice} size={IconSize.Small} />
-              <Text textType={TextType.Secondary}>
+              <Text textType={TextType.Default}>
                 No AI provider is configured. Open Editor Settings to set one up.
               </Text>
             </HStack>
           )}
-          {!hasProject && <Text textType={TextType.Secondary}>Open a project to review it.</Text>}
+          {!hasProject && <Text textType={TextType.Default}>Open a project to review it.</Text>}
 
           {/* BLD-001: "Review this project" is the thread's composer now —
               asking for the docs is a request like any other, and a start
@@ -370,7 +370,7 @@ export function ProjectReviewView({
               </Text>
             )}
 
-            {state?.phase === 'assembling' && <Text textType={TextType.Secondary}>Reading the project…</Text>}
+            {state?.phase === 'assembling' && <Text textType={TextType.Default}>Reading the project…</Text>}
 
             {state?.context && <ReviewCoverageSummary coverage={state.context.coverage} />}
 
@@ -386,7 +386,7 @@ export function ProjectReviewView({
                     <VStack key={draft.kind} UNSAFE_style={{ gap: 2 }}>
                       <HStack UNSAFE_style={{ alignItems: 'center', gap: 6 }}>
                         <Icon icon={isCurrent ? IconName.MagicWand : icon} variant={variant} size={IconSize.Small} />
-                        <Text textType={TextType.Secondary}>
+                        <Text textType={TextType.Default}>
                           {draft.path}
                           {isCurrent ? ' — drafting…' : ''}
                         </Text>
@@ -447,7 +447,7 @@ export function ProjectReviewView({
             {state?.phase === 'error' && (
               <HStack UNSAFE_style={{ alignItems: 'flex-start', gap: 6 }}>
                 <Icon icon={IconName.WarningCircleFilled} variant={FeedbackType.Danger} size={IconSize.Small} />
-                <Text textType={TextType.Secondary}>{state.error}</Text>
+                <Text textType={TextType.Default}>{state.error}</Text>
               </HStack>
             )}
 
@@ -462,7 +462,7 @@ export function ProjectReviewView({
             )}
 
             {finished && authored.length === 0 && (
-              <Text textType={TextType.Secondary}>
+              <Text textType={TextType.Default}>
                 The review produced no drafts. That is a real outcome — there may be too little here to write
                 down yet.
               </Text>
@@ -475,7 +475,7 @@ export function ProjectReviewView({
                   variant={note.type}
                   size={IconSize.Small}
                 />
-                <Text textType={TextType.Secondary}>{note.text}</Text>
+                <Text textType={TextType.Default}>{note.text}</Text>
               </HStack>
             )}
           </VStack>

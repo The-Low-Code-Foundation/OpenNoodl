@@ -20,6 +20,8 @@ export {
 export type { DecisionOwner } from './decisions';
 export { classifyPlan, decideIntent, summarisePlan } from './intent';
 export type { IntentDecision } from './intent';
+export { collapseActivities, isCollapsible, MIN_RUN_LENGTH, summariseRun } from './messages';
+export type { MessageKind, ThreadItem } from './messages';
 export {
   acceptedTurn,
   componentTurns,

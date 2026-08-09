@@ -248,7 +248,15 @@ export type AuthoringActivity =
   /** A context read, as a one-line event. */
   | { kind: 'tool'; label: string }
   /** A submission and the gate's verdict. */
-  | { kind: 'submit'; ok: boolean; errorLines: string[] };
+  | { kind: 'submit'; ok: boolean; errorLines: string[] }
+  /**
+   * BLD-002 reserves the shape; **BLD-008 is what produces one.** Nothing pushes
+   * a `question` yet, and that is deliberate — the treatment (the loudest thing
+   * in the thread) and the collapse rule (a question can never be absorbed into
+   * a run) are decided here so that BLD-008 adds an author, not a fifth opinion
+   * about how a question should look.
+   */
+  | { kind: 'question'; text: string };
 
 export type AuthoringPhase = 'idle' | 'working' | 'staged' | 'exhausted' | 'error' | 'cancelled';
 

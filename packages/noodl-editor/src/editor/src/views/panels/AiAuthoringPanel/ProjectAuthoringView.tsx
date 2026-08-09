@@ -1100,7 +1100,7 @@ export function ProjectAuthoringView({ isConfigured, hasProject, isEmbedded }: P
                   variant={note.type}
                   size={IconSize.Small}
                 />
-                <Text textType={TextType.Secondary}>{note.text}</Text>
+                <Text textType={TextType.Default}>{note.text}</Text>
               </HStack>
             )}
 
@@ -1108,7 +1108,7 @@ export function ProjectAuthoringView({ isConfigured, hasProject, isEmbedded }: P
               <VStack UNSAFE_style={{ gap: 6 }}>
                 <HStack UNSAFE_style={{ alignItems: 'flex-start', gap: 6 }}>
                   <Icon icon={IconName.Check} variant={FeedbackType.Success} size={IconSize.Small} />
-                  <Text textType={TextType.Secondary}>
+                  <Text textType={TextType.Default}>
                     Applied the plan — {applied.count} component{applied.count === 1 ? '' : 's'} changed
                     {applied.docs.length > 0 ? `, ${applied.docs.join(' and ')} written` : ''}.
                     {/* AIB-007: the undo sentence is qualified when a backend
@@ -1125,7 +1125,7 @@ export function ProjectAuthoringView({ isConfigured, hasProject, isEmbedded }: P
                 {applied.backend && (
                   <HStack UNSAFE_style={{ alignItems: 'flex-start', gap: 6 }}>
                     <Icon icon={IconName.CloudCheck} variant={FeedbackType.Success} size={IconSize.Small} />
-                    <Text textType={TextType.Secondary}>
+                    <Text textType={TextType.Default}>
                       Backend "{applied.backend.name}" is running at {applied.backend.endpoint}
                       {applied.backend.collections.length > 0
                         ? ` with ${applied.backend.collections.join(', ')}`
@@ -1143,13 +1143,13 @@ export function ProjectAuthoringView({ isConfigured, hasProject, isEmbedded }: P
                 {applied.registeredPages && (
                   <HStack UNSAFE_style={{ alignItems: 'flex-start', gap: 6 }}>
                     <Icon icon={IconName.PageRouter} variant={FeedbackType.Success} size={IconSize.Small} />
-                    <Text textType={TextType.Secondary}>{applied.registeredPages}</Text>
+                    <Text textType={TextType.Default}>{applied.registeredPages}</Text>
                   </HStack>
                 )}
                 {applied.settingsNote && (
                   <HStack UNSAFE_style={{ alignItems: 'flex-start', gap: 6 }}>
                     <Icon icon={IconName.Setting} variant={FeedbackType.Success} size={IconSize.Small} />
-                    <Text textType={TextType.Secondary}>{applied.settingsNote}</Text>
+                    <Text textType={TextType.Default}>{applied.settingsNote}</Text>
                   </HStack>
                 )}
                 {applied.backend?.warnings.map((warning, index) => (
@@ -1188,7 +1188,7 @@ export function ProjectAuthoringView({ isConfigured, hasProject, isEmbedded }: P
               <VStack UNSAFE_style={{ gap: 8 }}>
                 <HStack UNSAFE_style={{ alignItems: 'flex-start', gap: 6 }}>
                   <Icon icon={IconName.File} variant={FeedbackType.Notice} size={IconSize.Small} />
-                  <Text textType={TextType.Secondary}>
+                  <Text textType={TextType.Default}>
                     This project was scoped in a conversation and its plan — {recovered.plan.operations.length}{' '}
                     operation{recovered.plan.operations.length === 1 ? '' : 's'} — has never been built. It is
                     recorded in {recovered.recordPath}.
@@ -1237,7 +1237,7 @@ export function ProjectAuthoringView({ isConfigured, hasProject, isEmbedded }: P
 
             {plan && !runState && (
               <VStack UNSAFE_style={{ gap: 8 }}>
-                <Text textType={TextType.Secondary}>
+                <Text textType={TextType.Default}>
                   The plan — {plan.operations.length} operation{plan.operations.length === 1 ? '' : 's'}. Drop what
                   you don’t want; nothing has been authored yet.
                 </Text>
@@ -1474,7 +1474,7 @@ export function ProjectAuthoringView({ isConfigured, hasProject, isEmbedded }: P
                     {failedOps.length > 0 && (
                       <HStack UNSAFE_style={{ alignItems: 'flex-start', gap: 6 }}>
                         <Icon icon={IconName.WarningTriangle} variant={FeedbackType.Notice} size={IconSize.Small} />
-                        <Text textType={TextType.Secondary}>
+                        <Text textType={TextType.Default}>
                           {failedOps.length} of {totalComponentOps} operation{totalComponentOps === 1 ? '' : 's'}{' '}
                           failed. Nothing has touched your project — apply the rest explicitly, or abandon.
                         </Text>
@@ -1489,7 +1489,7 @@ export function ProjectAuthoringView({ isConfigured, hasProject, isEmbedded }: P
                     */}
                     {docsSkippedByStop.length > 0 && (
                       <VStack UNSAFE_style={{ gap: 6 }}>
-                        <Text textType={TextType.Secondary}>
+                        <Text textType={TextType.Default}>
                           Stopping skipped {docsSkippedByStop.length} document
                           {docsSkippedByStop.length === 1 ? '' : 's'}. What was built is still staged, and the
                           {docsSkippedByStop.length === 1 ? ' document can' : ' documents can'} be written
@@ -1512,7 +1512,7 @@ export function ProjectAuthoringView({ isConfigured, hasProject, isEmbedded }: P
                       </Text>
                     )}
                     {stagedCount > 0 || stagedDocOps.length > 0 ? (
-                      <Text textType={TextType.Secondary}>
+                      <Text textType={TextType.Default}>
                         Nothing is in your project yet — not the components, and not the documents.
                         {/*
                           ⚠️ AIB-007, found in live QA. This sentence used to end
@@ -1530,7 +1530,7 @@ export function ProjectAuthoringView({ isConfigured, hasProject, isEmbedded }: P
                           : ' Applying is one edit: a single undo reverts the whole plan.'}
                       </Text>
                     ) : (
-                      <Text textType={TextType.Secondary}>No operation produced anything to apply.</Text>
+                      <Text textType={TextType.Default}>No operation produced anything to apply.</Text>
                     )}
                     {/*
                       AAQ-001 — the registration is a change to a component the
@@ -1539,9 +1539,9 @@ export function ProjectAuthoringView({ isConfigured, hasProject, isEmbedded }: P
                       router has no pages" was what the silent version of this
                       looked like from the outside.
                     */}
-                    {pendingRegistration && <Text textType={TextType.Secondary}>{pendingRegistration}</Text>}
+                    {pendingRegistration && <Text textType={TextType.Default}>{pendingRegistration}</Text>}
                     {applyFailure && (
-                      <Text textType={TextType.Secondary}>
+                      <Text textType={TextType.Default}>
                         Nothing was applied and nothing was lost — every other component is still staged. Re-author
                         “{applyFailure.target}” against what went wrong, then apply again.
                       </Text>

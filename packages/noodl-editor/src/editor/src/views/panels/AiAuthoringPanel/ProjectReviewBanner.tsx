@@ -124,7 +124,7 @@ export function ProjectReviewBanner({ onStart, isBusy }: ProjectReviewBannerProp
   return (
     <div className={css['Root']}>
       <VStack UNSAFE_style={{ gap: 6 }}>
-        <Text textType={TextType.Secondary}>
+        <Text textType={TextType.Default}>
           This project has no AI context docs. The assistant can read the whole project and draft them for you
           to correct — nothing is written until you accept each file.
         </Text>

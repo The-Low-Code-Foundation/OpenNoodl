@@ -8,10 +8,13 @@
  * "where am I" is off screen. BLD-005 pins the run header into the header row
  * this creates; it could not, before, because there was no row to pin it to.
  *
- * ⚠️ No colour tokens are reached for here, deliberately. The panel's
- * legibility complaint is NOT a contrast problem (measured: 8.26:1 and 5.98:1
- * on the panel ground) — it is that nothing has a size. Type scale is BLD-002's
- * and brightening anything would destroy the last of the hierarchy.
+ * ⚠️ Almost no colour tokens are reached for here, deliberately, and BLD-002 did
+ * not change that. The panel's legibility complaint is NOT a contrast problem —
+ * measured live on the surfaces the thread actually paints, the worst text role
+ * was 5.57:1 dark and 5.06:1 light *before* the type scale existed. It is that
+ * nothing had a size. Brightening anything would have destroyed the last of the
+ * hierarchy; the one colour BLD-002 moved is the user's own message, which was
+ * drawn as a quote and should be the strongest thing in the turn.
  */
 
 .Thread {
@@ -65,21 +68,152 @@
   min-width: 0;
 }
 
+/*
+ * BLD-002 — the type scale.
+ *
+ * ## Why the sizes are set here and not on `Text`
+ *
+ * `Text` has three sizes — 12px, 11px, 10px — and no `line-height` rule at all,
+ * so leading is whatever the panel inherits. Measured live before this change,
+ * every single row in the thread was `12px / normal / 400`: one size, one
+ * weight, one leading, for the request, the prose, the tool events and the
+ * outcome alike. That is the wall D4 describes, and it is a *type* problem —
+ * measured contrast on the same surfaces was 5.57–9.2 dark and 5.06–7.1 light,
+ * so there was nothing to fix by brightening anything.
+ *
+ * Adding 13px and 11.5px to `Text` would be a design-system change reaching
+ * every surface in the editor. These rules set size and leading on the thread's
+ * own containers instead and let the `<p>` inside inherit — the same local
+ * override `.Body p { overflow-wrap }` above already relies on, and the same
+ * reason: one panel's problem does not get to move the whole scale.
+ *
+ * ⚠️ Colour is deliberately touched in exactly one place — the user's own
+ * message, which D4 item 3 says should be the strongest element and was drawn as
+ * a *quote*. Everything else keeps the token it had. `fg-muted` in particular is
+ * NOT used for the activity strip despite the task table proposing it: it
+ * measures 3.93:1 dark and 3.66:1 on bg-2, which is below AA at 11.5px, and
+ * POL-017 already moved `Text`'s Shy role off it for that reason.
+ */
+
+/*
+ * The user's own words. A bubble, aligned to the writer, on the panel's lightest
+ * surface — not a left-bordered quote on bg-2, which is the visual language of
+ * something being cited *at* you. It is the thing you scroll to find.
+ */
 .User {
-  padding: 6px 8px;
-  border-left: 2px solid var(--theme-color-primary);
-  background-color: var(--theme-color-bg-2);
-  border-radius: 0 2px 2px 0;
+  align-self: flex-end;
+  max-width: 85%;
+  padding: 7px 10px;
+  background-color: var(--theme-color-bg-3);
+  border-radius: 10px 10px 2px 10px;
+
+  p {
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--theme-color-fg-highlight);
+  }
 }
 
+/*
+ * Prose. The one place leading matters most, and the one place it was inherited
+ * — a 13px paragraph taking a 12px panel's leading is how a wall of text
+ * happens even when every colour is correct.
+ */
 .Assistant {
   white-space: pre-wrap;
+
+  p {
+    font-size: 13px;
+    line-height: 1.58;
+  }
+}
+
+/* Who is speaking, once per turn. Small, quiet, and not repeated per paragraph. */
+.Speaker {
+  font-family: var(--font-family-code);
+  font-size: 9.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--theme-color-fg-default-shy);
+  margin-bottom: 2px;
 }
 
 .Event {
   display: flex;
   align-items: flex-start;
   gap: 6px;
+
+  p {
+    font-size: 11.5px;
+    line-height: 1.45;
+  }
+}
+
+/*
+ * A collapsed run of activity. One line standing for a span of context reads and
+ * passing validations — see `thread/messages.ts` for what may never be inside
+ * one.
+ */
+.Run {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 0;
+  background: none;
+  border: 0;
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+  color: inherit;
+
+  p {
+    font-size: 11.5px;
+    line-height: 1.45;
+  }
+
+  &:hover p {
+    color: var(--theme-color-fg-default);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--theme-color-focus-ring);
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+}
+
+.RunCaret {
+  flex: 0 0 auto;
+  transition: transform var(--transition-fast, 120ms) ease;
+
+  &.is-expanded {
+    transform: rotate(90deg);
+  }
+}
+
+/* The expanded contents sit under the strip, indented to read as its detail. */
+.RunItems {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-left: 14px;
+}
+
+/*
+ * BLD-008's question. Reserved here so the treatment is decided once — it is the
+ * loudest thing in the thread because it is the only activity that *blocks*.
+ */
+.Question {
+  padding: 8px 10px;
+  border-radius: 6px;
+  background-color: var(--theme-color-bg-3);
+  box-shadow: inset 0 0 0 1px var(--theme-color-primary);
+
+  p {
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--theme-color-fg-highlight);
+  }
 }
 
 .Composer {
