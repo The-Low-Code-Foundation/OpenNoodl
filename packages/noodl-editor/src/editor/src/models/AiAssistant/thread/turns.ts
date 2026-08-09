@@ -33,6 +33,7 @@ import type { AuthoringMode, AuthoringSessionState, PlanOperationState, PlanRunS
 import type { PlanSession } from '../authoring';
 import type { ProjectReviewState } from '../review';
 import { summarisePlan } from './intent';
+import type { IntentDecision } from './intent';
 import type { BuildIntent, Turn, TurnActivity, TurnOutcome } from './types';
 
 /**
@@ -155,6 +156,10 @@ export function acceptedTurn(legacyName: string, mode: AuthoringMode, idPrefix =
  *
  * Strips `busy` — a frozen turn that still claims to be running is how a thread
  * grows two spinners, one of which never stops.
+ *
+ * ⚠️ Freezing is **not** on its own enough to retire a turn: the ids carry the
+ * liveness, and this deliberately leaves them alone. See {@link retireLive},
+ * which is what callers retiring a whole request should use.
  */
 export function freezeTurns(turns: readonly Turn[]): Turn[] {
   return turns.map(({ busy: _busy, ...turn }) => turn);
@@ -327,4 +332,101 @@ export function composeThread(...groups: readonly (readonly Turn[])[]): Turn[] {
     seenBusy = true;
   }
   return turns;
+}
+
+// ── Live and retired ──────────────────────────────────────────────────────────
+
+/**
+ * Everything the three producers currently hold, as one argument.
+ *
+ * One object rather than six parameters because it is read twice per request —
+ * once to render the live turns and once to retire them — and a positional list
+ * two call sites must keep in agreement is precisely how the two copies drift.
+ */
+export interface LiveSources {
+  /** What the last routed request became. `null` before the first one. */
+  route: BuildIntent | null;
+  session: AuthoringSessionState | null;
+  planSession: PlanSession;
+  runState: PlanRunState | null;
+  reviewState: ProjectReviewState | null;
+  /** The agent's first sentence, named on the producer the decision was about. */
+  decision: Pick<IntentDecision, 'intent' | 'sentence'> | null;
+}
+
+/**
+ * The turns the three producers are holding *right now*.
+ *
+ * ## The prefix is the liveness
+ *
+ * Called with no `idPrefix`, the ids are `component-…`, `plan-…` and `docs-run`
+ * — and those exact strings are what the panel's `renderOutcome` matches to
+ * decide where to mount a live control (the plan editor, the review view, the
+ * Accept/Discard card). Called *with* one, every id gains a `history-N-`
+ * front and **none of those matches can fire**. That is not a tidy-ids
+ * nicety; it is the whole mechanism that stops a retired turn from growing a
+ * second Accept button beside the live one, and it is why retiring goes through
+ * {@link retireLive} rather than through `freezeTurns` alone.
+ *
+ * A plan turn exists whenever the store holds a plan — whether this request
+ * planned it, a previous one left it, or the launcher handed it over — because
+ * the store, not this panel, is the plan's owner.
+ */
+export function liveTurns(sources: LiveSources, idPrefix?: string): Turn[] {
+  const { route, session, planSession, runState, reviewState, decision } = sources;
+  const scope = (kind: string) => (idPrefix ? `${idPrefix}-${kind}` : kind);
+
+  const showPlan = route === 'plan' || Boolean(planSession.plan);
+  const showDocs = route === 'docs' || Boolean(reviewState && reviewState.phase !== 'idle');
+
+  return [
+    ...(route === 'component'
+      ? componentTurns(session, {
+          idPrefix: scope('component'),
+          ...(decision ? { sentence: decision.sentence, intent: decision.intent } : {})
+        })
+      : []),
+    ...(showPlan
+      ? planTurns(planSession, runState, {
+          idPrefix: scope('plan'),
+          ...(decision?.intent === 'plan' ? { sentence: decision.sentence } : {})
+        })
+      : []),
+    ...(showDocs
+      ? docsTurns(reviewState, {
+          idPrefix: scope('docs'),
+          ...(decision?.intent === 'docs' ? { sentence: decision.sentence } : {})
+        })
+      : [])
+  ];
+}
+
+/**
+ * B9 — a new request retires the previous one instead of erasing it.
+ *
+ * The thread reset on every successful send: `history` was appended on the
+ * accept path, the discard path and the *declined* / *failed* branches of a
+ * send, but never on the path that worked. Routing a second request replaced
+ * the plan session the first one had produced, and the first turn simply
+ * evaporated — three sends, three provider calls, one turn on screen. The
+ * declined and failed branches were the tell that accumulation was always
+ * intended and the success path was the one that was missed.
+ *
+ * Retiring at send time is not a new contract, it is the one that went missing:
+ * the pre-BLD-001 panel called `reset()` at the top of `startPlanning` for the
+ * same reason — *planning a new request is the user saying they are done with
+ * the previous one*. What is new is that the record survives it.
+ *
+ * ⚠️ The caller must drop the live sources after calling this, or the retired
+ * copy and the live derivation are both on screen — the duplicated message this
+ * phase is measured on. Retiring is a pair: freeze the record, then release
+ * what produced it.
+ *
+ * Returns the given history unchanged when there was nothing live, so a first
+ * send does not push an empty render through React.
+ */
+export function retireLive(history: readonly Turn[], sources: LiveSources): Turn[] {
+  const retired = freezeTurns(liveTurns(sources, `history-${history.length}`));
+  if (retired.length === 0) return history as Turn[];
+  return [...history, ...retired];
 }

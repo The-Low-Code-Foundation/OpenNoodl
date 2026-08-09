@@ -13,10 +13,12 @@ import {
   composeThread,
   docsTurns,
   freezeTurns,
+  liveTurns,
   planTurns,
+  retireLive,
   sessionNote
 } from '@noodl-models/AiAssistant/thread';
-import type { Turn } from '@noodl-models/AiAssistant/thread';
+import type { LiveSources, Turn } from '@noodl-models/AiAssistant/thread';
 import type {
   AuthoringActivity,
   AuthoringSessionState,
@@ -354,5 +356,137 @@ describe('BLD-001 — history', () => {
       legacyName: '/Pages/Customers',
       mode: 'update'
     });
+  });
+});
+
+// ── Live and retired ──────────────────────────────────────────────────────────
+
+const IDLE: LiveSources = {
+  route: null,
+  session: null,
+  planSession: planSession(),
+  runState: null,
+  reviewState: null,
+  decision: null
+};
+
+const planFor = (request: string) => ({
+  request,
+  operations: [
+    { id: 'op-1', kind: 'create' as const, target: 'Pages/One', intent: 'the page' },
+    { id: 'op-2', kind: 'update' as const, target: 'Pages/Two', intent: 'link to it' }
+  ]
+});
+
+/** What `send` leaves behind once a request has routed to the plan path. */
+const planned = (request: string): LiveSources => ({
+  ...IDLE,
+  route: 'plan',
+  planSession: planSession({ description: request, plan: planFor(request) })
+});
+
+/**
+ * The ids the panel's `renderOutcome` mounts live controls on. Spelled out
+ * rather than imported because the point of these specs is that the two halves
+ * agree — a copy that drifts is exactly the failure being pinned.
+ */
+const MOUNTS_A_LIVE_CONTROL = (id: string) =>
+  id.startsWith('component-') || id.startsWith('plan-') || id === 'docs-run';
+
+describe('BLD-001 — liveTurns', () => {
+  const everything: LiveSources = {
+    route: 'component',
+    session: sessionState({
+      phase: 'staged',
+      staged: { nodeCount: 3, connectionCount: 1 },
+      activities: [USER('a customers page')]
+    }),
+    planSession: planSession({ plan: planFor('wire checkout in') }),
+    runState: null,
+    reviewState: reviewState({ drafts: [draft('docs/brief.md', 'authored')] }),
+    decision: { intent: 'component', sentence: "I'll build this as one component." }
+  };
+
+  it('gives every live turn an id the panel mounts a control on', () => {
+    const ids = liveTurns(everything).map((turn) => turn.id);
+    expect(ids).toEqual(['component-0', 'plan-proposed', 'docs-run']);
+    for (const id of ids) expect(MOUNTS_A_LIVE_CONTROL(id)).toBe(true);
+  });
+
+  it('gives every retired turn an id the panel mounts NOTHING on', () => {
+    // Trap 1: freeze without re-prefixing and the *live* plan editor mounts on
+    // a historical turn, because `lastPlanTurnId` takes the last `plan-*` id.
+    const ids = liveTurns(everything, 'history-0').map((turn) => turn.id);
+    expect(ids).toEqual(['history-0-component-0', 'history-0-plan-proposed', 'history-0-docs-run']);
+    for (const id of ids) expect(MOUNTS_A_LIVE_CONTROL(id)).toBe(false);
+  });
+
+  it('shows a plan the store holds even when nothing routed to it', () => {
+    // The launcher's scoping hand-off arrives this way — the store is the
+    // plan's owner, not the panel, and a plan with no route is still a plan.
+    expect(liveTurns({ ...IDLE, planSession: planSession({ plan: planFor('from the launcher') }) })).toHaveLength(1);
+  });
+
+  it('shows nothing at all when the producers hold nothing', () => {
+    expect(liveTurns(IDLE)).toEqual([]);
+  });
+});
+
+describe('BLD-001 — retireLive (B9)', () => {
+  it('leaves three sends as three turns, not one', () => {
+    // The defect, exactly: three requests, three provider calls, and the panel
+    // held only the third — because routing replaced the plan session and
+    // nothing retired the one it replaced.
+    const requests = ['a customers page', 'now an orders page', 'now a cart'];
+    let history: Turn[] = [];
+    let live: LiveSources = IDLE;
+
+    for (const request of requests) {
+      // `send`, in the order the panel does it: retire what the previous
+      // request left live, release the sources, then route the new plan.
+      history = retireLive(history, live);
+      live = planned(request);
+    }
+
+    // Without the retire this is the whole thread — one turn, the last one.
+    expect(liveTurns(live)).toHaveLength(1);
+
+    const thread = composeThread(history, [], liveTurns(live));
+    expect(thread.map((turn) => turn.request)).toEqual(requests);
+    // A repeated id renders as state leaking between turns rather than as an
+    // error, so the growth has to be checked at the key as well.
+    expect(new Set(thread.map((turn) => turn.id)).size).toBe(thread.length);
+  });
+
+  it('returns the history untouched when there was nothing live', () => {
+    const history: Turn[] = [{ id: 'a', activities: [] }];
+    expect(retireLive(history, IDLE)).toBe(history);
+  });
+
+  it('keeps what a retired turn built, and takes away the decision about it', () => {
+    // A frozen turn keeps its `staged-component` outcome — what it built is
+    // worth reading — but it must not be a second Accept beside the live one.
+    const retired = retireLive([], {
+      ...IDLE,
+      route: 'component',
+      session: sessionState({
+        phase: 'staged',
+        staged: { nodeCount: 7, connectionCount: 4 },
+        activities: [USER('a customers page')]
+      })
+    });
+
+    expect(retired).toHaveLength(1);
+    expect(retired[0].outcome?.kind).toBe('staged-component');
+    expect(MOUNTS_A_LIVE_CONTROL(retired[0].id)).toBe(false);
+  });
+
+  it('retires a running turn without carrying its spinner into history', () => {
+    const retired = retireLive([], {
+      ...IDLE,
+      route: 'component',
+      session: sessionState({ busy: true, phase: 'working', activities: [USER('a page')] })
+    });
+    expect(retired[0].busy).toBeUndefined();
   });
 });

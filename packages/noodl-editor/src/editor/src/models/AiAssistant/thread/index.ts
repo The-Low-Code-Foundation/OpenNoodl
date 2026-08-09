@@ -17,8 +17,10 @@ export {
   composeThread,
   docsTurns,
   freezeTurns,
+  liveTurns,
   planTurns,
+  retireLive,
   sessionNote
 } from './turns';
-export type { ComponentTurnOptions, DocsTurnOptions, PlanTurnOptions } from './turns';
+export type { ComponentTurnOptions, DocsTurnOptions, LiveSources, PlanTurnOptions } from './turns';
 export type { BuildIntent, Turn, TurnActivity, TurnOutcome, TurnPlanSummary } from './types';

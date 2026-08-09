@@ -71,11 +71,12 @@ import {
   componentTurns,
   composeThread,
   decideIntent,
-  docsTurns,
   freezeTurns,
-  planTurns,
+  liveTurns,
+  retireLive,
   type BuildIntent,
   type IntentDecision,
+  type LiveSources,
   type Turn
 } from '@noodl-models/AiAssistant/thread';
 import { AppRegistry } from '@noodl-models/app_registry';
@@ -230,7 +231,60 @@ export function AiAuthoringPanel({ width = 'panel' }: AiAuthoringPanelProps = {}
 
   useEffect(() => () => sessionRef.current?.dispose(), []);
 
+  /**
+   * What the three producers are holding, in one value.
+   *
+   * Read twice — once to render the thread, once to retire it — and the whole
+   * point of it being one value is that those two readings cannot disagree.
+   * Declared here rather than beside the thread because `send` retires before
+   * it plans, and a `useCallback` dependency cannot reference a `useMemo`
+   * declared further down.
+   */
+  const liveSources = useMemo<LiveSources>(
+    () => ({ route, session: state, planSession, runState, reviewState, decision }),
+    [route, state, planSession, runState, reviewState, decision]
+  );
+
   // ── Sending ────────────────────────────────────────────────────────────────
+
+  /**
+   * B9 — a new request retires the previous one instead of erasing it.
+   *
+   * Freeze the record, then release what produced it. Both halves are required:
+   * `retireLive` re-prefixes the ids so no live control mounts on a historical
+   * turn, and dropping the sources is what stops the frozen copy and the live
+   * derivation being on screen together.
+   *
+   * ⚠️ `store.discard` and `ProjectReviewStore.clear` destroy authored output,
+   * which AIB-003's rule allows only when the user says so. **Sending a new
+   * request is the user saying so** — it is the contract the pre-BLD-001 panel
+   * already had (`startPlanning` opened with `reset()`), and the difference now
+   * is that the conversation survives it. Nothing here can run mid-flight:
+   * `canSend` is false while anything is busy, so what is being released has
+   * always finished.
+   */
+  const retire = useCallback(() => {
+    const hadLive = liveTurns(liveSources).length > 0;
+    setHistory((turns) => retireLive(turns, liveSources));
+
+    sessionRef.current?.dispose();
+    sessionRef.current = null;
+    setState(null);
+    setRoute(null);
+    setDecision(null);
+    if (AppRegistry.instance.CurrentDocumentId === AuthoringPreviewDocumentProvider.ID) {
+      AppRegistry.instance.openDocument(EditorDocumentProvider.ID);
+    }
+
+    // ⚠️ Guarded on there having *been* something, and that guard is not an
+    // optimisation: `discard` removes the AIB-003 sidecar, and a saved build
+    // from a previous launch is restored asynchronously. Releasing sources that
+    // hold nothing would delete a build that had not finished coming back yet.
+    if (!hadLive) return;
+    reviewRunRef.current = null;
+    ProjectReviewStore.instance.clear();
+    store.discard(ProjectModel.instance?.id);
+  }, [liveSources, store]);
 
   /**
    * Hand a plan to the path it belongs to.
@@ -331,7 +385,10 @@ export function AiAuthoringPanel({ width = 'panel' }: AiAuthoringPanelProps = {}
     if (!project || !request) return;
 
     setComposer('');
-    setDecision(null);
+    // Before anything is awaited, so the thread's order is an invariant rather
+    // than a race: history is always older than the pending turn, which is
+    // always older than whatever is live.
+    retire();
     setSetupError(null);
     setPlanningRequest(request);
     try {
@@ -366,7 +423,7 @@ export function AiAuthoringPanel({ width = 'panel' }: AiAuthoringPanelProps = {}
       planAbortRef.current = null;
       setPlanningRequest(null);
     }
-  }, [composer, routePlan]);
+  }, [composer, retire, routePlan]);
 
   /**
    * The one-click override on the agent's own sentence.
@@ -453,7 +510,7 @@ export function AiAuthoringPanel({ width = 'panel' }: AiAuthoringPanelProps = {}
       // receipt. The session is still disposed — it holds a candidate, and the
       // candidate is in the project now — but the record of it outlives it.
       const live = componentTurns(session.state, {
-        idPrefix: `history-${history.length}`,
+        idPrefix: `history-${history.length}-component`,
         ...(decision ? { sentence: decision.sentence, intent: decision.intent } : {})
       });
       setHistory((turns) => [
@@ -489,7 +546,7 @@ export function AiAuthoringPanel({ width = 'panel' }: AiAuthoringPanelProps = {}
     }
     if (session) {
       const live = componentTurns(session.state, {
-        idPrefix: `history-${history.length}`,
+        idPrefix: `history-${history.length}-component`,
         ...(decision ? { sentence: decision.sentence, intent: decision.intent } : {})
       });
       setHistory((turns) => [...turns, ...freezeTurns(live)]);
@@ -529,30 +586,11 @@ export function AiAuthoringPanel({ width = 'panel' }: AiAuthoringPanelProps = {}
 
   // ── The thread ─────────────────────────────────────────────────────────────
 
-  // A plan turn exists whenever the store holds a plan — whether this session
-  // planned it, a previous one left it, or the launcher handed it over.
-  const showPlan = route === 'plan' || Boolean(planSession.plan);
-  const showDocs = route === 'docs' || Boolean(reviewState && reviewState.phase !== 'idle');
-
+  // History, then the request in flight, then whatever is live — an ordering
+  // that holds because `retire` runs before the pending turn exists.
   const turns = useMemo(
-    () =>
-      composeThread(
-        history,
-        planningRequest ? [pendingTurn(planningRequest)] : [],
-        route === 'component'
-          ? componentTurns(state, {
-              idPrefix: 'component',
-              ...(decision ? { sentence: decision.sentence, intent: decision.intent } : {})
-            })
-          : [],
-        showPlan
-          ? planTurns(planSession, runState, { ...(decision?.intent === 'plan' ? { sentence: decision.sentence } : {}) })
-          : [],
-        showDocs
-          ? docsTurns(reviewState, { ...(decision?.intent === 'docs' ? { sentence: decision.sentence } : {}) })
-          : []
-      ),
-    [history, planningRequest, route, state, decision, showPlan, planSession, runState, showDocs, reviewState]
+    () => composeThread(history, planningRequest ? [pendingTurn(planningRequest)] : [], liveTurns(liveSources)),
+    [history, planningRequest, liveSources]
   );
 
   /** The turn the live plan view attaches to. See `renderOutcome`. */
@@ -579,6 +617,14 @@ export function AiAuthoringPanel({ width = 'panel' }: AiAuthoringPanelProps = {}
    * rather than to a pinned bar at the bottom of the panel. BLD-003 finishes
    * that job (the preview document still renders its own copy of Accept); this
    * is the half that had to move for the thread to exist at all.
+   *
+   * ⚠️ **Every match here is on a *live* id.** A retired turn is re-prefixed
+   * `history-N-…` by `retireLive`, so none of these three fire on it. That is
+   * the only thing keeping a historical turn from mounting a second plan
+   * editor, or a second Accept beside the live one — the outcome *kind* is not
+   * enough on its own, because a frozen turn keeps the `staged-component`
+   * outcome it had when it was frozen, and it should: what it built is worth
+   * reading, it is just no longer a decision anyone can take.
    */
   const renderOutcome = useCallback(
     (turn: Turn): React.ReactNode | undefined => {
@@ -608,7 +654,7 @@ export function AiAuthoringPanel({ width = 'panel' }: AiAuthoringPanelProps = {}
         return <ProjectReviewView isConfigured={isConfigured} hasProject={hasProject} isEmbedded />;
       }
 
-      if (turn.outcome?.kind === 'staged-component' && canDecide) {
+      if (turn.id.startsWith('component-') && turn.outcome?.kind === 'staged-component' && canDecide) {
         return (
           <VStack UNSAFE_style={{ gap: 8 }}>
             <Text textType={TextType.Secondary}>
