@@ -24,6 +24,7 @@ import {
   PROJECT_REVIEW_CHANGED,
   ProjectReviewSetupError,
   ProjectReviewStore,
+  REVIEW_SOURCE,
   stageReviewDrafts,
   startProjectReview,
   summariseCoverage,
@@ -260,9 +261,23 @@ export function ProjectReviewView({
    * replaces the pending proposal for a path — so an unguarded second pass
    * would silently swap the proposal the user is mid-decision on for a fresh
    * one with a new id.
+   *
+   * ⚠️ A ref is per-mount, and the store check beside it is what covers a
+   * remount: this view is mounted by `renderOutcome` on the `docs-run` turn, so
+   * within a session it stays put, but HMR and BLD-009's second host both
+   * remount it. **The residual is narrow and filed rather than papered over:** a
+   * remount *after* every draft has been decided finds no pending proposal and
+   * no `decided` map, and would re-offer files the user already answered for.
+   * See the task register.
    */
   useEffect(() => {
     if (!finished || !state || authored.length === 0 || stagingRef.current) return;
+    const alreadyStaged = (path: string) =>
+      proposals.some((proposal) => proposal.path === path && proposal.source === REVIEW_SOURCE);
+    if (authored.every((draft) => alreadyStaged(draft.path))) {
+      stagingRef.current = true;
+      return;
+    }
     stagingRef.current = true;
     void (async () => {
       try {
@@ -271,10 +286,18 @@ export function ProjectReviewView({
         setNote({ text: error instanceof Error ? error.message : String(error), type: FeedbackType.Danger });
       }
     })();
-  }, [finished, state, authored.length]);
+  }, [finished, state, authored, proposals]);
 
+  /**
+   * The pending proposal *this run* made for a path.
+   *
+   * ⚠️ Scoped by `source`, not by path alone. `DocProposalStore` is global and
+   * holds one proposal per file from whoever made it — a plan's doc operation,
+   * an MCP client, this run. Matching on path alone would let this card offer
+   * Accept for a draft it did not write, on a turn that does not describe it.
+   */
   const proposalFor = useCallback(
-    (path: string) => proposals.find((proposal) => proposal.path === path),
+    (path: string) => proposals.find((proposal) => proposal.path === path && proposal.source === REVIEW_SOURCE),
     [proposals]
   );
 
