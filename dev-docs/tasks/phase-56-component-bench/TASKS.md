@@ -39,13 +39,22 @@ runtime) was the wrong shape. Two new register rows: **B11** (`stringlist` canno
 so the drive needed a fixture — `Components/BenchProbe` in *Puppy test 3*, authored through MCP, one
 input per control kind, every one of them wired so `getPorts` derives a real type.
 
+**Session 5 (2026-08-09):** **BEN-005** is built **and driven** — see
+[HANDOVER-SESSION-5.md](HANDOVER-SESSION-5.md). The two questions its own §1/§3 said to answer
+before building were both answered in source and then confirmed live (**B22**), and the drive
+closed **B13's remount branch**, which had been *"code without a live case"* for two sessions —
+along the way finding that the branch as shipped would have restored the *export's* inputs rather
+than the applied ones (**B21**). Also **B23** (a v2 save deletes `description`, which is AWP-002
+arriving by a new route) and **B24** (a driving race that presses the control underneath).
+**Only BEN-006's Live criteria and BEN-007 remain.**
+
 | Task | File | One line | State |
 |---|---|---|---|
 | BEN-001 ⭐ | [BEN-001-HARNESS-MOUNT.md](BEN-001-HARNESS-MOUNT.md) | the synthetic harness: mount any component as root *with* its inputs set | ✅ **built and driven**, 19 specs; Live 6 closed (320 measures 320) and **Live 5 closed by BEN-002's drive** — a value set on the harness reaches the mounted component's DOM |
 | BEN-002 ⭐ | [BEN-002-INPUT-FORM.md](BEN-002-INPUT-FORM.md) | the inputs rail, generated from the component interface — and live update without reload | ✅ **built and driven**, 26 specs; **B2 decided** — see B13/B14 and the task file's correction |
 | BEN-003 | [BEN-003-OUTPUT-READOUT.md](BEN-003-OUTPUT-READOUT.md) | what the component emits, as a live log. Makes logic-only components previewable | ✅ **DONE and driven** — one channel (the trace), not two; every criterion measured live |
 | BEN-004 ⭐ | [BEN-004-BENCH-SURFACE.md](BEN-004-BENCH-SURFACE.md) | the mode selector, the stage chrome, the way back — R1–R5 live here | ✅ **built and driven**, 18 specs; see B6–B10 |
-| BEN-005 | [BEN-005-SCENARIOS.md](BEN-005-SCENARIOS.md) | named input sets saved to component metadata (Empty / Loaded / Error) | 📋 not started |
+| BEN-005 | [BEN-005-SCENARIOS.md](BEN-005-SCENARIOS.md) | named input sets saved to component metadata (Empty / Loaded / Error) | ✅ **built and driven**, 34 specs; every criterion measured live, and B13's remount branch finally has a case (B21) |
 | BEN-006 ⭐ | [BEN-006-AUTHORED-SAMPLE-DATA.md](BEN-006-AUTHORED-SAMPLE-DATA.md) | **Richard's ask**: the user edits the sample data in the AI preview and re-renders | 🟡 §1–§6 built, 26 specs; every Live criterion open |
 | BEN-007 | [BEN-007-ACCEPTANCE.md](BEN-007-ACCEPTANCE.md) | the live-driving pass the phase closes on | 📋 not started |
 
