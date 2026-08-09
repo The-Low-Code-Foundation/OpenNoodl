@@ -8,6 +8,7 @@
  * Offline: the one spec that drives a response stubs `AiClient.chatStream`.
  */
 
+import { asText } from '../../src/editor/src/models/AiAssistant/client/content';
 import { AiClient } from '../../src/editor/src/models/AiAssistant/client/AiClient';
 import {
   AiChatRequest,
@@ -192,7 +193,7 @@ describe('AIX-004 session', () => {
     // The follow-up carries the whole conversation, so the context is not resent.
     const followUpMessages = sent[1];
     expect(followUpMessages[0].role).toBe('system');
-    expect(followUpMessages.filter((m) => m.content.includes('--- CONTEXT ---')).length).toBe(1);
+    expect(followUpMessages.filter((m) => asText(m.content).includes('--- CONTEXT ---')).length).toBe(1);
     expect(followUpMessages[followUpMessages.length - 1].content).toContain('Why does this run twice?');
 
     // Sanity: the context that was sent is the one the session assembled.

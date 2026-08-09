@@ -124,13 +124,36 @@ export interface AiModelDefinition {
      * for whoever wonders why a breakpoint did nothing.
      */
     minCacheableTokens?: number;
+    /**
+     * BLD-012 — whether this model accepts an image. Absent means **no**, and
+     * the absence is load-bearing: an unregistered id, a custom gateway and a
+     * freshly pulled Ollama model all arrive here with nothing set, and all
+     * three must degrade to the text twin rather than send bytes the endpoint
+     * will reject.
+     *
+     * Unlike `measured`, this is not a benchmark result — it is a documented
+     * API capability, read from each vendor's own docs. It says the endpoint
+     * will *accept* an image, not that the model is any good at reading one.
+     */
+    vision?: boolean;
   };
   /** The default pick for its provider. Exactly one per provider. */
   isDefault?: boolean;
 }
 
-const frontier = { streaming: true, tools: true, agentFlow: true, sampling: true } as const;
-const small = { streaming: true, tools: true, agentFlow: false, sampling: true } as const;
+// `vision: true` on the shared bands below: every GPT-4.1/4o-family model and
+// every current Claude model documents image input. The Ollama seeds and the
+// hosted open-weight coder models deliberately do NOT get it — see their
+// entries.
+const frontier = { streaming: true, tools: true, agentFlow: true, sampling: true, vision: true } as const;
+/**
+ * BLD-012. Frontier-class reasoning, no image input — the shape the hosted
+ * open-weight coder models actually have. They shared `frontier` before vision
+ * existed as a flag; keeping them on it would have claimed a capability their
+ * endpoints reject, which is the silent-failure this task exists to prevent.
+ */
+const frontierTextOnly = { streaming: true, tools: true, agentFlow: true, sampling: true } as const;
+const small = { streaming: true, tools: true, agentFlow: false, sampling: true, vision: true } as const;
 const claudeFrontier = {
   streaming: true,
   tools: true,
@@ -139,7 +162,8 @@ const claudeFrontier = {
   adaptiveThinking: true,
   effort: true,
   promptCaching: true,
-  minCacheableTokens: 1024
+  minCacheableTokens: 1024,
+  vision: true
 } as const;
 
 export const AI_MODELS: readonly AiModelDefinition[] = [
@@ -307,7 +331,7 @@ export const AI_MODELS: readonly AiModelDefinition[] = [
     tier: 'frontier',
     contextWindow: 1_048_576,
     maxOutputTokens: 32_768,
-    capabilities: frontier,
+    capabilities: frontierTextOnly,
     openWeights: true,
     measured: false
   },
@@ -318,7 +342,7 @@ export const AI_MODELS: readonly AiModelDefinition[] = [
     tier: 'frontier',
     contextWindow: 262_144,
     maxOutputTokens: 32_768,
-    capabilities: frontier,
+    capabilities: frontierTextOnly,
     openWeights: true,
     measured: false
   }

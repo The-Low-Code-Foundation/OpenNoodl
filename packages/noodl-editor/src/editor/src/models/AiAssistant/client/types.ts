@@ -9,6 +9,10 @@
  * @module AiAssistant/client/types
  */
 
+import type { AiContent } from '@noodl-models/AiAssistant/client/content';
+
+export type { AiContent, AiContentBlock, AiImageBlock, AiTextBlock, AiImageMediaType } from '@noodl-models/AiAssistant/client/content';
+
 export type AiProviderId = 'anthropic' | 'openai' | 'openai-compatible' | 'ollama';
 
 export const AI_PROVIDER_IDS: readonly AiProviderId[] = [
@@ -38,7 +42,18 @@ export interface AiToolCall {
 
 export interface AiMessage {
   role: AiMessageRole;
-  content: string;
+  /**
+   * BLD-012 — a string, or a closed union of text and image blocks.
+   *
+   * String is still the overwhelmingly common case and every producer that
+   * built one keeps working. A *reader* must decide, though, and that is
+   * deliberate: `content.slice(...)` no longer typechecks, so the compiler
+   * names every place that has to say what it means for an image. Use the
+   * helpers in `./content` rather than re-deriving it — `asText` in particular
+   * is the only sanctioned way to flatten, because it substitutes the declared
+   * text twin instead of dropping the picture.
+   */
+  content: AiContent;
   /** Only on assistant messages that requested tools. */
   toolCalls?: AiToolCall[];
   /** Only on `role: 'tool'` messages — the id of the call being answered. */
@@ -55,6 +70,14 @@ export interface AiMessage {
    * Only meaningful on a message whose stable part is worth caching — the
    * opening turn. Caching is a prefix match, so a message carrying this must
    * be ordered stable-first; see `prompts/authoring.ts`.
+   *
+   * ⚠️ BLD-012 — **string content only.** A character offset says nothing about
+   * a block array, so the block form carries `cache: true` on the last stable
+   * block instead; see `cacheBlockIndex` in `./content` for why a marker beat a
+   * block index. Setting this alongside block content is a mistake the adapters
+   * cannot act on, so `assertCacheBoundary` rejects it at build time rather
+   * than letting the breakpoint quietly vanish — a lost breakpoint has no
+   * symptom except the bill.
    */
   cacheBoundary?: number;
 }

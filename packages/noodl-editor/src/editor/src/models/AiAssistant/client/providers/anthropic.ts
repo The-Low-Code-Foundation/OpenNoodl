@@ -27,6 +27,14 @@ import {
   AiToolCall
 } from '@noodl-models/AiAssistant/client/types';
 import { parseToolArguments } from '@noodl-models/AiAssistant/client/providers/stream-utils';
+import {
+  AiContentBlock,
+  asText,
+  assertCacheBoundary,
+  cacheBlockIndex,
+  degradeImages,
+  isBlockContent
+} from '@noodl-models/AiAssistant/client/content';
 
 import { errorMessage, errorStatus, isAbortError } from './errors';
 import { finalizeUsage } from './usage';
@@ -175,11 +183,44 @@ function markCacheBreakpoint(message: AnthropicRequestMessage): boolean {
  */
 function splitAtCacheBoundary(message: AiMessage): AnthropicRequestBlock[] | null {
   const boundary = message.cacheBoundary;
-  if (typeof boundary !== 'number' || boundary <= 0 || boundary >= message.content.length) return null;
+  // BLD-012: string content only. `assertCacheBoundary` has already thrown if a
+  // caller paired an offset with blocks, so reaching here with an array means
+  // no boundary was set and the block path owns the breakpoint.
+  if (isBlockContent(message.content)) return null;
+  const content = message.content;
+  if (typeof boundary !== 'number' || boundary <= 0 || boundary >= content.length) return null;
   return [
-    { type: 'text', text: message.content.slice(0, boundary), cache_control: CACHE_CONTROL },
-    { type: 'text', text: message.content.slice(boundary) }
+    { type: 'text', text: content.slice(0, boundary), cache_control: CACHE_CONTROL },
+    { type: 'text', text: content.slice(boundary) }
   ];
+}
+
+/**
+ * BLD-012 — our closed block union onto Anthropic's open one.
+ *
+ * The image shape is the documented base64 source form; `mediaType` is already
+ * narrowed to the four types Anthropic accepts, so nothing is validated again
+ * here.
+ */
+function toAnthropicBlocks(blocks: AiContentBlock[]): AnthropicRequestBlock[] {
+  return blocks.map((block) =>
+    block.type === 'image'
+      ? { type: 'image', source: { type: 'base64', media_type: block.mediaType, data: block.data } }
+      : { type: 'text', text: block.text }
+  );
+}
+
+/**
+ * Blocks with the breakpoint placed on the block marked `cache`, or null when
+ * none is — the block-content analogue of `splitAtCacheBoundary`, and it spends
+ * from the same budget for the same reason.
+ */
+function markedBlocks(content: AiContentBlock[]): AnthropicRequestBlock[] | null {
+  const index = cacheBlockIndex(content);
+  if (index < 0) return null;
+  const blocks = toAnthropicBlocks(content);
+  blocks[index].cache_control = CACHE_CONTROL;
+  return blocks;
 }
 
 /**
@@ -214,15 +255,23 @@ export function toAnthropicMessages(
   let breakpoints = 0;
 
   for (const message of messages) {
+    // BLD-012: a character offset paired with block content is a caller bug the
+    // adapter cannot act on, and ignoring it would cost caching silently.
+    assertCacheBoundary(message);
+
     if (message.role === 'system') {
-      if (message.content) systemParts.push(message.content);
+      // System is a string on the wire, so an image here can only ever be its
+      // twin. Nothing legitimately puts one in a system turn; `asText` means
+      // that if something does, it is described rather than dropped.
+      const text = asText(message.content);
+      if (text) systemParts.push(text);
       continue;
     }
 
     if (options.cacheBoundaries && message.role === 'user' && breakpoints < (options.maxBoundaries ?? Infinity)) {
-      const split = splitAtCacheBoundary(message);
-      if (split) {
-        out.push({ role: 'user', content: split });
+      const marked = isBlockContent(message.content) ? markedBlocks(message.content) : splitAtCacheBoundary(message);
+      if (marked) {
+        out.push({ role: 'user', content: marked });
         breakpoints++;
         continue;
       }
@@ -232,7 +281,8 @@ export function toAnthropicMessages(
       const block = {
         type: 'tool_result',
         tool_use_id: message.toolCallId,
-        content: message.content
+        // A tool result is text by contract — no tool returns an image today.
+        content: asText(message.content)
       };
 
       const previous = out[out.length - 1];
@@ -246,7 +296,10 @@ export function toAnthropicMessages(
 
     if (message.role === 'assistant' && message.toolCalls?.length) {
       const content: AnthropicRequestBlock[] = [];
-      if (message.content) content.push({ type: 'text', text: message.content });
+      // An assistant turn is generated text, never an image, so flattening is
+      // lossless here rather than a degradation.
+      const text = asText(message.content);
+      if (text) content.push({ type: 'text', text });
       for (const call of message.toolCalls) {
         content.push({ type: 'tool_use', id: call.id, name: call.name, input: call.arguments });
       }
@@ -254,7 +307,10 @@ export function toAnthropicMessages(
       continue;
     }
 
-    out.push({ role: message.role, content: message.content });
+    out.push({
+      role: message.role,
+      content: isBlockContent(message.content) ? toAnthropicBlocks(message.content) : message.content
+    });
   }
 
   // The API requires the first message to be `user`. Templates that open with
@@ -312,11 +368,20 @@ export class AnthropicProvider implements AiProvider {
 
     const model = resolveModel(modelId, this.id);
     const caching = model.capabilities.promptCaching === true;
+
+    // BLD-012 — degrade before mapping, never inside it. Every current Claude
+    // model takes images, so this is normally a pass-through; it earns its keep
+    // on an unregistered id, which `unknownModel` gives no `vision` flag and
+    // which would otherwise be sent bytes its endpoint may reject.
+    const messagesIn = model.capabilities.vision
+      ? request.messages
+      : request.messages.map((message) => ({ ...message, content: degradeImages(message.content) }));
+
     // Two of the four markers are spoken for here — one for system, one for the
     // newest turn — so the mapper may spend at most the remaining two. It is
     // budgeted rather than checked afterwards: an over-budget request is a 400,
     // and there is no partial success to fall back to.
-    const { system, messages, breakpoints } = toAnthropicMessages(request.messages, {
+    const { system, messages, breakpoints } = toAnthropicMessages(messagesIn, {
       cacheBoundaries: caching,
       maxBoundaries: MAX_CACHE_BREAKPOINTS - 2
     });

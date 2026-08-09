@@ -12,6 +12,7 @@
  * Everything here is offline: the chat function is a script.
  */
 
+import { asText } from '../../src/editor/src/models/AiAssistant/client/content';
 import { DocSession } from '../../src/editor/src/models/AiAssistant/authoring/DocSession';
 import { docLint } from '../../src/editor/src/models/AiAssistant/authoring/docLint';
 import { PlanRun } from '../../src/editor/src/models/AiAssistant/authoring/PlanRun';
@@ -294,7 +295,7 @@ describe('AIX-011 criterion 7 — doc operations in the fan-out', () => {
       ]
     };
     const chat = async (request: AiChatRequest): Promise<AiChatResponse> => {
-      const opening = request.messages.find((m) => m.role === 'user')?.content ?? '';
+      const opening = asText(request.messages.find((m) => m.role === 'user')?.content ?? '');
       if (opening.includes('submit_doc')) {
         order.push('doc');
         return submitDoc(CLEAN_DOC);
