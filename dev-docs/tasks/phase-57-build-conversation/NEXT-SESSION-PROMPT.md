@@ -1,4 +1,4 @@
-# Next-session prompt — phase 57, after session 7
+# Next-session prompt — phase 57, after session 9
 
 Paste everything below into a fresh session.
 
@@ -7,103 +7,100 @@ Paste everything below into a fresh session.
 You are picking up **phase 57 (BLD — the Build panel as a conversation)** on `cline-dev` in
 `/Users/richardosborne/vscode_projects/OpenNoodl`.
 
-Read `dev-docs/tasks/phase-57-build-conversation/HANDOVER-SESSION-7.md` first, then `TASKS.md`.
+Read `dev-docs/tasks/phase-57-build-conversation/HANDOVER-SESSION-9.md` first, then `TASKS.md`.
 
 ## 🔴 Do these checks before anything else
 
-1. **`git status` and `git log` — a sibling session was live through session 7 and may still be.**
-   Two files under `packages/noodl-core-ui/src/components/code-editor/` were left modified and
-   **they are not yours**. If the tree still holds them, leave them; if new commits you did not make
-   are on the branch, a sibling is working now. **Pathspec-scope every commit; never `git add -A`;
-   never `git stash`.**
-2. **`ps aux | grep "[e]lectron/dist"` before you launch or stop anything.** ⚠️ `npm run dev:stop`
-   reaps by *checkout*, and a sibling shares this one — session 7 killed their editor with it. If
-   something is running that you did not start, **ask Richard before stopping it**.
-3. **`ai-test`'s `project.json` is dirty and that is correct.** It holds the sibling's
-   Slider → Expression → opacity test graph. **Do not "clean" the fixture.** A dirty test project is
-   evidence about someone else, not litter — read the repo's `git log` before deciding otherwise.
-   (Session 7 got this wrong, reverted their graph, and had to restore it from a backup.)
-4. **`test:ci` has not been run since BLD-002.** Session 6's tree measured **2582 specs, 6 failures**
-   — the inherited four `AIX-006 style vocabulary` plus two `AI model registry`. BLD-005 landed
-   after that, so the number is unverified on the current tree. ~20 minutes. ⚠️ **Redirect to a file
-   and `grep -E "^Jasmine:"`; never `tail` it.** The `FAILED:` list prints *after* the verdict line.
+1. **`git log` *and* `git status` — sessions 7, 8 and 9 all ran beside a sibling.** Two files under
+   `packages/noodl-core-ui/src/components/code-editor/` have been modified and uncommitted for three
+   consecutive sessions and **are not yours** — leave them. Three untracked `dev-docs/tasks/phase-59…61`
+   directories are likewise not yours. **Pathspec-scope every commit; never `git add -A`; never
+   `git stash`.** ⚠️ A clean `git status` can also mean *a sibling already committed your work* —
+   check `git log` before concluding anything.
+2. **`ps aux | grep "[e]lectron/dist"` before you launch or stop anything.** `npm run dev:stop` reaps
+   by *checkout* and a sibling shares this one. If something is running that you did not start, **ask
+   Richard before stopping it** — the editor is a queue, not a resource to seize.
+3. ⚠️ **Never run `test:ci` with a dev stack up.** Commit `37fe2db5` proves it manufactures phantom
+   failures: 11 failures with the stack live, **`Jasmine: 2582 specs, 6 failures`** on a clean re-run
+   with no code change. Stop the stack, redirect to a file, `grep -E "^Jasmine:"` — never `tail` it,
+   the `FAILED:` list prints *after* the verdict line.
+4. **`ai-test` holds two things that look like litter and are not.** Its `project.json` carries a
+   sibling's Slider/Expression graph; `docs/uk-vat.md` is BLD-007's acceptance fixture (currently
+   `inject: always`). **Do not clean either.**
 
 ## Where the phase is
 
-**6 of 16 built.** BLD-001 ✅, BLD-002 ✅, BLD-003 ✅, BLD-005 ✅ (all driven and closed — D1, D2, D3,
-D4, correction 2). BLD-007 and BLD-012 merged but ⚠️ **neither has ever been driven**, and BLD-012's
-image block has never reached a real endpoint — the one with a bill attached to getting it wrong.
+**8 of 16 built, 7 driven.** BLD-001 ✅, BLD-002 ✅, BLD-003 ✅, BLD-004 ✅, BLD-005 ✅, **BLD-007 ✅
+(driven and closed session 9 — D9 closed)**, BLD-012 🟡.
+
+**BLD-012 is the one to read carefully before touching.** Its image block *has* now reached a real
+Anthropic endpoint on both `chat` and `chatStream` — that claim is closed. Two different gaps remain:
+**the panel** (no UI produces an image message until BLD-011 ships the chip) and **OpenAI's leg**
+(stub-only). Do not re-verify the Anthropic one; do not assume the other two are done.
 
 ## What to work on
 
 Unless Richard says otherwise:
 
-1. **BLD-004** — and it is now a *pair* of filed items with the same shape, which is why it is first.
-   - **C8**: the collapsed activity run says *"12 steps"* and deliberately claims **no duration**,
-     because `AuthoringActivity` carries no timestamp. Stamping activities where the three sessions
-     push them is what closes it.
-   - **R2**: the current operation in the run map has accent and weight and **deliberately no
-     motion**. ⚠️ Do not "fix" this with a CSS animation on `busy` — `busy` stays true when the
-     provider has hung, so that pulse animates hardest exactly when nothing is happening, which is
-     the failure correction 2 exists to fix. It needs a real `onActivity` heartbeat.
-     `thread/RunHeader.module.scss` already says where the motion belongs.
-2. **Drive BLD-007 and BLD-012.**
-3. **BLD-006** — persistence across a restart, plus the switcher. `BuildThread`'s `header` slot was
-   deliberately left free for it; BLD-005 took a **separate** `runHeader` slot so the two would not
-   fight over one node.
-4. **BLD-008** — ⚠️ `question` is **already** a kind on `AuthoringActivity`, with its treatment built
+1. **BLD-006** — threads persist across accept, navigation and restart, plus the switcher.
+   `BuildThread`'s `header` slot was deliberately left free for it (BLD-005 took a *separate*
+   `runHeader` slot so the two would not fight over one node). ⚠️ It also owns **R6**: the user's
+   request renders **twice** in the thread — a retired turn carrying only the request, plus the live
+   one. Visible in every screenshot since session 8; it is a thread-composition question, not a
+   regression.
+2. **BLD-008** — ⚠️ `question` is **already** a kind on `AuthoringActivity`, with its treatment built
    and its collapse rule decided (a question can never be absorbed into a run). **Add the author, not
    a fifth opinion about how it should look.**
-5. **BLD-010** owns two open debts: the docs route of BLD-003 has **never been on screen**, and
-   BLD-005's **R5** — cost has never been verified against a real provider, because the scripted
-   drive hook returns fixed `usage` and every dollar figure so far is an artefact of it.
+3. **BLD-010** owns three debts (one fewer than last session): BLD-003's docs route has **never been
+   on screen**, and BLD-004's **R4** (Ollama open-weight leg, inferred not driven) and **R5**
+   (OpenAI-compatible `reasoning_content`, deliberately unwired). ✅ **BLD-005's R5 is closed** —
+   cost is now verified against a real provider and the arithmetic is exact.
 
-## The two traps session 7 found, both bigger than the bugs they caused
+## The three traps sessions 8 and 9 found, all one shape
 
-> **There is no `opacity` value that both reads as dimmed and clears AA in both themes.**
+> **A rule that was right about its old subject.**
 
-Measured on real composited pixels, `fg-default` on a panel surface:
+Three for three this phase: a clock that outlived what it measured (BLD-004), a state class that
+outlived its modifier (BLD-004), and an ellipsis that outlived the path it was written for
+(BLD-007 **B8** — the panel stated the per-turn cost and truncated it to *"about 4…"*). When you
+append to something, re-read the rules already governing it. **A correct decision plus a correct
+decision is not a correct result.**
 
-| opacity | 0.55 | 0.65 | 0.70 | 0.75 | 0.80 | 0.85 |
-|---|---|---|---|---|---|---|
-| **dark** | 3.27 ❌ | 4.03 ❌ | 4.46 ❌ | 4.92 ✅ | 5.41 ✅ | 5.93 ✅ |
-| **light** | 2.53 ❌ | 3.10 ❌ | 3.46 ❌ | 3.87 ❌ | 4.34 ❌ | 4.89 ✅ |
+> **A spot-check at the default value proves nothing about the range.**
 
-Everything that reads as dimmed fails AA in light; the first value passing both (0.85) is too subtle
-to read as dimming. **Light mode binds ~0.1 stricter than dark**, so a dark-only check ships a
-failure. And opacity moves contrast **without appearing in any colour token** — `tsc`, every pure
-spec and a screenshot all pass. Use `fg-default-shy` (5.57 dark / 5.06 light) and let an icon carry
-the rest. ⚠️ `fg-muted` fails AA on all three surfaces; non-text affordances only.
+B8's *first* fix was perfect at the shipped 400px panel and hard-clipped the cost with no ellipsis at
+every narrower width — strictly worse than the bug. Found by sweeping the panel's whole width range.
+Same lesson as session 7's opacity table. **Sweep the parameter; it costs the same as one check and
+answers a different question.**
 
-> **A CSS-module lookup for a class the stylesheet does not define returns `undefined`, so the
-> element renders with NO class at all.**
+> **A substring in a request is not evidence of a leak.**
 
-A five-row run map reported **four** roles the moment one row changed state. The row was fine — it
-had become *unmeasurable*. When a class encodes **state**, declare every value, even the empty ones.
-If a drive's element count drops as state advances, suspect this before suspecting the render.
+Searching a captured request for removed docs returned two hits, both false: the harness's own text,
+and a citation a human had typed inside a different doc. **Locate the offset and read around it.**
 
-## Driving the Build panel with no provider
+## Driving this panel
 
-The recipe is in `HANDOVER-SESSION-7.md` (and sessions 5 and 6). The four that cost session 7 real
-time:
+The recipe is in handovers 5–9. The four from session 9 that cost real time:
 
-- ⚠️ **Install the `AiClient` hook BEFORE opening the project** — a source edit rebuilds and reloads.
-- ⚠️ **`!counter` is true when the counter is `0`.** A drive hook keyed on `!__driveRead` looped on
-  context reads forever and **Stop could not land**, because cancel is checked between provider calls
-  and the hook kept supplying them. Initialise drive counters to `-1`.
-- ⚠️ **An occluded window clamps the run clock** — elapsed froze at 6s then jumped to 47s. Take a
-  **screenshot each poll**; it forces a frame.
-- **A bare `Group` fails the gate for a `Pages/*` target but stages fine as `Ui/*`.** If every
-  operation reports *"could not produce a valid component within its budget"*, that is the target
-  kind, not the graph.
+- **The doc tool lives on `AuthoringSession`, not the planning turn** — a doc drive must carry a run
+  into a real build operation. The planning turn offers only `submit_plan`, which is a plain tool call
+  with an `operations` array (no XML), so scripting it is two lines.
+- ⚠️ **HMR applies SCSS to the Docs panel and misses its TSX**, and switching panels does not remount
+  it. Only a full restart works, and `cdp reload` is still forbidden (it lands the `file://` page on
+  `chrome-error://`). **Order your source edits to pay for one restart, not two.**
+- ⚠️ **`textContent` sweeps across `*` match `<style>` elements** — a CSS module's own source comments
+  contain the words you are searching for. Exclude `style`/`script`.
+- **You may not need to reset a capture.** Record the current length and slice from it; it keeps the
+  previous run's evidence instead of destroying it, and avoids the global assignment the tool-call
+  classifier refuses.
 
-## The habit that paid off most
+## If a real provider is needed
 
-**Sweep the parameter instead of picking one.** The opacity defect was not found by reading the value
-or by spot-checking one theme — it was found by asking the running app for the ratio at nine
-opacities in both themes in a single `eval` and reading a table. A sweep costs the same as a spot
-check and answers *"is there a good value at all"*, which turned out to be the real question, with
-the answer "no".
+The editor has **no AI provider configured**, deliberately — session 9 ran its endpoint check
+*outside* the editor so no key reached `editorSettings`, the keychain or the repo. Richard supplied a
+testing key on request and said he would cycle it. The harness is one ts-node script driving the real
+`AnthropicProvider` with no injected client; the pattern is in HANDOVER-SESSION-9.md and it takes a
+model id as an argument, so OpenAI's leg is a short job.
 
-Corollary, twice-earned now: **the comment written from reasoning was wrong and the measurement one
-line away was right.** Write the sweep before the justification.
+⚠️ **Make the test distinguish acceptance from comprehension.** A 1px PNG proves only that a request
+shape was not rejected. Session 9 sent a solid blue square and asked what colour it was.

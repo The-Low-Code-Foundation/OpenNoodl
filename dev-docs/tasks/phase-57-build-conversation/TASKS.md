@@ -29,7 +29,7 @@ box — its header is inside the scroll area.
 | BLD-004 ✅ | [BLD-004-THINKING-AND-HEARTBEAT.md](BLD-004-THINKING-AND-HEARTBEAT.md) | surface `onActivity`; add a reasoning channel the XML parser cannot see | **D6 ✅ D7 ✅** C8 ✅ R2 ✅ |
 | BLD-005 ⭐ ✅ | [BLD-005-LEGIBLE-LONG-RUN.md](BLD-005-LEGIBLE-LONG-RUN.md) | pin the run header out of the scroll area; plan-as-map; honest estimate | **corr. 2 ✅** |
 | BLD-006 | [BLD-006-THREADS-PERSIST.md](BLD-006-THREADS-PERSIST.md) | threads survive accept, navigation and restart; a switcher | D5 |
-| BLD-007 ✅ | [BLD-007-DOCS-ARE-OPEN.md](BLD-007-DOCS-ARE-OPEN.md) | front-matter `inject`; the one-value enum becomes a discovered list | D9 |
+| BLD-007 ⭐ ✅ | [BLD-007-DOCS-ARE-OPEN.md](BLD-007-DOCS-ARE-OPEN.md) | front-matter `inject`; the one-value enum becomes a discovered list | **D9 ✅** |
 | BLD-008 ⭐ | [BLD-008-DOCS-INTERVIEW.md](BLD-008-DOCS-INTERVIEW.md) | the agent asks before it drafts; TODO count stops being a feature | D8 |
 | BLD-009 | [BLD-009-EXPANDED-MODE.md](BLD-009-EXPANDED-MODE.md) | the same thread as a document, two-pane with the live preview | D10 |
 | BLD-010 | [BLD-010-ACCEPTANCE-PASS.md](BLD-010-ACCEPTANCE-PASS.md) | drive every state live, both widths, both themes, and measure | — |
@@ -38,6 +38,15 @@ box — its header is inside the scroll area.
 
 ✅ = built **and on `cline-dev`** (BLD-007 and BLD-012 merged 2026-08-09; **BLD-001 built, driven and
 closed 2026-08-09** — `a93720b3`, `02c3072c`, `458e189f`).
+
+**Session 9 (2026-08-09) — BLD-007 driven and closed; BLD-012's live claim taken.** **8 of 16 built,
+7 driven.** BLD-007's three open acceptance criteria are all live measurements now, and the drive
+found **B8** (the panel stated the per-turn cost and the ellipsis ate the number). BLD-012's image
+block **reached a real Anthropic endpoint** on both `chat` and `chatStream` — the model was shown a
+blue square and said "Blue", so acceptance is distinguished from comprehension. That one call also
+closed **BLD-005's R5** (cost against a real provider: $0.000042, arithmetic exact) and showed
+**BLD-004's `onActivity` firing against a real provider** for the first time. ⚠️ BLD-012 is *not*
+closed: no UI produces an image message until BLD-011, and OpenAI's leg is still stub-only.
 
 **BLD-001 is driven and closed** (2026-08-09). The first drive closed B1, confirmed six claims and
 found two defects, neither reachable offline; both are now fixed and re-driven:

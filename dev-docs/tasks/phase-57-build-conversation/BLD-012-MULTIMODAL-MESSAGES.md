@@ -15,10 +15,37 @@
 > **`Jasmine: 2582 specs, 6 failures`** (the inherited six, by name) · `test:main` **84 suites /
 > 1125 tests**, of which 19 are this task's · `typecheck:editor` + `typecheck:editor-tests` clean.
 >
-> ⚠️ **Still not driven, and the untested claim is unchanged:** no real Anthropic/OpenAI endpoint
-> has accepted the image block. The specs pin the request *shape* against a stub client, nothing
-> more. **This failure has no symptom except the bill**, so the golden is the only guard until
-> someone runs a live turn.
+> ✅ **The untested claim is now tested — 2026-08-09, session 9.** A real Anthropic endpoint accepted
+> the image block this adapter builds, on **both** `chat` and `chatStream`, driven through the real
+> `AnthropicProvider` with no injected client (so the real SDK path, not the stub the specs use).
+>
+> ⚠️ **The image was chosen so acceptance could not be confused with comprehension.** A 1px PNG would
+> prove only that the request shape was not rejected. This sent a solid blue 16×16 PNG and asked
+> *"What colour is this image?"* — the model answered **"Blue"**, which is only possible if the picture
+> arrived *and* decoded. Verifying the consequence, not the mechanism.
+>
+> | | value |
+> |---|---|
+> | model id sent | `claude-haiku-4-5` (the registry's id) |
+> | model served | `claude-haiku-4-5-20251001` |
+> | answer | **"Blue"** · `stopReason: stop` |
+> | usage | 22 in / 4 out, 0 cached |
+> | **cost** | **$0.000042** |
+> | `onActivity` calls | **6** (streaming path) |
+>
+> Three things fell out of one call beyond this task:
+> - **The registry ships an id the endpoint accepts.** `claude-haiku-4-5` resolved server-side to a
+>   real dated model rather than 404ing — worth knowing, given register #5 records that
+>   `openai-compatible` ids resolve to nothing.
+> - **BLD-005's R5 is closed.** Cost had never been checked against a real provider; every figure so
+>   far came from a scripted hook returning fixed `usage`. $0.000042 is exactly
+>   22×$1/MTok + 4×$5/MTok, so the editor's pricing arithmetic is correct on real numbers.
+> - **BLD-004's heartbeat fired against a real provider** for the first time — `onActivity` 6 times on
+>   one four-token answer. It had only ever been driven with a scripted hook.
+>
+> ⚠️ **Still not driven:** the *panel*. There is no UI that produces an image message (the chip is
+> blocked on BLD-011), so this is verified at the adapter, not on screen. And OpenAI's leg remains
+> stub-only — only Anthropic was exercised against a real endpoint.
 
 ## The defect, measured
 
@@ -138,8 +165,11 @@ a silent-drop branch and none has one.
 Anthropic degrade path fails 2 specs, flipping `cacheBlockIndex` to first-match fails 1.
 `noodl-mcp` unchanged at its 6 inherited tsc errors and 226 passing.
 
-**Not driven.** No editor, no live provider call. A green check proves the request *shape*; it does
-not prove a real endpoint accepts it, and it says nothing about a panel.
+~~**Not driven.** No editor, no live provider call.~~ **Superseded 2026-08-09** — see the live table at
+the top. A live Anthropic turn accepted the image and described it correctly on both `chat` and
+`chatStream`. Two gaps remain and neither is the one this note was written about: **the panel** (no UI
+produces an image message until BLD-011 ships the chip) and **OpenAI's leg** (stub-only; only Anthropic
+was exercised against a real endpoint).
 
 ## Register
 
