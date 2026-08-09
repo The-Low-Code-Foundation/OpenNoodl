@@ -30,7 +30,7 @@ box — its header is inside the scroll area.
 | BLD-005 ⭐ ✅ | [BLD-005-LEGIBLE-LONG-RUN.md](BLD-005-LEGIBLE-LONG-RUN.md) | pin the run header out of the scroll area; plan-as-map; honest estimate | **corr. 2 ✅** |
 | BLD-006 ✅ | [BLD-006-THREADS-PERSIST.md](BLD-006-THREADS-PERSIST.md) | threads survive accept, navigation and restart; a switcher | **D5 ✅** |
 | BLD-007 ⭐ ✅ | [BLD-007-DOCS-ARE-OPEN.md](BLD-007-DOCS-ARE-OPEN.md) | front-matter `inject`; the one-value enum becomes a discovered list | **D9 ✅** |
-| BLD-008 ⭐ 🟡 | [BLD-008-DOCS-INTERVIEW.md](BLD-008-DOCS-INTERVIEW.md) | the agent asks before it drafts; TODO count stops being a feature | D8 (built, not driven) |
+| BLD-008 ⭐ ✅ | [BLD-008-DOCS-INTERVIEW.md](BLD-008-DOCS-INTERVIEW.md) | the agent asks before it drafts; TODO count stops being a feature | **D8 closed — driven $0.0588, 3 defects fixed (R11–R13); drafting turns + restart-resume still specs** |
 | BLD-009 | [BLD-009-EXPANDED-MODE.md](BLD-009-EXPANDED-MODE.md) | the same thread as a document, two-pane with the live preview | D10 |
 | BLD-017 ⭐ ✅ | [BLD-017-MOCKUP-FIDELITY.md](BLD-017-MOCKUP-FIDELITY.md) | the panel does not look like the mockup it was approved from | **F1–F6 closed, driven; F7 → design system, F8 → BLD-011** |
 | BLD-010 | [BLD-010-ACCEPTANCE-PASS.md](BLD-010-ACCEPTANCE-PASS.md) | drive every state live, both widths, both themes, and measure | — |
