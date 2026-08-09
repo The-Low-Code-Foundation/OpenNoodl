@@ -51,6 +51,7 @@ import { ScrollArea } from '@noodl-core-ui/components/layout/ScrollArea';
 import { HStack, VStack } from '@noodl-core-ui/components/layout/Stack';
 import { Text, TextType } from '@noodl-core-ui/components/typography/Text';
 
+import { ReasoningStrip } from './ReasoningStrip';
 import css from './BuildThread.module.scss';
 
 export type ThreadWidth = 'panel' | 'expanded';
@@ -79,6 +80,10 @@ export function ActivityRow({ activity }: { activity: AuthoringActivity }) {
           </Text>
         </div>
       );
+    case 'reasoning':
+      // BLD-004. Its own component and its own channel — never merged into the
+      // prose above, which is the string the authoring XML templates parse.
+      return <ReasoningStrip text={activity.text} streaming={activity.streaming} at={activity.at} />;
     case 'tool':
       return (
         <div className={css['Event']}>
@@ -259,6 +264,16 @@ export interface BuildThreadProps {
    * which half of one node is currently allowed to exist.
    */
   runHeader?: React.ReactNode;
+  /**
+   * BLD-004 — what a busy turn shows instead of the bare "Working…".
+   *
+   * A node rather than a `lastActivityAt` prop, because the liveness belongs to
+   * whichever producer is running and this component knows about none of them.
+   * Absent, the turn falls back to the sentence below, which is what a producer
+   * with no heartbeat wired should show: the only claim it can evidence is that
+   * a turn is open.
+   */
+  heartbeat?: React.ReactNode;
   /** Shown in place of the turn list when there are no turns. */
   emptyState?: React.ReactNode;
 
@@ -281,6 +296,7 @@ export function BuildThread({
   renderOutcome,
   header,
   runHeader,
+  heartbeat,
   emptyState,
   value,
   onChange,
@@ -353,15 +369,15 @@ export function BuildThread({
                     <ActivityRow key={item.index} activity={item.activity} />
                   )
                 )}
-                {turn.busy && (
-                  <div className={css['Event']}>
-                    {/* BLD-004 makes this a heartbeat driven by `onActivity`.
-                        Until it is, it says only what is certainly true: a turn
-                        is open. Rule 5 — never claim progress you cannot
-                        evidence. */}
-                    <Text textType={TextType.Shy}>Working…</Text>
-                  </div>
-                )}
+                {turn.busy &&
+                  (heartbeat ?? (
+                    <div className={css['Event']}>
+                      {/* The fallback for a producer with no heartbeat wired: it
+                          says only what is certainly true, that a turn is open.
+                          Rule 5 — never claim progress you cannot evidence. */}
+                      <Text textType={TextType.Shy}>Working…</Text>
+                    </div>
+                  ))}
                 {rich !== undefined ? rich : turn.outcome && <OutcomeSummary outcome={turn.outcome} />}
               </div>
             );

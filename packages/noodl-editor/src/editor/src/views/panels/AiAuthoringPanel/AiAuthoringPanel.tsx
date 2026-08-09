@@ -110,6 +110,7 @@ import { ProjectAuthoringView } from './ProjectAuthoringView';
 import { ProjectReviewBanner } from './ProjectReviewBanner';
 import { ProjectReviewView } from './ProjectReviewView';
 import { BuildThread, type ThreadWidth } from './thread/BuildThread';
+import { Heartbeat } from './thread/Heartbeat';
 import { RunHeader } from './thread/RunHeader';
 
 export const AiAuthoringPanel_ID = 'ai-authoring';
@@ -760,6 +761,21 @@ export function AiAuthoringPanel({ width = 'panel' }: AiAuthoringPanelProps = {}
     ]
   );
 
+  /*
+   * BLD-004 — the component session's heartbeat.
+   *
+   * The plan run's own is on the pinned header instead, beside the operation it
+   * belongs to: during a plan the busy turn in the list *is* the run, while the
+   * thing actually streaming is one operation inside it, and attaching the dot
+   * to the run would put it next to a turn whose liveness it does not describe.
+   *
+   * `state` is null between requests and `Heartbeat` renders nothing when not
+   * busy, so this is on screen only for the turn it is about.
+   */
+  const heartbeat = (
+    <Heartbeat busy={Boolean(state?.busy)} lastActivityAt={state?.lastActivityAt} stallMs={state?.stallMs} />
+  );
+
   return (
     <BasePanel title="Build" isFill>
       <BuildThread
@@ -767,6 +783,7 @@ export function AiAuthoringPanel({ width = 'panel' }: AiAuthoringPanelProps = {}
         turns={turns}
         renderOutcome={renderOutcome}
         runHeader={<RunHeader state={runState} />}
+        heartbeat={heartbeat}
         header={
           <>
             {/* The flag moves to the header, out of the turn list, where it

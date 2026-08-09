@@ -108,6 +108,10 @@ export function withTurnDeadline(chat: DeadlineChatFn, options: TurnDeadlineOpti
         touch();
         callbacks?.onActivity?.();
       },
+      onReasoning: (fullReasoning, delta) => {
+        touch();
+        callbacks?.onReasoning?.(fullReasoning, delta);
+      },
       onEnd: () => {
         touch();
         callbacks?.onEnd?.();

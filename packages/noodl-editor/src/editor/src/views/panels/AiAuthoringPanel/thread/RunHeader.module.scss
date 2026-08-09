@@ -32,19 +32,56 @@
 /*
  * The current operation.
  *
- * ⚠️ **Accent and weight, and deliberately no motion.** The obvious thing is to
- * pulse this while the run is busy, and it is wrong for the reason BLD-004
- * exists: `busy` stays true when the provider has hung, so a pulse driven by it
- * animates most confidently at exactly the moment nothing is happening. Motion
- * here has to be driven by `onActivity` — a real heartbeat — which is BLD-004's
- * to add. Until then this distinguishes the current row without claiming
- * anything about it.
+ * Accent and weight in every state; motion in exactly one.
+ *
+ * ⚠️ **BLD-004 supplied the heartbeat this waited for, and the rule it replaced
+ * stands.** The obvious build is `animation: … infinite` on a `busy` class, and
+ * it is wrong: `busy` stays true when the provider has hung, so that pulse
+ * animates most confidently at the moment nothing is happening — the failure
+ * BLD-005's correction 2 exists to fix. The class below is set from
+ * `liveness()`, whose input is the timestamp of the last event on the wire, and
+ * the animation is finite so it expires on its own if no next event arrives.
+ * See `Heartbeat.module.scss` for the full argument.
  */
 .Current {
   display: flex;
   align-items: baseline;
   gap: 6px;
   color: var(--theme-color-primary);
+}
+
+/*
+ * ⚠️ Every liveness state is declared, including the ones with no rules.
+ *
+ * A CSS-module lookup for an undeclared class returns `undefined` and the
+ * element renders with **no class at all** — BLD-005 lost a re-drive to exactly
+ * that, when a five-row run map reported four roles the moment one row changed
+ * state. The row was fine; it had become unmeasurable. State classes are
+ * exhaustive so a drive can count them.
+ *
+ * ⚠️ **None of them animates the row itself, and that is deliberate.** The first
+ * build of this breathed the row's `opacity` between 1 and 0.92. BLD-005 swept
+ * nine opacities on composited pixels and found that opacity moves contrast
+ * without appearing in any colour token — invisible to `tsc`, to every pure
+ * spec and to a screenshot — so the row keeps its measured colour at all times
+ * and the motion lives on the dot beside it, which is a non-text affordance and
+ * therefore not something AA binds.
+ */
+.is-alive {
+  /* The dot carries it — see `Heartbeat.module.scss`. */
+}
+
+.is-waiting {
+  /* No declarations. Between events is the resting appearance. */
+}
+
+.is-silent {
+  /* No declarations of its own — the run header renders the sentence instead,
+     which is a stronger signal than any treatment of this row would be. */
+}
+
+.is-idle {
+  /* Reached between operations, when no session is busy. Deliberately inert. */
 }
 
 .CurrentTarget {

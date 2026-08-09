@@ -214,6 +214,22 @@ export interface AiStreamCallbacks {
    * that has stopped answering. `withTurnDeadline` is its consumer.
    */
   onActivity?: () => void;
+  /**
+   * BLD-004: called per reasoning delta, with the accumulated reasoning and the
+   * delta — the same shape as {@link onText}, on a channel that never touches it.
+   *
+   * ⚠️ **The separation is the entire risk of this callback.** The authoring
+   * loop parses the assistant's visible text with XML templates, so reasoning
+   * that reaches `onText`'s string corrupts authoring output rather than merely
+   * a panel. Reasoning arrives from the provider as its own block type and must
+   * be routed here without ever being appended to the accumulated text; see the
+   * `thinking_delta` case in `providers/anthropic.ts`.
+   *
+   * Providers with no reasoning channel simply never call it. Nothing here
+   * synthesises one from visible text — a "reasoning" strip fabricated out of
+   * the answer is a claim about the model's process that nobody measured.
+   */
+  onReasoning?: (fullReasoning: string, delta: string) => void;
   onEnd?: () => void;
 }
 

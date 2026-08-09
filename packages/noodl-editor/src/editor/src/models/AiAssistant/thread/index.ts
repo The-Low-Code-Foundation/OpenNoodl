@@ -20,7 +20,16 @@ export {
 export type { DecisionOwner } from './decisions';
 export { classifyPlan, decideIntent, summarisePlan } from './intent';
 export type { IntentDecision } from './intent';
-export { collapseActivities, isCollapsible, MIN_RUN_LENGTH, summariseRun } from './messages';
+export {
+  ALIVE_MS,
+  DEFAULT_QUIET_MS,
+  liveness,
+  QUIET_FRACTION,
+  quietThreshold,
+  silenceNote
+} from './liveness';
+export type { Liveness, LivenessInput, LivenessState } from './liveness';
+export { collapseActivities, isCollapsible, MIN_RUN_LENGTH, runDuration, summariseRun } from './messages';
 export type { MessageKind, ThreadItem } from './messages';
 export {
   authoringDetail,

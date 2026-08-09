@@ -89,7 +89,14 @@ export interface AnthropicStreamEvent {
   index?: number;
   message?: { model?: string; usage?: AnthropicUsage };
   content_block?: { type?: string; id?: string; name?: string };
-  delta?: { type?: string; text?: string; partial_json?: string; stop_reason?: string };
+  delta?: {
+    type?: string;
+    text?: string;
+    /** BLD-004: the reasoning summary's delta, on `thinking_delta`. Never `text`. */
+    thinking?: string;
+    partial_json?: string;
+    stop_reason?: string;
+  };
   usage?: AnthropicUsage;
 }
 
@@ -423,10 +430,25 @@ export class AnthropicProvider implements AiProvider {
       params.temperature = request.temperature;
     }
 
-    // Adaptive thinking with the reasoning hidden: better answers, and the
-    // visible text stays clean for the XML-parsing templates.
+    /*
+     * Adaptive thinking, with the reasoning summarised rather than hidden.
+     *
+     * ⚠️ **BLD-004, and the premise it corrects.** This shipped as
+     * `display: 'omitted'` under a comment saying that kept "reasoning out of
+     * the response text the XML templates parse". The templates were never at
+     * risk: `display` governs the *thinking block*, and thinking has never been
+     * part of a `text` block on any setting — the raw chain of thought is not
+     * returned at all, on any value of this field. What `'omitted'` actually
+     * does is stream thinking blocks whose text is **empty**, which is why
+     * `onReasoning` had nothing to report until this line changed.
+     *
+     * `'summarized'` returns a readable summary of the reasoning on its own
+     * block type. It is billed identically — display controls visibility only,
+     * not whether the model thinks — so this costs nothing and is the only
+     * setting under which the reasoning channel exists at all.
+     */
     if (model.capabilities.adaptiveThinking) {
-      params.thinking = { type: 'adaptive', display: 'omitted' };
+      params.thinking = { type: 'adaptive', display: 'summarized' };
     }
 
     // AIX-007 — reasoning depth. Unset inherits Anthropic's default of `high`,
@@ -494,6 +516,14 @@ export class AnthropicProvider implements AiProvider {
     const signal = request.abortController?.signal;
 
     let fullText = '';
+    /**
+     * BLD-004. Deliberately a *second* accumulator rather than a flag on the
+     * first: the response returned from this method carries `fullText` and
+     * nothing else, so reasoning can only reach the XML-parsed authoring output
+     * if someone renames this variable, which is a harder mistake to make than
+     * dropping a conditional.
+     */
+    let fullReasoning = '';
     const toolCalls: AiToolCall[] = [];
     let promptTokens = 0;
     let completionTokens = 0;
@@ -545,6 +575,16 @@ export class AnthropicProvider implements AiProvider {
             if (delta?.type === 'text_delta' && delta.text) {
               fullText += delta.text;
               callbacks.onText?.(fullText, delta.text);
+            } else if (delta?.type === 'thinking_delta' && delta.thinking) {
+              // BLD-004. ⚠️ `fullReasoning`, never `fullText` — the two
+              // accumulators are separate variables precisely so that the
+              // mistake this comment is about requires editing a name rather
+              // than forgetting a branch. Reasoning reaching `fullText` would
+              // be parsed as authoring output by the XML templates, which
+              // corrupts the component rather than the panel, and the response
+              // returned below carries `fullText` alone.
+              fullReasoning += delta.thinking;
+              callbacks.onReasoning?.(fullReasoning, delta.thinking);
             } else if (delta?.type === 'input_json_delta') {
               const index = event.index ?? 0;
               const pending = pendingTools.get(index);
@@ -553,8 +593,6 @@ export class AnthropicProvider implements AiProvider {
                 callbacks.onToolCallPartial?.({ index, name: pending.name, argsText: pending.json });
               }
             }
-            // `thinking_delta` is deliberately ignored: reasoning is requested
-            // with display 'omitted' and must never reach the response text.
             break;
           }
 

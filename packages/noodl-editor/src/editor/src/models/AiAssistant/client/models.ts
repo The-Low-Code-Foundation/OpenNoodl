@@ -100,9 +100,12 @@ export interface AiModelDefinition {
      */
     sampling: boolean;
     /**
-     * Whether the model supports Anthropic adaptive thinking. Enabled with
-     * `display: 'omitted'` so reasoning never leaks into the response text the
-     * XML templates parse.
+     * Whether the model supports Anthropic adaptive thinking.
+     *
+     * ⚠️ BLD-004 changed how it is requested — `display: 'summarized'`, not
+     * `'omitted'`. The old value did not protect the XML templates (nothing put
+     * reasoning in a `text` block on any setting); it made the thinking blocks
+     * arrive **empty**, so there was no reasoning to show. See the adapter.
      */
     adaptiveThinking?: boolean;
     /**

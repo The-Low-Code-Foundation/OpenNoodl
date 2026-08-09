@@ -29,10 +29,11 @@
 import React, { useRef } from 'react';
 
 import type { PlanRunState } from '@noodl-models/AiAssistant/authoring';
-import { authoringDetail, runHeadline } from '@noodl-models/AiAssistant/thread';
+import { authoringDetail, liveness, runHeadline } from '@noodl-models/AiAssistant/thread';
 
 import { Text, TextType } from '@noodl-core-ui/components/typography/Text';
 
+import { Heartbeat, HeartbeatDot } from './Heartbeat';
 import { useElapsedClock } from './useElapsedClock';
 import css from './RunHeader.module.scss';
 
@@ -55,16 +56,41 @@ export function RunHeader({ state }: RunHeaderProps) {
   // sentence, one author — see `authoringDetail`.
   const detail = current ? authoringDetail(current.session) : undefined;
 
+  /*
+   * BLD-004 closes R2. The current row moves only while the *stream* is moving —
+   * `liveness` reads the session's `lastActivityAt`, never `state.busy`, which
+   * stays true for the whole three-minute stall window and would therefore
+   * animate hardest at exactly the moment the provider had hung. That is the
+   * failure BLD-005's correction 2 exists to fix, and it is why this component
+   * shipped with accent and weight and deliberately no motion until now.
+   */
+  const session = current?.session;
+  const beat = liveness({
+    busy: Boolean(session?.busy),
+    lastActivityAt: session?.lastActivityAt,
+    now,
+    stallMs: session?.stallMs
+  });
+
   return (
     <div className={css['RunHeader']} ref={ref}>
       <Text textType={TextType.Proud}>{runHeadline(state, now)}</Text>
       {current && (
-        <div className={css['Current']}>
+        <div className={`${css['Current']} ${css[`is-${beat.state}`]}`}>
+          <HeartbeatDot state={beat.state} lastActivityAt={session?.lastActivityAt} />
           <Text textType={TextType.Default} className={css['CurrentTarget']}>
             {current.operation.target}
           </Text>
           {detail && <Text textType={TextType.Shy}>{detail}</Text>}
         </div>
+      )}
+      {/*
+        The words half. It renders only in the state that has any — a run whose
+        stream has gone quiet says so here, above the fold, rather than in the
+        turn list that has long since scrolled past.
+      */}
+      {beat.state === 'silent' && (
+        <Heartbeat busy lastActivityAt={session?.lastActivityAt} stallMs={session?.stallMs} />
       )}
     </div>
   );

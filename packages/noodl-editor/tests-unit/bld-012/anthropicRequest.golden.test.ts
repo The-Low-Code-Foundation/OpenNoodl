@@ -62,7 +62,20 @@ const GOLDEN = {
     }
   ],
   system: [{ type: 'text', text: 'You are an authoring agent.', cache_control: { type: 'ephemeral' } }],
-  thinking: { type: 'adaptive', display: 'omitted' },
+  /**
+   * ⚠️ Changed by **BLD-004**, deliberately, and this spec is how it was noticed
+   * — which is the point of a golden that pins the whole request rather than the
+   * fields one task happened to care about.
+   *
+   * `'omitted'` was not protecting the XML-parsed text (thinking has never been
+   * part of a `text` block on any setting); it made the thinking blocks arrive
+   * empty, so the reasoning channel had nothing to carry. `'summarized'` is
+   * billed identically — `display` controls visibility only.
+   *
+   * Everything else on this object is still the pre-BLD-012 shape, which is what
+   * this file is for.
+   */
+  thinking: { type: 'adaptive', display: 'summarized' },
   output_config: { effort: 'medium' }
 };
 

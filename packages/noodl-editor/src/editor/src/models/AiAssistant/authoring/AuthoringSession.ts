@@ -41,7 +41,7 @@ import type { StyleTokenRecord } from '../../StyleTokensModel/TokenCategories';
 import { AiClient } from '../client';
 import { asText } from '../client/content';
 import type { AiRoleRequestFields } from '../client/roles';
-import { withTurnDeadline } from '../client/turnDeadline';
+import { TURN_STALL_MS, withTurnDeadline } from '../client/turnDeadline';
 import type {
   AiChatRequest,
   AiChatResponse,
@@ -199,7 +199,22 @@ export interface AuthoringSessionOptions {
    * script an unresponsive provider set it to a few milliseconds.
    */
   stallMs?: number;
+  /**
+   * BLD-004: the clock the activity stamps and the heartbeat are read from.
+   * Injected for the same reason `PlanRun` injects one — a spec that pins "this
+   * run took 14s" must not depend on how fast the machine running it is.
+   */
+  now?: () => number;
 }
+
+/**
+ * BLD-004 — the fastest the heartbeat pushes a render, in milliseconds.
+ *
+ * Half a second, against a pulse keyed on two: the published timestamp can be at
+ * most this stale, which is well inside the window the UI compares it against,
+ * and a streaming turn re-renders twice a second instead of once per token.
+ */
+const HEARTBEAT_PUBLISH_MS = 500;
 
 const DEFAULT_MAX_TURNS = 12;
 const DEFAULT_MAX_SUBMITS = 4;
@@ -239,16 +254,41 @@ export class AuthoringStateError extends Error {
 
 // ── Published state ───────────────────────────────────────────────────────────
 
+/**
+ * When an entry was recorded, as `Date.now()` on the session's clock.
+ *
+ * BLD-004 / BLD-002 C8. Optional, and that is the whole design: an activity a
+ * producer did not stamp yields **no duration** rather than a fabricated one,
+ * so the failure mode of forgetting to stamp is a summary that says less, never
+ * one that says something untrue. `turns.ts` synthesises activities for the
+ * plan run and the docs pass out of state that has no per-entry clock, and
+ * inventing timestamps there to satisfy a required field is precisely the lie
+ * this exists to avoid.
+ */
+interface Stamped {
+  at?: number;
+}
+
 /** One entry in the feed the panel renders. */
 export type AuthoringActivity =
   /** The user's request or refinement instruction, verbatim. */
-  | { kind: 'user'; text: string }
+  | ({ kind: 'user'; text: string } & Stamped)
   /** Assistant prose; `text` grows while `streaming` is set. */
-  | { kind: 'assistant'; text: string; streaming?: boolean }
+  | ({ kind: 'assistant'; text: string; streaming?: boolean } & Stamped)
+  /**
+   * BLD-004 — the model's own reasoning, on its own channel.
+   *
+   * ⚠️ **Never merged into `assistant`.** The authoring loop parses the
+   * assistant text with XML templates, so reasoning reaching that string
+   * corrupts authoring output rather than just a panel — see the adapter note
+   * in `providers/anthropic.ts`. A separate kind is what makes the two paths
+   * impossible to confuse at the type level as well as at the call site.
+   */
+  | ({ kind: 'reasoning'; text: string; streaming?: boolean } & Stamped)
   /** A context read, as a one-line event. */
-  | { kind: 'tool'; label: string }
+  | ({ kind: 'tool'; label: string } & Stamped)
   /** A submission and the gate's verdict. */
-  | { kind: 'submit'; ok: boolean; errorLines: string[] }
+  | ({ kind: 'submit'; ok: boolean; errorLines: string[] } & Stamped)
   /**
    * BLD-002 reserves the shape; **BLD-008 is what produces one.** Nothing pushes
    * a `question` yet, and that is deliberate — the treatment (the loudest thing
@@ -256,7 +296,7 @@ export type AuthoringActivity =
    * a run) are decided here so that BLD-008 adds an author, not a fifth opinion
    * about how a question should look.
    */
-  | { kind: 'question'; text: string };
+  | ({ kind: 'question'; text: string } & Stamped);
 
 export type AuthoringPhase = 'idle' | 'working' | 'staged' | 'exhausted' | 'error' | 'cancelled';
 
@@ -298,6 +338,23 @@ export interface AuthoringSessionState {
    * so a refinement re-renders and a re-render does not.
    */
   stagedRevision: number;
+  /**
+   * BLD-004 — when the last event arrived from the provider's stream, including
+   * the pings and keepalives that carry nothing a user would see.
+   *
+   * This is the *only* signal that separates a model thinking hard from a
+   * provider that has stopped answering, and `busy` is not it: `busy` stays true
+   * for the whole stall window. Undefined while a turn is open means nothing has
+   * been heard yet, which is a real answer and not a missing one — see
+   * `thread/liveness.ts`, which is the only thing allowed to interpret it.
+   */
+  lastActivityAt?: number;
+  /**
+   * The silence window this session's turns are bounded by, republished so the
+   * panel can say how long is left before one ends itself. Undefined when the
+   * caller disabled the deadline.
+   */
+  stallMs?: number;
   error?: string;
 }
 
@@ -381,6 +438,23 @@ export class AuthoringSession {
   private lastError?: string;
   private currentAbort?: AbortController;
 
+  // BLD-004 — the heartbeat.
+  private readonly now: () => number;
+  /** The silence window, republished on state so the panel can name the deadline. */
+  private readonly stallMs?: number;
+  private lastActivityAt?: number;
+  /**
+   * When the heartbeat last pushed a render.
+   *
+   * ⚠️ `onActivity` fires **per stream event**, which on a streaming provider is
+   * per token — publishing on each would re-render the whole thread hundreds of
+   * times a turn to move one number the UI only reads once a second anyway. The
+   * timestamp itself is always current; only the notification is throttled, so
+   * the worst a reader sees is a value {@link HEARTBEAT_PUBLISH_MS} stale, which
+   * is an order of magnitude inside the two seconds the pulse is keyed on.
+   */
+  private lastHeartbeatPublish = 0;
+
   private constructor(
     private readonly graph: ExplainGraph,
     private readonly request: AuthoringRequest,
@@ -394,6 +468,12 @@ export class AuthoringSession {
     this.chat = withTurnDeadline(options.chat ?? ((req, callbacks) => AiClient.chatStream(req, callbacks ?? {})), {
       stallMs: options.stallMs
     });
+    this.now = options.now ?? (() => Date.now());
+    // `TURN_STALL_MS` is the wrapper's own default, and the panel needs the same
+    // number to say when a silent turn ends. Resolved here rather than left
+    // undefined so the sentence cannot disagree with the deadline that produces
+    // it — BLD-007's one-fact-two-sources trap, at a smaller size.
+    this.stallMs = options.stallMs ?? TURN_STALL_MS;
     this.maxTurns = options.maxTurns ?? DEFAULT_MAX_TURNS;
     this.maxSubmits = options.maxSubmits ?? DEFAULT_MAX_SUBMITS;
     this.effort = options.effort ?? AUTHORING_EFFORT;
@@ -519,6 +599,8 @@ export class AuthoringSession {
           }
         : undefined,
       stagedRevision: this.stagedRevision,
+      lastActivityAt: this.lastActivityAt,
+      stallMs: this.stallMs,
       error: this.lastError
     };
   }
@@ -531,6 +613,32 @@ export class AuthoringSession {
   private publish(): void {
     const state = this.state;
     for (const listener of this.listeners) listener(state);
+  }
+
+  /**
+   * BLD-004 — append an activity, stamped.
+   *
+   * Every `activities.push` in this class goes through here, which is the only
+   * reason the stamps are reliable: `at` is optional on the type (a producer
+   * without a clock must be able to omit it), so a push that bypassed this would
+   * compile, render, and silently cost the run its duration. One door.
+   */
+  private record<T extends AuthoringActivity>(activity: T): T {
+    activity.at = this.now();
+    this.activities.push(activity);
+    return activity;
+  }
+
+  /**
+   * BLD-004 — the provider's stream said something. See `lastHeartbeatPublish`
+   * for why this does not publish every time.
+   */
+  private touchActivity(): void {
+    const at = this.now();
+    this.lastActivityAt = at;
+    if (at - this.lastHeartbeatPublish < HEARTBEAT_PUBLISH_MS) return;
+    this.lastHeartbeatPublish = at;
+    this.publish();
   }
 
   /**
@@ -617,7 +725,7 @@ export class AuthoringSession {
       // the end of the reference blocks. Nothing else reads it.
       { role: 'user', content: opening.content, cacheBoundary: opening.cacheBoundary }
     );
-    this.activities.push({ kind: 'user', text: this.request.description });
+    this.record({ kind: 'user', text: this.request.description });
     return this.round(options);
   }
 
@@ -633,7 +741,7 @@ export class AuthoringSession {
       throw new AuthoringStateError('The refinement has no instruction — nothing to change.');
     }
     this.messages.push({ role: 'user', content: refineMessage(instruction) });
-    this.activities.push({ kind: 'user', text: instruction });
+    this.record({ kind: 'user', text: instruction });
     return this.round(options);
   }
 
@@ -671,12 +779,25 @@ export class AuthoringSession {
 
       // The assistant's prose for this turn, streamed into the feed as it arrives.
       const prose: AuthoringActivity = { kind: 'assistant', text: '', streaming: true };
-      this.activities.push(prose);
+      this.record(prose);
       this.publish();
 
       // Submissions streaming this turn, scanned for complete nodes as the
       // arguments arrive so the preview canvas can render the forming graph.
       const scanners = new Map<number, PartialPayloadScanner>();
+
+      /**
+       * BLD-004 — this turn's reasoning, created on the first delta and not
+       * before.
+       *
+       * Lazy, unlike `prose`, because most turns have none: only some models
+       * think, and a `reasoning` entry pushed eagerly would put an empty strip
+       * above every turn of every Ollama run. It is spliced in *ahead* of the
+       * prose, because that is the order the two actually happened in —
+       * reasoning precedes the answer it produced, and appending it would show
+       * the thinking below the sentence it led to.
+       */
+      let reasoning: AuthoringActivity | undefined;
 
       let response: AiChatResponse;
       try {
@@ -696,6 +817,17 @@ export class AuthoringSession {
           {
             onText: (fullText) => {
               prose.text = fullText;
+              this.publish();
+            },
+            // BLD-004. The heartbeat: fires for every event on the wire,
+            // including the pings that carry nothing. Throttled inside.
+            onActivity: () => this.touchActivity(),
+            onReasoning: (fullReasoning) => {
+              if (!reasoning) reasoning = this.insertReasoningBefore(prose);
+              // ⚠️ `reasoning.text`, and the narrowing is what keeps it honest:
+              // assigning to `prose.text` here compiles and would feed the
+              // model's private thinking to the XML templates.
+              if (reasoning.kind === 'reasoning') reasoning.text = fullReasoning;
               this.publish();
             },
             onToolCallPartial: (partial) => {
@@ -729,6 +861,11 @@ export class AuthoringSession {
         // A cancelled turn keeps whatever prose arrived; an empty bubble helps no one.
         prose.streaming = false;
         if (!prose.text.trim()) this.dropActivity(prose);
+        // BLD-004: the same rule for the reasoning strip, and it matters more
+        // here — a strip left `streaming` on a turn that died keeps a clock
+        // running against a stream that has stopped, which is the exact lie
+        // this task exists to remove.
+        this.settleReasoning(reasoning);
         if (abortController.signal.aborted) return this.finish('cancelled');
         // AIB-009 F11: a stalled turn reaches here, and `signal.aborted` is
         // deliberately false — `withTurnDeadline` aborts its own inner
@@ -765,6 +902,7 @@ export class AuthoringSession {
       prose.text = response.text ?? prose.text;
       prose.streaming = false;
       if (!prose.text.trim()) this.dropActivity(prose);
+      this.settleReasoning(reasoning);
 
       // A cancelled turn is not a model that declined to act. Providers that
       // swallow the abort and resolve with a partial response (the Anthropic
@@ -796,7 +934,7 @@ export class AuthoringSession {
           scanners.clear();
           roundSubmits++;
           this.rounds.push({ attempt: this.rounds.length + 1, ok: result.ok, errorLines: result.errorLines });
-          this.activities.push({ kind: 'submit', ok: result.ok, errorLines: result.errorLines });
+          this.record({ kind: 'submit', ok: result.ok, errorLines: result.errorLines });
           if (result.ok) {
             // The candidate passed the gate — keep it staged no matter what
             // happens next, so a failed style-improvement pass never loses it.
@@ -834,7 +972,7 @@ export class AuthoringSession {
             return this.finish('exhausted');
           }
         } else {
-          this.activities.push({ kind: 'tool', label: readToolLabel(call) });
+          this.record({ kind: 'tool', label: readToolLabel(call) });
           this.messages.push({
             role: 'tool',
             toolCallId: call.id,
@@ -853,6 +991,34 @@ export class AuthoringSession {
   private dropActivity(activity: AuthoringActivity): void {
     const index = this.activities.indexOf(activity);
     if (index !== -1) this.activities.splice(index, 1);
+  }
+
+  /**
+   * BLD-004 — put this turn's reasoning strip immediately before its prose.
+   *
+   * Stamped like everything else, but spliced rather than appended (see the
+   * declaration of `reasoning` in the loop for why the position matters). Falls
+   * back to appending if the anchor has already been dropped — a cancelled turn
+   * removes its empty prose, and losing the reasoning to that race would delete
+   * the only record of what the model was doing when it was cancelled.
+   */
+  /**
+   * BLD-004 — the turn is over, so the reasoning strip stops claiming to be
+   * live, and an empty one is removed rather than shown as a thing that thought
+   * about nothing.
+   */
+  private settleReasoning(reasoning: AuthoringActivity | undefined): void {
+    if (!reasoning || reasoning.kind !== 'reasoning') return;
+    reasoning.streaming = false;
+    if (!reasoning.text.trim()) this.dropActivity(reasoning);
+  }
+
+  private insertReasoningBefore(anchor: AuthoringActivity): AuthoringActivity {
+    const entry: AuthoringActivity = { kind: 'reasoning', text: '', streaming: true, at: this.now() };
+    const index = this.activities.indexOf(anchor);
+    if (index === -1) this.activities.push(entry);
+    else this.activities.splice(index, 0, entry);
+    return entry;
   }
 
   /**
