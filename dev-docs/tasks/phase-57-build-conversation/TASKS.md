@@ -32,7 +32,7 @@ box — its header is inside the scroll area.
 | BLD-007 ⭐ ✅ | [BLD-007-DOCS-ARE-OPEN.md](BLD-007-DOCS-ARE-OPEN.md) | front-matter `inject`; the one-value enum becomes a discovered list | **D9 ✅** |
 | BLD-008 ⭐ 🟡 | [BLD-008-DOCS-INTERVIEW.md](BLD-008-DOCS-INTERVIEW.md) | the agent asks before it drafts; TODO count stops being a feature | D8 (built, not driven) |
 | BLD-009 | [BLD-009-EXPANDED-MODE.md](BLD-009-EXPANDED-MODE.md) | the same thread as a document, two-pane with the live preview | D10 |
-| BLD-017 ⭐ | [BLD-017-MOCKUP-FIDELITY.md](BLD-017-MOCKUP-FIDELITY.md) | the panel does not look like the mockup it was approved from | — |
+| BLD-017 ⭐ ✅ | [BLD-017-MOCKUP-FIDELITY.md](BLD-017-MOCKUP-FIDELITY.md) | the panel does not look like the mockup it was approved from | **F1–F6 closed, driven; F7 → design system, F8 → BLD-011** |
 | BLD-010 | [BLD-010-ACCEPTANCE-PASS.md](BLD-010-ACCEPTANCE-PASS.md) | drive every state live, both widths, both themes, and measure | — |
 
 ᵃ BLD-003 closes the *duplicate-bar* half of D8 (the Docs panel hand-off); BLD-008 closes the rest.

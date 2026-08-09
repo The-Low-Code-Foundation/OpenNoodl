@@ -1,10 +1,19 @@
 # Phase 57 — The Build panel is a conversation
 
 **Created:** 2026-08-08
-**Status:** 🟡 **3 of 16 built** — **BLD-007** and **BLD-012** (merged 2026-08-09, built the day
-before in worktrees beside a live phase-56 session) and **BLD-001 ⭐ the frame** (built 2026-08-09).
-⚠️ **None of the three has been driven in a real editor.** The other thirteen are specced only.
-Tasks are **[TASKS.md](TASKS.md)** (BLD-001…016, two tracks).
+**Status:** 🟡 **11 of 17 built** — BLD-001…008, 012 and **BLD-017 ⭐** (2026-08-09).
+Tasks are **[TASKS.md](TASKS.md)** (BLD-001…017, two tracks).
+
+⚠️ **BLD-017 closed the surfaces, not the whole look.** F1–F6 are built and driven; **F7 is
+deferred because the mockup contradicts a measured repo rule** (`.btn-quiet` is borderless, and
+POL-016 exists because a ringless button reads as a label), and **F8 is new content rather than
+fidelity**. The card still renders two identical azure Ghost outlines where the mockup has a
+descending ladder of three weights — see that task's R6.
+
+⚠️ **BLD-002's and BLD-005's own text roles were never wrong.** BLD-017 re-measured every role it
+moved and found the contrast problem was in **the mockup**: its `.acts` and `.runbar-line2` are
+`fg-muted`, which is 3.66:1 dark / 3.43:1 light on bg-2. *A mockup is not a contrast measurement* —
+copy the intent, name the token, and re-measure on the new surface.
 
 **BLD-001 landing changes how you read the rest of this file.** The panel is now one thread of
 turns with one composer, and the scope tabs are gone — so every defect below that says "the panel
