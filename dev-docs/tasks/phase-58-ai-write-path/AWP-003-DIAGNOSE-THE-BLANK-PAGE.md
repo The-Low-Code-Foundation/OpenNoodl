@@ -91,3 +91,65 @@ unlikely to be the only one, and each is a trap of the same shape.
 |---|---|---|
 | A5 | The probe-node bisection is what a competent agent reaches for — **two of two models used it unprompted**. Any diagnostic we ship must not be defeated by it, and should ideally make it unnecessary | 📋 design constraint |
 | A6 | Both models called `render_report` unprompted, 7 times each. **The self-verification loop phase 55 wanted already exists**; its input is what is wrong | ✅ observed, session 8 |
+
+---
+
+## Built 2026-08-09 — and the premise this task got wrong
+
+**Status: ✅ closed.** `blankDiagnosis()` in
+[render-report.js](../../../scripts/devtools/render-report.js) walks the project in
+bisection order and reports the cause it **determined** plus the component it is about;
+`summarise()` carries it into the `blank-render` finding as a message, a `cause` code and
+`evidence.component`. Both the CLI and the `render_report` MCP tool inherit it, because
+both go through `renderReport()`.
+
+### ⚠️ The acceptance predicted the wrong cause
+
+> *"On `phase55-s8-deepseek-v4-pro` **as it was staged**, `render_report` names the
+> components lacking visual roots"*
+
+**It does not, because that is no longer why the page is blank.** Measured 2026-08-09:
+
+- AWP-001 §3 landed derivation at read time **and** in `render-from-disk.js`, so all 11
+  components missing `visualRoots` now resolve correctly. **F43 is genuinely closed** —
+  the check this task called "the one that was missing" has no live trigger on the fixture.
+- The staged project renders blank for a different reason: **`/Pages/Home` is a bare
+  `Page` node with no children.** That is the state DeepSeek left it in at turn 60, when
+  it deleted the Group holding its six sections. The fixture is that deletion, on disk.
+
+So the shipped walk reports `page-has-no-content` and names `/Pages/Home`, and the two
+guesses the old message led with are checked, held, and confined to `checked[]` — the
+message mentions neither. `instances-without-visual-root` is still implemented, as the
+residual form of F43 for a component that genuinely has nothing visual at its root.
+
+**The lesson is the task's own:** an acceptance criterion is a prediction about a
+mechanism, and this one aged out between being written and being built. Running it was
+what surfaced that; reading the fixture would not have.
+
+### The wider rule, applied
+
+AWP-003 asks for a grep of the finding set for other messages that enumerate causes
+rather than reporting one. It found two, and both had the answer already in hand:
+
+| finding | was | now |
+|---|---|---|
+| `minimum-layout-width` | *"Something inside carries a fixed width or a non-collapsing row"* | names the widest element — *"The widest element inside it is img at 500px"* |
+| `elements-overflowing` | *(mine, written this session)* *"A fixed width that does not collapse is the usual cause"* | *"the widest is div at 756px"* |
+
+Both were attaching `overflowing` as evidence and not reading it — the same shape as
+register note A7 one task over. `empty-decorated-box` and `single-column-grid` keep their
+two-way sentences: those are genuine abstentions about **intent**, which no measurement
+settles, not guesses about cause.
+
+### The paraphrase, and the gate on it
+
+`render-report.js` is plain JS and cannot import `visualRoots.ts`, so `rootNodes()`
+restates the editor's own rule (`parent === undefined`). A restatement is the defect class
+AWP-002 exists to gate, so the suite runs it against the real `deriveVisualRootIds` over
+every component of the real project. **Watched fail**: perturbing `rootNodes` to return
+every node fails that spec.
+
+| # | Finding | State |
+|---|---|---|
+| A9 | **The acceptance named a cause that AWP-001 had already fixed.** A criterion written against a mechanism decays when a sibling task lands; the fixture is durable, the predicted cause is not | ⚠️ measured 08-09 |
+| A10 | `render-from-disk.js` derives roots via `!childIds.has(id)` while `ProjectImporter` uses `parent === undefined`. **Two rules, agreeing on every fixture** — not a defect today, and worth a parity gate before it becomes one | 📋 filed |

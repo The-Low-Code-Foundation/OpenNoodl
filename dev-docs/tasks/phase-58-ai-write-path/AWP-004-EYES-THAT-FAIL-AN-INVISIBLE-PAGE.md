@@ -105,3 +105,67 @@ are all in hand. Do not let §4 grow into node attribution.
 |---|---|---|
 | A7 | Two of the three signals needed here were **already in the report object** and simply had no rule attached. Before adding measurement, check what is already measured and ignored | 📋 method note |
 | A8 | DeepSeek's page is the negative control for every check in §2, and it is free — a real agent-authored page that genuinely renders. Use it, or the checks are untested against a true positive | 📋 fixture |
+
+---
+
+## Built 2026-08-09 — and the two premises this task got wrong
+
+**Status: ✅ closed.** The acceptance is met and was measured, not predicted:
+
+| fixture | before | after |
+|---|---|---|
+| `phase55-s8-kimi-k3-rerun` | *"Rendered clean: 83 texts, 10 images"*, **0 findings** | **4 errors, 3 warnings**; summary reads `83 texts, 13 on screen` |
+| `phase55-replay-sonnet` | Rendered clean | **Rendered clean** — no new check fires |
+| `ecommerce-example` | 1 warning | **1 warning**, unchanged |
+| `phase55-replay-haiku` | 4 errors | **4 errors**, unchanged |
+
+### ⚠️ §2's proposed check would have fired on every good page
+
+AWP-004 §2 specifies `content-not-visible` as *"counted text elements vastly exceed text
+within the viewport's bounds"*. Measured across the corpus before it was written:
+
+| build | texts | on screen, desktop | on screen, phone | verdict |
+|---|---|---|---|---|
+| Kimi K3 (clipped) | 83 | **13** | **9** | the defect |
+| sonnet (correct) | 82 | **19** | **11** | fine |
+| ecommerce (reference) | 49 | **17** | **10** | fine |
+
+**The ratio does not separate them** — a correct long page also shows ~15 texts at a time,
+because that is what a viewport holds. The doc's *"83 counted, ~3 visible"* is not what the
+page measures; it is 13 and 9.
+
+What separates them is **reachability**: sonnet's content ends exactly at its page height
+(3777/3777, 6482/6482) and Kimi's runs to **5292px inside a page that stops at 900**. So
+the shipped check counts elements below the scrollable extent — **70 of 83 on Kimi, 0 on
+both correct builds**. Register note A8 is the only reason this was checked against a true
+positive before shipping rather than after.
+
+### ⚠️ §3's three strings are not node-type defaults
+
+*"`Title`, `Body` and `Got it` are the untouched defaults of a dialog component"* — measured:
+**zero catalog defaults match any of the three.** They are text the model hardcoded in its
+own components, on ports that a `Component Inputs` node also feeds. That shape is the
+general form §3 asks for and it is sharper than the catalog one:
+
+> a port hardcoded to a string **and** wired from `Component Inputs` holds a value that is
+> only ever visible when the input does not arrive
+
+So the strings are **derived from the graph**, not listed — `overriddenDefaults()` finds all
+three of Kimi's plus six more, records **every** site (`Title` is hardcoded in both
+`TrustItem` and `NoticeDialog`), and `dead-placeholder-text` now splits into two causes,
+because "nobody set this port" and "an input that was wired never arrived" send an agent to
+different subsystems. **No false positives**: `ecommerce-example` yields 7 derived fallbacks
+and none reaches the screen.
+
+### §1 and §4
+
+`Rendered clean` is now a claim the report has to earn — it requires an affirmative
+measurement that something is on screen. Where visibility was never measured (a recording
+predating these fields) it says so rather than upgrading silence into a pass. The summary
+line reports both counts.
+
+| # | Finding | State |
+|---|---|---|
+| A11 | **The visible/counted ratio is not a defect signal.** A correct 82-text page shows 19. Only content below the *scrollable extent* is unreachable, and that is a different number | ⚠️ measured 08-09 |
+| A12 | The three placeholder strings were **authored**, not defaults — the catalog could never have answered §3. The project could | ⚠️ measured 08-09 |
+| A13 | `pageHeight == viewport` held on **both** viewports, not just desktop — Kimi's phone is 844/844 with content to 5236px | ✅ measured 08-09 |
