@@ -24,7 +24,7 @@ box — its header is inside the scroll area.
 | Task | File | One line | Closes |
 |---|---|---|---|
 | BLD-001 ⭐ ✅ | [BLD-001-ONE-THREAD.md](BLD-001-ONE-THREAD.md) | one thread, one composer; scope inferred, not chosen | **D1 ✅** |
-| BLD-002 | [BLD-002-MESSAGE-HIERARCHY.md](BLD-002-MESSAGE-HIERARCHY.md) | five message kinds, five treatments; collapsed activity runs | D4 |
+| BLD-002 ✅ | [BLD-002-MESSAGE-HIERARCHY.md](BLD-002-MESSAGE-HIERARCHY.md) | five message kinds, five treatments; collapsed activity runs | **D4 ✅** |
 | BLD-003 ⭐ ✅ | [BLD-003-DECISIONS-ON-THE-CARD.md](BLD-003-DECISIONS-ON-THE-CARD.md) | actions attach to their subject; one owner; Discard, not red Reject | **D2 ✅ D3 ✅** D8ᵃ |
 | BLD-004 | [BLD-004-THINKING-AND-HEARTBEAT.md](BLD-004-THINKING-AND-HEARTBEAT.md) | surface `onActivity`; add a reasoning channel the XML parser cannot see | D6 D7 |
 | BLD-005 ⭐ | [BLD-005-LEGIBLE-LONG-RUN.md](BLD-005-LEGIBLE-LONG-RUN.md) | pin the run header out of the scroll area; plan-as-map; honest estimate | corr. 2 |
@@ -71,9 +71,33 @@ exists to remove. The rule takes *every document that shows the candidate*, not 
 ⚠️ **The one half of BLD-003 that has never been on screen is the docs route** — each draft's
 Accept / Review changes / Discard. It is built and gated; it is not driven. **BLD-010 owns it.**
 
-🔴 **New, and visible in both of BLD-003's screenshots: C5 — BLD-001's `Show me the plan first`
-override is 96px tall and paints 52px over the first turn's text.** Filed on **BLD-002**, with the
-measurement and an explicit note that the *mechanism* in the entry is a hypothesis.
+**BLD-002 is driven and closed** (2026-08-09). **D4 is closed.** Measured before and after, in both
+themes, on the surfaces the thread actually paints:
+
+- **The premise is confirmed on screen.** `is-type-secondary` and `is-type-default` measured the
+  *identical ratio* in both themes (7.70 dark, 7.10 light), so the ~40 call sites alternating between
+  them expressed no hierarchy at all. Every row was `12px / normal / 400`. And **no text role failed
+  AA before the change** — README correction 1 is now empirical, not just arithmetic.
+- Four sizes and explicit leading where there was one size and inherited leading; the user's message
+  is now the highest-contrast element in its turn (13.03 / 14.20 against 7.70 / 7.10).
+- Twelve tool activities collapse to one line and expand to twelve. **Driven.**
+
+⚠️ **The rule that specs alone could not have protected: a *failed* submission never collapses.**
+Driven with a real rejection through the real gate. A run that had swallowed it would look completely
+normal on screen — the cure for noise must not also be a cure for signal.
+
+✅ **C5 is fixed, and BLD-003's stated mechanism was half wrong** — which is why it said to
+re-measure. The cause is not a stray stretch: **`Stack` sets `height: 100%` on every `HStack` that
+does not declare one** ([Stack.tsx:38](../../../packages/noodl-core-ui/src/components/layout/Stack/Stack.tsx#L38)),
+and the header is a *block* container, so the row resolved 100% against the whole header rather than
+its own line. That is also why the "60px" did not close: the overflow **equals** the offset, always,
+because the row becomes as tall as the header while starting below whatever is above it. Confirmed by
+intervention before fixing.
+
+⚠️ **Two findings filed rather than fixed, both design-system scope:** the `height: 100%` above is a
+trap at **every** `HStack` in a block parent (C6), and `PrimaryButtonVariant.Ghost`'s label measures
+**4.33:1 in light mode**, below AA, on every `bg-1` surface in the editor (C7). Neither is this
+panel's to change; both need a full-surface pass.
 
 ⚠️ **BLD-007 and BLD-012 still have not been driven**, and BLD-012's is the one with a bill attached
 to getting it wrong — its image block has never reached a real endpoint.
