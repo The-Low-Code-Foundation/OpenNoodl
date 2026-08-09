@@ -25,7 +25,7 @@ box — its header is inside the scroll area.
 |---|---|---|---|
 | BLD-001 ⭐ ✅ | [BLD-001-ONE-THREAD.md](BLD-001-ONE-THREAD.md) | one thread, one composer; scope inferred, not chosen | **D1 ✅** |
 | BLD-002 | [BLD-002-MESSAGE-HIERARCHY.md](BLD-002-MESSAGE-HIERARCHY.md) | five message kinds, five treatments; collapsed activity runs | D4 |
-| BLD-003 ⭐ | [BLD-003-DECISIONS-ON-THE-CARD.md](BLD-003-DECISIONS-ON-THE-CARD.md) | actions attach to their subject; one owner; Discard, not red Reject | D2 D3 D8ᵃ |
+| BLD-003 ⭐ ✅ | [BLD-003-DECISIONS-ON-THE-CARD.md](BLD-003-DECISIONS-ON-THE-CARD.md) | actions attach to their subject; one owner; Discard, not red Reject | **D2 ✅ D3 ✅** D8ᵃ |
 | BLD-004 | [BLD-004-THINKING-AND-HEARTBEAT.md](BLD-004-THINKING-AND-HEARTBEAT.md) | surface `onActivity`; add a reasoning channel the XML parser cannot see | D6 D7 |
 | BLD-005 ⭐ | [BLD-005-LEGIBLE-LONG-RUN.md](BLD-005-LEGIBLE-LONG-RUN.md) | pin the run header out of the scroll area; plan-as-map; honest estimate | corr. 2 |
 | BLD-006 | [BLD-006-THREADS-PERSIST.md](BLD-006-THREADS-PERSIST.md) | threads survive accept, navigation and restart; a switcher | D5 |
@@ -57,6 +57,23 @@ retired ones — and because the live ids are exactly what `renderOutcome` match
 **cannot** mount a live control. Anything else keying off a turn's identity must use the same
 convention. And retiring is a **pair**: freeze the record, then release what produced it; doing only
 the first half is worse than doing neither.
+
+**BLD-003 is driven and closed** (2026-08-09, `49d06961` + `eb23291c`). **B5's measurement is
+answered:** where there were 2 Accept and 2 Review changes, with the two copies disagreeing on
+wording, there is now **exactly one of each**, moving between surfaces as the document opens and
+closes — counted from the DOM in all three states.
+
+⚠️ **The defect table listed two surfaces; there are three.** `ChangeReviewDocument` is reached from
+the card's own *"Review changes"* button and a document sits **beside** the sidebar, not over it, so
+the ownership rule had to cover it or this task's own control would have opened the duplicate it
+exists to remove. The rule takes *every document that shows the candidate*, not a preview flag.
+
+⚠️ **The one half of BLD-003 that has never been on screen is the docs route** — each draft's
+Accept / Review changes / Discard. It is built and gated; it is not driven. **BLD-010 owns it.**
+
+🔴 **New, and visible in both of BLD-003's screenshots: C5 — BLD-001's `Show me the plan first`
+override is 96px tall and paints 52px over the first turn's text.** Filed on **BLD-002**, with the
+measurement and an explicit note that the *mechanism* in the entry is a hypothesis.
 
 ⚠️ **BLD-007 and BLD-012 still have not been driven**, and BLD-012's is the one with a bill attached
 to getting it wrong — its image block has never reached a real endpoint.
