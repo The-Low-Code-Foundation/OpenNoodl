@@ -39,6 +39,7 @@ import { useThrottle } from '@noodl-hooks/useThrottleState';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import {
+  benchComponent,
   benchInstanceUsage,
   benchInterfaceFor,
   buildBenchExport,
@@ -58,6 +59,23 @@ import { SandboxToolbar, SANDBOX_PARTITION, SANDBOX_WEBVIEW_ATTRIBUTES, useSandb
 import { benchParameterContent, benchSignalContents } from './benchInputs';
 import { BenchInputsRail } from './BenchInputsRail';
 import { BenchOutputsRail } from './BenchOutputsRail';
+import { BenchScenarioBar } from './BenchScenarioBar';
+import {
+  BENCH_SCENARIOS_KEY,
+  applyBenchScenario,
+  benchScenarioApplyNotice,
+  benchScenarioFrame,
+  benchScenarioFrom,
+  benchScenarioIsModified,
+  benchScenarioStore,
+  moveBenchScenario,
+  readBenchScenarios,
+  removeBenchScenario,
+  renameBenchScenario,
+  uniqueBenchScenarioName,
+  upsertBenchScenario,
+  type BenchScenario
+} from './benchScenarios';
 import css from './ComponentBench.module.scss';
 import { resolveBenchWidth, type BenchFrame } from './previewScope';
 import { useBenchOutputs } from './useBenchOutputs';
@@ -66,6 +84,15 @@ export interface ComponentBenchProps {
   /** Legacy name of the component to mount. */
   target: string;
   frame: BenchFrame;
+  /**
+   * Set the frame — the *only* caller is a scenario being applied (BEN-005).
+   *
+   * The frame's own control lives in the chrome strip above this surface and
+   * writes the same state directly; this exists because a scenario records the
+   * width it was saved at, and "renders correctly at 320" is part of what a
+   * scenario claims. Optional so the bench still mounts without it.
+   */
+  onFrameChange?: (frame: BenchFrame) => void;
   /**
    * The frame's **measured** box, reported up for the strip's read-out.
    *
@@ -77,7 +104,7 @@ export interface ComponentBenchProps {
   onFrameMeasured?: (size: { width: number; height: number } | undefined) => void;
 }
 
-export function ComponentBench({ target, frame, onFrameMeasured }: ComponentBenchProps) {
+export function ComponentBench({ target, frame, onFrameChange, onFrameMeasured }: ComponentBenchProps) {
   const [useSampleData, setUseSampleData] = useState(true);
   /** POL-008: signed in by default — see `SandboxPreview` for the whole reason. */
   const [signedIn, setSignedIn] = useState(true);
@@ -256,6 +283,16 @@ export function ComponentBench({ target, frame, onFrameMeasured }: ComponentBenc
   );
 
   /**
+   * Put the rail into a *given* set of values — the one path Reset, Reset all
+   * and a scenario switch all go through.
+   *
+   * They are one operation and were three before BEN-005: "make the mounted
+   * component hold exactly these inputs and nothing else". Reset is that with
+   * one name removed, Reset all is that with none left, and selecting a scenario
+   * is that with a saved set. Keeping them separate would mean the warning below
+   * — which cost two shipped-and-inert implementations — had to be remembered
+   * again at a third call site.
+   *
    * ⚠️ **Deleting the parameter does not put the old value back, and the first
    * implementation of Reset assumed it did.**
    *
@@ -273,7 +310,7 @@ export function ComponentBench({ target, frame, onFrameMeasured }: ComponentBenc
    * colour, alignment and visibility all unchanged. The mechanism worked and
    * had no consequence, which is the whole reason this phase drives things.
    *
-   * So Reset uses whichever of the two honest routes applies:
+   * So clearing a name uses whichever of the two honest routes applies:
    *
    * - the port has a **derived default** — send it. That is the value the
    *   harness would have given the port at mount (`benchParameters`), so it is
@@ -287,40 +324,73 @@ export function ComponentBench({ target, frame, onFrameMeasured }: ComponentBenc
    *   keeps the value. Measured live: Reset all cleared the rail and changed
    *   nothing on screen. Only the `src` reloads.
    */
-  const resetInput = useCallback(
-    (name: string) => {
-      const port = iface?.inputs.find((candidate) => candidate.name === name);
-      setInputs((previous) => {
-        const next = { ...previous };
-        delete next[name];
-        return next;
-      });
+  const applyValueSet = useCallback(
+    (next: Record<string, unknown>) => {
+      const previous = inputsRef.current;
+      inputsRef.current = next;
+      setInputs(next);
 
-      if (port && port.default !== undefined) {
-        ViewerConnection.instance.sendModelUpdateToClient(clientId, benchParameterContent(name, port.default));
-      } else {
+      let remount = false;
+
+      // Names the new set does not carry have to go back to their default, and
+      // deleting the parameter is not how (see above).
+      for (const name of Object.keys(previous)) {
+        if (Object.prototype.hasOwnProperty.call(next, name)) continue;
+        const port = iface?.inputs.find((candidate) => candidate.name === name);
+        if (port && port.default !== undefined) {
+          ViewerConnection.instance.sendModelUpdateToClient(clientId, benchParameterContent(name, port.default));
+        } else {
+          remount = true;
+        }
+      }
+
+      // Only what actually moved. Re-sending an unchanged value would set the
+      // input again on every scenario switch, which is a render the user did
+      // not cause and — on a component that reacts to being set — a visible one.
+      for (const [name, value] of Object.entries(next)) {
+        const unchanged =
+          Object.prototype.hasOwnProperty.call(previous, name) &&
+          JSON.stringify(previous[name]) === JSON.stringify(value);
+        if (unchanged) continue;
+        ViewerConnection.instance.sendModelUpdateToClient(clientId, benchParameterContent(name, value));
+      }
+
+      if (remount) {
+        /**
+         * ⚠️ **Both, and it has to be both.**
+         *
+         * `remountKey` reloads the window, which is the only thing that clears
+         * a value the runtime was handed by a targeted update. But a reload
+         * re-imports whatever export the client is *given*, and that export was
+         * built from an older input set — so on its own it would restore the
+         * values it was built with rather than the ones being applied. Bumping
+         * `revision` rebuilds it from `inputsRef.current`, which is already
+         * `next`, so the window comes back holding exactly the new set.
+         *
+         * Rebuilding alone is not enough either, and that is BEN-002's shipped
+         * defect: an export whose bytes did not change is dropped by
+         * `_exportToClient` and nothing reaches the runtime at all.
+         */
+        setRevision((n) => n + 1);
         setRemountKey((n) => n + 1);
       }
+
+      outputs.pullNow();
     },
-    [clientId, iface]
+    [clientId, iface, outputs]
+  );
+
+  const resetInput = useCallback(
+    (name: string) => {
+      const next = { ...inputsRef.current };
+      delete next[name];
+      applyValueSet(next);
+    },
+    [applyValueSet]
   );
 
   /** Every set input at once, each by whichever of the two routes applies. */
-  const resetInputs = useCallback(() => {
-    const names = Object.keys(inputsRef.current);
-    setInputs({});
-
-    let remount = false;
-    for (const name of names) {
-      const port = iface?.inputs.find((candidate) => candidate.name === name);
-      if (port && port.default !== undefined) {
-        ViewerConnection.instance.sendModelUpdateToClient(clientId, benchParameterContent(name, port.default));
-      } else {
-        remount = true;
-      }
-    }
-    if (remount) setRemountKey((n) => n + 1);
-  }, [clientId, iface]);
+  const resetInputs = useCallback(() => applyValueSet({}), [applyValueSet]);
 
   /** A pulse is two updates; see `benchSignalContents` for why one is not enough. */
   const sendSignal = useCallback(
@@ -332,6 +402,167 @@ export function ComponentBench({ target, frame, onFrameMeasured }: ComponentBenc
     },
     [clientId, outputs]
   );
+
+  /**
+   * BEN-005 — the saved input sets, and the one exception to R5.
+   *
+   * They live in the *component's* metadata rather than in this state, so this
+   * is a mirror of what is on disk and never the source of truth: a version
+   * control revert, an MCP write or a second editor window all change the
+   * component underneath, and a bar rendered from a snapshot taken when the
+   * bench opened would offer to overwrite a scenario that no longer exists.
+   */
+  const [scenarios, setScenarios] = useState<BenchScenario[]>([]);
+  /** The scenario the bench is showing, by name. Absent means "not on one". */
+  const [activeScenario, setActiveScenario] = useState<string | undefined>(undefined);
+  /** What the last scenario action had to say — a skipped input, or a refused value. */
+  const [scenarioNotice, setScenarioNotice] = useState<string | undefined>(undefined);
+
+  const readScenarios = useCallback(() => {
+    const component = ProjectModel.instance ? benchComponent(ProjectModel.instance, target) : undefined;
+    setScenarios(readBenchScenarios(component?.getMetaData(BENCH_SCENARIOS_KEY)));
+  }, [target]);
+
+  /**
+   * ⚠️ **Clearing the selection is keyed on the target and nothing else.**
+   *
+   * Folding it into the re-read below — which is keyed on `revision` too — would
+   * mean a Refresh, a dataset change, or the export rebuild that
+   * {@link applyValueSet} does when it has to remount, each silently dropped the
+   * scenario the user was looking at. The last of those is the sharp one:
+   * *applying* a scenario would deselect it.
+   */
+  useEffect(() => {
+    setActiveScenario(undefined);
+    setScenarioNotice(undefined);
+  }, [target]);
+
+  useEffect(() => {
+    readScenarios();
+  }, [readScenarios, revision]);
+
+  useEffect(() => {
+    const eventGroup = {};
+    // Every component's metadata, because the event carries the key and the data
+    // and not the component that raised it. Re-reading one component's metadata
+    // is cheap; being wrong about what is saved is not.
+    EventDispatcher.instance.on('ComponentModel.metadataChanged', readScenarios, eventGroup);
+    return () => EventDispatcher.instance.off(eventGroup);
+  }, [readScenarios]);
+
+  /**
+   * ⚠️ **The only write in this surface.** R5 is that nothing on the bench
+   * reaches `project.json` without an explicit save, and this is the explicit
+   * save — reached from Save, Save as…, Rename, the reorder items and Delete,
+   * every one of them a thing a user pressed on purpose.
+   *
+   * It needs no scheduling of its own: `ComponentModel.setMetaData` raises
+   * `Model.metadataChanged`, which is a member of `projectSaveTriggers`
+   * (`projectmodel.ts`), so the 1s autosave arms and the write lands. Nothing
+   * else here goes near it — typing does not save, selecting does not save,
+   * changing the frame does not save, and closing the bench does not save.
+   */
+  const persistScenarios = useCallback(
+    (next: BenchScenario[]) => {
+      const component = ProjectModel.instance ? benchComponent(ProjectModel.instance, target) : undefined;
+      if (!component) return;
+
+      component.setMetaData(BENCH_SCENARIOS_KEY, benchScenarioStore(next));
+      setScenarios(next);
+    },
+    [target]
+  );
+
+  const selectScenario = useCallback(
+    (name: string) => {
+      const scenario = scenarios.find((candidate) => candidate.name === name);
+      if (!scenario) return;
+
+      const { inputs: next, missing } = applyBenchScenario(scenario, iface);
+      setActiveScenario(name);
+      setScenarioNotice(benchScenarioApplyNotice(missing));
+      applyValueSet(next);
+      // The width is part of the state a scenario claims, so applying one
+      // applies it — through the surface that owns the frame, because the strip
+      // above has to agree with the stage about how wide it is.
+      onFrameChange?.(benchScenarioFrame(scenario, frame));
+    },
+    [applyValueSet, frame, iface, onFrameChange, scenarios]
+  );
+
+  /** Overwrite the selected scenario with what is on the bench now. */
+  const saveScenario = useCallback(() => {
+    if (!activeScenario) return;
+
+    const draft = benchScenarioFrom(activeScenario, inputsRef.current, frame);
+    if (!draft.scenario) {
+      setScenarioNotice(draft.error);
+      return;
+    }
+
+    setScenarioNotice(undefined);
+    persistScenarios(upsertBenchScenario(scenarios, draft.scenario));
+  }, [activeScenario, frame, persistScenarios, scenarios]);
+
+  const saveScenarioAs = useCallback(
+    (name: string) => {
+      const unique = uniqueBenchScenarioName(
+        scenarios.map((scenario) => scenario.name),
+        name
+      );
+      const draft = benchScenarioFrom(unique, inputsRef.current, frame);
+      if (!draft.scenario) {
+        setScenarioNotice(draft.error);
+        return;
+      }
+
+      setScenarioNotice(undefined);
+      setActiveScenario(unique);
+      persistScenarios(upsertBenchScenario(scenarios, draft.scenario));
+    },
+    [frame, persistScenarios, scenarios]
+  );
+
+  const renameScenario = useCallback(
+    (from: string, to: string) => {
+      const next = renameBenchScenario(scenarios, from, to);
+      // Unchanged means the name was taken or empty; saying so beats a button
+      // that silently does nothing.
+      if (next === scenarios) {
+        setScenarioNotice(`Could not rename to “${to.trim()}” — that name is already taken.`);
+        return;
+      }
+
+      setScenarioNotice(undefined);
+      if (activeScenario === from) setActiveScenario(to.trim());
+      persistScenarios(next);
+    },
+    [activeScenario, persistScenarios, scenarios]
+  );
+
+  const moveScenario = useCallback(
+    (name: string, delta: number) => persistScenarios(moveBenchScenario(scenarios, name, delta)),
+    [persistScenarios, scenarios]
+  );
+
+  /**
+   * Deleting the scenario does not clear the bench.
+   *
+   * What is on screen is what someone is looking at; throwing away the saved
+   * *name* for it is not a request to throw away the state itself, and a Delete
+   * that blanked the preview would be one nobody pressed twice.
+   */
+  const deleteScenario = useCallback(
+    (name: string) => {
+      if (activeScenario === name) setActiveScenario(undefined);
+      setScenarioNotice(undefined);
+      persistScenarios(removeBenchScenario(scenarios, name));
+    },
+    [activeScenario, persistScenarios, scenarios]
+  );
+
+  const selectedScenario = scenarios.find((scenario) => scenario.name === activeScenario);
+  const scenarioModified = selectedScenario ? benchScenarioIsModified(selectedScenario, inputs, frame) : false;
 
   // Only ever read by the empty state, and only worth walking the project for
   // when the mounted component or the project itself has changed.
@@ -412,6 +643,21 @@ export function ComponentBench({ target, frame, onFrameMeasured }: ComponentBenc
             read-out is under the inputs in the same column for the same reason
             — set something, see what comes out, without either scrolling away. */}
         <div className={css.Rail}>
+          {/* Above the rail, because it is a control over the rail: it sets
+              every row at once and it is the only thing on this surface that
+              writes anything down. */}
+          <BenchScenarioBar
+            scenarios={scenarios}
+            current={activeScenario}
+            modified={scenarioModified}
+            notice={scenarioNotice}
+            onSelect={selectScenario}
+            onSave={saveScenario}
+            onSaveAs={saveScenarioAs}
+            onRename={renameScenario}
+            onMove={moveScenario}
+            onDelete={deleteScenario}
+          />
           <BenchInputsRail
             iface={iface}
             usage={usage}

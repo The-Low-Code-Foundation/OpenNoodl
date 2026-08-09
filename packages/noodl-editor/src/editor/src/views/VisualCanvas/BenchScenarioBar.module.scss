@@ -1,0 +1,181 @@
+/* BEN-005 — the scenario bar.
+
+   Above the inputs rail rather than beside the stage: it is a control *over*
+   the rail, and one row is all it is allowed to cost. The rail is the thing
+   someone is looking at. */
+.Root {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  border-bottom: 1px solid var(--theme-color-border-subtle);
+}
+
+.Row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  min-width: 0;
+}
+
+.Label {
+  flex: none;
+  font-size: 11px;
+  color: var(--theme-color-fg-default-shy);
+}
+
+/* Positioned, so the menus below are anchored to the control that opened them
+   and not to the surface. No portal — see the module note. */
+.Picker {
+  position: relative;
+  min-width: 0;
+}
+
+.PickerChip {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 160px;
+  padding: 3px 6px;
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: var(--radius-sm);
+  background-color: var(--theme-color-bg-3);
+  color: var(--theme-color-fg-default);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.PickerChip:hover {
+  background-color: var(--theme-color-bg-4);
+  border-color: var(--theme-color-border-strong);
+}
+
+.PickerLabel {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Notice, not danger: unsaved work is a state, not a fault. Red is danger only
+   (phase 23). */
+.Dot {
+  flex: none;
+  font-size: 8px;
+  line-height: 1;
+  color: var(--theme-color-notice);
+}
+
+.Menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 3;
+  min-width: 160px;
+  max-height: 280px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  padding: 4px;
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: var(--radius-md);
+  background-color: var(--theme-color-bg-2);
+  box-shadow: var(--shadow-lg);
+}
+
+/* The overflow sits at the right end of the row, so its menu opens inward. */
+.Menu.is-right {
+  left: auto;
+  right: 0;
+}
+
+.MenuItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--theme-color-fg-default);
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.MenuItem:hover:not(:disabled) {
+  background-color: var(--theme-color-bg-3);
+}
+
+.MenuItem:disabled {
+  color: var(--theme-color-fg-muted);
+  cursor: default;
+}
+
+.MenuItem.is-current {
+  background-color: var(--theme-color-bg-3);
+  color: var(--theme-color-primary);
+}
+
+.MenuItem.is-danger:hover:not(:disabled) {
+  color: var(--theme-color-danger);
+}
+
+.Action {
+  flex: none;
+  padding: 3px 8px;
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: var(--radius-sm);
+  background-color: transparent;
+  color: var(--theme-color-fg-default);
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.Action:hover:not(:disabled) {
+  background-color: var(--theme-color-bg-3);
+}
+
+.Action:disabled {
+  color: var(--theme-color-fg-muted);
+  cursor: default;
+}
+
+/* Save is only emphasised while there is something to save. A permanently
+   primary button in a row you are not using reads as a step you have skipped. */
+.Action.is-primary {
+  border-color: var(--theme-color-primary);
+  color: var(--theme-color-primary);
+}
+
+.Empty {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 8px;
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: var(--radius-sm);
+  background-color: transparent;
+  color: var(--theme-color-fg-default);
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.Empty:hover {
+  background-color: var(--theme-color-bg-3);
+}
+
+.NameField {
+  flex: 1;
+  min-width: 0;
+  padding: 3px 6px;
+  border: 1px solid var(--theme-color-border-strong);
+  border-radius: var(--radius-sm);
+  background-color: var(--theme-color-bg-1);
+  color: var(--theme-color-fg-default);
+  font-size: 12px;
+}
+
+.Notice {
+  padding: 0 12px 8px;
+}

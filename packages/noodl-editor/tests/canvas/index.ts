@@ -27,3 +27,7 @@ export * from './bench-inputs.test';
 // count is the tell. See register B18.
 export * from './bench-outputs-channel.test';
 export * from './bench-outputs.test';
+
+// BEN-005: what a saved scenario is allowed to contain, and what a stale one
+// does to a component whose interface has moved on since it was written.
+export * from './bench-scenarios.test';

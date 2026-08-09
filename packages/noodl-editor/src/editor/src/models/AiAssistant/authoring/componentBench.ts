@@ -235,6 +235,19 @@ export function benchInterfaceFor(project: ProjectModel, target: string): BenchI
   return component ? benchInterface(component) : undefined;
 }
 
+/**
+ * The component the bench is pointed at, resolved the way everything else here
+ * resolves one — both spellings of a reference, exactly as the validator's do.
+ *
+ * Exported for BEN-005: a scenario is stored in the component's own metadata,
+ * so the surface needs the model and not just its interface. Re-implementing
+ * the lookup there would be a second answer to "which component is
+ * `Components/Card`", and the two would eventually disagree.
+ */
+export function benchComponent(project: ProjectModel, target: string): ComponentModel | undefined {
+  return findComponent(project, target);
+}
+
 /** How the rest of the project already uses the component on the bench. */
 export interface BenchInstanceUsage {
   /** Nodes in the project that instantiate the target. */

@@ -25,6 +25,13 @@ const FileSystem = require('@noodl-utils/filesystem');
 const { ProjectModel, flushPendingProjectSave } = require('@noodl-models/projectmodel');
 const { projectFromDirectory } = require('@noodl-models/projectmodel.editor');
 const { ComponentModel } = require('@noodl-models/componentmodel');
+// BEN-005. Imported rather than spelled out: a scenario reaching disk under a
+// key nothing reads back is the failure this case exists to catch, and a
+// literal here would keep passing through exactly that rename.
+const {
+  BENCH_SCENARIOS_KEY,
+  benchScenarioStore
+} = require('../../src/editor/src/views/VisualCanvas/benchScenarios');
 const { NodeGraphModel } = require('@noodl-models/nodegraphmodel');
 const Model = require('../../src/shared/model');
 const Utils = require('@noodl-utils/utils');
@@ -238,5 +245,47 @@ describe('only a project edit writes the project', function () {
     node.setParameter('paddingLeft', { value: 17, unit: 'px' });
 
     expectTheProjectIsWritten('changing a node parameter', sentinelSurvives, done);
+  });
+
+  /**
+   * BEN-005 — saving a bench scenario is the *only* thing on the component
+   * bench that is allowed to reach disk (R5), and it reaches it through this
+   * listener rather than through a save call of its own:
+   * `ComponentModel.setMetaData` raises `Model.metadataChanged`, which is a
+   * member of the allowlist above.
+   *
+   * So the feature's whole persistence story is one allowlist entry, and an
+   * allowlist can only fail by omission. This is the case that would notice.
+   */
+  it('saving a bench scenario on a component DOES rewrite the project, with the scenario in it', function (done) {
+    const sentinelSurvives = plantDiskOnlySentinel();
+
+    const component = project.getComponentWithName('/Home');
+    component.setMetaData(BENCH_SCENARIOS_KEY, benchScenarioStore([{ name: 'Loaded', inputs: { title: 'Rex' } }]));
+
+    // `expectTheProjectIsWritten` calls this on success and `.fail` on timeout,
+    // so the continuation has to carry `fail` the way a Jasmine `done` does.
+    const written = function () {
+      try {
+        // The write happened; the acceptance criterion is that the scenario is
+        // *in* it. `toJSON` carries `metadata` per component, and a round trip
+        // that dropped it would leave a green save and an empty scenario list on
+        // the next open — which is exactly how this would fail silently.
+        const json = JSON.parse(fs.readFileSync(path.join(projectDir, 'project.json'), 'utf8'));
+        const saved = json.components.find(function (c) {
+          return c.name === '/Home';
+        });
+
+        expect(saved.metadata[BENCH_SCENARIOS_KEY]).toEqual({
+          scenarios: [{ name: 'Loaded', inputs: { title: 'Rex' } }]
+        });
+        done();
+      } catch (e) {
+        done.fail(e);
+      }
+    };
+    written.fail = done.fail;
+
+    expectTheProjectIsWritten('saving a bench scenario', sentinelSurvives, written);
   });
 });

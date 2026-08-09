@@ -221,7 +221,18 @@ export function VisualCanvas({ onWebView, deviceName, zoom }: VisualCanvasProps)
           />
         </div>
 
-        {isBench && <ComponentBench target={scope.target} frame={frame} onFrameMeasured={setBenchMeasured} />}
+        {/* `onFrameChange` has exactly one caller — a scenario carrying the
+            width it was saved at (BEN-005). The frame lives here rather than in
+            the bench because the chrome strip's control writes it too, and the
+            two have to be the same number. */}
+        {isBench && (
+          <ComponentBench
+            target={scope.target}
+            frame={frame}
+            onFrameChange={setFrame}
+            onFrameMeasured={setBenchMeasured}
+          />
+        )}
       </div>
 
       {Boolean(crashed) && (

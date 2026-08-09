@@ -167,6 +167,7 @@ export type { SandboxExport, SandboxExportOptions } from './sandboxExport';
 export {
   BENCH_COMPONENT_NAME,
   BENCH_NODE_ID,
+  benchComponent,
   benchHarness,
   benchInstanceUsage,
   benchInterface,
