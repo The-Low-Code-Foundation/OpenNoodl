@@ -1,0 +1,173 @@
+/*
+ * BLD-008 — the question card, from the approved mockup's `.qcard`.
+ *
+ * The mockup for this phase draws its panels in **NodeGX's own dark tokens,
+ * verbatim** — it says so in its own stylesheet — so nothing here is a new
+ * visual language. Every raw hex it uses stands for a token that already exists,
+ * and this file names the token rather than copying the hex:
+ *
+ *   mockup                      here
+ *   --gx-primary-bg             --theme-color-primary-bg   (identical value)
+ *   #33404f  (card border)      --theme-color-border-strong
+ *   #2c3540  (inset border)     --theme-color-border-default
+ *   --gx-bg-2 / --gx-bg-1       --theme-color-bg-2 / bg-1
+ *   --gx-fg-hi / --gx-shy       --theme-color-fg-highlight / fg-default-shy
+ *
+ * ⚠️ That mapping is the whole reason this is safe in light mode. The mockup is
+ * dark-only; a copied `rgba(77, 163, 255, 0.13)` would be an azure wash sitting
+ * on a white panel in light, where the token resolves to `rgba(21, 112, 239,
+ * 0.09)` instead. **Copy the intent, name the token.**
+ *
+ * ## Why the question is loud here and quiet in the thread
+ *
+ * This card is the only thing in the panel that *blocks* — nothing proceeds
+ * until it is answered — so it takes the accent wash and the strong border.
+ * `BuildThread`'s `.Question` draws the same exchange after it is settled, at a
+ * weight that reads as history. See that rule's note for the correction to
+ * BLD-002 that this implies.
+ */
+
+/*
+ * The card. `background` is a flat wash composited over bg-2 rather than a
+ * blend mode, exactly as the mockup does it: a `linear-gradient` of one colour
+ * to itself is the portable way to lay a translucent tint over an opaque
+ * surface in one declaration.
+ */
+.QCard {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--theme-color-border-strong);
+  border-radius: 6px;
+  background:
+    linear-gradient(var(--theme-color-primary-bg), var(--theme-color-primary-bg)),
+    var(--theme-color-bg-2);
+}
+
+.QTop {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  padding: 12px;
+}
+
+/*
+ * The eyebrow. Mono and tracked-out, the same device `.Speaker` uses one
+ * element up — it says what kind of thing this is without spending a line of
+ * prose on it, which at 400px is a line that has somewhere better to be.
+ */
+.Tag {
+  font-family: var(--font-family-code);
+  font-size: 9.5px;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--theme-color-primary);
+}
+
+/*
+ * The question. The only 560-weight text in the thread — the mockup's way of
+ * making one line the strongest thing on screen without another colour, which
+ * matters because README correction 1 is that this panel's problem was never
+ * contrast.
+ */
+.Text p {
+  font-size: 13px;
+  line-height: 1.5;
+  font-weight: 560;
+  color: var(--theme-color-fg-highlight);
+}
+
+/* Why it is being asked, tied to what the agent saw. */
+.Why p {
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--theme-color-fg-default-shy);
+}
+
+/*
+ * The agent's guess, in an inset well.
+ *
+ * Recessed to `bg-1` — *below* the card it sits in — because the one thing a
+ * reader must not do is mistake this sentence for their own previous answer.
+ * The mono label above it says whose it is; the depth says it is a quotation.
+ */
+.Guess {
+  padding: 8px 10px;
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: 4px;
+  background-color: var(--theme-color-bg-1);
+
+  p {
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--theme-color-fg-default);
+  }
+}
+
+.GuessLabel {
+  display: block;
+  margin-bottom: 5px;
+  font-family: var(--font-family-code);
+  font-size: 9.5px;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--theme-color-fg-default-shy);
+}
+
+/*
+ * The answers, in their own band.
+ *
+ * The mockup's `.card-acts`: a top rule, so the actions read as a footer of the
+ * card rather than as three buttons that happen to be underneath it.
+ * `flex-wrap` because at 400px "Skip — this becomes a TODO" does not share a row
+ * with two other labels, and B8's lesson is that a control you cannot reach is
+ * worse than one that wrapped.
+ *
+ * ⚠️ The mockup also lays `rgba(255, 255, 255, 0.014)` over this band, and that
+ * one thing is **not** copied. It is the only value in the mockup with no token
+ * behind it, and it is white — which is a lift on a dark card and a no-op on a
+ * light one, so copying it would import a treatment that exists in exactly one
+ * theme. The rule carries the band on its own. If a lift is wanted later it
+ * needs a token, in `colors.css`, with a light value that means the same thing.
+ */
+.Actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  padding: 10px 12px;
+  border-top: 1px solid var(--theme-color-border-default);
+}
+
+/* The editor for a rewritten answer. Same band, laid out downwards. */
+.Editor {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+  border-top: 1px solid var(--theme-color-border-default);
+}
+
+/*
+ * The proposal for a fourth document.
+ *
+ * Neutral, not accented, and deliberately not a `.QCard`: this is an offer the
+ * user is free to decline, and AIX-010's banner rules apply — an offer that
+ * looks like a demand gets dismissed rather than read. The accent belongs to the
+ * thing that blocks.
+ */
+.Proposal {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: 6px;
+  background-color: var(--theme-color-bg-2);
+}
+
+/* A quiet status line — used while the drafts are being written. */
+.Settled {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+}

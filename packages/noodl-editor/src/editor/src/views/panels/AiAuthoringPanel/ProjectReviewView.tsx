@@ -21,6 +21,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 
 import {
+  InterviewSidecar,
   PROJECT_REVIEW_CHANGED,
   ProjectReviewSetupError,
   ProjectReviewStore,
@@ -32,7 +33,6 @@ import {
   type ProjectReviewDraft,
   type ProjectReviewState
 } from '@noodl-models/AiAssistant/review';
-import type { ProjectReviewRun } from '@noodl-models/AiAssistant/review';
 import { acceptLabel, DISCARD_LABEL, REVIEW_LABEL } from '@noodl-models/AiAssistant/thread';
 import { ProjectModel } from '@noodl-models/projectmodel';
 
@@ -43,6 +43,7 @@ import {
   type DocProposal
 } from '../../../models/ProjectDocs';
 import { openDocsPanelAt } from '../DocsPanel/docsPanelRoute';
+import { hasInterview, InterviewCard } from './InterviewCard';
 
 import { FeedbackType } from '@noodl-constants/FeedbackType';
 import { Icon, IconName, IconSize } from '@noodl-core-ui/components/common/Icon';
@@ -135,11 +136,33 @@ function draftIcon(draft: ProjectReviewDraft): { icon: IconName; variant?: Feedb
   }
 }
 
-function draftDetail(draft: ProjectReviewDraft): string | undefined {
+/**
+ * The line under a drafted file.
+ *
+ * ⚠️ **The TODO count stopped being a feature here.** It used to read
+ * *"4 TODOs for you to confirm"* on every draft, which is the sentence BLD-008
+ * exists because of: it presented "the machine could not work this out" as
+ * something the machine had done for you. After the interview a TODO means one
+ * specific thing — *you declined to answer this when I asked* — so a draft with
+ * none says nothing at all, and a draft with some says whose decision it was.
+ *
+ * `interviewed` and not `todoCount > 0`: on a run with no interview (a caller
+ * passing `interview: false`, or an interview that failed to phrase itself), the
+ * old meaning still holds and the old sentence is still the honest one.
+ */
+function draftDetail(draft: ProjectReviewDraft, interviewed: boolean): string | undefined {
   if (draft.status === 'authored') {
     const size = `${draft.baseline === null ? 'New file' : 'Edited'}, ${draft.content?.length ?? 0} characters`;
-    const todos = `${draft.todoCount} TODO${draft.todoCount === 1 ? '' : 's'} for you to confirm`;
-    return draft.summary ? `${size} · ${todos} — ${draft.summary}` : `${size} · ${todos}`;
+    const parts = [size];
+    if (draft.todoCount > 0) {
+      parts.push(
+        interviewed
+          ? `${draft.todoCount} question${draft.todoCount === 1 ? '' : 's'} you skipped, marked TODO`
+          : `${draft.todoCount} TODO${draft.todoCount === 1 ? '' : 's'} for you to confirm`
+      );
+    }
+    const detail = parts.join(' · ');
+    return draft.summary ? `${detail} — ${draft.summary}` : detail;
   }
   return draft.note;
 }
@@ -175,7 +198,23 @@ export function ProjectReviewView({
 }: ProjectReviewViewProps) {
   const [state, setState] = useState<ProjectReviewState | null>(() => ProjectReviewStore.instance.getState());
   const [note, setNote] = useState<{ text: string; type: FeedbackType } | null>(null);
-  const runRef = useRef<ProjectReviewRun | null>(null);
+
+  /**
+   * The run, from the store rather than from a ref.
+   *
+   * ⚠️ This was a `useRef` that **nothing ever filled**, in the only
+   * configuration that ships. The ref was set in `start()`; `start()` is
+   * reachable only from the `!isEmbedded` button and the `startImmediately`
+   * flag; and since BLD-001 the sole mount of this view is
+   * `renderOutcome`'s embedded one, started by `AiAuthoringPanel`. So the Stop
+   * button below has been calling `null?.cancel()` — silently doing nothing —
+   * since the panel became a thread. BLD-008 needed the same reference for the
+   * interview's controls, which is how it came to light.
+   *
+   * The store already owned the state; it owns the producer now, and there is
+   * one answer to "which run is this" for however many mounts BLD-009 adds.
+   */
+  const run = ProjectReviewStore.instance.getRun();
 
   // ── BLD-003 D8: the drafts are decided here, not handed to another panel ────
   //
@@ -198,7 +237,11 @@ export function ProjectReviewView({
     };
   }, []);
 
-  useEffect(() => () => runRef.current?.dispose(), []);
+  // ⚠️ No `dispose()` on unmount any more, and that is a correction rather than
+  // an omission. This view is mounted as an outcome card inside a thread that is
+  // hidden and re-shown, and the run now outlives it by design — an interview
+  // waits on a person for minutes. `ProjectReviewStore.clear()` is what releases
+  // it, on the paths that own that decision (a new request, a project switch).
 
   useEffect(() => {
     const store = DocProposalStore.instance;
@@ -216,8 +259,9 @@ export function ProjectReviewView({
     setDecided({});
     stagingRef.current = false;
     try {
-      const { run } = await startProjectReview(project);
-      runRef.current = run;
+      // The run lands on the store inside `startProjectReview`, which is what
+      // makes it reachable from both mounts of this view.
+      await startProjectReview(project);
     } catch (error) {
       setNote({
         text:
@@ -245,6 +289,55 @@ export function ProjectReviewView({
   const busy = Boolean(state?.busy);
   const authored = state?.drafts.filter((d) => d.status === 'authored') ?? [];
   const finished = state?.phase === 'done' || state?.phase === 'cancelled';
+
+  // ── BLD-008: the interview ──────────────────────────────────────────────────
+
+  const interview = state?.interview;
+
+  /**
+   * Every change to the interview, to disk.
+   *
+   * ⚠️ On the *state*, not on each handler. Six handlers each remembering to
+   * save is six chances to forget one, and the one that gets forgotten is
+   * whichever is added last — which is precisely how `PlanSessionSidecar.flush`
+   * came to exist with no caller. This runs whenever the answers change, from
+   * wherever they changed, including a resume that re-published them.
+   *
+   * The write is debounced and queued inside the sidecar, and drained by
+   * `flushAiSidecars` on the quit path.
+   */
+  useEffect(() => {
+    const project = ProjectModel.instance;
+    const directory = project?._retainedProjectDirectory;
+    if (!project || !directory || !interview || interview.questions.length === 0) return;
+    // A finished interview has been spent — the drafts carry its answers now,
+    // and leaving the file behind would resume it over the next docs run.
+    if (state?.phase === 'drafting' || state?.phase === 'done') {
+      void InterviewSidecar.instance.remove(directory);
+      return;
+    }
+    InterviewSidecar.instance.write(directory, interview, project.id);
+  }, [interview, state?.phase]);
+
+  const answerQuestion = useCallback((id: string, text: string) => run?.answerQuestion(id, text), [run]);
+  const skipQuestion = useCallback((id: string) => run?.skipQuestion(id), [run]);
+  const reopenQuestion = useCallback((id: string) => run?.reopenQuestion(id), [run]);
+  const decideProposal = useCallback((accepted: boolean) => run?.decideProposedDoc(accepted), [run]);
+
+  /**
+   * Start drafting — the button, never a side effect of the last answer.
+   *
+   * ⚠️ Guarded on `canDraft()` rather than on the card's own `complete`, because
+   * the run is the owner of that question and a second opinion here would be the
+   * thing that lets a draft start over an unanswered interview after a reopen.
+   */
+  const draft = useCallback(() => {
+    if (!run?.canDraft()) return;
+    void run.draft().then(
+      () => undefined,
+      (error: unknown) => setNote({ text: error instanceof Error ? error.message : String(error), type: FeedbackType.Danger })
+    );
+  }, [run]);
 
   /**
    * Stage the drafts the moment the run finishes, rather than behind a button.
@@ -350,12 +443,7 @@ export function ProjectReviewView({
             />
           )}
           {busy && (
-            <PrimaryButton
-              label="Stop"
-              variant={PrimaryButtonVariant.Ghost}
-              isGrowing
-              onClick={() => runRef.current?.cancel()}
-            />
+            <PrimaryButton label="Stop" variant={PrimaryButtonVariant.Ghost} isGrowing onClick={() => run?.cancel()} />
           )}
         </VStack>
       </Section>
@@ -365,20 +453,37 @@ export function ProjectReviewView({
             {!state && !note && (
               <Text textType={TextType.Shy}>
                 The assistant reads your project — its pages, its data model, and the components that carry the
-                most of it — and drafts the three context documents for you to correct. It reads what it can
-                afford and tells you what it skipped. Nothing is written until you accept each file.
+                most of it — then asks you the handful of things the graph cannot tell it, and drafts the context
+                documents from your answers. It tells you what it skipped reading. Nothing is written until you
+                accept each file.
               </Text>
             )}
 
             {state?.phase === 'assembling' && <Text textType={TextType.Default}>Reading the project…</Text>}
 
+            {/* Criterion 4, unchanged in spirit and now first: the coverage is
+                what the interview reports before it asks anything, so a user
+                knows how much the agent had to go on when they read its guesses. */}
             {state?.context && <ReviewCoverageSummary coverage={state.context.coverage} />}
+
+            {hasInterview(interview) && (
+              <InterviewCard
+                interview={interview}
+                {...(state?.interviewNote ? { note: state.interviewNote } : {})}
+                onAnswer={answerQuestion}
+                onSkip={skipQuestion}
+                onReopen={reopenQuestion}
+                onDecideProposal={decideProposal}
+                {...(run?.canDraft() ? { onDraft: draft } : {})}
+                isDrafting={state?.phase !== 'interviewing'}
+              />
+            )}
 
             {state && state.drafts.length > 0 && (
               <VStack UNSAFE_style={{ gap: 8 }}>
                 {state.drafts.map((draft) => {
                   const { icon, variant } = draftIcon(draft);
-                  const detail = draftDetail(draft);
+                  const detail = draftDetail(draft, hasInterview(interview));
                   const isCurrent = state.current === draft.kind && state.busy;
                   const proposal = draft.status === 'authored' ? proposalFor(draft.path) : undefined;
                   const outcome = decided[draft.path];
@@ -456,8 +561,9 @@ export function ProjectReviewView({
                 them, because it is about how to read them, not where to go. */}
             {finished && authored.length > 0 && (
               <Text textType={TextType.Shy}>
-                Read the coverage above before you read the drafts — every TODO line is a question the graph
-                could not answer. Nothing is written until you accept each file.
+                {hasInterview(interview)
+                  ? 'These were written from your answers. Any TODO line is a question you skipped, not a guess I could not check. Nothing is written until you accept each file.'
+                  : 'Read the coverage above before you read the drafts — every TODO line is a question the graph could not answer. Nothing is written until you accept each file.'}
               </Text>
             )}
 

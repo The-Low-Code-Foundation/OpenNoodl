@@ -44,12 +44,51 @@ export type { ProjectReviewPhase, ProjectReviewRunOptions, ProjectReviewState } 
 
 export { PROJECT_REVIEW_CHANGED, ProjectReviewStore, REVIEW_SOURCE } from './ProjectReviewStore';
 
+// ── BLD-008, the interview ────────────────────────────────────────────────────
+//
+// Pure: `interviewQuestions`, `interviewState` and `interviewPrompts` touch
+// nothing but the templates. `InterviewSidecar` is Electron-side — it is under
+// the note above with `collectSources`.
+export { interviewQuestions, QUESTION_RULES, templateHeadingKeys, templateHeadings } from './interviewQuestions';
+export type { InterviewQuestionSpec, QuestionRule } from './interviewQuestions';
+export {
+  answerOf,
+  answeredFor,
+  currentQuestion,
+  decideProposal,
+  emptyInterview,
+  insertSkipTodos,
+  interviewActivities,
+  interviewFrom,
+  interviewProgress,
+  isInterviewComplete,
+  nothingSkipped,
+  recordAnswer,
+  recordSkip,
+  renderAnswersForPrompt,
+  renderSkipsForPrompt,
+  reopen,
+  skipTodoLines,
+  skippedFor
+} from './interviewState';
+export type {
+  InterviewAnswer,
+  InterviewAnswerStatus,
+  InterviewQuestion,
+  InterviewState,
+  ProposedDoc
+} from './interviewState';
+export { answersBlock, INTERVIEW_TOOLS, interviewSystemPrompt, interviewUserMessage, SUBMIT_INTERVIEW } from './interviewPrompts';
+export { InterviewSession, proposedDocPath } from './InterviewSession';
+export type { InterviewOutcome, InterviewSessionOptions } from './InterviewSession';
+export { INTERVIEW_FILE_VERSION, InterviewSidecar, parseInterviewFile, serialiseInterview } from './InterviewSidecar';
+
 export { dismissReviewBanner, isReviewBannerDismissed, REVIEW_BANNER_DISMISSED_KEY } from './bannerDismissal';
 
 // Electron-side only — see the note above.
 export { collectBackendSummary, collectProjectReviewSources, readDeclaredRoutes } from './collectSources';
 export { buildBackendSummary, collectionsFromCachedSchema } from './backendSummary';
-export { ProjectReviewSetupError, stageReviewDrafts, startProjectReview } from './startProjectReview';
+export { ProjectReviewSetupError, resumableInterview, stageReviewDrafts, startProjectReview } from './startProjectReview';
 export type { StagedReviewDraft, StartProjectReviewOptions } from './startProjectReview';
 
 export { REVIEW_DOC_ORDER } from './types';

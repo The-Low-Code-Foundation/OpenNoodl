@@ -171,7 +171,22 @@ export function roleRequestFields(resolved: ResolvedRole): AiRoleRequestFields {
  * quietly inherit the global pair with nothing recording that it did.
  */
 export const AI_ROLE_SESSIONS: Record<AiRole, readonly string[]> = {
-  design: ['scoping/ScopingSession.ts'],
+  /**
+   * ⚠️ BLD-008's interview is `design`, and it is worth saying why, because the
+   * drafting turn beside it (`review/ReviewDocSession.ts`) is deliberately
+   * global and the two run in the same pass.
+   *
+   * The interview decides **what to ask a person about their own product** and
+   * writes the guess they will correct. That is the same act `ScopingSession`
+   * performs before a project exists, and it sets the ceiling on all three
+   * documents: a question that misses costs a document that is wrong, and no
+   * amount of drafting effort recovers it. The drafting turns that follow are
+   * transcription of answers already given — prose about work already done,
+   * which is the line `ReviewDocSession`'s entry draws.
+   *
+   * One turn per pass, so the expensive role is affordable here.
+   */
+  design: ['scoping/ScopingSession.ts', 'review/InterviewSession.ts'],
   plan: ['authoring/PlanningSession.ts'],
   act: ['authoring/AuthoringSession.ts']
 };

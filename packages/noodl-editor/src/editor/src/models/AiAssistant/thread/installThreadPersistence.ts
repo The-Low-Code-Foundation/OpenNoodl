@@ -26,6 +26,7 @@
  */
 
 import { PlanSessionSidecar } from '../authoring/PlanSessionSidecar';
+import { InterviewSidecar } from '../review/InterviewSidecar';
 import { ProjectModel } from '../../projectmodel';
 import { ThreadSidecar } from './ThreadSidecar';
 import { ThreadStore } from './ThreadStore';
@@ -62,10 +63,17 @@ export function installThreadPersistence(sidecar = ThreadSidecar.instance): void
  */
 export async function flushAiSidecars(
   threads = ThreadSidecar.instance,
-  plans = PlanSessionSidecar.instance
+  plans = PlanSessionSidecar.instance,
+  /**
+   * BLD-008. Added here on the day the sidecar was written, not "later" — the
+   * whole finding this handshake exists to close is that a flush wired later is
+   * a flush that never gets wired.
+   */
+  interviews = InterviewSidecar.instance
 ): Promise<void> {
   await Promise.all([
     threads.flush().catch((error) => console.warn('Could not flush AI conversations on exit:', error)),
-    plans.flush().catch((error) => console.warn('Could not flush the saved AI build on exit:', error))
+    plans.flush().catch((error) => console.warn('Could not flush the saved AI build on exit:', error)),
+    interviews.flush().catch((error) => console.warn('Could not flush the docs interview on exit:', error))
   ]);
 }

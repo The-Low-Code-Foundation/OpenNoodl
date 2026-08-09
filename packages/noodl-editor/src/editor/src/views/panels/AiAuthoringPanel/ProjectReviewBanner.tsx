@@ -124,9 +124,19 @@ export function ProjectReviewBanner({ onStart, isBusy }: ProjectReviewBannerProp
   return (
     <div className={css['Root']}>
       <VStack UNSAFE_style={{ gap: 6 }}>
-        <Text textType={TextType.Default}>
-          This project has no AI context docs. The assistant can read the whole project and draft them for you
-          to correct — nothing is written until you accept each file.
+        {/*
+          BLD-008 item 7 — a suggestion, not an interrupt.
+
+          What was here described the whole feature in three lines before
+          offering it, which is what made it an interrupt rather than a
+          suggestion: a paragraph at the top of a panel is something you have to
+          read past. The sentence is now one line and it says the thing that
+          actually decides the click — that the agent asks first — because
+          "correct these three documents" and "answer six questions" are
+          different offers and only one of them is true after this task.
+        */}
+        <Text textType={TextType.Shy}>
+          This project has no AI context docs. I'll ask you a few things first, then draft them.
         </Text>
         {/*
           Wraps because the two labels do not fit side by side in the panel this
@@ -135,10 +145,14 @@ export function ProjectReviewBanner({ onStart, isBusy }: ProjectReviewBannerProp
           down to 240px, where the primary button alone does not fit a row. A
           banner whose "no thanks" is the half you cannot reach is worse than no
           banner — it reads as an offer you are not allowed to decline.
+
+          ⚠️ `height: 'auto'` — `Stack` puts `height: 100%` on any row that does
+          not declare one, and this row's parent is a block. See C5 in
+          `AiAuthoringPanel`'s header for the full measurement.
         */}
-        <HStack UNSAFE_style={{ gap: 6, flexWrap: 'wrap' }}>
+        <HStack UNSAFE_style={{ height: 'auto', gap: 6, flexWrap: 'wrap' }}>
           <PrimaryButton
-            label={isBusy ? 'Reviewing…' : 'Review the project and draft them'}
+            label={isBusy ? 'Reviewing…' : 'Write the project docs'}
             icon={IconName.MagicWand}
             size={PrimaryButtonSize.Small}
             isDisabled={isBusy}

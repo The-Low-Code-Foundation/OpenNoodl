@@ -16,15 +16,31 @@
  * @module AiAssistant/review/types
  */
 
-import type { ProjectDocsContent } from '../../ProjectDocs/docsText';
+import type { KnownDocKind, ProjectDocsContent } from '../../ProjectDocs/docsText';
 import type { StyleVocabulary } from '../../StyleTokensModel/StyleVocabulary';
 import type { ContextLogEntry } from '../authoring/types';
 
-/** The three files a retrofit drafts. Same vocabulary as `KnownDocKind`. */
-export type ReviewDocKind = 'brief' | 'architecture' | 'conventions';
+/**
+ * What a retrofit drafts.
+ *
+ * ⚠️ BLD-008 widened this, and the widening is the kind that goes wrong
+ * silently. `proposed` is a document **the interview invented** — its path comes
+ * from the model, not from a table — so it has no entry in `REVIEW_DOC_PATHS`
+ * and no entry in `DOC_TEMPLATES`. Both of those are `Record<KnownDocKind, …>`
+ * rather than `Record<ReviewDocKind, …>` precisely so that indexing them with a
+ * `proposed` kind is a compile error rather than an `undefined` that becomes the
+ * string "undefined" in a file path. Every draft carries its own `path`; look
+ * there, not in the table.
+ */
+export type ReviewDocKind = KnownDocKind | 'proposed';
 
-/** The order they are drafted in — cheapest and most grounded first. */
-export const REVIEW_DOC_ORDER: readonly ReviewDocKind[] = ['brief', 'architecture', 'conventions'];
+/**
+ * The order the seed documents are drafted in — cheapest and most grounded first.
+ *
+ * Typed `KnownDocKind`, not `ReviewDocKind`: this list is what indexes
+ * `DOC_TEMPLATES`, and a proposed document is not in it.
+ */
+export const REVIEW_DOC_ORDER: readonly KnownDocKind[] = ['brief', 'architecture', 'conventions'];
 
 // ── Page map ──────────────────────────────────────────────────────────────────
 

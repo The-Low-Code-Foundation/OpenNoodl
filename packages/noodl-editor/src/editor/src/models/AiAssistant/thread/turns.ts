@@ -31,7 +31,8 @@
 
 import type { AuthoringMode, AuthoringSessionState, PlanOperationState, PlanRunState } from '../authoring';
 import type { PlanSession } from '../authoring';
-import type { ProjectReviewState } from '../review';
+import type { ProjectReviewState } from '../review/ProjectReviewRun';
+import { interviewActivities } from '../review/interviewState';
 import { summarisePlan } from './intent';
 import type { IntentDecision } from './intent';
 import type { BuildIntent, Turn, TurnActivity, TurnOutcome } from './types';
@@ -273,13 +274,29 @@ export interface DocsTurnOptions {
   sentence?: string;
 }
 
-/** A project review (the docs pass) as one turn. */
+/**
+ * A project review (the docs pass) as one turn.
+ *
+ * ⚠️ BLD-008 — the interview goes **before** the drafts, and its questions are
+ * `question` activities rather than `tool` lines. That is not a styling choice:
+ * `isCollapsible` returns false for `question` and true for `tool`, so writing
+ * them as tool lines would let six questions and their answers vanish behind a
+ * "8 steps ▸" disclosure — the transcript of the only exchange in this panel
+ * where the *user* supplied the content, hidden by the mechanism built to hide
+ * "Read node documentation".
+ *
+ * The pending question's *controls* are not here. They are on the outcome card
+ * (`ProjectReviewView`), per BLD-003's rule that a decision attaches to its
+ * subject — and the text is written once, here, so the question is never on
+ * screen twice.
+ */
 export function docsTurns(state: ProjectReviewState | null, options: DocsTurnOptions = {}): Turn[] {
   if (!state || state.phase === 'idle') return [];
   const prefix = options.idPrefix ?? 'docs';
 
   const activities: TurnActivity[] = [];
   if (options.sentence) activities.push({ kind: 'assistant', text: options.sentence });
+  if (state.interview) activities.push(...interviewActivities(state.interview));
   for (const draft of state.drafts) {
     if (draft.status === 'pending') continue;
     activities.push({ kind: 'tool', label: `${draft.status === 'authored' ? 'Drafted' : 'Left'} ${draft.path}` });
@@ -294,6 +311,13 @@ export function docsTurns(state: ProjectReviewState | null, options: DocsTurnOpt
 
   if (state.busy) {
     turn.busy = true;
+  } else if (state.phase === 'interviewing') {
+    // ⚠️ No outcome, and no `busy`. The interview is the one point in this
+    // panel where nothing is running and the turn is not finished either — it
+    // is waiting on a person. Falling through to the `docs-drafts` branch below
+    // would report "Drafted 0 documents" over a thread of unanswered questions,
+    // and setting `busy` would put a heartbeat on a turn that is not working.
+    // The card carries the state; the turn says nothing it cannot evidence.
   } else if (state.phase === 'error') {
     turn.outcome = { kind: 'note', tone: 'danger', text: state.error ?? 'The review could not be completed.' };
   } else if (state.phase === 'cancelled') {

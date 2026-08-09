@@ -25,11 +25,19 @@
  * @module AiAssistant/review/prompts
  */
 
-import { DOC_ARCHITECTURE, DOC_BRIEF, DOC_CONVENTIONS } from '../../ProjectDocs/docsText';
+import { DOC_ARCHITECTURE, DOC_BRIEF, DOC_CONVENTIONS, type KnownDocKind } from '../../ProjectDocs/docsText';
 import type { ReviewDocKind } from './types';
 
-/** `docs/…` path for each drafted document. */
-export const REVIEW_DOC_PATHS: Record<ReviewDocKind, string> = {
+/**
+ * `docs/…` path for each **seed** document.
+ *
+ * ⚠️ `Record<KnownDocKind, …>`, not `Record<ReviewDocKind, …>`, and that is
+ * load-bearing since BLD-008: a `proposed` document's path is invented by the
+ * interview and carried on the draft. Widening this record to the full kind
+ * union would make `REVIEW_DOC_PATHS[kind]` compile everywhere and return
+ * `undefined` for the one kind that does not belong in it.
+ */
+export const REVIEW_DOC_PATHS: Record<KnownDocKind, string> = {
   brief: DOC_BRIEF,
   architecture: DOC_ARCHITECTURE,
   conventions: DOC_CONVENTIONS
@@ -116,6 +124,34 @@ const DOC_BRIEFS: Record<ReviewDocKind, DocBrief> = {
       'style token names that recur, if a style vocabulary was provided',
       'a convention you can see TWICE. Once is a coincidence.'
     ]
+  },
+  /**
+   * BLD-008 item 8 — the document the interview invented.
+   *
+   * Its job is the one the three seeds cannot do: hold outside knowledge that
+   * has no home. The anti-goals are sharper here than anywhere else because
+   * nobody asked for this file — it exists because the agent proposed it and the
+   * user said yes, so a fourth file of restated graph is a cost with no ask
+   * behind it.
+   */
+  proposed: {
+    title: 'a document this project asked for',
+    job: [
+      'The outside knowledge the graph cannot hold: a rule, a rate, a third-party contract, a house style.',
+      'What the user told you about it, in their words, organised so it can be read in a minute.',
+      'The front matter that decides how it reaches the assistant — it is the first thing in the file.'
+    ],
+    antiGoals: [
+      'Anything the three other documents already cover. This file exists because something did NOT fit them;',
+      'if what you are writing is a brief, an architecture note or a convention, it belongs there instead.',
+      '',
+      'Padding. This file was proposed on the strength of one observation. If that observation and what the user',
+      'said about it fill four lines, the document is four lines long and that is a good document.'
+    ],
+    lookFor: [
+      "the user's own answers — this file is mostly theirs, not yours",
+      'the facts in the material that made this worth proposing at all'
+    ]
   }
 };
 
@@ -186,6 +222,16 @@ export interface ReviewTurnInput {
   template?: string;
   /** Drafts produced earlier in this same run, so the three do not repeat each other. */
   siblings?: Array<{ path: string; summary: string }>;
+  /**
+   * BLD-008 — what the owner of the project said, from `answersBlock`.
+   *
+   * Empty when no interview ran, which is how the pre-BLD-008 behaviour is
+   * reached: by the absence of a block rather than by a flag a caller can forget
+   * to set. It goes **last**, after the task, and that placement is the same
+   * recency argument the rest of this file is built on — these are the sentences
+   * the draft is supposed to be made of.
+   */
+  answers?: string;
 }
 
 /**
@@ -242,9 +288,22 @@ export function reviewUserMessage(input: ReviewTurnInput): string {
   lines.push(
     '--- YOUR TASK ---',
     `Draft ${input.path} for this project and submit the complete file.`,
-    'Mark every inference. Use a TODO line wherever a human must confirm or supply something you cannot know.',
-    'Do not describe the graph.'
+    // ⚠️ Two different instructions about TODO lines, and exactly one of them is
+    // in the prompt at a time. Without an interview, a TODO is how the model
+    // admits it was guessing and it is required. With one, the TODOs are written
+    // by `insertSkipTodos` — one per declined question, no more — and a
+    // model-authored line would be a second, false claim that somebody declined
+    // something. `answersBlock` carries the prohibition, so the two can never
+    // both be on screen.
+    ...(input.answers
+      ? ['Use what you were told below. Do not describe the graph.']
+      : [
+          'Mark every inference. Use a TODO line wherever a human must confirm or supply something you cannot know.',
+          'Do not describe the graph.'
+        ])
   );
+
+  if (input.answers) lines.push('', input.answers);
 
   return lines.join('\n');
 }

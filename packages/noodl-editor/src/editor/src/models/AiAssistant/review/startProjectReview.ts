@@ -17,6 +17,9 @@ import { currentProjectDocsModel, proposeDocChange, ProjectDocsModel } from '../
 import type { ProjectModel } from '../../projectmodel';
 import { fromProjectModel } from '../explain/graph';
 import { collectProjectReviewSources } from './collectSources';
+import { InterviewSidecar } from './InterviewSidecar';
+import { interviewQuestions } from './interviewQuestions';
+import { resumableInterview, type InterviewState } from './interviewState';
 import { ProjectReviewRun } from './ProjectReviewRun';
 import type { ProjectReviewRunOptions, ProjectReviewState } from './ProjectReviewRun';
 import { authoredDrafts } from './ProjectReviewRun';
@@ -36,14 +39,28 @@ export class ProjectReviewSetupError extends Error {
 export interface StartProjectReviewOptions extends ProjectReviewRunOptions {
   /** Override the docs model. Defaults to the boot-installed one for the project. */
   docs?: ProjectDocsModel;
+  /** Override the sidecar. Defaults to the singleton; injected by the specs. */
+  interviewSidecar?: Pick<InterviewSidecar, 'read' | 'write' | 'remove'>;
 }
 
 /**
- * Assemble, draft, and publish progress to `ProjectReviewStore` as it goes.
+ * The resume rule lives in the pure module — see `interviewState`. Re-exported
+ * here because this is where it is used, and a reader following the resume path
+ * should not have to guess which of the two modules owns it.
+ */
+export { resumableInterview };
+
+/**
+ * Assemble, ask, and publish progress to `ProjectReviewStore` as it goes.
  *
- * Returns the run so a panel can cancel it. Nothing is staged here — see
- * `stageReviewDrafts`, which the panel calls when the run finishes and the user
- * asks to review the results.
+ * ⚠️ **This no longer produces drafts.** BLD-008 inverted the pass: it returns
+ * once the questions are on screen (`phase: 'interviewing'`, `busy: false`), and
+ * the panel calls `run.draft()` when they are settled. A caller that wants the
+ * old behaviour passes `{ interview: false }`, which drafts straight through.
+ *
+ * Returns the run so a panel can cancel it — and puts it on the store, which is
+ * how the *other* mount reaches it. Nothing is staged here; see
+ * `stageReviewDrafts`, which the panel calls when drafting finishes.
  */
 export async function startProjectReview(
   project: ProjectModel,
@@ -60,15 +77,39 @@ export async function startProjectReview(
   // re-run on a documented project must edit rather than replace.
   const docs = await docsModel.content();
   const sources = await collectProjectReviewSources(project, docs);
-  const run = new ProjectReviewRun(fromProjectModel(project), sources, options);
+
+  // An interview left unfinished by a quit or a project switch. Read before the
+  // run starts, so a resume never pays for the questions twice.
+  const resumed = await readResumableInterview(project, options);
+
+  const run = new ProjectReviewRun(fromProjectModel(project), sources, {
+    ...options,
+    // A resumed interview replaces the model turn entirely: the questions and
+    // the answers are both already there.
+    ...(resumed ? { resumeInterview: resumed } : {})
+  });
 
   const store = ProjectReviewStore.instance;
+  store.setRun(run);
   run.onChange((state) => store.setState(state));
   store.setState(run.getState());
 
   const state = await run.run();
   store.setState(state);
   return { run, state };
+}
+
+async function readResumableInterview(
+  project: ProjectModel,
+  options: StartProjectReviewOptions
+): Promise<InterviewState | undefined> {
+  if (options.interview === false) return undefined;
+  const directory = project._retainedProjectDirectory;
+  if (!directory) return undefined;
+  const sidecar = options.interviewSidecar ?? InterviewSidecar.instance;
+  const saved = await sidecar.read(directory, project.id);
+  if (!saved) return undefined;
+  return resumableInterview(saved, interviewQuestions());
 }
 
 export interface StagedReviewDraft {

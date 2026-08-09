@@ -62,7 +62,6 @@ import {
   PROJECT_REVIEW_CHANGED,
   ProjectReviewStore,
   startProjectReview,
-  type ProjectReviewRun,
   type ProjectReviewState
 } from '@noodl-models/AiAssistant/review';
 import { authoringTelemetry } from '@noodl-models/AiAssistant/telemetry';
@@ -293,7 +292,11 @@ export function AiAuthoringPanel({ width = 'panel' }: AiAuthoringPanelProps = {}
   const [reviewState, setReviewState] = useState<ProjectReviewState | null>(() =>
     ProjectReviewStore.instance.getState()
   );
-  const reviewRunRef = useRef<ProjectReviewRun | null>(null);
+  // ⚠️ BLD-008 removed this panel's `reviewRunRef`. The run lives on
+  // `ProjectReviewStore` now, because `ProjectReviewView` needs it too — and its
+  // own ref was never filled, so its Stop button had been calling
+  // `null?.cancel()` ever since this panel became a thread. One owner, and every
+  // reader looks in the same place.
 
   // Stable identities for the preview document's buttons — the document is
   // mounted once per build, the handlers re-bind every render.
@@ -397,7 +400,7 @@ export function AiAuthoringPanel({ width = 'panel' }: AiAuthoringPanelProps = {}
     // from a previous launch is restored asynchronously. Releasing sources that
     // hold nothing would delete a build that had not finished coming back yet.
     if (!hadLive) return;
-    reviewRunRef.current = null;
+    // `clear()` drops the run with the state — see `ProjectReviewStore`.
     ProjectReviewStore.instance.clear();
     store.discard(ProjectModel.instance?.id);
   }, [appendTurns, threadLength, liveSources, store]);
@@ -431,8 +434,11 @@ export function AiAuthoringPanel({ width = 'panel' }: AiAuthoringPanelProps = {}
 
       if (intent === 'docs') {
         try {
-          const { run } = await startProjectReview(project);
-          reviewRunRef.current = run;
+          // ⚠️ BLD-008 — this now returns with the questions on screen, not with
+          // three drafts. `startProjectReview` publishes the run to
+          // `ProjectReviewStore`; drafting is a second call, made by the card
+          // when the interview is settled.
+          await startProjectReview(project);
         } catch (e) {
           setSetupError(e instanceof Error ? e.message : String(e));
         }
@@ -820,7 +826,7 @@ export function AiAuthoringPanel({ width = 'panel' }: AiAuthoringPanelProps = {}
     if (planningRequest) planAbortRef.current?.abort();
     else if (state?.busy) sessionRef.current?.cancel();
     else if (runState?.busy) planSession.run?.cancel();
-    else if (reviewState?.busy) reviewRunRef.current?.cancel();
+    else if (reviewState?.busy) ProjectReviewStore.instance.getRun()?.cancel();
   }, [planningRequest, state?.busy, runState?.busy, reviewState?.busy, planSession.run]);
 
   /**
