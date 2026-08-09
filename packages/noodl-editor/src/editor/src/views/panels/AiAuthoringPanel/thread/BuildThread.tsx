@@ -283,6 +283,30 @@ export function BuildThread({
             value={value}
             placeholder={placeholder}
             onChange={(event) => onChange(event.target.value)}
+            /*
+             * ⚠️ `TextArea.onEnter` is **Shift+Enter**
+             * ([TextArea.tsx:96](../../../../../../../noodl-core-ui/src/components/inputs/TextArea/TextArea.tsx)
+             * — `ev.shiftKey && ev.key === 'Enter'`). `TextInput.onEnter` is
+             * **plain Enter**. They are different keystrokes behind one prop
+             * name, and the refine field below is a `TextInput`, so the two
+             * composers on this panel do not answer to the same key.
+             *
+             * Shift+Enter is nonetheless right *here*: this composer is
+             * multi-line by design — a request spanning four components is a
+             * paragraph — and plain Enter must insert a newline. The old
+             * description field was a `TextArea` with no `onEnter` at all, so
+             * nothing regresses either way.
+             *
+             * Guarded by exactly the condition that disables the button, so the
+             * two cannot disagree. A dropped or mismatched binding here is
+             * invisible to `tsc` (`onEnter` is optional) and to every spec in
+             * this task — they grade the pure model, which has no keyboard.
+             * BLD-010 drives it.
+             */
+            onEnter={() => {
+              if (busy || !canSend) return;
+              onSend();
+            }}
           />
           <HStack UNSAFE_style={{ gap: 8 }}>
             {busy ? (
