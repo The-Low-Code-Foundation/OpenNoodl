@@ -28,7 +28,7 @@ box — its header is inside the scroll area.
 | BLD-003 ⭐ ✅ | [BLD-003-DECISIONS-ON-THE-CARD.md](BLD-003-DECISIONS-ON-THE-CARD.md) | actions attach to their subject; one owner; Discard, not red Reject | **D2 ✅ D3 ✅** D8ᵃ |
 | BLD-004 ✅ | [BLD-004-THINKING-AND-HEARTBEAT.md](BLD-004-THINKING-AND-HEARTBEAT.md) | surface `onActivity`; add a reasoning channel the XML parser cannot see | **D6 ✅ D7 ✅** C8 ✅ R2 ✅ |
 | BLD-005 ⭐ ✅ | [BLD-005-LEGIBLE-LONG-RUN.md](BLD-005-LEGIBLE-LONG-RUN.md) | pin the run header out of the scroll area; plan-as-map; honest estimate | **corr. 2 ✅** |
-| BLD-006 | [BLD-006-THREADS-PERSIST.md](BLD-006-THREADS-PERSIST.md) | threads survive accept, navigation and restart; a switcher | D5 |
+| BLD-006 ✅ | [BLD-006-THREADS-PERSIST.md](BLD-006-THREADS-PERSIST.md) | threads survive accept, navigation and restart; a switcher | **D5 ✅** |
 | BLD-007 ⭐ ✅ | [BLD-007-DOCS-ARE-OPEN.md](BLD-007-DOCS-ARE-OPEN.md) | front-matter `inject`; the one-value enum becomes a discovered list | **D9 ✅** |
 | BLD-008 ⭐ | [BLD-008-DOCS-INTERVIEW.md](BLD-008-DOCS-INTERVIEW.md) | the agent asks before it drafts; TODO count stops being a feature | D8 |
 | BLD-009 | [BLD-009-EXPANDED-MODE.md](BLD-009-EXPANDED-MODE.md) | the same thread as a document, two-pane with the live preview | D10 |
@@ -38,6 +38,31 @@ box — its header is inside the scroll area.
 
 ✅ = built **and on `cline-dev`** (BLD-007 and BLD-012 merged 2026-08-09; **BLD-001 built, driven and
 closed 2026-08-09** — `a93720b3`, `02c3072c`, `458e189f`).
+
+**Session 10 (2026-08-09) — BLD-006 built, driven and closed. D5 is closed.** **9 of 16 built, 8
+driven.** The conversation now lives in `ThreadStore` (per project, injected persistence) and on disk
+at `.nodegx/threads/<id>.jsonl`, with a switcher in the header slot BLD-005 left free. All five
+acceptance criteria are live measurements — accept, restart, project switch, three threads, and a
+human-readable file.
+
+⚠️ **Three findings worth more than the task, and one correction that changes what a session can
+assume:**
+
+- **The editor DOES have a real Anthropic provider configured** (`ai.provider = "anthropic"`,
+  `ai.hasKey.anthropic`, verified — in `editorSettings.json`, not localStorage). Session 9's "no
+  provider is configured, deliberately" is stale, and the first send of this session was a **real
+  billed API call** before that was noticed. **Check the settings file, not localStorage.**
+- ⚠️ **`PlanSessionSidecar.flush()` was built for the quit path in AIB-003 and never had a caller.**
+  A build staged inside its 750ms debounce was lost to ⌘Q. Both AI sidecars now ride the existing
+  `flush-project-save` handshake.
+- ⚠️ **`MenuDialog.is-highlighted` does not recolour its `EndSlot`** — the *selected* row's text
+  measured **1.16:1**. Fixed locally; filed as a design-system trap at every `MenuDialog` with an
+  end slot. The same 1.16:1 as BLD-004's state-class collision, and the same shape for the fifth
+  time this phase: **a rule that was right about its old subject.**
+
+**R6 is closed too** — the request rendered twice for the whole of every component build, because
+`send` awaits `routePlan` which awaits the build, so the pending turn outlived the producer holding
+the same words. Removing it uncovered the hole it was hiding: a **docs** run had no request at all.
 
 **Session 9 (2026-08-09) — BLD-007 driven and closed; BLD-012's live claim taken.** **8 of 16 built,
 7 driven.** BLD-007's three open acceptance criteria are all live measurements now, and the drive
