@@ -1,13 +1,25 @@
 # BLD-007 — Docs are open: any doc, declared by the doc itself
 
-**Status:** 🟡 **built, gated offline; nothing driven live** · **Track A** · **independent — parallelisable** ·
+**Status:** ✅ **merged and fully gated; nothing driven live** · **Track A** · **independent — parallelisable** ·
 closes **D9**
 
 Built 2026-08-08 in a worktree, beside a concurrent phase-56 QA session holding the dev editor — so
-every claim below is a jest/tsc number, and **not one of them is a live measurement**. The Jasmine
-half (`tests/ai/project-docs.test.ts`, 7 new specs) is **written and typechecked but never run**:
-`test:ci` launches Electron and would have swept the other session's stack. Run it first thing in the
-session that picks this up.
+every claim written here on that date was a jest/tsc number and **not one of them was a live
+measurement**. **Merged to `cline-dev` 2026-08-09** and the Jasmine half finally run.
+
+⚠️ **Running it found a real regression this task shipped, and only `test:ci` could have.**
+`tests/ai/project-docs.test.ts`'s 7 new specs all passed; **two pre-existing AIX-009 specs failed** —
+`2581 specs, 8 failures` against a `2574 / 6` baseline. `dispatchProjectDocTool` had taken the doc
+set as a **third parameter defaulting to `{}`**, giving "what docs exist" two sources that could
+disagree. Every pre-BLD-007 call site kept compiling, silently resolved against the empty set, and
+answered *"this project has no fetchable documents"* for a project whose context was holding an
+ARCHITECTURE.md — **no type error, and no symptom until a real turn asks for a doc.** Fixed by
+reading the set from the public `context.docs`, which is built once per session from the same
+snapshot `projectDocTools` is handed; the parameter and `AuthoringSession`'s redundant held field are
+gone. Register **B7**. **Now `2582 specs, 6 failures`** — the inherited six, confirmed by name.
+
+**The general lesson, and it is the phase-56 lesson again:** a gate that has never been *run* is not
+a gate. This one was typechecked, unit-tested at 21/21, and wrong.
 
 ## The defect, measured
 
@@ -88,16 +100,25 @@ Both properties must survive this task.
 | 1 | `docs/uk-vat.md` with `inject: pull` appears in the tool list, and a build that mentions VAT fetches it — **measured on a real turn** | ⬜ **open** — the mechanism is built and gated offline (`projectDocTools` widens the enum, `dispatchProjectDocTool` routes it); the *turn* is a live measurement nobody has taken |
 | 2 | The same doc with `inject: always` lands in the always-block, and the panel states the cost | 🟡 built — `ContextBuilder.projectAlwaysDocs()` charges it, `docBlocks()` renders it last, and the panel states tokens per turn on both the new-doc form and the selected doc. **Not driven** |
 | 3 | A project with no user docs produces a **byte-identical request** | ✅ for the part that can be proven offline, and it is the sharp part: the tool definition is compared against a recorded pre-BLD-007 golden, and `content()` returns no `extra` field at all rather than an empty array. The whole-request comparison is still a live/harness check |
-| 4 | A doc with no front matter still works, and its file on disk is unmodified | 🟡 spec written (`never rewrites the file it read`), **unrun** — Jasmine |
+| 4 | A doc with no front matter still works, and its file on disk is unmodified | ✅ `never rewrites the file it read` **run and passing** under `test:ci`, 2026-08-09 |
 | 5 | `KNOWN_DOCS` no longer gates injection | ✅ `grep` shows it seeds templates, supplies historical per-path defaults, and is consulted by nothing that decides whether a doc is read |
 | 6 | Both clients resolve the same doc set from one module | ✅ `noodl-mcp` imports `describeDoc` through `editor-deps` and reports the injection **each file declared**; 2 new specs, suite 227 green |
 
-**Gates run:** `tests-unit` 887/887 (21 new, `tests-unit/bld-007/`) · `noodl-mcp` 227 pass / 45 skip
-(2 new) · `tsc -p noodl-editor` clean · `tsc -p noodl-editor/tsconfig.tests.json` clean ·
-`noodl-mcp` tsc has **6 inherited errors** in `interfaceGate`/`stagingDiagnostics` (`ToolCallResult.text`),
-identical on the untouched primary checkout — not this task's.
+**Gates at build time (2026-08-08, worktree):** `tests-unit` 887/887 (21 new, `tests-unit/bld-007/`) ·
+`noodl-mcp` 227 pass / 45 skip (2 new) · `tsc -p noodl-editor` clean ·
+`tsc -p noodl-editor/tsconfig.tests.json` clean · `noodl-mcp` tsc has **6 inherited errors** in
+`interfaceGate`/`stagingDiagnostics` (`ToolCallResult.text`), identical on the untouched primary
+checkout — not this task's.
 
-**Not run:** the Jasmine editor suite (`test:ci`), because the editor was another session's.
+**Gates on `cline-dev` after the merge (2026-08-09), with BLD-012 also merged:**
+**`Jasmine: 2582 specs, 6 failures`** — the inherited six confirmed **by name** (4 `AIX-006 style
+vocabulary`, 2 `AI model registry`), not by arithmetic · `test:main` **84 suites / 1125 tests**
+(was 80 / 1085; +2 suites and +21 from this task) · `noodl-mcp` **291 pass** ·
+`typecheck:editor` + `typecheck:editor-tests` clean · `catalog:check`, `cloud-library:check`,
+`catalog:merge:check`, `library:check` all green.
+
+⚠️ **The first run of that suite was `2581 / 8`.** See register **B7** — the two extra failures were
+this task's, and nothing else in the gate set could see them.
 
 ## Register
 
@@ -109,3 +130,4 @@ identical on the untouched primary checkout — not this task's.
 | **B4** | **The external-edit poll could not see a new file.** `refresh()` re-read `cache.keys()` + `KNOWN_DOCS`, so a doc written in VS Code — the way a user actually writes one — produced no change event and never reached the snapshot. The feature would have appeared broken for the exact workflow it was built for. Found by reading `refresh()`, not by a failing test. | ✅ fixed (one directory listing per poll) |
 | **B5** | **The tool definition must be built once per session, and now it also has to be *ordered* once.** `discover()` sorts by path: the definition lives in the cached prefix, and a filesystem returning two files in a different order between sessions would invalidate it for nothing. | ✅ built |
 | **B6** | ⚠️ **`injection: 'default'` was a second word for `always`**, and it was on the MCP wire (`DocRow.injection`). Renamed to one vocabulary across both clients; one MCP spec asserted the old string and was updated. Anything outside this repo reading that field sees a changed value. | ✅ changed deliberately |
+| **B7** | 🔴 **This task shipped a regression, and the unrun gate is the only thing that would have caught it.** `dispatchProjectDocTool` took the doc set as a **third parameter defaulting to `{}`**, so "what docs exist" had two sources. The one real caller passed it; **every other call site kept compiling and silently resolved against the empty set**, answering *"this project has no fetchable documents"* for a project whose own context was holding an ARCHITECTURE.md. Two pre-existing AIX-009 specs caught it the first time `test:ci` ran — `2581 / 8` against a `2574 / 6` baseline. ⚠️ **`tsc` and 21/21 unit specs were both green while this was live**, because a defaulted parameter is exactly the shape a type system cannot object to. Fixed by reading `context.docs` (public, built once per session from the same snapshot `projectDocTools` gets); the parameter and `AuthoringSession.projectDocs` are gone, so the two sources cannot disagree again. One spec asserting the superseded scolding string was repointed at the new contract, and the empty-context case gained the regression spec it never had. | ✅ fixed 2026-08-09 |

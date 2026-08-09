@@ -1,7 +1,14 @@
 # Phase 57 — The Build panel is a conversation
 
 **Created:** 2026-08-08
-**Status:** 📋 specced, nothing built. Tasks are **[TASKS.md](TASKS.md)** (BLD-001…016, two tracks).
+**Status:** 🟡 **2 of 16 built and merged** — **BLD-007** (Track A) and **BLD-012** (Track B), both
+built 2026-08-08 in worktrees beside a live phase-56 session and **merged to `cline-dev`
+2026-08-09**. Neither has been driven in a real editor. The other fourteen are specced only.
+Tasks are **[TASKS.md](TASKS.md)** (BLD-001…016, two tracks).
+
+⚠️ **Both were finished work that produced nothing for a day**, because a committed branch in a
+scratchpad worktree is invisible to `git log cline-dev`. If you build in a worktree, the merge is
+part of the task, not a follow-up.
 **Design:** the mockup this phase was approved from —
 [claude.ai/code/artifact/a37f0d32-b7f8-4104-97fd-2ee46a188c9f](https://claude.ai/code/artifact/a37f0d32-b7f8-4104-97fd-2ee46a188c9f)
 (before/after at true panel width, nine mocked states, the reference model, the front-matter spec).

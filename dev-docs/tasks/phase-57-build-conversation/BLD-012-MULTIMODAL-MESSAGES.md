@@ -7,6 +7,18 @@
 > editor was owned by a concurrent phase-56 session, so this landed from a worktree with jest and
 > tsc only. The one piece deliberately not built is the **chip**: BLD-011 has not shipped, so there
 > is no reference and no chip row to mark. See the register.
+>
+> **Merged to `cline-dev` 2026-08-09**, after `bld-007` and in that order, as both branches' notes
+> specified. The `AuthoringSession.ts` overlap between the two auto-merged — they touch different
+> regions (imports + `finish()` here, the tool dispatch and constructor there) — and **both changes
+> were verified present after the merge rather than assumed**. Full suite on the settled tree:
+> **`Jasmine: 2582 specs, 6 failures`** (the inherited six, by name) · `test:main` **84 suites /
+> 1125 tests**, of which 19 are this task's · `typecheck:editor` + `typecheck:editor-tests` clean.
+>
+> ⚠️ **Still not driven, and the untested claim is unchanged:** no real Anthropic/OpenAI endpoint
+> has accepted the image block. The specs pin the request *shape* against a stub client, nothing
+> more. **This failure has no symptom except the bill**, so the golden is the only guard until
+> someone runs a live turn.
 
 ## The defect, measured
 

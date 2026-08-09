@@ -29,19 +29,22 @@ box — its header is inside the scroll area.
 | BLD-004 | [BLD-004-THINKING-AND-HEARTBEAT.md](BLD-004-THINKING-AND-HEARTBEAT.md) | surface `onActivity`; add a reasoning channel the XML parser cannot see | D6 D7 |
 | BLD-005 ⭐ | [BLD-005-LEGIBLE-LONG-RUN.md](BLD-005-LEGIBLE-LONG-RUN.md) | pin the run header out of the scroll area; plan-as-map; honest estimate | corr. 2 |
 | BLD-006 | [BLD-006-THREADS-PERSIST.md](BLD-006-THREADS-PERSIST.md) | threads survive accept, navigation and restart; a switcher | D5 |
-| BLD-007 | [BLD-007-DOCS-ARE-OPEN.md](BLD-007-DOCS-ARE-OPEN.md) | front-matter `inject`; the one-value enum becomes a discovered list | D9 |
+| BLD-007 ✅ | [BLD-007-DOCS-ARE-OPEN.md](BLD-007-DOCS-ARE-OPEN.md) | front-matter `inject`; the one-value enum becomes a discovered list | D9 |
 | BLD-008 ⭐ | [BLD-008-DOCS-INTERVIEW.md](BLD-008-DOCS-INTERVIEW.md) | the agent asks before it drafts; TODO count stops being a feature | D8 |
 | BLD-009 | [BLD-009-EXPANDED-MODE.md](BLD-009-EXPANDED-MODE.md) | the same thread as a document, two-pane with the live preview | D10 |
 | BLD-010 | [BLD-010-ACCEPTANCE-PASS.md](BLD-010-ACCEPTANCE-PASS.md) | drive every state live, both widths, both themes, and measure | — |
 
 ᵃ BLD-003 closes the *duplicate-bar* half of D8 (the Docs panel hand-off); BLD-008 closes the rest.
 
+✅ = built **and merged to `cline-dev`** (BLD-007 and BLD-012, merged 2026-08-09). Neither has been
+driven in a real editor; both carry an open live-QA criterion in their own file.
+
 ## Track B — what the agent can see
 
 | Task | File | One line | Rests on |
 |---|---|---|---|
 | BLD-011 ⭐ | [BLD-011-TURN-CARRIES-REFERENCES.md](BLD-011-TURN-CARRIES-REFERENCES.md) | the composer becomes a context builder; one `Reference` model | new |
-| BLD-012 ⭐ | [BLD-012-MULTIMODAL-MESSAGES.md](BLD-012-MULTIMODAL-MESSAGES.md) | `AiMessage.content` widens to blocks; declared degradation | adapters exist |
+| BLD-012 ⭐ ✅ | [BLD-012-MULTIMODAL-MESSAGES.md](BLD-012-MULTIMODAL-MESSAGES.md) | `AiMessage.content` widens to blocks; declared degradation | adapters exist |
 | BLD-013 | [BLD-013-ATTACHMENTS.md](BLD-013-ATTACHMENTS.md) | drop/paste/pick markdown, text, images; PDF behind a decision | one new dep |
 | BLD-014 ⭐ | [BLD-014-LOOK-AT-IT.md](BLD-014-LOOK-AT-IT.md) | two capture paths: the live webview, and CDP for any viewport or URL | harness built |
 | BLD-015 | [BLD-015-WEB-SEARCH.md](BLD-015-WEB-SEARCH.md) | one editor-side backend; citations carry source and read-time | nothing |
