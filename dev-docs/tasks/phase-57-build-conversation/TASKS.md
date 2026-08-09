@@ -23,7 +23,7 @@ box — its header is inside the scroll area.
 
 | Task | File | One line | Closes |
 |---|---|---|---|
-| BLD-001 ⭐ 🟠 | [BLD-001-ONE-THREAD.md](BLD-001-ONE-THREAD.md) | one thread, one composer; scope inferred, not chosen | D1 — **open, B9** |
+| BLD-001 ⭐ ✅ | [BLD-001-ONE-THREAD.md](BLD-001-ONE-THREAD.md) | one thread, one composer; scope inferred, not chosen | **D1 ✅** |
 | BLD-002 | [BLD-002-MESSAGE-HIERARCHY.md](BLD-002-MESSAGE-HIERARCHY.md) | five message kinds, five treatments; collapsed activity runs | D4 |
 | BLD-003 ⭐ | [BLD-003-DECISIONS-ON-THE-CARD.md](BLD-003-DECISIONS-ON-THE-CARD.md) | actions attach to their subject; one owner; Discard, not red Reject | D2 D3 D8ᵃ |
 | BLD-004 | [BLD-004-THINKING-AND-HEARTBEAT.md](BLD-004-THINKING-AND-HEARTBEAT.md) | surface `onActivity`; add a reasoning channel the XML parser cannot see | D6 D7 |
@@ -36,17 +36,27 @@ box — its header is inside the scroll area.
 
 ᵃ BLD-003 closes the *duplicate-bar* half of D8 (the Docs panel hand-off); BLD-008 closes the rest.
 
-✅ = built **and on `cline-dev`** (BLD-007 and BLD-012 merged 2026-08-09; **BLD-001 built and
-committed 2026-08-09**, `a93720b3`).
+✅ = built **and on `cline-dev`** (BLD-007 and BLD-012 merged 2026-08-09; **BLD-001 built, driven and
+closed 2026-08-09** — `a93720b3`, `02c3072c`, `458e189f`).
 
-**BLD-001 has now been driven** (2026-08-09) — its register B1 is closed, and the drive confirmed six
-claims and found two defects, neither reachable offline:
+**BLD-001 is driven and closed** (2026-08-09). The first drive closed B1, confirmed six claims and
+found two defects, neither reachable offline; both are now fixed and re-driven:
 
-- 🔴 **B9 — the thread resets on every successful send.** Three requests, three provider calls, **one**
-  turn on screen. `history` accumulates on the declined and failed paths but not the success path.
-  **D1 is not closed until this is.** See BLD-001's register for the two traps a fix must clear.
-- **B8 — the composer answered no key at all**; the refactor dropped the old `onEnter`. Fixed and
+- ✅ **B9 — the thread reset on every successful send.** `history` accumulated on the declined and
+  failed paths but not the success one. Fixed by `retireLive` (`458e189f`) and re-driven from an
+  empty thread: three sends, three provider calls, **three turns, in order**. **D1 is closed.**
+- ✅ **B10 — a retired turn kept the Accept card.** Found while fixing B9, not by driving it: the
+  outcome *kind* plus a session-wide `canDecide` is not turn-specific, so a second staged build put
+  a second Accept on the historical turn. `renderOutcome` now matches the live id.
+- ✅ **B8 — the composer answered no key at all**; the refactor dropped the old `onEnter`. Fixed and
   driven.
+
+⚠️ **The reusable lesson from the fix:** the id prefix *is* the liveness. `liveTurns(sources,
+idPrefix?)` is one derivation read twice — with no prefix for the live turns, with `history-N` for
+retired ones — and because the live ids are exactly what `renderOutcome` matches, a retired turn
+**cannot** mount a live control. Anything else keying off a turn's identity must use the same
+convention. And retiring is a **pair**: freeze the record, then release what produced it; doing only
+the first half is worse than doing neither.
 
 ⚠️ **BLD-007 and BLD-012 still have not been driven**, and BLD-012's is the one with a bill attached
 to getting it wrong — its image block has never reached a real endpoint.
