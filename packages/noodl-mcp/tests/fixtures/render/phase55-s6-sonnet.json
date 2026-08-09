@@ -27,12 +27,16 @@
     ],
     "layoutWidth": 1280,
     "clientWidth": 1280,
+    "clientHeight": 900,
     "scrollWidth": 1280,
     "pageHeight": 3004,
+    "contentBottom": 3004,
     "overflowing": [],
     "overflowingCount": 0,
     "text": {
       "elements": 73,
+      "onScreen": 17,
+      "unreachable": 0,
       "fontWeights": {
         "400": 33,
         "500": 4,
@@ -51,12 +55,27 @@
       "bodyFontFamily": "Inter, ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoj"
     },
     "placeholders": {
-      "count": 0,
-      "byText": {},
-      "samples": []
+      "count": 2,
+      "byText": {
+        "Shop": 2
+      },
+      "samples": [
+        {
+          "text": "Shop",
+          "tag": "DIV",
+          "cls": "ndl-visual-text"
+        },
+        {
+          "text": "Shop",
+          "tag": "DIV",
+          "cls": "ndl-visual-text"
+        }
+      ]
     },
     "images": {
       "total": 10,
+      "onScreen": 1,
+      "unreachable": 0,
       "broken": 0,
       "brokenSources": []
     },
@@ -197,7 +216,8 @@
         "tag": "DIV",
         "cls": "ndl-visual-text"
       }
-    ]
+    ],
+    "consoleErrors": []
   },
   "phone": {
     "requested": {
@@ -227,12 +247,16 @@
     ],
     "layoutWidth": 390,
     "clientWidth": 390,
+    "clientHeight": 844,
     "scrollWidth": 390,
     "pageHeight": 6434,
+    "contentBottom": 6434,
     "overflowing": [],
     "overflowingCount": 0,
     "text": {
       "elements": 73,
+      "onScreen": 11,
+      "unreachable": 0,
       "fontWeights": {
         "400": 33,
         "500": 4,
@@ -251,12 +275,27 @@
       "bodyFontFamily": "Inter, ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoj"
     },
     "placeholders": {
-      "count": 0,
-      "byText": {},
-      "samples": []
+      "count": 2,
+      "byText": {
+        "Shop": 2
+      },
+      "samples": [
+        {
+          "text": "Shop",
+          "tag": "DIV",
+          "cls": "ndl-visual-text"
+        },
+        {
+          "text": "Shop",
+          "tag": "DIV",
+          "cls": "ndl-visual-text"
+        }
+      ]
     },
     "images": {
       "total": 10,
+      "onScreen": 1,
+      "unreachable": 0,
       "broken": 0,
       "brokenSources": []
     },
@@ -397,6 +436,7 @@
         "tag": "DIV",
         "cls": "ndl-visual-text"
       }
-    ]
+    ],
+    "consoleErrors": []
   }
 }

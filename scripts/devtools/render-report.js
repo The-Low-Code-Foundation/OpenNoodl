@@ -222,43 +222,67 @@ function staticDataItems(node) {
 }
 
 /**
- * Read a v2 project off disk and build one probe per repeater whose rows are
- * knowable. Returns `[]` for anything it cannot read — an unreadable project is
- * the render's problem to report, not this function's.
+ * Read a v2 project off disk once: the manifest, and every component's flat node
+ * list with its connections and whatever `visualRoots` it declared.
+ *
+ * Both halves of this file want it — {@link listProbes} for the rows a repeater
+ * declares, {@link blankDiagnosis} for the walk that answers *why* nothing is on
+ * screen. Before AWP-003 only the first existed and read the project itself; a
+ * second reader beside it would have been a second idea of what a component is,
+ * which is the shape of defect this whole phase exists to close.
+ *
+ * `ok: false` for anything unreadable — an unreadable project is the render's
+ * problem to report, not this function's.
  */
-function listProbes(projectDir) {
-  const probes = [];
+function readComponents(projectDir) {
   let project;
   try {
     project = JSON.parse(fs.readFileSync(path.join(projectDir, 'nodegx.project.json'), 'utf8'));
   } catch {
-    return probes;
+    return { ok: false, components: [] };
   }
   const componentsDir = path.join(projectDir, (project.structure && project.structure.componentsDir) || 'components');
   let registry;
   try {
     registry = JSON.parse(fs.readFileSync(path.join(componentsDir, '_registry.json'), 'utf8'));
   } catch {
-    return probes;
+    return { ok: false, project, components: [] };
   }
 
+  const components = [];
   for (const key of Object.keys(registry.components || {})) {
     const dir = path.join(componentsDir, registry.components[key].path);
-    let nodes;
-    let connections = [];
-    let name = '/' + key;
     try {
-      nodes = JSON.parse(fs.readFileSync(path.join(dir, 'nodes.json'), 'utf8')).nodes || [];
+      const nodesFile = JSON.parse(fs.readFileSync(path.join(dir, 'nodes.json'), 'utf8'));
       const meta = JSON.parse(fs.readFileSync(path.join(dir, 'component.json'), 'utf8'));
-      name = meta.path || name;
       const connPath = path.join(dir, 'connections.json');
-      if (fs.existsSync(connPath)) {
-        connections = JSON.parse(fs.readFileSync(connPath, 'utf8')).connections || [];
-      }
+      components.push({
+        name: meta.path || '/' + key,
+        nodes: nodesFile.nodes || [],
+        connections: fs.existsSync(connPath)
+          ? JSON.parse(fs.readFileSync(connPath, 'utf8')).connections || []
+          : [],
+        // Absent and empty are different things and AWP-001 §3 turns on the
+        // difference: `undefined` means nobody computed this, `[]` means a writer
+        // did and found nothing. Carried through verbatim, decided in one place.
+        declaredRoots: nodesFile.visualRoots
+      });
     } catch {
       continue;
     }
+  }
+  return { ok: true, project, components };
+}
 
+/**
+ * Read a v2 project off disk and build one probe per repeater whose rows are
+ * knowable. Returns `[]` for anything it cannot read.
+ */
+function listProbes(projectDir) {
+  const probes = [];
+
+  for (const component of readComponents(projectDir).components) {
+    const { name, nodes, connections } = component;
     const byId = new Map(nodes.map((n) => [n.id, n]));
     for (const node of nodes) {
       if (node.type !== 'For Each') continue;
@@ -293,6 +317,403 @@ function listProbes(projectDir) {
   return probes;
 }
 
+/**
+ * AWP-004 §3 — the placeholders the catalog cannot know about.
+ *
+ * `placeholderStrings` covers the strings a *node type* shows when nobody set it:
+ * `Text`, `Label`, `Type here...`. Kimi K3's page showed **Title / Body / Got
+ * it**, `placeholders.count` was 0, and the reason is that none of the three is a
+ * node-type default. Measured 2026-08-09: zero catalog defaults match any of
+ * them. They are text the model hardcoded inside its own `NoticeDialog`
+ * component.
+ *
+ * AWP-004 §3 assumed these were "the untouched defaults of a dialog component"
+ * and that the catalog could answer for them. It cannot. **The project can**, and
+ * the general form is sharper than the three strings:
+ *
+ * > a port that is hardcoded to a string **and** wired from `Component Inputs`
+ *
+ * has a value that is only ever seen when the input does not arrive. All three of
+ * Kimi's are exactly that shape — `Component Inputs.title → Text.text` over a
+ * hardcoded `"Title"`, and the same for `body` and `actionLabel`. So the strings
+ * are derived from the graph rather than listed here, which is what §3 asks for
+ * when it warns against over-fitting to the three it happened to name.
+ *
+ * This says nothing about *why* the input failed to arrive — that is the graph's
+ * business, not the render's. It reports that the fallback is what a human sees.
+ */
+function overriddenDefaults(projectDir) {
+  const found = new Map();
+  for (const component of readComponents(projectDir).components) {
+    const byId = new Map(component.nodes.map((n) => [n.id, n]));
+    for (const conn of component.connections) {
+      const from = byId.get(conn.sourceId ?? conn.fromId);
+      const to = byId.get(conn.targetId ?? conn.toId);
+      const port = conn.targetPort ?? conn.toProperty;
+      if (!from || !to || from.type !== 'Component Inputs') continue;
+      if (!TEXT_BEARING_PORTS.test(port)) continue;
+      const hardcoded = (to.parameters || {})[port];
+      if (typeof hardcoded !== 'string' || !hardcoded.trim()) continue;
+      const key = hardcoded.trim();
+      // Every site, not the first one seen: Kimi hardcodes "Title" in both
+      // `TrustItem` and `NoticeDialog`, and a finding that named only one would
+      // send an agent to fix a component that was never on screen.
+      if (!found.has(key)) found.set(key, { sites: [] });
+      found.get(key).sites.push({ component: component.name, nodeId: to.id, port });
+    }
+  }
+  return found;
+}
+
+/** The sites of one overridden default, as a phrase a finding can end on. */
+function describeSites(entry) {
+  const sites = entry.sites || [];
+  const named = sites.slice(0, 2).map((s) => `${s.port} in ${s.component}`);
+  const rest = sites.length - named.length;
+  return named.join(' and ') + (rest > 0 ? ` and ${plural(rest, 'other place', 'other places')}` : '');
+}
+
+// ── AWP-003: why is nothing on screen, answered from the graph ───────────────
+
+/**
+ * AWP-003 — a blank page must be **diagnosed**, not guessed at.
+ *
+ * The message this replaces named the two causes its author knew about — no
+ * `Page` node at the root, no Router listing the route. DeepSeek V4 Pro had
+ * neither: a correct `Page` node and a Router that listed it. It spent turns
+ * 42→60 on `urlPath`, `startPage`, `clip` and `flexDirection`, about 30% of its
+ * run and roughly $1.70, and at turn 60 deleted the Group holding its six
+ * sections. **The message did not merely fail to help; it aimed the model at the
+ * wrong subsystem and held it there.**
+ *
+ * Worse, it poisons the standard bisection. Both session-8 models reached for the
+ * same probe — drop a Text somewhere and see if anything draws. Kimi added its
+ * probe to the existing page, saw it render and fixed the real fault in four
+ * turns. DeepSeek created a *new* component to hold its probe, which in the
+ * pre-AWP-001 world was born without visual roots too, so its control rendered
+ * blank as well and it concluded the viewer bundle needed rebuilding. It reasoned
+ * correctly from a poisoned control. A diagnostic that defeats the bisection is
+ * worse than none, because it turns a solvable problem into a confident wrong
+ * answer.
+ *
+ * So this walks the project in the order a bisection would and reports **the
+ * cause it determined and the component it is about**. Everything it needs is on
+ * disk before a browser opens.
+ *
+ * ## It only ever explains an observed blank
+ *
+ * Nothing here raises a finding on its own. {@link summarise} calls it after the
+ * DOM has already come back with zero texts and zero images, and the job is to
+ * explain that, not to predict it. That is what keeps the last check honest: on a
+ * page that renders, "no content-bearing node under the page root" would be a
+ * claim about layout; on a page that measurably drew nothing it is the answer.
+ *
+ * ## Abstention is a result
+ *
+ * Without the enriched catalog there is no way to know which types draw, so the
+ * walk reports `ok: false` and the finding says only what was measured. LAS-012
+ * established abstention as the honest third state and this keeps to it — a
+ * diagnosis guessed from a missing catalog is exactly the failure being fixed.
+ */
+const ENRICHED_CATALOG_JSON = path.join(REPO, 'packages/noodl-types/src/node-catalog-enriched.json');
+
+const visualTypesCache = new Map();
+
+/**
+ * The set of node types that draw, **read** from the enriched catalog rather than
+ * restated here.
+ *
+ * `render-from-disk.js` reads the same field for the same reason, and its header
+ * records what paraphrasing an export contract cost: two phases of certifying a
+ * page the editor could not render. `null` when the catalog is absent, which is a
+ * checkout without a generated catalog and means this walk must abstain.
+ */
+function visualTypeNames(catalogPath = ENRICHED_CATALOG_JSON) {
+  if (visualTypesCache.has(catalogPath)) return visualTypesCache.get(catalogPath);
+  let names;
+  try {
+    const catalog = JSON.parse(fs.readFileSync(catalogPath, 'utf8'));
+    names = new Set((catalog.nodes || []).filter((n) => n.isVisual === true).map((n) => n.typeName));
+    if (names.size === 0) names = null;
+  } catch {
+    names = null;
+  }
+  visualTypesCache.set(catalogPath, names);
+  return names;
+}
+
+/**
+ * The types that show something of their own — words, a picture — as opposed to
+ * the containers that only arrange whatever is inside them.
+ *
+ * Derived from the catalog the same way {@link placeholderStrings} is: a visual
+ * type with a port whose value is what a human reads or looks at. A `Group` has
+ * none and is a container; a `Text` has `text`; an `Image` has `src`. This is the
+ * distinction that lets the walk say "this page draws containers and nothing
+ * else" without a hand-kept list of container types going stale.
+ */
+const CONTENT_BEARING_PORTS = /^(text|label|placeholder|title|caption|heading|src|source|icon)$/i;
+
+const contentTypesCache = new Map();
+
+function contentBearingTypeNames(catalogPath = ENRICHED_CATALOG_JSON) {
+  if (contentTypesCache.has(catalogPath)) return contentTypesCache.get(catalogPath);
+  let names;
+  try {
+    const catalog = JSON.parse(fs.readFileSync(catalogPath, 'utf8'));
+    names = new Set(
+      (catalog.nodes || [])
+        .filter((n) => n.isVisual === true && (n.inputs || []).some((p) => CONTENT_BEARING_PORTS.test(p.name)))
+        .map((n) => n.typeName)
+    );
+    if (names.size === 0) names = null;
+  } catch {
+    names = null;
+  }
+  contentTypesCache.set(catalogPath, names);
+  return names;
+}
+
+/**
+ * The editor's own root rule: a node with no parent.
+ *
+ * `unflattenNodes` pushes exactly `v2Node.parent === undefined` onto its roots
+ * list ([ProjectImporter.ts:133](../../packages/noodl-editor/src/editor/src/io/ProjectImporter.ts#L133)),
+ * and `NodeGraphModel.toJSON` derives `visualRoots` from that set. Restating it
+ * in this file is a paraphrase, so `derivationParity` in the noodl-mcp suite runs
+ * this against the real `deriveVisualRootIds` over every fixture component — the
+ * day the two disagree is a failing spec rather than a blank page.
+ */
+function rootNodes(nodes) {
+  return (nodes || []).filter((n) => n.parent === undefined);
+}
+
+/** Every node in the subtree under `ids`, following the v2 `children` id lists. */
+function subtreeNodes(nodes, ids) {
+  const byId = new Map((nodes || []).map((n) => [n.id, n]));
+  const seen = new Set();
+  const out = [];
+  const stack = [...ids];
+  while (stack.length) {
+    const id = stack.pop();
+    if (seen.has(id)) continue;
+    seen.add(id);
+    const node = byId.get(id);
+    if (!node) continue;
+    out.push(node);
+    for (const child of node.children || []) stack.push(child);
+  }
+  return out;
+}
+
+/**
+ * Answers "does a node of this type draw?" for one project, including instances.
+ *
+ * A node's type is either a catalog type or the legacyName of a project
+ * component. An instance draws exactly when the component it points at has visual
+ * roots of its own, so the question is recursive — memoised, and cycle-guarded
+ * because a component that instantiates itself is already invalid and a walk that
+ * overflows the stack reports nothing about the valid graph beside it.
+ */
+function projectVisualPredicate(components) {
+  const catalogVisual = visualTypeNames();
+  const byName = new Map(components.map((c) => [c.name, c]));
+  const memo = new Map();
+  const inFlight = new Set();
+
+  const isVisual = (typeName) => {
+    if (catalogVisual && catalogVisual.has(typeName)) return true;
+    if (!byName.has(typeName)) return false;
+    if (memo.has(typeName)) return memo.get(typeName);
+    if (inFlight.has(typeName)) return false;
+    inFlight.add(typeName);
+    const draws = effectiveRoots(byName.get(typeName), isVisual).length > 0;
+    inFlight.delete(typeName);
+    memo.set(typeName, draws);
+    return draws;
+  };
+  return isVisual;
+}
+
+/** What the runtime will actually render this component from — AWP-001 §3's rule. */
+function effectiveRoots(component, isVisual) {
+  if (component.declaredRoots !== undefined) return component.declaredRoots;
+  return rootNodes(component.nodes)
+    .filter((n) => isVisual(n.type))
+    .map((n) => n.id);
+}
+
+/** Blank-page causes, as codes a message and a test can both name. */
+const BlankCause = {
+  Unreadable: 'project-unreadable',
+  NoCatalog: 'no-catalog',
+  NoStartPage: 'no-start-page',
+  StartPageMissing: 'start-page-missing',
+  PageNotRouted: 'page-not-routed',
+  PageWithoutPageNode: 'page-without-page-node',
+  PageWithoutVisualRoot: 'page-without-visual-root',
+  PageHasNoContent: 'page-has-no-content',
+  InstancesWithoutVisualRoot: 'instances-without-visual-root',
+  Undetermined: 'undetermined'
+};
+
+/**
+ * Walk the project and determine why nothing drew.
+ *
+ * Returns `{ ok, cause, message, evidence, checked }`. `checked` is the list of
+ * facts established on the way, so the finding can say what it *ruled out* — the
+ * two guesses the old message led with live there now, as checked facts rather
+ * than as possibilities.
+ */
+function blankDiagnosis(projectDir) {
+  const { ok, project, components } = readComponents(projectDir);
+  if (!ok || !components.length) {
+    return {
+      ok: false,
+      cause: BlankCause.Unreadable,
+      message: 'The project could not be read from disk, so there is nothing to diagnose against.',
+      checked: []
+    };
+  }
+  if (!visualTypeNames() || !contentBearingTypeNames()) {
+    return {
+      ok: false,
+      cause: BlankCause.NoCatalog,
+      message:
+        'No generated node catalog in this checkout, so which node types draw is not knowable here and ' +
+        'the cause was not determined.',
+      checked: []
+    };
+  }
+
+  const isVisual = projectVisualPredicate(components);
+  const contentTypes = contentBearingTypeNames();
+  const byName = new Map(components.map((c) => [c.name, c]));
+  const checked = [];
+  const done = (cause, message, evidence) => ({ ok: true, cause, message, evidence, checked });
+
+  // 1. Routers and pages, read the way render-from-disk reads them.
+  const routers = [];
+  const pageComponents = new Set();
+  for (const c of components) {
+    for (const n of c.nodes) {
+      if (n.type === 'Router') routers.push({ component: c.name, ...(n.parameters || {}) });
+      if (n.type === 'Page') pageComponents.add(c.name);
+    }
+  }
+
+  const routed = new Set();
+  let startPage;
+  for (const r of routers) {
+    const pages = r.pages || {};
+    for (const route of pages.routes || []) routed.add(route);
+    if (!startPage && pages.startPage) startPage = pages.startPage;
+  }
+
+  if (!routers.length || !startPage) {
+    return done(
+      BlankCause.NoStartPage,
+      routers.length
+        ? `${plural(routers.length, 'Router', 'Routers')} in this project, and none names a startPage — ` +
+            'nothing selects a page to show.'
+        : 'No Router anywhere in the project, so no page is ever selected to be shown.',
+      { routers: routers.map((r) => r.component) }
+    );
+  }
+  checked.push(`a Router names "${startPage}" as its startPage`);
+
+  const page = byName.get(startPage);
+  if (!page) {
+    return done(
+      BlankCause.StartPageMissing,
+      `The Router's startPage is "${startPage}" and no component of that name exists in the project.`,
+      { component: startPage, known: [...byName.keys()] }
+    );
+  }
+
+  if (!routed.has(startPage)) {
+    return done(
+      BlankCause.PageNotRouted,
+      `"${startPage}" is the startPage but no Router lists it in its routes, so the route is never reached.`,
+      { component: startPage, routes: [...routed] }
+    );
+  }
+  checked.push('a Router lists it in its routes');
+
+  if (!pageComponents.has(startPage)) {
+    return done(
+      BlankCause.PageWithoutPageNode,
+      `"${startPage}" contains no Page node. A page component renders blank without one at its root.`,
+      { component: startPage }
+    );
+  }
+  checked.push('it has a Page node');
+
+  // 2. The page's own visual roots.
+  const pageRoots = effectiveRoots(page, isVisual);
+  if (!pageRoots.length) {
+    return done(
+      BlankCause.PageWithoutVisualRoot,
+      `"${startPage}" has no visual root — nothing in it is a node that draws, so the component renders nothing.`,
+      { component: startPage }
+    );
+  }
+  checked.push(`its visual root set is ${JSON.stringify(pageRoots)}`);
+
+  // 3. Is there anything under those roots that shows something of its own? A
+  //    tree of containers with no content is a page that draws no pixels, and it
+  //    is the state DeepSeek's project was left in at turn 60.
+  const drawn = subtreeNodes(page.nodes, pageRoots);
+  const carriesContent = (node) =>
+    contentTypes.has(node.type) || (byName.has(node.type) && componentDrawsContent(node.type));
+
+  const seenComponents = new Set();
+  function componentDrawsContent(name) {
+    if (seenComponents.has(name)) return false; // cycle
+    seenComponents.add(name);
+    const c = byName.get(name);
+    if (!c) return false;
+    const nodes = subtreeNodes(c.nodes, effectiveRoots(c, isVisual));
+    const answer = nodes.some((n) => contentTypes.has(n.type) || (byName.has(n.type) && componentDrawsContent(n.type)));
+    seenComponents.delete(name);
+    return answer;
+  }
+
+  if (!drawn.some(carriesContent)) {
+    const only = drawn.map((n) => n.type);
+    return done(
+      BlankCause.PageHasNoContent,
+      `Nothing under the visual root of "${startPage}" shows content of its own: it draws ` +
+        `${plural(drawn.length, 'node', 'nodes')} (${[...new Set(only)].join(', ')}); nothing there is text, ` +
+        'an image, or an instance that resolves to either. The page is an empty container.',
+      { component: startPage, nodes: drawn.length, types: [...new Set(only)] }
+    );
+  }
+  checked.push('it has content-bearing nodes under that root');
+
+  // 4. F43's residual form: instances on the page that resolve to a component
+  //    with nothing to draw. This is the check that was missing, and it must name
+  //    the components — a finding that cannot say *which* forces exactly the
+  //    manual bisection the old message sabotaged.
+  const instanceTypes = [...new Set(drawn.filter((n) => byName.has(n.type)).map((n) => n.type))];
+  const empty = instanceTypes.filter((t) => effectiveRoots(byName.get(t), isVisual).length === 0);
+  if (empty.length) {
+    return done(
+      BlankCause.InstancesWithoutVisualRoot,
+      `${plural(empty.length, 'component has', 'components have')} no visual root, so every instance of ` +
+        `${empty.length === 1 ? 'it' : 'them'} on "${startPage}" renders nothing: ${empty.join(', ')}.`,
+      { component: startPage, components: empty }
+    );
+  }
+
+  return done(
+    BlankCause.Undetermined,
+    `Checked, and each held: ${checked.join('; ')}. The graph says this page should draw, so the cause is ` +
+      'downstream of it — a runtime error, or content that reached the DOM and is not visible.',
+    { component: startPage }
+  );
+}
+
 // ── The browser-side measurement ────────────────────────────────────────────
 
 /**
@@ -310,10 +731,29 @@ function measureExpression(placeholders, probes = []) {
   const visible = all.filter((el) => el.offsetParent !== null || getComputedStyle(el).position === 'fixed');
 
   const vw = document.documentElement.clientWidth;
+  const vh = document.documentElement.clientHeight;
   const overflowing = visible
     .map((el) => ({ el, w: el.getBoundingClientRect().width }))
     .filter((x) => x.w > vw + 1)
     .map((x) => ({ tag: x.el.tagName, cls: cls(x.el), width: round(x.w) }));
+
+  // AWP-004 — what is on screen, as opposed to what is in the DOM. The page is
+  // never scrolled when this runs, so a rect is already a document position.
+  // Kimi K3's storefront was 83 texts in the DOM and about three on screen, and
+  // the report called it clean because every check it had was about content
+  // present and wrong rather than content present and unreachable.
+  const onScreen = (el) => {
+    const r = el.getBoundingClientRect();
+    return r.width > 0 && r.height > 0 && r.bottom > 0 && r.top < vh && r.right > 0 && r.left < vw;
+  };
+
+  // Below the fold is fine — that is what scrolling is for. Below the *scrollable
+  // extent* is not: no scroll reaches it, so it is on the page and can never be
+  // seen. Measured directly rather than inferred from a visible-count ratio,
+  // because a correct 82-text page also shows only ~19 at a time and a ratio
+  // cannot tell the two apart.
+  const pageBottom = document.documentElement.scrollHeight;
+  const unreachable = (el) => el.getBoundingClientRect().top >= pageBottom - 1;
 
   const textEls = visible.filter((el) => el.children.length === 0 && el.textContent.trim().length > 0);
   const fontWeights = {};
@@ -404,16 +844,29 @@ function measureExpression(placeholders, probes = []) {
     return { ...p, found: found.length, missing: p.strings.filter((s) => found.indexOf(s) === -1).slice(0, 3) };
   });
 
+  // How far down the page anything was actually laid out. A page pinned to the
+  // viewport height with content laid out past it is clipped; a page that is
+  // simply short has nothing past it. That difference is the whole of
+  // \`clipped-page\`, and neither number alone can tell them apart.
+  const contentBottom = visible.reduce((lowest, el) => {
+    const r = el.getBoundingClientRect();
+    return r.width > 0 && r.height > 0 && r.bottom > lowest ? r.bottom : lowest;
+  }, 0);
+
   return {
     lists,
     layoutWidth: window.innerWidth,
     clientWidth: vw,
+    clientHeight: vh,
     scrollWidth: document.documentElement.scrollWidth,
     pageHeight: document.documentElement.scrollHeight,
+    contentBottom: round(contentBottom),
     overflowing: overflowing.slice(0, 10),
     overflowingCount: overflowing.length,
     text: {
       elements: textEls.length,
+      onScreen: textEls.filter(onScreen).length,
+      unreachable: textEls.filter(unreachable).length,
       fontWeights,
       fontSizes,
       distinctFontSizes: Object.keys(fontSizes).length,
@@ -426,6 +879,8 @@ function measureExpression(placeholders, probes = []) {
     },
     images: {
       total: images.length,
+      onScreen: images.filter(onScreen).length,
+      unreachable: images.filter(unreachable).length,
       broken: brokenImages.length,
       brokenSources: brokenImages.slice(0, 8).map((el) => String(el.currentSrc || el.src).slice(0, 160))
     },
@@ -464,6 +919,19 @@ const RenderFinding = {
   EmptyList: 'empty-list',
   DeadPlaceholderText: 'dead-placeholder-text',
   BrokenImage: 'broken-image',
+  /**
+   * AWP-004 §2 — content on the page that no scroll can reach.
+   *
+   * The direct check for F45, and the one that generalises the other two: Kimi
+   * K3's storefront put 83 texts and 10 images in the DOM and stranded 70 and 9
+   * of them below a page that does not scroll, and the report called it
+   * *"Rendered clean: 83 texts, 10 images"*.
+   */
+  ContentNotVisible: 'content-not-visible',
+  /** The mechanism behind it: a page pinned to the viewport with content past the fold. */
+  ClippedPage: 'clipped-page',
+  /** Elements wider than the viewport inside a page that does not itself scroll sideways. */
+  ElementsOverflowing: 'elements-overflowing',
   SingleColumnGrid: 'single-column-grid',
   MinimumLayoutWidth: 'minimum-layout-width',
   HorizontalOverflow: 'horizontal-overflow',
@@ -474,8 +942,41 @@ const RenderFinding = {
 
 const SEVERITY_ORDER = { error: 0, warning: 1, info: 2 };
 
+/**
+ * AWP-004 — how far past its own scrollable extent a page may lay content out
+ * before that content is stranded rather than rounded.
+ *
+ * Measured 2026-08-09: the two builds this phase calls correct put `contentBottom`
+ * **exactly** on `pageHeight` (sonnet 3777/3777 and 6482/6482, ecommerce
+ * 2373/2373 and 3080/3080), and Kimi's clipped build put it 4,392px past. There is
+ * no middle ground in the corpus, so the slack only has to absorb sub-pixel
+ * rounding.
+ */
+const CLIPPED_CONTENT_SLACK = 8;
+
 function plural(n, one, many) {
   return n === 1 ? `1 ${one}` : `${n} ${many}`;
+}
+
+/**
+ * AWP-003's wider rule, applied to the overflow findings: **name what was
+ * measured, not what might be wrong.**
+ *
+ * Grepping the finding set for messages that enumerate possible causes rather
+ * than reporting a determined one — which AWP-003 asks for explicitly, on the
+ * grounds that `blank-render` was unlikely to be the only one — turned up
+ * `minimum-layout-width` ending on *"Something inside carries a fixed width or a
+ * non-collapsing row"*. Both halves of that guess were already answered by
+ * `overflowing`, which the finding was attaching as evidence and not reading.
+ *
+ * Returns the widest offending element as a phrase, or `null` when nothing was
+ * captured — in which case the finding says less rather than guessing.
+ */
+function widestOffender(v) {
+  const widest = (v.overflowing || []).slice().sort((a, b) => b.width - a.width)[0];
+  if (!widest) return null;
+  const named = widest.cls ? `${widest.tag.toLowerCase()}.${widest.cls.split(/\s+/)[0]}` : widest.tag.toLowerCase();
+  return `${named} at ${widest.width}px`;
 }
 
 /**
@@ -487,7 +988,7 @@ function plural(n, one, many) {
  * carrying a concrete fix were self-corrected 100% of the time and prose was
  * dropped.
  */
-function summarise(viewports) {
+function summarise(viewports, diagnosis, overridden = {}) {
   const findings = [];
   const add = (f) => findings.push(f);
 
@@ -496,13 +997,20 @@ function summarise(viewports) {
     const isDesktop = v.requested.width >= DESKTOP_WIDTH;
 
     if (v.text.elements === 0 && v.images.total === 0) {
+      // AWP-003 — what was determined, never a list of what might be wrong. The
+      // walk has the project; without one there is nothing to say beyond the
+      // measurement, and saying less is the point of the task.
       add({
         code: RenderFinding.BlankRender,
         severity: 'error',
         viewport: name,
         message:
-          'The page rendered nothing at all — no text and no images. A page component renders blank ' +
-          'without a Page node at its root, and a route no Router lists is never reached.'
+          'The page rendered nothing at all — no text and no images. ' +
+          (diagnosis
+            ? diagnosis.message
+            : 'No project was available to diagnose it against, so the cause was not determined.'),
+        ...(diagnosis && diagnosis.cause ? { cause: diagnosis.cause } : {}),
+        ...(diagnosis && diagnosis.evidence ? { evidence: diagnosis.evidence } : {})
       });
       continue;
     }
@@ -525,21 +1033,47 @@ function summarise(viewports) {
     }
 
     if (v.placeholders.count > 0) {
-      const listed = Object.entries(v.placeholders.byText)
-        .map(([text, n]) => `${n}\u00d7 "${text}"`)
-        .join(', ');
-      add({
-        code: RenderFinding.DeadPlaceholderText,
-        severity: 'error',
-        viewport: name,
-        relatedDiagnostic: 'interfaceless-instance',
-        message:
-          `${plural(v.placeholders.count, 'element renders', 'elements render')} a node-type default instead of ` +
-          `content: ${listed}. Nothing set those ports. The usual cause is a component instantiated with ` +
-          'parameters its Component Inputs node does not declare, so every value is discarded — the graph-side ' +
-          'name for it is interfaceless-instance.',
-        evidence: v.placeholders.samples
-      });
+      // Two classes, two causes, two sentences. A node-type default on screen
+      // means nobody set the port; a component's own hardcoded fallback on screen
+      // means an input that *was* wired never arrived. Telling an agent the wrong
+      // one aims it at the wrong subsystem, which is AWP-003's lesson applied to
+      // the finding next door.
+      const entries = Object.entries(v.placeholders.byText);
+      const listing = (pairs) => pairs.map(([text, n]) => `${n}× "${text}"`).join(', ');
+      const total = (pairs) => pairs.reduce((sum, [, n]) => sum + n, 0);
+      const fromInput = entries.filter(([text]) => overridden[text]);
+      const fromCatalog = entries.filter(([text]) => !overridden[text]);
+
+      // AWP-004 §3 — the fallback a wired port shows when its input never came.
+      if (fromInput.length) {
+        const where = fromInput.map(([text]) => `"${text}" is ${describeSites(overridden[text])}`).join('; ');
+        add({
+          code: RenderFinding.DeadPlaceholderText,
+          severity: 'error',
+          viewport: name,
+          relatedDiagnostic: 'interfaceless-instance',
+          message:
+            `${plural(total(fromInput), 'element shows', 'elements show')} the fallback hardcoded on a port ` +
+            `that a Component Inputs node also feeds: ${listing(fromInput)}. That value is only ever visible ` +
+            `when the input does not arrive, so it did not arrive — ${where}.`,
+          evidence: v.placeholders.samples.filter((s) => overridden[s.text])
+        });
+      }
+
+      if (fromCatalog.length) {
+        add({
+          code: RenderFinding.DeadPlaceholderText,
+          severity: 'error',
+          viewport: name,
+          relatedDiagnostic: 'interfaceless-instance',
+          message:
+            `${plural(total(fromCatalog), 'element renders', 'elements render')} a node-type default instead ` +
+            `of content: ${listing(fromCatalog)}. Nothing set those ports. The usual cause is a component ` +
+            'instantiated with parameters its Component Inputs node does not declare, so every value is ' +
+            'discarded — the graph-side name for it is interfaceless-instance.',
+          evidence: v.placeholders.samples.filter((s) => !overridden[s.text])
+        });
+      }
     }
 
     if (v.images.broken > 0) {
@@ -553,6 +1087,65 @@ function summarise(viewports) {
           'the half a number can see, so look at the screenshot for the rest.',
         evidence: v.images.brokenSources
       });
+    }
+
+    // ── AWP-004 §2 — is what is in the DOM also on screen? ──────────────────
+    //
+    // Only where it was measured. A recording made before these fields existed
+    // cannot answer the question, and LAS-012 established abstention as the
+    // honest third state rather than assuming the flattering answer.
+    const measuredVisibility = typeof v.contentBottom === 'number' && typeof v.text.unreachable === 'number';
+
+    if (measuredVisibility) {
+      const strandedText = v.text.unreachable;
+      const strandedImages = v.images.unreachable || 0;
+
+      // The direct check. Deliberately NOT "counted text vastly exceeds visible
+      // text" as AWP-004 §2 first proposed: measured on the corpus, a correct
+      // 82-text page shows 19 of them at 1280×900 and 11 at 390×844 against
+      // Kimi's 13 and 9, so a ratio cannot separate a clipped page from a long
+      // one. Content below the page's own scrollable extent can — 70 on Kimi,
+      // 0 on both builds this phase calls correct.
+      if (strandedText > 0 || strandedImages > 0) {
+        const parts = [];
+        if (strandedText > 0) parts.push(`${strandedText} of ${v.text.elements} text elements`);
+        if (strandedImages > 0) parts.push(`${strandedImages} of ${v.images.total} images`);
+        add({
+          code: RenderFinding.ContentNotVisible,
+          severity: 'error',
+          viewport: name,
+          message:
+            `${parts.join(' and ')} are laid out below ${v.pageHeight}px, which is as far as this page ` +
+            `scrolls — no scroll reaches them, so they are on the page and cannot be seen. Content ` +
+            `extends to ${v.contentBottom}px. ${v.text.onScreen} of ${v.text.elements} texts are on screen.`,
+          evidence: {
+            pageHeight: v.pageHeight,
+            contentBottom: v.contentBottom,
+            textElements: v.text.elements,
+            textOnScreen: v.text.onScreen,
+            textUnreachable: strandedText,
+            imagesUnreachable: strandedImages
+          }
+        });
+      }
+
+      // The mechanism, when the page height is pinned to the viewport it was
+      // asked for. The MCP server's own instructions already warn that the
+      // default clips every page with no scrollbar and tell planners to pass
+      // `scroll`; this is what makes that warning checkable.
+      const pinned = Math.abs(v.pageHeight - v.requested.height) <= 1;
+      if (pinned && v.contentBottom > v.pageHeight + CLIPPED_CONTENT_SLACK) {
+        add({
+          code: RenderFinding.ClippedPage,
+          severity: 'warning',
+          viewport: name,
+          message:
+            `The page is exactly ${v.pageHeight}px tall — the viewport height — and its content runs to ` +
+            `${v.contentBottom}px, so it is clipped at the fold rather than scrolling. A root that clips to ` +
+            'the viewport with no scrollbar is the default; a page of this length has to opt into scrolling.',
+          evidence: { pageHeight: v.pageHeight, contentBottom: v.contentBottom, viewport: v.requested.height }
+        });
+      }
     }
 
     if (isDesktop) {
@@ -587,8 +1180,10 @@ function summarise(viewports) {
         viewport: name,
         message:
           `The page cannot lay out below ${v.layoutWidth}px: asked for ${v.requested.width}px, the browser ` +
-          `widened the layout viewport to ${v.layoutWidth}px and scaled the whole page down. Something inside ` +
-          'carries a fixed width or a non-collapsing row.',
+          `widened the layout viewport to ${v.layoutWidth}px and scaled the whole page down.` +
+          (widestOffender(v)
+            ? ` The widest element inside it is ${widestOffender(v)}.`
+            : ' Nothing wider than the viewport was captured, so the element holding the floor was not identified.'),
         evidence: v.overflowing
       });
     } else if (v.scrollWidth > v.clientWidth + 1) {
@@ -599,6 +1194,22 @@ function summarise(viewports) {
         message:
           `The page scrolls sideways at ${v.requested.width}px — content is ${v.scrollWidth}px wide in a ` +
           `${v.clientWidth}px viewport, with ${plural(v.overflowingCount, 'element', 'elements')} wider than it.`,
+        evidence: v.overflowing
+      });
+    } else if (v.overflowingCount > 0) {
+      // AWP-004 §2. `overflowingCount` has been computed since LAS-005 and had no
+      // rule attached to it — register note A7, and the reason that note says to
+      // check what is already measured before measuring anything new. The two
+      // page-level checks above both passed on Kimi's phone render (the document
+      // itself does not scroll sideways) while 43 elements overflowed inside it.
+      add({
+        code: RenderFinding.ElementsOverflowing,
+        severity: 'warning',
+        viewport: name,
+        message:
+          `${plural(v.overflowingCount, 'element is', 'elements are')} wider than the ${v.clientWidth}px ` +
+          'viewport, while the page itself does not scroll sideways — so each is clipped by an ancestor ' +
+          `rather than reachable${widestOffender(v) ? `; the widest is ${widestOffender(v)}` : ''}.`,
         evidence: v.overflowing
       });
     }
@@ -655,18 +1266,51 @@ function summarise(viewports) {
   return { findings: unique, summary: summaryLine(viewports, unique) };
 }
 
-/** One sentence an agent can act on without reading the JSON. */
+/**
+ * One sentence an agent can act on without reading the JSON.
+ *
+ * ## AWP-004 \u00a74 \u2014 say what is on screen, not only what is in the DOM
+ *
+ * This line was *"Rendered clean: desktop 1280\u00d7900px, 83 texts, 10 images"* for a
+ * page showing a dialog and nothing else. Every number in it was true and the
+ * sentence was false, because "83 texts" is a fact about the DOM and the reader
+ * takes it as a fact about the picture. `83 texts, 13 on screen` needs no finding
+ * attached to tell a model something is wrong, which is why AWP-004 called this
+ * the cheapest change here and probably the highest value.
+ *
+ * ## AWP-004 \u00a71 \u2014 "clean" is a claim, and it has to be earned
+ *
+ * *"Rendered clean"* used to mean "no check I own fired", which is how three
+ * different broken pages across three sessions were certified. It now means the
+ * report **affirmed** that something is on screen. Where visibility was not
+ * measured at all \u2014 a recording made before those fields existed \u2014 it says so
+ * instead of upgrading silence into a pass.
+ */
 function summaryLine(viewports, findings) {
   const count = (severity) => findings.filter((f) => f.severity === severity).length;
   const errors = count('error');
   const warnings = count('warning');
   const infos = count('info');
-  const shape = Object.entries(viewports)
-    .filter(([, v]) => v && !v.error)
-    .map(([name, v]) => `${name} ${v.requested.width}\u00d7${v.pageHeight}px, ${v.text.elements} texts, ${v.images.total} images`)
+  const live = Object.entries(viewports).filter(([, v]) => v && !v.error);
+  const shape = live
+    .map(([name, v]) => {
+      const counts =
+        typeof v.text.onScreen === 'number'
+          ? `${v.text.elements} texts, ${v.text.onScreen} on screen, ${v.images.total} images`
+          : `${v.text.elements} texts, ${v.images.total} images`;
+      return `${name} ${v.requested.width}\u00d7${v.pageHeight}px, ${counts}`;
+    })
     .join('; ');
   if (!errors && !warnings) {
-    return `Rendered clean${infos ? ` (${plural(infos, 'observation', 'observations')})` : ''}: ${shape}.`;
+    const measured = live.filter(([, v]) => typeof v.text.onScreen === 'number');
+    const observations = infos ? ` (${plural(infos, 'observation', 'observations')})` : '';
+    if (measured.length !== live.length) {
+      return `No findings${observations}, and visibility was not measured \u2014 not a claim the page is on screen: ${shape}.`;
+    }
+    if (measured.some(([, v]) => v.text.onScreen === 0 && v.images.onScreen === 0)) {
+      return `No findings${observations}, but nothing is on screen at the top of the page: ${shape}.`;
+    }
+    return `Rendered clean${observations}: ${shape}.`;
   }
   const worst = [...new Set(findings.filter((f) => f.severity !== 'info').map((f) => f.code))].slice(0, 4).join(', ');
   return (
@@ -934,7 +1578,14 @@ async function renderReport(options) {
     await client.send('Page.navigate', { url: `http://127.0.0.1:${servePort}/` });
     await wait(BOOT_MS);
 
-    const expression = measureExpression(placeholderStrings(), listProbes(projectDir));
+    // AWP-004 §3 — the catalog's defaults, plus this project's own fallbacks on
+    // ports a Component Inputs node feeds. Neither source can see the other's
+    // strings, and Kimi's three were all in the second.
+    const overridden = Object.fromEntries(overriddenDefaults(projectDir));
+    const expression = measureExpression(
+      [...new Set([...placeholderStrings(), ...Object.keys(overridden)])],
+      listProbes(projectDir)
+    );
     const measured = {};
     const screenshots = [];
 
@@ -980,7 +1631,10 @@ async function renderReport(options) {
       }
     }
 
-    const { findings, summary } = summarise(measured);
+    // AWP-003 — computed only when something is blank, because it is an
+    // explanation of an observed blank and never a prediction of one.
+    const blank = Object.values(measured).some((v) => v && !v.error && v.text.elements === 0 && v.images.total === 0);
+    const { findings, summary } = summarise(measured, blank ? blankDiagnosis(projectDir) : undefined, overridden);
     const project = JSON.parse(fs.readFileSync(path.join(projectDir, 'nodegx.project.json'), 'utf8'));
 
     return {
@@ -1006,6 +1660,15 @@ module.exports = {
   summarise,
   measureExpression,
   listProbes,
+  readComponents,
+  blankDiagnosis,
+  overriddenDefaults,
+  rootNodes,
+  effectiveRoots,
+  projectVisualPredicate,
+  visualTypeNames,
+  contentBearingTypeNames,
+  BlankCause,
   placeholderStrings,
   checkPrerequisites,
   findChrome,

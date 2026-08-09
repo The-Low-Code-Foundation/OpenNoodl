@@ -28,9 +28,21 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const { summarise, placeholderStrings, measureExpression, listProbes, RenderFinding } = require(
-  path.resolve(__dirname, '..', '..', '..', 'scripts', 'devtools', 'render-report.js')
-);
+const {
+  summarise,
+  placeholderStrings,
+  measureExpression,
+  listProbes,
+  blankDiagnosis,
+  overriddenDefaults,
+  readComponents,
+  rootNodes,
+  projectVisualPredicate,
+  BlankCause,
+  RenderFinding
+} = require(path.resolve(__dirname, '..', '..', '..', 'scripts', 'devtools', 'render-report.js'));
+
+import { deriveVisualRootIds } from '../src/visualRoots';
 
 interface Finding {
   code: string;
@@ -178,7 +190,14 @@ describe('the shapes no real build produced', () => {
     );
     // One cause, one finding: a blank page has no type scale worth commenting on.
     expect(codes(findings)).toEqual([RenderFinding.BlankRender]);
-    expect(findings[0].message).toContain('Page node');
+
+    // AWP-003 — and with no project to walk, it says what it measured and stops.
+    // This assertion used to be `toContain('Page node')`, which is the guess the
+    // task removed: DeepSeek V4 Pro had a correct Page node and a Router that
+    // listed it, and the sentence sent it to the wrong subsystem for 18 turns.
+    expect(findings[0].message).toContain('rendered nothing at all');
+    expect(findings[0].message).not.toContain('Page node');
+    expect(findings[0].message).not.toContain('Router');
   });
 
   it('one font weight across twenty texts is the unstyled signature', () => {
@@ -326,5 +345,276 @@ describe('LAS-012 §3 — which lists are knowable off disk at all', () => {
   it('returns nothing for a directory that is not a project', () => {
     expect(listProbes(path.resolve(__dirname, 'fixtures'))).toEqual([]);
     expect(listProbes('/nonexistent')).toEqual([]);
+  });
+});
+
+/**
+ * AWP-003 — the blank page, diagnosed rather than guessed at.
+ *
+ * The fixture is DeepSeek V4 Pro's real session-8 artefact, and it is **evidence**:
+ * it is the project as the model left it at turn 60, after it deleted the Group
+ * holding its six sections in a last restructuring attempt. It is not repaired on
+ * disk and must not be.
+ *
+ * That makes it a sharper fixture than AWP-003 expected. The task predicted the
+ * live cause would be the missing `visualRoots` of F43; measured on 2026-08-09 it
+ * is not, because AWP-001 §3 derives those at read time and `render-from-disk`
+ * does too. What is left is a page whose visual root is a bare `Page` node — so
+ * the walk has to name *that*, and stay silent about the Page node and the
+ * routing, both of which are correct here.
+ */
+describe('AWP-003 — why is nothing on screen', () => {
+  const fixture = path.join(__dirname, 'fixtures', 'replay-deepseek-v4-pro');
+  const diagnosis = blankDiagnosis(fixture);
+
+  it('names the component and the determined cause, on the real artefact', () => {
+    expect(diagnosis.ok).toBe(true);
+    expect(diagnosis.cause).toBe(BlankCause.PageHasNoContent);
+    expect(diagnosis.evidence.component).toBe('/Pages/Home');
+    expect(diagnosis.message).toContain('/Pages/Home');
+  });
+
+  it('does not blame the Page node or the routing, because both are correct', () => {
+    // The two guesses the old message led with. Here they are checked facts, and
+    // they held — so they belong in `checked`, never in the message.
+    expect(diagnosis.message).not.toContain('Router');
+    expect(diagnosis.checked.join(' ')).toContain('startPage');
+    expect(diagnosis.checked.join(' ')).toContain('routes');
+    expect(diagnosis.checked.join(' ')).toContain('Page node');
+  });
+
+  it('carries the component through to the finding an agent reads', () => {
+    const blank = summarise(
+      {
+        desktop: {
+          requested: { width: 1280, height: 900 },
+          layoutWidth: 1280,
+          clientWidth: 1280,
+          scrollWidth: 1280,
+          pageHeight: 900,
+          overflowing: [],
+          overflowingCount: 0,
+          text: { elements: 0, fontWeights: {}, distinctFontSizes: 0, bodyFontFamily: 'Inter' },
+          placeholders: { count: 0, byText: {}, samples: [] },
+          images: { total: 0, broken: 0, brokenSources: [] },
+          emptyDecoratedBoxes: { count: 0, samples: [] },
+          repeatedGroups: []
+        }
+      },
+      diagnosis
+    );
+    const [finding] = blank.findings as Finding[];
+    expect(finding.code).toBe(RenderFinding.BlankRender);
+    // Acceptance: every blank-render-class finding carries a component path.
+    expect((finding.evidence as { component: string }).component).toBe('/Pages/Home');
+  });
+
+  it('abstains rather than guessing when there is no project to walk', () => {
+    const missing = blankDiagnosis('/nonexistent');
+    expect(missing.ok).toBe(false);
+    expect(missing.cause).toBe(BlankCause.Unreadable);
+  });
+
+  /**
+   * The anti-paraphrase check. `rootNodes` restates the editor's own rule — a node
+   * with no parent — in plain JS, because this file cannot import TypeScript. A
+   * restatement is exactly the defect class AWP-002 gates, so it is run against
+   * the real `deriveVisualRootIds` over every component of the real project.
+   */
+  it('derives the same roots as the editor reader it paraphrases', () => {
+    const { components } = readComponents(fixture);
+    expect(components.length).toBeGreaterThan(10);
+    const isVisual = projectVisualPredicate(components);
+
+    for (const component of components) {
+      const here = rootNodes(component.nodes)
+        .filter((n: { type: string }) => isVisual(n.type))
+        .map((n: { id: string }) => n.id);
+      const there = deriveVisualRootIds(component.nodes, isVisual);
+      expect({ component: component.name, roots: here }).toEqual({ component: component.name, roots: there });
+    }
+  });
+});
+
+/**
+ * AWP-004 — the eyes must fail a page nobody can see.
+ *
+ * `phase55-s8-kimi-k3-rerun` is the page that made this task: a storefront with a
+ * dialog mounted into the layout instead of over it, reported as *"Rendered
+ * clean: 83 texts, 10 images"* with zero findings.
+ */
+describe('AWP-004 — a page nobody can see is not clean', () => {
+  const kimi = report('phase55-s8-kimi-k3-rerun');
+
+  it('fails the page the old report called clean', () => {
+    expect(kimi.summary).not.toContain('Rendered clean');
+    expect(codes(kimi.findings, 'error').length).toBeGreaterThan(0);
+  });
+
+  it('counts the content no scroll can reach, and names the numbers', () => {
+    const stranded = kimi.findings.find((f) => f.code === RenderFinding.ContentNotVisible);
+    expect(stranded?.severity).toBe('error');
+    // 70 of 83 texts and 9 of 10 images laid out past a page that stops at 900px.
+    expect(stranded?.message).toContain('70 of 83 text elements');
+    expect(stranded?.message).toContain('9 of 10 images');
+  });
+
+  it('names the mechanism: a page pinned to the viewport with content past it', () => {
+    const clipped = kimi.findings.find((f) => f.code === RenderFinding.ClippedPage);
+    expect(clipped?.viewport).toBe('desktop');
+    expect(clipped?.message).toContain('900px');
+    expect(clipped?.message).toContain('5292px');
+  });
+
+  it('reports the 43 overflowing elements the page-level check could not see', () => {
+    // `scrollWidth <= clientWidth` held, so `horizontal-overflow` stayed silent
+    // while 43 elements overflowed inside the page. The number had been measured
+    // since LAS-005 and had no rule attached to it — register note A7.
+    const over = kimi.findings.find((f) => f.code === RenderFinding.ElementsOverflowing);
+    expect(over?.viewport).toBe('phone');
+    expect(over?.message).toContain('43 elements');
+  });
+
+  it('says what is on screen, not only what is in the DOM', () => {
+    // The single cheapest change in the task: "83 texts, 13 on screen" needs no
+    // finding attached for a model to know something is wrong.
+    expect(kimi.summary).toContain('83 texts, 13 on screen');
+  });
+
+  /**
+   * The fixture that stops the new checks crying wolf — register note A8. Both of
+   * these are real agent-authored pages that genuinely render, and the first
+   * version of `content-not-visible` (counted text vs text in the viewport, as
+   * AWP-004 §2 proposed it) fired on **both**: sonnet shows 19 of 82 texts at
+   * 1280×900 against Kimi's 13, so the ratio does not separate them.
+   */
+  it('says nothing new about the build this phase calls correct', () => {
+    const sonnet = report('phase55-replay-sonnet');
+    expect(sonnet.summary).toContain('Rendered clean');
+    expect(codes(sonnet.findings)).not.toContain(RenderFinding.ContentNotVisible);
+    expect(codes(sonnet.findings)).not.toContain(RenderFinding.ClippedPage);
+    expect(codes(sonnet.findings)).not.toContain(RenderFinding.ElementsOverflowing);
+  });
+
+  it('does not trip a short page that is genuinely complete', () => {
+    // A page that fits the fold with nothing past it is fine, and that is the
+    // difference `clipped-page` turns on: content *exceeding* a pinned height.
+    const short = summarise({
+      desktop: {
+        requested: { width: 1280, height: 900 },
+        layoutWidth: 1280,
+        clientWidth: 1280,
+        clientHeight: 900,
+        scrollWidth: 1280,
+        pageHeight: 900,
+        contentBottom: 640,
+        overflowing: [],
+        overflowingCount: 0,
+        text: { elements: 6, onScreen: 6, unreachable: 0, fontWeights: { '400': 3, '700': 3 }, distinctFontSizes: 3, bodyFontFamily: 'Inter' },
+        placeholders: { count: 0, byText: {}, samples: [] },
+        images: { total: 1, onScreen: 1, unreachable: 0, broken: 0, brokenSources: [] },
+        emptyDecoratedBoxes: { count: 0, samples: [] },
+        repeatedGroups: []
+      }
+    });
+    expect(short.findings).toEqual([]);
+    expect(short.summary).toContain('Rendered clean');
+  });
+
+  it('abstains, rather than claiming clean, when visibility was never measured', () => {
+    // A recording made before these fields existed cannot answer the question,
+    // and "no check I own fired" is the claim that certified three broken pages.
+    const old = summarise({
+      desktop: {
+        requested: { width: 1280, height: 900 },
+        layoutWidth: 1280,
+        clientWidth: 1280,
+        scrollWidth: 1280,
+        pageHeight: 2400,
+        overflowing: [],
+        overflowingCount: 0,
+        text: { elements: 40, fontWeights: { '400': 20, '700': 20 }, distinctFontSizes: 4, bodyFontFamily: 'Inter' },
+        placeholders: { count: 0, byText: {}, samples: [] },
+        images: { total: 2, broken: 0, brokenSources: [] },
+        emptyDecoratedBoxes: { count: 0, samples: [] },
+        repeatedGroups: []
+      }
+    });
+    expect(old.findings).toEqual([]);
+    expect(old.summary).not.toContain('Rendered clean');
+    expect(old.summary).toContain('visibility was not measured');
+  });
+});
+
+/**
+ * AWP-004 §3 — the placeholders the catalog cannot know about.
+ *
+ * The task assumed `Title`, `Body` and `Got it` were "the untouched defaults of a
+ * dialog component" and that the catalog could answer for them. Measured: **no
+ * catalog default matches any of the three**. They are text the model hardcoded
+ * in its own components, on ports a `Component Inputs` node also feeds — a value
+ * only ever visible when the input does not arrive. So the strings are derived
+ * from the graph rather than listed, which is what §3 asks for when it warns
+ * against over-fitting to the three it happened to name.
+ */
+describe('AWP-004 §3 — a fallback on screen is an input that never arrived', () => {
+  const kimiProject = '/Users/richardosborne/vscode_projects/NodeGX test projects/phase55-s8-kimi-k3-rerun';
+  const available = fs.existsSync(kimiProject);
+  const maybe = available ? it : it.skip;
+
+  maybe('derives all three of the strings the task named, and never lists them', () => {
+    const derived = overriddenDefaults(kimiProject);
+    for (const string of ['Title', 'Body', 'Got it']) expect([...derived.keys()]).toContain(string);
+    // None of the three is a node-type default, which is why `placeholders.count`
+    // was 0 on a page showing all three.
+    for (const string of ['Title', 'Body', 'Got it']) expect(placeholderStrings()).not.toContain(string);
+  });
+
+  maybe('records every site of a string, not the first one seen', () => {
+    // "Title" is hardcoded in both TrustItem and NoticeDialog. A finding naming
+    // one would send an agent to a component that was never on screen.
+    const derived = overriddenDefaults(kimiProject);
+    expect(derived.get('Title').sites.length).toBeGreaterThan(1);
+  });
+
+  it('reports the two placeholder classes as two different causes', () => {
+    const measured = {
+      desktop: {
+        requested: { width: 1280, height: 900 },
+        layoutWidth: 1280,
+        clientWidth: 1280,
+        clientHeight: 900,
+        scrollWidth: 1280,
+        pageHeight: 2400,
+        contentBottom: 2400,
+        overflowing: [],
+        overflowingCount: 0,
+        text: { elements: 20, onScreen: 8, unreachable: 0, fontWeights: { '400': 10, '700': 10 }, distinctFontSizes: 4, bodyFontFamily: 'Inter' },
+        placeholders: {
+          count: 2,
+          byText: { Text: 1, 'Got it': 1 },
+          samples: [
+            { text: 'Text', tag: 'DIV', cls: '' },
+            { text: 'Got it', tag: 'DIV', cls: '' }
+          ]
+        },
+        images: { total: 1, onScreen: 1, unreachable: 0, broken: 0, brokenSources: [] },
+        emptyDecoratedBoxes: { count: 0, samples: [] },
+        repeatedGroups: []
+      }
+    };
+    const { findings } = summarise(measured, undefined, {
+      'Got it': { sites: [{ component: '/Components/NoticeDialog', nodeId: 'btn', port: 'label' }] }
+    });
+    const placeholders = (findings as Finding[]).filter((f) => f.code === RenderFinding.DeadPlaceholderText);
+    expect(placeholders).toHaveLength(2);
+
+    const nodeDefault = placeholders.find((f) => f.message.includes('node-type default'));
+    expect(nodeDefault?.message).toContain('"Text"');
+    expect(nodeDefault?.message).not.toContain('Got it');
+
+    const fallback = placeholders.find((f) => f.message.includes('did not arrive'));
+    expect(fallback?.message).toContain('label in /Components/NoticeDialog');
+    expect(fallback?.message).not.toContain('"Text"');
   });
 });

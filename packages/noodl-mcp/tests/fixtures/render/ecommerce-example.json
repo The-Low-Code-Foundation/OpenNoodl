@@ -4,14 +4,19 @@
       "width": 1280,
       "height": 900
     },
+    "lists": [],
     "layoutWidth": 1280,
     "clientWidth": 1280,
+    "clientHeight": 900,
     "scrollWidth": 1280,
     "pageHeight": 2373,
+    "contentBottom": 2373,
     "overflowing": [],
     "overflowingCount": 0,
     "text": {
       "elements": 49,
+      "onScreen": 17,
+      "unreachable": 0,
       "fontWeights": {
         "400": 23,
         "500": 6,
@@ -36,6 +41,8 @@
     },
     "images": {
       "total": 4,
+      "onScreen": 1,
+      "unreachable": 0,
       "broken": 0,
       "brokenSources": []
     },
@@ -132,21 +139,27 @@
         "tag": "DIV",
         "cls": ""
       }
-    ]
+    ],
+    "consoleErrors": []
   },
   "phone": {
     "requested": {
       "width": 390,
       "height": 844
     },
+    "lists": [],
     "layoutWidth": 525,
     "clientWidth": 390,
+    "clientHeight": 844,
     "scrollWidth": 525,
     "pageHeight": 3080,
+    "contentBottom": 3080,
     "overflowing": [],
     "overflowingCount": 0,
     "text": {
       "elements": 49,
+      "onScreen": 10,
+      "unreachable": 0,
       "fontWeights": {
         "400": 23,
         "500": 6,
@@ -171,6 +184,8 @@
     },
     "images": {
       "total": 4,
+      "onScreen": 1,
+      "unreachable": 0,
       "broken": 0,
       "brokenSources": []
     },
@@ -201,6 +216,7 @@
         "tag": "DIV",
         "cls": "ndl-visual-text"
       }
-    ]
+    ],
+    "consoleErrors": []
   }
 }

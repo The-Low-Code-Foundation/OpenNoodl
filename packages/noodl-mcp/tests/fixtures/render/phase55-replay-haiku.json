@@ -4,14 +4,19 @@
       "width": 1280,
       "height": 900
     },
+    "lists": [],
     "layoutWidth": 1280,
     "clientWidth": 1280,
+    "clientHeight": 900,
     "scrollWidth": 1280,
     "pageHeight": 4269,
+    "contentBottom": 4269,
     "overflowing": [],
     "overflowingCount": 0,
     "text": {
       "elements": 63,
+      "onScreen": 17,
+      "unreachable": 0,
       "fontWeights": {
         "400": 33,
         "600": 24,
@@ -81,6 +86,8 @@
     },
     "images": {
       "total": 5,
+      "onScreen": 1,
+      "unreachable": 0,
       "broken": 5,
       "brokenSources": [
         "https://images.unsplash.com/photo-1578500494198-246f612d03b3?w=600&h=600&fit=crop",
@@ -172,17 +179,21 @@
         "tag": "DIV",
         "cls": ""
       }
-    ]
+    ],
+    "consoleErrors": []
   },
   "phone": {
     "requested": {
       "width": 390,
       "height": 844
     },
+    "lists": [],
     "layoutWidth": 768,
     "clientWidth": 390,
+    "clientHeight": 844,
     "scrollWidth": 768,
     "pageHeight": 4530,
+    "contentBottom": 4530,
     "overflowing": [
       {
         "tag": "IMG",
@@ -193,6 +204,8 @@
     "overflowingCount": 1,
     "text": {
       "elements": 63,
+      "onScreen": 9,
+      "unreachable": 0,
       "fontWeights": {
         "400": 33,
         "600": 24,
@@ -262,6 +275,8 @@
     },
     "images": {
       "total": 5,
+      "onScreen": 1,
+      "unreachable": 0,
       "broken": 5,
       "brokenSources": [
         "https://images.unsplash.com/photo-1578500494198-246f612d03b3?w=600&h=600&fit=crop",
@@ -342,6 +357,7 @@
         "tag": "DIV",
         "cls": ""
       }
-    ]
+    ],
+    "consoleErrors": []
   }
 }

@@ -26,7 +26,7 @@ box — its header is inside the scroll area.
 | BLD-001 ⭐ ✅ | [BLD-001-ONE-THREAD.md](BLD-001-ONE-THREAD.md) | one thread, one composer; scope inferred, not chosen | **D1 ✅** |
 | BLD-002 ✅ | [BLD-002-MESSAGE-HIERARCHY.md](BLD-002-MESSAGE-HIERARCHY.md) | five message kinds, five treatments; collapsed activity runs | **D4 ✅** |
 | BLD-003 ⭐ ✅ | [BLD-003-DECISIONS-ON-THE-CARD.md](BLD-003-DECISIONS-ON-THE-CARD.md) | actions attach to their subject; one owner; Discard, not red Reject | **D2 ✅ D3 ✅** D8ᵃ |
-| BLD-004 | [BLD-004-THINKING-AND-HEARTBEAT.md](BLD-004-THINKING-AND-HEARTBEAT.md) | surface `onActivity`; add a reasoning channel the XML parser cannot see | D6 D7 |
+| BLD-004 ✅ | [BLD-004-THINKING-AND-HEARTBEAT.md](BLD-004-THINKING-AND-HEARTBEAT.md) | surface `onActivity`; add a reasoning channel the XML parser cannot see | **D6 ✅ D7 ✅** C8 ✅ R2 ✅ |
 | BLD-005 ⭐ ✅ | [BLD-005-LEGIBLE-LONG-RUN.md](BLD-005-LEGIBLE-LONG-RUN.md) | pin the run header out of the scroll area; plan-as-map; honest estimate | **corr. 2 ✅** |
 | BLD-006 | [BLD-006-THREADS-PERSIST.md](BLD-006-THREADS-PERSIST.md) | threads survive accept, navigation and restart; a switcher | D5 |
 | BLD-007 ✅ | [BLD-007-DOCS-ARE-OPEN.md](BLD-007-DOCS-ARE-OPEN.md) | front-matter `inject`; the one-value enum becomes a discovered list | D9 |
@@ -99,6 +99,28 @@ trap at **every** `HStack` in a block parent (C6), and `PrimaryButtonVariant.Gho
 **4.33:1 in light mode**, below AA, on every `bg-1` surface in the editor (C7). Neither is this
 panel's to change; both need a full-surface pass.
 
+**BLD-004 is driven and closed** (2026-08-09). **D6, D7, C8 and BLD-005's R2 are closed.** The
+heartbeat, the reasoning channel, the collapsed run's duration, and the run map's motion.
+
+⚠️ **The task's own premise was wrong about the mechanism, and one field was the whole of it.**
+`display: 'omitted'` was never protecting the XML-parsed text — thinking has never been in a `text`
+block on any setting — it made the thinking blocks arrive **empty**. The reasoning channel would
+have shipped inert, and every spec above it would have passed. See the task doc's header.
+
+⚠️ **Two defects came out of the drive that nothing else could have caught**, and both are the same
+shape as the defect the task exists to remove:
+
+- **A clock outlived what it measured.** The reasoning strip ran while `streaming` was set, and a
+  hung turn stays `streaming` until the deadline — a one-second think showed **"Thinking… 3m 2s"**.
+- **A state class collided with an animated modifier**, painting `primary` behind the sentence at
+  **1.16:1**. ⚠️ Found by *measuring composited pixels*: every screenshot was taken in `waiting`,
+  where the collision does not paint, so it was absent from every frame captured and present the
+  whole time.
+
+⚠️ **BLD-012's golden request spec caught the `display` change** — a spec BLD-004 never touched. A
+golden that pins the *whole* request rather than the fields one task cared about is what made a
+deliberate byte-change visible instead of silent.
+
 ⚠️ **BLD-007 and BLD-012 still have not been driven**, and BLD-012's is the one with a bill attached
 to getting it wrong — its image block has never reached a real endpoint.
 
@@ -153,11 +175,9 @@ re-read [`no-concurrent-session-on-opennoodl`] discipline: pathspec-scope every 
 1. **BLD-001** — nothing else is safe to start.
 2. **BLD-003 + BLD-002** — together they are most of what Richard actually complained about, and they
    are visible immediately.
-3. ~~**BLD-005** + **BLD-004** — the long-run legibility pair.~~ **BLD-005 is closed**, and it was
-   built *before* BLD-004 rather than after: only step 4's motion needed the heartbeat, and motion is
-   the one thing there that must not be faked (a pulse driven by `busy` animates hardest when the
-   provider has hung). **BLD-004 now owns two filed items** — C8 (the collapsed run claims no
-   duration) and BLD-005's R2 (the current operation does not move).
+3. ~~**BLD-005** + **BLD-004** — the long-run legibility pair. **Both closed.**~~ BLD-005 was built
+   *before* BLD-004 rather than after: only step 4's motion needed the heartbeat, and motion is the
+   one thing there that must not be faked. BLD-004 then closed C8 and R2 along with its own D6/D7.
 4. **BLD-006** — cheap, and it is the difference between a tool and a form.
 5. **BLD-007 → BLD-008** — the docs pair. 007 is mechanical, 008 is the interesting one.
 6. **BLD-011 → BLD-012 → BLD-014** — the context spine. 014 is the payoff and should be prioritised

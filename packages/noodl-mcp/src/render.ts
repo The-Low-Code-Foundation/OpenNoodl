@@ -43,6 +43,13 @@ export interface RenderFindingPayload {
    * on two vocabularies — see the module note in `render-report.js`.
    */
   relatedDiagnostic?: string;
+  /**
+   * AWP-003 — for a `blank-render`, which cause the graph walk *determined*, as
+   * one of `BlankCause`. A blank page used to come back with a sentence naming
+   * the two causes its author knew about, and DeepSeek V4 Pro had neither; this
+   * field is the machine-readable half of answering the question properly.
+   */
+  cause?: string;
   evidence?: unknown;
 }
 

@@ -4,14 +4,37 @@
       "width": 1280,
       "height": 900
     },
+    "lists": [
+      {
+        "component": "/Sections/FeaturedProducts",
+        "nodeId": "fp_repeater",
+        "label": "One card per product",
+        "rows": 6,
+        "source": "Static Data \"Featured products\"",
+        "strings": [
+          "Speckled Stoneware Mug",
+          "Wheel-thrown with a matte reactive glaze — no two are quite alike.",
+          "128 reviews",
+          "Bud Vase Trio",
+          "Three narrow-neck vases in warm stoneware, sold as a set of three.",
+          "41 reviews"
+        ],
+        "found": 6,
+        "missing": []
+      }
+    ],
     "layoutWidth": 1280,
     "clientWidth": 1280,
+    "clientHeight": 900,
     "scrollWidth": 1280,
     "pageHeight": 3777,
+    "contentBottom": 3777,
     "overflowing": [],
     "overflowingCount": 0,
     "text": {
       "elements": 82,
+      "onScreen": 19,
+      "unreachable": 0,
       "fontWeights": {
         "400": 40,
         "500": 4,
@@ -38,6 +61,8 @@
     },
     "images": {
       "total": 16,
+      "onScreen": 7,
+      "unreachable": 0,
       "broken": 0,
       "brokenSources": []
     },
@@ -123,21 +148,45 @@
         "tag": "SPAN",
         "cls": "ndl-visual-text"
       }
-    ]
+    ],
+    "consoleErrors": []
   },
   "phone": {
     "requested": {
       "width": 390,
       "height": 844
     },
+    "lists": [
+      {
+        "component": "/Sections/FeaturedProducts",
+        "nodeId": "fp_repeater",
+        "label": "One card per product",
+        "rows": 6,
+        "source": "Static Data \"Featured products\"",
+        "strings": [
+          "Speckled Stoneware Mug",
+          "Wheel-thrown with a matte reactive glaze — no two are quite alike.",
+          "128 reviews",
+          "Bud Vase Trio",
+          "Three narrow-neck vases in warm stoneware, sold as a set of three.",
+          "41 reviews"
+        ],
+        "found": 6,
+        "missing": []
+      }
+    ],
     "layoutWidth": 390,
     "clientWidth": 390,
+    "clientHeight": 844,
     "scrollWidth": 390,
     "pageHeight": 6482,
+    "contentBottom": 6482,
     "overflowing": [],
     "overflowingCount": 0,
     "text": {
       "elements": 82,
+      "onScreen": 11,
+      "unreachable": 0,
       "fontWeights": {
         "400": 40,
         "500": 4,
@@ -164,6 +213,8 @@
     },
     "images": {
       "total": 16,
+      "onScreen": 3,
+      "unreachable": 0,
       "broken": 0,
       "brokenSources": []
     },
@@ -238,6 +289,7 @@
         "tag": "SPAN",
         "cls": "ndl-visual-text"
       }
-    ]
+    ],
+    "consoleErrors": []
   }
 }

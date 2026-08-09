@@ -1,6 +1,28 @@
 # BLD-004 — Thinking, and the heartbeat
 
-**Status:** 📋 not started · **Track A** · after BLD-002 · closes **D6**, **D7**
+**Status:** ✅ **built, driven and closed** (2026-08-09, `7d6e955c` + `95c13e30`) · **Track A** ·
+closes **D6**, **D7**, and the two items filed on it — **C8** (the collapsed run claims no duration)
+and **BLD-005's R2** (the current operation does not move).
+
+## ⚠️ The premise this task shipped with was wrong, and it was one field
+
+The build instruction said *"the `display: 'omitted'` decision stays — the reasoning must reach the
+callback without entering the text the XML templates parse"*. That decision was never protecting the
+templates. **`display` governs the thinking *block*, and thinking has never been part of a `text`
+block on any setting** — the raw chain of thought is not returned at all. What `'omitted'` actually
+does is stream thinking blocks whose text is **empty**, so `onReasoning` would have been wired to a
+channel that carries nothing: a feature inert rather than safe, and inert in a way every spec above
+it would have passed.
+
+`display: 'summarized'` returns a readable summary on its own block type, and is **billed
+identically** — display controls visibility only, not whether the model thinks. The isolation the
+task was worried about is real and is enforced a different way: a second accumulator
+(`fullReasoning`) that the returned response never reads, so a leak requires renaming a variable
+rather than forgetting a branch.
+
+⚠️ **BLD-012's golden request spec caught the change** — a spec this task never touched, which pins
+the *whole* request rather than the fields one task cared about. Updated deliberately, with the
+reason beside the byte.
 
 ## The defect, measured
 
@@ -60,17 +82,53 @@ The mechanism is trivial to build and easy to have lie on screen. Before wiring 
 
 ## Acceptance
 
-- [ ] Provider killed mid-turn → pulse stops, and within the deadline window the panel says so in
-      words. Screenshot both.
-- [ ] A long silent reasoning phase on a thinking-capable model → pulse alive, thinking strip
-      counting, no assistant prose yet.
-- [ ] Ollama (no reasoning channel) → no thinking strip, pulse still correct. **Open-weight leg is
-      not optional.**
-- [ ] Authoring output is byte-identical before/after the `onReasoning` change on a fixture run —
-      proving reasoning did not leak into the parsed text.
+- [x] **Provider killed mid-turn → pulse stops, and the panel says so in words.** Driven: the pulse
+      stopped within 2s of the last event (`dotAnimation: "none"`, read from the compositor rather
+      than from the class), and at 53s the panel read *"No response for 53s — this turn ends by
+      itself at 3m 0s of silence."* ⚠️ **The consequence was verified too, not just the mechanism:**
+      the sentence made a prediction and the prediction came true — the turn ended by itself at
+      exactly 180s with *"The model stopped responding — nothing arrived for 180 seconds."*
+- [x] **A long silent reasoning phase → pulse alive, thinking strip counting, no prose.** Driven for
+      **96 seconds** of pure keepalives with zero content — twice the quiet threshold — state
+      `alive` throughout, animation running, strip counting. This is the direction a heartbeat wired
+      to `onText` fails, and it fails it on exactly the turns worth waiting for.
+- [x] **The two runs diffed on one variable.** Same turn, same clock, same code path; the only
+      difference was whether pings kept arriving. `alive` → `waiting` → `silent`.
+- [x] **Authoring output is byte-identical with the reasoning present and absent.** Pinned as a spec
+      on a fixture turn whose reasoning contains `<Group>`, so a leak would be a *parseable* one
+      rather than obvious noise.
+- [ ] **Ollama (no reasoning channel) → no thinking strip, pulse still correct.** ⚠️ **Not driven —
+      see R3.** The negative half is specced (`onReasoning` uncalled on a non-thinking stream); the
+      open-weight leg on a real endpoint is not.
+
+### R2, closed — and the measurement that closes it
+
+The current operation in the run map moves only while the *stream* moves. Driven on a two-operation
+plan run, killing the pings mid-run:
+
+| | before | after |
+|---|---|---|
+| run still busy | ✅ | ✅ (Stop present) |
+| `.Current` class | `is-alive` | `is-waiting` |
+| dot animation | `heartbeat-pulse` | **`none`** |
+
+**A `busy`-driven pulse would still have been animating in the right-hand column.** That is the
+whole of R2, and it is why the row shipped still until this task existed.
+
+### C8, closed
+
+The collapsed run reports `2 steps — 3s` against a scripted 3000ms delay — and, on the same screen,
+the plan-run's own collapsed strip still reads `2 steps` with no duration, because `turns.ts`
+synthesises those from state that has no per-entry clock. **Both paths visible at once** is the
+demonstration: the stamp is optional, and its absence costs a fact rather than inventing one.
 
 ## Register
 
 | # | Finding | State |
 |---|---|---|
-| | | |
+| R1 | **The task's own premise about `display: 'omitted'` was wrong** — it did not protect the XML templates, it made the reasoning blocks arrive empty. See the header. | ✅ fixed (`'summarized'`), golden updated |
+| R2 | **The reasoning clock outlived what it measured** — it ran while `streaming` was set, and a hung turn stays `streaming` until the deadline fires, so a one-second think showed **"Thinking… 3m 2s"**. Found by driving; invisible to `tsc` and to all 29 specs. | ✅ fixed (`lastAt`), label changes tense |
+| R3 | **The heartbeat's wrapper state class collided with the dot's animated modifier**, so an alive heartbeat drew `background-color: primary` behind the sentence — **1.16:1**. ⚠️ Found by *measuring composited pixels*; every screenshot I had was taken in `waiting`, where the collision does not paint. | ✅ fixed (`Dot*`-prefixed modifiers) |
+| R4 | **Ollama's open-weight leg is not driven.** No local endpoint was available this session. The adapter is untouched and calls `onReasoning` nowhere, so the specced behaviour (no strip, pulse from `onActivity`) is what it does — but that is inference, not a drive. | 📋 filed for BLD-010 |
+| R5 | **OpenAI-compatible reasoning (`reasoning_content` / `reasoning` deltas) is deliberately not wired.** Several gateways emit it, but nothing here could verify against a real endpoint, and a speculative field-read is the "fake pass" this phase keeps paying for. `turnDeadline` already forwards `onReasoning`, so adding it later is one adapter branch. | 📋 filed, blocker named |
+| R6 | **The user's request renders twice** in the thread — one retired turn carrying only the request, plus the live one. Visible in every drive screenshot. Not BLD-004's surface and provenance not established (it predates this session's changes); it is a thread-composition question. | 📋 filed for **BLD-006** |
