@@ -6,6 +6,13 @@
  * mapping be pinned in `tests-unit/bld-001/` rather than only inside a real
  * Electron renderer.
  *
+ * ⚠️ BLD-006 adds `ThreadStore`, which is a `Model` and therefore not a pure
+ * function — but it keeps the property that matters: no filesystem, no
+ * Electron, no `ProjectModel`, so it runs in the same plain-Node runner.
+ * `ThreadSidecar` and `installThreadPersistence` are the two modules that reach
+ * a disk and an open project, and they are deliberately **not** exported here —
+ * importing this barrel must never drag Electron in.
+ *
  * @module AiAssistant/thread
  */
 
@@ -46,6 +53,22 @@ export {
 } from './runProgress';
 export type { OperationRole } from './runProgress';
 export {
+  byRecency,
+  emptyThread,
+  isWorthWriting,
+  parseThreadFile,
+  serialiseThread,
+  THREAD_FILE_VERSION,
+  threadLabel,
+  threadTitle,
+  threadWhen,
+  TITLE_MAX,
+  UNTITLED
+} from './threadRecord';
+export type { ThreadRecord } from './threadRecord';
+export { THREADS_CHANGED, ThreadStore } from './ThreadStore';
+export type { ThreadPersistence, ThreadsState } from './ThreadStore';
+export {
   acceptedTurn,
   componentTurns,
   composeThread,
@@ -53,6 +76,7 @@ export {
   freezeTurns,
   liveTurns,
   planTurns,
+  retiredTurns,
   retireLive,
   sessionNote
 } from './turns';

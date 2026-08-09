@@ -346,6 +346,18 @@ export function composeThread(...groups: readonly (readonly Turn[])[]): Turn[] {
 export interface LiveSources {
   /** What the last routed request became. `null` before the first one. */
   route: BuildIntent | null;
+  /**
+   * The user's words that opened this work.
+   *
+   * ⚠️ Only the **docs** producer needs handing it, and that asymmetry is not
+   * an oversight: a component session pushes `{kind:'user'}` into its own feed
+   * and a plan carries `plan.request`, so both already know what was asked. A
+   * project review knows only that it was started. Until BLD-006 nothing passed
+   * it, so a docs run rendered with no request at all — which went unnoticed
+   * because a *second* copy of the request was on screen the whole time in the
+   * pending turn (R6). Removing the duplicate is what made the gap visible.
+   */
+  request?: string | null;
   session: AuthoringSessionState | null;
   planSession: PlanSession;
   runState: PlanRunState | null;
@@ -373,7 +385,7 @@ export interface LiveSources {
  * the store, not this panel, is the plan's owner.
  */
 export function liveTurns(sources: LiveSources, idPrefix?: string): Turn[] {
-  const { route, session, planSession, runState, reviewState, decision } = sources;
+  const { route, session, planSession, runState, reviewState, decision, request } = sources;
   const scope = (kind: string) => (idPrefix ? `${idPrefix}-${kind}` : kind);
 
   const showPlan = route === 'plan' || Boolean(planSession.plan);
@@ -395,6 +407,7 @@ export function liveTurns(sources: LiveSources, idPrefix?: string): Turn[] {
     ...(showDocs
       ? docsTurns(reviewState, {
           idPrefix: scope('docs'),
+          ...(request ? { request } : {}),
           ...(decision?.intent === 'docs' ? { sentence: decision.sentence } : {})
         })
       : [])
@@ -426,7 +439,25 @@ export function liveTurns(sources: LiveSources, idPrefix?: string): Turn[] {
  * send does not push an empty render through React.
  */
 export function retireLive(history: readonly Turn[], sources: LiveSources): Turn[] {
-  const retired = freezeTurns(liveTurns(sources, `history-${history.length}`));
+  const retired = retiredTurns(history.length, sources);
   if (retired.length === 0) return history as Turn[];
   return [...history, ...retired];
+}
+
+/**
+ * Just the retired copies, for a caller that appends rather than replaces.
+ *
+ * BLD-006 moved the thread into a store, and a store appends: handing it the
+ * whole concatenated history back would make the store's own copy the loser of
+ * every race with a second append. Extracted rather than reimplemented at the
+ * call site, because the `history-N-` prefix **is** the mechanism that stops a
+ * retired turn mounting a live control, and a second place computing it is a
+ * second place that can get it wrong.
+ *
+ * `historyLength` and not the array: the only thing the prefix needs is the
+ * position, and asking for the whole list would invite a caller to pass the
+ * turns it is about to append instead of the ones already there.
+ */
+export function retiredTurns(historyLength: number, sources: LiveSources): Turn[] {
+  return freezeTurns(liveTurns(sources, `history-${historyLength}`));
 }

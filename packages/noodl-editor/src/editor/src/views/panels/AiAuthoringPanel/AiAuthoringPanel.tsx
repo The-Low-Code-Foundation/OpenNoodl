@@ -78,17 +78,22 @@ import {
   liveTurns,
   ON_CANVAS_NOTE,
   ON_REVIEW_NOTE,
-  retireLive,
+  retiredTurns,
   REVIEW_LABEL,
+  THREADS_CHANGED,
+  ThreadStore,
   type BuildIntent,
   type IntentDecision,
   type LiveSources,
+  type ThreadsState,
   type Turn
 } from '@noodl-models/AiAssistant/thread';
+import { ThreadSidecar } from '@noodl-models/AiAssistant/thread/ThreadSidecar';
 import { AppRegistry } from '@noodl-models/app_registry';
 import { ProjectModel } from '@noodl-models/projectmodel';
 import { buildEffectiveTokens, buildStyleVocabulary, readStoredTokens } from '@noodl-models/StyleTokensModel';
 
+import { EventDispatcher } from '../../../../../shared/utils/EventDispatcher';
 import { useModel } from '../../../hooks/useModel';
 import { buildComponentV2Files } from '../../../io/ProjectExporter';
 import { formatDiagnosticLine } from '../../../validation';
@@ -112,6 +117,7 @@ import { ProjectReviewView } from './ProjectReviewView';
 import { BuildThread, type ThreadWidth } from './thread/BuildThread';
 import { Heartbeat } from './thread/Heartbeat';
 import { RunHeader } from './thread/RunHeader';
+import { ThreadSwitcher } from './thread/ThreadSwitcher';
 
 export const AiAuthoringPanel_ID = 'ai-authoring';
 
@@ -150,9 +156,99 @@ export function AiAuthoringPanel({ width = 'panel' }: AiAuthoringPanelProps = {}
   //
   // D5: accepting used to call `setState(null)` and `session.dispose()` — what
   // you asked, what it read and what it repaired, gone at the moment it became
-  // part of your project. Finished turns move here instead. Surviving a restart
-  // is BLD-006; surviving an accept is this.
-  const [history, setHistory] = useState<Turn[]>([]);
+  // part of your project. Finished turns go to the store instead.
+  //
+  // ⚠️ BLD-006 moved this out of `useState`, and the reason is the one AIB-003
+  // wrote down one directory over: a sidebar panel is hidden rather than
+  // unmounted *most* of the time, and "most of the time" is the kind of
+  // lifetime guarantee that becomes a data-loss defect two refactors later.
+  // The store is also what makes the conversation survive a restart, a project
+  // switch, and a second host (BLD-009 renders this same panel as a document).
+  const threadStore = ThreadStore.instance;
+  const [threads, setThreads] = useState<ThreadsState>(() => threadStore.get(ProjectModel.instance?.id));
+  useEffect(() => {
+    const context = {};
+    threadStore.on(THREADS_CHANGED, () => setThreads({ ...threadStore.get(ProjectModel.instance?.id) }), context);
+    return () => {
+      threadStore.off(context);
+    };
+  }, [threadStore]);
+
+  /**
+   * The conversation on screen, and the turns already in it.
+   *
+   * `current` never returns undefined — the store creates an empty thread on
+   * first ask — but the fallback is kept because `threads` is a snapshot taken
+   * at a `setState`, and a snapshot from before a project switch can name a
+   * thread this project does not have.
+   */
+  const currentThread = threads.threads.find((thread) => thread.id === threads.currentId) ?? threads.threads[0];
+  const history = currentThread?.turns ?? [];
+
+  /**
+   * BLD-006 — the conversations this project left on disk.
+   *
+   * ⚠️ Keyed on the open project, not on the mount, and that is acceptance
+   * criterion 3. The store is keyed by project id, but `threads` above is a
+   * *snapshot* of one project's entry and `THREADS_CHANGED` does not fire when
+   * the open project changes underneath it — so without this the panel would go
+   * on showing project A's conversations after B opened, and append B's turns
+   * into A's thread. Re-reading is what makes "switch away and back" return the
+   * right history rather than the last one rendered.
+   *
+   * The read itself is `ProjectAuthoringView`'s saved-build shape and for the
+   * same reason: *whether to ask again* outlives every mount, so the guard is
+   * in the store rather than in a ref here — which is also why re-running this
+   * on a switch back does not re-read the disk.
+   */
+  const [projectEpoch, setProjectEpoch] = useState(0);
+  useEffect(() => {
+    const context = {};
+    EventDispatcher.instance.on(
+      ['ProjectModel.instanceHasChanged', 'ProjectModel.importComplete'],
+      () => setProjectEpoch((epoch) => epoch + 1),
+      context
+    );
+    return () => {
+      EventDispatcher.instance.off(context);
+    };
+  }, []);
+
+  useEffect(() => {
+    setThreads({ ...threadStore.get(ProjectModel.instance?.id) });
+    const project = ProjectModel.instance;
+    if (!project) return;
+    void threadStore.consultSavedThreads(project.id, async () => {
+      const directory = project._retainedProjectDirectory;
+      if (!directory) return;
+      // Lands in the store, not in this component's state, so a panel that
+      // unmounted while the read was in flight still gets its history back.
+      threadStore.restore(project.id, await ThreadSidecar.instance.readAll(directory));
+    });
+  }, [threadStore, projectEpoch]);
+
+  /** Finished turns join the conversation they happened in. */
+  const appendTurns = useCallback(
+    (turns: readonly Turn[]) => threadStore.append(ProjectModel.instance?.id, turns),
+    [threadStore]
+  );
+
+  /**
+   * How many turns are already in the thread, read *now*.
+   *
+   * ⚠️ Every id this panel mints is `<something>-<position>`, and the render's
+   * `history.length` is a value captured when the callback was created. `send`
+   * appends inside `retire()` and can then append a declined note in the same
+   * invocation — with a captured length both land on the same id, and two turns
+   * sharing a React key is state leaking between them rather than an error
+   * anyone sees. Reading the store at the point of use is the only version that
+   * cannot go stale, and it is what the old `setHistory((turns) => …)`
+   * functional updater was quietly providing before the store existed.
+   */
+  const threadLength = useCallback(
+    () => threadStore.current(ProjectModel.instance?.id).turns.length,
+    [threadStore]
+  );
   /**
    * The one input, seeded from the Docs panel's banner when that is how the
    * user arrived.
@@ -178,6 +274,15 @@ export function AiAuthoringPanel({ width = 'panel' }: AiAuthoringPanelProps = {}
   const lastPlanRef = useRef<AuthoringPlan | null>(null);
 
   const [planningRequest, setPlanningRequest] = useState<string | null>(null);
+  /**
+   * The request the *live* work belongs to, which outlives the planning call.
+   *
+   * Separate from `planningRequest` because they end at different moments:
+   * planning is over as soon as a plan comes back, while a docs review that the
+   * plan started can run for minutes afterwards — and it is the only producer
+   * that cannot recover the request from its own state. See `LiveSources.request`.
+   */
+  const [liveRequest, setLiveRequest] = useState<string | null>(null);
   const planAbortRef = useRef<AbortController | null>(null);
 
   const [state, setState] = useState<AuthoringSessionState | null>(null);
@@ -250,8 +355,8 @@ export function AiAuthoringPanel({ width = 'panel' }: AiAuthoringPanelProps = {}
    * declared further down.
    */
   const liveSources = useMemo<LiveSources>(
-    () => ({ route, session: state, planSession, runState, reviewState, decision }),
-    [route, state, planSession, runState, reviewState, decision]
+    () => ({ route, session: state, planSession, runState, reviewState, decision, request: liveRequest }),
+    [route, state, planSession, runState, reviewState, decision, liveRequest]
   );
 
   // ── Sending ────────────────────────────────────────────────────────────────
@@ -260,9 +365,9 @@ export function AiAuthoringPanel({ width = 'panel' }: AiAuthoringPanelProps = {}
    * B9 — a new request retires the previous one instead of erasing it.
    *
    * Freeze the record, then release what produced it. Both halves are required:
-   * `retireLive` re-prefixes the ids so no live control mounts on a historical
-   * turn, and dropping the sources is what stops the frozen copy and the live
-   * derivation being on screen together.
+   * `retiredTurns` re-prefixes the ids so no live control mounts on a
+   * historical turn, and dropping the sources is what stops the frozen copy and
+   * the live derivation being on screen together.
    *
    * ⚠️ `store.discard` and `ProjectReviewStore.clear` destroy authored output,
    * which AIB-003's rule allows only when the user says so. **Sending a new
@@ -273,14 +378,16 @@ export function AiAuthoringPanel({ width = 'panel' }: AiAuthoringPanelProps = {}
    * always finished.
    */
   const retire = useCallback(() => {
-    const hadLive = liveTurns(liveSources).length > 0;
-    setHistory((turns) => retireLive(turns, liveSources));
+    const retired = retiredTurns(threadLength(), liveSources);
+    const hadLive = retired.length > 0;
+    appendTurns(retired);
 
     sessionRef.current?.dispose();
     sessionRef.current = null;
     setState(null);
     setRoute(null);
     setDecision(null);
+    setLiveRequest(null);
     if (AppRegistry.instance.CurrentDocumentId === AuthoringPreviewDocumentProvider.ID) {
       AppRegistry.instance.openDocument(EditorDocumentProvider.ID);
     }
@@ -293,7 +400,7 @@ export function AiAuthoringPanel({ width = 'panel' }: AiAuthoringPanelProps = {}
     reviewRunRef.current = null;
     ProjectReviewStore.instance.clear();
     store.discard(ProjectModel.instance?.id);
-  }, [liveSources, store]);
+  }, [appendTurns, threadLength, liveSources, store]);
 
   /**
    * Hand a plan to the path it belongs to.
@@ -400,6 +507,9 @@ export function AiAuthoringPanel({ width = 'panel' }: AiAuthoringPanelProps = {}
     retire();
     setSetupError(null);
     setPlanningRequest(request);
+    // Survives the planning call, and is cleared by the next `retire()`. A docs
+    // review can still be running long after `planningRequest` has gone.
+    setLiveRequest(request);
     try {
       const session = new PlanningSession(fromProjectModel(project), request);
       planAbortRef.current = new AbortController();
@@ -421,18 +531,17 @@ export function AiAuthoringPanel({ width = 'panel' }: AiAuthoringPanelProps = {}
           : outcome.status === 'cancelled'
             ? 'Cancelled. Nothing happened.'
             : outcome.note ?? 'Could not produce a plan for this request.';
-      setHistory((turns) => [
-        ...turns,
-        noteTurn(`declined-${turns.length}`, request, text, outcome.status === 'declined' ? 'notice' : 'danger')
+      appendTurns([
+        noteTurn(`declined-${threadLength()}`, request, text, outcome.status === 'declined' ? 'notice' : 'danger')
       ]);
     } catch (e) {
       const text = e instanceof Error ? e.message : String(e);
-      setHistory((turns) => [...turns, noteTurn(`failed-${turns.length}`, request, text, 'danger')]);
+      appendTurns([noteTurn(`failed-${threadLength()}`, request, text, 'danger')]);
     } finally {
       planAbortRef.current = null;
       setPlanningRequest(null);
     }
-  }, [composer, retire, routePlan]);
+  }, [appendTurns, composer, retire, routePlan, threadLength]);
 
   /**
    * The one-click override on the agent's own sentence.
@@ -517,16 +626,14 @@ export function AiAuthoringPanel({ width = 'panel' }: AiAuthoringPanelProps = {}
 
       // D5's fix: the conversation becomes history and the accept appends a
       // receipt. The session is still disposed — it holds a candidate, and the
-      // candidate is in the project now — but the record of it outlives it.
+      // candidate is in the project now — but the record of it outlives it,
+      // and since BLD-006 it outlives the process too.
+      const at = threadLength();
       const live = componentTurns(session.state, {
-        idPrefix: `history-${history.length}-component`,
+        idPrefix: `history-${at}-component`,
         ...(decision ? { sentence: decision.sentence, intent: decision.intent } : {})
       });
-      setHistory((turns) => [
-        ...turns,
-        ...freezeTurns(live),
-        acceptedTurn(session.legacyName, session.mode, `accepted-${turns.length}`)
-      ]);
+      appendTurns([...freezeTurns(live), acceptedTurn(session.legacyName, session.mode, `accepted-${at}`)]);
       session.dispose();
       sessionRef.current = null;
       setState(null);
@@ -538,7 +645,7 @@ export function AiAuthoringPanel({ width = 'panel' }: AiAuthoringPanelProps = {}
       setSetupError(message);
       return message;
     }
-  }, [decision, history.length]);
+  }, [appendTurns, decision, threadLength]);
 
   const accept = useCallback(() => {
     const files = sessionRef.current?.stagedFiles;
@@ -555,10 +662,10 @@ export function AiAuthoringPanel({ width = 'panel' }: AiAuthoringPanelProps = {}
     }
     if (session) {
       const live = componentTurns(session.state, {
-        idPrefix: `history-${history.length}-component`,
+        idPrefix: `history-${threadLength()}-component`,
         ...(decision ? { sentence: decision.sentence, intent: decision.intent } : {})
       });
-      setHistory((turns) => [...turns, ...freezeTurns(live)]);
+      appendTurns(freezeTurns(live));
     }
     session?.dispose();
     sessionRef.current = null;
@@ -568,7 +675,7 @@ export function AiAuthoringPanel({ width = 'panel' }: AiAuthoringPanelProps = {}
     if (AppRegistry.instance.CurrentDocumentId === AuthoringPreviewDocumentProvider.ID) {
       AppRegistry.instance.openDocument(EditorDocumentProvider.ID);
     }
-  }, [decision, history.length]);
+  }, [appendTurns, decision, threadLength]);
 
   const openReview = useCallback(() => {
     const session = sessionRef.current;
@@ -608,11 +715,36 @@ export function AiAuthoringPanel({ width = 'panel' }: AiAuthoringPanelProps = {}
 
   // ── The thread ─────────────────────────────────────────────────────────────
 
-  // History, then the request in flight, then whatever is live — an ordering
-  // that holds because `retire` runs before the pending turn exists.
+  const live = useMemo(() => liveTurns(liveSources), [liveSources]);
+
+  /**
+   * R6 — the request rendered twice, and the pending turn is why.
+   *
+   * `pendingTurn` exists to carry the user's words while the planning call is
+   * in flight, because at that moment nothing else has them. The moment a
+   * producer takes over, it has them too: a component session pushes
+   * `{kind:'user'}` at the top of `run()`, and a plan turn carries
+   * `plan.request`. So the request was on screen twice for the whole of every
+   * component build — and it *looked* like a retired turn, because
+   * `composeThread` clears `busy` on all but the last, leaving a bare bubble
+   * above the live one.
+   *
+   * ⚠️ The obvious fix — clear `planningRequest` once the route is decided —
+   * is wrong, and the docs path is where it shows. `routePlan` sets the route
+   * and then **awaits** `startProjectReview`, so there is a render in between
+   * with a route and no producer state; clearing there would blank the thread
+   * and drop `busy` at the same instant. The condition is therefore about what
+   * is *on screen*, not about what has been decided: the pending turn stands in
+   * for the live turns until there are some.
+   *
+   * ⚠️ A docs run genuinely has nowhere to put the request — `docsTurns` takes
+   * one but `liveTurns` has never had it to give. That is why `LiveSources`
+   * carries `request` now: without it the fix would trade a duplicated request
+   * for a vanished one.
+   */
   const turns = useMemo(
-    () => composeThread(history, planningRequest ? [pendingTurn(planningRequest)] : [], liveTurns(liveSources)),
-    [history, planningRequest, liveSources]
+    () => composeThread(history, planningRequest && live.length === 0 ? [pendingTurn(planningRequest)] : [], live),
+    [history, planningRequest, live]
   );
 
   /** The turn the live plan view attaches to. See `renderOutcome`. */
@@ -623,6 +755,42 @@ export function AiAuthoringPanel({ width = 'panel' }: AiAuthoringPanelProps = {}
 
   const canDecide = Boolean(state && !state.busy && state.staged);
   const busy = Boolean(planningRequest || state?.busy || runState?.busy || reviewState?.busy);
+
+  /**
+   * BLD-006 — the two controls in the switcher answer to different rules, and
+   * the difference is the phase's data-loss doctrine, not an inconsistency.
+   *
+   * **New thread** is allowed exactly when Send is. Starting a new conversation
+   * is at least as strong a statement as sending a new request, and `retire()`
+   * already encodes that contract — freeze the record, release the sources.
+   *
+   * ⚠️ **Switching to an existing thread is navigation, and navigation may not
+   * destroy.** AIB-003's rule is that authored output is durable from the
+   * moment it validates and nothing may destroy it without the user saying so.
+   * Opening a dropdown to read yesterday's conversation is not the user saying
+   * so, and routing it through `retire()` would mean a staged eight-node
+   * component evaporating on a click. Nor may the switch simply *happen*: the
+   * live turns are appended to whatever thread is current, and `renderOutcome`
+   * matches live ids — so the Accept card would mount under a conversation it
+   * has nothing to do with. It refuses, and says why.
+   */
+  const switchLockedReason = busy
+    ? 'A build is running — it will still be here when it finishes.'
+    : live.length > 0
+      ? 'This build is still on screen. Accept it, discard it, or start a new thread.'
+      : undefined;
+
+  const newThread = useCallback(() => {
+    // In this order: the live work is retired into the thread it happened in,
+    // and only then does the current thread change under it.
+    retire();
+    threadStore.newThread(ProjectModel.instance?.id);
+  }, [retire, threadStore]);
+
+  const selectThread = useCallback(
+    (threadId: string) => threadStore.select(ProjectModel.instance?.id, threadId),
+    [threadStore]
+  );
 
   /**
    * BLD-003 D2 — which surface owns Accept / Review changes / Discard.
@@ -789,6 +957,17 @@ export function AiAuthoringPanel({ width = 'panel' }: AiAuthoringPanelProps = {}
             {/* The flag moves to the header, out of the turn list, where it
                 stops competing with the task. It is honest and it stays. */}
             <ExperimentalFlag />
+            {/* BLD-006. The slot BLD-005 deliberately left free — it took a
+                separate `runHeader` so the two would not fight over one node,
+                because they have opposite lifetimes. */}
+            <ThreadSwitcher
+              threads={threads.threads}
+              currentId={threads.currentId}
+              onSelect={selectThread}
+              onNew={newThread}
+              canStartNew={!busy}
+              {...(switchLockedReason ? { lockedReason: switchLockedReason } : {})}
+            />
             {/*
              * ⚠️ C5, and the reason every `HStack` in this header carries an
              * explicit `height`. `Stack` sets `height: 100%` on any row that does

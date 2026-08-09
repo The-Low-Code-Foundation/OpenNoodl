@@ -1,4 +1,5 @@
 import { installPlanSessionPersistence } from '@noodl-models/AiAssistant/authoring/installPlanSessionPersistence';
+import { installThreadPersistence } from '@noodl-models/AiAssistant/thread/installThreadPersistence';
 import { AppRegistry } from '@noodl-models/app_registry';
 import { installCodeAuthoringContext } from '@noodl-models/CodeAuthoringContext';
 import { installProjectDocs } from '@noodl-models/ProjectDocs';
@@ -214,6 +215,11 @@ export function installSidePanel({ isLesson }: SetupEditorOptions) {
   // whether or not the Build panel is mounted, so the thing that writes them to
   // disk cannot be installed by a mount.
   installPlanSessionPersistence();
+
+  // BLD-006: the conversation, beside the build. Same argument one level up —
+  // a thread accumulates turns whenever the panel is open, and the writer must
+  // outlive the mount that produced them.
+  installThreadPersistence();
 
   // FH-019: and once more. The code popout is constructed the first time
   // someone clicks a code port, so a mount-time subscription would mean the

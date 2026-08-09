@@ -6,6 +6,7 @@ import { createRoot } from 'react-dom/client';
 import './process-setup';
 
 import { EventDispatcher } from '../shared/utils/EventDispatcher';
+import { flushAiSidecars } from './src/models/AiAssistant/thread/installThreadPersistence';
 import { NodeLibrary } from './src/models/nodelibrary';
 import { flushPendingProjectSave, ProjectModel } from './src/models/projectmodel';
 
@@ -59,13 +60,19 @@ ipcRenderer.on('import-projectmetadata', (event, data) => {
 // Registered at module scope rather than inside `DOMContentLoaded` so a quit
 // during startup is handled too. Both are free when nothing is pending:
 // `flushPendingProjectSave()` returns immediately unless an edit is queued.
+// BLD-006: the AI sidecars ride the same handshake, and one of them has been
+// waiting for it. `PlanSessionSidecar.flush()` was written for the quit path in
+// AIB-003 slice 4 and never had a caller, so an unapplied build staged inside
+// its 750ms debounce was lost to ⌘Q — the same defect this handler exists to
+// fix, one directory over. `flushAiSidecars` drains both and never rejects.
 ipcRenderer.on('flush-project-save', () => {
   const reply = () => ipcRenderer.send('flush-project-save-done');
-  flushPendingProjectSave().then(reply, reply);
+  Promise.all([flushPendingProjectSave(), flushAiSidecars()]).then(reply, reply);
 });
 
 window.addEventListener('blur', () => {
   flushPendingProjectSave();
+  void flushAiSidecars();
 });
 
 function setupViewerIpc() {
