@@ -1,6 +1,11 @@
 # SIG-001 — The refused port says why
 
-**Status:** 📋 open · **Track SIG** · ⭐ **flagship**
+**Status:** ✅ **closed 2026-08-11** · **Track SIG** · ⭐ **flagship**
+
+> **Built and driven.** The refusal renders, states its category on its face, and
+> connects the wire the builder meant. Six defects were found by driving it that
+> no gate could have expressed — four of them in this task's own first build, and
+> two of them in the spec below. See the Register.
 
 > The editor already writes the sentence this user needed. It writes it into `p.message`, and seven
 > lines later deletes the row that would have shown it.
@@ -98,22 +103,66 @@ row, it is the absence this task exists to fix, with extra steps.
 
 ## Acceptance
 
-- [ ] Dragging a String output onto a Button, the signal inputs are **represented** in the popup —
-      not absent. Screenshotted, both themes.
-- [ ] The reason is legible **without hovering** and without waiting 1000ms.
-- [ ] Every text and glyph on a refused row measures ≥ 4.5:1 against the surface it actually paints
-      on, **in light mode**, on composited pixels. Table in the task's Register, not a claim.
-- [ ] Clicking the refusal connects to a value input instead, and the resulting wire is the one a
-      builder would have drawn by hand.
-- [ ] With a source whose type can reach **nothing** on the target, the popup says so and offers no
-      redirect.
-- [ ] A node with 40+ refused ports still shows its connectable ones without scrolling past a grey
-      wall. Driven on a real node, counted.
-- [ ] ⚠️ The copy does not assert that signals never carry values. Wire a Boolean output into a signal
-      input as a live check that the sentence shipped is still true.
+All driven on `Puppy test 3` → `/Pages/Admin Login`, over CDP, 2026-08-11.
+⚠️ **Button was the wrong node for the flagship** — it has no signal *inputs* at all, so a String
+dragged at it refuses only `Font Family` and `Icon Source`. The scenario the phase describes needs a
+**Text Input** (103 ports, four signal inputs: `Set`, `Clear`, `Focus`, `Blur`).
+
+- [x] Dragging a String output onto a node with signal inputs, the signal inputs are **represented** —
+      not absent. `4 signal inputs · a moment, not a value`, expanding to `Set`/`Clear`/`Focus`/`Blur`,
+      each with its lightning glyph. Screenshotted in both themes.
+- [x] The reason is legible **without hovering** and without waiting 1000ms — it is a row, not a
+      tooltip. ⚠️ The 1000ms `PopupLayer` tooltip turned out to be a **third** never-rendered half
+      (see Register #3) and is gone; its type-naming sentence moved into the port explainer.
+- [x] Every text and glyph on a refused row measures ≥ 4.5:1, **on composited pixels**, both themes.
+      Table below.
+- [x] Clicking the refusal connects to a value input instead: `usernameInput.onTextChanged ->
+      passwordInput.label`, which is the wire a builder would have drawn. ⚠️ It did **not**, in the
+      first build — Register #2.
+- [x] With a source that can reach nothing (a Button's `Click` at a `Text` node), the popup says
+      *"Nothing on this node takes a **signal**."* and offers no redirect. `actionable: false`.
+- [x] A node with 97 refused ports still shows its connectable ones without scrolling past a grey
+      wall: **1 summary row, 4 connectable rows**. ⚠️ It was **19 summary rows** before Register #4.
+- [x] ⚠️ The copy does not assert that signals never carry values, and a Boolean output into a signal
+      input is still `connectable: true` (`usernameInput.focusState` → `passwordInput.focus`, measured
+      live). A spec sweeps every string this phase can emit against the forbidden phrasings.
+
+### Contrast, composited pixels (`sharp`, sampled from CDP screenshots at dpr 2)
+
+Method: crop the element's rect, take the modal colour as the background and the pixel furthest from
+it in luminance as the glyph at full coverage. fg/bg printed with every ratio.
+
+| Element | Dark fg/bg | Ratio | Light fg/bg | Ratio |
+|---|---|---|---|---|
+| Offer sentence | `#eef2f6` / `#181d23` | **15.07** | `#18212b` / `#f8f9fb` | **15.44** |
+| Offer, bolded port name | `#eef2f6` / `#181d23` | **15.07** | `#18212b` / `#f8f9fb` | **15.44** |
+| Refused summary row | `#cbd3dc` / `#181d23` | **11.21** | `#2e3945` / `#f8f9fb` | **11.15** |
+| Refused summary, hovered | `#eef2f6` / `#212933` | **13.06** | `#18212b` / `#ecf0f4` | **14.20** |
+| Refused port row | `#cbd3dc` / `#181d23` | **11.21** | `#2e3945` / `#f8f9fb` | **11.15** |
+| Refused signal glyph | `#a6b0bb` / `#181d23` | **7.71** | `#4b5663` / `#f8f9fb` | **7.09** |
+| *(control)* ordinary enabled row | `#b0b9c2` / `#213349` | 6.46 | `#515c68` / `#d5e5f7` | 5.32 |
+
+**The refused row is more legible than an ordinary one** (11.15 vs 5.32 in light), because enabled
+rows carry `.listElementPort { opacity: 0.7 }` and refused rows opt out of it. That is the intended
+outcome of the phase's standing constraint, not an accident: the row this task made visible for the
+first time is the one row in the list that was never allowed to be dimmed.
+
+⚠️ **The first contrast pass measured the editor's title bar.** The QA harness had called
+`scrollIntoView` on the expanded group, pushing the offer out of the popup's scroll viewport, and a
+rect at `y ≈ 2` is not the element it claims to be — it returned `#fdb122`, which is the ⚠2 warning
+badge in the toolbar. Every rect is now clipped to the popup's own scroll box and *dropped* if it
+does not survive. See [[measure-the-element-you-claim-about]].
 
 ## Register
 
 | # | Finding | State |
 |---|---|---|
-| | | |
+| 1 | ⚠️ **The spec's own worked copy is the falsehood the spec forbids.** §2 offers *"4 signal inputs · signals carry no value"* as the summary wording; §"The copy cannot say" forbids exactly that, because `boolean → signal` is in the cast table. Shipped as **"a moment, not a value"**, and a spec now sweeps every string the module can emit against the forbidden phrasings. | ✅ copy corrected, guarded |
+| 2 | 🔴 **The offer promised a wire it did not draw.** Built as specced — connect when there is exactly one candidate, scroll otherwise — but the *copy* said "connect it to **Label** instead" in both branches. On a Text Input (90-odd candidates) clicking it scrolled and drew nothing. `isConfidentRedirect` now decides the verb **and** the behaviour, so they cannot disagree: confident (the node's declared primary port, or a unique exact-type match) connects and says "connect it to X"; otherwise it says "pick a value input below" and is inert. | ✅ fixed, 5 specs |
+| 3 | ⚠️ **A third never-rendered half.** `PortItem` opened a `PopupLayer` tooltip after a 1000ms hover on `port.message` — and `message` is only ever set on a refused port, which this task is the first thing to render. So the tooltip had fired exactly as often as the disabled row style: never. Reviving it as written would have put two floating boxes under one pointer; folded into the port explainer instead. | ✅ folded in |
+| 4 | 🔴 **The grey wall came back as summary rows.** One refused line per group is right for a mixed group and catastrophic when every group is refused: a **signal** output at a Text Input produced **19 identical** *"N value inputs · a signal is a moment, not a value"* rows above the 4 ports that work. Groups with nothing connectable now fold into **one** block (`RefusedPorts`), which is also where the group headings go. 19 → 1. | ✅ fixed, driven |
+| 5 | 🔴 **`groupPriority` is a display order, not a ranking.** Specced as "exact type, then group priority", the redirect for a String at a Button answered **Variant** — `string` in `General` (priority 0) beating `Label`, `string` in `Label` (priority 6). Correct by the rule and wrong to every human. The library already records which port a node is *about*: `usePortAsLabel` (35 node types: `label`, `text`, `collectionName`, `url`, `expression`…). Added as a rank key **below** exact-type, so it cannot hand a `color` output to a label. | ✅ fixed, 3 specs |
+| 6 | ⚠️ **The offer named a port identifier the builder has never seen.** A Text Input's string output is *named* `onTextChanged` and *displayed* as **Text**; the offer read "onTextChanged is already live" about a row the builder had just clicked labelled "Text". Now uses `displayName`. | ✅ fixed |
+| 7 | ⚠️ **Button has no signal inputs**, so it cannot host this task's own worked example. Recorded because the phase README, TASKS and this file all use "drop on a Button" as the canonical scenario, and a session that drives it will measure a feature that is working and conclude it is not. | 📋 recorded |
+| 8 | ⚠️ **`getConnectionStatus` had to gain a reason code.** The popup cannot recover the *category* of a refusal from an English sentence. `reason` is a plain `string` on the model (a view's vocabulary has no business in a model) and is narrowed at the popup boundary by `asRefusalReason`, so `WorkflowGraphModel`'s three refusals of its own render as "refused, and I am not going to guess why" rather than as a confident wrong category. | ✅ built |
+| 9 | ⚠️ **The explicit return type on `getConnectionStatus` is load-bearing.** Without it TypeScript infers the union of its literals, and `WorkflowGraphModel` — which overrides it — stopped being assignable to its own base class the moment either side grew a field. It did, immediately. | ✅ built |

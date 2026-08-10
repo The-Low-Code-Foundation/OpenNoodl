@@ -1,6 +1,10 @@
 # SIG-002 — The value is already live
 
-**Status:** 📋 open · **Track SIG**
+**Status:** ✅ **closed 2026-08-11** · **Track SIG**
+
+> Built with SIG-004, as its §"What is on disk" required: they share the `if (d)` guard and the
+> vocabulary. ⚠️ Its central premise — *answer the empty search* — turned out to be wrong about when
+> the search is empty. See Register #1.
 
 > *"He was worried and confused when he wanted to set the button label and he didn't see a 'Set' signal
 > input."*
@@ -78,17 +82,25 @@ trigger needed"*, and stops looking for the `Set`. The whole task is that they s
 
 ## Acceptance
 
-- [ ] Hovering any value input in the connection popup states that it is live, **including on a port
-      the catalog does not document.**
-- [ ] Searching `set` on a node with no `Set` port returns copy that answers the question, not an empty
-      list. Driven on Button and on Text.
-- [ ] Searching a nonsense term returns the ordinary empty state, with no advice.
-- [ ] The copy names Variable's `Set` and Run On Value Change as the way to control timing, and both
-      names match what the editor actually shows. ⚠️ Re-check after SIG-003.
-- [ ] The library gains **no** new `Set` ports as a result of this task.
+- [x] Hovering any value input states that it is live, including on an undocumented port — the `if (d)`
+      guard is inverted (SIG-004 §2). Driven on `Variant` and `Label`; both showed
+      *"**Value — live.** Updates whenever the source changes. No trigger needed."* above the catalog
+      prose.
+- [x] Searching `set` on a Button returns the answer. ⚠️ **Not because the list was empty** — see
+      Register #1.
+- [x] Searching `xyzzy` returns the ordinary empty state (*"Can't find any inputs"*), no advice,
+      `isAnswer: false`.
+- [x] The copy names **Variable**'s `Set` and **Run On Value Change**. ⚠️ Re-check after SIG-003, which
+      may rename the group — the string lives in `portCopy.ts`, one place.
+- [x] The library gains no new `Set` ports: `git status` on `packages/noodl-runtime/src/nodes` and
+      `packages/noodl-viewer-react/src/nodes` is clean.
 
 ## Register
 
 | # | Finding | State |
 |---|---|---|
-| | | |
+| 1 | 🔴 **"Answer the empty search" is the wrong trigger, and a Button proves it.** §2 specifies the copy for when the search *matches nothing*. Driven, searching `set` on a Button returned **three** ports — `Box Shadow Offset X`, `Offset Y` and a sibling: **`set` is a substring of `offset`**. So the builder from the complaint types the exact word, gets three shadow-offset ports, and is *further* from the answer than an empty list would have left them, because the list now looks like it worked. The condition is not "nothing matched", it is **"there is no `Set` here"** — no *signal* input whose name contains the word. The answer now renders beside whatever the search returned. | ✅ fixed, 4 specs |
+| 2 | ⚠️ **A value port literally named `Set` must not silence the answer.** The check is on signal inputs only: a value input called `Set` is not the trigger they are looking for, and pointing at it would teach the wrong thing. | ✅ guarded |
+| 3 | ⚠️ **The intent list fires on prefixes from three characters**, so `trig` and `updat` answer mid-type. Two characters do not — `se` is a prefix of half the library — and a longer word that merely *starts* with an intent term (`settings`, `runtime`) does not. | ✅ built |
+| 4 | 📋 **§4 (say it once on the wire too) not done.** It is marked a candidate, not a requirement, and it belongs to whoever owns onboarding: a toast on every connection is intolerable by the tenth wire, and "once per project" needs a first-run store this task does not own. | 📋 deferred, as scoped |
+| 5 | ⚠️ **Run On Value Change is named but not promoted.** §3 says "at minimum, name it", which is done. Whether it also moves in the ordering is SIG-003's call, and Text Input still does not list it in `groupPriority` — so it still sorts last on the node that most needs it. | 📋 SIG-003 |

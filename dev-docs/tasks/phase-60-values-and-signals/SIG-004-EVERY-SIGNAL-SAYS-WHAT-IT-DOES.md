@@ -1,6 +1,9 @@
 # SIG-004 — Every signal port says what it does
 
-**Status:** 📋 open · **Track SIG**
+**Status:** ✅ **closed 2026-08-11** · **Track SIG**
+
+> One line at the render seam, for the whole library, and the catalog is byte-identical. The
+> correction in §"The correction" held: **no node definition file was edited.**
 
 > *"Write something in the port description that appears next to the port picker, clarifying on every
 > signal port that it doesn't send a value but runs another node, and can be used in conjunction with
@@ -104,19 +107,26 @@ sentence that is the same on all of them.**
 
 ## Acceptance
 
-- [ ] Hovering **any** signal port in the connection popup shows the type sentence — including on a
-      port with no catalog entry. Driven on a documented port and an undocumented one, both named.
-- [ ] Hovering any value port shows the live sentence (shared with SIG-002).
-- [ ] `git diff` touches **no** file under `packages/noodl-runtime/src/nodes/` or
-      `packages/noodl-viewer-react/src/nodes/`.
-- [ ] `node-catalog-enriched.json` is byte-identical before and after. This is the measurement that
-      the token bill did not move.
-- [ ] The sentence does not claim signals never carry a value.
-- [ ] The wording matches SIG-001's and SIG-002's copy word for word where they overlap. One
-      vocabulary, three surfaces.
+- [x] Hovering a signal port shows the type sentence. Driven on Text Input's `Text Changed`
+      (documented — the sentence renders above *"Fires whenever the Text output changes"*) and on the
+      refused `Set`/`Clear`/`Focus`/`Blur` rows.
+- [x] Hovering a value port shows the live sentence. Driven on Button's `Variant` and `Label`.
+- [x] `git status` touches **no** file under `packages/noodl-runtime/src/nodes/` or
+      `packages/noodl-viewer-react/src/nodes/` — clean.
+- [x] `node-catalog-enriched.json` untouched (`packages/noodl-types` clean in `git status`). The token
+      bill did not move.
+- [x] The sentence does not claim signals never carry a value, and a spec sweeps every string in the
+      module against the forbidden phrasings.
+- [x] One vocabulary: all three surfaces read their strings from `portCopy.ts`, and the signal
+      sentence is asserted to be the **same object** for inputs and outputs, so a future edit cannot
+      fork it by touching one branch.
 
 ## Register
 
 | # | Finding | State |
 |---|---|---|
-| | | |
+| 1 | ⚠️ **The value sentence had to become direction-aware; the signal sentence must not.** *"Updates whenever the source changes"* is the fact a builder needs on an **input** and is simply false read off an output, which has no source. The signal sentence is deliberately one object for both directions — "the node it points at" is true either way, and a second wording would be the second vocabulary this task exists to prevent. | ✅ built, 2 specs |
+| 2 | ⚠️ **`*` gets no sentence.** A wildcard port is neither a moment nor a standing state, and inventing a third sentence for it is how one vocabulary becomes three. `portTypeSentence('*')` returns `undefined` and the explainer falls back to the port's own prose. | ✅ built |
+| 3 | ⚠️ **Inverting `if (d)` changes how often the explainer appears, not just what it says.** It now shows on nearly every port rather than on the ~65% the catalog documents. That is the point of the task, but it is also why SIG-001's revived 1000ms tooltip had to be folded into it rather than left beside it — two floating boxes under one pointer. | ✅ built |
+| 4 | ✅ **§4's "the glyph gets the same words" needs no second surface.** The lightning icon sits *on* the row whose explainer now carries the signal sentence, so hovering the glyph explains the glyph. A `title` on the icon would have been the second wording the section warns against. | ✅ by construction |
+| 5 | ⚠️ **`NodeLibrary.nameForPortType`'s signature was narrower than its body.** It has always guarded `if (!type) return;` and always accepted a port declaration whose `name` is optional, while the type said `string \| { name: string }` — so every call site holding a real `PortLike` had to cast. Widened to match the body; the return type (`string \| undefined`) is unchanged, since that is what it already inferred. | ✅ fixed |
