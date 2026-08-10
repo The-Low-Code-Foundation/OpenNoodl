@@ -40,6 +40,31 @@ box — its header is inside the scroll area.
 ✅ = built **and on `cline-dev`** (BLD-007 and BLD-012 merged 2026-08-09; **BLD-001 built, driven and
 closed 2026-08-09** — `a93720b3`, `02c3072c`, `458e189f`).
 
+**Session 14 (2026-08-10) — BLD-011 built and driven. 12 of 17 built, 10 driven.** Track B's frame
+exists: the composer is a context builder, a turn carries references, and each remaining Track B task
+adds a `kind` plus a resolver and touches nothing else. Driven for **$0.029799**, one call.
+
+🔴 **The finding worth more than the task: two of the three defects the drive found were invisible to
+every gate, and one of them broke nothing.** The picker's list opened **113.8px wide** — the width of
+its own button, because `left/right: 0` resolved against a wrapper that shrink-wrapped inside an
+`HStack` — so the one control whose entire job is *letting you find a component by name* ellipsized
+`Library/Layout/Breadcrumbs` to `Library/L…`. It threw nothing, rendered fine, and passed
+typecheck, 103 jest suites and every contrast measurement. **A control that works and cannot be read
+is a defect no green check has a way to express**, and it is the second time this phase a right
+mechanism has been measured in the wrong state (BLD-004's collision painted only in a frame nobody
+screenshotted).
+
+⚠️ **And the accent trap has now been seen three times in three tasks.** `Ghost` at **4.33:1 in
+light** — C7's row, hardened by BLD-008's R12, and it caught this task's own primary affordance.
+**It was fixed by not using `Ghost`**, not by a local override: five call-site overrides of one token
+defect is five copies that can disagree, and the design-system row is deliberately still open.
+
+⚠️ **The billed call proved transport and not comprehension**, and the reason is worth carrying:
+the probe was a naming rule in an attached `CONVENTIONS.md`, and the model correctly **reused** an
+existing component rather than creating one, so the rule never applied. **A comprehension test must
+be answerable by the route the request will actually take.** BLD-012 earned this with a blue square;
+half of it was relearned here.
+
 **Session 11 (2026-08-09) — BLD-008 built, all six acceptance criteria pinned as specs, none
 driven.** **10 of 16 built, 8 driven.** The docs pass is inverted: `startProjectReview` now returns
 with **questions on screen and nothing drafted**, and `run.draft()` is a second call the card makes
@@ -197,7 +222,7 @@ lines and they are the vocabulary the rest of the track speaks.
 
 | Task | File | One line | Rests on |
 |---|---|---|---|
-| BLD-011 ⭐ | [BLD-011-TURN-CARRIES-REFERENCES.md](BLD-011-TURN-CARRIES-REFERENCES.md) | the composer becomes a context builder; one `Reference` model | new |
+| BLD-011 ⭐ ✅ | [BLD-011-TURN-CARRIES-REFERENCES.md](BLD-011-TURN-CARRIES-REFERENCES.md) | the composer becomes a context builder; one `Reference` model | **driven $0.0298; 4 of 6 criteria met, 2 partly — staleness needs BLD-014, `.jsonl` needs a 2nd send. F8 built here.** |
 | BLD-012 ⭐ ✅ | [BLD-012-MULTIMODAL-MESSAGES.md](BLD-012-MULTIMODAL-MESSAGES.md) | `AiMessage.content` widens to blocks; declared degradation | adapters exist |
 | BLD-013 | [BLD-013-ATTACHMENTS.md](BLD-013-ATTACHMENTS.md) | drop/paste/pick markdown, text, images; PDF behind a decision | one new dep |
 | BLD-014 ⭐ | [BLD-014-LOOK-AT-IT.md](BLD-014-LOOK-AT-IT.md) | two capture paths: the live webview, and CDP for any viewport or URL | harness built |
