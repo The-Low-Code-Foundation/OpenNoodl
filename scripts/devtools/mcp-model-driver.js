@@ -64,9 +64,10 @@ const MCP_BIN = path.join(REPO, 'packages/noodl-mcp/bin/noodl-mcp.js');
  * backend needs that line to explain itself.
  */
 class McpStdioClient {
-  constructor({ projectDir, allowWrites, onStderr }) {
+  constructor({ projectDir, allowWrites, allTools, onStderr }) {
     this.projectDir = projectDir;
     this.allowWrites = allowWrites;
+    this.allTools = allTools;
     this.onStderr = onStderr || (() => {});
     this.nextId = 1;
     this.pending = new Map();
@@ -80,6 +81,9 @@ class McpStdioClient {
   async start() {
     const args = [MCP_BIN, this.projectDir];
     if (this.allowWrites) args.push('--allow-writes');
+    // AWP-006's control run: the same brief on the undeferred surface, so a
+    // failure can be attributed to disclosure or cleared of it.
+    if (this.allTools) args.push('--all-tools');
     this.child = spawn(process.execPath, args, { stdio: ['pipe', 'pipe', 'pipe'] });
 
     this.exited = new Promise((resolve) => {
@@ -340,7 +344,8 @@ function parseArgs(argv) {
     priceOut: 0,
     listTools: false,
     toolsAllow: null,
-    readOnly: false
+    readOnly: false,
+    allTools: false
   };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
@@ -365,6 +370,7 @@ function parseArgs(argv) {
       case '--tools': out.toolsAllow = next().split(',').map((s) => s.trim()).filter(Boolean); break;
       case '--list-tools': out.listTools = true; break;
       case '--read-only': out.readOnly = true; break;
+      case '--all-tools': out.allTools = true; break;
       case '--help':
       case '-h': out.help = true; break;
       default:
@@ -390,6 +396,7 @@ Drives an OpenAI-compatible chat model through a noodl-mcp stdio server.
   --price-in / --price-out   USD per million tokens, for the cost line
   --list-tools               print the served tool surface and exit
   --read-only                serve without --allow-writes
+  --all-tools                serve the undeferred surface (AWP-006's control run)
 `;
 
 async function main() {
@@ -411,6 +418,7 @@ async function main() {
   const client = new McpStdioClient({
     projectDir: opts.project,
     allowWrites: !opts.readOnly,
+    allTools: opts.allTools,
     onStderr: (text) => {
       process.stderr.write(text);
       record({ kind: 'server-stderr', text: text.trim() });
