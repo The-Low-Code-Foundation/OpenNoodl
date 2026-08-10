@@ -488,7 +488,24 @@ export class NodeGraphModel extends Model {
     }
   }
 
-  getConnectionStatus(args) {
+  /**
+   * Whether a wire may be drawn, and — since SIG-001 — *what kind* of refusal it
+   * is when it may not.
+   *
+   * The explicit return type is load-bearing rather than decorative: without it
+   * TypeScript infers the union of the three literal objects below, and
+   * `WorkflowGraphModel`, which overrides this and returns refusals of its own,
+   * stops being assignable to its own base class the moment either side grows a
+   * field the other lacks. It did, immediately.
+   *
+   * `reason` is a plain `string` here on purpose. The narrow union lives in the
+   * connection popup (`portCopy.ts`), which is the only reader that has to
+   * decide what to *say* about each kind; a model has no business importing a
+   * view's vocabulary, and the popup normalises anything it does not recognise
+   * to `'other'` — which it renders as "refused, and I am not going to guess
+   * why". That is the honest answer for a subclass this file has never seen.
+   */
+  getConnectionStatus(args): { connectable: boolean; reason?: string; message?: string } {
     const _this = this;
     const targetNode = args.targetNode;
     const targetPort = targetNode.getPort(args.targetPort);
@@ -502,6 +519,13 @@ export class NodeGraphModel extends Model {
       if (!typesCompatible) {
         return {
           connectable: false,
+          // SIG-001: the *category* of the refusal, alongside the prose. The
+          // connection popup used to throw both away — it dropped every refused
+          // port from the list one loop after writing this message — and now
+          // renders the row, which means it has to say which kind of refusal it
+          // was in a sentence a beginner can act on. It cannot recover that from
+          // the string without parsing English.
+          reason: 'type-mismatch',
           message:
             'Type mismatch a source port of type <strong>' +
             NodeLibrary.nameForPortType(sourcePort.type) +
@@ -526,6 +550,7 @@ export class NodeGraphModel extends Model {
       if (isDuplicate) {
         return {
           connectable: false,
+          reason: 'duplicate',
           message: 'These ports are already connected in this direction'
         };
       }

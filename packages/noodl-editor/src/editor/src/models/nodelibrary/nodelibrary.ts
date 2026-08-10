@@ -44,8 +44,17 @@ export class NodeLibrary extends Model {
     return this;
   }
 
-  /** Returns the name for a port type */
-  static nameForPortType(type: string | { name: string }) {
+  /**
+   * Returns the name for a port type.
+   *
+   * SIG-001 widened the parameter to match what the body has always done: the
+   * `if (!type) return;` guard handles `null`/`undefined`, and a port
+   * declaration's `type` is `PortTypeLike` — an object whose `name` is optional.
+   * The signature claimed neither, so every call site holding a real port
+   * declaration had to cast. The return type is unchanged (`string | undefined`
+   * was already what it inferred).
+   */
+  static nameForPortType(type: string | { name?: string } | null | undefined): string | undefined {
     if (!type) return;
     return typeof type === 'string' ? type : type.name;
   }

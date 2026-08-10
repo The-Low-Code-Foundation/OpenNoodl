@@ -39,6 +39,17 @@
     // so the edge cases are graded here instead of only by hovering the right
     // port at the right window width.
     "src/editor/src/views/ConnectionPopup/docsPopupPlacement.ts",
+    // SIG-001/002/004: three more of the same shape, all in the same folder. The
+    // connection popup's *sentences* (`portCopy`), the ranking that picks the
+    // wire a builder meant when the editor refused theirs (`refusalPlan`), and
+    // the search term that means "where is the Set?" (`searchIntent`). None of
+    // the three imports anything — `refusalPlan` deliberately takes the port
+    // rows and the already-resolved type names as data rather than reaching for
+    // `NodeLibrary` — which is what lets the copy itself be graded here,
+    // including the one clause phase 60 forbids.
+    "src/editor/src/views/ConnectionPopup/portCopy.ts",
+    "src/editor/src/views/ConnectionPopup/refusalPlan.ts",
+    "src/editor/src/views/ConnectionPopup/searchIntent.ts",
     "src/editor/src/models/nodelibrary/cloud-node-library.json",
     "src/editor/src/utils/import-engine/legacy",
     "src/editor/src/validation",
