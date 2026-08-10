@@ -1,4 +1,4 @@
-# Next-session prompt — phase 57, after session 16
+# Next-session prompt — phase 57, after session 18
 
 Paste everything below into a fresh session.
 
@@ -7,7 +7,7 @@ Paste everything below into a fresh session.
 You are picking up **phase 57 (BLD — the Build panel as a conversation)** on `cline-dev` in
 `/Users/richardosborne/vscode_projects/OpenNoodl`.
 
-Read `dev-docs/tasks/phase-57-build-conversation/HANDOVER-SESSION-16.md` first, then `TASKS.md`.
+Read `dev-docs/tasks/phase-57-build-conversation/HANDOVER-SESSION-18.md` first, then `TASKS.md`.
 
 NB: there are several parallel sessions fixing minor bugs who may take the editor from time to time.
 Just set a timer for 10 mins and wait to check when it frees up. Don't complain about the other
@@ -16,7 +16,7 @@ sessions and their commits, just be patient and get the job done. We don't need 
 ## 🔴 Do these checks before anything else
 
 1. **`git log` *and* `git status` — every session since 7 has run beside a sibling.** An inherited,
-   uncommitted set has now survived **nine** sessions and is **not yours**: `dev-docs/tasks/phase-17-noodl-learn/`,
+   uncommitted set has now survived **eleven** sessions and is **not yours**: `dev-docs/tasks/phase-17-noodl-learn/`,
    both files under `packages/noodl-core-ui/src/components/code-editor/`, the four `Launcher/` files,
    `hello-world.template.ts`, `ProjectsPage.tsx`, `ExtractToComponent.ts`, `EditorClipboard.ts`,
    `useComponentActions.ts`, three files under `packages/noodl-editor/tests/`, and four untracked
@@ -54,48 +54,74 @@ the call you were given permission for.
 
 ## Where the phase is — recount, do not increment
 
-**13 of 17 fully built, plus BLD-014's webview half.** ⚠️ The running total was off by one for
-several sessions because each one added to the last one's number. **Count it off the tables in
-`TASKS.md`.** Track A is 9 of 11; Track B is 4 of 6 plus a half.
-
-**All three open decisions are now answered and recorded in their task files** — Q5 (PDF: a
-capability gate, no library), Q6 (a capture is a one-click offer, not automatic) and **F22 (the
-shared render substrate: a no-build package, `@nodegx/render-measure`)**.
+**15 of 17 fully built. Every *feature* in this phase is built.** ⚠️ The running total was off by
+one for several sessions because each one added to the last one's number. **Count it off the tables
+in `TASKS.md`.** Track A is 10 of 11 (only BLD-010); Track B is 5 of 6 (BLD-015, deferred).
 
 ⚠️ **Read `packages/nodegx-render-measure/src/index.js`'s header before touching it.** It records
-the two rejected F22 options and why, and the one rule the package exists to hold: **no `require`
-in it, ever.** A single `require('path')` to build one file path would not fail a typecheck, would
-not change a number, and would silently put Node in the renderer bundle. There is a spec that bites
-on the source text and a second that evaluates it with `require` out of scope.
+the two rejected F22 options and the one rule the package exists to hold: **no `require` in it,
+ever.** A single `require('path')` would not fail a typecheck, would not change a number, and would
+silently put Node in the renderer bundle. Two specs bite on it.
 
 ## What is actually left
 
 | | What | Notes |
 |---|---|---|
-| **BLD-015** | web search | The cheapest remaining feature, and the same shape one more time: a kind, a resolver, a glyph. Needs a backend decision (Q4). |
-| **BLD-009** | expanded mode | A real feature, not a bolt-on: the same thread as a document, two-pane with the live preview. Closes **D10**. `BuildThread` already takes a `ThreadWidth` and has an `is-expanded` variant, so the host is the work. |
-| **BLD-010** | acceptance pass | Not a task so much as a sweep, and **its debt list is now nine** — see below. |
-| **BLD-014** | the CDP half | ✅ **Unblocked — F22 was resolved 2026-08-10.** `@nodegx/render-measure` is a no-build package with no `require` in it; the editor already imports it for the webview producer. What is left is the *transport*: a `Page.navigate` entry point for an arbitrary URL and the viewport vocabulary (`desktop,phone` or `390x844`), which `DEFAULT_VIEWPORTS` already exports. LAS-005 estimated ~50 lines plus live QA once decided. |
-| **BLD-012** | 🟡 two legs | OpenAI's image leg is stub-only; the panel chip claim is about a *message* carrying an image, which BLD-011's composer chip does not close. |
+| **BLD-010** | acceptance pass | The phase's exit test, and **its debt list is now fourteen** — see below. One of the fourteen is a *defect in shipped behaviour* rather than an unverified criterion; do that one first. |
+| **BLD-015** | web search | 🔴 **Deferred, not open.** Richard was asked to choose Tavily or Brave in session 17 and chose neither; it needs him to sign up and pay for an account. **Do not re-ask it as an open question every session.** |
 
-**Suggested order: BLD-014's CDP half, then BLD-015, then BLD-009, then BLD-010.** The CDP half
-jumped the queue because F22 no longer blocks it and the measurement side is already proven inside
-the editor — only the transport is missing.
+### 🔴 Start with R6 — AIB-003's saved plan is never restored
 
-**Original ordering rationale:** BLD-009 is the last unbuilt *feature*; BLD-010 should run last
-because every task before it adds to what it has to sweep. ✅ BLD-016 closed in session 16.
+Found in session 18 while driving BLD-009, and **confirmed three ways** (statically, empirically
+with a valid on-disk snapshot, and against the shipped parser so the fixture is ruled out):
 
-### BLD-010's list is eleven
+`ProjectAuthoringView` has exactly one mount site, gated on `turn.id.startsWith('plan-')`. A plan
+turn exists only when `planSession.plan` is non-null. The effect that reads
+`.nodegx/plan/session.json` is **inside that view**. *The only thing that can restore a plan is a
+component that mounts only once a plan has been restored.*
 
-BLD-004's **R4** (Ollama open-weight leg, inferred not driven) and **R5** (OpenAI-compatible
-`reasoning_content`, deliberately unwired); BLD-006's **R12**; BLD-017's **F2** and **F4**; BLD-008's
-drafting turns + restart-resume; BLD-011's **R9** (a comprehension probe the request's actual route
-can answer); from session 15 — **BLD-013's drag-and-drop and file-picker paths** (paste was
-driven end to end, the drop handlers were not) and **BLD-014's on-screen staleness**; and new from
-session 16 — **BLD-016's `get_component` consequence** (the mechanism is built and specced; the
-criterion says to compare tool calls before and after on a fixture run, which costs one billed call)
-and **BLD-016's `collection` leg** (built, never driven — `ai-test` has no backend, so the group
-correctly never rendered).
+It is **BLD-001's B6 one instance later** — B6 hoisted the AIX-012 *launcher* handover into
+`adoptScopePlan`, and left the sidecar restore (and the `docs/decisions/000-initial-scope.md`
+recovery offer beside it) behind in the same effect.
+
+⚠️ **Read BLD-009's R6 section before touching it.** Hoisting the restore is mechanical, but the
+other half of that effect renders an *offer*, and **fixing half makes the other half permanently
+dead rather than conditionally dead** — the panel's `consultSavedBuild` would answer first every
+time. Deciding where a second offer lives (beside BLD-009's own, in the one `notice` slot) is the
+actual work.
+
+### BLD-010's list is fourteen
+
+BLD-004's **R4** and **R5**; BLD-006's **R12**; BLD-017's **F2** and **F4**; BLD-008's drafting turns
++ restart-resume; BLD-011's **R9**; BLD-013's drag-and-drop and file-picker paths; BLD-014's
+on-screen staleness and its *"agent names a responsive defect"* criterion; BLD-016's `get_component`
+consequence and its `collection` leg; and new from session 18 — **BLD-009's live-candidate Accept
+check** (the mechanism is verified — the expanded document is not one of `decisionOwner`'s candidate
+ids, and `AuthoringCandidatePane` has zero controls by grep — but the *state* needs a billed run)
+and **R6 above**.
+
+## 🔴 Three rules session 18 paid for
+
+> **A sweep that does not move the element is a green result about nothing.**
+
+The first width sweep reported 0 overflow at all seven widths — and the thread was **364px at every
+one of them**, because `style.width` went on an element that does not size the panel. It is a **CSS
+custom property on the `FrameDivider` root** (`--frame-divider-<id>-container-1-width`). **Print the
+achieved size beside every swept value.** ⚠️ And `removeProperty` on that variable does not restore
+it — the FrameDivider is its only writer, so the panel collapses to 24px and the next measurement
+looks like a catastrophic layout defect. Set it back to a number.
+
+> ⚠️ **A contrast probe must start at the element itself, not its parent.**
+
+A control paints its own ground; walking up from the parent reads the box *behind* the button. Cost:
+the dismiss control read 7.10 light when it is **6.54**. Fifth of this family in four sessions.
+
+> ⚠️ **`flex-wrap` wraps a line before it shrinks the items on it.**
+
+A `flex: 1 1 auto` paragraph with long content claims the whole line and pushes a 14px sibling icon
+onto one of its own — `min-width: 0` does not help, because shrinking happens only *within* a line
+already formed. Cost 113px for a one-line offer; grouping icon and text into one flex item made it
+91px.
 
 ## 🔴 Two rules session 16 paid for
 
@@ -201,22 +227,20 @@ What session 15 adds:
 - **Measure disabled and enabled separately.** `Look at it` reads 3.17:1 disabled (WCAG-exempt) and
   6.66:1 enabled; reporting the first without the second looks like a failure that is not one.
 
-## 🔴 The `test:ci` baseline is 6 *plus an order-dependent BEN-001 trio*
+## 🔴 The `test:ci` baseline is 6, and the BEN-001 cluster is SIX, not three
 
-Session 15 hit **9 failures at seed 82196** and had to rule itself out, because it had just changed a
-module the bench imports. Re-running **the same commit at seed 97132 gave 6** — the documented set.
+The documented six — **AI model registry ×2, AIX-006 style vocabulary ×4** — appear at every seed.
+On top of them sits an **order-dependent BEN-001 cluster** that appears at some seeds and not
+others. Session 17 established the cluster is **six specs, not the "trio" earlier handovers named**:
+three in *"the component interface, as the bench reads it"* and three in *"the harness export"*, both
+reading the same fixture and all failing with the same signature (the component comes back with no
+ports at all). Which of them you see depends on how many of those describes ran after whatever
+poisons `ProjectModel`.
 
-```
-BEN-001 the component interface, as the bench reads it reads declared inputs off the plug…
-BEN-001 …degrades to untyped rather than guessing, for an input wired to nothing
-BEN-001 …gives a logic-only component an interface too
-```
+**So: 6 is the floor, 9 and 12 are both reachable, and neither is automatically your fault.**
+Session 18 saw **9 at seed 82776** — the six plus the *"harness export"* three, matched by name.
 
-They fail with `Expected $.length = 0 to equal 2` — the fixture component came back with **no ports
-at all**, which is a spec-order effect on `ProjectModel`, not a capability change. ⚠️ Earlier
-handovers recorded *"BEN-001 ×3 did not appear at any of the three seeds"*, which is now falsified
-rather than confirmed: they appear at some seeds and not others.
-
-**So the rule is: 6 is the floor, and a run showing 9 is not automatically your fault.** Re-run at a
-different seed before investigating — and if the trio is reproducible across seeds on your branch and
-absent on the previous commit, *then* it is yours.
+**The rule: match the failures BY NAME, then re-run at a different seed before investigating.** If a
+cluster is reproducible across seeds on your branch and absent on the previous commit, *then* it is
+yours. ⚠️ **Do not diff the spec count** — it moved 2596 → 2632 purely because a sibling's
+*uncommitted* Jasmine specs are wired into two `index.ts` barrels.

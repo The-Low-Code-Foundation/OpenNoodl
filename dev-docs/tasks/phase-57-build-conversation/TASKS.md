@@ -31,7 +31,7 @@ box — its header is inside the scroll area.
 | BLD-006 ✅ | [BLD-006-THREADS-PERSIST.md](BLD-006-THREADS-PERSIST.md) | threads survive accept, navigation and restart; a switcher | **D5 ✅** |
 | BLD-007 ⭐ ✅ | [BLD-007-DOCS-ARE-OPEN.md](BLD-007-DOCS-ARE-OPEN.md) | front-matter `inject`; the one-value enum becomes a discovered list | **D9 ✅** |
 | BLD-008 ⭐ ✅ | [BLD-008-DOCS-INTERVIEW.md](BLD-008-DOCS-INTERVIEW.md) | the agent asks before it drafts; TODO count stops being a feature | **D8 closed — driven $0.0588, 3 defects fixed (R11–R13); drafting turns + restart-resume still specs** |
-| BLD-009 | [BLD-009-EXPANDED-MODE.md](BLD-009-EXPANDED-MODE.md) | the same thread as a document, two-pane with the live preview | D10 |
+| BLD-009 ✅ | [BLD-009-EXPANDED-MODE.md](BLD-009-EXPANDED-MODE.md) | the same thread as a document, two-pane with the live preview | **D10 ✅ — driven, no billed call; R1–R5 fixed, R6 filed** |
 | BLD-017 ⭐ ✅ | [BLD-017-MOCKUP-FIDELITY.md](BLD-017-MOCKUP-FIDELITY.md) | the panel does not look like the mockup it was approved from | **F1–F6 closed, driven; F7 → design system, F8 → BLD-011** |
 | BLD-010 | [BLD-010-ACCEPTANCE-PASS.md](BLD-010-ACCEPTANCE-PASS.md) | drive every state live, both widths, both themes, and measure | — |
 
@@ -39,6 +39,38 @@ box — its header is inside the scroll area.
 
 ✅ = built **and on `cline-dev`** (BLD-007 and BLD-012 merged 2026-08-09; **BLD-001 built, driven and
 closed 2026-08-09** — `a93720b3`, `02c3072c`, `458e189f`).
+
+**Session 18 (2026-08-10) — BLD-009 built and driven, no billed call. 15 of 17 fully built.**
+Counted off the tables below, not incremented: **Track A is 10 of 11** (only BLD-010, the sweep,
+is left), **Track B is 5 of 6** (BLD-015, deferred). **Every feature in this phase is now built.**
+
+🔴 **The design decision that was the task.** The obvious build — mount `AiAuthoringPanel` a second
+time inside the document — satisfies "one component, two hosts" and *breaks the task*: two mounts
+means two `AuthoringSession` refs, two subscriptions and two composers, which is precisely the
+doubled activity feed the task file warns about, and it makes *"expand mid-run, nothing restarts"*
+**unsatisfiable rather than merely unbuilt.** The panel is therefore mounted **once, ever**:
+`SidePanel` already keeps every visited panel alive behind `display: none`, so the expanded document
+is a **shell** that publishes an empty box and the panel paints into it with `createPortal`.
+Expanding changes where the component renders, not whether it exists — and the acceptance criterion
+becomes true by construction rather than by care. Expanded-ness is never stored either: it is
+`CurrentDocumentId`, read through `threadHost()` on the subscription `decisionOwner` already had.
+
+🔴 **The wide workspace was narrower than the panel it replaced.** A document sits *beside* the
+sidebar (BLD-003 states this), so on a 1368px window the rail kept 452px and the candidate pane got
+**396px** — less than the 400px panel the whole task exists to escape. **A feature can be built
+exactly as specified and not deliver its own premise.** Expanding now stands the rail down through a
+new `layout.hideIfShown()`, and 🔴 **the reveal is keyed on leaving the host, not on the Collapse
+button** — because Accept and Review changes both leave by other doors, and hung off the button they
+would have left the sidebar hidden *and* the document gone, with the thread alive and on screen
+nowhere.
+
+🔴 **And a defect that is not BLD-009's: AIB-003's saved plan is never restored.** The effect that
+reads `.nodegx/plan/session.json` lives inside `ProjectAuthoringView`, which since BLD-001 mounts
+**only as a plan turn's outcome card** — so the only thing that can restore a plan is a component
+that mounts only once a plan has been restored. Confirmed statically, empirically (valid snapshot +
+restart = nothing) and against the shipped parser (the fixture is fine). It is BLD-001's B6 one
+instance later. **Filed to BLD-010, deliberately not fixed here** — see BLD-009's R6 for why half a
+fix is worse than none.
 
 **Session 17 (2026-08-10) — BLD-014's CDP half built and driven, no billed call. 14 of 17 fully
 built.** Counted off the tables below, not incremented: **Track A is 9 of 11** (BLD-009, BLD-010
