@@ -25,6 +25,17 @@ export {
   REVIEW_LABEL
 } from './decisions';
 export type { DecisionOwner } from './decisions';
+// BLD-009 — the second host's three gradeable rules. The layout itself is CSS
+// and is measured in the running editor, not here.
+export {
+  COLLAPSE_LABEL,
+  EXPAND_LABEL,
+  EXPAND_SUGGESTION_THRESHOLD,
+  expandSuggestion,
+  shouldOfferExpanding,
+  threadHost
+} from './expanded';
+export type { ExpandOfferInput, ThreadHost } from './expanded';
 export { classifyPlan, decideIntent, summarisePlan } from './intent';
 export type { IntentDecision } from './intent';
 export {
