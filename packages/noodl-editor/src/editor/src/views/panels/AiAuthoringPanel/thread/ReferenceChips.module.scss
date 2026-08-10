@@ -41,6 +41,20 @@
   align-items: center;
 }
 
+/*
+ * The record row under a turn's request packs to the RIGHT.
+ *
+ * Measured on the drive: `.TurnRefs` is `justify-content: flex-end`, but that
+ * positions the *row*, which is a full-width flex item — so the chips inside it
+ * still packed left and sat under a right-aligned bubble with their right edges
+ * 154px short of it. Aligning the container is not the same as aligning its
+ * contents, and at a glance the block read as the agent's reply rather than as
+ * part of the user's message.
+ */
+.Row.is-record {
+  justify-content: flex-end;
+}
+
 .Chip {
   display: inline-flex;
   align-items: center;

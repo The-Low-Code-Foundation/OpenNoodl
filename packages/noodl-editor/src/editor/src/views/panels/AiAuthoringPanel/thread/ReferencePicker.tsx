@@ -70,10 +70,27 @@ export function ReferencePicker({ candidates, attachedTargets, onAttach, onOpen,
 
   return (
     <div className={css['Picker']} ref={rootRef} data-test="reference-picker">
+      {/*
+       * ⚠️ `MutedOnLowBg`, not `Ghost`, and the drive is why.
+       *
+       * Measured in the running editor: `Ghost`'s accent label came out at
+       * **4.33:1 in light** on the composer's `bg-2` — the exact figure already
+       * on the design-system list as C7 (BLD-002) and hardened by BLD-008's R12,
+       * now seen a third time. Fixing it per-call-site with a specificity
+       * override is how one token defect becomes five copies that disagree, so
+       * the row stays filed and this control uses a variant that passes:
+       * `fg-default` measures **6.66 dark / 6.54 light** on `bg-3`.
+       *
+       * It is also the better control on the merits. Attaching context is
+       * secondary to Send, which is the composer's CTA — an accent-bordered
+       * button beside it was competing with the thing it supports. And the
+       * muted variants carry POL-016's inset ring, so it still reads as a
+       * control rather than a label.
+       */}
       <PrimaryButton
         label="Add context"
         icon={IconName.Plus}
-        variant={PrimaryButtonVariant.Ghost}
+        variant={PrimaryButtonVariant.MutedOnLowBg}
         size={PrimaryButtonSize.Small}
         isDisabled={isDisabled}
         onClick={toggle}
@@ -113,6 +130,12 @@ function renderGroup(
             key={candidate.target}
             type="button"
             role="option"
+            /* A stable hook for driving. `cdp click` takes a selector and this
+               repo has a measured trap where a coordinate click lands on the
+               control underneath (BEN, `cdp-click-races-the-layout`); an
+               attribute selector on the target is the one thing here that
+               cannot drift with the layout. BLD-010 drives this list too. */
+            data-target={candidate.target}
             aria-selected={attached}
             disabled={attached}
             className={`${css['Item']} ${attached ? css['is-attached'] : ''}`}

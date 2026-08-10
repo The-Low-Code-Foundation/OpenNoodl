@@ -195,7 +195,7 @@ export function ReferenceChips({ references, onTogglePin, onRemove, applyCount }
 export function TurnReferences({ references }: { references: readonly TurnReference[] }) {
   if (references.length === 0) return null;
   return (
-    <div className={css['Row']} data-test="turn-references">
+    <div className={`${css['Row']} ${css['is-record']}`} data-test="turn-references">
       {references.map((ref, index) => (
         <div key={`${ref.kind}:${ref.label}:${index}`} className={`${css['Chip']} ${css['is-record']}`}>
           <Icon icon={KIND_ICONS[ref.kind]} size={IconSize.Tiny} />

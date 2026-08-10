@@ -37,6 +37,35 @@ export interface ReferenceCandidate {
 }
 
 /**
+ * ⚠️ The graph's internal markers, mapped to the folders a person sees.
+ *
+ * Found by driving the picker: it listed `__page__/Home` and `__cloud__/test`.
+ * `legacyNameToPath` strips the leading `/` and `#` but leaves these two
+ * markers in — its docstring claims it strips `__cloud__/` and it does not,
+ * which is a pre-existing mismatch and not this task's to fix. What *is* this
+ * task's: a chip label is the user-facing name of the thing they attached, and
+ * `__page__/Home` is a spelling that appears nowhere else in the product.
+ *
+ * Mapped rather than deleted. Stripping the marker outright would render a page
+ * called `Home` and a component called `Home` as the same label, and the folder
+ * names below are the ones the Components panel, the plan's `target` and the
+ * MCP server all already use.
+ *
+ * ⚠️ The **kind stays `component`**, deliberately, even for a page. The
+ * `page` member of `ReferenceKind` is BLD-016's, for an `@`-mentioned page; what
+ * gets attached here is a component's v2 serialization whatever folder it sits
+ * in, so it wants `REFERENCE_CAPS.component` and the `COMPONENT` prompt
+ * heading. Classifying by folder would have quietly halved the cap on every
+ * page in the project.
+ */
+function componentDisplayLabel(legacyName: string): string {
+  const path = legacyNameToPath(legacyName);
+  if (path.startsWith('__page__/')) return `Pages/${path.slice('__page__/'.length)}`;
+  if (path.startsWith('__cloud__/')) return `Cloud/${path.slice('__cloud__/'.length)}`;
+  return path;
+}
+
+/**
  * Every component in the open project, as attachable candidates.
  *
  * Labelled with the path form (`Pages/Home`) rather than the legacy name
@@ -50,7 +79,7 @@ export function componentCandidates(project: ProjectModel | null): ReferenceCand
     .getComponents()
     .map((component) => component.name as string)
     .filter((name) => typeof name === 'string' && name.length > 0)
-    .map((name) => ({ kind: 'component' as const, label: legacyNameToPath(name), target: name }))
+    .map((name) => ({ kind: 'component' as const, label: componentDisplayLabel(name), target: name }))
     .sort((a, b) => a.label.localeCompare(b.label));
 }
 
