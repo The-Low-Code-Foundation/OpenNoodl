@@ -25,6 +25,9 @@
  */
 
 import { captureLivePreview, type PreviewCapture } from '../../../views/SandboxSurface/livePreviewCapture';
+// ⚠️ From the *model*, not from `renderCapture.ts`. That one imports
+// `electron`, and this module is graded in `tests-unit/` — a plain-Node runner.
+import type { CapturedViewport } from '../../../views/SandboxSurface/renderCaptureModel';
 import type { RenderFindingResult } from '@nodegx/render-measure';
 import type { AiImageBlock } from '../client/content';
 import { formatBytes } from '../thread/fileAttachments';
@@ -155,4 +158,145 @@ export async function resolveLivePreviewCapture(
 /** For the control's tooltip — what one press is about to cost. */
 export function captureSizeNote(bytes: number): string {
   return `${formatBytes(bytes)} of PNG, sent uncached on every turn it rides.`;
+}
+
+// ── The CDP producer ────────────────────────────────────────────────────────
+
+/**
+ * How many findings ride the twin before it starts summarising them.
+ *
+ * ⚠️ `REFERENCE_CAPS.capture` is 2,000 characters and a full render at two
+ * viewports can produce more findings than that holds. Cut **by count, with the
+ * remainder stated**, rather than with `capReferenceText`: that truncator cuts
+ * on a heading boundary, which is right for a document and wrong for a list —
+ * it would drop findings mid-sentence and leave the model unable to tell a
+ * severed finding from a complete one. Sorted by severity first, so the twelve
+ * that survive are the twelve worth having.
+ */
+const MAX_TWIN_FINDINGS = 12;
+
+const SEVERITY_RANK: Record<string, number> = { error: 0, warning: 1, info: 2 };
+
+/**
+ * What a CDP capture tells a model, including one that cannot see it.
+ *
+ * ⚠️ Deliberately **not** `captureTwinText`. That one's load-bearing sentence is
+ * *"this is the size of the preview pane, not a device viewport"* — the honest
+ * limit of a webview grab. Here the opposite is true and just as load-bearing:
+ * this **is** a device viewport, it is the one that was asked for, and a model
+ * told otherwise would discount a genuine 390px finding as an artefact of a
+ * narrow pane.
+ */
+export function renderCaptureTwinText(capture: CapturedViewport, url: string, external: boolean): string {
+  const where = external
+    ? `an external page, ${url}`
+    : `the user's own app, running at ${url}`;
+
+  const opening =
+    `A screenshot of ${where}, rendered at ${capture.width}×${capture.height} ` +
+    `(the "${capture.name}" viewport).`;
+
+  if (capture.measurementError) {
+    return [
+      opening,
+      `It is a picture only — the measurement did not run (${capture.measurementError}), so there are no findings attached.`,
+      'If you cannot see images, do not guess at its contents; say so and ask for what you need in words.'
+    ].join(' ');
+  }
+
+  const lines = [
+    opening,
+    '',
+    `MEASURED AT ${capture.width}×${capture.height} — this is a real device viewport, not a resized pane.`,
+    capture.summary ?? 'No summary was produced.'
+  ];
+
+  if (capture.findings.length > 0) {
+    const ranked = [...capture.findings].sort(
+      (a, b) => (SEVERITY_RANK[a.severity] ?? 3) - (SEVERITY_RANK[b.severity] ?? 3)
+    );
+    lines.push('');
+    for (const finding of ranked.slice(0, MAX_TWIN_FINDINGS)) {
+      lines.push(`- [${finding.severity}] ${finding.code}: ${finding.message}`);
+    }
+    if (ranked.length > MAX_TWIN_FINDINGS) {
+      lines.push(`- …and ${ranked.length - MAX_TWIN_FINDINGS} more, least severe first.`);
+    }
+  }
+
+  lines.push(
+    '',
+    'If you cannot see images, act on the measurements above and say you could not see the screenshot itself.'
+  );
+  return lines.join('\n');
+}
+
+/**
+ * One CDP render, as one reference per viewport.
+ *
+ * ⚠️ **Per viewport, not per render**, and the chip row is why. A render at
+ * `desktop,phone` produces two pictures with different findings and different
+ * costs; folding them into one chip would show a single price for two
+ * screenshots and give the user no way to drop the one they did not need. Each
+ * picture is a thing that can be unpinned and removed on its own.
+ */
+export async function resolveRenderCapture(
+  url: string,
+  captures: readonly CapturedViewport[],
+  external: boolean
+): Promise<AttachedReference[]> {
+  return captures.map((capture) => {
+    seq += 1;
+    const id = `capture:render:${seq}`;
+    const text = renderCaptureTwinText(capture, url, external);
+    const image: AiImageBlock = { type: 'image', data: capture.data, mediaType: 'image/png', text };
+    return {
+      id,
+      kind: 'capture' as const,
+      /*
+       * The label carries the host, and for an external page that *is* the
+       * acceptance criterion — "labelled as external". A chip reading
+       * `example.com · phone` beside one reading `Your app · phone` is the
+       * difference between a user who knows what they are sending their
+       * provider and one who does not.
+       */
+      label: `${external ? hostLabel(url) : 'Your app'} · ${capture.name}`,
+      target: `${url}#${capture.name}`,
+      pinned: defaultPinned('capture'),
+      capturedAtApply: applyCount(),
+      status: 'ready' as const,
+      resolution: {
+        text,
+        images: [image],
+        chars: text.length,
+        truncated: false,
+        originalChars: text.length,
+        bytes: capture.bytes
+      }
+    };
+  });
+}
+
+/** `https://example.com/pricing?x=1` → `example.com`. */
+export function hostLabel(url: string): string {
+  try {
+    return new URL(url).host;
+  } catch {
+    return url;
+  }
+}
+
+/**
+ * Build item 7 — a URL capture is a network egress, said before the first one.
+ *
+ * ⚠️ It names **both** halves of what happens, because they are two different
+ * disclosures and a user can reasonably object to either: the editor fetches
+ * the page, *and* the picture of it then goes to their model provider. A notice
+ * that mentioned only the fetch would understate it considerably.
+ */
+export function egressNotice(url: string): string {
+  return (
+    `${hostLabel(url)} will be loaded in a hidden browser window, and the screenshot ` +
+    `will be sent to your AI provider with this message. Only load pages you are happy to share.`
+  );
 }

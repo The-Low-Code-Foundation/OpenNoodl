@@ -1,0 +1,125 @@
+/**
+ * BLD-014 — the CDP producer's popup.
+ *
+ * ⚠️ Every structural decision here is inherited from a measurement, not a
+ * preference. Read `ReferencePicker.module.scss` before changing any of them:
+ *
+ * - **Not a `MenuDialog`** — BLD-006 measured its `is-highlighted` failing to
+ *   recolour an `EndSlot` at **1.16:1**, and its register records it rendering
+ *   items twice.
+ * - **Not positioned itself** — the containing block is `.ComposerControls`, so
+ *   this box shrink-wraps and shares the control row. BLD-013 measured what
+ *   happens when a control in this row takes `width: 100%`: both its siblings
+ *   were pushed onto a second line at *every* panel width.
+ * - **Opens upward** — the composer sits at the bottom of the panel, so a popup
+ *   dropping downward opens off-screen at every panel height.
+ *
+ * No global `box-sizing` in this repo (BLD-017 R4), so every padded, bordered
+ * box below declares it.
+ */
+
+.Control {
+  /* No `position` — see above. `.ComposerControls` is the containing block. */
+  display: inline-flex;
+}
+
+.Panel {
+  position: absolute;
+  bottom: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px;
+  background-color: var(--theme-color-bg-2);
+  border: 1px solid var(--theme-color-border-strong);
+  border-radius: 4px;
+  box-sizing: border-box;
+}
+
+.Row {
+  display: flex;
+  gap: 6px;
+}
+
+/*
+ * A pair of buttons rather than a `Select`: a native `<select>` opened by
+ * `.click()` never closes, which makes the path undriveable — measured in
+ * PropertyPanel and carried forward through this whole phase.
+ */
+.Choice {
+  flex: 1 1 0;
+  padding: 5px 8px;
+  border: 1px solid var(--theme-color-border-strong);
+  border-radius: 3px;
+  background: transparent;
+  color: var(--theme-color-fg-default);
+  cursor: pointer;
+  box-sizing: border-box;
+
+  &:hover {
+    background-color: var(--theme-color-bg-3);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--theme-color-focus-ring);
+    outline-offset: -2px;
+  }
+}
+
+/*
+ * `.Choice.is-chosen`, compound — a bare module class loses to any descendant
+ * selector reaching in, and the failure mode is a state that silently stops
+ * painting (BLD-004's 1.16:1 collision, BLD-017's R-register).
+ *
+ * The inset ring is POL-016's, the same one the muted buttons in the control row
+ * carry, so the chosen target reads as a selected control rather than a hover.
+ */
+.Choice.is-chosen {
+  background-color: var(--theme-color-bg-3);
+  box-shadow: inset 0 0 0 1px var(--theme-color-border-strong);
+}
+
+.Field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.Label {
+  font-size: 10px;
+  line-height: 14px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+/*
+ * ⚠️ `bg-3` with a border, not an accent wash. `an-accent-wash-costs-the-accent-most`
+ * is on this phase's register twice: `primary` on `primary-bg` measured 3.85:1
+ * in light. This notice has to be *read*, so it uses the ground `fg-default` is
+ * already measured against in this panel (6.54 light / 6.66 dark) and carries
+ * its weight in the border instead.
+ */
+.Egress {
+  padding: 6px 8px;
+  border: 1px solid var(--theme-color-border-strong);
+  border-left-width: 3px;
+  border-radius: 3px;
+  background-color: var(--theme-color-bg-3);
+  box-sizing: border-box;
+}
+
+.Error {
+  padding: 6px 8px;
+  border: 1px solid var(--theme-color-border-strong);
+  border-radius: 3px;
+  background-color: var(--theme-color-bg-3);
+  box-sizing: border-box;
+}
+
+.Actions {
+  display: flex;
+  justify-content: flex-end;
+}

@@ -148,15 +148,21 @@ import {
 // BLD-016 — `@`. The menu is a second door onto `refreshCandidates`' list; the
 // hook is the loop that keeps the chip row equal to what the text says.
 import { MentionMenu } from './thread/MentionMenu';
+import { RenderCaptureControl } from './thread/RenderCaptureControl';
 import { useComposerMentions } from './thread/useComposerMentions';
 // BLD-013 — the three intake paths' one resolver, and BLD-014's capture. Both
 // are `authoring/` modules for the same reason `referenceSources` is: they need
 // a browser (a `<canvas>`, a `<webview>`), which is exactly what the pure half
 // next door exists to stay free of.
 import { ATTACHMENT_ACCEPT, resolveAttachment } from '../../../models/AiAssistant/authoring/fileReferences';
-import { resolveLivePreviewCapture } from '../../../models/AiAssistant/authoring/captureReferences';
+import { resolveLivePreviewCapture, resolveRenderCapture } from '../../../models/AiAssistant/authoring/captureReferences';
 import { applyCount, noteApply, onApplyCountChanged } from '../../../models/AiAssistant/authoring/applyCount';
-import { hasLivePreview } from '../../SandboxSurface';
+import {
+  hasLivePreview,
+  isExternalUrl,
+  parseViewports,
+  renderCapture as runRenderCapture
+} from '../../SandboxSurface';
 import type { AiContentBlock } from '../../../models/AiAssistant/client/content';
 
 export const AiAuthoringPanel_ID = 'ai-authoring';
@@ -428,6 +434,28 @@ export function AiAuthoringPanel({ width = 'panel' }: AiAuthoringPanelProps = {}
   const captureLive = useCallback(async () => {
     const resolved = await resolveLivePreviewCapture();
     if (resolved) setReferences((current) => [...current, resolved]);
+  }, []);
+
+  /**
+   * BLD-014 — the CDP producer, behind `Render…`.
+   *
+   * ⚠️ It throws rather than attaching a failed chip, which is the opposite of
+   * every other resolver on this row. A dropped file that cannot be read is
+   * still a thing the user put there and the chip is where they will look for
+   * the reason; a render that never produced a picture attached nothing, so a
+   * chip saying so would be a row entry for an event rather than a reference.
+   * The popup that asked for the URL is still open and is where the answer
+   * belongs.
+   */
+  const renderCapture = useCallback(async (url: string, viewportSpec: string) => {
+    const parsed = parseViewports(viewportSpec);
+    if ('error' in parsed) throw new Error(parsed.error);
+
+    const result = await runRenderCapture({ url, viewports: parsed.viewports });
+    if (result.error) throw new Error(result.error);
+
+    const resolved = await resolveRenderCapture(url, result.captures, isExternalUrl(url));
+    setReferences((current) => [...current, ...resolved]);
   }, []);
 
   const togglePin = useCallback((id: string) => {
@@ -1405,6 +1433,13 @@ export function AiAuthoringPanel({ width = 'panel' }: AiAuthoringPanelProps = {}
                 onClick={() => void captureLive()}
                 testId="capture-preview"
               />
+              {/*
+               * BLD-014's CDP producer — the second of the task's two, and the
+               * only one that can name a viewport or a URL. Not greyed with the
+               * preview down, unlike `Look at it`: this one does not need a
+               * mounted webview, because it opens its own window.
+               */}
+              <RenderCaptureControl onRender={renderCapture} isDisabled={!hasProject} />
               {/*
                * BLD-016 — the `@` menu, inside `.ComposerControls` because that
                * is the positioned ancestor `.List` resolves against (the same

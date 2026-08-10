@@ -29,6 +29,7 @@ import { guid } from '@noodl-utils/utils';
 import { PreviewTokenInjector } from '../../services/PreviewTokenInjector';
 import { ViewerConnection } from '../../ViewerConnection';
 import { registerLivePreview, unregisterLivePreview } from './livePreviewCapture';
+import { viewerOrigin } from './viewerOrigin';
 
 /**
  * Its own storage jar: a sandbox signs in as a fake user and must not leak that
@@ -46,11 +47,10 @@ export const SANDBOX_WEBVIEW_ATTRIBUTES: Record<string, string> = {
   webpreferences: 'allowRunningInsecureContent'
 };
 
-export function viewerOrigin(): string {
-  const protocol = process.env.ssl ? 'https://' : 'http://';
-  const port = process.env.NOODLPORT || 8574;
-  return `${protocol}localhost:${port}`;
-}
+// BLD-014 moved this to its own module so the CDP producer's pure half can
+// reach it from a runner with no React in it. Re-exported because this is where
+// every existing caller imports it from.
+export { viewerOrigin };
 
 export interface SandboxViewerOptions {
   /** The export this window is fed. `undefined` while there is nothing to show. */

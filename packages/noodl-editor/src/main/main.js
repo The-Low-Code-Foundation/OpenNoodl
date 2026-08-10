@@ -991,6 +991,11 @@ function launchApp() {
     // renderer that renders them.
     require('./src/mcp/mcpFrontDoor').setupMcpIPC(electron.ipcMain);
 
+    // BLD-014: the CDP half of "look at it". A hidden BrowserWindow driven
+    // through `webContents.debugger` — only the main process can open one, and
+    // only the main process can attach a debugger to it.
+    require('./src/render-capture').setupRenderCaptureIPC(electron.ipcMain);
+
     // WF-004: executions now happen inside nodegx-backend child processes,
     // each with its own store — the panel's IPC merges them with the local one.
     const { executionHistoryManager } = require('./src/execution-history/ExecutionHistoryManager');
