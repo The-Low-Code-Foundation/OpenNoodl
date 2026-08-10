@@ -16,6 +16,9 @@ import { ProjectBackendLifecycle } from './services/ProjectBackendLifecycle';
 import { installProjectBackendStatusToasts } from './services/projectBackendStatusToasts';
 import { AuthoringPreviewDocumentProvider } from './views/documents/AuthoringPreviewDocument';
 import { ChangeReviewDocumentProvider } from './views/documents/ChangeReviewDocument';
+// BLD-009 — the Build panel's second host. A shell: it publishes a box and the
+// panel portals into it, so there is exactly one thread instance in the editor.
+import { ExpandedBuildDocumentProvider } from './views/documents/ExpandedBuildDocument';
 import { ComponentDiffDocumentProvider } from './views/documents/ComponentDiffDocument';
 import { EditorDocumentProvider } from './views/documents/EditorDocument';
 import { AiAuthoringPanel, AiAuthoringPanel_ID } from './views/panels/AiAuthoringPanel';
@@ -427,6 +430,7 @@ export function installDocuments() {
   appRegistry.registerDocumentProvider(ComponentDiffDocumentProvider.ID, new ComponentDiffDocumentProvider());
   appRegistry.registerDocumentProvider(ChangeReviewDocumentProvider.ID, new ChangeReviewDocumentProvider());
   appRegistry.registerDocumentProvider(AuthoringPreviewDocumentProvider.ID, new AuthoringPreviewDocumentProvider());
+  appRegistry.registerDocumentProvider(ExpandedBuildDocumentProvider.ID, new ExpandedBuildDocumentProvider());
 
   if (import.meta.webpackHot) {
     import.meta.webpackHot.accept('./views/documents/EditorDocument', () => {

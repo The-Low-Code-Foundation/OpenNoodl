@@ -136,6 +136,17 @@ export interface SidePanelLayout {
   setFloatRect: (rect: FloatRect, bounds: { width: number; height: number }) => void;
   /** Clicking a rail icon must bring a hidden panel back. */
   revealIfHidden: () => void;
+  /**
+   * Hide, idempotently — the caller's verb, the way `openFull` is.
+   *
+   * BLD-009 needs it: expanding the Build thread into the document surface has
+   * to give the rail's width to the workspace it just opened, and `toggleHidden`
+   * would *reveal* a panel the user had already hidden. `hideTransition` is
+   * already idempotent and already remembers the mode it hid from, so this is
+   * that pure transition with the toggle's ambiguity removed — and it is the
+   * very callback the divider's own collapse floor has always used.
+   */
+  hideIfShown: () => void;
 }
 
 const SidePanelLayoutContext = createContext<SidePanelLayout | null>(null);
@@ -405,7 +416,11 @@ export function useSidePanelLayout(): SidePanelLayout {
     openFull,
     dock,
     setFloatRect,
-    revealIfHidden
+    revealIfHidden,
+    // BLD-009 — the same `hide` the divider's collapse floor already calls. One
+    // implementation; the interface name says what a *caller* gets, which is the
+    // distinction `openFull` draws against `toggleFull` above.
+    hideIfShown: hide
   };
 }
 

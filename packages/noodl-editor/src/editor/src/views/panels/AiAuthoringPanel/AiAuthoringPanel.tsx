@@ -36,6 +36,7 @@
 
 import { NodeGraphContextTmp } from '@noodl-contexts/NodeGraphContext/NodeGraphContext';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 
 import {
   acceptAuthoredComponent,
@@ -73,13 +74,17 @@ import {
   decideIntent,
   decisionOwner,
   DISCARD_LABEL,
+  EXPAND_LABEL,
+  expandSuggestion,
   freezeTurns,
   liveTurns,
   ON_CANVAS_NOTE,
   ON_REVIEW_NOTE,
   retiredTurns,
   REVIEW_LABEL,
+  shouldOfferExpanding,
   stagedComponentCard,
+  threadHost,
   THREADS_CHANGED,
   ThreadStore,
   type BuildIntent,
@@ -93,6 +98,10 @@ import { AppRegistry } from '@noodl-models/app_registry';
 import { ProjectModel } from '@noodl-models/projectmodel';
 import { buildEffectiveTokens, buildStyleVocabulary, readStoredTokens } from '@noodl-models/StyleTokensModel';
 
+import { EditorSettings } from '@noodl-utils/editorsettings';
+
+import { useSidePanelLayoutContext } from '../../../pages/EditorPage/useSidePanelLayout';
+
 import { EventDispatcher } from '../../../../../shared/utils/EventDispatcher';
 import { useModel } from '../../../hooks/useModel';
 import { buildComponentV2Files } from '../../../io/ProjectExporter';
@@ -103,11 +112,21 @@ import { Icon, IconName, IconSize } from '@noodl-core-ui/components/common/Icon'
 import { PrimaryButton, PrimaryButtonSize, PrimaryButtonVariant } from '@noodl-core-ui/components/inputs/PrimaryButton';
 import { TextInput } from '@noodl-core-ui/components/inputs/TextInput';
 import { HStack, VStack } from '@noodl-core-ui/components/layout/Stack';
+import { IconButton, IconButtonVariant } from '@noodl-core-ui/components/inputs/IconButton';
+import { FrameDivider, FrameDividerOwner } from '@noodl-core-ui/components/layout/FrameDivider';
+import { Tooltip } from '@noodl-core-ui/components/popups/Tooltip';
 import { BasePanel } from '@noodl-core-ui/components/sidebar/BasePanel';
 import { ExperimentalFlag } from '@noodl-core-ui/components/sidebar/ExperimentalFlag';
 import { Text, TextType } from '@noodl-core-ui/components/typography/Text';
 
-import { AuthoringPreviewDocumentProvider } from '../../documents/AuthoringPreviewDocument';
+import { AuthoringCandidatePane, AuthoringPreviewDocumentProvider } from '../../documents/AuthoringPreviewDocument';
+// BLD-009 — the second host. `ExpandedBuildDocument` is a shell that publishes a
+// box; this panel is the one thread instance and portals itself into it.
+import {
+  ExpandedBuildDocumentProvider,
+  expandedContainer,
+  onExpandedContainerChanged
+} from '../../documents/ExpandedBuildDocument';
 import { ChangeReviewDocumentProvider } from '../../documents/ChangeReviewDocument';
 import { EditorDocumentProvider } from '../../documents/EditorDocument';
 import { adoptScopePlan } from './adoptScopePlan';
@@ -211,6 +230,19 @@ function noteTurn(
  * strings would classify differently on some model, some day.
  */
 const DOCS_SUGGESTION = "Write this project's documents — read the app and draft them for me to correct.";
+
+/**
+ * BLD-009 — whether the one-time offer of the wider workspace has been answered.
+ *
+ * ⚠️ In `EditorSettings`, not in module state, and that is what "one-time"
+ * actually promises. A session-scoped flag re-offers on every restart, which is
+ * the nag build item 5 rules out — the offer's whole job is to teach the header
+ * control exists, and it is either learned or it is not.
+ *
+ * Not per project: the thing being taught is a piece of the editor, and a user
+ * who has met it in one project has met it.
+ */
+const EXPAND_OFFER_SETTING = 'aiAuthoring.expandOffered';
 
 export interface AiAuthoringPanelProps {
   /** BLD-009 renders the same thread as a document. One implementation, two hosts. */
@@ -466,6 +498,17 @@ export function AiAuthoringPanel({ width = 'panel' }: AiAuthoringPanelProps = {}
    * by a control inside it.
    */
   const [previewing, setPreviewing] = useState<AttachedReference | null>(null);
+
+  /**
+   * BLD-009 — the one-time offer, already answered.
+   *
+   * Read once at mount. `EditorSettings` is the durable half; this is the copy
+   * the render reads, so dismissing the offer removes it immediately rather than
+   * at the next unrelated re-render.
+   */
+  const [offerAnswered, setOfferAnswered] = useState<boolean>(() =>
+    Boolean(EditorSettings.instance.get(EXPAND_OFFER_SETTING))
+  );
 
   const togglePin = useCallback((id: string) => {
     setReferences((current) => current.map((ref) => (ref.id === id ? { ...ref, pinned: !ref.pinned } : ref)));
@@ -748,14 +791,32 @@ export function AiAuthoringPanel({ width = 'panel' }: AiAuthoringPanelProps = {}
         session.onChange(setState);
         setState(session.state);
 
-        // The payoff moment is watching the graph form — put the preview canvas
-        // up before the first token arrives.
-        AppRegistry.instance.openDocument(AuthoringPreviewDocumentProvider.ID, {
-          session,
-          onAccept: () => handlersRef.current.accept(),
-          onDiscard: () => handlersRef.current.discard(),
-          onOpenReview: () => handlersRef.current.openReview()
-        });
+        /*
+         * The payoff moment is watching the graph form — put the preview canvas
+         * up before the first token arrives.
+         *
+         * ⚠️ BLD-009 — **unless the expanded workspace is already showing.**
+         * There is one document surface, so opening the preview from inside the
+         * expanded host would replace the host with it: the thread's portal
+         * target would unmount mid-request and the conversation would snap back
+         * to the rail at the exact moment the user asked for something. The
+         * expanded host renders the same candidate in its right-hand pane, from
+         * the same `AuthoringCandidatePane`, so nothing is lost by staying put.
+         *
+         * Read off `AppRegistry` rather than the `host` derived in the render:
+         * this callback is `useCallback([store])` and would otherwise close over
+         * a stale host from whenever it was last created.
+         */
+        if (
+          threadHost(AppRegistry.instance.CurrentDocumentId, ExpandedBuildDocumentProvider.ID) !== 'document'
+        ) {
+          AppRegistry.instance.openDocument(AuthoringPreviewDocumentProvider.ID, {
+            session,
+            onAccept: () => handlersRef.current.accept(),
+            onDiscard: () => handlersRef.current.discard(),
+            onOpenReview: () => handlersRef.current.openReview()
+          });
+        }
 
         const startedAt = Date.now();
         const outcome = await session.run();
@@ -1278,10 +1339,184 @@ export function AiAuthoringPanel({ width = 'panel' }: AiAuthoringPanelProps = {}
     <Heartbeat busy={Boolean(state?.busy)} lastActivityAt={state?.lastActivityAt} stallMs={state?.stallMs} />
   );
 
-  return (
-    <BasePanel title="Build" isFill>
-      <BuildThread
-        width={width}
+  // ── BLD-009: the second host ───────────────────────────────────────────────
+  //
+  // 🔴 **This component is mounted once and rendered in two places.** It is not
+  // mounted twice, and the difference is the whole task: everything a run needs
+  // — `sessionRef`, `state`, `planSession`, the composer's text, every
+  // subscription above — is `useState` and `useRef` *here*, so a second mount
+  // would be a second, empty panel and "expand mid-run, nothing restarts" would
+  // be impossible rather than merely unbuilt. `SidePanel` keeps every visited
+  // panel mounted behind `display: none`, so this instance is alive whichever
+  // document is on screen; expanding changes only where it paints.
+  //
+  // ⚠️ The host is *derived*, never stored — same rule, same reason as
+  // `decisionOwner` above, and it shares that subscription (`useModel` on
+  // `documentChanged`). A stored boolean would be falsified silently by every
+  // other route out of this document, and there are several: Accept switches
+  // the canvas to the component it wrote, Review changes opens the diff.
+  const host = threadHost(AppRegistry.instance.CurrentDocumentId, ExpandedBuildDocumentProvider.ID);
+
+  /**
+   * The box the expanded document is offering, if one is mounted.
+   *
+   * Read at mount as well as subscribed to: this panel can remount underneath a
+   * live document (the sidebar's error boundary and its hot reload both do it),
+   * and an event that has already fired is not going to fire again.
+   */
+  const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(() => expandedContainer());
+  useEffect(() => onExpandedContainerChanged(() => setPortalTarget(expandedContainer())), []);
+
+  /**
+   * Where the thread was scrolled to, kept across the change of host.
+   *
+   * Declared here rather than in `BuildThread` because that component is what
+   * remounts: a portal whose container changes is a delete and a recreate, so
+   * every DOM node under it — and every ref declared inside it — is new. This
+   * one survives because this component does.
+   */
+  const threadScroll = useRef(0);
+
+  /** How wide the thread column is in the expanded host. The mockup's ~520px. */
+  const [expandedSplit, setExpandedSplit] = useState(520);
+  const [expandedWidth, setExpandedWidth] = useState<number | undefined>(undefined);
+
+  /**
+   * 🔴 Expanding gives the rail's width to the workspace it opens.
+   *
+   * A document sits *beside* the sidebar rather than over it (BLD-003 states
+   * this, and it is why `decisionOwner` exists at all) — so without this, "the
+   * wide workspace" was measurably narrower than the surface it replaced: on a
+   * 1368px window the rail took 452px and left the candidate pane 396px, which
+   * is less than the 400px panel the whole task exists to escape. The feature
+   * does not deliver its own premise unless the rail stands down.
+   *
+   * ⚠️ Only reversed if *we* hid it. A user who had already collapsed the
+   * sidebar and then collapses the thread must not have it thrown back open —
+   * and `hideIfShown` is idempotent precisely so this stays one flag rather than
+   * a second reading of the mode.
+   */
+  const layout = useSidePanelLayoutContext();
+  const railHiddenByExpand = useRef(false);
+
+  /*
+   * 🔴 The rail comes back when the thread leaves the expanded host — by any
+   * route, not just the Collapse button.
+   *
+   * This is `ExpandedBuildDocument`'s own lesson one level up, and it took a
+   * drive to see it: **Accept switches the canvas to the component it just
+   * wrote**, and Review changes opens the diff. Neither goes near Collapse. Hung
+   * off that button, the reveal would leave the sidebar hidden *and* the
+   * expanded document gone — the Build thread mounted, alive, holding the run,
+   * and on screen nowhere at all.
+   *
+   * Keyed on the derived host rather than on a click, so every exit is one exit.
+   */
+  const previousHost = useRef(host);
+  useEffect(() => {
+    const left = previousHost.current === 'document' && host === 'panel';
+    previousHost.current = host;
+    if (!left || !railHiddenByExpand.current) return;
+    railHiddenByExpand.current = false;
+    layout?.revealIfHidden();
+  }, [host, layout]);
+
+  const expand = useCallback(() => {
+    // One-time, and *accepting* the offer answers it as surely as dismissing —
+    // a user who has been here has found the control.
+    EditorSettings.instance.set(EXPAND_OFFER_SETTING, true);
+    setOfferAnswered(true);
+    if (layout && layout.mode !== 'hidden') {
+      railHiddenByExpand.current = true;
+      layout.hideIfShown();
+    }
+    AppRegistry.instance.openDocument(ExpandedBuildDocumentProvider.ID);
+  }, [layout]);
+
+  const collapse = useCallback(() => {
+    /*
+     * ⚠️ Collapsing with a candidate live puts the preview document back, rather
+     * than dropping to the canvas.
+     *
+     * In the expanded host the candidate is the right-hand pane; in the rail it
+     * has nowhere to go, and `AuthoringPreviewDocumentProvider` is where it has
+     * lived since AIX-002. Returning to the bare canvas instead would make
+     * collapsing look like it had thrown the staged component away — and the
+     * thread's card would then be the only surface with it, which is the exact
+     * ownership `decisionOwner` re-derives one line later.
+     */
+    const session = sessionRef.current;
+    if (session && state) {
+      AppRegistry.instance.openDocument(AuthoringPreviewDocumentProvider.ID, {
+        session,
+        onAccept: () => handlersRef.current.accept(),
+        onDiscard: () => handlersRef.current.discard(),
+        onOpenReview: () => handlersRef.current.openReview()
+      });
+      return;
+    }
+    AppRegistry.instance.openDocument(EditorDocumentProvider.ID);
+  }, [state]);
+
+  /**
+   * Build item 5 — the offer, at the moment it helps.
+   *
+   * A plan the rail cannot hold is the moment: it is the first time the panel is
+   * demonstrably too small for what is in it, and the count is on screen for the
+   * user to check the sentence against. The rule itself is pure and specced —
+   * see `thread/expanded.ts` — so what is left here is reading the two facts.
+   */
+  const planOperationCount = planSession.plan?.operations.length ?? 0;
+  const offerExpanding = shouldOfferExpanding({
+    operationCount: planOperationCount,
+    isExpanded: host === 'document',
+    offered: offerAnswered
+  });
+
+  const expandNotice = offerExpanding ? (
+    <div className={css['ExpandOffer']} data-test="expand-offer">
+      {/*
+       * ⚠️ The glyph is grouped with the sentence rather than being a sibling of
+       * it, and that is a flexbox fact rather than a preference: `flex-wrap`
+       * wraps a line *before* it shrinks the items on it, so a `flex: 1 1 auto`
+       * paragraph whose content is longer than the row claims the whole line and
+       * pushes a 14px icon onto one of its own. Measured at the shipped 400px:
+       * three rows and **113px** for one dismissible offer.
+       *
+       * It is the same `Columns` glyph as the header control, which is the
+       * reason it earns its place at all — the offer's real job is to teach
+       * where the permanent control is.
+       */}
+      <span className={css['ExpandOfferText']}>
+        <Icon icon={IconName.Columns} size={IconSize.Small} />
+        <Text textType={TextType.Default}>{expandSuggestion(planOperationCount)}</Text>
+      </span>
+      <PrimaryButton
+        label="Open it"
+        variant={PrimaryButtonVariant.Ghost}
+        size={PrimaryButtonSize.Small}
+        onClick={expand}
+        testId="expand-offer-accept"
+      />
+      <button
+        type="button"
+        className={css['ExpandOfferDismiss']}
+        data-test="expand-offer-dismiss"
+        onClick={() => {
+          EditorSettings.instance.set(EXPAND_OFFER_SETTING, true);
+          setOfferAnswered(true);
+        }}
+      >
+        Not now
+      </button>
+    </div>
+  ) : undefined;
+
+  const thread = (
+    <BuildThread
+        width={host === 'document' ? 'expanded' : width}
+        scrollMemory={threadScroll}
+        {...(expandNotice ? { notice: expandNotice } : {})}
         turns={turns}
         renderOutcome={renderOutcome}
         runHeader={<RunHeader state={runState} />}
@@ -1520,19 +1755,132 @@ export function AiAuthoringPanel({ width = 'panel' }: AiAuthoringPanelProps = {}
           // the request does not carry.
           !mentions.blocksSend
         }
-        placeholder="Describe a component, a change across the app, or ask for the project docs…"
-        busy={busy}
-        onStop={stop}
-      />
+      placeholder="Describe a component, a change across the app, or ask for the project docs…"
+      busy={busy}
+      onStop={stop}
+    />
+  );
 
-      {/*
-       * 🔴 The capture viewer — Richard, 2026-08-10: *"we can't leave users in
-       * the dark about what the AI has seen."* Rendered here, at the panel root
-       * rather than inside the chip row, because it is a full-window overlay:
-       * a full-page capture is genuinely tall (195×4047 measured on a page 9.6×
-       * its viewport) and has no useful representation inside a 400px sidebar.
-       */}
+  /**
+   * What the expanded host puts to the right of the thread.
+   *
+   * ⚠️ Gated on `state`, not on `sessionRef.current`: a ref read during render
+   * is not a subscription, so a pane keyed off it would keep the last candidate
+   * on screen after a discard until something unrelated re-rendered. `state` is
+   * the value every other surface here already reacts to, and it goes null in
+   * the same call that clears the ref.
+   */
+  const candidate =
+    state && sessionRef.current ? (
+      <AuthoringCandidatePane session={sessionRef.current} state={state} />
+    ) : (
+      <div className={css['ExpandedEmpty']}>
+        <Text textType={TextType.Shy}>
+          A component the agent builds appears here as it forms, beside the graph it is assembling. A plan reports
+          its operations in the thread.
+        </Text>
+      </div>
+    );
+
+  /**
+   * The thread, in whichever host is live.
+   *
+   * ⚠️ `ReferencePreview` travels with it rather than staying at the panel root.
+   * It is a full-window overlay, and an overlay rendered inside a `display:
+   * none` ancestor draws nothing — which is what would happen the moment the
+   * user opened the capture viewer from the expanded workspace and then clicked
+   * any other rail icon. It belongs to the thread; it goes where the thread is.
+   */
+  const body = (
+    <>
+      {host === 'document' ? (
+        <div className={css['Expanded']}>
+          <FrameDivider
+            horizontal
+            splitOwner={FrameDividerOwner.First}
+            size={expandedSplit}
+            sizeMin={380}
+            sizeMax={expandedWidth ? Math.max(420, expandedWidth - 320) : undefined}
+            first={thread}
+            second={candidate}
+            onSizeChanged={setExpandedSplit}
+            onBoundsChanged={(bounds) => setExpandedWidth(bounds.width)}
+          />
+        </div>
+      ) : (
+        thread
+      )}
       {previewing && <ReferencePreview reference={previewing} onClose={() => setPreviewing(null)} />}
+    </>
+  );
+
+  return (
+    <BasePanel
+      title="Build"
+      isFill
+      headerSlot={
+        /*
+         * Build item 5's "quiet control in the header always".
+         *
+         * ⚠️ In `BasePanel.headerSlot`, which `PanelHeader` renders in
+         * `.Children` — a group that never shrinks, so the title absorbs the
+         * squeeze instead. Deliberately **not** tagged
+         * `data-panel-chrome="secondary"`: that attribute is what
+         * `PanelHeader`'s narrow band hides below 360px, and the width where a
+         * bigger workspace helps most is the width where the panel is smallest.
+         *
+         * Icon-only, and `Columns` rather than `ViewportDiagonalArrow`: the
+         * latter is two buttons to the right of this one in the side panel's
+         * own mode group, where it means "fill the editor". Two adjacent
+         * controls with one glyph and two meanings is the drift BLD-003 names,
+         * drawn instead of written.
+         */
+        host === 'document' ? undefined : (
+          <Tooltip content={EXPAND_LABEL} showAfterMs={400}>
+            <IconButton
+              icon={IconName.Columns}
+              size={IconSize.Default}
+              variant={IconButtonVariant.Transparent}
+              testId="expand-build"
+              onClick={expand}
+            />
+          </Tooltip>
+        )
+      }
+    >
+      {/*
+       * One instance, two containers. `createPortal` moves the DOM this
+       * component paints; the component itself never unmounts, which is what
+       * makes a run survive the move — see the note above `host`.
+       */}
+      {host === 'document' ? (
+        <>
+          {portalTarget && createPortal(body, portalTarget)}
+          {/*
+           * ⚠️ The rail says where its contents went, rather than going blank.
+           *
+           * BLD-003's `ON_CANVAS_NOTE` made exactly this call for a card whose
+           * buttons had moved: a surface that simply empties reads as something
+           * lost. A panel showing nothing while a build runs elsewhere is the
+           * same misreading, one level up.
+           */}
+          <div className={css['Elsewhere']} data-test="thread-elsewhere">
+            <Icon icon={IconName.Columns} size={IconSize.Small} />
+            <Text textType={TextType.Default}>
+              This conversation is open in the wide workspace. It is the same thread — nothing was copied.
+            </Text>
+            <PrimaryButton
+              label="Bring it back here"
+              variant={PrimaryButtonVariant.Ghost}
+              size={PrimaryButtonSize.Small}
+              onClick={collapse}
+              testId="thread-elsewhere-collapse"
+            />
+          </div>
+        </>
+      ) : (
+        body
+      )}
     </BasePanel>
   );
 }

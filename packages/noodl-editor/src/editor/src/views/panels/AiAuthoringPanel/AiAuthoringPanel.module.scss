@@ -419,3 +419,144 @@
     outline-offset: 1px;
   }
 }
+
+/*
+ * ─── BLD-009: the second host ───────────────────────────────────────────────
+ *
+ * ⚠️ Everything below is written as a bare module class and is reached from
+ * markup this file's panel renders — but note that two of these rules paint
+ * inside a **portal**, in the expanded document's DOM, not under any ancestor
+ * from the sidebar. That is fine for CSS modules (the class is a global name)
+ * and it is exactly why none of these may be written as descendants of a panel
+ * class: `.AiAuthoringPanel .Expanded` would match in the rail and silently
+ * match nothing in the host this task exists for.
+ */
+
+/*
+ * The expanded workspace's frame.
+ *
+ * `min-height: 0` on a flex child is the difference between a thread that
+ * scrolls and a composer pushed off the bottom of the window — see the same
+ * declaration in `ExpandedBuildDocument.module.scss`, which owns the level
+ * above this one.
+ */
+.Expanded {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+/*
+ * What the right-hand pane says before there is a candidate.
+ *
+ * Rule 5 — it describes what *will* appear and where, rather than apologising
+ * for an empty box. A plan run genuinely has no canvas of its own, and the
+ * second sentence says so rather than leaving the pane looking broken during
+ * the longest runs this workspace exists for.
+ */
+.ExpandedEmpty {
+  box-sizing: border-box;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  text-align: center;
+  background-color: var(--theme-color-bg-2);
+
+  p {
+    max-width: 34ch;
+  }
+}
+
+/*
+ * The rail, while the thread is open in the wide workspace.
+ *
+ * BLD-003's `ON_CANVAS_NOTE` shape: a surface whose contents have moved says
+ * where they went and offers the way back. Going blank instead reads as a
+ * conversation that was lost, which is the one thing this whole phase is
+ * measured on not doing.
+ */
+.Elsewhere {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 16px 12px;
+}
+
+/*
+ * Build item 5's offer, between the thread and the composer.
+ *
+ * ⚠️ A wrapping flex row, not an `HStack`, and that is session 15's finding
+ * rather than taste: `HStack` does not wrap and forces `height: 100%` on every
+ * child, and this row carries a sentence plus two controls at a width that
+ * starts at 240px. The sentence is the only item allowed to shrink
+ * (`min-width: 0`), for the reason `PanelHeader.Title` states — a control
+ * pushed out of the row is an offer the user cannot answer.
+ *
+ * On `bg-2` with a top hairline, so it reads as chrome attached to the composer
+ * rather than as a sixth message kind. Deliberately **not** an accent wash:
+ * BLD-008's `.Tag` measured 3.85:1 in light doing exactly that, and an offer
+ * nobody asked for is the last thing that should shout.
+ */
+.ExpandOffer {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 8px 12px;
+  background-color: var(--theme-color-bg-2);
+  border-top: 1px solid var(--theme-color-bg-3);
+  color: var(--theme-color-fg-default);
+
+  p {
+    min-width: 0;
+    font-size: 11.5px;
+    line-height: 1.45;
+  }
+}
+
+/*
+ * Icon and sentence, as one flex item.
+ *
+ * ⚠️ `flex: 1 1 100%` rather than `1 1 auto`: the sentence is two lines at the
+ * shipped width, so this group takes the whole first line and the controls take
+ * the second — deliberately, because the alternative at 248px is a group and two
+ * buttons all competing for one 224px line. `align-items: flex-start` keeps the
+ * glyph on the sentence's first line rather than centred against both of them.
+ */
+.ExpandOfferText {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  flex: 1 1 100%;
+  min-width: 0;
+}
+
+/* The same control treatment as `.MentionDismiss`, and for the same reason:
+   dismissing does something, and it has to be findable. */
+.ExpandOfferDismiss {
+  flex: none;
+  padding: 1px 6px;
+  border: none;
+  border-radius: 3px;
+  background-color: var(--theme-color-bg-3);
+  box-shadow: inset 0 0 0 1px var(--theme-color-border-strong);
+  color: var(--theme-color-fg-default);
+  font-size: 10px;
+  line-height: 16px;
+  cursor: pointer;
+
+  &:hover {
+    background-color: var(--theme-color-bg-4);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--theme-color-focus-ring);
+    outline-offset: 1px;
+  }
+}

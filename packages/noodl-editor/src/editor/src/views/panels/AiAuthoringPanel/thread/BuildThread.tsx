@@ -37,7 +37,7 @@
  * @module noodl-editor/views/panels/AiAuthoringPanel/thread/BuildThread
  */
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 
 import type { AuthoringActivity } from '@noodl-models/AiAssistant/authoring';
 import {
@@ -315,6 +315,31 @@ export interface BuildThreadProps {
   heartbeat?: React.ReactNode;
   /** Shown in place of the turn list when there are no turns. */
   emptyState?: React.ReactNode;
+  /**
+   * BLD-009 — a one-time offer, between the conversation and the composer.
+   *
+   * Its own slot rather than a turn, because it is not something anybody said:
+   * BLD-002 defined five message kinds and an offer about the *workspace* is
+   * none of them. Below the scroll area so it cannot be scrolled past — an offer
+   * the user never sees is an offer that was not made — and above the composer
+   * so it reads as chrome attached to the thread rather than as the agent's last
+   * word.
+   */
+  notice?: React.ReactNode;
+  /**
+   * BLD-009 — where this thread was scrolled to, across a change of host.
+   *
+   * ⚠️ A ref owned by the *caller*, and that is the whole mechanism. Moving
+   * between hosts moves the portal's container, which React implements as a
+   * delete and a recreate — the panel component and all its state survive, but
+   * every DOM node under it is new, and `scrollTop` is a property of a DOM node.
+   * A `useRef` declared in this file would be recreated with them. The caller's
+   * ref outlives the remount because the caller does.
+   *
+   * Acceptance criterion 2 is "the thread keeps its scroll position", and this
+   * is the only part of "nothing restarts" that is not free.
+   */
+  scrollMemory?: React.MutableRefObject<number>;
 
   // ── Composer ───────────────────────────────────────────────────────────────
   value: string;
@@ -392,6 +417,8 @@ export function BuildThread({
   runHeader,
   heartbeat,
   emptyState,
+  notice,
+  scrollMemory,
   value,
   onChange,
   onSend,
@@ -405,8 +432,41 @@ export function BuildThread({
   composer
 }: BuildThreadProps) {
   const anchorRef = useRef<HTMLDivElement | null>(null);
+  const rootRef = useRef<HTMLDivElement | null>(null);
   /** BLD-013 — whether a drag is currently over the composer. Paint only. */
   const [dragging, setDragging] = useState(false);
+
+  /*
+   * BLD-009 — save and restore the scroll offset across a change of host.
+   *
+   * ⚠️ The scroller is `ScrollArea`'s root, which carries `css['Body']`, and it
+   * is found by walking this element's own children rather than with a
+   * selector: a CSS-module class name is a generated string, and building a
+   * selector out of one means escaping whatever the hasher produced. Matching on
+   * `classList` asks the DOM the same question with nothing to quote.
+   *
+   * `useLayoutEffect`, not `useEffect`: restoring after paint shows one frame of
+   * the thread at the top before it jumps, which reads as the conversation
+   * having reset — the exact thing this task promises does not happen.
+   *
+   * The offset is restored as a pixel count, and the two hosts wrap text at
+   * different measures, so the same turn does not sit at exactly the same
+   * `scrollTop` in both. It is deliberately not converted to a fraction: a
+   * fraction is *also* wrong, and it is wrong in a way that moves the further
+   * you are from the top. What the user needs is to land in the same part of the
+   * conversation, and the browser clamps whatever overshoots.
+   */
+  useLayoutEffect(() => {
+    if (!scrollMemory) return;
+    const scroller = Array.from(rootRef.current?.children ?? []).find((child) =>
+      child.classList.contains(css['Body'])
+    ) as HTMLElement | undefined;
+    if (!scroller) return;
+    if (scrollMemory.current > 0) scroller.scrollTop = scrollMemory.current;
+    return () => {
+      scrollMemory.current = scroller.scrollTop;
+    };
+  }, [scrollMemory]);
 
   // Follow the stream, but only while the user is already near the bottom —
   // same rule as the Explain panel, same reason: scrolling up to read something
@@ -438,7 +498,7 @@ export function BuildThread({
   }, [tailLength, turns.length, busy]);
 
   return (
-    <div className={`${css['Thread']} ${css[width === 'expanded' ? 'is-expanded' : 'is-panel']}`}>
+    <div ref={rootRef} className={`${css['Thread']} ${css[width === 'expanded' ? 'is-expanded' : 'is-panel']}`}>
       {header && <div className={css['Header']}>{header}</div>}
       {/*
         BLD-005. Outside the `ScrollArea` on purpose — that placement IS the fix,
@@ -508,6 +568,10 @@ export function BuildThread({
           <div ref={anchorRef} />
         </div>
       </ScrollArea>
+
+      {/* BLD-009's offer. Outside the scroll area, like the run header and for
+          the same reason — its whole job is to be seen. */}
+      {notice}
 
       <div
         className={`${css['Composer']}${dragging ? ` ${css['is-dragging']}` : ''}`}

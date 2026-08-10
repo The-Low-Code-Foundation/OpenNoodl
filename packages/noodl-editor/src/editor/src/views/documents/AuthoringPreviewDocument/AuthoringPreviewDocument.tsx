@@ -19,15 +19,9 @@
  * @module noodl-editor/views/documents/AuthoringPreviewDocument
  */
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 
-import {
-  PreviewGraphBuilder,
-  RevealQueue,
-  type AuthoringSession,
-  type AuthoringSessionState,
-  type RevealItem
-} from '@noodl-models/AiAssistant/authoring';
+import { type AuthoringSession, type AuthoringSessionState } from '@noodl-models/AiAssistant/authoring';
 import { AppRegistry, IDocumentProvider } from '@noodl-models/app_registry';
 import { acceptLabel, DISCARD_LABEL, REVIEW_LABEL } from '@noodl-models/AiAssistant/thread';
 
@@ -38,13 +32,11 @@ import { PrimaryButton, PrimaryButtonVariant } from '@noodl-core-ui/components/i
 import { Label } from '@noodl-core-ui/components/typography/Label';
 import { Text, TextType } from '@noodl-core-ui/components/typography/Text';
 
-import { FrameDivider, FrameDividerOwner } from '@noodl-core-ui/components/layout/FrameDivider';
-
-import { Frame } from '../../common/Frame';
-import { NodeGraphEditor } from '../../nodegrapheditor';
 import { EditorDocumentProvider } from '../EditorDocument';
+// BLD-009 — the two panes, so the expanded workspace shows the same candidate
+// rather than a second rendering of it.
+import { AuthoringCandidatePane } from './AuthoringCandidatePane';
 import css from './AuthoringPreviewDocument.module.scss';
-import { SandboxPreview } from './SandboxPreview';
 
 export interface AuthoringPreviewDocumentProps {
   session: AuthoringSession;
@@ -61,12 +53,6 @@ export interface AuthoringPreviewDocumentProps {
   onDiscard: () => void;
   onOpenReview: () => void;
 }
-
-/** One reveal per tick — fast enough to feel live, slow enough to follow. */
-const REVEAL_INTERVAL_MS = 90;
-
-/** Starting width of the rendered pane, in pixels. */
-const DEFAULT_PREVIEW_WIDTH = 620;
 
 function statusLine(state: AuthoringSessionState): { text: string; type: FeedbackType | null } {
   switch (state.phase) {
@@ -100,86 +86,12 @@ function statusLine(state: AuthoringSessionState): { text: string; type: Feedbac
 }
 
 function AuthoringPreviewDocument({ session, onAccept, onDiscard, onOpenReview }: AuthoringPreviewDocumentProps) {
-  const [nodeGraph] = useState<NodeGraphEditor>(() => {
-    const ng = new NodeGraphEditor({});
-    ng.setReadOnly(true);
-    ng.render();
-    return ng;
-  });
-
   const [state, setState] = useState<AuthoringSessionState>(session.state);
 
-  // AIX-008: the rendered half. Wide by default — the question the user is
-  // being asked ("is this what you meant?") is answered by the render, and the
-  // graph answers the follow-up.
-  const splitRef = useRef<HTMLDivElement>(null);
-  const [splitSize, setSplitSize] = useState(DEFAULT_PREVIEW_WIDTH);
-  const [splitWidth, setSplitWidth] = useState<number | undefined>(undefined);
-
-  const builderRef = useRef<PreviewGraphBuilder | null>(null);
-  const queueRef = useRef<RevealQueue | null>(null);
-  const submissionRef = useRef(0);
-  const enqueuedRef = useRef({ nodes: 0, connections: 0 });
-  const completeRef = useRef(false);
-  const flushedRef = useRef(false);
-
+  // This document owns the bar; the pane below owns the two canvases. One
+  // subscription, read by both — see `AuthoringCandidatePane.state` for why that
+  // is a requirement rather than a convenience.
   useEffect(() => session.onChange(setState), [session]);
-  useEffect(() => () => nodeGraph.dispose(), []);
-
-  // An empty canvas titled with the component being built, before the first
-  // node arrives — the stage the graph will assemble on.
-  useEffect(() => {
-    const builder = new PreviewGraphBuilder(session.legacyName);
-    builderRef.current = builder;
-    nodeGraph.switchToComponent(builder.component);
-  }, [session]);
-
-  // Feed the reveal queue from the forming submission. A new submission
-  // (repair round or refinement) resets the canvas and rebuilds.
-  useEffect(() => {
-    const building = state.building;
-    if (!building) return;
-
-    if (submissionRef.current !== building.submission || !queueRef.current) {
-      submissionRef.current = building.submission;
-      enqueuedRef.current = { nodes: 0, connections: 0 };
-      flushedRef.current = false;
-      const builder = new PreviewGraphBuilder(state.legacyName);
-      builderRef.current = builder;
-      queueRef.current = new RevealQueue((item: RevealItem) => {
-        if (item.kind === 'node') builder.addNode(item.node, item.order);
-        else builder.addConnection(item.connection);
-      });
-      nodeGraph.switchToComponent(builder.component);
-    }
-
-    completeRef.current = building.complete;
-
-    const items: RevealItem[] = [];
-    for (let i = enqueuedRef.current.nodes; i < building.nodes.length; i++) {
-      items.push({ kind: 'node', node: building.nodes[i], order: i });
-    }
-    for (let i = enqueuedRef.current.connections; i < building.connections.length; i++) {
-      items.push({ kind: 'connection', connection: building.connections[i] });
-    }
-    enqueuedRef.current = { nodes: building.nodes.length, connections: building.connections.length };
-    if (items.length > 0) queueRef.current.enqueue(items);
-  }, [state.building, state.legacyName]);
-
-  // The pace. One item per tick; when the stream is done and the queue is
-  // drained, root anything still waiting on a parent that never arrived.
-  useEffect(() => {
-    const timer = setInterval(() => {
-      const queue = queueRef.current;
-      const builder = builderRef.current;
-      if (!queue || !builder) return;
-      if (!queue.tick() && completeRef.current && !flushedRef.current) {
-        builder.flushOrphans();
-        flushedRef.current = true;
-      }
-    }, REVEAL_INTERVAL_MS);
-    return () => clearInterval(timer);
-  }, []);
 
   const exit = () => AppRegistry.instance.openDocument(EditorDocumentProvider.ID);
   const status = statusLine(state);
@@ -222,26 +134,7 @@ function AuthoringPreviewDocument({ session, onAccept, onDiscard, onOpenReview }
         </div>
       </div>
 
-      <div className={css.Canvas} ref={splitRef}>
-        <FrameDivider
-          horizontal
-          splitOwner={FrameDividerOwner.First}
-          size={splitSize}
-          sizeMin={280}
-          sizeMax={splitWidth ? Math.max(320, splitWidth - 280) : undefined}
-          first={
-            <SandboxPreview
-              files={session.stagedFiles}
-              sampleData={session.stagedSampleData}
-              revision={state.stagedRevision}
-              unrenderableHint="The graph beside this shows what it does."
-            />
-          }
-          second={<Frame instance={nodeGraph} onResize={(bounds) => nodeGraph.resize(bounds)} />}
-          onSizeChanged={setSplitSize}
-          onBoundsChanged={(bounds) => setSplitWidth(bounds.width)}
-        />
-      </div>
+      <AuthoringCandidatePane session={session} state={state} />
     </div>
   );
 }
