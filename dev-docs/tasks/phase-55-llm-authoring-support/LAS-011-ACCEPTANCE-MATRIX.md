@@ -346,6 +346,48 @@ Kimi is 11× DeepSeek's per-token output price and used a comparable number of t
 of the gap. DeepSeek V4 Pro built the more complete page for **a third of sonnet's $5.10-adjacent
 cost** — $5.83 including 27 wasted turns it should never have spent.
 
+## Session 9 — the same model, a different surface
+
+**Run 2026-08-10 after phase 58** (AWP-001…006), same rig, same verbatim brief, same prices, same
+model. This is LAS-010's re-run rule being obeyed rather than cited, and **the surface change is
+named because without naming it a 39% cost cut reads as a model improvement**:
+
+> **89 tools → 20** (AWP-006 defers 70 behind `find_tools`), and **`get_node_type` defaults to
+> `detail:"summary"`** (AWP-005). Resident surface 25,886 → **7,828 tokens/turn**.
+
+⚠️ **The cost and turn cells are not comparable to session 8's — they are the intervention.** The
+artefact cells (components, `For Each`, `Columns`, validate, render report) are comparable, because
+nothing in phase 58 changed what the model is asked to build.
+
+| | session 8 DeepSeek (89 tools) | **session 9 DeepSeek (20 tools)** |
+|---|---|---|
+| turn-one prompt tokens | 22,968 | **8,578** — −63% |
+| billed input / cost | 4,410,622 / $5.83 | **2,674,024 / $3.55** — −39% |
+| stop reason | **max-turns (60)** — still working | **model-finished at 47** |
+| tool calls / rejections | 66 / 8 | **57 / 3** |
+| components / page own nodes | 12 / 8 | 10 / 8 |
+| Component Inputs components | 5 (16 ports) | 4 (16 ports) |
+| For Each / Static Data / Columns | 1 / 1 / 4 | 1 / 1 / **5** |
+| validate: errors / warnings | 0 / 0 (108 nodes) | 0 / 0 (**115 nodes**) |
+| render report, **as run** | **blank-render, 0 texts** (F43) — scorable only with the defect undone | **clean as run** — 63 texts, 8 images, 0 broken, 0 placeholders, both viewports |
+
+**F43 is closed by consequence.** Session 8's artefact had to be repaired by hand before it could be
+scored; this one renders as run, and the model never passed `visual_roots` once.
+
+⚠️ **And one of the brief's six sections is invisible anyway.** The hero is an empty white band at
+both viewports — not a model error and not an AWP-006 regression, but two write-path defects that
+swallowed three correct operations. Filed as **AWP-002 A19/A20** with a minimal reproduction; the
+full reading is in
+[AWP-006 §The re-replay](../phase-58-ai-write-path/AWP-006-PROGRESSIVE-TOOL-DISCLOSURE.md#the-re-replay--2026-08-10).
+**`validate:project` said 0/0 and `render_report` said clean** — which is F38's thesis arriving a
+third time, from a fourth direction.
+
+Transcript and screenshots: `measurements/s9-awp006-deepseek-*`.
+
+⚠️ **A12 applies to every Claude row above.** The `claude` CLI has always deferred tools behind its
+own `ToolSearch`, so no Claude row ever met the 89-tool surface a plain MCP client got. Now that the
+server defers too, a row must say *which* deferral it met.
+
 ## Register
 
 | # | Finding | State |
