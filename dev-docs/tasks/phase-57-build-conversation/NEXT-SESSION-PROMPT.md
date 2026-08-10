@@ -1,4 +1,4 @@
-# Next-session prompt — phase 57, after session 9
+# Next-session prompt — phase 57, after session 15
 
 Paste everything below into a fresh session.
 
@@ -7,100 +7,142 @@ Paste everything below into a fresh session.
 You are picking up **phase 57 (BLD — the Build panel as a conversation)** on `cline-dev` in
 `/Users/richardosborne/vscode_projects/OpenNoodl`.
 
-Read `dev-docs/tasks/phase-57-build-conversation/HANDOVER-SESSION-9.md` first, then `TASKS.md`.
+Read `dev-docs/tasks/phase-57-build-conversation/HANDOVER-SESSION-15.md` first, then `TASKS.md`.
+
+NB: there are several parallel sessions fixing minor bugs who may take the editor from time to time.
+Just set a timer for 10 mins and wait to check when it frees up. Don't complain about the other
+sessions and their commits, just be patient and get the job done. We don't need super clean commits.
 
 ## 🔴 Do these checks before anything else
 
-1. **`git log` *and* `git status` — sessions 7, 8 and 9 all ran beside a sibling.** Two files under
-   `packages/noodl-core-ui/src/components/code-editor/` have been modified and uncommitted for three
-   consecutive sessions and **are not yours** — leave them. Three untracked `dev-docs/tasks/phase-59…61`
-   directories are likewise not yours. **Pathspec-scope every commit; never `git add -A`; never
-   `git stash`.** ⚠️ A clean `git status` can also mean *a sibling already committed your work* —
-   check `git log` before concluding anything.
+1. **`git log` *and* `git status` — every session since 7 has run beside a sibling.** An inherited,
+   uncommitted set has now survived **nine** sessions and is **not yours**: `dev-docs/tasks/phase-17-noodl-learn/`,
+   both files under `packages/noodl-core-ui/src/components/code-editor/`, the four `Launcher/` files,
+   `hello-world.template.ts`, `ProjectsPage.tsx`, `ExtractToComponent.ts`, `EditorClipboard.ts`,
+   `useComponentActions.ts`, three files under `packages/noodl-editor/tests/`, and four untracked
+   `ExtractToComponentPopup` / spec files. **Leave all of it.** Three untracked
+   `dev-docs/tasks/phase-59…61` directories are likewise not yours.
+   **Pathspec-scope every commit; never `git add -A`; never `git stash`.**
+   ⚠️ A clean `git status` can also mean *a sibling already committed your work* — check `git log`.
+   ⚠️ A pre-existing `stash@{0}` on this branch belongs to nobody who has been here since session 7
+   and still wants identifying.
 2. **`ps aux | grep "[e]lectron/dist"` before you launch or stop anything.** `npm run dev:stop` reaps
-   by *checkout* and a sibling shares this one. If something is running that you did not start, **ask
-   Richard before stopping it** — the editor is a queue, not a resource to seize.
-3. ⚠️ **Never run `test:ci` with a dev stack up.** Commit `37fe2db5` proves it manufactures phantom
-   failures: 11 failures with the stack live, **`Jasmine: 2582 specs, 6 failures`** on a clean re-run
-   with no code change. Stop the stack, redirect to a file, `grep -E "^Jasmine:"` — never `tail` it,
-   the `FAILED:` list prints *after* the verdict line.
+   by *checkout* and a sibling shares this one. If something is running that you did not start,
+   **ask Richard before stopping it** — the editor is a queue, not a resource to seize.
+3. ⚠️ **Never run `test:ci` with a dev stack up** — it manufactures phantom failures. Stop the stack,
+   redirect to a file, `grep -E "^Jasmine:"`; never `tail` it, the `FAILED:` list prints *after* the
+   verdict line. **The baseline is 6 failures, confirmed by name at four seeds** (39386, 30232,
+   27603, 52977). ⚠️ **Do not diff the spec count** — it moved 2596 → 2632 purely because the
+   sibling's *uncommitted* Jasmine specs are wired into two `index.ts` barrels.
 4. **`ai-test` holds two things that look like litter and are not.** Its `project.json` carries a
-   sibling's Slider/Expression graph; `docs/uk-vat.md` is BLD-007's acceptance fixture (currently
-   `inject: always`). **Do not clean either.**
+   sibling's Slider/Expression graph; `docs/uk-vat.md` is BLD-007's acceptance fixture. **Do not
+   clean either.** Session 15 drove the whole of BLD-013 against this project without writing to it —
+   attachments were constructed in the renderer's memory, so `project.json` was never touched.
 
-## Where the phase is
+## 🔴 And one about money
 
-**8 of 16 built, 7 driven.** BLD-001 ✅, BLD-002 ✅, BLD-003 ✅, BLD-004 ✅, BLD-005 ✅, **BLD-007 ✅
-(driven and closed session 9 — D9 closed)**, BLD-012 🟡.
+> **The editor has a real, verified Anthropic provider (`editorSettings.json`, not localStorage).
+> A drive costs Richard money.**
 
-**BLD-012 is the one to read carefully before touching.** Its image block *has* now reached a real
-Anthropic endpoint on both `chat` and `chatStream` — that claim is closed. Two different gaps remain:
-**the panel** (no UI produces an image message until BLD-011 ships the chip) and **OpenAI's leg**
-(stub-only). Do not re-verify the Anthropic one; do not assume the other two are done.
+**Session 15 spent nothing** — every path in BLD-013 and BLD-014's webview half is reachable without
+a billed call, so none was made. Sessions 11 and 14 spent `$0.0588` and `$0.0298`.
 
-## What to work on
+⚠️ **Ask before the first one, and scope it.** A request phrased to reach the *plan* route stops at
+the proposal; one phrased to reach the *component* route runs a whole authoring session on top of
+the call you were given permission for.
 
-Unless Richard says otherwise:
+## Where the phase is — recount, do not increment
 
-1. **BLD-006** — threads persist across accept, navigation and restart, plus the switcher.
-   `BuildThread`'s `header` slot was deliberately left free for it (BLD-005 took a *separate*
-   `runHeader` slot so the two would not fight over one node). ⚠️ It also owns **R6**: the user's
-   request renders **twice** in the thread — a retired turn carrying only the request, plus the live
-   one. Visible in every screenshot since session 8; it is a thread-composition question, not a
-   regression.
-2. **BLD-008** — ⚠️ `question` is **already** a kind on `AuthoringActivity`, with its treatment built
-   and its collapse rule decided (a question can never be absorbed into a run). **Add the author, not
-   a fifth opinion about how it should look.**
-3. **BLD-010** owns three debts (one fewer than last session): BLD-003's docs route has **never been
-   on screen**, and BLD-004's **R4** (Ollama open-weight leg, inferred not driven) and **R5**
-   (OpenAI-compatible `reasoning_content`, deliberately unwired). ✅ **BLD-005's R5 is closed** —
-   cost is now verified against a real provider and the arithmetic is exact.
+**12 of 17 fully built, plus BLD-014's webview half.** ⚠️ The running total was off by one for
+several sessions because each one added to the last one's number. **Count it off the tables in
+`TASKS.md`.** Track A is 9 of 11; Track B is 3 of 6 plus a half.
 
-## The three traps sessions 8 and 9 found, all one shape
+**Both of Richard's open decisions are now answered and recorded in their task files** — Q5 (PDF:
+a capability gate, no library) and Q6 (a capture is a one-click offer, not automatic).
 
-> **A rule that was right about its old subject.**
+## What is actually left
 
-Three for three this phase: a clock that outlived what it measured (BLD-004), a state class that
-outlived its modifier (BLD-004), and an ellipsis that outlived the path it was written for
-(BLD-007 **B8** — the panel stated the per-turn cost and truncated it to *"about 4…"*). When you
-append to something, re-read the rules already governing it. **A correct decision plus a correct
-decision is not a correct result.**
+| | What | Notes |
+|---|---|---|
+| **BLD-016** | `@` mentions | ⭐ **Cheapest and highest value.** The media path now exists, so this really is a `ReferenceKind` member, a resolver and a glyph — plus the `@` keyboard path into the picker that already backs it. Four of its kinds (`component`, `doc`, `page`, `collection`) are already declared in the union. |
+| **BLD-015** | web search | Same shape, one more resolver. Needs a backend decision (Q4). |
+| **BLD-009** | expanded mode | A real feature, not a bolt-on: the same thread as a document, two-pane with the live preview. Closes **D10**. `BuildThread` already takes a `ThreadWidth` and has an `is-expanded` variant, so the host is the work. |
+| **BLD-010** | acceptance pass | Not a task so much as a sweep, and **its debt list is now nine** — see below. |
+| **BLD-014** | the CDP half | 🔴 **Blocked on F22 and it is Richard's decision, not a wiring one.** |
+| **BLD-012** | 🟡 two legs | OpenAI's image leg is stub-only; the panel chip claim is about a *message* carrying an image, which BLD-011's composer chip does not close. |
 
-> **A spot-check at the default value proves nothing about the range.**
+**Suggested order: BLD-016, then BLD-009, then BLD-010.** BLD-016 finishes the Track B mechanism
+while it is fresh; BLD-009 is the last unbuilt *feature*; BLD-010 should run last because every task
+before it adds to what it has to sweep.
 
-B8's *first* fix was perfect at the shipped 400px panel and hard-clipped the cost with no ellipsis at
-every narrower width — strictly worse than the bug. Found by sweeping the panel's whole width range.
-Same lesson as session 7's opacity table. **Sweep the parameter; it costs the same as one check and
-answers a different question.**
+### BLD-010's list is nine
 
-> **A substring in a request is not evidence of a leak.**
+BLD-004's **R4** (Ollama open-weight leg, inferred not driven) and **R5** (OpenAI-compatible
+`reasoning_content`, deliberately unwired); BLD-006's **R12**; BLD-017's **F2** and **F4**; BLD-008's
+drafting turns + restart-resume; BLD-011's **R9** (a comprehension probe the request's actual route
+can answer); and new from session 15 — **BLD-013's drag-and-drop and file-picker paths** (paste was
+driven end to end, the drop handlers were not) and **BLD-014's on-screen staleness**.
 
-Searching a captured request for removed docs returned two hits, both false: the harness's own text,
-and a citation a human had typed inside a different doc. **Locate the offset and read around it.**
+## The one thing to read before touching the opening turn
+
+> 🔴 **Media placement is a Rule 6 question, not a formatting one.**
+
+An authoring turn is a string with a character `cacheBoundary`. Media cannot be concatenated into a
+string, so a turn carrying it converts that offset into a `cache: true` marker — and the *natural*
+order (media first, which is what every provider's guidance says and what the planning turn
+correctly does) puts a 900KB screenshot **ahead of the breakpoint**. That does not cost the
+screenshot: it re-bills the entire AIX-007 stable prefix, uncached, on every operation of every
+plan. Nothing on screen changes. The only symptom is the invoice.
+
+`openingTurnWithMedia` places it after. `tests-unit/bld-013/mediaCacheSafety.test.ts` asserts the
+marked block's **index**, not just its bytes, and was inverted before it was trusted (4 of 7 red).
+
+## The traps sessions 14 and 15 paid for
+
+> **A rule that was right about its old subject. Six for six this phase.**
+
+Session 15's was the sharpest yet, because the rule was *ours and correct*: BLD-011 gave `.Picker`
+`width: 100%` to stop its list opening 113.8px wide. Add two sibling buttons and a full-width flex
+item claims the whole line — both siblings pushed to a second row at **every** width, 67px tall even
+at 800px where all three fit in 742px. **When you add a sibling to a box, re-read the rules that box
+was given when it was alone.**
+
+> ⚠️ **A synchronous measurement sweep lies in this renderer.**
+
+Session 15's first width sweep reported **71px of overflow that did not exist** — it set
+`style.width` and measured in the same synchronous loop, and an occluded Electron window clamps
+timers ~1000× and never fires `ResizeObserver`. Re-swept with `await` between steps: 0 everywhere.
+**Always await ~180ms after changing a size, and confirm the element actually resized.** A defect
+reported at one end of a sweep only should be re-run async before you believe it.
+
+> **A ceiling must be round in the unit it is *printed* in.**
+
+`20_000_000` bytes rendered as `"19.1 MB"`, so a user who trimmed a PDF to just under 20MB was told
+the limit was 19.1. Assert the rendered string, not the constant.
+
+> **Decide what state the defect would live in, then go and measure that state.**
+
+Three for three now: BLD-004's collision painted only in an unscreenshotted frame; BLD-011's picker
+list was only wrong while *open*; session 15's row was only wrong *with siblings present*.
 
 ## Driving this panel
 
-The recipe is in handovers 5–9. The four from session 9 that cost real time:
+The recipe is in handovers 5–15. What session 15 adds:
 
-- **The doc tool lives on `AuthoringSession`, not the planning turn** — a doc drive must carry a run
-  into a real build operation. The planning turn offers only `submit_plan`, which is a plain tool call
-  with an `operations` array (no XML), so scripting it is two lines.
-- ⚠️ **HMR applies SCSS to the Docs panel and misses its TSX**, and switching panels does not remount
-  it. Only a full restart works, and `cdp reload` is still forbidden (it lands the `file://` page on
-  `chrome-error://`). **Order your source edits to pay for one restart, not two.**
-- ⚠️ **`textContent` sweeps across `*` match `<style>` elements** — a CSS module's own source comments
-  contain the words you are searching for. Exclude `style`/`script`.
-- **You may not need to reset a capture.** Record the current length and slice from it; it keeps the
-  previous run's evidence instead of destroying it, and avoids the global assignment the tool-call
-  classifier refuses.
-
-## If a real provider is needed
-
-The editor has **no AI provider configured**, deliberately — session 9 ran its endpoint check
-*outside* the editor so no key reached `editorSettings`, the keychain or the repo. Richard supplied a
-testing key on request and said he would cycle it. The harness is one ts-node script driving the real
-`AnthropicProvider` with no injected client; the pattern is in HANDOVER-SESSION-9.md and it takes a
-model id as an argument, so OpenAI's leg is a short job.
-
-⚠️ **Make the test distinguish acceptance from comprehension.** A 1px PNG proves only that a request
-shape was not rejected. Session 9 sent a solid blue square and asked what colour it was.
+- **The whole of BLD-013 is driveable with no billed call.** Construct a `DataTransfer`, add a
+  `File`, dispatch a bubbling `ClipboardEvent('paste')` at
+  `[class*=BuildThread-module__Composer]` — that runs the real handler through the real resolver.
+  Generate a genuine oversized PNG via `canvas.toBlob` so the resize path actually runs.
+- **BLD-014's capture needs a sandbox mounted, and the component bench provides one** — click
+  `[data-test=preview-scope-chip]`, pick a component. No AI session, no cost.
+- ⚠️ **Opening the bench hides the side panel.** Measurements taken then return `0×0` at `x:0` and
+  look exactly like a layout defect. Re-click `[data-test=ai-authoring-panel]` first, and check for
+  a `display: none` ancestor before believing any zero.
+- ⚠️ **HMR did not apply either SCSS change in session 15.** The class was in the DOM from a
+  previous edit and the *new* rules were not — computed style still showed the old values. **Check
+  `getComputedStyle` against what you wrote before concluding a fix failed**, and restart rather
+  than `cdp reload` (still forbidden — it lands `file://` on `chrome-error://`).
+- **Theme flips with `document.documentElement.setAttribute('data-theme','light')`**, and a probe
+  element carrying a CSS-module class is how you measure a state you cannot reach through the UI.
+- **Measure disabled and enabled separately.** `Look at it` reads 3.17:1 disabled (WCAG-exempt) and
+  6.66:1 enabled; reporting the first without the second looks like a failure that is not one.

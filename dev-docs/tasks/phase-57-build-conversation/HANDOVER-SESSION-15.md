@@ -1,7 +1,12 @@
 # Phase 57 — handover after session 15 (2026-08-10)
 
-**What ran:** **BLD-013 built and driven; BLD-014's webview half built and driven.** Phase 57 is
-**14 of 17 built, 12 driven**. Both of Richard's open decisions are answered and recorded.
+**What ran:** **BLD-013 built and driven; BLD-014's webview half built and driven.** Both of
+Richard's open decisions are answered and recorded.
+
+⚠️ **Phase 57 is 12 of 17 fully built, plus BLD-014's webview half** — *not* the 14 this handover
+first claimed. The running total in TASKS.md was already off by one and I incremented it instead of
+recounting. Counted off the tables: Track A 9 of 11, Track B 3 of 6 + a half. **Recount from the
+tables; never increment the previous session's number.**
 
 Track B's frame paid for itself exactly as BLD-011 promised — but not for free. Each task is a
 `ReferenceKind` member, a resolver and a glyph *plus* the one thing BLD-011 declared and never

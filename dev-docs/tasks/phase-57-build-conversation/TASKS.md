@@ -40,8 +40,12 @@ box — its header is inside the scroll area.
 ✅ = built **and on `cline-dev`** (BLD-007 and BLD-012 merged 2026-08-09; **BLD-001 built, driven and
 closed 2026-08-09** — `a93720b3`, `02c3072c`, `458e189f`).
 
-**Session 15 (2026-08-10) — BLD-013 built and driven; BLD-014's webview half built and driven.
-14 of 17 built, 12 driven.** Track B's frame paid for itself exactly as promised: both tasks are a
+**Session 15 (2026-08-10) — BLD-013 built and driven; BLD-014's webview half built and driven.**
+
+⚠️ **Count corrected: 12 tasks fully built of 17, plus BLD-014's webview half.** Earlier sessions'
+running total was off by one and session 15 propagated it before checking. Counted off the tables
+below: Track A has 9 of 11 (BLD-009 and BLD-010 not started); Track B has 3 of 6 plus BLD-014's
+first half (BLD-015 and BLD-016 not started). **Recount from the tables, do not increment.** Track B's frame paid for itself exactly as promised: both tasks are a
 `ReferenceKind` member, a resolver, a glyph — plus the one thing BLD-011 declared and never wired,
 which was the media path from the composer to the wire.
 
