@@ -31,6 +31,8 @@ import {
   AiContentBlock,
   asText,
   assertCacheBoundary,
+  degradeDocuments,
+  degradedDocumentText,
   degradeImages,
   isBlockContent
 } from '@noodl-models/AiAssistant/client/content';
@@ -99,6 +101,12 @@ function toOllamaContent(content: AiContentBlock[]): { content: string; images: 
   const images: string[] = [];
   for (const block of content) {
     if (block.type === 'image') images.push(block.data);
+    // BLD-013 — Ollama's `/api/chat` has no document sibling to `images`, and no
+    // registered model here is flagged for `documents`, so `buildParams` has
+    // already degraded this to a text block. The branch exists so that a
+    // document arriving by any other route lands in the prose *declared* rather
+    // than silently dropped by the `else if (block.text)` below.
+    else if (block.type === 'document') text.push(degradedDocumentText(block));
     else if (block.text) text.push(block.text);
   }
   return { content: text.join('\n\n'), images };
@@ -191,9 +199,15 @@ export class OllamaProvider implements AiProvider {
     // this degrades every time until someone registers a vision model
     // deliberately. That is the intended default: sending image bytes to a
     // text-only local model is the failure this branch exists to prevent.
-    const messagesIn = model.capabilities.vision
-      ? request.messages
-      : request.messages.map((message) => ({ ...message, content: degradeImages(message.content) }));
+    //
+    // BLD-013 — and a local model takes a PDF even less often than it takes an
+    // image, so the same reasoning applies harder. Nothing seeded here is
+    // flagged `documents`, so a dropped PDF always degrades on this provider.
+    const messagesIn = request.messages.map((message) => {
+      let content = model.capabilities.vision ? message.content : degradeImages(message.content);
+      if (!model.capabilities.documents) content = degradeDocuments(content);
+      return content === message.content ? message : { ...message, content };
+    });
 
     const body: Record<string, unknown> = {
       model: modelId,

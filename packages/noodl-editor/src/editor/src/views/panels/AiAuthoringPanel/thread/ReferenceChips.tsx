@@ -26,6 +26,7 @@ import { Icon, IconName, IconSize } from '@noodl-core-ui/components/common/Icon'
 import { Text, TextType } from '@noodl-core-ui/components/typography/Text';
 import { FeedbackType } from '@noodl-constants/FeedbackType';
 
+import { formatBytes } from '../../../../models/AiAssistant/thread/fileAttachments';
 import {
   blockingReferences,
   referenceCost,
@@ -78,6 +79,10 @@ export function ReferenceChips({ references, onTogglePin, onRemove, applyCount }
 
   const cost = referenceCost(references);
   const blocked = blockingReferences(references);
+  // Deduped: five PDFs on a text-only model is one fact, not five sentences.
+  const warnings = Array.from(
+    new Set(references.filter((ref) => ref.status !== 'failed' && ref.warning).map((ref) => ref.warning as string))
+  );
 
   return (
     <VStack UNSAFE_style={{ gap: 4 }}>
@@ -85,7 +90,15 @@ export function ReferenceChips({ references, onTogglePin, onRemove, applyCount }
         {references.map((ref) => {
           const age = staleAge(ref, applyCount);
           const failed = ref.status === 'failed';
-          const classes = [css['Chip'], failed ? css['is-failed'] : '', age !== undefined ? css['is-stale'] : '']
+          const classes = [
+            css['Chip'],
+            failed ? css['is-failed'] : '',
+            age !== undefined ? css['is-stale'] : '',
+            // BLD-013 — a warned chip is not a failed one and must not look
+            // like one. It resolved, it will be sent, and the only thing wrong
+            // is what the *model* will do with it.
+            !failed && ref.warning ? css['is-warned'] : ''
+          ]
             .filter(Boolean)
             .join(' ');
 
@@ -105,7 +118,13 @@ export function ReferenceChips({ references, onTogglePin, onRemove, applyCount }
               <Icon
                 icon={KIND_ICONS[ref.kind]}
                 size={IconSize.Tiny}
-                variant={failed ? FeedbackType.Danger : age !== undefined ? FeedbackType.Notice : undefined}
+                variant={
+                  failed
+                    ? FeedbackType.Danger
+                    : age !== undefined || ref.warning
+                      ? FeedbackType.Notice
+                      : undefined
+                }
               />
               {/* `isSpan` — a `<p>` inside a flex row brings block margins the
                   chip has no room for, and `Text` defaults to one. */}
@@ -119,7 +138,17 @@ export function ReferenceChips({ references, onTogglePin, onRemove, applyCount }
               )}
               {ref.status === 'ready' && ref.resolution && (
                 <span className={css['Size']}>
-                  {formatChars(ref.resolution.chars)}
+                  {/*
+                   * BLD-013 — a media reference reports **bytes**, not
+                   * characters, and the swap is deliberate rather than cosmetic.
+                   * `chars` on a screenshot counts its one-sentence twin, so
+                   * showing it would print "180" beside a 900KB picture — a
+                   * number that is true, meaningless, and reads as reassuring.
+                   * See `ReferenceResolution.bytes`.
+                   */}
+                  {ref.resolution.bytes !== undefined
+                    ? formatBytes(ref.resolution.bytes)
+                    : formatChars(ref.resolution.chars)}
                   {ref.resolution.truncated && <span className={css['Truncated']}> cut</span>}
                 </span>
               )}
@@ -164,7 +193,25 @@ export function ReferenceChips({ references, onTogglePin, onRemove, applyCount }
           <span>
             {cost.count === 1 ? '1 attachment' : `${cost.count} attachments`} · {formatChars(cost.chars)} characters
             {cost.images > 0 ? ` · ${cost.images} image${cost.images === 1 ? '' : 's'}` : ''}
+            {cost.documents > 0 ? ` · ${cost.documents} PDF${cost.documents === 1 ? '' : 's'}` : ''}
+            {/*
+             * BLD-013 — the second unit, printed only when there is media. A
+             * request has a size ceiling as well as a context window, and this
+             * is the number that runs into it; folding it into the character
+             * count would report a figure that describes neither limit.
+             */}
+            {cost.bytes > 0 ? ` · ${formatBytes(cost.bytes)}` : ''}
           </span>
+          {/*
+           * Q5's warning, per chip, spelled out under the meter rather than
+           * left to a `title` nobody hovers. It is the whole of what Richard
+           * asked for on the unsupported leg, and a tooltip is not a warning.
+           */}
+          {warnings.map((warning) => (
+            <span key={warning} className={css['Warning']}>
+              {warning}
+            </span>
+          ))}
           {/*
            * ⚠️ The sentence that stops a pinned reference reading as free. None
            * of this rides the cached prefix (Rule 6), and a plan opens one turn
@@ -216,6 +263,7 @@ export function TurnReferences({ references }: { references: readonly TurnRefere
 function chipTitle(ref: AttachedReference, age: number | undefined): string {
   const parts = [ref.label];
   if (ref.status === 'failed' && ref.error) parts.push(ref.error);
+  if (ref.status !== 'failed' && ref.warning) parts.push(ref.warning);
   if (ref.status === 'ready' && ref.resolution?.truncated) {
     parts.push(
       `Cut to ${ref.resolution.chars} of ${ref.resolution.originalChars} characters — the model is told what it is missing.`

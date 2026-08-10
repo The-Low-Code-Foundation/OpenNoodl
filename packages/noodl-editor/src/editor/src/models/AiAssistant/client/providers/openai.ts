@@ -27,6 +27,8 @@ import {
   AiContentBlock,
   asText,
   assertCacheBoundary,
+  degradeDocuments,
+  degradedDocumentText,
   degradeImages,
   isBlockContent
 } from '@noodl-models/AiAssistant/client/content';
@@ -121,13 +123,27 @@ export function toModelsUrl(baseUrl: string): string {
   return `${trimmed}/models`;
 }
 
-/** BLD-012 — our closed block union onto OpenAI's content parts. */
+/**
+ * BLD-012 — our closed block union onto OpenAI's content parts.
+ *
+ * ⚠️ BLD-013's `document` block has **no** part to map to here: this adapter
+ * speaks Chat Completions, whose only binary part is `image_url`, and a PDF is
+ * not one. It therefore never reaches this function — `buildParams` degrades it
+ * to its declared text twin first, because `documents` is absent on every model
+ * this provider resolves. The explicit branch is kept anyway so that the day
+ * someone adds the capability flag, the compiler points here rather than
+ * letting a document fall through to `block.text` and be sent as bare prose.
+ */
 function toOpenAiParts(blocks: AiContentBlock[]): OpenAiContentPart[] {
-  return blocks.map<OpenAiContentPart>((block) =>
-    block.type === 'image'
-      ? { type: 'image_url', image_url: { url: `data:${block.mediaType};base64,${block.data}` } }
-      : { type: 'text', text: block.text }
-  );
+  return blocks.map<OpenAiContentPart>((block) => {
+    if (block.type === 'image') {
+      return { type: 'image_url', image_url: { url: `data:${block.mediaType};base64,${block.data}` } };
+    }
+    if (block.type === 'document') {
+      return { type: 'text', text: degradedDocumentText(block) };
+    }
+    return { type: 'text', text: block.text };
+  });
 }
 
 export function toOpenAiMessages(messages: AiMessage[]): OpenAiRequestMessage[] {
@@ -226,9 +242,18 @@ export class OpenAiProvider implements AiProvider {
     // anything, so it resolves through `unknownModel` and gets no `vision`
     // flag: text-only by default, which is the safe direction. OpenAI proper
     // has vision on every registered id.
-    const messagesIn = model.capabilities.vision
-      ? request.messages
-      : request.messages.map((message) => ({ ...message, content: degradeImages(message.content) }));
+    //
+    // BLD-013 — `documents` is absent on **every** model this provider
+    // resolves, including OpenAI proper, so the second pass always fires. That
+    // is a statement about this adapter, not about OpenAI: Chat Completions has
+    // no part shape we encode for a PDF. A dropped PDF therefore reaches an
+    // OpenAI model as its declared twin — stated, never silent — and the
+    // composer says so before the send rather than after the bill.
+    const messagesIn = request.messages.map((message) => {
+      let content = model.capabilities.vision ? message.content : degradeImages(message.content);
+      if (!model.capabilities.documents) content = degradeDocuments(content);
+      return content === message.content ? message : { ...message, content };
+    });
 
     const body: Record<string, unknown> = {
       model: modelId,

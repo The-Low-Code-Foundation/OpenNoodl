@@ -342,6 +342,17 @@ export interface BuildThreadProps {
    * a fifth message kind BLD-002 never defined.
    */
   composerAccessory?: React.ReactNode;
+  /**
+   * BLD-013 — files dropped on the composer or pasted into it.
+   *
+   * The handler lives here rather than in the panel because both events are DOM
+   * plumbing on *this* element: a paste has to be caught where the caret is
+   * (inside the `TextArea`, and it bubbles to the composer), and a drop needs
+   * its `dragover` default prevented on the same box or the OS opens the file
+   * instead. The panel is handed a plain `File[]` and never sees a
+   * `DataTransfer`.
+   */
+  onComposerFiles?: (files: File[]) => void;
 }
 
 export function BuildThread({
@@ -360,9 +371,12 @@ export function BuildThread({
   sendLabel = 'Send',
   busy,
   onStop,
-  composerAccessory
+  composerAccessory,
+  onComposerFiles
 }: BuildThreadProps) {
   const anchorRef = useRef<HTMLDivElement | null>(null);
+  /** BLD-013 — whether a drag is currently over the composer. Paint only. */
+  const [dragging, setDragging] = useState(false);
 
   // Follow the stream, but only while the user is already near the bottom —
   // same rule as the Explain panel, same reason: scrolling up to read something
@@ -465,7 +479,55 @@ export function BuildThread({
         </div>
       </ScrollArea>
 
-      <div className={css['Composer']}>
+      <div
+        className={`${css['Composer']}${dragging ? ` ${css['is-dragging']}` : ''}`}
+        /*
+         * ⚠️ `onDragOver` must call `preventDefault()` on **every** dragover,
+         * not just once — the browser re-asks on each event, and a handler that
+         * only prevents the first one lets the drop fall through to Electron,
+         * which navigates the whole window to the dropped file. That failure
+         * replaces the editor with a PDF viewer and looks like a crash.
+         */
+        onDragOver={(event) => {
+          if (!onComposerFiles) return;
+          event.preventDefault();
+          if (!dragging) setDragging(true);
+        }}
+        /*
+         * `dragleave` fires when the pointer crosses onto a *child*, so a naive
+         * handler flickers the highlight off every time the cursor passes over
+         * the textarea. `relatedTarget` still inside this box means we never
+         * actually left it.
+         */
+        onDragLeave={(event) => {
+          const next = event.relatedTarget as Node | null;
+          if (next && event.currentTarget.contains(next)) return;
+          setDragging(false);
+        }}
+        onDrop={(event) => {
+          if (!onComposerFiles) return;
+          event.preventDefault();
+          setDragging(false);
+          const files = Array.from(event.dataTransfer?.files ?? []);
+          if (files.length > 0) onComposerFiles(files);
+        }}
+        /*
+         * A pasted screenshot arrives as a clipboard *file* with an empty name,
+         * which is why `classifyAttachment` falls back to the MIME type.
+         *
+         * ⚠️ The paste is only intercepted when it actually carries files.
+         * Reading `clipboardData.files` unconditionally and preventing the
+         * default would break ordinary text paste into the composer — the most
+         * common thing anyone does here.
+         */
+        onPaste={(event) => {
+          if (!onComposerFiles) return;
+          const files = Array.from(event.clipboardData?.files ?? []);
+          if (files.length === 0) return;
+          event.preventDefault();
+          onComposerFiles(files);
+        }}
+      >
         <VStack UNSAFE_style={{ gap: 8 }}>
           {composerAccessory}
           <TextArea

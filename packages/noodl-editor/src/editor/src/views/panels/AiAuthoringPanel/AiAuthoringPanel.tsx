@@ -100,7 +100,7 @@ import { formatDiagnosticLine } from '../../../validation';
 
 import { FeedbackType } from '@noodl-constants/FeedbackType';
 import { Icon, IconName, IconSize } from '@noodl-core-ui/components/common/Icon';
-import { PrimaryButton, PrimaryButtonVariant } from '@noodl-core-ui/components/inputs/PrimaryButton';
+import { PrimaryButton, PrimaryButtonSize, PrimaryButtonVariant } from '@noodl-core-ui/components/inputs/PrimaryButton';
 import { TextInput } from '@noodl-core-ui/components/inputs/TextInput';
 import { HStack, VStack } from '@noodl-core-ui/components/layout/Stack';
 import { BasePanel } from '@noodl-core-ui/components/sidebar/BasePanel';
@@ -130,6 +130,7 @@ import { ThreadSwitcher } from './thread/ThreadSwitcher';
 import {
   blockingReferences,
   carryOver,
+  referenceMediaBlocks,
   renderReferenceBlock,
   toTurnReferences,
   type AttachedReference,
@@ -141,6 +142,15 @@ import {
   resolveCandidate,
   type ReferenceCandidate
 } from '../../../models/AiAssistant/authoring/referenceSources';
+// BLD-013 — the three intake paths' one resolver, and BLD-014's capture. Both
+// are `authoring/` modules for the same reason `referenceSources` is: they need
+// a browser (a `<canvas>`, a `<webview>`), which is exactly what the pure half
+// next door exists to stay free of.
+import { ATTACHMENT_ACCEPT, resolveAttachment } from '../../../models/AiAssistant/authoring/fileReferences';
+import { resolveLivePreviewCapture } from '../../../models/AiAssistant/authoring/captureReferences';
+import { applyCount, noteApply, onApplyCountChanged } from '../../../models/AiAssistant/authoring/applyCount';
+import { hasLivePreview } from '../../SandboxSurface';
+import type { AiContentBlock } from '../../../models/AiAssistant/client/content';
 
 export const AiAuthoringPanel_ID = 'ai-authoring';
 
@@ -343,6 +353,70 @@ export function AiAuthoringPanel({ width = 'panel' }: AiAuthoringPanelProps = {}
     setReferences((current) => [...current, resolved]);
   }, []);
 
+  /**
+   * BLD-014 Rule 7 — how many times the agent has changed the project in this
+   * run, so a capture can say how far behind it is.
+   *
+   * Subscribed rather than read at render: an Accept can land while the
+   * composer sits untouched, and the chip has to grey *then*, not at whatever
+   * moment React next happens to re-render this panel for some other reason.
+   */
+  const [applies, setApplies] = useState(applyCount);
+  useEffect(() => onApplyCountChanged(() => setApplies(applyCount())), []);
+
+  /**
+   * BLD-013 — the one destination for drag-and-drop, paste and the picker.
+   *
+   * Resolved in parallel and appended in one `setReferences`, not one per file:
+   * dropping five mocks through five sequential state updates renders five
+   * intermediate chip rows, and the meter's total is wrong in four of them.
+   */
+  const attachFiles = useCallback(async (files: readonly File[]) => {
+    if (files.length === 0) return;
+    // The model that will serve the *plan* turn, which is where an attachment
+    // first lands. See `AiClient.getRoleModel` for why this is not the active
+    // model.
+    const model = AiClient.getRoleModel('plan');
+    const target = {
+      modelLabel: model?.displayName ?? 'This model',
+      supportsDocuments: model?.capabilities.documents === true
+    };
+    const resolved = await Promise.all(files.map((file, index) => resolveAttachment(file, target, index)));
+    setReferences((current) => [...current, ...resolved]);
+  }, []);
+
+  /**
+   * BLD-014 — `◎ Look at it`, the webview half.
+   *
+   * ⚠️ Q6 is answered for the *receipt* (Richard: a one-click offer after an
+   * apply, not an automatic render on every one). This control is the other
+   * half of that decision: the offer has to exist somewhere the user can reach
+   * it mid-conversation too, or "one click after an apply" is the only moment
+   * the feature is ever available.
+   */
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  /**
+   * Whether there is a preview mounted to capture.
+   *
+   * ⚠️ Polled rather than subscribed, and 500ms is deliberate. The registry is
+   * written from a `<webview>` ref callback in a *different* document tree —
+   * there is no React path from that mount to this panel's render, and adding
+   * an event bus for a boolean that changes when the user opens a document is a
+   * larger mechanism than the fact deserves. Half a second is under the time it
+   * takes to look down at the composer after opening a preview.
+   */
+  const [previewLive, setPreviewLive] = useState(hasLivePreview);
+  useEffect(() => {
+    const timer = setInterval(() => setPreviewLive(hasLivePreview()), 500);
+    return () => clearInterval(timer);
+  }, []);
+
+  const captureLive = useCallback(async () => {
+    const resolved = await resolveLivePreviewCapture();
+    if (resolved) setReferences((current) => [...current, resolved]);
+  }, []);
+
   const togglePin = useCallback((id: string) => {
     setReferences((current) => current.map((ref) => (ref.id === id ? { ...ref, pinned: !ref.pinned } : ref)));
   }, []);
@@ -522,7 +596,13 @@ export function AiAuthoringPanel({ width = 'panel' }: AiAuthoringPanelProps = {}
    * rather than by picking a tab first.
    */
   const routePlan = useCallback(
-    async (intent: BuildIntent, plan: AuthoringPlan, request: string, references?: string) => {
+    async (
+      intent: BuildIntent,
+      plan: AuthoringPlan,
+      request: string,
+      references?: string,
+      referenceMedia?: AiContentBlock[]
+    ) => {
       const project = ProjectModel.instance;
       if (!project) return;
       setRoute(intent);
@@ -574,7 +654,12 @@ export function AiAuthoringPanel({ width = 'panel' }: AiAuthoringPanelProps = {}
         // BLD-011 — the attachments ride into the opening turn's variable half,
         // beside `planContext`. This is the path where Rule 6 actually binds:
         // it is the only one of the three that carries a `cacheBoundary`.
-        const sessionOptions = { ...styleOptions, references };
+        // BLD-013/014 — and the media rides in the same half, placed by
+        // `openingTurnWithMedia`. 🔴 Read its docstring before touching the
+        // order: this is the one route with a cache boundary, so a picture put
+        // ahead of it re-bills the entire stable prefix on every operation of
+        // every plan, silently.
+        const sessionOptions = { ...styleOptions, references, referenceMedia };
         const session = existing
           ? AuthoringSession.createUpdate(
               fromProjectModel(project),
@@ -627,7 +712,15 @@ export function AiAuthoringPanel({ width = 'panel' }: AiAuthoringPanelProps = {}
     // of what the user has been looking at rather than a second, later read
     // that could disagree with the sizes on screen.
     const attached = references;
-    const referenceBlock = renderReferenceBlock(attached);
+    // BLD-014 — `applies` is passed so a stale capture states its age *in the
+    // prompt text*. Rule 7's "nothing stale is ever sent silently" is this
+    // argument, not the grey border on the chip: the border tells the user, the
+    // sentence tells the model.
+    const referenceBlock = renderReferenceBlock(attached, applies);
+    // BLD-013/014 — the half that cannot be a string. Empty for every turn that
+    // carries only text attachments, which is what keeps those turns
+    // byte-identical to the ones BLD-011 shipped.
+    const referenceMedia = referenceMediaBlocks(attached);
 
     setComposer('');
     // Rule 7 — pinned references ride the next turn; unpinned ones perish,
@@ -646,7 +739,10 @@ export function AiAuthoringPanel({ width = 'panel' }: AiAuthoringPanelProps = {}
     setLiveRequest(request);
     setLiveReferences(toTurnReferences(attached));
     try {
-      const session = new PlanningSession(fromProjectModel(project), request, { references: referenceBlock });
+      const session = new PlanningSession(fromProjectModel(project), request, {
+        references: referenceBlock,
+        referenceMedia
+      });
       planAbortRef.current = new AbortController();
       const outcome = await session.run({ abortController: planAbortRef.current });
 
@@ -654,7 +750,7 @@ export function AiAuthoringPanel({ width = 'panel' }: AiAuthoringPanelProps = {}
         lastPlanRef.current = outcome.plan;
         const next = decideIntent(outcome.plan);
         setDecision(next);
-        await routePlan(next.intent, outcome.plan, request, referenceBlock);
+        await routePlan(next.intent, outcome.plan, request, referenceBlock, referenceMedia);
         return;
       }
 
@@ -682,7 +778,7 @@ export function AiAuthoringPanel({ width = 'panel' }: AiAuthoringPanelProps = {}
       planAbortRef.current = null;
       setPlanningRequest(null);
     }
-  }, [appendTurns, composer, references, retire, routePlan, threadLength]);
+  }, [appendTurns, applies, composer, references, retire, routePlan, threadLength]);
 
   /**
    * The one-click override on the agent's own sentence.
@@ -769,6 +865,10 @@ export function AiAuthoringPanel({ width = 'panel' }: AiAuthoringPanelProps = {}
       // receipt. The session is still disposed — it holds a candidate, and the
       // candidate is in the project now — but the record of it outlives it,
       // and since BLD-006 it outlives the process too.
+      // BLD-014 Rule 7 — the project has changed, so every capture taken
+      // before this moment now depicts something that no longer exists. One
+      // call, on the one path that writes to the project from this panel.
+      noteApply();
       const at = threadLength();
       const live = componentTurns(session.state, {
         idPrefix: `history-${at}-component`,
@@ -1186,8 +1286,19 @@ export function AiAuthoringPanel({ width = 'panel' }: AiAuthoringPanelProps = {}
         }
         composerAccessory={
           <VStack UNSAFE_style={{ gap: 6 }}>
-            <ReferenceChips references={references} onTogglePin={togglePin} onRemove={removeReference} />
-            <HStack UNSAFE_style={{ height: 'auto' }}>
+            <ReferenceChips
+              references={references}
+              onTogglePin={togglePin}
+              onRemove={removeReference}
+              applyCount={applies}
+            />
+            {/* ⚠️ `gap` and `height: 'auto'` both matter. BLD-011 measured this
+                row: an `HStack` forces `height: 100%` on every child, and the
+                picker's absolutely-positioned list resolves `left/right: 0`
+                against whatever box wraps it — which is how a component list
+                opened 113.8px wide, the width of its own button, and
+                ellipsized every path it existed to show. */}
+            <HStack UNSAFE_style={{ height: 'auto', gap: 6 }}>
               <ReferencePicker
                 candidates={candidates}
                 attachedTargets={new Set(references.map((ref) => ref.target))}
@@ -1195,9 +1306,60 @@ export function AiAuthoringPanel({ width = 'panel' }: AiAuthoringPanelProps = {}
                 onOpen={refreshCandidates}
                 isDisabled={!hasProject}
               />
+              {/*
+               * BLD-013's third intake path. A hidden input rather than
+               * Electron's `dialog.showOpenDialog`: the same `File` objects the
+               * drop and paste paths produce, so one resolver serves all three
+               * — and no main-process round trip to open a file the renderer
+               * then has to read back off disk anyway.
+               */}
+              <input
+                ref={fileInputRef}
+                type="file"
+                multiple
+                accept={ATTACHMENT_ACCEPT}
+                style={{ display: 'none' }}
+                onChange={(event) => {
+                  const files = Array.from(event.target.files ?? []);
+                  // Cleared so that picking the *same* file twice in a row
+                  // still fires `change` — the input compares values, and a
+                  // second attach of one mock is a legitimate thing to want.
+                  event.target.value = '';
+                  void attachFiles(files);
+                }}
+              />
+              <PrimaryButton
+                label="Attach"
+                icon={IconName.ImportSlanted}
+                variant={PrimaryButtonVariant.MutedOnLowBg}
+                size={PrimaryButtonSize.Small}
+                isDisabled={!hasProject}
+                onClick={() => fileInputRef.current?.click()}
+                testId="attach-file"
+              />
+              {/*
+               * BLD-014's webview grab. Greyed with no preview mounted rather
+               * than hidden: a control that appears and disappears as documents
+               * change is one the user never learns exists.
+               *
+               * ⚠️ `MutedOnLowBg`, like its neighbours — `Ghost`'s accent label
+               * measured 4.33:1 in light on this exact ground three tasks
+               * running, and a fourth call-site override would be a fourth copy
+               * of one token defect that can disagree with the other three.
+               */}
+              <PrimaryButton
+                label="Look at it"
+                icon={IconName.Image}
+                variant={PrimaryButtonVariant.MutedOnLowBg}
+                size={PrimaryButtonSize.Small}
+                isDisabled={!hasProject || !previewLive}
+                onClick={() => void captureLive()}
+                testId="capture-preview"
+              />
             </HStack>
           </VStack>
         }
+        onComposerFiles={(files) => void attachFiles(files)}
         value={composer}
         onChange={setComposer}
         onSend={() => void send()}

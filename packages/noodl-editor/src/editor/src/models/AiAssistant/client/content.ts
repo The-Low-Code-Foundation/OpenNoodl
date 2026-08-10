@@ -71,7 +71,43 @@ export interface AiImageBlock extends AiBlockBase {
   text: string;
 }
 
-export type AiContentBlock = AiTextBlock | AiImageBlock;
+/**
+ * BLD-013 — the third member, and the reason the phase takes on no PDF library.
+ *
+ * Richard's call on Q5: *"If they're using an image model (Anthropic, OpenAI,
+ * Google) accept. If not throw a warning like 'PDFs might not be supported by
+ * this model'."* Read literally that is a **capability gate, not a parser**:
+ * Anthropic's Messages API takes a base64 `application/pdf` document block
+ * natively — no beta header, 32MB and 600 pages — and does its own extraction
+ * and rasterisation server-side. So the alternative the task costed (adopt
+ * `pdfjs-dist`, the one genuinely new dependency in a packaged Electron app
+ * that is already large) buys nothing the endpoint does not already do better.
+ *
+ * ⚠️ The union stays closed, so this is a decision made here with every adapter
+ * updated in the same commit — see the module docstring. An open union would
+ * let a document block reach an adapter with no case for it and be dropped on
+ * the floor, which is the exact failure the twin exists to prevent.
+ */
+export type AiDocumentMediaType = 'application/pdf';
+
+export interface AiDocumentBlock extends AiBlockBase {
+  type: 'document';
+  /** Raw base64. No `data:` prefix, same contract as {@link AiImageBlock}. */
+  data: string;
+  mediaType: AiDocumentMediaType;
+  /** The filename, as the model is told it. Part of the twin's wording. */
+  title: string;
+  /**
+   * The text twin, required for the same reason an image's is.
+   *
+   * ⚠️ It is **not** the document's text — nothing here extracts any. It says
+   * what the document was and that it could not be sent, so a model that cannot
+   * take one never discusses a file it did not receive.
+   */
+  text: string;
+}
+
+export type AiContentBlock = AiTextBlock | AiImageBlock | AiDocumentBlock;
 
 /** Message content in either form. String remains the overwhelmingly common case. */
 export type AiContent = string | AiContentBlock[];
@@ -105,16 +141,45 @@ export function degradedImageText(block: AiImageBlock): string {
 }
 
 /**
- * Content as one plain string, with every image replaced by its declared twin.
+ * BLD-013 — the same contract for a document, and the wording carries the
+ * consequence rather than just the fact.
+ *
+ * "Was not sent" is what a user needs; "do not answer from its filename" is
+ * what the *model* needs, because a PDF's name is often a decent summary of it
+ * (`2026-brand-guidelines.pdf`) and a model handed only the name will happily
+ * reason from it. The blunt second sentence is the difference between a
+ * declared substitution and a confident guess.
+ */
+export function degradedDocumentText(block: AiDocumentBlock): string {
+  return [
+    `[document omitted — the model serving this request cannot receive documents, so ${block.title} was not sent.]`,
+    block.text,
+    `[end of document description. Do not infer the document's contents from its filename; ask for the text if the task depends on it.]`
+  ].join('\n');
+}
+
+/**
+ * Content as one plain string, with every image and document replaced by its
+ * declared twin.
  *
  * This is the degrade path, and it is the *only* way an adapter without vision
  * is allowed to render content — which is what makes "no image is ever dropped
  * silently" a property of the module rather than a promise in four adapters.
+ *
+ * ⚠️ The document branch is explicit rather than falling through to
+ * `block.text`. A document's `text` field is a *description*, exactly like an
+ * image's, so the fall-through would have emitted it bare — the twin's words
+ * with none of the declaration that makes them honest. Same field name, wholly
+ * different meaning from `AiTextBlock.text`.
  */
 export function asText(content: AiContent): string {
   if (!isBlockContent(content)) return content;
   return content
-    .map((block) => (block.type === 'image' ? degradedImageText(block) : block.text))
+    .map((block) => {
+      if (block.type === 'image') return degradedImageText(block);
+      if (block.type === 'document') return degradedDocumentText(block);
+      return block.text;
+    })
     .filter((text) => text.length > 0)
     .join('\n\n');
 }
@@ -141,6 +206,31 @@ export function degradeImages(content: AiContent): AiContent {
 
 export function hasImage(content: AiContent): boolean {
   return isBlockContent(content) && content.some((block) => block.type === 'image');
+}
+
+/**
+ * BLD-013 — `degradeImages` for documents, and deliberately a second function
+ * rather than one `degradeMedia(content, caps)`.
+ *
+ * The two capabilities are independent on real providers: every current Claude
+ * model takes both, an Ollama vision model takes images and no documents, and
+ * an unregistered id takes neither. Folding them into one call would make the
+ * common case — a model with vision but no document support — express itself as
+ * a flag combination rather than as two separate, separately-tested passes, and
+ * BLD-012's goldens pin `degradeImages`' output byte-for-byte on the assumption
+ * that it is the only thing that touched the content.
+ */
+export function degradeDocuments(content: AiContent): AiContent {
+  if (!isBlockContent(content) || !hasDocument(content)) return content;
+  return content.map<AiContentBlock>((block) =>
+    block.type === 'document'
+      ? { type: 'text', text: degradedDocumentText(block), ...(block.cache ? { cache: true } : {}) }
+      : block
+  );
+}
+
+export function hasDocument(content: AiContent): boolean {
+  return isBlockContent(content) && content.some((block) => block.type === 'document');
 }
 
 /**

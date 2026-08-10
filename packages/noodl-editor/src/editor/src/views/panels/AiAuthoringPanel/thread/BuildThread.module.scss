@@ -374,6 +374,24 @@
 }
 
 /*
+ * BLD-013 — the composer while a file is being dragged over it.
+ *
+ * ⚠️ Written as `.Composer.is-dragging`, not `.is-dragging`, for the reason
+ * `ReferenceChips` documents at length: a bare CSS-module class loses to any
+ * descendant selector reaching in from the panel, and the failure mode is a
+ * state that silently stops painting — BLD-004's 1.16:1 collision, and BLD-005's
+ * undefined class, were both this shape.
+ *
+ * ⚠️ The border **replaces** the existing 1px top border rather than adding to
+ * it: an outline or an extra border would change the box's height mid-drag and
+ * shift the whole thread up, which reads as the panel rejecting the drop.
+ */
+.Composer.is-dragging {
+  border-top-color: var(--theme-color-primary);
+  background-color: var(--theme-color-bg-2);
+}
+
+/*
  * The expanded host (BLD-009) is a document, not a 400px rail: a thread line
  * that runs the full width of a 1400px window is unreadable for the same reason
  * a newspaper has columns. The measure is capped and centred; nothing else

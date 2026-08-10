@@ -84,6 +84,21 @@
 }
 
 /*
+ * BLD-013 — Q5's warned chip: a PDF attached to a model that cannot receive
+ * one.
+ *
+ * ⚠️ Deliberately the **same** border as `is-stale` and deliberately NOT
+ * `is-failed`'s. All three states are "this will not do what you assume", and a
+ * third colour would be a third thing to learn for no extra information — while
+ * borrowing `danger` would say the send is blocked, which is exactly the
+ * confusion `AttachedReference.warning` exists as a separate field to prevent.
+ * The distinguishing detail is the sentence under the meter, not the hue.
+ */
+.Chip.is-warned {
+  border-color: var(--theme-color-notice);
+}
+
+/*
  * The historical record under a turn's request. Flatter than a live chip and
  * with no controls in it — see `TurnReferences` for why it is a separate
  * component rather than a mode of the live one.
@@ -176,4 +191,19 @@
  */
 .Blocked {
   color: var(--theme-color-danger);
+}
+
+/*
+ * BLD-013 — Q5's warning, on screen rather than in a `title`.
+ *
+ * `notice` at the meter's 10px, on `bg-1`/`bg-2`. ⚠️ It takes the full row
+ * (`flex-basis: 100%`) rather than sitting after the totals: the meter is a
+ * `flex-wrap` row, so a long sentence appended inline would wrap *mid-sentence*
+ * around the character count and read as part of it. Contrast is measured in
+ * the running editor and recorded in the register — the token name is not the
+ * measurement, which this phase has now paid for three times.
+ */
+.Warning {
+  flex-basis: 100%;
+  color: var(--theme-color-notice);
 }

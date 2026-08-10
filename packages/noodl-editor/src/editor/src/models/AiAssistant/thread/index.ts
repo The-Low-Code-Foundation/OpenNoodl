@@ -48,14 +48,30 @@ export {
   capReferenceText,
   carryOver,
   defaultPinned,
+  hasReferenceMedia,
   isStale,
+  openingTurnWithMedia,
   REFERENCE_CAPS,
   referenceCost,
+  referenceMediaBlocks,
   renderReferenceBlock,
   staleAge,
   toTurnReferences
 } from './references';
 export type { AttachedReference, ReferenceCost, ReferenceKind, ReferenceResolution, TurnReference } from './references';
+// BLD-013 — what a dropped file is and what it costs. Pure, same rule as above:
+// `authoring/fileReferences` needs a browser and is not re-exported here.
+export {
+  ATTACHMENT_LIMITS,
+  classifyAttachment,
+  documentSupportWarning,
+  documentTwinText,
+  fileExtension,
+  formatBytes,
+  imageTwinText,
+  sizeRefusal
+} from './fileAttachments';
+export type { AttachmentClass, AttachmentKind } from './fileAttachments';
 export {
   authoringDetail,
   completedDurations,

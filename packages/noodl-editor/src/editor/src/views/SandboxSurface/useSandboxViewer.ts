@@ -28,6 +28,7 @@ import { guid } from '@noodl-utils/utils';
 
 import { PreviewTokenInjector } from '../../services/PreviewTokenInjector';
 import { ViewerConnection } from '../../ViewerConnection';
+import { registerLivePreview, unregisterLivePreview } from './livePreviewCapture';
 
 /**
  * Its own storage jar: a sandbox signs in as a fake user and must not leak that
@@ -123,6 +124,11 @@ export function useSandboxViewer({
     if (webview.current && onDomReady.current) {
       webview.current.removeEventListener('dom-ready', onDomReady.current);
       PreviewTokenInjector.instance.clearWebview(webview.current);
+      // BLD-014 — released on the same edge the listener is. Both hosts of this
+      // hook mount a sandbox, so registering here is what makes "look at it"
+      // work in the bench and the authoring preview without either of them
+      // knowing the feature exists.
+      unregisterLivePreview(webview.current);
     }
 
     webview.current = element;
@@ -132,6 +138,7 @@ export function useSandboxViewer({
       const handler = () => PreviewTokenInjector.instance.notifyDomReady(element);
       onDomReady.current = handler;
       element.addEventListener('dom-ready', handler);
+      registerLivePreview(element);
     }
   }, []);
 

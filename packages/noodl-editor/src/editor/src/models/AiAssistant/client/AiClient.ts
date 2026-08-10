@@ -109,6 +109,23 @@ export const AiClient = {
   },
 
   /**
+   * BLD-013 — the model a given role's turn will actually reach, capabilities
+   * and all.
+   *
+   * ⚠️ Not `getActiveModel()`, and the difference is the point. LAS-009 lets a
+   * role name its own provider *and* model, so the composer's PDF warning has
+   * to ask about the model that will serve **this** turn — a user with the
+   * `plan` role pointed at a local model would otherwise be told a Claude
+   * model's capabilities and watch the document be silently degraded.
+   */
+  getRoleModel(role: AiRole | 'global'): AiModelDefinition | null {
+    const fields = this.roleRequestFields(role);
+    const provider = fields.provider ?? AiConfigStore.getActiveProvider();
+    if (!provider) return null;
+    return resolveModel(fields.model || AiConfigStore.getModel(provider), provider);
+  },
+
+  /**
    * LAS-009 — resolve a role against the user's settings. Call once, when a
    * session starts, and spread the result onto every request that session
    * sends: resolving per request would let a settings change move the model

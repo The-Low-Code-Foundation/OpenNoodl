@@ -16,6 +16,7 @@
 
 import { AiClient } from '../client';
 import type { AiRoleRequestFields } from '../client/roles';
+import type { AiContentBlock } from '../client/content';
 import type { AiEffort, AiMessage, AiRole, AiToolCall } from '../client/types';
 import type { ExplainGraph } from '../explain/types';
 // Pure ProjectDocs submodules only, for the same reason `AuthoringSession`
@@ -76,6 +77,17 @@ export interface PlanningOptions {
    * plans on byte-identical words.
    */
   references?: string;
+  /**
+   * BLD-013/014: the attachments that cannot be concatenated into a string — a
+   * dropped PDF, a pasted screenshot, a capture of the running app.
+   *
+   * Separate from `references` because it has to stay *blocks* all the way to
+   * the adapter: that is what lets `degradeImages` / `degradeDocuments` swap in
+   * a declared twin for a model that cannot take the media, and a turn that
+   * flattened them early would have nothing left to degrade. Absent for a turn
+   * carrying only text attachments, whose bytes are unchanged.
+   */
+  referenceMedia?: AiContentBlock[];
 }
 
 export type PlanningStatus = 'planned' | 'declined' | 'exhausted' | 'cancelled' | 'error';
@@ -195,6 +207,8 @@ export class PlanningSession {
   private readonly existingComponents: ReadonlySet<string>;
   /** BLD-011 — the attachment block, or undefined for a turn that carried none. */
   private readonly references?: string;
+  /** BLD-013/014 — the attachments that must stay blocks. See `PlanningOptions`. */
+  private readonly referenceMedia?: AiContentBlock[];
 
   constructor(graph: ExplainGraph, private readonly request: string, options: PlanningOptions = {}) {
     if (!request.trim()) throw new AuthoringSetupError('The request is empty — nothing to plan.');
@@ -211,6 +225,7 @@ export class PlanningSession {
       options.projectDocs ?? currentProjectDocs()
     );
     this.references = options.references;
+    this.referenceMedia = options.referenceMedia?.length ? options.referenceMedia : undefined;
     this.existingComponents = new Set(graph.components.map((c) => c.name));
   }
 
@@ -220,12 +235,27 @@ export class PlanningSession {
       { role: 'system', content: planningSystemPrompt() },
       {
         role: 'user',
-        content: planningUserMessage(
-          this.request,
-          this.context.projectOverview(),
-          this.context.docsOverview(),
-          this.references
-        )
+        /*
+         * BLD-013/014 — media first, then the prose that names it.
+         *
+         * A turn carrying no media sends a plain string, byte-identical to the
+         * one it sent before this existed; that absent-means-unchanged rule is
+         * the same one `renderReferenceBlock` keeps, and it is what makes the
+         * media path a strict addition rather than a rewrite of every plan.
+         */
+        content: this.referenceMedia
+          ? [...this.referenceMedia, { type: 'text' as const, text: planningUserMessage(
+              this.request,
+              this.context.projectOverview(),
+              this.context.docsOverview(),
+              this.references
+            ) }]
+          : planningUserMessage(
+              this.request,
+              this.context.projectOverview(),
+              this.context.docsOverview(),
+              this.references
+            )
       }
     ];
 

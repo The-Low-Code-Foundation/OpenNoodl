@@ -32,6 +32,7 @@ import {
   asText,
   assertCacheBoundary,
   cacheBlockIndex,
+  degradeDocuments,
   degradeImages,
   isBlockContent
 } from '@noodl-models/AiAssistant/client/content';
@@ -208,13 +209,26 @@ function splitAtCacheBoundary(message: AiMessage): AnthropicRequestBlock[] | nul
  * The image shape is the documented base64 source form; `mediaType` is already
  * narrowed to the four types Anthropic accepts, so nothing is validated again
  * here.
+ *
+ * BLD-013 adds `document`, whose source shape is the same base64 form with
+ * `application/pdf`. ⚠️ `title` is sent as the block's own field rather than
+ * folded into the surrounding prose: it is what Anthropic's citations name, and
+ * a filename stated once in the block cannot drift from the one the chip shows.
  */
 function toAnthropicBlocks(blocks: AiContentBlock[]): AnthropicRequestBlock[] {
-  return blocks.map((block) =>
-    block.type === 'image'
-      ? { type: 'image', source: { type: 'base64', media_type: block.mediaType, data: block.data } }
-      : { type: 'text', text: block.text }
-  );
+  return blocks.map((block) => {
+    if (block.type === 'image') {
+      return { type: 'image', source: { type: 'base64', media_type: block.mediaType, data: block.data } };
+    }
+    if (block.type === 'document') {
+      return {
+        type: 'document',
+        source: { type: 'base64', media_type: block.mediaType, data: block.data },
+        title: block.title
+      };
+    }
+    return { type: 'text', text: block.text };
+  });
 }
 
 /**
@@ -380,9 +394,17 @@ export class AnthropicProvider implements AiProvider {
     // model takes images, so this is normally a pass-through; it earns its keep
     // on an unregistered id, which `unknownModel` gives no `vision` flag and
     // which would otherwise be sent bytes its endpoint may reject.
-    const messagesIn = model.capabilities.vision
-      ? request.messages
-      : request.messages.map((message) => ({ ...message, content: degradeImages(message.content) }));
+    //
+    // BLD-013 chains documents through the same gate. Two passes rather than
+    // one combined flag because the capabilities are independent — and on this
+    // provider specifically, both are true for every *registered* model, so
+    // what this line actually protects is the unregistered id and the custom
+    // gateway, which arrive with neither flag set.
+    const messagesIn = request.messages.map((message) => {
+      let content = model.capabilities.vision ? message.content : degradeImages(message.content);
+      if (!model.capabilities.documents) content = degradeDocuments(content);
+      return content === message.content ? message : { ...message, content };
+    });
 
     // Two of the four markers are spoken for here — one for system, one for the
     // newest turn — so the mapper may spend at most the remaining two. It is

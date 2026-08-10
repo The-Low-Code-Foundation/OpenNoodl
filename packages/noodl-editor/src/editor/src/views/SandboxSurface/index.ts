@@ -5,6 +5,9 @@
  * file.
  */
 export { SandboxToolbar, type SandboxToolbarProps } from './SandboxToolbar';
+// BLD-014 — the webview grab. Registered by `useSandboxViewer`, read by the
+// Build panel's `◎ Look at it`.
+export { captureLivePreview, hasLivePreview, type PreviewCapture } from './livePreviewCapture';
 export {
   useSandboxViewer,
   viewerOrigin,

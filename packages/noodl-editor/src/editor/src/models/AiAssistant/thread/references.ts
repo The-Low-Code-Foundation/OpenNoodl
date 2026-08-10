@@ -38,7 +38,7 @@
  * @module AiAssistant/thread/references
  */
 
-import type { AiImageBlock } from '../client/content';
+import type { AiContentBlock, AiDocumentBlock, AiImageBlock } from '../client/content';
 import { truncateDoc } from '../../ProjectDocs/docsText';
 
 /**
@@ -67,14 +67,27 @@ export type ReferenceKind =
 export interface ReferenceResolution {
   /** Rendered for the prompt, already capped and already saying so if it was. */
   text?: string;
-  /** BLD-012 blocks. Empty for every kind BLD-011 ships. */
+  /** BLD-012 blocks. Empty for every kind BLD-011 ships; filled by 013 and 014. */
   images?: AiImageBlock[];
+  /** BLD-013 blocks — a dropped PDF, sent whole to a provider that takes one. */
+  documents?: AiDocumentBlock[];
   /** Length of `text` as sent — post-cap, so the meter never over-promises. */
   chars: number;
   /** True when {@link capReferenceText} cut it. */
   truncated: boolean;
   /** Length before the cap, so the chip can say what fraction is present. */
   originalChars: number;
+  /**
+   * BLD-013 — decoded size of the media this reference carries, in bytes.
+   *
+   * ⚠️ A **second unit**, deliberately not folded into `chars`. A 900KB
+   * screenshot and a 900k-character document cost wildly different amounts and
+   * are limited by different things — one by a request-size ceiling, the other
+   * by the context window — and a meter that added them would report a number
+   * that is true of neither. Absent on a text-only reference, which is what
+   * keeps the meter's media clause off every chip that has no media.
+   */
+  bytes?: number;
 }
 
 /**
@@ -119,6 +132,17 @@ export interface AttachedReference {
   resolution?: ReferenceResolution;
   /** Why it could not be fulfilled. Shown on the chip; blocks send. */
   error?: string;
+  /**
+   * BLD-013 — something true about this reference that is **not** a failure.
+   *
+   * ⚠️ A separate field from `error` precisely so it cannot block the send.
+   * Q5's PDF warning is the case: the attachment resolved, the bytes are real,
+   * and the only thing wrong is that *this* model will be handed the twin
+   * instead. Folding that into `error` would have made `blockingReferences`
+   * refuse to send a turn the user deliberately composed — a warning that
+   * behaves like a failure is a failure with better manners.
+   */
+  warning?: string;
   /**
    * BLD-014 — the project's apply-count when a `capture` was taken. Undefined
    * for every other kind, which is what makes {@link isStale} a no-op for them
@@ -226,6 +250,84 @@ export function renderReferenceBlock(refs: readonly AttachedReference[], applyCo
 }
 
 /**
+ * BLD-013 — the binary half of what the references carry, in send order.
+ *
+ * ## Why this is a second function rather than more of {@link renderReferenceBlock}
+ *
+ * Rule 6 puts the *text* after the cache boundary, and that is a statement
+ * about where a string is concatenated. Media cannot be concatenated into a
+ * string at all — it has to survive as blocks all the way to the adapter, or
+ * `degradeImages` has nothing to degrade and the twin contract silently stops
+ * being enforceable. So a turn that carries media sends **block content**, and
+ * this returns the blocks while `renderReferenceBlock` returns the prose that
+ * names them.
+ *
+ * ⚠️ The two must be assembled in this order — media first, then the text
+ * block. Anthropic's own guidance puts a document before the text that refers
+ * to it, and the same order is what makes an image's caption read as a caption
+ * rather than as a prediction.
+ *
+ * Documents lead images within a reference for the same reason: a PDF is the
+ * bulky thing the request is *about*, and a screenshot is usually commentary
+ * on it.
+ */
+export function referenceMediaBlocks(refs: readonly AttachedReference[]): AiContentBlock[] {
+  const blocks: AiContentBlock[] = [];
+  for (const ref of refs) {
+    if (ref.status !== 'ready' || !ref.resolution) continue;
+    blocks.push(...(ref.resolution.documents ?? []), ...(ref.resolution.images ?? []));
+  }
+  return blocks;
+}
+
+/** Whether this turn has anything that must ride as blocks rather than prose. */
+export function hasReferenceMedia(refs: readonly AttachedReference[]): boolean {
+  return referenceMediaBlocks(refs).length > 0;
+}
+
+/**
+ * 🔴 Rule 6 for media, and it is the opposite of the order everywhere else.
+ *
+ * An authoring turn is one string with a **character offset** marking where the
+ * cache-stable prefix ends (`AuthoringSession` → `openingTurn`). Block content
+ * has no offsets, so a turn that carries media has to express the same boundary
+ * as a `cache: true` marker instead — and *that is where the whole cost of this
+ * feature is decided*.
+ *
+ * `referenceMediaBlocks` puts media first, because a document should precede
+ * the prose that discusses it. Doing the same here would put a 900KB screenshot
+ * **ahead of the breakpoint**, which does not merely cost the screenshot: it
+ * changes the prefix, so every send carrying one silently re-bills the entire
+ * AIX-007 stable half — the project overview, the node catalog, the style
+ * vocabulary, the docs — uncached, on every operation of every plan. Nothing on
+ * screen would change. The only symptom is the invoice.
+ *
+ * So media lands **after** the marked block and before the task, which is the
+ * same position `renderReferenceBlock`'s prose occupies, and for the identical
+ * reason. `tests-unit/bld-013/` asserts the *index* of the marked block as well
+ * as its bytes: a prefix that is the same length by luck is not the same
+ * prefix, and this ordering is exactly the kind of thing a later refactor
+ * "tidies" into the natural reading order.
+ */
+export function openingTurnWithMedia(
+  content: string,
+  cacheBoundary: number | undefined,
+  media: readonly AiContentBlock[]
+): AiContentBlock[] {
+  const usable = typeof cacheBoundary === 'number' && cacheBoundary > 0 && cacheBoundary < content.length;
+  if (!usable) {
+    // No usable prefix to protect, so recency wins and media leads — the
+    // planning turn's ordering. Nothing is cached either way.
+    return [...media, { type: 'text', text: content }];
+  }
+  return [
+    { type: 'text', text: content.slice(0, cacheBoundary), cache: true },
+    ...media,
+    { type: 'text', text: content.slice(cacheBoundary) }
+  ];
+}
+
+/**
  * BLD-014 — a capture taken before the last apply depicts a project that no
  * longer exists.
  *
@@ -271,6 +373,10 @@ export interface ReferenceCost {
   pinnedChars: number;
   /** Images attached this turn. Zero for every kind BLD-011 ships. */
   images: number;
+  /** BLD-013 — documents attached this turn. */
+  documents: number;
+  /** BLD-013 — decoded media bytes this turn. See {@link ReferenceResolution.bytes}. */
+  bytes: number;
   /** True when any reference was cut, so the meter can say so. */
   truncated: boolean;
 }
@@ -290,6 +396,8 @@ export function referenceCost(refs: readonly AttachedReference[]): ReferenceCost
   let chars = 0;
   let pinnedChars = 0;
   let images = 0;
+  let documents = 0;
+  let bytes = 0;
   let truncated = false;
 
   for (const ref of refs) {
@@ -297,10 +405,12 @@ export function referenceCost(refs: readonly AttachedReference[]): ReferenceCost
     chars += ref.resolution.chars;
     if (ref.pinned) pinnedChars += ref.resolution.chars;
     images += ref.resolution.images?.length ?? 0;
+    documents += ref.resolution.documents?.length ?? 0;
+    bytes += ref.resolution.bytes ?? 0;
     if (ref.resolution.truncated) truncated = true;
   }
 
-  return { count: refs.length, chars, pinnedChars, images, truncated };
+  return { count: refs.length, chars, pinnedChars, images, documents, bytes, truncated };
 }
 
 /**

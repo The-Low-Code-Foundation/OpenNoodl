@@ -139,6 +139,20 @@ export interface AiModelDefinition {
      * will *accept* an image, not that the model is any good at reading one.
      */
     vision?: boolean;
+    /**
+     * BLD-013 — whether this model accepts a document (a PDF) as a content
+     * block. Absent means **no**, load-bearing in exactly the way `vision` is.
+     *
+     * ⚠️ Deliberately narrower than `vision`, and the gap is the finding: a
+     * model that reads images is not thereby a model whose *endpoint* takes a
+     * PDF. Anthropic's Messages API documents a base64 `application/pdf`
+     * document block and does its own extraction server-side; our OpenAI
+     * adapter speaks `image_url` parts only, which reject a PDF. Claiming the
+     * capability from the vision flag would have sent bytes to an endpoint that
+     * refuses them — the same silent failure `vision` was added to prevent,
+     * one media type later.
+     */
+    documents?: boolean;
   };
   /** The default pick for its provider. Exactly one per provider. */
   isDefault?: boolean;
@@ -166,7 +180,12 @@ const claudeFrontier = {
   effort: true,
   promptCaching: true,
   minCacheableTokens: 1024,
-  vision: true
+  vision: true,
+  // BLD-013 — the only band that gets it. Anthropic documents base64
+  // `application/pdf` document blocks on the Messages API with no beta header;
+  // the `frontier` band above (OpenAI) does not get it, because this repo's
+  // OpenAI adapter encodes `image_url` parts and nothing else.
+  documents: true
 } as const;
 
 export const AI_MODELS: readonly AiModelDefinition[] = [

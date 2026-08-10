@@ -40,6 +40,8 @@ import type { StyleVocabulary } from '../../StyleTokensModel/StyleVocabulary';
 import type { StyleTokenRecord } from '../../StyleTokensModel/TokenCategories';
 import { AiClient } from '../client';
 import { asText } from '../client/content';
+import type { AiContentBlock } from '../client/content';
+import { openingTurnWithMedia } from '../thread/references';
 import type { AiRoleRequestFields } from '../client/roles';
 import { TURN_STALL_MS, withTurnDeadline } from '../client/turnDeadline';
 import type {
@@ -164,6 +166,16 @@ export interface AuthoringSessionOptions {
    * for a turn that carried none, whose bytes are unchanged.
    */
   references?: string;
+  /**
+   * BLD-013/014: the attachments that must stay blocks — a dropped PDF, a
+   * pasted mock, a capture of the running app.
+   *
+   * 🔴 Placed by {@link openingTurnWithMedia}, **after** the cache-stable half,
+   * never before it. Read that function before changing anything here: media
+   * ahead of the breakpoint re-bills the whole AIX-007 prefix on every send and
+   * says nothing on screen about having done so.
+   */
+  referenceMedia?: AiContentBlock[];
   /**
    * AAQ-001: component names the plan in flight is going to create, which do
    * not exist yet.
@@ -426,6 +438,8 @@ export class AuthoringSession {
   private readonly planContext?: string;
   /** BLD-011 — the attachment block, or undefined for a turn that carried none. */
   private readonly references?: string;
+  /** BLD-013/014 — see `AuthoringSessionOptions.referenceMedia`. */
+  private readonly referenceMedia?: AiContentBlock[];
   /** AAQ-001: components the plan will create, so a link to one is not "unresolved". */
   private readonly plannedComponents?: readonly string[];
   /** AIB-007: what the project can offer a Cloud Data or User node. Undefined ⇒ do not check. */
@@ -510,6 +524,7 @@ export class AuthoringSession {
     this.roleFields = AiClient.roleRequestFields(options.role ?? 'act');
     this.planContext = options.planContext;
     this.references = options.references;
+    this.referenceMedia = options.referenceMedia?.length ? options.referenceMedia : undefined;
     this.plannedComponents = options.plannedComponents;
     this.backend = options.backend;
     this.styleGuidance = options.styleGuidance ?? true;
@@ -755,7 +770,14 @@ export class AuthoringSession {
       { role: 'system', content: systemPrompt(this.mode) },
       // The boundary rides along so a caching provider can put a breakpoint at
       // the end of the reference blocks. Nothing else reads it.
-      { role: 'user', content: opening.content, cacheBoundary: opening.cacheBoundary }
+      //
+      // BLD-013/014 — a turn carrying media cannot use a character offset at
+      // all (`assertCacheBoundary` throws on the pairing, deliberately), so it
+      // expresses the same boundary as a marked block. A turn with no media is
+      // byte-identical to before either task existed.
+      this.referenceMedia
+        ? { role: 'user' as const, content: openingTurnWithMedia(opening.content, opening.cacheBoundary, this.referenceMedia) }
+        : { role: 'user' as const, content: opening.content, cacheBoundary: opening.cacheBoundary }
     );
     this.record({ kind: 'user', text: this.request.description });
     return this.round(options);
