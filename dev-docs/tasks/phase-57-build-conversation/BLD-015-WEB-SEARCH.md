@@ -1,6 +1,8 @@
 # BLD-015 — Web search
 
-**Status:** 📋 not started · **Track B** · after BLD-011 · **Q4 open — decide the backend first**
+**Status:** 🟡 **deferred by Richard, 2026-08-10** · **Track B** · after BLD-011 · **the last unbuilt
+Track B task, and the only one of the phase's remaining three that needs Richard to spend money
+before a line can be written**
 
 ## The state today
 
@@ -71,4 +73,4 @@ explicitly out of scope for the phase.
 
 | # | Finding | State |
 |---|---|---|
-| 1 | Q4 — backend and key not chosen. Blocks implementation, not design | 🔴 open — Richard |
+| 1 | Q4 — backend and key not chosen. Blocks implementation, not design | 🟡 **deferred, not open** — Richard, 2026-08-10 (session 17): asked to choose between Tavily and Brave, he chose neither for now, so the task is **unscheduled rather than merely unstarted**. ⚠️ **Do not re-ask it as an open question each session.** It needs him to sign up for and pay for an account, which is a decision with a cost attached and no deadline. The design above is settled and needs nothing from him; only the account does |

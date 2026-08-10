@@ -40,6 +40,40 @@ box — its header is inside the scroll area.
 ✅ = built **and on `cline-dev`** (BLD-007 and BLD-012 merged 2026-08-09; **BLD-001 built, driven and
 closed 2026-08-09** — `a93720b3`, `02c3072c`, `458e189f`).
 
+**Session 17 (2026-08-10) — BLD-014's CDP half built and driven, no billed call. 14 of 17 fully
+built.** Counted off the tables below, not incremented: **Track A is 9 of 11** (BLD-009, BLD-010
+open), **Track B is 5 of 6** — BLD-015 is the only one left, and Q4 was **deferred by Richard this
+session**, so it is unscheduled rather than merely unstarted.
+
+🔴 **The finding worth more than the task: "reuse the existing harness" was unreachable, and no
+register had said so.** The build item named `render-report.js` and a `Page.navigate` entry point.
+Checked before building: `scripts/` is **not in `package.json`'s `build.files`**, so it is absent
+from a packaged app entirely — and `checkPrerequisites` additionally wants a **Chrome binary on the
+user's machine**, the built viewer bundle at a repo path, and `ws` from the repo's `node_modules`.
+Every one of those is a dev-checkout assumption, so the named route would have shipped a feature
+that works in this checkout and is dead for every user. **F22 freed the *measurement* half; the
+*transport* had its own packaging blocker that nobody had filed.** Electron **is** Chromium, so
+`webContents.debugger` now carries the identical CDP commands with no Chrome to find, no `ws`, no
+`child_process` and no packaging change — and no browser to launch, so it is faster than the harness
+it replaces. **A resolved blocker on one half of a task is not a resolved blocker on the other.**
+
+🔴 **Two defects that only a drive could reach, because the transport is deliberately not mocked.**
+A `BrowserWindow` with no `loadURL` has **no renderer process behind its `webContents`**, so
+`attach()` succeeds — it is local and synchronous — and `Page.enable` **never resolves**. Not a
+throw, not an error result: a promise that never settles, and a control reading *"Rendering…"*
+forever, which looks exactly like a slow network. `await win.loadURL('about:blank')` first takes
+`Page.enable` from a 45s timeout to **4ms**. The second defect is that the hang **had no deadline at
+all** — every CDP step can fail that way, so the deadline went around the whole operation, with the
+window teardown deliberately *outside* the race because `Promise.race` does not cancel the loser.
+
+⚠️ **And a third that every spec passed with wrong.** `summarise` must see all viewports at once or
+it loses the findings that compare them — but `report.summary` then describes the *whole render*,
+and it was being pasted onto each per-viewport capture. The **desktop** chip's twin read *"2
+warnings … desktop 1280×900px …; phone 390×844px …"*: two warnings on a picture that has one, and
+measurements from an image the model cannot see. The findings were split correctly the whole time;
+only the sentence above them was not. **A right mechanism with a wrong presentation** — and the
+kind of thing a green suite cannot express.
+
 **Session 16 (2026-08-10) — BLD-016 built and driven, no billed call. 13 of 17 fully built, plus
 BLD-014's webview half.** Counted off the tables below, not incremented: Track A is 9 of 11
 (BLD-009, BLD-010), Track B is 4 of 6 plus a half (BLD-015 open, BLD-014's CDP half open).
@@ -298,7 +332,7 @@ lines and they are the vocabulary the rest of the track speaks.
 | BLD-011 ⭐ ✅ | [BLD-011-TURN-CARRIES-REFERENCES.md](BLD-011-TURN-CARRIES-REFERENCES.md) | the composer becomes a context builder; one `Reference` model | **driven $0.0298; 4 of 6 criteria met, 2 partly — staleness needs BLD-014, `.jsonl` needs a 2nd send. F8 built here.** |
 | BLD-012 ⭐ ✅ | [BLD-012-MULTIMODAL-MESSAGES.md](BLD-012-MULTIMODAL-MESSAGES.md) | `AiMessage.content` widens to blocks; declared degradation | adapters exist |
 | BLD-013 ✅ | [BLD-013-ATTACHMENTS.md](BLD-013-ATTACHMENTS.md) | drop/paste/pick markdown, text, images **and PDFs** | **driven — Q5 answered, ZERO new deps** |
-| BLD-014 ⭐ 🟡 | [BLD-014-LOOK-AT-IT.md](BLD-014-LOOK-AT-IT.md) | two capture paths: the live webview, and CDP for any viewport or URL | **webview half driven; F22 resolved 08-10, so the CDP half is unblocked. Q6 answered** |
+| BLD-014 ⭐ ✅ | [BLD-014-LOOK-AT-IT.md](BLD-014-LOOK-AT-IT.md) | two capture paths: the live webview, and CDP for any viewport or URL | **both halves driven, no billed call. Q6 answered; F22 + a second packaging decision (R5) resolved. One criterion → BLD-010** |
 | BLD-015 | [BLD-015-WEB-SEARCH.md](BLD-015-WEB-SEARCH.md) | one editor-side backend; citations carry source and read-time | nothing |
 | BLD-016 ✅ | [BLD-016-MENTIONS.md](BLD-016-MENTIONS.md) | `@` over components, docs, pages, collections, attachments | **driven, no billed call — 5 of 6 criteria met, the 6th needs one. CM6 rejected on inspection** |
 
