@@ -26,11 +26,23 @@ was defeated by a field our writer omits and the editor derives; the other was p
 | AWP-005 | [AWP-005-NODE-DOC-BUDGET.md](AWP-005-NODE-DOC-BUDGET.md) | `Group` costs 11,000 tokens and `detail:"summary"` is broken for 100% of ports | ✅ **done 08-10** (§1 08-08, §2 08-10, §3 closed as unnecessary) |
 | AWP-006 | [AWP-006-PROGRESSIVE-TOOL-DISCLOSURE.md](AWP-006-PROGRESSIVE-TOOL-DISCLOSURE.md) | 22,968 tokens of tool schemas resent every turn, ~30% of every bill, 63% of it backend admin | ✅ **done 08-10** — 89 tools → 20, 25,886 → 7,828 tok/turn |
 
-**Phase 58 is complete, 6 of 6.** The exit test is answered in
-[AWP-006 §As built](AWP-006-PROGRESSIVE-TOOL-DISCLOSURE.md#as-built--2026-08-10) and the re-replay
-row below it. The one thing deliberately left for a later session is a **model run of
-[BACKEND-BRIEF.md](BACKEND-BRIEF.md)** — the fixture that needs the deferred half. Its mechanism is
-gated by spec; what has not been paid for is a model discovering it cold.
+**Phase 58 is built, 6 of 6, and both paid runs are in.** The exit test is answered in
+[AWP-006 §As built](AWP-006-PROGRESSIVE-TOOL-DISCLOSURE.md#as-built--2026-08-10), the re-replay row
+below it, and the matrix row in
+[LAS-011 §Session 9](../phase-55-llm-authoring-support/LAS-011-ACCEPTANCE-MATRIX.md#session-9--the-same-model-a-different-surface).
+
+**[BACKEND-BRIEF.md](BACKEND-BRIEF.md) has been run** — both arms, 2026-08-10. A model found the
+hidden tools cold (`find_tools` at turn 3) and built the app; the `--all-tools` control never
+applied a write. **The deferred half is reachable by evidence, not just by spec.**
+
+⚠️ **What the phase did not finish is its own subject.** The re-replay's page is missing its hero:
+`update_node.set.children` is accepted, reported applied and silently discarded, and the
+`operations` path never re-derives `visualRoots` while reporting `visualRootsDerived: true`. Filed
+with a minimal reproduction as
+[AWP-002 A19/A20](AWP-002-WRITE-PATH-CONFORMANCE.md#a19a20--the-minimal-reproduction), 🔴 **open**.
+`validate:project` said 0/0 and `render_report` said clean, so **AWP-004 earns a fourth check**
+(A21). Phase 58 is 6 of 6 *built*; it is not 6 of 6 *proven* until those close, and the honest
+statement of its exit test is that criterion 1 still fails — on a door AWP-001 did not cover.
 
 ## Suggested order, and why
 
