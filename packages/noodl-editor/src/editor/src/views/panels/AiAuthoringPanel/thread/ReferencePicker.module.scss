@@ -114,6 +114,24 @@
   cursor: default;
 }
 
+/*
+ * BLD-016 — the keyboard's highlight, and it is deliberately **not** `:hover`'s
+ * paint reused.
+ *
+ * A menu driven entirely by arrow keys has to say which row Enter takes, and
+ * `bg-3` alone is the same wash the mouse leaves behind — under a held arrow key
+ * the two are indistinguishable from "the pointer happens to be there". The
+ * inset ring is POL-016's, the same one the muted buttons in this row carry, so
+ * the highlight reads as a control's focus rather than as a hover.
+ *
+ * Compound (`.Item.is-active`) for the reason above it, and after `.is-attached`
+ * so an active row that is already attached still shows where the keyboard is.
+ */
+.Item.is-active {
+  background-color: var(--theme-color-bg-3);
+  box-shadow: inset 0 0 0 1px var(--theme-color-border-strong);
+}
+
 .ItemLabel {
   min-width: 0;
   overflow: hidden;

@@ -149,6 +149,16 @@ export interface AttachedReference {
    * rather than a rule they have to opt out of.
    */
   capturedAtApply?: number;
+  /**
+   * BLD-016 — the `@` token in the composer that put this reference here.
+   *
+   * Present **only** on a mention-origin reference, and its absence is what
+   * tells `reconcileMentions` that the text has no authority over a chip: a
+   * dropped file and a picked component are owned by the chip row, a mention is
+   * owned by the words. See `thread/mentions.ts` for why that is one rule
+   * rather than two stores kept in step.
+   */
+  mention?: string;
 }
 
 /**
@@ -165,7 +175,18 @@ export interface AttachedReference {
 export const REFERENCE_CAPS: Record<ReferenceKind, number> = {
   component: 24_000,
   doc: 12_000,
-  page: 12_000,
+  /**
+   * ⚠️ **The same as `component`, and BLD-016 raised it from 12k to say so.**
+   *
+   * A page's payload *is* a component's — the v2 serialization of its graph,
+   * plus the two lines naming the router that lists it. The 12k this member was
+   * declared with in BLD-011 was the doc-shaped default it inherited from
+   * sitting next to `doc` in the list, and it would have silently halved the
+   * graph of every mentioned page: exactly the "classifying by folder quietly
+   * halves the cap" trap `componentDisplayLabel` was written to avoid, arrived
+   * at from the other direction.
+   */
+  page: 24_000,
   collection: 6_000,
   file: 12_000,
   capture: 2_000,
@@ -240,6 +261,27 @@ export function renderReferenceBlock(refs: readonly AttachedReference[], applyCo
     '--- ATTACHED CONTEXT ---',
     'The user attached these to this message. They are context for the task, not the task itself.'
   ];
+  /**
+   * BLD-016 build item 2 — a mention **pre-authorises a read**, and this
+   * sentence is the whole of the mechanism that turns it into a saved turn.
+   *
+   * Without it the graph is in the prompt and the agent fetches it anyway:
+   * `get_component`'s own description tells it to read a component when the
+   * overview is not enough, and an attached component is not the overview. That
+   * is a full round trip — a request, a response, and the same bytes twice — to
+   * learn something it was already holding.
+   *
+   * ⚠️ Emitted only when a component or a page is attached, so a doc-only turn
+   * produces the byte-identical block it produced before this task. Naming the
+   * tool rather than saying "do not look these up" for the same reason
+   * `renderBackendSchema` names `collectionName`: a rule the model has to map
+   * onto a tool name itself is a rule it follows unevenly.
+   */
+  if (usable.some((ref) => ref.kind === 'component' || ref.kind === 'page')) {
+    lines.push(
+      'The components and pages below are here in full — do not call get_component for any of them.'
+    );
+  }
   for (const ref of usable) {
     const heading = KIND_HEADINGS[ref.kind];
     const age = staleNote(ref, applyCount);

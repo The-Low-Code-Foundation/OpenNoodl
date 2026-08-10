@@ -137,11 +137,18 @@ import {
   type TurnReference
 } from '../../../models/AiAssistant/thread/references';
 import {
+  attachmentCandidates,
+  collectionCandidates,
   componentCandidates,
   docCandidates,
+  pageCandidates,
   resolveCandidate,
   type ReferenceCandidate
 } from '../../../models/AiAssistant/authoring/referenceSources';
+// BLD-016 — `@`. The menu is a second door onto `refreshCandidates`' list; the
+// hook is the loop that keeps the chip row equal to what the text says.
+import { MentionMenu } from './thread/MentionMenu';
+import { useComposerMentions } from './thread/useComposerMentions';
 // BLD-013 — the three intake paths' one resolver, and BLD-014's capture. Both
 // are `authoring/` modules for the same reason `referenceSources` is: they need
 // a browser (a `<canvas>`, a `<webview>`), which is exactly what the pure half
@@ -341,11 +348,17 @@ export function AiAuthoringPanel({ width = 'panel' }: AiAuthoringPanelProps = {}
    */
   const refreshCandidates = useCallback(() => {
     const project = ProjectModel.instance;
-    const components = componentCandidates(project);
-    setCandidates(components);
-    // Docs are a filesystem read, so they land a tick later. Components are
+    // BLD-016: four kinds, all from `ProjectModel` and the schema cache, so
+    // they are in memory and land in this tick.
+    const immediate = [
+      ...componentCandidates(project),
+      ...pageCandidates(project),
+      ...collectionCandidates(project)
+    ];
+    setCandidates(immediate);
+    // Docs are a filesystem read, so they land a tick later. Everything else is
     // already in memory and should not wait for them.
-    void docCandidates().then((docs) => setCandidates([...components, ...docs]));
+    void docCandidates().then((docs) => setCandidates([...immediate, ...docs]));
   }, []);
 
   const attachReference = useCallback(async (candidate: ReferenceCandidate) => {
@@ -421,9 +434,35 @@ export function AiAuthoringPanel({ width = 'panel' }: AiAuthoringPanelProps = {}
     setReferences((current) => current.map((ref) => (ref.id === id ? { ...ref, pinned: !ref.pinned } : ref)));
   }, []);
 
-  const removeReference = useCallback((id: string) => {
-    setReferences((current) => current.filter((ref) => ref.id !== id));
-  }, []);
+  /**
+   * BLD-016 — `@`, and the reason this is a hook rather than more of this file.
+   *
+   * It owns the caret, the menu's highlight and the loop that keeps the chip row
+   * equal to what the composer text says. The panel keeps the two stores
+   * (`composer`, `references`) because they are the message, and hands them over
+   * — a mention is not a third store, it is a *derivation* of the first onto the
+   * second.
+   *
+   * ⚠️ It also owns the chip row's Remove button, which is why there is no
+   * plain remover here any more: removing a mention chip has to delete its
+   * token too, or reconciliation puts the chip straight back and the control
+   * reads as broken.
+   */
+  const mentions = useComposerMentions({
+    text: composer,
+    setText: setComposer,
+    references,
+    setReferences,
+    // The `@` menu can name what is already on the row (BLD-016's fifth kind);
+    // the Add-context button cannot, so the attachments are added here rather
+    // than inside `refreshCandidates`.
+    candidates: useMemo(
+      () => [...candidates, ...attachmentCandidates(references)],
+      [candidates, references]
+    ),
+    refreshCandidates,
+    isEnabled: Boolean(ProjectModel.instance)
+  });
 
   /** What the current attachments will cost, and whether any of them blocks. */
   const referencesBlock = blockingReferences(references).length > 0;
@@ -1289,7 +1328,7 @@ export function AiAuthoringPanel({ width = 'panel' }: AiAuthoringPanelProps = {}
             <ReferenceChips
               references={references}
               onTogglePin={togglePin}
-              onRemove={removeReference}
+              onRemove={mentions.removeReference}
               applyCount={applies}
             />
             {/*
@@ -1366,9 +1405,54 @@ export function AiAuthoringPanel({ width = 'panel' }: AiAuthoringPanelProps = {}
                 onClick={() => void captureLive()}
                 testId="capture-preview"
               />
+              {/*
+               * BLD-016 — the `@` menu, inside `.ComposerControls` because that
+               * is the positioned ancestor `.List` resolves against (the same
+               * one `ReferencePicker` documents at both ends). It is absolutely
+               * positioned, so it is out of flow and the control row measures
+               * 30px whether it is open or shut.
+               */}
+              {mentions.menu && (
+                <MentionMenu
+                  query={mentions.menu.query}
+                  candidates={mentions.menu.candidates}
+                  activeIndex={mentions.menu.activeIndex}
+                  onActiveIndexChange={mentions.setActiveIndex}
+                  onPick={mentions.pick}
+                />
+              )}
             </div>
+            {/*
+             * 🔴 Build item 4 — a mention that resolves to nothing is refused
+             * *here*, before Send, and this line is the whole of the refusal.
+             *
+             * AIB-010's finding was that a name typed into a parameter is never
+             * checked for resolving, so a wrong one silently means nothing. A
+             * composer is the second place that could happen and it is worse,
+             * because the user watched themselves write it. Blocking is
+             * therefore deliberate — and so is `Not a mention`: somebody asking
+             * about `@media` queries must not be trapped in a composer that
+             * will not send, and dismissing marks the token without touching a
+             * character of what they wrote.
+             */}
+            {mentions.refusals.map((refusal) => (
+              <div key={refusal.token} className={css['MentionRefusal']} data-test="mention-refusal">
+                <Icon icon={IconName.WarningTriangle} variant={FeedbackType.Danger} size={IconSize.Tiny} />
+                <Text textType={TextType.Default} isSpan>
+                  {refusal.token} — {refusal.reason}
+                </Text>
+                <button
+                  type="button"
+                  className={css['MentionDismiss']}
+                  onClick={() => mentions.dismiss(refusal.token)}
+                >
+                  Not a mention
+                </button>
+              </div>
+            ))}
           </VStack>
         }
+        composer={mentions.bindings}
         onComposerFiles={(files) => void attachFiles(files)}
         value={composer}
         onChange={setComposer}
@@ -1380,7 +1464,17 @@ export function AiAuthoringPanel({ width = 'panel' }: AiAuthoringPanelProps = {}
          * can disagree is exactly the defect BLD-001 fixed here when the button
          * and the key answered to different state.
          */
-        canSend={hasProject && isConfigured && composer.trim().length > 0 && !busy && !referencesBlock}
+        canSend={
+          hasProject &&
+          isConfigured &&
+          composer.trim().length > 0 &&
+          !busy &&
+          !referencesBlock &&
+          // BLD-016 build item 4, in the same single condition and for the same
+          // reason: a mention naming nothing is a message that says something
+          // the request does not carry.
+          !mentions.blocksSend
+        }
         placeholder="Describe a component, a change across the app, or ask for the project docs…"
         busy={busy}
         onStop={stop}

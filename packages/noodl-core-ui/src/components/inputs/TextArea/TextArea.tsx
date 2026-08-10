@@ -33,6 +33,23 @@ export interface TextAreaProps extends UnsafeStyleProps {
   onBlur?: FocusEventHandler<HTMLTextAreaElement>;
   /** Occurs when Shift+Enter is pressed. */
   onEnter?: () => void;
+  /**
+   * BLD-016 — every keystroke, before {@link onEnter} decides anything.
+   *
+   * A completion menu over a text area needs Arrow/Enter/Escape *and* needs to
+   * stop the text area acting on them, and it needs the caret at the moment the
+   * key lands. Called first, and a handler that calls `preventDefault()` also
+   * suppresses `onEnter` — otherwise a menu selection would submit the composer
+   * on the same keystroke that picked a row.
+   */
+  onKeyDown?: (ev: React.KeyboardEvent<HTMLTextAreaElement>) => void;
+  /**
+   * BLD-016 — the element, for the two things no prop can express: reading
+   * `selectionStart`, and putting the caret after an inserted token.
+   */
+  inputRef?: React.Ref<HTMLTextAreaElement>;
+  /** Caret moved — by a click, an arrow key, or a selection. */
+  onSelect?: React.ReactEventHandler<HTMLTextAreaElement>;
 }
 
 export function TextArea({
@@ -56,6 +73,9 @@ export function TextArea({
   onFocus,
   onBlur,
   onEnter,
+  onKeyDown,
+  inputRef,
+  onSelect,
 
   UNSAFE_className,
   UNSAFE_style
@@ -89,10 +109,17 @@ export function TextArea({
           maxLength={maxLength}
           disabled={isDisabled}
           placeholder={placeholder}
+          ref={inputRef}
           onChange={onChange}
           onFocus={onFocus}
           onBlur={onBlur}
+          onSelect={onSelect}
           onKeyDown={(ev) => {
+            onKeyDown?.(ev);
+            // ⚠️ `defaultPrevented`, not a separate flag: a completion menu that
+            // consumed Enter to pick a row must not also submit the composer,
+            // and the DOM already has the word for "this key is spoken for".
+            if (ev.defaultPrevented) return;
             if (onEnter && ev.shiftKey && ev.key === 'Enter') {
               onEnter();
               ev.preventDefault();

@@ -20,7 +20,7 @@ import { PrimaryButton, PrimaryButtonSize, PrimaryButtonVariant } from '@noodl-c
 import { IconName } from '@noodl-core-ui/components/common/Icon';
 import { Text, TextType } from '@noodl-core-ui/components/typography/Text';
 
-import type { ReferenceCandidate } from '../../../../models/AiAssistant/authoring/referenceSources';
+import { CANDIDATE_GROUPS, type ReferenceCandidate } from '../../../../models/AiAssistant/authoring/referenceSources';
 
 import css from './ReferencePicker.module.scss';
 
@@ -65,8 +65,14 @@ export function ReferencePicker({ candidates, attachedTargets, onAttach, onOpen,
     });
   }, [onOpen]);
 
-  const components = candidates.filter((c) => c.kind === 'component');
-  const docs = candidates.filter((c) => c.kind === 'doc');
+  // BLD-016: five kinds now, from `CANDIDATE_GROUPS` rather than a pair of
+  // hand-written filters. The `@` menu renders the same list in the same order
+  // from the same constant — two doors, one list, and no way for them to
+  // disagree about what this project contains.
+  const groups = CANDIDATE_GROUPS.map((group) => ({
+    ...group,
+    items: candidates.filter((candidate) => candidate.kind === group.kind)
+  }));
 
   return (
     <div className={css['Picker']} ref={rootRef} data-test="reference-picker">
@@ -104,8 +110,7 @@ export function ReferencePicker({ candidates, attachedTargets, onAttach, onOpen,
               <Text textType={TextType.Default}>Nothing to attach — this project has no components or docs yet.</Text>
             </div>
           )}
-          {renderGroup('Components', components, attachedTargets, onAttach, setOpen)}
-          {renderGroup('Documents', docs, attachedTargets, onAttach, setOpen)}
+          {groups.map((group) => renderGroup(group.title, group.items, attachedTargets, onAttach, setOpen))}
         </div>
       )}
     </div>
@@ -149,7 +154,10 @@ function renderGroup(
             }}
           >
             <span className={css['ItemLabel']}>{candidate.label}</span>
-            {attached && <span className={css['ItemNote']}>attached</span>}
+            {/* BLD-016 — the deciding fact, or the reason it cannot be picked.
+                "attached" wins: a row you cannot choose should say why rather
+                than tell you how many nodes the thing you cannot choose has. */}
+            <span className={css['ItemNote']}>{attached ? 'attached' : (candidate.note ?? '')}</span>
           </button>
         );
       })}

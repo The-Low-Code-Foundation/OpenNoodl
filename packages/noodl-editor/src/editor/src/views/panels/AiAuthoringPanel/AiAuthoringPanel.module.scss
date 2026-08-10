@@ -365,6 +365,57 @@
    *
    * ⚠️ Removing this `position` silently returns the list to the viewport as
    * its containing block — it will span the whole window, not break visibly.
+   *
+   * ⚠️ BLD-016 hung a **second** absolutely-positioned list off this box (the
+   * `@` menu). Both are out of flow, so the row's height is unchanged whether
+   * either is open — but the rule the last three tasks kept paying for applies
+   * again: this box now has four children, and any rule written for it while it
+   * had one should be re-read before it is trusted.
    */
   position: relative;
+}
+
+/*
+ * BLD-016 — a mention that names nothing, refused before Send.
+ *
+ * ⚠️ Not `FeedbackType.Danger`'s own text colour on the label: the sentence
+ * contains the user's own token and has to be *read*, not just noticed, and this
+ * composer's ground is `bg-2` where the danger foreground has been measured
+ * short before. The glyph carries the alarm, `fg-default` carries the words —
+ * the same split `.Warning` uses one file over, which measured 9.20 dark /
+ * 5.14 light.
+ */
+.MentionRefusal {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  color: var(--theme-color-fg-default);
+}
+
+/*
+ * The escape hatch, styled as a control rather than as prose — it does
+ * something, and a user who has just been told their message will not send has
+ * to be able to find the thing that unblocks it.
+ */
+.MentionDismiss {
+  flex: none;
+  padding: 1px 6px;
+  border: none;
+  border-radius: 3px;
+  background-color: var(--theme-color-bg-3);
+  box-shadow: inset 0 0 0 1px var(--theme-color-border-strong);
+  color: var(--theme-color-fg-default);
+  font-size: 10px;
+  line-height: 16px;
+  cursor: pointer;
+
+  &:hover {
+    background-color: var(--theme-color-bg-4);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--theme-color-focus-ring);
+    outline-offset: 1px;
+  }
 }

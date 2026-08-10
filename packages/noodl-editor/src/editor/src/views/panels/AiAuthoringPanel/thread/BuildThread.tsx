@@ -353,6 +353,35 @@ export interface BuildThreadProps {
    * `DataTransfer`.
    */
   onComposerFiles?: (files: File[]) => void;
+  /**
+   * BLD-016 — the three handles a completion menu over this text area needs.
+   *
+   * ⚠️ Deliberately the **opposite** shape from `onComposerFiles`, which takes a
+   * `DataTransfer` apart here and hands the panel a plain `File[]`. That works
+   * because a drop is an event with a payload and nothing more. A mention menu
+   * is not: it has to read the caret at the instant a key lands, decide whether
+   * that key belongs to it, stop the text area acting on the ones that do, and
+   * then put the caret after the token it inserted. Reducing that to events
+   * would mean inventing a vocabulary here for a mechanism that lives entirely
+   * next door — so this hands over the element instead and keeps the knowledge
+   * in one file (`thread/mentions.ts` and its host).
+   *
+   * A grouped object rather than three props so the set arrives together: a
+   * `ref` without the key handler is a menu that cannot be driven, and having
+   * one without the other compile is not worth the tidier signature.
+   */
+  composer?: ComposerBindings;
+}
+
+/** BLD-016 — see {@link BuildThreadProps.composer}. */
+export interface ComposerBindings {
+  /** The text area itself: caret in, caret out, focus. */
+  ref?: React.Ref<HTMLTextAreaElement>;
+  /** Every keystroke. Call `preventDefault()` to consume one — that also
+   *  suppresses Shift+Enter's send, so picking a menu row cannot submit. */
+  onKeyDown?: (ev: React.KeyboardEvent<HTMLTextAreaElement>) => void;
+  /** The caret moved — a click, an arrow key, a selection. */
+  onSelect?: React.ReactEventHandler<HTMLTextAreaElement>;
 }
 
 export function BuildThread({
@@ -372,7 +401,8 @@ export function BuildThread({
   busy,
   onStop,
   composerAccessory,
-  onComposerFiles
+  onComposerFiles,
+  composer
 }: BuildThreadProps) {
   const anchorRef = useRef<HTMLDivElement | null>(null);
   /** BLD-013 — whether a drag is currently over the composer. Paint only. */
@@ -534,6 +564,9 @@ export function BuildThread({
             value={value}
             placeholder={placeholder}
             onChange={(event) => onChange(event.target.value)}
+            inputRef={composer?.ref}
+            onKeyDown={composer?.onKeyDown}
+            onSelect={composer?.onSelect}
             /*
              * ⚠️ `TextArea.onEnter` is **Shift+Enter**
              * ([TextArea.tsx:96](../../../../../../../noodl-core-ui/src/components/inputs/TextArea/TextArea.tsx)
