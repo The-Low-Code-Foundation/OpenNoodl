@@ -121,6 +121,7 @@ import { ProjectReviewView } from './ProjectReviewView';
 import { BuildThread, type ThreadWidth } from './thread/BuildThread';
 import { Heartbeat } from './thread/Heartbeat';
 import { ReferenceChips } from './thread/ReferenceChips';
+import { ReferencePreview } from './thread/ReferencePreview';
 import { ReferencePicker } from './thread/ReferencePicker';
 import { RunHeader } from './thread/RunHeader';
 import { ThreadSwitcher } from './thread/ThreadSwitcher';
@@ -157,12 +158,11 @@ import { useComposerMentions } from './thread/useComposerMentions';
 import { ATTACHMENT_ACCEPT, resolveAttachment } from '../../../models/AiAssistant/authoring/fileReferences';
 import { resolveLivePreviewCapture, resolveRenderCapture } from '../../../models/AiAssistant/authoring/captureReferences';
 import { applyCount, noteApply, onApplyCountChanged } from '../../../models/AiAssistant/authoring/applyCount';
-import {
-  hasLivePreview,
-  isExternalUrl,
-  parseViewports,
-  renderCapture as runRenderCapture
-} from '../../SandboxSurface';
+import { hasLivePreview, isExternalUrl, parseViewports } from '../../SandboxSurface';
+// ⚠️ By path, not through the barrel: this is the one module that imports
+// `electron`, and the barrel is shared with the component bench. See the note
+// in `SandboxSurface/index.ts`.
+import { renderCapture as runRenderCapture } from '../../SandboxSurface/renderCapture';
 import type { AiContentBlock } from '../../../models/AiAssistant/client/content';
 
 export const AiAuthoringPanel_ID = 'ai-authoring';
@@ -457,6 +457,15 @@ export function AiAuthoringPanel({ width = 'panel' }: AiAuthoringPanelProps = {}
     const resolved = await resolveRenderCapture(url, result.captures, isExternalUrl(url));
     setReferences((current) => [...current, ...resolved]);
   }, []);
+
+  /**
+   * The capture the user asked to look at.
+   *
+   * Held here rather than in `ReferenceChips` because the viewer is a
+   * full-window overlay: a surface that escapes the panel should not be owned
+   * by a control inside it.
+   */
+  const [previewing, setPreviewing] = useState<AttachedReference | null>(null);
 
   const togglePin = useCallback((id: string) => {
     setReferences((current) => current.map((ref) => (ref.id === id ? { ...ref, pinned: !ref.pinned } : ref)));
@@ -1358,6 +1367,7 @@ export function AiAuthoringPanel({ width = 'panel' }: AiAuthoringPanelProps = {}
               onTogglePin={togglePin}
               onRemove={mentions.removeReference}
               applyCount={applies}
+              onPreview={setPreviewing}
             />
             {/*
               * 🔴 A plain wrapping row, not an `HStack`, and the drive is why.
@@ -1514,6 +1524,15 @@ export function AiAuthoringPanel({ width = 'panel' }: AiAuthoringPanelProps = {}
         busy={busy}
         onStop={stop}
       />
+
+      {/*
+       * 🔴 The capture viewer — Richard, 2026-08-10: *"we can't leave users in
+       * the dark about what the AI has seen."* Rendered here, at the panel root
+       * rather than inside the chip row, because it is a full-window overlay:
+       * a full-page capture is genuinely tall (195×4047 measured on a page 9.6×
+       * its viewport) and has no useful representation inside a 400px sidebar.
+       */}
+      {previewing && <ReferencePreview reference={previewing} onClose={() => setPreviewing(null)} />}
     </BasePanel>
   );
 }

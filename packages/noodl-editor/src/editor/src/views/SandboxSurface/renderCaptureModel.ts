@@ -22,6 +22,7 @@
 
 import {
   DEFAULT_VIEWPORTS,
+  NAMED_VIEWPORTS,
   summarise,
   summaryLine,
   type RenderFindingResult,
@@ -67,7 +68,10 @@ export function isExternalUrl(url: string): boolean {
 export function parseViewports(spec?: string): { viewports: ViewportSpec[]; error?: undefined } | { error: string } {
   if (!spec || !spec.trim()) return { viewports: DEFAULT_VIEWPORTS };
 
-  const known = new Map(DEFAULT_VIEWPORTS.map((v) => [v.name, v]));
+  // ⚠️ Names resolve from the **vocabulary**, not the default set, so `tablet`
+  // is spellable here without `render_report` measuring a third viewport on
+  // every call it has ever been asked to make.
+  const known = new Map(NAMED_VIEWPORTS.map((v) => [v.name, v]));
   const viewports: ViewportSpec[] = [];
 
   for (const token of spec.split(',')) {
@@ -105,6 +109,43 @@ export function parseViewports(spec?: string): { viewports: ViewportSpec[]; erro
   if (viewports.length === 0) return { error: 'No viewport was asked for.' };
   return { viewports };
 }
+
+/**
+ * Add or remove one viewport name from a spec, preserving everything else.
+ *
+ * 🔴 **The device-preset buttons are derived from the spec string, not stored
+ * beside it** — BLD-016's rule, applied a second time. The obvious build is a
+ * `Set` of chosen devices *plus* the text field, which is two stores that have
+ * to be kept equal; every *"I typed `390x844` and the Mobile button did not
+ * light up"* bug is a missing edge in that graph. A toggle edits the text and
+ * the lit state is re-read from it, so typing and clicking cannot disagree —
+ * and a hand-typed custom size keeps working with no special case.
+ *
+ * Lives here rather than in the control because `tests-unit/` is a plain-Node
+ * runner: a helper inside a `.tsx` file drags React and a stylesheet with it.
+ */
+export function toggleViewport(spec: string, name: string): string {
+  const tokens = spec
+    .split(',')
+    .map((token) => token.trim())
+    .filter(Boolean);
+  const next = tokens.includes(name) ? tokens.filter((token) => token !== name) : [...tokens, name];
+  return next.join(',');
+}
+
+/**
+ * The word on the preset button, where it differs from the word in the spec.
+ *
+ * ⚠️ `phone` is the vocabulary's name — the CLI, the MCP tool and the spec
+ * string all use it — but Richard asked for *mobile*, which is what someone
+ * building a mobile app calls it. The label is presentation; the token stays
+ * `phone`, so one viewport is spelled one way everywhere it is parsed.
+ */
+export const PRESET_LABELS: Record<string, string> = {
+  desktop: 'Desktop',
+  tablet: 'Tablet',
+  phone: 'Mobile'
+};
 
 /** One viewport's picture and what was measured in it. */
 export interface CapturedViewport {

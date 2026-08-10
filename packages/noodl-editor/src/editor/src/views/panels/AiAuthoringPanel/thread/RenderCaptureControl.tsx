@@ -25,8 +25,16 @@ import { PrimaryButton, PrimaryButtonSize, PrimaryButtonVariant } from '@noodl-c
 import { TextInput } from '@noodl-core-ui/components/inputs/TextInput';
 import { Text, TextType } from '@noodl-core-ui/components/typography/Text';
 
+import { NAMED_VIEWPORTS } from '@nodegx/render-measure';
+
 import { egressNotice } from '../../../../models/AiAssistant/authoring/captureReferences';
-import { appViewerUrl, isExternalUrl, parseViewports } from '../../../SandboxSurface/renderCaptureModel';
+import {
+  appViewerUrl,
+  isExternalUrl,
+  parseViewports,
+  toggleViewport,
+  PRESET_LABELS
+} from '../../../SandboxSurface/renderCaptureModel';
 
 import css from './RenderCaptureControl.module.scss';
 
@@ -41,6 +49,7 @@ export interface RenderCaptureControlProps {
 
 /** What the viewport field offers before anyone types in it. */
 const DEFAULT_VIEWPORT_SPEC = 'desktop,phone';
+
 
 export function RenderCaptureControl({ onRender, isDisabled }: RenderCaptureControlProps) {
   const [open, setOpen] = useState(false);
@@ -74,6 +83,15 @@ export function RenderCaptureControl({ onRender, isDisabled }: RenderCaptureCont
   const external = target === 'url' && effectiveUrl.length > 0 && isExternalUrl(effectiveUrl);
   const parsed = useMemo(() => parseViewports(viewportSpec), [viewportSpec]);
   const viewportError = 'error' in parsed ? parsed.error : null;
+  /** Which preset buttons are lit — read back out of the text, never stored. */
+  const chosenNames = useMemo(
+    () =>
+      viewportSpec
+        .split(',')
+        .map((t) => t.trim())
+        .filter(Boolean),
+    [viewportSpec]
+  );
 
   const canRender = !busy && effectiveUrl.length > 0 && !viewportError;
 
@@ -142,6 +160,36 @@ export function RenderCaptureControl({ onRender, isDisabled }: RenderCaptureCont
             <Text textType={TextType.Shy} className={css['Label']}>
               Viewports
             </Text>
+            {/*
+             * 🔴 **The text is the source of truth and these toggles are derived
+             * from it — BLD-016's rule, applied a second time.**
+             *
+             * The obvious build is a `Set<string>` of chosen devices *plus* the
+             * text field, which is two stores that have to be kept equal; every
+             * "I typed 390x844 and the Phone button did not light up" bug is a
+             * missing edge in that graph. Here a toggle edits the text and the
+             * lit state is re-read from it, so typing and clicking cannot
+             * disagree — and a custom `WIDTHxHEIGHT` keeps working with no
+             * special case.
+             */}
+            <div className={css['Row']}>
+              {NAMED_VIEWPORTS.map((preset) => {
+                const on = chosenNames.includes(preset.name);
+                return (
+                  <button
+                    key={preset.name}
+                    type="button"
+                    className={`${css['Choice']} ${on ? css['is-chosen'] : ''}`}
+                    onClick={() => setViewportSpec(toggleViewport(viewportSpec, preset.name))}
+                    aria-pressed={on}
+                    title={`${preset.width}×${preset.height}`}
+                    data-test={`render-capture-preset-${preset.name}`}
+                  >
+                    {PRESET_LABELS[preset.name] ?? preset.name}
+                  </button>
+                );
+              })}
+            </div>
             <TextInput
               value={viewportSpec}
               placeholder={DEFAULT_VIEWPORT_SPEC}

@@ -50,6 +50,27 @@ const DEFAULT_VIEWPORTS = [
   { name: 'phone', width: 390, height: 844, mobile: true }
 ];
 
+/**
+ * Every viewport that has a *name*, which is a longer list than the default.
+ *
+ * ⚠️ **`tablet` is here and deliberately not in `DEFAULT_VIEWPORTS`.** Richard
+ * asked (2026-08-10) for mobile/tablet/desktop to be selectable when building a
+ * mobile app, and the name has to be spelled the same way everywhere — the CLI,
+ * the MCP tool and the editor's capture control all resolve names from here. But
+ * adding it to the *default* set would silently make `render_report` measure a
+ * third viewport on every call it has ever been asked to make, changing its cost
+ * and its recorded output. **A vocabulary and a default are different things.**
+ *
+ * 1024×1366 is the portrait iPad Pro, and `mobile: false` because a tablet at
+ * that width gets the desktop layout — which is exactly what a user checking
+ * "does my app work on a tablet" needs to see.
+ */
+const NAMED_VIEWPORTS = [
+  { name: 'desktop', width: 1280, height: 900, mobile: false },
+  { name: 'tablet', width: 1024, height: 1366, mobile: false },
+  { name: 'phone', width: 390, height: 844, mobile: true }
+];
+
 /** A viewport at least this wide is expected to lay content out in more than one column. */
 const DESKTOP_WIDTH = 1024;
 
@@ -736,6 +757,7 @@ function placeholderStringsFromCatalog(catalog) {
 module.exports = {
   // Vocabulary — every client must agree on these.
   DEFAULT_VIEWPORTS,
+  NAMED_VIEWPORTS,
   DESKTOP_WIDTH,
   RenderFinding,
   SEVERITY_ORDER,

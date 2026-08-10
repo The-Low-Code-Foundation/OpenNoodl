@@ -1,0 +1,109 @@
+/**
+ * The capture viewer.
+ *
+ * ⚠️ A fixed overlay over the whole window rather than something inside the
+ * panel, and that is forced by the subject: a full-page capture at 195×4047 has
+ * no useful representation inside a 400px sidebar. `DialogLayer` was not used —
+ * it is recorded in this project as **not centring** its content, and this
+ * surface has exactly one job that depends on the image being where the user
+ * expects it.
+ *
+ * No global `box-sizing` in this repo (BLD-017 R4), so every padded, bordered
+ * box below declares it.
+ */
+
+.Backdrop {
+  position: fixed;
+  inset: 0;
+  /* Above the panel and its popups (which sit at z-index 10). */
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px;
+  background-color: rgba(0, 0, 0, 0.6);
+  box-sizing: border-box;
+}
+
+.Sheet {
+  display: flex;
+  flex-direction: column;
+  max-width: 900px;
+  max-height: 100%;
+  width: 100%;
+  background-color: var(--theme-color-bg-2);
+  border: 1px solid var(--theme-color-border-strong);
+  border-radius: 6px;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.Header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--theme-color-border-strong);
+  box-sizing: border-box;
+  flex: none;
+}
+
+.Title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/*
+ * ⚠️ Scrolls rather than fits. A full-page capture is tall by design — the whole
+ * reason the capture is not a viewport grab — so scaling it to the sheet would
+ * turn the evidence into an illegible strip and defeat the point of looking.
+ */
+.Stage {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  /* A neutral ground so a page with a transparent or white background still
+     reads as an image with edges rather than bleeding into the sheet. */
+  background-color: var(--theme-color-bg-1);
+  padding: 12px;
+  box-sizing: border-box;
+}
+
+.Image {
+  display: block;
+  margin: 0 auto;
+  /* Never wider than the stage; never scaled *up* past its own pixels, which
+     would present a half-scale capture as though it were sharp. */
+  max-width: 100%;
+  height: auto;
+  border: 1px solid var(--theme-color-border-strong);
+  box-sizing: border-box;
+}
+
+.Twin {
+  flex: none;
+  border-top: 1px solid var(--theme-color-border-strong);
+  padding: 8px 12px;
+  box-sizing: border-box;
+  color: var(--theme-color-fg-default);
+}
+
+.TwinSummary {
+  cursor: pointer;
+  font-size: 11px;
+  line-height: 16px;
+}
+
+.TwinText {
+  margin: 8px 0 0;
+  max-height: 180px;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-size: 11px;
+  line-height: 16px;
+  color: var(--theme-color-fg-default);
+}

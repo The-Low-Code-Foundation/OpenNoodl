@@ -29,6 +29,15 @@ export interface ViewportSpec {
 
 export declare const DEFAULT_VIEWPORTS: ViewportSpec[];
 
+/**
+ * Every viewport with a name — `desktop`, `tablet`, `phone`.
+ *
+ * ⚠️ A superset of {@link DEFAULT_VIEWPORTS}: a **vocabulary**, not a default.
+ * `tablet` is selectable by name everywhere but is not measured unless asked
+ * for, so adding it did not change what `render_report` costs.
+ */
+export declare const NAMED_VIEWPORTS: ViewportSpec[];
+
 /** A viewport at least this wide is expected to lay content out in more than one column. */
 export declare const DESKTOP_WIDTH: number;
 

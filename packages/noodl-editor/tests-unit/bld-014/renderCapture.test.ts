@@ -32,7 +32,14 @@ import {
   type CapturedViewport,
   type RenderCaptureReply
 } from '../../src/editor/src/views/SandboxSurface/renderCaptureModel';
-import { carryOver, defaultPinned, isStale } from '../../src/editor/src/models/AiAssistant/thread/references';
+import {
+  carryOver,
+  defaultPinned,
+  firstImage,
+  isStale
+} from '../../src/editor/src/models/AiAssistant/thread/references';
+import { toggleViewport } from '../../src/editor/src/views/SandboxSurface/renderCaptureModel';
+import { DEFAULT_VIEWPORTS, NAMED_VIEWPORTS, type ViewportSpec } from '@nodegx/render-measure';
 
 beforeEach(() => resetApplyCountForTests());
 
@@ -108,16 +115,61 @@ describe('BLD-014 — the viewport vocabulary', () => {
   });
 
   it('names what IS known when it refuses, rather than only what is not', () => {
-    const parsed = parseViewports('tablet') as { error: string };
-    expect(parsed.error).toContain('tablet');
+    // ⚠️ `watch`, not `tablet` — this test used `tablet` until the presets
+    // landed, and it went red the moment the name became real. That is the
+    // fixture doing its job: an unknown-name test whose name quietly becomes
+    // known is a test that stops checking anything.
+    const parsed = parseViewports('watch') as { error: string };
+    expect(parsed.error).toContain('watch');
     // The repair, not just the complaint.
     expect(parsed.error).toContain('desktop');
+    expect(parsed.error).toContain('tablet');
     expect(parsed.error).toContain('phone');
     expect(parsed.error).toContain('390x844');
   });
 
   it('refuses a zero dimension rather than rendering a 0px window', () => {
     expect((parseViewports('0x844') as { error: string }).error).toMatch(/above zero/);
+  });
+});
+
+describe('BLD-014 — device presets (Richard, 2026-08-10)', () => {
+  it('🔴 knows tablet by name, so a mobile-app author can ask for one', () => {
+    const parsed = parseViewports('tablet') as { viewports: ViewportSpec[] };
+    expect(parsed.viewports[0]).toEqual({ name: 'tablet', width: 1024, height: 1366, mobile: false });
+  });
+
+  it('🔴 does NOT add tablet to the default set', () => {
+    // ⚠️ A vocabulary and a default are different things. `DEFAULT_VIEWPORTS` is
+    // what `render_report` measures when nobody says otherwise, and quietly
+    // making that three viewports would change the cost and the recorded output
+    // of every call the CLI and the MCP tool have ever been asked to make.
+    expect(DEFAULT_VIEWPORTS.map((v) => v.name)).toEqual(['desktop', 'phone']);
+    expect(NAMED_VIEWPORTS.map((v) => v.name)).toEqual(['desktop', 'tablet', 'phone']);
+    const parsed = parseViewports() as { viewports: ViewportSpec[] };
+    expect(parsed.viewports.map((v) => v.name)).toEqual(['desktop', 'phone']);
+  });
+
+  it('offers all three by name, and a tablet gets the desktop layout', () => {
+    const parsed = parseViewports('desktop,tablet,phone') as { viewports: ViewportSpec[] };
+    expect(parsed.viewports.map((v) => v.name)).toEqual(['desktop', 'tablet', 'phone']);
+    // 1024px is not a phone: emulating one would report a mobile layout for a
+    // device that gets the desktop one, which is the opposite of the question.
+    expect(parsed.viewports[1].mobile).toBe(false);
+    expect(parsed.viewports[2].mobile).toBe(true);
+  });
+
+  it('🔴 toggles one preset without disturbing the others, or a custom size', () => {
+    // The preset buttons edit the text and read their lit state back out of it —
+    // one store, so typing and clicking cannot disagree. That only holds if the
+    // toggle is a pure edit of the spec string.
+    expect(toggleViewport('desktop,phone', 'tablet')).toBe('desktop,phone,tablet');
+    expect(toggleViewport('desktop,tablet,phone', 'tablet')).toBe('desktop,phone');
+    expect(toggleViewport('', 'phone')).toBe('phone');
+    expect(toggleViewport('phone', 'phone')).toBe('');
+    // A hand-typed custom size survives a preset click.
+    expect(toggleViewport('390x844', 'desktop')).toBe('390x844,desktop');
+    expect(toggleViewport('390x844,desktop', 'desktop')).toBe('390x844');
   });
 });
 
@@ -408,6 +460,75 @@ describe('BLD-014 — a render becomes references', () => {
     expect(isStale(ref, applyCount())).toBe(true);
     // Rule 7: it rides exactly the turn it was attached to.
     expect(carryOver([ref])).toEqual([]);
+  });
+
+  it('🔴 is viewable, so the user can check what the agent was shown', async () => {
+    // Richard, 2026-08-10: "we can't leave users in the dark about what the AI
+    // has seen." A capture is the one kind whose whole content is invisible —
+    // made by a browser window nobody can see and summarised as a byte count.
+    // A cookie banner, a loading state and a good render all look identical on
+    // the chip.
+    const [ref] = await resolveRenderCapture(appViewerUrl(), captures, false);
+    const image = firstImage(ref);
+    expect(image).toBeDefined();
+    expect(image!.mediaType).toBe('image/png');
+    // ⚠️ The viewer shows the reference's OWN bytes, so what is on screen is
+    // byte-identical to what the provider receives. A preview that re-captured
+    // would be a picture of something *like* what was sent.
+    expect(image!.data).toBe(captures[0].data);
+  });
+
+  it('offers the view control for any image, not only a capture', () => {
+    // The pasted-screenshot path (BLD-013) had the same gap and nobody noticed,
+    // because that is the one route where the user has just seen the file.
+    const pastedImage = {
+      id: 'f1',
+      kind: 'file' as const,
+      label: 'mock.png',
+      target: 'mock.png',
+      pinned: true,
+      status: 'ready' as const,
+      resolution: {
+        text: 'a mock',
+        images: [{ type: 'image' as const, data: 'ZZZZ', mediaType: 'image/png' as const, text: 'a mock' }],
+        chars: 6,
+        truncated: false,
+        originalChars: 6,
+        bytes: 3
+      }
+    };
+    expect(firstImage(pastedImage)?.data).toBe('ZZZZ');
+
+    // And not for anything without one — the eye must not appear on a doc.
+    const doc = {
+      id: 'd1',
+      kind: 'doc' as const,
+      label: 'BRIEF.md',
+      target: 'docs/BRIEF.md',
+      pinned: true,
+      status: 'ready' as const,
+      resolution: { text: 'x', chars: 1, truncated: false, originalChars: 1 }
+    };
+    expect(firstImage(doc)).toBeUndefined();
+
+    /*
+     * ⚠️ And not on a **failed** reference that still carries bytes — which is
+     * the only case that exercises the status guard at all.
+     *
+     * This assertion was written first against a *doc* with no images, and an
+     * inversion that deleted the `status === 'ready'` check passed anyway: the
+     * fixture had no `images` array, so the guard was never reached. A spec that
+     * cannot fail is not a spec. The state below is the one the guard is for —
+     * a resolver that failed after producing a partial resolution — and offering
+     * a view control on it would open a viewer onto bytes the turn will not send.
+     */
+    const failedWithBytes = {
+      ...pastedImage,
+      id: 'f2',
+      status: 'failed' as const,
+      error: 'The screenshot could not be encoded.'
+    };
+    expect(firstImage(failedWithBytes)).toBeUndefined();
   });
 
   it('keeps each viewport\'s target distinct, so two chips are two things', async () => {

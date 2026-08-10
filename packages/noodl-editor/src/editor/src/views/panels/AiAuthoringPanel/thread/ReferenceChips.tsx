@@ -29,6 +29,7 @@ import { FeedbackType } from '@noodl-constants/FeedbackType';
 import { formatBytes } from '../../../../models/AiAssistant/thread/fileAttachments';
 import {
   blockingReferences,
+  firstImage,
   referenceCost,
   staleAge,
   type AttachedReference,
@@ -72,9 +73,17 @@ export interface ReferenceChipsProps {
    * guess.
    */
   applyCount?: number;
+  /**
+   * Show the picture this reference carries, full size.
+   *
+   * Optional so the row still renders in a host that has nowhere to put a
+   * viewer — the eye is then simply absent, rather than a control that does
+   * nothing when pressed.
+   */
+  onPreview?: (ref: AttachedReference) => void;
 }
 
-export function ReferenceChips({ references, onTogglePin, onRemove, applyCount }: ReferenceChipsProps) {
+export function ReferenceChips({ references, onTogglePin, onRemove, applyCount, onPreview }: ReferenceChipsProps) {
   if (references.length === 0) return null;
 
   const cost = referenceCost(references);
@@ -151,6 +160,39 @@ export function ReferenceChips({ references, onTogglePin, onRemove, applyCount }
                     : formatChars(ref.resolution.chars)}
                   {ref.resolution.truncated && <span className={css['Truncated']}> cut</span>}
                 </span>
+              )}
+
+              {/*
+               * 🔴 **The user must be able to see what the agent was shown.**
+               *
+               * Richard, 2026-08-10, on the capture control: *"we can't leave
+               * users in the dark about what the AI has seen."* Before this a
+               * chip said `example.com · phone · 9 KB` and there was **no way
+               * to look at the picture** — the one attachment kind whose entire
+               * content is invisible was also the only one nobody could check.
+               * A wrong viewport, a cookie banner over the whole page, a render
+               * that caught a loading state: all of them look identical on the
+               * chip and all of them waste a billed turn.
+               *
+               * ⚠️ It is offered for **any** reference carrying an image, not
+               * just a capture — a pasted screenshot (BLD-013) had the same gap
+               * and nobody had noticed, because the paste path is the one where
+               * the user has just seen the file.
+               */}
+              {firstImage(ref) && (
+                <button
+                  type="button"
+                  className={css['Action']}
+                  onClick={() => onPreview?.(ref)}
+                  aria-label={`View ${ref.label}`}
+                  title={`View ${ref.label} — exactly what the agent is shown`}
+                  data-test="reference-preview"
+                >
+                  {/* Expand, not a magnifier: `IconName.Search` is already
+                      BLD-015's kind glyph and two meanings for one shape in the
+                      same row is how a control stops being read. */}
+                  <Icon icon={IconName.ViewportDiagonalArrow} size={IconSize.Tiny} />
+                </button>
               )}
 
               {/*

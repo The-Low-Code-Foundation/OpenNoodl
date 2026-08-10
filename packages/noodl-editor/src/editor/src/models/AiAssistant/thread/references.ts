@@ -463,6 +463,20 @@ export function referenceCost(refs: readonly AttachedReference[]): ReferenceCost
  * have already scrolled past. Failing closed is the same call BLD-002 made for
  * a failed submission never collapsing.
  */
+/**
+ * The picture a reference carries, if it carries one — what makes it viewable.
+ *
+ * 🔴 Richard, 2026-08-10: *"we can't leave users in the dark about what the AI
+ * has seen."* A capture is the one reference kind whose entire content is
+ * invisible — produced by a browser window nobody can see, summarised on the
+ * chip as a byte count. This is the predicate behind the chip's view control,
+ * and it deliberately asks *does this carry an image*, not *is this a capture*:
+ * a pasted screenshot (BLD-013) had exactly the same gap.
+ */
+export function firstImage(ref: AttachedReference): AiImageBlock | undefined {
+  return ref.status === 'ready' ? ref.resolution?.images?.[0] : undefined;
+}
+
 export function blockingReferences(refs: readonly AttachedReference[]): AttachedReference[] {
   return refs.filter((ref) => ref.status === 'failed' || ref.status === 'resolving');
 }

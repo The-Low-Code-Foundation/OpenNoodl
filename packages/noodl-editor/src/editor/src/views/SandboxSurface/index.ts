@@ -10,9 +10,17 @@ export { SandboxToolbar, type SandboxToolbarProps } from './SandboxToolbar';
 export { captureLivePreview, hasLivePreview, type PreviewCapture } from './livePreviewCapture';
 // BLD-014 — the CDP render. The other producer behind the same control, and the
 // only one that can answer "at 390×844" or point at a URL.
-export { renderCapture, type RenderCaptureRequest } from './renderCapture';
-// The rules half, importable without Electron — see the module header for why
-// the split exists.
+/*
+ * ⚠️ **`renderCapture.ts` is deliberately NOT re-exported here.**
+ *
+ * It is the one module in this directory that imports `electron`, and this
+ * barrel is imported by `ComponentBench.tsx` and `AuthoringPreviewDocument` —
+ * so re-exporting it silently put `ipcRenderer` into the import graph of every
+ * consumer of the sandbox surface, including the two that are graded in the
+ * Jasmine suite. The one caller that needs the transport imports it by path.
+ *
+ * Everything below is Electron-free and safe for any consumer.
+ */
 export {
   appViewerUrl,
   base64Bytes,
