@@ -181,3 +181,23 @@ passing as covered.
 | A13 | An editor save **deletes a component's `description`** — authored documentation, silently discarded | 🔴 filed not fixed (ProjectExporter) |
 | A14 | `inferComponentType` relabels a project rooted at `/App` from **`root` to `visual`** on save, and its return union declares a `logic` no branch can produce | 🔴 filed not fixed (ProjectExporter) |
 | A18 | **The task's own §1 prediction was wrong** — the pure round trip is a fixed point for `visualRoots`, so the flagship gate as specced would have shipped green and blind. Verified by running it | ⚠️ **corrected**, the suite's header records it |
+| **A19** ⭐ | **`update_node.set.children` is accepted, reported applied, and silently discarded.** `children` is part of the authoring vocabulary at `create_component` (`{id:'a', children:['b']}` → `b.parent = 'a'`, verified), but `update_node`'s `set` declares only `label/x/y/variant/parent` and **zod strips unknown keys by default**, so the operation returns `applied: ["update_node band"]`, `0 errors, 0 warnings`, and changes nothing. One vocabulary, two doors, one of which lies. **Caught by consequence, not by inspection:** in the 2026-08-10 re-replay DeepSeek parented its hero content with exactly this operation, and the hero — headline, lead, two CTAs, photo — is in the file and cannot draw | 🔴 **OPEN**, minimal repro below |
+| **A20** ⭐ | **`add_node` never re-derives `visualRoots`, so a node added without a parent can never draw.** At create time two parentless visual Groups both become roots (`["a","b"]`, verified); the same second Group added via `operations:[{op:'add_node'}]` yields `["a"]` — it is neither parented nor a root. **AWP-001 fixed the `set` path** (`assembleSetFiles` always recomputes) **and the operations path was not in its scope**, so F43's exact failure mode survives on the door DeepSeek used 20 times | 🔴 **OPEN** |
+| A21 | ⚠️ **Every instrument passed the page with a section missing.** `validate:project` 0 errors/0 warnings on 115 nodes; `render_report` *"Rendered clean"*, 63 texts, 8 images, 0 placeholders, 0 broken images, no overflow at 390px. An orphaned subtree draws as **nothing**, and "nothing" is not an empty decorated box, a node-type default, or a broken image — so none of AWP-004's three checks can see it. **A fourth check earns its place here:** a component with a top-level node that is neither a visual root nor anybody's child | 📋 **the next AWP-004 check** |
+
+### A19/A20 — the minimal reproduction
+
+Both fire from one `update_component` call against a component whose only node is `band`:
+
+```json
+{ "path": "Components/Probe", "operations": [
+  { "op": "add_node", "node": { "id": "wrap", "type": "Group" }, "index": 0 },
+  { "op": "update_node", "id": "band", "set": { "children": ["wrap"] } } ] }
+```
+
+**Returns** `isError: false`, `applied: ["add_node wrap (Group)", "update_node band"]`,
+`validation: {errors: 0, warnings: 0}`, `visualRoots: ["band"], visualRootsDerived: true`.
+**On disk**: `wrap` has no `parent`, `band` has no `children`, and `wrap` is not a root.
+
+⚠️ Note the response *confidently reports a derivation* (`visualRootsDerived: true`) whose answer
+omits the node just added — which is AWP-001 §2's own reporting field saying the thing is fine.

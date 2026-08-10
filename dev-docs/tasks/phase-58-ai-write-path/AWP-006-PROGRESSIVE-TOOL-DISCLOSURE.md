@@ -189,6 +189,52 @@ one trim was taken: `render_report`'s description lost ~450 characters of per-vi
 and prerequisite prose that the response and the error message already carry at the moment they
 matter.
 
+## The re-replay — 2026-08-10
+
+Cold replay of `STOREFRONT-BRIEF.md` on `deepseek-ai/DeepSeek-V4-Pro`, same rig, same brief
+(1,248 chars), same prices, after **both** AWP-005 and AWP-006. **The surface changed, so this row
+is not comparable to session 8's on cost — that is the point of the change, not a side effect.**
+Per LAS-010's re-run rule, the change is named: 89 tools → 20, and `get_node_type` defaults to
+`summary`.
+
+| | session 8 (89 tools, full docs) | **after AWP-005 + 006 (20 tools, summary docs)** |
+|---|---|---|
+| turn-one prompt tokens | 22,968 | **8,578** — **−63%** |
+| billed input, whole run | 4,410,622 | **2,674,024** — **−39%** |
+| cost | $5.83 | **$3.55** — **−39%** |
+| turns | **60 — max-turns, still working** | **47 — model-finished** |
+| tool calls / rejections | 66 / 8 | 57 / 3 |
+| `get_node_type` calls | 4 (full detail) | 4 (summary) |
+| components / page own nodes | 12 / 8 | 10 / 8 |
+| Component Inputs components | 5 (16 ports) | 4 (16 ports) |
+| For Each / Static Data / Columns | 1 / 1 / 4 | 1 / 1 / 5 |
+| `validate:project` | 0 / 0 (108 nodes) | **0 / 0 (115 nodes)** |
+| render report | **blank-render, 0 texts** (F43); clean only with the defect undone | **clean as run** — 63 texts, 8 images, both viewports, 0 broken, 0 placeholders |
+
+**The modelled target was $4.07 at a 29% cut. Actual: $3.55 at 39%** — better than the model,
+because the model assumed the same number of turns and the run took 47 instead of 60. It also
+**finished** instead of being cut off, which session 8's row could not say.
+
+**F43 is closed by consequence, not by assertion.** Session 8's DeepSeek run rendered blank and
+needed the defect undone by hand before it could be scored; this one renders as run.
+
+### ⚠️ And the page is missing its hero — every instrument said clean
+
+The screenshots
+([desktop](../phase-55-llm-authoring-support/measurements/s9-awp006-deepseek-desktop.png),
+[phone](../phase-55-llm-authoring-support/measurements/s9-awp006-deepseek-phone.png)) show nav,
+trust strip, five product cards with badges and struck prices, category cards with counts, and a
+three-column footer — **and an empty white band where the hero should be.** The hero component
+exists, is complete, and has twelve nodes; its content subtree is orphaned and cannot draw.
+
+**This is not a model error and not an AWP-006 regression.** DeepSeek issued exactly the right
+three operations; two product defects on the `operations` write path swallowed them. Both are
+reproduced minimally and filed as
+[AWP-002 A19/A20](AWP-002-WRITE-PATH-CONFORMANCE.md#a19a20--the-minimal-reproduction). Read the row
+above with that in mind: **the artefact cells are honest, and one of the brief's six sections is
+invisible in a page that passed `validate:project` 0/0 and rendered "clean".** That is AWP-004's
+thesis restated by a fresh run, and it earns AWP-004 a fourth check.
+
 ## Acceptance
 
 - ✅ `--list-tools` reports the authoring surface at **7,828 tokens** including server instructions.
@@ -196,7 +242,7 @@ matter.
   [`tests/toolDisclosure.test.ts`](../../../packages/noodl-mcp/tests/toolDisclosure.test.ts), and the
   seven suites that exercise deferred tools now reach them **through `find_tools`**, so their green
   is evidence the disclosure door works. Fixture brief: [BACKEND-BRIEF.md](BACKEND-BRIEF.md).
-- ✅ Turn-one prompt tokens on a replay: see the row below.
+- ✅ Turn-one prompt tokens: 22,968 → **8,578**, measured on the wire the same way F37 was.
 - 📋 A replay of the storefront brief on DeepSeek V4 Pro after AWP-005 and AWP-006, recorded beside
   session 8's row with the surface change named. **The run was still in flight when session 3 ended**
   (turn 29 of 60); scored in session 4 — see [A17](#register).
