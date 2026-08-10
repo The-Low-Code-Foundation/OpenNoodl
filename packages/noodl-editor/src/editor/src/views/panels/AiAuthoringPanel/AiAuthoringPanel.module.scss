@@ -330,3 +330,41 @@
   padding: 10px 12px;
   border-top: 1px solid var(--theme-color-border-default);
 }
+
+/*
+ * BLD-013/014 — the composer's control row.
+ *
+ * 🔴 Wraps, and that is the whole point of it existing. See the call site: an
+ * `HStack` held one button in BLD-011 and could not overflow; three buttons
+ * total 299px against a panel that the width sweep takes down to 248px, and the
+ * overflow was invisible at the 400px default everyone looks at.
+ *
+ * `align-items: center` rather than `stretch` so a wrapped second line does not
+ * stretch its buttons to the taller row's height.
+ */
+.ComposerControls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  /*
+   * 🔴 The positioning context for `ReferencePicker`'s list, and it lives here
+   * rather than on the picker for a measured reason.
+   *
+   * BLD-011 gave `.Picker` `position: relative; width: 100%` so its list —
+   * which is `left: 0; right: 0` — would span the composer instead of opening
+   * 113.8px wide and ellipsizing every component path it existed to show. That
+   * was right while the picker was alone in this row. With `Attach` and
+   * `Look at it` beside it, a full-width flex item claims the whole line and
+   * pushed both onto a second row at EVERY width — 67px tall at 248px and still
+   * 67px at 800px, where all three fit in 742px.
+   *
+   * Anchoring the list here keeps both properties true at once: the list still
+   * spans the full composer, and the picker shrink-wraps so its siblings share
+   * the line.
+   *
+   * ⚠️ Removing this `position` silently returns the list to the viewport as
+   * its containing block — it will span the whole window, not break visibly.
+   */
+  position: relative;
+}

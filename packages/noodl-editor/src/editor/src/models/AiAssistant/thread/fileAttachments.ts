@@ -72,8 +72,16 @@ export const ATTACHMENT_LIMITS = {
    * prompt (a 24k component serialization, the catalog, the docs) cannot push a
    * legal attachment over the line. A refusal that names the real ceiling is
    * useless if the real ceiling depends on what else is attached.
+   *
+   * 🔴 **Binary MB, not decimal, and the drive is why.** Written as
+   * `20_000_000` this is a perfectly round ceiling that {@link formatBytes}
+   * prints as **"19.1 MB"** — so a user who trimmed a PDF to just under 20MB
+   * was told the limit was 19.1. The number was correct and the message was
+   * useless: nobody checks a limit against the constant in the source, they
+   * check it against the sentence in front of them. A ceiling has to be round
+   * *in the unit it is displayed in*.
    */
-  documentMaxBytes: 20_000_000,
+  documentMaxBytes: 20 * 1024 * 1024,
   /**
    * Bytes a text file may occupy on disk before it is refused outright.
    *
@@ -82,7 +90,9 @@ export const ATTACHMENT_LIMITS = {
    * file into a string to then throw 99% of it away stops being reasonable —
    * a 5MB log is not a document that got long, it is the wrong file.
    */
-  textMaxBytes: 2_000_000
+  // Binary, for the reason `documentMaxBytes` documents — this one is printed
+  // in a refusal too.
+  textMaxBytes: 2 * 1024 * 1024
 } as const;
 
 const TEXT_EXTENSIONS = [

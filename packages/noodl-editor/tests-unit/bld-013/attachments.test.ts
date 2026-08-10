@@ -82,8 +82,17 @@ describe('BLD-013 — ceilings, and the refusal that names both numbers', () => 
     // "Too large" tells a user nothing about whether splitting the file in two
     // would have been enough.
     expect(message).toContain('23.8 MB');
-    expect(message).toContain('19.1 MB');
     expect(message).toMatch(/Split it/);
+  });
+
+  it('🔴 prints a limit that is ROUND in the unit it is displayed in', () => {
+    // Found on the drive. `documentMaxBytes: 20_000_000` is a perfectly round
+    // constant that `formatBytes` renders as "19.1 MB" — so a user who trimmed
+    // a PDF to just under 20MB was told the limit was 19.1. The number was
+    // right and the message was useless: nobody checks a ceiling against the
+    // source, they check it against the sentence in front of them.
+    expect(formatBytes(ATTACHMENT_LIMITS.documentMaxBytes)).toBe('20.0 MB');
+    expect(sizeRefusal('document', 25_000_000)).toContain('20.0 MB');
   });
 
   it('does not cap an image by bytes — it resizes instead', () => {

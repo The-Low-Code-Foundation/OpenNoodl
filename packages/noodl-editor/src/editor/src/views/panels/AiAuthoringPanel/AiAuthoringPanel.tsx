@@ -1292,13 +1292,23 @@ export function AiAuthoringPanel({ width = 'panel' }: AiAuthoringPanelProps = {}
               onRemove={removeReference}
               applyCount={applies}
             />
-            {/* ⚠️ `gap` and `height: 'auto'` both matter. BLD-011 measured this
-                row: an `HStack` forces `height: 100%` on every child, and the
-                picker's absolutely-positioned list resolves `left/right: 0`
-                against whatever box wraps it — which is how a component list
-                opened 113.8px wide, the width of its own button, and
-                ellipsized every path it existed to show. */}
-            <HStack UNSAFE_style={{ height: 'auto', gap: 6 }}>
+            {/*
+              * 🔴 A plain wrapping row, not an `HStack`, and the drive is why.
+              *
+              * BLD-011 shipped this as an `HStack` holding one 112px button, so
+              * it could not overflow. Adding `Attach` (80px) and `Look at it`
+              * (95px) takes the row to 299px plus the composer's 24px padding —
+              * and an `HStack` does not wrap. Swept across the panel's real
+              * width range it overflowed by **71px at 248px** and **19px at
+              * 300px**, zero from 340px up. The shipped default is 400px, which
+              * is exactly why nothing caught it: the defect lives entirely
+              * below the value anyone spot-checks.
+              *
+              * ⚠️ `HStack` also forces `height: 100%` on every child, which is
+              * what the `height: 'auto'` override above was for — a plain flex
+              * row needs neither that nor the override.
+              */}
+            <div className={css['ComposerControls']}>
               <ReferencePicker
                 candidates={candidates}
                 attachedTargets={new Set(references.map((ref) => ref.target))}
@@ -1356,7 +1366,7 @@ export function AiAuthoringPanel({ width = 'panel' }: AiAuthoringPanelProps = {}
                 onClick={() => void captureLive()}
                 testId="capture-preview"
               />
-            </HStack>
+            </div>
           </VStack>
         }
         onComposerFiles={(files) => void attachFiles(files)}

@@ -19,23 +19,37 @@
  */
 
 /*
- * ⚠️ `width: 100%` is load-bearing, and driving is what found it.
+ * 🔴 This box is deliberately **not** positioned and **not** width-100%, and
+ * the history is the point.
  *
- * The list below is `left: 0; right: 0`, which resolves against *this* box — and
- * this box sits in an `HStack` that shrink-wraps to the button inside it. So the
- * list opened **113.8px wide**, the width of the "Add context" button, and every
- * candidate longer than about twelve characters ellipsized:
- * `Library/Layout/Breadcrumbs` — the exact case a picker exists to let you find —
- * rendered as `Library/L…`. Nothing was broken; the control simply could not be
- * read, which is the failure mode a screenshot in the wrong state hides.
+ * BLD-011 drove this and found the list opening **113.8px wide** — the width of
+ * the "Add context" button — because `.List` is `left: 0; right: 0`, which
+ * resolves against the nearest positioned ancestor, and that was this box
+ * shrink-wrapping inside an `HStack`. `Library/Layout/Breadcrumbs` rendered as
+ * `Library/L…`: nothing broken, and the one control whose job is finding a
+ * component by name could not be read.
  *
- * The button keeps its natural size because `PrimaryButton` only fills its
- * parent when `isGrowing` is set, so widening the wrapper costs nothing visually
- * and gives the list the whole composer to open into.
+ * The fix then was `position: relative; width: 100%` here. It was correct, and
+ * it stopped being correct the moment BLD-013 and BLD-014 put two more buttons
+ * in the same row: a full-width flex item claims the entire line, so `Attach`
+ * and `Look at it` were pushed onto a second row **at every panel width** —
+ * measured 67px tall at 248px and still 67px at 800px, where all three buttons
+ * fit in 742px with room to spare. A rule that was right about its old subject,
+ * for the sixth time this phase.
+ *
+ * So the positioning context moved **up**, to the control row itself
+ * (`AiAuthoringPanel.module.scss` → `.ComposerControls`). The list still spans
+ * the full composer — BLD-011's measurement is preserved exactly — and this box
+ * shrink-wraps to its button so its siblings can share the line.
+ *
+ * ⚠️ **`ReferencePicker` therefore requires a positioned ancestor.** Without
+ * one the list resolves against the viewport and spans the whole window. There
+ * is one call site and it is documented at both ends; a second call site must
+ * bring its own `position: relative`.
  */
 .Picker {
-  position: relative;
-  width: 100%;
+  /* No `position` — see above. The list is positioned by `.ComposerControls`. */
+  display: inline-flex;
 }
 
 .List {
