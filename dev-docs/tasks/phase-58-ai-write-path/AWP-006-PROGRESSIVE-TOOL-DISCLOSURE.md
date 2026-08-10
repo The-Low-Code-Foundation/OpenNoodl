@@ -242,10 +242,19 @@ thesis restated by a fresh run, and it earns AWP-004 a fourth check.
   [`tests/toolDisclosure.test.ts`](../../../packages/noodl-mcp/tests/toolDisclosure.test.ts), and the
   seven suites that exercise deferred tools now reach them **through `find_tools`**, so their green
   is evidence the disclosure door works. Fixture brief: [BACKEND-BRIEF.md](BACKEND-BRIEF.md).
+- ✅ **And a model has now walked it cold** — [BACKEND-BRIEF §As run](BACKEND-BRIEF.md#as-run--2026-08-10):
+  `find_tools({group:"backend"})` at turn 3 unprompted, `provision_backend` at turn 5 with columns,
+  and a working app on all four of the brief's questions. **The `--all-tools` control is the arm that
+  failed** — it never applied a write — so the capability loss AWP-006 feared did not happen, and did
+  not merely go unobserved. ⚠️ Two limits are recorded there and matter: **n=1 per arm**, and the
+  **auto-reveal has still never fired for a model** (`backendToolsRevealed`: zero occurrences —
+  the model searched before it authored).
 - ✅ Turn-one prompt tokens: 22,968 → **8,578**, measured on the wire the same way F37 was.
-- 📋 A replay of the storefront brief on DeepSeek V4 Pro after AWP-005 and AWP-006, recorded beside
-  session 8's row with the surface change named. **The run was still in flight when session 3 ended**
-  (turn 29 of 60); scored in session 4 — see [A17](#register).
+- ✅ A replay of the storefront brief on DeepSeek V4 Pro after AWP-005 and AWP-006, recorded beside
+  session 8's row with the surface change named — [§The re-replay](#the-re-replay--2026-08-10), and
+  the matrix row itself in
+  [LAS-011 §Session 9](../phase-55-llm-authoring-support/LAS-011-ACCEPTANCE-MATRIX.md#session-9--the-same-model-a-different-surface).
+  ⚠️ Session 3 wrote this up while the run was still going — see [A17](#register).
 
 ## Register
 
@@ -256,5 +265,7 @@ thesis restated by a fresh run, and it earns AWP-004 a fourth check.
 | A13 | **A backend profile alone could not have met the bar.** The non-backend surface is 10,189 tokens against an 8,000-token acceptance — 27% over. The task's recommendation to "measure the split before choosing" is what caught it; choosing the cheapest option on F37's 63% figure would have shipped something that missed its own acceptance and looked done | ✅ measured 2026-08-10 |
 | A14 | **The transcripts overruled the manifest three times.** `get_example` (14 calls) was about to be deferred, the docs reads (all four runs, first six turns) were about to be deferred, and `search_project`/`explain_component`/`list_examples` (zero calls) were about to stay. **Membership in a resident set is a usage question, and this repo already had the usage data** — it was one `sort \| uniq -c` away and nearly went unasked | ✅ **the method, not the finding** |
 | A15 | **The two-directional write-only assertion caught a misclassification on its first run.** `list_backend_processes` reads a registry and changes nothing, so it was filed as a read — but it ships in `registerProvisionTools`, inside the write gate. Asserting the manifest against *both* modes, in both directions, found in seconds what reading the file did not | ✅ fixed |
+| A18 ⭐ | **The control run failed and the deferred run passed — the opposite sign to the one this task feared.** On the undeferred 90-tool surface the same model on the same brief never called `apply_plan`: it provisioned ten turns later than the deferred arm, spent 22 calls browsing the catalog, discarded its plan at turn 28 and ran out at 30 with nothing on disk. **The question "did deferral cost a capability" is therefore answered by the arm that succeeded, not by both arms failing** — which is a stronger answer than the brief asked for. ⚠️ **n=1 per arm at temperature 0.2**, so the inverse is a hypothesis and is written down as one, not as a result | ✅ run 2026-08-10 |
+| A19 | ⚠️ **The rig could not run the control until it was taught to.** `--tools` narrowed the served surface and nothing widened it back, so `--all-tools` was unreachable from the driver — the control BACKEND-BRIEF.md has specified since it was written was **unrunnable**, and "the model failed" and "the model could not see the tools" would have stayed indistinguishable. Same shape as the `list_changed` gap: **the instrument was missing the half that could disconfirm the change** | ✅ fixed, `82507342` |
 | A17 | ⚠️ **The handover described the re-replay as a finished artefact while its driver was still running.** Session 3 wrote up the run and named the project and transcript, but `mcp-model-driver.js` was at **turn 29 of 60** and the transcript had **no `run-end` event** — `extract-transcript.js` printed `# incomplete turns=? costUsd=0.00`. Scoring the snapshot would have produced a matrix row for a half-built app and a cost of $0.00, beside session 8's completed 60-turn row. **A transcript is only a finished artefact once it carries `run-end`; check that before scoring, and check for a live driver process before believing a handover's past tense** | ✅ caught before scoring, session 4 |
 | A16 | ⚠️ **The budget is path-dependent and the jest number lied by 1.4%.** Server instructions embed the project directory, so the same build measured 7.9k in jest (a short temp dir) and **8,015 on the wire** (a 76-character project path) — over the bar. The spec now normalises to a deliberately long 160-character path so it errs strict. **Any budget measured against a fixture in `os.tmpdir()` inherits this**, and it is invisible because both numbers are "about 8,000" | ✅ fixed, and worth generalising |
