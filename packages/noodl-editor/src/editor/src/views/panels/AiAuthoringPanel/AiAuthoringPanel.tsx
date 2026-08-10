@@ -120,8 +120,27 @@ import { ProjectReviewBanner } from './ProjectReviewBanner';
 import { ProjectReviewView } from './ProjectReviewView';
 import { BuildThread, type ThreadWidth } from './thread/BuildThread';
 import { Heartbeat } from './thread/Heartbeat';
+import { ReferenceChips } from './thread/ReferenceChips';
+import { ReferencePicker } from './thread/ReferencePicker';
 import { RunHeader } from './thread/RunHeader';
 import { ThreadSwitcher } from './thread/ThreadSwitcher';
+// BLD-011 — the pure half (caps, carry-over, cost) and the half that reads a
+// project. Kept apart for the reason the turn model is: the arithmetic is what
+// a plain-Node spec can grade.
+import {
+  blockingReferences,
+  carryOver,
+  renderReferenceBlock,
+  toTurnReferences,
+  type AttachedReference,
+  type TurnReference
+} from '../../../models/AiAssistant/thread/references';
+import {
+  componentCandidates,
+  docCandidates,
+  resolveCandidate,
+  type ReferenceCandidate
+} from '../../../models/AiAssistant/authoring/referenceSources';
 
 export const AiAuthoringPanel_ID = 'ai-authoring';
 
@@ -136,8 +155,28 @@ function pendingTurn(request: string): Turn {
   return { id: 'pending', request, activities: [], busy: true };
 }
 
-function noteTurn(id: string, request: string, text: string, tone: 'notice' | 'danger'): Turn {
-  return { id, request, activities: [], outcome: { kind: 'note', text, tone } };
+/**
+ * ⚠️ BLD-011 — the declined and failed paths carry their attachments too.
+ *
+ * These are the turns that never reach a producer, so `liveTurns` never stamps
+ * them; without this a request that was declined would show as having carried
+ * nothing, which is the one reading that makes the attachment look like the
+ * reason it was declined.
+ */
+function noteTurn(
+  id: string,
+  request: string,
+  text: string,
+  tone: 'notice' | 'danger',
+  references?: TurnReference[]
+): Turn {
+  return {
+    id,
+    request,
+    activities: [],
+    ...(references && references.length > 0 ? { references } : {}),
+    outcome: { kind: 'note', text, tone }
+  };
 }
 
 /**
@@ -271,6 +310,50 @@ export function AiAuthoringPanel({ width = 'panel' }: AiAuthoringPanelProps = {}
     ProjectReviewStore.instance.consumeReviewRequest() ? DOCS_SUGGESTION : ''
   );
 
+  /**
+   * BLD-011 — what the next message carries besides the words.
+   *
+   * Lives beside `composer` and empties on the same event, because it is part
+   * of the same message: the chip row and the text are one thing the user is
+   * composing, and holding them in stores with different lifetimes is how a
+   * turn ends up sending an attachment the user removed.
+   */
+  const [references, setReferences] = useState<AttachedReference[]>([]);
+  const [candidates, setCandidates] = useState<ReferenceCandidate[]>([]);
+
+  /**
+   * Re-read the attachable things when the picker opens.
+   *
+   * Not on mount and not on an interval: components are created and renamed
+   * while this panel sits idle, and a list assembled once at mount is wrong by
+   * the time anybody opens it. Opening the list is the only moment its contents
+   * are about to be read.
+   */
+  const refreshCandidates = useCallback(() => {
+    const project = ProjectModel.instance;
+    const components = componentCandidates(project);
+    setCandidates(components);
+    // Docs are a filesystem read, so they land a tick later. Components are
+    // already in memory and should not wait for them.
+    void docCandidates().then((docs) => setCandidates([...components, ...docs]));
+  }, []);
+
+  const attachReference = useCallback(async (candidate: ReferenceCandidate) => {
+    const resolved = await resolveCandidate(candidate, ProjectModel.instance);
+    setReferences((current) => [...current, resolved]);
+  }, []);
+
+  const togglePin = useCallback((id: string) => {
+    setReferences((current) => current.map((ref) => (ref.id === id ? { ...ref, pinned: !ref.pinned } : ref)));
+  }, []);
+
+  const removeReference = useCallback((id: string) => {
+    setReferences((current) => current.filter((ref) => ref.id !== id));
+  }, []);
+
+  /** What the current attachments will cost, and whether any of them blocks. */
+  const referencesBlock = blockingReferences(references).length > 0;
+
   /** What the current live work is, and what the agent said it was. */
   const [route, setRoute] = useState<BuildIntent | null>(null);
   const [decision, setDecision] = useState<IntentDecision | null>(null);
@@ -287,6 +370,16 @@ export function AiAuthoringPanel({ width = 'panel' }: AiAuthoringPanelProps = {}
    * that cannot recover the request from its own state. See `LiveSources.request`.
    */
   const [liveRequest, setLiveRequest] = useState<string | null>(null);
+  /**
+   * BLD-011 — what the *live* request carried, as the persisted record.
+   *
+   * Separate from `references`, which is the composer's list and has already
+   * moved on: by the time a turn is live, `carryOver` has dropped the unpinned
+   * ones, and rendering the composer's current list onto the running turn would
+   * show a turn carrying attachments it never sent. Same lifetime as
+   * `liveRequest`, and cleared by the same `retire()`.
+   */
+  const [liveReferences, setLiveReferences] = useState<TurnReference[] | null>(null);
   const planAbortRef = useRef<AbortController | null>(null);
 
   const [state, setState] = useState<AuthoringSessionState | null>(null);
@@ -363,8 +456,17 @@ export function AiAuthoringPanel({ width = 'panel' }: AiAuthoringPanelProps = {}
    * declared further down.
    */
   const liveSources = useMemo<LiveSources>(
-    () => ({ route, session: state, planSession, runState, reviewState, decision, request: liveRequest }),
-    [route, state, planSession, runState, reviewState, decision, liveRequest]
+    () => ({
+      route,
+      session: state,
+      planSession,
+      runState,
+      reviewState,
+      decision,
+      request: liveRequest,
+      ...(liveReferences && liveReferences.length > 0 ? { references: liveReferences } : {})
+    }),
+    [route, state, planSession, runState, reviewState, decision, liveRequest, liveReferences]
   );
 
   // ── Sending ────────────────────────────────────────────────────────────────
@@ -396,6 +498,7 @@ export function AiAuthoringPanel({ width = 'panel' }: AiAuthoringPanelProps = {}
     setRoute(null);
     setDecision(null);
     setLiveRequest(null);
+    setLiveReferences(null);
     if (AppRegistry.instance.CurrentDocumentId === AuthoringPreviewDocumentProvider.ID) {
       AppRegistry.instance.openDocument(EditorDocumentProvider.ID);
     }
@@ -419,7 +522,7 @@ export function AiAuthoringPanel({ width = 'panel' }: AiAuthoringPanelProps = {}
    * rather than by picking a tab first.
    */
   const routePlan = useCallback(
-    async (intent: BuildIntent, plan: AuthoringPlan, request: string) => {
+    async (intent: BuildIntent, plan: AuthoringPlan, request: string, references?: string) => {
       const project = ProjectModel.instance;
       if (!project) return;
       setRoute(intent);
@@ -427,6 +530,10 @@ export function AiAuthoringPanel({ width = 'panel' }: AiAuthoringPanelProps = {}
       if (intent === 'plan') {
         store.update(project.id, {
           description: request,
+          // BLD-011 — in memory only; `snapshotSession` deliberately omits it,
+          // so a plan restored from disk carries no attachments rather than
+          // stale copies of components that have since changed.
+          references,
           plan,
           note: null,
           excluded: new Set(),
@@ -464,14 +571,18 @@ export function AiAuthoringPanel({ width = 'panel' }: AiAuthoringPanelProps = {}
         const authoringRequest = { description: request, componentPath: operation.target };
         // An existing component is revised, not recreated: the session gets the
         // exporter's own serialization of it as the base.
+        // BLD-011 — the attachments ride into the opening turn's variable half,
+        // beside `planContext`. This is the path where Rule 6 actually binds:
+        // it is the only one of the three that carries a `cacheBoundary`.
+        const sessionOptions = { ...styleOptions, references };
         const session = existing
           ? AuthoringSession.createUpdate(
               fromProjectModel(project),
               authoringRequest,
               buildComponentV2Files(existing.toJSON(), new Date().toISOString()),
-              styleOptions
+              sessionOptions
             )
-          : AuthoringSession.create(fromProjectModel(project), authoringRequest, styleOptions);
+          : AuthoringSession.create(fromProjectModel(project), authoringRequest, sessionOptions);
         sessionRef.current = session;
         session.onChange(setState);
         setState(session.state);
@@ -511,7 +622,19 @@ export function AiAuthoringPanel({ width = 'panel' }: AiAuthoringPanelProps = {}
     const request = composer.trim();
     if (!project || !request) return;
 
+    // BLD-011 — resolved once, here, into the words this turn sends. The chips
+    // already read their sources when they were attached, so this is a render
+    // of what the user has been looking at rather than a second, later read
+    // that could disagree with the sizes on screen.
+    const attached = references;
+    const referenceBlock = renderReferenceBlock(attached);
+
     setComposer('');
+    // Rule 7 — pinned references ride the next turn; unpinned ones perish,
+    // having ridden exactly the turn they were attached to. Applied here rather
+    // than after the await for the same reason `retire()` is: everything that
+    // decides what this turn *was* must happen before anything can interleave.
+    setReferences(carryOver(attached));
     // Before anything is awaited, so the thread's order is an invariant rather
     // than a race: history is always older than the pending turn, which is
     // always older than whatever is live.
@@ -521,8 +644,9 @@ export function AiAuthoringPanel({ width = 'panel' }: AiAuthoringPanelProps = {}
     // Survives the planning call, and is cleared by the next `retire()`. A docs
     // review can still be running long after `planningRequest` has gone.
     setLiveRequest(request);
+    setLiveReferences(toTurnReferences(attached));
     try {
-      const session = new PlanningSession(fromProjectModel(project), request);
+      const session = new PlanningSession(fromProjectModel(project), request, { references: referenceBlock });
       planAbortRef.current = new AbortController();
       const outcome = await session.run({ abortController: planAbortRef.current });
 
@@ -530,7 +654,7 @@ export function AiAuthoringPanel({ width = 'panel' }: AiAuthoringPanelProps = {}
         lastPlanRef.current = outcome.plan;
         const next = decideIntent(outcome.plan);
         setDecision(next);
-        await routePlan(next.intent, outcome.plan, request);
+        await routePlan(next.intent, outcome.plan, request, referenceBlock);
         return;
       }
 
@@ -543,16 +667,22 @@ export function AiAuthoringPanel({ width = 'panel' }: AiAuthoringPanelProps = {}
             ? 'Cancelled. Nothing happened.'
             : outcome.note ?? 'Could not produce a plan for this request.';
       appendTurns([
-        noteTurn(`declined-${threadLength()}`, request, text, outcome.status === 'declined' ? 'notice' : 'danger')
+        noteTurn(
+          `declined-${threadLength()}`,
+          request,
+          text,
+          outcome.status === 'declined' ? 'notice' : 'danger',
+          toTurnReferences(attached)
+        )
       ]);
     } catch (e) {
       const text = e instanceof Error ? e.message : String(e);
-      appendTurns([noteTurn(`failed-${threadLength()}`, request, text, 'danger')]);
+      appendTurns([noteTurn(`failed-${threadLength()}`, request, text, 'danger', toTurnReferences(attached))]);
     } finally {
       planAbortRef.current = null;
       setPlanningRequest(null);
     }
-  }, [appendTurns, composer, retire, routePlan, threadLength]);
+  }, [appendTurns, composer, references, retire, routePlan, threadLength]);
 
   /**
    * The one-click override on the agent's own sentence.
@@ -1054,10 +1184,31 @@ export function AiAuthoringPanel({ width = 'panel' }: AiAuthoringPanelProps = {}
             <ProjectReviewBanner onStart={() => setComposer(DOCS_SUGGESTION)} />
           </VStack>
         }
+        composerAccessory={
+          <VStack UNSAFE_style={{ gap: 6 }}>
+            <ReferenceChips references={references} onTogglePin={togglePin} onRemove={removeReference} />
+            <HStack UNSAFE_style={{ height: 'auto' }}>
+              <ReferencePicker
+                candidates={candidates}
+                attachedTargets={new Set(references.map((ref) => ref.target))}
+                onAttach={(candidate) => void attachReference(candidate)}
+                onOpen={refreshCandidates}
+                isDisabled={!hasProject}
+              />
+            </HStack>
+          </VStack>
+        }
         value={composer}
         onChange={setComposer}
         onSend={() => void send()}
-        canSend={hasProject && isConfigured && composer.trim().length > 0 && !busy}
+        /*
+         * BLD-011 build item 6 — an attachment that could not be read blocks the
+         * send. Folded into the one condition that already governs both Send and
+         * Shift+Enter, rather than a second rule beside it: two conditions that
+         * can disagree is exactly the defect BLD-001 fixed here when the button
+         * and the key answered to different state.
+         */
+        canSend={hasProject && isConfigured && composer.trim().length > 0 && !busy && !referencesBlock}
         placeholder="Describe a component, a change across the app, or ask for the project docs…"
         busy={busy}
         onStop={stop}

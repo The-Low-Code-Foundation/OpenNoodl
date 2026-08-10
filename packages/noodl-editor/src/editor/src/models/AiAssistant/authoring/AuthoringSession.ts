@@ -155,6 +155,16 @@ export interface AuthoringSessionOptions {
    */
   planContext?: string;
   /**
+   * BLD-011: the composer's attachments, rendered by `renderReferenceBlock`.
+   *
+   * Rides the same route as `planContext` and lands in the same half of the
+   * opening turn, which is what keeps Rule 6 true by construction rather than
+   * by review: an attachment can never reach the cache-stable prefix, because
+   * the only function that places it puts it after every stable byte. Absent
+   * for a turn that carried none, whose bytes are unchanged.
+   */
+  references?: string;
+  /**
    * AAQ-001: component names the plan in flight is going to create, which do
    * not exist yet.
    *
@@ -414,6 +424,8 @@ export class AuthoringSession {
   private readonly roleFields: AiRoleRequestFields;
   /** AIX-011: rendered sibling-intent block when part of a plan, else undefined. */
   private readonly planContext?: string;
+  /** BLD-011 — the attachment block, or undefined for a turn that carried none. */
+  private readonly references?: string;
   /** AAQ-001: components the plan will create, so a link to one is not "unresolved". */
   private readonly plannedComponents?: readonly string[];
   /** AIB-007: what the project can offer a Cloud Data or User node. Undefined ⇒ do not check. */
@@ -497,6 +509,7 @@ export class AuthoringSession {
     // LAS-009: resolved once, here, and carried for the life of the session.
     this.roleFields = AiClient.roleRequestFields(options.role ?? 'act');
     this.planContext = options.planContext;
+    this.references = options.references;
     this.plannedComponents = options.plannedComponents;
     this.backend = options.backend;
     this.styleGuidance = options.styleGuidance ?? true;
@@ -721,7 +734,8 @@ export class AuthoringSession {
         planBlock,
         this.context.libraryOverview(),
         this.context.importReport(),
-        this.context.backendSchema()
+        this.context.backendSchema(),
+        this.references
       );
     } else {
       opening = initialUserMessage(
@@ -733,7 +747,8 @@ export class AuthoringSession {
         planBlock,
         this.context.libraryOverview(),
         this.context.importReport(),
-        this.context.backendSchema()
+        this.context.backendSchema(),
+        this.references
       );
     }
     this.messages.push(

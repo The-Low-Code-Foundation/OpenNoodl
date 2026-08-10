@@ -227,7 +227,8 @@ function appliedBackendFacts(project: ProjectModel, operations: readonly Applied
 function planRunOptions(
   project: ProjectModel,
   plan: AuthoringPlan,
-  docs: ReturnType<typeof projectDocs>
+  docs: ReturnType<typeof projectDocs>,
+  references?: string
 ): PlanRunOptions {
   return {
     baseFilesFor: (legacyName) => {
@@ -241,6 +242,12 @@ function planRunOptions(
     // itself — this is the only seam through which it sees one.
     docBaselineFor: docs ? (relPath: string) => docs.read(relPath) : undefined,
     session: {
+      // BLD-011 — every operation this plan authors gets the same attachments.
+      // ⚠️ That is a real multiplier and the composer's meter says so: a pinned
+      // reference is fresh input once for the planning turn and once more for
+      // each component built, because each operation opens its own turn and
+      // none of it rides the cached prefix (Rule 6).
+      references,
       styleVocabulary: buildStyleVocabulary(project),
       styleTokenRecords: Array.from(buildEffectiveTokens(readStoredTokens(project)).values()),
       // AIB-007 criterion 2 and 5. Bound here rather than defaulted inside the
@@ -580,14 +587,14 @@ export function ProjectAuthoringView({ isConfigured, hasProject, isEmbedded }: P
     if (!project || !plan) return;
     const docs = projectDocs();
     setDocsAvailable(docs !== undefined);
-    const run = new PlanRun(fromProjectModel(project), plan, planRunOptions(project, plan, docs));
+    const run = new PlanRun(fromProjectModel(project), plan, planRunOptions(project, plan, docs, session.references));
     runRef.current = run;
     // Into the store first: the run must outlive this mount, and the effect that
     // watches `session.run` is what subscribes to it. Doing it here rather than
     // in the effect keeps a single owner for the subscription.
     patch({ run });
     await run.run();
-  }, [plan, patch]);
+  }, [plan, patch, session.references]);
 
   const excludeOperation = useCallback(
     (id: string) => {

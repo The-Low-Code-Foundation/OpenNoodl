@@ -30,6 +30,7 @@
  */
 
 import type { AuthoringActivity, AuthoringMode } from '../authoring';
+import type { TurnReference } from './references';
 
 /**
  * What the agent decided a request was, before it acted.
@@ -103,6 +104,17 @@ export interface Turn {
   intent?: BuildIntent;
   activities: TurnActivity[];
   outcome?: TurnOutcome;
+  /**
+   * BLD-011 — what rode along with the request: kind, label, size, pin state.
+   *
+   * ⚠️ **The record, never the bytes.** See `TurnReference` for the retention
+   * rule and why it is the way it is — in short, a 24k component serialization
+   * per turn would make a thread file unreadable within a dozen turns and would
+   * put a second, silently diverging copy of the project on disk. Reopening a
+   * thread therefore shows what each turn carried and does not pretend it can
+   * replay it.
+   */
+  references?: TurnReference[];
   /** True while this turn is still producing. At most one turn is busy. */
   busy?: boolean;
 }

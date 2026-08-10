@@ -236,7 +236,21 @@ function toTurn(line: Partial<TurnLine>): Turn | null {
     ...(typeof line.request === 'string' ? { request: line.request } : {}),
     ...(line.intent === 'component' || line.intent === 'plan' || line.intent === 'docs' ? { intent: line.intent } : {}),
     activities,
-    ...(line.outcome && typeof line.outcome === 'object' ? { outcome: line.outcome } : {})
+    ...(line.outcome && typeof line.outcome === 'object' ? { outcome: line.outcome } : {}),
+    // BLD-011 — the record of what rode along. Filtered on the two fields the
+    // row actually renders, on the same "take what is well formed" rule as the
+    // activities above: a hand-edited entry missing its label costs one chip,
+    // not the turn.
+    ...(Array.isArray(line.references)
+      ? {
+          references: line.references.filter(
+            (ref) =>
+              Boolean(ref) &&
+              typeof (ref as { kind?: unknown }).kind === 'string' &&
+              typeof (ref as { label?: unknown }).label === 'string'
+          )
+        }
+      : {})
     // `busy` is deliberately never restored. A frozen turn that still claims to
     // be running is how a thread grows a spinner that never stops, and a file
     // is by definition frozen — `freezeTurns` strips it on the way in, and this

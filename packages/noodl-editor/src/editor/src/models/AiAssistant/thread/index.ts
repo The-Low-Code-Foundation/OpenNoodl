@@ -40,6 +40,22 @@ export { collapseActivities, isCollapsible, MIN_RUN_LENGTH, runDuration, summari
 export type { MessageKind, ThreadItem } from './messages';
 export { outcomeSentence, stagedComponentCard } from './outcomeCard';
 export type { OutcomeCardText } from './outcomeCard';
+// BLD-011 — the pure half of the reference mechanism. `referenceSources` is the
+// half that reads a `ProjectModel` and is deliberately not re-exported here,
+// same rule as `ThreadSidecar` above.
+export {
+  blockingReferences,
+  capReferenceText,
+  carryOver,
+  defaultPinned,
+  isStale,
+  REFERENCE_CAPS,
+  referenceCost,
+  renderReferenceBlock,
+  staleAge,
+  toTurnReferences
+} from './references';
+export type { AttachedReference, ReferenceCost, ReferenceKind, ReferenceResolution, TurnReference } from './references';
 export {
   authoringDetail,
   completedDurations,

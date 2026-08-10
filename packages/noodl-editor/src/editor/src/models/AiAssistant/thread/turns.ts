@@ -35,6 +35,7 @@ import type { ProjectReviewState } from '../review/ProjectReviewRun';
 import { interviewActivities } from '../review/interviewState';
 import { summarisePlan } from './intent';
 import type { IntentDecision } from './intent';
+import type { TurnReference } from './references';
 import type { BuildIntent, Turn, TurnActivity, TurnOutcome } from './types';
 
 /**
@@ -388,6 +389,15 @@ export interface LiveSources {
   reviewState: ProjectReviewState | null;
   /** The agent's first sentence, named on the producer the decision was about. */
   decision: Pick<IntentDecision, 'intent' | 'sentence'> | null;
+  /**
+   * BLD-011 — what the live request carried, as the record (never the bytes).
+   *
+   * Stamped onto the **first** turn the producers yield, because that is the
+   * turn the request opened and an attachment belongs to a request rather than
+   * to whatever the request went on to produce. Absent for a turn that carried
+   * none, which keeps every pre-BLD-011 thread file byte-identical.
+   */
+  references?: TurnReference[];
 }
 
 /**
@@ -409,13 +419,13 @@ export interface LiveSources {
  * the store, not this panel, is the plan's owner.
  */
 export function liveTurns(sources: LiveSources, idPrefix?: string): Turn[] {
-  const { route, session, planSession, runState, reviewState, decision, request } = sources;
+  const { route, session, planSession, runState, reviewState, decision, request, references } = sources;
   const scope = (kind: string) => (idPrefix ? `${idPrefix}-${kind}` : kind);
 
   const showPlan = route === 'plan' || Boolean(planSession.plan);
   const showDocs = route === 'docs' || Boolean(reviewState && reviewState.phase !== 'idle');
 
-  return [
+  const produced: Turn[] = [
     ...(route === 'component'
       ? componentTurns(session, {
           idPrefix: scope('component'),
@@ -436,6 +446,16 @@ export function liveTurns(sources: LiveSources, idPrefix?: string): Turn[] {
         })
       : [])
   ];
+
+  // Stamped rather than threaded through all three producers: an attachment is
+  // a property of the *request*, and each producer already has its own reasons
+  // for the shape of the turn it yields. Widening three signatures to carry one
+  // field that only the opening turn may hold would give three places the
+  // chance to put it on the wrong one.
+  if (references && references.length > 0 && produced.length > 0) {
+    produced[0] = { ...produced[0], references };
+  }
+  return produced;
 }
 
 /**

@@ -69,6 +69,13 @@ export interface PlanningOptions {
    * project had no docs.
    */
   projectDocs?: ProjectDocsContent;
+  /**
+   * BLD-011: the block the composer's attachments rendered to, or nothing when
+   * the turn carried none — `renderReferenceBlock` returns `undefined` in that
+   * case precisely so this stays absent-means-omitted and an unattached turn
+   * plans on byte-identical words.
+   */
+  references?: string;
 }
 
 export type PlanningStatus = 'planned' | 'declined' | 'exhausted' | 'cancelled' | 'error';
@@ -186,6 +193,8 @@ export class PlanningSession {
   private readonly roleFields: AiRoleRequestFields;
   readonly context: AuthoringContextBuilder;
   private readonly existingComponents: ReadonlySet<string>;
+  /** BLD-011 — the attachment block, or undefined for a turn that carried none. */
+  private readonly references?: string;
 
   constructor(graph: ExplainGraph, private readonly request: string, options: PlanningOptions = {}) {
     if (!request.trim()) throw new AuthoringSetupError('The request is empty — nothing to plan.');
@@ -201,6 +210,7 @@ export class PlanningSession {
       undefined,
       options.projectDocs ?? currentProjectDocs()
     );
+    this.references = options.references;
     this.existingComponents = new Set(graph.components.map((c) => c.name));
   }
 
@@ -210,7 +220,12 @@ export class PlanningSession {
       { role: 'system', content: planningSystemPrompt() },
       {
         role: 'user',
-        content: planningUserMessage(this.request, this.context.projectOverview(), this.context.docsOverview())
+        content: planningUserMessage(
+          this.request,
+          this.context.projectOverview(),
+          this.context.docsOverview(),
+          this.references
+        )
       }
     ];
 

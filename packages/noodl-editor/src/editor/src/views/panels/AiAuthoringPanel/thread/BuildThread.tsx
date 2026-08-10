@@ -57,6 +57,7 @@ import { HStack, VStack } from '@noodl-core-ui/components/layout/Stack';
 import { Text, TextType } from '@noodl-core-ui/components/typography/Text';
 
 import { ReasoningStrip } from './ReasoningStrip';
+import { TurnReferences } from './ReferenceChips';
 import css from './BuildThread.module.scss';
 
 export type ThreadWidth = 'panel' | 'expanded';
@@ -326,6 +327,21 @@ export interface BuildThreadProps {
   /** A run is in flight. The composer stays; Send becomes Stop. */
   busy?: boolean;
   onStop?: () => void;
+  /**
+   * BLD-011 — rendered above the text area, inside the composer's border.
+   *
+   * A slot rather than a `references` prop, for the reason `heartbeat` and
+   * `runHeader` are slots: this component renders a thread and knows about no
+   * producer, and a `Reference` is something the *panel* resolves out of a
+   * `ProjectModel` this file must never reach. It also keeps the chip row and
+   * the attach control one decision made in one place, rather than two props
+   * that can disagree about whether there is anything attached.
+   *
+   * Inside the composer's border on purpose: what a message carries is part of
+   * the message, and putting it above the border would read as thread content —
+   * a fifth message kind BLD-002 never defined.
+   */
+  composerAccessory?: React.ReactNode;
 }
 
 export function BuildThread({
@@ -343,7 +359,8 @@ export function BuildThread({
   placeholder,
   sendLabel = 'Send',
   busy,
-  onStop
+  onStop,
+  composerAccessory
 }: BuildThreadProps) {
   const anchorRef = useRef<HTMLDivElement | null>(null);
 
@@ -402,6 +419,14 @@ export function BuildThread({
                     <Text textType={TextType.Default}>{turn.request}</Text>
                   </div>
                 )}
+                {/* BLD-011 — what this turn carried, under the words it carried
+                    them with. Read-only by construction: `TurnReferences` has no
+                    controls to mount, so a historical turn cannot grow one. */}
+                {turn.references && turn.references.length > 0 && (
+                  <div className={css['TurnRefs']}>
+                    <TurnReferences references={turn.references} />
+                  </div>
+                )}
                 {/*
                  * Once per turn, not once per paragraph. The alignment already
                  * says who is speaking — the request is a bubble on the right —
@@ -442,6 +467,7 @@ export function BuildThread({
 
       <div className={css['Composer']}>
         <VStack UNSAFE_style={{ gap: 8 }}>
+          {composerAccessory}
           <TextArea
             value={value}
             placeholder={placeholder}

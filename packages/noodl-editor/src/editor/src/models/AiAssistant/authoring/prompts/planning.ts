@@ -165,12 +165,23 @@ prose and do not submit a plan.`;
  * when the project has no docs, which keeps the rule's condition honest in both
  * directions.
  */
-export function planningUserMessage(request: string, projectOverview: string, docsOverview?: string): string {
+export function planningUserMessage(
+  request: string,
+  projectOverview: string,
+  docsOverview?: string,
+  references?: string
+): string {
   return [
     '--- PROJECT OVERVIEW ---',
     projectOverview,
     '--- END PROJECT OVERVIEW ---',
     ...(docsOverview ? ['', '--- PROJECT DOCUMENTS ---', docsOverview, '--- END PROJECT DOCUMENTS ---'] : []),
+    // BLD-011 — the user's attachments, before the request so the request keeps
+    // the last word. This message carries no `cacheBoundary` (nothing in a
+    // planning turn is stable enough to cache), so placement here is about
+    // recency rather than Rule 6 — but the authoring turn's is about both, and
+    // the two orderings match so that one format is learned once.
+    ...(references ? ['', references] : []),
     '',
     '--- THE REQUEST ---',
     request,

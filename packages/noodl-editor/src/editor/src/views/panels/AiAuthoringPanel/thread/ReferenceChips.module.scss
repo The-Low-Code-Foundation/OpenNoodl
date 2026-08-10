@@ -1,0 +1,165 @@
+/**
+ * BLD-011 — the chip row and its meter.
+ *
+ * ## The pill is BLD-017's F8, finally built
+ *
+ * The approved mockup specifies `.chip` as a pill at `radius: 20px` under the
+ * composer. BLD-017 measured it as missing and deferred it here rather than
+ * inventing content for it (R7: *"F8 is new content, not fidelity"*) — deciding
+ * what a chip **says** was a feature decision, and this is the feature. The
+ * geometry below is the mockup's; the content is this task's.
+ *
+ * ## Two traps this file is written around, both paid for already in this phase
+ *
+ * ⚠️ **There is no global `box-sizing` in this repo.** The mockup gets one from
+ * `.panel * { box-sizing: border-box }` and the editor has no counterpart
+ * (BLD-017 R4, and POL-016's inset ring one panel over). Every box here that
+ * combines padding with a border declares it locally.
+ *
+ * ⚠️ **A bare CSS-module class loses to a descendant selector.** The state
+ * modifiers below are written as `.Chip.is-failed`, not `.is-failed`, so they
+ * out-specify anything the surrounding panel styles reach in with — the exact
+ * collision BLD-004's 1.16:1 state class was.
+ *
+ * ## Colour, and why nothing here is washed
+ *
+ * BLD-008 R12 measured what an accent wash costs: laying
+ * `--theme-color-primary-bg` under a card moved the surface *toward* the accent
+ * and put the accent eyebrow at **3.85:1** in light. A chip is smaller than that
+ * card and its text is smaller still, so it gets a plain `bg-3` ground and a
+ * plain border. The pinned state is carried by a filled **glyph** rather than a
+ * tint, which costs no contrast at all.
+ *
+ * Ratios are measured in the running editor, both themes, and recorded in
+ * BLD-011's register — a token name is not a contrast measurement.
+ */
+
+.Row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.Chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  /* F8's geometry, from the approved mockup. */
+  border-radius: 20px;
+  padding: 3px 4px 3px 10px;
+  background-color: var(--theme-color-bg-3);
+  border: 1px solid var(--theme-color-border-strong);
+  /* ⚠️ See the header — no global `box-sizing`, and this box has both. */
+  box-sizing: border-box;
+  max-width: 100%;
+  min-width: 0;
+}
+
+/*
+ * Written as `.Chip.is-*` on purpose — see the header. A single-class modifier
+ * here would be out-specified by any descendant selector reaching into the
+ * composer, and the failure mode is a state that silently stops painting.
+ */
+.Chip.is-failed {
+  border-color: var(--theme-color-danger);
+}
+
+.Chip.is-stale {
+  border-color: var(--theme-color-notice);
+}
+
+/*
+ * The historical record under a turn's request. Flatter than a live chip and
+ * with no controls in it — see `TurnReferences` for why it is a separate
+ * component rather than a mode of the live one.
+ */
+.Chip.is-record {
+  padding: 2px 8px;
+  background-color: transparent;
+  border-color: var(--theme-color-border-default);
+}
+
+.Label {
+  /*
+   * The chip must be able to shrink — a component path is long and the panel is
+   * 400px. `min-width: 0` is what lets a flex item ellipsize at all; without it
+   * the row overflows instead, which is the horizontal-overflow defect BLD-008
+   * measured at every width.
+   */
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/*
+ * The size, and the reason it is not `fg-default-shy`.
+ *
+ * README correction 1, measured in BLD-002: contrast was never this panel's
+ * legibility problem — type scale was, and `is-type-secondary` and
+ * `is-type-default` turned out to be the identical ratio. So hierarchy here is
+ * carried by size and weight, and the colour stays at a role that is known to
+ * pass on this ground at this size.
+ */
+.Size {
+  flex: none;
+  font-size: 10px;
+  line-height: 14px;
+  color: var(--theme-color-fg-default);
+  font-variant-numeric: tabular-nums;
+}
+
+.Truncated {
+  flex: none;
+  color: var(--theme-color-notice);
+}
+
+.Action {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--theme-color-fg-default);
+  cursor: pointer;
+  box-sizing: border-box;
+
+  &:hover {
+    background-color: var(--theme-color-bg-2);
+  }
+
+  /*
+   * POL-016's rule, and the reason it exists: a control with no ring reads as a
+   * label. These are icon-only buttons, so the focus ring is the only thing that
+   * says they are reachable from the keyboard at all.
+   */
+  &:focus-visible {
+    outline: 2px solid var(--theme-color-focus-ring);
+    outline-offset: 1px;
+  }
+}
+
+.Meter {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  flex-wrap: wrap;
+  font-size: 10px;
+  line-height: 14px;
+  color: var(--theme-color-fg-default);
+}
+
+/*
+ * The blocking line: a reference that could not be resolved stops the send.
+ * `danger` on `bg-1`/`bg-2` rather than on a washed surface, for BLD-008 R12's
+ * reason — this panel has spent one contrast failure on a tint already.
+ */
+.Blocked {
+  color: var(--theme-color-danger);
+}

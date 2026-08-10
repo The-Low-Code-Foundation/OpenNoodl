@@ -148,6 +148,21 @@
  * surface — not a left-bordered quote on bg-2, which is the visual language of
  * something being cited *at* you. It is the thing you scroll to find.
  */
+/*
+ * BLD-011 — the record of what a turn carried, directly under its request.
+ *
+ * Aligned to the writer like `.User` above it, and for the same reason: the
+ * attachments were part of the user's message, not a reply to it. Left-aligned
+ * they would read as the agent's first act, which is the alignment mistake the
+ * `.User` bubble exists to make impossible.
+ */
+.TurnRefs {
+  align-self: flex-end;
+  max-width: 88%;
+  display: flex;
+  justify-content: flex-end;
+}
+
 .User {
   align-self: flex-end;
 

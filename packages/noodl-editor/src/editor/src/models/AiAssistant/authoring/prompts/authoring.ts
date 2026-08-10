@@ -327,6 +327,26 @@ function planContextBlock(planContext?: string): string[] {
   return ['--- THE PLAN ---', planContext, '--- END PLAN ---', ''];
 }
 
+/**
+ * BLD-011 — what the user attached to this message.
+ *
+ * ⚠️ **In the VARIABLE half, and that placement IS Rule 6.** An attachment is
+ * per-turn content by definition — a different component each time, a
+ * screenshot that is true for one turn — so putting it anywhere above
+ * `cacheBoundary` would invalidate the AIX-007 prefix on every send that
+ * carried one, which is the most expensive mistake available in this file. It
+ * sits beside `planContextBlock` for exactly that reason, and a turn with no
+ * references produces bytes identical to one built before this task existed
+ * (pinned in `tests-unit/bld-011/cacheSafety.test.ts`).
+ *
+ * Before `YOUR TASK` rather than after: the task keeps the recency the whole
+ * ordering exists to give it, and the attachment reads as material for it.
+ */
+function attachedReferenceBlock(references?: string): string[] {
+  if (!references) return [];
+  return [references, ''];
+}
+
 /** The opening user turn: the overview blocks, then the task. */
 export function initialUserMessage(
   request: AuthoringRequest,
@@ -337,7 +357,8 @@ export function initialUserMessage(
   planContext?: string,
   libraryOverview?: string,
   importReport?: string,
-  backendSchema?: string
+  backendSchema?: string,
+  references?: string
 ): OpeningTurn {
   return openingTurn(
     referenceBlocks(
@@ -351,6 +372,7 @@ export function initialUserMessage(
     ),
     [
       ...planContextBlock(planContext),
+      ...attachedReferenceBlock(references),
       '--- YOUR TASK ---',
       `Build a new component at "${request.componentPath}"${
         request.componentType ? ` (type: ${request.componentType})` : ''
@@ -387,7 +409,8 @@ export function updateUserMessage(
   planContext?: string,
   libraryOverview?: string,
   importReport?: string,
-  backendSchema?: string
+  backendSchema?: string,
+  references?: string
 ): OpeningTurn {
   return openingTurn(
     referenceBlocks(
@@ -401,6 +424,7 @@ export function updateUserMessage(
     ),
     [
       ...planContextBlock(planContext),
+      ...attachedReferenceBlock(references),
       '--- YOUR TASK ---',
       `Revise the existing component "${request.componentPath}".`,
       '',
