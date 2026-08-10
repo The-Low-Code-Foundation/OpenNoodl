@@ -201,6 +201,40 @@ describe('BLD-014 — interpreting what came back', () => {
     expect(phone.findings.every((f) => f.viewport === 'phone')).toBe(true);
   });
 
+  it('🔴 scopes each capture\'s summary to its OWN viewport', () => {
+    // Found by driving it, and every test above passed with it wrong.
+    // `summarise` must see all viewports at once to produce cross-viewport
+    // findings — but `report.summary` then describes the whole render, and
+    // pasting it onto each capture told a model looking at the *desktop*
+    // picture that it had 2 warnings when that viewport had 1, and recited
+    // phone measurements no part of that image shows.
+    const narrow = reply();
+    narrow.viewports.phone = {
+      requested: { width: 390, height: 844 },
+      ...measured({ layoutWidth: 390, clientWidth: 390, clientHeight: 844, scrollWidth: 900 })
+    };
+    const { captures } = interpretCaptureReply(narrow, viewports);
+    const desktop = captures.find((c) => c.name === 'desktop')!;
+    const phone = captures.find((c) => c.name === 'phone')!;
+
+    // Each sentence names its own viewport and not the other one.
+    expect(desktop.summary).toContain('desktop');
+    expect(desktop.summary).not.toContain('phone');
+    expect(phone.summary).toContain('phone');
+    expect(phone.summary).not.toContain('desktop');
+
+    /*
+     * And each counts only its own findings. Both viewports share a
+     * `flat-type-scale` warning from the fixture; the horizontal overflow is
+     * the phone's alone. So the phone names it and the desktop must not — the
+     * whole-report summary named it on both.
+     */
+    expect(phone.summary).toContain('horizontal-overflow');
+    expect(desktop.summary).not.toContain('horizontal-overflow');
+    expect(desktop.summary).toContain('1 warning');
+    expect(phone.summary).toContain('2 warnings');
+  });
+
   it('🔴 distinguishes "measured clean" from "measurement failed"', () => {
     // The same ambiguity the webview producer already guards: `summarise` skips
     // any viewport carrying an `error`, so without the branch a failed

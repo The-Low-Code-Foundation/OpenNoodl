@@ -23,6 +23,7 @@
 import {
   DEFAULT_VIEWPORTS,
   summarise,
+  summaryLine,
   type RenderFindingResult,
   type ViewportSpec
 } from '@nodegx/render-measure';
@@ -183,8 +184,19 @@ export function interpretCaptureReply(
        * would present as "measured, nothing found", which is the one ambiguity
        * this task's acceptance list calls out by name and the webview producer
        * already guards against.
+       *
+       * 🔴 **And the summary is scoped to THIS viewport, which the drive is why.**
+       * `summarise` must see every viewport at once (above), so `report.summary`
+       * describes the whole render — *"2 warnings … desktop 1280×900px …; phone
+       * 390×844px …"*. Pasting that onto each capture was measured live and
+       * told a model looking at the **desktop** picture that it had 2 warnings
+       * when that viewport had 1, and recited phone measurements no part of
+       * that image shows. `summaryLine` re-derives the sentence from one
+       * viewport and its own findings, in the same vocabulary.
        */
-      ...(measured?.error ? { measurementError: String(measured.error) } : { summary: report.summary })
+      ...(measured?.error
+        ? { measurementError: String(measured.error) }
+        : { summary: summaryLine({ [vp.name]: measured as never }, byViewport.get(vp.name) ?? []) })
     });
   }
 

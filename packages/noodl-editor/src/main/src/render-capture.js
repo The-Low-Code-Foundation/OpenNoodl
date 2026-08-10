@@ -62,6 +62,34 @@ const REFLOW_MS = 1200;
 const MAX_SHOT_HEIGHT = 16384;
 
 /**
+ * The whole capture's deadline, per viewport asked for plus a fixed overhead.
+ *
+ * 🔴 **Added after a drive, because a CDP command that hangs does not fail — it
+ * waits.** The `about:blank` defect above produced a promise that never settled
+ * and a control that read "Rendering…" forever, with nothing on screen or in a
+ * log to say the call was dead rather than slow. Every individual step here can
+ * hang the same way, so the deadline belongs around the whole operation rather
+ * than on the one command already known to misbehave.
+ *
+ * Generous on purpose: a real render is ~7s for one viewport, so this refuses
+ * only what is genuinely stuck.
+ */
+const DEADLINE_BASE_MS = 20000;
+const DEADLINE_PER_VIEWPORT_MS = 20000;
+
+/** Reject if `work` has not settled by the deadline, naming what timed out. */
+function withDeadline(work, ms) {
+  let timer;
+  const expiry = new Promise((_resolve, reject) => {
+    timer = setTimeout(
+      () => reject(new Error(`The capture did not finish within ${Math.round(ms / 1000)}s and was abandoned.`)),
+      ms
+    );
+  });
+  return Promise.race([work, expiry]).finally(() => clearTimeout(timer));
+}
+
+/**
  * One capture at a time.
  *
  * Each capture is a real browser window rendering a real page, and two of them
@@ -195,6 +223,50 @@ async function renderCapture(request) {
   let dbg = null;
 
   try {
+    /*
+     * ⚠️ The deadline wraps the work but the cleanup below is **outside** the
+     * race, and it has to be: a `Promise.race` does not cancel the loser, so a
+     * hung CDP command is still hung when the timeout fires. Destroying the
+     * window in `finally` is what actually ends it — the abandoned command then
+     * rejects with "target closed" into a promise nobody is waiting on.
+     */
+    return await withDeadline(drive(), DEADLINE_BASE_MS + viewports.length * DEADLINE_PER_VIEWPORT_MS);
+  } catch (e) {
+    return {
+      error: e instanceof Error ? e.message : String(e),
+      viewports: {},
+      screenshots: []
+    };
+  } finally {
+    try {
+      if (dbg && dbg.isAttached()) dbg.detach();
+    } catch {
+      /* the window may already be gone */
+    }
+    if (!win.isDestroyed()) win.destroy();
+  }
+
+  async function drive() {
+    /*
+     * 🔴 **`about:blank` first, and without it the very first CDP command hangs
+     * forever.** Found by driving it, and no spec could have caught it: the
+     * transport is deliberately not mocked.
+     *
+     * A `BrowserWindow` constructed without a `loadURL` has a `webContents` but
+     * **no renderer process behind it** — nothing has been loaded, so there is
+     * no page for the `Page` domain to talk to. `attach()` succeeds (it is
+     * local and synchronous), and then `Page.enable` never resolves. Measured:
+     * attach at 238ms, then silence to a 45s timeout.
+     *
+     * ⚠️ The failure mode is the nastiest shape available — not a throw, not an
+     * error result, just a promise that never settles. The capture control sat
+     * on "Rendering…" indefinitely, which reads as a slow network rather than a
+     * dead call.
+     *
+     * With this line: `Page.enable` returns in **4ms**.
+     */
+    await win.loadURL('about:blank');
+
     dbg = win.webContents.debugger;
     dbg.attach('1.3');
 
@@ -288,19 +360,6 @@ async function renderCapture(request) {
     }
 
     return { viewports: measured, screenshots };
-  } catch (e) {
-    return {
-      error: e instanceof Error ? e.message : String(e),
-      viewports: {},
-      screenshots: []
-    };
-  } finally {
-    try {
-      if (dbg && dbg.isAttached()) dbg.detach();
-    } catch {
-      /* the window may already be gone */
-    }
-    if (!win.isDestroyed()) win.destroy();
   }
 }
 
