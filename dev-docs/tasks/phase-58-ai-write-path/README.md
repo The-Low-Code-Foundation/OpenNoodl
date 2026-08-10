@@ -144,7 +144,23 @@ Then re-run the storefront replay on DeepSeek V4 Pro — the cheapest complete b
 $5.83 — and compare against session 8's row. That is the phase's own benchmark, and it costs about
 $4 to run.
 
-> ✅ **Run 2026-08-10, after all six tasks.** Criterion 5 was the loosest of the five and is now the
-> most comfortably met: **turn one billed 8,578 prompt tokens against session 8's 22,968**, and the
-> resident tool surface is 7,828 tokens/turn against 25,886. The row is in
-> [AWP-006 §The re-replay](AWP-006-PROGRESSIVE-TOOL-DISCLOSURE.md#the-re-replay--2026-08-10).
+> **Run 2026-08-10, after all six tasks — and it does not pass.** Scored per criterion, because a
+> single verdict on this run would hide the one that matters. The row is in
+> [AWP-006 §The re-replay](AWP-006-PROGRESSIVE-TOOL-DISCLOSURE.md#the-re-replay--2026-08-10) and
+> [LAS-011 §Session 9](../phase-55-llm-authoring-support/LAS-011-ACCEPTANCE-MATRIX.md#session-9--the-same-model-a-different-surface).
+>
+> | | | |
+> |---|---|---|
+> | 1 | renderable without ever passing `visual_roots` | 🔴 **fails** — the model never passed it, and the page still lost its hero. Not the create door AWP-001 fixed: **`update_component`'s `operations` path never re-derives `visualRoots`**, and `update_node.set.children` is silently discarded while reported applied ([AWP-002 A19/A20](AWP-002-WRITE-PATH-CONFORMANCE.md#a19a20--the-minimal-reproduction)) |
+> | 2 | a shape the editor could not produce is rejected with the reason | 🔴 **fails, same defect** — the orphaned subtree was *accepted*, `0 errors, 0 warnings` |
+> | 3 | a blank page names which component | ✅ not exercised — no page rendered blank this run |
+> | 4 | no page reported "clean" while invisible | 🔴 **fails** — `validate:project` 0/0 on 115 nodes and `render_report` *"clean"*, with a sixth of the brief not drawn. Earns AWP-004 a **fourth check**: a top-level node that is neither a visual root nor anybody's child |
+> | 5 | under 16,000 tokens/turn on fixed surface + node docs | ✅ **comfortably** — turn one billed **8,578** against session 8's 22,968; resident surface **7,828**/turn against 25,886 |
+>
+> **The cost half of the phase succeeded and the correctness half is not finished.** Criterion 5 was
+> the loosest of the five and is the one met; 1, 2 and 4 are three views of a single open defect on
+> the `operations` write path. ⚠️ **Do not read the green cost row as the phase passing** — that
+> inversion is the exact mistake AWP-004 exists to prevent, and this run made it about itself.
+>
+> Separately, [BACKEND-BRIEF.md](BACKEND-BRIEF.md) — the fixture for the deferred half — **passed
+> cold on both arms**, and its `--all-tools` control is the arm that failed.
