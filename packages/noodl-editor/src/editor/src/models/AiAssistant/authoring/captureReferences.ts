@@ -7,20 +7,25 @@
  * row, the cap, the cost meter, the carry-over rule, the persistence format and
  * the staleness rule were all written once and already handle a `capture`.
  *
- * ⚠️ **What this does not do.** It returns a picture and no findings. The task
- * is emphatic that a capture path returning only an image is the wrong shape —
- * *"always return findings alongside the picture… this is what makes the
- * feature work on a model that cannot see"* — and that is right for the CDP
- * producer, which measures a viewport. It cannot be right for this one: nothing
- * here measures anything, so any "findings" it emitted would be invented. What
- * it does instead is state that plainly, in the twin, so a model without vision
- * is told it received nothing rather than being handed a fabricated report.
- * **The findings half arrives with the CDP producer, behind F22.**
+ * ✅ **It returns findings as well as a picture, and F22 is why it can.**
+ *
+ * Build item 4 is emphatic — *"never ship a capture path that returns only an
+ * image… this is what makes the feature work on a model that cannot see"* — and
+ * this producer could not honour it while `summarise` was locked behind
+ * `render-report.js`'s Node requires. Richard's F22 decision (2026-08-10) moved
+ * the measurement into `@nodegx/render-measure`, so the twin now carries the
+ * **same findings, in the same vocabulary**, that `render_report` returns on the
+ * MCP surface.
+ *
+ * ⚠️ It measures **the preview pane's size**, not a device viewport, and the
+ * twin says so in those words. Answering "what does it look like at 390×844"
+ * needs the CDP producer, which is still unbuilt.
  *
  * @module AiAssistant/authoring/captureReferences
  */
 
 import { captureLivePreview, type PreviewCapture } from '../../../views/SandboxSurface/livePreviewCapture';
+import type { RenderFindingResult } from '@nodegx/render-measure';
 import type { AiImageBlock } from '../client/content';
 import { formatBytes } from '../thread/fileAttachments';
 import { defaultPinned, type AttachedReference } from '../thread/references';
@@ -39,12 +44,50 @@ let seq = 0;
  * argument `degradedImageText` makes, one step further because here we know
  * the substitution carries no information at all.
  */
-export function captureTwinText(width: number, height: number): string {
-  return [
-    `A screenshot of the user's app as it is running right now in the preview, ${width}×${height}.`,
-    'It is a picture only — nothing has measured it, so there are no findings attached.',
-    'If you cannot see images, do not guess at its contents; say so and ask for what you need in words.'
-  ].join(' ');
+export function captureTwinText(
+  width: number,
+  height: number,
+  findings: readonly RenderFindingResult[] = [],
+  summary?: string
+): string {
+  const opening = `A screenshot of the user's app as it is running right now in the preview, ${width}×${height}.`;
+
+  // ⚠️ The picture-only wording is still reachable, and it must be. `measure`
+  // swallows its own failure so a measurement that throws never costs the
+  // screenshot — which means "no findings" can mean *measured clean* or
+  // *measurement failed*, and only `summary` tells them apart. Saying "no
+  // problems found" on a failed measurement would be the fabrication this whole
+  // file is written against.
+  if (!summary) {
+    return [
+      opening,
+      'It is a picture only — the measurement did not run, so there are no findings attached.',
+      'If you cannot see images, do not guess at its contents; say so and ask for what you need in words.'
+    ].join(' ');
+  }
+
+  const lines = [
+    opening,
+    '',
+    `MEASURED AT ${width}×${height} — this is the size of the preview pane, not a device viewport.`,
+    summary
+  ];
+
+  if (findings.length > 0) {
+    lines.push('');
+    for (const finding of findings) {
+      lines.push(`- [${finding.severity}] ${finding.code}: ${finding.message}`);
+    }
+  }
+
+  lines.push(
+    '',
+    // The sentence that makes the feature work on a model that cannot see —
+    // build item 4's actual purpose. Without it a text-only model has numbers
+    // and no idea it is missing the picture they describe.
+    'If you cannot see images, act on the measurements above and say you could not see the screenshot itself.'
+  );
+  return lines.join('\n');
 }
 
 /**
@@ -93,7 +136,7 @@ export async function resolveLivePreviewCapture(
     };
   }
 
-  const text = captureTwinText(shot.width, shot.height);
+  const text = captureTwinText(shot.width, shot.height, shot.findings, shot.summary);
   const image: AiImageBlock = { type: 'image', data: shot.data, mediaType: 'image/png', text };
   return {
     ...base,

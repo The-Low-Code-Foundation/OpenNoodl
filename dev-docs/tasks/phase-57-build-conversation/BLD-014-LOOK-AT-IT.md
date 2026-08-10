@@ -1,7 +1,8 @@
 # BLD-014 — Look at it
 
-**Status:** 🟡 **webview half built and driven** (session 15, 2026-08-10); **CDP half not started** ·
-**Track B** · ⭐ **the payoff of the track** · after BLD-011, BLD-012 · CDP half still gated on **F22**
+**Status:** 🟡 **webview half built, driven, and now returning findings** (session 15, 2026-08-10);
+**CDP half not started** · **Track B** · ⭐ **the payoff of the track** · after BLD-011, BLD-012 ·
+✅ **F22 resolved — the CDP half is unblocked**
 
 ## What it is
 
@@ -89,8 +90,14 @@ one**, and the remaining work after it is ~50 lines plus live QA.
 - [x] `◎ Look at it` with the preview open returns an image in < 1s, attached as a reference. —
       **driven**: control greyed with no preview, un-greyed itself within 500ms of the bench
       mounting, one click produced `App screenshot 3 KB`, unpinned.
-- [x] Against a text-only model the capture degrades, **declared** (BLD-012). — the twin states the
-      size, that nothing measured it, and that a model which cannot see must not guess.
+- [x] **Always return findings alongside the picture** (build item 4). — ✅ **closed for the webview
+      producer** once F22 was resolved. Verified live: `0 errors, 1 warning (empty-decorated-box).
+      preview 800×150px, 2 texts, 2 on screen, 0 images.`
+- [x] Against a text-only model the capture degrades, **declared** (BLD-012). — the twin carries the
+      measurements and tells a model that cannot see to act on them and say so.
+- [x] ⚠️ **"Measured clean" and "measurement failed" are distinguishable.** `measure()` swallows its
+      own failure so a throw never costs the screenshot — which makes an empty findings list
+      ambiguous. Only a present `summary` means it ran, and the twin's wording differs.
 - [ ] A capture greys after the next apply and states its age if sent anyway. — **half.** The
       *sentence* is driven against a real capture for the first time (`tests-unit/bld-014/`); the
       **on-screen** grey is not. See R2.
@@ -103,7 +110,7 @@ one**, and the remaining work after it is ~50 lines plus live QA.
 
 | # | Finding | State |
 |---|---|---|
-| 1 | F22 (LAS-005) — the shared render substrate has no home the editor bundle can import. Inherited, not caused by this task | 🔴 open — **decide before the CDP half**; the webview half deliberately needs none of it |
+| 1 | F22 (LAS-005) — the shared render substrate had no home the editor bundle could import. ✅ **Richard decided 2026-08-10: a new no-build package.** `@nodegx/render-measure` holds `measureExpression`, `summarise`, the thresholds and the finding vocabulary, with no `require` in it (asserted by a spec, inverted). `render-report.js` re-exports every name it used to own, so `noodl-mcp`'s 41 recorded-measurement specs stayed green across the move. ⚠️ Plain CJS with a hand-written `.d.ts`, unlike the repo's seven other no-build packages — `measure-from-disk.js` is run by bare `node`, which cannot `require` a `.ts` file | ✅ **resolved** |
 | 2 | ⚠️ **Staleness is still not on screen — BLD-011's R4 is half-closed, not closed.** `capturedAtApply` now comes from a real capture and `tests-unit/bld-014/capture.test.ts` grades the whole rule against one; first time the mechanism and its subject have both been real. But `noteApply()` fires only on the accept path, so *watching a chip grey* costs a billed authoring session. The paint was verified to exist (`.Chip.is-stale`/`.is-warned` compile as two-class selectors, not `MISSING` — BLD-005's defect shape) | 🟡 mechanism driven, on-screen transition not |
 | 3 | ⚠️ **`hasLivePreview()` is polled at 500ms, not subscribed.** The registry is written from a `<webview>` ref callback in a different document tree; there is no React path to the panel. Half a second is under the time it takes to look down at the composer — but it is a poll | 🟢 accepted, documented at the call site |
-| 4 | ⚠️ **This producer returns a picture and no findings, contradicting build item 4 — deliberately.** "Never ship a capture path that returns only an image" is right for the CDP producer, which *measures* a viewport. Nothing in the webview grab measures anything, so any findings it emitted would be invented. The twin says so instead | 🟢 accepted — findings are the CDP producer's |
+| 4 | ✅ **Build item 4 now holds for this producer too, and resolving F22 is what made it possible.** The webview grab evaluates the same `measureExpression` the CLI and MCP tool run, and `summarise` judges it — so the twin carries findings in one vocabulary rather than a second. Verified live: `0 errors, 1 warning (empty-decorated-box). preview 800×150px, 2 texts, 2 on screen, 0 images.` ⚠️ It measures **the preview pane's size**, not a device viewport, and the twin says so — answering "what does it look like at 390×844" is still the CDP producer's job | ✅ closed |

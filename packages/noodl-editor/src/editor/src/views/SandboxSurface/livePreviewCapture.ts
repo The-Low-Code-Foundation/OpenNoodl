@@ -9,23 +9,34 @@
  * ## Why the webview grab ships before the CDP render
  *
  * The task names two producers behind one control and says to ship this one
- * first. It needs no packaging decision — **F22 is still open** and gates the
- * CDP half only: the render harness's pure measurement code is plain CJS under
- * `scripts/`, which the editor bundle cannot import without either dragging
- * `child_process` into the renderer or compiling it, and `scripts/` is not
- * shipped in a packaged editor at all. That is a decision about where a shared
- * module lives, and it is Richard's to make before anyone writes the CDP entry
- * point. None of it touches this file: an Electron `<webview>` already has
- * `capturePage()`, and the bytes never leave the renderer.
+ * first, and it needs no Chrome, no packaging and no ~8s wait: an Electron
+ * `<webview>` already has `capturePage()`, and the bytes never leave the
+ * renderer.
  *
- * ⚠️ **This answers a different question from the CDP render, and the chip
- * says so.** A webview grab is *"what does it look like right now"* at whatever
- * size the preview pane happens to be — it is not a viewport measurement, it
- * carries no findings, and it must never be presented as though it were. The
- * findings half arrives with the CDP producer.
+ * ✅ **F22 is resolved (2026-08-10) and this file is one of the two reasons it
+ * had to be.** The measurement half now lives in `@nodegx/render-measure`, a
+ * no-build package with no `require` in it, so this runs **the identical
+ * expression and the identical judgement** the CLI and the MCP tool run — which
+ * is what closes build item 4 (*"never ship a capture path that returns only an
+ * image"*) for this producer as well as the CDP one.
+ *
+ * ⚠️ **It still answers a different question from the CDP render, and the chip
+ * must keep saying so.** This measures *whatever size the preview pane happens
+ * to be*. It cannot answer "what does it look like at 390×844", because it does
+ * not control the viewport — which is the whole of what the CDP producer is
+ * still for.
  *
  * @module noodl-editor/views/SandboxSurface/livePreviewCapture
  */
+
+import {
+  measureExpression,
+  placeholderStringsFromCatalog,
+  summarise,
+  type RenderFindingResult
+} from '@nodegx/render-measure';
+
+import { defaultCatalog } from '../../validation/catalog';
 
 /**
  * The live sandbox webviews, newest last.
@@ -62,6 +73,24 @@ export interface PreviewCapture {
   width: number;
   height: number;
   bytes: number;
+  /**
+   * ✅ **F22 resolved (2026-08-10), so this is no longer empty.**
+   *
+   * Build item 4 — *"always return findings alongside the picture… this is what
+   * makes the feature work on a model that cannot see"* — was unbuildable while
+   * `summarise` was trapped behind `render-report.js`'s `child_process` /
+   * `http` / `net` / `ws` requires. It now lives in `@nodegx/render-measure`,
+   * which has none, so the editor runs **the identical measurement the CLI and
+   * the MCP tool run** and gets findings in the same vocabulary.
+   *
+   * ⚠️ **One viewport, and it is whatever size the preview pane happens to be.**
+   * That is the honest limit of a webview grab and the reason the CDP producer
+   * still has a job: this cannot answer *"what does it look like at 390×844"*,
+   * because it does not control the viewport — it measures the one on screen.
+   */
+  findings: RenderFindingResult[];
+  /** `summarise`'s one-line verdict, or undefined when measurement failed. */
+  summary?: string;
 }
 
 /**
@@ -85,10 +114,45 @@ export async function captureLivePreview(): Promise<PreviewCapture | null> {
 
   const png = image.toPNG();
   const size = image.getSize();
+  const measured = await measure(element, size);
   return {
     data: png.toString('base64'),
     width: size.width,
     height: size.height,
-    bytes: png.length
+    bytes: png.length,
+    findings: measured.findings,
+    ...(measured.summary ? { summary: measured.summary } : {})
   };
+}
+
+/**
+ * Run the shared measurement inside the preview and judge the numbers.
+ *
+ * ⚠️ **Failure here must not lose the picture.** A measurement that throws — a
+ * webview that navigated mid-call, a page that blocks eval — would otherwise
+ * take the screenshot down with it, which trades a working feature for a
+ * better one. The capture degrades to picture-only and says so; it never
+ * degrades to nothing.
+ */
+async function measure(
+  element: Electron.WebviewTag,
+  size: { width: number; height: number }
+): Promise<{ findings: RenderFindingResult[]; summary?: string }> {
+  try {
+    const placeholders = placeholderStringsFromCatalog(defaultCatalog());
+    const raw = await element.executeJavaScript(measureExpression(placeholders));
+    if (!raw || typeof raw !== 'object') return { findings: [] };
+    /*
+     * `summarise` keys its report by viewport name, and the name is what every
+     * finding's `viewport` field reports. `preview` rather than `desktop`
+     * deliberately: this is not one of `DEFAULT_VIEWPORTS`, it is whatever the
+     * pane is, and calling it `desktop` would let a finding measured at 364px
+     * read as a desktop finding.
+     */
+    const viewport = { ...(raw as object), requested: { width: size.width, height: size.height } };
+    const report = summarise({ preview: viewport as never });
+    return { findings: report.findings, summary: report.summary };
+  } catch {
+    return { findings: [] };
+  }
 }

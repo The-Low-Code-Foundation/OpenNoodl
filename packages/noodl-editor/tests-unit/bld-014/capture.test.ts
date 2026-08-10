@@ -32,8 +32,18 @@ import {
 } from '../../src/editor/src/models/AiAssistant/thread/references';
 import type { PreviewCapture } from '../../src/editor/src/views/SandboxSurface/livePreviewCapture';
 
-const SHOT: PreviewCapture = { data: 'AAAA', width: 1280, height: 800, bytes: 240_000 };
+const SHOT: PreviewCapture = {
+  data: 'AAAA',
+  width: 1280,
+  height: 800,
+  bytes: 240_000,
+  findings: [],
+  summary: 'Rendered clean: 42 texts, 6 images.'
+};
 const shoot = async () => SHOT;
+
+/** A capture whose measurement threw — findings empty, and NO summary. */
+const UNMEASURED: PreviewCapture = { data: 'AAAA', width: 1280, height: 800, bytes: 240_000, findings: [] };
 
 beforeEach(() => resetApplyCountForTests());
 
@@ -57,15 +67,54 @@ describe('BLD-014 — a capture becomes a reference', () => {
     expect(referenceCost([ref!]).images).toBe(1);
   });
 
-  it('🔴 tells a text-only model there are NO findings rather than inventing some', async () => {
-    // The task is emphatic that a capture path returning only an image is the
-    // wrong shape. That is right for the CDP producer, which measures a
-    // viewport — it cannot be right for this one, because nothing here measures
-    // anything and any "findings" it emitted would be fabricated.
-    const twin = captureTwinText(1280, 800);
+  it('✅ carries the findings, which is build item 4 and F22 is why it can', async () => {
+    // *"Never ship a capture path that returns only an image — this is what
+    // makes the feature work on a model that cannot see."* Unbuildable until
+    // `summarise` left `render-report.js`'s Node requires for
+    // `@nodegx/render-measure`.
+    const twin = captureTwinText(1280, 800, [
+      {
+        code: 'horizontal-overflow',
+        severity: 'warning',
+        viewport: 'preview',
+        message: 'The page scrolls sideways: scrollWidth 1600 against a 1280 viewport.'
+      }
+    ], 'Rendered with 1 warning (horizontal-overflow).');
     expect(twin).toContain('1280×800');
-    expect(twin).toMatch(/no findings attached/);
-    expect(twin).toMatch(/do not guess/i);
+    expect(twin).toContain('Rendered with 1 warning');
+    expect(twin).toContain('[warning] horizontal-overflow');
+    // The sentence that is the actual point: numbers alone leave a text-only
+    // model unaware it is missing the picture they describe.
+    expect(twin).toMatch(/act on the measurements above/);
+  });
+
+  it('⚠️ says the size is the PANE, not a device viewport', async () => {
+    // The honest limit of a webview grab, and the reason the CDP producer still
+    // has a job. A model told "1280×800" with no qualifier would reasonably
+    // read it as a desktop viewport measurement.
+    const twin = captureTwinText(364, 700, [], 'Rendered clean.');
+    expect(twin).toMatch(/not a device viewport/);
+  });
+
+  it('🔴 distinguishes "measured clean" from "measurement failed"', async () => {
+    // `measure()` swallows its own failure so a throw never costs the
+    // screenshot — which means an empty findings array means two different
+    // things, and only the summary tells them apart. Reporting "no problems
+    // found" on a failed measurement would be exactly the fabrication this
+    // producer is written against.
+    const clean = captureTwinText(1280, 800, [], 'Rendered clean: 42 texts, 6 images.');
+    const failed = captureTwinText(1280, 800, []);
+    expect(clean).toContain('Rendered clean');
+    expect(clean).not.toMatch(/measurement did not run/);
+    expect(failed).toMatch(/measurement did not run/);
+    expect(failed).toMatch(/do not guess/i);
+  });
+
+  it('degrades to picture-only without losing the picture', async () => {
+    const ref = await resolveLivePreviewCapture(async () => UNMEASURED);
+    expect(ref?.status).toBe('ready');
+    expect(ref?.resolution?.images).toHaveLength(1);
+    expect(ref?.resolution?.text).toMatch(/measurement did not run/);
   });
 
   it('does not pin, because it depicts a thing the agent is changing', async () => {

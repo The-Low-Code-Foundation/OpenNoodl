@@ -156,7 +156,8 @@
     "underscore": "^1.13.7",
     "w3c-keyname": "^2.2.8",
     "webpack": "^5.101.3",
-    "ws": "^8.18.3"
+    "ws": "^8.18.3",
+    "@nodegx/render-measure": "*"
   },
   "devDependencies": {
     "@babel/core": "^7.28.3",
