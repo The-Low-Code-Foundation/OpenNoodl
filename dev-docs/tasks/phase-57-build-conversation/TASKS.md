@@ -40,12 +40,45 @@ box — its header is inside the scroll area.
 ✅ = built **and on `cline-dev`** (BLD-007 and BLD-012 merged 2026-08-09; **BLD-001 built, driven and
 closed 2026-08-09** — `a93720b3`, `02c3072c`, `458e189f`).
 
+**Session 16 (2026-08-10) — BLD-016 built and driven, no billed call. 13 of 17 fully built, plus
+BLD-014's webview half.** Counted off the tables below, not incremented: Track A is 9 of 11
+(BLD-009, BLD-010), Track B is 4 of 6 plus a half (BLD-015 open, BLD-014's CDP half open).
+
+🔴 **The finding worth more than the task: the acceptance criterion decided the architecture.**
+*"Deleting the token removes the chip, and vice versa"* cannot be satisfied by a menu that inserts a
+token **and** attaches a reference — that is two writes to two stores, and keeping them equal needs
+a third mechanism nobody would maintain. So the composer text was made the **single source of
+truth** and the chip row derived from it on every change. The menu inserts text and attaches
+nothing; the chip's Remove button deletes text and detaches nothing. Both directions then fall out
+of one pure function, and typing a mention works for free — which is the AIB-010 half of the task,
+because a name typed rather than picked must not silently mean nothing.
+
+⚠️ **The interaction between the two halves of that function is the part a refactor breaks:**
+`attach` respects the settled rule (a token still under the caret is not read) and `detach` does
+**not**. They look like they should agree. If they did, deleting the space after a finished mention
+would drop its chip — a chip row disagreeing with the text it was derived from, which is the one
+state the design exists to make unreachable. Driven, all four states, and pinned as a spec.
+
+🔴 **And BLD-011's own union carried a default nobody had measured.** `REFERENCE_CAPS.page` was
+12,000 — declared beside `doc` when the union was written ahead of its tasks — while a page's
+payload is a **component's** v2 serialization. Every mentioned page would have been silently cut in
+half. Raised to 24,000. The union-up-front bet paid off everywhere else (the chip row, meter,
+carry-over and persistence took no changes at all), and this is what it costs: **a member declared
+ahead of its task is a default nobody measured.**
+
+⚠️ **A near-miss, and the third of this shape in two sessions.** The first contrast sweep reported
+**4.58 in light** for the refusal line and I nearly filed it — it was the *danger icon*, a graphical
+object at a 3:1 threshold, because `querySelector('span')` grabbed the wrong child. The sentence
+measures **7.70 / 7.10**. Session 15's phantom 71px overflow was the same error in a different
+dimension: **measure the element you are making a claim about, and print what you measured.**
+
 **Session 15 (2026-08-10) — BLD-013 built and driven; BLD-014's webview half built and driven.**
 
-⚠️ **Count corrected: 12 tasks fully built of 17, plus BLD-014's webview half.** Earlier sessions'
-running total was off by one and session 15 propagated it before checking. Counted off the tables
-below: Track A has 9 of 11 (BLD-009 and BLD-010 not started); Track B has 3 of 6 plus BLD-014's
-first half (BLD-015 and BLD-016 not started). **Recount from the tables, do not increment.** Track B's frame paid for itself exactly as promised: both tasks are a
+⚠️ **Count as of session 15: 12 tasks fully built of 17, plus BLD-014's webview half.** Earlier
+sessions' running total was off by one and session 15 propagated it before checking. Counted off the
+tables below at the time: Track A had 9 of 11 (BLD-009 and BLD-010 not started); Track B had 3 of 6
+plus BLD-014's first half (BLD-015 and BLD-016 not started). **Recount from the tables, do not
+increment.** Track B's frame paid for itself exactly as promised: both tasks are a
 `ReferenceKind` member, a resolver, a glyph — plus the one thing BLD-011 declared and never wired,
 which was the media path from the composer to the wire.
 
@@ -265,9 +298,9 @@ lines and they are the vocabulary the rest of the track speaks.
 | BLD-011 ⭐ ✅ | [BLD-011-TURN-CARRIES-REFERENCES.md](BLD-011-TURN-CARRIES-REFERENCES.md) | the composer becomes a context builder; one `Reference` model | **driven $0.0298; 4 of 6 criteria met, 2 partly — staleness needs BLD-014, `.jsonl` needs a 2nd send. F8 built here.** |
 | BLD-012 ⭐ ✅ | [BLD-012-MULTIMODAL-MESSAGES.md](BLD-012-MULTIMODAL-MESSAGES.md) | `AiMessage.content` widens to blocks; declared degradation | adapters exist |
 | BLD-013 ✅ | [BLD-013-ATTACHMENTS.md](BLD-013-ATTACHMENTS.md) | drop/paste/pick markdown, text, images **and PDFs** | **driven — Q5 answered, ZERO new deps** |
-| BLD-014 ⭐ 🟡 | [BLD-014-LOOK-AT-IT.md](BLD-014-LOOK-AT-IT.md) | two capture paths: the live webview, and CDP for any viewport or URL | **webview half driven; CDP half still gated on F22. Q6 answered** |
+| BLD-014 ⭐ 🟡 | [BLD-014-LOOK-AT-IT.md](BLD-014-LOOK-AT-IT.md) | two capture paths: the live webview, and CDP for any viewport or URL | **webview half driven; F22 resolved 08-10, so the CDP half is unblocked. Q6 answered** |
 | BLD-015 | [BLD-015-WEB-SEARCH.md](BLD-015-WEB-SEARCH.md) | one editor-side backend; citations carry source and read-time | nothing |
-| BLD-016 | [BLD-016-MENTIONS.md](BLD-016-MENTIONS.md) | `@` over components, docs, pages, collections, attachments | CM6 precedent |
+| BLD-016 ✅ | [BLD-016-MENTIONS.md](BLD-016-MENTIONS.md) | `@` over components, docs, pages, collections, attachments | **driven, no billed call — 5 of 6 criteria met, the 6th needs one. CM6 rejected on inspection** |
 
 ---
 

@@ -1,4 +1,4 @@
-# Next-session prompt — phase 57, after session 15
+# Next-session prompt — phase 57, after session 16
 
 Paste everything below into a fresh session.
 
@@ -7,7 +7,7 @@ Paste everything below into a fresh session.
 You are picking up **phase 57 (BLD — the Build panel as a conversation)** on `cline-dev` in
 `/Users/richardosborne/vscode_projects/OpenNoodl`.
 
-Read `dev-docs/tasks/phase-57-build-conversation/HANDOVER-SESSION-15.md` first, then `TASKS.md`.
+Read `dev-docs/tasks/phase-57-build-conversation/HANDOVER-SESSION-16.md` first, then `TASKS.md`.
 
 NB: there are several parallel sessions fixing minor bugs who may take the editor from time to time.
 Just set a timer for 10 mins and wait to check when it frees up. Don't complain about the other
@@ -54,9 +54,9 @@ the call you were given permission for.
 
 ## Where the phase is — recount, do not increment
 
-**12 of 17 fully built, plus BLD-014's webview half.** ⚠️ The running total was off by one for
+**13 of 17 fully built, plus BLD-014's webview half.** ⚠️ The running total was off by one for
 several sessions because each one added to the last one's number. **Count it off the tables in
-`TASKS.md`.** Track A is 9 of 11; Track B is 3 of 6 plus a half.
+`TASKS.md`.** Track A is 9 of 11; Track B is 4 of 6 plus a half.
 
 **All three open decisions are now answered and recorded in their task files** — Q5 (PDF: a
 capability gate, no library), Q6 (a capture is a one-click offer, not automatic) and **F22 (the
@@ -72,28 +72,56 @@ on the source text and a second that evaluates it with `require` out of scope.
 
 | | What | Notes |
 |---|---|---|
-| **BLD-016** | `@` mentions | ⭐ **Cheapest and highest value.** The media path now exists, so this really is a `ReferenceKind` member, a resolver and a glyph — plus the `@` keyboard path into the picker that already backs it. Four of its kinds (`component`, `doc`, `page`, `collection`) are already declared in the union. |
-| **BLD-015** | web search | Same shape, one more resolver. Needs a backend decision (Q4). |
+| **BLD-015** | web search | The cheapest remaining feature, and the same shape one more time: a kind, a resolver, a glyph. Needs a backend decision (Q4). |
 | **BLD-009** | expanded mode | A real feature, not a bolt-on: the same thread as a document, two-pane with the live preview. Closes **D10**. `BuildThread` already takes a `ThreadWidth` and has an `is-expanded` variant, so the host is the work. |
 | **BLD-010** | acceptance pass | Not a task so much as a sweep, and **its debt list is now nine** — see below. |
 | **BLD-014** | the CDP half | ✅ **Unblocked — F22 was resolved 2026-08-10.** `@nodegx/render-measure` is a no-build package with no `require` in it; the editor already imports it for the webview producer. What is left is the *transport*: a `Page.navigate` entry point for an arbitrary URL and the viewport vocabulary (`desktop,phone` or `390x844`), which `DEFAULT_VIEWPORTS` already exports. LAS-005 estimated ~50 lines plus live QA once decided. |
 | **BLD-012** | 🟡 two legs | OpenAI's image leg is stub-only; the panel chip claim is about a *message* carrying an image, which BLD-011's composer chip does not close. |
 
-**Suggested order: BLD-016, then BLD-014's CDP half, then BLD-009, then BLD-010.** The CDP half
+**Suggested order: BLD-014's CDP half, then BLD-015, then BLD-009, then BLD-010.** The CDP half
 jumped the queue because F22 no longer blocks it and the measurement side is already proven inside
 the editor — only the transport is missing.
 
-**Original ordering rationale:** BLD-016 finishes the Track B mechanism
-while it is fresh; BLD-009 is the last unbuilt *feature*; BLD-010 should run last because every task
-before it adds to what it has to sweep.
+**Original ordering rationale:** BLD-009 is the last unbuilt *feature*; BLD-010 should run last
+because every task before it adds to what it has to sweep. ✅ BLD-016 closed in session 16.
 
-### BLD-010's list is nine
+### BLD-010's list is eleven
 
 BLD-004's **R4** (Ollama open-weight leg, inferred not driven) and **R5** (OpenAI-compatible
 `reasoning_content`, deliberately unwired); BLD-006's **R12**; BLD-017's **F2** and **F4**; BLD-008's
 drafting turns + restart-resume; BLD-011's **R9** (a comprehension probe the request's actual route
-can answer); and new from session 15 — **BLD-013's drag-and-drop and file-picker paths** (paste was
-driven end to end, the drop handlers were not) and **BLD-014's on-screen staleness**.
+can answer); from session 15 — **BLD-013's drag-and-drop and file-picker paths** (paste was
+driven end to end, the drop handlers were not) and **BLD-014's on-screen staleness**; and new from
+session 16 — **BLD-016's `get_component` consequence** (the mechanism is built and specced; the
+criterion says to compare tool calls before and after on a fixture run, which costs one billed call)
+and **BLD-016's `collection` leg** (built, never driven — `ai-test` has no backend, so the group
+correctly never rendered).
+
+## 🔴 Two rules session 16 paid for
+
+> **An acceptance criterion can decide the architecture — read them before choosing a design.**
+
+BLD-016's *"deleting the token removes the chip, and vice versa"* is unsatisfiable by the obvious
+build (the menu inserts a token **and** attaches a reference: two writes to two stores). Making the
+composer text the **single source of truth** and deriving the chip row from it on every change
+removed the problem instead of solving it — and made *typing* a mention work for free, which is the
+AIB-010 half of the same task. **A criterion that is awkward to satisfy is usually describing an
+invariant the design does not have yet.**
+
+> 🔴 **A member declared ahead of its task is a default nobody measured.**
+
+BLD-011 declared the whole `ReferenceKind` union up front so the chip row, caps, meter, carry-over
+and persistence would be written once. That bet paid off completely — BLD-016 changed none of them.
+But `REFERENCE_CAPS.page` had been declared *beside* `doc` and inherited a doc-sized **12,000**,
+while a page's payload is a **component's** v2 serialization. Every mentioned page would have been
+cut to half a graph. **The shape a union declares up front is trustworthy; its values are not.**
+
+> ⚠️ **Measure the element you are making a claim about, and print what you measured.**
+
+Session 16's first contrast sweep read **4.58 in light** for a refusal line and nearly filed it — it
+was the *danger icon* (a graphical object, 3:1 threshold), because `querySelector('span')` grabs the
+first span. The sentence is **7.70 / 7.10**. Third of this shape in two sessions, after session 15's
+phantom 71px overflow. **A ratio with no `fg`/`bg` hex beside it is a number you cannot check.**
 
 ## The one thing to read before touching the opening turn
 
@@ -139,7 +167,21 @@ list was only wrong while *open*; session 15's row was only wrong *with siblings
 
 ## Driving this panel
 
-The recipe is in handovers 5–15. What session 15 adds:
+The recipe is in handovers 5–16. What session 16 adds:
+
+- ⚠️ **A controlled `TextArea` cannot be driven with `el.value = …`** — React ignores it. Use
+  `Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,'value').set.call(el, v)` then
+  `el.dispatchEvent(new Event('input',{bubbles:true}))`. Caret moves want a `select` event, keys want
+  `new KeyboardEvent('keydown',{key,bubbles:true})`, and all of it reaches the real handlers.
+- ⚠️ **Pick a popup row with `mousedown`, not `click`** where the popup closes on blur: the click
+  blurs the input first, so it lands on a menu that has already decided it is shut.
+- ⚠️ **To claim a popup costs no layout, measure open against shut at the same width.** "The row is
+  30px" is not the claim; "the row is identical with the menu up" is, and it needs both readings.
+- **Measure the `test:main` baseline rather than inheriting it.** Session 15 recorded 106/1448 (its
+  own commit said 1447); the same 106 suites returned **1452** today. One command settles it:
+  `npx jest --testPathIgnorePatterns "/node_modules/" "<your new dir>"`.
+
+What session 15 adds:
 
 - **The whole of BLD-013 is driveable with no billed call.** Construct a `DataTransfer`, add a
   `File`, dispatch a bubbling `ClipboardEvent('paste')` at
