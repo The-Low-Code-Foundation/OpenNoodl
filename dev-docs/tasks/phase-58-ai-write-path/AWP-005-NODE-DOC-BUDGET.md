@@ -1,6 +1,7 @@
 # AWP-005 — The node-doc budget: `Group` costs 11,000 tokens
 
-**Status:** 🟡 **§1 DONE 2026-08-08** — §2 and §3 open · **Track: the context** · out of **F44** ·
+**Status:** ✅ **§1 DONE 2026-08-08, §2 DONE 2026-08-10** — §3 closed as unnecessary, see
+[§2 as built](#2-as-built--2026-08-10) · **Track: the context** · out of **F44** ·
 Richard asked for this directly:
 
 > *"I'm a bit worried that Kimi described our node docs as 'enormous', are we feeding too much context
@@ -144,6 +145,68 @@ demands, not inspection — and that needs an MCP rebuild plus a model run. The 
 (≤ 3,000 tok per summary, ≤ 12,500 per full response) are in and will fire when the next port is added
 to `Group`.
 
+## §2 as built — 2026-08-10
+
+**`detail` now defaults to `summary`**, full detail is opt-in, and `get_node_type` takes a new
+`ports` argument returning full authored semantics for named ports only. A new *argument* on a
+resident tool, not a new tool — the weighing against AWP-006 that §2 asked for.
+
+### The check the flip needed, done against the corpus before spending anything
+
+§2's condition was *"verify a model can actually author from summary output"*. That was answered by
+asking the question the corpus can already answer: **of every `(nodeType, port)` pair the four
+phase-55 replay models actually set, how many does the summary carry with a usable type?**
+
+| | |
+|---|---|
+| catalog node types used across the four builds | 12 |
+| `(type, port)` pairs the models set | **117** |
+| carried by the summary with a usable type | **113** |
+| present but with no type | **0** |
+| enum ports among them, with options inline | **26 of 26** |
+
+**Three of the four misses are absent from `detail: "full"` as well** — `For Each.itemId`,
+`RouterNavigate.target` and `RouterNavigate.router` are runtime-pushed ports the static catalog
+never had. Not a summary deficiency, and not this task's problem.
+
+### The fourth miss was real, and it would have shipped
+
+`Page.urlPath` **is** in full detail and was in **no** summary. The cause is worth stating exactly:
+`Page`'s `title` and `urlPath` are registered per instance by the editor connection, so they appear
+in no port list at all — the catalog's only record that they exist is a sentence inside
+`runtimeBehavior`, and a summary drops prose by construction. The old summary said
+`hasDynamicPorts: true`, which announces that a node has ports the list does not show and gives no
+way to learn what they are. Flipping the default without noticing would have silently lost the two
+ports a page most needs — **the same shape of defect as §1's `[object Object]`, arrived at from the
+opposite direction.**
+
+So the summary now carries `runtimeBehavior` **for types that declare dynamic ports, and only
+those**. Gated by a catalog-wide sweep of that biconditional rather than a sample — because the
+obvious sample was wrong: `Group` looks like the plainest visual node in the catalog and it declares
+dynamic ports (its scroll and size-mode port groups are conditional on parameters).
+
+### Measured after
+
+| call | before §2 | after §2 |
+|---|---|---|
+| 8-type storefront basket, `detail` omitted | 30,862 tok (it defaulted to full) | **~6,200 tok** — 4.9× cheaper |
+| `Group`, `ports: ["width","flexDirection"]` | *(not expressible)* | **< 500 tok**, against 11,018 for the type |
+
+Gated by five new specs in
+[`tests/nodeDocBudget.test.ts`](../../../packages/noodl-mcp/tests/nodeDocBudget.test.ts): that
+omitting `detail` costs what summary costs, that `Page`'s runtime ports survive the summary, the
+catalog-wide `runtimeBehavior` ⟺ `hasDynamicPorts` sweep, and that `ports` reports what it could not
+find rather than dropping it.
+
+### §3 closed as unnecessary — which is what §3 asked for
+
+§3 said *"Measure first — §1 and §2 may make this unnecessary"*. They do. §3's territory is what
+`detail: "full"` carries, and after §2 nothing reaches for full detail by accident: it is opt-in, it
+is described as the expensive mode, and the per-port door covers the case that used to justify
+asking for it. Trimming enum lists or de-duplicating the ~40 layout ports every visual node shares
+would now be invasive surgery on a payload almost nobody requests. The ≤ 12,500 tok per-response
+ratchet stays, so `Group` still cannot grow past a client's cap unnoticed.
+
 ## Register
 
 | # | Finding | State |
@@ -151,3 +214,5 @@ to `Group`.
 | A9 | The tool description actively recommends a mode that has never worked. **Check the other `detail`/`summary` affordances in the surface for the same** — this one was invisible because nobody used it | ✅ **checked 2026-08-08** — `String(p.type)` at catalog.ts:273 was the **only** instance in the package; the sole other affordance, `get_style_vocabulary`'s `detail: full\|prompt`, is sound |
 | A11 | **`noodl-mcp`'s own `npm run typecheck` is red at HEAD** — 6 errors, all `res.text` on `ToolCallResult` in `interfaceGate.test.ts` and `stagingDiagnostics.test.ts`, which declares only `isError` and `data`. Invisible because jest runs ts-jest with **`diagnostics: false`**, so the green 281-spec gate cannot see it, and `test:packages` runs `test` and never `typecheck`. Pre-dates this task — verified against HEAD, not inferred | 🔴 **OPEN**, filed not fixed — out of AWP-005's scope, but it is the same shape as the phase-55 register's "a gate omitted from CI" |
 | A10 | The 24,000-char driver truncation is a *rig* setting, not a product one, but it interacts: any payload above it arrives as broken JSON. After §1, re-measure the largest response against common client limits | ⚠️ interaction |
+| A17 | **A summary that drops prose can drop a port.** `Page.title` and `urlPath` are runtime-registered, so they are in no port list and the catalog's only record of them is a sentence in `runtimeBehavior`. `hasDynamicPorts: true` said "there are ports you cannot see" and offered no way to see them. **Generalises past this task:** a compact mode is defined by what it omits, and the thing to check is not whether the omitted field is *prose* but whether it is the only statement of a fact — which is exactly what "compact" makes invisible | ✅ fixed 2026-08-10 |
+| A18 | **The obvious sample for "a type with no dynamic ports" was `Group`, and `Group` has them.** A spec written on that assumption failed on its first run and was replaced with a catalog-wide sweep of the biconditional. Cheap here; the same assumption inside product code would have been a silent wrong branch | ✅ swept instead |

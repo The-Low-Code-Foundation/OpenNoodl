@@ -17,6 +17,11 @@ Serves a NodeGX (OpenNoodl) v2 project directory over the Model Context Protocol
 Options:
   --allow-writes   Register the authoring tools (create/update/delete component).
                    Default is read-only.
+  --all-tools      Advertise every tool from the first tools/list. By default the
+                   authoring set is advertised and the backend, docs, project and
+                   theme groups are revealed on demand via find_tools — 60 of the
+                   89 tools are backend admin, and they are re-sent every turn.
+                   Use this for a client that ignores tools/list_changed.
   --version        Print version and exit.
   --help           Show this help.
 
@@ -37,6 +42,7 @@ async function main(): Promise<void> {
   }
 
   const allowWrites = argv.includes('--allow-writes');
+  const deferTools = !argv.includes('--all-tools');
   const positional = argv.filter((a) => !a.startsWith('--'));
   if (positional.length !== 1) {
     process.stderr.write(USAGE);
@@ -67,9 +73,21 @@ async function main(): Promise<void> {
   }
 
   try {
-    const { server, store } = createServer({ projectDir: positional[0], allowWrites });
+    const { server, store, disclosure } = createServer({ projectDir: positional[0], allowWrites, deferTools });
+    // AWP-006 — the surface is now a decision, so it is stated at startup rather
+    // than inferred from a tools/list. `--all-tools` is named here because the
+    // one failure mode of deferral is a client that never re-lists, and the
+    // person who can fix that is reading stderr.
+    const advertised = disclosure.groupStates().filter((g) => g.advertised);
+    const held = disclosure.groupStates().filter((g) => !g.advertised);
     process.stderr.write(
-      `noodl-mcp serving ${store.projectDir} (${allowWrites ? 'read-write' : 'read-only'}) on stdio\n`
+      `noodl-mcp serving ${store.projectDir} (${allowWrites ? 'read-write' : 'read-only'}) on stdio\n` +
+        `noodl-mcp advertising ${advertised.reduce((n, g) => n + g.tools, 0)} tools` +
+        (held.length > 0
+          ? `; ${held.reduce((n, g) => n + g.tools, 0)} held behind find_tools (${held
+              .map((g) => `${g.group}:${g.tools}`)
+              .join(', ')}) — pass --all-tools to advertise everything\n`
+          : ' (--all-tools)\n')
     );
     await server.connect(new StdioServerTransport());
   } catch (err) {

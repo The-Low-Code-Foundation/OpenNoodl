@@ -63,6 +63,12 @@ export type {
 // without one yields a component with no such input, silently. This package's
 // port schema did not even declare the field until AAQ-005.
 export { checkInstancePorts } from '../../noodl-editor/src/editor/src/validation';
+// AWP-006 — the same reviewed table, used for a second decision. `Record` nodes
+// in a graph already produce a backend precondition diagnostic; they now also
+// reveal the backend tool group, so an agent is never in the position of having
+// been told it needs a backend by a server that is not advertising the tool that
+// makes one. One classification, both consequences.
+export { backendRequirementFor } from '../../noodl-editor/src/editor/src/validation';
 
 // ─── LAS-007: retrieval into the failure moment ───────────────────────────────
 // The DiagnosticCode → example table, beside the checks that produce the

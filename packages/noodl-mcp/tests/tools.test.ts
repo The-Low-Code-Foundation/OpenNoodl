@@ -24,20 +24,23 @@ import type {
   ValidateProjectResponse,
   ValidationFailureDetails
 } from '../src/tools/responses';
-import { call, connect, copyFixture, exists, readJson, TestSession } from './helpers';
+import { call, connect, copyFixture, exists, readJson, reveal, TestSession } from './helpers';
 
 /**
  * `get_node_type` returns a union per requested name — a full entry or a lookup
  * miss. The specs know which they asked for; these say so, and report the other
  * case as a readable failure instead of a property read on the wrong branch.
  */
-type NodeTypeResult = NodeTypeDetail | NodeTypeSummary | NodeTypeLookupMiss;
+type NodeTypeResult = GetNodeTypeResponse['types'][number];
 const isMiss = (t: NodeTypeResult): t is NodeTypeLookupMiss => 'error' in t;
 const isSummary = (t: NodeTypeResult): t is NodeTypeSummary => !isMiss(t) && 'ports' in t;
 
 function asDetail(t: NodeTypeResult): NodeTypeDetail {
   if (isMiss(t)) throw new Error(`Expected a node type entry, got a miss: ${t.error}`);
   if (isSummary(t)) throw new Error(`Expected full detail, got a summary for ${t.typeName}`);
+  // AWP-005 §2 widened the union with the per-port view; a caller asking for
+  // full detail and getting one is the same mistake as getting a summary.
+  if (!('availableIn' in t)) throw new Error(`Expected full detail, got a per-port view for ${t.typeName}`);
   return t;
 }
 
@@ -108,6 +111,7 @@ describe('noodl-mcp tools (end to end)', () => {
   });
 
   it('search_project finds by type, component ref and text', async () => {
+    await reveal(session, 'explore'); // AWP-006 — zero calls across four replays, so deferred
     const byType = await call<SearchProjectResponse>(session, 'search_project', { node_type: 'net.noodl.controls.button' });
     expect(byType.data.matches).toEqual([
       expect.objectContaining({ component: 'Pages/Home', nodeId: 'btn', matchedOn: 'type' })
@@ -119,6 +123,7 @@ describe('noodl-mcp tools (end to end)', () => {
   });
 
   it('explain_component produces a structured description', async () => {
+    await reveal(session, 'explore');
     const { data } = await call<ExplainComponentResponse>(session, 'explain_component', { path: 'Pages/Home' });
     expect(data.visualTree).toHaveLength(1);
     expect(data.visualTree[0].id).toBe('page');
@@ -137,7 +142,11 @@ describe('noodl-mcp tools (end to end)', () => {
     expect(names).toContain('net.noodl.controls.button');
     expect(list.data.categories.length).toBeGreaterThan(0);
 
-    const detail = await call<GetNodeTypeResponse>(session, 'get_node_type', { type_names: ['net.noodl.controls.button', 'Grup'] });
+    // AWP-005 §2 — `detail` now defaults to "summary", so full is asked for.
+    const detail = await call<GetNodeTypeResponse>(session, 'get_node_type', {
+      type_names: ['net.noodl.controls.button', 'Grup'],
+      detail: 'full'
+    });
     const button = asDetail(detail.data.types[0]);
     const miss = asMiss(detail.data.types[1]);
     expect(button.outputs.map((p) => p.name)).toContain('onClick');
@@ -174,7 +183,7 @@ describe('noodl-mcp tools (end to end)', () => {
 
     // Full mode: the byte budget degrades the tail to summaries in-band
     // rather than letting the response blow the cap.
-    const full = await call<GetNodeTypeResponse>(session, 'get_node_type', { type_names: heavy });
+    const full = await call<GetNodeTypeResponse>(session, 'get_node_type', { type_names: heavy, detail: 'full' });
     expect(full.data.types).toHaveLength(heavy.length);
     expect(JSON.stringify(full.data).length).toBeLessThan(90_000);
     if (full.data.summarized && full.data.summarized.length > 0) {
@@ -187,6 +196,10 @@ describe('noodl-mcp tools (end to end)', () => {
   });
 
   it('examples are browsable and fetchable', async () => {
+    // AWP-006 — `get_example` is resident (14 calls across four replays);
+    // `list_examples` is in `explore` (zero calls, and get_node_type already
+    // returns each type's example ids and titles inline).
+    await reveal(session, 'explore');
     const list = await call<ListExamplesResponse>(session, 'list_examples', { node_type: 'RouterNavigate' });
     expect(list.data.examples.length).toBeGreaterThanOrEqual(0);
     const all = await call<ListExamplesResponse>(session, 'list_examples');

@@ -6,7 +6,7 @@
  * which is exactly where the editor's importer reads them back.
  */
 import type { StyleVocabulary } from '../src/editor-deps';
-import { call, connect, copyFixture, readJson, TestSession } from './helpers';
+import { call, connect, copyFixture, readJson, reveal, TestSession } from './helpers';
 
 interface ProjectFile {
   metadata?: { designTokens?: { version: number; customTokens: Array<{ name: string; value: string }> } };
@@ -19,6 +19,7 @@ describe('AIX-006 style MCP tools', () => {
   beforeEach(async () => {
     projectDir = copyFixture();
     session = await connect(projectDir, true);
+    await reveal(session, 'theme'); // AWP-006 — the style writes are deferred; the read is not
   });
 
   afterEach(async () => {

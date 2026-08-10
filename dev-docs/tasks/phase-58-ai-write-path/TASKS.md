@@ -23,8 +23,14 @@ was defeated by a field our writer omits and the editor derives; the other was p
 | AWP-002 ⭐ | [AWP-002-WRITE-PATH-CONFORMANCE.md](AWP-002-WRITE-PATH-CONFORMANCE.md) | **the flagship** — MCP output must survive the editor's own round trip; the gate that catches the *next* F43 | ✅ **done 08-08** |
 | AWP-003 | [AWP-003-DIAGNOSE-THE-BLANK-PAGE.md](AWP-003-DIAGNOSE-THE-BLANK-PAGE.md) | a blank page must be diagnosed and the component named, not guessed at from a list of causes | ✅ **done 08-09** |
 | AWP-004 | [AWP-004-EYES-THAT-FAIL-AN-INVISIBLE-PAGE.md](AWP-004-EYES-THAT-FAIL-AN-INVISIBLE-PAGE.md) | stop calling a page "clean" because no known check fired; three checks these runs earned | ✅ **done 08-09** |
-| AWP-005 | [AWP-005-NODE-DOC-BUDGET.md](AWP-005-NODE-DOC-BUDGET.md) | `Group` costs 11,000 tokens and `detail:"summary"` is broken for 100% of ports | 🟡 **§1 done 08-08** |
-| AWP-006 | [AWP-006-PROGRESSIVE-TOOL-DISCLOSURE.md](AWP-006-PROGRESSIVE-TOOL-DISCLOSURE.md) | 22,968 tokens of tool schemas resent every turn, ~30% of every bill, 63% of it backend admin | 📋 open |
+| AWP-005 | [AWP-005-NODE-DOC-BUDGET.md](AWP-005-NODE-DOC-BUDGET.md) | `Group` costs 11,000 tokens and `detail:"summary"` is broken for 100% of ports | ✅ **done 08-10** (§1 08-08, §2 08-10, §3 closed as unnecessary) |
+| AWP-006 | [AWP-006-PROGRESSIVE-TOOL-DISCLOSURE.md](AWP-006-PROGRESSIVE-TOOL-DISCLOSURE.md) | 22,968 tokens of tool schemas resent every turn, ~30% of every bill, 63% of it backend admin | ✅ **done 08-10** — 89 tools → 20, 25,886 → 7,828 tok/turn |
+
+**Phase 58 is complete, 6 of 6.** The exit test is answered in
+[AWP-006 §As built](AWP-006-PROGRESSIVE-TOOL-DISCLOSURE.md#as-built--2026-08-10) and the re-replay
+row below it. The one thing deliberately left for a later session is a **model run of
+[BACKEND-BRIEF.md](BACKEND-BRIEF.md)** — the fixture that needs the deferred half. Its mechanism is
+gated by spec; what has not been paid for is a model discovering it cold.
 
 ## Suggested order, and why
 

@@ -28,7 +28,7 @@ import * as path from 'path';
 
 import { PROPOSALS_DIR, listProposals } from '../src/backend/workflowProposals';
 
-import { connect, TestSession, call } from './helpers';
+import { connect, TestSession, call, reveal } from './helpers';
 
 const BACKEND_DIR = path.join(__dirname, '..', '..', 'nodegx-backend');
 const BACKEND_CLI = path.join(BACKEND_DIR, 'dist', 'cli.js');
@@ -105,6 +105,7 @@ describeOrSkip('WFA-007 — proposing a workflow instead of writing one (live ba
     projectDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mcp-wfa007-proj-'));
     fs.cpSync(FIXTURE, projectDir, { recursive: true });
     session = await connect(projectDir, true);
+    await reveal(session, 'backend'); // AWP-006 — workflow tools ship with the backend group
   });
 
   afterAll(async () => {

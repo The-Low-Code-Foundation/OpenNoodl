@@ -267,6 +267,25 @@ export interface NodeTypeSummary {
   /** `"in name: type"` / `"out name: type (signal)"` one-liners. */
   ports: string[];
   hasDynamicPorts?: boolean;
+  /**
+   * AWP-005 §2 — the one prose field a summary may not drop.
+   *
+   * Present only for types with `dynamicPorts`, and it is the reason the default
+   * could be flipped at all. Measured against the four phase-55 replays: of the
+   * 117 (type, port) pairs those models actually set, the summary carried 113
+   * with a usable type and every one of the 26 enum ports with its options
+   * inline. Of the four it missed, three (`For Each.itemId`,
+   * `RouterNavigate.target`, `RouterNavigate.router`) are absent from **full**
+   * detail too — runtime-pushed ports the static catalog never had.
+   *
+   * The fourth was real: `Page.urlPath` is in full detail and was in no summary,
+   * because `Page`'s settable `title` and `urlPath` are registered per instance
+   * and exist in the catalog **only inside `runtimeBehavior`'s prose**. A summary
+   * that drops prose therefore dropped the only statement that two of the most
+   * commonly set ports on a page exist — silently, which is the same shape of
+   * defect as `[object Object]` and would have been shipped as the new default.
+   */
+  runtimeBehavior?: string;
   examples: ExampleCitationRow[];
 }
 
@@ -339,8 +358,53 @@ export function getNodeTypeSummary(typeName: string): NodeTypeSummary | NodeType
   if (full.category) s.category = full.category;
   if (full.deprecated) s.deprecated = true;
   if (full.summary) s.summary = full.summary;
-  if (full.dynamicPorts) s.hasDynamicPorts = true;
+  if (full.dynamicPorts) {
+    s.hasDynamicPorts = true;
+    // Only these types pay for it. `hasDynamicPorts: true` on its own says a
+    // node has ports the list does not show and gives no way to learn what they
+    // are, which is a flag rather than an answer.
+    if (full.runtimeBehavior) s.runtimeBehavior = full.runtimeBehavior;
+  }
   return s;
+}
+
+/**
+ * AWP-005 §2 — full detail for named ports of one type, and nothing else.
+ *
+ * The expensive half of a node doc is per-port: `Group` costs 11,018 tokens for
+ * 111 ports, and a caller setting `width` needs one of them. This is the shape
+ * that makes `summary` viable as a default — survey cheaply, then pay for the
+ * two ports being set rather than for the type.
+ *
+ * Unmatched names are returned in `notFound` rather than dropped: silently
+ * answering three of four asked-for ports is how a model concludes a port does
+ * not exist.
+ */
+export function getNodeTypePorts(
+  typeName: string,
+  portNames: readonly string[]
+): (Pick<NodeTypeDetail, 'typeName' | 'displayName' | 'runtimeBehavior'> & {
+  inputs: PortDetail[];
+  outputs: PortDetail[];
+  notFound?: string[];
+}) | NodeTypeLookupMiss {
+  const full = getNodeTypeDetail(typeName);
+  if ('error' in full) return full;
+  const wanted = new Set(portNames);
+  const inputs = full.inputs.filter((p) => wanted.has(p.name));
+  const outputs = full.outputs.filter((p) => wanted.has(p.name));
+  const found = new Set([...inputs, ...outputs].map((p) => p.name));
+  const notFound = [...wanted].filter((n) => !found.has(n));
+  return {
+    typeName: full.typeName,
+    displayName: full.displayName,
+    inputs,
+    outputs,
+    // Carried whenever it exists here, not only for misses: a port this call
+    // could not find may be one `runtimeBehavior` is the only record of.
+    ...(full.runtimeBehavior ? { runtimeBehavior: full.runtimeBehavior } : {}),
+    ...(notFound.length > 0 ? { notFound } : {})
+  };
 }
 
 export function getNodeTypeDetail(typeName: string): NodeTypeDetail | NodeTypeLookupMiss {

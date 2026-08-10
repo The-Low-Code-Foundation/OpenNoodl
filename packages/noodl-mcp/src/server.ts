@@ -21,6 +21,7 @@ import { registerValidateTools } from './tools/validateTools';
 import { registerCreateProjectTools } from './tools/createProject';
 import { registerProvisionTools } from './tools/provisionTools';
 import { registerReviewTools } from './tools/review';
+import { ToolDisclosure, recordTools, registerFindTools } from './tools/disclosure';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const PKG_VERSION: string = require('../package.json').version;
@@ -28,15 +29,24 @@ const PKG_VERSION: string = require('../package.json').version;
 export interface ServerOptions {
   projectDir: string;
   allowWrites: boolean;
+  /**
+   * AWP-006 — advertise the authoring set and hold the rest behind `find_tools`.
+   * Defaults to true; `--all-tools` turns it off, which is the pre-AWP-006
+   * surface exactly.
+   */
+  deferTools?: boolean;
 }
 
 export interface CreatedServer {
   server: McpServer;
   store: ProjectStore;
+  /** AWP-006 — exposed so a caller (and the suite) can see the served surface. */
+  disclosure: ToolDisclosure;
 }
 
 export function createServer(options: ServerOptions): CreatedServer {
   const store = new ProjectStore(options.projectDir); // throws early on non-v2 targets
+  const deferTools = options.deferTools !== false;
   const server = new McpServer(
     { name: 'noodl-mcp', version: PKG_VERSION },
     {
@@ -79,7 +89,16 @@ export function createServer(options: ServerOptions): CreatedServer {
         // AAQ-011/F13. Stated because it is the step an agent otherwise skips:
         // a graph with Record nodes and no backend validates, builds, and then
         // does nothing at run time, and the agent has no panel to notice in.
-        'BACKENDS: an app with Record, User or Cloud Function nodes needs one. Call provision_backend FIRST ' +
+        'BACKENDS: an app with Record, User or Cloud Function nodes needs one. ' +
+        // AWP-006. The backend tools are 60 of the 89 and 59% of the schema
+        // bytes, and a storefront brief touches none of them — so they are held
+        // back by default. This sentence is where an agent building a data app
+        // learns that, and it is stated before provision_backend is named so the
+        // instruction never points at a tool the reader cannot currently see.
+        (deferTools
+          ? 'Its 60 tools are not advertised yet — call find_tools({group:"backend"}) and they arrive in your ' +
+            'next tool list (authoring a Record node reveals them too). Then provision_backend FIRST '
+          : 'Call provision_backend FIRST ') +
         '(it creates, starts and binds a local backend and pre-seeds the collections you name — declare their ' +
         'columns, or the Record nodes get no prop-* ports), then plan the components against it. It is ' +
         'deliberately not a plan operation: it starts a process and creates a database, which a plan cannot ' +
@@ -95,22 +114,35 @@ export function createServer(options: ServerOptions): CreatedServer {
     }
   );
 
-  registerReadTools(server, store, { allowWrites: options.allowWrites });
+  // AWP-006 — every registration below goes through the recorder, which keeps
+  // the SDK's handle so a group can be hidden at startup and revealed later.
+  // The recorder forwards `registerTool` and nothing else, because that is the
+  // only method these functions use; `tests/toolDisclosure.test.ts` asserts the
+  // manifest and the recorded set are the same, so a tool that escapes it fails
+  // the suite rather than becoming permanently unhideable.
+  const disclosure = new ToolDisclosure();
+  const rec = recordTools(server, disclosure);
+
+  registerReadTools(rec, store, { allowWrites: options.allowWrites });
   // LIB-006. Read-only and always registered: knowing what an import could not
   // convert is useful long before anyone is allowed to change anything.
-  registerImportReportTool(server, store);
-  registerCatalogTools(server);
-  registerValidateTools(server, store);
-  registerStyleReadTools(server, store);
-  registerDocsReadTools(server, store);
-  registerBackendReadTools(server);
+  registerImportReportTool(rec, store);
+  registerCatalogTools(rec);
+  registerValidateTools(rec, store);
+  registerStyleReadTools(rec, store);
+  registerDocsReadTools(rec, store);
+  registerBackendReadTools(rec);
   // AIX-010 — read-only: assembles the docs-retrofit context. The caller drafts
   // and writes back through write_project_doc.
-  registerReviewTools(server, store);
+  registerReviewTools(rec, store);
   // LAS-005 — read-only and unconditional, the same posture as the rest of the
   // read surface: rendering a project changes nothing about it, and a read-only
   // server is exactly where "is this page actually right?" gets asked.
-  registerRenderTools(server, store);
+  registerRenderTools(rec, store);
+  // AWP-006 — resident in both modes. A read-only server defers the docs and
+  // backend *read* tools too, so the door out of the deferred set cannot be
+  // behind the write flag.
+  registerFindTools(rec, disclosure);
   if (options.allowWrites) {
     // LAS-006 §4 — one plan registry, shared by the two write groups that both
     // have an opinion about it: the plan tools own the plans, and
@@ -120,19 +152,23 @@ export function createServer(options: ServerOptions): CreatedServer {
     // rejection of a code carries the recipe and the fifth carries its id. A
     // repair loop must not be re-sent the same fragment every turn.
     const exampleBudget = createExampleBudget();
-    registerAuthorTools(server, store, planRegistry, exampleBudget);
-    registerPlanTools(server, store, planRegistry, exampleBudget);
-    registerStyleWriteTools(server, store);
-    registerDocsWriteTools(server, store);
-    registerBackendWriteTools(server);
+    registerAuthorTools(rec, store, planRegistry, exampleBudget, disclosure);
+    registerPlanTools(rec, store, planRegistry, exampleBudget, disclosure);
+    registerStyleWriteTools(rec, store);
+    registerDocsWriteTools(rec, store);
+    registerBackendWriteTools(rec);
     // AAQ-011/F13. Write-gated, and it is the strongest write in the server: it
     // starts a process and creates a database. Read-only callers get the
     // diagnosis (checkBackendRequirements says a graph needs a backend) without
     // the ability to act on it, which is the same posture as everything else.
-    registerProvisionTools(server, store);
+    registerProvisionTools(rec, store);
     // AIX-012. Takes no store: it creates a project at a directory the caller
     // names, which is by definition not the one this server is pointed at.
-    registerCreateProjectTools(server);
+    registerCreateProjectTools(rec);
   }
-  return { server, store };
+  // AWP-006 — last, and it has to be: the handles do not all exist until every
+  // registration has run, and disabling a group before its tools are registered
+  // would silently hide nothing.
+  disclosure.applyPolicy({ deferTools });
+  return { server, store, disclosure };
 }

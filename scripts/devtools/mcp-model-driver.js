@@ -73,6 +73,8 @@ class McpStdioClient {
     this.buffer = '';
     this.child = null;
     this.exited = null;
+    /** AWP-006 — set by `notifications/tools/list_changed`, cleared on re-list. */
+    this.toolsChanged = false;
   }
 
   async start() {
@@ -116,7 +118,17 @@ class McpStdioClient {
       } catch {
         continue; // not protocol traffic; the server keeps stdout clean, but be forgiving
       }
-      if (msg.id === undefined || !this.pending.has(msg.id)) continue;
+      // AWP-006 — the server now hides the backend, docs, explore, project and
+      // theme groups until `find_tools` asks for them, and announces the change
+      // this way. A client that drops this notification never sees a revealed
+      // tool, which turns a cost saving into a missing capability; this rig is
+      // the one that measures whether that happened, so it must not be that
+      // client. Flag only — the re-list happens between turns, not mid-parse.
+      if (msg.id === undefined) {
+        if (msg.method === 'notifications/tools/list_changed') this.toolsChanged = true;
+        continue;
+      }
+      if (!this.pending.has(msg.id)) continue;
       const { resolve, reject } = this.pending.get(msg.id);
       this.pending.delete(msg.id);
       if (msg.error) reject(new Error(`${msg.error.code}: ${msg.error.message}`));
@@ -406,16 +418,67 @@ async function main() {
   });
 
   const init = await client.start();
-  const tools = await client.listTools();
-  const served = opts.toolsAllow ? tools.filter((t) => opts.toolsAllow.includes(t.name)) : tools;
-  const openAiTools = served.map(toOpenAiTool);
+  let tools = await client.listTools();
+  client.toolsChanged = false;
+  let served = opts.toolsAllow ? tools.filter((t) => opts.toolsAllow.includes(t.name)) : tools;
+  let openAiTools = served.map(toOpenAiTool);
+
+  /**
+   * AWP-006 — re-read the advertised surface after the server said it changed.
+   *
+   * Called between turns rather than inside the tool loop: `openAiTools` is what
+   * goes on the wire with the *next* request, and a mid-turn swap would rebuild
+   * the payload for calls the model has already emitted.
+   */
+  const refreshTools = async (turn) => {
+    if (!client.toolsChanged) return;
+    client.toolsChanged = false;
+    const before = served.length;
+    tools = await client.listTools();
+    served = opts.toolsAllow ? tools.filter((t) => opts.toolsAllow.includes(t.name)) : tools;
+    openAiTools = served.map(toOpenAiTool);
+    const schemaChars = JSON.stringify(openAiTools).length;
+    record({
+      kind: 'tools-changed',
+      turn,
+      toolCount: served.length,
+      added: served.length - before,
+      toolSchemaChars: schemaChars
+    });
+    process.stderr.write(
+      `[driver] tools/list_changed: ${before} → ${served.length} tools ` +
+        `(~${Math.round(schemaChars / 4)} tokens/turn from here)\n`
+    );
+  };
 
   if (opts.listTools) {
     const schemaChars = JSON.stringify(openAiTools).length;
+    const instructionChars = (init.instructions || '').length;
     process.stdout.write(`server: ${init.serverInfo && init.serverInfo.name} ${init.serverInfo && init.serverInfo.version}\n`);
     process.stdout.write(`tools advertised: ${served.length} (of ${tools.length})\n`);
     process.stdout.write(`tool schema payload: ${schemaChars} chars (~${Math.round(schemaChars / 4)} tokens)\n`);
-    process.stdout.write(`instructions: ${(init.instructions || '').length} chars\n\n`);
+    process.stdout.write(`instructions: ${instructionChars} chars\n`);
+    // AWP-006's acceptance is stated about this total, so it is printed rather
+    // than left to be added up by hand from the two lines above it.
+    process.stdout.write(
+      `RESIDENT SURFACE: ${schemaChars + instructionChars} chars ` +
+        `(~${Math.round((schemaChars + instructionChars) / 4)} tokens/turn)\n`
+    );
+    // What is *not* advertised, straight from the server rather than from a list
+    // kept here — a second copy of the manifest in a devtool is how the two stop
+    // agreeing.
+    if (served.some((t) => t.name === 'find_tools')) {
+      try {
+        const inv = await client.callTool('find_tools', {});
+        const payload = JSON.parse(inv.content[0].text);
+        for (const g of payload.groups) {
+          process.stdout.write(`  group ${g.group.padEnd(8)} ${String(g.tools).padStart(3)} tools  ${g.advertised ? 'advertised' : 'held'}\n`);
+        }
+      } catch {
+        /* an older server without find_tools; the totals above still stand */
+      }
+    }
+    process.stdout.write('\n');
     for (const t of served) {
       process.stdout.write(`${t.name}\t${JSON.stringify(t.inputSchema || {}).length}\n`);
     }
@@ -555,6 +618,9 @@ async function main() {
         record({ kind: 'tool-result', turn: turns, name, isError: flat.isError, images: flat.images, truncated: flat.truncated, text: flat.text });
         messages.push({ role: 'tool', tool_call_id: call.id, content: flat.text });
       }
+
+      // AWP-006 — after the turn's calls, before the next request.
+      await refreshTools(turns);
     }
   } finally {
     await client.stop();

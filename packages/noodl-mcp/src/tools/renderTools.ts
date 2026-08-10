@@ -39,12 +39,13 @@ export function registerRenderTools(server: McpServer, store: ProjectStore): voi
       description:
         'Render this project headless, measure the result and return the numbers AND the screenshots. ' +
         'Use it after applying a plan and before saying the work is done — a graph is a claim, a render is ' +
-        'evidence. Reports per viewport: the width the page refuses to collapse below, horizontal overflow, ' +
-        'the font-weight and font-size sets, broken images, empty decorated boxes, repeated groups that came ' +
-        'out one column wide, and texts still rendering a node-type default like "Text" (the signature of a ' +
-        'component instantiated with parameters it has no Component Inputs for). ' +
-        'Takes about 8 seconds. Needs the built viewer bundle and a Chrome/Chromium binary; if either is ' +
-        'missing the error says which and how to get it. ' +
+        // AWP-006 §1's third lever: the per-viewport enumeration and the
+        // prerequisite prose were ~450 characters resent every turn to say what
+        // the response and the error message already say at the moment they
+        // matter. The two sentences that change behaviour — call it, and look at
+        // the pictures — are kept in full.
+        'evidence. Reports per viewport: minimum width, overflow, the font sets, broken images, empty ' +
+        'decorated boxes, one-column repeats, and texts still showing a node-type default. Takes ~8s. ' +
         'LOOK AT THE SCREENSHOTS: a picture that loads is not a picture of the right thing, and no number can ' +
         'tell you it is the wrong one.',
       inputSchema: {

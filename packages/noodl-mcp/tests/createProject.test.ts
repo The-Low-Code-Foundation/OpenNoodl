@@ -17,7 +17,7 @@ import { planFromScope, scopeDocuments, emptyScope, mergeScope } from '../../noo
 import type { ProjectScope } from '../../noodl-editor/src/editor/src/models/AiAssistant/scoping/scope';
 import { ProjectStore } from '../src/project/ProjectStore';
 import { SKELETON_COMPONENTS } from '../src/tools/createProject';
-import { call, connect, copyFixture, type TestSession } from './helpers';
+import { call, connect, copyFixture, reveal, type TestSession } from './helpers';
 import type { ToolErrorPayload } from '../src/tools/responses';
 
 interface CreateProjectPayload {
@@ -61,6 +61,7 @@ describe('AIX-012 create_project', () => {
     // The server still needs a project of its own to be pointed at — creation
     // necessarily targets a *different* directory.
     session = await connect(copyFixture(), true);
+    await reveal(session, 'project'); // AWP-006 — create_project is deferred by default
     tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'aix012-create-'));
   });
 

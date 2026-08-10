@@ -143,3 +143,8 @@ A model that has never seen NodeGX builds the storefront brief through MCP, and:
 Then re-run the storefront replay on DeepSeek V4 Pro — the cheapest complete builder measured, at
 $5.83 — and compare against session 8's row. That is the phase's own benchmark, and it costs about
 $4 to run.
+
+> ✅ **Run 2026-08-10, after all six tasks.** Criterion 5 was the loosest of the five and is now the
+> most comfortably met: **turn one billed 8,578 prompt tokens against session 8's 22,968**, and the
+> resident tool surface is 7,828 tokens/turn against 25,886. The row is in
+> [AWP-006 §The re-replay](AWP-006-PROGRESSIVE-TOOL-DISCLOSURE.md#the-re-replay--2026-08-10).

@@ -147,8 +147,19 @@ export interface ListNodeTypesResponse {
   categories: string[];
 }
 
+/** AWP-005 §2 — what `get_node_type({ports: [...]})` returns per type. */
+export interface NodeTypePortsView {
+  typeName: string;
+  displayName: string;
+  inputs: NodeTypeDetail['inputs'];
+  outputs: NodeTypeDetail['outputs'];
+  runtimeBehavior?: string;
+  /** Names that matched no port. Reported rather than dropped. */
+  notFound?: string[];
+}
+
 export interface GetNodeTypeResponse {
-  types: Array<NodeTypeDetail | NodeTypeSummary | NodeTypeLookupMiss>;
+  types: Array<NodeTypeDetail | NodeTypeSummary | NodeTypePortsView | NodeTypeLookupMiss>;
   /** Types degraded to summaries because the full response would blow the
    * host's tool-result cap (DEBT-009). Re-request these individually. */
   summarized?: string[];
@@ -243,10 +254,23 @@ export interface VisualRootsSummary {
   visualRootsDerived?: boolean;
 }
 
+/**
+ * AWP-006 — the backend tools arrived because the graph asked for them.
+ *
+ * Present only on the write that first introduced a node needing a backend, and
+ * only when the backend group was still deferred. It is a disclosure event, not
+ * a diagnostic: the write succeeded, and what changed is the surface the caller
+ * can see from its next turn.
+ */
+export interface BackendDisclosureSummary {
+  backendToolsRevealed?: string;
+}
+
 export interface CreateComponentResponse
   extends WriteValidationSummary,
     PageRegistrationSummary,
     NodeIdRemapSummary,
+    BackendDisclosureSummary,
     VisualRootsSummary {
   created: string;
   legacyName: string;
@@ -265,11 +289,33 @@ export interface UpdateComponentResponse
   extends WriteValidationSummary,
     PageRegistrationSummary,
     NodeIdRemapSummary,
+    BackendDisclosureSummary,
     VisualRootsSummary {
   updated: string;
   revision: string;
   /** Present for the `operations` form; absent for `set`. */
   applied?: string[];
+}
+
+/**
+ * AWP-006 — `find_tools`' payload.
+ *
+ * `groups` is returned on every call, including the ones that reveal nothing,
+ * because the inventory is the thing a model needs to decide what to ask for
+ * next and it is cheaper to always send it than to make the model ask twice.
+ */
+export interface FindToolsResponse {
+  /** Names revealed by this call. Empty when they were already advertised. */
+  revealed: string[];
+  groups: {
+    group: string;
+    title: string;
+    purpose: string;
+    tools: number;
+    advertised: boolean;
+  }[];
+  /** Present only when something was revealed: how the client sees it. */
+  note?: string;
 }
 
 export interface DeleteComponentResponse {

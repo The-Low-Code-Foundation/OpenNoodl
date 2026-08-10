@@ -85,6 +85,8 @@ import { connectionSchema, nodeSchema } from '../vocabulary';
 import { writeProjectDocFile } from './docsTools';
 import type { ExampleBudget } from './attachments';
 import { examplesBlock } from './attachments';
+import type { ToolDisclosure } from './disclosure';
+import { backendRevealPayload } from './disclosure';
 import { guarded, jsonResult } from './util';
 
 // ─── LAS-006: the structured operation fields, in this client's dialect ───────
@@ -458,7 +460,9 @@ export function registerPlanTools(
   server: McpServer,
   store: ProjectStore,
   registry: PlanRegistry,
-  examples: ExampleBudget
+  examples: ExampleBudget,
+  // AWP-006 — see registerAuthorTools. Optional for the same reason.
+  disclosure?: ToolDisclosure
 ): void {
   const plans = (registry as PlanRegistryInternal).plans;
 
@@ -785,6 +789,12 @@ export function registerPlanTools(
           staged: operation.id,
           target: operation.target,
           warnings: validation.warnings,
+          // AWP-006 — staging, not applying, is the right moment: a plan that
+          // stages a Record node has already decided the app needs a backend,
+          // and provision_backend must be called *before* apply so the plan's
+          // components are authored against a bound backend rather than
+          // retrofitted onto one.
+          ...backendRevealPayload(disclosure?.revealForNodes(candidate.nodes.nodes) ?? []),
           // LAS-002 — the words, not the integer. This is the moment the agent
           // can still act: the candidate is in memory and nothing is on disk.
           ...validationBlock(validation.diagnostics, validation.summary),

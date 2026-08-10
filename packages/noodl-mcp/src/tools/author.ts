@@ -25,6 +25,8 @@ import { deconflictNodeIds, remapNote } from '../project/nodeIds';
 import type { ProjectStore } from '../project/ProjectStore';
 import type { ExampleBudget } from './attachments';
 import { examplesBlock } from './attachments';
+import type { ToolDisclosure } from './disclosure';
+import { backendRevealPayload } from './disclosure';
 import type { PlanRegistry } from './planTools';
 import type { WriteValidation } from '../validate';
 import { validateCandidate, validateDeletion } from '../validate';
@@ -289,7 +291,11 @@ export function registerAuthorTools(
   server: McpServer,
   store: ProjectStore,
   plans: PlanRegistry,
-  examples: ExampleBudget
+  examples: ExampleBudget,
+  // AWP-006. Optional so the four existing call sites in the suite that build a
+  // registration directly keep working; when absent nothing is deferred, which
+  // is the same posture `--all-tools` gives.
+  disclosure?: ToolDisclosure
 ): void {
   // Rendered from the shared vocabulary (AAQ-005), so the two doors describe a
   // node with one set of words and `update_component` cannot drift from
@@ -373,6 +379,9 @@ export function registerAuthorTools(
           ...registrationSummary(registration),
           ...remapPayload(remapped),
           ...successPayload(validation),
+          // AWP-006 — after the write, because a rejected candidate is not
+          // evidence that anybody intends to build a data app.
+          ...backendRevealPayload(disclosure?.revealForNodes(candidate.nodes.nodes) ?? []),
           ...visualRootsPayload(candidate, args.visual_roots),
           // LAS-006 §4 — one line, on the door a page most often comes through
           // without a plan. Advisory and not a refusal: the bag-of-nodes door
@@ -480,6 +489,7 @@ export function registerAuthorTools(
           ...registrationSummary(registration),
           ...remapPayload(remapped),
           ...successPayload(validation),
+          ...backendRevealPayload(disclosure?.revealForNodes(candidate.nodes.nodes) ?? []),
           ...visualRootsPayload(candidate, args.set?.visual_roots)
         };
         return jsonResult(payload);

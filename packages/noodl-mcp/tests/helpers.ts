@@ -93,6 +93,21 @@ export async function callRawText(
   return res.content?.[0]?.text ?? '';
 }
 
+/**
+ * AWP-006 — bring a deferred group into the advertised surface.
+ *
+ * `connect()` deliberately reproduces the shipped default (the backend, docs,
+ * project and theme groups deferred), so the seven suites that exercise those
+ * tools reach them **through `find_tools`, the same door a model has** — rather
+ * than through an `--all-tools` bypass that would prove only that the tools
+ * still exist. Their green is now evidence that the disclosure path works, which
+ * is the property AWP-006's warning is about.
+ */
+export async function reveal(session: TestSession, group: 'backend' | 'docs' | 'explore' | 'project' | 'theme'): Promise<void> {
+  const res = await call<{ revealed: string[] }>(session, 'find_tools', { group });
+  if (res.isError) throw new Error(`find_tools({group:"${group}"}) failed: ${JSON.stringify(res.data)}`);
+}
+
 export function readJson<T>(projectDir: string, rel: string): T {
   return JSON.parse(fs.readFileSync(path.join(projectDir, rel), 'utf8')) as T;
 }
