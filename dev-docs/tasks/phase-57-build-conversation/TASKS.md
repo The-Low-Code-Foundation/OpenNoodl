@@ -40,6 +40,42 @@ box — its header is inside the scroll area.
 ✅ = built **and on `cline-dev`** (BLD-007 and BLD-012 merged 2026-08-09; **BLD-001 built, driven and
 closed 2026-08-09** — `a93720b3`, `02c3072c`, `458e189f`).
 
+**Session 15 (2026-08-10) — BLD-013 built and driven; BLD-014's webview half built and driven.
+14 of 17 built, 12 driven.** Track B's frame paid for itself exactly as promised: both tasks are a
+`ReferenceKind` member, a resolver, a glyph — plus the one thing BLD-011 declared and never wired,
+which was the media path from the composer to the wire.
+
+✅ **Q5 answered, and the answer removed the dependency rather than costing one.** Richard: *"If
+they're using an image model (Anthropic, OpenAI, Google) accept. If not throw a warning like 'PDFs
+might not be supported by this model'."* That is a **capability gate, not a parser** — Anthropic's
+Messages API takes a base64 `application/pdf` block natively and extracts server-side, so
+`pdfjs-dist` (the phase's one genuinely new dependency) would have bought a worse version of
+something the endpoint already does. ⚠️ The registry flag `documents` is deliberately **narrower
+than `vision`**: a model that reads images is not one whose endpoint takes a PDF, and claiming it
+from the vision flag would have sent bytes to an endpoint that refuses them.
+
+✅ **Q6 answered**: a one-click offer on the receipt, not an automatic ~8s render on every apply.
+
+🔴 **The finding worth more than either task: media placement on the authoring turn is a Rule 6
+question, not a formatting one.** Media cannot be concatenated into a string, so a turn carrying it
+converts its character `cacheBoundary` into a `cache: true` marker — and the natural implementation
+(media first, as every provider's guidance says, and as the planning turn correctly does) puts a
+900KB screenshot **ahead of the breakpoint**. That does not cost the screenshot; it re-bills the
+entire AIX-007 stable prefix, uncached, on every operation of every plan, with nothing on screen to
+say so. `mediaCacheSafety.test.ts` asserts the marked block's **index**, not just its bytes, and was
+inverted before it was trusted — 4 of 7 go red.
+
+🔴 **And BLD-011's own fix became this task's defect.** `.Picker { position: relative; width: 100% }`
+was BLD-011's answer to a list that opened 113.8px wide; with two more buttons in the row, a
+full-width flex item claims the whole line and pushed both onto a second row at **every** width —
+67px tall at 248px and still 67px at 800px, where all three fit in 742px. **A rule that was right
+about its old subject, for the sixth time this phase.**
+
+⚠️ **A near-miss worth carrying: the first width sweep reported a 71px overflow that did not exist.**
+A synchronous loop measured before layout settled in an occluded renderer. Re-swept with real frame
+waits it is 0 everywhere. **The occlusion trap that clamps timers and kills `ResizeObserver` also
+poisons a synchronous measurement sweep** — the tool this phase reaches for most.
+
 **Session 14 (2026-08-10) — BLD-011 built and driven. 12 of 17 built, 10 driven.** Track B's frame
 exists: the composer is a context builder, a turn carries references, and each remaining Track B task
 adds a `kind` plus a resolver and touches nothing else. Driven for **$0.029799**, one call.
@@ -224,8 +260,8 @@ lines and they are the vocabulary the rest of the track speaks.
 |---|---|---|---|
 | BLD-011 ⭐ ✅ | [BLD-011-TURN-CARRIES-REFERENCES.md](BLD-011-TURN-CARRIES-REFERENCES.md) | the composer becomes a context builder; one `Reference` model | **driven $0.0298; 4 of 6 criteria met, 2 partly — staleness needs BLD-014, `.jsonl` needs a 2nd send. F8 built here.** |
 | BLD-012 ⭐ ✅ | [BLD-012-MULTIMODAL-MESSAGES.md](BLD-012-MULTIMODAL-MESSAGES.md) | `AiMessage.content` widens to blocks; declared degradation | adapters exist |
-| BLD-013 | [BLD-013-ATTACHMENTS.md](BLD-013-ATTACHMENTS.md) | drop/paste/pick markdown, text, images; PDF behind a decision | one new dep |
-| BLD-014 ⭐ | [BLD-014-LOOK-AT-IT.md](BLD-014-LOOK-AT-IT.md) | two capture paths: the live webview, and CDP for any viewport or URL | harness built |
+| BLD-013 ✅ | [BLD-013-ATTACHMENTS.md](BLD-013-ATTACHMENTS.md) | drop/paste/pick markdown, text, images **and PDFs** | **driven — Q5 answered, ZERO new deps** |
+| BLD-014 ⭐ 🟡 | [BLD-014-LOOK-AT-IT.md](BLD-014-LOOK-AT-IT.md) | two capture paths: the live webview, and CDP for any viewport or URL | **webview half driven; CDP half still gated on F22. Q6 answered** |
 | BLD-015 | [BLD-015-WEB-SEARCH.md](BLD-015-WEB-SEARCH.md) | one editor-side backend; citations carry source and read-time | nothing |
 | BLD-016 | [BLD-016-MENTIONS.md](BLD-016-MENTIONS.md) | `@` over components, docs, pages, collections, attachments | CM6 precedent |
 
