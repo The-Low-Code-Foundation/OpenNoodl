@@ -75,3 +75,64 @@ one running. `provision_backend`'s reaper cleans up orphans at the *next* server
 
 ⚠️ **Run it against `--all-tools` too, at least once.** The same brief on the undeferred surface is
 the control: if the model fails to build the app in both, the defect is not disclosure.
+
+⚠️ The rig could not do this until 2026-08-10 — `--tools` narrowed the surface and nothing widened
+it back, so **the control was unrunnable and the question unanswerable from evidence**. The driver
+now takes `--all-tools`.
+
+## As run — 2026-08-10
+
+Both runs: `deepseek-ai/DeepSeek-V4-Pro`, verbatim brief (700 chars), fresh `create_project` mint,
+`--max-turns 30 --max-tokens 16384`, temperature 0.2, no rescues.
+
+| | **deferred (20 tools)** | control (`--all-tools`, 90) |
+|---|---|---|
+| tool schema payload | 28,297 chars | 102,162 chars |
+| turn-one prompt tokens | **8,458** | 27,380 |
+| billed input / cost | **1,555,184 / $2.07** | 1,825,493 / $2.43 |
+| tool calls / rejections | 41 / 1 | 48 / 6 |
+| `provision_backend` | **turn 5** | turn 15 |
+| `apply_plan` | **turn 25** | **never** |
+| catalog-research calls | 14 | 22 |
+| stop | max-turns 30 | max-turns 30 |
+| **what is on disk** | **the whole app** | **nothing — no write ever applied** |
+
+### The four questions
+
+| # | | |
+|---|---|---|
+| 1 | works out it needs a backend | ✅ reached for `Record`/`User` nodes unprompted |
+| 2 | finds it *can* have one, from a surface where the tools are hidden | ✅ **`find_tools({group:"backend"})` at turn 3**, cold — 60 tools revealed, one `tools_list_changed` |
+| 3 | provisions one, columns declared | ✅ `StockItem{name:String, count:Number, supplier:String}` |
+| 4 | the page works against it | ✅ `DbCollection2` → `For Each(template:"/Components/StockItemRow")`; `New`/`Set`/`DeleteDbModelProperties`; `prop-count`/`prop-name`/`prop-supplier` resolved from the provisioned columns; `User`/`LogIn`/`SignUp`/`LogOut` present and the start page is the sign-in gate |
+
+It also wired the brief's hardest line without being told how: `Expression "count === 0"` →
+`out_of_stock_bg.visible`.
+
+### ⚠️ The two doors were scored separately, and only one of them has ever been walked
+
+`backendToolsRevealed` appears **zero times** in the transcript. The model searched *before* it
+authored, so `ToolDisclosure.revealForNodes` never fired. **The search door is proven by a model;
+the auto-reveal is still proven only by spec.** A run that authored a `Record` node before searching
+would exercise it, and no run has.
+
+### The control answered the question it was built to answer, and inverted the expected sign
+
+The failure mode AWP-006 was afraid of is *a model that never provisions a backend because it never
+knew it could*. **The control is the run that failed** — 90 tools, everything visible, and it never
+applied a single write. It provisioned ten turns later than the deferred run, spent 22 calls
+browsing the node catalog, staged eight operations, discarded the plan at turn 28, started a second
+one, and ran out.
+
+So the brief's own test resolves cleanly in the direction that matters: **the defect is not
+disclosure.** Deferral did not cost the capability; the deferred surface is the one that shipped a
+working app, for less money and with a sixth of the rejections.
+
+⚠️ **Do not read the inverse as established.** This is **n=1 per arm** at temperature 0.2, and the
+sign could be run variance. What the pair licenses is the negative — deferral did not break it —
+and a *hypothesis* worth another pair of runs: that `find_tools` handed the model a grouped map of
+the capability at turn 3, where 90 undifferentiated tools sent it into the catalog instead. The
+cheap way to test it is two more runs per arm; nothing in phase 58 depends on the answer.
+
+**Backends left behind: none.** Both stopped with their MCP server, as `provision_backend` documents
+— port free, pids gone, verified after each run.
