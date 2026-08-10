@@ -1,6 +1,7 @@
 # Experiment — Generated Lessons (LEARN-007…010)
 
-**Status:** SPECCED 2026-08-02. Nothing built.
+**Status:** SPECCED 2026-08-02. Nothing built. **Open questions answered 2026-08-09 — see §8.**
+**Verdict on the arc itself (2026-08-09):** run it, *and* author the spine regardless (§8.4).
 **Phase:** 17 (Track E — Pedagogy as a product line)
 **Tasks:** LEARN-007, LEARN-008, LEARN-009, LEARN-010
 **Time-box:** 4 weeks, hard, on the LEARN-004 precedent
@@ -156,7 +157,9 @@ phase with its own doc.
 - **Per-learner project generation.** The starter graph comes from the pattern, not from the model.
 - **BYO API key, billing, or any product plumbing.** Generation runs on Richard's key, from a script.
 - **The classroom/13–17 audience question.** A BYO-key product cannot serve it; that is a real
-  consequence and it is LEARN-002's to weigh, not this arc's.
+  consequence and it is LEARN-002's to weigh, not this arc's. ✅ **Answered 2026-08-09 — see §9:**
+  the intended shape is a **free hosted endpoint**, not BYO key, which is why LEARN-002 kept both
+  audiences. Still not built here.
 - **NodeGX↔Anchor integration.** No code moves between the repos. The prompt design borrows Anchor's
   projection technique; nothing imports anything.
 
@@ -209,19 +212,50 @@ Stated up front so the experiment can falsify it:
 If F2 comes in above a quarter, the patterns are not as predictable as they look, and that — not the
 prose — is the finding.
 
-## 8. Open questions for Richard
+## 8. Open questions for Richard — ✅ answered 2026-08-09
 
-1. **Which concept?** The arc uses exactly one, and it should be the one where personalisation
-   plausibly matters most and the graph pattern is most templatable. **Recommendation: lists /
-   repeaters** (CURRICULUM-DESIGN L7) — it is the concept Richard named, it is the most theme-bound,
-   and its "empty preview" failure is the sharpest test of §3.3.
-2. **Twelve goals — chosen or sampled?** Hand-picking twelve goals risks picking twelve easy ones.
-   **Recommendation:** six Richard picks, six drawn from real stated goals (Anchor onboarding, alpha
-   signups) if any exist by then.
-3. **Who are the F5/F6 human testers?** The automated classes need nobody; F5 and F6 need people who
-   deviate from instructions. If the answer is "Richard, twelve times", say so — it is a weaker
-   result and worth naming as such in the verdict.
-4. **Does a no-go on generation still mean a go on the spine?** The spine is worth authoring
-   regardless — [ALPHA-006](../phase-33-alpha-launch/ALPHA-006-DOCS-PLATFORM.md) reports 35% of
-   nodes have no docs page, and one concept corpus serves docs *and* lessons. Confirm that reading,
-   because it changes what a no-go costs.
+1. **Which concept?** ✅ **Lists / repeaters** (CURRICULUM-DESIGN L7), as recommended — the concept
+   Richard named, the most theme-bound, and the one whose "empty preview" failure is the sharpest
+   test of §3.3.
+2. **Twelve goals — chosen or sampled?** ✅ **Six Richard picks, six drawn from real stated goals**
+   (Anchor onboarding, alpha signups). If no real goals exist when the run starts, fall back to
+   twelve picked and **say so in the verdict** — hand-picked goals risk being twelve easy ones.
+3. **Who are the F5/F6 human testers?** ✅ **Richard, plus one or two community members who have
+   offered.** Better than Richard alone, and still small: name the sample size in the verdict and do
+   not generalise from it. The testers who matter are the ones who **deviate** from the instructions.
+4. **Does a no-go on generation still mean a go on the spine?** ✅ **Yes — confirmed, and the
+   evidence is stronger than this document claimed.** [ALPHA-006](../phase-33-alpha-launch/ALPHA-006-DOCS-PLATFORM.md)
+   reported 35% of nodes with no docs page. Re-measured 2026-08-09: **all 175 entries in
+   `node-catalog-enriched.json` have no `summary` and no `description`** — there is no teaching prose
+   for any node anywhere in the product, and the docs site, the node picker and the AI authoring path
+   all read from that file. One concept corpus serves all of them. **The spine is authored either
+   way**, and the experiment decides only how lessons are *delivered*.
+
+## 9. New decision — the free generation endpoint (2026-08-09)
+
+Richard, answering question 2:
+
+> *"If we do any AI steps, it would be great if we could find a cheap model on DeepInfra or
+> equivalent that can handle it, then offer it to people using NodeGX for free… and return the lesson
+> choices, objectives, whatever to their editor free of charge and without using their own API key,
+> so anyone can do it without any hindrance."*
+
+**Accepted as the intended product shape, and explicitly *not* part of this arc** — §3.8 already
+excludes "BYO API key, billing, or any product plumbing", and that stands. The experiment runs from a
+script on Richard's key against fixtures; nothing ships to a learner (§3.7).
+
+It matters here for one reason: **it removes the objection that killed the classroom audience.** A
+BYO-key product cannot serve a school, which §3.8 named as a real consequence and handed to
+LEARN-002. A free hosted endpoint answers it — so CURRICULUM-DESIGN's "both adults and teenagers"
+(D1) stays viable rather than being quietly narrowed to adults with API keys.
+
+Filed as **[LEARN-011](./LEARN-011-THE-FREE-LESSON-ENDPOINT.md)**, stubbed not specced. Two things
+that must not be lost between now and then:
+
+- **A GitHub secret is not a runtime secret.** Anything shipped in the Electron app is readable by
+  anyone who installs it. The key has to live behind a small hosted endpoint that the editor calls —
+  that is a service to run, monitor and pay for, not a config value.
+- **The cheap model is a variable the experiment measures.** LEARN-010's failure rate is measured on
+  whichever model generates. A frontier model passing says nothing about a cheap one, and this arc's
+  whole output is a number. Either run the experiment on the model you intend to ship, or run both
+  and report the gap.

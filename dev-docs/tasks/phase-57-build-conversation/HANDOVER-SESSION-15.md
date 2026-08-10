@@ -162,7 +162,16 @@ AI model registry treats openai-compatible as sharing the OpenAI catalogue
 AI model registry has exactly one default per provider that owns models
 ```
 
-The two real bugs behind them are unchanged: the registry expects `gpt-4o`/`gpt-4o-mini` where the
+🔴 **And a correction to the recorded baseline that a later run forced.** After the F22 work, a
+`test:ci` run at seed **82196** came back with **9** failures — the 6 plus **BEN-001 ×3**. Since I had
+just changed a module the component bench imports, I could not assume it was inherited. Re-running
+**the same commit at seed 97132 returned 6**. So the trio is **order-dependent**, and earlier
+handovers' *"BEN-001 ×3 did not appear at any of the three seeds"* is falsified rather than
+confirmed. They fail with `Expected $.length = 0 to equal 2` — the fixture component came back with
+no ports at all, which is a spec-order effect on `ProjectModel`. **6 is the floor; a 9 is not
+automatically yours — re-run at another seed first.**
+
+The two real bugs behind the six are unchanged: the registry expects `gpt-4o`/`gpt-4o-mini` where the
 catalogue now returns six ids led by `deepseek-ai/DeepSeek-V4-Pro`, and AIX-006's style pass is not
 emitting `STYLE LINT`. ⚠️ **I checked whether adding `documents: true` to the `claudeFrontier` band
 had caused the registry pair — it had not**: both are in the baseline by name, and neither touches
@@ -189,14 +198,43 @@ Every commit here was pathspec-scoped. No `git add -A`, no `git stash`. The pre-
 memory and opened the component bench; `project.json` was never written and no `docs/` file was
 created or removed. BLD-008's criterion-1 dependency on the fixture's state is intact.
 
+## ✅ F22 resolved, after the handover was first written
+
+Richard chose **option 2 — a new no-build package**. `@nodegx/render-measure` now holds
+`measureExpression`, `summarise`, the thresholds, the finding vocabulary and
+`placeholderStringsFromCatalog`; `render-report.js` requires it and re-exports all 22 names it used
+to own, so `noodl-mcp` and `measure-from-disk.js` are untouched — its 41 specs, graded against
+recorded measurements from seven real builds, stayed green across the move.
+
+⚠️ **Plain CJS with a hand-written `index.d.ts`, unlike this repo's seven other no-build packages,
+which point `main` at `.ts`.** `measure-from-disk.js` is run by bare `node`, and bare `node` cannot
+`require` a `.ts` file. The cost is real and stated in the file: `tsc` cannot check the declarations
+against the source, so they are narrow on purpose.
+
+**And it closed BLD-014's build item 4 for the webview producer** — the second reason F22 had to go.
+*"Never ship a capture path that returns only an image"* was unbuildable while `summarise` sat behind
+Node requires. The editor now evaluates the identical expression through
+`webview.executeJavaScript` and gets findings in one vocabulary. Verified inside a live sandbox:
+
+```
+0 errors, 1 warning (empty-decorated-box). preview 800×150px, 2 texts, 2 on screen, 0 images.
+```
+
+⚠️ **A spec of mine was decoration and inverting it is what showed me.** The purity check's
+behavioural half patched `Module._load` and asserted the module still loaded — but jest supplies its
+own module registry, so the patch intercepted nothing and it passed whatever the source did. Adding
+`require('path')` turned only the *textual* check red. It now compiles the source with `require` out
+of scope, which is the actual condition in a browser bundle, and both bite.
+
 ## What to do next
 
 1. **BLD-015 and BLD-016 are now the cheap ones**, and cheaper than BLD-013 was: the media path
    exists, so a search result or an `@` mention is genuinely just a kind, a resolver and a glyph.
    BLD-016 additionally wants the `@` keyboard path into the picker that already backs it.
-2. **BLD-014's CDP half needs the F22 packaging decision first** — *where the shared render
-   substrate lives*. Three named ways out are in LAS-005 §5. It is a packaging decision, not a wiring
-   one; **do not discover it mid-task.** The webview half deliberately needed none of it.
+2. ✅ **BLD-014's CDP half is unblocked.** F22 is resolved and the measurement half is already proven
+   inside the editor. What remains is transport: a `Page.navigate` entry point for an arbitrary URL,
+   and the viewport vocabulary — `DEFAULT_VIEWPORTS` already exports it. ⚠️ A URL capture is a
+   network egress and build item 7 says to say so before the first one.
 3. **BLD-010's list is now nine**: BLD-004's R4 (Ollama) and R5 (`reasoning_content`); BLD-006's
    R12; BLD-017's F2 and F4; BLD-008's drafting turns + restart-resume; BLD-011's R9; and now
    **BLD-013's drag-and-drop + picker paths** and **BLD-014's on-screen staleness**.

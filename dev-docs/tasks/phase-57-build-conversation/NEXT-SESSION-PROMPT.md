@@ -31,9 +31,10 @@ sessions and their commits, just be patient and get the job done. We don't need 
    **ask Richard before stopping it** — the editor is a queue, not a resource to seize.
 3. ⚠️ **Never run `test:ci` with a dev stack up** — it manufactures phantom failures. Stop the stack,
    redirect to a file, `grep -E "^Jasmine:"`; never `tail` it, the `FAILED:` list prints *after* the
-   verdict line. **The baseline is 6 failures, confirmed by name at four seeds** (39386, 30232,
-   27603, 52977). ⚠️ **Do not diff the spec count** — it moved 2596 → 2632 purely because the
-   sibling's *uncommitted* Jasmine specs are wired into two `index.ts` barrels.
+   verdict line. **The baseline is 6 failures, confirmed by name at five seeds** (39386, 30232,
+   27603, 52977, 97132) — **but see the BEN-001 note below: a run can legitimately show 9.**
+   ⚠️ **Do not diff the spec count** — it moved 2596 → 2632 purely because the sibling's
+   *uncommitted* Jasmine specs are wired into two `index.ts` barrels.
 4. **`ai-test` holds two things that look like litter and are not.** Its `project.json` carries a
    sibling's Slider/Expression graph; `docs/uk-vat.md` is BLD-007's acceptance fixture. **Do not
    clean either.** Session 15 drove the whole of BLD-013 against this project without writing to it —
@@ -57,8 +58,15 @@ the call you were given permission for.
 several sessions because each one added to the last one's number. **Count it off the tables in
 `TASKS.md`.** Track A is 9 of 11; Track B is 3 of 6 plus a half.
 
-**Both of Richard's open decisions are now answered and recorded in their task files** — Q5 (PDF:
-a capability gate, no library) and Q6 (a capture is a one-click offer, not automatic).
+**All three open decisions are now answered and recorded in their task files** — Q5 (PDF: a
+capability gate, no library), Q6 (a capture is a one-click offer, not automatic) and **F22 (the
+shared render substrate: a no-build package, `@nodegx/render-measure`)**.
+
+⚠️ **Read `packages/nodegx-render-measure/src/index.js`'s header before touching it.** It records
+the two rejected F22 options and why, and the one rule the package exists to hold: **no `require`
+in it, ever.** A single `require('path')` to build one file path would not fail a typecheck, would
+not change a number, and would silently put Node in the renderer bundle. There is a spec that bites
+on the source text and a second that evaluates it with `require` out of scope.
 
 ## What is actually left
 
@@ -68,10 +76,14 @@ a capability gate, no library) and Q6 (a capture is a one-click offer, not autom
 | **BLD-015** | web search | Same shape, one more resolver. Needs a backend decision (Q4). |
 | **BLD-009** | expanded mode | A real feature, not a bolt-on: the same thread as a document, two-pane with the live preview. Closes **D10**. `BuildThread` already takes a `ThreadWidth` and has an `is-expanded` variant, so the host is the work. |
 | **BLD-010** | acceptance pass | Not a task so much as a sweep, and **its debt list is now nine** — see below. |
-| **BLD-014** | the CDP half | 🔴 **Blocked on F22 and it is Richard's decision, not a wiring one.** |
+| **BLD-014** | the CDP half | ✅ **Unblocked — F22 was resolved 2026-08-10.** `@nodegx/render-measure` is a no-build package with no `require` in it; the editor already imports it for the webview producer. What is left is the *transport*: a `Page.navigate` entry point for an arbitrary URL and the viewport vocabulary (`desktop,phone` or `390x844`), which `DEFAULT_VIEWPORTS` already exports. LAS-005 estimated ~50 lines plus live QA once decided. |
 | **BLD-012** | 🟡 two legs | OpenAI's image leg is stub-only; the panel chip claim is about a *message* carrying an image, which BLD-011's composer chip does not close. |
 
-**Suggested order: BLD-016, then BLD-009, then BLD-010.** BLD-016 finishes the Track B mechanism
+**Suggested order: BLD-016, then BLD-014's CDP half, then BLD-009, then BLD-010.** The CDP half
+jumped the queue because F22 no longer blocks it and the measurement side is already proven inside
+the editor — only the transport is missing.
+
+**Original ordering rationale:** BLD-016 finishes the Track B mechanism
 while it is fresh; BLD-009 is the last unbuilt *feature*; BLD-010 should run last because every task
 before it adds to what it has to sweep.
 
@@ -146,3 +158,23 @@ The recipe is in handovers 5–15. What session 15 adds:
   element carrying a CSS-module class is how you measure a state you cannot reach through the UI.
 - **Measure disabled and enabled separately.** `Look at it` reads 3.17:1 disabled (WCAG-exempt) and
   6.66:1 enabled; reporting the first without the second looks like a failure that is not one.
+
+## 🔴 The `test:ci` baseline is 6 *plus an order-dependent BEN-001 trio*
+
+Session 15 hit **9 failures at seed 82196** and had to rule itself out, because it had just changed a
+module the bench imports. Re-running **the same commit at seed 97132 gave 6** — the documented set.
+
+```
+BEN-001 the component interface, as the bench reads it reads declared inputs off the plug…
+BEN-001 …degrades to untyped rather than guessing, for an input wired to nothing
+BEN-001 …gives a logic-only component an interface too
+```
+
+They fail with `Expected $.length = 0 to equal 2` — the fixture component came back with **no ports
+at all**, which is a spec-order effect on `ProjectModel`, not a capability change. ⚠️ Earlier
+handovers recorded *"BEN-001 ×3 did not appear at any of the three seeds"*, which is now falsified
+rather than confirmed: they appear at some seeds and not others.
+
+**So the rule is: 6 is the floor, and a run showing 9 is not automatically your fault.** Re-run at a
+different seed before investigating — and if the trio is reproducible across seeds on your branch and
+absent on the previous commit, *then* it is yours.

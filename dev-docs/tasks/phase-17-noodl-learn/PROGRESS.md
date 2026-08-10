@@ -1,8 +1,38 @@
 # Phase 17 Progress — Noodl Learn
 
 **Created:** 2026-07-22, from [NOODL-REVIVAL-ROADMAP.md](../../reviews/NOODL-REVIVAL-ROADMAP.md) Track E
-**Last updated:** 2026-07-25
-**Overall status:** 🟡 In progress — LEARN-001 substantially complete (engine revived & wired end-to-end); LEARN-002 design phase started (Richard is the learning designer); 4 tasks not started
+**Last updated:** 2026-08-09
+**Overall status:** 🟡 In progress — LEARN-001 substantially complete (engine revived & wired end-to-end); **LEARN-002's design is reviewed and accepted (2026-08-09) — authoring is unblocked**; the generated-lessons arc (LEARN-007…010) is specced with its open questions answered; 4 original tasks not started
+
+## What changed on 2026-08-09
+
+The learning designer (Richard) reviewed the design gate and answered every open
+question in one session. Nine decisions are recorded in
+[CURRICULUM-DESIGN.md §10](./CURRICULUM-DESIGN.md) (D1–D6 as drafted; D7–D9 new),
+and four more in [EXPERIMENT-GENERATED-LESSONS.md §8](./EXPERIMENT-GENERATED-LESSONS.md).
+
+The substantive changes, as opposed to confirmations:
+
+- **L8 moves to the built-in backend** (D8) — persistence replaces "lists grow
+  and shrink" as the felt problem. Cost recorded: L8 is now the first lesson
+  that will not run in a browser, so it is the first lesson LEARN-003's web
+  viewer cannot carry.
+- **Logic Builder joins as an optional visual-code track** (D9), blocked on
+  phase 59 surfacing a node that has been unfindable since phase 3.
+- **Phase 60 owns the beginner wording for "signal"** (D7) — and the glossary's
+  existing line is probably false.
+- **Generated lessons are to reach learners through a free hosted endpoint**, not
+  BYO API key — stubbed as [LEARN-011](./LEARN-011-THE-FREE-LESSON-ENDPOINT.md),
+  deferred behind LEARN-010's verdict. This is what keeps the classroom audience
+  reachable.
+- **Node names in the spine were rebased** against `node-catalog.json`: five had
+  drifted, and the two-vocabulary rule (prose = display name, conditions = type
+  name) is now written into [LESSON-FORMAT.md §3](./LESSON-FORMAT.md). A lesson
+  authored against the old names would have told learners they failed steps they
+  had completed.
+
+⚠️ **Three items block the first authored lesson** — none is a design question.
+[CURRICULUM-DESIGN.md §11](./CURRICULUM-DESIGN.md).
 
 ## Status vocabulary
 
@@ -13,7 +43,9 @@ Not started · In progress · **Built–not wired** · Complete · Superseded
 | ID | Title | Status | Estimate | Notes |
 |---|---|---|---|---|
 | LEARN-001 | Lessons engine revival | In progress (revival done; format-validation gate open) | 4–6 wks | **Engine revived and wired end-to-end** (verified in the running editor 2026-07-25). Evaluator typed + de-eval'd + tested; new declarative `lesson.json` format + compiler + docs; legacy `lesson.html` compat path; Learn-tab entry UI (list → clone → open); progress persists. Remaining: **validate the format with a non-programmer author** (the one unmet success criterion), full `lessonlayer2.ts` typing/tidy, and curriculum hosting (LEARN-002). See status below |
-| LEARN-002 | Curriculum v1 | In progress — design docs drafted, awaiting designer review | 8–10 wks | **Learning designer engaged: Richard (2026-07-25).** [CURRICULUM-DESIGN.md](./CURRICULUM-DESIGN.md) (outcomes, 12-lesson progression, assessment layers, 6 designer decisions D1–D6) + [TUTOR-BOUNDARY.md](./TUTOR-BOUNDARY.md) (will/won't table, Socratic ladder, prompt overlay spec, adversarial test plan) drafted per the design-before-content gate. No lesson authored until review. Follow-ons identified: tutor lesson-context overlay (small AIX-004 ext), template-chaining check, hosting decision |
+| LEARN-002 | Curriculum v1 | **In progress — design ACCEPTED 2026-08-09; authoring not started** | 8–10 wks | **Learning designer: Richard.** [CURRICULUM-DESIGN.md](./CURRICULUM-DESIGN.md) (outcomes, 12-lesson progression, assessment layers) reviewed and accepted; **D1–D9 answered** (§10). [TUTOR-BOUNDARY.md](./TUTOR-BOUNDARY.md) unchanged. The design-before-content gate is now open, but §11's three items come first. Follow-ons still owed: tutor lesson-context overlay (small AIX-004 ext), template-chaining check, hosting decision |
+| LEARN-007…010 | Generated-lessons experiment | Specced 2026-08-02, **open questions answered 2026-08-09**; nothing built | 4 wks (hard box) | [EXPERIMENT-GENERATED-LESSONS.md](./EXPERIMENT-GENERATED-LESSONS.md). Concept = lists/repeaters; 6 picked + 6 real goals; testers = Richard + 1–2 community members; **the spine is authored either way**. Runs from a script against fixtures — no editor change, nothing ships to a learner |
+| LEARN-011 | Free lesson endpoint | 🟠 Stub — decided, not specced | — | Deferred behind LEARN-010's verdict. A hosted endpoint so a learner needs no API key |
 | LEARN-003 | Web read-only viewer | Not started | 6–8 wks | The distribution unlock for classrooms |
 | LEARN-004 | Web editor spike | Not started | 4 wks (time-boxed) | Deliverable is a go/no-go decision document |
 | LEARN-005 | Classroom mode | Not started | 6–8 wks | Depends on AIX-001's local-model (Ollama) support |

@@ -127,6 +127,38 @@ Matching is case-insensitive. Example: `App:#Card:%Text` means "inside component
 > part of the task, then match on it — it is the most robust way to identify a
 > node the learner created.
 
+#### ⚠️ `%Type` takes the node's **type name**, not the name on the button
+
+Every lesson carries two vocabularies and they are frequently different strings:
+
+- **Prose** (`title`, `body`) must use the **display name** — what the learner
+  reads in the node picker and on the canvas.
+- **Conditions** (`%Type`, `hastype`) must use the **type name** — the internal
+  identifier. `findNodeWithPath` matches `node.type.name`
+  ([lessonevalconditions.ts:246-248](../../../packages/noodl-editor/src/editor/src/views/lessons/lessonevalconditions.ts#L246-L248)),
+  and `hastype` does the same
+  ([:301-303](../../../packages/noodl-editor/src/editor/src/views/lessons/lessonevalconditions.ts#L301-L303)).
+
+Where they diverge today (verified against `node-catalog.json`, 2026-08-09):
+
+| Prose says (display name) | Conditions must say (type name) |
+|---|---|
+| Repeater | `For Each` |
+| Repeater Item | `For Each Actions` |
+| Static Array | `Static Data` |
+| Delay | `Timer` |
+| Array | `Collection` (or `Collection2`) |
+| Insert Object Into Array | `CollectionInsert` |
+| Object | `Model2` |
+| Record | `DbModel2` |
+| Page Router | `Router` |
+
+Most nodes (`Group`, `Text`, `Image`, `Circle`, `Condition`, `Expression`,
+`Counter`, `Variable`) use the same string for both. The failure is silent: a
+condition naming a display name matches nothing, and the learner is told they
+have not done a step they have in fact done. Check the type name in
+`packages/noodl-types/src/node-catalog.json` rather than trusting the picker.
+
 ---
 
 ## 4. `body` — Markdown
