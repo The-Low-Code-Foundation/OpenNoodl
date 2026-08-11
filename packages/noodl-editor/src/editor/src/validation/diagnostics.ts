@@ -418,7 +418,90 @@ export enum DiagnosticCode {
    *
    * Corpus: 3 hits in 89 repeaters, all three haiku's. Zero legitimate use.
    */
-  RepeaterWithVisualChildren = 'repeater-with-visual-children'
+  RepeaterWithVisualChildren = 'repeater-with-visual-children',
+
+  /**
+   * DSG-004 §2.1 (register F17) — a multi-column arrangement built out of a
+   * `Group`, which is an arrangement that can never collapse.
+   *
+   * Doctrine `§7` is the only mechanical statement in the design doctrine about
+   * the runtime's *one* responsive mechanism: **a `Group` never responds to
+   * width. There are no media queries and no breakpoints anywhere in the runtime
+   * except on `net.noodl.visual.columns`.** A row of Groups is frozen at
+   * whatever proportions it was authored with, so a three-up card band stays
+   * three-up at 390px and a 32%-wide card becomes 120px wide.
+   *
+   * Until this rule the line had **nothing behind it**, and the measured
+   * consequence is the phase's own argument: the author of the doctrine broke it
+   * three commits after shipping it (the reference build's header, footer, trust
+   * strip and category row are all frozen rows), and every cold replay
+   * reproduced the same shape.
+   *
+   * Matched on structure and on the node's own size parameters — never on the
+   * children's values. See `rules`-vs-precondition in
+   * `responsiveArrangement.ts`: `NormNode` carries no parameters, so this cannot
+   * be a `rules/` rule at all.
+   *
+   * A **warning**, not an error: the graph renders, and at desktop width it
+   * renders correctly. Not authored-blocking on first ship — the promotion
+   * argument and the one measurement it still needs are in
+   * `responsiveArrangement.ts`'s header.
+   */
+  UncollapsibleMultiColumn = 'uncollapsible-multi-column',
+
+  /**
+   * DSG-004 §2.2 (register F18) — a `width`, `height` or `objectFit` that the
+   * node's `sizeMode` switches off.
+   *
+   * The narrow, named half of {@link InactiveConditionalParameter}, and it needs
+   * its own code for one reason: severity policy is per *code*, and this is the
+   * subset whose authored population is a defect every time. Doctrine `§8` names
+   * it — *"On `Image`, `net.noodl.controls.button` and `textinput`,
+   * `width`/`height`/`objectFit` are INERT unless `sizeMode: "explicit"`. A
+   * `width: 100%` input that renders 170px wide is this, every time."*
+   *
+   * The general code stays a warning for the other 308 corpus hits (a
+   * `borderWidth` with no `borderStyle`, a `showScrollbar` with scrolling off);
+   * this one is **blocking for authored output**, on the `UnitlessDimension`
+   * argument exactly: for a graph an agent just wrote, a `width` that does
+   * nothing is a value it believes it set and did not.
+   *
+   * Corpus (both corpora, 107 projects, 2026-08-11): **58 hits in 10 projects** —
+   * `Group.height` 19, `textinput.width` 8, `textinput.height` 7, `Group.width`
+   * 7, `button.height` 6, `Text.height` 5, `options.width` 3, `Text.width` 2,
+   * `button.width` 1. Every hit outside this repository is a real one, and the
+   * canonical case is `Puppy test 3`'s admin form: six Text Inputs at
+   * `width: 100%`, rendering at 170px. **Zero `Image` hits in 204 Images** —
+   * the doctrine's `sizeMode: "explicit"` line is the one part of §5 that
+   * already landed.
+   */
+  InertDimension = 'inert-dimension',
+
+  /**
+   * DSG-004 §2.3 — a page whose text is all one weight, so nothing on it is
+   * emphasised over anything else.
+   *
+   * Doctrine `§3`: *"A page rendering at one font weight is not designed. Aim for
+   * three or more distinct weights. Set `fontWeight` explicitly — it is a real
+   * port and nothing infers it."* The line exists because before 0.1.4 there was
+   * **no `fontWeight` port on any node** (`no-font-weight-port-existed`), so
+   * every word in every authored page rendered at 400.
+   *
+   * **Info, and it never blocks.** It is taste, a deliberately monotone page
+   * exists, and the corpus says the doctrine is already winning: across 429
+   * components carrying text, every `fontWeight` ever authored is
+   * `var(--font-semibold)` (88), `var(--font-bold)` (43), `var(--font-medium)`
+   * (21) or `var(--font-normal)` (13), and **no measured model replay is
+   * monotone**. This is the `oversized-page` shape of rule — a backstop against
+   * a regression, not pressure — and it is deliberately shipped at that
+   * severity for the same reason.
+   *
+   * Its render-time twin is `flat-type-scale` in `@nodegx/render-measure`, which
+   * sees what this cannot: the *computed* weight, including a token that resolves
+   * to 400. This one sees what that cannot: a page that has not been rendered
+   * yet, which is every page at the moment it is authored.
+   */
+  MonotoneTypography = 'monotone-typography'
 }
 
 // ─── Location ─────────────────────────────────────────────────────────────────
