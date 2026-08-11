@@ -19,9 +19,9 @@ Do not repeat it in a larger form by reporting "6/6 built" as "phase closed".
 
 | What is genuinely finished | What is not |
 |---|---|
-| Every mechanism, with suites | The **consequence** of any of it, with a model |
-| Four client behaviours, **measured** | The launcher card, **still never rendered** |
+| Every mechanism, with suites | The **consequence** of the authoring path, with a model |
 | The phase's own gates, at their floors | Windows, at all |
+| BST-003's card, **rendered and clicked** | The editor half of BST-005, driven |
 
 ### §0.1 — Gates, with provenance
 
@@ -29,7 +29,7 @@ Do not repeat it in a larger form by reporting "6/6 built" as "phase closed".
 |---|---|---|
 | `cd packages/noodl-mcp && npx jest` | **1 failed / 450 passed of 451** | ✅ measured 08-12. Total was **419** before this session; +32 is exactly the specs added. The red is **F65** by name |
 | `cd packages/noodl-editor && npx jest` | **131 suites / 1892 tests, green** | ✅ measured 08-12 |
-| `npm run test:ci` | ⚠️ **see §0.2 — unresolved** | measured twice, disagreeing |
+| `npm run test:ci` | **2672 specs, 6 failures** — the register's six by name | ✅ measured 08-12 **alone**; see §0.2, the first run beside a live stack said 9 |
 
 🔴 **Compare the MCP suite by TOTAL (451) and the failures by NAME.** A gitignored build artifact can
 make a whole file's specs vanish and still read as a pass.
@@ -73,23 +73,18 @@ had touched that night. And the reasoning that would have dismissed them ("not m
 
 ## §1 — What is left, in the order it should be done
 
-### 1. 🆓 Render BST-003's launcher card, with zero projects — **free, and overdue**
+### ~~1. Render BST-003's launcher card~~ ✅ **DONE 2026-08-12** — see BST-003 §5a
 
-Still the oldest unpaid debt in the phase. Blocked on 08-11 by another session's `test:ci`, and on
-08-12 by *this* session's. Nothing else blocks it.
+Rendered with a genuinely empty project list (the 25-project store backed up, moved aside, restored
+**byte-identical**), clicked, and the registration verified **against `~/.claude.json` rather than
+against the card's own success message**. Then the recorded command was spawned and asked what it is:
+`5 tools`, briefing says "five", banner says five — **F87 closed by measurement, in the shipped
+bundle**. Test registration removed afterwards.
 
-The acceptance asks for **an empty project list, driven** — not reasoned about. This machine's
-launcher has projects, so you need a profile that has none. The list comes from `electron-store`
-`recently_opened_project` in the user-data dir, so a throwaway `--user-data-dir` (or moving that one
-store file aside and restoring it) gives a genuine zero-project launcher.
-
-Then: `npm run dev:debug -- --quiet`, wait for the compile, `npm run cdp -- screenshot`, and **click
-the button**. `npm run cdp -- health` first — a window that opens and renders nothing is this app's
-signature failure.
-
-⚠️ Clicking it performs a **real user-scope registration** of `nodegx`. Remove it afterwards
-(`claude mcp remove --scope user nodegx`), and note that while it exists it will **shadow** any
-project-scope `nodegx` — see §3.
+⚠️ **F95, found while doing it and unowned:** the empty-state sidebar reads `All projects 0`,
+`Uncategorized 0`, **`Test 1`** — a folder claiming a project on a machine with none. Folder counts
+are not reconciled against the project list. Cosmetic, but it is in the one state this phase's
+audience is guaranteed to see.
 
 ### 2. 💰 The one drive that closes three debts — **needs Richard's authorisation**
 
@@ -226,8 +221,6 @@ When a task's deliverable is prose, print it and read it.
 
 ## §6 — Definition of done for the next session
 
-- [ ] `testci-clean.log` read, and §0.2 resolved **by name** — BEN-001 green, or fixed
-- [ ] BST-003's card rendered with **zero projects**, clicked, screenshot in the register
 - [ ] The editor half of BST-005 driven, in the same stack
 - [ ] `mcp-model-driver.js` given a no-project mode
 - [ ] Richard asked about the drive; if authorised, run it and **judge it on the render and the

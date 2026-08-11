@@ -2,7 +2,7 @@
 
 **Status:** ✅ **built 2026-08-11** (`d1e3bfaa`) · **Track: the editor** · **depends on BST-001 and
 BST-004** · §2's decision was **measured (§2a) and settled: B-then-C**.
-⚠️ **The card has never been rendered** — see §5.
+✅ **Rendered, clicked and verified end-to-end 2026-08-12** — see §5a.
 
 ## The gap, stated precisely
 
@@ -215,9 +215,8 @@ Two edits, and they are not cosmetic:
 
 **Not driven, and stated plainly:**
 
-- ❌ **The launcher card itself has never been rendered.** No screenshot, no click. See F88.
-- ❌ **A zero-project profile.** The acceptance asks for an empty project list rather than reasoning
-  about the empty state, and this machine's launcher has projects.
+- ✅ ~~The launcher card itself has never been rendered.~~ **Done 2026-08-12 — see §5a.**
+- ✅ ~~A zero-project profile.~~ **Done 2026-08-12 — see §5a.**
 - ❌ **The paid model drive.** The briefing a fresh session receives is verified *as text*; nobody
   has spent money having a model read it and answer *"what can you do with NodeGX?"* in prose.
 - ❌ **Windows**, unchanged from BST-004.
