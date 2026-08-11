@@ -501,7 +501,59 @@ export enum DiagnosticCode {
    * to 400. This one sees what that cannot: a page that has not been rendered
    * yet, which is every page at the moment it is authored.
    */
-  MonotoneTypography = 'monotone-typography'
+  MonotoneTypography = 'monotone-typography',
+
+  /**
+   * LEG-002 — a run of three or more same-type sibling nodes, none of them
+   * named, each of which is something the reader has to go *through*.
+   *
+   * **Info, advisory in both directions, and that polarity is the finding.**
+   * Phase 50's README specced this the other way round: blocking for *authored*
+   * output on the `AUTHORED_BLOCKING_WARNINGS` precedent, advisory for
+   * hand-built. The corpus inverts it. Label coverage, measured 2026-08-11 over
+   * every graph in reach (`scripts/legibility/scan-labels.js`):
+   *
+   *     agent-authored, 12 phase-55/58 model runs   1,126 nodes   89.3% labelled
+   *     hand-authored, 58 library/ prefabs+modules  1,333 nodes   20.3% labelled
+   *     every project.json in this repo             5,509 nodes   19.7% labelled
+   *
+   * A rule that blocks authored output and merely advises hand-built output
+   * would be a gate aimed at the one population that already complies at 89%,
+   * silent on the one at 20%. And the honest reading of those two columns is
+   * that there is no compliance problem to gate at all: agents label, humans
+   * mostly do not and always have not, and an unlabelled node **renders
+   * correctly**. Every other code in `AUTHORED_BLOCKING_WARNINGS` describes
+   * output that is *broken* — a value the runtime discards, a page that renders
+   * blank, an instance parameter naming no port. Admitting this one would
+   * redefine that set.
+   *
+   * ⚠️ The audit finding that usually argues *for* gating argues against it
+   * here: hard rejections carrying a suggestion were self-corrected at a 100%
+   * rate, and **a rejection whose repair is "write a better sentence" invites
+   * the model to satisfy it with `Group 3`**. So: `severity: 'info'`, which
+   * `isBlockingForAuthoredOutput` (`severity === 'error' || AUTHORED_BLOCKING_WARNINGS.has`)
+   * correctly ignores in both clients with no further work. **That is the
+   * desired outcome, not an omission** — `unlabelledNode.spec.ts` asserts it, so
+   * a later edit to the blocking set cannot silently promote it.
+   *
+   * ## Why the predicate is a *run of siblings* and not "unlabelled"
+   *
+   * 4,426 of the corpus's 5,509 nodes carry no label. A rule reporting those is
+   * not a diagnostic, it is a second copy of the node list, and it would make
+   * the ProblemsPanel useless for the diagnostics that describe real breakage.
+   * The task file's own candidate — children, or ≥3 authored parameters, or >1
+   * outgoing connection — measures **2,232** repo nodes and **37.7%** of
+   * `library/`, so it was measured and rejected rather than shipped. The census
+   * behind the shipped predicate, and the eight other candidates it beat, are in
+   * `scripts/legibility/scan-labels.js` and this phase's lane notes.
+   *
+   * Shipped counts: **214** repo (3.9%, 24 of 91 projects) · **25** in
+   * `library/` (1.9%, and **53 of 58 prefabs are untouched**) · **9** across the
+   * model runs — 6 on `phase55-replay-haiku` (1% labelled), 3 on
+   * `phase55-s6-qwen35-27b` (16%), and **zero on all ten runs that already
+   * label**. 166 of the 214 are `Group`, which is the shape it is named for.
+   */
+  UnlabelledNode = 'unlabelled-node'
 }
 
 // ─── Location ─────────────────────────────────────────────────────────────────
