@@ -1,7 +1,17 @@
 # BST-005 — The project configures the next agent
 
-**Status:** 📋 open · **Track: the project on disk** · independent of BST-002 · the cheapest task
+**Status:** ✅ **built 2026-08-12** (`5bb1767b`) · **Track: the project on disk** · the cheapest task
 that helps **every session after the first**
+
+| Acceptance | State |
+|---|---|
+| Both files from `create_project`, correct absolute paths | ✅ `tests/createProject.test.ts` |
+| Both files from the launcher, same content shape | ✅ built — one shared renderer over a three-method host, called from `LocalProjectsModel.newProject`. ⚠️ **not driven in the running editor** |
+| **The consequence** — a fresh session in the folder, no user-scope registration, changes something *using the tools* | ❌ **undriven.** Costs a paid model turn |
+| Unapproved registration degrades to "no tools", not a broken client | ✅ **measured** — `⏸ Pending approval`, never spawned, other servers unaffected ([MEASUREMENTS §3](MEASUREMENTS-CLIENT-CONTRACT.md)) |
+| `.mcp.json` git-ignored | ✅ appended, never replacing an existing `.gitignore` |
+| Neither file overwritten | ✅ and the report distinguishes `written` from `kept-existing` |
+| `CLAUDE.md` duplicates no sentence of `instructions` | ✅ asserted **and the check is proved able to fail** |
 
 ## The gap, stated precisely
 

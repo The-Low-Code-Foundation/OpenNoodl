@@ -1,6 +1,7 @@
 # BST-002 — `create_project` binds the live server
 
-**Status:** 📋 open · **Track: the seam** · ⭐ **the flagship** · **depends on BST-001** ·
+**Status:** ✅ **built 2026-08-12** (`140f7076`) · **Track: the seam** · ⭐ **the flagship** ·
+**depends on BST-001** ·
 ✅ **the gate in §2 is MEASURED and it passed** — see
 [MEASUREMENTS §1](MEASUREMENTS-CLIENT-CONTRACT.md#1--f91-claude-code-does-re-list-on-notificationstoolslist_changed).
 Claude Code 2.1.217 re-issues `tools/list` **3ms** after the notification, with a clean
@@ -114,20 +115,23 @@ shape rather than a new one.
 
 ## Acceptance
 
-- **The end-to-end run, and it is the acceptance:** one server, launched with no project. Ask for an
-  app. `create_project` runs, and **the same session** goes on to build pages into it with
-  `create_plan` / `apply_plan`. No second registration, no restart.
-- The built app **renders** — `render_report` returns something drawn, not an empty page. §3's
-  failure mode passes every other check.
-- Pages are reachable: the Router lists them. This is the specific thing a briefing-less agent gets
-  wrong, and it is why the acceptance is a render and not a tool count.
-- A second `create_project` on a now-bound server creates the project and **does not rebind**.
-  Assert the bound directory is unchanged.
-- A `create_project` that fails validation leaves the server **unbound**, with the bootstrap surface
-  intact.
-- The guidance text exists once. A test asserts the constructor's instructions and the bind result
-  quote the same constant.
-- The bound-from-the-start path is untouched — same tools, same behaviour, existing suite green.
+`tests/bindOnCreate.test.ts`, 10 specs, all green.
+
+| | State |
+|---|---|
+| **The end-to-end run:** one server launched with no project; the **same session** goes on to author into it, no second registration, no restart | ✅ asserted through a real client over `InMemoryTransport` — `get_project_info` and `list_components` answer about the new project, so the tools are not merely *listed* |
+| The built app **renders** — `render_report` returns something drawn | ❌ **not run.** Needs a model to author real pages; a fixture render would test the renderer, not this seam |
+| Pages are reachable: the Router lists them | ❌ same — this is the **briefing-less failure**, and it is why the render was the acceptance |
+| A second `create_project` creates the project and **does not rebind** | ✅ and the bound project is asserted **by name through `get_project_info`**, not by reading the binding |
+| A failed `create_project` leaves the server **unbound**, bootstrap surface intact | ✅ including `find_tools`' description, which is where a half-bind would show |
+| The guidance text exists once | ✅ the bind result is compared to `projectInstructions(...)` itself, not to a phrase |
+| The bound-from-the-start path is untouched | ✅ separate describe block; whole package 1 failed / 449 passed of 450, the one red being F65 |
+
+🔴 **The two ❌ rows are the same row, and they are the point of §3.** The failure mode that ships
+from this task is a bound session that authors unreachable pages because nobody mentioned the Router
+— and it *passes* every green row above. What is asserted is that the briefing is present, identical
+to the constructor's, and pointed at from two places. What is **not** asserted is that a model reads
+it and acts differently, which is a paid drive and is named in the handover as outstanding.
 
 ## Register
 

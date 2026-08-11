@@ -117,9 +117,14 @@ plan-first order, the Router paragraph, the backend paragraph) has to arrive in 
 **2. ⚠️ A client that ignores `tools/list_changed` never sees the revealed tools.** The disclosure
 module says so itself ([`disclosure.ts:17-22`](../../../packages/noodl-mcp/src/tools/disclosure.ts#L17)),
 and today the escape hatch is `--all-tools`. For a deferred *group* that costs a turn. For **BST-002
-it costs the whole session** — the user's project exists and their agent cannot touch it. Whether
-Claude Code re-lists on the notification is ⚠️ **unverified and gates BST-002's design**; if it does
-not, the bind path must also return enough in its result for the agent to keep going.
+it costs the whole session** — the user's project exists and their agent cannot touch it.
+
+✅ **Measured 2026-08-11 and it passed.** Claude Code 2.1.217 re-issues `tools/list` **3ms** after the
+notification, with a no-notification control that issues one list and never a second
+([MEASUREMENTS §1](MEASUREMENTS-CLIENT-CONTRACT.md)). BST-002 shipped the plain bind-and-reveal; the
+third-state fallback was not built. ⚠️ The bind result still carries the briefing — not because the
+reveal might fail, but because `instructions` is spent, which is point 1 above and a separate
+problem.
 
 **3. ⚠️ An unbound server that answers *everything* with an error is worse than one that fails to
 start.** Failing to start is loud, appears in the client's own MCP status, and is the failure MCP-001
