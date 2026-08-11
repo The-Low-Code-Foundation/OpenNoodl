@@ -80,6 +80,18 @@ export class InspectorActions {
       }
     }
 
+    // SIG-006 item 4: the hover direction mark. `highlightedConnection` changes
+    // here and nowhere else, so this is where the mark's clock starts — and it
+    // restarts on every *new* wire, so the bead always leaves the source rather
+    // than being caught mid-flight. Re-entering the same wire (a move event
+    // within the stroke) must not restart it, or the mark stutters under a
+    // moving cursor.
+    if (editor.highlightedConnection !== c) {
+      editor.hoverMarkStartedAt = c ? performance.now() : undefined;
+      if (c) editor.startNodeAnimations('hover-direction');
+      else editor.stopNodeAnimations('hover-direction');
+    }
+
     editor.highlightedConnection = c;
   }
 

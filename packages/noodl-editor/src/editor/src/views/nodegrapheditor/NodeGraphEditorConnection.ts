@@ -8,6 +8,7 @@ import PopupLayer from '../popuplayer';
 import { CanvasFonts, CanvasTheme, WireLabel, WIRE_TYPE_ERROR } from './canvas/CanvasTheme';
 import { NodeGraphEditorNode } from './NodeGraphEditorNode';
 import { textWordWrap } from './NodeGraphEditorNodePainter';
+import { arrivalDirection, arrowheadPolygon, glyphScaleFor, loopedAge, WIRE_ENDPOINT } from './wireEndpoints';
 import { samplePolyline, travellingHeadRange, valueDashOffset, wirePulseKind, WIRE_PULSE } from './wirePulse';
 
 /** Editor setting: show every wire's label without hovering (CAN-001). */
@@ -630,19 +631,42 @@ export class NodeGraphEditorConnection {
     this.drawCurve();
     ctx.stroke();
 
-    // Endpoint dots (mock: 3px wire-coloured dots at both ends). On a
-    // highlighted wire they grow into the grab handles CAN-003 adds; they stay
-    // dots otherwise, because handles on every wire would be a hundred new hit
-    // targets competing with the node cards on a dense graph.
-    const endpointRadius = hoverConnection
-      ? NodeGraphEditorConnection.endpointHandleRadius
-      : NodeGraphEditorConnection.endpointRadius;
+    // SIG-006: circle at the source, arrowhead at the target.
+    //
+    // Both ends used to be the same 3px dot ("mock: 3px wire-coloured dots at
+    // both ends"), so a finished wire stated no direction at all — while the
+    // *drag* line, one interaction earlier, drew a circle at the source and a
+    // real arrowhead at the target and then threw that away on commit. This is
+    // the same vocabulary, kept.
+    //
+    // ⚠️ The glyphs hold their **screen** size as the graph zooms out
+    // (`glyphScaleFor`); everything else here is in graph units. A 3px dot at
+    // 50% zoom is 1.5 screen px, which is why no choice of shape could have met
+    // this task's zoom acceptance while the glyphs scaled with the content.
+    //
+    // On a highlighted wire they grow into the grab handles CAN-003 adds; they
+    // stay small otherwise, because handles on every wire would be a hundred new
+    // hit targets competing with the node cards on a dense graph. ⚠️ The
+    // arrowhead is *paint*: `endpointHitRadius` (8) is untouched, so what
+    // CAN-003 grabs is exactly what it grabbed before.
+    const glyphScale = glyphScaleFor(this.owner?.getPanAndScale?.().scale ?? 1);
+    const sourceRadius =
+      (hoverConnection ? WIRE_ENDPOINT.sourceHandleRadius : WIRE_ENDPOINT.sourceRadius) * glyphScale;
     ctx.fillStyle = strokeColor;
     ctx.beginPath();
-    ctx.arc(this.curve[0].x, this.curve[0].y, endpointRadius, 0, 2 * Math.PI, false);
+    ctx.arc(this.curve[0].x, this.curve[0].y, sourceRadius, 0, 2 * Math.PI, false);
     ctx.fill();
+
+    const head = arrowheadPolygon(
+      this.curve[3],
+      arrivalDirection(this.curve),
+      (hoverConnection ? WIRE_ENDPOINT.arrowLengthHighlighted : WIRE_ENDPOINT.arrowLength) * glyphScale,
+      (hoverConnection ? WIRE_ENDPOINT.arrowHalfWidthHighlighted : WIRE_ENDPOINT.arrowHalfWidth) * glyphScale
+    );
     ctx.beginPath();
-    ctx.arc(this.curve[3].x, this.curve[3].y, endpointRadius, 0, 2 * Math.PI, false);
+    ctx.moveTo(head[0].x, head[0].y);
+    for (let i = 1; i < head.length; i++) ctx.lineTo(head[i].x, head[i].y);
+    ctx.closePath();
     ctx.fill();
 
     if (DebugInspector.instance.isEnabled() && DebugInspector.instance.isConnectionPulsing(this)) {
@@ -694,6 +718,47 @@ export class NodeGraphEditorConnection {
 
       ctx.lineWidth = wireWidth;
       ctx.globalAlpha = 1;
+    } else if (this.owner && this.owner.highlightedConnection === this) {
+      // SIG-006 item 4 — the hover direction mark.
+      //
+      // The endpoint glyphs answer "which way" when you can see an end. On a
+      // long wire crossing the viewport both ends are off screen, and this is
+      // the answer that reaches: a bead running source → target, for as long as
+      // the pointer stays on the wire.
+      //
+      // ⚠️ **`highlightedConnection === this`, not `isHighlighted()`.** The
+      // latter is also true when either endpoint's *node* is hovered or
+      // selected, which on a busy node is a dozen wires at once — the question
+      // "which way does *this* wire go" is asked of one wire, the one under the
+      // cursor.
+      //
+      // ⚠️ **The bead runs on a value wire too, and that is a decision.**
+      // SIG-005 gave a signal one travelling bead and a value a repeating dash
+      // *on purpose*, because at runtime the mark says *what happened* — and a
+      // value connection is live everywhere at once, with no one place for a
+      // moment to be. A hover asks a different question. Direction is the same
+      // question for both kinds and has the same answer shape, so both get the
+      // bead. The two never collide: this branch is `else` to the pulse, so a
+      // wire that is genuinely carrying something keeps saying so.
+      const ageMs = performance.now() - (this.owner.hoverMarkStartedAt ?? 0);
+      const { from, to } = travellingHeadRange(loopedAge(ageMs));
+      const points = samplePolyline((u) => this.pointOnCurve(u), from, to);
+      if (points.length > 1) {
+        const previousCap = ctx.lineCap;
+        const previousJoin = ctx.lineJoin;
+        ctx.strokeStyle = theme.wirePulse;
+        ctx.setLineDash([]);
+        ctx.lineDashOffset = 0;
+        ctx.lineWidth = ctx.lineWidth + WIRE_PULSE.signalWeightBoost;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.beginPath();
+        ctx.moveTo(points[0].x, points[0].y);
+        for (let i = 1; i < points.length; i++) ctx.lineTo(points[i].x, points[i].y);
+        ctx.stroke();
+        ctx.lineCap = previousCap;
+        ctx.lineJoin = previousJoin;
+      }
     }
 
     ctx.lineDashOffset = 0;

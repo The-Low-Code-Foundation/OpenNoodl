@@ -285,13 +285,23 @@ export class NodeGraphEditor extends View {
     this.modelBindings.bindProjectModel();
   }
 
-  startNodeAnimations() {
-    this.painter.startNodeAnimations();
+  startNodeAnimations(reason?: string) {
+    this.painter.startNodeAnimations(reason);
   }
 
-  stopNodeAnimations() {
-    this.painter.stopNodeAnimations();
+  stopNodeAnimations(reason?: string) {
+    this.painter.stopNodeAnimations(reason);
   }
+
+  /**
+   * When the pointer entered the wire it is currently on (SIG-006 item 4).
+   *
+   * The hover direction mark is driven off this rather than off wall-clock time,
+   * so every hover starts the mark at the source instead of catching it
+   * mid-flight. Written by `InspectorActions.setHighlightedConnection`, which is
+   * the one place `highlightedConnection` changes.
+   */
+  hoverMarkStartedAt: number | undefined;
 
   render() {
     // Expose editor instance to window for console debugging (dev only)

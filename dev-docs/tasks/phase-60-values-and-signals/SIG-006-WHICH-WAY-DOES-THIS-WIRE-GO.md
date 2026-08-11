@@ -1,6 +1,18 @@
 # SIG-006 — Which way does this wire go
 
-**Status:** 📋 open · **Track SIG**
+**Status:** 🔨 **built 2026-08-11 — 6 of 7 acceptance criteria met, one refused with reasons** · **Track SIG**
+
+**What shipped:** circle at the source and arrowhead at the target on every committed wire; the
+node-side glyphs rebuilt so they differ by something that survives greyscale and zoom; `'both'` given
+a diamond of its own; hover runs SIG-005's travelling mark source → target; `portIcons.ts` deleted.
+The geometry is in [`wireEndpoints.ts`](../../../packages/noodl-editor/src/editor/src/views/nodegrapheditor/wireEndpoints.ts),
+import-free and graded by 21 specs in `tests-unit/sig-006/`.
+
+🔴 **Criterion 1 is not met and should not be marked met** — see the Register, R3. An endpoint glyph
+is at the endpoint; on a wire whose *ends are both off screen* there is nothing of it to see, and the
+criterion asks for direction there **without hovering**. Hover answers that case (criterion 4, met);
+nothing painted today answers it hands-off. The fix is a mid-wire cue, and it is a real design
+decision about density rather than an oversight — it is written up in R3 rather than guessed at.
 
 > *"The connector ends are hard to see, the circle and arrow ends, and it's true they're a bit small
 > and hard to tell apart to know which direction the connector is going. We could also benefit from a
@@ -104,20 +116,65 @@ earlier, and it throws it away on commit. Start here — the geometry is written
 
 ## Acceptance
 
-- [ ] A committed wire shows its direction **without hovering, without selecting, and without either
-      node being visible** — captured on a wire whose ends are both off screen.
-- [ ] Source and target glyphs are distinguishable in a **greyscale** screenshot at **50% zoom**.
-      Both are stated as measurements, not impressions.
-- [ ] The in-flight drag line and the committed wire use the same vocabulary.
-- [ ] Hovering a long wire runs a mark from source to target, using SIG-005's implementation.
-      Exactly one travelling-mark implementation exists in the painter.
-- [ ] `endpointHitRadius` behaviour is unchanged; CAN-003 endpoint dragging still grabs at 8px.
-- [ ] A `'both'` port paints something chosen on purpose, named in the register.
-- [ ] `portIcons.ts` is either imported or deleted at the end of this task.
+- [ ] 🔴 **NOT MET.** A committed wire shows its direction **without hovering, without selecting, and
+      without either node being visible** — captured on a wire whose ends are both off screen.
+      **Refused with reasons, not missed — see R3.**
+- [x] Source and target glyphs are distinguishable in a **greyscale** screenshot at **50% zoom**.
+      Both are stated as measurements, not impressions. **See "What was measured" below.**
+- [x] The in-flight drag line and the committed wire use the same vocabulary — circle at the source,
+      arrowhead at the target, the arrowhead's tip *on* the endpoint.
+- [x] Hovering a long wire runs a mark from source to target, using SIG-005's implementation.
+      Exactly one travelling-mark implementation exists in the painter — `wireEndpoints.loopedAge` is
+      an age transform feeding SIG-005's `travellingHeadRange`, not a second one.
+- [x] `endpointHitRadius` behaviour is unchanged; CAN-003 endpoint dragging still grabs at 8px. The
+      constant is untouched and the arrowhead is paint, never a target.
+- [x] A `'both'` port paints something chosen on purpose, named in the register — **a diamond**, R2.
+- [x] `portIcons.ts` is **deleted**. R1.
+
+## What was measured
+
+Driven on `lib21-qa` `/Table/Row`, five wires, 2026-08-11. Composited canvas pixels, selection and
+highlight cleared first. Each endpoint's silhouette is taken as a **width profile across the wire** —
+at the endpoint, and 3 and 7 graph px back along it — masked to the wire's own colour so the node card
+underneath is excluded. **Both ends are the same colour**, so what is compared is only shape, which is
+the point: a greyscale reader cannot use colour to tell a source from a target, and neither does this.
+
+| zoom | glyph | width **at** the endpoint | 3 back | 7 back |
+|---|---|---:|---:|---:|
+| 100% | source circle | **5.5 px** | 1.5–2.5 | 1.5–2 |
+| 100% | target arrowhead | **0 px** | 3.5 | 7.5–9.5 |
+| 50% | source circle | **5.5–6 px** (screen) | — | — |
+| 50% | target arrowhead | **0–0.5 px** (screen) | — | — |
+
+The profiles are *opposite by construction*: a circle is widest exactly where the wire ends, an
+arrowhead is a point there and widens behind it. That is a distinction no amount of zooming or
+desaturating can collapse, and it is why the shapes were chosen this way rather than by making one
+glyph bigger.
+
+⚠️ **The screen-px row at 50% is the whole of item 2's difficulty.** Everything painted after
+`CanvasRenderer` scales the context is in *graph* units, so the old 7px disc and 8px triangle were 3.5
+and 4 screen px at half zoom — half a pixel apart. `glyphScaleFor` divides by the zoom down to a floor
+of 0.5, which is why the two rows above read the same. **No choice of shape could have passed this
+criterion while the glyphs scaled with the content.**
+
+**The hover mark**, same session, sampled by walking `pointOnCurve` and looking for the mark's colour:
+
+| age since the pointer entered | the bead spans, in bezier `t` |
+|---|---|
+| 0 ms | nothing — zero length, at the source |
+| 150 ms | **0.12 → 0.36** |
+| 380 ms | **0.68 → 0.92** |
+
+Monotonic, source → target, and measured on a **value** wire — which is R4's decision working.
 
 ## Register
 
 | # | Finding | State |
 |---|---|---|
 | **R2** | 🔴 **⚠️ Read SIG-005's R8 before measuring anything about wire colour.** The component a project *opens on* builds its connections before the node library can answer them, so `fromPort` is `undefined` on every one of them, `nameForPortType` returns undefined, and **a signal wire is painted in the data colour** until you navigate to another component and back. This task is about telling wires apart; a measurement taken on the first graph after an open is measuring the wrong colour. Reproduced deterministically on `lib21-qa`, 2026-08-11. ✅ **Fixed the same day as [ELO-001](../editor-load-ordering/ELO-001-A-PORT-LIST-CACHED-BEFORE-THE-LIBRARY.md)** — the cause was not load ordering but a port list memoised from an `UnknownNodeType`, and a cold open now paints 751 signal-cyan px and 0 data-green px where it painted 0 and 767. **Wire colour on a first-opened graph can now be measured.** | ✅ **closed — measure freely** |
-| **R1** | ℹ️ **`portIcons.ts` is dead on disk** — `PORT_ICONS` (a `⚡` for signal, `T` for string, and eight more) plus `drawPortIcon`, imported by nothing in the editor source. Verified by grep, 2026-08-09. | **open** |
+| **R1** | ℹ️ **`portIcons.ts` is dead on disk** — `PORT_ICONS` (a `⚡` for signal, `T` for string, and eight more) plus `drawPortIcon`, imported by nothing in the editor source. Verified by grep, 2026-08-09. ✅ **Deleted 2026-08-11.** The standing constraint said "use it or delete it", and using it would have been wrong: it is a table of **port *type*** icons, and this task's glyphs say **direction**. Importing it to satisfy the letter of the acceptance would have started the third vocabulary the constraint exists to prevent. | ✅ **closed — deleted** |
+| **R2** | 🔴 **`'both'` was not a variant of "arrives here", and painting it as one made the arrow a liar.** The branch read `leftIcon === 'to' \|\| leftIcon === 'both'`, so an arrowhead did *not* mean "input" — and it was wrong on exactly the ports where direction is hardest to read, the ones that are a source and a target at once. **Decided: a diamond.** Axis-aligned rather than oriented along a wire, because a both-ways port has no one direction to align to, which is the thing it is saying. The mapping now lives in one function (`glyphForPlugIcon`) that both painters call, so it cannot be re-derived wrongly a second time. ⚠️ **Graded by spec, not yet seen on a screen:** a sweep of every component in `lib21-qa` found **zero** `'both'` plugs — it needs a port that is the source of one wire *and* the target of another *on the same side of the same node*, which is rare. Whoever next builds one should look. | ✅ **decided — diamond unobserved live** |
+| **R3** | 🔴 **Criterion 1 is unreachable with endpoint glyphs, and this task did not fake it.** "Direction without hovering, without selecting, and without either node visible" asks for a cue in the *middle* of a wire; an endpoint glyph is, by definition, at the end. Hover answers that case and is criterion 4. Painting an always-on mid-wire chevron would satisfy the letter, and it is a **density decision, not a detail**: the task's own "What must not regress" section warns that endpoint density is the test, the label chip (CAN-001/002) already occupies the midpoint on wires that have one, and a mark on every wire in a hundred-wire graph is what the endpoint dots were kept small to avoid. **Left unbuilt and stated, rather than guessed at.** Same shape as SIG-005's finding that a criterion applied literally would have made the thing worse. | 📋 **open — needs a density decision** |
+| **R4** | ⚠️ **The hover mark runs on a value wire too, and that is a decision rather than an inheritance.** SIG-005 gave a signal one travelling bead and a value a repeating dash *on purpose* — at runtime the mark says *what happened*, and a value connection is live everywhere at once with no one place for a moment to be. **Hover asks a different question.** "Which way" has the same answer shape for both kinds, so both get the bead. The two never collide: the hover branch is `else` to the pulse, so a wire genuinely carrying something keeps saying so. | ✅ **decided** |
+| **R5** | 🔴 **`isHighlighted()` is not "the wire under the cursor".** It is also true when either endpoint's **node** is hovered or selected — so driving the hover mark off it would animate every wire touching a selected node, a dozen at once on a busy one. The mark reads `owner.highlightedConnection === this` instead. The question "which way does *this* wire go" is asked of one wire. | ✅ **fixed** |
+| **R6** | 🔴 **`isPlayingNodeAnimations` was a bare boolean with one caller, and a second animated thing breaks it in both directions.** The AI assistant's spinning icons owned it; a pointer leaving a wire would have called `stopNodeAnimations()` and frozen those icons mid-spin, and the assistant finishing would have frozen the hover mark under the cursor. `CanvasPainter` now counts *reasons* (`'nodes'`, `'hover-direction'`) and runs while any are held. **Anything else in this codebase that animates the canvas must take a reason, not the boolean.** | ✅ **fixed** |

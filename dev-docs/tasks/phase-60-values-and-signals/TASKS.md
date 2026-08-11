@@ -34,7 +34,7 @@ show the direction is drawn only while the wire is still being dragged.
 | SIG-003 ⭐ | [SIG-003-GROUPS-THAT-MEAN-SOMETHING.md](SIG-003-GROUPS-THAT-MEAN-SOMETHING.md) | **the second flagship** — one heading vocabulary, ordered by use; the ungrouped-port audit | ✅ **closed 08-11** |
 | SIG-004 | [SIG-004-EVERY-SIGNAL-SAYS-WHAT-IT-DOES.md](SIG-004-EVERY-SIGNAL-SAYS-WHAT-IT-DOES.md) | one sentence at the render seam, true of every signal port in the library | ✅ **closed 08-11** |
 | SIG-005 | [SIG-005-THE-SIGNAL-TRAVELS.md](SIG-005-THE-SIGNAL-TRAVELS.md) | the travelling pulse — it fired all along and measured **1.48:1** against the wire it was painted on | ✅ **closed 08-11** |
-| SIG-006 | [SIG-006-WHICH-WAY-DOES-THIS-WIRE-GO.md](SIG-006-WHICH-WAY-DOES-THIS-WIRE-GO.md) | endpoint glyphs you can tell apart, and a hover that runs the length of a long wire | 📋 open |
+| SIG-006 | [SIG-006-WHICH-WAY-DOES-THIS-WIRE-GO.md](SIG-006-WHICH-WAY-DOES-THIS-WIRE-GO.md) | endpoint glyphs you can tell apart, and a hover that runs the length of a long wire | 🔨 **built 08-11 — 6/7 criteria; R3 refused with reasons** |
 | SIG-007 | [SIG-007-ANCHOR-POINTS.md](SIG-007-ANCHOR-POINTS.md) | drag a wire to bend it; anchor points, added and removed | 📋 open |
 
 ## Suggested order, and why
@@ -102,8 +102,29 @@ Repeated from [README.md](README.md) because they are the ones that will be forg
 - 📋 **`Other` is now empty in practice but is still rendered as a heading** if a third-party or
   project-local node ships an ungrouped port — the CI gate covers this repo's library, not a user's.
   Worth a thought if a later task revisits the popup chrome.
-- 📋 **`portIcons.ts` is still dead on disk.** SIG-003 added no glyphs; the standing constraint stands
-  for 005/006.
+- ✅ **`portIcons.ts` is gone.** SIG-006 deleted it rather than importing it: it is a **port *type***
+  icon table (`⚡`, `T`, `#`), and SIG-006's glyphs say **direction**. Importing it to satisfy the
+  letter of "use it or delete it" would have started the third vocabulary the constraint exists to
+  prevent.
+
+## What SIG-006 settled, and what it left
+
+- ✅ **The endpoint vocabulary is one module** —
+  [`wireEndpoints.ts`](../../../packages/noodl-editor/src/editor/src/views/nodegrapheditor/wireEndpoints.ts),
+  import-free like `wirePulse.ts` and `portCopy.ts`, 21 specs in `tests-unit/sig-006/`. **Both the
+  wire's own ends and the node-side plugs read it**, so the two statements of one fact cannot drift.
+  Circle = it leaves here · arrowhead = it arrives here · **diamond = both**.
+- 🔴 **Glyphs on a zooming canvas must be painted at constant *screen* size, or no choice of shape can
+  survive a zoom-out acceptance.** Everything after `CanvasRenderer` scales the context is in graph
+  units, so the old 7px disc and 8px triangle were 3.5 and 4 screen px at 50% — half a pixel apart.
+  `glyphScaleFor` divides by the zoom down to a 0.5 floor, and only below that do the glyphs recede
+  again, where the ground grid has already gone.
+- 🔴 **Criterion 1 was refused, not missed.** Direction on a wire whose ends are *both off screen*,
+  without hovering, needs a **mid-wire** cue — and that is a density decision the task's own
+  constraints argue against. See SIG-006 **R3**. Hover answers that case today.
+- 🔴 **The canvas animation flag is now reason-counted.** `isPlayingNodeAnimations` was a bare boolean
+  owned by the AI assistant's spinning icons; a second animated thing breaks it in both directions.
+  **Anything that animates the canvas from here takes a reason** (SIG-006 R6).
 
 ## What SIG-005 settled, and what it left
 

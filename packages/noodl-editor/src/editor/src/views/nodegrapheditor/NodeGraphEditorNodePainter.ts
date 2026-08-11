@@ -4,6 +4,7 @@ import { NodeLibrary } from '../../models/nodelibrary';
 import { CanvasFonts, CanvasTheme } from './canvas/CanvasTheme';
 import { fillRoundRect, roundRect, strokeRoundRect, truncateText } from './canvasHelpers';
 import { NodeGraphEditorNode } from './NodeGraphEditorNode';
+import { arrowheadPolygon, diamondPolygon, glyphForPlugIcon, glyphScaleFor, WIRE_ENDPOINT } from './wireEndpoints';
 
 function _getColorForAnnotation(annotation) {
   const theme = CanvasTheme.instance.colors;
@@ -391,25 +392,70 @@ export function paintNode(node: NodeGraphEditorNode, ctx: CanvasRenderingContext
     // Paint plugs
     let tx, ty;
 
-    function arrow(side, color) {
-      const dx = side === 'left' ? 4 : -4;
-      const cx = x + (side === 'left' ? 0 : _this.nodeSize.width);
-      ctx.fillStyle = color;
+    // SIG-006: the node-side direction glyphs. Circle = it leaves here,
+    // arrowhead = it arrives here, diamond = both. The shapes and their sizes
+    // come from `wireEndpoints.ts`, which the *wire's* own ends read too, so the
+    // two statements of the same fact cannot drift apart.
+    //
+    // ⚠️ Painted at constant screen size below 100% zoom. The old pair was a 7px
+    // disc against an 8px triangle — one pixel of extent apart, in the same
+    // colour, and halving with the zoom.
+    const plugGlyphScale = glyphScaleFor(_this.owner?.getPanAndScale?.().scale ?? 1);
+
+    const fillPolygon = (points) => {
       ctx.beginPath();
-      ctx.moveTo(cx - dx, ty - 4);
-      ctx.lineTo(cx + dx, ty);
-      ctx.lineTo(cx - dx, ty + 4);
+      ctx.moveTo(points[0].x, points[0].y);
+      for (let i = 1; i < points.length; i++) ctx.lineTo(points[i].x, points[i].y);
+      ctx.closePath();
       ctx.fill();
     }
 
-    function dot(side, color) {
-      const cx = x + (side === 'left' ? 0 : _this.nodeSize.width);
-      const radius = 3.5; // mock: flat 7px port dots
+    const plugCentre = (side) => {
+      return { x: x + (side === 'left' ? 0 : _this.nodeSize.width), y: ty };
+    }
 
+    const arrow = (side, color) => {
+      // Pointing *into* the node: a wire arriving on the left side comes from
+      // the left, so its head points right.
+      const direction = { x: side === 'left' ? 1 : -1, y: 0 };
+      ctx.fillStyle = color;
+      fillPolygon(
+        arrowheadPolygon(
+          plugCentre(side),
+          direction,
+          WIRE_ENDPOINT.arrowLength * plugGlyphScale,
+          WIRE_ENDPOINT.arrowHalfWidth * plugGlyphScale
+        )
+      );
+    }
+
+    const dot = (side, color) => {
+      const c = plugCentre(side);
       ctx.fillStyle = color;
       ctx.beginPath();
-      ctx.arc(cx, ty, radius, 0, 2 * Math.PI, false);
+      ctx.arc(c.x, c.y, WIRE_ENDPOINT.sourceRadius * plugGlyphScale, 0, 2 * Math.PI, false);
       ctx.fill();
+    }
+
+    const diamond = (side, color) => {
+      ctx.fillStyle = color;
+      fillPolygon(diamondPolygon(plugCentre(side), WIRE_ENDPOINT.diamondRadius * plugGlyphScale));
+    }
+
+    /**
+     * SIG-006 item 3, decided rather than inherited.
+     *
+     * `'both'` used to fall into the arrow branch — `leftIcon === 'to' ||
+     * leftIcon === 'both'` — so an arrow did not actually mean "input", and the
+     * ports where direction is hardest to read were the ones being told a small
+     * lie. A port that is the source of one wire and the target of another is a
+     * third fact and gets a third silhouette.
+     */
+    const paintPlugGlyph = (side, icon, color) => {
+      const glyph = glyphForPlugIcon(icon);
+      if (glyph === 'circle') dot(side, color);
+      else if (glyph === 'arrowhead') arrow(side, color);
+      else if (glyph === 'diamond') diamond(side, color);
     }
 
     function drawPlugs(plugs, offset) {
@@ -467,11 +513,7 @@ export function paintNode(node: NodeGraphEditorNode, ctx: CanvasRenderingContext
             color = _getColorForAnnotation(topConnection.model.annotation);
           }
 
-          if (p.leftIcon === 'from') {
-            dot('left', color);
-          } else if (p.leftIcon === 'to' || p.leftIcon === 'both') {
-            arrow('left', color);
-          }
+          paintPlugGlyph('left', p.leftIcon, color);
         }
 
         // Plug - Right side
@@ -494,11 +536,7 @@ export function paintNode(node: NodeGraphEditorNode, ctx: CanvasRenderingContext
             color = _getColorForAnnotation(topConnection.model.annotation);
           }
 
-          if (p.rightIcon === 'from') {
-            dot('right', color);
-          } else if (p.rightIcon === 'to' || p.rightIcon === 'both') {
-            arrow('right', color);
-          }
+          paintPlugGlyph('right', p.rightIcon, color);
         }
       }
     }

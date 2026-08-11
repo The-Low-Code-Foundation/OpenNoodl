@@ -78,6 +78,14 @@
     // Import-free by design: it takes the point function as an argument rather
     // than reaching for the connection, which is also what lets SIG-006's hover
     // reuse it without inheriting the painter.
-    "src/editor/src/views/nodegrapheditor/wirePulse.ts"
+    "src/editor/src/views/nodegrapheditor/wirePulse.ts",
+    // SIG-006: `wireEndpoints.ts` is its neighbour and the same shape — the
+    // endpoint glyph geometry (which shape a plug gets, the arrowhead's three
+    // points, the diamond's four, and how much to inflate them so they hold
+    // their screen size as the graph zooms out). Import-free for the same
+    // reason: the fill-ratio separation these shapes are chosen for is a
+    // property of the polygons, so it can be graded as arithmetic here and
+    // confirmed once on composited pixels, rather than argued about.
+    "src/editor/src/views/nodegrapheditor/wireEndpoints.ts"
   ]
 }

@@ -94,10 +94,25 @@ export class CanvasPainter {
     });
   }
 
+  /**
+   * Who currently needs the canvas repainting every frame.
+   *
+   * ⚠️ SIG-006: this used to be the bare boolean `isPlayingNodeAnimations`, with
+   * one caller — the AI assistant's spinning node icons. A second animated thing
+   * (the hover direction mark) makes that boolean wrong in both directions: the
+   * pointer leaving a wire would `stopNodeAnimations()` and freeze the
+   * assistant's icons mid-spin, and the assistant finishing would freeze the
+   * hover mark under the cursor. Reasons are counted; the loop runs while any
+   * are held.
+   */
+  private animationHolds = new Set<string>();
+
   //A request animation frame timer that renders the entire node graph while there are animations to play
   //TODO: only render when an animated node is visible
-  startNodeAnimations() {
+  startNodeAnimations(reason = 'nodes') {
     const editor = this.editor;
+
+    this.animationHolds.add(reason);
 
     if (editor.isPlayingNodeAnimations) {
       return;
@@ -116,7 +131,10 @@ export class CanvasPainter {
     requestAnimationFrame(animate);
   }
 
-  stopNodeAnimations() {
-    this.editor.isPlayingNodeAnimations = false;
+  stopNodeAnimations(reason = 'nodes') {
+    this.animationHolds.delete(reason);
+    if (this.animationHolds.size === 0) {
+      this.editor.isPlayingNodeAnimations = false;
+    }
   }
 }

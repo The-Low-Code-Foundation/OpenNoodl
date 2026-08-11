@@ -1,107 +1,141 @@
 # Phase 60 — next session
 
-**Written 2026-08-11**, at the end of the session that closed **SIG-005**.
-**5 of 7 are done — SIG-001, 002, 003, 004, 005.** That is the whole of *what a wire means*, plus the
-first of *what a wire looks like*.
-**The next session's job is R8 and then SIG-006** — and R8 comes first for a reason given below.
+**Written 2026-08-11**, at the end of the session that fixed **R8** (as ELO-001) and built **SIG-006**.
+**6 of 7 SIG tasks are done.** Only **SIG-007** remains, and it is gated on a question for Richard,
+not on code — see the last section. There is also **one open item inside SIG-006** (R3) that is a
+design decision rather than a bug.
 
-Commit: `7e614ba0` (the painter, the module, 21 specs, four docs).
-Remaining: **006, 007** — and **R8**, which is new and is not either of them.
+Commits: `ac7690c5` (ELO-001) and the SIG-006 commit that follows it.
 
 ## What this session did, so you do not redo it
 
-The pulse was never broken. It was built, enabled by default, and **fires correctly end to end** — a
-real click in the preview puts the connection's id on the channel and the editor paints it, verified
-by driving it, not by reading it. What it was, was invisible.
+### 1. R8 is fixed — and the handover's diagnosis of it was wrong
 
-| theme | wire | pulse over it | before | after |
+R8 said "the component a project opens on builds its connections before the node library can answer",
+and pointed at editor load ordering. **It is not load ordering.** An in-boot trace shows
+`EditorEventBindings`' `libraryUpdated` re-resolve firing exactly when it should, with the connection
+in hand, *after* the type has resolved to a `BasicNodeType` — and still reading **zero ports**:
+
+```
+resolvePorts onClick -> saveValue  from=UNRESOLVED  portsOnFromNode=0  libLoaded=false  typeCtor=UnknownNodeType
+libraryUpdated handler in EditorEventBindings, connections=1
+resolvePorts onClick -> saveValue  from=UNRESOLVED  portsOnFromNode=0  libLoaded=true   typeCtor=BasicNodeType
+```
+
+`NodeGraphNode.getPorts()` memoises the `[]` it derives from an `UnknownNodeType` during the window
+before the viewer delivers the library, and **`[]` is truthy**, so `if (!this._ports)` never
+re-derives. Full write-up:
+[`dev-docs/tasks/editor-load-ordering/ELO-001-…md`](../editor-load-ordering/ELO-001-A-PORT-LIST-CACHED-BEFORE-THE-LIBRARY.md).
+
+🔴 **The trap worth carrying: the defect erases its own evidence.** `NodeGraphModel.scheduleUpdateTypes()`
+clears every node's `_ports` on a `setTimeout(…, 1)` — one tick *after* the only thing that would have
+re-read it. So by the time you can type into a console, the cache is healthy and only `fromPort` is
+stale, which reads as pure load ordering. **I abandoned the correct hypothesis once on exactly that
+evidence.** Anything inside the editor's first second has to be traced with `console.log` in source and
+a cold boot, not probed from a live `eval`.
+
+⚠️ **A cold boot is required to reproduce**: reopening a project inside a live session has the library
+already loaded. Stage the fixture **on disk** (stop the stack, edit `project.json`, relaunch).
+
+### 2. SIG-006 is built — 6 of 7 acceptance criteria
+
+Circle at the source, arrowhead at the target, on every committed wire; node-side glyphs rebuilt;
+`'both'` given a **diamond**; hover runs SIG-005's mark source → target; `portIcons.ts` **deleted**.
+Geometry is in [`wireEndpoints.ts`](../../../packages/noodl-editor/src/editor/src/views/nodegrapheditor/wireEndpoints.ts),
+import-free, 21 specs in `tests-unit/sig-006/`.
+
+Measured on composited pixels, `lib21-qa` `/Table/Row`, five wires — the width **across** the wire at
+the endpoint and behind it, masked to the wire's own colour so the node card is excluded:
+
+| zoom | glyph | at the endpoint | 3 back | 7 back |
 |---|---|---:|---:|---:|
-| **dark** | `#35c3e8` signal | `#b6e4f2` | **1.48:1** | 1.84 core / **17.19 flank** |
-| **dark** | `#45d08a` value | `#a7e2c9` | **1.43:1** | 1.75 core / **17.19 flank** |
-| light | `#0e9cc4` signal | `#145269` | 3.25:1 | **5.09** core / 14.35 flank |
-| light | `#1e9e63` value | `#1a463b` | 3.09:1 | **4.74** core / 14.35 flank |
+| 100% | source circle | **5.5 px** | 1.5–2.5 | 1.5–2 |
+| 100% | target arrowhead | **0 px** | 3.5 | 7.5–10 |
+| 50% | source circle | **5.5–6 px** screen | — | — |
+| 50% | target arrowhead | **0–0.5 px** screen | — | — |
 
-Measured on composited canvas pixels, four dash phases before / three points along the travel after,
-in the running editor on `lib21-qa` with a purpose-built Button → `String.saveValue` (signal) and
-`String.savedValue` → `Text.text` (value) pair. The fixture was removed from the project afterwards
-and the removal confirmed on disk.
+The profiles are opposite by construction, and unchanged by zoom.
 
 ### The five things worth carrying
 
-1. 🔴 **"Light mode is the binding constraint" is about text on a panel. For anything painted ON a
-   wire, dark is binding and it inverts.** `wirePulse` is `--theme-color-fg-highlight` — near-white in
-   dark, near-black in light. A wire is *already* a bright saturated colour at 9.3:1 against the
-   ground, so in dark there is nowhere lighter for a mark to go; in light the same token is near-black
-   and moves a great deal. **Check the dark number first.**
-2. 🔴 **≥3:1 against a dark-theme wire is unreachable by any colour, and the task says so rather than
-   reporting around it.** It requires a mark *darker* than the wire, and on a near-black ground a dark
-   mark on a bright wire is indistinguishable from a **gap** — which is what an unhealthy wire's `[5]`
-   dash already means. The mark went to **weight** and is measured against the **ground on its
-   flanks**. Same shape as SIG-003's mixed-kind headings: *an acceptance criterion applied literally
-   would have made it worse.*
-3. ✅ **Splitting signal from value cost no protocol change.** The runtime genuinely cannot tell them
-   apart — `connectionSentSignal` wraps `connectionSentValue` and `sendPulsingConnections` flattens the
-   map to a bare array of ids. But **the editor already resolves the source port's type one line above
-   the pulse block.** A signal now gets **one round-capped bead running source → target** (a moment has
-   a position); a value gets **the repeating dash along the whole wire** (a value connection is live
-   everywhere at once). Distinguishable in a still frame, which was the acceptance.
-4. ⚠️ **The old mark could never have travelled.** `offset = life / 20` is 50 px/s and a pulse is
-   visible for ~600 ms, so on a 300 px wire it left the source and was deleted ~250 px short of
-   arriving. It was marching ants, not a travelling mark. The new one crosses in 420 ms.
-5. 🔴 **R8, below.** Found while measuring, filed rather than fixed.
+1. 🔴 **A glyph on a zooming canvas must be painted at constant *screen* size, or no choice of shape
+   passes a zoom-out test.** Everything after `CanvasRenderer` scales the context is in *graph* units,
+   so the old 7px disc and 8px triangle were 3.5 and 4 screen px at 50% — half a pixel apart. This was
+   never a shape problem first; it was a units problem. `glyphScaleFor` divides by the zoom down to a
+   0.5 floor (below which the ground grid has already gone).
+2. 🔴 **`isPlayingNodeAnimations` was a bare boolean and a second animated thing breaks it in both
+   directions.** The AI assistant's spinning icons owned it; a pointer leaving a wire would have frozen
+   them mid-spin, and the assistant finishing would have frozen the hover mark. `CanvasPainter` now
+   counts **reasons**. **Anything else that animates the canvas must take a reason, not the boolean.**
+3. 🔴 **`isHighlighted()` is not "the wire under the cursor."** It is also true when either endpoint's
+   *node* is hovered or selected — a dozen wires at once on a busy node. The hover mark reads
+   `owner.highlightedConnection === this`.
+4. ⚠️ **The hover bead runs on value wires too, and that is a decision.** At runtime SIG-005 gives a
+   value a repeating dash because a value is live everywhere at once. Hover asks a *different*
+   question, and "which way" has one answer shape for both kinds. The two never collide — the hover
+   branch is `else` to the pulse.
+5. 🔴 **SIG-006's criterion 1 is refused, not met.** See below.
 
-### 🔴 R8 — the defect this session filed and did not fix
+### 🔴 SIG-006 R3 — the one criterion this session would not fake
 
-**On a fresh open of a project, every connection in the component the editor lands on has
-`fromPort === undefined`.** So `NodeLibrary.nameForPortType` returns undefined,
-`CanvasTheme.connectionColors` falls through to the *data* pair, and **a signal wire is painted green
-instead of cyan.** `wirePulseKind` falls to `'value'` too.
+Criterion 1: *"a committed wire shows its direction without hovering, without selecting, and without
+either node being visible — captured on a wire whose ends are both off screen."*
 
-```js
-ed = window.__nodeGraphEditor
-ed.connections.map(c => c.fromProperty + ':' + (c.fromPort ? 'ok' : 'UNRESOLVED'))
-// ["onClick:UNRESOLVED", "savedValue:UNRESOLVED"]        <- lib21-qa, /#__page__/Home, on open
-```
+**An endpoint glyph is at the endpoint.** On a wire whose ends are both off screen there is nothing of
+it to see, and the criterion forbids the hover that does answer that case. Meeting it literally needs
+an always-on **mid-wire** cue, and that is a density decision, not a detail:
 
-It **self-heals the moment you navigate**, which is why nobody has ever reported it — switch to
-another component and its wires read `onClick:ok/signal`, and switching *back* resolves the first
-one's. `resolvePorts()` (`NodeGraphEditorConnection.ts:104`) has no guard and no retry; the re-resolve
-that exists (`EditorEventBindings.ts:58-70`, on `libraryUpdated`/`typeAdded`) has either already fired
-or is not yet bound at initial `render()`. Both paths go through the same `bindModel()`, so the
-difference is purely **when**.
+- the task's own "What must not regress" says endpoint density on a real graph is the test;
+- the label chip (CAN-001/002) already occupies the midpoint on wires that have one;
+- a mark on every wire in a hundred-wire graph is exactly what the endpoint dots were kept small to
+  avoid.
 
-This is **phase 60's own premise failing in the one graph every builder sees first**: *a wire has a
-kind, and the editor draws it* — here it draws it wrong. Recorded as SIG-005 **R8** and SIG-006 **R2**.
+**Left unbuilt and written down** rather than guessed at — the same shape as SIG-005's finding that a
+criterion applied literally would have made the thing worse. If you take it on, the candidates are a
+mid-wire chevron (cheap, collides with the chip) or tapering the wire itself (survives any zoom,
+larger change, interacts with the pulse's weight boost and `Created`'s 3px stroke).
 
-### Gates, measured on the settled tree
+⚠️ Also open: **the `'both'` diamond has never been seen on a screen.** A sweep of every component in
+`lib21-qa` found zero `'both'` plugs — it needs a port that is the source of one wire *and* the target
+of another *on the same side of the same node*. It is graded by spec. Look at it when you build one.
+
+### Gates, measured on this tree
 
 `typecheck:editor`, `typecheck:editor-tests`, `typecheck:viewer`, `typecheck:cloud` **clean** ·
-`test:main` **116 suites / 1632 tests green** (was 115/1611; +1 suite, +21 specs, all this task's) ·
-`lint:ci` **869 errors against a 3916 baseline** ·
-`test:ci` **`Jasmine: 2632 specs, 6 failures` at seed 90638** — the recorded baseline, confirmed **by
-name**: four `AIX-006 style vocabulary`, two `AI model registry`. Spec count unchanged at 2632, which
-is correct: this task's 21 specs are Jest and live in `test:main`.
+`test:main` **117 suites / 1653 tests green** (was 116/1632; +1 suite, +21 specs, all SIG-006's) ·
+`lint:ci` **865 errors against a 3916 baseline** — *down* 2 from the 867 at session start, because the
+plug-glyph helpers became `const` rather than adding four `no-inner-declarations` to the ratchet.
 
-⚠️ **`typecheck:runtime` is still red and it is still not this work** — re-measured at the end of this
-session, same two files, both unmodified in the diff:
+`test:ci`: **2635 specs**, and the baseline of **6** confirmed by name at seed **02525**.
+
+✅ **New and useful: you can pin the seed.** `tests/SpecRunner.html:41-42` reads
+`process.env.NOODL_SPEC_SEED`, so `NOODL_SPEC_SEED=31954 npm run test:ci` reproduces an order. This
+session used it as a **control**: ELO-001's change came back 12 at seed 31954 and 6 at 02525, and
+BEN-001 *reads* `getPorts` — so "it's order-dependent" was not good enough. Re-running **31954 with the
+change reverted** returned 14. BEN-001 fails at that seed either way. One run, and the change is
+exonerated instead of argued about. **Do this whenever the extra failures plausibly touch what you
+changed.**
+
+⚠️ `typecheck:runtime` is **still red and still not this work** — the same two files, both untouched:
 `packages/noodl-runtime/test/editorconnection.replyidentity.test.ts:23` and
-`…/editorconnection.sendqueue.test.ts:24` both redeclare `EditorConnection`. Pre-existing; ten minutes
-for someone; **do not let it read as a regression.**
+`…/editorconnection.sendqueue.test.ts:24` redeclare `EditorConnection`. Ten minutes for someone; **do
+not let it read as a regression.**
 
-⚠️ **The first `test:ci` attempt died at the webpack stage in under a minute with no output at all.**
-A bare re-run of the same bundle compiled successfully in 45 s, and the full re-run gave the baseline
-above. If you see a sub-minute exit-1 with a truncated log, re-run before investigating.
+⚠️ **These gates ran on a tree carrying a concurrent session's uncommitted work** — `noodl-core-ui/`,
+`ProjectsPage/`, `ExtractToComponent*`, `ComponentsPanelNew/`, `models/template/`, and (new, appearing
+mid-session) `views/ConnectionPopup/ConnectionBar.tsx` and `ConnectionPopup.module.scss`. The baseline
+matched by name exactly, so it perturbed nothing — but say so if you inherit the numbers.
 
-⚠️ **These gates ran on a tree carrying a concurrent session's uncommitted work** (see below). The
-baseline matched by name exactly, so it perturbed nothing — but say so if you inherit the numbers.
+### Incidental, unrelated
 
-### Incidental, unrelated to this phase
-
-**One node with an undefined type name takes down the whole editor document.** Opening `Puppy test 3`
-gives an "Aw, Snap!" error boundary — `UnknownNodeType.localName` does `this.name.split('/')` and
-`this.name` is undefined (`models/nodelibrary/UnknownNodeType.ts:6`). An unknown *type* is supposed to
-render as an unknown-node card; an unknown type with no name string kills `EditorDocument` instead.
-Not investigated further.
+- **One node with an undefined type name still takes down the whole editor document.** `Puppy test 3`
+  gives an "Aw, Snap!" boundary — `UnknownNodeType.localName` does `this.name.split('/')` with
+  `this.name` undefined (`models/nodelibrary/UnknownNodeType.ts:6`). Carried over from the last
+  handover; still unfixed. **This is now an obvious ELO-track candidate** — it is the same
+  UnknownNodeType, in the same boot window.
+- A renderer `SyntaxError: Unexpected token '<', "<!DOCTYPE "… is not valid JSON` appears in
+  `.logs/dev.log` on editor boot. Something fetches a URL that 404s to an HTML page and parses it as
+  JSON. Not investigated; unrelated to the canvas.
 
 ---
 
@@ -109,120 +143,103 @@ Paste the block below into a fresh session.
 
 ---
 
-Work on **phase 60** for OpenNoodl/NodeGX — **R8 first, then SIG-006**. Work on `cline-dev`, commit
-straight to it, no branches and no PRs. **Check for a second live session first**
-(`git log --since="3 hours ago"`, and read untracked files rather than assuming they are yours) —
-there was one throughout the last three sessions, on phases 50/54/55/57/58, and it was **still
-committing 15 minutes before this handover was written** (`08c2b85a` reconciling four LEG branches,
-`fb696b0d` phase-54). It leaves uncommitted work in `packages/noodl-core-ui/`,
-`packages/noodl-editor/src/editor/src/{utils/ExtractToComponent.ts,
+Work on **phase 60** for OpenNoodl/NodeGX. **SIG-001…006 are done.** Two things are open and they are
+different in kind: **SIG-006 R3** (a design decision about wire density) and **SIG-007** (gated on a
+question for Richard). **Read "Which to do" below before starting either.** Work on `cline-dev`, commit
+straight to it, no branches and no PRs.
+
+**Check for a second live session first** (`git log --since="3 hours ago"`, and read untracked files
+rather than assuming they are yours) — there was one throughout the last four sessions, on phases
+50/54/55/57/58, and it was still committing minutes before this handover. It leaves uncommitted work in
+`packages/noodl-core-ui/`, `packages/noodl-editor/src/editor/src/{utils/ExtractToComponent.ts,
 views/nodegrapheditor/EditorClipboard.ts, views/nodegrapheditor/ExtractToComponentPopup.*,
-views/panels/ComponentsPanelNew/, pages/ProjectsPage/, models/template/}` and
+views/ConnectionPopup/, views/panels/ComponentsPanelNew/, pages/ProjectsPage/, models/template/}` and
 `packages/noodl-editor/tests/`. ⚠️ **`views/nodegrapheditor/` holds both their untracked
-`ExtractToComponentPopup.*` and your files — never pathspec that directory, name the files.**
-Pathspec-scope every `git add` **and** every `git commit`, and **never stash**.
+`ExtractToComponentPopup.*` and yours, and `views/ConnectionPopup/` is now theirs too — never pathspec
+either directory, name the files.** Pathspec-scope every `git add` **and** every `git commit`, and
+**never stash**.
 
 Read these first, in this order:
 
 1. `dev-docs/tasks/phase-60-values-and-signals/README.md` — the phase and its **four premise
    corrections**, every one read in source. Do not re-derive them.
-2. `dev-docs/tasks/phase-60-values-and-signals/TASKS.md` — the ordering, and **"What SIG-005 settled,
+2. `dev-docs/tasks/phase-60-values-and-signals/TASKS.md` — the ordering, and **"What SIG-006 settled,
    and what it left"**.
-3. `dev-docs/tasks/phase-60-values-and-signals/SIG-005-THE-SIGNAL-TRAVELS.md` — **its Register, R5
-   through R8 only.** R8 is your first job and it is written up there with the reproduction.
-4. `dev-docs/tasks/phase-60-values-and-signals/SIG-006-WHICH-WAY-DOES-THIS-WIRE-GO.md` — the task.
-   **Read R2 before measuring anything about wire colour.**
-5. `packages/noodl-editor/src/editor/src/views/nodegrapheditor/wirePulse.ts` — **its header carries the
-   measurements and the reasoning**, and its API is what SIG-006 item 4 calls.
+3. `dev-docs/tasks/phase-60-values-and-signals/SIG-006-WHICH-WAY-DOES-THIS-WIRE-GO.md` — **its
+   Register, and "What was measured".** R3 is the open design decision and is written up there.
+4. `packages/noodl-editor/src/editor/src/views/nodegrapheditor/wireEndpoints.ts` — **its header carries
+   the shape reasoning and the fill-ratio table.** Anything new on a wire end goes through it.
+5. `dev-docs/tasks/editor-load-ordering/README.md` — the ELO track, one task closed, and the rule it
+   exists to state: **a value derived while the node library was empty is a "don't know yet", and
+   `[]` is truthy.**
 
-## Why R8 comes before SIG-006
+## Which to do
 
-SIG-006 is *the task about telling wires apart*. R8 means the first graph a builder opens is telling
-them apart **wrong** — a signal wire painted in the data colour. Shipping direction cues onto a canvas
-that is mis-stating kind is building on sand, and any measurement of wire colour taken on that graph
-is measuring the wrong pixels.
+**SIG-007 is gated on a question, not on code.** Its §0 says to ship 001–006, put the result in front
+of the same user, and ask whether he still wants to bend wires — because manual routing is what people
+reach for when they cannot tell what a wire is or where it goes, which is exactly what 005 and 006
+address. **006 has now shipped, so the question is finally askable.** It is also the only task in the
+phase that changes what a connection is **on disk**. **Do not start it without that answer.**
 
-**It is not a phase-60 task and should not be filed as one.** Give it its own spec — an editor
-load-ordering fix with a gate — or land it as a scoped fix with a regression spec. ⚠️ **Prove the gate
-red by injection before trusting it green**, the way SIG-003's `catalog:groups:check` had to be: its
-first version read a field its source lacked and printed a confident `✓ 0`.
+So unless Richard has answered: **SIG-006 R3 is the work**, and it is a *design* task — decide whether
+a wire states its direction in its middle, and at what density cost. Measure on a real graph, not a
+two-node example. If the answer is "no", say so and close R3 rather than leaving the criterion
+ambiguous.
 
-⚠️ **If R8 turns out larger than it looks, stop and say so.** SIG-006's items 1–3 (the endpoint glyphs,
-the node-side dot/arrow, and what `'both'` paints) do not depend on it — only the colour-adjacent parts
-do. Do those and leave the rest, rather than half-fixing load ordering.
-
-## What SIG-005 hands SIG-006
-
-✅ **`wirePulse.ts` is THE travelling-mark implementation. Item 4 calls it. Writing a second one is
-the exact failure the 005-before-006 ordering existed to prevent.**
-
-- `travellingHeadRange(ageMs)` → `{from, to}` in bezier `t`; `samplePolyline(pointAt, from, to)` →
-  points. **It takes the point function as an argument** precisely so a hover can drive it — all you
-  supply is the age (time since the pointer entered, instead of `performance.now() - created`).
-- ⚠️ **The mark travels source → target because `curve[0]` is the source**, the same array the endpoint
-  dots are painted from. So item 1's arrowhead and this mark cannot disagree about which end is which.
-- ⚠️ **Decide what a hovered *value* wire does, out loud.** SIG-005 gave a signal one bead and a value
-  a repeating dash *on purpose*. Hover asks a different question ("which way?"), so it may want the
-  bead on both — that is a third state on one painter and it needs a decision, not an inheritance.
+⚠️ A third option, if neither appeals: the **ELO track** has an obvious second task — the
+`UnknownNodeType.localName` crash above. Same class, same boot window, and it takes down the whole
+document.
 
 ## Standing constraints for this phase
 
-- 🔴 **Dark is the binding theme for anything painted on a wire** (finding 1 above). Light is binding
-  for text on a panel. Do not inherit the wrong one.
+- 🔴 **Dark is the binding theme for anything painted on a wire.** Light is binding for text on a
+  panel. Do not inherit the wrong one.
 - **Wire colour already carries four meanings** — type, health, pulse, diff annotation — and
   `NodeGraphEditorConnection.ts:625-627` explicitly refused to make selection a fifth, using stroke
   weight instead. **New information goes in shape, weight or motion. Never a sixth colour.**
 - **Red is danger only.**
-- ⚠️ **`portIcons.ts` is a complete glyph table imported by nothing.** SIG-006's acceptance says it is
-  **either imported or deleted at the end of this task**. Do not start a third vocabulary beside it and
-  the painter's `dot`/`arrow`.
+- ⚠️ **Glyphs on the canvas are painted at constant screen size** via `glyphScaleFor`. Anything new
+  that must survive zoom-out goes through it, or it halves with the content.
+- ⚠️ **The canvas animation flag is reason-counted.** `startNodeAnimations(reason)` /
+  `stopNodeAnimations(reason)`. Passing no reason takes the default `'nodes'` hold and will fight the
+  AI assistant.
 - ⚠️ **`endpointHitRadius` is 8 against a painted radius of 3**, deliberately, for CAN-003 endpoint
-  dragging. Changing the paint must not silently change the grab. An arrowhead is paint, not a target.
+  dragging. An arrowhead is paint, not a target.
 
 ## Driving and measuring
 
-Use the `run-editor` skill. The mechanics that cost this session real time are in memory under
-**`reaching-editor-modules-over-cdp`**; the short version:
+Use the `run-editor` skill. The mechanics are in memory under **`reaching-editor-modules-over-cdp`**
+and **`a-boot-window-defect-erases-its-own-evidence`**; the short version:
 
-- ✅ **`ed.layoutAndPaint()` paints synchronously.** `ed.repaint()` only schedules a
-  `requestAnimationFrame`, which an occluded window clamps ~1000×. Force the frame yourself and read
-  `getImageData` in the same `eval` — this sidesteps the occlusion trap entirely and beats screenshot
-  timing.
-- ✅ **Three-frame stability mask, then filter to the wire's own token colour.** A plain two-frame diff
-  produced a confident `#ffffff` on `#000000` = 21:1 that was not the thing under test. Print the
-  foreground and background hex beside every ratio.
-- ⚠️ **The node-graph canvas is transparent where the ground shows through** — the ground is CSS on the
-  element behind it. `getImageData` gives you `#000000, alpha 0` there. Fill your own ground before
-  rendering a crop for evidence.
-- ⚠️ **Sample the animation phase, not multiples of its period.** `lineDashOffset` 0 / 20 / 40 against
-  a `[5, 15]` dash are the same phase, and produced three byte-identical "measurements at three points
-  along the travel".
-- ⚠️ **`ed.clearSelection(); ed.highlighted = null;` first**, or you measure `wireSignalHighlighted`.
-- ⚠️ **Reaching a non-exported module:** `window.webpackChunknoodl_editor.push([...])` works, but
-  **never require `projectmodel.ts` that way** — it re-evaluated the module and dropped the editor back
-  to the launcher mid-session. Reach the project off the editor: `ed.model.owner` is the ComponentModel,
-  `ed.model.owner.owner` is the project.
+- ✅ **`ed.layoutAndPaint()` paints synchronously**; `ed.repaint()` only schedules a
+  `requestAnimationFrame`, which an occluded window clamps ~1000×. Force the frame and read
+  `getImageData` in the same `eval`.
+- ✅ **The graph context is `ed.canvas.ctx`, not `document.querySelector('canvas').getContext('2d')`** —
+  and `ed.canvas.ratio` is the device ratio. Screen px = `(graph + pan) * scale * ratio`.
+- ✅ **To compare two glyphs, measure a *profile*, not a crop.** A box around an endpoint contains the
+  wire as well, and the wire is the same colour, so areas and bounding boxes say almost nothing. The
+  width **across** the wire at the endpoint separates a circle (widest there) from an arrowhead (a
+  point there) completely.
+- ⚠️ **`ed.clearSelection(); ed.highlighted = null; ed.setHighlightedConnection(undefined);` first**, or
+  you measure the highlighted colours and the hover mark.
+- ⚠️ **The CDP `eval` context persists between calls** — a second `const s = …` throws
+  "Identifier 's' has already been declared". Wrap every probe in `(() => { … })()`.
+- ⚠️ **`npm run cdp -- eval "$(cat file.js | tr '\n' ' ')"` silently comments out the rest of the file**
+  at the first `//`. Strip comment lines first, or the whole probe becomes one line ending in a
+  comment and you get `SyntaxError: Unexpected end of input`.
 - ⚠️ **`cdp click <selector>` matches the FIRST element for that selector.** Tag the one you want with
-  a unique `id` in an `eval` first — clicking a class opened the wrong project.
-- ⚠️ **A preview page is `overflow-y: clip`.** You cannot scroll to a control below the fold; reorder
-  the node to the top of the page's children instead.
-- Clean up anything you add to Richard's projects, and confirm the removal **on disk**, not just in the
-  model.
+  a unique `id` in an `eval` first.
+- Clean up anything you add to Richard's projects, and confirm the removal **on disk** — back
+  `project.json` up first and check the SHA afterwards.
 
 ## Gates
 
 `dev:stop` **before** `test:ci`; **measure `test:main`, never inherit its number**; only the
 `Jasmine:` line counts, and match failures **by name** — the baseline is **6** (4 × `AIX-006 style
-vocabulary`, 2 × `AI model registry`), reaching 12 when the order-dependent BEN-001 cluster fails, so
-re-run at another seed before investigating. **Record the seed.** ⚠️ `test:ci` takes 10–15 minutes and
-its output is large — redirect it to a file and grep, because a truncated tail loses the `Jasmine:`
-line and the seed. ⚠️ A sub-minute exit-1 at the webpack stage is transient; re-run it. ⚠️
-`typecheck:runtime` is already red on two untouched test files — do not chase it.
-
-## After SIG-006
-
-**SIG-007 is gated on a question, not on code.** Its §0 says to ship 001–006, put the result in front
-of the same user, and ask whether he still wants to bend wires — because manual routing is what people
-reach for when they cannot tell what a wire is or where it goes, which is precisely what 005 and 006
-address. It is also the only task in the phase that changes what a connection is **on disk**. **Do not
-start it without that answer.**
+vocabulary`, 2 × `AI model registry`), reaching 12 when the order-dependent BEN-001 cluster fails.
+✅ **`NOODL_SPEC_SEED=<seed> npm run test:ci` pins the order** — when the extra failures plausibly touch
+what you changed, do not settle for a clean run at another seed; **pin the failing seed and revert your
+change.** **Record the seed.** ⚠️ `test:ci` takes 10–15 minutes and its output is large — redirect it to
+a file and grep, because a truncated tail loses the `Jasmine:` line and the seed. ⚠️ A sub-minute exit-1
+at the webpack stage is transient; re-run it. ⚠️ `typecheck:runtime` is already red on two untouched
+test files — do not chase it.
