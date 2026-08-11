@@ -1,7 +1,10 @@
 # BST-002 — `create_project` binds the live server
 
 **Status:** 📋 open · **Track: the seam** · ⭐ **the flagship** · **depends on BST-001** ·
-⚠️ **its design is gated on one unverified client behaviour — read §2 before starting**
+✅ **the gate in §2 is MEASURED and it passed** — see
+[MEASUREMENTS §1](MEASUREMENTS-CLIENT-CONTRACT.md#1--f91-claude-code-does-re-list-on-notificationstoolslist_changed).
+Claude Code 2.1.217 re-issues `tools/list` **3ms** after the notification, with a clean
+no-notification control. **§1 is the whole task; the third-state fallback is not built.**
 
 ## The gap, stated precisely
 
@@ -132,5 +135,6 @@ shape rather than a new one.
 |---|---|---|
 | F6 | `enable()` → `notifications/tools/list_changed` is the SDK's own mechanism; nothing needs inventing | ✅ verified, [`disclosure.ts:11-14`](../../../packages/noodl-mcp/src/tools/disclosure.ts#L11), [`:107-115`](../../../packages/noodl-mcp/src/tools/disclosure.ts#L107) |
 | F7 | **`instructions` cannot be revised after `initialize`**, and the bound briefing exists because measured models failed without it | ✅ verified, [`server.ts:53-112`](../../../packages/noodl-mcp/src/server.ts#L53) — the paragraphs cite LAS-006, AAQ-005, AAQ-011 |
-| F8 | A client that ignores `list_changed` never sees revealed tools — a turn's cost for a group, **a session's cost here** | ⚠️ **unverified for Claude Code; gates §1 vs §2's fallback.** Check the phase 58 record before driving it |
+| F8 | A client that ignores `list_changed` never sees revealed tools — a turn's cost for a group, **a session's cost here** | ✅ **measured 2026-08-11: Claude Code is not such a client.** Re-lists 3ms after the notification; control run issues one `tools/list` and never a second. Phase 58's record was no help — it records the *driver rig* being taught to act on the notification, which says nothing about Claude Code. [MEASUREMENTS §1](MEASUREMENTS-CLIENT-CONTRACT.md) |
+| F91 | The measurement itself cost nothing, because the probe reveals **on a timer** rather than on a tool call — so booting a client is the whole trigger and no turn is taken | ✅ the technique, worth keeping |
 | F9 | `registerCreateProjectTools` takes only the recorder; the binding + disclosure pair is the shape `registerAuthorTools` already uses | ✅ verified, [`server.ts:155-167`](../../../packages/noodl-mcp/src/server.ts#L155) |

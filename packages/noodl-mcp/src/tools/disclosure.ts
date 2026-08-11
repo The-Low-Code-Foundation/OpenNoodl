@@ -39,7 +39,14 @@ import type { McpServer, RegisteredTool } from '@modelcontextprotocol/sdk/server
 import { z } from 'zod';
 
 import { backendRequirementFor } from '../editor-deps';
-import { BOOTSTRAP_TOOLS, TOOL_GROUPS, deferredGroups, groupOfTool, type ToolGroupId } from '../toolGroups';
+import {
+  BOOTSTRAP_ADVERTISED,
+  BOOTSTRAP_TOOLS,
+  TOOL_GROUPS,
+  deferredGroups,
+  groupOfTool,
+  type ToolGroupId
+} from '../toolGroups';
 import type { FindToolsResponse } from './responses';
 import { guarded, jsonResult } from './util';
 
@@ -102,7 +109,10 @@ export class ToolDisclosure {
       this.deferring = true;
       this.revealed.clear();
       for (const [name, handle] of this.handles) {
-        if (!BOOTSTRAP_TOOLS.includes(name) && name !== 'find_tools') handle.disable();
+        // 🔴 F87 — one list rather than a list plus a special case. The
+        // `&& name !== 'find_tools'` this replaces was the whole reason the
+        // served count and the advertised count could disagree.
+        if (!BOOTSTRAP_ADVERTISED.includes(name)) handle.disable();
       }
       return;
     }

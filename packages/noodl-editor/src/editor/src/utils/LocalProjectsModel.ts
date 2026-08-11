@@ -13,6 +13,7 @@ import Model from '../../../shared/model';
 import { detectRuntimeVersion } from '../models/migration/ProjectScanner';
 import { RuntimeVersionInfo } from '../models/migration/types';
 import { projectFromDirectory, unzipIntoDirectory } from '../models/projectmodel.editor';
+import { installProjectAgentConfig } from '../models/template/installAgentConfig';
 import { installStarterAssets } from '../models/template/starterAssets';
 import { GitHubOAuthService } from '../services/GitHubOAuthService';
 import { isV2FormatEnabled } from '../services/ProjectStructure/featureFlags';
@@ -219,6 +220,27 @@ export class LocalProjectsModel extends Model {
     );
   }
 
+  /**
+   * BST-005 — the two files that tell the *next* agent what this folder is.
+   *
+   * ⚠️ **After the template and never overwriting**, exactly like
+   * `installStarterAssets` beside it: a downloaded template that ships its own
+   * `CLAUDE.md` keeps it, and a template's `.gitignore` is appended to rather
+   * than replaced. Called from both branches because a project made from a
+   * template and one made from the embedded default must carry the same files —
+   * otherwise "why doesn't my agent know about this project?" answers "depends
+   * how you made it", which the user can neither check nor fix.
+   *
+   * Never fatal: it reports instead of throwing. The user asked for a project,
+   * and a project whose agent configuration could not be written is still one.
+   */
+  private async writeAgentConfigFor(projectDirectory: string, projectName: string) {
+    const report = await installProjectAgentConfig({ projectDirectory, projectName });
+    for (const file of report.files) {
+      if (file.outcome === 'skipped') console.warn(`Agent configuration: ${file.path} — ${file.reason}`);
+    }
+  }
+
   async newProject(
     fn,
     options: {
@@ -250,6 +272,7 @@ export class LocalProjectsModel extends Model {
       // `installStarterAssets` never overwrites — and before the load, so the module scanner sees
       // them on its first scan rather than one nobody triggers.
       await installStarterAssets(dirEntry);
+      await this.writeAgentConfigFor(dirEntry, name);
 
       // Project extracted successfully, load it
       projectFromDirectory(dirEntry, (project) => {
@@ -287,6 +310,7 @@ export class LocalProjectsModel extends Model {
       // POL-006 — see the note in the template branch above. Both branches are covered because both
       // the manual wizard and the AI scoping wizard reach the project through this one method.
       await installStarterAssets(dirEntry);
+      await this.writeAgentConfigFor(dirEntry, name);
 
       // Load the newly created project
       projectFromDirectory(dirEntry, (project) => {

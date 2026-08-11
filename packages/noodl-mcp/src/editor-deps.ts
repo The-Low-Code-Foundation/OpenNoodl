@@ -384,3 +384,32 @@ export type {
 export { renderReportForAssistant, renderReportMarkdown } from '../../noodl-editor/src/editor/src/utils/import-engine/legacy/report';
 export { IMPORT_REPORT_FORMAT_VERSION, IMPORT_REPORT_JSON_PATH } from '../../noodl-editor/src/editor/src/utils/import-engine/legacy/types';
 export type { ImportReport, LegacyFinding, LegacyOutcome } from '../../noodl-editor/src/editor/src/utils/import-engine/legacy/types';
+
+// ─── What a new project tells the next agent (BST-005) ───────────────────────
+// Pure: `agentConfig.ts` imports nothing at all, deliberately, because it is
+// reached from here. It renders the two files and owns the never-overwrite rule;
+// the filesystem arrives as a three-method host, so this server writes with `fs`
+// and the editor writes with `@noodl/platform` over one implementation.
+export {
+  AGENT_CONFIG_PATHS,
+  installAgentConfig,
+  renderClaudeMd,
+  renderMcpJson
+} from '../../noodl-editor/src/editor/src/models/template/agentConfig';
+export type {
+  AgentConfigFileResult,
+  AgentConfigHost,
+  AgentConfigOptions,
+  AgentConfigReport,
+  AgentServerRegistration
+} from '../../noodl-editor/src/editor/src/models/template/agentConfig';
+// ⚠️ The registration NAME, from the module that owns the rule and its tests.
+// `mcpCommands.ts` lives under the renderer's settings panel but imports nothing
+// whatsoever, which is what makes it reachable from here — and the alternative,
+// a second slugger, is exactly the drift TALK-004 decision 4 exists to prevent.
+// 🔴 F94: the per-project name is load-bearing in project scope too — a
+// user-scope `nodegx` shadows a project-scope `nodegx` silently.
+export {
+  authoringServerName,
+  projectSlug
+} from '../../noodl-editor/src/editor/src/views/panels/SettingsPanel/sections/mcpCommands';

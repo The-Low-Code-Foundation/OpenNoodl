@@ -4,7 +4,7 @@
  * the protocol channel.
  *
  * BST-001 — the project directory is optional. With none, the server starts in
- * bootstrap mode: four tools that need no project, and a briefing for an agent
+ * bootstrap mode: the tools that need no project, and a briefing for an agent
  * that has not got one. Zero positionals used to be the usage-and-exit-2 branch,
  * so {@link USAGE} is where somebody first reads that the mode exists — which is
  * why it says what zero means rather than only what one means.
@@ -15,14 +15,15 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { reapOrphanedBackends } from './backend/reaper';
 import { ToolError } from './errors';
 import { createServer } from './server';
-import { BOOTSTRAP_TOOLS } from './toolGroups';
+import { BOOTSTRAP_ADVERTISED } from './toolGroups';
 
 const USAGE = `Usage: noodl-mcp [project-dir] [options]
 
 Serves a NodeGX (OpenNoodl) v2 project directory over the Model Context Protocol (stdio).
 
 With NO project directory the server starts in bootstrap mode: it advertises
-list_projects, create_project, list_examples and get_example, and nothing else.
+list_projects, create_project, list_examples, get_example and find_tools, and
+nothing else.
 That is the mode for a machine with no projects yet — the agent finds what is
 already there, or scopes and creates one, and a server is then started against
 that directory. Bootstrap mode requires --allow-writes, because creating a
@@ -107,8 +108,10 @@ async function main(): Promise<void> {
     // path bug in a server that started exactly as asked.
     if (!binding.isBound) {
       process.stderr.write(
-        `noodl-mcp: no project bound — bootstrap mode (${BOOTSTRAP_TOOLS.length} tools: ` +
-          `${BOOTSTRAP_TOOLS.join(', ')}). Call list_projects or create_project, or restart with a project ` +
+        // 🔴 F87 — counted from what is actually advertised, `find_tools`
+        // included. It said four and served five.
+        `noodl-mcp: no project bound — bootstrap mode (${BOOTSTRAP_ADVERTISED.length} tools: ` +
+          `${BOOTSTRAP_ADVERTISED.join(', ')}). Call list_projects or create_project, or restart with a project ` +
           'directory as the argument.\n'
       );
     } else {

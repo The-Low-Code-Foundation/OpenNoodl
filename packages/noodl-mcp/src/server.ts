@@ -6,7 +6,7 @@
  * ## BST-001 — the project is optional
  *
  * `options.projectDir` may be absent, and then the server starts anyway with the
- * bootstrap surface: four tools that need no project, and a briefing written for
+ * bootstrap surface: the handful of tools that need no project, and a briefing written for
  * an agent that has not got one. The store is held behind a {@link
  * ProjectBinding} rather than constructed here, and **every registration below
  * runs in both modes** — see that module for why sixteen conditionals would have

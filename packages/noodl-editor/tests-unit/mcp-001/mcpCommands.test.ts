@@ -12,6 +12,7 @@ import {
   buildBootstrapCommand,
   BOOTSTRAP_SERVER_NAME,
   buildMcpCommands,
+  buildProjectRegistration,
   McpFrontDoor,
   projectSlug,
   quoteArg
@@ -245,5 +246,52 @@ describe('the bootstrap registration', () => {
     expect(command).toBeNull();
     expect(registration).toBeNull();
     expect(unavailable).toBeTruthy();
+  });
+});
+
+describe('BST-005 the registration written into a project’s .mcp.json', () => {
+  const DIR = '/Users/someone/Documents/Reading List';
+
+  it('🔴 F94 — carries the per-project name, never the bare `nodegx`', () => {
+    // Measured 2026-08-11: a user-scope registration silently shadows a project-scope one of the
+    // same name — the project entry is not listed at all. BST-003's launcher card registers
+    // `nodegx` at user scope, so the bare name here would hand a card user the UNBOUND bootstrap
+    // server inside a folder that is already a project. That is this phase's founding complaint,
+    // delivered by the file written to prevent it.
+    const { serverName } = buildProjectRegistration(frontDoor(), DIR);
+
+    expect(serverName).toBe('nodegx-reading-list');
+    expect(serverName).not.toBe(BOOTSTRAP_SERVER_NAME);
+  });
+
+  it('points at this project, with writes allowed', () => {
+    const { registration } = buildProjectRegistration(frontDoor(), DIR);
+
+    expect(registration).toEqual({
+      type: 'stdio',
+      command: 'node',
+      args: ['/Applications/NodeGX.app/Contents/Resources/noodl-mcp/noodl-mcp.cjs', DIR, '--allow-writes'],
+      env: {}
+    });
+  });
+
+  it('falls back to the bundled runtime on a machine with no Node', () => {
+    const door = frontDoor();
+    door.runtime = { hasNode: false, nodePath: null, electron: '/Applications/NodeGX.app/Contents/MacOS/NodeGX', detection: 'none', probed: [] };
+
+    const { registration } = buildProjectRegistration(door, DIR);
+
+    expect(registration!.command).toBe('/Applications/NodeGX.app/Contents/MacOS/NodeGX');
+    // 🔴 BST-004/F80 — load-bearing, and the naive test says otherwise.
+    expect(registration!.env).toEqual({ ELECTRON_RUN_AS_NODE: '1' });
+  });
+
+  it('returns no registration at all when the bundle is missing', () => {
+    const door = frontDoor();
+    door.servers['noodl-mcp'].entry = null;
+
+    // A folder carrying a registration that points at nothing is worse than one carrying none:
+    // the client reports a server that cannot start, and CLAUDE.md is where the reason belongs.
+    expect(buildProjectRegistration(door, DIR).registration).toBeNull();
   });
 });

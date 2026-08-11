@@ -386,6 +386,28 @@ export const BOOTSTRAP_TOOLS: readonly string[] = Object.freeze([
   'get_example'
 ]);
 
+/**
+ * 🔴 F87 — what `tools/list` actually returns in bootstrap mode: the capability
+ * surface **plus `find_tools`**, which stays advertised because it is the one
+ * tool that can be called wrongly and still help.
+ *
+ * The distinction above was already written down and the human-facing strings
+ * still said "four": the briefing an agent reads at `initialize`, and the
+ * stderr banner the person configuring the client reads. Both are now derived
+ * from here, so the number cannot disagree with the server again.
+ *
+ * ⚠️ **Not cosmetic.** The briefing is the first thing a cold agent reads and
+ * the sentence containing that number is the one that tells it what it has;
+ * a count that does not match `tools/list` is the server being wrong about
+ * itself in the one place nothing else can correct.
+ */
+export const BOOTSTRAP_ADVERTISED: readonly string[] = Object.freeze([...BOOTSTRAP_TOOLS, 'find_tools']);
+
+/** English for a small count, so a briefing reads like prose rather than a log line. */
+export function spellCount(n: number): string {
+  return ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'][n] ?? String(n);
+}
+
 /** The group a tool belongs to, or `undefined` if the manifest has never heard of it. */
 export function groupOfTool(name: string): ToolGroupId | undefined {
   for (const group of TOOL_GROUPS) if (group.tools.includes(name)) return group.id;

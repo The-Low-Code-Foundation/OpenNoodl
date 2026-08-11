@@ -33,6 +33,8 @@
  * @module noodl-mcp/instructions
  */
 
+import { BOOTSTRAP_ADVERTISED, spellCount } from './toolGroups';
+
 export interface ProjectInstructionOptions {
   /** Absolute path of the served project. Interpolated into the first clause. */
   projectDir: string;
@@ -146,7 +148,12 @@ export function projectInstructions(options: ProjectInstructionOptions): string 
 export const BOOTSTRAP_INSTRUCTIONS =
   'NodeGX (OpenNoodl) is a visual app builder: an app is a graph of nodes stored as plain files on disk, ' +
   'and this server reads and writes those files. ' +
-  'RIGHT NOW NO PROJECT IS BOUND, so only four tools are advertised — the rest of the server (reading ' +
+  // 🔴 F87 — this said "four" and `tools/list` returned five: the four capability
+  // tools plus `find_tools`, which stays advertised in this mode. Counted from
+  // the manifest now, because the sentence a cold agent reads first is the worst
+  // possible place for the server to be wrong about itself.
+  `RIGHT NOW NO PROJECT IS BOUND, so only ${spellCount(BOOTSTRAP_ADVERTISED.length)} tools are advertised — ` +
+  'the rest of the server (reading ' +
   'components, authoring, validation, rendering, the backend) arrives once there is a project to point it at. ' +
   'TWO WAYS ON: if the user has built with NodeGX before, call list_projects — it reports the projects on ' +
   'this machine, and editing the one they mean is almost always what they want. Only when there is nothing ' +

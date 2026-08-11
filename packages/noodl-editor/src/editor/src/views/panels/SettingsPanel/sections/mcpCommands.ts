@@ -366,6 +366,43 @@ export function buildBootstrapCommand(frontDoor: McpFrontDoor): BootstrapConnect
   };
 }
 
+/**
+ * BST-005 — the same registration as data, but **for a project**, to be written into that project's
+ * `.mcp.json` when it is created.
+ *
+ * 🔴 **`authoringServerName`, never the bare `nodegx`.** Measured 2026-08-11: a user-scope
+ * registration shadows a project-scope one of the same name *silently* — the project entry is not
+ * listed at all, not even as a conflict. BST-003's launcher card registers `nodegx` at user scope,
+ * so the bare name here would hand a user who used that card the **unbound bootstrap server** in a
+ * folder that is already a project. See `dev-docs/tasks/phase-62-cold-start/MEASUREMENTS-CLIENT-CONTRACT.md`.
+ *
+ * `'prefer-node'`, like the settings section and unlike the launcher card: this file sits in the
+ * user's own project folder where they may well read it, and the Electron form still arrives
+ * automatically on a machine with no Node.
+ *
+ * @returns `null` when the bundle could not be resolved — the `.mcp.json` is then not written at
+ *   all, and `CLAUDE.md` says why rather than the folder carrying a registration pointing at nothing.
+ */
+export function buildProjectRegistration(
+  frontDoor: McpFrontDoor,
+  projectDir: string
+): { serverName: string; registration: BootstrapRegistration | null } {
+  const serverName = authoringServerName(projectDir);
+  const authoring = frontDoor.servers['noodl-mcp'];
+  if (!authoring?.entry) return { serverName, registration: null };
+
+  const chosen = chooseRuntime(frontDoor.runtime, 'prefer-node');
+  return {
+    serverName,
+    registration: {
+      type: 'stdio',
+      command: chosen.exec,
+      args: [authoring.entry, projectDir, '--allow-writes'],
+      env: Object.fromEntries(chosen.env.map((pair) => splitEnvPair(pair)))
+    }
+  };
+}
+
 /** `KEY=value` → `[KEY, value]`, splitting on the **first** `=` only, since values may contain one. */
 function splitEnvPair(pair: string): [string, string] {
   const at = pair.indexOf('=');

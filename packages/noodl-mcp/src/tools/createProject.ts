@@ -62,8 +62,10 @@ import type {
   ProjectV2File,
   RegistryV2File
 } from '../editor-deps';
+import type { AgentConfigReport } from '../editor-deps';
 import { SCHEMA_IDS, SchemaValidator, formatValidationErrors } from '../editor-deps';
 import { ToolError } from '../errors';
+import { writeAgentConfig } from '../project/agentConfig';
 import { guarded, jsonResult } from './util';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -384,6 +386,13 @@ export interface CreateProjectResponse {
   rootNodeId: string;
   plan: AuthoringPlan;
   note: string;
+  /**
+   * BST-005 — what was written so the *next* session in this folder is not as
+   * cold as this one. Reported rather than assumed: "already there" and "we
+   * wrote it" look identical from outside, and a `skipped` row is the only
+   * place a failed write is visible at all.
+   */
+  agentConfig: AgentConfigReport;
 }
 
 /**
@@ -427,7 +436,7 @@ export function registerCreateProjectTools(server: McpServer): void {
         'directory to build against it.',
       inputSchema: scopeSchema
     },
-    guarded((args: CreateProjectArgs) => {
+    guarded(async (args: CreateProjectArgs) => {
       const target = prepareDirectory(args.directory);
       const name = args.name?.trim();
       if (!name) throw new ToolError('invalid-argument', 'A project name is required.');
@@ -470,6 +479,17 @@ export function registerCreateProjectTools(server: McpServer): void {
         writeTextAtomic(abs, doc.content);
       }
 
+      // BST-005 — last, after the documents, because `CLAUDE.md` points at them
+      // and a pointer written before its target is a pointer that can be wrong.
+      // Never throws: a project without a CLAUDE.md is still a project, and the
+      // report is where a failure becomes visible instead of vanishing.
+      const agentConfig = await writeAgentConfig({
+        projectDir: target,
+        projectName: name,
+        summary: scope.summary,
+        hasDocs: documents.length > 0
+      });
+
       const payload: CreateProjectResponse = {
         ok: true,
         projectDir: target,
@@ -481,7 +501,8 @@ export function registerCreateProjectTools(server: McpServer): void {
           `Project created with an empty App + Home skeleton and ${plan.operations.length} planned operation(s) ` +
           `that have NOT been run. The plan is also recorded in ${DOC_INITIAL_SCOPE}. To build it, start a ` +
           'server against this directory with --allow-writes and use create_plan / stage_plan_operation / ' +
-          'apply_plan — reviewing each page against docs/CONVENTIONS.md as you go.'
+          'apply_plan — reviewing each page against docs/CONVENTIONS.md as you go.',
+        agentConfig
       };
       return jsonResult(payload);
     })

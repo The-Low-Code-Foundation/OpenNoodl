@@ -63,12 +63,17 @@ Three decisions the file forces:
   Either `.gitignore` it (the project already ships a `.gitignore`) or accept it and say so in
   `CLAUDE.md`. **Ignoring it is the right default**; a broken registration in a teammate's checkout
   is worse than no registration.
-- **`nodegx`, unsuffixed, inside a project-scoped file.** The per-project slug
-  ([TALK-004 decision 4](../phase-42-first-hour/TALK-004-THE-MCP-FRONT-DOOR.md#L150)) exists to stop
-  user-scope registrations overwriting one another. Inside a file that only applies to this folder
-  there is nothing to collide with, and a slug would make the name unpredictable to the user reading
-  their own config. ⚠️ Confirm a project-scoped `nodegx` does not shadow BST-003's user-scope
-  `nodegx` in a way that breaks either.
+- 🔴 ~~**`nodegx`, unsuffixed, inside a project-scoped file.**~~ **REVERSED by measurement, 2026-08-11
+  — the file uses the per-project name `nodegx-<slug>`.** The argument was that a file applying only
+  to this folder has nothing to collide with. It has exactly one thing to collide with, and BST-003
+  puts it there: the launcher card registers `nodegx` at **user scope**, and
+  [user scope silently shadows project scope on the same name](MEASUREMENTS-CLIENT-CONTRACT.md#4--f94-user-scope-shadows-project-scope-on-the-same-name--this-reverses-bst-005-2)
+  — the project entry is not listed at all, not even as a conflict. A user who clicked the launcher
+  card and then opens their project folder would get the **unbound bootstrap server**, in a folder
+  that is already a project, with no authoring tools and nothing saying why. That is this phase's
+  founding complaint delivered by the file written to prevent it. So:
+  `authoringServerName(dir)` — TALK-004 decision 4's name, which turns out to be load-bearing in
+  project scope too.
 
 ## §3 — `CLAUDE.md`
 
@@ -134,6 +139,7 @@ backfilling is taken up.
 |---|---|---|
 | F20 | A real NodeGX project on disk carries no agent configuration of any kind — no `.mcp.json`, no `CLAUDE.md` | ✅ verified on disk, `NodeGX test projects/Puppy test 3`, 2026-08-11 |
 | F21 | `create_project` already writes a `docs/` tree with the captured scope, so `CLAUDE.md` points at content rather than inventing it | ✅ verified, [`createProject.ts:420-421`](../../../packages/noodl-mcp/src/tools/createProject.ts#L420) |
-| F22 | `.mcp.json` key shape, and whether an unapproved server is ignored or fails loudly | ⚠️ **unverified. Write one and open the folder before building on it** |
+| F22 | `.mcp.json` key shape, and whether an unapproved server is ignored or fails loudly | ✅ **measured 2026-08-11.** Shape read off `claude mcp add --scope project` — `{mcpServers:{name:{type:'stdio',command,args,env}}}`, identical to the `~/.claude.json` entry BST-003 measured. Unapproved: **`⏸ Pending approval`, never spawned, every other server unaffected** — the exact degradation the acceptance asks for. [MEASUREMENTS §2–3](MEASUREMENTS-CLIENT-CONTRACT.md) |
+| F94 | 🔴 **User scope shadows project scope on the same server name**, invisibly — the project entry is not listed at all. Reverses §2's naming decision; the file uses `nodegx-<slug>` | ✅ **measured 2026-08-11**, [MEASUREMENTS §4](MEASUREMENTS-CLIENT-CONTRACT.md) |
 | F23 | Absolute paths make the file machine-specific and it will be committed — a new route to the same broken-path failure | ⚠️ ours to design; `.gitignore` is the default answer |
 | F24 | The two project-creating paths are in different processes with different knowledge of the runtime | ⚠️ ours to design; §4 leans to the server writing its own argv |

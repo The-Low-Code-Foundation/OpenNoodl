@@ -23,7 +23,8 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
 
 import { ProjectStore } from '../src/project/ProjectStore';
-import { BOOTSTRAP_TOOLS, TOOL_GROUPS } from '../src/toolGroups';
+import { BOOTSTRAP_INSTRUCTIONS } from '../src/instructions';
+import { BOOTSTRAP_ADVERTISED, BOOTSTRAP_TOOLS, TOOL_GROUPS, spellCount } from '../src/toolGroups';
 import { createServer, type ServerOptions } from '../src/server';
 import type { CreateProjectResponse, FindToolsResponse, ListProjectsResponse } from '../src/tools/responses';
 import { copyFixture } from './helpers';
@@ -80,7 +81,18 @@ describe('BST-001 — the unbound surface', () => {
   });
 
   it('advertises the bootstrap tools and find_tools, and nothing else', async () => {
-    expect([...(await toolNames(session.client))].sort()).toEqual([...BOOTSTRAP_TOOLS, 'find_tools'].sort());
+    expect([...(await toolNames(session.client))].sort()).toEqual([...BOOTSTRAP_ADVERTISED].sort());
+  });
+
+  it('🔴 F87 — the briefing counts the tools the server actually serves', async () => {
+    // It said "four" and served five: the four capability tools plus
+    // `find_tools`. That sentence is the first thing a cold agent reads and the
+    // one that tells it what it has, so the count is asserted against
+    // `tools/list` itself rather than against another constant.
+    const served = [...(await toolNames(session.client))];
+    expect(served).toHaveLength(BOOTSTRAP_ADVERTISED.length);
+    expect(BOOTSTRAP_INSTRUCTIONS).toContain(`only ${spellCount(served.length)} tools are advertised`);
+    expect(BOOTSTRAP_INSTRUCTIONS).not.toContain('only four tools are advertised');
   });
 
   it('every project-shaped tool is absent, not present-and-erroring', async () => {
