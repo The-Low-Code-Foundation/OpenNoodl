@@ -12770,7 +12770,7 @@
         {
           "name": "alt",
           "displayName": "Alternate text",
-          "group": "Values",
+          "group": "Image",
           "plug": "input",
           "type": {
             "name": "string"

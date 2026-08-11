@@ -105,7 +105,10 @@ const ImageNode: ReactNodeDefinition = {
       allowVisualStates: true
     },
     alt: {
-      group: 'Values',
+      // SIG-003 — the node's own subject heading, which `groupPriority` already
+      // names, in preference to the `Values` kind heading. It sits with `Source`
+      // and `Source Set`, which is where an author looking for it will look.
+      group: 'Image',
       displayName: 'Alternate text',
       tooltip: "The alt text is used by screen readers, or if the image can't be downloaded or displayed",
       type: 'string',
