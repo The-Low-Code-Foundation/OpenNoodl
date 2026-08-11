@@ -9,6 +9,8 @@
 
 import {
   authoringServerName,
+  buildBootstrapCommand,
+  BOOTSTRAP_SERVER_NAME,
   buildMcpCommands,
   McpFrontDoor,
   projectSlug,
@@ -183,5 +185,65 @@ describe('the unavailable states', () => {
     const door = frontDoor({ project: null, isPackaged: false });
     door.servers['noodl-mcp'] = { ...door.servers['noodl-mcp'], entry: null, probed: ['/x'] };
     expect(authoringOf(door).unavailable).toContain('has not been built');
+  });
+});
+
+/**
+ * BST-003 — the bootstrap registration, which is a *different* command from the two above rather
+ * than a special case of one. It carries no project path, because the whole premise of the launcher
+ * card is that there is no project yet.
+ */
+describe('the bootstrap registration', () => {
+  it('names the server bare `nodegx`, with no project path anywhere in it', () => {
+    const { command } = buildBootstrapCommand(frontDoor());
+
+    expect(command).toContain(' nodegx ');
+    expect(command).not.toContain('/Users/me/Documents/My App');
+  });
+
+  it('🔴 can never collide with a per-project registration', () => {
+    // Per-project names are always `nodegx-<slug>`, so the namespaces do not overlap — including
+    // for a project whose directory is literally called "nodegx".
+    expect(authoringServerName('/Users/me/nodegx')).toBe('nodegx-nodegx');
+    expect(authoringServerName('/Users/me/nodegx')).not.toBe(BOOTSTRAP_SERVER_NAME);
+  });
+
+  it('🔴 always carries --allow-writes, or create_project is not registered at all', () => {
+    const { command, registration } = buildBootstrapCommand(frontDoor());
+
+    expect(command).toContain('--allow-writes');
+    expect(registration?.args).toContain('--allow-writes');
+  });
+
+  it('always uses the Electron runtime, even on a machine that has node', () => {
+    // The settings section prefers `node` for legibility; this card never shows its command by
+    // default and its audience is *defined* by not having node, so correctness wins.
+    const { registration } = buildBootstrapCommand(frontDoor({ runtime: { ...frontDoor().runtime } }));
+
+    expect(registration?.command).toBe('/Applications/NodeGX.app/Contents/MacOS/NodeGX');
+    expect(registration?.env).toEqual({ ELECTRON_RUN_AS_NODE: '1' });
+  });
+
+  it('🔴 the command and the registration describe the SAME thing', () => {
+    // Two renderings of one fact. If they drift, we connect one server and tell the user about
+    // another — and only one of the two is ever visible to check.
+    const { command, registration } = buildBootstrapCommand(frontDoor());
+
+    expect(command).toContain(registration!.command);
+    for (const arg of registration!.args) expect(command).toContain(arg);
+    for (const [key, value] of Object.entries(registration!.env)) {
+      expect(command).toContain(`-e ${key}=${value}`);
+    }
+  });
+
+  it('refuses with a reason when the bundle is missing, rather than half a command', () => {
+    const door = frontDoor();
+    door.servers['noodl-mcp'].entry = null;
+
+    const { command, registration, unavailable } = buildBootstrapCommand(door);
+
+    expect(command).toBeNull();
+    expect(registration).toBeNull();
+    expect(unavailable).toBeTruthy();
   });
 });

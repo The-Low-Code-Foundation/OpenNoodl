@@ -8,6 +8,7 @@
 
 import React, { createContext, useContext, ReactNode } from 'react';
 
+import type { ConnectAgentResult, ConnectAgentState } from './components/ConnectAgentCard';
 import { LauncherProjectData } from './components/LauncherProjectCard';
 import { NoodlGitHubRepo, UseGitHubReposReturn } from './hooks/useGitHubRepos';
 
@@ -104,6 +105,25 @@ export interface LauncherContextValue {
   onMinimizeWindow?: () => void;
   onMaximizeWindow?: () => void;
   onCloseWindow?: () => void;
+
+  /**
+   * BST-003 — the connect-an-agent card, and the host's answer about it.
+   *
+   * Supplied by the host for the same reason as `onOpenSettings`: registering an MCP server means
+   * probing PATH, spawning a CLI and possibly writing `~/.claude.json`, none of which
+   * `noodl-core-ui` has any business doing. Absent in Storybook, where the card then does not
+   * render at all rather than rendering a button that cannot work.
+   */
+  connectAgent?: ConnectAgentHostState;
+}
+
+/** What the host tells the launcher about connecting an agent. */
+export interface ConnectAgentHostState {
+  state: ConnectAgentState;
+  result?: ConnectAgentResult | null;
+  isCopied?: boolean;
+  onConnect: () => void;
+  onCopyCommand: () => void;
 }
 
 const LauncherContext = createContext<LauncherContextValue | null>(null);

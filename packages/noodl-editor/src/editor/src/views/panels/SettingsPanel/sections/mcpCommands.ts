@@ -288,6 +288,32 @@ function missingBundleReason(server: McpServerResolution, isPackaged: boolean): 
 export const BOOTSTRAP_SERVER_NAME = 'nodegx';
 
 /**
+ * One stdio MCP registration, in the shape Claude Code's own config stores it.
+ *
+ * ⚠️ **This is a schema we do not own**, and BST-003 §2a is explicit about that being the one real
+ * cost of the write path. It was read off the live file rather than guessed: `claude mcp add
+ * --scope user` produces exactly `{ type, command, args, env }` under `mcpServers`, and the CLI
+ * names the file it wrote on stdout. If Claude Code changes it, the *CLI* path keeps working and
+ * only the fallback goes stale — which is the argument for trying the CLI first.
+ */
+export interface BootstrapRegistration {
+  type: 'stdio';
+  command: string;
+  args: string[];
+  env: Record<string, string>;
+}
+
+/** What the launcher card needs: a command to run, the same thing as data, or the reason for neither. */
+export interface BootstrapConnection {
+  /** The `claude mcp add …` line — what we spawn, and what the copy fallback shows. */
+  command: string | null;
+  /** The same registration as data, for writing the config directly when there is no CLI. */
+  registration: BootstrapRegistration | null;
+  /** Why there is neither. Never a half-command pointing at nothing. */
+  unavailable: string | null;
+}
+
+/**
  * BST-003's registration: the authoring server with **no project directory**.
  *
  * ⚠️ **This is a different command from the settings section's, not a special case of it.**
@@ -301,18 +327,49 @@ export const BOOTSTRAP_SERVER_NAME = 'nodegx';
  * failure is at least visible in the client's MCP status — but the emitted string still has to be
  * right, which is what the suite asserts.
  *
- * @returns the command, or `null` with the reason — never a half-command pointing at nothing.
+ * ## Two renderings of one registration, and why both are here
+ *
+ * BST-003's decision was **try the CLI, fall back to writing the config**, so the same facts have to
+ * come out as a shell line *and* as data. Building them in one place is the point: a `command` and a
+ * `registration` that disagreed would connect one thing and tell the user about another, and the
+ * suite asserts they match.
+ *
+ * @returns the command **and** the registration, or `null` for both with the reason — never a
+ *   half-command pointing at nothing.
  */
-export function buildBootstrapCommand(frontDoor: McpFrontDoor): { command: string | null; unavailable: string | null } {
+export function buildBootstrapCommand(frontDoor: McpFrontDoor): BootstrapConnection {
   const authoring = frontDoor.servers['noodl-mcp'];
   if (!authoring.entry) {
-    return { command: null, unavailable: missingBundleReason(authoring, frontDoor.isPackaged) };
+    return {
+      command: null,
+      registration: null,
+      unavailable: missingBundleReason(authoring, frontDoor.isPackaged)
+    };
   }
 
-  // Always Electron: this card's audience is *defined* by not having Node, and we run this
-  // command for them rather than showing it, so correctness by construction beats legibility.
+  // Always Electron: this card's audience is *defined* by not having Node, and we register this
+  // for them rather than showing it, so correctness by construction beats legibility.
   const chosen = chooseRuntime(frontDoor.runtime, 'always-electron');
-  return { command: claudeMcpAdd(BOOTSTRAP_SERVER_NAME, [authoring.entry, '--allow-writes'], chosen), unavailable: null };
+  const args = [authoring.entry, '--allow-writes'];
+
+  return {
+    command: claudeMcpAdd(BOOTSTRAP_SERVER_NAME, args, chosen),
+    registration: {
+      type: 'stdio',
+      command: chosen.exec,
+      args,
+      // ⚠️ `-e KEY=value` on the command line is the same fact as a key here; `chosen.env` carries
+      // it in the CLI's `KEY=value` spelling, so it is split rather than re-derived.
+      env: Object.fromEntries(chosen.env.map((pair) => splitEnvPair(pair)))
+    },
+    unavailable: null
+  };
+}
+
+/** `KEY=value` → `[KEY, value]`, splitting on the **first** `=` only, since values may contain one. */
+function splitEnvPair(pair: string): [string, string] {
+  const at = pair.indexOf('=');
+  return at === -1 ? [pair, ''] : [pair.slice(0, at), pair.slice(at + 1)];
 }
 
 /**
@@ -369,9 +426,12 @@ export function buildMcpCommands(
     authoringRow.unavailable = missingBundleReason(authoring, frontDoor.isPackaged);
     authoringRow.probed = authoring.probed;
   } else if (!project) {
+    // ⚠️ Still correct — this command genuinely needs a path — but BST-003 gave it somewhere to
+    // send the reader. Before, it dead-ended on a requirement the user could not act on from here.
     authoringRow.unavailable =
       'Open a project first. This server is pointed at one project directory on disk, and that path ' +
-      'is half the command.';
+      'is half the command. To let an agent create the project for you instead, use “Connect Claude ' +
+      'Code” on the launcher’s projects screen — that registration needs no project path.';
   } else if (project.format !== 'v2') {
     // The server's own words, so the button and the spawn failure it is replacing say one thing.
     authoringRow.unavailable = project.message ?? 'This project is not one the authoring server can open.';

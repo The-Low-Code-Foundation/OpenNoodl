@@ -46,81 +46,23 @@
  * @module main/src/mcp/resolveNodeRuntime
  */
 
-const { spawnSync } = require('child_process');
-
-/** How long the login shell gets before we call it a miss. It normally answers in ~2s. */
-const LOGIN_SHELL_TIMEOUT_MS = 5000;
+const { probeProcessPath, probeLoginShellCached, resetProbeCache } = require('./probeBinary');
 
 /**
- * The login shell's answer, cached for the life of the process.
+ * The binary this module is about. Also the cache key in `probeBinary`.
  *
- * `undefined` means "not probed yet"; `null` means "probed, and it does not have node". The
- * distinction matters — without it a cached miss is indistinguishable from a cold cache and the
- * slow probe runs on every call.
- *
- * @type {{ path: string|null, probed: string[] }|undefined}
+ * ⚠️ The two probes below were lifted into `probeBinary.js` when BST-003 needed the identical pair
+ * for `claude`. The reasoning that makes them look over-engineered lives there; this module is now
+ * only the *policy* — which answer we prefer, and what we emit for it.
  */
-let loginShellResult;
+const NODE_BINARY = 'node';
+
+/** Anything that answers a `vN.` version is a runtime, rather than something merely named `node`. */
+const isNodeVersion = (stdout) => /^v\d+\./.test(stdout);
 
 /** Test seam: forget the cached login-shell answer. */
 function resetNodeRuntimeCache() {
-  loginShellResult = undefined;
-}
-
-/**
- * Is there a `node` on this process's PATH, and where?
- *
- * `--version` rather than `--help` so a hit is cheap, and because anything that answers a version
- * is a runtime rather than something merely named `node`.
- *
- * @returns {string|null} the name we would emit, or `null`
- */
-function probeProcessPath(env) {
-  try {
-    const result = spawnSync('node', ['--version'], { encoding: 'utf8', env, windowsHide: true });
-    if (result.error || result.status !== 0) return null;
-    return /^v\d+\./.test((result.stdout || '').trim()) ? 'node' : null;
-  } catch (e) {
-    return null;
-  }
-}
-
-/**
- * Ask the user's login shell, which is the shell they will paste the command into.
- *
- * ⚠️ `-l` (login) is what reads `.zprofile`/`.bash_profile`, and `-i` (interactive) is what reads
- * `.zshrc` — **nvm's initialisation lives in the latter on a default install**, so a login-only
- * shell misses it. Hence `-lic`, and hence the timeout: an interactive rc file can prompt, and a
- * shell that blocks forever must read as a miss rather than hang the settings panel.
- *
- * Windows has no equivalent and does not need one: a GUI process there inherits the user's real
- * `PATH`, so `probeProcessPath` is already the right answer.
- */
-function probeLoginShell(env, platform) {
-  if (platform === 'win32') return { path: null, probed: [] };
-
-  const shell = (env && env.SHELL) || '/bin/sh';
-  const attempt = `${shell} -lic 'command -v node'`;
-
-  try {
-    const result = spawnSync(shell, ['-lic', 'command -v node'], {
-      encoding: 'utf8',
-      env,
-      timeout: LOGIN_SHELL_TIMEOUT_MS,
-      windowsHide: true
-    });
-    if (result.error || result.status !== 0) return { path: null, probed: [attempt] };
-
-    // An interactive shell may print rc-file noise first; the path is the last non-empty line.
-    const lines = (result.stdout || '')
-      .split('\n')
-      .map((l) => l.trim())
-      .filter(Boolean);
-    const found = lines.length ? lines[lines.length - 1] : '';
-    return { path: found.startsWith('/') ? found : null, probed: [attempt] };
-  } catch (e) {
-    return { path: null, probed: [attempt] };
-  }
+  resetProbeCache(NODE_BINARY);
 }
 
 /**
@@ -149,7 +91,7 @@ function resolveNodeRuntime(options) {
 
   const probed = ['node (on this process’s PATH)'];
 
-  if (probeProcessPath(env)) {
+  if (probeProcessPath(NODE_BINARY, env, isNodeVersion)) {
     return { hasNode: true, nodePath: null, electron, detection: 'path', probed };
   }
 
@@ -157,7 +99,7 @@ function resolveNodeRuntime(options) {
     return { hasNode: false, nodePath: null, electron, detection: 'none', probed };
   }
 
-  if (loginShellResult === undefined) loginShellResult = probeLoginShell(env, platform);
+  const loginShellResult = probeLoginShellCached(NODE_BINARY, env, platform);
   probed.push(...loginShellResult.probed);
 
   return loginShellResult.path

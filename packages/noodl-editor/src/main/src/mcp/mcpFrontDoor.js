@@ -23,6 +23,8 @@ const path = require('path');
 
 const { resolveMcpServers } = require('./resolveMcpServer');
 const { resolveNodeRuntime, warmNodeRuntime } = require('./resolveNodeRuntime');
+const { warmClaudeCli } = require('./resolveClaudeCli');
+const { claudeConfigPath, connectBootstrapServer } = require('./connectBootstrapServer');
 
 /**
  * The verdict on a project directory, in `noodl-mcp`'s own words.
@@ -111,6 +113,49 @@ function isPackagedApp() {
 /** The channel name, so the renderer and this file cannot drift apart on a string. */
 const MCP_FRONT_DOOR_CHANNEL = 'mcp:front-door';
 
+/** BST-003's launcher card: register the bootstrap server. */
+const MCP_CONNECT_BOOTSTRAP_CHANNEL = 'mcp:connect-bootstrap';
+
+/**
+ * Is this registration one *we* would have built?
+ *
+ * ⚠️ **The renderer composes the registration, and this handler spawns from it — so this is a trust
+ * boundary and not a formality.** Anything that reaches the renderer reaches these arguments, and
+ * "run this binary with these arguments, from the main process" is the most useful thing an
+ * attacker could ask for. The registration is therefore checked against what main independently
+ * resolves, rather than taken on its word.
+ *
+ * The check is deliberately narrow — the executable must be this Electron binary or the bare word
+ * `node`, and the entry must be the bundle path `resolveMcpServers` just reported. Nothing here
+ * consults the incoming value to decide what is allowed.
+ *
+ * @returns {string|null} the reason it was refused, or `null` when it is fine.
+ */
+function rejectUntrustedRegistration(registration, options) {
+  if (!registration || typeof registration !== 'object') return 'No registration was supplied.';
+
+  const { command, args } = registration;
+  if (typeof command !== 'string' || !Array.isArray(args) || args.length === 0) {
+    return 'The registration was malformed.';
+  }
+
+  if (command !== 'node' && command !== process.execPath) {
+    return 'The registration named a runtime NodeGX did not resolve.';
+  }
+
+  const authoring = resolveMcpServers(options)['noodl-mcp'];
+  if (!authoring || !authoring.entry || args[0] !== authoring.entry) {
+    return 'The registration did not point at NodeGX’s own authoring server.';
+  }
+
+  // The only other argument this command takes. Anything else is not ours.
+  if (args.slice(1).some((arg) => arg !== '--allow-writes')) {
+    return 'The registration carried arguments NodeGX does not emit.';
+  }
+
+  return null;
+}
+
 /**
  * Register the channel. Called once from `app.on('ready')`, beside the other `setup*IPC` calls.
  *
@@ -121,11 +166,44 @@ const MCP_FRONT_DOOR_CHANNEL = 'mcp:front-door';
 function setupMcpIPC(ipcMain) {
   ipcMain.handle(MCP_FRONT_DOOR_CHANNEL, (_event, projectDir) => describeMcpFrontDoor(projectDir));
 
+  ipcMain.handle(MCP_CONNECT_BOOTSTRAP_CHANNEL, (_event, payload) => {
+    const { registration, command } = payload || {};
+
+    const refusal = rejectUntrustedRegistration(registration);
+    if (refusal) {
+      return {
+        ok: false,
+        method: null,
+        serverName: 'nodegx',
+        configPath: claudeConfigPath(),
+        removeCommand: `claude mcp remove --scope user nodegx`,
+        backupPath: null,
+        message: 'NodeGX would not register that.',
+        detail: refusal,
+        command: typeof command === 'string' ? command : null,
+        probed: []
+      };
+    }
+
+    return connectBootstrapServer(registration, typeof command === 'string' ? command : null);
+  });
+
   // ⚠️ BST-004: get the login-shell PATH probe out of the way before anyone opens the panel. On a
   // Finder-launched mac it costs ~2.3s, and this handler is synchronous — un-warmed, the first
   // person to open settings pays it as a freeze. Deliberately not awaited: nothing here blocks
   // startup, and if it fails the panel simply pays the cost itself.
   warmNodeRuntime();
+
+  // BST-003: the same trick for `claude`, for the same reason — the launcher card probes it on a
+  // click, and F85 says the answer on a Finder-launched mac costs a login shell to get.
+  warmClaudeCli();
 }
 
-module.exports = { MCP_FRONT_DOOR_CHANNEL, describeProject, describeMcpFrontDoor, setupMcpIPC };
+module.exports = {
+  MCP_FRONT_DOOR_CHANNEL,
+  MCP_CONNECT_BOOTSTRAP_CHANNEL,
+  describeProject,
+  describeMcpFrontDoor,
+  rejectUntrustedRegistration,
+  setupMcpIPC
+};

@@ -2,6 +2,10 @@ import React, { useMemo, useState } from 'react';
 
 import { IconName } from '@noodl-core-ui/components/common/Icon';
 import { SelectOption } from '@noodl-core-ui/components/inputs/Select';
+import {
+  ConnectAgentCard,
+  ConnectAgentVariant
+} from '@noodl-core-ui/preview/launcher/Launcher/components/ConnectAgentCard';
 import { FolderTree } from '@noodl-core-ui/preview/launcher/Launcher/components/FolderTree';
 import {
   LauncherButton,
@@ -52,7 +56,8 @@ export function Projects({}: ProjectsViewProps) {
     onOpenProjectFolder,
     onDeleteProject,
     onMigrateProject,
-    onOpenReadOnly
+    onOpenReadOnly,
+    connectAgent
   } = useLauncherContext();
 
   const { getProjectMeta, getProjectsInFolder, folders, moveProjectToFolder } = useProjectOrganization();
@@ -213,9 +218,19 @@ export function Projects({}: ProjectsViewProps) {
                   onClick={() => setActivePageId('templates')}
                 />
               </div>
+
+              {/* BST-003 — visible with **zero projects**, which is the whole point: the bootstrap
+                  server's command has no project path in it, so the objection that kept this offer
+                  buried in Settings no longer applies. */}
+              {connectAgent && <ConnectAgentCard variant={ConnectAgentVariant.Prominent} {...connectAgent} />}
             </div>
           ) : (
             <>
+              {/* ⚠️ The card does not disappear once projects exist. Someone with one project who
+                  has never connected an agent is the same user, just further along — so the offer
+                  stays and only its prominence changes. */}
+              {connectAgent && <ConnectAgentCard variant={ConnectAgentVariant.Row} {...connectAgent} />}
+
               <ProjectSettingsModal
                 isVisible={selectedProjectId !== null}
                 onClose={onCloseProjectSettings}

@@ -1,0 +1,129 @@
+/*
+ * BST-003 — the connect-an-agent card.
+ *
+ * ⚠️ **`box-sizing` is set explicitly.** There is no global `border-box` rule in this repo, so a
+ * card with padding and a `max-width` overflows its column unless it says so itself.
+ *
+ * ⚠️ **Every class referenced from the component is defined here.** An undefined CSS-module class
+ * resolves to `undefined` and renders *no class at all* — the element keeps working, looks
+ * unstyled, and nothing anywhere reports an error.
+ */
+
+.Root {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-3);
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: 6px;
+  background: var(--theme-color-bg-2);
+  text-align: left;
+}
+
+/* First launch: this is the offer, so it gets the room. */
+.is-prominent {
+  max-width: 520px;
+  width: 100%;
+  margin: var(--spacing-4) auto 0;
+  padding: var(--spacing-5);
+}
+
+/* They already have projects — same offer, quieter, and it does not push the grid down. */
+.is-row {
+  width: 100%;
+  margin: 0 0 var(--spacing-4);
+  padding: var(--spacing-4);
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+
+.Body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+  min-width: 0;
+}
+
+.Title {
+  font-family: var(--font-family-display);
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--theme-color-fg-highlight);
+  margin: 0;
+}
+
+.Text {
+  color: var(--theme-color-fg-muted);
+  font-size: 13px;
+  line-height: 1.6;
+  margin: 0;
+}
+
+.Actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  /* ⚠️ `flex-wrap` wraps before it shrinks: without this the two buttons wrap to a second line
+     while there is still room, because neither is allowed to give any width back. */
+  flex-wrap: wrap;
+}
+
+.Success,
+.Failure {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+  min-width: 0;
+}
+
+.SuccessMessage {
+  color: var(--theme-color-fg-highlight);
+  font-size: 13px;
+  line-height: 1.6;
+  margin: 0;
+}
+
+.FailureMessage {
+  color: var(--theme-color-fg-highlight);
+  font-size: 13px;
+  line-height: 1.6;
+  margin: 0;
+}
+
+/* Secondary, but still AA — this is where "how to remove it" lives, which nobody may miss. */
+.Aside {
+  color: var(--theme-color-fg-muted);
+  font-size: 12px;
+  line-height: 1.6;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.Code {
+  font-family: var(--font-family-code);
+  font-size: 11px;
+  color: var(--theme-color-fg-default);
+  background: var(--theme-color-bg-3);
+  border-radius: 3px;
+  padding: 1px 4px;
+}
+
+/* The copyable fallback. Long absolute paths must scroll rather than widen the card. */
+.Command {
+  box-sizing: border-box;
+  font-family: var(--font-family-code);
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--theme-color-fg-default);
+  background: var(--theme-color-bg-3);
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: 4px;
+  padding: var(--spacing-2);
+  margin: 0;
+  max-width: 100%;
+  overflow-x: auto;
+  white-space: pre;
+}

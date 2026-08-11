@@ -69,6 +69,7 @@ import { MigrationWizard } from '../../views/migration/MigrationWizard';
 import { ToastLayer } from '../../views/ToastLayer/ToastLayer';
 import { UpdateManager } from '../../views/UpdateManager';
 import { LauncherSettingsDialog, LauncherSettingsSection } from './LauncherSettingsDialog';
+import { useConnectAgent } from './useConnectAgent';
 
 export interface ProjectsPageProps extends IRouteProps {
   from: TSFixme;
@@ -236,6 +237,9 @@ export function ProjectsPage(props: ProjectsPageProps) {
    */
   const [draftProjectName, setDraftProjectName] = useState('');
   const [aiConfigVersion, setAiConfigVersion] = useState(0);
+
+  /** BST-003 — the connect-an-agent card's state, or `undefined` when there is nothing to offer. */
+  const connectAgent = useConnectAgent();
 
   // GitHub OAuth state
   const [githubIsAuthenticated, setGithubIsAuthenticated] = useState(false);
@@ -1084,6 +1088,9 @@ export function ProjectsPage(props: ProjectsPageProps) {
         onMinimizeWindow={() => App.instance.minimize()}
         onMaximizeWindow={() => App.instance.maximize()}
         onCloseWindow={() => App.instance.close()}
+        // BST-003 — the on-ramp before there is a project. `undefined` when there is no server
+        // bundle to point at, in which case the card does not render at all.
+        connectAgent={connectAgent}
       />
 
       <ProjectCreationWizard
