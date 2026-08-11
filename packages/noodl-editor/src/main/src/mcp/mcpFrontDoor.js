@@ -22,6 +22,7 @@ const fs = require('fs');
 const path = require('path');
 
 const { resolveMcpServers } = require('./resolveMcpServer');
+const { resolveNodeRuntime, warmNodeRuntime } = require('./resolveNodeRuntime');
 
 /**
  * The verdict on a project directory, in `noodl-mcp`'s own words.
@@ -71,15 +72,21 @@ function describeProject(projectDir) {
 }
 
 /**
- * Both server resolutions plus the project verdict — one answer for one panel.
+ * Both server resolutions, the project verdict, and which runtime can run them — one answer for
+ * one panel.
+ *
+ * ⚠️ **BST-004: `runtime` is why the renderer does no detection of its own.** Whether `node`
+ * resolves is a property of the machine, and the renderer cannot see the machine. It is one more
+ * field here on the exact model of `entry` and `probed`.
  *
  * @param {string|null|undefined} projectDir the open project's retained directory, or nothing.
- * @param {{ packagesRoots?: string[] }} [options] passed through to the resolver, for tests.
+ * @param {{ packagesRoots?: string[] }} [options] passed through to the resolvers, for tests.
  */
 function describeMcpFrontDoor(projectDir, options) {
   return {
     servers: resolveMcpServers(options),
     project: describeProject(projectDir),
+    runtime: resolveNodeRuntime(options),
     isPackaged: (options && typeof options.isPackaged === 'boolean' ? options.isPackaged : isPackagedApp())
   };
 }
@@ -113,6 +120,12 @@ const MCP_FRONT_DOOR_CHANNEL = 'mcp:front-door';
  */
 function setupMcpIPC(ipcMain) {
   ipcMain.handle(MCP_FRONT_DOOR_CHANNEL, (_event, projectDir) => describeMcpFrontDoor(projectDir));
+
+  // ⚠️ BST-004: get the login-shell PATH probe out of the way before anyone opens the panel. On a
+  // Finder-launched mac it costs ~2.3s, and this handler is synchronous — un-warmed, the first
+  // person to open settings pays it as a freeze. Deliberately not awaited: nothing here blocks
+  // startup, and if it fails the panel simply pays the cost itself.
+  warmNodeRuntime();
 }
 
 module.exports = { MCP_FRONT_DOOR_CHANNEL, describeProject, describeMcpFrontDoor, setupMcpIPC };

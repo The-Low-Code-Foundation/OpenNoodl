@@ -1,6 +1,6 @@
 # BST-004 — A runtime the user already has
 
-**Status:** 📋 open · **Track: distribution** · **blocks BST-003** ·
+**Status:** ✅ built 2026-08-11 · **Track: distribution** · **blocks BST-003** ·
 ⚠️ **re-opens [TALK-004 decision 8](../phase-42-first-hour/TALK-004-THE-MCP-FRONT-DOOR.md#L154)**
 
 ## The gap, stated precisely

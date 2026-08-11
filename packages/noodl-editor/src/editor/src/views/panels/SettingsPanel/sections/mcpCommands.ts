@@ -17,11 +17,23 @@
  *
  * ## The decisions baked in here (TALK-004)
  *
- * - **`node <path>`, not `ELECTRON_RUN_AS_NODE`** (decision 8). Anyone running an MCP client has
- *   Node; the Electron trick buys little for the strangeness.
  * - **The server name carries the project** (decision 4), so two projects register as two servers
  *   instead of silently replacing one another.
  * - **`--scope user`**, which is *not* the CLI's default — see `MCP_SCOPE` below.
+ *
+ * ## What BST-004 changed, and what it deliberately did not
+ *
+ * Decision 8 said **`node <path>`, not `ELECTRON_RUN_AS_NODE`**, because *"anyone running an MCP
+ * client has Node"*. That premise holds for this section's audience — someone deliberately wiring
+ * an agent to one project, for whom `node <path>` is legible, portable and pasteable into any
+ * client — so **this section still emits `node` whenever there is one**, character for character
+ * as it always did.
+ *
+ * ⚠️ It is the *other* audience that broke it: a designer who installed the desktop app and has no
+ * Node at all. For them `claude mcp add` records a command that dies later, inside the client,
+ * with a `spawn node ENOENT` NodeGX never sees. So the runtime is now **chosen from
+ * `frontDoor.runtime`, which main supplies** — nothing here probes the machine — and the Electron
+ * form is a named fallback rather than a silent substitution.
  *
  * @module SettingsPanel/sections/mcpCommands
  */
@@ -45,14 +57,45 @@ export interface McpProjectVerdict {
   message?: string;
 }
 
+/**
+ * BST-004 — what can actually run an MCP server bundle on this machine, as main reports it.
+ *
+ * ⚠️ Detected in main, never here: whether `node` resolves is a property of the machine, and a
+ * renderer that guesses will guess wrong on exactly the machines this phase is written for.
+ */
+export interface McpRuntime {
+  /** Whether a `node` the user's shell can find exists at all. */
+  hasNode: boolean;
+  /** Where it was found, when only the login shell could find it. Evidence, never the command. */
+  nodePath: string | null;
+  /** The app binary. Always present — Electron *is* a Node runtime, and every install has one. */
+  electron: string;
+  /** How we know. `'none'` is the case this task exists for. */
+  detection: 'path' | 'login-shell' | 'none';
+  /** Everything tried. When it misses, this list *is* the bug report. */
+  probed: string[];
+}
+
 /** What one IPC round trip to `mcp:front-door` answers. */
 export interface McpFrontDoor {
   servers: Record<string, McpServerResolution>;
   /** `null` when no project is open — a different state from "the open project is wrong". */
   project: McpProjectVerdict | null;
+  /** BST-004 — which runtime the emitted command should name. */
+  runtime: McpRuntime;
   /** A shipped app, or a checkout. Only the advice for a missing bundle depends on it. */
   isPackaged: boolean;
 }
+
+/**
+ * Which runtime a surface wants — because **the answer differs by audience** (BST-004 §2), and
+ * conflating them is how a working setup gets broken for the people who already have one.
+ *
+ * - `'prefer-node'` — the settings section. `node` when there is one, Electron otherwise.
+ * - `'always-electron'` — BST-003's launcher card. Its audience is *defined* by not having Node,
+ *   and it is the command we run *for* them, so strangeness costs nothing: nobody reads it.
+ */
+export type RuntimePreference = 'prefer-node' | 'always-electron';
 
 /** One row of the section: a caption, and either a command or the reason there isn't one. */
 export interface McpCommandRow {
@@ -67,6 +110,14 @@ export interface McpCommandRow {
   unavailable: string | null;
   /** The paths the resolver tried, when that is what went wrong. */
   probed: string[] | null;
+  /**
+   * BST-004 — why this command looks unusual, when it does. `null` for the ordinary `node` form.
+   *
+   * ⚠️ **A named fallback, not a silent substitution.** The whole failure this task prevents is a
+   * command that is recorded and then dies out of sight, so the one thing we must not do is
+   * quietly hand out a different command and say nothing.
+   */
+  runtimeNote: string | null;
 }
 
 /**
@@ -159,9 +210,65 @@ export function quoteArg(value: string): string {
   return `"${escaped}"`;
 }
 
-/** `claude mcp add --scope user <name> -- node <entry> [args…]`, quoted. */
-function claudeMcpAdd(serverName: string, args: string[]): string {
-  return ['claude', 'mcp', 'add', '--scope', MCP_SCOPE, serverName, '--', 'node', ...args.map(quoteArg)].join(' ');
+/**
+ * The environment variable that turns the app binary into a plain Node process.
+ *
+ * ⚠️ **Load-bearing, and the naive test says otherwise.** Without it the binary boots as a full
+ * Electron *app* — `process.type === 'browser'`, a dock icon, a GUI event loop that never exits.
+ * It happens to serve stdio correctly anyway, so a probe that forgets the variable still looks
+ * like a pass. Measured: with it, `process.type` is undefined and the stream is byte-identical to
+ * plain `node`'s; without it, `process.type === 'browser'`.
+ */
+const ELECTRON_AS_NODE_ENV = 'ELECTRON_RUN_AS_NODE=1';
+
+/** One runtime, resolved to the words that go in the command. */
+interface ChosenRuntime {
+  /** The executable — the bare word `node`, or an absolute path to the app binary. */
+  exec: string;
+  /** `-e KEY=value` flags the registration needs, if any. */
+  env: string[];
+  /** Whether this is the Electron fallback, which the UI must name rather than hide. */
+  isElectron: boolean;
+}
+
+/**
+ * Pick the runtime for one surface.
+ *
+ * ⚠️ **`node` stays the bare word even when only the login shell found it.** The command is pasted
+ * into that same shell, where it resolves; substituting the absolute path would bake in an nvm
+ * version directory that breaks on the next `nvm use`.
+ */
+export function chooseRuntime(runtime: McpRuntime, preference: RuntimePreference): ChosenRuntime {
+  if (preference === 'prefer-node' && runtime.hasNode) {
+    return { exec: 'node', env: [], isElectron: false };
+  }
+  return { exec: runtime.electron, env: [ELECTRON_AS_NODE_ENV], isElectron: true };
+}
+
+/**
+ * `claude mcp add --scope user <name> [-e KEY=v] -- <runtime> <entry> [args…]`, quoted.
+ *
+ * 🔴 **`-e` goes AFTER the server name, and the order is not cosmetic.** `claude mcp add` declares
+ * it as `-e, --env <env...>` — *variadic* — so an `-e` placed before the name greedily swallows the
+ * name as a second variable and the command dies with
+ * `Invalid environment variable format: nodegx`. The CLI's own documented example puts it after
+ * (`claude mcp add my-server -e API_KEY=xxx -- npx my-mcp-server`), and that is the only order that
+ * parses. Found by running the emitted command against the real client, which is why the
+ * acceptance demands that rather than an inspection of the string.
+ */
+function claudeMcpAdd(serverName: string, args: string[], runtime: ChosenRuntime): string {
+  return [
+    'claude',
+    'mcp',
+    'add',
+    '--scope',
+    MCP_SCOPE,
+    serverName,
+    ...runtime.env.flatMap((pair) => ['-e', pair]),
+    '--',
+    quoteArg(runtime.exec),
+    ...args.map(quoteArg)
+  ].join(' ');
 }
 
 /**
@@ -177,16 +284,71 @@ function missingBundleReason(server: McpServerResolution, isPackaged: boolean): 
         `repo root, then use “Check again” below. Looked in:`;
 }
 
+/** The registration name for a server with no project bound — BST-003's launcher card. */
+export const BOOTSTRAP_SERVER_NAME = 'nodegx';
+
+/**
+ * BST-003's registration: the authoring server with **no project directory**.
+ *
+ * ⚠️ **This is a different command from the settings section's, not a special case of it.**
+ * `buildMcpCommands` refuses to emit without a project, and rightly — its row is *about* a project,
+ * and half the command is that path. BST-001 made the server start unbound, so this one is about
+ * the opposite: an agent that will call `list_projects` or `create_project` and has nothing yet.
+ *
+ * 🔴 **`--allow-writes` is not optional here.** `create_project` is write-gated, so a bootstrap
+ * server registered without it connects, advertises the tool, and then refuses the one call it
+ * exists to serve. The CLI now refuses that combination out loud with the flag named, so the
+ * failure is at least visible in the client's MCP status — but the emitted string still has to be
+ * right, which is what the suite asserts.
+ *
+ * @returns the command, or `null` with the reason — never a half-command pointing at nothing.
+ */
+export function buildBootstrapCommand(frontDoor: McpFrontDoor): { command: string | null; unavailable: string | null } {
+  const authoring = frontDoor.servers['noodl-mcp'];
+  if (!authoring.entry) {
+    return { command: null, unavailable: missingBundleReason(authoring, frontDoor.isPackaged) };
+  }
+
+  // Always Electron: this card's audience is *defined* by not having Node, and we run this
+  // command for them rather than showing it, so correctness by construction beats legibility.
+  const chosen = chooseRuntime(frontDoor.runtime, 'always-electron');
+  return { command: claudeMcpAdd(BOOTSTRAP_SERVER_NAME, [authoring.entry, '--allow-writes'], chosen), unavailable: null };
+}
+
+/**
+ * What to tell the reader about an unusual-looking command.
+ *
+ * Only the Electron form gets a note: the `node` form is what this section has always emitted and
+ * needs no explanation.
+ */
+function runtimeNoteFor(chosen: ChosenRuntime): string | null {
+  if (!chosen.isElectron) return null;
+  return (
+    'No Node runtime was found on this machine, so this command runs the server with NodeGX’s own ' +
+    'bundled one instead. It works the same way. Install Node and use “Check again” if you would ' +
+    'rather have the shorter `node …` command.'
+  );
+}
+
 /**
  * Build both rows.
  *
  * The unavailable states are ordered deepest-first: a missing bundle is a broken installation and
  * stays true whatever project is open, so it is named before anything about the project.
+ *
+ * @param preference BST-004 §2 — `'prefer-node'` for this settings section, whose audience can read
+ *   a command; `'always-electron'` for BST-003's launcher card, whose audience is defined by not
+ *   having Node and never sees the string.
  */
-export function buildMcpCommands(frontDoor: McpFrontDoor): McpCommandRow[] {
+export function buildMcpCommands(
+  frontDoor: McpFrontDoor,
+  preference: RuntimePreference = 'prefer-node'
+): McpCommandRow[] {
   const authoring = frontDoor.servers['noodl-mcp'];
   const observe = frontDoor.servers[OBSERVE_SERVER_NAME];
   const project = frontDoor.project;
+  const chosen = chooseRuntime(frontDoor.runtime, preference);
+  const runtimeNote = runtimeNoteFor(chosen);
 
   const rows: McpCommandRow[] = [];
 
@@ -199,7 +361,8 @@ export function buildMcpCommands(frontDoor: McpFrontDoor): McpCommandRow[] {
     caption: authoring.what,
     command: null,
     unavailable: null,
-    probed: null
+    probed: null,
+    runtimeNote: null
   };
 
   if (!authoring.entry) {
@@ -213,7 +376,8 @@ export function buildMcpCommands(frontDoor: McpFrontDoor): McpCommandRow[] {
     // The server's own words, so the button and the spawn failure it is replacing say one thing.
     authoringRow.unavailable = project.message ?? 'This project is not one the authoring server can open.';
   } else {
-    authoringRow.command = claudeMcpAdd(serverName, [authoring.entry, project.dir, '--allow-writes']);
+    authoringRow.command = claudeMcpAdd(serverName, [authoring.entry, project.dir, '--allow-writes'], chosen);
+    authoringRow.runtimeNote = runtimeNote;
   }
   rows.push(authoringRow);
 
@@ -226,14 +390,16 @@ export function buildMcpCommands(frontDoor: McpFrontDoor): McpCommandRow[] {
     caption: observe.what,
     command: null,
     unavailable: null,
-    probed: null
+    probed: null,
+    runtimeNote: null
   };
 
   if (!observe.entry) {
     observeRow.unavailable = missingBundleReason(observe, frontDoor.isPackaged);
     observeRow.probed = observe.probed;
   } else {
-    observeRow.command = claudeMcpAdd(OBSERVE_SERVER_NAME, [observe.entry]);
+    observeRow.command = claudeMcpAdd(OBSERVE_SERVER_NAME, [observe.entry], chosen);
+    observeRow.runtimeNote = runtimeNote;
   }
   rows.push(observeRow);
 

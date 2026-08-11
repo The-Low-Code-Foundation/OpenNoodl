@@ -161,6 +161,12 @@ function McpServerRow({
             Registers it as <strong>{row.serverName}</strong> for your user account, so it works
             from any directory.
           </p>
+          {/*
+            BST-004 — when the command names NodeGX's bundled runtime instead of `node`, say so.
+            A command that looks strange and is unexplained reads as a bug; and the failure this
+            whole task prevents is a substitution nobody was told about.
+          */}
+          {row.runtimeNote && <p className={css.Provenance}>{row.runtimeNote}</p>}
         </>
       ) : (
         <div className={css.Unavailable}>

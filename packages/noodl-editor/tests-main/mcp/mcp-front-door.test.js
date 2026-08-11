@@ -93,4 +93,17 @@ describe('describeMcpFrontDoor', () => {
     expect(answer.servers['noodl-mcp'].probed.length).toBeGreaterThan(0);
     expect(answer.project).toBeNull();
   });
+
+  it('carries the runtime, because the renderer cannot see the machine (BST-004)', () => {
+    // ⚠️ Whether `node` resolves is a property of the machine. A renderer that guessed would guess
+    // wrong on exactly the installs this phase is written for — a desktop app with no Node at all,
+    // where `claude mcp add` would record a command that dies later with `spawn node ENOENT`.
+    const answer = describeMcpFrontDoor(null, { packagesRoots: [path.join(tmp, 'nowhere')] });
+
+    expect(typeof answer.runtime.hasNode).toBe('boolean');
+    expect(['path', 'login-shell', 'none']).toContain(answer.runtime.detection);
+    expect(answer.runtime.probed.length).toBeGreaterThan(0);
+    // Electron is never null: we ship one by definition, which is the whole basis of the fallback.
+    expect(answer.runtime.electron).toBe(process.execPath);
+  });
 });

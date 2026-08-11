@@ -34,6 +34,15 @@ function frontDoor(overrides: Partial<McpFrontDoor> = {}): McpFrontDoor {
       }
     },
     project: { dir: '/Users/me/Documents/My App', format: 'v2' },
+    // BST-004: the machine these MCP-001 assertions describe is one that has Node — which is the
+    // case decision 8 was written for, and the case that must not change.
+    runtime: {
+      hasNode: true,
+      nodePath: null,
+      electron: '/Applications/NodeGX.app/Contents/MacOS/NodeGX',
+      detection: 'path',
+      probed: []
+    },
     isPackaged: true,
     ...overrides
   };
