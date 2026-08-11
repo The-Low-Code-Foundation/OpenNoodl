@@ -85,13 +85,20 @@ the other, and a 1,003-to-1 result. LEG-001 is that arm being closed.
 
 | Task | File | One line | State |
 |---|---|---|---|
-| **LEG-006** ⭐ | [LEG-006-THE-DESCRIPTION-THAT-IS-DELETED.md](LEG-006-THE-DESCRIPTION-THAT-IS-DELETED.md) | **live data loss** — a component `description` is authorable, and the next editor save deletes it | 📋 open |
+| **LEG-006** ⭐ | [LEG-006-THE-DESCRIPTION-THAT-IS-DELETED.md](LEG-006-THE-DESCRIPTION-THAT-IS-DELETED.md) | **live data loss** — a component `description` is authorable, and the next editor save deletes it | ✅ **in `cline-dev`** |
 | **LEG-001** ⭐ | [LEG-001-THE-ONLY-FIELD-STILL-EMPTY.md](LEG-001-THE-ONLY-FIELD-STILL-EMPTY.md) | **the flagship** — `metadata.comment` into the authoring vocabulary, the one field the editor cannot express and nobody has ever written | 📋 open |
 | LEG-005 | [LEG-005-WHERE-THE-WHY-LIVES.md](LEG-005-WHERE-THE-WHY-LIVES.md) | a comment row in the property panel — today the only way in is a context-menu item you have to know about | 📋 open |
-| LEG-004 | [LEG-004-FOUR-LINES-AND-A-TEXTCONV.md](LEG-004-FOUR-LINES-AND-A-TEXTCONV.md) | `.gitattributes` already exists and already names the four files; add one word to each and a textconv driver | 📋 open |
-| LEG-007 | [LEG-007-A-SPEC-FOR-A-FIX-NOBODY-MADE.md](LEG-007-A-SPEC-FOR-A-FIX-NOBODY-MADE.md) | paste already carries labels and comments. A regression spec, not a fix | 📋 open |
+| LEG-004 | [LEG-004-FOUR-LINES-AND-A-TEXTCONV.md](LEG-004-FOUR-LINES-AND-A-TEXTCONV.md) | `.gitattributes` already exists and already names the four files; add one word to each and a textconv driver | ✅ **in `cline-dev`** |
+| LEG-007 | [LEG-007-A-SPEC-FOR-A-FIX-NOBODY-MADE.md](LEG-007-A-SPEC-FOR-A-FIX-NOBODY-MADE.md) | paste already carries labels and comments. A regression spec, not a fix | ✅ **in `cline-dev`** |
 | LEG-002 | [LEG-002-THE-GRAPHS-THAT-LACK-LABELS.md](LEG-002-THE-GRAPHS-THAT-LACK-LABELS.md) | the label diagnostic, **aimed the opposite way** from the README: advisory everywhere, blocking nowhere | 📋 open |
-| LEG-003 | [LEG-003-THE-DIFF-ALREADY-SPEAKS-ENGLISH.md](LEG-003-THE-DIFF-ALREADY-SPEAKS-ENGLISH.md) | SUB-007 built and wired it. Drive it, then do the Explain-panel half | 📋 open |
+| LEG-003 | [LEG-003-THE-DIFF-ALREADY-SPEAKS-ENGLISH.md](LEG-003-THE-DIFF-ALREADY-SPEAKS-ENGLISH.md) | SUB-007 built and wired it. Drive it, then do the Explain-panel half | ✅ **in `cline-dev`** |
+
+⚠️ **Four of the seven were built in worktrees on 2026-08-11 and sat unmerged for a day.** They were
+reconciled onto `trial-leg` (`08c2b85a`) that morning and merged to `cline-dev` that evening
+(`e0732dd1`) by a different session, which is the only reason they are not still there. The three
+still open are LEG-001, LEG-002 and LEG-005 — and **LEG-001 has a blocker recorded against it**:
+`toJSON` passes `metadata` by reference, so a pasted node shares its source's bag. Fix `clone()`
+before LEG-001 puts `comment` in there.
 
 **Revised total: ~2 weeks**, against the README's ~4. Every day of the difference is work that was
 already done by SUB-007, CAN-004 and AAQ-005 and never struck off.
