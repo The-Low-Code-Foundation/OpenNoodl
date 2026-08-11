@@ -235,7 +235,7 @@ describeOrSkip('DSG-007 — a project owns its backend across an MCP server rest
     }
   });
 
-  it('⚠️ the LIMIT — an id lost between provisions (what an editor save does) is now LOUD', async () => {
+  it('⚠️ an id lost between provisions is now LOUD rather than silent', async () => {
     const first = await session();
     let created: ProvisionResponse;
     try {
@@ -246,10 +246,13 @@ describeOrSkip('DSG-007 — a project owns its backend across an MCP server rest
     expect(backendDirs(root)).toHaveLength(1);
 
     await stopOwnedBackends(root);
-    // `ProjectModel`'s constructor drops `id` on load and its `toJSON` omits it
-    // on save, so this is exactly what opening the project in the editor and
-    // saving it does today. Fixing it is two lines in noodl-editor, outside this
-    // task's territory; what is in scope is that the result stops being silent.
+    // ⚠️ This WAS what an editor save did — `ProjectModel` dropped `id` on load
+    // and omitted it from `toJSON`, so every save deleted the field (DSG-007/F30,
+    // fixed on this branch). It is kept because the MCP server cannot assume the
+    // editor writing these files is a fixed one: an older installed binary, a
+    // hand edit, or a restore from a pre-fix backup all reproduce it. What is
+    // asserted is not the editor's behaviour but this server's — that losing the
+    // identity produces a named, repairable result instead of silence.
     forgetProjectId(projectDir);
 
     const second = await session();
