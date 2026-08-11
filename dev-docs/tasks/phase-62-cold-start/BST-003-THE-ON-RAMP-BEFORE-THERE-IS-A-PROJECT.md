@@ -66,6 +66,54 @@ uninstall problem in [TASKS.md](TASKS.md#what-is-deliberately-not-here) arriving
 **This decision blocks the task and nothing else in the phase.** BST-001, 002, 004, 005 and 006 can
 all proceed while it is open.
 
+## §2a — F14, measured 2026-08-11 — and it moves the recommendation
+
+⚠️ **The recommendation above was written before F14 was measured. Measuring it changed two of the
+three rows.** What follows is what was actually observed, not what was expected.
+
+**1. A desktop-app user does not have the CLI, and the docs say so outright.**
+[The desktop quickstart](https://code.claude.com/docs/en/desktop-quickstart) states: *"The desktop
+app includes Claude Code. You don't need to install Node.js or the CLI separately. **To use `claude`
+from the terminal, install the CLI separately.**"* The app's own pitch is *"No terminal required."*
+Confirmed against the installed bundle: `/Applications/Claude.app`
+(`com.anthropic.claudefordesktop` 0.5.0) contains **no** `claude` binary, no bundled `node`, and
+nothing claude-code shaped anywhere in it.
+
+🔴 **So B's failure path is not the edge case — for this card's stated audience it is the default
+case.** The designer who installed the desktop app because they did not want a terminal is precisely
+the user who has no `claude` to spawn. The card would be A wearing a button.
+
+**2. And B fails a second way, independently, even when the CLI *is* installed.** Under a
+Finder-launched app's inherited `PATH=/usr/bin:/bin:/usr/sbin:/sbin`, `which claude` exits 1 on this
+machine — the CLI is an npm global under nvm, and `.zshrc` is never read. This is **F79 exactly**,
+one task later, about a different binary. It is *not* a reason to reject B: BST-004 already built the
+two-stage probe that solves it (process PATH first, then `$SHELL -lic`, cached). Measured here at
+**2.27s** for the login-shell probe. But it means B costs that machinery, not one `spawnSync`.
+
+**3. 🔴 The objection to C is much weaker than stated, and this is the finding that matters.**
+§2 rejects C as *"writing another application's configuration by hand, to an undocumented schema we
+do not own."* Measured:
+
+- `claude mcp add --scope user` writes **`~/.claude.json`**, top-level key **`mcpServers`** — verified
+  by adding and removing a probe registration against the real CLI.
+- The CLI **names the file on stdout**: `File modified: /Users/richardosborne/.claude.json`.
+- The docs state that Desktop and CLI **share configuration**, *"MCP servers"* named explicitly, and
+  the uninstall page documents `~/.claude.json` as a Claude Code file.
+
+So it is Claude Code's own store, shared by both surfaces, named by the tool itself. Writing it is
+still writing a file whose schema we do not control — that risk is real and unchanged — but it is a
+long way from reverse-engineering a foreign app, and **it is the only one of the three options that
+works for the user this card exists for.**
+
+⚠️ **A consequence for whichever shape wins:** `buildBootstrapCommand` returns a *shell string*. C
+needs the **parts** (`command`, `args`, `env`) to write JSON. That is a small refactor of one
+function, not a new mechanism — but it is not free, and the string form is what is currently built
+and tested.
+
+**The measurement does not decide this on its own** — C's schema risk is a judgement call about what
+breaks worst, and that is Richard's. It does establish that the ranking in §2's table was built on a
+premise that did not survive contact.
+
 ## §3 — What the command is
 
 One server, one name, no project path:
@@ -136,4 +184,6 @@ Two edits, and they are not cosmetic:
 | F11 | TALK-004's reason for choosing Settings over the launcher — "the authoring command needs a project path" — **does not apply to the bootstrap command** | ✅ verified, [TALK-004 Q1](../phase-42-first-hour/TALK-004-THE-MCP-FRONT-DOOR.md#L66) |
 | F12 | The settings copy actively tells the user the opposite of what BST-001 makes true | ✅ verified, [`McpSettingsSection.tsx:79-80`](../../../packages/noodl-editor/src/editor/src/views/panels/SettingsPanel/sections/McpSettingsSection.tsx#L79) |
 | F13 | Bare `nodegx` cannot collide with per-project names, which are always `nodegx-<slug>` | ✅ verified, [`mcpCommands.ts:135-138`](../../../packages/noodl-editor/src/editor/src/views/panels/SettingsPanel/sections/mcpCommands.ts#L135) |
-| F14 | Whether a Claude Code **desktop app** user has the `claude` CLI on PATH | ⚠️ **unverified, and it decides §2.** Check before building B |
+| F14 | Whether a Claude Code **desktop app** user has the `claude` CLI on PATH | ✅ **measured 2026-08-11 — they do not.** See §2a. The docs say it in as many words, and the bundle confirms it |
+| F85 | 🔴 **Even a machine that *has* the CLI cannot spawn it from a Finder-launched editor.** Under the inherited `PATH=/usr/bin:/bin:/usr/sbin:/sbin`, `which claude` exits 1 on this machine — the CLI is an npm global under nvm. This is **F79 exactly**, and BST-004 already built the fix | ✅ measured; reuse BST-004's two-stage probe |
+| F86 | 🟠 **`--scope user` writes Claude Code's own `~/.claude.json` → top-level `mcpServers`**, and the CLI prints `File modified: /Users/richardosborne/.claude.json` on stdout. Desktop and CLI **share MCP configuration** (documented). This is not "another application's undocumented schema" | ✅ measured, and it weakens §2's objection to C |

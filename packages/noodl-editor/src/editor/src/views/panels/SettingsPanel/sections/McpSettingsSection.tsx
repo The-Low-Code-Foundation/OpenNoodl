@@ -76,8 +76,10 @@ export function McpSettingsSection() {
           runs by itself — you only have to tell it where they are, which is what these commands do.
         </Text>
         <Text size={TextSize.Medium} hasBottomSpacing>
-          Create the project here in NodeGX first, then point the agent at it. The authoring server
-          works inside a project that already exists; it will not make you one.
+          Each command below binds an agent to <em>this</em> project, so the project has to exist
+          first. The authoring server can also run with no project at all and create one for you —
+          that registration has no project path in it, which is why it is not one of the commands
+          here.
         </Text>
 
         {error && (
