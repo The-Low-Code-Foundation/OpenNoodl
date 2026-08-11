@@ -172,6 +172,19 @@ function configPath(root: string, id: string): string {
   return path.join(root, id, 'config.json');
 }
 
+/**
+ * Every readable `config.json` under the root.
+ *
+ * ⚠️ Deliberately not `client.listBackends()`, which projects a descriptor
+ * carrying `adminToken` and **dropping `projectIds`** — the one field every
+ * ownership decision here turns on.
+ */
+export function listBackendConfigs(root = backendsRoot()): BackendConfig[] {
+  return safeReaddir(root)
+    .map((id) => readBackendConfig(id, root))
+    .filter((c): c is BackendConfig => !!c);
+}
+
 export function readBackendConfig(id: string, root = backendsRoot()): BackendConfig | null {
   try {
     return JSON.parse(fs.readFileSync(configPath(root, id), 'utf-8')) as BackendConfig;
@@ -198,6 +211,187 @@ export function findReusableBackend(
   if (!projectId) return undefined;
   const wanted = name.trim().toLowerCase();
   return existing.find((b) => b.name.trim().toLowerCase() === wanted && (b.projectIds ?? []).includes(projectId));
+}
+
+export type ReuseVerdict =
+  /** This project owns a backend of this name. Reused. */
+  | 'reused'
+  /** Nothing of this name exists. A new backend is simply a new backend. */
+  | 'none-of-that-name'
+  /** A backend of this name exists and belongs to another project. Correct to skip. */
+  | 'owned-by-another-project'
+  /**
+   * This project only acquired its id on this very call, and a same-named
+   * backend is already owned by an id nobody has. Almost certainly this
+   * project's own backend, stranded when it lost its identity.
+   */
+  | 'identity-only-just-minted'
+  /** A backend of this name exists and nobody owns it. Adoptable by hand, never silently. */
+  | 'unowned-namesake'
+  /** This project has no id, so it cannot prove it owns anything. */
+  | 'project-has-no-id';
+
+export interface ReuseExplanation {
+  verdict: ReuseVerdict;
+  /** The sentence a tool result repeats verbatim. Empty for `reused`. */
+  note: string;
+  /** Ids of the same-named backends this project did not take. */
+  namesakes: string[];
+}
+
+/**
+ * ⭐ DSG-007 §4.3 — *why* a backend was not reused.
+ *
+ * The defect this closes is not that the rule is wrong; it is that the rule's
+ * only failure mode was silence. `findReusableBackend` returns `undefined` for
+ * five materially different situations, four of which the caller should be told
+ * about, and the caller's response to all five was to create a second backend
+ * without comment. That is how a machine acquires three backends with
+ * `projectIds: []` and nobody notices for a month.
+ *
+ * ⚠️ This **explains**; it does not decide. In particular an `unowned-namesake`
+ * is deliberately *not* adopted: adopting a backend on name alone is precisely
+ * the AAQ-002/F4 defect that made every AI-created project on a machine bind to
+ * the first backend ever provisioned on it, and "it had no owner" is not a
+ * safe-looking special case, it is the *common* case for exactly those orphans.
+ * A human adopts it by opening the project that should own it.
+ */
+export function explainReuse(
+  existing: readonly { id: string; name: string; port: number; projectIds?: string[] }[],
+  name: string,
+  projectId: string | undefined,
+  identity: { reason?: string; minted?: boolean } = {}
+): ReuseExplanation {
+  const wanted = name.trim().toLowerCase();
+  const sameName = existing.filter((b) => b.name.trim().toLowerCase() === wanted);
+  const namesakes = sameName.map((b) => b.id);
+
+  if (projectId && sameName.some((b) => (b.projectIds ?? []).includes(projectId))) {
+    return { verdict: 'reused', note: '', namesakes };
+  }
+  if (sameName.length === 0) {
+    return { verdict: 'none-of-that-name', note: '', namesakes };
+  }
+  if (!projectId) {
+    return {
+      verdict: 'project-has-no-id',
+      note:
+        `${sameName.length} backend(s) named "${name}" already exist (${namesakes.join(', ')}), but this project ` +
+        `cannot prove it owns one — ${identity.reason ?? 'it has no id in nodegx.project.json'}. A NEW backend was ` +
+        'created rather than adopting one on its name alone, because two different projects may legitimately ' +
+        'share a backend name. Fix the identity and the next provision will reuse.',
+      namesakes
+    };
+  }
+  // ⚠️ The order matters: a project whose id was minted *on this call* has, by
+  // definition, never owned anything, so a same-named backend cannot belong to
+  // "another project" in any meaningful sense — it far more likely belongs to
+  // THIS one, from before the identity went missing. Reporting that as the
+  // ordinary owned-by-another case ("this is correct, not a failure") would be
+  // reassuring about the exact situation that produced `Shop backend` and
+  // `Puppy test 3 backend`: a stamp naming an id no project file claims.
+  if (identity.minted) {
+    return {
+      verdict: 'identity-only-just-minted',
+      note:
+        `This project had no id until this call, and ${sameName.length} backend(s) named "${name}" already exist ` +
+        `(${namesakes.join(', ')}). A NEW backend was created, because a backend is only ever taken on proof of ` +
+        'ownership and there was none. ⚠️ If one of the existing ones is really this project\'s — stranded when ' +
+        `its id went missing — stop the new one, add "${projectId}" to that backend's config.json → projectIds, ` +
+        'and re-point the project at its endpoint. Nothing here guesses at that for you.',
+      namesakes
+    };
+  }
+  const unowned = sameName.filter((b) => (b.projectIds ?? []).length === 0);
+  if (unowned.length > 0) {
+    return {
+      verdict: 'unowned-namesake',
+      note:
+        `${unowned.length} backend(s) named "${name}" exist with no owner at all (${unowned
+          .map((b) => b.id)
+          .join(', ')}). They were NOT adopted: taking a backend on its name alone is the defect ownership ` +
+        'exists to prevent. If one of them is really this project\'s, add this project\'s id to its ' +
+        'config.json → projectIds, or delete it.',
+      namesakes
+    };
+  }
+  return {
+    verdict: 'owned-by-another-project',
+    note:
+      `${sameName.length} backend(s) named "${name}" exist but belong to other projects (${namesakes.join(', ')}). ` +
+      'A new one was created — this is correct, not a failure: two projects with the same name must not share ' +
+      'a database.',
+    namesakes
+  };
+}
+
+export type BackendCensusVerdict =
+  /** At least one project id claims it. */
+  | 'owned'
+  /** `projectIds: []` — reusable by nobody, ever. */
+  | 'unowned'
+  /** Owned, but shares its name with another backend. Normal when the owners differ. */
+  | 'owned-namesake';
+
+export interface BackendCensusEntry {
+  id: string;
+  name: string;
+  port: number;
+  projectIds: string[];
+  verdict: BackendCensusVerdict;
+  note: string;
+}
+
+/**
+ * DSG-007 §4.4 — say which backend directories nobody can ever reuse.
+ *
+ * ⚠️ It reports; it deletes nothing. A backend directory is a **database**, and
+ * "unowned" means "no project file names it", which is not the same as "no data
+ * anybody wants" — three of the four unowned backends on the machine that
+ * prompted this were the by-product of the very defect being fixed, and one of
+ * them was still being used through its endpoint.
+ *
+ * Two backends sharing a name is reported but is **not** a fault: DSG-007 §2
+ * read the two `Stock Cupboard Backend`s as stranding, and they are in fact two
+ * different projects, correctly kept apart. Same-name-different-owner is the
+ * ownership rule working.
+ */
+export function censusBackends(
+  existing: readonly { id: string; name: string; port: number; projectIds?: string[] }[]
+): BackendCensusEntry[] {
+  const byName = new Map<string, number>();
+  for (const b of existing) {
+    const key = b.name.trim().toLowerCase();
+    byName.set(key, (byName.get(key) ?? 0) + 1);
+  }
+  return existing.map((b) => {
+    const projectIds = b.projectIds ?? [];
+    const shared = (byName.get(b.name.trim().toLowerCase()) ?? 0) > 1;
+    if (projectIds.length === 0) {
+      return {
+        id: b.id,
+        name: b.name,
+        port: b.port,
+        projectIds,
+        verdict: 'unowned' as const,
+        note:
+          'No project claims this backend, so no provision can ever reuse it. Adopt it by adding a project id ' +
+          'to its config.json → projectIds, or delete the directory if its data is not wanted. Nothing here ' +
+          'deletes it for you.'
+      };
+    }
+    return {
+      id: b.id,
+      name: b.name,
+      port: b.port,
+      projectIds,
+      verdict: shared ? ('owned-namesake' as const) : ('owned' as const),
+      note: shared
+        ? 'Shares its name with another backend but has its own owner. This is the ownership rule working, ' +
+          'not a fault — two different projects may be called the same thing.'
+        : ''
+    };
+  });
 }
 
 /**
@@ -557,6 +751,13 @@ export interface ProvisionRequest {
   projectId?: string;
   projectDir?: string;
   root?: string;
+  /**
+   * DSG-007 — how this project came by its `projectId` on this call. `reason` is
+   * quoted into {@link ProvisionResult.reuseNote} when there is no id at all;
+   * `minted` distinguishes a project that has owned this backend all along from
+   * one that only acquired an identity a moment ago. See {@link explainReuse}.
+   */
+  identity?: { reason?: string; minted?: boolean };
 }
 
 export interface ProvisionResult {
@@ -569,6 +770,10 @@ export interface ProvisionResult {
   adopted: boolean;
   collections: string[];
   warnings: string[];
+  /** DSG-007 §4.3 — why reuse did not happen, when a same-named backend existed. */
+  reuseVerdict: ReuseVerdict;
+  /** Empty when there is nothing to explain (`reused`, or no namesake at all). */
+  reuseNote: string;
 }
 
 /**
@@ -588,11 +793,13 @@ export async function provisionBackend(request: ProvisionRequest): Promise<Provi
   await reapOrphanedBackends({ root });
 
   const warnings: string[] = [];
-  const configs = safeReaddir(root)
-    .map((id) => readBackendConfig(id, root))
-    .filter((c): c is BackendConfig => !!c);
+  const configs = listBackendConfigs(root);
 
   const reusable = findReusableBackend(configs, name, request.projectId);
+  // ⭐ DSG-007 §4.3 — computed on the SAME inputs, before anything is created,
+  // so the sentence describes the decision that was actually taken rather than
+  // a re-derivation against a directory this call has since added to.
+  const explanation = explainReuse(configs, name, request.projectId, request.identity ?? {});
   let started: StartedBackend;
   let reused = false;
   let adopted = false;
@@ -664,7 +871,11 @@ export async function provisionBackend(request: ProvisionRequest): Promise<Provi
     reused,
     adopted,
     collections: created,
-    warnings
+    // A reuse that could not happen is a fact about this provision, so it rides
+    // out with the warnings rather than only in a field a caller may not read.
+    warnings: explanation.note ? [...warnings, explanation.note] : warnings,
+    reuseVerdict: explanation.verdict,
+    reuseNote: explanation.note
   };
 }
 
