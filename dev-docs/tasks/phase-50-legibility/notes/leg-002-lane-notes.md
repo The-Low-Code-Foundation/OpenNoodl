@@ -14,9 +14,29 @@ shapes, no dependency on the validator, and scores ten candidate predicates side
 
 | Corpus | Projects | Nodes | Labelled | **`UnlabelledNode` hits** | % of nodes | Projects it fires on |
 |---|---:|---:|---:|---:|---:|---:|
-| Every `project.json` in this repo | 91 | 5,509 | 19.7% | **214** | 3.9% | 24 of 91 |
+| Every `project.json` in this repo | 91 | 5,509 | 19.7% | **214** | 3.9% | **9 of 91** |
 | **`library/` prefabs + modules alone** | 58 | 1,333 | 20.3% | **25** | **1.9%** | **5 of 58** |
 | phase-55/58 model runs | 12 | 1,126 | 89.3% | **9** | 0.8% | **2 of 12** |
+
+All three were re-measured against the **shipped rule** afterwards, not only against the census
+script: `validate:project` over the same 103 targets reports **223** `unlabelled-node` diagnostics
+(214 repo + 9 runs), which is the census number to the unit. The two implementations agree.
+
+The repo's 214 are concentrated, which is worth seeing before reading 214 as a lot:
+
+```
+   78  packages/noodl-editor/tests/testfs/big-merge-test-mine   (571/2933 labelled)  test fixture
+   71  project-examples/agent-chat                              (  0/ 262 labelled)  ← the README's own
+   39  packages/noodl-editor/tests/testfs/git-repo-utf8         (128/ 688 labelled)  test fixture
+   17  library/modules/avatar                                   (  6/ 112 labelled)
+    3  library/prefabs/stripe          ·  3  library/prefabs/supabase
+    1  library/prefabs/form            ·  1  library/prefabs/pages-and-rows
+    1  dev-docs/qa-fixtures/legacy-import/real-noodl-form
+```
+
+**117 of the 214 are editor merge-test fixtures** and 71 are `agent-chat` — the very fixture the
+README noticed reads 0 of 262. The rule found it without being told about it, which is the closest
+thing to independent corroboration this task has.
 
 The node totals and label percentages reproduce LEG-002 §2's table **exactly** (5,509 / 19.7%,
 1,333 / 20.3%), so the instrument is measuring the same thing §2 did.
@@ -163,6 +183,70 @@ orchestrator strike criterion 2 and replace it with §2's measured pair.
 
 ---
 
-## 6 — Gates
+## 6 — What was built, and where
 
-See §7 of this file for the numbers actually run.
+| File | What |
+|---|---|
+| `scripts/legibility/scan-labels.js` | The census. Ten candidates × three corpora, re-runnable, committed **before** the rule (`d4eb6ef7`). |
+| `…/validation/diagnostics.ts` | `DiagnosticCode.UnlabelledNode = 'unlabelled-node'`, carrying §2's polarity argument and the measured numbers. |
+| `…/validation/rules/unlabelledNode.ts` | The rule. `severity: 'info'`, `defaultEnabled: true`, plus the predicate census and the two skip lists. |
+| `…/validation/rules/index.ts` | Registered **last** in `ALL_RULES` — the only rule in the set about legibility rather than breakage, so a reader meets everything describing real breakage first. |
+| `packages/noodl-editor/tests-unit/validation/unlabelledNode.test.ts` | 20 specs. |
+
+`validation/index.ts` was **not touched** — `ALL_RULES` already carries the rule and the spec
+imports `MIN_NAMELESS_SIBLINGS` from the rule module directly, so there is no convergent conflict
+with LEG-001's lane on that barrel.
+
+---
+
+## 7 — Gates, with the numbers
+
+| Gate | Result |
+|---|---|
+| `npx tsc -p packages/noodl-editor --noEmit` | **clean**, exit 0 |
+| `npx tsc -p packages/noodl-editor/tsconfig.tests.json --noEmit` | **clean**, exit 0 |
+| `npx jest tests-unit/validation/unlabelledNode.test.ts` (from `packages/noodl-editor`) | **20 passed / 20** |
+| `npx jest tests-unit` (from `packages/noodl-editor`) | **110 suites, 1,599 passed / 1,599** |
+| `npx jest` (from `packages/noodl-mcp`) | **1 failed / 405 passed of 406** — the known baseline, unmoved (`tests/tools.test.ts:182`, a response byte budget, red since DSG-003 and untouched by this diff) |
+| `validate:project` over 103 targets, **before** | 0 load errors · **5 errors** · 147 warnings · 4 infos · 6,635 nodes · exit 1 |
+| `validate:project` over 103 targets, **after** | 0 load errors · **5 errors** · **147 warnings** · 227 infos · 6,635 nodes · exit 1 |
+
+**`validate:project`'s pass/fail is unchanged, proven by running it, not reasoned about.** Errors
+5 → 5, warnings 147 → 147, exit code 1 → 1 (the five errors are pre-existing:
+`unknown-node-type` 83, `duplicate-node-id` 52, `repeated-sibling-subtree` 17, `oversized-page` 4
+are unmoved). The rule's 223 diagnostics land entirely in `infos`, which neither the default gate
+nor `--warnings-as-errors` counts.
+
+> The corpus run needs its stdout redirected to a **file**, not a pipe: `validate-project.ts` ends
+> in `process.exit()`, which truncates a large async pipe mid-JSON. The first attempt at this
+> baseline silently lost half the report and read as 36 load failures.
+
+### The tripwire was proved red, not assumed
+
+Acceptance asks that `isBlockingForAuthoredOutput` return **false**, asserted so a later edit to
+the blocking set cannot silently promote the code. A guard that has never been seen to fail is
+decoration, so `DiagnosticCode.UnlabelledNode` was temporarily added to
+`AUTHORED_BLOCKING_WARNINGS` and the suite re-run: **2 failed / 18 passed**, the two being
+`is not in AUTHORED_BLOCKING_WARNINGS` and `does not block an authored submission`. Reverted; the
+working tree is clean of it.
+
+---
+
+## 8 — Could not verify
+
+- **The ProblemsPanel row was not seen on screen.** It is asserted structurally (severity `info` →
+  `IconName.CircleOpen` + `TextType.Secondary`; `location.nodeType` + `#nodeId` in the row's second
+  line; `message` as the primary text; `navigateTo` uses `location.nodeId`, which is set) and by
+  spec, but no editor was launched — driving one from this worktree would have needed the primary
+  checkout, where another session is working.
+- **The full editor jasmine suite (`test:ci` / `test:main`) was not run** — the lane rules forbid
+  it, since `lerna exec` resolves to the primary checkout.
+- **`agent-chat` was not regenerated.** Deliberate, per §5 — see §4 above.
+- **`usePortAsLabel` was transcribed by grep, not derived.** The list in `SELF_NAMING_TYPES` is
+  believed complete as of `fc36d61a`, but nothing gates it, and the field does not reach the
+  catalog, so a node type added later with `usePortAsLabel` will be reported as nameless until
+  someone re-greps. It is worth 16 corpus hits today.
+- **The `library/modules/avatar` hits (17 of the library's 25) are a demo gallery**, and a run of
+  identical avatars in a *demonstration* project is arguably a legitimate shape rather than a
+  legibility failure. It stays reported because the rule cannot tell a demo from a page, and
+  because at info severity the cost of being wrong there is one grey line.

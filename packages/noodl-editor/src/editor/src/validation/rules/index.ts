@@ -32,6 +32,7 @@ import { signalDrivenStaleInput } from './signalDrivenStaleInput';
 import { unwiredOutcome } from './unwiredOutcome';
 import { repeatedSiblingSubtree } from './repeatedSiblingSubtree';
 import { oversizedPage } from './oversizedPage';
+import { unlabelledNode } from './unlabelledNode';
 
 export const ALL_RULES: Rule[] = [
   duplicateNodeId,
@@ -46,7 +47,11 @@ export const ALL_RULES: Rule[] = [
   signalDrivenStaleInput,
   unwiredOutcome,
   repeatedSiblingSubtree,
-  oversizedPage
+  oversizedPage,
+  // LEG-002 — last, and deliberately: it is the only rule in the set that
+  // reports a matter of legibility rather than of correctness, and a reader
+  // should meet everything that describes breakage first.
+  unlabelledNode
 ];
 
 export {
@@ -62,7 +67,8 @@ export {
   signalDrivenStaleInput,
   unwiredOutcome,
   repeatedSiblingSubtree,
-  oversizedPage
+  oversizedPage,
+  unlabelledNode
 };
 
 export * from './types';
