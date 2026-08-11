@@ -533,7 +533,7 @@ export enum DiagnosticCode {
    * the model to satisfy it with `Group 3`**. So: `severity: 'info'`, which
    * `isBlockingForAuthoredOutput` (`severity === 'error' || AUTHORED_BLOCKING_WARNINGS.has`)
    * correctly ignores in both clients with no further work. **That is the
-   * desired outcome, not an omission** — `unlabelledNode.spec.ts` asserts it, so
+   * desired outcome, not an omission** — `unlabelledNode.test.ts` asserts it, so
    * a later edit to the blocking set cannot silently promote it.
    *
    * ## Why the predicate is a *run of siblings* and not "unlabelled"

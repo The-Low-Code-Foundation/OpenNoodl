@@ -172,7 +172,7 @@ describe('AWP-006 — the resident surface fits the budget', () => {
     projectDir = copyFixture();
   });
 
-  it('the advertised surface plus instructions is under 8,000 tokens', async () => {
+  it('the advertised surface plus instructions is under the token budget', async () => {
     const session = await connectRaw(projectDir, true, true);
     try {
       const tools = (await session.client.listTools()).tools;
