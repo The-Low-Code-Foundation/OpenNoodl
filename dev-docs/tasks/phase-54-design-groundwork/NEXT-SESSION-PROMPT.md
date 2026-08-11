@@ -1,162 +1,115 @@
 # Phase 54 — the next session
 
-**Written:** 2026-08-11, at the end of a three-worktree parallel session run **beside a live phase-60
-session**. That constraint shaped everything below: no gate that launches Electron was run, because
-`test:ci` and `dev:*` kill by checkout and would have reaped the sibling's work.
+**Written:** 2026-08-11, at the end of a session that ran **beside two live siblings** — a phase-50
+LEG session holding 18 uncommitted files in the primary tree, and a phase-60 SIG session committing
+to `cline-dev` while this was being written. No gate that launches Electron was run, for the same
+reason as last time.
 
-**Read [TASKS.md](TASKS.md) first** — its correction table overrides the README's register, and two
-more rows are now stale (see §5).
+**This replaces the previous prompt.** Its §1, §2, §6 and §7 still hold verbatim and are not repeated
+— go read them for the three unmerged DSG branches, the trial-merge numbers, and the parallel recipe.
+What changed is §3 (still blocked), §4 (three of five items are now done) and §5 (numbering settled).
 
 ---
 
-## §1 — What exists, and where
+## §0 — Read this before you plan
 
-Three branches, **none merged to `cline-dev`**, all based on `80868946`:
+**The previous prompt ranked five checkout-free tasks. Three are now built.** Do not re-plan them:
 
-| Branch | Commits | What landed |
-|---|---|---|
-| `dsg-004` | `6b8bdc44` → `5e03d9f8` (7) | three gates + the calibration corpus scripts |
-| `dsg-005` | `a96e70df` → `191b9ee5` (4) | 18 compositions on the style vocabulary |
-| `dsg-007` | `75fc129f` → `b41e96df` (5) | F2 fixed both sides, F30 root-caused and fixed |
-
-A trial-merge worktree exists at `wt-trial54` (`6fc35d80`) holding all three **plus** the current
-`cline-dev` tip. ⚠️ **It lives under a session-scoped scratchpad and may be garbage-collected — the
-branches are the durable artefact.** Rebuild it with the recipe in §6 if it is gone.
-
-## §2 — The gates that were run, with numbers
-
-Measured on the trial merge **against the current tip `6e27f741`**, not against the agents' base —
-the sibling landed SIG-003 mid-session, including a regenerated node catalog.
-
-| Gate | Result |
+| Was | Now |
 |---|---|
-| merge of all three + `cline-dev` | clean, **0 conflicts**; `comm -12` shows zero file overlap between any pair, and none with the sibling's 130 files |
-| `typecheck:editor` / `typecheck:editor-tests` | exit 0 |
-| `catalog:examples` | 57/57 strict, warnings-as-errors |
-| `catalog:generate` → `git diff` | **empty** — the merged catalog is byte-identical to regeneration |
-| `noodl-mcp` jest | 29 suites, 305 passed, 2 skipped |
-| `test:main` — **merged** | **118 suites / 1644 tests, 0 failed** |
-| `test:main` — **baseline @ `6e27f741`** | **115 suites / 1611 tests, 0 failed** |
+| §4.1 the design rubric | ✅ **built, all 8 rows** — `measurements/score-design.js`, `e41cb2a8` + `fb696b0d` |
+| §4.2 decide `--border-control` | ✅ **decided and defined** — Richard's call, `fb696b0d` |
+| §4.3 the gate that would have caught it | ✅ **built** — `npm run catalog:tokens`, `614e3673` |
+| §4.4 DSG-003's five remaining recipes | 🟠 **unblocked** — see §2 |
+| §4.5 spec F33 | 🟠 unchanged — still a UX decision, still needs Richard |
 
-⚠️ **`test:main` is safe beside a sibling session but NOT safe beside itself.** Running the baseline
-and trial concurrently invented 1–2 failures **in a different suite each run** (`relay-auth`,
-`reasoningChannel` — both port/timing-sensitive), and I briefly reported `cline-dev` as red on the
-strength of two runs that agreed because they shared the confound. Serialise the comparison; re-run
-any red suite **alone** before attributing it to a diff.
+**The one correction worth carrying:** the previous prompt said `--border-control` is "defined in no
+token set". The AI-facing token did not exist, but the editor's own chrome **already defined
+`--theme-color-border-control: #7c8894`**, used for `PrimaryButton`'s control ring. The concept and
+its value existed; only the AI-facing name was missing. Grep before quoting a spec row — including
+the rows in this file.
 
-## §3 — The one blocking gate: `test:ci` has NOT been run
+## §1 — Still the blocking gate: `test:ci` has NOT been run
 
-This is the first thing to do **in a session that owns the checkout**.
+Unchanged from the last prompt, and now **two** sessions have failed to get to it.
 
-- `packages/noodl-editor/tests/models/ProjectIdentity.test.ts` (DSG-007/F30) — jasmine, barrel-exported
-  in `tests/models/index.ts` (a spec absent from its barrel never runs), typechecks clean, **assertions
-  never executed**. `test:main`'s jest `testMatch` covers only `tests-main/` and `tests-unit/` and
-  cannot reach `tests/`, so there is no fallback.
+- `packages/noodl-editor/tests/models/ProjectIdentity.test.ts` (DSG-007/F30) — jasmine,
+  barrel-exported, typechecks clean, **assertions still never executed**. `test:main`'s `testMatch`
+  covers `tests-main/` and `tests-unit/` only and cannot reach `tests/`.
 - DSG-004's promotion of `uncollapsible-multi-column` to authored-blocking also needs one jasmine run.
 
 **Until `test:ci` is green on the merged tree, F30 is fixed-and-unproven and F2 is not closed.**
-Confirm the checkout is quiet first (`ps` for `electron/dist`, `webpack.test-ci`, `scripts/start.ts`;
-poll for a *sustained* window, never `dev:stop` — it kills by checkout and also matches a running
-`test:ci` Electron).
 
-## §4 — Work that needs neither the editor nor the shared branch
+⚠️ **A quiet dev stack is not a quiet checkout.** This session found *zero* Electron and webpack
+processes at a moment when a sibling was committing 48 seconds earlier. `dev:stop --list` **first**,
+never `dev:stop` — it kills by checkout and also matches a sibling's running `test:ci`. Check
+`git log -1` and `git status` for a sibling's uncommitted work before believing the process table.
 
-Ordered by value. All of this is worktree-safe beside a live sibling.
+## §2 — What is available without the editor, ranked
 
-1. **DSG-006 §3 — the design rubric.** ⭐ **The best available task, and it costs nothing.** The
-   phase-55 replays already rendered their artefacts: `dev-docs/tasks/phase-55-llm-authoring-support/measurements/`
-   holds desktop+phone PNGs for haiku, qwen, sonnet, deepseek and kimi, and `score-run.js`
-   reproduces the structural numbers off disk. The design half was **judged, never scored**. Build the
-   per-criterion rubric in §3's table and score the *existing* artefacts — **no paid drive, no
-   editor**. ⚠️ Publish the row per criterion, never a single verdict; phase 58's exit test hid its
-   one failing criterion behind one green summary.
-2. **Decide `--border-control`** (DSG-005's finding). The doctrine at
-   [`design.ts:134`](../../../packages/noodl-editor/src/editor/src/models/AiAssistant/authoring/prompts/design.ts)
-   prescribes it at 3:1; it is defined in **no token set**, so `border-color` falls back to
-   `currentColor` — the exact defect the sentence exists to prevent. No border token reaches 3:1
-   (`--border` 1.23, `--border-subtle` 1.10, `--border-strong` 1.48). A model **has already emitted
-   it** in a real drive (`s9-awp006-deepseek-transcript.jsonl`), and it is live in
-   `docs/node-catalog/examples/ui-split-hero.json`. **Richard's call:** define the token, or rewrite
-   the doctrine sentence and the recipe. Do not do both halves from model taste.
-3. **The gate that would have caught it.** `catalog:examples` validates types and connectivity but
-   **not parameter values against the token set** — the same "nothing validates parameter values" gap
-   the phase-38 register carries. This is DSG-004-shaped work in `scripts/validate-examples.ts`,
-   needs no editor, and closes the class rather than the instance.
-4. **DSG-003's five remaining recipes** — ⚠️ only from a **measured** DOM. The three that were not
-   measured shipped the defect they were teaching against (F23). `scripts/devtools/render-from-disk.js`
-   and `measure-from-disk.js` exist; **check whether either needs a browser this session can legally
-   launch** before planning around them.
-5. **Spec F33** (a copied project directory inherits its parent's id). Deliberately not built: it
-   needs a new persisted field to know where an id was *minted*, and re-minting may be wrong —
-   "duplicate this project, experiment against the same data" is legitimate, so refuse-and-explain is
-   plausibly the right behaviour. **That is a UX decision, not a bug fix.** Residual hole to state in
-   the spec: a copy of an *unbound* project, provisioned under a matching backend name, now reuses the
-   original's backend.
+`render:report` drives **its own headless Google Chrome**, and `dev-processes.js:56`'s `DEV_TOOL`
+regex does not match it. It is the one visual instrument that is legal beside a live sibling — which
+answers the question the last prompt left open in its §4.4.
 
-## §5 — Register hygiene, and a collision to fix
+1. **DSG-003's five remaining recipes** ⭐ **now the best available task.** The last prompt gated this
+   on "check whether either script needs a browser this session can legally launch". Answered: it
+   does, and it can. Three of the eight recipes shipped the defect they were teaching against (F23)
+   because they were written from an *unmeasured* DOM. `npm run render:report -- <project-dir>` gives
+   you the measured one, and `score-design.js` now scores the result per criterion.
+2. **F39 — doctrine `§9` lands nowhere.** 0/6 replays build an empty-state branch and **no replay
+   contains a gate node of any kind**. Either the doctrine never says how, or the vocabulary has no
+   way to express it. Find out which before writing prose — DSG-004 refuted a whole gate premise by
+   checking whether the thing was expressible at all.
+3. **F38 — doctrine `§5` lands for two models of six.** Four replays contain *zero* `Image` nodes.
+4. **F41 — `one accent` counts accents, not restraint.** haiku and sonnet both score `1 accent` in the
+   same hue at 603,740px² and 14,474px². Area share is already in the report (`colors.accents[].area`);
+   the criterion just does not use it.
+5. **F40 — `real-copy` passes 6/6, so it discriminates nothing.** Widen the detector, or prove `§10`
+   is genuinely absorbed. Do not read the green row as evidence until one run fails it.
 
-⚠️ **`F25` is claimed twice.** `DSG-006`'s register already uses it for *"the design half has no
-per-criterion score"*; `NOTES-DSG-005.md` claims it for `--border-control`. Phase-54 numbering runs
-F1–F29 in the task files and the new notes claim F30–F34, so **renumber the `--border-control`
-finding to F35** when the notes are folded into the register.
+## §3 — What needs Richard, not a session
 
-Also stale now: DSG-007's re-verification **withdrew F28** — the two `Stock Cupboard Backend`s on
-8583/8584 are phase 58's two paid experiment arms, each correctly owning its own database. That was
-the rule *working*, and acting on it as stranding would have destroyed an arm's data. TASKS.md's F2
-correction row still describes it as the defect's second witness; fix that row.
+- **F33** — a copied project directory inherits its parent's id. Deliberately not built: re-minting
+  may be wrong, because "duplicate this project, experiment against the same data" is legitimate.
+  Refuse-and-explain is plausibly correct. Residual hole to state either way: a copy of an *unbound*
+  project, provisioned under a matching backend name, reuses the original's backend.
+- **The §5 migration of the seven stranded projects** stays unexecuted, and both preconditions still
+  stand: a build carrying F30, and one actual jasmine run. `Puppy test` and `test1` both point at
+  8578; `BCN009 QA` (8579) has no claimant.
 
-**The §5 migration of the seven stranded projects stays unexecuted.** Two preconditions: run it only
-on a build carrying F30 (an older installed binary still deletes `id` on save), and only after the
-jasmine spec has actually run. Two entries need a human — `Puppy test` and `test1` both point at
-8578, and `BCN009 QA` (8579) has no claimant.
+## §4 — Register, settled
 
-## §6 — The parallel recipe that worked, verbatim
+Phase-54 numbering: **F1–F29** in the task files, **F30–F34** on the three unmerged branches,
+**F35** = `--border-control` (the collision the last prompt flagged — `DSG-006`'s register keeps F25),
+**F36–F43** in [NOTES-DSG-006.md](NOTES-DSG-006.md).
 
-Do **not** use `isolation: "worktree"` on this repo — the harness roots those at `origin/main`,
-hundreds of commits stale, 7-for-7 batches. Build them:
+Closed this session: F35, F36, F42, F43. Open: **F38, F39, F40, F41**.
+Still open from before: **F2** (needs `test:ci`), F26, F33.
 
-```
-git worktree add -b <name> <scratchpad>/<name> cline-dev
-```
+⚠️ **F25 is closed but its two hardest rows were the last to work.** `one accent` and `rhythm` had no
+instrument at all until this session; do not assume a row that prints a number was always measuring
+something.
 
-then a **real** `node_modules` dir containing one symlink per entry of the primary's `node_modules`
-(skipping `@noodl`), plus a **real** `@noodl/` dir whose entries point at the **worktree's**
-`packages/*`, plus a symlink per `packages/*/node_modules`. Verify before launching anyone:
+## §5 — The three traps this session paid for
 
-```
-node -e "require.resolve('@noodl/runtime/package.json',{paths:['<wt>']})"
-```
+- 🔴 **`rhythm` nearly shipped as a plausible lie.** The first version measured only inter-band gaps
+  and reported *"1 distinct gap: 0"* for sonnet — a page with obviously good rhythm. Bands in this
+  renderer **abut and carry their spacing as internal padding**, so gaps alone measure nothing. It
+  was wrong in the direction that produces a believable number, which is the direction nobody checks.
+  **A new measurement's first job is to disagree with something you already know.**
+- 🔴 **A gate in `tests/` cannot be proved red beside a sibling.** That is why `catalog:tokens` is a
+  script. DSG-007's `ProjectIdentity.test.ts` is the counter-example, unproven across two sessions
+  now. If you build a check this session, build it where you can run it.
+- ⚠️ **Commit path-limited, always.** A sibling landed `57196555` between this session's two commits
+  and held 18 unrelated files the whole time. `git add -A` would have swept them.
 
-It must return a path **inside** the worktree; if it names the primary checkout, the dual-load trap is
-armed and you will get a whole suite of false failures. All four worktrees this session resolved
-correctly first time and landed on the right tip with no reset dance.
+## §6 — Gates run, with numbers
 
-**In every agent prompt:** primary checkout read-only; no `npm install` (the symlinks would mutate the
-primary's modules); no `dev:*` / `test:ci` / `dev:stop` / Electron; no `lerna exec` gates (they grade
-the **primary** checkout's source, not the worktree diff); jest from the package dir, never the repo
-root; path-limited incremental commits with a task-id prefix; its own `NOTES-<task>.md` and hands off
-`TASKS.md`/`README.md`.
-
-**Fence shared *design*, not only shared files.** All three branches were file-disjoint by
-construction, but 004 and 005 both sit downstream of `design.ts` and were told to flag before editing
-it — which is why there is nothing to reconcile. DSG-007 was told to grep for the **existing**
-ownership-identity scheme rather than invent one, because two agents inventing rival backend spawn
-records is a mistake this repo has already paid for.
-
-## §7 — What the agents got right that the specs did not
-
-Worth reading their notes before trusting any spec row here. Each of the three **refuted** part of its
-own brief, and in two cases acting on the spec as written would have caused damage:
-
-- **DSG-007** withdrew F28 (above) and found the *actual* root cause, which was absent from the spec:
-  the editor minted an id and deleted it at both ends of the round trip — `toJSON()` never emitted it,
-  so `buildProjectV2File`'s `if (project.id !== undefined)` was dead code on **every** v2 save. That
-  one fact explains every row of the spec's disk table.
-- **DSG-004** refuted §2.4's premise: hover *is* expressible via MCP's passthrough but is not in
-  `AUTHORED_NODE_FIELDS`, so the gate would have rejected 100% of what it judged for something the
-  author cannot write in the editor's loop at all. Filed as a vocabulary change, not built.
-- **DSG-005** found that the doctrine ships the defect it forbids, and correctly refused to edit
-  `design.ts` to fix it while a sibling was downstream of that module.
-
-The pattern is the phase's own thesis turned on itself: **prose loses.** Grep the code before quoting
-a spec row, including the rows in this file.
+| Gate | Result |
+|---|---|
+| `typecheck:editor` | exit 0 |
+| `catalog:examples` | 57/57 strict, warnings-as-errors |
+| `catalog:tokens` (new) | 186 references / 63 files / 182 tokens, clean — **and proved red** |
+| `nodegx-render-measure` jest | 5/5, purity holds |
+| `test:ci` | ❌ **not run** — §1 |
+| `test:main` | ❌ not run — a sibling was live, and two concurrent runs invent failures |

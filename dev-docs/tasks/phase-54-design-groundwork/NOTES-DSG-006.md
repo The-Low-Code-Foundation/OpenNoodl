@@ -85,7 +85,7 @@ pages prettier or merely not worse.
 | F40 | **`real-copy` passes 6/6 and therefore carries no signal yet.** Either `§10` is fully absorbed or the detector is too narrow to catch what these models actually write. Do not read the green row as evidence until one run fails it | 🟠 filed |
 | F41 | **`one accent` counts accents, not restraint.** haiku and sonnet both score `1 accent` in the same hue, at **603,740px²** and **14,474px²** respectively — a full-bleed wash and an accent on a control read as a tie | 🟠 filed |
 | F42 | **Rhythm expressed as padding is invisible to a gap measurement.** The first version measured only inter-band gaps and reported *"1 distinct gap: 0"* for a page with perfectly good rhythm — bands in this renderer abut and carry their spacing internally. It now counts gaps **and** band padding | ✅ caught before it shipped |
-| F43 | **The token-coverage gate scans one of the three places a token name is written.** `tests/models/StyleTokenCoverage.test.ts` walks `ElementConfigRegistry` only, so `--border-control` in `design.ts` and in `docs/node-catalog/examples/*.json` was invisible to it — and `catalog:examples` passes 57/57 without checking token names at all | 🔴 open |
+| F43 | **The token-coverage gate scans one of the four places a token name is written.** `tests/models/StyleTokenCoverage.test.ts` walks `ElementConfigRegistry` only, so `--border-control` in `design.ts` and in `docs/node-catalog/examples/*.json` was invisible to it — and `catalog:examples` passes 57/57 without checking token names at all | ✅ **closed** — `npm run catalog:tokens`, proved red then green; see §7 |
 
 ⚠️ F25 stays **open**: this closes six of its eight rows, not all eight. It is honest to say the
 design half now has a per-criterion score with two named holes, not that it has one.
@@ -115,21 +115,33 @@ and `rhythm` 125B per viewport, so **444B added to a 7,578B report, 5.9%**. Both
 (six accents, twelve spacings), so that is close to the worst case rather than a floor. ⚠️ MCP
 responses go out **pretty-printed**, so the wire cost is roughly double the figures above.
 
-## §7 — The gate that still does not exist (F43)
+## §7 — The gate that would have caught it (F43) — built
 
-`--border-control` was defined this session (below), but nothing would have caught its absence. There
-are three places a token name gets written and the coverage gate reads one:
+`npm run catalog:tokens` → [`scripts/validate-token-references.ts`](../../../scripts/validate-token-references.ts).
+There are **four** places a token name gets written and the coverage gate read one:
 
-| Where a `var(--token)` can appear | Guarded by |
-|---|---|
-| `ElementConfigRegistry` defaults/sizes/variants | ✅ `tests/models/StyleTokenCoverage.test.ts` |
-| the doctrine prose, `AiAssistant/authoring/prompts/design.ts` | ❌ nothing |
-| `docs/node-catalog/examples/*.json` | ❌ nothing — `catalog:examples` is 57/57 green and never looks at token names |
+| Where a `var(--token)` can appear | Was guarded by | Now |
+|---|---|---|
+| `ElementConfigRegistry` defaults/sizes/variants | ✅ `tests/models/StyleTokenCoverage.test.ts` | unchanged |
+| the doctrine, `AiAssistant/authoring/prompts/*.ts` | ❌ nothing | ✅ `catalog:tokens` |
+| `docs/node-catalog/examples/*.json` (176 references) | ❌ nothing — `catalog:examples` is 57/57 green and never looks at a token name | ✅ `catalog:tokens` |
+| a **preset key** no default token declares | ❌ nothing — dead weight that reads as a real token | ✅ `catalog:tokens` |
 
-That is the same "nothing validates parameter values" gap the phase-38 register carries, and it is
-the DSG-004-shaped work the handover ranked third. It needs no editor. **Extending the existing
-coverage spec would not be enough** — it is jasmine, in `tests/`, so only `test:ci` runs it and this
-session could not have proved it red. A `scripts/` gate can be proved red on the spot.
+**186 references across 63 files, all resolving against 182 tokens.**
+
+⚠️ **A script, not a spec, and that was the point.** Extending `StyleTokenCoverage.test.ts` would have
+put the check in `tests/` — jasmine, `test:ci` only — which this session could not run and therefore
+could not have proved red. Cf. DSG-007's `ProjectIdentity.test.ts`, still fixed-and-unproven for
+exactly that reason. This one **was** proved: removing `--border-control` from `DefaultTokens` turns
+it red on `ui-split-hero.json:175` *and* on all four orphan preset keys, and green again on restore.
+
+Two guards on the gate itself, both from things this repo has paid for:
+
+- **under 50 references found is exit 2, not a pass** — a gate that finds nothing because it read
+  nothing is the failure mode, not the success one;
+- **prose placeholders are excluded by name**, not by heuristic. The doctrine teaches the *shape*
+  `var(--token)`, which is five legitimate hits; listing them means a real token ever called
+  `--token` would still have to be declared here deliberately.
 
 ## §8 — `--border-control`, defined (handover §4.2, renumbered F35)
 
