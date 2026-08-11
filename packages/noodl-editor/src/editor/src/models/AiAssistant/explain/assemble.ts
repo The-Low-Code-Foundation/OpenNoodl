@@ -201,6 +201,10 @@ function componentShape(component: GraphComponent): ContextComponentShape {
 
   return {
     name: component.name,
+    // Verbatim, or absent. Assembly truncates parameter values because they can
+    // be a whole script body; an author's one or two sentences about their own
+    // component are the last thing worth spending the budget cutting.
+    ...(component.description ? { description: component.description } : {}),
     nodeCount: component.nodes.length,
     connectionCount: component.connections.length,
     inputPorts,
