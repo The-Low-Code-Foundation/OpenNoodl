@@ -106,7 +106,10 @@ of another *on the same side of the same node*. It is graded by spec. Look at it
 `lint:ci` **865 errors against a 3916 baseline** — *down* 2 from the 867 at session start, because the
 plug-glyph helpers became `const` rather than adding four `no-inner-declarations` to the ratchet.
 
-`test:ci`: **2635 specs**, and the baseline of **6** confirmed by name at seed **02525**.
+`test:ci`: **2635 specs**. **9 failures at seed 46637** — the baseline 6 plus the **BEN-001
+harness-export trio** — and a **control run at the same pinned seed with SIG-006's source reverted
+returned exactly the same 9, by name**. SIG-006 is exonerated; the trio is order-dependent at that
+seed. The baseline of 6 was separately confirmed by name at seed **02525**.
 
 ✅ **New and useful: you can pin the seed.** `tests/SpecRunner.html:41-42` reads
 `process.env.NOODL_SPEC_SEED`, so `NOODL_SPEC_SEED=31954 npm run test:ci` reproduces an order. This
