@@ -121,6 +121,14 @@ the rest.
    Regenerating `agent-chat` is still worth doing on its own terms — the repo's flagship
    AI-authoring demonstration having 0 labels and 0 comments is embarrassing — but it is **fixing a
    stale fixture, never evidence for this phase**.
+
+   🔴 **Run 2026-08-12, and it came back zero.** One cold storefront replay with the field declared
+   and verified in the served schema: **0 of 182 nodes carry a comment**, against `label` at 103
+   (56.6%) *in the same run, from the same schema*. So **this criterion is not met**, and the phase
+   does not get to claim it. Declaring the field was necessary and is not sufficient. The write-up,
+   the reproduction and the three checks that prove it is a real zero rather than a broken rig are in
+   [`measurements/LEG-001-COMMENT-REMEASUREMENT.md`](measurements/LEG-001-COMMENT-REMEASUREMENT.md);
+   the untried lead is LEG-001 §5's doctrine half, which never shipped.
 3. A wire change in `git diff` on the command line names both endpoints.
 4. Duplicating a component preserves every label and comment.
 5. A décret-style citation has an obvious home in the property panel, and it exports (EXP-006).
