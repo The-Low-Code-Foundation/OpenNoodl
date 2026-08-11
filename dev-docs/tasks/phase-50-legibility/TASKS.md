@@ -86,19 +86,29 @@ the other, and a 1,003-to-1 result. LEG-001 is that arm being closed.
 | Task | File | One line | State |
 |---|---|---|---|
 | **LEG-006** ⭐ | [LEG-006-THE-DESCRIPTION-THAT-IS-DELETED.md](LEG-006-THE-DESCRIPTION-THAT-IS-DELETED.md) | **live data loss** — a component `description` is authorable, and the next editor save deletes it | ✅ **in `cline-dev`** |
-| **LEG-001** ⭐ | [LEG-001-THE-ONLY-FIELD-STILL-EMPTY.md](LEG-001-THE-ONLY-FIELD-STILL-EMPTY.md) | **the flagship** — `metadata.comment` into the authoring vocabulary, the one field the editor cannot express and nobody has ever written | 📋 open |
-| LEG-005 | [LEG-005-WHERE-THE-WHY-LIVES.md](LEG-005-WHERE-THE-WHY-LIVES.md) | a comment row in the property panel — today the only way in is a context-menu item you have to know about | 📋 open |
+| **LEG-001** ⭐ | [LEG-001-THE-ONLY-FIELD-STILL-EMPTY.md](LEG-001-THE-ONLY-FIELD-STILL-EMPTY.md) | **the flagship** — `metadata.comment` into the authoring vocabulary, the one field the editor cannot express and nobody has ever written | ✅ **in `cline-dev`** — 🔴 live-model re-measurement NOT run |
+| LEG-005 | [LEG-005-WHERE-THE-WHY-LIVES.md](LEG-005-WHERE-THE-WHY-LIVES.md) | a comment row in the property panel — today the only way in is a context-menu item you have to know about | ✅ **in `cline-dev`** — 🔴 never painted; drive in [notes §4](notes/leg-005-lane-notes.md) |
 | LEG-004 | [LEG-004-FOUR-LINES-AND-A-TEXTCONV.md](LEG-004-FOUR-LINES-AND-A-TEXTCONV.md) | `.gitattributes` already exists and already names the four files; add one word to each and a textconv driver | ✅ **in `cline-dev`** |
 | LEG-007 | [LEG-007-A-SPEC-FOR-A-FIX-NOBODY-MADE.md](LEG-007-A-SPEC-FOR-A-FIX-NOBODY-MADE.md) | paste already carries labels and comments. A regression spec, not a fix | ✅ **in `cline-dev`** |
-| LEG-002 | [LEG-002-THE-GRAPHS-THAT-LACK-LABELS.md](LEG-002-THE-GRAPHS-THAT-LACK-LABELS.md) | the label diagnostic, **aimed the opposite way** from the README: advisory everywhere, blocking nowhere | 📋 open |
+| LEG-002 | [LEG-002-THE-GRAPHS-THAT-LACK-LABELS.md](LEG-002-THE-GRAPHS-THAT-LACK-LABELS.md) | the label diagnostic, **aimed the opposite way** from the README: advisory everywhere, blocking nowhere | ✅ **in `cline-dev`** — the corpus **rejected §3's own candidate**; see [notes](notes/leg-002-lane-notes.md) |
 | LEG-003 | [LEG-003-THE-DIFF-ALREADY-SPEAKS-ENGLISH.md](LEG-003-THE-DIFF-ALREADY-SPEAKS-ENGLISH.md) | SUB-007 built and wired it. Drive it, then do the Explain-panel half | ✅ **in `cline-dev`** |
 
-⚠️ **Four of the seven were built in worktrees on 2026-08-11 and sat unmerged for a day.** They were
-reconciled onto `trial-leg` (`08c2b85a`) that morning and merged to `cline-dev` that evening
-(`e0732dd1`) by a different session, which is the only reason they are not still there. The three
-still open are LEG-001, LEG-002 and LEG-005 — and **LEG-001 has a blocker recorded against it**:
-`toJSON` passes `metadata` by reference, so a pasted node shares its source's bag. Fix `clone()`
-before LEG-001 puts `comment` in there.
+✅ **All seven are built and merged as of 2026-08-11 evening.** Four landed that morning via
+`trial-leg` (`08c2b85a` → `e0732dd1`); the remaining three were built the same evening in three
+parallel worktrees under `../OpenNoodl-worktrees/` and merged as `599ecd49` (LEG-001), `3c1aea66`
+(LEG-005) and `c9ced40f` (LEG-002). Zero shared files between the three lanes, verified with
+`comm -12` before merging; all three merges conflict-free.
+
+**The blocker recorded against LEG-001 is fixed** — `fc36d61a`, which had to land first because
+LEG-001 puts `comment` into the metadata bag and LEG-005 gives humans a way to edit it. It also
+caught two seams in the same family: `ComponentModel` aliased its bag in both directions, and
+`ProjectModel.duplicateComponent` was dropping the `description` LEG-006 had shipped four commits
+earlier.
+
+🔴 **Built is not closed.** Two measurements remain and one exit criterion has to be struck rather
+than met — see [NEXT-SESSION-PROMPT.md](NEXT-SESSION-PROMPT.md) §2, §3 and §4. In short: **LEG-005
+has never been painted**, **LEG-001's live-model re-measurement has not been run** (it costs money;
+ask Richard), and **README exit criterion 2 compares against a hand-built fixture and is void**.
 
 **Revised total: ~2 weeks**, against the README's ~4. Every day of the difference is work that was
 already done by SUB-007, CAN-004 and AAQ-005 and never struck off.

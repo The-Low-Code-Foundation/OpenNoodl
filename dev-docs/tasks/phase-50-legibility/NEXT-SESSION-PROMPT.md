@@ -1,160 +1,271 @@
 # Phase 50 — next session
 
-**Written 2026-08-11**, at the end of a session that built **four LEG tasks in four parallel
-worktrees** while two sibling sessions (phase 54 DSG, phase 60 SIG) held the primary checkout.
+**Written 2026-08-11**, at the end of a session that built the **three remaining LEG tasks in three
+parallel worktrees**, cleared the blocker they were waiting on, and merged all of it to `cline-dev`.
 
-**4 of 7 are built. 0 are merged. None has seen the Jasmine suite.**
-**The next session's first job is not a task — it is the merge and the gate.**
+**7 of 7 are built. 7 of 7 are merged. The phase is NOT closed.**
 
-Built: **LEG-003** (reduced scope), **LEG-004**, **LEG-006**, **LEG-007**.
-Open: **LEG-001**, **LEG-002**, **LEG-005**.
+What is left is not a task. It is **two measurements nobody has taken** and **one exit criterion that
+has to be struck rather than met**. Everything below is either a number you can go and get, or a
+decision that belongs to Richard.
+
+> ⚠️ This file replaces the 2026-08-11 morning version, which said *"4 of 7 built, 0 merged"*. That
+> is now history. Do not act on it if you find a stale copy.
 
 ---
 
-## 1. What exists, and where
+## 1. Where the phase actually stands
 
-Four branches, one commit each, all based on `80868946`. `cline-dev` advanced to `6759aa92` while
-they ran (SIG-003 landed); **the four branches collide with none of those commits** — checked with
-`comm -12` on the name lists.
+| Task | State | The thing that is still missing |
+|---|---|---|
+| LEG-003 | ✅ merged `e0732dd1` | — |
+| LEG-004 | ✅ merged `e0732dd1` | — |
+| LEG-006 | ✅ merged `e0732dd1` + `3ba3e40a` | — |
+| LEG-007 | ✅ merged `e0732dd1` | — |
+| **LEG-001** | ✅ merged `599ecd49` | 🔴 **the live-model re-measurement** — §3 |
+| **LEG-005** | ✅ merged `3c1aea66` | 🔴 **nothing was ever painted** — §2 |
+| **LEG-002** | ✅ merged `c9ced40f` | the ProblemsPanel row has never been seen on screen |
 
-| Branch | Commit | Files | Task | Self-verified? |
-|---|---|---:|---|---|
-| `leg-004` | `8cbcaf9b` | 13 | textconv driver + `.gitattributes` | ✅ all seven criteria **run**, not reasoned |
-| `leg-006` | `4a7fe09a` | 16 | component `description` write path + MCP read | Mostly — see §4 |
-| `leg-003` | `e44efc65` | 14 | Explain-panel half + headless diff coverage | §2 only; §1 **not claimed** |
-| `leg-007` | `02acff1a` | 2 | paste regression spec | ❌ suite never run |
+Plus the blocker, which was not a task and had to land first:
 
-The worktrees are under
-`/private/tmp/claude-501/-Users-richardosborne-vscode-projects-OpenNoodl/00e4253c-.../scratchpad/leg-00N`.
-⚠️ **That is temp space and it will be swept.** The commits are safe in the object store; the agents'
-NOTES were not, so they have been copied to **[`notes/`](notes/)** next to this file — five files,
-1,390 lines, including the register text each task would have written and
-[`NOTES-LEG-003-DRIVE.md`](notes/NOTES-LEG-003-DRIVE.md), the executable CDP drive for LEG-003 §1.
-**They are untracked. Commit them.**
+**`fc36d61a` — `fix(models): the metadata bag a clone shared with its original`.** `toJSON` deep-copied
+every field *except* `metadata`, which it handed out by reference, so `NodeGraphNodeSet.clone()`
+produced a node sharing its source's bag. The same reference let `toJSON` mutate the node it was
+merely serialising. Two further seams in the family: `ComponentModel` aliased in both directions, and
+`ProjectModel.duplicateComponent` built the copy from `name`/`graph`/`id` only — **so a duplicated
+component was dropping the `description` LEG-006 had shipped four commits earlier.**
 
-## 2. 🔴 The first job: merge, then gate
+LEG-007 had pinned the node-level defect with a deliberate `toBe` and written down how the assertion
+should flip when the fix landed. It flipped exactly as specified.
 
-Trial-merge into a throwaway worktree before touching `cline-dev` — that is what caught a
-merge-created defect in the phase-35 batch, and no single agent can see it.
+### The lane branches and worktrees
+
+`leg-lane` (LEG-001), `leg-005-lane`, `leg-002-lane`, and `wt-trial-leg50` (the throwaway trial merge),
+all under **`/Users/richardosborne/vscode_projects/OpenNoodl-worktrees/`** — a sibling of the repo, not
+a session scratchpad, so they will still be there. All merged; **safe to remove** with
+`git worktree remove`. Built with `scripts/devtools/make-worktree.sh`, which verified `require.resolve`
+lands inside each worktree before exiting.
+
+**Zero shared files across the three lanes** — verified with `comm -12` on all three pairs before
+merging, and all three merges were conflict-free. That was not luck; it was the split.
+
+---
+
+## 2. 🔴 First job: drive LEG-005. Nothing has ever been painted
+
+This is the largest unverified surface in the phase, and the lane that built it says so itself.
+
+**The hand-off is written and it is good.**
+[`notes/leg-005-lane-notes.md`](notes/leg-005-lane-notes.md) **§4** is an eight-step drive written for
+someone who has not seen the diff: the exact eval snippets (native-setter writes on
+`HTMLTextAreaElement.prototype`, `window.__nodeGraphEditor` / `findNodeWithId` / `selectNode` /
+`layoutAndPaint`), plain global selectors (`.property-comment-bar|label|sizer|input`), and the model
+reads that are the witness for every commit. **Follow it. Do not re-derive it.**
+
+The eight steps, and what each is really testing:
+
+| § | Step | Why it can fail |
+|---|---|---|
+| 4.1 | Row renders for a node with **no** comment | The entire point of the task. A conditional row is the context menu again |
+| 4.2 | Type → commit → read the **model** back | `el.value = x` does not drive React; use the native setter |
+| 4.3 | Stripe repaints **without a reselect** | Moved from a hand-written `owner.repaint()` to a `commentChanged` model binding |
+| 4.4 | One undo removes it | Goes through `setComment(…, { undo: true })`. `push()` then `do()` runs **nothing** — `pushAndDo` |
+| 4.5 | Clearing matches the popup exactly | Two ways to clear that behave differently is worse than one way |
+| 4.6 | Save, close, reopen | The round trip a human uses to notice it is gone |
+| 4.7 | **Contrast, both themes, hexes printed** | See below |
+| 4.8 | The one thing to eyeball, not measure | Height of the wrapped placeholder at a real panel width |
+
+### ⚠️ 4.7 is the one to be most careful with
+
+The lane's contrast table is **arithmetic on `colors.css` token hexes, not samples**, and it says so.
+This repo has a long record of a computed ratio being wrong about the element it claimed to be about.
+**Sample the real elements, print `fg` and `bg` hex with every ratio**, and confirm or refute:
+
+| Pair | Predicted dark | Predicted light |
+|---|---|---|
+| Label `fg-default-shy` on `bg-1` | `#8b95a1`/`#12161b` = 5.98:1 | `#616c79`/`#ffffff` = 5.34:1 |
+| Comment text `fg-default` on `bg-2` | `#a6b0bb`/`#181d24` = 7.70:1 | `#4a5663`/`#f7f9fb` = 7.10:1 |
+| Placeholder `fg-default-shy` on `bg-2` | `#8b95a1`/`#181d24` = 5.57:1 | `#616c79`/`#f7f9fb` = 5.06:1 |
+
+The lane's own **"most likely thing to be wrong"** is 4.8: the hidden-mirror height mechanism yielding
+a box tall enough for the wrapped placeholder at a real panel width. Second most likely: blur-commit
+racing the panel remount when you click a different node while focused.
+
+**⚠️ Serialisation.** The editor cannot be driven while `test:ci` owns Electron, and a `dev:debug`
+launch reaps a running suite (and vice versa). A sibling session was live in this checkout all evening.
+Poll for a **sustained** quiet window — `npm run dev:stop -- --list` is the only spelling that lists
+rather than kills, and it matches a running `test:ci` Electron too.
+
+---
+
+## 3. 🔴 Second job: LEG-001's re-measurement — and it costs money
+
+This is **the flagship's acceptance criterion**, and it is the only way to learn whether the phase's
+central claim was right.
+
+The claim: `label` is in the authoring vocabulary with one clear sentence of description and got
+**1,003 of 1,123 agent-authored nodes (89.3%)**. `metadata.comment` was not in the vocabulary and got
+**1 in 2,045**. LEG-001 closed that arm — the field now exists, with this sentence, in both doors:
 
 ```
-git worktree add -b trial-leg <scratchpad>/wt-trial-leg cline-dev
-# merge leg-004, leg-006, leg-003, leg-007 in that order (cheapest first)
+Why this node is the way it is — a constraint, a rule, or a decision with an alternative. Omit when the type and label already say it.
 ```
 
-**Two reconciliation points, both known in advance:**
+**What to run:** re-author one phase-55 fixture with the field declared. The comparable baseline is
+**1 in 2,045**; anything above zero is new information and the number goes in the register whichever
+way it falls.
 
-1. **`packages/noodl-editor/tests/nodegraph/index.ts`** — `leg-007` appends exactly one line at the
-   end. That file was uncommitted in the primary tree during the run, so it is a hand-merge, not a
-   conflict to resolve mechanically. `leg-006` touches `tests/io/index.ts` instead; there is nothing
-   to reconcile from that one.
-2. **`ExplainPanel.tsx`** — the only pairwise overlap between the four branches (`leg-003` ×
-   `leg-006`). Both surface the component description there. **Convergent, not a disagreement** —
-   `leg-003` built the adapter to read both `description` and `metadata.description`, and `leg-006`
-   shipped the top-level field. Take both.
+⚠️ **Judge the comments, do not count them.** A run producing 100% coverage of *"This is a Group"* has
+**failed** this task while passing a coverage check. Read twenty and say so in the register. Expect the
+cheap-model split to reappear (haiku 1/94, qwen 3/19).
 
-Then the gates. **Do not inherit a green board** — re-run after any sibling commits over the tree.
+🔴 **A real Anthropic provider is configured in this editor — a drive costs money. Ask Richard before
+spending it.**
 
-- The `test:ci` baseline to compare against is phase 60's, recorded the same day:
-  **`Jasmine: 2632 specs, 6 failures` at seed 72213**, confirmed **by name** (four
-  `AIX-006 style vocabulary`, two `AI model registry`). Only the `Jasmine:` line counts; the exit code
-  lies. `dev:stop` first, and never with a sibling's run live.
-- **16 new specs to look for**, listed in [`NOTES-LEG-006.md`](notes/NOTES-LEG-006.md) §6.
-- `leg-007`'s spec has **never been seen green or red**. Its red-proof is a four-row table in
-  [`NOTES-LEG-007.md`](notes/NOTES-LEG-007.md) §5; the two that matter are deleting
-  `label: this._label,` from `NodeGraphNode.toJSON`, and adding `|| key === 'comment'` to the filter
-  at `codeHistoryMetadata.ts:33` — the second faithfully simulates the LEG-001-era regression and
-  should turn exactly the three comment `it`s. **A guard never seen to fail is decoration.**
-- ⚠️ `leg-006` ran its two Jasmine specs out-of-band under `@noodl/platform-node` instead of
-  `platform-electron` (10/10 and 19/19). Neither subject touches the platform, but **the platform
-  under test differs from CI's** — that is a signal, not a substitute.
+---
 
-## 3. Defects found and deliberately not fixed
+## 4. The exit criterion that has to be struck, not met
 
-All five were **verified at source by the orchestrator**, not taken on an agent's word.
+README exit criterion 2 says `agent-chat` is regenerated and its label coverage goes above 90%, *"the
+same fixture that currently reads 0 of 262, so the number is comparable."*
 
-1. 🔴 **`NodeGraphNode.toJSON` passes `metadata` by reference** (`NodeGraphNode.ts:~1590`) while
-   deep-copying every other field. `NodeGraphNodeSet.clone()` is `fromJSON(toJSON())`, so **a pasted
-   node shares its source's metadata bag**. `toJSON` then *writes into* that shared object
-   (`json.metadata.merge.soureCodePorts.push(...)`) — and the `[...new Set(...)]` dedupe two lines
-   down, commented *"fixes a bug where the soureCodePortss contained duplicated entries"*, is this
-   same defect patched once at the symptom. **This blocks LEG-001**, which puts `comment` in that bag.
-   Fix `clone()` first; it is one line, and `duplicateComponent` already shows the pattern.
-2. 🔴 **`ProjectModel.duplicateComponent` (`projectmodel.ts:335`) constructs the copy from `name`,
-   `graph` and `id` only** — the component's whole metadata bag is dropped, **and so is `leg-006`'s
-   new top-level `description`**, because that branch does not touch `projectmodel.ts`. The graph
-   *is* deep-copied, so node-level metadata in a duplicate is independent. Two agents reported these
-   as contradictory findings; they are not, they are different scopes. **When adding a field to
-   `ComponentModel` the seams are four, not two: importer, model, exporter, `duplicateComponent`.**
-3. ⚠️ **`@noodl/git`'s 17 new tests never run in CI.** Root `package.json`'s `test:packages` lists
-   ten `--scope` flags and that package is not one of them. One word.
-4. ⚠️ **`nodegx.project.json` matches none of the four `.gitattributes` patterns** — the v2 manifest
-   gets neither `merge=noodl` nor `diff=noodl`. The `merge` half predates LEG-004. Its own task:
-   adding `merge=noodl` would route a manifest into `mergeProject`.
-5. ⚠️ **A multi-parameter sentence names three changed parameters chosen alphabetically.**
-   `paramDeltas` (`GraphDiff.ts`) iterates `[...keys].sort()`, and `DiffFormatter.ts:84` takes
-   `.slice(0, 3)` of that — so `+N more` always hides the alphabetically-last changes, whatever their
-   significance. Every parameter named *is* a real change; the defect is the selection, not the
-   contents. Pre-existing, not new work, and it interacts with LEG-004's one-fact-per-line rule.
+**It is not comparable and the criterion is void.** `project-examples/agent-chat` was built **by hand**
+during AIX-005 on 2026-07-27 (`b95eddb4`), before the authoring vocabulary existed. It is not a sample
+of agent output. Regenerating it with a current model would measure nothing this phase did —
+`phase55-replay-sonnet` already reads 196/196 with no LEG task shipped, and eight of twelve model runs
+are at 100%.
 
-Also filed by `leg-006`, unverified here: `displayName`, `category`, `tags`, `dependencies` and
-`settings` are declared on `ComponentV2File` and carried by nothing. **Same seam, same class — any of
-them is the next silent deletion.**
+[`notes/leg-002-lane-notes.md`](notes/leg-002-lane-notes.md) **§4** states this in strike-ready form
+with the measured substitute. **Strike the criterion, replace it with §3's comment measurement, and say
+in the README why** — a phase that quietly drops an exit criterion is indistinguishable from one that
+failed it.
 
-⚠️ **Review one gate change before merging.** `leg-006` retired stale allow-list entries in AWP-002's
-`writePathConformance.test.ts` (A13 `component.description`, A12 `created`, `modifiedBy` — each
-marked *"filed not fixed, the fix is in ProjectExporter"*) and replaced them with a positive
-assertion. That is correct now that the fix exists, but it is a change to someone else's gate. A14
-(`component.type`) is still live.
+Regenerating `agent-chat` anyway is still worth doing, on its own terms: the repo's flagship
+AI-authoring demonstration having 0 labels and 0 comments is embarrassing. **Frame it as fixing a stale
+fixture, never as evidence.**
 
-## 4. What none of them could verify
+---
 
-The live and serial list, in priority order:
+## 5. What LEG-002 measured, because it changed the task
 
-- **`npm run dev:stop && npm run test:ci`** from the primary checkout, for all four branches.
-- **LEG-003 §1** — the four change kinds driven in the running editor. The script is written:
-  [`NOTES-LEG-003-DRIVE.md`](notes/NOTES-LEG-003-DRIVE.md), with selectors
-  (`[data-test="versioncontrol-panel"]`, `[data-test="explain-panel"]`, `[class*="ChangeRow"]`).
-  **§1's acceptance is not met and must not be recorded as met.**
-- **The authored-notes card rendered.** Its contrast was computed from the token files, not sampled:
-  the card fill is **1.07:1** against the panel — a wash cannot carry the distinction, so it is
-  carried by a 2px rule (5.98:1), an icon and a header sentence. And `--theme-color-primary` is
-  **4.33:1** on `bg-2` in light, under AA at 12px, so the node link is underlined rather than tinted.
-- **LEG-006's picker and Explain surfaces**, and the `metadata.description` → `ComponentModel` hop.
-- **LEG-004 on a packaged/asar build and on Windows** — the `ENV=1 cmd` prefix needs Git's bundled
-  `sh` and is the most likely break point. Worth gating a release on.
+The spec told the lane to pin *non-trivial* against the corpus **before** freezing it, and the
+measurement **rejected the spec's own candidate definition**. `scripts/legibility/scan-labels.js` is
+committed and re-runnable; it reproduces §2's table exactly, so it measures the same thing.
 
-## 5. The three that remain, and the order
+| Candidate | repo | `library/` | model runs |
+|---|---:|---:|---:|
+| every unlabelled node | 4,426 | 1,062 | 120 |
+| **§3's own candidate** | 2,232 | **502 (37.7%)** | 92 |
+| fan-out only | 567 | 205 | **0** ⚠️ blind to the population the phase is about |
+| **THIS RULE** | **214** | **25 (1.9%)** | **9** |
 
-Unchanged from [TASKS.md](TASKS.md) except where this session's findings bear on it:
+What ships: *three or more **unlabelled** same-type siblings under one parent, each a junction.*
 
-1. **LEG-001** — the flagship, `metadata.comment` into the authoring vocabulary. **Do §3 item 1
-   first**, or the aliasing becomes user-visible for the first time through this field.
-2. **LEG-005** with it or immediately after — LEG-001 gives the agent a way to write a comment,
-   LEG-005 gives a human a way to find one. Shipping either alone leaves half a channel.
-   ⚠️ These two share three files with each other **and `NodeGraphEditorNodePainter.ts` with SIG-006**.
-   One agent, and not while SIG-006 is live.
-3. **LEG-002** — late, and **advisory both ways**. The measurement inverts the specced polarity:
-   agents label at 89%, humans at 20%.
+The property that decided it: **zero hits on all ten model runs that already label**, 6 on
+`phase55-replay-haiku` (1% labelled), 3 on `qwen35-27b` (16%). 53 of 58 shipped prefabs untouched.
+71 of the repo's 214 are `agent-chat` — found without being told to look there.
 
-**LEG-006's own §4 premise was wrong** and the correction generalises: `list_components` had returned
-the description since SUB-008; the column read empty only because the write path destroyed the data
-first. **Check whether the read path is already right before building one.** Three of seven tasks in
-this phase turned out smaller than budgeted for exactly this reason.
+Two corrections to §2's own table, both harmless: `library/` is **58** files not 34 (node total
+identical), and the model-run corpus is **twelve** dirs, 1,126 nodes (§2's eleven = this minus one
+3-node stub).
 
-## 6. Carried from this session
+`validate:project` went **5 errors / 147 warnings** before and after, run not reasoned; the 223 new hits
+land entirely in `infos`. The tripwire asserting `isBlockingForAuthoredOutput` is false was **proved
+red** by temporarily adding the code to `AUTHORED_BLOCKING_WARNINGS` (2 failed / 18 passed), then
+reverted.
 
-- **The manual worktree recipe worked 4/4 again** — `git worktree add -b <n> <path> cline-dev`, then
-  a *real* `node_modules` of per-entry symlinks (minus `@noodl`) plus a *real* `@noodl/` pointing at
-  the worktree's own `packages/*`. Verified before launch with
-  `node -e "require.resolve('@noodl/runtime/package.json',{paths:['<wt>']})"` — it must return a path
-  **inside** the worktree. Never `isolation: "worktree"`: the harness roots those at `origin/main`.
-- **The phase-50 specs were untracked**, so the worktrees could not see them and they had to be
-  copied in. Commit specs before spawning agents against them.
-- **The base moved under the batch.** `cline-dev` gained four commits mid-run. Harmless here, but
-  compute overlap from `git merge-base`, not from the branch name — `git diff cline-dev..<branch>`
-  reported ~140 files for every branch and the true numbers were 13–16.
-- 🔴 **Do not take an agent's finding at face value.** Two of them reported flatly contradictory
-  things about `duplicateComponent`; both were right about different scopes, and the resolution
-  (§3 item 2) is worth more than either report. A third's central claim was that a premise in its own
-  spec was false, and it was.
+---
+
+## 6. Three debts found on the way, filed and not fixed
+
+None is phase 50's, all are real, and each was verified in source rather than inferred.
+
+1. 🔴 **`NodeLabel.tsx:104` calls `model.off(this)` inside a function component**, where `this` is
+   `undefined` in a strict-mode module. `shared/model.js:84` splices every listener whose
+   `group === group`, so **`off(undefined)` removes every listener registered without a group** from
+   that node's model — on every unmount, which is every time you select a different node. LEG-005's row
+   sidesteps it with a `useRef({})` group rather than copying the pattern. **One line to fix; needs a
+   thought about what it has been silently unbinding.**
+2. ⚠️ **core-ui `TextArea`'s placeholder is unusable in dark.** `::placeholder` resolves to
+   `--base-color-grey-600` = `#2c3540` — **1.36:1**. That is why LEG-005 used a native `<textarea>`
+   with global CSS: overriding it from outside meant `UNSAFE_className` on the same element, a
+   specificity tie decided by stylesheet order. **A defect in a shared component, not a LEG-005
+   problem.**
+3. ⚠️ **`SELF_NAMING_TYPES` is transcribed by grep, not derived.** `usePortAsLabel` reaches **0 of 175**
+   catalog entries, so the rule cannot ask `CatalogIndex` for it and nothing gates the list. Worth 16
+   corpus hits today; a new type carrying `usePortAsLabel` will be misreported until someone re-greps.
+   Regenerate with the command in the constant's doc comment.
+
+Also worth knowing: **17 of `library/`'s 25 hits are `library/modules/avatar`**, a demo gallery, and
+arguably legitimate. Kept, because the rule cannot tell a demo from a page and at info severity being
+wrong costs one grey line.
+
+---
+
+## 7. Gates, with the numbers to compare against
+
+Measured this session on the merged tree. **Do not inherit a green board** — re-run after any sibling
+commits over the tree.
+
+| Gate | Number | Note |
+|---|---|---|
+| `typecheck:editor` | clean | |
+| `typecheck:editor-tests` | clean | |
+| editor `npx jest tests-unit` | **1641 / 1641**, 112 suites | run from `packages/noodl-editor`, **never the repo root** — the root picks up the wrong babel config and reports every suite as failing to run |
+| `noodl-mcp` `npx jest` | **418 passed / 419** | the one failure is **DEBT-009** by name (`tools.test.ts`, 30,365 > 30,000 chars), pre-existing and unmoved |
+| `validate:project` | 5 errors / 147 warnings | unchanged by LEG-002 |
+| `test:ci` | **see §7.1** | |
+
+### 7.1 The Jasmine number
+
+Baseline before this session's work, measured on `fc36d61a`:
+**`Jasmine: 2672 specs, 6 failures`** — 2,670 + the blocker's two new specs. All six inherited **by
+name**: four `AIX-006 style vocabulary` (the known F32 fixture defect), two `AI model registry`.
+
+⚠️ **Only the `Jasmine:` line counts.** The exit code lies, and a run that dies without a `Jasmine:`
+line graded nothing — re-run it, do not read exit=1 as failures. **Compare the total spec count too, not
+just the failure count**: a gitignored build artifact can make a whole block of specs vanish behind a
+number that still looks like a pass.
+
+⚠️ **A run on the merged tree was in flight when this file was written.** Its log is at
+`tasks/bbogetkqw.output` in this session's scratchpad, which will be swept — **just re-run it** and
+compare against 6 failures by name, with the spec total risen by the three lanes' additions.
+
+---
+
+## 8. Decisions already taken. Do not re-litigate them
+
+- **The AWP-006 tool-surface budget is 8,200, not 8,000 — Richard decided this on 2026-08-11**, with
+  the measurement in front of him. Base was **7,963**, independently re-measured, i.e. 37 tokens of
+  headroom, so *any* new authored field broke that gate. One declared node field costs ~45 tokens per
+  rendering and the node schema is inlined **three** times. The table is in the constant's doc comment
+  in `toolDisclosure.test.ts`. **If the next field to arrive needs room, the honest fix is a `$ref`ed
+  node schema, not a shorter sentence in front of a model.**
+- **LEG-002 ships advisory in both directions**, not blocking for authored output. The spec inverts its
+  own phase README deliberately and the corpus backs it. Do not "fix" it back.
+- **The comment field description and LEG-005's placeholder are one voice on purpose.** They were fixed
+  before the lanes launched precisely so two agents could not diverge on them, and neither lane
+  objected. Changing one means changing both.
+- **`update_node.set.comment` was added beyond LEG-001's spec** — a field zod does not name is a field
+  zod *strips*, which is how a hero vanished in phase 58. Costs 45 of the 179 tokens. Reversible in two
+  lines if you disagree.
+
+---
+
+## 9. The shape of the session that produced this, in case it is worth repeating
+
+Three lanes, near-disjoint by construction, with the two things that do **not** parallelise pulled out
+and done by the orchestrator:
+
+1. **The blocker went first, alone, in its own commit** — because two of the three tasks made its
+   defect user-visible for the first time.
+2. **Shared copy was authored once, up front, and handed to both lanes verbatim** with instructions to
+   report rather than silently edit. Two surfaces describing one field differently is a documentation
+   bug no parity spec can catch, because one of the two is UI copy.
+3. **Live verification was never delegated**, because `lerna exec` resolves the package root to the
+   primary checkout — a drive from a worktree exercises code that is not the branch's and reports a
+   result unrelated to the diff.
+
+All three lanes were told to report **deviations with reasoning** and an explicit **"could not verify"**
+list. That is where every finding in §6 came from, and where LEG-005's honest *"nothing was ever
+painted"* came from. **Ask for it by name.**
