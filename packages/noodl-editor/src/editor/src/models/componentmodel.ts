@@ -65,7 +65,9 @@ export class ComponentModel extends Model {
       description: json.description,
       created: json.created,
       modifiedBy: json.modifiedBy,
-      metadata: json.metadata,
+      // Copied, not aliased — two components built from one json must not share
+      // a metadata bag.
+      metadata: json.metadata ? JSON.parse(JSON.stringify(json.metadata)) : undefined,
       graph: NodeGraphModel.fromJSON(json.graph)
     });
     return _this;
@@ -394,7 +396,10 @@ export class ComponentModel extends Model {
       name: this.name,
       id: this.id,
       graph: this.graph.toJSON(),
-      metadata: this.metadata
+      // Deep-copied, for the same reason as `NodeGraphNode.toJSON` — handing the
+      // live bag out means a caller that edits the serialised form edits the
+      // model. The copy is byte-identical, so it cannot produce an F46 diff.
+      metadata: this.metadata ? JSON.parse(JSON.stringify(this.metadata)) : undefined
     };
     // LEG-006 — spread conditionally rather than assigning `undefined`: a
     // component that never had a description must not gain the key, or a save

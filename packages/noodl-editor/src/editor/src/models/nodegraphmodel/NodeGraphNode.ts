@@ -1609,7 +1609,13 @@ export class NodeGraphNode extends Model {
       dynamicports: this.dynamicports ? JSON.parse(JSON.stringify(this.dynamicports)) : undefined,
       conflicts: this.conflicts ? JSON.parse(JSON.stringify(this.conflicts)) : undefined,
       children: [],
-      metadata: this.metadata
+      // Deep-copied like every other field above. It used to be handed out by
+      // reference, which made `NodeGraphNodeSet.clone()` — `fromJSON(toJSON())` —
+      // produce a node sharing its source's metadata bag, so editing a pasted
+      // node's comment rewrote the original's. It also let the loop below mutate
+      // the live node while merely serialising it; the `[...new Set(...)]` dedupe
+      // on line 1624 is that same defect already patched once at the symptom.
+      metadata: this.metadata ? JSON.parse(JSON.stringify(this.metadata)) : undefined
     };
 
     for (const parameterName in json.parameters) {

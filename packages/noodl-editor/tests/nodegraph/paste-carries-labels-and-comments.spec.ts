@@ -204,23 +204,51 @@ describe('LEG-007 — a pasted node keeps its label and its comment', () => {
       expect(clone.metadata.merge.soureCodePorts).toEqual(['css']);
     });
 
-    it('shares the metadata object with its source — a defect, recorded, not endorsed', () => {
-      // `toJSON` emits `metadata: this.metadata` by reference (`:1590`) and
+    it('gives the clone its own metadata object, so editing one does not rewrite the other', () => {
+      // `toJSON` used to emit `metadata: this.metadata` by reference, and
       // `stripCodeHistoryMetadata` returns its argument untouched when there is nothing to strip,
-      // so a clone of a node whose metadata is clean holds the *same object*. Editing the copy's
-      // comment therefore rewrites the original's — reachable through the in-memory clipboard
+      // so a clone of a node whose metadata was clean held the *same object*. Editing the copy's
+      // comment therefore rewrote the original's — reachable through the in-memory clipboard
       // fallback (`EditorClipboard.paste()` when the OS clipboard holds unparseable text) and
       // through any direct `insertNodeSet` caller such as the AI assistant.
       //
-      // Every other field is deep-copied; `metadata` is the exception. The fix is one line in
-      // `NodeGraphNodeSet.clone()` — round-trip the JSON the way `duplicateComponent` already
-      // does — and when it lands, this expectation flips to `not.toBe` plus an independence
-      // assertion. It is pinned rather than fixed here because LEG-007's remit is a regression
-      // spec, not a change to the paste path. See LEG-007 register L23.
+      // LEG-007 pinned it with `toBe` and said this expectation flips when the fix lands. It has:
+      // `toJSON` now deep-copies `metadata` like every other field. ⚠️ This guards the phase-50
+      // comment channel — LEG-001 puts `comment` in this bag and LEG-005 gives humans a way to
+      // edit it, so aliasing here would become user-visible data corruption for the first time.
       const source = sourceSet();
       const clone = source.clone();
 
-      expect(clone.nodes[0].metadata).toBe(source.nodes[0].metadata);
+      expect(clone.nodes[0].metadata).not.toBe(source.nodes[0].metadata);
+      expect(clone.nodes[0].metadata.comment).toEqual(source.nodes[0].metadata.comment);
+
+      // The consequence, not just the mechanism: write through the clone and read the original.
+      clone.nodes[0].setComment('rewritten on the copy');
+
+      expect(source.nodes[0].metadata.comment).toBe('The whole card. One row per piece.');
+    });
+
+    it('does not mutate the node it serialises when deriving metadata.merge', () => {
+      // The other half of the same defect: the `isSourceCodePort` loop in `toJSON` pushed onto
+      // `json.metadata.merge.soureCodePorts`, which WAS the live node's array. The
+      // `[...new Set(...)]` dedupe beside it is that accumulation already patched at the symptom.
+      const node = NodeGraphNode.fromJSON({
+        id: 'bare',
+        type: 'image',
+        x: 0,
+        y: 0,
+        parameters: { css: '.b {}' }
+      } as TSFixme);
+
+      expect(node.metadata).toBeUndefined();
+
+      const first = node.toJSON();
+      const second = node.toJSON();
+
+      // Serialising twice must produce the same thing, and must leave the model alone.
+      expect(first.metadata.merge.soureCodePorts).toEqual(['css']);
+      expect(second.metadata.merge.soureCodePorts).toEqual(['css']);
+      expect(node.metadata).toBeUndefined();
     });
   });
 
@@ -314,7 +342,8 @@ describe('LEG-007 — a pasted node keeps its label and its comment', () => {
     it('gives the duplicate its own metadata objects', () => {
       // Unlike `clone()`, `duplicateComponent` re-parses the graph through
       // `JSON.parse(JSON.stringify(...))` (`projectmodel.ts:337`), so commenting the duplicate
-      // does not write through to the original. This is the behaviour `clone()` should have.
+      // does not write through to the original. `clone()` now behaves the same way — see the
+      // independence assertion in the `clone()` block above.
       const project = ProjectModel.fromJSON({
         components: [{ name: 'Card', graph: graphJSON() }]
       });
@@ -330,6 +359,42 @@ describe('LEG-007 — a pasted node keeps its label and its comment', () => {
       copy.setComment('Rewritten on the duplicate');
       expect(copy.metadata.comment).toBe('Rewritten on the duplicate');
       expect(original.metadata.comment).toBe('The whole card. One row per piece.');
+    });
+
+    it("carries the component's OWN fields, not only its graph", () => {
+      // The graph was always deep-copied; the component's own fields were not carried at all,
+      // because `duplicateComponent` constructed the copy with `name`, `graph` and `id` only.
+      // So LEG-006 shipped a `description` that a duplicate silently dropped — and the same was
+      // true of the component-level metadata bag.
+      const project = ProjectModel.fromJSON({
+        components: [
+          {
+            name: 'Card',
+            description: 'One row per piece. Instantiate rather than rebuild.',
+            created: '2026-08-10T09:00:00.000Z',
+            modifiedBy: 'noodl-mcp',
+            metadata: { arbitrary: 'bag' },
+            graph: graphJSON()
+          }
+        ]
+      });
+      ProjectModel.instance = project;
+
+      project.duplicateComponent(project.getComponentWithName('Card'), 'Card copy', {});
+
+      const copy = project.getComponentWithName('Card copy');
+
+      expect(copy.description).toBe('One row per piece. Instantiate rather than rebuild.');
+      expect(copy.created).toBe('2026-08-10T09:00:00.000Z');
+      expect(copy.modifiedBy).toBe('noodl-mcp');
+      expect(copy.metadata).toEqual({ arbitrary: 'bag' });
+
+      // Carried by value, not by reference — the same rule as the node-level bag.
+      const original = project.getComponentWithName('Card');
+      expect(copy.metadata).not.toBe(original.metadata);
+
+      copy.metadata.arbitrary = 'rewritten on the duplicate';
+      expect(original.metadata.arbitrary).toBe('bag');
     });
   });
 });

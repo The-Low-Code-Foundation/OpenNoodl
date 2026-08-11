@@ -362,7 +362,17 @@ export class ProjectModel extends Model {
     const newComponent = new ComponentModel({
       name: newComponentName,
       graph: NodeGraphModel.fromJSON(JSON.parse(JSON.stringify(component.graph.toJSON()))),
-      id: Utils.guid()
+      id: Utils.guid(),
+      // The graph was already deep-copied above; the component's OWN fields were
+      // not carried at all, so a duplicate silently lost its description and its
+      // whole metadata bag. Preserved rather than restamped, matching
+      // `ProjectExporter`'s rule for `modifiedBy`. ⚠️ When a field is added to
+      // `ComponentModel` the seams are four, not two: importer, model, exporter
+      // and here.
+      description: component.description,
+      created: component.created,
+      modifiedBy: component.modifiedBy,
+      metadata: component.metadata ? JSON.parse(JSON.stringify(component.metadata)) : undefined
     });
 
     newComponent.rekeyAllIds();
