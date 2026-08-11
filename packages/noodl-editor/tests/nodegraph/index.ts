@@ -4,6 +4,7 @@ export * from './conflictwarnings';
 export * from './createnewnode';
 export * from './createstatus';
 export * from './explain-selection.spec';
+export * from './extract-to-component.spec';
 export * from './export';
 export * from './hierarchy';
 export * from './nodegrapheditor';

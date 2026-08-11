@@ -3,16 +3,16 @@ import _ from 'underscore';
 
 import { BasicNodeType } from '@noodl-models/nodelibrary/BasicNodeType';
 import { UndoActionGroup, UndoQueue } from '@noodl-models/undo-queue-model';
-import { extractToComponent } from '@noodl-utils/ExtractToComponent';
+import { extractToComponent, labelForPath } from '@noodl-utils/ExtractToComponent';
 
 import { ComponentModel } from '../../models/componentmodel';
 import { NodeGraphNodeSet } from '../../models/nodegraphmodel';
 import { ProjectModel } from '../../models/projectmodel';
+import type { NodeGraphEditor } from '../nodegrapheditor';
 import PopupLayer from '../popuplayer';
 import { ToastLayer } from '../ToastLayer/ToastLayer';
+import { ExtractToComponentPopup } from './ExtractToComponentPopup';
 import { NodeGraphEditorNode } from './NodeGraphEditorNode';
-
-import type { NodeGraphEditor } from '../nodegrapheditor';
 
 /**
  * Clipboard and node-set actions for the node graph editor (PLAT-001 wave 2
@@ -282,10 +282,27 @@ export class EditorClipboard {
     return nodeset;
   }
 
+  /**
+   * Ask for a name and a destination, then extract.
+   *
+   * This used to be one click that created `<current component>/Extracted
+   * component` — nested under whatever component the nodes were born in, under
+   * a name nobody chose — so a project accumulated `Extracted component 4`s in
+   * places their authors could not find again. Everything below the dialog is
+   * unchanged; the dialog only decides the *name*, which is also the location.
+   */
   extractSelectionToComponent() {
     const editor = this.editor;
+    const sourceComponent = editor.model.owner;
+    if (!ProjectModel.instance || !sourceComponent) return;
+
     const nodeset = this.nodesetFromSelection();
-    const selection = editor.selector.nodes;
+    if (!nodeset) return; // a node in the selection refused to be copied
+
+    // Snapshotted before the dialog opens: `selector.nodes` is the live
+    // selection, and the extraction must act on what the user had selected when
+    // they asked for it.
+    const selection = [...editor.selector.nodes];
 
     const aabb = editor.calculateNodesAABB(selection);
 
@@ -294,10 +311,28 @@ export class EditorClipboard {
       y: aabb.minY
     };
 
-    extractToComponent(ProjectModel.instance, editor.model, nodeset, selection, pos);
+    const popup = new ExtractToComponentPopup({
+      projectModel: ProjectModel.instance,
+      sourceComponent,
+      onConfirm: (componentName: string) => {
+        extractToComponent(ProjectModel.instance, editor.model, nodeset, selection, pos, componentName);
 
-    editor.clearSelection();
-    editor.relayout();
-    editor.repaint();
+        editor.clearSelection();
+        editor.relayout();
+        editor.repaint();
+
+        ToastLayer.showSuccess(`Extracted to ${labelForPath(componentName)}`);
+      }
+    });
+    popup.render();
+
+    PopupLayer.instance.showPopup({
+      content: popup,
+      position: 'screen-center',
+      isBackgroundDimmed: true,
+      // The shell pins itself to the content's measured height otherwise, and a
+      // wrapped validation message would paint outside its own background.
+      hasDynamicHeight: true
+    });
   }
 }

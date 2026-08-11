@@ -1,9 +1,11 @@
 import { ComponentModel } from '@noodl-models/componentmodel';
 import { Connection, NodeGraphModel, NodeGraphNode, NodeGraphNodeSet } from '@noodl-models/nodegraphmodel';
+import { RuntimeType } from '@noodl-models/nodelibrary/NodeLibraryData';
 import { ProjectModel } from '@noodl-models/projectmodel';
 import { UndoQueue, UndoActionGroup } from '@noodl-models/undo-queue-model';
 
 import { NodeGraphEditorNode } from '../views/nodegrapheditor/NodeGraphEditorNode';
+import { getComponentModelRuntimeType } from './NodeGraph';
 import { guid, Rectangle } from './utils';
 
 type ConnectionInfo = {
@@ -31,11 +33,21 @@ export function extractToComponent(
   nodeGraphModel: NodeGraphModel,
   nodeset: NodeGraphNodeSet,
   selectedNodes: readonly NodeGraphEditorNode[],
-  newNodePosition: { x: number; y: number }
+  newNodePosition: { x: number; y: number },
+  /**
+   * The full component name to create, e.g. `/Components/Product card`.
+   *
+   * Required. It used to be generated here — always
+   * `<current component>/Extracted component` — which is why every extraction
+   * landed nested inside whatever component it was born in, under a name nobody
+   * chose. The caller asks first (see `ExtractToComponentPopup`); this function
+   * only performs the extraction.
+   */
+  componentName: string
 ) {
   const undoGroup = new UndoActionGroup({ label: 'extract to component' });
 
-  const name = generateName(projectModel, nodeGraphModel);
+  const name = componentName;
 
   const component = new ComponentModel({
     name,
@@ -306,16 +318,199 @@ function connectExternalInputsAndOutputs(
   }
 }
 
-function generateName(projectModel: ProjectModel, nodeGraphModel: NodeGraphModel) {
-  let name: string;
+/**
+ * A place an extracted component can be put.
+ *
+ * `path` is a real component-name prefix — `/`, `/#Pages`, `/#Pages/Home` — so
+ * `joinComponentPath(path, localName)` is a component name in exactly the shape
+ * every other producer of one makes (see `useComponentActions.toFolderPath`).
+ *
+ * `kind` is derived, not stored: the project has only names and graphs. A path
+ * that *is* a component's name can still be extracted into — that is what
+ * nesting is, and it is what extraction used to do unconditionally.
+ */
+export type ExtractDestinationKind = 'root' | 'sheet' | 'folder' | 'component';
+
+export interface ExtractDestination {
+  path: string;
+  kind: ExtractDestinationKind;
+  /** Human-readable trail, e.g. `Pages / Home`. Sheets lose their `#`. */
+  label: string;
+  /** True for the component the nodes are being extracted *out of*. */
+  isCurrent: boolean;
+}
+
+/** The sheets whose contents are not browser components. */
+const CLOUD_SHEET = '/#__cloud__';
+const WORKFLOW_SHEET = '/#__workflow__';
+
+/** Components the panel hides, and which must not be offered as a parent. */
+function isPlaceholder(name: string) {
+  return name.endsWith('/.placeholder');
+}
+
+/**
+ * The leading slash a component name is *supposed* to have.
+ *
+ * It is not guaranteed. `ProjectModel.getComponentWithName` is an exact string
+ * match with no normalisation, and real projects hold both forms side by side —
+ * a fixture opened while this was written had `/#__page__/Home` next to a bare
+ * `App`. Without this, that `App` derives the path `/App`, fails to match its
+ * own name in the component set, and is offered as a *folder* rather than as
+ * the component you are extracting out of.
+ */
+export function normalizeComponentName(name: string) {
+  return name.startsWith('/') ? name : '/' + name;
+}
+
+/** `/` + `Card` → `/Card`; `/#Pages/Home` + `Card` → `/#Pages/Home/Card`. */
+export function joinComponentPath(folderPath: string, localName: string) {
+  return folderPath === '/' ? '/' + localName : folderPath + '/' + localName;
+}
+
+/** The folder a component lives in. `/#Pages/Home` → `/#Pages`, `/Card` → `/`. */
+export function parentPathOf(componentName: string) {
+  const normalized = normalizeComponentName(componentName);
+  const cut = normalized.lastIndexOf('/');
+  return cut <= 0 ? '/' : normalized.substring(0, cut);
+}
+
+/**
+ * Is a component already called this?
+ *
+ * Both spellings are checked, because the project may hold either and
+ * `getComponentWithName` will not find one when asked for the other — a
+ * collision missed here is a second component with the same name in the tree.
+ */
+function componentExists(projectModel: ProjectModel, componentName: string) {
+  const normalized = normalizeComponentName(componentName);
+  return !!(
+    projectModel.getComponentWithName(normalized) || projectModel.getComponentWithName(normalized.substring(1))
+  );
+}
+
+/**
+ * Is this path in the same runtime as the component being extracted from?
+ *
+ * The runtime of a component is its *name* (`utils/NodeGraph`), so moving an
+ * extraction across the `#__cloud__` boundary silently changes what the graph
+ * is — cloud nodes in a browser component, or the reverse. The picker refuses
+ * to offer the crossing rather than validating it afterwards.
+ */
+function isInRuntime(path: string, runtime: RuntimeType) {
+  const isCloud = path === CLOUD_SHEET || path.startsWith(CLOUD_SHEET + '/');
+  const isWorkflow = path === WORKFLOW_SHEET || path.startsWith(WORKFLOW_SHEET + '/');
+
+  if (runtime === RuntimeType.Cloud) return isCloud;
+  if (runtime === RuntimeType.Workflow) return isWorkflow;
+  return !isCloud && !isWorkflow;
+}
+
+/** `#Pages` → `Pages`, and the two internal sheets get the names the UI uses. */
+function segmentLabel(segment: string) {
+  if (segment === '#__cloud__') return 'Cloud Functions';
+  if (segment === '#__workflow__') return 'Workflows';
+  return segment.startsWith('#') ? segment.substring(1) : segment;
+}
+
+/** `/#Pages/Home` → `Pages / Home`. Root is named rather than drawn as `/`. */
+export function labelForPath(path: string) {
+  if (path === '/') return 'Project root';
+  return path.split('/').filter(Boolean).map(segmentLabel).join(' / ');
+}
+
+/**
+ * Every folder, sheet and component the extraction may be put in, in tree order.
+ *
+ * Derived from component names alone — folders are virtual in this project
+ * format, so a folder exists exactly as long as some component's name has it as
+ * a prefix.
+ */
+export function collectExtractDestinations(
+  projectModel: ProjectModel,
+  sourceComponent: ComponentModel
+): ExtractDestination[] {
+  const runtime = getComponentModelRuntimeType(sourceComponent);
+  const components = projectModel.getComponents();
+  const componentNames = new Set(
+    components.filter((c) => !isPlaceholder(c.name)).map((c) => normalizeComponentName(c.name))
+  );
+  const sourceName = normalizeComponentName(sourceComponent.name);
+
+  const paths = new Set<string>(['/']);
+  for (const component of components) {
+    const segments = component.name.split('/').filter(Boolean);
+
+    /**
+     * A placeholder contributes its *folders* but never itself. An empty folder
+     * exists only as `<folder>/.placeholder` (see
+     * `useComponentActions.handleAddFolder`), so skipping placeholders outright
+     * would make every empty folder — the ones most likely to have been made to
+     * hold exactly this — impossible to extract into.
+     */
+    const last = isPlaceholder(component.name) ? segments.length - 1 : segments.length;
+
+    for (let i = 1; i <= last; i++) {
+      paths.add('/' + segments.slice(0, i).join('/'));
+    }
+  }
+
+  return Array.from(paths)
+    .filter((path) => isInRuntime(path, runtime))
+    .sort((a, b) => a.localeCompare(b))
+    .map((path) => {
+      const segments = path.split('/').filter(Boolean);
+
+      let kind: ExtractDestinationKind;
+      if (path === '/') kind = 'root';
+      else if (segments.length === 1 && segments[0].startsWith('#')) kind = 'sheet';
+      else if (componentNames.has(path)) kind = 'component';
+      else kind = 'folder';
+
+      return { path, kind, label: labelForPath(path), isCurrent: path === sourceName };
+    });
+}
+
+/**
+ * A free name in `folderPath`, starting from `base`.
+ *
+ * The dialog pre-fills with this so Enter is still a one-keystroke extraction;
+ * the difference from before is that the name is now visible and editable
+ * *before* the component exists.
+ */
+export function suggestExtractedComponentName(
+  projectModel: ProjectModel,
+  folderPath: string,
+  base = 'Extracted component'
+) {
+  let localName = base;
   let i = 1;
 
-  do {
-    name = nodeGraphModel.owner.fullName + '/Extracted component' + (i > 1 ? ' ' + i : '');
+  while (componentExists(projectModel, joinComponentPath(folderPath, localName))) {
     i++;
-  } while (projectModel.getComponentWithName(name));
+    localName = base + ' ' + i;
+  }
 
-  return name;
+  return localName;
+}
+
+/** Why this name cannot be used, or `null` if it can. */
+export function validateExtractedComponentName(
+  projectModel: ProjectModel,
+  folderPath: string,
+  localName: string
+): string | null {
+  const trimmed = localName.trim();
+
+  if (!trimmed) return 'Give the component a name';
+  if (trimmed.includes('/')) return 'A component name cannot contain "/" — pick a folder below instead';
+  if (trimmed.startsWith('#')) return 'A component name cannot start with "#"';
+  if (trimmed.startsWith('.')) return 'A component name cannot start with "."';
+  if (componentExists(projectModel, joinComponentPath(folderPath, trimmed))) {
+    return `"${trimmed}" already exists in ${labelForPath(folderPath)}`;
+  }
+
+  return null;
 }
 
 function getComponentInputsPosition(component: ComponentModel, numOutputs: number) {
