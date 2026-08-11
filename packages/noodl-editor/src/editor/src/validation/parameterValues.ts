@@ -455,6 +455,43 @@ function repairForCondition(condition: string): string | undefined {
   return single ? `${single[1]}: ${JSON.stringify(single[2])}` : undefined;
 }
 
+/**
+ * DSG-004 §2.2 — the three ports `sizeMode` switches off, and the reason they
+ * get a code of their own.
+ *
+ * `InactiveConditionalParameter` is one code over a wide population: 366 corpus
+ * hits, most of them a `borderWidth` with no `borderStyle` or a `showScrollbar`
+ * with scrolling off. Severity policy in `AUTHORED_BLOCKING_WARNINGS` is per
+ * *code*, so a promotion decision about the 58 hits doctrine `§8` names —
+ * *"`width`/`height`/`objectFit` are INERT unless `sizeMode: "explicit"`. A
+ * `width: 100%` input that renders 170px wide is this, every time."* — cannot be
+ * made without separating them.
+ *
+ * Keyed on the condition rather than on the node type, because the trap is
+ * declared by `addDimensions` in `node-shared-port-definitions.ts` and inherited
+ * by every visual type that calls it — including whichever type is added next.
+ */
+const SIZE_GATED_PORTS: ReadonlySet<string> = new Set(['width', 'height', 'objectFit']);
+
+function isSizeModeGated(portName: string, condition: string): boolean {
+  return SIZE_GATED_PORTS.has(portName) && /\bsizeMode\b/.test(condition);
+}
+
+/**
+ * The mode that makes the port live, phrased as the edit that gets it: the
+ * repair for `width` is `contentHeight` as much as `explicit`, and saying
+ * "explicit" when the author wanted the height from the content is advice that
+ * costs a second round.
+ */
+function sizeModeExit(portName: string): string {
+  if (portName === 'objectFit') return 'Set sizeMode: "explicit" on this node — objectFit is read in no other mode.';
+  const keeping = portName === 'width' ? 'contentHeight' : 'contentWidth';
+  return (
+    `Set sizeMode: "explicit" on this node to use both dimensions as given, or ${JSON.stringify(keeping)} to ` +
+    `keep sizing the other axis to the content while this ${portName} applies.`
+  );
+}
+
 // ─── The rule ────────────────────────────────────────────────────────────────
 
 /**
@@ -762,14 +799,31 @@ export function checkParameterValues(
       // first one produces a second broken image.
       const condition = conditionForInput(portGroups, name);
       if (condition && conditionIsUnsatisfied(condition, parameters)) {
+        // DSG-004 §2.2 — the `sizeMode` family is reported under its own code so
+        // that it can block authored output while the wider population stays a
+        // warning, and so that the message can carry the exit rather than only
+        // the diagnosis. One diagnostic either way: the two codes are exclusive.
+        const sizeGated = isSizeModeGated(name, condition);
         const repair = repairForCondition(condition);
-        diagnostics.push({
-          code: DiagnosticCode.InactiveConditionalParameter,
-          severity: 'warning',
-          message: `${node.type}'s "${name}" only applies when ${describeCondition(condition)}, so this parameter is never read.`,
-          location: locate(component, node, name),
-          ...(repair ? { suggestion: repair } : {})
-        });
+        diagnostics.push(
+          sizeGated
+            ? {
+                code: DiagnosticCode.InertDimension,
+                severity: 'warning',
+                message:
+                  `${node.type}'s "${name}" is inert here: it only applies when ${describeCondition(condition)}, ` +
+                  `and this node sizes itself to its content instead, so the value is never read. ${sizeModeExit(name)}`,
+                location: locate(component, node, name),
+                suggestion: 'sizeMode: "explicit"'
+              }
+            : {
+                code: DiagnosticCode.InactiveConditionalParameter,
+                severity: 'warning',
+                message: `${node.type}'s "${name}" only applies when ${describeCondition(condition)}, so this parameter is never read.`,
+                location: locate(component, node, name),
+                ...(repair ? { suggestion: repair } : {})
+              }
+        );
       }
 
       // Before the value is examined at all: a connection-only port discards
