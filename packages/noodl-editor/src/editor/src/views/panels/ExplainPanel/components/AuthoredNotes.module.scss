@@ -1,0 +1,72 @@
+/* LEG-003 §2 — see AuthoredNotes.tsx for the measured contrast of every pair
+   below. The card fill alone is 1.07:1 (dark) / 1.06:1 (light) against the panel
+   behind it, which is why the left rule, the icon and the header sentence carry
+   the distinction and the fill only supports it. */
+
+.Root {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px 10px;
+  /* Only ever rendered with at least one note, so this never leaves a gap
+     behind an empty block. */
+  margin-bottom: 12px;
+  border-left: 2px solid var(--theme-color-fg-default-shy);
+  border-radius: 0 2px 2px 0;
+  background-color: var(--theme-color-bg-2);
+}
+
+.Header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.Note {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.Attribution {
+  display: block;
+}
+
+.Subject {
+  color: var(--theme-color-fg-default-contrast);
+  font-weight: 600;
+}
+
+/* The node name reaches the canvas. Underlined rather than tinted: the accent
+   measures 4.33:1 on this card in the light theme, under the 4.5:1 that 12px
+   text needs, and an affordance nobody can read is not one. */
+.Clickable {
+  padding: 0;
+  border: none;
+  border-bottom: 1px dashed var(--theme-color-fg-default-shy);
+  background: none;
+  font: inherit;
+  cursor: pointer;
+
+  &:hover,
+  &:focus-visible {
+    border-bottom-style: solid;
+    background-color: var(--theme-color-bg-3);
+  }
+}
+
+.Body {
+  margin: 0;
+  color: var(--theme-color-fg-default-contrast);
+  font-family: var(--font-family);
+  font-size: 12px;
+  line-height: 1.6;
+  /* An author's line breaks are part of what they wrote. */
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.Omitted {
+  display: block;
+}

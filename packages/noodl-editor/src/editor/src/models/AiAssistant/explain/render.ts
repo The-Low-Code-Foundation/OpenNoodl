@@ -70,6 +70,10 @@ export function renderContext(context: ExplainContext): string {
     `name: ${shape.name}`,
     `${shape.nodeCount} nodes, ${shape.connectionCount} connections`
   ];
+  // LEG-003 §2. The author's own sentence about their component, marked as
+  // theirs so the model treats it as evidence rather than as something to
+  // restate. The panel shows it verbatim above the answer either way.
+  if (shape.description) overview.push(`description, written by the author: ${shape.description}`);
   if (shape.inputPorts.length) overview.push(`component inputs: ${shape.inputPorts.join(', ')}`);
   if (shape.outputPorts.length) overview.push(`component outputs: ${shape.outputPorts.join(', ')}`);
   if (context.scope === 'component' && shape.typeCounts.length) {

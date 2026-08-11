@@ -53,6 +53,15 @@ interface EditorNodeLike {
 interface EditorComponentLike {
   name: string;
   fullName?: string;
+  /**
+   * LEG-003 §2 / LEG-006. Read from two places on purpose: `ComponentModel`
+   * carries no `description` field today (it drops the key on `fromJSON`), and
+   * LEG-006 may restore it either as a field of its own or inside the existing
+   * `metadata` bag. Reading both means this adapter is correct either way, and
+   * correct *now* for anything that hands it a plain component object.
+   */
+  description?: unknown;
+  metadata?: Record<string, unknown>;
   graph?: {
     roots?: EditorNodeLike[];
     connections?: ReadonlyArray<{ fromId: string; fromProperty: string; toId: string; toProperty: string }>;
@@ -130,6 +139,18 @@ function fromEditorNode(node: EditorNodeLike, parentId: string | undefined, out:
   for (const child of children) fromEditorNode(child, node.id, out);
 }
 
+/**
+ * A description is only a description when someone wrote something in it. An
+ * empty string is the shape a form control leaves behind, not an author's
+ * sentence, and it must not produce an empty quotation in the panel.
+ */
+function authoredDescription(...candidates: unknown[]): string | undefined {
+  for (const candidate of candidates) {
+    if (typeof candidate === 'string' && candidate.trim() !== '') return candidate;
+  }
+  return undefined;
+}
+
 /** Adapt one live `ComponentModel` (the case the panel always has in hand). */
 export function fromComponentModel(component: EditorComponentLike): GraphComponent {
   const nodes: GraphNode[] = [];
@@ -142,7 +163,14 @@ export function fromComponentModel(component: EditorComponentLike): GraphCompone
     toProperty: c.toProperty
   }));
 
-  return { name: component.fullName ?? component.name, nodes, connections };
+  const description = authoredDescription(component.description, component.metadata?.['description']);
+
+  return {
+    name: component.fullName ?? component.name,
+    ...(description ? { description } : {}),
+    nodes,
+    connections
+  };
 }
 
 /**
@@ -173,6 +201,8 @@ interface SerialisedNode {
 
 interface SerialisedComponent {
   name: string;
+  description?: string;
+  metadata?: Record<string, unknown>;
   graph?: {
     roots?: SerialisedNode[];
     connections?: GraphConnection[];
@@ -221,8 +251,10 @@ export function fromSerialisedProject(project: SerialisedProject | null | undefi
   for (const comp of project?.components ?? []) {
     const nodes: GraphNode[] = [];
     for (const root of comp.graph?.roots ?? []) fromSerialisedNode(root, undefined, nodes);
+    const description = authoredDescription(comp.description, comp.metadata?.['description']);
     components.push({
       name: comp.name,
+      ...(description ? { description } : {}),
       nodes,
       connections: (comp.graph?.connections ?? []).map((c) => ({
         fromId: c.fromId,
