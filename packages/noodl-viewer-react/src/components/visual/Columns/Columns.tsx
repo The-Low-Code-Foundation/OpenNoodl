@@ -43,6 +43,35 @@ function toPixels(value: string | number | undefined): number {
 }
 
 /**
+ * Read the same port value as a CSS length, keeping whatever the author wrote.
+ *
+ * F49. {@link toPixels} exists for *arithmetic* — the fold has to compare numbers — and it
+ * answers `0` for anything it cannot parse, which is the right answer for a comparison and the
+ * wrong one for a declaration. The three container declarations below used `parseFloat`
+ * directly instead, so a tokenised gutter produced `NaNpx` and `calc(100% + NaNpx)`: the CSSOM
+ * rejects both, the width vanishes, and the flex container shrink-to-fits. An *unset* gutter
+ * did the same thing, for the same reason.
+ *
+ * Passing the value through untouched is what the item wrappers already do (`paddingLeft`
+ * below), and is why a tokenised gutter always spaced the columns correctly while the
+ * container that compensates for it collapsed. `calc()` does the negation and the addition, so
+ * `var(--space-4)` and `16px` take the same path and neither has to be resolved here.
+ *
+ * ⚠️ This does not help {@link resolveColumnLayout}: autofold genuinely needs a number, and a
+ * `var()` cannot be resolved without computed styles. A tokenised `marginX` still folds as
+ * though the gutter were 0, and a tokenised `minWidth` disables `autoFit` entirely (`minWidth
+ * > 0` is false). Both are degradations of the *fold*, not of the layout, and both are
+ * separate from this fix.
+ */
+function toCssLength(value: string | number | undefined): string {
+  if (typeof value === 'number') return Number.isFinite(value) ? `${value}px` : '0px';
+  if (typeof value !== 'string' || value.trim() === '') return '0px';
+  // A bare numeric string ('16') is the legacy shape and means pixels; anything else —
+  // '16px', 'var(--space-4)', 'clamp(…)' — is already a CSS length and is kept verbatim.
+  return /^-?\d*\.?\d+$/.test(value.trim()) ? `${value.trim()}px` : value;
+}
+
+/**
  * Parse the authored layout string into positive fractions.
  *
  * Anything that is not a positive finite number is dropped rather than carried: a double
@@ -434,8 +463,8 @@ export function Columns(props: ColumnsProps) {
         // render and, because a server render never gets a `ResizeObserver` callback, blank
         // for the entire SSR/SSG output. The authored layout is right at the width the author
         // designed for; autofold reflows it once measured.
-        marginTop: parseFloat(props.marginY) * -1,
-        marginLeft: parseFloat(props.marginX) * -1,
+        marginTop: `calc(${toCssLength(props.marginY)} * -1)`,
+        marginLeft: `calc(${toCssLength(props.marginX)} * -1)`,
         display: 'flex',
         flexWrap: 'wrap',
         // Masonry's items must keep their natural height, both because that is the point and
@@ -457,7 +486,7 @@ export function Columns(props: ColumnsProps) {
         // declaration after it: `width` and `box-sizing` both vanished, the container fell back
         // to shrink-to-fit, and every percentage-width child computed to zero. The whole of an
         // SSR/SSG page's Columns content was a zero-width strip until hydration replaced it.
-        width: `calc(100% + ${parseFloat(props.marginX)}px)`,
+        width: `calc(100% + ${toCssLength(props.marginX)})`,
         boxSizing: 'border-box',
         // Every item is out of flow once packed, so the container has no content to size itself
         // from. `position: relative` is what the items' percentage `left` resolves against.

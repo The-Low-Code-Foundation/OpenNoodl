@@ -129,8 +129,8 @@ job: **add identifiers to `§9`** and fix the two existing wrong sentences
 
 | # | Finding | State |
 |---|---|---|
-| F49 | 🔴 **`Columns.marginX` is consumed by `parseFloat`** ([`Columns.tsx:460`](../../../packages/noodl-viewer-react/src/components/visual/Columns/Columns.tsx)), so a tokenised value yields `calc(100% + NaNpx)`, the width declaration is dropped and the container shrink-to-fits: **175px instead of 1292px**, items **58px instead of 431px**. The doctrine tells agents to tokenise every spacing value and `catalog:tokens` resolves it happily | 🔴 open — verified in source |
-| F50 | 🔴 **A plain array reaching a Repeater renders every row twice.** `Model.create` mints a fresh anonymous id per element ([`model.ts:238`](../../../packages/noodl-runtime/src/model.ts)), `Collection.set` diffs by `getId()` ([`collection.ts:497`](../../../packages/noodl-runtime/src/collection.ts)), the Repeater calls `set` at least twice, so nothing matches and both passes stay on screen — **31 texts where 19 were authored**, with `catalog:examples`, `catalog:tokens` and `render:report` all green. Adding an `id` per object fixes it. **The documented plain-array route is the broken one** | 🔴 open — verified in source |
+| F49 | 🔴 **`Columns.marginX` is consumed by `parseFloat`** ([`Columns.tsx:460`](../../../packages/noodl-viewer-react/src/components/visual/Columns/Columns.tsx)), so a tokenised value yields `calc(100% + NaNpx)`, the width declaration is dropped and the container shrink-to-fits: **175px instead of 1292px**, items **58px instead of 431px**. The doctrine tells agents to tokenise every spacing value and `catalog:tokens` resolves it happily | ✅ **closed** — `toCssLength` at the **three** container declarations (the register named one; `marginTop`/`marginLeft` did it too, and an **unset** gutter emitted `NaNpx` as well). `f49-columns-token-margins.test.tsx`, 6 specs. ⚠️ The *fold* arithmetic still cannot resolve a token: a tokenised `marginX` folds as 0 and a tokenised `minWidth` disables `autoFit` — separate, and now documented at `toCssLength` |
+| F50 | 🔴 **A plain array reaching a Repeater renders every row twice.** `Model.create` mints a fresh anonymous id per element ([`model.ts:238`](../../../packages/noodl-runtime/src/model.ts)), `Collection.set` diffs by `getId()` ([`collection.ts:497`](../../../packages/noodl-runtime/src/collection.ts)), the Repeater calls `set` at least twice, so nothing matches and both passes stay on screen — **31 texts where 19 were authored**, with `catalog:examples`, `catalog:tokens` and `render:report` all green. Adding an `id` per object fixes it. **The documented plain-array route is the broken one** | ✅ **closed** — a per-collection `WeakMap` from source object → Model, so the same array converts stably and the diff means what it says. `f50-repeater-plain-array.test.ts`, proven red first (3→6, 4→8, 2→4). 🔴 **The recorded mechanism was half right**: churning ids alone only cause a full rebuild. What *doubles* rows is that `refresh()` iterates the collection across `await`s while a coalesced `scheduleCopyItems` sets the same array underneath it — two passes that, with churning ids, see disjoint records, so neither's removals cancel the other's additions |
 | F51 | 🔴 **No AA-passing semantic token for destructive *text*.** `--destructive` on `--surface` is **3.60:1** at 14px; the recipe ships `--red-700` (6.18:1). The same hole `--border-control` closed for rings | 🔴 open — needs Richard |
 | F52 | ⚠️ **`render:report` reads at scrollTop 0**, where stuck and not-stuck are pixel-identical. It would have reported *"Rendered clean"* for **four dead or illegible** sticky variants. Any scroll-dependent recipe needs a scrolled read; the ~140-line probe is worth promoting to `scripts/devtools/` | 🟠 filed |
 | F53 | 🔴 **`zIndex` on a sticky band is structural, not styling.** Without it the geometry is perfect, every rect-based check passes, and the band is unreadable because sibling bands paint through it. Only `elementFromPoint` catches it | 🟠 filed |
@@ -154,16 +154,19 @@ job: **add identifiers to `§9`** and fix the two existing wrong sentences
   one line to move.
 - **F33** — a copied project directory inherits its parent's id; refuse-and-explain is plausible,
   re-minting may be wrong, because "duplicate this project, same data" is legitimate.
-- **F49 and F50 are product defects, not phase-54 work.** Both are cheap and both are silent, which
-  is the argument for doing them soon.
+- ✅ **F49 and F50 are fixed** (2026-08-11 evening). Both were product defects rather than phase-54
+  work; both are closed at one seam each, each proven red first, with both package suites green
+  (viewer-react 892, runtime 2314).
 
 ## §6 — What a next session should pick up
 
-1. **F50 first.** It is a runtime defect on the *documented* path, it doubles rendered rows, and
-   every instrument in the repo says clean while it happens.
-2. **F49**, one line, same argument.
+1. ~~**F50 first.**~~ ✅ done — one seam in `collection.ts`. ⚠️ Read the corrected mechanism in the
+   register: **the id churn is not by itself what doubles the rows**, and a fix aimed only at
+   "call `set` once" would have left it. The rows double because two rebuild passes overlap.
+2. ~~**F49**, one line~~ ✅ done — it was **three** lines, not one, and the register's `Columns.tsx:460`
+   named only the most destructive of them.
 3. **The scrolled-read probe (F52)** promoted into `scripts/devtools/`. Two of five recipes needed
-   it; the third that did not need it would have shipped a lie without it.
+   it; the third that did not need it would have shipped a lie without it. **This is now first.**
 4. ⚠️ **Three of the six DSG-006 "replays" rendered no page at all** yet are scored on six render
    criteria — a blank page passes `narrow-survives`. **The real design corpus is three.** Any future
    claim about the rubric's discrimination has to say so.
