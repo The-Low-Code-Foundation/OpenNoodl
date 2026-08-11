@@ -34,7 +34,7 @@ show the direction is drawn only while the wire is still being dragged.
 | SIG-003 ⭐ | [SIG-003-GROUPS-THAT-MEAN-SOMETHING.md](SIG-003-GROUPS-THAT-MEAN-SOMETHING.md) | **the second flagship** — one heading vocabulary, ordered by use; the ungrouped-port audit | ✅ **closed 08-11** |
 | SIG-004 | [SIG-004-EVERY-SIGNAL-SAYS-WHAT-IT-DOES.md](SIG-004-EVERY-SIGNAL-SAYS-WHAT-IT-DOES.md) | one sentence at the render seam, true of every signal port in the library | ✅ **closed 08-11** |
 | SIG-005 | [SIG-005-THE-SIGNAL-TRAVELS.md](SIG-005-THE-SIGNAL-TRAVELS.md) | the travelling pulse — it fired all along and measured **1.48:1** against the wire it was painted on | ✅ **closed 08-11** |
-| SIG-006 | [SIG-006-WHICH-WAY-DOES-THIS-WIRE-GO.md](SIG-006-WHICH-WAY-DOES-THIS-WIRE-GO.md) | endpoint glyphs you can tell apart, and a hover that runs the length of a long wire | 🔨 **built 08-11 — 6/7 criteria; R3 refused with reasons** |
+| SIG-006 | [SIG-006-WHICH-WAY-DOES-THIS-WIRE-GO.md](SIG-006-WHICH-WAY-DOES-THIS-WIRE-GO.md) | endpoint glyphs you can tell apart, and a hover that runs the length of a long wire | ✅ **closed 08-11 — 7/7; R3 priced and built** |
 | SIG-007 | [SIG-007-ANCHOR-POINTS.md](SIG-007-ANCHOR-POINTS.md) | drag a wire to bend it; anchor points, added and removed | 📋 open |
 
 ## Suggested order, and why
@@ -119,9 +119,17 @@ Repeated from [README.md](README.md) because they are the ones that will be forg
   units, so the old 7px disc and 8px triangle were 3.5 and 4 screen px at 50% — half a pixel apart.
   `glyphScaleFor` divides by the zoom down to a 0.5 floor, and only below that do the glyphs recede
   again, where the ground grid has already gone.
-- 🔴 **Criterion 1 was refused, not missed.** Direction on a wire whose ends are *both off screen*,
-  without hovering, needs a **mid-wire** cue — and that is a density decision the task's own
-  constraints argue against. See SIG-006 **R3**. Hover answers that case today.
+- ✅ **Criterion 1 was refused, then priced, then built.** Direction on a wire whose ends are *both
+  off screen* needs a cue along the wire's **length**, and the first build declined to guess at the
+  density. SIG-006 **R7** measured it in the running editor and shipped it as a chevron every 500
+  screen px, **off by default**, behind *Always show wire direction*.
+- 🔴 **A straight-line density model overstated both the cost and the need, by ~3.5× and more.**
+  Wires modelled as chords between node *origins* said 38 marks a viewport and 40 wires in 54 needing
+  the cue; the real `pointOnCurve` geometry says ~10 marks and ~2 in 25. ⚠️ **Node positions are not
+  wire geometry** — anything reasoning about wire density has to sample the curve.
+- 🔴 **The reason it stays off is redundancy, not density.** An end is visible on ~92% of the wires on
+  screen. A single *midpoint* mark, the obvious cheap version, answers under half the wires that need
+  one — the criterion's letter, satisfied by a lie.
 - 🔴 **The canvas animation flag is now reason-counted.** `isPlayingNodeAnimations` was a bare boolean
   owned by the AI assistant's spinning icons; a second animated thing breaks it in both directions.
   **Anything that animates the canvas from here takes a reason** (SIG-006 R6).

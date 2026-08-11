@@ -20,6 +20,9 @@
 import {
   arrivalDirection,
   arrowheadPolygon,
+  chevronPlacements,
+  chevronPolyline,
+  DIRECTION_CHEVRON,
   diamondPolygon,
   glyphForPlugIcon,
   glyphScaleFor,
@@ -221,5 +224,117 @@ describe('loopedAge — the hover mark repeats, using SIG-005 and not a second i
 
   it('treats a negative age as not yet started', () => {
     expect(loopedAge(-500)).toBe(0);
+  });
+});
+
+/**
+ * SIG-006 R3 — the direction stated along the wire's length.
+ *
+ * The criterion these grade is "direction on a wire whose ends are **both off
+ * screen**, without hovering". The design decision behind them — that this is
+ * off by default, and that a *single* mid-wire mark would have answered only 18%
+ * of the wires that need it — is a measurement on a real 263-wire graph and is
+ * recorded in `DIRECTION_CHEVRON`'s header. What is gradeable here is the
+ * geometry that decision rests on: that the marks repeat by **distance**, that a
+ * short wire gets none, and that the mark is not the endpoint arrowhead.
+ */
+describe('SIG-006 R3 — direction chevrons along the wire', () => {
+  /** A straight polyline of a given length, sampled like the painter does. */
+  function straight(length: number, samples = 48): Point[] {
+    const out: Point[] = [];
+    for (let i = 0; i < samples; i++) out.push({ x: (length * i) / (samples - 1), y: 0 });
+    return out;
+  }
+
+  it('gives a wire shorter than one spacing no marks at all', () => {
+    // A wire you can see the ends of is already answered by the endpoint
+    // glyphs, so the cheapest thing this can do on one is nothing.
+    const short = straight(DIRECTION_CHEVRON.spacing - 1);
+    expect(chevronPlacements(short).length).toBe(0);
+  });
+
+  it('repeats roughly every spacing along a long wire', () => {
+    const marks = chevronPlacements(straight(5000));
+    // 5000 px of wire, minus two clearances, at 500 px spacing.
+    expect(marks.length).toBe(9);
+
+    const gaps: number[] = [];
+    for (let i = 1; i < marks.length; i++) gaps.push(marks[i].point.x - marks[i - 1].point.x);
+    for (const gap of gaps) expect(Math.abs(gap - DIRECTION_CHEVRON.spacing)).toBeLessThan(60);
+  });
+
+  it('keeps every mark clear of both ends, where the endpoint glyphs speak', () => {
+    const length = 5000;
+    const marks = chevronPlacements(straight(length));
+    for (const mark of marks) {
+      expect(mark.point.x).toBeGreaterThanOrEqual(DIRECTION_CHEVRON.endClearance);
+      expect(mark.point.x).toBeLessThanOrEqual(length - DIRECTION_CHEVRON.endClearance);
+    }
+  });
+
+  it('places the run symmetrically, so panning does not shift it', () => {
+    const length = 5000;
+    const marks = chevronPlacements(straight(length));
+    const first = marks[0].point.x;
+    const last = length - marks[marks.length - 1].point.x;
+    expect(Math.abs(first - last)).toBeLessThan(1);
+  });
+
+  it('spaces by arc length, not by bezier t, so the hooks do not bunch', () => {
+    // Half the samples cover a tenth of the distance — what a `t`-spaced run
+    // does to a curve with a hook at each end.
+    const bunched: Point[] = [];
+    for (let i = 0; i < 24; i++) bunched.push({ x: (200 * i) / 23, y: 0 });
+    for (let i = 1; i <= 24; i++) bunched.push({ x: 200 + (3800 * i) / 24, y: 0 });
+
+    const marks = chevronPlacements(bunched);
+    const inTheHook = marks.filter((m) => m.point.x < 200).length;
+    // One mark's worth at most, and only because 200px is itself under half a
+    // spacing — nothing like the half of them a `t`-spaced run would put there.
+    expect(inTheHook).toBeLessThanOrEqual(1);
+  });
+
+  it('points each mark the way the wire runs at that place', () => {
+    const elbow: Point[] = [
+      { x: 0, y: 0 },
+      { x: 2000, y: 0 },
+      { x: 2000, y: 2000 }
+    ];
+    const marks = chevronPlacements(elbow);
+    // A mark landing exactly on the corner takes the heading it arrived with,
+    // so it belongs to the horizontal leg — hence `y > 0` rather than `x === 2000`.
+    const alongX = marks.filter((m) => m.point.y === 0);
+    const alongY = marks.filter((m) => m.point.y > 0);
+    expect(alongX.length).toBeGreaterThan(0);
+    expect(alongY.length).toBeGreaterThan(0);
+    for (const m of alongX) expect(m.direction).toEqual({ x: 1, y: 0 });
+    for (const m of alongY) expect(m.direction).toEqual({ x: 0, y: 1 });
+  });
+
+  it('is an OPEN polyline, not the closed triangle the target end paints', () => {
+    // A mid-wire mark that read as an endpoint arrowhead would say the wire
+    // stops there — on a wire whose real ends are off screen, the one thing it
+    // must not say. The endpoint glyph is filled and closed; this is three
+    // points that are stroked, and its ends do not meet.
+    const v = chevronPolyline({ x: 100, y: 0 }, { x: 1, y: 0 });
+    expect(v.length).toBe(3);
+    expect(v[0]).not.toEqual(v[2]);
+    // The tip is the middle point, and it leads.
+    expect(v[1]).toEqual({ x: 100, y: 0 });
+    expect(v[0].x).toBeLessThan(v[1].x);
+    expect(v[2].x).toBeLessThan(v[1].x);
+  });
+
+  it('is smaller than the endpoint arrowhead, so the ends still read as the ends', () => {
+    expect(DIRECTION_CHEVRON.length).toBeLessThan(WIRE_ENDPOINT.arrowLength);
+    expect(DIRECTION_CHEVRON.halfWidth).toBeLessThanOrEqual(WIRE_ENDPOINT.arrowHalfWidth);
+  });
+
+  it('survives a degenerate curve without placing anything', () => {
+    expect(chevronPlacements([]).length).toBe(0);
+    expect(chevronPlacements([{ x: 0, y: 0 }]).length).toBe(0);
+    expect(chevronPlacements(straight(5000), 0).length).toBe(0);
+    // A wire whose samples are all the same point has no direction to state.
+    expect(chevronPlacements([{ x: 5, y: 5 }, { x: 5, y: 5 }, { x: 5, y: 5 }]).length).toBe(0);
   });
 });

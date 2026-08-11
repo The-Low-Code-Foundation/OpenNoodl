@@ -10,7 +10,10 @@ import { CollapsableSection } from '@noodl-core-ui/components/sidebar/Collapsabl
 import { PanelRow } from '@noodl-core-ui/components/sidebar/PanelRow';
 
 import { BLOCK_LANGUAGE_SETTINGS_KEY, SUPPORTED_LANGUAGES } from '../../../BlocklyEditor/BlocklyLocale';
-import { ALWAYS_SHOW_WIRE_LABELS } from '../../../nodegrapheditor/NodeGraphEditorConnection';
+import {
+  ALWAYS_SHOW_WIRE_DIRECTION,
+  ALWAYS_SHOW_WIRE_LABELS
+} from '../../../nodegrapheditor/NodeGraphEditorConnection';
 import { ThemeSettingRow } from './ThemeSettingRow';
 
 const BLOCK_LANGUAGE_OPTIONS = [
@@ -27,6 +30,7 @@ const BLOCK_LANGUAGE_OPTIONS = [
 export function AppearanceSettingsSection() {
   const [blockLanguage, setBlockLanguage] = useState<string>('system');
   const [alwaysShowWireLabels, setAlwaysShowWireLabels] = useState(false);
+  const [alwaysShowWireDirection, setAlwaysShowWireDirection] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -36,6 +40,7 @@ export function AppearanceSettingsSection() {
         const saved = EditorSettings.instance.get(BLOCK_LANGUAGE_SETTINGS_KEY);
         setBlockLanguage(typeof saved === 'string' ? saved : 'system');
         setAlwaysShowWireLabels(!!EditorSettings.instance.get(ALWAYS_SHOW_WIRE_LABELS));
+        setAlwaysShowWireDirection(!!EditorSettings.instance.get(ALWAYS_SHOW_WIRE_DIRECTION));
       })
       .catch(() => {
         /* keep the default */
@@ -55,6 +60,11 @@ export function AppearanceSettingsSection() {
     EditorSettings.instance.set(ALWAYS_SHOW_WIRE_LABELS, value);
   }
 
+  function onAlwaysShowWireDirectionChange(value: boolean) {
+    setAlwaysShowWireDirection(value);
+    EditorSettings.instance.set(ALWAYS_SHOW_WIRE_DIRECTION, value);
+  }
+
   return (
     <CollapsableSection title="Appearance">
       <Box hasXSpacing>
@@ -67,6 +77,15 @@ export function AppearanceSettingsSection() {
             <Checkbox
               isChecked={alwaysShowWireLabels}
               onChange={(ev) => onAlwaysShowWireLabelsChange(ev.target.checked)}
+            />
+          </PanelRow>
+          <PanelRow
+            label="Always show wire direction"
+            helpText="Repeat a small chevron along every wire, pointing the way it runs. Off by default: a wire already shows a circle where it leaves and an arrowhead where it arrives, and hovering one runs a mark along it. Turn this on to read direction on long wires whose ends are both off screen — on a large graph it adds a few dozen marks to the screen."
+          >
+            <Checkbox
+              isChecked={alwaysShowWireDirection}
+              onChange={(ev) => onAlwaysShowWireDirectionChange(ev.target.checked)}
             />
           </PanelRow>
           <PanelRow

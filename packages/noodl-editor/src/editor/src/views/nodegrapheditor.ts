@@ -45,7 +45,11 @@ import { InspectorActions } from './nodegrapheditor/InspectorActions';
 import { ModelBindings } from './nodegrapheditor/ModelBindings';
 import { NavigationHistory } from './nodegrapheditor/NavigationHistory';
 import { NodeContextMenu } from './nodegrapheditor/NodeContextMenu';
-import { ALWAYS_SHOW_WIRE_LABELS, NodeGraphEditorConnection } from './nodegrapheditor/NodeGraphEditorConnection';
+import {
+  ALWAYS_SHOW_WIRE_DIRECTION,
+  ALWAYS_SHOW_WIRE_LABELS,
+  NodeGraphEditorConnection
+} from './nodegrapheditor/NodeGraphEditorConnection';
 import { NodeGraphEditorNode } from './nodegrapheditor/NodeGraphEditorNode';
 import { NodeOperations } from './nodegrapheditor/NodeOperations';
 import { OverlayViews } from './nodegrapheditor/OverlayViews';
@@ -222,7 +226,7 @@ export class NodeGraphEditor extends View {
     EditorSettings.instance.on(
       'updated',
       (args) => {
-        if (args?.key === ALWAYS_SHOW_WIRE_LABELS) this.repaint();
+        if (args?.key === ALWAYS_SHOW_WIRE_LABELS || args?.key === ALWAYS_SHOW_WIRE_DIRECTION) this.repaint();
       },
       this
     );

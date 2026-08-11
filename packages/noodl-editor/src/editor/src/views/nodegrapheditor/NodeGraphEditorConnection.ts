@@ -8,11 +8,31 @@ import PopupLayer from '../popuplayer';
 import { CanvasFonts, CanvasTheme, WireLabel, WIRE_TYPE_ERROR } from './canvas/CanvasTheme';
 import { NodeGraphEditorNode } from './NodeGraphEditorNode';
 import { textWordWrap } from './NodeGraphEditorNodePainter';
-import { arrivalDirection, arrowheadPolygon, glyphScaleFor, loopedAge, WIRE_ENDPOINT } from './wireEndpoints';
+import {
+  arrivalDirection,
+  arrowheadPolygon,
+  chevronPlacements,
+  chevronPolyline,
+  DIRECTION_CHEVRON,
+  glyphScaleFor,
+  loopedAge,
+  WIRE_ENDPOINT
+} from './wireEndpoints';
 import { samplePolyline, travellingHeadRange, valueDashOffset, wirePulseKind, WIRE_PULSE } from './wirePulse';
 
 /** Editor setting: show every wire's label without hovering (CAN-001). */
 export const ALWAYS_SHOW_WIRE_LABELS = 'nodeGraphEditor.alwaysShowWireLabels';
+
+/**
+ * Editor setting: state every wire's direction along its length (SIG-006 R3).
+ *
+ * Off by default. The endpoint glyphs answer "which way" wherever you can see an
+ * end, and hover answers the rest one wire at a time; this turns the answer on
+ * for the whole graph at once, at a measured cost of ~38 extra marks on the
+ * median viewport of a 263-wire component. See `DIRECTION_CHEVRON` for the
+ * sweep, and why there is no cheaper version of this cue.
+ */
+export const ALWAYS_SHOW_WIRE_DIRECTION = 'nodeGraphEditor.alwaysShowWireDirection';
 
 /**
  * Break a label into the lines the chip will draw (CAN-002).
@@ -446,6 +466,19 @@ export class NodeGraphEditorConnection {
     return this.isHighlighted();
   }
 
+  /**
+   * Should this wire state its direction along its length right now? (SIG-006 R3.)
+   *
+   * Unlike `shouldShowPortLabel` there is no hover clause: hovering already runs
+   * a travelling mark from source to target, which is a better answer to the
+   * same question than a row of static chevrons would be. This is only ever the
+   * always-on setting — the chevrons exist for reading a graph you are *not*
+   * pointing at.
+   */
+  paintsDirectionChevrons(): boolean {
+    return !!EditorSettings.instance.get(ALWAYS_SHOW_WIRE_DIRECTION);
+  }
+
   /** Where the label sits on the curve, clamped clear of both node cards. */
   labelT(): number {
     const t = typeof this.model.labelT === 'number' ? this.model.labelT : WireLabel.defaultT;
@@ -649,7 +682,8 @@ export class NodeGraphEditorConnection {
     // hit targets competing with the node cards on a dense graph. ⚠️ The
     // arrowhead is *paint*: `endpointHitRadius` (8) is untouched, so what
     // CAN-003 grabs is exactly what it grabbed before.
-    const glyphScale = glyphScaleFor(this.owner?.getPanAndScale?.().scale ?? 1);
+    const scale = this.owner?.getPanAndScale?.().scale ?? 1;
+    const glyphScale = glyphScaleFor(scale);
     const sourceRadius =
       (hoverConnection ? WIRE_ENDPOINT.sourceHandleRadius : WIRE_ENDPOINT.sourceRadius) * glyphScale;
     ctx.fillStyle = strokeColor;
@@ -668,6 +702,60 @@ export class NodeGraphEditorConnection {
     for (let i = 1; i < head.length; i++) ctx.lineTo(head[i].x, head[i].y);
     ctx.closePath();
     ctx.fill();
+
+    // SIG-006 R3 — the direction stated along the wire's length, off by default.
+    //
+    // The endpoint glyphs above answer "which way" wherever an end is on screen.
+    // On the graph this was measured against, 40 of the 54 wires in the median
+    // viewport had **both** ends off screen — so on a real project that is the
+    // common case, not an edge one, and hover (below) answers it one wire at a
+    // time. This answers it for every wire at once, for the builder who wants
+    // that and has priced the density: see `DIRECTION_CHEVRON` for the sweep and
+    // for why a single mid-wire mark would have been a plausible lie (18%).
+    if (this.paintsDirectionChevrons()) {
+      // ⚠️ Spacing and clearance are **screen** distances converted into graph
+      // units, so the marks-per-screen figure the setting was priced on holds at
+      // every zoom. The glyphs themselves use `glyphScale`, which is floored;
+      // the spacing deliberately is not — see `DIRECTION_CHEVRON.spacing`.
+      const perScreenPx = scale > 0 ? 1 / scale : 1;
+      const marks = chevronPlacements(
+        samplePolyline((u) => this.pointOnCurve(u), 0, 1, DIRECTION_CHEVRON.samples),
+        DIRECTION_CHEVRON.spacing * perScreenPx,
+        DIRECTION_CHEVRON.endClearance * perScreenPx
+      );
+
+      if (marks.length) {
+        const previousCap = ctx.lineCap;
+        const previousJoin = ctx.lineJoin;
+        const previousWidth = ctx.lineWidth;
+        // Stroked and open, against the filled endpoint arrowhead — a mid-wire
+        // mark that read as an endpoint would say the wire stops there.
+        ctx.setLineDash([]);
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.lineWidth = previousWidth * glyphScale;
+        ctx.beginPath();
+        for (const mark of marks) {
+          const v = chevronPolyline(
+            mark.point,
+            mark.direction,
+            DIRECTION_CHEVRON.length * glyphScale,
+            DIRECTION_CHEVRON.halfWidth * glyphScale
+          );
+          ctx.moveTo(v[0].x, v[0].y);
+          for (let i = 1; i < v.length; i++) ctx.lineTo(v[i].x, v[i].y);
+        }
+        ctx.stroke();
+        ctx.lineCap = previousCap;
+        ctx.lineJoin = previousJoin;
+        ctx.lineWidth = previousWidth;
+        // The health/annotation dash is restored at the end of paint, with the
+        // one the pulse branches also rely on.
+        if (!this.getHealth().healthy) ctx.setLineDash([5]);
+        else if (this.model.annotation === 'Deleted') ctx.setLineDash([6, 4]);
+        else if (type === WIRE_TYPE_ERROR) ctx.setLineDash([7, 4]);
+      }
+    }
 
     if (DebugInspector.instance.isEnabled() && DebugInspector.instance.isConnectionPulsing(this)) {
       const t = DebugInspector.instance.getPulseAnimationState(this);

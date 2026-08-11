@@ -200,6 +200,203 @@ export function loopedAge(ageMs: number, cycleMs: number = HOVER_MARK_CYCLE_MS):
 }
 
 /**
+ * The along-the-wire direction chevrons (SIG-006 R3).
+ *
+ * ## Why these are off by default, and what the numbers were
+ *
+ * SIG-006's first criterion asked for direction on a wire whose ends are **both
+ * off screen**, without hovering. An endpoint glyph is at the endpoint, so that
+ * needs a mark in the middle — and R3 refused to guess at it, because the task's
+ * own constraints argue that a mark on every wire is what the endpoint dots were
+ * kept small to avoid.
+ *
+ * Measured **in the running editor, on the real curves**, over the five densest
+ * components of a real 9,245-wire project (`Erleah-2`), by sliding a 1400×900
+ * viewport across each graph:
+ *
+ * | | median viewport | worst |
+ * |---|---:|---:|
+ * | wires visible | 22–27 | 45 |
+ * | …of those, with **both ends off screen** | **1–3** | 30 |
+ * | chevrons this paints | **5–14** | 46 |
+ * | share of the off-screen-ended wires it answers | **74–93%** | |
+ *
+ * 🔴 **Both halves of R3's argument were overestimates, and the live numbers
+ * corrected them in opposite directions.** A first pass modelled wires as
+ * straight lines between node *origins* and put the cost at 38 marks a viewport
+ * and the need at 40 wires in 54. On the real curves it is ~10 marks and ~2
+ * wires in 25 — the model overcounted the density it feared by about 3.5×, and
+ * overcounted the need by more. ⚠️ **Node positions are not wire geometry**: the
+ * curve leaves and arrives horizontally and routes through a mid-x, so its
+ * length and its intersection with a viewport are both quite different from the
+ * chord. Anything reasoning about wire density has to sample `pointOnCurve`.
+ *
+ * 🔴 **A single mid-wire chevron is still not the cheap win it looks like.** It
+ * would satisfy the acceptance criterion's letter — you can capture one — while
+ * answering well under half the wires that need it, because a long wire's
+ * *middle* is usually off screen too. A cue readable from *any* slice of a wire
+ * has to **repeat** at a spacing smaller than a viewport, and repeating is the
+ * whole cost. Those are the same requirement, which is why there is no free
+ * version of this.
+ *
+ * ## So why is it still off by default
+ *
+ * Not density — that turned out affordable. **Redundancy.** At a normal viewport
+ * an end is visible on ~92% of the wires on screen, and those already state
+ * their direction with a circle and an arrowhead; hover answers the rest, one
+ * wire at a time, with a mark that travels. A permanent third statement earns
+ * its place only on graphs like the one measured here, and the person who owns
+ * such a graph is the one who can price it. That is the same call CAN-001 made
+ * for wire labels — hover by default, always-on as a setting — in this painter,
+ * for the same reason.
+ */
+export const DIRECTION_CHEVRON = {
+  /**
+   * Distance between chevrons, in **screen** px. See the table above.
+   *
+   * ⚠️ Screen, not graph — and unlike {@link glyphScaleFor} this has **no
+   * floor**. A glyph stops growing at 0.5 zoom so it does not become the only
+   * thing left when the ground grid has gone; spacing must keep growing past
+   * that, or zooming out multiplies the marks on screen until the graph is a
+   * hatch pattern.
+   *
+   * ⚠️ What this actually produces is *not* a constant marks-per-screen — it
+   * **thins out** as you zoom away, because the graph-space spacing grows with
+   * `1 / scale` and a wire has to be at least one spacing long to carry
+   * anything. Measured on the component above, at a fixed pan:
+   *
+   * | zoom | wires on screen | chevrons |
+   * |---:|---:|---:|
+   * | 100% | 41 | **22** |
+   * | 50% | 51 | **15** |
+   * | 25% | 96 | **6** |
+   *
+   * That is the right way round rather than a flaw: zooming out brings the
+   * *ends* of wires on screen, which is where the endpoint glyphs answer, so
+   * the along-the-wire cue recedes exactly as the thing it substitutes for
+   * arrives.
+   */
+  spacing: 500,
+
+  /** Tip-to-base length of one chevron, along the wire. */
+  length: 5,
+
+  /** Half the chevron's span across the wire. */
+  halfWidth: 4,
+
+  /**
+   * How much of each end of the wire to leave alone, in screen px.
+   *
+   * The endpoint glyphs already answer there, and the curve is doing its hook
+   * into the node card, so a chevron placed inside this reads as a smudge on
+   * the arrowhead rather than as a second statement of the same fact.
+   */
+  endClearance: 24,
+
+  /**
+   * How finely the curve is sampled before the marks are spaced along it.
+   *
+   * These wires are long — the median in the measured component is 3,451 graph
+   * px — and the arc length has to be walked to place anything by distance. 48
+   * is enough that the hooks at each end do not alias into a straight line,
+   * and it is only paid on wires that are on screen, and only while the setting
+   * is on.
+   */
+  samples: 48
+} as const;
+
+/**
+ * Where the chevrons go along a sampled wire, and which way each one points.
+ *
+ * Placed by **arc length**, not by bezier `t`: `t` is not uniform along a cubic,
+ * and these wires are long and mostly straight with a hook at each end, so
+ * spacing by `t` would bunch the marks into the hooks — the one place
+ * {@link DIRECTION_CHEVRON.endClearance} exists to keep them out of.
+ *
+ * The usable span is divided into `n` equal segments and a mark placed at the
+ * **middle** of each, rather than stepping from one end. That makes the run
+ * symmetric, keeps every mark clear of both ends, and — the point — gives a
+ * wire shorter than one spacing **no marks at all**, because a wire you can see
+ * the ends of is already answered.
+ */
+export function chevronPlacements(
+  points: Point[],
+  spacing: number = DIRECTION_CHEVRON.spacing,
+  endClearance: number = DIRECTION_CHEVRON.endClearance
+): { point: Point; direction: Point }[] {
+  if (!points || points.length < 2 || !(spacing > 0)) return [];
+
+  // Cumulative arc length at each sample.
+  const at: number[] = [0];
+  for (let i = 1; i < points.length; i++) {
+    const d = delta(points[i], points[i - 1]);
+    at.push(at[i - 1] + Math.sqrt(d.x * d.x + d.y * d.y));
+  }
+
+  const total = at[at.length - 1];
+  const clearance = Math.max(0, endClearance);
+  const usable = total - clearance * 2;
+  const count = Math.floor(usable / spacing);
+  if (count < 1) return [];
+
+  const step = usable / count;
+  const out: { point: Point; direction: Point }[] = [];
+  for (let i = 0; i < count; i++) {
+    const placement = pointAtArcLength(points, at, clearance + (i + 0.5) * step);
+    if (placement) out.push(placement);
+  }
+  return out;
+}
+
+/** Walk a sampled polyline to a given arc length, and report the heading there. */
+function pointAtArcLength(points: Point[], at: number[], target: number): { point: Point; direction: Point } | undefined {
+  for (let i = 1; i < points.length; i++) {
+    if (at[i] < target) continue;
+
+    const span = at[i] - at[i - 1];
+    const u = span > 1e-6 ? (target - at[i - 1]) / span : 0;
+    const direction = normalise(delta(points[i], points[i - 1]));
+    if (!direction) continue;
+
+    return {
+      point: {
+        x: points[i - 1].x + (points[i].x - points[i - 1].x) * u,
+        y: points[i - 1].y + (points[i].y - points[i - 1].y) * u
+      },
+      direction
+    };
+  }
+  return undefined;
+}
+
+/**
+ * One chevron, as an **open** three-point polyline: back corner, tip, back
+ * corner.
+ *
+ * ⚠️ Open and stroked, where the target glyph is a closed filled triangle. A
+ * mid-wire mark that looked like the endpoint arrowhead would say the wire
+ * *ends* there, which on a wire whose real ends are off screen is exactly the
+ * wrong thing to say — so the two marks differ in fill as well as in size, the
+ * same property the endpoint vocabulary is separated on. It is also simply less
+ * ink, which is the whole argument at 38 marks a screen.
+ */
+export function chevronPolyline(
+  point: Point,
+  direction: Point,
+  length: number = DIRECTION_CHEVRON.length,
+  halfWidth: number = DIRECTION_CHEVRON.halfWidth
+): Point[] {
+  const d = normalise(direction) || { x: 1, y: 0 };
+  const n = { x: d.y, y: -d.x };
+  const back = { x: point.x - d.x * length, y: point.y - d.y * length };
+  return [
+    { x: back.x + n.x * halfWidth, y: back.y + n.y * halfWidth },
+    { x: point.x, y: point.y },
+    { x: back.x - n.x * halfWidth, y: back.y - n.y * halfWidth }
+  ];
+}
+
+/**
  * Which glyph a node-side plug gets, from the `leftIcon`/`rightIcon` the layout
  * computed.
  *
