@@ -111,7 +111,8 @@ The code of this phase is complete. Its acceptance is not, and none of these is 
 | 3 | **BST-006's ordering acceptance** | Unchanged, and still blocked on `mcp-model-driver.js` needing a no-project mode |
 | 4 | **The editor half of BST-005, driven** | Written and unit-tested; nobody has created a project in the running editor and looked in the folder |
 | 5 | **Windows** | No Windows machine. `selfRegistration` composes the strings; that `NodeGX.exe` under `ELECTRON_RUN_AS_NODE=1` spawns and speaks clean stdio remains BST-004's expectation |
-| 6 | **F65** | Unchanged and structural — summary mode copies `examples` verbatim and the corpus is meant to grow. Bounding the list per type is the fix that holds |
+| 6 | **No backfill for a cloned checkout** | A teammate who clones the repo gets `CLAUDE.md` (committed) and no `.mcp.json` (ignored, correctly). BST-005 §4 left backfill-on-open optional and it was **not taken up**. `CLAUDE.md` now says so and points at the settings section, rather than promising a regeneration that does not happen |
+| 7 | **F65** | Unchanged and structural — summary mode copies `examples` verbatim and the corpus is meant to grow. Bounding the list per type is the fix that holds |
 
 ⚠️ **Debts 1 and 2 are one debt**: a paid model turn against a bound server. It is the single
 measurement that would close this phase, and it needs Richard's authorisation.

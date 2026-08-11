@@ -198,9 +198,17 @@ export function renderClaudeMd(options: AgentConfigOptions): string {
   lines.push(
     '## A note on `.mcp.json`',
     '',
+    // ⚠️ This paragraph must describe what the build does, not what would be
+    // nice. It said a teammate "generates their own by opening the project in
+    // NodeGX" — the files are written when a project is **created**, and
+    // nothing backfills a cloned checkout (BST-005 §4 left that optional and it
+    // was not taken up). Promising it is the same failure BST-006's rule names:
+    // a reader told to expect something automatic waits instead of acting.
     'It names absolute paths belonging to this machine’s NodeGX install, so it is listed in ' +
-      '`.gitignore`. A teammate cloning this repository generates their own by opening the project ' +
-      'in NodeGX; a committed one would point their agent at a path that does not exist on their disk.',
+      '`.gitignore` — committed, it would point a teammate’s agent at a path that does not exist ' +
+      'on their disk. It is written when a project is created, and **not** regenerated for a ' +
+      'checkout cloned from git. To get one there, open the project in NodeGX and use ' +
+      '“Connect an AI agent” in settings, which emits the registration for that machine.',
     ''
   );
 
