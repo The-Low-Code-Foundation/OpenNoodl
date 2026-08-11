@@ -224,13 +224,18 @@ export function JavaScriptEditor({
    * (`Mod-Shift-M`) has been in our keymap since CED-001 — with no button, no
    * label and nothing in the UI that says so, it had zero callers. The verdict
    * is that button now (FH-017 slice 3).
+   *
+   * Focus is left where `openLintPanel` puts it — on the panel's list. Pulling
+   * it back to the document (which this used to do) is what made the panel
+   * open in its *unfocused* selected state, and it also disabled the arrow
+   * keys, which are how you step through the diagnostics and move the cursor
+   * to each one.
    */
   const showProblems = useCallback(() => {
     const view = editorViewRef.current;
     if (!view) return;
 
     openLintPanel(view);
-    view.focus();
   }, []);
 
   const problemCount = problems.errors + problems.warnings;

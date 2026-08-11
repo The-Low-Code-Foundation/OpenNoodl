@@ -240,6 +240,58 @@ export function createOpenNoodlTheme(isDark: boolean = currentThemeIsDark()): Ex
         color: 'var(--theme-color-warning)'
       },
 
+      // The diagnostics panel — the list that opens under the editor from the
+      // verdict button ("✗ 1 error") or Mod-Shift-M.
+      //
+      // Two hardcoded colours from `@codemirror/lint`'s base theme met here and
+      // cancelled each other out. The panel's text colour is not its own: it is
+      // inherited from CodeMirror's `&dark .cm-panels { color: white }`, while
+      // the *selected* row is painted a flat `#ddd` with no dark variant
+      // (`@codemirror/lint/dist/index.js:701-704`). White on near-white — the
+      // message was invisible in dark mode. And there is always a selected row:
+      // `LintState.init` selects the first diagnostic every time the linter
+      // runs, before anyone has clicked anything.
+      //
+      // Every rule below carries an extra element in the selector on purpose,
+      // to out-specify the base theme's `.cm-panel.cm-panel-lint ul [aria-selected]`.
+      '.cm-panel.cm-panel-lint': {
+        backgroundColor: 'var(--theme-color-bg-3)',
+        color: 'var(--theme-color-fg-default)'
+      },
+
+      '.cm-panel.cm-panel-lint ul li.cm-diagnostic': {
+        color: 'var(--theme-color-fg-default)'
+      },
+
+      // Selected, panel unfocused — the state the panel opens in.
+      '.cm-panel.cm-panel-lint ul li[aria-selected]': {
+        backgroundColor: 'var(--theme-color-primary-25)',
+        color: 'var(--theme-color-fg-default-contrast)'
+      },
+
+      // Selected, panel focused. The base theme reaches for the system
+      // `Highlight`/`HighlightText` pair here, which owes nothing to the app's
+      // theme; the autocomplete list next door already uses these two tokens.
+      '.cm-panel.cm-panel-lint ul:focus li[aria-selected]': {
+        backgroundColor: 'var(--theme-color-primary)',
+        color: 'var(--theme-color-on-primary)'
+      },
+
+      // Severity stripe: `#d11` / `orange` in the base theme.
+      '.cm-panel.cm-panel-lint li.cm-diagnostic-error, .cm-tooltip-lint li.cm-diagnostic-error': {
+        borderLeftColor: 'var(--theme-color-danger)'
+      },
+
+      '.cm-panel.cm-panel-lint li.cm-diagnostic-warning, .cm-tooltip-lint li.cm-diagnostic-warning': {
+        borderLeftColor: 'var(--theme-color-warning)'
+      },
+
+      // The panel's close button inherits `background: inherit` and nothing else.
+      '.cm-panel.cm-panel-lint button[name=close]': {
+        color: 'var(--theme-color-fg-default)',
+        cursor: 'pointer'
+      },
+
       // Hover tooltips
       '.cm-tooltip': {
         backgroundColor: 'var(--theme-color-bg-4)',
