@@ -124,10 +124,15 @@ Repeated from [README.md](README.md) because they are the ones that will be forg
   what an unhealthy wire's dash already means. The mark is legible by **weight**: 17.19:1 against the
   ground on its flanks, dark. **Anything else in this phase that wants to say something on a wire
   should reach for weight or shape first and check the dark number, not the light one.**
-- 🔴 **R8 — the component a project OPENS ON has every wire unresolved**, so a signal wire is painted
-  in the **data** colour until you navigate away and back. Found by SIG-005, filed not fixed, and it
-  is this phase's own premise failing in the one graph every builder sees first. ⚠️ **SIG-006 must
-  read it before measuring wire colour.** Needs its own task; the fix is in editor load ordering.
+- ✅ **R8 — the component a project OPENS ON had every wire unresolved**, so a signal wire painted in
+  the **data** colour until you navigated away and back. Found by SIG-005, **fixed the next session as
+  [ELO-001](../editor-load-ordering/ELO-001-A-PORT-LIST-CACHED-BEFORE-THE-LIBRARY.md)**, with three
+  specs proved red by reverting the fix. 🔴 **It was not load ordering, which is what it looked like
+  and what SIG-005 filed.** The `libraryUpdated` re-resolve fires on time; it finds a port list
+  `getPorts()` memoised from an `UnknownNodeType` during the window before the viewer delivers the
+  library — and `[]` is truthy, so the `if (!this._ports)` guard never re-derives. **SIG-006 may now
+  measure wire colour on a first-opened graph**: 0 signal-cyan px / 767 data-green px before, 751 / 0
+  after.
 - 📋 **Discoverability is still open** and belongs to onboarding. There is now something to discover;
   it needs a **running preview** and lasts ~600 ms.
 

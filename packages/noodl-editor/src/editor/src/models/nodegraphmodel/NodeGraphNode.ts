@@ -499,11 +499,15 @@ export class NodeGraphNode extends Model {
 
   // Return all ports, filter is optional and can be 'input' or 'output'
   getPorts(filters?: 'input' | 'output'): NodeGrapPort[] {
-    var ports;
+    let ports;
 
     if (!this._ports) {
+      // The type is read once: whether it resolved decides whether the list
+      // below may be cached, and asking twice could give two answers.
+      const type = this.type;
+
       // Start with type ports
-      var ports = this.type.ports ? this.type.ports : [];
+      ports = type.ports ? type.ports : [];
 
       // Add instance ports from type
       // var instanceports = NodeLibrary.instance.getDynamicPortsForNode(this);
@@ -522,7 +526,25 @@ export class NodeGraphNode extends Model {
         return a.index > b.index ? 1 : -1;
       });
 
-      this._ports = ports;
+      // R8: only memoise a list derived from a type the library could actually
+      // answer for. The node library arrives *asynchronously* — the viewer
+      // delivers it over `ViewerConnection` and `NodeLibraryImporter` only then
+      // calls `NodeLibrary.instance.reload()` — so until it does, `type` is an
+      // `UnknownNodeType`, which declares no ports at all. Caching the `[]` that
+      // produces banks it permanently, because `[]` is truthy and the
+      // `if (!this._ports)` guard above never re-derives.
+      //
+      // That is a "don't know yet", not an answer, and in the editor it was
+      // paid for on the canvas: the first component a project opens on binds its
+      // connections before the library has loaded, so `resolvePorts()` cached
+      // the empty list, and when `libraryUpdated` fired and re-resolved every
+      // connection (`EditorEventBindings.ts`) it read the same stale `[]` back.
+      // `NodeGraphModel.scheduleUpdateTypes()` does clear the cache — one tick
+      // later, on a `setTimeout(…, 1)`, after the only thing that would have
+      // re-read it. So every wire in that graph kept `fromPort === undefined`,
+      // `NodeLibrary.nameForPortType` returned undefined, and a **signal wire
+      // painted in the data colour** until the builder navigated away and back.
+      if (!NodeLibrary.instance.typeIsMissing(type)) this._ports = ports;
     } else ports = this._ports;
 
     return filters

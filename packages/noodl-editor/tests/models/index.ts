@@ -15,5 +15,6 @@ export * from './StyleTokenCoverage.test';
 export * from './StyleTokensUndo.test';
 export * from './code-history.test';
 export * from './BackendSecurity.test';
+export * from './NodeGraphNodePortCache.test';
 export * from './BackendSelection.test';
 export * from './ProjectSettings.test';

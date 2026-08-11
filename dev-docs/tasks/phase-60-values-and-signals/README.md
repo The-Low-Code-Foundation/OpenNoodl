@@ -5,10 +5,12 @@
 means*) and **005**, the first of *what a wire looks like*. **006 and 007 remain.** Tasks are
 **[TASKS.md](TASKS.md)**.
 
-⚠️ **SIG-005 filed a defect it did not fix, and 006 depends on it:** the component a project *opens
-on* builds its connections before the node library can answer them, so every wire in it reports no
-type and **a signal wire is painted in the data colour** until you navigate away and back. This
-phase's own premise, failing in the one graph every builder sees first. SIG-005 **R8**.
+✅ **SIG-005 filed a defect it did not fix; it is fixed.** The component a project *opens on* built its
+connections before the node library could answer them, so every wire in it reported no type and **a
+signal wire was painted in the data colour** until you navigated away and back — this phase's own
+premise, failing in the one graph every builder sees first. SIG-005 **R8**, fixed 2026-08-11 as
+**[ELO-001](../editor-load-ordering/ELO-001-A-PORT-LIST-CACHED-BEFORE-THE-LIBRARY.md)**. 🔴 Not load
+ordering: a port list memoised from an `UnknownNodeType`, kept because `[]` is truthy.
 
 ⚠️ **Two normative documents came out of this phase and are the place to start, not this file:**
 [`PORT-GROUP-VOCABULARY.md`](../../reference/PORT-GROUP-VOCABULARY.md) (SIG-003 — headings, ordering,
