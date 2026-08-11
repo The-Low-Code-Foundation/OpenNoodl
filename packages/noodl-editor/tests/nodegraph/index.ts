@@ -13,3 +13,4 @@ export * from './propertyeditor';
 export * from './selectionactions-readonly.spec';
 export * from './typechangepropagation';
 export * from './warnings-model-spec';
+export * from './paste-carries-labels-and-comments.spec';
