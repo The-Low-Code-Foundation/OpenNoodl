@@ -18,3 +18,4 @@ export * from './BackendSecurity.test';
 export * from './NodeGraphNodePortCache.test';
 export * from './BackendSelection.test';
 export * from './ProjectSettings.test';
+export * from './ProjectIdentity.test';

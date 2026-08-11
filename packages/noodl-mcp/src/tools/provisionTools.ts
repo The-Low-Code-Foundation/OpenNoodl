@@ -32,7 +32,8 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 
-import { provisionBackend, stopBackend } from '../backend/provision';
+import { ensureProjectId } from '../backend/projectIdentity';
+import { censusBackends, listBackendConfigs, provisionBackend, stopBackend } from '../backend/provision';
 import { reapOrphanedBackends } from '../backend/reaper';
 import { listRuntimeRecords, ownerIsLive } from '../backend/runtimeRecord';
 import type { ProjectStore } from '../project/ProjectStore';
@@ -95,12 +96,23 @@ export function registerProvisionTools(server: McpServer, store: ProjectStore): 
         });
       }
 
+      // ⭐ DSG-007 / F2 — establish the project's identity BEFORE provisioning.
+      //
+      // `findReusableBackend` matches on name plus ownership, and ownership is
+      // this id appearing in the backend's `projectIds`. Read straight off the
+      // file, it was `undefined` for every project the editor had ever saved —
+      // so the match short-circuited, a second backend was created, and it was
+      // stamped `projectIds: []`, unreusable by anyone forever. The backfill is
+      // idempotent and adds nothing but `id`, so a project that already has one
+      // is not written at all.
+      const identity = ensureProjectId(store.projectDir);
       const projectFile = store.readProjectFile();
       const result = await provisionBackend({
         name: args.name,
         collections: args.collections ?? [],
-        projectId: projectFile?.id,
-        projectDir: store.projectDir
+        projectId: identity.id ?? projectFile?.id,
+        projectDir: store.projectDir,
+        identity: { reason: identity.reason, minted: identity.outcome === 'minted' }
       });
 
       store.writeCloudServices(
@@ -124,6 +136,13 @@ export function registerProvisionTools(server: McpServer, store: ProjectStore): 
         adopted: result.adopted,
         collections: result.collections,
         warnings: result.warnings,
+        // DSG-007 — the identity this backend is owned by, and whether this call
+        // had to mint it. A caller that sees `minted` is looking at a project
+        // that could never have reused a backend before now.
+        projectId: identity.id,
+        projectIdentity: identity.outcome,
+        reuseVerdict: result.reuseVerdict,
+        ...(result.reuseNote ? { reuseNote: result.reuseNote } : {}),
         boundTo: 'nodegx.project.json → metadata.cloudservices',
         note:
           'The project is bound. Record/User nodes will now resolve prop-* ports from this backend, and the ' +
@@ -156,7 +175,10 @@ export function registerProvisionTools(server: McpServer, store: ProjectStore): 
       description:
         'What is actually running, from the durable spawn records: which backend, which pid and port, which ' +
         'spawner owns it (this server or the editor), and whether that owner is still alive. Pass ' +
-        '`reap: true` to also stop the ones no live owner claims — the same sweep that runs at startup.',
+        '`reap: true` to also stop the ones no live owner claims — the same sweep that runs at startup. ' +
+        'Also returns a census of every backend DIRECTORY and which project owns it, flagging the ones no ' +
+        'project claims — those can never be reused by any provision. It reports them; it deletes nothing, ' +
+        'because a backend directory is a database.',
       inputSchema: {
         reap: z.boolean().optional().describe('Also kill backends whose owner is gone. Off by default.')
       }
@@ -164,6 +186,10 @@ export function registerProvisionTools(server: McpServer, store: ProjectStore): 
     guarded(async ({ reap }: { reap?: boolean }) => {
       const swept = reap ? await reapOrphanedBackends() : [];
       const records = listRuntimeRecords();
+      // DSG-007 §4.4. Directories, not processes — an unowned backend is
+      // usually not running, which is exactly why nobody notices it.
+      const census = censusBackends(listBackendConfigs());
+      const unowned = census.filter((c) => c.verdict === 'unowned');
       return jsonResult({
         running: records.map((r) => ({
           backendId: r.backendId,
@@ -177,6 +203,16 @@ export function registerProvisionTools(server: McpServer, store: ProjectStore): 
           ownedByThisServer: r.owner?.pid === process.pid,
           startedAt: r.startedAt
         })),
+        directories: census,
+        ...(unowned.length > 0
+          ? {
+              unownedNote:
+                `${unowned.length} backend director(ies) are claimed by no project (${unowned
+                  .map((c) => `${c.name} @ ${c.port}`)
+                  .join(', ')}). No provision can ever reuse them. Adopt one by adding a project id to its ` +
+                'config.json → projectIds, or delete the directory if its data is not wanted.'
+            }
+          : {}),
         ...(reap ? { swept } : {})
       });
     })
