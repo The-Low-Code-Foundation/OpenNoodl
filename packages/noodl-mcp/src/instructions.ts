@@ -139,11 +139,13 @@ export function projectInstructions(options: ProjectInstructionOptions): string 
  * plan-first order. Those belong to a project and they arrive with one — see the
  * module header on why they cannot simply be sent here as well.
  *
- * ⚠️ **The last sentence describes what happens today**, which is that a created
- * project needs a server pointed at it. BST-002 is the task that makes the live
- * server bind itself, and **it must rewrite that sentence when it lands** —
- * promising a bind this build does not perform is worse than the extra step,
- * because the agent stops and waits for tools that are never coming.
+ * ⚠️ **The last sentence describes what happens today.** It used to say a created
+ * project needs a second server pointed at it, and BST-002 made that false: the
+ * live server binds itself and the authoring tools arrive in the same session.
+ * Rewritten here when that landed, as BST-006 required — the rule in both
+ * directions is that this paragraph must never promise a bind the build does not
+ * perform, because an agent told to expect tools that never arrive stops and
+ * waits rather than falling back.
  */
 export const BOOTSTRAP_INSTRUCTIONS =
   'NodeGX (OpenNoodl) is a visual app builder: an app is a graph of nodes stored as plain files on disk, ' +
@@ -162,6 +164,12 @@ export const BOOTSTRAP_INSTRUCTIONS =
   'is written into the project as its brief and its build plan. ' +
   'You can also call list_examples and get_example without a project — that is what a NodeGX graph actually ' +
   'looks like, and it is worth reading one before scoping anything. ' +
-  'AFTER CREATING: the project is written to disk, and this server stays unbound. Point a server at the new ' +
-  'directory to build in it — the same command with the project directory as its argument, and ' +
-  '--allow-writes — and its instructions will then describe how to author components.';
+  // BST-002. This said the server stayed unbound and the user had to start a
+  // second one — a configuration errand at the end of the first thing they ever
+  // built. It now binds itself, so the sentence says what actually happens and
+  // names the one field that carries what `initialize` could not.
+  'AFTER CREATING: this server binds itself to the new project and the authoring tools arrive in the same ' +
+  'conversation — no second registration, no restart. The result carries a `bound.guidance` field: read it ' +
+  'before authoring anything. It is the briefing a server started with a project sends at the beginning of a ' +
+  'session, and this one could not send it because there was no project to describe. Creating a second ' +
+  'project later does NOT repoint this server; it stays bound to the first, and says so.';

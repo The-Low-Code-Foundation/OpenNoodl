@@ -165,7 +165,13 @@ export function createServer(options: ServerOptions): CreatedServer {
     // already true and already commented here before anyone could reach it: the
     // capability was store-independent, and unreachable, because the store was
     // built two lines before the first registration and threw.
-    registerCreateProjectTools(rec);
+    //
+    // BST-002 — and it is the one registration that also takes the binding and
+    // the disclosure registry, which is the shape `registerAuthorTools` and
+    // `registerPlanTools` above already use. `create_project` is the only tool
+    // that can turn an unbound server into a bound one, so it is the only one
+    // that needs to be able to write to either.
+    registerCreateProjectTools(rec, { binding, disclosure, deferTools });
   }
   // AWP-006 — last, and it has to be: the handles do not all exist until every
   // registration has run, and disabling a group before its tools are registered

@@ -118,13 +118,29 @@ describe('BST-006 — the unbound briefing', () => {
     }
   });
 
-  it('does not promise a bind this build does not perform', () => {
-    // ⚠️ BST-002 is what makes `create_project` repoint the live server. Until
-    // it lands, saying so would leave an agent waiting for tools that are never
-    // coming — a worse failure than the extra step, because it looks like a
-    // hang rather than an instruction. When BST-002 lands, this assertion is
-    // what it has to come and change.
-    expect(BOOTSTRAP_INSTRUCTIONS).toContain('this server stays unbound');
+  it('describes the bind this build DOES perform', () => {
+    // ⚠️ This asserted the opposite until BST-002 landed, and the comment said
+    // so: promising a bind the build does not make leaves an agent waiting for
+    // tools that never arrive, which looks like a hang rather than an
+    // instruction. The rule is symmetric, which is why the assertion flipped
+    // rather than being deleted — the paragraph must always match the build.
+    expect(BOOTSTRAP_INSTRUCTIONS).toContain('this server binds itself to the new project');
+    expect(BOOTSTRAP_INSTRUCTIONS).not.toContain('this server stays unbound');
+  });
+
+  it('sends the agent to the one field carrying what initialize could not', () => {
+    // 🔴 The silent half of BST-002. `instructions` is fixed at `initialize`, so
+    // a server that binds mid-session has already spent its briefing on this
+    // text — and the authoring paragraphs it never sent are the ones written
+    // because measured models failed without them. They travel in the bind
+    // result instead, and this is the sentence that makes an agent read them.
+    expect(BOOTSTRAP_INSTRUCTIONS).toContain('bound.guidance');
+  });
+
+  it('says a second create_project does not repoint the server', () => {
+    // Otherwise an agent tidying up mid-session describes its next twenty calls
+    // as being about the new project when every one is about the old one.
+    expect(BOOTSTRAP_INSTRUCTIONS).toContain('does NOT repoint this server');
   });
 
   it('is a fraction of the bound briefing', () => {

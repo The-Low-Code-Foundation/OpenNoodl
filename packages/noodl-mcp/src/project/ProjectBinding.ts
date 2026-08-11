@@ -88,6 +88,30 @@ export class ProjectBinding {
   }
 
   /**
+   * BST-002 — bind a project this server just created.
+   *
+   * ⚠️ **Bind once, and refuse the second.** A second `create_project` on a
+   * bound server creates the project and does **not** repoint this one. An agent
+   * tidying up mid-session would otherwise silently redirect every subsequent
+   * tool at a different project, and nothing in any response says which project
+   * it is describing — so the tools would keep working and start answering about
+   * somewhere else. That is the boundary that keeps this from quietly becoming
+   * a `use_project` contract, which the phase deliberately does not ship.
+   *
+   * @returns `true` when this call bound, `false` when a project was already
+   *   bound and nothing changed. The caller says which happened; it is not
+   *   something a reader of the result should have to infer.
+   */
+  bind(projectDir: string): boolean {
+    if (this.store !== null) return false;
+    // ⚠️ Constructed here rather than by the caller, so a directory the store
+    // will not accept throws *before* anything is marked bound. A half-bound
+    // server is the one state this class exists to make unrepresentable.
+    this.store = new ProjectStore(projectDir);
+    return true;
+  }
+
+  /**
    * The store, or a refusal that names the way out.
    *
    * ⚠️ Call this **inside the handler**, on every request. See the module

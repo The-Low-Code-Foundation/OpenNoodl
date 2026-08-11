@@ -71,13 +71,37 @@ export class ToolDisclosure {
   /**
    * BST-001 — whether a project is bound.
    *
-   * Set once, at construction, and read by both {@link applyPolicy} and
-   * {@link registerFindTools}: those two have to agree about the mode, and a
-   * boolean passed to each separately is a boolean that eventually disagrees
-   * with itself. Defaults to bound, so every existing call site and every spec
-   * that constructs one keeps today's behaviour.
+   * Read by both {@link applyPolicy} and {@link registerFindTools}: those two
+   * have to agree about the mode, and a boolean passed to each separately is a
+   * boolean that eventually disagrees with itself. Defaults to bound, so every
+   * existing call site and every spec that constructs one keeps today's
+   * behaviour.
+   *
+   * ⚠️ **BST-002 made it mutable**, and it is the only mutable thing about the
+   * mode: `bindProject` flips it and re-derives everything that was decided
+   * from it, rather than letting a second source of truth appear.
    */
-  constructor(private readonly bound: boolean = true) {}
+  private bound: boolean;
+
+  /**
+   * What `--all-tools` asked for, which is **not** the same as what bootstrap
+   * mode did with it.
+   *
+   * F72 — the flag is refused in bootstrap mode, because advertising 89 project
+   * tools on a server with no project is that mode's whole failure in one flag.
+   * But it must not be *forgotten*: at bind there is finally something to
+   * change into, and a user who passed the flag for a client that ignores
+   * `list_changed` still means it. So the request is remembered here and
+   * honoured by {@link bindProject}.
+   */
+  private requestedDeferTools = true;
+
+  /** Set by {@link registerFindTools} so a later bind can revise its description. */
+  private describeForBoundMode: (() => string) | null = null;
+
+  constructor(bound = true) {
+    this.bound = bound;
+  }
 
   /** No project: the surface is {@link BOOTSTRAP_TOOLS} and nothing can be revealed. */
   get isBootstrap(): boolean {
@@ -87,6 +111,17 @@ export class ToolDisclosure {
   /** Called by {@link recordTools} for every `registerTool`. */
   record(name: string, handle: RegisteredTool): void {
     this.handles.set(name, handle);
+  }
+
+  /**
+   * BST-002 — how to describe `find_tools` once a project exists.
+   *
+   * Handed over by {@link registerFindTools} rather than duplicated here: the
+   * paragraph is that module's, and the registry only needs to be able to ask
+   * for it again at bind time.
+   */
+  useBoundDescription(describe: () => string): void {
+    this.describeForBoundMode = describe;
   }
 
   /** Every tool name this server registered, revealed or not. */
@@ -99,6 +134,7 @@ export class ToolDisclosure {
    * handles do not all exist before then.
    */
   applyPolicy(options: { deferTools: boolean }): void {
+    this.requestedDeferTools = options.deferTools;
     // BST-001 — the bootstrap surface is a policy applied here, at the one place
     // that already decides what is advertised, rather than sixteen conditional
     // registrations. `--all-tools` does NOT override it: that flag exists for a
@@ -126,6 +162,63 @@ export class ToolDisclosure {
     }
   }
 
+  /**
+   * BST-002 — leave bootstrap mode, and advertise what a bound server advertises.
+   *
+   * ⚠️ **The `find_tools` description is revised here, and this is the half that
+   * gets missed.** That description is chosen from the mode *at registration*
+   * ({@link registerFindTools}), so a server that binds mid-session would keep
+   * advertising the bootstrap copy — which states, in the one place a model
+   * looks to find out what else exists, that *"this tool cannot reveal them
+   * here"*. Every other part of the bind would work and the door out of the
+   * deferred set would be advertised as bolted shut. `RegisteredTool.update()`
+   * is the mechanism, and it emits `list_changed` like everything else.
+   *
+   * ✅ That notification is acted on: measured 2026-08-11, Claude Code re-issues
+   * `tools/list` 3ms after it. See `MEASUREMENTS-CLIENT-CONTRACT.md` §1.
+   *
+   * @returns the tool names that became advertised, so the caller can say what
+   *   arrived rather than claiming a reveal it did not make.
+   */
+  bindProject(): string[] {
+    if (this.bound) return [];
+    this.bound = true;
+
+    // Re-derive from the one flag, rather than adding a second policy path:
+    // this is exactly what `applyPolicy` would have decided had the server
+    // started bound, which is the property that keeps the two modes converging
+    // instead of drifting.
+    this.deferring = this.requestedDeferTools;
+    const revealed: string[] = [];
+    for (const group of TOOL_GROUPS) {
+      if (!this.deferring || group.resident) {
+        this.revealed.add(group.id);
+        revealed.push(...this.enableAll(group.tools));
+      }
+    }
+
+    // ⚠️ Last, and after the reveals: the description names the groups that are
+    // still held back, so it must be built from the surface as it now is.
+    const findTools = this.handles.get('find_tools');
+    if (findTools && this.describeForBoundMode) {
+      findTools.update({ description: this.describeForBoundMode() });
+    }
+
+    return revealed;
+  }
+
+  /** Enable named handles that are currently disabled, reporting only what changed. */
+  private enableAll(names: readonly string[]): string[] {
+    const newly: string[] = [];
+    for (const name of names) {
+      const handle = this.handles.get(name);
+      if (!handle || handle.enabled) continue;
+      handle.enable();
+      newly.push(name);
+    }
+    return newly;
+  }
+
   isRevealed(group: ToolGroupId): boolean {
     return this.revealed.has(group);
   }
@@ -150,14 +243,7 @@ export class ToolDisclosure {
     // because this is the primitive: a future caller that reveals by name would
     // otherwise re-enable a project tool on a server with no project.
     if (this.isBootstrap) return [];
-    const newly: string[] = [];
-    for (const name of names) {
-      const handle = this.handles.get(name);
-      if (!handle || handle.enabled) continue;
-      handle.enable();
-      newly.push(name);
-    }
-    return newly;
+    return this.enableAll(names);
   }
 
   /**
@@ -238,7 +324,16 @@ const BOOTSTRAP_FIND_TOOLS_DESCRIPTION =
   'project, and arrives when a server is started with a project directory. This tool cannot reveal them here. ' +
   'Call list_projects to find a project that already exists, or create_project to make one.';
 
-export function registerFindTools(server: McpServer, disclosure: ToolDisclosure): void {
+/**
+ * The bound-mode description.
+ *
+ * ⚠️ A function rather than a constant because BST-002 needs it **twice**: once
+ * at registration on a server that started bound, and once at
+ * {@link ToolDisclosure.bindProject} on a server that did not. Two spellings of
+ * this paragraph would mean a mid-session bind advertising a subtly different
+ * contract from a server started the ordinary way, and nothing would report it.
+ */
+export function boundFindToolsDescription(): string {
   // The description is the whole disclosure contract for a model that reads
   // nothing else, so it names each deferred group, its size and its subject.
   // Built from the manifest rather than written out, because a hand-written list
@@ -246,19 +341,29 @@ export function registerFindTools(server: McpServer, disclosure: ToolDisclosure)
   const catalogue = deferredGroups()
     .map((g) => `"${g.id}" (${g.tools.length} tools) — ${g.purpose}`)
     .join(' ');
+
+  return (
+    'Reveal tools this server has but is not currently advertising. The authoring set is advertised up ' +
+    'front; the rest is held back so it is not re-sent on every turn, and is one call away. Held back: ' +
+    catalogue +
+    ' Pass `group` to reveal a whole group, or `query` to search names and descriptions across everything ' +
+    'and reveal what matches. Call with neither for the inventory.'
+  );
+}
+
+export function registerFindTools(server: McpServer, disclosure: ToolDisclosure): void {
   const bootstrap = disclosure.isBootstrap;
+  // 🔴 BST-002 — the description is chosen from the mode HERE, at registration,
+  // which is why a server that binds mid-session has to revise it. Handing the
+  // builder to the registry is what makes that possible without the registry
+  // owning a second copy of the text.
+  disclosure.useBoundDescription(boundFindToolsDescription);
 
   server.registerTool(
     'find_tools',
     {
       title: 'Find tools',
-      description: bootstrap
-        ? BOOTSTRAP_FIND_TOOLS_DESCRIPTION
-        : 'Reveal tools this server has but is not currently advertising. The authoring set is advertised up ' +
-          'front; the rest is held back so it is not re-sent on every turn, and is one call away. Held back: ' +
-          catalogue +
-          ' Pass `group` to reveal a whole group, or `query` to search names and descriptions across everything ' +
-          'and reveal what matches. Call with neither for the inventory.',
+      description: bootstrap ? BOOTSTRAP_FIND_TOOLS_DESCRIPTION : boundFindToolsDescription(),
       inputSchema: {
         group: z
           .enum(['backend', 'docs', 'explore', 'project', 'theme'])

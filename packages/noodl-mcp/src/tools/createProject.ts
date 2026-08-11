@@ -65,7 +65,10 @@ import type {
 import type { AgentConfigReport } from '../editor-deps';
 import { SCHEMA_IDS, SchemaValidator, formatValidationErrors } from '../editor-deps';
 import { ToolError } from '../errors';
+import { projectInstructions } from '../instructions';
 import { writeAgentConfig } from '../project/agentConfig';
+import type { ProjectBinding } from '../project/ProjectBinding';
+import type { ToolDisclosure } from './disclosure';
 import { guarded, jsonResult } from './util';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -393,6 +396,28 @@ export interface CreateProjectResponse {
    * place a failed write is visible at all.
    */
   agentConfig: AgentConfigReport;
+  /**
+   * BST-002 — what happened to *this* server, when it was the one with no
+   * project.
+   *
+   * Absent on a server that was already pointed at a project: nothing bound,
+   * and a field saying so on every ordinary call is noise. Present, it is the
+   * difference between "a project exists somewhere" and "you can build it now".
+   */
+  bound?: BindResult;
+}
+
+export interface BindResult {
+  /** Whether this call bound the server. `false` means a project was already bound. */
+  bound: boolean;
+  /** The directory this server is now serving — which on a refusal is **not** the new one. */
+  projectDir: string;
+  /** Tools that became advertised. Empty when nothing changed. */
+  toolsRevealed: string[];
+  /** What to do next, and — on a bind — the briefing `initialize` could not carry. */
+  note: string;
+  /** ⚠️ The bound briefing, verbatim from `instructions.ts`. Only on an actual bind. */
+  guidance?: string;
 }
 
 /**
@@ -420,7 +445,88 @@ function prepareDirectory(directory: string): string {
   return target;
 }
 
-export function registerCreateProjectTools(server: McpServer): void {
+/**
+ * BST-002 — what a mid-session bind has to say, because `initialize` already
+ * happened.
+ *
+ * 🔴 **`instructions` is fixed at `initialize` and MCP has no notification that
+ * revises it.** A server launched with no project has already spent its one
+ * briefing on the bootstrap text, so everything a bound server normally says up
+ * front — the plan-first order, `Static Data` and `Component Inputs`, the Router
+ * paragraph, `provision_backend` first, `render_report` as evidence — is missing
+ * at exactly the moment it becomes relevant. Every one of those paragraphs is in
+ * that string because a measured model got it wrong without it, so an agent that
+ * binds mid-session and never reads them reproduces those failures, and the
+ * failure looks like a model problem rather than a plumbing one.
+ *
+ * ⚠️ **This is the defect most likely to ship from this task and it is invisible
+ * to every gate.** The tools appear, the calls succeed, the project builds, and
+ * the pages are unreachable because nobody mentioned the Router.
+ *
+ * So the bind result carries the briefing — **the same string**, from
+ * `instructions.ts`, never a paraphrase of it. `tests/bindOnCreate.test.ts`
+ * asserts the constructor's instructions and this field come from one source.
+ */
+function bindGuidance(projectDir: string, deferTools: boolean): string {
+  return projectInstructions({ projectDir, allowWrites: true, deferTools });
+}
+
+/**
+ * Bind the live server to the project just created — or say, precisely, why not.
+ *
+ * ⚠️ **The refusal is as important as the bind.** A second `create_project`
+ * creates the second project and leaves this server pointed where it was, and
+ * the result has to *say* so: an agent that assumes the rebind will describe its
+ * next twenty tool calls as being about the new project when every one of them
+ * is about the old one.
+ */
+function bindTo(bind: CreateProjectBinding, projectDir: string): BindResult {
+  const didBind = bind.binding.bind(projectDir);
+
+  if (!didBind) {
+    const servingDir = bind.binding.projectDir ?? projectDir;
+    return {
+      bound: false,
+      projectDir: servingDir,
+      toolsRevealed: [],
+      note:
+        `The project was created at ${projectDir}, but this server stays bound to ${servingDir} — a server ` +
+        'binds once, so every tool you call here still reads and writes the project it was already serving. ' +
+        'To build the new one, start a server with that directory as its argument and --allow-writes. Its ' +
+        '.mcp.json is already written, so an agent opened in that folder is offered it.'
+    };
+  }
+
+  const toolsRevealed = bind.disclosure.bindProject();
+
+  return {
+    bound: true,
+    projectDir,
+    toolsRevealed,
+    note:
+      `This server is now bound to ${projectDir} and ${toolsRevealed.length} more tools are advertised — ` +
+      'you can build in it from this same conversation, with no second registration and no restart. ' +
+      // ⚠️ Named, because a client that ignores `list_changed` would otherwise
+      // see a note promising tools it cannot call. Measured 2026-08-11: Claude
+      // Code re-lists 3ms after the notification.
+      'They arrive in your next tool list; if your client does not refresh on notifications/tools/' +
+      'list_changed, restart the server with the project directory as its argument. ' +
+      // 🔴 §3 — the briefing `initialize` already spent, and the reason this
+      // field exists at all.
+      'Read `guidance` below before authoring: it is what a server started with this project would have ' +
+      'told you at the start of the session, and it could not be sent then because there was no project.',
+    guidance: bindGuidance(projectDir, bind.deferTools)
+  };
+}
+
+export interface CreateProjectBinding {
+  binding: ProjectBinding;
+  disclosure: ToolDisclosure;
+  /** AWP-006 — whether the backend group stays behind `find_tools` after the bind. */
+  deferTools: boolean;
+}
+
+export function registerCreateProjectTools(server: McpServer, bind?: CreateProjectBinding): void {
   server.registerTool(
     'create_project',
     {
@@ -490,6 +596,13 @@ export function registerCreateProjectTools(server: McpServer): void {
         hasDocs: documents.length > 0
       });
 
+      // ── BST-002: bind ────────────────────────────────────────────────────
+      // ⚠️ Here — after the files are written and validated, before the result
+      // is returned. Earlier, a failed write leaves a server bound to a
+      // half-made project; later, the result describes a session the agent
+      // cannot act on. Both halves in one place: the store, and the surface.
+      const bound = bind ? bindTo(bind, target) : undefined;
+
       const payload: CreateProjectResponse = {
         ok: true,
         projectDir: target,
@@ -502,7 +615,8 @@ export function registerCreateProjectTools(server: McpServer): void {
           `that have NOT been run. The plan is also recorded in ${DOC_INITIAL_SCOPE}. To build it, start a ` +
           'server against this directory with --allow-writes and use create_plan / stage_plan_operation / ' +
           'apply_plan — reviewing each page against docs/CONVENTIONS.md as you go.',
-        agentConfig
+        agentConfig,
+        ...(bound ? { bound } : {})
       };
       return jsonResult(payload);
     })

@@ -26,7 +26,11 @@ import { ProjectStore } from '../src/project/ProjectStore';
 import { BOOTSTRAP_INSTRUCTIONS } from '../src/instructions';
 import { BOOTSTRAP_ADVERTISED, BOOTSTRAP_TOOLS, TOOL_GROUPS, spellCount } from '../src/toolGroups';
 import { createServer, type ServerOptions } from '../src/server';
-import type { CreateProjectResponse, FindToolsResponse, ListProjectsResponse } from '../src/tools/responses';
+import type { FindToolsResponse, ListProjectsResponse } from '../src/tools/responses';
+// `CreateProjectResponse` lives with the tool, not in `responses.ts` — this
+// import named the wrong module and had been failing `tsc` silently, because
+// jest transpiles per file and never typechecks the graph.
+import type { CreateProjectResponse } from '../src/tools/createProject';
 import { copyFixture } from './helpers';
 
 interface Session {
