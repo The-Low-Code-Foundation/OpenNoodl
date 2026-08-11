@@ -230,11 +230,18 @@ export {
 } from '../../noodl-editor/src/editor/src/models/StyleTokensModel/StyleVocabulary';
 export type {
   StyleVocabulary,
+  VocabComposition,
+  VocabCompositionGroup,
   VocabElement,
+  VocabParamValue,
   VocabPreset,
   VocabToken,
   VocabTokenCategory
 } from '../../noodl-editor/src/editor/src/models/StyleTokensModel/StyleVocabulary';
+// DSG-005 — the compositions themselves, so a tool can name one without
+// rebuilding the vocabulary. Same containment rule: StyleCompositions imports
+// nothing at all.
+export { STYLE_COMPOSITIONS } from '../../noodl-editor/src/editor/src/models/StyleTokensModel/StyleCompositions';
 export {
   buildEffectiveTokens,
   readStoredTokens,

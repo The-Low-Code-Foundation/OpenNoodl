@@ -44,6 +44,70 @@ describe('AIX-006 style MCP tools', () => {
     expect(data.vocabulary).toContain('--primary');
   });
 
+  /**
+   * DSG-005 — the external client gets the arrangements, not only the atoms.
+   *
+   * This is the "one substrate, two clients" half of the acceptance: the field
+   * was added to `buildStyleVocabulary`/`renderStyleVocabulary` and reaches the
+   * MCP surface with no second wiring. If a future change routes compositions
+   * through a tool description or a second dialect instead, this fails.
+   */
+  it('get_style_vocabulary hands over the named compositions, each naming its recipe', async () => {
+    const { data } = await call<StyleVocabulary>(session, 'get_style_vocabulary', {});
+    const ids = data.compositions.map((c) => c.id);
+    for (const required of ['card', 'shell', 'sectionHead', 'primaryButton', 'outlineButton']) {
+      expect(ids).toContain(required);
+    }
+
+    const card = data.compositions.find((c) => c.id === 'card');
+    expect(card).toBeDefined();
+    expect(card!.nodeType).toBe('Group');
+    expect(card!.parameters.borderRadius).toBe('var(--radius-xl)');
+    expect(card!.recipe).toBe('ui-card-grid-repeater');
+
+    // A dimension arrives as { value, unit } — a "100%" string is dropped by the
+    // runtime, so the wire format has to be the one that survives.
+    expect(card!.parameters.width).toEqual({ value: 100, unit: '%' });
+
+    for (const c of data.compositions) {
+      // Connection-only ports: setting either as a parameter is discarded AND rejected.
+      expect(Object.keys(c.parameters)).not.toContain('variant');
+      expect(Object.keys(c.parameters)).not.toContain('size');
+    }
+
+    // Ids, never an inlined graph — the recipes stay the single copy.
+    const serialized = JSON.stringify(data.compositions);
+    expect(serialized).not.toContain('"nodes"');
+    expect(serialized).not.toContain('"connections"');
+  });
+
+  /**
+   * DSG-005 — the wire size, measured where it is billed.
+   *
+   * MCP responses go out pretty-printed, so the cost of this tool is the cost of
+   * `JSON.stringify(payload, null, 2)` and not of the object. Measured at the
+   * point compositions landed: detail "prompt" 9.5k chars (~2.4k tokens),
+   * detail "full" 36.8k chars (~9.2k tokens) — up from 5.1k/26.8k. The ceilings
+   * are round numbers in the printed unit and exist to catch the next thing that
+   * doubles the block, not to pin the current byte count.
+   */
+  it('stays inside its wire budget, in the shape the model is billed for', async () => {
+    const promptResult = await session.client.callTool({
+      name: 'get_style_vocabulary',
+      arguments: { detail: 'prompt' }
+    });
+    const fullResult = await session.client.callTool({ name: 'get_style_vocabulary', arguments: {} });
+    const wireChars = (r: unknown) =>
+      ((r as { content: Array<{ text: string }> }).content ?? []).reduce((n, c) => n + (c.text?.length ?? 0), 0);
+    // /4 to match `toolDisclosure`'s convention, so the two budgets are comparable.
+    const promptTokens = Math.round(wireChars(promptResult) / 4);
+    const fullTokens = Math.round(wireChars(fullResult) / 4);
+    expect({
+      prompt: promptTokens <= 3000 ? 'within budget' : promptTokens,
+      full: fullTokens <= 11_000 ? 'within budget' : fullTokens
+    }).toEqual({ prompt: 'within budget', full: 'within budget' });
+  });
+
   it('set_project_tokens persists overrides into nodegx.project.json metadata', async () => {
     const { isError, data } = await call<{ ok: boolean; updated: string[] }>(session, 'set_project_tokens', {
       tokens: [{ name: '--primary', value: '#7c3aed' }]

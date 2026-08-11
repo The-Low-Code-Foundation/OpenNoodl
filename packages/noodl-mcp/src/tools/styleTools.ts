@@ -87,7 +87,9 @@ export function registerStyleReadTools(server: McpServer, store: ProjectStore): 
       title: 'Get style vocabulary',
       description:
         "This project's design system: design tokens by category (semantic colours, spacing, typography, " +
-        'radius, borders, shadows) and the legal variants/sizes per element type. Reference a token in a node ' +
+        'radius, borders, shadows), the legal variants/sizes per element type, and the named COMPOSITIONS — ' +
+        'ready-made parameter sets for a card, a shell, a section head, the buttons and the type ramp, each ' +
+        'naming the recipe that shows it assembled. Reference a token in a node ' +
         'parameter as "var(--token-name)" (never a raw hex or px). Set detail: "prompt" for the compact ' +
         'prompt-shaped block, or "full" (default) for the structured JSON. Built-in presets are listed too.',
       inputSchema: {
