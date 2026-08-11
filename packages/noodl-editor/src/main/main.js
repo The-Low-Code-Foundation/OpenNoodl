@@ -1,3 +1,20 @@
+// LEG-004 — `diff=noodl`, and it has to be the first statement in the file.
+//
+// Git invokes textconv once per blob per revision, so `installMergeDriver`
+// configures it as `ELECTRON_RUN_AS_NODE=1 <exe> <this bundle> --textconv`:
+// plain Node, no Chromium, tens of milliseconds instead of a full app boot.
+// Two consequences, both of which put the dispatch here rather than beside the
+// `--merge` check at the bottom of this file:
+//
+//  1. Under ELECTRON_RUN_AS_NODE the guard immediately below would exit 1, and
+//     git reports a non-zero textconv as an error on an ordinary `git log`.
+//  2. Every require after this line assumes a real Electron main process.
+//
+// `handleTextconv` always exits, so nothing below runs on this path.
+if (process.argv.indexOf('--textconv') !== -1) {
+  require('./src/textconv-driver').handleTextconv(process.argv);
+}
+
 const electron = require('electron');
 const { app, dialog } = electron;
 const fs = require('fs');
@@ -349,6 +366,12 @@ function launchApp() {
   }
 
   process.env.exePath = app.getPath('exe');
+  // LEG-004 — the merge driver only needs the binary, but the textconv driver
+  // has to name a script for it to run (`ELECTRON_RUN_AS_NODE` makes the binary
+  // a plain `node`, which has no app to boot). Set here, beside exePath, so the
+  // renderer inherits it in its environment and `installMergeDriver` can build
+  // the command without reaching for an Electron API from @noodl/git.
+  process.env.appPath = app.getAppPath();
   let reopenWindow = false;
 
   // Windows and Linux draw the window and taskbar icon from BrowserWindow; with no
