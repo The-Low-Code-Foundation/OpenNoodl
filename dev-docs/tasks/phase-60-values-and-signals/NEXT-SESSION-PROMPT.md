@@ -1,91 +1,81 @@
 # Phase 60 — next session
 
-**Written 2026-08-11**, at the end of the session that closed **SIG-001, SIG-002 and SIG-004**.
-**The next session's job is SIG-003**, the phase's second flagship, and it is the one task here that
-is real work rather than unhiding.
+**Written 2026-08-11**, at the end of the session that closed **SIG-003**, the phase's second flagship.
+**4 of 7 are done — SIG-001, 002, 003, 004 — which is the whole of *what a wire means*.**
+**The next session's job is SIG-005**, and it opens *what a wire looks like*.
 
-Commits: `9ff122bb` (code) and `8d8e371f` (docs). Remaining: **003, 005, 006, 007**.
+Commits: `2f513016` (the library sweep and the gate), `15028e25` (docs), `6e27f741` (one straggler).
+Remaining: **005, 006, 007**.
 
 ## What this session did, so you do not redo it
 
-The connection popup computed a full refusal sentence for every refused port, wrote it to
-`p.message`, and deleted the row that would show it seven lines later. Three halves of one feature —
-the message, `PortItem`'s `'disabled'` state, the stylesheet — had never met. They do now.
+`Other` was never a category anyone chose. `ConnectionBar` reads `p.group ? p.group : 'Other'`, so the
+**absence of one line** in a node definition rendered as if it were a decision — and on every Variable
+node that was the four ports the node exists for, while the only port with a heading was the NDA-003
+back-compat one.
 
-| Task | Outcome |
-|---|---|
-| **SIG-001** ⭐ | **CLOSED.** Refused ports render behind one summary line per group; the offer names the wire the builder meant and connects it |
-| **SIG-002** | **CLOSED.** Type sentence on every value input (the `if (d)` guard is inverted); the timing-intent answer at the search |
-| **SIG-004** | **CLOSED.** One sentence per port *type* at the render seam. **No node definition touched; `node-catalog-enriched.json` byte-identical** |
+| Measure | Before | After |
+|---|---:|---:|
+| Static ports with no `group` | **167** across 58 node types | **0** |
+| Ports in a kind heading that is not their kind | **35** | **0** |
+| Ports in a retired group (`Value`, `Signals`, `Changed Events`) | **63** | **0** |
+| `groupPriority` entries naming a retired group | **4** | **0** |
+| Connectable **dynamic** ports with no group | **2 seams** | **0** |
 
-**Four new modules, all import-free, all in `tsconfig.tests-main.json`'s allowlist**, graded by 58
-specs in `packages/noodl-editor/tests-unit/connection-popup/`:
+**§2 was answered by Richard: the teaching end — `Values` / `Actions` / `Events`.** The normative
+write-up is **[`dev-docs/reference/PORT-GROUP-VOCABULARY.md`](../../reference/PORT-GROUP-VOCABULARY.md)**;
+read it rather than SIG-003, which is now a record. The gate is `npm run catalog:groups:check`, in the
+`node-catalog` CI job.
 
-- **`portCopy.ts` — every sentence the popup says. All new copy goes here, including yours.**
-- `refusalPlan.ts` — `rankAlternatives`, `isConfidentRedirect`, `asRefusalReason`, `dominantReason`
-- `searchIntent.ts` — `answersTimingIntent`
-- `components/RefusedPorts.tsx` — the folded refused block
+Verified live: a String variable's inputs render **Values(Value) · Actions(Set)** and its outputs
+**Values(Value, Length) · Events(Changed, Done, Completed, Unchanged)**, no `Other`; and a sweep of
+`window.NodeLibraryData` — the same data the popup reads — gave **175 node types, 3,056 connectable
+ports, 0 ungrouped**.
 
-Plus a `reason` code on `NodeGraphModel.getConnectionStatus` and a widened
-`NodeLibrary.nameForPortType` signature.
+### The five things worth carrying
 
-### The six things worth carrying
-
-1. 🔴 **Two of the six defects were in the specs, not in the build.** SIG-001 §2's worked copy —
-   *"4 signal inputs · signals carry no value"* — is the exact sentence the same file forbids four
-   sections earlier. And SIG-002 §2's trigger cannot fire on the node its own acceptance names,
-   because **`set` is a substring of `offset`**: searching `set` on a Button returns three
-   shadow-offset ports, so "answer the empty search" never runs. **Grep a spec's own examples against
-   its own constraints before building them.**
-2. 🔴 **`connectionPanel.groupPriority` is a display order, not a ranking.** Ranking by "exact type,
-   then group priority" answered **Variant** for a String dragged at a Button — `string` in `General`
-   (priority 0) beating `Label`, `string` in `Label` (priority 6). Correct by the rule and wrong to
-   every human. **`usePortAsLabel` is what says which port a node is about** (~41 declarations:
-   `label`, `text`, `collectionName`, `url`, `expression`, `functionName`…). **SIG-003 should treat
-   it as a declaration to preserve, not incidental metadata.**
-3. 🔴 **The offer promised a wire it did not draw.** Built as specced — connect on one candidate,
-   scroll otherwise — with the copy of the first branch on both. Clicking "connect it to **Label**
-   instead" drew nothing. Fixed by making one predicate decide the verb *and* the action. **Verify
-   the consequence (was a connection created?), never the mechanism (did the handler run?).**
-4. 🔴 **The grey wall came back as summary rows.** One refused line per group is right for a mixed
-   group and catastrophic when every group is refused: a signal source at a Text Input produced
-   **19 identical** lines above the 4 ports that work. Whenever you collapse-per-container, ask what
-   it looks like when *every* container collapses, and **count it on a real node**.
-5. ⚠️ **Button cannot host this phase's canonical scenario.** "Drop a String on a Button" appears in
-   the README, in TASKS and in SIG-001 — and a Button has **no signal inputs at all**. Use a **Text
-   Input** (`Set`, `Clear`, `Focus`, `Blur`; 103 ports). A session that drives the documented example
-   will measure a working feature and conclude it is broken.
-6. ⚠️ **The first contrast pass measured the editor's title bar.** The harness had scrolled the offer
-   out of the popup's viewport, and a rect at `y ≈ 2` is whatever the window is showing there — it
-   returned the amber ⚠2 badge. Every rect is now clipped to the popup's scroll box and **dropped**
-   if it does not survive. Corrected table is in SIG-001's Register.
-
-### Driving the connection popup (it is fiddly, and this cost a session)
-
-`window.__nodeGraphEditor` → `ed.switchToComponent(c)` → set
-`ed.interaction.draggingConnection = { fromNode, toNode }` (**view** nodes, from `findNodeWithId`) →
-`ed.connectionPopups.open()`. Then click a row in the *from* bar.
-
-- ⚠️ **`connectionPopups.close()` removes nothing** — it only sends `viewer-show`. Popouts are
-  dismissed by a pointer press **outside** them; the window is **1368×781 CSS**, and the components
-  panel (≈250,700) is outside. A click on the canvas at 850,604 is *inside* the target popout.
-- 🔴 **Never `replaceChildren()` the `.popup-layer`** to clean up — it orphans PopupLayer's state and
-  no popup opens again until the editor is restarted.
-- ⚠️ **Two bars in the DOM does not mean their rows exist.** Poll for the row, then assert the
-  selection took.
-- ⚠️ **`scrollIntoView` then `getBoundingClientRect()` in the same tick gives stale coordinates** —
-  the click lands on a neighbour, nothing is selected, and every downstream number reads as "nothing
-  was refused", which looks exactly like a broken feature.
-- ⚠️ **HMR does not reach `ed.connectionPopups`** — the live editor holds the old instance. Restart
-  the stack after editing the popup.
+1. 🔴 **The gate's fourth rule was a check that could never go red.** It read
+   `node.connectionPanel.groupPriority` off the generated catalog, and **the catalog carries
+   `connectionPanel` on none of its 175 entries**. It printed a confident `✓ 0` while four cloud nodes
+   really did still name the retired `'Value'` — found by a grep run for another reason. It now reads
+   source. **Prove a new gate red by injecting one violation of each class before trusting it green**,
+   and note `$?` after a pipeline is the *last* command's status: `gate.js --check | head` reported 0
+   while the gate exited 1.
+2. 🔴 **An acceptance criterion, applied literally, would have made the library worse.** "No node files
+   a signal port and a value port under the same heading" is wrong for **subject** headings:
+   `Snap To Position X` is `Do` + `Duration` + `Value`, a task and its parameters. 77 node/group pairs
+   mix kinds and most are correct. Left unchecked in SIG-003 with the reason; what shipped is the
+   narrower rule that only the three *kind* headings must be pure.
+3. 🔴 **A previous fix attempt was inert.** `logic-builder.ts` carried
+   `group: '', // Empty group to avoid "Other" label`. The empty string is **falsy**, so the port landed
+   under `Other` anyway — and it was a **duplicate object key** overriding the line above it. A comment
+   claiming a workaround is a reason to verify the workaround, not to skip the port.
+4. ⚠️ **The library had already voted.** `error` (a value output) sat under `Events` on 33 nodes and
+   under an existing `Error` group on **41**. Same port, same purpose, two headings, never counted.
+   Following the majority cleared 33 of the 35 violations. **Census before convention.**
+5. ⚠️ **Measure an audit's concentration before estimating it.** 60% of the 167 came from ten port
+   names (`this` ×27, `childIndex` ×27, `childrenCount` ×12 — three edits in one file cleared 44), and
+   **26% were on deprecated nodes**. It looked like 58 files and was really about six. Report live and
+   deprecated separately: the live number was 123, not 167.
 
 ### Gates, measured on the settled tree
 
-`typecheck:editor` and `typecheck:editor-tests` **clean** · `test:main` **114 suites / 1600 tests
-green** (58 new) · `test:ci` **`Jasmine: 2632 specs, 6 failures` at seed 37092** — the recorded
-baseline, matched **by name**, no regression.
+`typecheck:editor`, `typecheck:editor-tests`, `typecheck:viewer`, `typecheck:cloud` **clean** ·
+`test:main` **115 suites / 1611 tests green** (was 114/1600; +12 specs in `groupOrder.test.ts`) ·
+`catalog:check`, `catalog:merge:check`, `cloud-library:check`, `docs:nodes:check`, `catalog:examples`
+**all clean** · `lint:ci` **869 errors against a 3916 baseline** ·
+`test:ci` **`Jasmine: 2632 specs, 6 failures` at seed 72213** — the recorded baseline, confirmed **by
+name**: four `AIX-006 style vocabulary`, two `AI model registry`. Same 2632 spec count as the previous
+session, which is correct: SIG-003's 12 new specs are Jest and live in `test:main`, not in the Jasmine
+suite.
 
-⚠️ `dev:stop` **before** `test:ci`, and **measure `test:main`, never inherit its number.**
+⚠️ **`typecheck:runtime` FAILS, and it is not this work.** Two files redeclare `EditorConnection`:
+`packages/noodl-runtime/test/editorconnection.replyidentity.test.ts:23` and
+`…/editorconnection.sendqueue.test.ts:24`. Both are **unmodified** in this diff. Pre-existing; worth
+someone's ten minutes, but do not let it read as a regression.
+
+⚠️ Editing a port `group` makes **four** artifacts stale at once — `catalog:generate`, `catalog:merge`,
+`cloud-library:generate`, `docs:nodes`. All four have `--check` gates and all four are in CI.
 
 ---
 
@@ -93,60 +83,97 @@ Paste the block below into a fresh session.
 
 ---
 
-Work on **phase 60, task SIG-003** for OpenNoodl/NodeGX. Work on `cline-dev`, commit straight to it,
-no branches and no PRs. **Check for a second live session first** (`git log --since="3 hours ago"`,
-and read untracked files rather than assuming they are yours) — there was one throughout the previous
-session, on phases 50/54/55/57/58. If there is, pathspec-scope every `git add` **and** every
-`git commit`, and never stash.
+Work on **phase 60, task SIG-005** for OpenNoodl/NodeGX. Work on `cline-dev`, commit straight to it,
+no branches and no PRs. **Check for a second live session first** (`git log --since="3 hours ago"`, and
+read untracked files rather than assuming they are yours) — there was one throughout the previous two
+sessions, on phases 50/54/55/57/58, touching `packages/noodl-core-ui/`,
+`packages/noodl-editor/src/editor/src/{utils/ExtractToComponent.ts, views/nodegrapheditor/EditorClipboard.ts,
+views/nodegrapheditor/ExtractToComponentPopup.*, views/panels/ComponentsPanelNew/, pages/ProjectsPage/,
+models/template/}` and `packages/noodl-editor/tests/`. If it is still live, pathspec-scope every
+`git add` **and** every `git commit`, and **never stash** — a stash was attempted last session and
+correctly refused.
 
 Read these first, in this order:
 
-1. `dev-docs/tasks/phase-60-values-and-signals/README.md` — the phase, and its **four premise
-   corrections**, every one of which was read in source. Do not re-derive them.
-2. `dev-docs/tasks/phase-60-values-and-signals/TASKS.md` — the ordering, and the section
-   **"What 001/002/004 left for the rest of the phase"**.
-3. `dev-docs/tasks/phase-60-values-and-signals/SIG-003-GROUPS-THAT-MEAN-SOMETHING.md` — the task.
-4. `dev-docs/tasks/phase-60-values-and-signals/SIG-001-THE-REFUSED-PORT-SAYS-WHY.md` — **its Register
-   only** (nine rows). It is where the previous session's defects live, and two of them are about
-   this phase's specs rather than its code.
-5. `dev-docs/reference/PORT-DESCRIPTION-STYLE.md` — normative. `description` is the catalog's channel,
-   read by the semantic validator and the AI authoring loop; `tooltip` is the property panel's. SIG-003
-   edits node definitions, so this is the file that says which field.
+1. `dev-docs/tasks/phase-60-values-and-signals/README.md` — the phase and its **four premise
+   corrections**, every one read in source. Do not re-derive them. Correction 3 is SIG-006's answer and
+   correction 1 is the reason no copy may say "a signal carries no value".
+2. `dev-docs/tasks/phase-60-values-and-signals/TASKS.md` — the ordering, and **"What SIG-003 settled,
+   and what it left"**.
+3. `dev-docs/tasks/phase-60-values-and-signals/SIG-005-THE-SIGNAL-TRAVELS.md` — the task. **Its §0 is
+   an investigation and it comes before any rendering code.**
+4. `dev-docs/tasks/phase-60-values-and-signals/SIG-006-WHICH-WAY-DOES-THIS-WIRE-GO.md` — **§"Build"
+   item 4 only**, which is why SIG-005 comes first: hover and the runtime pulse are the *same*
+   travelling mark on the same painter. **SIG-005 owns the mechanism; SIG-006 consumes it.** Building
+   them the other way round mints two animation paths on one wire.
 
-**SIG-003 is an audit of every port heading in the library**, plus a decision. Three things about it
-that the previous session established and you should not spend time rediscovering:
+**SIG-005 is not "build a pulse". The pulse is built, and switched on by default.** The task is to find
+out why a finished, enabled mechanism is something no user has ever mentioned seeing. Four things the
+previous session established from source on 2026-08-11 that you should not spend time rediscovering —
+they close **R1** and most of **§0.1–§0.3**:
 
-- ⚠️ **Its §2 rename half is a decision for Richard, not for you.** Surface it early with the census
-  in hand — `Value` (30) beside `Values` (6), `Change` (6) beside `Changed Events` (5), `Signals`
-  used 16× — and **get on with the ungrouped-port audit while you wait.** Do not block.
-- ⚠️ **`usePortAsLabel` is now load-bearing.** It is what makes the connection popup offer "connect it
-  to **Label**" instead of "connect it to **Variant**". If the audit touches a node that declares it,
-  preserve it, and prefer adding a `group:` over moving a port.
-- ⚠️ **SIG-003 changes strings SIG-002 shipped.** The timing-intent answer names **Variable**'s `Set`
-  and the **Run On Value Change** group by heading. Both are in
-  `packages/noodl-editor/src/editor/src/views/ConnectionPopup/portCopy.ts` — one edit, and
-  `tests-unit/connection-popup/portCopy.test.ts` asserts them, so a rename that forgets the copy goes
-  red rather than silently lying. **All new copy goes in that file too.**
+- ✅ **The producer is `NodeContext.prototype.connectionSentValue`**,
+  `packages/noodl-runtime/src/nodecontext.ts:573`. It fills `connectionsToPulse` (`:585-601`) and ships
+  it via `editorConnection.sendPulsingConnections` at `:626` and `:645`. The editor consumes it at
+  `ViewerConnection.ts:214` → `DebugInspector.instance.setConnectionsToPulse`. **SIG-005's R1 is
+  answered — record it and move on.**
+- 🔴 **§0.2 is answered, and the answer is the task's biggest finding: it pulses EVERY connection, not
+  only signals.** `connectionSentSignal` (`nodecontext.ts:608`) is a four-line wrapper that *calls*
+  `connectionSentValue` with a string. **A value changing and a signal firing produce an identical
+  pulse.** That is precisely the confusion this phase exists to separate, rendered identically by the
+  one mechanism that could teach the difference — so §1.4 is not a contingency, it is the work.
+- ⚠️ **There is a second gate the spec did not know about.** The spec found
+  `DebugInspector.instance.enabled = true` on the *editor* side. The *runtime* side has its own flag:
+  `connectionSentValue` returns early unless `editorConnection.isConnected() && debugInspectorsEnabled`
+  (`nodecontext.ts:574`), set by `setDebugInspectorsEnabled` (`:698`) from `viewer.jsx:112/258`, driven
+  by the editor's `sendDebugInspectorsEnabled` (`ViewerConnection.ts:477`, called at `:173` on connect
+  and `:504`). The chain **looks** complete end to end — so verify it live rather than assuming either
+  that it works or that this is the bug.
+- ⚠️ **A pulse lives 100 ms.** `clearOldConnectionPulsing` deletes any entry older than 100 ms
+  (`nodecontext.ts:629-641`) and reschedules itself on a 100 ms `setTimeout`. Against a fade-in, a
+  fade-out and `globalAlpha = t.opacity * 0.7`, that is a strong candidate for "fires, and is
+  invisible" — which is a different task from "never fires".
 
-The single fact the task turns on, already read in source: **an ungrouped port silently becomes
-`Other`** (`ConnectionBar.tsx`), so `Other` is not a category anyone chose — it is the absence of a
-`group:` line rendered as if it were a decision. On **every Variable node** the four ports that are
-the whole point of the node (`Value` in, `Set`, `Value` out, `Changed`) declare no group, while the
-only port that *has* one is `treatEmptyAs` → `'Advanced'`. A beginner opening a String variable sees
-a heading called *Advanced* and a bucket called *Other* containing everything they came for.
+So the three outcomes SIG-005 §0 says to distinguish are already narrowed to two, and **§0.4 —
+is it visible at all — is the open one.** Measure it before changing anything.
 
-**Standing constraints for this phase** (from the README, repeated because they are the ones that get
-forgotten): `opacity` cannot dim and stay legible — light mode is binding; **red is danger only**, and
-a refused connection is not the builder's error; wire colour already carries four meanings, so new
-information goes in shape, weight or motion; and **`portIcons.ts` is a complete glyph table imported
-by nothing** — use it or delete it, but do not start a third vocabulary beside it.
+**Standing constraints for this phase** (repeated because they are the ones that get forgotten):
+`opacity` cannot dim and stay legible, and **light mode is binding** — this bites SIG-005 directly,
+because `globalAlpha` multiplied onto a colour never appears in a token, so nothing in the code says a
+contrast ratio moved; **red is danger only**; **wire colour already carries four meanings** (type,
+health, pulse, diff annotation) and `NodeGraphEditorConnection.ts:625-627` explicitly refused to make
+selection a fifth — new information goes in **shape, weight or motion**, never a sixth colour; and
+**`portIcons.ts` is a complete glyph table imported by nothing** — use it or delete it in SIG-006, but
+do not start a third vocabulary beside it.
 
-**Verify in the running editor, not only in tests.** Use the `run-editor` skill. `dev:stop` before
-`test:ci`; measure `test:main` rather than inheriting it; and only the `Jasmine:` line counts —
-`test:ci`'s floor is **6 failures** (it reaches 12 when the order-dependent BEN-001 cluster fails, so
-re-run at another seed before investigating). Record the seed.
+**Verify in the running editor, not only in tests.** Use the `run-editor` skill. Traps that cost the
+last two sessions real time:
 
-**If SIG-003's audit turns out to be larger than one session, close the ungrouped-port half and stop
-there** — it is the half that fixes the reported complaint, and the rename half cannot ship without
-Richard's answer anyway. Then update `TASKS.md` and the task's Register with what was measured, and
-say plainly what you left.
+- ⚠️ **An occluded Electron renderer clamps timers by roughly 1000× and fires zero `ResizeObserver`
+  callbacks.** An animation graded by eye on a background window looks broken when it is fine and fine
+  when it is broken. **A screenshot forces the frame** — grade the pulse as forced frames at ≥3 points
+  along the travel, in both themes, never by watching.
+- ⚠️ **Measure the element you claim about**, and print the foreground and background hex beside every
+  ratio. A rect that has scrolled out of its container returns whatever the window is showing there;
+  one such measurement last session returned the editor's title bar.
+- ⚠️ **A synchronous measurement sweep lies** on an animated target. Sample across frames.
+- ⚠️ `ed.createNewNode` takes a **type object** (`{name: 'String'}`), not a string, and appends to
+  `ed.model.roots` — `forEachNode` only walks visual descendants, so a non-visual node you just created
+  will not appear in it. Clean up anything you add to Richard's project: `ed.model.removeNode(m, {undo:
+  true})`, then confirm `roots`.
+- ⚠️ **HMR does not reach `ed.connectionPopups`** and, expect the same for the canvas painters — restart
+  the stack after editing them.
+
+**Gates.** `dev:stop` **before** `test:ci`; **measure `test:main`, never inherit its number**; only the
+`Jasmine:` line counts, and match failures **by name** — the documented baseline is **6** (4 ×
+`AIX-006 style vocabulary`, 2 × `AI model registry`), reaching 12 when the order-dependent BEN-001
+cluster fails, so re-run at another seed before investigating. **Record the seed.** ⚠️ `test:ci` takes
+well over ten minutes on this machine and its output is large — redirect it to a file and grep, because
+a truncated tail loses the `Jasmine:` line and the seed, which happened last session. And ⚠️
+`typecheck:runtime` is already red on two untouched test files — do not chase it.
+
+**If SIG-005's §0 shows the mechanism is fine and only the presentation is wrong, that is the whole
+task and it is small** — say so, land it, and go to SIG-006 in the same session. If §0 turns up
+something larger, close §0 with the register filled in and stop there; **the investigation is the
+deliverable that makes SIG-006 and SIG-007 cheap**, and it is the half nobody can redo from the specs.
+Then update `TASKS.md` and the task's Register with what was measured, and say plainly what you left.

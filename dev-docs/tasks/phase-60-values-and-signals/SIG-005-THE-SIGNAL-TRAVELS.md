@@ -62,6 +62,12 @@ Do not write rendering code until these are answered, in this order:
 never fires", "it fires and is invisible", and "it fires, is visible, and nobody knows to look" each
 need a different fix, and only the last one is a design problem.
 
+⚠️ **§0.1 and §0.2 were answered from source on 2026-08-11 — see R1 and R2 below. Do not re-hunt
+them.** The headline is that the pulse fires on **every** connection, because `connectionSentSignal`
+simply calls `connectionSentValue`, so a value change and a signal firing are rendered identically
+today. **§0.4 — is it visible at all — is the open question**, and R4 records the 100 ms linger window
+that makes it the likely one.
+
 ## §1 — The build, conditional on §0
 
 Once the mechanism is understood:
@@ -96,5 +102,8 @@ Once the mechanism is understood:
 
 | # | Finding | State |
 |---|---|---|
-| **R1** | ⚠️ **The producer of `connectionsToPulse` was not found in source.** Consumed at `ViewerConnection.ts:214`; not present under that name in `noodl-runtime/src`, `noodl-viewer-react/src` or the editor source. Every scoping decision in this task depends on it. | **open — §0.1** |
+| **R1** | ✅ **The producer is `NodeContext.prototype.connectionSentValue`** — [`nodecontext.ts:573`](../../../packages/noodl-runtime/src/nodecontext.ts#L573). It fills `connectionsToPulse` at [`:585-601`](../../../packages/noodl-runtime/src/nodecontext.ts#L585) and ships it via `editorConnection.sendPulsingConnections` at [`:626`](../../../packages/noodl-runtime/src/nodecontext.ts#L626) and [`:645`](../../../packages/noodl-runtime/src/nodecontext.ts#L645); the editor consumes it at `ViewerConnection.ts:214`. The 2026-08-09 grep missed it because nothing in the chain is named "pulse" on the producing side. Found 2026-08-11 while writing SIG-005's handover. | ✅ **answered — §0.1** |
+| **R2** | 🔴 **§0.2 is answered, and it is this task's biggest finding: the pulse fires on EVERY connection, not only signals.** `connectionSentSignal` ([`:608`](../../../packages/noodl-runtime/src/nodecontext.ts#L608)) is a four-line wrapper that increments a counter and then *calls* `connectionSentValue` with a string. **A value changing and a signal firing produce an identical entry and an identical mark.** The one mechanism in the editor that could teach the distinction this whole phase is named for currently renders both the same way. §1.4 is therefore not a contingency — it is the work. | ✅ **answered — §0.2** |
+| **R3** | ⚠️ **There is a second enable gate the spec did not know about, on the runtime side.** The spec found `DebugInspector.instance.enabled = true` in the *editor*. `connectionSentValue` returns early unless `editorConnection.isConnected() && debugInspectorsEnabled` ([`:574`](../../../packages/noodl-runtime/src/nodecontext.ts#L574)), which is set by `setDebugInspectorsEnabled` ([`:698`](../../../packages/noodl-runtime/src/nodecontext.ts#L698)) from `viewer.jsx:112/258`, driven by the editor's `sendDebugInspectorsEnabled` (`ViewerConnection.ts:477`, called at `:173` on connect and at `:504`). Read in source the chain **looks** complete end to end — so this is a thing to confirm live, not a diagnosis. | 📋 **read, not driven — §0.3** |
+| **R4** | ⚠️ **A pulse lives 100 ms.** `clearOldConnectionPulsing` ([`:629-641`](../../../packages/noodl-runtime/src/nodecontext.ts#L629)) deletes any entry older than 100 ms and reschedules itself on a 100 ms `setTimeout`. Against a fade-in, a fade-out and `globalAlpha = t.opacity * 0.7` over an already-painted wire, that is a strong candidate for "it fires and is invisible" — a different task from "it never fires". **§0.4 is the open question; measure it before changing anything.** | 📋 **open — §0.4** |
 
