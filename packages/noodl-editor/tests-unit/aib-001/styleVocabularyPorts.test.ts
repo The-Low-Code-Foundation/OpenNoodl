@@ -20,7 +20,14 @@
  * vocabulary is allowed to say.
  */
 
-import { buildStyleVocabulary } from '../../src/editor/src/models/StyleTokensModel/StyleVocabulary';
+import * as fs from 'fs';
+import * as path from 'path';
+
+import { buildEffectiveTokens, readStoredTokens } from '../../src/editor/src/models/StyleTokensModel/ProjectTokenCss';
+import {
+  buildStyleVocabulary,
+  renderStyleVocabulary
+} from '../../src/editor/src/models/StyleTokensModel/StyleVocabulary';
 import { loadDefaultCatalog } from '../../src/editor/src/validation/catalog';
 
 const catalog = loadDefaultCatalog();
@@ -95,5 +102,120 @@ describe('the style vocabulary against the catalog', () => {
     const weights = styles.filter((s) => s.property === 'fontWeight');
     expect(weights.length).toBeGreaterThan(0);
     for (const w of weights) expect(w.value).toMatch(/^var\(--font-/);
+  });
+});
+
+/**
+ * DSG-005 — the same gate, over the compositions.
+ *
+ * A composition is a longer, more confident version of a variant: a whole
+ * parameter set the model is told to copy verbatim onto a node. Everything the
+ * suite above exists to prevent applies to it more strongly, and two failure
+ * modes are new — a `var(--token)` naming a token that does not exist (which is
+ * how `--border-control` reached a shipped recipe and the doctrine), and a
+ * `recipe` id pointing at a file that has been renamed or removed.
+ */
+describe('DSG-005 — the style vocabulary compositions', () => {
+  const compositions = vocab.compositions;
+  const tokenNames = new Set(Array.from(buildEffectiveTokens(readStoredTokens(null)).values()).map((t) => t.name));
+  const EXAMPLES_DIR = path.resolve(__dirname, '../../../../docs/node-catalog/examples');
+
+  it('supplies the named parameter sets the doctrine tells the model to fix', () => {
+    // Doctrine §6, verbatim: "a card, a shell, a sectionHead, one primaryButton,
+    // one outlineButton, and a type ramp". Before this task the instruction was
+    // given and nothing supplied the sets.
+    const ids = compositions.map((c) => c.id);
+    for (const required of ['card', 'shell', 'sectionHead', 'primaryButton', 'outlineButton']) {
+      expect(ids).toContain(required);
+    }
+    // The type ramp: display down to secondary text, per §3.
+    const ramp = compositions.filter((c) => c.group === 'type').map((c) => c.id);
+    expect(ramp).toEqual(
+      expect.arrayContaining(['displayHeadline', 'sectionHeading', 'cardTitle', 'eyebrow', 'lead', 'body', 'meta'])
+    );
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+
+  it('names only ports the node types actually declare', () => {
+    // The F22 gate. A parameter with no port is dropped at apply with a warning
+    // that never blocks — so this is the only thing standing between a
+    // confident-looking composition and styling that silently evaporates.
+    const orphans: string[] = [];
+    const unknownTypes: string[] = [];
+    for (const c of compositions) {
+      if (!catalog.hasType(c.nodeType)) unknownTypes.push(`${c.id}: ${c.nodeType}`);
+      for (const property of Object.keys(c.parameters)) {
+        if (!catalog.hasPort(c.nodeType, 'input', property)) orphans.push(`${c.id}: ${c.nodeType}.${property}`);
+      }
+    }
+    expect(unknownTypes).toEqual([]);
+    expect(orphans).toEqual([]);
+  });
+
+  it('never emits a variant or size parameter', () => {
+    // Both are `allowConnectionsOnly`: setting either as a parameter is
+    // discarded AND rejected. Copying the concrete parameters is the only route.
+    const offenders = compositions.filter((c) => 'variant' in c.parameters || 'size' in c.parameters).map((c) => c.id);
+    expect(offenders).toEqual([]);
+  });
+
+  it('references only tokens that exist, and never a raw hex or a "Npx" string', () => {
+    // `--border-control` is named in the design doctrine §4 and used in
+    // `ui-split-hero`, and is in neither DefaultTokens.ts nor any preset. An
+    // undefined custom property makes the CSS declaration invalid, so the
+    // control's border falls back to currentColor — the exact defect §4 exists
+    // to prevent. This check is what stops the vocabulary repeating it.
+    const problems: string[] = [];
+    for (const c of compositions) {
+      for (const [property, value] of Object.entries(c.parameters)) {
+        if (typeof value !== 'string') continue;
+        for (const match of value.matchAll(/var\((--[A-Za-z0-9-]+)\)/g)) {
+          if (!tokenNames.has(match[1])) problems.push(`${c.id}.${property}: unknown token ${match[1]}`);
+        }
+        if (/^#[0-9a-fA-F]{3,8}$/.test(value) || /^rgba?\(/.test(value)) {
+          problems.push(`${c.id}.${property}: raw colour ${value}`);
+        }
+        // AIB-001: `defineRegularInputProp` reads `value.value`, so a dimension
+        // written as a string is dropped without a word.
+        if (/^-?\d+(\.\d+)?(px|%|rem|em)$/.test(value)) {
+          problems.push(`${c.id}.${property}: dimension as a string, must be { value, unit }`);
+        }
+      }
+    }
+    expect(problems).toEqual([]);
+  });
+
+  it('points at recipe ids that still exist, and inlines no graph', () => {
+    // §2.2: a pointer, not a copy. A second copy of a recipe here would drift,
+    // and drift in the corpus an agent imitates is phase 55's F23 again.
+    const onDisk = new Set(
+      fs
+        .readdirSync(EXAMPLES_DIR)
+        .filter((f) => f.endsWith('.json'))
+        .map((f) => f.slice(0, -'.json'.length))
+    );
+    const missing = compositions.map((c) => c.recipe).filter((id) => !onDisk.has(id));
+    expect(missing).toEqual([]);
+
+    for (const c of compositions) {
+      // A composition is a flat parameter bag for ONE node. Anything with
+      // children or connections in it is an inlined graph.
+      const serialized = JSON.stringify(c);
+      expect(serialized).not.toContain('"children"');
+      expect(serialized).not.toContain('"connections"');
+    }
+  });
+
+  it('renders every composition into the prompt block, terse and by name', () => {
+    const block = renderStyleVocabulary(vocab);
+    expect(block).toContain('COMPOSITIONS');
+    for (const c of compositions) {
+      expect(block).toContain(`- ${c.id} (${c.nodeType}) [${c.recipe}]`);
+    }
+    // The budget: one line per composition plus one header per group. Not a
+    // document — the descriptions stay in detail:"full".
+    const compositionLines = block.split('\n').filter((l) => l.startsWith('- ') && / \[ui-/.test(l));
+    expect(compositionLines.length).toBe(compositions.length);
+    for (const c of compositions) expect(block).not.toContain(c.description);
   });
 });
