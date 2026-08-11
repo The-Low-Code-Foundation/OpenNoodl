@@ -25,6 +25,14 @@ export interface CorpusNode {
   parameters?: Record<string, unknown> | null;
   children?: string[];
   ports?: { name: string; plug?: string }[];
+  /**
+   * Visual-state overrides, carried verbatim. Read by the §2.4 premise check and
+   * by nothing else — ⚠️ and its absence is what made the first run of
+   * `explore-hover.ts` report a confident **0**, on a corpus carrying 41 of
+   * them. A loader that drops a field answers every question about that field
+   * wrong, and answers it with a number.
+   */
+  stateParameters?: Record<string, Record<string, unknown>>;
 }
 
 export interface CorpusComponent {
@@ -77,7 +85,8 @@ function flattenLegacy(roots: any[]): CorpusNode[] {
       label: n.label,
       parameters: n.parameters ?? null,
       children: (n.children ?? []).map((c: any) => c.id),
-      ports: n.ports ?? undefined
+      ports: n.ports ?? undefined,
+      stateParameters: n.stateParameters ?? undefined
     });
     for (const c of n.children ?? []) visit(c);
   };
@@ -116,7 +125,8 @@ function componentsOf(file: string): CorpusComponent[] {
             label: n.label,
             parameters: n.parameters ?? null,
             children: Array.isArray(n.children) ? n.children : [],
-            ports: n.ports ?? undefined
+            ports: n.ports ?? undefined,
+            stateParameters: n.stateParameters ?? undefined
           })),
           connections
         });
