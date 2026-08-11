@@ -54,11 +54,11 @@ interface EditorComponentLike {
   name: string;
   fullName?: string;
   /**
-   * LEG-003 §2 / LEG-006. Read from two places on purpose: `ComponentModel`
-   * carries no `description` field today (it drops the key on `fromJSON`), and
-   * LEG-006 may restore it either as a field of its own or inside the existing
-   * `metadata` bag. Reading both means this adapter is correct either way, and
-   * correct *now* for anything that hands it a plain component object.
+   * LEG-003 §2 / LEG-006. Read from two places on purpose. LEG-006 has since
+   * landed and `ComponentModel` now carries `description` as a field of its
+   * own, so the top-level read is the live one. The `metadata` read is not
+   * dead: a project saved before LEG-006 still has the text in the metadata
+   * bag on disk, and stays readable until it is next saved.
    */
   description?: unknown;
   metadata?: Record<string, unknown>;
