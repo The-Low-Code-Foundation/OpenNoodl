@@ -28,6 +28,7 @@ import { z } from 'zod';
 import { assertInsideDocs, describeDoc, DocPathError, DOCS_DIR, DOC_TEMPLATES, KNOWN_DOCS } from '../editor-deps';
 import type { DocInjection } from '../editor-deps';
 import { ToolError } from '../errors';
+import type { ProjectBinding } from '../project/ProjectBinding';
 import type { ProjectStore } from '../project/ProjectStore';
 import { guarded, jsonResult } from './util';
 
@@ -97,7 +98,7 @@ function walkDocs(docsDir: string, projectDir: string): string[] {
 }
 
 /** Always-registered read tools. */
-export function registerDocsReadTools(server: McpServer, store: ProjectStore): void {
+export function registerDocsReadTools(server: McpServer, binding: ProjectBinding): void {
   server.registerTool(
     'list_project_docs',
     {
@@ -112,6 +113,7 @@ export function registerDocsReadTools(server: McpServer, store: ProjectStore): v
       inputSchema: {}
     },
     guarded(() => {
+      const store = binding.require();
       const docsDir = path.join(store.projectDir, DOCS_DIR);
       const known = new Map(KNOWN_DOCS.map((d) => [d.path, d]));
       const found = walkDocs(docsDir, store.projectDir);
@@ -172,6 +174,7 @@ export function registerDocsReadTools(server: McpServer, store: ProjectStore): v
       }
     },
     guarded((args: { path: string }) => {
+      const store = binding.require();
       const { rel, abs } = resolveDoc(store, args.path);
       if (!fs.existsSync(abs)) {
         throw new ToolError('not-found', `No ${rel} in this project.`, {
@@ -220,7 +223,7 @@ export function writeProjectDocFile(store: ProjectStore, docPath: string, conten
 }
 
 /** Write tools — only when --allow-writes. */
-export function registerDocsWriteTools(server: McpServer, store: ProjectStore): void {
+export function registerDocsWriteTools(server: McpServer, binding: ProjectBinding): void {
   server.registerTool(
     'write_project_doc',
     {
@@ -237,7 +240,7 @@ export function registerDocsWriteTools(server: McpServer, store: ProjectStore): 
       }
     },
     guarded((args: { path: string; content: string }) => {
-      return jsonResult({ ok: true, ...writeProjectDocFile(store, args.path, args.content) });
+      return jsonResult({ ok: true, ...writeProjectDocFile(binding.require(), args.path, args.content) });
     })
   );
 
@@ -251,6 +254,7 @@ export function registerDocsWriteTools(server: McpServer, store: ProjectStore): 
       inputSchema: {}
     },
     guarded(() => {
+      const store = binding.require();
       const created: string[] = [];
       for (const doc of KNOWN_DOCS) {
         const abs = path.join(store.projectDir, ...doc.path.split('/'));

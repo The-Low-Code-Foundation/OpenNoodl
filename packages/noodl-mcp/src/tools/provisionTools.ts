@@ -36,6 +36,7 @@ import { ensureProjectId } from '../backend/projectIdentity';
 import { censusBackends, listBackendConfigs, provisionBackend, stopBackend } from '../backend/provision';
 import { reapOrphanedBackends } from '../backend/reaper';
 import { listRuntimeRecords, ownerIsLive } from '../backend/runtimeRecord';
+import type { ProjectBinding } from '../project/ProjectBinding';
 import type { ProjectStore } from '../project/ProjectStore';
 import { guarded, jsonResult } from './util';
 
@@ -57,7 +58,7 @@ const collectionSchema = z.object({
     )
 });
 
-export function registerProvisionTools(server: McpServer, store: ProjectStore): void {
+export function registerProvisionTools(server: McpServer, binding: ProjectBinding): void {
   server.registerTool(
     'provision_backend',
     {
@@ -83,6 +84,7 @@ export function registerProvisionTools(server: McpServer, store: ProjectStore): 
       }
     },
     guarded(async (args: { name: string; collections?: { name: string; columns: { name: string; type: string }[] }[]; force?: boolean }) => {
+      const store = binding.require();
       // Refuse BEFORE spawning anything: a provision that creates a process and
       // then fails to bind it has left durable machine state for nothing.
       const current = store.readCloudServices();

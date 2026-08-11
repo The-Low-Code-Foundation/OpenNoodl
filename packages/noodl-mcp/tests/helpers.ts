@@ -25,7 +25,10 @@ export interface TestSession {
 }
 
 export async function connect(projectDir: string, allowWrites = true): Promise<TestSession> {
-  const { server, store } = createServer({ projectDir, allowWrites });
+  const { server, binding } = createServer({ projectDir, allowWrites });
+  // BST-001 — every suite that uses this helper serves a real fixture project,
+  // so the binding is always bound here and `require()` is the honest read.
+  const store = binding.require();
   const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
   const client = new Client({ name: 'test-client', version: '0.0.0' });
   await Promise.all([server.connect(serverTransport), client.connect(clientTransport)]);

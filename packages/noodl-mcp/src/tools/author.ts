@@ -22,6 +22,7 @@ import { pathToLegacyName, validateComponentPath } from '../paths';
 import { componentIsPage, registerPages, registrationSummary } from '../project/pageRegistration';
 import type { NodeIdRemap } from '../project/nodeIds';
 import { deconflictNodeIds, remapNote } from '../project/nodeIds';
+import type { ProjectBinding } from '../project/ProjectBinding';
 import type { ProjectStore } from '../project/ProjectStore';
 import type { ExampleBudget } from './attachments';
 import { examplesBlock } from './attachments';
@@ -346,7 +347,7 @@ const PAGE_WITHOUT_PLAN_ADVISORY =
 
 export function registerAuthorTools(
   server: McpServer,
-  store: ProjectStore,
+  binding: ProjectBinding,
   plans: PlanRegistry,
   examples: ExampleBudget,
   // AWP-006. Optional so the four existing call sites in the suite that build a
@@ -385,6 +386,7 @@ export function registerAuthorTools(
         description?: string;
         allow_unknown_types?: boolean;
       }) => {
+        const store = binding.require();
         const pathError = validateComponentPath(args.path);
         if (pathError) throw new ToolError('invalid-argument', pathError);
         if (store.resolve(args.path)) {
@@ -487,6 +489,7 @@ export function registerAuthorTools(
         if_revision?: string;
         allow_unknown_types?: boolean;
       }) => {
+        const store = binding.require();
         if (!args.set === !args.operations) {
           throw new ToolError('invalid-argument', 'Provide exactly one of `set` or `operations`.');
         }
@@ -568,6 +571,7 @@ export function registerAuthorTools(
       }
     },
     guarded((args: { path: string; force?: boolean }) => {
+      const store = binding.require();
       const stored = store.readComponent(args.path);
       const usages = store.findUsages(stored.key);
       if (usages.length > 0 && !args.force) {

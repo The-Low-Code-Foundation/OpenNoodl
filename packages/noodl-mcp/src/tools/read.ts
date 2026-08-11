@@ -9,6 +9,7 @@ import { z } from 'zod';
 import { describeComponent } from '../describe';
 import { AUTHORING_TRAPS, DECOMPOSITION_DOCTRINE_MD, DESIGN_DOCTRINE_MD, isComponentRef, refToPath } from '../editor-deps';
 import { ToolError } from '../errors';
+import type { ProjectBinding } from '../project/ProjectBinding';
 import type { ProjectStore } from '../project/ProjectStore';
 import type {
   ExplainComponentResponse,
@@ -60,7 +61,7 @@ export function truncateRowDescription(description: string): string {
   return description.slice(0, LIST_COMPONENTS_DESCRIPTION_CHARS - 1).trimEnd() + '…';
 }
 
-export function registerReadTools(server: McpServer, store: ProjectStore, options: { allowWrites: boolean }): void {
+export function registerReadTools(server: McpServer, binding: ProjectBinding, options: { allowWrites: boolean }): void {
   server.registerTool(
     'get_project_info',
     {
@@ -72,6 +73,7 @@ export function registerReadTools(server: McpServer, store: ProjectStore, option
       inputSchema: {}
     },
     guarded(() => {
+      const store = binding.require();
       const project = store.readProjectFile();
       const registry = store.readRegistry();
       const routes = store.readRoutes();
@@ -134,6 +136,7 @@ export function registerReadTools(server: McpServer, store: ProjectStore, option
       }
     },
     guarded((args: { type?: string; path_prefix?: string }) => {
+      const store = binding.require();
       const all = store.listComponents();
       let rows = all;
       if (args.type) rows = rows.filter((r) => r.type === args.type);
@@ -174,6 +177,7 @@ export function registerReadTools(server: McpServer, store: ProjectStore, option
       }
     },
     guarded((args: { path: string; include_usages?: boolean }) => {
+      const store = binding.require();
       const stored = store.readComponent(args.path);
       const c = stored.files.component;
       // AWP-001 §3 — an agent inspecting a project written before the derivation
@@ -218,6 +222,7 @@ export function registerReadTools(server: McpServer, store: ProjectStore, option
       }
     },
     guarded((args: { node_type?: string; text?: string; path_prefix?: string }) => {
+      const store = binding.require();
       if (!args.node_type && !args.text) {
         throw new ToolError('invalid-argument', 'Provide node_type and/or text.');
       }
@@ -284,6 +289,7 @@ export function registerReadTools(server: McpServer, store: ProjectStore, option
       }
     },
     guarded((args: { path: string }) => {
+      const store = binding.require();
       const stored = store.readComponent(args.path);
       const payload: ExplainComponentResponse = describeComponent(stored.key, stored.files);
       return jsonResult(payload);

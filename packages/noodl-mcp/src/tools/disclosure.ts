@@ -39,7 +39,7 @@ import type { McpServer, RegisteredTool } from '@modelcontextprotocol/sdk/server
 import { z } from 'zod';
 
 import { backendRequirementFor } from '../editor-deps';
-import { TOOL_GROUPS, deferredGroups, groupOfTool, type ToolGroupId } from '../toolGroups';
+import { BOOTSTRAP_TOOLS, TOOL_GROUPS, deferredGroups, groupOfTool, type ToolGroupId } from '../toolGroups';
 import type { FindToolsResponse } from './responses';
 import { guarded, jsonResult } from './util';
 
@@ -61,6 +61,22 @@ export class ToolDisclosure {
   /** When false nothing is ever hidden — the `--all-tools` posture. */
   private deferring = true;
 
+  /**
+   * BST-001 — whether a project is bound.
+   *
+   * Set once, at construction, and read by both {@link applyPolicy} and
+   * {@link registerFindTools}: those two have to agree about the mode, and a
+   * boolean passed to each separately is a boolean that eventually disagrees
+   * with itself. Defaults to bound, so every existing call site and every spec
+   * that constructs one keeps today's behaviour.
+   */
+  constructor(private readonly bound: boolean = true) {}
+
+  /** No project: the surface is {@link BOOTSTRAP_TOOLS} and nothing can be revealed. */
+  get isBootstrap(): boolean {
+    return !this.bound;
+  }
+
   /** Called by {@link recordTools} for every `registerTool`. */
   record(name: string, handle: RegisteredTool): void {
     this.handles.set(name, handle);
@@ -76,6 +92,20 @@ export class ToolDisclosure {
    * handles do not all exist before then.
    */
   applyPolicy(options: { deferTools: boolean }): void {
+    // BST-001 — the bootstrap surface is a policy applied here, at the one place
+    // that already decides what is advertised, rather than sixteen conditional
+    // registrations. `--all-tools` does NOT override it: that flag exists for a
+    // client that ignores `list_changed`, and there is nothing to change into.
+    // Advertising 89 project tools on a server with no project would be the
+    // exact failure this mode exists to prevent, in one flag.
+    if (this.isBootstrap) {
+      this.deferring = true;
+      this.revealed.clear();
+      for (const [name, handle] of this.handles) {
+        if (!BOOTSTRAP_TOOLS.includes(name) && name !== 'find_tools') handle.disable();
+      }
+      return;
+    }
     this.deferring = options.deferTools;
     if (!options.deferTools) {
       for (const group of TOOL_GROUPS) this.revealed.add(group.id);
@@ -98,13 +128,18 @@ export class ToolDisclosure {
    */
   revealGroup(id: ToolGroupId): string[] {
     const group = TOOL_GROUPS.find((g) => g.id === id);
-    if (!group || this.revealed.has(id)) return [];
+    if (!group || this.isBootstrap || this.revealed.has(id)) return [];
     this.revealed.add(id);
     return this.revealNames(group.tools);
   }
 
   /** Reveal named tools without their whole group — what a `query` match gets. */
   revealNames(names: readonly string[]): string[] {
+    // BST-001 — the bootstrap surface has no door out of it, and this is the
+    // second half of saying so. Guarded here as well as in `revealGroup`
+    // because this is the primitive: a future caller that reveals by name would
+    // otherwise re-enable a project tool on a server with no project.
+    if (this.isBootstrap) return [];
     const newly: string[] = [];
     for (const name of names) {
       const handle = this.handles.get(name);
@@ -175,6 +210,24 @@ const REFRESH_NOTE =
   'Revealed tools are advertised from your next tool list. If your client does not refresh tool lists on ' +
   'notifications/tools/list_changed, restart the server with --all-tools to advertise everything up front.';
 
+/**
+ * BST-001 — what `find_tools` says on a server with no project.
+ *
+ * ⚠️ **It must not offer what it cannot deliver.** The bound description ends
+ * with "one call away", which is true there and a lie here: nothing this tool
+ * can do brings the project surface back, because there is no project. So the
+ * unbound copy states the surface, states the reason, and hands over the same
+ * two exits the bootstrap briefing gives — which is the only useful thing it
+ * has, and the reason it stays advertised at all rather than answering "unknown
+ * tool".
+ */
+const BOOTSTRAP_FIND_TOOLS_DESCRIPTION =
+  'This server has no project bound, so it advertises everything it currently has: ' +
+  BOOTSTRAP_TOOLS.join(', ') +
+  '. The rest of the server — reading and authoring components, validation, rendering, the backend — needs a ' +
+  'project, and arrives when a server is started with a project directory. This tool cannot reveal them here. ' +
+  'Call list_projects to find a project that already exists, or create_project to make one.';
+
 export function registerFindTools(server: McpServer, disclosure: ToolDisclosure): void {
   // The description is the whole disclosure contract for a model that reads
   // nothing else, so it names each deferred group, its size and its subject.
@@ -183,17 +236,19 @@ export function registerFindTools(server: McpServer, disclosure: ToolDisclosure)
   const catalogue = deferredGroups()
     .map((g) => `"${g.id}" (${g.tools.length} tools) — ${g.purpose}`)
     .join(' ');
+  const bootstrap = disclosure.isBootstrap;
 
   server.registerTool(
     'find_tools',
     {
       title: 'Find tools',
-      description:
-        'Reveal tools this server has but is not currently advertising. The authoring set is advertised up ' +
-        'front; the rest is held back so it is not re-sent on every turn, and is one call away. Held back: ' +
-        catalogue +
-        ' Pass `group` to reveal a whole group, or `query` to search names and descriptions across everything ' +
-        'and reveal what matches. Call with neither for the inventory.',
+      description: bootstrap
+        ? BOOTSTRAP_FIND_TOOLS_DESCRIPTION
+        : 'Reveal tools this server has but is not currently advertising. The authoring set is advertised up ' +
+          'front; the rest is held back so it is not re-sent on every turn, and is one call away. Held back: ' +
+          catalogue +
+          ' Pass `group` to reveal a whole group, or `query` to search names and descriptions across everything ' +
+          'and reveal what matches. Call with neither for the inventory.',
       inputSchema: {
         group: z
           .enum(['backend', 'docs', 'explore', 'project', 'theme'])
@@ -203,6 +258,15 @@ export function registerFindTools(server: McpServer, disclosure: ToolDisclosure)
       }
     },
     guarded((args: { group?: Exclude<ToolGroupId, 'core'>; query?: string }) => {
+      // Unbound, both arguments are answered the same way, and the answer is not
+      // an error: the call was reasonable, there is simply nothing behind it.
+      // `groups` is empty rather than a list of groups reported `advertised:
+      // false` — that shape reads as "ask again for one of these", which is the
+      // turn this whole mode exists to save.
+      if (disclosure.isBootstrap) {
+        const payload: FindToolsResponse = { revealed: [], groups: [], note: BOOTSTRAP_FIND_TOOLS_DESCRIPTION };
+        return jsonResult(payload);
+      }
       const revealed: string[] = [];
       if (args.group) revealed.push(...disclosure.revealGroup(args.group));
       if (args.query) {

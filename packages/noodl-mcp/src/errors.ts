@@ -12,6 +12,10 @@ export class ToolError extends Error {
       | 'invalid-argument'
       | 'validation-failed'
       | 'not-a-v2-project'
+      // BST-001 — this server started with no project directory. Distinct from
+      // `not-found`, which means a project was named and is not there: this one
+      // means none was ever named, and the fix is a different call entirely.
+      | 'no-project'
       | 'read-only'
       | 'no-backend'
       | 'backend-error'

@@ -25,6 +25,7 @@ import {
   type TokenCategory
 } from '../editor-deps';
 import { ToolError } from '../errors';
+import type { ProjectBinding } from '../project/ProjectBinding';
 import type { ProjectStore } from '../project/ProjectStore';
 import { guarded, jsonResult } from './util';
 
@@ -80,7 +81,7 @@ function upsertTokens(store: ProjectStore, entries: Array<{ name: string; value:
 }
 
 /** Always-registered read tool. */
-export function registerStyleReadTools(server: McpServer, store: ProjectStore): void {
+export function registerStyleReadTools(server: McpServer, binding: ProjectBinding): void {
   server.registerTool(
     'get_style_vocabulary',
     {
@@ -97,7 +98,7 @@ export function registerStyleReadTools(server: McpServer, store: ProjectStore): 
       }
     },
     guarded((args: { detail?: 'full' | 'prompt' }) => {
-      const vocab = buildStyleVocabulary(store.designTokenMetaSource());
+      const vocab = buildStyleVocabulary(binding.require().designTokenMetaSource());
       if (args.detail === 'prompt') {
         return jsonResult({ vocabulary: renderStyleVocabulary(vocab) });
       }
@@ -107,7 +108,7 @@ export function registerStyleReadTools(server: McpServer, store: ProjectStore): 
 }
 
 /** Write tools — only when --allow-writes. */
-export function registerStyleWriteTools(server: McpServer, store: ProjectStore): void {
+export function registerStyleWriteTools(server: McpServer, binding: ProjectBinding): void {
   server.registerTool(
     'set_project_tokens',
     {
@@ -125,7 +126,7 @@ export function registerStyleWriteTools(server: McpServer, store: ProjectStore):
       }
     },
     guarded((args: { tokens: Array<{ name: string; value: string }> }) => {
-      const customTokens = upsertTokens(store, args.tokens);
+      const customTokens = upsertTokens(binding.require(), args.tokens);
       return jsonResult({
         ok: true,
         updated: args.tokens.map((t) => t.name),
@@ -149,6 +150,7 @@ export function registerStyleWriteTools(server: McpServer, store: ProjectStore):
       }
     },
     guarded((args: { preset_id: string }) => {
+      const store = binding.require();
       const preset = getPreset(args.preset_id);
       if (!preset) {
         throw new ToolError('not-found', `No style preset "${args.preset_id}".`, {

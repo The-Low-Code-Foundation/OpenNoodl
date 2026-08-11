@@ -70,6 +70,7 @@ import { reconcileHierarchy } from '../graph';
 import { deconflictNodeIds, remapNote } from '../project/nodeIds';
 import { pathToLegacyName, toPathForm, validateComponentPath } from '../paths';
 import { componentIsPage, registerPages, registrationSummary } from '../project/pageRegistration';
+import type { ProjectBinding } from '../project/ProjectBinding';
 import type { ProjectStore } from '../project/ProjectStore';
 import { authoredProjectViews, preconditionDiagnostics } from '../validate';
 import type { WriteValidation } from '../validate';
@@ -458,7 +459,7 @@ function stagingProgress(plan: ServerPlan): string {
 
 export function registerPlanTools(
   server: McpServer,
-  store: ProjectStore,
+  binding: ProjectBinding,
   registry: PlanRegistry,
   examples: ExampleBudget,
   // AWP-006 — see registerAuthorTools. Optional for the same reason.
@@ -518,6 +519,7 @@ export function registerPlanTools(
         { kind: 'create' | 'update' | 'doc' | 'provision'; target: string; intent: string } & PlanStructureInput
       >;
     }) => {
+      const store = binding.require();
       // AAQ-005 — one vocabulary, an honest capability. The editor's plan model
       // has carried `provision` since AIB-007 and this package imports that very
       // module, so silently rejecting the kind at the schema edge told an agent
@@ -699,6 +701,7 @@ export function registerPlanTools(
         content?: string;
         allow_unknown_types?: boolean;
       }) => {
+        const store = binding.require();
         const serverPlan = mustGetPlan(args.plan_id);
         const operation = serverPlan.plan.operations.find((op) => op.id === args.operation_id);
         if (!operation) {
@@ -838,6 +841,7 @@ export function registerPlanTools(
       }
     },
     guarded(async (args: { plan_id: string; skip?: string[]; render?: 'summary' | 'off' }) => {
+      const store = binding.require();
       const serverPlan = mustGetPlan(args.plan_id);
       const skip = new Set(args.skip ?? []);
 

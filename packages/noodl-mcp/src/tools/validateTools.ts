@@ -7,12 +7,13 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 
 import { sortDiagnostics } from '../editor-deps';
+import type { ProjectBinding } from '../project/ProjectBinding';
 import type { ProjectStore } from '../project/ProjectStore';
 import { validateOnDisk } from '../validate';
 import type { ValidateComponentResponse, ValidateProjectResponse } from './responses';
 import { guarded, jsonResult } from './util';
 
-export function registerValidateTools(server: McpServer, store: ProjectStore): void {
+export function registerValidateTools(server: McpServer, binding: ProjectBinding): void {
   const strictArg = z
     .boolean()
     .optional()
@@ -32,6 +33,7 @@ export function registerValidateTools(server: McpServer, store: ProjectStore): v
       }
     },
     guarded((args: { path: string; strict?: boolean }) => {
+      const store = binding.require();
       const { report, target } = validateOnDisk(store, { component: args.path, strict: args.strict });
       const payload: ValidateComponentResponse = {
         target,
@@ -52,6 +54,7 @@ export function registerValidateTools(server: McpServer, store: ProjectStore): v
       }
     },
     guarded((args: { strict?: boolean }) => {
+      const store = binding.require();
       const { report } = validateOnDisk(store, { strict: args.strict });
       const payload: ValidateProjectResponse = {
         summary: report.summary,

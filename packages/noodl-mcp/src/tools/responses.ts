@@ -318,6 +318,28 @@ export interface FindToolsResponse {
   note?: string;
 }
 
+/** BST-006 — one project the launcher has recorded. */
+export interface ProjectListRow {
+  name: string;
+  /** Absolute, resolved. This is the argument a server is started with. */
+  directory: string;
+  /**
+   * `v2` opens; `legacy` needs migrating in the editor first; `unrecognised` is
+   * a directory the launcher remembers that no longer looks like a project.
+   * Reported rather than filtered — see `listProjects.ts`.
+   */
+  format: 'v2' | 'legacy' | 'unrecognised';
+  /** ISO, from the launcher's `latestAccessed`. Absent when it never recorded one. */
+  lastOpened?: string;
+}
+
+export interface ListProjectsResponse {
+  projects: ProjectListRow[];
+  note: string;
+  /** Only when the list is empty: the store files that were looked for, in order. */
+  searched?: string[];
+}
+
 export interface DeleteComponentResponse {
   deleted: string;
   removedFiles: string[];

@@ -265,8 +265,10 @@ export const TOOL_GROUPS: readonly ToolGroup[] = Object.freeze([
   {
     id: 'project',
     title: 'Project lifecycle',
-    purpose: 'create a new project elsewhere on disk; read an imported project\'s conversion report.',
-    tools: ['create_project', 'get_import_report'],
+    purpose:
+      'list the NodeGX projects on this machine; create a new project elsewhere on disk; read an imported ' +
+      'project\'s conversion report.',
+    tools: ['list_projects', 'create_project', 'get_import_report'],
     resident: false
   },
   {
@@ -335,6 +337,53 @@ export const WRITE_ONLY_TOOLS: ReadonlySet<string> = new Set<string>([
   'create_project',
   'set_project_tokens',
   'set_style_preset'
+]);
+
+/**
+ * BST-001 — the whole advertised surface of a server with no project bound.
+ *
+ * ## Why four, and why these four
+ *
+ * ⚠️ **A model calls what it is shown.** An advertised `update_component` on a
+ * server with nothing to update produces a call, a refusal and a turn spent, and
+ * repeats until the model gives up or invents an explanation. So the unbound
+ * surface is not "everything, erroring" — it is a different, smaller set, and
+ * everything else is genuinely absent from `tools/list`.
+ *
+ * | Tool | Why it is here |
+ * |---|---|
+ * | `list_projects` | So an agent can find the project the user already has instead of making a second one. First for the same reason it is named first in {@link BOOTSTRAP_INSTRUCTIONS} |
+ * | `create_project` | The point of the mode |
+ * | `list_examples` | Scoping a build with no project to read from |
+ * | `get_example` | The same, and it is the one thing that shows what a NodeGX graph actually looks like |
+ *
+ * ## ⚠️ `find_tools` is a fifth advertised tool, and this list does not name it
+ *
+ * BST-001's acceptance says "exactly the four bootstrap tools", and its §3 spends
+ * a paragraph designing what `find_tools` does *while unbound* — "it should
+ * report the bootstrap set and say plainly that the rest arrive with a project".
+ * Both cannot be true, so this build takes the second: `find_tools` is advertised
+ * in every mode, and unbound it reveals nothing and says why.
+ *
+ * The reason is the same one that decides every other string in this mode. An
+ * absent `find_tools` answers a model that has met this server before with
+ * "unknown tool", which is a dead end — no fix named, nothing to do next. A
+ * present one answers with the two exits. It is one short description, rewritten
+ * for the mode rather than listing groups it cannot open, and it is the only
+ * tool in the surface that can be called wrongly and still help.
+ *
+ * So: this list is the *capability* surface, `tools/list` is these four plus
+ * `find_tools`, and `tests/bootstrap.test.ts` asserts exactly that set — nothing
+ * project-shaped, and nothing merely present-and-erroring.
+ *
+ * ⚠️ Every name here must exist in {@link TOOL_GROUPS}; `tests/bootstrap.test.ts`
+ * asserts it, because a typo would silently produce a three-tool server.
+ */
+export const BOOTSTRAP_TOOLS: readonly string[] = Object.freeze([
+  'list_projects',
+  'create_project',
+  'list_examples',
+  'get_example'
 ]);
 
 /** The group a tool belongs to, or `undefined` if the manifest has never heard of it. */

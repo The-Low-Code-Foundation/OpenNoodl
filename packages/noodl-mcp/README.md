@@ -17,8 +17,13 @@ your installation's path and your open project's path already filled in, and a p
 name (MCP-001). Everything here is the same thing, written out.
 
 There is no URL and nothing to start: this is a **stdio** server that your MCP client spawns
-itself. Create the project in NodeGX first, then point the agent at it — this server authors
-inside a project that already exists; it will not make you one.
+itself. Point it at a project directory and it serves that project.
+
+**With no project directory it still starts** (BST-001), in *bootstrap mode*: `list_projects`,
+`create_project`, `list_examples`, `get_example` and nothing else. That is the mode for a machine
+that has no projects yet — the agent finds what is already there, or scopes one with you and
+creates it, and you then register a server against that directory. See
+[Bootstrap mode](#bootstrap-mode-no-project-yet) below.
 
 ### Client configuration
 
@@ -51,6 +56,31 @@ Generic MCP host config, for clients that are not Claude Code:
 ```
 
 Drop `--allow-writes` for a read-only server.
+
+### Bootstrap mode (no project yet)
+
+```bash
+claude mcp add --scope user nodegx-bootstrap -- node <path-to>/noodl-mcp.cjs --allow-writes
+```
+
+Omit the project directory and the server starts anyway, advertising four tools:
+
+| Tool | |
+|---|---|
+| `list_projects` | The NodeGX projects this machine has opened, read from the launcher's own recent-projects list and never written to. **Call this first** when the user talks about their app as something that already exists |
+| `create_project` | Scope an app in conversation, then write the project, its `docs/` and a build plan that is returned but not run |
+| `list_examples`, `get_example` | What a NodeGX graph actually looks like, without needing a project to read |
+
+Everything else — reading components, authoring, validation, rendering, the backend — is **absent
+from `tools/list`**, not present-and-erroring, because a model calls what it is shown.
+
+⚠️ **`--allow-writes` is required in this mode**, and the server refuses to start without it:
+`create_project` is a write, and with no project there is nothing to read, so a read-only bootstrap
+server would start, appear connected, and be unable to do the one thing it exists for.
+
+⚠️ **Creating a project does not repoint this server.** The project is written to disk and the
+server stays unbound; register a second server against the new directory to author in it. (BST-002
+is the task that makes the live server bind itself.)
 
 ### Where the bundle is
 
@@ -113,6 +143,7 @@ Every tool accepts either form; responses carry both.
 | `get_node_type` | Full enriched entries (ports + semantics, whenToUse, runtime behavior, example ids) for up to 8 named types. |
 | `list_examples` / `get_example` | Browse and fetch validated example graph fragments. |
 | `validate_component` / `validate_project` | SUB-006 semantic diagnostics on demand (`strict` promotes unknown types to errors). |
+| `list_projects` | BST-006 — the NodeGX projects this machine has opened, from the launcher's own list (read, never written). Legacy ones are marked rather than dropped; directories that no longer exist are counted, not listed. Resident in [bootstrap mode](#bootstrap-mode-no-project-yet); deferred to the `project` group when a project is bound, because a bound server cannot be repointed. |
 
 ### Backend permissions — read (always available)
 
@@ -134,6 +165,7 @@ own `secrets.json`). See [BAK-003](../../docs/runtime/BACKEND-ACCESS-CONTROL.md)
 
 | Tool | Purpose |
 |------|---------|
+| `create_project` | AIX-012 — a whole new project at a directory you name, from a scope you agreed with your user: the v2 skeleton, `docs/` (BRIEF, ARCHITECTURE, CONVENTIONS, and the initial-scope decision record) and a build plan that is **returned but not run**. Takes no store — the directory it writes is by definition not the one this server is pointed at — which is what makes it the point of [bootstrap mode](#bootstrap-mode-no-project-yet). |
 | `create_component` | New component from nodes/connections. Validated before writing. |
 | `update_component` | One component change: full `set` replacement **or** a batch of `operations` (`add_node`, `update_node`, `remove_node`, `add_connection`, `remove_connection`, `set_visual_roots`, `set_ports`, `set_component_info`). Supports `if_revision`. |
 | `delete_component` | Refuses while referenced (lists usages) unless `force`. |

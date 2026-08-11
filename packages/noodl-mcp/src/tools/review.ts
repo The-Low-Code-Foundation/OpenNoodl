@@ -46,6 +46,7 @@ import {
   reviewSystemPrompt,
   summariseCoverage
 } from '../editor-deps';
+import type { ProjectBinding } from '../project/ProjectBinding';
 import type { ProjectStore } from '../project/ProjectStore';
 import { guarded, jsonResult } from './util';
 
@@ -99,7 +100,7 @@ function buildGraph(store: ProjectStore): ExplainGraph {
   return { components };
 }
 
-export function registerReviewTools(server: McpServer, store: ProjectStore): void {
+export function registerReviewTools(server: McpServer, binding: ProjectBinding): void {
   server.registerTool(
     'review_project',
     {
@@ -129,6 +130,7 @@ export function registerReviewTools(server: McpServer, store: ProjectStore): voi
       }
     },
     guarded((args: { maxComponentReads?: number; maxChars?: number }) => {
+      const store = binding.require();
       const project = store.readProjectFile();
       const routes = store.readRoutes();
 

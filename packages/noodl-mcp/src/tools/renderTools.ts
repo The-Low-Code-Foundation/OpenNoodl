@@ -19,6 +19,7 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 
+import type { ProjectBinding } from '../project/ProjectBinding';
 import type { ProjectStore } from '../project/ProjectStore';
 import { runRenderReport } from '../render';
 import { guarded, type ToolResult } from './util';
@@ -31,7 +32,7 @@ import { guarded, type ToolResult } from './util';
 const MAX_SCALE = 1;
 const MIN_SCALE = 0.1;
 
-export function registerRenderTools(server: McpServer, store: ProjectStore): void {
+export function registerRenderTools(server: McpServer, binding: ProjectBinding): void {
   server.registerTool(
     'render_report',
     {
@@ -75,7 +76,7 @@ export function registerRenderTools(server: McpServer, store: ProjectStore): voi
         backend_port?: number;
       }): Promise<ToolResult> => {
         const scale = args.scale === undefined ? undefined : Math.min(MAX_SCALE, Math.max(MIN_SCALE, args.scale));
-        const { report, screenshots } = await runRenderReport(store.projectDir, {
+        const { report, screenshots } = await runRenderReport(binding.require().projectDir, {
           viewports: args.viewports,
           screenshot: args.screenshot,
           scale,
