@@ -39,37 +39,26 @@ files, now 7 (one was a stale `CreateProjectResponse` import naming the wrong mo
 transpiles per file and never typechecks the graph, so nothing reports them. **Do not read a green
 jest run as a clean package.**
 
-### §0.2 — 🔴 `test:ci` gave 9 failures, and three of them are unexplained
+### §0.2 — ✅ `test:ci` is at its floor: **2672 specs, 6 failures**, resolved by re-running alone
 
-The measured run: **`Jasmine: 2672 specs, 9 failures`**. The recorded floor is 6.
+Measured twice, and the disagreement is itself the finding.
 
-**Six match the register exactly** — four `AIX-006 style vocabulary`, two `AI model registry`.
+| Run | Result |
+|---|---|
+| Beside a concurrent session driving a live editor | `2672 specs, **9 failures**` |
+| **Alone, 00:18** | `2672 specs, **6 failures**` ✅ |
 
-**Three are new, and all three are one describe block:**
+The **six are the register's six, by name** — four `AIX-006 style vocabulary`, two `AI model
+registry`. The three extra in the first run were all one describe block, `BEN-001 the harness
+export`, and they are **phantoms**: `.logs/dev.log` was written at 00:01, mid-run, because the other
+session was driving a live editor. No phase-50 regression. The spec **total** is 2672 in both runs,
+so nothing vanished either.
 
-```
-BEN-001 the harness export mounts the component as a child of a synthetic parent, with its inputs set
-BEN-001 the harness export mounts a logic-only component instead of refusing it
-BEN-001 the harness export hands back the interface, so the rail does not re-derive it
-```
-
-⚠️ **They are not from this session's work by area** — BST-002/005 touch `noodl-mcp`, `agentConfig`,
-`LocalProjectsModel` and `mcpCommands`; BEN-001's harness export is phase 56's component bench. But
-**"not mine by area" is an argument, not a measurement**, and this register has been burned by
-exactly that reasoning before.
-
-There are two live candidates and they are not distinguishable from the log:
-
-1. **A real regression from phase 50**, which a concurrent session landed overnight
-   (LEG-001/002/005, and `b0ad50ed` at 00:17). LEG work moves node `metadata`, and a harness export
-   that mounts a component with its inputs set is plausibly downstream of that.
-2. **Phantoms.** `.logs/dev.log` was written at **00:01, during the run** — the other session was
-   driving a live editor. That is the documented `test:ci` + live-stack phantom condition precisely.
-
-**A clean re-run was started alone at 00:18** into
-`scratchpad/testci-clean.log`. 🔴 **Read its result before doing anything else.** If BEN-001 is green,
-the floor is still 6 and this paragraph is history. If it is red, **that is a real regression in
-phase 50's work and it is the first thing to fix** — before any of §1.
+⚠️ **Both halves of that are worth keeping.** The phantom is real and reproducible — `test:ci` beside
+a live stack invents failures, and it invented three plausible ones in a subsystem neither session
+had touched that night. And the reasoning that would have dismissed them ("not mine by area") was
+*correct here and is still not a measurement*; what settled it was running the gate alone, which cost
+35 minutes and nothing else.
 
 ### §0.3 — The rules that still hold
 

@@ -100,6 +100,19 @@ derive from `BOOTSTRAP_ADVERTISED`, `applyPolicy` uses the one list instead of a
 case, and the gate asserts the count **against `tools/list` itself** rather than against another
 constant.
 
+## §3a — The gates, measured
+
+| Gate | Result |
+|---|---|
+| `noodl-mcp` jest | **1 failed / 450 passed of 451** — total was 419; +32 is exactly the specs added. Red is F65 by name |
+| `noodl-editor` jest | **131 suites / 1892 tests, green** |
+| `npm run test:ci` | ✅ **2672 specs, 6 failures** — the register's six by name, run **alone** |
+
+🔴 **`test:ci` first returned 9.** The three extra were all `BEN-001 the harness export`, and they
+were **phantoms from a concurrent session's live editor** (`.logs/dev.log` written mid-run). Re-run
+alone: 6. ⚠️ The phantom invented three *plausible* failures in a subsystem nobody had touched — a
+live stack does not produce obvious garbage, it produces a believable regression.
+
 ## §4 — 🔴 What is NOT done, stated plainly
 
 The code of this phase is complete. Its acceptance is not, and none of these is an effort problem.
