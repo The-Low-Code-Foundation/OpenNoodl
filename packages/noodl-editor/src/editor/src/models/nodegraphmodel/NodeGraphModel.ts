@@ -30,6 +30,18 @@ export type Connection = {
   label?: string;
   /** Normalised position of the label along the curve, 0.15–0.85 (CAN-001). */
   labelT?: number;
+  /**
+   * Where the builder bent this wire (SIG-007), in the wire's own chord frame:
+   * `u` along it and `v` in graph px across it. **Absent when there are none** —
+   * never `[]`, so a wire that was bent and reset is indistinguishable from one
+   * that never was, and `project.json` does not churn. ⚠️ And `[]` is truthy,
+   * which is the mistake ELO-001 was.
+   *
+   * Structural rather than an import of `wireAnchors.WireAnchor`: the geometry
+   * lives in the canvas painter's directory and a model does not reach into a
+   * view. The two shapes are identical and the specs check that they stay so.
+   */
+  anchors?: { u: number; v: number }[];
 };
 
 type NodeGraphModelJson = {

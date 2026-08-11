@@ -25,7 +25,18 @@
  *   storage schema allows and this package therefore must not strip. (The editor
  *   solves the same problem the other way, by carrying those fields over from the
  *   base node; see `CARRIED_NODE_FIELDS`.) A connection has exactly four fields
- *   and an unknown fifth is a mistake worth reporting.
+ *   an agent may *author*, and an unknown fifth is a mistake worth reporting.
+ *
+ *   ⚠️ **That last sentence used to end at "four fields", and by SIG-007 it was
+ *   false in a way that lost data.** A connection has four *authorable* fields
+ *   and, on disk, three more it does not: `label`, `labelT` (CAN-001/CAN-002)
+ *   and `anchors` (SIG-007's hand-drawn routing). Because zod's default is
+ *   **strip** rather than reject, read-modify-write silently returned graphs
+ *   with all three gone — the schema was not reporting the mistake it claimed
+ *   to. The rule is kept as written, because an agent still has no business
+ *   authoring where a wire bends and the schema surface is already 27k tokens a
+ *   turn; the three fields are **carried over from the baseline** instead. See
+ *   `carryConnectionPresentation` in `tools/author.ts`.
  * - **`parameters` is `z.record(z.unknown())`**, not a bare object: parameter
  *   values are validated by the shared gate (AIB-001), not by the tool schema.
  */

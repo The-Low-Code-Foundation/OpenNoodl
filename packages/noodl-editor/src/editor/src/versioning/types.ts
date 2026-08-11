@@ -41,6 +41,8 @@ export interface SnapshotConnection {
   label?: string;
   /** Where that text sits along the wire (CAN-001). Presentation — not diffed. */
   labelT?: number;
+  /** Hand-drawn routing (SIG-007). Presentation — not diffed, but merged. */
+  anchors?: { u: number; v: number }[];
   rest: Record<string, unknown>;
 }
 

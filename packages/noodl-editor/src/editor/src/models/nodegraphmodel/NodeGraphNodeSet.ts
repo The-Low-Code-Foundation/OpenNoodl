@@ -43,15 +43,29 @@ export class NodeGraphNodeSet {
     }
 
     // Clone all connections, and remap IDs
+    //
+    // 🔴 SIG-007 R2: this rebuilt each connection from **four fields**, so
+    // copy/paste and component duplication have been dropping wire labels since
+    // CAN-002 shipped one — a live defect nobody hit, found by tracing `labelT`
+    // through every seam that had to learn about it and noticing this one never
+    // did. Anchors would have gone the same way, in the same four lines.
+    //
+    // ⚠️ The anchor list is copied per-entry, not by reference: a pasted wire
+    // that shared its source's array would re-route the original the moment
+    // either was dragged. Same shape as the `toJSON` metadata trap in LEG-001.
     const connections = [];
     for (var i in this.connections) {
       const c = this.connections[i];
-      connections.push({
+      const clone: TSFixme = {
         fromId: idMap[c.fromId],
         fromProperty: c.fromProperty,
         toId: idMap[c.toId],
         toProperty: c.toProperty
-      });
+      };
+      if (c.label !== undefined) clone.label = c.label;
+      if (c.labelT !== undefined) clone.labelT = c.labelT;
+      if (c.anchors && c.anchors.length) clone.anchors = c.anchors.map((a) => ({ u: a.u, v: a.v }));
+      connections.push(clone);
     }
 
     //clone comments with new IDs

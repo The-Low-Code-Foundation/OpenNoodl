@@ -202,6 +202,15 @@ export function reconstructLegacyComponent(
     // would still lose every wire label on the round trip (CAN-002/CAN-001).
     if (typeof c.label === 'string') conn.label = c.label;
     if (typeof c.labelT === 'number') conn.labelT = c.labelT;
+    // SIG-007's half of the same carry. ⚠️ Shape-checked here rather than
+    // trusted: this is the door a project written by something else comes
+    // through, and a `NaN` in an anchor kills the rest of the canvas frame.
+    if (Array.isArray(c.anchors) && c.anchors.length) {
+      const anchors = c.anchors.filter(
+        (a) => a && typeof a.u === 'number' && isFinite(a.u) && typeof a.v === 'number' && isFinite(a.v)
+      );
+      if (anchors.length) conn.anchors = anchors.map((a) => ({ u: a.u, v: a.v }));
+    }
     if (c.annotation) conn.annotation = c.annotation;
     return conn;
   });

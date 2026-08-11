@@ -46,6 +46,8 @@ export interface LegacyConnection {
   label?: string;
   /** CAN-001: where that text sits along the wire. */
   labelT?: number;
+  /** SIG-007: where the builder bent the wire, in its own chord frame. */
+  anchors?: { u: number; v: number }[];
   annotation?: 'Deleted' | 'Changed' | 'Created';
 }
 
@@ -349,6 +351,11 @@ export function buildComponentV2Files(component: LegacyComponent, now: string): 
       // diff come through this serializer — made a relabel invisible to review.
       if (c.label !== undefined) conn.label = c.label;
       if (c.labelT !== undefined) conn.labelT = c.labelT;
+      // SIG-007: hand-drawn routing is authored content too, and the way it is
+      // lost is the quiet one — a field the exporter does not know about is
+      // dropped without an error, and reappears as "my routing disappeared when
+      // I reopened the project". Written only when there is some.
+      if (c.anchors && c.anchors.length) conn.anchors = c.anchors;
       if (c.annotation) conn.annotation = c.annotation;
       return conn;
     })

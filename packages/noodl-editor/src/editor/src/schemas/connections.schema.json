@@ -59,6 +59,19 @@
           "type": "number",
           "description": "Where the label sits along the wire, 0..1 (CAN-001)"
         },
+        "anchors": {
+          "type": "array",
+          "description": "Hand-drawn routing (SIG-007). Each anchor is read in the wire's own chord frame — u along it (0..1, dimensionless), v across it in graph px — so the routing stretches with the wire when a node moves instead of pinning it to the canvas. Absent when there is none; never an empty array.",
+          "items": {
+            "type": "object",
+            "required": ["u", "v"],
+            "additionalProperties": false,
+            "properties": {
+              "u": { "type": "number", "description": "Position along the chord, 0 at the source and 1 at the target" },
+              "v": { "type": "number", "description": "Offset across the chord, in graph px" }
+            }
+          }
+        },
         "annotation": {
           "type": "string",
           "enum": ["Deleted", "Changed", "Created"],

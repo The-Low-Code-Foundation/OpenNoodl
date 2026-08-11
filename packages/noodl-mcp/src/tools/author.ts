@@ -205,12 +205,69 @@ export function assembleSetFiles(
   if (resolved.visualRoots) candidate.nodes.visualRoots = resolved.visualRoots;
   else delete candidate.nodes.visualRoots;
   if (set.connections !== undefined) {
-    candidate.connections.connections = set.connections;
+    candidate.connections.connections = carryConnectionPresentation(
+      baseline.connections.connections ?? [],
+      set.connections
+    );
   }
   candidate.component.modified = new Date().toISOString();
   candidate.component.modifiedBy = 'noodl-mcp';
   backfillIds(candidate);
   return candidate;
+}
+
+/**
+ * Fields a connection has on disk that the authoring vocabulary deliberately
+ * does not offer — carried over from the baseline instead of being stripped.
+ *
+ * 🔴 **SIG-007 R3.** `connectionSchema` is a plain `z.object` over exactly four
+ * fields, and zod's default is *strip*, not reject. So an external agent doing
+ * read-modify-write — read the component, change one parameter, hand the graph
+ * back — returned it with every wire label and every hand-drawn route silently
+ * gone, and nothing anywhere errored. Same shape as `update_node.set.children`
+ * (P58), one object over.
+ *
+ * ⚠️ **The four-field rule is kept, not widened.** `vocabulary.ts` argues it and
+ * `vocabularyParity.test.ts` pins it, and both are still right: an agent has no
+ * business *authoring* where a wire bends, and describing an anchor array in
+ * every tool schema is paid on every call by a surface already measured at 27k
+ * tokens a turn. This is the other half of the answer the same file names for
+ * nodes — *"the editor solves the same problem the other way, by carrying those
+ * fields over from the base node; see `CARRIED_NODE_FIELDS`"*. Now connections
+ * do too.
+ *
+ * Matched on the four endpoints, which is the connection's identity everywhere
+ * else in this file. A wire the caller re-pointed is a different wire and
+ * correctly inherits nothing.
+ */
+const CARRIED_CONNECTION_FIELDS = ['label', 'labelT', 'anchors'] as const;
+
+export function carryConnectionPresentation(
+  baseline: readonly ConnectionV2[],
+  incoming: readonly ConnectionV2[]
+): ConnectionV2[] {
+  if (!baseline.length) return incoming as ConnectionV2[];
+
+  const previous = new Map<string, ConnectionV2>();
+  for (const c of baseline) previous.set(`${c.fromId} ${c.fromProperty} ${c.toId} ${c.toProperty}`, c);
+
+  return incoming.map((c) => {
+    const was = previous.get(`${c.fromId} ${c.fromProperty} ${c.toId} ${c.toProperty}`);
+    if (!was) return c;
+
+    let out = c;
+    for (const field of CARRIED_CONNECTION_FIELDS) {
+      // Only when the caller said nothing. An agent that *did* send a label is
+      // setting it, and one that sent `null` is not saying nothing either — but
+      // zod has already stripped anything it does not know, so "absent" here
+      // genuinely means the schema dropped it or the caller omitted it, and both
+      // want the baseline's value back.
+      if (out[field] === undefined && was[field] !== undefined) {
+        out = { ...out, [field]: was[field] };
+      }
+    }
+    return out;
+  });
 }
 
 function normalizeOperations(operations: OperationInput[]): UpdateOperation[] {

@@ -182,6 +182,20 @@ export interface ConnectionV2 {
   fromProperty: string;
   toId: string;
   toProperty: string;
+  /** Author-written text on the wire (CAN-002). */
+  label?: string;
+  /** Where that text sits along the wire (CAN-001). */
+  labelT?: number;
+  /**
+   * Hand-drawn routing (SIG-007), in the wire's own chord frame. Absent when
+   * there is none — never `[]`.
+   *
+   * ⚠️ Declared even though the index signature below already permits it. A
+   * field only an index signature knows about is a field no reader can be
+   * checked against, and this one is written by the canvas and read by the
+   * exporter, the importer, the snapshot and the AI write path.
+   */
+  anchors?: { u: number; v: number }[];
   annotation?: 'Deleted' | 'Changed' | 'Created';
   [key: string]: unknown;
 }
