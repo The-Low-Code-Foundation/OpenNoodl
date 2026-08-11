@@ -79,6 +79,42 @@ export function ConnectionBar(props: TSFixme) {
   const [cursorPosition, setCursorPosition] = useState(0);
   const portAmount = useRef(0);
 
+  /*
+   * ⚠️ The search is cleared when the box loses focus, on a 200ms timer, and that
+   * timer used to race the very click that was supposed to pick a port.
+   *
+   * `mousedown` on a port row blurs the input (rows are not focusable, so focus
+   * falls to the body) and arms the reset. Hold the button for longer than 200ms
+   * — a careful aim at a 22px row does it — and the reset lands *mid-gesture*:
+   * the filter drops, every port comes back, the list re-lays-out under the
+   * pointer, and `mouseup` happens over a different row. A `click` is dispatched
+   * to the nearest common ancestor of the two, which is a wrapper with no
+   * handler, so nothing is selected and the only visible effect is the search
+   * having emptied itself. Exactly the "it treated my click as a click on empty
+   * space" report.
+   *
+   * Two things stop it, and both are wanted on their own terms:
+   *
+   *  - the results area cancels the default of `mousedown`, so the search box
+   *    never loses focus to the list and the reset is never armed. Keyboard
+   *    navigation also survives a mouse click now, where before the first click
+   *    left the arrow keys driving an unfocused field.
+   *  - picking a port clears the search itself. That is the behaviour the timer
+   *    was written for — a fresh box for the next connection — stated directly
+   *    instead of arrived at by racing.
+   */
+  const searchResetTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+
+  function cancelSearchReset() {
+    if (searchResetTimer.current === undefined) return;
+    clearTimeout(searchResetTimer.current);
+    searchResetTimer.current = undefined;
+  }
+
+  // Both popups stay mounted between connections, so a pending reset outliving
+  // this render would clear a term typed after it was armed.
+  useEffect(() => cancelSearchReset, []);
+
   const disabled = props.type === 'to' && (props.fromNode === undefined || props.sourcePort === undefined);
   // UIX-012: theme-derived (light + dark), re-resolved when the theme flips.
   const colors = useNodeColorScheme(nodeColorNameForModel(props.model));
@@ -255,6 +291,12 @@ export function ConnectionBar(props: TSFixme) {
   const onPortClicked = (p) => {
     if (p.disabled) return;
 
+    // The next connection starts from an empty box — said here rather than left
+    // to the blur timer, which used to say it in the middle of this gesture.
+    cancelSearchReset();
+    setSearchTerm('');
+    setCursorPosition(0);
+
     setSelectedPort(p.name);
     props.onPortSelected(p.name);
   };
@@ -388,59 +430,75 @@ export function ConnectionBar(props: TSFixme) {
           className={css.searchInput}
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          onFocus={() => setCursorPosition(0)}
-          onBlur={() => setTimeout(() => setSearchTerm(''), 200)}
+          onFocus={() => {
+            cancelSearchReset();
+            setCursorPosition(0);
+          }}
+          onBlur={() => {
+            cancelSearchReset();
+            searchResetTimer.current = setTimeout(() => setSearchTerm(''), 200);
+          }}
           ref={searchRef}
         />
       </div>
 
-      {/* Beside whatever the search did return, not instead of it: on a Button,
-          `set` matches three shadow-offset ports, and a list of those is not an
-          answer to "where is the Set?" — it just looks like one. */}
-      {timingIntent ? (
-        <div
-          className={classNames(css.noPortsMessage, css.noPortsAnswer)}
-          dangerouslySetInnerHTML={{ __html: TIMING_INTENT_ANSWER }}
-        />
-      ) : null}
-
-      {emptyMessage !== undefined ? (
-        <div className={css.noPortsMessage} dangerouslySetInnerHTML={{ __html: emptyMessage }} />
-      ) : null}
-
-      {offer ? (
-        <div
-          className={classNames(css.refusedOffer, offer.actionable && css.actionable)}
-          onClick={offer.actionable ? onRefusalClicked : undefined}
-          dangerouslySetInnerHTML={{ __html: offer.text }}
-        />
-      ) : null}
-
-      {hasGroups ? (
-        <div>
-          {mixedGroups.map((g) => (
-            <PortGroup
-              key={g.name}
-              colors={colors}
-              expanded={true}
-              onItemClicked={onPortClicked}
-              onRefusalClicked={onRefusalClicked}
-              canRedirect={Boolean(offer && offer.actionable)}
-              group={g}
-              selectedPort={selectedPort}
-              highlightedPort={cursorPosition && flatPorts[cursorPosition - 1]?.name}
-            />
-          ))}
-
-          <RefusedPorts
-            ports={foldedRefusedPorts}
-            colors={colors}
-            canRedirect={Boolean(offer && offer.actionable)}
-            onRefusalClicked={onRefusalClicked}
-            showGroupNames
+      {/*
+        ⚠️ `preventDefault` on `mousedown`, so pressing a row does not move focus
+        out of the search box. Without it the blur timer above is armed by the
+        press and can fire before the release, re-filling the list under the
+        pointer — see the note on `searchResetTimer`. It is on the results
+        wrapper rather than the whole bar because the search box itself needs the
+        default (caret placement, drag-select).
+      */}
+      <div onMouseDown={(e) => e.preventDefault()}>
+        {/* Beside whatever the search did return, not instead of it: on a Button,
+            `set` matches three shadow-offset ports, and a list of those is not an
+            answer to "where is the Set?" — it just looks like one. */}
+        {timingIntent ? (
+          <div
+            className={classNames(css.noPortsMessage, css.noPortsAnswer)}
+            dangerouslySetInnerHTML={{ __html: TIMING_INTENT_ANSWER }}
           />
-        </div>
-      ) : null}
+        ) : null}
+
+        {emptyMessage !== undefined ? (
+          <div className={css.noPortsMessage} dangerouslySetInnerHTML={{ __html: emptyMessage }} />
+        ) : null}
+
+        {offer ? (
+          <div
+            className={classNames(css.refusedOffer, offer.actionable && css.actionable)}
+            onClick={offer.actionable ? onRefusalClicked : undefined}
+            dangerouslySetInnerHTML={{ __html: offer.text }}
+          />
+        ) : null}
+
+        {hasGroups ? (
+          <div>
+            {mixedGroups.map((g) => (
+              <PortGroup
+                key={g.name}
+                colors={colors}
+                expanded={true}
+                onItemClicked={onPortClicked}
+                onRefusalClicked={onRefusalClicked}
+                canRedirect={Boolean(offer && offer.actionable)}
+                group={g}
+                selectedPort={selectedPort}
+                highlightedPort={cursorPosition && flatPorts[cursorPosition - 1]?.name}
+              />
+            ))}
+
+            <RefusedPorts
+              ports={foldedRefusedPorts}
+              colors={colors}
+              canRedirect={Boolean(offer && offer.actionable)}
+              onRefusalClicked={onRefusalClicked}
+              showGroupNames
+            />
+          </div>
+        ) : null}
+      </div>
     </div>
   );
 }

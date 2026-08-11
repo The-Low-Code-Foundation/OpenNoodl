@@ -279,6 +279,14 @@
 .docsPopup {
   position: fixed;
   width: 300px;
+  /* ⚠️ `DocsPopup.tsx` says this box never takes the mouse, and relies on it: it
+     is drawn in the pointer's path, and taking the mouse would fire `mouseout`
+     on the port row and close the box the author is reading. It got that for
+     free from `.popup-layer { pointer-events: none }` — but `.popup-layer
+     .has-popouts` re-enables them, and the connection popup is *always* a
+     popout, so the one surface this explainer is used on is the one where the
+     assumption does not hold. Said here, where the box is. */
+  pointer-events: none;
   overflow-y: auto;
   background-color: var(--theme-color-bg-2);
   border: 1px solid var(--theme-color-border-default);
