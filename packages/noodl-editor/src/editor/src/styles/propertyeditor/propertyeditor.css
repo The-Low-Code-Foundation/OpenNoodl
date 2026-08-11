@@ -304,6 +304,123 @@
   right: 0;
 }
 
+/* =============================================================================
+   LEG-005 — the comment row.
+
+   Sits between the header bar and the tab strip: *what this is* (the name and
+   the type chip), then *why it is* (this), then *what it is wired to* (the
+   ports). The order of the panel is a claim about importance.
+
+   ⚠️ Everything here states `box-sizing` for itself. There is no global
+   `border-box` rule in this repo, and the field's height is computed from a
+   mirror element that has to agree with the textarea to the pixel.
+   ============================================================================= */
+
+.property-comment-bar {
+  border-bottom: 1px solid var(--theme-color-border-default);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 16px 12px;
+}
+
+/* The tooltip wraps its child in a trigger div; hug the label so hovering the
+   empty space beside it does not open the tooltip. */
+.property-comment-label-trigger {
+  width: fit-content;
+  max-width: 100%;
+}
+
+/* Section micro-label, matching `.property-group-label`'s rhythm — but one step
+   brighter than that rule's `fg-muted`.
+   ⚠️ Measured, not chosen. Against the panel ground `bg-1`:
+     fg-muted        dark #6b7682 on #12161b = 3.93:1  ·  light #7c8894 on #ffffff = 3.62:1
+     fg-default-shy  dark #8b95a1 on #12161b = 5.98:1  ·  light #616c79 on #ffffff = 5.34:1
+   `fg-muted` is under AA in both themes at this size, so this row does not use
+   it — even though the neighbouring `.property-group-label` still does. */
+.property-comment-label {
+  display: block;
+  color: var(--theme-color-fg-default-shy);
+  font-family: var(--font-family);
+  font-size: 10.5px;
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  cursor: default;
+}
+
+/* The field is two elements in one box: a hidden mirror that carries the text
+   (or the placeholder, when there is no text) and therefore sets the height,
+   and the real textarea absolutely positioned over it.
+
+   A textarea's `scrollHeight` ignores its placeholder, so an empty field sizes
+   to one line and clips a placeholder that wraps to two — and the placeholder
+   is the only copy most users will ever read about this field. This is that fix
+   with no JS measurement pass, and in particular no `ResizeObserver`, which a
+   backgrounded Electron renderer does not run at all. */
+.property-comment-field {
+  position: relative;
+}
+
+.property-comment-sizer,
+.property-comment-input {
+  box-sizing: border-box;
+  min-width: 0;
+  padding: 6px 8px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-default);
+  font-family: var(--font-family);
+  font-size: 12px;
+  line-height: 17px;
+  letter-spacing: normal;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+}
+
+.property-comment-sizer {
+  visibility: hidden;
+  pointer-events: none;
+  /* Ten lines of text drive the height; past that the field scrolls rather than
+     pushing the ports off the panel. 10 × 17 + 12 padding + 2 border. */
+  max-height: 184px;
+  overflow: hidden;
+}
+
+.property-comment-input {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  resize: none;
+  overflow-y: auto;
+  color: var(--theme-color-fg-default);
+  background-color: var(--theme-color-bg-2);
+  /* The control edge, not the hairline `border-default` — DSG-006: a field you
+     can type into has to look like one before it is hovered. */
+  border-color: var(--theme-color-border-control);
+}
+
+/* ⚠️ A colour token, never opacity. Opacity cannot dim placeholder text and
+   keep it AA. `fg-default-shy` on the `bg-2` field ground is 5.57:1 dark and
+   5.06:1 light; `--base-color-grey-600`, which is what `TextArea` uses by
+   default, resolves to #2c3540 in dark and is 1.36:1 there. `opacity: 1` is not
+   redundant — several UA stylesheets still dim `::placeholder` by default. */
+.property-comment-input::placeholder {
+  color: var(--theme-color-fg-default-shy);
+  opacity: 1;
+}
+
+.property-comment-input:hover {
+  border-color: var(--theme-color-fg-default-shy);
+}
+
+.property-comment-input:focus {
+  outline: none;
+  border-color: var(--theme-color-primary);
+}
+
 .property-editor-highlight {
   color: var(--theme-color-primary);
 }
