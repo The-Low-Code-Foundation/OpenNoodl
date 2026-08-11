@@ -59,6 +59,11 @@ export function NodePickerPreview({ item, docs }: NodePickerPreviewProps) {
           <div className={css['Docs']}>
             <HtmlRenderer html={docs.content} />
           </div>
+        ) : item.description ? (
+          // LEG-006 — a project component has no docs page and never will; its
+          // description is the documentation. The card's line is one row tall
+          // and ellipsised, so the full sentence needs somewhere to be read.
+          <p className={css['Placeholder']}>{item.description}</p>
         ) : (
           <p className={css['Placeholder']}>
             {item.kind === 'action' ? item.meta : 'No documentation yet.'}

@@ -226,6 +226,21 @@ export function reconstructLegacyComponent(
     component.id = componentFile.id;
   }
 
+  // LEG-006 — the other half of the exporter's carry, and the half that is
+  // invisible in the obvious spec. An exporter that writes `description` while
+  // the importer discards it looks identical from outside on a single save:
+  // the file is right, and the *next* save deletes it again. The sequence that
+  // catches it is author → save → load → save, which is what BEN-005 performed.
+  if (typeof componentFile.description === 'string' && componentFile.description.length > 0) {
+    component.description = componentFile.description;
+  }
+  if (typeof componentFile.created === 'string' && componentFile.created.length > 0) {
+    component.created = componentFile.created;
+  }
+  if (typeof componentFile.modifiedBy === 'string' && componentFile.modifiedBy.length > 0) {
+    component.modifiedBy = componentFile.modifiedBy;
+  }
+
   if (componentFile.metadata && Object.keys(componentFile.metadata).length > 0) {
     component.metadata = componentFile.metadata as Record<string, unknown>;
   }

@@ -181,6 +181,14 @@ export function ExplainPanel() {
             <Text textType={TextType.Secondary}>Open a component to explain it.</Text>
           )}
 
+          {/* LEG-006 — the component's authored sentence, before the model is
+              asked for one. It is the answer to "what is this for" that costs
+              nothing and is already written; a panel that asks an LLM while
+              ignoring the sentence on the component would be absurd. */}
+          {selection.componentDescription && (
+            <Text textType={TextType.Shy}>{selection.componentDescription}</Text>
+          )}
+
           <Select
             options={DETAIL_OPTIONS}
             value={detail}
