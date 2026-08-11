@@ -1,0 +1,335 @@
+{
+  "id": "ui-footer-columns",
+  "title": "Site footer: the three link columns are one component over a data array, not three hand-written subtrees",
+  "description": "The corrected version of a footer that shipped wrong, so lift the fix and not the artefact. The reference build wrote Shop, Company and Help as three structurally identical Group(Text x5) subtrees: 27 nodes, one `repeated-sibling-subtree` warning, and a fourth column costs another six nodes. Here the whole nav is one Static Array of {title, links} driving a For Each over a FooterColumn, and the link list inside each column is a second For Each — repetition is data at BOTH levels, so 17 nodes total and a fourth column is one line of JSON and no nodes at all. ⚠️ Every object in an inline array carries an `id`. A plain array reaching a Repeater's Items is wrapped with Model.create, which mints a fresh anonymous id per element, so a second delivery of the same array matches nothing in the id diff and the list renders TWICE — measured at 31 texts where 19 were authored, forward then reversed. Ids make the diff idempotent. The row is a Columns node with layoutString \"1.6 1 1 1\" and smallLayout \"1\" below 760px, because no Group in the runtime has a breakpoint — the original crammed four tracks into 390px and broke words mid-syllable. Two more that are easy to miss: marginY is what gives the collapsed stack its vertical rhythm, and the legal row's two Texts need sizeMode contentSize, or they are each width 100%, justifyContent has nothing to distribute and flexWrap has nothing to wrap.",
+  "demonstrates": [
+    "net.noodl.visual.columns",
+    "For Each",
+    "Static Data",
+    "Component Inputs",
+    "Group",
+    "Text"
+  ],
+  "components": [
+    {
+      "name": "/Components/SiteFooter",
+      "nodes": [
+        {
+          "id": "band",
+          "type": "Group",
+          "label": "Footer band",
+          "parameters": {
+            "width": {
+              "value": 100,
+              "unit": "%"
+            },
+            "flexDirection": "column",
+            "alignItems": "center",
+            "backgroundColor": "var(--muted)",
+            "borderTopStyle": "solid",
+            "borderTopWidth": "var(--border-1)",
+            "borderTopColor": "var(--border)",
+            "paddingTop": "var(--space-16)",
+            "paddingBottom": "var(--space-10)"
+          },
+          "children": [
+            "shell"
+          ]
+        },
+        {
+          "id": "shell",
+          "type": "Group",
+          "label": "Shell",
+          "parameters": {
+            "width": {
+              "value": 100,
+              "unit": "%"
+            },
+            "maxWidth": {
+              "value": 1200,
+              "unit": "px"
+            },
+            "flexDirection": "column",
+            "rowGap": "var(--space-12)",
+            "paddingLeft": "var(--space-6)",
+            "paddingRight": "var(--space-6)"
+          },
+          "parent": "band",
+          "children": [
+            "top",
+            "legal"
+          ]
+        },
+        {
+          "id": "top",
+          "type": "net.noodl.visual.columns",
+          "label": "Brand + nav, collapsing",
+          "parameters": {
+            "sizing": "layoutString",
+            "layoutString": "1.6 1 1 1",
+            "marginX": {
+              "value": 48,
+              "unit": "px"
+            },
+            "marginY": {
+              "value": 40,
+              "unit": "px"
+            },
+            "smallBreakpoint": {
+              "value": 760,
+              "unit": "px"
+            },
+            "smallLayout": "1"
+          },
+          "parent": "shell",
+          "children": [
+            "brand",
+            "nav_repeater"
+          ]
+        },
+        {
+          "id": "brand",
+          "type": "Group",
+          "label": "Brand",
+          "parameters": {
+            "width": {
+              "value": 100,
+              "unit": "%"
+            },
+            "flexDirection": "column",
+            "rowGap": "var(--space-3)"
+          },
+          "parent": "top",
+          "children": [
+            "wordmark",
+            "blurb"
+          ]
+        },
+        {
+          "id": "wordmark",
+          "type": "Text",
+          "label": "Wordmark",
+          "parameters": {
+            "text": "Kiln & Co.",
+            "fontSize": "var(--text-base)",
+            "fontWeight": "var(--font-bold)",
+            "letterSpacing": "var(--tracking-widest)",
+            "textTransform": "uppercase",
+            "color": "var(--foreground)"
+          },
+          "parent": "brand"
+        },
+        {
+          "id": "blurb",
+          "type": "Text",
+          "label": "Blurb",
+          "parameters": {
+            "text": "Small-batch ceramics, coffee and home goods. Made to be used, not admired.",
+            "fontSize": "var(--text-sm)",
+            "lineHeight": "var(--leading-normal)",
+            "color": "var(--muted-foreground)"
+          },
+          "parent": "brand"
+        },
+        {
+          "id": "nav_repeater",
+          "type": "For Each",
+          "label": "One column per nav section",
+          "parameters": {
+            "template": "/Components/FooterColumn"
+          },
+          "parent": "top"
+        },
+        {
+          "id": "nav",
+          "type": "Static Data",
+          "label": "Footer nav",
+          "x": 40,
+          "y": 40,
+          "parameters": {
+            "type": "json",
+            "json": "[{\"id\":\"shop\",\"title\":\"Shop\",\"links\":[{\"id\":\"shop-ceramics\",\"label\":\"Ceramics\"},{\"id\":\"shop-coffee\",\"label\":\"Coffee\"},{\"id\":\"shop-table\",\"label\":\"Table\"},{\"id\":\"shop-gift\",\"label\":\"Gift cards\"}]},{\"id\":\"company\",\"title\":\"Company\",\"links\":[{\"id\":\"co-story\",\"label\":\"Our story\"},{\"id\":\"co-workshop\",\"label\":\"The workshop\"},{\"id\":\"co-stockists\",\"label\":\"Stockists\"},{\"id\":\"co-journal\",\"label\":\"Journal\"}]},{\"id\":\"help\",\"title\":\"Help\",\"links\":[{\"id\":\"help-delivery\",\"label\":\"Delivery\"},{\"id\":\"help-returns\",\"label\":\"Returns\"},{\"id\":\"help-care\",\"label\":\"Care guide\"},{\"id\":\"help-contact\",\"label\":\"Contact\"}]}]"
+          }
+        },
+        {
+          "id": "legal",
+          "type": "Group",
+          "label": "Legal row",
+          "parameters": {
+            "width": {
+              "value": 100,
+              "unit": "%"
+            },
+            "flexDirection": "row",
+            "flexWrap": "wrap",
+            "justifyContent": "space-between",
+            "alignItems": "center",
+            "columnGap": "var(--space-6)",
+            "rowGap": "var(--space-2)",
+            "borderTopStyle": "solid",
+            "borderTopWidth": "var(--border-1)",
+            "borderTopColor": "var(--border)",
+            "paddingTop": "var(--space-6)"
+          },
+          "parent": "shell",
+          "children": [
+            "copyright",
+            "policies"
+          ]
+        },
+        {
+          "id": "copyright",
+          "type": "Text",
+          "label": "Copyright",
+          "parameters": {
+            "text": "© 2026 Kiln & Co. Built with NodeGX.",
+            "sizeMode": "contentSize",
+            "fontSize": "var(--text-xs)",
+            "color": "var(--muted-foreground)"
+          },
+          "parent": "legal"
+        },
+        {
+          "id": "policies",
+          "type": "Text",
+          "label": "Policies",
+          "parameters": {
+            "text": "Privacy · Terms",
+            "sizeMode": "contentSize",
+            "fontSize": "var(--text-xs)",
+            "color": "var(--muted-foreground)"
+          },
+          "parent": "legal"
+        }
+      ],
+      "connections": [
+        {
+          "fromId": "nav",
+          "fromProperty": "items",
+          "toId": "nav_repeater",
+          "toProperty": "items"
+        }
+      ]
+    },
+    {
+      "name": "/Components/FooterColumn",
+      "nodes": [
+        {
+          "id": "column",
+          "type": "Group",
+          "label": "Column",
+          "parameters": {
+            "width": {
+              "value": 100,
+              "unit": "%"
+            },
+            "flexDirection": "column",
+            "rowGap": "var(--space-3)"
+          },
+          "children": [
+            "heading",
+            "link_repeater"
+          ]
+        },
+        {
+          "id": "heading",
+          "type": "Text",
+          "label": "Section title",
+          "parameters": {
+            "text": "Section",
+            "fontSize": "var(--text-xs)",
+            "fontWeight": "var(--font-semibold)",
+            "letterSpacing": "var(--tracking-widest)",
+            "textTransform": "uppercase",
+            "color": "var(--muted-foreground)"
+          },
+          "parent": "column"
+        },
+        {
+          "id": "link_repeater",
+          "type": "For Each",
+          "label": "One row per link",
+          "parameters": {
+            "template": "/Components/FooterLink"
+          },
+          "parent": "column"
+        },
+        {
+          "id": "column_inputs",
+          "type": "Component Inputs",
+          "label": "What varies per column",
+          "x": 40,
+          "y": 40,
+          "ports": [
+            {
+              "name": "title",
+              "plug": "output",
+              "type": "*"
+            },
+            {
+              "name": "links",
+              "plug": "output",
+              "type": "*"
+            }
+          ]
+        }
+      ],
+      "connections": [
+        {
+          "fromId": "column_inputs",
+          "fromProperty": "title",
+          "toId": "heading",
+          "toProperty": "text"
+        },
+        {
+          "fromId": "column_inputs",
+          "fromProperty": "links",
+          "toId": "link_repeater",
+          "toProperty": "items"
+        }
+      ]
+    },
+    {
+      "name": "/Components/FooterLink",
+      "nodes": [
+        {
+          "id": "link_text",
+          "type": "Text",
+          "label": "Link",
+          "parameters": {
+            "text": "Link",
+            "width": {
+              "value": 100,
+              "unit": "%"
+            },
+            "fontSize": "var(--text-sm)",
+            "lineHeight": "var(--leading-normal)",
+            "color": "var(--foreground)"
+          }
+        },
+        {
+          "id": "link_inputs",
+          "type": "Component Inputs",
+          "label": "Link label in",
+          "x": 40,
+          "y": 40,
+          "ports": [
+            {
+              "name": "label",
+              "plug": "output",
+              "type": "*"
+            }
+          ]
+        }
+      ],
+      "connections": [
+        {
+          "fromId": "link_inputs",
+          "fromProperty": "label",
+          "toId": "link_text",
+          "toProperty": "text"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,421 @@
+{
+  "id": "ui-slide-over",
+  "title": "Slide-over: an overlay panel that is a real width on desktop and full-bleed on a phone",
+  "description": "A slide-over is an ARRANGEMENT, and this recipe is only the arrangement — `logic-toggle-details-panel` owns the wiring that flips it (a Switch, `onClick` -> `flip`, `state` -> the panel's `open`), and the two are meant to be read together rather than merged. A real overlay IS authorable on this canvas, and this is how. (1) THE OVERLAY LAYER is a Group with `position: \"fixed\"`, width and height 100%, laid out `row` with `justifyContent: \"flex-end\"`. Measured at 1280x900 it is 1280x900 — the viewport — while the page canvas that contains it is only 1280x278. `\"absolute\"` also overlays, but its box is the nearest positioned ancestor (every Group is `position: relative` by default), so on a short page an absolute slide-over is a short slide-over; `\"fixed\"` is the one that does not depend on how tall the page happens to be. (2) THE SCRIM is a second box, `position: \"absolute\"` at 100%x100%, painted `var(--foreground)` with `opacity` 0.5 — no colour token carries an alpha channel, so `opacity` is how a scrim gets its tint. It is the FIRST child, because child order is paint order, and it carries the click that closes. (3) ONE WIDTH, NOT TWO: the panel is `width: 100%` with `maxWidth: 420px`. Measured, that is 420px at 1280 and 390px full-bleed at 390 with no breakpoint anywhere — there are no media queries on this canvas, and a panel pinned at 420px is 30px wider than a phone. Full-bleed also means no scrim is left to tap, which is why the header's close button is not optional. (4) THE BODY carries `scrollEnabled: true` and `height: 100%`, so a long panel scrolls inside itself: measured in a 1280x300 window the body reports scrollHeight 284 against clientHeight 231 while the page height stays 300 — the panel scrolled and the page did not grow. (5) STATE WITH NO LOGIC NODE: `open` goes straight to the overlay's `mounted`. ⚠️ Use `mounted`, not `visible` — `visible: false` only sets `visibility: hidden`, so the panel keeps its box and its whole subtree (measured: 30 boxes closed with `visible`, 16 with `mounted`, against 30 open). ⚠️ Both ports on the Component Inputs node are plugged \"output\", because a component INPUT is a port whose own plug is \"output\"; plugged \"input\" it becomes an output, and every connection drawn out of it is dropped as unhealthy.",
+  "demonstrates": [
+    "Group",
+    "Text",
+    "net.noodl.controls.button",
+    "Component Inputs",
+    "Component Outputs"
+  ],
+  "components": [
+    {
+      "name": "/Pages/Example",
+      "nodes": [
+        {
+          "id": "page",
+          "type": "Page",
+          "label": "Page",
+          "parameters": {
+            "title": "Orders",
+            "urlPath": "orders"
+          },
+          "children": ["canvas"]
+        },
+        {
+          "id": "canvas",
+          "type": "Group",
+          "label": "Page canvas — the overlay's containing block",
+          "parameters": {
+            "width": { "value": 100, "unit": "%" },
+            "sizeMode": "contentHeight",
+            "flexDirection": "column",
+            "alignItems": "center",
+            "backgroundColor": "var(--background)"
+          },
+          "parent": "page",
+          "children": ["shell", "slide_over"]
+        },
+        {
+          "id": "shell",
+          "type": "Group",
+          "label": "Shell",
+          "parameters": {
+            "width": { "value": 100, "unit": "%" },
+            "maxWidth": { "value": 1200, "unit": "px" },
+            "sizeMode": "contentHeight",
+            "flexDirection": "column",
+            "rowGap": "var(--space-5)",
+            "paddingLeft": "var(--space-6)",
+            "paddingRight": "var(--space-6)",
+            "paddingTop": "var(--space-10)",
+            "paddingBottom": "var(--space-10)"
+          },
+          "parent": "canvas",
+          "children": ["toolbar", "row_1", "row_2", "row_3", "row_4"]
+        },
+        {
+          "id": "toolbar",
+          "type": "Group",
+          "label": "Toolbar",
+          "parameters": {
+            "width": { "value": 100, "unit": "%" },
+            "sizeMode": "contentHeight",
+            "flexDirection": "row",
+            "alignItems": "center",
+            "justifyContent": "space-between",
+            "columnGap": "var(--space-4)"
+          },
+          "parent": "shell",
+          "children": ["page_heading", "open_button"]
+        },
+        {
+          "id": "page_heading",
+          "type": "Text",
+          "label": "Page heading",
+          "parameters": {
+            "text": "Orders",
+            "fontSize": "var(--text-3xl)",
+            "fontWeight": "var(--font-semibold)",
+            "lineHeight": "var(--leading-tight)",
+            "letterSpacing": "var(--tracking-tight)",
+            "color": "var(--foreground)"
+          },
+          "parent": "toolbar"
+        },
+        {
+          "id": "open_button",
+          "type": "net.noodl.controls.button",
+          "label": "Open the slide-over",
+          "parameters": {
+            "label": "Filters",
+            "sizeMode": "contentSize",
+            "backgroundColor": "var(--surface)",
+            "color": "var(--foreground)",
+            "borderStyle": "solid",
+            "borderWidth": "var(--border-1)",
+            "borderColor": "var(--border)",
+            "borderRadius": "var(--radius-md)",
+            "paddingLeft": "var(--space-4)",
+            "paddingRight": "var(--space-4)",
+            "paddingTop": "var(--space-2)",
+            "paddingBottom": "var(--space-2)",
+            "fontSize": "var(--text-sm)",
+            "fontWeight": "var(--font-medium)"
+          },
+          "parent": "toolbar"
+        },
+        {
+          "id": "row_1",
+          "type": "Text",
+          "label": "Page content",
+          "parameters": {
+            "text": "#1041 — Priya Raman — £48.00 — Shipped",
+            "fontSize": "var(--text-base)",
+            "color": "var(--foreground)"
+          },
+          "parent": "shell"
+        },
+        {
+          "id": "row_2",
+          "type": "Text",
+          "label": "Page content",
+          "parameters": {
+            "text": "#1042 — Tom Vail — £112.50 — Packing",
+            "fontSize": "var(--text-base)",
+            "color": "var(--foreground)"
+          },
+          "parent": "shell"
+        },
+        {
+          "id": "row_3",
+          "type": "Text",
+          "label": "Page content",
+          "parameters": {
+            "text": "#1043 — Ada Nwosu — £9.99 — Refunded",
+            "fontSize": "var(--text-base)",
+            "color": "var(--foreground)"
+          },
+          "parent": "shell"
+        },
+        {
+          "id": "row_4",
+          "type": "Text",
+          "label": "Page content",
+          "parameters": {
+            "text": "#1044 — Jonas Berg — £76.20 — Awaiting payment",
+            "fontSize": "var(--text-base)",
+            "color": "var(--foreground)"
+          },
+          "parent": "shell"
+        },
+        {
+          "id": "slide_over",
+          "type": "/Components/SlideOver",
+          "label": "Filters slide-over",
+          "parameters": {
+            "open": true,
+            "title": "Filter orders"
+          },
+          "parent": "canvas"
+        }
+      ],
+      "connections": []
+    },
+    {
+      "name": "/Components/SlideOver",
+      "nodes": [
+        {
+          "id": "overlay",
+          "type": "Group",
+          "label": "Overlay layer",
+          "parameters": {
+            "position": "fixed",
+            "sizeMode": "explicit",
+            "width": { "value": 100, "unit": "%" },
+            "height": { "value": 100, "unit": "%" },
+            "flexDirection": "row",
+            "justifyContent": "flex-end"
+          },
+          "children": ["scrim", "panel"]
+        },
+        {
+          "id": "scrim",
+          "type": "Group",
+          "label": "Scrim",
+          "parameters": {
+            "position": "absolute",
+            "sizeMode": "explicit",
+            "width": { "value": 100, "unit": "%" },
+            "height": { "value": 100, "unit": "%" },
+            "backgroundColor": "var(--foreground)",
+            "opacity": 0.5
+          },
+          "parent": "overlay"
+        },
+        {
+          "id": "panel",
+          "type": "Group",
+          "label": "Panel",
+          "parameters": {
+            "sizeMode": "explicit",
+            "width": { "value": 100, "unit": "%" },
+            "maxWidth": { "value": 420, "unit": "px" },
+            "height": { "value": 100, "unit": "%" },
+            "flexDirection": "column",
+            "backgroundColor": "var(--surface)",
+            "borderLeftStyle": "solid",
+            "borderLeftWidth": "var(--border-1)",
+            "borderLeftColor": "var(--border)"
+          },
+          "parent": "overlay",
+          "children": ["panel_header", "panel_body"]
+        },
+        {
+          "id": "panel_header",
+          "type": "Group",
+          "label": "Panel header",
+          "parameters": {
+            "width": { "value": 100, "unit": "%" },
+            "sizeMode": "contentHeight",
+            "flexDirection": "row",
+            "alignItems": "center",
+            "justifyContent": "space-between",
+            "columnGap": "var(--space-3)",
+            "paddingLeft": "var(--space-5)",
+            "paddingRight": "var(--space-4)",
+            "paddingTop": "var(--space-4)",
+            "paddingBottom": "var(--space-4)",
+            "borderBottomStyle": "solid",
+            "borderBottomWidth": "var(--border-1)",
+            "borderBottomColor": "var(--border)"
+          },
+          "parent": "panel",
+          "children": ["panel_title", "close_button"]
+        },
+        {
+          "id": "panel_title",
+          "type": "Text",
+          "label": "Panel title",
+          "parameters": {
+            "text": "Panel",
+            "fontSize": "var(--text-lg)",
+            "fontWeight": "var(--font-semibold)",
+            "color": "var(--foreground)"
+          },
+          "parent": "panel_header"
+        },
+        {
+          "id": "close_button",
+          "type": "net.noodl.controls.button",
+          "label": "Close",
+          "parameters": {
+            "useLabel": false,
+            "useIcon": true,
+            "iconIconSource": {
+              "class": "lucide",
+              "code": "icon-x",
+              "codeAsClass": true
+            },
+            "iconSize": { "value": 20, "unit": "px" },
+            "iconColor": "var(--muted-foreground)",
+            "sizeMode": "contentSize",
+            "backgroundColor": "var(--surface)",
+            "borderStyle": "none",
+            "borderWidth": { "value": 0, "unit": "px" },
+            "borderRadius": "var(--radius-md)",
+            "paddingLeft": "var(--space-2)",
+            "paddingRight": "var(--space-2)",
+            "paddingTop": "var(--space-2)",
+            "paddingBottom": "var(--space-2)"
+          },
+          "parent": "panel_header"
+        },
+        {
+          "id": "panel_body",
+          "type": "Group",
+          "label": "Panel body — scrolls inside the panel",
+          "parameters": {
+            "sizeMode": "explicit",
+            "width": { "value": 100, "unit": "%" },
+            "height": { "value": 100, "unit": "%" },
+            "flexDirection": "column",
+            "scrollEnabled": true,
+            "rowGap": "var(--space-4)",
+            "paddingLeft": "var(--space-5)",
+            "paddingRight": "var(--space-5)",
+            "paddingTop": "var(--space-5)",
+            "paddingBottom": "var(--space-5)"
+          },
+          "parent": "panel",
+          "children": [
+            "body_1",
+            "body_2",
+            "body_3",
+            "body_4",
+            "body_5",
+            "body_6",
+            "body_7",
+            "body_8"
+          ]
+        },
+        {
+          "id": "body_1",
+          "type": "Text",
+          "label": "Group label",
+          "parameters": {
+            "text": "Status",
+            "fontSize": "var(--text-xs)",
+            "fontWeight": "var(--font-semibold)",
+            "letterSpacing": "var(--tracking-widest)",
+            "textTransform": "uppercase",
+            "color": "var(--muted-foreground)"
+          },
+          "parent": "panel_body"
+        },
+        {
+          "id": "body_2",
+          "type": "Text",
+          "label": "Filter row",
+          "parameters": {
+            "text": "Awaiting payment",
+            "fontSize": "var(--text-sm)",
+            "color": "var(--foreground)"
+          },
+          "parent": "panel_body"
+        },
+        {
+          "id": "body_3",
+          "type": "Text",
+          "label": "Filter row",
+          "parameters": {
+            "text": "Packing",
+            "fontSize": "var(--text-sm)",
+            "color": "var(--foreground)"
+          },
+          "parent": "panel_body"
+        },
+        {
+          "id": "body_4",
+          "type": "Text",
+          "label": "Filter row",
+          "parameters": {
+            "text": "Shipped",
+            "fontSize": "var(--text-sm)",
+            "color": "var(--foreground)"
+          },
+          "parent": "panel_body"
+        },
+        {
+          "id": "body_5",
+          "type": "Text",
+          "label": "Group label",
+          "parameters": {
+            "text": "Fulfilment",
+            "fontSize": "var(--text-xs)",
+            "fontWeight": "var(--font-semibold)",
+            "letterSpacing": "var(--tracking-widest)",
+            "textTransform": "uppercase",
+            "color": "var(--muted-foreground)"
+          },
+          "parent": "panel_body"
+        },
+        {
+          "id": "body_6",
+          "type": "Text",
+          "label": "Filter row",
+          "parameters": {
+            "text": "Warehouse — Bristol",
+            "fontSize": "var(--text-sm)",
+            "color": "var(--foreground)"
+          },
+          "parent": "panel_body"
+        },
+        {
+          "id": "body_7",
+          "type": "Text",
+          "label": "Filter row",
+          "parameters": {
+            "text": "Warehouse — Leeds",
+            "fontSize": "var(--text-sm)",
+            "color": "var(--foreground)"
+          },
+          "parent": "panel_body"
+        },
+        {
+          "id": "body_8",
+          "type": "Text",
+          "label": "Filter row",
+          "parameters": {
+            "text": "Third-party fulfilment",
+            "fontSize": "var(--text-sm)",
+            "color": "var(--foreground)"
+          },
+          "parent": "panel_body"
+        },
+        {
+          "id": "panel_inputs",
+          "type": "Component Inputs",
+          "label": "Panel interface",
+          "ports": [
+            { "name": "open", "plug": "output", "type": "boolean" },
+            { "name": "title", "plug": "output", "type": "string" }
+          ]
+        },
+        {
+          "id": "panel_outputs",
+          "type": "Component Outputs",
+          "label": "Close request",
+          "ports": [{ "name": "onClose", "plug": "input", "type": "signal" }]
+        }
+      ],
+      "connections": [
+        { "fromId": "panel_inputs", "fromProperty": "open", "toId": "overlay", "toProperty": "mounted" },
+        { "fromId": "panel_inputs", "fromProperty": "title", "toId": "panel_title", "toProperty": "text" },
+        { "fromId": "close_button", "fromProperty": "onClick", "toId": "panel_outputs", "toProperty": "onClose" },
+        { "fromId": "scrim", "fromProperty": "onClick", "toId": "panel_outputs", "toProperty": "onClose" }
+      ]
+    }
+  ]
+}
