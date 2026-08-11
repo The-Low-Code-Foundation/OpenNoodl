@@ -1,7 +1,7 @@
 {
   "rubric": "DSG-006 §3",
   "scoredOn": "2026-08-11",
-  "note": "one row per criterion; no total by design. All eight criteria live as of the render-measure colour+rhythm extension.",
+  "note": "one row per criterion; no total by design. All eight criteria live as of the render-measure colour+rhythm extension. F41: `one accent` now scores area SHARE of the viewport, not the accent count alone — the ceiling is 25%, a doctrine call rather than a fitted one.",
   "runs": [
     {
       "project": "phase55-s6-haiku",
@@ -19,9 +19,9 @@
           "key": "one-accent",
           "doctrine": "§4",
           "source": "render",
-          "score": 1,
-          "value": "1 accent",
-          "evidence": "rgb(59, 130, 246) (603740px²)"
+          "score": 0,
+          "value": "1 accent, 52.4%",
+          "evidence": "covers 52.4% of the viewport, over the 25.0% ceiling — a ground, not an accent: rgb(59, 130, 246) (603740px², 52.4%)"
         },
         {
           "key": "rhythm",
@@ -160,8 +160,8 @@
           "doctrine": "§4",
           "source": "render",
           "score": 1,
-          "value": "1 accent",
-          "evidence": "rgb(59, 130, 246) (14474px²)"
+          "value": "1 accent, 1.3%",
+          "evidence": "rgb(59, 130, 246) (14474px², 1.3%)"
         },
         {
           "key": "rhythm",

@@ -83,7 +83,9 @@ pages prettier or merely not worse.
 | F38 | **Doctrine `§5` (imagery) is not landing.** Four of six replays contain **zero `Image` nodes** — not broken URLs, none authored. Only sonnet (10) and ds-awp006 (8) have any | 🔴 open |
 | F39 | **Doctrine `§9` (empty states) is landing nowhere.** 0/6 — and no project contains a gate node of *any* kind, so there is no branch for a list that is empty. Uniform failure, so the criterion currently discriminates nothing | 🔴 open |
 | F40 | **`real-copy` passes 6/6 and therefore carries no signal yet.** Either `§10` is fully absorbed or the detector is too narrow to catch what these models actually write. Do not read the green row as evidence until one run fails it | 🟠 filed |
-| F41 | **`one accent` counts accents, not restraint.** haiku and sonnet both score `1 accent` in the same hue, at **603,740px²** and **14,474px²** respectively — a full-bleed wash and an accent on a control read as a tie | 🟠 filed |
+| F41 | **`one accent` counts accents, not restraint.** haiku and sonnet both score `1 accent` in the same hue, at **603,740px²** and **14,474px²** respectively — a full-bleed wash and an accent on a control read as a tie | ✅ **closed** — scores viewport *share*; see §8 |
+| F44 | **A `test:ci` run killed from outside reports no failures at all.** The merged-tree run died at spec 550 of 2632 with `GPU process exited unexpectedly: exit_code=15`, **zero `FAILED:` lines, no `Jasmine:` summary, `lerna success`, and exit code 0.** A void run and a clean run are near-indistinguishable at a glance, and the void one looks *better* | 🔴 open — §9 |
+| F45 | **`node scripts/devtools/dev-processes.js --list` is a silent no-op.** That file is a **module with no CLI entry point**: it prints nothing and exits 0 whether the checkout is idle or running seventeen dev processes. The real instrument is `npm run dev:stop -- --list` | 🔴 open — §9 |
 | F42 | **Rhythm expressed as padding is invisible to a gap measurement.** The first version measured only inter-band gaps and reported *"1 distinct gap: 0"* for a page with perfectly good rhythm — bands in this renderer abut and carry their spacing internally. It now counts gaps **and** band padding | ✅ caught before it shipped |
 | F43 | **The token-coverage gate scans one of the four places a token name is written.** `tests/models/StyleTokenCoverage.test.ts` walks `ElementConfigRegistry` only, so `--border-control` in `design.ts` and in `docs/node-catalog/examples/*.json` was invisible to it — and `catalog:examples` passes 57/57 without checking token names at all | ✅ **closed** — `npm run catalog:tokens`, proved red then green; see §7 |
 
@@ -134,6 +136,73 @@ put the check in `tests/` — jasmine, `test:ci` only — which this session cou
 could not have proved red. Cf. DSG-007's `ProjectIdentity.test.ts`, still fixed-and-unproven for
 exactly that reason. This one **was** proved: removing `--border-control` from `DefaultTokens` turns
 it red on `ui-split-hero.json:175` *and* on all four orphan preset keys, and green again on restore.
+
+## §8 — How F41 was closed
+
+`§4`'s row now scores **how much of the page the accent covers**, not how many accents there are.
+The measurement half went into `@nodegx/render-measure` for the same reason F36 did: it is the only
+home from which this can later become a DSG-004-shaped gate. `colors.accents[]` gains a **`share`**
+(fraction of the viewport) alongside `area`, and `colors.viewportArea` carries the denominator so a
+score can be recomputed from a stored report without knowing which viewport produced it.
+
+| replay | before | after | `one accent` |
+|---|---|---|---|
+| phase55-s6-haiku | 5/8 | **4/8** | **PASS → FAIL** — `1 accent, 52.4%` |
+| phase55-s6-sonnet | 7/8 | 7/8 | PASS — `1 accent, 1.3%` |
+| the other four | 2/8, 2/8, 2/8, 6/8 | unchanged | already FAIL at `0 accents` |
+
+**It separates the only pair it could have.** haiku and sonnet paint the *same hue* at the *same
+count*; the wash is now the only one that fails, and sonnet is left as the sole 7/8. The row moved in
+the direction Richard's verdict already pointed, which is the check that matters — an instrument
+whose first act is to agree with everything it is shown has not been tested.
+
+⚠️ **The 25% ceiling is a doctrine call, and the corpus cannot defend it.** The only two runs with any
+accent sit at **0.524** and **0.013**, so *every* threshold between about 2% and 52% splits them
+identically. A quarter of the page is where a colour stops reading as an accent and starts reading as
+the surface it is painted on — but that is a judgement, not a measurement, and `ACCENT_CEILING` in
+[`score-design.js`](measurements/score-design.js) is the one line to move if Richard wants it
+elsewhere. Nothing else changes with it.
+
+⚠️ `share` postdates the six stored reports, so the criterion **falls back to the count** when a
+report carries no `share` rather than silently passing a wash it cannot measure.
+
+🔴 **A backtick in a comment inside `measureExpression` ends the string.** The whole measurement block
+is one template literal, so ``  `share` `` in a comment terminated it and surfaced as
+`SyntaxError: Unexpected identifier 'share'` from `new Function` in the *purity test*, hundreds of
+lines from the cause. Purity is back at 5/5. There is now a warning to that effect at the edit site,
+because nothing else in the file says so.
+
+## §9 — What the gate cost, and the two instruments that lied
+
+This session **owned the checkout for about twenty minutes** and spent it on the handover's §1.
+
+✅ **Baseline, `cline-dev`: `Jasmine: 2632 specs, 6 failures (failed)`, seed 05169** — exactly the
+recorded floor of 6, and the same six: two `AI model registry` and four `AIX-006 style vocabulary`.
+
+❌ **The merged tree is still unproven.** `wt-trial54` was brought up to date (`cline-dev` +
+`dsg-004` + `dsg-005` + `dsg-007`, a clean merge, `d137c69b`) and `test:ci` ran there — and was
+**killed from outside at spec 550 of 2632**, six seconds before a sibling's `npm run dev:debug`
+brought up seventeen dev processes in the primary checkout. `ProjectIdentity.test.ts` never
+executed: **0 of its 9 specs appear in the log.**
+
+🔴 **F44 — a killed run is shaped like a clean one.** It ended with **no `FAILED:` lines, no
+`Jasmine:` summary line, `lerna success exec`, and exit code 0.** Every habit that says "check the
+exit code" and every habit that says "count the failures" reports this run as *better* than the
+baseline that honestly printed 6. The only tell is the **absence** of the `Jasmine:` line — so the
+rule is not "read the Jasmine line instead of the exit code", it is **"a run with no `Jasmine:` line
+did not happen at all"**, and absence has to be checked for explicitly.
+
+🔴 **F45 — the instrument for "is the checkout quiet" was a no-op.**
+`node scripts/devtools/dev-processes.js --list` prints nothing and exits 0 **always**: that file is a
+`module.exports` with no CLI entry point, and `--list` is parsed by `stop-dev.js`. This session ran it
+at the start, got silence, and read it as an idle checkout — which happened to be true, but only an
+independent `ps` sweep actually established that. Run **`npm run dev:stop -- --list`** (note the `--`);
+it kills nothing and printed all seventeen processes correctly.
+
+⚠️ **The rule about `dev:stop` runs in both directions.** The register already says *"`dev:stop`
+KILLS a sibling's `test:ci`"*. Here this session was the **victim** rather than the offender, and
+nothing it could have done would have prevented it — which means a long `test:ci` on a shared
+checkout is not something a session can protect, only detect. Detecting it is F44.
 
 Two guards on the gate itself, both from things this repo has paid for:
 

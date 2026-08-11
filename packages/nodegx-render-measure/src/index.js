@@ -201,8 +201,22 @@ function measureExpression(placeholders, probes = []) {
     const bucket = chroma > 12 ? accentArea : neutralArea;
     bucket[bg] = (bucket[bg] || 0) + area;
   }
+  // DSG-006/F41 — raw area cannot say whether a chromatic colour is an *accent*
+  // or the page's ground, and it is not comparable between viewports: 600k px²
+  // is half of a desktop page and four phone screens. "share" is the fraction
+  // of the viewport the colour covers, which is the number §4 is actually
+  // about. The case that named this: haiku and sonnet paint the SAME hue at the
+  // SAME accent count, at 0.524 and 0.013 of the page respectively.
+  // ⚠️ No backticks in here — this whole block is a template literal, and one
+  // in a comment ends the string. It surfaces as a syntax error hundreds of
+  // lines away, which is how it cost a debug cycle the first time.
+  const viewportArea = window.innerWidth * window.innerHeight;
   const accents = Object.keys(accentArea)
-    .map((color) => ({ color, area: round(accentArea[color]) }))
+    .map((color) => ({
+      color,
+      area: round(accentArea[color]),
+      share: viewportArea ? Math.round((1000 * accentArea[color]) / viewportArea) / 1000 : null
+    }))
     .sort((a, b) => b.area - a.area);
 
   // DSG-006 §1/§8 — vertical rhythm. Measured between the full-width bands of
@@ -359,7 +373,10 @@ function measureExpression(placeholders, probes = []) {
     colors: {
       distinctAccents: accents.length,
       accents: accents.slice(0, 6),
-      distinctNeutrals: Object.keys(neutralArea).length
+      distinctNeutrals: Object.keys(neutralArea).length,
+      // The denominator behind every "share", emitted so a score can be
+      // recomputed from the report without knowing which viewport produced it.
+      viewportArea: round(viewportArea)
     },
     rhythm: {
       bands: bands.length,

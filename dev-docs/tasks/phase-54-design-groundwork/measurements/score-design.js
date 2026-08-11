@@ -106,18 +106,48 @@ function typeHierarchy(vp) {
 }
 
 /**
- * `§4` — one accent. Exactly one chromatic background colour: none means the
- * page is wholly neutral, several mean it is decorated rather than designed.
+ * `§4` — one accent. Exactly one chromatic background colour, *and* that colour
+ * has to behave like an accent: none means the page is wholly neutral, several
+ * mean it is decorated rather than designed, and one that covers half the page
+ * is the page's ground wearing an accent's name.
+ *
+ * ⚠️ F41 — the count alone was a tie between two pages nobody would call alike.
+ * haiku and sonnet paint the SAME hue at the SAME count, at 52.4% and 1.3% of
+ * the viewport: a full-bleed wash against an accent on a control.
+ *
+ * ⚠️ The ceiling is a DOCTRINE call, not a fitted one. The two runs that have
+ * any accent at all sit at 0.524 and 0.013, so every threshold between about
+ * 2% and 52% separates them equally well and the corpus cannot choose one.
+ * A quarter of the page is where a colour stops reading as an accent and starts
+ * reading as the surface it is painted on; if Richard wants it elsewhere, the
+ * number to move is here and nothing else changes.
  */
+const ACCENT_CEILING = 0.25;
+
 function oneAccent(vp) {
   const n = vp.colors?.distinctAccents;
   if (n === undefined) return { score: null, value: 'no-data', evidence: 'report carries no colour block' };
+  const accents = vp.colors.accents || [];
+  const dominant = accents[0];
+  // `share` postdates the first six replays; an older report scores on the
+  // count alone rather than silently passing a wash it cannot measure.
+  const share = dominant && typeof dominant.share === 'number' ? dominant.share : null;
+  const restrained = share === null ? true : share <= ACCENT_CEILING;
+  const pct = (s) => `${(100 * s).toFixed(1)}%`;
   return {
-    score: n === 1 ? 1 : 0,
-    value: `${n} accent${n === 1 ? '' : 's'}`,
+    score: n === 1 && restrained ? 1 : 0,
+    value:
+      n === 1 && share !== null
+        ? `1 accent, ${pct(share)}`
+        : `${n} accent${n === 1 ? '' : 's'}`,
     evidence:
-      (vp.colors.accents || []).map((a) => `${a.color} (${a.area}px²)`).join('; ') ||
-      `no chromatic background; ${vp.colors.distinctNeutrals} neutral`
+      (n === 1 && !restrained
+        ? `covers ${pct(share)} of the viewport, over the ${pct(ACCENT_CEILING)} ceiling — a ground, not an accent: `
+        : '') +
+      (accents
+        .map((a) => `${a.color} (${a.area}px²${typeof a.share === 'number' ? `, ${pct(a.share)}` : ''})`)
+        .join('; ') ||
+        `no chromatic background; ${vp.colors.distinctNeutrals} neutral`)
   };
 }
 
