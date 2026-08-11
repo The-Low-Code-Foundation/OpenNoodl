@@ -2,6 +2,8 @@
 
 **Created:** 2026-08-08
 **Status:** 🚧 In progress — reference build first, library distilled from it.
+**Tasks:** [TASKS.md](TASKS.md) — DSG-001…007, written 2026-08-10 **after** most of the work shipped.
+Two rows of the register below are wrong today; the corrections are at the bottom of that file.
 **Origin:** not the roadmap. A community member asked to see NodeGX handle an ecommerce site, and
 Richard's framing of the problem with everything the AI stack currently produces:
 
