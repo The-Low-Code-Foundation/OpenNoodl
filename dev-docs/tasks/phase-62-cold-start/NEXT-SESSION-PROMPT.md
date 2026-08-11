@@ -1,27 +1,42 @@
-# Phase 62 — three of six, and the next task is blocked on a decision, not on code
+# Phase 62 — closing it: two tasks, two measurements, and three debts a session cannot pay
 
-**Written:** 2026-08-11, by the session that built BST-004. It supersedes the handover written
-earlier the same night by the BST-001/006 session — that one is history, and **§3 of it is now
-spent**: it sends you to build BST-004, which is built, and it describes `bst-lane` as ready for
-work that has since happened somewhere else.
+**Written:** 2026-08-11 by the session that built BST-003. It **supersedes** the prompt written
+earlier the same night by the BST-004 session — that one sends you to build BST-003, which is built.
 
 **This is the live prompt.**
 
 ---
 
-## §0 — The gates, and what each one is actually worth
+## §0 — Read this first: the goal is six of six, and you will not get it
 
-🔴 **`npm run test:ci` is not the gate. It is one gate.** Three run, they cover different things, and
-two of them were measured tonight rather than inherited.
+You have been asked to close phase 62 in one session. **The code of it, yes — realistically.** The
+whole of it, no, and the parts that cannot close are not effort problems:
 
-| Gate | Floor, measured 2026-08-11 |
+| Debt | Why a session cannot close it |
 |---|---|
-| `npm run test:ci` | **`Jasmine: 2670 specs, 6 failures`** |
-| `cd packages/noodl-mcp && npx jest` | **1 failed / 405 passed of 406** — F65, DEBT-009's byte cap at 30,365 |
-| `cd packages/noodl-editor && npx jest --config jest.config.js` | **127 suites / 1798 tests, all green** — no floor, any red is yours |
+| **Windows spawn** (BST-004, BST-005) | There is no Windows machine. The path *string* is asserted; that `NodeGX.exe` under `ELECTRON_RUN_AS_NODE=1` spawns and speaks clean stdio is **an expectation** |
+| **The paid model drives** (BST-006's ordering acceptance, BST-003's consequence in prose) | A drive costs real money against a real Anthropic key. **Ask Richard before spending it** |
+| **Anything needing a quiet checkout** | A concurrent session has been live all night (see §0.2) |
 
-The six `test:ci` failures **by name**, because 6 → 12 has two routes and only the names separate
-them:
+🔴 **Do not report the phase closed because the code landed.** This phase has already been caught
+once reporting a successful `claude mcp add` as the deliverable. Land the code, run what you can, and
+**name the rest as outstanding** — that is a complete session, and a false "6/6" is not.
+
+### §0.1 — The gates, and who measured what
+
+| Gate | Floor | Provenance |
+|---|---|---|
+| `cd packages/noodl-mcp && npx jest` | **1 failed / 418 passed of 419** | ✅ **measured 2026-08-11 ~23:00**, this checkout |
+| `cd packages/noodl-editor && npx jest` | **128 suites / 1826 tests, all green** | ✅ **measured**, after BST-003 |
+| `npm run test:ci` | `Jasmine: 2670 specs, 6 failures` | ⚠️ **INHERITED — not measured this session.** Measure it before you trust it |
+
+🔴 **The MCP total moved and the floor did not.** It was `1 failed / 405 passed of 406`; it is now
+**419**. Thirteen tests arrived from other work. **Compare the TOTAL to this number, not the failure
+count** — a gitignored build artifact can make a whole file's specs vanish and still read as a pass.
+The one red is **F65**, the byte cap at `tests/tools.test.ts:182`, and it is structural rather than an
+overshoot.
+
+The six `test:ci` failures **by name** — 6 → 12 has two routes and only the names separate them:
 
 ```
 AIX-006 style vocabulary  AIB-009 F11: a provider that stalls during the style pass …
@@ -32,203 +47,187 @@ AI model registry         has exactly one default per provider that owns models
 AI model registry         treats openai-compatible as sharing the OpenAI catalogue
 ```
 
-All six are provider/model-catalogue drift. `grep -n "^  FAILED:" <log>` and compare that list.
+⚠️ **The exit code lies, and so does the harness's.** A background task reported **exit 0** for a
+`test:ci` run in which npm exited **1** with six failures. Only the `Jasmine:` line counts.
 
-⚠️ **The exit code lies, and tonight it lied through the harness too.** The background-task
-notification reported **exit code 0** for a `test:ci` run in which npm had exited **1** with six
-failures. Only the `Jasmine:` line is true. Read that line and the `FAILED:` names; never the status.
+### §0.2 — 🔴 A concurrent session is live on this checkout, and it has been all night
 
-⚠️ **`npx tsc --noEmit -p tsconfig.tests-main.json` in `noodl-editor` reports ~419 errors and always
-has** — SCSS-module resolution noise in `noodl-core-ui`. It is not a gate. Filter to your own files.
-🔴 And do not baseline it by stashing: `git stash` without `-u` leaves untracked files, so the
-"before" run compiles your new tests against the old source and reports a *higher* count than the
-after. That happened tonight (426 before, 419 after). Filter by filename instead.
+While BST-003 was being built, another session merged three lanes and landed phase 50's LEG-001/002/
+005. `HEAD` moved under this session twice. At the time of writing an Electron test run is still up.
 
-Unchanged and still true:
+**What this cost, and what it must cost you:**
 
-- ⚠️ `npm run dev:stop --list` **kills** (npm swallows the flag); `node scripts/devtools/dev-processes.js --list`
-  is a **silent no-op**; the one correct spelling is `npm run dev:stop -- --list`.
-- ⚠️ `test:ci` beside a live dev stack manufactures phantoms. Stop it first. It self-terminates at 15
-  minutes.
+- ⚠️ **`git add -A` is a loaded gun.** Both BST-003 commits were checked file-by-file afterwards and
+  were clean — but that was luck plus the other session working in worktrees. **Check
+  `git status --short` before every commit and name your paths if anything is not yours.**
+- 🔴 **Do not launch the editor while their run is up.** `start.ts` sweeps leftover processes and
+  will reap it. That is exactly why BST-003's card has never been rendered.
+- ⚠️ **`npm run dev:stop -- --list` is the ONLY spelling that lists.** `dev:stop --list` **kills**
+  (npm eats the flag) and would kill *their* run; `dev-processes.js --list` is a silent no-op.
+- Before any live work: `npm run dev:stop -- --list`, and if it shows someone else's run, **wait or
+  do the non-live half first.**
 
 ## §1 — Where things stand
 
-`cline-dev` is **`ab8e5c1e`**. **Working tree clean.** `origin/cline-dev` is **228 behind** at
-`9ba239cf` and has still not been pushed.
+`cline-dev` is at **`c80452c1`** and is **245 ahead** of an unpushed `origin/cline-dev`.
 
-| Phase | State |
+| Task | State |
 |---|---|
-| **54** — design groundwork | ✅ closed 7/7. Only §4's Richard items remain |
-| **50** — legibility (LEG) | **4 of 7.** LEG-003/004/006/007 in; **LEG-001, 002, 005 open** |
-| **62** — cold start (BST) | **3 of 6.** BST-001, 006 (`6c4dc372`) and **004 (`ab8e5c1e`)** in; **002, 003, 005 open** |
+| BST-001, 006 | ✅ built `6c4dc372` — 006 has **one acceptance line unrun** |
+| BST-004 | ✅ built `ab8e5c1e` — Windows unverified |
+| BST-003 | ✅ built `d1e3bfaa` — **card never rendered** |
+| **BST-002** | 📋 **open — the flagship** |
+| **BST-005** | 📋 **open — the cheapest** |
 
-## §2 — What BST-004 landed, and the two things it deliberately did not
+**Phase 50 is not yours** but it moved tonight; LEG-001/002/005 landed from lanes.
 
-`ab8e5c1e`, editor only — `packages/noodl-mcp` untouched. Full account in
-[NOTES-BST-004.md](NOTES-BST-004.md).
+## §2 — 🔴 Measure two things before you write anything
 
-Main now reports a `runtime` on the `mcp:front-door` answer, on the model of `entry` and `probed`;
-`mcpCommands.ts` chooses from it and **nothing in the renderer probes the machine**. `node` when
-there is one — character for character the command that shipped — and NodeGX's own Electron when
-there is not, **named in the panel** rather than substituted silently.
+Both open tasks are gated on an unverified premise about a client you do not control. **This exact
+shape has now paid out twice** — F14 inverted BST-003's recommendation, F79/F85 twice caught a probe
+answering backwards on the machines that matter most. Both measurements below are cheap, and both
+decide what gets built rather than merely how.
 
-🔴 **Two things it deliberately did not do. Neither is an oversight:**
+### §2.1 — BST-002's gate: does Claude Code re-list on `notifications/tools/list_changed`?
 
-1. **The settings prose was not corrected.** It still says *"The authoring server works inside a
-   project that already exists; it will not make you one"* — F70's sentence in a second place, made
-   false by BST-001. **BST-003 §4 owns that rewrite**, and editing it here would have collided.
-2. **Windows was not driven.** No machine. The path *string* is asserted (`quoteArg` already handled
-   `C:\Program Files\…`, which was MCP-001's tested behaviour); that `NodeGX.exe` under
-   `ELECTRON_RUN_AS_NODE=1` spawns and speaks clean stdio is **an expectation, not a measurement**.
+The whole flagship rests on it. `disclosure.ts:17-22` states the risk itself: *"A client that ignores
+the notification never sees them."* For a deferred group that costs a turn. **Here it costs the
+session** — the agent finishes `create_project` and the authoring tools stay invisible for the rest
+of the conversation.
 
-⚠️ **And one thing it did that BST-003 needs to know about:** `buildBootstrapCommand(frontDoor)` is
-new and it is **already exactly BST-003 §3's string** — server name `nodegx` unsuffixed, no project
-path, always-Electron, `--allow-writes`. It was driven end to end: registered in a real client,
-`✔ Connected`, `tools/list` answered all five bootstrap tools.
+⚠️ **You do not need BST-002 to measure this.** Write a throwaway stdio MCP server that advertises
+one tool, then reveals a second on first call and emits the notification. Register it, call the first
+tool, and see whether the client ever lists the second. That is the entire question, it costs no
+model spend, and it decides whether BST-002 is *"bind and reveal"* or *"bind, and tell the user to
+reconnect"*.
 
-🔴 **`buildMcpCommands` will not serve BST-003.** It refuses to emit without a project by design
-(*"Open a project first… that path is half the command"*), which is right for a row *about* a project
-and exactly wrong for a card whose whole premise is that there isn't one. Use the new function; do
-not loosen the old one.
+🔴 **If it does NOT re-list, do not build the reveal and call it done.** Say so, and take the fallback
+the phase already planned for: register the project server and reconnect. TASKS.md §"suggested order"
+is explicit that the phase delivers real value at step 4 even if 002 falls back.
 
-## §3 — What a next session should pick up
+### §2.2 — BST-005's gate: the `.mcp.json` contract
 
-**BST-003 — but read §2 of its spec before writing anything, because it opens with a decision that
-is Richard's and it blocks the task.**
+Its own spec marks two things unverified, and **the file is worthless if either is wrong**: the exact
+key shape, and whether an unapproved server is silently ignored. Verify by **writing one and opening
+the folder** — the spec says so and it is right.
 
-Three shapes for what the card's button does: **A** copy a command, **B** run `claude mcp add` for
-them, **C** write the client's config file directly. The spec recommends **B, with A as the visible
-fallback and C refused**, and the reasoning is sound: C trades a legible dependency for an invisible
-one, writing another application's undocumented schema, and a malformed write breaks a tool the user
-was already using successfully.
+✅ **One input you now have for free:** BST-003 measured the live registration shape. Claude Code
+stores stdio servers as `{ type: 'stdio', command, args, env }`, and `--scope user` writes
+`~/.claude.json` → top-level `mcpServers`. `.mcp.json` is a *different file* with project scope, so
+**confirm it separately** — but you are not guessing from nothing.
 
-🔴 **F14 decides it and F14 is still unverified:** *does a Claude Code **desktop app** user have the
-`claude` CLI on PATH?* If they do not, B's failure path is the common case rather than the edge, and
-the card is mostly A wearing a button.
+⚠️ **Take the spec's escape hatch on `"command"`:** write it from the server's own `process.argv[1]`,
+which is correct by construction, rather than re-deriving a path.
 
-⚠️ **Measure that before asking Richard, not after.** It is the same shape as F79 below — an
-assumption about what is on a stranger's PATH — and it is cheap. It is also the one question whose
-answer changes which product gets built.
+## §3 — The work, in order
 
-**Everything else in BST-003 is unblocked and can be built while that sits:** the command string
-already exists, the launcher card's placement is settled (`ProjectsPage.tsx`, **visible with zero
-projects**), and §4's two settings-copy edits are pure correction.
+**1. BST-005 first, not second.** It is self-contained, it is the cheapest thing in the phase, and it
+is the only task that helps *every session after the first* — a project directory currently holds
+nothing that says what it is, so session two is as cold as session one and colder in one way, because
+the user believes they connected something yesterday. ⚠️ **Both files or neither**: a registered
+server with no context gives a model 20+ tools and no vocabulary; a `CLAUDE.md` with no server gives
+vocabulary and no way to act. The complaint that opened this phase is those two failures in one
+sentence.
 
-⚠️ **Its last acceptance is a consequence, not a mechanism:** after the click, a fresh Claude Code
-session *in a folder with nothing to do with NodeGX* can answer "what can you do with NodeGX?" from
-the server's own instructions. **A successful `claude mcp add` is not the deliverable** — that is the
-thing this phase has already been caught reporting as success once.
+**2. BST-002 after its measurement.** Three landmines, all still exact:
 
-### The alternatives
+- `ProjectBinding.bind()` **plus** the disclosure reveal **in one commit**.
+- **Bind once, refuse the second.** A second `create_project` on a bound server creates the project
+  and does **not** rebind — otherwise an agent tidying up silently repoints every later tool and
+  nothing in any response says which project it is describing.
+- 🔴 **`find_tools`' description is chosen at REGISTRATION from the mode**, so a server that binds
+  mid-session leaves the stale bootstrap description advertised. `RegisteredTool.update()` is the
+  mechanism. **This is the one of the three that gets missed.**
 
-- **BST-005**, which wants BST-004's answer for `.mcp.json`'s `"command"` and now has it. It has an
-  escape hatch that is better than the answer: write it from the server's own `process.argv[1]`,
-  correct by construction.
-- **BST-002**, the flagship. The previous handover's three landmines are unchanged and still exact:
-  `ProjectBinding.bind()` plus the disclosure reveal in one commit; `BOOTSTRAP_INSTRUCTIONS`' closing
-  sentence is asserted on purpose so the task cannot land without meeting it; and 🔴 **`find_tools`'
-  description is chosen at REGISTRATION from the mode**, so a server that binds mid-session leaves
-  the stale bootstrap description advertised — `RegisteredTool.update()` is the mechanism, and it is
-  the one of the three that gets missed. Over all of it: **`instructions` is fixed at `initialize`**,
-  so project-bound guidance must travel in tool results, and no gate can see that it didn't.
-- **Finish phase 50.** Three left. 🔴 **LEG-001 is blocked and the blocker is recorded**: `toJSON`
-  passes `metadata` **by reference**, so a pasted node shares its source's bag. Fix `clone()` first.
-- **Housekeeping:** push `cline-dev` (228 ahead); `git worktree prune` (~20 stale entries, most cut
-  into per-session temp directories that no longer exist); decide about `nightly-to-main`'s one real
-  commit `77d4920b`.
+Over all of it: ⚠️ **`instructions` is fixed at `initialize`.** A server that binds mid-session can
+never send its real briefing, so project-bound guidance must travel **in tool results** — and no gate
+can see that it didn't.
 
-## §4 — What needs Richard, not a session
+**3. Then the acceptance debts in §4**, which is where the phase is actually thin.
 
-- 🔴 **BST-003 §2's decision** — A, B or C. See §3. **Measure F14 first.**
-- 🔴 **BST-006's last acceptance, still unrun.** A fresh agent with only the unbound server, asked
-  *"open my app"*, should call `list_projects` and not `create_project`. Two blockers, both
-  decisions: `scripts/devtools/mcp-model-driver.js` requires `--project` and needs a no-project mode,
-  and **a drive costs money**. ⚠️ Until it runs, BST-006 is *built* and its ordering claim is
-  *unmeasured*.
-- **F65** — the MCP byte cap, the one red in the `noodl-mcp` suite. 🔴 The mechanism is structural,
-  not an overshoot: summary mode does `s.examples = full.examples` verbatim and the corpus is *meant*
-  to grow. Raising it to 31,000 buys until the next recipe; bounding the list per type is the fix
-  that holds.
-- **`§9`'s prose**, **F51** (a destructive-text token that passes AA), **the 25% accent ceiling**
-  (`ACCENT_CEILING` in `score-design.js`), **F33** (a copied project directory inherits its parent's
-  id) — all unchanged from the previous handover.
-- 🟠 **New, and small:** your real `nodegx-observe` registration reports **`✘ Failed to connect`** in
-  `claude mcp list`. Noticed while health-checking something else; it points at
-  `/Applications/NodeGX.app/…`, not this checkout. Not investigated (F82).
+## §4 — The debts, and who can pay them
 
-## §5 — Register, new this session
+| # | Debt | Who |
+|---|---|---|
+| 1 | **BST-003's card has never been rendered.** No screenshot, no click, no zero-project profile | **A session**, once the checkout is quiet. The acceptance asks for an *empty project list*, driven — not reasoned about |
+| 2 | **BST-006's ordering acceptance.** A fresh agent with only the unbound server, asked *"open my app"*, must call `list_projects` and **not** `create_project` | **Blocked on two things**: `scripts/devtools/mcp-model-driver.js` requires `--project` and needs a no-project mode, and **the drive costs money** |
+| 3 | **F87 — the briefing miscounts its own tools.** `instructions` says *"only four tools are advertised"*; `tools/list` returns **five** (`find_tools`). The stderr line says four too | **A session.** It is BST-006's text. One sentence, and it is the first thing a fresh agent reads |
+| 4 | **Windows** | Nobody here |
+| 5 | **F65** — the MCP byte cap, the phase's one red | 🔴 Structural: summary mode does `s.examples = full.examples` verbatim and the corpus is *meant* to grow. Raising it to 31,000 buys until the next recipe; **bounding the list per type is the fix that holds** |
 
-F1–F64 in the phase-54 files; F65–F69 in the first handover; F70–F77 in the second. Full text for
-these in [NOTES-BST-004.md](NOTES-BST-004.md).
+⚠️ **Debt 3 is the cheapest real improvement in this list** and it is not cosmetic: the number is
+wrong in the one sentence that decides what a cold agent does first.
+
+## §5 — What needs Richard, not a session
+
+- 🔴 **Authorisation to spend on model drives** (debt 2, and BST-003's consequence in prose). A real
+  Anthropic provider **is** configured and a drive costs money.
+- 🔴 **If §2.1 comes back "no"** — whether BST-002 ships the reconnect fallback or waits.
+- **F82** — the real `nodegx-observe` registration reports `✘ Failed to connect` in `claude mcp list`.
+  Still true tonight. Points at `/Applications/NodeGX.app/…`, not this checkout. Not investigated.
+- **F51**, the **25% accent ceiling** (`ACCENT_CEILING` in `score-design.js`), **F33**, and **`§9`'s
+  prose** — all unchanged.
+
+## §6 — Findings this session should not have to rediscover
 
 | # | Finding | State |
 |---|---|---|
-| F78 | 🔴 **`-e/--env` is variadic, so placed before the server name it eats the name.** The first emitted command did not merely misbehave — it **failed to register at all**: `Invalid environment variable format: nodegx`. The flag goes *after* the name, as the CLI's own example shows. **No amount of reading the string reveals this**, which is exactly why the acceptance said *verify inside a real client* | ✅ fixed and asserted by index |
-| F79 | 🔴 **The obvious node probe answers backwards on the machine that matters most.** A Finder-launched mac inherits `PATH=/usr/bin:/bin:/usr/sbin:/sbin` and never reads `.zshrc`. On this machine node is at `~/.nvm/…`, so `spawnSync('node')` returns ENOENT **for an nvm user — the person most likely to have one** — which would have swapped the shipped command on machines that already worked. Two probes now: process PATH (~17ms), then `$SHELL -lic` (~2.3s, cached, warmed off the synchronous IPC handler) | ✅ built |
-| F80 | 🔴 **`ELECTRON_RUN_AS_NODE` is load-bearing and every naive test says otherwise.** Without it the binary boots a full Electron *app* (`process.type === 'browser'`, dock icon, an event loop that never exits) and **still serves stdio correctly**. ⚠️ **Claude Code's own host process exports it** — it was already `1` in this session's shell — so every negative control needs an explicit `env -u` or it is contaminated. The repo already knew: `start.ts`, `test-editor.ts`, `dev-debug.js` and `run-electron-tests.js` all delete it on the way past | ✅ asserted at both ends |
-| F18 | Electron-as-Node stdout is byte-clean for stdio MCP — **the risk that could have invalidated the whole task** | ✅ **verified**: 8258 bytes stdout and 208 stderr, byte-identical to plain `node` over `initialize` + `tools/list` |
-| F19 | `claude mcp add` supports `-e/--env`; the shim-script fallback is not needed | ✅ verified |
-| F81 | ⚠️ **`buildMcpCommands` cannot serve BST-003** — it refuses without a project by design. `buildBootstrapCommand` is the separate command, and it is built and driven | ✅ built |
-| F82 | ⚠️ The real `nodegx-observe` registration reports `✘ Failed to connect`. Not this task's; filed | 🟠 filed |
-| F83 | 🟠 **F70's sentence lives in a second place** — the settings panel still says the server *"will not make you one"*. Left deliberately for BST-003 §4, which rewrites that copy. **A structural change has a documentation half, and it is never in only one file** | 🟠 filed for BST-003 |
-| F84 | ⚠️ **A backgrounded command's completion notification reported exit 0 for a run that exited 1** with six test failures. The old rule ("the exit code lies") now has a second door: the *harness's* status is as untrustworthy as the shell's. Only the `Jasmine:` line counts | 🟠 recorded |
+| F14 | 🔴 **The Claude Code desktop app ships NO `claude` CLI.** Docs: *"To use `claude` from the terminal, install the CLI separately."* Its pitch is *"No terminal required."* `Claude.app` contains no binary, no bundled node. **The card's audience is defined by not having the thing option B spawns** | ✅ measured |
+| F85 | 🔴 **And a Finder-launched editor cannot reach the CLI even when it exists** — under `PATH=/usr/bin:/bin:/usr/sbin:/sbin`, `which claude` exits 1 (npm global under nvm). **F79 exactly, one task later, different binary.** Now one prober: `probeBinary.js` | ✅ fixed |
+| F86 | 🟠 **`~/.claude.json` → `mcpServers` is Claude Code's OWN store**, shared by CLI and Desktop by documentation, and the CLI **prints the filename on stdout**. Writing it was never "a foreign undocumented schema" — that objection killed the only option that works for the target user | ✅ measured |
+| F87 | 🔴 The bootstrap `instructions` says **four** tools; `tools/list` returns **five** | 🟠 filed, see §4 |
+| F88 | ⚠️ BST-003's card render blocked by a **concurrent session's `test:ci`** — environment, not code | 🟠 open |
+| F89 | ⚠️ **A number invented for rhetorical weight is still a number someone will rely on.** "twenty-five top-level keys" in `~/.claude.json` was written from a truncated list; it is **58** | ✅ corrected |
+| F90 | 🔴 **`--border-control` does not exist in editor chrome CSS.** It is an **app-facing** project style token (`DefaultTokens.ts`, `StylePresets/presets/*.ts`); chrome uses `--theme-color-border-*`. An undefined custom property renders **no border** and nothing reports it. Recalled memory said "defined ✅" and was right about a *different namespace* | ✅ fixed; use `--theme-color-border-default` |
 
-## §6 — Running this in two lanes
+⚠️ **F90's general form is worth more than F90:** a remembered fact can be accurate and still be
+about a different thing than the one in front of you. Verify a token against the file that must load
+it.
 
-⚠️ **Both worktrees are stale.** They sit at `b56e1f43`, two commits behind. Before using either:
+## §7 — Two lanes, if you want them
 
-```
-git -C ../OpenNoodl-worktrees/<lane> merge --ff-only cline-dev
-```
+The axis that paid — *"62 is `noodl-mcp`, 50 is editor"* — **is now clean again**, because phase 50
+landed tonight and both remaining tasks are `noodl-mcp`:
 
-| Lane | Path | Branch | Work |
-|---|---|---|---|
-| **A** | `../OpenNoodl-worktrees/bst-lane` | `bst-lane` | ~~BST-004~~ → **BST-003** (decision-gated) → BST-005 |
-| **B** | `../OpenNoodl-worktrees/leg-lane` | `leg-lane` | the `clone()` fix → LEG-001 → 002 → 005 |
+| Lane | Work |
+|---|---|
+| **A** | **BST-005** — `.mcp.json` + `CLAUDE.md`. Self-contained, touches project scaffolding only |
+| **B** | **BST-002** — binding and disclosure. Touches `server.ts`, `createProject.ts`, `disclosure.ts` |
 
-🔴 **Lane A's premise has weakened.** BST-003 is decision-gated and its live half is a **launcher
-UI** — and rule 3 below puts editor live verification in the primary. What is left for a lane there
-is the command string (already built) and the settings-copy edits. **Consider running BST-003 in the
-primary and giving lane A to BST-005**, which is self-contained.
+⚠️ **They collide in `noodl-mcp`.** BST-005 writes files at project creation; BST-002 changes what
+`create_project` does. **Both edit `createProject.ts`.** If you run two lanes, give BST-002 that file
+and have BST-005 land its writer as a separate module the other calls — or just run them in sequence,
+which for two tasks of this size is probably faster than the merge.
 
-The axis that pays is still **62 is `noodl-mcp`, 50 is editor** — except that BST-003, BST-004 and
-BST-005 are all *editor* tasks, so that separation no longer holds within phase 62. Two lanes remain
-the ceiling; the reason is the gates, not the agent count.
+### The rules that keep lanes from costing more than they save
 
-### The rules that keep it from costing more than it saves
-
-1. 🔴 **Do NOT use the harness's `isolation: "worktree"`.** It creates the branch from `origin/main`
-   — hundreds of commits behind, no `dev-docs/` at all. Seven batches out of seven. Launch
-   **non-isolated** agents pinned to the absolute paths above, with `-C <path>` on every git command
-   and the primary checkout off limits for edits.
-2. 🔴 **One full gate at a time.** Two concurrent `test:main` runs manufacture failures, and
-   `start.ts` sweeps leftover processes, so one lane's `test:ci` reaps the other's stack. Lanes run
-   their **package-local** suite only. **The orchestrator runs `test:ci` once, at merge, from the
-   primary.**
-3. 🔴 **`lerna exec` runs the PRIMARY checkout's source**, so `dev:debug` and `test:ci` launched from
-   a worktree exercise primary's code and report a result unrelated to the diff. **Editor live
-   verification belongs to the primary, after merging.**
-4. ⚠️ **Never `npm install` in a worktree**, and **never `dev:stop`** (it kills by checkout and
-   matches a running `test:ci` Electron too).
-5. ⚠️ **Every agent commits on its own branch before reporting.** An uncommitted agent produced
+1. 🔴 **Never the harness's `isolation: "worktree"`** — it branches from `origin/main`, hundreds of
+   commits back, no `dev-docs/` at all. Seven out of seven. Use
+   `scripts/devtools/make-worktree.sh <name> [base] [parent]`, which verifies before it exits.
+2. 🔴 Cut into `../OpenNoodl-worktrees/`, **never a session scratchpad** — that is why
+   `git worktree list` carries ~20 stale entries. `git worktree prune` is overdue.
+3. 🔴 **One full gate at a time**, and the orchestrator runs `test:ci` once, at merge, from the
+   primary. Lanes run their **package-local** suite only.
+4. 🔴 **`lerna exec` runs the PRIMARY checkout's source**, so `dev:debug` and `test:ci` from a
+   worktree exercise primary's code. **Editor live verification belongs to the primary.**
+5. ⚠️ **Never `npm install` in a worktree**, and **never `dev:stop`** — it kills by checkout and
+   matches a running `test:ci` Electron too.
+6. ⚠️ **Every agent commits on its own branch before reporting.** An uncommitted agent produced
    nothing.
-6. ⚠️ **Never give two agents the same task from different angles.** Already paid for.
-7. ⚠️ **Reserve this file and `TASKS.md` for the orchestrator**; give each lane its own NOTES file.
-8. ⚠️ **Agents cannot see uncommitted work** — a worktree branches from a *commit*. One previously
-   declared two real files "phantoms" and deleted them. **Verify any destructive claim against the
-   primary before merging it.**
+7. ⚠️ **Compare a lane's suite TOTAL to primary's, never its failure count** — a fresh worktree once
+   reported `1 failed, 356 passed` against primary's `405`: **49 tests silently absent, and the
+   number still looked like a pass.**
 
-### Refreshing or rebuilding a lane
+## §8 — Definition of done for this session
 
-`scripts/devtools/make-worktree.sh <name> [base] [parent]`. It does the whole thing and **verifies
-before it exits**. Cut into `../OpenNoodl-worktrees/`, **never a session scratchpad** — that is why
-`git worktree list` carries ~20 stale entries.
+Do not claim more than this, and do not claim less:
 
-🔴 **Two traps it handles, both of which fake a result:** the **dual-load trap** (symlinking
-`node_modules` wholesale makes `@noodl/runtime` resolve through primary's relative symlink, so
-`collection.ts` loads twice and throws *"Cannot redefine property: items"* — a whole suite fails and
-reads like a real defect; note there are **two** scopes, `@noodl` **and** `@nodegx`), and the
-**silent-skip trap** (build artifacts are gitignored and some suites do
-`existsSync(...) ? describe : describe.skip`, so a fresh worktree reported `1 failed, 356 passed`
-where primary reports `1 failed, 405 passed` — **49 tests silently absent, and the number still
-looks like a pass**). ⚠️ **Compare a lane's TOTAL to primary's, never its failure count.**
+- [ ] §2.1 measured, and its answer written into BST-002 before any code
+- [ ] §2.2 measured by writing a real `.mcp.json` and opening the folder
+- [ ] BST-005 built, both files, with the Windows caveat stated
+- [ ] BST-002 built — or its fallback taken, explicitly, with the measurement quoted
+- [ ] F87 fixed (one sentence, and the stderr line)
+- [ ] BST-003's card rendered with zero projects, **if** the checkout goes quiet
+- [ ] `noodl-mcp` suite compared by **total** (419) and by failure **name**
+- [ ] `test:ci` measured, not inherited, and compared by the six names in §0.1
+- [ ] Everything unrun named in the handover, Windows and paid drives included
