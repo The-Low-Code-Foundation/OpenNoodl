@@ -90,6 +90,20 @@ export interface LauncherContextValue {
    * rather than present and inert.
    */
   onOpenSettings?: () => void;
+
+  /**
+   * Window controls for the frameless window. macOS draws its own traffic
+   * lights (`titleBarStyle: 'hidden'` in main.js keeps them); Windows and Linux
+   * get nothing from `frame: false`, so the launcher header must draw them —
+   * the editor's `TitleBar` already does the same for the in-project chrome.
+   *
+   * Supplied by the host, like `onOpenSettings`: the launcher lives in
+   * noodl-core-ui and has no business requiring `@electron/remote`. Absent in
+   * Storybook, where the buttons then do not render.
+   */
+  onMinimizeWindow?: () => void;
+  onMaximizeWindow?: () => void;
+  onCloseWindow?: () => void;
 }
 
 const LauncherContext = createContext<LauncherContextValue | null>(null);

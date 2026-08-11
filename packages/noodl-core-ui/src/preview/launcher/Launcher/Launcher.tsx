@@ -73,6 +73,11 @@ export interface LauncherProps {
 
   /** Open the app-wide settings dialog (theme, AI provider and key). */
   onOpenSettings?: () => void;
+
+  /** Frameless-window controls, drawn by the header on Windows and Linux. */
+  onMinimizeWindow?: () => void;
+  onMaximizeWindow?: () => void;
+  onCloseWindow?: () => void;
 }
 
 // FIXME: make the mock data real
@@ -220,7 +225,10 @@ export function Launcher({
   onGitHubDisconnect,
   githubRepos,
   onCloneRepo,
-  onOpenSettings
+  onOpenSettings,
+  onMinimizeWindow,
+  onMaximizeWindow,
+  onCloseWindow
 }: LauncherProps) {
   // Determine initial tab: props > deep link > persisted > default
   const deepLinkTab = parseDeepLink();
@@ -355,7 +363,10 @@ export function Launcher({
         onGitHubDisconnect,
         githubRepos,
         onCloneRepo,
-        onOpenSettings
+        onOpenSettings,
+        onMinimizeWindow,
+        onMaximizeWindow,
+        onCloseWindow
       }}
     >
       <div className={css['Root']}>

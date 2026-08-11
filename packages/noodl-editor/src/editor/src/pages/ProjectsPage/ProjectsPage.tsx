@@ -45,6 +45,7 @@ import {
   setPendingScopePlan,
   writeScopeDocs
 } from '../../models/AiAssistant/scoping';
+import { App } from '../../models/app';
 import { DialogLayerModel } from '../../models/DialogLayerModel';
 import { LessonsProjectsModel } from '../../models/LessonsProjectModel';
 import LessonTemplatesModel from '../../models/lessontemplatesmodel';
@@ -1076,6 +1077,13 @@ export function ProjectsPage(props: ProjectsPageProps) {
         githubRepos={githubRepos}
         onCloneRepo={handleCloneRepo}
         onOpenSettings={handleOpenSettings}
+        // The window is frameless on every platform, and only macOS keeps
+        // native buttons — so on Windows and Linux the launcher had no
+        // minimise/maximise/close. `App` already owns these for the editor's
+        // own titlebar; the launcher just had nobody passing them in.
+        onMinimizeWindow={() => App.instance.minimize()}
+        onMaximizeWindow={() => App.instance.maximize()}
+        onCloseWindow={() => App.instance.close()}
       />
 
       <ProjectCreationWizard
