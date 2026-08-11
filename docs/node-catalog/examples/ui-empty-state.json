@@ -1,14 +1,208 @@
 {
   "id": "ui-empty-state",
   "title": "Empty state: what a list shows when it has no rows",
-  "description": "A list with nothing in it should say what it is and what to do, not render nothing. The designed version is small and centred inside a dashed card: an icon in a muted disc, one heading, one line of explanation capped at ~380px, and exactly one action. Wire the collection's count into this Group's `visible` port and the inverse into the list — falsiness does the switching with no logic node. Skipping the empty state is the difference between an app that looks unfinished on first run and one that does not, and first run is when it is always seen.",
+  "description": "A list with nothing in it should say what it is and what to do, not render nothing. The designed version is small and centred inside a dashed card: an icon in a muted disc, one heading, one line of explanation capped at ~380px, and exactly one action. The switch is one wire: the query's `isEmpty` boolean into the empty state's `mounted` input. Use `mounted`, not `visible` — `mounted` takes the element out of the layout, while `visible` only hides it and keeps the space it occupies, which leaves a page-height hole above your empty state. The list needs no gate at all: a `For Each` over an empty array renders no rows and occupies no height, so nothing has to be inverted and no logic node is involved. Skipping the empty state is the difference between an app that looks unfinished on first run and one that does not, and first run is when it is always seen.",
   "demonstrates": [
     "Group",
     "net.noodl.visual.icon",
     "Text",
-    "net.noodl.controls.button"
+    "net.noodl.controls.button",
+    "DbCollection2",
+    "For Each"
   ],
   "components": [
+    {
+      "name": "/Pages/Orders",
+      "nodes": [
+        {
+          "id": "page",
+          "type": "Page",
+          "label": "Orders",
+          "parameters": {
+            "title": "Orders",
+            "urlPath": "orders"
+          },
+          "children": [
+            "band"
+          ]
+        },
+        {
+          "id": "band",
+          "type": "Group",
+          "label": "Page band",
+          "parameters": {
+            "width": {
+              "value": 100,
+              "unit": "%"
+            },
+            "flexDirection": "column",
+            "alignItems": "center",
+            "backgroundColor": "var(--background)",
+            "paddingTop": "var(--space-16)",
+            "paddingBottom": "var(--space-16)"
+          },
+          "parent": "page",
+          "children": [
+            "shell"
+          ]
+        },
+        {
+          "id": "shell",
+          "type": "Group",
+          "label": "Centred shell",
+          "parameters": {
+            "width": {
+              "value": 100,
+              "unit": "%"
+            },
+            "maxWidth": {
+              "value": 720,
+              "unit": "px"
+            },
+            "flexDirection": "column",
+            "rowGap": "var(--space-6)",
+            "paddingLeft": "var(--space-6)",
+            "paddingRight": "var(--space-6)"
+          },
+          "parent": "band",
+          "children": [
+            "heading",
+            "list",
+            "empty"
+          ]
+        },
+        {
+          "id": "heading",
+          "type": "Text",
+          "label": "Section head",
+          "parameters": {
+            "text": "Orders",
+            "fontSize": "var(--text-2xl)",
+            "fontWeight": "var(--font-semibold)",
+            "color": "var(--foreground)"
+          },
+          "parent": "shell"
+        },
+        {
+          "id": "list",
+          "type": "For Each",
+          "label": "One row per record",
+          "parameters": {
+            "template": "/Components/OrderRow"
+          },
+          "parent": "shell"
+        },
+        {
+          "id": "empty",
+          "type": "/Components/EmptyState",
+          "label": "Shown only when the query is empty",
+          "parent": "shell"
+        },
+        {
+          "id": "query",
+          "type": "DbCollection2",
+          "label": "Fetch orders",
+          "parameters": {
+            "collectionName": "Order"
+          }
+        }
+      ],
+      "connections": [
+        {
+          "fromId": "query",
+          "fromProperty": "items",
+          "toId": "list",
+          "toProperty": "items"
+        },
+        {
+          "fromId": "query",
+          "fromProperty": "isEmpty",
+          "toId": "empty",
+          "toProperty": "mounted"
+        }
+      ]
+    },
+    {
+      "name": "/Components/OrderRow",
+      "nodes": [
+        {
+          "id": "row",
+          "type": "Group",
+          "label": "Order row",
+          "parameters": {
+            "width": {
+              "value": 100,
+              "unit": "%"
+            },
+            "flexDirection": "row",
+            "alignItems": "center",
+            "justifyContent": "space-between",
+            "backgroundColor": "var(--surface)",
+            "borderRadius": "var(--radius-lg)",
+            "paddingLeft": "var(--space-4)",
+            "paddingRight": "var(--space-4)",
+            "paddingTop": "var(--space-4)",
+            "paddingBottom": "var(--space-4)"
+          },
+          "children": [
+            "row_reference",
+            "row_total"
+          ]
+        },
+        {
+          "id": "row_reference",
+          "type": "Text",
+          "label": "Reference",
+          "parameters": {
+            "fontSize": "var(--text-sm)",
+            "fontWeight": "var(--font-medium)",
+            "color": "var(--foreground)"
+          },
+          "parent": "row"
+        },
+        {
+          "id": "row_total",
+          "type": "Text",
+          "label": "Total",
+          "parameters": {
+            "fontSize": "var(--text-sm)",
+            "color": "var(--muted-foreground)"
+          },
+          "parent": "row"
+        },
+        {
+          "id": "row_inputs",
+          "type": "Component Inputs",
+          "label": "One record's fields",
+          "ports": [
+            {
+              "name": "reference",
+              "plug": "output",
+              "type": "*"
+            },
+            {
+              "name": "total",
+              "plug": "output",
+              "type": "*"
+            }
+          ]
+        }
+      ],
+      "connections": [
+        {
+          "fromId": "row_inputs",
+          "fromProperty": "reference",
+          "toId": "row_reference",
+          "toProperty": "text"
+        },
+        {
+          "fromId": "row_inputs",
+          "fromProperty": "total",
+          "toId": "row_total",
+          "toProperty": "text"
+        }
+      ]
+    },
     {
       "name": "/Components/EmptyState",
       "nodes": [
