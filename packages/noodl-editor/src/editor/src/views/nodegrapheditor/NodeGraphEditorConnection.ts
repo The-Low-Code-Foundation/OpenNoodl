@@ -18,7 +18,15 @@ import {
   loopedAge,
   WIRE_ENDPOINT
 } from './wireEndpoints';
-import { samplePolyline, travellingHeadRange, valueDashOffset, wirePulseKind, WIRE_PULSE } from './wirePulse';
+import {
+  arrivalGlow,
+  beadRange,
+  beadTaper,
+  samplePolyline,
+  valueDashOffset,
+  wirePulseKind,
+  WIRE_PULSE
+} from './wirePulse';
 
 /** Editor setting: show every wire's label without hovering (CAN-001). */
 export const ALWAYS_SHOW_WIRE_LABELS = 'nodeGraphEditor.alwaysShowWireLabels';
@@ -26,11 +34,13 @@ export const ALWAYS_SHOW_WIRE_LABELS = 'nodeGraphEditor.alwaysShowWireLabels';
 /**
  * Editor setting: state every wire's direction along its length (SIG-006 R3).
  *
- * Off by default. The endpoint glyphs answer "which way" wherever you can see an
- * end, and hover answers the rest one wire at a time; this turns the answer on
- * for the whole graph at once, at a measured cost of ~38 extra marks on the
- * median viewport of a 263-wire component. See `DIRECTION_CHEVRON` for the
- * sweep, and why there is no cheaper version of this cue.
+ * ⚠️ **On by default** — so the stored value is only ever `false`, and an unset
+ * key means on. R3 shipped this off by default on a redundancy argument (an end
+ * is visible on ~92% of the wires on screen); shown the result, Richard's
+ * judgement was the opposite, and specifically that the cue earning its place
+ * only past a certain wire length is what makes it worth having always. The
+ * measurement stands, the default it implied did not — see `DIRECTION_CHEVRON`
+ * for the sweep and SIG-006 R9.
  */
 export const ALWAYS_SHOW_WIRE_DIRECTION = 'nodeGraphEditor.alwaysShowWireDirection';
 
@@ -476,7 +486,9 @@ export class NodeGraphEditorConnection {
    * pointing at.
    */
   paintsDirectionChevrons(): boolean {
-    return !!EditorSettings.instance.get(ALWAYS_SHOW_WIRE_DIRECTION);
+    // ⚠️ `!== false`, not truthiness: this setting is **on by default**, and an
+    // unset key must mean on rather than off.
+    return EditorSettings.instance.get(ALWAYS_SHOW_WIRE_DIRECTION) !== false;
   }
 
   /** Where the label sits on the curve, clamped clear of both node cards. */
@@ -528,6 +540,94 @@ export class NodeGraphEditorConnection {
 
     // Cached for hit-testing the drag. Graph coordinates, this frame only.
     this.labelBounds = { x: a.x - width / 2, y: a.y - height / 2, width, height };
+  }
+
+  /**
+   * The travelling mark, and its arrival — the one implementation, called by
+   * both the runtime signal pulse and the hover direction mark.
+   *
+   * `ageMs` is time since the mark began: since the runtime reported the pulse,
+   * or since the pointer entered the wire (folded into one cycle by
+   * `loopedAge`). `baseWidth` is the wire's own stroke width, which the mark
+   * exceeds — SIG-005 established that the mark's meaning is carried in weight,
+   * because a luminance step against a bright wire cannot be won in dark.
+   *
+   * ## Why it is drawn in segments rather than as one stroke
+   *
+   * One stroke is one width and one alpha, and that is what made this a uniform
+   * white bar sliding along the wire. The mark is now **tapered and faded from
+   * tail to head** (`beadTaper`) and drawn as a dim halo under a bright core,
+   * which is what reads as a charge moving down a wire rather than a rectangle.
+   * `shadowBlur` is the other way to get a glow and costs far more on a graph
+   * that may be pulsing dozens of wires at once.
+   *
+   * ⚠️ Each segment sets its own `globalAlpha`, so the caller's alpha — the
+   * runtime pulse's fade-out — is read first and multiplied through rather than
+   * clobbered.
+   *
+   * ## The arrival
+   *
+   * The head used to clamp at the target with the tail held behind it, parking a
+   * full-length bar on the end of the wire for the rest of its life and then
+   * blinking out. Now `beadRange` runs the tail in after it, so the mark is
+   * consumed by the target, and `arrivalGlow` lights `arrowhead` as it lands.
+   * ⚠️ **The lit arrowhead is the payoff, not decoration** — the mark spends its
+   * whole life saying "this way" and only that instant says "*here*".
+   */
+  paintTravellingMark(
+    ctx: CanvasRenderingContext2D,
+    ageMs: number,
+    baseWidth: number,
+    arrowhead: { x: number; y: number }[] | undefined
+  ) {
+    const outerAlpha = ctx.globalAlpha;
+    const headWidth = baseWidth + WIRE_PULSE.signalWeightBoost;
+    const { from, to } = beadRange(ageMs);
+
+    if (to - from > 1e-4) {
+      const points = samplePolyline((u) => this.pointOnCurve(u), from, to, WIRE_PULSE.beadSegments);
+      if (points.length > 1) {
+        const previousCap = ctx.lineCap;
+        const previousJoin = ctx.lineJoin;
+        ctx.setLineDash([]);
+        ctx.lineDashOffset = 0;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+
+        // Halo first, whole length, then the core over it — interleaving them
+        // would let one segment's halo wash over the previous segment's core.
+        for (const halo of [true, false]) {
+          for (let i = 1; i < points.length; i++) {
+            const { alpha, widthScale } = beadTaper(i / (points.length - 1));
+            ctx.globalAlpha = outerAlpha * alpha * (halo ? WIRE_PULSE.beadHaloAlpha : 1);
+            ctx.lineWidth = headWidth * widthScale * (halo ? WIRE_PULSE.beadHaloScale : 1);
+            ctx.beginPath();
+            ctx.moveTo(points[i - 1].x, points[i - 1].y);
+            ctx.lineTo(points[i].x, points[i].y);
+            ctx.stroke();
+          }
+        }
+
+        ctx.lineCap = previousCap;
+        ctx.lineJoin = previousJoin;
+      }
+    }
+
+    const glow = arrivalGlow(ageMs);
+    if (glow > 0 && arrowhead && arrowhead.length) {
+      const previousFill = ctx.fillStyle;
+      ctx.globalAlpha = outerAlpha * glow;
+      ctx.fillStyle = ctx.strokeStyle;
+      ctx.beginPath();
+      ctx.moveTo(arrowhead[0].x, arrowhead[0].y);
+      for (let i = 1; i < arrowhead.length; i++) ctx.lineTo(arrowhead[i].x, arrowhead[i].y);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = previousFill;
+    }
+
+    ctx.globalAlpha = outerAlpha;
+    ctx.lineWidth = baseWidth;
   }
 
   /** Is this point on the label chip? Only meaningful when one was painted. */
@@ -778,23 +878,7 @@ export class NodeGraphEditorConnection {
         // One bead, running source → target. `curve[0]` is the source end (the
         // endpoint dots above are painted from the same array), so sampling
         // forward in `t` travels the way the signal does.
-        const { from, to } = travellingHeadRange(ageMs);
-        const points = samplePolyline((u) => this.pointOnCurve(u), from, to);
-        if (points.length > 1) {
-          const previousCap = ctx.lineCap;
-          const previousJoin = ctx.lineJoin;
-          ctx.setLineDash([]);
-          ctx.lineDashOffset = 0;
-          ctx.lineWidth = wireWidth + WIRE_PULSE.signalWeightBoost;
-          ctx.lineCap = 'round';
-          ctx.lineJoin = 'round';
-          ctx.beginPath();
-          ctx.moveTo(points[0].x, points[0].y);
-          for (let i = 1; i < points.length; i++) ctx.lineTo(points[i].x, points[i].y);
-          ctx.stroke();
-          ctx.lineCap = previousCap;
-          ctx.lineJoin = previousJoin;
-        }
+        this.paintTravellingMark(ctx, ageMs, wireWidth, head);
       } else {
         // A value is live along the whole wire, so the overlay is too.
         ctx.setLineDash(WIRE_PULSE.valueDash as unknown as number[]);
@@ -829,24 +913,8 @@ export class NodeGraphEditorConnection {
       // bead. The two never collide: this branch is `else` to the pulse, so a
       // wire that is genuinely carrying something keeps saying so.
       const ageMs = performance.now() - (this.owner.hoverMarkStartedAt ?? 0);
-      const { from, to } = travellingHeadRange(loopedAge(ageMs));
-      const points = samplePolyline((u) => this.pointOnCurve(u), from, to);
-      if (points.length > 1) {
-        const previousCap = ctx.lineCap;
-        const previousJoin = ctx.lineJoin;
-        ctx.strokeStyle = theme.wirePulse;
-        ctx.setLineDash([]);
-        ctx.lineDashOffset = 0;
-        ctx.lineWidth = ctx.lineWidth + WIRE_PULSE.signalWeightBoost;
-        ctx.lineCap = 'round';
-        ctx.lineJoin = 'round';
-        ctx.beginPath();
-        ctx.moveTo(points[0].x, points[0].y);
-        for (let i = 1; i < points.length; i++) ctx.lineTo(points[i].x, points[i].y);
-        ctx.stroke();
-        ctx.lineCap = previousCap;
-        ctx.lineJoin = previousJoin;
-      }
+      ctx.strokeStyle = theme.wirePulse;
+      this.paintTravellingMark(ctx, loopedAge(ageMs), ctx.lineWidth, head);
     }
 
     ctx.lineDashOffset = 0;

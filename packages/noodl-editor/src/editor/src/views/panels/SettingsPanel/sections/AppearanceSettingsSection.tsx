@@ -30,7 +30,7 @@ const BLOCK_LANGUAGE_OPTIONS = [
 export function AppearanceSettingsSection() {
   const [blockLanguage, setBlockLanguage] = useState<string>('system');
   const [alwaysShowWireLabels, setAlwaysShowWireLabels] = useState(false);
-  const [alwaysShowWireDirection, setAlwaysShowWireDirection] = useState(false);
+  const [alwaysShowWireDirection, setAlwaysShowWireDirection] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
@@ -40,7 +40,7 @@ export function AppearanceSettingsSection() {
         const saved = EditorSettings.instance.get(BLOCK_LANGUAGE_SETTINGS_KEY);
         setBlockLanguage(typeof saved === 'string' ? saved : 'system');
         setAlwaysShowWireLabels(!!EditorSettings.instance.get(ALWAYS_SHOW_WIRE_LABELS));
-        setAlwaysShowWireDirection(!!EditorSettings.instance.get(ALWAYS_SHOW_WIRE_DIRECTION));
+        setAlwaysShowWireDirection(EditorSettings.instance.get(ALWAYS_SHOW_WIRE_DIRECTION) !== false);
       })
       .catch(() => {
         /* keep the default */
@@ -81,7 +81,7 @@ export function AppearanceSettingsSection() {
           </PanelRow>
           <PanelRow
             label="Always show wire direction"
-            helpText="Repeat a small chevron along every wire, pointing the way it runs. Off by default: a wire already shows a circle where it leaves and an arrowhead where it arrives, and hovering one runs a mark along it. Turn this on to read direction on long wires whose ends are both off screen — on a large graph it adds a few dozen marks to the screen."
+            helpText="Repeat a small chevron along every wire, pointing the way it runs. Only wires long enough that you cannot easily see both ends get them, so short hops stay clean. Turn this off to leave direction to the circle where a wire leaves, the arrowhead where it arrives, and the mark that runs along a wire you hover."
           >
             <Checkbox
               isChecked={alwaysShowWireDirection}

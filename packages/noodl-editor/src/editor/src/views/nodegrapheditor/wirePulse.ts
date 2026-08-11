@@ -101,7 +101,53 @@ export const WIRE_PULSE = {
   valueDash: [4, 10],
 
   /** Pixels per ms the value overlay's dashes advance. Matches the old feel. */
-  valueDriftPerMs: 1 / 20
+  valueDriftPerMs: 1 / 20,
+
+  /**
+   * How long the mark takes to pour into the target once its head lands, in ms.
+   *
+   * Before this the head clamped at `t = 1` and the tail stayed `headSpan`
+   * behind it, so the mark **parked** on the target for the rest of the cycle
+   * and then blinked out — read as "stopping abruptly", which is what it was.
+   * A signal arriving is an event; the tail now runs into the target and the
+   * mark is consumed by it.
+   */
+  dissipateMs: 170,
+
+  /**
+   * How long the target glyph stays lit after the mark lands, in ms.
+   *
+   * ⚠️ The arrowhead lighting up is the *point* of the arrival, not decoration:
+   * the mark spends its whole life saying "this way", and the moment it lands is
+   * the only one that says "**here**". Leaving the glyph unlit while a white
+   * mark died against it read as an inconsistency because it was one.
+   */
+  arrivalGlowMs: 240,
+
+  /**
+   * Segments the travelling mark is drawn in, so it can taper and fade.
+   *
+   * One stroke can only be one width and one alpha, which is what made the mark
+   * a uniform bar — a white rectangle with rounded ends rather than anything
+   * that reads as a charge moving down a wire.
+   */
+  beadSegments: 14,
+
+  /** The tail's width and alpha as a share of the head's. */
+  beadTailWidthScale: 0.12,
+
+  /**
+   * How wide the halo is, as a multiple of the core's width.
+   *
+   * Drawn under the core at low alpha. This is the "electric" part: a bright
+   * core inside a soft spread is what a glow is, and canvas `shadowBlur` is the
+   * other way to get it and costs far more per frame on a graph that may be
+   * pulsing dozens of wires at once.
+   */
+  beadHaloScale: 2.6,
+
+  /** The halo's alpha, as a share of the core's at the same point. */
+  beadHaloAlpha: 0.3
 } as const;
 
 /**
@@ -130,6 +176,69 @@ export function travellingHeadRange(
 ): { from: number; to: number } {
   const progress = Math.max(0, Math.min(1, travelMs > 0 ? ageMs / travelMs : 1));
   return { from: Math.max(0, progress - headSpan), to: progress };
+}
+
+/**
+ * Where the mark is on the curve *including its arrival*, as `[from, to]` in
+ * bezier `t`.
+ *
+ * {@link travellingHeadRange} is the crossing and nothing else — it clamps the
+ * head at the target and holds the tail `headSpan` behind, which parks a
+ * full-length bar on the end of the wire until the age runs out. This wraps it
+ * with the arrival: once the head has landed, the **tail keeps going**, so the
+ * mark pours into the target and is gone. Zero length is the resting state, and
+ * the painter skips it.
+ *
+ * `travellingHeadRange` is left exactly as SIG-005 wrote it, because the range
+ * it describes is still the honest answer to "where is the head" and its specs
+ * grade that.
+ */
+export function beadRange(
+  ageMs: number,
+  travelMs: number = WIRE_PULSE.travelMs,
+  headSpan: number = WIRE_PULSE.headSpan,
+  dissipateMs: number = WIRE_PULSE.dissipateMs
+): { from: number; to: number } {
+  const crossing = travellingHeadRange(ageMs, travelMs, headSpan);
+  if (ageMs <= travelMs || !(dissipateMs > 0)) return crossing;
+
+  const landed = Math.max(0, Math.min(1, (ageMs - travelMs) / dissipateMs));
+  return { from: crossing.from + (crossing.to - crossing.from) * landed, to: crossing.to };
+}
+
+/**
+ * How lit the target glyph is, 0 to 1, for a mark of this age.
+ *
+ * Zero until the head lands, full at the moment it does, then decaying over
+ * {@link WIRE_PULSE.arrivalGlowMs}. Squared on the way down so it reads as a
+ * flash that decays rather than a linear dimmer.
+ */
+export function arrivalGlow(
+  ageMs: number,
+  travelMs: number = WIRE_PULSE.travelMs,
+  glowMs: number = WIRE_PULSE.arrivalGlowMs
+): number {
+  if (ageMs < travelMs || !(glowMs > 0)) return 0;
+
+  const since = (ageMs - travelMs) / glowMs;
+  if (since >= 1) return 0;
+  return (1 - since) * (1 - since);
+}
+
+/**
+ * The width and alpha of one point along the mark, from tail to head.
+ *
+ * `fraction` is 0 at the tail and 1 at the head. Both curves are eased so the
+ * mark is mostly its bright leading end with a thin trail behind it — a charge
+ * moving, rather than a bar sliding.
+ */
+export function beadTaper(fraction: number): { alpha: number; widthScale: number } {
+  const f = Math.max(0, Math.min(1, fraction));
+  const tail = WIRE_PULSE.beadTailWidthScale;
+  return {
+    alpha: f * f,
+    widthScale: tail + (1 - tail) * Math.sqrt(f)
+  };
 }
 
 /**
