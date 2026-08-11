@@ -2,8 +2,9 @@
 
 **Created:** 2026-08-09
 **Status:** 🔨 **6 of 7 closed 2026-08-11** — SIG-001, 002, 003, 004 (the whole of *what a wire
-means*), **005** and **006** (all but the last of *what a wire looks like*). **Only 007 remains, and
-it is gated on a question for Richard — see its §0.** Tasks are **[TASKS.md](TASKS.md)**.
+means*), **005** and **006** (all but the last of *what a wire looks like*). **Only 007 remains, and its §0
+gate is now answered** — Richard, shown 001–006 running: *"yes I do want the anchor points"*. Tasks are
+**[TASKS.md](TASKS.md)**.
 
 ✅ **SIG-005 filed a defect it did not fix; it is fixed.** The component a project *opens on* built its
 connections before the node library could answer them, so every wire in it reported no type and **a

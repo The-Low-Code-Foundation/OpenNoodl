@@ -35,7 +35,7 @@ show the direction is drawn only while the wire is still being dragged.
 | SIG-004 | [SIG-004-EVERY-SIGNAL-SAYS-WHAT-IT-DOES.md](SIG-004-EVERY-SIGNAL-SAYS-WHAT-IT-DOES.md) | one sentence at the render seam, true of every signal port in the library | ✅ **closed 08-11** |
 | SIG-005 | [SIG-005-THE-SIGNAL-TRAVELS.md](SIG-005-THE-SIGNAL-TRAVELS.md) | the travelling pulse — it fired all along and measured **1.48:1** against the wire it was painted on | ✅ **closed 08-11** |
 | SIG-006 | [SIG-006-WHICH-WAY-DOES-THIS-WIRE-GO.md](SIG-006-WHICH-WAY-DOES-THIS-WIRE-GO.md) | endpoint glyphs you can tell apart, and a hover that runs the length of a long wire | ✅ **closed 08-11 — 7/7; R3 priced and built** |
-| SIG-007 | [SIG-007-ANCHOR-POINTS.md](SIG-007-ANCHOR-POINTS.md) | drag a wire to bend it; anchor points, added and removed | 📋 open |
+| SIG-007 | [SIG-007-ANCHOR-POINTS.md](SIG-007-ANCHOR-POINTS.md) | drag a wire to bend it; anchor points, added and removed | 📋 **open — §0 answered 08-11, build it** |
 
 ## Suggested order, and why
 
@@ -56,7 +56,9 @@ show the direction is drawn only while the wire is still being dragged.
 6. **SIG-006** — the endpoint glyphs are a contained fix with a known correct answer already in the
    codebase (the drag line's arrowhead).
 7. **SIG-007 last.** It is the largest, the only one that changes what a connection *is* on disk, and
-   the only one nobody has complained about twice. See its §0 before committing to it.
+   the only one nobody has complained about twice. ✅ **Its §0 gate is answered** — Richard, shown
+   001–006 running on 2026-08-11: *"and yes I do want the anchor points"*. Recorded verbatim in the
+   task file, with two design steers he gave in the same breath.
 
 ## The dependency that is not obvious
 

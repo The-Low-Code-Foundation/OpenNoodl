@@ -1,13 +1,35 @@
 # SIG-007 — Anchor points
 
-**Status:** 📋 open · **Track SIG** · ⚠️ **the largest task in the phase, and the only speculative one**
+**Status:** 📋 open, **§0 answered — build it** · **Track SIG** · ⚠️ **the largest task in the phase**
 
 > *"In another app he showed in his demo, you could click drag a connector line and create an 'anchor
 > point' that would adjust the trajectory of the connector line — so like clicking near one end and
 > dragging to make it curve more sharply before moving off to its destination, adding as many anchor
 > points (and deleting with right click I guess) as you like."*
 
-## §0 — Read this before committing to it
+## ✅ §0 is answered — 2026-08-11
+
+**Richard, shown SIG-001…006 running:** *"Couple of observations before we move on to 007 (and yes I do
+want the anchor points)."*
+
+So the gate below is cleared and the acceptance's first box is ticked. ⚠️ **It is still worth reading
+§0** — not to reopen the decision, but because it names what this task costs and what it touches, and
+none of that changed by being approved.
+
+Two things he said in the same breath are **design input for this task**, not just for SIG-006:
+
+- *"I like the chevron, especially that it only comes on after a certain distance."* — the principle
+  that earned it: **a cue that only appears where it is needed**. Anchor handles are the same problem
+  with more force (there can be many per wire), and §4 below already says handles appear on
+  hover/selection only. Treat that as confirmed by the user, not just inherited.
+- *"I think the chevron looks good compared to the solid triangle anchor point, it's like a wire
+  diagram, which is a bit the inspiration for Noodl."* — ⚠️ **an anchor handle is another solid mark
+  on a wire that now also carries chevrons**, and "wire diagram" is the aesthetic to hold to. Whatever
+  an anchor handle looks like has to be told apart from the endpoint circle, the endpoint arrowhead,
+  the `'both'` diamond and the direction chevron — five marks on one wire. `wireEndpoints.ts` owns
+  that vocabulary and its header carries the fill-ratio reasoning; a sixth mark goes through it.
+
+## §0 — the argument that gate existed for
 
 This is the only task in phase 60 that:
 
@@ -92,7 +114,8 @@ visible from the canvas:
 
 ## Acceptance
 
-- [ ] ⚠️ §0 answered: the same user has seen SIG-001…006 and still wants this. Recorded before build.
+- [x] ⚠️ §0 answered: the same user has seen SIG-001…006 and still wants this. **Recorded above,
+      2026-08-11, before any build.**
 - [ ] An anchor is created by dragging a wire body, moved, and deleted by right-click.
 - [ ] Dragging **near an endpoint** still re-targets the wire, and the boundary between the two
       gestures is discoverable rather than a surprise.
