@@ -51,6 +51,81 @@ function toFolderPath(sheetPrefix: string, parentPath?: string): string {
   return joined.endsWith('/') ? joined : joined + '/';
 }
 
+/**
+ * The node "Make Home" would actually point the project's root at, or
+ * `undefined` if this component has none.
+ *
+ * `ProjectModel.setRootComponent` runs the same search and *silently returns*
+ * when it comes up empty. The menu entry is offered for anything the panel calls
+ * visual — `allowAsChild`, "may live inside a visual tree" — which is not the
+ * same question as `allowAsExportRoot`, "may *be* a tree". Resolving the node
+ * here is what lets the caller tell the two apart and say so.
+ */
+export function findExportRootNode(component: ComponentModel) {
+  return (component?.graph?.roots ?? []).find((node: TSFixme) => node.type?.allowAsExportRoot);
+}
+
+export interface MakeHomeResult {
+  ok: boolean;
+  /** Why not, in the words the user is shown. Absent when `ok`. */
+  reason?: string;
+}
+
+/**
+ * Point the project's root node at `component` — the model half of "Make Home",
+ * split out from the menu handler so it can be driven without React.
+ *
+ * **`pushAndDo`, not `push` + `do()`.** `UndoActionGroup.push` advances the
+ * group's pointer to the end of its action list, and `do()` runs *from* the
+ * pointer forward — so `push({do, undo})` followed by `do()` executes nothing at
+ * all. That is what shipped here, and it made the whole gesture inert: the undo
+ * entry was recorded, the root was never set, and a project whose home component
+ * had been deleted could not be given a new one — the preview kept showing the
+ * "No HOME component selected" error that tells you to click the very item that
+ * does nothing. It is the mirror image of the trap
+ * `tests/models/StyleTokensUndo.test.ts` pins from the other side: there the
+ * constructor form left the pointer at 0 so `undo()` had nothing to walk back;
+ * here `push` moved it past the one action `do()` was meant to run. `pushAndDo`
+ * is the pair that both applies and records.
+ */
+export function makeComponentHome(project: ProjectModel, component: ComponentModel): MakeHomeResult {
+  if (!project || !component) return { ok: false, reason: 'No component to make home.' };
+
+  // `deleteComponentAllowed` is the project's own "may this component be
+  // reassigned" answer: it refuses annotation-locked components, and it refuses
+  // the component that is *already* home.
+  const allowed = project.deleteComponentAllowed(component);
+  if (!allowed?.canBeDelete) {
+    return { ok: false, reason: allowed?.reason || `"${component.localName}" can't be made the home component.` };
+  }
+
+  const rootNode = findExportRootNode(component);
+  if (!rootNode) {
+    return {
+      ok: false,
+      reason:
+        `"${component.localName}" has no visual node at the root of its graph, so it can't be the home ` +
+        `component. Add a visual node — a Group, for example — at the top level of the component.`
+    };
+  }
+
+  const previousRootNode = project.getRootNode();
+
+  // By node rather than via `setRootComponent`: the node is already resolved, so
+  // neither direction of travel depends on a second type lookup, and undo
+  // restores the exact node that was root before — not merely some node of the
+  // component that used to own it.
+  UndoQueue.instance.pushAndDo(
+    new UndoActionGroup({
+      label: `Make ${component.name} home`,
+      do: () => project.setRootNode(rootNode),
+      undo: () => project.setRootNode(previousRootNode)
+    })
+  );
+
+  return { ok: true };
+}
+
 export function useComponentActions(options: UseComponentActionsOptions = {}) {
   const { sheetPrefix = '' } = options;
   const handleMakeHome = useCallback((node: TreeNode) => {
@@ -64,35 +139,14 @@ export function useComponentActions(options: UseComponentActionsOptions = {}) {
       return;
     }
 
-    if (!component) return;
+    if (!component || !ProjectModel.instance) return;
 
-    const canDelete = ProjectModel.instance?.deleteComponentAllowed(component);
-    if (!canDelete?.canBeDelete) {
-      console.warn('Cannot set component as home:', canDelete?.reason);
-      return;
-    }
+    const result = makeComponentHome(ProjectModel.instance, component);
 
-    const previousRoot = ProjectModel.instance?.getRootComponent();
-    const undoGroup = new UndoActionGroup({
-      label: `Make ${component.name} home`
-    });
-
-    UndoQueue.instance.push(undoGroup);
-
-    undoGroup.push({
-      do: () => {
-        ProjectModel.instance?.setRootComponent(component);
-      },
-      undo: () => {
-        if (previousRoot) {
-          ProjectModel.instance?.setRootComponent(previousRoot);
-        } else {
-          ProjectModel.instance?.setRootNode(undefined);
-        }
-      }
-    });
-
-    undoGroup.do();
+    // A refusal is shown, not logged. The one place this gesture is reached from
+    // is the preview telling the user to click it; a `console.warn` there is a
+    // click that does nothing.
+    if (!result.ok) ToastLayer.showError(result.reason);
   }, []);
 
   const handleDelete = useCallback((node: TreeNode) => {
@@ -258,7 +312,12 @@ export function useComponentActions(options: UseComponentActionsOptions = {}) {
 
       UndoQueue.instance.push(undoGroup);
 
-      undoGroup.push({
+      // `pushAndDo`, for the reason spelled out on `makeComponentHome`: `push`
+      // advances the group's pointer and `do()` runs from the pointer forward,
+      // so `push({do, undo})` + `do()` renames nothing. This is the same defect
+      // "Make Home" shipped with, in the same file — a folder rename moved no
+      // component and reported success.
+      undoGroup.pushAndDo({
         do: () => {
           renames.forEach(({ component, newName }) => {
             ProjectModel.instance?.renameComponent(component, newName);
@@ -270,8 +329,6 @@ export function useComponentActions(options: UseComponentActionsOptions = {}) {
           });
         }
       });
-
-      undoGroup.do();
 
       return true;
     }
