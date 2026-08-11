@@ -1,6 +1,7 @@
 # Phase 60 — the tasks (SIG: values flow, signals fire)
 
-**Created:** 2026-08-09, out of [README.md](README.md) and a new user's feedback.
+**Created:** 2026-08-09, out of [README.md](README.md) and a new user’s feedback.
+**Next session:** [NEXT-SESSION-PROMPT.md](NEXT-SESSION-PROMPT.md) — SIG-003, and the six defects the last one found.
 **3 of 7 closed 2026-08-11** — SIG-001, 002 and 004, built together because they share one popup, one
 `if (d)` guard and one vocabulary (`portCopy.ts`). Remaining: **003, 005, 006, 007**.
 
