@@ -7,7 +7,14 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 
 import { describeComponent } from '../describe';
-import { AUTHORING_TRAPS, DECOMPOSITION_DOCTRINE_MD, DESIGN_DOCTRINE_MD, isComponentRef, refToPath } from '../editor-deps';
+import {
+  AUTHORING_TRAPS,
+  DECOMPOSITION_DOCTRINE_MD,
+  DESIGN_DOCTRINE_MD,
+  isComponentRef,
+  refToPath,
+  unfoldNodeComment
+} from '../editor-deps';
 import { ToolError } from '../errors';
 import type { ProjectBinding } from '../project/ProjectBinding';
 import type { ProjectStore } from '../project/ProjectStore';
@@ -194,7 +201,15 @@ export function registerReadTools(server: McpServer, binding: ProjectBinding, op
         displayName: c.displayName,
         ports: c.ports,
         revision: stored.revision,
-        nodes: stored.files.nodes.nodes,
+        // LEG-001 — the other direction of the one mapping. A comment is stored
+        // in the metadata bag and authored flat, so it is surfaced flat: an agent
+        // about to revise this component must see the field under the name the
+        // write schema gives it, and must not have to learn that a bag exists to
+        // find the sentence explaining a node. `unfoldNodeComment` takes it *out*
+        // of the returned bag, so a read-modify-write hands back one comment
+        // rather than two copies of it, and the fold on the way in puts it back
+        // exactly where it was.
+        nodes: stored.files.nodes.nodes.map((n) => unfoldNodeComment(n)),
         visualRoots,
         ...(derived && visualRoots.length > 0 ? { visualRootsDerived: true } : {}),
         comments: stored.files.nodes.comments,

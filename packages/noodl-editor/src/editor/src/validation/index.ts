@@ -71,20 +71,25 @@ export { citationFor, DIAGNOSTIC_EXAMPLES, exampleAttachments } from './diagnost
 export type { AttachedExample, CatalogExampleLike, ExampleCitation } from './diagnosticExamples';
 // AAQ-005 — the one authoring vocabulary, rendered into both clients' schemas.
 export {
+  AUTHORED_COMMENT_FIELD,
   AUTHORED_CONNECTION_FIELDS,
   AUTHORED_NODE_FIELDS,
   AUTHORED_PAYLOAD_FIELDS,
   AUTHORED_PORT_FIELDS,
   AUTHORING_SURFACES,
+  STORED_COMMENT_KEY,
   SURFACE_DIVERGENCES,
   VOCAB_CLIENTS,
   declaredDivergences,
   describeFor,
   fieldsFor,
+  foldNodeComment,
   isRequiredIn,
   jsonSchemaForSurface,
   jsonSchemasFor,
-  undeclaredDivergences
+  metadataWithComment,
+  undeclaredDivergences,
+  unfoldNodeComment
 } from './authoringVocabulary';
 export type {
   DeclaredDivergence,

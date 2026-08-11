@@ -14,7 +14,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 
 import type { ComponentV2File, ConnectionsV2File, ConnectionV2, NodesV2File, NodeV2 } from '../editor-deps';
-import { formatDiagnosticLine, inferComponentType } from '../editor-deps';
+import { foldNodeComment, formatDiagnosticLine, inferComponentType } from '../editor-deps';
 import { ToolError } from '../errors';
 import type { ComponentFiles, UpdateOperation } from '../graph';
 import { applyOperations, reconcileHierarchy } from '../graph';
@@ -31,7 +31,7 @@ import { backendRevealPayload } from './disclosure';
 import type { PlanRegistry } from './planTools';
 import type { WriteValidation } from '../validate';
 import { validateCandidate, validateDeletion } from '../validate';
-import { CREATE_COMPONENT_SHAPE, connectionSchema, nodeSchema, portSchema } from '../vocabulary';
+import { CREATE_COMPONENT_SHAPE, NODE_COMMENT_ARG, connectionSchema, nodeSchema, portSchema } from '../vocabulary';
 import type { VisualTypePredicate } from '../visualRoots';
 import { catalogVisualPredicate, makeProjectVisualPredicate, resolveVisualRoots } from '../visualRoots';
 import type {
@@ -62,6 +62,12 @@ const operationSchema = z.discriminatedUnion('op', [
     set: z
       .object({
         label: z.string().optional(),
+        // LEG-001. The delta door needs it too: adding one sentence to one node
+        // of a 60-node page is exactly the change nobody will resend a whole
+        // graph for, and a field zod does not name is a field zod **strips** —
+        // silently, which is how `update_node.set.children` lost a hero in P58.
+        // Same words as the vocabulary row, from the vocabulary row.
+        comment: NODE_COMMENT_ARG,
         x: z.number().optional(),
         y: z.number().optional(),
         variant: z.string().optional(),
@@ -100,6 +106,21 @@ type OperationInput =
 
 export function ensureIds(nodes: NodeInput[]): NodeV2[] {
   return nodes.map((n) => ({ ...n, id: n.id ?? crypto.randomUUID() }) as NodeV2);
+}
+
+/**
+ * LEG-001 — the two things every authored node needs before it is a stored node:
+ * an id, and its flat `comment` folded into `metadata.comment`.
+ *
+ * One funnel, because the mapping must not be door-dependent: `create_component`,
+ * `update_component`'s `set` branch and a staged plan operation all arrive here,
+ * and a node whose comment reached disk through one door but sat as a dead
+ * top-level key through another would be worse than not offering the field.
+ * `add_node` is folded in `normalizeOperations` and `update_node.set` in
+ * `graph.ts`, which are the two paths that do not carry a whole node list.
+ */
+export function normalizeAuthoredNodes(nodes: NodeInput[]): NodeV2[] {
+  return ensureIds(nodes).map((n) => foldNodeComment(n));
 }
 
 /**
@@ -272,9 +293,14 @@ export function carryConnectionPresentation(
 }
 
 function normalizeOperations(operations: OperationInput[]): UpdateOperation[] {
-  return operations.map((op) =>
-    op.op === 'add_node' && !op.node.id ? { ...op, node: { ...op.node, id: crypto.randomUUID() } } : op
-  ) as UpdateOperation[];
+  return operations.map((op) => {
+    if (op.op !== 'add_node') return op;
+    // LEG-001 — the same fold `normalizeAuthoredNodes` does for a whole graph.
+    // `add_node` carries one node through a different door; a comment written
+    // here has to land in the same place.
+    const node = foldNodeComment(op.node.id ? op.node : { ...op.node, id: crypto.randomUUID() });
+    return { ...op, node };
+  }) as UpdateOperation[];
 }
 
 /**
@@ -394,7 +420,7 @@ export function registerAuthorTools(
         }
 
         const legacyName = pathToLegacyName(args.path);
-        const reconciled = reconcileHierarchy(ensureIds(args.nodes));
+        const reconciled = reconcileHierarchy(normalizeAuthoredNodes(args.nodes));
         if (reconciled.errors.length > 0) {
           throw new ToolError('invalid-argument', 'Node hierarchy is inconsistent.', { errors: reconciled.errors });
         }
@@ -499,7 +525,7 @@ export function registerAuthorTools(
         let applied: string[] | undefined;
 
         if (args.set) {
-          const reconciled = reconcileHierarchy(ensureIds(args.set.nodes));
+          const reconciled = reconcileHierarchy(normalizeAuthoredNodes(args.set.nodes));
           if (reconciled.errors.length > 0) {
             throw new ToolError('invalid-argument', 'Node hierarchy is inconsistent.', { errors: reconciled.errors });
           }

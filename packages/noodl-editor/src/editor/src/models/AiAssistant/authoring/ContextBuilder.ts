@@ -19,6 +19,7 @@ import type { ImportReport } from '../../../utils/import-engine/legacy/types';
 import {
   CatalogIndex,
   loadDefaultCatalog,
+  unfoldNodeComment,
   wireFormatHint,
   WIRE_FORMAT_LEGEND,
   type CatalogNode,
@@ -396,16 +397,25 @@ export class AuthoringContextBuilder {
    * that cost belongs in the log.
    */
   currentComponentSource(files: ComponentFiles): string {
-    const nodes = files.nodes.nodes.map((n: NodeV2) => ({
+    const nodes = files.nodes.nodes.map((raw: NodeV2) => {
+      // LEG-001 — `comment` became submit-expressible, so this handout owes the
+      // agent the ones the component already has: the sentence saying why a node
+      // is the way it is, handed to the model most likely to change it for a
+      // reason the sentence already answers. Unfolded from `metadata.comment`
+      // rather than read out of the bag here, so the two doors keep one mapping.
+      const n = unfoldNodeComment(raw);
+      return {
       id: n.id,
       type: n.type,
       ...(n.label !== undefined ? { label: n.label } : {}),
+      ...(typeof n.comment === 'string' ? { comment: n.comment } : {}),
       ...(n.x !== undefined ? { x: n.x } : {}),
       ...(n.y !== undefined ? { y: n.y } : {}),
       ...(n.parent !== undefined ? { parent: n.parent } : {}),
       ...(n.parameters && Object.keys(n.parameters).length > 0 ? { parameters: n.parameters } : {}),
       ...(n.ports && n.ports.length > 0 ? { ports: n.ports } : {})
-    }));
+      };
+    });
     const source = JSON.stringify(
       {
         nodes,

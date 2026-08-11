@@ -50,6 +50,12 @@ export interface SubmittedNode {
   id?: string;
   type: string;
   label?: string;
+  /**
+   * LEG-001 — why the node is the way it is. Authored flat and stored as
+   * `metadata.comment`; `buildCandidate` folds it into the bag, which is also
+   * where CAN-004's gutter stripe, hover tooltip and context menu read it.
+   */
+  comment?: string;
   x?: number;
   y?: number;
   /** Id of the parent node in the visual tree. Children order = submission order. */

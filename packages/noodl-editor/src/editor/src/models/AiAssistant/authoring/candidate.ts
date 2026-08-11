@@ -14,6 +14,7 @@
  */
 
 import { inferComponentType } from '../../../io/ProjectExporter';
+import { metadataWithComment } from '../../../validation/authoringVocabulary';
 import type { ComponentV2File, ConnectionsV2File, NodesV2File, NodeV2 } from '../../../schemas';
 import type { AuthoringRequest, ComponentFiles, SubmitPayload, SubmittedNode } from './types';
 
@@ -181,6 +182,20 @@ export function buildCandidate(
           node[field] = JSON.parse(JSON.stringify(baseNode[field]));
         }
       }
+    }
+
+    // LEG-001 — the authored `comment` into `metadata.comment`, AFTER the carry
+    // above, and that order is the whole point: `metadata` is one of the carried
+    // fields, so folding first would have made the bag "already set" and dropped
+    // everything the base node kept there — `merge.soureCodePorts`, the AI prompt
+    // history, the lot. This way a comment is written *into* the carried bag and
+    // an omitted one leaves the base's comment standing, which is the same rule
+    // the rest of `CARRIED_NODE_FIELDS` follows: an AI revision must not eat work
+    // the contract gave it no way to resubmit.
+    if (n.comment !== undefined) {
+      const metadata = metadataWithComment(node.metadata, n.comment);
+      if (metadata) node.metadata = metadata;
+      else delete node.metadata;
     }
     return node;
   });
