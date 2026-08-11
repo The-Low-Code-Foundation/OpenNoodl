@@ -126,17 +126,45 @@ describe('SIG-007 — ordering is what stops the path folding', () => {
     expect(dragged[1].u - dragged[0].u).toBeGreaterThanOrEqual(WIRE_ANCHOR.minGap - 1e-9);
   });
 
-  it('holds every anchor clear of both endpoints', () => {
+  it('bounds an absurd u without pinning it to the endpoints', () => {
     const clamped = normaliseAnchors([
-      { u: -3, v: 0 },
+      { u: -30, v: 0 },
       { u: 0.5, v: 0 },
-      { u: 9, v: 0 }
+      { u: 90, v: 0 }
     ]);
 
     for (const a of clamped) {
-      expect(a.u).toBeGreaterThan(0);
-      expect(a.u).toBeLessThan(1);
+      expect(a.u).toBeGreaterThanOrEqual(WIRE_ANCHOR.minU);
+      expect(a.u).toBeLessThanOrEqual(WIRE_ANCHOR.maxU);
     }
+  });
+
+  /**
+   * 🔴 The defect the live gesture found, and the reason `minU`/`maxU` are not
+   * `0` and `1`.
+   *
+   * `u` runs along the **chord**, and this painter's wire does not stay inside
+   * it: the `'inline'` and `'right'` layouts route out to a mid-x *left of both
+   * nodes*. Clamped to `[0, 1]`, an anchor minted under the pointer at the
+   * middle of such a wire was rewritten to `u = 0.99` — the far end — and the
+   * wire snapped somewhere the user had not clicked.
+   */
+  it('keeps an anchor minted on a wire that routes outside its own chord', () => {
+    // The 'inline' layout: the control points go left of both endpoints.
+    const from = { x: 400, y: 100 };
+    const to = { x: 380, y: 400 };
+    const dx = Math.min(from.x, to.x) - (50 + Math.abs(to.y - from.y) * 0.2);
+    const base = [from, { x: dx, y: from.y }, { x: dx, y: to.y }, to];
+
+    const frame = chordFrame(base[0], base[3]);
+    const onWire = { x: base[1].x, y: (from.y + to.y) / 2 }; // out on the left hook
+
+    const minted = anchorFromPoint(frame, onWire);
+    const [kept] = normaliseAnchors([minted]);
+    const landed = anchorPoint(frame, kept);
+
+    expect(Math.abs(landed.x - onWire.x)).toBeLessThan(1);
+    expect(Math.abs(landed.y - onWire.y)).toBeLessThan(1);
   });
 
   it('drops a NaN rather than painting one', () => {

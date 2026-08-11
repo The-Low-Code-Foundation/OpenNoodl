@@ -114,6 +114,25 @@ export const WIRE_ANCHOR = {
   minGap: 0.01,
 
   /**
+   * How far outside the chord an anchor may sit, in `u`.
+   *
+   * 🔴 **These were `0` and `1`, and that was wrong in a way only the live
+   * gesture showed.** It reads as obvious that an anchor belongs *between* the
+   * two endpoints — but `u` is measured along the **chord**, and this painter's
+   * wire does not stay inside it. The `'inline'` and `'right'` layouts route the
+   * curve out to a mid-x that is to the *left of both nodes*, so a point on the
+   * wire projects to `u` well outside `[0, 1]`. Clamped, a mint landed at
+   * `u = 0.99` — the far end — when the pointer was on the middle of the wire.
+   *
+   * ⚠️ Nothing was lost by widening it: **ordering is what prevents a
+   * self-crossing** ({@link normaliseAnchors}), not the endpoint clamp, and the
+   * measured sweep is unchanged by this. The bound stays finite only so a
+   * malformed or absurd value cannot throw the routing to infinity.
+   */
+  minU: -1,
+  maxU: 2,
+
+  /**
    * The most an anchor may be offset across the chord, as a multiple of the
    * chord's own length. See the header: this only ever binds on a wire whose
    * endpoints have been brought almost on top of each other.
@@ -229,19 +248,23 @@ export function normaliseAnchors(anchors: readonly WireAnchor[] | undefined): Wi
   if (!anchors || !anchors.length) return [];
 
   const gap = WIRE_ANCHOR.minGap;
-  // More anchors than the gap can fit between the ends: the bounds below would
-  // cross and every anchor would pile onto the same `u`. Keep the ones that fit.
-  const max = Math.max(1, Math.floor(1 / gap) - 1);
+  const lowest = WIRE_ANCHOR.minU;
+  const highest = WIRE_ANCHOR.maxU;
+
+  // More anchors than the gap can fit in the range: the bounds below would cross
+  // and every anchor would pile onto the same `u`. Keep the ones that fit.
+  const max = Math.max(1, Math.floor((highest - lowest) / gap) - 1);
   const kept = anchors.slice(0, max);
 
   const out: WireAnchor[] = [];
-  let lower = 0;
+  let lower = lowest - gap;
 
   for (let i = 0; i < kept.length; i++) {
     const a = kept[i];
     const min = lower + gap;
-    // Leave room for everyone still to come, so the last one is not pinned at 1.
-    const upper = Math.max(min, 1 - (kept.length - i) * gap);
+    // Leave room for everyone still to come, so the last one is not pinned to
+    // the top of the range.
+    const upper = Math.max(min, highest - (kept.length - 1 - i) * gap);
     const u = Math.max(min, Math.min(upper, isFinite(a.u) ? a.u : min));
 
     out.push({ u, v: isFinite(a.v) ? a.v : 0 });
