@@ -8,6 +8,18 @@ import PopupLayer from '../popuplayer';
 import { CanvasFonts, CanvasTheme, WireLabel, WIRE_TYPE_ERROR } from './canvas/CanvasTheme';
 import { NodeGraphEditorNode } from './NodeGraphEditorNode';
 import { textWordWrap } from './NodeGraphEditorNodePainter';
+import type { ChordFrame, Point, WireAnchor } from './wireAnchors';
+import {
+  anchorAt,
+  anchoredSegments,
+  anchorPoint,
+  chordFrame,
+  closestPointOnPath,
+  normaliseAnchors,
+  pointOnSegments,
+  readAnchors,
+  WIRE_ANCHOR
+} from './wireAnchors';
 import {
   arrivalDirection,
   arrowheadPolygon,
@@ -109,6 +121,23 @@ export class NodeGraphEditorConnection {
 
   model: Connection;
   curve: any;
+  /**
+   * The path actually painted (SIG-007) — one cubic per anchored segment.
+   *
+   * ⚠️ **`curve` stays what it always was**: the four-point array whose ends are
+   * the two port anchors. `endpointAt`, the re-target elbow and the chord frame
+   * all read it, and none of them should see a bend. This is the *drawn* path,
+   * and with no anchors it is `[this.curve]` — the same array, so an unbent wire
+   * is stroked, hit-tested and sampled by exactly the code that did it before.
+   */
+  curveSegments: IVector2[][];
+  /**
+   * Where the pointer is on this wire, while it is the hovered one (SIG-007).
+   *
+   * Read by the ghost anchor, which is the *only* thing that makes the boundary
+   * between "bend this wire" and CAN-003's "re-target this wire" visible.
+   */
+  hoverPos: IVector2 | undefined;
   color: any;
   lineWidth: number | undefined;
 
@@ -277,6 +306,10 @@ export class NodeGraphEditorConnection {
         // and made the chip vanish out from under the cursor.
         if (this.isPointInLabel(pos) || this.hitTest(pos)) {
           evt.consumed = true;
+          // SIG-007: the ghost anchor rides this. Kept on the connection rather
+          // than read back off the editor, because the ghost has to be drawn in
+          // *this* wire's graph coordinates and only this wire knows its path.
+          this.hoverPos = pos;
           this.owner.setHighlightedConnection(this, pos);
 
           // annotations takes priority over health
@@ -309,6 +342,7 @@ export class NodeGraphEditorConnection {
           }
           this.owner.repaint();
         } else if (this.owner.highlightedConnection === this) {
+          this.hoverPos = undefined;
           this.owner.setHighlightedConnection(undefined);
           PopupLayer.instance.hideTooltip();
           this.owner.repaint();
@@ -339,6 +373,12 @@ export class NodeGraphEditorConnection {
 
       // Grabbing an end detaches it (CAN-003). Tested before anything else on
       // the wire, so a grab can never select instead.
+      //
+      // ⚠️ **Still first, and still 8px** (SIG-007 R1). The reported anchor
+      // gesture — *"clicking near one end and dragging"* — is this gesture, and
+      // the one that has been in the editor longer wins the overlap. What
+      // SIG-007 adds is that the boundary is now *painted*: the ghost ring
+      // tracks the pointer along the wire and stops appearing here.
       const end = this.endpointAt(pos);
       if (end) {
         PopupLayer.instance.hideTooltip();
@@ -346,10 +386,29 @@ export class NodeGraphEditorConnection {
         return;
       }
 
-      // Grabbing the label chip moves it along the wire (CAN-001).
+      // Grabbing the label chip moves it along the wire (CAN-001). Before the
+      // anchors, because a chip is a thing you can see and aim at, and it sits
+      // on the wire body where a mint would otherwise happen.
       if (onLabel) {
         PopupLayer.instance.hideTooltip();
         this.owner.interaction.startDraggingWireLabel(this);
+        return;
+      }
+
+      // SIG-007 — grabbing an existing anchor moves it; grabbing the wire body
+      // mints one and moves that. Both are the same drag from here on, which is
+      // what makes a mint feel like "I grabbed the wire" rather than "I made an
+      // object and then moved it".
+      const handle = this.anchorHandleAt(pos);
+      if (handle !== undefined) {
+        PopupLayer.instance.hideTooltip();
+        this.owner.interaction.startDraggingWireAnchor(this, handle);
+        return;
+      }
+
+      if (this.showsAnchorHandles()) {
+        PopupLayer.instance.hideTooltip();
+        this.owner.interaction.startMintingWireAnchor(this, pos);
       }
     } else if (type === 'up' && this.owner.highlightedConnection === this) {
       PopupLayer.instance.hideTooltip();
@@ -366,13 +425,27 @@ export class NodeGraphEditorConnection {
     }
   }
 
+  /**
+   * The wire's painted path, as one path on the context.
+   *
+   * ⚠️ **One `beginPath` for every segment, which is what makes `hitTest` work
+   * on a bent wire.** `isPointInStroke` tests the path last built, so a wire
+   * stroked segment-by-segment would only ever hit-test its last segment —
+   * SIG-007's build note asked for this to be verified rather than assumed, and
+   * it is the reason the whole path is assembled before anyone strokes it.
+   */
   drawCurve() {
     const c = this.curve;
     if (!c) return;
     const ctx = this.ctx;
+    const segments = this.curveSegments && this.curveSegments.length ? this.curveSegments : [c];
+
     ctx.beginPath();
-    ctx.moveTo(c[0].x, c[0].y);
-    ctx.bezierCurveTo(c[1].x, c[1].y, c[2].x, c[2].y, c[3].x, c[3].y);
+    ctx.moveTo(segments[0][0].x, segments[0][0].y);
+    for (const s of segments) {
+      ctx.lineTo(s[0].x, s[0].y);
+      ctx.bezierCurveTo(s[1].x, s[1].y, s[2].x, s[2].y, s[3].x, s[3].y);
+    }
   }
 
   midpoint(a: IVector2, b: IVector2) {
@@ -391,13 +464,61 @@ export class NodeGraphEditorConnection {
     );
   }
 
+  /**
+   * A point on the painted path, `t` in `[0, 1]`.
+   *
+   * The label, the direction chevrons and the travelling mark all ride this, so
+   * they follow a bent wire without any of them knowing anchors exist.
+   */
   pointOnCurve(t) {
     const c = this.curve;
     if (!c) return;
+    if (this.curveSegments && this.curveSegments.length > 1) {
+      return pointOnSegments(this.curveSegments as Point[][], t);
+    }
     return {
       x: this._bezierInterpolation(t, c[0].x, c[1].x, c[2].x, c[3].x),
       y: this._bezierInterpolation(t, c[0].y, c[1].y, c[2].y, c[3].y)
     };
+  }
+
+  /** This wire's chord frame — what its anchors are read against (SIG-007). */
+  anchorFrame(): ChordFrame | undefined {
+    if (!this.curve) return undefined;
+    return chordFrame(this.curve[0], this.curve[3]);
+  }
+
+  /** The anchors to paint and hit-test: the model's, cleaned and ordered. */
+  anchorList(): WireAnchor[] {
+    return normaliseAnchors(readAnchors(this.model?.anchors));
+  }
+
+  /**
+   * Which anchor handle is under this point, if any (SIG-007).
+   *
+   * ⚠️ Only answers on a wire that is showing its handles. Handles paint on
+   * hover or selection only, and a target you cannot see is the thing this whole
+   * task's §G D4 exists to avoid — `endpointHitRadius` grabbing at 8px against a
+   * 3px dot is exactly that trap, kept for CAN-003's sake and not repeated here.
+   */
+  anchorHandleAt(pos: IVector2): number | undefined {
+    if (!this.showsAnchorHandles()) return undefined;
+    const frame = this.anchorFrame();
+    if (!frame) return undefined;
+    return anchorAt(frame, this.anchorList(), pos);
+  }
+
+  /**
+   * Are this wire's anchor handles visible right now?
+   *
+   * The same argument that keeps endpoints as 3px dots on an unhovered wire —
+   * *"handles on every wire would be a hundred new hit targets competing with
+   * the node cards on a dense graph"* — and it applies harder here, because
+   * there can be many per wire. It is also the principle Richard named
+   * unprompted about the chevron: a cue only appears where it is needed.
+   */
+  showsAnchorHandles(): boolean {
+    return !this.rerouting && (this.owner?.highlightedConnection === this || this.isSelected());
   }
 
   _findClosestPointOnCurve(p, t0, t1) {
@@ -630,6 +751,92 @@ export class NodeGraphEditorConnection {
     ctx.lineWidth = baseWidth;
   }
 
+  /**
+   * The anchor handles, and the ghost of the one a drag would mint (SIG-007).
+   *
+   * ## The sixth mark on a wire, and why it is a ring
+   *
+   * There are already five: the endpoint circle, the endpoint arrowhead, the
+   * `'both'` diamond, the direction chevron and the travelling bead.
+   * `wireEndpoints.ts` separates its glyphs on **fill ratio** — circle 0.79,
+   * arrowhead and diamond 0.50 — so the sixth joins that table rather than
+   * starting a second scheme. A stroked ring is **0.00**, as far from every
+   * filled glyph as the axis goes, and it separates from the chevron (the only
+   * other open mark, and the only other one mid-wire) by being closed and having
+   * no direction. ⚠️ A filled square was the other candidate and is rejected:
+   * rotate it and it is the diamond.
+   *
+   * ## The ghost is the answer to R1
+   *
+   * *"Click near one end and drag"* was already CAN-003's re-target gesture, at
+   * an 8px radius against a 3px dot — a boundary nothing painted. That radius is
+   * **unchanged**; what changes is that the ghost ring rides the pointer along
+   * the wire and **stops appearing inside it**, so running the pointer down a
+   * wire shows you exactly where bending stops and re-targeting starts. The
+   * absence is the boundary, and it moves, which is the only kind anyone reads.
+   *
+   * ⚠️ Painted in the wire's own colour, not a new one. Wire colour already
+   * carries four meanings and this painter refused to make selection a fifth.
+   */
+  paintAnchorHandles(ctx: CanvasRenderingContext2D, strokeColor: string, glyphScale: number, wireType: string) {
+    if (!this.showsAnchorHandles()) return;
+
+    const frame = this.anchorFrame();
+    if (!frame) return;
+
+    const anchors = this.anchorList();
+    const radius = WIRE_ANCHOR.handleRadius * glyphScale;
+
+    const previousWidth = ctx.lineWidth;
+    const previousAlpha = ctx.globalAlpha;
+    ctx.setLineDash([]);
+    ctx.strokeStyle = strokeColor;
+    ctx.lineWidth = WIRE_ANCHOR.handleLineWidth * glyphScale;
+
+    for (const anchor of anchors) {
+      const p = anchorPoint(frame, anchor);
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, radius, 0, 2 * Math.PI, false);
+      ctx.stroke();
+    }
+
+    // The ghost. Only while the pointer is actually on this wire — a selected
+    // wire shows its existing handles but does not follow a pointer that has
+    // gone somewhere else.
+    const pos = this.owner?.highlightedConnection === this ? this.hoverPos : undefined;
+    if (pos) {
+      const near = closestPointOnPath(this.curveSegments as Point[][], pos);
+      const insideEndpointZone = !!this.endpointAt(pos);
+      const onExistingHandle = anchorAt(frame, anchors, pos) !== undefined;
+
+      if (near && !insideEndpointZone && !onExistingHandle && near.distance <= NodeGraphEditorConnection.hitStrokeWidth) {
+        ctx.globalAlpha = previousAlpha * WIRE_ANCHOR.ghostAlpha;
+        ctx.beginPath();
+        ctx.arc(near.point.x, near.point.y, radius, 0, 2 * Math.PI, false);
+        ctx.stroke();
+      }
+    }
+
+    ctx.globalAlpha = previousAlpha;
+    ctx.lineWidth = previousWidth;
+    this.restoreWireDash(ctx, wireType);
+  }
+
+  /**
+   * Put back the dash pattern this wire is entitled to, after a mark that had to
+   * be drawn solid.
+   *
+   * ⚠️ Three separate meanings live on `setLineDash` — an unhealthy wire, a
+   * `Deleted` diff annotation and a workflow error edge — and every solid mark
+   * painted over a wire has to restore whichever applies. The chevrons already
+   * had this inline; the anchor rings would have been the second copy.
+   */
+  restoreWireDash(ctx: CanvasRenderingContext2D, wireType: string) {
+    if (!this.getHealth().healthy) ctx.setLineDash([5]);
+    else if (this.model.annotation === 'Deleted') ctx.setLineDash([6, 4]);
+    else if (wireType === WIRE_TYPE_ERROR) ctx.setLineDash([7, 4]);
+  }
+
   /** Is this point on the label chip? Only meaningful when one was painted. */
   isPointInLabel(pos: IVector2): boolean {
     const b = this.labelBounds;
@@ -705,16 +912,35 @@ export class NodeGraphEditorConnection {
           : [loose, { x: mid, y: loose.y }, { x: mid, y: pinned.y }, pinned];
     }
 
-    function aabbIntersectTest(connection, paintArea) {
-      const minX = Math.min(connection[0].x, connection[1].x, connection[2].x, connection[3].x);
-      const maxX = Math.max(connection[0].x, connection[1].x, connection[2].x, connection[3].x);
-      const minY = Math.min(connection[0].y, connection[1].y, connection[2].y, connection[3].y);
-      const maxY = Math.max(connection[0].y, connection[1].y, connection[2].y, connection[3].y);
+    // SIG-007 — the painted path, which is the wire's curve unless the builder
+    // bent it. ⚠️ Not while an end is being re-targeted: during a CAN-003 drag
+    // the wire is a temporary elbow to the cursor, and its chord frame is
+    // meaningless, so anchors sit the drag out and come back on drop.
+    this.curveSegments = this.rerouting ? [this.curve] : (anchoredSegments(this.curve, this.anchorList()) as IVector2[][]);
+
+    // ⚠️ Over every segment's control points, not just the wire's own four. An
+    // anchor can carry the path well outside the box its endpoints describe, and
+    // culling on that box would make a bent wire vanish while part of it is
+    // still on screen.
+    function aabbIntersectTest(segments: IVector2[][], paintArea) {
+      let minX = Infinity;
+      let maxX = -Infinity;
+      let minY = Infinity;
+      let maxY = -Infinity;
+
+      for (const s of segments) {
+        for (const p of s) {
+          if (p.x < minX) minX = p.x;
+          if (p.x > maxX) maxX = p.x;
+          if (p.y < minY) minY = p.y;
+          if (p.y > maxY) maxY = p.y;
+        }
+      }
 
       return !(minX > paintArea.maxX || maxX < paintArea.minX || minY > paintArea.maxY || maxY < paintArea.minY);
     }
 
-    if (aabbIntersectTest(this.curve, paintRect) === false) {
+    if (aabbIntersectTest(this.curveSegments, paintRect) === false) {
       return;
     }
 
@@ -791,9 +1017,15 @@ export class NodeGraphEditorConnection {
     ctx.arc(this.curve[0].x, this.curve[0].y, sourceRadius, 0, 2 * Math.PI, false);
     ctx.fill();
 
+    // ⚠️ `arrivalDirection` reads the **last segment**, not the wire's own
+    // control points. On a bent wire those are the same array; on one whose last
+    // anchor sits above the target, they are not, and an arrowhead pointing the
+    // way the curve used to arrive would be the one glyph on the canvas telling
+    // a lie about the line it is attached to. Its own docstring anticipated this
+    // task by name.
     const head = arrowheadPolygon(
       this.curve[3],
-      arrivalDirection(this.curve),
+      arrivalDirection(this.curveSegments[this.curveSegments.length - 1] as Point[]),
       (hoverConnection ? WIRE_ENDPOINT.arrowLengthHighlighted : WIRE_ENDPOINT.arrowLength) * glyphScale,
       (hoverConnection ? WIRE_ENDPOINT.arrowHalfWidthHighlighted : WIRE_ENDPOINT.arrowHalfWidth) * glyphScale
     );
@@ -851,11 +1083,12 @@ export class NodeGraphEditorConnection {
         ctx.lineWidth = previousWidth;
         // The health/annotation dash is restored at the end of paint, with the
         // one the pulse branches also rely on.
-        if (!this.getHealth().healthy) ctx.setLineDash([5]);
-        else if (this.model.annotation === 'Deleted') ctx.setLineDash([6, 4]);
-        else if (type === WIRE_TYPE_ERROR) ctx.setLineDash([7, 4]);
+        this.restoreWireDash(ctx, type);
       }
     }
+
+    // SIG-007 — the anchor handles, and the ghost that shows where they begin.
+    this.paintAnchorHandles(ctx, strokeColor, glyphScale, type);
 
     if (DebugInspector.instance.isEnabled() && DebugInspector.instance.isConnectionPulsing(this)) {
       const t = DebugInspector.instance.getPulseAnimationState(this);

@@ -24,6 +24,68 @@ import type { NodeGraphEditorConnection } from './NodeGraphEditorConnection';
 import type { NodeGraphEditor } from '../nodegrapheditor';
 
 /**
+ * The two anchor entries on a wire's right-click menu (SIG-007).
+ *
+ * **Delete anchor** is the delete gesture the report asked for — *"deleting with
+ * right click I guess"* — and it needs the click point, because a wire may carry
+ * several and the menu is otherwise about the wire as a whole.
+ *
+ * **Reset routing** is the escape hatch: one click back from a wire bent into an
+ * unusable shape, and the answer for a graph that arrived carrying somebody
+ * else's routing. ⚠️ It writes `undefined`, never `[]` — `updateConnection`
+ * deletes a key set to undefined, so a reset wire is byte-identical to one that
+ * was never bent, and `project.json` does not grow a dead key per wire.
+ *
+ * Both are absent rather than disabled when they would do nothing. A greyed
+ * *Reset routing* on every wire in the editor is a control that is inert almost
+ * everywhere it is shown, which is the same argument the handles themselves are
+ * painted on.
+ */
+function anchorMenuItems(
+  editor: NodeGraphEditor,
+  connection: NodeGraphEditorConnection,
+  pos?: { x: number; y: number }
+): (MenuDialogItem | 'divider')[] {
+  const anchors = connection.model.anchors;
+  if (!anchors || !anchors.length) return [];
+
+  const items: (MenuDialogItem | 'divider')[] = [];
+  const index = pos ? connection.anchorHandleAt(pos) : undefined;
+
+  if (index !== undefined) {
+    items.push({
+      label: 'Delete anchor',
+      icon: IconName.Trash,
+      onClick: () => {
+        const remaining = anchors.filter((_unused, i) => i !== index);
+        editor.model.updateConnection(
+          connection.model,
+          { anchors: remaining.length ? remaining : undefined },
+          { undo: true, label: 'delete wire anchor' }
+        );
+        editor.repaint();
+      }
+    });
+  }
+
+  items.push({
+    label: 'Reset routing',
+    icon: IconName.Reset,
+    onClick: () => {
+      editor.model.updateConnection(
+        connection.model,
+        { anchors: undefined },
+        { undo: true, label: 'reset wire routing' }
+      );
+      editor.repaint();
+    }
+  });
+
+  items.push('divider');
+  return items;
+}
+
+/**
  * The floating node toolbar shown over a multi-selection and the right-click
  * context menu (PLAT-001 wave 2 extraction — bodies moved verbatim from
  * nodegrapheditor.ts).
@@ -325,7 +387,10 @@ export class NodeContextMenu {
    * Right-click on a wire (CAN-003 / F54). Wires had no menu at all — deleting
    * one meant discovering an undocumented two-click gesture.
    */
-  getConnectionContextMenuActions(connection: NodeGraphEditorConnection): (MenuDialogItem | 'divider')[] {
+  getConnectionContextMenuActions(
+    connection: NodeGraphEditorConnection,
+    pos?: { x: number; y: number }
+  ): (MenuDialogItem | 'divider')[] {
     const editor = this.editor;
 
     return [
@@ -348,6 +413,14 @@ export class NodeContextMenu {
         onClick: () => editor.wireLabelEditor.open(connection)
       },
       'divider',
+      // SIG-007 — the escape hatch, and the delete gesture the report asked for
+      // (*"deleting with right click I guess"*).
+      //
+      // ⚠️ Both entries are conditional, which is the same argument the handles
+      // themselves are painted on: a cue only appears where it is needed, and a
+      // permanently greyed *Reset routing* on every wire in the editor would be
+      // a control that is inert almost everywhere it is shown.
+      ...anchorMenuItems(editor, connection, pos),
       {
         label: 'Delete connection',
         icon: IconName.Trash,
@@ -360,11 +433,11 @@ export class NodeContextMenu {
     ];
   }
 
-  openConnectionRightClickMenu(connection: NodeGraphEditorConnection) {
+  openConnectionRightClickMenu(connection: NodeGraphEditorConnection, pos?: { x: number; y: number }) {
     this.editor.selectConnection(connection);
 
     showContextMenuInPopup({
-      items: this.getConnectionContextMenuActions(connection),
+      items: this.getConnectionContextMenuActions(connection, pos),
       width: MenuDialogWidth.Default,
       renderDirection: DialogRenderDirection.Horizontal
     });

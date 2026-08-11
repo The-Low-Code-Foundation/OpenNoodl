@@ -8,6 +8,7 @@ import { CreateNewNodePanel } from '../../createnewnodepanel';
 import { canAcceptDrop, onDrop } from '../../nodegrapheditor.drag';
 import PopupLayer from '../../popuplayer';
 import { NodeGraphEditorNode } from '../NodeGraphEditorNode';
+import { anchorFromPoint, insertionIndexFor, normaliseAnchors } from '../wireAnchors';
 import { WireLabel } from './CanvasTheme';
 import * as HitTester from './HitTester';
 import { IVector2, MouseEventType } from './types';
@@ -21,6 +22,24 @@ type MousePosition = {
   pageX?: number;
   pageY?: number;
 };
+
+/**
+ * How far the pointer must travel before a press on a wire bends it (SIG-007).
+ *
+ * In graph units, so it is a smaller screen movement when zoomed out — the same
+ * as every other drag threshold on this canvas. Small enough that the mint feels
+ * like part of the same grab, large enough that a click with a shaky hand still
+ * selects the wire rather than bending it.
+ */
+const MINT_THRESHOLD = 3;
+
+/** A defensive copy of an anchor list, entry by entry. */
+function cloneAnchors(anchors: { u: number; v: number }[] | undefined): { u: number; v: number }[] | undefined {
+  // ⚠️ Per entry, not `[...anchors]`. The undo entry holds this list while the
+  // drag mutates the model's, and a shallow copy shares the anchor objects — so
+  // "rewind to where the drag started" would rewind to where it ended.
+  return anchors ? anchors.map((a) => ({ u: a.u, v: a.v })) : undefined;
+}
 
 /**
  * Input state machines for the node graph canvas (PLAT-001 extraction):
@@ -77,6 +96,30 @@ export class InteractionController {
    * where it started pushes none.
    */
   draggingWireLabel: { connection: NodeGraphEditorConnection; startT: number | undefined };
+
+  /**
+   * A wire is being bent (SIG-007).
+   *
+   * ⚠️ **`index` is undefined until the pointer has actually moved**, and that
+   * is the whole design of the gesture. A press on a wire body has meant *select
+   * this wire* since CAN-003, so minting on `down` would create an anchor every
+   * time anyone clicked a wire. The mint happens on the first move past
+   * `MINT_THRESHOLD`, at which point this stops being a pending press and
+   * becomes an ordinary anchor drag — so a mint feels like "I grabbed the wire",
+   * not like "I made an object and then moved it".
+   *
+   * `startAnchors` is the routing as it was when the drag began, kept so the
+   * whole drag is one undo entry and a drag that changes nothing pushes none.
+   */
+  draggingWireAnchor: {
+    connection: NodeGraphEditorConnection;
+    index: number | undefined;
+    startAnchors: { u: number; v: number }[] | undefined;
+    /** Where the press landed, while the drag is still only a press. */
+    pressedAt: IVector2 | undefined;
+    /** True when this drag created the anchor it is moving. Names the undo. */
+    mintedHere: boolean;
+  };
 
   /**
    * Last value written to the canvas cursor, so a hover that has not changed
@@ -261,6 +304,42 @@ export class InteractionController {
     this.setCursor('grabbing');
   }
 
+  /** Grab an anchor that is already there (SIG-007). */
+  startDraggingWireAnchor(connection: NodeGraphEditorConnection, index: number) {
+    if (this.owner.readOnly) {
+      return false;
+    }
+
+    this.draggingWireAnchor = {
+      connection,
+      index,
+      startAnchors: cloneAnchors(connection.model.anchors),
+      pressedAt: undefined,
+      mintedHere: false
+    };
+    this.setCursor('grabbing');
+  }
+
+  /**
+   * Press on a wire body, which *may* become a new anchor (SIG-007).
+   *
+   * Nothing is created here. See `draggingWireAnchor` — a press on a wire has
+   * selected it since CAN-003, and it still does; only a drag bends it.
+   */
+  startMintingWireAnchor(connection: NodeGraphEditorConnection, pos: IVector2) {
+    if (this.owner.readOnly) {
+      return false;
+    }
+
+    this.draggingWireAnchor = {
+      connection,
+      index: undefined,
+      startAnchors: cloneAnchors(connection.model.anchors),
+      pressedAt: { x: pos.x, y: pos.y },
+      mintedHere: false
+    };
+  }
+
   handleMouseWheelEvent(event: TSFixme, args?: TSFixme) {
     event.preventDefault();
 
@@ -419,6 +498,70 @@ export class InteractionController {
         }
 
         evt.consumed = true;
+        this.owner.repaint();
+      }
+      return true;
+    }
+
+    // A wire is being bent (SIG-007)
+    if (this.draggingWireAnchor) {
+      const drag = this.draggingWireAnchor;
+      const { connection } = drag;
+      const frame = connection.anchorFrame();
+
+      if (type === 'move' && frame) {
+        // Still only a press? Mint on the first real movement, and never on a
+        // click — see `draggingWireAnchor`.
+        if (drag.index === undefined) {
+          const from = drag.pressedAt;
+          const moved = from && Math.abs(pos.x - from.x) + Math.abs(pos.y - from.y) >= MINT_THRESHOLD;
+          if (!moved) return true;
+
+          const anchors = cloneAnchors(connection.model.anchors) ?? [];
+          const minted = anchorFromPoint(frame, pos);
+          const index = insertionIndexFor(anchors, minted.u);
+          anchors.splice(index, 0, minted);
+
+          connection.model.anchors = normaliseAnchors(anchors);
+          drag.index = index;
+          drag.pressedAt = undefined;
+          drag.mintedHere = true;
+          this.setCursor('grabbing');
+        } else {
+          const anchors = cloneAnchors(connection.model.anchors);
+          if (anchors && anchors[drag.index]) {
+            anchors[drag.index] = anchorFromPoint(frame, pos);
+            connection.model.anchors = normaliseAnchors(anchors);
+          }
+        }
+
+        evt.consumed = true;
+        this.owner.repaint();
+      } else if (type === 'up') {
+        // Whether anything was dragged at all — a press that never moved leaves
+        // `index` undefined, and is a click on the wire, not a bend.
+        const dragged = drag.index !== undefined;
+        const anchors = connection.model.anchors;
+        this.draggingWireAnchor = undefined;
+        this.setCursor('grab');
+
+        if (dragged && JSON.stringify(anchors ?? null) !== JSON.stringify(drag.startAnchors ?? null)) {
+          // One undo entry for the whole drag: rewind, then let the model verb
+          // record the change — the same shape as the wire label drag above.
+          // ⚠️ `undefined`, not `[]`, when the routing is empty: `updateConnection`
+          // deletes a key set to undefined, and `[]` would churn `project.json`
+          // on every wire anyone ever grabbed.
+          connection.model.anchors = drag.startAnchors;
+          this.owner.model.updateConnection(
+            connection.model,
+            { anchors: anchors && anchors.length ? anchors : undefined },
+            { undo: true, label: drag.mintedHere ? 'bend wire' : 'move wire anchor' }
+          );
+        }
+
+        // A press that never moved is still a click, and the connection's own
+        // `up` handler selects on it. Not consumed, so it gets there.
+        if (dragged) evt.consumed = true;
         this.owner.repaint();
       }
       return true;
@@ -712,7 +855,9 @@ export class InteractionController {
           // node's edge, and the wire is the smaller, more specific target.
           const connectionUnderCursor = owner.findConnectionAtPoint(scaledPos);
           if (connectionUnderCursor) {
-            owner.openConnectionRightClickMenu(connectionUnderCursor);
+            // SIG-007 passes the click point: *Delete anchor* has to know which
+            // anchor was right-clicked, and the menu has no other way to learn it.
+            owner.openConnectionRightClickMenu(connectionUnderCursor, scaledPos);
             this.rightClickPos = undefined;
             return true;
           }

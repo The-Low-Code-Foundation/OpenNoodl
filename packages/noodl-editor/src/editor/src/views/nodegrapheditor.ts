@@ -675,8 +675,8 @@ export class NodeGraphEditor extends View {
     }
   }
 
-  openConnectionRightClickMenu(c: NodeGraphEditorConnection) {
-    this.contextMenu.openConnectionRightClickMenu(c);
+  openConnectionRightClickMenu(c: NodeGraphEditorConnection, pos?: { x: number; y: number }) {
+    this.contextMenu.openConnectionRightClickMenu(c, pos);
   }
 
   /** Port picker for a reroute drop, with the wire's other end pinned (CAN-003). */
