@@ -136,6 +136,13 @@ matched by name exactly, so it perturbed nothing — but say so if you inherit t
   `this.name` undefined (`models/nodelibrary/UnknownNodeType.ts:6`). Carried over from the last
   handover; still unfixed. **This is now an obvious ELO-track candidate** — it is the same
   UnknownNodeType, in the same boot window.
+- 🔴 **Opening a project writes it back, and it can flush state you never authored.** `lib21-qa`'s
+  `project.json` came out of this session with a **component `/Custom text` that was not in the
+  pre-session file** — a real one, with Component Inputs, a Group and hover wiring. Nothing in this
+  session created a component; the editor evidently held it in memory and flushed it on open/close.
+  The file was restored to its verified pre-session bytes (SHA `fed8a885…`, 13 components) and the
+  added component's JSON kept aside. ⚠️ **Back the file up and check the SHA at the end of any session
+  that opens a project, even one that only reads** — "I only navigated" is not a reason to skip it.
 - A renderer `SyntaxError: Unexpected token '<', "<!DOCTYPE "… is not valid JSON` appears in
   `.logs/dev.log` on editor boot. Something fetches a URL that 404s to an HTML page and parses it as
   JSON. Not investigated; unrelated to the canvas.
