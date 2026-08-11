@@ -104,8 +104,23 @@ the rest.
 
 1. An agent-authored page of 40+ nodes has a label on every non-trivial node, and a human who did
    not watch it being built can say what each does.
-2. `agent-chat` is regenerated and its label coverage is above 90% — **the same fixture that
-   currently reads 0 of 262**, so the number is comparable.
+2. ~~`agent-chat` is regenerated and its label coverage is above 90% — the same fixture that
+   currently reads 0 of 262, so the number is comparable.~~ **Struck 2026-08-11. It is not
+   comparable.** The criterion assumed `agent-chat` was a sample of agent output. It is not: it was
+   hand-built during AIX-005 on 2026-07-27 (`b95eddb4`), *before* the authoring vocabulary existed.
+   Regenerating it would measure a current model, not anything this phase changed —
+   `phase55-replay-sonnet` already reads 196/196 with no LEG task shipped, and eight of twelve model
+   runs are at 100%. A criterion this phase would pass without doing any work is not a criterion.
+
+   **Replaced by, measuring the arm LEG-001 actually closed:** one phase-55 fixture is re-authored
+   with `metadata.comment` declared, and the share of nodes carrying a comment is compared against
+   the **1-in-2,045** baseline. ⚠️ **Judged, not counted** — twenty of the comments are read and
+   assessed in the register, because a run producing 100% coverage of *"This is a Group"* has failed
+   this task while passing a coverage check.
+
+   Regenerating `agent-chat` is still worth doing on its own terms — the repo's flagship
+   AI-authoring demonstration having 0 labels and 0 comments is embarrassing — but it is **fixing a
+   stale fixture, never evidence for this phase**.
 3. A wire change in `git diff` on the command line names both endpoints.
 4. Duplicating a component preserves every label and comment.
 5. A décret-style citation has an obvious home in the property panel, and it exports (EXP-006).
