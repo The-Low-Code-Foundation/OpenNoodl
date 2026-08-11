@@ -1,7 +1,8 @@
 # BST-003 — The on-ramp, before there is a project
 
-**Status:** 📋 open · **Track: the editor** · **depends on BST-001 and BST-004** ·
-⚠️ **contains a decision for Richard (§2)**
+**Status:** ✅ **built 2026-08-11** (`d1e3bfaa`) · **Track: the editor** · **depends on BST-001 and
+BST-004** · §2's decision was **measured (§2a) and settled: B-then-C**.
+⚠️ **The card has never been rendered** — see §5.
 
 ## The gap, stated precisely
 
