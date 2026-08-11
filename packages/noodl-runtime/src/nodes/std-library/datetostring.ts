@@ -75,6 +75,7 @@ const DateToStringNode: NodeDefinitionOptions = {
   },
   inputs: {
     formatString: {
+      group: 'Values',
       displayName: 'Format',
       type: 'string',
       default: '{year}-{month}-{date}',
@@ -91,6 +92,7 @@ const DateToStringNode: NodeDefinitionOptions = {
       }
     },
     timeZone: {
+      group: 'Values',
       displayName: 'Timezone',
       type: 'string',
       default: '',
@@ -110,6 +112,7 @@ const DateToStringNode: NodeDefinitionOptions = {
       }
     },
     input: {
+      group: 'Values',
       type: { name: 'date' },
       displayName: 'Date',
       description: 'The instant to render; a string arriving here is parsed as a date first',
@@ -128,7 +131,7 @@ const DateToStringNode: NodeDefinitionOptions = {
     currentValue: {
       type: 'string',
       displayName: 'Date String',
-      group: 'Value',
+      group: 'Values',
       description: 'Date rendered through Format, or blank when the date could not be read',
       getter: function (this: DateToStringNodeInstance) {
         return this._internal.dateString;
@@ -137,13 +140,13 @@ const DateToStringNode: NodeDefinitionOptions = {
     inputChanged: {
       type: 'signal',
       displayName: 'Date Changed',
-      group: 'Signals',
+      group: 'Events',
       description: 'Fires whenever a new Date arrives or Format changes, after Date String has been updated'
     },
     onError: {
       type: 'signal',
       displayName: 'Invalid Date',
-      group: 'Signals',
+      group: 'Events',
       description: 'Fires when the Date could not be read, leaving Date String blank'
     }
   },

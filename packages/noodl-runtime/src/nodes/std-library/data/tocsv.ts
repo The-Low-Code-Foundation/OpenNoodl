@@ -123,7 +123,7 @@ const ToCSVNode: NodeDefinitionOptions = {
     text: {
       type: 'string',
       displayName: 'CSV',
-      group: 'Value',
+      group: 'Values',
       description:
         'The array as CSV text. Cells containing the delimiter, a quote or a newline are quoted ' +
         'and their quotes doubled, so this round-trips back through Parse CSV unchanged',
@@ -134,7 +134,7 @@ const ToCSVNode: NodeDefinitionOptions = {
     count: {
       type: 'number',
       displayName: 'Count',
-      group: 'Value',
+      group: 'Values',
       description: 'How many data rows were written, not counting the header row',
       getter: function (this: ToCSVNodeInstance) {
         return this._internal.items ? this._internal.items.length : 0;

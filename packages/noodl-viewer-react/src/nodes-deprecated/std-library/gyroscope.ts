@@ -32,6 +32,7 @@ const GyroscopeNode: NodeDefinitionOptions = {
   },
   outputs: {
     rotationX: {
+      group: 'Values',
       type: 'number',
       displayName: 'Rotation X',
       description: 'Front-to-back tilt in degrees; it never updates on iOS, which requires a permission this node does not request',
@@ -40,6 +41,7 @@ const GyroscopeNode: NodeDefinitionOptions = {
       }
     },
     rotationY: {
+      group: 'Values',
       type: 'number',
       displayName: 'Rotation Y',
       description: 'Left-to-right tilt in degrees; it never updates on iOS, which requires a permission this node does not request',
@@ -48,6 +50,7 @@ const GyroscopeNode: NodeDefinitionOptions = {
       }
     },
     rotationZ: {
+      group: 'Values',
       type: 'number',
       displayName: 'Rotation Z',
       description: 'Compass heading in degrees; it never updates on iOS, which requires a permission this node does not request',

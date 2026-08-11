@@ -141,7 +141,7 @@ const LogNode: NodeDefinitionOptions = {
     value: {
       type: '*',
       displayName: 'Value',
-      group: 'Value',
+      group: 'Values',
       description: 'Whatever arrived on the Value input, unchanged — this node never alters what passes through it',
       getter: function (this: LogNodeInstance) {
         return this._internal.value;

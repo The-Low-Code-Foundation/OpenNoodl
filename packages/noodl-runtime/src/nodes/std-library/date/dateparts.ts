@@ -68,7 +68,7 @@ const DatePartsNode: NodeDefinitionOptions = {
     year: {
       type: 'number',
       displayName: 'Year',
-      group: 'Value',
+      group: 'Values',
       description: 'Four-digit year, in the host s local zone',
       getter: function (this: DatePartsNodeInstance) {
         return this._internal.input && this._internal.input.getFullYear();
@@ -77,7 +77,7 @@ const DatePartsNode: NodeDefinitionOptions = {
     month: {
       type: 'number',
       displayName: 'Month',
-      group: 'Value',
+      group: 'Values',
       description: 'Month as 1-12 — January is 1, not 0',
       getter: function (this: DatePartsNodeInstance) {
         return this._internal.input && this._internal.input.getMonth() + 1;
@@ -86,7 +86,7 @@ const DatePartsNode: NodeDefinitionOptions = {
     date: {
       type: 'number',
       displayName: 'Day of Month',
-      group: 'Value',
+      group: 'Values',
       description: 'Day of the month, 1-31',
       getter: function (this: DatePartsNodeInstance) {
         return this._internal.input && this._internal.input.getDate();
@@ -95,7 +95,7 @@ const DatePartsNode: NodeDefinitionOptions = {
     hours: {
       type: 'number',
       displayName: 'Hours',
-      group: 'Value',
+      group: 'Values',
       description: 'Hour of the day, 0-23',
       getter: function (this: DatePartsNodeInstance) {
         return this._internal.input && this._internal.input.getHours();
@@ -104,7 +104,7 @@ const DatePartsNode: NodeDefinitionOptions = {
     minutes: {
       type: 'number',
       displayName: 'Minutes',
-      group: 'Value',
+      group: 'Values',
       description: 'Minutes past the hour, 0-59',
       getter: function (this: DatePartsNodeInstance) {
         return this._internal.input && this._internal.input.getMinutes();
@@ -113,7 +113,7 @@ const DatePartsNode: NodeDefinitionOptions = {
     seconds: {
       type: 'number',
       displayName: 'Seconds',
-      group: 'Value',
+      group: 'Values',
       description: 'Seconds past the minute, 0-59',
       getter: function (this: DatePartsNodeInstance) {
         return this._internal.input && this._internal.input.getSeconds();
@@ -122,7 +122,7 @@ const DatePartsNode: NodeDefinitionOptions = {
     milliseconds: {
       type: 'number',
       displayName: 'Milliseconds',
-      group: 'Value',
+      group: 'Values',
       description: 'Milliseconds past the second, 0-999',
       getter: function (this: DatePartsNodeInstance) {
         return this._internal.input && this._internal.input.getMilliseconds();
@@ -131,7 +131,7 @@ const DatePartsNode: NodeDefinitionOptions = {
     dayOfWeek: {
       type: 'number',
       displayName: 'Day of Week',
-      group: 'Value',
+      group: 'Values',
       description: 'Day of the week as 0-6, Sunday first — JavaScript s own numbering',
       getter: function (this: DatePartsNodeInstance) {
         return this._internal.input && this._internal.input.getDay();
@@ -140,7 +140,7 @@ const DatePartsNode: NodeDefinitionOptions = {
     dayName: {
       type: 'string',
       displayName: 'Day Name',
-      group: 'Value',
+      group: 'Values',
       description: 'The English name of the weekday. For a localised name, format through Date To String',
       getter: function (this: DatePartsNodeInstance) {
         return this._internal.input && DAY_NAMES[this._internal.input.getDay()];
@@ -149,7 +149,7 @@ const DatePartsNode: NodeDefinitionOptions = {
     isoWeek: {
       type: 'number',
       displayName: 'ISO Week',
-      group: 'Value',
+      group: 'Values',
       description: 'ISO-8601 week number, 1-53: weeks start on Monday and week 1 holds the first Thursday',
       getter: function (this: DatePartsNodeInstance) {
         return this._internal.input && isoWeek(this._internal.input);
@@ -158,7 +158,7 @@ const DatePartsNode: NodeDefinitionOptions = {
     timestamp: {
       type: 'number',
       displayName: 'Timestamp',
-      group: 'Value',
+      group: 'Values',
       description: 'The instant as milliseconds since 1 January 1970 UTC',
       getter: function (this: DatePartsNodeInstance) {
         return this._internal.input && this._internal.input.getTime();

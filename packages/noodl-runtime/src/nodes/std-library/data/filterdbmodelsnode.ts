@@ -295,7 +295,7 @@ const FilterDBModelsNode: NodeDefinitionOptions = {
       failure: 'Fires when the filter could not be applied, or when Filter was triggered with nothing on Items'
     }),
     error: {
-      group: 'Events',
+      group: 'Error',
       type: 'string',
       displayName: 'Error',
       description: 'Why the most recent failed run failed, kept after a later run succeeds',

@@ -157,7 +157,7 @@ const GlobalStoreNodeDefinition: NodeDefinitionOptions = {
       displayName: 'Error',
       description:
         'What the store could not do, prefixed by the phase it happened in: persist, load, clone or subscriber',
-      group: 'Events',
+      group: 'Error',
       getter: function (this: GlobalStoreNodeInstance) {
         return this._internal.error;
       }

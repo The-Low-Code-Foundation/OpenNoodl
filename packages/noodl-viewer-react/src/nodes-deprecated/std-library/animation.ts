@@ -479,13 +479,13 @@ const AnimationNode: NodeDefinitionOptions = {
   outputs: {
     hasReachedStart: {
       type: 'signal',
-      group: 'Signals',
+      group: 'Events',
       displayName: 'Has Reached Start',
       description: 'Fires when a play towards the start values has finished'
     },
     hasReachedEnd: {
       type: 'signal',
-      group: 'Signals',
+      group: 'Events',
       displayName: 'Has Reached End',
       description: 'Fires when a play towards the end values has finished'
     }

@@ -16,7 +16,14 @@ import { Icon, IconName, IconSize } from '@noodl-core-ui/components/common/Icon'
 import { EventDispatcher } from '../../../../../shared/utils/EventDispatcher';
 import css from '../ConnectionPopup.module.scss';
 import { redirectOffer, TIMING_INTENT_ANSWER } from '../portCopy';
-import { asRefusalReason, isConfidentRedirect, OTHER_GROUP, rankAlternatives } from '../refusalPlan';
+import {
+  asRefusalReason,
+  DEFAULT_GROUP_PRIORITY,
+  isConfidentRedirect,
+  orderGroups,
+  OTHER_GROUP,
+  rankAlternatives
+} from '../refusalPlan';
 import { answersTimingIntent } from '../searchIntent';
 import { PortGroup } from './PortGroup';
 import { RefusedPorts } from './RefusedPorts';
@@ -225,26 +232,18 @@ export function ConnectionBar(props: TSFixme) {
   const declaredGroupPriority: string[] =
     props.model.type.connectionPanel !== undefined && props.model.type.connectionPanel.groupPriority !== undefined
       ? props.model.type.connectionPanel.groupPriority
-      : ['General', 'Events', 'Actions', 'States'];
+      : [...DEFAULT_GROUP_PRIORITY];
 
-  // ⚠️ Reversed, because the sort below applies the entries one at a time and
-  // each pass floats its own group to the top — so the *last* one applied ends
-  // up first. `rankAlternatives` takes `declaredGroupPriority`, not this: read
-  // as a ranking, this array says the opposite of what it means.
-  const priorityGroups = declaredGroupPriority.slice().reverse();
-
-  priorityGroups.forEach((g) => {
-    groups.sort(function (x, y) {
-      return x.name === g ? -1 : y.name === g ? 1 : 0;
-    });
-  });
-
-  // Move other to the bottom
-  const otherIdx = groups.findIndex((g) => g.name === OTHER_GROUP);
-  if (otherIdx !== -1) {
-    const otherGroup = groups.splice(otherIdx, 1);
-    groups.push(otherGroup[0]);
-  }
+  /*
+   * SIG-003 §3. This was three separate passes — reverse the priority list,
+   * float each entry to the top one at a time, then splice `Other` to the end —
+   * and between them there was no rule at all for a group the list did not name.
+   * `orderGroups` is one comparator with the three tiers written down, and the
+   * middle one (alphabetical) is the tier that did not previously exist.
+   */
+  const orderedGroups = orderGroups(groups, declaredGroupPriority);
+  groups.length = 0;
+  groups.push(...orderedGroups);
 
   // Keyboard navigation stays over the ports that can actually be connected:
   // arrowing onto a row whose only behaviour is to redirect you elsewhere would

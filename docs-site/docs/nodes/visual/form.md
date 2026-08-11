@@ -31,6 +31,7 @@ Do not use in new graphs — use Group with explicit click/enter wiring instead.
 |---|---|---|---|
 | `alignX` | Enum (`left`, `center`, `right`) | — | Horizontal alignment of this element within the space its parent gives it |
 | `alignY` | Enum (`top`, `center`, `bottom`) | — | Vertical alignment of this element within the space its parent gives it |
+| `boxSizing` | Enum (`border-box`, `content-box`) | `border-box` | Whether Width and Height include this element's padding and border, or only its content |
 | `cssClassName` | String | `` | Extra CSS class names to put on this element, for styling from a stylesheet you supply |
 | `flexDirection` | Enum (`none`, `column`, `row`) | `column` | — |
 | `height` | Dimension | `100` | Height of the element; how the value is read depends on Size Mode |

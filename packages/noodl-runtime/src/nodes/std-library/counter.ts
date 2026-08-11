@@ -115,6 +115,7 @@ const CounterNode: NodeDefinitionOptions = {
       }
     },
     startValue: {
+      group: 'Values',
       type: 'number',
       displayName: 'Start Value',
       description: 'Count to begin at and to return to on Reset; setting it announces a change on Count Changed at page load',
@@ -169,6 +170,7 @@ const CounterNode: NodeDefinitionOptions = {
   },
   outputs: {
     currentCount: {
+      group: 'Values',
       displayName: 'Current Count',
       type: 'number',
       description: 'The count as it stands',
@@ -177,6 +179,7 @@ const CounterNode: NodeDefinitionOptions = {
       }
     },
     countChanged: {
+      group: 'Events',
       displayName: 'Count Changed',
       type: 'signal',
       description: 'Fires after the count has moved, and also once at page load when Start Value is set'

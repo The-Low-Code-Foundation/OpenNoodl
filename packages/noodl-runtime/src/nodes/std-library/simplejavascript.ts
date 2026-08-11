@@ -247,7 +247,7 @@ const SimpleJavascriptNode: NodeDefinitionOptions = {
     error: {
       type: 'string',
       displayName: 'Error',
-      group: 'Events',
+      group: 'Error',
       description: 'What the script went wrong with, in JavaScript\'s own words',
       // A bare Failure signal reproduces "no information" one level up, so the message
       // travels with it (FAILURE-CONTRACT.md).

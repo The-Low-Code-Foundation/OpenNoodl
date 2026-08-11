@@ -46,6 +46,7 @@ const StringSelectorNode: NodeDefinitionOptions = {
   },
   inputs: {
     index: {
+      group: 'Values',
       type: {
         name: 'number'
       },
@@ -65,7 +66,7 @@ const StringSelectorNode: NodeDefinitionOptions = {
     currentValue: {
       type: 'string',
       displayName: 'Current Value',
-      group: 'Value',
+      group: 'Values',
       description: 'The numbered string sitting at Index, or nothing when there is none',
       getter: function (this: StringSelectorNodeInstance) {
         return this._internal.inputs[this._internal.currentSelectedIndex];
@@ -74,7 +75,7 @@ const StringSelectorNode: NodeDefinitionOptions = {
     indexChanged: {
       type: 'signal',
       displayName: 'Index Changed',
-      group: 'Signals',
+      group: 'Events',
       description: 'Fires when Index changes, after Current Value has been updated'
     }
   }

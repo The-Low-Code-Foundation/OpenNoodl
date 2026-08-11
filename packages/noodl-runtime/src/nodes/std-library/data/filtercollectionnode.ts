@@ -319,7 +319,7 @@ const FilterCollectionNode: NodeDefinitionOptions = {
         'pulse with no array connected'
     }),
     error: {
-      group: 'Events',
+      group: 'Error',
       type: 'string',
       displayName: 'Error',
       description: 'Why the last run failed, in one sentence; empty until something fails',

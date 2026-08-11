@@ -105,6 +105,7 @@ const ImageNode: ReactNodeDefinition = {
       allowVisualStates: true
     },
     alt: {
+      group: 'Values',
       displayName: 'Alternate text',
       tooltip: "The alt text is used by screen readers, or if the image can't be downloaded or displayed",
       type: 'string',
@@ -144,7 +145,7 @@ const ImageNode: ReactNodeDefinition = {
     imageError: {
       displayName: 'Error',
       type: 'string',
-      group: 'Events',
+      group: 'Error',
       description: 'Why the image could not be loaded, naming the source that failed'
     }
   }

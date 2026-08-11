@@ -180,7 +180,7 @@ const ModelNodeDefinition: NodeDefinitionOptions = {
       description: 'Why the last action failed; empty until one does',
       type: 'string',
       displayName: 'Error',
-      group: 'Events',
+      group: 'Error',
       getter: function (this: DbModelNodeInstance) {
         return this._internal.error;
       }

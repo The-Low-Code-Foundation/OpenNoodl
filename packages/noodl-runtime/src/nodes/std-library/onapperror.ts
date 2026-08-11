@@ -75,7 +75,7 @@ const OnAppErrorNode: NodeDefinitionOptions = {
     error: {
       type: 'signal',
       displayName: 'Error',
-      group: 'Events',
+      group: 'Error',
       description: 'Fires when an error passes the Filter, after every value output below has been updated to describe it'
     },
     message: {

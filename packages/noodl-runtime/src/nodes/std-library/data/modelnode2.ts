@@ -513,7 +513,7 @@ function updatePorts(nodeId: string, parameters: Record<string, unknown>, editor
       ports.push({
         type: 'signal',
         plug: 'output',
-        group: 'Changed Events',
+        group: 'Events',
         displayName: p + ' Changed',
         name: 'changed-' + p,
         description: 'Fires when the ' + p + ' property changes, from this node or from anywhere else'

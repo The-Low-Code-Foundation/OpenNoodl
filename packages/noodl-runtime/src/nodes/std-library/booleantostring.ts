@@ -35,6 +35,7 @@ const BooleanToStringNode: NodeDefinitionOptions = {
   },
   inputs: {
     trueString: {
+      group: 'Values',
       displayName: 'String for true',
       type: 'string',
       description: 'Text published on Current Value while Selector is true',
@@ -48,6 +49,7 @@ const BooleanToStringNode: NodeDefinitionOptions = {
       }
     },
     falseString: {
+      group: 'Values',
       displayName: 'String for false',
       type: 'string',
       description: 'Text published on Current Value while Selector is false',
@@ -61,6 +63,7 @@ const BooleanToStringNode: NodeDefinitionOptions = {
       }
     },
     input: {
+      group: 'Values',
       type: { name: 'boolean' },
       displayName: 'Selector',
       description: 'Which of the two strings to publish; anything that is not true counts as false',
@@ -77,7 +80,7 @@ const BooleanToStringNode: NodeDefinitionOptions = {
     currentValue: {
       type: 'string',
       displayName: 'Current Value',
-      group: 'Value',
+      group: 'Values',
       description: 'String for true or String for false, whichever Selector currently picks',
       getter: function (this: BooleanToStringNodeInstance) {
         return this._internal.currentInput ? this._internal.trueString : this._internal.falseString;
@@ -86,7 +89,7 @@ const BooleanToStringNode: NodeDefinitionOptions = {
     inputChanged: {
       type: 'signal',
       displayName: 'Selector Changed',
-      group: 'Signals',
+      group: 'Events',
       description: 'Fires when Selector flips, after Current Value has been updated'
     }
   }

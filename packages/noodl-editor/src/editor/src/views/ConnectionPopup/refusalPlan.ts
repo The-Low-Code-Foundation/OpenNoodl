@@ -42,6 +42,64 @@ export interface PlannablePort {
 /** The ungrouped bucket. Named here because two modules and a component all say it. */
 export const OTHER_GROUP = 'Other';
 
+/**
+ * The order a node gets when it declares no `connectionPanel.groupPriority`.
+ *
+ * SIG-003 §3. Was `['General', 'Events', 'Actions', 'States']`, which put the
+ * things that *happened* above the things you can *cause* and named neither of
+ * the two headings the library actually leans on — a node's values and its
+ * errors. The order below reads as a sentence about the node: what it is, what
+ * it has, what you do to it, what it tells you, how it is doing, what went
+ * wrong.
+ *
+ * ⚠️ Entries are matched against `group` strings by literal equality, here and
+ * in every per-node `groupPriority`. `scripts/node-audit/port-groups.js` fails
+ * on a rename that moves one side and not the other.
+ */
+export const DEFAULT_GROUP_PRIORITY: readonly string[] = [
+  'General',
+  'Values',
+  'Actions',
+  'Events',
+  'Status',
+  'Error',
+  'States',
+  'Advanced'
+];
+
+/**
+ * Order group headings for display.
+ *
+ * Three tiers, because before SIG-003 there were only two and the second was not
+ * an order at all:
+ *
+ * 1. groups named in `priority`, in that order;
+ * 2. everything else, **alphabetically** — this is the new part. The old sort
+ *    floated each priority entry to the top one pass at a time and left every
+ *    unlisted group in whatever order it happened to be built in, which is
+ *    recorded in source at `text-input.ts:45` about `Run On Value Change`. A
+ *    heading's position was therefore a property of the declaration order in the
+ *    node file, and nothing said so;
+ * 3. `Other` last — and after §1 it should be empty, because a port with no
+ *    `group` is now a gate failure rather than a silent demotion.
+ */
+export function orderGroups<T extends { name: string }>(groups: readonly T[], priority: readonly string[]): T[] {
+  const rankOf = (name: string): number => {
+    if (name === OTHER_GROUP) return Number.MAX_SAFE_INTEGER;
+    const index = priority.indexOf(name);
+    return index === -1 ? priority.length : index;
+  };
+
+  return groups.slice().sort((a, b) => {
+    const rankA = rankOf(a.name);
+    const rankB = rankOf(b.name);
+    if (rankA !== rankB) return rankA - rankB;
+    // Same tier. Listed groups cannot collide (an index is unique), so this only
+    // ever runs for the unlisted tier — and there it is the whole point.
+    return a.name.localeCompare(b.name);
+  });
+}
+
 const KNOWN_REASONS: readonly string[] = ['signal-rule', 'type-mismatch', 'duplicate', 'other'];
 
 /**

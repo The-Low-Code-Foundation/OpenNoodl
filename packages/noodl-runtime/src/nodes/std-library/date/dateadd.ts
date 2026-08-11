@@ -84,7 +84,7 @@ const DateAddNode: NodeDefinitionOptions = {
     result: {
       type: 'date',
       displayName: 'Result',
-      group: 'Value',
+      group: 'Values',
       description: 'Date shifted by Amount of Unit, or unset when Date could not be read',
       getter: function (this: DateAddNodeInstance) {
         return this._internal.result;

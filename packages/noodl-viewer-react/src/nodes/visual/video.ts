@@ -276,11 +276,12 @@ const VideoNode: ReactNodeDefinition = {
     },
     playbackError: {
       type: 'string',
-      group: 'Events',
+      group: 'Error',
       displayName: 'Error',
       description: 'Why playback failed — either the browser refused to autoplay, or the source could not be decoded'
     },
     onVideoElementCreated: {
+      group: 'Advanced',
       type: 'domelement',
       displayName: 'DOM Element',
       description: 'The underlying video element, for a Group to scroll to or a script to reach'

@@ -58,7 +58,7 @@ export const node = {
   docs: 'https://docs.noodl.net/nodes/cloud-functions/secret',
   color: 'data',
   connectionPanel: {
-    groupPriority: ['General', 'Actions', 'Value', 'Events', 'Error']
+    groupPriority: ['General', 'Actions', 'Values', 'Events', 'Error']
   },
   inputs: {
     name: {
@@ -86,7 +86,7 @@ export const node = {
   },
   outputs: {
     value: {
-      group: 'Value',
+      group: 'Values',
       displayName: 'Value',
       type: 'string',
       description: 'The secret, available once Done has fired. Blank until then, and blank after a Failure',

@@ -116,7 +116,7 @@ export const node = {
     error: {
       type: 'string',
       displayName: 'Error',
-      group: 'Events',
+      group: 'Error',
       description: 'Why the response could not be sent',
       getter: function () {
         return this._internal.lastError;

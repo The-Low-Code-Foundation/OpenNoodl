@@ -27,6 +27,7 @@ Decorative or informative glyphs next to text, in cards, headers and list rows. 
 |---|---|---|---|
 | `alignX` | Enum (`left`, `center`, `right`) | — | Horizontal alignment of this element within the space its parent gives it |
 | `alignY` | Enum (`top`, `center`, `bottom`) | — | Vertical alignment of this element within the space its parent gives it |
+| `boxSizing` | Enum (`border-box`, `content-box`) | `border-box` | Whether Width and Height include this element's padding and border, or only its content |
 | `cssClassName` | String | `` | Extra CSS class names to put on this element, for styling from a stylesheet you supply |
 | `iconColor` | Color | `#FFFFFF` | Colour of the icon |
 | `iconIconSource` | Icon | — | Which glyph to show, picked from an installed icon set |
@@ -102,6 +103,14 @@ Declared-port-groups keyed on `iconSourceType`: 'icon' exposes `iconIconSource` 
 **Media card row: Columns layout with Image, Icon and Circle**
 
 A card layout composed from the visual primitives: Columns (net.noodl.visual.columns) distributes its children by a layout string ('1 2' — the second column twice as wide), the Image shows a picture from a URL/asset on `src`, the Icon (net.noodl.visual.icon) renders a themed glyph, and the Circle doubles as a status dot whose `fillColor` is data-driven. Layout is containment; only the dynamic bits (image source, status color) are wired.
+
+**Icon feature strip: one item component, instantiated three times inside a Columns**
+
+Three reassurances on a bordered band — and the shape this recipe is really about. The item is its OWN component with Component Inputs for its icon, title and body, instantiated three times; writing the subtree out three times is a `repeated-sibling-subtree` warning, not a style preference. The row is a Columns node so it collapses to one column under 700px: a Group row cannot, because no Group in the runtime has a breakpoint. The band sits on --surface with hairlines top and bottom so it reads as a rule across the page rather than another section.
+
+**Empty state: what a list shows when it has no rows**
+
+A list with nothing in it should say what it is and what to do, not render nothing. The designed version is small and centred inside a dashed card: an icon in a muted disc, one heading, one line of explanation capped at ~380px, and exactly one action. Wire the collection's count into this Group's `visible` port and the inverse into the list — falsiness does the switching with no logic node. Skipping the empty state is the difference between an app that looks unfinished on first run and one that does not, and first run is when it is always seen.
 
 ## Related nodes
 

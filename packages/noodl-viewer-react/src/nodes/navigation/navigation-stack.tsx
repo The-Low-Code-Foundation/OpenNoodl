@@ -1133,12 +1133,21 @@ const PageStack = {
         if (pages !== undefined && pages.length > 0) {
           pages.forEach((p) => {
             // Component for page
+            /*
+             * SIG-003 — dynamic, and connectable, so it reaches the connection
+             * popup. `isPortConnectable` only refuses `allowEditOnly` object
+             * types, and these two are `'component'` and `'string'`; with no
+             * `group` both landed under `Other` on every Page Stack that has
+             * pages. `Pages` is the heading the Router already uses for the
+             * same subject.
+             */
             ports.push({
               name: 'pageComp-' + p.id,
               displayName: 'Component',
               editorName: p.label + ' | Component',
               plug: 'input',
               type: 'component',
+              group: 'Pages',
               parent: 'pages',
               parentItemId: p.id
             });
@@ -1151,6 +1160,7 @@ const PageStack = {
                 editorName: p.label + ' | Path',
                 plug: 'input',
                 type: 'string',
+                group: 'Pages',
                 default: p.label.replace(/\s+/g, '-').toLowerCase(),
                 parent: 'pages',
                 parentItemId: p.id

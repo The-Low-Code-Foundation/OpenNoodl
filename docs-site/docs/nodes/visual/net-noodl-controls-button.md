@@ -56,12 +56,15 @@ Any tap/click affordance with a caption. For a custom-drawn clickable area, a Gr
 | `boxShadowOffsetX` | Number | `0` | How far to the right the shadow is cast from the element |
 | `boxShadowOffsetY` | Number | `0` | How far down the shadow is cast from the element |
 | `boxShadowSpreadRadius` | Number | `2` | How much larger than the element the shadow is drawn |
+| `boxSizing` | Enum (`border-box`, `content-box`) | `border-box` | Whether Width and Height include this element's padding and border, or only its content |
 | `clickBubbling` | Enum (`auto`, `always`, `never`) | `auto` | Whether a click on this control also fires Click on the nodes it sits inside. Automatic keeps it here as soon as this control's own Click is connected, so a Favourite button inside a clickable card runs Favourite and not the card; Always is the older behaviour where both run; Never keeps every click here, wired or not |
 | `color` | Color | — | Colour of the text itself, not of the element behind it |
 | `cssClassName` | String | `` | Extra CSS class names to put on this element, for styling from a stylesheet you supply |
 | `enabled` | Boolean | `true` | Lets the user interact with this control; when off it still renders and occupies its space but ignores clicks, touches and typing |
 | `fontFamily` | Font | — | Typeface to render the text in, either a web-safe family name or a font file added to the project |
 | `fontSize` | Number | — | Height of the text, in pixels |
+| `fontStyle` | Enum (`normal`, `italic`) | `normal` | Renders the text upright or italic |
+| `fontWeight` | Number | `Auto` | How heavy the text is drawn, from 100 (thin) to 900 (black); leave as Auto to use the weight the font family sets |
 | `height` | Dimension | `100` | Height of the element; how the value is read depends on Size Mode |
 | `iconColor` | Color | `#FFFFFF` | Colour of the icon |
 | `iconIconSource` | Icon | — | Which glyph to show, picked from an installed icon set |
@@ -148,7 +151,7 @@ Declares conditional/expandable port groups whose visibility depends on paramete
 |---|---|---|
 | sizeMode = explicit OR sizeMode = contentHeight | `width` | — |
 | sizeMode = explicit OR sizeMode = contentWidth | `height` | — |
-| useLabel = true OR useLabel NOT SET | `label`, `textStyle`, `fontFamily`, `fontSize`, `color`, `letterSpacing`, `lineHeight`, `textTransform` | — |
+| useLabel = true OR useLabel NOT SET | `label`, `textStyle`, `fontFamily`, `fontSize`, `fontWeight`, `fontStyle`, `color`, `letterSpacing`, `lineHeight`, `textTransform` | — |
 | useIcon = true | `iconSourceType`, `iconSize`, `iconPlacement`, `iconSpacing` | — |
 | useIcon = true AND iconSourceType = image | `iconImageSource` | — |
 | useIcon = true AND iconSourceType = icon | `iconIconSource`, `iconColor` | — |
@@ -182,6 +185,14 @@ The idiomatic gate shape: a Button click does not act directly — it evaluates 
 **Router page navigation from a button**
 
 URL-style navigation: a Router hosts the app's pages (each page is a component, configured in the Router's `pages` parameter), and a Navigate node (RouterNavigate) switches it. The Button's `onClick` signal triggers `navigate`; which page to go to, and any path parameters, are set on the Navigate node's parameters — those ports are created from the Router's page configuration at edit time, which is why they are runtime-determined in the catalog.
+
+**Split hero: copy column and image, with a display headline that looks set rather than typed**
+
+Two columns inside the shell, each width 100% so an UNWRAPPED row shrinks them to half each — this is why a plain row works where a wrapped grid does not. The copy column carries the page's one display headline (--text-6xl, --font-bold, --leading-none and --tracking-tighter; tight tracking is what makes a large heading look set), an eyebrow above it, a lead paragraph capped at ~520px, and two buttons whose concrete parameters are copied from the style vocabulary because `variant` is a connection-only port. The image gets sizeMode "explicit" plus a width, a height and objectFit "cover" — without explicit sizing those three ports are inert and the photo renders at its natural size.
+
+**Empty state: what a list shows when it has no rows**
+
+A list with nothing in it should say what it is and what to do, not render nothing. The designed version is small and centred inside a dashed card: an icon in a muted disc, one heading, one line of explanation capped at ~380px, and exactly one action. Wire the collection's count into this Group's `visible` port and the inverse into the list — falsiness does the switching with no logic node. Skipping the empty state is the difference between an app that looks unfinished on first run and one that does not, and first run is when it is always seen.
 
 ## Related nodes
 

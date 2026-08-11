@@ -56,12 +56,15 @@ Any free-text entry. Use `type` instead of separate nodes for email/number/passw
 | `boxShadowOffsetX` | Number | `0` | How far to the right the shadow is cast from the element |
 | `boxShadowOffsetY` | Number | `0` | How far down the shadow is cast from the element |
 | `boxShadowSpreadRadius` | Number | `2` | How much larger than the element the shadow is drawn |
+| `boxSizing` | Enum (`border-box`, `content-box`) | `border-box` | Whether Width and Height include this element's padding and border, or only its content |
 | `clickBubbling` | Enum (`auto`, `always`, `never`) | `auto` | Whether a click on this control also fires Click on the nodes it sits inside. Automatic keeps it here as soon as this control's own Click is connected, so a Favourite button inside a clickable card runs Favourite and not the card; Always is the older behaviour where both run; Never keeps every click here, wired or not |
 | `color` | Color | — | Colour of the text itself, not of the element behind it |
 | `cssClassName` | String | `` | Extra CSS class names to put on this element, for styling from a stylesheet you supply |
 | `enabled` | Boolean | `true` | Lets the user interact with this control; when off it still renders and occupies its space but ignores clicks, touches and typing |
 | `fontFamily` | Font | — | Typeface to render the text in, either a web-safe family name or a font file added to the project |
 | `fontSize` | Number | — | Height of the text, in pixels |
+| `fontStyle` | Enum (`normal`, `italic`) | `normal` | Renders the text upright or italic |
+| `fontWeight` | Number | `Auto` | How heavy the text is drawn, from 100 (thin) to 900 (black); leave as Auto to use the weight the font family sets |
 | `height` | Dimension | `100` | Height of the element; how the value is read depends on Size Mode |
 | `iconColor` | Color | `#000000` | Colour of the icon |
 | `iconIconSource` | Icon | — | Which glyph to show, picked from an installed icon set |
@@ -75,6 +78,8 @@ Any free-text entry. Use `type` instead of separate nodes for email/number/passw
 | `labelcolor` | Color | — | Colour of the text itself, not of the element behind it |
 | `labelfontFamily` | Font | — | Typeface to render the text in, either a web-safe family name or a font file added to the project |
 | `labelfontSize` | Number | — | Height of the text, in pixels |
+| `labelfontStyle` | Enum (`normal`, `italic`) | `normal` | Renders the text upright or italic |
+| `labelfontWeight` | Number | `Auto` | How heavy the text is drawn, from 100 (thin) to 900 (black); leave as Auto to use the weight the font family sets |
 | `labelletterSpacing` | Number | `Auto` | Extra space added between characters; leave as Auto to use the spacing built into the font |
 | `labellineHeight` | Number | `Auto` | Vertical space each line of text occupies; leave as Auto to follow the font |
 | `labeltextStyle` | TextStyle | `None` | Applies one of the project's saved text styles; the individual font ports below override whatever it sets |
@@ -178,7 +183,7 @@ Declares conditional/expandable port groups whose visibility depends on paramete
 | useIcon = true | `iconSourceType`, `iconSize`, `iconPlacement`, `iconSpacing` | — |
 | useIcon = true AND iconSourceType = image | `iconImageSource` | — |
 | useIcon = true AND iconSourceType = icon | `iconIconSource`, `iconColor` | — |
-| useLabel = true | `label`, `labeltextStyle`, `labelfontFamily`, `labelfontSize`, `labelcolor`, `labelletterSpacing`, `labellineHeight`, `labeltextTransform`, `labelSpacing` | — |
+| useLabel = true | `label`, `labeltextStyle`, `labelfontFamily`, `labelfontSize`, `labelfontWeight`, `labelfontStyle`, `labelcolor`, `labelletterSpacing`, `labellineHeight`, `labeltextTransform`, `labelSpacing` | — |
 | borderStyle = solid OR borderStyle = dashed OR borderStyle = dotted  | `borderWidth`, `borderColor` | — |
 | borderLeftStyle = solid OR borderLeftStyle = dashed OR borderLeftStyle = dotted OR borderStyle = solid OR borderStyle = dashed OR borderStyle = dotted  | `borderLeftWidth`, `borderLeftColor` | — |
 | borderTopStyle = solid OR borderTopStyle = dashed OR borderTopStyle = dotted OR borderStyle = solid OR borderStyle = dashed OR borderStyle = dotted  | `borderTopWidth`, `borderTopColor` | — |

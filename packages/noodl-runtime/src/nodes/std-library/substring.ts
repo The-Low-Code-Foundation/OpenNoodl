@@ -33,6 +33,7 @@ const SubStringNode: NodeDefinitionOptions = {
   },
   inputs: {
     start: {
+      group: 'Values',
       type: 'number',
       displayName: 'Start',
       description: 'Position of the first character to keep, counting from zero; a negative value counts back from the end',
@@ -44,6 +45,7 @@ const SubStringNode: NodeDefinitionOptions = {
       }
     },
     end: {
+      group: 'Values',
       type: 'number',
       displayName: 'End',
       description: 'Position to stop before; leave it unset to run to the end of the string, since setting it to 0 yields nothing',
@@ -55,6 +57,7 @@ const SubStringNode: NodeDefinitionOptions = {
       }
     },
     string: {
+      group: 'Values',
       type: {
         name: 'string'
       },
@@ -73,6 +76,7 @@ const SubStringNode: NodeDefinitionOptions = {
   },
   outputs: {
     result: {
+      group: 'Values',
       type: 'string',
       displayName: 'Result',
       description: 'The section of String between Start and End',

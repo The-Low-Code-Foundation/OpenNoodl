@@ -39,6 +39,7 @@ NodeDefinition.extend(StringNode, {
   portLabelTruncationMode: 'length',
   outputs: {
     length: {
+      group: 'Values',
       type: 'number',
       displayName: 'Length',
       description:

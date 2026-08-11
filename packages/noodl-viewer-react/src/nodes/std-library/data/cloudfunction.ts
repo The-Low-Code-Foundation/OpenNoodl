@@ -212,14 +212,14 @@ const CloudFunctionNode: NodeDefinitionOptions = {
       description: 'Fires once the function has returned and Result is up to date',
       type: 'signal',
       displayName: 'Success',
-      group: 'Signals'
+      group: 'Events'
     },
     failure: {
       description:
         'Fires when the call failed, and also when it succeeded without returning a result; this node carries no reason for either',
       type: 'signal',
       displayName: 'Failure',
-      group: 'Signals'
+      group: 'Events'
     },
     result: {
       description: 'Whatever the function returned, with records and arrays deserialised where they can be',

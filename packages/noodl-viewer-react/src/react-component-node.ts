@@ -961,7 +961,20 @@ function createNodeFromReactComponent(def: ReactNodeDefinition): ReactNodeModule
       }
     },
     outputs: {
+      /*
+       * SIG-003 — `Advanced`, not the absence of a group.
+       *
+       * These three are the largest single source of `Other` in the library: 27
+       * `childIndex`, 27 `this` and 12 `childrenCount` reached the connection
+       * popup with no `group`, and `ConnectionBar` renders an ungrouped port
+       * under `Other` — so a beginner opening any visual node found a heading
+       * nobody chose. `Advanced` is the honest subject: they describe this
+       * element's place in the tree and a reference to the node itself, not
+       * anything the node is *for*, and it keeps `Values` meaning "the things
+       * this node is about".
+       */
       childIndex: {
+        group: 'Advanced',
         displayName: 'Child Index',
         type: 'number',
         description: "This element's position among its parent's children, counting from 0",
@@ -970,6 +983,7 @@ function createNodeFromReactComponent(def: ReactNodeDefinition): ReactNodeModule
         }
       },
       this: {
+        group: 'Advanced',
         displayName: 'This',
         type: 'reference',
         description: 'A reference to this node itself, for ports that take a node rather than a value',
@@ -1787,6 +1801,7 @@ function createNodeFromReactComponent(def: ReactNodeDefinition): ReactNodeModule
 
   if (hasChildCountOutput) {
     ReactComponentNode.outputs.childrenCount = {
+      group: 'Advanced', // SIG-003 — see `childIndex` above
       displayName: 'Children Count',
       type: 'number',
       description: 'How many child elements are currently mounted inside this one',

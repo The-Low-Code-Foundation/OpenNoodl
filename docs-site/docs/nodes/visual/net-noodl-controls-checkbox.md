@@ -56,6 +56,7 @@ Boolean choices the user flips directly: settings, consent, done flags. For one-
 | `boxShadowOffsetX` | Number | `0` | How far to the right the shadow is cast from the element |
 | `boxShadowOffsetY` | Number | `0` | How far down the shadow is cast from the element |
 | `boxShadowSpreadRadius` | Number | `2` | How much larger than the element the shadow is drawn |
+| `boxSizing` | Enum (`border-box`, `content-box`) | `border-box` | Whether Width and Height include this element's padding and border, or only its content |
 | `checked` | Boolean | `false` | Sets whether the box is ticked; setting it from the graph does not fire Changed |
 | `clickBubbling` | Enum (`auto`, `always`, `never`) | `auto` | Whether a click on this control also fires Click on the nodes it sits inside. Automatic keeps it here as soon as this control's own Click is connected, so a Favourite button inside a clickable card runs Favourite and not the card; Always is the older behaviour where both run; Never keeps every click here, wired or not |
 | `cssClassName` | String | `` | Extra CSS class names to put on this element, for styling from a stylesheet you supply |
@@ -71,6 +72,8 @@ Boolean choices the user flips directly: settings, consent, done flags. For one-
 | `labelcolor` | Color | — | Colour of the text itself, not of the element behind it |
 | `labelfontFamily` | Font | — | Typeface to render the text in, either a web-safe family name or a font file added to the project |
 | `labelfontSize` | Number | — | Height of the text, in pixels |
+| `labelfontStyle` | Enum (`normal`, `italic`) | `normal` | Renders the text upright or italic |
+| `labelfontWeight` | Number | `Auto` | How heavy the text is drawn, from 100 (thin) to 900 (black); leave as Auto to use the weight the font family sets |
 | `labelletterSpacing` | Number | `Auto` | Extra space added between characters; leave as Auto to use the spacing built into the font |
 | `labellineHeight` | Number | `Auto` | Vertical space each line of text occupies; leave as Auto to follow the font |
 | `labeltextStyle` | TextStyle | `None` | Applies one of the project's saved text styles; the individual font ports below override whatever it sets |
@@ -154,7 +157,7 @@ Declares conditional/expandable port groups whose visibility depends on paramete
 | useIcon = true OR useIcon NOT SET | `iconSourceType`, `iconSize` | — |
 | #js (params.useIcon===true \|\| params.useIcon===undefined) && params.iconSourceType === 'image' | `iconImageSource` | — |
 | #js (params.useIcon===true \|\| params.useIcon===undefined) && params.iconSourceType === 'icon' | `iconIconSource`, `iconColor` | — |
-| useLabel = true | `label`, `labeltextStyle`, `labelfontFamily`, `labelfontSize`, `labelcolor`, `labelletterSpacing`, `labellineHeight`, `labeltextTransform`, `labelSpacing` | — |
+| useLabel = true | `label`, `labeltextStyle`, `labelfontFamily`, `labelfontSize`, `labelfontWeight`, `labelfontStyle`, `labelcolor`, `labelletterSpacing`, `labellineHeight`, `labeltextTransform`, `labelSpacing` | — |
 | borderStyle = solid OR borderStyle = dashed OR borderStyle = dotted OR borderStyle NOT SET | `borderWidth`, `borderColor` | — |
 | borderLeftStyle = solid OR borderLeftStyle = dashed OR borderLeftStyle = dotted OR borderStyle = solid OR borderStyle = dashed OR borderStyle = dotted OR borderStyle NOT SET | `borderLeftWidth`, `borderLeftColor` | — |
 | borderTopStyle = solid OR borderTopStyle = dashed OR borderTopStyle = dotted OR borderStyle = solid OR borderStyle = dashed OR borderStyle = dotted OR borderStyle NOT SET | `borderTopWidth`, `borderTopColor` | — |

@@ -122,7 +122,7 @@ const HashNode: NodeDefinitionOptions = {
     digest: {
       type: 'string',
       displayName: 'Digest',
-      group: 'Value',
+      group: 'Values',
       description: 'The hash of Value, rendered in Encoding. Available once Done has fired',
       getter: function (this: HashNodeInstance) {
         return this._internal.digest;

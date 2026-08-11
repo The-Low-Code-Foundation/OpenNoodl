@@ -193,7 +193,7 @@ export function recordFieldPorts(
         displayName: `${field.displayName || field.name} Changed`,
         type: 'signal',
         plug: 'output',
-        group: 'Changed Events'
+        group: 'Events'
       });
     }
   }

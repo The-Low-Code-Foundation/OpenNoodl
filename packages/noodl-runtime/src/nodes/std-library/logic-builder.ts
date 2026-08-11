@@ -446,14 +446,21 @@ const LogicBuilderNode: NodeDefinitionOptions = {
   },
 
   inputs: {
+    /*
+     * SIG-003 — `group: ''` was already an attempt at this task's complaint, and
+     * it never worked twice over. `ConnectionBar` reads `p.group ? p.group :
+     * 'Other'`, and the empty string is falsy, so the port landed under `Other`
+     * exactly as if the line were absent. It was also a duplicate key, silently
+     * overriding whatever was declared above it.
+     */
     workspace: {
+      group: 'General',
       type: {
         name: 'string',
         allowEditOnly: true,
         editorType: 'logic-builder-workspace'
       },
       displayName: 'Logic Blocks',
-      group: '', // Empty group to avoid "Other" label
       description:
         'The block program itself, authored in the block editor — it decides which ports this node has, so editing it adds and removes ports',
       set: function (this: LogicBuilderNodeInstance, value: string) {
@@ -465,6 +472,7 @@ const LogicBuilderNode: NodeDefinitionOptions = {
       }
     },
     generatedCode: {
+      group: 'Advanced', // SIG-003 — see `workspace` above; renders nothing, so it is not `General`
       // Internal storage - renders nothing in property panel
       type: {
         name: 'string',
@@ -472,7 +480,6 @@ const LogicBuilderNode: NodeDefinitionOptions = {
         editorType: 'logic-builder-hidden' // Custom type that renders nothing
       },
       displayName: 'Generated Code',
-      group: '', // Empty group
       description:
         'The JavaScript the block editor writes out of Logic Blocks and the runtime actually executes; it is overwritten on every block edit, so hand edits do not survive',
       set: function (this: LogicBuilderNodeInstance, value: string) {
@@ -484,7 +491,7 @@ const LogicBuilderNode: NodeDefinitionOptions = {
     run: {
       type: 'signal',
       displayName: 'Run',
-      group: 'Signals',
+      group: 'Actions',
       description:
         'Runs the block program once; the blocks never run on their own, so a value arriving at an input changes nothing until this fires',
       valueChangedToTrue: function (this: LogicBuilderNodeInstance) {
@@ -570,13 +577,21 @@ function updatePorts(nodeId: string, workspace: string, editorConnection: Editor
     });
   }
 
+  /*
+   * SIG-003 — a dynamic seam, and the one place the old `Signals` heading hid a
+   * real distinction: both loops filed under it, so a block program's inputs and
+   * its outputs arrived in the popup under one heading that said only "these are
+   * signals". A signal input is an Action you cause; a signal output is an Event
+   * that happened. `scripts/node-audit/port-groups.js` reads the static catalog
+   * and cannot see either of these, so they are listed in its DYNAMIC_SEAMS.
+   */
   for (const name of io.signalInputs) {
     if (RESERVED_INPUTS.indexOf(name) !== -1) continue;
     ports.push({
       name,
       type: 'signal',
       plug: 'input',
-      group: 'Signals',
+      group: 'Actions',
       displayName: name
     });
   }
@@ -587,7 +602,7 @@ function updatePorts(nodeId: string, workspace: string, editorConnection: Editor
       name,
       type: 'signal',
       plug: 'output',
-      group: 'Signals',
+      group: 'Events',
       displayName: name
     });
   }

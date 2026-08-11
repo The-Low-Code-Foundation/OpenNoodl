@@ -168,7 +168,7 @@ const UndoNodeDefinition: NodeDefinitionOptions = {
       type: 'string',
       displayName: 'Error',
       description: 'Why the last step failed; blank once one succeeds',
-      group: 'Events',
+      group: 'Error',
       getter: function (this: UndoInstance) {
         return this._internal.error;
       }

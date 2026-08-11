@@ -127,7 +127,18 @@ export function createDefinition(args: VariableDefinitionArgs): NodeDefinitionOp
       return [{ type, value: this._internal.currentValue }];
     },
     inputs: {
+      /*
+       * SIG-003 — the reported case, and the worst one in the library.
+       *
+       * `value`, `saveValue`, `savedValue` and `changed` — the four ports that
+       * are the entire point of a Variable — declared no group, so all four fell
+       * to `Other`, while `treatEmptyAs`, which is pure NDA-003 back-compat, was
+       * the only port with a heading. A beginner opening a String variable saw a
+       * category called *Advanced* and a bucket called *Other* containing
+       * everything they came for.
+       */
       value: {
+        group: 'Values',
         type: args.type,
         displayName: 'Value',
         default: args.startValue,
@@ -176,6 +187,7 @@ export function createDefinition(args: VariableDefinitionArgs): NodeDefinitionOp
         }
       },
       saveValue: {
+        group: 'Actions', // SIG-003 — a signal input is an Action you cause
         displayName: 'Set',
         description:
           'Stores the latest value now. This is additional to Value storing on change; untick Value under Run On Value Change to stop that',
@@ -200,6 +212,7 @@ export function createDefinition(args: VariableDefinitionArgs): NodeDefinitionOp
     },
     outputs: {
       savedValue: {
+        group: 'Values', // SIG-003
         type: args.type.name,
         displayName: 'Value',
         description:
@@ -210,6 +223,7 @@ export function createDefinition(args: VariableDefinitionArgs): NodeDefinitionOp
         }
       },
       changed: {
+        group: 'Events', // SIG-003 — a signal output is an Event that happened
         type: 'signal',
         displayName: 'Changed',
         description:

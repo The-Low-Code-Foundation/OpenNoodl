@@ -186,6 +186,7 @@ const DragNode: ReactNodeDefinition = {
       default: true
     },
     inputPositionX: {
+      group: 'Values',
       displayName: 'Start Drag X',
       description: 'Sets the X position the element starts at, before any dragging',
       type: {
@@ -193,6 +194,7 @@ const DragNode: ReactNodeDefinition = {
       }
     },
     inputPositionY: {
+      group: 'Values',
       displayName: 'Start Drag Y',
       description: 'Sets the Y position the element starts at, before any dragging',
       type: {
@@ -200,6 +202,7 @@ const DragNode: ReactNodeDefinition = {
       }
     },
     scale: {
+      group: 'Values',
       displayName: 'Scale',
       description: 'Divides pointer movement before it becomes element movement, so 2 makes the element move half as far as the pointer',
       default: 1.0,
@@ -210,19 +213,19 @@ const DragNode: ReactNodeDefinition = {
   },
   outputProps: {
     onStart: {
-      group: 'Signals',
+      group: 'Events',
       type: 'signal',
       displayName: 'Drag Started',
       description: 'Fires when the user starts dragging'
     },
     onStop: {
-      group: 'Signals',
+      group: 'Events',
       type: 'signal',
       displayName: 'Drag Ended',
       description: 'Fires when the user releases the element, including when the pointer leaves the window'
     },
     onDrag: {
-      group: 'Signals',
+      group: 'Events',
       type: 'signal',
       displayName: 'Drag Moved',
       description: 'Fires on every frame the element moves while being dragged'

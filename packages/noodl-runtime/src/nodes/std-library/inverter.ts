@@ -32,6 +32,7 @@ const InverterNode: NodeDefinitionOptions = {
   },
   inputs: {
     value: {
+      group: 'Values',
       type: {
         name: 'boolean'
       },
@@ -45,6 +46,7 @@ const InverterNode: NodeDefinitionOptions = {
   },
   outputs: {
     result: {
+      group: 'Values',
       type: 'boolean',
       displayName: 'Result',
       description: 'The opposite of Value, and unset rather than true while Value has never been set',

@@ -92,7 +92,7 @@ const DateCompareNode: NodeDefinitionOptions = {
     before: {
       type: 'boolean',
       displayName: 'Is Before',
-      group: 'Value',
+      group: 'Values',
       description: 'True when Date is earlier than Compare To, at this Granularity',
       getter: function (this: DateCompareNodeInstance) {
         return this._internal.before;
@@ -101,7 +101,7 @@ const DateCompareNode: NodeDefinitionOptions = {
     after: {
       type: 'boolean',
       displayName: 'Is After',
-      group: 'Value',
+      group: 'Values',
       description: 'True when Date is later than Compare To, at this Granularity',
       getter: function (this: DateCompareNodeInstance) {
         return this._internal.after;
@@ -110,7 +110,7 @@ const DateCompareNode: NodeDefinitionOptions = {
     same: {
       type: 'boolean',
       displayName: 'Is Same',
-      group: 'Value',
+      group: 'Values',
       description: 'True when the two land in the same Granularity bucket — the same day, month or year',
       getter: function (this: DateCompareNodeInstance) {
         return this._internal.same;

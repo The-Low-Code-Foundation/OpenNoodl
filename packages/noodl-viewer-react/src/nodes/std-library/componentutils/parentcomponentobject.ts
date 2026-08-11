@@ -270,7 +270,7 @@ const ParentComponentObject: NodeDefinitionOptions = {
     error: {
       type: 'string',
       displayName: 'Error',
-      group: 'Events',
+      group: 'Error',
       description: 'Which ancestor was looked for and why it was not found',
       getter(this: ParentComponentObjectInstance) {
         return this._internal.lastError;
@@ -506,7 +506,7 @@ function updatePorts(
     ports.push({
       type: 'signal',
       plug: 'output',
-      group: 'Changed Events',
+      group: 'Events',
       displayName: p + ' Changed',
       name: 'changed-' + p
     });

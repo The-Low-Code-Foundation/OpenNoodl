@@ -396,7 +396,7 @@ const OptimisticUpdateNodeDefinition: NodeDefinitionOptions = {
       type: 'string',
       displayName: 'Error',
       description: 'Why the last update failed or was undone; blank once an Apply succeeds',
-      group: 'Events',
+      group: 'Error',
       getter: function (this: OptimisticUpdateInstance) {
         return this._internal.error;
       }

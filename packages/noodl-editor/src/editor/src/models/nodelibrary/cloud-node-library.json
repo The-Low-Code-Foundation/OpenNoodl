@@ -621,7 +621,7 @@
           "name": "error",
           "type": "string",
           "plug": "output",
-          "group": "Events",
+          "group": "Error",
           "displayName": "Error",
           "description": "The compile or evaluation error, in JavaScript's own words"
         },
@@ -753,7 +753,7 @@
           "name": "error",
           "type": "string",
           "plug": "output",
-          "group": "Events",
+          "group": "Error",
           "displayName": "Error",
           "description": "What the script went wrong with, in JavaScript's own words"
         }
@@ -785,6 +785,7 @@
             "editorType": "logic-builder-workspace"
           },
           "plug": "input",
+          "group": "General",
           "displayName": "Logic Blocks",
           "description": "The block program itself, authored in the block editor — it decides which ports this node has, so editing it adds and removes ports"
         },
@@ -796,6 +797,7 @@
             "editorType": "logic-builder-hidden"
           },
           "plug": "input",
+          "group": "Advanced",
           "displayName": "Generated Code",
           "description": "The JavaScript the block editor writes out of Logic Blocks and the runtime actually executes; it is overwritten on every block edit, so hand edits do not survive"
         },
@@ -806,7 +808,7 @@
             "allowConnectionsOnly": true
           },
           "plug": "input",
-          "group": "Signals",
+          "group": "Actions",
           "displayName": "Run",
           "description": "Runs the block program once; the blocks never run on their own, so a value arriving at an input changes nothing until this fires"
         },
@@ -2091,7 +2093,7 @@
           "name": "error",
           "type": "string",
           "plug": "output",
-          "group": "Events",
+          "group": "Error",
           "displayName": "Error",
           "description": "Why the most recent failed run failed, kept after a later run succeeds"
         }
@@ -3073,7 +3075,7 @@
           "name": "error",
           "type": "string",
           "plug": "output",
-          "group": "Events",
+          "group": "Error",
           "displayName": "Error",
           "description": "Why the last run failed, in one sentence; empty until something fails"
         }
@@ -3103,6 +3105,7 @@
             "codeeditor": "javascript"
           },
           "plug": "input",
+          "group": "Values",
           "displayName": "Script",
           "description": "Script run once per record, declaring the output properties through map({ … }); each entry is either a source property name or a function of the record",
           "default": "map({\n\t// Here you add mappings between the input object and the mapped output object.\n\t//myOutputProp: 'inputProp',\n\t//anotherProperty: function(object) { return object.get('someProperty') + ' ' + object.get('otherProp') }\n})\n"
@@ -3170,7 +3173,7 @@
           "name": "error",
           "type": "string",
           "plug": "output",
-          "group": "Events",
+          "group": "Error",
           "displayName": "Error",
           "description": "Why the last mapping failed, in one sentence; empty until something fails"
         }
@@ -3304,7 +3307,7 @@
           "name": "error",
           "type": "string",
           "plug": "output",
-          "group": "Events",
+          "group": "Error",
           "displayName": "Error",
           "description": "Why the JSON could not be parsed, in one sentence; empty until a parse fails"
         }
@@ -3426,7 +3429,7 @@
           "name": "error",
           "type": "string",
           "plug": "output",
-          "group": "Events",
+          "group": "Error",
           "displayName": "Error",
           "description": "Why the last write was refused, in one sentence; empty until something fails"
         },
@@ -3545,7 +3548,7 @@
           "name": "error",
           "type": "string",
           "plug": "output",
-          "group": "Events",
+          "group": "Error",
           "displayName": "Error",
           "description": "Why the write was refused, in one sentence; empty until something fails"
         }
@@ -3847,6 +3850,7 @@
             "name": "number"
           },
           "plug": "input",
+          "group": "Values",
           "displayName": "Value",
           "description": "The empty-value contract (dev-docs/reference/EMPTY-VALUE-CONTRACT.md): `undefined` abstains and leaves the Variable's stored value untouched. `null` is a real value — it clears the Variable, is stored, and fires Changed. What \"cleared\" is stored as is controlled by `Treat empty as` (null by default).",
           "default": 0
@@ -3880,6 +3884,7 @@
             "allowConnectionsOnly": true
           },
           "plug": "input",
+          "group": "Actions",
           "displayName": "Set",
           "description": "Stores the latest value now. This is additional to Value storing on change; untick Value under Run On Value Change to stop that"
         },
@@ -3921,6 +3926,7 @@
           "name": "savedValue",
           "type": "number",
           "plug": "output",
+          "group": "Values",
           "displayName": "Value",
           "description": "Can be `null` — a cleared Variable (see `value`'s description) stores and emits null by default, not this type's zero value, unless `Treat empty as` says otherwise."
         },
@@ -3928,6 +3934,7 @@
           "name": "changed",
           "type": "signal",
           "plug": "output",
+          "group": "Events",
           "displayName": "Changed",
           "description": "Fires whenever the stored value actually changed, however it was reached — including Value writing straight through under Run On Value Change. It is a value-level event, not the outcome of a Set"
         },
@@ -3974,6 +3981,7 @@
             "name": "string"
           },
           "plug": "input",
+          "group": "Values",
           "displayName": "Value",
           "description": "The empty-value contract (dev-docs/reference/EMPTY-VALUE-CONTRACT.md): `undefined` abstains and leaves the Variable's stored value untouched. `null` is a real value — it clears the Variable, is stored, and fires Changed. What \"cleared\" is stored as is controlled by `Treat empty as` (null by default).",
           "default": ""
@@ -4007,6 +4015,7 @@
             "allowConnectionsOnly": true
           },
           "plug": "input",
+          "group": "Actions",
           "displayName": "Set",
           "description": "Stores the latest value now. This is additional to Value storing on change; untick Value under Run On Value Change to stop that"
         },
@@ -4048,6 +4057,7 @@
           "name": "savedValue",
           "type": "string",
           "plug": "output",
+          "group": "Values",
           "displayName": "Value",
           "description": "Can be `null` — a cleared Variable (see `value`'s description) stores and emits null by default, not this type's zero value, unless `Treat empty as` says otherwise."
         },
@@ -4055,6 +4065,7 @@
           "name": "changed",
           "type": "signal",
           "plug": "output",
+          "group": "Events",
           "displayName": "Changed",
           "description": "Fires whenever the stored value actually changed, however it was reached — including Value writing straight through under Run On Value Change. It is a value-level event, not the outcome of a Set"
         },
@@ -4086,6 +4097,7 @@
           "name": "length",
           "type": "number",
           "plug": "output",
+          "group": "Values",
           "displayName": "Length",
           "description": "0 when the Variable is cleared (`savedValue` is `null`) — there is no text to measure, and 0 is what an author reading this as a plain number expects, rather than a thrown error or `null` itself."
         }
@@ -4103,6 +4115,7 @@
             "name": "boolean"
           },
           "plug": "input",
+          "group": "Values",
           "displayName": "Value",
           "description": "The empty-value contract (dev-docs/reference/EMPTY-VALUE-CONTRACT.md): `undefined` abstains and leaves the Variable's stored value untouched. `null` is a real value — it clears the Variable, is stored, and fires Changed. What \"cleared\" is stored as is controlled by `Treat empty as` (null by default).",
           "default": false
@@ -4136,6 +4149,7 @@
             "allowConnectionsOnly": true
           },
           "plug": "input",
+          "group": "Actions",
           "displayName": "Set",
           "description": "Stores the latest value now. This is additional to Value storing on change; untick Value under Run On Value Change to stop that"
         },
@@ -4177,6 +4191,7 @@
           "name": "savedValue",
           "type": "boolean",
           "plug": "output",
+          "group": "Values",
           "displayName": "Value",
           "description": "Can be `null` — a cleared Variable (see `value`'s description) stores and emits null by default, not this type's zero value, unless `Treat empty as` says otherwise."
         },
@@ -4184,6 +4199,7 @@
           "name": "changed",
           "type": "signal",
           "plug": "output",
+          "group": "Events",
           "displayName": "Changed",
           "description": "Fires whenever the stored value actually changed, however it was reached — including Value writing straight through under Run On Value Change. It is a value-level event, not the outcome of a Set"
         },
@@ -4310,6 +4326,7 @@
           "name": "result",
           "type": "boolean",
           "plug": "output",
+          "group": "Values",
           "displayName": "Result",
           "description": "True only while every connected input is true; false when no input is connected at all"
         }
@@ -4325,6 +4342,7 @@
           "name": "result",
           "type": "boolean",
           "plug": "output",
+          "group": "Values",
           "displayName": "Result",
           "description": "True while at least one connected input is true; false when no input is connected at all"
         }
@@ -4340,6 +4358,7 @@
           "name": "trueString",
           "type": "string",
           "plug": "input",
+          "group": "Values",
           "displayName": "String for true",
           "description": "Text published on Current Value while Selector is true"
         },
@@ -4347,6 +4366,7 @@
           "name": "falseString",
           "type": "string",
           "plug": "input",
+          "group": "Values",
           "displayName": "String for false",
           "description": "Text published on Current Value while Selector is false"
         },
@@ -4356,6 +4376,7 @@
             "name": "boolean"
           },
           "plug": "input",
+          "group": "Values",
           "displayName": "Selector",
           "description": "Which of the two strings to publish; anything that is not true counts as false"
         },
@@ -4363,7 +4384,7 @@
           "name": "currentValue",
           "type": "string",
           "plug": "output",
-          "group": "Value",
+          "group": "Values",
           "displayName": "Current Value",
           "description": "String for true or String for false, whichever Selector currently picks"
         },
@@ -4371,7 +4392,7 @@
           "name": "inputChanged",
           "type": "signal",
           "plug": "output",
-          "group": "Signals",
+          "group": "Events",
           "displayName": "Selector Changed",
           "description": "Fires when Selector flips, after Current Value has been updated"
         }
@@ -4387,6 +4408,7 @@
           "name": "formatString",
           "type": "string",
           "plug": "input",
+          "group": "Values",
           "displayName": "Format",
           "description": "Template in which {year} {yearShort} {month} {monthShort} {date} {hours} {minutes} {seconds} are replaced and everything else is copied through",
           "default": "{year}-{month}-{date}"
@@ -4395,6 +4417,7 @@
           "name": "timeZone",
           "type": "string",
           "plug": "input",
+          "group": "Values",
           "displayName": "Timezone",
           "description": "IANA zone name to render in, such as Europe/London or America/New_York. Leave empty for the host machine's zone — which on a server is whatever the container says, and is the usual reason a date is an hour out in production but right on your laptop",
           "default": ""
@@ -4405,6 +4428,7 @@
             "name": "date"
           },
           "plug": "input",
+          "group": "Values",
           "displayName": "Date",
           "description": "The instant to render; a string arriving here is parsed as a date first"
         },
@@ -4412,7 +4436,7 @@
           "name": "currentValue",
           "type": "string",
           "plug": "output",
-          "group": "Value",
+          "group": "Values",
           "displayName": "Date String",
           "description": "Date rendered through Format, or blank when the date could not be read"
         },
@@ -4420,7 +4444,7 @@
           "name": "inputChanged",
           "type": "signal",
           "plug": "output",
-          "group": "Signals",
+          "group": "Events",
           "displayName": "Date Changed",
           "description": "Fires whenever a new Date arrives or Format changes, after Date String has been updated"
         },
@@ -4428,7 +4452,7 @@
           "name": "onError",
           "type": "signal",
           "plug": "output",
-          "group": "Signals",
+          "group": "Events",
           "displayName": "Invalid Date",
           "description": "Fires when the Date could not be read, leaving Date String blank"
         }
@@ -4446,6 +4470,7 @@
             "name": "string"
           },
           "plug": "input",
+          "group": "Values",
           "displayName": "Input String",
           "description": "The string to look up among the numbered inputs",
           "index": 1
@@ -4463,7 +4488,7 @@
           "name": "mappedString",
           "type": "string",
           "plug": "output",
-          "group": "Value",
+          "group": "Values",
           "displayName": "Mapped String",
           "description": "The mapping paired with the input that matched, or Default when none did"
         }
@@ -4481,6 +4506,7 @@
             "name": "boolean"
           },
           "plug": "input",
+          "group": "Values",
           "displayName": "Value",
           "description": "Value to negate; anything falsy counts as false, and leaving it unset keeps Result unset too"
         },
@@ -4488,6 +4514,7 @@
           "name": "result",
           "type": "boolean",
           "plug": "output",
+          "group": "Values",
           "displayName": "Result",
           "description": "The opposite of Value, and unset rather than true while Value has never been set"
         }
@@ -4503,6 +4530,7 @@
           "name": "start",
           "type": "number",
           "plug": "input",
+          "group": "Values",
           "displayName": "Start",
           "description": "Position of the first character to keep, counting from zero; a negative value counts back from the end",
           "default": 0
@@ -4511,6 +4539,7 @@
           "name": "end",
           "type": "number",
           "plug": "input",
+          "group": "Values",
           "displayName": "End",
           "description": "Position to stop before; leave it unset to run to the end of the string, since setting it to 0 yields nothing",
           "default": 0
@@ -4521,6 +4550,7 @@
             "name": "string"
           },
           "plug": "input",
+          "group": "Values",
           "displayName": "String",
           "description": "Text to take the substring from; it must not be cleared to null, which raises an error rather than yielding an empty result",
           "default": ""
@@ -4529,6 +4559,7 @@
           "name": "result",
           "type": "string",
           "plug": "output",
+          "group": "Values",
           "displayName": "Result",
           "description": "The section of String between Start and End"
         }
@@ -4549,6 +4580,7 @@
             "multiline": true
           },
           "plug": "input",
+          "group": "Values",
           "displayName": "Format",
           "description": "Template text; each {placeholder} becomes an input port, and a placeholder used twice fills only the first time"
         },
@@ -4556,6 +4588,7 @@
           "name": "formatted",
           "type": "string",
           "plug": "output",
+          "group": "Values",
           "displayName": "Formatted",
           "description": "Format with every placeholder substituted, and an unset placeholder replaced by nothing"
         }
@@ -4604,6 +4637,7 @@
           "name": "startValue",
           "type": "number",
           "plug": "input",
+          "group": "Values",
           "displayName": "Start Value",
           "description": "Count to begin at and to return to on Reset; setting it announces a change on Count Changed at page load",
           "default": 0
@@ -4645,6 +4679,7 @@
           "name": "currentCount",
           "type": "number",
           "plug": "output",
+          "group": "Values",
           "displayName": "Current Count",
           "description": "The count as it stands"
         },
@@ -4652,6 +4687,7 @@
           "name": "countChanged",
           "type": "signal",
           "plug": "output",
+          "group": "Events",
           "displayName": "Count Changed",
           "description": "Fires after the count has moved, and also once at page load when Start Value is set"
         },
@@ -4694,6 +4730,7 @@
             "allowConnectionsOnly": true
           },
           "plug": "input",
+          "group": "Actions",
           "displayName": "New",
           "description": "Generates a fresh id, replacing the one on Id"
         },
@@ -4701,6 +4738,7 @@
           "name": "guid",
           "type": "string",
           "plug": "output",
+          "group": "Values",
           "displayName": "Id",
           "description": "A short random id — 10 characters, from Math.random(). Good for keying a list. For a record id, an idempotency key or anything that must be unguessable, use the UUID node instead"
         },
@@ -4803,7 +4841,7 @@
           "name": "digest",
           "type": "string",
           "plug": "output",
-          "group": "Value",
+          "group": "Values",
           "displayName": "Digest",
           "description": "The hash of Value, rendered in Encoding. Available once Done has fired"
         },
@@ -4898,7 +4936,7 @@
           "name": "value",
           "type": "string",
           "plug": "output",
-          "group": "Value",
+          "group": "Values",
           "displayName": "Value",
           "description": "The random bytes rendered in Encoding, replaced on every New"
         },
@@ -4959,7 +4997,7 @@
           "name": "uuid",
           "type": "string",
           "plug": "output",
-          "group": "Value",
+          "group": "Values",
           "displayName": "Id",
           "description": "A random version-4 UUID, generated once when the node is created and again on every New. Use this rather than Unique Id wherever the id has to be globally unique or unguessable"
         },
@@ -5020,7 +5058,7 @@
           "name": "date",
           "type": "date",
           "plug": "output",
-          "group": "Value",
+          "group": "Values",
           "displayName": "Date",
           "description": "The instant of the last Read, for the other date nodes"
         },
@@ -5028,7 +5066,7 @@
           "name": "timestamp",
           "type": "number",
           "plug": "output",
-          "group": "Value",
+          "group": "Values",
           "displayName": "Timestamp",
           "description": "The same instant as milliseconds since 1 January 1970 UTC"
         },
@@ -5036,7 +5074,7 @@
           "name": "iso",
           "type": "string",
           "plug": "output",
-          "group": "Value",
+          "group": "Values",
           "displayName": "ISO String",
           "description": "The same instant as an ISO-8601 string in UTC — the shape to put in a JSON body"
         },
@@ -5134,7 +5172,7 @@
           "name": "result",
           "type": "date",
           "plug": "output",
-          "group": "Value",
+          "group": "Values",
           "displayName": "Result",
           "description": "Date shifted by Amount of Unit, or unset when Date could not be read"
         },
@@ -5242,7 +5280,7 @@
           "name": "difference",
           "type": "number",
           "plug": "output",
-          "group": "Value",
+          "group": "Values",
           "displayName": "Difference",
           "description": "To minus From, counted in Unit. Unset while either date is missing or unreadable"
         },
@@ -5337,7 +5375,7 @@
           "name": "before",
           "type": "boolean",
           "plug": "output",
-          "group": "Value",
+          "group": "Values",
           "displayName": "Is Before",
           "description": "True when Date is earlier than Compare To, at this Granularity"
         },
@@ -5345,7 +5383,7 @@
           "name": "after",
           "type": "boolean",
           "plug": "output",
-          "group": "Value",
+          "group": "Values",
           "displayName": "Is After",
           "description": "True when Date is later than Compare To, at this Granularity"
         },
@@ -5353,7 +5391,7 @@
           "name": "same",
           "type": "boolean",
           "plug": "output",
-          "group": "Value",
+          "group": "Values",
           "displayName": "Is Same",
           "description": "True when the two land in the same Granularity bucket — the same day, month or year"
         },
@@ -5413,7 +5451,7 @@
           "name": "year",
           "type": "number",
           "plug": "output",
-          "group": "Value",
+          "group": "Values",
           "displayName": "Year",
           "description": "Four-digit year, in the host s local zone"
         },
@@ -5421,7 +5459,7 @@
           "name": "month",
           "type": "number",
           "plug": "output",
-          "group": "Value",
+          "group": "Values",
           "displayName": "Month",
           "description": "Month as 1-12 — January is 1, not 0"
         },
@@ -5429,7 +5467,7 @@
           "name": "date",
           "type": "number",
           "plug": "output",
-          "group": "Value",
+          "group": "Values",
           "displayName": "Day of Month",
           "description": "Day of the month, 1-31"
         },
@@ -5437,7 +5475,7 @@
           "name": "hours",
           "type": "number",
           "plug": "output",
-          "group": "Value",
+          "group": "Values",
           "displayName": "Hours",
           "description": "Hour of the day, 0-23"
         },
@@ -5445,7 +5483,7 @@
           "name": "minutes",
           "type": "number",
           "plug": "output",
-          "group": "Value",
+          "group": "Values",
           "displayName": "Minutes",
           "description": "Minutes past the hour, 0-59"
         },
@@ -5453,7 +5491,7 @@
           "name": "seconds",
           "type": "number",
           "plug": "output",
-          "group": "Value",
+          "group": "Values",
           "displayName": "Seconds",
           "description": "Seconds past the minute, 0-59"
         },
@@ -5461,7 +5499,7 @@
           "name": "milliseconds",
           "type": "number",
           "plug": "output",
-          "group": "Value",
+          "group": "Values",
           "displayName": "Milliseconds",
           "description": "Milliseconds past the second, 0-999"
         },
@@ -5469,7 +5507,7 @@
           "name": "dayOfWeek",
           "type": "number",
           "plug": "output",
-          "group": "Value",
+          "group": "Values",
           "displayName": "Day of Week",
           "description": "Day of the week as 0-6, Sunday first — JavaScript s own numbering"
         },
@@ -5477,7 +5515,7 @@
           "name": "dayName",
           "type": "string",
           "plug": "output",
-          "group": "Value",
+          "group": "Values",
           "displayName": "Day Name",
           "description": "The English name of the weekday. For a localised name, format through Date To String"
         },
@@ -5485,7 +5523,7 @@
           "name": "isoWeek",
           "type": "number",
           "plug": "output",
-          "group": "Value",
+          "group": "Values",
           "displayName": "ISO Week",
           "description": "ISO-8601 week number, 1-53: weeks start on Monday and week 1 holds the first Thursday"
         },
@@ -5493,7 +5531,7 @@
           "name": "timestamp",
           "type": "number",
           "plug": "output",
-          "group": "Value",
+          "group": "Values",
           "displayName": "Timestamp",
           "description": "The instant as milliseconds since 1 January 1970 UTC"
         },
@@ -5556,7 +5594,7 @@
           "name": "items",
           "type": "array",
           "plug": "output",
-          "group": "Value",
+          "group": "Values",
           "displayName": "Items",
           "description": "The parsed rows — records when Has Header is ticked, arrays of cells when it is not. Every cell is a string, including columns that look numeric. Unchanged while the CSV cannot be parsed"
         },
@@ -5564,7 +5602,7 @@
           "name": "count",
           "type": "number",
           "plug": "output",
-          "group": "Value",
+          "group": "Values",
           "displayName": "Count",
           "description": "How many rows the last successful parse produced, not counting the header row"
         },
@@ -5588,7 +5626,7 @@
           "name": "error",
           "type": "string",
           "plug": "output",
-          "group": "Events",
+          "group": "Error",
           "displayName": "Error",
           "description": "Why the CSV could not be parsed, naming the line it gave up on; empty until a parse fails"
         }
@@ -5643,7 +5681,7 @@
           "name": "text",
           "type": "string",
           "plug": "output",
-          "group": "Value",
+          "group": "Values",
           "displayName": "CSV",
           "description": "The array as CSV text. Cells containing the delimiter, a quote or a newline are quoted and their quotes doubled, so this round-trips back through Parse CSV unchanged"
         },
@@ -5651,7 +5689,7 @@
           "name": "count",
           "type": "number",
           "plug": "output",
-          "group": "Value",
+          "group": "Values",
           "displayName": "Count",
           "description": "How many data rows were written, not counting the header row"
         },
@@ -5741,7 +5779,7 @@
           "name": "value",
           "type": "*",
           "plug": "output",
-          "group": "Value",
+          "group": "Values",
           "displayName": "Value",
           "description": "Whatever arrived on the Value input, unchanged — this node never alters what passes through it"
         },
@@ -5815,6 +5853,7 @@
           "name": "state",
           "type": "boolean",
           "plug": "output",
+          "group": "Values",
           "displayName": "Current State",
           "description": "True while the switch is on"
         },
@@ -5822,7 +5861,7 @@
           "name": "switched",
           "type": "signal",
           "plug": "output",
-          "group": "Signals",
+          "group": "Events",
           "displayName": "Switched",
           "description": "Fires on every state change, alongside whichever of Switched To On and Switched To Off applies"
         },
@@ -5830,7 +5869,7 @@
           "name": "switchedToOn",
           "type": "signal",
           "plug": "output",
-          "group": "Signals",
+          "group": "Events",
           "displayName": "Switched To On",
           "description": "Fires when the switch becomes on"
         },
@@ -5838,7 +5877,7 @@
           "name": "switchedToOff",
           "type": "signal",
           "plug": "output",
-          "group": "Signals",
+          "group": "Events",
           "displayName": "Switched To Off",
           "description": "Fires when the switch becomes off"
         },
@@ -5970,7 +6009,7 @@
           "name": "error",
           "type": "signal",
           "plug": "output",
-          "group": "Events",
+          "group": "Error",
           "displayName": "Error",
           "description": "Fires when an error passes the Filter, after every value output below has been updated to describe it"
         },
@@ -7760,7 +7799,7 @@
           "name": "error",
           "type": "string",
           "plug": "output",
-          "group": "Events",
+          "group": "Error",
           "displayName": "Error",
           "description": "Why the last Add was refused; blank until one is"
         }
@@ -8050,7 +8089,7 @@
           "name": "error",
           "type": "string",
           "plug": "output",
-          "group": "Events",
+          "group": "Error",
           "displayName": "Error",
           "description": "Why the response could not be sent"
         }
@@ -8195,7 +8234,7 @@
         "groupPriority": [
           "General",
           "Actions",
-          "Value",
+          "Values",
           "Events",
           "Error"
         ]
@@ -8224,7 +8263,7 @@
           "name": "value",
           "type": "string",
           "plug": "output",
-          "group": "Value",
+          "group": "Values",
           "displayName": "Value",
           "description": "The secret, available once Done has fired. Blank until then, and blank after a Failure"
         },
@@ -8273,7 +8312,7 @@
         "groupPriority": [
           "General",
           "Actions",
-          "Value",
+          "Values",
           "Events",
           "Error"
         ]
@@ -8360,7 +8399,7 @@
           "name": "signature",
           "type": "string",
           "plug": "output",
-          "group": "Value",
+          "group": "Values",
           "displayName": "Signature",
           "description": "The HMAC of Value, rendered in Encoding. Available once Done has fired"
         },
@@ -8409,7 +8448,7 @@
         "groupPriority": [
           "General",
           "Actions",
-          "Value",
+          "Values",
           "Events",
           "Error"
         ]
@@ -8482,7 +8521,7 @@
           "name": "token",
           "type": "string",
           "plug": "output",
-          "group": "Value",
+          "group": "Values",
           "displayName": "Token",
           "description": "The signed JWT, available once Done has fired"
         },
@@ -8531,7 +8570,7 @@
         "groupPriority": [
           "General",
           "Actions",
-          "Value",
+          "Values",
           "Events",
           "Error"
         ]
@@ -8602,7 +8641,7 @@
           "name": "valid",
           "type": "boolean",
           "plug": "output",
-          "group": "Value",
+          "group": "Values",
           "displayName": "Valid",
           "description": "Whether the token verified. False whenever Failure fired, so either can be wired"
         },
@@ -8610,7 +8649,7 @@
           "name": "claims",
           "type": "object",
           "plug": "output",
-          "group": "Value",
+          "group": "Values",
           "displayName": "Claims",
           "description": "The token payload — set ONLY after the signature verified. Nothing in a token can be believed before that, so this is left alone on a failure rather than handed over unchecked"
         },
@@ -9669,7 +9708,7 @@
           "name": "error",
           "type": "string",
           "plug": "output",
-          "group": "Events",
+          "group": "Error",
           "displayName": "Error",
           "description": "What went wrong with the last request, in one sentence; unchanged when a request succeeds"
         },

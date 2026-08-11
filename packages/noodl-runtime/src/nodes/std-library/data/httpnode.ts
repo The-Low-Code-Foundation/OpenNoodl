@@ -327,7 +327,7 @@ const HttpNode: NodeDefinitionOptions = {
     error: {
       type: 'string',
       displayName: 'Error',
-      group: 'Events',
+      group: 'Error',
       description: 'What went wrong with the last request, in one sentence; unchanged when a request succeeds',
       getter: function (this: HttpNodeInstance) {
         return this._internal.error;

@@ -34,6 +34,8 @@ Any static or data-bound text: headings, labels, list-item fields, error message
 | `cssClassName` | String | `` | Extra CSS class names to put on this element, for styling from a stylesheet you supply |
 | `fontFamily` | Font | — | Typeface to render the text in, either a web-safe family name or a font file added to the project |
 | `fontSize` | Number | — | Height of the text, in pixels |
+| `fontStyle` | Enum (`normal`, `italic`) | `normal` | Renders the text upright or italic |
+| `fontWeight` | Number | `Auto` | How heavy the text is drawn, from 100 (thin) to 900 (black); leave as Auto to use the weight the font family sets |
 | `height` | Dimension | `100` | Height of the element; how the value is read depends on Size Mode |
 | `letterSpacing` | Number | `Auto` | Extra space added between characters; leave as Auto to use the spacing built into the font |
 | `lineHeight` | Number | `Auto` | Vertical space each line of text occupies; leave as Auto to follow the font |
@@ -126,6 +128,18 @@ The canonical data-list shape. Query Records (DbCollection2) fetches a database 
 **Validate an input before acting on a click**
 
 The idiomatic gate shape: a Button click does not act directly — it evaluates a Condition. The Condition's boolean comes from an Expression that checks the text input's current value, so the same click either proceeds (ontrue) or reveals an error message (isfalse drives the error Text's visibility as a level, not a pulse). Note the two kinds of flow: text/booleans are values, onClick/eval/ontrue are momentary signals.
+
+**Page spine: full-bleed bands, a centred max-width shell, an announced section**
+
+The structure every designed page shares, and the one an unstyled page is missing. Three levels: a BAND is full width and owns a background (sections alternate --background and --surface so the page reads as parts, not a scroll); inside it exactly one SHELL, width 100% with maxWidth 1200px and --space-6 side padding, centred by alignItems "center" on the band; content lives in the shell. Content that touches the viewport edge is the loudest signal nobody designed the page. A section opens with an eyebrow, a heading and one optional sub-line capped at ~560px so it wraps at a readable measure, then --space-10 of air. Band padding is --space-20.
+
+**Split hero: copy column and image, with a display headline that looks set rather than typed**
+
+Two columns inside the shell, each width 100% so an UNWRAPPED row shrinks them to half each — this is why a plain row works where a wrapped grid does not. The copy column carries the page's one display headline (--text-6xl, --font-bold, --leading-none and --tracking-tighter; tight tracking is what makes a large heading look set), an eyebrow above it, a lead paragraph capped at ~520px, and two buttons whose concrete parameters are copied from the style vocabulary because `variant` is a connection-only port. The image gets sizeMode "explicit" plus a width, a height and objectFit "cover" — without explicit sizing those three ports are inert and the photo renders at its natural size.
+
+**Stat tile row: one tile component, four instances, collapsing to two then one**
+
+The top of an admin screen. The tile is its own component — four hand-written copies is a `repeated-sibling-subtree` warning — and the row is a Columns node that folds 4 -> 2 -> 1 as the container narrows. Inside a tile the VALUE is the only large thing: a muted uppercase label, one --text-3xl semibold number, and a small delta line. A tile whose label competes with its number reads as a form, not a dashboard. Wire each value from a Query Records count or a Cloud Function output.
 
 ## Related nodes
 

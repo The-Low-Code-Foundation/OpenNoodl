@@ -47,6 +47,7 @@ const SignalToIndexNode: NodeDefinitionOptions = {
   },
   outputs: {
     index: {
+      group: 'Values',
       displayName: 'Index',
       type: 'number',
       description: 'Number of the signal input that last fired, counting from zero',
@@ -55,6 +56,7 @@ const SignalToIndexNode: NodeDefinitionOptions = {
       }
     },
     signalTriggered: {
+      group: 'Events',
       displayName: 'Signal Triggered',
       type: 'signal',
       description: 'Fires when any signal input fires, once Index holds the number of the input that fired'

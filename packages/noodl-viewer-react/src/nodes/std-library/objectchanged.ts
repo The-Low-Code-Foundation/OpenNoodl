@@ -160,6 +160,7 @@ const ObjectChangedNode: NodeDefinitionOptions = {
 
   inputs: {
     object: {
+      group: 'Values',
       type: 'object',
       displayName: 'Object',
       description:
@@ -198,16 +199,19 @@ const ObjectChangedNode: NodeDefinitionOptions = {
 
   outputs: {
     keyAdded: {
+      group: 'Events',
       type: 'signal',
       displayName: 'Key Added',
       description: 'Fires when a key that did not exist on the watched Object now does'
     },
     keyChanged: {
+      group: 'Events',
       type: 'signal',
       displayName: 'Key Changed',
       description: 'Fires when a key that already existed on the watched Object is given a different value'
     },
     objectReplaced: {
+      group: 'Events',
       type: 'signal',
       displayName: 'Object Replaced',
       description:

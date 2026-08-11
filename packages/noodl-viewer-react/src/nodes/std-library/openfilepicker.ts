@@ -250,7 +250,7 @@ const OpenFilePicker: NodeDefinitionOptions = {
     }),
     error: {
       type: 'string',
-      group: 'Events',
+      group: 'Error',
       displayName: 'Error',
       description: 'Why the dialog could not be opened',
       get(this: OpenFilePickerInstance) {

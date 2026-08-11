@@ -264,7 +264,7 @@ export function userPropertyPorts(
         displayName: (field.displayName || field.name) + ' Changed',
         type: 'signal',
         plug: 'output',
-        group: 'Changed Events'
+        group: 'Events'
       });
     }
   }

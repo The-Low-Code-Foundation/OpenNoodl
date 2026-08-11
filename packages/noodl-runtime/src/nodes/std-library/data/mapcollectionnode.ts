@@ -115,6 +115,7 @@ const MapCollectionNode: NodeDefinitionOptions = {
       }
     },
     mapScript: {
+      group: 'Values',
       type: {
         name: 'string',
         allowEditOnly: true,
@@ -184,7 +185,7 @@ const MapCollectionNode: NodeDefinitionOptions = {
       failure: 'Fires when the script could not be compiled, or threw while mapping a record'
     }),
     error: {
-      group: 'Events',
+      group: 'Error',
       type: 'string',
       displayName: 'Error',
       description: 'Why the last mapping failed, in one sentence; empty until something fails',

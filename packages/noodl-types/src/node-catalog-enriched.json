@@ -377,6 +377,7 @@
         {
           "name": "result",
           "displayName": "Result",
+          "group": "Values",
           "plug": "output",
           "type": {
             "name": "boolean"
@@ -641,7 +642,7 @@
         {
           "name": "hasReachedEnd",
           "displayName": "Has Reached End",
-          "group": "Signals",
+          "group": "Events",
           "plug": "output",
           "type": {
             "name": "signal"
@@ -652,7 +653,7 @@
         {
           "name": "hasReachedStart",
           "displayName": "Has Reached Start",
-          "group": "Signals",
+          "group": "Events",
           "plug": "output",
           "type": {
             "name": "signal"
@@ -784,6 +785,7 @@
         {
           "name": "saveValue",
           "displayName": "Set",
+          "group": "Actions",
           "plug": "input",
           "type": {
             "name": "signal",
@@ -841,6 +843,7 @@
         {
           "name": "value",
           "displayName": "Value",
+          "group": "Values",
           "plug": "input",
           "type": {
             "name": "boolean"
@@ -854,6 +857,7 @@
         {
           "name": "changed",
           "displayName": "Changed",
+          "group": "Events",
           "plug": "output",
           "type": {
             "name": "signal"
@@ -886,6 +890,7 @@
         {
           "name": "savedValue",
           "displayName": "Value",
+          "group": "Values",
           "plug": "output",
           "type": {
             "name": "boolean"
@@ -962,6 +967,7 @@
         {
           "name": "falseString",
           "displayName": "String for false",
+          "group": "Values",
           "plug": "input",
           "type": {
             "name": "string"
@@ -972,6 +978,7 @@
         {
           "name": "input",
           "displayName": "Selector",
+          "group": "Values",
           "plug": "input",
           "type": {
             "name": "boolean"
@@ -982,6 +989,7 @@
         {
           "name": "trueString",
           "displayName": "String for true",
+          "group": "Values",
           "plug": "input",
           "type": {
             "name": "string"
@@ -994,7 +1002,7 @@
         {
           "name": "currentValue",
           "displayName": "Current Value",
-          "group": "Value",
+          "group": "Values",
           "plug": "output",
           "type": {
             "name": "string"
@@ -1005,7 +1013,7 @@
         {
           "name": "inputChanged",
           "displayName": "Selector Changed",
-          "group": "Signals",
+          "group": "Events",
           "plug": "output",
           "type": {
             "name": "signal"
@@ -1132,6 +1140,7 @@
         {
           "name": "blockTouch",
           "displayName": "Block Pointer Events",
+          "group": "Pointer Events",
           "plug": "input",
           "type": {
             "name": "boolean"
@@ -1337,6 +1346,7 @@
         {
           "name": "clickBubbling",
           "displayName": "Click Bubbling",
+          "group": "Pointer Events",
           "plug": "input",
           "type": {
             "name": "enum",
@@ -1990,6 +2000,7 @@
         {
           "name": "childIndex",
           "displayName": "Child Index",
+          "group": "Advanced",
           "plug": "output",
           "type": {
             "name": "number"
@@ -2000,6 +2011,7 @@
         {
           "name": "childrenCount",
           "displayName": "Children Count",
+          "group": "Advanced",
           "plug": "output",
           "type": {
             "name": "number"
@@ -2163,6 +2175,7 @@
         {
           "name": "this",
           "displayName": "This",
+          "group": "Advanced",
           "plug": "output",
           "type": {
             "name": "reference"
@@ -2373,6 +2386,7 @@
         {
           "name": "blockTouch",
           "displayName": "Block Pointer Events",
+          "group": "Pointer Events",
           "plug": "input",
           "type": {
             "name": "boolean"
@@ -2580,6 +2594,7 @@
         {
           "name": "clickBubbling",
           "displayName": "Click Bubbling",
+          "group": "Pointer Events",
           "plug": "input",
           "type": {
             "name": "enum",
@@ -3074,6 +3089,7 @@
         {
           "name": "childIndex",
           "displayName": "Child Index",
+          "group": "Advanced",
           "plug": "output",
           "type": {
             "name": "number"
@@ -3237,6 +3253,7 @@
         {
           "name": "this",
           "displayName": "This",
+          "group": "Advanced",
           "plug": "output",
           "type": {
             "name": "reference"
@@ -3967,6 +3984,7 @@
         {
           "name": "childIndex",
           "displayName": "Child Index",
+          "group": "Advanced",
           "plug": "output",
           "type": {
             "name": "number"
@@ -4076,6 +4094,7 @@
         {
           "name": "this",
           "displayName": "This",
+          "group": "Advanced",
           "plug": "output",
           "type": {
             "name": "reference"
@@ -4295,7 +4314,7 @@
         {
           "name": "failure",
           "displayName": "Failure",
-          "group": "Signals",
+          "group": "Events",
           "plug": "output",
           "type": {
             "name": "signal"
@@ -4317,7 +4336,7 @@
         {
           "name": "success",
           "displayName": "Success",
-          "group": "Signals",
+          "group": "Events",
           "plug": "output",
           "type": {
             "name": "signal"
@@ -4391,7 +4410,7 @@
         {
           "name": "completed",
           "displayName": "Completed",
-          "group": "Signals",
+          "group": "Events",
           "plug": "output",
           "type": {
             "name": "signal"
@@ -4402,7 +4421,7 @@
         {
           "name": "done",
           "displayName": "Done",
-          "group": "Signals",
+          "group": "Events",
           "plug": "output",
           "type": {
             "name": "signal"
@@ -4424,7 +4443,7 @@
         {
           "name": "failure",
           "displayName": "Failure",
-          "group": "Signals",
+          "group": "Events",
           "plug": "output",
           "type": {
             "name": "signal"
@@ -5456,6 +5475,7 @@
         {
           "name": "saveValue",
           "displayName": "Set",
+          "group": "Actions",
           "plug": "input",
           "type": {
             "name": "signal",
@@ -5513,6 +5533,7 @@
         {
           "name": "value",
           "displayName": "Value",
+          "group": "Values",
           "plug": "input",
           "type": {
             "name": "color"
@@ -5526,6 +5547,7 @@
         {
           "name": "changed",
           "displayName": "Changed",
+          "group": "Events",
           "plug": "output",
           "type": {
             "name": "signal"
@@ -5558,6 +5580,7 @@
         {
           "name": "savedValue",
           "displayName": "Value",
+          "group": "Values",
           "plug": "output",
           "type": {
             "name": "color"
@@ -5629,6 +5652,7 @@
         {
           "name": "blendValue",
           "displayName": "Blend Value",
+          "group": "Values",
           "plug": "input",
           "type": {
             "name": "number"
@@ -5642,6 +5666,7 @@
         {
           "name": "result",
           "displayName": "Result",
+          "group": "Values",
           "plug": "output",
           "type": {
             "name": "color"
@@ -5946,7 +5971,7 @@
             "variables": {
               "property": "one of the comma-separated entries in the `properties` parameter"
             },
-            "group": "Changed Events",
+            "group": "Events",
             "valueType": "signal",
             "example": "changed-Sa1"
           },
@@ -6223,6 +6248,7 @@
         {
           "name": "startValue",
           "displayName": "Start Value",
+          "group": "Values",
           "plug": "input",
           "type": {
             "name": "number"
@@ -6247,6 +6273,7 @@
         {
           "name": "countChanged",
           "displayName": "Count Changed",
+          "group": "Events",
           "plug": "output",
           "type": {
             "name": "signal"
@@ -6257,6 +6284,7 @@
         {
           "name": "currentCount",
           "displayName": "Current Count",
+          "group": "Values",
           "plug": "output",
           "type": {
             "name": "number"
@@ -6340,6 +6368,7 @@
         {
           "name": "formatString",
           "displayName": "Format",
+          "group": "Values",
           "plug": "input",
           "type": {
             "name": "string"
@@ -6351,6 +6380,7 @@
         {
           "name": "input",
           "displayName": "Date",
+          "group": "Values",
           "plug": "input",
           "type": {
             "name": "date"
@@ -6361,6 +6391,7 @@
         {
           "name": "timeZone",
           "displayName": "Timezone",
+          "group": "Values",
           "plug": "input",
           "type": {
             "name": "string"
@@ -6374,7 +6405,7 @@
         {
           "name": "currentValue",
           "displayName": "Date String",
-          "group": "Value",
+          "group": "Values",
           "plug": "output",
           "type": {
             "name": "string"
@@ -6385,7 +6416,7 @@
         {
           "name": "inputChanged",
           "displayName": "Date Changed",
-          "group": "Signals",
+          "group": "Events",
           "plug": "output",
           "type": {
             "name": "signal"
@@ -6396,7 +6427,7 @@
         {
           "name": "onError",
           "displayName": "Invalid Date",
-          "group": "Signals",
+          "group": "Events",
           "plug": "output",
           "type": {
             "name": "signal"
@@ -6470,7 +6501,7 @@
         {
           "name": "error",
           "displayName": "Error",
-          "group": "Events",
+          "group": "Error",
           "plug": "output",
           "type": {
             "name": "string"
@@ -7155,7 +7186,7 @@
         {
           "name": "error",
           "displayName": "Error",
-          "group": "Events",
+          "group": "Error",
           "plug": "output",
           "type": {
             "name": "string"
@@ -7501,7 +7532,7 @@
             "variables": {
               "property": "a property of the cloud database class selected by the `collectionName` parameter. The names come from the class schema, not from anything on this node — a project without that class has no way to know them."
             },
-            "group": "Changed Events",
+            "group": "Events",
             "valueType": "signal",
             "example": "changed-Sa1"
           },
@@ -7832,6 +7863,7 @@
         {
           "name": "inputPositionX",
           "displayName": "Start Drag X",
+          "group": "Values",
           "plug": "input",
           "type": {
             "name": "number"
@@ -7842,6 +7874,7 @@
         {
           "name": "inputPositionY",
           "displayName": "Start Drag Y",
+          "group": "Values",
           "plug": "input",
           "type": {
             "name": "number"
@@ -7865,6 +7898,7 @@
         {
           "name": "scale",
           "displayName": "Scale",
+          "group": "Values",
           "plug": "input",
           "type": {
             "name": "number"
@@ -8017,6 +8051,7 @@
         {
           "name": "childIndex",
           "displayName": "Child Index",
+          "group": "Advanced",
           "plug": "output",
           "type": {
             "name": "number"
@@ -8027,6 +8062,7 @@
         {
           "name": "childrenCount",
           "displayName": "Children Count",
+          "group": "Advanced",
           "plug": "output",
           "type": {
             "name": "number"
@@ -8103,7 +8139,7 @@
         {
           "name": "onDrag",
           "displayName": "Drag Moved",
-          "group": "Signals",
+          "group": "Events",
           "plug": "output",
           "type": {
             "name": "signal"
@@ -8114,7 +8150,7 @@
         {
           "name": "onStart",
           "displayName": "Drag Started",
-          "group": "Signals",
+          "group": "Events",
           "plug": "output",
           "type": {
             "name": "signal"
@@ -8125,7 +8161,7 @@
         {
           "name": "onStop",
           "displayName": "Drag Ended",
-          "group": "Signals",
+          "group": "Events",
           "plug": "output",
           "type": {
             "name": "signal"
@@ -8180,6 +8216,7 @@
         {
           "name": "this",
           "displayName": "This",
+          "group": "Advanced",
           "plug": "output",
           "type": {
             "name": "reference"
@@ -8253,6 +8290,7 @@
         {
           "name": "channelName",
           "displayName": "Channel",
+          "group": "Values",
           "plug": "input",
           "type": {
             "name": "string",
@@ -8264,6 +8302,7 @@
         {
           "name": "consume",
           "displayName": "Consume",
+          "group": "Values",
           "plug": "input",
           "type": {
             "name": "enum",
@@ -8285,6 +8324,7 @@
         {
           "name": "enabled",
           "displayName": "Enabled",
+          "group": "Values",
           "plug": "input",
           "type": {
             "name": "boolean"
@@ -8298,6 +8338,7 @@
         {
           "name": "eventReceived",
           "displayName": "Received",
+          "group": "Events",
           "plug": "output",
           "type": {
             "name": "signal"
@@ -8418,6 +8459,7 @@
         {
           "name": "sendEvent",
           "displayName": "Send",
+          "group": "Actions",
           "plug": "input",
           "type": {
             "name": "signal",
@@ -8453,7 +8495,7 @@
         {
           "name": "error",
           "displayName": "Error",
-          "group": "Events",
+          "group": "Error",
           "plug": "output",
           "type": {
             "name": "string"
@@ -8633,7 +8675,7 @@
         {
           "name": "error",
           "displayName": "Error",
-          "group": "Events",
+          "group": "Error",
           "plug": "output",
           "type": {
             "name": "string"
@@ -9544,6 +9586,7 @@
         {
           "name": "childIndex",
           "displayName": "Child Index",
+          "group": "Advanced",
           "plug": "output",
           "type": {
             "name": "number"
@@ -9554,6 +9597,7 @@
         {
           "name": "childrenCount",
           "displayName": "Children Count",
+          "group": "Advanced",
           "plug": "output",
           "type": {
             "name": "number"
@@ -9597,6 +9641,7 @@
         {
           "name": "this",
           "displayName": "This",
+          "group": "Advanced",
           "plug": "output",
           "type": {
             "name": "reference"
@@ -9808,7 +9853,7 @@
         {
           "name": "error",
           "displayName": "Error",
-          "group": "Events",
+          "group": "Error",
           "plug": "output",
           "type": {
             "name": "string"
@@ -10045,7 +10090,7 @@
         {
           "name": "error",
           "displayName": "Error",
-          "group": "Events",
+          "group": "Error",
           "plug": "output",
           "type": {
             "name": "string"
@@ -10297,7 +10342,7 @@
         {
           "name": "itemActionItemId",
           "displayName": "Item Id",
-          "group": "Actions",
+          "group": "Values",
           "plug": "output",
           "type": {
             "name": "string"
@@ -10400,7 +10445,7 @@
         {
           "name": "removeCompleted",
           "displayName": "Remove Completed",
-          "group": "Events",
+          "group": "Actions",
           "plug": "input",
           "type": {
             "name": "signal",
@@ -11280,6 +11325,7 @@
         {
           "name": "childIndex",
           "displayName": "Child Index",
+          "group": "Advanced",
           "plug": "output",
           "type": {
             "name": "number"
@@ -11290,6 +11336,7 @@
         {
           "name": "childrenCount",
           "displayName": "Children Count",
+          "group": "Advanced",
           "plug": "output",
           "type": {
             "name": "number"
@@ -11343,6 +11390,7 @@
         {
           "name": "this",
           "displayName": "This",
+          "group": "Advanced",
           "plug": "output",
           "type": {
             "name": "reference"
@@ -13253,6 +13301,7 @@
         {
           "name": "childIndex",
           "displayName": "Child Index",
+          "group": "Advanced",
           "plug": "output",
           "type": {
             "name": "number"
@@ -13263,6 +13312,7 @@
         {
           "name": "childrenCount",
           "displayName": "Children Count",
+          "group": "Advanced",
           "plug": "output",
           "type": {
             "name": "number"
@@ -13460,6 +13510,7 @@
         {
           "name": "this",
           "displayName": "This",
+          "group": "Advanced",
           "plug": "output",
           "type": {
             "name": "reference"
@@ -13674,6 +13725,7 @@
         {
           "name": "rotationX",
           "displayName": "Rotation X",
+          "group": "Values",
           "plug": "output",
           "type": {
             "name": "number"
@@ -13684,6 +13736,7 @@
         {
           "name": "rotationY",
           "displayName": "Rotation Y",
+          "group": "Values",
           "plug": "output",
           "type": {
             "name": "number"
@@ -13694,6 +13747,7 @@
         {
           "name": "rotationZ",
           "displayName": "Rotation Z",
+          "group": "Values",
           "plug": "output",
           "type": {
             "name": "number"
@@ -13800,6 +13854,7 @@
         {
           "name": "alt",
           "displayName": "Alternate text",
+          "group": "Values",
           "plug": "input",
           "type": {
             "name": "string"
@@ -15049,6 +15104,7 @@
         {
           "name": "childIndex",
           "displayName": "Child Index",
+          "group": "Advanced",
           "plug": "output",
           "type": {
             "name": "number"
@@ -15092,7 +15148,7 @@
         {
           "name": "imageError",
           "displayName": "Error",
-          "group": "Events",
+          "group": "Error",
           "plug": "output",
           "type": {
             "name": "string"
@@ -15191,6 +15247,7 @@
         {
           "name": "this",
           "displayName": "This",
+          "group": "Advanced",
           "plug": "output",
           "type": {
             "name": "reference"
@@ -15348,6 +15405,7 @@
         {
           "name": "value",
           "displayName": "Value",
+          "group": "Values",
           "plug": "input",
           "type": {
             "name": "boolean"
@@ -15360,6 +15418,7 @@
         {
           "name": "result",
           "displayName": "Result",
+          "group": "Values",
           "plug": "output",
           "type": {
             "name": "boolean"
@@ -15491,7 +15550,7 @@
         {
           "name": "error",
           "displayName": "Error",
-          "group": "Events",
+          "group": "Error",
           "plug": "output",
           "type": {
             "name": "string"
@@ -17115,6 +17174,7 @@
         {
           "name": "childIndex",
           "displayName": "Child Index",
+          "group": "Advanced",
           "plug": "output",
           "type": {
             "name": "number"
@@ -17125,6 +17185,7 @@
         {
           "name": "childrenCount",
           "displayName": "Children Count",
+          "group": "Advanced",
           "plug": "output",
           "type": {
             "name": "number"
@@ -17168,6 +17229,7 @@
         {
           "name": "this",
           "displayName": "This",
+          "group": "Advanced",
           "plug": "output",
           "type": {
             "name": "reference"
@@ -17286,7 +17348,7 @@
         {
           "name": "generatedCode",
           "displayName": "Generated Code",
-          "group": "",
+          "group": "Advanced",
           "plug": "input",
           "type": {
             "name": "string",
@@ -17299,7 +17361,7 @@
         {
           "name": "run",
           "displayName": "Run",
-          "group": "Signals",
+          "group": "Actions",
           "plug": "input",
           "type": {
             "name": "signal",
@@ -17311,7 +17373,7 @@
         {
           "name": "workspace",
           "displayName": "Logic Blocks",
-          "group": "",
+          "group": "General",
           "plug": "input",
           "type": {
             "name": "string",
@@ -17465,6 +17527,7 @@
         {
           "name": "mapScript",
           "displayName": "Script",
+          "group": "Values",
           "plug": "input",
           "type": {
             "name": "string",
@@ -17525,7 +17588,7 @@
         {
           "name": "error",
           "displayName": "Error",
-          "group": "Events",
+          "group": "Error",
           "plug": "output",
           "type": {
             "name": "string"
@@ -17761,7 +17824,7 @@
             "variables": {
               "property": "one of the comma-separated entries in the `properties` parameter"
             },
-            "group": "Changed Events",
+            "group": "Events",
             "valueType": "signal",
             "example": "changed-Sa1"
           }
@@ -18009,7 +18072,7 @@
             "variables": {
               "property": "one of the comma-separated entries in the `properties` parameter"
             },
-            "group": "Changed Events",
+            "group": "Events",
             "valueType": "signal",
             "example": "changed-Sa1"
           },
@@ -18150,7 +18213,7 @@
         {
           "name": "error",
           "displayName": "Error",
-          "group": "Events",
+          "group": "Error",
           "plug": "output",
           "type": {
             "name": "string"
@@ -18336,7 +18399,7 @@
         {
           "name": "error",
           "displayName": "Error",
-          "group": "Events",
+          "group": "Error",
           "plug": "output",
           "type": {
             "name": "string"
@@ -18789,6 +18852,7 @@
         {
           "name": "saveValue",
           "displayName": "Set",
+          "group": "Actions",
           "plug": "input",
           "type": {
             "name": "signal",
@@ -18846,6 +18910,7 @@
         {
           "name": "value",
           "displayName": "Value",
+          "group": "Values",
           "plug": "input",
           "type": {
             "name": "number"
@@ -18859,6 +18924,7 @@
         {
           "name": "changed",
           "displayName": "Changed",
+          "group": "Events",
           "plug": "output",
           "type": {
             "name": "signal"
@@ -18891,6 +18957,7 @@
         {
           "name": "savedValue",
           "displayName": "Value",
+          "group": "Values",
           "plug": "output",
           "type": {
             "name": "number"
@@ -18965,6 +19032,7 @@
         {
           "name": "blendValue",
           "displayName": "Blend Value",
+          "group": "Values",
           "plug": "input",
           "type": {
             "name": "number"
@@ -18976,6 +19044,7 @@
         {
           "name": "clamp",
           "displayName": "Clamp",
+          "group": "Values",
           "plug": "input",
           "type": {
             "name": "boolean"
@@ -18989,6 +19058,7 @@
         {
           "name": "result",
           "displayName": "Result",
+          "group": "Values",
           "plug": "output",
           "type": {
             "name": "number"
@@ -19218,7 +19288,7 @@
         {
           "name": "error",
           "displayName": "Error",
-          "group": "Events",
+          "group": "Error",
           "plug": "output",
           "type": {
             "name": "signal"
@@ -19378,7 +19448,7 @@
         {
           "name": "error",
           "displayName": "Error",
-          "group": "Events",
+          "group": "Error",
           "plug": "output",
           "type": {
             "name": "string"
@@ -19587,6 +19657,7 @@
         {
           "name": "blockTouch",
           "displayName": "Block Pointer Events",
+          "group": "Pointer Events",
           "plug": "input",
           "type": {
             "name": "boolean"
@@ -19795,6 +19866,7 @@
         {
           "name": "clickBubbling",
           "displayName": "Click Bubbling",
+          "group": "Pointer Events",
           "plug": "input",
           "type": {
             "name": "enum",
@@ -20544,6 +20616,7 @@
         {
           "name": "childIndex",
           "displayName": "Child Index",
+          "group": "Advanced",
           "plug": "output",
           "type": {
             "name": "number"
@@ -20707,6 +20780,7 @@
         {
           "name": "this",
           "displayName": "This",
+          "group": "Advanced",
           "plug": "output",
           "type": {
             "name": "reference"
@@ -20805,6 +20879,7 @@
         {
           "name": "result",
           "displayName": "Result",
+          "group": "Values",
           "plug": "output",
           "type": {
             "name": "boolean"
@@ -21286,6 +21361,7 @@
         {
           "name": "childIndex",
           "displayName": "Child Index",
+          "group": "Advanced",
           "plug": "output",
           "type": {
             "name": "number"
@@ -21296,6 +21372,7 @@
         {
           "name": "childrenCount",
           "displayName": "Children Count",
+          "group": "Advanced",
           "plug": "output",
           "type": {
             "name": "number"
@@ -21361,6 +21438,7 @@
         {
           "name": "this",
           "displayName": "This",
+          "group": "Advanced",
           "plug": "output",
           "type": {
             "name": "reference"
@@ -21576,6 +21654,7 @@
         {
           "name": "childIndex",
           "displayName": "Child Index",
+          "group": "Advanced",
           "plug": "output",
           "type": {
             "name": "number"
@@ -21586,6 +21665,7 @@
         {
           "name": "childrenCount",
           "displayName": "Children Count",
+          "group": "Advanced",
           "plug": "output",
           "type": {
             "name": "number"
@@ -21673,6 +21753,7 @@
         {
           "name": "this",
           "displayName": "This",
+          "group": "Advanced",
           "plug": "output",
           "type": {
             "name": "reference"
@@ -21721,6 +21802,7 @@
             "variables": {
               "pageId": "the `id` of a row in the `pages` parameter — an editor-generated identifier, not a name you choose"
             },
+            "group": "Pages",
             "valueType": "component",
             "example": "pageComp-Sa1Id"
           },
@@ -21963,7 +22045,7 @@
         {
           "name": "error",
           "displayName": "Error",
-          "group": "Events",
+          "group": "Error",
           "plug": "output",
           "type": {
             "name": "string"
@@ -22108,7 +22190,7 @@
         {
           "name": "error",
           "displayName": "Error",
-          "group": "Events",
+          "group": "Error",
           "plug": "output",
           "type": {
             "name": "string"
@@ -22291,7 +22373,7 @@
         {
           "name": "error",
           "displayName": "Error",
-          "group": "Events",
+          "group": "Error",
           "plug": "output",
           "type": {
             "name": "string"
@@ -22484,7 +22566,7 @@
             "variables": {
               "property": "one of the comma-separated entries in the `properties` parameter"
             },
-            "group": "Changed Events",
+            "group": "Events",
             "valueType": "signal",
             "example": "changed-Sa1"
           }
@@ -22771,6 +22853,7 @@
         {
           "name": "blockTouch",
           "displayName": "Block Pointer Events",
+          "group": "Pointer Events",
           "plug": "input",
           "type": {
             "name": "boolean"
@@ -22967,6 +23050,7 @@
         {
           "name": "clickBubbling",
           "displayName": "Click Bubbling",
+          "group": "Pointer Events",
           "plug": "input",
           "type": {
             "name": "enum",
@@ -23471,6 +23555,7 @@
         {
           "name": "childIndex",
           "displayName": "Child Index",
+          "group": "Advanced",
           "plug": "output",
           "type": {
             "name": "number"
@@ -23624,6 +23709,7 @@
         {
           "name": "this",
           "displayName": "This",
+          "group": "Advanced",
           "plug": "output",
           "type": {
             "name": "reference"
@@ -24424,6 +24510,7 @@
         {
           "name": "childIndex",
           "displayName": "Child Index",
+          "group": "Advanced",
           "plug": "output",
           "type": {
             "name": "number"
@@ -24434,6 +24521,7 @@
         {
           "name": "childrenCount",
           "displayName": "Children Count",
+          "group": "Advanced",
           "plug": "output",
           "type": {
             "name": "number"
@@ -24488,6 +24576,7 @@
         {
           "name": "this",
           "displayName": "This",
+          "group": "Advanced",
           "plug": "output",
           "type": {
             "name": "reference"
@@ -24651,6 +24740,7 @@
         {
           "name": "blockTouch",
           "displayName": "Block Pointer Events",
+          "group": "Pointer Events",
           "plug": "input",
           "type": {
             "name": "boolean"
@@ -24735,6 +24825,7 @@
         {
           "name": "clickBubbling",
           "displayName": "Click Bubbling",
+          "group": "Pointer Events",
           "plug": "input",
           "type": {
             "name": "enum",
@@ -25357,6 +25448,7 @@
         {
           "name": "childIndex",
           "displayName": "Child Index",
+          "group": "Advanced",
           "plug": "output",
           "type": {
             "name": "number"
@@ -25520,6 +25612,7 @@
         {
           "name": "this",
           "displayName": "This",
+          "group": "Advanced",
           "plug": "output",
           "type": {
             "name": "reference"
@@ -25958,6 +26051,7 @@
         {
           "name": "childIndex",
           "displayName": "Child Index",
+          "group": "Advanced",
           "plug": "output",
           "type": {
             "name": "number"
@@ -25968,6 +26062,7 @@
         {
           "name": "childrenCount",
           "displayName": "Children Count",
+          "group": "Advanced",
           "plug": "output",
           "type": {
             "name": "number"
@@ -26066,6 +26161,7 @@
         {
           "name": "this",
           "displayName": "This",
+          "group": "Advanced",
           "plug": "output",
           "type": {
             "name": "reference"
@@ -26214,7 +26310,7 @@
         {
           "name": "error",
           "displayName": "Error",
-          "group": "Events",
+          "group": "Error",
           "plug": "output",
           "type": {
             "name": "string"
@@ -26547,6 +26643,7 @@
         {
           "name": "aspectRatio",
           "displayName": "Aspect Ratio",
+          "group": "Values",
           "plug": "output",
           "type": {
             "name": "number"
@@ -26557,6 +26654,7 @@
         {
           "name": "height",
           "displayName": "Height",
+          "group": "Values",
           "plug": "output",
           "type": {
             "name": "number"
@@ -26567,6 +26665,7 @@
         {
           "name": "width",
           "displayName": "Width",
+          "group": "Values",
           "plug": "output",
           "type": {
             "name": "number"
@@ -26647,6 +26746,7 @@
         {
           "name": "loaded",
           "displayName": "Loaded",
+          "group": "Events",
           "plug": "output",
           "type": {
             "name": "signal"
@@ -26804,7 +26904,7 @@
         {
           "name": "error",
           "displayName": "Error",
-          "group": "Events",
+          "group": "Error",
           "plug": "output",
           "type": {
             "name": "string"
@@ -27632,6 +27732,7 @@
         {
           "name": "index",
           "displayName": "Index",
+          "group": "Values",
           "plug": "output",
           "type": {
             "name": "number"
@@ -27642,6 +27743,7 @@
         {
           "name": "signalTriggered",
           "displayName": "Signal Triggered",
+          "group": "Events",
           "plug": "output",
           "type": {
             "name": "signal"
@@ -27784,7 +27886,7 @@
         {
           "name": "error",
           "displayName": "Error",
-          "group": "Events",
+          "group": "Error",
           "plug": "output",
           "type": {
             "name": "string"
@@ -28049,7 +28151,7 @@
         {
           "name": "error",
           "displayName": "Error",
-          "group": "Events",
+          "group": "Error",
           "plug": "output",
           "type": {
             "name": "string"
@@ -28170,6 +28272,7 @@
         {
           "name": "saveValue",
           "displayName": "Set",
+          "group": "Actions",
           "plug": "input",
           "type": {
             "name": "signal",
@@ -28227,6 +28330,7 @@
         {
           "name": "value",
           "displayName": "Value",
+          "group": "Values",
           "plug": "input",
           "type": {
             "name": "string"
@@ -28240,6 +28344,7 @@
         {
           "name": "changed",
           "displayName": "Changed",
+          "group": "Events",
           "plug": "output",
           "type": {
             "name": "signal"
@@ -28272,6 +28377,7 @@
         {
           "name": "length",
           "displayName": "Length",
+          "group": "Values",
           "plug": "output",
           "type": {
             "name": "number"
@@ -28282,6 +28388,7 @@
         {
           "name": "savedValue",
           "displayName": "Value",
+          "group": "Values",
           "plug": "output",
           "type": {
             "name": "string"
@@ -28359,6 +28466,7 @@
         {
           "name": "format",
           "displayName": "Format",
+          "group": "Values",
           "plug": "input",
           "type": {
             "name": "string",
@@ -28372,6 +28480,7 @@
         {
           "name": "formatted",
           "displayName": "Formatted",
+          "group": "Values",
           "plug": "output",
           "type": {
             "name": "string"
@@ -28464,6 +28573,7 @@
         {
           "name": "inputString",
           "displayName": "Input String",
+          "group": "Values",
           "plug": "input",
           "type": {
             "name": "string"
@@ -28477,7 +28587,7 @@
         {
           "name": "mappedString",
           "displayName": "Mapped String",
-          "group": "Value",
+          "group": "Values",
           "plug": "output",
           "type": {
             "name": "string"
@@ -28562,6 +28672,7 @@
         {
           "name": "index",
           "displayName": "Index",
+          "group": "Values",
           "plug": "input",
           "type": {
             "name": "number"
@@ -28575,7 +28686,7 @@
         {
           "name": "currentValue",
           "displayName": "Current Value",
-          "group": "Value",
+          "group": "Values",
           "plug": "output",
           "type": {
             "name": "string"
@@ -28586,7 +28697,7 @@
         {
           "name": "indexChanged",
           "displayName": "Index Changed",
-          "group": "Signals",
+          "group": "Events",
           "plug": "output",
           "type": {
             "name": "signal"
@@ -28878,6 +28989,7 @@
         {
           "name": "end",
           "displayName": "End",
+          "group": "Values",
           "plug": "input",
           "type": {
             "name": "number"
@@ -28889,6 +29001,7 @@
         {
           "name": "start",
           "displayName": "Start",
+          "group": "Values",
           "plug": "input",
           "type": {
             "name": "number"
@@ -28900,6 +29013,7 @@
         {
           "name": "string",
           "displayName": "String",
+          "group": "Values",
           "plug": "input",
           "type": {
             "name": "string"
@@ -28913,6 +29027,7 @@
         {
           "name": "result",
           "displayName": "Result",
+          "group": "Values",
           "plug": "output",
           "type": {
             "name": "string"
@@ -29042,6 +29157,7 @@
         {
           "name": "state",
           "displayName": "Current State",
+          "group": "Values",
           "plug": "output",
           "type": {
             "name": "boolean"
@@ -29052,7 +29168,7 @@
         {
           "name": "switched",
           "displayName": "Switched",
-          "group": "Signals",
+          "group": "Events",
           "plug": "output",
           "type": {
             "name": "signal"
@@ -29063,7 +29179,7 @@
         {
           "name": "switchedToOff",
           "displayName": "Switched To Off",
-          "group": "Signals",
+          "group": "Events",
           "plug": "output",
           "type": {
             "name": "signal"
@@ -29074,7 +29190,7 @@
         {
           "name": "switchedToOn",
           "displayName": "Switched To On",
-          "group": "Signals",
+          "group": "Events",
           "plug": "output",
           "type": {
             "name": "signal"
@@ -30200,6 +30316,7 @@
         {
           "name": "childIndex",
           "displayName": "Child Index",
+          "group": "Advanced",
           "plug": "output",
           "type": {
             "name": "number"
@@ -30309,6 +30426,7 @@
         {
           "name": "this",
           "displayName": "This",
+          "group": "Advanced",
           "plug": "output",
           "type": {
             "name": "reference"
@@ -30479,6 +30597,7 @@
         {
           "name": "blockTouch",
           "displayName": "Block Pointer Events",
+          "group": "Pointer Events",
           "plug": "input",
           "type": {
             "name": "boolean"
@@ -30663,6 +30782,7 @@
         {
           "name": "clickBubbling",
           "displayName": "Click Bubbling",
+          "group": "Pointer Events",
           "plug": "input",
           "type": {
             "name": "enum",
@@ -31475,6 +31595,7 @@
         {
           "name": "childIndex",
           "displayName": "Child Index",
+          "group": "Advanced",
           "plug": "output",
           "type": {
             "name": "number"
@@ -31586,7 +31707,7 @@
         {
           "name": "onTextChanged",
           "displayName": "Text",
-          "group": "Value",
+          "group": "Values",
           "plug": "output",
           "type": {
             "name": "string"
@@ -31648,6 +31769,7 @@
         {
           "name": "this",
           "displayName": "This",
+          "group": "Advanced",
           "plug": "output",
           "type": {
             "name": "reference"
@@ -31735,6 +31857,7 @@
         {
           "name": "duration",
           "displayName": "Duration",
+          "group": "Values",
           "plug": "input",
           "type": {
             "name": "number"
@@ -31746,6 +31869,7 @@
         {
           "name": "restart",
           "displayName": "Restart",
+          "group": "Actions",
           "plug": "input",
           "type": {
             "name": "signal",
@@ -31757,6 +31881,7 @@
         {
           "name": "start",
           "displayName": "Start",
+          "group": "Actions",
           "plug": "input",
           "type": {
             "name": "signal",
@@ -31768,6 +31893,7 @@
         {
           "name": "startDelay",
           "displayName": "Start Delay",
+          "group": "Values",
           "plug": "input",
           "type": {
             "name": "number"
@@ -31779,6 +31905,7 @@
         {
           "name": "stop",
           "displayName": "Stop",
+          "group": "Actions",
           "plug": "input",
           "type": {
             "name": "signal",
@@ -31814,6 +31941,7 @@
         {
           "name": "timerFinished",
           "displayName": "Finished",
+          "group": "Events",
           "plug": "output",
           "type": {
             "name": "signal"
@@ -31824,6 +31952,7 @@
         {
           "name": "timerStarted",
           "displayName": "Started",
+          "group": "Events",
           "plug": "output",
           "type": {
             "name": "signal"
@@ -31990,7 +32119,7 @@
         {
           "name": "atTargetValue",
           "displayName": "At Target Value",
-          "group": "Signals",
+          "group": "Events",
           "plug": "output",
           "type": {
             "name": "signal"
@@ -32043,6 +32172,7 @@
         {
           "name": "new",
           "displayName": "New",
+          "group": "Actions",
           "plug": "input",
           "type": {
             "name": "signal",
@@ -32078,6 +32208,7 @@
         {
           "name": "guid",
           "displayName": "Id",
+          "group": "Values",
           "plug": "output",
           "type": {
             "name": "string"
@@ -32397,6 +32528,7 @@
         {
           "name": "value",
           "displayName": "Input",
+          "group": "Values",
           "plug": "input",
           "type": {
             "name": "*"
@@ -32409,6 +32541,7 @@
         {
           "name": "valueChanged",
           "displayName": "Value Changed",
+          "group": "Events",
           "plug": "output",
           "type": {
             "name": "signal"
@@ -32685,7 +32818,7 @@
         {
           "name": "error",
           "displayName": "Error",
-          "group": "Events",
+          "group": "Error",
           "plug": "output",
           "type": {
             "name": "string"
@@ -34116,6 +34249,7 @@
         {
           "name": "childIndex",
           "displayName": "Child Index",
+          "group": "Advanced",
           "plug": "output",
           "type": {
             "name": "number"
@@ -34258,6 +34392,7 @@
         {
           "name": "onVideoElementCreated",
           "displayName": "DOM Element",
+          "group": "Advanced",
           "plug": "output",
           "type": {
             "name": "domelement"
@@ -34268,7 +34403,7 @@
         {
           "name": "playbackError",
           "displayName": "Error",
-          "group": "Events",
+          "group": "Error",
           "plug": "output",
           "type": {
             "name": "string"
@@ -34334,6 +34469,7 @@
         {
           "name": "this",
           "displayName": "This",
+          "group": "Advanced",
           "plug": "output",
           "type": {
             "name": "reference"
@@ -35282,6 +35418,7 @@
         {
           "name": "array",
           "displayName": "Array",
+          "group": "Values",
           "plug": "input",
           "type": {
             "name": "array"
@@ -35294,6 +35431,7 @@
         {
           "name": "arrayReplaced",
           "displayName": "Array Replaced",
+          "group": "Events",
           "plug": "output",
           "type": {
             "name": "signal"
@@ -35337,6 +35475,7 @@
         {
           "name": "itemAdded",
           "displayName": "Item Added",
+          "group": "Events",
           "plug": "output",
           "type": {
             "name": "signal"
@@ -35347,6 +35486,7 @@
         {
           "name": "itemChanged",
           "displayName": "Item Changed",
+          "group": "Events",
           "plug": "output",
           "type": {
             "name": "signal"
@@ -35357,6 +35497,7 @@
         {
           "name": "itemRemoved",
           "displayName": "Item Removed",
+          "group": "Events",
           "plug": "output",
           "type": {
             "name": "signal"
@@ -35529,7 +35670,7 @@
             "variables": {
               "property": "one of the comma-separated entries in the `properties` parameter"
             },
-            "group": "Changed Events",
+            "group": "Events",
             "valueType": "signal",
             "example": "changed-Sa1"
           },
@@ -35691,7 +35832,7 @@
         {
           "name": "result",
           "displayName": "Result",
-          "group": "Value",
+          "group": "Values",
           "plug": "output",
           "type": {
             "name": "date"
@@ -35815,7 +35956,7 @@
         {
           "name": "after",
           "displayName": "Is After",
-          "group": "Value",
+          "group": "Values",
           "plug": "output",
           "type": {
             "name": "boolean"
@@ -35826,7 +35967,7 @@
         {
           "name": "before",
           "displayName": "Is Before",
-          "group": "Value",
+          "group": "Values",
           "plug": "output",
           "type": {
             "name": "boolean"
@@ -35881,7 +36022,7 @@
         {
           "name": "same",
           "displayName": "Is Same",
-          "group": "Value",
+          "group": "Values",
           "plug": "output",
           "type": {
             "name": "boolean"
@@ -36036,7 +36177,7 @@
         {
           "name": "difference",
           "displayName": "Difference",
-          "group": "Value",
+          "group": "Values",
           "plug": "output",
           "type": {
             "name": "number"
@@ -36130,7 +36271,7 @@
         {
           "name": "date",
           "displayName": "Day of Month",
-          "group": "Value",
+          "group": "Values",
           "plug": "output",
           "type": {
             "name": "number"
@@ -36141,7 +36282,7 @@
         {
           "name": "dayName",
           "displayName": "Day Name",
-          "group": "Value",
+          "group": "Values",
           "plug": "output",
           "type": {
             "name": "string"
@@ -36152,7 +36293,7 @@
         {
           "name": "dayOfWeek",
           "displayName": "Day of Week",
-          "group": "Value",
+          "group": "Values",
           "plug": "output",
           "type": {
             "name": "number"
@@ -36174,7 +36315,7 @@
         {
           "name": "hours",
           "displayName": "Hours",
-          "group": "Value",
+          "group": "Values",
           "plug": "output",
           "type": {
             "name": "number"
@@ -36185,7 +36326,7 @@
         {
           "name": "isoWeek",
           "displayName": "ISO Week",
-          "group": "Value",
+          "group": "Values",
           "plug": "output",
           "type": {
             "name": "number"
@@ -36196,7 +36337,7 @@
         {
           "name": "milliseconds",
           "displayName": "Milliseconds",
-          "group": "Value",
+          "group": "Values",
           "plug": "output",
           "type": {
             "name": "number"
@@ -36207,7 +36348,7 @@
         {
           "name": "minutes",
           "displayName": "Minutes",
-          "group": "Value",
+          "group": "Values",
           "plug": "output",
           "type": {
             "name": "number"
@@ -36218,7 +36359,7 @@
         {
           "name": "month",
           "displayName": "Month",
-          "group": "Value",
+          "group": "Values",
           "plug": "output",
           "type": {
             "name": "number"
@@ -36229,7 +36370,7 @@
         {
           "name": "seconds",
           "displayName": "Seconds",
-          "group": "Value",
+          "group": "Values",
           "plug": "output",
           "type": {
             "name": "number"
@@ -36240,7 +36381,7 @@
         {
           "name": "timestamp",
           "displayName": "Timestamp",
-          "group": "Value",
+          "group": "Values",
           "plug": "output",
           "type": {
             "name": "number"
@@ -36251,7 +36392,7 @@
         {
           "name": "year",
           "displayName": "Year",
-          "group": "Value",
+          "group": "Values",
           "plug": "output",
           "type": {
             "name": "number"
@@ -36374,7 +36515,7 @@
         {
           "name": "error",
           "displayName": "Error",
-          "group": "Events",
+          "group": "Error",
           "plug": "output",
           "type": {
             "name": "string"
@@ -36581,7 +36722,7 @@
         {
           "name": "error",
           "displayName": "Error",
-          "group": "Events",
+          "group": "Error",
           "plug": "output",
           "type": {
             "name": "string"
@@ -36859,7 +37000,7 @@
         {
           "name": "error",
           "displayName": "Error",
-          "group": "Events",
+          "group": "Error",
           "plug": "output",
           "type": {
             "name": "string"
@@ -37067,7 +37208,7 @@
         {
           "name": "digest",
           "displayName": "Digest",
-          "group": "Value",
+          "group": "Values",
           "plug": "output",
           "type": {
             "name": "string"
@@ -37549,7 +37690,7 @@
         {
           "name": "value",
           "displayName": "Value",
-          "group": "Value",
+          "group": "Values",
           "plug": "output",
           "type": {
             "name": "*"
@@ -37635,7 +37776,7 @@
         {
           "name": "date",
           "displayName": "Date",
-          "group": "Value",
+          "group": "Values",
           "plug": "output",
           "type": {
             "name": "date"
@@ -37657,7 +37798,7 @@
         {
           "name": "iso",
           "displayName": "ISO String",
-          "group": "Value",
+          "group": "Values",
           "plug": "output",
           "type": {
             "name": "string"
@@ -37668,7 +37809,7 @@
         {
           "name": "timestamp",
           "displayName": "Timestamp",
-          "group": "Value",
+          "group": "Values",
           "plug": "output",
           "type": {
             "name": "number"
@@ -37725,6 +37866,7 @@
         {
           "name": "object",
           "displayName": "Object",
+          "group": "Values",
           "plug": "input",
           "type": {
             "name": "object"
@@ -37748,6 +37890,7 @@
         {
           "name": "keyAdded",
           "displayName": "Key Added",
+          "group": "Events",
           "plug": "output",
           "type": {
             "name": "signal"
@@ -37758,6 +37901,7 @@
         {
           "name": "keyChanged",
           "displayName": "Key Changed",
+          "group": "Events",
           "plug": "output",
           "type": {
             "name": "signal"
@@ -37768,6 +37912,7 @@
         {
           "name": "objectReplaced",
           "displayName": "Object Replaced",
+          "group": "Events",
           "plug": "output",
           "type": {
             "name": "signal"
@@ -38019,7 +38164,7 @@
         {
           "name": "error",
           "displayName": "Error",
-          "group": "Events",
+          "group": "Error",
           "plug": "output",
           "type": {
             "name": "string"
@@ -38297,7 +38442,7 @@
         {
           "name": "error",
           "displayName": "Error",
-          "group": "Events",
+          "group": "Error",
           "plug": "output",
           "type": {
             "name": "string"
@@ -38346,7 +38491,7 @@
             "variables": {
               "property": "one of the comma-separated entries in the `properties` parameter"
             },
-            "group": "Changed Events",
+            "group": "Events",
             "valueType": "signal",
             "example": "changed-Sa1"
           },
@@ -38452,7 +38597,7 @@
         {
           "name": "count",
           "displayName": "Count",
-          "group": "Value",
+          "group": "Values",
           "plug": "output",
           "type": {
             "name": "number"
@@ -38463,7 +38608,7 @@
         {
           "name": "error",
           "displayName": "Error",
-          "group": "Events",
+          "group": "Error",
           "plug": "output",
           "type": {
             "name": "string"
@@ -38485,7 +38630,7 @@
         {
           "name": "items",
           "displayName": "Items",
-          "group": "Value",
+          "group": "Values",
           "plug": "output",
           "type": {
             "name": "array"
@@ -38909,7 +39054,7 @@
         {
           "name": "value",
           "displayName": "Value",
-          "group": "Value",
+          "group": "Values",
           "plug": "output",
           "type": {
             "name": "string"
@@ -39708,7 +39853,7 @@
         {
           "name": "error",
           "displayName": "Error",
-          "group": "Events",
+          "group": "Error",
           "plug": "output",
           "type": {
             "name": "string"
@@ -40155,7 +40300,7 @@
         {
           "name": "error",
           "displayName": "Error",
-          "group": "Events",
+          "group": "Error",
           "plug": "output",
           "type": {
             "name": "string"
@@ -40381,7 +40526,7 @@
         {
           "name": "error",
           "displayName": "Error",
-          "group": "Events",
+          "group": "Error",
           "plug": "output",
           "type": {
             "name": "string"
@@ -40669,7 +40814,7 @@
         {
           "name": "error",
           "displayName": "Error",
-          "group": "Events",
+          "group": "Error",
           "plug": "output",
           "type": {
             "name": "string"
@@ -41198,7 +41343,7 @@
         {
           "name": "count",
           "displayName": "Count",
-          "group": "Value",
+          "group": "Values",
           "plug": "output",
           "type": {
             "name": "number"
@@ -41209,7 +41354,7 @@
         {
           "name": "text",
           "displayName": "CSV",
-          "group": "Value",
+          "group": "Values",
           "plug": "output",
           "type": {
             "name": "string"
@@ -41329,7 +41474,7 @@
         {
           "name": "uuid",
           "displayName": "Id",
-          "group": "Value",
+          "group": "Values",
           "plug": "output",
           "type": {
             "name": "string"
@@ -42028,7 +42173,7 @@
         {
           "name": "atTargetValue",
           "displayName": "At Target Value",
-          "group": "Signals",
+          "group": "Events",
           "plug": "output",
           "type": {
             "name": "signal"
@@ -43803,6 +43948,7 @@
         {
           "name": "childIndex",
           "displayName": "Child Index",
+          "group": "Advanced",
           "plug": "output",
           "type": {
             "name": "number"
@@ -43813,6 +43959,7 @@
         {
           "name": "childrenCount",
           "displayName": "Children Count",
+          "group": "Advanced",
           "plug": "output",
           "type": {
             "name": "number"
@@ -43977,6 +44124,7 @@
         {
           "name": "this",
           "displayName": "This",
+          "group": "Advanced",
           "plug": "output",
           "type": {
             "name": "reference"
@@ -45773,6 +45921,7 @@
         {
           "name": "childIndex",
           "displayName": "Child Index",
+          "group": "Advanced",
           "plug": "output",
           "type": {
             "name": "number"
@@ -45959,6 +46108,7 @@
         {
           "name": "this",
           "displayName": "This",
+          "group": "Advanced",
           "plug": "output",
           "type": {
             "name": "reference"
@@ -48093,6 +48243,7 @@
         {
           "name": "childIndex",
           "displayName": "Child Index",
+          "group": "Advanced",
           "plug": "output",
           "type": {
             "name": "number"
@@ -48257,6 +48408,7 @@
         {
           "name": "this",
           "displayName": "This",
+          "group": "Advanced",
           "plug": "output",
           "type": {
             "name": "reference"
@@ -50062,6 +50214,7 @@
         {
           "name": "childIndex",
           "displayName": "Child Index",
+          "group": "Advanced",
           "plug": "output",
           "type": {
             "name": "number"
@@ -50226,6 +50379,7 @@
         {
           "name": "this",
           "displayName": "This",
+          "group": "Advanced",
           "plug": "output",
           "type": {
             "name": "reference"
@@ -52265,6 +52419,7 @@
         {
           "name": "childIndex",
           "displayName": "Child Index",
+          "group": "Advanced",
           "plug": "output",
           "type": {
             "name": "number"
@@ -52429,6 +52584,7 @@
         {
           "name": "this",
           "displayName": "This",
+          "group": "Advanced",
           "plug": "output",
           "type": {
             "name": "reference"
@@ -54703,6 +54859,7 @@
         {
           "name": "childIndex",
           "displayName": "Child Index",
+          "group": "Advanced",
           "plug": "output",
           "type": {
             "name": "number"
@@ -54913,6 +55070,7 @@
         {
           "name": "this",
           "displayName": "This",
+          "group": "Advanced",
           "plug": "output",
           "type": {
             "name": "reference"
@@ -55109,6 +55267,7 @@
         {
           "name": "do",
           "displayName": "Do",
+          "group": "Actions",
           "plug": "input",
           "type": {
             "name": "signal",
@@ -55120,6 +55279,7 @@
         {
           "name": "link",
           "displayName": "Link",
+          "group": "Values",
           "plug": "input",
           "type": {
             "name": "string"
@@ -55130,6 +55290,7 @@
         {
           "name": "openInNewTab",
           "displayName": "Open In New Tab",
+          "group": "Values",
           "plug": "input",
           "type": {
             "name": "boolean"
@@ -55165,7 +55326,7 @@
         {
           "name": "error",
           "displayName": "Error",
-          "group": "Events",
+          "group": "Error",
           "plug": "output",
           "type": {
             "name": "string"
@@ -56880,6 +57041,7 @@
         {
           "name": "childIndex",
           "displayName": "Child Index",
+          "group": "Advanced",
           "plug": "output",
           "type": {
             "name": "number"
@@ -56890,6 +57052,7 @@
         {
           "name": "childrenCount",
           "displayName": "Children Count",
+          "group": "Advanced",
           "plug": "output",
           "type": {
             "name": "number"
@@ -56933,6 +57096,7 @@
         {
           "name": "this",
           "displayName": "This",
+          "group": "Advanced",
           "plug": "output",
           "type": {
             "name": "reference"
@@ -57649,6 +57813,7 @@
         {
           "name": "childIndex",
           "displayName": "Child Index",
+          "group": "Advanced",
           "plug": "output",
           "type": {
             "name": "number"
@@ -57692,6 +57857,7 @@
         {
           "name": "this",
           "displayName": "This",
+          "group": "Advanced",
           "plug": "output",
           "type": {
             "name": "reference"
@@ -58823,7 +58989,7 @@
         {
           "name": "signature",
           "displayName": "Signature",
-          "group": "Value",
+          "group": "Values",
           "plug": "output",
           "type": {
             "name": "string"
@@ -58999,7 +59165,7 @@
         {
           "name": "token",
           "displayName": "Token",
-          "group": "Value",
+          "group": "Values",
           "plug": "output",
           "type": {
             "name": "string"
@@ -59131,7 +59297,7 @@
         {
           "name": "claims",
           "displayName": "Claims",
-          "group": "Value",
+          "group": "Values",
           "plug": "output",
           "type": {
             "name": "object"
@@ -59186,7 +59352,7 @@
         {
           "name": "valid",
           "displayName": "Valid",
-          "group": "Value",
+          "group": "Values",
           "plug": "output",
           "type": {
             "name": "boolean"
@@ -59752,7 +59918,7 @@
         {
           "name": "error",
           "displayName": "Error",
-          "group": "Events",
+          "group": "Error",
           "plug": "output",
           "type": {
             "name": "string"
@@ -59940,7 +60106,7 @@
         {
           "name": "value",
           "displayName": "Value",
-          "group": "Value",
+          "group": "Values",
           "plug": "output",
           "type": {
             "name": "string"

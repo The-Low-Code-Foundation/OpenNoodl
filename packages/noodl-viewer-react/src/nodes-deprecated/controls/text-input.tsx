@@ -431,7 +431,7 @@ const TextInput: ReactNodeDefinition = {
   outputProps: {
     // Value
     onTextChanged: {
-      group: 'Value',
+      group: 'Values',
       displayName: 'Text',
       type: 'string'
     },

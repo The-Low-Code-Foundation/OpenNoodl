@@ -156,6 +156,13 @@ jobs:
       # the committed artifact (packages/noodl-types/src/node-catalog.*)
       # doesn't match — i.e. node definitions changed without regenerating.
       - run: npm run catalog:check
+      # SIG-003: every port must declare a `group`. An ungrouped port is not
+      # filed under a category anyone chose — `ConnectionBar` renders it under
+      # `Other`, so the absence of one line in a node definition reads to a
+      # builder as a decision. Also holds the kind headings (Values / Actions /
+      # Events) to their kind and refuses the retired names. Runs after
+      # catalog:check so a stale catalog fails as staleness, not as a group bug.
+      - run: npm run catalog:groups:check
       # Enrichment (SUB-005): every example fragment must validate clean
       # against the semantic validator, and the committed enriched catalog
       # (node-catalog-enriched.*) must match the authored inputs, with every

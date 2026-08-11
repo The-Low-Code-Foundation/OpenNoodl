@@ -59,6 +59,7 @@ const StringMapperNode: NodeDefinitionOptions = {
   },
   inputs: {
     inputString: {
+      group: 'Values',
       type: {
         name: 'string'
       },
@@ -86,7 +87,7 @@ const StringMapperNode: NodeDefinitionOptions = {
     mappedString: {
       type: 'string',
       displayName: 'Mapped String',
-      group: 'Value',
+      group: 'Values',
       description: 'The mapping paired with the input that matched, or Default when none did',
       getter: function (this: StringMapperNodeInstance) {
         return this._internal.mappedString;

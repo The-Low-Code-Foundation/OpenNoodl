@@ -51,6 +51,7 @@ const AndNode: NodeDefinitionOptions = {
   },
   outputs: {
     result: {
+      group: 'Values',
       type: 'boolean',
       displayName: 'Result',
       description: 'True only while every connected input is true; false when no input is connected at all',

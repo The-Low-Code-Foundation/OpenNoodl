@@ -149,7 +149,7 @@ const CloudFunctionNode: NodeDefinitionOptions = {
     // ⚠️ **No `Unchanged`.** The node cannot know whether the function it invoked changed
     // anything — only the function does, and it says so through its own result outputs.
     ...outcomeOutputs({
-      group: 'Signals',
+      group: 'Events',
       done: 'Fires once the function has returned and its result outputs are up to date',
       failure:
         'Fires when the function could not be reached or answered with an error, after the reason has been reported on the error channel'

@@ -66,6 +66,8 @@
     "catalog:encoding:eval": "node scripts/node-catalog/encoding-eval.js",
     "catalog:merge": "node scripts/node-catalog/merge.js",
     "catalog:merge:check": "node scripts/node-catalog/merge.js --check --require-coverage",
+    "catalog:groups": "node scripts/node-audit/port-groups.js",
+    "catalog:groups:check": "node scripts/node-audit/port-groups.js --check",
     "docs:nodes": "node scripts/generate-node-docs.js",
     "docs:nodes:check": "node scripts/generate-node-docs.js --check",
     "docs-site:start": "npm --prefix docs-site run start",

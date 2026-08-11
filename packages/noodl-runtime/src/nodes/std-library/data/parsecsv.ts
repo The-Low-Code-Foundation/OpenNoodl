@@ -121,7 +121,7 @@ const ParseCSVNode: NodeDefinitionOptions = {
     items: {
       type: 'array',
       displayName: 'Items',
-      group: 'Value',
+      group: 'Values',
       description:
         'The parsed rows — records when Has Header is ticked, arrays of cells when it is not. ' +
         'Every cell is a string, including columns that look numeric. Unchanged while the CSV ' +
@@ -133,7 +133,7 @@ const ParseCSVNode: NodeDefinitionOptions = {
     count: {
       type: 'number',
       displayName: 'Count',
-      group: 'Value',
+      group: 'Values',
       description: 'How many rows the last successful parse produced, not counting the header row',
       getter: function (this: ParseCSVNodeInstance) {
         return this._internal.count;
@@ -154,7 +154,7 @@ const ParseCSVNode: NodeDefinitionOptions = {
     error: {
       type: 'string',
       displayName: 'Error',
-      group: 'Events',
+      group: 'Error',
       description: 'Why the CSV could not be parsed, naming the line it gave up on; empty until a parse fails',
       getter: function (this: ParseCSVNodeInstance) {
         return this._internal.lastError;

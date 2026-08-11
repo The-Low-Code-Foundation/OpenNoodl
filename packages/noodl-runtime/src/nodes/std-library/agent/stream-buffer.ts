@@ -245,7 +245,7 @@ const StreamBufferNode: NodeDefinitionOptions = {
       type: 'string',
       displayName: 'Error',
       description: 'Why the last Add was refused; blank until one is',
-      group: 'Events',
+      group: 'Error',
       getter(this: StreamBufferNodeInstance) {
         return internalOf(this).lastError;
       }

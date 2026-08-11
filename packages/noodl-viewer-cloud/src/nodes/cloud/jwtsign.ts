@@ -20,7 +20,7 @@ export const node = {
   docs: 'https://docs.noodl.net/nodes/cloud-functions/jwt-sign',
   color: 'data',
   connectionPanel: {
-    groupPriority: ['General', 'Actions', 'Value', 'Events', 'Error']
+    groupPriority: ['General', 'Actions', 'Values', 'Events', 'Error']
   },
   /** ⚠️ A declared `default` never runs its setter — this line is the real default. */
   initialize: function () {
@@ -97,7 +97,7 @@ export const node = {
     token: {
       type: 'string',
       displayName: 'Token',
-      group: 'Value',
+      group: 'Values',
       description: 'The signed JWT, available once Done has fired',
       getter: function () {
         return this._internal.token;

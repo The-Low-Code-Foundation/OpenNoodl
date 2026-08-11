@@ -44,6 +44,7 @@ Do not use in new graphs — use net.noodl.controls.options instead.
 | `boxShadowOffsetX` | Number | `0` | — |
 | `boxShadowOffsetY` | Number | `0` | — |
 | `boxShadowSpreadRadius` | Number | `2` | — |
+| `boxSizing` | Enum (`border-box`, `content-box`) | `border-box` | Whether Width and Height include this element's padding and border, or only its content |
 | `clickBubbling` | Enum (`auto`, `always`, `never`) | `auto` | — |
 | `color` | Color | — | — |
 | `cssClassName` | String | `` | Extra CSS class names to put on this element, for styling from a stylesheet you supply |

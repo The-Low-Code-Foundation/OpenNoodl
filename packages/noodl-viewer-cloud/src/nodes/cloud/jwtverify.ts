@@ -27,7 +27,7 @@ export const node = {
   docs: 'https://docs.noodl.net/nodes/cloud-functions/jwt-verify',
   color: 'data',
   connectionPanel: {
-    groupPriority: ['General', 'Actions', 'Value', 'Events', 'Error']
+    groupPriority: ['General', 'Actions', 'Values', 'Events', 'Error']
   },
   /** ⚠️ A declared `default` never runs its setter — these lines are the real defaults. */
   initialize: function () {
@@ -104,7 +104,7 @@ export const node = {
     valid: {
       type: 'boolean',
       displayName: 'Valid',
-      group: 'Value',
+      group: 'Values',
       description: 'Whether the token verified. False whenever Failure fired, so either can be wired',
       getter: function () {
         return this._internal.valid === true;
@@ -113,7 +113,7 @@ export const node = {
     claims: {
       type: 'object',
       displayName: 'Claims',
-      group: 'Value',
+      group: 'Values',
       description:
         'The token payload — set ONLY after the signature verified. Nothing in a token can be believed ' +
         'before that, so this is left alone on a failure rather than handed over unchecked',

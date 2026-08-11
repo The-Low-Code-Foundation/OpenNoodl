@@ -36,6 +36,7 @@ const EventReceiver: NodeDefinitionOptions = {
   },
   inputs: {
     enabled: {
+      group: 'Values',
       displayName: 'Enabled',
       type: 'boolean',
       default: true,
@@ -45,6 +46,7 @@ const EventReceiver: NodeDefinitionOptions = {
       }
     },
     consume: {
+      group: 'Values',
       displayName: 'Consume',
       type: {
         name: 'enum',
@@ -60,6 +62,7 @@ const EventReceiver: NodeDefinitionOptions = {
       }
     },
     channelName: {
+      group: 'Values',
       type: { name: 'string', identifierOf: 'EventChannelName' },
       displayName: 'Channel',
       description: 'Name to listen on, which must match a Send Event exactly; nothing reports a name no sender uses',
@@ -80,6 +83,7 @@ const EventReceiver: NodeDefinitionOptions = {
   },
   outputs: {
     eventReceived: {
+      group: 'Events',
       displayName: 'Received',
       type: 'signal',
       description: "Fires when an event arrives on Channel, once the payload outputs carry that event's values"
@@ -191,10 +195,14 @@ const EventReceiverModule: NodeModule = {
 
         const ports = [];
         for (const key in portKeys) {
+          // SIG-003 — one dynamic output per payload key the matching Event
+          // Senders declare. These are the ports an author came for, and with no
+          // `group` every one of them arrived under `Other`.
           ports.push({
             name: key,
             type: '*',
             plug: 'output',
+            group: 'Values',
             displayName: key
           });
         }

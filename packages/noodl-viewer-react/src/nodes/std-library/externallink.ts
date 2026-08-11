@@ -15,17 +15,20 @@ const ExternalLinkNode: NodeDefinitionOptions = {
   },
   inputs: {
     link: {
+      group: 'Values',
       type: 'string',
       displayName: 'Link',
       description: 'Web address to open; one with no scheme is resolved relative to the page the app is served from'
     },
     openInNewTab: {
+      group: 'Values',
       type: 'boolean',
       displayName: 'Open In New Tab',
       default: true,
       description: 'Opens the link in a new tab; when off the current page is replaced and the app unloads'
     },
     do: {
+      group: 'Actions',
       type: 'signal',
       displayName: 'Do',
       description: 'Opens Link, or fires Failure if there is no Link or the browser blocked the new tab',
@@ -96,7 +99,7 @@ const ExternalLinkNode: NodeDefinitionOptions = {
     error: {
       type: 'string',
       displayName: 'Error',
-      group: 'Events',
+      group: 'Error',
       description: 'Why the link could not be opened, set just before Failure fires',
       getter(this: ExternalLinkInstance) {
         return this._internal.lastError;

@@ -66,6 +66,7 @@ const ColorBlendNode: NodeDefinitionOptions = {
   },
   inputs: {
     blendValue: {
+      group: 'Values',
       type: 'number',
       displayName: 'Blend Value',
       description: 'Position along the colour list, where 1 is exactly Color 1 and 1.5 is halfway to Color 2; values outside the list are clamped',
@@ -78,6 +79,7 @@ const ColorBlendNode: NodeDefinitionOptions = {
   },
   outputs: {
     result: {
+      group: 'Values',
       type: 'color',
       displayName: 'Result',
       description: 'The blended colour as a hex string; the inputs must be 6-digit hex, since any other notation yields nonsense',

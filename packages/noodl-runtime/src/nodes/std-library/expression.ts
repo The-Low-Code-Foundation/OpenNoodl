@@ -583,7 +583,7 @@ const ExpressionNode: NodeDefinitionOptions = {
      */
     ...outcomeOutputs({ done: 'Fires once a Run you triggered has evaluated the expression, after On True or On False' }),
     error: {
-      group: 'Events',
+      group: 'Error',
       type: 'string',
       displayName: 'Error',
       description: 'The compile or evaluation error, in JavaScript\'s own words',

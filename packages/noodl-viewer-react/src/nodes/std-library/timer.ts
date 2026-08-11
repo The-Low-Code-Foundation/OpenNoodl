@@ -48,6 +48,7 @@ const Timer: NodeDefinitionOptions = {
   },
   inputs: {
     start: {
+      group: 'Actions',
       displayName: 'Start',
       description: 'Starts the countdown, or fires Unchanged while one is already running — use Restart to begin again',
       valueChangedToTrue: function (this: TimerInstance) {
@@ -64,6 +65,7 @@ const Timer: NodeDefinitionOptions = {
       }
     },
     restart: {
+      group: 'Actions',
       displayName: 'Restart',
       description: 'Begins the countdown again from zero, whether or not one is already running',
       valueChangedToTrue: function (this: TimerInstance) {
@@ -75,6 +77,7 @@ const Timer: NodeDefinitionOptions = {
       }
     },
     duration: {
+      group: 'Values',
       type: 'number',
       displayName: 'Duration',
       default: 0,
@@ -84,6 +87,7 @@ const Timer: NodeDefinitionOptions = {
       }
     },
     startDelay: {
+      group: 'Values',
       type: 'number',
       displayName: 'Start Delay',
       default: 0,
@@ -93,6 +97,7 @@ const Timer: NodeDefinitionOptions = {
       }
     },
     stop: {
+      group: 'Actions',
       displayName: 'Stop',
       description: 'Abandons the countdown, so Finished never fires for it',
       valueChangedToTrue: function (this: TimerInstance) {
@@ -105,11 +110,13 @@ const Timer: NodeDefinitionOptions = {
   },
   outputs: {
     timerStarted: {
+      group: 'Events',
       type: 'signal',
       displayName: 'Started',
       description: 'Fires when the countdown begins, once Start Delay has elapsed'
     },
     timerFinished: {
+      group: 'Events',
       type: 'signal',
       displayName: 'Finished',
       description: 'Fires once Duration has elapsed, and not at all for a countdown that was stopped'

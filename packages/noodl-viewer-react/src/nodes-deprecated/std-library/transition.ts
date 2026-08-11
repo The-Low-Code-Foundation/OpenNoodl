@@ -189,7 +189,7 @@ const TransitionNode: NodeDefinitionOptions = {
     atTargetValue: {
       type: 'signal',
       displayName: 'At Target Value',
-      group: 'Signals',
+      group: 'Events',
       description: 'Fires when the value settles on Target Value, and not at all if a new target interrupted it'
     }
   }

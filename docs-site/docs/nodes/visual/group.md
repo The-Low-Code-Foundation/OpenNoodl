@@ -26,7 +26,7 @@ Reach for Group whenever you need structure: rows, columns, cards, overlays, scr
 | Name | Type | Default | Description |
 |---|---|---|---|
 | `alignContent` | Enum (`flex-start`, `flex-end`, `center`, `space-between`, `space-around`, `space-evenly`) | — | Where the wrapped lines sit as a group; only applies once Multi Line Wrap is on |
-| `alignItems` | Enum (`flex-start`, `flex-end`, `center`) | `flex-start` | Where children sit across the layout direction |
+| `alignItems` | Enum (`flex-start`, `flex-end`, `center`, `stretch`) | `flex-start` | Where children sit across the layout direction |
 | `alignX` | Enum (`left`, `center`, `right`) | — | Horizontal alignment of this element within the space its parent gives it |
 | `alignY` | Enum (`top`, `center`, `bottom`) | — | Vertical alignment of this element within the space its parent gives it |
 | `as` | Enum (`div`, `section`, `article`, `aside`, `nav`, `header`, `footer`, `main`, `span`) | `div` | HTML element to render as, which changes nothing visually but matters for screen readers and SEO |
@@ -59,6 +59,7 @@ Reach for Group whenever you need structure: rows, columns, cards, overlays, scr
 | `boxShadowOffsetX` | Number | `0` | How far to the right the shadow is cast from the element |
 | `boxShadowOffsetY` | Number | `0` | How far down the shadow is cast from the element |
 | `boxShadowSpreadRadius` | Number | `2` | How much larger than the element the shadow is drawn |
+| `boxSizing` | Enum (`border-box`, `content-box`) | `border-box` | Whether Width and Height include this element's padding and border, or only its content |
 | `clickBubbling` | Enum (`auto`, `always`, `never`) | `auto` | Whether a click here also fires Click on the nodes this one sits inside. Automatic keeps it here as soon as this node's own Click is connected, so a button inside a clickable card runs the button and not the card; Always is the older behaviour where both run; Never keeps every click here, wired or not. Note that an element at zero opacity takes no pointer events at all |
 | `clip` | Boolean | `false` | Hides any child that overflows the group instead of letting it spill out |
 | `columnGap` | Number | `0` | Space between children on the horizontal axis |
@@ -205,6 +206,30 @@ The canonical data-list shape. Query Records (DbCollection2) fetches a database 
 **Validate an input before acting on a click**
 
 The idiomatic gate shape: a Button click does not act directly — it evaluates a Condition. The Condition's boolean comes from an Expression that checks the text input's current value, so the same click either proceeds (ontrue) or reveals an error message (isfalse drives the error Text's visibility as a level, not a pulse). Note the two kinds of flow: text/booleans are values, onClick/eval/ontrue are momentary signals.
+
+**Page spine: full-bleed bands, a centred max-width shell, an announced section**
+
+The structure every designed page shares, and the one an unstyled page is missing. Three levels: a BAND is full width and owns a background (sections alternate --background and --surface so the page reads as parts, not a scroll); inside it exactly one SHELL, width 100% with maxWidth 1200px and --space-6 side padding, centred by alignItems "center" on the band; content lives in the shell. Content that touches the viewport edge is the loudest signal nobody designed the page. A section opens with an eyebrow, a heading and one optional sub-line capped at ~560px so it wraps at a readable measure, then --space-10 of air. Band padding is --space-20.
+
+**Card grid: Query Records into a Repeater, in a Columns node that reflows on its own**
+
+The canonical data grid, and the layout decision most often got wrong. Use a Columns node with sizing "autoFit" and a minWidth of 260-320px: it fits as many columns as the CONTAINER holds and reflows by itself, with no breakpoints to maintain. Columns handles a Repeater child correctly — the Repeater draws nothing and adds its items as siblings, so Columns skips it and gives each real item a column box. The card component is width 100% and lets the column size it, which is what makes the SAME card work in this grid, in a 2-up related row, and in a sidebar. Do NOT reach for a Group with flexWrap: a wrapped flex row does not shrink its children, so each item needs a hardcoded percentage track, and — the part that matters — no Group anywhere in the runtime has a breakpoint, so that layout can never collapse on a narrow screen. Record fields reach the item through Component Inputs whose names match the record properties, and wiring a field straight into a Group's visible port is conditional rendering with no logic node.
+
+**Split hero: copy column and image, with a display headline that looks set rather than typed**
+
+Two columns inside the shell, each width 100% so an UNWRAPPED row shrinks them to half each — this is why a plain row works where a wrapped grid does not. The copy column carries the page's one display headline (--text-6xl, --font-bold, --leading-none and --tracking-tighter; tight tracking is what makes a large heading look set), an eyebrow above it, a lead paragraph capped at ~520px, and two buttons whose concrete parameters are copied from the style vocabulary because `variant` is a connection-only port. The image gets sizeMode "explicit" plus a width, a height and objectFit "cover" — without explicit sizing those three ports are inert and the photo renders at its natural size.
+
+**Icon feature strip: one item component, instantiated three times inside a Columns**
+
+Three reassurances on a bordered band — and the shape this recipe is really about. The item is its OWN component with Component Inputs for its icon, title and body, instantiated three times; writing the subtree out three times is a `repeated-sibling-subtree` warning, not a style preference. The row is a Columns node so it collapses to one column under 700px: a Group row cannot, because no Group in the runtime has a breakpoint. The band sits on --surface with hairlines top and bottom so it reads as a rule across the page rather than another section.
+
+**Stat tile row: one tile component, four instances, collapsing to two then one**
+
+The top of an admin screen. The tile is its own component — four hand-written copies is a `repeated-sibling-subtree` warning — and the row is a Columns node that folds 4 -> 2 -> 1 as the container narrows. Inside a tile the VALUE is the only large thing: a muted uppercase label, one --text-3xl semibold number, and a small delta line. A tile whose label competes with its number reads as a form, not a dashboard. Wire each value from a Query Records count or a Cloud Function output.
+
+**Empty state: what a list shows when it has no rows**
+
+A list with nothing in it should say what it is and what to do, not render nothing. The designed version is small and centred inside a dashed card: an icon in a muted disc, one heading, one line of explanation capped at ~380px, and exactly one action. Wire the collection's count into this Group's `visible` port and the inverse into the list — falsiness does the switching with no logic node. Skipping the empty state is the difference between an app that looks unfinished on first run and one that does not, and first run is when it is always seen.
 
 ## Related nodes
 
