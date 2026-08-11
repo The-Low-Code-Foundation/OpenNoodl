@@ -1,115 +1,123 @@
 # Phase 54 — the next session
 
-**Written:** 2026-08-11, at the end of a session that ran **beside two live siblings** — a phase-50
-LEG session holding 18 uncommitted files in the primary tree, and a phase-60 SIG session committing
-to `cline-dev` while this was being written. No gate that launches Electron was run, for the same
-reason as last time.
+**Written:** 2026-08-11, by a session that **owned the checkout for about twenty minutes** and spent
+it on the blocking gate — then lost the suite to a sibling that brought up a dev stack mid-run.
 
-**This replaces the previous prompt.** Its §1, §2, §6 and §7 still hold verbatim and are not repeated
-— go read them for the three unmerged DSG branches, the trial-merge numbers, and the parallel recipe.
-What changed is §3 (still blocked), §4 (three of five items are now done) and §5 (numbering settled).
+**This replaces the previous prompt.** Its §6 and §7 (the three unmerged DSG branches, the parallel
+recipe) still hold and are not repeated. What changed: the gate was finally attempted, the baseline
+is now measured, the trial merge is current, and **two of the instruments this project trusts were
+found to be lying.**
 
 ---
 
-## §0 — Read this before you plan
+## §0 — Read this first, it will save you the mistake this session made
 
-**The previous prompt ranked five checkout-free tasks. Three are now built.** Do not re-plan them:
+🔴 **`npm run dev:stop --list` does not list. It kills.** npm swallows `--list` as its own config
+flag and forwards nothing, so `stop-dev.js` runs its killing path with an empty argv. Proved with a
+throwaway script: `npm run show --list` → `argv: []`, `npm run show -- --list` → `argv: ["--list"]`.
 
-| Was | Now |
-|---|---|
-| §4.1 the design rubric | ✅ **built, all 8 rows** — `measurements/score-design.js`, `e41cb2a8` + `fb696b0d` |
-| §4.2 decide `--border-control` | ✅ **decided and defined** — Richard's call, `fb696b0d` |
-| §4.3 the gate that would have caught it | ✅ **built** — `npm run catalog:tokens`, `614e3673` |
-| §4.4 DSG-003's five remaining recipes | 🟠 **unblocked** — see §2 |
-| §4.5 spec F33 | 🟠 unchanged — still a UX decision, still needs Richard |
+🔴 **`node scripts/devtools/dev-processes.js --list` is a silent no-op** — that file is a
+`module.exports` with no CLI entry point. It prints nothing and exits 0 whether the checkout is idle
+or running seventeen dev processes. **This session opened by running it, got silence, and read it as
+an idle checkout.** That happened to be true, but only the independent `ps` sweep established it.
 
-**The one correction worth carrying:** the previous prompt said `--border-control` is "defined in no
-token set". The AI-facing token did not exist, but the editor's own chrome **already defined
-`--theme-color-border-control: #7c8894`**, used for `PrimaryButton`'s control ring. The concept and
-its value existed; only the AI-facing name was missing. Grep before quoting a spec row — including
-the rows in this file.
+✅ **The one correct form is `npm run dev:stop -- --list`** (bare `--`). It printed all 17 processes
+of the sibling's stack and killed none.
 
-## §1 — Still the blocking gate: `test:ci` has NOT been run
+## §1 — The gate: half done, and the half that is done is worth having
 
-Unchanged from the last prompt, and now **two** sessions have failed to get to it.
+✅ **Baseline, `cline-dev`: `Jasmine: 2632 specs, 6 failures (failed)`, seed 05169.** Exactly the
+recorded floor, and the same six — two `AI model registry`, four `AIX-006 style vocabulary`. This is
+now measured rather than inherited, which is what the register kept asking for.
 
-- `packages/noodl-editor/tests/models/ProjectIdentity.test.ts` (DSG-007/F30) — jasmine,
-  barrel-exported, typechecks clean, **assertions still never executed**. `test:main`'s `testMatch`
-  covers `tests-main/` and `tests-unit/` only and cannot reach `tests/`.
-- DSG-004's promotion of `uncollapsible-multi-column` to authored-blocking also needs one jasmine run.
+✅ **The trial merge is current.** `wt-trial54` = `cline-dev` + `dsg-004` + `dsg-005` + `dsg-007`,
+merged clean at **`d137c69b`**, in an existing worktree that already has `node_modules`:
 
-**Until `test:ci` is green on the merged tree, F30 is fixed-and-unproven and F2 is not closed.**
+```
+/private/tmp/claude-501/-Users-richardosborne-vscode-projects-OpenNoodl/f5b771e5-.../scratchpad/wt-trial54
+```
 
-⚠️ **A quiet dev stack is not a quiet checkout.** This session found *zero* Electron and webpack
-processes at a moment when a sibling was committing 48 seconds earlier. `dev:stop --list` **first**,
-never `dev:stop` — it kills by checkout and also matches a sibling's running `test:ci`. Check
-`git log -1` and `git status` for a sibling's uncommitted work before believing the process table.
+⚠️ It will be behind again by the time you read this — re-merge `cline-dev` first. Use the worktree
+rather than a checkout: the primary tree has a sibling's 20+ uncommitted files in it, permanently.
+
+❌ **F30 is STILL fixed-and-unproven, three sessions running.** `test:ci` in the merged worktree was
+**killed at spec 550 of 2632**, six seconds before a sibling's `npm run dev:debug` brought up 17
+processes. `ProjectIdentity.test.ts` never executed — **0 of its 9 specs appear in the log.**
+
+**So the remaining job is one clean `test:ci` run in `wt-trial54`, and nothing else.** Everything
+that used to stand in front of it — the merge, the baseline to compare against, the barrel check
+(`tests/index.ts:27` → `models` → `ProjectIdentity.test`, confirmed present) — is done.
+
+🔴 **F44 — a killed run is shaped like a clean one, and reads as *better*.** The void run ended with
+**no `FAILED:` lines, no `Jasmine:` line, `lerna success exec`, and exit code 0.** Checking the exit
+code says green; counting failures says zero. The only tell is an **absence**. The rule is not "read
+the `Jasmine:` line instead of the exit code" — it is **"a run with no `Jasmine:` line did not
+happen"**, and you have to go looking for the absence on purpose.
+
+⚠️ This session was the **victim** of the `dev:stop` rule, not the offender, and could have done
+nothing to prevent it. A 15-minute `test:ci` on a shared checkout cannot be protected, only detected.
 
 ## §2 — What is available without the editor, ranked
 
-`render:report` drives **its own headless Google Chrome**, and `dev-processes.js:56`'s `DEV_TOOL`
-regex does not match it. It is the one visual instrument that is legal beside a live sibling — which
-answers the question the last prompt left open in its §4.4.
+`render:report` drives **its own headless Chrome** and `dev-processes.js:56`'s `DEV_TOOL` regex does
+not match it. Re-confirmed this session: four scoring runs completed normally beside the sibling's
+live stack. It is the one visual instrument that is legal beside a sibling.
 
-1. **DSG-003's five remaining recipes** ⭐ **now the best available task.** The last prompt gated this
-   on "check whether either script needs a browser this session can legally launch". Answered: it
-   does, and it can. Three of the eight recipes shipped the defect they were teaching against (F23)
-   because they were written from an *unmeasured* DOM. `npm run render:report -- <project-dir>` gives
-   you the measured one, and `score-design.js` now scores the result per criterion.
+1. **DSG-003's five remaining recipes** ⭐ **still the best available task, and still not started.**
+   Three of the eight shipped the defect they were teaching against (F23) because they were written
+   from an *unmeasured* DOM. `score-design.js` now scores eight criteria including a working
+   `one accent`, so the loop is: write, render, score, compare.
 2. **F39 — doctrine `§9` lands nowhere.** 0/6 replays build an empty-state branch and **no replay
-   contains a gate node of any kind**. Either the doctrine never says how, or the vocabulary has no
-   way to express it. Find out which before writing prose — DSG-004 refuted a whole gate premise by
-   checking whether the thing was expressible at all.
-3. **F38 — doctrine `§5` lands for two models of six.** Four replays contain *zero* `Image` nodes.
-4. **F41 — `one accent` counts accents, not restraint.** haiku and sonnet both score `1 accent` in the
-   same hue at 603,740px² and 14,474px². Area share is already in the report (`colors.accents[].area`);
-   the criterion just does not use it.
-5. **F40 — `real-copy` passes 6/6, so it discriminates nothing.** Widen the detector, or prove `§10`
+   contains a gate node of any kind**. Either the doctrine never says how, or the vocabulary cannot
+   express it. Find out which before writing prose — DSG-004 refuted a whole gate premise that way.
+3. **F38 — doctrine `§5` lands for two of six.** Four replays contain zero `Image` nodes.
+4. **F40 — `real-copy` passes 6/6, so it discriminates nothing.** Widen the detector or prove `§10`
    is genuinely absorbed. Do not read the green row as evidence until one run fails it.
 
 ## §3 — What needs Richard, not a session
 
-- **F33** — a copied project directory inherits its parent's id. Deliberately not built: re-minting
-  may be wrong, because "duplicate this project, experiment against the same data" is legitimate.
-  Refuse-and-explain is plausibly correct. Residual hole to state either way: a copy of an *unbound*
-  project, provisioned under a matching backend name, reuses the original's backend.
-- **The §5 migration of the seven stranded projects** stays unexecuted, and both preconditions still
-  stand: a build carrying F30, and one actual jasmine run. `Puppy test` and `test1` both point at
-  8578; `BCN009 QA` (8579) has no claimant.
+- **F33** — a copied project directory inherits its parent's id. Refuse-and-explain is plausibly
+  correct; re-minting may be wrong, because "duplicate this project, same data" is legitimate.
+- **The 25% accent ceiling (new).** F41 now fails an accent that covers more than a quarter of the
+  viewport. **The corpus cannot defend that number** — the only two runs with any accent sit at
+  0.524 and 0.013, so every threshold between ~2% and ~52% splits them identically. `ACCENT_CEILING`
+  in `measurements/score-design.js` is the one line to move.
+- **The §5 migration of the seven stranded projects** stays unexecuted; both preconditions still
+  stand (a build carrying F30, and one actual jasmine run).
 
 ## §4 — Register, settled
 
-Phase-54 numbering: **F1–F29** in the task files, **F30–F34** on the three unmerged branches,
-**F35** = `--border-control` (the collision the last prompt flagged — `DSG-006`'s register keeps F25),
-**F36–F43** in [NOTES-DSG-006.md](NOTES-DSG-006.md).
+**F1–F29** in the task files, **F30–F34** on the unmerged branches, **F35** = `--border-control`,
+**F36–F45** in [NOTES-DSG-006.md](NOTES-DSG-006.md).
 
-Closed this session: F35, F36, F42, F43. Open: **F38, F39, F40, F41**.
-Still open from before: **F2** (needs `test:ci`), F26, F33.
+Closed this session: **F41**. Filed this session: **F44**, **F45**.
+Open: **F38, F39, F40, F44, F45**, and **F2** (still needs that one `test:ci`), F26, F33.
 
-⚠️ **F25 is closed but its two hardest rows were the last to work.** `one accent` and `rhythm` had no
-instrument at all until this session; do not assume a row that prints a number was always measuring
-something.
+## §5 — F41, since it changed a published table
 
-## §5 — The three traps this session paid for
+`one accent` scored a *count*; it now scores **share of the viewport**. `@nodegx/render-measure`
+emits `share` per accent plus `colors.viewportArea` as the denominator, so a stored report can be
+re-scored later. haiku **5/8 → 4/8** on `1 accent, 52.4%`; sonnet unchanged at **7/8** on
+`1 accent, 1.3%`; the four runs with no accent are untouched. The pair it could have separated is the
+pair it separated, and sonnet is left the sole 7/8 — the direction Richard's verdict already pointed.
 
-- 🔴 **`rhythm` nearly shipped as a plausible lie.** The first version measured only inter-band gaps
-  and reported *"1 distinct gap: 0"* for sonnet — a page with obviously good rhythm. Bands in this
-  renderer **abut and carry their spacing as internal padding**, so gaps alone measure nothing. It
-  was wrong in the direction that produces a believable number, which is the direction nobody checks.
-  **A new measurement's first job is to disagree with something you already know.**
-- 🔴 **A gate in `tests/` cannot be proved red beside a sibling.** That is why `catalog:tokens` is a
-  script. DSG-007's `ProjectIdentity.test.ts` is the counter-example, unproven across two sessions
-  now. If you build a check this session, build it where you can run it.
-- ⚠️ **Commit path-limited, always.** A sibling landed `57196555` between this session's two commits
-  and held 18 unrelated files the whole time. `git add -A` would have swept them.
+`design-scores.json` was regenerated against all six replays and is current.
 
-## §6 — Gates run, with numbers
+## §6 — The traps this session paid for
+
+- 🔴 Both `--list` instruments (§0). One kills, one is a no-op. The memory that recommended the
+  killing spelling as "the safe one" has been corrected.
+- 🔴 **A backtick in a comment inside `measureExpression` ends the string.** That block is one
+  template literal; `` `share` `` in a comment surfaced as `SyntaxError: Unexpected identifier` from
+  `new Function` **in the purity test**, hundreds of lines from the cause. Warned at the edit site now.
+- ⚠️ **Commit path-limited, always.** The sibling grew from 18 to 25 files while this session ran.
+
+## §7 — Gates run, with numbers
 
 | Gate | Result |
 |---|---|
-| `typecheck:editor` | exit 0 |
-| `catalog:examples` | 57/57 strict, warnings-as-errors |
-| `catalog:tokens` (new) | 186 references / 63 files / 182 tokens, clean — **and proved red** |
-| `nodegx-render-measure` jest | 5/5, purity holds |
-| `test:ci` | ❌ **not run** — §1 |
+| `test:ci` (`cline-dev`) | ✅ **2632 specs, 6 failures** — the recorded floor, seed 05169 |
+| `test:ci` (`wt-trial54`, merged) | ❌ **VOID** — killed at spec 550/2632, exit 0 and no `Jasmine:` line |
+| `nodegx-render-measure` jest | 5/5, purity holds after the `share` change |
+| `score-design.js` | 4 replay runs + a 6-replay regeneration, all completed beside a live sibling |
 | `test:main` | ❌ not run — a sibling was live, and two concurrent runs invent failures |
