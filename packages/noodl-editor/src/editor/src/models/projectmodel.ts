@@ -119,6 +119,27 @@ export class ProjectModel extends Model {
     }
   }
 
+  /**
+   * DSG-007/F30 — the project's durable identity, and the ownership key a
+   * backend is bound to.
+   *
+   * ⚠️ This field existed and was **written to by nobody who could persist it**.
+   * `LocalProjectsModel._addProject` minted one (`project.id = guid()`) for a new
+   * project, the constructor did not read it back off the file, and `toJSON()`
+   * did not emit it — so it lived in memory for one session and was **deleted
+   * from disk by the first save**, which also made
+   * `ProjectExporter.buildProjectV2File`'s `if (project.id !== undefined)` dead
+   * code on every v2 write.
+   *
+   * The consequence was not cosmetic. `BackendServices/provisionBackend.ts`
+   * reads `project.id` as the ownership half of `findReusableBackend`, so after
+   * any reload a project could not prove it owned anything: it got a *second*
+   * backend, stamped `projectIds: []`, reusable by nobody, forever. Four such
+   * directories accumulated on one machine before anyone noticed.
+   *
+   * Set at creation and read from the file. Nothing mutates it afterwards, which
+   * is why it needs no entry in {@link projectSaveTriggers}.
+   */
   public id?: string;
   public name?: string;
   public version?: string;
@@ -146,6 +167,12 @@ export class ProjectModel extends Model {
     this.variants = [];
     this.settings = {};
     if (args) {
+      // DSG-007/F30. Read, never minted: a project that arrives without an id
+      // must stay without one here. Generating one on load would write a fresh
+      // identity into every legacy project the editor opens, and two copies of
+      // the same project would then diverge silently — the opposite of what an
+      // ownership key is for. Minting stays where it already is, at creation.
+      this.id = args.id;
       this.name = args.name;
       // A project.json with no `settings` block must still leave this an object —
       // four read sites index it directly and the panel crashes on undefined (POL-001).
@@ -1384,6 +1411,11 @@ export class ProjectModel extends Model {
   toJSON() {
     const json = {
       name: this.name,
+      // DSG-007/F30. `undefined` here serialises to an absent key rather than a
+      // null, so a project with no identity still round-trips to a byte-identical
+      // file — which is what keeps this from rewriting every legacy project the
+      // moment it is opened.
+      id: this.id,
       components: [],
       settings: this.settings,
       rootNodeId: this.rootNode ? this.rootNode.id : undefined,
@@ -1469,9 +1501,13 @@ let savePending = false;
  *
  * Adding those two names to the denylist would have fixed the symptom and kept
  * the design. So the list is inverted: an event has to be *named here* to reach
- * disk, and the membership rule is `ProjectModel.toJSON()` — `name`,
+ * disk, and the membership rule is `ProjectModel.toJSON()` — `name`, `id`,
  * `components[]`, `settings`, `rootNodeId`, `runtimeVersion`, `lesson`,
  * `metadata`, `variants[]`. Anything a save would not write is not here.
+ *
+ * `id` (DSG-007/F30) needs no entry either, for the opposite reason to
+ * `metadata`'s: it is set once at project creation and never mutated, so no
+ * event can change it and no event should arm a save for it.
  *
  * `metadata` needs no entry: `setMetaData` calls `scheduleProjectSave()` itself,
  * which is what covers app config, styles and style tokens.

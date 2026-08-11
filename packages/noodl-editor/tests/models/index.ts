@@ -17,3 +17,4 @@ export * from './code-history.test';
 export * from './BackendSecurity.test';
 export * from './BackendSelection.test';
 export * from './ProjectSettings.test';
+export * from './ProjectIdentity.test';
