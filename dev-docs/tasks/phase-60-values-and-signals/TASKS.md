@@ -1,9 +1,11 @@
 # Phase 60 — the tasks (SIG: values flow, signals fire)
 
 **Created:** 2026-08-09, out of [README.md](README.md) and a new user’s feedback.
-**Next session:** [NEXT-SESSION-PROMPT.md](NEXT-SESSION-PROMPT.md) — SIG-003, and the six defects the last one found.
-**3 of 7 closed 2026-08-11** — SIG-001, 002 and 004, built together because they share one popup, one
-`if (d)` guard and one vocabulary (`portCopy.ts`). Remaining: **003, 005, 006, 007**.
+**4 of 7 closed 2026-08-11.** SIG-001, 002 and 004 went together because they share one popup, one
+`if (d)` guard and one vocabulary (`portCopy.ts`); **SIG-003 closed later the same day**, all three
+sections, with §2's vocabulary answered by Richard before the first rename.
+**Remaining: 005, 006, 007** — the whole of "what a wire *looks* like". The first half of the phase,
+"what a wire *means*", is done.
 
 ⚠️ **Driving found six defects that no gate could express**, four of them in the first build of
 SIG-001 and two in the specs themselves — including the spec's own worked copy being the one sentence
@@ -29,7 +31,7 @@ show the direction is drawn only while the wire is still being dragged.
 |---|---|---|---|
 | SIG-001 ⭐ | [SIG-001-THE-REFUSED-PORT-SAYS-WHY.md](SIG-001-THE-REFUSED-PORT-SAYS-WHY.md) | **the flagship** — stop deleting the explanation; show the refused port, greyed, with the reason, and offer the wire they meant | ✅ **closed 08-11** |
 | SIG-002 | [SIG-002-THE-VALUE-IS-ALREADY-LIVE.md](SIG-002-THE-VALUE-IS-ALREADY-LIVE.md) | the other edge of the sword — "where is the Set?" answered where it is asked | ✅ **closed 08-11** |
-| SIG-003 ⭐ | [SIG-003-GROUPS-THAT-MEAN-SOMETHING.md](SIG-003-GROUPS-THAT-MEAN-SOMETHING.md) | **the second flagship** — one heading vocabulary, ordered by use; the ungrouped-port audit | 📋 open |
+| SIG-003 ⭐ | [SIG-003-GROUPS-THAT-MEAN-SOMETHING.md](SIG-003-GROUPS-THAT-MEAN-SOMETHING.md) | **the second flagship** — one heading vocabulary, ordered by use; the ungrouped-port audit | ✅ **closed 08-11** |
 | SIG-004 | [SIG-004-EVERY-SIGNAL-SAYS-WHAT-IT-DOES.md](SIG-004-EVERY-SIGNAL-SAYS-WHAT-IT-DOES.md) | one sentence at the render seam, true of every signal port in the library | ✅ **closed 08-11** |
 | SIG-005 | [SIG-005-THE-SIGNAL-TRAVELS.md](SIG-005-THE-SIGNAL-TRAVELS.md) | the travelling pulse — **already built and on by default**; find out why nobody sees it | 📋 open |
 | SIG-006 | [SIG-006-WHICH-WAY-DOES-THIS-WIRE-GO.md](SIG-006-WHICH-WAY-DOES-THIS-WIRE-GO.md) | endpoint glyphs you can tell apart, and a hover that runs the length of a long wire | 📋 open |
@@ -83,6 +85,25 @@ Repeated from [README.md](README.md) because they are the ones that will be forg
 - ⚠️ **`portIcons.ts` is dead on disk** — a whole glyph table nothing imports. Use it or delete it; do
   not start a third vocabulary beside it. *(Still true after 001/002/004: they added no glyphs, and
   the only icons they render are core-ui `Lightning` and `Caret*`.)*
+
+## What SIG-003 settled, and what it left
+
+- ✅ **The vocabulary is normative and written down**, in
+  [`dev-docs/reference/PORT-GROUP-VOCABULARY.md`](../../reference/PORT-GROUP-VOCABULARY.md). `Values`
+  (a thing that is) / `Actions` (a signal input you cause) / `Events` (a signal output that happened)
+  are **kind** headings and are gated pure. Everything else is a **subject** heading and may hold
+  mixed kinds on purpose. Retired: `Value`, `Signals`, `Changed Events`.
+- ✅ **`npm run catalog:groups:check`** is the gate, in the `node-catalog` CI job. 167 ungrouped static
+  ports → 0; 3,056 connectable ports swept live in the running editor, 0 ungrouped.
+- 🔴 **The gate's first version was a check that could never go red** — it read `groupPriority` off the
+  catalog, which carries `connectionPanel` on none of its 175 entries. It now reads source, and it was
+  verified by *injecting* one violation of each class rather than by reading its own green line.
+  **Anything SIG-005/006/007 adds as a gate should be proved red the same way.**
+- 📋 **`Other` is now empty in practice but is still rendered as a heading** if a third-party or
+  project-local node ships an ungrouped port — the CI gate covers this repo's library, not a user's.
+  Worth a thought if a later task revisits the popup chrome.
+- 📋 **`portIcons.ts` is still dead on disk.** SIG-003 added no glyphs; the standing constraint stands
+  for 005/006.
 
 ## What 001/002/004 left for the rest of the phase
 

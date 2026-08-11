@@ -1,6 +1,21 @@
 # SIG-003 — Groups that mean something
 
-**Status:** 📋 open · **Track SIG** · ⭐ **flagship**
+**Status:** ✅ **closed 2026-08-11** · **Track SIG** · ⭐ **flagship**
+
+**§2 answered by Richard on 2026-08-11: the teaching end, `Values` / `Actions` / `Events`.** §1, §2
+and §3 all shipped in `2f513016`. The normative write-up is
+[`dev-docs/reference/PORT-GROUP-VOCABULARY.md`](../../reference/PORT-GROUP-VOCABULARY.md); the gate is
+`npm run catalog:groups:check`, wired into the `node-catalog` CI job.
+
+| Measure | Before | After |
+|---|---:|---:|
+| Static ports with no `group` | **167** (58 node types) | **0** |
+| Ports in a kind heading that is not their kind | **35** | **0** |
+| Ports in a retired group (`Value`, `Signals`, `Changed Events`) | **63** | **0** |
+| `groupPriority` entries naming a retired group | **4** (found by grep; the first gate could not see them) | **0** |
+| Connectable *dynamic* ports with no group | **2 seams** | **0** |
+
+⚠️ **One acceptance criterion was not implemented, deliberately — see Register row 2.**
 
 > *"On the text node the 'Text' output isn't under 'Values' but 'Other', and the Changed signal is
 > under Other rather than Signals."*
@@ -135,22 +150,34 @@ the end of this task, §1 was not finished** — that is the measurement, not a 
 
 ## Acceptance
 
-- [ ] No port in the library ships without a `group`. Enforced by a gate that fails, not by a sweep —
-      and the gate is run against a **committed** tree.
-- [ ] On a String variable, `Value`, `Set`, `Value` (out) and `Changed` all appear under real headings,
-      and `Other` is empty. This node is the acceptance case because it is the reported one.
-- [ ] No node files a signal port and a value port under the same heading. Checked across the library,
-      not on a sample.
-- [ ] `Value`/`Values` and `Change`/`Changed Events` no longer both exist. Census re-run and diffed
-      against the table above.
-- [ ] Every `group` string used anywhere appears in the default priority list or sorts by the defined
-      rule — no group's position is incidental.
-- [ ] ⚠️ Dynamic ports checked at their own seams, with the node types named in the register. A static
-      grep is not evidence for these.
-- [ ] Richard has answered §2 before any rename lands.
+- [x] No port in the library ships without a `group`. Enforced by a gate that fails, not by a sweep —
+      and the gate is run against a **committed** tree. `npm run catalog:groups:check`, in the
+      `node-catalog` CI job after `catalog:check`. **Verified by injection, not by reading a green
+      line:** one violation of each class was introduced and the gate returned exit 1 each time.
+- [x] On a String variable, `Value`, `Set`, `Value` (out) and `Changed` all appear under real headings,
+      and `Other` is empty. Inputs read **Values · Actions · Advanced · Run On Value Change**; outputs
+      read **Values · Events**. Driven in the running editor, not only computed.
+- [ ] ⚠️ **Not implemented, and the criterion is wrong as written** — "no node files a signal port and
+      a value port under the same heading". See Register row 2. The narrower rule that *is* enforced:
+      the three **kind** headings must be pure; **subject** headings need not be.
+- [x] `Value`/`Values` and `Change`/`Changed Events` no longer both exist. `Value` → `Values` (37
+      ports), `Changed Events` → `Events` (5). ⚠️ `Change` is kept — see Register row 3.
+- [x] Every `group` string used anywhere appears in the default priority list or sorts by the defined
+      rule — no group's position is incidental. `orderGroups`, 3 tiers, 12 specs.
+- [x] ⚠️ Dynamic ports checked at their own seams, with the node types named in the register. Two
+      connectable seams were ungrouped: **Event Receiver** and **Page Stack**. See Register row 6.
+- [x] Richard has answered §2 before any rename lands. Answered 2026-08-11, before the first rename.
 
 ## Register
 
 | # | Finding | State |
 |---|---|---|
-| | | |
+| 1 | 🔴 **The gate's fourth rule was a check that could never go red.** It read `node.connectionPanel.groupPriority` off the generated catalog — and the catalog carries `connectionPanel` on **none of its 175 node entries**. It printed a confident `✓ 0` while four cloud nodes (`hmac`, `secret`, `jwtsign`, `jwtverify`) really did still list the retired `'Value'` after their ports had been renamed to `'Values'` — the exact silent-demotion defect recorded at `text-input.ts:45`. Found only because the same question was also asked with `grep`. The rule now reads **source**. **A green line from a gate is worth nothing until you have seen that gate go red.** | ✅ fixed, verified by injection |
+| 2 | 🔴 **An acceptance criterion, applied literally, would have made the library worse.** "No node files a signal port and a value port under the same heading" reads as obviously right and is wrong for **subject** headings. `Drag`'s `Snap To Position X` is `Do` + `Duration` + `Value`: a task and its parameters. `Group`'s `Scroll To Element` and `Scroll To Index` are the same shape. Splitting the trigger from its parameters by kind puts three ports an author always uses together under two headings. 77 node/group pairs mix kinds and **most of them are correct**. Implemented as: kind headings (`Values`/`Actions`/`Events`) are pure and gated; subject headings are not policed. | ✅ narrowed, written up as normative |
+| 3 | ⚠️ **The task's own census was wrong about `Change`.** §2 pairs "`Change` (6) beside `Changed Events` (5)" as an outright duplicate to merge. Read port by port they are not one idea: every port under `Changed Events` is a **signal output**; every port under `Change` — on Array Changed and Object Changed — is a **value** describing what changed (`index`, `item`, `key`, `previousValue`). `Changed Events` is a fifth name for `Events` and is retired; `Change` is a subject heading and is kept. Merging it into `Values` would have collapsed "what the array is" into "what changed about it" on the two nodes whose entire job is that difference. | ✅ census corrected |
+| 4 | 🔴 **Someone had already tried this fix, and it did nothing.** `logic-builder.ts` carried `group: '', // Empty group to avoid "Other" label` on two ports. `ConnectionBar` reads `p.group ? p.group : 'Other'` — the empty string is falsy, so both ports landed under `Other` exactly as if the line were absent. It was also a **duplicate object key**, silently overriding the declaration above it. The comment named the right defect and the code was inert against it. | ✅ fixed |
+| 5 | ⚠️ **`error` was the same port under two headings on 74 nodes.** A value output named "Error" sat under `Events` on 33 nodes and under an existing `Error` group on 41. The library had already answered its own question, by a majority, and nobody had noticed. Moved to `Error`, which resolved 33 of the 35 kind-heading violations without touching the Failure Contract's `failure`/`error` pairing. | ✅ fixed |
+| 6 | ⚠️ **Two dynamic seams were connectable and ungrouped, and a static read saw neither.** `isPortConnectable` only refuses `allowEditOnly` **object** types, so a dynamic port declared `type: 'string'` or `type: 'component'` reaches the popup like any other. **Event Receiver** publishes one `*` output per payload key — the ports an author came for — with no group; **Page Stack** publishes `pageComp-*` / `pagePath-*` per page. Both were in `Other` on every project that used them. The `intype-*`/`outtype-*` ports on the script hosts *are* `allowEditOnly` and are exempt. Also found: **Logic Builder** filed a block program's signal inputs *and* its signal outputs under one `Signals` heading. | ✅ fixed, seams listed in the gate |
+| 7 | ⚠️ **60% of the 167 came from ten port names.** `this` (27), `childIndex` (27), `childrenCount` (12), `blockTouch`/`clickBubbling` (6 each) and the Variable four. Three edits in `react-component-node.ts` cleared 44 of them. The audit looked like 58 node files and was really about six. **Measure the concentration before estimating an audit.** | 📋 recorded |
+| 8 | ⚠️ **A quarter of the ungrouped ports were on deprecated nodes** (44 of 167, 14 node types) — `Button`, `Text Input`, `Label`, `Options` and friends, whose live replacements are `net.noodl.controls.*`. Fixed anyway: they still render in existing projects, and a gate that exempts them is a gate that decays. But the *live* number was 123, not 167, and the two are worth reporting separately. | ✅ fixed |
+| 9 | ⚠️ **The dependency SIG-002 warned about did not fire.** `TIMING_INTENT_ANSWER` in `portCopy.ts` names **Variable**'s `Set` port and the **Run On Value Change** group. `Set` is a `displayName` (unchanged by a `group` edit) and `Run On Value Change` is a subject heading (not retired), so no copy changed. Recorded because the warning was correct to make — it just landed on the two names this rename happened not to touch. | 📋 recorded |

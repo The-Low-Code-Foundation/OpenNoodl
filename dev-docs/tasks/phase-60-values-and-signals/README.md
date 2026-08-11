@@ -1,7 +1,12 @@
 # Phase 60 — Values flow, signals fire (Track SIG)
 
 **Created:** 2026-08-09
-**Status:** 📋 specced, not started. Tasks are **[TASKS.md](TASKS.md)** (SIG-001…007).
+**Status:** 🔨 **4 of 7 closed 2026-08-11** — SIG-001, 002, 003, 004. That is the whole of *what a
+wire means*; **005, 006 and 007 (what a wire looks like) remain.** Tasks are **[TASKS.md](TASKS.md)**.
+
+⚠️ **Two normative documents came out of this phase and are the place to start, not this file:**
+[`PORT-GROUP-VOCABULARY.md`](../../reference/PORT-GROUP-VOCABULARY.md) (SIG-003 — headings, ordering,
+the gate) and `portCopy.ts` (SIG-001/002/004 — every sentence the connection popup says).
 **Origin:** Richard, 2026-08-09, watching a new user's feedback — and recognising his own first week
 in Noodl:
 
@@ -32,7 +37,7 @@ anything renders.
 |---|---|---|
 | "I tried to wire a value into a signal and nothing happened" | The popup **computes the exact refusal sentence** — *"Type mismatch, a source port of type **string** cannot be connected to a target port with type **signal**"* — writes it to `p.message`, then drops the port from the list one loop later | [`ConnectionBar.tsx:139-170`](../../../packages/noodl-editor/src/editor/src/views/ConnectionPopup/components/ConnectionBar.tsx#L139-L170) |
 | "…so I couldn't tell if I was wrong or the editor was broken" | `PortItem` **renders `port.message` as a tooltip**, and the row has a full `disabled` visual state | [`PortItem.tsx:29-39`](../../../packages/noodl-editor/src/editor/src/views/ConnectionPopup/components/PortItem.tsx#L29-L39), [`:76`](../../../packages/noodl-editor/src/editor/src/views/ConnectionPopup/components/PortItem.tsx#L76), [`ConnectionPopup.module.scss:101-107`](../../../packages/noodl-editor/src/editor/src/views/ConnectionPopup/ConnectionPopup.module.scss#L101) |
-| "the Text output is under Other, not Values" | An ungrouped port falls to `Other` — and on **every Variable node** `Value`, `Set`, `Value` (out) and `Changed` all declare no group at all | [`ConnectionBar.tsx:176`](../../../packages/noodl-editor/src/editor/src/views/ConnectionPopup/components/ConnectionBar.tsx#L176), [`variablebase.ts:130-219`](../../../packages/noodl-runtime/src/nodes/std-library/variables/variablebase.ts#L130-L219) |
+| "the Text output is under Other, not Values" ✅ **fixed, SIG-003** | An ungrouped port falls to `Other` — and on **every Variable node** `Value`, `Set`, `Value` (out) and `Changed` all declare no group at all. 167 ports across 58 node types; now 0, gated | [`ConnectionBar.tsx:176`](../../../packages/noodl-editor/src/editor/src/views/ConnectionPopup/components/ConnectionBar.tsx#L176), [`variablebase.ts:130-219`](../../../packages/noodl-runtime/src/nodes/std-library/variables/variablebase.ts#L130-L219) |
 | "the connector ends are small and hard to tell apart" | On the **wire**, both ends are the *same* 3px circle. There is no arrowhead anywhere on a finished connection | [`NodeGraphEditorConnection.ts:636-645`](../../../packages/noodl-editor/src/editor/src/views/nodegrapheditor/NodeGraphEditorConnection.ts#L636-L645) |
 | "a pulse that travels down the wire would teach this" | **It is built.** A travelling dash with an animated `lineDashOffset`, enabled by default, driven by the running viewer | [`NodeGraphEditorConnection.ts:647-656`](../../../packages/noodl-editor/src/editor/src/views/nodegrapheditor/NodeGraphEditorConnection.ts#L647-L656), [`debuginspector.js:18`](../../../packages/noodl-editor/src/editor/src/utils/debuginspector.js#L18) |
 

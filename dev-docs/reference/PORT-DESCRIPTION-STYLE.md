@@ -3,7 +3,13 @@
 **Status:** normative for the node library. Written for NDA-005 (Track O, phase 30), beside
 [`REACTIVITY-CONTRACT.md`](./REACTIVITY-CONTRACT.md), [`EMPTY-VALUE-CONTRACT.md`](./EMPTY-VALUE-CONTRACT.md),
 [`FAILURE-CONTRACT.md`](./FAILURE-CONTRACT.md), [`PORT-TYPE-CONTRACT.md`](./PORT-TYPE-CONTRACT.md),
-[`BINDING-CONTRACT.md`](./BINDING-CONTRACT.md) and [`ICON-SOURCE-MODEL.md`](./ICON-SOURCE-MODEL.md).
+[`BINDING-CONTRACT.md`](./BINDING-CONTRACT.md), [`PORT-GROUP-VOCABULARY.md`](./PORT-GROUP-VOCABULARY.md)
+and [`ICON-SOURCE-MODEL.md`](./ICON-SOURCE-MODEL.md).
+
+⚠️ **This file governs the sentence on a port. [`PORT-GROUP-VOCABULARY.md`](./PORT-GROUP-VOCABULARY.md)
+governs the heading above it**, and is where the rule that every port must declare a `group` lives.
+The two are independent: a heading says what *sort* of thing a port is, a description says what that
+particular port does.
 
 ## The field, and why it is not `tooltip`
 
