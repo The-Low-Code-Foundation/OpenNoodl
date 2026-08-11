@@ -9,6 +9,7 @@
 
 export * from './types';
 export * from './graph';
+export * from './authoredNotes';
 export * from './assemble';
 export * from './render';
 export * from './prompts';

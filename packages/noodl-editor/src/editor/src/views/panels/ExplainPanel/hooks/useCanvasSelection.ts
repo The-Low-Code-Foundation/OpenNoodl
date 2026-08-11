@@ -28,6 +28,13 @@ import { EXPLAIN_TARGET_CHANGED, rememberedTarget } from '../explainTarget';
 export interface CanvasSelection {
   /** Full name of the active component, or null when no component is open. */
   componentName: string | null;
+  /**
+   * LEG-006 — the active component's own sentence, when it has one. The panel
+   * already scopes to a component and offers "Explain this component"; it had
+   * the target and lacked the sentence, which is the cheapest place in the
+   * editor to read one.
+   */
+  componentDescription: string | null;
   selectedNodeIds: string[];
   /** True when the ids came from the remembered target rather than a live read. */
   isRemembered: boolean;
@@ -36,17 +43,29 @@ export interface CanvasSelection {
 function readSelection(): CanvasSelection {
   const nodeGraph = NodeGraphContextTmp.nodeGraph;
   const component = nodeGraph?.activeComponent;
-  if (!component) return { componentName: null, selectedNodeIds: [], isRemembered: false };
+  if (!component) {
+    return { componentName: null, componentDescription: null, selectedNodeIds: [], isRemembered: false };
+  }
+
+  const description = typeof component.description === 'string' && component.description.trim().length > 0
+    ? component.description.trim()
+    : null;
 
   // A view node's `id` is copied from its model's, so this is the graph id.
   const live = (nodeGraph?.getSelectedNodes?.() ?? []).map((node) => node?.id).filter(Boolean);
   if (live.length) {
-    return { componentName: component.fullName, selectedNodeIds: live, isRemembered: false };
+    return {
+      componentName: component.fullName,
+      componentDescription: description,
+      selectedNodeIds: live,
+      isRemembered: false
+    };
   }
 
   const target = rememberedTarget();
   return {
     componentName: component.fullName,
+    componentDescription: description,
     selectedNodeIds: target ? target.nodeIds : [],
     isRemembered: Boolean(target)
   };
@@ -55,6 +74,7 @@ function readSelection(): CanvasSelection {
 function isSameSelection(a: CanvasSelection, b: CanvasSelection): boolean {
   return (
     a.componentName === b.componentName &&
+    a.componentDescription === b.componentDescription &&
     a.isRemembered === b.isRemembered &&
     a.selectedNodeIds.length === b.selectedNodeIds.length &&
     a.selectedNodeIds.every((id, index) => id === b.selectedNodeIds[index])

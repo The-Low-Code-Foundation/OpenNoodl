@@ -50,6 +50,17 @@ export interface PickerItem {
   tint: PickerTint;
   /** Secondary line on the card, when the match itself doesn't explain the row. */
   meta: string;
+  /**
+   * LEG-006 — the component's own sentence, for the project components that
+   * have one. Core node types carry `docs`/`shortDocs` and never set this, so
+   * it is present only on a project component whose `component.json` has a
+   * `description`.
+   *
+   * It is the reason the field exists: a picker row that says
+   * `/Pages/Checkout` and nothing else cannot be told apart from
+   * `/Pages/CheckoutV2` without opening both.
+   */
+  description?: string;
   /** Why this matched, when it wasn't the name. */
   reason: MatchReason | null;
   /** Lower sorts first. `-1` means "no query". */
@@ -221,16 +232,39 @@ export function flattenIndex(index: INodeIndex): FlatNode[] {
   return [...flatten(index?.coreNodes || [], 'core'), ...flatten(index?.customNodes || [], 'custom')];
 }
 
+/**
+ * LEG-006 — a project component's own sentence, when it has one.
+ *
+ * Project component rows are `ComponentModel`s cast through the index
+ * (`createnodeindex.ts` pushes `NodeLibrary.getComponents()` straight into
+ * "Project components"), so this reads the model field rather than anything on
+ * `INodeType`, which has no such key.
+ */
+function componentDescription(type: INodeType): string | undefined {
+  const value = (type as unknown as { description?: unknown }).description;
+  if (typeof value !== 'string') return undefined;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
+}
+
 function toItem(node: FlatNode, match: Match | null, isSearching: boolean): PickerItem {
   const label = getItemLabel(node.type);
   const reason = match?.reason ?? null;
+  const description = componentDescription(node.type);
 
   // In browse the group heading is the sub-category, so the card's second line
   // carries the category. While searching the heading is the category, so the
   // card carries the sub-category — unless the match itself needs explaining,
   // which always wins.
+  //
+  // LEG-006 — a component's own description outranks both, because for a
+  // project component the category line reads "Project components", which the
+  // group heading already said. The match reason still wins: "why is this row
+  // here" is a question the description does not answer.
   const meta = reason
     ? `${reason.kind} · ${reason.text}`
+    : description
+    ? description
     : isSearching
     ? node.subCategoryName || node.categoryName
     : node.categoryName;
@@ -245,6 +279,7 @@ function toItem(node: FlatNode, match: Match | null, isSearching: boolean): Pick
     subCategoryName: node.subCategoryName,
     tint: tintFor(node.type.color, node.categoryType),
     meta,
+    ...(description ? { description } : {}),
     reason,
     rank: match?.rank ?? -1,
     highlight: match?.highlight ?? null,

@@ -212,3 +212,121 @@ describe('NodePicker buildResults — search (UIX-013)', () => {
     expect(build('text').items.some((item) => item.kind === 'action')).toBe(false);
   });
 });
+
+/**
+ * LEG-006 — the picker row carries the component's own sentence.
+ *
+ * The acceptance is "a human can tell two similarly-named components apart from
+ * the list without opening either", so the fixture is two components whose
+ * labels differ by one character. Everything else about the row is identical;
+ * the description is the only thing that can separate them.
+ *
+ * Project component rows are `ComponentModel`s pushed straight into the index
+ * by `createnodeindex.ts`, so `description` on the fixture node is the field
+ * `ComponentModel` now holds (LEG-006 added it, and the `ProjectImporter` half
+ * is what puts a value in it).
+ */
+const DESCRIBED_INDEX = {
+  coreNodes: [
+    {
+      name: 'UI Elements',
+      description: '',
+      type: 'visual',
+      subCategories: [{ name: 'Basic Elements', items: [node('Group')] }],
+      items: []
+    }
+  ],
+  customNodes: [
+    {
+      name: 'Project components',
+      description: '',
+      type: 'none',
+      subCategories: [
+        {
+          name: '',
+          items: [
+            node('/Pages/Checkout', {
+              displayName: 'Checkout',
+              description: 'The live one-page checkout: address, card and the confirm button.'
+            }),
+            node('/Pages/Checkout2', {
+              displayName: 'Checkout2',
+              description: 'The abandoned two-step checkout kept for the A/B test. Do not link to it.'
+            }),
+            node('/Components/Undescribed', { displayName: 'Undescribed' })
+          ]
+        }
+      ]
+    }
+  ]
+} as TSFixme;
+
+function buildDescribed(query: string) {
+  return buildResults({ index: DESCRIBED_INDEX, query, activeCategory: null });
+}
+
+describe('NodePicker buildResults — component descriptions (LEG-006)', () => {
+  it('carries the description onto the item', () => {
+    const item = buildDescribed('').items.find((i) => i.name === '/Pages/Checkout');
+
+    expect(item).toBeTruthy();
+    expect(item.description).toBe('The live one-page checkout: address, card and the confirm button.');
+  });
+
+  it('shows it on the card instead of the redundant category line', () => {
+    // In browse the second line is normally the category, which for every one
+    // of these rows reads "Project components" — the group heading, repeated.
+    const item = buildDescribed('').items.find((i) => i.name === '/Pages/Checkout');
+
+    expect(item.meta).toBe('The live one-page checkout: address, card and the confirm button.');
+  });
+
+  it('separates two components whose names differ by one character', () => {
+    const items = buildDescribed('checkout').items;
+    const first = items.find((i) => i.name === '/Pages/Checkout');
+    const second = items.find((i) => i.name === '/Pages/Checkout2');
+
+    expect(first).toBeTruthy();
+    expect(second).toBeTruthy();
+    expect(first.meta).not.toBe(second.meta);
+    expect(second.meta).toContain('abandoned');
+  });
+
+  it('leaves a component without one exactly as it was', () => {
+    const item = buildDescribed('').items.find((i) => i.name === '/Components/Undescribed');
+
+    expect(item.description).toBeUndefined();
+    expect(item.meta).toBe('Project components');
+  });
+
+  it('does not put a description where a core node has none', () => {
+    const item = buildDescribed('').items.find((i) => i.name === 'Group');
+
+    expect(item.description).toBeUndefined();
+    expect(item.meta).toBe('UI Elements');
+  });
+
+  it('still explains a non-name match — the reason outranks the description', () => {
+    // A row that appeared because of a search tag must still say so, or the
+    // description turns "why is this here?" back into a mystery (UIX-013).
+    const tagged = {
+      coreNodes: [
+        {
+          name: 'Logic & Utilities',
+          description: '',
+          type: 'logic',
+          subCategories: [
+            { name: 'Strings', items: [node('String Format', { searchTags: ['template'] })] }
+          ],
+          items: []
+        }
+      ],
+      customNodes: []
+    } as TSFixme;
+
+    const results = buildResults({ index: tagged, query: 'template', activeCategory: null });
+    const item = results.items.find((i) => i.name === 'String Format');
+
+    expect(item.meta).toBe('tag · template');
+  });
+});

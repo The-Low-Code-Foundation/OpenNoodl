@@ -19,6 +19,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { AiClient } from '@noodl-models/AiAssistant/client';
 import { ExplainContextError } from '@noodl-models/AiAssistant/explain/assemble';
+import { collectAuthoredNotes, type AuthoredNotesResult } from '@noodl-models/AiAssistant/explain/authoredNotes';
 import { ExplainSession, type ExplainSessionState } from '@noodl-models/AiAssistant/explain/ExplainSession';
 import { fromComponentModel } from '@noodl-models/AiAssistant/explain/graph';
 import type { ExplainDetail } from '@noodl-models/AiAssistant/explain/prompts';
@@ -39,6 +40,7 @@ import { Text, TextType } from '@noodl-core-ui/components/typography/Text';
 
 import { useIsActivePanel } from '../useIsActivePanel';
 
+import { AuthoredNotes } from './components/AuthoredNotes';
 import { ExplanationView } from './components/ExplanationView';
 import { clearCitedHighlight } from './canvasLink';
 import { useCanvasSelection } from './hooks/useCanvasSelection';
@@ -149,6 +151,39 @@ export function ExplainPanel() {
 
   const componentName = state?.context.component.name ?? selection.componentName;
 
+  /**
+   * LEG-003 §2 — the author's own text, read straight from the project.
+   *
+   * Two sources, one collector. Once a session exists the assembled context is
+   * the truth (it knows catalog display names and which nodes the answer is
+   * actually about); before one does, the live component is read directly, so a
+   * comment reaches the reader without a provider, a token or a click. The memo
+   * keys on `state.context` rather than `state` because the context object is
+   * stable for the life of a session while `state` changes on every streamed
+   * delta.
+   */
+  const authored = useMemo<AuthoredNotesResult>(() => {
+    const context = state?.context;
+    if (context) {
+      return collectAuthoredNotes({
+        scope: context.scope,
+        component: { name: context.component.name, description: context.component.description },
+        selectedIds: context.selectedIds,
+        nodes: context.nodes
+      });
+    }
+
+    const component = NodeGraphContextTmp.nodeGraph?.activeComponent;
+    if (!component) return { notes: [], omitted: 0 };
+    const graph = fromComponentModel(component);
+    return collectAuthoredNotes({
+      scope,
+      component: { name: graph.name, description: graph.description },
+      selectedIds: selection.selectedNodeIds,
+      nodes: graph.nodes
+    });
+  }, [state?.context, scope, selection.selectedNodeIds, selection.componentName]);
+
   return (
     <BasePanel title="Explain" isFill>
       <ExperimentalFlag />
@@ -181,6 +216,14 @@ export function ExplainPanel() {
             <Text textType={TextType.Secondary}>Open a component to explain it.</Text>
           )}
 
+          {/* LEG-006 — the component's authored sentence, before the model is
+              asked for one. It is the answer to "what is this for" that costs
+              nothing and is already written; a panel that asks an LLM while
+              ignoring the sentence on the component would be absurd. */}
+          {selection.componentDescription && (
+            <Text textType={TextType.Shy}>{selection.componentDescription}</Text>
+          )}
+
           <Select
             options={DETAIL_OPTIONS}
             value={detail}
@@ -209,6 +252,14 @@ export function ExplainPanel() {
 
       <ScrollArea>
         <Box hasXSpacing hasYSpacing UNSAFE_style={{ width: '100%' }}>
+          {/* Above the answer, and above the empty state: the author wrote this,
+              and it is worth reading whether or not anyone asks a model. */}
+          <AuthoredNotes
+            notes={authored.notes}
+            omitted={authored.omitted}
+            componentName={componentName ?? ''}
+          />
+
           {error && (
             <HStack UNSAFE_style={{ alignItems: 'flex-start', gap: 6 }}>
               <Icon icon={IconName.WarningCircleFilled} variant={FeedbackType.Danger} size={IconSize.Small} />

@@ -60,6 +60,13 @@ export interface GraphConnection {
 export interface GraphComponent {
   /** Component identifier, e.g. "/#Home" or "/Pages/About". */
   name: string;
+  /**
+   * The author's own sentence about what this component is for (LEG-003 §2).
+   *
+   * Authored through the vocabulary's `description` field and the MCP plan
+   * tools; carried here verbatim, never generated and never rewritten.
+   */
+  description?: string;
   nodes: GraphNode[];
   connections: GraphConnection[];
 }
@@ -137,6 +144,8 @@ export interface ContextConnection extends GraphConnection {
 /** A component-shape overview, included for the component scope. */
 export interface ContextComponentShape {
   name: string;
+  /** The component's authored description, verbatim. See {@link GraphComponent.description}. */
+  description?: string;
   nodeCount: number;
   connectionCount: number;
   /** The component's own input/output ports, as its parents see them. */

@@ -2,6 +2,9 @@
   "name": "@noodl/git",
   "version": "2.7.0",
   "main": "src/index.ts",
+  "scripts": {
+    "test": "jest"
+  },
   "description": "",
   "author": "Noodl <info@noodl.net>",
   "homepage": "https://noodl.net",

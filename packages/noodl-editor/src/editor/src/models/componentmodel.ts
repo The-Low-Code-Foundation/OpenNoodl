@@ -13,6 +13,17 @@ import { ProjectModel } from './projectmodel';
 export type ComponentModelArgs = {
   name: string;
   id: string;
+  /**
+   * LEG-006 — one or two sentences saying what this component is and does.
+   * Authored by an agent (`create_component`, the plan tools) or by hand in
+   * `component.json`; the sentence the picker shows and the one an agent reads
+   * before deciding whether to instantiate this instead of rebuilding it.
+   */
+  description?: string;
+  /** LEG-006 — ISO timestamp, stamped once by whoever created the component. */
+  created?: string;
+  /** LEG-006 — who last wrote it, e.g. "noodl-mcp". */
+  modifiedBy?: string;
   metadata?: Record<string, any>;
   graph?: NodeGraphModel;
 };
@@ -21,6 +32,10 @@ export class ComponentModel extends Model {
   name: string;
   id: string;
   graph: NodeGraphModel;
+  /** @see ComponentModelArgs.description */
+  description?: string;
+  created?: string;
+  modifiedBy?: string;
   metadata: ComponentModelArgs['metadata'];
   owner: ProjectModel;
 
@@ -29,6 +44,9 @@ export class ComponentModel extends Model {
 
     this.name = args.name;
     this.id = args.id;
+    this.description = args.description;
+    this.created = args.created;
+    this.modifiedBy = args.modifiedBy;
     this.metadata = args.metadata;
 
     if (args.graph) {
@@ -40,6 +58,13 @@ export class ComponentModel extends Model {
     const _this = new ComponentModel({
       name: json.name,
       id: json.id,
+      // LEG-006 — the in-memory leg of the round trip. `ProjectImporter` reads
+      // these off `component.json` and `toJSON` writes them back out, so if the
+      // model does not hold them in between, the exporter has nothing to carry
+      // and the save deletes them exactly as before the fix.
+      description: json.description,
+      created: json.created,
+      modifiedBy: json.modifiedBy,
       metadata: json.metadata,
       graph: NodeGraphModel.fromJSON(json.graph)
     });
@@ -357,12 +382,26 @@ export class ComponentModel extends Model {
   }
 
   toJSON() {
-    const json = {
+    const json: {
+      name: string;
+      id: string;
+      graph: TSFixme;
+      metadata: ComponentModelArgs['metadata'];
+      description?: string;
+      created?: string;
+      modifiedBy?: string;
+    } = {
       name: this.name,
       id: this.id,
       graph: this.graph.toJSON(),
       metadata: this.metadata
     };
+    // LEG-006 — spread conditionally rather than assigning `undefined`: a
+    // component that never had a description must not gain the key, or a save
+    // that changed nothing produces a diff (F46).
+    if (this.description) json.description = this.description;
+    if (this.created) json.created = this.created;
+    if (this.modifiedBy) json.modifiedBy = this.modifiedBy;
     return json;
   }
 
