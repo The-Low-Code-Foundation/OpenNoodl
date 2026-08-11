@@ -63,6 +63,8 @@ import { checkInstancePorts, type AuthoredPortLike } from './instancePorts';
 import { checkNavigation, checkPageShape, looksLikePageComponent, PAGE_NODE_TYPE } from './navigation';
 import { checkParameterValues } from './parameterValues';
 import { checkRepeaterTemplate } from './repeaterTemplate';
+import { checkResponsiveArrangement } from './responsiveArrangement';
+import { checkTypographyHierarchy } from './typographyHierarchy';
 
 /**
  * The node shape every precondition check reads. The three checks take three
@@ -240,7 +242,21 @@ export const AUTHORED_BLOCKING_WARNINGS: ReadonlySet<string> = new Set([
   // that is a tidy-up, and for a graph an agent just wrote it is the mental
   // model that produced haiku's three blank sections.
   DiagnosticCode.RepeaterTemplateUnresolved,
-  DiagnosticCode.RepeaterWithVisualChildren
+  DiagnosticCode.RepeaterWithVisualChildren,
+  // DSG-004 §2.2 — the `sizeMode` family, split out of
+  // `InactiveConditionalParameter` precisely so this decision could be made about
+  // it alone. The general code stays a warning: project-wide its population is
+  // 366 hits of a dozen different conditions, and `validate:project` gaining an
+  // error class across that corpus is a separate decision.
+  //
+  // This subset has the `UnitlessDimension` shape exactly. Doctrine §8 names the
+  // measured consequence — "a `width: 100%` input that renders 170px wide is
+  // this, every time" — and the corpus's authored half is 17 hits, every one of
+  // them real: six Text Inputs in one QA project's admin form at `width: 100%`,
+  // rendering at 170px under a clean report. Zero of the 204 `Image` nodes in
+  // either corpus are affected, so this promotion cannot fire on the population
+  // §5 already taught correctly.
+  DiagnosticCode.InertDimension
 ]);
 
 /** Whether a diagnostic rejects an authored submission. */
@@ -343,6 +359,13 @@ export interface AuthoredPreconditionOptions {
  * as values: a `For Each` fails its contract by omitting a `template`, by naming
  * one that does not resolve, or by nesting the item content as a child, and
  * telling those three apart needs the parameters and the children in one place.
+ *
+ * The ninth and tenth are DSG-004's, and they are the first two *design* gates
+ * in the set. They are here for the same reason as all the others — a
+ * `flexDirection` and a `fontWeight` are parameter values, which `NormNode` does
+ * not carry — and it is worth being explicit about what that costs: neither can
+ * ever appear in `validate:project`, so both are calibrated against the corpus
+ * (see their headers) and reported only on graphs an agent just wrote.
  */
 export function authoredPreconditionDiagnostics(options: AuthoredPreconditionOptions): Diagnostic[] {
   const { component, nodes, components, urlPaths, catalog, backend, interfaces, connections } = options;
@@ -354,7 +377,11 @@ export function authoredPreconditionDiagnostics(options: AuthoredPreconditionOpt
     ...checkInstancePorts(nodes, { component }),
     ...(interfaces ? checkInstanceInterfaces(nodes, { component, interfaces }) : []),
     ...checkComponentPortDirection(nodes, { component }),
-    ...checkRepeaterTemplate(nodes, { component, components, connectedInputs: connections })
+    ...checkRepeaterTemplate(nodes, { component, components, connectedInputs: connections }),
+    // DSG-004 §2.1 — doctrine §7's only mechanical claim, which had no gate.
+    ...checkResponsiveArrangement(nodes, { component, catalog }),
+    // DSG-004 §2.3 — doctrine §3, as an info that never blocks.
+    ...checkTypographyHierarchy(nodes, { component, connectedInputs: connections })
   ];
 }
 

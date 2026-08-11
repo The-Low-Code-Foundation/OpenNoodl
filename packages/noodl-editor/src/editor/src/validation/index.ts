@@ -105,6 +105,20 @@ export type { ParameterizedNode, PortTypeShape, WireFormat } from './parameterVa
 // LAS-012 — a Repeater that names a template component, and holds no children.
 export { checkRepeaterTemplate, REPEATER_TYPE } from './repeaterTemplate';
 export type { CheckRepeaterTemplateOptions, RepeaterNode } from './repeaterTemplate';
+// DSG-004 §2.1 — doctrine §7: a Group never responds to width. Exported for the
+// same reason as the checks above it: one definition, both clients, no second
+// dialect. Both clients reach it through `authoredPreconditionDiagnostics`; the
+// named export is for the specs and for a caller that wants this alone.
+export {
+  checkResponsiveArrangement,
+  COLUMNS_TYPE,
+  MIN_TRACKS,
+  MIN_TRACK_NODES
+} from './responsiveArrangement';
+export type { ArrangementNode, CheckResponsiveArrangementOptions } from './responsiveArrangement';
+// DSG-004 §2.3 — doctrine §3: a page with one font weight.
+export { checkTypographyHierarchy, MIN_TEXT_NODES, TEXT_WEIGHT_TYPES } from './typographyHierarchy';
+export type { CheckTypographyHierarchyOptions } from './typographyHierarchy';
 export { SemanticValidator, validateProject } from './SemanticValidator';
 export { ALL_RULES } from './rules';
 export type { Rule, RuleContext, ValidatorOptions } from './rules';

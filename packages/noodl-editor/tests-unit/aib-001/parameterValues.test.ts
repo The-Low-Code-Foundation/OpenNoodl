@@ -317,8 +317,12 @@ describe('the styling a candidate believes it set', () => {
       // and `widthUnit` is not a port on anything, so it is never read either.
       // The unit *trap* stays quiet because the width needs no repair — that is
       // a different claim from "the stray sibling is a real port".
+      //
+      // DSG-004 §2.2 renamed the first of those: the `sizeMode` family reports
+      // as `InertDimension` so that it alone can block authored output. Same
+      // finding, same node, its own code.
       expect(found.map((d) => d.code)).toEqual([
-        DiagnosticCode.InactiveConditionalParameter,
+        DiagnosticCode.InertDimension,
         DiagnosticCode.UnknownParameter
       ]);
     });
@@ -373,7 +377,7 @@ describe('the styling a candidate believes it set', () => {
       // that `sizeMode` leaves the width unread either way. Both are needed:
       // repairing only the unit gives an image that is still ignored, and
       // repairing only `sizeMode` gives one that is 228% wide.
-      expect(codes).toEqual([DiagnosticCode.InactiveConditionalParameter, DiagnosticCode.InvalidParameterValue]);
+      expect(codes).toEqual([DiagnosticCode.InertDimension, DiagnosticCode.InvalidParameterValue]);
     });
 
     it('says nothing about a conditional port whose condition is met', () => {

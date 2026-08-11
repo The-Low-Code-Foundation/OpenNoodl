@@ -145,6 +145,42 @@ export const DIAGNOSTIC_EXAMPLES: readonly ExampleCitation[] = [
     code: DiagnosticCode.RepeaterWithVisualChildren,
     examples: ['data-static-array-filter-repeater', 'ui-card-grid-repeater'],
     why: 'the item markup living in its own component with nothing nested under the For Each, which is the only arrangement that renders'
+  },
+  // DSG-004 §2.1 — the citation this phase most wanted to exist: the rule's
+  // message names `Columns`, and the recipe library already contains the
+  // arrangement in both of the modes the message offers. Nothing pointed a
+  // rejection at it.
+  //
+  // Split by `port` because the two arms have different exits and the recipes
+  // are not interchangeable: a band wants a layoutString that collapses, a
+  // wrapped grid over a Repeater wants autoFit. Each example was read before it
+  // was cited — `vis-columns-media-cards` is deliberately *not* here, because
+  // its Columns node sets no breakpoint at all and its Image carries no
+  // parameters, so it teaches neither exit. That check is F23's lesson: a recipe
+  // is a graph an agent will imitate verbatim.
+  {
+    code: DiagnosticCode.UncollapsibleMultiColumn,
+    port: 'flexDirection',
+    examples: ['ui-stat-tile-row', 'ui-icon-feature-strip'],
+    why:
+      'a fixed band as a Columns node — "1 1 1 1" with mediumLayout "1 1" and smallLayout "1", so the row ' +
+      'collapses to two columns and then to one instead of staying four'
+  },
+  {
+    code: DiagnosticCode.UncollapsibleMultiColumn,
+    port: 'flexWrap',
+    examples: ['ui-card-grid-repeater'],
+    why:
+      'a grid of unknown length as a Columns node in autoFit with a 280px minWidth, with the For Each inside ' +
+      'it — no breakpoints to maintain and no wrapped Group to freeze'
+  },
+  // DSG-004 §2.2 — the doctrine's own worked box: sizeMode "explicit", a width,
+  // a height and objectFit "cover", which is the four-parameter set an inert
+  // dimension is one quarter of.
+  {
+    code: DiagnosticCode.InertDimension,
+    examples: ['ui-card-grid-repeater'],
+    why: 'an Image given a real box — sizeMode "explicit" with a width, a height and objectFit "cover" — which is what makes any of the three apply'
   }
 ];
 
