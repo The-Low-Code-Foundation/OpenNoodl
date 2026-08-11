@@ -74,9 +74,113 @@ endpoint clarity substitutes for moving a wire out of the way.
   ([`NodeGraphModel.ts:478-490`](../../../packages/noodl-editor/src/editor/src/models/nodegraphmodel/NodeGraphModel.ts#L478-L490)). Anchors
   are model state and inherit all of it.
 
+## §G — the geometry, decided (2026-08-11, before any code)
+
+Build item 1 says write it down first. This is that. Six decisions, and the two the task called
+load-bearing are **D2** and **D4**.
+
+### D1 — the curve: chained cubics with derived tangents, and **zero anchors is not a special case of
+anything**
+
+An anchored wire is `n + 1` cubic segments through `P0, A₁ … Aₙ, P3`. The **end** tangents stay
+exactly what they are today — horizontal, out of the source port and into the target port — which is
+the idiom that makes this a wire diagram rather than a hairball, and which `arrivalDirection` already
+reads at `t = 1`. **Interior** tangents are Catmull-Rom from each anchor's neighbours, so the wire
+flows *through* an anchor along its direction of travel instead of stopping to be horizontal at it.
+That is the difference between "adjust the trajectory" and "add a staircase".
+
+🔴 **With zero anchors the painter returns today's four-point array from today's code, untouched** —
+not a spline that happens to agree with it. The requirement is that every existing graph opens
+byte-identically, and an argument that two constructions coincide is a weaker thing to rely on than
+not running the new construction at all. Catmull-Rom through no interior points *would* reproduce the
+cubic; it is still not what runs.
+
+Rejected: **polyline with rounded corners** (a hard break from every existing wire, and the corner
+radius becomes a second geometry decision), and **Catmull-Rom through the endpoints too** (it throws
+away the horizontal leave/arrive, so wires stop meeting their ports square on).
+
+### D2 — storage: the **chord frame**, `u` along it and `v` across it in graph px
+
+⚠️ This is the decision the task warned about, and neither pure answer is right.
+
+An anchor is `{ u, v }`, read against the frame the wire's own endpoints define:
+
+```
+d = P3 − P0 · L = |d| · t̂ = d/L · n̂ = (t̂.y, −t̂.x)      (the same normal convention as wireEndpoints)
+position = P0 + u·d + v·n̂
+```
+
+- **`u` is dimensionless.** Move a node and the routing stretches with the wire, keeping its
+  proportions. This is what stops the loop the task predicted for absolute coordinates.
+- **`v` is graph px.** Normalising it too would make the frame a similarity transform — shape
+  preserved *exactly*, which sounds better and is worse: drag a node ten times further away and the
+  40px nudge you drew becomes a 400px detour. A detour is a fixed-size thing you drew, so it stays
+  the size you drew it.
+
+That mix has one failure mode, and it is the opposite one: as `L` **shrinks**, a fixed `v` becomes
+huge relative to the wire and spikes. So `v` is clamped to `L × maxOffsetRatio` at paint time. At real
+lengths (the measured median wire is 3,451 graph px, offsets are tens) the clamp never binds; it
+exists for the case where someone drags two nodes on top of each other.
+
+**And `u` is clamped between its neighbours**, epsilon apart, and inside `(0, 1)` at the ends. That —
+not the tangent scheme — is what actually delivers *"no wire crossing itself"*: anchors cannot swap
+order, so the sequence stays monotonic along the chord however the nodes are dragged.
+
+### D3 — the field: `anchors?: { u, v }[]`, **absent when empty**
+
+Never `[]`. Same rule as `label`: a wire that was bent and then reset has to be indistinguishable from
+one that never was, or every wire anyone ever touched churns `project.json`. `updateConnection` already
+deletes a key set to `undefined`, so the model verb needs nothing new. ⚠️ And `[]` is truthy — the
+mistake ELO-001 was, one file over.
+
+### D4 — R1, resolved: the boundary is **where the ghost appears**
+
+`endpointHitRadius` (8) is **unchanged**, and a grab inside it still re-targets. CAN-003's gesture is
+older, is reachable from muscle memory, and does not get quietly narrowed by a feature that arrived
+later.
+
+What changes is that the boundary stops being invisible. Hovering a wire paints a **ghost anchor** —
+the handle glyph at reduced alpha — at the closest point on the curve to the pointer, tracking it. It
+is the preview of what a drag would mint, and 🔴 **it is not drawn inside the endpoint zones**. So the
+two gestures are told apart by watching: run the pointer down the wire and the ghost rides along, then
+vanishes as the endpoint handle grows under it. The absence *is* the boundary, and it is animated,
+which is the only kind of boundary anyone reads.
+
+This is also the honest answer to *"paint is not a target"*: the task is right that SIG-007 is where
+that gets contested, and the resolution is not to paint an 8px ring on every hovered wire — it is to
+paint the thing the pointer would actually get.
+
+### D5 — the sixth mark: a **hollow ring**
+
+`wireEndpoints.ts` separates its glyphs on **fill ratio**, so the sixth mark joins that table rather
+than starting a second scheme:
+
+| glyph | fill of bbox | where |
+|---|---:|---|
+| circle | 0.79 | wire end, source |
+| arrowhead | 0.50 | wire end, target |
+| diamond | 0.50 | node plug, `'both'` |
+| chevron | — *open stroke*, V | along the wire |
+| **anchor ring** | **0.00** — *open stroke*, closed and radially symmetric | **along the wire** |
+
+A ring is as far from every filled glyph as the axis goes, and it separates from the chevron — the
+only other open mark, and the only other one that lives mid-wire — by being closed and having no
+direction. ⚠️ A filled square was the other candidate and is rejected: at any rotation it is the
+diamond.
+
+Rings paint on **hover or selection only**, which is the argument the endpoint dots were already kept
+small for, and which Richard confirmed unprompted about the chevron: *a cue only appears where it is
+needed*. There can be many per wire, so it applies with more force here.
+
+### D6 — what is *not* decided here
+
+Anchors are per-connection and screen-size-independent by construction (D2), so **there is no
+migration and no version bump** — an old `connections.json` has no `anchors` key and reads as a wire
+with none.
+
 ## Build
 
-1. **Decide the geometry, and write it down first.** A list of anchor points turns one cubic bézier
+1. **Decide the geometry, and write it down first.** ✅ **Done — §G above.** A list of anchor points turns one cubic bézier
    into a spline. The choices — polyline with rounded corners, chained cubics with derived tangents,
    or Catmull-Rom through the anchors — differ in how the wire behaves when a node *moves*, which is
    the case that will make or break it. ⚠️ An anchor stored in absolute canvas coordinates on a wire
@@ -102,15 +206,45 @@ endpoint clarity substitutes for moving a wire out of the way.
 ## What else acquires a new field
 
 Enumerate and check every one of these — this is the part that makes the task large, and none of it is
-visible from the canvas:
+visible from the canvas.
 
-- project format (v2) reader and writer, and the legacy importer
-- the diff/annotation path (`model.annotation` — `Created`/`Changed`/`Deleted` on a wire that also has
-  anchors)
-- undo/redo
-- the AI write path and MCP `addConnection` — ⚠️ which already **accepts wires to ports that don't
-  exist**, so it is not a strict validator and will not reject a malformed anchor list either
-- copy/paste and component duplication
+✅ **Enumerated 2026-08-11 by tracing `labelT`, which is the exact precedent**: the last per-connection
+field anyone added (CAN-001), so every seam that had to learn about it is every seam that has to learn
+about `anchors`. Ten call sites, all read in source:
+
+| Seam | File | What it does with `labelT` |
+|---|---|---|
+| the model | `NodeGraphModel.ts:14` | the `Connection` type; `updateConnection` is the verb |
+| v2 **writer** | `ProjectExporter.ts:48,351` | `LegacyConnection` type + the `ConnectionV2` map |
+| v2 **reader** | `ProjectImporter.ts:194-208` | the other half of the same carry |
+| the storage schema | `schemas/connections.schema.json` | a declared property |
+| the schema type | `schemas/index.ts:180` | `ConnectionV2` |
+| snapshot | `versioning/GraphSnapshot.ts:48,111,282` | `CONNECTION_KNOWN_KEYS`, read **and** write |
+| diff | `versioning/GraphDiff.ts:359` | deliberately *not* compared — moving a label is not a change |
+| merge | `versioning/GraphMerge.ts:714` | a per-field three-way rule |
+| versioning type | `versioning/types.ts:43` | |
+| interaction + undo | `canvas/InteractionController.ts:418` | `updateConnection(..., { undo: true })` |
+
+⚠️ **Two of the listed seams do not carry `labelT` today, and both are defects this task inherits
+rather than causes.** Found by the same trace, filed as **R2** and **R3** below:
+
+- **copy/paste and component duplication** — `NodeGraphNodeSet.clone()` rebuilds each connection from
+  **four fields** ([`:46-55`](../../../packages/noodl-editor/src/editor/src/models/nodegraphmodel/NodeGraphNodeSet.ts#L46-L55)),
+  so duplicating a component already loses every wire label. Anchors would be lost the same way, in
+  the same four lines.
+- **the AI write path** — `AUTHORED_CONNECTION_FIELDS` is exactly those four fields
+  ([`authoringVocabulary.ts:212-227`](../../../packages/noodl-editor/src/editor/src/validation/authoringVocabulary.ts#L212-L227)),
+  `connectionSchema` is a plain `z.object` over them (zod's default is **strip**, not reject), and
+  MCP's `add_connection` re-emits four fields explicitly
+  ([`graph.ts:281`](../../../packages/noodl-mcp/src/graph.ts#L281)). ⚠️ `vocabulary.ts:22-28`
+  states the four-field rule as a *decision* — "a connection has exactly four fields and an unknown
+  fifth is a mistake worth reporting" — so this is a stale premise to correct, not an oversight to
+  patch quietly. And strip-not-reject means it does not report anything.
+
+🔴 **That second one is the `update_node.set.children` shape from P58**, one object over: a field the
+schema does not name is dropped by zod between a valid request and the disk, and every instrument says
+clean. It is the reason this task's acceptance asks for export → import **separately** from save →
+reopen.
 
 ## Acceptance
 
@@ -131,4 +265,6 @@ visible from the canvas:
 
 | # | Finding | State |
 |---|---|---|
-| **R1** | ⚠️ **"Click near one end and drag" is already an interaction.** `endpointAt` grabs at 8px for CAN-003 endpoint re-targeting, and the feature as described begins with the same gesture. This is a design conflict, not an implementation detail, and it is unresolved. | **open — §3** |
+| **R1** | ⚠️ **"Click near one end and drag" is already an interaction.** `endpointAt` grabs at 8px for CAN-003 endpoint re-targeting, and the feature as described begins with the same gesture. This is a design conflict, not an implementation detail. | ✅ **resolved — §G D4.** The 8px zone is untouched; the boundary is made visible by a **ghost anchor** that tracks the pointer along the wire and is not drawn inside it |
+| **R2** | 🔴 **Copy/paste already loses wire labels.** `NodeGraphNodeSet.clone()` rebuilds every connection from four fields, so duplicating a component drops `label` and `labelT` — a live CAN-001/CAN-002 defect, found by tracing the precedent rather than by anyone hitting it. Anchors would go the same way. | **open — fix with this task** |
+| **R3** | 🔴 **The AI write path drops per-connection fields silently.** `AUTHORED_CONNECTION_FIELDS` declares four; `connectionSchema` is a plain `z.object`, and zod's default is **strip**. So an agent doing read-modify-write on a component returns it with every wire label gone, and nothing errors. ⚠️ The four-field rule is written down as a decision in `vocabulary.ts`, so correcting it means correcting that text too. **Same shape as P58's `update_node.set.children`.** | **open — fix with this task** |
