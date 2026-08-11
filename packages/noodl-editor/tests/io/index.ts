@@ -4,3 +4,4 @@ export * from './ProjectFormatDetector.test';
 export * from './roundtrip-fidelity.test';
 export * from './expression-parameters.test';
 export * from './schema-drift.test';
+export * from './component-description-roundtrip.test';

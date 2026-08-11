@@ -1,0 +1,367 @@
+{
+  "_note": "LEG-006 \u2014 every component `description` found in the 35 v2 projects under \"NodeGX test projects/\" on 2026-08-11. Real agent-authored prose, extracted verbatim so the list_components wire-cost measurement is reproducible from the repo rather than from a machine-local corpus.",
+  "_extractedOn": "2026-08-11",
+  "_count": 72,
+  "descriptions": [
+    {
+      "project": "Puppy test 3",
+      "path": "/Components/BenchLogicProbe",
+      "description": "A BEN-003 live-drive fixture with NO visual root: inputs feed a counter and the counter's value and change-signal are the component's outputs. Nothing about it can be seen on a canvas \u2014 it exists to prove a logic-only component mounts on the bench and reports what it emits."
+    },
+    {
+      "project": "Puppy test 3",
+      "path": "/Components/BenchProbeNoDefault",
+      "description": "A BEN-002 fixture for the reset path that has nothing to put back: its input is wired to a Text whose own text parameter is unset, so getPorts derives a type but no default."
+    },
+    {
+      "project": "phase55-replay-haiku",
+      "path": "/Components/BrowseCategories",
+      "description": "Browse by category section showing Ceramics, Coffee, and Home categories with item counts"
+    },
+    {
+      "project": "phase55-replay-haiku",
+      "path": "/Components/CategoryCard",
+      "description": "Reusable category card showing category name and item count"
+    },
+    {
+      "project": "phase55-replay-haiku",
+      "path": "/Components/FeaturedProducts",
+      "description": "Featured products section displaying a grid of product cards with varied discount and badge states"
+    },
+    {
+      "project": "phase55-replay-haiku",
+      "path": "/Components/Footer",
+      "description": "Footer with Shop, Company, and Help link columns plus copyright notice"
+    },
+    {
+      "project": "phase55-replay-haiku",
+      "path": "/Components/Header",
+      "description": "Top navigation bar with shop name, section links, search, and basket with item count"
+    },
+    {
+      "project": "phase55-replay-haiku",
+      "path": "/Components/Hero",
+      "description": "Hero section with image, headline, supporting text, and two call-to-action buttons"
+    },
+    {
+      "project": "phase55-replay-haiku",
+      "path": "/Components/InfoStrip",
+      "description": "Three info items highlighting free delivery over \u00a340, 30-day returns, and secure checkout"
+    },
+    {
+      "project": "phase55-replay-haiku",
+      "path": "/Components/ProductCard",
+      "description": "Reusable product card showing image, name, description, price, and optional badges"
+    },
+    {
+      "project": "phase55-replay-sonnet",
+      "path": "/Cards/Category Card",
+      "description": "Reusable category tile: photo, gradient overlay, name + piece count, cardClicked output."
+    },
+    {
+      "project": "phase55-replay-sonnet",
+      "path": "/Cards/Product Card",
+      "description": "Product card: photo, badge, name, description, price/compare, reviews. Click -> Shop."
+    },
+    {
+      "project": "phase55-replay-sonnet",
+      "path": "/Pages/About",
+      "description": "About stub: Navbar + ComingSoon + Footer, real shop-story copy."
+    },
+    {
+      "project": "phase55-replay-sonnet",
+      "path": "/Pages/Basket",
+      "description": "Basket stub: Navbar + ComingSoon + Footer, real saved-items message."
+    },
+    {
+      "project": "phase55-replay-sonnet",
+      "path": "/Pages/Ceramics",
+      "description": "Ceramics category stub: Navbar + ComingSoon + Footer."
+    },
+    {
+      "project": "phase55-replay-sonnet",
+      "path": "/Pages/Coffee",
+      "description": "Coffee category stub: Navbar + ComingSoon + Footer."
+    },
+    {
+      "project": "phase55-replay-sonnet",
+      "path": "/Pages/Help",
+      "description": "Help stub: Navbar + ComingSoon + Footer."
+    },
+    {
+      "project": "phase55-replay-sonnet",
+      "path": "/Pages/HomeGoods",
+      "description": "Home goods category stub: Navbar + ComingSoon + Footer."
+    },
+    {
+      "project": "phase55-replay-sonnet",
+      "path": "/Pages/Shop",
+      "description": "Shop landing stub: Navbar + ComingSoon + Footer."
+    },
+    {
+      "project": "phase55-replay-sonnet",
+      "path": "/Sections/CategoryBrowse",
+      "description": "Browse-by-category band with 3 category tiles."
+    },
+    {
+      "project": "phase55-replay-sonnet",
+      "path": "/Sections/ComingSoon",
+      "description": "Reusable centered stub content: eyebrow, heading, blurb, CTA with ctaClicked output."
+    },
+    {
+      "project": "phase55-replay-sonnet",
+      "path": "/Sections/FeaturedProducts",
+      "description": "Featured products band: head, repeater of 6 real products, view-all CTA."
+    },
+    {
+      "project": "phase55-replay-sonnet",
+      "path": "/Sections/Footer",
+      "description": "Dark footer: brand blurb, Shop/Company/Help columns, divider, copyright + legal row."
+    },
+    {
+      "project": "phase55-replay-sonnet",
+      "path": "/Sections/Hero",
+      "description": "Hero band: eyebrow, headline, supporting line, two CTAs, photo."
+    },
+    {
+      "project": "phase55-replay-sonnet",
+      "path": "/Sections/InfoStrip",
+      "description": "Trust strip: delivery, returns, secure checkout, small-batch."
+    },
+    {
+      "project": "phase55-replay-sonnet",
+      "path": "/Sections/Navbar",
+      "description": "Sticky-feeling top nav: logo, primary links, search, basket with count."
+    },
+    {
+      "project": "phase55-s6-haiku",
+      "path": "/Components/BrowseCategories",
+      "description": "Browse categories section with category cards grid"
+    },
+    {
+      "project": "phase55-s6-haiku",
+      "path": "/Components/CategoryCard",
+      "description": "Category card showing category name and item count"
+    },
+    {
+      "project": "phase55-s6-haiku",
+      "path": "/Components/FeatureItem",
+      "description": "A single feature item with icon and text"
+    },
+    {
+      "project": "phase55-s6-haiku",
+      "path": "/Components/FeaturedProducts",
+      "description": "Featured products section with grid of product cards"
+    },
+    {
+      "project": "phase55-s6-haiku",
+      "path": "/Components/FeaturesStrip",
+      "description": "Horizontal strip with three feature items"
+    },
+    {
+      "project": "phase55-s6-haiku",
+      "path": "/Components/Footer",
+      "description": "Footer with link columns via repeater and copyright"
+    },
+    {
+      "project": "phase55-s6-haiku",
+      "path": "/Components/Header",
+      "description": "Navigation header with logo, links, search, and basket"
+    },
+    {
+      "project": "phase55-s6-haiku",
+      "path": "/Components/Hero",
+      "description": "Hero section with background image, headline and CTAs"
+    },
+    {
+      "project": "phase55-s6-haiku",
+      "path": "/Components/ProductCard",
+      "description": "Product card showing photo, name, description, price with optional discount badge"
+    },
+    {
+      "project": "phase55-s6-qwen35-27b",
+      "path": "/Components/ProductCard",
+      "description": "Product card showing image, name, description, price with optional discount and badges"
+    },
+    {
+      "project": "phase55-s6-sonnet",
+      "path": "/Components/InfoBand",
+      "description": "A page-intro band: eyebrow, heading, sub-line and one body paragraph, centred in the standard shell. Reused by the simple content pages."
+    },
+    {
+      "project": "phase55-s8-deepseek-v4-pro",
+      "path": "/Components/CategoryBrowse",
+      "description": "Section with heading and a responsive grid of 3 CategoryTiles with piece counts."
+    },
+    {
+      "project": "phase55-s8-deepseek-v4-pro",
+      "path": "/Components/CategoryTile",
+      "description": "A browse-by-category tile with a photo, category name, and piece count."
+    },
+    {
+      "project": "phase55-s8-deepseek-v4-pro",
+      "path": "/Components/FeaturedProducts",
+      "description": "Section with heading, subtext, and a responsive grid of 4 ProductCards with varied badges."
+    },
+    {
+      "project": "phase55-s8-deepseek-v4-pro",
+      "path": "/Components/Footer",
+      "description": "Site footer with three link columns and a copyright line."
+    },
+    {
+      "project": "phase55-s8-deepseek-v4-pro",
+      "path": "/Components/FooterLink",
+      "description": "A single footer text link \u2014 used as the template for the For Each repeater in FooterLinkColumn."
+    },
+    {
+      "project": "phase55-s8-deepseek-v4-pro",
+      "path": "/Components/FooterLinkColumn",
+      "description": "A column of footer links with a heading and a list of links driven by a data array."
+    },
+    {
+      "project": "phase55-s8-deepseek-v4-pro",
+      "path": "/Components/HeroSection",
+      "description": "Full-width hero with a background photo, headline, supporting text, and two CTA buttons."
+    },
+    {
+      "project": "phase55-s8-deepseek-v4-pro",
+      "path": "/Components/InfoStripItem",
+      "description": "A single trust-strip item: icon, bold title, and short description line."
+    },
+    {
+      "project": "phase55-s8-deepseek-v4-pro",
+      "path": "/Components/NavBar",
+      "description": "Top navigation bar with shop name, nav links, a search input, and a basket icon with item count."
+    },
+    {
+      "project": "phase55-s8-deepseek-v4-pro",
+      "path": "/Components/ProductCard",
+      "description": "A product card with photo, name, description, price, optional discount badge, optional best-seller badge, and review count."
+    },
+    {
+      "project": "phase55-s8-deepseek-v4-pro",
+      "path": "/Components/TrustStrip",
+      "description": "A horizontal strip of three InfoStripItems: free delivery, 30-day returns, secure checkout."
+    },
+    {
+      "project": "phase55-s8-ds-probe",
+      "path": "/Components/CategoryBrowse",
+      "description": "Section with heading and a responsive grid of 3 CategoryTiles with piece counts."
+    },
+    {
+      "project": "phase55-s8-ds-probe",
+      "path": "/Components/CategoryTile",
+      "description": "A browse-by-category tile with a photo, category name, and piece count."
+    },
+    {
+      "project": "phase55-s8-ds-probe",
+      "path": "/Components/FeaturedProducts",
+      "description": "Section with heading, subtext, and a responsive grid of 4 ProductCards with varied badges."
+    },
+    {
+      "project": "phase55-s8-ds-probe",
+      "path": "/Components/Footer",
+      "description": "Site footer with three link columns and a copyright line."
+    },
+    {
+      "project": "phase55-s8-ds-probe",
+      "path": "/Components/FooterLink",
+      "description": "A single footer text link \u2014 used as the template for the For Each repeater in FooterLinkColumn."
+    },
+    {
+      "project": "phase55-s8-ds-probe",
+      "path": "/Components/FooterLinkColumn",
+      "description": "A column of footer links with a heading and a list of links driven by a data array."
+    },
+    {
+      "project": "phase55-s8-ds-probe",
+      "path": "/Components/HeroSection",
+      "description": "Full-width hero with a background photo, headline, supporting text, and two CTA buttons."
+    },
+    {
+      "project": "phase55-s8-ds-probe",
+      "path": "/Components/InfoStripItem",
+      "description": "A single trust-strip item: icon, bold title, and short description line."
+    },
+    {
+      "project": "phase55-s8-ds-probe",
+      "path": "/Components/NavBar",
+      "description": "Top navigation bar with shop name, nav links, a search input, and a basket icon with item count."
+    },
+    {
+      "project": "phase55-s8-ds-probe",
+      "path": "/Components/ProductCard",
+      "description": "A product card with photo, name, description, price, optional discount badge, optional best-seller badge, and review count."
+    },
+    {
+      "project": "phase55-s8-ds-probe",
+      "path": "/Components/TrustStrip",
+      "description": "A horizontal strip of three InfoStripItems: free delivery, 30-day returns, secure checkout."
+    },
+    {
+      "project": "phase55-s8-kimi-k3-rerun",
+      "path": "/Components/CategoryCard",
+      "description": "Category tile for the browse-by-category section: photo, category name, piece count, one-line blurb and a Browse link whose click is reported through Component Outputs."
+    },
+    {
+      "project": "phase55-s8-kimi-k3-rerun",
+      "path": "/Components/CategorySection",
+      "description": "Browse-by-category section on the surface band: Ceramics, Coffee and Home from a Static Array, each with its piece count, drawn by CategoryCard through a Repeater in a collapsing Columns. Browse clicks are reported upward."
+    },
+    {
+      "project": "phase55-s8-kimi-k3-rerun",
+      "path": "/Components/FeaturedProducts",
+      "description": "Featured products section: an announced head and six products from a Static Array (a mix of discounted, best sellers and not-yet-reviewed), drawn by ProductCard through a Repeater in an autoFit Columns grid. Add-to-basket clicks are reported upward."
+    },
+    {
+      "project": "phase55-s8-kimi-k3-rerun",
+      "path": "/Components/Footer",
+      "description": "Dark footer band: wordmark and blurb, Shop / Company / Help link columns, and a copyright line. Every link reports a signal through Component Outputs so the page can say where it would go."
+    },
+    {
+      "project": "phase55-s8-kimi-k3-rerun",
+      "path": "/Components/Header",
+      "description": "Sticky top menu bar: wordmark, Shop/Ceramics/Coffee/About links, a search field with icon, and a basket button whose count pill reads the app-wide BasketCount variable. Every control reports a signal through Component Outputs."
+    },
+    {
+      "project": "phase55-s8-kimi-k3-rerun",
+      "path": "/Components/Hero",
+      "description": "Split hero for the home page: eyebrow, display headline, supporting line, two calls to action and a large workshop photo, collapsing to one column under 900px. CTA clicks are reported through Component Outputs."
+    },
+    {
+      "project": "phase55-s8-kimi-k3-rerun",
+      "path": "/Components/NoticeDialog",
+      "description": "Modal dialog that explains what a clicked control would do \u2014 used for search, basket and every stub link. Closes itself with a 'Got it' action and reports closed upward."
+    },
+    {
+      "project": "phase55-s8-kimi-k3-rerun",
+      "path": "/Components/ProductCard",
+      "description": "Product card for the featured grid: photo with an optional badge pill, name, short description, star rating or a 'No reviews yet' line, price with an optional struck-through compare-at price, and an Add to Basket button reported through Component Outputs."
+    },
+    {
+      "project": "phase55-s8-kimi-k3-rerun",
+      "path": "/Components/TrustItem",
+      "description": "One reassurance row for the info strip: a lucide icon beside a title and a short line of body text."
+    },
+    {
+      "project": "phase55-s8-kimi-k3-rerun",
+      "path": "/Components/TrustStrip",
+      "description": "Bordered reassurance strip below the hero: free delivery over \u00a340, 30-day returns and secure checkout, three-up in a Columns that collapses under 700px."
+    },
+    {
+      "project": "phase58-backend-deferred",
+      "path": "/Components/AddStockForm",
+      "description": "A form with name, count, and supplier fields plus an Add button. Creates a new StockItem record on submit."
+    },
+    {
+      "project": "phase58-backend-deferred",
+      "path": "/Components/StockItemRow",
+      "description": "A single row in the stock list: shows item name, count with +/- buttons, and supplier. Out-of-stock items get a red highlight. Includes delete button."
+    },
+    {
+      "project": "phase58-backend-deferred",
+      "path": "/Pages/StockCupboard",
+      "description": "The main stock cupboard page. Shows sign-in/sign-up when not authenticated. When signed in, shows who is signed in, the stock list, and the add-item form. Queries StockItem from the backend."
+    }
+  ]
+}

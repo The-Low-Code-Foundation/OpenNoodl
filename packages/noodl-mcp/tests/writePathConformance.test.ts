@@ -68,24 +68,22 @@ interface Fixture extends ComponentFiles {
  * Differences that are **decisions**, not details.
  *
  * The whole value of this gate is that this list is short enough to read, so
- * every entry carries its reason and anything not on it fails. Four of the five
- * are the editor's writer dropping a field `noodl-mcp` wrote — which is drift in
- * the editor's direction, filed rather than fixed here because the fix is in
- * `ProjectExporter` and this package cannot be the place that changes it.
+ * every entry carries its reason and anything not on it fails.
+ *
+ * ⚠️ **This list got shorter, and that is the point.** It used to hold four
+ * entries of the form "the editor's writer drops a field `noodl-mcp` wrote,
+ * filed not fixed because the fix is in `ProjectExporter` and this package
+ * cannot be the place that changes it". Three of them — `component.description`
+ * (A13), `component.created` (A12) and `component.modifiedBy` — were fixed by
+ * **LEG-006**, and the honesty check below (`none is dead`) is what forced them
+ * off the list rather than leaving them as a permanent excuse. They are now
+ * asserted the other way round, in "§1 … carries authored prose and provenance".
+ *
+ * `component.type` (A14) is still here and is still real.
  */
 const ALLOWED_DIFFERENCES: Record<string, string> = {
   'component.modified':
     'A timestamp differs by construction — the re-export is stamped at the moment the gate runs.',
-  'component.modifiedBy':
-    'Provenance `noodl-mcp` stamps and the editor has no concept of. The editor drops it on save; harmless, ' +
-    'because nothing reads it to make a decision.',
-  'component.created':
-    'A12 — `buildComponentV2Files` never emits `created`, so an editor save drops the creation timestamp ' +
-    'on every MCP-authored component. Real, low severity, filed not fixed: the fix is in ProjectExporter.',
-  'component.description':
-    'A13 — authored prose the editor silently discards. **The most consequential entry on this list**: ' +
-    'it is a component`s own documentation, written by the agent, and an editor open+save deletes it. ' +
-    'Filed not fixed for the same reason as A12.',
   'component.type':
     'A14 — `inferComponentType` recomputes the type from the legacy name and only recognises a root ' +
     'component by the marker `%rootcomponent`, so a project whose root is `/App` is relabelled ' +
@@ -257,6 +255,53 @@ describe('AWP-002 — MCP output must survive the editor’s own round trip', ()
         }
       }
       expect([...Object.keys(ALLOWED_DIFFERENCES)].filter((k) => !seen.has(k))).toEqual([]);
+    });
+
+    it('carries authored prose and provenance — LEG-006', () => {
+      // The inverse of three allow-list entries that used to live above. This is
+      // the MCP-side half of LEG-006: `reconstructLegacyComponent` →
+      // `buildComponentV2Files` is the editor's own reader and writer, imported
+      // from `editor-deps`, so a regression in `ProjectExporter` fails here even
+      // though the change is in another package.
+      //
+      // ⚠️ It is NOT the whole acceptance. This pair is a fixed point with the
+      // in-memory model missing, exactly as the `visualRoots` note at the top of
+      // this file explains for F43. The four-step spec that covers the model is
+      // `packages/noodl-editor/tests/io/component-description-roundtrip.test.ts`.
+      let described = 0;
+      for (const f of fixtures) {
+        const re = roundTrip(f);
+        if (f.component.description !== undefined) {
+          expect({ label: f.label, description: re.component.description }).toEqual({
+            label: f.label,
+            description: f.component.description
+          });
+          described++;
+        } else {
+          // Absent in, absent out. A component with no description must not
+          // acquire an empty string, which would be a diff on every save (F46).
+          expect({ label: f.label, has: 'description' in re.component }).toEqual({
+            label: f.label,
+            has: false
+          });
+        }
+        if (f.component.created !== undefined) {
+          expect({ label: f.label, created: re.component.created }).toEqual({
+            label: f.label,
+            created: f.component.created
+          });
+        }
+        if (f.component.modifiedBy !== undefined) {
+          expect({ label: f.label, modifiedBy: re.component.modifiedBy }).toEqual({
+            label: f.label,
+            modifiedBy: f.component.modifiedBy
+          });
+        }
+      }
+
+      // A gate that iterated over nothing would pass. `create_component` writes
+      // a description on every component authored in `beforeAll`.
+      expect(described).toBeGreaterThan(0);
     });
 
     it('preserves the graph itself — nodes and connections are untouched by the round trip', () => {

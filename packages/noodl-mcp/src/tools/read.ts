@@ -24,6 +24,42 @@ import { readVisualRoots } from '../visualRoots';
 
 const SEARCH_RESULT_CAP = 200;
 
+/**
+ * LEG-006 — ceiling on the `description` carried on each `list_components` row,
+ * in characters.
+ *
+ * The column is the point of the field: an agent choosing between fourteen
+ * components should not have to read fourteen graphs. But it is also a
+ * per-row cost on every listing, against a budget AWP-005 spent a session
+ * cutting from 25,886 tokens/turn to 7,828, and a description is free-text —
+ * nothing stops a model writing a paragraph.
+ *
+ * 160 characters is the ceiling because it is a round number in the unit
+ * actually printed (characters, not tokens — a token count is model-specific
+ * and cannot be asserted), and because it clears the field's own instruction:
+ * `AUTHORED_PAYLOAD_FIELDS` asks for "one or two sentences". Measured over the
+ * 72 real descriptions in the 35 projects under "NodeGX test projects/"
+ * (2026-08-11): mean 99, median 84, max 274 characters. A 160 ceiling touches
+ * 11 of the 72 — it bounds the pathological row and leaves the typical one
+ * whole.
+ *
+ * Truncation is here, at the tool seam, and NOT in `ProjectStore.listComponents`
+ * — `validate.ts`, `review.ts`, `pageRegistration.ts` and `nodeIds.ts` all call
+ * that method, and none of them is a wire-cost site. `get_component` returns the
+ * description in full: one component is not a budget question.
+ */
+export const LIST_COMPONENTS_DESCRIPTION_CHARS = 160;
+
+/**
+ * Cuts a description to {@link LIST_COMPONENTS_DESCRIPTION_CHARS}, marking the
+ * cut so a reader can tell a truncated sentence from a terse one. The ellipsis
+ * is inside the ceiling, so no row ever exceeds it.
+ */
+export function truncateRowDescription(description: string): string {
+  if (description.length <= LIST_COMPONENTS_DESCRIPTION_CHARS) return description;
+  return description.slice(0, LIST_COMPONENTS_DESCRIPTION_CHARS - 1).trimEnd() + '…';
+}
+
 export function registerReadTools(server: McpServer, store: ProjectStore, options: { allowWrites: boolean }): void {
   server.registerTool(
     'get_project_info',
@@ -86,8 +122,12 @@ export function registerReadTools(server: McpServer, store: ProjectStore, option
     {
       title: 'List components',
       description:
-        'List the project\'s components from the registry: path, legacyName, type (root/page/visual/logic/cloud) ' +
-        'and node/connection counts. Filter with `type` or `path_prefix`.',
+        'List the project\'s components from the registry: path, legacyName, type (root/page/visual/logic/cloud), ' +
+        'node/connection counts, and `description` — what the component is for, in the author\'s own words, for ' +
+        'the components that have one (cut at ' +
+        LIST_COMPONENTS_DESCRIPTION_CHARS +
+        ' characters, ending "…"; `get_component` returns it in full). Read the descriptions before rebuilding ' +
+        'something the project already has. Filter with `type` or `path_prefix`.',
       inputSchema: {
         type: z.enum(['root', 'page', 'visual', 'logic', 'cloud']).optional().describe('Only components of this type'),
         path_prefix: z.string().optional().describe('Only components whose path starts with this prefix, e.g. "Pages/"')
@@ -98,6 +138,11 @@ export function registerReadTools(server: McpServer, store: ProjectStore, option
       let rows = all;
       if (args.type) rows = rows.filter((r) => r.type === args.type);
       if (args.path_prefix) rows = rows.filter((r) => r.path.startsWith(args.path_prefix!));
+      // LEG-006 — the ceiling is applied on the way out, not in the store: this
+      // is the only caller of `listComponents()` whose output crosses the wire.
+      rows = rows.map((row) =>
+        row.description ? { ...row, description: truncateRowDescription(row.description) } : row
+      );
       const result: ListComponentsResponse = { components: rows };
       if (rows.length === 0 && all.length > 0 && args.type) {
         // Legacy-exported projects often type everything "visual" and mark
