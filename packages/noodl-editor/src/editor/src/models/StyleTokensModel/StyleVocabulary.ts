@@ -33,6 +33,7 @@
 
 import { ElementConfigRegistry } from '../ElementConfigs/ElementConfigRegistry';
 import { buildEffectiveTokens, MetaDataSource, readStoredTokens } from './ProjectTokenCss';
+import { formatCompositionValue, STYLE_COMPOSITIONS, VocabComposition } from './StyleCompositions';
 import {
   StyleTokenRecord,
   TokenCategory,
@@ -81,9 +82,18 @@ export interface StyleVocabulary {
   categories: VocabTokenCategory[];
   /** Element types with a variant/size registry (Button, Text, …). */
   elements: VocabElement[];
+  /**
+   * DSG-005 — named parameter sets to reuse verbatim, and the recipe that shows
+   * each one arranged. Tokens and variants are the paint; this is the only
+   * field in here that is an arrangement of them. See {@link STYLE_COMPOSITIONS}.
+   */
+  compositions: VocabComposition[];
   /** Built-in presets a new project can adopt. */
   presets: VocabPreset[];
 }
+
+export type { VocabComposition, VocabCompositionGroup, VocabParamValue } from './StyleCompositions';
+export { STYLE_COMPOSITIONS } from './StyleCompositions';
 
 /** Categories whose members are raw scales the agent should rarely reach for. */
 const RAW_SCALE_CATEGORIES = new Set<TokenCategory>(['color-palette']);
@@ -196,7 +206,12 @@ export function buildStyleVocabulary(source?: MetaDataSource | null): StyleVocab
 
   const presets = listVocabularyPresets();
 
-  return { categories, elements, presets };
+  // Static by design: a composition is a set of token NAMES, and names are
+  // stable across projects — only the values a project overrides change, and
+  // those are already reflected in `categories`. Nothing here reads `source`.
+  const compositions = STYLE_COMPOSITIONS;
+
+  return { categories, elements, compositions, presets };
 }
 
 /**
@@ -253,6 +268,27 @@ export function renderStyleVocabulary(vocab: StyleVocabulary, options: RenderVoc
     }
   }
 
+  if (vocab.compositions.length > 0) {
+    lines.push('');
+    // Deliberately ahead of the variant catalogue: this is the part an agent
+    // acts on. Variants are a lookup; these are the decisions it should not be
+    // making one page at a time.
+    lines.push(
+      'COMPOSITIONS — named parameter sets lifted verbatim from the validated recipes; fix them ONCE and reuse ' +
+        'them rather than re-deciding a radius per card. Copy a set onto the node type in brackets exactly as ' +
+        'written: a dimension is {"value":N,"unit":"px"}, and a "Npx" string is dropped in silence. [recipe-id] ' +
+        'is the same thing assembled — fetch it with get_example.'
+    );
+    let group = '';
+    for (const c of vocab.compositions) {
+      if (c.group !== group) {
+        group = c.group;
+        lines.push(`  ${group}:`);
+      }
+      lines.push(`- ${c.id} (${c.nodeType}) [${c.recipe}]: ${formatCompositionParams(c)}`);
+    }
+  }
+
   if (vocab.elements.length > 0) {
     lines.push('');
     // The old wording offered two routes — "set the element type via the marker
@@ -284,6 +320,17 @@ export function renderStyleVocabulary(vocab: StyleVocabulary, options: RenderVoc
   }
 
   return lines.join('\n');
+}
+
+/**
+ * One composition's parameters as `k=v` pairs. The description is NOT rendered
+ * here — it is in `detail: "full"` — because the block has a budget and the name
+ * plus the recipe id already say what the set is for.
+ */
+function formatCompositionParams(composition: VocabComposition): string {
+  return Object.entries(composition.parameters)
+    .map(([k, v]) => `${k}=${formatCompositionValue(v)}`)
+    .join(', ');
 }
 
 function formatStyleMap(styles: Record<string, string>): string {
