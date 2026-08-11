@@ -76,7 +76,7 @@ import { authoredProjectViews, preconditionDiagnostics } from '../validate';
 import type { WriteValidation } from '../validate';
 import type { WriteValidationSummary } from './responses';
 import type { NodeInput } from './author';
-import { assembleCreateFiles, assembleSetFiles, ensureIds, projectVisualPredicate } from './author';
+import { assembleCreateFiles, assembleSetFiles, normalizeAuthoredNodes, projectVisualPredicate } from './author';
 // LAS-012 §4 — the skeleton's own writer owns the predicate for "untouched".
 import { isUntouchedSkeletonPage } from './createProject';
 // AAQ-005: one authoring vocabulary — the same node/connection shapes
@@ -733,7 +733,7 @@ export function registerPlanTools(
           );
         }
 
-        const reconciled = reconcileHierarchy(ensureIds(args.nodes));
+        const reconciled = reconcileHierarchy(normalizeAuthoredNodes(args.nodes));
         if (reconciled.errors.length > 0) {
           throw new ToolError('invalid-argument', 'Node hierarchy is inconsistent.', { errors: reconciled.errors });
         }

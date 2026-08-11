@@ -44,6 +44,7 @@
 import { z } from 'zod';
 
 import {
+  AUTHORED_COMMENT_FIELD,
   AUTHORED_CONNECTION_FIELDS,
   AUTHORED_NODE_FIELDS,
   AUTHORED_PAYLOAD_FIELDS,
@@ -99,6 +100,20 @@ export function zodForField(field: VocabField, nested: Nested = {}): z.ZodTypeAn
   return description ? schema.describe(description) : schema;
 }
 
+/**
+ * LEG-001 — the `comment` argument on its own, rendered from the same row
+ * `nodeSchema` renders, for the one place that needs it outside a whole node:
+ * `update_node.set`. Re-deriving it there would be a second copy of the sentence,
+ * which is the exact failure this module exists to prevent — and the throw is a
+ * tripwire, because a `comment` row deleted from the table must not leave a delta
+ * door quietly describing a field the doors no longer share.
+ */
+export const NODE_COMMENT_ARG: z.ZodTypeAny = (() => {
+  const field = AUTHORED_NODE_FIELDS.find((f) => f.name === AUTHORED_COMMENT_FIELD);
+  if (!field) throw new Error('The authoring vocabulary declares no `comment` field on a node (LEG-001).');
+  return zodForField(field);
+})();
+
 /** A record of zod types, keyed by field name — what `registerTool` takes. */
 export function zodShapeFor(fields: readonly VocabField[], nested: Nested = {}): Record<string, z.ZodTypeAny> {
   const shape: Record<string, z.ZodTypeAny> = {};
@@ -140,6 +155,11 @@ type NodeShape = {
   id: Opt<z.ZodString>;
   type: z.ZodString;
   label: Opt<z.ZodString>;
+  // LEG-001. Flat here, `metadata.comment` on disk — `foldNodeComment` in
+  // `tools/author.ts` and `graph.ts` does the mapping, so a caller never names
+  // the bag. Declared in the shape type for the reason the block above gives:
+  // without it the write handlers' inferred argument type loses the field.
+  comment: Opt<z.ZodString>;
   x: Opt<z.ZodNumber>;
   y: Opt<z.ZodNumber>;
   parent: Opt<z.ZodString>;

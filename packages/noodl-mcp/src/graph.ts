@@ -8,6 +8,7 @@
  */
 
 import type { ComponentV2File, ConnectionV2, ConnectionsV2File, NodePort, NodeV2, NodesV2File } from './editor-deps';
+import { metadataWithComment } from './editor-deps';
 
 export interface ComponentFiles {
   component: ComponentV2File;
@@ -127,7 +128,14 @@ export type UpdateOperation =
   | {
       op: 'update_node';
       id: string;
-      set?: Partial<Pick<NodeV2, 'label' | 'x' | 'y' | 'variant'>> & { parent?: string | null };
+      /**
+       * LEG-001: `comment` is the authored name of `metadata.comment`. It never
+       * lands as a top-level key — see the fold in `applyOperations`.
+       */
+      set?: Partial<Pick<NodeV2, 'label' | 'x' | 'y' | 'variant'>> & {
+        parent?: string | null;
+        comment?: string;
+      };
       parameters?: Record<string, unknown>;
       unset_parameters?: string[];
       ports?: NodePort[];
@@ -198,8 +206,19 @@ export function applyOperations(
           break;
         }
         if (op.set) {
-          const { parent: newParent, ...rest } = op.set;
+          const { parent: newParent, comment, ...rest } = op.set;
           Object.assign(node, rest);
+          // LEG-001 — the authored field is flat and the stored one is not, so
+          // it is destructured out above rather than assigned: a top-level
+          // `comment` on a stored node is read by nothing (CAN-004's stripe,
+          // tooltip and context menu all read `metadata.comment`). Every other
+          // key of the bag is left exactly as it was, `merge.soureCodePorts`
+          // included.
+          if (comment !== undefined) {
+            const metadata = metadataWithComment(node.metadata, comment);
+            if (metadata) node.metadata = metadata;
+            else delete node.metadata;
+          }
           if (newParent !== undefined) {
             // Reparent: detach from old parent, attach to new (null → detach only).
             if (node.parent !== undefined) {

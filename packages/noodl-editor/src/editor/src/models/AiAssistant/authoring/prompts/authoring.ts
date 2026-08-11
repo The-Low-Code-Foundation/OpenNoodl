@@ -44,6 +44,13 @@ THE AUTHORING CONTRACT
   an existing component's name such as "/Pages/Home" to instantiate that component), an optional "label"
   saying what it is for, "x"/"y" canvas coordinates, and "parent" (a node id) when it sits inside a visual
   container. Child order = the order nodes appear in your list. Do not send children arrays.
+- "comment" is the other sentence a node can carry, and it answers a different question: the label says
+  what this node is FOR, the comment says WHY it is the way it is. Write one where a reader would
+  otherwise change something and break it — a decision that had an alternative ("deliberately not a
+  Repeater; the three cards differ in more than data"), a rule from outside the app the graph cannot
+  state, or a trap ("sizeMode must stay explicit or objectFit is ignored"). Omit it everywhere else: a
+  comment that restates the type, restates the label, or narrates what the wire already shows is noise,
+  and most nodes need none.
 - "parameters" sets static input values, keyed by EXACT port names. Only set what the task needs; defaults
   are already right.
 - Connections: { fromId, fromProperty, toId, toProperty } — fromProperty is an output port on the source

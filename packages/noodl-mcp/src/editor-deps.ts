@@ -95,20 +95,30 @@ export type {
 // selects on `p.plug`, so a port without one is inert and the component silently
 // has no such input or output.
 export {
+  AUTHORED_COMMENT_FIELD,
   AUTHORED_CONNECTION_FIELDS,
   AUTHORED_NODE_FIELDS,
   AUTHORED_PAYLOAD_FIELDS,
   AUTHORED_PORT_FIELDS,
   AUTHORING_SURFACES,
+  STORED_COMMENT_KEY,
   SURFACE_DIVERGENCES,
   VOCAB_CLIENTS,
   declaredDivergences,
   describeFor,
   fieldsFor,
+  // LEG-001 — the fold/unfold pair for the one authored field whose storage name
+  // is not its authored one (`comment` ⇄ `metadata.comment`). Shared rather than
+  // reimplemented here for the same reason the table is: two doors, one mapping,
+  // or the flat field means something different depending which door you came
+  // through.
+  foldNodeComment,
   isRequiredIn,
   jsonSchemaForSurface,
   jsonSchemasFor,
-  undeclaredDivergences
+  metadataWithComment,
+  undeclaredDivergences,
+  unfoldNodeComment
 } from '../../noodl-editor/src/editor/src/validation';
 export type {
   DeclaredDivergence,

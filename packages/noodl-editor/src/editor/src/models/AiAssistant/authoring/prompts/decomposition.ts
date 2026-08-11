@@ -135,6 +135,10 @@ and change than the same page as one long column of nodes.
 - **Interfaces are deliberate.** Component Inputs/Outputs carry what varies per instance. Shared app
   state goes through Variables and Objects, not through prop drilling.
 - **Placement.** Used once, next to its page. Used twice or plausibly reusable, in a shared folder.
+- **Say why on the node.** A node's \`label\` says what it is for; its \`comment\` says why it is the way
+  it is. Write one where the next reader would otherwise change something and break it — a decision that
+  had an alternative, a rule from outside the app that the graph cannot state, or a trap. Omit it when
+  the type and label already say it: a comment restating either is noise, and most nodes need none.
 
 **When not to.** A single node, an unnamed wrapper, or a two-node group used once is not a
 component — it is a file and a hop that bought nothing. A page with one section has one section.
