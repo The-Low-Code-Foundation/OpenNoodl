@@ -1,7 +1,7 @@
 {
   "rubric": "DSG-006 §3",
   "scoredOn": "2026-08-11",
-  "note": "one row per criterion; no total by design. All eight criteria live as of the render-measure colour+rhythm extension. F41: `one accent` now scores area SHARE of the viewport, not the accent count alone — the ceiling is 25%, a doctrine call rather than a fitted one.",
+  "note": "one row per criterion; no total by design. All eight criteria live as of the render-measure colour+rhythm extension. F41: `one accent` scores area SHARE of the viewport, not the accent count alone — the ceiling is 25%, a doctrine call rather than a fitted one. F40: `real-copy` now exempts a literal a connection overwrites and catches structural nouns, zero-values and the create_project skeleton sentence. F39: `empty-state` now recognises the mechanism the doctrine actually teaches — isEmpty/count wired into visible/mounted — as well as a gate node, and its gate-node list no longer contains a dead alternative.",
   "runs": [
     {
       "project": "phase55-s6-haiku",
@@ -37,7 +37,7 @@
           "source": "render",
           "score": 0,
           "value": "0 loading",
-          "evidence": "0 Image nodes, 0 broken"
+          "evidence": "0 <img> rendered, 0 broken (DOM, not authored Image nodes)"
         },
         {
           "key": "narrow-survives",
@@ -107,7 +107,7 @@
           "source": "render",
           "score": 0,
           "value": "0 loading",
-          "evidence": "0 Image nodes, 0 broken"
+          "evidence": "0 <img> rendered, 0 broken (DOM, not authored Image nodes)"
         },
         {
           "key": "narrow-survives",
@@ -131,15 +131,15 @@
           "source": "graph",
           "score": 0,
           "value": "0/0 lists gated",
-          "evidence": "no For Each in the project"
+          "evidence": "no For Each or Query Records in the project"
         },
         {
           "key": "real-copy",
           "doctrine": "§10",
           "source": "graph",
-          "score": 1,
-          "value": "clean",
-          "evidence": "no generic copy found"
+          "score": 0,
+          "value": "1 generic",
+          "evidence": "Pages/Home text=\"Kiln & Co. — nothing built yet. Review the plan in docs/ and\""
         }
       ]
     },
@@ -177,7 +177,7 @@
           "source": "render",
           "score": 1,
           "value": "10 loading",
-          "evidence": "10 Image nodes, 0 broken"
+          "evidence": "10 <img> rendered, 0 broken (DOM, not authored Image nodes)"
         },
         {
           "key": "narrow-survives",
@@ -247,7 +247,7 @@
           "source": "render",
           "score": 0,
           "value": "0 loading",
-          "evidence": "0 Image nodes, 0 broken"
+          "evidence": "0 <img> rendered, 0 broken (DOM, not authored Image nodes)"
         },
         {
           "key": "narrow-survives",
@@ -317,7 +317,7 @@
           "source": "render",
           "score": 0,
           "value": "0 loading",
-          "evidence": "0 Image nodes, 0 broken"
+          "evidence": "0 <img> rendered, 0 broken (DOM, not authored Image nodes)"
         },
         {
           "key": "narrow-survives",
@@ -341,15 +341,15 @@
           "source": "graph",
           "score": 0,
           "value": "0/0 lists gated",
-          "evidence": "no For Each in the project"
+          "evidence": "no For Each or Query Records in the project"
         },
         {
           "key": "real-copy",
           "doctrine": "§10",
           "source": "graph",
-          "score": 1,
-          "value": "clean",
-          "evidence": "no generic copy found"
+          "score": 0,
+          "value": "1 generic",
+          "evidence": "Pages/Home text=\"Kiln & Co. — nothing built yet. Review the plan in docs/ and\""
         }
       ]
     },
@@ -387,7 +387,7 @@
           "source": "render",
           "score": 1,
           "value": "8 loading",
-          "evidence": "8 Image nodes, 0 broken"
+          "evidence": "8 <img> rendered, 0 broken (DOM, not authored Image nodes)"
         },
         {
           "key": "narrow-survives",

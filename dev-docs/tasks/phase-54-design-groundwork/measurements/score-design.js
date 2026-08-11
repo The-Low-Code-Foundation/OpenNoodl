@@ -48,14 +48,58 @@ const DEAD_COPY = [
   /^placeholder$/i,
   /^(button|link) text$/i,
   /^item \d+$/i,
-  /^lorem$/i
+  /^lorem$/i,
+  /^(lorem|ipsum|foo|bar|baz|todo|tbd|xxx|asdf)$/i,
+  /^(your|my|the) (product|company|brand|store|site) name$/i,
+  // The `create_project` skeleton sentence. A project still carrying it never
+  // wrote a word of its own. Kept in sync by hand with
+  // `SKELETON_PLACEHOLDER_MARKER`, `noodl-mcp/src/tools/createProject.ts:90`.
+  /nothing built yet\. Review the plan in docs\//i
 ];
+
+/**
+ * F40 — the structural noun a model types into a slot it means to fill later:
+ * "Category", "Title", "Description", "Link", "£0", "0 pieces". These are the
+ * shape of dead copy these models actually produce; the original `DEAD_COPY`
+ * list was written from the doctrine's three named examples and caught none of
+ * them, which is why the row passed 6/6 and carried no signal.
+ *
+ * Separate from `DEAD_COPY` because it must NOT apply to `placeholder`: a text
+ * input whose placeholder reads "Name" or "Description" is a correctly labelled
+ * field, not a template. Two real projects (`Puppy test`, `Puppy test 3`) are
+ * false-positived by the single combined list.
+ */
+const STRUCTURAL_NOUN =
+  /^(category|categories|section|feature|product|product name|item|link|heading|subheading|sub-?line|subtitle|title|description|body|caption|label|content|text|name|value|price|image|photo|icon)$/i;
+
+/** A zero standing in for a value nobody has yet: `£0`, `$0.00`, `0 pieces`. */
+const ZERO_VALUE = [/^[£$€]\s?0([.,]0{1,2})?$/, /^0\s+(pieces|items|products|results|reviews|rows)$/i];
 
 /** Parameter names that carry author-written copy. */
 const COPY_PARAM = /^(text|label|title|placeholder|.*Label|heading|subtitle|caption)$/;
 
-/** Nodes that gate a subtree on a condition — how an empty branch is built. */
-const GATE_TYPE = /condition|states$|net\.noodl\.logic|Switch/i;
+/**
+ * Nodes that gate a subtree on a condition — one half of how an empty branch is
+ * built. Anchored type names rather than a substring sweep.
+ *
+ * ⚠️ The first version was `/condition|states$|net\.noodl\.logic|Switch/i`, and
+ * two of its four alternatives were wrong: **`net.noodl.logic` matches none of
+ * the 175 catalog types** (the real prefixes are `net.noodl.ArrayChanged`,
+ * `net.noodl.ObjectChanged`, `net.noodl.DateCompare`), and `states$` matches
+ * `States`, which is the animation node. Meanwhile it missed `Inverter` — the
+ * node the doctrine's own empty-state mechanism needs, and the one a real
+ * project on disk uses (`phase58-backend-deferred/Pages/StockCupboard`).
+ */
+const GATE_TYPE = /^(Condition|Inverter|Switch|Expression|And|Or)$/;
+
+/**
+ * The other half, and the one the doctrine actually teaches: a collection's
+ * emptiness driven straight into a `visible`/`mounted` port. `DbCollection2`
+ * emits `isEmpty`; `Static Data`, `Collection2`, `DbCollection` and the array
+ * filters emit `count`. No gate node is involved on the "hide the list" side.
+ */
+const EMPTY_SOURCE = /^(isEmpty|count)$/i;
+const GATE_PORT = /^(visible|mounted)$/i;
 
 function readJson(file, fallback) {
   try {
@@ -65,7 +109,15 @@ function readJson(file, fallback) {
   }
 }
 
-/** Every component in the project, with its nodes flattened. */
+/**
+ * Every component in the project, with its nodes and its connections.
+ *
+ * ⚠️ In the v2 format `children` is a list of node **ids**, not nested node
+ * objects, and connections live in a sibling `connections.json`. An earlier
+ * version of this walker recursed into `children` and so pushed bare strings
+ * into the node list; they read as `{type: undefined}` and were counted. The
+ * node array in a v2 `nodes.json` is already flat.
+ */
 function loadComponents(projectDir) {
   const root = path.join(projectDir, 'components');
   const out = [];
@@ -74,14 +126,23 @@ function loadComponents(projectDir) {
       const p = path.join(dir, entry.name);
       if (entry.isDirectory()) walk(p);
       else if (entry.name === 'nodes.json') {
+        const doc = readJson(p, { nodes: [] });
         const flat = [];
         (function descend(nodes) {
           for (const n of nodes || []) {
+            if (!n || typeof n !== 'object') continue;
             flat.push(n);
             descend(n.children);
           }
-        })(readJson(p, { nodes: [] }).nodes);
-        out.push({ pathName: path.relative(root, dir).split(path.sep).join('/'), nodes: flat });
+        })(doc.nodes);
+        // v2: a sibling file. v1: inline on the same document.
+        const sidecar = readJson(path.join(dir, 'connections.json'), null);
+        const connections = (sidecar && sidecar.connections) || doc.connections || [];
+        out.push({
+          pathName: path.relative(root, dir).split(path.sep).join('/'),
+          nodes: flat,
+          connections: Array.isArray(connections) ? connections : []
+        });
       }
     }
   })(root);
@@ -166,7 +227,17 @@ function rhythm(vp) {
   };
 }
 
-/** `§5` — imagery that actually loads. A broken URL is not imagery. */
+/**
+ * `§5` — imagery that actually loads. A broken URL is not imagery.
+ *
+ * ⚠️ **This counts rendered `<img>` elements, not authored `Image` nodes.**
+ * `@nodegx/render-measure` builds its list from `document.querySelectorAll` and
+ * filters on `offsetParent` (`index.js:124`,`:175`), so a project whose Image
+ * node sits inside a Repeater that never ran reports `0` — and the evidence
+ * string used to say *"0 Image nodes"*, which read as "none were authored".
+ * F38 was filed on that reading and it was wrong: five of the six replays
+ * author Image nodes and every one of them sets `sizeMode: "explicit"`.
+ */
 function imagery(vp) {
   const total = vp.images?.total || 0;
   const broken = vp.images?.broken || 0;
@@ -174,7 +245,7 @@ function imagery(vp) {
   return {
     score: loading > 0 ? 1 : 0,
     value: `${loading} loading`,
-    evidence: `${total} Image nodes, ${broken} broken`
+    evidence: `${total} <img> rendered, ${broken} broken (DOM, not authored Image nodes)`
   };
 }
 
@@ -207,27 +278,55 @@ function gridIsAGrid(vp) {
   };
 }
 
-/** `§9` — a list has a designed branch for having nothing in it. */
+/**
+ * `§9` — a list has a designed branch for having nothing in it.
+ *
+ * A list is gated when its host component either holds a gate node
+ * ({@link GATE_TYPE}) or wires a collection's `isEmpty`/`count` straight into a
+ * `visible`/`mounted` port ({@link EMPTY_SOURCE}). The second form is the one
+ * the doctrine teaches and the first version could not see at all.
+ */
 function emptyState(components) {
-  const hosts = components.filter((c) => c.nodes.some((n) => n.type === 'For Each'));
-  const withGate = hosts.filter((c) => c.nodes.some((n) => GATE_TYPE.test(n.type || '')));
+  const hosts = components.filter((c) => c.nodes.some((n) => n.type === 'For Each' || n.type === 'DbCollection2'));
+  const how = new Map();
+  for (const c of hosts) {
+    const gates = c.nodes.filter((n) => GATE_TYPE.test(n.type || '')).map((n) => n.type);
+    const wires = c.connections
+      .filter((x) => GATE_PORT.test(x.toProperty || '') && EMPTY_SOURCE.test(x.fromProperty || ''))
+      .map((x) => `${x.fromProperty}→${x.toProperty}`);
+    if (gates.length || wires.length) how.set(c, [...wires, ...gates].join(','));
+  }
   return {
-    score: hosts.length > 0 && withGate.length === hosts.length ? 1 : 0,
-    value: `${withGate.length}/${hosts.length} lists gated`,
+    score: hosts.length > 0 && how.size === hosts.length ? 1 : 0,
+    value: `${how.size}/${hosts.length} lists gated`,
     evidence: hosts.length
-      ? hosts.map((c) => `${c.pathName}${withGate.includes(c) ? '' : ' (none)'}`).join('; ')
-      : 'no For Each in the project'
+      ? hosts.map((c) => `${c.pathName} (${how.get(c) || 'none'})`).join('; ')
+      : 'no For Each or Query Records in the project'
   };
 }
 
-/** `§10` — copy a person wrote, not copy a template shipped. */
+/**
+ * `§10` — copy a person wrote, not copy a template shipped.
+ *
+ * ⚠️ **A literal that a connection overwrites is not copy.** Every replay
+ * component driven by a Repeater carries defaults like `"Title"`, `"£0"`,
+ * `"Category"` on the very ports its Component Inputs feed; none of them ever
+ * reaches a screen. Counting them would fail sonnet — the one run Richard's
+ * verdict clears — on thirteen strings nobody can see. The rule is therefore:
+ * a `(node, param)` pair that is the target of a connection is exempt.
+ */
 function realCopy(components) {
   const hits = [];
   for (const c of components) {
+    const driven = new Set(c.connections.map((x) => `${x.toId} ${x.toProperty}`));
     for (const n of c.nodes) {
       for (const [k, v] of Object.entries(n.parameters || {})) {
         if (typeof v !== 'string' || !COPY_PARAM.test(k)) continue;
-        if (DEAD_COPY.some((re) => re.test(v.trim()))) hits.push(`${c.pathName} ${k}="${v.trim()}"`);
+        const t = v.trim();
+        if (!t) continue;
+        if (driven.has(`${n.id} ${k}`)) continue;
+        const rules = k === 'placeholder' ? DEAD_COPY : [...DEAD_COPY, STRUCTURAL_NOUN, ...ZERO_VALUE];
+        if (rules.some((re) => re.test(t))) hits.push(`${c.pathName} ${k}="${t.slice(0, 60)}"`);
       }
     }
   }
