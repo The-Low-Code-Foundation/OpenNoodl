@@ -50,9 +50,9 @@ export class NodeGraphNodeSet {
     // through every seam that had to learn about it and noticing this one never
     // did. Anchors would have gone the same way, in the same four lines.
     //
-    // ⚠️ The anchor list is copied per-entry, not by reference: a pasted wire
-    // that shared its source's array would re-route the original the moment
-    // either was dragged. Same shape as the `toJSON` metadata trap in LEG-001.
+    // ⚠️ The route's arrays are copied, not shared: a pasted wire holding its
+    // source's arrays would re-route the original the moment either was dragged.
+    // Same shape as the `toJSON` metadata trap in LEG-001.
     const connections = [];
     for (var i in this.connections) {
       const c = this.connections[i];
@@ -64,7 +64,7 @@ export class NodeGraphNodeSet {
       };
       if (c.label !== undefined) clone.label = c.label;
       if (c.labelT !== undefined) clone.labelT = c.labelT;
-      if (c.anchors && c.anchors.length) clone.anchors = c.anchors.map((a) => ({ u: a.u, v: a.v }));
+      if (c.route) clone.route = { xs: (c.route.xs ?? []).slice(), ys: (c.route.ys ?? []).slice() };
       connections.push(clone);
     }
 

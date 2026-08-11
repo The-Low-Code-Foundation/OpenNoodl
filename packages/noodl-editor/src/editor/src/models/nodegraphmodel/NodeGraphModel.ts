@@ -31,17 +31,24 @@ export type Connection = {
   /** Normalised position of the label along the curve, 0.15–0.85 (CAN-001). */
   labelT?: number;
   /**
-   * Where the builder bent this wire (SIG-007), in the wire's own chord frame:
-   * `u` along it and `v` in graph px across it. **Absent when there are none** —
-   * never `[]`, so a wire that was bent and reset is indistinguishable from one
-   * that never was, and `project.json` does not churn. ⚠️ And `[]` is truthy,
-   * which is the mistake ELO-001 was.
+   * How a **square** wire is routed (SIG-007) — the positions of its runs.
    *
-   * Structural rather than an import of `wireAnchors.WireAnchor`: the geometry
+   * `xs[i]` is a fraction of the horizontal gap between the two ports; `ys[j]`
+   * is an offset in graph px from the source port's row; runs alternate, and
+   * `xs.length === ys.length + 1` because the first and last runs belong to the
+   * ports. **Absent when the wire has never been routed**, so a wire that was
+   * routed and reset is indistinguishable from one that never was and
+   * `project.json` does not churn.
+   *
+   * ⚠️ Only square wires have one. A curved wire is a *look*, not a routing
+   * mode — that decision is what makes this a list of runs rather than a list of
+   * points, since a point has nowhere to record "this run moved 40px left".
+   *
+   * Structural rather than an import of `wireRouting.WireRoute`: the geometry
    * lives in the canvas painter's directory and a model does not reach into a
-   * view. The two shapes are identical and the specs check that they stay so.
+   * view.
    */
-  anchors?: { u: number; v: number }[];
+  route?: { xs: number[]; ys: number[] };
 };
 
 type NodeGraphModelJson = {

@@ -204,12 +204,15 @@ export function reconstructLegacyComponent(
     if (typeof c.labelT === 'number') conn.labelT = c.labelT;
     // SIG-007's half of the same carry. ⚠️ Shape-checked here rather than
     // trusted: this is the door a project written by something else comes
-    // through, and a `NaN` in an anchor kills the rest of the canvas frame.
-    if (Array.isArray(c.anchors) && c.anchors.length) {
-      const anchors = c.anchors.filter(
-        (a) => a && typeof a.u === 'number' && isFinite(a.u) && typeof a.v === 'number' && isFinite(a.v)
-      );
-      if (anchors.length) conn.anchors = anchors.map((a) => ({ u: a.u, v: a.v }));
+    // through, and a `NaN` in a route kills the rest of the canvas frame. The
+    // invariant is `xs.length === ys.length + 1` — the first and last runs
+    // belong to the ports — and a route that breaks it is dropped whole.
+    const route = c.route as { xs?: unknown; ys?: unknown } | undefined;
+    if (route && Array.isArray(route.xs) && Array.isArray(route.ys)) {
+      const finite = (v: unknown) => typeof v === 'number' && isFinite(v);
+      if (route.xs.length === route.ys.length + 1 && route.xs.every(finite) && route.ys.every(finite)) {
+        conn.route = { xs: route.xs as number[], ys: route.ys as number[] };
+      }
     }
     if (c.annotation) conn.annotation = c.annotation;
     return conn;

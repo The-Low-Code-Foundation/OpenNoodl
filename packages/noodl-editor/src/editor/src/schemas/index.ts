@@ -187,15 +187,15 @@ export interface ConnectionV2 {
   /** Where that text sits along the wire (CAN-001). */
   labelT?: number;
   /**
-   * Hand-drawn routing (SIG-007), in the wire's own chord frame. Absent when
-   * there is none — never `[]`.
+   * How a **square** wire is routed (SIG-007) — the positions of its runs.
+   * Absent when the wire has never been routed.
    *
    * ⚠️ Declared even though the index signature below already permits it. A
    * field only an index signature knows about is a field no reader can be
    * checked against, and this one is written by the canvas and read by the
    * exporter, the importer, the snapshot and the AI write path.
    */
-  anchors?: { u: number; v: number }[];
+  route?: { xs: number[]; ys: number[] };
   annotation?: 'Deleted' | 'Changed' | 'Created';
   [key: string]: unknown;
 }

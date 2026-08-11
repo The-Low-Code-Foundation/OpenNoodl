@@ -8,18 +8,21 @@ import PopupLayer from '../popuplayer';
 import { CanvasFonts, CanvasTheme, WireLabel, WIRE_TYPE_ERROR } from './canvas/CanvasTheme';
 import { NodeGraphEditorNode } from './NodeGraphEditorNode';
 import { textWordWrap } from './NodeGraphEditorNodePainter';
-import type { ChordFrame, Point, WireAnchor } from './wireAnchors';
+import type { Point, WireRoute } from './wireRouting';
 import {
-  anchorAt,
-  anchoredSegments,
-  anchorPoint,
-  chordFrame,
-  closestPointOnPath,
-  normaliseAnchors,
-  pointOnSegments,
-  readAnchors,
-  WIRE_ANCHOR
-} from './wireAnchors';
+  addMarkAt,
+  addMarks,
+  cornerAt,
+  cornerRadiusAt,
+  defaultRoute,
+  isDefaultRoute,
+  pointOnRoute,
+  readRoute,
+  routePoints,
+  runAt,
+  runCoordinate,
+  WIRE_ROUTE
+} from './wireRouting';
 import {
   arrivalDirection,
   arrowheadPolygon,
@@ -55,6 +58,21 @@ export const ALWAYS_SHOW_WIRE_LABELS = 'nodeGraphEditor.alwaysShowWireLabels';
  * for the sweep and SIG-006 R9.
  */
 export const ALWAYS_SHOW_WIRE_DIRECTION = 'nodeGraphEditor.alwaysShowWireDirection';
+
+/**
+ * Editor setting: draw every wire as right angles instead of a curve (SIG-007).
+ *
+ * 🔴 **This is not a new routing topology — it is the one that was always
+ * there.** Every wire is built as `[P0, {mid, fy}, {mid, ty}, P3]` and then
+ * drawn as a cubic *through* those control points, so the control polygon of
+ * every wire in this editor is already the orthogonal route. Square mode draws
+ * it, with a small fillet at each corner.
+ *
+ * ⚠️ Off by default, and the default is a **judgement call, not a measurement** —
+ * it changes how every wire in every existing project looks. Richard asked to
+ * see it; where it lands is his call on sight.
+ */
+export const SQUARE_WIRE_ROUTING = 'nodeGraphEditor.squareWireRouting';
 
 /**
  * Break a label into the lines the chip will draw (CAN-002).
@@ -122,20 +140,22 @@ export class NodeGraphEditorConnection {
   model: Connection;
   curve: any;
   /**
-   * The path actually painted (SIG-007) — one cubic per anchored segment.
+   * The painted path as corner points, when square routing is on (SIG-007).
    *
-   * ⚠️ **`curve` stays what it always was**: the four-point array whose ends are
-   * the two port anchors. `endpointAt`, the re-target elbow and the chord frame
-   * all read it, and none of them should see a bend. This is the *drawn* path,
-   * and with no anchors it is `[this.curve]` — the same array, so an unbent wire
-   * is stroked, hit-tested and sampled by exactly the code that did it before.
+   * ⚠️ **Undefined is the signal for "curved", and curved means unbendable.**
+   * Everything that follows the wire — `drawCurve`, `pointOnCurve`, the cull
+   * box, the handles — branches on this one field, so there is a single place
+   * that decides which mode a wire is in and no way for two of them to disagree.
+   * A curved wire has no route, no handles and no drag targets: it is exactly
+   * the wire this editor drew before SIG-007.
    */
-  curveSegments: IVector2[][];
+  wirePoints: IVector2[] | undefined;
   /**
    * Where the pointer is on this wire, while it is the hovered one (SIG-007).
    *
-   * Read by the ghost anchor, which is the *only* thing that makes the boundary
-   * between "bend this wire" and CAN-003's "re-target this wire" visible.
+   * Read by the cursor: a movable run says so by turning the pointer into a
+   * resize arrow along the one axis it can travel, which is the whole
+   * affordance — there is no other cue that a run is draggable.
    */
   hoverPos: IVector2 | undefined;
   color: any;
@@ -395,20 +415,36 @@ export class NodeGraphEditorConnection {
         return;
       }
 
-      // SIG-007 — grabbing an existing anchor moves it; grabbing the wire body
-      // mints one and moves that. Both are the same drag from here on, which is
-      // what makes a mint feel like "I grabbed the wire" rather than "I made an
-      // object and then moved it".
-      const handle = this.anchorHandleAt(pos);
-      if (handle !== undefined) {
+      // SIG-007 — square routing. A corner is asked about **before** the run it
+      // sits on: near a corner you move the corner, along a run you move the
+      // run. The other order makes every corner unreachable, since a corner is
+      // by definition inside both of the runs it joins.
+      //
+      // ⚠️ **Neither gesture creates anything.** Grabbing a vertical run slides
+      // it sideways; that is what the hand expects of a line that is already
+      // straight, and an earlier build that minted a new corner there instead
+      // broke the wire under the pointer. A new corner is an explicit
+      // right-click — see `NodeContextMenu`.
+      // ⚠️ The "+" is asked about first: it is the smallest target and it sits in
+      // the middle of a run, so anything asked before it would swallow it.
+      const add = this.addHandleAt(pos);
+      if (add !== undefined) {
         PopupLayer.instance.hideTooltip();
-        this.owner.interaction.startDraggingWireAnchor(this, handle);
+        this.owner.interaction.startAddingWireCorner(this, add, pos);
         return;
       }
 
-      if (this.showsAnchorHandles()) {
+      const corner = this.cornerHandleAt(pos);
+      if (corner !== undefined) {
         PopupLayer.instance.hideTooltip();
-        this.owner.interaction.startMintingWireAnchor(this, pos);
+        this.owner.interaction.startDraggingWireCorner(this, corner);
+        return;
+      }
+
+      const run = this.runHandleAt(pos);
+      if (run !== undefined) {
+        PopupLayer.instance.hideTooltip();
+        this.owner.interaction.startDraggingWireRun(this, run);
       }
     } else if (type === 'up' && this.owner.highlightedConnection === this) {
       PopupLayer.instance.hideTooltip();
@@ -438,14 +474,26 @@ export class NodeGraphEditorConnection {
     const c = this.curve;
     if (!c) return;
     const ctx = this.ctx;
-    const segments = this.curveSegments && this.curveSegments.length ? this.curveSegments : [c];
+
+    // SIG-007 square routing — the same path, drawn as runs and corners.
+    // `arcTo` rounds each corner by the radius `cornerRadiusAt` clamped for it,
+    // so a tight elbow tightens instead of the arc wandering off the route.
+    const p = this.wirePoints;
+    if (p && p.length >= 2) {
+      ctx.beginPath();
+      ctx.moveTo(p[0].x, p[0].y);
+      for (let i = 1; i < p.length - 1; i++) {
+        const radius = cornerRadiusAt(p as Point[], i);
+        if (radius > 0) ctx.arcTo(p[i].x, p[i].y, p[i + 1].x, p[i + 1].y, radius);
+        else ctx.lineTo(p[i].x, p[i].y);
+      }
+      ctx.lineTo(p[p.length - 1].x, p[p.length - 1].y);
+      return;
+    }
 
     ctx.beginPath();
-    ctx.moveTo(segments[0][0].x, segments[0][0].y);
-    for (const s of segments) {
-      ctx.lineTo(s[0].x, s[0].y);
-      ctx.bezierCurveTo(s[1].x, s[1].y, s[2].x, s[2].y, s[3].x, s[3].y);
-    }
+    ctx.moveTo(c[0].x, c[0].y);
+    ctx.bezierCurveTo(c[1].x, c[1].y, c[2].x, c[2].y, c[3].x, c[3].y);
   }
 
   midpoint(a: IVector2, b: IVector2) {
@@ -473,8 +521,11 @@ export class NodeGraphEditorConnection {
   pointOnCurve(t) {
     const c = this.curve;
     if (!c) return;
-    if (this.curveSegments && this.curveSegments.length > 1) {
-      return pointOnSegments(this.curveSegments as Point[][], t);
+    // ⚠️ By arc length in square mode. A square route's legs are wildly uneven —
+    // a long run and a 4px jog are one vertex apart — so anything stepping by
+    // vertex would crawl the long side and jump the short one.
+    if (this.wirePoints && this.wirePoints.length >= 2) {
+      return pointOnRoute(this.wirePoints as Point[], t);
     }
     return {
       x: this._bezierInterpolation(t, c[0].x, c[1].x, c[2].x, c[3].x),
@@ -482,43 +533,88 @@ export class NodeGraphEditorConnection {
     };
   }
 
-  /** This wire's chord frame — what its anchors are read against (SIG-007). */
-  anchorFrame(): ChordFrame | undefined {
-    if (!this.curve) return undefined;
-    return chordFrame(this.curve[0], this.curve[3]);
+  /**
+   * The last leg of the painted path, for orienting the target arrowhead.
+   *
+   * `arrivalDirection` reads `curve[3] - curve[2]`, so a square route hands it
+   * the final run's two ends in those slots. Both modes therefore state arrival
+   * from the line that actually arrives, rather than from the curve's idea of it.
+   */
+  arrivalSegment(): Point[] {
+    const p = this.wirePoints;
+    if (p && p.length >= 2) {
+      const a = p[p.length - 2] as Point;
+      const b = p[p.length - 1] as Point;
+      return [a, a, a, b];
+    }
+    return this.curve as Point[];
   }
 
-  /** The anchors to paint and hit-test: the model's, cleaned and ordered. */
-  anchorList(): WireAnchor[] {
-    return normaliseAnchors(readAnchors(this.model?.anchors));
+  /** The route this wire is drawn along, or the untouched one (SIG-007). */
+  wireRoute(): WireRoute {
+    return readRoute(this.model?.route) ?? defaultRoute(this.curve as Point[]);
+  }
+
+  /** Has anybody actually routed this wire, or is it still where it started? */
+  hasCustomRoute(): boolean {
+    return !!this.curve && !isDefaultRoute(this.curve as Point[], readRoute(this.model?.route));
   }
 
   /**
-   * Which anchor handle is under this point, if any (SIG-007).
+   * Which corner is under this point, if any (SIG-007).
    *
-   * ⚠️ Only answers on a wire that is showing its handles. Handles paint on
-   * hover or selection only, and a target you cannot see is the thing this whole
-   * task's §G D4 exists to avoid — `endpointHitRadius` grabbing at 8px against a
-   * 3px dot is exactly that trap, kept for CAN-003's sake and not repeated here.
+   * ⚠️ Only answers on a wire that is showing its handles — a target you cannot
+   * see is the trap `endpointHitRadius` already is, kept for CAN-003's sake and
+   * deliberately not repeated here.
    */
-  anchorHandleAt(pos: IVector2): number | undefined {
-    if (!this.showsAnchorHandles()) return undefined;
-    const frame = this.anchorFrame();
-    if (!frame) return undefined;
-    return anchorAt(frame, this.anchorList(), pos);
+  cornerHandleAt(pos: IVector2): number | undefined {
+    if (!this.showsRouteHandles() || !this.wirePoints) return undefined;
+    return cornerAt(this.wirePoints as Point[], pos);
   }
 
   /**
-   * Are this wire's anchor handles visible right now?
+   * Which movable **run** is under this point, if any (SIG-007).
    *
-   * The same argument that keeps endpoints as 3px dots on an unhovered wire —
-   * *"handles on every wire would be a hundred new hit targets competing with
-   * the node cards on a dense graph"* — and it applies harder here, because
-   * there can be many per wire. It is also the principle Richard named
-   * unprompted about the chevron: a cue only appears where it is needed.
+   * ⚠️ Asked *after* `cornerHandleAt`, always. Near a corner you are moving the
+   * corner; along a run you are moving the run. Asking the other way round makes
+   * every corner unreachable, because a corner is by definition the end of two
+   * runs and always inside one of them.
    */
-  showsAnchorHandles(): boolean {
-    return !this.rerouting && (this.owner?.highlightedConnection === this || this.isSelected());
+  runHandleAt(pos: IVector2): number | undefined {
+    if (!this.showsRouteHandles() || !this.wirePoints) return undefined;
+    return runAt(this.wirePoints as Point[], this.wireRoute(), pos);
+  }
+
+  /**
+   * Which run's "+" is under this point (SIG-007).
+   *
+   * ⚠️ Asked **before** the corner and the run, because it is the smallest and
+   * most deliberate target of the three and it sits in the middle of a run — if
+   * the run answered first, the "+" could never be clicked.
+   */
+  addHandleAt(pos: IVector2): number | undefined {
+    if (!this.showsRouteHandles() || !this.wirePoints) return undefined;
+    return addMarkAt(this.wirePoints as Point[], this.wireRoute(), pos);
+  }
+
+  /** The axis a run may travel along — what the cursor is telling you. */
+  runAxisAt(pos: IVector2): 'x' | 'y' | undefined {
+    const run = this.runHandleAt(pos);
+    if (run === undefined) return undefined;
+    return runCoordinate(this.wireRoute(), run)?.axis;
+  }
+
+  /**
+   * Are this wire's route handles live right now?
+   *
+   * ⚠️ **Square mode only.** A curved wire has no route to move — that is the
+   * whole shape of the decision: curves are a look, square is the mode you route
+   * in. And within square mode it is still hover-or-selection, on the argument
+   * that kept endpoints as 3px dots: handles on every wire would be a hundred
+   * new hit targets competing with the node cards on a dense graph.
+   */
+  showsRouteHandles(): boolean {
+    return !this.rerouting && !!this.wirePoints && (this.owner?.highlightedConnection === this || this.isSelected());
   }
 
   _findClosestPointOnCurve(p, t0, t1) {
@@ -606,6 +702,17 @@ export class NodeGraphEditorConnection {
    * always-on setting — the chevrons exist for reading a graph you are *not*
    * pointing at.
    */
+  /**
+   * Should this wire be drawn as right angles rather than a curve? (SIG-007.)
+   *
+   * Off by default — unlike the direction chevrons, this changes the appearance
+   * of every wire in every existing project, so an unset key means the editor
+   * looks the way it always has.
+   */
+  usesSquareRouting(): boolean {
+    return EditorSettings.instance.get(SQUARE_WIRE_ROUTING) === true;
+  }
+
   paintsDirectionChevrons(): boolean {
     // ⚠️ `!== false`, not truthiness: this setting is **on by default**, and an
     // unset key must mean on rather than off.
@@ -752,69 +859,63 @@ export class NodeGraphEditorConnection {
   }
 
   /**
-   * The anchor handles, and the ghost of the one a drag would mint (SIG-007).
+   * The corner handles of a square route (SIG-007).
    *
-   * ## The sixth mark on a wire, and why it is a ring
+   * ## The handle is the corner
    *
-   * There are already five: the endpoint circle, the endpoint arrowhead, the
-   * `'both'` diamond, the direction chevron and the travelling bead.
-   * `wireEndpoints.ts` separates its glyphs on **fill ratio** — circle 0.79,
-   * arrowhead and diamond 0.50 — so the sixth joins that table rather than
-   * starting a second scheme. A stroked ring is **0.00**, as far from every
-   * filled glyph as the axis goes, and it separates from the chevron (the only
-   * other open mark, and the only other one mid-wire) by being closed and having
-   * no direction. ⚠️ A filled square was the other candidate and is rejected:
-   * rotate it and it is the diamond.
+   * 🔴 **This replaced a ring on a curve, and the shape change is the point.**
+   * On a curve an anchor is somewhere the spline is smoothed *towards*, so a
+   * ring — a mark meaning "here, roughly" — was honest. On a square route the
+   * corner is exactly where you put it, and the handle and the corner are the
+   * same object. A square says that. It also settles the objection that first
+   * ruled a square out (rotate it and it is the `'both'` diamond): the diamond
+   * lives on a node plug and never on a wire body, and here the square is
+   * aligned to the two runs it joins rather than floating on a curve.
    *
-   * ## The ghost is the answer to R1
-   *
-   * *"Click near one end and drag"* was already CAN-003's re-target gesture, at
-   * an 8px radius against a 3px dot — a boundary nothing painted. That radius is
-   * **unchanged**; what changes is that the ghost ring rides the pointer along
-   * the wire and **stops appearing inside it**, so running the pointer down a
-   * wire shows you exactly where bending stops and re-targeting starts. The
-   * absence is the boundary, and it moves, which is the only kind anyone reads.
+   * ⚠️ There is no ghost-handle preview any more, because there is no
+   * mint-by-dragging: dragging a run **moves** it, and a new corner is an
+   * explicit right-click. What tells you a run is draggable is the cursor.
    *
    * ⚠️ Painted in the wire's own colour, not a new one. Wire colour already
    * carries four meanings and this painter refused to make selection a fifth.
    */
-  paintAnchorHandles(ctx: CanvasRenderingContext2D, strokeColor: string, glyphScale: number, wireType: string) {
-    if (!this.showsAnchorHandles()) return;
+  paintRouteHandles(ctx: CanvasRenderingContext2D, strokeColor: string, glyphScale: number, wireType: string) {
+    if (!this.showsRouteHandles()) return;
 
-    const frame = this.anchorFrame();
-    if (!frame) return;
+    const points = this.wirePoints;
+    if (!points || points.length < 3) return;
 
-    const anchors = this.anchorList();
-    const radius = WIRE_ANCHOR.handleRadius * glyphScale;
-
+    const radius = WIRE_ROUTE.handleRadius * glyphScale;
     const previousWidth = ctx.lineWidth;
-    const previousAlpha = ctx.globalAlpha;
     ctx.setLineDash([]);
     ctx.strokeStyle = strokeColor;
-    ctx.lineWidth = WIRE_ANCHOR.handleLineWidth * glyphScale;
+    ctx.lineWidth = WIRE_ROUTE.handleLineWidth * glyphScale;
 
-    for (const anchor of anchors) {
-      const p = anchorPoint(frame, anchor);
+    // Every interior vertex is a corner, and every corner is a handle. There is
+    // no separate "anchor" object to paint: a corner **is** the anchor, which is
+    // what makes dragging one feel like moving the wire rather than moving a
+    // marker attached to it.
+    for (let i = 1; i < points.length - 1; i++) {
       ctx.beginPath();
-      ctx.arc(p.x, p.y, radius, 0, 2 * Math.PI, false);
+      ctx.rect(points[i].x - radius, points[i].y - radius, radius * 2, radius * 2);
       ctx.stroke();
     }
 
-    // The ghost. Only while the pointer is actually on this wire — a selected
-    // wire shows its existing handles but does not follow a pointer that has
-    // gone somewhere else.
-    const pos = this.owner?.highlightedConnection === this ? this.hoverPos : undefined;
-    if (pos) {
-      const near = closestPointOnPath(this.curveSegments as Point[][], pos);
-      const insideEndpointZone = !!this.endpointAt(pos);
-      const onExistingHandle = anchorAt(frame, anchors, pos) !== undefined;
-
-      if (near && !insideEndpointZone && !onExistingHandle && near.distance <= NodeGraphEditorConnection.hitStrokeWidth) {
-        ctx.globalAlpha = previousAlpha * WIRE_ANCHOR.ghostAlpha;
-        ctx.beginPath();
-        ctx.arc(near.point.x, near.point.y, radius, 0, 2 * Math.PI, false);
-        ctx.stroke();
-      }
+    // 🔴 **The "+" is the answer to "there's no way to add an anchor that I can
+    // see".** Adding was only ever on the right-click menu, which is a fine
+    // place for it and a hopeless way to find it. One mark per run long enough
+    // to hold it, at the run's midpoint, fainter than a corner because a corner
+    // is a thing that exists and this is an offer.
+    const previousAlpha = ctx.globalAlpha;
+    const plus = WIRE_ROUTE.addMarkRadius * glyphScale;
+    ctx.globalAlpha = previousAlpha * WIRE_ROUTE.addMarkAlpha;
+    for (const mark of addMarks(points as Point[], this.wireRoute())) {
+      ctx.beginPath();
+      ctx.moveTo(mark.point.x - plus, mark.point.y);
+      ctx.lineTo(mark.point.x + plus, mark.point.y);
+      ctx.moveTo(mark.point.x, mark.point.y - plus);
+      ctx.lineTo(mark.point.x, mark.point.y + plus);
+      ctx.stroke();
     }
 
     ctx.globalAlpha = previousAlpha;
@@ -916,7 +1017,13 @@ export class NodeGraphEditorConnection {
     // bent it. ⚠️ Not while an end is being re-targeted: during a CAN-003 drag
     // the wire is a temporary elbow to the cursor, and its chord frame is
     // meaningless, so anchors sit the drag out and come back on drop.
-    this.curveSegments = this.rerouting ? [this.curve] : (anchoredSegments(this.curve, this.anchorList()) as IVector2[][]);
+    // SIG-007 — the square route, when square routing is on. ⚠️ Not while an
+    // end is being re-targeted: a CAN-003 drag builds a temporary elbow to the
+    // cursor, and squaring that fights the gesture.
+    this.wirePoints =
+      this.usesSquareRouting() && !this.rerouting
+        ? (routePoints(this.curve as Point[], this.wireRoute()) as IVector2[])
+        : undefined;
 
     // ⚠️ Over every segment's control points, not just the wire's own four. An
     // anchor can carry the path well outside the box its endpoints describe, and
@@ -940,7 +1047,10 @@ export class NodeGraphEditorConnection {
       return !(minX > paintArea.maxX || maxX < paintArea.minX || minY > paintArea.maxY || maxY < paintArea.minY);
     }
 
-    if (aabbIntersectTest(this.curveSegments, paintRect) === false) {
+    // The square route's corners sit on the same control points the curve's box
+    // was built from, so one test covers both — but pass the actual painted
+    // points when there are anchors, because those leave the box entirely.
+    if (aabbIntersectTest(this.wirePoints ? [this.wirePoints] : [this.curve], paintRect) === false) {
       return;
     }
 
@@ -1025,7 +1135,7 @@ export class NodeGraphEditorConnection {
     // task by name.
     const head = arrowheadPolygon(
       this.curve[3],
-      arrivalDirection(this.curveSegments[this.curveSegments.length - 1] as Point[]),
+      arrivalDirection(this.arrivalSegment()),
       (hoverConnection ? WIRE_ENDPOINT.arrowLengthHighlighted : WIRE_ENDPOINT.arrowLength) * glyphScale,
       (hoverConnection ? WIRE_ENDPOINT.arrowHalfWidthHighlighted : WIRE_ENDPOINT.arrowHalfWidth) * glyphScale
     );
@@ -1088,7 +1198,7 @@ export class NodeGraphEditorConnection {
     }
 
     // SIG-007 — the anchor handles, and the ghost that shows where they begin.
-    this.paintAnchorHandles(ctx, strokeColor, glyphScale, type);
+    this.paintRouteHandles(ctx, strokeColor, glyphScale, type);
 
     if (DebugInspector.instance.isEnabled() && DebugInspector.instance.isConnectionPulsing(this)) {
       const t = DebugInspector.instance.getPulseAnimationState(this);

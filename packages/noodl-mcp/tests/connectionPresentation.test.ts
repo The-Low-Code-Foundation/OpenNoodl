@@ -27,10 +27,7 @@ describe('SIG-007 R3 — connection presentation survives read-modify-write', ()
       wire({
         label: 'the retry path',
         labelT: 0.3,
-        anchors: [
-          { u: 0.25, v: 120 },
-          { u: 0.7, v: -60 }
-        ]
+        route: { xs: [0.25, 0.7], ys: [120] }
       })
     ];
 
@@ -39,26 +36,23 @@ describe('SIG-007 R3 — connection presentation survives read-modify-write', ()
 
     expect(carried.label).toBe('the retry path');
     expect(carried.labelT).toBe(0.3);
-    expect(carried.anchors).toEqual([
-      { u: 0.25, v: 120 },
-      { u: 0.7, v: -60 }
-    ]);
+    expect(carried.route).toEqual({ xs: [0.25, 0.7], ys: [120] });
   });
 
   it('carries nothing onto a wire the caller re-pointed', () => {
     // A connection's identity is its four endpoints everywhere else in this
     // package. Move one and it is a different wire, which has no routing yet.
-    const baseline = [wire({ label: 'old', anchors: [{ u: 0.5, v: 90 }] })];
+    const baseline = [wire({ label: 'old', route: { xs: [0.5], ys: [] } })];
     const [carried] = carryConnectionPresentation(baseline, [wire({ toProperty: 'somewhereElse' })]);
 
     expect(carried.label).toBeUndefined();
-    expect(carried.anchors).toBeUndefined();
+    expect(carried.route).toBeUndefined();
   });
 
   it('carries nothing onto a newly added wire', () => {
     const [carried] = carryConnectionPresentation([], [wire()]);
     expect(carried.label).toBeUndefined();
-    expect(carried.anchors).toBeUndefined();
+    expect(carried.route).toBeUndefined();
   });
 
   it('leaves a wire the caller deleted deleted', () => {
@@ -71,12 +65,12 @@ describe('SIG-007 R3 — connection presentation survives read-modify-write', ()
   });
 
   it('does not mutate the baseline or the incoming list', () => {
-    const baseline = [wire({ anchors: [{ u: 0.5, v: 10 }] })];
+    const baseline = [wire({ route: { xs: [0.5], ys: [] } })];
     const incoming = [wire()];
     carryConnectionPresentation(baseline, incoming);
 
-    expect(incoming[0].anchors).toBeUndefined();
-    expect(baseline[0].anchors).toEqual([{ u: 0.5, v: 10 }]);
+    expect(incoming[0].route).toBeUndefined();
+    expect(baseline[0].route).toEqual({ xs: [0.5], ys: [] });
   });
 
   /**
@@ -91,7 +85,7 @@ describe('SIG-007 R3 — connection presentation survives read-modify-write', ()
       nodes: { componentId: 'c1', nodes: [{ id: 'a', type: 'Group' }] } as ComponentFiles['nodes'],
       connections: {
         componentId: 'c1',
-        connections: [wire({ label: 'the retry path', anchors: [{ u: 0.4, v: 75 }] })]
+        connections: [wire({ label: 'the retry path', route: { xs: [0.4], ys: [75] } })]
       } as ComponentFiles['connections']
     };
 
@@ -102,7 +96,7 @@ describe('SIG-007 R3 — connection presentation survives read-modify-write', ()
     );
 
     expect(out.connections.connections[0].label).toBe('the retry path');
-    expect(out.connections.connections[0].anchors).toEqual([{ u: 0.4, v: 75 }]);
+    expect(out.connections.connections[0].route).toEqual({ xs: [0.4], ys: [75] });
   });
 
   it('prefers what the caller did send over the baseline', () => {

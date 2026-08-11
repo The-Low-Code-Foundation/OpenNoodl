@@ -240,7 +240,7 @@ export function assembleSetFiles(
  * else in this file. A wire the caller re-pointed is a different wire and
  * correctly inherits nothing.
  */
-const CARRIED_CONNECTION_FIELDS = ['label', 'labelT', 'anchors'] as const;
+const CARRIED_CONNECTION_FIELDS = ['label', 'labelT', 'route'] as const;
 
 export function carryConnectionPresentation(
   baseline: readonly ConnectionV2[],

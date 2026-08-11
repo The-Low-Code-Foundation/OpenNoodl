@@ -19,69 +19,105 @@ import { showContextMenuInPopup } from '../ShowContextMenuInPopup';
 import { OverlayHandle } from './canvas/OverlayHost';
 import { AABB } from './canvas/types';
 import { NodeGraphEditorNode } from './NodeGraphEditorNode';
+import { isDefaultRoute, removeCorner, splitRun } from './wireRouting';
 
 import type { NodeGraphEditorConnection } from './NodeGraphEditorConnection';
 import type { NodeGraphEditor } from '../nodegrapheditor';
 
 /**
- * The two anchor entries on a wire's right-click menu (SIG-007).
+ * The route entries on a square wire's right-click menu (SIG-007).
  *
- * **Delete anchor** is the delete gesture the report asked for — *"deleting with
- * right click I guess"* — and it needs the click point, because a wire may carry
- * several and the menu is otherwise about the wire as a whole.
+ * 🔴 **Adding an anchor is a right-click because the drag gesture is spoken
+ * for.** On a square wire, grabbing a run slides it — that is what the hand
+ * expects of a line that is already straight — so there is no drag left to mean
+ * "create". Right-click is the report's own suggestion (*"deleting with right
+ * click I guess"*), applied to both halves of the pair.
  *
- * **Reset routing** is the escape hatch: one click back from a wire bent into an
- * unusable shape, and the answer for a graph that arrived carrying somebody
- * else's routing. ⚠️ It writes `undefined`, never `[]` — `updateConnection`
- * deletes a key set to undefined, so a reset wire is byte-identical to one that
- * was never bent, and `project.json` does not grow a dead key per wire.
+ * **Add anchor here** splits the run under the cursor without moving the wire.
+ * **Delete anchor** is its inverse, on the corner under the cursor. **Reset
+ * routing** is the escape hatch: one click back from a wire routed into an
+ * unusable shape, and the answer for a graph carrying somebody else's routing.
  *
- * Both are absent rather than disabled when they would do nothing. A greyed
- * *Reset routing* on every wire in the editor is a control that is inert almost
- * everywhere it is shown, which is the same argument the handles themselves are
- * painted on.
+ * ⚠️ Every entry is conditional rather than greyed, and absent entirely on a
+ * curved wire — a curve is a *look*, not a routing mode, so it has no route to
+ * add to, move or reset. A control that is inert almost everywhere it is shown
+ * is worse than one that appears where it works.
  */
-function anchorMenuItems(
+function routeMenuItems(
   editor: NodeGraphEditor,
   connection: NodeGraphEditorConnection,
   pos?: { x: number; y: number }
 ): (MenuDialogItem | 'divider')[] {
-  const anchors = connection.model.anchors;
-  if (!anchors || !anchors.length) return [];
+  // Square wires only. A curved wire is a look, not a routing mode — it has no
+  // route to add to, move or reset, and offering the entries would be three
+  // controls that do nothing.
+  if (!connection.wirePoints || !pos) return [];
 
   const items: (MenuDialogItem | 'divider')[] = [];
-  const index = pos ? connection.anchorHandleAt(pos) : undefined;
+  const base = connection.curve;
+  const route = connection.wireRoute();
+  const corner = connection.cornerHandleAt(pos);
+  const run = corner === undefined ? connection.runHandleAt(pos) : undefined;
 
-  if (index !== undefined) {
+  // ⚠️ Corner before run, the same order the drag uses. Right-clicking a corner
+  // is asking about that corner; right-clicking along a run is asking about the
+  // run. Reversed, a corner could never be deleted.
+  // ⚠️ Only when it would actually remove something. Every square wire has two
+  // corners it cannot lose — the ones where it turns out of its ports — and an
+  // untouched wire is nothing but those, so the naive version offered
+  // *Delete anchor* on every wire in the editor and did nothing on most of them.
+  const removable = corner !== undefined && JSON.stringify(removeCorner(route, corner)) !== JSON.stringify(route);
+
+  if (removable) {
     items.push({
       label: 'Delete anchor',
       icon: IconName.Trash,
       onClick: () => {
-        const remaining = anchors.filter((_unused, i) => i !== index);
+        const next = removeCorner(route, corner);
         editor.model.updateConnection(
           connection.model,
-          { anchors: remaining.length ? remaining : undefined },
+          { route: isDefaultRoute(base, next) ? undefined : next },
           { undo: true, label: 'delete wire anchor' }
+        );
+        editor.repaint();
+      }
+    });
+  } else if (run !== undefined || (corner !== undefined && !removable)) {
+    items.push({
+      label: 'Add anchor here',
+      icon: IconName.Plus,
+      onClick: () => {
+        const target = run ?? connection.runHandleAt(pos) ?? 1;
+        // 🔴 The wire does not move. Splitting a run inserts a second run at the
+        // same position with a join at the click point, so the path is
+        // pixel-identical and what you have gained is two runs you can drag
+        // independently. An add that also bent the wire would be doing two
+        // things when one was asked for.
+        editor.model.updateConnection(
+          connection.model,
+          { route: splitRun(base, route, target, pos) },
+          { undo: true, label: 'add wire anchor' }
         );
         editor.repaint();
       }
     });
   }
 
-  items.push({
-    label: 'Reset routing',
-    icon: IconName.Reset,
-    onClick: () => {
-      editor.model.updateConnection(
-        connection.model,
-        { anchors: undefined },
-        { undo: true, label: 'reset wire routing' }
-      );
-      editor.repaint();
-    }
-  });
+  if (connection.hasCustomRoute()) {
+    items.push({
+      label: 'Reset routing',
+      icon: IconName.Reset,
+      onClick: () => {
+        // ⚠️ `undefined`, never a default-valued route: `updateConnection`
+        // deletes a key set to undefined, so a reset wire is byte-identical on
+        // disk to one nobody ever touched.
+        editor.model.updateConnection(connection.model, { route: undefined }, { undo: true, label: 'reset wire routing' });
+        editor.repaint();
+      }
+    });
+  }
 
-  items.push('divider');
+  if (items.length) items.push('divider');
   return items;
 }
 
@@ -413,14 +449,17 @@ export class NodeContextMenu {
         onClick: () => editor.wireLabelEditor.open(connection)
       },
       'divider',
-      // SIG-007 — the escape hatch, and the delete gesture the report asked for
-      // (*"deleting with right click I guess"*).
+      // SIG-007 — where a new anchor comes from, and the way back.
       //
-      // ⚠️ Both entries are conditional, which is the same argument the handles
-      // themselves are painted on: a cue only appears where it is needed, and a
-      // permanently greyed *Reset routing* on every wire in the editor would be
-      // a control that is inert almost everywhere it is shown.
-      ...anchorMenuItems(editor, connection, pos),
+      // ⚠️ **Adding is a right-click, not a drag**, because on a square wire the
+      // drag gesture is already spoken for: grabbing a run slides it. That is
+      // the report's own suggestion — *"deleting with right click I guess"* —
+      // applied to both halves.
+      //
+      // Every entry is conditional rather than greyed, on the same argument the
+      // handles are painted on: a control that is inert almost everywhere it is
+      // shown is worse than one that appears where it works.
+      ...routeMenuItems(editor, connection, pos),
       {
         label: 'Delete connection',
         icon: IconName.Trash,

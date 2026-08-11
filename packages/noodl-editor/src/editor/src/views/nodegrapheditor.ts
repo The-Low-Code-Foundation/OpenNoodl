@@ -47,6 +47,7 @@ import { NavigationHistory } from './nodegrapheditor/NavigationHistory';
 import { NodeContextMenu } from './nodegrapheditor/NodeContextMenu';
 import {
   ALWAYS_SHOW_WIRE_DIRECTION,
+  SQUARE_WIRE_ROUTING,
   ALWAYS_SHOW_WIRE_LABELS,
   NodeGraphEditorConnection
 } from './nodegrapheditor/NodeGraphEditorConnection';
@@ -226,7 +227,12 @@ export class NodeGraphEditor extends View {
     EditorSettings.instance.on(
       'updated',
       (args) => {
-        if (args?.key === ALWAYS_SHOW_WIRE_LABELS || args?.key === ALWAYS_SHOW_WIRE_DIRECTION) this.repaint();
+        if (
+          args?.key === ALWAYS_SHOW_WIRE_LABELS ||
+          args?.key === ALWAYS_SHOW_WIRE_DIRECTION ||
+          args?.key === SQUARE_WIRE_ROUTING
+        )
+          this.repaint();
       },
       this
     );

@@ -45,7 +45,7 @@ const NODE_TRANSIENT_KEYS = new Set(['conflicts', 'annotation', 'diffData', '_pa
  * AIX-003). Putting `label` beside it by symmetry would strip it from every
  * snapshot.
  *
- * ⚠️ **`anchors` (SIG-007) is known for a different reason, and leaving it in
+ * ⚠️ **`route` (SIG-007) is known for a different reason, and leaving it in
  * `rest` would have looked correct.** `rest` round-trips verbatim, so the
  * routing would survive a snapshot; but `mergeConnectionFields` starts from
  * `deepClone(ours)`, so *our* `rest` wins unconditionally — and a colleague's
@@ -59,7 +59,7 @@ const CONNECTION_KNOWN_KEYS = new Set([
   'toProperty',
   'label',
   'labelT',
-  'anchors'
+  'route'
 ]);
 const CONNECTION_TRANSIENT_KEYS = new Set(['annotation']);
 
@@ -124,8 +124,8 @@ function normalizeConnection(raw: Record<string, unknown>): SnapshotConnection {
   };
   if (raw.label !== undefined) connection.label = raw.label as string;
   if (raw.labelT !== undefined) connection.labelT = raw.labelT as number;
-  if (Array.isArray(raw.anchors) && raw.anchors.length) {
-    connection.anchors = raw.anchors as { u: number; v: number }[];
+  if (raw.route && typeof raw.route === 'object') {
+    connection.route = raw.route as { xs: number[]; ys: number[] };
   }
   return connection;
 }
@@ -298,7 +298,7 @@ function denormalizeConnection(connection: SnapshotConnection): Record<string, u
   // grow the keys on its way through a merge.
   if (connection.label !== undefined) out.label = connection.label;
   if (connection.labelT !== undefined) out.labelT = connection.labelT;
-  if (connection.anchors && connection.anchors.length) out.anchors = connection.anchors;
+  if (connection.route) out.route = connection.route;
   return { ...out, ...connection.rest };
 }
 

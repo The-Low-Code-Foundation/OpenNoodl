@@ -691,7 +691,7 @@ function connectionRefFor(context: MergeContext, connection: SnapshotConnection)
  * whichever side moved it wins, and two different positions are not worth
  * asking about.
  *
- * `anchors` (SIG-007) takes `labelT`'s rule, and it is here rather than left in
+ * `route` (SIG-007) takes `labelT`'s rule, and it is here rather than left in
  * `rest` **because of the first line of this function** — `deepClone(ours)`
  * means our `rest` wins unconditionally, so a colleague's hand-drawn routing
  * would be dropped on every merge where we had not touched our own. It is not a
@@ -722,13 +722,13 @@ function mergeConnectionFields(
   if (labelT === undefined) delete merged.labelT;
   else merged.labelT = labelT;
 
-  // Compared by value: an anchor list is an array, so `ours === base` is false
-  // between two snapshots of the same unchanged routing and every merge would
-  // take theirs.
-  const untouched = JSON.stringify(ours.anchors ?? null) === JSON.stringify(base?.anchors ?? null);
-  const anchors = untouched ? theirs.anchors : ours.anchors;
-  if (!anchors || !anchors.length) delete merged.anchors;
-  else merged.anchors = anchors;
+  // Compared by value: a route is an object of arrays, so `ours === base` is
+  // false between two snapshots of the same unchanged routing and every merge
+  // would take theirs.
+  const untouched = JSON.stringify(ours.route ?? null) === JSON.stringify(base?.route ?? null);
+  const route = untouched ? theirs.route : ours.route;
+  if (!route) delete merged.route;
+  else merged.route = route;
 
   return merged;
 }
