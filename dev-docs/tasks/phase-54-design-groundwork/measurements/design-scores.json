@@ -1,7 +1,7 @@
 {
   "rubric": "DSG-006 §3",
   "scoredOn": "2026-08-11",
-  "note": "one row per criterion; no total by design. one-accent and rhythm are no-data: see NOTES-DSG-006.md F36",
+  "note": "one row per criterion; no total by design. All eight criteria live as of the render-measure colour+rhythm extension.",
   "runs": [
     {
       "project": "phase55-s6-haiku",
@@ -19,17 +19,17 @@
           "key": "one-accent",
           "doctrine": "§4",
           "source": "render",
-          "score": null,
-          "value": "no-data",
-          "evidence": "the render report carries no colour; nothing measures backgrounds"
+          "score": 1,
+          "value": "1 accent",
+          "evidence": "rgb(59, 130, 246) (603740px²)"
         },
         {
           "key": "rhythm",
           "doctrine": "§1,§8",
           "source": "render",
-          "score": null,
-          "value": "no-data",
-          "evidence": "the render report carries no inter-band gaps; nothing measures spacing"
+          "score": 1,
+          "value": "3 spacings",
+          "evidence": "3 bands; 16px×2, 40px×2, 80px×2"
         },
         {
           "key": "imagery-present",
@@ -89,17 +89,17 @@
           "key": "one-accent",
           "doctrine": "§4",
           "source": "render",
-          "score": null,
-          "value": "no-data",
-          "evidence": "the render report carries no colour; nothing measures backgrounds"
+          "score": 0,
+          "value": "0 accents",
+          "evidence": "no chromatic background; 0 neutral"
         },
         {
           "key": "rhythm",
           "doctrine": "§1,§8",
           "source": "render",
-          "score": null,
-          "value": "no-data",
-          "evidence": "the render report carries no inter-band gaps; nothing measures spacing"
+          "score": 0,
+          "value": "0 spacings",
+          "evidence": "1 bands; none"
         },
         {
           "key": "imagery-present",
@@ -159,17 +159,17 @@
           "key": "one-accent",
           "doctrine": "§4",
           "source": "render",
-          "score": null,
-          "value": "no-data",
-          "evidence": "the render report carries no colour; nothing measures backgrounds"
+          "score": 1,
+          "value": "1 accent",
+          "evidence": "rgb(59, 130, 246) (14474px²)"
         },
         {
           "key": "rhythm",
           "doctrine": "§1,§8",
           "source": "render",
-          "score": null,
-          "value": "no-data",
-          "evidence": "the render report carries no inter-band gaps; nothing measures spacing"
+          "score": 1,
+          "value": "4 spacings",
+          "evidence": "6 bands; 32px×2, 40px×1, 64px×2, 80px×5"
         },
         {
           "key": "imagery-present",
@@ -229,17 +229,17 @@
           "key": "one-accent",
           "doctrine": "§4",
           "source": "render",
-          "score": null,
-          "value": "no-data",
-          "evidence": "the render report carries no colour; nothing measures backgrounds"
+          "score": 0,
+          "value": "0 accents",
+          "evidence": "no chromatic background; 0 neutral"
         },
         {
           "key": "rhythm",
           "doctrine": "§1,§8",
           "source": "render",
-          "score": null,
-          "value": "no-data",
-          "evidence": "the render report carries no inter-band gaps; nothing measures spacing"
+          "score": 0,
+          "value": "0 spacings",
+          "evidence": "1 bands; none"
         },
         {
           "key": "imagery-present",
@@ -299,17 +299,17 @@
           "key": "one-accent",
           "doctrine": "§4",
           "source": "render",
-          "score": null,
-          "value": "no-data",
-          "evidence": "the render report carries no colour; nothing measures backgrounds"
+          "score": 0,
+          "value": "0 accents",
+          "evidence": "no chromatic background; 0 neutral"
         },
         {
           "key": "rhythm",
           "doctrine": "§1,§8",
           "source": "render",
-          "score": null,
-          "value": "no-data",
-          "evidence": "the render report carries no inter-band gaps; nothing measures spacing"
+          "score": 0,
+          "value": "0 spacings",
+          "evidence": "1 bands; none"
         },
         {
           "key": "imagery-present",
@@ -369,17 +369,17 @@
           "key": "one-accent",
           "doctrine": "§4",
           "source": "render",
-          "score": null,
-          "value": "no-data",
-          "evidence": "the render report carries no colour; nothing measures backgrounds"
+          "score": 0,
+          "value": "0 accents",
+          "evidence": "no chromatic background; 3 neutral"
         },
         {
           "key": "rhythm",
           "doctrine": "§1,§8",
           "source": "render",
-          "score": null,
-          "value": "no-data",
-          "evidence": "the render report carries no inter-band gaps; nothing measures spacing"
+          "score": 1,
+          "value": "4 spacings",
+          "evidence": "6 bands; 16px×2, 40px×3, 64px×1, 80px×6"
         },
         {
           "key": "imagery-present",

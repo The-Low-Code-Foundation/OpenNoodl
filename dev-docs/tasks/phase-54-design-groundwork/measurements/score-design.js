@@ -24,10 +24,11 @@
  * hid its one failing criterion behind one green summary; DSG-006 §3 exists
  * because of that. There is deliberately no total.
  *
- * ⚠️ Two of the eight criteria print `no-data`. `One accent` and `Rhythm` need
- * facts the render report does not emit — it carries no colour at all, and no
- * band geometry. They are listed, with the reason, rather than dropped: a
- * criterion that is silently absent reads as a criterion that passed.
+ * All eight rows are live. `one accent` and `rhythm` needed two facts the render
+ * report did not emit — it carried no colour at all, and no band geometry — so
+ * `@nodegx/render-measure` now measures both (F36). Each still prints `no-data`
+ * rather than a zero if its block is absent, because a criterion that is
+ * silently missing reads as a criterion that passed.
  *
  * @module measurements/score-design
  */
@@ -104,21 +105,34 @@ function typeHierarchy(vp) {
   };
 }
 
-/** `§4` — one accent. The report emits no colour, so this cannot be scored. */
-function oneAccent() {
+/**
+ * `§4` — one accent. Exactly one chromatic background colour: none means the
+ * page is wholly neutral, several mean it is decorated rather than designed.
+ */
+function oneAccent(vp) {
+  const n = vp.colors?.distinctAccents;
+  if (n === undefined) return { score: null, value: 'no-data', evidence: 'report carries no colour block' };
   return {
-    score: null,
-    value: 'no-data',
-    evidence: 'the render report carries no colour; nothing measures backgrounds'
+    score: n === 1 ? 1 : 0,
+    value: `${n} accent${n === 1 ? '' : 's'}`,
+    evidence:
+      (vp.colors.accents || []).map((a) => `${a.color} (${a.area}px²)`).join('; ') ||
+      `no chromatic background; ${vp.colors.distinctNeutrals} neutral`
   };
 }
 
-/** `§1`,`§8` — vertical rhythm. Needs band geometry the report does not emit. */
-function rhythm() {
+/**
+ * `§1`,`§8` — vertical rhythm: how many distinct vertical spacings the page
+ * uses, counting band gaps and band padding alike. The doctrine's own line is
+ * that "a page with nine is not designed"; zero means nothing was spaced at all.
+ */
+function rhythm(vp) {
+  const n = vp.rhythm?.distinctSpacings;
+  if (n === undefined) return { score: null, value: 'no-data', evidence: 'report carries no rhythm block' };
   return {
-    score: null,
-    value: 'no-data',
-    evidence: 'the render report carries no inter-band gaps; nothing measures spacing'
+    score: n >= 1 && n <= 6 ? 1 : 0,
+    value: `${n} spacing${n === 1 ? '' : 's'}`,
+    evidence: `${vp.rhythm.bands} bands; ${(vp.rhythm.spacings || []).map((s) => `${s.px}px×${s.count}`).join(', ') || 'none'}`
   };
 }
 
@@ -213,8 +227,8 @@ async function scoreDesign(projectDir) {
 
   const results = {
     'type-hierarchy': typeHierarchy(desktop || {}),
-    'one-accent': oneAccent(),
-    rhythm: rhythm(),
+    'one-accent': oneAccent(desktop || {}),
+    rhythm: rhythm(desktop || {}),
     'imagery-present': imagery(desktop || {}),
     'narrow-survives': narrowSurvives(phone),
     'grid-is-a-grid': gridIsAGrid(desktop || {}),

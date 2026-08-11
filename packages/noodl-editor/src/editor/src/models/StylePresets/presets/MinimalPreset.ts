@@ -36,6 +36,7 @@ export const MinimalPreset: StylePreset = {
     '--border': '#e4e4e7',
     '--border-subtle': '#f4f4f5',
     '--border-strong': '#d4d4d8',
+    '--border-control': '#71717a',
     // Focus ring
     '--ring': '#18181b',
     '--ring-offset': '#ffffff',

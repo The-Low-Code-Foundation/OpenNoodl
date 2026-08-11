@@ -175,6 +175,78 @@ function measureExpression(placeholders, probes = []) {
   const images = visible.filter((el) => el.tagName === 'IMG');
   const brokenImages = images.filter((el) => el.complete && el.naturalWidth === 0);
 
+  // DSG-006 §4 — "one accent". A designed page carries one chromatic colour as
+  // a background and neutrals for everything else; five accents is decorated
+  // rather than designed. Neutral is decided by *chroma* (max minus min
+  // channel) rather than by matching a palette, so it holds for any token set
+  // and for a project that never adopted one. Area-weighted, because a 4px
+  // chromatic rule and a full-bleed hero are not the same claim.
+  const parseRgb = (s) => {
+    const m = s.match(/rgba?\\(([^)]+)\\)/);
+    if (!m) return null;
+    const p = m[1].split(',').map((x) => parseFloat(x));
+    if (p.length >= 4 && p[3] === 0) return null;
+    return [p[0], p[1], p[2]];
+  };
+  const accentArea = {};
+  const neutralArea = {};
+  for (const el of visible) {
+    const r = el.getBoundingClientRect();
+    const area = r.width * r.height;
+    if (area < 1000) continue;
+    const bg = getComputedStyle(el).backgroundColor;
+    const c = parseRgb(bg);
+    if (!c) continue;
+    const chroma = Math.max(c[0], c[1], c[2]) - Math.min(c[0], c[1], c[2]);
+    const bucket = chroma > 12 ? accentArea : neutralArea;
+    bucket[bg] = (bucket[bg] || 0) + area;
+  }
+  const accents = Object.keys(accentArea)
+    .map((color) => ({ color, area: round(accentArea[color]) }))
+    .sort((a, b) => b.area - a.area);
+
+  // DSG-006 §1/§8 — vertical rhythm. Measured between the full-width bands of
+  // the page's main stack, not between every pair of siblings: a designed page
+  // repeats two or three spacings, and counting every gap in the DOM would
+  // drown that signal in card padding. The widest-stack parent is chosen by
+  // how many bands it holds, which is what "the page's sections" means when
+  // nothing in the graph labels them as such.
+  // ⚠️ Measured as gaps *and* band padding, because in this renderer the two
+  // are interchangeable and the first version of this saw nothing: a stack of
+  // bands that abut at gap 0 and carry their spacing as internal padding is the
+  // normal shape here, so gaps alone reported "1 distinct gap: 0" for a page
+  // with perfectly good rhythm. What the doctrine is about is the number of
+  // distinct vertical spacings on the page, however they are expressed.
+  const bandParents = new Map();
+  for (const el of visible) {
+    const r = el.getBoundingClientRect();
+    if (r.width < vw * 0.6 || r.height < 8) continue;
+    const p = el.parentElement;
+    if (!p) continue;
+    if (!bandParents.has(p)) bandParents.set(p, []);
+    bandParents.get(p).push({ el, r });
+  }
+  let bands = [];
+  for (const set of bandParents.values()) if (set.length > bands.length) bands = set;
+  bands = bands.slice().sort((a, b) => a.r.top - b.r.top);
+
+  const spacingCounts = {};
+  const addSpacing = (v) => {
+    const n = round(v);
+    // Zero is "these abut", not a spacing; a huge value is a page break.
+    if (n <= 0 || n > 400) return;
+    spacingCounts[n] = (spacingCounts[n] || 0) + 1;
+  };
+  for (let i = 1; i < bands.length; i++) addSpacing(bands[i].r.top - bands[i - 1].r.bottom);
+  for (const b of bands) {
+    const cs = getComputedStyle(b.el);
+    addSpacing(parseFloat(cs.paddingTop));
+    addSpacing(parseFloat(cs.paddingBottom));
+  }
+  const spacingValues = Object.keys(spacingCounts)
+    .map(Number)
+    .sort((a, b) => a - b);
+
   // Repeated sibling sets — a card grid, seen from the DOM. Two kinds:
   //   'columns' — a Columns node's own item wrappers (.column-item), so the
   //               author asked for a grid explicitly and we know it.
@@ -283,6 +355,16 @@ function measureExpression(placeholders, probes = []) {
         const r = el.getBoundingClientRect();
         return { tag: el.tagName, cls: cls(el), width: round(r.width), height: round(r.height) };
       })
+    },
+    colors: {
+      distinctAccents: accents.length,
+      accents: accents.slice(0, 6),
+      distinctNeutrals: Object.keys(neutralArea).length
+    },
+    rhythm: {
+      bands: bands.length,
+      distinctSpacings: spacingValues.length,
+      spacings: spacingValues.slice(0, 12).map((px) => ({ px, count: spacingCounts[px] }))
     },
     repeatedGroups: groups.sort((a, b) => b.itemWidth * b.count - a.itemWidth * a.count).slice(0, 12)
   };

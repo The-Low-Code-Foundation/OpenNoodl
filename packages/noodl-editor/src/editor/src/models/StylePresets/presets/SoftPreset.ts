@@ -38,6 +38,7 @@ export const SoftPreset: StylePreset = {
     '--border': '#e5e7eb',
     '--border-subtle': '#f3f4f6',
     '--border-strong': '#d1d5db',
+    '--border-control': '#6b7280',
     // Focus ring — indigo
     '--ring': '#6366f1',
     '--ring-offset': '#fefefe',

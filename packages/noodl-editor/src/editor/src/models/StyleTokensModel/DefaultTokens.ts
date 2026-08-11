@@ -163,6 +163,18 @@ export const DEFAULT_TOKENS: StyleTokenRecord[] = [
     isCustom: false,
     description: 'Strong/dark border'
   },
+  {
+    // The design doctrine prescribes this at 3:1 so a control reads as a
+    // control; without it `border-color` falls back to `currentColor`, which is
+    // the defect the sentence exists to prevent. Seeded from the editor's own
+    // `--theme-color-border-control`. Measured 3.46:1 against `--surface`
+    // (#f8fafc) and 3.62:1 against `--background` (#ffffff).
+    name: '--border-control',
+    value: '#7c8894',
+    category: 'color-semantic',
+    isCustom: false,
+    description: 'Border for controls — meets 3:1 against surface, unlike --border'
+  },
 
   // Focus ring
   { name: '--ring', value: '#3b82f6', category: 'color-semantic', isCustom: false, description: 'Focus ring color' },

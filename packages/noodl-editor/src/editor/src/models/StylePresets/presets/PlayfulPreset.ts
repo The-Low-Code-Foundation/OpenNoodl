@@ -37,6 +37,7 @@ export const PlayfulPreset: StylePreset = {
     '--border': '#e9d5ff',
     '--border-subtle': '#faf5ff',
     '--border-strong': '#d8b4fe',
+    '--border-control': '#a855f7',
     // Focus ring — purple
     '--ring': '#8b5cf6',
     '--ring-offset': '#ffffff',
