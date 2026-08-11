@@ -1,0 +1,279 @@
+#!/usr/bin/env node
+/**
+ * Score one replay's *design* against the DSG-006 §3 rubric.
+ *
+ * The structural half already has a scorer (`phase-55-.../measurements/score-run.js`,
+ * which reads the graph). The design half was judged by eye and never scored, so
+ * the phase cannot tell "prettier" from "not worse" between the times a human
+ * looks. This is the missing instrument, built to the same contract: it reads
+ * artefacts that are already on disk and prints numbers a later run can diff.
+ *
+ *   node dev-docs/tasks/phase-54-design-groundwork/measurements/score-design.js <project-dir> [--json]
+ *
+ * Two sources, deliberately:
+ *
+ *   - **render** — six criteria are render-time facts (DSG-004 §3), so they come
+ *     from `renderReport`, which drives a headless Chrome over the project as
+ *     served. It launches its own Chrome; it is not the editor and not the dev
+ *     stack, so it is safe to run beside a session that owns the checkout.
+ *   - **graph** — "empty state" and "real copy" are authoring facts. Rendering
+ *     them would only prove that the strings survived a paint, which is not the
+ *     question, so they are read straight off the component JSON.
+ *
+ * ⚠️ **One row per criterion, never a single verdict.** The phase-58 exit test
+ * hid its one failing criterion behind one green summary; DSG-006 §3 exists
+ * because of that. There is deliberately no total.
+ *
+ * ⚠️ Two of the eight criteria print `no-data`. `One accent` and `Rhythm` need
+ * facts the render report does not emit — it carries no colour at all, and no
+ * band geometry. They are listed, with the reason, rather than dropped: a
+ * criterion that is silently absent reads as a criterion that passed.
+ *
+ * @module measurements/score-design
+ */
+const fs = require('fs');
+const path = require('path');
+const { renderReport } = require('../../../../scripts/devtools/render-report');
+
+/** Generic copy a model reaches for when it has nothing to say. DSG-006 `§10`. */
+const DEAD_COPY = [
+  /lorem ipsum/i,
+  /dolor sit amet/i,
+  /welcome to our (store|site|shop)/i,
+  /card (title|subtitle)/i,
+  /(title|subtitle|heading|text) goes here/i,
+  /your (text|title|content) here/i,
+  /sample (text|title|content)/i,
+  /^placeholder$/i,
+  /^(button|link) text$/i,
+  /^item \d+$/i,
+  /^lorem$/i
+];
+
+/** Parameter names that carry author-written copy. */
+const COPY_PARAM = /^(text|label|title|placeholder|.*Label|heading|subtitle|caption)$/;
+
+/** Nodes that gate a subtree on a condition — how an empty branch is built. */
+const GATE_TYPE = /condition|states$|net\.noodl\.logic|Switch/i;
+
+function readJson(file, fallback) {
+  try {
+    return JSON.parse(fs.readFileSync(file, 'utf8'));
+  } catch {
+    return fallback;
+  }
+}
+
+/** Every component in the project, with its nodes flattened. */
+function loadComponents(projectDir) {
+  const root = path.join(projectDir, 'components');
+  const out = [];
+  (function walk(dir) {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      const p = path.join(dir, entry.name);
+      if (entry.isDirectory()) walk(p);
+      else if (entry.name === 'nodes.json') {
+        const flat = [];
+        (function descend(nodes) {
+          for (const n of nodes || []) {
+            flat.push(n);
+            descend(n.children);
+          }
+        })(readJson(p, { nodes: [] }).nodes);
+        out.push({ pathName: path.relative(root, dir).split(path.sep).join('/'), nodes: flat });
+      }
+    }
+  })(root);
+  return out;
+}
+
+// ── the eight criteria ───────────────────────────────────────────────────────
+// Each returns {score: 0|1|null, value: string, evidence?: string}. `null` is
+// no-data — the measurement does not exist yet, which is not the same as a zero.
+
+/** `§3` — distinct font weights across text. A page all in 400 has no hierarchy. */
+function typeHierarchy(vp) {
+  const weights = Object.entries(vp.text?.fontWeights || {})
+    .filter(([, n]) => n > 0)
+    .map(([w]) => w)
+    .sort();
+  return {
+    score: weights.length >= 3 ? 1 : 0,
+    value: `${weights.length} distinct`,
+    evidence: weights.join(', ') || 'none'
+  };
+}
+
+/** `§4` — one accent. The report emits no colour, so this cannot be scored. */
+function oneAccent() {
+  return {
+    score: null,
+    value: 'no-data',
+    evidence: 'the render report carries no colour; nothing measures backgrounds'
+  };
+}
+
+/** `§1`,`§8` — vertical rhythm. Needs band geometry the report does not emit. */
+function rhythm() {
+  return {
+    score: null,
+    value: 'no-data',
+    evidence: 'the render report carries no inter-band gaps; nothing measures spacing'
+  };
+}
+
+/** `§5` — imagery that actually loads. A broken URL is not imagery. */
+function imagery(vp) {
+  const total = vp.images?.total || 0;
+  const broken = vp.images?.broken || 0;
+  const loading = total - broken;
+  return {
+    score: loading > 0 ? 1 : 0,
+    value: `${loading} loading`,
+    evidence: `${total} Image nodes, ${broken} broken`
+  };
+}
+
+/** `§7`,`§11` — the page survives 390px without a horizontal scrollbar. */
+function narrowSurvives(phone) {
+  if (!phone) return { score: null, value: 'no-data', evidence: 'no phone viewport rendered' };
+  const overflow = phone.scrollWidth - phone.clientWidth;
+  const count = phone.overflowingCount || 0;
+  return {
+    score: overflow <= 0 && count === 0 ? 1 : 0,
+    value: overflow <= 0 && count === 0 ? 'fits' : `+${overflow}px`,
+    evidence: `scrollWidth ${phone.scrollWidth} vs clientWidth ${phone.clientWidth}, ${count} overflowing`
+  };
+}
+
+/** `§8`,`§11` — a grid lays items side by side; a column of full-width rows does not. */
+function gridIsAGrid(vp) {
+  const groups = (vp.repeatedGroups || []).filter((g) => (g.count || 0) >= 2);
+  // `columns >= 2` matters as much as the width: three stacked lines of text are
+  // each narrower than their parent and are not a grid.
+  const multi = groups.filter(
+    (g) => (g.columns || 0) >= 2 && g.itemWidth > 0 && g.parentWidth > 0 && g.itemWidth < g.parentWidth * 0.95
+  );
+  return {
+    score: multi.length > 0 ? 1 : 0,
+    value: `${multi.length}/${groups.length} multi-column`,
+    evidence: multi.length
+      ? multi.map((g) => `${g.cls || g.tag} ${g.columns}×${g.rows} ${g.itemWidth}/${g.parentWidth}px`).join('; ')
+      : groups.map((g) => `${g.cls || g.tag} ${g.itemWidth}/${g.parentWidth}px`).slice(0, 3).join('; ') || 'no repeated groups'
+  };
+}
+
+/** `§9` — a list has a designed branch for having nothing in it. */
+function emptyState(components) {
+  const hosts = components.filter((c) => c.nodes.some((n) => n.type === 'For Each'));
+  const withGate = hosts.filter((c) => c.nodes.some((n) => GATE_TYPE.test(n.type || '')));
+  return {
+    score: hosts.length > 0 && withGate.length === hosts.length ? 1 : 0,
+    value: `${withGate.length}/${hosts.length} lists gated`,
+    evidence: hosts.length
+      ? hosts.map((c) => `${c.pathName}${withGate.includes(c) ? '' : ' (none)'}`).join('; ')
+      : 'no For Each in the project'
+  };
+}
+
+/** `§10` — copy a person wrote, not copy a template shipped. */
+function realCopy(components) {
+  const hits = [];
+  for (const c of components) {
+    for (const n of c.nodes) {
+      for (const [k, v] of Object.entries(n.parameters || {})) {
+        if (typeof v !== 'string' || !COPY_PARAM.test(k)) continue;
+        if (DEAD_COPY.some((re) => re.test(v.trim()))) hits.push(`${c.pathName} ${k}="${v.trim()}"`);
+      }
+    }
+  }
+  return {
+    score: hits.length === 0 ? 1 : 0,
+    value: hits.length === 0 ? 'clean' : `${hits.length} generic`,
+    evidence: hits.slice(0, 4).join('; ') || 'no generic copy found'
+  };
+}
+
+const ROWS = [
+  { key: 'type-hierarchy', doctrine: '§3', source: 'render' },
+  { key: 'one-accent', doctrine: '§4', source: 'render' },
+  { key: 'rhythm', doctrine: '§1,§8', source: 'render' },
+  { key: 'imagery-present', doctrine: '§5', source: 'render' },
+  { key: 'narrow-survives', doctrine: '§7,§11', source: 'render' },
+  { key: 'grid-is-a-grid', doctrine: '§8,§11', source: 'render' },
+  { key: 'empty-state', doctrine: '§9', source: 'graph' },
+  { key: 'real-copy', doctrine: '§10', source: 'graph' }
+];
+
+async function scoreDesign(projectDir) {
+  const { report } = await renderReport({ projectDir, screenshot: 'none' });
+  const desktop = report.viewports?.desktop;
+  const phone = report.viewports?.phone;
+  const components = loadComponents(projectDir);
+
+  const results = {
+    'type-hierarchy': typeHierarchy(desktop || {}),
+    'one-accent': oneAccent(),
+    rhythm: rhythm(),
+    'imagery-present': imagery(desktop || {}),
+    'narrow-survives': narrowSurvives(phone),
+    'grid-is-a-grid': gridIsAGrid(desktop || {}),
+    'empty-state': emptyState(components),
+    'real-copy': realCopy(components)
+  };
+
+  return {
+    project: path.basename(projectDir),
+    projectName: report.projectName,
+    criteria: ROWS.map((r) => ({ ...r, ...results[r.key] }))
+  };
+}
+
+function print(r) {
+  const mark = (s) => (s === null ? '  —  ' : s ? ' PASS' : ' FAIL');
+  const lines = [
+    `project   ${r.project}  (${r.projectName || '?'})`,
+    '',
+    'criterion          doctrine  src      score  value                evidence',
+    '─'.repeat(110)
+  ];
+  for (const c of r.criteria) {
+    lines.push(
+      [
+        c.key.padEnd(18),
+        c.doctrine.padEnd(9),
+        c.source.padEnd(8),
+        mark(c.score).padEnd(6),
+        String(c.value).padEnd(20),
+        c.evidence
+      ].join(' ')
+    );
+  }
+  const scored = r.criteria.filter((c) => c.score !== null);
+  lines.push('─'.repeat(110));
+  lines.push(
+    `${scored.filter((c) => c.score).length}/${scored.length} scored criteria pass · ` +
+      `${r.criteria.length - scored.length} not measurable (see evidence) · no total by design`
+  );
+  return lines.join('\n');
+}
+
+async function main() {
+  const argv = process.argv.slice(2);
+  const dir = argv.find((a) => !a.startsWith('--'));
+  if (!dir) {
+    process.stderr.write('usage: score-design.js <project-dir> [--json]\n');
+    process.exit(2);
+  }
+  const result = await scoreDesign(path.resolve(dir));
+  process.stdout.write(argv.includes('--json') ? `${JSON.stringify(result, null, 2)}\n` : `${print(result)}\n`);
+}
+
+if (require.main === module) {
+  main().catch((e) => {
+    process.stderr.write(`${e.message}\n`);
+    process.exit(1);
+  });
+}
+
+module.exports = { scoreDesign, ROWS };

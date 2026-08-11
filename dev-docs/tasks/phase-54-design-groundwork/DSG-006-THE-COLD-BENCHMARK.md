@@ -1,7 +1,7 @@
 # DSG-006 — The cold benchmark
 
 **Status:** 🟠 **run, in phase 55's frame** · **Track C** · the architecture half was scored; the
-half this phase is about **never was**
+design half now has **six of §3's eight rows** scored — see [NOTES-DSG-006.md](NOTES-DSG-006.md)
 
 ## What the README asked for
 
@@ -105,6 +105,6 @@ eye; it makes the trend visible between the times he looks.
 |---|---|---|
 | F23 | **Cold models decompose correctly once the doctrine reaches them** — 7 and 8 node Homes against the reference build's 66 | ✅ measured, audit session 1 |
 | F24 | **Blocking gates made the run cheaper** — 147 turns/$7.86 → 92/$5.10, 3 rejections in 91 calls | ✅ measured, LAS-011 |
-| F25 | **The design half has no per-criterion score**, so a visual regression is invisible between human reviews | 🔴 open — §3 |
+| F25 | **The design half has no per-criterion score**, so a visual regression is invisible between human reviews | 🟠 **6 of 8 rows built** — `measurements/score-design.js`, scored across six replays; `one accent` and `rhythm` have no instrument (F36) |
 | F26 | **No run isolates the design library's contribution**; doctrine, recipes and gate landed within four hours and were replayed together | 🟠 filed, deliberately not scheduled — §2.1 |
 </content>
