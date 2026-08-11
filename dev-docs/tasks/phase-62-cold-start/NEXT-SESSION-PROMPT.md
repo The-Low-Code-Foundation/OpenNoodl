@@ -52,6 +52,9 @@ directions) — it and the four `leg-*` worktrees can be pruned. `nightly-to-mai
 unmerged commit, `77d4920b`, a packaged nightly workflow aimed at `main`. Somebody should decide
 about it.
 
+**Two live worktrees are cut and waiting** at `../OpenNoodl-worktrees/{bst-lane,leg-lane}`, both from
+`b56e1f43`, both verified against a real suite run. See §6.
+
 ## §2 — What landed, and what it did NOT do
 
 `6c4dc372`, `packages/noodl-mcp` only — **no editor file was touched**, so nothing in `test:ci`'s
@@ -146,4 +149,75 @@ F1–F64 are in the phase-54 files; F65–F69 in the previous handover. Full tex
 | F72 | ⚠️ **`--all-tools` had to be refused in bootstrap mode.** The flag exists for a client that ignores `list_changed` and there is nothing to change into, so honouring it would advertise 89 project tools on a server with no project — this mode's entire failure, in one flag | ✅ handled and asserted |
 | F73 | ⚠️ **The bound briefing is now pinned to a byte** against three pre-move fixtures. Every paragraph answers a measured phase-55 failure and the replays were run against that exact wording; a reword would invalidate them silently. The fixtures are a record of a moment, not a spec — a deliberate change edits them in the same commit and the diff is the review | ✅ built |
 | F74 | ⚠️ **`list_projects` must never return `thumbURI`** — every row in the launcher's store carries a base64 PNG, and a dozen is ~1 MB of tokens for a picture nothing in the loop can look at. The obvious implementation passes the row straight through | ✅ guarded |
+| F76 | 🔴 **A gitignored build artifact makes 49 tests vanish, and the run still reads as a pass.** `noodl-mcp`'s provisioning and project-identity specs do `existsSync(nodegx-backend/dist/cli.js) ? describe : describe.skip`. A fresh worktree has no build outputs, so it reported **`1 failed, 356 passed`** against primary's **`1 failed, 405 passed`** — the missing 49 announced only as a "skipped" count nobody reads. **A lane's green was quietly 49 tests weaker than the primary's**, and the failure mode is a lane merging work whose real coverage never ran. Generalise it: `grep -rn "describe.skip\|it.skip" tests/` for anything gated on `existsSync` before trusting a worktree's number | ✅ handled in `make-worktree.sh`; the *pattern* is the finding |
+| F77 | ⚠️ **The worktree recipe was recorded as "written down as a script" and the script is gone** — it lived in a session scratchpad. Seven recurrences of the same traps were re-derived tonight from prose. **A procedure that survives only in a note gets re-learned at full price**; it is now `scripts/devtools/make-worktree.sh`, in the repo, and it verifies rather than instructs | ✅ fixed |
 | F75 | ⚠️ **The previous handover's §0 and §5 went stale within one session** — a quoted suite baseline and a "pick this up next" that were both wrong the moment the work landed. This file replaced it rather than being written beside it, and that is the convention: **one live prompt, superseded in place** | 🟠 recorded |
+
+## §6 — Running this in two lanes
+
+**The worktrees are already cut.** Both from `b56e1f43`, both verified.
+
+| Lane | Path | Branch | Work |
+|---|---|---|---|
+| **A** | `../OpenNoodl-worktrees/bst-lane` | `bst-lane` | BST-004 → BST-003 → BST-005 |
+| **B** | `../OpenNoodl-worktrees/leg-lane` | `leg-lane` | the `clone()` fix → LEG-001 → 002 → 005 |
+
+Two lanes, not five, and **the limit is the gates, not the agent count**. Within phase 62 the tasks
+are nearly a chain by their own design — BST-004 decides the string BST-003 emits, and BST-005 wants
+that same answer for `.mcp.json`'s `"command"` (it has an escape hatch: write it from the server's
+own `process.argv[1]`, correct by construction). The axis that actually pays is **62 is `noodl-mcp`,
+50 is editor** — zero file overlap.
+
+### The rules that keep it from costing more than it saves
+
+1. 🔴 **Do NOT use the harness's `isolation: "worktree"`.** It creates the branch from `origin/main`
+   — `git reflog` says so literally — hundreds of commits behind, with no `dev-docs/` at all. Seven
+   batches out of seven. Launch **non-isolated** agents pinned to the absolute paths above, and tell
+   each to pass `-C <path>` to every git command with the primary checkout off limits for edits.
+2. 🔴 **One full gate at a time.** Two concurrent `test:main` runs manufacture failures; `start.ts`
+   sweeps leftover processes, so one lane's `test:ci` reaps the other's stack. Lanes run their
+   **package-local** suite only (`cd packages/noodl-mcp && npx jest` — safe concurrently, its backend
+   specs set `NODEGX_BACKENDS_DIR` to a temp dir per suite). **The orchestrator runs `test:ci` once,
+   at merge, from the primary.**
+3. 🔴 **`lerna exec` runs the PRIMARY checkout's source**, so `npm run dev:debug` and `test:ci`
+   launched from a worktree exercise primary's code and report a result unrelated to the diff.
+   **Editor live verification belongs to the primary, after merging** — which is most of LEG-005.
+4. ⚠️ **Never `npm install` in a worktree** (the module symlinks would mutate primary's tree), and
+   **never `dev:stop`** (it kills by checkout, and matches a running `test:ci` Electron too).
+5. ⚠️ **Every agent commits on its own branch before reporting.** An uncommitted agent produced
+   nothing — that is how ten finished pieces sat on no branch for three days.
+6. ⚠️ **Never give two agents the same task from different angles.** Already paid for.
+7. ⚠️ **Reserve this file and `TASKS.md` for the orchestrator**; give each lane its own NOTES file.
+   Zero conflicts across four merges last time that rule was used.
+8. ⚠️ **Agents cannot see uncommitted work** — a worktree branches from a *commit*. One previously
+   declared two real files "phantoms" and deleted them. **Verify any destructive claim against the
+   primary before merging it.**
+
+### Refreshing or rebuilding a lane
+
+`scripts/devtools/make-worktree.sh <name> [base] [parent]` — new this session, because the previous
+recipe was recorded as "written down as a script" and the script lived in a session scratchpad and is
+gone. It does the whole thing and **verifies before it exits**. If the tip has moved since:
+`git -C <worktree> merge --ff-only cline-dev`.
+
+⚠️ **Cut worktrees into `../OpenNoodl-worktrees/`, never a session scratchpad.** `git worktree list`
+carries ~20 stale entries, half marked `prunable`, entirely because they were cut into per-session
+temp directories that no longer exist. `git worktree prune` clears the bookkeeping for the dead ones
+safely — it touches no branch — and is worth running before adding more.
+
+### 🔴 Two traps the script now handles, both of which fake a result
+
+- **The dual-load trap.** Symlinking `node_modules` wholesale makes `@noodl/runtime` resolve through
+  *primary's* relative symlink, so `collection.ts` loads twice and its
+  `Object.defineProperty(Array.prototype, 'items')` throws *"Cannot redefine property: items"* on the
+  second. A whole suite fails to run and it reads exactly like a real defect on the branch. The
+  script builds real directories of per-entry symlinks and **verifies `require.resolve` lands inside
+  the worktree** before it exits. ⚠️ Note there are **two** workspace scopes, `@noodl` **and**
+  `@nodegx` — the older recipe knew only about the first.
+- **The silent-skip trap, found tonight.** Build artifacts are gitignored, and some suites gate
+  themselves on one rather than failing: `noodl-mcp`'s provisioning and project-identity specs do
+  `existsSync(nodegx-backend/dist/cli.js) ? describe : describe.skip`. A fresh worktree therefore
+  reported **`1 failed, 356 passed`** where primary reports **`1 failed, 405 passed`** — 49 tests
+  silently absent, and the number still looks like a pass. The script links the artifact and says so.
+  ⚠️ **A lane that changes `nodegx-backend` must rebuild in its own worktree** rather than trust that
+  link, which points at primary's output.
