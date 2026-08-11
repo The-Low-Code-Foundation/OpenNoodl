@@ -2,8 +2,9 @@
  * BST-003 — the two routes the launcher card's button can take, and the things it must never do.
  *
  * The write path is the one that needs proving. `~/.claude.json` is not a config file we can
- * rewrite: on a real machine it is tens of KB of the user's own state — every project they have
- * opened, their history, their onboarding flags — with `mcpServers` as one key among twenty-five.
+ * rewrite: measured on a real machine it is 64KB of the user's own state across 58 top-level keys —
+ * every project they have opened, their history, their onboarding flags — of which `mcpServers`
+ * is one.
  * So the assertions here are mostly about what *survives* the write, and about the case where we
  * must refuse to write at all.
  *
@@ -133,7 +134,7 @@ describe('the CLI route', () => {
 });
 
 describe('the config-file route, when there is no CLI', () => {
-  it('adds the server without disturbing the twenty-four other keys', () => {
+  it('adds the server without disturbing any of the user’s other state', () => {
     const before = {
       numStartups: 412,
       userID: 'abc',

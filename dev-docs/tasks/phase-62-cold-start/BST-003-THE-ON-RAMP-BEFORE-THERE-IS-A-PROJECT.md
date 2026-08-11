@@ -187,3 +187,36 @@ Two edits, and they are not cosmetic:
 | F14 | Whether a Claude Code **desktop app** user has the `claude` CLI on PATH | ✅ **measured 2026-08-11 — they do not.** See §2a. The docs say it in as many words, and the bundle confirms it |
 | F85 | 🔴 **Even a machine that *has* the CLI cannot spawn it from a Finder-launched editor.** Under the inherited `PATH=/usr/bin:/bin:/usr/sbin:/sbin`, `which claude` exits 1 on this machine — the CLI is an npm global under nvm. This is **F79 exactly**, and BST-004 already built the fix | ✅ measured; reuse BST-004's two-stage probe |
 | F86 | 🟠 **`--scope user` writes Claude Code's own `~/.claude.json` → top-level `mcpServers`**, and the CLI prints `File modified: /Users/richardosborne/.claude.json` on stdout. Desktop and CLI **share MCP configuration** (documented). This is not "another application's undocumented schema" | ✅ measured, and it weakens §2's objection to C |
+| F87 | 🔴 **The bootstrap briefing miscounts its own tools.** `instructions` tells a fresh agent *"only four tools are advertised"* and the stderr line says `bootstrap mode (4 tools: …)`, but `tools/list` returns **five** — `find_tools` is registered separately and neither sentence knows about it. The instructions are the one thing a fresh session reads before deciding what to do, so the wrong number is in the worst possible place. **BST-006's text, not BST-003's** | 🟠 filed for BST-002/006 |
+| F88 | ⚠️ **The zero-projects launcher drive is still outstanding**, and it is blocked by the environment rather than the code: a **concurrent session was running `test:ci`**, and `start.ts` sweeps leftover processes, so launching the editor would have reaped their run. Everything reachable without the editor was driven instead (see below) | 🟠 open |
+| F89 | ⚠️ **The `~/.claude.json` key count in the first draft was wrong** — written as "twenty-five" from a glance at a truncated key list; the real file has **58 top-level keys**. Corrected in the module and the suite. A number invented for rhetorical weight is still a number someone will later rely on | ✅ corrected |
+
+## §5 — What was driven, 2026-08-11, and what was not
+
+**Driven, against the real CLI and the real server:**
+
+- ✅ **The consequence.** The server, spawned exactly as the card registers it — Electron under
+  `ELECTRON_RUN_AS_NODE=1`, `--allow-writes`, **no project path** — speaks clean stdio and hands a
+  fresh agent a real briefing: *"RIGHT NOW NO PROJECT IS BOUND… TWO WAYS ON: if the user has built
+  with NodeGX before, call `list_projects`… Only when there is nothing there… call
+  `create_project`."* `tools/list` answers `list_examples, get_example, list_projects, find_tools,
+  create_project`.
+- ✅ **`--scope user` works from an unrelated directory.** Registered through the real code path
+  (`connectBootstrapServer` → the CLI), then `claude mcp list` **from `/tmp`**: `nodegx: … ✔
+  Connected`. That is the half that silently fails if the scope is wrong.
+- ✅ **The write path, against real data.** Run against a copy of the actual 64KB `~/.claude.json`:
+  58 top-level keys in and 58 out, **every non-`mcpServers` byte identical**, both pre-existing
+  registrations untouched, ours replaced rather than duplicated, backup written.
+- ✅ **The refusal guard is load-bearing**, proved by inverting it — exactly one test went red, and
+  the right one.
+- ✅ The test registration was removed afterwards; `mcpServers` is byte-identical to its state at
+  session start.
+
+**Not driven, and stated plainly:**
+
+- ❌ **The launcher card itself has never been rendered.** No screenshot, no click. See F88.
+- ❌ **A zero-project profile.** The acceptance asks for an empty project list rather than reasoning
+  about the empty state, and this machine's launcher has projects.
+- ❌ **The paid model drive.** The briefing a fresh session receives is verified *as text*; nobody
+  has spent money having a model read it and answer *"what can you do with NodeGX?"* in prose.
+- ❌ **Windows**, unchanged from BST-004.

@@ -25,11 +25,14 @@
  *
  * ## What the write path must not do
  *
- * ⚠️ `~/.claude.json` is not a small config we can rewrite. On this machine it is **64KB of the
- * user's own state** — every project they have opened, their history, their onboarding flags — and
- * `mcpServers` is one top-level key among twenty-five. So the write is read-modify-write, keyed,
+ * ⚠️ `~/.claude.json` is not a small config we can rewrite. Measured on this machine: **64KB of the
+ * user's own state across 58 top-level keys** — every project they have opened, their history,
+ * their onboarding flags — of which `mcpServers` is one. So the write is read-modify-write, keyed,
  * backed up, and atomic, and **malformed JSON is a refusal rather than an overwrite**: a file we
  * cannot parse is far more likely to be a file we must not clobber than one we should replace.
+ *
+ * Verified against a copy of that real file: 58 keys in and 58 out, every non-`mcpServers` byte
+ * identical, both pre-existing registrations untouched, and ours replaced rather than duplicated.
  *
  * @module main/src/mcp/connectBootstrapServer
  */
