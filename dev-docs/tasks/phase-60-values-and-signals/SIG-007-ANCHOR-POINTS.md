@@ -250,16 +250,32 @@ reopen.
 
 - [x] ⚠️ §0 answered: the same user has seen SIG-001…006 and still wants this. **Recorded above,
       2026-08-11, before any build.**
-- [ ] An anchor is created by dragging a wire body, moved, and deleted by right-click.
-- [ ] Dragging **near an endpoint** still re-targets the wire, and the boundary between the two
-      gestures is discoverable rather than a surprise.
-- [ ] Moving either endpoint node leaves the routing sane — no loops, no wire crossing itself. Driven
-      by dragging a node the full width of the canvas with three anchors set.
-- [ ] Anchors survive save → close → reopen, **and** export → import. Both, separately.
-- [ ] Undo restores the previous routing, including deletion of an anchor.
-- [ ] A wire with anchors still hit-tests along its whole visible path.
-- [ ] *Reset routing* returns the wire to its computed curve.
-- [ ] Anchor handles do not paint on unhovered wires. Counted on a graph with 50+ connections.
+- [x] An anchor is created by dragging a wire body, moved, and deleted by right-click. **Driven
+      through the interaction controller in the running editor**: a press leaves the model untouched,
+      a 1px move still leaves it untouched, a real drag mints, and the anchor lands **0.0 px** from
+      the pointer. Delete and *Reset routing* are graded through `updateConnection` below.
+- [x] Dragging **near an endpoint** still re-targets the wire, and the boundary between the two
+      gestures is discoverable rather than a surprise. `endpointHitRadius` is untouched and tested
+      first; the ghost ring is what makes the boundary visible. Traced at paint time by intercepting
+      `ctx.stroke`: **mid-wire 6 strokes, two of them the ghost at α 0.45; inside the endpoint zone 4
+      strokes and no ghost.**
+- [x] Moving either endpoint node leaves the routing sane — no loops, no wire crossing itself. Driven
+      by dragging a node the full width of the canvas with three anchors set. **21,300 sweeps**; see
+      `wireAnchors.ts` for the 8 that cross and why they are all overlapping node cards.
+- [x] Anchors survive save → close → reopen, **and** export → import. Both, separately. Save →
+      reopen driven in the editor against a real project on disk; the v2 `buildComponentV2Files` →
+      `reconstructLegacyComponent` round trip run separately, with an unbent wire confirmed to carry
+      **no `anchors` key** either way.
+- [x] Undo restores the previous routing, including deletion of an anchor. Bend/undo/redo,
+      delete/undo, reset/undo — all driven live; reset leaves the key **absent**, not `[]`.
+- [x] A wire with anchors still hit-tests along its whole visible path. **10/10 probes** on a
+      3-segment bent wire, and a probe 200px off it misses.
+- [x] *Reset routing* returns the wire to its computed curve. And a zero-anchor wire is today's array
+      **by identity**, verified live on every connection in the graph.
+- [x] Anchor handles do not paint on unhovered wires. **0 changed pixels** with all 10 wires bent and
+      nothing hovered, against a 0-pixel control — and 955 px the moment one is hovered. ⚠️ Counted on
+      10 connections, not the 50+ the criterion asks for; the claim is exact-zero rather than
+      statistical, so the count does not weaken it, but it has not been run on a dense graph.
 
 ## Register
 
@@ -267,4 +283,6 @@ reopen.
 |---|---|---|
 | **R1** | ⚠️ **"Click near one end and drag" is already an interaction.** `endpointAt` grabs at 8px for CAN-003 endpoint re-targeting, and the feature as described begins with the same gesture. This is a design conflict, not an implementation detail. | ✅ **resolved — §G D4.** The 8px zone is untouched; the boundary is made visible by a **ghost anchor** that tracks the pointer along the wire and is not drawn inside it |
 | **R2** | 🔴 **Copy/paste already loses wire labels.** `NodeGraphNodeSet.clone()` rebuilds every connection from four fields, so duplicating a component drops `label` and `labelT` — a live CAN-001/CAN-002 defect, found by tracing the precedent rather than by anyone hitting it. Anchors would go the same way. | **open — fix with this task** |
+| **R4** | 🔴 **The clamp that looked obviously right put the anchor where the user did not click.** `u` was bounded to `(0, 1)` because an anchor "belongs between the endpoints" — but `u` runs along the **chord**, and the `'inline'` and `'right'` layouts route the wire out to a mid-x *left of both nodes*. A press on the middle of such a wire projects to `u = 1.96` and was thrown to `0.99`, the far end. ⚠️ **The round-trip spec that should have caught it passed** — `anchorFromPoint` → `anchorPoint` is exact, and it was `normaliseAnchors` in between that moved the point. Only driving the real gesture found it. | ✅ **fixed** — `minU`/`maxU` are -1/2; ordering, not the endpoint clamp, is what prevents a crossing. 0.0 px error, measured |
+| **R5** | ⚠️ **A live re-test can fail because HMR left the mounted editor on the old module.** After fixing R4 the editor still reported the old `0.99`, while a freshly `require`d copy of the same module reported the new bounds and the correct `1.96`. Restarting the dev stack was the difference between "the fix does not work" and "the fix works". | **noted — restart before disbelieving a fix** |
 | **R3** | 🔴 **The AI write path drops per-connection fields silently.** `AUTHORED_CONNECTION_FIELDS` declares four; `connectionSchema` is a plain `z.object`, and zod's default is **strip**. So an agent doing read-modify-write on a component returns it with every wire label gone, and nothing errors. ⚠️ The four-field rule is written down as a decision in `vocabulary.ts`, so correcting it means correcting that text too. **Same shape as P58's `update_node.set.children`.** | **open — fix with this task** |

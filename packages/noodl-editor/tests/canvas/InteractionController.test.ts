@@ -384,7 +384,11 @@ describe('InteractionController', () => {
     mouse('down', 100, 100, { button: 2 });
     mouse('up', 100, 100, { button: 2 });
 
-    expect(owner.openConnectionRightClickMenu).toHaveBeenCalledWith(connection as TSFixme);
+    // ⚠️ The click point goes with it (SIG-007). A wire may carry several
+    // anchors and the menu is otherwise about the wire as a whole, so
+    // *Delete anchor* has no other way to learn which one was right-clicked.
+    // Graph coordinates, not screen: the stub halves them, as the editor does.
+    expect(owner.openConnectionRightClickMenu).toHaveBeenCalledWith(connection as TSFixme, { x: 50, y: 50 });
     expect(owner.openRightClickMenu).not.toHaveBeenCalled();
   });
 });

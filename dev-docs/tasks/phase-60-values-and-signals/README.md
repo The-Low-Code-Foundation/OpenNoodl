@@ -1,10 +1,15 @@
 # Phase 60 — Values flow, signals fire (Track SIG)
 
 **Created:** 2026-08-09
-**Status:** 🔨 **6 of 7 closed 2026-08-11** — SIG-001, 002, 003, 004 (the whole of *what a wire
-means*), **005** and **006** (all but the last of *what a wire looks like*). **Only 007 remains, and its §0
-gate is now answered** — Richard, shown 001–006 running: *"yes I do want the anchor points"*. Tasks are
+**Status:** ✅ **7 of 7 built 2026-08-11** — SIG-001, 002, 003, 004 (the whole of *what a wire means*),
+and **005**, **006**, **007** (the whole of *what a wire looks like*). SIG-007's §0 gate was answered
+by Richard, shown 001–006 running: *"yes I do want the anchor points"*. Tasks are
 **[TASKS.md](TASKS.md)**.
+
+🔴 **SIG-007 is the only task in this phase that changed what a connection is on disk**, and tracing
+the precedent field (`labelT`) through its ten seams found **two live defects it would have inherited**:
+copy/paste has been dropping wire labels since CAN-002 shipped them, and the AI write path strips every
+per-connection field because zod's default is *strip*. Both fixed with it. See the task's **R2**/**R3**.
 
 ✅ **SIG-005 filed a defect it did not fix; it is fixed.** The component a project *opens on* built its
 connections before the node library could answer them, so every wire in it reported no type and **a

@@ -1,11 +1,12 @@
 # Phase 60 — the tasks (SIG: values flow, signals fire)
 
 **Created:** 2026-08-09, out of [README.md](README.md) and a new user’s feedback.
-**4 of 7 closed 2026-08-11.** SIG-001, 002 and 004 went together because they share one popup, one
+**7 of 7 built 2026-08-11.** SIG-001, 002 and 004 went together because they share one popup, one
 `if (d)` guard and one vocabulary (`portCopy.ts`); **SIG-003 closed later the same day**, all three
-sections, with §2's vocabulary answered by Richard before the first rename.
-**Remaining: 005, 006, 007** — the whole of "what a wire *looks* like". The first half of the phase,
-"what a wire *means*", is done.
+sections, with §2's vocabulary answered by Richard before the first rename. **005, 006 and 007** —
+the whole of "what a wire *looks* like" — followed, in that order, deliberately: 006 calls 005's
+travelling mark rather than writing a second one, and 007's anchor ring joins 006's glyph table
+rather than starting a third vocabulary.
 
 ⚠️ **Driving found six defects that no gate could express**, four of them in the first build of
 SIG-001 and two in the specs themselves — including the spec's own worked copy being the one sentence
@@ -108,6 +109,31 @@ Repeated from [README.md](README.md) because they are the ones that will be forg
   icon table (`⚡`, `T`, `#`), and SIG-006's glyphs say **direction**. Importing it to satisfy the
   letter of "use it or delete it" would have started the third vocabulary the constraint exists to
   prevent.
+
+## What SIG-007 settled, and what it left
+
+- ✅ **The anchor geometry is one import-free module** —
+  [`wireAnchors.ts`](../../../packages/noodl-editor/src/editor/src/views/nodegrapheditor/wireAnchors.ts),
+  beside `wireEndpoints.ts` and `wirePulse.ts`, 26 specs in `tests-unit/sig-007/`. An anchor lives in
+  the wire's **chord frame**: `u` dimensionless along it (the routing stretches when a node moves),
+  `v` in graph px across it (a detour stays the size it was drawn).
+- 🔴 **Two things that read as obviously right were measured wrong, and both were removed rather than
+  kept.** An **alignment guard** on the Catmull-Rom tangents — the textbook overshoot fix — took
+  self-crossings *up* from 8 to 14 over 21,300 sweeps. And the **`(0, 1)` clamp on `u`** put a minted
+  anchor at the far end of the wire, because `u` runs along the chord and the `'inline'`/`'right'`
+  layouts route the curve *outside* it. ⚠️ **The round-trip spec that should have caught the second
+  one passed** — the frame maths is exact; the clamp in between was what moved the point. Driving the
+  real gesture is what found it.
+- 🔴 **A field the exporter does not know about is dropped silently**, which is why the acceptance
+  asks for save → reopen and export → import **separately**. Tracing `labelT` — the last
+  per-connection field anyone added — through its ten seams found **two that never learned about it**:
+  `NodeGraphNodeSet.clone()` (copy/paste has been losing wire labels since CAN-002) and the AI write
+  path (zod strips, and `vocabulary.ts` states the four-field rule as a decision). Both fixed.
+- ⚠️ **A live re-test can fail because HMR left the mounted editor on the old module.** A freshly
+  `require`d copy reported the fix; the running editor did not. **Restart before disbelieving a fix.**
+- ⚠️ **The endpoint grab radius (8) is still untouched**, and SIG-007 was where it was going to be
+  contested. It is not: the answer is a **ghost ring** that rides the pointer and stops appearing
+  inside the zone, so the boundary is painted rather than widened.
 
 ## What SIG-006 settled, and what it left
 
