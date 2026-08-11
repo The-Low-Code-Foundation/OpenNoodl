@@ -8,6 +8,7 @@ import PopupLayer from '../popuplayer';
 import { CanvasFonts, CanvasTheme, WireLabel, WIRE_TYPE_ERROR } from './canvas/CanvasTheme';
 import { NodeGraphEditorNode } from './NodeGraphEditorNode';
 import { textWordWrap } from './NodeGraphEditorNodePainter';
+import { samplePolyline, travellingHeadRange, valueDashOffset, wirePulseKind, WIRE_PULSE } from './wirePulse';
 
 /** Editor setting: show every wire's label without hovering (CAN-001). */
 export const ALWAYS_SHOW_WIRE_LABELS = 'nodeGraphEditor.alwaysShowWireLabels';
@@ -646,12 +647,52 @@ export class NodeGraphEditorConnection {
 
     if (DebugInspector.instance.isEnabled() && DebugInspector.instance.isConnectionPulsing(this)) {
       const t = DebugInspector.instance.getPulseAnimationState(this);
-      ctx.strokeStyle = connectionColors.pulsing ? connectionColors.pulsing : theme.wirePulse;
-      ctx.setLineDash([5, 15]);
-      ctx.lineDashOffset = -t.offset;
-      ctx.globalAlpha = t.opacity * 0.7;
-      this.drawCurve();
-      ctx.stroke();
+      // SIG-005. This was a `[5, 15]` dash at `globalAlpha = opacity * 0.7`,
+      // which measured **1.48:1** against the signal wire it sat on and 1.43:1
+      // against a value wire, in the default dark theme, on composited canvas
+      // pixels. It fired correctly and nobody had ever mentioned seeing it. The
+      // mark now carries its meaning in weight and shape instead of in a
+      // luminance step it cannot win in dark, and a signal no longer looks like
+      // a value — see the header of `wirePulse.ts` for the measurements and for
+      // why colour is not on the table here.
+      const kind = wirePulseKind(type);
+      const ageMs = typeof t.created === 'number' ? performance.now() - t.created : 0;
+
+      ctx.strokeStyle = theme.wirePulse;
+      ctx.globalAlpha = Math.max(0, Math.min(1, t.opacity));
+
+      const wireWidth = ctx.lineWidth;
+      if (kind === 'signal') {
+        // One bead, running source → target. `curve[0]` is the source end (the
+        // endpoint dots above are painted from the same array), so sampling
+        // forward in `t` travels the way the signal does.
+        const { from, to } = travellingHeadRange(ageMs);
+        const points = samplePolyline((u) => this.pointOnCurve(u), from, to);
+        if (points.length > 1) {
+          const previousCap = ctx.lineCap;
+          const previousJoin = ctx.lineJoin;
+          ctx.setLineDash([]);
+          ctx.lineDashOffset = 0;
+          ctx.lineWidth = wireWidth + WIRE_PULSE.signalWeightBoost;
+          ctx.lineCap = 'round';
+          ctx.lineJoin = 'round';
+          ctx.beginPath();
+          ctx.moveTo(points[0].x, points[0].y);
+          for (let i = 1; i < points.length; i++) ctx.lineTo(points[i].x, points[i].y);
+          ctx.stroke();
+          ctx.lineCap = previousCap;
+          ctx.lineJoin = previousJoin;
+        }
+      } else {
+        // A value is live along the whole wire, so the overlay is too.
+        ctx.setLineDash(WIRE_PULSE.valueDash as unknown as number[]);
+        ctx.lineDashOffset = -valueDashOffset(ageMs);
+        ctx.lineWidth = wireWidth + WIRE_PULSE.valueWeightBoost;
+        this.drawCurve();
+        ctx.stroke();
+      }
+
+      ctx.lineWidth = wireWidth;
       ctx.globalAlpha = 1;
     }
 

@@ -70,6 +70,14 @@
     // lets the 37 specs in `tests-unit/bld-001/` grade the mapping without Electron —
     // and it is a boundary worth keeping: a single value import here moves these specs
     // into the jasmine runner.
-    "src/editor/src/models/AiAssistant/thread"
+    "src/editor/src/models/AiAssistant/thread",
+    // SIG-005: `wirePulse.ts` is the same shape again — the travelling mark's
+    // arithmetic (which mark a wire gets, where its head is at a given age, how
+    // far the value overlay has drifted) lifted out of the canvas painter so it
+    // is graded here rather than only by running an app and watching a wire.
+    // Import-free by design: it takes the point function as an argument rather
+    // than reaching for the connection, which is also what lets SIG-006's hover
+    // reuse it without inheriting the painter.
+    "src/editor/src/views/nodegrapheditor/wirePulse.ts"
   ]
 }

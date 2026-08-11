@@ -1,8 +1,14 @@
 # Phase 60 — Values flow, signals fire (Track SIG)
 
 **Created:** 2026-08-09
-**Status:** 🔨 **4 of 7 closed 2026-08-11** — SIG-001, 002, 003, 004. That is the whole of *what a
-wire means*; **005, 006 and 007 (what a wire looks like) remain.** Tasks are **[TASKS.md](TASKS.md)**.
+**Status:** 🔨 **5 of 7 closed 2026-08-11** — SIG-001, 002, 003, 004 (the whole of *what a wire
+means*) and **005**, the first of *what a wire looks like*. **006 and 007 remain.** Tasks are
+**[TASKS.md](TASKS.md)**.
+
+⚠️ **SIG-005 filed a defect it did not fix, and 006 depends on it:** the component a project *opens
+on* builds its connections before the node library can answer them, so every wire in it reports no
+type and **a signal wire is painted in the data colour** until you navigate away and back. This
+phase's own premise, failing in the one graph every builder sees first. SIG-005 **R8**.
 
 ⚠️ **Two normative documents came out of this phase and are the place to start, not this file:**
 [`PORT-GROUP-VOCABULARY.md`](../../reference/PORT-GROUP-VOCABULARY.md) (SIG-003 — headings, ordering,
@@ -39,7 +45,7 @@ anything renders.
 | "…so I couldn't tell if I was wrong or the editor was broken" | `PortItem` **renders `port.message` as a tooltip**, and the row has a full `disabled` visual state | [`PortItem.tsx:29-39`](../../../packages/noodl-editor/src/editor/src/views/ConnectionPopup/components/PortItem.tsx#L29-L39), [`:76`](../../../packages/noodl-editor/src/editor/src/views/ConnectionPopup/components/PortItem.tsx#L76), [`ConnectionPopup.module.scss:101-107`](../../../packages/noodl-editor/src/editor/src/views/ConnectionPopup/ConnectionPopup.module.scss#L101) |
 | "the Text output is under Other, not Values" ✅ **fixed, SIG-003** | An ungrouped port falls to `Other` — and on **every Variable node** `Value`, `Set`, `Value` (out) and `Changed` all declare no group at all. 167 ports across 58 node types; now 0, gated | [`ConnectionBar.tsx:176`](../../../packages/noodl-editor/src/editor/src/views/ConnectionPopup/components/ConnectionBar.tsx#L176), [`variablebase.ts:130-219`](../../../packages/noodl-runtime/src/nodes/std-library/variables/variablebase.ts#L130-L219) |
 | "the connector ends are small and hard to tell apart" | On the **wire**, both ends are the *same* 3px circle. There is no arrowhead anywhere on a finished connection | [`NodeGraphEditorConnection.ts:636-645`](../../../packages/noodl-editor/src/editor/src/views/nodegrapheditor/NodeGraphEditorConnection.ts#L636-L645) |
-| "a pulse that travels down the wire would teach this" | **It is built.** A travelling dash with an animated `lineDashOffset`, enabled by default, driven by the running viewer | [`NodeGraphEditorConnection.ts:647-656`](../../../packages/noodl-editor/src/editor/src/views/nodegrapheditor/NodeGraphEditorConnection.ts#L647-L656), [`debuginspector.js:18`](../../../packages/noodl-editor/src/editor/src/utils/debuginspector.js#L18) |
+| "a pulse that travels down the wire would teach this" ✅ **fixed, SIG-005** | **It was built and it fired** — and measured **1.48:1** against the dark-theme wire it was painted on, and rendered a value change and a signal firing identically. Now weight and shape: one bead that travels for a signal, a dash along the whole wire for a value | [`wirePulse.ts`](../../../packages/noodl-editor/src/editor/src/views/nodegrapheditor/wirePulse.ts), [`NodeGraphEditorConnection.ts:647`](../../../packages/noodl-editor/src/editor/src/views/nodegrapheditor/NodeGraphEditorConnection.ts#L647) |
 
 **So this phase is mostly unhiding, renaming and one honest sentence — not new machinery.** Three of
 its seven tasks connect two halves that already exist and have never met.

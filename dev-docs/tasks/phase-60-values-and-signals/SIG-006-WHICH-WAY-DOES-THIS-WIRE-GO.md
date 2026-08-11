@@ -68,10 +68,20 @@ earlier, and it throws it away on commit. Start here — the geometry is written
 3. **Decide what `'both'` paints**, explicitly, rather than inheriting the arrow.
 4. **Hover runs a mark along the wire, source → target.** The direction answer for a long connector
    that crosses the viewport, where both ends are off screen and the glyphs are unreachable.
-   ⚠️ **This is SIG-005's travelling mark with a different trigger. Do not write a second one.**
-   Hover already recolours the wire (`hoverConnection` at
+   ✅ **SIG-005 built it — [`wirePulse.ts`](../../../packages/noodl-editor/src/editor/src/views/nodegrapheditor/wirePulse.ts), closed 2026-08-11. Call it; do not write a second one.**
+   `travellingHeadRange(ageMs)` gives the head's `[from, to]` in bezier `t` and `samplePolyline` turns
+   that into points off *any* point function — it takes the function as an argument precisely so a
+   hover can drive it. All this task supplies is the age: for the runtime pulse that is
+   `performance.now() - created`; for hover it is time since the pointer entered.
+   ⚠️ **The mark travels source → target because `curve[0]` is the source**, which is the same array
+   the endpoint dots are painted from — so item 1's arrowhead and this mark cannot disagree about
+   which end is which. Hover already recolours the wire (`hoverConnection` at
    [`:604-605`](../../../packages/noodl-editor/src/editor/src/views/nodegrapheditor/NodeGraphEditorConnection.ts#L604)) and already
-   grows the endpoints, so the trigger exists; only the mark is new.
+   grows the endpoints, so the trigger exists; only the call is new.
+   ⚠️ **Decide what a hovered *value* wire does.** SIG-005 gave a signal one travelling bead and a
+   value a repeating dash, on purpose — a signal is a moment and a value is live along the whole
+   wire. A hover asks a different question ("which way?"), so it may want the bead on both kinds; if
+   it does, that is a third state on one painter and it needs saying out loud rather than inheriting.
 5. **Do not spend colour.** Wire colour carries type, health, pulse and diff annotation, and
    [`:625-627`](../../../packages/noodl-editor/src/editor/src/views/nodegrapheditor/NodeGraphEditorConnection.ts#L625) already refused to
    make selection a fifth meaning, using stroke weight instead. Direction goes in **shape and motion**.
@@ -109,4 +119,5 @@ earlier, and it throws it away on commit. Start here — the geometry is written
 
 | # | Finding | State |
 |---|---|---|
+| **R2** | 🔴 **⚠️ Read SIG-005's R8 before measuring anything about wire colour.** The component a project *opens on* builds its connections before the node library can answer them, so `fromPort` is `undefined` on every one of them, `nameForPortType` returns undefined, and **a signal wire is painted in the data colour** until you navigate to another component and back. This task is about telling wires apart; a measurement taken on the first graph after an open is measuring the wrong colour. Reproduced deterministically on `lib21-qa`, 2026-08-11. Filed, not fixed. | **open — read first** |
 | **R1** | ℹ️ **`portIcons.ts` is dead on disk** — `PORT_ICONS` (a `⚡` for signal, `T` for string, and eight more) plus `drawPortIcon`, imported by nothing in the editor source. Verified by grep, 2026-08-09. | **open** |

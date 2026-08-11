@@ -33,7 +33,7 @@ show the direction is drawn only while the wire is still being dragged.
 | SIG-002 | [SIG-002-THE-VALUE-IS-ALREADY-LIVE.md](SIG-002-THE-VALUE-IS-ALREADY-LIVE.md) | the other edge of the sword — "where is the Set?" answered where it is asked | ✅ **closed 08-11** |
 | SIG-003 ⭐ | [SIG-003-GROUPS-THAT-MEAN-SOMETHING.md](SIG-003-GROUPS-THAT-MEAN-SOMETHING.md) | **the second flagship** — one heading vocabulary, ordered by use; the ungrouped-port audit | ✅ **closed 08-11** |
 | SIG-004 | [SIG-004-EVERY-SIGNAL-SAYS-WHAT-IT-DOES.md](SIG-004-EVERY-SIGNAL-SAYS-WHAT-IT-DOES.md) | one sentence at the render seam, true of every signal port in the library | ✅ **closed 08-11** |
-| SIG-005 | [SIG-005-THE-SIGNAL-TRAVELS.md](SIG-005-THE-SIGNAL-TRAVELS.md) | the travelling pulse — **already built and on by default**; find out why nobody sees it | 📋 open |
+| SIG-005 | [SIG-005-THE-SIGNAL-TRAVELS.md](SIG-005-THE-SIGNAL-TRAVELS.md) | the travelling pulse — it fired all along and measured **1.48:1** against the wire it was painted on | ✅ **closed 08-11** |
 | SIG-006 | [SIG-006-WHICH-WAY-DOES-THIS-WIRE-GO.md](SIG-006-WHICH-WAY-DOES-THIS-WIRE-GO.md) | endpoint glyphs you can tell apart, and a hover that runs the length of a long wire | 📋 open |
 | SIG-007 | [SIG-007-ANCHOR-POINTS.md](SIG-007-ANCHOR-POINTS.md) | drag a wire to bend it; anchor points, added and removed | 📋 open |
 
@@ -104,6 +104,32 @@ Repeated from [README.md](README.md) because they are the ones that will be forg
   Worth a thought if a later task revisits the popup chrome.
 - 📋 **`portIcons.ts` is still dead on disk.** SIG-003 added no glyphs; the standing constraint stands
   for 005/006.
+
+## What SIG-005 settled, and what it left
+
+- ✅ **The pulse was never broken; it was invisible.** Measured on composited canvas pixels in the
+  running editor: **1.48:1** against a dark-theme signal wire, 1.43:1 against a value wire, 3.25/3.09
+  in light. ⚠️ **Dark is the binding theme for anything painted ON a wire** — the opposite of this
+  phase's standing constraint, which is about text on a panel. A wire is already a bright saturated
+  colour at 9.3:1 against the ground, so in dark there is nowhere lighter for a mark to go.
+- ✅ **`wirePulse.ts` is the one travelling-mark implementation** and it takes the point function as
+  an argument. **SIG-006 §"Build" item 4 calls it.** Writing a second one is the failure this
+  ordering existed to prevent.
+- ✅ **A signal and a value no longer render identically**, and it cost no protocol change: the
+  runtime cannot tell them apart (`connectionSentSignal` wraps `connectionSentValue`) but the editor
+  already resolves the source port's type one line above the pulse. One bead that travels versus a
+  dash along the whole wire.
+- 🔴 **The 3:1-against-the-wire criterion is unreachable in dark, and the task says so.** Getting
+  there needs a mark darker than the wire, which on a near-black ground reads as a gap — and a gap is
+  what an unhealthy wire's dash already means. The mark is legible by **weight**: 17.19:1 against the
+  ground on its flanks, dark. **Anything else in this phase that wants to say something on a wire
+  should reach for weight or shape first and check the dark number, not the light one.**
+- 🔴 **R8 — the component a project OPENS ON has every wire unresolved**, so a signal wire is painted
+  in the **data** colour until you navigate away and back. Found by SIG-005, filed not fixed, and it
+  is this phase's own premise failing in the one graph every builder sees first. ⚠️ **SIG-006 must
+  read it before measuring wire colour.** Needs its own task; the fix is in editor load ordering.
+- 📋 **Discoverability is still open** and belongs to onboarding. There is now something to discover;
+  it needs a **running preview** and lasts ~600 ms.
 
 ## What 001/002/004 left for the rest of the phase
 
