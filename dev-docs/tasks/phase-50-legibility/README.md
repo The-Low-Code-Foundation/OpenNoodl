@@ -1,9 +1,41 @@
 # Phase 50 — Legibility (Track L: the review channel)
 
 **Created:** 2026-08-06
-**Status:** 📋 Specced, not started — 7 tasks. Post-alpha.
+**Status:** 📋 Specced, not started — 7 tasks. Post-alpha. Tasks are **[TASKS.md](TASKS.md)**
+(LEG-001…007), written 2026-08-10.
 **Origin:** [NODEGX-WHAT-IT-IS-FOR.md](../../reviews/NODEGX-WHAT-IT-IS-FOR.md) §7 item 1, and the
 axis it comes from — [the spectrum](../../reviews/NODEGX-VS-CODE-THE-SPECTRUM.md) §2 and §7.
+
+---
+
+## ⚠️ Correction, 2026-08-10 — read [TASKS.md](TASKS.md) before this file
+
+Everything below was written against a re-measurement that has since been done, and **the central
+claim did not survive it.** Kept as written, because the reasoning about *why review is the control*
+is the durable part and is unaffected.
+
+What changed, measured across all 35 projects in `NodeGX test projects/` and all 65 `project.json`
+in this repo:
+
+- **Agent-authored graphs label 89.3% of their nodes** (1,003 of 1,123 across the eleven phase-55/58
+  model runs; sonnet, deepseek and kimi each at 100%), with real labels — *"Gradient overlay"*,
+  *"Three up, collapsing"*. `label` has been in the authoring vocabulary since AAQ-005
+  (`authoringVocabulary.ts:143`) and it works.
+- **`project-examples/agent-chat` is not agent output.** It was hand-built during AIX-005 on
+  2026-07-27 (`b95eddb4`), before that vocabulary existed. Its 0-of-262 is a stale fixture, not a
+  measurement of the agent, and the "one number" framing below rests on it.
+- **Hand-authored graphs label 20.3%** (34 `library/` prefabs), which inverts LEG-002's polarity: the
+  specced gate is aimed at the population that already complies.
+- **What survives, and is sharper than the original claim: `metadata.comment` is empty.** One in
+  2,045 agent-authored nodes; **zero** in 5,509 nodes across this repo. The mechanism is known —
+  `metadata` is not in the authoring vocabulary and *"cannot be expressed in the editor at all"*
+  (`SURFACE_DIVERGENCES`, AAQ-011 F14). That is LEG-001.
+- **Three tasks are much smaller than budgeted**, because SUB-007, CAN-004 and `noodl-git` already
+  shipped their substrate. Revised total ~2 weeks, not ~4.
+
+Per-task corrections, including to exit criterion 2, are in the task files.
+
+---
 
 ## The one number
 
