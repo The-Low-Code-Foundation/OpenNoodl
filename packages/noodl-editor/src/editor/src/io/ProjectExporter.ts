@@ -347,6 +347,16 @@ export function buildComponentV2Files(component: LegacyComponent, now: string): 
     componentFile.modifiedBy = component.modifiedBy;
   }
 
+  // ⚠️ This carry predates LEG-006 and was deleted by it: the three blocks above
+  // replaced the body of the old `if (component.metadata …)` and reused its
+  // closing brace, so a save stopped writing `metadata` at all — canvasSize,
+  // canvasPos and the legacy `created` all gone on the first save. Which is
+  // LEG-006's own defect, one field over, and it is why the round-trip fidelity
+  // specs and SUB-003's migration self-verify went red.
+  if (component.metadata && Object.keys(component.metadata).length > 0) {
+    componentFile.metadata = component.metadata;
+  }
+
   const ports = extractPorts(component);
   if (ports) {
     componentFile.ports = ports;
