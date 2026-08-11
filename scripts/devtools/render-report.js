@@ -763,6 +763,35 @@ function checkPrerequisites(projectDir) {
   return { ok: problems.length === 0, problems, chrome };
 }
 
+/**
+ * `"desktop,phone"`, `"1280x900"`, or a mix, as viewport records.
+ *
+ * Lives here rather than in a CLI because both CLIs parse the same flag, and the
+ * second copy is the one that drifts. Throws actionably — an unknown name lists
+ * what is known, on the same principle as {@link checkPrerequisites}.
+ *
+ * @param {string} [spec]
+ * @returns {Array<{name: string, width: number, height: number, mobile: boolean}>}
+ */
+function parseViewports(spec) {
+  if (!spec) return DEFAULT_VIEWPORTS;
+  const known = new Map(DEFAULT_VIEWPORTS.map((v) => [v.name, v]));
+  return spec.split(',').map((token) => {
+    const trimmed = token.trim();
+    if (known.has(trimmed)) return known.get(trimmed);
+    const m = /^(\d+)x(\d+)$/.exec(trimmed);
+    if (!m) {
+      const error = new Error(`Unknown viewport "${trimmed}". Use ${[...known.keys()].join(', ')} or WIDTHxHEIGHT.`);
+      error.problems = [error.message];
+      error.actionable = true;
+      error.usage = true;
+      throw error;
+    }
+    const width = Number(m[1]);
+    return { name: trimmed, width, height: Number(m[2]), mobile: width < 500 };
+  });
+}
+
 /** A port nothing is listening on right now. */
 function freePort() {
   return new Promise((resolve, reject) => {
@@ -848,26 +877,37 @@ const BOOT_MS = 3500;
 const REFLOW_MS = 1200;
 
 /**
- * Render `projectDir` and measure it.
+ * A booted page, handed to the body of {@link withRenderedPage}.
+ *
+ * @typedef {object} RenderedPage
+ * @property {object} client                      Raw CDP client, for anything the helpers do not cover.
+ * @property {string[]} consoleErrors             Appended to as they arrive; slice it around a step to attribute them.
+ * @property {() => string} serverLog             Everything `render-from-disk.js` has printed so far.
+ * @property {(expression: string) => Promise<any>} evaluate  `Runtime.evaluate`, by value, throwing on exceptions.
+ * @property {(viewport: object) => Promise<void>} setViewport  Set device metrics and let the reflow settle.
+ */
+
+/**
+ * Boot `projectDir` in a headless Chrome, hand the page to `fn`, tear it down.
+ *
+ * Extracted from {@link renderReport} when the scroll probe (phase 54 F52)
+ * needed the same eight steps — spawn the server, spawn Chrome, wait for the
+ * debugging port, connect, enable the two domains, navigate, let the runtime
+ * settle, and kill all of it — and the alternative was a second copy of them in
+ * a sibling script. What differs between the two tools is the measuring; putting
+ * a page on the screen is not, and a duplicated copy of this is a copy that
+ * drifts.
  *
  * @param {object} options
- * @param {string} options.projectDir           v2 project directory.
- * @param {Array}  [options.viewports]          `[{name, width, height, mobile}]`.
- * @param {'full'|'viewport'|'none'} [options.screenshot='full']
- * @param {number} [options.deviceScaleFactor=0.5]  Screenshot scale — 0.5 keeps a full page around 500KB.
- * @param {number} [options.backendPort]        Backend to proxy `/__backend` to, if the project has one.
- * @param {boolean}[options.editorTokens=false] Mirror a running editor's tokens (see render-from-disk.js).
- * @returns {Promise<{report: object, screenshots: Array<{name: string, mimeType: string, base64: string}>}>}
+ * @param {string} options.projectDir          v2 project directory.
+ * @param {number} [options.backendPort]       Backend to proxy `/__backend` to.
+ * @param {boolean}[options.editorTokens=false]
+ * @param {(page: RenderedPage) => Promise<T>} fn
+ * @returns {Promise<T>}
+ * @template T
  */
-async function renderReport(options) {
-  const {
-    projectDir,
-    viewports = DEFAULT_VIEWPORTS,
-    screenshot = 'full',
-    deviceScaleFactor = 0.5,
-    backendPort,
-    editorTokens = false
-  } = options;
+async function withRenderedPage(options, fn) {
+  const { projectDir, backendPort, editorTokens = false } = options;
 
   const pre = checkPrerequisites(projectDir);
   if (!pre.ok) {
@@ -877,7 +917,6 @@ async function renderReport(options) {
     throw error;
   }
 
-  const started = Date.now();
   const servePort = await freePort();
   const cdpPort = await freePort();
 
@@ -949,6 +988,51 @@ async function renderReport(options) {
     await client.send('Page.navigate', { url: `http://127.0.0.1:${servePort}/` });
     await wait(BOOT_MS);
 
+    return await fn({
+      client,
+      consoleErrors,
+      serverLog: () => serverLog,
+      evaluate: (expression) => evaluate(client, expression),
+      async setViewport(vp) {
+        await client.send('Emulation.setDeviceMetricsOverride', {
+          width: vp.width,
+          height: vp.height,
+          deviceScaleFactor: 1,
+          mobile: Boolean(vp.mobile)
+        });
+        await wait(REFLOW_MS);
+      }
+    });
+  } finally {
+    cleanup(client);
+  }
+}
+
+/**
+ * Render `projectDir` and measure it.
+ *
+ * @param {object} options
+ * @param {string} options.projectDir           v2 project directory.
+ * @param {Array}  [options.viewports]          `[{name, width, height, mobile}]`.
+ * @param {'full'|'viewport'|'none'} [options.screenshot='full']
+ * @param {number} [options.deviceScaleFactor=0.5]  Screenshot scale — 0.5 keeps a full page around 500KB.
+ * @param {number} [options.backendPort]        Backend to proxy `/__backend` to, if the project has one.
+ * @param {boolean}[options.editorTokens=false] Mirror a running editor's tokens (see render-from-disk.js).
+ * @returns {Promise<{report: object, screenshots: Array<{name: string, mimeType: string, base64: string}>}>}
+ */
+async function renderReport(options) {
+  const {
+    projectDir,
+    viewports = DEFAULT_VIEWPORTS,
+    screenshot = 'full',
+    deviceScaleFactor = 0.5,
+    backendPort,
+    editorTokens = false
+  } = options;
+
+  const started = Date.now();
+
+  return withRenderedPage({ projectDir, backendPort, editorTokens }, async (page) => {
     // AWP-004 §3 — the catalog's defaults, plus this project's own fallbacks on
     // ports a Component Inputs node feeds. Neither source can see the other's
     // strings, and Kimi's three were all in the second.
@@ -963,24 +1047,18 @@ async function renderReport(options) {
     for (const vp of viewports) {
       // Everything logged from here to the read belongs to this viewport; for
       // the first one that includes the boot, which is where it belongs.
-      const loggedBefore = consoleErrors.length;
-      await client.send('Emulation.setDeviceMetricsOverride', {
-        width: vp.width,
-        height: vp.height,
-        deviceScaleFactor: 1,
-        mobile: Boolean(vp.mobile)
-      });
-      await wait(REFLOW_MS);
+      const loggedBefore = page.consoleErrors.length;
+      await page.setViewport(vp);
 
-      const raw = await evaluate(client, expression);
+      const raw = await page.evaluate(expression);
       measured[vp.name] = {
         requested: { width: vp.width, height: vp.height },
         ...raw,
-        consoleErrors: consoleErrors.slice(loggedBefore)
+        consoleErrors: page.consoleErrors.slice(loggedBefore)
       };
 
       if (screenshot !== 'none') {
-        const shot = await client.send('Page.captureScreenshot', {
+        const shot = await page.client.send('Page.captureScreenshot', {
           format: 'png',
           captureBeyondViewport: screenshot === 'full',
           optimizeForSpeed: true,
@@ -1007,27 +1085,27 @@ async function renderReport(options) {
     const blank = Object.values(measured).some((v) => v && !v.error && v.text.elements === 0 && v.images.total === 0);
     const { findings, summary } = summarise(measured, blank ? blankDiagnosis(projectDir) : undefined, overridden);
     const project = JSON.parse(fs.readFileSync(path.join(projectDir, 'nodegx.project.json'), 'utf8'));
+    const log = page.serverLog();
 
     return {
       report: {
         project: projectDir,
         projectName: project.name,
         durationMs: Date.now() - started,
-        tokens: (serverLog.match(/\[render\] design tokens: (.*)/) || [])[1] || 'unknown',
-        components: (serverLog.match(/\[render\] rootComponent=\S+\s+(\d+) components/) || [])[1],
+        tokens: (log.match(/\[render\] design tokens: (.*)/) || [])[1] || 'unknown',
+        components: (log.match(/\[render\] rootComponent=\S+\s+(\d+) components/) || [])[1],
         viewports: measured,
         findings,
         summary
       },
       screenshots
     };
-  } finally {
-    cleanup(client);
-  }
+  });
 }
 
 module.exports = {
   renderReport,
+  withRenderedPage,
   summarise,
   measureExpression,
   listProbes,
@@ -1044,6 +1122,7 @@ module.exports = {
   checkPrerequisites,
   findChrome,
   freePort,
+  parseViewports,
   RenderFinding,
   DEFAULT_VIEWPORTS,
   DESKTOP_WIDTH,

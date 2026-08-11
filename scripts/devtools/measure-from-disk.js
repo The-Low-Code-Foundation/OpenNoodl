@@ -22,7 +22,7 @@
  * assumed is.
  */
 const fs = require('fs');
-const { renderReport, DEFAULT_VIEWPORTS } = require('./render-report');
+const { renderReport, parseViewports } = require('./render-report');
 
 const argv = process.argv.slice(2);
 const VALUE_FLAGS = new Set(['--out', '--viewports', '--screenshot', '--scale', '--backend-port']);
@@ -33,21 +33,15 @@ const flag = (name, fallback) => {
 const projectDir = argv.find((a, i) => !a.startsWith('--') && !VALUE_FLAGS.has(argv[i - 1]));
 const asJson = argv.includes('--json');
 
-/** `"desktop,phone"`, `"1280x900"`, or a mix. Unknown names list what is known. */
-function parseViewports(spec) {
-  if (!spec) return DEFAULT_VIEWPORTS;
-  const known = new Map(DEFAULT_VIEWPORTS.map((v) => [v.name, v]));
-  return spec.split(',').map((token) => {
-    const trimmed = token.trim();
-    if (known.has(trimmed)) return known.get(trimmed);
-    const m = /^(\d+)x(\d+)$/.exec(trimmed);
-    if (!m) {
-      console.error(`Unknown viewport "${trimmed}". Use ${[...known.keys()].join(', ')} or WIDTHxHEIGHT.`);
-      process.exit(2);
-    }
-    const width = Number(m[1]);
-    return { name: trimmed, width, height: Number(m[2]), mobile: width < 500 };
-  });
+/** Shared with `scroll-probe.js` — see `render-report.js`. Exit 2 stays a usage error. */
+function viewportsOrExit(spec) {
+  try {
+    return parseViewports(spec);
+  } catch (e) {
+    if (!e.usage) throw e;
+    console.error(e.message);
+    process.exit(2);
+  }
 }
 
 function printHuman(report, files) {
@@ -74,7 +68,7 @@ async function main() {
 
   const { report, screenshots } = await renderReport({
     projectDir,
-    viewports: parseViewports(flag('--viewports')),
+    viewports: viewportsOrExit(flag('--viewports')),
     screenshot: flag('--screenshot', 'full'),
     deviceScaleFactor: Number(flag('--scale', 0.5)),
     backendPort: flag('--backend-port') ? Number(flag('--backend-port')) : undefined,
