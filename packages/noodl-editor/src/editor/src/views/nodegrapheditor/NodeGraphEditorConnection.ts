@@ -166,7 +166,31 @@ export class NodeGraphEditorConnection {
 
   constructor(model: Connection, ctx) {
     this.model = model;
-    for (const i in model) this[i] = model[i];
+
+    // 🔴 **A model field must never land on top of a method of the same name,
+    // and one did: it killed the whole canvas.**
+    //
+    // This loop copies the model's fields onto the view. `labelT` is both a
+    // stored number (CAN-001, where the label sits) and a method (the same
+    // value, clamped) — and an own property beats a prototype method, so the
+    // moment a wire had its label moved, `this.labelT()` became
+    // `TypeError: this.labelT is not a function`. It throws inside `paint`, so
+    // the frame stops there and **every node after that wire vanishes**, which
+    // reads as a rendering bug in whatever you were last working on rather than
+    // as a wire whose label you dragged three sessions ago.
+    //
+    // ⚠️ Latent since CAN-001 shipped: it only fires once the view is rebuilt
+    // from a model that already carries the key — switch component, or reopen
+    // the project — so the drag that causes it and the breakage are far apart.
+    //
+    // Guarding the copy rather than renaming `labelT` fixes the shape of the
+    // bug instead of this one instance of it: any future field that shares a
+    // name with a method stays inert here.
+    for (const i in model) {
+      if (typeof this[i] === 'function') continue;
+      this[i] = model[i];
+    }
+
     this.ctx = ctx;
   }
 
