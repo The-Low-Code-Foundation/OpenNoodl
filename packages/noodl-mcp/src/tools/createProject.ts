@@ -481,7 +481,27 @@ function bindGuidance(projectDir: string, deferTools: boolean): string {
  * is about the old one.
  */
 function bindTo(bind: CreateProjectBinding, projectDir: string): BindResult {
-  const didBind = bind.binding.bind(projectDir);
+  let didBind: boolean;
+  try {
+    didBind = bind.binding.bind(projectDir);
+  } catch (err) {
+    // ⚠️ **The project is already on disk by the time we get here**, so a bind
+    // failure must not become the tool's failure. If it did, the agent would be
+    // told `create_project` errored, retry into the directory it just filled,
+    // and be refused with "not empty" — losing a real project to a plumbing
+    // fault. `ProjectStore` should accept a directory this module just wrote
+    // and validated; if it ever does not, that is worth saying out loud rather
+    // than converting into a lie about the creation.
+    return {
+      bound: false,
+      projectDir,
+      toolsRevealed: [],
+      note:
+        `The project was created at ${projectDir}, but this server could not bind to it: ` +
+        `${(err as Error).message} — the project is on disk and intact. Start a server with that ` +
+        'directory as its argument and --allow-writes to build in it.'
+    };
+  }
 
   if (!didBind) {
     const servingDir = bind.binding.projectDir ?? projectDir;

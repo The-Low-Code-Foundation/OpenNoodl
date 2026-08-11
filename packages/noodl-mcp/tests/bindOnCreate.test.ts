@@ -36,6 +36,7 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
 
 import { BOOTSTRAP_INSTRUCTIONS, projectInstructions } from '../src/instructions';
+import { ProjectBinding } from '../src/project/ProjectBinding';
 import { createServer, type ServerOptions } from '../src/server';
 import { BOOTSTRAP_ADVERTISED } from '../src/toolGroups';
 import { boundFindToolsDescription } from '../src/tools/disclosure';
@@ -259,6 +260,32 @@ describe('BST-002 — create_project binds the live server', () => {
     // Still the honest unbound description, not a half-bound one.
     const findTools = (await session.client.listTools()).tools.find((t) => t.name === 'find_tools');
     expect(findTools!.description).toContain('cannot reveal them here');
+  });
+
+  it('a bind failure does not become the creation’s failure', async () => {
+    // ⚠️ The project is on disk by the time the bind runs. If a bind fault were
+    // reported as a `create_project` error, the agent would retry into the
+    // directory it just filled and be refused with "not empty" — a real project
+    // lost to plumbing. Provoked by making the bind itself throw.
+    const directory = path.join(tmpRoot, 'unbindable');
+    const spy = jest.spyOn(ProjectBinding.prototype, 'bind').mockImplementation(() => {
+      throw new Error('simulated store failure');
+    });
+
+    try {
+      const res = await callJson<CreateProjectResponse>(session.client, 'create_project', { ...SCOPE, directory });
+
+      // The creation is reported as the success it was.
+      expect(res.isError).toBe(false);
+      expect(fs.existsSync(path.join(directory, 'nodegx.project.json'))).toBe(true);
+
+      // …and the bind says what went wrong, rather than being silently absent.
+      expect(res.data.bound?.bound).toBe(false);
+      expect(res.data.bound!.note).toContain('simulated store failure');
+      expect(res.data.bound!.note).toContain('intact');
+    } finally {
+      spy.mockRestore();
+    }
   });
 
   it('BST-005 and BST-002 land together: the folder is configured AND the session can build', async () => {
