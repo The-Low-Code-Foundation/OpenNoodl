@@ -21,33 +21,36 @@ like, and did the only thing available: stacked Groups in a column.
 |---|---|---|---|
 | DSG-001 | [DSG-001-THE-REFERENCE-BUILD.md](DSG-001-THE-REFERENCE-BUILD.md) | build a real storefront and measure the DOM, because the deliverable is distilled from it | ✅ **done** — 5 components, 132 nodes, measured |
 | DSG-002 | [DSG-002-A-DOCTRINE-BOTH-CLIENTS-READ.md](DSG-002-A-DOCTRINE-BOTH-CLIENTS-READ.md) | one module, three consumers, the shape `decomposition.ts` already proved | ✅ **done** `2ef44128` |
-| DSG-003 | [DSG-003-THE-COMPOSITION-RECIPES.md](DSG-003-THE-COMPOSITION-RECIPES.md) | arrangements in the example corpus, not only wirings | 🟠 **6 of 10** — five named recipes unbuilt |
-| DSG-004 ⭐ | [DSG-004-THE-GATES-BEHIND-THE-DOCTRINE.md](DSG-004-THE-GATES-BEHIND-THE-DOCTRINE.md) | **the load-bearing one** — a doctrine nothing enforces is advice, and advice gets skipped | 🟠 **2 rules** of six; four filed |
-| DSG-005 | [DSG-005-THE-VOCABULARY-TEACHES-ARRANGEMENTS.md](DSG-005-THE-VOCABULARY-TEACHES-ARRANGEMENTS.md) | `get_style_vocabulary` still hands over atoms only — the one untouched deliverable | 📋 **open** |
-| DSG-006 | [DSG-006-THE-COLD-BENCHMARK.md](DSG-006-THE-COLD-BENCHMARK.md) | the only honest proof: replay cold, judge side by side | 🟠 **run in phase 55** — the design half was never scored |
-| DSG-007 | [DSG-007-A-PROJECT-THAT-CAN-OWN-ITS-BACKEND.md](DSG-007-A-PROJECT-THAT-CAN-OWN-ITS-BACKEND.md) | register F2, still true and now visible on disk as two backends of the same name | 🔴 **open** |
+| DSG-003 | [DSG-003-THE-COMPOSITION-RECIPES.md](DSG-003-THE-COMPOSITION-RECIPES.md) | arrangements in the example corpus, not only wirings | ✅ **done** 2026-08-11 — 11 `ui-*` recipes, corpus 57 → 62 |
+| DSG-004 ⭐ | [DSG-004-THE-GATES-BEHIND-THE-DOCTRINE.md](DSG-004-THE-GATES-BEHIND-THE-DOCTRINE.md) | **the load-bearing one** — a doctrine nothing enforces is advice, and advice gets skipped | ✅ **merged** 2026-08-11 — three gates, one premise refuted |
+| DSG-005 | [DSG-005-THE-VOCABULARY-TEACHES-ARRANGEMENTS.md](DSG-005-THE-VOCABULARY-TEACHES-ARRANGEMENTS.md) | `get_style_vocabulary` still hands over atoms only — the one untouched deliverable | ✅ **merged** 2026-08-11 — 18 named arrangements, 5 gates |
+| DSG-006 | [DSG-006-THE-COLD-BENCHMARK.md](DSG-006-THE-COLD-BENCHMARK.md) | the only honest proof: replay cold, judge side by side | ✅ **scored** — 8-row rubric; ⚠️ only **three** of the six replays render a page at all |
+| DSG-007 | [DSG-007-A-PROJECT-THAT-CAN-OWN-ITS-BACKEND.md](DSG-007-A-PROJECT-THAT-CAN-OWN-ITS-BACKEND.md) | register F2, still true and now visible on disk as two backends of the same name | ✅ **merged** 2026-08-11 — **F30 proven**, 8/8 specs |
 
 Three tracks in the README map onto these as: **A** = DSG-001; **B** = DSG-002 (doctrine),
 DSG-003 (recipes), DSG-005 (vocabulary); **C** = DSG-004 (gates), DSG-006 (benchmark). DSG-007 is
 register work the phase acquired while building A.
 
-## Suggested order, and why
+## All seven are done — 2026-08-11
 
-1. **DSG-004 first**, and it is the only one that is urgent. The phase's own evidence is that prose
-   loses: the author of the design doctrine broke it in the reference build **three commits later**
-   (`ef945bdc`), and the audit measured all three replay models ignoring a warning that fired
-   correctly on every one of them. Two rules exist; the four in §2 are where the remaining value is.
-2. **DSG-005 next**, because it is the cheapest untouched thing in the phase and the only seam that
-   reaches both clients *without* costing prompt tokens on every turn — the vocabulary is fetched on
-   demand, the doctrine is prepended always.
-3. **DSG-003's five recipes** whenever a build produces one honestly. ⚠️ **Do not author a recipe
-   from taste** — every shipped one was lifted from a measured DOM, and the three that were not
-   measured for interface direction shipped the exact defect they were teaching against (F23).
-4. **DSG-006 last**, and only once DSG-004 and DSG-005 have landed, because a benchmark run before
-   the thing it measures is a cost with no information in it. ⚠️ It costs real money — see the
-   standing constraints.
-5. **DSG-007 independently**, at any point. It blocks nothing here and will keep costing an hour a
-   phase until it is fixed.
+The ordering that used to live here is spent. **[NEXT-SESSION-PROMPT.md](NEXT-SESSION-PROMPT.md) is
+the closing record**: the gate (`2607 specs, 6 failures`, seed 46463 — the recorded floor, the same
+six by name), what each recipe measured, and the register **F49–F63**.
+
+Three things a later session should not have to rediscover:
+
+- 🔴 **`§9`'s prose is still Richard's to write**, and the reason it lands nowhere is now known: the
+  doctrine section names **no node and no port**, while the recipe that was supposed to make it
+  concrete taught the wire **backwards, into a port that keeps the space**. Both are fixed except the
+  doctrine text.
+- 🔴 **Two silent product defects came out of building the recipes** and neither belongs to this
+  phase: `Columns.marginX` dropping a tokenised width through `parseFloat`, and a plain array into a
+  Repeater rendering **every row twice** on the documented path. All three corpus gates stay green
+  through both.
+- ⚠️ **A recipe cannot be authored from taste, and now it does not have to be.**
+  [`measurements/example-to-project.js`](measurements/example-to-project.js) renders any example
+  fragment; every one of the five was written from its own measurement, and two claims were cut
+  because the measurement refused them.
 
 ## Standing constraints
 
