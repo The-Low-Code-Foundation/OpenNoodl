@@ -2,8 +2,8 @@
  * Hello World Template
  *
  * A simple starter project with:
- * - App component (root)
- * - Page Router configured
+ * - App component (root) — a full-viewport Group
+ * - Page Router configured, inside that Group
  * - Home page with "Hello World" text
  *
  * @module noodl-editor/models/template/templates
@@ -38,7 +38,20 @@ export const helloWorldTemplate: ProjectTemplate = {
     name: 'Hello World Project',
     rootComponent: 'App',
     components: [
-      // App component (root) — hosts the Page Router.
+      // App component (root) — a full-viewport Group hosting the Page Router.
+      //
+      // The Group is not decoration. A Router sizes itself to its content, so on
+      // its own at the root of the app it gives every page a height of whatever
+      // that page happens to contain — a new project opens as a strip a few
+      // pixels tall rather than a page. The Group is what gives the app a
+      // viewport-sized canvas to lay pages out in, which is the shape every
+      // Noodl project has had, and the one every layout tutorial assumes.
+      //
+      // Its dimensions are written out rather than left to the port defaults.
+      // `addDimensions` declares 100% × 100% with `sizeMode: 'explicit'`, but a
+      // declared default is a value the editor renders, not a setter the runtime
+      // runs — stating them here means the template does not depend on that
+      // distinction holding.
       {
         name: 'App',
         id: generateId(),
@@ -49,23 +62,37 @@ export const helloWorldTemplate: ProjectTemplate = {
           roots: [
             {
               id: generateId(),
-              type: 'Router',
+              type: 'Group',
               x: 100,
               y: 100,
-              // `name` is required: getRouterIndex() drops routers without one,
-              // so the router would find no pages. `pages` must be the
-              // { startPage, routes } shape the runtime and exporter expect —
-              // `routes` lists page components by name, `startPage` is the one
-              // shown first. See utils/exporter/router.ts.
               parameters: {
-                name: 'Main',
-                pages: {
-                  startPage: '/#__page__/Home',
-                  routes: ['/#__page__/Home']
-                }
+                sizeMode: 'explicit',
+                width: { value: 100, unit: '%' },
+                height: { value: 100, unit: '%' }
               },
               ports: [],
-              children: []
+              children: [
+                {
+                  id: generateId(),
+                  type: 'Router',
+                  x: 100,
+                  y: 100,
+                  // `name` is required: getRouterIndex() drops routers without one,
+                  // so the router would find no pages. `pages` must be the
+                  // { startPage, routes } shape the runtime and exporter expect —
+                  // `routes` lists page components by name, `startPage` is the one
+                  // shown first. See utils/exporter/router.ts.
+                  parameters: {
+                    name: 'Main',
+                    pages: {
+                      startPage: '/#__page__/Home',
+                      routes: ['/#__page__/Home']
+                    }
+                  },
+                  ports: [],
+                  children: []
+                }
+              ]
             }
           ],
           connections: [],
