@@ -16,6 +16,32 @@
  * @see LEARNINGS-BLOCKLY.md §1 (editor/runtime window separation)
  */
 
+/**
+ * LGC-009 — the hat block's type id, and the reason it is declared *here* rather than in the
+ * editor beside the block it names.
+ *
+ * The block is drawn by `NoodlBlocks.ts`, which lives in the editor window. `detectIO` runs in
+ * the *viewer* window, which cannot see anything the editor put on `window` — the whole reason
+ * this file exists at all. So the one string both halves have to agree on lives on the side
+ * that cannot import the other, and the editor imports it from here.
+ *
+ * ⚠️ It is serialised into `project.json` the moment anyone saves a program, so it is frozen in
+ * the same sense `name: 'Logic Builder'` is frozen.
+ */
+export const HAT_BLOCK_TYPE = 'noodl_when_signal';
+
+/**
+ * The signal a hat names when nothing else says otherwise: the node's own built-in `run` port.
+ *
+ * Lower case, and that is load-bearing twice over. `RESERVED_INPUTS` in `logic-builder.ts`
+ * holds `'run'`, so a hat carrying this name publishes **no new port** — it names the port the
+ * node already has. And `_executeLogic('run', …)` passes exactly this string as
+ * `__triggerSignal__`, so the day a hat gates its body on the trigger (see NOTES-LGC-009) the
+ * default hat is the one that matches. `'Run'` would fail both: it is not reserved, so it would
+ * mint a second run-ish input port, and it would never equal the trigger string.
+ */
+export const DEFAULT_HAT_SIGNAL = 'run';
+
 export interface DetectedPort {
   name: string;
   /** A Noodl port type name, or `'*'` when the blocks do not declare one. */
@@ -284,6 +310,27 @@ function processBlock(block: BlocklyBlock | undefined, mentions: PortMention[]):
         break;
 
       case 'noodl_define_signal_input':
+        mentions.push({ name, plug: 'input', kind: 'signal', declaredType: 'signal' });
+        break;
+
+      /**
+       * LGC-009 — the hat, and the answer to *"a hat is a second declaration of a port"*.
+       *
+       * 🔴 **The hat is a mention, not a second store.** It pushes a mention identical in every
+       * field to the one `noodl_define_signal_input` pushes above, and both projections then
+       * key on the name: `signalNames` on a `Set`, `interfacePorts` on a `Map`. So a hat and a
+       * `Define signal input` naming the same signal are one port, and they are one port
+       * whichever of them the workspace serialises first.
+       *
+       * ⚠️ **That order-independence is the whole reason this shape was chosen**, and it is why
+       * this is not L39 again. L39 (LGC-004's register) records that a *type* clash on a value
+       * port resolves by document order, because `valuePorts` takes the first mention's type and
+       * an author cannot see which mention is first. A signal port has no type, so the only
+       * fact two declarations of it could disagree about does not exist — there is nothing to
+       * tie-break, and therefore no invisible tie-break to get wrong. A precedence rule ("the
+       * hat wins", "the declaration wins") would have manufactured one.
+       */
+      case HAT_BLOCK_TYPE:
         mentions.push({ name, plug: 'input', kind: 'signal', declaredType: 'signal' });
         break;
 
