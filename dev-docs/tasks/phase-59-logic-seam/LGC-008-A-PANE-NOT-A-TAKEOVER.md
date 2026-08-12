@@ -1,12 +1,14 @@
 # LGC-008 — the workspace stops hiding everything else
 
-**Status:** 🔬 **§3 analysed, `svgResize` seam built, pane not built** (2026-08-12) ·
-**Track: the eyes** · prior art: MakeCode · last in the order, and deliberately
+**Status:** 🔨 **F3, F4 and §1 BUILT 2026-08-12** on branch `lgc008-pane`, three commits, 28
+specs · **nothing seen in an editor** · **Track: the eyes** · prior art: MakeCode
 
-> **Read §5, §6 and §7 before building anything here.** The five decisions are answered and
-> there are **eight** layers, not five. Three of the findings are open defects that predate
-> this task and one of them (L28) is the exact defect a pane would otherwise ship. §1 ends in a
-> question for Richard, and the acceptance criterion nobody has met is the A/B, not the code.
+> **Read §5, §6 and §8 before touching this.** The five decisions are answered and there are
+> **eight** layers, not five. F3, F4 and L27 are fixed and specced; §1's pane is built. What is
+> left is a **drive** (every criterion about pixels or about the saved file), the **A/B**, and
+> 🔴 **L30 keystroke ownership, which now blocks shipping rather than merging** — two surfaces on
+> screen means one Delete can mean two deletions. Build notes and the three places this file was
+> wrong about our code: [NOTES-LGC-008.md](NOTES-LGC-008.md).
 
 ## ✅ F2 — RULED 2026-08-12: both panes on screen at once
 
@@ -34,9 +36,9 @@ beside it with its own diagram and was not chosen.
 - The acceptance criterion *"the workspace is not remounted by a resize, a splitter drag or a
   pane swap"* is now the one that decides whether this task is done.
 
-## What happens today
+## What happened before this task (kept: it is the reasoning the fix retires)
 
-Opening a Visual Function **hides the entire canvas**.
+Opening a Visual Function **hid the entire canvas**.
 [`OverlayViews.ts:286-300`](../../../packages/noodl-editor/src/editor/src/views/nodegrapheditor/OverlayViews.ts)
 sets `display: none` on the canvas, both comment layers, the highlight overlay, the recording overlay
 and the canvas HUD, and the code comments say why: *"the Logic Builder takes the whole canvas over,
@@ -253,32 +255,84 @@ Three constraints are baked into the shape and should not be undone:
 ⚠️ **Wired but unverified.** No drive was run — the lane may not launch the editor. The specs
 prove the dispatch, not the pixels. See *Deferred verification*.
 
-**Not built: the pane itself.** Deliberately, and for reasons that are about evidence, not
-effort:
+**Not built at the time: the pane itself.** ✅ **Built 2026-08-12** — see §8. Of the three
+reasons given for deferring it, the first was answered by Richard's ruling, the second still
+stands (the screenshot is owed), and the third turned out to be **wrong in a useful way**:
 
 1. F1 and F2 change what §1 should be, and F2 ends in a question only Richard can answer.
-   Building the wrong one of two readings is worse than building neither.
+   Building the wrong one of two readings is worse than building neither. → ✅ **ruled**: both
+   panes on screen, second splitter built.
 2. The correct structure requires the canvas layers to be inset by a tab strip and
    **re-measured** (F3), and a `display: none` canvas reports zero — so the one thing that
-   would prove it right is a screenshot, which this lane cannot take.
+   would prove it right is a screenshot, which this lane cannot take. → 🔴 **still true.** The
+   screenshot is owed; see *Deferred verification* §1.
 3. There is no React test runner in reach. `tests-unit`/`tests-main` are `testEnvironment:
    'node'` with no jsdom, and the jasmine suite needs a real Electron renderer. So the
    no-remount property (F4) **cannot be gated here** — only reasoned about, which is what §6
-   does.
+   does. → ⚠️ **half wrong (L32).** There is no *renderer*, but a React **element tree is plain
+   objects**, and key, type and sibling position are precisely what React remounts on. Lifting
+   the tree out of the component into a pure builder put most of the property behind a spec.
+   What a drive still owes is whether React and Blockly behave as the tree implies.
+
+## §8 — What was built on 2026-08-12, in build order
+
+Three commits on `lgc008-pane`, each proved red by inverting it and naming which specs failed.
+
+1. **F3 — a hidden canvas measures 0, and 0 is not a measurement.** `measureNodeGraphCanvas`
+   answers `undefined` rather than zero and `bindNodeGraphCanvas` skips the write (the listeners
+   are re-bound either way). `remeasureNodeGraphCanvas` is the canvas's equivalent of
+   `resizeBlocklyWorkspaces()` — same rule, called **synchronously** from whatever moved the
+   geometry, no-op when nothing moved. Wired to the reveal, the pane toggle and `EditorDocument`'s
+   divider `onDrag`. 🔴 **The file understated this defect:** the drag path was broken by the same
+   mechanism, because `Frame.onResize` is fed by a `ResizeObserver` and an occluded renderer fires
+   none.
+2. **F4 — an edit belongs to the tab that made it.** The tab is bound at the call site, in a new
+   `tabWorkspaces.tsx` that builds the per-tab elements as a value. ⚠️ Landed **before** anything
+   mounted two workspaces, which is the right order and also means the fix was unprovable when it
+   was made: inverting it left every spec green until the pane arrived.
+3. **§1 — the pane.** `#canvas-tabs-root` starts at a splitter instead of covering the shell; one
+   custom property (`--logic-pane-canvas-width`) on the shell root drives every layer through
+   `styles/nodegrapheditor.css`. The layers' box model moved out of `CanvasShell` into that
+   stylesheet, because an inline `width: 100%` outranks every selector. Every open tab stays
+   mounted, hidden rather than unmounted. L27's `z-index: 7` landed **first**, as it must.
+
+Where the code is: `nodegrapheditor/LogicPane.ts` (open/close, drag, both re-measures),
+`nodegrapheditor/logicPaneSplit.ts` (the clamp), `CanvasTabs/tabWorkspaces.tsx` (the mounted
+workspaces), `CanvasTabs/PaneSplitter.tsx`, and the split rules at the end of
+`styles/nodegrapheditor.css`. Specs: `tests-unit/lgc-008/` — 28 across three files, plus the
+seven that already held `blocklyResize`.
+
+Build notes, including the three places this file was wrong about our code and the four things
+left open: [NOTES-LGC-008.md](NOTES-LGC-008.md).
 
 ## Acceptance
 
-- Opening a Visual Function no longer hides the canvas; it opens a pane.
-- The companion pane defaults to the running app, with the node graph available in its tab bar.
-- Dragging the splitter resizes the workspace correctly — verified **with a screenshot**, because an
-  occluded renderer will not report layout truthfully.
-- The workspace is **not remounted** by a resize, a splitter drag or a pane swap. Proven by editing
-  a program, dragging the splitter, and confirming the edit survives and the saved JSON is the edited
-  one.
-- The recording HUD, comment layers and highlight overlay each have a stated behaviour in split mode,
-  and the blanket `display: none` is gone.
-- ⚠️ **A/B against the takeover on a real task**, per §2. Record the result whichever way it goes —
-  a negative result here is more valuable than a positive one, because it is the one nobody expects.
+- ✅ **Built** — opening a Visual Function no longer hides the canvas; it opens a pane. There is no
+  state in which `LogicPane.ts` hides a canvas layer, and a spec fails if one comes back.
+- ✅ **Met by structure that already existed** (F1) — the running app is beside the node graph
+  through `EditorDocument`'s `FrameDivider`, and `setCanvasVisibility` never reached it.
+  ⚠️ Under `documentLayout: 'detachedPreview'` there is no such divider; the new pane splits the
+  node-graph frame there too, undriven.
+- 🔴 **Built, unverified — needs the screenshot.** The splitter calls `resizeBlocklyWorkspaces()`
+  and `remeasureNodeGraphCanvas()` synchronously from `mousemove`, and specs prove the dispatch
+  and the ordering. They cannot prove the pixels, and an occluded renderer will not report layout
+  truthfully. See *Deferred verification* §1.
+- 🟡 **Built and specced as far as a plain-Node runner reaches; the property itself is undriven.**
+  Every open tab stays mounted, hidden rather than unmounted, and the element tree keeps its keys,
+  types and sibling order across a switch — which is exactly what React remounts on. What no spec
+  here can show is that React and Blockly then behave as the tree implies, or that the saved JSON
+  is the edited one. **That is a drive, and it is the one that matters** (*Deferred verification*
+  §2). Do not read the green suite as this criterion being met.
+- ✅ **Built** — the blanket `display: none` is gone and each of the eight layers has a stated
+  behaviour, in §5's table and in `LogicPane.ts`. ⚠️ One is a design question, not a mechanism:
+  there are now two zoom clusters bottom-right of adjacent rectangles (Blockly draws its own).
+  Richard's call, per §5.
+- ⚠️ **Outstanding: A/B against the takeover on a real task**, per §2. Record the result whichever
+  way it goes — a negative result here is more valuable than a positive one, because it is the one
+  nobody expects.
+- 🔴 **Added, and it gates shipping rather than merging: L30.** Both surfaces on screen means a
+  node selection and a block selection coexist, and `KeyboardHandler` has no scope. One Delete can
+  mean two deletions. Not fixed here; it is a keyboard-scope task the pane forces.
 
 ## Register
 
@@ -288,11 +342,12 @@ effort:
 | L24 | IwC 38(1) 2026 measured almost exactly this layout and the hybrid **lost while being preferred**. This task must be measured, not shipped on enthusiasm | ⚠️ standing |
 | L25 | `OverlayViews`' blanket hide has a documented reason per layer. Removing it is five decisions, not one | ✅ answered 2026-08-12 — §5. It is **eight** layers, not five, and the hide is doing far less than it looks: everything except the highlight overlay is already covered by the tabs root's opaque `z-index: 100`, so the decisions are about what each layer is *for* once it has a rectangle, not about whether it shows |
 | L26 | **The companion pane already exists.** `EditorDocument`'s `FrameDivider` already puts the running app beside the node graph, and `setCanvasVisibility` never reached it — so a Visual Function already opens with the app live beside the blocks. §2's default is met by structure that exists. What the takeover destroys is the *node graph*, and a new inner splitter would be graph \| blocks, the configuration §2 rules out | ⚠️ standing — decides §1 |
-| L27 | **The highlight overlay is the only unsafe `display: none` to remove.** Its clipping wrapper is the one built without a `z-index`, so its 999/1000/1001 escape the tabs root's 100. Give it `z-index: 7` first (execution 5 < recording 6 < highlight 7, all below `.popup-layer`'s 10) | 📋 open — do before any hide is removed |
-| L28 | **The remount trap is not the one the file warns about.** `handleWorkspaceChange` writes to `activeTab`, and is correct today only because a key change stops the outgoing workspace re-rendering. Keep two workspaces mounted and a background one re-renders, picks up the *new* active tab's callback, and saves its blocks onto another node. Bind the callback to the tab id at the call site before mounting more than one | 🔴 open — the defect a pane will otherwise ship |
-| L29 | **A `display: none` canvas reports `clientWidth === 0`**, `bindCanvas` writes that straight into the viewport metrics, and nothing re-measures on reveal. Reproducible today: open blocks, resize, close, and the graph returns on a zero viewport. The canvas needs an explicit `resize` exactly as Blockly needs an explicit `svgResize` | 🔴 open — defect, predates this task |
-| L30 | **Keystroke ownership is the sixth decision and a blocker.** `KeyboardHandler` has no scope and a focused Blockly `<svg>` reads as `'none'`, so Backspace, ⌘Z, ⌘C/⌘V all reach the node graph. The 200 ms `lastBlocklyTabCloseTime` guard is evidence it has bitten, and a split makes that guard useless | 🔴 open — decide before the pane ships |
+| L27 | **The highlight overlay is the only unsafe `display: none` to remove.** Its clipping wrapper is the one built without a `z-index`, so its 999/1000/1001 escape the tabs root's 100. Give it `z-index: 7` first (execution 5 < recording 6 < highlight 7, all below `.popup-layer`'s 10) | ✅ **fixed 2026-08-12, and before the hide was removed.** `HIGHLIGHT_OVERLAY_Z = '7'` in `CanvasShell.ts`; the ordering is specced (dropping it fails one spec, named). Unseen in an app — the drive step is §7's "trigger a lesson highlight with blocks open" |
+| L28 | **The remount trap is not the one the file warns about.** `handleWorkspaceChange` writes to `activeTab`, and is correct today only because a key change stops the outgoing workspace re-rendering. Keep two workspaces mounted and a background one re-renders, picks up the *new* active tab's callback, and saves its blocks onto another node. Bind the callback to the tab id at the call site before mounting more than one | ✅ **fixed 2026-08-12**, in its own commit, *before* the pane mounted a second workspace. The tab is bound at the call site in `tabWorkspaces.tsx`. ⚠️ Worth keeping: the fix was **unprovable while it was made** — with one workspace mounted the two readings agree, so the inversion left every spec green. It only goes red once the pane mounts two, and it does |
+| L29 | **A `display: none` canvas reports `clientWidth === 0`**, `bindCanvas` writes that straight into the viewport metrics, and nothing re-measures on reveal. Reproducible today: open blocks, resize, close, and the graph returns on a zero viewport. The canvas needs an explicit `resize` exactly as Blockly needs an explicit `svgResize` | ✅ **fixed 2026-08-12** — `measureNodeGraphCanvas` answers `undefined` rather than 0 and the write is skipped; `remeasureNodeGraphCanvas` is the canvas's `resizeBlocklyWorkspaces()` and is called synchronously from the reveal, the pane toggle and both dividers' `onDrag`. 🔴 **And the file understated it:** the *drag* path was broken by the same mechanism, because `Frame.onResize` is fed by a `ResizeObserver` |
+| L30 | **Keystroke ownership is the sixth decision and a blocker.** `KeyboardHandler` has no scope and a focused Blockly `<svg>` reads as `'none'`, so Backspace, ⌘Z, ⌘C/⌘V all reach the node graph. The 200 ms `lastBlocklyTabCloseTime` guard is evidence it has bitten, and a split makes that guard useless | 🔴 **open, and now the thing that blocks shipping.** The pane is built and merged-ready; this is not fixed and is deliberately not fixable inside this task — it is a keyboard-scope change the pane forces rather than contains. With a node selected on one pane and a block on the other, **one Delete can mean two deletions**. ⚠️ Still read from the predicate, not driven |
 | L31 | **`Blockly.svgResize` was never called anywhere in the editor.** Verified in `blockly_compressed.js`: `inject` binds one `window` `"resize"` listener and it is the library's only `svgResize` caller | ✅ fixed 2026-08-12, `83142881` — unverified in the app |
+| L32 | **A React element tree can be gated without a renderer.** §7 concluded the no-remount property "cannot be gated here" because there is no jsdom and nothing may be installed. But an element tree is plain objects, and key/type/sibling-position are exactly what React remounts on — so lifting the tree into a pure builder (`buildTabWorkspaces`) puts most of the property behind a spec. What still needs a drive is whether React and Blockly then behave as the tree implies | ✅ used 2026-08-12 |
 
 ## Deferred verification
 
