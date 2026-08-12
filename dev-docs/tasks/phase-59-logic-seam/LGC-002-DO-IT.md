@@ -139,6 +139,41 @@ defect at a smaller scale.**
    convenience: the values a block computes include Collections, Models, DOM nodes and circular
    objects, none of which survive `JSON.stringify` on a socket.
 
+## ✅ §2's byte-identical criterion — DRIVEN AND PASSED, 2026-08-12
+
+**The check the spec calls the one most likely to be skipped, measured in a real editor for the
+first time.** Fixture `lgc59-drive` was opened in a live editor with a running preview and closed.
+Its serialised `workspace` parameter, compared against the recorded `WORKSPACE-BEFORE.json`:
+
+```
+workspace byte-identical to WORKSPACE-BEFORE: ✅ YES
+disabledReasons present:                      ✅ no
+```
+
+Three things this settles, and one it does not:
+
+1. **The criterion is met for an untouched program.** Previously this was proved only headlessly by
+   `byte-identical-probe.js`; it now holds through the real load path, `Blockly.Events.disable()`
+   wrapper and all.
+2. 🔴 **It is a live confirmation of the `disableOrphans` revert** (`f1b57c0f`). Before the revert
+   this could not have passed for any program anyone touched — every top-level block would have
+   carried `disabledReasons`. The absence of that key in a real editor is the strongest evidence
+   the revert works that a spec cannot give.
+3. **`project.json`'s own SHA does change on open** (`a6d7cf3a…` → `8aa16c55…`). That is the
+   known "opening a project dirties every component" behaviour and is **not** what this criterion
+   is about — compare the `workspace` *parameter*, not the file. Anyone diffing the file will read
+   a pass as a fail.
+
+⚠️ **What it does NOT settle: the touched case.** Nobody has yet opened this program, dragged a
+block, and re-measured. The finding's claim is that untouched is identical and touched is not, and
+only the first half is now driven.
+
+⚠️ **An observation with no baseline, recorded rather than claimed.** This fixture's `generatedCode`
+reads `Outputs.completed = true;`, which is *not* what its `price × quantity → total` program would
+generate. It may be an authored placeholder, or evidence that `generatedCode` is not regenerated on
+open. It was not baselined before the drive, so **it is a question, not a finding** — baseline it
+first and re-open.
+
 ## Deferred verification
 
 **No editor was driven this session.** Everything below is unverified. Nothing in this task's
