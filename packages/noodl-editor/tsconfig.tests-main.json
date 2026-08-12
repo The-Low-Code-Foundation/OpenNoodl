@@ -108,6 +108,17 @@
     // not an error message, it is a hung renderer inside a 300 ms debounce tick,
     // which presents as the workspace freezing at random — the one class of
     // defect a drive is worst at finding and a plain-Node runner is best at.
-    "src/editor/src/views/BlocklyEditor/myblocks"
+    "src/editor/src/views/BlocklyEditor/myblocks",
+    // …and these three, which are not pure but are reachable anyway: all each
+    // one imports is `blockly` / `blockly/javascript`, and Blockly runs headless
+    // in Node. That is what lets `inliner.test.ts` close the loop the rest of
+    // this feature cannot close by inspection — expand the JSON, load it into a
+    // real headless workspace, run the **real** generators, and assert the
+    // JavaScript that comes out. Without them the inliner could only be graded
+    // on the shape of the JSON it produces, which is precisely the kind of
+    // proof that passes while the generated program does nothing.
+    "src/editor/src/views/BlocklyEditor/initialize.ts",
+    "src/editor/src/views/BlocklyEditor/NoodlBlocks.ts",
+    "src/editor/src/views/BlocklyEditor/NoodlGenerators.ts"
   ]
 }
