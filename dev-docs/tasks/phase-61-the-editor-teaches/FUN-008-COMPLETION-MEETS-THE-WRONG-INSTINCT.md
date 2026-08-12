@@ -74,6 +74,41 @@ a known trap in this file. Nothing here should reach for it.
 - ⚠️ **Driven in the real editor, not asserted in a unit test.** A completion source that silently
   never fires is this file's documented failure mode, and it has shipped here before.
 
+## What was built, 2026-08-12 (late)
+
+| File | What |
+|---|---|
+| `noodl-completions.ts` | `barePortCompletions`, merged into the top-level branch with `filter: false` |
+| `utils/completionPosition.ts` | `isDeclarationPosition` |
+| `tests/code-editor/noodl-completions.test.ts` | +19 specs |
+
+20 suites / 314 tests green in `noodl-core-ui`, three consecutive runs.
+
+### The label is the expression, and that decides the filtering
+
+`Outputs.Done()` does not begin with the `Don` that should match it, so CodeMirror's own filter would
+drop the very completion this task exists to offer. The result therefore sets **`filter: false`** and
+prefix-matches on the *port name* by hand — which the top-level branch was already doing for globals,
+so it is one convention rather than two. Showing the notation as the label is the point: the user sees
+`Inputs.Input_1` having typed `Inp`.
+
+### 🔴 A gap this task found next door: `Inputs.` withheld an answer it had
+
+A spec asserting the member branch was undisturbed came back `null`. `scriptPortCompletions` read
+`minePorts` **alone**, so a port declared in the property panel and not yet mentioned in the code did
+not complete after `Inputs.` — the exact position a beginner is in one second after adding a port, and
+the one place completion knew the right answer and withheld it. It now reads the union, and the `info`
+still distinguishes the two, because *why* a port exists is the thing this editor is teaching.
+
+Not in this task's plan; found by writing a test for something else.
+
+### ⚠️ Not driven, and the task says that is not enough
+
+**"A completion source that silently never fires is indistinguishable from one that is not
+installed"** — and it has shipped broken in this exact file before (F29). The unit rows are green and
+prove nothing about the running editor. The mechanics are in the handover: `startCompletion(view)` +
+`currentCompletions(view.state)` off the webpack registry, because `cdp type` cannot open the menu.
+
 ## Register
 
 | # | Finding | State |

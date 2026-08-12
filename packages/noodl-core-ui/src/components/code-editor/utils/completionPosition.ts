@@ -14,6 +14,7 @@
  */
 
 import type { CompletionContext } from '@codemirror/autocomplete';
+import { syntaxTree } from '@codemirror/language';
 
 /**
  * Is `pos` immediately after a `.` — i.e. is the user completing a member of
@@ -37,4 +38,23 @@ export function isMemberPosition(context: CompletionContext, pos: number): boole
 export function completesTopLevel(context: CompletionContext, word: { from: number; to: number }): boolean {
   if (isMemberPosition(context, word.from)) return false;
   return word.from !== word.to || context.explicit;
+}
+
+/**
+ * Is the cursor naming something, rather than referring to something?
+ *
+ * FUN-008 §3's third exclusion. `var Inp…` is someone binding a local; offering
+ * `Inputs.Input_1` there produces `var Inputs.Input_1`, which is a syntax error —
+ * a completion that breaks the document is worse than no completion. FUN-004's
+ * message 2 is the right answer for that line anyway, and it fires on the same
+ * text.
+ *
+ * `VariableDefinition` is the Lezer node for exactly this and for nothing else:
+ * measured against `@codemirror/lang-javascript`'s own parse, `var Inp`, `let Inp`,
+ * `const Inp` and `function Inp` all resolve to it at the cursor, while `return Inp`,
+ * `x = Inp` and a bare `Inp` resolve to `VariableName`. It also covers parameter
+ * lists, which the text-matching version of this test would have missed.
+ */
+export function isDeclarationPosition(context: CompletionContext, pos: number): boolean {
+  return syntaxTree(context.state).resolveInner(pos, -1).name === 'VariableDefinition';
 }

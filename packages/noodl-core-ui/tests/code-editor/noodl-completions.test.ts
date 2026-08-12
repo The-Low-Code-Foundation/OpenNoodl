@@ -20,13 +20,22 @@ import { CompletionContext } from '@codemirror/autocomplete';
 import { javascript } from '@codemirror/lang-javascript';
 import { EditorState } from '@codemirror/state';
 
-import { setCodeAuthoringContext } from '@noodl-core-ui/components/code-editor/authoringContext';
+import { setCodeAuthoringContext, setOpenNodeContext } from '@noodl-core-ui/components/code-editor/authoringContext';
 import { createNoodlCompletionSource } from '@noodl-core-ui/components/code-editor/noodl-completions';
 import type { ValidationType } from '@noodl-core-ui/components/code-editor/utils/types';
 
 function contextAt(doc: string, pos: number = doc.length, explicit = false): CompletionContext {
   const state = EditorState.create({ doc, extensions: [javascript()] });
   return new CompletionContext(state, pos, explicit);
+}
+
+function openFunctionNode(inputs: string[], outputs: { name: string; type: string }[]) {
+  setOpenNodeContext({
+    nodeId: 'n1',
+    typeName: 'JavaScriptFunction',
+    declaredInputs: inputs.map((name) => ({ name, type: 'string' })),
+    declaredOutputs: outputs
+  });
 }
 
 function labelsFor(doc: string, explicit = false, mode: ValidationType = 'function'): string[] | null {
@@ -168,5 +177,164 @@ describe('noodlCompletionSource', () => {
       expect(everything).not.toContain('State');
       expect(everything).not.toContain('Props');
     });
+  });
+});
+
+/**
+ * FUN-008 — a bare port name completes to its notation.
+ *
+ * The originating user typed `Input_1`, not `Inputs.`, and nothing was
+ * listening. Completion cannot help someone who never types the trigger.
+ *
+ * ⚠️ **The failure mode this file has actually shipped is a source that never
+ * fires**, and it typechecks and reads correctly while doing nothing (FH-017
+ * slice 1, pinned at the top of this file). These rows are the unit half; the
+ * task is explicit that they are not sufficient and it must be driven, because
+ * a source that silently never fires is indistinguishable from one that is not
+ * installed.
+ */
+describe('a bare port name completes to its notation (FUN-008)', () => {
+  afterEach(() => {
+    setCodeAuthoringContext(null);
+    setOpenNodeContext(null);
+  });
+
+  function completionsFor(doc: string, mode: ValidationType = 'function') {
+    const result = createNoodlCompletionSource(mode)(contextAt(doc, doc.length, false));
+    return result ? result.options : [];
+  }
+
+  function portOptions(doc: string, mode: ValidationType = 'function') {
+    return completionsFor(doc, mode).filter((option) => option.boost === 99);
+  }
+
+  it('offers the read expression for a declared input, from a partial word', () => {
+    openFunctionNode(['Input_1'], []);
+    const [first] = completionsFor('Inp');
+
+    expect(first.label).toBe('Inputs.Input_1');
+    expect(first.apply).toBe('Inputs.Input_1');
+    expect(first.detail).toBe('input port');
+  });
+
+  it('sorts the port above the globals, which is the whole of §4', () => {
+    // `Inp` also prefixes the global `Inputs`. Without the boost the port lands
+    // under it and under every identifier in the document.
+    openFunctionNode(['Input_1'], []);
+    const options = completionsFor('Inp');
+
+    expect(options[0].label).toBe('Inputs.Input_1');
+    expect(options.some((option) => option.label === 'Inputs')).toBe(true);
+    expect(options[0].boost).toBeGreaterThan(0);
+  });
+
+  it('completes a value output to an assignment, caret after the `=`', () => {
+    openFunctionNode([], [{ name: 'Output_1', type: 'string' }]);
+    const [first] = portOptions('Out');
+
+    expect(first.apply).toBe('Outputs.Output_1 = ');
+    expect(first.detail).toBe('output port (value)');
+  });
+
+  it('completes a signal output to a call', () => {
+    openFunctionNode([], [{ name: 'Done', type: 'signal' }]);
+    const [first] = portOptions('Don');
+
+    expect(first.apply).toBe('Outputs.Done()');
+    expect(first.detail).toBe('output port (signal)');
+  });
+
+  it('matches on the port name even though the label is the expression', () => {
+    // `Outputs.Done()` does not begin with `Don`, so CodeMirror's own filter
+    // would drop it. This is why the result sets `filter: false`.
+    openFunctionNode([], [{ name: 'Done', type: 'signal' }]);
+    const result = createNoodlCompletionSource('function')(contextAt('Don', 3, false));
+
+    expect(result.filter).toBe(false);
+    expect(result.options.some((option) => option.label === 'Outputs.Done()')).toBe(true);
+  });
+
+  it('offers a port mined from the code, not only a declared one', () => {
+    const options = portOptions('const a = Inputs.Value;\nVal');
+    expect(options.map((option) => option.label)).toContain('Inputs.Value');
+  });
+
+  it('uses bracket notation for a name the dot form would not mine', () => {
+    openFunctionNode(['My Value'], []);
+    expect(portOptions('My').map((option) => option.apply)).toContain('Inputs["My Value"]');
+  });
+
+  describe('§3 — where it must not fire', () => {
+    it('offers nothing in expression mode', () => {
+      // A bare identifier there already *becomes* the port; prefixing it would
+      // create a port called `Inputs`.
+      openFunctionNode(['Input_1'], []);
+      expect(portOptions('Inp', 'expression')).toEqual([]);
+    });
+
+    it('offers nothing after a dot', () => {
+      openFunctionNode(['Input_1'], []);
+      expect(portOptions('foo.Inp')).toEqual([]);
+    });
+
+    it('offers nothing in a declaration position', () => {
+      // `var Inputs.Input_1` is a syntax error — a completion that breaks the
+      // document is worse than no completion.
+      openFunctionNode(['Input_1'], []);
+      expect(portOptions('var Inp')).toEqual([]);
+      expect(portOptions('let Inp')).toEqual([]);
+      expect(portOptions('const Inp')).toEqual([]);
+      expect(portOptions('function Inp')).toEqual([]);
+    });
+
+    it('still offers in a reference position', () => {
+      openFunctionNode(['Input_1'], []);
+      expect(portOptions('return Inp').length).toBeGreaterThan(0);
+      expect(portOptions('var x = Inp').length).toBeGreaterThan(0);
+    });
+
+    it('offers nothing at an empty position', () => {
+      // Every port on the node, ahead of every language completion, on every
+      // keystroke of whitespace.
+      openFunctionNode(['Input_1'], []);
+      expect(portOptions('')).toEqual([]);
+      expect(portOptions('return ')).toEqual([]);
+    });
+
+    it('offers nothing when no node is open and nothing is mined', () => {
+      expect(portOptions('Inp')).toEqual([]);
+    });
+  });
+
+  it('does not disturb the member completions this file already had', () => {
+    openFunctionNode(['Input_1'], []);
+    const result = createNoodlCompletionSource('function')(contextAt('Inputs.', 7, false));
+
+    expect(result).not.toBeNull();
+    // The bare-name offer is a top-level thing; after a dot the member branch
+    // answers, unboosted, exactly as it did before.
+    expect(result.options.every((option) => option.boost !== 99)).toBe(true);
+    expect(result.options.map((option) => option.label)).toEqual(['Input_1']);
+  });
+
+  it('completes a declared-but-unread port after `Inputs.` too', () => {
+    // ⚠️ Found by the row above going red. `Inputs.` read `minePorts` alone, so a
+    // port added in the panel and not yet mentioned did not complete — the exact
+    // position a beginner is in one second after creating it, and the one place
+    // completion knew the answer and withheld it.
+    openFunctionNode(['Declared_1'], []);
+    const result = createNoodlCompletionSource('function')(contextAt('Inputs.', 7, false));
+
+    expect(result.options.map((option) => option.label)).toEqual(['Declared_1']);
+    expect(result.options[0].info).toContain('not yet read');
+  });
+
+  it('still says why a mined port exists, which is the thing being taught', () => {
+    const result = createNoodlCompletionSource('function')(
+      contextAt('const a = Inputs.Value;\nInputs.', 31, false)
+    );
+
+    expect(result.options[0].label).toBe('Value');
+    expect(result.options[0].info).toContain('because your code reads it');
   });
 });
