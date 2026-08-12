@@ -138,7 +138,8 @@ export function ensureHats(
 
   if (tops.length === 0) {
     if (!options.seedEmpty) {
-      return { workspace: (workspace || { blocks: { languageVersion: 0, blocks: [] } }) as BlocklyWorkspaceJson, added: 0, skipped: [] };
+      const unchanged = (workspace || { blocks: { languageVersion: 0, blocks: [] } }) as BlocklyWorkspaceJson;
+      return { workspace: unchanged, added: 0, skipped: [] };
     }
     const seeded: BlocklyWorkspaceJson = {
       ...(workspace || {}),
