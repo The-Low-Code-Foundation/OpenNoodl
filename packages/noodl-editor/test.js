@@ -35,9 +35,31 @@ const isCI = process.argv.includes('--ci') || process.env.NOODL_TEST_CI === '1';
 // Belt and braces: the renderer reads this to decide where to load the bundle from.
 process.env.NOODL_TEST_CI = isCI ? '1' : '';
 
-// If the renderer never reports back (bundle failed to load, hard crash, hung spec)
-// we must not sit forever holding a CI runner.
-const OVERALL_TIMEOUT_MS = 15 * 60 * 1000;
+/**
+ * If the renderer never reports back (bundle failed to load, hard crash, hung
+ * spec) we must not sit forever holding a CI runner.
+ *
+ * ⚠️ **A run that trips this grades NOTHING.** It prints no `Jasmine:` line, so
+ * there is no spec count and no failure list — the result is not "zero failures"
+ * and not "one failure", it is *no measurement*. Read the `Jasmine:` line or read
+ * nothing.
+ *
+ * 🔴 **The 15-minute default is no longer comfortably above the suite.** On
+ * 2026-08-12 a healthy machine reached **2476 of ~2700 specs — 92% — and was cut
+ * off**, the third consecutive run across two sessions to grade nothing. The
+ * usual cause is a thrashing machine and the usual fix is to free memory rather
+ * than raise this; that advice did not fit here, because swap was fine and the
+ * suite was simply close to the wall. The suite has grown 2596 → ~2700.
+ *
+ * So the ceiling is overridable — for a slow or loaded machine that still
+ * deserves a real measurement — while the default stays put so CI keeps its
+ * guard. Raise it only after checking the machine is not swapping; a timeout is
+ * far more often a symptom than a limit.
+ */
+const DEFAULT_TIMEOUT_MS = 15 * 60 * 1000;
+const overrideMinutes = Number(process.env.NOODL_TEST_TIMEOUT_MINUTES);
+const OVERALL_TIMEOUT_MS =
+  Number.isFinite(overrideMinutes) && overrideMinutes > 0 ? Math.round(overrideMinutes * 60 * 1000) : DEFAULT_TIMEOUT_MS;
 
 let win = null;
 let didReportResults = false;
