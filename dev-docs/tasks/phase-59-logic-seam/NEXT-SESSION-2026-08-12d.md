@@ -106,17 +106,34 @@ this session, and it answers two open questions in the same run. Fixture `lgc59-
 - ✅ Measure from **disk**, not pixels: `shasum` + a `node -e` walk of `project.json` before and
   after. No canvas driving needed, which is why this one is first.
 
-**2. Solve the canvas node-selection gate.** 🔴 **This is the gate on drive items 3–6 and it is
-unsolved.** Budget for it explicitly rather than discovering it at step 3 — the last session did.
+**2. ~~Solve the canvas node-selection gate.~~ ✅ SOLVED 2026-08-12. It was never a gate.**
 
-- Nodes are **Canvas2D, not DOM**. You cannot `cdp click` a node, and the picker's `+` was not
-  findable by selector either.
-- `window.__nodeGraphEditor` is exposed; `.model.roots` lists nodes and types — that is how the
-  Logic Builder was located (`id: c6`, component `/ErgCodes`).
-- ⚠️ **`getNodeBounds(node)` returned `null`** for a node definitely in the model. Different
-  argument, or outside the viewport — unresolved.
-- `selectionActions` has only `{editor}` — no `selectNode`. No method matching `/block|tab|open|edit/`
-  opens the workspace; it is opened from the Properties panel.
+```js
+const e = window.__nodeGraphEditor;
+e.selectNode(e.roots.find(v => v.model.id === 'c6'));   // Properties panel follows
+```
+
+Driven and confirmed: selecting `c4` swapped the Properties panel to **Counter**, so the whole
+panel-dependent half of drive items 3–6 is reachable without a canvas gesture.
+
+🔴 **Why the last session concluded the opposite, because the mistake is reusable.** It read
+`selectionActions`' **own** keys — which really are just `{editor}` — and stopped. `selectNode`
+lives on the **prototype**, on both `selectionActions` and `NodeGraphEditor` itself.
+`Object.keys()` on a class instance is not a survey of its API; use
+`Object.getOwnPropertyNames(Object.getPrototypeOf(x))`.
+
+⚠️ **And it was already written down.** The LEG-003 drive recorded `nodeGraph.selectNode` (view
+nodes, matched on `n.model.id`) in the memory directory before this phase started. **Two objects,
+one trap:** `e.roots` holds the *views* that `selectNode` wants; `e.model.roots` holds the
+*models*. Passing a model selects nothing and throws nothing.
+
+- Nodes are still **Canvas2D, not DOM** — you still cannot `cdp click` a node, and the picker's `+`
+  was not findable by selector. Selection just no longer needs either.
+- ⚠️ **`getNodeBounds(node)` returned `null`** for a node definitely in the model — still
+  unresolved, and now only matters for drives that need *geometry* rather than selection.
+- **Opening the block editor needs no selection at all**: emit
+  `LogicBuilder.OpenTab {nodeId, nodeName, workspace}` on `EventDispatcher.instance`, which is what
+  the Properties panel button does.
 
 **3. LGC-008 — the pane. The biggest remaining build, and now ruled.**
 

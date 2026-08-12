@@ -218,6 +218,9 @@ tick, which will look like the workspace freezing at random.
 
 ### ✅ §6 DRIVEN 2026-08-12 — 2 of 3 conditions pass, and the third is a real defect
 
+> **Superseded by the re-drive at the end of this section: 3 of 3 now pass.** Kept because it is
+> the record of how the defect was found, and of what the fix had to undo.
+
 First time this guard met a real renderer. Fixture `lgc59-cycle`, opened in a live editor with a
 running preview; `defAAA ⇄ defBBB` hand-written into `settings['myBlocks.library']`.
 
@@ -248,6 +251,7 @@ byte-identical comparison.
 
 **Not yet answered:** whether the empty write happens on *open* or on the first debounce tick, and
 whether a node whose definitions are later fixed regenerates. Both need another drive.
+✅ **Both answered by the re-drive below.**
 
 ### ✅ FIXED 2026-08-12 — the refusal no longer writes anything
 
@@ -280,11 +284,60 @@ forces the caller's check. The contract is held by
 `tests-unit/lgc-007/generateWithMyBlocks.spec.ts` instead, **proved red** by inverting the fix to
 return `''`: exactly the two intended specs fail and the refusal-still-reports spec stays green.
 
-⚠️ **What is still owed is the drive.** The write-skip lives in `OverlayViews`, which reaches
-React and the node-graph singleton, so the plain-Node runner cannot see it. Re-run §6 against
-`lgc59-cycle` and confirm the third condition — `generatedCode` unchanged, `project.json`
-`generatedCode` field byte-identical — now passes. The two questions above (open vs. first
-debounce tick; whether a fixed node regenerates) are answerable in the same drive.
+### ✅ §6 RE-DRIVEN 2026-08-12 — 3 of 3 pass, and the pass is not vacuous
+
+Same fixture, same cycle, live editor. The fix is confirmed at the only place it could be:
+`project.json` on disk.
+
+| Condition | Result |
+|---|---|
+| The workspace stays live | ✅ **pass.** Injected, both top-level blocks rendered, rails drawn |
+| The console carries the warning | ✅ **pass.** *"Saved block "Alpha" uses itself. The loop is Alpha → Beta → Alpha. No code was generated."* |
+| `generatedCode` **unchanged** | ✅ **PASS** — `"Outputs.completed = true;"` before and after, byte-identical. Previously the FAIL |
+
+🔴 **The thing that makes this a real pass rather than a quiet one: the same flush wrote to disk.**
+A refusal that skips the write is indistinguishable from a flush that never ran, and the first
+reading of this drive *was* that vacuous case — opening the tab produced no flush at all, so
+`generatedCode` was trivially unchanged. The discriminator is the **`workspace` parameter**: the
+block was moved to `x:77, y:63` and those exact coordinates are on disk, in the same save that
+left `generatedCode` alone. **Grade this condition by what the refusal *did* write, never by what
+it didn't.**
+
+The full ordered console signature, all four lines, is what a pass looks like:
+
+```
+[Blockly] The saved blocks in this program could not be expanded: … Alpha → Beta → Alpha …
+[NodeGraphEditor] Workspace changed for node c6
+[NodeGraphEditor] Blocks saved for node c6, but generation declined — keeping the previous …
+Project saved …
+```
+
+**Both open questions answered.**
+
+- **Neither open nor the first debounce tick — the first debounce tick *after an edit*.** Opening
+  the tab on a cyclic node fires no flush whatsoever: no `Workspace changed`, no refusal, no save.
+  So the old defect needed one edit after mount, not merely a mount. Merely *looking* at a broken
+  node never destroyed its code; touching it once did.
+- **Yes, a fixed node regenerates — on its own next settled edit, not when the definition changes.**
+  Breaking the cycle in `myBlocks.library` and then moving a block regenerated cleanly and wrote
+  `__s(…)/__p(…)` instrumented code, logging `Saved workspace and generated code for node c6`.
+  🔴 The definition edit alone changed nothing on the node. That gap **is** §4's sweep, which is
+  ruled unauthorised — so the current behaviour is "fixed, and it recovers the moment you touch it".
+
+⚠️ **The instrumentation in `generatedCode` is correct, not a leak.** `__s`/`__p` are persisted
+deliberately — `flushSave` documents that there is one generated string and never a debug/release
+pair, and the runtime compiles them as its ninth and tenth parameters. Checked before filing it.
+
+✅ **The fixture was restored byte-for-byte** (`shasum f9470b9f…` before and after), so §6 re-runs
+from the same baseline. The 2-space-formatting caveat above still stands — this drive compared the
+`generatedCode` *field*, which is immune to it.
+
+**How it was driven, since the canvas gate does not apply here.** The block editor is opened by an
+`EventDispatcher` event, so no canvas gesture is needed:
+`EventDispatcher.instance.emit('LogicBuilder.OpenTab', {nodeId, nodeName, workspace})` — the exact
+payload `LogicBuilderWorkspaceType.onEditBlocksClicked` emits. The edit is
+`Blockly.getMainWorkspace().getBlockById(id).moveBy(dx, dy)`, which is the event a real drag fires
+at drag *end*.
 
 ## §4 — Updating a definition
 
