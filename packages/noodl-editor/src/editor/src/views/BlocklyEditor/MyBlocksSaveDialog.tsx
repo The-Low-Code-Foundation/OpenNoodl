@@ -32,7 +32,6 @@
 import React, { useMemo, useState } from 'react';
 
 import { PrimaryButton, PrimaryButtonSize, PrimaryButtonVariant } from '@noodl-core-ui/components/inputs/PrimaryButton';
-import { Select } from '@noodl-core-ui/components/inputs/Select';
 import { TextInput, TextInputVariant } from '@noodl-core-ui/components/inputs/TextInput';
 import { CoreBaseDialog } from '@noodl-core-ui/components/layout/BaseDialog';
 import { Box } from '@noodl-core-ui/components/layout/Box';
@@ -47,11 +46,23 @@ import css from './MyBlocksSaveDialog.module.scss';
 import { checkBlockName, describeShape, normaliseBlockName } from './myblocks/saveIntent';
 import type { MyBlocksScope } from './myblocks/store';
 
-const SHELF_OPTIONS = [
+/**
+ * ⚠️ **Not core-ui's `Select`.** It renders its option list through `BaseDialog`, which portals
+ * into `.dialog-layer-portal-target` — a body sibling at `z-index: 666`, exactly the same as the
+ * DialogLayer this dialog lives in. On a tie the later element wins and the portal target is
+ * created first, so an option list opened from inside a DialogLayer dialog paints **behind it**.
+ * `ReportProblemDialog` hit this and dropped to a native `<select>` for the same reason
+ * (ALPHA-007-NOTES.md).
+ *
+ * Radios rather than a native `<select>` because there are two options and each needs its
+ * consequence beside it — which is the whole difference between the shelves, and which a
+ * collapsed `<select>` hides until after the choice is made.
+ */
+const SHELF_OPTIONS: { value: MyBlocksScope; label: string; note: string }[] = [
   // "This project" first, and selected by default: it is the shelf that travels with the
   // project, and §2's whole reason for having two.
-  { label: 'This project — everyone who opens it gets this block', value: 'project' },
-  { label: 'My backpack — only me, but in every project', value: 'user' }
+  { value: 'project', label: 'This project', note: 'It travels with the project. Anyone who opens it gets this block.' },
+  { value: 'user', label: 'My backpack', note: 'Only you, but in every project you open.' }
 ];
 
 export interface MyBlocksSaveDialogProps {
@@ -133,12 +144,29 @@ export function MyBlocksSaveDialog({ request, onClose }: MyBlocksSaveDialogProps
             </VStack>
           </div>
 
-          <Select
-            label="Save it in"
-            options={SHELF_OPTIONS}
-            value={scope}
-            onChange={(value) => setScope(value as MyBlocksScope)}
-          />
+          <fieldset className={css.Shelves}>
+            <legend className={css.ShelvesLegend}>
+              <Text size={TextSize.Small} textType={TextType.Shy}>
+                Save it in
+              </Text>
+            </legend>
+            {SHELF_OPTIONS.map((option) => (
+              <label key={option.value} className={css.Shelf}>
+                <input
+                  type="radio"
+                  name="myblocks-shelf"
+                  checked={scope === option.value}
+                  onChange={() => setScope(option.value)}
+                />
+                <span>
+                  <Text size={TextSize.Small}>{option.label}</Text>
+                  <Text size={TextSize.Small} textType={TextType.Shy}>
+                    {option.note}
+                  </Text>
+                </span>
+              </label>
+            ))}
+          </fieldset>
 
           {refusal ? (
             <Text size={TextSize.Small} textType={TextType.Danger}>

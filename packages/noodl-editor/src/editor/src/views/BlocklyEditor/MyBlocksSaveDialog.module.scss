@@ -24,6 +24,45 @@
   text-transform: none;
 }
 
+/*
+ * The shelf picker. Radios and not core-ui's `Select`: see the note in the component — a Select
+ * opened from inside a DialogLayer dialog paints behind it.
+ *
+ * ⚠️ No global `box-sizing` in this repo, so anything with a width and a border sets its own.
+ */
+.Shelves {
+  box-sizing: border-box;
+  border: 0;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ShelvesLegend {
+  padding: 0;
+  margin-bottom: 4px;
+}
+
+.Shelf {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  cursor: pointer;
+
+  input {
+    /* Nudged down onto the first line of the label rather than the top of the block. */
+    margin-top: 3px;
+    flex: 0 0 auto;
+    cursor: pointer;
+  }
+
+  p {
+    margin: 0;
+  }
+}
+
 .Actions {
   display: flex;
   justify-content: flex-end;
