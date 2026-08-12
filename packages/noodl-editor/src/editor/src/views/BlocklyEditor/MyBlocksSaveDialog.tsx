@@ -29,7 +29,7 @@
  * @module BlocklyEditor
  */
 
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 
 import { PrimaryButton, PrimaryButtonSize, PrimaryButtonVariant } from '@noodl-core-ui/components/inputs/PrimaryButton';
 import { TextInput, TextInputVariant } from '@noodl-core-ui/components/inputs/TextInput';
@@ -74,6 +74,7 @@ export function MyBlocksSaveDialog({ request, onClose }: MyBlocksSaveDialogProps
   const [name, setName] = useState('');
   const [scope, setScope] = useState<MyBlocksScope>(request.defaultScope);
   const [refusal, setRefusal] = useState<string | null>(null);
+  const committed = useRef(false);
 
   const shape = useMemo(() => describeShape(request.signature), [request.signature]);
   const verdict = checkBlockName(name, request.taken);
@@ -84,6 +85,14 @@ export function MyBlocksSaveDialog({ request, onClose }: MyBlocksSaveDialogProps
 
   function handleSave() {
     if (!verdict.ok) return;
+    /**
+     * ⚠️ Once only. `commit` mints a **fresh id** on every call — it is a create, not an
+     * upsert — so a double-click or an Enter landing on top of a click would put two identical
+     * definitions on the shelf with different ids, and the toolbox would show both. A ref
+     * rather than state: the second call happens before React has re-rendered.
+     */
+    if (committed.current) return;
+    committed.current = true;
     try {
       const definition = request.commit({ name: normaliseBlockName(name), scope });
       ToastLayer.showSuccess(
@@ -93,7 +102,9 @@ export function MyBlocksSaveDialog({ request, onClose }: MyBlocksSaveDialogProps
       );
       onClose();
     } catch (error) {
-      // §3, at save time. The message names the loop; showing it in place is the point.
+      // §3, at save time. The message names the loop; showing it in place is the point. The
+      // latch is released — nothing was written, so a second attempt is a first attempt.
+      committed.current = false;
       setRefusal((error as Error)?.message || 'That could not be saved.');
     }
   }
