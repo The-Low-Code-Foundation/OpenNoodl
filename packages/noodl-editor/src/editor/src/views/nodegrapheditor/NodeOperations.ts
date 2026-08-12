@@ -1,6 +1,7 @@
 import { EditorSettings } from '@noodl-utils/editorsettings';
 
 import { NodeGraphNode, NodeGraphNodeJSON } from '../../models/nodegraphmodel';
+import { seedNewNode } from '../../models/nodeSeed/seedNewNode';
 import { guid } from '../../utils/utils';
 import { IVector2, SnapSpacing } from './canvas/types';
 
@@ -35,6 +36,10 @@ export class NodeOperations {
     } else {
       editor.model.addRoot(node, { undo: true, label: 'create' });
     }
+
+    // FUN-002: the second of the two paths that mint a brand-new node — a drag
+    // from the library onto the canvas. Same seed, same undo semantics.
+    seedNewNode(node, type.name);
 
     editor.clearSelection();
     editor.relayout();

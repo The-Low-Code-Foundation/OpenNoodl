@@ -86,6 +86,14 @@
     // reason: the fill-ratio separation these shapes are chosen for is a
     // property of the polygons, so it can be graded as arithmetic here and
     // confirmed once on composited pixels, rather than argued about.
-    "src/editor/src/views/nodegrapheditor/wireEndpoints.ts"
+    "src/editor/src/views/nodegrapheditor/wireEndpoints.ts",
+    // FUN-002: `newNodeSeed.ts` is the same shape again — whether a just-created
+    // node gets a body, and which parameter it goes in. Import-free on purpose:
+    // the seed *string* is FUN-001's and is passed in by the two call sites
+    // rather than imported here, which is what keeps `@noodl-core-ui` (and
+    // through it React and CodeMirror) out of this runner. The two guards it
+    // holds — wrong node type, node already has a body — both fail silently in
+    // the app, so they are graded here rather than by remembering to try them.
+    "src/editor/src/models/nodeSeed/newNodeSeed.ts"
   ]
 }

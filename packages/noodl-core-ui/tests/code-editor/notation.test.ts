@@ -46,8 +46,13 @@ describe('readExpression', () => {
     expect(readExpression('total-price')).toBe('Inputs["total-price"]');
   });
 
-  it('strips the prefix — inserting a raw internal name is the FUN-003 trap', () => {
-    expect(readExpression('in-Value')).toBe('Inputs.Value');
+  it('does NOT strip a prefix — the name it is given is the name in the code', () => {
+    // FUN-003 measured that the prefix is applied when the port list is
+    // ASSEMBLED, so a declared-port fact's name is already the display name.
+    // A row an author labels `in-Value` is a port displayed `in-Value`, and
+    // writing `Inputs.Value` for it addresses a port that does not exist.
+    expect(readExpression('in-Value')).toBe('Inputs["in-Value"]');
+    expect(minePorts(readExpression('in-Value')).inputs).toEqual(['in-Value']);
   });
 
   it('round-trips through the miner as the same single port', () => {
@@ -104,12 +109,12 @@ describe('canExpressPort', () => {
     // quotes only, no escape. There is nowhere to put a `"`.
     expect(canExpressPort('say "hi"')).toBe(false);
     expect(canExpressPort('')).toBe(false);
-    expect(canExpressPort('in-')).toBe(false);
   });
 
   it('accepts everything the two builders have a form for', () => {
     expect(canExpressPort('Value')).toBe(true);
     expect(canExpressPort('My Value')).toBe(true);
+    // A display name that merely looks prefixed is an ordinary name.
     expect(canExpressPort('in-My Value')).toBe(true);
   });
 });

@@ -97,12 +97,26 @@ export type PortKind = 'value' | 'signal';
 const PORT_NAME_PREFIX = /^(?:in|out)-/;
 
 /**
- * Turn an internal port name into the display name the code refers to.
+ * Turn an **assembled** port name into the display name the code refers to.
  *
  * ⚠️ Internal names are prefixed (`simplejavascript.ts:711-714`) and the
  * prefixed form is *valid JavaScript*: insert `Inputs.in-Value` and it parses
- * as `Inputs.in - Value`, mints a port called `in`, and reports nothing. Strip
- * here, at the one boundary, rather than at five call sites.
+ * as `Inputs.in - Value`, mints a port called `in`, and reports nothing.
+ *
+ * ⚠️ **Call this only when you know you are holding an assembled name, and
+ * never inside the builders.** FUN-001 §1 said to strip once, here, and FUN-003
+ * measured why that would have been a defect: the prefix is applied when the
+ * port list is *assembled* (`'in-' + p.label`), so a proplist row's `label` —
+ * which is what FUN-003's declared-port facts carry — is already the display
+ * name. An author may legitimately label a row `in-Value`, which becomes the
+ * port `in-in-Value` displayed as `in-Value`; blanket-stripping that writes
+ * `Inputs.Value`, a port which does not exist. The Script node (`Javascript2`)
+ * applies no prefix at all.
+ *
+ * So the two kinds of name stay distinct at the call site: consumers holding
+ * **display** names (FUN-004's diagnostic, from the declared-port facts) pass
+ * them straight to the builders, and consumers holding **assembled** names
+ * (FUN-005's rail, which reads the node's real ports) call this first.
  */
 export function stripPortPrefix(portName: string): string {
   return portName.replace(PORT_NAME_PREFIX, '');
@@ -130,9 +144,8 @@ const MINEABLE_BY_DOT_AS_SIGNAL = /^[A-Za-z0-9]+$/;
  * anyway writes code that either fails to parse or mints a different port. Ask
  * before inserting; the honest answer for such a name is to rename the port.
  */
-export function canExpressPort(portName: string): boolean {
-  const name = stripPortPrefix(portName);
-  return name.length > 0 && !name.includes('"');
+export function canExpressPort(displayName: string): boolean {
+  return displayName.length > 0 && !displayName.includes('"');
 }
 
 /** `Foo` → `"Foo"`, for the bracket forms. Callers gate on {@link canExpressPort}. */
@@ -152,9 +165,8 @@ function quoted(name: string): string {
  * (FUN-005's rail) must keep two bracket-form insertions off one line. Names
  * that take the dot form are unaffected.
  */
-export function readExpression(portName: string): string {
-  const name = stripPortPrefix(portName);
-  return MINEABLE_BY_DOT.test(name) ? `Inputs.${name}` : `Inputs${quoted(name)}`;
+export function readExpression(displayName: string): string {
+  return MINEABLE_BY_DOT.test(displayName) ? `Inputs.${displayName}` : `Inputs${quoted(displayName)}`;
 }
 
 /**
@@ -168,8 +180,8 @@ export function readExpression(portName: string): string {
  * mines as a **value** port; `Outputs["Done_1"]()` mines as a signal. This is
  * the one case where the shorter form is not merely uglier but wrong.
  */
-export function writeExpression(portName: string, kind: PortKind): string {
-  const name = stripPortPrefix(portName);
+export function writeExpression(displayName: string, kind: PortKind): string {
+  const name = displayName;
 
   if (kind === 'signal') {
     return MINEABLE_BY_DOT_AS_SIGNAL.test(name) ? `Outputs.${name}()` : `Outputs${quoted(name)}()`;
