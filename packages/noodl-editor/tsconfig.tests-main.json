@@ -94,6 +94,20 @@
     // through it React and CodeMirror) out of this runner. The two guards it
     // holds — wrong node type, node already has a body — both fail silently in
     // the app, so they are graded here rather than by remembering to try them.
-    "src/editor/src/models/nodeSeed/newNodeSeed.ts"
+    "src/editor/src/models/nodeSeed/newNodeSeed.ts",
+    // LGC-007: `views/BlocklyEditor/myblocks/` is the same shape again, and here
+    // the boundary is enforced by where a file sits rather than by remembering.
+    // The whole directory is pure — the saved-definition format, the cycle
+    // guard, the shape inference and the inliner — and imports nothing but
+    // itself, not even Blockly: a saved group is plain JSON, so all four are
+    // JSON transforms. Anything that touches Blockly or an editor singleton (the
+    // two shelf adapters, the call-block definitions) lives one level up in
+    // `BlocklyEditor/` and is deliberately not reached from here.
+    //
+    // That split matters more than usual for this feature. §3's failure mode is
+    // not an error message, it is a hung renderer inside a 300 ms debounce tick,
+    // which presents as the workspace freezing at random — the one class of
+    // defect a drive is worst at finding and a plain-Node runner is best at.
+    "src/editor/src/views/BlocklyEditor/myblocks"
   ]
 }
