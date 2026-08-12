@@ -22,7 +22,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 import { call, connect, copyFixture, type TestSession } from './helpers';
-import type { NodesV2File, NodeV2 } from '../src/editor-deps';
+import type { ConnectionsV2File, ConnectionV2, NodesV2File, NodeV2 } from '../src/editor-deps';
 import type { CreateComponentResponse, ToolErrorPayload, UpdateComponentResponse } from '../src/tools/responses';
 
 let session: TestSession;
@@ -45,6 +45,27 @@ function nodesFileOnDisk(componentPath: string): NodesV2File {
 
 function nodeOnDisk(componentPath: string, id: string): NodeV2 | undefined {
   return nodesFileOnDisk(componentPath).nodes.find((n) => n.id === id);
+}
+
+function connectionsFileOnDisk(componentPath: string): ConnectionsV2File {
+  const file = path.join(projectDir, 'components', componentPath, 'connections.json');
+  return JSON.parse(fs.readFileSync(file, 'utf8')) as ConnectionsV2File;
+}
+
+/**
+ * Put a wire label on disk the way the *editor* does — MCP's schema cannot
+ * express one (SIG-007 R3 keeps the four-field rule deliberately), so a label
+ * can only ever arrive from the other client. That is precisely the scenario
+ * worth protecting: a human labels a wire, an agent edits the component later.
+ */
+function labelConnectionOnDisk(componentPath: string, label: string): void {
+  const file = path.join(projectDir, 'components', componentPath, 'connections.json');
+  const parsed = JSON.parse(fs.readFileSync(file, 'utf8')) as ConnectionsV2File;
+  const first = (parsed.connections ?? [])[0] as ConnectionV2 & { label?: string; route?: unknown };
+  if (!first) throw new Error(`${componentPath} has no connection to label`);
+  first.label = label;
+  first.route = { xs: [120], ys: [] };
+  fs.writeFileSync(file, JSON.stringify(parsed, null, 2));
 }
 
 async function createProbe(): Promise<void> {
@@ -154,5 +175,42 @@ describe('A20 — the operations door re-derives visualRoots', () => {
     // `buildComponentV2Files` only writes the field when non-empty, so `[]`
     // would put MCP output outside what the editor's own writer can produce.
     expect(nodesFileOnDisk('Components/Probe').visualRoots).toBeUndefined();
+  });
+});
+
+describe('SIG-007 R3 — the operations door keeps what it did not author', () => {
+  // ✅ **A guard, not a defect proof.** `carryConnectionPresentation` closed R3 on
+  // the `set` branch and `connectionPresentation.test.ts` pins it there; this door
+  // was never broken, because `applyOperations` mutates a copy of the baseline and
+  // therefore leaves untouched wires alone. It is asserted anyway because
+  // "hardened on `set`, untouched on `operations`" is exactly what A20 turned out
+  // to be, and this test is what would notice if the door ever grew its own
+  // connection-rebuilding path. Unlike the specs above, it passes on the unfixed
+  // source too — that is what makes it a guard.
+  it('a wire an editor labelled survives an unrelated operations edit', async () => {
+    const created = await call<CreateComponentResponse>(session, 'create_component', {
+      path: 'Components/Wired',
+      nodes: [
+        { id: 'wiredBtn', type: 'net.noodl.controls.button', parameters: { label: 'Go' } },
+        { id: 'wiredNav', type: 'RouterNavigate', parameters: { target: '/Pages/Home' } }
+      ],
+      connections: [{ fromId: 'wiredBtn', fromProperty: 'onClick', toId: 'wiredNav', toProperty: 'navigate' }]
+    });
+    expect(created.isError).toBe(false);
+
+    labelConnectionOnDisk('Components/Wired', 'the primary action');
+
+    const res = await call<UpdateComponentResponse>(session, 'update_component', {
+      path: 'Components/Wired',
+      operations: [{ op: 'update_node', id: 'wiredBtn', set: { label: 'Renamed' } }]
+    });
+    if (res.isError) throw new Error(`update refused: ${JSON.stringify(res.data)}`);
+
+    const wire = connectionsFileOnDisk('Components/Wired').connections?.[0] as ConnectionV2 & {
+      label?: string;
+      route?: { xs: number[]; ys: number[] };
+    };
+    expect(wire.label).toBe('the primary action');
+    expect(wire.route).toEqual({ xs: [120], ys: [] });
   });
 });

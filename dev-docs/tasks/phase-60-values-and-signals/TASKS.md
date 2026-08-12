@@ -1,7 +1,9 @@
 # Phase 60 — the tasks (SIG: values flow, signals fire)
 
 **Created:** 2026-08-09, out of [README.md](README.md) and a new user’s feedback.
-**7 of 7 built 2026-08-11.** SIG-001, 002 and 004 went together because they share one popup, one
+**7 of 7 built, merged and closed 2026-08-11.** ⚠️ This file's own SIG-007 row said `open` until 2026-08-12 while
+this sentence said built — the header was right. Two open register rows (R8, R9) are polish on a shipped feature,
+not unbuilt work. SIG-001, 002 and 004 went together because they share one popup, one
 `if (d)` guard and one vocabulary (`portCopy.ts`); **SIG-003 closed later the same day**, all three
 sections, with §2's vocabulary answered by Richard before the first rename. **005, 006 and 007** —
 the whole of "what a wire *looks* like" — followed, in that order, deliberately: 006 calls 005's
@@ -36,7 +38,7 @@ show the direction is drawn only while the wire is still being dragged.
 | SIG-004 | [SIG-004-EVERY-SIGNAL-SAYS-WHAT-IT-DOES.md](SIG-004-EVERY-SIGNAL-SAYS-WHAT-IT-DOES.md) | one sentence at the render seam, true of every signal port in the library | ✅ **closed 08-11** |
 | SIG-005 | [SIG-005-THE-SIGNAL-TRAVELS.md](SIG-005-THE-SIGNAL-TRAVELS.md) | the travelling pulse — it fired all along and measured **1.48:1** against the wire it was painted on | ✅ **closed 08-11** |
 | SIG-006 | [SIG-006-WHICH-WAY-DOES-THIS-WIRE-GO.md](SIG-006-WHICH-WAY-DOES-THIS-WIRE-GO.md) | endpoint glyphs you can tell apart, and a hover that runs the length of a long wire | ✅ **closed 08-11 — 7/7; R3 priced and built** |
-| SIG-007 | [SIG-007-ANCHOR-POINTS.md](SIG-007-ANCHOR-POINTS.md) | drag a wire to bend it; anchor points, added and removed | 📋 **open — §0 answered 08-11, build it** |
+| SIG-007 | [SIG-007-ANCHOR-POINTS.md](SIG-007-ANCHOR-POINTS.md) | drag a wire to bend it; anchor points, added and removed | ✅ **closed 08-11 — 9/9 acceptance criteria driven.** R2 and R3 fixed; **R8** (a port run can be split but not moved) and **R9** (chevrons go diagonal at a corner) are open, both Richard's notes on the built feature |
 
 ## Suggested order, and why
 
