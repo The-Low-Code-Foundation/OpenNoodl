@@ -34,7 +34,10 @@
  * describe/it/expect are Jasmine globals here; the editor suite is not jest.
  */
 
-import { validationTypeForEditType } from '../../src/editor/src/views/panels/propertyeditor/CodeEditor/CodeEditorType';
+import {
+  runtimeDiagnosticFromWarnings,
+  validationTypeForEditType
+} from '../../src/editor/src/views/panels/propertyeditor/CodeEditor/CodeEditorType';
 
 describe('CodeEditorType — the port language decides the mode (AIX-005)', () => {
   it('opens a CSS port as CSS, not as a JavaScript expression', () => {
@@ -95,5 +98,84 @@ describe('CodeEditorType — the port language decides the mode (AIX-005)', () =
   it('falls back to expression for a language it does not know', () => {
     expect(validationTypeForEditType({ name: 'string', codeeditor: 'brainfuck' })).toBe('expression');
     expect(validationTypeForEditType(undefined)).toBe('expression');
+  });
+});
+
+/**
+ * FUN-007 §2 — finding the last run's error among a node's warnings.
+ *
+ * The runtime has attached `line`, `column` and `hint` to the run-error warning
+ * since 2026-08-12 and nothing read them. This is the reader.
+ *
+ * It matches on the **shape** — a warning that names a line — rather than on the
+ * warning key, because the keys are string literals in `simplejavascript.ts`,
+ * which this package does not import. FUN-007's own F32 already records what
+ * happens to a constant copied across that boundary: two copies that must agree,
+ * with nothing to notice when they stop.
+ */
+describe('CodeEditorType — the last run’s error reaches the gutter (FUN-007 §2)', () => {
+  it('finds nothing when the node has no warnings at all', () => {
+    expect(runtimeDiagnosticFromWarnings(undefined)).toBe(null);
+    expect(runtimeDiagnosticFromWarnings(null)).toBe(null);
+    expect(runtimeDiagnosticFromWarnings({})).toBe(null);
+    expect(runtimeDiagnosticFromWarnings({ warnings: [] })).toBe(null);
+  });
+
+  it('reads the line, column and message off a run error', () => {
+    const warnings = {
+      warnings: [{ ref: {}, warning: { message: 'Line 2: boom', line: 2, column: 7, level: 'error' } }]
+    };
+
+    expect(runtimeDiagnosticFromWarnings(warnings)).toEqual({ line: 2, column: 7, message: 'Line 2: boom' });
+  });
+
+  it('ignores a warning that names no line', () => {
+    // The "wrote no output" warning is the real instance: it is about the run as
+    // a whole, has no line, and belongs on the node rather than in the gutter.
+    const warnings = {
+      warnings: [
+        { ref: {}, warning: { message: 'The script ran but produced no output: "Output_1" stayed empty.' } }
+      ]
+    };
+
+    expect(runtimeDiagnosticFromWarnings(warnings)).toBe(null);
+  });
+
+  it('picks the run error out of a node carrying both kinds', () => {
+    const warnings = {
+      warnings: [
+        { ref: {}, warning: { message: 'The script ran but produced no output.' } },
+        { ref: {}, warning: { message: 'Line 1: not defined', line: 1 } }
+      ]
+    };
+
+    expect(runtimeDiagnosticFromWarnings(warnings)).toEqual({ line: 1, column: undefined, message: 'Line 1: not defined' });
+  });
+
+  it('leaves the column undefined when the stack carried none', () => {
+    const warnings = { warnings: [{ ref: {}, warning: { message: 'Line 4: boom', line: 4 } }] };
+    expect(runtimeDiagnosticFromWarnings(warnings).column).toBe(undefined);
+  });
+
+  it('refuses a line that is not a number, rather than anchoring at NaN', () => {
+    const warnings = { warnings: [{ ref: {}, warning: { message: 'boom', line: '3' } }] };
+    expect(runtimeDiagnosticFromWarnings(warnings)).toBe(null);
+  });
+
+  it('refuses a warning with no message — an empty gutter entry says nothing', () => {
+    expect(runtimeDiagnosticFromWarnings({ warnings: [{ ref: {}, warning: { line: 1 } }] })).toBe(null);
+    expect(runtimeDiagnosticFromWarnings({ warnings: [{ ref: {}, warning: { line: 1, message: '' } }] })).toBe(null);
+  });
+
+  it('survives a malformed entry without taking the editor down', () => {
+    const warnings = { warnings: [null, undefined, {}, { warning: null }, { ref: {}, warning: { message: 'Line 1: ok', line: 1 } }] };
+    expect(runtimeDiagnosticFromWarnings(warnings)).toEqual({ line: 1, column: undefined, message: 'Line 1: ok' });
+  });
+
+  it('does not treat the shortMessage summary as a diagnostic', () => {
+    // `getWarnings` builds `shortMessage` by joining every warning with `<br>`.
+    // Rendering that in the gutter would put HTML and unrelated sentences in it.
+    const warnings = { shortMessage: 'one<br>two', warnings: [] };
+    expect(runtimeDiagnosticFromWarnings(warnings)).toBe(null);
   });
 });

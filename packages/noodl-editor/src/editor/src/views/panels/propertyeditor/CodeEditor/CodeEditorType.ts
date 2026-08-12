@@ -10,6 +10,7 @@ import {
   collectDeclaredPorts,
   modeHasDeclaredPorts,
   setOpenNodeContext,
+  type RuntimeDiagnostic,
   type ValidationType
 } from '@noodl-core-ui/components/code-editor';
 
@@ -110,6 +111,50 @@ export function validationTypeForEditType(
   }
 
   return 'expression';
+}
+
+/**
+ * Find the last run's error among a node's warnings (FUN-007 §2).
+ *
+ * ## Why this matches on the shape and not on the warning key
+ *
+ * The keys (`js-function-run-waring`, and its `script-` twin) are string
+ * literals in `simplejavascript.ts`, a package this one does not import. Copying
+ * them here would create exactly the drift the runtime lane's F32 already
+ * records for the *message* builders — two copies of a constant that must agree,
+ * with nothing to notice when they stop. What this actually needs is narrower
+ * and self-describing: **a warning that names a line in the document**. Only the
+ * run-error path attaches `line`, and if another path ever attaches one it will
+ * be for the same reason and should render the same way.
+ *
+ * ⚠️ **Known limit: the warning does not say which port it is about.** A node
+ * with two code ports — `For Each` has `templateScript` beside its others — would
+ * anchor the same error in both editors. Every node that can currently throw this
+ * has one body, so it is not reachable today; a second code port on a running
+ * node is what would make it real, and the fix is a port name on the payload.
+ *
+ * Exported for the spec.
+ */
+export function runtimeDiagnosticFromWarnings(warnings: TSFixme): RuntimeDiagnostic | null {
+  const list = warnings?.warnings;
+  if (!Array.isArray(list)) return null;
+
+  for (const entry of list) {
+    const warning = entry?.warning;
+    // `line` is 1-based in the author's document — the runtime subtracted the
+    // compiled prefix before sending it (`functionDiagnostics.ts`). Nothing here
+    // adjusts it again.
+    if (!warning || typeof warning.line !== 'number') continue;
+    if (typeof warning.message !== 'string' || !warning.message) continue;
+
+    return {
+      line: warning.line,
+      column: typeof warning.column === 'number' ? warning.column : undefined,
+      message: warning.message
+    };
+  }
+
+  return null;
 }
 
 export class CodeEditorType extends TypeView {
@@ -295,31 +340,67 @@ export class CodeEditorType extends TypeView {
         ? CodeHistoryStore.instance.providerFor(nodeId, scope.name)
         : undefined;
 
-    // Synchronous so showPopout can measure real content (DEBT-010). The editor's
-    // size is an inline width/height on its root, so one flushed commit is the
-    // whole box — CodeMirror's own layout happens inside it and cannot change it.
-    // Without this the popout is measured as 0×0 and opens with its top edge at
-    // the button's Y, i.e. below the fold for any row low in the panel (FH-005).
-    flushSync(() =>
-      this.popoutRoot.render(
-        React.createElement(JavaScriptEditor, {
-          value: this.value || '',
-          onChange: (newValue) => {
-            this.value = newValue;
-          },
-          onSave: () => {
-            save();
-          },
-          onClose: closeHandler,
-          validationType,
-          // No placeholder: the mode supplies its own (core-ui `utils/modes.ts`).
-          disabled: this.readOnly, // Enable read-only mode if port is marked readOnly
-          width: initialSize?.x || 800,
-          height: initialSize?.y || 500,
-          historyProvider
-        })
-      )
-    );
+    // FUN-007 §2. What the node's last run threw, if it threw. Read from the
+    // model rather than pushed by the runtime: the throw may have happened long
+    // before this popout existed — a node runs at load when `Run` is unconnected
+    // — so an editor that only listened would open blank over a node that is
+    // already dotted.
+    const readRuntimeDiagnostic = (): RuntimeDiagnostic | null => {
+      if (!node) return null;
+
+      return runtimeDiagnosticFromWarnings(
+        WarningsModel.instance.getWarnings({ component: node.owner?.owner, node })
+      );
+    };
+
+    const renderEditor = (flush: boolean) => {
+      const element = React.createElement(JavaScriptEditor, {
+        value: this.value || '',
+        onChange: (newValue) => {
+          this.value = newValue;
+        },
+        onSave: () => {
+          save();
+        },
+        onClose: closeHandler,
+        validationType,
+        // No placeholder: the mode supplies its own (core-ui `utils/modes.ts`).
+        disabled: this.readOnly, // Enable read-only mode if port is marked readOnly
+        width: initialSize?.x || 800,
+        height: initialSize?.y || 500,
+        historyProvider,
+        runtimeDiagnostic: readRuntimeDiagnostic()
+      });
+
+      // Synchronous so showPopout can measure real content (DEBT-010). The editor's
+      // size is an inline width/height on its root, so one flushed commit is the
+      // whole box — CodeMirror's own layout happens inside it and cannot change it.
+      // Without this the popout is measured as 0×0 and opens with its top edge at
+      // the button's Y, i.e. below the fold for any row low in the panel (FH-005).
+      //
+      // ⚠️ Only the first commit. A later re-render must **not** flush: the size is
+      // already measured, and `flushSync` from inside the model's notification would
+      // commit React from a place React is entitled to refuse.
+      if (flush) flushSync(() => this.popoutRoot.render(element));
+      else this.popoutRoot.render(element);
+    };
+
+    renderEditor(true);
+
+    // Re-render when the node's warnings change, so an error raised by a run that
+    // happens *while* the popout is open reaches the gutter, and a cleared warning
+    // takes it away again. Unsubscribed in `dispose()`, which every close path
+    // goes through — the pre-existing `WarningsModel.instance.off(this)` there was
+    // waiting for a subscriber and now has one.
+    if (node) {
+      WarningsModel.instance.on(
+        'warningsChanged',
+        () => {
+          if (this.popoutRoot) renderEditor(false);
+        },
+        this
+      );
+    }
 
     const popoutDiv = this.popoutDiv;
     this.parent.showPopout({

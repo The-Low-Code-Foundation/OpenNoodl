@@ -5,6 +5,7 @@
  */
 
 import type { CodeHistoryProvider } from '../CodeHistory/types';
+import type { RuntimeDiagnostic } from './runtimeDiagnostic';
 
 /**
  * What the popout is editing.
@@ -59,4 +60,15 @@ export interface JavaScriptEditorProps {
    * button is not rendered at all.
    */
   historyProvider?: CodeHistoryProvider;
+
+  /**
+   * What the last run of this code threw, anchored to a line (FUN-007 §2).
+   *
+   * Drawn in the gutter beside the real diagnostics. Unlike them it is a claim
+   * about an execution rather than about the text, so **the editor drops it as
+   * soon as the document changes** and will not take it back until the consumer
+   * supplies a newer one — see `utils/runtimeDiagnostic.ts`. Pass `null` to
+   * clear it deliberately.
+   */
+  runtimeDiagnostic?: RuntimeDiagnostic | null;
 }

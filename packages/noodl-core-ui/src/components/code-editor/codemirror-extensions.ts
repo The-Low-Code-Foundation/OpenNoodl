@@ -43,6 +43,7 @@ import { createNoodlCompletionSource } from './noodl-completions';
 import { javascriptDiagnostics } from './utils/esLintDiagnostics';
 import { isExternalValueSync } from './utils/externalValueSync';
 import { defaultPlaceholder } from './utils/modes';
+import { runtimeDiagnosticExtension, runtimeDiagnostics } from './utils/runtimeDiagnostic';
 import { syntaxDiagnostics } from './utils/syntaxDiagnostics';
 import { ValidationType } from './utils/types';
 
@@ -365,7 +366,13 @@ export function createExtensions(options: ExtensionOptions = {}): Extension[] {
       maxRenderedOptions: 10,
       defaultKeymap: true
     }),
-    linter((view) => diagnosticsFor(view.state, validationType)),
+    // FUN-007 §2. The state field holding the last run's error, and the linter
+    // source that draws it. It is added for every mode, including the ones
+    // `diagnosticsFor` gives nothing: a CSS or JSON port cannot throw, so the
+    // field simply stays empty, and gating it would mean a second rule to keep
+    // in step with the runtime's idea of which ports run.
+    runtimeDiagnosticExtension(),
+    linter((view) => [...diagnosticsFor(view.state, validationType), ...runtimeDiagnostics(view.state)]),
     lintGutter(),
     lintGutterClick,
     ...(options.onDiagnostics ? [diagnosticReporter(options.onDiagnostics)] : []),

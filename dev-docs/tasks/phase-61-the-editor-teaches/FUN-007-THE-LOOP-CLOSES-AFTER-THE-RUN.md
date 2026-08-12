@@ -131,6 +131,49 @@ Branch `fun-007-lane`. Three files:
   `CodeEditorType.ts`, which is FUN-003's file and was owned by another lane this wave. **FUN-003's
   consumer should read those three fields; they are already there.**
 
+## §2's editor half, built 2026-08-12 (late)
+
+The runtime had emitted `line`, `column` and `hint` since the morning and **nothing rendered them**.
+That is now the whole of what changed:
+
+| File | What |
+|---|---|
+| `noodl-core-ui/.../utils/runtimeDiagnostic.ts` | **new.** A `StateField` holding the last run's error, a linter source that positions it, and `setRuntimeDiagnostic(view, …)` |
+| `noodl-core-ui/.../codemirror-extensions.ts` | the field installed, and its diagnostics concatenated onto the existing linter |
+| `noodl-core-ui/.../JavaScriptEditor.tsx` + `utils/types.ts` | a `runtimeDiagnostic` prop and the effect that pushes it |
+| `noodl-editor/.../CodeEditorType.ts` | `runtimeDiagnosticFromWarnings`, a `WarningsModel` subscription, and a re-render path |
+| `noodl-core-ui/tests/code-editor/runtimeDiagnostic.test.ts` | **new.** 18 specs |
+| `noodl-editor/tests/utils/codeeditor-mode.test.ts` | +9 specs for the reader |
+
+### Two decisions worth not re-litigating
+
+- **It matches on the shape, not the warning key.** `js-function-run-waring` is a literal in
+  `simplejavascript.ts`, which `noodl-editor` does not import. Copying it would be F32's problem
+  again — two copies of a constant that must agree, with nothing to notice when they stop. The reader
+  takes *a warning that names a line*, which is narrower and self-describing.
+- **The field clears itself on `docChanged`.** The producer clears too, but this is a floor rather
+  than a courtesy: given F31 — a warning that stranded and never cleared — an editor that can only be
+  cleared by a message it may never receive is the wrong shape. A runtime diagnostic describes an
+  execution, and the text changing makes it false regardless of who noticed.
+
+### ⚠️ Proved red, and one of the two attempts was decoration
+
+Both guards were inverted before being believed:
+
+- Injecting `+ 1` into the line maths fails the two anchoring specs. **It did not, the first time.**
+  The specs were written the obvious way — a one-line body for line 1, a three-line body for line 3 —
+  and the clamp to `doc.lines` puts both answers back, so both specs passed *with the defect
+  present*. They were decoration for as long as they existed. Rewritten with lines below the reported
+  one, they now fail. This is the recorded trap in a new place: an off-by-one is only observable when
+  the wrong line is a line the document has.
+- Removing the `docChanged` clear fails the three stale-error specs.
+
+### Still not driven
+
+Drive steps **8 and 9** are unblocked by this and remain unrun. §2's own acceptance — a first-line
+throw reading `Line 1:` in a real editor — is proved at the unit boundary but not on screen, and
+"nothing renders it" was this task's entire §2 problem, so the drive is the check that matters.
+
 ## Register
 
 | # | Finding | State |

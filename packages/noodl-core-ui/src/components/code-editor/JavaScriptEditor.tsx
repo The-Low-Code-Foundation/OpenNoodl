@@ -26,6 +26,7 @@ import {
 } from './codemirror-extensions';
 import css from './JavaScriptEditor.module.scss';
 import { defaultPlaceholder, isValidatedType, modeLabel } from './utils/modes';
+import { setRuntimeDiagnostic } from './utils/runtimeDiagnostic';
 import { isPixelSize, parseSizeProp, type CssSize } from './utils/size';
 import { minimalChange } from './utils/textChange';
 import { JavaScriptEditorProps } from './utils/types';
@@ -55,7 +56,8 @@ export function JavaScriptEditor({
   height,
   width,
   placeholder,
-  historyProvider
+  historyProvider,
+  runtimeDiagnostic
 }: JavaScriptEditorProps) {
   // Mode-specific, because the editor is not always holding JavaScript.
   const resolvedPlaceholder = placeholder ?? defaultPlaceholder(validationType);
@@ -184,6 +186,20 @@ export function JavaScriptEditor({
     // No re-validation here: the linter is an extension of this editor and runs
     // itself on any document change, whoever caused it.
   }, [value]);
+
+  // FUN-007 §2. Push the last run's error into the gutter.
+  //
+  // ⚠️ This runs *after* the `value` effect above on any render that changes
+  // both, which is the order it has to be: the field drops itself on
+  // `docChanged`, so a diagnostic dispatched before the text landed would be
+  // cleared by its own document update. Ordering by effect declaration is
+  // load-bearing here rather than incidental.
+  useEffect(() => {
+    const view = editorViewRef.current;
+    if (!view) return;
+
+    setRuntimeDiagnostic(view, runtimeDiagnostic ?? null);
+  }, [runtimeDiagnostic]);
 
   // Toggle read-only on the live editor.
   useEffect(() => {

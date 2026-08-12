@@ -56,3 +56,7 @@ export type { DeclaredPorts } from './utils/declaredPorts';
 // The two sources stay separate — see the module header for why that matters.
 export { unionPorts } from './utils/unionPorts';
 export type { UnionPort, UnionPorts } from './utils/unionPorts';
+// FUN-007 §2: the last run's error, anchored in the gutter. The runtime has
+// emitted the mapped line/column/hint since 2026-08-12; this is what renders it.
+export { setRuntimeDiagnostic } from './utils/runtimeDiagnostic';
+export type { RuntimeDiagnostic } from './utils/runtimeDiagnostic';
