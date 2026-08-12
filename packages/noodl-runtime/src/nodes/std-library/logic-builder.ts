@@ -13,7 +13,14 @@ import type {
 } from '@noodl/types';
 
 import { DetectedIO, detectIO, typeOfPort } from './logic-builder-io';
-import { PROBE_TRIGGER_SIGNAL, ProbeResult, evaluateFragment } from './logic-builder-probe';
+import {
+  BlockRunRecorder,
+  IDENTITY_VALUE_PROBE,
+  NOOP_STATEMENT_PROBE,
+  PROBE_TRIGGER_SIGNAL,
+  ProbeResult,
+  evaluateFragment
+} from './logic-builder-probe';
 import { ARITHMETIC_SEARCH_TAGS } from './logic-search-tags';
 
 import { outcomeOutputs } from '../../outcome';
@@ -49,6 +56,20 @@ interface LogicBuilderNodeInstance extends NodeInstance {
   _probeFragment(code: string): ProbeResult;
   _fail(code: string, message: string, token?: OutcomeToken): void;
   _io(): DetectedIO;
+}
+
+/**
+ * The two `NodeContext` methods this node reaches for that the published `NodeContextLike`
+ * does not name.
+ *
+ * ⚠️ Both are optional here on purpose. `NodeContextLike` is the *published* node-author
+ * contract and these are internal — but this node also runs under test harnesses and under a
+ * deployed viewer whose context is built from the same constructor, so the guard at the call
+ * site is a real one rather than a type-system formality.
+ */
+interface BlockTracingContext {
+  beginBlockRun?(nodeId: string): BlockRunRecorder | undefined;
+  endBlockRun?(nodeId: string, recorder: BlockRunRecorder): void;
 }
 
 /** What the generated code is handed as its parameters. */
@@ -297,6 +318,25 @@ const LogicBuilderNode: NodeDefinitionOptions = {
         return;
       }
 
+      /**
+       * LGC-003 §1 — one generated string, two probes.
+       *
+       * With nobody watching this is the shared identity pair and the run costs one extra
+       * pair of arguments and nothing else: no allocation, no map, no accumulation. With a
+       * block editor attached to *this* node, it is a recorder, and the map goes out at the
+       * end of the run.
+       *
+       * ⚠️ **This never touches `context.traceEnabled`, `_traceOwners` or `_traceBuffer`.**
+       * TALK-003 recorded that arming the shared trace switch destroys a human's in-progress
+       * Provenance recording, and HUD-004 paid for an ownership set to stop it. Rather than
+       * join that switch and have to be careful, block tracing declines it: it is a separate
+       * per-node set on the context, so there is nothing here that *can* commandeer a
+       * recording. See `NodeContext.setBlockTracing`.
+       */
+      const tracing = this.context as unknown as BlockTracingContext | undefined;
+      const recorder: BlockRunRecorder | undefined =
+        tracing && typeof tracing.beginBlockRun === 'function' ? tracing.beginBlockRun(this.id) : undefined;
+
       try {
         // Create execution context
         const context = this._createExecutionContext(triggerSignal);
@@ -310,7 +350,9 @@ const LogicBuilderNode: NodeDefinitionOptions = {
           context.Objects,
           context.Arrays,
           context.sendSignalOnOutput,
-          context.__triggerSignal__
+          context.__triggerSignal__,
+          recorder ? recorder.probeValue : IDENTITY_VALUE_PROBE,
+          recorder ? recorder.probeStatement : NOOP_STATEMENT_PROBE
         );
 
         // Update outputs. Registration comes first because `flagOutputDirty` throws on an
@@ -359,6 +401,19 @@ const LogicBuilderNode: NodeDefinitionOptions = {
           error && error.message ? String(error.message) : String(error),
           token
         );
+      } finally {
+        // A run that threw halfway is exactly the run whose hollow blocks are worth seeing:
+        // everything below the throw did not execute, and that is the answer to "why did my
+        // condition never fire". So the frame is flushed on the failure path too, and the
+        // flush itself is guarded — a diagnostic that throws out of a `finally` would replace
+        // the program's real error with its own.
+        if (recorder && tracing && typeof tracing.endBlockRun === 'function') {
+          try {
+            tracing.endBlockRun(this.id, recorder);
+          } catch (flushError) {
+            console.error('[Logic Builder] Could not report block values:', flushError);
+          }
+        }
       }
     },
 
@@ -454,6 +509,23 @@ const LogicBuilderNode: NodeDefinitionOptions = {
           'Arrays',
           'sendSignalOnOutput',
           '__triggerSignal__',
+          /**
+           * LGC-003 §1 — the ninth and tenth parameters, and the reason there is only ever one
+           * generated string.
+           *
+           * The editor emits `__p("<blockId>", …)` around every value block and `__s("<blockId>")`
+           * before every statement, always — there is no debug build and no release build, so
+           * there is no class of defect that appears only when nobody is watching. What changes
+           * is which functions land here: the shared identity pair, or a recorder.
+           *
+           * ⚠️ **Declared unconditionally, including for code generated before this existed.**
+           * A `generatedCode` string saved by an older editor mentions neither name, and an
+           * unused parameter costs nothing — whereas making the list conditional on the code
+           * would put a `code.indexOf('__p')` on the compile path and give the runtime two
+           * shapes of compiled function to reason about.
+           */
+          '__p',
+          '__s',
           code
         );
         return fn;

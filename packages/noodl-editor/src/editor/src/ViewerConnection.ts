@@ -247,6 +247,16 @@ export class ViewerConnection extends Model {
       // that asked is a lazily-loaded module this one must not import.
       const content = typeof request.content === 'string' ? JSON.parse(request.content) : request.content;
       EventDispatcher.instance.emit('BlockFragmentResult', { clientId: request.clientId, result: content });
+    } else if (request.cmd === 'blockTraceState' && request.type === 'viewer') {
+      // LGC-003 — "I have (or do not have) the node you asked me to trace." `clientId` is what
+      // the block editor pins, so its badges come from one viewer rather than from whichever
+      // preview spoke last.
+      const content = typeof request.content === 'string' ? JSON.parse(request.content) : request.content;
+      EventDispatcher.instance.emit('BlockTraceState', { clientId: request.clientId, state: content });
+    } else if (request.cmd === 'blockValues' && request.type === 'viewer') {
+      // LGC-003 — one run's `{blockId → value}` map.
+      const content = typeof request.content === 'string' ? JSON.parse(request.content) : request.content;
+      EventDispatcher.instance.emit('BlockValues', { clientId: request.clientId, frame: content });
     } else if (request.cmd === 'inputResult' && request.type === 'viewer') {
       // OBS-004 — the reply to an injected click or keystroke.
       const content = typeof request.content === 'string' ? JSON.parse(request.content) : request.content;
@@ -603,6 +613,27 @@ export class ViewerConnection extends Model {
   sendEvaluateBlockFragment(request: { requestId: string; nodeId: string; code: string }) {
     this.send({
       cmd: 'evaluateBlockFragment',
+      content: JSON.stringify(request)
+    });
+  }
+
+  /**
+   * LGC-003 — start or stop recording one Logic Builder's block values.
+   *
+   * ⚠️ **Broadcast to arm, addressed on the way back.** Same constraint as Do It's — a block
+   * editor tab knows a node id and nothing else — so every viewer arms and each replies with
+   * its own `clientId` and whether it actually has the node. The block editor pins the first
+   * one that does and ignores frames from anybody else, which is the "address the client being
+   * traced" correction LGC-002's handover asked for, applied at the only end that can enforce
+   * it.
+   *
+   * ⚠️ **This is not `traceEnabled`.** It does not touch the switch the Provenance panel and
+   * `nodegx-observe` share, so it cannot clear a recording a human is in the middle of — the
+   * accident TALK-003 recorded. See `NodeContext.setBlockTracing`.
+   */
+  sendSetBlockTracing(request: { nodeId: string; enabled: boolean }) {
+    this.send({
+      cmd: 'setBlockTracing',
       content: JSON.stringify(request)
     });
   }

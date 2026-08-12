@@ -22,6 +22,8 @@ import { buildBlocklyTheme, resolveBlocklyChrome } from './BlocklyTheme';
 import css from './BlocklyWorkspace.module.scss';
 import { buildToolbox } from './BlocklyToolbox';
 import { DoItHandle, attachDoIt } from './DoItController';
+import { withBlockProbes } from './BlockProbes';
+import { BlockValueHandle, attachBlockValues } from './BlockValueController';
 import { generateWithMyBlocks, initMyBlocks, myBlocksFlyout, MY_BLOCKS_CATEGORY } from './MyBlocksBlocks';
 import { myBlocksStore } from './MyBlocksShelves';
 import type { BlocklyWorkspaceJson } from './myblocks/format';
@@ -54,6 +56,8 @@ export interface BlocklyWorkspaceProps {
 
 export function BlocklyWorkspace({ initialWorkspace, onChange, readOnly = false, nodeId }: BlocklyWorkspaceProps) {
   const blocklyDiv = useRef<HTMLDivElement>(null);
+  /** LGC-003 — the scrubber strip goes below the workspace, inside the same root. */
+  const rootRef = useRef<HTMLDivElement>(null);
   const workspaceRef = useRef<Blockly.WorkspaceSvg | null>(null);
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -85,19 +89,38 @@ export function BlocklyWorkspace({ initialWorkspace, onChange, readOnly = false,
     // LGC-002. Its own handle rather than anything on the workspace: Do It is an overlay and
     // must stay separable from the workspace's own lifecycle, including its serialisation.
     let doIt: DoItHandle | null = null;
+    // LGC-003. Its own handle for the same reason Do It has one: live values are an overlay
+    // and must stay separable from the workspace's own lifecycle and from its serialisation.
+    let blockValues: BlockValueHandle | null = null;
 
     const flushSave = () => {
       if (!workspace || !onChangeRef.current) return;
       const saved = Blockly.serialization.workspaces.save(workspace) as BlocklyWorkspaceJson;
       const json = JSON.stringify(saved);
 
-      // Saved blocks are inlined before generation (LGC-007). A workspace that uses none takes
-      // the fast path and behaves exactly as it did before the feature existed.
-      const generated = generateWithMyBlocks(workspace, saved, myBlocksStore());
+      /**
+       * LGC-003 §1 — the program is generated **instrumented**, always.
+       *
+       * There is one generated string, not a debug one and a release one, so there is no class
+       * of defect that appears only when nobody is watching. `__p` and `__s` are the ninth and
+       * tenth parameters the runtime compiles against, and with nothing attached they are the
+       * shared identity pair.
+       *
+       * `probedIds` is what makes the didn't-execute tell honest: a block that emitted no code
+       * is not part of the program and must render neutral, not hollow.
+       */
+      const probed = withBlockProbes(() =>
+        // Saved blocks are inlined before generation (LGC-007). A workspace that uses none takes
+        // the fast path and behaves exactly as it did before the feature existed.
+        generateWithMyBlocks(workspace as Blockly.WorkspaceSvg, saved, myBlocksStore())
+      );
+      const generated = probed.result;
+
       if (generated.error) {
         console.error('[Blockly] The saved blocks in this program could not be expanded:', generated.error.message);
       } else {
         lastGoodCodeRef.current = generated.code;
+        if (blockValues) blockValues.setProbedIds(probed.probedIds);
       }
 
       onChangeRef.current(workspace, json, lastGoodCodeRef.current);
@@ -177,9 +200,34 @@ export function BlocklyWorkspace({ initialWorkspace, onChange, readOnly = false,
 
       workspace.addChangeListener(changeListener);
 
+      /**
+       * LGC-003 §2, the static half of the didn't-execute tell — **and it is core Blockly, not
+       * a plugin.**
+       *
+       * LGC-006 checked the package the task names: `@blockly/disable-top-blocks` greys nothing
+       * out. Its whole 74-line source rewrites the precondition of the `blockDisable`
+       * context-menu item so a user cannot manually re-enable an orphan. The greying is
+       * `Blockly.Events.disableOrphans`, which is in core and present at our 12.3.1. So this
+       * half costs one line and zero bytes, and no dependency was added for it.
+       *
+       * ⚠️ **It writes to the model, deliberately, and that is the difference between the two
+       * halves of §2.** A block disconnected from anything runnable really is disabled, and
+       * Blockly serialises that. So opening an existing program that has orphan blocks will
+       * re-save it with them marked disabled — a real, one-time change to the saved bytes, and
+       * the churn LGC-006 asked a drive to measure. The *dynamic* half (the hollow wash) never
+       * touches the model, which is why it is drawn rather than set.
+       *
+       * Registered after the load so the deserialisation's BLOCK_CREATE storm does not run it
+       * once per block.
+       */
+      workspace.addChangeListener(Blockly.Events.disableOrphans);
+
       // LGC-002 — right-click a block, see its value. Attached after the load so the balloon
       // layer's own change listener never sees the deserialisation's BLOCK_CREATE storm.
       doIt = attachDoIt(workspace, nodeId);
+
+      // LGC-003 — the whole program answers at once, during a real run.
+      if (rootRef.current) blockValues = attachBlockValues(workspace, rootRef.current, nodeId);
 
       // Follow the editor's light/dark setting (UIX-005 contract). The grid is not part of
       // the theme object and Blockly's setter for it is private, so the grid colour is
@@ -188,6 +236,7 @@ export function BlocklyWorkspace({ initialWorkspace, onChange, readOnly = false,
       CanvasTheme.instance.on(() => {
         if (!workspace) return;
         workspace.setTheme(buildBlocklyTheme());
+        if (blockValues) blockValues.refreshTheme();
       }, themeContext);
     }
 
@@ -204,6 +253,11 @@ export function BlocklyWorkspace({ initialWorkspace, onChange, readOnly = false,
       if (event.type === Blockly.Events.FINISHED_LOADING) return;
       // Mid-drag intermediate states are not worth serialising; the drop fires its own event.
       if (workspace.isDragging()) return;
+
+      // LGC-003. The program changed, so every recorded run is now about a program that no
+      // longer exists. Dropped immediately rather than at the end of the debounce: the badges
+      // are on screen for those 300 ms and would be describing the old blocks.
+      if (blockValues) blockValues.invalidate();
 
       if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
       saveTimeoutRef.current = setTimeout(flushSave, SAVE_DEBOUNCE_MS);
@@ -231,10 +285,17 @@ export function BlocklyWorkspace({ initialWorkspace, onChange, readOnly = false,
 
       CanvasTheme.instance.off(themeContext);
 
-      // Before the workspace goes: the layer holds a reference to it.
+      // Before the workspace goes: the layers hold references to it. Block tracing also has to
+      // be disarmed at the far end, and `dispose` is the only place that happens — a tab closed
+      // without it leaves a viewer recording values nobody is reading.
       if (doIt) {
         doIt.dispose();
         doIt = null;
+      }
+
+      if (blockValues) {
+        blockValues.dispose();
+        blockValues = null;
       }
 
       if (workspace) {
@@ -250,7 +311,7 @@ export function BlocklyWorkspace({ initialWorkspace, onChange, readOnly = false,
   }, []);
 
   return (
-    <div className={css.Root}>
+    <div className={css.Root} ref={rootRef}>
       {failedToLoad ? (
         <div className={css.LoadError}>The block editor could not be opened. See the developer console for details.</div>
       ) : null}

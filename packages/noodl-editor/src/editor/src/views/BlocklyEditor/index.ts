@@ -47,6 +47,28 @@ export { attachDoIt, registerDoItMenuItem } from './DoItController';
 export type { DoItHandle } from './DoItController';
 export { requestBlockValue } from './DoItProbeClient';
 
+// LGC-003 — the pushed probe. `BlockProbes` and `BlockValueTrace` are import-free (Blockly
+// only, and the second not even that), so `tests-unit/lgc-003/` grades the instrumentation,
+// the identity property, the precedence safety and the map→hollow logic headlessly. The three
+// that cannot be are the three that must not be: `BlockValueBadges` (SVG and the canvas
+// theme), `BlockTraceClient` (the socket) and `BlockValueController` (both, plus the DOM).
+export {
+  PROBE_PARAMETER_NAMES,
+  PROBE_STATEMENT_FN,
+  PROBE_STATEMENT_PREFIX,
+  PROBE_VALUE_FN,
+  probeExpression,
+  withBlockProbes
+} from './BlockProbes';
+export type { ProbedGeneration } from './BlockProbes';
+export { BlockRunHistory, FramePaintScheduler, RUN_HISTORY_LIMIT, badgeText, markFor } from './BlockValueTrace';
+export type { BlockMark, BlockMarkState, BlockRunFrame, BlockValueEntry } from './BlockValueTrace';
+export { BlockValueBadgeLayer, truncateBadge } from './BlockValueBadges';
+export { attachBlockTrace } from './BlockTraceClient';
+export type { BlockTraceHandle, BlockTraceStatus } from './BlockTraceClient';
+export { STATUS_COPY, attachBlockValues } from './BlockValueController';
+export type { BlockValueHandle } from './BlockValueController';
+
 // Block definitions and generators
 export { initNoodlBlocks } from './NoodlBlocks';
 export { initNoodlGenerators, generateCode } from './NoodlGenerators';

@@ -1,6 +1,21 @@
 'use strict';
 
+import { IDENTITY_VALUE_PROBE, NOOP_STATEMENT_PROBE } from '../../blockrun';
 import { DEFAULT_VALUE_CAP, previewValue } from '../../tracebuffer';
+
+/**
+ * LGC-003's probe pair, re-exported so `logic-builder.ts` keeps one import for "everything the
+ * compiled program is handed beyond its context". The definitions live in `blockrun.ts`,
+ * which is core rather than node-library, because `NodeContext` owns the switch.
+ */
+export {
+  BLOCK_CAP,
+  IDENTITY_VALUE_PROBE,
+  ITERATION_CAP,
+  NOOP_STATEMENT_PROBE,
+  createBlockRunRecorder
+} from '../../blockrun';
+export type { BlockRunFrame, BlockRunRecorder, BlockStatementProbe, BlockValueProbe } from '../../blockrun';
 
 /**
  * LGC-002 — the viewer half of "Do It".
@@ -26,7 +41,12 @@ import { DEFAULT_VALUE_CAP, previewValue } from '../../tracebuffer';
  * @module logic-builder-probe
  */
 
-/** Exactly the eight parameters `_compileFunction` compiles against, in that order. */
+/**
+ * Exactly the ten parameters `_compileFunction` compiles against, in that order.
+ *
+ * The last two are LGC-003's. LGC-002's register L5 found the ninth free and named it for
+ * `__p`; `__s` follows it because Blockly's `STATEMENT_PREFIX` needs a name of its own.
+ */
 export interface ProbeExecutionContext {
   Inputs: Record<string, unknown>;
   Outputs: Record<string, unknown>;
@@ -112,6 +132,14 @@ export function evaluateFragment(
       'Arrays',
       'sendSignalOnOutput',
       '__triggerSignal__',
+      // LGC-003. A Do It fragment is generated **bare** — one block's value is the answer, so
+      // there is nothing to instrument — but the parameter list stays identical to
+      // `_compileFunction`'s, because "the same eight" was the load-bearing claim of LGC-002
+      // and "the same ten" has to stay true for the same reason. A fragment cut out of a
+      // program that happens to carry a `__p` call still compiles and still computes the same
+      // thing, because the identity probe is what it gets.
+      '__p',
+      '__s',
       code
     ) as (...args: unknown[]) => unknown;
   } catch (error) {
@@ -137,7 +165,9 @@ export function evaluateFragment(
       function (name: string) {
         suppressedSignals.push(String(name));
       },
-      context.__triggerSignal__
+      context.__triggerSignal__,
+      IDENTITY_VALUE_PROBE,
+      NOOP_STATEMENT_PROBE
     );
 
     const result: ProbeResult = { ok: true, value: previewValue(value, valueCap) };
