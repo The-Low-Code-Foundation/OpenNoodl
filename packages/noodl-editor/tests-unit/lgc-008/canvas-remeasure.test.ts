@@ -10,10 +10,10 @@
  * The pane makes it structural rather than occasional: in split mode the canvas is never
  * hidden but is continuously resized, so the re-measure path runs on every splitter drag.
  *
- * These run in plain Node against fakes, which is possible because `CanvasDOMBindings` and
- * `CanvasVisibility` take the editor as an argument and touch no React. The fakes are the
- * shape the real editor has: `editor.canvas.width/height` are DEVICE pixels (CSS pixels times
- * the ratio), which is the arithmetic the staleness check has to get right.
+ * These run in plain Node against fakes, which is possible because `CanvasDOMBindings` takes
+ * the editor as an argument and touches no React. The fakes are the shape the real editor has:
+ * `editor.canvas.width/height` are DEVICE pixels (CSS pixels times the ratio), which is the
+ * arithmetic the staleness check has to get right.
  */
 
 import {
@@ -22,7 +22,6 @@ import {
   nodeGraphCanvasIsStale,
   remeasureNodeGraphCanvas
 } from '../../src/editor/src/views/nodegrapheditor/CanvasDOMBindings';
-import { setNodeGraphCanvasVisibility } from '../../src/editor/src/views/nodegrapheditor/CanvasVisibility';
 
 type FakeCanvas = {
   clientWidth: number;
@@ -51,16 +50,7 @@ function fakeCanvas(clientWidth: number, clientHeight: number): FakeCanvas {
 
 function fakeEditor(canvas: FakeCanvas) {
   return {
-    shell: {
-      canvas,
-      commentLayerBg: { style: {} as Record<string, string> },
-      commentLayerFg: { style: {} as Record<string, string> },
-      highlightOverlayLayer: { style: {} as Record<string, string> },
-      recordingOverlayLayer: { style: {} as Record<string, string> },
-      componentTrailRoot: { style: {} as Record<string, string> },
-      canvasHudRoot: { style: {} as Record<string, string> }
-    },
-    domElementContainer: { style: {} as Record<string, string> },
+    shell: { canvas },
     canvas: {
       desiredWidth: 100,
       desiredHeight: 100,
@@ -192,60 +182,5 @@ describe('LGC-008 F3 — remeasureNodeGraphCanvas', () => {
 
     expect(nodeGraphCanvasIsStale(editor)).toBe(true);
     expect(remeasureNodeGraphCanvas(editor)).toBe(true);
-  });
-});
-
-describe('LGC-008 F3 — setNodeGraphCanvasVisibility', () => {
-  it('re-measures on reveal, because the reveal is the first moment it can be measured', () => {
-    // 🔴 The other half of the defect: hiding is a state change with two halves and only one
-    // was written. The sequence is the real one — open a Logic Builder, resize the window while
-    // it is open, close the tab.
-    const canvas = fakeCanvas(1200, 800);
-    const editor = fakeEditor(canvas);
-    bindNodeGraphCanvas(editor);
-
-    setNodeGraphCanvasVisibility(editor, false);
-    canvas.clientWidth = 0;
-    canvas.clientHeight = 0;
-    bindNodeGraphCanvas(editor); // the window resize that happens while it is hidden
-
-    // The tab closes; the canvas comes back into a container that is now narrower.
-    canvas.clientWidth = 700;
-    canvas.clientHeight = 500;
-    setNodeGraphCanvasVisibility(editor, true);
-
-    expect(editor.resize).toHaveBeenCalledWith({ width: 700, height: 500 });
-  });
-
-  it('does not re-measure on hide', () => {
-    const canvas = fakeCanvas(1200, 800);
-    const editor = fakeEditor(canvas);
-    bindNodeGraphCanvas(editor);
-
-    setNodeGraphCanvasVisibility(editor, false);
-
-    expect(editor.resize).not.toHaveBeenCalled();
-  });
-
-  it('writes the same display values it always did', () => {
-    // The body was moved out of `OverlayViews` verbatim; this is the characterisation that says
-    // so. The component trail is `flex`, not `block`, and the DOM layer is cleared rather than
-    // set — both load-bearing.
-    const editor = fakeEditor(fakeCanvas(1200, 800));
-
-    setNodeGraphCanvasVisibility(editor, false);
-    expect(editor.shell.canvas.style.display).toBe('none');
-    expect(editor.shell.commentLayerBg.style.display).toBe('none');
-    expect(editor.shell.commentLayerFg.style.display).toBe('none');
-    expect(editor.shell.highlightOverlayLayer.style.display).toBe('none');
-    expect(editor.shell.recordingOverlayLayer.style.display).toBe('none');
-    expect(editor.shell.canvasHudRoot.style.display).toBe('none');
-    expect(editor.shell.componentTrailRoot.style.display).toBe('none');
-    expect(editor.domElementContainer.style.display).toBe('none');
-
-    setNodeGraphCanvasVisibility(editor, true);
-    expect(editor.shell.canvas.style.display).toBe('block');
-    expect(editor.shell.componentTrailRoot.style.display).toBe('flex');
-    expect(editor.domElementContainer.style.display).toBe('');
   });
 });

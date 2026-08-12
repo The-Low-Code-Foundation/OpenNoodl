@@ -12,7 +12,7 @@ import { refFromComponentName } from '../../models/workflow/functionRefResolutio
 import { descentFor } from '../../models/workflow/workflowDescent';
 import { NodeGraphComponentTrail } from '../NodeGraphComponentTrail';
 import { CloudFunctionTrailStatus } from '../NodeGraphComponentTrail/CloudFunctionTrailStatus';
-import { setNodeGraphCanvasVisibility } from './CanvasVisibility';
+import { setLogicPaneOpen, setLogicPaneSplit } from './LogicPane';
 import { CenterToFitMode } from './canvas/types';
 
 import type { NodeGraphEditor } from '../nodegrapheditor';
@@ -42,7 +42,10 @@ export class OverlayViews {
         CanvasTabsProvider,
         null,
         React.createElement(CanvasTabs, {
-          onWorkspaceChange: this.handleBlocklyWorkspaceChange.bind(this)
+          onWorkspaceChange: this.handleBlocklyWorkspaceChange.bind(this),
+          // LGC-008: the pane reports a pointer position; the shell's bounds — and therefore
+          // what that position means — are the editor's.
+          onSplitDrag: (pointerClientX: number) => setLogicPaneSplit(this.editor, pointerClientX)
         })
       )
     );
@@ -289,13 +292,14 @@ export class OverlayViews {
   }
 
   /**
-   * Set canvas visibility (hide when Logic Builder is open, show when closed).
+   * Open or close the logic pane (LGC-008).
    *
-   * The body is in `CanvasVisibility.ts` — no React in it, so it can be gated in a plain-Node
-   * runner, which is where LGC-008 F3's re-measure-on-reveal is held.
+   * It used to be `setCanvasVisibility`, and it used to hide eight layers. Both panes are on
+   * screen now, so what changes is geometry rather than visibility. The body is in
+   * `LogicPane.ts` — no React in it, so it can be gated in a plain-Node runner.
    */
-  setCanvasVisibility(visible: boolean) {
-    setNodeGraphCanvasVisibility(this.editor, visible);
+  setLogicPaneOpen(open: boolean) {
+    setLogicPaneOpen(this.editor, open);
   }
 
   updateTitle() {

@@ -68,12 +68,19 @@ export interface BuildTabWorkspacesArgs {
  * be active when it fires.
  */
 export function buildTabWorkspaces({ tabs, activeTabId, onEdit }: BuildTabWorkspacesArgs): React.ReactElement[] {
-  // ⚠️ Only the active tab is mounted, which is what the editor has always done — the pane is
-  // the change that mounts more than one, and F4 is fixed *first*, deliberately, so the pane
-  // cannot be the thing that exposes it. Removing this filter is the whole of that change.
-  const mounted = tabs.filter((tab) => tab.id === activeTabId);
-
-  return mounted.map((tab) => {
+  /**
+   * **Every** open tab is mounted, and the inactive ones are hidden rather than unmounted.
+   *
+   * This is the acceptance criterion the pane is graded on: a workspace is not remounted by a
+   * resize, a splitter drag or a pane swap. `BlocklyWorkspace` injects once and never reloads
+   * from props, so a remount is not a re-render — it is a fresh workspace built from whatever
+   * JSON the tab was last saved with, discarding anything still inside the 300 ms save debounce
+   * along with the scroll position and the undo stack.
+   *
+   * It is also what makes F4 load-bearing rather than theoretical, which is why F4 was fixed
+   * before this line changed.
+   */
+  return tabs.map((tab) => {
     const isActive = tab.id === activeTabId;
 
     return (

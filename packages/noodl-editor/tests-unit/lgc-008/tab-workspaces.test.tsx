@@ -117,12 +117,39 @@ describe('LGC-008 F4 — buildTabWorkspaces', () => {
     }
   });
 
-  it('mounts only the active tab, which is what the editor does before the pane', () => {
-    // ⚠️ This is today's behaviour, recorded so that the change which removes it is visible in
-    // one place. The pane is what mounts more than one workspace, and F4 is fixed first
-    // deliberately — before the structure that would expose it exists.
-    const elements = buildTabWorkspaces({ tabs: [tabA, tabB], activeTabId: tabB.id, onEdit: jest.fn() });
+  it('mounts every open tab and hides the inactive ones, rather than unmounting them', () => {
+    // The acceptance criterion the pane is graded on. `BlocklyWorkspace` injects once and never
+    // reloads from props, so a remount is a fresh workspace rebuilt from the last saved JSON —
+    // it discards whatever is still inside the 300 ms debounce along with the scroll position
+    // and the undo stack.
+    const containers = containersOf(buildTabWorkspaces({ tabs: [tabA, tabB], activeTabId: tabB.id, onEdit: jest.fn() }));
 
-    expect(containersOf(elements).map((c) => c.tabId)).toEqual([tabB.id]);
+    expect(containers.map((c) => c.tabId)).toEqual([tabA.id, tabB.id]);
+    expect(containers.map((c) => c.display)).toEqual(['none', 'block']);
+    // Keys and order both stay put across a switch — the two things React remounts on.
+    const switched = containersOf(buildTabWorkspaces({ tabs: [tabA, tabB], activeTabId: tabA.id, onEdit: jest.fn() }));
+    expect(switched.map((c) => c.key)).toEqual(containers.map((c) => c.key));
+    expect(switched.map((c) => c.display)).toEqual(['block', 'none']);
+  });
+
+  it('🔴 a background workspace saves to its own node, not to the active tab', () => {
+    // The F4 defect itself, and the reason it had to be fixed before this structure existed. A
+    // background workspace re-renders whenever its parent does, so it is handed a *new*
+    // `onChange` bound to whatever tab is active now. Its next flush — an edit made before the
+    // switch, landing after it — used to write its blocks and its generated code onto the other
+    // node's model. Silently, and only visible in the saved file.
+    const edits: TabWorkspaceEdit[] = [];
+    const elements = buildTabWorkspaces({
+      tabs: [tabA, tabB],
+      activeTabId: tabB.id, // B is active; A is mounted behind it
+      onEdit: (edit) => edits.push(edit)
+    });
+
+    const background = containersOf(elements).find((c) => c.tabId === tabA.id);
+    workspaceIn(background.element).props.onChange(null, '{"a":2}', 'code A');
+
+    expect(edits).toHaveLength(1);
+    expect(edits[0].tab.id).toBe(tabA.id);
+    expect(edits[0].tab.nodeId).toBe(tabA.nodeId);
   });
 });

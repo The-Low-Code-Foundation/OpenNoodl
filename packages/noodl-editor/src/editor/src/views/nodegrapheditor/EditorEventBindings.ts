@@ -154,24 +154,24 @@ export function registerEditorEventBindings(editor: NodeGraphEditor): KeyboardCo
     editor
   );
 
-  // Listen for Logic Builder tab opened - hide canvas
+  // LGC-008: the first Logic Builder tab splits the shell in two. It used to hide the canvas.
   EventDispatcher.instance.on(
     'LogicBuilder.TabOpened',
     () => {
-      console.log('[NodeGraphEditor] Logic Builder tab opened - hiding canvas');
-      editor.setCanvasVisibility(false);
+      console.log('[NodeGraphEditor] Logic Builder tab opened - splitting the canvas');
+      editor.setLogicPaneOpen(true);
     },
     editor
   );
 
-  // Listen for all Logic Builder tabs closed - show canvas
+  // ...and the last one closing gives the whole shell back to the canvas.
   EventDispatcher.instance.on(
     'LogicBuilder.AllTabsClosed',
     () => {
-      console.log('[NodeGraphEditor] All Logic Builder tabs closed - showing canvas');
+      console.log('[NodeGraphEditor] All Logic Builder tabs closed - closing the logic pane');
       // Track close time to prevent accidental node deletions during focus transition
       editor.lastBlocklyTabCloseTime = Date.now();
-      editor.setCanvasVisibility(true);
+      editor.setLogicPaneOpen(false);
     },
     editor
   );

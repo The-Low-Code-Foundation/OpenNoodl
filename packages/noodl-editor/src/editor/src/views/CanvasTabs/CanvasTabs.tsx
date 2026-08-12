@@ -1,7 +1,9 @@
-import React from 'react';
+import React, { useLayoutEffect } from 'react';
 
 import { useCanvasTabs } from '../../contexts/CanvasTabsContext';
+import { resizeBlocklyWorkspaces } from '../BlocklyEditor/blocklyResize';
 import css from './CanvasTabs.module.scss';
+import { PaneSplitter } from './PaneSplitter';
 import { buildTabWorkspaces, TabWorkspaceEdit } from './tabWorkspaces';
 
 export interface CanvasTabsProps {
@@ -13,17 +15,44 @@ export interface CanvasTabsProps {
    * code for this edit" and "the empty program" is the whole point of the type.
    */
   onWorkspaceChange?: (nodeId: string, workspace: string, code: string | undefined) => void;
+  /**
+   * LGC-008 — the splitter between the canvas pane and this one, reported as the pointer's
+   * client X on every `mousemove` of a drag.
+   *
+   * A client coordinate rather than a fraction because the conversion needs the shell's bounds,
+   * and the shell is the editor's, not this component's. `OverlayViews` closes the loop.
+   * Omitted, the splitter is not drawn — which is what a document with no pane wants.
+   */
+  onSplitDrag?: (pointerClientX: number) => void;
 }
 
 /**
  * Canvas Tabs Component
  *
- * Manages tabs for Logic Builder (Blockly) editors.
- * The canvas itself is NOT managed here - it's always visible in the background
- * unless a Logic Builder tab is open.
+ * The tab bar and the mounted Blockly workspaces of the **logic pane** — the right-hand half of
+ * the node graph shell once a Visual Function is open. The canvas is not managed here and, since
+ * LGC-008, is not hidden either: both surfaces are on screen at once and this pane is bounded by
+ * the splitter it draws down its own left edge.
  */
-export function CanvasTabs({ onWorkspaceChange }: CanvasTabsProps) {
+export function CanvasTabs({ onWorkspaceChange, onSplitDrag }: CanvasTabsProps) {
   const { tabs, activeTabId, switchTab, closeTab, updateTab } = useCanvasTabs();
+
+  /**
+   * A revealed workspace has to be re-measured, and this is the one place that knows it happened.
+   *
+   * Hidden workspaces decline to resize — `Blockly.svgResize` reads
+   * `parentElement.offsetWidth/offsetHeight`, which are 0 under `display: none`, and it would
+   * cache the 0 and set the SVG to `0px` — so a workspace that sat behind an inactive tab
+   * through a splitter drag is stale the moment it is shown.
+   *
+   * ⚠️ `useLayoutEffect`, not `useEffect` and not a `ResizeObserver`. It runs synchronously
+   * after the DOM mutation that changed `display`, which is exactly when the new size can be
+   * read. An occluded Electron renderer fires zero `ResizeObserver` callbacks and clamps timers
+   * ~1000×, so anything deferred works while the window is focused and fails where this is used.
+   */
+  useLayoutEffect(() => {
+    resizeBlocklyWorkspaces();
+  }, [activeTabId, tabs.length]);
 
   /**
    * Save one settled edit — to the tab that produced it.
@@ -65,6 +94,8 @@ export function CanvasTabs({ onWorkspaceChange }: CanvasTabsProps) {
 
   return (
     <div className={css['CanvasTabs']}>
+      {onSplitDrag ? <PaneSplitter onDrag={onSplitDrag} /> : null}
+
       {/* Tab Bar */}
       <div className={css['TabBar']}>
         {tabs.map((tab) => {

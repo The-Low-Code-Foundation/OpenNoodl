@@ -386,10 +386,13 @@ export class NodeGraphEditor extends View {
   getNodeBounds = (nodeId: string) => this.overlayViews.getNodeBounds(nodeId);
 
   /**
-   * Set canvas visibility (hide when Logic Builder is open, show when closed)
+   * Open or close the logic pane (LGC-008).
+   *
+   * Was `setCanvasVisibility`, and the rename is the change: opening a Visual Function no
+   * longer hides the canvas, it splits the shell in two.
    */
-  setCanvasVisibility(visible: boolean) {
-    this.overlayViews.setCanvasVisibility(visible);
+  setLogicPaneOpen(open: boolean) {
+    this.overlayViews.setLogicPaneOpen(open);
   }
 
   // This is called by the parent view (frames view) when the size and position
