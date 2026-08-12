@@ -227,11 +227,52 @@ want to type."* If it does not, this is out of scope — do not build a header s
 - The freeze was grepped as well as specced — `name: 'Logic Builder'` appears unchanged in the
   runtime definition, both catalogs, the enrichment file, the example and the docs-site path.
 
+## ✅ §1 and §4 DRIVEN 2026-08-12 — the triad answers `multiply`, and all three preview rows are right
+
+Live editor, `lgc59-drive`, picker 1000 px wide (above `NODE_PICKER_PREVIEW_MIN_WIDTH` = 760, so the
+preview column is present).
+
+**§1 — the ranking, confirmed on screen.** Typing `multiply` returns **exactly three results**, in
+the order this task specified, each carrying its match reason:
+
+    E  Expression       tag · multiply   ⏎
+    V  Visual Function  tag · multiply
+    F  Function         tag · multiply
+
+Expression first, Visual Function second, Function third — the deliberate ranking, not alphabetical
+and not library order by accident. All three land in the **`Logic`** category (3), which is D3's
+renamed rail label doing its job.
+
+**§4 — the preview column, all three rows.** Previously only the Function row had been seen, and
+that incidentally. Each row was cursored and its preview read; every one matches
+`NodePicker.chooser.ts` exactly, headline, detail, examples and signals:
+
+| Row | Preview |
+|---|---|
+| **Expression** | *"One line of maths or logic over a few inputs."* · *"Every name you use in the line becomes an input port."* · `price * quantity`, `total > 100`, `Math.ceil(subtotal / 5)` · *"No signal — it recalculates whenever an input changes."* |
+| **Visual Function** | *"The same jobs, built from blocks instead of typed."* · *"Drag maths, conditions and loops together; its inputs and outputs appear as you build."* · `multiply → round up → set output` · *"Runs when you send it a signal. Start here if you would rather not type code."* |
+| **Function** | *"Real JavaScript, when a line is not enough."* · *"Many inputs and outputs, async/await, calls out to the network."* · `Outputs.total = Inputs.items.length`, `await fetch(url)` · **"Runs when you send it a signal, and can fire several when it is done."** |
+
+The Function row's copy is **D1 option (a)** including the word `several`, so the shipped decision is
+confirmed on screen and not merely in a spec.
+
+✅ **§3 and §5 confirmed again in passing:** the card and the preview head both read **Visual
+Function**, tinted **LOGIC**, while the type id stays `Logic Builder`.
+
+**How the picker was opened, since this is not obvious.** It is not a button — `InteractionController`
+constructs it on a **right-click on empty canvas**. The drive builds the same `CreateNewNodePanel`
+with the same props and shows it through `PopupLayer.instance.showPopup`, which is the gesture's own
+route minus the mouse. Rows are cursored by dispatching `mouseover`/`mousemove` at the card.
+
+⚠️ Still not driven here: the jasmine suite (item 1 below), and the picker below 760 px where the
+preview column is dropped.
+
 ## Deferred verification
 
-⚠️ **Nothing below was done.** This work was built in a worktree with the editor deliberately out of
-reach (a sibling session held the dev stack, and `lerna exec` resolves to the primary checkout), so
-the acceptance's *"Drive it, do not infer it"* is outstanding. Treat the six items below as **the
+⚠️ **Items 1 and 3–6 below are still outstanding**; item 2's substance — §1's ranking and §4's
+preview column — was driven on 2026-08-12, see the section above. This work was built in a worktree
+with the editor deliberately out of reach (a sibling session held the dev stack, and `lerna exec`
+resolves to the primary checkout), so the acceptance's *"Drive it, do not infer it"* was outstanding. Treat the six items below as **the
 task, not a formality**: a passing unit spec cannot tell you the preview column rendered, and this
 repo has already banked the lesson that *"rendered clean" can mean nothing was drawn at all*.
 
