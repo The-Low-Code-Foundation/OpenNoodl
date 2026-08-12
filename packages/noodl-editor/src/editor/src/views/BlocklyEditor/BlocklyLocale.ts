@@ -118,7 +118,8 @@ const TOOLBOX_LABELS: Record<string, ToolboxLabels> = {
     text: 'Texte',
     lists: 'Listes',
     variables: 'Variables',
-    functions: 'Fonctions'
+    functions: 'Fonctions',
+    myBlocks: 'Mes blocs'
   },
   es: {
     noodlInputsOutputs: 'Entradas / Salidas',
@@ -132,7 +133,8 @@ const TOOLBOX_LABELS: Record<string, ToolboxLabels> = {
     text: 'Texto',
     lists: 'Listas',
     variables: 'Variables',
-    functions: 'Funciones'
+    functions: 'Funciones',
+    myBlocks: 'Mis bloques'
   },
   de: {
     noodlInputsOutputs: 'Eingänge / Ausgänge',
@@ -146,7 +148,8 @@ const TOOLBOX_LABELS: Record<string, ToolboxLabels> = {
     text: 'Text',
     lists: 'Listen',
     variables: 'Variablen',
-    functions: 'Funktionen'
+    functions: 'Funktionen',
+    myBlocks: 'Meine Blöcke'
   },
   it: {
     noodlInputsOutputs: 'Ingressi / Uscite',
@@ -160,7 +163,8 @@ const TOOLBOX_LABELS: Record<string, ToolboxLabels> = {
     text: 'Testo',
     lists: 'Liste',
     variables: 'Variabili',
-    functions: 'Funzioni'
+    functions: 'Funzioni',
+    myBlocks: 'I miei blocchi'
   },
   nl: {
     noodlInputsOutputs: 'Invoer / Uitvoer',
@@ -174,7 +178,8 @@ const TOOLBOX_LABELS: Record<string, ToolboxLabels> = {
     text: 'Tekst',
     lists: 'Lijsten',
     variables: 'Variabelen',
-    functions: 'Functies'
+    functions: 'Functies',
+    myBlocks: 'Mijn blokken'
   },
   'pt-br': {
     noodlInputsOutputs: 'Entradas / Saídas',
@@ -188,7 +193,8 @@ const TOOLBOX_LABELS: Record<string, ToolboxLabels> = {
     text: 'Texto',
     lists: 'Listas',
     variables: 'Variáveis',
-    functions: 'Funções'
+    functions: 'Funções',
+    myBlocks: 'Meus blocos'
   }
 };
 
