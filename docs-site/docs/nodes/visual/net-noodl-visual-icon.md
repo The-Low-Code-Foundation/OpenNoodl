@@ -110,7 +110,7 @@ Three reassurances on a bordered band — and the shape this recipe is really ab
 
 **Empty state: what a list shows when it has no rows**
 
-A list with nothing in it should say what it is and what to do, not render nothing. The designed version is small and centred inside a dashed card: an icon in a muted disc, one heading, one line of explanation capped at ~380px, and exactly one action. Wire the collection's count into this Group's `visible` port and the inverse into the list — falsiness does the switching with no logic node. Skipping the empty state is the difference between an app that looks unfinished on first run and one that does not, and first run is when it is always seen.
+A list with nothing in it should say what it is and what to do, not render nothing. The designed version is small and centred inside a dashed card: an icon in a muted disc, one heading, one line of explanation capped at ~380px, and exactly one action. The switch is one wire: the query's `isEmpty` boolean into the empty state's `mounted` input. Use `mounted`, not `visible` — `mounted` takes the element out of the layout, while `visible` only hides it and keeps the space it occupies, which leaves a page-height hole above your empty state. The list needs no gate at all: a `For Each` over an empty array renders no rows and occupies no height, so nothing has to be inverted and no logic node is involved. Skipping the empty state is the difference between an app that looks unfinished on first run and one that does not, and first run is when it is always seen.
 
 ## Related nodes
 
