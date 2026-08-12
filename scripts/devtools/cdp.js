@@ -230,6 +230,75 @@ async function dispatchClick(client, { x, y }) {
   await client.send('Input.dispatchMouseEvent', { ...base, type: 'mouseReleased', button: 'left', buttons: 0 });
 }
 
+/**
+ * A real press-move-release drag through the input pipeline.
+ *
+ * ⚠️ **The intermediate moves are not padding.** HTML5 drag sources, Blockly's own
+ * gesture handler and every pointer-drag implementation in this editor start a drag
+ * only after the pointer has travelled a few pixels while held. A press followed
+ * straight by a release at the destination is a *click at the origin*, which is a
+ * different gesture and frequently a passing-looking no-op — so this walks the
+ * pointer across in steps and lets each one be processed.
+ *
+ * `Input.dispatchMouseEvent` is also how a real drag arrives, so `dragstart`,
+ * `dragover` and `drop` fire for HTML5 sources and Blockly sees genuine
+ * `pointermove`s. Synthesising the events from `eval` does neither.
+ */
+async function dispatchDrag(client, from, to, steps = 12) {
+  await client.send('Input.dispatchMouseEvent', {
+    type: 'mouseMoved',
+    x: from.x,
+    y: from.y,
+    button: 'none',
+    buttons: 0
+  });
+  await client.send('Input.dispatchMouseEvent', {
+    type: 'mousePressed',
+    x: from.x,
+    y: from.y,
+    button: 'left',
+    buttons: 1,
+    clickCount: 1,
+    pointerType: 'mouse'
+  });
+
+  for (let i = 1; i <= steps; i++) {
+    const t = i / steps;
+    await client.send('Input.dispatchMouseEvent', {
+      type: 'mouseMoved',
+      x: from.x + (to.x - from.x) * t,
+      y: from.y + (to.y - from.y) * t,
+      button: 'left',
+      buttons: 1,
+      pointerType: 'mouse'
+    });
+    // Let the renderer process each move; a burst of moves in one task can be
+    // coalesced into a single jump and miss the drag threshold entirely.
+    await new Promise((r) => setTimeout(r, 16));
+  }
+
+  await client.send('Input.dispatchMouseEvent', {
+    type: 'mouseReleased',
+    x: to.x,
+    y: to.y,
+    button: 'left',
+    buttons: 0,
+    clickCount: 1,
+    pointerType: 'mouse'
+  });
+}
+
+/**
+ * Resolve a drag endpoint: either a selector, or literal `x,y` viewport coordinates.
+ * Coordinates matter because half the interesting drop targets — empty canvas, a
+ * point past the last row, somewhere outside the window — have no element to name.
+ */
+async function dragPoint(client, spec) {
+  const m = /^(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)$/.exec(String(spec).trim());
+  if (m) return { x: Number(m[1]), y: Number(m[2]) };
+  return elementCentre(client, spec);
+}
+
 function describeArg(a) {
   if (a.value !== undefined) return typeof a.value === 'string' ? a.value : JSON.stringify(a.value);
   return a.description || a.preview?.description || a.type;
@@ -395,6 +464,27 @@ const commands = {
     const box = await elementCentre(client, selector);
     await dispatchClick(client, box);
     console.log(`clicked ${selector} at ${Math.round(box.x)},${Math.round(box.y)}`);
+    client.close();
+  },
+
+  /**
+   * Drag from one point to another. Either endpoint may be a CSS selector or
+   * literal viewport `x,y` coordinates:
+   *
+   *   cdp drag ".RailRow" "700,400"        # rail row onto the canvas
+   *   cdp drag ".RailRow" ".BlocklyToolbox"  # onto a cancel target
+   *
+   * Needed because the canvas and the Blockly workspace are not DOM — there is
+   * often no element to name on the drop side. See `dispatchDrag` for why the
+   * intermediate moves are load-bearing rather than cosmetic.
+   */
+  async drag(from, to, steps) {
+    if (!from || !to) throw new Error('usage: cdp.js drag "<selector|x,y>" "<selector|x,y>" [steps]');
+    const client = await connect(await appTarget());
+    const a = await dragPoint(client, from);
+    const b = await dragPoint(client, to);
+    await dispatchDrag(client, a, b, steps ? Number(steps) : 12);
+    console.log(`dragged ${Math.round(a.x)},${Math.round(a.y)} -> ${Math.round(b.x)},${Math.round(b.y)}`);
     client.close();
   },
 

@@ -343,9 +343,63 @@ actually did in our workspace" is owed and is not written here.
 both themes, against a Blockly workspace whose ground is `#0b0e12`. No contrast ratio is claimed in
 this file because none was measured.
 
+## ✅ DRIVEN 2026-08-12 — 11 of 15 run, 9 clean passes, 3 findings
+
+Fixture: a throwaway copy of `lgc59-drive` (the original is byte-identical afterwards, `d802e836`).
+Both fixtures were left untouched. Results against the numbered steps below.
+
+| # | Result |
+|---|---|
+| 1 | ✅ **PASS.** Exactly five rows, no others: `price/number`, `run/signal`, `quantity/any` on Inputs; `total/any`, `done/signal` on Outputs. Inferred rows carry `RailRowInferred` with a **dashed** edge and an **italic** type, declared ones do not. ⚠️ Row order is *declared first, then inferred* (`price, run, quantity`), not the order this table lists — a display choice, not a defect, but the table should say which it wants |
+| 2 | ✅ **PASS, non-vacuously.** The block moved 725 → 401 px across the screen while the rail stayed at x=380. Proving the blocks *moved* is the whole point; a rail that holds still because nothing happened is not a pass |
+| 3 | ✅ **PASS.** `getScale()` genuinely read 0.3 then 3.0. Rail rect (152×280) and row font (12 px) were byte-identical at both. This is the one the register warned about, and the rails are outside the SVG as designed |
+| 4 | 🟡 **Mechanism passes, legibility fails.** See the contrast block below |
+| 5 | 🟡 **Mostly.** The drag creates exactly one `noodl_get_input` named `price`, landing at the drop x exactly and 24 px below the drop y — under the cursor. **One undo removes the whole thing** (single undo group, the thing worth checking). 🔴 **It is not selected**: `Blockly.common.getSelected()` is `null` afterwards, and the step asks for selected. ⚠️ Undo was driven through `workspace.undo(false)`, so the *Ctrl+Z keybinding route* specifically is still unverified |
+| 6 | 🔴 **SPLIT — half of it fails.** Released **outside the pane**: nothing created, correct. Released **over the toolbox**: a block **is** created. `elementsFromPoint` at the drop confirms `blocklyToolbox` is the hit target, so this is not a mis-aimed drop. The toolbox is inside the injection div, so the drop handler counts it as "inside the workspace" — but to a user it is the palette, and dropping a row on the palette reads as a cancel |
+| 7 | ✅ **PASS.** Clicking `total` creates `noodl_set_output` named `total` at (896,618) against a view centre of (874,619). ⚠️ **Richard's eye is still needed**, and finding 6 sharpens the question: there are now *two* ways to create a block you did not mean to |
+| 8 | ✅ **PASS.** Dragging a `math_arithmetic` onto the Outputs rail over `total` creates a new `noodl_set_output total` with the arithmetic block plugged into it |
+| 9 | ✅ **PASS.** Dropping below the last row creates `noodl_set_output` named **`result`**, freshly minted, arithmetic plugged in |
+| 10 | ❌ **NOT RUN.** Needs a `Define output total type number` block, which `lgc59-drive` does not contain. The LGC-005 refusal half is unobserved |
+| 11 | ✅ **PASS.** The rail row renames on **every keystroke** — `prcice` → `prcice/number`, `procice` → `procice/number`, four characters, four updates. No debounce, as intended |
+| 12 | ✅ **PASS.** Both rails read *"None yet. Any "get input" or "Define input" block you add shows up here."* The copy names blocks as the source and there is no "+ Add" |
+| 13 | ✅ **PASS — and this is the one the task called most likely to be skipped.** Opened the tab, closed it, touched nothing: the `workspace` parameter on disk is **byte-identical**, 776 bytes before and after. Run from a pristine copy after a full editor restart, because doing it any other way would not have been an answer |
+| 14 | ❌ **BLOCKED.** Needs LGC-008's splitter, which is not built |
+| 15 | ✅ **Met incidentally.** `lgc59-drive`'s blocks were authored earlier in the week, and step 1 read them correctly with no migration |
+
+### 🔴 The contrast measurement this file said it could not make
+
+The *"what no gate here can tell you"* note above asked whether the rails are legible and declined to
+claim a ratio. Measured now, live-flipped rather than reloaded — **step 4's mechanism passes**: the
+rails re-colour on the flip, rail ground `#181d24` → `#f7f9fb`, with no reload.
+
+| Element | Dark (on `#181d24`) | Light (on `#f7f9fb`) | AA 4.5 |
+|---|---|---|---|
+| Row **name**, 12 px | `#a6b0bb` — **7.70** | `#4a5663` — **7.10** | ✅ both |
+| **Type** label, 10 px (`number`, `any`) | `#6b7682` — **3.66** | `#7c8894` — **3.43** | 🔴 **fails both** |
+| **Signal** type, 10 px | `#4da3ff` — **6.45** | `#1570ef` — **4.33** | 🔴 **fails light** |
+
+The type label is **10 px and weight 400**, so the large-text exemption does not apply and the
+threshold is 4.5. Two of the three roles fail, one of them in both themes. This is the
+[[a-control-can-work-and-be-unreadable]] shape: every functional step above passed against text that
+is below AA.
+
+### How it was driven, and one trap worth keeping
+
+`cdp.js` had no drag command; steps 5–10 are all drags, so one was added (`cdp drag <from> <to>`,
+either endpoint a selector or literal `x,y`). The intermediate moves are load-bearing — a press
+followed straight by a release is a click at the origin.
+
+🔴 **A Blockly block's bounding box is not its hit area, and mistaking the two manufactures a
+"the mechanism is broken" finding.** Grabbing a nested block 8 px inside its `getBoundingClientRect()`
+top-left hit empty workspace, the drag did nothing, and the honest-looking conclusion was *"CDP mouse
+events do not reach Blockly's gesture handler"* — which would have written off steps 8–10 as
+undrivable. They are fine. Pick the grab point by walking candidate points until
+`document.elementFromPoint(x,y).closest('.blocklyDraggable')` carries the block's own `data-id`.
+
 ## Deferred verification
 
-Everything below needs the editor running. None of it was done: this session could not launch
+Everything below needs the editor running. **11 of the 15 were run on 2026-08-12 — see the results
+table above.** The original note follows, for the record: this task's own session could not launch
 Electron (`lerna exec` resolves to the primary checkout from a worktree, and a concurrent session
 was live there).
 
