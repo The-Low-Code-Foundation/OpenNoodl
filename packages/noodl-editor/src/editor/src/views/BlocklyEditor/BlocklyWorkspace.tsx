@@ -13,7 +13,6 @@
  */
 
 import * as Blockly from 'blockly';
-import { javascriptGenerator } from 'blockly/javascript';
 import React, { useEffect, useRef, useState } from 'react';
 
 import { CanvasTheme } from '../nodegrapheditor/canvas/CanvasTheme';
@@ -22,6 +21,9 @@ import { registerBlocklyResizeHandler } from './blocklyResize';
 import { buildBlocklyTheme, resolveBlocklyChrome } from './BlocklyTheme';
 import css from './BlocklyWorkspace.module.scss';
 import { buildToolbox } from './BlocklyToolbox';
+import { generateWithMyBlocks, initMyBlocks, myBlocksFlyout, MY_BLOCKS_CATEGORY } from './MyBlocksBlocks';
+import { myBlocksStore } from './MyBlocksShelves';
+import type { BlocklyWorkspaceJson } from './myblocks/format';
 import { initBlocklyIntegration } from './initialize';
 
 /** How long to coalesce edits before serialising and generating code. */
@@ -50,6 +52,17 @@ export function BlocklyWorkspace({ initialWorkspace, onChange, readOnly = false 
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
 
+  /**
+   * The last code that generated cleanly (LGC-007 §3).
+   *
+   * A program whose saved blocks cannot be expanded — a cycle in the definition graph, a
+   * definition deleted from under a reference, a definition whose shape changed — has no
+   * honest JavaScript. The blocks are still saved; the *code* falls back to the last good one
+   * rather than becoming empty or becoming a different program, because a Logic Builder node
+   * that silently starts doing something else is worse than one that stops changing.
+   */
+  const lastGoodCodeRef = useRef('');
+
   // Injection waits on the language bundle, so the toolbox is built with the right labels
   // rather than being rebuilt a frame later.
   const [failedToLoad, setFailedToLoad] = useState(false);
@@ -62,14 +75,25 @@ export function BlocklyWorkspace({ initialWorkspace, onChange, readOnly = false 
 
     const flushSave = () => {
       if (!workspace || !onChangeRef.current) return;
-      const json = JSON.stringify(Blockly.serialization.workspaces.save(workspace));
-      const code = javascriptGenerator.workspaceToCode(workspace);
-      onChangeRef.current(workspace, json, code);
+      const saved = Blockly.serialization.workspaces.save(workspace) as BlocklyWorkspaceJson;
+      const json = JSON.stringify(saved);
+
+      // Saved blocks are inlined before generation (LGC-007). A workspace that uses none takes
+      // the fast path and behaves exactly as it did before the feature existed.
+      const generated = generateWithMyBlocks(workspace, saved, myBlocksStore());
+      if (generated.error) {
+        console.error('[Blockly] The saved blocks in this program could not be expanded:', generated.error.message);
+      } else {
+        lastGoodCodeRef.current = generated.code;
+      }
+
+      onChangeRef.current(workspace, json, lastGoodCodeRef.current);
     };
 
     async function setup() {
       // Custom blocks and generators must exist before the toolbox referencing them is built.
       initBlocklyIntegration();
+      initMyBlocks();
 
       const labels = await applyLanguage(currentLanguageCode());
       if (disposed || !blocklyDiv.current) return;
@@ -119,6 +143,11 @@ export function BlocklyWorkspace({ initialWorkspace, onChange, readOnly = false 
         if (container.offsetWidth === 0 || container.offsetHeight === 0) return;
         Blockly.svgResize(workspace);
       });
+
+      // The My Blocks category is dynamic, like Variables and Functions: its contents change
+      // whenever a definition is saved, renamed or deleted, and Blockly rebuilds it on every
+      // flyout open. Registering it after injection is the documented order.
+      workspace.registerToolboxCategoryCallback(MY_BLOCKS_CATEGORY, myBlocksFlyout(myBlocksStore()) as never);
 
       if (initialWorkspace) {
         try {

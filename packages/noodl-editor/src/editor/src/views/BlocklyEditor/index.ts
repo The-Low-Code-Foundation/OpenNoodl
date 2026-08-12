@@ -20,6 +20,28 @@ export { initNoodlBlocks } from './NoodlBlocks';
 export { initNoodlGenerators, generateCode } from './NoodlGenerators';
 export { initBlocklyIntegration } from './initialize';
 
+// My Blocks (LGC-007): a saved group of blocks, reusable in any Visual Function.
+// The rules — format, store, cycle guard, shape inference, inliner — are in `myblocks/`
+// and import nothing, not even Blockly. The two files below are the Blockly and editor
+// halves and are the only ones that cannot be reached from a plain-Node runner.
+export {
+  bodyFromBlocks,
+  callBlockJson,
+  generateWithMyBlocks,
+  initMyBlocks,
+  myBlocksFlyout,
+  previewSignature,
+  MY_BLOCKS_CATEGORY
+} from './MyBlocksBlocks';
+export { myBlocksStore, PROJECT_LIBRARY_SETTING, USER_LIBRARY_SETTING } from './MyBlocksShelves';
+export { MyBlocksStore, MyBlocksInUseError, InMemoryShelf } from './myblocks/store';
+export { MyBlocksCycleError, MyBlocksMissingDefinitionError } from './myblocks/cycles';
+export { MyBlocksBudgetError, MyBlocksShapeError, detachDefinition, expandWorkspace } from './myblocks/expand';
+export { inferSignature } from './myblocks/shape';
+export { MY_BLOCKS_FORMAT_VERSION, validateDefinition, validateLibrary } from './myblocks/format';
+export type { MyBlockDefinition, MyBlockParam, MyBlocksLibrary, MyBlockShape } from './myblocks/format';
+export type { MyBlocksScope, MyBlocksShelf } from './myblocks/store';
+
 // Toolbox and language
 export { buildToolbox, DEFAULT_TOOLBOX_LABELS } from './BlocklyToolbox';
 export type { ToolboxLabels } from './BlocklyToolbox';
