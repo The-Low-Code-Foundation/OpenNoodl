@@ -16,13 +16,13 @@ in the property panel teaches nothing.
 
 | Task | File | One line | State |
 |---|---|---|---|
-| FUN-001 | [FUN-001-ONE-NOTATION-WRITTEN-DOWN-ONCE.md](FUN-001-ONE-NOTATION-WRITTEN-DOWN-ONCE.md) | one module owns the notation copy and the two expression builders. ⚠️ **contains a decision for Richard** | 📋 open |
-| FUN-002 | [FUN-002-NEVER-A-BLANK-PAGE.md](FUN-002-NEVER-A-BLANK-PAGE.md) | a new Function node arrives with a three-line body that works — and therefore with two ports | 📋 open |
-| FUN-003 ⭐ | [FUN-003-THE-DECLARED-PORTS-REACH-THE-EDITOR.md](FUN-003-THE-DECLARED-PORTS-REACH-THE-EDITOR.md) | **the structural task** — one field so the editor can see the ports declared in the panel | 📋 open |
+| FUN-001 | [FUN-001-ONE-NOTATION-WRITTEN-DOWN-ONCE.md](FUN-001-ONE-NOTATION-WRITTEN-DOWN-ONCE.md) | one module owns the notation copy and the two expression builders | ✅ **in `cline-dev`** `f03eaece` — §2 taken on the recommendation, **not yet signed by Richard**. Four findings measured against the real parser; **F5 invalidates FUN-002's specced seed** |
+| FUN-002 | [FUN-002-NEVER-A-BLANK-PAGE.md](FUN-002-NEVER-A-BLANK-PAGE.md) | a new Function node arrives with a body that works — and therefore with two ports | ✅ **in `cline-dev`** `b3837c9d` — 🔴 the **specced seed body was wrong** (four ports, not two); `SEED_FUNCTION_BODY` ships instead. ⏳ live drive outstanding |
+| FUN-003 ⭐ | [FUN-003-THE-DECLARED-PORTS-REACH-THE-EDITOR.md](FUN-003-THE-DECLARED-PORTS-REACH-THE-EDITOR.md) | **the structural task** — one field so the editor can see the ports declared in the panel | ✅ **merged** `fun-003-lane` — 🔴 §3's *"strip the prefix here"* **would have been a defect**; nothing is stripped. ⏳ the A→close→B drive is the one criterion still open |
 | FUN-004 ⭐ | [FUN-004-THE-DIAGNOSTIC-THAT-NAMES-THE-PORT.md](FUN-004-THE-DIAGNOSTIC-THAT-NAMES-THE-PORT.md) | **the flagship** — four messages with one-click fixes, including the observed bug verbatim | 📋 open |
 | FUN-005 | [FUN-005-THE-PORTS-RAIL.md](FUN-005-THE-PORTS-RAIL.md) | the ports become clickable beside the code; `+` creates one without leaving; live values | 📋 open |
 | FUN-006 | [FUN-006-THE-BAR-THAT-KNOWS-WHAT-IS-TRUE.md](FUN-006-THE-BAR-THAT-KNOWS-WHAT-IS-TRUE.md) | a dismissable line that names *their* ports and retires itself on success | 📋 open |
-| FUN-007 | [FUN-007-THE-LOOP-CLOSES-AFTER-THE-RUN.md](FUN-007-THE-LOOP-CLOSES-AFTER-THE-RUN.md) | "this node wrote no output"; runtime errors reach the gutter at the right line | 📋 open |
+| FUN-007 | [FUN-007-THE-LOOP-CLOSES-AFTER-THE-RUN.md](FUN-007-THE-LOOP-CLOSES-AFTER-THE-RUN.md) | "this node wrote no output"; runtime errors reach the gutter at the right line | 🔨 **in flight**, `fun-007-lane` |
 | FUN-008 | [FUN-008-COMPLETION-MEETS-THE-WRONG-INSTINCT.md](FUN-008-COMPLETION-MEETS-THE-WRONG-INSTINCT.md) | typing `Inp` offers `Inputs.Input_1` — the smallest task here | 📋 open |
 | FUN-009 | [FUN-009-THE-EXPRESSION-NODES-OPPOSITE-RULE.md](FUN-009-THE-EXPRESSION-NODES-OPPOSITE-RULE.md) | the sibling node with the inverse rule, and why the user's guess was reasonable | 📋 open |
 
