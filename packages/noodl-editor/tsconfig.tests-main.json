@@ -104,6 +104,14 @@
     // node at a time. The clause it must never contain — that the Function node
     // has one signal in and one out, which is false in both directions — is the
     // reason it is graded at all.
-    "src/editor/src/views/NodePicker/NodePicker.chooser.ts"
+    "src/editor/src/views/NodePicker/NodePicker.chooser.ts",
+    // LGC-008: `blocklyResize.ts` is the same shape once more — the registry a
+    // splitter drag calls to make Blockly re-measure itself against its
+    // container. It is import-free *by requirement* rather than by luck: Blockly
+    // is a ~1.1 MB lazy chunk and the layout code that triggers a resize sits in
+    // the eager bundle, so the module joining them must never name `blockly`.
+    // That constraint is exactly what lets the dispatch behaviour be graded here
+    // with no Electron, no DOM and no Blockly.
+    "src/editor/src/views/BlocklyEditor/blocklyResize.ts"
   ]
 }

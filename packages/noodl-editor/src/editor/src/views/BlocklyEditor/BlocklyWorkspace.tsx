@@ -18,6 +18,7 @@ import React, { useEffect, useRef, useState } from 'react';
 
 import { CanvasTheme } from '../nodegrapheditor/canvas/CanvasTheme';
 import { applyLanguage, currentLanguageCode } from './BlocklyLocale';
+import { registerBlocklyResizeHandler } from './blocklyResize';
 import { buildBlocklyTheme, resolveBlocklyChrome } from './BlocklyTheme';
 import css from './BlocklyWorkspace.module.scss';
 import { buildToolbox } from './BlocklyToolbox';
@@ -57,6 +58,7 @@ export function BlocklyWorkspace({ initialWorkspace, onChange, readOnly = false 
     let disposed = false;
     let workspace: Blockly.WorkspaceSvg | null = null;
     const themeContext = {};
+    let unregisterResize: (() => void) | null = null;
 
     const flushSave = () => {
       if (!workspace || !onChangeRef.current) return;
@@ -97,6 +99,26 @@ export function BlocklyWorkspace({ initialWorkspace, onChange, readOnly = false 
       });
 
       workspaceRef.current = workspace;
+
+      /**
+       * LGC-008: Blockly only re-measures itself on a **window** resize (its `inject` binds
+       * one listener, and that handler is the library's only `svgResize` caller). A splitter
+       * drag or a pane layout change moves the container without moving the window, so the
+       * workspace has to be told. See `blocklyResize.ts` for why this is a registry of
+       * closures and not a `ResizeObserver`.
+       *
+       * The zero-size guard is not defensive padding: `svgResize` reads
+       * `parentElement.offsetWidth/offsetHeight`, which are 0 for anything under
+       * `display: none`, and it would cache that 0 and set the SVG to `0px`. A workspace
+       * parked behind an inactive tab must therefore ignore the call and be resized again
+       * when it is revealed.
+       */
+      unregisterResize = registerBlocklyResizeHandler(() => {
+        const container = blocklyDiv.current;
+        if (!workspace || !container) return;
+        if (container.offsetWidth === 0 || container.offsetHeight === 0) return;
+        Blockly.svgResize(workspace);
+      });
 
       if (initialWorkspace) {
         try {
@@ -148,6 +170,11 @@ export function BlocklyWorkspace({ initialWorkspace, onChange, readOnly = false 
 
     return () => {
       disposed = true;
+
+      // Before the workspace goes: a handler left in the registry would call `svgResize` on
+      // a disposed workspace at the next splitter drag.
+      unregisterResize?.();
+      unregisterResize = null;
 
       // A pending edit must not be lost to a tab close — flush it rather than drop it.
       if (saveTimeoutRef.current) {
