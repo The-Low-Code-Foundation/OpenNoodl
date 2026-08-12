@@ -233,7 +233,23 @@ export function previewSignature(body: BlocklyWorkspaceJson) {
 }
 
 export interface GenerateResult {
-  code: string;
+  /**
+   * The generated JavaScript, or `undefined` when generation declined.
+   *
+   * 🔴 `undefined` is **not** `''`. An empty string is a real program (the one with no
+   * blocks in it); `undefined` means *this edit produced no honest JavaScript* and the caller
+   * must leave whatever code it already holds alone. Writing `''` here is how a refusal
+   * publishes its silence over the last-known-good code, which is a defect this feature has
+   * shipped twice.
+   *
+   * ⚠️ **The compiler will not hold this for you.** `strictNullChecks` is off across this
+   * package (root `tsconfig.json` sets no `strict` flags), so nothing stops a future edit
+   * returning `''` here and nothing forces the caller's `=== undefined` check. It was
+   * previously declared `code: string` while the error path returned `undefined`, and that
+   * lie cost nothing to compile. The contract is held by
+   * `tests-unit/lgc-007/generateWithMyBlocks.spec.ts` instead.
+   */
+  code?: string;
   /** Set when the program could not be generated. The code is then the caller's previous one. */
   error?: Error;
 }

@@ -13,8 +13,14 @@ const BlocklyWorkspace = lazy(() =>
 );
 
 export interface CanvasTabsProps {
-  /** Callback when workspace changes */
-  onWorkspaceChange?: (nodeId: string, workspace: string, code: string) => void;
+  /**
+   * Callback when workspace changes.
+   *
+   * `code` is `undefined` when generation declined — see `BlocklyWorkspaceProps.onChange`.
+   * It is threaded through rather than defaulted, because the difference between "no honest
+   * code for this edit" and "the empty program" is the whole point of the type.
+   */
+  onWorkspaceChange?: (nodeId: string, workspace: string, code: string | undefined) => void;
 }
 
 /**
@@ -32,7 +38,7 @@ export function CanvasTabs({ onWorkspaceChange }: CanvasTabsProps) {
   /**
    * Handle workspace changes from Blockly editor
    */
-  const handleWorkspaceChange = (_workspaceSvg: unknown, json: string, code: string) => {
+  const handleWorkspaceChange = (_workspaceSvg: unknown, json: string, code: string | undefined) => {
     if (!activeTab) {
       return;
     }

@@ -40,8 +40,20 @@ export interface BlocklyWorkspaceProps {
    * cursor. Key the component by node id to show a different program.
    */
   initialWorkspace?: string;
-  /** Called after every settled edit with the serialised workspace and the generated code. */
-  onChange?: (workspace: Blockly.WorkspaceSvg, json: string, code: string) => void;
+  /**
+   * Called after every settled edit with the serialised workspace and the generated code.
+   *
+   * 🔴 `code` is `undefined` when generation **declined** — a cycle in the saved-block
+   * definition graph, a missing definition, a shape mismatch, a budget overrun. It does not
+   * mean "the program is empty"; it means *this edit produced no honest JavaScript*. The
+   * blocks in `json` are still the user's and must still be saved. The receiver must leave
+   * whatever `generatedCode` it already holds alone.
+   *
+   * The distinction is the whole point of the type. An empty string here would be
+   * indistinguishable from a program the user really did empty, and writing it is how a
+   * refusal publishes its silence over the last-known-good code.
+   */
+  onChange?: (workspace: Blockly.WorkspaceSvg, json: string, code: string | undefined) => void;
   /** Read-only mode */
   readOnly?: boolean;
   /**
@@ -73,15 +85,24 @@ export function BlocklyWorkspace({ initialWorkspace, onChange, readOnly = false,
   onChangeRef.current = onChange;
 
   /**
-   * The last code that generated cleanly (LGC-007 §3).
+   * There is deliberately **no `lastGoodCode` ref here** (LGC-007 §3).
    *
    * A program whose saved blocks cannot be expanded — a cycle in the definition graph, a
    * definition deleted from under a reference, a definition whose shape changed — has no
-   * honest JavaScript. The blocks are still saved; the *code* falls back to the last good one
-   * rather than becoming empty or becoming a different program, because a Logic Builder node
-   * that silently starts doing something else is worse than one that stops changing.
+   * honest JavaScript. The blocks are still saved; the *code* is left exactly as it is,
+   * because a Logic Builder node that silently starts doing something else is worse than one
+   * that stops changing.
+   *
+   * 🔴 This used to be `useRef('')`, seeded from nothing and never from the node's saved
+   * `generatedCode`. A refusal on the first flush after mount therefore wrote that `''`
+   * straight over the good code on disk, and reopening could not recover it because the cycle
+   * was still there and re-emptied it. Driven and confirmed 2026-08-12.
+   *
+   * The fix is not to seed the ref. It is to not have one: the node's own `generatedCode`
+   * parameter *is* the last code that generated cleanly, so a second copy of that fact in the
+   * editor is the one-fact-two-stores shape this directory keeps finding (L11). `flushSave`
+   * passes `undefined` on a refusal and the writer skips the parameter.
    */
-  const lastGoodCodeRef = useRef('');
 
   // Injection waits on the language bundle, so the toolbox is built with the right labels
   // rather than being rebuilt a frame later.
@@ -127,12 +148,16 @@ export function BlocklyWorkspace({ initialWorkspace, onChange, readOnly = false,
 
       if (generated.error) {
         console.error('[Blockly] The saved blocks in this program could not be expanded:', generated.error.message);
-      } else {
-        lastGoodCodeRef.current = generated.code;
-        if (blockValues) blockValues.setProbedIds(probed.probedIds);
+      } else if (blockValues) {
+        blockValues.setProbedIds(probed.probedIds);
       }
 
-      onChangeRef.current(workspace, json, lastGoodCodeRef.current);
+      /**
+       * `generated.code` is `undefined` exactly when generation declined, and that is what
+       * travels — never `''`. The blocks (`json`) are saved either way; they are the user's
+       * edit and refusing to generate is not a reason to lose them.
+       */
+      onChangeRef.current(workspace, json, generated.code);
     };
 
     async function setup() {

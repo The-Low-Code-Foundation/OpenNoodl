@@ -48,9 +48,19 @@ export class OverlayViews {
   }
 
   /**
-   * Handle workspace changes from Blockly editor
+   * Handle workspace changes from Blockly editor.
+   *
+   * 🔴 `code` is `undefined` when generation **declined** (LGC-007 §3) — a cycle in the
+   * saved-block definition graph, a missing definition, a shape mismatch, a budget overrun.
+   * The blocks are still the user's edit and are still saved; the `generatedCode` parameter
+   * is **left exactly as it is**, so the node keeps running its last-known-good program.
+   *
+   * This is the point at which a refusal used to publish its silence: the empty string was
+   * written here and reached `project.json`, and reopening could not recover it because the
+   * cycle was still there and re-emptied it. The rule the class needs, stated once, here:
+   * **ask what a refusal path writes, not whether it warns.**
    */
-  handleBlocklyWorkspaceChange(nodeId: string, workspace: string, code: string) {
+  handleBlocklyWorkspaceChange(nodeId: string, workspace: string, code: string | undefined) {
     console.log(`[NodeGraphEditor] Workspace changed for node ${nodeId}`);
 
     const node = this.editor.findNodeWithId(nodeId);
@@ -59,8 +69,17 @@ export class OverlayViews {
       return;
     }
 
-    // Save workspace JSON to node model
+    // Save workspace JSON to node model. Unconditional: refusing to generate is not a reason
+    // to lose the blocks the user just edited.
     node.model.setParameter('workspace', workspace);
+
+    if (code === undefined) {
+      console.warn(
+        `[NodeGraphEditor] Blocks saved for node ${nodeId}, but generation declined — ` +
+          `keeping the previous generated code rather than emptying it.`
+      );
+      return;
+    }
 
     // Save generated JavaScript code to node model
     // This triggers the runtime's parameterUpdated listener which calls updatePorts()
