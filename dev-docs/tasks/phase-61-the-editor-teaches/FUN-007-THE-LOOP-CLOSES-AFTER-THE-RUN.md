@@ -1,11 +1,18 @@
 # FUN-007 — The loop closes after the run
 
-**Status:** 📋 open · **Track: the consequence** · independent of FUN-003, so it can be worked in
-parallel
+**Status:** 🟡 **runtime half built 2026-08-12** on branch `fun-007-lane`; §1, §2's mapping and §3
+are in and specced, §2's *gutter rendering* is blocked on FUN-003's file. **The live drive that
+closes the acceptance has not been run.** · **Track: the consequence** · independent of FUN-003, so
+it can be worked in parallel
 
 ## The silence this ends
 
 `var Output_1 = Input_1` does not merely lint weakly. **It runs successfully.**
+
+> 🔴 **The sentence above is false — see F24 and F28 in the register.** That exact body *throws*.
+> The silent shape is `Output_1 = Inputs.Input_1`. The section is left as written because it is the
+> premise the task was accepted under, and because a premise corrected in place stops being
+> evidence of how the task went wrong.
 
 The function is compiled and invoked, the local is assigned, no exception is thrown, no output is
 written, and the node reports nothing wrong — because from the runtime's point of view nothing *was*
@@ -97,11 +104,77 @@ ignore the dot — which costs more than this task gains.
 - ⚠️ **Verify the consequence:** reproduce the originating user's exact node, run it, and confirm the
   product now tells them something. Reading the code path is not the check.
 
+## What was built, 2026-08-12
+
+Branch `fun-007-lane`. Three files:
+
+| File | What |
+|---|---|
+| `packages/noodl-runtime/src/nodes/std-library/functionDiagnostics.ts` | **new.** The notation builders (`portReference`/`portUsage`), the measured stack-line offset, the `ReferenceError`-to-port reading, and the two sentences |
+| `packages/noodl-runtime/src/nodes/std-library/simplejavascript.ts` | the write counter in the proxy trap and in the signal stub, `reportOutputSilence`, `clearRunDiagnostics`, the mapped line and hint on the throw path |
+| `packages/noodl-runtime/test/nodes/fun-007-run-diagnostics.test.ts` | **new.** 22 specs, including the prefix-offset check and the Expression-mode control |
+
+### Verified by specs, in this worktree
+
+- 22/22 in the new file; `packages/noodl-runtime` **128 suites / 2349 tests, 0 failures**;
+  `packages/noodl-viewer-react` **67 suites / 892 tests, 0 failures**; `tsc -p` adds no error.
+- The line-1 anchoring was proved **red first**: an off-by-one deliberately injected into
+  `stackLineOffset()` fails 3 specs, including "reported at line 1".
+
+### ⚠️ Not verified, and only a live drive can close it
+
+- **The warning dot and its tooltip on the canvas.** Everything here ends at
+  `editorConnection.sendWarning`; that the dot renders, and that the sentence is legible in the
+  tooltip, is unproven. The drive recipe is in the handover.
+- **§2's gutter.** The mapped line is *emitted* (`line`, `column`, `hint` on the warning payload and
+  on the raised error's `detail`), but nothing renders it in the code editor: that needs
+  `CodeEditorType.ts`, which is FUN-003's file and was owned by another lane this wave. **FUN-003's
+  consumer should read those three fields; they are already there.**
+
 ## Register
 
 | # | Finding | State |
 |---|---|---|
-| F24 | `var Output_1 = Input_1` **runs successfully** and reports nothing — the silence beneath the lint gap | ✅ verified by reading the compile and run path |
-| F25 | `outputValuesProxy`'s `set` trap is where a write becomes a port write, so counting writes per run is nearly free | ✅ verified, `simplejavascript.ts:99-110` |
-| F26 | The body is compiled with a **prefix**, so stack line numbers are offset from the user's document | ✅ verified, `:447` + `javascriptnodeparser.js:492-494`; offset ours to compute |
-| F27 | Stale errors outliving their code is a filed defect in this exact node; the runtime error path needs the same clearing the parse error got | ✅ verified, `:171-176` |
+| F24 | ~~`var Output_1 = Input_1` **runs successfully** and reports nothing~~ | 🔴 **FALSE, corrected 2026-08-12.** It **throws** `ReferenceError: Input_1 is not defined` — reading an undeclared identifier throws in sloppy mode too, so that body has always fired `Failure` and always put its message on `Error`. The claim was verified *by reading*, and reading cannot answer it. Measured by compiling the body |
+| F28 | The genuinely silent shape is the **other half** of the same mistake: `Output_1 = Inputs.Input_1`. The read is correct, the write lands on an implicit global, nothing throws, `Success` fires | ✅ measured 2026-08-12. This is what §1 catches, and it is why §1 rather than §3 is this task's load-bearing half |
+| F25 | `outputValuesProxy`'s `set` trap is where a write becomes a port write, so counting writes per run is nearly free | ✅ verified, `simplejavascript.ts:99-110` — with **two** corrections: the count must be taken **before** the "only send when they change" early return, or re-writing an unchanged value reads as no write; and `Outputs.Done()` is a *call* that never reaches the trap at all, so the signal stub counts separately |
+| F26 | The body is compiled with a **prefix**, so stack line numbers are offset from the user's document | ✅ verified, and **measured: the offset is 3** — one line of `getCodePrefix()` plus two of `async function anonymous(…)\n) {\n`. Only the first is derivable from our own inputs, so `stackLineOffset()` compiles a probe and asks the engine instead |
+| F27 | Stale errors outliving their code is a filed defect in this exact node; the runtime error path needs the same clearing the parse error got | ✅ verified, `:171-176`; now cleared from **three** places — the `functionScript` setter, a run that succeeds, and the editor-side `_parseScriptForErrorsAndPorts` |
+| F30 | 🔴 **An implicit global written by one Function body is visible to every other one.** Bodies are compiled non-strict against one global object, so the first node in a project to write `Output_1 = …` permanently disarms the `ReferenceError` for every node that later *reads* a bare `Output_1` — the read silently returns the other node's value | ✅ measured 2026-08-12, by this task's own spec file failing on test order. **§3's hint is therefore best-effort**: it fires on the first offender and not the second. §1 is unaffected and catches both |
+| F31 | 🔴 **A user's `"use strict"` is inert.** The prefix is prepended *before* the author's first line, so their directive is never in the directive prologue. The source comment at `simplejavascript.ts:104-110` — "the throw only reaches authors who opt in" — describes something an author **cannot** do | ✅ measured 2026-08-12 (same body throws without the prefix, does not throw with it). Not fixed here: making bodies strict is a language change and belongs with the "bare identifiers work" question TASKS.md files as out of scope |
+| F32 | §3 asks for the message to be built in **one** place. It cannot be, today: `noodl-core-ui` — where FUN-001's `notation.ts` and FUN-004's diagnostics live — has **no dependency on `@noodl/runtime`**, and a runtime node cannot import a React package | ✅ verified in both `package.json`s. The runtime's builders are in `functionDiagnostics.ts` with the constraint written at the top; keeping the two copies saying the same words is a **review** obligation until someone adds a shared package |
+| F33 | ⚠️ `scripts/devtools/make-worktree.sh` links `packages/nodegx-backend/dist` but **not** `packages/noodl-runtime/dist-types`. Without it, 5 runtime suites fail to *run* in a worktree and the total silently drops 2303 ← 2349 | ✅ measured 2026-08-12 — the recorded "a gitignored artifact makes tests vanish" trap, in a new place. Symlinked by hand for this lane; the script is not this task's territory |
+
+## The drive that closes the acceptance
+
+⚠️ Run this **in the primary checkout after merge**, not in a worktree — `lerna exec` resolves the
+package root to primary, so `npm run dev:*` there would launch primary's code either way.
+
+1. `npm run dev:stop -- --list`, then `npm run dev:stop` if anything is listed. Launch the editor.
+2. New project. Drop a **Function** node. Nothing should be on it yet — no dot.
+3. In the property panel, add **one output** under Script Outputs named `Output_1`, and **one input**
+   under Script Inputs named `Input_1`. Still no dot: the node has not run.
+4. Double-click the node (this focuses `Script`) and type exactly the originating user's line:
+   `Output_1 = Inputs.Input_1;` — **not** `var Output_1 = Input_1`, which throws and is a different
+   row. Close the popout so the parameter is written.
+5. **This is the acceptance.** The node runs at load because `Run` is unconnected, and a warning dot
+   must appear. Hover it. It must read:
+   *"The script ran but produced no output: "Output_1" stayed empty. Write it in the script with
+   `Outputs.Output_1 = ...` — assigning to a plain variable of the same name does not reach the
+   port."*
+   Verify the **consequence**, not the dot: a person who has never seen the notation must be able to
+   act on that sentence without opening anything else.
+6. Re-open the Script, change the line to `Outputs.Output_1 = Inputs.Input_1;`, close. **The dot must
+   go.** If it does not, the clear path is wrong, and a warning that cannot be cleared is worse than
+   none.
+7. Delete both ports in the panel, put back a side-effect-only body (`Noodl.Variables.hits = 1;`),
+   run. **No dot, ever** — the "a Function with no outputs is not a defect" case.
+8. §2's line anchoring, which no unit test can prove *in the editor*: set the body to
+   `throw new Error("first line");` and hover the dot. It must say **`Line 1:`**. Then put two blank
+   lines above it and confirm it says `Line 3:`.
+9. §3: set the body to `var Output_1 = Input_1;` on a node that declares `Input_1`, in a **fresh
+   project** (F30 — an earlier node's implicit global disarms the `ReferenceError`). The dot must
+   read *"Line 1: Input_1 is not defined — Input_1 is an input port on this node. Read it with
+   `Inputs.Input_1`."*
+10. The mode control: drop an **Expression** node, type `Output_1 = Input_1` into it, and confirm
+    nothing from this task appears on it and its ports behave exactly as before.
