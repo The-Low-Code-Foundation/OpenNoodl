@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useCallback, ReactNode, useEffect } from 'react';
 
 import { EventDispatcher } from '../../../shared/utils/EventDispatcher';
+import { ensureHatsInJson } from '../views/BlocklyEditor/hatMigration';
 
 /**
  * Tab types supported by the canvas tab system
@@ -85,9 +86,27 @@ export function CanvasTabsProvider({ children }: CanvasTabsProviderProps) {
         return prevTabs;
       }
 
-      // Add new tab
+      /**
+       * LGC-009 — a program acquires its hat here, on the way in.
+       *
+       * This is the one seam every block editor opens through, and it is deliberately *not*
+       * inside `BlocklyWorkspace`: the workspace component reads `initialWorkspace` once and
+       * never reloads it, so a migration applied after injection would fight the load it was
+       * meant to precede. Doing it here also means the migration is a pure string-to-string
+       * transform with nothing rendered around it.
+       *
+       * ⚠️ **Nothing is written to disk here.** The node's `workspace` parameter is untouched
+       * until the author's first settled edit flushes the workspace back through
+       * `handleBlocklyWorkspaceChange` — so opening a program and closing it again changes no
+       * bytes, which is what LGC-002 §2 and LGC-004 #13 grade.
+       *
+       * `seedEmpty` is what makes the hat mandatory for a program that does not exist yet: a
+       * freshly dropped Visual Function opens with a hat on the canvas rather than with the
+       * empty sheet that used to leave "where does this start?" unanswerable.
+       */
       const tab: Tab = {
         ...newTab,
+        workspace: ensureHatsInJson(newTab.workspace, { seedEmpty: true }),
         id: tabId
       };
 

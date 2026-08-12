@@ -12,7 +12,7 @@ import type {
   OutcomeToken
 } from '@noodl/types';
 
-import { DetectedIO, detectIO, typeOfPort } from './logic-builder-io';
+import { DetectedIO, RESERVED_INPUTS, RESERVED_OUTPUTS, detectIO, typeOfPort } from './logic-builder-io';
 import {
   BlockRunRecorder,
   IDENTITY_VALUE_PROBE,
@@ -101,7 +101,10 @@ interface LogicBuilderExecutionContext {
  * author names verbatim — changing that would break every `generatedCode` string in every
  * existing project — so the names are reserved and the collision is reported instead.
  */
-const RESERVED_INPUTS = ['workspace', 'generatedCode', 'run'];
+/* LGC-009 — the two lists now live in `logic-builder-io.ts`, beside the port set they are about,
+ * so the editor-side migration can prove it publishes no new port by reading them rather than by
+ * repeating them. The history above and below is why they exist; the file they moved to says why
+ * they moved. */
 /**
  * ⚠️ ERG-001 §4 added `done`, `unchanged` and `completed`.
  *
@@ -111,7 +114,6 @@ const RESERVED_INPUTS = ['workspace', 'generatedCode', 'run'];
  * `Outputs.done` would flag the contract's built-in signal and its own value would vanish with
  * nothing anywhere saying why. Reserved *before* the ports landed, not after.
  */
-const RESERVED_OUTPUTS = ['error', 'success', 'failure', 'done', 'unchanged', 'completed'];
 
 const LogicBuilderNode: NodeDefinitionOptions = {
   /**

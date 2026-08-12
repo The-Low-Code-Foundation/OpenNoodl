@@ -15,6 +15,8 @@
 import * as Blockly from 'blockly';
 import { javascriptGenerator, Order } from 'blockly/javascript';
 
+import { HAT_BLOCK_TYPE } from '@noodl/runtime/src/nodes/std-library/logic-builder-io';
+
 import { initBlockProbes } from './BlockProbes';
 
 /**
@@ -48,6 +50,27 @@ export function initNoodlGenerators() {
  * Input/Output Generators
  */
 function initInputOutputGenerators() {
+  /**
+   * LGC-009 — the hat emits nothing, and that is acceptance criterion 1.
+   *
+   * Blockly's `scrub_` appends the `next` chain to whatever a statement generator returns, so
+   * returning `''` here makes a hatted stack generate **byte-identically** to the same stack
+   * without the hat — the same lines, in the same order, with the same probe ids. The hat's own
+   * id never appears, because `initBlockProbes` marks it `suppressPrefixSuffix` along with the
+   * other declaration blocks: it is not a statement of the program, so a `__s(…)` for it would
+   * be a mark that teaches nothing.
+   *
+   * 🔴 **This is where per-hat dispatch would go, and it is deliberately not here.** Wrapping the
+   * body in `if (__triggerSignal__ === "<name>") { … }` needs no runtime change — the parameter
+   * is already passed — but it would break criterion 1, and it has a trap in it: the node's
+   * built-in Run port passes the lower-case `'run'` and Do It passes `PROBE_TRIGGER_SIGNAL`, so
+   * a hat named `Run` would match neither and its program would silently stop running. See
+   * HAT-DISPATCH in `NOTES-LGC-009.md`.
+   */
+  javascriptGenerator.forBlock[HAT_BLOCK_TYPE] = function () {
+    return '';
+  };
+
   // Define Input - no runtime code (used for I/O detection only)
   javascriptGenerator.forBlock['noodl_define_input'] = function () {
     return '';

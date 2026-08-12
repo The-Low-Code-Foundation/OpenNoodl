@@ -42,6 +42,21 @@ export const HAT_BLOCK_TYPE = 'noodl_when_signal';
  */
 export const DEFAULT_HAT_SIGNAL = 'run';
 
+/**
+ * Port names the Logic Builder node itself owns, and which a block program therefore cannot mint.
+ *
+ * ⚠️ **Moved here from `logic-builder.ts` by LGC-009, and the move is the point.** These are facts
+ * about the *port set*, and the port set is what this file is for. `updatePorts` filters every
+ * published port through them, so anything that has to answer *"would this name reach the
+ * canvas?"* — the hat migration's "this publishes no new port" guarantee, and the spec that grades
+ * it — reads the same list rather than repeating it. A second copy of a reserved-name list is
+ * LGC-004's L11 with a different noun.
+ *
+ * @see logic-builder.ts, where the collisions these prevent are written up at length.
+ */
+export const RESERVED_INPUTS = ['workspace', 'generatedCode', 'run'];
+export const RESERVED_OUTPUTS = ['error', 'success', 'failure', 'done', 'unchanged', 'completed'];
+
 export interface DetectedPort {
   name: string;
   /** A Noodl port type name, or `'*'` when the blocks do not declare one. */

@@ -22,6 +22,10 @@
 // A value import would drag all of Blockly in with it and undo the lazy load.
 import type * as Blockly from 'blockly';
 
+// A plain string constant out of the runtime's pure port detector — no Blockly, nothing to
+// drag in, so the lazy load above is unaffected.
+import { HAT_BLOCK_TYPE } from '@noodl/runtime/src/nodes/std-library/logic-builder-io';
+
 /** Category colours. Hues, not hex — Blockly derives block shading from these. */
 const HUE = {
   io: '230',
@@ -101,6 +105,11 @@ export function buildToolbox(labels: ToolboxLabels = DEFAULT_TOOLBOX_LABELS) {
         'noodl_set_output'
       ]),
       category(labels.noodlSignals, HUE.signals, [
+        // LGC-009 — first, because it is where a program starts. Scratch and MakeCode both put
+        // the hat at the top of the first category a beginner opens, for the same reason: the
+        // commonest question in any block tool is "why didn't this run?", and the answer is
+        // easier to reach for than to explain.
+        HAT_BLOCK_TYPE,
         'noodl_define_signal_input',
         'noodl_define_signal_output',
         'noodl_send_signal'
