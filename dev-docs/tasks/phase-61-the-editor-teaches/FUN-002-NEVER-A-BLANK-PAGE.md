@@ -135,3 +135,46 @@ Owned by FUN-001 §3 and imported, not retyped. Constraints on the string:
 | F6 | A declared `default` **never runs its setter** — the seed must be a real parameter write, not a port default | ✅ known trap, re-confirmed by the setter's structure |
 | F7 | `CodeEditorType.save()` writes `undefined` when the value equals the default, so a defaulted seed is un-deletable | ✅ verified, `CodeEditorType.ts:164` |
 | F8 | The old Script node's twenty-line commented template still sits in `javascript.ts:15-60` as dead comments — evidence of what to not do again | ✅ verified |
+
+## The drive, as run — 2026-08-12, primary checkout
+
+Driven over CDP against a copy of a real project. **6 of 7 criteria pass.**
+
+| Criterion | Measured | |
+|---|---|---|
+| Three-line body on open, not an empty editor | popout rendered **3 `.cm-line`s**, the seed verbatim | ✅ |
+| **Passes a value through when run** | String `FUN002-VALUE-OK` → `in-Value` → seeded body → `out-Result` → Text. **Rendered to the DOM**, read off a full disk render (`measure-from-disk.js`), not the editor | ✅ |
+| Two ports before the editor is opened | `in-Value`, `out-Result` | ✅ ⚠️ see note |
+| One ⌘Z removes the seed, node survives, stays gone | real ⌘Z keystroke: `functionScript` gone, node alive, mined ports gone with it, still gone 6 s later | ✅ |
+| Duplicate/paste preserves the body verbatim | pasted copy byte-equal to `SEED_FUNCTION_BODY` | ✅ |
+| …and an **emptied** node is not re-seeded on paste | both copies `hasScript: false` — §2's exclusion holds | ✅ |
+| Seed imported from FUN-001, no second copy | one occurrence repo-wide | ✅ |
+| ⚠️ **Byte-identical open-and-close** | **NOT CLOSED** — see below | ⏳ |
+
+⚠️ **"Two ports immediately" is true but not synchronous.** Read in the same tick as
+`createNewNode`, the node has **no** mined ports; they appear after a sub-second round-trip to the
+runtime. Not user-perceptible, and not a defect — but a spec that asserts it in the creating tick
+will fail.
+
+### 🔴 The byte-identical criterion cannot be measured as written
+
+Opening a project **rewrites every component on disk** — `component.json` and `nodes.json` for all of
+them, plus `_registry.json` and `nodegx.project.json`. So "the project file is byte-identical after
+open-and-close" is false for every project, seeded or not, and has nothing to do with this task.
+
+**Restate it as the thing it is actually protecting**, which is still exactly worth testing:
+
+1. open the fixture once and let the editor normalise it — **that** is the baseline;
+2. close, open again, close;
+3. the two normalised states must be byte-identical, **and** the Function node's `functionScript`
+   must still be absent.
+
+The risk the criterion exists for — a node loaded from disk getting seeded — is the second clause.
+It was **not driven this session**: it needs a project switch, which needs an editor restart.
+The related exclusion *was* measured: **paste does not re-seed an emptied node**, which exercises the
+same "not just created" gate from the other side.
+
+⚠️ Mechanical note for whoever runs it: `ed.createNewNode` leaves `ed.highlighted` set, so nodes
+created in sequence get **parented under the previously selected node**. Three of mine landed as
+children of a `Router` and rendered nothing at all (`node-not-child`), which looks exactly like a
+product bug and is not one. Set `ed.highlighted = null` between creations.

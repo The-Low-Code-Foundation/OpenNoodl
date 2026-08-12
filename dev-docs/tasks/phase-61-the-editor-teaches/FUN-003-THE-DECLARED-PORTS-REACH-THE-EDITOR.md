@@ -1,8 +1,13 @@
 # FUN-003 — The declared ports reach the editor
 
-**Status:** ✅ built 2026-08-12, branch `fun-003-lane` · **one acceptance criterion is unclosed and
-needs a live drive** (see *What was verified, and what was not*) · **Track: the seam** ·
+**Status:** ✅ built 2026-08-12, branch `fun-003-lane` · ✅ **DRIVEN 2026-08-12 in the primary
+checkout — every criterion of this task passes** (see *The drive, as run*) · **Track: the seam** ·
 ⭐ **structural — FUN-004, 005, 006, 007 and 008 all stand on it** · no user-visible change of its own
+
+🔴 **The drive found a defect that is not this task's, and blocks FUN-004: `validationTypeForEditType`
+never returns `'expression'`.** See F17 below. Every JavaScript code port — Function, Script *and*
+Expression — opens in `'function'` mode, so the gate all of these tasks are told to stand on does not
+discriminate. It is already user-visible: an Expression node underlines its own inputs.
 
 ## The gap, stated precisely
 
@@ -128,6 +133,41 @@ what a Function node with no ports yet looks like, and FUN-006 needs to tell tho
 | F14 | A **declared output can be typed `signal`** (`_outputTypeEnums = inputTypeEnums.concat([{value:'signal'}])`, `simplejavascript.ts:616-621`), which is why `PortFact.type` is not optional: `Outputs.Done()` and `Outputs.x = ` are different insertions | ✅ verified; carried and tested |
 | F15 | 🔴 **One field on one object would have been a live defect.** `install.ts` republishes the project surface on a **400 ms debounce off `Model.parametersChanged`**, i.e. every few keystrokes in any property field — a single-slot registry would erase `openNode` while the editor was still open | ✅ found and designed around; two slots composed on write. Proved by mutation: reverting to one slot fails 3 specs |
 | F16 | ⚠️ `ExpressionEditorModal`, `GeneratedCodeModal` and `AiChat` never write the slot, and are correct only because nothing can be open when they mount (`PopupLayer.hidePopout` fires `onClose` **synchronously**, and `onLaunchClicked` calls `hidePopout()` before publishing). Not asserted anywhere | ⚠️ residual; re-check when the first consumer lands, and gate every consumer on `validationType` rather than on `openNode` being present |
+| F17 | 🔴 **`validationTypeForEditType` can never return `'expression'` or `'script'`, so "gate on `validationType`" does not work.** It tests `type?.name` — the **type's** name, which is `'string'` for every JS code port — where the function's own comment says *"the port name is the only signal available"* ([`CodeEditorType.ts:41` vs `:57`](../../../packages/noodl-editor/src/editor/src/views/panels/propertyeditor/CodeEditor/CodeEditorType.ts)). Both name-based branches are dead code | ✅ **measured live 2026-08-12**, see below |
+
+### F17 — measured, not argued
+
+Three nodes, in the running editor, port type objects read off the live model:
+
+| Node | Code port | `type.name` | `type.codeeditor` | Popout title | `openNode` written? |
+|---|---|---|---|---|---|
+| Function | `functionScript` | `string` | `javascript` | **FUNCTION** | yes — correct |
+| Script (`Javascript2`) | `code` | `string` | `javascript` | **FUNCTION** | yes — wrong mode |
+| **Expression** | `expression` | `string` | `javascript` | **FUNCTION** | **yes — the leak §4 forbids** |
+
+🔴 **It is already a user-visible defect, independent of this phase.** `no-undef` is disabled in
+`'expression'` mode for the reason [`esLintDiagnostics.ts:26-32`](../../../packages/noodl-core-ui/src/components/code-editor/utils/esLintDiagnostics.ts)
+gives: every undeclared identifier in an Expression **becomes an input port**. Because the mode is
+never `'expression'`, the rule runs. Typing `total * 2` into an Expression node — the correct way to
+create an input called `total` — produces:
+
+```
+⚠ 1 warning     'total' is not defined.  eslint:no-undef
+```
+
+…and saving mints the port `total` anyway. **The code is right, the port exists, and the editor
+underlines it.** Verified end to end: the warning was read from the lint tooltip, and `total` was
+then read back off the node's port list.
+
+⚠️ **The fix is not simply "use the port name".** The port names do not support the guess either —
+the Function node's port is `functionScript` (contains `script`) and the Script node's is `code`
+(contains neither), so switching to `this.name` (which `TypeView` already carries) **inverts** those
+two while fixing Expression. Whatever replaces it has to be decided, not swapped.
+
+**Filed against FUN-004 §3 and FUN-009**, not fixed here: it changes which lint rules run for every
+Expression and Script port in the product, and FUN-009 is the task that owns the Expression node's
+opposite rule. It is a blocker for FUN-004 — all four of its messages would fire inside Expression
+editors, where §3 calls them *"actively destructive"*.
 
 ## What was verified, and what was not
 
@@ -137,7 +177,7 @@ Built in the worktree `../OpenNoodl-worktrees/fun-003-lane`, branch `fun-003-lan
 |---|---|
 | Panel-declared ports readable from `getCodeAuthoringContext()`, types intact | ✅ unit-tested (`declaredPorts.test.ts`, `authoringContext.test.ts`) |
 | "prefixes stripped" | ✅ **restated** — see F12. There is no prefix at this boundary; a test pins that nothing is stripped |
-| Closing clears it — **open A, close, open B** | ⚠️ **NOT DRIVEN.** The registry half is pinned headlessly; the editor half (`dispose()` runs on every close path) is **reasoned, not measured**. `lerna exec` resolves to the primary checkout from a worktree, so no editor could be launched here. **Drive recipe below; this is the phase lead's to run after merge** |
+| Closing clears it — **open A, close, open B** | ✅ **DRIVEN 2026-08-12, passes.** See *The drive, as run* |
 | Only `CodeEditorType` modified of the four call sites | ✅ verified by diff |
 | Declared + used appears once when unioned with `minePorts` | ✅ unit-tested against the real `minePorts` |
 | Unit tests DOM-free | ✅ 203 specs pass under `testEnvironment: 'node'` |
@@ -158,3 +198,35 @@ In the **primary** checkout, after merge:
 5. Double-click node B. Re-read: `declaredOutputs` must be `[{name:'Delta',type:'*'}]` and `declaredInputs` `[]`. **`Alpha`/`Beta`/`Gamma` must not appear.**
 6. Now the mode gate: with node B's popout closed, open a **CSS Definition**'s `style` port, and separately an **Expression** node's expression. `openNode` must be `undefined` in both — not node B's, and not an empty object.
 7. Finally, leave node A's popout open and type into an unrelated property field on another node (this triggers the 400 ms project republish). `openNode` must still be node A's. That is F15, measured rather than argued.
+
+## The drive, as run — 2026-08-12, primary checkout
+
+Dev stack quiet first (`dev:stop -- --list` → nothing), a copy of a real project registered in
+`recently_opened_project.json` and the editor restarted. The registry was read live over CDP through
+the webpack chunk registry, which returns the **cached** module rather than a second instance:
+
+```js
+window.webpackChunknoodl_editor.push([['probe61'], {probe61:(m,e,req)=>{window.__req61=req;}}, r=>r('probe61')]);
+window.__ac61 = window.__req61('../noodl-core-ui/src/components/code-editor/authoringContext.ts');
+window.__ac61.getCodeAuthoringContext().openNode
+```
+
+| Step | Expected | Measured | |
+|---|---|---|---|
+| 3 — open A | `Alpha:number`, `Beta:string`, `Gamma:signal` | exactly that, nodeId A, `typeName: 'JavaScriptFunction'` | ✅ |
+| 3 — types, not just names | a chosen type must not be lost to a default | `Alpha` held `number`; `Beta` correctly defaulted `string`; `Gamma` held `signal` | ✅ |
+| 3 — declared ≠ mined | FUN-002's seed mints `Value`/`Result` | neither appears in `declaredInputs`/`declaredOutputs` | ✅ |
+| **4 — close** | `openNode === undefined` | `undefined` | ✅ **the one that mattered** |
+| 5 — open B | `declaredOutputs [{Delta,'*'}]`, `declaredInputs []` | exactly that, nodeId B | ✅ |
+| 5 — no leak | `Alpha`/`Beta`/`Gamma` absent | absent | ✅ |
+| 6 — CSS Definition `style` | `openNode === undefined` | `undefined`, popout titled **CSS** | ✅ |
+| 6 — Expression | `openNode === undefined` | 🔴 **written** — popout titled **FUNCTION**. **Not this task's bug: F17** | 🔴 |
+| 7 — F15 republish | still A's, mid-edit | changed an unrelated parameter on node B; `openNode` still A with types intact | ✅ |
+
+**Every criterion belonging to FUN-003 passes.** The single red row is F17, which lives one layer
+below this seam: the slot was written correctly for the mode it was told about, and the mode was
+wrong.
+
+⚠️ Two mechanical notes for the next drive. `ed.createNewNode` returns **void** — it delegates to
+`nodeOperations` — so read the node back off `ed.model.roots` rather than believing a `null` return
+means failure. And node *views* are on `ed.roots`, not `ed.nodes`.

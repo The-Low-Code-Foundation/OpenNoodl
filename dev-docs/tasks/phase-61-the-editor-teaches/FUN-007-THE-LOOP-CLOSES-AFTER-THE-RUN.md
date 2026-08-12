@@ -178,3 +178,44 @@ package root to primary, so `npm run dev:*` there would launch primary's code ei
    `Inputs.Input_1`."*
 10. The mode control: drop an **Expression** node, type `Output_1 = Input_1` into it, and confirm
     nothing from this task appears on it and its ports behave exactly as before.
+
+## The drive, as run — 2026-08-12, primary checkout
+
+§1's acceptance is **closed**. §2's steps are still open because §2 is not built.
+
+Warnings were read from the live `WarningsModel.instance` over CDP, so this is what the editor
+actually holds, not what the runtime intended to send.
+
+| Step | Measured | |
+|---|---|---|
+| 2–4 — node with `Input_1`/`Output_1` and body `Output_1 = Inputs.Input_1;` | warning key `js-function-no-output-written` present on the node | ✅ |
+| **5 — the sentence** | verbatim: *"The script ran but produced no output: "Output_1" stayed empty. Write it in the script with `Outputs.Output_1 = ...` — assigning to a plain variable of the same name does not reach the port."* — `level: 'warning'`, `showGlobally: false`, exactly as §4 argues | ✅ |
+| 6 — correct the body, **the dot must go** | body → `Outputs.Output_1 = Inputs.Input_1;` → warning keys `[]` | ✅ |
+| 7 — no ports, side-effect-only body, **no dot ever** | a **clean** node with `Noodl.Variables.hits = 1;` and no declared ports raises nothing | ✅ |
+| 8 — `Line 1:` anchoring | **not driven — §2 is not built**, nothing renders the mapped line | ⏳ |
+| 9 — `ReferenceError` naming the port | **not driven** — same reason; also needs a fresh project (F30) | ⏳ |
+| 10 — Expression control | see **FUN-003 F17**: the Expression editor does not run in `'expression'` mode at all, which makes this control unmeasurable until that is fixed | 🔴 |
+
+### 🔴 F31 — a stranded warning never clears
+
+Found while driving step 7. Setting `scriptInputs`, `scriptOutputs` and `functionScript` in one rapid
+batch left the node carrying:
+
+```
+message:        …"Output_1" stayed empty…      ← names a port that no longer exists
+scriptOutputs:  []
+functionScript: "Noodl.Variables.hits = 1;"
+```
+
+**It was still there minutes later.** It is not a rendering lag; the entry sits in `WarningsModel`.
+
+⚠️ **Rare, but permanent once it happens.** It did **not** reproduce on a second node given the
+identical batch, and each individual transition clears correctly — removing only the port clears it,
+and changing only the script clears it. So it is a race between the clear and a re-run scheduled
+against the previous script, not a plain missing-clear.
+
+This is the failure §2 filed in advance — *"a stale error can outlive the expression"* — and it
+breaks step 6's own principle: **a warning that cannot be cleared is worse than none.** The user-facing
+form is a Function node permanently dotted about a port it does not have.
+
+**Fix belongs with §2's lane**, which is already the one that owns clearing.

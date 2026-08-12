@@ -3,6 +3,11 @@
 **Status:** 📋 open · ⭐ **the flagship** · **Track: the mistake itself** · depends on FUN-003
 (declared ports) and FUN-001 (the strings)
 
+⚠️ **Start with FUN-007 §2, not with this file.** FUN-007 shipped its mapped `line`, `column` and
+`hint` onto the warning payload and the raised error's `detail`, but **nothing renders them** — that
+half needs `CodeEditorType.ts`, which is this task's own territory. Same file, same knowledge, and it
+makes the lane's first commit a small one.
+
 ## This is the observed bug, exactly
 
 The user typed:
@@ -27,8 +32,26 @@ So `Input_1` carries *"'Input_1' is not defined"* today.
 a NodeGX fact: `Input_1` is a **port they created ninety seconds ago in the panel next door**.
 
 ⚠️ **The half of the line the linter cannot see at all is worse.** `var Output_1 = …` is perfectly
-valid JavaScript that declares a local. No rule fires. The output port is never written, the node
-runs "successfully", and nothing anywhere says otherwise — see FUN-007 for the runtime half of that.
+valid JavaScript that declares a local. No rule fires, and the output port is never written.
+
+🔴 **But do not describe that line as running silently — it does not.** Per **premise correction 3**
+in the [README](README.md#-premise-correction-3--the-observed-code-does-not-run-silently-it-throws),
+measured twice by compiling the body the runtime compiles:
+
+```
+var Output_1 = Input_1;      → ReferenceError: Input_1 is not defined   (Failure fires, Error carries it)
+Output_1 = Inputs.Input_1;   → runs clean, writes nothing, Success fires
+```
+
+The runtime injects only `Inputs`, `Outputs`, `Noodl` and `Component` — never the port names — so
+reading a bare `Input_1` throws. **The observed body has always thrown.** The silence is real but it
+belongs to the *next* thing the user types: drop the `var` once you see the ReferenceError, and
+`Output_1 = …` lands on an implicit global. Nothing throws, `Success` fires, no port moves. That is
+FUN-007 §1's subject.
+
+**What this does not change:** the user was warned twice — by a linter that did not know `Input_1`
+was a port, and by a runtime failure delivered to `Error` and `Failure` ports that nothing on the
+canvas draws attention to. Neither report names the port. That gap is this task, undiminished.
 
 **So this task adds no detection. It adds knowledge and a fix.**
 
@@ -98,6 +121,17 @@ Expression node would be actively destructive: it mints a port literally named `
 property access that is not what the author meant. Gate on `validationType`, per FUN-003 §4, and
 prove it with a test that lints the same text in both modes and asserts the difference.
 
+🔴 **BLOCKER, measured 2026-08-12 — the gate does not currently work. Fix it first or this task ships
+the destruction it is trying to prevent.** `validationTypeForEditType` can never return `'expression'`:
+it tests `type?.name`, which is `'string'` for every JS code port, where its own comment says the
+**port** name is the signal. Function, Script and Expression ports all open as `'function'`. Measured
+live — see **FUN-003 F17**, which carries the table and the reproduction.
+
+The consequence is already shipped and visible without any of FUN-004's code: typing `total * 2` into
+an Expression node warns `'total' is not defined. eslint:no-undef`, and then mints the port `total`
+anyway. Note the fix is **not** a swap to `this.name` — the Function node's port is `functionScript`
+and the Script node's is `code`, so the port names invert those two. It needs deciding, with FUN-009.
+
 ## §4 — Legacy code the user did not write
 
 A saved project may contain `Noodl.Inputs.foo` — supported forever
@@ -120,6 +154,18 @@ A saved project may contain `Noodl.Inputs.foo` — supported forever
 - ⚠️ **Verify the consequence, not the mechanism:** after applying the fixes, wire the node and
   confirm a value actually arrives at the output. A green lint panel is not the outcome; a working
   node is.
+
+🔴 **How to drive that first criterion — it is two rows, not one.** Premise correction 3 splits the
+observed body into two distinct runtime failures, and they must be driven separately:
+
+| Body | Runtime | What the drive proves |
+|---|---|---|
+| `var Output_1 = Input_1` | **throws** — `ReferenceError`, `Failure` fires, `Error` carries the message | Message 1 (undefined identifier is an input port) and message 2 (assignment to a local named for an output) both fire, and the failure is loud in a place nobody looks |
+| `Output_1 = Inputs.Input_1` | **silent** — implicit global, `Success` fires, no port moves | Message 2 alone fires; this is the row FUN-007 §1 also catches |
+
+⚠️ **Use a fresh project for each row.** Implicit globals are shared between Function nodes in a
+project, so the first node to write a bare `Output_1` permanently disarms the `ReferenceError` for
+every node that later reads one — the second run of the same test lies.
 - An identifier matching no port offers "create it by reading it", and after applying, **the port
   appears on the node**.
 - A declared, unused port is reported as information exactly once, never as a squiggle.
@@ -134,5 +180,7 @@ A saved project may contain `Noodl.Inputs.foo` — supported forever
 |---|---|---|
 | F12 | The user **was already warned** — `no-undef` fires in function mode. The gap is actionability, not detection | ✅ verified, `esLintDiagnostics.ts:141` |
 | F13 | `var Output_1 = …` is valid JavaScript and lints **clean**; the silent half needs a new syntax-tree rule | ✅ verified by inspection of the enabled rule set |
+| F13b | 🔴 `var Output_1 = Input_1` **throws** at runtime (`ReferenceError`) — it never ran silently. The silent body is `Output_1 = Inputs.Input_1`, an implicit global | ✅ verified 2026-08-12, twice, by compiling the body the runtime compiles — README premise correction 3 |
+| F13c | Implicit globals are shared across Function nodes, so one bare-`Output_1` write disarms the ReferenceError project-wide | ✅ verified with F13b; **every drive of this pair needs a fresh project** |
 | F14 | `no-undef` is off in expression mode for a real reason, and every message here would be destructive there | ✅ verified, `esLintDiagnostics.ts:26-32` |
 | F15 | Whether `Noodl.Inputs.foo` is mined as port `foo` by the shared regexes | ⚠️ **unverified — test before implementing message 4** |

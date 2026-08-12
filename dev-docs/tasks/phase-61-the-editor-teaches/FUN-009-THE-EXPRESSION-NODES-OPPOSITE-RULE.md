@@ -1,6 +1,25 @@
 # FUN-009 — The Expression node's opposite rule
 
-**Status:** 📋 open · **Track: the sibling** · small, and it explains the original mistake
+**Status:** 📋 open · **Track: the sibling** · small, and it explains the original mistake ·
+🔴 **no longer only copy — it now owns a measured defect**
+
+🔴 **The Expression editor does not run in `'expression'` mode, and never has.**
+`validationTypeForEditType` tests the *type's* name (`'string'` for every JS code port) rather than
+the port's, so Function, Script and Expression all resolve to `'function'`. Measured live
+2026-08-12 — the table and reproduction are in **FUN-003 F17**.
+
+**The user-visible half is this task's exact subject.** `no-undef` is switched off in `'expression'`
+mode precisely because bare identifiers *are* the inputs — the inverse rule below. Because the mode
+never selects, the rule runs, and the Expression node **underlines its own inputs**:
+
+```
+total * 2   →   ⚠ 'total' is not defined.  eslint:no-undef      …and the port `total` is then created
+```
+
+So the editor is currently teaching the opposite of this task's sentence. ⚠️ The fix is not a swap to
+the port name — `functionScript` contains `script` and the Script node's port is `code`, which would
+invert those two. **Decide the discriminator here**, because this is the task that knows why the two
+rules differ. FUN-004 is blocked until it lands.
 
 ## Why the user's guess was reasonable
 
