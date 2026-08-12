@@ -1,6 +1,29 @@
 import { NodeGraphNode } from '@noodl-models/nodegraphmodel';
 import { guid } from '@noodl-utils/utils';
 
+/**
+ * A wire, as this model carries it: four endpoint fields that are its identity,
+ * plus the presentation SIG-007 gave it.
+ *
+ * Declared for `clone()` rather than widened onto `connections` itself — those
+ * fields are `TSFixme` in several other seams and retyping them here would move
+ * the problem rather than solve it (PLAT-003 owns that). What it does buy is the
+ * one place where getting the field list wrong is a silent data loss: R2 shipped
+ * because `clone()` rebuilt a connection from four fields and nobody noticed the
+ * other three.
+ */
+export interface GraphConnection {
+  fromId: string;
+  fromProperty: string;
+  toId: string;
+  toProperty: string;
+  /** CAN-002's wire label, and its position along the wire. */
+  label?: string;
+  labelT?: number;
+  /** SIG-007's anchors, as run positions. Copied, never shared — see `clone()`. */
+  route?: { xs: number[]; ys: number[] };
+}
+
 export interface NodeGraphNodeSetOptions {
   nodes: NodeGraphNode[];
   connections: TSFixme;
@@ -56,7 +79,7 @@ export class NodeGraphNodeSet {
     const connections = [];
     for (var i in this.connections) {
       const c = this.connections[i];
-      const clone: TSFixme = {
+      const clone: GraphConnection = {
         fromId: idMap[c.fromId],
         fromProperty: c.fromProperty,
         toId: idMap[c.toId],

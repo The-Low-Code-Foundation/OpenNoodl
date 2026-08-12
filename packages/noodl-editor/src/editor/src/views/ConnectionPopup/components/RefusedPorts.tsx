@@ -1,11 +1,13 @@
 import classNames from 'classnames';
 import React, { useState } from 'react';
 
+import { INodeColorScheme } from '@noodl-types/nodeTypes';
+
 import { Icon, IconName, IconSize } from '@noodl-core-ui/components/common/Icon';
 
 import css from '../ConnectionPopup.module.scss';
 import { refusedGroupSummary } from '../portCopy';
-import { dominantReason, dominantTypeName } from '../refusalPlan';
+import { dominantReason, dominantTypeName, type PlannablePort } from '../refusalPlan';
 import { PortItem } from './PortItem';
 
 /**
@@ -31,8 +33,15 @@ import { PortItem } from './PortItem';
  * fully-refused group into a single instance of this at the end of the list.
  */
 export interface RefusedPortsProps {
-  ports: TSFixme[];
-  colors: TSFixme;
+  /**
+   * The same shape `dominantReason` and `dominantTypeName` already take — this
+   * component reads `group` and `name` on top of what they read, and both are on
+   * it. It was `TSFixme[]` while the two functions it hands every port to were
+   * typed, which is the arrangement where a renamed field type-checks.
+   */
+  ports: PlannablePort[];
+  /** `useNodeColorScheme`'s output, passed through to each `PortItem`. */
+  colors: INodeColorScheme;
   /** Whether clicking a row redirects. Inert when the offer is only advisory. */
   canRedirect?: boolean;
   onRefusalClicked?: () => void;
