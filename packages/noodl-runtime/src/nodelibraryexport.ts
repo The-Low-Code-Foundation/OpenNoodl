@@ -791,13 +791,44 @@ function generateNodeLibrary(nodeRegister: NodeRegisterLike, options?: { runtime
       ]
     },
     {
-      name: 'Custom Code',
-      description: 'Custom JavaScript and CSS',
+      /**
+       * LGC-001 §4. This read `Custom Code` — an implementation word. A person
+       * who wants to work out a total does not think "custom code"; the test
+       * user in the originating video never opened this rail entry at all. The
+       * rail is where a builder *chooses*, so it names the choice.
+       *
+       * ⚠️ This is a **display string only**: it is the picker's rail label and
+       * group heading and nothing else. It is not the nodes' `category` field
+       * (still `CustomCode`, which is what the catalog carries and what
+       * `generate-node-docs.js` slugs into the docs-site path), it is not in any
+       * saved project, and `node-catalog.json` does not contain it. One line to
+       * revert.
+       *
+       * ⚠️ Two known consequences, both recorded in LGC-001's Register:
+       *  - `Logic & Utilities` above already has a **sub-category** called
+       *    `Logic`, so the picker now shows a rail entry and an unrelated group
+       *    heading with the same word;
+       *  - the category still holds `Javascript2` (labelled "Script") and
+       *    `CSS Definition`, so "Logic" contains one node that is not logic.
+       *    Moving it out is a taxonomy change, not a display string, so it was
+       *    left alone.
+       */
+      name: 'Logic',
+      description: 'Three ways to compute — pick by how much you want to type',
       type: 'javascript',
       subCategories: [
         {
+          /**
+           * LGC-001 §1/§4 — the order is load-bearing, not cosmetic. A picker
+           * row that matched on a *tag* rather than on its name is ranked by its
+           * position in this list (`NodePicker.search.ts`, `withLibraryOrder`),
+           * so this is what makes `multiply` answer
+           * Expression → Visual Function → Function: the cheapest correct answer
+           * for `price * quantity` first, and the one that is the wrong tool for
+           * a one-liner last.
+           */
           name: '',
-          items: ['Expression', 'JavaScriptFunction', 'Javascript2', 'Logic Builder', 'CSS Definition']
+          items: ['Expression', 'Logic Builder', 'JavaScriptFunction', 'Javascript2', 'CSS Definition']
         }
       ]
     },

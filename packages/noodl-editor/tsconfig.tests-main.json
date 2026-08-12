@@ -94,6 +94,16 @@
     // through it React and CodeMirror) out of this runner. The two guards it
     // holds — wrong node type, node already has a body — both fail silently in
     // the app, so they are graded here rather than by remembering to try them.
-    "src/editor/src/models/nodeSeed/newNodeSeed.ts"
+    "src/editor/src/models/nodeSeed/newNodeSeed.ts",
+    // LGC-001 §2: `NodePicker.chooser.ts` is the same shape once more — the three
+    // sentences that say which of Expression / Visual Function / Function to
+    // reach for, lifted out of the preview component so the *copy* is graded
+    // here rather than only by cursoring a row and reading it. Import-free by
+    // design, and deliberately not part of the enriched catalog: this is a
+    // comparative note about three neighbours, and the catalog is written one
+    // node at a time. The clause it must never contain — that the Function node
+    // has one signal in and one out, which is false in both directions — is the
+    // reason it is graded at all.
+    "src/editor/src/views/NodePicker/NodePicker.chooser.ts"
   ]
 }

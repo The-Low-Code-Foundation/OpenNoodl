@@ -64,7 +64,7 @@ HTTP Request (net.noodl.HTTP) fetches the `url` when `fetch` fires and delivers 
 
 ## Related nodes
 
-[Function](./java-script-function.md), [Expression](./expression.md), [Logic Builder](./logic-builder.md)
+[Function](./java-script-function.md), [Expression](./expression.md), [Visual Function](./logic-builder.md)
 
 
 :::info Generated
