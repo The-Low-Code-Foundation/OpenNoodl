@@ -210,26 +210,31 @@ export function BlocklyWorkspace({ initialWorkspace, onChange, readOnly = false,
       workspace.addChangeListener(changeListener);
 
       /**
-       * LGC-003 §2, the static half of the didn't-execute tell — **and it is core Blockly, not
-       * a plugin.**
+       * 🔴 **Do not register `Blockly.Events.disableOrphans` here.** It was, briefly, as
+       * LGC-003 §2's static half; it destroyed every program it was shown and was reverted on
+       * Richard's ruling. See `FINDING-2026-08-12-disableOrphans-kills-every-program.md`.
        *
-       * LGC-006 checked the package the task names: `@blockly/disable-top-blocks` greys nothing
-       * out. Its whole 74-line source rewrites the precondition of the `blockDisable`
-       * context-menu item so a user cannot manually re-enable an orphan. The greying is
-       * `Blockly.Events.disableOrphans`, which is in core and present at our 12.3.1. So this
-       * half costs one line and zero bytes, and no dependency was added for it.
+       * The predicate disables any parentless block carrying a `previousConnection` *or* an
+       * `outputConnection`, plus its whole `next` chain. That means "unreachable code" only in
+       * a language where runnable code hangs off a hat block. **`NoodlBlocks.ts` defines no hat**
+       * — 9 statement blocks, 6 value blocks, zero hats — so every Noodl program is a
+       * free-floating statement stack and the top of every stack matches the predicate. One
+       * user gesture greyed the whole program, collapsed `generatedCode` to `""`, and serialised
+       * `disabledReasons: ["ORPHANED_BLOCK"]` to `project.json`. Silently: nothing throws.
        *
-       * ⚠️ **It writes to the model, deliberately, and that is the difference between the two
-       * halves of §2.** A block disconnected from anything runnable really is disabled, and
-       * Blockly serialises that. So opening an existing program that has orphan blocks will
-       * re-save it with them marked disabled — a real, one-time change to the saved bytes, and
-       * the churn LGC-006 asked a drive to measure. The *dynamic* half (the hollow wash) never
-       * touches the model, which is why it is drawn rather than set.
+       * It also broke the drag-out-and-ask flow. A *floating* value block is parentless with an
+       * output connection, so it was disabled, and `classifyBlockForDoIt` refuses a disabled
+       * block (`DoIt.ts`, `REASON_DISABLED`) — the one shape Do It exists to serve.
        *
-       * Registered after the load so the deserialisation's BLOCK_CREATE storm does not run it
-       * once per block.
+       * Narrowing the predicate to value blocks only is the tempting middle path and is also
+       * wrong: it still calls `setDisabledReason`, which is model state that Blockly serialises,
+       * and `BlockValueBadges.ts` already rules that the tell is *drawn* rather than *set* for
+       * exactly this reason.
+       *
+       * §2's static tell is therefore unbuilt on purpose, re-filed against the drawn treatment.
+       * The other route — giving the language a hat, so "orphan" means what Blockly assumes —
+       * is filed as its own language task.
        */
-      workspace.addChangeListener(Blockly.Events.disableOrphans);
 
       // LGC-002 — right-click a block, see its value. Attached after the load so the balloon
       // layer's own change listener never sees the deserialisation's BLOCK_CREATE storm.

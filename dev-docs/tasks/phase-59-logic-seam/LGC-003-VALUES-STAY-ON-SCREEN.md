@@ -56,8 +56,8 @@ type to understand, just a block that looks switched off.
 
 Two halves, and one is free:
 
-- **Static** — blocks not connected to anything runnable. **`@blockly/disable-top-blocks` already
-  does this** (LGC-006). ⚠️ Unverified against our toolbox; confirm before relying on it.
+- **Static** — blocks not connected to anything runnable. 🔴 **Built, then reverted on Richard's
+  ruling, 2026-08-12. It is unbuilt on purpose — see "§2's static half, ruled" below.**
 - **Dynamic** — connected, but not reached this run. This is ours, and it falls out of §1: a block
   with no entry in the run's map did not execute.
 
@@ -123,7 +123,7 @@ observation of people using §1–§3, not precede it.
 | the marks | `.../BlocklyEditor/BlockValueBadges.ts` | imperative SVG into the block's `<g>`, never the model |
 | the switch, addressed | `.../BlocklyEditor/BlockTraceClient.ts` | broadcast to arm, **pin the answering `clientId`**, drop everyone else's frames |
 | the scrubber and the glue | `.../BlocklyEditor/BlockValueController.ts` | one strip, one `FramePaintScheduler`, one badge layer |
-| §2's static half | `BlocklyWorkspace.tsx`, one line | `Blockly.Events.disableOrphans` — **core**, not the plugin |
+| ~~§2's static half~~ | `BlocklyWorkspace.tsx` | 🔴 **reverted 2026-08-12** — it disabled every program. A tombstone comment stands where the line was |
 | the recorder | `noodl-runtime/src/blockrun.ts` | the identity pair, the per-run map, the iteration cap |
 | the switch, per node | `noodl-runtime/src/nodecontext.ts` | `setBlockTracing` / `beginBlockRun` / `endBlockRun` — **its own switch, never `traceEnabled`** |
 | the two extra parameters | `.../std-library/logic-builder.ts` | `__p` and `__s`, ninth and tenth, unconditional |
@@ -153,11 +153,15 @@ observation of people using §1–§3, not precede it.
    the expansion carries the definition's own block ids — so a definition used twice produces two
    probes with the same id, for blocks in no workspace the user can see. Painting only what
    `getBlockById` returns is what keeps that from becoming a badge on the wrong block.
-5. **§2's static half writes to the model and the dynamic half never does.** `disableOrphans`
-   really does disable orphan blocks, and Blockly serialises that — so opening an existing
-   program with orphans in it will re-save it with them marked disabled. That is legitimate and
-   it is the save churn LGC-006 asked a drive to measure. The hollow wash is drawn, never
-   `setEnabled`, because a mark that serialises would end up in the user's git diff.
+5. 🔴 **This decision was wrong, and it is kept here because the way it was wrong is the lesson.**
+   It read: *"`disableOrphans` really does disable orphan blocks... That is legitimate and it is
+   the save churn LGC-006 asked a drive to measure."* The word carrying the error is **orphan**.
+   It was assumed to name a subset — a stray block someone left lying around. In a language with
+   no hat block it names **every program**. The sentence's own last clause states the rule that
+   the line broke: *"the hollow wash is drawn, never `setEnabled`, because a mark that serialises
+   would end up in the user's git diff."* The static half serialised to the user's git diff, and
+   emptied `generatedCode` on the way. **A term borrowed from a framework does not keep its
+   framework meaning in your language.** See "§2's static half, ruled".
 
 ## Deferred verification
 
@@ -217,6 +221,38 @@ a fail is a save per orphan per drag.
   (`STATUS_COPY`), none of them observed.
 - **Two previews.** The pinning only earns its keep with two viewers attached.
 
+## §2's static half, ruled — 2026-08-12
+
+**Built, then reverted the same day. It is unbuilt on purpose, and re-filed against the drawn
+treatment.** Full evidence: `FINDING-2026-08-12-disableOrphans-kills-every-program.md`.
+
+`Blockly.Events.disableOrphans` disables any parentless block carrying a `previousConnection` *or*
+an `outputConnection`, plus its whole `next` chain. That is "unreachable code" only where runnable
+code hangs off a hat. **`NoodlBlocks.ts` defines 9 statement blocks, 6 value blocks and zero hats**,
+so every Noodl program is a free-floating statement stack whose top matches the predicate. One user
+gesture greyed the entire program, collapsed `generatedCode` to `""`, and wrote
+`disabledReasons: ["ORPHANED_BLOCK"]` into `project.json`. Nothing threw.
+
+**A consequence the finding did not list.** Do It serves *value blocks only* (`DoIt.ts`). A value
+block plugged into a statement keeps its parent and was never touched — so Do It was not broadly
+broken, and a claim that it was would be wrong. What broke is narrower and real: a **floating**
+value block is parentless with an output connection, so it was disabled, and
+`classifyBlockForDoIt` refuses a disabled block with `REASON_DISABLED`. That is exactly the
+drag-it-out-and-ask-it flow LGC-002 exists to serve.
+
+**Three routes were weighed. The ruling is the first.**
+
+| Route | Verdict |
+|---|---|
+| **Revert the line** | ✅ **ruled.** One line. Restores behaviour shipped since 2026-01-11. §2's static tell becomes a missing feature rather than a bug — and nobody has it today, so nothing is lost |
+| **Narrow the predicate** to floating value blocks only | ❌ **rejected, and it is the tempting one.** It still calls `setDisabledReason` — model state Blockly serialises — which is the exact rule decision 5 above already stated. It keeps the design violation and still breaks byte-identical for anyone with a spare block lying around |
+| **Give the language a hat block** | 📋 **filed as its own task**, `LGC-009`. The only route that makes "orphan" mean something true here |
+
+**Rebuilding §2's static half means drawing it, not setting it** — the same treatment as the
+dynamic hollow wash in `BlockValueBadges.ts`, which was designed to avoid precisely this. The
+substrate is already there; what is missing is a rule for "connected to nothing runnable" that
+does not borrow Blockly's.
+
 ## §4, filed and not built
 
 `why_is_this_empty` in the workspace is **not** built, deliberately and as the task instructs. It
@@ -229,7 +265,8 @@ precede it. Nothing in this commit forecloses it: the run frames are the substra
 |---|---|---|
 | L7 | `Order.ATOMIC` on the probe wrapper is what makes precedence safe. Get it wrong and the instrumented program computes different arithmetic than the real one — silently | 🔴 **half wrong, corrected 2026-08-12.** Measured against Blockly 12.3.1: `valueToCode` only ever *adds* parentheses, and parenthesising a call expression is a no-op — so **every** order in the enum computes the same arithmetic, proved by a spec that generates at each of them and diffs. What makes precedence safe is that the wrapper is a **call** at all; a probe emitted as anything that is not one self-delimiting expression is what rewrites `a + b * c`, and a spec builds exactly that and watches the differential catch it. `ATOMIC` is kept because it is the honest declaration and the only one that adds no redundant parentheses |
 | L8 | NuzzleBug: a correct answer is not a understood answer. **"Systematic debugging requires dedicated training"** — badges are necessary and not sufficient | ⚠️ standing, drives §4. Three rules in `BlockValueTrace.ts` are written to obey it: a block that emitted no code is never marked, nothing is hollow before the first run, and `×1` is never printed |
-| L9 | The didn't-execute tell is probably worth more than every value badge combined, and half of it is an npm package | ✅ built — and **it is not an npm package.** `@blockly/disable-top-blocks` greys nothing out (LGC-006 L31); the greying is `Blockly.Events.disableOrphans`, core, present at 12.3.1. One line, zero bytes, no dependency added |
+| L9 | The didn't-execute tell is probably worth more than every value badge combined, and half of it is an npm package | 🔴 **built, then reverted 2026-08-12 — and "half of it is free" was the trap.** It is not an npm package (`@blockly/disable-top-blocks` greys nothing out, LGC-006 L31); the greying is `Blockly.Events.disableOrphans`, core at 12.3.1. It really was one line and zero bytes — **and it disabled every program in the language and emptied `generatedCode` to disk.** The cheapness was real and measured; the semantics were assumed. See "§2's static half, ruled" |
+| L40 | 🔴 **A framework's term does not keep its meaning in your language.** `disableOrphans` shipped on the reading that "orphan" names a stray block. With no hat block in the grammar it names every top-level statement stack — i.e. every program. The predicate was read out of `blockly_compressed.js` only *after* the damage was found, and it took ~15 lines to settle | ✅ ruled and reverted. The general form: before adopting a framework behaviour whose name implies a subset, **enumerate what it actually matches in your grammar.** The enumeration here was 15 block shapes and it fitted in one table |
 | L13 | 🔴 **`addReservedWords` is only read once, when the generator lazily builds `nameDB_` at its first `init()`.** Reserving `__p`/`__s` inside the generation call — the obvious place — reserves nothing at all on any session that has already generated code, and a user variable named `__p` then compiles to `var __p; __p = __p("id", 1)`, shadowing the parameter and turning every later probe into a call on a number | ✅ found by a spec, fixed in `initNoodlGenerators` |
 | L14 | 🔴 **Blockly folds `STATEMENT_PREFIX` in *inside* `blockToCode`**, so a block whose generator returns `''` still emits `__s("id");` — the four `Define …` blocks were reported as having executed, and would have been badged | ✅ found by a spec; `suppressPrefixSuffix` on the four declaration mixins |
 | L15 | My Blocks inlines a saved definition's body **with the definition's own block ids** at every call site, so a definition used twice produces duplicate probe ids for blocks that exist in no visible workspace | ⚠️ contained rather than fixed: only ids `getBlockById` resolves are painted. Fixing it properly means re-iding during expansion, which is LGC-007's file |

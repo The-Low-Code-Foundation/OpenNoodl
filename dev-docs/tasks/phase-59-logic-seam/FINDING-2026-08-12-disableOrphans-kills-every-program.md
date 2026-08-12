@@ -1,7 +1,37 @@
 # 🔴 LGC-003 §2 — `disableOrphans` disables *every* Noodl program, and empties its generated code
 
-**Found 2026-08-12, reproduced headlessly.** Severity: blocking. It destroys the user's saved
-program on the first interaction, and it is on `cline-dev` now (merge `f32a9cd4`).
+**Found 2026-08-12, reproduced headlessly.** Severity: blocking. It destroyed the user's saved
+program on the first interaction.
+
+## ✅ RULED AND FIXED — 2026-08-12, Richard's ruling
+
+**The listener is reverted.** `BlocklyWorkspace.tsx` carries a tombstone comment where the line
+was, enumerating the grammar (9 statement / 6 value / **0 hat**) so it cannot be re-added by
+someone reading only the framework docs. LGC-003 §2's static tell is **unbuilt on purpose** and
+re-filed against the drawn treatment; the hat-block route is filed as **LGC-009**.
+
+The middle path — narrowing the predicate to floating value blocks only — was weighed and
+**rejected**: it still calls `setDisabledReason`, which Blockly serialises, and
+`BlockValueBadges.ts` already rules that the tell is drawn rather than set for exactly that reason.
+
+**Two corrections to what is written below**, both found while ruling:
+
+1. 🔴 **The blast radius has one more item, and it is narrower than it first looks.** Do It serves
+   *value blocks only* (`DoIt.ts`). A value block plugged into a statement keeps its parent, so
+   `disableOrphans` never touched it — **"Do It was broken" would be a wrong claim.** What broke is
+   the **floating** value block: parentless with an output connection, so disabled, and
+   `classifyBlockForDoIt` refuses a disabled block with `REASON_DISABLED`. That is precisely the
+   drag-it-out-and-ask-it flow LGC-002 exists for.
+2. 🔴 **"A migration for every saved program" was wrong, and it nearly decided the ruling.** The
+   Logic Builder is this fork's own feature (`554dd9f3`, 2026-01-11); legacy Noodl never had one,
+   so no imported project can contain a block program. Counted on the authoring machine: **two
+   saved programs exist**, `lgc59-drive` and `lgc59-cycle`, both fixtures authored this week. The
+   hat block's real cost is **verification, not migration** — which is why LGC-009 is still its own
+   task, but for an honest reason rather than an invented one.
+
+---
+
+*Original finding, as filed, below.*
 
 ## The one sentence
 

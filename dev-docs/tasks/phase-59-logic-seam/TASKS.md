@@ -17,24 +17,26 @@ full math palette has been in the product since phase 3.
 |---|---|---|---|
 | LGC-001 ⭐ | [LGC-001-THE-LOGIC-TRIAD.md](LGC-001-THE-LOGIC-TRIAD.md) | **the flagship** — the picker explains Expression vs Function vs Visual Function, with examples, and answers `multiply` | 🟡 **built 2026-08-12**, live verification deferred (see the task file's *Deferred verification*) |
 | LGC-002 | [LGC-002-DO-IT.md](LGC-002-DO-IT.md) | right-click a block, run it, see the value in a balloon — App Inventor's most-loved feature | 🔨 §1–§4 built; **one line of wiring outstanding**, no drive run |
-| LGC-003 | [LGC-003-VALUES-STAY-ON-SCREEN.md](LGC-003-VALUES-STAY-ON-SCREEN.md) | ambient values during a run, the didn't-execute tell, and the run scrubber | 📋 open |
+| LGC-003 | [LGC-003-VALUES-STAY-ON-SCREEN.md](LGC-003-VALUES-STAY-ON-SCREEN.md) | ambient values during a run, the didn't-execute tell, and the run scrubber | 🔨 §1/§3/§5 built 2026-08-12, no drive · 🔴 **§2's static half was built and then REVERTED** — `disableOrphans` disabled every program in the language and emptied `generatedCode` to disk. Ruled 2026-08-12; re-filed against the drawn treatment. §4 filed not built |
 | LGC-004 | [LGC-004-INTERFACE-RAILS.md](LGC-004-INTERFACE-RAILS.md) | pin the signature to the workspace edges; the props panel edits blocks rather than shadowing them | 🔨 **§1 + §4 done 2026-08-12** — both rails built, rows derived from a new `detectInterface` projection of `detectIO`'s own traversal, **no second store, proved red**. 72 specs. 🔴 **§2/§3's panel NOT built** (a concurrent session owned `PortsTab/`) — the design is written and it **corrects §2's table in three places**, one of which decides the architecture (**L38**: a panel edit made while the block tab is open is silently destroyed). 🔴 **Nothing was seen in an editor**; 15 steps in `## Deferred verification` |
 | LGC-005 | [LGC-005-TYPES-BECOME-CONNECTIONS.md](LGC-005-TYPES-BECOME-CONNECTIONS.md) | Noodl port types → Blockly connection checks, so wrong connections stop snapping | 🔨 §1/§2 built, §3 deferred; live verification not run |
 | LGC-006 | [LGC-006-PLUGIN-SWEEP.md](LGC-006-PLUGIN-SWEEP.md) | thirteen official plugins that cover things we specced by hand, including the a11y themes | 🔬 **verdict done 2026-08-12, adoption deferred** — nothing installed or run; every plugin's `latest` peer-deps Blockly 13, so each adoption pins a frozen 12-line release |
 | LGC-007 ⭐ | [LGC-007-MY-BLOCKS.md](LGC-007-MY-BLOCKS.md) | **the second flagship** — save a group of blocks, reuse it in any Visual Function | 🚧 **engine built 2026-08-12, no UI** — format, two shelves, cycle guard, shape inference, inliner and export/import, 66 specs in a plain-Node runner. 🔴 **No save menu item, no dialog, no backpack, no §4 sweep, and nothing run in an editor.** 🔴 **Resized by LGC-006**: the two npm packages do **not** do most of it |
 | LGC-008 | [LGC-008-A-PANE-NOT-A-TAKEOVER.md](LGC-008-A-PANE-NOT-A-TAKEOVER.md) | the workspace stops hiding the whole canvas; blocks beside the running app | 🔬 §3 analysed + `svgResize` seam built (2026-08-12) · pane **not** built — §1 needs a ruling (L26/F2), and L28/L29/L30 are open defects to fix first |
+| LGC-009 | [LGC-009-A-HAT-FOR-THE-LANGUAGE.md](LGC-009-A-HAT-FOR-THE-LANGUAGE.md) | give block programs a stated beginning — *"when Run is received"* | 📋 **filed 2026-08-12, not scheduled.** Raised by the `disableOrphans` finding: the grammar has **9 statement / 6 value / 0 hat** blocks, so nothing can say where a program starts. 🔴 Its cost was mis-priced once already — the migration is **two fixtures, both ours**, not a fleet. Needs one ruling (mandatory hat or optional) before it can be estimated |
 
 ## Suggested order, and why
 
 1. **LGC-001 first, alone if necessary.** It is the only task that addresses what the video actually
    showed. Every other task here improves a node that nobody currently finds, so shipping any of
    them before LGC-001 improves something no user reaches. It is also the cheapest.
-2. **LGC-006 next** — mostly configuration, and it delivers the didn't-execute tell statically (which
-   turned out to be `Blockly.Events.disableOrphans` in **core**, one line and zero bytes — the plugin
-   is only the context-menu correction) and `toolbox-search` (LGC-001's intercept, inside the
-   workspace). ✅ **The verdict half is done**; the install-and-drive half is deferred and its steps
-   are written down at the end of that file. 🔴 It de-scopes LGC-003 and LGC-004 as expected, and it
-   **grows LGC-007**.
+2. **LGC-006 next** — mostly configuration, and it delivers `toolbox-search` (LGC-001's intercept,
+   inside the workspace). ✅ **The verdict half is done**; the install-and-drive half is deferred and
+   its steps are written down at the end of that file. 🔴 It **grows LGC-007**.
+   🔴 **It no longer delivers the didn't-execute tell.** That read "one line and zero bytes" via
+   `Blockly.Events.disableOrphans` in core — which was true about the cost and wrong about the
+   semantics: the line disabled every program in the language. Reverted 2026-08-12. The static tell
+   is now LGC-003 §2's drawn treatment or LGC-009's hat, and neither is free.
 3. **LGC-002** — the probe seam, and the pull half of it. Small, and it proves the mechanism that
    LGC-003 then scales up.
 4. **LGC-005** alongside — independent, mechanical, and the strongest single beginner affordance in
