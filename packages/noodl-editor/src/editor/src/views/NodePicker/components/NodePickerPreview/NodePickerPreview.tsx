@@ -8,6 +8,7 @@ import { tracker } from '@noodl-utils/tracker';
 import { HtmlRenderer } from '@noodl-core-ui/components/common/HtmlRenderer';
 import { Icon, IconName } from '@noodl-core-ui/components/common/Icon';
 
+import { getChooserNote } from '../../NodePicker.chooser';
 import { getPreviewPorts, NodeDocs } from '../../NodePicker.hooks';
 import { nodeIconName } from '../../NodePicker.icons';
 import { PickerItem } from '../../NodePicker.search';
@@ -41,6 +42,8 @@ export function NodePickerPreview({ item, docs }: NodePickerPreviewProps) {
 
   const iconName = item.kind === 'action' ? IconName.Chat : nodeIconName(item.name);
   const { ports, total } = getPreviewPorts(item.type);
+  // LGC-001 §2 — present for the three logic nodes only.
+  const chooser = item.kind === 'node' ? getChooserNote(item.name) : undefined;
 
   return (
     <aside className={classNames(css['Root'], css[`Root--tint-${item.tint}`])}>
@@ -53,6 +56,28 @@ export function NodePickerPreview({ item, docs }: NodePickerPreviewProps) {
         </div>
         <span className={css['Chip']}>{item.subCategoryName ? `${item.categoryName} · ${item.subCategoryName}` : item.categoryName}</span>
       </header>
+
+      {/* LGC-001 §2 — above the reference prose, not inside it. The docs below
+          answer "what does this node do"; this answers "why this one and not
+          the other two", which is the question a person has while the picker is
+          open and the only question the enriched catalog cannot answer, because
+          it is written one node at a time. */}
+      {chooser && (
+        <div className={css['Chooser']}>
+          <p className={css['ChooserHeadline']}>{chooser.headline}</p>
+          {Boolean(chooser.detail) && <p className={css['ChooserDetail']}>{chooser.detail}</p>}
+          {Boolean(chooser.examples.length) && (
+            <ul className={css['ChooserExamples']}>
+              {chooser.examples.map((example) => (
+                <li key={example}>
+                  <code className={css['ChooserExample']}>{example}</code>
+                </li>
+              ))}
+            </ul>
+          )}
+          <p className={css['ChooserSignals']}>{chooser.signals}</p>
+        </div>
+      )}
 
       <div className={css['Body']}>
         {docs.content ? (

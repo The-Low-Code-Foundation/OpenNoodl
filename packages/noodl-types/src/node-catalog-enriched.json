@@ -8587,7 +8587,22 @@
       },
       "docs": "https://docs.noodl.net/nodes/math/expression",
       "searchTags": [
-        "javascript"
+        "javascript",
+        "math",
+        "calculate",
+        "formula",
+        "equation",
+        "add",
+        "subtract",
+        "multiply",
+        "divide",
+        "round",
+        "ceil",
+        "floor",
+        "sum",
+        "average",
+        "percent",
+        "%"
       ],
       "inputs": [
         {
@@ -15473,7 +15488,22 @@
       },
       "docs": "https://docs.noodl.net/nodes/javascript/function",
       "searchTags": [
-        "javascript"
+        "javascript",
+        "math",
+        "calculate",
+        "formula",
+        "equation",
+        "add",
+        "subtract",
+        "multiply",
+        "divide",
+        "round",
+        "ceil",
+        "floor",
+        "sum",
+        "average",
+        "percent",
+        "%"
       ],
       "inputs": [
         {
@@ -17323,7 +17353,7 @@
     },
     {
       "typeName": "Logic Builder",
-      "displayName": "Logic Builder",
+      "displayName": "Visual Function",
       "category": "CustomCode",
       "isVisual": false,
       "isDeprecated": false,
@@ -17342,7 +17372,22 @@
         "visual",
         "logic",
         "blocks",
-        "nocode"
+        "nocode",
+        "math",
+        "calculate",
+        "formula",
+        "equation",
+        "add",
+        "subtract",
+        "multiply",
+        "divide",
+        "round",
+        "ceil",
+        "floor",
+        "sum",
+        "average",
+        "percent",
+        "%"
       ],
       "inputs": [
         {
@@ -17449,7 +17494,7 @@
             "name": "signal"
           },
           "isSignal": true,
-          "description": "Fires when there are no blocks to run yet, which is what a freshly dropped Logic Builder looks like"
+          "description": "Fires when there are no blocks to run yet, which is what a freshly dropped Visual Function looks like"
         }
       ],
       "dynamicPorts": {

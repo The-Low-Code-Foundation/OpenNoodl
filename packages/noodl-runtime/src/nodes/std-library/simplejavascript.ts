@@ -11,6 +11,8 @@ import type {
   OutcomeToken
 } from '@noodl/types';
 
+import { ARITHMETIC_SEARCH_TAGS } from './logic-search-tags';
+
 import { outcomeOutputs, reportOutcomes } from '../../outcome';
 import { runOnChangeDynamicPorts } from '../../run-on-value-change';
 import {
@@ -120,7 +122,15 @@ const SimpleJavascriptNode: NodeDefinitionOptions = {
   nodeDoubleClickAction: {
     focusPort: 'Script'
   },
-  searchTags: ['javascript'],
+  /**
+   * LGC-001 §1 — Function answers the arithmetic words too, but it is the wrong
+   * tool for a one-liner and deliberately ranks last of the three (the Logic
+   * category in `nodelibraryexport.ts` lists it after Expression and Visual
+   * Function, and a tag match takes the library's order). It still leads its own
+   * name: `function` is a leading name match here and only an offset-7 match on
+   * "Visual Function".
+   */
+  searchTags: ['javascript', ...ARITHMETIC_SEARCH_TAGS],
   exportDynamicPorts: true,
   initialize: function (this: SimpleJavascriptNodeInstance) {
     this._internal.inputValues = {};

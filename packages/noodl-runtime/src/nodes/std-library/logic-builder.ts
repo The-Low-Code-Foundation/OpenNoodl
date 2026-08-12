@@ -13,6 +13,7 @@ import type {
 } from '@noodl/types';
 
 import { DetectedIO, detectIO, typeOfPort } from './logic-builder-io';
+import { ARITHMETIC_SEARCH_TAGS } from './logic-search-tags';
 
 import { outcomeOutputs } from '../../outcome';
 import EdgeTriggeredInput = require('../../edgetriggeredinput');
@@ -90,15 +91,42 @@ const RESERVED_INPUTS = ['workspace', 'generatedCode', 'run'];
 const RESERVED_OUTPUTS = ['error', 'success', 'failure', 'done', 'unchanged', 'completed'];
 
 const LogicBuilderNode: NodeDefinitionOptions = {
+  /**
+   * ⚠️ **Frozen.** `name` is the type id: it is the string in every saved
+   * `project.json`, in `node-catalog.json`, in `docs/node-catalog/enrichment/`,
+   * in the example `code-logic-builder-greeting.json`, and it is what
+   * `slugify(typeName)` turns into the docs-site page path. Renaming it is a
+   * migration and phase 59 does not do one (TASKS.md, standing constraints).
+   * LGC-001 §3 changes the *label* only.
+   */
   name: 'Logic Builder',
   docs: 'https://docs.noodl.net/nodes/logic/logic-builder',
-  displayNodeName: 'Logic Builder',
+  /**
+   * LGC-001 §3. "Logic Builder" told a beginner nothing: the test user who said
+   * on camera *"I'd really like to build my functions visually"* had this node
+   * in his picker the whole time and never opened it. "Visual Function" answers
+   * his sentence literally, makes `function` return both this node and the
+   * JavaScript one, and makes the trio read as a progression —
+   * Expression (a line) → Visual Function (blocks) → Function (code).
+   *
+   * ⚠️ Not "Function": Richard ruled that out, the JavaScript node keeps it.
+   */
+  displayNodeName: 'Visual Function',
   category: 'CustomCode',
   color: 'javascript',
   nodeDoubleClickAction: {
     focusPort: 'workspace'
   },
-  searchTags: ['blockly', 'visual', 'logic', 'blocks', 'nocode'],
+  /**
+   * LGC-001 §1 — the arithmetic vocabulary is shared with Expression and
+   * Function so all three answer `multiply`; see `logic-search-tags.ts`.
+   *
+   * No `function` tag: the label above now *contains* the word, so `function`
+   * is a name match here (rank 7, the offset of "Function" in "Visual
+   * Function") and therefore already ranks below the Function node's own
+   * leading match (rank 0). A tag would be dead weight.
+   */
+  searchTags: ['blockly', 'visual', 'logic', 'blocks', 'nocode', ...ARITHMETIC_SEARCH_TAGS],
 
   initialize: function (this: LogicBuilderNodeInstance) {
     const internal = this._internal;
@@ -442,7 +470,9 @@ const LogicBuilderNode: NodeDefinitionOptions = {
     if (internal.executionError) {
       return `Error: ${internal.executionError}`;
     }
-    return 'Logic Builder';
+    // The label, not the type id — this string is read by a person looking at
+    // the node on the canvas. LGC-001 §3.
+    return 'Visual Function';
   },
 
   inputs: {
@@ -520,7 +550,8 @@ const LogicBuilderNode: NodeDefinitionOptions = {
     ...outcomeOutputs({
       group: 'Status',
       done: 'Fires once a run you triggered has finished, after Success and after every output the program wrote',
-      unchanged: 'Fires when there are no blocks to run yet, which is what a freshly dropped Logic Builder looks like',
+      unchanged:
+        'Fires when there are no blocks to run yet, which is what a freshly dropped Visual Function looks like',
       failure: 'Fires when the block program threw while running, or could not be compiled at all'
     }),
     error: {

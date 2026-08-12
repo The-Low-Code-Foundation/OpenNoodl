@@ -519,7 +519,22 @@
     {
       "name": "Expression",
       "searchTags": [
-        "javascript"
+        "javascript",
+        "math",
+        "calculate",
+        "formula",
+        "equation",
+        "add",
+        "subtract",
+        "multiply",
+        "divide",
+        "round",
+        "ceil",
+        "floor",
+        "sum",
+        "average",
+        "percent",
+        "%"
       ],
       "nodeDoubleClickAction": {
         "focusPort": "Expression"
@@ -654,7 +669,22 @@
     {
       "name": "JavaScriptFunction",
       "searchTags": [
-        "javascript"
+        "javascript",
+        "math",
+        "calculate",
+        "formula",
+        "equation",
+        "add",
+        "subtract",
+        "multiply",
+        "divide",
+        "round",
+        "ceil",
+        "floor",
+        "sum",
+        "average",
+        "percent",
+        "%"
       ],
       "displayNodeName": "Function",
       "nodeDoubleClickAction": {
@@ -766,9 +796,24 @@
         "visual",
         "logic",
         "blocks",
-        "nocode"
+        "nocode",
+        "math",
+        "calculate",
+        "formula",
+        "equation",
+        "add",
+        "subtract",
+        "multiply",
+        "divide",
+        "round",
+        "ceil",
+        "floor",
+        "sum",
+        "average",
+        "percent",
+        "%"
       ],
-      "displayNodeName": "Logic Builder",
+      "displayNodeName": "Visual Function",
       "nodeDoubleClickAction": {
         "focusPort": "workspace"
       },
@@ -842,7 +887,7 @@
           "plug": "output",
           "group": "Status",
           "displayName": "Unchanged",
-          "description": "Fires when there are no blocks to run yet, which is what a freshly dropped Logic Builder looks like"
+          "description": "Fires when there are no blocks to run yet, which is what a freshly dropped Visual Function looks like"
         },
         {
           "name": "failure",
@@ -10022,17 +10067,17 @@
         ]
       },
       {
-        "name": "Custom Code",
-        "description": "Custom JavaScript and CSS",
+        "name": "Logic",
+        "description": "Three ways to compute — pick by how much you want to type",
         "type": "javascript",
         "subCategories": [
           {
             "name": "",
             "items": [
               "Expression",
+              "Logic Builder",
               "JavaScriptFunction",
               "Javascript2",
-              "Logic Builder",
               "CSS Definition"
             ]
           }

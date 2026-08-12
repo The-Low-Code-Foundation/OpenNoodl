@@ -75,8 +75,8 @@ This page is generated from `node-catalog-enriched.json`. Do not edit it by hand
 - [CSS Definition](./custom-code/css-definition.md)
 - [Expression](./custom-code/expression.md)
 - [Function](./custom-code/java-script-function.md)
-- [Logic Builder](./custom-code/logic-builder.md)
 - [Script](./custom-code/javascript2.md)
+- [Visual Function](./custom-code/logic-builder.md)
 
 ## Data
 
