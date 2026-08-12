@@ -33,6 +33,13 @@ module.exports = {
   ],
   testPathIgnorePatterns: ['/node_modules/'],
   moduleNameMapper: {
+    // LGC-008: a CSS-module import is a webpack artefact and there is no loader here, so a
+    // module that names one would fail the suite *to run*. It does NOT make the renderer
+    // reachable — a module that touches the DOM, React's runtime or an editor singleton still
+    // fails here, loudly. What it makes reachable is the small set of view modules that build
+    // React *elements* and nothing else, which is where the no-remount property lives: an
+    // element tree is plain objects, and its keys and types are what decide a remount.
+    '\\.(css|scss)$': '<rootDir>/tests-unit/support/styleMock.js',
     '^@noodl-viewer-cloud/execution-history$': '<rootDir>/../noodl-viewer-cloud/src/execution-history/index.ts',
     // WFA-007: the workflow proposal diff. `@noodl-versioning` (SUB-007) is
     // self-contained — its only imports are its own files — and the workflow

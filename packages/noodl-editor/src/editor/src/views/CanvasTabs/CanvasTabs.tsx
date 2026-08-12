@@ -1,16 +1,8 @@
-import React, { Suspense, lazy } from 'react';
+import React from 'react';
 
 import { useCanvasTabs } from '../../contexts/CanvasTabsContext';
 import css from './CanvasTabs.module.scss';
-
-/**
- * Blockly is ~1.1 MB before its message bundle, and the overwhelming majority of sessions
- * never open a Logic Builder. Loading it on first tab open keeps it out of the renderer's
- * main bundle entirely.
- */
-const BlocklyWorkspace = lazy(() =>
-  import('../BlocklyEditor/BlocklyWorkspace').then((m) => ({ default: m.BlocklyWorkspace }))
-);
+import { buildTabWorkspaces, TabWorkspaceEdit } from './tabWorkspaces';
 
 export interface CanvasTabsProps {
   /**
@@ -33,22 +25,21 @@ export interface CanvasTabsProps {
 export function CanvasTabs({ onWorkspaceChange }: CanvasTabsProps) {
   const { tabs, activeTabId, switchTab, closeTab, updateTab } = useCanvasTabs();
 
-  const activeTab = tabs.find((t) => t.id === activeTabId);
-
   /**
-   * Handle workspace changes from Blockly editor
+   * Save one settled edit — to the tab that produced it.
+   *
+   * 🔴 F4. This used to read `activeTab`: the tab from the render that produced the callback,
+   * not the tab that owns the workspace that fired. `buildTabWorkspaces` now binds the tab at
+   * the call site and hands it back here, so the answer no longer depends on what happened to
+   * be active when the 300 ms debounce elapsed. See `tabWorkspaces.tsx` for the full mechanism
+   * and for why the `key` was never the defence it looked like.
    */
-  const handleWorkspaceChange = (_workspaceSvg: unknown, json: string, code: string | undefined) => {
-    if (!activeTab) {
-      return;
-    }
-
-    // Update tab's workspace with JSON
-    updateTab(activeTab.id, { workspace: json });
+  const handleWorkspaceEdit = ({ tab, workspace, code }: TabWorkspaceEdit) => {
+    updateTab(tab.id, { workspace });
 
     // Notify parent (pass both workspace JSON and generated code)
-    if (onWorkspaceChange && activeTab.nodeId) {
-      onWorkspaceChange(activeTab.nodeId, json, code);
+    if (onWorkspaceChange && tab.nodeId) {
+      onWorkspaceChange(tab.nodeId, workspace, code);
     }
   };
 
@@ -104,26 +95,7 @@ export function CanvasTabs({ onWorkspaceChange }: CanvasTabsProps) {
       </div>
 
       {/* Tab Content */}
-      <div className={css['TabContent']}>
-        {activeTab && (
-          <div className={css['BlocklyContainer']}>
-            <Suspense fallback={<div className={css['TabLoading']}>Loading the block editor…</div>}>
-              {/*
-                Keyed by tab id. BlocklyWorkspace injects its workspace once and never reloads
-                it from props, so without a key React would reuse one mounted workspace across
-                tabs: switching tabs would show the previous node's blocks and then save them
-                over the newly selected node.
-              */}
-              <BlocklyWorkspace
-                key={activeTab.id}
-                nodeId={activeTab.nodeId}
-                initialWorkspace={activeTab.workspace || undefined}
-                onChange={handleWorkspaceChange}
-              />
-            </Suspense>
-          </div>
-        )}
-      </div>
+      <div className={css['TabContent']}>{buildTabWorkspaces({ tabs, activeTabId, onEdit: handleWorkspaceEdit })}</div>
     </div>
   );
 }
