@@ -15,7 +15,7 @@ full math palette has been in the product since phase 3.
 
 | Task | File | One line | State |
 |---|---|---|---|
-| LGC-001 ⭐ | [LGC-001-THE-LOGIC-TRIAD.md](LGC-001-THE-LOGIC-TRIAD.md) | **the flagship** — the picker explains Expression vs Function vs Visual Function, with examples, and answers `multiply` | 📋 open |
+| LGC-001 ⭐ | [LGC-001-THE-LOGIC-TRIAD.md](LGC-001-THE-LOGIC-TRIAD.md) | **the flagship** — the picker explains Expression vs Function vs Visual Function, with examples, and answers `multiply` | 🟡 **built 2026-08-12**, live verification deferred (see the task file's *Deferred verification*) |
 | LGC-002 | [LGC-002-DO-IT.md](LGC-002-DO-IT.md) | right-click a block, run it, see the value in a balloon — App Inventor's most-loved feature | 📋 open |
 | LGC-003 | [LGC-003-VALUES-STAY-ON-SCREEN.md](LGC-003-VALUES-STAY-ON-SCREEN.md) | ambient values during a run, the didn't-execute tell, and the run scrubber | 📋 open |
 | LGC-004 | [LGC-004-INTERFACE-RAILS.md](LGC-004-INTERFACE-RAILS.md) | pin the signature to the workspace edges; the props panel edits blocks rather than shadowing them | 📋 open |
