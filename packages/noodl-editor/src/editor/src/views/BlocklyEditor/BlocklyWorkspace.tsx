@@ -316,6 +316,8 @@ export function BlocklyWorkspace({ initialWorkspace, onChange, readOnly = false,
       if (rails) {
         rails.dispose();
         rails = null;
+      }
+
       if (blockValues) {
         blockValues.dispose();
         blockValues = null;
