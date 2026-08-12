@@ -10,6 +10,37 @@
   height: 100%;
   width: 100%;
   pointer-events: all; /* Enable clicks on tabs */
+  /* LGC-008: the splitter positions against this box. */
+  position: relative;
+
+  /* LGC-008: the pane's own edge. The canvas is now beside this rather than
+     under it, so the two surfaces need a line between them and not just a
+     change of background. */
+  border-left: 1px solid var(--theme-color-border-default);
+}
+
+/* LGC-008: the splitter between the canvas pane and this one.
+
+   It overhangs the pane's left edge by half its width so the grab target is
+   centred on the seam rather than sitting entirely inside the blocks. The tabs
+   root is `pointer-events: none` with its children re-enabling, so the overhang
+   is inert over the canvas except exactly where this element is. */
+.PaneSplitter {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -4px;
+  width: 8px;
+  z-index: 1;
+  cursor: col-resize;
+  pointer-events: all;
+  background-color: transparent;
+  transition: background-color 0.15s ease;
+
+  &:hover,
+  &:active {
+    background-color: var(--theme-color-primary);
+  }
 }
 
 .TabBar {
@@ -97,9 +128,13 @@
   position: relative;
 }
 
+/* LGC-008: every open tab's workspace is mounted, so the containers are stacked
+   on top of each other and all but the active one is `display: none` (written
+   inline by `buildTabWorkspaces`). Absolute rather than in flow: two 100%-height
+   blocks in a column would make the second overflow its pane. */
 .BlocklyContainer {
-  width: 100%;
-  height: 100%;
+  position: absolute;
+  inset: 0;
   overflow: hidden;
   background-color: var(--theme-color-bg-1);
 }

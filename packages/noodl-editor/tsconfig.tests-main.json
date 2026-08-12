@@ -24,6 +24,11 @@
   // import shell, never by a test here. Keeping that split is what lets these run
   // without Electron.
   "include": [
+    // LGC-008: the ambient declarations the editor's own tsconfig includes — `TSFixme`,
+    // `NodeColor` and the `*.scss` / `*.svg` module shims. Everything under `src/editor` that
+    // this runner reaches is written against them, and a single `TSFixme` in an otherwise pure
+    // file fails the whole suite *to run* rather than failing a spec.
+    "@include-types",
     "src/main",
     "tests-main",
     "tests-unit",

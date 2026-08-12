@@ -12,6 +12,7 @@ import { refFromComponentName } from '../../models/workflow/functionRefResolutio
 import { descentFor } from '../../models/workflow/workflowDescent';
 import { NodeGraphComponentTrail } from '../NodeGraphComponentTrail';
 import { CloudFunctionTrailStatus } from '../NodeGraphComponentTrail/CloudFunctionTrailStatus';
+import { setLogicPaneOpen, setLogicPaneSplit } from './LogicPane';
 import { CenterToFitMode } from './canvas/types';
 
 import type { NodeGraphEditor } from '../nodegrapheditor';
@@ -41,7 +42,10 @@ export class OverlayViews {
         CanvasTabsProvider,
         null,
         React.createElement(CanvasTabs, {
-          onWorkspaceChange: this.handleBlocklyWorkspaceChange.bind(this)
+          onWorkspaceChange: this.handleBlocklyWorkspaceChange.bind(this),
+          // LGC-008: the pane reports a pointer position; the shell's bounds — and therefore
+          // what that position means — are the editor's.
+          onSplitDrag: (pointerClientX: number) => setLogicPaneSplit(this.editor, pointerClientX)
         })
       )
     );
@@ -288,36 +292,14 @@ export class OverlayViews {
   }
 
   /**
-   * Set canvas visibility (hide when Logic Builder is open, show when closed)
+   * Open or close the logic pane (LGC-008).
+   *
+   * It used to be `setCanvasVisibility`, and it used to hide eight layers. Both panes are on
+   * screen now, so what changes is geometry rather than visibility. The body is in
+   * `LogicPane.ts` — no React in it, so it can be gated in a plain-Node runner.
    */
-  setCanvasVisibility(visible: boolean) {
-    const editor = this.editor;
-    const {
-      canvas,
-      commentLayerBg,
-      commentLayerFg,
-      highlightOverlayLayer,
-      recordingOverlayLayer,
-      componentTrailRoot,
-      canvasHudRoot
-    } = editor.shell;
-
-    // Show/hide the canvas and related elements. The recording HUD goes with them: the Logic
-    // Builder takes the whole canvas over, and a Record pill floating on top of a Blockly
-    // workspace is a control over a surface it has nothing to say about.
-    const layers = [
-      canvas,
-      commentLayerBg,
-      commentLayerFg,
-      highlightOverlayLayer,
-      recordingOverlayLayer,
-      canvasHudRoot
-    ];
-    for (const el of layers) {
-      el.style.display = visible ? 'block' : 'none';
-    }
-    componentTrailRoot.style.display = visible ? 'flex' : 'none';
-    editor.domElementContainer.style.display = visible ? '' : 'none';
+  setLogicPaneOpen(open: boolean) {
+    setLogicPaneOpen(this.editor, open);
   }
 
   updateTitle() {

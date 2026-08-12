@@ -22,6 +22,7 @@ import { Frame } from '../../common/Frame';
 import { EditorTopbar } from '../../EditorTopbar';
 import { HelpCenter } from '../../HelpCenter';
 import { NodeGraphEditor } from '../../nodegrapheditor';
+import { remeasureNodeGraphCanvas } from '../../nodegrapheditor/CanvasDOMBindings';
 import { panelHoldsCanvasSelection } from '../../nodegrapheditor/EditorEventBindings';
 import { ScopePlanStrip } from '../../panels/AiAuthoringPanel/ScopePlanStrip';
 import { showContextMenuInPopup } from '../../ShowContextMenuInPopup';
@@ -472,9 +473,17 @@ function ViewComponent({
    * exactly where it is needed. Stable identity: `FrameDivider` lists `onDrag` in two
    * dependency arrays.
    */
+  /**
+   * ⚠️ The node graph canvas has the same problem and needs the same answer (LGC-008 F3).
+   * The only thing that re-measured it on a drag was `Frame`'s `onResize`, which
+   * `useTrackBounds` feeds from a `ResizeObserver` — zero callbacks in an occluded renderer.
+   * `remeasureNodeGraphCanvas` is a no-op when the canvas did not actually change size, which
+   * is what makes it safe to call at `mousemove` frequency beside a full relayout and repaint.
+   */
   const onDividerDrag = useCallback(() => {
+    remeasureNodeGraphCanvas(nodeGraphEditorInstance);
     resizeBlocklyWorkspaces();
-  }, []);
+  }, [nodeGraphEditorInstance]);
 
   const horizontal = documentLayout === 'horizontal';
   const totalSize = frameBounds ? (horizontal ? frameBounds.height : frameBounds.width) : undefined;
@@ -498,7 +507,9 @@ function ViewComponent({
         onSizeChanged={(size) => {
           onSizeUpdated(size);
           // The drag has ended and the containers have settled; one last measurement so a
-          // workspace that was mid-flight during the last mousemove lands on the final size.
+          // workspace or a canvas that was mid-flight during the last mousemove lands on the
+          // final size.
+          remeasureNodeGraphCanvas(nodeGraphEditorInstance);
           resizeBlocklyWorkspaces();
         }}
         onBoundsChanged={setFrameBounds}
