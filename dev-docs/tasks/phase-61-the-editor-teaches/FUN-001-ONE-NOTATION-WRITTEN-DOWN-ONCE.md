@@ -1,7 +1,12 @@
 # FUN-001 — One notation, written down once
 
-**Status:** 📋 open · **Track: the words** · ⚠️ **contains a decision for Richard (§2)** · blocks the
-copy in FUN-002, FUN-004, FUN-005, FUN-006
+**Status:** ✅ **built 2026-08-12** · **Track: the words** · §2 taken on the recommendation, recorded
+below · blocks the copy in FUN-002, FUN-004, FUN-005, FUN-006
+
+`notation.ts` + 19 DOM-free unit tests; the module is exported from the `code-editor` barrel. The AI
+prompt half is done and was **three** copies, not one. **§4's catalog half needed no work** — see F2,
+which is refuted. Four findings were measured against the real parser while building it, and one of
+them says FUN-002's specced seed body is wrong: **F5**.
 
 ## Why this is first and why it is not documentation
 
@@ -63,6 +68,18 @@ case explicitly rather than pretending it away.
 NDA-017 shape applies: when a port description is the only place a behaviour is written down, a wrong
 one is worse than none.
 
+### ✅ Decision taken, 2026-08-12 — the recommendation, unchanged
+
+**`Inputs.` / `Outputs.` is the notation. `Noodl.Inputs` stays working forever and is never written
+by us** — not in a seed, not in a fix-it, not in a docs example, not in an AI prompt. Nothing may
+flag a user's existing `Noodl.Inputs` code as wrong.
+
+Recorded here rather than only in a commit message, per §2's own instruction. It is enforced, not
+just stated: `notation.test.ts` asserts that no rule string and no seed body contains the alias, and
+the module's doc comment carries the decision and its date. Reversing it means changing one module
+and re-running one test file — the cost of the decision is deliberately low, which is the point of
+taking it now rather than blocking four tasks on it.
+
 ## §3 — Where the string lives
 
 One module in `noodl-core-ui`, beside the code editor, exporting the copy the UI consumes — not a
@@ -90,28 +107,39 @@ functions rather than concatenating a dot.
 
 | Surface | Change |
 |---|---|
-| The enriched catalog entry for `Function` | gains a summary and **one worked example** — the two-line pass-through. It is what the node picker, the docs site and the AI prompt all read |
-| Same for `Expression` and `Script` | the three `CustomCode` nodes get one sentence each; phase 59's LGC-001 needs the same three sentences for the picker, so **write them once and let both phases cite them** |
+| ~~The enriched catalog entry for `Function`~~ | ✅ **already done — nothing to build.** See F2. `JavaScriptFunction`, `Expression` and `Javascript2` each carry `summary`, `description`, `whenToUse`, `ports`, `runtimeBehavior`, `patterns`, `antiPatterns`, `relatedNodes` and a validated example, landed by **SUB-005 on 2026-07-23** — seventeen days *before* this task was written. The Function description already teaches the notation correctly, including that a signal is the call and not the assignment |
+| ~~Same for `Expression` and `Script`~~ | ✅ same. Phase 59's LGC-001 should **cite these three entries** rather than write a fourth version of the sentence |
 | `functionScript` port description | already correct. Leave it |
-| The AI function prompt (`FUNCTION_CODE_CONTEXT`, [`templates/function.ts`](../../../packages/noodl-editor/src/editor/src/models/AiAssistant/templates/function.ts)) | ⚠️ it currently instructs the model that *"Inputs follow `Inputs[InputName]` format"* — bracket notation, unquoted, which is **not** what the runtime mines. Check it against §1 and fix it here |
+| The AI function prompt | ✅ **fixed, and it was three prompts not one.** `FUNCTION_CODE_CONTEXT` **and** `FUNCTION_CODE_CONTEXT_EDIT` in [`templates/function.ts`](../../../packages/noodl-editor/src/editor/src/models/AiAssistant/templates/function.ts), plus `FUNCTION_QUERY_DATABASE_CONTEXT_GPT3_GENERAL_RULES` in [`function-query-database/gpt-3-version.ts:216`](../../../packages/noodl-editor/src/editor/src/models/AiAssistant/templates/function-query-database/gpt-3-version.ts). The first two now share one `FUNCTION_NOTATION_RULES` const built from `NOTATION_RULES.function`, so the sentence the model reads and the sentence the editor shows a beginner cannot drift |
 
 ## Acceptance
 
-- One module exports the notation copy and the two expression builders, and **the seed, the fix-it,
-  the rail and the bar all import it** — grep proves no second string exists.
-- `writeExpression` returns a call for a signal port and an assignment for a value port.
-- A port display name containing a space produces `Inputs["My Value"]`, and that name is mined back
-  as the same port by `minePorts`. **Round-trip it in a unit test** — this is core-ui's `node`
-  test environment, so it must stay DOM-free (CED-001).
-- The enriched catalog entry for `Function` contains a worked example that compiles.
-- ⚠️ The AI function prompt no longer teaches a notation the runtime does not mine.
-- Richard has signed §2, and the decision is recorded **in this file**, not only in a commit message.
+- ✅ One module exports the notation copy and the two expression builders. ⏳ **"the seed, the fix-it,
+  the rail and the bar all import it" cannot close until those exist** — FUN-002/004/005/006 are the
+  consumers, and the grep that proves no second string exists is only meaningful once there is
+  something to grep. Re-run it at phase exit, not now.
+- ✅ `writeExpression` returns a call for a signal port and an assignment for a value port — **and
+  brackets an underscored signal name**, which is F6 and was not anticipated here.
+- ✅ A port display name containing a space produces `Inputs["My Value"]` and is mined back as the
+  same port. Round-tripped through `minePorts` in `tests/code-editor/notation.test.ts`; DOM-free, 19
+  specs, and the whole `tests/code-editor/` directory is green at **11 suites / 129 specs**.
+- ✅ The enriched catalog entry for `Function` contains a worked example that compiles — it already
+  did, since 2026-07-23. See F2; nothing was written for this.
+- ✅ The AI function prompt no longer teaches a notation the runtime does not mine. Three prompts.
+- ⏳ **§2 is taken on the recommendation and recorded above, not signed.** Richard has not seen it
+  yet. It is asserted in a test rather than only stated, and reversing it is one module and one test
+  file — deliberately cheap, because blocking four tasks on a signature costs more than reversing it
+  would.
 
 ## Register
 
 | # | Finding | State |
 |---|---|---|
 | F1 | The brief's `Noodl.Inputs` is the **legacy alias**; the runtime injects `Inputs` / `Outputs` directly | ✅ verified in source, `simplejavascript.ts:356-360, 447` |
-| F2 | There is **no documentation to have read**: the enriched catalog entry for `Function` has two fields and no prose | ✅ verified, `node-catalog-enriched.json` |
-| F3 | Internal port names carry `in-` / `out-` prefixes — inserting one raw produces valid, silently wrong code | ⚠️ ours to handle once, in `notation.ts` |
-| F4 | The shipped AI prompt teaches `Inputs[InputName]`, which is not one of the six mined patterns | ⚠️ unverified against every mining regex; check before editing |
+| F2 | ~~There is **no documentation to have read**: the enriched catalog entry for `Function` has two fields and no prose~~ | 🔴 **REFUTED 2026-08-12.** The claim reads the *node* object, whose first two keys are `typeName` and `displayName`, and misses its `enrichment` sub-object. `JavaScriptFunction` carries a summary, a 1,100-character description that teaches the notation correctly, `whenToUse`, per-port prose, `runtimeBehavior`, patterns, anti-patterns and the validated example `function-compute-on-run` — landed by **SUB-005 in `c0d6c86f`, 2026-07-23**, i.e. the entry was already full when this task was written on 08-09. The README's *"premise correction 2"* is therefore half wrong: what is missing is not documentation, it is documentation **anywhere the person in the code editor can see**. The catalog feeds the AI path, the picker and the docs site — not the blank editor. The phase's premise survives; §4's catalog work does not exist |
+| F3 | Internal port names carry `in-` / `out-` prefixes — inserting one raw produces valid, silently wrong code | ✅ handled once, `stripPortPrefix()`, asserted |
+| F4 | The shipped AI prompt teaches `Inputs[InputName]`, which is not one of the six mined patterns | ✅ **CONFIRMED and fixed.** Measured: unquoted brackets match **none** of the six patterns — the mined bracket form is quoted. And it was **three prompts**, not the one the task names. The prompt's own worked example already used `Inputs.City`, so each prompt contradicted itself |
+| F5 | 🔴 **FUN-002's specced seed body mints FOUR ports, not two** | ✅ **measured against `parseAndAddPortsFromScript`.** The runtime's comment-stripping line is commented out, so comments are mined — and the specced comment *"Read an input with `Inputs.Name`, write an output with `Outputs.Name`"* mints an input `Name` **and** an output `Name` beside `Value` and `Result`. The phase exit test says *"with two ports on the node to prove it"*; as specced, a beginner's first Function node arrives with two extra ports that do nothing and cannot be explained. `SEED_FUNCTION_BODY` states the rule without spelling either prefix followed by a name, and is asserted to mine exactly `input:Value` / `output:Result`. **FUN-002 must not restore the specced string** |
+| F6 | 🔴 **`Outputs.Done_1()` creates a VALUE port, not a signal** | ✅ measured. The signal-by-dot pattern is `/Outputs\.([A-Za-z0-9]+)\s*\(\s*\)/` — **no underscore in the class** — so an underscored signal name falls through to the regular-output pattern. `Outputs["Done_1"]()` types it correctly. This is the concrete mechanism behind TASKS.md's *"any inserter that does not know the type will silently create the wrong kind of port"*, and `writeExpression` forces bracket form for it |
+| F7 | ⚠️ **Two bracket-form reads on one line do not round-trip** | ✅ measured. The bracket patterns capture with a greedy `(.*)`, so `Inputs["My Value"] + Inputs["Other"]` mines **one** port literally named `My Value"] + Inputs["Other`. `minePorts` reproduces the defect faithfully, which is correct of it. **This is a constraint on FUN-005's rail**: an insert-at-cursor affordance can put two bracket reads on one line, and the ports it then shows will not be the ports the node grows. Dot-form names are unaffected |
+| F8 | A display name containing `"` has **no** expressible form | ✅ the regular-output pattern is `[^"]*` with no escape. `canExpressPort()` returns false; the honest answer for such a port is to rename it, and no downstream surface should offer an insertion for it |

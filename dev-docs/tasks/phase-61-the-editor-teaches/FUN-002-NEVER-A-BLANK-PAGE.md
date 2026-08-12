@@ -26,6 +26,28 @@ ports already on it.
 Outputs.Result = Inputs.Value;
 ```
 
+> 🔴 **The body above is wrong and must not be used. It mints FOUR ports, not two** — FUN-001 **F5**,
+> measured against `parseAndAddPortsFromScript` on 2026-08-12.
+>
+> The runtime's comment-stripping line is commented out, so **comments are mined**. `Inputs.Name` and
+> `Outputs.Name` in that first line mint an input `Name` and an output `Name` beside `Value` and
+> `Result` — two extra ports that do nothing, on the very node whose job is to demonstrate that ports
+> come from the code. The phase's exit test says *"with two ports on the node to prove it"*.
+>
+> **Import `SEED_FUNCTION_BODY` from
+> [`code-editor/utils/notation.ts`](../../../packages/noodl-core-ui/src/components/code-editor/utils/notation.ts)**
+> — do not retype the string, and do not "restore" the specced comment. What ships states the same
+> rule without spelling either prefix followed by a name, and is asserted to mine exactly
+> `input:Value` / `output:Result`:
+>
+> ```js
+> // The ports come from this code: rename Value or Result and the node follows.
+> Outputs.Result = Inputs.Value;
+> ```
+>
+> Everything else in this task — §1's *not a `default`*, §2's fires-exactly-once — is unaffected and
+> still governs.
+
 Three things happen at once, and the third is why this is the highest-leverage line in the phase:
 
 1. There is something to imitate.
