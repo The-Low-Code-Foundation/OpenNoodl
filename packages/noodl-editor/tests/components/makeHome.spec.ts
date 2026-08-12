@@ -1,3 +1,6 @@
+import type { ComponentModel } from '@noodl-models/componentmodel';
+import type { NodeGraphNode } from '@noodl-models/nodegraphmodel';
+import type { ProjectModel } from '@noodl-models/projectmodel';
 import { UndoQueue } from '@noodl-models/undo-queue-model';
 
 import {
@@ -25,11 +28,42 @@ import {
  * Jasmine, not Jest — the editor suite runs inside Electron.
  */
 
+/**
+ * The doubles are typed structurally rather than as `TSFixme`, so a spec that
+ * stops matching the shape under test fails at `typecheck:editor-tests` instead
+ * of at whatever the runtime does with the wrong object. Only the hand-off to the
+ * real signatures is cast, and it goes through `unknown` — these are deliberately
+ * *narrow slices*, not partial `ProjectModel`s.
+ */
+interface FakeRoot {
+  id: string;
+  type: { allowAsExportRoot: boolean };
+}
+
+interface FakeProject {
+  rootNode: FakeRoot | null;
+  setRootNode(node: FakeRoot | null): void;
+  getRootNode(): FakeRoot | null;
+  deleteComponentAllowed(): DeleteVerdict;
+}
+
+interface FakeComponent {
+  name: string;
+  localName: string | undefined;
+  graph: { roots: FakeRoot[] };
+}
+
+/** `deleteComponentAllowed`'s answer: may this component be reassigned, and why not. */
+interface DeleteVerdict {
+  canBeDelete: boolean;
+  reason?: string;
+}
+
 /** The narrow slice of `ProjectModel` that `makeComponentHome` touches. */
-function fakeProject(rootNode: TSFixme, canBeDelete = { canBeDelete: true } as TSFixme) {
+function fakeProject(rootNode: FakeRoot | null, canBeDelete: DeleteVerdict = { canBeDelete: true }): FakeProject {
   return {
     rootNode,
-    setRootNode(node: TSFixme) {
+    setRootNode(node: FakeRoot | null) {
       this.rootNode = node;
     },
     getRootNode() {
@@ -38,19 +72,23 @@ function fakeProject(rootNode: TSFixme, canBeDelete = { canBeDelete: true } as T
     deleteComponentAllowed() {
       return canBeDelete;
     }
-  } as TSFixme;
+  };
 }
 
-function fakeComponent(name: string, roots: TSFixme[]) {
+function fakeComponent(name: string, roots: FakeRoot[]): FakeComponent {
   return {
     name,
     localName: name.split('/').pop(),
     graph: { roots }
-  } as TSFixme;
+  };
 }
 
-const VISUAL_ROOT = { id: 'group-1', type: { allowAsExportRoot: true } } as TSFixme;
-const LOGIC_ROOT = { id: 'inputs-1', type: { allowAsExportRoot: false } } as TSFixme;
+/** The two casts every spec needs, named once so the intent is not retyped. */
+const asProject = (p: FakeProject) => p as unknown as ProjectModel;
+const asComponent = (c: FakeComponent) => c as unknown as ComponentModel;
+
+const VISUAL_ROOT: FakeRoot = { id: 'group-1', type: { allowAsExportRoot: true } };
+const LOGIC_ROOT: FakeRoot = { id: 'inputs-1', type: { allowAsExportRoot: false } };
 
 describe('Make Home', () => {
   let originalQueue: UndoQueue;
@@ -72,7 +110,7 @@ describe('Make Home', () => {
     const project = fakeProject(null);
     const component = fakeComponent('/MyApp', [VISUAL_ROOT]);
 
-    const result = makeComponentHome(project, component);
+    const result = makeComponentHome(asProject(project), asComponent(component));
 
     expect(result.ok).toBe(true);
     expect(project.getRootNode()).toBe(VISUAL_ROOT);
@@ -82,7 +120,7 @@ describe('Make Home', () => {
     const previous = { id: 'old-root', type: { allowAsExportRoot: true } };
     const project = fakeProject(previous);
 
-    makeComponentHome(project, fakeComponent('/MyApp', [VISUAL_ROOT]));
+    makeComponentHome(asProject(project), asComponent(fakeComponent('/MyApp', [VISUAL_ROOT])));
 
     expect(project.getRootNode()).toBe(VISUAL_ROOT);
   });
@@ -91,7 +129,7 @@ describe('Make Home', () => {
     const previous = { id: 'old-root', type: { allowAsExportRoot: true } };
     const project = fakeProject(previous);
 
-    makeComponentHome(project, fakeComponent('/MyApp', [VISUAL_ROOT]));
+    makeComponentHome(asProject(project), asComponent(fakeComponent('/MyApp', [VISUAL_ROOT])));
     expect(project.getRootNode()).toBe(VISUAL_ROOT);
 
     UndoQueue.instance.undo();
@@ -104,7 +142,7 @@ describe('Make Home', () => {
     // project genuinely had no root, and undo has to be able to say so.
     const project = fakeProject(null);
 
-    makeComponentHome(project, fakeComponent('/MyApp', [VISUAL_ROOT]));
+    makeComponentHome(asProject(project), asComponent(fakeComponent('/MyApp', [VISUAL_ROOT])));
     UndoQueue.instance.undo();
 
     expect(project.getRootNode()).toBe(null);
@@ -116,7 +154,7 @@ describe('Make Home', () => {
     // could do nothing.
     const project = fakeProject(null);
 
-    const result = makeComponentHome(project, fakeComponent('/Helper', [LOGIC_ROOT]));
+    const result = makeComponentHome(asProject(project), asComponent(fakeComponent('/Helper', [LOGIC_ROOT])));
 
     expect(result.ok).toBe(false);
     expect(result.reason).toContain('Helper');
@@ -126,7 +164,7 @@ describe('Make Home', () => {
   it('refuses, with the project\'s own reason, a component the project will not reassign', () => {
     const project = fakeProject(null, { canBeDelete: false, reason: "Home component can't be deleted" });
 
-    const result = makeComponentHome(project, fakeComponent('/MyApp', [VISUAL_ROOT]));
+    const result = makeComponentHome(asProject(project), asComponent(fakeComponent('/MyApp', [VISUAL_ROOT])));
 
     expect(result.ok).toBe(false);
     expect(result.reason).toBe("Home component can't be deleted");
@@ -134,7 +172,11 @@ describe('Make Home', () => {
   });
 
   it('finds the first exportable root, ignoring nodes that cannot be one', () => {
-    expect(findExportRootNode(fakeComponent('/Mixed', [LOGIC_ROOT, VISUAL_ROOT]))).toBe(VISUAL_ROOT);
-    expect(findExportRootNode(fakeComponent('/Empty', []))).toBeUndefined();
+    // Identity, not shape: the function must return *that* root object, so the
+    // expected value crosses the same boundary the argument did.
+    expect(findExportRootNode(asComponent(fakeComponent('/Mixed', [LOGIC_ROOT, VISUAL_ROOT])))).toBe(
+      VISUAL_ROOT as unknown as NodeGraphNode
+    );
+    expect(findExportRootNode(asComponent(fakeComponent('/Empty', [])))).toBeUndefined();
   });
 });

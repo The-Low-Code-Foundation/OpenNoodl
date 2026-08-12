@@ -54,11 +54,43 @@ import {
   benchOutputPortRefs,
   seedValues,
   type BenchEmission,
-  type BenchValueState
+  type BenchValueState,
+  type TraceDictionaryLike,
+  type TraceEventLike
 } from './benchOutputs';
 
 /** How often the tail is pulled while the bench is on screen. */
 const PULL_INTERVAL_MS = 700;
+
+/**
+ * The five relay messages this hook listens for.
+ *
+ * They were destructured as `TSFixme` while `benchOutputs.ts` next door already
+ * declared `TraceDictionaryLike` and `TraceEventLike` for the same payloads — so
+ * the helpers were typed and the handlers feeding them were not, which is the
+ * half where a renamed field goes unnoticed. Every field is optional because the
+ * relay is a wire: a message that arrives malformed must fail the guard, not the
+ * destructure.
+ */
+interface RelayMessage {
+  clientId?: string;
+}
+
+interface TraceStateMessage extends RelayMessage {
+  state?: { highestSeq?: number };
+}
+
+interface TraceDictionaryMessage extends RelayMessage {
+  dictionary?: TraceDictionaryLike;
+}
+
+interface TracePortValuesMessage extends RelayMessage {
+  values?: Array<{ port?: string; exists?: boolean; value?: unknown }>;
+}
+
+interface TraceEventsMessage extends RelayMessage {
+  events?: TraceEventLike[];
+}
 
 export interface BenchOutputs {
   /** Current value per declared value output. */
@@ -136,7 +168,7 @@ export function useBenchOutputs({
 
     EventDispatcher.instance.on(
       'TraceState',
-      ({ clientId: from, state }: TSFixme) => {
+      ({ clientId: from, state }: TraceStateMessage) => {
         if (!isOurs(from) || !state) return;
         if (!armedRef.current) {
           lastSeq.current = typeof state.highestSeq === 'number' ? state.highestSeq : 0;
@@ -153,7 +185,7 @@ export function useBenchOutputs({
 
     EventDispatcher.instance.on(
       'TraceDictionary',
-      ({ clientId: from, dictionary }: TSFixme) => {
+      ({ clientId: from, dictionary }: TraceDictionaryMessage) => {
         if (!isOurs(from)) return;
         outputNodeIds.current = benchOutputNodeIds(dictionary, target);
       },
@@ -162,7 +194,7 @@ export function useBenchOutputs({
 
     EventDispatcher.instance.on(
       'TracePortValues',
-      ({ clientId: from, values: replied }: TSFixme) => {
+      ({ clientId: from, values: replied }: TracePortValuesMessage) => {
         if (!isOurs(from)) return;
         // The seed only fills rows nothing has reported yet: a real emission
         // arriving first is newer than a snapshot taken at arming time.
@@ -180,7 +212,7 @@ export function useBenchOutputs({
 
     EventDispatcher.instance.on(
       'TraceEvents',
-      ({ clientId: from, events }: TSFixme) => {
+      ({ clientId: from, events }: TraceEventsMessage) => {
         if (!isOurs(from) || !Array.isArray(events) || events.length === 0) return;
 
         const highest = events[events.length - 1].seq;
@@ -194,7 +226,7 @@ export function useBenchOutputs({
           setLog([]);
           setOrigin(0);
         } else {
-          const fresh = events.filter((event: TSFixme) => event.seq > lastSeq.current);
+          const fresh = events.filter((event: TraceEventLike) => event.seq > lastSeq.current);
           if (fresh.length === 0) return;
           lastSeq.current = fresh[fresh.length - 1].seq;
         }
@@ -216,7 +248,7 @@ export function useBenchOutputs({
     // relay has never seen is dropped without a word.
     EventDispatcher.instance.on(
       'ViewerRegistered',
-      ({ clientId: from }: TSFixme) => {
+      ({ clientId: from }: RelayMessage) => {
         if (!isOurs(from)) return;
         armedRef.current = false;
         arm();

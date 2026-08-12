@@ -24,15 +24,42 @@ import {
   benchInterfaceFor
 } from '../../src/editor/src/models/AiAssistant/authoring/componentBench';
 import { ViewerConnection } from '../../src/editor/src/ViewerConnection';
+import type { ProjectModel } from '@noodl-models/projectmodel';
+
+/**
+ * Typed rather than `TSFixme`: these doubles stand in for a relay request and a
+ * project, and a spec whose double stops matching the shape under test should
+ * fail at `typecheck:editor-tests` rather than at whatever the runtime does with
+ * the wrong object.
+ */
+interface RelayRequest {
+  cmd?: string;
+  target?: string;
+  /** Always a JSON string on the wire — the specs parse it back. */
+  content?: string;
+  [key: string]: unknown;
+}
+
+interface FakePort {
+  name: string;
+  plug: 'input' | 'output';
+  type: string;
+}
+
+interface FakeComponent {
+  name: string;
+  getPorts(): FakePort[];
+  graph: { forEachNode: () => void };
+}
 
 describe('BEN-003: arming the trace on one client', () => {
   /** The real method on a recorder — see `bench-inputs.test.ts` for why this is safe. */
   function capture() {
-    const sent: TSFixme[] = [];
+    const sent: RelayRequest[] = [];
     return {
       sent,
       clientId: 'editor-test',
-      send(request: TSFixme) {
+      send(request: RelayRequest) {
         sent.push(request);
       },
       sendTraceEnabled: ViewerConnection.prototype.sendTraceEnabled
@@ -74,7 +101,7 @@ describe('BEN-003: the interface is re-derivable without rebuilding the export',
    * rail by a route that does not. Measured live — a `LiveAdded` port appeared in the rail with
    * the bench window's planted marker still intact.
    */
-  function aComponent(name: string, ports: TSFixme[]) {
+  function aComponent(name: string, ports: FakePort[]) {
     return {
       name,
       getPorts: () => ports,
@@ -82,10 +109,10 @@ describe('BEN-003: the interface is re-derivable without rebuilding the export',
     };
   }
 
-  function aProject(components: TSFixme[]) {
+  function aProject(components: FakeComponent[]) {
     return {
       getComponentWithName: (name: string) => components.find((c) => c.name === name)
-    } as TSFixme;
+    } as unknown as ProjectModel;
   }
 
   it('reads the live component, both spellings of its name', () => {
@@ -104,7 +131,7 @@ describe('BEN-003: the interface is re-derivable without rebuilding the export',
   });
 
   it('sees a port that was added after the export was built', () => {
-    const ports: TSFixme[] = [{ name: 'Title', plug: 'input', type: 'string' }];
+    const ports: FakePort[] = [{ name: 'Title', plug: 'input', type: 'string' }];
     const project = aProject([aComponent('/Components/Card', ports)]);
 
     expect(benchInterfaceFor(project, '/Components/Card').inputs.length).toBe(1);
