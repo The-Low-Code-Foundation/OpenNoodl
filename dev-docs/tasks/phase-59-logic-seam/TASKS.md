@@ -21,7 +21,7 @@ full math palette has been in the product since phase 3.
 | LGC-004 | [LGC-004-INTERFACE-RAILS.md](LGC-004-INTERFACE-RAILS.md) | pin the signature to the workspace edges; the props panel edits blocks rather than shadowing them | 📋 open |
 | LGC-005 | [LGC-005-TYPES-BECOME-CONNECTIONS.md](LGC-005-TYPES-BECOME-CONNECTIONS.md) | Noodl port types → Blockly connection checks, so wrong connections stop snapping | 📋 open |
 | LGC-006 | [LGC-006-PLUGIN-SWEEP.md](LGC-006-PLUGIN-SWEEP.md) | thirteen official plugins that cover things we specced by hand, including the a11y themes | 🔬 **verdict done 2026-08-12, adoption deferred** — nothing installed or run; every plugin's `latest` peer-deps Blockly 13, so each adoption pins a frozen 12-line release |
-| LGC-007 ⭐ | [LGC-007-MY-BLOCKS.md](LGC-007-MY-BLOCKS.md) | **the second flagship** — save a group of blocks, reuse it in any Visual Function | 📋 open · 🔴 **resized by LGC-006**: the two npm packages do **not** do most of it |
+| LGC-007 ⭐ | [LGC-007-MY-BLOCKS.md](LGC-007-MY-BLOCKS.md) | **the second flagship** — save a group of blocks, reuse it in any Visual Function | 🚧 **engine built 2026-08-12, no UI** — format, two shelves, cycle guard, shape inference, inliner and export/import, 66 specs in a plain-Node runner. 🔴 **No save menu item, no dialog, no backpack, no §4 sweep, and nothing run in an editor** |
 | LGC-008 | [LGC-008-A-PANE-NOT-A-TAKEOVER.md](LGC-008-A-PANE-NOT-A-TAKEOVER.md) | the workspace stops hiding the whole canvas; blocks beside the running app | 📋 open |
 
 ## Suggested order, and why
