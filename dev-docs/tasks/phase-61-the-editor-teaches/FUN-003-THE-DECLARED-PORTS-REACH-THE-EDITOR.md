@@ -1,7 +1,8 @@
 # FUN-003 — The declared ports reach the editor
 
-**Status:** 📋 open · **Track: the seam** · ⭐ **structural — FUN-004, 005, 006, 007 and 008 all
-stand on it** · no user-visible change of its own
+**Status:** ✅ built 2026-08-12, branch `fun-003-lane` · **one acceptance criterion is unclosed and
+needs a live drive** (see *What was verified, and what was not*) · **Track: the seam** ·
+⭐ **structural — FUN-004, 005, 006, 007 and 008 all stand on it** · no user-visible change of its own
 
 ## The gap, stated precisely
 
@@ -76,6 +77,11 @@ and currently passes it to `CodeHistoryStore` and nothing else — and clear it 
 The node model's `parameters['scriptInputs']` / `['scriptOutputs']` are the proplists, typed as
 `ScriptPortSpec[]` in [`simplejavascript.ts:139-160`](../../../packages/noodl-runtime/src/nodes/std-library/simplejavascript.ts).
 
+> 🔴 **Corrected on build — see F12.** The paragraph below is wrong about *this* boundary: the
+> prefix is on the assembled port list, not on the proplist row, and stripping a `label` renames a
+> port that does not exist. The trap it describes is real and belongs to consumers that read a node's
+> assembled ports.
+
 ⚠️ **Strip the `in-` / `out-` prefixes exactly once**, here, at the boundary. Downstream code sees
 display names only. The port assembly at
 [`:711-714`](../../../packages/noodl-runtime/src/nodes/std-library/simplejavascript.ts) shows the
@@ -116,4 +122,39 @@ what a Function node with no ports yet looks like, and FUN-006 needs to tell tho
 |---|---|---|
 | F9 | `minePorts` sees only code-derived ports; the panel-declared ones are invisible to the editor — **the exact blind spot the originating user fell into** | ✅ verified, `scriptPorts.ts` header vs `simplejavascript.ts:701-705` |
 | F10 | `CodeEditorType.onLaunchClicked` already holds `nodeId` and spends it only on code history | ✅ verified, `:146` |
-| F11 | The registry field is per-editor, unlike the project field, and **must be cleared on close** or it answers with the previous node's ports | ⚠️ ours to design; the phase's most likely shipped defect |
+| F11 | The registry field is per-editor, unlike the project field, and **must be cleared on close** or it answers with the previous node's ports | ✅ built; cleared in `dispose()`, which every close path runs through. Registry contract pinned by `tests/code-editor/authoringContext.test.ts`; **the live A→close→B drive is NOT run** — see below |
+| F12 | 🔴 **§3's prefix instruction is wrong about this boundary, and following it would be a defect.** The `in-`/`out-` prefix lives on the *assembled port list* (`'in-' + p.label`), never on the proplist row. `label` is already the display name, so there is nothing here to strip — and stripping anyway would rename a row an author labelled `in-Value` (whose real port is `in-in-Value`, notation `Inputs["in-Value"]`) to a port that does not exist | ✅ verified in source; the trap is real but belongs to **any consumer that reads a node's assembled ports**, which is FUN-005's rail, not this seam |
+| F13 | The **Script node applies no prefix at all** — `javascript.ts:800-822` names the port `p.label` directly, where the Function node names it `'in-' + p.label`. Both read the same `scriptInputs`/`scriptOutputs`/`intype-`/`outtype-` parameters | ✅ verified; one collector serves both modes, and a generic "strip `in-`" helper would corrupt an ordinary Script-node port |
+| F14 | A **declared output can be typed `signal`** (`_outputTypeEnums = inputTypeEnums.concat([{value:'signal'}])`, `simplejavascript.ts:616-621`), which is why `PortFact.type` is not optional: `Outputs.Done()` and `Outputs.x = ` are different insertions | ✅ verified; carried and tested |
+| F15 | 🔴 **One field on one object would have been a live defect.** `install.ts` republishes the project surface on a **400 ms debounce off `Model.parametersChanged`**, i.e. every few keystrokes in any property field — a single-slot registry would erase `openNode` while the editor was still open | ✅ found and designed around; two slots composed on write. Proved by mutation: reverting to one slot fails 3 specs |
+| F16 | ⚠️ `ExpressionEditorModal`, `GeneratedCodeModal` and `AiChat` never write the slot, and are correct only because nothing can be open when they mount (`PopupLayer.hidePopout` fires `onClose` **synchronously**, and `onLaunchClicked` calls `hidePopout()` before publishing). Not asserted anywhere | ⚠️ residual; re-check when the first consumer lands, and gate every consumer on `validationType` rather than on `openNode` being present |
+
+## What was verified, and what was not
+
+Built in the worktree `../OpenNoodl-worktrees/fun-003-lane`, branch `fun-003-lane`.
+
+| Acceptance criterion | State |
+|---|---|
+| Panel-declared ports readable from `getCodeAuthoringContext()`, types intact | ✅ unit-tested (`declaredPorts.test.ts`, `authoringContext.test.ts`) |
+| "prefixes stripped" | ✅ **restated** — see F12. There is no prefix at this boundary; a test pins that nothing is stripped |
+| Closing clears it — **open A, close, open B** | ⚠️ **NOT DRIVEN.** The registry half is pinned headlessly; the editor half (`dispose()` runs on every close path) is **reasoned, not measured**. `lerna exec` resolves to the primary checkout from a worktree, so no editor could be launched here. **Drive recipe below; this is the phase lead's to run after merge** |
+| Only `CodeEditorType` modified of the four call sites | ✅ verified by diff |
+| Declared + used appears once when unioned with `minePorts` | ✅ unit-tested against the real `minePorts` |
+| Unit tests DOM-free | ✅ 203 specs pass under `testEnvironment: 'node'` |
+| Ships dark | ✅ nothing renders; no UI added |
+
+### The drive recipe for the criterion a worktree cannot close
+
+In the **primary** checkout, after merge:
+
+1. `npm run dev:stop -- --list` first, then start the editor and open a real project (a copy, not the example).
+2. Add two Function nodes. On **node A**, add `scriptInputs` rows `Alpha` and `Beta` in the property panel; set `intype-Alpha` to `number`. Add a `scriptOutputs` row `Gamma`, typed `signal`. Add **no** rows on **node B**; give it a `scriptOutputs` row `Delta` instead.
+3. Double-click node A (which focuses its `Script` port) to open the code popout. Over CDP, evaluate:
+   `require('@noodl-core-ui/components/code-editor').getCodeAuthoringContext().openNode`
+   — or, if the module is not reachable from the renderer console, add a temporary `window.__openNode = …` probe. Expect
+   `{ nodeId: <A>, typeName: 'JavaScriptFunction', declaredInputs: [{name:'Alpha',type:'number'},{name:'Beta',type:'string'}], declaredOutputs: [{name:'Gamma',type:'signal'}] }`.
+   ⚠️ Assert on the **types**, not just the names — a default of `'string'`/`'*'` leaking over a chosen type is the silent half.
+4. Click the canvas to close the popout. Re-read: `openNode` must be `undefined`. **This is the assertion that matters**; a stale object here is the shipped defect.
+5. Double-click node B. Re-read: `declaredOutputs` must be `[{name:'Delta',type:'*'}]` and `declaredInputs` `[]`. **`Alpha`/`Beta`/`Gamma` must not appear.**
+6. Now the mode gate: with node B's popout closed, open a **CSS Definition**'s `style` port, and separately an **Expression** node's expression. `openNode` must be `undefined` in both — not node B's, and not an empty object.
+7. Finally, leave node A's popout open and type into an unrelated property field on another node (this triggers the 400 ms project republish). `openNode` must still be node A's. That is F15, measured rather than argued.

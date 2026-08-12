@@ -40,3 +40,10 @@ export type { NotationMode, PortKind } from './utils/notation';
 // without any of them being edited.
 export { setCodeAuthoringContext, getCodeAuthoringContext, EMPTY_AUTHORING_CONTEXT } from './authoringContext';
 export type { CodeAuthoringContext, AuthoringLibrary } from './authoringContext';
+// FUN-003: and what it knows about the one node whose code is open. Written when
+// a code popout opens and cleared when it closes — a per-editor slot, unlike the
+// project surface above.
+export { setOpenNodeContext } from './authoringContext';
+export type { OpenNodeFact, PortFact } from './authoringContext';
+export { collectDeclaredPorts, modeHasDeclaredPorts } from './utils/declaredPorts';
+export type { DeclaredPorts } from './utils/declaredPorts';
