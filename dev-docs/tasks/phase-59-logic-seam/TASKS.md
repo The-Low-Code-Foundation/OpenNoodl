@@ -20,8 +20,8 @@ full math palette has been in the product since phase 3.
 | LGC-003 | [LGC-003-VALUES-STAY-ON-SCREEN.md](LGC-003-VALUES-STAY-ON-SCREEN.md) | ambient values during a run, the didn't-execute tell, and the run scrubber | 📋 open |
 | LGC-004 | [LGC-004-INTERFACE-RAILS.md](LGC-004-INTERFACE-RAILS.md) | pin the signature to the workspace edges; the props panel edits blocks rather than shadowing them | 📋 open |
 | LGC-005 | [LGC-005-TYPES-BECOME-CONNECTIONS.md](LGC-005-TYPES-BECOME-CONNECTIONS.md) | Noodl port types → Blockly connection checks, so wrong connections stop snapping | 📋 open |
-| LGC-006 | [LGC-006-PLUGIN-SWEEP.md](LGC-006-PLUGIN-SWEEP.md) | eleven official plugins that cover things we specced by hand, including the a11y themes | 📋 open |
-| LGC-007 ⭐ | [LGC-007-MY-BLOCKS.md](LGC-007-MY-BLOCKS.md) | **the second flagship** — save a group of blocks, reuse it in any Visual Function. Mostly two npm packages | 📋 open |
+| LGC-006 | [LGC-006-PLUGIN-SWEEP.md](LGC-006-PLUGIN-SWEEP.md) | thirteen official plugins that cover things we specced by hand, including the a11y themes | 🔬 **verdict done 2026-08-12, adoption deferred** — nothing installed or run; every plugin's `latest` peer-deps Blockly 13, so each adoption pins a frozen 12-line release |
+| LGC-007 ⭐ | [LGC-007-MY-BLOCKS.md](LGC-007-MY-BLOCKS.md) | **the second flagship** — save a group of blocks, reuse it in any Visual Function | 🟡 **engine built 2026-08-12** (format, store, cycle guard, inliner, shape inference — 66 specs) · **no user-reachable surface**, and §4's sweep is blocked on a ruling · 🔴 **resized by LGC-006**: the two npm packages do **not** do most of it |
 | LGC-008 | [LGC-008-A-PANE-NOT-A-TAKEOVER.md](LGC-008-A-PANE-NOT-A-TAKEOVER.md) | the workspace stops hiding the whole canvas; blocks beside the running app | 🔬 §3 analysed + `svgResize` seam built (2026-08-12) · pane **not** built — §1 needs a ruling (L26/F2), and L28/L29/L30 are open defects to fix first |
 
 ## Suggested order, and why
@@ -29,16 +29,22 @@ full math palette has been in the product since phase 3.
 1. **LGC-001 first, alone if necessary.** It is the only task that addresses what the video actually
    showed. Every other task here improves a node that nobody currently finds, so shipping any of
    them before LGC-001 improves something no user reaches. It is also the cheapest.
-2. **LGC-006 next** — mostly configuration, and it delivers `disable-top-blocks` (the
-   didn't-execute tell, statically, for free) and `toolbox-search` (LGC-001's intercept, inside the
-   workspace). It de-scopes parts of three later tasks, so doing it early shrinks them.
+2. **LGC-006 next** — mostly configuration, and it delivers the didn't-execute tell statically (which
+   turned out to be `Blockly.Events.disableOrphans` in **core**, one line and zero bytes — the plugin
+   is only the context-menu correction) and `toolbox-search` (LGC-001's intercept, inside the
+   workspace). ✅ **The verdict half is done**; the install-and-drive half is deferred and its steps
+   are written down at the end of that file. 🔴 It de-scopes LGC-003 and LGC-004 as expected, and it
+   **grows LGC-007**.
 3. **LGC-002** — the probe seam, and the pull half of it. Small, and it proves the mechanism that
    LGC-003 then scales up.
 4. **LGC-005** alongside — independent, mechanical, and the strongest single beginner affordance in
    the phase.
 5. **LGC-007** — promoted above the debugging polish by the scale research: median App Inventor
    project is 54 blocks and the literature names viscosity as the failure mode. This is the
-   mitigation, and two npm packages do most of it.
+   mitigation. 🔴 **Re-estimate it before scheduling it**: LGC-006 read both plugins in source and
+   they do *not* do most of it — `block-shareable-procedures` shares procedures between live
+   workspaces, not block groups across a project, and the backpack is a drawer with no cupboard. It
+   is the largest job in the phase.
 6. **LGC-004** then **LGC-003** then **LGC-008** — real work, real payoff, but all three improve the
    inside of a node the first five tasks are busy making findable and legible.
 
