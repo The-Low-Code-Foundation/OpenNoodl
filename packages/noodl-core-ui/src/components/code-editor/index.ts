@@ -51,3 +51,8 @@ export { setOpenNodeContext } from './authoringContext';
 export type { OpenNodeFact, PortFact } from './authoringContext';
 export { collectDeclaredPorts, modeHasDeclaredPorts } from './utils/declaredPorts';
 export type { DeclaredPorts } from './utils/declaredPorts';
+// Phase 61's prelude: the two lists above and `minePorts` composed into one, for
+// the four surfaces that want every port a node has rather than one route's half.
+// The two sources stay separate — see the module header for why that matters.
+export { unionPorts } from './utils/unionPorts';
+export type { UnionPort, UnionPorts } from './utils/unionPorts';

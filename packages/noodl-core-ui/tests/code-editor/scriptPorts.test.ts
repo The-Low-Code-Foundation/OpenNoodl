@@ -72,6 +72,26 @@ describe('minePorts', () => {
     expect(minePorts('// Inputs.legacy is gone').inputs).toEqual(['legacy']);
   });
 
+  // FUN-004 F15. The task flagged this unverified and told us to test it rather
+  // than reason about it, because message 4 — "you declared this port and have
+  // never read it" — is a false accusation if legacy `Noodl.Inputs.foo` code
+  // does not mine. It does, and for a blunter reason than the question assumed:
+  // the patterns have no left boundary at all, so *any* identifier ending in
+  // `Inputs` mints the port after the dot. There is nothing to fix here — the
+  // runtime mines the same string and grows the same port — but a consumer must
+  // not assume `Inputs.` is only matched at the start of an expression.
+  it('mines through a member expression, so `Noodl.Inputs.foo` is the port `foo`', () => {
+    expect(minePorts('return Noodl.Inputs.foo;').inputs).toEqual(['foo']);
+    expect(minePorts('Noodl.Outputs.bar = 1;').outputs).toEqual(['bar']);
+    expect(minePorts('Noodl.Outputs.Done();').signals.has('Done')).toBe(true);
+  });
+
+  it('has no left boundary at all — `MyInputs.foo` mints `foo` too', () => {
+    // Stated separately because it is the surprising half: this is not a special
+    // case for `Noodl.`, it is no boundary check anywhere.
+    expect(minePorts('MyInputs.foo;').inputs).toEqual(['foo']);
+  });
+
   it('gives the same answer twice — no shared regex `lastIndex`', () => {
     const script = 'Inputs.a; Outputs.b = 1;';
     expect(minePorts(script)).toEqual(minePorts(script));
