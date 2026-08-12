@@ -91,7 +91,7 @@ the other, and a 1,003-to-1 result. LEG-001 is that arm being closed.
 | LEG-004 | [LEG-004-FOUR-LINES-AND-A-TEXTCONV.md](LEG-004-FOUR-LINES-AND-A-TEXTCONV.md) | `.gitattributes` already exists and already names the four files; add one word to each and a textconv driver | ✅ **in `cline-dev`** |
 | LEG-007 | [LEG-007-A-SPEC-FOR-A-FIX-NOBODY-MADE.md](LEG-007-A-SPEC-FOR-A-FIX-NOBODY-MADE.md) | paste already carries labels and comments. A regression spec, not a fix | ✅ **in `cline-dev`** |
 | LEG-002 | [LEG-002-THE-GRAPHS-THAT-LACK-LABELS.md](LEG-002-THE-GRAPHS-THAT-LACK-LABELS.md) | the label diagnostic, **aimed the opposite way** from the README: advisory everywhere, blocking nowhere | ✅ **in `cline-dev`** — the corpus **rejected §3's own candidate**; see [notes](notes/leg-002-lane-notes.md) |
-| LEG-003 | [LEG-003-THE-DIFF-ALREADY-SPEAKS-ENGLISH.md](LEG-003-THE-DIFF-ALREADY-SPEAKS-ENGLISH.md) | SUB-007 built and wired it. Drive it, then do the Explain-panel half | ✅ **in `cline-dev`** |
+| LEG-003 | [LEG-003-THE-DIFF-ALREADY-SPEAKS-ENGLISH.md](LEG-003-THE-DIFF-ALREADY-SPEAKS-ENGLISH.md) | SUB-007 built and wired it. Drive it, then do the Explain-panel half | ✅ **in `cline-dev`** — ✅ **§1's acceptance DRIVEN 2026-08-12**, incl. the packaged-build half of L29 and the paid B.6; see [drive results](notes/leg-003-drive-results.md) |
 
 ✅ **All seven are built and merged as of 2026-08-11 evening.** Four landed that morning via
 `trial-leg` (`08c2b85a` → `e0732dd1`); the remaining three were built the same evening in three

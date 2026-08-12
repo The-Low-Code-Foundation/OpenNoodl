@@ -2,7 +2,9 @@
 
 **Branch:** `leg-003`, off `80868946`. **Date:** 2026-08-11.
 **Scope as briefed:** build §2 (the Explain half); replace §1's live drive with headless coverage;
-write the drive for someone else to run. **§1's acceptance is NOT met** — see "Could not verify".
+write the drive for someone else to run. ~~**§1's acceptance is NOT met**~~ — ✅ **§1's acceptance was
+met on 2026-08-12**, when the drive was executed end to end (including the packaged-build half of L29
+and the paid B.6 step). See §6 and [`leg-003-drive-results.md`](leg-003-drive-results.md).
 
 ---
 
@@ -164,15 +166,23 @@ an affordance that is legible in both themes and is not colour-only either.
 
 ---
 
-## 6. Could not verify
+## 6. Could not verify — ✅ **both cleared 2026-08-12**
 
-- 🔴 **§1's acceptance — the four change kinds driven in the running editor.** Outstanding by
-  construction. The sentences above are unit-level; the panel path (`DiffList` → `ComponentDiffView`)
-  is unexercised in this run. `NOTES-LEG-003-DRIVE.md` is the script for it.
-- 🔴 **The catalog name provider in a packaged build (register L29).** Only checked under ts-jest,
-  where `require('../validation/catalog')` resolves and `net.noodl.controls.button → Button`. The
-  packaged app bundles differently and the `try/catch` in `catalogDisplayNames()` still swallows a
-  failure into a panel full of raw type names. **Unchanged: check first, in a package.**
+Full write-up: [`leg-003-drive-results.md`](leg-003-drive-results.md).
+
+- ✅ ~~🔴 **§1's acceptance — the four change kinds driven in the running editor.**~~ **Driven, and it
+  passes.** All four sentences render through the real panel path (`DiffList` → `ComponentDiffView`)
+  against a git-backed copy of `phase55-s8-kimi-k3-rerun`, and all four of A.6's pass conditions hold.
+  The sentences are pasted verbatim into the results file and into **L32** below.
+- ✅ ~~🔴 **The catalog name provider in a packaged build (register L29).**~~ **Checked, in a package,
+  and it passes.** A signed `NodeGX.app` was built and launched from `app.asar`; its four sentences are
+  **byte-identical** to the dev run's, with no raw type name anywhere. The `try/catch` was also proved
+  to discriminate — `nodeName` with the healthy provider gives `Button 'Ceramics link'`, with the
+  `catch` branch's `() => undefined` it gives `net.noodl.controls.button 'Ceramics link'`.
+
+⚠️ Deviation 6 above turns out to matter more than it looked: it describes the pre-session subject
+rendering, and **`NOTES-LEG-003-DRIVE.md`'s B.2 pass condition contradicts it** — B.2 forbids creating
+a session, then demands the string only a session produces. See **L35**.
 - 🔴 **The Explain panel rendered.** No React test runner reaches these panels in `tests-unit`, and I
   did not launch the editor. `collectAuthoredNotes` is covered; `AuthoredNotes.tsx` is typechecked and
   linted only. Contrast is computed from the token files, not sampled from pixels.
@@ -200,11 +210,14 @@ The orchestrator folds this into `LEG-003-THE-DIFF-ALREADY-SPEAKS-ENGLISH.md`; I
 | # | Finding | State |
 |---|---|---|
 | L28 | `DiffFormatter` renders named nodes and ports for ~20 change kinds and **is already wired** into GraphDiffPanel. The README's "renders ids" is wrong and the week is not needed | ⚠️ corrected |
-| L29 | `catalogDisplayNames()` swallows a failed `require` and degrades to raw type names silently. **Confirmed resolving under ts-jest** (`net.noodl.controls.button → Button`) and the degraded rendering is now pinned as its own case — **still unverified in a packaged build** | ⚠️ check first |
+| L29 | `catalogDisplayNames()` swallows a failed `require` and degrades to raw type names silently. **Confirmed resolving under ts-jest** (`net.noodl.controls.button → Button`) and the degraded rendering is now pinned as its own case — **still unverified in a packaged build** | ✅ **CLOSED 2026-08-12 — both halves.** Dev passes; a signed `NodeGX.app` running from `app.asar` produced **byte-identical** sentences with no dotted type name. The `catch` branch was also proved to discriminate live |
 | L30 | A node labelled exactly its type name renders as if unlabelled. Pinned by a test rather than left to be discovered mid-review | ✅ noted, covered |
 | L31 | The Explain panel must quote a comment, never paraphrase it | ✅ built: the panel renders both authored fields itself, verbatim, and the system prompt forbids restating them |
-| L32 | The four change kinds render as: `Renamed Button 'Submit Order' to 'Place order'` · `Rewired Navigate 'Checkout'.navigate to come from Text Input 'Coupon code'.onEnter (was Button 'Submit Order'.onClick)` · `Moved Text 'Order total' from Group 'Checkout page' into Columns 'Order summary'` · `Changed Columns 'Order summary' (alignY: (unset) → 'center', gutter: 12 → 24, layoutString: '1,1' → '1,2', +1 more)`. **Recorded at unit level, not driven** | ⚠️ §1 still open |
-| L33 | The three parameters a multi-parameter sentence spells out are the first three **alphabetically**, not the first three changed — so `+N more` hides an alphabetically-last change, not a least-important one | 📋 noted |
+| L32 | The four change kinds, **driven in the running editor 2026-08-12** and pasted verbatim: `Renamed Button 'Ceramics link' to 'Ceramics'` · `Rewired Component Outputs 'Footer signals out'.returnsClicked to come from Button 'FAQ link'.onClick (was Button 'Returns link'.onClick)` · `Moved Text 'Blurb' from Group 'Brand column' into Columns 'Footer columns'` · `Changed Columns 'Footer columns' (alignX: (unset) → 'center', marginX: {"unit":"px","value":48} → {"unit":"px","value":64}, mediumLayout: '1 1' → '1 1 1', +1 more)`. All four of A.6's pass conditions hold | ✅ **§1's acceptance MET** |
+| L33 | The three parameters a multi-parameter sentence spells out are the first three **alphabetically**, not the first three changed. ✅ **Confirmed by drive**: changed in the order `marginX, mediumLayout, smallLayout, alignX`, rendered `alignX, marginX, mediumLayout, +1 more` — `alignX` was changed **last** and printed **first**, and **`smallLayout` is the one hidden**. A reviewer cannot assume `+N more` conceals the least recent change | ✅ confirmed live |
 | L34 | A component `description` reaches Explain **today** if it is written to `metadata.description`: component `metadata` already round-trips (`ProjectExporter.ts:310` / `ProjectImporter.ts:229`). The adapter reads both shapes, so LEG-006 can restore the top-level key either way without touching Explain | ✅ resolved |
-| L35 | ⚠️ The authored card's fill measures **1.07:1 dark / 1.06:1 light** against the panel behind it. A background wash cannot distinguish authored text from generated text; the left rule (5.98/5.34), the icon and the header sentence do | ⚠️ standing |
+| L35 | ⚠️ The authored card's fill vs the panel behind it. Computed as 1.07:1 dark / 1.06:1 light; **measured on the live elements it is 1.00:1 in BOTH themes** — the card's backdrop is `BasePanel-module__Root`, which is the card's own colour (`#181d24` / `#f7f9fb`), not the `#12161b` / `#ffffff` the table assumed. The fill is not nearly invisible, it is **exactly** invisible, so the **2px left rule is load-bearing** and must not be softened. The rule's own ratio is correspondingly **5.57 dark / 5.06 light**, not 5.98/5.34 — both still clear AA | 🔴 **corrected by measurement** |
 | L36 | `--theme-color-primary` measures **4.33:1** on `bg-2` in the light theme — under AA for 12px text. The node link in the authored card is `fg-default-contrast` with a dashed underline instead | ⚠️ standing |
+| **L37** | 🔴 **A unit-value parameter delta prints as raw JSON.** `marginX: {"unit":"px","value":48} → {"unit":"px","value":64}`, while every other delta on the same line is human-readable (`'1 1' → '1 1 1'`, `(unset) → 'center'`). So the change a designer is most likely to make — a spacing tweak — is the one that reads like a machine. A formatter fix, not a model one. Found by the drive; not predicted | 📋 open |
+| **L38** | 🔴 **`NOTES-LEG-003-DRIVE.md` B.2 contradicts itself**, and the panel is right. B.2 says *"Do not press Explain this node"* then requires `attribution[0]` to read `Note on Button '<label>'` — but `ExplainPanel.tsx:165-185` has **two sources**, and the pre-session one (`fromComponentModel`) carries no catalog `displayName`, so `subjectForNode` correctly renders the label alone: **`Note on FAQ link`**. This is deviation 6 of §5, which the lane documented on purpose. Confirmed both ways: calling `collectAuthoredNotes` with a `displayName` gives `Button 'FAQ link'`, and **B.6's paid run flipped the live card to exactly that** once a session existed. **Fix the drive, not the panel** | 📋 open |
+| **L39** | ✅ **B.6 passed on a deliberately mismatched note.** The model **quoted the comment exactly and attributed it** — *"The author's note on this node — 'Retry twice, not three times. PSP-4412…' — describes a payment-retry policy that has nothing to do with an FAQ link's click signal… I won't try to reconcile it"* — rather than paraphrasing or silently contradicting it. It also caught the A.2 rewire unprompted. The §2 rule holds under the hardest case for it | ✅ verified, paid |
