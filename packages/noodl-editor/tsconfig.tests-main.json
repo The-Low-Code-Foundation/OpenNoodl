@@ -137,6 +137,13 @@
     // proof that passes while the generated program does nothing.
     "src/editor/src/views/BlocklyEditor/initialize.ts",
     "src/editor/src/views/BlocklyEditor/NoodlBlocks.ts",
-    "src/editor/src/views/BlocklyEditor/NoodlGenerators.ts"
+    "src/editor/src/views/BlocklyEditor/NoodlGenerators.ts",
+    // LGC-005: the Blockly type map and the block definitions that apply it. The map itself
+    // (`NoodlTypes.ts`) imports nothing at all; `NoodlBlocks.ts` imports only `blockly`, which
+    // runs headlessly in plain Node as long as nothing asks for a `WorkspaceSvg` — so the
+    // specs drive a real workspace and grade Blockly's own refusals rather than a
+    // re-implementation of them. Nothing else in `views/BlocklyEditor/` is reachable from
+    // here: `BlocklyWorkspace.tsx` is React and `BlocklyTheme.ts` reaches the canvas theme.
+    "src/editor/src/views/BlocklyEditor/NoodlTypes.ts"
   ]
 }

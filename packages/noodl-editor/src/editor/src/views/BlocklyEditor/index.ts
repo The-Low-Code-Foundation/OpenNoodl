@@ -15,6 +15,18 @@
 export { BlocklyWorkspace } from './BlocklyWorkspace';
 export type { BlocklyWorkspaceProps } from './BlocklyWorkspace';
 
+// The Noodl port type ⇄ Blockly connection check map (LGC-005). Import-free by design, so it
+// is safe for anything to reach — including the plain-Node test runner.
+export {
+  BLOCKLY_CHECK_TO_NOODL_TYPE,
+  NOODL_TYPE_TO_BLOCKLY_CHECK,
+  PERMISSIVE_NOODL_TYPE,
+  blocklyCheckForNoodlType,
+  connectionCheckForDeclaredPort,
+  isSignalType,
+  noodlTypeForBlocklyCheck
+} from './NoodlTypes';
+
 // Block definitions and generators
 export { initNoodlBlocks } from './NoodlBlocks';
 export { initNoodlGenerators, generateCode } from './NoodlGenerators';
