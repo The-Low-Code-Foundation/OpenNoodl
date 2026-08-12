@@ -33,6 +33,7 @@ export {
 // probe channel from pull to push.
 export {
   DECLARATION_BLOCK_TYPES,
+  ORPHANED_BLOCK_DISABLED_REASON,
   WRITING_BLOCK_TYPES,
   answerForReply,
   classifyBlockForDoIt,
@@ -115,6 +116,13 @@ export { inferSignature } from './myblocks/shape';
 export { MY_BLOCKS_FORMAT_VERSION, validateDefinition, validateLibrary } from './myblocks/format';
 export type { MyBlockDefinition, MyBlockParam, MyBlocksLibrary, MyBlockShape } from './myblocks/format';
 export type { MyBlocksScope, MyBlocksShelf } from './myblocks/store';
+
+// LGC-009 — the hat. The block itself is registered by `initNoodlBlocks`; the type id and the
+// default signal name live in `@noodl/runtime` (the viewer window has to know them too), and the
+// migration below is a plain JSON transform with no Blockly in it, so it is safe for
+// `CanvasTabsContext` — which is in the main bundle — to import.
+export { HATTABLE_BLOCK_TYPES, ensureHats, ensureHatsInJson, isHattableBlockType } from './hatMigration';
+export type { EnsureHatsOptions, EnsureHatsResult } from './hatMigration';
 
 // Toolbox and language
 export { buildToolbox, DEFAULT_TOOLBOX_LABELS } from './BlocklyToolbox';

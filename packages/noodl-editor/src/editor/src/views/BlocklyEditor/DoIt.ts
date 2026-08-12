@@ -27,6 +27,8 @@
 import * as Blockly from 'blockly';
 import { javascriptGenerator } from 'blockly/javascript';
 
+import { HAT_BLOCK_TYPE } from '@noodl/runtime/src/nodes/std-library/logic-builder-io';
+
 export type DoItOffer =
   /** Evaluate it. */
   | { offered: true }
@@ -50,19 +52,56 @@ export const WRITING_BLOCK_TYPES = [
   'noodl_array_add'
 ];
 
-/** Blocks that declare a port and generate nothing at all. */
+/**
+ * Blocks that declare a port and generate nothing at all.
+ *
+ * LGC-009 adds the hat. It belongs here on both counts and for both of this list's consumers:
+ * its `NAME` field declares a signal input port exactly as `Define signal input` does, and its
+ * generator returns `''`, so `BlockProbes` must mark it `suppressPrefixSuffix` or a block that
+ * emits no code comes out as a bare `__s("id");` and is then, correctly and uselessly, reported
+ * as having executed.
+ */
 export const DECLARATION_BLOCK_TYPES = [
   'noodl_define_input',
   'noodl_define_output',
   'noodl_define_signal_input',
-  'noodl_define_signal_output'
+  'noodl_define_signal_output',
+  HAT_BLOCK_TYPE
 ];
+
+/**
+ * Blockly's own name for the disabled state `Blockly.Events.disableOrphans` sets.
+ *
+ * ⚠️ **A string literal, because the library does not export it.** `Blockly.constants` publishes
+ * `MANUALLY_DISABLED` and two field names and nothing else; `ORPHANED_BLOCK` exists only inside
+ * `blockly_compressed.js`. `tests-unit/lgc-009/hat-orphans.spec.ts` runs the real
+ * `Events.disableOrphans` over a real headless workspace and reads the reason back off the
+ * block, so a Blockly upgrade that renames it fails a spec rather than silently un-fixing the
+ * behaviour below.
+ */
+export const ORPHANED_BLOCK_DISABLED_REASON = 'ORPHANED_BLOCK';
 
 /** The task's own words, kept verbatim so the copy is reviewable in one place. */
 export const REASON_WRITES = 'This block changes things. Run the node to see it.';
 export const REASON_DECLARES = 'This block declares a port. There is nothing to work out until the node runs.';
 export const REASON_NO_VALUE = 'Do It shows what a block works out. This one does something instead — run the node to see it.';
 export const REASON_DISABLED = 'This block is switched off, so it has nothing to work out.';
+
+/**
+ * Is `ORPHANED_BLOCK` the *only* thing wrong with this block?
+ *
+ * Written against `getDisabledReasons()` rather than `hasDisabledReason()` so that a block
+ * carrying the orphan reason **and** a real one is still refused: "it is not attached to
+ * anything" does not cancel "the author switched it off".
+ *
+ * ⚠️ Both methods are Blockly 12 API. Guarded anyway, because `classifyBlockForDoIt` is called
+ * from a context-menu callback where a `TypeError` would take the menu out rather than degrade.
+ */
+function isOnlyOrphanDisabled(block: Blockly.Block): boolean {
+  if (typeof block.getDisabledReasons !== 'function') return false;
+  const reasons = block.getDisabledReasons();
+  return reasons.size === 1 && reasons.has(ORPHANED_BLOCK_DISABLED_REASON);
+}
 
 /**
  * Should Do It be offered on this block, and if not, what does the greyed item say?
@@ -87,7 +126,23 @@ export function classifyBlockForDoIt(block: Blockly.Block): DoItOffer {
   // behind it and nothing to ask.
   if (block.isInFlyout) return { offered: false, reason: REASON_NO_VALUE };
 
-  if (!block.isEnabled()) return { offered: false, reason: REASON_DISABLED };
+  /**
+   * ⚠️ **Disabled by the author, not disabled by Blockly's orphan bookkeeping.** LGC-009 makes
+   * `Blockly.Events.disableOrphans` meaningful, and the moment that listener is registered every
+   * *floating* value block — parentless, with an output plug — carries
+   * `ORPHANED_BLOCK_DISABLED_REASON`. That is the drag-it-out-and-ask-it block: the one shape
+   * this whole feature exists for. Refusing it as "switched off" is what the `disableOrphans`
+   * finding recorded as the real blast radius, and it is a lie besides — nobody switched it off,
+   * and the sentence would send its author looking for a checkbox they never ticked.
+   *
+   * A block disabled for any *other* reason — `MANUALLY_DISABLED`, a collapsed parent, a future
+   * one — is still refused, with the sentence that is true of it.
+   *
+   * 🔴 This is a **no-op today**: nothing registers `disableOrphans`, so nothing ever carries
+   * that reason. It is here so that re-registering the listener (LGC-009 acceptance criterion 4)
+   * is one line and does not take Do It out with it.
+   */
+  if (!block.isEnabled() && !isOnlyOrphanDisabled(block)) return { offered: false, reason: REASON_DISABLED };
 
   if (block.outputConnection) return { offered: true };
 

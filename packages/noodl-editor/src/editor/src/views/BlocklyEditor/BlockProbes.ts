@@ -121,6 +121,17 @@ export function initBlockProbes(): void {
   }
 }
 
+/**
+ * Is this a block Blockly will *not* prepend `STATEMENT_PREFIX` to?
+ *
+ * The flag is set on the registry entry by {@link initBlockProbes} and mixed into every instance
+ * by the `Block` constructor, so this reads the same fact Blockly's own `blockToCode` reads when
+ * it decides whether to fold the prefix in.
+ */
+function emitsNoStatementProbe(block: Blockly.Block): boolean {
+  return (block as unknown as { suppressPrefixSuffix?: boolean }).suppressPrefixSuffix === true;
+}
+
 /** What a probed generation produced. */
 export interface ProbedGeneration<T> {
   result: T;
@@ -169,11 +180,27 @@ export function withBlockProbes<T>(
   g.blockToCode = function (block: Blockly.Block | null, thisOnly?: boolean): string | [string, number] {
     const generated = originalBlockToCode.call(this, block, thisOnly);
 
-    // A statement block comes back as a string and has already had `STATEMENT_PREFIX` folded
-    // into it by Blockly. Its id still belongs in the set, because a statement that did not
-    // run is exactly as worth showing as a value that did not.
+    /**
+     * A statement block comes back as a string and has already had `STATEMENT_PREFIX` folded
+     * into it by Blockly. Its id still belongs in the set, because a statement that did not
+     * run is exactly as worth showing as a value that did not.
+     *
+     * 🔴 **`generated !== ''` is not the emptiness test it looks like**, and LGC-009 found it by
+     * measurement. `blockToCode` on a statement returns that block's code **plus its whole `next`
+     * chain** (`scrub_` appends it), so a block that emits nothing itself is non-empty whenever
+     * anything is stacked under it. A `Define input` at the *top* of a stack therefore landed in
+     * `probedIds` while emitting no `__s(…)` — so it could never appear in a run frame, and
+     * `markFor` painted it **hollow**, permanently, on every run. That contradicts this module's
+     * own docstring (*"a block that generates nothing … must render neutral"*) and the existing
+     * spec missed it by declaring the port as a separate top-level block rather than as the head
+     * of the stack.
+     *
+     * The honest question is not "did anything come back" but "can this block emit a probe at
+     * all", and `suppressPrefixSuffix` is exactly that flag. LGC-009 escalates the defect from
+     * occasional to universal — a hat is the head of every stack — which is how it was noticed.
+     */
     if (!Array.isArray(generated)) {
-      if (block && block.id && generated !== '') probedIds.add(block.id);
+      if (block && block.id && generated !== '' && !emitsNoStatementProbe(block)) probedIds.add(block.id);
       return generated;
     }
 

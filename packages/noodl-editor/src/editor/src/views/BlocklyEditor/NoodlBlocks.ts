@@ -13,6 +13,8 @@
 
 import * as Blockly from 'blockly';
 
+import { DEFAULT_HAT_SIGNAL, HAT_BLOCK_TYPE } from '@noodl/runtime/src/nodes/std-library/logic-builder-io';
+
 import { blocklyCheckForNoodlType, connectionCheckForDeclaredPort, PERMISSIVE_NOODL_TYPE } from './NoodlTypes';
 
 /**
@@ -131,6 +133,59 @@ export function initNoodlBlocks() {
  * Input/Output Blocks
  */
 function defineInputOutputBlocks() {
+  /**
+   * LGC-009 — the hat, and the only block in this file with a `next` and no `previous`.
+   *
+   * ## What it is for
+   *
+   * Before this, a Noodl block program had **no stated beginning**: 9 statement shapes, 6 value
+   * shapes, zero hats, so a program was a free-floating stack and where it started was wherever
+   * the author happened to drop the topmost block. Every other block language states it —
+   * Scratch's *when green flag clicked*, MakeCode's *on start*. The hat is the token that makes
+   * *"this code runs"* and *"this code is stranded"* different sentences, and without one the
+   * distinction is not expressible, which is why `Blockly.Events.disableOrphans` — a predicate
+   * whose whole meaning rests on it — disabled every program it was shown
+   * (`FINDING-2026-08-12-disableOrphans-kills-every-program.md`).
+   *
+   * ## 🔴 What it does **not** do yet, stated here because the label reads as though it does
+   *
+   * The name in this field declares a signal input port (`detectIO` reads it) and marks where the
+   * program starts. It does **not** gate execution: the node runs its whole `generatedCode` on
+   * any signal, so a program with *two* hats runs both bodies whichever signal arrived. With one
+   * hat — what the migration writes, and what a new program opens with — the label is literally
+   * true; with two it over-promises.
+   *
+   * Making it true is a **one-line generator change and no runtime change at all**: the runtime
+   * already passes `__triggerSignal__` as the eighth parameter of the compiled function, and its
+   * own docstring says it is there *"so a program with several of them can branch on it"*. It is
+   * deliberately not done here, because acceptance criterion 1 requires a hatted program to
+   * generate byte-identically to today's hatless one. Filed as HAT-DISPATCH in
+   * `NOTES-LGC-009.md`, with the casing trap that decides it.
+   *
+   * ## Shape
+   *
+   * `setNextStatement` only — no `setPreviousStatement`, no `setOutput`. `hat = 'cap'` is
+   * Blockly's own opt-in for the rounded top (the same one `procedures_defnoreturn` uses); it is
+   * a plain property on the block, so it costs nothing headless and reads at render time.
+   */
+  Blockly.Blocks[HAT_BLOCK_TYPE] = {
+    init: function () {
+      this.appendDummyInput()
+        .appendField('▶ when')
+        .appendField(new Blockly.FieldTextInput(DEFAULT_HAT_SIGNAL), 'NAME')
+        .appendField('is received');
+      this.setNextStatement(true, null);
+      // Deliberately no `setPreviousStatement` and no `setOutput`: this is the block that
+      // cannot be an orphan, which is the whole of its job.
+      this.hat = 'cap';
+      this.setColour(180);
+      this.setTooltip(
+        'The program starts here. Names a signal input on the node, and marks the blocks under it as the ones that run. Note: every hat in a program runs on every signal today — per-hat dispatch is not built yet.'
+      );
+      this.setHelpUrl('');
+    }
+  };
+
   // Define Input block - declares an input port
   Blockly.Blocks['noodl_define_input'] = {
     init: function () {
