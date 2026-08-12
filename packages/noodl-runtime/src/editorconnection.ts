@@ -126,6 +126,8 @@ interface EditorConnection extends RuntimeEditorConnection, EventSender {
   sendPortValues(values: unknown[]): void;
   sendInputResult(result: unknown): void;
   sendBlockFragmentResult(result: unknown): void;
+  sendBlockTraceState(state: unknown): void;
+  sendBlockValues(frame: unknown): void;
   sendDynamicPorts(id: string, ports: RuntimeDiscoveredPort[], options?: SendDynamicPortsOptions): void;
   sendNodeSubLabel(nodeId: string, subLabel: string | undefined): void;
   clearWarnings(componentName: string, nodeId: string): void;
@@ -347,6 +349,17 @@ EditorConnection.prototype.connect = function (this: EditorConnection, address, 
           nodeId: content.nodeId,
           code: content.code
         });
+      }
+    } else if (message.cmd === 'setBlockTracing') {
+      // LGC-003 §1 — arm or disarm block-value recording for one Logic Builder node.
+      //
+      // ⚠️ Gated on `isRunningLocally()` like its neighbours, though this one carries no code:
+      // it turns on a per-run allocation and a push of the program's intermediate values, and
+      // a deployed runtime should not be able to be made to narrate itself to anything that
+      // can reach the port.
+      if (self.isRunningLocally()) {
+        content = JSON.parse(message.content);
+        await self.emit('setBlockTracing', { nodeId: content.nodeId, enabled: content.enabled });
       }
     } else if (message.cmd === 'getConnectionValue') {
       if (self.isRunningLocally()) {
@@ -633,6 +646,52 @@ EditorConnection.prototype.sendBlockFragmentResult = function (this: EditorConne
     }
   }
   this.send(message);
+};
+
+/**
+ * "I have (or do not have) the node you asked me to trace" — LGC-003 §1.
+ *
+ * ⚠️ **`clientId` is the whole point of this message**, and it is the correction LGC-002's
+ * handover asked for. Its request is broadcast because a block editor tab knows a node id and
+ * nothing else; this is how the editor learns *which* viewer to listen to, so a second preview
+ * showing the same component cannot interleave its values into the first one's badges.
+ *
+ * Unbatched, like `sendBlockFragmentResult`: it gates whether the editor shows badges at all.
+ */
+EditorConnection.prototype.sendBlockTraceState = function (this: EditorConnection, state) {
+  const message = {
+    cmd: 'blockTraceState',
+    type: 'viewer',
+    clientId: this.clientId,
+    content: JSON.stringify(state)
+  };
+  if (this.isConnected()) {
+    try {
+      this.socket.send(JSON.stringify(message));
+      return;
+    } catch (e) {
+      /* fall through to the queue, which at least retries */
+    }
+  }
+  this.send(message);
+};
+
+/**
+ * One run's block values — LGC-003 §1.
+ *
+ * ⚠️ **Batched, deliberately, and it is the opposite decision from its two neighbours.** Those
+ * are replies a human is watching for and 200 ms of nothing reads as broken. This is a program
+ * on a frame clock emitting a frame per run: §5.3 says repaint on an animation frame rather
+ * than per value, because both runtime clocks are frame clocks and a naive path strobes. The
+ * relay's own 200 ms coalescing is the first half of that rule and it is free here.
+ */
+EditorConnection.prototype.sendBlockValues = function (this: EditorConnection, frame) {
+  this.send({
+    cmd: 'blockValues',
+    type: 'viewer',
+    clientId: this.clientId,
+    content: JSON.stringify(frame)
+  });
 };
 
 const dynamicPortsHash: Record<string, string> = {};

@@ -15,10 +15,22 @@
 import * as Blockly from 'blockly';
 import { javascriptGenerator, Order } from 'blockly/javascript';
 
+import { initBlockProbes } from './BlockProbes';
+
 /**
  * Initialize all Noodl code generators
  */
 export function initNoodlGenerators() {
+  /**
+   * LGC-003 §1. **First, and it has to be first.** `addReservedWords` is only read when the
+   * generator lazily builds its name database at the first `init()`, so reserving `__p`/`__s`
+   * after anything has generated code reserves nothing — see `BlockProbes.initBlockProbes`.
+   * It also exempts the four declaration blocks from `STATEMENT_PREFIX`, which needs
+   * `initNoodlBlocks` to have registered them, and `initBlocklyIntegration` guarantees that
+   * order.
+   */
+  initBlockProbes();
+
   // Input/Output generators
   initInputOutputGenerators();
 

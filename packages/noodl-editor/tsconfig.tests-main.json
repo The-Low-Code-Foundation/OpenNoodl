@@ -153,6 +153,18 @@
     // against anything else would be grading a mock. The three files deliberately NOT reachable
     // from here are the three that must not be: `DoItController` (Blockly's rendered menu),
     // `DoItBalloons` (SVG and the canvas theme) and `DoItProbeClient` (the socket).
-    "src/editor/src/views/BlocklyEditor/DoIt.ts"
+    "src/editor/src/views/BlocklyEditor/DoIt.ts",
+    // LGC-003: the same shape a fourth time, and here the split is the whole design.
+    // `BlockProbes.ts` is the instrumentation — it decides what `__p` wraps and at what
+    // operator precedence — and it imports nothing but Blockly, so the claim the acceptance
+    // list actually cares about ("instrumented and uninstrumented runs of the same program
+    // produce identical outputs") is proved by *running both* against a real workspace with the
+    // real generator rather than by reading the emitted string. `BlockValueTrace.ts` imports
+    // nothing at all: it is the didn't-execute rule, the loop count, the run history and the
+    // frame coalescing — every decision §2, §3 and §5 make. Deliberately NOT reachable:
+    // `BlockValueBadges` (SVG + canvas theme), `BlockTraceClient` (the socket) and
+    // `BlockValueController` (both, plus the DOM).
+    "src/editor/src/views/BlocklyEditor/BlockProbes.ts",
+    "src/editor/src/views/BlocklyEditor/BlockValueTrace.ts"
   ]
 }
