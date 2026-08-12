@@ -5,7 +5,13 @@ import { createRoot, Root } from 'react-dom/client';
 import { CodeHistoryStore } from '@noodl-models/CodeHistory';
 import { WarningsModel } from '@noodl-models/warningsmodel';
 
-import { JavaScriptEditor, type ValidationType } from '@noodl-core-ui/components/code-editor';
+import {
+  JavaScriptEditor,
+  collectDeclaredPorts,
+  modeHasDeclaredPorts,
+  setOpenNodeContext,
+  type ValidationType
+} from '@noodl-core-ui/components/code-editor';
 
 import { TypeView } from '../TypeView';
 import { getEditType } from '../utils';
@@ -106,6 +112,14 @@ export class CodeEditorType extends TypeView {
   }
 
   dispose(): void {
+    // FUN-003. The code editor's view of "the node whose code is open" is a
+    // per-editor slot, and this is the one path every close takes: the popout's
+    // own `onClose` calls `dispose()`, and so does a panel teardown that removes
+    // the view out from under an open popout. Left standing, the next editor
+    // opened over a different node completes against this node's ports — a live
+    // wrong answer rather than an empty one.
+    setOpenNodeContext(null);
+
     // Unmount popout root
     if (this.popoutRoot) {
       this.popoutRoot.unmount();
@@ -143,7 +157,10 @@ export class CodeEditorType extends TypeView {
   /** HTML Binding */
   onLaunchClicked(scope, el, evt): void {
     const _this = this;
-    const nodeId = _this.parent.model?.model?.id;
+    // `parent.model` is the panel's `ModelProxy`; `.model` is the `NodeGraphNode`
+    // underneath it, which is where the id and the raw parameter bag live.
+    const node = _this.parent.model?.model;
+    const nodeId = node?.id;
 
     this.propertyName = scope.name;
 
@@ -190,6 +207,31 @@ export class CodeEditorType extends TypeView {
     this.popoutRoot = createRoot(this.popoutDiv);
 
     const validationType = this.getValidationType();
+
+    // ---
+    // FUN-003. Tell the code editor which node it is holding the code of, so the
+    // ports declared in the property panel are readable alongside the ones mined
+    // out of the document. This is the only producer; the four `JavaScriptEditor`
+    // call sites read it through the registry and none of the other three needs
+    // to know it exists.
+    //
+    // ⚠️ The `else` is load bearing. A mode with no declared ports must *clear*
+    // the slot rather than skip it — opening a CSS Definition's `style` after a
+    // Function node would otherwise leave the Function's ports standing, and in
+    // `'expression'` mode a consumer acting on them would write `Inputs.foo` into
+    // a language where a bare identifier *becomes* a port (`expression.ts:399`).
+    if (node && modeHasDeclaredPorts(validationType)) {
+      const declared = collectDeclaredPorts(node.parameters);
+
+      setOpenNodeContext({
+        nodeId,
+        typeName: node.typename,
+        declaredInputs: declared.inputs,
+        declaredOutputs: declared.outputs
+      });
+    } else {
+      setOpenNodeContext(null);
+    }
 
     // Create close handler to trigger popout close
     const closeHandler = () => {
