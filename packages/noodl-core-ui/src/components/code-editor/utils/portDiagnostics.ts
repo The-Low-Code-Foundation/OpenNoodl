@@ -65,6 +65,7 @@ import {
   type PortKind
 } from './notation';
 import type { ValidationType } from './types';
+import { minesAnyPort } from './portBar';
 import { unionPorts, type UnionPort } from './unionPorts';
 
 /** `source` on the diagnostics this module owns, so the panel names the rule. */
@@ -358,7 +359,7 @@ function declarationStart(state: EditorState, definitionFrom: number): number {
  */
 export function unreadPortDiagnostics(
   state: EditorState,
-  ports: { inputs: UnionPort[] } | null,
+  ports: { inputs: UnionPort[]; outputs: UnionPort[] } | null,
   alreadyNamed: ReadonlySet<string> = new Set()
 ): Diagnostic[] {
   if (!ports) return [];
@@ -369,6 +370,15 @@ export function unreadPortDiagnostics(
   // a better sentence and a fix. Saying both turns the originating user's one-line
   // mistake into three diagnostics, two of them about the same port, which is the
   // grey wall this phase exists to remove rather than reproduce.
+  // ⚠️ FUN-006 §3, the deliberate split, and this is the half that lives here.
+  // A document that mines **no** port is the blank page, and FUN-006's bar owns
+  // it — "you have not started" is a document-level statement of fact, in the
+  // register the bar is written in. This message owns "you started and this
+  // specific port got left behind". Without the line below, both surfaces
+  // narrate the same fact in different words on a fresh node, which the task
+  // names as how a help surface stops being believed.
+  if (!minesAnyPort(ports)) return [];
+
   const unread = ports.inputs.filter((port) => port.declared && !port.mined && !alreadyNamed.has(port.name));
   if (unread.length === 0) return [];
 

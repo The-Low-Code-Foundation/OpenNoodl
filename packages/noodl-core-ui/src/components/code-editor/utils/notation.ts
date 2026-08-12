@@ -361,3 +361,56 @@ export function declaredButUnreadMessage(names: readonly string[]): string {
   const listed = names.join(', ');
   return `${listed} are declared on this node but never read. Insert ${readExpression(names[0])} to use the first.`;
 }
+
+/* ------------------------------------------------------------------ *
+ * FUN-006 — what the bar says, if it says anything
+ * ------------------------------------------------------------------ */
+
+/**
+ * **Row 1** — nothing declared, nothing written. The node is blank.
+ *
+ * ⚠️ Names the mechanism rather than pointing at documentation: the fact worth
+ * knowing is that *mentioning a name is what creates the port*, and that is one
+ * sentence, not a link.
+ */
+export function barNoPortsMessage(): string {
+  return 'This node has no ports yet. Type Inputs. — the name you use becomes an input port.';
+}
+
+/**
+ * **Row 2** — ports exist and the code mentions none of them.
+ *
+ * The sentence that would have saved the originating session, and the reason the
+ * bar is built in its stateful form at all: it names **their** ports. A version
+ * of this that said "use Inputs.name" would be the version that gets dismissed
+ * on day one and never helps anyone twice.
+ */
+export function barUnusedPortsMessage(inputs: readonly string[], outputs: readonly { name: string; kind: PortKind }[]): string {
+  const parts: string[] = [];
+
+  if (inputs.length > 0) {
+    parts.push(`Read ${inputs[0]} with ${readExpression(inputs[0])}`);
+  }
+
+  if (outputs.length > 0) {
+    const output = outputs[0];
+    const written = output.kind === 'signal' ? writeExpression(output.name, 'signal') : `${writeExpression(output.name, 'value')}…`;
+    parts.push(`write ${output.name} with ${written}`);
+  }
+
+  if (parts.length === 0) return '';
+
+  // Sentence case: the second clause is a continuation, not a new sentence.
+  return `${parts.join(', ')}.`;
+}
+
+/**
+ * **Row 3** — inputs are being read and nothing is being written.
+ *
+ * ⚠️ States the consequence, not the rule. "This node produces nothing when it
+ * runs" is checkable against what the author is about to see happen; "you should
+ * write an output" is advice, and advice is what gets skimmed.
+ */
+export function barNoOutputMessage(): string {
+  return 'Nothing is written to an output, so this node produces nothing when it runs.';
+}

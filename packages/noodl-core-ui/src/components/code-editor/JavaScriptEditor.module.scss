@@ -186,3 +186,60 @@
   align-items: center;
   gap: 8px;
 }
+
+/*
+  FUN-006 — the port hint bar.
+
+  ⚠️ §4 is not decoration, and every instinct here has a filed defect behind it.
+
+  - **No opacity.** No opacity value both dims antialiased text and keeps it
+    legible, and light mode is the binding constraint (F22).
+  - **No "secondary" foreground.** `TextType.Secondary` is identical to
+    `TextType.Default` on screen in both themes, so reaching for it buys nothing
+    and costs a measurement.
+  - **`--theme-color-fg-default` on `--theme-color-bg-2`** — deliberately the
+    *same pairing the toolbar above already ships* (`.ModeLabel` on `.Toolbar`).
+    Picking a combination already on screen is the honest way to choose without a
+    contrast meter in hand; anything else would be a guess dressed as a decision.
+  - It sits in our own DOM, not CodeMirror's, so the tokens actually apply. A
+    `baseTheme` hardcodes colours our tokens never reach, which is how the lint
+    panel shipped at 1.36:1 (F23).
+
+  ⏳ The measured numbers in both themes are still owed — see the task file.
+*/
+.PortHint {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px 12px;
+  background-color: var(--theme-color-bg-2);
+  border-bottom: 1px solid var(--theme-color-border-default);
+}
+
+.PortHintText {
+  flex: 1;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--theme-color-fg-default);
+}
+
+.PortHintDismiss,
+.HintButton {
+  flex: none;
+  padding: 0 4px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--theme-color-fg-default);
+
+  &:hover {
+    color: var(--theme-color-primary);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--theme-color-primary);
+    outline-offset: 1px;
+  }
+}

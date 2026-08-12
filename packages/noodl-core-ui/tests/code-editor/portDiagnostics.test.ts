@@ -97,7 +97,9 @@ describe('message 1 — an undefined name that is an input port', () => {
     openNode(['My Value']);
     // A bare `My Value` is not one identifier, so this is reached through the
     // declared-but-unread message instead — which must still quote correctly.
-    expect(portMessages('return 1;')[0]).toContain('Inputs["My Value"]');
+    // ⚠️ The body has to mine *something*, or FUN-006's bar owns this state
+    // instead — see the §3 handover block below.
+    expect(portMessages('return Inputs.Other;')[0]).toContain('Inputs["My Value"]');
   });
 });
 
@@ -213,7 +215,7 @@ describe('message 3 — an undefined name that is no port at all', () => {
 describe('message 4 — a declared port the code never reads', () => {
   it('reports it once, as information, anchored at the top', () => {
     openNode(['Input_1']);
-    const diagnostic = lint('return 1;').find((d) => d.message.includes('never read'));
+    const diagnostic = lint('return Inputs.Other;').find((d) => d.message.includes('never read'));
 
     expect(diagnostic.severity).toBe('info');
     expect(diagnostic.from).toBe(0);
@@ -228,12 +230,26 @@ describe('message 4 — a declared port the code never reads', () => {
 
   it('names several ports in one line rather than one line each', () => {
     openNode(['A_1', 'B_1']);
-    const [message] = portMessages('return 1;');
-    expect(message).toBe('A_1, B_1 are declared on this node but never read. Insert Inputs.A_1 to use the first.');
+    const messages = portMessages('return Inputs.Other;');
+    expect(messages).toContain(
+      'A_1, B_1 are declared on this node but never read. Insert Inputs.A_1 to use the first.'
+    );
   });
 
   it('says nothing when no node is open', () => {
     expect(portMessages('return 1;')).toEqual([]);
+  });
+
+  it('stands down entirely on a document that mines no port at all (FUN-006 §3)', () => {
+    // The deliberate split, from this side. A blank page is FUN-006's bar —
+    // "you have not started" is a document-level statement of fact, and two
+    // components narrating it in different words is how a help surface stops
+    // being believed. This message owns "you started and this specific port got
+    // left behind", which needs the author to have started.
+    openNode(['Input_1']);
+    expect(portMessages('')).toEqual([]);
+    expect(portMessages('return 1;')).toEqual([]);
+    expect(portMessages('return Inputs.Other;').some((m) => m.includes('never read'))).toBe(true);
   });
 
   it('is not confused by a port that is mined but not declared', () => {
@@ -268,8 +284,8 @@ describe('§3 — none of it may reach expression mode', () => {
 
   it('does not report a declared-but-unread port in an expression', () => {
     openNode(['Input_1']);
-    expect(portMessages('1 + 1', 'function').length).toBeGreaterThan(0);
-    expect(portMessages('1 + 1', 'expression')).toEqual([]);
+    expect(portMessages('Inputs.Other + 1', 'function').length).toBeGreaterThan(0);
+    expect(portMessages('Inputs.Other + 1', 'expression')).toEqual([]);
   });
 
   it('does not report an output shadow in an expression', () => {

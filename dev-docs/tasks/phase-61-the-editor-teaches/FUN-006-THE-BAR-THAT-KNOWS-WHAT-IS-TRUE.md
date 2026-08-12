@@ -78,6 +78,57 @@ Measure the contrast in **both** themes before calling this done.
 - Contrast measured in light **and** dark, both passing AA, with the numbers recorded — not "looks
   fine".
 
+## What was built, 2026-08-12 (late)
+
+Stateful form only, as §"the version that is worth nothing" demands.
+
+| File | What |
+|---|---|
+| `utils/portBar.ts` | **new.** The four states, the dismissal store, the retire counter |
+| `utils/notation.ts` | +3 sentence builders |
+| `JavaScriptEditor.tsx` + `.module.scss` | the bar, the `✕`, the toolbar `?` |
+| `utils/portDiagnostics.ts` | message 4 stands down on the other side of §3's split |
+| `tests/code-editor/portBar.test.ts` | **new.** 19 specs |
+
+21 suites / 334 tests green in `noodl-core-ui`.
+
+### §3, resolved deliberately — the predicate is `minesAnyPort`
+
+Both surfaces read the same lists, and *"two components narrating the same fact in different words is
+how a help surface stops being believed."* The line, made testable rather than left as an intention:
+
+- **The bar owns "you have not started"** — the document mines **no** port at all.
+- **FUN-004's message 4 owns "you started and this specific port got left behind"** — the document
+  mines at least one.
+
+Neither surface tests the other's state; they test the same predicate from opposite sides, which is
+why they cannot drift into both firing. It cost four FUN-004 specs, all of which had used bodies that
+mine nothing — they now mine something, and a new row pins the handover explicitly.
+
+### ⚠️ Proved red
+
+Deleting the self-retire — the `'silent'` return when an output is mined — fails three specs,
+including both "disappears the moment an output is written" rows. That is §1's last row and the whole
+discipline of the feature: a bar that persists once the user is succeeding is a bar that gets
+dismissed while it is still useful.
+
+### 🔴 §4 is NOT done — the numbers are still owed
+
+The bar deliberately uses **`--theme-color-fg-default` on `--theme-color-bg-2`**, which is the pairing
+`.ModeLabel` already ships in the toolbar directly above it — a combination already on screen, chosen
+because picking anything else without a meter would be a guess dressed as a decision. No opacity, and
+no `Secondary` foreground, per F22.
+
+**That is a reasoned choice, not a measurement, and §4 asks for a measurement.** Contrast in light
+**and** dark, both passing AA, with the numbers recorded — *"not 'looks fine'"*. It sits in our DOM
+rather than CodeMirror's, so the tokens do apply and F23's 1.36:1 trap is avoided by construction,
+but that is an argument and the task asked for numbers.
+
+### Also not driven
+
+Every acceptance row: the two named ports on a fresh node, the bar vanishing on a working output, the
+dismissal surviving a node change, and the retire threshold.
+
 ## Register
 
 | # | Finding | State |
