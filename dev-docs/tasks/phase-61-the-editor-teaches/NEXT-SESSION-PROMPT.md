@@ -1,7 +1,7 @@
 # Phase 61 — next session
 
 **Written 2026-08-12 evening.** Replaces the afternoon handover. **Five of nine built, four decisions
-now signed, and the one thing this phase has never had is a quiet machine.**
+now signed, and the gate is green — the one thing this phase has never had is a quiet machine.**
 
 ---
 
@@ -17,41 +17,47 @@ now signed, and the one thing this phase has never had is a quiet machine.**
 | **FUN-004, 005, 006, 008** | 📋 open | — |
 | **FUN-009 §5 (F35)** | 📋 **new task**, opened by the fix | — |
 
-## 1a. 🔴 `test:ci` may not be able to finish on this tree — check this before trusting a run
+## 1a. ✅ `test:ci` is FINE on this tree — 2700 / 6 / seed 59012
 
-**Three attempts on 2026-08-12 evening, zero completions.** Not simply contention, which is what I
-assumed after the first one:
+**Measured 2026-08-12 15:40 by a sibling session**, on `0ece138a` (the phase-59-merged tree) plus
+their uncommitted PortsTab work:
+
+```
+Jasmine: 2700 specs, 6 failures (failed).
+Randomized with seed 59012.
+```
+
+**All six are the inherited baseline, by name** — `AI model registry` ×2, `AIX-006 style vocabulary`
+×4. ⚠️ It **predates the FUN-009 commits**, so it is this tree's baseline, not a verification of the
+change. Re-run and compare **NAMES** against those six.
+
+### ⚠️ My three failed attempts were resource contention, and I misdiagnosed them
+
+Recorded because the wrong diagnosis is the expensive part, not the lost runs:
 
 | Attempt | Outcome | Specs started |
 |---|---|---|
-| 1 | timed out at 900s, **no `Jasmine:` line** | 2424 |
-| 2 | webpack **OOM-killed**, exit 137 — never built | 0 |
-| 3 | timed out at 900s, **no `Jasmine:` line** | 1472 |
+| 1 | timed out at 900s, no `Jasmine:` line | 2424 |
+| 2 | webpack **OOM-killed**, exit 137 | 0 |
+| 3 | timed out at 900s, no `Jasmine:` line | 1472 |
 
-⚠️ **A run that ends without a `Jasmine:` line graded nothing.** Do not read exit 1 as failures, and
-do not compare a count from such a run against anything.
+Every one of them had a confounder — my own concurrent `typecheck:editor-tests` on the first, heavy
+swapping on the second, **two sibling `test:ci` runs** on the third. Richard identified it
+immediately: a parallel session was running the suite and the laptop ran out of headroom.
 
-🔴 **Both timeouts flooded the same guard**: *"Warning: we have more that 10000 listeners on this
-model"* (`src/editor/src/utils/model.ts:106`, `src/shared/model.js:18`) — **2569 times** in attempt
-3, first firing at spec ~1392, inside the AI-authoring suites (`tests/ai/authoring-staging.test.ts`
-and neighbours). The two runs stalled in *different* suites, so it is **order-dependent** under the
-random seed, but the listener flood is common to both.
+🔴 **The trap I fell into, so nobody repeats it.** Both timeouts showed a flood of *"Warning: we have
+more that 10000 listeners on this model"* (`utils/model.ts:106`) — 2569 of them — and I read that as
+a listener leak stalling the suite. **It is normal.** Every *completed* run in the scratchpad
+archive, including the green baseline-six ones, carries **~12,300** of those warnings. My timed-out
+runs had *fewer* only because they got through fewer specs.
 
-⚠️ **Read the guard correctly before chasing it.** It fires on *every subsequent* `on()` once the
-count passes 10000, so thousands of warnings mean **accumulation across the whole run** — listeners
-never released between specs on a shared model — not one runaway spec. That is consistent with a
-long-standing leak that has only now crossed the threshold as the suite grew.
+⚠️ **The guard fires on every `on()` past 10000, so its volume tracks how far the run got — it is a
+progress counter, not a defect signal.** I had it exactly backwards, and I had no control: I never
+compared against a passing log before theorising. **`grep -c "10000 listeners"` on a known-good run
+takes ten seconds and would have killed the theory instantly.**
 
-**What is not known, and should not be guessed:** whether the cause is the added phase-59 specs, the
-leak crossing its threshold, machine load, or some combination. It **completed earlier the same day**
-at 2692 specs / 6 failures / seed 64762, on a tree predating the phase-59 merge.
-
-**None of it is attributable to FUN-009's change** — a port type field, a pure function, copy and
-specs touch no model listener.
-
-**So:** run `test:ci` on a genuinely quiet machine, and if it times out again, treat *that* as the
-finding and investigate the listener accumulation rather than re-running a fourth time. Compare
-failure **NAMES** against the baseline six, never the count.
+⚠️ **A run without a `Jasmine:` line graded nothing** — do not read exit 1 as failures, and never
+compare a count from such a run. That part stands.
 
 ---
 
