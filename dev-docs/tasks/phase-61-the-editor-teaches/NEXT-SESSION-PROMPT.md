@@ -1,165 +1,169 @@
 # Phase 61 — next session
 
-**Written 2026-08-12**, at the end of the first build session on this phase.
+**Written 2026-08-12 afternoon**, at the end of the drive session. Replaces the morning handover.
 
-**4 of 9 built and merged. Zero of them have been seen to work in a running editor.** That sentence
-is the whole point of this file: the code is in, the gates are green, and every acceptance criterion
-that ends at *a working node* is still open.
-
----
-
-## 1. What is in `cline-dev`
-
-| Task | Commit | State |
-|---|---|---|
-| **FUN-001** — one notation, written down once | `f03eaece` + `8578534e` | ✅ built. §2 taken on the recommendation, **not signed by Richard** |
-| **FUN-002** — never a blank page | `b3837c9d` | ✅ built. ⏳ never created in a running editor |
-| **FUN-003** — the declared ports reach the editor | `5e95c8e1`, merged `70f8110e` | ✅ built, ships dark. ⏳ the A→close→B drive is unmeasured |
-| **FUN-007** — the loop closes after the run | `1a20cff4`, merged `5d71f775` | ✅ §1/§3 built. 🔴 **§2's gutter rendering is NOT done** |
-| Premise correction + worktree fix | `ccc2e74d` | ✅ |
-| Phase status | `b150e787` | ✅ |
-
-**Open: FUN-004, FUN-005, FUN-006, FUN-008, FUN-009.**
-
-### Gates, measured on the merged tree this session
-
-```
-noodl-core-ui        npx jest      17 suites / 222 specs        PASS
-noodl-runtime        npx jest      128 of 129 suites, 2349      PASS  (1 skipped)
-noodl-editor         tests-unit/fun-002                7/7      PASS
-                     npm run typecheck:editor      0 errors
-```
-
-🔴 **`test:ci` has NOT been run on this tree, and neither has `test:main` or the `noodl-mcp` suite.**
-Four merges landed without it. That is the first thing to do when the checkout is quiet — `npm run
-dev:stop -- --list` first, and remember the baseline is **6 failures at 2670 specs**, that 12 is
-reachable by a real regression, and that only the `Jasmine:` line counts.
+**4 of 9 built. Three of them have now been driven, and they mostly work.** What the drives actually
+produced is not a tick-list — it is **one defect that blocks the flagship task**, and it is not in any
+of the code this phase wrote.
 
 ---
 
-## 2. 🔴 The premise correction — do not re-litigate it as an oversight
+## 1. 🔴 Read this first — the gate does not discriminate
 
-The README now carries **premise correction 3**, and it moves the diagnosis the phase was built on.
-It was measured twice: once by the FUN-007 lane, once independently in the primary checkout by
-compiling the body the runtime compiles.
+**`validationTypeForEditType` can never return `'expression'` or `'script'`.** It tests `type?.name`
+— the *type's* name, which is `'string'` for every JavaScript code port — three lines below its own
+comment saying *"the port name is the only signal available for that."* Both name-based branches are
+dead code. Measured in the running editor:
+
+| Node | Code port | `type.name` | Popout title |
+|---|---|---|---|
+| Function | `functionScript` | `string` | **FUNCTION** |
+| Script (`Javascript2`) | `code` | `string` | **FUNCTION** |
+| **Expression** | `expression` | `string` | **FUNCTION** |
+
+**It is already a shipped, user-visible defect, with none of this phase's code involved.** `no-undef`
+is disabled in `'expression'` mode on purpose, because a bare identifier in an Expression *becomes an
+input port*. The mode never selects, so the rule runs:
 
 ```
-var Output_1 = Input_1;      → ReferenceError: Input_1 is not defined
-Output_1 = Inputs.Input_1;   → runs clean, writes nothing, Success fires
+total * 2   →   ⚠ 'total' is not defined.  eslint:no-undef     …and the port `total` is then created
 ```
 
-**The observed code has always thrown.** Reading an undeclared identifier is a `ReferenceError` in
-sloppy mode as well as strict, and the runtime injects only `Inputs`, `Outputs`, `Noodl` and
-`Component` — never the port names. The user was warned **twice**: by a linter that did not know
-`Input_1` was a port, and by a runtime failure delivered to `Error` and `Failure` ports that nothing
-on the canvas draws attention to.
+The code is right, the port exists, and the editor underlines it. Read off the lint tooltip, then the
+port read back off the node.
 
-The silent case is the *next* thing they type. Every task still stands; only the sentence *"a
-function that ran fine"* dies.
+⚠️ **The fix is NOT "use the port name".** `TypeView.name` carries it, but `functionScript` contains
+`script` and the Script node's port is `code` — switching **inverts** those two while fixing
+Expression. The discriminator has to be *decided*.
 
-⚠️ **This changes FUN-004's acceptance**, which promises the observed bug verbatim. It is **two rows,
-not one**, and they must be driven separately. **Use a fresh project**: implicit globals are shared
-between Function nodes, so the first node to write a bare `Output_1` permanently disarms the
-`ReferenceError` for every node after it — the second run of the same test lies.
-
-**Fold this into FUN-004's file before a lane is pointed at it.** It was not done this session.
+**Filed in FUN-003 F17, FUN-004 §3, FUN-009. FUN-009 owns the fix** — it is the task that knows why
+the two rules differ. **FUN-004 is blocked until it lands**, because all four of its messages would
+fire inside Expression editors, which its own §3 calls *"actively destructive."*
+Memory: [[every-js-code-port-opens-in-function-mode]].
 
 ---
 
-## 3. The traps this phase measured — every one of them is silent
+## 2. Where the phase actually stands
 
-All against the real `parseAndAddPortsFromScript`, 2026-08-12. Memory:
-[[function-node-ports-are-mined-from-comments-too]].
-
-| | |
+| Task | State |
 |---|---|
-| **Comments are mined** | The parser's comment-stripping line is commented out. FUN-002's *specced* seed body mints **four** ports because its comment spells `Inputs.Name` and `Outputs.Name`. Never write teaching copy containing a prefix followed by a name |
-| **`Outputs.Done_1()` is a VALUE port** | The signal-by-dot pattern excludes `_`. `Outputs["Done_1"]()` types it correctly. `writeExpression` handles it; a hand-rolled `` `Outputs.${name}()` `` reintroduces it |
-| **Two bracket reads on one line** | Greedy `(.*)` — `Inputs["My Value"] + Inputs["Other"]` mines one port named `My Value"] + Inputs["Other`. **A hard constraint on FUN-005's insert-at-cursor rail** |
-| **Never blanket-strip `in-`/`out-`** | The prefix goes on when the port list is *assembled*; a proplist row's `label` is already the display name, and `Javascript2` applies no prefix at all. FUN-001 §1 and FUN-003 §3 both said to strip once — both were wrong, and the builders were corrected |
-| **A `"` in a display name** | No expressible form at all. `canExpressPort()` says so; the honest answer is to rename the port |
+| **FUN-001** | ✅ built. §2 still **unsigned by Richard** — see §5.1 |
+| **FUN-002** | ✅ built · ✅ **driven, 6 of 7**. One criterion open and it needs restating — §3 |
+| **FUN-003** | ✅ built · ✅ **driven, every criterion of its own passes**. Found F17 |
+| **FUN-007** | ✅ §1 built and **driven closed** · 🔴 §2 not built · 🔴 **F31 filed** — §3 |
+| **FUN-004, 005, 006, 008, 009** | 📋 open |
 
-**All notation copy lives in `packages/noodl-core-ui/src/components/code-editor/utils/notation.ts`**
-and is exported from the `code-editor` barrel. Import it. A second copy of any of these strings is
-the failure FUN-001 exists to prevent.
+Commit `1c77b8c7` carries all three drive records, in the task files under *"The drive, as run"*.
 
----
-
-## 4. What to do first — the drives, not more building
-
-Four tasks are built on evidence nobody has seen behave. Both lanes left step-by-step recipes:
-
-- **FUN-003** — *"Open node A, close, open node B; B's editor never sees A's ports."* Recipe in the
-  task file. **Assert the port types, not just the names** — a default leaking over a chosen type is
-  the silent half. The close-clears step is the assertion that matters.
-- **FUN-007** — recipe under *"The drive that closes the acceptance"*. Nine steps, and step 8 needs
-  a **fresh project** for the reason in §2.
-- **FUN-002** — not written as a recipe because it is three actions: drop a Function node, see three
-  lines and two ports; wire it and run it; ⌘Z once and the body goes and stays gone. Then the one
-  most likely to be skipped and worst to get wrong: **open an existing project containing a Function
-  node with an empty script, close it, and diff the project file. It must be byte-identical.**
-
-⚠️ Live verification belongs to the **primary checkout** — `lerna exec` resolves to primary even when
-launched from a worktree, so a drive from a lane grades the wrong code.
-
----
-
-## 5. The other session
-
-**A second session was live in this checkout this morning** — commits to `cline-dev` at 08:59, files
-written at 09:01, quiet since. Its uncommitted work is still in the tree:
+**Gates, measured on the merged tree before the drives:**
 
 ```
-M  .../propertyeditor/components/PortsTab/PortsTab.tsx, .module.scss
-M  .../utils/provenance/TraceSession.ts
-M  packages/noodl-editor/tests/nodegraph/index.ts        ← the spec barrel, shared
-?? .../PortsTab/portValues.ts, usePortValues.ts
-?? packages/noodl-editor/tests/nodegraph/port-values.spec.ts
+test:ci     Jasmine: 2692 specs, 6 failures    seed 64762 — all six the baseline NAMES
 ```
 
-**Check whether it is still live — do not inherit this paragraph.** Long-idle is not abandoned;
-leave the files alone either way, never `git stash`, never `git add -A`, and pathspec-scope both
-`git add` **and** `git commit`.
+⚠️ The **+20** over the morning's 2672 is a **concurrent session's uncommitted `port-values.spec.ts`**,
+whose barrel edit is live in the shared checkout. That run graded their work too. Do not read 2692 as
+this phase's number.
 
-🔴 **It matters for FUN-005.** `usePortValues.ts` is live port values in the property panel — that is
-FUN-005 §3's subject. **Adopt it; do not rebuild it.** Adopt > build has now been the right call
-three times in two phases.
+🔴 **`test:main` and the `noodl-mcp` suite are still unrun on this tree**, and a large amount of
+phase-59 work has landed since (HEAD is now a phase-59 merge, `f32a9cd4`). **Re-run `test:ci` before
+believing any of the numbers above** — they predate every phase-59 commit.
 
 ---
 
-## 6. Decisions and debts
+## 3. The two defects the drives found, beyond F17
 
-1. 🔴 **FUN-001 §2 is unsigned.** Taken on the spec's own recommendation: `Inputs.`/`Outputs.` is the
-   notation, `Noodl.Inputs` is supported forever and never written. It is asserted in a test, so
+**F31 — a warning can strand and never clear.** Setting `scriptInputs`, `scriptOutputs` and
+`functionScript` in one rapid batch left a node carrying *"…"Output_1" stayed empty…"* while
+`scriptOutputs` was `[]` and the script was `Noodl.Variables.hits = 1;`. **Still there minutes
+later**, in `WarningsModel` — not a rendering lag.
+
+⚠️ **Be skeptical of my mechanism, not the observation.** It did **not** reproduce on a second node
+given the identical batch, and every individual transition clears correctly. I called it a race
+between the clear and a re-run scheduled against the previous script. **That is inference.** The
+observation is solid; the cause is not. Reproduce before fixing. It belongs to **§2's lane**, which
+already owns clearing.
+
+**FUN-002's byte-identical criterion cannot be measured as written.** Opening a project rewrites
+every component on disk, so *"the project file is byte-identical after open-and-close"* is false for
+every project and has nothing to do with the seed. The file now carries the restatement:
+
+1. open once, let the editor normalise — **that** is the baseline;
+2. close, open again, close;
+3. the two normalised states must match, **and** the Function node's `functionScript` must still be
+   absent.
+
+Clause 3 is the whole point and is **undriven** — it needs a project switch, which needs a restart.
+The same gate *was* exercised from the other side: **paste does not re-seed an emptied node.**
+
+---
+
+## 4. What to do, in order
+
+1. **`test:ci` on the current tree.** Four phase-61 merges plus a whole phase-59 landed since the last
+   green run. `dev:stop -- --list` first; only the `Jasmine:` line counts; compare **names**, not the
+   count.
+2. **FUN-009 first, not FUN-004.** It was the smallest task in the phase and is now the one holding up
+   the flagship. It has to decide the discriminator, and it is the task that understands the inverse
+   rule well enough to write the sentence that goes with it.
+3. **FUN-004 + FUN-008 in one lane**, after 009. §2's premise correction is already folded into
+   FUN-004's acceptance — **two rows, driven separately, fresh project each** (implicit globals are
+   shared between Function nodes, so the first bare `Output_1` disarms the `ReferenceError`
+   project-wide). Start with **FUN-007 §2's gutter rendering**: same file, same knowledge, small first
+   commit, and it unblocks FUN-007 drive steps 8 and 9.
+4. **FUN-005 §1/§2** in a second lane. 🔴 **Adopt the sibling's `usePortValues.ts`, do not rebuild
+   it** — it is FUN-005 §3's subject and it is still sitting uncommitted in the checkout. §3 is where
+   the cost is; do not start it in the same lane.
+5. **FUN-006** last of the editor work.
+
+---
+
+## 5. Decisions and debts
+
+1. 🔴 **FUN-001 §2 is still unsigned.** `Inputs.`/`Outputs.` is the notation; `Noodl.Inputs` is
+   supported forever and never written. Taken on the spec's own recommendation, asserted in a test, so
    reversing it is one module and one test file. **Ask Richard.**
 2. 🔴 **FUN-007 §2 is not built.** The mapped `line`, `column` and `hint` are on the warning payload
-   and on the raised error's `detail`; nothing renders them. It needs `CodeEditorType.ts`, which was
-   another lane's territory. **This is the natural first half of FUN-004's lane** — same file, same
-   knowledge.
-3. ⚠️ **FUN-003 F16.** `ExpressionEditorModal`, `GeneratedCodeModal` and `AiChat` never write the
-   open-node slot. They are correct only because nothing can be open when they mount, and nothing
-   asserts that. **Every consumer must gate on `validationType`, never on `openNode` being present.**
-4. ⚠️ **`SEED_FUNCTION_BODY` differs from FUN-002's specced string on purpose.** The task file
-   carries a red block saying so. Do not "restore" the spec.
-5. **Two lane worktrees are still on disk** — `../OpenNoodl-worktrees/fun-003-lane` and
-   `fun-007-lane`. Merged; remove them and keep the branches.
+   and the raised error's `detail`; nothing renders them. Drive steps 8 and 9 are blocked on it.
+3. ⚠️ **FUN-003 F16 stands.** `ExpressionEditorModal`, `GeneratedCodeModal` and `AiChat` never write
+   the open-node slot, and are correct only because nothing can be open when they mount. Nothing
+   asserts that. **Gate every consumer on `validationType`, never on `openNode` being present** — and
+   note F17 means that gate needs fixing first.
+4. ⚠️ **`SEED_FUNCTION_BODY` differs from FUN-002's specced string on purpose.** Its comment writes
+   bare `Value`/`Result`, never `Inputs.Value`, because **comments are mined into ports**. Do not
+   "restore" the spec.
+5. **The concurrent session is active in this checkout.** It committed a phase-59 merge this
+   afternoon. Its PortsTab work is still uncommitted. Leave it alone, never `git stash`, never
+   `git add -A`, and pathspec-scope both `git add` **and** `git commit`.
 
 ---
 
-## 7. Suggested order
+## 6. Mechanics worth not rediscovering
 
-1. **`test:ci` on the merged tree**, once the checkout is quiet. Four merges are ungated.
-2. **The three drives** in §4. They can all be done in one editor session; re-open the project
-   defensively at the top of each, because a sibling commit full-reloads the renderer.
-3. **FUN-004 + FUN-008 in one lane**, after §2's correction is folded into FUN-004's file. Start with
-   FUN-007 §2's gutter rendering — same file, and it makes the lane's first commit a small one.
-4. **FUN-005 §1/§2** in a second lane, adopting the sibling's port-values hook. §3 is where the cost
-   is; do not start it in the same lane.
-5. **FUN-006** last of the editor work — it wants 003 and 004 in place so it can narrate rather than
-   become the whole help system.
-6. **FUN-009** whenever the Expression copy is written, ideally with phase 59's LGC-001.
-
-**Use `scripts/devtools/make-worktree.sh`** — never the harness's `isolation: "worktree"`. It now
-links `noodl-runtime/dist-types`, without which five runtime suites silently fail to run and the
-total drops 2349 → 2303 with zero failures. Verify a lane's suite **total** against primary's before
-believing its board.
+- **Reading the FUN-003 registry live.** The webpack chunk registry returns the **cached** module, not
+  a second instance:
+  ```js
+  window.webpackChunknoodl_editor.push([['probe'], {probe:(m,e,req)=>{window.__req=req;}}, r=>r('probe')]);
+  window.__req('../noodl-core-ui/src/components/code-editor/authoringContext.ts').getCodeAuthoringContext()
+  ```
+  🔴 Never `req()` `projectmodel.ts` this way — it re-evaluates and drops the editor to the launcher.
+- **`ed.createNewNode` returns `void`** and leaves `ed.highlighted` set, so consecutive creations get
+  **parented under the previous selection**. Three of mine became children of a `Router`, rendered
+  nothing, and looked exactly like a product bug. **Set `ed.highlighted = null` between creations**,
+  and read nodes back off `ed.model.roots`. Node *views* are `ed.roots`, not `ed.nodes`.
+- **Mined ports are not synchronous.** In the same tick as `createNewNode` a seeded node has **no**
+  `in-`/`out-` ports; they arrive after a sub-second round-trip. Not a defect, but a spec asserting it
+  in the creating tick will fail.
+- **`cdp.js` has no key dispatch.** ⌘Z needed a small `Input.dispatchKeyEvent` script. The keystroke
+  does reach the renderer, and undo *does* fire — but the undo queue holds `create` and
+  `seed function` as **separate entries**, and opening/closing a popout pushes `edit parameter`
+  entries on top. Test "one ⌘Z" with nothing in between, and read `UndoQueue.instance.queue` before
+  concluding anything.
+- **The editor's preview cannot render a project outside the normal projects location** — it 404s on
+  `index.json`. Use `node scripts/devtools/measure-from-disk.js <dir> --screenshot full --out <prefix>`
+  and read the PNG. That is how "passes a value through when run" was proved, independent of the
+  editor.
+- ⚠️ **`cdp click` on a class selector hits the first match.** Mine opened a GitHub device-login page.
+  **Tag the element with a unique `id` in an `eval` first**, every time.
+- Registering a scratch project with the launcher and restarting works
+  ([[open-a-copy-of-a-real-project-in-the-editor]]) — **back the store up and restore it afterwards**.
