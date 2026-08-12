@@ -21,6 +21,7 @@ import { applyLanguage, currentLanguageCode } from './BlocklyLocale';
 import { buildBlocklyTheme, resolveBlocklyChrome } from './BlocklyTheme';
 import css from './BlocklyWorkspace.module.scss';
 import { buildToolbox } from './BlocklyToolbox';
+import { DoItHandle, attachDoIt } from './DoItController';
 import { initBlocklyIntegration } from './initialize';
 
 /** How long to coalesce edits before serialising and generating code. */
@@ -37,9 +38,18 @@ export interface BlocklyWorkspaceProps {
   onChange?: (workspace: Blockly.WorkspaceSvg, json: string, code: string) => void;
   /** Read-only mode */
   readOnly?: boolean;
+  /**
+   * LGC-002 — the Logic Builder node these blocks belong to.
+   *
+   * Do It generates code here and runs it **in the viewer**, against that node's live inputs,
+   * so the node id is the whole address of the round trip. Optional, and the menu item
+   * explains its own absence rather than disappearing: a tab opened without one is a wiring
+   * mistake, and a missing menu item is the hardest kind of wiring mistake to see.
+   */
+  nodeId?: string;
 }
 
-export function BlocklyWorkspace({ initialWorkspace, onChange, readOnly = false }: BlocklyWorkspaceProps) {
+export function BlocklyWorkspace({ initialWorkspace, onChange, readOnly = false, nodeId }: BlocklyWorkspaceProps) {
   const blocklyDiv = useRef<HTMLDivElement>(null);
   const workspaceRef = useRef<Blockly.WorkspaceSvg | null>(null);
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -57,6 +67,9 @@ export function BlocklyWorkspace({ initialWorkspace, onChange, readOnly = false 
     let disposed = false;
     let workspace: Blockly.WorkspaceSvg | null = null;
     const themeContext = {};
+    // LGC-002. Its own handle rather than anything on the workspace: Do It is an overlay and
+    // must stay separable from the workspace's own lifecycle, including its serialisation.
+    let doIt: DoItHandle | null = null;
 
     const flushSave = () => {
       if (!workspace || !onChangeRef.current) return;
@@ -113,6 +126,10 @@ export function BlocklyWorkspace({ initialWorkspace, onChange, readOnly = false 
 
       workspace.addChangeListener(changeListener);
 
+      // LGC-002 — right-click a block, see its value. Attached after the load so the balloon
+      // layer's own change listener never sees the deserialisation's BLOCK_CREATE storm.
+      doIt = attachDoIt(workspace, nodeId);
+
       // Follow the editor's light/dark setting (UIX-005 contract). The grid is not part of
       // the theme object and Blockly's setter for it is private, so the grid colour is
       // restyled from CSS instead (see `.blocklyGridPattern` in the stylesheet) — which
@@ -158,6 +175,12 @@ export function BlocklyWorkspace({ initialWorkspace, onChange, readOnly = false 
 
       CanvasTheme.instance.off(themeContext);
 
+      // Before the workspace goes: the layer holds a reference to it.
+      if (doIt) {
+        doIt.dispose();
+        doIt = null;
+      }
+
       if (workspace) {
         workspace.removeChangeListener(changeListener);
         workspace.dispose();
@@ -166,7 +189,8 @@ export function BlocklyWorkspace({ initialWorkspace, onChange, readOnly = false 
       workspaceRef.current = null;
     };
     // Mount-only by design: see `initialWorkspace`. `readOnly` is fixed per tab, and the
-    // component is keyed by node id so a different program means a fresh mount.
+    // component is keyed by node id so a different program means a fresh mount — which is also
+    // what makes `nodeId` safe to capture here: a different node is a different instance.
   }, []);
 
   return (

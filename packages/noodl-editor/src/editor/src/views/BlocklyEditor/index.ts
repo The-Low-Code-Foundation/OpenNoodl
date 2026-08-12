@@ -27,6 +27,26 @@ export {
   noodlTypeForBlocklyCheck
 } from './NoodlTypes';
 
+// LGC-002 — "Do It". The offer rule and the fragment generator are import-free (Blockly only)
+// so `tests-unit/lgc-002/` grades them headlessly; the controller and the balloon layer are
+// not, and are exported for the workspace component and for LGC-003, which extends the same
+// probe channel from pull to push.
+export {
+  DECLARATION_BLOCK_TYPES,
+  WRITING_BLOCK_TYPES,
+  answerForReply,
+  classifyBlockForDoIt,
+  generateFragmentForBlock,
+  invalidatesBalloons,
+  wrapPreview
+} from './DoIt';
+export type { BlockFragmentReply, DoItAnswer, DoItOffer, GeneratedFragment } from './DoIt';
+export { DoItBalloonLayer } from './DoItBalloons';
+export type { BalloonContent, BalloonState } from './DoItBalloons';
+export { attachDoIt, registerDoItMenuItem } from './DoItController';
+export type { DoItHandle } from './DoItController';
+export { requestBlockValue } from './DoItProbeClient';
+
 // Block definitions and generators
 export { initNoodlBlocks } from './NoodlBlocks';
 export { initNoodlGenerators, generateCode } from './NoodlGenerators';

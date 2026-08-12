@@ -102,6 +102,16 @@
     // re-implementation of them. Nothing else in `views/BlocklyEditor/` is reachable from
     // here: `BlocklyWorkspace.tsx` is React and `BlocklyTheme.ts` reaches the canvas theme.
     "src/editor/src/views/BlocklyEditor/NoodlTypes.ts",
-    "src/editor/src/views/BlocklyEditor/NoodlBlocks.ts"
+    "src/editor/src/views/BlocklyEditor/NoodlBlocks.ts",
+    // LGC-002: the same shape a third time. `DoIt.ts` is the offer rule ("is this a value
+    // block, and if not, what does the greyed menu item say?") plus the fragment generator, and
+    // it imports nothing but `blockly/javascript` — so both are graded against a real headless
+    // workspace, with the real blocks and the real generator. `NoodlGenerators.ts` comes with
+    // it because the fragment for a `get input` block *is* its output; grading generation
+    // against anything else would be grading a mock. The three files deliberately NOT reachable
+    // from here are the three that must not be: `DoItController` (Blockly's rendered menu),
+    // `DoItBalloons` (SVG and the canvas theme) and `DoItProbeClient` (the socket).
+    "src/editor/src/views/BlocklyEditor/NoodlGenerators.ts",
+    "src/editor/src/views/BlocklyEditor/DoIt.ts"
   ]
 }
