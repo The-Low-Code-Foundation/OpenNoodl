@@ -73,6 +73,20 @@ const operationSchema = z.discriminatedUnion('op', [
         variant: z.string().optional(),
         parent: z.string().nullable().optional().describe('Reparent; null detaches from the visual tree')
       })
+      // AWP-002 A19 — strict, so an unnamed key is a refusal and not a silent
+      // strip. The comment above says a field zod does not name is a field zod
+      // strips; what it did not say is that the strip is *reported as applied*.
+      // `set: {children: [...]}` returned `applied: ["update_node band"]` with
+      // 0 errors and 0 warnings and changed nothing, which is how P58's re-replay
+      // lost its hero with every instrument green.
+      //
+      // Deliberately a refusal rather than an implementation: `children` is
+      // reconciled from `parent` by design (`AUTHORED_NODE_FIELDS` — double
+      // bookkeeping is the consistency an LLM gets wrong), so making this door
+      // accept it would re-introduce the disagreement the vocabulary removed.
+      // An agent that reaches for it gets told the supported spelling instead of
+      // being told it worked.
+      .strict()
       .optional(),
     parameters: z.record(z.unknown()).optional().describe('Shallow-merged into existing parameters'),
     unset_parameters: z.array(z.string()).optional(),
@@ -544,6 +558,26 @@ export function registerAuthorTools(
           }
           candidate = result.files;
           applied = result.applied;
+          // AWP-002 A20 — the operations door has to re-derive too.
+          //
+          // AWP-001 gave `assembleSetFiles` an unconditional recompute and the
+          // `operations` branch was not in its scope, so `add_node` left the
+          // baseline's `visualRoots` untouched: a parentless visual node added
+          // here was neither parented nor a root, and therefore could never
+          // draw. That is F43's exact failure mode surviving on the door the
+          // 2026-08-10 re-replay used twenty times — and `visualRootsPayload`
+          // then reported `visualRootsDerived: true` over the stale array,
+          // which is the reporting field saying the thing is fine.
+          //
+          // `explicit` is undefined here by construction: a batch has no
+          // `visual_roots` argument, so this door only ever derives.
+          const opRoots = resolveVisualRoots(
+            candidate.nodes.nodes,
+            undefined,
+            projectVisualPredicate(store)
+          );
+          if (opRoots.visualRoots) candidate.nodes.visualRoots = opRoots.visualRoots;
+          else delete candidate.nodes.visualRoots;
         }
         candidate.component.modified = new Date().toISOString();
         candidate.component.modifiedBy = 'noodl-mcp';
