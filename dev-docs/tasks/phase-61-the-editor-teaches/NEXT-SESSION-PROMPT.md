@@ -13,9 +13,9 @@ now signed, and the gate is green — the one thing this phase has never had is 
 | **FUN-002** | ✅ | ✅ 6 of 7. One criterion open (needs a project switch → restart) |
 | **FUN-003** | ✅ | ✅ every criterion of its own |
 | **FUN-007 §1** | ✅ | ✅ closed · 🔴 **§2 not built** — blocks drive steps 8 and 9 |
-| **FUN-009** | ✅ `ace5232f` | 🔴 **NEVER DRIVEN** — see §3 |
+| **FUN-009** | ✅ `ace5232f` | ✅ **DRIVEN 2026-08-12 evening — every step passed.** §3 below is done; do not re-run it |
 | **FUN-004, 005, 006, 008** | 📋 open | — |
-| **FUN-009 §5 (F35)** | 📋 **new task**, opened by the fix | — |
+| **FUN-009 §5 (F35)** | 📋 **new task**, opened by the fix · 🔴 **five ports, not four** | — |
 
 ## 1a. ✅ `test:ci` is FINE on this tree — 2700 / 6 / seed 59012
 
@@ -80,7 +80,35 @@ Recorded in the task files, not only here. **Do not re-litigate any of them.**
 
 ---
 
-## 3. 🔴 The drive FUN-009 never got — do this before writing any new code
+## 3. ✅ DONE — the drive FUN-009 never got, run 2026-08-12 evening
+
+**Every step below passed. Do not re-run it.** Full readings in the FUN-009 task file under
+*"The drive, run 2026-08-12 evening"*. In summary:
+
+- **The premise holds.** `codenotation` arrives intact in the editor's own `NodeLibrary` —
+  `expression` / `function` / `script` on the three ports. It was only ever read before; now measured.
+- **F17 is closed.** The three popouts render **EXPRESSION**, **FUNCTION**, **SCRIPT**. Nothing below
+  is standing on sand.
+- **The user-visible half is fixed.** `total * 2` in an Expression: no `no-undef`, toolbar `✓ Valid`,
+  and the port `total` is minted. The same text still warns in `function` and `script`.
+- **§2 is closed**, driven both ways with an injected authoring context so an empty list could not
+  masquerade as a pass: `Inputs.` → `[]` in Expression but `["Value"]` in Function; `Variables.` → two
+  names in Expression but `[]` in Function; bare `car` offers nothing while `cartTotal` sits in scope.
+
+🔴 **What it turned up:** F35's port count is **five**, not four — `For Each.templateScript` was
+missing, it is not a Function body, and its *default value* may warn about itself on the `function`
+floor. That is Lane C's first measurement. `storageJSONFilter` is a **dynamic** port and will not
+appear if you enumerate node types.
+
+✅ **Two mechanics worth keeping:** the live CodeMirror `EditorView` is at
+`document.querySelector('.cm-content').cmTile.view` (**not** `.cmView`, and non-enumerable — a first
+probe finds nothing), and `cdp type` cannot open the completion menu because `Input.insertText` does
+not trigger it — use `startCompletion(view)` / `currentCompletions(view.state)` from
+`@codemirror/autocomplete` off the webpack registry.
+
+<details><summary>The original instructions, kept for reference</summary>
+
+### 🔴 The drive FUN-009 never got — do this before writing any new code
 
 The fix is committed and specced in three packages, but **the premise that `type.codenotation`
 survives the runtime → editor trip has never been measured.** Four static readings agree
@@ -106,6 +134,8 @@ re-opening the project defensively at the top:
 
 ⚠️ If step 2 shows FUNCTION three times, the premise is wrong and **every lane below that depends on
 `validationType` is standing on sand** — stop and fix that first.
+
+</details>
 
 ---
 
@@ -148,7 +178,22 @@ lane, sequential, bar first.
 ### Lane C — the runtime ports
 **FUN-009 §5 (F35).** Disjoint from A and B — runtime node definitions plus possibly one case in
 `modes.ts` / `esLintDiagnostics.ts`. Read §5 in the FUN-009 file: the REST two are trivial, and
-`mapScript` / `storageJSONFilter` are a design decision that must be made explicitly.
+`mapScript` / `templateScript` / `storageJSONFilter` are a design decision that must be made
+explicitly.
+
+🔴 **The count is five, not four** — the 2026-08-12 drive enumerated the live library and found
+**`For Each.templateScript`** missing from F35's table. It is not a Function body
+(`new Function('item', 'var component;' + value + ';return component;')`), which makes it a third
+vote for option (a) rather than the `function` floor.
+
+🔴 **Lane C's first measurement, before any code:** `templateScript`'s default value is
+`component = '/MyComponent';` and `component` is not in `globalsFor('function')`, so the node may
+**warn about its own seed text** — the very defect FUN-009 just removed from the Expression node.
+`lintMessages("component = '/MyComponent';", 'function')` settles it in one line. **It is a reading,
+not a measurement** — reproduce it before treating it as true.
+
+⚠️ `storageJSONFilter` is a **dynamic** port (`dbcollectionnode2.ts:1330-1340`, inside the
+`storageFilterType === 'json'` branch). Enumerating node types will not find it.
 
 ⚠️ **This lane regenerates the catalog.** `catalog:check` will go red; run `catalog:generate` **and**
 `catalog:merge`, and run the `noodl-mcp` suite afterwards — it is not in `test:ci`.

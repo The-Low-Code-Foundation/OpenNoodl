@@ -3,6 +3,10 @@
 **Status:** 📋 open · **Track: the sibling** · small, and it explains the original mistake ·
 🔴 **no longer only copy — it now owns a measured defect**
 
+✅ **§0 built (`ace5232f`) and DRIVEN 2026-08-12 evening — every step passed. F17 is closed.**
+✅ **§2 driven and closed.** 📋 **§1 open** — the copy exists, nothing renders it; FUN-006 owns that.
+📋 **§5 open** — and the drive found the port count is **five**, not four. See the drive section.
+
 🔴 **The Expression editor does not run in `'expression'` mode, and never has.**
 `validationTypeForEditType` tests the *type's* name (`'string'` for every JS code port) rather than
 the port's, so Function, Script and Expression all resolve to `'function'`. Measured live
@@ -110,7 +114,11 @@ the same three nodes and disagreeing.
 | F32 | The originating mistake is correct **transfer** from the sibling node, not ignorance — which is why marking the boundary beats teaching a notation | ✅ inference, stated as such |
 | F33 | Deleting a name from an expression deletes the port **and its connections** — a text edit with a graph consequence | ✅ verified, `expression.ts:404` |
 | F34 | The three `CustomCode` one-liners are needed by both this phase and phase 59's LGC-001 | ✅ write once, cite twice |
-| F35 | Four other `codeeditor: 'javascript'` ports declare no notation and fall back to `function` — and at least two of them are not Function bodies | 📋 filed, deliberately not fixed |
+| F35 | ~~Four~~ **Five** other `codeeditor: 'javascript'` ports declare no notation and fall back to `function` — and **three** of them are not Function bodies | 📋 promoted to §5 · 🔴 count corrected by the 2026-08-12 drive: `For Each.templateScript` was missing |
+| F38 | `type.codenotation` **survives** the runtime → editor trip — measured off `NodeLibrary.instance` in the running editor, not read off the source | ✅ measured 2026-08-12 |
+| F39 | The three popouts render **EXPRESSION / FUNCTION / SCRIPT** — F17 closed outright | ✅ measured 2026-08-12 |
+| F40 | Expression and Function offer **opposite, non-empty** completions (`Inputs.` → `[]` vs `["Value"]`; `Variables.` → 2 names vs `[]`) — the guard is not decoration | ✅ measured 2026-08-12, with an injected context so an empty list could not masquerade as a pass |
+| F41 | `storageJSONFilter` is a **dynamic** port, pushed only when `storageFilterType === 'json'` — it cannot be found by enumerating node types | ✅ verified, `dbcollectionnode2.ts:1330-1340` |
 | F36 | `NOTATION_RULES` has **no consumer that renders it**; its only reader is the AI prompt template. The phase's copy has never been on screen | ✅ verified by grep, 2026-08-12 |
 | F37 | LGC-001 shipped its own copy for the same three nodes before F34's "write once" could happen | ✅ resolved as two documents that must agree — see below |
 
@@ -213,7 +221,123 @@ than as done; if one string is still wanted, it is a small change and this is th
 `npm test` in that package could not run at all. Removed and rebuilt. Nothing in git saw it — the
 path is ignored — and no gate reported it as anything but a build failure.
 
-## 🔴 The drive that has not happened
+## ✅ The drive, run 2026-08-12 evening — every step passed
+
+**Superseded the section below.** A quiet machine (no dev stack, no sibling helpers, `dev:stop --list`
+clean) finally allowed it. Driven against the **NodeGX QA Fixture** project, editor at `f23d5b4c`.
+Every reading below is a live measurement in the running editor, not a static reading.
+
+### The premise: `codenotation` survives the trip ✅
+
+Read straight off `NodeLibrary.instance` in the renderer — i.e. **after** the runtime →
+`nodelibraryexport` → `NodeLibraryImporter` trip that had only ever been read, never measured. 175
+node types loaded:
+
+| Node | Port | `codenotation` in the **editor's** library |
+|---|---|---|
+| `Expression` | `expression` | `expression` |
+| `JavaScriptFunction` | `functionScript` | `function` |
+| `Javascript2` | `code` | `script` |
+
+The three declarations arrive intact. The premise holds and nothing downstream is standing on sand.
+
+### Step 2: three different words ✅ — **F17 is closed**
+
+Three nodes created as siblings (`ed.highlighted` cleared between each, as warned), each selected,
+each code popout opened by clicking its tagged `button.property-codeeditor-button`, and the rendered
+toolbar read out of the DOM:
+
+| Node | `span.ModeLabel` | toolbar |
+|---|---|---|
+| `Expression` | `Expression` | **`EXPRESSION`** · ✓ Valid |
+| `JavaScriptFunction` | `Function` | **`FUNCTION`** · ✓ Valid |
+| `Javascript2` | `Script` | **`SCRIPT`** · ✓ Valid |
+
+The label renders title-case and is uppercased by `text-transform: uppercase`
+(`JavaScriptEditor.module.scss:35-41`) — so **EXPRESSION / FUNCTION / SCRIPT** on screen, three
+different words where all three used to say FUNCTION. The placeholders differ per mode too
+(`// Enter a JavaScript expression` vs `// Enter your JavaScript code here`), which is a second
+independent confirmation that the mode selects.
+
+### Step 3: the user-visible half ✅
+
+Typed `total * 2` into the Expression popout: **zero lint markers**, toolbar reads `✓ Valid`, and on
+save the node minted `dynamicports: ["total", "runOnChange-total"]`. The port appears *and* is not
+underlined — the exact inverse of the behaviour F17 recorded.
+
+The same text through the real `lintMessages`, per mode:
+
+| mode | `total * 2` |
+|---|---|
+| `expression` | `[]` |
+| `function` | `no-undef: 'total' is not defined.` |
+| `script` | `no-undef: 'total' is not defined.` |
+
+### Step 4: §2's completions ✅ — driven, and **inverted as a control**
+
+Driven through the real completion source in the real editor (`startCompletion` on the live
+`EditorView`, read back with `currentCompletions`). The project has no variables of its own, so a
+context of `variables: ['cartTotal','userTier']`, `objects: ['CurrentUser']`, `arrays: ['Basket']`
+was injected and restored afterwards — **an empty list would not have distinguished a firing branch
+from a dead one**, which is the whole reason the predecessor spec passed while the feature did
+nothing.
+
+| typed | Expression editor | Function editor |
+|---|---|---|
+| `Variables.` | `["cartTotal","userTier"]` | `[]` |
+| `Objects.` | `["CurrentUser"]` | — |
+| `Arrays.` | `["Basket"]` | — |
+| `Inputs.` | **`[]`** | `["Value"]` |
+| `Outputs.` | **`[]`** | — |
+| bare `car` | **`[]`** — `cartTotal` **not** offered | `[]` |
+| bare `ab` | `["abs"]` — the fixed math surface | — |
+| bare `Var` | `["Variables","var"]` | — |
+
+**Both sides are non-empty and they are opposites.** `Inputs.` offers nothing in an Expression and
+`Value` in a Function; `Variables.` offers two names in an Expression and nothing in a Function. That
+is the inversion the task asked for, measured rather than asserted — and `car` returning `[]` while
+`cartTotal` sits in the context is §2's destructive-inverse guard holding.
+
+⚠️ **`cdp.js` cannot open the completion menu.** `Input.insertText` does not trigger CodeMirror's
+autocomplete and there is no key dispatch. The live `EditorView` is reachable at
+**`document.querySelector('.cm-content').cmTile.view`** — not `.cmView`, and not an enumerable
+property, which is why a first probe found nothing. With it, `startCompletion(view)` and
+`currentCompletions(view.state)` from `@codemirror/autocomplete` drive and read the real source.
+
+### 🔴 What the drive found that F35 did not — a **fifth** undeclared port
+
+Listing every `codeeditor` port in the live library turned up one F35's table misses:
+
+| Port | Node | in F35's table? |
+|---|---|---|
+| `requestScript` | REST2 | ✅ |
+| `responseScript` | REST2 | ✅ |
+| `mapScript` | Map Collection | ✅ |
+| **`templateScript`** | **For Each** | 🔴 **no — missing** |
+| `storageJSONFilter` | Database Collection | ✅, but see below |
+
+**`For Each.templateScript`** (`foreach.tsx:346-358`) is `codeeditor: 'javascript'` with no
+`codenotation`, so it falls to the `function` floor. It is **not** a Function body: it compiles as
+`new Function('item', 'var component;' + value + ';return component;')` — one bare parameter `item`
+in, one bare assignment to `component` out, and **no `Inputs.`/`Outputs.` anywhere**. It belongs with
+`mapScript` in §5's decision, not with the REST pair, and it makes the case for option (a) stronger:
+there are **three** such ports, not two.
+
+⚠️ **`storageJSONFilter` never appears in the static library listing** because it is a *dynamic* port
+— pushed only when `parameters['storageFilterType'] === 'json'`
+(`dbcollectionnode2.ts:1330-1340`). It is still real and still undeclared; it just cannot be found by
+enumerating node types, which is worth knowing before §5 goes looking for it.
+
+🔴 **Unmeasured, and Lane C's first job:** `templateScript`'s *default value* is
+`component = '/MyComponent';` (`foreach.tsx:95-100`). On the `function` floor, `component` is not in
+`globalsFor('function')` (`Component, Inputs, Noodl, Outputs, Script`), so the node most likely
+**warns on its own seed text** the moment the popout opens — the same defect class as the Expression
+node's. This is a **reading, not a measurement**; the probe is one line:
+`lintMessages("component = '/MyComponent';", 'function')`.
+
+---
+
+## The drive that had not happened — superseded by the section above
 
 **No live measurement was taken.** Two sibling sessions were running `test:ci` on this checkout
 concurrently for the whole session; three attempts of my own died to the contention (one OOM-killed
@@ -260,18 +384,24 @@ commit — re-open the project defensively at the top):
 ## §5 — F35: the four ports that declare nothing (new, opened by the fix)
 
 `validationTypeForEditType` falls back to `'function'` for a JavaScript port with no `codenotation`.
-That is a compatibility floor and it is currently load-bearing for four ports:
+That is a compatibility floor and it is currently load-bearing for **five** ports — the count was four
+until the 2026-08-12 drive enumerated the live library:
 
 | Port | Node | What its text actually is |
 |---|---|---|
 | `requestScript` | REST | a real Function body — `new Function('Inputs','Outputs','Request', script)` |
 | `responseScript` | REST | same |
 | `mapScript` | Map Collection | declares output properties through `map({ … })`; **no `Inputs.`/`Outputs.` at all** |
+| 🔴 `templateScript` | **For Each** | `new Function('item', 'var component;' + value + ';return component;')` — bare `item` in, bare `component` out; **no `Inputs.`/`Outputs.` at all** |
 | `storageJSONFilter` | Database Collection | a JSON filter with `$variable` placeholders; not a program |
 
 **The REST two are easy** — declare `codenotation: 'function'` and they are correct and documented.
 
-⚠️ **The other two are the actual decision, and it is not a labelling pass.** Neither is a Function
+⚠️ **`storageJSONFilter` is a dynamic port** (F41) — declared inside the `storageFilterType === 'json'`
+branch at `dbcollectionnode2.ts:1330-1340`, not in a static port list. Do not go looking for it among
+the node types.
+
+⚠️ **The other three are the actual decision, and it is not a labelling pass.** None is a Function
 body, a Script `define({…})`, nor an Expression. Today they are offered `Inputs.` / `Outputs.`
 completions that would do nothing if accepted, and linted with `no-undef` against globals they do not
 have. Both were true before FUN-009 and neither is a regression — which is exactly why this can be
@@ -282,8 +412,15 @@ The choice to make, and make explicitly:
 - **(a) a fourth notation** — e.g. `'plain'`: JavaScript, linted for structure, but **no port
   notation of any kind offered**. `modeHasDeclaredPorts` already returns false for anything not
   `function`/`script`, so the completions half falls out for free; `configFor` needs a case, and
-  `LABELS`/`PLACEHOLDERS` in `modes.ts` need an entry each. This is the honest reading of both ports.
+  `LABELS`/`PLACEHOLDERS` in `modes.ts` need an entry each. This is the honest reading of all three.
 - **(b) leave them on the `function` floor** and record that the offer is knowingly wrong.
+
+🔴 **`templateScript` tilts this toward (a), and may already be a live defect.** Its *default value*
+is `component = '/MyComponent';`, and `component` is not in `globalsFor('function')`
+(`Component, Inputs, Noodl, Outputs, Script`) — so on the floor the node plausibly warns on its own
+seed text the moment the popout opens, exactly as the Expression node did before FUN-009. **This is a
+reading and not a measurement.** Measure it first — one line, no editor needed beyond a popout:
+`lintMessages("component = '/MyComponent';", 'function')`. If it warns, §5 stops being tidying.
 
 ⚠️ **Whichever is chosen, `storageJSONFilter` may not end up in a mode that lints it as a program.**
 It is a filter object with `$foo` placeholders; a JavaScript linter has nothing true to say about it,
@@ -294,10 +431,14 @@ and `isValidatedType` exists precisely so a mode can decline to render a verdict
 
 **Acceptance for §5**
 
-- All four ports declare a `codenotation` — no JavaScript port in the product relies on the fallback.
+- All **five** ports declare a `codenotation` — no JavaScript port in the product relies on the
+  fallback. ⚠️ Enumerate the **live** library to check this, not the source: that is how the fifth was
+  found, and `storageJSONFilter` will not appear there at all (F41) so it needs checking by hand.
 - The two REST ports open as `function` and still complete `Inputs.` / `Outputs.`.
-- `mapScript` and `storageJSONFilter` are **not** offered `Inputs.` / `Outputs.` completions, and the
-  reason is stated at the declaration rather than only here.
+- `mapScript`, `templateScript` and `storageJSONFilter` are **not** offered `Inputs.` / `Outputs.`
+  completions, and the reason is stated at the declaration rather than only here.
+- `templateScript`'s **default value lints clean** in whatever mode it lands in. A seed that warns
+  about itself is the defect FUN-009 just removed from the Expression node; do not leave it here.
 - If a fourth mode lands, it has a label, a placeholder, a lint config and a row in the
   `codeeditor-mode` spec — and `modes.ts`'s table stays the single place a mode is named.
 - The fallback stays in place and stays `'function'`, because a *future* undeclared port must not
