@@ -25,7 +25,7 @@ that would have taught them the answer is **invisible while the one they found t
 | They create a Function node and open the Script | **A completely blank editor.** `functionScript` declares no `default` | [`simplejavascript.ts:161`](../../../packages/noodl-runtime/src/nodes/std-library/simplejavascript.ts) |
 | They add ports in the property panel | `scriptInputs` / `scriptOutputs` proplists. Nothing about them reaches the code editor | [`simplejavascript.ts:139-160`](../../../packages/noodl-runtime/src/nodes/std-library/simplejavascript.ts) |
 | They type `var Output_1 = Input_1` | `no-undef` fires as a **warning**: *"'Input_1' is not defined"*. It does not know `Input_1` is a port | [`esLintDiagnostics.ts:141`](../../../packages/noodl-core-ui/src/components/code-editor/utils/esLintDiagnostics.ts) |
-| They run it | `Outputs` is never written. The node reports nothing, because a function that assigns to a local is a function that ran fine | — |
+| They run it | ~~`Outputs` is never written. The node reports nothing, because a function that assigns to a local is a function that ran fine~~ 🔴 **false — see premise correction 3.** That body **throws**, every time | — |
 | What would have worked | Typing `Inputs.` — which **creates the port as a side effect of mentioning it** | [`javascriptnodeparser.js:294-387`](../../../packages/noodl-runtime/src/javascriptnodeparser.js) |
 
 ## ⚠️ Premise correction 1 — the notation in the brief is the legacy alias
@@ -71,6 +71,40 @@ The brief assumed the user could have read the docs and didn't. Checked:
 
 So this is not a "user wouldn't read the docs" problem. **The sentence does not exist to be read.**
 FUN-001 writes it once, and every other task consumes it.
+
+## ⚠️ Premise correction 3 — the observed code does not run silently. It throws
+
+**Measured 2026-08-12, twice and independently** (the FUN-007 lane, then again in the primary
+checkout by compiling the body the runtime compiles):
+
+```
+var Output_1 = Input_1;      → ReferenceError: Input_1 is not defined
+Output_1 = Inputs.Input_1;   → runs clean, writes nothing, Success fires
+```
+
+Reading an undeclared identifier throws in sloppy mode as readily as in strict, and the runtime
+injects only `Inputs`, `Outputs`, `Noodl` and `Component` — never the port names. So the exact body
+in the originating observation has **always** thrown, always fired `Failure`, and always put its
+message on `Error`. FUN-007's register carried this as *"✅ verified by reading the compile and run
+path"*; reading cannot answer that question, and compiling the body answers it in one second.
+
+**The silence is real, and it belongs to the other half of the same mistake.** Drop the `var` — which
+is what a user does the moment they see the ReferenceError — and `Output_1 = Inputs.Input_1` lands on
+an implicit global: nothing throws, `Success` fires, no port moves. That is the body FUN-007 §1
+catches, and it is why §1 rather than §3 is the load-bearing half.
+
+**What this changes, and what it does not.** The phase is *not* weakened; the diagnosis moves. The
+user was not unwarned — they were warned **twice**, by a linter that did not know `Input_1` was a
+port and by a runtime failure delivered to `Error` and `Failure` ports that nothing on the canvas
+draws attention to. Neither report names the port, and that is exactly FUN-004's subject. What dies
+is only the sentence *"a function that ran fine"*: the first failure is loud in a place nobody looks,
+and the second is silent everywhere.
+
+⚠️ And a trap for FUN-004's acceptance, which promises to reproduce the observed bug verbatim: a
+`ReferenceError` and an implicit-global write are **different rows** and must be driven separately.
+Worse, implicit globals are shared between Function nodes in a project — the first node to write a
+bare `Output_1` permanently disarms the ReferenceError for every node that later reads one, so any
+drive of this pair needs a **fresh project**.
 
 ## The inversion this phase exists to fix
 

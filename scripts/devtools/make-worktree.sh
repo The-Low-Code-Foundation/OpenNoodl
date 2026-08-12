@@ -127,7 +127,15 @@ done
 #
 # ⚠️ A lane that actually CHANGES `nodegx-backend` must rebuild in its own
 # worktree rather than trust this link, which points at primary's output.
-for artifact in packages/nodegx-backend/dist; do
+#
+# ⚠️ `noodl-runtime/dist-types` is the second of these, found by the FUN-007
+# lane on 2026-08-12 — the same trap in a new place, and it had been armed for
+# every runtime lane since. `package.json` points `types` at
+# `dist-types/noodl-runtime.d.ts`; without it five runtime suites fail to *run*
+# and the total drops from **2349 to 2303** while the failure count stays at
+# zero. That is the shape to watch for: a green board with 46 fewer tests in it.
+# Always compare the TOTAL against primary's, never just the failures.
+for artifact in packages/nodegx-backend/dist packages/noodl-runtime/dist-types; do
   if [ -d "$PRIMARY/$artifact" ] && [ ! -e "$WT/$artifact" ]; then
     ln -s "$PRIMARY/$artifact" "$WT/$artifact"
     echo "make-worktree: linked $artifact from primary (gitignored build output)"

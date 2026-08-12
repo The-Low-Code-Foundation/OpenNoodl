@@ -14,6 +14,12 @@ A new user was **eight characters** from working code (`Outputs.Output_1 = Input
 would have taught them — *typing `Inputs.` creates the port* — is invisible, while the one they found
 in the property panel teaches nothing.
 
+🔴 **Corrected 2026-08-12:** they were warned **twice**. `var Output_1 = Input_1` *throws* — it has
+never run silently — and the runtime failure goes to `Error` and `Failure` ports that nothing on the
+canvas draws attention to. The silent case is the *next* thing they type, `Output_1 = Inputs.Input_1`,
+which lands on an implicit global. Neither report names the port. See README **premise correction 3**;
+it moves the diagnosis and leaves every task standing.
+
 | Task | File | One line | State |
 |---|---|---|---|
 | FUN-001 | [FUN-001-ONE-NOTATION-WRITTEN-DOWN-ONCE.md](FUN-001-ONE-NOTATION-WRITTEN-DOWN-ONCE.md) | one module owns the notation copy and the two expression builders | ✅ **in `cline-dev`** `f03eaece` — §2 taken on the recommendation, **not yet signed by Richard**. Four findings measured against the real parser; **F5 invalidates FUN-002's specced seed** |
@@ -22,7 +28,7 @@ in the property panel teaches nothing.
 | FUN-004 ⭐ | [FUN-004-THE-DIAGNOSTIC-THAT-NAMES-THE-PORT.md](FUN-004-THE-DIAGNOSTIC-THAT-NAMES-THE-PORT.md) | **the flagship** — four messages with one-click fixes, including the observed bug verbatim | 📋 open |
 | FUN-005 | [FUN-005-THE-PORTS-RAIL.md](FUN-005-THE-PORTS-RAIL.md) | the ports become clickable beside the code; `+` creates one without leaving; live values | 📋 open |
 | FUN-006 | [FUN-006-THE-BAR-THAT-KNOWS-WHAT-IS-TRUE.md](FUN-006-THE-BAR-THAT-KNOWS-WHAT-IS-TRUE.md) | a dismissable line that names *their* ports and retires itself on success | 📋 open |
-| FUN-007 | [FUN-007-THE-LOOP-CLOSES-AFTER-THE-RUN.md](FUN-007-THE-LOOP-CLOSES-AFTER-THE-RUN.md) | "this node wrote no output"; runtime errors reach the gutter at the right line | 🔨 **in flight**, `fun-007-lane` |
+| FUN-007 | [FUN-007-THE-LOOP-CLOSES-AFTER-THE-RUN.md](FUN-007-THE-LOOP-CLOSES-AFTER-THE-RUN.md) | "this node wrote no output"; runtime errors reach the gutter at the right line | ✅ **merged** `fun-007-lane` — 🔴 **F24 refuted: the observed body throws**, and the premise moved with it. §2's gutter rendering is **not done** — the payload carries `line`/`column`/`hint`, nothing renders them |
 | FUN-008 | [FUN-008-COMPLETION-MEETS-THE-WRONG-INSTINCT.md](FUN-008-COMPLETION-MEETS-THE-WRONG-INSTINCT.md) | typing `Inp` offers `Inputs.Input_1` — the smallest task here | 📋 open |
 | FUN-009 | [FUN-009-THE-EXPRESSION-NODES-OPPOSITE-RULE.md](FUN-009-THE-EXPRESSION-NODES-OPPOSITE-RULE.md) | the sibling node with the inverse rule, and why the user's guess was reasonable | 📋 open |
 
