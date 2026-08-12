@@ -22,6 +22,7 @@ import { buildBlocklyTheme, resolveBlocklyChrome } from './BlocklyTheme';
 import css from './BlocklyWorkspace.module.scss';
 import { buildToolbox } from './BlocklyToolbox';
 import { DoItHandle, attachDoIt } from './DoItController';
+import { InterfaceRailsHandle, attachInterfaceRails } from './InterfaceRailsOverlay';
 import { generateWithMyBlocks, initMyBlocks, myBlocksFlyout, MY_BLOCKS_CATEGORY } from './MyBlocksBlocks';
 import { myBlocksStore } from './MyBlocksShelves';
 import type { BlocklyWorkspaceJson } from './myblocks/format';
@@ -54,6 +55,11 @@ export interface BlocklyWorkspaceProps {
 
 export function BlocklyWorkspace({ initialWorkspace, onChange, readOnly = false, nodeId }: BlocklyWorkspaceProps) {
   const blocklyDiv = useRef<HTMLDivElement>(null);
+  // LGC-004 — the two interface rails. Rendered as siblings of the injection div (rather than as
+  // layers over it) so they cannot cover Blockly's left-edge toolbox, and so the workspace is
+  // injected at its final width and needs no `svgResize` when they appear.
+  const inputsRailDiv = useRef<HTMLDivElement>(null);
+  const outputsRailDiv = useRef<HTMLDivElement>(null);
   const workspaceRef = useRef<Blockly.WorkspaceSvg | null>(null);
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -85,6 +91,9 @@ export function BlocklyWorkspace({ initialWorkspace, onChange, readOnly = false,
     // LGC-002. Its own handle rather than anything on the workspace: Do It is an overlay and
     // must stay separable from the workspace's own lifecycle, including its serialisation.
     let doIt: DoItHandle | null = null;
+    // LGC-004. Also its own handle: the rails are DOM outside the SVG and must stay separable
+    // from the workspace's serialisation, for the reason `DoItBalloons` states at length.
+    let rails: InterfaceRailsHandle | null = null;
 
     const flushSave = () => {
       if (!workspace || !onChangeRef.current) return;
@@ -181,6 +190,16 @@ export function BlocklyWorkspace({ initialWorkspace, onChange, readOnly = false,
       // layer's own change listener never sees the deserialisation's BLOCK_CREATE storm.
       doIt = attachDoIt(workspace, nodeId);
 
+      // LGC-004 — the signature at the two edges. Attached after the load, like Do It, so its
+      // first paint reads the finished program rather than one block of it.
+      if (inputsRailDiv.current && outputsRailDiv.current) {
+        rails = attachInterfaceRails({
+          workspace,
+          inputsHost: inputsRailDiv.current,
+          outputsHost: outputsRailDiv.current
+        });
+      }
+
       // Follow the editor's light/dark setting (UIX-005 contract). The grid is not part of
       // the theme object and Blockly's setter for it is private, so the grid colour is
       // restyled from CSS instead (see `.blocklyGridPattern` in the stylesheet) — which
@@ -237,6 +256,13 @@ export function BlocklyWorkspace({ initialWorkspace, onChange, readOnly = false,
         doIt = null;
       }
 
+      // Before the workspace goes: the rails hold a change listener and a registered drag target
+      // on it.
+      if (rails) {
+        rails.dispose();
+        rails = null;
+      }
+
       if (workspace) {
         workspace.removeChangeListener(changeListener);
         workspace.dispose();
@@ -254,7 +280,18 @@ export function BlocklyWorkspace({ initialWorkspace, onChange, readOnly = false,
       {failedToLoad ? (
         <div className={css.LoadError}>The block editor could not be opened. See the developer console for details.</div>
       ) : null}
-      <div ref={blocklyDiv} className={css.BlocklyContainer} />
+      <div className={css.Workspace}>
+        {/*
+          ⚠️ The rails carry their classes from the **first render**, not from `attachInterfaceRails`.
+          Their width has to exist before `Blockly.inject` measures the container, and injection
+          happens inside the effect — a rail that widened afterwards would leave the SVG at the
+          width it was injected with, which is precisely the class of defect `blocklyResize.ts`
+          exists for.
+        */}
+        <div ref={inputsRailDiv} className={css.Rail + ' ' + css.RailInputs} />
+        <div ref={blocklyDiv} className={css.BlocklyContainer} />
+        <div ref={outputsRailDiv} className={css.Rail + ' ' + css.RailOutputs} />
+      </div>
     </div>
   );
 }
