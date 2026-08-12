@@ -188,6 +188,49 @@ every node that later reads one — the second run of the same test lies.
 - A local variable inside a nested function that happens to share an output's name is a warning at
   most, and is never auto-rewritten without a click.
 
+## What was built, 2026-08-12 (late)
+
+| File | What |
+|---|---|
+| `noodl-core-ui/.../utils/portDiagnostics.ts` | **new.** The four messages, their fix-its, the syntax-tree rule and the expression gate |
+| `noodl-core-ui/.../utils/notation.ts` | +4 sentence builders, beside the notation they use |
+| `noodl-core-ui/.../utils/esLintDiagnostics.ts` | one call — the port pass over what ESLint produced |
+| `noodl-core-ui/tests/code-editor/portDiagnostics.test.ts` | **new.** 35 specs |
+
+20 suites / 298 tests green in `noodl-core-ui`. `ts-jest` runs diagnostics on, so the suite typechecks
+every module it imports.
+
+### Three things the specs decided, not the plan
+
+- **Message 4 must not repeat message 1.** `var Output_1 = Input_1` produced *three* messages, because
+  `Input_1` is declared and — reading a bare name rather than the port — genuinely never read. Literally
+  true, and noise: the user is already being told about that exact name on that exact line, better.
+  Message 4 now skips ports message 1 has claimed, and the acceptance's "two actionable messages" is
+  what actually comes out.
+- **The typo guard is real, and an existing spec found it.** §1's *"offer it only for identifiers that
+  look like a port and not like a typo of something in scope"* was implemented as a length check, which
+  is not that. `esLintDiagnostics.test.ts`'s `const total = 1; … totl` row went red and named the
+  hole. Now: one edit's distance from any `VariableDefinition` in the document, or from any port name,
+  declines the offer. One edit, not two — at two, `sum` and `num` are typos of each other and a real
+  new port stops being offerable.
+- **Message 2's two forms are different bugs.** `var Output_1 = …` is a genuine local and legal inside
+  a helper, so it is reported at top level only. `Output_1 = …` undeclared is an implicit global at any
+  depth and is reported at any depth. One rule for both gets one of them wrong.
+
+### ⚠️ Proved red — and one §3 row is defence in depth, not a gate test
+
+Replacing `modeHasDeclaredPorts` with `false` in `portsFor` fails **four** of the five expression rows.
+The fifth — "offers no port for an undefined name in an expression" — stays green, because `no-undef`
+is already off in expression mode so there is no diagnostic for messages 1 and 3 to enrich. It is worth
+keeping and it is worth knowing it does not test the gate. **Messages 2 and 4 have no second mechanism
+behind them at all**, which is what makes the gate load-bearing rather than belt-and-braces.
+
+### Still not driven
+
+Both acceptance rows. The first — apply both fixes, **wire the node, confirm a value arrives** — is
+explicitly *"verify the consequence, not the mechanism"*, and a green lint panel is not the outcome.
+⚠️ Fresh project per row (F13c).
+
 ## Register
 
 | # | Finding | State |
@@ -197,4 +240,5 @@ every node that later reads one — the second run of the same test lies.
 | F13b | 🔴 `var Output_1 = Input_1` **throws** at runtime (`ReferenceError`) — it never ran silently. The silent body is `Output_1 = Inputs.Input_1`, an implicit global | ✅ verified 2026-08-12, twice, by compiling the body the runtime compiles — README premise correction 3 |
 | F13c | Implicit globals are shared across Function nodes, so one bare-`Output_1` write disarms the ReferenceError project-wide | ✅ verified with F13b; **every drive of this pair needs a fresh project** |
 | F14 | `no-undef` is off in expression mode for a real reason, and every message here would be destructive there | ✅ verified, `esLintDiagnostics.ts:26-32` |
-| F15 | Whether `Noodl.Inputs.foo` is mined as port `foo` by the shared regexes | ⚠️ **unverified — test before implementing message 4** |
+| F15 | Whether `Noodl.Inputs.foo` is mined as port `foo` by the shared regexes | ✅ **measured 2026-08-12 — yes, and the reason is blunter than the question.** The patterns have **no left boundary at all**, so `MyInputs.foo` mints `foo` too. Legacy code is therefore never falsely accused by message 4. Pinned in `scriptPorts.test.ts` |
+| F16 | Message 3's "not a typo of something in scope" needs an actual scope reading, not a length heuristic | ✅ found by an **existing** spec going red, not by design. One edit's distance from any in-scope name or port declines the offer |

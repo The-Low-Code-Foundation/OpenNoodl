@@ -290,3 +290,74 @@ export const SEED_FUNCTION_BODY = [
   'Outputs.Result = Inputs.Value;',
   ''
 ].join('\n');
+
+/* ------------------------------------------------------------------ *
+ * FUN-004 — the four sentences a port diagnostic says
+ * ------------------------------------------------------------------ */
+
+/**
+ * The four messages, in one place, because three of them put `Inputs.`/`Outputs.`
+ * in front of a beginner and this module is where that notation is written down.
+ *
+ * ⚠️ **Message 1 is duplicated in the runtime and the two must agree.** FUN-007's
+ * F32 records why it cannot be shared: `noodl-core-ui` has no dependency on
+ * `@noodl/runtime`, and a runtime node cannot import a React package. The twin is
+ * `functionDiagnostics.ts#undeclaredPortNameMessage`, reached when the *run*
+ * throws a `ReferenceError` rather than when the linter sees the name. Static and
+ * runtime paths converge on one sentence (FUN-007 §3), and keeping them
+ * converged is a review obligation until someone adds a shared package.
+ * `notation.test.ts` pins the wording on this side; the runtime's own spec pins
+ * the other.
+ */
+
+/**
+ * **Message 1** — an undefined identifier that *is* a declared or mined input.
+ * The originating user's exact case.
+ */
+export function undefinedNameIsInputMessage(name: string): string {
+  return `${name} is an input port on this node. Read it with ${readExpression(name)}.`;
+}
+
+/**
+ * **Message 2** — a local declared, or an implicit global assigned, under an
+ * output's name. The half that lints clean today.
+ *
+ * ⚠️ Says *"the port stays empty"* rather than *"this is wrong"*: `var Output_1 = 1`
+ * is valid JavaScript doing exactly what it says. What makes it a defect is a
+ * NodeGX fact the language cannot see.
+ */
+export function localShadowsOutputMessage(name: string, kind: PortKind): string {
+  return (
+    `${name} is an output port. This writes a local variable instead, so the port stays empty. ` +
+    `Write ${writeExpression(name, kind).trimEnd()}${kind === 'signal' ? '' : ' …'}.`
+  );
+}
+
+/**
+ * **Message 3** — an undefined identifier that is not any port. The offer that
+ * teaches the inversion: the port appears *because* you mentioned it.
+ */
+export function undefinedNameIsNoPortMessage(name: string): string {
+  return `No port named ${name}. Create an input port by reading it: ${readExpression(name)}.`;
+}
+
+/**
+ * **Message 4** — a declared port the code never mentions.
+ *
+ * ⚠️ Information, not a warning, and reported once at the top of the document.
+ * A declared-but-unread port is a completely legitimate state mid-edit; a squiggle
+ * for it would be noise on every port between creating it and using it. This is
+ * the sentence the originating user would have seen *before* typing anything
+ * wrong, and it is only expressible because the declared and mined lists are kept
+ * apart (`authoringContext.ts:69-77`).
+ */
+export function declaredButUnreadMessage(names: readonly string[]): string {
+  if (names.length === 0) return '';
+
+  if (names.length === 1) {
+    return `${names[0]} is declared on this node but never read. Insert ${readExpression(names[0])}.`;
+  }
+
+  const listed = names.join(', ');
+  return `${listed} are declared on this node but never read. Insert ${readExpression(names[0])} to use the first.`;
+}

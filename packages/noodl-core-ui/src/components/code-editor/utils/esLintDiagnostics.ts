@@ -46,6 +46,7 @@ import { Linter } from 'eslint-linter-browserify';
 import globals from 'globals';
 
 import { getCodeAuthoringContext } from '../authoringContext';
+import { portDiagnostics } from './portDiagnostics';
 import { widen } from './syntaxDiagnostics';
 import type { ValidationType } from './types';
 
@@ -254,7 +255,7 @@ function offsetOf(state: EditorState, line: number, column: number): number {
 export function javascriptDiagnostics(state: EditorState, validationType: ValidationType): Diagnostic[] {
   const messages = lintMessages(state.doc.toString(), validationType);
 
-  return messages.map((message) => {
+  const base = messages.map((message) => {
     const from = offsetOf(state, message.line, message.column);
     const to =
       message.endLine !== undefined && message.endColumn !== undefined
@@ -268,4 +269,11 @@ export function javascriptDiagnostics(state: EditorState, validationType: Valida
       source: message.ruleId ? `eslint:${message.ruleId}` : 'eslint'
     };
   });
+
+  // FUN-004. Everything above is a claim about JavaScript. This is the pass that
+  // knows a name is a *port* — it rewrites `no-undef` where the name turns out to
+  // be one, and adds the two rules ESLint cannot express. It is a no-op in every
+  // mode without declared ports, `'expression'` most importantly: see the ⚠️ in
+  // `portDiagnostics.ts`.
+  return portDiagnostics(state, validationType, base);
 }
