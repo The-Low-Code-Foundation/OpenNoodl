@@ -8613,7 +8613,8 @@
           "type": {
             "name": "string",
             "allowEditOnly": true,
-            "codeeditor": "javascript"
+            "codeeditor": "javascript",
+            "codenotation": "expression"
           },
           "isSignal": false,
           "description": "JavaScript expression whose value becomes Result; every identifier in it becomes an input port"
@@ -15514,7 +15515,8 @@
           "type": {
             "name": "string",
             "allowEditOnly": true,
-            "codeeditor": "javascript"
+            "codeeditor": "javascript",
+            "codenotation": "function"
           },
           "isSignal": false,
           "description": "JavaScript run when Run fires, reading Inputs.name and writing Outputs.name"
@@ -15756,7 +15758,8 @@
           "type": {
             "name": "string",
             "allowEditOnly": true,
-            "codeeditor": "javascript"
+            "codeeditor": "javascript",
+            "codenotation": "script"
           },
           "isSignal": false,
           "default": "",

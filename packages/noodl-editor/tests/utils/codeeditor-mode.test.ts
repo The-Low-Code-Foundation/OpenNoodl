@@ -22,6 +22,15 @@
  * the component's own helpers. (It was `jsValidator.test.ts` until FH-017
  * slice 2 deleted that module along with the second error system in it.)
  *
+ * ## The JavaScript half (FUN-009)
+ *
+ * The three JavaScript modes used to be guessed from `type.name`, and the guess
+ * could never fire — `type.name` is `'string'` for all three code ports, so
+ * Function, Script and Expression all opened as **FUNCTION**. The mode is now
+ * declared by the port as `type.codenotation`; the three declarations are
+ * pinned in `noodl-viewer-react/tests/fun-009-code-notation.test.ts`, which can
+ * read the node definitions this suite cannot reach.
+ *
  * describe/it/expect are Jasmine globals here; the editor suite is not jest.
  */
 
@@ -44,12 +53,43 @@ describe('CodeEditorType — the port language decides the mode (AIX-005)', () =
     expect(validationTypeForEditType({ name: 'string', codeeditor: 'json' })).toBe('json');
   });
 
-  it('keeps the name-based guess for the three JavaScript modes', () => {
-    // The only signal available for "which wrapping does the validator accept".
-    expect(validationTypeForEditType({ name: 'stringWithExpression', codeeditor: 'javascript' })).toBe('expression');
-    expect(validationTypeForEditType({ name: 'scriptString', codeeditor: 'javascript' })).toBe('script');
+  it('takes the JavaScript mode from the port declaration (FUN-009)', () => {
+    expect(validationTypeForEditType({ name: 'string', codeeditor: 'javascript', codenotation: 'expression' })).toBe(
+      'expression'
+    );
+    expect(validationTypeForEditType({ name: 'string', codeeditor: 'javascript', codenotation: 'script' })).toBe(
+      'script'
+    );
+    expect(validationTypeForEditType({ name: 'string', codeeditor: 'javascript', codenotation: 'function' })).toBe(
+      'function'
+    );
+    expect(validationTypeForEditType({ name: 'string', codeeditor: 'typescript', codenotation: 'script' })).toBe(
+      'script'
+    );
+  });
+
+  it('ignores the type name, which is what made the old guess dead code (FUN-009)', () => {
+    // The rows this replaces asserted `stringWithExpression` → expression and
+    // `scriptString` → script. No port in the product has either name: all three
+    // JavaScript code ports declare `type.name = 'string'`, so both branches were
+    // unreachable and every one of them opened as `function` — an Expression node
+    // included, where `no-undef` then underlined the identifiers that *are* its
+    // input ports. A spec that only exercises invented inputs cannot see that.
+    expect(validationTypeForEditType({ name: 'stringWithExpression', codeeditor: 'javascript' })).toBe('function');
+    expect(validationTypeForEditType({ name: 'scriptString', codeeditor: 'javascript' })).toBe('function');
+  });
+
+  it('leaves an undeclared JavaScript port where it already was', () => {
+    // The compatibility floor. `mapScript`, `storageJSONFilter` and the REST node's
+    // two scripts declare no notation; they resolved to `function` before FUN-009
+    // and still do. Changing that is a separate decision about four real ports
+    // (FUN-009 F35), not a side effect of giving three other ports a voice.
     expect(validationTypeForEditType({ name: 'string', codeeditor: 'javascript' })).toBe('function');
     expect(validationTypeForEditType({ name: 'string', codeeditor: 'typescript' })).toBe('function');
+    // An unrecognised notation is not a licence to invent one.
+    expect(validationTypeForEditType({ name: 'string', codeeditor: 'javascript', codenotation: 'lisp' })).toBe(
+      'function'
+    );
   });
 
   it('falls back to expression for a language it does not know', () => {

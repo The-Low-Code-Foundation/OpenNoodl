@@ -25,6 +25,24 @@ const LANGUAGE_MODES: Record<string, ValidationType> = {
   text: 'text'
 };
 
+/** The `codenotation` values a JavaScript port may declare. */
+const NOTATION_MODES: Record<string, ValidationType> = {
+  expression: 'expression',
+  function: 'function',
+  script: 'script'
+};
+
+/**
+ * Which mode a JavaScript port opens in when it does not say.
+ *
+ * `'function'` because that is what every one of these ports resolved to before
+ * FUN-009 — the guess this function used to make returned `'function'` for
+ * every real port in the product — so a port that has not been given a
+ * `codenotation` behaves exactly as it did. It is a fallback, not a claim about
+ * the port; see the `⚠️` in {@link validationTypeForEditType}.
+ */
+const DEFAULT_JS_NOTATION: ValidationType = 'function';
+
 /**
  * Which editor mode a `codeeditor` port opens in.
  *
@@ -36,9 +54,40 @@ const LANGUAGE_MODES: Record<string, ValidationType> = {
  * A stylesheet was therefore presented as an expression and then reported as a
  * syntax error, on a node whose whole purpose is to hold a stylesheet.
  *
- * `javascript`/`typescript` keep the name-based guess they always had: the
- * three JS modes differ only in what wrapping the validator accepts, and the
- * port name is the only signal available for that.
+ * ## The JavaScript half, and why it is a second declaration (FUN-009)
+ *
+ * The three JavaScript modes are not three flavours of validation. They are
+ * three **different scoping rules**, and two of them are opposites:
+ *
+ * | | reads an input as | an unknown name is |
+ * |---|---|---|
+ * | `function` | `Inputs.Name` | undefined — `no-undef` warns |
+ * | `script` | a declared `inputs:{}` entry | undefined — `no-undef` warns |
+ * | `expression` | the bare name itself | **a new input port** (`expression.ts:399`) |
+ *
+ * Which rule a port follows is known only to the node that declares it, and
+ * nothing derivable carries it. This function used to guess from `type.name`
+ * — three lines below its own comment saying the *port* name was the only
+ * signal — and `type.name` is `'string'` for all three, so **both name branches
+ * were unreachable and every JavaScript port in the product opened as
+ * `function`**. Measured live 2026-08-12; the user-visible half was an
+ * Expression node running `no-undef` and underlining `total * 2` as an
+ * undefined variable while dutifully minting the port `total`.
+ *
+ * ⚠️ The repair is **not** the port name either. `functionScript` (Function)
+ * contains `script` and `code` (Script) contains neither, so switching to the
+ * port name fixes Expression and inverts the other two. So the port says which
+ * rule it follows, in `type.codenotation`, next to the language it is written
+ * in — `expression.ts`, `javascript.ts` (`Javascript2`) and
+ * `simplejavascript.ts` are the three declarations.
+ *
+ * ⚠️ A JavaScript port that declares no `codenotation` gets
+ * {@link DEFAULT_JS_NOTATION}, which reproduces today's behaviour exactly. That
+ * is a compatibility floor and not an assertion that the port is a Function
+ * body: `mapScript` (Map Collection) declares its outputs through `map({…})`
+ * and `storageJSONFilter` (Database Collection) is a filter with `$variables`,
+ * and neither has `Inputs.`/`Outputs.` in it. They were offered Function
+ * completions before this change and still are. Filed as FUN-009 F35.
  *
  * Anything unrecognised stays `expression`, which is the safest JS reading. It
  * is no longer the array/object case, though — since ERG-003 those ports route
@@ -46,7 +95,9 @@ const LANGUAGE_MODES: Record<string, ValidationType> = {
  *
  * Exported for the spec; `getValidationType` is the only caller in the product.
  */
-export function validationTypeForEditType(type: { name?: string; codeeditor?: string } | undefined): ValidationType {
+export function validationTypeForEditType(
+  type: { name?: string; codeeditor?: string; codenotation?: string } | undefined
+): ValidationType {
   const language = type?.codeeditor;
 
   if (language && LANGUAGE_MODES[language]) {
@@ -54,10 +105,8 @@ export function validationTypeForEditType(type: { name?: string; codeeditor?: st
   }
 
   if (language === 'javascript' || language === 'typescript') {
-    const typeName = (type?.name || '').toLowerCase();
-    if (typeName.includes('expression')) return 'expression';
-    if (typeName.includes('script')) return 'script';
-    return 'function';
+    const notation = type?.codenotation;
+    return (notation && NOTATION_MODES[notation]) || DEFAULT_JS_NOTATION;
   }
 
   return 'expression';

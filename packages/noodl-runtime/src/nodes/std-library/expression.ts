@@ -395,7 +395,14 @@ const ExpressionNode: NodeDefinitionOptions = {
       type: {
         name: 'string',
         allowEditOnly: true,
-        codeeditor: 'javascript'
+        codeeditor: 'javascript',
+        // FUN-009. The scoping rule this port follows, which is the *inverse* of
+        // the Function node's: the identifiers below become the input ports, so
+        // `no-undef` is off here and nothing may offer `Inputs.` — inserting it
+        // would mint a port called `Inputs`. The editor cannot derive this
+        // (`type.name` is `'string'` for all three code nodes, and the port names
+        // invert), so it is declared. Read by `validationTypeForEditType`.
+        codenotation: 'expression'
       },
       displayName: 'Expression',
       description: 'JavaScript expression whose value becomes Result; every identifier in it becomes an input port',

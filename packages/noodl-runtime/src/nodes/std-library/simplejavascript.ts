@@ -212,7 +212,12 @@ const SimpleJavascriptNode: NodeDefinitionOptions = {
       type: {
         name: 'string',
         allowEditOnly: true,
-        codeeditor: 'javascript'
+        codeeditor: 'javascript',
+        // FUN-009. `Inputs.Name` / `Outputs.Name`, and an unknown identifier is
+        // an undefined variable. Declared rather than derived: this port is
+        // called `functionScript` and the *Script* node's is `code`, so any
+        // guess from the name gets these two the wrong way round.
+        codenotation: 'function'
       },
       group: 'General',
       set(this: SimpleJavascriptNodeInstance, script: string) {

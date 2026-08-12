@@ -16,6 +16,7 @@ import {
   NOTATION_RULES,
   SEED_FUNCTION_BODY,
   canExpressPort,
+  expressionPortNote,
   readExpression,
   stripPortPrefix,
   writeExpression
@@ -172,5 +173,49 @@ describe('NOTATION_RULES', () => {
   it('states the function rule in the notation the runtime actually mines', () => {
     expect(minePorts(NOTATION_RULES.function).inputs).toEqual(['Name']);
     expect(minePorts(NOTATION_RULES.function).outputs).toEqual(['Name']);
+  });
+});
+
+describe('expressionPortNote (FUN-009 §1)', () => {
+  it('states the rule even when the expression is empty', () => {
+    const note = expressionPortNote([]);
+
+    expect(note.rule).toContain('becomes an input port');
+    // Nothing to lose yet, so no warning about losing it.
+    expect(note.current).toBeUndefined();
+    expect(note.onDelete).toBeUndefined();
+  });
+
+  it('names the ports the current expression has grown', () => {
+    const note = expressionPortNote(['price', 'quantity']);
+
+    expect(note.current).toBe('price, quantity → 2 input ports.');
+  });
+
+  it('counts one port in the singular', () => {
+    expect(expressionPortNote(['total']).current).toBe('total → 1 input port.');
+  });
+
+  it('warns about deletion exactly when there is a port to lose', () => {
+    // ⚠️ The half that matters: removing a name removes the port AND its wires
+    // (`expression.ts`, `inputsToRemove`). Shown only in the state where the
+    // next keystroke could do it.
+    expect(expressionPortNote(['price']).onDelete).toContain('wired');
+    expect(expressionPortNote([]).onDelete).toBeUndefined();
+  });
+
+  it('never puts Inputs. or Outputs. in front of an Expression author', () => {
+    // The destructive case, and the reason the copy does not draw the contrast
+    // with Function mode in words: `Inputs.foo` typed here mints a port called
+    // `Inputs`. Assert over every string the note can produce, in both states.
+    for (const names of [[], ['price', 'quantity']]) {
+      const note = expressionPortNote(names);
+      const all = [note.rule, note.current ?? '', note.onDelete ?? ''].join(' ');
+
+      expect(all).not.toContain('Inputs.');
+      expect(all).not.toContain('Outputs.');
+      expect(minePorts(all).inputs).toEqual([]);
+      expect(minePorts(all).outputs).toEqual([]);
+    }
   });
 });

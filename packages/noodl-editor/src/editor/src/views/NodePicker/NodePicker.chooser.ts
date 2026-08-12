@@ -40,6 +40,23 @@
  * down at all, which is exactly the shape of the NDA-017 defect — a description
  * that described a trap as if it were a feature, was wrong, and was the sole
  * source. Copy asserting a one-in/one-out limit does not ship.
+ *
+ * ## The other module that describes these nodes (FUN-009 §4)
+ *
+ * `noodl-core-ui/…/code-editor/utils/notation.ts` holds `NOTATION_RULES` — one
+ * line per code node, shown *inside* the editor. Phase 61 planned for both
+ * phases to cite a single string; on reading the two, that is the wrong shape
+ * and the plan is not being followed. They are different documents for
+ * different moments: this one is **comparative and pre-choice** ("which of
+ * these three"), that one is **instructional and mid-edit** ("how do I read an
+ * input here"), and it also covers `Javascript2`, which is not in this triad,
+ * while this covers `Logic Builder`, which has no code editor at all. One
+ * string cannot be both without being worse than either.
+ *
+ * ⚠️ What they may not do is **disagree**. The shared fact is the Expression
+ * node's rule — every name in the text becomes an input port — and both state
+ * it, in the same register and with the same worked example (`price * quantity`).
+ * If one of them is edited, read the other.
  */
 
 /** One card's worth of chooser copy. */

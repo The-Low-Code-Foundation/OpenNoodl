@@ -69,8 +69,17 @@ export type NotationMode = 'function' | 'script' | 'expression';
  * The expression line therefore does not name either prefix, not even to deny
  * it: the one string a surface is most likely to offer as an insertion is the
  * one string that must not be insertable here. Explaining the contrast *to*
- * someone arriving from a Function node is FUN-009's copy, and belongs beside
- * this as its own export rather than inside a one-liner.
+ * someone arriving from a Function node is FUN-009's copy — see
+ * {@link expressionPortNote}, which does it by naming their actual ports rather
+ * than by writing the other notation on screen.
+ *
+ * ⚠️ **These are not the only sentences the product has about these nodes.**
+ * Phase 59's `NodePicker.chooser.ts` describes Expression, Visual Function and
+ * Function to somebody who has not picked one yet. FUN-009 §4 planned for the
+ * two to share one string; they should not, and that file's header says why —
+ * a comparative card and an in-editor rule are different documents. **They must
+ * still agree**, and the fact they share is the Expression rule below. Edit one,
+ * read the other.
  */
 export const NOTATION_RULES: Record<NotationMode, string> = {
   function:
@@ -83,6 +92,65 @@ export const NOTATION_RULES: Record<NotationMode, string> = {
     'Every name in the expression becomes an input port — write price * quantity and the node ' +
     'grows price and quantity. The value of the expression is the result; there is nothing to assign.'
 };
+
+/**
+ * What the Expression editor says about the text that is in it right now
+ * (FUN-009 §1).
+ *
+ * ## Why this is a function of the current names and not a constant
+ *
+ * The Expression node's rule is the **inverse** of the Function node's, and the
+ * confusion FUN-009 exists to end is not ignorance — it is correct transfer from
+ * the sibling node. Somebody who met a Function five minutes ago writes
+ * `var Output_1 = Input_1` in an Expression because that is what worked. A
+ * constant line stating the rule is the version that gets skimmed; naming the
+ * ports *this* expression has grown is the version that is checkable against
+ * what is on screen, and it is the same discipline FUN-006 §1 imposes on the
+ * Function bar.
+ *
+ * ⚠️ **The deletion half is the one that matters, and it is the half nobody
+ * expects.** Removing a name from the text removes the port — `inputsToRemove`
+ * in the `expression` setter — and with it whatever was wired to that port. A
+ * text edit that silently disconnects a wire is not a thing text editors do, so
+ * the sentence is only shown in the state where it is about to happen: when the
+ * expression currently references at least one name, i.e. when there is a port
+ * with something to lose.
+ *
+ * ⚠️ **Nothing here may name `Inputs.` or `Outputs.`, not even to deny them.**
+ * The one string a help surface is most likely to make insertable is the one
+ * string that must not be inserted here: `Inputs.foo` in an expression mints a
+ * port called `Inputs`. See {@link NOTATION_RULES}. That constraint is also why
+ * this is not written as "unlike a Function node, …" — a contrast sentence puts
+ * the wrong notation on screen in the editor where it is destructive.
+ *
+ * The caller owns rendering; this owns the words. `names` is the identifiers the
+ * expression currently references, in document order — the runtime's own
+ * `parsePorts` result, which is what actually became ports.
+ */
+export interface ExpressionPortNote {
+  /** Always shown. The rule, in the second person. */
+  rule: string;
+  /** The current names as ports, or `undefined` when the expression has none. */
+  current?: string;
+  /** The deletion warning, or `undefined` when there is no port to lose. */
+  onDelete?: string;
+}
+
+export function expressionPortNote(names: readonly string[]): ExpressionPortNote {
+  const rule = 'Every name you use here becomes an input port on this node.';
+
+  if (names.length === 0) {
+    return { rule };
+  }
+
+  const count = names.length === 1 ? '1 input port' : `${names.length} input ports`;
+
+  return {
+    rule,
+    current: `${names.join(', ')} → ${count}.`,
+    onDelete: 'Delete a name and its port goes too, along with anything wired to it.'
+  };
+}
 
 /**
  * What a port carries, in the only two shapes the runtime types differently.
