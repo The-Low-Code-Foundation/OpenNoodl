@@ -50,6 +50,12 @@ export interface RuntimeEditorConnection extends EditorConnectionLike {
   /** HUD-004. Who holds the trace, and the last `seq` written. See `tracebuffer.ts`. */
   sendTraceState(state: unknown): void;
   sendPortValues(values: unknown[]): void;
+  /** LGC-002 — the answer to one "Do It". See `logic-builder-probe.ts`. */
+  sendBlockFragmentResult(result: unknown): void;
+  /** LGC-003 — "I have the node you asked me to trace", stamped with this viewer's id. */
+  sendBlockTraceState(state: unknown): void;
+  /** LGC-003 — one run's `{blockId → value}` map. See `blockrun.ts`. */
+  sendBlockValues(frame: unknown): void;
 }
 
 /**

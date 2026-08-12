@@ -1,6 +1,14 @@
 # LGC-007 — save a group of blocks, use it anywhere
 
-**Status:** 📋 open · ⭐ **the second flagship** · **Track: adopt over build** · depends on **LGC-006**
+**Status:** 🚧 **engine built 2026-08-12, no UI** · ⭐ **the second flagship** · 🔴 **Track: BUILD** —
+"adopt over build" was tested here and failed; see the verdict below · depends on **LGC-006**
+
+> **Read [What is built](#what-is-built-2026-08-12) before scheduling anything against this file.**
+> The format, the store, the two shelves, the cycle guard, the shape inference, the inliner and
+> export/import are built and graded by **66 specs in a plain-Node runner**. **Not one of them has a
+> user-reachable surface.** There is no *Save as a block* menu item, no save dialog, no backpack, no
+> regeneration sweep, and nothing has been run in an editor. The remaining work is the half a spec
+> cannot grade.
 
 ## Richard's framing, which is the right one
 
@@ -35,20 +43,137 @@ settled edit
 `SAVE_DEBOUNCE_MS = 300`), editing a definition can regenerate every Visual Function that references
 it. Single-definition semantics at zero runtime cost.
 
-## ⚠️ Most of that is already written
+## 🔴 Most of that is **not** already written — the verdict came back 2026-08-12
 
-**`@blockly/block-shareable-procedures`** — "a group of blocks that replace the built-in procedures
-with ones that can be shared between workspaces… backed by explicit data models."
+The hour was spent. Both plugins were read in their published Blockly-12 source; the full findings are
+in [LGC-006](LGC-006-PLUGIN-SWEEP.md). **This task is the largest job in the phase, not wiring.**
 
-That is the definition store, the reference-by-id and the cross-workspace sharing, i.e. the paragraph
-above. **`@blockly/workspace-backpack`** is the storage and retrieval half, and it is Scratch's
-backpack, which non-technical users already recognise: drag things in, open it in another project,
-drag them out — and *dragging from the backpack copies rather than removes*, which is the behaviour
-people expect.
+**`@blockly/block-shareable-procedures`** does not do what its README implies here.
 
-⚠️ Both are **unverified** against Blockly 12 and our custom blocks (LGC-006). **The first hour of
-this task is confirming what they actually do**, because if they hold, this task is wiring, and if
-they do not, it is the largest job in the phase. Do not spec the fallback until that hour is spent.
+- Its unit is a **procedure** — a name, typed parameters, a body inside `procedures_defreturn`. It is
+  gated throughout on `Blockly.procedures.isProcedureBlock`, so **it cannot represent an arbitrary
+  group of blocks**, which is exactly what §1 asks for.
+- The "definition store" is Blockly **core's** `workspace.getProcedureMap()` — per workspace, created
+  and disposed with it. The plugin adds observable models, not a store.
+- **"Shared between workspaces" is an event bus you wire yourself, between two workspaces that are
+  live at the same time.** Ours never are: `BlocklyWorkspace` injects on mount and disposes on
+  unmount, keyed by node id. There is no second workspace to forward events to.
+- It ships **no code generators**; it works only because it reuses the built-in type names. A call
+  block in workspace B would emit a call to a function defined only in A — the very failure the table
+  above exists to avoid.
+
+✅ **What it is worth taking for**: reference-by-id is real, and swapping the name-based built-ins for
+model-backed procedures gives rename-safe local functions inside one Visual Function, for 6.8 KB.
+That is a good trade and a different feature from this task.
+
+**`@blockly/workspace-backpack`** holds up as the **retrieval UI** and nothing more. It is Scratch's
+backpack, drag-from-it copies rather than removes, and its API (`getContents`/`setContents`/`addBlock`)
+is open enough to drive from our own store. 🔴 **But its default store is the workspace**: it registers
+a serializer that would write every backpacked stack into every Logic Builder node's project JSON, and
+give each node its own separate backpack — the opposite of §2. Adopt it with
+`skipSerializerRegistration: true` and put our own store behind it.
+
+**So the definition store, reference-by-id over arbitrary block groups, the two shelves, the cycle
+guard and the regeneration sweep are all still ours to build.** What the sweep saves is the *pattern*
+— Blockly's `IProcedureModel` plus fired-event shape is the right thing to copy — and the backpack as
+the drawer. Spec the rest.
+
+## What is built, 2026-08-12
+
+Everything below is committed on `lgc-007-lane` and graded by **66 specs** in `tests-unit/lgc-007/`,
+which run in plain Node with no Electron. `npx tsc -p tsconfig.json` is clean; `npx jest` in
+`packages/noodl-editor` is **1965 passed / 136 suites**.
+
+**The rules are in [`views/BlocklyEditor/myblocks/`](../../../packages/noodl-editor/src/editor/src/views/BlocklyEditor/myblocks)
+and import nothing — not even Blockly.** A saved group is plain JSON, so the format, the cycle
+guard, the shape inference and the inliner are all JSON transforms. The directory is in
+`tsconfig.tests-main.json`'s include list, so that boundary is enforced by where a file sits rather
+than by remembering it. Anything touching Blockly or an editor singleton is one level up.
+
+| | File | State |
+|---|---|---|
+| the format | `myblocks/format.ts` | ✅ built · written down below |
+| the two shelves and every rule over them | `myblocks/store.ts` | ✅ built |
+| where the shelves live (project settings, `EditorSettings`) | `MyBlocksShelves.ts` | ✅ built · **never run** |
+| §3 the cycle guard, at save and at generate | `myblocks/cycles.ts` + `myblocks/expand.ts` | ✅ built · 21 specs |
+| §1 shape and signature inference | `myblocks/shape.ts` | ✅ built · 17 specs |
+| the inliner, with the live definition link | `myblocks/expand.ts` | ✅ built · 13 specs asserting the **generated JavaScript** |
+| export / import, with id remapping | `myblocks/store.ts` | ✅ built · 15 specs |
+| §4 delete refusal, and inline-and-detach | `myblocks/store.ts` + `expand.ts` | ✅ built |
+| the two call blocks, the My Blocks toolbox category | `MyBlocksBlocks.ts`, `BlocklyToolbox.ts` | ✅ built · **never rendered** |
+| generate-with-inlining, wired into the 300 ms debounce | `BlocklyWorkspace.tsx` | ✅ built · **never run** |
+| **§1 the *Save as a block* menu item and dialog** | — | ❌ **not built** |
+| **§2 the backpack UI** (`@blockly/workspace-backpack`) | — | ❌ **not built** — cannot install in this lane |
+| **§2 the project shelf beside components in the sidebar** | — | ❌ **not built** |
+| **§4 the regeneration sweep** over Logic Builder nodes | — | ❌ **not built** — see below |
+| export/import **file pickers**, the delete dialog's detach offer | — | ❌ **not built** |
+
+🔴 **§4's sweep is not built and its blocker is not code.** Everything below the definition graph is
+done: editing a definition changes what every referencing program generates, and that is asserted by
+a spec. What is missing is the index from a definition id to the **Logic Builder nodes** that
+reference it, and the write of `generatedCode` onto nodes the user is not looking at. The spec's own
+warning is the reason it was not rushed: *"that is a project mutation from a background sweep, and
+this repo has a register entry about a 1-second quit window losing data. The sweep must be part of
+the normal save path, not a fire-and-forget."* Choosing which save path, in a repo where
+`EditorSettings` already debounces its own write by exactly that 1000 ms, is a decision that should
+be made deliberately rather than as the tail of an implementation. ⚠️ Until it lands, a node
+referencing an edited definition picks the change up the next time **that node** is opened and
+settles — which is correct, but is not the acceptance criterion.
+
+## The definition format
+
+A saved group is JSON and nothing else. §2: *"do not design a format that forecloses"* a shared
+library. Three properties buy that, and each has a spec pointed at it.
+
+```jsonc
+// One definition.
+{
+  "formatVersion": 1,
+  "id": "mb_k3f9x2q1a8d0",   // identity. A call block stores THIS, never the name.
+  "name": "Half",             // display only; renameable without breaking a caller
+  "description": "…",         // optional
+  "shape": "value",           // 'value' | 'statement' — derived from body, cached
+  "params": [                 // derived from body, cached
+    { "id": "p_…", "name": "a", "type": "*", "hole": ["0", "i:A"] }
+  ],
+  "requires": ["mb_…"],       // ids this body calls. Derived, cached, and NEVER trusted
+  "body": { "blocks": { "languageVersion": 0, "blocks": [ /* Blockly */ ] } },
+  "colour": "55",
+  "createdAt": "2026-08-12T…", "updatedAt": "2026-08-12T…"
+}
+
+// A shelf, an export file, or one day a fetched package — the same envelope in all three.
+{
+  "formatVersion": 1,
+  "source": { "name": "…", "url": "…", "version": "…" },  // free text; nothing reads it today
+  "definitions": [ /* … */ ]
+}
+```
+
+1. **Identity is a uid, not a name.** A rename is a display change, so two independently-authored
+   libraries can be merged: a name collision is cosmetic and an id collision is remappable.
+2. **A definition names its dependencies.** A partial export carries its transitive closure by
+   default, so an import cannot dangle — and the import side remaps a colliding id and rewrites
+   every reference to it, inside the bodies and inside `requires`. That is the mechanism a shared
+   library would use, and the spec for it is the one that decides whether this claim is true.
+3. **The envelope is scope-free.** Nothing in the JSON says which shelf it came from. The shelf is
+   the container, not a field.
+
+**`shape`, `params` and `requires` are caches**, so the toolbox can draw a flyout without parsing
+every body. They are recomputed by the store on every write, and **no guard reads them** — the cycle
+check re-walks the body, because §3 needs the check to hold at generate time and a stale cache is
+exactly the case it exists for. There is a spec that writes `requires: []` onto a genuinely cyclic
+pair to prove the guard ignores it.
+
+**A hole path** addresses a socket from the body root as a plain string array: `["0","i:VALUE","n","i:A"]`
+is *root block 0 → its `VALUE` input → one `next` down → that block's `A` input*. Recomputed on every
+write, so it cannot drift; skipped rather than thrown on if it no longer resolves, because losing one
+argument is a visible wrong answer and refusing to generate the whole program is a worse one.
+
+**Where the shelves are.** Project: `ProjectModel.setSetting('myBlocks.library', …)`, so it is inside
+`project.json` and reaches a collaborator through git. User: `EditorSettings` key
+`myBlocks.backpack`, the editor's own JSON on disk. Project wins on an id collision, because a
+program that generates differently for its author than for everyone else is the worse failure.
 
 ## §1 — Saving
 
@@ -106,24 +231,113 @@ nothing" is already in the registers as a related surprise.
 
 ## Acceptance
 
-- Blocks selected in one Visual Function can be saved, named, and dropped into a **different**
-  Visual Function in the same project, where they generate working code.
-- A pure single-output group becomes a value block and can be dropped inside `a + …`. A group with
-  signals becomes a statement block and cannot.
-- Editing a definition changes the behaviour of every node referencing it, **without reopening
-  them** — verified by running one, not by regenerating and reading the code.
-- A → B → A is refused at save with a message naming the cycle, and refused at generate.
-- Deleting a referenced definition is refused or detaches, and never leaves a dangling reference.
-- A definition exports to JSON and imports into a different project.
-- ⚠️ **The first deliverable is the plugin verdict**: `block-shareable-procedures` and
-  `workspace-backpack` confirmed or rejected against Blockly 12 and our blocks, in writing, before
-  any of the above is built.
+- ⚠️ Blocks selected in one Visual Function can be saved, named, and dropped into a **different**
+  Visual Function in the same project, where they generate working code. — **half met.** The
+  *generate working code* half is asserted on the exact JavaScript output (`inliner.test.ts`); the
+  *selected, saved, named and dropped* half has no UI and is deferred.
+- ⚠️ A pure single-output group becomes a value block and can be dropped inside `a + …`. A group with
+  signals becomes a statement block and cannot. — **half met.** The inference is graded 17 ways and
+  the value block is asserted to generate `Outputs["r"] = Inputs["n"] / 2 + 1;` from a saved
+  expression dropped inside `a + …`. **"and cannot"** is Blockly's connection checker refusing a
+  drag; it needs a drive.
+- ⚠️ Editing a definition changes the behaviour of every node referencing it, **without reopening
+  them** — verified by running one, not by regenerating and reading the code. — **the link is
+  built and specced; the sweep is not.** A spec edits a definition and asserts the *same* program
+  object now generates `* 20` where it generated `* 10`, with the reference untouched. **Without
+  reopening them** needs §4's sweep, which is not built, and the criterion's own last clause —
+  *verified by running one* — needs a drive regardless.
+- ✅ A → B → A is refused at save with a message naming the cycle, and refused at generate. — **met,
+  both halves, 21 specs.** The generate half is graded against a shelf whose `requires` deliberately
+  lies, which is the state a save-time-only guard cannot see.
+- ⚠️ Deleting a referenced definition is refused or detaches, and never leaves a dangling reference.
+  — **both mechanisms built and specced** (`MyBlocksInUseError` names every definition and node that
+  would break; `detachDefinition` inlines and the detached program is asserted to generate what it
+  generated before). **There is no dialog that offers the choice.**
+- ✅ A definition exports to JSON and imports into a different project. — **met**, including the case
+  the format was designed for: an id that collides on import is remapped and every reference to it is
+  rewritten.
+- ❌ Nothing in this task has been run in an editor. See Deferred verification.
+
+## Deferred verification
+
+Everything here needs a running editor, and none of it was done. ⚠️ Per the register: an occluded
+Electron renderer fires no `ResizeObserver` and clamps timers ~1000×, so take a screenshot to force
+a frame and do not trust a headless assertion about layout.
+
+1. **The category renders and the empty state reads.** Open a Logic Builder node, open **My Blocks**
+   in the toolbox. *Pass:* the category exists, is last, and shows *"Select some blocks, right-click
+   and choose Save as a block"*. ⚠️ It will say that **forever** until the save UI is built —
+   confirm the label renders, not that the instruction is followable.
+2. **A call block renders at both shapes.** With a definition on the project shelf (seed it by
+   writing `myBlocks.library` into `project.json` by hand), reopen the node. *Pass:* a value
+   definition gives a block with an output plug and one socket per parameter; a statement definition
+   gives one that stacks. *Fail that matters:* `rebuildInputs_` throws on `removeInput` for the
+   unnamed dummy input — it is named `HEADER` for that reason, but this is the first time that code
+   runs anywhere.
+3. **The "and cannot" half of §1.** Drag a statement-shaped saved block toward the `A` socket of a
+   `math_arithmetic`. *Pass:* it does not snap.
+4. **A saved block dropped into a second Visual Function.** Two Logic Builder nodes, same project.
+   *Pass:* the block appears in the second node's My Blocks category and its `generatedCode` port
+   contains the inlined body. This is the flagship criterion and it is the one a spec cannot reach,
+   because `BlocklyWorkspace` injects on mount and disposes on unmount keyed by node id — the two
+   workspaces are never alive together.
+5. **The 300 ms debounce still settles.** Type in a Logic Builder node with a saved block in it.
+   *Pass:* one save per settle, no visible stall. The inlining path serialises, expands, loads a
+   headless workspace and generates — measure it once with a real body rather than assuming.
+6. **A cycle does not freeze the workspace.** Hand-write two definitions into `project.json` that
+   reference each other, put a call to one in a node, open it. *Pass:* the workspace stays live, the
+   console carries *"The saved blocks in this program could not be expanded"*, and the node's
+   `generatedCode` is unchanged rather than emptied. ⚠️ **This is the whole point of §3 and it is the
+   only place the guard meets a real renderer.**
+7. **The project shelf survives a save/reopen** and reaches a collaborator through git — i.e. it is
+   in `project.json` and not in some editor-local cache. ⚠️ Check `ProjectSettingsModel.ts:92`, which
+   deep-copies the whole settings bag into the settings panel on open; confirm a library survives
+   opening and closing that panel.
+8. **The backpack shelf survives a quit.** Save to the user shelf, quit within a second.
+   ⚠️ `EditorSettings.set` debounces its disk write by **1000 ms** — this is expected to be the same
+   quit window already in the registers, and the test is to confirm how bad it is, not to be
+   surprised by it.
+
+## Not built, in the order it should be picked up
+
+1. **The save UI.** `bodyFromBlocks` and `previewSignature` exist and nothing calls them. A
+   context-menu item on a selection, a dialog with a name, the inferred shape and its plain-English
+   reason (*"it sends or declares a signal"*), and a shelf picker.
+2. **§4's regeneration sweep** — the definition-id → node-id index, and a write of `generatedCode`
+   onto nodes the user is not looking at, on the normal save path. **Decide the save path first.**
+3. **The delete dialog** — refuse, or offer inline-and-detach. Both mechanisms exist.
+4. **`@blockly/workspace-backpack@7.0.11`** as the retrieval UI. **It must be installed with
+   `skipSerializerRegistration: true`** (LGC-006 L30) or it writes every backpacked stack into every
+   Logic Builder node's project JSON. Install line, to be run in the primary checkout, alone:
+   `npm i -w packages/noodl-editor @blockly/workspace-backpack@7.0.11`. Drive
+   `getContents`/`setContents` from `myBlocksStore()`; it is the drawer and `myblocks/store.ts` is
+   the cupboard. ⚠️ Its five `Blockly.Msg` keys need adding to `BlocklyLocale.ts`.
+5. **The project shelf in the sidebar**, beside components (§2).
+6. **Export/import file pickers.** The store functions are built and specced.
+7. **α-renaming of variables per expansion.** Today a definition's variables merge into the host
+   **by name**, so two expansions share one variable — the same thing that happens when you paste a
+   stack twice. A saved block using a local variable as scratch space will interfere with itself if
+   one expansion nests inside another. Documented in `expand.ts`, not fixed.
+8. **A toast instead of a console line** when generation is refused.
+- ✅ **The first deliverable was the plugin verdict**, and it is delivered: both plugins read in
+  source against Blockly 12 and our blocks, written up in [LGC-006](LGC-006-PLUGIN-SWEEP.md)
+  2026-08-12. ⚠️ It is a verdict from reading, not from running — neither plugin was installed. The
+  size of this task is now known; the *wiring* still has to be proved on a drive.
 
 ## Register
 
 | # | Finding | State |
 |---|---|---|
-| L19 | The definition store, reference-by-id and cross-workspace sharing we designed **is an official plugin**. Adopt-over-build applies at its strongest here | ⚠️ unverified, and the first hour of the task |
+| L19 | The definition store, reference-by-id and cross-workspace sharing we designed **is an official plugin**. Adopt-over-build applies at its strongest here | 🔴 **WRONG — disproved 2026-08-12 in source.** `block-shareable-procedures` shares *procedures*, not block groups, between *live* workspaces, via events you forward yourself, with no store and no persistence. Adopt-over-build applies here at its **weakest** |
+| L38 | The backpack holds up as the **drawer** and fails as the **cupboard**: its default serializer writes the contents into the workspace JSON, so each Logic Builder node would get its own backpack inside the project file | 🔴 found 2026-08-12 — `skipSerializerRegistration: true` |
 | L20 | A call-into-the-node-graph mechanism is **structurally impossible** for value blocks — signals are asynchronous, expressions are not. Inlining is not a compromise, it is the only option | ✅ settled |
 | L21 | Blockly's block shape already encodes pure-vs-effectful, and users already read it. Do not invent a visual language for something the toolkit says for free | ✅ settled |
 | L22 | The scale literature makes this a maintenance necessity, not a delight. Median App Inventor project: 54 blocks | ✅ why it is promoted |
+| L39 | 🔴 **A cycle is not the only way to hang the inliner.** An *acyclic* definition graph can expand exponentially: twelve layers each calling the one below twice is 4096 copies and not one cycle. §3's failure mode reached by a route §3 does not mention | 🔴 found 2026-08-12 — two backstops, both **errors** rather than truncations, because half a generated program is worse than none |
+| L40 | 🔴 **A definition can change shape under an existing reference.** Add a `send signal` to a value definition and every value plug pointing at it is asking for something that cannot be an expression. Blockly block types are fixed at `init`, so the old call block is now literally the wrong *type* | 🔴 found 2026-08-12 — refused by name (`MyBlocksShapeError`); §4's sweep should eventually repair it rather than only refusing |
+| L41 | **Inlining at the JSON level, not inside a Blockly generator, is what makes §3 testable at all.** The obvious implementation — a generator that deserialises the definition and generates it — puts the cycle guard somewhere only a drive can reach | ✅ settled 2026-08-12 — it also leaves `NoodlGenerators.ts` untouched and makes §4's detach the same transform rather than a second one that can drift |
+| L42 | ⚠️ **`ProjectModel.setSetting` bails on `this.settings[name] === value` — *reference* equality.** Mutating a library in place and handing back the same object is a silent no-op | ⚠️ found 2026-08-12 — the shelf always writes a fresh clone |
+| L43 | ⚠️ **`EditorSettings.set` debounces its disk write by 1000 ms**, which is the same quit window already in the registers. A backpack save immediately before a quit can be lost, and it is not fixable from the shelf's side | ⚠️ found 2026-08-12 — written down, not fixed; item 8 of Deferred verification measures it |
+| L44 | ⚠️ **This repo compiles with `strictNullChecks` off, so TypeScript will not narrow `{ok: true} \| {ok: false}` on the literal.** A result type that reads correctly only under a compiler flag we do not set is a shape that lies | ⚠️ found 2026-08-12 — cost one compile cycle; worth knowing before writing any other result type |
+| L45 | ⚠️ **A definition's variables merge into the host by name**, so two expansions share one variable. A saved block using a local as scratch space interferes with itself when nested inside another expansion | ⚠️ known limitation 2026-08-12 — α-renaming per expansion is the fix and is not in this version |
+| L46 | ✅ **Blockly runs headless in Node**, so the inliner can be graded on the JavaScript it actually produces rather than on the shape of the JSON it emits — `render:report clean means nothing drawn` was the available trap and this closes it | ✅ verified 2026-08-12 — `initialize.ts`, `NoodlBlocks.ts` and `NoodlGenerators.ts` import nothing but `blockly`, so all fifteen Noodl generators are now gradeable without an editor |

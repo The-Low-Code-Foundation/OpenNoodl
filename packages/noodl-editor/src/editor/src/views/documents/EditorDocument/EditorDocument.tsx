@@ -17,6 +17,7 @@ import { FrameDivider, FrameDividerOwner } from '@noodl-core-ui/components/layou
 import { MenuDialogWidth } from '@noodl-core-ui/components/popups/MenuDialog';
 
 import { EventDispatcher } from '../../../../../shared/utils/EventDispatcher';
+import { resizeBlocklyWorkspaces } from '../../BlocklyEditor/blocklyResize';
 import { Frame } from '../../common/Frame';
 import { EditorTopbar } from '../../EditorTopbar';
 import { HelpCenter } from '../../HelpCenter';
@@ -453,6 +454,28 @@ function ViewComponent({
 }: TSFixme) {
   const [frameBounds, setFrameBounds] = useState(undefined);
 
+  /**
+   * LGC-008: the only route by which this splitter reaches Blockly.
+   *
+   * The node graph pane hosts the Logic Builder's Blockly workspace, and Blockly re-measures
+   * itself on a **window** resize only — never on a container resize (verified in
+   * `blockly_compressed.js`; the reasoning is written out in `blocklyResize.ts`). So before
+   * this, dragging this divider with a Logic Builder open left the workspace at its injected
+   * size: blocks fell outside the visible SVG or a strip of dead space appeared beside them,
+   * and it corrected itself only if you happened to resize the whole window afterwards.
+   *
+   * ⚠️ It hangs off `onDrag` — which `FrameDivider` calls synchronously from its `mousemove`,
+   * after it has already written the new container widths as CSS variables — and deliberately
+   * **not** off `onResize`, which is fed by a `ResizeObserver`. An occluded Electron renderer
+   * fires zero `ResizeObserver` callbacks and clamps timers ~1000×, so an observer-based or
+   * `requestAnimationFrame`-deferred version works whenever the window is focused and fails
+   * exactly where it is needed. Stable identity: `FrameDivider` lists `onDrag` in two
+   * dependency arrays.
+   */
+  const onDividerDrag = useCallback(() => {
+    resizeBlocklyWorkspaces();
+  }, []);
+
   const horizontal = documentLayout === 'horizontal';
   const totalSize = frameBounds ? (horizontal ? frameBounds.height : frameBounds.width) : undefined;
 
@@ -471,8 +494,12 @@ function ViewComponent({
         sizeMin={100}
         sizeMax={totalSize ? totalSize - 100 : undefined}
         size={frameDividerSize}
+        onDrag={onDividerDrag}
         onSizeChanged={(size) => {
           onSizeUpdated(size);
+          // The drag has ended and the containers have settled; one last measurement so a
+          // workspace that was mid-flight during the last mousemove lands on the final size.
+          resizeBlocklyWorkspaces();
         }}
         onBoundsChanged={setFrameBounds}
       />

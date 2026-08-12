@@ -12,6 +12,8 @@ import type {
   OutcomeToken
 } from '@noodl/types';
 
+import { ARITHMETIC_SEARCH_TAGS } from './logic-search-tags';
+
 import Node = require('../../node');
 import { outcomeOutputs, reportOutcomes } from '../../outcome';
 import { runOnChangeDynamicPorts } from '../../run-on-value-change';
@@ -123,7 +125,13 @@ const ExpressionNode: NodeDefinitionOptions = {
   nodeDoubleClickAction: {
     focusPort: 'Expression'
   },
-  searchTags: ['javascript'],
+  /**
+   * LGC-001 §1 — Expression is the cheapest correct answer to `price * quantity`,
+   * so it is the node the arithmetic vocabulary is meant to land on first. It
+   * leads the triad because `nodelibraryexport.ts` lists it first in the Logic
+   * category, not because of anything here; see `logic-search-tags.ts`.
+   */
+  searchTags: ['javascript', ...ARITHMETIC_SEARCH_TAGS],
   initialize: function (this: ExpressionNodeInstance) {
     const internal = this._internal;
 

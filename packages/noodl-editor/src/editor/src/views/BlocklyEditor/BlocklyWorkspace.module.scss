@@ -14,17 +14,175 @@
   overflow: hidden;
 }
 
+/**
+ * LGC-004 §1 — the row the two interface rails and the workspace share.
+ *
+ * The rails are siblings of the injection div rather than layers over it, so they cannot cover
+ * Blockly's own left-edge toolbox, and so the workspace is injected at its final width. See
+ * `InterfaceRailsOverlay.ts`.
+ */
+.Workspace {
+  flex: 1;
+  display: flex;
+  flex-direction: row;
+  /* Without this a flex item refuses to shrink below its content, and the rails get pushed out. */
+  min-height: 0;
+  min-width: 0;
+}
+
 .BlocklyContainer {
   flex: 1;
-  width: 100%;
   height: 100%;
   position: relative;
+  min-width: 0;
 
   /* Ensure Blockly SVG fills container */
   & > .injectionDiv {
     width: 100% !important;
     height: 100% !important;
   }
+}
+
+/**
+ * The rails.
+ *
+ * ⚠️ `box-sizing` is declared on every box below because this repo sets no global one — a padded
+ * fixed-width rail without it is wider than its declared width and the arithmetic quietly stops
+ * describing what is on screen.
+ */
+.Rail {
+  box-sizing: border-box;
+  flex: 0 0 auto;
+  width: 152px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--theme-color-bg-2);
+  font-family: var(--font-family);
+  /* The rails never scroll away with the blocks; their own overflow is their own. */
+  overflow: hidden;
+}
+
+.RailInputs {
+  border-right: 1px solid var(--theme-color-border-default);
+}
+
+.RailOutputs {
+  border-left: 1px solid var(--theme-color-border-default);
+}
+
+.RailHeader {
+  box-sizing: border-box;
+  flex: 0 0 auto;
+  padding: 8px 10px 6px;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--theme-color-fg-muted);
+  border-bottom: 1px solid var(--theme-color-border-default);
+}
+
+.RailRows {
+  box-sizing: border-box;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 4px 0;
+}
+
+.RailEmpty {
+  box-sizing: border-box;
+  padding: 8px 10px;
+  font-size: 11px;
+  line-height: 1.45;
+  /* Not `opacity`: dimming a token cannot both read and stay legible (register). */
+  color: var(--theme-color-fg-muted);
+}
+
+.RailRow {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 5px 10px;
+  border-left: 2px solid transparent;
+  user-select: none;
+}
+
+.RailRowName {
+  font-size: 12px;
+  color: var(--theme-color-fg-default);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.RailRowType {
+  font-size: 10px;
+  color: var(--theme-color-fg-muted);
+}
+
+/**
+ * An **inferred** row: no `Define …` block states this port, it exists because a block uses it.
+ *
+ * ⚠️ Distinct, never diminished. Marked by a dashed edge and an italic type rather than by being
+ * greyed further than the declared rows, because an undeclared port is a working port and this
+ * mark must not read as a warning (LGC-004 §3, register L12).
+ */
+.RailRowInferred {
+  border-left-style: dashed;
+  border-left-color: var(--theme-color-border-default);
+
+  & .RailRowType {
+    font-style: italic;
+  }
+}
+
+.RailRowSignal {
+  & .RailRowType {
+    color: var(--theme-color-primary);
+  }
+}
+
+.RailRowDraggable {
+  cursor: grab;
+
+  &:hover {
+    background-color: var(--theme-color-bg-3);
+  }
+}
+
+.RailRowDragging {
+  cursor: grabbing;
+  background-color: var(--theme-color-bg-3);
+}
+
+/** The outputs rail while a block is being dragged over it. */
+.RailDropActive {
+  background-color: var(--theme-color-bg-3);
+  box-shadow: inset 0 0 0 1px var(--theme-color-primary);
+}
+
+/**
+ * The thing that follows the pointer during a drag off a rail.
+ *
+ * `position: fixed` on `document.body` rather than inside the rail, because the drag crosses out
+ * of a container with `overflow: hidden` and would otherwise be clipped the moment it started.
+ */
+.RailDragGhost {
+  box-sizing: border-box;
+  position: fixed;
+  z-index: 10002;
+  pointer-events: none;
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-family: var(--font-family);
+  font-size: 11px;
+  color: var(--theme-color-fg-default);
+  background-color: var(--theme-color-bg-3);
+  border: 1px solid var(--theme-color-border-default);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
 }
 
 /* Override Blockly default styles to match Noodl theme */

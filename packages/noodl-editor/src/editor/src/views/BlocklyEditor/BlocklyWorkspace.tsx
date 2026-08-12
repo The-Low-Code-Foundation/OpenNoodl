@@ -13,14 +13,21 @@
  */
 
 import * as Blockly from 'blockly';
-import { javascriptGenerator } from 'blockly/javascript';
 import React, { useEffect, useRef, useState } from 'react';
 
 import { CanvasTheme } from '../nodegrapheditor/canvas/CanvasTheme';
 import { applyLanguage, currentLanguageCode } from './BlocklyLocale';
+import { registerBlocklyResizeHandler } from './blocklyResize';
 import { buildBlocklyTheme, resolveBlocklyChrome } from './BlocklyTheme';
 import css from './BlocklyWorkspace.module.scss';
 import { buildToolbox } from './BlocklyToolbox';
+import { DoItHandle, attachDoIt } from './DoItController';
+import { InterfaceRailsHandle, attachInterfaceRails } from './InterfaceRailsOverlay';
+import { withBlockProbes } from './BlockProbes';
+import { BlockValueHandle, attachBlockValues } from './BlockValueController';
+import { generateWithMyBlocks, initMyBlocks, myBlocksFlyout, MY_BLOCKS_CATEGORY } from './MyBlocksBlocks';
+import { myBlocksStore } from './MyBlocksShelves';
+import type { BlocklyWorkspaceJson } from './myblocks/format';
 import { initBlocklyIntegration } from './initialize';
 
 /** How long to coalesce edits before serialising and generating code. */
@@ -37,10 +44,26 @@ export interface BlocklyWorkspaceProps {
   onChange?: (workspace: Blockly.WorkspaceSvg, json: string, code: string) => void;
   /** Read-only mode */
   readOnly?: boolean;
+  /**
+   * LGC-002 — the Logic Builder node these blocks belong to.
+   *
+   * Do It generates code here and runs it **in the viewer**, against that node's live inputs,
+   * so the node id is the whole address of the round trip. Optional, and the menu item
+   * explains its own absence rather than disappearing: a tab opened without one is a wiring
+   * mistake, and a missing menu item is the hardest kind of wiring mistake to see.
+   */
+  nodeId?: string;
 }
 
-export function BlocklyWorkspace({ initialWorkspace, onChange, readOnly = false }: BlocklyWorkspaceProps) {
+export function BlocklyWorkspace({ initialWorkspace, onChange, readOnly = false, nodeId }: BlocklyWorkspaceProps) {
   const blocklyDiv = useRef<HTMLDivElement>(null);
+  // LGC-004 — the two interface rails. Rendered as siblings of the injection div (rather than as
+  // layers over it) so they cannot cover Blockly's left-edge toolbox, and so the workspace is
+  // injected at its final width and needs no `svgResize` when they appear.
+  const inputsRailDiv = useRef<HTMLDivElement>(null);
+  const outputsRailDiv = useRef<HTMLDivElement>(null);
+  /** LGC-003 — the scrubber strip goes below the workspace, inside the same root. */
+  const rootRef = useRef<HTMLDivElement>(null);
   const workspaceRef = useRef<Blockly.WorkspaceSvg | null>(null);
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -48,6 +71,17 @@ export function BlocklyWorkspace({ initialWorkspace, onChange, readOnly = false 
   // re-rendered parent would otherwise keep writing through the callback captured at mount.
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
+
+  /**
+   * The last code that generated cleanly (LGC-007 §3).
+   *
+   * A program whose saved blocks cannot be expanded — a cycle in the definition graph, a
+   * definition deleted from under a reference, a definition whose shape changed — has no
+   * honest JavaScript. The blocks are still saved; the *code* falls back to the last good one
+   * rather than becoming empty or becoming a different program, because a Logic Builder node
+   * that silently starts doing something else is worse than one that stops changing.
+   */
+  const lastGoodCodeRef = useRef('');
 
   // Injection waits on the language bundle, so the toolbox is built with the right labels
   // rather than being rebuilt a frame later.
@@ -57,17 +91,54 @@ export function BlocklyWorkspace({ initialWorkspace, onChange, readOnly = false 
     let disposed = false;
     let workspace: Blockly.WorkspaceSvg | null = null;
     const themeContext = {};
+    let unregisterResize: (() => void) | null = null;
+    // LGC-002. Its own handle rather than anything on the workspace: Do It is an overlay and
+    // must stay separable from the workspace's own lifecycle, including its serialisation.
+    let doIt: DoItHandle | null = null;
+    // LGC-004. Also its own handle: the rails are DOM outside the SVG and must stay separable
+    // from the workspace's serialisation, for the reason `DoItBalloons` states at length.
+    let rails: InterfaceRailsHandle | null = null;
+    // LGC-003. Its own handle for the same reason Do It has one: live values are an overlay
+    // and must stay separable from the workspace's own lifecycle and from its serialisation.
+    let blockValues: BlockValueHandle | null = null;
 
     const flushSave = () => {
       if (!workspace || !onChangeRef.current) return;
-      const json = JSON.stringify(Blockly.serialization.workspaces.save(workspace));
-      const code = javascriptGenerator.workspaceToCode(workspace);
-      onChangeRef.current(workspace, json, code);
+      const saved = Blockly.serialization.workspaces.save(workspace) as BlocklyWorkspaceJson;
+      const json = JSON.stringify(saved);
+
+      /**
+       * LGC-003 §1 — the program is generated **instrumented**, always.
+       *
+       * There is one generated string, not a debug one and a release one, so there is no class
+       * of defect that appears only when nobody is watching. `__p` and `__s` are the ninth and
+       * tenth parameters the runtime compiles against, and with nothing attached they are the
+       * shared identity pair.
+       *
+       * `probedIds` is what makes the didn't-execute tell honest: a block that emitted no code
+       * is not part of the program and must render neutral, not hollow.
+       */
+      const probed = withBlockProbes(() =>
+        // Saved blocks are inlined before generation (LGC-007). A workspace that uses none takes
+        // the fast path and behaves exactly as it did before the feature existed.
+        generateWithMyBlocks(workspace as Blockly.WorkspaceSvg, saved, myBlocksStore())
+      );
+      const generated = probed.result;
+
+      if (generated.error) {
+        console.error('[Blockly] The saved blocks in this program could not be expanded:', generated.error.message);
+      } else {
+        lastGoodCodeRef.current = generated.code;
+        if (blockValues) blockValues.setProbedIds(probed.probedIds);
+      }
+
+      onChangeRef.current(workspace, json, lastGoodCodeRef.current);
     };
 
     async function setup() {
       // Custom blocks and generators must exist before the toolbox referencing them is built.
       initBlocklyIntegration();
+      initMyBlocks();
 
       const labels = await applyLanguage(currentLanguageCode());
       if (disposed || !blocklyDiv.current) return;
@@ -98,6 +169,31 @@ export function BlocklyWorkspace({ initialWorkspace, onChange, readOnly = false 
 
       workspaceRef.current = workspace;
 
+      /**
+       * LGC-008: Blockly only re-measures itself on a **window** resize (its `inject` binds
+       * one listener, and that handler is the library's only `svgResize` caller). A splitter
+       * drag or a pane layout change moves the container without moving the window, so the
+       * workspace has to be told. See `blocklyResize.ts` for why this is a registry of
+       * closures and not a `ResizeObserver`.
+       *
+       * The zero-size guard is not defensive padding: `svgResize` reads
+       * `parentElement.offsetWidth/offsetHeight`, which are 0 for anything under
+       * `display: none`, and it would cache that 0 and set the SVG to `0px`. A workspace
+       * parked behind an inactive tab must therefore ignore the call and be resized again
+       * when it is revealed.
+       */
+      unregisterResize = registerBlocklyResizeHandler(() => {
+        const container = blocklyDiv.current;
+        if (!workspace || !container) return;
+        if (container.offsetWidth === 0 || container.offsetHeight === 0) return;
+        Blockly.svgResize(workspace);
+      });
+
+      // The My Blocks category is dynamic, like Variables and Functions: its contents change
+      // whenever a definition is saved, renamed or deleted, and Blockly rebuilds it on every
+      // flyout open. Registering it after injection is the documented order.
+      workspace.registerToolboxCategoryCallback(MY_BLOCKS_CATEGORY, myBlocksFlyout(myBlocksStore()) as never);
+
       if (initialWorkspace) {
         try {
           // Events off during load: deserialisation fires a BLOCK_CREATE per block, which
@@ -113,6 +209,44 @@ export function BlocklyWorkspace({ initialWorkspace, onChange, readOnly = false 
 
       workspace.addChangeListener(changeListener);
 
+      /**
+       * LGC-003 §2, the static half of the didn't-execute tell — **and it is core Blockly, not
+       * a plugin.**
+       *
+       * LGC-006 checked the package the task names: `@blockly/disable-top-blocks` greys nothing
+       * out. Its whole 74-line source rewrites the precondition of the `blockDisable`
+       * context-menu item so a user cannot manually re-enable an orphan. The greying is
+       * `Blockly.Events.disableOrphans`, which is in core and present at our 12.3.1. So this
+       * half costs one line and zero bytes, and no dependency was added for it.
+       *
+       * ⚠️ **It writes to the model, deliberately, and that is the difference between the two
+       * halves of §2.** A block disconnected from anything runnable really is disabled, and
+       * Blockly serialises that. So opening an existing program that has orphan blocks will
+       * re-save it with them marked disabled — a real, one-time change to the saved bytes, and
+       * the churn LGC-006 asked a drive to measure. The *dynamic* half (the hollow wash) never
+       * touches the model, which is why it is drawn rather than set.
+       *
+       * Registered after the load so the deserialisation's BLOCK_CREATE storm does not run it
+       * once per block.
+       */
+      workspace.addChangeListener(Blockly.Events.disableOrphans);
+
+      // LGC-002 — right-click a block, see its value. Attached after the load so the balloon
+      // layer's own change listener never sees the deserialisation's BLOCK_CREATE storm.
+      doIt = attachDoIt(workspace, nodeId);
+
+      // LGC-004 — the signature at the two edges. Attached after the load, like Do It, so its
+      // first paint reads the finished program rather than one block of it.
+      if (inputsRailDiv.current && outputsRailDiv.current) {
+        rails = attachInterfaceRails({
+          workspace,
+          inputsHost: inputsRailDiv.current,
+          outputsHost: outputsRailDiv.current
+        });
+      }
+      // LGC-003 — the whole program answers at once, during a real run.
+      if (rootRef.current) blockValues = attachBlockValues(workspace, rootRef.current, nodeId);
+
       // Follow the editor's light/dark setting (UIX-005 contract). The grid is not part of
       // the theme object and Blockly's setter for it is private, so the grid colour is
       // restyled from CSS instead (see `.blocklyGridPattern` in the stylesheet) — which
@@ -120,6 +254,7 @@ export function BlocklyWorkspace({ initialWorkspace, onChange, readOnly = false 
       CanvasTheme.instance.on(() => {
         if (!workspace) return;
         workspace.setTheme(buildBlocklyTheme());
+        if (blockValues) blockValues.refreshTheme();
       }, themeContext);
     }
 
@@ -137,6 +272,11 @@ export function BlocklyWorkspace({ initialWorkspace, onChange, readOnly = false 
       // Mid-drag intermediate states are not worth serialising; the drop fires its own event.
       if (workspace.isDragging()) return;
 
+      // LGC-003. The program changed, so every recorded run is now about a program that no
+      // longer exists. Dropped immediately rather than at the end of the debounce: the badges
+      // are on screen for those 300 ms and would be describing the old blocks.
+      if (blockValues) blockValues.invalidate();
+
       if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
       saveTimeoutRef.current = setTimeout(flushSave, SAVE_DEBOUNCE_MS);
     }
@@ -149,6 +289,11 @@ export function BlocklyWorkspace({ initialWorkspace, onChange, readOnly = false 
     return () => {
       disposed = true;
 
+      // Before the workspace goes: a handler left in the registry would call `svgResize` on
+      // a disposed workspace at the next splitter drag.
+      unregisterResize?.();
+      unregisterResize = null;
+
       // A pending edit must not be lost to a tab close — flush it rather than drop it.
       if (saveTimeoutRef.current) {
         clearTimeout(saveTimeoutRef.current);
@@ -158,6 +303,26 @@ export function BlocklyWorkspace({ initialWorkspace, onChange, readOnly = false 
 
       CanvasTheme.instance.off(themeContext);
 
+      // Before the workspace goes: the layers hold references to it. Block tracing also has to
+      // be disarmed at the far end, and `dispose` is the only place that happens — a tab closed
+      // without it leaves a viewer recording values nobody is reading.
+      if (doIt) {
+        doIt.dispose();
+        doIt = null;
+      }
+
+      // Before the workspace goes: the rails hold a change listener and a registered drag target
+      // on it.
+      if (rails) {
+        rails.dispose();
+        rails = null;
+      }
+
+      if (blockValues) {
+        blockValues.dispose();
+        blockValues = null;
+      }
+
       if (workspace) {
         workspace.removeChangeListener(changeListener);
         workspace.dispose();
@@ -166,15 +331,27 @@ export function BlocklyWorkspace({ initialWorkspace, onChange, readOnly = false 
       workspaceRef.current = null;
     };
     // Mount-only by design: see `initialWorkspace`. `readOnly` is fixed per tab, and the
-    // component is keyed by node id so a different program means a fresh mount.
+    // component is keyed by node id so a different program means a fresh mount — which is also
+    // what makes `nodeId` safe to capture here: a different node is a different instance.
   }, []);
 
   return (
-    <div className={css.Root}>
+    <div className={css.Root} ref={rootRef}>
       {failedToLoad ? (
         <div className={css.LoadError}>The block editor could not be opened. See the developer console for details.</div>
       ) : null}
-      <div ref={blocklyDiv} className={css.BlocklyContainer} />
+      <div className={css.Workspace}>
+        {/*
+          ⚠️ The rails carry their classes from the **first render**, not from `attachInterfaceRails`.
+          Their width has to exist before `Blockly.inject` measures the container, and injection
+          happens inside the effect — a rail that widened afterwards would leave the SVG at the
+          width it was injected with, which is precisely the class of defect `blocklyResize.ts`
+          exists for.
+        */}
+        <div ref={inputsRailDiv} className={css.Rail + ' ' + css.RailInputs} />
+        <div ref={blocklyDiv} className={css.BlocklyContainer} />
+        <div ref={outputsRailDiv} className={css.Rail + ' ' + css.RailOutputs} />
+      </div>
     </div>
   );
 }

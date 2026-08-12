@@ -15,30 +15,36 @@ full math palette has been in the product since phase 3.
 
 | Task | File | One line | State |
 |---|---|---|---|
-| LGC-001 ⭐ | [LGC-001-THE-LOGIC-TRIAD.md](LGC-001-THE-LOGIC-TRIAD.md) | **the flagship** — the picker explains Expression vs Function vs Visual Function, with examples, and answers `multiply` | 📋 open |
-| LGC-002 | [LGC-002-DO-IT.md](LGC-002-DO-IT.md) | right-click a block, run it, see the value in a balloon — App Inventor's most-loved feature | 📋 open |
+| LGC-001 ⭐ | [LGC-001-THE-LOGIC-TRIAD.md](LGC-001-THE-LOGIC-TRIAD.md) | **the flagship** — the picker explains Expression vs Function vs Visual Function, with examples, and answers `multiply` | 🟡 **built 2026-08-12**, live verification deferred (see the task file's *Deferred verification*) |
+| LGC-002 | [LGC-002-DO-IT.md](LGC-002-DO-IT.md) | right-click a block, run it, see the value in a balloon — App Inventor's most-loved feature | 🔨 §1–§4 built; **one line of wiring outstanding**, no drive run |
 | LGC-003 | [LGC-003-VALUES-STAY-ON-SCREEN.md](LGC-003-VALUES-STAY-ON-SCREEN.md) | ambient values during a run, the didn't-execute tell, and the run scrubber | 📋 open |
-| LGC-004 | [LGC-004-INTERFACE-RAILS.md](LGC-004-INTERFACE-RAILS.md) | pin the signature to the workspace edges; the props panel edits blocks rather than shadowing them | 📋 open |
-| LGC-005 | [LGC-005-TYPES-BECOME-CONNECTIONS.md](LGC-005-TYPES-BECOME-CONNECTIONS.md) | Noodl port types → Blockly connection checks, so wrong connections stop snapping | 📋 open |
-| LGC-006 | [LGC-006-PLUGIN-SWEEP.md](LGC-006-PLUGIN-SWEEP.md) | eleven official plugins that cover things we specced by hand, including the a11y themes | 📋 open |
-| LGC-007 ⭐ | [LGC-007-MY-BLOCKS.md](LGC-007-MY-BLOCKS.md) | **the second flagship** — save a group of blocks, reuse it in any Visual Function. Mostly two npm packages | 📋 open |
-| LGC-008 | [LGC-008-A-PANE-NOT-A-TAKEOVER.md](LGC-008-A-PANE-NOT-A-TAKEOVER.md) | the workspace stops hiding the whole canvas; blocks beside the running app | 📋 open |
+| LGC-004 | [LGC-004-INTERFACE-RAILS.md](LGC-004-INTERFACE-RAILS.md) | pin the signature to the workspace edges; the props panel edits blocks rather than shadowing them | 🔨 **§1 + §4 done 2026-08-12** — both rails built, rows derived from a new `detectInterface` projection of `detectIO`'s own traversal, **no second store, proved red**. 72 specs. 🔴 **§2/§3's panel NOT built** (a concurrent session owned `PortsTab/`) — the design is written and it **corrects §2's table in three places**, one of which decides the architecture (**L38**: a panel edit made while the block tab is open is silently destroyed). 🔴 **Nothing was seen in an editor**; 15 steps in `## Deferred verification` |
+| LGC-005 | [LGC-005-TYPES-BECOME-CONNECTIONS.md](LGC-005-TYPES-BECOME-CONNECTIONS.md) | Noodl port types → Blockly connection checks, so wrong connections stop snapping | 🔨 §1/§2 built, §3 deferred; live verification not run |
+| LGC-006 | [LGC-006-PLUGIN-SWEEP.md](LGC-006-PLUGIN-SWEEP.md) | thirteen official plugins that cover things we specced by hand, including the a11y themes | 🔬 **verdict done 2026-08-12, adoption deferred** — nothing installed or run; every plugin's `latest` peer-deps Blockly 13, so each adoption pins a frozen 12-line release |
+| LGC-007 ⭐ | [LGC-007-MY-BLOCKS.md](LGC-007-MY-BLOCKS.md) | **the second flagship** — save a group of blocks, reuse it in any Visual Function | 🚧 **engine built 2026-08-12, no UI** — format, two shelves, cycle guard, shape inference, inliner and export/import, 66 specs in a plain-Node runner. 🔴 **No save menu item, no dialog, no backpack, no §4 sweep, and nothing run in an editor.** 🔴 **Resized by LGC-006**: the two npm packages do **not** do most of it |
+| LGC-008 | [LGC-008-A-PANE-NOT-A-TAKEOVER.md](LGC-008-A-PANE-NOT-A-TAKEOVER.md) | the workspace stops hiding the whole canvas; blocks beside the running app | 🔬 §3 analysed + `svgResize` seam built (2026-08-12) · pane **not** built — §1 needs a ruling (L26/F2), and L28/L29/L30 are open defects to fix first |
 
 ## Suggested order, and why
 
 1. **LGC-001 first, alone if necessary.** It is the only task that addresses what the video actually
    showed. Every other task here improves a node that nobody currently finds, so shipping any of
    them before LGC-001 improves something no user reaches. It is also the cheapest.
-2. **LGC-006 next** — mostly configuration, and it delivers `disable-top-blocks` (the
-   didn't-execute tell, statically, for free) and `toolbox-search` (LGC-001's intercept, inside the
-   workspace). It de-scopes parts of three later tasks, so doing it early shrinks them.
+2. **LGC-006 next** — mostly configuration, and it delivers the didn't-execute tell statically (which
+   turned out to be `Blockly.Events.disableOrphans` in **core**, one line and zero bytes — the plugin
+   is only the context-menu correction) and `toolbox-search` (LGC-001's intercept, inside the
+   workspace). ✅ **The verdict half is done**; the install-and-drive half is deferred and its steps
+   are written down at the end of that file. 🔴 It de-scopes LGC-003 and LGC-004 as expected, and it
+   **grows LGC-007**.
 3. **LGC-002** — the probe seam, and the pull half of it. Small, and it proves the mechanism that
    LGC-003 then scales up.
 4. **LGC-005** alongside — independent, mechanical, and the strongest single beginner affordance in
    the phase.
 5. **LGC-007** — promoted above the debugging polish by the scale research: median App Inventor
    project is 54 blocks and the literature names viscosity as the failure mode. This is the
-   mitigation, and two npm packages do most of it.
+   mitigation. 🔴 **Re-estimate it before scheduling it**: LGC-006 read both plugins in source and
+   they do *not* do most of it — `block-shareable-procedures` shares procedures between live
+   workspaces, not block groups across a project, and the backpack is a drawer with no cupboard. It
+   is the largest job in the phase.
 6. **LGC-004** then **LGC-003** then **LGC-008** — real work, real payoff, but all three improve the
    inside of a node the first five tasks are busy making findable and legible.
 
@@ -64,6 +70,14 @@ full math palette has been in the product since phase 3.
 - ⚠️ **Occluded Electron fires zero `ResizeObserver` events** and clamps timers ~1000×. Blockly
   sizes itself via `Blockly.svgResize`. LGC-008's splitter must call it explicitly, and any headless
   verification needs a screenshot to force a frame.
+  **Done 2026-08-12 (`83142881`)**: the seam is
+  [`blocklyResize.ts`](../../../packages/noodl-editor/src/editor/src/views/BlocklyEditor/blocklyResize.ts)
+  — call `resizeBlocklyWorkspaces()` **synchronously** from whatever moved the geometry. Verified
+  in `blockly_compressed.js` that `inject`'s single `window` `"resize"` listener is the library's
+  only `svgResize` caller, and that nothing in this editor called it: **any** container resize,
+  including the existing preview/graph divider, left the workspace at its injected size. The
+  registry deliberately does not import `blockly` — it would pull the 1.1 MB lazy chunk into the
+  eager bundle for every session.
 - **Adopt > build.** Any task that reimplements a `@blockly/*` plugin owes a written reason why the
   plugin was insufficient.
 - **Structure > gate > documentation**, inherited from phase 58 and unchanged.

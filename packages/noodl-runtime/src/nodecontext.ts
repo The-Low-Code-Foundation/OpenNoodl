@@ -14,6 +14,8 @@ import TimerScheduler = require('./timerscheduler');
 import { DEFAULT_VALUE_CAP, TraceBuffer, previewValue, toWireEvent } from './tracebuffer';
 import type { SessionDictionary, TraceEvent, TraceState } from './tracebuffer';
 import Variants = require('./variants');
+import { createBlockRunRecorder } from './blockrun';
+import type { BlockRunRecorder } from './blockrun';
 
 /** Set by the viewer before any node runs; carries deploy-time environment values. */
 declare const Noodl: { Env: Record<string, string> };
@@ -41,6 +43,26 @@ interface PortValueRequest {
 interface PortValueResult extends PortValueRequest {
   exists: boolean;
   value: string | undefined;
+}
+
+/**
+ * The answer to one "Do It" (LGC-002).
+ *
+ * ⚠️ `found: false` is a *different* answer from an error, and the balloon says something
+ * different for each. "The app is running but this node is not in it right now" is the most
+ * likely thing a builder hits — the component is not on screen — and reporting it as a failure
+ * of the block would send them looking in the wrong place.
+ */
+interface BlockFragmentReply {
+  requestId: string;
+  nodeId: string;
+  /** Whether this viewer has the node at all. Nothing else is meaningful when false. */
+  found: boolean;
+  ok?: boolean;
+  value?: string;
+  error?: string;
+  errorPhase?: 'compile' | 'run';
+  suppressedSignals?: string[];
 }
 
 /**
@@ -84,6 +106,17 @@ interface NodeContext extends RuntimeNodeContext {
    * (`traceEdgeSend`, `outputproperty`, `node`) never has to ask a Set anything.
    */
   _traceOwners: Set<string>;
+  /**
+   * LGC-003 — the Logic Builder nodes whose block values are being watched.
+   *
+   * ⚠️ **Deliberately not `_traceOwners`, not `traceEnabled`, and not `_traceBuffer`.** See
+   * {@link NodeContext.setBlockTracing}: joining the shared trace switch would mean a block
+   * editor opening could clear a human's Provenance recording, which is the accident TALK-003
+   * recorded and HUD-004 had to build an ownership set to survive.
+   */
+  _blockTraceNodes: Set<string> | undefined;
+  /** Monotonic run counter for block frames. Only its ordering is used. */
+  _blockRunSeq: number;
   _traceBuffer: TraceBuffer | undefined;
   _traceValueCap: number;
   /**
@@ -138,6 +171,13 @@ interface NodeContext extends RuntimeNodeContext {
   buildSessionDictionary(): SessionDictionary;
   getTraceEvents(afterSeq?: number): TraceEvent[];
   getPortValues(ports: PortValueRequest[]): PortValueResult[];
+  evaluateBlockFragment(requestId: string, nodeId: string, code: string): BlockFragmentReply;
+  /** Is this node in this viewer's live scope right now? */
+  hasNode(nodeId: string): boolean;
+  setBlockTracing(nodeId: string, enabled: boolean): void;
+  isBlockTracing(nodeId: string): boolean;
+  beginBlockRun(nodeId: string): BlockRunRecorder | undefined;
+  endBlockRun(nodeId: string, recorder: BlockRunRecorder): void;
   clearTrace(): void;
   sendGlobalEventFromEventSender(channelName: string, inputValues: unknown): void;
   setPopupCallbacks(callbacks: { onShow: (group: any) => void; onClose: (group: any) => void }): void;
@@ -315,6 +355,40 @@ const NodeContext = function NodeContext(this: NodeContext, args?: NodeContextAr
     this.editorConnection.on('getPortValues', ({ clientId, ports }) => {
       if (this.editorConnection.clientId !== clientId) return;
       this.editorConnection.sendPortValues(this.getPortValues(ports));
+    });
+
+    // LGC-002 — "Do It". Deliberately **not** filtered on `clientId` the way its neighbours
+    // are: the editor is asking "whichever of you has this node, evaluate this", because a
+    // block editor tab knows its node id and nothing more. Every viewer answers, and one of
+    // the two answers is `found: false`.
+    this.editorConnection.on('evaluateBlockFragment', ({ requestId, nodeId, code }) => {
+      this.editorConnection.sendBlockFragmentResult(this.evaluateBlockFragment(requestId, nodeId, code));
+    });
+
+    /**
+     * LGC-003 §1 — arm or disarm block-value tracing for one Logic Builder node.
+     *
+     * ⚠️ **Broadcast to arm, addressed on the way back**, which is the correction LGC-002's
+     * handover asked for. A block editor tab knows a node id and nothing else, so it cannot
+     * name the viewer it wants; every viewer arms, and every viewer that *has* the node says
+     * so with its own `clientId` in the ack. The editor pins that client and drops frames
+     * from any other, so two previews showing the same component can never interleave two
+     * programs' values into one set of badges.
+     *
+     * Arming a node this viewer does not have costs a string in a Set, which is why arming is
+     * unconditional: the component may be mounted a moment later, and a switch that had
+     * refused would then be off with nothing to turn it back on.
+     */
+    this.editorConnection.on('setBlockTracing', ({ nodeId, enabled }) => {
+      this.setBlockTracing(nodeId, !!enabled);
+      this.editorConnection.sendBlockTraceState({
+        nodeId: nodeId,
+        enabled: !!enabled,
+        // "Do I have this node right now?" — the same walk `evaluateBlockFragment` does, and
+        // the same distinction: not having the node is a different answer from an error, and
+        // the editor says something different for each.
+        attached: this.hasNode(nodeId)
+      });
     });
   }
 } as unknown as NodeContextConstructor;
@@ -913,6 +987,128 @@ NodeContext.prototype.getPortValues = function (ports) {
   }
 
   return out;
+};
+
+/**
+ * LGC-002 — evaluate one Blockly block's generated fragment on the node that owns it.
+ *
+ * The node lookup is `getPortValues`' — the same walk of the live scope, for the same reason:
+ * this has to answer about the app as it is now, not about a model of it.
+ *
+ * ⚠️ **Everything here is guarded and nothing here throws.** The caller is a socket message
+ * handler; a throw would take the whole editor channel down, and the thing that would take it
+ * down is a diagnostic the user reached for because something was already wrong.
+ *
+ * ⚠️ **A node that is not a Logic Builder is refused by capability, not by type name.** The
+ * type id `'Logic Builder'` is frozen and could be checked, but `_probeFragment` is the actual
+ * contract and checking for it means the day a second node hosts blocks, this works.
+ */
+NodeContext.prototype.evaluateBlockFragment = function (requestId, nodeId, code) {
+  const reply = { requestId: requestId, nodeId: nodeId, found: false };
+
+  if (typeof nodeId !== 'string' || !this.rootComponent) return reply;
+
+  let node;
+  for (const candidate of this.rootComponent.nodeScope.getAllNodesRecursive()) {
+    if (candidate.id === nodeId) {
+      node = candidate;
+      break;
+    }
+  }
+
+  if (!node || typeof node._probeFragment !== 'function') return reply;
+
+  reply.found = true;
+
+  try {
+    return Object.assign(reply, node._probeFragment(typeof code === 'string' ? code : ''));
+  } catch (e) {
+    // `_probeFragment` already guards itself; this is the belt for the braces, because a
+    // silent failure here is precisely the defect §4 of the task exists to stop repeating.
+    return Object.assign(reply, {
+      ok: false,
+      errorPhase: 'run',
+      error: 'The node could not evaluate this block: ' + (e && e.message ? e.message : String(e))
+    });
+  }
+};
+
+/**
+ * Is this node in the live scope right now? LGC-003.
+ *
+ * The same walk `evaluateBlockFragment` does, named so both can use it and so the answer has
+ * one definition. "The preview is running but this Logic Builder is not in it" is the most
+ * common thing a builder hits, and it is not an error.
+ */
+NodeContext.prototype.hasNode = function (nodeId) {
+  if (typeof nodeId !== 'string' || !this.rootComponent) return false;
+  for (const candidate of this.rootComponent.nodeScope.getAllNodesRecursive()) {
+    if (candidate.id === nodeId) return true;
+  }
+  return false;
+};
+
+/**
+ * LGC-003 §1 — arm or disarm block-value recording for one Logic Builder node.
+ *
+ * ⚠️ **This is a different switch from `setTraceEnabled`, and that is the point.** The task's
+ * own warning is that `start_trace` also *clears* the trace the editor's Provenance panel is
+ * showing, and TALK-003 recorded a human losing an in-progress recording to exactly that.
+ * HUD-004 made the shared switch survivable with an ownership set; this declines to join it at
+ * all, which is strictly stronger: opening a block editor cannot clear a recording, cannot
+ * change `traceEnabled`, cannot add an owner and cannot replace `_traceBuffer`, because it
+ * touches none of them. `nodecontext.block-trace.test.ts` asserts every one of those by
+ * identity rather than by reading the code.
+ *
+ * Per node, not per app: a builder watching one Visual Function should not make every other
+ * one in the project allocate a map per run.
+ */
+NodeContext.prototype.setBlockTracing = function (nodeId, enabled) {
+  if (typeof nodeId !== 'string' || nodeId === '') return;
+  if (!this._blockTraceNodes) this._blockTraceNodes = new Set();
+
+  if (enabled) this._blockTraceNodes.add(nodeId);
+  else this._blockTraceNodes.delete(nodeId);
+};
+
+NodeContext.prototype.isBlockTracing = function (nodeId) {
+  return !!this._blockTraceNodes && this._blockTraceNodes.has(nodeId);
+};
+
+/**
+ * Start recording one run, or return `undefined` so the node uses the identity probes.
+ *
+ * ⚠️ **`undefined` is the hot path and it is one Set lookup.** Every Logic Builder run in every
+ * app calls this. Returning a recorder that then throws its map away would be the shape that
+ * looks tidier and costs an allocation per run per node, forever, for nobody.
+ */
+NodeContext.prototype.beginBlockRun = function (nodeId) {
+  if (!this._blockTraceNodes || !this._blockTraceNodes.has(nodeId)) return undefined;
+  return createBlockRunRecorder(this._traceValueCap);
+};
+
+/**
+ * Send one run's map to the editor.
+ *
+ * ⚠️ **Batched, not unbatched** — the opposite of `sendBlockFragmentResult`, and for the
+ * opposite reason. A Do It is a request a human is watching a balloon for, so 200 ms of
+ * nothing reads as broken. This is a program on a frame clock pushing a frame per run, and the
+ * relay's 200 ms coalescing is the first of the two places §5.3's "repaint on an animation
+ * frame, not per value" is enforced. The second is the editor's `FramePaintScheduler`.
+ */
+NodeContext.prototype.endBlockRun = function (nodeId, recorder) {
+  if (!recorder) return;
+
+  this._blockRunSeq = (this._blockRunSeq || 0) + 1;
+  // `getCurrentTime` goes through the platform clock, which a context built without a platform
+  // does not have. The frame's `t` labels the scrubber and nothing else reads it, so a wall
+  // clock is a correct answer for it — and throwing here would cost the whole frame.
+  const now = this.platform ? this.getCurrentTime() : Date.now();
+  const frame = recorder.take(nodeId, this._blockRunSeq, now);
+
+  if (this.editorConnection && typeof this.editorConnection.sendBlockValues === 'function') {
+    this.editorConnection.sendBlockValues(frame);
+  }
 };
 
 NodeContext.prototype.getTraceEvents = function (afterSeq) {

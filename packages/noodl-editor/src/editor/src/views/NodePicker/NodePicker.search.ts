@@ -124,6 +124,35 @@ export interface PickerResults {
 const RANK_TAG = 1_000;
 const RANK_PORT = 2_000;
 
+/**
+ * LGC-001 §1 — a match that is *not* on the name is ordered by the library's own
+ * listing order, not by label length.
+ *
+ * The tie-break used to be "shorter name first", which is arbitrary: it is a
+ * property of the string, not of the node. It also actively fought the one
+ * ordering this codebase has already thought about. `multiply` matches
+ * Expression, Visual Function and Function all three on a tag, all at
+ * `RANK_TAG`, and shortest-first answers **Function** (8 characters) first — the
+ * one node LGC-001 says must not lead, because it is the wrong tool for a
+ * one-liner.
+ *
+ * `nodelibraryexport.ts`'s `coreNodes` is a hand-curated list whose order is
+ * deliberate, so it is used here as the tie-break. Nothing about the triad is
+ * named in this file: reordering that list reorders these results.
+ *
+ * The offset is clamped so a tag match can never reach the port band — the two
+ * bands are 1000 apart and the library is ~250 entries, but the clamp makes that
+ * a guarantee rather than an observation.
+ */
+const MAX_LIBRARY_ORDER = 999;
+
+function withLibraryOrder(match: Match | null, ordinal: number): Match | null {
+  // Name matches keep their raw offset; only the "why is this here?" rows are
+  // re-ordered, and those are exactly the ones carrying a `reason`.
+  if (!match || !match.reason) return match;
+  return { ...match, rank: match.rank + Math.min(ordinal, MAX_LIBRARY_ORDER) };
+}
+
 export function getItemLabel(type: INodeType): string {
   return type.displayName || type.displayNodeName || type.name;
 }
@@ -198,6 +227,8 @@ interface FlatNode {
   categoryType: string;
   subCategoryName: string;
   source: 'core' | 'custom';
+  /** Position in the library's own listing order — see {@link withLibraryOrder}. */
+  ordinal: number;
 }
 
 /** Walk the index once — categories, sub-categories and loose category items. */
@@ -213,7 +244,10 @@ function flatten(categories: INodeIndexCategory[], source: 'core' | 'custom'): F
           categoryName: category.name,
           categoryType: category.type,
           subCategoryName,
-          source
+          source,
+          // Filled in by `flattenIndex`, which is the only place that can see
+          // core and custom nodes as one sequence.
+          ordinal: 0
         });
       }
     };
@@ -229,7 +263,11 @@ function flatten(categories: INodeIndexCategory[], source: 'core' | 'custom'): F
 }
 
 export function flattenIndex(index: INodeIndex): FlatNode[] {
-  return [...flatten(index?.coreNodes || [], 'core'), ...flatten(index?.customNodes || [], 'custom')];
+  const all = [...flatten(index?.coreNodes || [], 'core'), ...flatten(index?.customNodes || [], 'custom')];
+  // Core nodes before project components, each in the order the library lists
+  // them — the walk order *is* the intended order, so it only has to be counted.
+  all.forEach((node, index) => (node.ordinal = index));
+  return all;
 }
 
 /**
@@ -331,7 +369,7 @@ export function buildResults({ index, query, activeCategory }: BuildResultsOptio
   for (const node of nodes) {
     const match = isSearching ? matchNode(node.type, term) : null;
     if (isSearching && !match) continue;
-    matched.push(toItem(node, match, isSearching));
+    matched.push(toItem(node, withLibraryOrder(match, node.ordinal), isSearching));
   }
 
   // Counts are computed before the category filter — clicking a rail item must

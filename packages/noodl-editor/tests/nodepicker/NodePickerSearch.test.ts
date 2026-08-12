@@ -330,3 +330,150 @@ describe('NodePicker buildResults — component descriptions (LEG-006)', () => {
     expect(item.meta).toBe('tag · template');
   });
 });
+
+/**
+ * LGC-001 §1 — the arithmetic terms, and the order they answer in.
+ *
+ * A test user typed the words he knew — `add`, `multiply`, `round` — and got
+ * nothing back, because this product has no math nodes and the three that *do*
+ * answer those words advertised only `javascript` and `blockly`. The tags that
+ * fix that live on the node definitions in `@noodl/runtime` and are graded
+ * there (`test/lgc-001-logic-triad.test.ts`). What is graded here is the half
+ * that is picker arithmetic: **which of the three the tag match answers first**.
+ *
+ * The fixture is the real Logic category, in the real order
+ * `nodelibraryexport.ts` now lists it in, with the real labels and a
+ * representative slice of the real tags. It is deliberately *not* the whole
+ * library: the claim is about ranking, and a fixture small enough to read is
+ * what makes a failure legible.
+ *
+ * ⚠️ The regression this pins is subtle and was live before LGC-001. Every tag
+ * match sits at the same rank, so the tie-break decided the answer, and the
+ * tie-break was "shorter label first" — which answers `Function` (8 characters)
+ * ahead of `Expression` (10) and `Visual Function` (15). That is the exact
+ * inverse of what the task requires, and it would have been invisible in any
+ * spec that only asserted "all three are returned".
+ */
+const LOGIC_TAGS = ['math', 'multiply', 'round', 'percent'];
+
+const TRIAD_INDEX = {
+  coreNodes: [
+    {
+      name: 'UI Elements',
+      description: '',
+      type: 'visual',
+      subCategories: [{ name: 'Basic Elements', items: [node('Group'), node('Text')] }],
+      items: []
+    },
+    {
+      name: 'Logic',
+      description: '',
+      type: 'javascript',
+      subCategories: [
+        {
+          name: '',
+          items: [
+            node('Expression', { color: 'javascript', searchTags: ['javascript', ...LOGIC_TAGS] }),
+            node('Logic Builder', {
+              color: 'javascript',
+              displayNodeName: 'Visual Function',
+              searchTags: ['blockly', 'visual', 'logic', 'blocks', 'nocode', ...LOGIC_TAGS]
+            }),
+            node('JavaScriptFunction', {
+              color: 'javascript',
+              displayNodeName: 'Function',
+              searchTags: ['javascript', ...LOGIC_TAGS]
+            })
+          ]
+        }
+      ],
+      items: []
+    }
+  ],
+  customNodes: []
+} as TSFixme;
+
+function buildTriad(query: string) {
+  return buildResults({ index: TRIAD_INDEX, query, activeCategory: null });
+}
+
+describe('NodePicker buildResults — the logic triad (LGC-001 §1)', () => {
+  for (const term of ['math', 'multiply', 'round', 'percent']) {
+    it(`answers "${term}" with all three, Expression first`, () => {
+      const labels = buildTriad(term).items.map((item) => item.label);
+
+      expect(labels).toEqual(['Expression', 'Visual Function', 'Function']);
+    });
+  }
+
+  it('says on each card that the match was a tag, not the name', () => {
+    const reasons = buildTriad('multiply').items.map((item) => item.reason);
+
+    expect(reasons).toEqual([
+      { kind: 'tag', text: 'multiply' },
+      { kind: 'tag', text: 'multiply' },
+      { kind: 'tag', text: 'multiply' }
+    ]);
+  });
+
+  /**
+   * The acceptance criterion that the rename could have broken. "Visual
+   * Function" contains "function" at offset 7 and "Function" at offset 0, so
+   * both are *name* matches and the offset decides — which is the ordering the
+   * picker already had, and the reason Visual Function needs no `function` tag.
+   */
+  it('still ranks the Function node first for "function", and now returns both', () => {
+    const items = buildTriad('function').items;
+
+    expect(items.map((item) => item.label)).toEqual(['Function', 'Visual Function']);
+    // Name matches, so no reason is shown — the highlighted name is the reason.
+    expect(items.map((item) => item.reason)).toEqual([null, null]);
+    expect(items[1].highlight).toEqual([7, 15]);
+  });
+
+  /**
+   * The control. The ordering above must come from the library's listing order,
+   * not from a rule this file happens to satisfy by accident — and the two are
+   * easy to confuse, because Expression is also the *first* of the three
+   * alphabetically and the shortest-label rule would have answered Function.
+   * Reversing the fixture's list reverses the answer, and nothing else changes.
+   */
+  it('takes the order from the library listing, not from the labels', () => {
+    const reversed = {
+      ...TRIAD_INDEX,
+      coreNodes: [
+        TRIAD_INDEX.coreNodes[0],
+        {
+          ...TRIAD_INDEX.coreNodes[1],
+          subCategories: [
+            {
+              name: '',
+              items: [...TRIAD_INDEX.coreNodes[1].subCategories[0].items].reverse()
+            }
+          ]
+        }
+      ]
+    } as TSFixme;
+
+    const labels = buildResults({ index: reversed, query: 'multiply', activeCategory: null }).items.map(
+      (item) => item.label
+    );
+
+    expect(labels).toEqual(['Function', 'Visual Function', 'Expression']);
+  });
+
+  /**
+   * The band guard. A tag match is offset by the node's position in a library
+   * of ~250 entries, and a port match sits 1000 above it; the offset is clamped
+   * so no amount of library growth can let a tag match overtake a name match or
+   * a port match overtake a tag match.
+   */
+  it('keeps tag matches below name matches and above port matches', () => {
+    const results = buildTriad('multiply');
+
+    for (const item of results.items) {
+      expect(item.rank).toBeGreaterThanOrEqual(1000);
+      expect(item.rank).toBeLessThan(2000);
+    }
+  });
+});

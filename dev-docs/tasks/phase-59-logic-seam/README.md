@@ -64,7 +64,7 @@ shipped and loved somewhere, and two of them are on npm.
 | live values on blocks | **App Inventor "Do It"** — right-click any block with a device connected, it runs immediately and balloons the result at a small equals sign. **Scratch/Snap!** — click a reporter, get a speech bubble | **push → pull.** We specced always-on badges. The loved version is *on demand*, needs no trace session, and is far cheaper. LGC-002 before LGC-003 |
 | split screen | **MakeCode** — simulator left, blocks right, recompiling as you type; plus a two-editor Multi Editor | the left pane earns its place by being **the running thing**, not a second editor. LGC-008 puts the app there, not the node graph |
 | define inputs/outputs in a panel | **`@blockly/block-plus-minus`** — add/remove inputs without mutator dialogs | mutators are a known novice cliff; do not build one |
-| save a block group, reuse it | **Scratch backpack** (drag in, drag out in another project, copies not moves, account-scoped) · **`@blockly/workspace-backpack`** · **`@blockly/block-shareable-procedures`** — procedures "backed by explicit data models", shareable across workspaces | **the hard part is on npm.** The definition store, reference-by-id and cross-workspace sharing we specced are that plugin. LGC-007 adopts, it does not build |
+| save a block group, reuse it | **Scratch backpack** (drag in, drag out in another project, copies not moves, account-scoped) · **`@blockly/workspace-backpack`** · **`@blockly/block-shareable-procedures`** — procedures "backed by explicit data models", shareable across workspaces | 🔴 **this row was wrong, and LGC-006 disproved it in source 2026-08-12.** The plugin shares *procedures* between *live* workspaces via events you forward yourself; it has no store, no persistence, and cannot represent an arbitrary block group. The backpack is the drawer only. **LGC-007 builds; it adopts one UI** |
 | code view | **MakeCode** round-trips Blocks ⇄ JavaScript ⇄ Python | already have it — `generatedCode` is a port. Not a task; noted in "not here" |
 | run scrubber | **NuzzleBug** — omniscient Scratch debugger with reverse stepping | validated, and it carries a warning (below) |
 
@@ -93,8 +93,9 @@ the literature names the failure mode directly: block environments lower the bar
 and developing* but not for *reading, tracing and maintaining* — "viscosity".
 
 **So LGC-007 (save a group, reuse it) is not a delight feature. It is the only known mitigation for
-the thing that kills block programs**, and `workspace-minimap` / `workspace-search` in LGC-006 are
-not polish either. Both move up the order.
+the thing that kills block programs**, and `workspace-minimap` / `plugin-workspace-search` in LGC-006
+are not polish either. Both move up the order. ⚠️ LGC-006 found both of those plugins carry
+hardcoded colours that ignore our theme flip — they are adoptable, but neither is free.
 
 ### The warning attached to the debugger work
 
@@ -141,9 +142,15 @@ so the category exists and the choice inside it is simply never explained.
 
 Phase 58 settled it and it applies unchanged: **structure > gate > documentation.**
 
-With one addition earned by the research above: **adopt > build.** Two of the eight tasks are
-mostly `npm install` plus wiring. Any task here that reimplements a `@blockly/*` plugin needs a
-written reason why the plugin was insufficient.
+With one addition earned by the research above: **adopt > build.** Any task here that reimplements a
+`@blockly/*` plugin needs a written reason why the plugin was insufficient.
+
+🔴 **And the correction that rule earned on its first use.** The draft said *"two of the eight tasks
+are mostly `npm install` plus wiring"*. LGC-006 tested that by reading the plugins' published source
+rather than their READMEs, and **one of the two was wrong**: LGC-007 is the largest job in the phase.
+The reasons are written down in [LGC-006](LGC-006-PLUGIN-SWEEP.md), which is what the rule asks for.
+`adopt > build` still holds — it just costs an hour of reading to apply, and a README is not that
+hour. Three package names in the sweep did not even exist as written.
 
 ## The exit test
 

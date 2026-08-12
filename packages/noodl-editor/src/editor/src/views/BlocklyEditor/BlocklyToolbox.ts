@@ -35,7 +35,8 @@ const HUE = {
   text: '160',
   lists: '260',
   blocklyVariables: '330',
-  functions: '290'
+  functions: '290',
+  myBlocks: '55'
 } as const;
 
 export interface ToolboxLabels {
@@ -51,6 +52,7 @@ export interface ToolboxLabels {
   lists: string;
   variables: string;
   functions: string;
+  myBlocks: string;
 }
 
 /** English category names — the fallback for any locale we have no translation for. */
@@ -66,7 +68,11 @@ export const DEFAULT_TOOLBOX_LABELS: ToolboxLabels = {
   text: 'Text',
   lists: 'Lists',
   variables: 'Variables',
-  functions: 'Functions'
+  functions: 'Functions',
+  // LGC-007 §1: Scratch's own term for custom blocks, tested on millions of
+  // non-technical users and plain English. Preferred over "Snippets", "Macros"
+  // or "Procedures", all of which are words a builder has to already know.
+  myBlocks: 'My Blocks'
 };
 
 function category(name: string, colour: string, blocks: string[]) {
@@ -169,7 +175,14 @@ export function buildToolbox(labels: ToolboxLabels = DEFAULT_TOOLBOX_LABELS) {
 
       /* --- Dynamic categories Blockly fills in itself --------------------- */
       { kind: 'category', name: labels.variables, colour: HUE.blocklyVariables, custom: 'VARIABLE' },
-      { kind: 'category', name: labels.functions, colour: HUE.functions, custom: 'PROCEDURE' }
+      { kind: 'category', name: labels.functions, colour: HUE.functions, custom: 'PROCEDURE' },
+      // LGC-007: dynamic for the same reason as the two above — its contents change
+      // whenever a definition is saved, renamed or deleted, and Blockly rebuilds a
+      // `custom` category on every flyout open. `BlocklyWorkspace` registers the
+      // callback; a workspace that does not gets an empty category rather than an error.
+      // Last, which is both where Scratch puts My Blocks and where this toolbox already
+      // keeps its dynamic categories.
+      { kind: 'category', name: labels.myBlocks, colour: HUE.myBlocks, custom: 'MY_BLOCKS' }
     ]
   } as Blockly.utils.toolbox.ToolboxDefinition;
 }

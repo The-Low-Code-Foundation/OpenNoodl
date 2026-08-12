@@ -13,6 +13,103 @@
 
 import * as Blockly from 'blockly';
 
+import { blocklyCheckForNoodlType, connectionCheckForDeclaredPort, PERMISSIVE_NOODL_TYPE } from './NoodlTypes';
+
+/**
+ * Shorthand for a check a block knows statically, spelled in Noodl's vocabulary so the map in
+ * `NoodlTypes.ts` stays the only place the two type names are paired. Every call below
+ * resolves to the string that block already shipped — this single-sources them, it does not
+ * change them.
+ */
+const check = blocklyCheckForNoodlType;
+
+/**
+ * The declared type of a named port, read off the `Define …` blocks in the same workspace.
+ *
+ * `get input` and `set output` name a port but do not type it — the type lives on a
+ * *different* block, the matching `Define input` / `Define output`. `detectIO` resolves the
+ * same way on the serialised side ("a declaration wins on type because it is the only place a
+ * type is stated"); this is the live-workspace half of it.
+ *
+ * Two declarations of the same name that disagree read as `'*'`. Refusing to pick a winner is
+ * deliberate: `detectIO` resolves such a clash by document order, which is not something an
+ * author can see, and a check derived from an invisible tie-break is worse than no check.
+ */
+function declaredTypeOfPort(block: Blockly.Block, defineBlockType: string, portName: string): string {
+  const workspace = block.workspace;
+  if (!workspace || !portName) return PERMISSIVE_NOODL_TYPE;
+
+  let declared: string | null = null;
+
+  for (const candidate of workspace.getBlocksByType(defineBlockType, false)) {
+    if (candidate.getFieldValue('NAME') !== portName) continue;
+    const type = candidate.getFieldValue('TYPE') || PERMISSIVE_NOODL_TYPE;
+    if (declared !== null && declared !== type) return PERMISSIVE_NOODL_TYPE;
+    declared = type;
+  }
+
+  return declared || PERMISSIVE_NOODL_TYPE;
+}
+
+function sameCheck(current: string[] | null, next: string[] | null): boolean {
+  if (current === null || next === null) return current === next;
+  return current.length === next.length && current.every((value, i) => value === next[i]);
+}
+
+/**
+ * Put a check on a connection — but never at the cost of a wire that is already there.
+ *
+ * ⚠️ The migration guard, and the reason this task did not have to become one.
+ * `Connection.setCheck` disconnects whatever is attached if the new check no longer admits
+ * it, silently. A saved program authored before checks existed can hold a pairing this map
+ * would now refuse; breaking it on the author's next click would destroy a working program
+ * and blame the click. So a tightening that would sever a live connection is simply not
+ * applied, and the connection stays permissive until the author disconnects it themselves —
+ * at which point this runs again and the check lands.
+ *
+ * Loosening (`null`) is always safe and always applied.
+ */
+function setCheckWithoutBreakingWires(connection: Blockly.Connection | null, nextCheck: string | null): void {
+  if (!connection) return;
+
+  const next = nextCheck === null ? null : [nextCheck];
+  if (sameCheck(connection.getCheck(), next)) return;
+
+  if (next !== null && connection.isConnected()) {
+    // Blockly's rule, `ConnectionChecker.doTypeChecks`: a `null` check on either end admits
+    // everything, otherwise the two arrays must intersect.
+    const otherCheck = connection.targetConnection ? connection.targetConnection.getCheck() : null;
+    if (otherCheck && otherCheck.indexOf(nextCheck as string) === -1) return;
+  }
+
+  connection.setCheck(next);
+}
+
+/**
+ * Keep one block's connection check in step with the port declaration it refers to.
+ *
+ * Registered with `setOnChange`, which is a workspace change listener bound to the block —
+ * so it runs on every event, and (crucially) on **none** during load: `BlocklyWorkspace`
+ * deserialises inside `Blockly.Events.disable()`, so a saved program is reconstructed with
+ * the checks it was saved with and nothing is re-typed underneath it.
+ */
+function trackDeclaredType(
+  block: Blockly.Block,
+  defineBlockType: string,
+  plug: 'input' | 'output',
+  connectionOf: (block: Blockly.Block) => Blockly.Connection | null
+): void {
+  block.setOnChange(function (this: Blockly.Block) {
+    if (!this.workspace || this.isInFlyout || this.disposed) return;
+    // Mid-drag the connection set is in flux and the drop fires its own event.
+    const workspace = this.workspace as Blockly.WorkspaceSvg;
+    if (typeof workspace.isDragging === 'function' && workspace.isDragging()) return;
+
+    const declared = declaredTypeOfPort(this, defineBlockType, this.getFieldValue('NAME'));
+    setCheckWithoutBreakingWires(connectionOf(this), connectionCheckForDeclaredPort(declared, plug));
+  });
+}
+
 /**
  * Initialize all Noodl custom blocks
  */
@@ -64,7 +161,13 @@ function defineInputOutputBlocks() {
   Blockly.Blocks['noodl_get_input'] = {
     init: function () {
       this.appendDummyInput().appendField('📥 get input').appendField(new Blockly.FieldTextInput('value'), 'NAME');
+      // ⚠️ Stays `null`, and the tracker below is what keeps it that way *on purpose* rather
+      // than by omission. `connectionCheckForDeclaredPort(…, 'input')` returns `null` for
+      // every type because nothing between the wire and here converts anything — the reasons
+      // are in its docstring, read in source. The seam is wired so that the day the runtime
+      // coerces, the policy function is the only edit.
       this.setOutput(true, null);
+      trackDeclaredType(this, 'noodl_define_input', 'input', (block) => block.outputConnection);
       this.setColour(230);
       this.setTooltip('Gets the value from an input port');
       this.setHelpUrl('');
@@ -105,6 +208,14 @@ function defineInputOutputBlocks() {
         .appendField('📤 set output')
         .appendField(new Blockly.FieldTextInput('result'), 'NAME')
         .appendField('to');
+      // The enforceable half of LGC-005. A `Define output` typed `number` makes this socket
+      // refuse a `text` block, because both ends of that promise are inside this workspace.
+      // Starts `null` so a saved program loads exactly as it was saved; the tracker tightens
+      // it on the first event, and never over a live wire.
+      trackDeclaredType(this, 'noodl_define_output', 'output', (block) => {
+        const input = block.getInput('VALUE');
+        return input ? input.connection : null;
+      });
       this.setPreviousStatement(true, null);
       this.setNextStatement(true, null);
       this.setColour(230);
@@ -195,8 +306,8 @@ function defineObjectBlocks() {
   // Get Object block
   Blockly.Blocks['noodl_get_object'] = {
     init: function () {
-      this.appendValueInput('ID').setCheck('String').appendField('📦 get object');
-      this.setOutput(true, 'Object');
+      this.appendValueInput('ID').setCheck(check('string')).appendField('📦 get object');
+      this.setOutput(true, check('object'));
       this.setColour(20);
       this.setTooltip('Gets a Noodl Object by its ID');
       this.setHelpUrl('');
@@ -245,7 +356,7 @@ function defineArrayBlocks() {
   Blockly.Blocks['noodl_get_array'] = {
     init: function () {
       this.appendDummyInput().appendField('📋 get array').appendField(new Blockly.FieldTextInput('myArray'), 'NAME');
-      this.setOutput(true, 'Array');
+      this.setOutput(true, check('array'));
       this.setColour(260);
       this.setTooltip('Gets a Noodl Array by name');
       this.setHelpUrl('');
@@ -255,8 +366,8 @@ function defineArrayBlocks() {
   // Array Length block
   Blockly.Blocks['noodl_array_length'] = {
     init: function () {
-      this.appendValueInput('ARRAY').setCheck('Array').appendField('🔢 length of array');
-      this.setOutput(true, 'Number');
+      this.appendValueInput('ARRAY').setCheck(check('array')).appendField('🔢 length of array');
+      this.setOutput(true, check('number'));
       this.setColour(260);
       this.setTooltip('Gets the number of items in an array');
       this.setHelpUrl('');
@@ -267,7 +378,7 @@ function defineArrayBlocks() {
   Blockly.Blocks['noodl_array_add'] = {
     init: function () {
       this.appendValueInput('ITEM').setCheck(null).appendField('➕ add');
-      this.appendValueInput('ARRAY').setCheck('Array').appendField('to array');
+      this.appendValueInput('ARRAY').setCheck(check('array')).appendField('to array');
       this.setInputsInline(true);
       this.setPreviousStatement(true, null);
       this.setNextStatement(true, null);

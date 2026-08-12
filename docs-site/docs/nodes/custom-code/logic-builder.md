@@ -1,5 +1,5 @@
 ---
-title: "Logic Builder"
+title: "Visual Function"
 ---
 Block-based (Blockly) logic: blocks compile to JavaScript that runs when a signal fires and writes the node's output ports.
 
@@ -43,7 +43,7 @@ Reach for it when logic must be authorable without writing JavaScript, or when t
 | `completed` | Signal | — | Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error |
 | `done` | Signal | — | Fires once a run you triggered has finished, after Success and after every output the program wrote |
 | `success` | Signal | — | Fires once the block program has run through without throwing and every output it wrote is up to date |
-| `unchanged` | Signal | — | Fires when there are no blocks to run yet, which is what a freshly dropped Logic Builder looks like |
+| `unchanged` | Signal | — | Fires when there are no blocks to run yet, which is what a freshly dropped Visual Function looks like |
 
 ### Failure outputs
 

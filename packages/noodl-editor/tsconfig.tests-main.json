@@ -94,6 +94,77 @@
     // through it React and CodeMirror) out of this runner. The two guards it
     // holds — wrong node type, node already has a body — both fail silently in
     // the app, so they are graded here rather than by remembering to try them.
-    "src/editor/src/models/nodeSeed/newNodeSeed.ts"
+    "src/editor/src/models/nodeSeed/newNodeSeed.ts",
+    // LGC-001 §2: `NodePicker.chooser.ts` is the same shape once more — the three
+    // sentences that say which of Expression / Visual Function / Function to
+    // reach for, lifted out of the preview component so the *copy* is graded
+    // here rather than only by cursoring a row and reading it. Import-free by
+    // design, and deliberately not part of the enriched catalog: this is a
+    // comparative note about three neighbours, and the catalog is written one
+    // node at a time. The clause it must never contain — that the Function node
+    // has one signal in and one out, which is false in both directions — is the
+    // reason it is graded at all.
+    "src/editor/src/views/NodePicker/NodePicker.chooser.ts",
+    // LGC-008: `blocklyResize.ts` is the same shape once more — the registry a
+    // splitter drag calls to make Blockly re-measure itself against its
+    // container. It is import-free *by requirement* rather than by luck: Blockly
+    // is a ~1.1 MB lazy chunk and the layout code that triggers a resize sits in
+    // the eager bundle, so the module joining them must never name `blockly`.
+    // That constraint is exactly what lets the dispatch behaviour be graded here
+    // with no Electron, no DOM and no Blockly.
+    "src/editor/src/views/BlocklyEditor/blocklyResize.ts",
+    // LGC-007: `views/BlocklyEditor/myblocks/` is the same shape again, and here
+    // the boundary is enforced by where a file sits rather than by remembering.
+    // The whole directory is pure — the saved-definition format, the cycle
+    // guard, the shape inference and the inliner — and imports nothing but
+    // itself, not even Blockly: a saved group is plain JSON, so all four are
+    // JSON transforms. Anything that touches Blockly or an editor singleton (the
+    // two shelf adapters, the call-block definitions) lives one level up in
+    // `BlocklyEditor/` and is deliberately not reached from here.
+    //
+    // That split matters more than usual for this feature. §3's failure mode is
+    // not an error message, it is a hung renderer inside a 300 ms debounce tick,
+    // which presents as the workspace freezing at random — the one class of
+    // defect a drive is worst at finding and a plain-Node runner is best at.
+    "src/editor/src/views/BlocklyEditor/myblocks",
+    // …and these three, which are not pure but are reachable anyway: all each
+    // one imports is `blockly` / `blockly/javascript`, and Blockly runs headless
+    // in Node. That is what lets `inliner.test.ts` close the loop the rest of
+    // this feature cannot close by inspection — expand the JSON, load it into a
+    // real headless workspace, run the **real** generators, and assert the
+    // JavaScript that comes out. Without them the inliner could only be graded
+    // on the shape of the JSON it produces, which is precisely the kind of
+    // proof that passes while the generated program does nothing.
+    "src/editor/src/views/BlocklyEditor/initialize.ts",
+    "src/editor/src/views/BlocklyEditor/NoodlBlocks.ts",
+    "src/editor/src/views/BlocklyEditor/NoodlGenerators.ts",
+    // LGC-005: the Blockly type map and the block definitions that apply it. The map itself
+    // (`NoodlTypes.ts`) imports nothing at all; `NoodlBlocks.ts` imports only `blockly`, which
+    // runs headlessly in plain Node as long as nothing asks for a `WorkspaceSvg` — so the
+    // specs drive a real workspace and grade Blockly's own refusals rather than a
+    // re-implementation of them. Nothing else in `views/BlocklyEditor/` is reachable from
+    // here: `BlocklyWorkspace.tsx` is React and `BlocklyTheme.ts` reaches the canvas theme.
+    "src/editor/src/views/BlocklyEditor/NoodlTypes.ts",
+    // LGC-002: the same shape a third time. `DoIt.ts` is the offer rule ("is this a value
+    // block, and if not, what does the greyed menu item say?") plus the fragment generator, and
+    // it imports nothing but `blockly/javascript` — so both are graded against a real headless
+    // workspace, with the real blocks and the real generator. `NoodlGenerators.ts` comes with
+    // it because the fragment for a `get input` block *is* its output; grading generation
+    // against anything else would be grading a mock. The three files deliberately NOT reachable
+    // from here are the three that must not be: `DoItController` (Blockly's rendered menu),
+    // `DoItBalloons` (SVG and the canvas theme) and `DoItProbeClient` (the socket).
+    "src/editor/src/views/BlocklyEditor/DoIt.ts",
+    // LGC-003: the same shape a fourth time, and here the split is the whole design.
+    // `BlockProbes.ts` is the instrumentation — it decides what `__p` wraps and at what
+    // operator precedence — and it imports nothing but Blockly, so the claim the acceptance
+    // list actually cares about ("instrumented and uninstrumented runs of the same program
+    // produce identical outputs") is proved by *running both* against a real workspace with the
+    // real generator rather than by reading the emitted string. `BlockValueTrace.ts` imports
+    // nothing at all: it is the didn't-execute rule, the loop count, the run history and the
+    // frame coalescing — every decision §2, §3 and §5 make. Deliberately NOT reachable:
+    // `BlockValueBadges` (SVG + canvas theme), `BlockTraceClient` (the socket) and
+    // `BlockValueController` (both, plus the DOM).
+    "src/editor/src/views/BlocklyEditor/BlockProbes.ts",
+    "src/editor/src/views/BlocklyEditor/BlockValueTrace.ts"
   ]
 }

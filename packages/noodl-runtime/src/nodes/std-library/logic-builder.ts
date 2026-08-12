@@ -13,6 +13,15 @@ import type {
 } from '@noodl/types';
 
 import { DetectedIO, detectIO, typeOfPort } from './logic-builder-io';
+import {
+  BlockRunRecorder,
+  IDENTITY_VALUE_PROBE,
+  NOOP_STATEMENT_PROBE,
+  PROBE_TRIGGER_SIGNAL,
+  ProbeResult,
+  evaluateFragment
+} from './logic-builder-probe';
+import { ARITHMETIC_SEARCH_TAGS } from './logic-search-tags';
 
 import { outcomeOutputs } from '../../outcome';
 import EdgeTriggeredInput = require('../../edgetriggeredinput');
@@ -44,8 +53,23 @@ interface LogicBuilderNodeInstance extends NodeInstance {
   _executeLogic(triggerSignal: string, token?: OutcomeToken): void;
   _createExecutionContext(triggerSignal: string): LogicBuilderExecutionContext;
   _compileFunction(): ((...args: unknown[]) => unknown) | null;
+  _probeFragment(code: string): ProbeResult;
   _fail(code: string, message: string, token?: OutcomeToken): void;
   _io(): DetectedIO;
+}
+
+/**
+ * The two `NodeContext` methods this node reaches for that the published `NodeContextLike`
+ * does not name.
+ *
+ * ⚠️ Both are optional here on purpose. `NodeContextLike` is the *published* node-author
+ * contract and these are internal — but this node also runs under test harnesses and under a
+ * deployed viewer whose context is built from the same constructor, so the guard at the call
+ * site is a real one rather than a type-system formality.
+ */
+interface BlockTracingContext {
+  beginBlockRun?(nodeId: string): BlockRunRecorder | undefined;
+  endBlockRun?(nodeId: string, recorder: BlockRunRecorder): void;
 }
 
 /** What the generated code is handed as its parameters. */
@@ -90,15 +114,42 @@ const RESERVED_INPUTS = ['workspace', 'generatedCode', 'run'];
 const RESERVED_OUTPUTS = ['error', 'success', 'failure', 'done', 'unchanged', 'completed'];
 
 const LogicBuilderNode: NodeDefinitionOptions = {
+  /**
+   * ⚠️ **Frozen.** `name` is the type id: it is the string in every saved
+   * `project.json`, in `node-catalog.json`, in `docs/node-catalog/enrichment/`,
+   * in the example `code-logic-builder-greeting.json`, and it is what
+   * `slugify(typeName)` turns into the docs-site page path. Renaming it is a
+   * migration and phase 59 does not do one (TASKS.md, standing constraints).
+   * LGC-001 §3 changes the *label* only.
+   */
   name: 'Logic Builder',
   docs: 'https://docs.noodl.net/nodes/logic/logic-builder',
-  displayNodeName: 'Logic Builder',
+  /**
+   * LGC-001 §3. "Logic Builder" told a beginner nothing: the test user who said
+   * on camera *"I'd really like to build my functions visually"* had this node
+   * in his picker the whole time and never opened it. "Visual Function" answers
+   * his sentence literally, makes `function` return both this node and the
+   * JavaScript one, and makes the trio read as a progression —
+   * Expression (a line) → Visual Function (blocks) → Function (code).
+   *
+   * ⚠️ Not "Function": Richard ruled that out, the JavaScript node keeps it.
+   */
+  displayNodeName: 'Visual Function',
   category: 'CustomCode',
   color: 'javascript',
   nodeDoubleClickAction: {
     focusPort: 'workspace'
   },
-  searchTags: ['blockly', 'visual', 'logic', 'blocks', 'nocode'],
+  /**
+   * LGC-001 §1 — the arithmetic vocabulary is shared with Expression and
+   * Function so all three answer `multiply`; see `logic-search-tags.ts`.
+   *
+   * No `function` tag: the label above now *contains* the word, so `function`
+   * is a name match here (rank 7, the offset of "Function" in "Visual
+   * Function") and therefore already ranks below the Function node's own
+   * leading match (rank 0). A tag would be dead weight.
+   */
+  searchTags: ['blockly', 'visual', 'logic', 'blocks', 'nocode', ...ARITHMETIC_SEARCH_TAGS],
 
   initialize: function (this: LogicBuilderNodeInstance) {
     const internal = this._internal;
@@ -267,6 +318,25 @@ const LogicBuilderNode: NodeDefinitionOptions = {
         return;
       }
 
+      /**
+       * LGC-003 §1 — one generated string, two probes.
+       *
+       * With nobody watching this is the shared identity pair and the run costs one extra
+       * pair of arguments and nothing else: no allocation, no map, no accumulation. With a
+       * block editor attached to *this* node, it is a recorder, and the map goes out at the
+       * end of the run.
+       *
+       * ⚠️ **This never touches `context.traceEnabled`, `_traceOwners` or `_traceBuffer`.**
+       * TALK-003 recorded that arming the shared trace switch destroys a human's in-progress
+       * Provenance recording, and HUD-004 paid for an ownership set to stop it. Rather than
+       * join that switch and have to be careful, block tracing declines it: it is a separate
+       * per-node set on the context, so there is nothing here that *can* commandeer a
+       * recording. See `NodeContext.setBlockTracing`.
+       */
+      const tracing = this.context as unknown as BlockTracingContext | undefined;
+      const recorder: BlockRunRecorder | undefined =
+        tracing && typeof tracing.beginBlockRun === 'function' ? tracing.beginBlockRun(this.id) : undefined;
+
       try {
         // Create execution context
         const context = this._createExecutionContext(triggerSignal);
@@ -280,7 +350,9 @@ const LogicBuilderNode: NodeDefinitionOptions = {
           context.Objects,
           context.Arrays,
           context.sendSignalOnOutput,
-          context.__triggerSignal__
+          context.__triggerSignal__,
+          recorder ? recorder.probeValue : IDENTITY_VALUE_PROBE,
+          recorder ? recorder.probeStatement : NOOP_STATEMENT_PROBE
         );
 
         // Update outputs. Registration comes first because `flagOutputDirty` throws on an
@@ -329,6 +401,19 @@ const LogicBuilderNode: NodeDefinitionOptions = {
           error && error.message ? String(error.message) : String(error),
           token
         );
+      } finally {
+        // A run that threw halfway is exactly the run whose hollow blocks are worth seeing:
+        // everything below the throw did not execute, and that is the answer to "why did my
+        // condition never fire". So the frame is flushed on the failure path too, and the
+        // flush itself is guarded — a diagnostic that throws out of a `finally` would replace
+        // the program's real error with its own.
+        if (recorder && tracing && typeof tracing.endBlockRun === 'function') {
+          try {
+            tracing.endBlockRun(this.id, recorder);
+          } catch (flushError) {
+            console.error('[Logic Builder] Could not report block values:', flushError);
+          }
+        }
       }
     },
 
@@ -424,6 +509,23 @@ const LogicBuilderNode: NodeDefinitionOptions = {
           'Arrays',
           'sendSignalOnOutput',
           '__triggerSignal__',
+          /**
+           * LGC-003 §1 — the ninth and tenth parameters, and the reason there is only ever one
+           * generated string.
+           *
+           * The editor emits `__p("<blockId>", …)` around every value block and `__s("<blockId>")`
+           * before every statement, always — there is no debug build and no release build, so
+           * there is no class of defect that appears only when nobody is watching. What changes
+           * is which functions land here: the shared identity pair, or a recorder.
+           *
+           * ⚠️ **Declared unconditionally, including for code generated before this existed.**
+           * A `generatedCode` string saved by an older editor mentions neither name, and an
+           * unused parameter costs nothing — whereas making the list conditional on the code
+           * would put a `code.indexOf('__p')` on the compile path and give the runtime two
+           * shapes of compiled function to reason about.
+           */
+          '__p',
+          '__s',
           code
         );
         return fn;
@@ -434,6 +536,39 @@ const LogicBuilderNode: NodeDefinitionOptions = {
         internal.compileError = error && error.message ? String(error.message) : String(error);
         return null;
       }
+    },
+
+    /**
+     * LGC-002 — run one block's generated fragment and say what it came to.
+     *
+     * ⚠️ **`Inputs` is `_internal.inputValues`, and that is the whole point.** The context is
+     * built by `_createExecutionContext`, unchanged, so the fragment sees the *live* values
+     * that arrived on the node's ports rather than the defaults a static analysis would
+     * assume. A Do It that answers against `undefined` inputs is worse than no Do It, because
+     * it answers confidently and wrongly.
+     *
+     * The trigger signal is {@link PROBE_TRIGGER_SIGNAL}, not `'run'`: no signal input caused
+     * this, and a program branching on `__triggerSignal__` must not be told one did.
+     *
+     * Containment is `evaluateFragment`'s, and it is two side effects out of several — read
+     * that file's note before treating this as safe.
+     */
+    _probeFragment: function (this: LogicBuilderNodeInstance, code: string): ProbeResult {
+      let context: LogicBuilderExecutionContext;
+
+      try {
+        context = this._createExecutionContext(PROBE_TRIGGER_SIGNAL);
+      } catch (error) {
+        // `createNoodlAPI` reaches the model scope. A probe is a diagnostic and must report
+        // its own failure rather than throwing into the socket handler that called it.
+        return {
+          ok: false,
+          errorPhase: 'run',
+          error: 'The node could not build a context to evaluate in: ' + (error && error.message ? error.message : error)
+        };
+      }
+
+      return evaluateFragment(context, code);
     }
   },
 
@@ -442,7 +577,9 @@ const LogicBuilderNode: NodeDefinitionOptions = {
     if (internal.executionError) {
       return `Error: ${internal.executionError}`;
     }
-    return 'Logic Builder';
+    // The label, not the type id — this string is read by a person looking at
+    // the node on the canvas. LGC-001 §3.
+    return 'Visual Function';
   },
 
   inputs: {
@@ -520,7 +657,8 @@ const LogicBuilderNode: NodeDefinitionOptions = {
     ...outcomeOutputs({
       group: 'Status',
       done: 'Fires once a run you triggered has finished, after Success and after every output the program wrote',
-      unchanged: 'Fires when there are no blocks to run yet, which is what a freshly dropped Logic Builder looks like',
+      unchanged:
+        'Fires when there are no blocks to run yet, which is what a freshly dropped Visual Function looks like',
       failure: 'Fires when the block program threw while running, or could not be compiled at all'
     }),
     error: {
