@@ -50,6 +50,8 @@ export interface RuntimeEditorConnection extends EditorConnectionLike {
   /** HUD-004. Who holds the trace, and the last `seq` written. See `tracebuffer.ts`. */
   sendTraceState(state: unknown): void;
   sendPortValues(values: unknown[]): void;
+  /** LGC-002 — the answer to one "Do It". See `logic-builder-probe.ts`. */
+  sendBlockFragmentResult(result: unknown): void;
 }
 
 /**

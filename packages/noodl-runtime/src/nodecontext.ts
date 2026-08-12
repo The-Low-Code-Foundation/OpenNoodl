@@ -44,6 +44,26 @@ interface PortValueResult extends PortValueRequest {
 }
 
 /**
+ * The answer to one "Do It" (LGC-002).
+ *
+ * ⚠️ `found: false` is a *different* answer from an error, and the balloon says something
+ * different for each. "The app is running but this node is not in it right now" is the most
+ * likely thing a builder hits — the component is not on screen — and reporting it as a failure
+ * of the block would send them looking in the wrong place.
+ */
+interface BlockFragmentReply {
+  requestId: string;
+  nodeId: string;
+  /** Whether this viewer has the node at all. Nothing else is meaningful when false. */
+  found: boolean;
+  ok?: boolean;
+  value?: string;
+  error?: string;
+  errorPhase?: 'compile' | 'run';
+  suppressedSignals?: string[];
+}
+
+/**
  * The runtime's single per-application object: node register, scheduler, global values,
  * component models, and the editor channel.
  *
@@ -138,6 +158,7 @@ interface NodeContext extends RuntimeNodeContext {
   buildSessionDictionary(): SessionDictionary;
   getTraceEvents(afterSeq?: number): TraceEvent[];
   getPortValues(ports: PortValueRequest[]): PortValueResult[];
+  evaluateBlockFragment(requestId: string, nodeId: string, code: string): BlockFragmentReply;
   clearTrace(): void;
   sendGlobalEventFromEventSender(channelName: string, inputValues: unknown): void;
   setPopupCallbacks(callbacks: { onShow: (group: any) => void; onClose: (group: any) => void }): void;
@@ -315,6 +336,14 @@ const NodeContext = function NodeContext(this: NodeContext, args?: NodeContextAr
     this.editorConnection.on('getPortValues', ({ clientId, ports }) => {
       if (this.editorConnection.clientId !== clientId) return;
       this.editorConnection.sendPortValues(this.getPortValues(ports));
+    });
+
+    // LGC-002 — "Do It". Deliberately **not** filtered on `clientId` the way its neighbours
+    // are: the editor is asking "whichever of you has this node, evaluate this", because a
+    // block editor tab knows its node id and nothing more. Every viewer answers, and one of
+    // the two answers is `found: false`.
+    this.editorConnection.on('evaluateBlockFragment', ({ requestId, nodeId, code }) => {
+      this.editorConnection.sendBlockFragmentResult(this.evaluateBlockFragment(requestId, nodeId, code));
     });
   }
 } as unknown as NodeContextConstructor;
@@ -913,6 +942,50 @@ NodeContext.prototype.getPortValues = function (ports) {
   }
 
   return out;
+};
+
+/**
+ * LGC-002 — evaluate one Blockly block's generated fragment on the node that owns it.
+ *
+ * The node lookup is `getPortValues`' — the same walk of the live scope, for the same reason:
+ * this has to answer about the app as it is now, not about a model of it.
+ *
+ * ⚠️ **Everything here is guarded and nothing here throws.** The caller is a socket message
+ * handler; a throw would take the whole editor channel down, and the thing that would take it
+ * down is a diagnostic the user reached for because something was already wrong.
+ *
+ * ⚠️ **A node that is not a Logic Builder is refused by capability, not by type name.** The
+ * type id `'Logic Builder'` is frozen and could be checked, but `_probeFragment` is the actual
+ * contract and checking for it means the day a second node hosts blocks, this works.
+ */
+NodeContext.prototype.evaluateBlockFragment = function (requestId, nodeId, code) {
+  const reply = { requestId: requestId, nodeId: nodeId, found: false };
+
+  if (typeof nodeId !== 'string' || !this.rootComponent) return reply;
+
+  let node;
+  for (const candidate of this.rootComponent.nodeScope.getAllNodesRecursive()) {
+    if (candidate.id === nodeId) {
+      node = candidate;
+      break;
+    }
+  }
+
+  if (!node || typeof node._probeFragment !== 'function') return reply;
+
+  reply.found = true;
+
+  try {
+    return Object.assign(reply, node._probeFragment(typeof code === 'string' ? code : ''));
+  } catch (e) {
+    // `_probeFragment` already guards itself; this is the belt for the braces, because a
+    // silent failure here is precisely the defect §4 of the task exists to stop repeating.
+    return Object.assign(reply, {
+      ok: false,
+      errorPhase: 'run',
+      error: 'The node could not evaluate this block: ' + (e && e.message ? e.message : String(e))
+    });
+  }
 };
 
 NodeContext.prototype.getTraceEvents = function (afterSeq) {

@@ -241,6 +241,12 @@ export class ViewerConnection extends Model {
     } else if (request.cmd === 'portValues' && request.type === 'viewer') {
       const content = typeof request.content === 'string' ? JSON.parse(request.content) : request.content;
       EventDispatcher.instance.emit('TracePortValues', { clientId: request.clientId, values: content.values });
+    } else if (request.cmd === 'blockFragmentResult' && request.type === 'viewer') {
+      // LGC-002 — the answer to one "Do It". Re-emitted rather than handled, like the trace
+      // replies above and for the same reason: this file is transport, and the block editor
+      // that asked is a lazily-loaded module this one must not import.
+      const content = typeof request.content === 'string' ? JSON.parse(request.content) : request.content;
+      EventDispatcher.instance.emit('BlockFragmentResult', { clientId: request.clientId, result: content });
     } else if (request.cmd === 'inputResult' && request.type === 'viewer') {
       // OBS-004 — the reply to an injected click or keystroke.
       const content = typeof request.content === 'string' ? JSON.parse(request.content) : request.content;
@@ -581,6 +587,23 @@ export class ViewerConnection extends Model {
     this.send({
       cmd: 'getPortValues',
       content: JSON.stringify({ clientId, ports })
+    });
+  }
+
+  /**
+   * LGC-002 — "Do It": ask the running app what one block comes to.
+   *
+   * ⚠️ **Broadcast, not addressed.** Every other request on this channel names the viewer it is
+   * for, because its caller already knows which client it is talking to. A block editor tab
+   * knows a node id and nothing else — the node is in whichever preview happens to have that
+   * component mounted — so every viewer is asked and each one answers whether it has the node.
+   * `blockFragmentResult` carries the answering client's id, and `requestId` pairs the answer
+   * with its question.
+   */
+  sendEvaluateBlockFragment(request: { requestId: string; nodeId: string; code: string }) {
+    this.send({
+      cmd: 'evaluateBlockFragment',
+      content: JSON.stringify(request)
     });
   }
 

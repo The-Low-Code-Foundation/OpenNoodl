@@ -13,6 +13,7 @@ import type {
 } from '@noodl/types';
 
 import { DetectedIO, detectIO, typeOfPort } from './logic-builder-io';
+import { PROBE_TRIGGER_SIGNAL, ProbeResult, evaluateFragment } from './logic-builder-probe';
 import { ARITHMETIC_SEARCH_TAGS } from './logic-search-tags';
 
 import { outcomeOutputs } from '../../outcome';
@@ -45,6 +46,7 @@ interface LogicBuilderNodeInstance extends NodeInstance {
   _executeLogic(triggerSignal: string, token?: OutcomeToken): void;
   _createExecutionContext(triggerSignal: string): LogicBuilderExecutionContext;
   _compileFunction(): ((...args: unknown[]) => unknown) | null;
+  _probeFragment(code: string): ProbeResult;
   _fail(code: string, message: string, token?: OutcomeToken): void;
   _io(): DetectedIO;
 }
@@ -462,6 +464,39 @@ const LogicBuilderNode: NodeDefinitionOptions = {
         internal.compileError = error && error.message ? String(error.message) : String(error);
         return null;
       }
+    },
+
+    /**
+     * LGC-002 — run one block's generated fragment and say what it came to.
+     *
+     * ⚠️ **`Inputs` is `_internal.inputValues`, and that is the whole point.** The context is
+     * built by `_createExecutionContext`, unchanged, so the fragment sees the *live* values
+     * that arrived on the node's ports rather than the defaults a static analysis would
+     * assume. A Do It that answers against `undefined` inputs is worse than no Do It, because
+     * it answers confidently and wrongly.
+     *
+     * The trigger signal is {@link PROBE_TRIGGER_SIGNAL}, not `'run'`: no signal input caused
+     * this, and a program branching on `__triggerSignal__` must not be told one did.
+     *
+     * Containment is `evaluateFragment`'s, and it is two side effects out of several — read
+     * that file's note before treating this as safe.
+     */
+    _probeFragment: function (this: LogicBuilderNodeInstance, code: string): ProbeResult {
+      let context: LogicBuilderExecutionContext;
+
+      try {
+        context = this._createExecutionContext(PROBE_TRIGGER_SIGNAL);
+      } catch (error) {
+        // `createNoodlAPI` reaches the model scope. A probe is a diagnostic and must report
+        // its own failure rather than throwing into the socket handler that called it.
+        return {
+          ok: false,
+          errorPhase: 'run',
+          error: 'The node could not build a context to evaluate in: ' + (error && error.message ? error.message : error)
+        };
+      }
+
+      return evaluateFragment(context, code);
     }
   },
 
