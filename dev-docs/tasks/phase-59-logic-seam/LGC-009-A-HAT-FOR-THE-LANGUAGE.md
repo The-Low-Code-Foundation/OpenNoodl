@@ -53,6 +53,30 @@ than a quick fix. It touches `NoodlBlocks.ts`, `NoodlGenerators.ts`, `BlocklyToo
 `detectIO`, the LGC-004 interface rails, and LGC-007's My Blocks expansion — and none of that can
 be graded without a driven editor.
 
+## ✅ RULED 2026-08-12: the hat is MANDATORY
+
+**Richard's ruling: a program must hang off a hat.** This was the decisive open question — the
+file's own §1 says *"decide this before anything else; it decides the whole task"* — so the task
+is now estimable and buildable.
+
+**What the ruling settles, and what it does not:**
+
+- ✅ **`disableOrphans` becomes correct**, so LGC-003 §2's static tell is bought back, for the
+  right reason rather than by narrowing a predicate. The middle path that was rejected in the
+  `disableOrphans` finding stays rejected; this is the other way out, and it is the one that
+  makes "orphan" mean something in our grammar.
+- ✅ **The migration is two fixtures**, `lgc59-drive` and `lgc59-cycle`, both ours, both authored
+  this week. 🔴 **Do not re-derive this as "a migration for every saved program"** — that number
+  was wrong once and nearly decided the ruling the other way.
+- 📋 **Still unruled: one hat or several.** The per-signal hat (*"when Run is received"*, *"when
+  Reset is received"*) is a capability gain the language cannot currently express, and it is the
+  strongest argument for the task — but it is a separate decision and does not block starting.
+- 🔴 **Still open, and now urgent: what `detectIO` does with it.** A hat naming a signal is a
+  *second* declaration of a port that `noodl_define_signal_input` already declares, and LGC-004's
+  **L39** records that `detectIO` resolves a clash by **document order**. A mandatory hat lands
+  a second source of truth straight on top of a known ordering defect. Settle this before writing
+  the generator, not after.
+
 ## §1 — The hat itself
 
 A block with a `next` connection, no `previous`, and no output. Open questions, none of them ruled:

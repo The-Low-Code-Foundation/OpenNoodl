@@ -8,6 +8,32 @@
 > this task and one of them (L28) is the exact defect a pane would otherwise ship. §1 ends in a
 > question for Richard, and the acceptance criterion nobody has met is the A/B, not the code.
 
+## ✅ F2 — RULED 2026-08-12: both panes on screen at once
+
+**Richard's ruling: "opening a Visual Function no longer hides the canvas" means the canvas and
+the blocks are visible *simultaneously*. The second splitter gets built.**
+
+The literal reading of *"a pane, not a takeover"* wins over the canvas-as-a-tab reading that F2
+below argues for on IwC grounds. **Do not re-litigate this** — the cheaper option was put up
+beside it with its own diagram and was not chosen.
+
+**What that means for the work, and it is the more expensive branch of the two:**
+
+- A real second splitter, not a `Tab.type: 'canvas'` entry. F2's "smaller than it looked"
+  paragraph below describes the option that was **not** taken; it is kept for the reasoning,
+  not as the instruction.
+- 🔴 **F3 stops being an edge case and becomes every drag.** `bindNodeGraphCanvas` reads
+  `clientWidth`/`clientHeight`, which are 0 while hidden, and nothing re-binds when the canvas
+  is shown again. In split mode the canvas is never hidden but is *continuously resized*, so
+  the re-measure path is now load-bearing rather than a corner. Build it first.
+- 🔴 **F4's remount trap becomes real.** `CanvasTabs.handleWorkspaceChange` writes to
+  `activeTab` — the tab from the render that produced the callback — and is safe today only
+  because switching tabs unmounts the old workspace without re-rendering it. **A pane that
+  keeps several workspaces mounted at once breaks exactly that.** This is a correctness bug
+  that eats a user's program, not a layout nit.
+- The acceptance criterion *"the workspace is not remounted by a resize, a splitter drag or a
+  pane swap"* is now the one that decides whether this task is done.
+
 ## What happens today
 
 Opening a Visual Function **hides the entire canvas**.

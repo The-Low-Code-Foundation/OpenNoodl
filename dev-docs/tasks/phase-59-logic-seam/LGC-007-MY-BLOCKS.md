@@ -249,7 +249,57 @@ byte-identical comparison.
 **Not yet answered:** whether the empty write happens on *open* or on the first debounce tick, and
 whether a node whose definitions are later fixed regenerates. Both need another drive.
 
+### ✅ FIXED 2026-08-12 — the refusal no longer writes anything
+
+**The mechanism, which was one line and not where the drive pointed.**
+`BlocklyWorkspace.flushSave` held a `lastGoodCodeRef = useRef('')` and, on a generation error,
+passed that ref on to the writer. The ref was **seeded from nothing and never from the node's
+saved `generatedCode`** — so a refusal on the first flush after mount passed the initial `''`
+straight through to `setParameter('generatedCode', '')`. That is why reopening could not recover
+it: the ref was empty again on every mount, and the cycle was still there to trigger the flush.
+
+**The fix is not to seed the ref. It is to not have one.** The node's own `generatedCode`
+parameter *is* the last code that generated cleanly; a second copy of that fact in the editor is
+the one-fact-two-stores shape (L11) this directory keeps finding. So:
+
+| | |
+|---|---|
+| `generateWithMyBlocks` | already returned `code: undefined` on a refusal — its contract was right all along. `GenerateResult.code` was however **declared `string`**, a lie that compiled |
+| `BlocklyWorkspace` | ref deleted; passes `generated.code` — `undefined` on a refusal — straight through |
+| `CanvasTabs` | threads `string \| undefined` rather than defaulting it |
+| `OverlayViews.handleBlocklyWorkspaceChange` | **saves the workspace unconditionally**, then returns early without touching `generatedCode` when `code === undefined`, and warns |
+
+`undefined` and `''` now mean different things on this seam, deliberately: **`''` is a real
+program** — the one with no blocks in it — and writing it is legitimate. That is exactly why a
+refusal may not use the same value.
+
+🔴 **The compiler does not hold any of this.** `strictNullChecks` is **off** across the editor
+package (root `tsconfig.json` sets no `strict` flags), so the `string | undefined` annotations
+are documentation, not enforcement — nothing stops a future edit returning `''`, and nothing
+forces the caller's check. The contract is held by
+`tests-unit/lgc-007/generateWithMyBlocks.spec.ts` instead, **proved red** by inverting the fix to
+return `''`: exactly the two intended specs fail and the refusal-still-reports spec stays green.
+
+⚠️ **What is still owed is the drive.** The write-skip lives in `OverlayViews`, which reaches
+React and the node-graph singleton, so the plain-Node runner cannot see it. Re-run §6 against
+`lgc59-cycle` and confirm the third condition — `generatedCode` unchanged, `project.json`
+`generatedCode` field byte-identical — now passes. The two questions above (open vs. first
+debounce tick; whether a fixed node regenerates) are answerable in the same drive.
+
 ## §4 — Updating a definition
+
+### 🔴 RULED 2026-08-12: do not build the sweep yet
+
+**Richard's ruling: fix the destructive-write class first; the regeneration sweep waits.**
+
+The reasoning, and it is the ruling's own: a background sweep is a *second* writer of
+`generatedCode`, and it would have been built on top of a write path where the *first* writer
+emptied the field on every refusal. Two writers of a field that one of them destroys is not a
+sweep, it is a race with a data-loss outcome.
+
+The first half is now done (see §6's fix block above). **The sweep is still not authorised** —
+when it is picked up, the save-path question below is the one to answer, and it should be
+re-put to Richard with the fix in hand rather than assumed from this ruling.
 
 Editing a definition regenerates every Visual Function that references it. That needs a dependency
 index (definition id → node ids) and a regeneration sweep.

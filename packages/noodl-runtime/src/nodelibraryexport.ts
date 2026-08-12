@@ -614,7 +614,20 @@ function generateNodeLibrary(nodeRegister: NodeRegisterLike, options?: { runtime
           ]
         },
         {
-          name: 'Logic',
+          /**
+           * Was `Logic`. Renamed on Richard's ruling 2026-08-12, because
+           * LGC-001 §4 gave the `javascript` rail the label `Logic` and the
+           * picker then showed a rail entry and this unrelated group heading
+           * with the same word. The ruling was to rename here rather than
+           * revert the rail — the rail names a choice a builder makes, this
+           * names six boolean and branching primitives, and the second is the
+           * one that can move without losing anything.
+           *
+           * ⚠️ Display string only, same as the rail label: the nodes' own
+           * `category` field is untouched, nothing saved refers to it, and
+           * `node-catalog.json` does not contain it.
+           */
+          name: 'Conditions & Booleans',
           items: ['Boolean To String', 'Switch', 'And', 'Or', 'Condition', 'Inverter']
         },
         {
@@ -804,11 +817,14 @@ function generateNodeLibrary(nodeRegister: NodeRegisterLike, options?: { runtime
        * saved project, and `node-catalog.json` does not contain it. One line to
        * revert.
        *
-       * ⚠️ Two known consequences, both recorded in LGC-001's Register:
-       *  - `Logic & Utilities` above already has a **sub-category** called
-       *    `Logic`, so the picker now shows a rail entry and an unrelated group
-       *    heading with the same word;
-       *  - the category still holds `Javascript2` (labelled "Script") and
+       * ⚠️ Two known consequences were recorded in LGC-001's Register. The
+       * first is now closed:
+       *  - ✅ `Logic & Utilities` above had a **sub-category** called `Logic`,
+       *    so the picker showed a rail entry and an unrelated group heading
+       *    with the same word. Confirmed visually 2026-08-12. Ruled: rename
+       *    the sub-category, keep this rail label. It is now
+       *    `Conditions & Booleans`;
+       *  - 📋 the category still holds `Javascript2` (labelled "Script") and
        *    `CSS Definition`, so "Logic" contains one node that is not logic.
        *    Moving it out is a taxonomy change, not a display string, so it was
        *    left alone.
