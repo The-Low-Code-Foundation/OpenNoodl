@@ -363,7 +363,7 @@ Both fixtures were left untouched. Results against the numbered steps below.
 | 11 | ✅ **PASS.** The rail row renames on **every keystroke** — `prcice` → `prcice/number`, `procice` → `procice/number`, four characters, four updates. No debounce, as intended |
 | 12 | ✅ **PASS.** Both rails read *"None yet. Any "get input" or "Define input" block you add shows up here."* The copy names blocks as the source and there is no "+ Add" |
 | 13 | ✅ **PASS — and this is the one the task called most likely to be skipped.** Opened the tab, closed it, touched nothing: the `workspace` parameter on disk is **byte-identical**, 776 bytes before and after. Run from a pristine copy after a full editor restart, because doing it any other way would not have been an answer |
-| 14 | ❌ **BLOCKED.** Needs LGC-008's splitter, which is not built |
+| 14 | ✅ **ANSWERED 2026-08-12**, once LGC-008's splitter existed. At a **288 px** pane the two rails alone are **152 + 152 = 304 px** and `.injectionDiv` measures **0** — the workspace is gone, with no clamp and no message. So the floor is not a taste question: it is 304 px of rails plus whatever a workspace needs. ⚠️ *What should happen* is a decision — clamp the splitter, collapse the rails below a threshold (they are DOM siblings, so they can), or let the pane close. Filed in LGC-008, not chosen |
 | 15 | ✅ **Met incidentally.** `lgc59-drive`'s blocks were authored earlier in the week, and step 1 read them correctly with no migration |
 
 ### 🔴 The contrast measurement this file said it could not make

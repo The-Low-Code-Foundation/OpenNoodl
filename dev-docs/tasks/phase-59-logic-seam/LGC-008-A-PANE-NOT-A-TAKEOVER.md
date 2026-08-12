@@ -447,3 +447,56 @@ pane group is not faster, we built a preference.
 Record the result **whichever way it goes**. A negative result is the more valuable one here,
 because it is the one nobody expects — and because a positive one measured only by preference
 is exactly the result the paper already got.
+
+## ✅ DRIVEN 2026-08-12 — the acceptance criterion is met, and the pane has a missing floor
+
+Merged into `cline-dev` and driven from the **primary** checkout (a worktree cannot: `lerna exec`
+resolves to primary). Fixture: a throwaway copy of `lgc59-drive` carrying **two** Logic Builder
+nodes, `c6` (7 blocks) and `c99` (1 block), because one node cannot exercise F4 at all.
+
+| Claim | Result |
+|---|---|
+| **Both panes on screen at once** — F2's ruling | ✅ **Met.** `#nodegraphcanvas` is `display: block`, 518×356 css, with live nodes and wires drawn, while the block editor holds the right pane. The blanket hide is gone |
+| **Every open tab stays mounted** | ✅ **Met.** Two `[data-tab-id]` containers, each with its own injected `blocklySvg`; the inactive one is `display: none`, `aria-hidden="true"`, **not unmounted**. Main workspaces carry 7 and 1 blocks — their own programs, not each other's |
+| 🔴 **F4 — an edit belongs to the tab that made it** | ✅ **Met, and this is the one that matters.** With `c99` active, a block was moved in `c6`'s **background** workspace. The edit landed on **`c6`** (`x:71,y:47`, the exact move) and `c6`'s `generatedCode` regenerated from its own program. **`c99` was untouched** — same `workspace`, and `generatedCode` still `Outputs.second = 2;`. This is precisely the program-eating case, and it does not happen |
+| **Not remounted by a splitter drag** — *the* criterion | ✅ **Met.** Splitter dragged 847 → **1077** px. Both Blockly workspace **object ids are identical** across the drag, containers identical, block counts identical (7, 1). A remount would have produced new ids |
+| 🔴 **F3 — the canvas re-measures** | ✅ **Met, and measured.** The canvas backing store went **1036 → 1496** (css 518 → 748) as the splitter moved. Nothing re-bound before this task, so this is the fix working on the drag rather than only on the reveal |
+
+### 🔴 The finding: the pane has no minimum width, and past ~304 px the block editor ceases to exist
+
+Dragged to a **288 px** pane, the measurements are unambiguous:
+
+| | |
+|---|---|
+| pane width | **288 px** |
+| the two interface rails | **152 + 152 = 304 px** |
+| `.injectionDiv` (the Blockly workspace) | **0 px** |
+
+The rails alone are wider than the pane, and the workspace they frame is gone. Nothing clamps it,
+and there is no message — the block editor simply is not there. **This also answers LGC-004's step
+14**, which was blocked on this splitter existing: *"at some width this stops being usable; find that
+width and say what should happen."* The floor is **not** a taste question — it is 304 px of rails
+plus whatever a workspace needs, and below it the pane renders a feature that has vanished.
+
+⚠️ **What should happen is a decision, not a bug fix**: clamp the splitter at a minimum, collapse the
+rails below a threshold (they are DOM siblings, so they can), or let the pane collapse to a closed
+state. Filed rather than chosen.
+
+### One near-miss worth keeping
+
+Sampled 8 s after opening both tabs, `c6` had **two flyout workspaces and no main workspace** — which
+reads exactly like "the first tab's workspace was disposed when the second opened", a serious defect.
+It was not. `BlocklyWorkspace.setup()` awaits the language bundle, so the injection was still in
+flight; moments later `c6` had its main workspace and all 7 blocks. **`Blockly.Workspace.getAll()`
+includes flyouts** (filter on `isFlyout`), and an async injection sampled too early looks like a
+disposal. Third instance today of the same shape — see LGC-004's grab-point trap and LGC-007's
+vacuous pass.
+
+### Still not met
+
+- **§2's A/B** — unchanged, needs human testers.
+- **L30 keystroke ownership.** With both surfaces on screen a node selection and a block selection
+  coexist and `KeyboardHandler` has no scope, so one Delete can mean two deletions. 🔴 The lane is
+  right that this **blocks shipping, not merging** — it is a keyboard-scope task the pane forces
+  rather than contains. Not driven; not fixed.
+- The split is not persisted across restarts; `detachedPreview` undriven.
