@@ -12,6 +12,7 @@ import { refFromComponentName } from '../../models/workflow/functionRefResolutio
 import { descentFor } from '../../models/workflow/workflowDescent';
 import { NodeGraphComponentTrail } from '../NodeGraphComponentTrail';
 import { CloudFunctionTrailStatus } from '../NodeGraphComponentTrail/CloudFunctionTrailStatus';
+import { setNodeGraphCanvasVisibility } from './CanvasVisibility';
 import { CenterToFitMode } from './canvas/types';
 
 import type { NodeGraphEditor } from '../nodegrapheditor';
@@ -288,36 +289,13 @@ export class OverlayViews {
   }
 
   /**
-   * Set canvas visibility (hide when Logic Builder is open, show when closed)
+   * Set canvas visibility (hide when Logic Builder is open, show when closed).
+   *
+   * The body is in `CanvasVisibility.ts` — no React in it, so it can be gated in a plain-Node
+   * runner, which is where LGC-008 F3's re-measure-on-reveal is held.
    */
   setCanvasVisibility(visible: boolean) {
-    const editor = this.editor;
-    const {
-      canvas,
-      commentLayerBg,
-      commentLayerFg,
-      highlightOverlayLayer,
-      recordingOverlayLayer,
-      componentTrailRoot,
-      canvasHudRoot
-    } = editor.shell;
-
-    // Show/hide the canvas and related elements. The recording HUD goes with them: the Logic
-    // Builder takes the whole canvas over, and a Record pill floating on top of a Blockly
-    // workspace is a control over a surface it has nothing to say about.
-    const layers = [
-      canvas,
-      commentLayerBg,
-      commentLayerFg,
-      highlightOverlayLayer,
-      recordingOverlayLayer,
-      canvasHudRoot
-    ];
-    for (const el of layers) {
-      el.style.display = visible ? 'block' : 'none';
-    }
-    componentTrailRoot.style.display = visible ? 'flex' : 'none';
-    editor.domElementContainer.style.display = visible ? '' : 'none';
+    setNodeGraphCanvasVisibility(this.editor, visible);
   }
 
   updateTitle() {
