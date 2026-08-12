@@ -80,17 +80,27 @@ Everything below needs a real editor. Nothing below has been seen to work.
 
 ## 🔴 The environment is the real risk, and it is not a code problem
 
-`test:ci` was **OOM-killed** in webpack (`Killed: 9`, exit 137) on its first attempt, and a second
-attempt was **still running when this session ended** — over 25 minutes, most of it in the build.
-Its output is at the path in the session log; if it is gone, **just re-run it**.
+**`test:ci` was attempted twice and graded nothing either time. The baseline is UNMEASURED — there is
+no number from this session to inherit or subtract from.**
 
-- ⚠️ **The harness reported the OOM-killed run as "exit code 0".** Only the `Jasmine:` line counts.
-  A run with no `Jasmine:` line **graded nothing** — do not read it as zero failures.
+| Attempt | Outcome |
+|---|---|
+| 1 | **OOM-killed in webpack** — `Killed: 9`, exit 137, before a single spec ran |
+| 2 | Built, ran specs for 15 minutes, then **`Test run timed out after 900s without reporting results`** — killed mid-suite, last spec started was `AIB-004 sandbox export…` |
+
+Neither printed a `Jasmine:` line. Both were slow for the same reason: the machine was swapping.
+
+- ⚠️ **The harness reported the OOM-killed run as "exit code 0", and the timed-out run as "exit
+  code 1".** Neither exit code means what it looks like. Only the `Jasmine:` line counts, and a run
+  without one **graded nothing** — do not read attempt 1 as zero failures, and do not read attempt 2
+  as a real failure.
+- ⚠️ The 900s cutoff is a fixed self-termination, not a hang. On a quiet machine the suite finishes
+  inside it. **If it trips, free memory rather than raising the timeout.**
 - ⚠️ Swap was at 13.7 GB of 15.4 GB used with ~6 live `claude` sessions, and macOS grew the swap file
   to 18 GB during the run. **If the build OOMs again, that is the machine, not the tree.** Close
   sessions or wait rather than hunting a regression.
-- ⚠️ **Whatever number that run returns is contaminated**: three sibling commits landed at 16:13–16:16,
-  mid-build. Take a fresh one on a settled tree before comparing anything.
+- ⚠️ Even had it reported, the number would have been contaminated: three sibling commits landed at
+  16:13–16:16, mid-build. **Take a fresh one on a settled, quiet tree** — that is the first job.
 - Baseline to compare against: **6 failures by name** at seed 39386 (the six are in the register).
   Run at `NOODL_SPEC_SEED=39386` deliberately — it removes the order-dependent `BEN-001` confound, so
   any extra name is unambiguously new. Expect **+8** specs from LGC-001, not +9.
