@@ -550,7 +550,8 @@
           "type": {
             "name": "string",
             "allowEditOnly": true,
-            "codeeditor": "javascript"
+            "codeeditor": "javascript",
+            "codenotation": "expression"
           },
           "plug": "input",
           "group": "General",
@@ -721,7 +722,8 @@
           "type": {
             "name": "string",
             "allowEditOnly": true,
-            "codeeditor": "javascript"
+            "codeeditor": "javascript",
+            "codenotation": "function"
           },
           "plug": "input",
           "group": "General",
@@ -9876,7 +9878,7 @@
             ]
           },
           {
-            "name": "Logic",
+            "name": "Conditions & Booleans",
             "items": [
               "Boolean To String",
               "Switch",
