@@ -212,3 +212,37 @@ than as done; if one string is still wanted, it is a small change and this is th
 2026-08-12. `build:types` died on it with `ELOOP`, and `build:types` is viewer-react's `pretest`, so
 `npm test` in that package could not run at all. Removed and rebuilt. Nothing in git saw it — the
 path is ignored — and no gate reported it as anything but a build failure.
+
+## 🔴 The drive that has not happened
+
+**No live measurement was taken.** Two sibling sessions were running `test:ci` on this checkout
+concurrently for the whole session; three attempts of my own died to the contention (one OOM-killed
+mid-build at exit 137, one self-terminated at 900s with **no `Jasmine:` line**, having graded
+nothing). Driving a third Electron alongside them would have degraded their runs and produced
+measurements nobody should believe. **`test:ci` is unrun on this tree** — as it was when the session
+started.
+
+**The premise that needs live confirmation** is that `type.codenotation` survives the runtime → editor
+trip. The static evidence is good but it is not a measurement:
+
+- `nodelibraryexport.ts:161` passes `type: portData.type` **wholesale**, not field by field;
+- `NodeLibraryImporter` pushes node types wholesale and reconstructs no port type;
+- `cloud-node-library.json` stores type objects as plain JSON with `codeeditor` preserved;
+- the catalog generator drove the **real registries** and emitted `codenotation` for all three ports.
+
+**What the drive must show**, in one script (the dev stack full-reloads the renderer on a sibling's
+commit — re-open the project defensively at the top):
+
+1. Three nodes — Expression, Function, Script. ⚠️ `ed.createNewNode` returns `void` and leaves
+   `ed.highlighted` set; **clear it between creations** or they parent under each other.
+2. Open each code popout and read `span.ModeLabel` (`JavaScriptEditor.tsx:265`). It must read
+   **EXPRESSION**, **FUNCTION**, **SCRIPT** — three different words. That single reading closes F17,
+   because before this change all three said FUNCTION.
+3. In the Expression popout, type `total * 2`. **No `no-undef` warning.** That is the user-visible
+   half, and the port `total` should still appear on the node.
+4. §2's acceptance, now reachable for the first time: `Variables.` / `Objects.` / `Arrays.` complete
+   bare in the Expression editor, `Inputs.` offers nothing there, and no bare identifier is completed
+   from anything project-shaped.
+
+⚠️ `cdp click` on a class selector hits the first match — tag the element with a unique `id` in an
+`eval` first, every time.
