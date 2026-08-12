@@ -184,10 +184,12 @@
   /* The platform's destructive fill. `danger-dim` rather than `danger` because
      only the dim step carries a white glyph legibly in BOTH themes — #d92d20
      dark (4.8:1) and #b42318 light (6.7:1); `danger` in dark is #f97066, where
-     white lands at 2.8:1. The white is fixed because the fill is. */
+     white lands at 2.8:1. The white is fixed because the fill is, which is why
+     it is `--base-color-white` and not a `--theme-color-fg-*`: a foreground that
+     flips with the theme would be measured against a background that does not. */
   &.is-close:hover {
     background: var(--theme-color-danger-dim);
-    color: #ffffff;
+    color: var(--base-color-white);
   }
 }
 

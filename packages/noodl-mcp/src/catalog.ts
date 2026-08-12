@@ -287,6 +287,12 @@ export interface NodeTypeSummary {
    */
   runtimeBehavior?: string;
   examples: ExampleCitationRow[];
+  /**
+   * How many further examples cite this type but were not listed, because a
+   * summary caps the citation list at {@link MAX_SUMMARY_EXAMPLES}. Absent when
+   * nothing was dropped. `list_examples({node_type})` returns the full set.
+   */
+  examplesOmitted?: number;
 }
 
 /** LAS-007 §2 — an example the caller can decide about without fetching it. */
@@ -343,6 +349,27 @@ export function portTypeLabel(type: unknown): string {
   return base;
 }
 
+/**
+ * Citation rows a *summary* lists before it starts counting instead.
+ *
+ * 🔴 The citation list is the one part of a summary that grows with the
+ * **corpus** rather than with the node. DSG-003 added eleven `ui-*` composition
+ * recipes and every one of them cites `Group` or `Text`, so those two types went
+ * from a couple of citations to 13 and 14 — and the eight-type ceiling response
+ * crossed the compactness bar it is held to (30,365 bytes against 30,000)
+ * without a single node gaining a port. The next recipe would have done it
+ * again.
+ *
+ * Three keeps LAS-007 §2's intent — you can tell *that* worked examples exist
+ * and decide about the first few without fetching — while making the cost of a
+ * summary a function of the library, which is bounded, instead of the recipe
+ * corpus, which is meant to keep growing. The remainder is not hidden: the count
+ * ships as `examplesOmitted` and `list_examples({node_type})` returns all of it.
+ *
+ * Full detail is untouched and still carries every citation.
+ */
+export const MAX_SUMMARY_EXAMPLES = 3;
+
 export function getNodeTypeSummary(typeName: string): NodeTypeSummary | NodeTypeLookupMiss {
   const full = getNodeTypeDetail(typeName);
   if ('error' in full) return full;
@@ -353,8 +380,11 @@ export function getNodeTypeSummary(typeName: string): NodeTypeSummary | NodeType
     displayName: full.displayName,
     isVisual: full.isVisual,
     ports: [...full.inputs.map((p) => portLine(p, 'in')), ...full.outputs.map((p) => portLine(p, 'out'))],
-    examples: full.examples
+    examples: full.examples.slice(0, MAX_SUMMARY_EXAMPLES)
   };
+  if (full.examples.length > MAX_SUMMARY_EXAMPLES) {
+    s.examplesOmitted = full.examples.length - MAX_SUMMARY_EXAMPLES;
+  }
   if (full.category) s.category = full.category;
   if (full.deprecated) s.deprecated = true;
   if (full.summary) s.summary = full.summary;
