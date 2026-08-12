@@ -121,6 +121,14 @@ Expression node would be actively destructive: it mints a port literally named `
 property access that is not what the author meant. Gate on `validationType`, per FUN-003 §4, and
 prove it with a test that lints the same text in both modes and asserts the difference.
 
+✅ **The blocker is CLEARED — fixed by FUN-009 (`ace5232f`) and driven 2026-08-12 evening.**
+`validationTypeForEditType` now reads the port's declared `type.codenotation`, and the drive measured
+three different popouts rendering **EXPRESSION / FUNCTION / SCRIPT**, `no-undef` off in expression
+mode and on in the other two, and `Inputs.` completing to `[]` in an Expression but `["Value"]` in a
+Function. **Gating on `validationType` is now safe and this task is unblocked.**
+
+<details><summary>The blocker as it stood, for the record</summary>
+
 🔴 **BLOCKER, measured 2026-08-12 — the gate does not currently work. Fix it first or this task ships
 the destruction it is trying to prevent.** `validationTypeForEditType` can never return `'expression'`:
 it tests `type?.name`, which is `'string'` for every JS code port, where its own comment says the
@@ -131,6 +139,12 @@ The consequence is already shipped and visible without any of FUN-004's code: ty
 an Expression node warns `'total' is not defined. eslint:no-undef`, and then mints the port `total`
 anyway. Note the fix is **not** a swap to `this.name` — the Function node's port is `functionScript`
 and the Script node's is `code`, so the port names invert those two. It needs deciding, with FUN-009.
+
+</details>
+
+⚠️ **Still test both modes anyway.** The gate works, but §3's acceptance is that the same text
+produces none of the four messages in `'expression'` — that is about *this task's* code, not
+FUN-009's, and it is now genuinely reachable for the first time.
 
 ## §4 — Legacy code the user did not write
 
