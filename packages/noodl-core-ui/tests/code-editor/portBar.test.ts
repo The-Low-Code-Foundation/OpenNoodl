@@ -25,6 +25,7 @@ import {
   recordSuccess,
   RETIRE_AFTER_SUCCESSES,
   setDismissed,
+  shouldRecordSuccess,
   shouldShowBar,
   successCount
 } from '@noodl-core-ui/components/code-editor/utils/portBar';
@@ -192,5 +193,25 @@ describe('§2 — dismissal and retiring', () => {
     delete (globalThis as { localStorage?: unknown }).localStorage;
     expect(() => shouldShowBar(blank, false)).not.toThrow();
     expect(successCount()).toBe(0);
+  });
+});
+
+describe('what counts as succeeding', () => {
+  it('counts writing an output in front of us', () => {
+    expect(shouldRecordSuccess('no-ports', 'silent')).toBe(true);
+    expect(shouldRecordSuccess('unused-ports', 'silent')).toBe(true);
+    expect(shouldRecordSuccess('no-output', 'silent')).toBe(true);
+  });
+
+  it('does not count opening a node that already worked', () => {
+    // ⚠️ The failure this exists to stop: a new user opening three working
+    // Function nodes in an example project would retire the bar having never
+    // written an output — the same defect §2 forbids, by a different route.
+    expect(shouldRecordSuccess('silent', 'silent')).toBe(false);
+  });
+
+  it('does not count going backwards', () => {
+    expect(shouldRecordSuccess('silent', 'no-output')).toBe(false);
+    expect(shouldRecordSuccess('no-ports', 'unused-ports')).toBe(false);
   });
 });

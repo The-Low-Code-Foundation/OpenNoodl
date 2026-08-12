@@ -203,6 +203,21 @@ export function successCount(): number {
 }
 
 /**
+ * Has the user just succeeded, as opposed to opened something that already worked?
+ *
+ * ⚠️ The distinction is the whole of §2's *"the state to count is 'wrote an
+ * output', not 'opened the editor'"*. Counting the silent **state** rather than
+ * the **transition** into it also counts opening a node that already worked — so
+ * a new user opening three Function nodes in an example project would retire the
+ * bar having never written an output, which is the same defect the rule exists to
+ * prevent, arriving by a different route. Only not-silent → silent is somebody
+ * succeeding in front of us.
+ */
+export function shouldRecordSuccess(previous: PortBarState['kind'], next: PortBarState['kind']): boolean {
+  return next === 'silent' && previous !== 'silent';
+}
+
+/**
  * Should the bar be shown, given a state and what the user has done before?
  *
  * `forced` is the `?` in the toolbar: it overrides both the dismissal and the

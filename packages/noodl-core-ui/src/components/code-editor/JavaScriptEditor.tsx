@@ -34,6 +34,7 @@ import {
   portBarState,
   recordSuccess,
   setDismissed,
+  shouldRecordSuccess,
   shouldShowBar
 } from './utils/portBar';
 import { setRuntimeDiagnostic } from './utils/runtimeDiagnostic';
@@ -288,19 +289,37 @@ export function JavaScriptEditor({
    */
   const barState = portBarState(validationType, getCodeAuthoringContext().openNode, documentText);
 
-  // ⚠️ §2's auto-retire counts "wrote a working output", not "opened the
+  // ⚠️ §2's auto-retire counts "**wrote** a working output", not "opened the
   // editor". Opening it fifty times without succeeding is exactly when the bar
   // should keep appearing, so a counter on opens would retire it fastest for the
-  // person it exists for. Keyed by node id inside `recordSuccess`, so one node
-  // edited repeatedly counts once.
+  // person it exists for.
+  //
+  // ⚠️ Which is why it counts the **transition**, not the state. Recording
+  // whenever the bar is silent would also count *opening a node that already
+  // worked* — so a new user opening three Function nodes in an example project
+  // would retire the bar without ever having written an output, which is the
+  // same defect wearing a different hat. Only not-silent → silent is someone
+  // succeeding in front of us. Keyed by node id inside `recordSuccess`, so one
+  // node edited repeatedly still counts once.
+  const previousBarKind = useRef(barState.kind);
   useEffect(() => {
-    if (barState.kind !== 'silent') return;
+    const previous = previousBarKind.current;
+    previousBarKind.current = barState.kind;
+
+    if (!shouldRecordSuccess(previous, barState.kind)) return;
     if (!modeHasDeclaredPorts(validationType)) return;
 
     recordSuccess(getCodeAuthoringContext().openNode?.nodeId);
   }, [barState.kind, validationType]);
 
   const barMessage = portBarMessage(barState);
+
+  // ⚠️ The second clause looks redundant against `shouldShowBar`, which already
+  // reads the persisted flag. It is not: `setDismissed` swallows a storage
+  // failure (a full or blocked `localStorage` is not worth an exception over a
+  // hint bar), so on a browser where the write silently fails `isDismissed()`
+  // keeps answering `false` and the ✕ would do nothing at all. The React state
+  // is what makes dismissal work for the session regardless.
   const showBar = shouldShowBar(barState, barForced) && !(barDismissed && !barForced);
 
   const dismissBar = useCallback(() => {
