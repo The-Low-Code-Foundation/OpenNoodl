@@ -239,11 +239,17 @@ repo has already banked the lesson that *"rendered clean" can mean nothing was d
 **copy** of a real project, not the example — a dev launch rewrites the example project.
 
 1. **The jasmine suite has never run.** `packages/noodl-editor/tests/nodepicker/NodePickerSearch.test.ts`
-   gained 9 specs under `NodePicker buildResults — the logic triad (LGC-001 §1)`. It is appended to a
-   file the barrel already exports, so it will run — but it has only been typechecked.
+   gained **8** specs under `NodePicker buildResults — the logic triad (LGC-001 §1)`. It is appended
+   to a file the barrel already exports, so it will run — but it has only been typechecked.
    **Pass:** `npm run test:ci` prints a `Jasmine:` line with the same failure *names* as the
-   6-failure baseline, and a spec total 9 higher than before. ⚠️ Only the `Jasmine:` line counts, and
-   compare the **totals** to the primary checkout's, not the failure count.
+   6-failure baseline, and a spec total **8** higher than before. ⚠️ Only the `Jasmine:` line counts,
+   and compare the **totals** to the primary checkout's, not the failure count.
+
+   🔴 **Corrected 2026-08-12: this said 9, and the code yields 8.** The describe holds five `it(`
+   calls, one of which is inside `for (const term of ['math','multiply','round','percent'])` — so
+   4 looped + 4 standalone = **8**. Expecting +9 and seeing +8 reads as a spec that vanished, which
+   is the one failure mode the surrounding warning exists to catch. ✅ The barrel chain *is* intact
+   (`tests/index.ts:29` → `tests/nodepicker/index.ts` → `NodePickerSearch.test`), so it does run.
 
 2. **`multiply` in the picker.** Open the node picker over a canvas, type `multiply`.
    **Pass:** three rows, in the order **Expression → Visual Function → Function**, each card's second
