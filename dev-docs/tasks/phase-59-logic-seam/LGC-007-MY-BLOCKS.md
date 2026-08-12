@@ -1,14 +1,17 @@
 # LGC-007 — save a group of blocks, use it anywhere
 
-**Status:** 🚧 **engine built 2026-08-12, no UI** · ⭐ **the second flagship** · 🔴 **Track: BUILD** —
-"adopt over build" was tested here and failed; see the verdict below · depends on **LGC-006**
+**Status:** 🚧 **engine + save UI built 2026-08-12, never driven** · ⭐ **the second flagship** ·
+🔴 **Track: BUILD** — "adopt over build" was tested here and failed; see the verdict below ·
+depends on **LGC-006**
 
 > **Read [What is built](#what-is-built-2026-08-12) before scheduling anything against this file.**
 > The format, the store, the two shelves, the cycle guard, the shape inference, the inliner and
-> export/import are built and graded by **66 specs in a plain-Node runner**. **Not one of them has a
-> user-reachable surface.** There is no *Save as a block* menu item, no save dialog, no backpack, no
-> regeneration sweep, and nothing has been run in an editor. The remaining work is the half a spec
-> cannot grade.
+> export/import are built and graded by **66 specs in a plain-Node runner**. Since 2026-08-12 the
+> **save UI** is built too — a context-menu item, a dialog, a shelf picker — and graded by **34
+> more**, including the two-workspace round trip this file previously said a spec could not reach.
+> 🔴 **None of it has been run in an editor.** The remaining work on §1 is the half a spec cannot
+> grade, written out as D1–D11 in [`NOTES-LGC-007-UI.md`](NOTES-LGC-007-UI.md). Still unbuilt: the
+> backpack drawer, the delete dialog, the sidebar shelf, and §4's sweep (ruled unauthorised).
 
 ## Richard's framing, which is the right one
 
@@ -102,7 +105,7 @@ than by remembering it. Anything touching Blockly or an editor singleton is one 
 | §4 delete refusal, and inline-and-detach | `myblocks/store.ts` + `expand.ts` | ✅ built |
 | the two call blocks, the My Blocks toolbox category | `MyBlocksBlocks.ts`, `BlocklyToolbox.ts` | ✅ built · **never rendered** |
 | generate-with-inlining, wired into the 300 ms debounce | `BlocklyWorkspace.tsx` | ✅ built · **never run** |
-| **§1 the *Save as a block* menu item and dialog** | — | ❌ **not built** |
+| **§1 the *Save as a block* menu item and dialog** | `MyBlocksSave.ts`, `MyBlocksSaveDialog.tsx`, `myblocks/saveIntent.ts` | ✅ **built 2026-08-12** · 34 specs, every one proved red · **never driven** — see [`NOTES-LGC-007-UI.md`](NOTES-LGC-007-UI.md) |
 | **§2 the backpack UI** (`@blockly/workspace-backpack`) | — | ❌ **not built** — cannot install in this lane |
 | **§2 the project shelf beside components in the sidebar** | — | ❌ **not built** |
 | **§4 the regeneration sweep** over Logic Builder nodes | — | ❌ **not built** — see below |
@@ -179,6 +182,23 @@ program that generates differently for its author than for everyone else is the 
 
 Select blocks → **Save as a block**. Name it. It appears in a **My Blocks** toolbox category and in
 the backpack.
+
+### 🔴 "Select blocks" is not a gesture this editor has — found 2026-08-12 building the UI
+
+**Blockly 12 core has no multi-select.** One block is selected at a time;
+`@blockly/plugin-workspace-multiselect` is what adds it, and it is not installed. So the line
+above, and the empty state that shipped with the engine (*"Select some blocks, right-click and
+choose Save as a block"*), both instruct a builder to do something they cannot.
+
+The gesture as built is **one right-click on the top block of the group**, taking everything
+inside it and stacked below it — which is exactly what Blockly's own *Duplicate* does, so it is
+a behaviour builders already have a model for. The empty state now says so, and the dialog
+reports the **block count**, because a right-click landing mid-stack silently takes the rest of
+the stack. `bodyFromBlocks` still takes an array, so a multi-select plugin can feed it later.
+
+⚠️ **The hat cannot be saved.** It has no `previousConnection` and no output plug, so a
+definition rooted at one would be spliced into a workspace Blockly refuses to load. The menu item
+is **disabled with the reason in its label**, never hidden.
 
 **Naming:** *My Blocks* is Scratch's own term for custom blocks, tested on millions of non-technical
 users, and it is plain English. Preferred over "Snippets", "Macros" or "Procedures", all of which
@@ -368,9 +388,16 @@ nothing" is already in the registers as a related surprise.
 ## Acceptance
 
 - ⚠️ Blocks selected in one Visual Function can be saved, named, and dropped into a **different**
-  Visual Function in the same project, where they generate working code. — **half met.** The
-  *generate working code* half is asserted on the exact JavaScript output (`inliner.test.ts`); the
-  *selected, saved, named and dropped* half has no UI and is deferred.
+  Visual Function in the same project, where they generate working code. — **built and specced
+  end to end; the gesture needs a drive.** `saveAsBlock.test.ts` runs the real context-menu
+  callback in one headless workspace, commits through a fake dialog, asks the **real flyout
+  callback** what the toolbox offers, instantiates that JSON as a **real block** in a second
+  workspace, and asserts the generated JavaScript — three shapes, including a value block
+  dropped inside `… + 1`. 🔴 **The task file was wrong that a spec cannot reach this**: what
+  links two Visual Functions is the *store*, and two headless workspaces are two objects; the
+  mount-keyed lifetime is a constraint on the editor, not on Blockly. What is still owed is the
+  gesture — a rendered menu, a painted dialog, a mouse drag — written out as D1–D11 in
+  [`NOTES-LGC-007-UI.md`](NOTES-LGC-007-UI.md).
 - ⚠️ A pure single-output group becomes a value block and can be dropped inside `a + …`. A group with
   signals becomes a statement block and cannot. — **half met.** The inference is graded 17 ways and
   the value block is asserted to generate `Outputs["r"] = Inputs["n"] / 2 + 1;` from a saved
@@ -401,9 +428,10 @@ Electron renderer fires no `ResizeObserver` and clamps timers ~1000×, so take a
 a frame and do not trust a headless assertion about layout.
 
 1. **The category renders and the empty state reads.** Open a Logic Builder node, open **My Blocks**
-   in the toolbox. *Pass:* the category exists, is last, and shows *"Select some blocks, right-click
-   and choose Save as a block"*. ⚠️ It will say that **forever** until the save UI is built —
-   confirm the label renders, not that the instruction is followable.
+   in the toolbox. *Pass:* the category exists, is last, and shows *"Right-click a block and choose
+   «Save as a block…»"* over *"Everything inside it and stacked under it comes too."* ✅ The
+   instruction is now followable — it was not, and it described a gesture Blockly core does not
+   have (L47). The save UI's own drives are D1–D11 in [`NOTES-LGC-007-UI.md`](NOTES-LGC-007-UI.md).
 2. **A call block renders at both shapes.** With a definition on the project shelf (seed it by
    writing `myBlocks.library` into `project.json` by hand), reopen the node. *Pass:* a value
    definition gives a block with an output plug and one socket per parameter; a statement definition
@@ -414,9 +442,10 @@ a frame and do not trust a headless assertion about layout.
    `math_arithmetic`. *Pass:* it does not snap.
 4. **A saved block dropped into a second Visual Function.** Two Logic Builder nodes, same project.
    *Pass:* the block appears in the second node's My Blocks category and its `generatedCode` port
-   contains the inlined body. This is the flagship criterion and it is the one a spec cannot reach,
-   because `BlocklyWorkspace` injects on mount and disposes on unmount keyed by node id — the two
-   workspaces are never alive together.
+   contains the inlined body. This is the flagship criterion. 🔴 **The claim that a spec cannot
+   reach it was wrong** — see L48; `saveAsBlock.test.ts` reaches all of it but the gesture. What
+   the drive is actually for is the rendered menu, the painted dialog and the mouse drag (D1, D3,
+   D7).
 5. **The 300 ms debounce still settles.** Type in a Logic Builder node with a saved block in it.
    *Pass:* one save per settle, no visible stall. The inlining path serialises, expands, loads a
    headless workspace and generates — measure it once with a real body rather than assuming.
@@ -436,9 +465,12 @@ a frame and do not trust a headless assertion about layout.
 
 ## Not built, in the order it should be picked up
 
-1. **The save UI.** `bodyFromBlocks` and `previewSignature` exist and nothing calls them. A
-   context-menu item on a selection, a dialog with a name, the inferred shape and its plain-English
-   reason (*"it sends or declares a signal"*), and a shelf picker.
+1. ~~**The save UI.**~~ ✅ **built 2026-08-12** — the context-menu item, the dialog with a name,
+   the block count, the inferred shape with its consequence and its plain-English reason, and a
+   shelf picker. `bodyFromBlocks` and `previewSignature` finally have a caller. **Not driven**;
+   [`NOTES-LGC-007-UI.md`](NOTES-LGC-007-UI.md) lists D1–D11 and the could-not-verify list.
+   ⚠️ Now that definitions can be *created* from the editor, **item 3 below is the first gap a
+   real user reaches** — a saved block can be made and not unmade.
 2. **§4's regeneration sweep** — the definition-id → node-id index, and a write of `generatedCode`
    onto nodes the user is not looking at, on the normal save path. **Decide the save path first.**
 3. **The delete dialog** — refuse, or offer inline-and-detach. Both mechanisms exist.
@@ -476,4 +508,7 @@ a frame and do not trust a headless assertion about layout.
 | L43 | ⚠️ **`EditorSettings.set` debounces its disk write by 1000 ms**, which is the same quit window already in the registers. A backpack save immediately before a quit can be lost, and it is not fixable from the shelf's side | ⚠️ found 2026-08-12 — written down, not fixed; item 8 of Deferred verification measures it |
 | L44 | ⚠️ **This repo compiles with `strictNullChecks` off, so TypeScript will not narrow `{ok: true} \| {ok: false}` on the literal.** A result type that reads correctly only under a compiler flag we do not set is a shape that lies | ⚠️ found 2026-08-12 — cost one compile cycle; worth knowing before writing any other result type |
 | L45 | ⚠️ **A definition's variables merge into the host by name**, so two expansions share one variable. A saved block using a local as scratch space interferes with itself when nested inside another expansion | ⚠️ known limitation 2026-08-12 — α-renaming per expansion is the fix and is not in this version |
+| L47 | 🔴 **§1's gesture does not exist.** "Select blocks → Save as a block" and the empty state's "select some blocks" both assume multi-select; **Blockly 12 core has none**, and the plugin that adds it is not installed. A spec cannot catch a feature instructing a user to do something impossible — only reading the toolkit can | 🔴 found 2026-08-12 building the UI — the gesture is one right-click on the top block, the empty state was rewritten, and the dialog shows the block count because a mid-stack click takes the rest of the stack |
+| L48 | 🔴 **A spec CAN reach the two-workspace case**, which this file said it could not. The mount-keyed workspace lifetime is a constraint on the *editor*; what links two Visual Functions is the **store**, and two headless workspaces are two objects | 🔴 found 2026-08-12 — `saveAsBlock.test.ts` runs menu callback → flyout → real block in a second workspace → exact JavaScript. **"A spec cannot reach it" deserves the same suspicion as any other untested claim about our own code** |
+| L49 | ⚠️ **core-ui's `Select` paints behind any `DialogLayerModel` dialog.** Its option list portals to `.dialog-layer-portal-target`, a body sibling at `z-index: 666` — the same as the DialogLayer — and the portal target is created first, so on the tie it loses | ⚠️ **second independent hit** 2026-08-12; `ReportProblemDialog` was the first (ALPHA-007). The save dialog uses radios. A core-ui defect that outlives this task |
 | L46 | ✅ **Blockly runs headless in Node**, so the inliner can be graded on the JavaScript it actually produces rather than on the shape of the JSON it emits — `render:report clean means nothing drawn` was the available trap and this closes it | ✅ verified 2026-08-12 — `initialize.ts`, `NoodlBlocks.ts` and `NoodlGenerators.ts` import nothing but `blockly`, so all fifteen Noodl generators are now gradeable without an editor |

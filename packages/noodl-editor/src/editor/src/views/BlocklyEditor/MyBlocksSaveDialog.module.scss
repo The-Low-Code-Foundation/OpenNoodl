@@ -1,0 +1,69 @@
+.Root {
+  /* Wide enough for the shape sentence to sit on two lines rather than five. */
+  width: 420px;
+  max-width: 90vw;
+}
+
+/*
+ * The shape card. It is the half of this dialog that teaches, so it is a surface of its own
+ * rather than a paragraph in the flow — a builder scanning the dialog has to be able to find
+ * "what am I about to get" without reading the name field first.
+ *
+ * `--theme-color-border-default` and not `--border-*`: this repo has two border-token
+ * namespaces and this is the one the editor's own surfaces use.
+ */
+.ShapeCard {
+  background-color: var(--theme-color-bg-2);
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: 2px;
+  padding: 12px;
+}
+
+.ShapeName {
+  /* The one line a builder is most likely to read, so it is the only emphasised one. */
+  text-transform: none;
+}
+
+/*
+ * The shelf picker. Radios and not core-ui's `Select`: see the note in the component — a Select
+ * opened from inside a DialogLayer dialog paints behind it.
+ *
+ * ⚠️ No global `box-sizing` in this repo, so anything with a width and a border sets its own.
+ */
+.Shelves {
+  box-sizing: border-box;
+  border: 0;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ShelvesLegend {
+  padding: 0;
+  margin-bottom: 4px;
+}
+
+.Shelf {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  cursor: pointer;
+
+  input {
+    /* Nudged down onto the first line of the label rather than the top of the block. */
+    margin-top: 3px;
+    flex: 0 0 auto;
+    cursor: pointer;
+  }
+
+  p {
+    margin: 0;
+  }
+}
+
+.Actions {
+  display: flex;
+  justify-content: flex-end;
+}
