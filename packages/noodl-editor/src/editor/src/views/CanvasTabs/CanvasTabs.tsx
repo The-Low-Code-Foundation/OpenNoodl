@@ -110,6 +110,7 @@ export function CanvasTabs({ onWorkspaceChange }: CanvasTabsProps) {
               */}
               <BlocklyWorkspace
                 key={activeTab.id}
+                nodeId={activeTab.nodeId}
                 initialWorkspace={activeTab.workspace || undefined}
                 onChange={handleWorkspaceChange}
               />
