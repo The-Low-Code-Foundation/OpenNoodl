@@ -88,22 +88,6 @@ export const REASON_NO_VALUE = 'Do It shows what a block works out. This one doe
 export const REASON_DISABLED = 'This block is switched off, so it has nothing to work out.';
 
 /**
- * Should Do It be offered on this block, and if not, what does the greyed item say?
- *
- * **The rule is: value blocks only.** A value block has an output connection — `1 + 2`,
- * `get input`, `length of array` — and evaluating it is a read. Everything else is refused,
- * with the reason chosen from what the block actually is, because "greyed" without a reason is
- * the same dead end as a hidden menu item.
- *
- * ⚠️ **This is a strong default, not a proof, and the shape of a block does not give the
- * property we want from it.** A value block can nest something impure — `length of array` fed
- * by a block a user wrote that mutates — and nothing in Blockly's model marks purity, so
- * nothing here can detect it. Two side effects are contained downstream (`Outputs` writes go
- * to a throwaway object, and signal sends are swallowed and reported); writes to
- * `Noodl.Variables`, `Noodl.Objects` and `Noodl.Arrays` are **not**, and reach the running app.
- * Say that rather than claim a safety the shape does not give.
- */
-/**
  * Is `ORPHANED_BLOCK` the *only* thing wrong with this block?
  *
  * Written against `getDisabledReasons()` rather than `hasDisabledReason()` so that a block
@@ -119,6 +103,22 @@ function isOnlyOrphanDisabled(block: Blockly.Block): boolean {
   return reasons.size === 1 && reasons.has(ORPHANED_BLOCK_DISABLED_REASON);
 }
 
+/**
+ * Should Do It be offered on this block, and if not, what does the greyed item say?
+ *
+ * **The rule is: value blocks only.** A value block has an output connection — `1 + 2`,
+ * `get input`, `length of array` — and evaluating it is a read. Everything else is refused,
+ * with the reason chosen from what the block actually is, because "greyed" without a reason is
+ * the same dead end as a hidden menu item.
+ *
+ * ⚠️ **This is a strong default, not a proof, and the shape of a block does not give the
+ * property we want from it.** A value block can nest something impure — `length of array` fed
+ * by a block a user wrote that mutates — and nothing in Blockly's model marks purity, so
+ * nothing here can detect it. Two side effects are contained downstream (`Outputs` writes go
+ * to a throwaway object, and signal sends are swallowed and reported); writes to
+ * `Noodl.Variables`, `Noodl.Objects` and `Noodl.Arrays` are **not**, and reach the running app.
+ * Say that rather than claim a safety the shape does not give.
+ */
 export function classifyBlockForDoIt(block: Blockly.Block): DoItOffer {
   if (!block) return { offered: false, reason: REASON_NO_VALUE };
 

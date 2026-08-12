@@ -1,8 +1,31 @@
 # LGC-009 — give the language a hat
 
-**Status:** 📋 **filed, not built, not scheduled.** Raised 2026-08-12 by the `disableOrphans`
-finding, and filed on Richard's ruling as the follow-on to LGC-003 §2 rather than as part of it.
+**Status:** 🟡 **built 2026-08-12 on `lgc009-hat`; criteria 1–3 green headlessly, criterion 4
+needs a drive.** Raised 2026-08-12 by the `disableOrphans` finding, and filed on Richard's ruling
+as the follow-on to LGC-003 §2 rather than as part of it.
 **Track: the grammar** — this is a language change, not a UI one.
+
+> **📋 `NOTES-LGC-009.md` is the build record**: the `detectIO` clash mechanism and why it cannot
+> depend on document order, the one-hat-or-several answer, two defects found by measurement, five
+> corrections to what this file and the finding say about the current code, and the fixture
+> migration steps. Read it before touching any of this.
+
+## What was built
+
+| | |
+|---|---|
+| **The block** | `noodl_when_signal` — `next`, no `previous`, no output, `hat: 'cap'`. Field `NAME`, default `run`. First in the Signals category. `NoodlBlocks.ts`. |
+| **The generator** | Returns `''`. Blockly's `scrub_` appends the `next` chain, so a hatted stack generates **byte-identically** to the same stack without the hat. `NoodlGenerators.ts`. |
+| **`detectIO`** | One `case` in the single traversal, pushing a mention identical to `noodl_define_signal_input`'s. Both projections already dedupe by name. `logic-builder-io.ts`. |
+| **The migration** | `hatMigration.ts` — a plain JSON transform, no Blockly. One hat per top-level stack, at that stack's coordinates; the hat's name is taken from a signal the stack already declares, else the reserved `run`, so **the published port set cannot move**. Floating value blocks and unknown types are left alone and reported. |
+| **Mandatory** | Means *supplied*, not *enforced*: `CanvasTabsContext.openTab` migrates on the way in and seeds a hat for an empty program. The generator is deliberately **not** a second enforcement point (LGC-007 §3). |
+| **Toward criterion 4** | `classifyBlockForDoIt` no longer refuses a block whose only disabled reason is `ORPHANED_BLOCK` — otherwise re-registering the listener would take Do It out with it. A no-op today. |
+| **Found on the way** | `withBlockProbes` painted a chain-head declaration block hollow on every run. Pre-existing; the hat made it universal. Fixed. See NOTES §5.1. |
+
+**Specs:** `packages/noodl-runtime/test/logic-builder-hat.test.ts` (9),
+`packages/noodl-editor/tests-unit/lgc-009/` (36). Runtime gate 134/135 suites, 2476 passed;
+editor gate 147 suites, 2143 passed. Every spec proved red by inverting the change it grades —
+the inversions and what each one failed are in the report and in NOTES.
 
 > **Read `FINDING-2026-08-12-disableOrphans-kills-every-program.md` first.** This task exists
 > because that finding proved a gap in the grammar, not because anyone asked for a new block.
@@ -108,23 +131,33 @@ grammar work, and grammar work is invisible when it succeeds.
 
 ## Acceptance
 
-Nothing here is drivable until the mandatory/optional question above is ruled, so this list is
-provisional and deliberately short.
-
-1. A program with a hat generates the same code as today's equivalent hatless program.
-2. The two existing fixtures (`lgc59-drive`, `lgc59-cycle`) open, run, and produce their recorded
-   `generatedCode` — migrated if the hat is mandatory, untouched if it is optional.
-3. `detectIO` reports one port per signal, not two, when a hat and a
-   `noodl_define_signal_input` name the same signal.
-4. If the hat is mandatory: `Blockly.Events.disableOrphans` can be re-registered, and a program
-   under a hat survives a drag with `generatedCode` and `disabledReasons` unchanged. **This is the
-   check that closes LGC-003 §2**, and it must be driven, not asserted headlessly — the whole
-   defect it replaces was invisible to every spec in the phase.
+1. ✅ **A program with a hat generates the same code as today's equivalent hatless program.**
+   Graded by generating both and diffing, bare and with LGC-003's probes installed, over the real
+   `lgc59-drive` workspace — plus a two-stack case, because the migration's per-stack hats are
+   what keep `getTopBlocks(true)`'s positional order. `hat-block.spec.ts`.
+2. 🟡 **The fixtures open, run, and produce their recorded `generatedCode`.** The migration is
+   built and graded — port-set invariance, code invariance, idempotence, byte-identity when
+   nothing changes, the floating value block left alone — and it has been **run against copies**
+   of both fixtures, producing a one-line diff each. 🔴 **Not run against the fixtures
+   themselves**, and "open and run" is a drive, not a spec. Steps in NOTES §8.
+3. ✅ **`detectIO` reports one port per signal, not two.** Asserted in **both document orders**,
+   with the two whole results compared to each other — a one-order assertion passes against an
+   order-sensitive resolver, which is the thing L39 warns about. `logic-builder-hat.test.ts`.
+4. 🔴 **NOT CLAIMED. Needs a drive.** Nothing here registers `Blockly.Events.disableOrphans`;
+   `BlocklyWorkspace.tsx` still carries its tombstone, and that file was owned by another session
+   this week. What *was* done is the groundwork: `hat-orphans.spec.ts` drives the **real**
+   `Events.disableOrphans` over a real headless workspace and shows the hatless fixture destroyed
+   and the hatted one untouched, code and serialisation both; and `classifyBlockForDoIt` was
+   fixed so the listener does not take Do It out with it. **That is evidence the language change
+   works. It is not evidence the editor behaves, and the criterion says driven for a reason.**
 
 ## Register
 
 | # | Finding | State |
 |---|---|---|
-| L41 | 🔴 **The language has no hat, and nothing noticed until a framework behaviour asked.** 15 block shapes, 9 statement / 6 value / 0 hat. The gap was invisible because everything works without one — until a predicate whose meaning depends on one was adopted | 📋 open, this task |
+| L41 | 🔴 **The language has no hat, and nothing noticed until a framework behaviour asked.** 15 block shapes, 9 statement / 6 value / 0 hat. The gap was invisible because everything works without one — until a predicate whose meaning depends on one was adopted | ✅ closed 2026-08-12: 16 shapes, and the 16th is the hat |
 | L42 | 🔴 **A cost estimate can kill an option with a number nobody checked.** This was priced at "a migration for every saved program" and set aside. The population of saved programs is **two, both ours**, because the feature is 7 months old and legacy Noodl never had it. **Count the population before pricing a migration** | ✅ corrected 2026-08-12, before the estimate was inherited a second time |
-| L43 | One hat per signal input would make *different code for different signals* expressible, which it currently is not. Filed as the strongest argument for this task, and not yet weighed against the cost | 📋 open, needs Richard |
+| L43 | One hat per signal input would make *different code for different signals* expressible, which it currently is not. Filed as the strongest argument for this task, and not yet weighed against the cost | 🟡 **half-answered.** One block type parameterised by signal name is built, so a program *can* carry several hats — but they all run on every signal, so the capability is not yet real. See L45 |
+| L44 | 🔴 **A block that emits no code was painted "did not run" on every run, whenever anything was stacked under it.** `withBlockProbes` tested `generated !== ''`, and `blockToCode` returns a statement's code *plus its whole `next` chain* — so a `Define input` at the head of a stack was in `probedIds` while emitting no `__s(…)`. Pre-existing LGC-003 defect; `block-probes.spec.ts` missed it by declaring its port as a *separate* top-level block. **A spec can pass around the defect it was written for.** The hat made it universal, which is how it surfaced | ✅ fixed 2026-08-12, keyed on `suppressPrefixSuffix`, proved red |
+| L45 | 🔴 **Per-signal dispatch needs no runtime change, and the task file's premise that it does is wrong.** `__triggerSignal__` is already the eighth parameter of the compiled function and its own docstring says it is there *"so a program with several of them can branch on it"*. Dispatch is a one-line generator change. ⚠️ It carries a casing trap: the built-in `Run` port sends the **lower-case** `'run'`, so a hat named `Run` would match nothing — which is why `DEFAULT_HAT_SIGNAL` is `'run'` | 📋 filed as HAT-DISPATCH, NOTES §3 |
+| L46 | ⚠️ **The hat does not make `disableOrphans` safe on its own.** A *floating value block* is still an orphan, correctly — and it is the one shape Do It exists for. `classifyBlockForDoIt` had to stop treating Blockly's orphan bookkeeping as "the author switched it off" before criterion 4 was reachable at all | ✅ built 2026-08-12; a no-op until the listener is registered |
