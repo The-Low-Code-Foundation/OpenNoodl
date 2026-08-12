@@ -22,7 +22,7 @@ full math palette has been in the product since phase 3.
 | LGC-005 | [LGC-005-TYPES-BECOME-CONNECTIONS.md](LGC-005-TYPES-BECOME-CONNECTIONS.md) | Noodl port types → Blockly connection checks, so wrong connections stop snapping | 📋 open |
 | LGC-006 | [LGC-006-PLUGIN-SWEEP.md](LGC-006-PLUGIN-SWEEP.md) | eleven official plugins that cover things we specced by hand, including the a11y themes | 📋 open |
 | LGC-007 ⭐ | [LGC-007-MY-BLOCKS.md](LGC-007-MY-BLOCKS.md) | **the second flagship** — save a group of blocks, reuse it in any Visual Function. Mostly two npm packages | 📋 open |
-| LGC-008 | [LGC-008-A-PANE-NOT-A-TAKEOVER.md](LGC-008-A-PANE-NOT-A-TAKEOVER.md) | the workspace stops hiding the whole canvas; blocks beside the running app | 📋 open |
+| LGC-008 | [LGC-008-A-PANE-NOT-A-TAKEOVER.md](LGC-008-A-PANE-NOT-A-TAKEOVER.md) | the workspace stops hiding the whole canvas; blocks beside the running app | 🔬 §3 analysed + `svgResize` seam built (2026-08-12) · pane **not** built — §1 needs a ruling (L26/F2), and L28/L29/L30 are open defects to fix first |
 
 ## Suggested order, and why
 
@@ -64,6 +64,14 @@ full math palette has been in the product since phase 3.
 - ⚠️ **Occluded Electron fires zero `ResizeObserver` events** and clamps timers ~1000×. Blockly
   sizes itself via `Blockly.svgResize`. LGC-008's splitter must call it explicitly, and any headless
   verification needs a screenshot to force a frame.
+  **Done 2026-08-12 (`83142881`)**: the seam is
+  [`blocklyResize.ts`](../../../packages/noodl-editor/src/editor/src/views/BlocklyEditor/blocklyResize.ts)
+  — call `resizeBlocklyWorkspaces()` **synchronously** from whatever moved the geometry. Verified
+  in `blockly_compressed.js` that `inject`'s single `window` `"resize"` listener is the library's
+  only `svgResize` caller, and that nothing in this editor called it: **any** container resize,
+  including the existing preview/graph divider, left the workspace at its injected size. The
+  registry deliberately does not import `blockly` — it would pull the 1.1 MB lazy chunk into the
+  eager bundle for every session.
 - **Adopt > build.** Any task that reimplements a `@blockly/*` plugin owes a written reason why the
   plugin was insufficient.
 - **Structure > gate > documentation**, inherited from phase 58 and unchanged.
