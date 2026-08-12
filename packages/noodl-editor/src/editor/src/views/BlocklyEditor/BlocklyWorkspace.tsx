@@ -26,6 +26,8 @@ import { InterfaceRailsHandle, attachInterfaceRails } from './InterfaceRailsOver
 import { withBlockProbes } from './BlockProbes';
 import { BlockValueHandle, attachBlockValues } from './BlockValueController';
 import { generateWithMyBlocks, initMyBlocks, myBlocksFlyout, MY_BLOCKS_CATEGORY } from './MyBlocksBlocks';
+import { attachMyBlocksSave, type MyBlocksSaveHandle } from './MyBlocksSave';
+import { openSaveBlockDialog } from './MyBlocksSaveDialog';
 import { myBlocksStore } from './MyBlocksShelves';
 import type { BlocklyWorkspaceJson } from './myblocks/format';
 import { initBlocklyIntegration } from './initialize';
@@ -122,6 +124,10 @@ export function BlocklyWorkspace({ initialWorkspace, onChange, readOnly = false,
     // LGC-003. Its own handle for the same reason Do It has one: live values are an overlay
     // and must stay separable from the workspace's own lifecycle and from its serialisation.
     let blockValues: BlockValueHandle | null = null;
+    // LGC-007 §1. Its own handle for the same reason the three above have one: the context menu
+    // registry is renderer-wide and the session that connects it to *this* workspace's store has
+    // to be removed when the workspace goes, or a disposed workspace keeps offering to save.
+    let myBlocksSave: MyBlocksSaveHandle | null = null;
 
     const flushSave = () => {
       if (!workspace || !onChangeRef.current) return;
@@ -265,6 +271,15 @@ export function BlocklyWorkspace({ initialWorkspace, onChange, readOnly = false,
       // layer's own change listener never sees the deserialisation's BLOCK_CREATE storm.
       doIt = attachDoIt(workspace, nodeId);
 
+      // LGC-007 §1 — right-click a block, save it and everything under it as a My Block. Same
+      // store the flyout above reads, so a block saved here is in the toolbox of every Visual
+      // Function in the project without anything having to be told about it.
+      myBlocksSave = attachMyBlocksSave({
+        workspace,
+        store: myBlocksStore(),
+        openDialog: openSaveBlockDialog
+      });
+
       // LGC-004 — the signature at the two edges. Attached after the load, like Do It, so its
       // first paint reads the finished program rather than one block of it.
       if (inputsRailDiv.current && outputsRailDiv.current) {
@@ -351,6 +366,13 @@ export function BlocklyWorkspace({ initialWorkspace, onChange, readOnly = false,
       if (blockValues) {
         blockValues.dispose();
         blockValues = null;
+      }
+
+      // Before the workspace goes: the save session is an entry in a renderer-wide map, keyed by
+      // this workspace's id.
+      if (myBlocksSave) {
+        myBlocksSave.dispose();
+        myBlocksSave = null;
       }
 
       if (workspace) {

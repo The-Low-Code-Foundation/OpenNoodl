@@ -1,0 +1,30 @@
+.Root {
+  /* Wide enough for the shape sentence to sit on two lines rather than five. */
+  width: 420px;
+  max-width: 90vw;
+}
+
+/*
+ * The shape card. It is the half of this dialog that teaches, so it is a surface of its own
+ * rather than a paragraph in the flow — a builder scanning the dialog has to be able to find
+ * "what am I about to get" without reading the name field first.
+ *
+ * `--theme-color-border-default` and not `--border-*`: this repo has two border-token
+ * namespaces and this is the one the editor's own surfaces use.
+ */
+.ShapeCard {
+  background-color: var(--theme-color-bg-2);
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: 2px;
+  padding: 12px;
+}
+
+.ShapeName {
+  /* The one line a builder is most likely to read, so it is the only emphasised one. */
+  text-transform: none;
+}
+
+.Actions {
+  display: flex;
+  justify-content: flex-end;
+}

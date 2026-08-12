@@ -147,10 +147,22 @@ export function myBlocksFlyout(source: { list(): MyBlockDefinition[] }) {
   return function (): unknown[] {
     const definitions = source.list();
     if (definitions.length === 0) {
+      /**
+       * 🔴 The empty state used to read *"Select some blocks, right-click and choose Save as a
+       * block"*, which instructs a builder to perform a gesture this editor does not have:
+       * **Blockly 12 core has no multi-select**, and the plugin that adds it is not installed.
+       * The real gesture is one right-click on the top block of the group — see
+       * `MyBlocksSave.ts`. An empty state that teaches the wrong gesture is worse than one that
+       * teaches nothing, because it is followed.
+       */
       return [
         {
           kind: 'label',
-          text: 'Select some blocks, right-click and choose Save as a block'
+          text: 'Right-click a block and choose "Save as a block…"'
+        },
+        {
+          kind: 'label',
+          text: 'Everything inside it and stacked under it comes too.'
         }
       ];
     }
