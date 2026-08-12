@@ -19,7 +19,7 @@ full math palette has been in the product since phase 3.
 | LGC-002 | [LGC-002-DO-IT.md](LGC-002-DO-IT.md) | right-click a block, run it, see the value in a balloon — App Inventor's most-loved feature | 📋 open |
 | LGC-003 | [LGC-003-VALUES-STAY-ON-SCREEN.md](LGC-003-VALUES-STAY-ON-SCREEN.md) | ambient values during a run, the didn't-execute tell, and the run scrubber | 📋 open |
 | LGC-004 | [LGC-004-INTERFACE-RAILS.md](LGC-004-INTERFACE-RAILS.md) | pin the signature to the workspace edges; the props panel edits blocks rather than shadowing them | 📋 open |
-| LGC-005 | [LGC-005-TYPES-BECOME-CONNECTIONS.md](LGC-005-TYPES-BECOME-CONNECTIONS.md) | Noodl port types → Blockly connection checks, so wrong connections stop snapping | 📋 open |
+| LGC-005 | [LGC-005-TYPES-BECOME-CONNECTIONS.md](LGC-005-TYPES-BECOME-CONNECTIONS.md) | Noodl port types → Blockly connection checks, so wrong connections stop snapping | 🔨 §1/§2 built, §3 deferred; live verification not run |
 | LGC-006 | [LGC-006-PLUGIN-SWEEP.md](LGC-006-PLUGIN-SWEEP.md) | eleven official plugins that cover things we specced by hand, including the a11y themes | 📋 open |
 | LGC-007 ⭐ | [LGC-007-MY-BLOCKS.md](LGC-007-MY-BLOCKS.md) | **the second flagship** — save a group of blocks, reuse it in any Visual Function. Mostly two npm packages | 📋 open |
 | LGC-008 | [LGC-008-A-PANE-NOT-A-TAKEOVER.md](LGC-008-A-PANE-NOT-A-TAKEOVER.md) | the workspace stops hiding the whole canvas; blocks beside the running app | 📋 open |
