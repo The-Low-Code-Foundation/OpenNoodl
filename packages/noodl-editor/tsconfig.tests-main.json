@@ -94,6 +94,14 @@
     // through it React and CodeMirror) out of this runner. The two guards it
     // holds — wrong node type, node already has a body — both fail silently in
     // the app, so they are graded here rather than by remembering to try them.
-    "src/editor/src/models/nodeSeed/newNodeSeed.ts"
+    "src/editor/src/models/nodeSeed/newNodeSeed.ts",
+    // LGC-008: `blocklyResize.ts` is the same shape once more — the registry a
+    // splitter drag calls to make Blockly re-measure itself against its
+    // container. It is import-free *by requirement* rather than by luck: Blockly
+    // is a ~1.1 MB lazy chunk and the layout code that triggers a resize sits in
+    // the eager bundle, so the module joining them must never name `blockly`.
+    // That constraint is exactly what lets the dispatch behaviour be graded here
+    // with no Electron, no DOM and no Blockly.
+    "src/editor/src/views/BlocklyEditor/blocklyResize.ts"
   ]
 }
