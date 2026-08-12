@@ -216,6 +216,39 @@ generate — on generate too, because a definition can be edited after the refer
 ⚠️ The failure mode if this is missed is not an error message; it is a hung renderer during a debounce
 tick, which will look like the workspace freezing at random.
 
+### ✅ §6 DRIVEN 2026-08-12 — 2 of 3 conditions pass, and the third is a real defect
+
+First time this guard met a real renderer. Fixture `lgc59-cycle`, opened in a live editor with a
+running preview; `defAAA ⇄ defBBB` hand-written into `settings['myBlocks.library']`.
+
+| Condition | Result |
+|---|---|
+| The workspace stays live | ✅ **pass.** No freeze, no hung renderer. Both blocks survived in the saved `workspace` (`myblocks_call_statement`, `noodl_get_input`) |
+| The console carries the warning | ✅ **pass, and better than specified.** It names the loop: *"[Blockly] The saved blocks in this program could not be expanded: Saved block "Alpha" uses itself. The loop is Alpha → Beta → Alpha. No code was generated."* |
+| `generatedCode` **unchanged** (`Outputs.completed = true;`) | 🔴 **FAIL.** It was emptied to `""` **and written to disk.** `project.json` SHA `0e77f6e3…` → `53f281a6…` |
+
+🔴 **The guard refuses correctly and then destroys the evidence that it used to work.** The message
+says "No code was generated", and that *absence* is persisted over the last-known-good code. A user
+whose two definitions happen to reference each other loses the compiled output of a program that ran
+yesterday, and reopening cannot restore it — the cycle is still there, so it re-empties. The blocks
+survive, so the program is recoverable *in principle*; the compiled artefact the running node
+actually executes is not.
+
+**This is the second mechanism found in one day with the same shape**, the other being
+`disableOrphans` (`FINDING-2026-08-12-…`). Both are a *refusal to generate* that overwrites the
+persisted output with `""` instead of leaving the previous value alone. They are independent —
+`disableOrphans` was reverted before this drive, and the workspace here carries **no
+`disabledReasons`**, which is also a live confirmation that the revert works. **The pattern is worth
+a rule: a generation step that declines to produce code must not be allowed to publish its silence.**
+
+⚠️ **The fixture was restored** to `Outputs.completed = true;` so §6 can be re-run from a clean
+baseline. **It was rewritten with `JSON.stringify(…, null, 2)`, so its byte formatting no longer
+matches what the editor writes** — re-baseline it with an editor save before using it for any
+byte-identical comparison.
+
+**Not yet answered:** whether the empty write happens on *open* or on the first debounce tick, and
+whether a node whose definitions are later fixed regenerates. Both need another drive.
+
 ## §4 — Updating a definition
 
 Editing a definition regenerates every Visual Function that references it. That needs a dependency
