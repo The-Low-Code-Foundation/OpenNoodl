@@ -36,7 +36,7 @@ describe('LEG-007 — a pasted node keeps its label and its comment', () => {
   beforeAll(() => {
     // The same test library the rest of tests/nodegraph runs against. It is needed for the
     // source-code-port case below: `image` declares a `css` port with `codeeditor: 'css'`.
-    (window as TSFixme).NodeLibraryData = require('./nodelibrary');
+    window.NodeLibraryData = require('./nodelibrary');
     NodeLibrary.instance.loadLibrary();
   });
 

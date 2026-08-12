@@ -82,7 +82,7 @@ describe('NodeGraphNode.getPorts — a port list derived before the library load
     // Same reset the node library specs use — no modules left registered from a
     // previous spec (`unregisterModule` splices, so iterate a copy), then load —
     // but off a private copy of the blob.
-    (window as TSFixme).NodeLibraryData = JSON.parse(JSON.stringify(require('../nodegraph/nodelibrary')));
+    window.NodeLibraryData = JSON.parse(JSON.stringify(require('../nodegraph/nodelibrary')));
     for (const module of [...NodeLibrary.instance.modules]) {
       NodeLibrary.instance.unregisterModule(module);
     }
@@ -90,7 +90,7 @@ describe('NodeGraphNode.getPorts — a port list derived before the library load
   }
 
   function arriveLate() {
-    (window as TSFixme).NodeLibraryData.nodetypes.push({
+    window.NodeLibraryData.nodetypes.push({
       name: LATE_TYPE,
       allowAsChild: true,
       category: 'visuals',
@@ -113,7 +113,7 @@ describe('NodeGraphNode.getPorts — a port list derived before the library load
     NodeLibrary.instance.unregisterModule(p);
     // Hand the shared fixture object back, unmodified, so a spec that does not
     // install its own blob sees what it has always seen.
-    (window as TSFixme).NodeLibraryData = require('../nodegraph/nodelibrary');
+    window.NodeLibraryData = require('../nodegraph/nodelibrary');
     NodeLibrary.instance.loadLibrary();
   });
 

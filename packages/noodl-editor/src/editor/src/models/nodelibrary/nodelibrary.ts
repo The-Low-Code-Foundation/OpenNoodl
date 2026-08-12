@@ -64,7 +64,6 @@ export class NodeLibrary extends Model {
     this.typeCache.clear();
     this.unkownNodeTypes = {};
 
-    // @ts-expect-error window be scary!
     this.library = (typeof window !== 'undefined' ? window.NodeLibraryData : {}) || {};
 
     // Register basic types from the node library

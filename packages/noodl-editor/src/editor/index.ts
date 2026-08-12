@@ -127,7 +127,6 @@ window.addEventListener('DOMContentLoaded', () => {
   });
 
   EventDispatcher.instance.on('ProjectModel.instanceWillChange', () => {
-    //@ts-expect-error
     window.NodeLibraryData = undefined;
     NodeLibrary.instance.reload();
   }, null);
