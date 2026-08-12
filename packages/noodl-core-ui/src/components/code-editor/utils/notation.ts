@@ -14,6 +14,10 @@
  * support forever and never write.** Taken 2026-08-12 on the spec's own
  * recommendation, and recorded in the task file rather than only here.
  *
+ * ✅ **Signed by Richard, 2026-08-12.** It stood unsigned through two sessions
+ * while four surfaces were built on it; it is settled now and does not need
+ * re-litigating.
+ *
  * The runtime injects `Inputs` and `Outputs` as direct parameters —
  * `new AsyncFunction('Inputs', 'Outputs', 'Noodl', 'Component', script)`
  * (`noodl-runtime/src/nodes/std-library/simplejavascript.ts:447`) — and assigns

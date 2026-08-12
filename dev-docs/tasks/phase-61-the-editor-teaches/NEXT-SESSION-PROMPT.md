@@ -1,169 +1,178 @@
 # Phase 61 — next session
 
-**Written 2026-08-12 afternoon**, at the end of the drive session. Replaces the morning handover.
-
-**4 of 9 built. Three of them have now been driven, and they mostly work.** What the drives actually
-produced is not a tick-list — it is **one defect that blocks the flagship task**, and it is not in any
-of the code this phase wrote.
+**Written 2026-08-12 evening.** Replaces the afternoon handover. **Five of nine built, four decisions
+now signed, and the one thing this phase has never had is a quiet machine.**
 
 ---
 
-## 1. 🔴 Read this first — the gate does not discriminate
+## 1. Read this first — what is built vs. what is *proven*
 
-**`validationTypeForEditType` can never return `'expression'` or `'script'`.** It tests `type?.name`
-— the *type's* name, which is `'string'` for every JavaScript code port — three lines below its own
-comment saying *"the port name is the only signal available for that."* Both name-based branches are
-dead code. Measured in the running editor:
+| Task | Built | Driven |
+|---|---|---|
+| **FUN-001** | ✅ | n/a — ✅ **§2 now signed, settled** |
+| **FUN-002** | ✅ | ✅ 6 of 7. One criterion open (needs a project switch → restart) |
+| **FUN-003** | ✅ | ✅ every criterion of its own |
+| **FUN-007 §1** | ✅ | ✅ closed · 🔴 **§2 not built** — blocks drive steps 8 and 9 |
+| **FUN-009** | ✅ `ace5232f` | 🔴 **NEVER DRIVEN** — see §3 |
+| **FUN-004, 005, 006, 008** | 📋 open | — |
+| **FUN-009 §5 (F35)** | 📋 **new task**, opened by the fix | — |
 
-| Node | Code port | `type.name` | Popout title |
-|---|---|---|---|
-| Function | `functionScript` | `string` | **FUNCTION** |
-| Script (`Javascript2`) | `code` | `string` | **FUNCTION** |
-| **Expression** | `expression` | `string` | **FUNCTION** |
-
-**It is already a shipped, user-visible defect, with none of this phase's code involved.** `no-undef`
-is disabled in `'expression'` mode on purpose, because a bare identifier in an Expression *becomes an
-input port*. The mode never selects, so the rule runs:
-
-```
-total * 2   →   ⚠ 'total' is not defined.  eslint:no-undef     …and the port `total` is then created
-```
-
-The code is right, the port exists, and the editor underlines it. Read off the lint tooltip, then the
-port read back off the node.
-
-⚠️ **The fix is NOT "use the port name".** `TypeView.name` carries it, but `functionScript` contains
-`script` and the Script node's port is `code` — switching **inverts** those two while fixing
-Expression. The discriminator has to be *decided*.
-
-**Filed in FUN-003 F17, FUN-004 §3, FUN-009. FUN-009 owns the fix** — it is the task that knows why
-the two rules differ. **FUN-004 is blocked until it lands**, because all four of its messages would
-fire inside Expression editors, which its own §3 calls *"actively destructive."*
-Memory: [[every-js-code-port-opens-in-function-mode]].
+🔴 **`test:ci` has not completed on this tree in two sessions.** Three attempts on 2026-08-12 evening
+died to contention: one OOM-killed mid-build (exit 137), one self-terminated at 900s **with no
+`Jasmine:` line, having graded nothing**. Two sibling sessions were running `test:ci` on this same
+checkout throughout. **Run it first, when the checkout is quiet, and compare failure NAMES against
+the baseline six — not the count.**
 
 ---
 
-## 2. Where the phase actually stands
+## 2. The four decisions, signed by Richard 2026-08-12
 
-| Task | State |
-|---|---|
-| **FUN-001** | ✅ built. §2 still **unsigned by Richard** — see §5.1 |
-| **FUN-002** | ✅ built · ✅ **driven, 6 of 7**. One criterion open and it needs restating — §3 |
-| **FUN-003** | ✅ built · ✅ **driven, every criterion of its own passes**. Found F17 |
-| **FUN-007** | ✅ §1 built and **driven closed** · 🔴 §2 not built · 🔴 **F31 filed** — §3 |
-| **FUN-004, 005, 006, 008, 009** | 📋 open |
+Recorded in the task files, not only here. **Do not re-litigate any of them.**
 
-Commit `1c77b8c7` carries all three drive records, in the task files under *"The drive, as run"*.
-
-**Gates, measured on the merged tree before the drives:**
-
-```
-test:ci     Jasmine: 2692 specs, 6 failures    seed 64762 — all six the baseline NAMES
-```
-
-⚠️ The **+20** over the morning's 2672 is a **concurrent session's uncommitted `port-values.spec.ts`**,
-whose barrel edit is live in the shared checkout. That run graded their work too. Do not read 2692 as
-this phase's number.
-
-🔴 **`test:main` and the `noodl-mcp` suite are still unrun on this tree**, and a large amount of
-phase-59 work has landed since (HEAD is now a phase-59 merge, `f32a9cd4`). **Re-run `test:ci` before
-believing any of the numbers above** — they predate every phase-59 commit.
+1. ✅ **`Inputs.` / `Outputs.` is the notation.** `Noodl.Inputs` is supported forever and never
+   written. FUN-001 §2 stood unsigned through two sessions while four surfaces were built on it; it
+   is settled. Every consumer can stop hedging.
+2. ✅ **FUN-009 §4 stays two documents.** `NodePicker.chooser.ts` (comparative, pre-choice, covers
+   `Logic Builder`) and `NOTATION_RULES` (instructional, mid-edit, covers `Javascript2`) are **not**
+   merged into one string. They must not *disagree*; both files say to read the other.
+3. 🔴 **F35 is to be fixed** — all four undeclared JavaScript ports get a `codenotation`. It is now
+   **FUN-009 §5**, a real task with an acceptance list, not a note. The two Map/Database ports need a
+   *decision* (a fourth mode, or the `function` floor with the wrongness recorded), not a labelling
+   pass. Read §5 before touching it.
+4. ✅ **Parallel worktree lanes** for this session. ⚠️ I advised against it and Richard chose it
+   knowingly; §5 below is how to make it work rather than how to avoid it.
 
 ---
 
-## 3. The two defects the drives found, beyond F17
+## 3. 🔴 The drive FUN-009 never got — do this before writing any new code
 
-**F31 — a warning can strand and never clear.** Setting `scriptInputs`, `scriptOutputs` and
-`functionScript` in one rapid batch left a node carrying *"…"Output_1" stayed empty…"* while
-`scriptOutputs` was `[]` and the script was `Noodl.Variables.hits = 1;`. **Still there minutes
-later**, in `WarningsModel` — not a rendering lag.
+The fix is committed and specced in three packages, but **the premise that `type.codenotation`
+survives the runtime → editor trip has never been measured.** Four static readings agree
+(`nodelibraryexport.ts:161` passes `type` wholesale; `NodeLibraryImporter` reconstructs nothing;
+`cloud-node-library.json` stores type objects as plain JSON; the catalog generator emitted the field
+from the **real registries**) — but that is reading, not measurement.
 
-⚠️ **Be skeptical of my mechanism, not the observation.** It did **not** reproduce on a second node
-given the identical batch, and every individual transition clears correctly. I called it a race
-between the clear and a re-run scheduled against the previous script. **That is inference.** The
-observation is solid; the cause is not. Reproduce before fixing. It belongs to **§2's lane**, which
-already owns clearing.
+**It is the cheapest high-value thing in the phase and it needs ~15 quiet minutes.** In one script,
+re-opening the project defensively at the top:
 
-**FUN-002's byte-identical criterion cannot be measured as written.** Opening a project rewrites
-every component on disk, so *"the project file is byte-identical after open-and-close"* is false for
-every project and has nothing to do with the seed. The file now carries the restatement:
+1. Three nodes — Expression, Function, Script. ⚠️ `ed.createNewNode` returns `void` and leaves
+   `ed.highlighted` set; **clear it between creations** or they parent under one another and render
+   nothing, which looks exactly like a product bug.
+2. Open each code popout, read `span.ModeLabel` (`JavaScriptEditor.tsx:265`). It must read
+   **EXPRESSION**, **FUNCTION**, **SCRIPT**. Three different words closes F17 outright — before the
+   fix it said FUNCTION three times.
+3. In the Expression popout type `total * 2`. **No `no-undef` warning**, and the port `total` still
+   appears. That is the user-visible half.
+4. FUN-009 §2's acceptance, reachable for the first time: `Variables.` / `Objects.` / `Arrays.`
+   complete bare in Expression mode, `Inputs.` offers nothing there, no bare identifier is completed
+   from anything project-shaped. **No code was written for §2** — it was always correct and gated
+   behind a branch that could not fire.
 
-1. open once, let the editor normalise — **that** is the baseline;
-2. close, open again, close;
-3. the two normalised states must match, **and** the Function node's `functionScript` must still be
-   absent.
-
-Clause 3 is the whole point and is **undriven** — it needs a project switch, which needs a restart.
-The same gate *was* exercised from the other side: **paste does not re-seed an emptied node.**
-
----
-
-## 4. What to do, in order
-
-1. **`test:ci` on the current tree.** Four phase-61 merges plus a whole phase-59 landed since the last
-   green run. `dev:stop -- --list` first; only the `Jasmine:` line counts; compare **names**, not the
-   count.
-2. **FUN-009 first, not FUN-004.** It was the smallest task in the phase and is now the one holding up
-   the flagship. It has to decide the discriminator, and it is the task that understands the inverse
-   rule well enough to write the sentence that goes with it.
-3. **FUN-004 + FUN-008 in one lane**, after 009. §2's premise correction is already folded into
-   FUN-004's acceptance — **two rows, driven separately, fresh project each** (implicit globals are
-   shared between Function nodes, so the first bare `Output_1` disarms the `ReferenceError`
-   project-wide). Start with **FUN-007 §2's gutter rendering**: same file, same knowledge, small first
-   commit, and it unblocks FUN-007 drive steps 8 and 9.
-4. **FUN-005 §1/§2** in a second lane. 🔴 **Adopt the sibling's `usePortValues.ts`, do not rebuild
-   it** — it is FUN-005 §3's subject and it is still sitting uncommitted in the checkout. §3 is where
-   the cost is; do not start it in the same lane.
-5. **FUN-006** last of the editor work.
+⚠️ If step 2 shows FUNCTION three times, the premise is wrong and **every lane below that depends on
+`validationType` is standing on sand** — stop and fix that first.
 
 ---
 
-## 5. Decisions and debts
+## 4. The lanes
 
-1. 🔴 **FUN-001 §2 is still unsigned.** `Inputs.`/`Outputs.` is the notation; `Noodl.Inputs` is
-   supported forever and never written. Taken on the spec's own recommendation, asserted in a test, so
-   reversing it is one module and one test file. **Ask Richard.**
-2. 🔴 **FUN-007 §2 is not built.** The mapped `line`, `column` and `hint` are on the warning payload
-   and the raised error's `detail`; nothing renders them. Drive steps 8 and 9 are blocked on it.
-3. ⚠️ **FUN-003 F16 stands.** `ExpressionEditorModal`, `GeneratedCodeModal` and `AiChat` never write
-   the open-node slot, and are correct only because nothing can be open when they mount. Nothing
-   asserts that. **Gate every consumer on `validationType`, never on `openNode` being present** — and
-   note F17 means that gate needs fixing first.
-4. ⚠️ **`SEED_FUNCTION_BODY` differs from FUN-002's specced string on purpose.** Its comment writes
-   bare `Value`/`Result`, never `Inputs.Value`, because **comments are mined into ports**. Do not
-   "restore" the spec.
-5. **The concurrent session is active in this checkout.** It committed a phase-59 merge this
-   afternoon. Its PortsTab work is still uncommitted. Leave it alone, never `git stash`, never
-   `git add -A`, and pathspec-scope both `git add` **and** `git commit`.
+Cut with `scripts/devtools/make-worktree.sh`, from `origin/main`, into `../OpenNoodl-worktrees/` —
+**never** the harness's `isolation: "worktree"`, never a scratchpad.
+
+### Lane A — diagnostics and completions
+**FUN-007 §2 → FUN-004 → FUN-008**, in that order. The handover's reasoning still holds: §2's gutter
+is the same file and the same knowledge as FUN-004, it is a small first commit, and it unblocks
+FUN-007 drive steps 8 and 9. FUN-004 was blocked on FUN-009 and **is now unblocked**.
+
+- ⚠️ FUN-004: **two rows, driven separately, fresh project each.** Implicit globals are shared
+  between Function nodes, so the first bare `Output_1` disarms the `ReferenceError` project-wide.
+- ⚠️ FUN-007 §2: the mapped `line`, `column` and `hint` are already on the warning payload and the
+  raised error's `detail`. **Nothing renders them.** That is the whole of §2.
+- 🔴 **F31 is open and belongs here** — a warning that stranded and never cleared, with
+  `scriptOutputs: []` and a replaced script. **Be sceptical of the mechanism, not the observation**:
+  it did not reproduce on a second node given the identical batch. The "race with a re-run scheduled
+  against the previous script" is *inference*. Reproduce before fixing.
+
+### Lane B — the chrome (bar, then rail)
+**FUN-006 → FUN-005 §1/§2.** ⚠️ **These two cannot be separate lanes**: both mount a new surface
+inside `JavaScriptEditor.tsx` and its `.module.scss`, and they will conflict on the same lines. One
+lane, sequential, bar first.
+
+- **FUN-006 closes FUN-009 §1 for free.** The copy is already written and specced —
+  `NOTATION_RULES` and `expressionPortNote` in `notation.ts`, both exported from the code-editor
+  barrel. 🔴 **Nothing renders either of them today**; `NOTATION_RULES`'s only consumer in the whole
+  product is the AI prompt template. FUN-006 is the first surface to put any of this phase's copy on
+  screen.
+- ⚠️ FUN-006 §4 is not optional decoration: **measure contrast in both themes and record the
+  numbers.** `TextType.Secondary` is identical to `TextType.Default`, opacity cannot dim and stay
+  legible, and CodeMirror `baseTheme`s hardcode colours our tokens never reach.
+- 🔴 FUN-005: **adopt the sibling's `usePortValues.ts` / `portValues.ts`, do not rebuild them.**
+  Check whether they have been committed yet — they were still uncommitted in the shared checkout at
+  the end of 2026-08-12. **§3 is where the cost is; do not start it in this lane.**
+
+### Lane C — the runtime ports
+**FUN-009 §5 (F35).** Disjoint from A and B — runtime node definitions plus possibly one case in
+`modes.ts` / `esLintDiagnostics.ts`. Read §5 in the FUN-009 file: the REST two are trivial, and
+`mapScript` / `storageJSONFilter` are a design decision that must be made explicitly.
+
+⚠️ **This lane regenerates the catalog.** `catalog:check` will go red; run `catalog:generate` **and**
+`catalog:merge`, and run the `noodl-mcp` suite afterwards — it is not in `test:ci`.
+
+---
+
+## 5. Machine discipline — this is what cost the last session
+
+Three lanes plus however many sibling sessions are live all want one machine, and the last session
+lost its drive to exactly this.
+
+- 🔴 **No lane drives the editor.** All live verification happens in the **main session**,
+  **serialised**, one drive at a time. A lane that needs a drive hands its script to the main session
+  rather than launching Electron.
+- 🔴 **Check for siblings before every heavy run**, not once at the start: `dev:stop -- --list` (the
+  no-`--` spelling **KILLS**, including a sibling's running `test:ci`) and
+  `git log --oneline --since="3 hours ago"`. It was false at 15:35 and true by 16:43 on 2026-08-12.
+- ⚠️ **Never run two `test:ci` at once**, and never run one while a lane is doing anything heavy. A
+  suite that dies **without a `Jasmine:` line graded nothing** — re-run it, do not read exit 1 as
+  failures. A backgrounded wrapper's exit code lies; read the log.
+- ⚠️ The editor is a **queue, not a resource to seize.** If a sibling is driving, wait and poll.
+  Never `dev:stop` to make room.
+- ⚠️ Shared checkout: **never `git stash`, never `git add -A`**, and pathspec-scope both `git add`
+  **and** `git commit`. A sibling has had `PortsTab/**`, `CanvasTabs.tsx`, `TraceSession.ts` and
+  `tests/nodegraph/**` uncommitted for a full day. Leave them.
 
 ---
 
 ## 6. Mechanics worth not rediscovering
 
-- **Reading the FUN-003 registry live.** The webpack chunk registry returns the **cached** module, not
-  a second instance:
+- 🔴 **A `.gitignore` rule ending in `/` does not match a symlink.**
+  `packages/noodl-runtime/dist-types` was **committed as a symlink pointing at its own absolute
+  path**; `build:types` died with `ELOOP`, and because that is `noodl-viewer-react`'s `pretest`, that
+  package's whole suite could not start — showing up as a build failure, not a red suite. Fixed in
+  `d5b60f82` (link dropped, trailing slash dropped). It had been deleted once that morning and
+  **re-merged from a stale worktree branch within the hour**, so if a package suite refuses to
+  *start*, check for a broken build artifact before reading it as a code defect.
+- **Reading the FUN-003 registry live** — the webpack chunk registry returns the **cached** module:
   ```js
   window.webpackChunknoodl_editor.push([['probe'], {probe:(m,e,req)=>{window.__req=req;}}, r=>r('probe')]);
   window.__req('../noodl-core-ui/src/components/code-editor/authoringContext.ts').getCodeAuthoringContext()
   ```
   🔴 Never `req()` `projectmodel.ts` this way — it re-evaluates and drops the editor to the launcher.
-- **`ed.createNewNode` returns `void`** and leaves `ed.highlighted` set, so consecutive creations get
-  **parented under the previous selection**. Three of mine became children of a `Router`, rendered
-  nothing, and looked exactly like a product bug. **Set `ed.highlighted = null` between creations**,
-  and read nodes back off `ed.model.roots`. Node *views* are `ed.roots`, not `ed.nodes`.
-- **Mined ports are not synchronous.** In the same tick as `createNewNode` a seeded node has **no**
-  `in-`/`out-` ports; they arrive after a sub-second round-trip. Not a defect, but a spec asserting it
-  in the creating tick will fail.
-- **`cdp.js` has no key dispatch.** ⌘Z needed a small `Input.dispatchKeyEvent` script. The keystroke
-  does reach the renderer, and undo *does* fire — but the undo queue holds `create` and
-  `seed function` as **separate entries**, and opening/closing a popout pushes `edit parameter`
-  entries on top. Test "one ⌘Z" with nothing in between, and read `UndoQueue.instance.queue` before
-  concluding anything.
-- **The editor's preview cannot render a project outside the normal projects location** — it 404s on
-  `index.json`. Use `node scripts/devtools/measure-from-disk.js <dir> --screenshot full --out <prefix>`
-  and read the PNG. That is how "passes a value through when run" was proved, independent of the
-  editor.
-- ⚠️ **`cdp click` on a class selector hits the first match.** Mine opened a GitHub device-login page.
+- **Mined ports are not synchronous.** In the same tick as `createNewNode` a seeded node has no
+  `in-`/`out-` ports; they arrive after a sub-second round trip. A spec asserting it in the creating
+  tick will fail.
+- **`cdp.js` has no key dispatch** — ⌘Z needs a small `Input.dispatchKeyEvent` script. The undo queue
+  holds `create` and `seed function` as **separate entries**, and opening/closing a popout pushes
+  `edit parameter` on top. Read `UndoQueue.instance.queue` before concluding anything.
+- ⚠️ **`cdp click` on a class selector hits the first match** — one opened a GitHub device-login page.
   **Tag the element with a unique `id` in an `eval` first**, every time.
-- Registering a scratch project with the launcher and restarting works
-  ([[open-a-copy-of-a-real-project-in-the-editor]]) — **back the store up and restore it afterwards**.
+- **The editor's preview cannot render a project outside the normal projects location** (404s on
+  `index.json`). Use `node scripts/devtools/measure-from-disk.js <dir> --screenshot full --out <p>`
+  and read the PNG — that is how "passes a value through when run" was proved independently.
+- Registering a scratch project with the launcher and restarting works — **back the store up and
+  restore it afterwards**.
+- ⚠️ **`SEED_FUNCTION_BODY` differs from FUN-002's specced string on purpose.** Its comment writes
+  bare `Value`/`Result`, never `Inputs.Value`, because **comments are mined into ports**. Do not
+  "restore" the spec.
+- ⚠️ **A spec can be decoration.** FUN-009's predecessor asserted two branches using type names no
+  port in the product has, and passed for the whole of the feature's life. When a gate covers a
+  discriminator, **assert the wrong answer too** — reimplement the rejected guess and name the cases
+  it gets wrong.

@@ -1,7 +1,7 @@
 # FUN-001 — One notation, written down once
 
-**Status:** ✅ **built 2026-08-12** · **Track: the words** · §2 taken on the recommendation, recorded
-below · blocks the copy in FUN-002, FUN-004, FUN-005, FUN-006
+**Status:** ✅ **built 2026-08-12** · **Track: the words** · ✅ **§2 signed by Richard 2026-08-12** ·
+blocks the copy in FUN-002, FUN-004, FUN-005, FUN-006
 
 `notation.ts` + 19 DOM-free unit tests; the module is exported from the `code-editor` barrel. The AI
 prompt half is done and was **three** copies, not one. **§4's catalog half needed no work** — see F2,
@@ -126,10 +126,10 @@ functions rather than concatenating a dot.
 - ✅ The enriched catalog entry for `Function` contains a worked example that compiles — it already
   did, since 2026-07-23. See F2; nothing was written for this.
 - ✅ The AI function prompt no longer teaches a notation the runtime does not mine. Three prompts.
-- ⏳ **§2 is taken on the recommendation and recorded above, not signed.** Richard has not seen it
-  yet. It is asserted in a test rather than only stated, and reversing it is one module and one test
-  file — deliberately cheap, because blocking four tasks on a signature costs more than reversing it
-  would.
+- ✅ **§2 is signed.** Richard confirmed it 2026-08-12, unchanged from the recommendation:
+  `Inputs.` / `Outputs.` is the notation, `Noodl.Inputs` is supported forever and never written. It
+  stood unsigned through two sessions while four surfaces were built on it. **Settled — do not
+  re-litigate it**, and no consumer needs to hedge about it any more.
 
 ## Register
 

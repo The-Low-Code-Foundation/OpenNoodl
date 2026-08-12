@@ -246,3 +246,59 @@ commit — re-open the project defensively at the top):
 
 ⚠️ `cdp click` on a class selector hits the first match — tag the element with a unique `id` in an
 `eval` first, every time.
+
+---
+
+## Decisions, signed 2026-08-12
+
+1. ✅ **FUN-001 §2 stands**: `Inputs.` / `Outputs.` is the notation, `Noodl.Inputs` supported forever
+   and never written. Settled — do not re-open it.
+2. ✅ **§4 stays two documents.** `NodePicker.chooser.ts` and `NOTATION_RULES` are not merged into one
+   string. They must not disagree; both files say to read the other. F34 closes as *answered*.
+3. 🔴 **F35 is to be fixed, not left filed** — see below. It is now a task, not a note.
+
+## §5 — F35: the four ports that declare nothing (new, opened by the fix)
+
+`validationTypeForEditType` falls back to `'function'` for a JavaScript port with no `codenotation`.
+That is a compatibility floor and it is currently load-bearing for four ports:
+
+| Port | Node | What its text actually is |
+|---|---|---|
+| `requestScript` | REST | a real Function body — `new Function('Inputs','Outputs','Request', script)` |
+| `responseScript` | REST | same |
+| `mapScript` | Map Collection | declares output properties through `map({ … })`; **no `Inputs.`/`Outputs.` at all** |
+| `storageJSONFilter` | Database Collection | a JSON filter with `$variable` placeholders; not a program |
+
+**The REST two are easy** — declare `codenotation: 'function'` and they are correct and documented.
+
+⚠️ **The other two are the actual decision, and it is not a labelling pass.** Neither is a Function
+body, a Script `define({…})`, nor an Expression. Today they are offered `Inputs.` / `Outputs.`
+completions that would do nothing if accepted, and linted with `no-undef` against globals they do not
+have. Both were true before FUN-009 and neither is a regression — which is exactly why this can be
+done deliberately rather than in a hurry.
+
+The choice to make, and make explicitly:
+
+- **(a) a fourth notation** — e.g. `'plain'`: JavaScript, linted for structure, but **no port
+  notation of any kind offered**. `modeHasDeclaredPorts` already returns false for anything not
+  `function`/`script`, so the completions half falls out for free; `configFor` needs a case, and
+  `LABELS`/`PLACEHOLDERS` in `modes.ts` need an entry each. This is the honest reading of both ports.
+- **(b) leave them on the `function` floor** and record that the offer is knowingly wrong.
+
+⚠️ **Whichever is chosen, `storageJSONFilter` may not end up in a mode that lints it as a program.**
+It is a filter object with `$foo` placeholders; a JavaScript linter has nothing true to say about it,
+and `isValidatedType` exists precisely so a mode can decline to render a verdict.
+
+⚠️ **Changing a port type means regenerating the catalog** — `catalog:check` goes red, run
+`catalog:generate` **and** `catalog:merge`. Do not hand-edit `node-catalog.d.ts`; it is generated.
+
+**Acceptance for §5**
+
+- All four ports declare a `codenotation` — no JavaScript port in the product relies on the fallback.
+- The two REST ports open as `function` and still complete `Inputs.` / `Outputs.`.
+- `mapScript` and `storageJSONFilter` are **not** offered `Inputs.` / `Outputs.` completions, and the
+  reason is stated at the declaration rather than only here.
+- If a fourth mode lands, it has a label, a placeholder, a lint config and a row in the
+  `codeeditor-mode` spec — and `modes.ts`'s table stays the single place a mode is named.
+- The fallback stays in place and stays `'function'`, because a *future* undeclared port must not
+  change behaviour silently — but nothing shipping depends on it any more.
