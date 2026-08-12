@@ -8,6 +8,11 @@ five exit criteria is measured as FAILED, which is the whole point of this file.
 
 > ⚠️ This replaces the 2026-08-11 evening version, which said *"two measurements nobody has taken"*.
 > Both have now been taken. Do not act on a stale copy.
+>
+> 🔴 **Amended 2026-08-12 (later).** The "cheap next move" this file recommended — ship LEG-001 §5's
+> doctrine half — **was based on a false premise and has been struck**. The doctrine shipped in
+> `a4793530` and was in front of the model at turn 1 of the paid run. See §2 and §7; the phase's
+> options are now narrower, and no documentation move is left.
 
 ---
 
@@ -22,6 +27,15 @@ five exit criteria is measured as FAILED, which is the whole point of this file.
 | The four merged lane worktrees | removed; branches kept | — |
 
 Commits: `b0ad50ed` (LEG-005 drive + the scanner), `36821c0e` (the measurement).
+
+**Session of 2026-08-12 (later), documentation only — no code, no spend:**
+
+| Thing | Result |
+|---|---|
+| The recommended "cheap next move" | ❌ **struck** — the doctrine half shipped in `a4793530`, 52 min before the run |
+| Was the doctrine in front of the model? | ✅ **yes, turn 1**, verbatim in the `get_project_info` result (transcript record 3) |
+| What the zero now means | measured with **row + description + doctrine** all in place — a **stronger** result |
+| Leading hypothesis | 🔴 the **fixture**: a constraint-free brief may be unable to measure the field |
 
 ---
 
@@ -48,15 +62,38 @@ It is a **real** zero, not a broken rig; three things were verified before spend
 have faked it. See §3. **"Judge the comments, do not count them" is vacuous when there are none**, so
 the criterion is recorded as **not met** rather than quietly satisfied.
 
-### The next move, and it is cheap
+### ❌ The "cheap next move" this file used to recommend does not exist
 
-🔴 **LEG-001 shipped half of itself.** §5 of the task specifies a doctrine half — a sentence or two in
-`AUTHORING_TRAPS` and `dev-docs/best-practices/` on *when* a comment is worth writing, matched to
-§4's three cases. **It is not there.** The task's own ordering rule was *structure > gate >
-documentation*, with doctrine following the vocabulary row rather than replacing it. The structural
-half is in and measures zero; **the documentation half has never been tried.**
+> 🔴 **Struck 2026-08-12.** This section said *"LEG-001 shipped half of itself… the documentation
+> half has never been tried. Do that before buying another n=1 at $3.62."* **That was false**, and a
+> session acting on it would have re-shipped prose that was already there and then bought the paid
+> run anyway, expecting it to be the difference.
 
-**Do that before buying another n=1 at $3.62.**
+**The doctrine half shipped in `a4793530`** (2026-08-11 23:20:21 +0200): `authoring.ts`'s AUTHORING
+CONTRACT for the editor door, and `DECOMPOSITION_DOCTRINE_MD`'s **"Say why on the node"** bullet for
+the MCP door. **It was in front of the model at turn 1** — the run began `2026-08-11T22:12:31Z`, 52
+minutes later, and the bullet is verbatim in the transcript at record 3, the `get_project_info`
+result of the first turn.
+
+So the zero was measured with **every lever the task specified already pulled**: the vocabulary row,
+the field description on both doors the model used, and the doctrine prose delivered unasked before
+it wrote a node. That makes the result **stronger**, not weaker — and it removes the cheap move.
+
+⚠️ The earlier claim came from a grep over `AUTHORING_TRAPS` and `dev-docs/best-practices/`, the two
+surfaces `a4793530` **deliberately** skipped. Traps is for measured *silent failures* and a missing
+comment fails nothing; best-practices is the **pull** channel LAS-007 measured at **zero** retrievals
+in 42 turns. Their emptiness was by design, not an oversight — do not "fix" it and call it an
+experiment.
+
+### What is actually next
+
+🔴 **The fixture, not the wording.** A label names what is in front of you; a comment needs a
+constraint the brief never stated, and the storefront brief states almost none — so a model with
+nothing to say may be *right* to say nothing, and this fixture may be unable to measure the field at
+all. **Put décret-style external constraints in the brief before spending again**, or the next $3.62
+buys another uninformative zero. The one remaining cheap lever is a **worked example that carries a
+comment** (`get_example`) — showing rather than telling — but it cannot be measured on a
+constraint-free brief either. Detail in LEG-001 register **L13/L14**.
 
 ⚠️ And hold a second reading, which would change the fixture rather than the code: `label` names what
 is in front of you, a comment needs a constraint the brief never stated. The storefront brief
@@ -154,6 +191,17 @@ human — it is a judgement, and it is Richard's.
 The honest position: **the phase built everything it specified, and the central claim it was built on
 did not survive contact with a model.** That is a result worth having, and it is cheaper to have
 learned it for $3.62 than to have shipped the doctrine, the gate and the tooling on top of an
-assumption. **Closing it means deciding whether the doctrine half (§2) gets tried first, or whether
-the phase closes with the finding recorded and LEG-001 reopened as its own task.** That call is
-Richard's, not the next session's.
+assumption.
+
+⚠️ **Amended 2026-08-12.** This section used to offer a choice — *try the doctrine half first, or
+close with the finding recorded.* **The first option is gone**: the doctrine half was already shipped
+and already in front of the model when the zero was measured (§2). So the choice is narrower and
+cleaner:
+
+- **Close the phase** with criterion 2 recorded as failed and LEG-001 reopened as its own task, or
+- **Fix the fixture first** — put external constraints in the brief so the criterion becomes testable
+  — and only then decide whether another paid run is worth it.
+
+What is *not* on the table is another n=1 against the current storefront brief. It cannot distinguish
+"the field does not get written" from "there was nothing to write", and that ambiguity is what this
+correction exposed. **The call is still Richard's, not the next session's.**

@@ -127,8 +127,14 @@ the rest.
    (56.6%) *in the same run, from the same schema*. So **this criterion is not met**, and the phase
    does not get to claim it. Declaring the field was necessary and is not sufficient. The write-up,
    the reproduction and the three checks that prove it is a real zero rather than a broken rig are in
-   [`measurements/LEG-001-COMMENT-REMEASUREMENT.md`](measurements/LEG-001-COMMENT-REMEASUREMENT.md);
-   the untried lead is LEG-001 §5's doctrine half, which never shipped.
+   [`measurements/LEG-001-COMMENT-REMEASUREMENT.md`](measurements/LEG-001-COMMENT-REMEASUREMENT.md).
+
+   🔴 **And the "untried lead" this criterion used to name — LEG-001 §5's doctrine half — was not
+   untried.** It shipped in `a4793530`, 52 minutes before the run, and reached the model verbatim in
+   the `get_project_info` result of **turn 1**. The zero was measured with the vocabulary row, the
+   field description *and* the doctrine prose all in place. There is no cheap documentation move left;
+   the live question is whether the storefront fixture — a brief stating almost no external
+   constraints — can measure this field at all. See LEG-001 register **L13/L14**.
 3. A wire change in `git diff` on the command line names both endpoints.
 4. Duplicating a component preserves every label and comment.
 5. A décret-style citation has an obvious home in the property panel, and it exports (EXP-006).

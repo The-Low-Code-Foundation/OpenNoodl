@@ -95,22 +95,47 @@ two.
 
 **Do not re-run this and hope.** One more frontier model at $3.62 buys another n=1.
 
-The concrete, untested lead is that **LEG-001 shipped only half of itself**. §5 of the task specifies
-a doctrine half — one or two sentences in `AUTHORING_TRAPS` and the doctrine markdown on *when a
-comment is worth writing*, matched to §4's three cases. **It is not there**: no mention of comments in
-`AUTHORING_TRAPS` or anywhere in `dev-docs/best-practices/`. The task's own ordering rule was
-*structure > gate > documentation*, with doctrine following rather than replacing the vocabulary row.
-The structural half is in and measured at zero; **the documentation half has never been tried**, and
-it is cheap.
+> 🔴 **CORRECTION, 2026-08-12.** The paragraph this section originally carried — *"the concrete,
+> untested lead is that LEG-001 shipped only half of itself… the documentation half has never been
+> tried, and it is cheap"* — **was wrong**, and it was propagated into the phase handover as the
+> recommended next move. **The doctrine half shipped in `a4793530` (2026-08-11 23:20:21 +0200)**, in
+> `authoring.ts`'s AUTHORING CONTRACT and as `DECOMPOSITION_DOCTRINE_MD`'s **"Say why on the node"**
+> bullet. The grep behind the claim searched `AUTHORING_TRAPS` and `dev-docs/best-practices/` — the
+> two surfaces that commit **deliberately** left alone — and read their emptiness as the whole story.
 
-Two further readings worth holding, neither yet evidence:
+**The doctrine was in front of the model, at turn 1.** This run began `2026-08-11T22:12:31Z`, **52
+minutes after** that commit, and the bullet appears verbatim in the transcript at record 3 — the
+`get_project_info` result of the **first turn**, the pushed channel LAS-007 measured as the one that
+works:
 
-- **The model never engaged with the field at all** — not once in 39 turns. This does not look like a
-  judgement that no node warranted a comment; it looks like a field that was never read, in a
-  29,477-character schema. If so, the lever is salience (doctrine, an example, the `get_example`
-  payloads), not wording.
-- **`label` and `comment` are not the same kind of ask.** A label names what is in front of you; a
-  comment requires knowing a constraint the brief never stated. The storefront brief contains almost
-  no décret-style rules, so a model with nothing to say may be *right* to say nothing. ⚠️ If that is
-  true, this fixture cannot measure the field, and the honest next step is a brief that **contains**
-  external constraints — which would also make the criterion testable rather than aspirational.
+> **Say why on the node.** A node's `label` says what it is for; its `comment` says why it is the way
+> it is. Write one where the next reader would otherwise change something and break it…
+
+So the zero was measured with **every lever this task specified already pulled**: the vocabulary row,
+the one-sentence field description on the doors the model actually used, *and* the doctrine prose
+delivered unasked before it wrote a single node. **There is no cheap untried documentation move.**
+
+⚠️ The two surfaces that really are untouched are `AUTHORING_TRAPS` — excluded on purpose, because
+every line there is a *silent failure this project measured* and a missing comment fails nothing — and
+`dev-docs/best-practices/`, which is the **pull** channel LAS-007 measured at **zero** retrievals
+across 42 turns. Shipping prose there is predictably inert for this measurement, so it cannot be the
+next experiment.
+
+That leaves the two readings below — and the correction above **re-ranks them**, because one of them
+was quietly relying on the doctrine being absent:
+
+- 🔴 **`label` and `comment` are not the same kind of ask — now the leading hypothesis.** A label
+  names what is in front of you; a comment requires knowing a constraint the brief never stated. The
+  storefront brief contains almost no décret-style rules, so a model with nothing to say may be
+  *right* to say nothing — and this run's silence is then correct behaviour, not a failure to comply.
+  ⚠️ If so, **this fixture cannot measure the field at all**, and every number taken against it is
+  uninformative. The honest next step is a brief that **contains** external constraints — a
+  regulatory threshold, a client's contractual limit, a rule the graph cannot state — which would
+  also make the criterion testable rather than aspirational. **Do this before spending again.**
+- ⚠️ **Salience — weakened, but not dead.** The word "comment" appears in none of the 39 assistant
+  turns, which still looks like a field that was never *read* in a 29,477-character schema. But the
+  original form of this reading proposed doctrine as the lever, and doctrine was already there, at
+  turn 1, unasked. So if salience is the answer it is not prose that fixes it: what remains untried is
+  a **worked example** carrying a comment (the `get_example` payloads), i.e. showing rather than
+  telling. Cheaper than a paid run, and it does not collide with the fixture problem above — but note
+  that it *also* cannot be measured on a brief with no constraints in it.

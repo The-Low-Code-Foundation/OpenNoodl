@@ -86,7 +86,7 @@ the other, and a 1,003-to-1 result. LEG-001 is that arm being closed.
 | Task | File | One line | State |
 |---|---|---|---|
 | **LEG-006** ⭐ | [LEG-006-THE-DESCRIPTION-THAT-IS-DELETED.md](LEG-006-THE-DESCRIPTION-THAT-IS-DELETED.md) | **live data loss** — a component `description` is authorable, and the next editor save deletes it | ✅ **in `cline-dev`** |
-| **LEG-001** ⭐ | [LEG-001-THE-ONLY-FIELD-STILL-EMPTY.md](LEG-001-THE-ONLY-FIELD-STILL-EMPTY.md) | **the flagship** — `metadata.comment` into the authoring vocabulary, the one field the editor cannot express and nobody has ever written | ✅ **in `cline-dev`** — 🔴 live-model re-measurement NOT run |
+| **LEG-001** ⭐ | [LEG-001-THE-ONLY-FIELD-STILL-EMPTY.md](LEG-001-THE-ONLY-FIELD-STILL-EMPTY.md) | **the flagship** — `metadata.comment` into the authoring vocabulary, the one field the editor cannot express and nobody has ever written | ✅ **in `cline-dev`** — 🔴 re-measurement **run 2026-08-12: 0 of 182**. Structure *and* doctrine shipped; the claim is refuted as stated |
 | LEG-005 | [LEG-005-WHERE-THE-WHY-LIVES.md](LEG-005-WHERE-THE-WHY-LIVES.md) | a comment row in the property panel — today the only way in is a context-menu item you have to know about | ✅ **in `cline-dev`** — 🔴 never painted; drive in [notes §4](notes/leg-005-lane-notes.md) |
 | LEG-004 | [LEG-004-FOUR-LINES-AND-A-TEXTCONV.md](LEG-004-FOUR-LINES-AND-A-TEXTCONV.md) | `.gitattributes` already exists and already names the four files; add one word to each and a textconv driver | ✅ **in `cline-dev`** |
 | LEG-007 | [LEG-007-A-SPEC-FOR-A-FIX-NOBODY-MADE.md](LEG-007-A-SPEC-FOR-A-FIX-NOBODY-MADE.md) | paste already carries labels and comments. A regression spec, not a fix | ✅ **in `cline-dev`** |
@@ -105,10 +105,17 @@ caught two seams in the same family: `ComponentModel` aliased its bag in both di
 `ProjectModel.duplicateComponent` was dropping the `description` LEG-006 had shipped four commits
 earlier.
 
-🔴 **Built is not closed.** Two measurements remain and one exit criterion has to be struck rather
-than met — see [NEXT-SESSION-PROMPT.md](NEXT-SESSION-PROMPT.md) §2, §3 and §4. In short: **LEG-005
-has never been painted**, **LEG-001's live-model re-measurement has not been run** (it costs money;
-ask Richard), and **README exit criterion 2 compares against a hand-built fixture and is void**.
+🔴 ~~**Built is not closed.** Two measurements remain…~~ ✅ **Both measurements were taken on
+2026-08-12.** LEG-005 was painted and passes **8/8**; LEG-001's live-model re-measurement ran and came
+back **0 of 182 nodes** against `label`'s 103 (56.6%) *in the same run*; README exit criterion 2 was
+struck and replaced, and the replacement is **measured as failed**.
+
+🔴 **And the follow-up that handover recommended is void**: LEG-001 §5's doctrine half had *already*
+shipped in `a4793530` and was in front of the model at **turn 1** of that run, so the zero was
+measured with the vocabulary row, the field description and the doctrine prose all in place. No cheap
+documentation move remains — the live question is whether a brief stating no external constraints can
+measure the field at all. See LEG-001 register **L13/L14** and
+[NEXT-SESSION-PROMPT.md](NEXT-SESSION-PROMPT.md) §2.
 
 **Revised total: ~2 weeks**, against the README's ~4. Every day of the difference is work that was
 already done by SUB-007, CAN-004 and AAQ-005 and never struck off.
