@@ -17,11 +17,41 @@ now signed, and the one thing this phase has never had is a quiet machine.**
 | **FUN-004, 005, 006, 008** | 📋 open | — |
 | **FUN-009 §5 (F35)** | 📋 **new task**, opened by the fix | — |
 
-🔴 **`test:ci` has not completed on this tree in two sessions.** Three attempts on 2026-08-12 evening
-died to contention: one OOM-killed mid-build (exit 137), one self-terminated at 900s **with no
-`Jasmine:` line, having graded nothing**. Two sibling sessions were running `test:ci` on this same
-checkout throughout. **Run it first, when the checkout is quiet, and compare failure NAMES against
-the baseline six — not the count.**
+## 1a. 🔴 `test:ci` may not be able to finish on this tree — check this before trusting a run
+
+**Three attempts on 2026-08-12 evening, zero completions.** Not simply contention, which is what I
+assumed after the first one:
+
+| Attempt | Outcome | Specs started |
+|---|---|---|
+| 1 | timed out at 900s, **no `Jasmine:` line** | 2424 |
+| 2 | webpack **OOM-killed**, exit 137 — never built | 0 |
+| 3 | timed out at 900s, **no `Jasmine:` line** | 1472 |
+
+⚠️ **A run that ends without a `Jasmine:` line graded nothing.** Do not read exit 1 as failures, and
+do not compare a count from such a run against anything.
+
+🔴 **Both timeouts flooded the same guard**: *"Warning: we have more that 10000 listeners on this
+model"* (`src/editor/src/utils/model.ts:106`, `src/shared/model.js:18`) — **2569 times** in attempt
+3, first firing at spec ~1392, inside the AI-authoring suites (`tests/ai/authoring-staging.test.ts`
+and neighbours). The two runs stalled in *different* suites, so it is **order-dependent** under the
+random seed, but the listener flood is common to both.
+
+⚠️ **Read the guard correctly before chasing it.** It fires on *every subsequent* `on()` once the
+count passes 10000, so thousands of warnings mean **accumulation across the whole run** — listeners
+never released between specs on a shared model — not one runaway spec. That is consistent with a
+long-standing leak that has only now crossed the threshold as the suite grew.
+
+**What is not known, and should not be guessed:** whether the cause is the added phase-59 specs, the
+leak crossing its threshold, machine load, or some combination. It **completed earlier the same day**
+at 2692 specs / 6 failures / seed 64762, on a tree predating the phase-59 merge.
+
+**None of it is attributable to FUN-009's change** — a port type field, a pure function, copy and
+specs touch no model listener.
+
+**So:** run `test:ci` on a genuinely quiet machine, and if it times out again, treat *that* as the
+finding and investigate the listener accumulation rather than re-running a fourth time. Compare
+failure **NAMES** against the baseline six, never the count.
 
 ---
 
