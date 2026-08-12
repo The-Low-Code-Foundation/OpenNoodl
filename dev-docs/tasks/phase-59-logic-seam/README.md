@@ -154,6 +154,17 @@ hour. Three package names in the sweep did not even exist as written.
 
 ## The exit test
 
+> **Status, 2026-08-12** — see [NEXT-SESSION-2026-08-12e.md](NEXT-SESSION-2026-08-12e.md).
+> Items **1, 2 and 4 are built, merged and driven**. Item **3** (LGC-002) is built and wired but
+> **not driven** — it needs a running preview, because the acceptance is *live* values. Item **5**
+> is the phase's remaining gate: LGC-007's engine has always existed, its **user-reachable surface
+> did not**.
+>
+> 🔴 **This test needs a human tester, and the A/B below needs two groups of them.** No session can
+> close it. The achievable target is *every item attemptable, with the code behind it driven* —
+> which is not the same claim, and must not be reported as one.
+
+
 A person who has never opened NodeGX is told only *"make the total equal price × quantity, rounded
 up"*, and with nobody explaining components, ports or `Define input`:
 
