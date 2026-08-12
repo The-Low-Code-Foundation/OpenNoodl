@@ -22,6 +22,18 @@ export { lintMessages } from './utils/esLintDiagnostics';
 export type { LintMessage } from './utils/esLintDiagnostics';
 export { summariseDiff } from './utils/diffSummary';
 export type { DiffSummary } from './utils/diffSummary';
+// FUN-001: the notation, written down once. Every surface that puts `Inputs.` /
+// `Outputs.` in front of a beginner — the seed, the fix-it, the rail, the bar —
+// imports from here rather than concatenating its own.
+export {
+  NOTATION_RULES,
+  SEED_FUNCTION_BODY,
+  canExpressPort,
+  readExpression,
+  stripPortPrefix,
+  writeExpression
+} from './utils/notation';
+export type { NotationMode, PortKind } from './utils/notation';
 // FH-019: what the editor tells the code editor about the open project. The
 // editor writes it once at boot (`models/CodeAuthoringContext`); every code
 // editor in the app reads it, which is what keeps the four call sites identical
