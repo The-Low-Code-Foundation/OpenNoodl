@@ -52,8 +52,57 @@ const WINDOWS = process.platform === 'win32';
 /**
  * Tool names that identify a dev-stack process. Matched only in combination with
  * the repo path — `webpack` alone would match half the machine.
+ *
+ * `scripts/devtools/` is matched as a directory rather than by naming each helper,
+ * so a helper added later is swept without anyone remembering to come back here.
+ * The three that must survive a sweep — the watchdog, this module, `stop-dev` —
+ * are excluded by name in `findDevProcesses` *before* this test runs.
+ *
+ * ⚠️ **Why the directory was added, 2026-08-12.** `render-from-disk.js` holds a
+ * port and runs until killed. One was found alive after **22 hours**, invisible to
+ * `dev:stop`, which reported "No NodeGX dev processes are running" while it ran:
+ * its command line contains the repo path, so rule 1's first half passed, but no
+ * name in this pattern matched it. Every long-running helper here had the same
+ * hole.
  */
-const DEV_TOOL = /webpack|lerna|electron[/\\]dist|nodegx-backend|start-electron-dev|scripts[/\\]start\.ts|dev-debug\.js/;
+const DEV_TOOL = /webpack|lerna|electron[/\\]dist|nodegx-backend|start-electron-dev|scripts[/\\]start\.ts|dev-debug\.js|scripts[/\\]devtools[/\\]/;
+
+/**
+ * The per-checkout agent scratchpad, e.g.
+ * `/private/tmp/claude-501/-Users-richardosborne-vscode-projects-OpenNoodl/`.
+ *
+ * Session helpers (`drive.mjs`, one-off probes) are launched from here with a
+ * *project* path as their argument, so their command lines never contain the repo
+ * path and rule 1 cannot see them at all. Two were found alive after **four
+ * days**.
+ *
+ * The directory name encodes the checkout, so matching on it keeps the sweep
+ * checkout-scoped exactly as rule 1 intends: `/` and `_` both become `-`.
+ *
+ * 🔴 **Never a seed by default.** A sibling agent session's live drive lives here
+ * too, and killing it mid-run is silent and unattributable. Opt in with
+ * `includeScratchpad`, and prefer `--stale` — an age floor reaps the four-day
+ * corpse without touching the drive someone started ten minutes ago.
+ */
+const SESSION_SCRATCH = `${ROOT.replace(/[/\\_]/g, '-')}/`;
+
+/**
+ * Is this process *running a script from* the session scratchpad, as opposed to
+ * merely mentioning the path?
+ *
+ * 🔴 **The distinction is not pedantry, and it was found by running the sweep.**
+ * A plain substring test matched the shell of a live `test:ci` — whose only
+ * connection to the scratchpad was `> …/testci-39386.log` in a redirect. `--all`
+ * would have killed the run it was reporting on. So the token carrying the
+ * scratchpad path must be the *script*: it has to end in a JS extension, which a
+ * `.log`, a `.fifo` or an output directory never does.
+ */
+function runsScriptFromScratchpad(command) {
+  if (!command.includes(SESSION_SCRATCH)) return false;
+  return command
+    .split(/\s+/)
+    .some((token) => token.includes(SESSION_SCRATCH) && /\.(mjs|cjs|js)$/.test(token));
+}
 
 /**
  * The launcher wrappers, which sit *above* the seeds rather than below them.
@@ -72,11 +121,27 @@ const DEV_LAUNCHER = /scripts[/\\]start\.ts|devtools[/\\]dev-debug\.js|run dev(:
 // ---------------------------------------------------------------------------
 
 /**
- * The live process table as a Map<pid, {pid, ppid, command}>.
+ * `ps` elapsed time — `[[dd-]hh:]mm:ss` — as seconds.
+ *
+ * Returns 0 for anything unparseable, which is the safe direction: an unknown age
+ * reads as *brand new*, so a `--stale` floor skips it rather than killing it.
+ */
+function parseEtime(etime) {
+  const m = /^(?:(\d+)-)?(?:(\d+):)?(\d+):(\d+)$/.exec(String(etime).trim());
+  if (!m) return 0;
+  const [, days, hours, minutes, seconds] = m;
+  return Number(days || 0) * 86400 + Number(hours || 0) * 3600 + Number(minutes) * 60 + Number(seconds);
+}
+
+/**
+ * The live process table as a Map<pid, {pid, ppid, ageSeconds, command}>.
  *
  * Taken in one `ps` call rather than one per pid: a sweep walks it several times
  * (seeds, then descendants, then survivors after SIGTERM) and a stale table
  * between those passes would miss processes that were only just spawned.
+ *
+ * `etime` is requested ahead of `command` because `command` is the only field that
+ * can contain spaces, so it must stay last for the line to be splittable at all.
  */
 function snapshot() {
   const table = new Map();
@@ -84,7 +149,7 @@ function snapshot() {
 
   let out;
   try {
-    out = execFileSync('/bin/ps', ['-axo', 'pid=,ppid=,command='], {
+    out = execFileSync('/bin/ps', ['-axo', 'pid=,ppid=,etime=,command='], {
       maxBuffer: 16 * 1024 * 1024,
       stdio: ['ignore', 'pipe', 'ignore']
     }).toString();
@@ -93,9 +158,14 @@ function snapshot() {
   }
 
   for (const line of out.split('\n')) {
-    const m = /^\s*(\d+)\s+(\d+)\s+(.*)$/.exec(line);
+    const m = /^\s*(\d+)\s+(\d+)\s+(\S+)\s+(.*)$/.exec(line);
     if (!m) continue;
-    table.set(Number(m[1]), { pid: Number(m[1]), ppid: Number(m[2]), command: m[3] });
+    table.set(Number(m[1]), {
+      pid: Number(m[1]),
+      ppid: Number(m[2]),
+      ageSeconds: parseEtime(m[3]),
+      command: m[4]
+    });
   }
   return table;
 }
@@ -266,7 +336,7 @@ function sleepSync(seconds) {
  * killed — a sweep that prints nothing is indistinguishable from a sweep that
  * silently did the wrong thing.
  */
-function findDevProcesses({ protectAncestors = true } = {}) {
+function findDevProcesses({ protectAncestors = true, includeScratchpad = false, minAgeSeconds = 0 } = {}) {
   const table = snapshot();
   if (table.size === 0) return [];
 
@@ -275,12 +345,25 @@ function findDevProcesses({ protectAncestors = true } = {}) {
   const seeds = [];
   for (const proc of table.values()) {
     if (offLimits.has(proc.pid)) continue;
-    // Rule 1: repo path AND a known tool. The watchdog is excluded by name — it
-    // is the one process that must outlive the sweep it is running.
-    if (!proc.command.includes(ROOT)) continue;
     if (proc.command.includes('dev-watchdog.js')) continue;
     if (proc.command.includes('dev-processes.js') || proc.command.includes('stop-dev.js')) continue;
-    if (!DEV_TOOL.test(proc.command)) continue;
+
+    // Rule 1: repo path AND a known tool. The watchdog is excluded by name — it
+    // is the one process that must outlive the sweep it is running.
+    const isDevStack = proc.command.includes(ROOT) && DEV_TOOL.test(proc.command);
+
+    // Rule 1b: a session helper launched from this checkout's agent scratchpad.
+    // Same checkout-scoping, different evidence — the path is in the *scratchpad*
+    // name rather than the command's arguments. Off by default; see SESSION_SCRATCH.
+    const isSessionHelper = includeScratchpad && runsScriptFromScratchpad(proc.command);
+
+    if (!isDevStack && !isSessionHelper) continue;
+
+    // An age floor is what separates a four-day corpse from a sibling's live
+    // drive. Applied to seeds only: a young child of an old seed still belongs to
+    // the old stack and goes with it.
+    if (minAgeSeconds > 0 && proc.ageSeconds < minAgeSeconds) continue;
+
     seeds.push(proc.pid);
   }
 
@@ -288,6 +371,9 @@ function findDevProcesses({ protectAncestors = true } = {}) {
   // nothing away: `sh -c npx lerna exec --scope ...` names no path at all.
   for (const pid of readPidFile().groups) {
     if (offLimits.has(pid) || !table.has(pid)) continue;
+    // The age floor applies here too. Without it a `--stale 24` sweep, whose whole
+    // point is to spare live work, would kill a dev stack started a minute ago.
+    if (minAgeSeconds > 0 && table.get(pid).ageSeconds < minAgeSeconds) continue;
     seeds.push(pid);
   }
 
@@ -312,7 +398,7 @@ function findDevProcesses({ protectAncestors = true } = {}) {
  *
  * @returns {{killed: {pid: number, command: string}[], dryRun: boolean}}
  */
-function sweep({ dryRun = false, onLog, protectAncestors = true } = {}) {
+function sweep({ dryRun = false, onLog, protectAncestors = true, includeScratchpad = false, minAgeSeconds = 0 } = {}) {
   const log = onLog || (() => {});
 
   if (WINDOWS) {
@@ -321,7 +407,7 @@ function sweep({ dryRun = false, onLog, protectAncestors = true } = {}) {
     return { killed: [], dryRun };
   }
 
-  const targets = findDevProcesses({ protectAncestors });
+  const targets = findDevProcesses({ protectAncestors, includeScratchpad, minAgeSeconds });
   const record = readPidFile();
 
   if (targets.length === 0 && record.groups.length === 0) {
