@@ -2,6 +2,40 @@
 
 **Status:** 📋 open · **Tier 2** · ~half a day · no dependencies
 
+> ## 🔴 The outline was white in the light theme — found and fixed 2026-08-13, lane D
+>
+> The module's own sentence describing the mark is *"a dark casing underneath, the accent on top"*.
+> The casing was `--theme-color-bg-1`, which is `#12161b` in the dark theme and **`#ffffff`** in the
+> light one. So in half the app the casing was not dark, and the outline's outer edge measured:
+>
+> | casing | worst hue | My Blocks hue 55 | App Config hue 90 | bar |
+> |---|---|---|---|---|
+> | `--theme-color-bg-1`, light (`#ffffff`) | **2.58:1** (hue 60) | **2.72:1** | 2.82:1 | 3.0 🔴 |
+> | `--theme-color-bg-1`, dark (`#12161b`) | 3.01:1 (hue 240) | 6.67:1 | 6.44:1 | 3.0 ✅ (barely) |
+> | `#0b0e12`, both themes — **now** | **3.21:1** (hue 240) | **7.10:1** | **6.86:1** | 3.0 ✅ |
+>
+> 🔴 **2.58:1 is the same number VFN-013 measured**, one token over. This register keeps finding one
+> failure in different costumes: *a theme token painted onto a Blockly surface*. A block body is on
+> Blockly's hue scale and is theme-independent by design, so a mark drawn on one has no theme to
+> follow — the standing rule for anything painted on a wire or a block. And the hue it failed worst
+> against is **55, the My Blocks hue**: the blocks a save outline is most often wrapped around.
+>
+> **Changed:** `MyBlocksSaveOutline.ts` — `OUTLINE_TOKENS` now carries **no `css` on either stroke**,
+> using VFN-013's own two values (`#0b0e12` casing, `#4da3ff` accent, 7.37:1 between them), so the
+> two marks that share a block share a palette. `OUTLINE_TOKENS` is exported for the gate.
+> **Gated:** `tests-unit/vfn-006/save-outline-contrast.spec.ts` (9 cases), sweeping the whole hue
+> circle in both themes. ⚠️ It grades the **resolved** colour, not `spec.fallback` — the broken
+> casing's fallback was dark, so a spec that graded the fallback would have stayed green through the
+> entire defect.
+>
+> **Negative controls, watched red:** restoring `css: '--theme-color-bg-1'` failed three of the nine
+> (the no-token assertion, the light-theme circle at 2.58, and the light-theme named hues); and the
+> sweep is shown to tell `#000000` from `#ffffff` and to give different answers for different hues.
+>
+> 🔴 **Owed to the drive:** that the outline is *painted* at all — the clone landing inside the
+> block's `<g>`, `vector-effect` holding both widths under zoom, and nothing painting over it. A
+> ratio is not a screenshot.
+
 ## The report
 
 > *"The 'Save as a block' right click option is confusing. It's not clear which blocks are going to

@@ -133,7 +133,18 @@ describe('VFN-011 Part 2 — the sentence the bench adds', () => {
 
   it('names the button it is talking about, rather than assuming its label', () => {
     expect(benchHint('▶ Run')).toContain('▶ Run');
-    expect(benchHint('▶ Run')).toContain('with the app stopped');
+    // The two things the hint exists to teach: the values appear *here*, and the app does not have
+    // to be running. Both survived the trim that `strip-copy.spec.ts` gates — and they are the
+    // half the ellipsis was eating, which is why they are asserted rather than left to the copy.
+    expect(benchHint('▶ Run')).toContain('here');
+    expect(benchHint('▶ Run')).toContain('app stopped');
+  });
+
+  it('🔴 does not tell the builder to look below the note for a button beside it', () => {
+    // The word the trim removed was also a false direction: `buildStrip` appends the Run button
+    // *first*, so it is on the same row as this note and to its left. Asserted rather than left to
+    // taste, because "below" is the natural thing to write about a strip along the bottom edge.
+    expect(benchHint('▶ Run')).not.toContain('below');
   });
 });
 
@@ -183,7 +194,12 @@ describe('VFN-011 Part 1 — 🔴 NEGATIVE CONTROL: the line this replaced was s
 
     const now = STATUS_COPY[reason({ status: 'attached', runs: 0 })];
     expect(now).not.toBe('');
-    expect(now).toContain('Nothing has run since you opened this editor');
+    // ⚠️ The *meaning*, not the wording. The sentence was later trimmed to fit the strip
+    // (`strip-copy.spec.ts`), and the two things it has to carry are that the editor is watching
+    // from now on — which is why the run before it opened recorded nothing — and what to do next.
+    // The bare fact that nothing has run is the `No runs yet` label's job, one element to the left.
+    expect(now).toContain('Watching');
+    expect(now).toContain('trigger it in the app');
   });
 
   it('the stale-program case had no sentence at all to reach for', () => {

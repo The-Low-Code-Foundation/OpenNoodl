@@ -118,19 +118,43 @@ export type BlockStripReason =
  * already imported it has to move, and it is graded in `tests-unit/vfn-011/` beside the function
  * that chooses between them — which is the only way the choice and the copy can be checked against
  * each other at all.
+ *
+ * ## 🔴 Every sentence here has a width budget, and it is a gate
+ *
+ * The note is **one `text-overflow: ellipsis` line** sharing a flex row with the Run button and the
+ * `No runs yet` label ({@link module:BlocklyEditor.buildStrip}), so a sentence that is too long is
+ * not merely long — it is *cut*, and it is cut at the right-hand end, which is where the sentence
+ * keeps its verb and its instruction. VFN-011's own NOTES filed this as owed ("it may well be
+ * ellipsised into uselessness"); the drive confirmed it, at a window of ~875 px:
+ *
+ * > *"…Press ▶ Run below to work them out here, with the app stop…"*
+ *
+ * — the half that teaches the bench, gone. So these sentences are sized against the **narrowest
+ * window the geometry allows** (`LOGIC_OVERLAY_MIN_WIDTH`, 640 px), not against whatever width the
+ * last drive happened to use, and `tests-unit/vfn-011/strip-copy.spec.ts` measures each one in real
+ * glyph advances and fails when it will not fit.
+ *
+ * ⚠️ **The longest note is not the one that was reported.** `attached-idle` was the sentence in the
+ * report, but `no-probes` and `no-node` were both longer still and would have kept failing after a
+ * fix aimed only at the reported one. Every reason is budgeted, including the ones nobody has seen.
  */
 export const STATUS_COPY: Record<BlockStripReason, string> = {
   waiting: 'Waiting for the app to run these blocks…',
   attached: '',
-  'no-preview': 'Run the preview to see what these blocks work out.',
-  'not-in-preview': 'The preview is running, but this Visual Function is not on screen in it right now.',
+  // ⚠️ "Start", not "Run": this sentence is very often followed by `benchHint`'s "Or press ▶ Run",
+  // and two different Runs in one line is a sentence that has to be read twice.
+  'no-preview': 'Start the preview to see what these blocks work out.',
+  'not-in-preview': 'The preview is running, but not this Visual Function.',
   'no-connection': 'The editor has no connection to a running app.',
-  'attached-idle':
-    'Watching this node. Nothing has run since you opened this editor — trigger it in the app to see values.',
-  'no-probes': 'These blocks were generated before value tracing; make any edit to bring them up to date.',
+  // The label immediately to the left of this note already says `No runs yet`, so restating it
+  // spends the budget on the one fact the strip is not short of. What the reason adds is that the
+  // editor is armed **now** — which is why a run from before it opened recorded nothing — and what
+  // to do about it.
+  'attached-idle': 'Watching — trigger it in the app to see values.',
+  'no-probes': 'Made before value tracing; make any edit to update.',
   'no-node':
-    'These are a saved block’s own blocks. There is no node behind them, so there is nothing to run ' +
-    'and no live values to show — place the block in a Visual Function to watch it work.'
+    'A saved block’s own blocks, with no node behind them — ' +
+    'place the block in a Visual Function to see it run.'
 };
 
 /**
@@ -140,9 +164,18 @@ export const STATUS_COPY: Record<BlockStripReason, string> = {
  * whether a Run button exists, and that is decided per mount. A block editor attached with no bench
  * must not be told to press a button it does not have — the failure LGC-002 names about its menu
  * item, arriving as copy instead of as a control.
+ *
+ * 🔴 **"below" was both too long and wrong.** The Run button is the *first* child of the strip
+ * (`buildStrip` appends it before the label), so it sits on the same row as this note and to its
+ * **left**. A builder who followed the word would have looked underneath a control that is beside
+ * them. Trimming the sentence to fit removed a false direction as well as six characters.
+ *
+ * "Or" rather than "Press", because this is appended to a sentence that has already offered
+ * something — waiting for the app, starting the preview, triggering the node — and the bench is the
+ * alternative to it, not a restatement.
  */
 export function benchHint(runLabel: string): string {
-  return ' Press ' + runLabel + ' below to work them out here, with the app stopped.';
+  return ' Or press ' + runLabel + ' to work them out here, app stopped.';
 }
 
 /**

@@ -95,7 +95,11 @@ describe('VFN-002 — the block field editor keeps the box Blockly measured', ()
 
     // ⚠️ `box-shadow` and not `outline`: Blockly's base rule sets `outline: none` on this element
     // and means it. A shadow does not participate in the box model, which is the whole point.
-    expect(valueOf(declarations, 'box-shadow')).toContain('--theme-color-border-default');
+    //
+    // 🔴 `border-control`, not `border-default`. The ratio is measured in
+    // `field-editor-contrast.spec.ts`; the short version is that `border-default` against this
+    // rule's own `bg-3` fill is 1.01:1, which is a ring the same colour as the thing it rings.
+    expect(valueOf(declarations, 'box-shadow')).toContain('--theme-color-border-control');
     expect(properties).not.toContain('outline');
   });
 

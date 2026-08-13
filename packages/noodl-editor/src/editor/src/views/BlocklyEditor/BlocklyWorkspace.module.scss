@@ -408,6 +408,20 @@
    * precisely so the editor and the measurement agree. Overriding the family here broke that
    * agreement by hand: a wider font overflows a box sized for a narrower one even with the
    * padding gone. Letting Blockly's rule win makes them the same font by construction.
+   *
+   * 🔴 **The ring is `--theme-color-border-control`, and the token it replaced was invisible.**
+   * Criterion 3 asks for "a visible border", and it had never been measured. `border-default` is
+   * the *panel-edge* tone: against this rule's own `bg-3` fill it is **1.01:1 in the dark theme
+   * and 1.11:1 in the light one** — a ring painted the same colour as the surface it delimits.
+   * `border-control` is the token defined for exactly this ("the lightest tone that still clears
+   * 3:1 on bg-1, bg-2 and bg-3", `colors.css`) and measures **3.17:1 / 3.16:1**, which is WCAG
+   * 1.4.11's floor for a control boundary. Gated in `tests-unit/vfn-002/field-editor-contrast.spec.ts`.
+   *
+   * ⚠️ Note which side is measured. The ring's *outer* edge sits over the Blockly block, whose
+   * body is on the theme-independent hue scale, and no token clears 3:1 against all of those —
+   * VFN-013 hit the same wall and answered it by taking the theme out of the badge entirely. Here
+   * the inner edge is the one that carries the boundary, because the field's `bg-3` fill is a
+   * large flat area and the ring reads against it.
    */
   .blocklyWidgetDiv input,
   .blocklyHtmlInput {
@@ -416,7 +430,7 @@
     border: none !important;
     padding: 0 !important;
     border-radius: 4px !important;
-    box-shadow: 0 0 0 1px var(--theme-color-border-default);
+    box-shadow: 0 0 0 1px var(--theme-color-border-control);
   }
 
   /* Dropdown menus - DARK BACKGROUND with WHITE TEXT (matches Noodl theme) */
