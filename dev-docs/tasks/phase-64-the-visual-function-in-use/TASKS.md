@@ -3,21 +3,22 @@
 **Created:** 2026-08-13, out of [README.md](README.md) and eleven reports from one session of
 building with the floating Logic Builder.
 
-> **Status, 2026-08-13 (later)** — tier 1 (VFN-001, 002, 003) is **built, merged in `0067304d`, and
-> now DRIVEN**. One drive session closed tier 1's owed criteria and answered VFN-005's and VFN-007's
-> reproduce-first steps. Two results worth reading before picking anything up:
+>  **Status, 2026-08-13 (end of day)** — tier 1 is **built and driven**; VFN-004, 007, 008, 011 and
+> 012 are **built, merged and NOT driven**. Gates on `cline-dev`: **165 suites / 2453 passing**,
+> `tsc` clean, `cloud-library:check` green.
 >
-> - 🔴 **VFN-007 is not a contrast bug.** `BaseDialog` renders its children twice, so four radios
->   share one native `name="myblocks-shelf"` group and the browser gives the check to the invisible
->   measuring copy. The `color-scheme` hypothesis is ruled out as the cause; the proposed fix
->   (themed option cards) still works, for a better reason.
-> - ✅ **VFN-005 is occlusion**, decisively: every blocked point is inside the window rect, every
->   reachable one outside it. No pointer-events hunt.
+> 🔴 **Start at [NEXT-SESSION-2026-08-13-C.md](NEXT-SESSION-2026-08-13-C.md).** Its first items are
+> Richard's own three asks from driving the merged build — VFN-013 (run values drawn on top of the
+> block they belong inside), VFN-014 (*View Code* shows the instrumented build), and VFN-009/010
+> (the saved-blocks manager, now unblocked by VFN-008).
 >
-> 🔴 **One instrument trap now applies to every dialog drive in this phase:** `BaseDialog`'s
-> zero-height `MeasuringContainer` duplicates the whole dialog body, so `innerText` double-counts
-> and every button has a phantom twin *above* the real one. Filter
-> `:not([class*=MeasuringContainer])` and hit-test with `elementFromPoint` before clicking.
+> 🔴 **Five merged tasks have never been run.** That is the position tier 1 was in this morning,
+> and driving it found one task's *stated instrument* was wrong and VFN-007's real cause was a
+> fifth candidate nobody had considered. Bundle the drive; live QA is serial across this machine.
+>
+> 🔴 **Two defects filed and unfixed:** a placed saved block **publishes no ports** (measured), and
+> `BaseDialog`'s measuring copy is **tab-reachable**, so every focusable element in every dialog is
+> in the tab order twice. Both in -C.
 
 **Every claim about existing code in these files was read in source**, and every claim that was
 *not* pinned says so and carries a reproduce-first instruction. Six of the eleven reports have a
