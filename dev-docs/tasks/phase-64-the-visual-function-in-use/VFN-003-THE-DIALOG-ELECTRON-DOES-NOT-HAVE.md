@@ -1,6 +1,58 @@
 # VFN-003 — The dialog Electron does not have
 
-**Status:** 🔨 **BUILT 2026-08-13, not driven** · **Tier 1, ship-blocking** · no dependencies
+**Status:** ✅ **BUILT AND DRIVEN 2026-08-13 — 1, 2, 3, 5 pass; 4 passes at the seam** · **Tier 1**
+
+> ## ✅ Driven 2026-08-13. The silence is gone, and the control proves it was there.
+>
+> ### The negative control first, because it is what makes the rest mean anything
+>
+> Blockly's documented default was re-registered for one click —
+> `setPrompt((m, d, cb) => cb(window.prompt(m, d)))` — and *Create variable…* was clicked:
+>
+> ```
+> dialogs: []        variables before=["score","item"]  after=["score","item"]
+> ```
+>
+> ✅ **Nothing opened and nothing was created.** That is the reported bug, reproduced on demand, and
+> it establishes that the dialog seen below is ours rather than something that was always there.
+>
+> ### Criterion 1 ✅
+> One click → **exactly one** dialog card. Typed `score`, Enter: variable created, and the **flyout's
+> own workspace** (not the main one) then contained `["variables_set", "math_change",
+> "variables_get", "math_number"]` — both `get` and `set`.
+>
+> ### Criterion 2 ✅
+> Cancel and Escape each created nothing, and **no empty-named variable exists** after either — the
+> `callback(null)` ≠ `callback('')` distinction holds where it can be observed.
+>
+> ### Criterion 3 ✅
+> `Variables.renameVariable` opened our themed dialog; renamed `score` → `points`; the
+> `variables_get` block bound to it re-labelled itself to `points` in the same gesture.
+>
+> ### Criterion 5 ✅
+> Duplicate name submitted. `"A variable named 'counter' already exists."` shown on our own surface,
+> **no** duplicate created, and after clicking the alert's OK the **prompt re-opened** — so Blockly's
+> `alert(msg, () => d(g))` callback fires and the gesture continues instead of ending.
+>
+> ### Criterion 4 ⚠️ proved at the seam, not through the full gesture
+> `Blockly.dialog.confirm` was called directly: the eval **returned in 2ms** (a native `confirm()`
+> would not have returned at all), rendered `"Delete 1 use of the variable "points"? | Cancel |
+> Confirm"` as an in-app card, and honoured the contract — **accept → `callback(true)`,
+> cancel → `callback(false)`**. That is the single seam all four gestures route through.
+> 🔴 **The "delete a variable that is in use" gesture itself was not driven** — `deleteVariableById`
+> bypasses the confirm, so a caller-level drive is still owed.
+>
+> ### 🔴 Instrument warning, which cost this drive about an hour
+> `BaseDialog` renders its children **twice**: a zero-height `MeasuringContainer` plus the visible
+> `ChildContainer`. So `document.body.innerText` reports every dialog's text **twice**, and every
+> button exists twice with the phantom copy **above** the real one — a click at its centre lands on
+> a `<p>` and does nothing. Three separate "the prompt did not re-open" readings in this session were
+> that, not a defect. Filter with `:not([class*=MeasuringContainer])` and hit-test with
+> `elementFromPoint` before every click. The same trap produced VFN-007's actual defect.
+>
+> ⚠️ **Do not instrument by wrapping `Blockly.dialog.prompt`.** `B.dialog.prompt` is the public
+> dispatcher; calling it from inside a replacement `setPrompt` recurses and kills the button, which
+> reads exactly like the bug being fixed.
 
 > **What landed.** Two modules, not one:
 > [`blocklyDialogHandlers.ts`](../../../packages/noodl-editor/src/editor/src/views/BlocklyEditor/blocklyDialogHandlers.ts)

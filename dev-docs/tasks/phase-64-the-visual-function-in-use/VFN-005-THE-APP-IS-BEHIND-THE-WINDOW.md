@@ -1,6 +1,36 @@
 # VFN-005 — The app is behind the window
 
-**Status:** 📋 open · **Tier 2** · ~half a day · 🔴 **reproduce before building**
+**Status:** 📋 open · **Tier 2** · ~half a day · ✅ **REPRODUCED 2026-08-13 — it is OCCLUSION**
+
+> ## ✅ Criterion 1 is answered: occlusion, not interception
+>
+> Driven 2026-08-13 on `lgc010-drive` (a throwaway copy), one Logic Builder node, window open.
+> `elementFromPoint` at five points across the preview:
+>
+> | point | resolves to | verdict |
+> |---|---|---|
+> | preview **centre** (880,269) | `rect.blocklyMainBackground` `pointer-events: all` | 🔴 the window |
+> | top-left+40 (432,152) | `WEBVIEW.VisualCanvas-module__Webview` | ✅ preview |
+> | top-right−40 (1328,152) | `WEBVIEW.VisualCanvas-module__Webview` | ✅ preview |
+> | bottom-left (432,385) | `DIV.blocklyToolboxCategory` | 🔴 the window |
+> | bottom-right (1328,385) | `WEBVIEW.VisualCanvas-module__Webview` | ✅ preview |
+>
+> **Geometry measured:** viewport `1368×781`; preview `x=392 y=112 w=976 h=313`; window
+> `x=140 y=214 w=1014 h=543`.
+>
+> 🔴 **The result is decisive because the two sets separate exactly on the window rect.** Every
+> blocked point is geometrically inside `140..1154 × 214..757`; every reachable point is outside it.
+> Nothing is intercepting: where the window is not, the preview answers, and it answers with
+> `pointer-events: auto`. **Do not go hunting for what re-enabled pointer events, and do not touch
+> `.ResizeHandle`** — build the parking and snapping affordances below.
+>
+> ⚠️ **The window measured 74.1% × 69.5% of the viewport, not 82%.** `LOGIC_OVERLAY_DEFAULT_FRACTION`
+> is 0.82 but this fixture had *stored* geometry, which is the case Richard's report came from. The
+> report reproduces at 74% just as well, so criterion 4's "fresh profile" case is a **separate**
+> reading and is still owed — a fresh profile will be *worse*, not better.
+>
+> ⚠️ Three of five sampled points were reachable, so the preview is not entirely unusable — it is
+> the **middle** of it that is gone, which is where anything worth clicking usually is.
 
 ## The report
 
@@ -99,7 +129,8 @@ questions. If it is built, this task's parking and snapping remain useful and no
 
 ## Acceptance criteria
 
-1. The reproduce step above is run and its answer is written into this file before anything is built.
+1. ✅ **DONE 2026-08-13.** The reproduce step was run and its answer is written at the top of this
+   file: **occlusion**. The geometry work below is the task; there is no pointer-events hunt.
 2. Collapse and restore return the window to the same box, with the workspace measuring non-zero and
    the blocks in the same place.
 3. A snap places the window in a half of the viewport at ≥ 640 px, with the app clickable in the

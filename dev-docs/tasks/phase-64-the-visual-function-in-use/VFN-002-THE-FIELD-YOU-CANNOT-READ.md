@@ -1,6 +1,60 @@
 # VFN-002 — The field you cannot read while you type in it
 
-**Status:** 🔨 **BUILT 2026-08-13, not measured live** · **Tier 1, ship-blocking** · no dependencies
+**Status:** ✅ **BUILT AND MEASURED LIVE 2026-08-13 — passes** · **Tier 1** · no dependencies
+
+> ## ✅ Measured live 2026-08-13, with the pre-fix rule re-injected as the control.
+>
+> ### 🔴 First, a correction to this file's stated instrument
+>
+> **`scrollWidth > clientWidth` is off by one and will report a false failure.** Both are rounded to
+> integers, so a box measuring `26.305px` reports `client=26, scroll=27` with nothing hidden. Taken
+> at face value the fixed field "fails" on 4 of 4 field kinds. The honest instrument is
+> **`scrollLeft`**: drive the caret to the end, set `scrollLeft = 1e6`, and read it back. If the box
+> cannot be scrolled, nothing is clipped.
+>
+> ### With the fix — `math_number`, typing `12345`
+>
+> ```
+> value   rectW    client scroll intDelta textPx  slack(rect-text) scrolledBy font
+> 1       18.148   18     18     0        8.153   9.995            0          sans-serif 14.6667px
+> 12      26.305   26     27     1        16.306  9.998            0          sans-serif
+> 123     34.453   34     35     1        24.460  9.994            0          sans-serif
+> 1234    42.609   43     43     0        32.613  9.997            0          sans-serif
+> 12345   50.766   51     51     0        40.766  10.000           0          sans-serif
+> ```
+>
+> **~10px of slack at every length, `scrollLeft` immovable at 0.** The 1px integer delta appears only
+> where `rectWidth` is fractional. Nothing is hidden at any intermediate length. ✅ Criterion 1.
+>
+> ### The negative control — the pre-fix rule re-injected at runtime
+>
+> ```
+> value   client scroll textPx  scrolledBy  pad/border  font
+> 1       16     23     6.595   6.5         8px/1px     -apple-system
+> 12      24     32     15.237  7.0         8px/1px     -apple-system
+> 123     32     40     24.223  7.5         8px/1px     -apple-system
+> 1234    41     50     33.453  9.0         8px/1px     -apple-system
+> 12345   49     59     42.310  9.5         8px/1px     -apple-system
+> ```
+>
+> ✅ **The control genuinely clips: up to 9.5px of real horizontal scroll, versus 0 with the fix.**
+> So the green reading is earned rather than an instrument that measured nothing.
+>
+> ### ✅ The font half is confirmed by measurement, not only by reading
+>
+> With the fix the input computes to **`sans-serif`** — Blockly's own `FIELD_TEXT_FONTFAMILY`, the
+> family it measured the block text with. Re-injecting our override flips it to **`-apple-system`**
+> and `scrollWidth` for `12345` grows 51 → 59px. That 8px is the font mismatch alone, separate from
+> the 18px of padding and border, exactly as §"a third, smaller contributor" predicted.
+>
+> ### Criterion 2 — all four field kinds
+>
+> `math_number`, the hat block's signal-name field, `noodl_send_signal`'s name field and
+> `noodl_get_variable` were each opened and typed into. All four: `padding 0/0`, `border 0/0`,
+> `box-sizing border-box`, `box-shadow rgb(35,42,51) 0 0 0 1px`, font `sans-serif`. ✅
+>
+> 🔴 **Still owed: criterion 3's contrast reading**, in both themes. The ring is present and the
+> tokens resolve, but no AA measurement was taken. Criterion 4 (dropdowns) was not driven either.
 
 > **What landed.** The rule in
 > [`BlocklyWorkspace.module.scss`](../../../packages/noodl-editor/src/editor/src/views/BlocklyEditor/BlocklyWorkspace.module.scss)

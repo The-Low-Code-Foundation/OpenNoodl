@@ -1,6 +1,53 @@
 # VFN-001 — One Delete still means two
 
-**Status:** 🔨 **BUILT 2026-08-13, not driven** · ⭐ **Tier 1, ship-blocking** · no dependencies
+**Status:** ✅ **BUILT AND DRIVEN 2026-08-13 — criteria 1–4 all pass** · ⭐ **Tier 1** · no dependencies
+
+> ## ✅ Driven 2026-08-13. All four criteria, each with a negative control.
+>
+> Fixture: `lgc010-drive` copied to a scratch directory, component `/ErgCodes`, Logic Builder node
+> `c6`, window opened via `LogicBuilder.OpenTab`. Real trusted `Input.dispatchKeyEvent`, never a
+> synthesised `KeyboardEvent` — a synthetic event would let the drive *construct* the composed path
+> this fix is supposed to *observe*.
+>
+> **🔴 Both preconditions asserted before any key was pressed**, because LGC-010 logged two vacuous
+> passes on exactly this test. The run aborts rather than reporting a pass it did not earn.
+>
+> ### Criteria 1 and 2 — three consecutive Deletes
+>
+> ```
+> after selectNode(c4)    canvasNodes=8 blocks=8 blocklySel=null   canvasSel=[c4] active=BODY (outside)
+> after click on block    canvasNodes=8 blocks=8 blocklySel=getQty canvasSel=[c4] active=path (IN OVERLAY)
+> ✅ preconditions met: node selected on canvas, focus inside overlay, block selected
+> after Delete #1         canvasNodes=8 blocks=7
+> after Delete #2         canvasNodes=8 blocks=5
+> after Delete #3         canvasNodes=8 blocks=4
+> ```
+>
+> **Canvas nodes 8 → 8 → 8 → 8. Blocks 8 → 7 → 5 → 4.** The keystroke reached Blockly every time and
+> the canvas never lost a node. Criterion 2 — the one the old fix failed — holds on presses 2 and 3.
+>
+> ### The negative control (criterion 1's second half)
+>
+> Focus moved out with a real click on the node canvas, `c4` re-selected, same keypress:
+> **`nodes=8 → 7`, `c4` gone.** ✅ So the canvas delete path is live and the counter can see a
+> deletion — which is what makes "no node was deleted" above a result rather than an absence.
+>
+> ### Criterion 3 — deleting the node closes the tab and the window
+>
+> `c6` selected, Delete: node gone, `tabs 1 → 0`, `windowPresent false`, `injectionDiv false`. ✅
+>
+> ### Criterion 4 — nothing is disabled with nothing focused
+>
+> Instrumented `executeCommandMatchingKeyEvent` and counted arrivals. With `activeElement === BODY`:
+> ⌘F, Backspace, ArrowLeft and ArrowUp **all reached the dispatcher**. ✅ And the control that makes
+> that mean something: with focus inside the overlay, ⌘F and ArrowLeft reached it **zero** times, so
+> the counter discriminates rather than only ever going up. ✅
+>
+> ⚠️ One observation for whoever touches this next: after each Delete, Blockly's `FocusManager`
+> moves focus to the deleted block's **parent**, so `activeElement` reads back inside the overlay
+> once the dispatch settles. The stale read this fix repairs happens *within* one dispatch and is
+> not visible in an after-the-fact sample — which is exactly why the criterion is stated as an
+> outcome (node count) and not as a focus reading.
 
 > **What landed.** `keyboardTargetOf` in
 > [`utils/keyboardhandler.ts`](../../../packages/noodl-editor/src/editor/src/utils/keyboardhandler.ts)
