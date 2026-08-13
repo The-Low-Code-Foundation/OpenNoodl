@@ -170,6 +170,30 @@
     // `BlockValueBadges` (SVG + canvas theme), `BlockTraceClient` (the socket) and
     // `BlockValueController` (both, plus the DOM).
     "src/editor/src/views/BlocklyEditor/BlockProbes.ts",
-    "src/editor/src/views/BlocklyEditor/BlockValueTrace.ts"
+    "src/editor/src/views/BlocklyEditor/BlockValueTrace.ts",
+    // LGC-004: the rails' model half. `interfaceRails.ts` imports Blockly and the runtime's
+    // `detectInterface`, and nothing else — which is the whole argument that the rails cannot
+    // disagree with the node's ports, so it is the half that has to be gradeable. The overlay is
+    // DOM and is deliberately not reached from here.
+    "src/editor/src/views/BlocklyEditor/interfaceRails.ts",
+    // VFN-011: the bench, minus its drawing. The split is load-bearing for the same reason
+    // LGC-003's was, and then some — this is a **second execution context**, so the claim that it
+    // agrees with the runtime has to be provable by running both, which needs a runner with no DOM
+    // in it.
+    //
+    //  - `BenchRunner.ts` compiles and runs one program. Imports only `@noodl/runtime`, including
+    //    the runtime's *own* recorder, so a bench frame is a viewer frame plus a flag rather than a
+    //    lookalike. `drift-gate.spec.ts` runs the same `generatedCode` through this and through the
+    //    runtime's real `_executeLogic`, and diffs.
+    //  - `benchModel.ts` is the cell reading and the rows, and imports only the two above it.
+    //  - `BenchController.ts` holds the sandbox values and decides what one press runs. Code
+    //    generation is **injected** rather than imported, which is what keeps Blockly's generator —
+    //    and with it the whole question of a second generation path — out of this file.
+    //
+    // Deliberately NOT reachable: `InterfaceRailsOverlay` (the cells and the ▶ are DOM) and
+    // `BlocklyWorkspace.tsx` (React), which is where the wiring lives and where a drive is owed.
+    "src/editor/src/views/BlocklyEditor/BenchRunner.ts",
+    "src/editor/src/views/BlocklyEditor/benchModel.ts",
+    "src/editor/src/views/BlocklyEditor/BenchController.ts"
   ]
 }

@@ -88,6 +88,8 @@ export {
   RUN_HISTORY_LIMIT,
   STATUS_COPY,
   badgeText,
+  benchHint,
+  benchHintApplies,
   markFor,
   programHasProbes,
   stripReasonFor
@@ -105,6 +107,35 @@ export { attachBlockTrace } from './BlockTraceClient';
 export type { BlockTraceHandle, BlockTraceStatus } from './BlockTraceClient';
 export { attachBlockValues } from './BlockValueController';
 export type { BlockValueHandle, BlockValueOptions } from './BlockValueController';
+
+// VFN-011 — the bench. Three of the four files are import-free of the DOM and of Blockly, so
+// `tests-unit/vfn-011/` grades the runner against the runtime's own compile path (the drift gate),
+// the sandbox reading, and the two standing constraints — that the bench enumerates no ports, and
+// that pressing Run writes nothing to the program. The fourth, the cells and the ▶ on the rails,
+// lives in `InterfaceRailsOverlay` because it is DOM.
+//
+// ⚠️ `BenchRunner` is a **second execution context**. Read its module note before extending it: the
+// stubs are stated in the UI, and the agreement with the runtime is held by a gate rather than by
+// this comment.
+export {
+  LOGIC_BUILDER_PARAMETERS,
+  buildSandboxNoodl,
+  compileBenchProgram,
+  runOnBench
+} from './BenchRunner';
+export type { BenchRunRequest, BenchRunResult, CompiledBenchProgram, SandboxNoodl } from './BenchRunner';
+export {
+  SANDBOX_NOTE,
+  benchInputRows,
+  benchInputsFor,
+  benchOutputRows,
+  benchRunNote,
+  benchTriggers,
+  coerceSandboxValue
+} from './benchModel';
+export type { BenchInputRow, BenchOutputRow, SandboxText } from './benchModel';
+export { BenchController, DEFAULT_BENCH_TRIGGER } from './BenchController';
+export type { BenchControllerOptions, BenchLastRun, BenchSurface } from './BenchController';
 
 // Block definitions and generators
 export { initNoodlBlocks } from './NoodlBlocks';

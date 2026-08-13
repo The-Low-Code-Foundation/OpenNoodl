@@ -20,6 +20,8 @@
 
 import {
   STATUS_COPY,
+  benchHint,
+  benchHintApplies,
   programHasProbes,
   stripReasonFor,
   type BlockStripReason,
@@ -103,6 +105,27 @@ describe('VFN-011 Part 1 — which reason the strip owes the builder', () => {
     expect(reasons).toContain('attached-idle');
     expect(reasons).toContain('no-probes');
     expect(STATUS_COPY['no-probes']).toContain('make any edit');
+  });
+});
+
+describe('VFN-011 Part 2 — the sentence the bench adds', () => {
+  it('offers Run for every reason except "there is nothing to say"', () => {
+    for (const reason of Object.keys(STATUS_COPY) as BlockStripReason[]) {
+      expect(benchHintApplies(reason)).toBe(reason !== 'attached');
+    }
+  });
+
+  it('🔴 offers Run for a stale program, because the bench does not run the stale string', () => {
+    // The one that looks like an exception and is not. `no-probes` is about what the *app* would
+    // run — the node's saved code, which emits no probes. The bench regenerates from the blocks on
+    // screen through the flush's own generator, which is instrumented always, so pressing Run is
+    // exactly what works while the node on disk is stale.
+    expect(benchHintApplies('no-probes')).toBe(true);
+  });
+
+  it('names the button it is talking about, rather than assuming its label', () => {
+    expect(benchHint('▶ Run')).toContain('▶ Run');
+    expect(benchHint('▶ Run')).toContain('with the app stopped');
   });
 });
 

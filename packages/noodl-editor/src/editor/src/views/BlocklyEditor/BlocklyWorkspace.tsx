@@ -21,8 +21,10 @@ import { registerBlocklyResizeHandler } from './blocklyResize';
 import { buildBlocklyTheme, resolveBlocklyChrome } from './BlocklyTheme';
 import css from './BlocklyWorkspace.module.scss';
 import { buildToolbox } from './BlocklyToolbox';
+import { BenchController } from './BenchController';
 import { DoItHandle, attachDoIt } from './DoItController';
 import { InterfaceRailsHandle, attachInterfaceRails } from './InterfaceRailsOverlay';
+import { railModelForWorkspace } from './interfaceRails';
 import { withBlockProbes } from './BlockProbes';
 import { BlockValueHandle, attachBlockValues } from './BlockValueController';
 import { generateWithMyBlocks, initMyBlocks, myBlocksFlyout, MY_BLOCKS_CATEGORY } from './MyBlocksBlocks';
@@ -144,34 +146,45 @@ export function BlocklyWorkspace({
     // registry is renderer-wide and the session that connects it to *this* workspace's store has
     // to be removed when the workspace goes, or a disposed workspace keeps offering to save.
     let myBlocksSave: MyBlocksSaveHandle | null = null;
+    // VFN-011. Its own handle for the reason all four above have one, and one more: the bench holds
+    // the sandbox values, which are editor state that must die with the tab rather than reach the
+    // workspace's serialisation. See `BenchController`.
+    let bench: BenchController | null = null;
 
-    const flushSave = () => {
-      if (!workspace || !onChangeRef.current) return;
-      const saved = Blockly.serialization.workspaces.save(workspace) as BlocklyWorkspaceJson;
-      const json = JSON.stringify(saved);
-
-      /**
-       * LGC-003 §1 — the program is generated **instrumented**, always.
-       *
-       * There is one generated string, not a debug one and a release one, so there is no class
-       * of defect that appears only when nobody is watching. `__p` and `__s` are the ninth and
-       * tenth parameters the runtime compiles against, and with nothing attached they are the
-       * shared identity pair.
-       *
-       * `probedIds` is what makes the didn't-execute tell honest: a block that emitted no code
-       * is not part of the program and must render neutral, not hollow.
-       */
+    /**
+     * LGC-003 §1 — the program is generated **instrumented**, always.
+     *
+     * There is one generated string, not a debug one and a release one, so there is no class of
+     * defect that appears only when nobody is watching. `__p` and `__s` are the ninth and tenth
+     * parameters the runtime compiles against, and with nothing attached they are the shared
+     * identity pair.
+     *
+     * 🔴 **Extracted by VFN-011 so the bench runs this and not a second generation.** The bench must
+     * execute the program the node will have, and the only thing that knows what that is, is the
+     * expression the flush uses. Calling `javascriptGenerator` from the bench would have been a
+     * second code path with nothing keeping the two in step — the same defect as a second port list
+     * one file over, and this directory has found that shape three times.
+     */
+    const generateProgram = () => {
+      const saved = Blockly.serialization.workspaces.save(workspace as Blockly.WorkspaceSvg) as BlocklyWorkspaceJson;
       const probed = withBlockProbes(() =>
         // Saved blocks are inlined before generation (LGC-007). A workspace that uses none takes
         // the fast path and behaves exactly as it did before the feature existed.
         generateWithMyBlocks(workspace as Blockly.WorkspaceSvg, saved, myBlocksStore())
       );
-      const generated = probed.result;
+      return { saved, generated: probed.result, probedIds: probed.probedIds };
+    };
+
+    const flushSave = () => {
+      if (!workspace || !onChangeRef.current) return;
+      const { saved, generated, probedIds } = generateProgram();
+      const json = JSON.stringify(saved);
+      const probed = { probedIds };
 
       if (generated.error) {
         console.error('[Blockly] The saved blocks in this program could not be expanded:', generated.error.message);
       } else if (blockValues) {
-        blockValues.setProbedIds(probed.probedIds);
+        blockValues.setProbedIds(probed.probedIds as Set<string>);
         // VFN-011 — the code that is about to be written to the node. A refusal (`undefined`)
         // leaves whatever the node already has, so the strip is told nothing rather than told
         // the program went away.
@@ -311,17 +324,60 @@ export function BlocklyWorkspace({
         openDialog: openSaveBlockDialog
       });
 
+      /**
+       * VFN-011 — the bench. Built before the two surfaces that draw it, because both take it as an
+       * option, and it holds no DOM of its own.
+       *
+       * 🔴 `model()` is `railModelForWorkspace`, the same call the rails make, derived per call and
+       * cached nowhere. The bench therefore cannot disagree with the rails about which ports exist,
+       * because it is not answering the question — it is reading the answer.
+       */
+      bench = new BenchController({
+        nodeId,
+        model: () => railModelForWorkspace(workspace as Blockly.WorkspaceSvg),
+        generate: () => {
+          const { generated, probedIds } = generateProgram();
+          return { code: generated.code, probedIds };
+        },
+        publish: (frame, note, probedIds) => {
+          if (!blockValues) return;
+          // The probe ids from the generation this run actually used. Without them a bench run of
+          // an unflushed edit would be marked against the previous program's denominator, and
+          // blocks that are not in the program would paint hollow.
+          blockValues.setProbedIds(probedIds as Set<string>);
+          blockValues.pushFrame(frame, note);
+        },
+        onChanged: () => rails?.refresh()
+      });
+
       // LGC-004 — the signature at the two edges. Attached after the load, like Do It, so its
       // first paint reads the finished program rather than one block of it.
       if (inputsRailDiv.current && outputsRailDiv.current) {
         rails = attachInterfaceRails({
           workspace,
           inputsHost: inputsRailDiv.current,
-          outputsHost: outputsRailDiv.current
+          outputsHost: outputsRailDiv.current,
+          bench
         });
       }
-      // LGC-003 — the whole program answers at once, during a real run.
-      if (rootRef.current) blockValues = attachBlockValues(workspace, rootRef.current, { nodeId, generatedCode });
+      // LGC-003 — the whole program answers at once, during a real run. VFN-011 adds Run to the
+      // same strip, so the two ways a program can produce values share one scrubber.
+      if (rootRef.current) {
+        blockValues = attachBlockValues(workspace, rootRef.current, {
+          nodeId,
+          generatedCode,
+          onRun: {
+            label: '▶ Run',
+            title:
+              'Run these blocks here in the editor, with the app stopped, using the sandbox values in the ' +
+              'Inputs rail. Nothing it does reaches your app.',
+            run: () => {
+              const trigger = bench?.defaultTrigger();
+              if (trigger) bench?.run(trigger);
+            }
+          }
+        });
+      }
 
       // Follow the editor's light/dark setting (UIX-005 contract). The grid is not part of
       // the theme object and Blockly's setter for it is private, so the grid colour is
@@ -352,6 +408,16 @@ export function BlocklyWorkspace({
       // longer exists. Dropped immediately rather than at the end of the debounce: the badges
       // are on screen for those 300 ms and would be describing the old blocks.
       if (blockValues) blockValues.invalidate();
+      /**
+       * VFN-011 — and so is the outputs rail.
+       *
+       * ⚠️ **The last run's values go, the sandbox inputs stay.** They are different kinds of
+       * thing: an output value describes a program that has just changed and is now a lie with no
+       * timestamp on it, while a sandbox input is something the *builder* typed and did not
+       * change. Clearing both would empty the bench on every keystroke in a block, which is the
+       * behaviour that makes a tool not worth reaching for.
+       */
+      if (bench) bench.invalidate();
 
       if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
       saveTimeoutRef.current = setTimeout(flushSave, SAVE_DEBOUNCE_MS);
@@ -398,6 +464,11 @@ export function BlocklyWorkspace({
         blockValues.dispose();
         blockValues = null;
       }
+
+      // VFN-011 — the sandbox values go with the tab, and this is the line that says so. They are
+      // held in a `Map` on this object and written to nothing, so dropping the reference is the
+      // whole of their lifecycle (criterion 8).
+      bench = null;
 
       // Before the workspace goes: the save session is an entry in a renderer-wide map, keyed by
       // this workspace's id.

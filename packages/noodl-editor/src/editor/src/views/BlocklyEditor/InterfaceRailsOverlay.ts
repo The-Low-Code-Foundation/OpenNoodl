@@ -36,6 +36,9 @@
 
 import * as Blockly from 'blockly';
 
+import type { BenchSurface } from './BenchController';
+import { SANDBOX_NOTE } from './benchModel';
+import type { BenchInputRow, BenchOutputRow } from './benchModel';
 import css from './BlocklyWorkspace.module.scss';
 import { RailModel, RailRow, dragBlockJsonForRow, railModelForWorkspace, unusedOutputName } from './interfaceRails';
 
@@ -54,6 +57,15 @@ export interface InterfaceRailsOptions {
   inputsHost: HTMLElement;
   /** The element the Outputs rail owns. Must already be in the DOM. */
   outputsHost: HTMLElement;
+  /**
+   * VFN-011 — the bench, when there is one.
+   *
+   * 🔴 **It supplies values, never rows.** The rails' rows are still `railModelForWorkspace` and
+   * the bench's own rows are a projection of the same model (`benchModel.ts`), so there is exactly
+   * one answer to "what ports does this program have" and both surfaces read it. Absent, the rails
+   * are what LGC-004 built and nothing below changes.
+   */
+  bench?: BenchSurface;
 }
 
 export interface InterfaceRailsHandle {
@@ -80,16 +92,18 @@ class InterfaceRails {
   private readonly workspace: Blockly.WorkspaceSvg;
   private readonly inputsHost: HTMLElement;
   private readonly outputsHost: HTMLElement;
+  private readonly bench: BenchSurface | undefined;
 
   private readonly changeListener: (event: Blockly.Events.Abstract) => void;
   private readonly dropTarget: OutputsRailDropTarget;
 
   private disposed = false;
 
-  constructor({ workspace, inputsHost, outputsHost }: InterfaceRailsOptions) {
+  constructor({ workspace, inputsHost, outputsHost, bench }: InterfaceRailsOptions) {
     this.workspace = workspace;
     this.inputsHost = inputsHost;
     this.outputsHost = outputsHost;
+    this.bench = bench;
 
     /**
      * ⚠️ **No debounce, and no timer of any kind.** Serialising a workspace of the size block
@@ -142,6 +156,21 @@ class InterfaceRails {
   }
 
   private paint(host: HTMLElement, side: 'inputs' | 'outputs', rows: RailRow[]): void {
+    /**
+     * ⚠️ **The focused cell survives a repaint, and it has to.** The rails refresh on every settled
+     * Blockly change, and `replaceChildren` destroys whatever the pointer is in — so a builder
+     * typing a sandbox value while a block moves would lose their caret mid-word. What is
+     * remembered is only which cell and where in it, and it is restored after the rebuild rather
+     * than the rebuild being skipped: skipping would leave the rows describing an old program,
+     * which is what this class refuses to do in the first place.
+     */
+    const focused = document.activeElement as HTMLInputElement | null;
+    const focusedName =
+      focused && host.contains(focused) && focused.dataset && focused.dataset.benchPort
+        ? focused.dataset.benchPort
+        : undefined;
+    const focusedAt = focusedName ? focused!.selectionStart : null;
+
     // The host's own `.Rail` classes are set by `BlocklyWorkspace`'s JSX, not here: its width must
     // exist before Blockly is injected into the sibling next to it.
     host.replaceChildren();
@@ -150,6 +179,23 @@ class InterfaceRails {
     header.className = css.RailHeader;
     header.textContent = side === 'inputs' ? 'Inputs' : 'Outputs';
     host.appendChild(header);
+
+    /**
+     * Acceptance criterion 3 — **every sandbox surface is marked as one.**
+     *
+     * The cost of running in the editor was accepted on the condition that it is stated in the UI
+     * rather than hidden: these values are not the app's data, and a builder reading a number in
+     * the outputs rail with the app stopped has no other way to know that.
+     */
+    if (this.bench) {
+      const marker = document.createElement('div');
+      marker.className = css.RailSandboxNote;
+      marker.textContent = SANDBOX_NOTE;
+      marker.title =
+        'The bench runs these blocks here in the editor, against values you type. Variables, Objects and ' +
+        'Arrays are empty stand-ins, not your app’s data, and nothing a bench run does reaches your app.';
+      host.appendChild(marker);
+    }
 
     const list = document.createElement('div');
     list.className = css.RailRows;
@@ -172,9 +218,104 @@ class InterfaceRails {
       return;
     }
 
+    // 🔴 One list of ports, projected twice. The bench's rows come from the same `RailModel` these
+    // rows do; nothing here enumerates a second time. See `benchModel.ts`.
+    const benchInputs = this.bench && side === 'inputs' ? indexByName(this.bench.inputRows()) : undefined;
+    const benchOutputs = this.bench && side === 'outputs' ? indexByName(this.bench.outputRows()) : undefined;
+
     for (const row of rows) {
-      list.appendChild(this.buildRow(row, side));
+      const element = this.buildRow(row, side);
+      if (benchInputs) this.decorateInput(element, benchInputs.get(row.name));
+      if (benchOutputs) this.decorateOutput(element, benchOutputs.get(row.name));
+      list.appendChild(element);
     }
+
+    if (focusedName) {
+      const restored = host.querySelector<HTMLInputElement>('[data-bench-port="' + cssEscape(focusedName) + '"]');
+      if (restored) {
+        restored.focus();
+        if (focusedAt !== null) restored.setSelectionRange(focusedAt, focusedAt);
+      }
+    }
+  }
+
+  /**
+   * A data input gets a cell; a signal input gets a ▶.
+   *
+   * ⚠️ **The two are not the same control wearing different clothes.** A value input holds a value
+   * the next run reads; a signal input *is* a run. `interfaceRails.dragBlockJsonForRow` already
+   * makes exactly this distinction — it returns no block for a signal row, because a signal input's
+   * meaning is "the whole program" and there is no block for that — and this is the same fact
+   * arriving at the same rows from the other side.
+   */
+  private decorateInput(element: HTMLElement, benchRow: BenchInputRow | undefined): void {
+    if (!benchRow || !this.bench) return;
+    const bench = this.bench;
+
+    if (benchRow.row.kind === 'signal') {
+      const trigger = document.createElement('button');
+      trigger.type = 'button';
+      trigger.className = css.RailTrigger;
+      trigger.textContent = '▶ run';
+      trigger.title = 'Run these blocks as if “' + benchRow.row.name + '” fired, using the values below.';
+      // The row is not draggable for a signal, so nothing has to be stopped here — but a press is
+      // still a press on a row, and Blockly is listening on the document during a drag.
+      trigger.addEventListener('pointerdown', (event) => event.stopPropagation());
+      trigger.addEventListener('click', () => bench.run(benchRow.row.name));
+      element.appendChild(trigger);
+      return;
+    }
+
+    const cell = document.createElement('input');
+    cell.type = 'text';
+    cell.className = css.RailCell;
+    cell.dataset.benchPort = benchRow.row.name;
+    cell.value = benchRow.text;
+    cell.placeholder = benchRow.row.displayType;
+    cell.spellcheck = false;
+    cell.title = 'A sandbox value for “' + benchRow.row.name + '”. ' + SANDBOX_NOTE + '.';
+
+    /**
+     * ⚠️ **`stopPropagation`, not `preventDefault`.** The row's own `pointerdown` handler starts a
+     * drag *and* calls `preventDefault`, which is what would stop this input ever taking focus —
+     * the row would look like a text box you cannot type in. Stopping the event before it reaches
+     * the row leaves the browser's own click-to-focus intact.
+     */
+    cell.addEventListener('pointerdown', (event) => event.stopPropagation());
+    cell.addEventListener('input', () => bench.setText(benchRow.row.name, cell.value));
+
+    if (benchRow.problem) {
+      cell.classList.add(css.RailCellProblem);
+      cell.title = benchRow.text + ' is ' + benchRow.problem + ' — this port is declared ' + benchRow.row.displayType + '.';
+    }
+
+    element.appendChild(cell);
+  }
+
+  /** What the last run put here. Absent rather than zero: a port nothing wrote has no value. */
+  private decorateOutput(element: HTMLElement, benchRow: BenchOutputRow | undefined): void {
+    if (!benchRow) return;
+
+    if (benchRow.row.kind === 'signal') {
+      if (!benchRow.pulsed) return;
+      const pulse = document.createElement('div');
+      pulse.className = css.RailPulse;
+      pulse.textContent = '▶ fired';
+      pulse.title = 'The last sandbox run sent this signal. ' + SANDBOX_NOTE + '.';
+      element.appendChild(pulse);
+      return;
+    }
+
+    if (benchRow.preview === undefined) return;
+
+    const value = document.createElement('div');
+    value.className = css.RailValue;
+    value.textContent = benchRow.preview;
+    // ⚠️ The full value in the tooltip, because the cell is 132px wide and `previewValue` has
+    // already capped the string once. Two truncations with no way to see past either would make
+    // the rail a place values go to be almost readable.
+    value.title = benchRow.preview + '\n' + SANDBOX_NOTE + '.';
+    element.appendChild(value);
   }
 
   private buildRow(row: RailRow, side: 'inputs' | 'outputs'): HTMLElement {
@@ -330,6 +471,26 @@ class InterfaceRails {
     const view = this.workspace.getMetricsManager().getViewMetrics(true);
     return new Blockly.utils.Coordinate(view.left + view.width / 2 - 60, view.top + view.height / 2 - 12);
   }
+}
+
+/** The bench's rows, by port name. One `Map` build rather than a scan per row. */
+function indexByName<T extends { row: RailRow }>(rows: T[]): Map<string, T> {
+  const byName = new Map<string, T>();
+  for (const row of rows) byName.set(row.row.name, row);
+  return byName;
+}
+
+/**
+ * A port name, safe inside an attribute selector.
+ *
+ * Port names are free text typed into a Blockly field — quotes, brackets and backslashes are all
+ * reachable — and `CSS.escape` is what handles them. It exists in every Chromium the editor runs
+ * in; the fallback is for the plain-Node runner, where there is no `CSS` at all.
+ */
+function cssEscape(value: string): string {
+  const api = (globalThis as { CSS?: { escape?(value: string): string } }).CSS;
+  if (api && typeof api.escape === 'function') return api.escape(value);
+  return value.replace(/["\\]/g, '\\$&');
 }
 
 /**

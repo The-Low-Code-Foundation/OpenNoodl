@@ -121,6 +121,34 @@ export const STATUS_COPY: Record<BlockStripReason, string> = {
 };
 
 /**
+ * VFN-011 Part 2 — the sentence the bench adds to an empty strip.
+ *
+ * ⚠️ **Appended rather than written into `STATUS_COPY`**, because whether it is true depends on
+ * whether a Run button exists, and that is decided per mount. A block editor attached with no bench
+ * must not be told to press a button it does not have — the failure LGC-002 names about its menu
+ * item, arriving as copy instead of as a control.
+ */
+export function benchHint(runLabel: string): string {
+  return ' Press ' + runLabel + ' below to work them out here, with the app stopped.';
+}
+
+/**
+ * Would pressing Run answer this reason?
+ *
+ * Every reason except `attached`, which is the one whose copy is the empty string — there is
+ * already something to scrub, so there is nothing to offer.
+ *
+ * 🔴 **Including `no-probes`, and that is not an oversight.** The stale-code reason is about what
+ * the *app* would run: the node's saved `generatedCode` emits no probes, so no run of it in a
+ * preview can badge anything. The bench does not run that string — it regenerates from the blocks
+ * on screen through the flush's own generator, which is instrumented always — so pressing Run is
+ * exactly the thing that works while the node on disk is stale.
+ */
+export function benchHintApplies(reason: BlockStripReason): boolean {
+  return reason !== 'attached';
+}
+
+/**
  * Does this generated program carry the probe calls the badges are made of?
  *
  * ⚠️ **The runtime deliberately does not ask this question, and its comment says why**: making the
