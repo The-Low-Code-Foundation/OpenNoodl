@@ -1,5 +1,7 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { platform } from '@noodl/platform';
 
+import { Markdown } from '@noodl-core-ui/components/common/Markdown';
 import { Checkbox, CheckboxVariant } from '@noodl-core-ui/components/inputs/Checkbox';
 import { PrimaryButton, PrimaryButtonSize, PrimaryButtonVariant } from '@noodl-core-ui/components/inputs/PrimaryButton';
 import { Select } from '@noodl-core-ui/components/inputs/Select';
@@ -8,7 +10,10 @@ import { Box } from '@noodl-core-ui/components/layout/Box';
 import { VStack } from '@noodl-core-ui/components/layout/Stack';
 import { Text, TextType } from '@noodl-core-ui/components/typography/Text';
 
+import { linkActionFor } from './releaseLinks';
 import { formatBytes, formatRemaining, UpdateState, UpdateVersion } from './useUpdateState';
+
+import css from './UpdateDialog.module.scss';
 
 const DIALOG_STYLE: React.CSSProperties = {
   width: '520px',
@@ -18,17 +23,8 @@ const DIALOG_STYLE: React.CSSProperties = {
   overflow: 'hidden'
 };
 
-const NOTES_STYLE: React.CSSProperties = {
-  overflowY: 'auto',
-  minHeight: 0,
-  flex: '1 1 auto',
-  whiteSpace: 'pre-wrap',
-  // The notes are release markdown. Rendering them as markdown would mean
-  // shipping a renderer into a dialog for one string; monospace-free preformatted
-  // text reads acceptably and cannot execute anything from a release body.
-  fontSize: '12px',
-  lineHeight: 1.6
-};
+// Layout, selection and the markdown element styles the shared `Markdown`
+// component does not cover all live in `UpdateDialog.module.scss`.
 
 const PROGRESS_TRACK: React.CSSProperties = {
   height: '6px',
@@ -87,6 +83,31 @@ export function UpdateDialog({
     if (selected === undefined && state.targetVersion) setSelected(state.targetVersion);
   }, [state.targetVersion, selected]);
 
+  /**
+   * A link in the notes opens in the user's browser, and never in this window.
+   *
+   * Markdown renders `[text](url)` as a bare `<a href>` with no target, and
+   * main.js only intercepts `window.open` and `target="_blank"`
+   * (`setWindowOpenHandler`). A plain left-click is a same-window navigation, so
+   * without this the editor itself would load GitHub over the running app —
+   * "the links work now" in the worst available sense.
+   *
+   * Delegated from the container rather than bound per link, because the notes
+   * are re-rendered from a string on every version change.
+   */
+  const onNotesClick = useCallback((event: React.MouseEvent<HTMLDivElement>) => {
+    const anchor = (event.target as HTMLElement)?.closest?.('a[href]') as HTMLAnchorElement | null;
+    if (!anchor) return;
+
+    // Always swallow the navigation, even for a scheme we refuse to open: the
+    // point is that this window never navigates, and an unopened link is a much
+    // smaller failure than a destroyed session.
+    event.preventDefault();
+
+    const href = anchor.getAttribute('href');
+    if (linkActionFor(href) === 'open') platform.openExternal(href as string);
+  }, []);
+
   const chosen: UpdateVersion | undefined = offerable.find((v) => v.version === selected);
   const notes = chosen?.notes || state.releaseNotes || '';
   const isBusy = state.status === 'downloading';
@@ -142,8 +163,8 @@ export function UpdateDialog({
 
         <Box hasXSpacing hasTopSpacing UNSAFE_style={{ minHeight: 0, flex: '1 1 auto', display: 'flex' }}>
           {notes ? (
-            <div style={NOTES_STYLE}>
-              <Text textType={TextType.Secondary}>{notes}</Text>
+            <div className={css.Notes} onClick={onNotesClick} data-test="update-notes">
+              <Markdown content={notes} />
             </div>
           ) : (
             <Text textType={TextType.Secondary}>No release notes were published for this version.</Text>

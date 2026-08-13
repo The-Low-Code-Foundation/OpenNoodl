@@ -449,6 +449,19 @@ function launchApp() {
       return { action: 'deny' }; //deny a new electron window
     });
 
+    // A plain <a href> — no target — is a SAME-WINDOW navigation, which the
+    // handler above never sees. Nothing stopped one from replacing the running
+    // editor with a web page, taking the renderer and any unsaved state with it,
+    // with no way back but relaunching. Found when the update dialog started
+    // rendering release notes as markdown, which is exactly that kind of anchor.
+    //
+    // The editor's own file:// document is the only thing allowed to load here.
+    win.webContents.on('will-navigate', (event, url) => {
+      if (url.startsWith('file://')) return;
+      event.preventDefault();
+      if (/^https?:\/\//i.test(url)) shell.openExternal(url);
+    });
+
     win.once('ready-to-show', () => {
       win.show();
     });
