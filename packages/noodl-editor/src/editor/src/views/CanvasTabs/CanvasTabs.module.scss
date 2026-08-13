@@ -33,6 +33,43 @@
   overflow: hidden;
 }
 
+/* 🔴 VFN-005 — parked: the window rolled down to its title bar, in place.
+
+   **Height only, and only here.** The window's four custom properties are
+   untouched by parking — `--logic-overlay-height` still holds the box the
+   builder chose — so restoring is `height: var(...)` coming back, and it comes
+   back to the same number by construction. There is no remembered rect to get
+   out of step with a drag, a viewport resize or a reopen, which is what makes
+   acceptance criterion 2 structural rather than defended.
+
+   `height: auto` on a column flex container with the only flexible child gone
+   is exactly the tab bar's own height, so no constant has to be guessed and
+   none goes stale when the bar's padding changes.
+
+   ⚠️ `.TabContent` is `display: none` and not `height: 0`, because the point is
+   for `.BlocklyContainer` to measure **0×0**: `Blockly.svgResize` reads
+   `parentElement.offsetWidth/offsetHeight` and caches whatever it finds, and
+   the guard in `BlocklyWorkspace.tsx` declines a zero-size container rather
+   than letting it cache the zero and set the SVG to `0px`. Collapse goes
+   through that same door; `CanvasTabs.tsx` calls `resizeBlocklyWorkspaces()`
+   synchronously on the way back. */
+.CanvasTabs.isParked {
+  height: auto;
+
+  .TabContent {
+    display: none;
+  }
+
+  /* The bar stops offering a drag it will refuse. A parked window cannot be
+     moved — a drag would read its origin from the collapsed box and write the
+     title bar's height back as the window's — so the `grab` cursor would be a
+     promise the handler does not keep. See `CanvasTabs.tsx`. */
+  .TabBar,
+  .TabBar:active {
+    cursor: default;
+  }
+}
+
 /* LGC-010: the eight resize targets.
 
    🔴 They sit **entirely inside** the window, and that is a fix rather than a
@@ -136,6 +173,42 @@
   flex: 1;
   align-self: stretch;
   min-width: var(--spacing-2);
+}
+
+/* VFN-005 — the placement controls (home, park). Square siblings of `Done`,
+   sharing its chrome so the right-hand cluster reads as one group.
+
+   Sized rather than padded: the window's floor is 640px and the title bar has
+   to hold the tabs as well, so these are two 24px targets and not two more
+   labelled buttons. The glyph is `aria-hidden` — each button carries the answer
+   in words on `aria-label` and `title`, because a `⌂` announced as "house" is
+   worse than nothing. */
+.WindowButton {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: var(--radius-sm);
+  background-color: var(--theme-color-bg-3);
+  color: var(--theme-color-fg-default);
+  font-size: var(--font-size-base);
+  line-height: 1;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+
+  &:hover {
+    background-color: var(--theme-color-bg-4);
+    color: var(--theme-color-fg-highlight);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--theme-color-primary);
+    outline-offset: 1px;
+  }
 }
 
 .WindowCloseButton {

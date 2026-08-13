@@ -65,11 +65,17 @@ export const LOGIC_OVERLAY_MIN_WIDTH = 640;
 export const LOGIC_OVERLAY_MIN_HEIGHT = 320;
 
 /**
- * How much of the viewport the window claims the first time it is opened.
+ * How much of the viewport the centred fallback placement claims.
  *
  * Deliberately not 100%: the point of a floating window over a takeover is that you can *see*
  * there is a canvas and a running app behind it. A margin all the way round is what says so,
  * and it is also the grab area for moving the window out of the way.
+ *
+ * ⚠️ **VFN-005 demoted this from the first-open placement to the fallback.** 82% centred is the
+ * placement most likely to cover a preview that is a full-width band across the top of the
+ * document, which is what the report was about and what the drive measured: at 74% of a 1368×781
+ * viewport the middle of the preview was gone. {@link placeLogicOverlayInFrame} is the first
+ * open now, and this is what a caller with no frame box to read still gets.
  */
 export const LOGIC_OVERLAY_DEFAULT_FRACTION = 0.82;
 
@@ -226,6 +232,157 @@ export function applyOverlayDrag(
   }
 
   return clampLogicOverlayRect({ left, top, width, height }, viewport);
+}
+
+/* -------------------------------------------------------------------------------------------
+   VFN-005 — getting the window off the running app, and off what the window itself opens.
+
+   The report is *"when the editor is open, you can't click anything in the preview"*, and the
+   drive answered the first question: it is **occlusion**, not interception. An 82%-of-viewport
+   centred window covers the middle of a preview that, under the default `horizontal` layout, is
+   a full-width band across the top of the document.
+
+   Two remedies, and they answer two different halves:
+
+   - **Home** ({@link placeLogicOverlayInFrame}) — the window opens over the *node graph frame*
+     rather than over the viewport's centre. The frame is what is left after the side panel and
+     the preview have taken theirs, so a window that fills it covers neither. This is the first
+     open, and it is also the *"put it back"* gesture.
+   - **Clear of** ({@link moveLogicOverlayClearOf}) — a window the builder has since placed
+     themselves is moved out of the way of a region that has just appeared underneath it, keeping
+     the size they chose. This exists because of VFN-012: the toolbox flyout has a button labelled
+     *Open app settings*, it works, and the panel it opens renders **behind** the window it was
+     pressed from. A feature's own call to action must not land where the feature is hiding.
+
+   🔴 **Neither reads the frame as a containing block.** The window stays `position: fixed`
+   against the viewport — escaping the frame's `overflow: hidden` is what makes a 640 px window
+   possible on a 13" screen at all. What is read here is the frame's *box*, as four numbers.
+   ------------------------------------------------------------------------------------------- */
+
+/**
+ * The strip the docked side panel is assumed to want, when the window is asked to clear it.
+ *
+ * `RAIL_WIDTH` (52) + `DEFAULT_PANEL_WIDTH` (328) from `pages/EditorPage/useSidePanelLayout.tsx`,
+ * restated as a number rather than imported: that module is a `.tsx` that reaches `ProjectModel`
+ * and `EditorSettings`, and this one is deliberately reachable from the plain-Node runner.
+ *
+ * ⚠️ It is a **floor**, not the answer. The live measurement — the node graph frame's own left
+ * edge — is used whenever it is larger, which it is whenever a panel is open and whenever the
+ * builder has widened one. The floor covers the one case a synchronous read cannot: the panel was
+ * *closed* when the button was pressed, so the frame still starts at the rail and the panel that
+ * is about to appear has not been laid out yet. Deferring the read to see it is not an option —
+ * an occluded renderer clamps timers ~1000×.
+ */
+export const LOGIC_OVERLAY_PANEL_RESERVE = 380;
+
+/** Do these two boxes share any area at all? Touching edges do not count. */
+export function rectsIntersect(a: OverlayRect, b: OverlayRect): boolean {
+  return (
+    a.left < b.left + b.width && b.left < a.left + a.width && a.top < b.top + b.height && b.top < a.top + a.height
+  );
+}
+
+/**
+ * The window's home: the node graph frame, inset by the usual margin.
+ *
+ * Under the default `horizontal` layout the frame is the bottom-right region of the document —
+ * the side panel has the left, the running app has the top band — so a window placed here leaves
+ * both of them whole. That is acceptance criterion 4 and, via {@link LOGIC_OVERLAY_PANEL_RESERVE}
+ * and `moveLogicOverlayClearOf`, most of VFN-012's complaint too.
+ *
+ * Centred **on the frame**, not filled to it, so the minimums can overhang symmetrically when the
+ * frame is smaller than the window's floor — the 13" case with the divider dragged up. Overhang
+ * rather than shrink: 640 × 320 is argued (152 + 152 of interface rails plus ~90 of toolbox is
+ * spent before a block is drawn) and a window below it is not small, it is empty.
+ *
+ * `frame` is nullable on purpose. `strictNullChecks` is off in this package, so the `| null` is
+ * documentation — the behaviour is held by a spec instead: a caller with no frame to read (the
+ * element is not in the document, the box measured 0×0 while the renderer was occluded) gets the
+ * old centred default rather than a window at `NaN`.
+ */
+export function placeLogicOverlayInFrame(frame: OverlayRect | null, viewport: OverlayViewport): OverlayRect {
+  if (!frame) return defaultLogicOverlayRect(viewport);
+
+  const numbers = [frame.left, frame.top, frame.width, frame.height];
+  if (!numbers.every((n) => typeof n === 'number' && Number.isFinite(n))) return defaultLogicOverlayRect(viewport);
+  if (frame.width <= 0 || frame.height <= 0) return defaultLogicOverlayRect(viewport);
+
+  const min = minimums(viewport);
+
+  const width = clamp(frame.width - DEFAULT_MARGIN * 2, min.width, Math.max(viewport.width, min.width));
+  const height = clamp(frame.height - DEFAULT_MARGIN * 2, min.height, Math.max(viewport.height, min.height));
+
+  return clampLogicOverlayRect(
+    {
+      left: frame.left + (frame.width - width) / 2,
+      top: frame.top + (frame.height - height) / 2,
+      width,
+      height
+    },
+    viewport
+  );
+}
+
+/**
+ * The region a window should clear so a side panel opening underneath it can be read.
+ *
+ * `frameLeft` is the node graph frame's left edge, which is exactly where the rail and the panel
+ * stop — so no second element has to be found in the DOM and no panel mode (docked, wide, hidden,
+ * floating) has to be special-cased. The reserve is the floor for the closed-panel case; see
+ * {@link LOGIC_OVERLAY_PANEL_RESERVE}.
+ */
+export function sidePanelRegion(frameLeft: number, viewport: OverlayViewport): OverlayRect {
+  const width = Math.max(Number.isFinite(frameLeft) ? frameLeft : 0, LOGIC_OVERLAY_PANEL_RESERVE);
+  return { left: 0, top: 0, width: Math.min(width, viewport.width), height: viewport.height };
+}
+
+/**
+ * Translate a window clear of a region that has just appeared underneath it, keeping its size.
+ *
+ * Answers the rect unchanged when it was already clear, and `null` when no translation clears it
+ * — on a viewport where the region and the window together are wider than the screen, there is
+ * nowhere to go and the caller should **park** the window instead.
+ *
+ * Size is deliberately preserved. A builder who sized this window sized it for the blocks in it,
+ * and shrinking it to make room is how a 640 px floor gets quietly violated; moving it is the
+ * cheaper thing to undo, and the overhang the clamp allows is a supported placement.
+ *
+ * 🔴 **Each candidate is re-tested *after* the clamp.** `clampLogicOverlayRect` may pull a
+ * translation straight back — pushing a 1000 px window west off a 1440 px viewport lands it at
+ * `KEEP_ON_SCREEN - width`, which is still over the region — and a candidate accepted before the
+ * clamp reports a clearance that never happened. The pre-clamp check is the whole bug class this
+ * function exists inside: a placement that measures correct in the arithmetic and is wrong on
+ * screen.
+ */
+export function moveLogicOverlayClearOf(
+  rect: OverlayRect,
+  region: OverlayRect,
+  viewport: OverlayViewport
+): OverlayRect | null {
+  if (!rectsIntersect(rect, region)) return round(rect);
+
+  const candidates: OverlayRect[] = [
+    { ...rect, left: region.left + region.width }, // east of it
+    { ...rect, left: region.left - rect.width }, // west of it
+    { ...rect, top: region.top + region.height }, // below it
+    { ...rect, top: region.top - rect.height } // above it
+  ];
+
+  // Smallest movement first: the window should end up as near to where the builder put it as
+  // clearing the region allows.
+  const byDistance = candidates
+    .map((candidate) => ({
+      candidate,
+      distance: Math.abs(candidate.left - rect.left) + Math.abs(candidate.top - rect.top)
+    }))
+    .sort((a, b) => a.distance - b.distance);
+
+  for (const { candidate } of byDistance) {
+    const clamped = clampLogicOverlayRect(candidate, viewport);
+    if (!rectsIntersect(clamped, region)) return clamped;
+  }
+
+  return null;
 }
 
 /**

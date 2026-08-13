@@ -322,9 +322,25 @@ export function BlocklyWorkspace({
        */
       setConfigVariablesProvider(() => ProjectModel.instance?.getConfigVariables() || []);
       workspace.registerToolboxCategoryCallback(APP_CONFIG_CATEGORY, appConfigFlyout() as never);
-      // Criterion 6: the empty category names where to go, and this is the door. Registered
-      // whether or not the category is empty — "edit these" is as useful as "create some".
-      workspace.registerButtonCallback(APP_CONFIG_SETTINGS_BUTTON, () => openSettingsPanel('project'));
+      /**
+       * Criterion 6: the empty category names where to go, and this is the door. Registered
+       * whether or not the category is empty — "edit these" is as useful as "create some".
+       *
+       * 🔴 **VFN-005: and then the window gets out of the panel's way.** Opening the settings
+       * panel from here worked and was invisible — the panel renders in the side dock, *behind*
+       * the Logic Builder window this button was pressed from. A feature's own call to action
+       * cannot land somewhere the feature is hiding.
+       *
+       * The event rather than a direct call: the decision needs the node graph frame's box and
+       * the viewport, and this component is inside the window and can see neither.
+       * `EditorEventBindings` moves the window clear, or parks it when there is nowhere to move
+       * to. Emitted unconditionally — a window already clear of the dock is answered `'clear'`
+       * and nothing moves.
+       */
+      workspace.registerButtonCallback(APP_CONFIG_SETTINGS_BUTTON, () => {
+        openSettingsPanel('project');
+        EventDispatcher.instance.emit('LogicBuilder.SidePanelOpened');
+      });
 
       if (initialWorkspace) {
         try {
