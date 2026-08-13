@@ -2,6 +2,32 @@
 /**
  * VFN-011 — how wide a sentence actually is, without a renderer.
  *
+ * 🔴 ## THIS TOOL IS KNOWN WRONG. DO NOT GRADE A FITS/DOES-NOT-FIT QUESTION WITH IT.
+ *
+ * Measured against the running editor on 2026-08-13 (drive G, defect **D-6**): this tool reports
+ * **447.5 px** for a string the renderer draws at **518.6 px** — **16 % low at 11 px**. macOS
+ * applies SF's optical **tracking** at small sizes (~0.067 em here) and `hmtx` does not carry it.
+ *
+ * 🔴 **Both mitigations claimed under "What it deliberately does not model" below are false as
+ * stated, and they fail in the UNSAFE direction:**
+ *
+ * - *"this tool will never call something clipped that is not"* — it does the opposite. Being low,
+ *   it calls **clipped sentences fitting**. The unkerned-sum argument is real but is swamped by
+ *   tracking, which is an order of magnitude larger and has the other sign.
+ * - *"Treat readings as ±5%"* — the true error is ~16 %, so the declared band does not cover it.
+ *
+ * The consequence was a **green gate certifying a falsehood**: `tests-unit/vfn-011/strip-copy.spec.ts`
+ * passed with all seven strip sentences asserted to fit, while all seven clipped live by 1.6–68 px.
+ *
+ * **Use `canvas.measureText` at the element's own computed font instead** — it was proved equal to
+ * a live DOM `Range` measurement to 0.1 px. Grade the budget in the renderer.
+ *
+ * This file is kept, unrepaired, because the spec around it and its three controls are well built
+ * and because deleting a tool teaches nobody why it was wrong. See
+ * `dev-docs/tasks/phase-64-the-visual-function-in-use/DRIVE-2026-08-13-G.md` § D-6 for the
+ * measurement and for the two separable things still owed (fix the instrument; re-trim against
+ * corrected numbers).
+ *
  * ## Why this exists
  *
  * The Logic Builder's run strip is a flex row whose note is a single

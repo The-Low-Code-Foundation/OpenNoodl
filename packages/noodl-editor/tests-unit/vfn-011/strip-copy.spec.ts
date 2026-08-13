@@ -1,6 +1,28 @@
 /**
  * VFN-011 — the run strip's sentences have to *fit*, and this is the gate that says so.
  *
+ * 🔴 ## THIS GATE IS GREEN AND ITS SUBJECT IS STILL BROKEN. It does NOT prove the sentences fit.
+ *
+ * The live drive of 2026-08-13 (drive G, defect **D-6**) measured **all seven** of these sentences
+ * still clipping at the 640 px floor, by **1.6–68 px** — while every assertion below passed.
+ *
+ * The fault is the measurer, not this file: `scripts/devtools/text-advance.js` sums raw `hmtx`
+ * advances and is **16 % low at 11 px**, because macOS applies SF's optical tracking at small sizes
+ * and the advance table does not carry it. Being low, it calls clipped sentences fitting — so the
+ * gate cannot fail in the direction that matters, and a passing run here means nothing about the
+ * rendered strip.
+ *
+ * ⚠️ **Do not read a green run of this file as evidence the copy fits.** The structure and the
+ * three controls are sound and are worth keeping; only the width oracle is wrong. Re-point it at
+ * `canvas.measureText` at the element's own computed font (proved equal to a live DOM `Range` to
+ * 0.1 px) and the assertions become meaningful — and several will then correctly go red, which is
+ * the point.
+ *
+ * Two separable things are owed, both in
+ * `dev-docs/tasks/phase-64-the-visual-function-in-use/DRIVE-2026-08-13-G.md` § D-6: fix the
+ * instrument, then re-trim against corrected numbers. The re-trim was deliberately NOT done by the
+ * drive — choosing which words to lose is VFN-011's decision to make against real numbers.
+ *
  * ## The failure
  *
  * `NOTES-bench.md` §"Owed a live drive" item 7 filed it as a risk — *"the note is a single
