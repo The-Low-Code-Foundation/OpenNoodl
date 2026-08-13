@@ -54,6 +54,16 @@ bower_components
 build/Release
 
 # Dependency directories
+#
+# 🔴 Both spellings, and the one without the slash is load-bearing. A pattern ending
+# in `/` matches directories ONLY — not a symlink named `node_modules`, which is what
+# `scripts/devtools/make-worktree.sh` creates inside every worktree. On 2026-08-13 a
+# `git add -A` taken while resolving a merge conflict in a worktree swept five of them
+# in as tracked symlinks; merging that into the primary checkout replaced five real
+# `node_modules` directories with symlinks pointing at THEMSELVES, and required an
+# `npm install` to recover. Same shape as the `dist-types` self-symlink that ELOOPed
+# `build:types`.
+node_modules
 node_modules/
 jspm_packages/
 
