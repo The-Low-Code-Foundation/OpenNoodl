@@ -327,7 +327,31 @@ export function CoreBaseDialog({
         style={UNSAFE_style}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className={css['MeasuringContainer']}>
+        {/*
+          🔴 `inert`, and it closes a whole class of defect rather than one dialog's.
+
+          This container exists to be measured, so `{children}` is rendered **twice** in every
+          dialog in the editor — once here, once visibly below. The stylesheet hides this copy
+          from the mouse (`pointer-events: none`) and from the eye (`height: 0; opacity: 0`),
+          and **neither of those hides it from the keyboard**: every focusable element in every
+          dialog was in the tab order twice, invisible copy first. Tabbing into a dialog put
+          focus somewhere nothing could be seen, and a second Tab appeared to do nothing.
+
+          `inert` is the one attribute that says "this subtree is not for the user": it removes
+          the whole subtree from sequential focus navigation, from hit-testing, from text
+          selection and from the accessibility tree — which also stops a screen reader reading
+          every dialog twice. It does **not** touch layout, so `getBoundingClientRect` on
+          `dialogRef` below reads exactly what it read before; that is the one property this
+          container exists for and the one thing `inert` is specified not to affect. The
+          alternative, `aria-hidden`, fixes the screen reader and leaves the tab stop — the
+          worse of the two halves, and the combination of `aria-hidden` with a focusable
+          element is itself an accessibility defect.
+
+          ⚠️ Refs still resolve to the **visible** copy, unchanged: the same ref rendered twice
+          is attached in tree order, and this copy is first, so the visible one below wins. That
+          was already true and is why `isAutoFocus` has always landed on the real field.
+        */}
+        <div className={css['MeasuringContainer']} inert>
           <div ref={dialogRef} style={{}} className={css['ChildContainer']}>
             {children}
           </div>
