@@ -39,7 +39,7 @@ import { HAT_BLOCK_TYPE } from '@noodl/runtime/src/nodes/std-library/logic-build
 
 import { bodyFromBlocks, previewSignature } from './MyBlocksBlocks';
 import type { BlocklyWorkspaceJson, MyBlockDefinition } from './myblocks/format';
-import { countSavedBlocks, normaliseBlockName } from './myblocks/saveIntent';
+import { countSavedBlocks, normaliseBlockName, previewBlockIds } from './myblocks/saveIntent';
 import type { InferredSignature } from './myblocks/shape';
 import type { MyBlocksScope, MyBlocksStore } from './myblocks/store';
 
@@ -71,6 +71,32 @@ export interface SaveChoice {
 }
 
 /**
+ * VFN-006 — the thing that draws the outline, as this module is allowed to know it.
+ *
+ * 🔴 **An interface and not an import, and that is load-bearing.** The implementation
+ * (`MyBlocksSaveOutline.ts`) reaches the DOM and `CanvasTheme`, and this file is in the import
+ * graph of four plain-Node suites — `lgc-007`, `vfn-006`, `vfn-007` and `vfn-008`. One value
+ * import of that module from here fails all four *to run*, which counts as a failure and does
+ * not look like one; the same trap `MyBlocksBlocks.ts` documents about `MyBlocksShelves`. So the
+ * layer is **injected** by `BlocklyWorkspace.tsx`, which is React already, and everything below
+ * works exactly the same when nobody injected one.
+ */
+export interface SaveOutline {
+  /**
+   * Outline these blocks for as long as the dialog is up.
+   *
+   * @returns how many were actually drawn — see {@link SaveBlockRequest.outline}.
+   */
+  pin(blockIds: readonly string[]): number;
+  /** The dialog has gone: on save, on cancel and on Escape alike. */
+  unpin(): void;
+  /** Outline these blocks while a pointer is over the menu item. Never outranks a pin. */
+  show(blockIds: readonly string[]): void;
+  /** The pointer left. */
+  hide(): void;
+}
+
+/**
  * Everything the dialog needs, and nothing that needs the dialog.
  *
  * The shape is deliberately inert: no Blockly objects reach the React side, so the dialog
@@ -79,6 +105,30 @@ export interface SaveChoice {
 export interface SaveBlockRequest {
   /** How many blocks are going in — the gesture takes more than the one that was clicked. */
   blockCount: number;
+  /**
+   * VFN-006 — the ids of those same blocks, so the dialog can point at them.
+   *
+   * The same walk of the same body that produced `blockCount`, which is what makes criterion 3
+   * true by construction rather than by agreement: the outline and the number cannot drift,
+   * because there is one answer and it is rendered twice.
+   */
+  previewBlockIds: string[];
+  /**
+   * VFN-006 — how many blocks are **above** the clicked one in its own stack, and staying.
+   *
+   * `0` for the ordinary case. Non-zero means the right-click landed mid-stack, which is the
+   * surprise this feature's header predicted and the one thing the count alone cannot convey: a
+   * builder looking at "5 blocks" over an 8-block stack does not know which 5.
+   */
+  blocksAbove: number;
+  /**
+   * VFN-006 — the outline, when there is one to drive.
+   *
+   * Absent whenever the workspace is not rendered, which is every use in the plain-Node runner.
+   * `pin` answers with the number it actually **drew**, so the dialog can say *"outlined behind
+   * this dialog"* only when there is something behind it.
+   */
+  outline?: Pick<SaveOutline, 'pin' | 'unpin'>;
   /** The body as it will be stored. */
   body: BlocklyWorkspaceJson;
   /** The shape the definition will get, and why. Already inferred — do not re-infer it. */
@@ -115,6 +165,8 @@ interface SaveSession {
   workspace: Blockly.Workspace;
   store: MyBlocksStore;
   openDialog: SaveBlockDialog;
+  /** VFN-006. Absent on a workspace with nothing rendered — every use in the runner. */
+  outline?: SaveOutline;
 }
 
 const sessions = new Map<string, SaveSession>();
@@ -130,6 +182,48 @@ let menuItemRegistered = false;
  */
 export function selectionFor(block: Blockly.Block): Blockly.Block[] {
   return [block];
+}
+
+/**
+ * How many blocks sit **above** the selection in its own stack and are staying put.
+ *
+ * VFN-006 §3. The save takes the clicked block and everything under it, so a click in the middle
+ * of a stack silently splits it — the exact surprise the report is about, and one the count
+ * cannot convey on its own.
+ *
+ * ⚠️ *Its own stack*, which is why this walks `getNextBlock` back down rather than trusting
+ * `getPreviousBlock` alone. A block sitting first inside a C-block's statement input has its
+ * previous connection occupied — by the C-block — and nothing above it in that stack. Blockly's
+ * `getPreviousBlock()` returns the C-block there, and counting it (and its other inputs, and
+ * everything above *it*) as "the blocks above this one" would be a sentence about the wrong
+ * blocks. The round trip through `getNextBlock` is the test for "same stack".
+ *
+ * Counted the way `countSavedBlocks` counts, shadows excluded, so the two numbers in the dialog
+ * are in the same units.
+ */
+export function blocksAboveSelection(blocks: Blockly.Block[]): number {
+  const first = blocks[0];
+  if (!first || typeof first.getPreviousBlock !== 'function') return 0;
+
+  let count = 0;
+  let current: Blockly.Block | null = first;
+  let previous = first.getPreviousBlock();
+
+  while (previous && previous.getNextBlock() === current) {
+    count += ownAndInputs(previous);
+    current = previous;
+    previous = previous.getPreviousBlock();
+  }
+
+  return count;
+}
+
+/** A block plus everything plugged into it, but **not** what is stacked under it. */
+function ownAndInputs(block: Blockly.Block): number {
+  const all = block.getDescendants(false).filter((b) => !b.isShadow()).length;
+  const next = block.getNextBlock();
+  const below = next ? next.getDescendants(false).filter((b) => !b.isShadow()).length : 0;
+  return all - below;
 }
 
 /** Is this a block a saved definition could be rooted at? */
@@ -149,13 +243,19 @@ export function canSaveBlock(block: Blockly.Block | null | undefined): { ok: boo
 export function prepareSaveRequest(
   store: MyBlocksStore,
   blocks: Blockly.Block[],
-  onSaved?: (definition: MyBlockDefinition) => void
+  onSaved?: (definition: MyBlockDefinition) => void,
+  outline?: SaveOutline
 ): SaveBlockRequest {
   const body = bodyFromBlocks(blocks);
 
   return {
     body,
     blockCount: countSavedBlocks(body),
+    // VFN-006 — the same body, walked once more. Deliberately not a second selection: the whole
+    // property criterion 3 asks for is that the outline and the number are one answer.
+    previewBlockIds: previewBlockIds(body),
+    blocksAbove: blocksAboveSelection(blocks),
+    outline,
     signature: previewSignature(body),
     suggestedName: describeBlock(blocks[0]),
     taken: store.list().map((d) => ({ id: d.id, name: d.name })),
@@ -222,8 +322,15 @@ export function registerSaveAsBlockMenuItem(): void {
     },
 
     displayText: (scope) => {
-      const verdict = canSaveBlock(scope.block as Blockly.Block | undefined);
-      return verdict.ok ? SAVE_MENU_LABEL : `Save as a block — ${verdict.reason}`;
+      const block = scope.block as Blockly.Block | undefined;
+      const verdict = canSaveBlock(block);
+      const label = verdict.ok ? SAVE_MENU_LABEL : `Save as a block — ${verdict.reason}`;
+
+      // VFN-006 criterion 1 — the outline goes up while the item is hovered.
+      const session = block ? sessions.get(block.workspace.id) : undefined;
+      if (!verdict.ok || !session?.outline || typeof document === 'undefined') return label;
+
+      return hoverLabel(label, session.outline, previewBlockIds(bodyFromBlocks(selectionFor(block!))));
     },
 
     callback: (scope) => {
@@ -235,12 +342,50 @@ export function registerSaveAsBlockMenuItem(): void {
       if (!canSaveBlock(block).ok) return;
 
       session.openDialog(
-        prepareSaveRequest(session.store, selectionFor(block), () => refreshMyBlocksFlyout(session.workspace))
+        prepareSaveRequest(
+          session.store,
+          selectionFor(block),
+          () => refreshMyBlocksFlyout(session.workspace),
+          session.outline
+        )
       );
     }
   });
 
   menuItemRegistered = true;
+}
+
+/**
+ * The menu item's label as an element that turns the outline on while it is pointed at.
+ *
+ * ⚠️ `displayText` may return an `HTMLElement` — Blockly's own `ActionRegistryItem` says so —
+ * which is why this needs no `MutationObserver` on the widget div and no matching of menu rows by
+ * their text. We are handed the element the menu will render, so the listeners go on the exact
+ * row every time, and they die with the menu.
+ *
+ * The `pointerenter` also promotes itself to the surrounding `.blocklyMenuItem` when it can find
+ * one: Blockly's row has padding this span does not cover, and a pointer crossing that padding
+ * would otherwise flicker the outline off and on. The span's own `pointerleave` is kept as the
+ * fallback for the case where the row cannot be found, so the outline is never left up.
+ */
+function hoverLabel(text: string, outline: SaveOutline, blockIds: string[]): HTMLElement {
+  const span = document.createElement('span');
+  span.textContent = text;
+
+  const leave = () => outline.hide();
+
+  span.addEventListener('pointerenter', () => {
+    outline.show(blockIds);
+
+    const row = typeof span.closest === 'function' ? span.closest('.blocklyMenuItem') : null;
+    if (row && !(row as { noodlOutlineWired?: boolean }).noodlOutlineWired) {
+      (row as { noodlOutlineWired?: boolean }).noodlOutlineWired = true;
+      row.addEventListener('pointerleave', leave);
+    }
+  });
+  span.addEventListener('pointerleave', leave);
+
+  return span;
 }
 
 /**
@@ -264,13 +409,18 @@ export interface AttachSaveOptions {
   store: MyBlocksStore;
   /** Show the dialog. Injected so this module holds no React and stays gradeable. */
   openDialog: SaveBlockDialog;
+  /**
+   * VFN-006 — the outline layer, injected for the same reason `openDialog` is: it reaches the
+   * DOM, and this module must stay importable from the plain-Node runner. See {@link SaveOutline}.
+   */
+  outline?: SaveOutline;
 }
 
 /** Turn *Save as a block…* on for one open block editor. */
-export function attachMyBlocksSave({ workspace, store, openDialog }: AttachSaveOptions): MyBlocksSaveHandle {
+export function attachMyBlocksSave({ workspace, store, openDialog, outline }: AttachSaveOptions): MyBlocksSaveHandle {
   registerSaveAsBlockMenuItem();
 
-  const session: SaveSession = { workspace, store, openDialog };
+  const session: SaveSession = { workspace, store, openDialog, outline };
   sessions.set(workspace.id, session);
 
   return {

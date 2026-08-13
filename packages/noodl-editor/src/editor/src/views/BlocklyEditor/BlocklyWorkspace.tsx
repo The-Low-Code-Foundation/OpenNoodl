@@ -39,6 +39,7 @@ import {
 } from './MyBlocksBlocks';
 import { attachMyBlocksSave, type MyBlocksSaveHandle } from './MyBlocksSave';
 import { openSaveBlockDialog } from './MyBlocksSaveDialog';
+import { MyBlocksSaveOutline } from './MyBlocksSaveOutline';
 import { myBlocksStore } from './MyBlocksShelves';
 import type { BlocklyWorkspaceJson } from './myblocks/format';
 import { initBlocklyDialogs } from './BlocklyDialogs';
@@ -155,6 +156,11 @@ export function BlocklyWorkspace({
     // registry is renderer-wide and the session that connects it to *this* workspace's store has
     // to be removed when the workspace goes, or a disposed workspace keeps offering to save.
     let myBlocksSave: MyBlocksSaveHandle | null = null;
+    // VFN-006. Its own handle for the same reason every layer above has one, and one more: it is
+    // the only part of *Save as a block…* that touches the SVG, and `MyBlocksSave.ts` is in the
+    // import graph of four plain-Node suites. It is constructed here — where React already is —
+    // and injected, so that module never names it.
+    let saveOutline: MyBlocksSaveOutline | null = null;
     // VFN-011. Its own handle for the reason all four above have one, and one more: the bench holds
     // the sandbox values, which are editor state that must die with the tab rather than reach the
     // workspace's serialisation. See `BenchController`.
@@ -353,10 +359,14 @@ export function BlocklyWorkspace({
       // LGC-007 §1 — right-click a block, save it and everything under it as a My Block. Same
       // store the flyout above reads, so a block saved here is in the toolbox of every Visual
       // Function in the project without anything having to be told about it.
+      // VFN-006 — and show which blocks that is, on the workspace, while the choice is live.
+      saveOutline = new MyBlocksSaveOutline(workspace);
+
       myBlocksSave = attachMyBlocksSave({
         workspace,
         store: myBlocksStore(),
-        openDialog: openSaveBlockDialog
+        openDialog: openSaveBlockDialog,
+        outline: saveOutline
       });
 
       /**
@@ -422,6 +432,9 @@ export function BlocklyWorkspace({
         if (!workspace) return;
         workspace.setTheme(buildBlocklyTheme());
         if (blockValues) blockValues.refreshTheme();
+        // VFN-006 — repaint rather than drop: a builder who flips theme with the save dialog open
+        // has not asked for the outline behind it to disappear.
+        if (saveOutline) saveOutline.refreshTheme();
       }, themeContext);
     }
 
@@ -510,6 +523,15 @@ export function BlocklyWorkspace({
       if (myBlocksSave) {
         myBlocksSave.dispose();
         myBlocksSave = null;
+      }
+
+      // VFN-006 — after the session, so nothing can ask for an outline on a layer that has let
+      // go of its elements. It holds no listener and no timer; `dispose` is the removal of what
+      // it drew, which matters because those nodes live inside blocks the workspace is about to
+      // dispose.
+      if (saveOutline) {
+        saveOutline.dispose();
+        saveOutline = null;
       }
 
       if (workspace) {

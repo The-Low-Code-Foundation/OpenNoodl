@@ -39,7 +39,7 @@
  */
 
 import classNames from 'classnames';
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 
 import { PrimaryButton, PrimaryButtonSize, PrimaryButtonVariant } from '@noodl-core-ui/components/inputs/PrimaryButton';
 import { TextInput, TextInputVariant } from '@noodl-core-ui/components/inputs/TextInput';
@@ -55,7 +55,10 @@ import type { SaveBlockRequest } from './MyBlocksSave';
 import css from './MyBlocksSaveDialog.module.scss';
 import {
   checkBlockName,
+  describeBlocksLeftBehind,
   describeCallPreview,
+  describeOutlineTally,
+  describeSaveSelection,
   describeShape,
   describeVariableWarning,
   MAX_BLOCK_DESCRIPTION_LENGTH,
@@ -108,6 +111,36 @@ export function MyBlocksSaveDialog({ request, onClose }: MyBlocksSaveDialogProps
 
   /** The face of the block being named: `▣ Discount   price   rate`. */
   const preview = describeCallPreview(name, request.signature.params);
+
+  /**
+   * VFN-006 — how many of the blocks going in are actually outlined on the workspace behind.
+   *
+   * ⚠️ **The drawn count, not the requested one.** The sentence under the shape card says
+   * *"outlined behind this dialog"*, and a dialog that says that over a workspace with no
+   * outline on it has replaced a vague sentence with a false one — which is worse, because it
+   * sends the builder looking. `pin` answers with what it drew.
+   */
+  const [outlinedCount, setOutlinedCount] = useState(0);
+
+  useEffect(() => {
+    const outline = request.outline;
+    if (!outline) return undefined;
+
+    setOutlinedCount(outline.pin(request.previewBlockIds));
+    /**
+     * 🔴 Criterion 2, and it is one line because it has to be: *the outline disappears on save,
+     * on cancel and on Escape.* All three of those are this component unmounting, and there is
+     * no fourth way out — so the withdrawal is tied to the unmount rather than to three
+     * handlers, one of which would eventually be added without its `unpin`.
+     */
+    return () => outline.unpin();
+  }, [request]);
+
+  // Every block, or the sentence does not get to claim an outline. A partial outline is a
+  // different fact and does not have a sentence.
+  const isOutlined = outlinedCount > 0 && outlinedCount === request.blockCount;
+  const tally = describeOutlineTally(request.blockCount, isOutlined);
+  const leftBehind = describeBlocksLeftBehind(request.blocksAbove);
 
   function chooseShelf(next: MyBlocksScope, moveFocus: boolean) {
     setScope(next);
@@ -209,10 +242,29 @@ export function MyBlocksSaveDialog({ request, onClose }: MyBlocksSaveDialogProps
 
           <div className={css.ShapeCard}>
             <VStack hasSpacing={2}>
+              {/*
+                🔴 VFN-006 — *"These 5 blocks"* was **deictic**: it pointed, and the dialog is
+                modal and centred, so there was nothing on screen for it to point at. The number
+                was never wrong. What follows is the same fact said definitely, plus a tally that
+                hands the number to the outline now drawn on the workspace behind — and the
+                tally only claims an outline when one was actually painted.
+              */}
               <Text size={TextSize.Medium} textType={TextType.Proud} className={css.ShapeName}>
-                {request.blockCount === 1 ? 'This block becomes ' : `These ${request.blockCount} blocks become `}
-                {shape.shapeName}.
+                {describeSaveSelection(request.blockCount, shape.shapeName)}
               </Text>
+              {tally ? (
+                <Text size={TextSize.Small} textType={TextType.Shy}>
+                  {tally}
+                </Text>
+              ) : null}
+              {leftBehind ? (
+                // Notice and not Danger: nothing is wrong, and nothing is being refused. This is
+                // the mid-stack right-click saying which half of the stack it is taking — the
+                // surprise the report is actually about.
+                <Text size={TextSize.Small} textType={TextType.Notice}>
+                  {leftBehind}
+                </Text>
+              ) : null}
               <Text size={TextSize.Small}>{shape.consequence}</Text>
               <Text size={TextSize.Small} textType={TextType.Shy}>
                 {shape.reason} {shape.inputs}

@@ -125,6 +125,85 @@ export function countSavedBlocks(body: BlocklyWorkspaceJson | undefined | null):
   return count;
 }
 
+/**
+ * The **ids** of those same blocks, in the same document order — what the outline draws.
+ *
+ * VFN-006. `Blockly.serialization.blocks.save` writes each block's live workspace id, and
+ * `bodyFromBlocks` does not strip them, so the body the save is about to store carries the
+ * identity of every block still on the workspace behind the dialog. That is what makes "these 5
+ * blocks" pointable: the outline and the count are the same walk of the same body, so they
+ * cannot disagree about which blocks are coming.
+ *
+ * ⚠️ It is the *same* filter as `countSavedBlocks` — shadows excluded — and the two are asserted
+ * equal in `tests-unit/vfn-006`. They can differ only for a body whose blocks carry no `id`,
+ * which is a hand-written fixture and never something Blockly produced; in that case the count
+ * is still right and the outline is short, which is the safe direction to be wrong in.
+ */
+export function previewBlockIds(body: BlocklyWorkspaceJson | undefined | null): string[] {
+  const ids: string[] = [];
+  walkWorkspace(body, ({ block, shadow }) => {
+    if (shadow) return;
+    if (typeof block.id === 'string' && block.id.length > 0) ids.push(block.id);
+  });
+  return ids;
+}
+
+/* ============================================================================================
+ * VFN-006 — the sentences that point at something.
+ *
+ * > *"The 'Save as a block' right click option is confusing. It's not clear which blocks are
+ * > going to be saved. It explains 5 blocks but it'd make more sense if you like drag
+ * > highlighted them or something no?"*
+ *
+ * The count was already right. What was wrong is that *"These 5 blocks become a value block"* is
+ * **deictic** — it points — and the dialog is modal and centred, so there was nothing on screen
+ * for it to point at. The outline is the other half of the answer and lives in
+ * `MyBlocksSaveOutline.ts`; these are the words, and they are here rather than in the component
+ * so a runner can grade them.
+ * ========================================================================================== */
+
+/**
+ * What is being saved, said definitely rather than by pointing.
+ *
+ * 🔴 The plural clause is dropped entirely at one block, and that is not tidiness. *"This block
+ * and everything inside it and stacked under it"* implicates that there **is** something inside
+ * it and under it; said of a lone `math_number` it is a lie by implicature, and the builder's
+ * next move is to go looking for the blocks it claimed.
+ */
+export function describeSaveSelection(blockCount: number, shapeName: string): string {
+  return blockCount === 1
+    ? `This block becomes ${shapeName}.`
+    : `This block and everything inside it and stacked under it becomes ${shapeName}.`;
+}
+
+/**
+ * The tally under it — the sentence that hands the number to the thing on screen.
+ *
+ * @param outlined whether the outline was actually drawn. 🔴 Passed rather than assumed: the
+ *   overlay declines on a workspace with nothing rendered, and a dialog that says *"outlined
+ *   behind this dialog"* over an un-outlined workspace is a worse lie than the deixis it
+ *   replaced, because it sends the builder looking for something that is not there.
+ */
+export function describeOutlineTally(blockCount: number, outlined: boolean): string | undefined {
+  if (blockCount === 1) return outlined ? 'Outlined behind this dialog.' : undefined;
+  return outlined ? `${blockCount} blocks, outlined behind this dialog.` : `${blockCount} blocks.`;
+}
+
+/**
+ * What a mid-stack right-click leaves behind, or `undefined` when it left nothing behind.
+ *
+ * The surprise the report is really about, and the one `MyBlocksSave.ts`'s header predicted: the
+ * gesture takes everything *below* the clicked block, so clicking the middle of a stack silently
+ * splits it. Nothing said so, and the count alone cannot — a builder who sees "5 blocks" over an
+ * 8-block stack has no way to know which 5.
+ */
+export function describeBlocksLeftBehind(blocksAbove: number): string | undefined {
+  if (!blocksAbove || blocksAbove < 1) return undefined;
+  return blocksAbove === 1
+    ? 'The block above this one stays where it is.'
+    : `The ${blocksAbove} blocks above this one stay where they are.`;
+}
+
 export interface ShapeDescription {
   /** The shape, as a noun phrase: "a value block". */
   shapeName: string;
