@@ -37,6 +37,8 @@ mechanism; two do not; three are design work.
 | VFN-010 | [VFN-010-THE-BACKPACK-IN-THE-LAUNCHER.md](VFN-010-THE-BACKPACK-IN-THE-LAUNCHER.md) | backpack blocks are marked in the picker and managed from the launcher | 8 | 3 | 📋 open |
 | VFN-011 ⭐ | [VFN-011-THE-BENCH.md](VFN-011-THE-BENCH.md) | set sandbox values, press Run, watch the badges fill — with no app running | 10 | **1 — the flagship** | 📋 open |
 | VFN-012 | [VFN-012-THE-BLOCKS-THE-APP-ALREADY-HAS.md](VFN-012-THE-BLOCKS-THE-APP-ALREADY-HAS.md) | app-config variables, registered libraries and `window` become blocks | 11 | 3 | 📋 open |
+| VFN-013 | [VFN-013-THE-VALUES-YOU-CANNOT-READ.md](VFN-013-THE-VALUES-YOU-CANNOT-READ.md) | run values are drawn on top of the block they belong inside | live test 2026-08-13 | 2 | 📋 open · ✅ **mechanism pinned**: `BlockValueBadges.ts:210` anchors at `-(width+6)`, which is empty canvas for a top-level block and *inside the parent* for a nested one |
+| VFN-014 | [VFN-014-THE-CODE-NOBODY-CAN-READ.md](VFN-014-THE-CODE-NOBODY-CAN-READ.md) | *View Code* shows the probe-instrumented build, not the program | live test 2026-08-13 | 2 | 📋 open · ✅ **mechanism pinned**: `generatedCode` is generated inside `withBlockProbes`, which is **scoped** — a clean rendering is one call away. 🔴 carries an unexplained `Outputs["result"]` to reproduce first |
 
 ## Suggested order, and why
 
