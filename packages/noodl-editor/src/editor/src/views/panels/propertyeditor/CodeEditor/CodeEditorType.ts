@@ -16,7 +16,44 @@ import {
 
 import { TypeView } from '../TypeView';
 import { getEditType } from '../utils';
+import {
+  defaultCodeEditorSize,
+  restoreCodeEditorSize,
+  storableCodeEditorSize,
+  type PopoutSize,
+  type Viewport
+} from './popoutSize';
 import { Property, PropertyProps } from './Property';
+
+/** Where the popout's remembered size lives. Unchanged, so an existing good size survives. */
+const SIZE_STORAGE_KEY = 'codeeditor_size_percentage';
+
+function readViewport(): Viewport {
+  const body = document.body.getBoundingClientRect();
+  return { width: body.width, height: body.height };
+}
+
+function readStoredSize(viewport: Viewport): PopoutSize {
+  try {
+    const raw = localStorage[SIZE_STORAGE_KEY];
+    return raw ? restoreCodeEditorSize(JSON.parse(raw), viewport) : defaultCodeEditorSize(viewport);
+  } catch (error) {
+    // Unparseable is the same as nothing stored, and neither is worth an exception over the
+    // size of a window.
+    return defaultCodeEditorSize(viewport);
+  }
+}
+
+function writeStoredSize(measured: { width: number; height: number }): void {
+  const fractions = storableCodeEditorSize(measured, readViewport());
+  if (!fractions) return;
+
+  try {
+    localStorage[SIZE_STORAGE_KEY] = JSON.stringify(fractions);
+  } catch (error) {
+    /* a full or blocked store is not worth an exception either */
+  }
+}
 
 /** The `codeeditor` values a port may declare, and what each one is. */
 const LANGUAGE_MODES: Record<string, ValidationType> = {
@@ -276,26 +313,15 @@ export class CodeEditorType extends TypeView {
       _this.isDefault = source === undefined;
     }
 
-    let initialSize: { x: number; y: number };
-
-    if (localStorage['codeeditor_size_percentage']) {
-      try {
-        const json = JSON.parse(localStorage['codeeditor_size_percentage']);
-
-        const b = document.body.getBoundingClientRect();
-        const width = Math.min(Math.max(b.width * json.width, 400), b.width - 300);
-        const height = Math.min(Math.max(b.height * json.height, 400), b.height - 300);
-
-        initialSize = { x: width, y: height };
-      } catch (error) {}
-    } else {
-      // Default size: Make it wider (60% of viewport width, 70% of height)
-      const b = document.body.getBoundingClientRect();
-      initialSize = {
-        x: Math.min(b.width * 0.6, b.width - 200), // 60% width, but leave some margin
-        y: Math.min(b.height * 0.7, b.height - 200) // 70% height
-      };
-    }
+    // 🔴 CED-002. This used to clamp a stored fraction up to a 400px floor, and the floor was
+    // hiding a defect: `onClose` measured the React root's container, `dispose()` can have
+    // unmounted it already, and an emptied div measures 0×0 — so `{width: 0, height: 0}` was
+    // stored as if it were a chosen size, and every code editor from then on opened at 400px.
+    // The arithmetic, both floors and the refusal to store an impossible measurement are in
+    // `popoutSize.ts`, where they are gated by specs.
+    const viewport = readViewport();
+    const size = readStoredSize(viewport);
+    const initialSize = { x: size.width, y: size.height };
 
     this.popoutDiv = document.createElement('div');
     this.popoutRoot = createRoot(this.popoutDiv);
@@ -414,14 +440,14 @@ export class CodeEditorType extends TypeView {
         save();
 
         // ---
-        // Save the window size
-        const a = popoutDiv.getBoundingClientRect();
-        const b = document.body.getBoundingClientRect();
-
-        localStorage['codeeditor_size_percentage'] = JSON.stringify({
-          width: a.width / b.width,
-          height: a.height / b.height
-        });
+        // Save the window size — but only if what we measured can be a real one.
+        //
+        // 🔴 CED-002. `popoutDiv` is the React root's container, and `dispose()` unmounts that
+        // root. Every close reaches here first, but a *panel teardown* can dispose the view out
+        // from under an open popout, at which point this measures an empty div: 0×0, stored as
+        // a fraction, restored as the 400px floor, forever. `storableCodeEditorSize` answers
+        // `null` for anything below the floor, and the last good size is kept instead.
+        writeStoredSize(popoutDiv.getBoundingClientRect());
 
         // ---
         // Dispose
