@@ -1,6 +1,45 @@
 # VFN-007 — The shelf that does not say which
 
-**Status:** 📋 open · **Tier 3** · ~2 hours · ✅ **REPRODUCED 2026-08-13 — and it is NOT contrast**
+**Status:** 🟡 **BUILT 2026-08-13 on `vfn-saveblock`, NOT DRIVEN** · **Tier 3** · ✅ reproduced —
+and it is NOT contrast
+
+> ## ✅ Built. Criteria 1, 2 and 5 closed; 3 and 4 owe a drive
+>
+> The picker is now an **ARIA radiogroup of themed option cards** — no `<input type="radio">`
+> anywhere in the dialog, so there is no document-scoped group for `BaseDialog`'s second render
+> of the body to join. The selected state is React's and nothing else's, which is what it always
+> should have been: React's state was correct throughout the original bug.
+>
+> - `myblocks/shelfChoice.ts` (new) — the options as data and the arrow/Space/Enter model, both
+>   pure and both graded.
+> - `MyBlocksSaveDialog.tsx` / `.module.scss` — the cards, on design-system tokens.
+> - `tests-unit/vfn-007/shelf-picker.test.ts` — 23 tests, **three negative controls**.
+>
+> **Criterion 2 is a measured number, not a screenshot.** `tests-unit/support/themeTokens.ts`
+> (new) resolves `colors.css` for both themes and computes the WCAG ratio of the pairs the
+> stylesheet actually names:
+>
+> | Pair | dark | light |
+> |---|---|---|
+> | `--theme-color-primary` on `--theme-color-bg-3` — the chosen dot and ring | **6.45** | **3.99** |
+> | `--theme-color-border-control` on `--theme-color-bg-2` — the empty ring | **3.66** | **3.43** |
+> | `--theme-color-primary` on `--theme-color-bg-2` — the chosen row's border | **6.45** | **4.33** |
+>
+> ⚠️ **What changed that the task file said to keep.** The `<label>` wrapper is gone — a
+> `<label>` with no labelable control inside it labels nothing. The *property* it bought (the
+> whole row including its consequence note is the click target) is kept and asserted.
+> `DEFAULT_SCOPE` is untouched and is asserted to still be `'project'`.
+>
+> ⚠️ **Second finding, filed not fixed: `BaseDialog`'s measuring copy is tab-reachable.** It is
+> `pointer-events: none; opacity: 0` — hidden from the mouse and the eye, not from the keyboard.
+> **Every** focusable element in **every** dialog in the editor is therefore in the tab order
+> twice, invisible copy first. One attribute (`inert`, or `aria-hidden`) on the measuring
+> container closes the whole class; not done here because `BaseDialog` is on every dialog surface
+> in the app and the change cannot be verified without a drive. Its own task.
+>
+> **Owed to a drive:** that a click on the note really selects the row, that Tab and the arrows
+> behave in a rendered dialog, and `icon-contrast.js` on the painted pixels. Written up in
+> [`NOTES-saveblock.md`](NOTES-saveblock.md).
 
 > ## 🔴 Criterion 1 is answered, and it overturns this file's hypothesis
 >
@@ -129,12 +168,18 @@ behind it. Both survive the change.
 
 1. ✅ **DONE 2026-08-13.** The reproduce step was run and its answer is at the top of this file:
    a duplicated radio-group `name` across `BaseDialog`'s two renders, **not** contrast.
-2. The selected shelf is visible at a glance, in both themes, and its indicator measures **≥ 3:1**
-   against its own surround (the non-text contrast floor).
-3. Clicking anywhere in an option row selects it, including the consequence note.
-4. Keyboard: the picker is reachable by Tab, changeable by arrows or Space, and shows focus.
-5. The saved definition still lands on the chosen shelf — assert against `myBlocksStore().scopeOf(id)`,
-   not against the toast.
+2. ✅ **DONE.** The selected shelf is visible at a glance, in both themes, and its indicator
+   measures **≥ 3:1** against its own surround. Measured from `colors.css` in both themes — the
+   table is at the top of this file. ⚠️ Source-level; `icon-contrast.js` on the painted pixels is
+   still owed.
+3. 🟡 **Structure proved, delivery owed.** Clicking anywhere in an option row selects it,
+   including the consequence note — the row is the control and the note is inside it, asserted.
+   That a real click lands needs a drive.
+4. 🟡 **Model and markup proved, delivery owed.** Roving `tabIndex`, arrows/Space through
+   `shelfAfterKey`, and a focus outline on `--theme-color-focus-ring`. ⚠️ Expect an extra,
+   invisible tab stop first — that is the `BaseDialog` finding above, not this picker.
+5. ✅ **DONE.** The saved definition lands on the chosen shelf, asserted against `scopeOf` for
+   both options and against the *other* shelf being empty. Not against the toast.
 
 ## How to prove it
 

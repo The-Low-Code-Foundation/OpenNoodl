@@ -1,10 +1,13 @@
 import React, { useLayoutEffect, useRef } from 'react';
 
-import { useCanvasTabs } from '../../contexts/CanvasTabsContext';
+import { useCanvasTabs, type Tab } from '../../contexts/CanvasTabsContext';
 import { resizeBlocklyWorkspaces } from '../BlocklyEditor/blocklyResize';
 import css from './CanvasTabs.module.scss';
 import { beginOverlayDrag, OverlayResizeHandles, type OverlayDragCallbacks } from './OverlayDragHandles';
+import { isTabAway, LABEL_SEPARATOR, tabLabelSegments, tabTooltip } from './tabLocation';
+import { resolveTabLocations } from './tabNavigation';
 import { buildTabWorkspaces, TabWorkspaceEdit } from './tabWorkspaces';
+import { useActiveComponentId } from './useActiveComponentId';
 
 export interface CanvasTabsProps {
   /**
@@ -24,6 +27,15 @@ export interface CanvasTabsProps {
    * place — which is what a document with no editor behind it wants.
    */
   overlayDrag?: OverlayDragCallbacks;
+  /**
+   * VFN-004 — the tab was clicked, so take the canvas to where its blocks live.
+   *
+   * A callback rather than a call, for the same reason `onWorkspaceChange` is one: this component
+   * renders a window, and the node graph is not something it can see. The editor supplies
+   * `navigateToTabComponent`. Omitted, the tab still switches — it just does not travel, which is
+   * what a document with no canvas behind it wants.
+   */
+  onTabActivate?: (tab: Tab) => void;
 }
 
 /**
@@ -46,9 +58,30 @@ export interface CanvasTabsProps {
  * The layer around it (`#canvas-tabs-root`) is `pointer-events: none`, so every click outside
  * the window reaches whatever is underneath: the node canvas, the running app, the panels.
  */
-export function CanvasTabs({ onWorkspaceChange, overlayDrag }: CanvasTabsProps) {
+export function CanvasTabs({ onWorkspaceChange, overlayDrag, onTabActivate }: CanvasTabsProps) {
   const { tabs, activeTabId, switchTab, closeTab, closeTabs, updateTab } = useCanvasTabs();
   const windowRef = useRef<HTMLDivElement>(null);
+
+  /**
+   * VFN-004 — which component the canvas behind this window is showing.
+   *
+   * Read, never stored: the away mark is a comparison against the node graph's own active
+   * component, not a flag this component maintains.
+   */
+  const activeComponentId = useActiveComponentId();
+
+  /**
+   * VFN-004 — where each open tab says it belongs, resolved against the project as it is now.
+   *
+   * The resolution lives in `tabNavigation` because it reads the project, and this component's
+   * whole contract is that it can see a window and nothing else. What arrives here is a display
+   * string per tab and a full path for the tooltip.
+   *
+   * The words "Logic Builder" are deliberately not in any of it: the window is already
+   * `aria-label="Logic Builder"` and its title bar is two pixels away, and a tab that spends its
+   * width repeating the window's name has none left for the answer.
+   */
+  const resolvedTabs = resolveTabLocations(tabs);
 
   /**
    * A revealed workspace has to be re-measured, and this is the one place that knows it happened.
@@ -85,8 +118,23 @@ export function CanvasTabs({ onWorkspaceChange, overlayDrag }: CanvasTabsProps) 
     }
   };
 
+  /**
+   * VFN-004 — clicking a tab switches to it *and* goes to where its blocks live.
+   *
+   * Both, in that order, and unconditionally. "Already on that component" is not a case this
+   * handler decides — `navigateToTabComponent` decides it, because the answer depends on the
+   * canvas rather than on anything rendered here, and splitting one decision across two files is
+   * how the two halves get out of step.
+   *
+   * 🔴 The navigation must not be written over the editor's router. `Router.route()` early-returns
+   * when the route asked for is the route it is on, so editor→editor it is a silent no-op that
+   * looks exactly like a dead click handler — which is to say, exactly like the bug being fixed.
+   */
   const handleTabClick = (tabId: string) => {
     switchTab(tabId);
+
+    const tab = tabs.find((t) => t.id === tabId);
+    if (tab) onTabActivate?.(tab);
   };
 
   const handleTabClose = (e: React.MouseEvent, tabId: string) => {
@@ -148,19 +196,46 @@ export function CanvasTabs({ onWorkspaceChange, overlayDrag }: CanvasTabsProps) 
           beginOverlayDrag(event, 'move', windowRef.current, overlayDrag);
         }}
       >
-        {tabs.map((tab) => {
+        {resolvedTabs.map(({ tab, componentLabel, componentPath }) => {
           const isActive = tab.id === activeTabId;
+
+          const segments = tabLabelSegments(tab, { componentName: componentLabel });
+          const away = isTabAway(tab, activeComponentId);
 
           return (
             <div
               key={tab.id}
-              className={`${css['Tab']} ${isActive ? css['isActive'] : ''}`}
+              className={`${css['Tab']} ${isActive ? css['isActive'] : ''} ${away ? css['isAway'] : ''}`}
               onClick={() => handleTabClick(tab.id)}
               role="tab"
               aria-selected={isActive}
               tabIndex={0}
+              title={tabTooltip(tab, { component: componentPath, away })}
+              data-test="logic-builder-tab"
+              data-away={away ? 'true' : 'false'}
             >
-              <span className={css['TabLabel']}>Logic Builder: {tab.nodeName || 'Unnamed'}</span>
+              {/*
+                The away mark. 🔴 A shape, not a colour: a hollow ring that is simply not in the
+                DOM when the canvas is showing this tab's component, so it survives a screenshot,
+                a greyscale print and either theme. A tinted label would satisfy a rubric and
+                nothing else.
+
+                `aria-hidden` because the same fact is already in the tab's `title` in words —
+                see `tabTooltip`. Two announcements of one state is noise.
+              */}
+              {away ? <span className={css['AwayMark']} aria-hidden="true" /> : null}
+
+              <span className={css['TabLabel']}>
+                {segments.component ? (
+                  <>
+                    <span className={css['TabComponent']}>{segments.component}</span>
+                    <span className={css['TabSeparator']} aria-hidden="true">
+                      {LABEL_SEPARATOR}
+                    </span>
+                  </>
+                ) : null}
+                <span className={css['TabNode']}>{segments.node}</span>
+              </span>
 
               <button
                 className={css['TabCloseButton']}

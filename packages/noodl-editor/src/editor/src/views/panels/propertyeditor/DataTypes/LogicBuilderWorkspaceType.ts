@@ -84,17 +84,47 @@ export class LogicBuilderWorkspaceType extends TypeView {
 
   onEditBlocksClicked() {
     // ModelProxy wraps the actual node model in a .model property
-    const nodeId = this.parent?.model?.model?.id;
+    const nodeModel = this.parent?.model?.model;
+    const nodeId = nodeModel?.id;
     const nodeName = this.parent?.model?.model?.label || this.parent?.model?.type?.displayName || 'Logic Builder';
     const workspace = this.parent?.model?.getParameter('workspace') || '';
+    /**
+     * VFN-011 — what the app would actually run for this node, right now.
+     *
+     * Carried so the block editor's value strip can name the one empty state it could not: a
+     * program whose `generatedCode` predates value tracing emits no probes, so no run of it —
+     * in the app or on the bench — can ever produce a badge. Read only; the node's parameter is
+     * written by the workspace's own flush and by nothing on this path.
+     */
+    const generatedCode = this.parent?.model?.getParameter('generatedCode') || '';
 
-    console.log('[LogicBuilderWorkspaceType] Opening Logic Builder tab for node:', nodeId);
+    /**
+     * VFN-004 — where the node lives, read from the node itself.
+     *
+     * Node → graph → component. Nothing new is plumbed to get here: this is the same
+     * `owner.owner` walk the exporter, the compiler and `ViewerConnection` all do, and the
+     * component has been one dereference away from this line the whole time. It was simply never
+     * read, which is why the window could not say where it belonged.
+     *
+     * The **id** is what the tab navigates by; the two names are for the label, the tooltip and
+     * the refusal, and they are snapshots. See `views/CanvasTabs/tabLocation.ts`.
+     */
+    const component = nodeModel?.owner?.owner;
+    const componentId = component?.id;
+    const componentName = component?.displayName;
+    const componentPath = component?.fullName;
+
+    console.log('[LogicBuilderWorkspaceType] Opening Logic Builder tab for node:', nodeId, 'in', componentPath);
 
     // Emit event to open Logic Builder tab
     EventDispatcher.instance.emit('LogicBuilder.OpenTab', {
       nodeId,
       nodeName,
-      workspace
+      componentId,
+      componentName,
+      componentPath,
+      workspace,
+      generatedCode
     });
   }
 

@@ -7,6 +7,7 @@ import { ExecutionOverlay } from '../CanvasOverlays/ExecutionOverlay';
 import { HighlightOverlay } from '../CanvasOverlays/HighlightOverlay';
 import { RecordingOverlay } from '../CanvasOverlays/RecordingOverlay';
 import { CanvasTabs } from '../CanvasTabs';
+import { navigateToTabComponent } from '../CanvasTabs/tabNavigation';
 import { EditorBanner } from '../EditorBanner';
 import { refFromComponentName } from '../../models/workflow/functionRefResolution';
 import { descentFor } from '../../models/workflow/workflowDescent';
@@ -48,6 +49,16 @@ export class OverlayViews {
         null,
         React.createElement(CanvasTabs, {
           onWorkspaceChange: this.handleBlocklyWorkspaceChange.bind(this),
+          /**
+           * VFN-004 — clicking a tab takes the canvas to where its blocks live.
+           *
+           * Supplied here rather than reached for inside the window, for the same reason
+           * `onWorkspaceChange` is: the window renders a box of blocks and cannot see a node
+           * graph. `navigateToTabComponent` goes through `switchToComponent` — the door the
+           * components panel uses — and not through `Router.route()`, which is a silent no-op
+           * editor→editor and would look exactly like the dead click this replaces.
+           */
+          onTabActivate: (tab) => navigateToTabComponent(tab),
           // LGC-010: the window reports pointer positions and the box it measured at
           // `mousedown`; the editor owns the arithmetic, because the viewport it is clamped
           // into is the whole document rather than anything the component can see.

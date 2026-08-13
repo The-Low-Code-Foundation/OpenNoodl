@@ -103,6 +103,9 @@ export function buildTabWorkspaces({ tabs, activeTabId, onEdit }: BuildTabWorksp
           <BlocklyWorkspace
             nodeId={tab.nodeId}
             initialWorkspace={tab.workspace || undefined}
+            // VFN-011 — what the app would run right now, so the strip can say why it is empty.
+            // Read-only all the way down; nothing here writes it back.
+            generatedCode={tab.generatedCode}
             onChange={(_workspaceSvg, workspace, code) => onEdit({ tab, workspace, code })}
           />
         </Suspense>

@@ -26,8 +26,8 @@
  * @module BlocklyEditor/myblocks
  */
 
-import type { BlocklyWorkspaceJson } from './format';
-import { walkWorkspace } from './references';
+import type { BlocklyWorkspaceJson, MyBlockParam, MyBlockShape } from './format';
+import { collectVariableReferences, walkWorkspace } from './references';
 import type { InferredSignature } from './shape';
 
 /**
@@ -92,6 +92,24 @@ export function normaliseBlockName(raw: string): string {
 }
 
 /**
+ * The description that will actually be stored, or `undefined` when there is none.
+ *
+ * 🔴 `undefined` and never `''`. `MyBlockDefinition.description` is optional, and every
+ * definition ever written before VFN-008 has it absent — so "no description" has to be *one*
+ * value, not two. An empty string would make `definition.description !== undefined` true for a
+ * field the builder left blank, and every reader downstream would then have to know that `''`
+ * means the same thing as absent. This module has already paid for that distinction once, in
+ * the generate seam, where a refusal published its silence as `''`.
+ *
+ * The field is optional on purpose: a required description on a save dialog is a field that
+ * gets filled with `x`.
+ */
+export function normaliseBlockDescription(raw: string | undefined | null): string | undefined {
+  const description = (raw || '').trim();
+  return description.length > 0 ? description : undefined;
+}
+
+/**
  * How many blocks are going into the definition.
  *
  * Shown because the gesture takes more than the block that was clicked: everything inside it
@@ -150,4 +168,170 @@ export function joinPhrases(phrases: readonly string[]): string {
   if (phrases.length === 0) return 'of what is in it';
   if (phrases.length === 1) return phrases[0];
   return `${phrases.slice(0, -1).join(', ')} and ${phrases[phrases.length - 1]}`;
+}
+
+/* ============================================================================================
+ * VFN-008 — what a *saved* block says about itself, wherever it appears.
+ *
+ * > *"Once saved, it's not easy to know what your saved block actually does. If you put it on a
+ * > canvas later on, how do you know what inputs and outputs it has? What it's supposed to do?"*
+ *
+ * The answer was already computed and then thrown away: `inferSignature` runs on every save and
+ * stores `shape` and `params`, and the dialog showed a sentence about them once and dropped it.
+ * Everything below is that answer, said in the three places a builder meets a saved block — the
+ * save dialog, the call block's tooltip, and the My Blocks flyout — and it is all here rather
+ * than in the components so that a runner can grade the words. §1's whole argument is that the
+ * *words* are the only thing teaching value-versus-statement, and words in a JSX literal are
+ * words no spec can reach.
+ * ========================================================================================== */
+
+/**
+ * The glyph a saved block wears, in the flyout and on the workspace.
+ *
+ * Exported so the call block's own header and the save dialog's preview cannot drift: a preview
+ * that showed a different mark from the block it is previewing would be a mockup, not a preview.
+ */
+export const MY_BLOCKS_BLOCK_GLYPH = '▣';
+
+/**
+ * The one fact with the largest blast radius, and it holds for every saved block whether or not
+ * anyone described it.
+ *
+ * It is last in the tooltip rather than first because it is the sentence a builder needs *after*
+ * they have worked out what the block is — but it is never dropped, because "editing this edits
+ * it everywhere" is the property that makes a saved block worth having and the one that makes an
+ * unwitting edit expensive.
+ */
+export const MY_BLOCKS_PROPAGATION_NOTE = 'Editing the saved block changes it everywhere.';
+
+/** Enough for a sentence about what a block is for. Longer than that belongs in the block. */
+export const MAX_BLOCK_DESCRIPTION_LENGTH = 200;
+
+/** The parts of a definition every sentence below needs. Deliberately not the whole thing. */
+export interface DescribableDefinition {
+  name: string;
+  shape: MyBlockShape;
+  params: readonly Pick<MyBlockParam, 'name'>[];
+  description?: string;
+  /** Workspace variables the body reads or writes. See {@link describeVariableWarning}. */
+  variables?: readonly string[];
+}
+
+/**
+ * One line naming the block and its shape: *"Discount — takes price and rate, and gives a
+ * value."*
+ *
+ * "Gives a value" rather than "is a value block": the toolkit's word is in the save dialog,
+ * where there is room to teach it, and the tooltip is read by someone who is already holding the
+ * block and wants to know what to do with it.
+ */
+export function describeSignatureLine(definition: DescribableDefinition): string {
+  const name = (definition.name || '').trim() || 'This block';
+  const ending =
+    definition.shape === 'value' ? 'gives a value' : 'stacks with your other blocks';
+  const names = definition.params.map((param) => param.name);
+
+  return names.length === 0
+    ? `${name} — ${ending}.`
+    : `${name} — takes ${joinPhrases(names)}, and ${ending}.`;
+}
+
+/**
+ * The warning about workspace variables, or `undefined` when there is nothing to warn about.
+ *
+ * VFN-008's fourth question, answered honestly at the moment it can still be acted on. A
+ * definition body that uses a Blockly `variables_get` refers to a variable in the workspace it
+ * was saved from; placed in a different Visual Function that variable does not exist, and
+ * nothing remaps it.
+ *
+ * 🔴 The rejected alternative is worth keeping written down: **silently creating the variable in
+ * the host workspace on placement**. That is a saved definition quietly authoring the program it
+ * was dropped into, and it is not recoverable by undo in the way builders expect. An explicit
+ * *"create the variables this block needs"* button is a possible later affordance; a silent one
+ * is not.
+ */
+export function describeVariableWarning(variables: readonly string[] | undefined): string | undefined {
+  if (!variables || variables.length === 0) return undefined;
+
+  const quoted = variables.map((name) => `"${name}"`);
+  const subject = variables.length === 1 ? 'the variable' : 'the variables';
+
+  return `This uses ${subject} ${joinPhrases(quoted)}, which will not travel with the block.`;
+}
+
+/**
+ * The call block's tooltip — every line it has, in reading order.
+ *
+ * A definition with a description gets its sentence; one without degrades to the shape line and
+ * the standing warning rather than blanking, which is acceptance criterion 2 and is also the
+ * state **every definition on disk today is in**, because nothing has ever asked for a
+ * description.
+ *
+ * ⚠️ Tooltips are set in Blockly's `init()`, before `loadExtraState` has run and while the
+ * block's state is still a stub. `MyBlocksBlocks` therefore hands `setTooltip` a *function*, so
+ * this is called when the tooltip is shown rather than when the block is built.
+ */
+export function describeCallTooltip(definition: DescribableDefinition): string {
+  return [
+    describeSignatureLine(definition),
+    normaliseBlockDescription(definition.description),
+    describeVariableWarning(definition.variables),
+    MY_BLOCKS_PROPAGATION_NOTE
+  ]
+    .filter((line): line is string => !!line)
+    .join('\n');
+}
+
+/**
+ * The label lines that sit above a definition's block in the My Blocks flyout.
+ *
+ * The flyout used to show `▣ Discount` and nothing else, so a builder browsing the category had
+ * to drag a block out and read its sockets to learn anything about it. These are `kind: 'label'`
+ * entries, the same mechanism the empty state already uses.
+ *
+ * ⚠️ The flyout is rebuilt on **every open**, so this is free to keep current and must not be
+ * cached anywhere.
+ */
+export function describeFlyoutLabels(definition: DescribableDefinition): string[] {
+  return [
+    describeSignatureLine(definition),
+    normaliseBlockDescription(definition.description),
+    describeVariableWarning(definition.variables)
+  ].filter((line): line is string => !!line);
+}
+
+/**
+ * The face of the block the builder is about to get: `▣ Discount   price   rate`.
+ *
+ * Shown in the save dialog while the name is being typed, so the name is visibly being attached
+ * to a signature rather than to an abstraction. The socket labels are the resolved parameter
+ * names — the ones `rebuildInputs_` will actually render — not a restatement of the count.
+ */
+export function describeCallPreview(name: string, params: readonly Pick<MyBlockParam, 'name'>[]): string {
+  const label = (name || '').trim() || 'your block';
+  const sockets = params.map((param) => param.name);
+  return sockets.length === 0
+    ? `${MY_BLOCKS_BLOCK_GLYPH} ${label}`
+    : `${MY_BLOCKS_BLOCK_GLYPH} ${label}   ${sockets.join('   ')}`;
+}
+
+/**
+ * Everything a definition body says about itself, without a store or a workspace present.
+ *
+ * The convenience the three surfaces share: given a name, a signature and a body, work out the
+ * variables and hand back the shape the sentence builders want.
+ */
+export function describableFrom(
+  name: string,
+  signature: Pick<InferredSignature, 'shape' | 'params'>,
+  body: BlocklyWorkspaceJson | undefined | null,
+  description?: string
+): DescribableDefinition {
+  return {
+    name,
+    shape: signature.shape,
+    params: signature.params,
+    description: normaliseBlockDescription(description),
+    variables: collectVariableReferences(body)
+  };
 }

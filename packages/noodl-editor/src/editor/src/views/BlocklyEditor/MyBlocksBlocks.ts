@@ -32,7 +32,18 @@ import { javascriptGenerator, Order } from 'blockly/javascript';
 
 import type { BlocklyBlockJson, BlocklyWorkspaceJson, MyBlockDefinition } from './myblocks/format';
 import { expandWorkspace, type DefinitionSource } from './myblocks/expand';
-import { argInputName, MY_BLOCKS_CALL_STATEMENT, MY_BLOCKS_CALL_VALUE } from './myblocks/references';
+import {
+  argInputName,
+  collectVariableReferences,
+  MY_BLOCKS_CALL_STATEMENT,
+  MY_BLOCKS_CALL_VALUE
+} from './myblocks/references';
+import {
+  describeCallTooltip,
+  describeFlyoutLabels,
+  MY_BLOCKS_BLOCK_GLYPH,
+  type DescribableDefinition
+} from './myblocks/saveIntent';
 import { inferSignature, STATIC_BLOCK_SCHEMA, type BlockSchema } from './myblocks/shape';
 
 /** The toolbox category id. `buildToolbox` refers to it; `BlocklyWorkspace` fills it in. */
@@ -52,6 +63,61 @@ interface CallBlock extends Blockly.Block {
   rebuildInputs_(): void;
 }
 
+/**
+ * Where a call block looks up the definition it points at, for the tooltip (VFN-008).
+ *
+ * 🔴 **Injected, and not imported.** The obvious move is for this file to call `myBlocksStore()`
+ * — but that reaches `ProjectModel` and `EditorSettings`, and this module is in the import graph
+ * of the `lgc-007` specs in the plain-Node runner. One import would fail two suites *to run*,
+ * which counts as a failure and does not look like one. So `BlocklyWorkspace` injects the store
+ * it already holds, and everything here still works with nothing injected.
+ *
+ * Live rather than cached in `extraState`: a description edited on the definition should reach
+ * every call block without every placed block having to be re-serialised, and `label`/`args` are
+ * already the version of this problem we accepted (they go stale on rename until the flyout is
+ * reopened). Adding the description to that pile would have put a sentence of prose into every
+ * call site in `project.json` for nothing.
+ */
+let definitionSource: { get(id: string): MyBlockDefinition | undefined } | null = null;
+
+/** Tell call blocks where to find their definitions. `null` unregisters. */
+export function setMyBlocksDefinitionSource(source: { get(id: string): MyBlockDefinition | undefined } | null): void {
+  definitionSource = source;
+}
+
+/**
+ * Everything the tooltip needs, resolved from the live definition when there is one and from
+ * the block's own `extraState` when there is not.
+ *
+ * The fallback is not a degraded mode nobody hits: a call block in a headless generate, in a
+ * spec, or in a workspace opened before the store was injected has no source, and a tooltip that
+ * threw or blanked there would be a worse answer than the self-describing one `extraState`
+ * already carries. That `args` and `label` are serialised alongside the id is exactly what makes
+ * this possible, and it is the same property that lets `inferSignature` run with no store.
+ */
+export function describableCall(block: CallBlock, isValue: boolean): DescribableDefinition {
+  const state = block.myBlocksState_ || { defId: '', args: [], label: '' };
+  const definition = state.defId ? definitionSource?.get(state.defId) : undefined;
+
+  if (definition) {
+    return {
+      name: definition.name,
+      shape: definition.shape,
+      params: definition.params,
+      description: definition.description,
+      variables: collectVariableReferences(definition.body)
+    };
+  }
+
+  return {
+    name: state.label,
+    // The block type is the shape. It cannot be anything else — that is why there are two block
+    // types rather than one with a flag.
+    shape: isValue ? 'value' : 'statement',
+    params: (state.args || []).map((name) => ({ name }))
+  };
+}
+
 function callBlockMixin(isValue: boolean) {
   return {
     init(this: CallBlock) {
@@ -63,7 +129,13 @@ function callBlockMixin(isValue: boolean) {
         this.setPreviousStatement(true, null);
         this.setNextStatement(true, null);
       }
-      this.setTooltip('A group of blocks you saved. Editing the saved block changes it everywhere.');
+      /**
+       * ⚠️ A **function**, not a string. `init` runs before `loadExtraState`, so at this moment
+       * the state is the stub two lines above and a tooltip built now would say nothing about
+       * this block for the rest of its life — which is precisely the hard-coded sentence
+       * VFN-008 replaces. Blockly resolves a function tooltip when the tooltip is *shown*.
+       */
+      this.setTooltip(() => describeCallTooltip(describableCall(this, isValue)));
       this.rebuildInputs_();
     },
 
@@ -85,7 +157,7 @@ function callBlockMixin(isValue: boolean) {
         this.removeInput(input.name, true);
       }
 
-      this.appendDummyInput('HEADER').appendField(`▣ ${this.myBlocksState_.label}`);
+      this.appendDummyInput('HEADER').appendField(`${MY_BLOCKS_BLOCK_GLYPH} ${this.myBlocksState_.label}`);
       this.myBlocksState_.args.forEach((name, index) => {
         this.appendValueInput(argInputName(index)).setCheck(null).appendField(name);
       });
@@ -166,7 +238,36 @@ export function myBlocksFlyout(source: { list(): MyBlockDefinition[] }) {
         }
       ];
     }
-    return definitions.map((definition) => ({ kind: 'block', ...callBlockJson(definition) }));
+    /**
+     * VFN-008 §3 — each definition arrives with its shape sentence above it.
+     *
+     * > *"If you put it on a canvas later on, how do you know what inputs and outputs it has?"*
+     *
+     * It used to be one `▣ Discount` per definition and nothing else, so browsing the category
+     * taught nothing and the only way to find out what a saved block did was to drag it out and
+     * read its sockets. The sentences are `saveIntent.ts`; this is the plumbing.
+     *
+     * ⚠️ The flyout is rebuilt on every open, so nothing here is cached and nothing goes stale.
+     */
+    const items: unknown[] = [];
+    for (const definition of definitions) {
+      for (const text of describeFlyoutLabels(flyoutDescribable(definition))) {
+        items.push({ kind: 'label', text });
+      }
+      items.push({ kind: 'block', ...callBlockJson(definition) });
+    }
+    return items;
+  };
+}
+
+/** A definition as the flyout describes it — the variables are read from the body, not cached. */
+function flyoutDescribable(definition: MyBlockDefinition): DescribableDefinition {
+  return {
+    name: definition.name,
+    shape: definition.shape,
+    params: definition.params,
+    description: definition.description,
+    variables: collectVariableReferences(definition.body)
   };
 }
 
