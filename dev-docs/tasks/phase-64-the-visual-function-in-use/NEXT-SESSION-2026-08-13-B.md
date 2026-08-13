@@ -4,6 +4,51 @@
 [NEXT-SESSION-2026-08-13.md](NEXT-SESSION-2026-08-13.md), whose entire first item — one drive
 session closing five tasks' worth of owed proof — **is done**.
 
+---
+
+## 🔴 START HERE: four agent branches are in flight. Your first job is to land them.
+
+Launched 2026-08-13 from `cline-dev` @ `76dfece7`, in worktrees under
+`../OpenNoodl-worktrees/` (built with `scripts/devtools/make-worktree.sh` — **never**
+`isolation: "worktree"`, which forks from `origin/main`, hundreds of commits behind, 7 batches
+out of 7).
+
+| Branch | Tasks | Why grouped |
+|---|---|---|
+| `vfn-saveblock` | **VFN-007 + VFN-008** | Both are the save dialog; separating them guarantees a conflict in `MyBlocksSaveDialog.tsx` |
+| `vfn-bench` | **VFN-011** | The flagship, ~2 days. Told to land Part 1 and the drift gate as separate commits, so partial work still lands |
+| `vfn-config` | **VFN-012** | Isolated: toolbox + block defs. The one task that must keep `cloud-library:check` green |
+| `vfn-window` | **VFN-004** | Isolated: `CanvasTabs` + navigation |
+
+**Deliberately NOT in the batch:** VFN-006 (would collide with `vfn-bench` in
+`BlocklyWorkspace.tsx`), and VFN-009 / VFN-010 (both depend on VFN-008 landing first).
+
+### The merge protocol — the batch fails here, not in the agents
+
+1. 🔴 **Trial-merge in a throwaway worktree before touching `cline-dev`.** `make-worktree.sh
+   trial-merge`, merge each branch into it, then run the gates. A previous batch found a defect
+   *created by the merge* that neither agent could have seen: one branch's census test asserted a
+   port count, another branch added two ports.
+2. 🔴 **Agents cannot see uncommitted work.** A worktree branches from a *commit*, so the third
+   session's dirty `PortsTab/`, `TraceSession.ts` and `port-values.spec.ts` are invisible to all
+   four. **Verify any destructive or "this is unused" claim against the primary tree before
+   believing it** — an agent once deleted two files as phantoms that were real and registered.
+3. **Generated files: let them conflict and regenerate.** Never hand-merge `node-catalog*.json`;
+   `git checkout --theirs` then `catalog:generate` + `catalog:merge`. Strongest check available:
+   after merging, run `catalog:generate` and confirm `git diff` is **empty**.
+4. **Live verification belongs to the primary checkout, after merge.** `lerna exec` resolves the
+   package root to primary even when launched from a worktree, so `dev:debug` / `test:ci` run from
+   a worktree exercise primary's code and report a result unrelated to the diff.
+5. Then, in the primary: `test:main` (expect ≥ 157/2265, compare **names**), `test:ci` only if
+   `packages/noodl-editor/tests/` was touched, and `cloud-library:check` because `vfn-config`
+   changes ports.
+
+### What each agent was told it could not do
+
+None of them can drive the editor, so **every criterion needing a running editor is still owed** and
+each was told to list them in its own `NOTES-<name>.md`. Read those before assuming a task is closed
+— and see the drive recipe at the bottom of this file, which is what closed tier 1.
+
 ## Where tier 1 actually stands
 
 | | |
