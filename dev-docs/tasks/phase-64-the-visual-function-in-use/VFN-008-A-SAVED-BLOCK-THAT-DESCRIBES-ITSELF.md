@@ -1,6 +1,71 @@
 # VFN-008 — A saved block that describes itself
 
-**Status:** 📋 open · ⭐ **Tier 2** · ~1 day · blocks VFN-009
+**Status:** 🟡 **BUILT 2026-08-13 on `vfn-saveblock`, NOT DRIVEN** · ⭐ **Tier 2** · blocks VFN-009
+
+> ## 🔴 Criterion 4 is FALSE AS WRITTEN, and it is the most important thing on this page
+>
+> > *"Placing a call block for a definition that sets an output gives the host node that output
+> > port after the next generate."*
+> >
+> > **It does not.** Measured and pinned by `tests-unit/vfn-008/self-describing-block.test.ts`
+> > → *"🔴 FINDING: a placed saved block publishes no ports"*.
+>
+> The reasoning below — the workspace is the single source of truth for ports, and a saved
+> block's body is inlined at generate time — is right in both halves. The conclusion does not
+> follow, because **the two happen to different copies of the workspace**:
+>
+> - `updatePorts` → `detectIO(workspace)` reads the **raw** serialised workspace, the same
+>   string persisted as the node's `workspace` parameter;
+> - `expandWorkspace` runs inside `generateWithMyBlocks`, and its expanded copy is discarded as
+>   soon as the JavaScript is generated.
+>
+> `detectIO` has never heard of `myblocks_call_value` / `myblocks_call_statement`, so a call
+> block contributes no port mentions at all:
+>
+> ```
+> detectIO(workspace containing the call block)  → outputs: []
+> detectIO(the same body, inlined)               → outputs: [{ name: 'total', type: '*' }]
+> generateWithMyBlocks(...)                      → 'Outputs["total"] = 7;\n'
+> ```
+>
+> **The program is right and the node is deaf.** The generated code writes `Outputs["total"]` and
+> there is no `total` port for anyone to wire to. A builder saves a block that sets an output,
+> drops it into another Visual Function, and the output they were promised never appears.
+>
+> 🔴 **Not fixed here, deliberately.** `detectIO` lives in `noodl-runtime` and has no access to
+> the definition shelves, which live in `project.json` settings and `EditorSettings`. Either the
+> definitions get plumbed through to port detection, or the expansion happens before the
+> workspace parameter is written — and the second destroys the property that makes the workspace
+> the source of truth. That is a design decision and belongs in its own task, with LGC-007's
+> constraints in front of it. The spec asserts the **true** behaviour so that the fix turns a
+> line red at exactly the right moment.
+>
+> The second half of criterion 4 — *"no port is created for a definition's internal variables"* —
+> ✅ holds, and would still hold after the above is fixed.
+>
+> ## ✅ Everything else is built
+>
+> - **§1 a description field** on the dialog, optional, normalised so blank is `undefined` and
+>   never `''`. Stored through the `SaveChoice.description` that already existed; no format change.
+> - **§2 the block says what it is** — `setTooltip` now takes a **function**, resolved when the
+>   tooltip is shown rather than in `init()` where the state is still a stub. It prefers the live
+>   definition (injected from `BlocklyWorkspace`, never imported — see below) and falls back to
+>   the block's own `extraState`.
+> - **§3 the flyout shows the shape** — `kind: 'label'` entries above each definition's block.
+> - **§4 the dialog shows what it will look like** — `▣ Discount   price   rate`, wearing the same
+>   `MY_BLOCKS_BLOCK_GLYPH` the call block's header field renders.
+> - **The variable hazard** — `collectVariableReferences` finds Blockly `VAR` fields in both the
+>   `{id}` and bare-name spellings, and the warning is shown at save time *and* on the tooltip.
+>   ⚠️ Noodl variables are deliberately **not** flagged: they are global and they do travel, and a
+>   false alarm on the mechanism that works is worse than no alarm.
+>
+> ⚠️ **`MyBlocksBlocks.ts` must never import `MyBlocksShelves`.** It is in the import graph of the
+> `lgc-007` specs in the plain-Node runner, and `myBlocksStore` reaches `ProjectModel` and
+> `EditorSettings`; one import there fails two suites *to run*, which counts as a failure and does
+> not look like one. Hence the injected definition source.
+>
+> Full write-up, including what still needs a drive:
+> [`NOTES-saveblock.md`](NOTES-saveblock.md).
 
 ## The report
 
@@ -120,16 +185,23 @@ the call block will actually have — so the name being typed is being attached 
 
 ## Acceptance criteria
 
-1. A description typed at save time survives a reload and appears on the call block's tooltip and in
-   the flyout.
-2. A definition saved **without** a description still shows its shape and the propagation warning —
-   the absence degrades, it does not blank.
-3. A definition whose body uses a workspace variable produces the named warning at save time.
-4. Placing a call block for a definition that sets an output gives the host node that output port
-   after the next generate, and no port is created for a definition's internal variables.
-5. Every sentence rendered is produced by `saveIntent.ts` and is asserted in the plain-Node runner.
-6. Old definitions on disk — every one of which has `description: undefined` — load and render
-   without a diagnostic.
+1. 🟡 **Round trip proved, restart owed.** A description typed at save time survives a reload and
+   appears on the call block's tooltip and in the flyout. The spec puts a saved definition through
+   `JSON.parse(JSON.stringify(...))` and `validateLibrary` — the same journey `project.json` gives
+   it — and asserts both surfaces. It does not restart Electron, and the task file is right that
+   those are different claims.
+2. ✅ **DONE.** A definition saved **without** a description still shows its shape and the
+   propagation warning — the absence degrades, it does not blank. `''`, `'   '` and `undefined`
+   all produce the identical tooltip, and no line of it is blank.
+3. ✅ **DONE.** A definition whose body uses a workspace variable produces the named warning at
+   save time — and on the call block's tooltip as well, which is honest-answer 2 from above.
+4. 🔴 **FALSE AS WRITTEN — see the top of this file.** A call block publishes **no** ports; the
+   generated code writes the output and nothing can be wired to it. The second half — no port for
+   a definition's internal variables — ✅ holds.
+5. ✅ **DONE.** Every sentence rendered is produced by `saveIntent.ts` and is asserted in the
+   plain-Node runner.
+6. ✅ **DONE.** Old definitions on disk — every one of which has `description: undefined` — load
+   and render without a diagnostic.
 
 ## How to prove it
 
