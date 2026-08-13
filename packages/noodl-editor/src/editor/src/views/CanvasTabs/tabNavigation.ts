@@ -14,6 +14,7 @@
  */
 
 import { NodeGraphContextTmp } from '../../contexts/NodeGraphContext/NodeGraphContext';
+import { componentInstanceId } from '../../models/componentIdentity';
 import type { ComponentModel } from '../../models/componentmodel';
 import { ProjectModel } from '../../models/projectmodel';
 import { ToastLayer } from '../ToastLayer/ToastLayer';
@@ -32,20 +33,29 @@ export interface NavigableTab extends TabLocation {
 }
 
 /**
- * The component with this id, or `undefined`.
+ * The component with this identity, or `undefined`.
  *
- * `ProjectModel` indexes components by name and offers no lookup by id, so this is a scan. It is
- * over the project's component list and it runs once per tab click; the alternative — keying off
+ * `ProjectModel` indexes components by name and offers no lookup by identity, so this is a scan. It
+ * is over the project's component list and it runs once per tab click; the alternative — keying off
  * the name — is the stale-copy trap this task was told not to walk into.
+ *
+ * 🔴 **The key is `componentInstanceId`, not `component.id`.** `.id` is optional and absent for most
+ * components of a v1 legacy project, which is what made this whole feature dead on arrival: the
+ * lookup found nothing, `isTabAway` correctly refused to assert, and the tab sat there marked
+ * "home" while the canvas was somewhere else. See `models/componentIdentity.ts`.
+ *
+ * ⚠️ Asking here **mints** an identity for any component that has not been asked about yet. That is
+ * intended and is what makes the two sides agree: the tab's key and the canvas's key are minted by
+ * the same function off the same model objects, so neither can be `undefined` while the other is not.
  */
-export function findComponentById(componentId: string | undefined, project = ProjectModel.instance) {
+export function findComponentByInstanceId(componentId: string | undefined, project = ProjectModel.instance) {
   if (!componentId || !project) return undefined;
-  return project.getComponents().find((component) => component.id === componentId);
+  return project.getComponents().find((component) => componentInstanceId(component) === componentId);
 }
 
-/** The id of the component currently on the node graph canvas, if any. */
+/** The identity of the component currently on the node graph canvas, if any. */
 export function getActiveComponentId(): string | undefined {
-  return NodeGraphContextTmp.nodeGraph?.activeComponent?.id;
+  return componentInstanceId(NodeGraphContextTmp.nodeGraph?.activeComponent);
 }
 
 /**
@@ -53,7 +63,7 @@ export function getActiveComponentId(): string | undefined {
  * the tab opened. Falls back to nothing; the caller falls back to the snapshot.
  */
 export function resolveComponentName(componentId: string | undefined): string | undefined {
-  return findComponentById(componentId)?.displayName;
+  return findComponentByInstanceId(componentId)?.displayName;
 }
 
 /**
@@ -67,7 +77,7 @@ export function resolveComponentName(componentId: string | undefined): string | 
  * leading-slash normalised, so a path built by string surgery is a path that matches nothing.
  */
 export function resolveComponentPath(componentId: string | undefined): string | undefined {
-  return findComponentById(componentId)?.fullName;
+  return findComponentByInstanceId(componentId)?.fullName;
 }
 
 export interface ResolvedTab<T extends TabLocation> {
@@ -123,7 +133,7 @@ export function resolveTabLocations<T extends TabLocation>(tabs: readonly T[]): 
  * "select the node, navigate nowhere".
  */
 export function navigateToTabComponent(tab: NavigableTab): TabActivation {
-  const component = findComponentById(tab.componentId);
+  const component = findComponentByInstanceId(tab.componentId);
 
   const decision = tabActivation(tab, {
     componentExists: Boolean(component),

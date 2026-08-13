@@ -30,6 +30,18 @@ export type ComponentModelArgs = {
 
 export class ComponentModel extends Model {
   name: string;
+  /**
+   * ⚠️ **Optional in practice, whatever this type says.** `strictNullChecks` is off in this package,
+   * so `id: string` is documentation rather than a guarantee. A **v2** project assigns every
+   * component a guid; a **v1** legacy project carries one only for whichever components happened to
+   * get it — measured at **2 of 7** on three unrelated v1 projects — and `ProjectImporter`
+   * deliberately does not fabricate the key.
+   *
+   * 🔴 **Do not key a session-lifetime lookup on this field.** VFN-004 did, and the feature was dead
+   * on every v1 project while every one of its layers tested correct. Use
+   * `componentInstanceId(component)` from `./componentIdentity` for "is this the same component?"
+   * within a session; that module also records why an `id` is not minted on load (DSG-007).
+   */
   id: string;
   graph: NodeGraphModel;
   /** @see ComponentModelArgs.description */

@@ -4,6 +4,7 @@ import { createRoot, Root } from 'react-dom/client';
 import { PropertyPanelButton } from '@noodl-core-ui/components/property-panel/PropertyPanelButton';
 
 import { EventDispatcher } from '../../../../../../shared/utils/EventDispatcher';
+import { componentInstanceId } from '../../../../models/componentIdentity';
 import { myBlocksStore } from '../../../BlocklyEditor/MyBlocksShelves';
 import { renderReadableCodeFromJson } from '../../../BlocklyEditor/readableCode';
 import { GeneratedCodeModal } from '../GeneratedCodeModal';
@@ -110,9 +111,15 @@ export class LogicBuilderWorkspaceType extends TypeView {
      *
      * The **id** is what the tab navigates by; the two names are for the label, the tooltip and
      * the refusal, and they are snapshots. See `views/CanvasTabs/tabLocation.ts`.
+     *
+     * 🔴 **Not `component.id`.** That field is optional and absent for most components of a v1
+     * legacy project (measured: 2 of 7, on three unrelated projects), which made every one of this
+     * feature's layers correct and the feature itself dead — the away mark never appeared and the
+     * tab never navigated. `componentInstanceId` is a session identity that is always present; see
+     * `models/componentIdentity.ts` for why an `id` is not minted instead.
      */
     const component = nodeModel?.owner?.owner;
-    const componentId = component?.id;
+    const componentId = componentInstanceId(component);
     const componentName = component?.displayName;
     const componentPath = component?.fullName;
 

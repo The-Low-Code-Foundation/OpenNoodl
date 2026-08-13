@@ -1,6 +1,33 @@
 # VFN-004 — The window says where it belongs
 
-**Status:** 🟡 **built on `vfn-window`, four criteria owe a live drive** · **Tier 2** · no dependencies
+**Status:** ✅ **BUILT AND DRIVEN 2026-08-13 — AC 1, 2, 3, 4 pass live, each with a control** ·
+**Tier 2** · no dependencies
+
+> 🔴 **It shipped dead once. Read this before touching the identity.**
+>
+> Merged 2026-08-13 as built, with 52 green specs, and it did **nothing** in the running editor: the
+> away mark never appeared and clicking the tab neither navigated nor selected. Every layer was
+> individually correct — the event fired, the derivation was live, `isTabAway` was right in all
+> three polarities. The field they all agreed on, **`ComponentModel.id`, was `undefined`**.
+>
+> **Scope of the gap, measured:** a **v2** project assigns every component a guid (0 of ~180 missing
+> across every v2 project on this machine). A **v1** legacy project — one `project.json`, no
+> `components/` directory — assigns them only sporadically: **2 of 7**, on three unrelated projects.
+> `ProjectImporter` deliberately refuses to fabricate the key.
+>
+> **The fix is `componentInstanceId`** (`models/componentIdentity.ts`) — a session identity held in a
+> `WeakMap` keyed on the model, minted lazily, **never serialised**. Both the emit site and the
+> canvas reader key on it, so they cannot disagree.
+>
+> 🔴 **An `id` is deliberately NOT minted on load.** DSG-007 already ruled on that for the sibling
+> field and enforces it with live specs (*"opening a legacy project mints nothing"*): two copies of
+> one project would diverge silently, and copying a project directory is routine here — `vfn64-drive`
+> is a disk copy of `vfn64-qa`. `ProjectMerge` keys components by `id ?? name`, so minting would make
+> the two copies read as delete + add on every component.
+>
+> ⚠️ **Any new spec here must include the no-id case as a control.** The original 52 all supplied a
+> `componentId`, which is why none of them could see this. It was a missing *input*, not a missing
+> assertion.
 
 > Built 2026-08-13. Every decision is a pure module under `views/CanvasTabs/tabLocation.ts` and is
 > graded by `tests-unit/vfn-004/tab-location.test.ts` (52 specs, each block's negative control
