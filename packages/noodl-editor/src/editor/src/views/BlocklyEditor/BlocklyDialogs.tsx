@@ -13,6 +13,17 @@
  * The callback contract lives next door in `blocklyDialogHandlers.ts`, deliberately free of
  * React so it can be asserted directly. This file is the surface: what the builder sees.
  *
+ * ⚠️ **Everything below is mounted twice.** `CoreBaseDialog` renders `{children}` into a
+ * zero-height measuring container as well as into the visible one, so each dialog here exists as
+ * two React instances with two of every control and two copies of every piece of state. The
+ * measuring copy is `pointer-events: none`, so a builder cannot reach it — but anything that
+ * touches a *global* on mount will do it twice, which is what `useEphemeralBlocklyFocus` had to
+ * be taught. Bear it in mind before adding a control that registers something.
+ *
+ * That duplication is also why the callback guard lives in `blocklyDialogHandlers.ts` rather than
+ * only in these components: `once()` there holds Blockly's contract no matter how many instances
+ * of a dialog answer it.
+ *
  * @module BlocklyEditor
  */
 
@@ -46,6 +57,24 @@ import {
  *
  * Guarded, because a workspace does not have to exist for a dialog to be asked for, and being
  * unable to hold focus is not a reason to refuse to show the dialog.
+ *
+ * 🔴 **`ephemeralFocusTaken()` is not defensive tidiness — without it this throws on every open.**
+ * `CoreBaseDialog` renders `{children}` **twice**: once inside a zero-height
+ * `MeasuringContainer` it measures the body with, and once in the visible `ChildContainer`
+ * ([`BaseDialog.tsx:330,360`](../../../../../noodl-core-ui/src/components/layout/BaseDialog/BaseDialog.tsx)).
+ * So every dialog body is mounted as two React instances, this hook runs twice, and Blockly's
+ * contract is explicit that *"only 1 ephemeral focus context can be active at any given time
+ * (attempting to activate more than one simultaneously will result in an error being thrown)"*.
+ *
+ * The measuring copy renders first, so it is the one that holds the lock and the visible copy is
+ * the one that threw. The `catch` below made that survivable and invisible — a thrown exception
+ * and a console warning on every prompt. The guard makes it a deliberate no-op instead.
+ *
+ * ⚠️ Release accounting is what the guard must not break: exactly one instance ends up with a
+ * `release`, and Blockly throws on a second call to it just as it does on a second take. The
+ * instance that skipped has `undefined` and calls nothing, so the lambda is called exactly once —
+ * which its own docs require, on pain of *"automatic focus will no longer work anywhere on the
+ * page"*.
  */
 function useEphemeralBlocklyFocus(element: HTMLElement | null) {
   useEffect(() => {
@@ -53,7 +82,10 @@ function useEphemeralBlocklyFocus(element: HTMLElement | null) {
 
     let release: (() => void) | undefined;
     try {
-      release = Blockly.getFocusManager().takeEphemeralFocus(element);
+      const focusManager = Blockly.getFocusManager();
+      // The other copy of this same dialog body already holds it. See above.
+      if (focusManager.ephemeralFocusTaken()) return undefined;
+      release = focusManager.takeEphemeralFocus(element);
     } catch (error) {
       console.warn('[BlocklyDialogs] Could not take ephemeral focus from Blockly:', error);
     }
