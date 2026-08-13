@@ -8,6 +8,14 @@ import { HighlightOverlay } from '../CanvasOverlays/HighlightOverlay';
 import { RecordingOverlay } from '../CanvasOverlays/RecordingOverlay';
 import { CanvasTabs } from '../CanvasTabs';
 import { navigateToTabComponent } from '../CanvasTabs/tabNavigation';
+import { saveDefinitionBlocks } from '../BlocklyEditor/MyBlocksLibrary';
+import {
+  describeParameterChange,
+  describeShapeChange,
+  usageLines
+} from '../BlocklyEditor/myblocks/libraryIntent';
+import { EventDispatcher } from '../../../../shared/utils/EventDispatcher';
+import { ToastLayer } from '../ToastLayer/ToastLayer';
 import { EditorBanner } from '../EditorBanner';
 import { refFromComponentName } from '../../models/workflow/functionRefResolution';
 import { descentFor } from '../../models/workflow/workflowDescent';
@@ -49,6 +57,16 @@ export class OverlayViews {
         null,
         React.createElement(CanvasTabs, {
           onWorkspaceChange: this.handleBlocklyWorkspaceChange.bind(this),
+          /**
+           * VFN-009 — a settled edit in a **saved block's** tab.
+           *
+           * Supplied here for the same reason `onWorkspaceChange` is: the window renders a box of
+           * blocks and cannot see a shelf. It writes through `store.save({ id, … })` under the
+           * definition's own id, which is what makes editing a saved block an edit rather than a
+           * fork — every call block stores the id, so a body written under a fresh one would leave
+           * every call site pointing at the old copy.
+           */
+          onDefinitionChange: this.handleDefinitionWorkspaceChange.bind(this),
           /**
            * VFN-004 — clicking a tab takes the canvas to where its blocks live.
            *
@@ -112,6 +130,56 @@ export class OverlayViews {
     node.model.setParameter('generatedCode', code);
 
     console.log(`[NodeGraphEditor] Saved workspace and generated code for node ${nodeId}`);
+  }
+
+  /**
+   * VFN-009 — a settled edit in a saved block's tab, written back to the shelf.
+   *
+   * 🔴 **No node is touched and no `generatedCode` is written**, and that is acceptance criterion
+   * 3 rather than an omission: an edit to a definition does not rewrite the generated code of the
+   * nodes that use it. They regenerate on their own next edit — measured behaviour from LGC-007
+   * §6, which is also why the section says so in words instead of leaving a builder to find out.
+   *
+   * A cycle is refused here, by `store.save`, before anything is written, and the loop is named.
+   * The refusal is shown rather than swallowed: this feature has already shipped two refusals that
+   * published their silence, and the rule that came out of them is to ask what a refusal *writes*.
+   */
+  handleDefinitionWorkspaceChange(definitionId: string, workspace: string) {
+    let saved: ReturnType<typeof saveDefinitionBlocks>;
+
+    try {
+      saved = saveDefinitionBlocks(definitionId, workspace);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.error(`[NodeGraphEditor] The saved block ${definitionId} was not written:`, message);
+      ToastLayer.showError(message);
+      return;
+    }
+
+    if (!saved) return;
+    EventDispatcher.instance.emit('MyBlocks.LibraryChanged', { definitionId });
+
+    /**
+     * 🔴 Criterion 6 — a shape change names the call sites that are about to be refused.
+     *
+     * ⚠️ **The blocks are saved first, and that order is deliberate.** The author's edit is theirs
+     * and refusing to keep it is the one thing this feature must never do; what the warning
+     * changes is whether they find out now or on somebody else's next generate. `expandWorkspace`
+     * will throw `MyBlocksShapeError` at each of these call sites, by name — so this is reporting
+     * a refusal that is already written, which is exactly the boundary the task drew.
+     *
+     * Nothing here claims a flow is broken. See `libraryIntent.ts`.
+     */
+    const { change, usage } = saved;
+    if (!change.changed || !usage) return;
+
+    const shape = describeShapeChange(saved.definition.name, change, usage);
+    const params = describeParameterChange(saved.definition.name, change);
+    const message = [shape, params].filter(Boolean).join(' ');
+    if (!message) return;
+
+    const places = usage.total > 0 ? ' Used in: ' + usageLines(usage).join('; ') + '.' : '';
+    ToastLayer.showError(message + places);
   }
 
   /**

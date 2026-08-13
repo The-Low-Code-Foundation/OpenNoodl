@@ -98,7 +98,17 @@ export type BlockStripReason =
    * ⚠️ It regenerates on the node's own next edit and on nothing else (measured in LGC-007 §6),
    * which is why the copy asks for an edit rather than promising it will fix itself.
    */
-  | 'no-probes';
+  | 'no-probes'
+  /**
+   * VFN-009 — these blocks are a **saved block's own body**. There is no node behind them.
+   *
+   * 🔴 The reason this is its own answer rather than falling through to `no-connection`: without
+   * a `nodeId` the controller sets the status to `no-connection`, whose sentence is *"The editor
+   * has no connection to a running app."* That is a true sentence about a different problem, and
+   * a builder reading it on a definition tab would go and start the preview. Nothing they can do
+   * to the app will ever put values on these blocks — the subject has no inputs and no run.
+   */
+  | 'no-node';
 
 /**
  * What the strip says when there is nothing to scrub. One sentence per reason.
@@ -117,7 +127,10 @@ export const STATUS_COPY: Record<BlockStripReason, string> = {
   'no-connection': 'The editor has no connection to a running app.',
   'attached-idle':
     'Watching this node. Nothing has run since you opened this editor — trigger it in the app to see values.',
-  'no-probes': 'These blocks were generated before value tracing; make any edit to bring them up to date.'
+  'no-probes': 'These blocks were generated before value tracing; make any edit to bring them up to date.',
+  'no-node':
+    'These are a saved block’s own blocks. There is no node behind them, so there is nothing to run ' +
+    'and no live values to show — place the block in a Visual Function to watch it work.'
 };
 
 /**
@@ -135,8 +148,14 @@ export function benchHint(runLabel: string): string {
 /**
  * Would pressing Run answer this reason?
  *
- * Every reason except `attached`, which is the one whose copy is the empty string — there is
- * already something to scrub, so there is nothing to offer.
+ * Every reason except two. `attached` is the one whose copy is the empty string — there is already
+ * something to scrub, so there is nothing to offer. `no-node` (VFN-009) is the one where Run is not
+ * a thing that exists: a definition tab has no node, so the bench has no inputs to run against and
+ * the strip is not given a Run button at all. Saying so here as well means a build that *did* hand
+ * it one would not also get a sentence telling the builder to press it.
+ *
+ * ⚠️ **VFN-011's bench is what would make a definition tab genuinely runnable**, and this line is
+ * the single place that has to change when it is.
  *
  * 🔴 **Including `no-probes`, and that is not an oversight.** The stale-code reason is about what
  * the *app* would run: the node's saved `generatedCode` emits no probes, so no run of it in a
@@ -145,7 +164,7 @@ export function benchHint(runLabel: string): string {
  * exactly the thing that works while the node on disk is stale.
  */
 export function benchHintApplies(reason: BlockStripReason): boolean {
-  return reason !== 'attached';
+  return reason !== 'attached' && reason !== 'no-node';
 }
 
 /**
@@ -184,6 +203,17 @@ export interface StripReasonInput {
    * handed the parameter must not accuse the program of being stale.
    */
   generatedCode?: string;
+  /**
+   * VFN-009 — what these blocks *are*.
+   *
+   * 🔴 Explicit, and not inferred from a missing `nodeId`. A node tab opened without a node id is
+   * a **wiring mistake**, and LGC-002's whole design is that such a mistake explains itself rather
+   * than disappearing; a definition tab has no node by construction. Reading one state as the
+   * other would relabel every wiring mistake as a saved block and take the loud failure away.
+   *
+   * Omitted means `'node'`, so every existing caller keeps the answer it had.
+   */
+  subject?: 'node' | 'definition';
 }
 
 /**
@@ -192,7 +222,10 @@ export interface StripReasonInput {
  * The precedence is the whole of the decision, and it is ordered by *what the builder would do
  * next*:
  *
- *  1. **`no-probes` first**, because it is true regardless of the socket and it is the only reason
+ *  0. **`no-node` before everything** (VFN-009), because it is not a state the program is in — it
+ *     is a statement about what these blocks *are*. A saved block's body has no node, no inputs
+ *     and no run, so every reason below it is a sentence about a question that does not apply.
+ *  1. **`no-probes` first** of the rest, because it is true regardless of the socket and it is the only reason
  *     where nothing the builder does — starting the app, triggering the node, pressing Run — will
  *     produce a badge. Every other reason is answerable by an action.
  *  2. **Runs beat every reason.** Once there is something to scrub the strip has nothing to
@@ -201,7 +234,12 @@ export interface StripReasonInput {
  *     one the five socket answers could not name.
  *  4. Otherwise the socket's own answer, unchanged.
  */
-export function stripReasonFor({ status, runs, hasBlocks, generatedCode }: StripReasonInput): BlockStripReason {
+export function stripReasonFor({ status, runs, hasBlocks, generatedCode, subject }: StripReasonInput): BlockStripReason {
+  // VFN-009 — a saved block's body. Not a state; a subject. Nothing below applies to it, including
+  // `no-probes`: the definition is never generated on its own, so "these blocks are stale" is not
+  // a claim that has a meaning here.
+  if (subject === 'definition') return 'no-node';
+
   // `generatedCode === ''` is a program that has never been generated — a freshly dropped node —
   // not one generated by an older editor. Accusing it of being stale would be a sentence about a
   // program that does not exist yet.

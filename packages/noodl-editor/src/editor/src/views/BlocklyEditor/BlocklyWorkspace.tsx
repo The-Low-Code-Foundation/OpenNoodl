@@ -15,6 +15,7 @@
 import * as Blockly from 'blockly';
 import React, { useEffect, useRef, useState } from 'react';
 
+import { EventDispatcher } from '../../../../shared/utils/EventDispatcher';
 import { ProjectModel } from '../../models/projectmodel';
 import { openSettingsPanel } from '../panels/SettingsPanel/settingsPanelRoute';
 import { CanvasTheme } from '../nodegrapheditor/canvas/CanvasTheme';
@@ -89,6 +90,20 @@ export interface BlocklyWorkspaceProps {
    * badge anything — and it is **never written back**. See `BlockValueOptions.generatedCode`.
    */
   generatedCode?: string;
+  /**
+   * VFN-009 — what these blocks are: one node's program, or one saved block's body.
+   *
+   * 🔴 The three overlays that need a live node — Do It, the value strip and `BlockTraceClient` —
+   * were all written to *explain* a missing `nodeId` rather than vanish, so a definition tab takes
+   * a path that already exists. What it must not do is take the path a **wiring mistake** takes: a
+   * node tab opened with no node id is a real defect and has to keep saying so, which is why this
+   * is an explicit prop rather than `nodeId === undefined`.
+   *
+   * ⚠️ A definition tab is not runnable. VFN-011's bench is what would make it one; until then no
+   * Run button is offered, because a control that is there and does nothing is worse than one that
+   * is not there.
+   */
+  subject?: 'node' | 'definition';
 }
 
 export function BlocklyWorkspace({
@@ -96,7 +111,8 @@ export function BlocklyWorkspace({
   onChange,
   readOnly = false,
   nodeId,
-  generatedCode
+  generatedCode,
+  subject = 'node'
 }: BlocklyWorkspaceProps) {
   const blocklyDiv = useRef<HTMLDivElement>(null);
   // LGC-004 — the two interface rails. Rendered as siblings of the injection div (rather than as
@@ -366,7 +382,16 @@ export function BlocklyWorkspace({
         workspace,
         store: myBlocksStore(),
         openDialog: openSaveBlockDialog,
-        outline: saveOutline
+        outline: saveOutline,
+        /**
+         * VFN-009 — tell the *Saved blocks* section in project settings that a shelf moved.
+         *
+         * A **backpack** save touches neither `ProjectModel` nor `project.json`, so that panel has
+         * no other channel to hear about it on and would go on showing a list without the block
+         * that was just saved. Emitted here rather than inside `MyBlocksSave.ts`, which is in the
+         * plain-Node runner's import graph and must not import the event dispatcher.
+         */
+        onSaved: (definition) => EventDispatcher.instance.emit('MyBlocks.LibraryChanged', { definitionId: definition.id })
       });
 
       /**
@@ -411,16 +436,28 @@ export function BlocklyWorkspace({
         blockValues = attachBlockValues(workspace, rootRef.current, {
           nodeId,
           generatedCode,
-          onRun: {
-            label: '▶ Run',
-            title:
-              'Run these blocks here in the editor, with the app stopped, using the sandbox values in the ' +
-              'Inputs rail. Nothing it does reaches your app.',
-            run: () => {
-              const trigger = bench?.defaultTrigger();
-              if (trigger) bench?.run(trigger);
-            }
-          }
+          // VFN-009 — so the strip says "there is no node here" rather than "there is no
+          // connection to a running app", which is a true sentence about a different problem and
+          // would send a builder off to start the preview for nothing.
+          subject,
+          /**
+           * ⚠️ **No Run button on a definition tab.** The bench runs a program against a node's
+           * sandbox inputs; a saved block's body has neither. Offering the button and having it do
+           * nothing is the failure LGC-002 names about its menu item, arriving as a control.
+           */
+          onRun:
+            subject === 'definition'
+              ? undefined
+              : {
+                  label: '▶ Run',
+                  title:
+                    'Run these blocks here in the editor, with the app stopped, using the sandbox values in the ' +
+                    'Inputs rail. Nothing it does reaches your app.',
+                  run: () => {
+                    const trigger = bench?.defaultTrigger();
+                    if (trigger) bench?.run(trigger);
+                  }
+                }
         });
       }
 

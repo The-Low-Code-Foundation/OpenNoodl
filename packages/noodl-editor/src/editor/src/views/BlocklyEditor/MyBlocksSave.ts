@@ -167,6 +167,8 @@ interface SaveSession {
   openDialog: SaveBlockDialog;
   /** VFN-006. Absent on a workspace with nothing rendered — every use in the runner. */
   outline?: SaveOutline;
+  /** VFN-009 — see {@link AttachSaveOptions.onSaved}. */
+  onSaved?: (definition: MyBlockDefinition) => void;
 }
 
 const sessions = new Map<string, SaveSession>();
@@ -345,7 +347,13 @@ export function registerSaveAsBlockMenuItem(): void {
         prepareSaveRequest(
           session.store,
           selectionFor(block),
-          () => refreshMyBlocksFlyout(session.workspace),
+          (definition) => {
+            refreshMyBlocksFlyout(session.workspace);
+            // VFN-009 — and tell anything else that lists the shelves. A backpack save touches
+            // neither `ProjectModel` nor `project.json`, so the *Saved blocks* section in project
+            // settings has no other way to hear about it and would go on showing a stale list.
+            session.onSaved?.(definition);
+          },
           session.outline
         )
       );
@@ -414,13 +422,27 @@ export interface AttachSaveOptions {
    * DOM, and this module must stay importable from the plain-Node runner. See {@link SaveOutline}.
    */
   outline?: SaveOutline;
+  /**
+   * VFN-009 — run after a definition is committed, in addition to the flyout refresh.
+   *
+   * ⚠️ Injected rather than emitted from here, for this module's own reason: it is in the import
+   * graph of the `lgc-007` specs in the plain-Node runner, and one import of the editor's event
+   * dispatcher would fail two suites *to run*. The caller that has a renderer does the emitting.
+   */
+  onSaved?: (definition: MyBlockDefinition) => void;
 }
 
 /** Turn *Save as a block…* on for one open block editor. */
-export function attachMyBlocksSave({ workspace, store, openDialog, outline }: AttachSaveOptions): MyBlocksSaveHandle {
+export function attachMyBlocksSave({
+  workspace,
+  store,
+  openDialog,
+  outline,
+  onSaved
+}: AttachSaveOptions): MyBlocksSaveHandle {
   registerSaveAsBlockMenuItem();
 
-  const session: SaveSession = { workspace, store, openDialog, outline };
+  const session: SaveSession = { workspace, store, openDialog, outline, onSaved };
   sessions.set(workspace.id, session);
 
   return {

@@ -266,6 +266,20 @@
   font-style: italic;
 }
 
+/* VFN-009 — a saved block's tab wears the glyph its call block wears, so the tab
+   and the block on the canvas read as the same thing.
+
+   `currentColor` and no palette of its own, for the away mark's reason: it has to
+   survive a greyscale print and both themes, and the tab already decides what
+   colour its foreground is in each of its three states. */
+.SavedBlockMark {
+  flex: 0 0 auto;
+  align-self: center;
+  color: currentColor;
+  font-size: 11px;
+  line-height: 1;
+}
+
 .TabCloseButton {
   display: flex;
   align-items: center;

@@ -99,6 +99,14 @@ export interface BlockValueOptions {
    * criterion that opening a program and closing it again changes no bytes.
    */
   generatedCode?: string;
+  /**
+   * VFN-009 — whether these blocks belong to a node or to a saved block on a shelf.
+   *
+   * Passed explicitly rather than inferred from a missing `nodeId`: a node tab with no node id is
+   * a wiring mistake that has to keep failing loudly, and a definition tab has no node by
+   * construction. See `StripReasonInput.subject`.
+   */
+  subject?: 'node' | 'definition';
 }
 
 /**
@@ -168,7 +176,7 @@ export function attachBlockValues(
    * `benchHintApplies`.
    */
   const derivedNote = (hasBlocks: boolean): string => {
-    const reason = stripReasonFor({ status, runs: history.length, hasBlocks, generatedCode });
+    const reason = stripReasonFor({ status, runs: history.length, hasBlocks, generatedCode, subject: options.subject });
     const copy = STATUS_COPY[reason];
     if (!options.onRun || !benchHintApplies(reason)) return copy;
     return copy + benchHint(options.onRun.label);
