@@ -192,10 +192,78 @@
   }
 }
 
+/* VFN-004: `Component · Node`, in three spans so the component side can carry
+   the away state and truncate on its own.
+
+   `min-width: 0` is what lets `.TabComponent` shrink at all: a nowrap span in a
+   flex row has an automatic minimum equal to its content, so without it the tab
+   would grow past the window rather than ellipsis. `flex-wrap` is deliberately
+   not involved — it wraps before it shrinks, which is the opposite of what a
+   one-line tab wants. */
 .TabLabel {
+  display: flex;
+  align-items: center;
+  min-width: 0;
   font-size: var(--font-size-base);
   font-weight: 500;
   white-space: nowrap;
+}
+
+/* 🔴 The COMPONENT side truncates, not the node side. The node name is the more
+   specific of the two and is what tells two open tabs apart, so it keeps its
+   width. `tabLocation.ts` already caps the string at a character count; this is
+   the second line of defence for a narrow window, and the two agree on which
+   half gives way.
+
+   Its own token rather than opacity: a foreground dimmed by `opacity` cannot be
+   turned down far enough to read as secondary and still pass AA, and the away
+   state below needs a step it is still legible at. */
+.TabComponent {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--theme-color-fg-default-shy);
+}
+
+.TabSeparator {
+  flex: 0 0 auto;
+  padding: 0 var(--spacing-1);
+  color: var(--theme-color-fg-default-shy);
+}
+
+/* The node name never gives way. */
+.TabNode {
+  flex: 0 0 auto;
+}
+
+/* VFN-004 — the away mark: the graph on screen is NOT this tab's component.
+
+   🔴 A shape, not a colour. It is a hollow ring, present in the DOM only while
+   the tab is away, so it survives a screenshot, a greyscale print and both
+   themes — and it reads as "elsewhere" at a glance rather than after reading and
+   comparing two names, which is the failure the label alone would leave one step
+   later. `currentColor` so it inherits the active/inactive tab foreground and
+   needs no second palette. */
+.AwayMark {
+  flex: 0 0 auto;
+  width: 7px;
+  height: 7px;
+  border: 1.5px solid currentColor;
+  border-radius: 50%;
+  align-self: center;
+}
+
+/* An away tab also italicises its component segment. Belt and braces on purpose:
+   the ring answers "is this tab elsewhere?", and the slant answers "elsewhere
+   than WHAT?" by pointing at the half of the label that is currently untrue of
+   the screen. Both are shapes; neither is a colour.
+
+   ⚠️ `.Tab.isAway .TabComponent` and not a bare `.isAway` rule — `.TabComponent`
+   already sets `color`, and a bare class loses to a descendant selector of the
+   same specificity only by source order. Stated as a descendant so it wins by
+   specificity regardless of where the two end up in the emitted sheet. */
+.Tab.isAway .TabComponent {
+  font-style: italic;
 }
 
 .TabCloseButton {

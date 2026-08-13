@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useCallback, ReactNode, use
 
 import { EventDispatcher } from '../../../shared/utils/EventDispatcher';
 import { ensureHatsInJson } from '../views/BlocklyEditor/hatMigration';
+import { tabLocationRefresh } from '../views/CanvasTabs/tabLocation';
 import { tabsClosedByNodeRemoval, RemovedNode } from './canvasTabsNodeRemoval';
 
 /**
@@ -21,6 +22,22 @@ export interface Tab {
   nodeId?: string;
   /** Node name for display (for logic-builder tabs) */
   nodeName?: string;
+  /**
+   * VFN-004 — `ComponentModel.id` of the component the node lives in.
+   *
+   * 🔴 This is the identity the tab navigates by, and the only one. A name is a snapshot that a
+   * rename invalidates, and `ProjectModel` has no path normalisation that would make a stale one
+   * resolve; an id survives both. The two name fields below are display only.
+   *
+   * Optional because a tab can be opened without one (a caller that emits `LogicBuilder.OpenTab`
+   * by hand), and a tab that does not know where it belongs must say nothing rather than guess —
+   * see `isTabAway` in `views/CanvasTabs/tabLocation.ts`.
+   */
+  componentId?: string;
+  /** `ComponentModel.displayName` at open time — the tab's first segment. Display only. */
+  componentName?: string;
+  /** `ComponentModel.fullName` at open time — the tooltip, and the refusal. Display only. */
+  componentPath?: string;
   /** Blockly workspace JSON (for logic-builder tabs) */
   workspace?: string;
 }
@@ -93,7 +110,20 @@ export function CanvasTabsProvider({ children }: CanvasTabsProviderProps) {
       if (existingTab) {
         // Tab exists, just switch to it
         setActiveTabId(tabId);
-        return prevTabs;
+
+        /**
+         * VFN-004 — but refresh where it says it belongs.
+         *
+         * The decision lives in `tabLocationRefresh` rather than here, for the reason every
+         * decision in this provider ends up there: the provider cannot be rendered by either of
+         * this package's runners, so anything left inside it cannot be graded. `undefined` means
+         * nothing would change, and handing React the same array back is what stops a reopen of
+         * an unchanged tab from re-rendering the mounted Blockly workspaces.
+         */
+        const refreshed = tabLocationRefresh(existingTab, newTab);
+        if (!refreshed) return prevTabs;
+
+        return prevTabs.map((t) => (t.id === tabId ? { ...t, ...refreshed } : t));
       }
 
       /**
@@ -140,12 +170,23 @@ export function CanvasTabsProvider({ children }: CanvasTabsProviderProps) {
   useEffect(() => {
     const context = {};
 
-    const handleOpenTab = (data: { nodeId: string; nodeName: string; workspace: string }) => {
+    const handleOpenTab = (data: {
+      nodeId: string;
+      nodeName: string;
+      workspace: string;
+      /** VFN-004 — where the node lives. Absent from a caller that predates the field. */
+      componentId?: string;
+      componentName?: string;
+      componentPath?: string;
+    }) => {
       console.log('[CanvasTabsContext] Received LogicBuilder.OpenTab event:', data);
       openTab({
         type: 'logic-builder',
         nodeId: data.nodeId,
         nodeName: data.nodeName,
+        componentId: data.componentId,
+        componentName: data.componentName,
+        componentPath: data.componentPath,
         workspace: data.workspace
       });
     };

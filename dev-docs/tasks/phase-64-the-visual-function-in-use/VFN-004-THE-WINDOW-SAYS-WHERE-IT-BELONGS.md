@@ -1,6 +1,17 @@
 # VFN-004 — The window says where it belongs
 
-**Status:** 📋 open · **Tier 2** · ~half a day · no dependencies
+**Status:** 🟡 **built on `vfn-window`, four criteria owe a live drive** · **Tier 2** · no dependencies
+
+> Built 2026-08-13. Every decision is a pure module under `views/CanvasTabs/tabLocation.ts` and is
+> graded by `tests-unit/vfn-004/tab-location.test.ts` (52 specs, each block's negative control
+> **driven red** by mutation, not merely written). Gate: 158 suites / 2317 passing, `tsc` clean.
+>
+> ✅ AC 1 and AC 5 are proved. 🟡 AC 2, 3, 4 and 6 have their *decision* proved and their
+> *consequence* owed — the canvas moving, the ring in a screenshot, and the toast all need the
+> real app, which this worktree may not run.
+>
+> 📋 **Read [`NOTES-window.md`](NOTES-window.md) before the drive.** It lists the seven things to
+> check, in order, and two of them are quiet failures that will not announce themselves.
 
 ## The report
 
