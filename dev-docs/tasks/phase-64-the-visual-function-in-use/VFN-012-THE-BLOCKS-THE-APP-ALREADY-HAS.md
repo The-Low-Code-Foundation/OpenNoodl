@@ -1,11 +1,36 @@
 # VFN-012 — The blocks the app already has
 
-**Status:** 🟡 **§1 built, §2/§3 not** · **Tier 3** · no dependencies · scope cut cleanly
+**Status:** 🟡 **all three sections built, NOT driven** · **Tier 3** · no dependencies
 
-> **2026-08-13, branch `vfn-config`.** The **app-config-variables** half is built, gated and
-> written up in [`NOTES-config.md`](./NOTES-config.md). The **registered-libraries** and
-> **`window`** halves are not — see *What is deliberately not here* in the notes, which includes
-> the layout question they re-open.
+> **2026-08-13, branch `vfn-g-config`.** §2 (**registered libraries**) and §3 (**`window`**) are
+> now built and gated, on top of §1. **Nothing was dropped.** Write-up: the second half of
+> [`NOTES-config.md`](./NOTES-config.md).
+>
+> - The layout question §1 refused to answer silently is **settled**: one new category,
+>   **`Libraries & Browser`**, directly below `App Config`. §1's placement stands; the task file's
+>   original `App & Browser` merge is not adopted, because re-siting a merged, driven feature is
+>   churn. One category for §2 and §3 together, because both generate `window…`.
+> - Two blocks. `noodl_library_global` → `window.<global>`; `noodl_window` → `window["a"]["b"]`.
+>   No setter for either.
+> - 🔴 **The library list is read off disk and is async, and a flyout callback is not.** So there
+>   is a real window — the first tick of every session — in which the honest answer is *"I have
+>   not looked yet"*. The snapshot is **tri-state** (`unknown` / `loaded` / `unavailable`); a
+>   two-state cache would mark every library block `⚠` at the moment the editor opened. That is
+>   *"an async injection sampled early looks like a disposal"* as a live defect, not a caution.
+> - ⚠️ **The Logic Builder runs in the cloud runtime** (`noodl-runtime.ts:190`, not in the
+>   `type !== 'cloud'` subtraction), where there is no `window` and no injected library. Both
+>   blocks say so; `window.x` is left to throw rather than guarded into silence.
+> - Gates: jest **178/2707** (was 175/2622 — +3 suites, +85 specs, nothing else moved),
+>   `cloud-library:check` green, editor `tsc -p tsconfig.json --noEmit` 0 errors.
+> - **Eight negative controls, each watched red** and the failing names read off the runner. The
+>   one worth remembering: the `window` block is in *every* flyout, so an empty-state predicate
+>   written the obvious way reports no empty state, ever.
+> - ⚠️ **Nothing is driven.** Criteria 3 and 4 are proved as far as a headless runner reaches;
+>   reaching the library and the browser global in the preview is not. 🔴 And the category label
+>   `Libraries & Browser` is the longest in this toolbox and has never been measured against the
+>   pane width.
+
+> **2026-08-13, branch `vfn-config` — §1.** The **app-config-variables** half, built and gated.
 >
 > - Category is **`App Config`**, directly below `App Arrays`, where the report asked for it.
 > - `App Variables` → **`Runtime Variables`**, label and locale strings only; both block type ids
@@ -112,6 +137,18 @@ block. That single block plus the existing member-access shape is enough to reac
 ⚠️ `runtimes` matters: a library registered for the browser is not present in a cloud function. The
 block is offered where it exists and the flyout says which runtimes it covers.
 
+> **Built 2026-08-13.** Two things this section did not anticipate, both of which decided the code:
+>
+> 1. 🔴 **`listRegisteredLibraries` is async and a flyout callback is not.** The whole tri-state
+>    snapshot exists because of this. §1 had no equivalent — `getConfigVariables()` is synchronous.
+> 2. 🔴 **"Offered where it exists" is not implementable.** The block editor does not know which
+>    node it is editing on behalf of, let alone where that node will run, so there is no per-runtime
+>    toolbox. The block is offered everywhere and *says* which runtimes it covers. Hiding it would
+>    be a guess presented as a fact.
+>
+> Also: a library registered with **no `global`** is real and cannot be read. It is named in the
+> flyout with what to do about it rather than dropped.
+
 ### 3. `window` → one escape hatch, deliberately blunt
 
 One value block: `window`, with a text field for a property path, generating `window["a"]["b"]`.
@@ -121,7 +158,30 @@ category would be enormous, permanently incomplete, and would read as an endorse
 happened to be in it. `window` plus the existing blocks is a complete escape hatch, and a Function
 node is right there for anything more.
 
+> **Built 2026-08-13, exactly as written**, plus a second reason not to enumerate that this section
+> does not give: **`Object.keys` is not a survey of an API.** `Object.keys(window)` answers with
+> whatever *this renderer* happens to have and misses everything on `Window.prototype`, so a
+> generated category would ship one machine's globals to every project. This register has already
+> paid for that mistake once in this phase.
+>
+> 🔴 Two things found in the building:
+>
+> - **A pasted `window.` prefix.** The block reads `🌐 window.` + field and an author will still
+>   paste the whole path in. The naive parse gives `window["window"]["location"]["href"]`, which
+>   **works**, because `window.window === window` — so a value-based test would pass forever and the
+>   parse would stay broken until the first path whose head is not self-referential. One leading
+>   `window` is stripped, and the spec asserts the *string*, against the exact string the bug emits.
+> - **`window` does not exist in a cloud function**, and the Logic Builder runs there. It is left to
+>   throw a `ReferenceError`: a `typeof window` guard turns a wrong program into a silently empty
+>   one, and `globalThis` would quietly succeed against something that is not a browser window.
+
 ## Where they go in the toolbox
+
+> 🔴 **Superseded by what was built, 2026-08-13.** The single `App & Browser` category below is
+> **not** what shipped. §1 put `App Config` beside `App Arrays`, where the report asked for it, and
+> merged; §2/§3 went into a second category, **`Libraries & Browser`**, directly below it. Two
+> categories, not one, because re-siting a merged and driven feature to satisfy a layout sketch is
+> churn. The rest of this section — dynamic, and the empty state — held and was built as written.
 
 A new category — **`App & Browser`**, or similar — below the Noodl seam categories and above the
 stock Blockly ones, with three sub-groups. It is dynamic like `VARIABLE`, `PROCEDURE` and `MY_BLOCKS`,
@@ -139,13 +199,21 @@ app settings.
    — *category projection and generated string proved; the reading-in-the-app half needs a drive.*
 2. ✅ Renaming or deleting a config variable leaves existing blocks holding the old key, visibly marked,
    and changes no program. — *proved headless, with Blockly's own snapping behaviour as the control.*
-3. ⬜ A registered library appears with its `global`, and its block reaches the library in the preview.
-4. ⬜ The `window` block reaches a browser global.
+3. 🟡 A registered library appears with its `global`, and its block reaches the library in the preview.
+   — *the projection, the dropdown, the marked-when-removed rule and the generated `window.<global>`
+   are proved, including against an in-flight scan; **reaching it in the preview needs a drive**.*
+4. 🟡 The `window` block reaches a browser global.
+   — *the path grammar and the generated `window["a"]["b"]` are proved, including that a pasted
+   `window.` prefix is stripped and that nothing typed in the field can escape the expression;
+   **reaching a real global needs a drive**.*
 5. 🟡 The existing `App Variables` category is renamed and **no block type id changed** — an old project
    opens with identical `workspace` and `generatedCode` bytes.
-   — *renamed; type ids asserted unchanged; the byte diff on a real old project not done.*
+   — *renamed; type ids asserted unchanged for `Runtime Variables`, `App Objects` **and**
+   `App Arrays`; the byte diff on a real old project not done.*
 6. 🟡 Empty categories explain themselves and name where to go.
-   — *contents proved; that Blockly renders label/button items in a dynamic flyout not driven.*
+   — *contents proved, and for §2 in **three** states rather than two — "not read yet", "there are
+   none" and "could not be read" are told apart, with a spec asserting exactly one holds. That
+   Blockly renders label/button items in a dynamic flyout is still not driven.*
 7. ✅ ⚠️ `npm run cloud-library:check` passes — it is a required PR gate and drifts red on port-group
    changes.
 

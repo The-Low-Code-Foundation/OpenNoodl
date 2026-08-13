@@ -24,7 +24,17 @@ import {
   APP_CONFIG_HUE,
   defaultConfigKey
 } from './appConfig';
+import {
+  defaultLibraryGlobal,
+  libraryGlobalDisplay,
+  libraryGlobalOptions,
+  libraryTooltip,
+  registeredLibrariesSnapshot,
+  BROWSER_HUE,
+  LIBRARY_GLOBAL_BLOCK_TYPE
+} from './appLibraries';
 import { blocklyCheckForNoodlType, connectionCheckForDeclaredPort, PERMISSIVE_NOODL_TYPE } from './NoodlTypes';
+import { windowTooltip, DEFAULT_WINDOW_PATH, WINDOW_BLOCK_TYPE } from './windowAccess';
 
 /**
  * Shorthand for a check a block knows statically, spelled in Noodl's vocabulary so the map in
@@ -137,8 +147,11 @@ export function initNoodlBlocks() {
   // Array blocks (basic - will expand later)
   defineArrayBlocks();
 
-  // VFN-012 — the app's declared config variables
+  // VFN-012 §1 — the app's declared config variables
   defineAppConfigBlocks();
+
+  // VFN-012 §2/§3 — the libraries this app registered, and `window`
+  defineBrowserBlocks();
 }
 
 /**
@@ -526,6 +539,81 @@ function defineAppConfigBlocks() {
       // A function, so the hover text follows the key the block currently holds — including
       // "this key is gone", which is the one a builder most needs to read.
       this.setTooltip(() => appConfigTooltip(appConfigVariables(), this.getFieldValue('KEY') || ''));
+      this.setHelpUrl('');
+    }
+  };
+}
+
+/**
+ * The library-global dropdown — `ConfigKeyField`'s twin, for the same defect.
+ *
+ * Blockly 12.3.1's stock `FieldDropdown` rewrites a value it does not recognise to the first
+ * option in its list (measured in `app-config-block.spec.ts`, which builds one and watches it).
+ * A block reading `window.PocketBase` would therefore come back reading `window.Something Else`
+ * the moment that library was removed — or, far worse and unique to this half, **the moment the
+ * project was opened**, because the library list is read off disk asynchronously and is empty
+ * for the first tick of every session.
+ *
+ * That second case is why this field reads a *snapshot* and not an array:
+ *
+ * - `doClassValidation_` accepts any string, so the stored global is always the one the author
+ *   chose — the field is a picker, not the authority on which libraries exist.
+ * - `getText_` marks an unregistered global **only against a completed scan**. While the read is
+ *   in flight the global renders plainly, because "I have not looked yet" is not evidence of
+ *   absence. See `libraryGlobalDisplay`.
+ */
+class LibraryGlobalField extends Blockly.FieldDropdown {
+  constructor(value?: string) {
+    super(() => libraryGlobalOptions(registeredLibrariesSnapshot()) as Blockly.MenuOption[]);
+    if (typeof value === 'string') {
+      this.setValue(value);
+    }
+  }
+
+  /** Any string is a legal global — including one this project no longer registers. */
+  protected doClassValidation_(newValue?: string): string | null {
+    return typeof newValue === 'string' ? newValue : null;
+  }
+
+  /** An unregistered global reads as itself, marked. Never as another library. */
+  protected getText_(): string | null {
+    return libraryGlobalDisplay(registeredLibrariesSnapshot(), this.getValue() || '');
+  }
+}
+
+/**
+ * Library and browser blocks (VFN-012 §2 and §3)
+ *
+ * Two value blocks, one category. `window.<global>` for a library this app registered, and a bare
+ * `window` with a property path for everything else. See `appLibraries.ts` and `windowAccess.ts`
+ * for the reasoning and for everything in this feature that can be graded without Blockly.
+ */
+function defineBrowserBlocks() {
+  Blockly.Blocks[LIBRARY_GLOBAL_BLOCK_TYPE] = {
+    init: function () {
+      this.appendDummyInput()
+        .appendField('📦 library')
+        .appendField(new LibraryGlobalField(defaultLibraryGlobal(registeredLibrariesSnapshot())), 'GLOBAL');
+      this.setOutput(true, null);
+      this.setColour(Number(BROWSER_HUE));
+      // A function, so the hover text follows the global the block currently holds — including
+      // "this library is gone" and "we have not read them yet", which are different sentences.
+      this.setTooltip(() => libraryTooltip(registeredLibrariesSnapshot(), this.getFieldValue('GLOBAL') || ''));
+      this.setHelpUrl('');
+    }
+  };
+
+  Blockly.Blocks[WINDOW_BLOCK_TYPE] = {
+    init: function () {
+      // A free text field, like every other name field in this language — and here it is the
+      // whole design. There is no list of browser globals to pick from that would not be a claim
+      // about what exists; see the module note in `windowAccess.ts`.
+      this.appendDummyInput()
+        .appendField('🌐 window.')
+        .appendField(new Blockly.FieldTextInput(DEFAULT_WINDOW_PATH), 'PATH');
+      this.setOutput(true, null);
+      this.setColour(Number(BROWSER_HUE));
+      this.setTooltip(() => windowTooltip(this.getFieldValue('PATH') || ''));
       this.setHelpUrl('');
     }
   };

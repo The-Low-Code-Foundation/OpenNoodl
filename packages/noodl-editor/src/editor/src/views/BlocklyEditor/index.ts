@@ -296,6 +296,56 @@ export {
 } from './appConfig';
 export type { AppConfigFlyoutItem, AppConfigKeyOption, ConfigVariablesProvider } from './appConfig';
 
+// VFN-012 §2 — the libraries this app registered. Pure, and asynchronous at the edge: the
+// snapshot is tri-state because `noodl_modules` is read off disk and "not read yet" is not the
+// same answer as "there are none".
+export {
+  browserFlyout,
+  browserFlyoutContents,
+  defaultLibraryGlobal,
+  hasLibrariesEmptyState,
+  hasLibrariesLoadingState,
+  hasLibrariesUnavailableState,
+  hasWindowBlock,
+  isRegisteredGlobal,
+  librariesIn,
+  libraryGlobalDisplay,
+  libraryGlobalOptions,
+  libraryReadExpression,
+  libraryRuntimeNote,
+  libraryTooltip,
+  normalizeRegisteredLibraries,
+  reachableLibraries,
+  refreshRegisteredLibraries,
+  registeredLibrariesSnapshot,
+  resetRegisteredLibraries,
+  setRegisteredLibrariesLoader,
+  unreachableLibraries,
+  BROWSER_CATEGORY,
+  BROWSER_HUE,
+  LIBRARIES_SETTINGS_BUTTON,
+  LIBRARIES_SETTINGS_PATH,
+  LIBRARY_GLOBAL_BLOCK_TYPE
+} from './appLibraries';
+export type {
+  BrowserFlyoutItem,
+  LibraryGlobalOption,
+  RegisteredLibrariesLoader,
+  RegisteredLibrariesSnapshot
+} from './appLibraries';
+
+// VFN-012 §3 — `window`, and the path grammar its one text field speaks.
+export {
+  parseWindowPath,
+  windowPathDisplay,
+  windowPathExpression,
+  windowTooltip,
+  DEFAULT_WINDOW_PATH,
+  WINDOW_BLOCK_TYPE,
+  WINDOW_CLOUD_WARNING
+} from './windowAccess';
+export type { WindowPathSegment } from './windowAccess';
+
 // Toolbox and language
 export { buildToolbox, DEFAULT_TOOLBOX_LABELS } from './BlocklyToolbox';
 export type { ToolboxLabels } from './BlocklyToolbox';
