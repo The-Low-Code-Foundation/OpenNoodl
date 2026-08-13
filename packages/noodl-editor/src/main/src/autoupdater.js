@@ -258,6 +258,32 @@ function setupAutoUpdate(window) {
     // Reached only from a check, never from a download — `autoDownload` is off.
     if (state.status === 'downloading' || state.status === 'downloaded') return;
 
+    // An "available" version that is not NEWER is not an offer.
+    //
+    // `allowDowngrade` above is on for the version picker, and its cost is that
+    // electron-updater reports whatever the feed names as available — including
+    // something older than what is running. The feed lists only *published*
+    // releases, so while a newer release sits in draft (or one is unpublished,
+    // or yanked) the newest version GitHub admits to is genuinely older than the
+    // installed one, and this fires with it. 0.1.7 shipped as a draft and every
+    // copy of it offered to "update" to 0.1.6 on launch.
+    //
+    // The picker's deliberate downgrade does not come through here:
+    // `update:download` sets the status to `downloading` before re-reading the
+    // pinned feed, so it returns at the guard above.
+    //
+    // Treated exactly like `update-not-available`, which is what it is — the
+    // check succeeded and there is nothing to install. It must reset the backoff
+    // and re-arm the timer itself, because electron-updater fired *this* event
+    // instead of that one, and simply returning would stop the check chain for
+    // the rest of the session.
+    if (compareVersions(info.version, state.currentVersion) >= 0) {
+      retryDelay = RETRY_MIN_MS;
+      if (state.status === 'checking' || state.status === 'idle') setState({ status: 'idle' });
+      _scheduleCheck(CHECK_INTERVAL_MS);
+      return;
+    }
+
     setState({
       status: 'available',
       targetVersion: info.version,

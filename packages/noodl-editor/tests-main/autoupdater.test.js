@@ -261,6 +261,75 @@ describe('nothing happens without the user asking', () => {
     expect(mockUpdater.allowDowngrade).toBe(true);
   });
 
+  // The running version in these tests is 0.1.4 (the mocked `app.getVersion`).
+  describe('an older version is never offered as an update', () => {
+    // 0.1.7 shipped as a DRAFT. GitHub's feed lists only published releases, so
+    // the newest version it would admit to was 0.1.6 — and because
+    // `allowDowngrade` is on for the picker, electron-updater called that
+    // "available". Every copy of 0.1.7 offered to update itself to 0.1.6 on
+    // launch. The same thing happens to everyone on the current version the
+    // moment a release is unpublished or yanked.
+    it('ignores an offer older than what is running — the draft-release downgrade', () => {
+      const { setupAutoUpdate } = loadModule();
+      setupAutoUpdate(fakeWindow);
+
+      updaterListeners['update-available']({ version: '0.1.3' });
+
+      const state = ipcHandlers['update:get-state']();
+      expect(state.status).not.toBe('available');
+      expect(state.targetVersion).toBeNull();
+    });
+
+    it('ignores an offer equal to what is running', () => {
+      const { setupAutoUpdate } = loadModule();
+      setupAutoUpdate(fakeWindow);
+
+      updaterListeners['update-available']({ version: '0.1.4' });
+
+      expect(ipcHandlers['update:get-state']().status).not.toBe('available');
+    });
+
+    // The control. Without it the two above would still pass if the handler
+    // stopped offering anything at all.
+    it('still offers a genuinely newer version', () => {
+      const { setupAutoUpdate } = loadModule();
+      setupAutoUpdate(fakeWindow);
+
+      updaterListeners['update-available']({ version: '0.1.5' });
+
+      const state = ipcHandlers['update:get-state']();
+      expect(state.status).toBe('available');
+      expect(state.targetVersion).toBe('0.1.5');
+    });
+
+    // Returning early would otherwise kill the check chain for the session:
+    // electron-updater fired `update-available`, so `update-not-available` —
+    // which is what normally re-arms the timer — never runs.
+    it('keeps checking afterwards, instead of going quiet for the session', () => {
+      const { setupAutoUpdate } = loadModule();
+      setupAutoUpdate(fakeWindow);
+      mockUpdater.checkForUpdates.mockClear();
+
+      updaterListeners['update-available']({ version: '0.1.3' });
+      jest.advanceTimersByTime(4 * HOUR);
+
+      expect(mockUpdater.checkForUpdates).toHaveBeenCalled();
+    });
+
+    // The picker is the reason `allowDowngrade` is on, so the guard must not
+    // reach it. It does not: `update:download` sets the status to `downloading`
+    // before re-reading the pinned feed.
+    it('does not block a downgrade the user picked deliberately', async () => {
+      const { setupAutoUpdate } = loadModule();
+      setupAutoUpdate(fakeWindow);
+
+      await ipcHandlers['update:download'](null, undefined);
+
+      expect(mockUpdater.downloadUpdate).toHaveBeenCalledTimes(1);
+      expect(ipcHandlers['update:get-state']().status).not.toBe('idle');
+    });
+  });
+
   it('downloads only when the renderer asks, and installs only when it asks again', async () => {
     const { setupAutoUpdate } = loadModule();
     setupAutoUpdate(fakeWindow);
