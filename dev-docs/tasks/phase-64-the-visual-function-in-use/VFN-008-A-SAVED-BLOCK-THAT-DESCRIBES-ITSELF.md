@@ -1,47 +1,64 @@
 # VFN-008 — A saved block that describes itself
 
-**Status:** 🟡 **BUILT 2026-08-13 on `vfn-saveblock`, NOT DRIVEN** · ⭐ **Tier 2** · blocks VFN-009
+**Status:** 🟡 **BUILT 2026-08-13 on `vfn-saveblock` + `vfn-c-ports`, NOT DRIVEN** · ⭐ **Tier 2** ·
+blocks VFN-009 · **all six criteria now built**; 1 and 4 have a drive outstanding
 
-> ## 🔴 Criterion 4 is FALSE AS WRITTEN, and it is the most important thing on this page
+> ## ✅ Criterion 4 — was FALSE AS WRITTEN, FIXED 2026-08-13 on `vfn-c-ports`
 >
 > > *"Placing a call block for a definition that sets an output gives the host node that output
 > > port after the next generate."*
-> >
-> > **It does not.** Measured and pinned by `tests-unit/vfn-008/self-describing-block.test.ts`
-> > → *"🔴 FINDING: a placed saved block publishes no ports"*.
 >
-> The reasoning below — the workspace is the single source of truth for ports, and a saved
-> block's body is inlined at generate time — is right in both halves. The conclusion does not
-> follow, because **the two happen to different copies of the workspace**:
->
-> - `updatePorts` → `detectIO(workspace)` reads the **raw** serialised workspace, the same
->   string persisted as the node's `workspace` parameter;
-> - `expandWorkspace` runs inside `generateWithMyBlocks`, and its expanded copy is discarded as
->   soon as the JavaScript is generated.
->
-> `detectIO` has never heard of `myblocks_call_value` / `myblocks_call_statement`, so a call
-> block contributes no port mentions at all:
+> **It did not.** `updatePorts` → `detectIO(workspace)` reads the **raw** serialised workspace,
+> while `expandWorkspace` runs inside `generateWithMyBlocks` and its expanded copy is discarded
+> as soon as the JavaScript is generated — so the two happened to different copies, and
+> `detectIO` had never heard of `myblocks_call_*`:
 >
 > ```
 > detectIO(workspace containing the call block)  → outputs: []
-> detectIO(the same body, inlined)               → outputs: [{ name: 'total', type: '*' }]
 > generateWithMyBlocks(...)                      → 'Outputs["total"] = 7;\n'
 > ```
 >
-> **The program is right and the node is deaf.** The generated code writes `Outputs["total"]` and
-> there is no `total` port for anyone to wire to. A builder saves a block that sets an output,
-> drops it into another Visual Function, and the output they were promised never appears.
+> **The program was right and the node was deaf.**
 >
-> 🔴 **Not fixed here, deliberately.** `detectIO` lives in `noodl-runtime` and has no access to
-> the definition shelves, which live in `project.json` settings and `EditorSettings`. Either the
-> definitions get plumbed through to port detection, or the expansion happens before the
-> workspace parameter is written — and the second destroys the property that makes the workspace
-> the source of truth. That is a design decision and belongs in its own task, with LGC-007's
-> constraints in front of it. The spec asserts the **true** behaviour so that the fix turns a
-> line red at exactly the right moment.
+> ✅ **Now it publishes them.** A call block carries `extraState.ports` — whatever
+> `detectInterface` reported for the definition's body — and `detectIO` reads it, so the workspace
+> stays the single source of truth and nothing outside it is consulted. **A call block is a call
+> site, and a call site states the signature it was bound against.** `extraState` already carried
+> the definition's `label` and argument names for exactly that reason, and `MyBlockDefinition`
+> already caches `shape`/`params`/`requires` derived from `body`; this is one more field under the
+> same rule, computed by the one detector and never by a second one.
+>
+> Measured on the **real artefacts** — Richard's live backpack shelf and `vfn64-qa`:
+>
+> ```
+> BEFORE  outputs: [{"name":"total","type":"*"}]
+> AFTER   outputs: [{"name":"total","type":"*"},{"name":"result","type":"number"}]
+> CONTROL outputs: [{"name":"total","type":"*"}]     ← the stamp removed again
+> ```
+>
+> `result` is the port VFN-014 traced `Outputs["result"]` to and could not find.
+>
+> 🔴 **The route this task filed was rejected, and the evidence is decisive.** Plumbing the shelves
+> into port detection would publish ports for a *project*-scoped definition and not for a
+> *backpack*-scoped one — a node's interface would depend on which machine had the editor open —
+> and the block that produced this finding is **backpack-only**, so that route would have fixed
+> nothing that was reported. It would also import the inliner's throwing failure surface (cycles,
+> missing definitions, budgets) into a path whose contract is that it never throws.
+>
+> ⚠️ **The finding understated the blast radius.** `interfaceRails.ts` and `benchModel.ts` read
+> `detectInterface`, the sibling projection of the same traversal, so the rails and VFN-011's bench
+> were blind too. One fix, three surfaces.
+>
+> ⚠️ **Staleness, stated:** the rows are a cache, so a definition that grows an output after a call
+> block was placed understates its ports until reloaded with the shelf present and flushed again —
+> the same staleness `label`/`args` have always had, where before it was total and permanent.
+> LGC-007 §4's sweep is where it is properly repaired, and it belongs with VFN-009.
+>
+> Full design note, the rejected routes in full, the negative controls and what still needs a
+> drive: [`NOTES-ports.md`](NOTES-ports.md).
 >
 > The second half of criterion 4 — *"no port is created for a definition's internal variables"* —
-> ✅ holds, and would still hold after the above is fixed.
+> ✅ held throughout and still holds.
 >
 > ## ✅ Everything else is built
 >
@@ -123,6 +140,13 @@ containing `set output "total"` gives the host node a `total` output the moment 
 placed and the program regenerates. There is no copy step and no second store, which is exactly what
 the phase-59 constraint requires.
 
+> ⚠️ **Corrected 2026-08-13.** The conclusion was right and the mechanism was not. Inlining alone
+> never gave the host the port, because `detectIO` reads the *un-expanded* workspace — see the top
+> of this file. What makes the paragraph true is that the call block **states** its definition's
+> ports, so the workspace really is the single source of truth and there really is no second store:
+> the stated rows are `detectInterface(definition.body)`, computed by the one detector and cached at
+> the call site the way `label` and `args` already are.
+
 **Blockly variables: no, and this is the hazard.** A definition body that uses a Blockly `variables_get`
 refers to a variable in the workspace it was *saved from*. Placed in a different Visual Function,
 that variable does not exist. The inliner has no remapping for it — `remapCallTargets` remaps
@@ -195,9 +219,11 @@ the call block will actually have — so the name being typed is being attached 
    all produce the identical tooltip, and no line of it is blank.
 3. ✅ **DONE.** A definition whose body uses a workspace variable produces the named warning at
    save time — and on the call block's tooltip as well, which is honest-answer 2 from above.
-4. 🔴 **FALSE AS WRITTEN — see the top of this file.** A call block publishes **no** ports; the
-   generated code writes the output and nothing can be wired to it. The second half — no port for
-   a definition's internal variables — ✅ holds.
+4. ✅ **DONE 2026-08-13** — was false as written, see the top of this file. A call block states its
+   definition's ports in `extraState.ports` and `detectIO` reads them, so the port the generated
+   code writes to exists and can be wired. Proved by spec (both packages, each half watched red),
+   and measured on the real `vfn64-qa` artefacts. 🔴 **The canvas half needs a drive.** The second
+   half — no port for a definition's internal variables — ✅ held throughout.
 5. ✅ **DONE.** Every sentence rendered is produced by `saveIntent.ts` and is asserted in the
    plain-Node runner.
 6. ✅ **DONE.** Old definitions on disk — every one of which has `description: undefined` — load

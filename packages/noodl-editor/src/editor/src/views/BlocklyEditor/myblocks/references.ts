@@ -13,14 +13,27 @@
  * @module BlocklyEditor/myblocks
  */
 
+import {
+  MY_BLOCKS_CALL_STATEMENT,
+  MY_BLOCKS_CALL_TYPES,
+  MY_BLOCKS_CALL_VALUE
+} from '@noodl/runtime/src/nodes/std-library/logic-builder-io';
+
 import type { BlocklyBlockJson, BlocklyWorkspaceJson, MyBlockHolePath } from './format';
 
-/** A saved block used as an expression. Has an output plug. */
-export const MY_BLOCKS_CALL_VALUE = 'myblocks_call_value';
-/** A saved block used as a statement. Stacks. */
-export const MY_BLOCKS_CALL_STATEMENT = 'myblocks_call_statement';
-
-export const MY_BLOCKS_CALL_TYPES: readonly string[] = [MY_BLOCKS_CALL_VALUE, MY_BLOCKS_CALL_STATEMENT];
+/**
+ * The two call block type ids.
+ *
+ * 🔴 **Declared in `@noodl/runtime`'s `logic-builder-io.ts` and re-exported here**, for
+ * `HAT_BLOCK_TYPE`'s reason: since VFN-008 `detectIO` has to recognise a call block, and `detectIO`
+ * runs in the *viewer* window, which cannot import anything from the editor. The string both halves
+ * agree on therefore lives on the side that cannot import the other. A second copy here would be
+ * register L11 — one fact, two sources — on a string that is already frozen into `project.json`.
+ *
+ * `MY_BLOCKS_CALL_VALUE` is a saved block used as an expression (it has an output plug);
+ * `MY_BLOCKS_CALL_STATEMENT` is one you stack.
+ */
+export { MY_BLOCKS_CALL_STATEMENT, MY_BLOCKS_CALL_TYPES, MY_BLOCKS_CALL_VALUE };
 
 /** The prefix of the argument inputs a call block builds, one per parameter. */
 export const ARG_INPUT_PREFIX = 'ARG';

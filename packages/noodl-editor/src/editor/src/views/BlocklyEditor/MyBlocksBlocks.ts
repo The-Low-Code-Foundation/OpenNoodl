@@ -30,6 +30,12 @@
 import * as Blockly from 'blockly';
 import { javascriptGenerator, Order } from 'blockly/javascript';
 
+import {
+  CALL_PORTS_STATE_KEY,
+  detectInterface,
+  type DetectedInterface
+} from '@noodl/runtime/src/nodes/std-library/logic-builder-io';
+
 import type { BlocklyBlockJson, BlocklyWorkspaceJson, MyBlockDefinition } from './myblocks/format';
 import { expandWorkspace, type DefinitionSource } from './myblocks/expand';
 import {
@@ -56,6 +62,19 @@ interface CallBlockState {
   defId: string;
   args: string[];
   label: string;
+  /**
+   * VFN-008 — the ports this call contributes to the host node, as `detectInterface` reported
+   * them for the definition's body.
+   *
+   * 🔴 **The whole of the ports fix, and the one field here that something outside the editor
+   * reads.** `detectIO` runs in the viewer window and cannot see the shelves, so the call site
+   * states its own signature; the full argument, including the route that was rejected, is on
+   * `callPortMentions` in `@noodl/runtime`'s `logic-builder-io.ts`.
+   *
+   * Optional, because a call block placed before this existed has none — such a block publishes
+   * nothing, exactly as it did before, until `loadExtraState` re-derives it from the live shelf.
+   */
+  ports?: DetectedInterface;
 }
 
 interface CallBlock extends Blockly.Block {
@@ -118,6 +137,36 @@ export function describableCall(block: CallBlock, isValue: boolean): Describable
   };
 }
 
+/**
+ * VFN-008 — the ports a definition's body contributes to whatever host it is inlined into.
+ *
+ * 🔴 **`detectInterface`, and nothing else.** It is a projection of the one traversal `detectIO`
+ * projects, so what a call block states about its ports is computed by the same code that reads
+ * it back — this is a cache of the detector's answer, never a second detector. A body that itself
+ * contains a call block picks up that call's stated ports transitively, for free, because the
+ * traversal now knows what a call block is.
+ *
+ * `undefined` for a definition that is not there, so the caller can tell "no shelf to ask" from
+ * "asked, and the answer is no ports".
+ */
+export function portsOfDefinition(definition: MyBlockDefinition | undefined): DetectedInterface | undefined {
+  return definition ? detectInterface(definition.body) : undefined;
+}
+
+/**
+ * The serialised `ports` bag, kept only if it is shaped like one.
+ *
+ * It comes off `project.json` and may have been written by an older version or edited by hand.
+ * `detectIO` validates every row again on the far side, so this is about not carrying an obviously
+ * wrong object forward, not about trusting what survives.
+ */
+function readPorts(value: unknown): DetectedInterface | undefined {
+  if (!value || typeof value !== 'object') return undefined;
+  const bag = value as Partial<DetectedInterface>;
+  if (!Array.isArray(bag.inputs) || !Array.isArray(bag.outputs)) return undefined;
+  return { inputs: bag.inputs.slice(), outputs: bag.outputs.slice() };
+}
+
 function callBlockMixin(isValue: boolean) {
   return {
     init(this: CallBlock) {
@@ -144,10 +193,29 @@ function callBlockMixin(isValue: boolean) {
     },
 
     loadExtraState(this: CallBlock, state: Partial<CallBlockState>) {
+      const defId = typeof state?.defId === 'string' ? state.defId : '';
       this.myBlocksState_ = {
-        defId: typeof state?.defId === 'string' ? state.defId : '',
+        defId,
         args: Array.isArray(state?.args) ? state.args.slice() : [],
-        label: typeof state?.label === 'string' ? state.label : 'saved block'
+        label: typeof state?.label === 'string' ? state.label : 'saved block',
+        /**
+         * VFN-008 — **re-derived from the live definition when there is one**, and only fallen
+         * back to the serialised copy when there is not.
+         *
+         * This is what upgrades a call block placed before the field existed, and what stops a
+         * definition that grew an output from leaving its call sites understating their ports
+         * forever. It is deliberately the *only* field refreshed here: re-deriving `args` would
+         * change the block's sockets, which can disconnect an argument the builder plugged in, and
+         * that is a destructive repair that belongs in LGC-007 §4's sweep with a drive attached.
+         * Re-deriving the ports changes nothing anyone can see on the block.
+         *
+         * ⚠️ In memory immediately, on disk at the next settled edit — the workspace parameter is
+         * only rewritten by `flushSave`, and loading runs with `Blockly.Events.disable()`. That is
+         * exactly the contract `ensureHatsInJson` already has ("opening a program and closing it
+         * again changes no bytes"), and it is why the rails and the bench, which read the live
+         * workspace, are correct before the node's own ports are.
+         */
+        ports: portsOfDefinition(defId ? definitionSource?.get(defId) : undefined) ?? readPorts(state?.ports)
       };
       this.rebuildInputs_();
     },
@@ -196,14 +264,21 @@ function labelOf(block: Blockly.Block): string {
   return (block as CallBlock).myBlocksState_?.label ?? 'saved block';
 }
 
-/** The flyout JSON for one definition — what a builder drags out of the My Blocks category. */
+/**
+ * The flyout JSON for one definition — what a builder drags out of the My Blocks category.
+ *
+ * VFN-008: it carries the definition's ports, so that the block publishes them the moment it is
+ * dropped rather than after some later refresh. Placing a saved block that sets an output is the
+ * reported gesture, and this is the line that makes the output appear.
+ */
 export function callBlockJson(definition: MyBlockDefinition): BlocklyBlockJson {
   return {
     type: definition.shape === 'value' ? MY_BLOCKS_CALL_VALUE : MY_BLOCKS_CALL_STATEMENT,
     extraState: {
       defId: definition.id,
       args: definition.params.map((p) => p.name),
-      label: definition.name
+      label: definition.name,
+      [CALL_PORTS_STATE_KEY]: portsOfDefinition(definition)
     }
   };
 }

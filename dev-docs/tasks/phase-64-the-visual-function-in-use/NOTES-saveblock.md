@@ -64,7 +64,27 @@ plain-Node runner, which is criterion 5.
 
 ---
 
-## 🔴 FINDING — VFN-008's criterion 4 is false as written, and this is not a small thing
+## ✅ FINDING — VFN-008's criterion 4 was false as written · **FIXED 2026-08-13 on `vfn-c-ports`**
+
+> **The fix is a third route neither this note nor the task file considered: the call block states
+> its definition's ports in `extraState.ports`, and `detectIO` reads them.** The workspace stays the
+> single source of truth and nothing outside it is consulted.
+>
+> 🔴 **The route this note recommends first — plumb the definitions through to port detection —
+> was rejected, and the evidence is decisive.** The project shelf *does* reach the viewer
+> (`GraphModel.setSettings` carries the whole settings bag), but the **backpack** shelf lives in
+> `EditorSettings` and never can. That route would publish ports for a project-scoped block and not
+> for a backpack-scoped one, and **the block that produced this finding is backpack-only**, so it
+> would have fixed nothing that was reported.
+>
+> ⚠️ **This note understated the blast radius**: `interfaceRails.ts` and `benchModel.ts` read
+> `detectInterface`, the sibling projection of the same traversal, so the rails and VFN-011's bench
+> were blind too.
+>
+> Full design note, the rejected routes, the controls watched red, and what still needs a drive:
+> [`NOTES-ports.md`](NOTES-ports.md). The section below is left as it was written.
+
+### As filed, 2026-08-13
 
 > *"Placing a call block for a definition that sets an output gives the host node that output
 > port after the next generate."*
