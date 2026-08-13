@@ -13,6 +13,7 @@ import { ProjectModel } from '../../models/projectmodel';
 import { WarningsModel } from '../../models/warningsmodel';
 import { ExplainPanel_ID } from '../panels/ExplainPanel';
 import { SnapSpacing } from './canvas/types';
+import { LOGIC_BUILDER_PARK_EVENT, yieldLogicOverlayToSidePanel } from './LogicOverlay';
 
 import type { NodeGraphEditor } from '../nodegrapheditor';
 
@@ -173,6 +174,31 @@ export function registerEditorEventBindings(editor: NodeGraphEditor): KeyboardCo
       // Track close time to prevent accidental node deletions during focus transition
       editor.lastBlocklyTabCloseTime = Date.now();
       editor.setLogicOverlayOpen(false);
+    },
+    editor
+  );
+
+  /**
+   * 🔴 VFN-005 / VFN-012 — the window gets out of the way of a side panel it just opened.
+   *
+   * The App Config toolbox flyout has a button labelled *Open app settings*. It works, and the
+   * panel it opens renders **behind** the Logic Builder window it was pressed from: a feature's
+   * own call to action landing exactly where the feature is hiding. `BlocklyWorkspace` emits this
+   * immediately after `openSettingsPanel`, and the decision is made here because it needs the
+   * node graph frame's box and the viewport, neither of which the window can see.
+   *
+   * ⚠️ Synchronous, on the click's own tick. The panel has *not* been laid out when this runs,
+   * which is why `sidePanelRegion` carries a floor rather than measuring the panel — an occluded
+   * renderer clamps timers ~1000×, so waiting a tick for the layout is not an option that
+   * survives contact with the place this is used.
+   */
+  EventDispatcher.instance.on(
+    'LogicBuilder.SidePanelOpened',
+    () => {
+      const outcome = yieldLogicOverlayToSidePanel(editor);
+      // Nowhere to move to on this viewport. Collapsing the window to its title bar always works
+      // and is one click to undo.
+      if (outcome === 'park') EventDispatcher.instance.emit(LOGIC_BUILDER_PARK_EVENT);
     },
     editor
   );

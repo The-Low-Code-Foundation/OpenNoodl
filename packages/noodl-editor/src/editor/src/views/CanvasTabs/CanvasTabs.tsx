@@ -1,8 +1,10 @@
-import React, { useLayoutEffect, useRef } from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 
+import { EventDispatcher } from '../../../../shared/utils/EventDispatcher';
 import { useCanvasTabs, type Tab } from '../../contexts/CanvasTabsContext';
 import { definitionTabTooltip, editTargetFor, isDefinitionTab, tabTravels } from '../../contexts/tabSubject';
 import { resizeBlocklyWorkspaces } from '../BlocklyEditor/blocklyResize';
+import { LOGIC_BUILDER_PARK_EVENT } from '../nodegrapheditor/LogicOverlay';
 import css from './CanvasTabs.module.scss';
 import { beginOverlayDrag, OverlayResizeHandles, type OverlayDragCallbacks } from './OverlayDragHandles';
 import { isTabAway, LABEL_SEPARATOR, tabLabelSegments, tabTooltip } from './tabLocation';
@@ -52,6 +54,15 @@ export interface CanvasTabsProps {
    * what a document with no canvas behind it wants.
    */
   onTabActivate?: (tab: Tab) => void;
+  /**
+   * VFN-005 — put the window back over the node graph frame.
+   *
+   * A callback rather than a call, for `overlayDrag`'s reason: the frame's box and the viewport
+   * it is placed against are things the editor can read and this component cannot. Omitted, the
+   * control is not rendered at all — a window with no editor behind it has no home to go to, and
+   * a button that does nothing is worse than one that is not there.
+   */
+  onSendHome?: () => void;
 }
 
 /**
@@ -74,9 +85,34 @@ export interface CanvasTabsProps {
  * The layer around it (`#canvas-tabs-root`) is `pointer-events: none`, so every click outside
  * the window reaches whatever is underneath: the node canvas, the running app, the panels.
  */
-export function CanvasTabs({ onWorkspaceChange, onDefinitionChange, overlayDrag, onTabActivate }: CanvasTabsProps) {
+export function CanvasTabs({
+  onWorkspaceChange,
+  onDefinitionChange,
+  overlayDrag,
+  onTabActivate,
+  onSendHome
+}: CanvasTabsProps) {
   const { tabs, activeTabId, switchTab, closeTab, closeTabs, updateTab } = useCanvasTabs();
   const windowRef = useRef<HTMLDivElement>(null);
+
+  /**
+   * 🔴 VFN-005 — parked: the window rolled down to its title bar, in place.
+   *
+   * **A presentation state, not a geometry state, and that is the whole design.** The four custom
+   * properties on the shell root are left exactly as they are; parking is one class that gives the
+   * window `height: auto` and takes `.TabContent` out of the flow. So:
+   *
+   * - restore returns the window to *the same box* (criterion 2) **by construction** — there is no
+   *   remembered rect to get out of step with a drag, a viewport resize or a reopen;
+   * - `reflowLogicOverlay`, `applyOverlayDrag` and the stored fractions need to know nothing about
+   *   parking, so a parked window that survives a screen change is still clamped correctly;
+   * - nothing is serialised and no workspace is unmounted, so coming back costs no reload — which
+   *   is the difference between this and *Done*.
+   *
+   * ⚠️ It is not a close and it is not a hide. The tabs stay open, the blocks stay mounted, and
+   * the title bar — with this control on it — stays exactly where it was.
+   */
+  const [parked, setParked] = useState(false);
 
   /**
    * VFN-004 — which component the canvas behind this window is showing.
@@ -115,6 +151,35 @@ export function CanvasTabs({ onWorkspaceChange, onDefinitionChange, overlayDrag,
   useLayoutEffect(() => {
     resizeBlocklyWorkspaces();
   }, [activeTabId, tabs.length]);
+
+  /**
+   * 🔴 VFN-005 — un-parking re-measures Blockly, **synchronously**, on the same tick as the class
+   * that revealed it.
+   *
+   * A parked workspace's container is `display: none` and therefore measures 0×0.
+   * `Blockly.svgResize` reads `parentElement.offsetWidth/offsetHeight`, and it will cache the 0 and
+   * set the SVG to `0px` — so the handler registered by `BlocklyWorkspace` declines a zero-size
+   * container, which means a parked workspace is stale the instant it comes back.
+   *
+   * ⚠️ `useLayoutEffect`, not `useEffect`, not a timer and not a `ResizeObserver`. This runs after
+   * the DOM mutation that removed the class and before paint, which is exactly when the restored
+   * size can be read. An occluded Electron renderer fires **zero** `ResizeObserver` callbacks and
+   * clamps timers ~1000×, so anything deferred works while the window is focused and fails exactly
+   * where a block editor is used. Parking must go through the same door in both directions.
+   */
+  useLayoutEffect(() => {
+    resizeBlocklyWorkspaces();
+  }, [parked]);
+
+  /**
+   * VFN-005 / VFN-012 — the editor asking for a park, because a panel opened underneath a window
+   * with nowhere to move to. See `LOGIC_BUILDER_PARK_EVENT`.
+   */
+  useEffect(() => {
+    const group = {};
+    EventDispatcher.instance.on(LOGIC_BUILDER_PARK_EVENT, () => setParked(true), group);
+    return () => EventDispatcher.instance.off(group);
+  }, []);
 
   /**
    * Save one settled edit — to the tab that produced it.
@@ -206,7 +271,13 @@ export function CanvasTabs({ onWorkspaceChange, onDefinitionChange, overlayDrag,
   return (
     <div
       ref={windowRef}
-      className={css['CanvasTabs']}
+      className={`${css['CanvasTabs']} ${parked ? css['isParked'] : ''}`}
+      /**
+       * VFN-005 — readable from a drive without reaching into React state, and the thing a
+       * `.injectionDiv` measurement has to be read beside: a workspace measuring 0 while this is
+       * `true` is correct, and the same 0 while it is `false` is the defect.
+       */
+      data-parked={parked ? 'true' : 'false'}
       /**
        * L30 — keystroke ownership. Blockly runs its own shortcut registry (Delete, ⌘C/⌘X/⌘V,
        * ⌘Z) on its own listeners, and a focused Blockly workspace is an `<svg>`, which
@@ -218,7 +289,23 @@ export function CanvasTabs({ onWorkspaceChange, onDefinitionChange, overlayDrag,
       role="dialog"
       aria-label="Logic Builder"
     >
-      {overlayDrag ? <OverlayResizeHandles windowRef={windowRef} callbacks={overlayDrag} /> : null}
+      {/*
+        🔴 VFN-005 — **a parked window cannot be dragged or resized at all**, and that is what
+        makes criterion 2 structural rather than hopeful.
+
+        A drag reads its origin from `getBoundingClientRect`, and a parked window's box *is* its
+        title bar — 40px, not the box the builder chose. Any drag would therefore write that
+        measurement back through `clampLogicOverlayRect`, which floors it at 320, and restoring
+        would return a window nobody ever placed. Refusing the gesture is the narrow fix; the
+        wide one (teaching the drag to read the written height instead of the measured one)
+        changes the contract for every drag to serve one state, and the element is the authority
+        on its own edges in all the others.
+
+        So while parked the only thing that writes geometry is `reflowLogicOverlay`, which reads
+        the custom properties rather than the element and is correct for a parked window as it
+        stands. Unpark, move, park again: three clicks for a gesture that moves a 40px strip.
+      */}
+      {overlayDrag && !parked ? <OverlayResizeHandles windowRef={windowRef} callbacks={overlayDrag} /> : null}
 
       {/*
         Tab Bar — and the window's title bar. Dragging its background moves the window; dragging
@@ -227,7 +314,7 @@ export function CanvasTabs({ onWorkspaceChange, onDefinitionChange, overlayDrag,
       <div
         className={css['TabBar']}
         onMouseDown={(event) => {
-          if (!overlayDrag) return;
+          if (!overlayDrag || parked) return;
           // Only a drag of the bar's own background. A mousedown that started on a tab, a close
           // button or the window's own buttons belongs to that control.
           if (event.target !== event.currentTarget) return;
@@ -315,11 +402,48 @@ export function CanvasTabs({ onWorkspaceChange, onDefinitionChange, overlayDrag,
         <div
           className={css['TabBarSpacer']}
           onMouseDown={(event) => {
-            if (!overlayDrag) return;
+            // VFN-005: not while parked. See the note on the resize handles above.
+            if (!overlayDrag || parked) return;
             if (event.target !== event.currentTarget) return;
             beginOverlayDrag(event, 'move', windowRef.current, overlayDrag);
           }}
         />
+
+        {/*
+          VFN-005 — the two placement controls, then Done.
+
+          🔴 Two, not four. Snapping the window to a half of the viewport was the third thing this
+          task proposed and it is deliberately **not** here: the drive measured the running app as
+          a full-width band across the top of the document under the default `horizontal` layout,
+          so a half-snap frees half a preview. The home placement is what a half-snap was reaching
+          for, measured rather than guessed. See the task file for the full ruling.
+        */}
+        {onSendHome && !parked ? (
+          <button
+            className={css['WindowButton']}
+            onClick={onSendHome}
+            aria-label="Move the block editor over the node graph"
+            title="Move the block editor over the node graph, clear of the running app"
+            data-test="logic-builder-home"
+          >
+            <span aria-hidden="true">⌂</span>
+          </button>
+        ) : null}
+
+        <button
+          className={css['WindowButton']}
+          onClick={() => setParked((wasParked) => !wasParked)}
+          aria-expanded={!parked}
+          aria-label={parked ? 'Show the blocks again' : 'Collapse the block editor to its title bar'}
+          title={
+            parked
+              ? 'Show the blocks again — the window returns to the box it left'
+              : 'Collapse to the title bar, so you can use the running app. The tabs stay open.'
+          }
+          data-test="logic-builder-park"
+        >
+          <span aria-hidden="true">{parked ? '▾' : '▴'}</span>
+        </button>
 
         <button className={css['WindowCloseButton']} onClick={handleCloseAll} title="Close the block editor">
           Done

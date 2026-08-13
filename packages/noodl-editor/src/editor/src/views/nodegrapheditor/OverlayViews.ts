@@ -24,6 +24,7 @@ import { CloudFunctionTrailStatus } from '../NodeGraphComponentTrail/CloudFuncti
 import {
   beginLogicOverlayDrag,
   endLogicOverlayDrag,
+  sendLogicOverlayHome,
   setLogicOverlayOpen,
   updateLogicOverlayDrag
 } from './LogicOverlay';
@@ -77,6 +78,16 @@ export class OverlayViews {
            * editor→editor and would look exactly like the dead click this replaces.
            */
           onTabActivate: (tab) => navigateToTabComponent(tab),
+          /**
+           * VFN-005 — *"put the window back where the app is not."*
+           *
+           * Supplied here for `overlayDrag`'s reason: the node graph frame's box and the viewport
+           * the window is clamped into are things the editor can read and the window cannot.
+           * 🔴 The frame is read as four numbers and never becomes the window's containing block
+           * — `position: fixed` escaping the frame's clip is what makes a 640px window possible
+           * on a 13" screen.
+           */
+          onSendHome: () => sendLogicOverlayHome(this.editor),
           // LGC-010: the window reports pointer positions and the box it measured at
           // `mousedown`; the editor owns the arithmetic, because the viewport it is clamped
           // into is the whole document rather than anything the component can see.
