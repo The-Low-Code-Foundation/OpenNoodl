@@ -31,6 +31,29 @@
 export const HAT_BLOCK_TYPE = 'noodl_when_signal';
 
 /**
+ * VFN-008 — the two My Blocks call block types, declared here for exactly HAT_BLOCK_TYPE's reason.
+ *
+ * The blocks are drawn by `MyBlocksBlocks.ts`, in the editor window. `detectIO` runs in the
+ * *viewer* window and has to recognise them, so the strings both halves agree on live on the side
+ * that cannot import the other, and `myblocks/references.ts` re-exports them from here.
+ *
+ * ⚠️ Serialised into `project.json` the moment anyone places a saved block, so frozen in the same
+ * sense `HAT_BLOCK_TYPE` is frozen.
+ */
+export const MY_BLOCKS_CALL_VALUE = 'myblocks_call_value';
+export const MY_BLOCKS_CALL_STATEMENT = 'myblocks_call_statement';
+export const MY_BLOCKS_CALL_TYPES: readonly string[] = [MY_BLOCKS_CALL_VALUE, MY_BLOCKS_CALL_STATEMENT];
+
+/**
+ * The `extraState` key on a call block that carries the ports its definition's body contributes.
+ *
+ * 🔴 **This is what makes a call block audible to port detection, and the reason it is a key on
+ * the block rather than a lookup into the shelves is the whole design of VFN-008's fix.** See
+ * `callPortMentions` below.
+ */
+export const CALL_PORTS_STATE_KEY = 'ports';
+
+/**
  * The signal a hat names when nothing else says otherwise: the node's own built-in `run` port.
  *
  * Lower case, and that is load-bearing twice over. `RESERVED_INPUTS` in `logic-builder.ts`
@@ -117,6 +140,8 @@ export interface DetectedInterface {
 interface BlocklyBlock {
   type?: string;
   fields?: Record<string, string>;
+  /** Blockly's bag for a block whose shape is built at load time. A call block's whole identity. */
+  extraState?: Record<string, unknown>;
   inputs?: Record<string, { block?: BlocklyBlock; shadow?: BlocklyBlock }>;
   next?: { block?: BlocklyBlock };
 }
@@ -300,6 +325,106 @@ export function typeOfPort(io: DetectedIO, plug: 'input' | 'output', name: strin
   return port ? port.type : '*';
 }
 
+/**
+ * VFN-008 — the ports a placed saved block contributes to its host, read off the call block.
+ *
+ * ## The defect
+ *
+ * A saved block's body is *inlined* into the host program at generate time
+ * (`generateWithMyBlocks` → `expandWorkspace`), so a definition containing `set output "total"`
+ * makes the host node's program write `Outputs["total"]`. But **the expansion happens to a
+ * different copy of the workspace**: `updatePorts` calls `detectIO` on the raw serialised
+ * workspace — the string persisted as the node's `workspace` parameter — while the expanded copy
+ * is discarded the moment the JavaScript is generated. This traversal had never heard of a call
+ * block, so a call block contributed no mentions, and the program wrote an output that had no
+ * port for anyone to wire. The program was right and the node was deaf.
+ *
+ * ## Why the call block states its ports, rather than this file resolving the definition
+ *
+ * 🔴 **The rejected route was to plumb the definition shelves through to port detection**, and it
+ * is worth writing down why, because it is the obvious one.
+ *
+ * 1. **The backpack shelf does not exist in the viewer, and never will.** A definition lives on
+ *    one of two shelves: the project's (`project.json` settings, which *does* reach the viewer
+ *    through `GraphModel.setSettings`) or the builder's backpack (`EditorSettings`, machine-local
+ *    by design — that is what "follows the builder between projects" means). Resolving
+ *    definitions here would therefore publish ports for a project-scoped block and **not** for a
+ *    backpack-scoped one, making a node's public interface depend on which machine has the editor
+ *    open, and on which shelf a colleague happened to pick. The live artefact that produced this
+ *    finding (VFN-014, `vfn64-qa`) uses a **backpack** definition, so the rejected route would not
+ *    have fixed the case that was reported.
+ * 2. **It would import the inliner's entire failure surface into a port-registration path.**
+ *    Resolving definitions means cycles, missing definitions, shape mismatches and expansion
+ *    budgets — every one of which `expandWorkspace` signals by *throwing*. `detectIO`'s contract
+ *    is that it never throws, because its caller is where the node gets created. The alternative,
+ *    a second weaker traversal that resolves definitions without the guards, is register L11 with
+ *    a different noun.
+ * 3. **`detectIO` would stop being a function of the workspace.** The workspace being the single
+ *    source of truth for the port set is the property the whole file exists to hold. Reading a
+ *    second store here is exactly what the other rejected route (expanding before the workspace
+ *    parameter is written) was rejected for, arrived at from the opposite direction.
+ *
+ * ## What this is instead
+ *
+ * A call block is a **call site**, and a call site states the signature it was bound against —
+ * the same relationship a header file has to a definition. `extraState` already carries the
+ * definition's `label` and its argument names for precisely this reason (`MyBlocksBlocks.ts`: *"it
+ * makes a saved body self-describing, so a definition that calls another definition can be
+ * analysed with no store present"*), and `MyBlockDefinition` already caches `shape`, `params` and
+ * `requires` derived from `body` under the rule *recomputed on every write, never trusted by a
+ * guard*. This is one more field under both rules, and no new mechanism.
+ *
+ * The rows are whatever `detectInterface` returned for the definition's own body, so **this is not
+ * a second detector**: it is the one traversal, run over the body, and cached at the call site.
+ * A definition that calls another definition therefore carries the nested ports transitively, with
+ * no expansion and no way to recurse forever.
+ *
+ * ⚠️ **The cost, stated plainly.** The rows are a cache and can go stale — a definition that grows
+ * an output after a call block was placed leaves that call block understating its ports until it
+ * is reloaded with the shelf present (`loadExtraState` re-derives) and the workspace is flushed
+ * again. That is the same staleness `label` and `args` have always had, refreshed by the same
+ * event; before this change the understatement was total and permanent. LGC-007 §4's regeneration
+ * sweep is where it is properly repaired.
+ *
+ * Never throws, and validates every field: these rows come off disk and may have been written by
+ * an older version, edited by hand, or truncated.
+ */
+function callPortMentions(block: BlocklyBlock, mentions: PortMention[]): void {
+  const state = block.extraState;
+  if (!state || typeof state !== 'object') return;
+
+  const ports = state[CALL_PORTS_STATE_KEY] as { inputs?: unknown; outputs?: unknown } | undefined;
+  if (!ports || typeof ports !== 'object') return;
+
+  pushDeclaredRows(ports.inputs, 'input', mentions);
+  pushDeclaredRows(ports.outputs, 'output', mentions);
+}
+
+/** One side of a call block's stated interface, turned back into mentions. */
+function pushDeclaredRows(rows: unknown, plug: 'input' | 'output', mentions: PortMention[]): void {
+  if (!Array.isArray(rows)) return;
+
+  for (const row of rows) {
+    if (!row || typeof row !== 'object') continue;
+    const port = row as Partial<InterfacePort>;
+    if (typeof port.name !== 'string' || port.name === '') continue;
+
+    const kind: DetectedPortKind = port.kind === 'signal' ? 'signal' : 'value';
+    // `declared` is the row's own word for "some block inside the body states this port", and it
+    // is the only thing that decides whether the type is a statement or a guess — exactly as it
+    // does for a mention made by a block in this workspace.
+    const declaredType = !port.declared
+      ? null
+      : kind === 'signal'
+        ? 'signal'
+        : typeof port.type === 'string' && port.type !== ''
+          ? port.type
+          : '*';
+
+    mentions.push({ name: port.name, plug, kind, declaredType });
+  }
+}
+
 function processBlock(block: BlocklyBlock | undefined, mentions: PortMention[]): void {
   if (!block || !block.type) return;
 
@@ -357,6 +482,12 @@ function processBlock(block: BlocklyBlock | undefined, mentions: PortMention[]):
         mentions.push({ name, plug: 'output', kind: 'signal', declaredType: null });
         break;
     }
+  }
+
+  // VFN-008. Outside the `if (name)` above, deliberately: a call block has no `NAME` field. Its
+  // ports are a list on its `extraState`, not one name in a field.
+  if (MY_BLOCKS_CALL_TYPES.indexOf(block.type) !== -1) {
+    callPortMentions(block, mentions);
   }
 
   // Value inputs, statement inputs (`if`/loop bodies) and shadow blocks all

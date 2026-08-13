@@ -16,9 +16,15 @@ building with the floating Logic Builder.
 > and driving it found one task's *stated instrument* was wrong and VFN-007's real cause was a
 > fifth candidate nobody had considered. Bundle the drive; live QA is serial across this machine.
 >
-> 🔴 **Two defects filed and unfixed:** a placed saved block **publishes no ports** (measured), and
-> `BaseDialog`'s measuring copy is **tab-reachable**, so every focusable element in every dialog is
-> in the tab order twice. Both in -C.
+> ✅ **A placed saved block now publishes its ports — FIXED 2026-08-13 on `vfn-c-ports`.** The call
+> block states its definition's ports in `extraState.ports` and `detectIO` reads them; the route
+> both writeups filed was rejected because the **backpack** shelf can never reach the viewer and the
+> reported block was backpack-only. It also fixes the interface rails and the bench, which nobody
+> had noticed were blind. 🔴 **The canvas half still needs a drive.** See
+> [NOTES-ports.md](NOTES-ports.md).
+>
+> 🔴 **One defect still filed and unfixed:** `BaseDialog`'s measuring copy is **tab-reachable**, so
+> every focusable element in every dialog is in the tab order twice. In -C.
 
 **Every claim about existing code in these files was read in source**, and every claim that was
 *not* pinned says so and carries a reproduce-first instruction. Six of the eleven reports have a
@@ -33,7 +39,7 @@ mechanism; two do not; three are design work.
 | VFN-005 | [VFN-005-THE-APP-IS-BEHIND-THE-WINDOW.md](VFN-005-THE-APP-IS-BEHIND-THE-WINDOW.md) | 82% of the viewport, centred, is on top of the running app — park it, snap it, or place it better | 1B | 2 | 📋 open · ✅ **criterion 1 answered 2026-08-13: OCCLUSION** (window measured 74.1%×69.5%; every blocked point inside the window rect) |
 | VFN-006 | [VFN-006-SHOW-ME-WHAT-I-AM-SAVING.md](VFN-006-SHOW-ME-WHAT-I-AM-SAVING.md) | "5 blocks" becomes *those* five blocks, outlined on the workspace | 5 | 2 | 📋 open |
 | VFN-007 | [VFN-007-THE-SHELF-THAT-DOES-NOT-SAY-WHICH.md](VFN-007-THE-SHELF-THAT-DOES-NOT-SAY-WHICH.md) | the backpack radio takes the choice and does not show it — reproduce, then replace the control | 6 | 3 | 📋 open · 🔴 **criterion 1 answered 2026-08-13: NOT contrast.** `BaseDialog` renders the body twice, so 4 radios share one native group and the check lands on the invisible measuring copy |
-| VFN-008 ⭐ | [VFN-008-A-SAVED-BLOCK-THAT-DESCRIBES-ITSELF.md](VFN-008-A-SAVED-BLOCK-THAT-DESCRIBES-ITSELF.md) | a description that is asked for, stored, and shown everywhere the block appears | 7 | 2 | 📋 open |
+| VFN-008 ⭐ | [VFN-008-A-SAVED-BLOCK-THAT-DESCRIBES-ITSELF.md](VFN-008-A-SAVED-BLOCK-THAT-DESCRIBES-ITSELF.md) | a description that is asked for, stored, and shown everywhere the block appears | 7 | 2 | 🟡 **all six criteria built, NOT driven.** ✅ **criterion 4 fixed 2026-08-13 (`vfn-c-ports`)** — it was false as written: a call block now states its definition's ports in `extraState.ports` and `detectIO` reads them, so the port the generated code writes to exists. 🔴 **both filed routes rejected** — the backpack shelf can never reach the viewer and the reported block was backpack-only; measured on the real `vfn64-qa` artefacts (`result` appears, typed `number`). Also fixes the interface rails and the bench, which the finding never mentioned. Each half watched red. 🔴 canvas half needs a drive |
 | VFN-009 ⭐ | [VFN-009-THE-LIBRARY-IN-THE-PROJECT.md](VFN-009-THE-LIBRARY-IN-THE-PROJECT.md) | open, rename, delete and **edit** a saved block, with a warning that names every call site | 8, 9 | 2 | 📋 open |
 | VFN-010 | [VFN-010-THE-BACKPACK-IN-THE-LAUNCHER.md](VFN-010-THE-BACKPACK-IN-THE-LAUNCHER.md) | backpack blocks are marked in the picker and managed from the launcher | 8 | 3 | 📋 open |
 | VFN-011 ⭐ | [VFN-011-THE-BENCH.md](VFN-011-THE-BENCH.md) | set sandbox values, press Run, watch the badges fill — with no app running | 10 | **1 — the flagship** | 📋 open |

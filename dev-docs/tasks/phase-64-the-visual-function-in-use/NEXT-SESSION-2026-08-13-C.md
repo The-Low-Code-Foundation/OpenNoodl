@@ -87,13 +87,16 @@ Each agent listed its own owed criteria in `NOTES-bench.md`, `NOTES-saveblock.md
 
 ## Defects found and filed, none fixed
 
-1. 🔴 **A placed saved block publishes no ports.** Measured: `detectIO(call block) → outputs: []`
-   while the same body inlined gives `[{name:'total'}]` and the generated code is correct. The
-   program is right and the node is deaf. Fixing it means plumbing the shelves through to port
-   detection in `noodl-runtime` — a design decision, not a patch. A spec pins the true behaviour so
-   the fix turns a line red. **This is arguably more important than VFN-013 and VFN-014**, because
-   it makes saved blocks unusable in a real graph, and VFN-009 is about to make saved blocks the
-   headline feature.
+1. ✅ **A placed saved block publishes no ports — FIXED 2026-08-13 on `vfn-c-ports`.** The call
+   block now states its definition's ports in `extraState.ports` and `detectIO` reads them, so the
+   workspace stays the single source of truth and nothing outside it is consulted. 🔴 **Plumbing
+   the shelves through to port detection — the route this line recommended — was rejected**: the
+   backpack shelf lives in `EditorSettings` and can never reach the viewer window, so that route
+   would publish ports for a project-scoped block and not for a backpack-scoped one — and the block
+   that produced the finding was **backpack-only**. Measured on the real `vfn64-qa` artefacts:
+   `result` appears, typed `number`. It also fixes the interface rails and the bench, which the
+   finding never mentioned were blind. 🔴 **The canvas half still needs a drive** — see
+   [`NOTES-ports.md`](NOTES-ports.md).
 2. 🔴 **The drift gate caught a runtime defect on its first run.** A reserved `send signal` fails
    inside `_createExecutionContext` *during* the run and the success path then writes
    `executionError = null` over it — so a program sending `done` pulses **Failure and Success** with
