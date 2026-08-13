@@ -66,6 +66,8 @@ const VALUE_BLOCKS: Record<string, string[]> = {
   noodl_get_object_property: ['OBJECT'],
   noodl_get_array: [],
   noodl_array_length: ['ARRAY'],
+  // VFN-012 — a value block with no value inputs, like the other four readers.
+  noodl_get_config: [],
   // --- stock: logic ---
   logic_compare: ['A', 'B'],
   logic_operation: ['A', 'B'],

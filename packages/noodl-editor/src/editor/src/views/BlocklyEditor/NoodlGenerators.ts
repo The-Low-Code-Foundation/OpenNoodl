@@ -17,6 +17,7 @@ import { javascriptGenerator, Order } from 'blockly/javascript';
 
 import { HAT_BLOCK_TYPE } from '@noodl/runtime/src/nodes/std-library/logic-builder-io';
 
+import { appConfigReadExpression, APP_CONFIG_BLOCK_TYPE } from './appConfig';
 import { initBlockProbes } from './BlockProbes';
 
 /**
@@ -44,6 +45,9 @@ export function initNoodlGenerators() {
 
   // Array generators
   initArrayGenerators();
+
+  // App config generators (VFN-012)
+  initAppConfigGenerators();
 }
 
 /**
@@ -188,6 +192,27 @@ function initArrayGenerators() {
     const item = javascriptGenerator.valueToCode(block, 'ITEM', Order.NONE) || 'null';
     const array = javascriptGenerator.valueToCode(block, 'ARRAY', Order.MEMBER) || '[]';
     return `${array}.push(${item});\n`;
+  };
+}
+
+/**
+ * App Config Generators (VFN-012)
+ */
+function initAppConfigGenerators() {
+  /**
+   * Get App Config — generates `Noodl.Config["key"]`.
+   *
+   * 🔴 **The key is emitted exactly as stored, whether or not app settings still declare it.**
+   * A block left holding a deleted key generates the same code it generated yesterday and reads
+   * `undefined` at runtime; it does not silently start reading a *different* variable. VFN-012
+   * criterion 2 is a claim about this string, so it is graded on this string.
+   *
+   * `Order.MEMBER` matches the three neighbouring readers — it is a member access, and declaring
+   * it as one is what keeps `a.b.c` from acquiring parentheses.
+   */
+  javascriptGenerator.forBlock[APP_CONFIG_BLOCK_TYPE] = function (block) {
+    const key = block.getFieldValue('KEY') || '';
+    return [appConfigReadExpression(key), key ? Order.MEMBER : Order.ATOMIC];
   };
 }
 
