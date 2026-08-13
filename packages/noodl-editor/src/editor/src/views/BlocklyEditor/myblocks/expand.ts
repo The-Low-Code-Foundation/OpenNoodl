@@ -95,6 +95,25 @@ export interface ExpandResult {
   workspace: BlocklyWorkspaceJson;
   /** How many definition bodies were spliced in. Zero means the program used no saved blocks. */
   expansions: number;
+  /**
+   * VFN-014 criterion 6 — the **head** block of each spliced-in region → the definition's name.
+   *
+   * 🔴 This exists because of what the reproduce found. Richard read *View Code*, saw
+   * `Outputs["result"] = …` and could find nothing called `result` on the canvas — because it is
+   * not on the canvas. It is inside a saved block called `test1`, and the canvas shows the *call*,
+   * not the body. Removing the probes makes those lines legible; it does not make them findable.
+   * A reader needs to be told which lines came from a saved block, and this is the only place that
+   * knows: by the time the generator runs there are no call blocks left.
+   *
+   * Only region heads are recorded, not every block in the body — one marker per inlined region
+   * is a signpost, one per block is the grey wall this register keeps naming.
+   *
+   * ⚠️ **Ids are not unique across expansions.** A definition used twice splices its body twice,
+   * ids and all (see `BlockValueBadgeLayer.paint`, which skips them for the same reason). Both
+   * copies map to the same name, so the collision is harmless here — but it means this map cannot
+   * be used to count regions.
+   */
+  origins: Map<string, string>;
 }
 
 interface Context {
@@ -107,6 +126,8 @@ interface Context {
   variables: { name: string; id: string; type?: string }[];
   /** Body variable id → host variable id, per expansion pass. */
   variableRemap: Map<string, string>;
+  /** VFN-014 — head block id → the name of the definition its region came from. */
+  origins: Map<string, string>;
 }
 
 /**
@@ -135,7 +156,8 @@ export function expandWorkspace(
     expansions: 0,
     stack: [],
     variables: Array.isArray(result.variables) ? result.variables.slice() : [],
-    variableRemap: new Map()
+    variableRemap: new Map(),
+    origins: new Map()
   };
 
   const roots = result.blocks?.blocks;
@@ -152,7 +174,7 @@ export function expandWorkspace(
     result.variables = context.variables;
   }
 
-  return { workspace: result, expansions: context.expansions };
+  return { workspace: result, expansions: context.expansions, origins: context.origins };
 }
 
 /**
@@ -279,12 +301,16 @@ function inlineCall(call: BlocklyBlockJson, definitionId: string, context: Conte
     const expression = expandedRoots[0];
     delete expression.x;
     delete expression.y;
+    if (expression.id) context.origins.set(expression.id, definition.name);
     return expression;
   }
 
   const head = chainRoots(expandedRoots);
   delete head.x;
   delete head.y;
+  // VFN-014 — the head of the spliced stack is where the region's marker goes. Recorded after
+  // `chainRoots`, because a definition with several top-level stacks has one head, not several.
+  if (head.id) context.origins.set(head.id, definition.name);
   // Whatever was stacked after the call block goes after the inlined stack.
   const tail = tailOf(head);
   if (call.next?.block) tail.next = { block: call.next.block };

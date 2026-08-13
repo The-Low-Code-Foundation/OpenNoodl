@@ -82,6 +82,11 @@ export {
   withBlockProbes
 } from './BlockProbes';
 export type { ProbedGeneration } from './BlockProbes';
+// VFN-014 — the same program, generated with the probe wrapper simply not applied, plus a
+// marker naming each inlined saved block. A display seam: it never writes, and
+// `tests-unit/vfn-014/` holds the stored program byte-identical across a render.
+export { renderReadableCode, renderReadableCodeFromJson, withBlockOrigins } from './readableCode';
+export type { ReadableCodeResult } from './readableCode';
 export {
   BlockRunHistory,
   FramePaintScheduler,
@@ -102,7 +107,22 @@ export type {
   BlockValueEntry,
   StripReasonInput
 } from './BlockValueTrace';
-export { BlockValueBadgeLayer, truncateBadge } from './BlockValueBadges';
+export { BADGE_TOKENS, BlockValueBadgeLayer, badgeBoxWidth, truncateBadge } from './BlockValueBadges';
+// VFN-013 — where a badge goes when its block is inside another block. Pure arithmetic over
+// rectangles (no DOM, no Blockly), so `tests-unit/vfn-013/` grades the placement headlessly and
+// against a negative control built from the anchor it replaces.
+export {
+  BADGE_GUTTER,
+  BADGE_ROW_GAP,
+  MAX_ROWS_ABOVE,
+  MAX_ROWS_BELOW,
+  isNested,
+  layoutBadges,
+  legacyBadgeAnchor,
+  nestingDepth,
+  rectsOverlap
+} from './badgeLayout';
+export type { BadgePlacement, BadgeRequest, BlockBox, Rect as BadgeRect } from './badgeLayout';
 export { attachBlockTrace } from './BlockTraceClient';
 export type { BlockTraceHandle, BlockTraceStatus } from './BlockTraceClient';
 export { attachBlockValues } from './BlockValueController';

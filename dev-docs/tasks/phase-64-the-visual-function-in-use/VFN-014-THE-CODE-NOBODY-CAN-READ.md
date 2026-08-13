@@ -1,6 +1,7 @@
 # VFN-014 — The code nobody can read
 
-**Status:** 📋 open · **Tier 2** · ~half a day · ✅ **mechanism pinned in source, no reproduce needed**
+**Status:** ✅ **BUILT 2026-08-13** (`vfn-a-asks`) · **Tier 2** · ✅ mechanism pinned in source
+· 🔴 **criteria 1 and 2 owe one press of the button in a driven editor**
 
 ## The report
 
@@ -140,3 +141,52 @@ hit exactly. It was caught by searching the disk for the definition id rather th
    ⚠️ This is a **display-seam** criterion like the rest of the task — the stored, instrumented
    build must stay byte-identical (criterion 3). If a marker is worth having in what runs too, that
    is a separate decision and a separate spec, not a quiet widening of this one.
+
+
+---
+
+## ✅ What was built, 2026-08-13
+
+- 🆕 [`readableCode.ts`](../../../packages/noodl-editor/src/editor/src/views/BlocklyEditor/readableCode.ts)
+  — `renderReadableCode(saved, source)` loads the node's saved `workspace` into a headless
+  workspace and calls **the same `generateWithMyBlocks` the flush calls**, simply outside
+  `withBlockProbes`. No second generator, and criterion 4 is what forbids one ever appearing.
+- `withBlockOrigins(origins, body)` — the marker pass, built the way `withBlockProbes` is built and
+  for its reasons: `blockToCode` is the one funnel every block goes through. It **refuses to run
+  inside a probed generation**, because comments in that string would reach `project.json`.
+- `expandWorkspace` now returns `origins`: head block id → definition name. It is the only thing
+  that knows — by the time the generator runs there are no call blocks left.
+- The modal leads with the readable build and keeps *Show tracing* one press away, labelled
+  **"What runs"**. `Copy Code` copies whichever is on screen. If the readable render declines, the
+  instrumented build is shown **with the reason in the info bar** — a refusal must not publish its
+  silence as an empty editor.
+
+What *View Code* now shows for the reported fixture:
+
+```js
+// test1
+Outputs["result"] = 1 + 2;
+
+Outputs["total"] = Inputs["price"] * Inputs["quantity"];
+```
+
+### Where each criterion stands
+
+| # | State | How |
+|---|---|---|
+| 1 | ✅ headless · 🔴 one live press owed | No `__p` / `__s`, asserted **beside** the instrumented build in the same test so "no probes" cannot pass by generating nothing. The lint-warning half needs the real CodeMirror |
+| 2 | ✅ built · 🔴 live owed | One press, labelled "Show tracing", header reads "What runs · Read-Only" |
+| 3 | ✅ **with a negative control** | instrumented → readable render → instrumented, byte-identical; then again twice. 🔴 **The control installs a wrapper that forgets to restore `blockToCode` and requires that comparison to fail** — the generator is a module-level singleton shared with `DoIt` and My Blocks' shape inference, so a leak here changes what the *next flush* writes to disk |
+| 4 | ✅ | Both renderings **executed** with the identity probe pair; outputs *and* the order of assignments and signals compared. Diffing strings would have proved nothing, since the probes compute nothing |
+| 5 | ✅ closed 2026-08-13 | Above |
+| 6 | ✅ | `// test1` above a statement region; `/* test1 */` inside a value one, because `//` mid-expression would comment out the rest of the line. One marker per region, not per block. A definition name cannot close the comment it is inside (a name containing `*/` is proved harmless by executing the result) |
+
+### ⚠️ Notes for whoever drives it
+
+- `expandWorkspace` runs **twice** per press — once for the region names, once inside
+  `generateWithMyBlocks`. It is a pure transform over at most 400 blocks on a button press. The
+  alternative was growing `generateWithMyBlocks`' signature with an out-parameter for a display
+  feature.
+- The readable render always goes through a headless workspace, whereas the flush's fast path
+  (no saved blocks) generates from the **live** one. Criterion 4's spec is what holds those two in
+  step; if they ever diverge, that is the test that says so.
