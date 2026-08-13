@@ -34,9 +34,12 @@ type MouseEventHandler = (event: MouseEvent) => void;
  * - `activatable` a control the platform activates with Space/Enter (button,
  *                 link, menu item, tab, checkbox role, …). Only those two keys
  *                 belong to the control; every other shortcut runs normally.
+ * - `own-surface` a surface that runs its own shortcut registry. No editor
+ *                 command runs while focus is inside it, and Escape is *not*
+ *                 turned into a blur — the surface handles it.
  * - `none`        nothing meaningful is focused; all commands run.
  */
-export type KeyboardFocusKind = 'none' | 'text-entry' | 'activatable';
+export type KeyboardFocusKind = 'none' | 'text-entry' | 'activatable' | 'own-surface';
 
 const TEXT_ENTRY_TAGS = new Set(['INPUT', 'TEXTAREA', 'SELECT']);
 
@@ -47,6 +50,26 @@ const TEXT_ENTRY_TAGS = new Set(['INPUT', 'TEXTAREA', 'SELECT']);
  * rather than relying on one attribute staying put.
  */
 const CODE_EDITOR_SELECTOR = '.cm-editor';
+
+/**
+ * 🔴 L30 — a surface that owns its own keystrokes declares so on its root.
+ *
+ * The case this exists for is the Logic Builder's floating block editor (LGC-010). Blockly runs
+ * a full shortcut registry of its own — Delete, ⌘C/⌘X/⌘V, ⌘Z/⌘⇧Z — on its own document
+ * listeners, and a focused Blockly workspace is an `<svg>`: not `INPUT`, not `contenteditable`,
+ * not inside `.cm-editor`, no activatable role. So it read as `'none'` and **every** node graph
+ * command ran beside Blockly's own. With a node selected on the canvas and a block selected in
+ * the window, one Delete meant two deletions — a node the user never touched, gone.
+ *
+ * ⚠️ The 200 ms `lastBlocklyTabCloseTime` guard in `EditorClipboard.delete()` is the evidence
+ * this had already bitten. It is left in place: it guards a different window (the moment after a
+ * tab closes, when focus has left the surface and this predicate correctly answers `'none'`).
+ *
+ * An attribute rather than a class name because the surface is styled by a CSS module, whose
+ * class names are hashed at build time and are therefore not a contract anything outside the
+ * module can hold.
+ */
+const OWN_SURFACE_SELECTOR = '[data-keyboard-scope]';
 
 /** Roles whose keyboard contract includes Space and/or Enter as activation. */
 const ACTIVATABLE_ROLES = new Set([
@@ -90,6 +113,13 @@ export function getKeyboardFocusKind(element: HTMLElement | null): KeyboardFocus
   if (TEXT_ENTRY_TAGS.has(element.tagName)) return 'text-entry';
   if (typeof element.closest === 'function' && element.closest(CODE_EDITOR_SELECTOR)) return 'text-entry';
 
+  // After the text-entry checks and before the activatable ones, and both orderings matter.
+  // Blockly's own field editor is a real `<input>` (`.blocklyHtmlInput`) *inside* the surface,
+  // and while it is focused the user is typing — Escape must leave the field rather than reach
+  // Blockly. A focused button inside the surface, by contrast, is still the surface's: the
+  // browser activates it natively either way, and no editor command should run behind it.
+  if (typeof element.closest === 'function' && element.closest(OWN_SURFACE_SELECTOR)) return 'own-surface';
+
   if (ACTIVATABLE_TAGS.has(element.tagName)) return 'activatable';
   if (element.tagName === 'A' && element.hasAttribute('href')) return 'activatable';
   const role = element.getAttribute?.('role');
@@ -114,6 +144,9 @@ function isNativeActivationKey(event: KeyboardEvent): boolean {
  */
 function keystrokeBelongsToFocus(event: KeyboardEvent, kind: KeyboardFocusKind): boolean {
   if (kind === 'text-entry') return true;
+  // L30: the surface runs its own registry, so every key is its own — including Escape, which
+  // it may use to dismiss a flyout or a field of its own.
+  if (kind === 'own-surface') return true;
   if (kind === 'activatable') return isNativeActivationKey(event);
   return false;
 }

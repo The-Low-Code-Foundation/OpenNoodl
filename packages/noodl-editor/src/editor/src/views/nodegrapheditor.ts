@@ -42,6 +42,7 @@ import { ConnectionPopups } from './nodegrapheditor/ConnectionPopups';
 import { EditorClipboard } from './nodegrapheditor/EditorClipboard';
 import { registerEditorEventBindings, registerRenderEventBindings } from './nodegrapheditor/EditorEventBindings';
 import { InspectorActions } from './nodegrapheditor/InspectorActions';
+import { reflowLogicOverlay } from './nodegrapheditor/LogicOverlay';
 import { ModelBindings } from './nodegrapheditor/ModelBindings';
 import { NavigationHistory } from './nodegrapheditor/NavigationHistory';
 import { NodeContextMenu } from './nodegrapheditor/NodeContextMenu';
@@ -386,19 +387,26 @@ export class NodeGraphEditor extends View {
   getNodeBounds = (nodeId: string) => this.overlayViews.getNodeBounds(nodeId);
 
   /**
-   * Open or close the logic pane (LGC-008).
+   * Open or close the Logic Builder's floating window (LGC-010).
    *
-   * Was `setCanvasVisibility`, and the rename is the change: opening a Visual Function no
-   * longer hides the canvas, it splits the shell in two.
+   * Was `setCanvasVisibility` (a takeover), then `setLogicPaneOpen` (a splitter). Opening a
+   * Visual Function now hides nothing and narrows nothing — the blocks float over the document
+   * and the canvas underneath is untouched.
    */
-  setLogicPaneOpen(open: boolean) {
-    this.overlayViews.setLogicPaneOpen(open);
+  setLogicOverlayOpen(open: boolean) {
+    this.overlayViews.setLogicOverlayOpen(open);
   }
 
   // This is called by the parent view (frames view) when the size and position
   // changes
   resize(layout) {
     this.viewportActions.resize(layout);
+
+    // LGC-010: the block editor window is placed in viewport coordinates, so a smaller editor
+    // window — or opening the laptop after a session on an external display — can leave it
+    // partly or wholly off screen with its title bar out of reach. A no-op when it is closed
+    // and when the clamp does not move it.
+    reflowLogicOverlay(this);
   }
 
   // ------------------------- Cut n paste (EditorClipboard) --------------------------------

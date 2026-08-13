@@ -154,24 +154,25 @@ export function registerEditorEventBindings(editor: NodeGraphEditor): KeyboardCo
     editor
   );
 
-  // LGC-008: the first Logic Builder tab splits the shell in two. It used to hide the canvas.
+  // LGC-010: the first Logic Builder tab opens a floating window over the document. It used to
+  // hide the canvas (a takeover), and then to take half of it (a splitter); it now takes neither.
   EventDispatcher.instance.on(
     'LogicBuilder.TabOpened',
     () => {
-      console.log('[NodeGraphEditor] Logic Builder tab opened - splitting the canvas');
-      editor.setLogicPaneOpen(true);
+      console.log('[NodeGraphEditor] Logic Builder tab opened - opening the block editor window');
+      editor.setLogicOverlayOpen(true);
     },
     editor
   );
 
-  // ...and the last one closing gives the whole shell back to the canvas.
+  // ...and the last one closing puts it away.
   EventDispatcher.instance.on(
     'LogicBuilder.AllTabsClosed',
     () => {
-      console.log('[NodeGraphEditor] All Logic Builder tabs closed - closing the logic pane');
+      console.log('[NodeGraphEditor] All Logic Builder tabs closed - closing the block editor window');
       // Track close time to prevent accidental node deletions during focus transition
       editor.lastBlocklyTabCloseTime = Date.now();
-      editor.setLogicPaneOpen(false);
+      editor.setLogicOverlayOpen(false);
     },
     editor
   );

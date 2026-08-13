@@ -4,52 +4,161 @@
  * Theme-aware styling for canvas/Blockly tab system
  */
 
+/* LGC-010: the floating window. Its box is four custom properties on the shell
+   root, written by `LogicOverlay.ts` from a `mousemove`; see
+   `styles/nodegrapheditor.css` for the layer it floats in.
+
+   `position: absolute` inside a `position: fixed` full-viewport layer, so the
+   numbers are viewport coordinates and the window is not clipped by the node
+   graph frame — which is the whole point: on a 13" laptop the frame is half the
+   screen and the two interface rails alone are 304px. */
 .CanvasTabs {
+  position: absolute;
+  left: var(--logic-overlay-left, 5vw);
+  top: var(--logic-overlay-top, 5vh);
+  width: var(--logic-overlay-width, 90vw);
+  height: var(--logic-overlay-height, 90vh);
+
   display: flex;
   flex-direction: column;
-  height: 100%;
-  width: 100%;
-  pointer-events: all; /* Enable clicks on tabs */
-  /* LGC-008: the splitter positions against this box. */
-  position: relative;
+  box-sizing: border-box;
+  pointer-events: all; /* the layer around it is `none`, so clicks outside pass through */
 
-  /* LGC-008: the pane's own edge. The canvas is now beside this rather than
-     under it, so the two surfaces need a line between them and not just a
-     change of background. */
-  border-left: 1px solid var(--theme-color-border-default);
+  background-color: var(--theme-color-bg-1);
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: var(--radius-default);
+  /* It is a window over a working canvas, so it needs to read as being *above*
+     something rather than as a region of it. */
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+  overflow: hidden;
 }
 
-/* LGC-008: the splitter between the canvas pane and this one.
+/* LGC-010: the eight resize targets.
 
-   It overhangs the pane's left edge by half its width so the grab target is
-   centred on the seam rather than sitting entirely inside the blocks. The tabs
-   root is `pointer-events: none` with its children re-enabling, so the overhang
-   is inert over the canvas except exactly where this element is. */
-.PaneSplitter {
+   🔴 They sit **entirely inside** the window, and that is a fix rather than a
+   preference. Written the conventional way — 6px strips overhanging the border
+   by half, so the grab area is centred on the visible edge — half of every
+   handle was unreachable: `.CanvasTabs` carries `overflow: hidden` for its
+   border radius, and `overflow: hidden` clips **hit-testing**, not only paint.
+   Driven and measured: the east handle's box was x 1151–1157 while
+   `elementFromPoint` stopped answering it at 1154, so a drag starting on the
+   visible edge landed on the canvas behind and the window did not move.
+
+   8px inside is also a bigger target than 3px reachable, so the repair is
+   better than the thing it repairs. `z-index` puts them above the tab bar and
+   the workspace; the corners come after the edges in document order and so win
+   the overlap without needing a second number. */
+.ResizeHandle {
   position: absolute;
-  top: 0;
-  bottom: 0;
-  left: -4px;
-  width: 8px;
-  z-index: 1;
-  cursor: col-resize;
+  z-index: 2;
   pointer-events: all;
-  background-color: transparent;
-  transition: background-color 0.15s ease;
 
-  &:hover,
-  &:active {
-    background-color: var(--theme-color-primary);
+  &.is-n,
+  &.is-s {
+    left: 0;
+    right: 0;
+    height: 8px;
+    cursor: ns-resize;
+  }
+
+  &.is-e,
+  &.is-w {
+    top: 0;
+    bottom: 0;
+    width: 8px;
+    cursor: ew-resize;
+  }
+
+  &.is-n {
+    top: 0;
+  }
+  &.is-s {
+    bottom: 0;
+  }
+  &.is-e {
+    right: 0;
+  }
+  &.is-w {
+    left: 0;
+  }
+
+  &.is-ne,
+  &.is-nw,
+  &.is-se,
+  &.is-sw {
+    width: 16px;
+    height: 16px;
+  }
+
+  &.is-ne {
+    top: 0;
+    right: 0;
+    cursor: nesw-resize;
+  }
+  &.is-nw {
+    top: 0;
+    left: 0;
+    cursor: nwse-resize;
+  }
+  &.is-se {
+    bottom: 0;
+    right: 0;
+    cursor: nwse-resize;
+  }
+  &.is-sw {
+    bottom: 0;
+    left: 0;
+    cursor: nesw-resize;
   }
 }
 
+/* The tab bar is also the window's title bar: dragging its background moves the
+   window, which is why it says so with a `grab` cursor. */
 .TabBar {
   display: flex;
+  align-items: center;
   gap: var(--spacing-1);
   padding: var(--spacing-2);
   background-color: var(--theme-color-bg-2);
   border-bottom: 1px solid var(--theme-color-border-default);
   flex-shrink: 0;
+  cursor: grab;
+  user-select: none;
+
+  &:active {
+    cursor: grabbing;
+  }
+}
+
+/* Takes the slack between the tabs and the window controls, and is drag surface
+   like the rest of the bar's background. */
+.TabBarSpacer {
+  flex: 1;
+  align-self: stretch;
+  min-width: var(--spacing-2);
+}
+
+.WindowCloseButton {
+  flex: 0 0 auto;
+  padding: var(--spacing-1) var(--spacing-3);
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: var(--radius-sm);
+  background-color: var(--theme-color-bg-3);
+  color: var(--theme-color-fg-default);
+  font-size: var(--font-size-base);
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+
+  &:hover {
+    background-color: var(--theme-color-bg-4);
+    color: var(--theme-color-fg-highlight);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--theme-color-primary);
+    outline-offset: 1px;
+  }
 }
 
 .Tab {

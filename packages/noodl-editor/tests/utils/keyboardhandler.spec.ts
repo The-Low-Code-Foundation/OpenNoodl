@@ -213,4 +213,107 @@ describe('F21 KeyboardHandler focus predicate', () => {
     press('d', { type: 'keyup' });
     expect(fired).toEqual(['up']);
   });
+
+  // ------------------------------------------------------ L30: own-surface --
+
+  /**
+   * 🔴 L30 — one Delete meant two deletions.
+   *
+   * The Logic Builder's block editor runs Blockly's own shortcut registry, and a focused Blockly
+   * workspace is an `<svg>`: not `INPUT`, not `contenteditable`, not inside `.cm-editor`, no
+   * activatable role. It therefore read as `'none'`, so **every** node graph command ran beside
+   * Blockly's. With a node selected on the canvas and a block selected in the window — which is
+   * the normal state of things now that both are on screen at once — pressing Delete deleted
+   * the block *and* a node the user never touched.
+   *
+   * The 200 ms `lastBlocklyTabCloseTime` guard in `EditorClipboard.delete()` is the evidence
+   * this had already bitten once; it guarded a tab *close*, not the whole time both surfaces
+   * are on screen.
+   */
+  describe('L30 — a surface that owns its own keystrokes', () => {
+    function overlay(inner: string): HTMLElement {
+      host.innerHTML = `<div data-keyboard-scope="logic-overlay">${inner}</div>`;
+      return host.firstElementChild as HTMLElement;
+    }
+
+    it('reports a focused Blockly workspace as "own-surface", not as "none"', () => {
+      // The exact shape that was misread: an `<svg>` with nothing else to go on.
+      const root = overlay('<svg class="blocklySvg" tabindex="0"></svg>');
+      const svg = root.querySelector('svg') as unknown as HTMLElement;
+
+      expect(getKeyboardFocusKind(svg)).toBe('own-surface');
+    });
+
+    it('reports the surface root itself as "own-surface"', () => {
+      expect(getKeyboardFocusKind(overlay(''))).toBe('own-surface');
+    });
+
+    it('does NOT run Delete on the node graph while a block is selected', () => {
+      register([
+        { handler: () => fired.push('delete-node'), keybinding: KeyCode.Backspace },
+        { handler: () => fired.push('delete-node'), keybinding: KeyCode.Delete }
+      ]);
+
+      const root = overlay('<div tabindex="0" class="blocklyWorkspace"></div>');
+      const workspace = root.querySelector<HTMLElement>('.blocklyWorkspace');
+      workspace.focus();
+      expect(document.activeElement).toBe(workspace);
+
+      press('Backspace');
+      press('Delete');
+      expect(fired).toEqual([]);
+    });
+
+    it('does NOT run ⌘C / ⌘V / ⌘Z on the node graph from inside the surface', () => {
+      register([
+        { handler: () => fired.push('copy'), keybinding: KeyMod.CtrlCmd | KeyCode.KEY_C },
+        { handler: () => fired.push('paste'), keybinding: KeyMod.CtrlCmd | KeyCode.KEY_V },
+        { handler: () => fired.push('undo'), keybinding: KeyMod.CtrlCmd | KeyCode.KEY_Z }
+      ]);
+
+      const root = overlay('<div tabindex="0"></div>');
+      root.querySelector<HTMLElement>('div').focus();
+
+      press('c', { meta: true });
+      press('v', { meta: true });
+      press('z', { meta: true });
+      expect(fired).toEqual([]);
+    });
+
+    it('runs the node graph shortcut again the moment focus leaves the surface', () => {
+      // The other half, and the one that makes this a scope rather than a mute button: closing
+      // the window, or clicking the canvas, must give the keys straight back.
+      register([{ handler: () => fired.push('delete-node'), keybinding: KeyCode.Backspace }]);
+
+      const root = overlay('<div tabindex="0"></div>');
+      root.querySelector<HTMLElement>('div').focus();
+      press('Backspace');
+      expect(fired).toEqual([]);
+
+      const outside = document.createElement('div');
+      outside.tabIndex = 0;
+      host.appendChild(outside);
+      outside.focus();
+
+      press('Backspace');
+      expect(fired).toEqual(['delete-node']);
+    });
+
+    it("leaves Blockly's own field editor as text entry, so Escape still leaves the field", () => {
+      // ⚠️ The ordering inside `getKeyboardFocusKind` is what this holds. Blockly's field editor
+      // is a real `<input class="blocklyHtmlInput">` *inside* the surface, and while it is
+      // focused the user is typing a value — Escape belongs to the field, not to Blockly.
+      register([{ handler: () => fired.push('close-popup'), keybinding: KeyCode.Escape }]);
+
+      const root = overlay('<input class="blocklyHtmlInput" type="text" />');
+      const input = root.querySelector<HTMLElement>('input');
+      input.focus();
+
+      expect(getKeyboardFocusKind(input)).toBe('text-entry');
+
+      press('Escape');
+      expect(fired).toEqual([]);
+      expect(document.activeElement).not.toBe(input);
+    });
+  });
 });

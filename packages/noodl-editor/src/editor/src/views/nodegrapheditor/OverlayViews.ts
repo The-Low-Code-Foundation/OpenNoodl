@@ -12,7 +12,12 @@ import { refFromComponentName } from '../../models/workflow/functionRefResolutio
 import { descentFor } from '../../models/workflow/workflowDescent';
 import { NodeGraphComponentTrail } from '../NodeGraphComponentTrail';
 import { CloudFunctionTrailStatus } from '../NodeGraphComponentTrail/CloudFunctionTrailStatus';
-import { setLogicPaneOpen, setLogicPaneSplit } from './LogicPane';
+import {
+  beginLogicOverlayDrag,
+  endLogicOverlayDrag,
+  setLogicOverlayOpen,
+  updateLogicOverlayDrag
+} from './LogicOverlay';
 import { CenterToFitMode } from './canvas/types';
 
 import type { NodeGraphEditor } from '../nodegrapheditor';
@@ -43,9 +48,15 @@ export class OverlayViews {
         null,
         React.createElement(CanvasTabs, {
           onWorkspaceChange: this.handleBlocklyWorkspaceChange.bind(this),
-          // LGC-008: the pane reports a pointer position; the shell's bounds — and therefore
-          // what that position means — are the editor's.
-          onSplitDrag: (pointerClientX: number) => setLogicPaneSplit(this.editor, pointerClientX)
+          // LGC-010: the window reports pointer positions and the box it measured at
+          // `mousedown`; the editor owns the arithmetic, because the viewport it is clamped
+          // into is the whole document rather than anything the component can see.
+          overlayDrag: {
+            onDragStart: ({ handle, origin, pointerX, pointerY }) =>
+              beginLogicOverlayDrag(handle, origin, pointerX, pointerY),
+            onDrag: (pointerX: number, pointerY: number) => updateLogicOverlayDrag(this.editor, pointerX, pointerY),
+            onDragEnd: () => endLogicOverlayDrag(this.editor)
+          }
         })
       )
     );
@@ -292,14 +303,15 @@ export class OverlayViews {
   }
 
   /**
-   * Open or close the logic pane (LGC-008).
+   * Open or close the Logic Builder's floating window (LGC-010).
    *
-   * It used to be `setCanvasVisibility`, and it used to hide eight layers. Both panes are on
-   * screen now, so what changes is geometry rather than visibility. The body is in
-   * `LogicPane.ts` — no React in it, so it can be gated in a plain-Node runner.
+   * It was `setCanvasVisibility` (hid eight layers), then `setLogicPaneOpen` (split the shell).
+   * It now moves nothing but the window itself: the canvas keeps its full size and every layer
+   * stays exactly where it was. The body is in `LogicOverlay.ts` — no React in it, so it can be
+   * gated in a plain-Node runner.
    */
-  setLogicPaneOpen(open: boolean) {
-    setLogicPaneOpen(this.editor, open);
+  setLogicOverlayOpen(open: boolean) {
+    setLogicOverlayOpen(this.editor, open);
   }
 
   updateTitle() {
