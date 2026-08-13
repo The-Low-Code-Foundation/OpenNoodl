@@ -62,22 +62,57 @@ instrumented build. This task is about the *display* seam only. A "cleaned" buil
 runtime would be exactly the second-truth-about-the-program that VFN-011's drift gate exists to
 prevent.
 
-## 🔴 One thing in that screenshot that is NOT explained by any of the above
+## ✅ The `Outputs["result"]` question — REPRODUCED AND ANSWERED 2026-08-13
 
-Lines 1–2 assign **`Outputs["result"]`** from `1 + 2`, and nothing named `result` — and no literal
-`1 + 2` — is anywhere on the canvas in the same screenshot. Lines 9–13 are explained (two orphan
-`get input price` blocks are visible, and Blockly generates code for orphan top-level blocks). The
-`result` pair is not.
+**It is the inlined body of a saved block, and it is not a defect. Neither filed candidate was
+right, and the serious one is eliminated.**
 
-**Reproduce this before building anything else here.** Two candidates worth separating:
+Reproduced from disk artefacts alone — no drive needed. The real saved workspace from the `vfn64-qa`
+fixture was fed through the real `expandWorkspace` with the real shelves as they exist on disk:
 
-- a **My Blocks** definition being inlined at top level by `expandWorkspace` rather than at its call
-  site — which would be a sibling of the defect VFN-008 already filed, where a placed call block
-  publishes no ports; or
-- **stale `generatedCode`** on the node, i.e. the parameter not being rewritten when blocks are
-  deleted.
+```
+definitions on disk: test1 (mb_r945r1pzjmnx2ya8)
+"result" appears in the SAVED WORKSPACE?      false
+"result" appears in the BACKPACK DEFINITION?  true
 
-The second would be the more serious: it means the app runs a program the canvas no longer shows.
+expandWorkspace OK — expansions = 1
+top-level stacks AFTER expansion:
+  - noodl_when_signal#hat-defPrice000000000001 → … → noodl_send_signal#sendDone000000000001
+  - noodl_get_input#jQd(f]*TtfjfC1@mF.IE
+  - noodl_get_input#|V+e[@WlxS){0a5DhAxy
+  - noodl_define_output#F+HyJIl5$!RXL;(_l:{O → noodl_set_output#[gNyr+^/5_1o]E+asz:^
+
+NEGATIVE CONTROL (definition removed): MyBlocksMissingDefinitionError
+```
+
+That fourth stack is the screenshot, byte for byte: `[gNyr+^/5_1o]E+asz:^` is the id in
+`__s('[gNyr+^/5_1o]E+asz:^')`, and `/=)cyD(u02h_,OvQCt0L` / `sltVn~s%r1ar)hK^xD%m` /
+`3XJ_sAbG+cMCOWCRl7r+` are the `+`, the `1` and the `2`.
+
+**Where it comes from.** The canvas carries a `myblocks_call_statement` at `(310, 50)` with
+`extraState.defId = "mb_r945r1pzjmnx2ya8"`, label `test1`. That definition is on the **user
+backpack** shelf (saved 09:12:24Z), and its body is `define output result (number)` → `set output
+result to 1 + 2`. The call block is a *top-level statement*, so `inlineCall` correctly replaces it
+with its body as a top-level stack.
+
+- ❌ **Candidate 1 — the inliner emitting a definition at top level "rather than at its call site"**
+  — wrong in its premise. `expandWorkspace` only ever splices a body **at** a call site; it never
+  adds a root. Here the call site *was* the top level.
+- ❌ **Candidate 2 — stale `generatedCode`** — **eliminated.** Regenerating from the saved workspace
+  plus the on-disk shelves reproduces the stored program exactly. The app is not running a program
+  the canvas no longer shows.
+
+⚠️ **The reason nothing named `result` is on the canvas is that the canvas shows the call block, not
+the definition's body.** That is the feature working. It is also, precisely, the comprehension
+defect this task exists to fix — see the criterion added below.
+
+🔴 **One trap, logged because it nearly produced a false finding.** The definition looks absent from
+both shelves if you read `~/Library/Application Support/OpenNoodl Editor/` or `…/Noodl Editor/`.
+Neither is live. The editor's userData directory is **`~/Library/Application Support/NodeGX/`** since
+the rebrand, and the shelf key is nested under `.settings`. Reading the wrong two files gave a clean,
+confident, entirely wrong "the definition was never persisted → generation has been declining →
+the code is stale" — the register's *"a 'not there' finding can be a grep of the wrong surface"*,
+hit exactly. It was caught by searching the disk for the definition id rather than trusting the path.
 
 ## Acceptance criteria
 
@@ -89,4 +124,19 @@ The second would be the more serious: it means the app runs a program the canvas
 4. The clean rendering and the instrumented one describe the **same program**: same outputs assigned,
    same signals sent, same order. This is a spec, and it is the one that stops the display seam
    drifting into a second truth.
-5. The `Outputs["result"]` question above is reproduced and its answer written into this file.
+5. ✅ **DONE 2026-08-13.** The `Outputs["result"]` question is reproduced and answered above:
+   inlined saved-block body, `generatedCode` is not stale, neither filed candidate was right.
+6. 🔴 **New, and it is the finding criterion 5 actually produced.** A reader of *View Code* can tell
+   which lines came from a saved block and which they wrote. Richard could not find `result` on the
+   canvas because it is not on the canvas — it is inside `test1` — and the code said nothing about
+   that. Removing the probes makes those four lines *legible*; it does not make them *findable*.
+   A comment marking each inlined region with the definition's name is the cheap answer:
+
+   ```js
+   // test1
+   Outputs["result"] = 1 + 2;
+   ```
+
+   ⚠️ This is a **display-seam** criterion like the rest of the task — the stored, instrumented
+   build must stay byte-identical (criterion 3). If a marker is worth having in what runs too, that
+   is a separate decision and a separate spec, not a quiet widening of this one.
