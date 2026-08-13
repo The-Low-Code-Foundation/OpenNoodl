@@ -20,19 +20,22 @@
 import type * as Blockly from 'blockly';
 
 import { BlockValueBadgeLayer } from './BlockValueBadges';
-import { BlockRunHistory, FramePaintScheduler, markFor } from './BlockValueTrace';
+import { BlockRunHistory, FramePaintScheduler, STATUS_COPY, markFor, stripReasonFor } from './BlockValueTrace';
 import type { BlockMark, BlockRunFrame } from './BlockValueTrace';
 import { attachBlockTrace } from './BlockTraceClient';
 import type { BlockTraceHandle, BlockTraceStatus } from './BlockTraceClient';
 
-/** What the strip says when there is nothing to scrub. One sentence per reason. */
-export const STATUS_COPY: Record<BlockTraceStatus, string> = {
-  waiting: 'Waiting for the app to run these blocks…',
-  attached: '',
-  'no-preview': 'Run the preview to see what these blocks work out.',
-  'not-in-preview': 'The preview is running, but this Visual Function is not on screen in it right now.',
-  'no-connection': 'The editor has no connection to a running app.'
-};
+/**
+ * What the strip says when there is nothing to scrub.
+ *
+ * 🔴 **Moved to `BlockValueTrace` by VFN-011 Part 1, and re-exported here so nothing that imported
+ * it has to move.** The five socket answers described everything except the commonest empty strip
+ * — armed, attached, and nothing has run since the editor opened — and *that* one rendered the
+ * empty string, so the label's "No runs yet" stood alone and a builder could not tell *this has
+ * not run* from *this cannot run*. Both the sentences and the rule that picks between them are now
+ * on the graded side of this module's own split; only the `<span>` is here.
+ */
+export { STATUS_COPY };
 
 export interface BlockValueHandle {
   /**
@@ -48,7 +51,28 @@ export interface BlockValueHandle {
   refreshTheme(): void;
   /** The blocks changed, so every value is now about a program that no longer exists. */
   invalidate(): void;
+  /**
+   * VFN-011 — the `generatedCode` the node now carries.
+   *
+   * Pushed in from the flush rather than read from anywhere here, for `setProbedIds`' reason: the
+   * generate path is the only thing that knows. Once an edit has flushed, the code on disk is by
+   * definition instrumented, so the stale-code sentence retires itself.
+   */
+  setGeneratedCode(code: string | undefined): void;
   dispose(): void;
+}
+
+export interface BlockValueOptions {
+  /** The Logic Builder node these blocks belong to. */
+  nodeId?: string;
+  /**
+   * The node's saved `generatedCode` parameter — what the app would actually run **now**.
+   *
+   * ⚠️ Read, never written. VFN-011 Part 1's second bullet says so in as many words: regenerating
+   * the node to fix a stale program would write to disk on open, which breaks LGC-002 §2's
+   * criterion that opening a program and closing it again changes no bytes.
+   */
+  generatedCode?: string;
 }
 
 /**
@@ -61,13 +85,15 @@ export interface BlockValueHandle {
 export function attachBlockValues(
   workspace: Blockly.WorkspaceSvg,
   container: HTMLElement,
-  nodeId?: string
+  options: BlockValueOptions = {}
 ): BlockValueHandle {
+  const { nodeId } = options;
   const history = new BlockRunHistory();
   /** Which iteration of a loop each badge is showing. Absent means "the last one". */
   const iterations = new Map<string, number>();
   let probedIds: ReadonlySet<string> = new Set<string>();
   let status: BlockTraceStatus = nodeId ? 'waiting' : 'no-connection';
+  let generatedCode: string | undefined = options.generatedCode;
 
   const badges = new BlockValueBadgeLayer(workspace, (blockId) => {
     // §5.2 — click to scrub iterations, wrapping back to "the last one" so a builder can always
@@ -102,7 +128,8 @@ export function attachBlockValues(
     const run = history.current();
     const marks = new Map<string, BlockMark>();
 
-    for (const block of workspace.getAllBlocks(false)) {
+    const blocks = workspace.getAllBlocks(false);
+    for (const block of blocks) {
       const at = iterations.has(block.id) ? (iterations.get(block.id) as number) : -1;
       marks.set(block.id, markFor(block.id, run, probedIds, at));
     }
@@ -112,7 +139,11 @@ export function attachBlockValues(
       runs: history.length,
       index: history.index,
       isLive: history.isLive,
-      note: status === 'attached' ? '' : STATUS_COPY[status]
+      // 🔴 The reason, not the status. See `stripReasonFor` — the difference between the two is
+      // the whole of VFN-011 Part 1.
+      note: STATUS_COPY[
+        stripReasonFor({ status, runs: history.length, hasBlocks: blocks.length > 0, generatedCode })
+      ]
     });
   });
 
@@ -141,6 +172,10 @@ export function attachBlockValues(
   return {
     setProbedIds(ids) {
       probedIds = ids;
+      scheduler.request();
+    },
+    setGeneratedCode(code) {
+      generatedCode = code;
       scheduler.request();
     },
     refreshTheme() {

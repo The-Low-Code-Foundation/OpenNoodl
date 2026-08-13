@@ -82,13 +82,29 @@ export {
   withBlockProbes
 } from './BlockProbes';
 export type { ProbedGeneration } from './BlockProbes';
-export { BlockRunHistory, FramePaintScheduler, RUN_HISTORY_LIMIT, badgeText, markFor } from './BlockValueTrace';
-export type { BlockMark, BlockMarkState, BlockRunFrame, BlockValueEntry } from './BlockValueTrace';
+export {
+  BlockRunHistory,
+  FramePaintScheduler,
+  RUN_HISTORY_LIMIT,
+  STATUS_COPY,
+  badgeText,
+  markFor,
+  programHasProbes,
+  stripReasonFor
+} from './BlockValueTrace';
+export type {
+  BlockMark,
+  BlockMarkState,
+  BlockRunFrame,
+  BlockStripReason,
+  BlockValueEntry,
+  StripReasonInput
+} from './BlockValueTrace';
 export { BlockValueBadgeLayer, truncateBadge } from './BlockValueBadges';
 export { attachBlockTrace } from './BlockTraceClient';
 export type { BlockTraceHandle, BlockTraceStatus } from './BlockTraceClient';
-export { STATUS_COPY, attachBlockValues } from './BlockValueController';
-export type { BlockValueHandle } from './BlockValueController';
+export { attachBlockValues } from './BlockValueController';
+export type { BlockValueHandle, BlockValueOptions } from './BlockValueController';
 
 // Block definitions and generators
 export { initNoodlBlocks } from './NoodlBlocks';

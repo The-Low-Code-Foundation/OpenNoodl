@@ -20,6 +20,8 @@
  * @module BlocklyEditor
  */
 
+import type { BlockTraceStatus } from './BlockTraceClient';
+
 /** One block's contribution to one run, as it arrives from the viewer. */
 export interface BlockValueEntry {
   /** How many times this block was evaluated during the run. `1` for the ordinary case. */
@@ -51,6 +53,137 @@ export interface BlockRunFrame {
   statements: Record<string, number>;
   /** Set when the run recorded more distinct blocks than it was willing to carry. */
   truncated?: boolean;
+  /**
+   * VFN-011 — set only by the editor's own bench.
+   *
+   * ⚠️ **Additive and optional, and the runtime never writes it.** A viewer frame is the same
+   * object it always was, so nothing on the receiving path has to change to keep accepting one;
+   * a bench frame is the same shape *plus* this flag, which is how acceptance criterion 7 —
+   * "a sandbox run is distinguishable in the scrubber" — is met without a second history, a
+   * second frame type or a parallel render path.
+   */
+  sandbox?: true;
+}
+
+/**
+ * VFN-011 Part 1 — every reason the strip can give for having nothing to scrub.
+ *
+ * 🔴 **The five socket answers are not the whole list, and that gap was the defect.** The report
+ * that opened this task —
+ *
+ * > *"When I run the logic node, open the editor, it still says 'No runs yet' … so I can't
+ * > inspect the live values that passed through it."*
+ *
+ * — describes the *commonest* empty strip, and it was the one state with nothing to say: tracing
+ * arms when the editor opens, so a run that happened **before** the editor opened records nothing,
+ * and `STATUS_COPY.attached` was the empty string. Correct behaviour, wrong impression, and the
+ * whole distance between them is a sentence.
+ *
+ * So the reason a strip shows is **not** the trace status. It is derived from the status *and*
+ * from what the editor knows about the program, which is what {@link stripReasonFor} is.
+ */
+export type BlockStripReason =
+  /** The five the socket can report. Defined once, in `BlockTraceClient`. */
+  | BlockTraceStatus
+  /**
+   * Attached, armed, and nothing has run since this editor opened.
+   *
+   * The report's own sequence produces exactly this, and it is the reason the report was filed.
+   */
+  | 'attached-idle'
+  /**
+   * The node's `generatedCode` predates value tracing, so it emits no probes and **no run of it
+   * can ever badge anything** — from the app or from the bench.
+   *
+   * ⚠️ It regenerates on the node's own next edit and on nothing else (measured in LGC-007 §6),
+   * which is why the copy asks for an edit rather than promising it will fix itself.
+   */
+  | 'no-probes';
+
+/**
+ * What the strip says when there is nothing to scrub. One sentence per reason.
+ *
+ * ⚠️ **Here rather than beside the strip that draws it**, and that is this module's own rule: the
+ * words are a decision, the `<span>` is not. `BlockValueController` re-exports this so nothing that
+ * already imported it has to move, and it is graded in `tests-unit/vfn-011/` beside the function
+ * that chooses between them — which is the only way the choice and the copy can be checked against
+ * each other at all.
+ */
+export const STATUS_COPY: Record<BlockStripReason, string> = {
+  waiting: 'Waiting for the app to run these blocks…',
+  attached: '',
+  'no-preview': 'Run the preview to see what these blocks work out.',
+  'not-in-preview': 'The preview is running, but this Visual Function is not on screen in it right now.',
+  'no-connection': 'The editor has no connection to a running app.',
+  'attached-idle':
+    'Watching this node. Nothing has run since you opened this editor — trigger it in the app to see values.',
+  'no-probes': 'These blocks were generated before value tracing; make any edit to bring them up to date.'
+};
+
+/**
+ * Does this generated program carry the probe calls the badges are made of?
+ *
+ * ⚠️ **The runtime deliberately does not ask this question, and its comment says why**: making the
+ * `new Function` parameter list conditional on the code would put an `indexOf` on the compile path
+ * and give the runtime two shapes of compiled function to reason about (`logic-builder.ts`, the
+ * ninth-and-tenth-parameter note). The *editor* has no such constraint — it asks once, to explain
+ * an empty strip — so the check lives here.
+ *
+ * 🔴 **A call, not a substring.** `code.includes('__p')` is true of a program containing the string
+ * `"__pizza"` in a text block, and a bench that told such an author their blocks were fine would be
+ * wrong in the direction that costs most. The pattern requires the name to start a token and to be
+ * followed by an open parenthesis, which is the only shape `BlockProbes` emits.
+ */
+const PROBE_CALL = /(^|[^\w$])__[ps]\s*\(/;
+
+export function programHasProbes(generatedCode: string | undefined | null): boolean {
+  if (typeof generatedCode !== 'string' || generatedCode === '') return false;
+  return PROBE_CALL.test(generatedCode);
+}
+
+/** What {@link stripReasonFor} needs to know. Every field is a fact somebody already holds. */
+export interface StripReasonInput {
+  /** The last thing the trace client said about the socket. */
+  status: BlockTraceStatus;
+  /** How many runs the history holds, from **any** source — viewer or bench. */
+  runs: number;
+  /** Whether the workspace has any blocks at all. */
+  hasBlocks: boolean;
+  /**
+   * The `generatedCode` the node carries **on disk** — what the app would actually run.
+   *
+   * `undefined` means the editor was not told, not "there is none": a strip that has not been
+   * handed the parameter must not accuse the program of being stale.
+   */
+  generatedCode?: string;
+}
+
+/**
+ * Which sentence the strip owes the builder.
+ *
+ * The precedence is the whole of the decision, and it is ordered by *what the builder would do
+ * next*:
+ *
+ *  1. **`no-probes` first**, because it is true regardless of the socket and it is the only reason
+ *     where nothing the builder does — starting the app, triggering the node, pressing Run — will
+ *     produce a badge. Every other reason is answerable by an action.
+ *  2. **Runs beat every reason.** Once there is something to scrub the strip has nothing to
+ *     explain, and `attached` is the reason whose copy is the empty string.
+ *  3. **Attached and empty is `attached-idle`**, which is the state the report describes and the
+ *     one the five socket answers could not name.
+ *  4. Otherwise the socket's own answer, unchanged.
+ */
+export function stripReasonFor({ status, runs, hasBlocks, generatedCode }: StripReasonInput): BlockStripReason {
+  // `generatedCode === ''` is a program that has never been generated — a freshly dropped node —
+  // not one generated by an older editor. Accusing it of being stale would be a sentence about a
+  // program that does not exist yet.
+  if (hasBlocks && typeof generatedCode === 'string' && generatedCode !== '' && !programHasProbes(generatedCode)) {
+    return 'no-probes';
+  }
+
+  if (runs > 0) return 'attached';
+  if (status === 'attached') return 'attached-idle';
+  return status;
 }
 
 /** How many runs the scrubber keeps. §3's "~50". */

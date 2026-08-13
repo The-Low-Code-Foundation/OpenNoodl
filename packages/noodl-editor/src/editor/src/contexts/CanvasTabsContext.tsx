@@ -23,6 +23,15 @@ export interface Tab {
   nodeName?: string;
   /** Blockly workspace JSON (for logic-builder tabs) */
   workspace?: string;
+  /**
+   * VFN-011 — the node's saved `generatedCode` at the moment the tab was opened.
+   *
+   * ⚠️ **A snapshot, and read-only.** It is here so the block editor's value strip can tell a
+   * program generated before value tracing — one that emits no `__p`/`__s`, so no badge can ever
+   * appear for it — from one that simply has not run yet. Nothing writes it back: the node's own
+   * parameter is updated by the workspace's flush, not from here.
+   */
+  generatedCode?: string;
 }
 
 /**
@@ -140,13 +149,22 @@ export function CanvasTabsProvider({ children }: CanvasTabsProviderProps) {
   useEffect(() => {
     const context = {};
 
-    const handleOpenTab = (data: { nodeId: string; nodeName: string; workspace: string }) => {
+    const handleOpenTab = (data: {
+      nodeId: string;
+      nodeName: string;
+      workspace: string;
+      generatedCode?: string;
+    }) => {
       console.log('[CanvasTabsContext] Received LogicBuilder.OpenTab event:', data);
       openTab({
         type: 'logic-builder',
         nodeId: data.nodeId,
         nodeName: data.nodeName,
-        workspace: data.workspace
+        workspace: data.workspace,
+        // VFN-011 — a snapshot of what the app would run, carried for the value strip's empty
+        // state. Optional: an older emitter that does not send it leaves the strip unable to
+        // accuse the program of being stale, which is the correct silence.
+        generatedCode: data.generatedCode
       });
     };
 

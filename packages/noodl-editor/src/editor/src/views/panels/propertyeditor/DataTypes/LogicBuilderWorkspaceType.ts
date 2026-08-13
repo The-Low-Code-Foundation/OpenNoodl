@@ -87,6 +87,15 @@ export class LogicBuilderWorkspaceType extends TypeView {
     const nodeId = this.parent?.model?.model?.id;
     const nodeName = this.parent?.model?.model?.label || this.parent?.model?.type?.displayName || 'Logic Builder';
     const workspace = this.parent?.model?.getParameter('workspace') || '';
+    /**
+     * VFN-011 — what the app would actually run for this node, right now.
+     *
+     * Carried so the block editor's value strip can name the one empty state it could not: a
+     * program whose `generatedCode` predates value tracing emits no probes, so no run of it —
+     * in the app or on the bench — can ever produce a badge. Read only; the node's parameter is
+     * written by the workspace's own flush and by nothing on this path.
+     */
+    const generatedCode = this.parent?.model?.getParameter('generatedCode') || '';
 
     console.log('[LogicBuilderWorkspaceType] Opening Logic Builder tab for node:', nodeId);
 
@@ -94,7 +103,8 @@ export class LogicBuilderWorkspaceType extends TypeView {
     EventDispatcher.instance.emit('LogicBuilder.OpenTab', {
       nodeId,
       nodeName,
-      workspace
+      workspace,
+      generatedCode
     });
   }
 

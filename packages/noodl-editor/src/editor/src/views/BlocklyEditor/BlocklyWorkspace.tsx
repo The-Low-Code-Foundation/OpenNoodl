@@ -68,9 +68,24 @@ export interface BlocklyWorkspaceProps {
    * mistake, and a missing menu item is the hardest kind of wiring mistake to see.
    */
   nodeId?: string;
+  /**
+   * VFN-011 — the node's saved `generatedCode`, as it is on disk right now.
+   *
+   * Read once on mount, exactly like {@link initialWorkspace}, and for the same reason: every
+   * later value of it comes from this component's own flush. It exists so the strip can say
+   * *why* it is empty — a program generated before value tracing emits no probes and can never
+   * badge anything — and it is **never written back**. See `BlockValueOptions.generatedCode`.
+   */
+  generatedCode?: string;
 }
 
-export function BlocklyWorkspace({ initialWorkspace, onChange, readOnly = false, nodeId }: BlocklyWorkspaceProps) {
+export function BlocklyWorkspace({
+  initialWorkspace,
+  onChange,
+  readOnly = false,
+  nodeId,
+  generatedCode
+}: BlocklyWorkspaceProps) {
   const blocklyDiv = useRef<HTMLDivElement>(null);
   // LGC-004 — the two interface rails. Rendered as siblings of the injection div (rather than as
   // layers over it) so they cannot cover Blockly's left-edge toolbox, and so the workspace is
@@ -157,6 +172,10 @@ export function BlocklyWorkspace({ initialWorkspace, onChange, readOnly = false,
         console.error('[Blockly] The saved blocks in this program could not be expanded:', generated.error.message);
       } else if (blockValues) {
         blockValues.setProbedIds(probed.probedIds);
+        // VFN-011 — the code that is about to be written to the node. A refusal (`undefined`)
+        // leaves whatever the node already has, so the strip is told nothing rather than told
+        // the program went away.
+        if (generated.code !== undefined) blockValues.setGeneratedCode(generated.code);
       }
 
       /**
@@ -302,7 +321,7 @@ export function BlocklyWorkspace({ initialWorkspace, onChange, readOnly = false,
         });
       }
       // LGC-003 — the whole program answers at once, during a real run.
-      if (rootRef.current) blockValues = attachBlockValues(workspace, rootRef.current, nodeId);
+      if (rootRef.current) blockValues = attachBlockValues(workspace, rootRef.current, { nodeId, generatedCode });
 
       // Follow the editor's light/dark setting (UIX-005 contract). The grid is not part of
       // the theme object and Blockly's setter for it is private, so the grid colour is
