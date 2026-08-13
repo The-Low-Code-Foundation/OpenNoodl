@@ -26,6 +26,10 @@ import type * as Blockly from 'blockly';
 // drag in, so the lazy load above is unaffected.
 import { HAT_BLOCK_TYPE } from '@noodl/runtime/src/nodes/std-library/logic-builder-io';
 
+// Two string constants and a category id out of a module that imports nothing but a type — the
+// lazy load above is unaffected.
+import { APP_CONFIG_CATEGORY, APP_CONFIG_HUE } from './appConfig';
+
 /** Category colours. Hues, not hex — Blockly derives block shading from these. */
 const HUE = {
   io: '230',
@@ -33,6 +37,7 @@ const HUE = {
   variables: '330',
   objects: '20',
   arrays: '260',
+  appConfig: APP_CONFIG_HUE,
   logic: '210',
   loops: '120',
   math: '230',
@@ -46,9 +51,17 @@ const HUE = {
 export interface ToolboxLabels {
   noodlInputsOutputs: string;
   noodlSignals: string;
+  /**
+   * ⚠️ **`Noodl.Variables`, not the app's config.** This was called *App Variables* until
+   * VFN-012, which is the name a builder reads as *"the variables I declared in app settings"* —
+   * a different bag entirely, now under {@link ToolboxLabels.noodlAppConfig}. The label changed;
+   * the block type ids `noodl_get_variable` / `noodl_set_variable` did not, and must not.
+   */
   noodlVariables: string;
   noodlObjects: string;
   noodlArrays: string;
+  /** VFN-012 — `Noodl.Config`: declared in app settings, typed, read only at runtime. */
+  noodlAppConfig: string;
   logic: string;
   loops: string;
   math: string;
@@ -63,9 +76,10 @@ export interface ToolboxLabels {
 export const DEFAULT_TOOLBOX_LABELS: ToolboxLabels = {
   noodlInputsOutputs: 'Inputs / Outputs',
   noodlSignals: 'Signals',
-  noodlVariables: 'App Variables',
+  noodlVariables: 'Runtime Variables',
   noodlObjects: 'App Objects',
   noodlArrays: 'App Arrays',
+  noodlAppConfig: 'App Config',
   logic: 'Logic',
   loops: 'Loops',
   math: 'Math',
@@ -121,6 +135,17 @@ export function buildToolbox(labels: ToolboxLabels = DEFAULT_TOOLBOX_LABELS) {
         'noodl_set_object_property'
       ]),
       category(labels.noodlArrays, HUE.arrays, ['noodl_get_array', 'noodl_array_length', 'noodl_array_add']),
+      /**
+       * VFN-012 — the app's own declared config variables, where Richard asked for them: beside
+       * App Objects and App Arrays, at the bottom of the seam to the graph.
+       *
+       * `custom`, like `VARIABLE` / `PROCEDURE` / `MY_BLOCKS`, because its contents are the
+       * project's app settings and those change under an open editor. `BlocklyWorkspace`
+       * registers the callback; a workspace that does not gets an empty category rather than an
+       * error, which is why the callback's own empty state has to be distinguishable from it —
+       * see `hasAppConfigEmptyState`.
+       */
+      { kind: 'category', name: labels.noodlAppConfig, colour: HUE.appConfig, custom: APP_CONFIG_CATEGORY },
 
       { kind: 'sep' },
 

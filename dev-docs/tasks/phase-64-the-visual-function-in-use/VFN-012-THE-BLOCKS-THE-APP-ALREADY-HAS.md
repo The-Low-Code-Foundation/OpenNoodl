@@ -1,6 +1,24 @@
 # VFN-012 — The blocks the app already has
 
-**Status:** 📋 open · **Tier 3** · ~1 day · no dependencies · scope can be cut cleanly
+**Status:** 🟡 **§1 built, §2/§3 not** · **Tier 3** · no dependencies · scope cut cleanly
+
+> **2026-08-13, branch `vfn-config`.** The **app-config-variables** half is built, gated and
+> written up in [`NOTES-config.md`](./NOTES-config.md). The **registered-libraries** and
+> **`window`** halves are not — see *What is deliberately not here* in the notes, which includes
+> the layout question they re-open.
+>
+> - Category is **`App Config`**, directly below `App Arrays`, where the report asked for it.
+> - `App Variables` → **`Runtime Variables`**, label and locale strings only; both block type ids
+>   asserted unchanged.
+> - One block, `noodl_get_config` → `Noodl.Config["key"]`. No setter: config is immutable.
+> - 🔴 **Blockly's stock `FieldDropdown` really does snap an unknown value to the first option**
+>   (12.3.1, measured). A saved block reading a deleted config variable would silently start
+>   reading a *different* one on open. `ConfigKeyField` overrides two methods to stop it, and a
+>   spec builds a stock dropdown beside ours and watches it happen.
+> - Gates: jest **159/2303** (was 157/2265, +2 suites/+38 specs), `cloud-library:check` green,
+>   editor `tsc --noEmit` 0 errors.
+> - ⚠️ **Nothing is driven.** Criteria 1, 5 and 6 are proved as far as a headless runner reaches;
+>   the flyout rendering, the settings button and the runtime round trip are not.
 
 ## The report
 
@@ -116,16 +134,19 @@ app settings.
 
 ## Acceptance criteria
 
-1. A config variable declared in app settings appears in the category, and its block generates
+1. 🟡 A config variable declared in app settings appears in the category, and its block generates
    `Noodl.Config["key"]` that reads correctly in the running app.
-2. Renaming or deleting a config variable leaves existing blocks holding the old key, visibly marked,
-   and changes no program.
-3. A registered library appears with its `global`, and its block reaches the library in the preview.
-4. The `window` block reaches a browser global.
-5. The existing `App Variables` category is renamed and **no block type id changed** — an old project
+   — *category projection and generated string proved; the reading-in-the-app half needs a drive.*
+2. ✅ Renaming or deleting a config variable leaves existing blocks holding the old key, visibly marked,
+   and changes no program. — *proved headless, with Blockly's own snapping behaviour as the control.*
+3. ⬜ A registered library appears with its `global`, and its block reaches the library in the preview.
+4. ⬜ The `window` block reaches a browser global.
+5. 🟡 The existing `App Variables` category is renamed and **no block type id changed** — an old project
    opens with identical `workspace` and `generatedCode` bytes.
-6. Empty categories explain themselves and name where to go.
-7. ⚠️ `npm run cloud-library:check` passes — it is a required PR gate and drifts red on port-group
+   — *renamed; type ids asserted unchanged; the byte diff on a real old project not done.*
+6. 🟡 Empty categories explain themselves and name where to go.
+   — *contents proved; that Blockly renders label/button items in a dynamic flyout not driven.*
+7. ✅ ⚠️ `npm run cloud-library:check` passes — it is a required PR gate and drifts red on port-group
    changes.
 
 ## How to prove it

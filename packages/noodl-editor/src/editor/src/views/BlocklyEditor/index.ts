@@ -124,6 +124,27 @@ export type { MyBlocksScope, MyBlocksShelf } from './myblocks/store';
 export { HATTABLE_BLOCK_TYPES, ensureHats, ensureHatsInJson, isHattableBlockType } from './hatMigration';
 export type { EnsureHatsOptions, EnsureHatsResult } from './hatMigration';
 
+// VFN-012 — the app's own config variables as blocks. Pure: no Blockly, no editor singletons,
+// so the projection from `project.json` into the toolbox category is gradeable in plain Node.
+export {
+  appConfigFlyout,
+  appConfigFlyoutContents,
+  appConfigKeyDisplay,
+  appConfigKeyOptions,
+  appConfigReadExpression,
+  appConfigTooltip,
+  appConfigVariables,
+  hasAppConfigEmptyState,
+  normalizeConfigVariables,
+  resetConfigVariablesProvider,
+  setConfigVariablesProvider,
+  APP_CONFIG_BLOCK_TYPE,
+  APP_CONFIG_CATEGORY,
+  APP_CONFIG_SETTINGS_BUTTON,
+  APP_CONFIG_SETTINGS_PATH
+} from './appConfig';
+export type { AppConfigFlyoutItem, AppConfigKeyOption, ConfigVariablesProvider } from './appConfig';
+
 // Toolbox and language
 export { buildToolbox, DEFAULT_TOOLBOX_LABELS } from './BlocklyToolbox';
 export type { ToolboxLabels } from './BlocklyToolbox';

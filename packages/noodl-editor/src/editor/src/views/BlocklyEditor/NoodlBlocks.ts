@@ -15,6 +15,15 @@ import * as Blockly from 'blockly';
 
 import { DEFAULT_HAT_SIGNAL, HAT_BLOCK_TYPE } from '@noodl/runtime/src/nodes/std-library/logic-builder-io';
 
+import {
+  appConfigKeyDisplay,
+  appConfigKeyOptions,
+  appConfigTooltip,
+  appConfigVariables,
+  APP_CONFIG_BLOCK_TYPE,
+  APP_CONFIG_HUE,
+  defaultConfigKey
+} from './appConfig';
 import { blocklyCheckForNoodlType, connectionCheckForDeclaredPort, PERMISSIVE_NOODL_TYPE } from './NoodlTypes';
 
 /**
@@ -127,6 +136,9 @@ export function initNoodlBlocks() {
 
   // Array blocks (basic - will expand later)
   defineArrayBlocks();
+
+  // VFN-012 — the app's declared config variables
+  defineAppConfigBlocks();
 }
 
 /**
@@ -439,6 +451,81 @@ function defineArrayBlocks() {
       this.setNextStatement(true, null);
       this.setColour(260);
       this.setTooltip('Adds an item to the end of an array');
+      this.setHelpUrl('');
+    }
+  };
+}
+
+/**
+ * The key field on the App Config block (VFN-012).
+ *
+ * ## Why this is a dropdown at all, when every other name field here is free text
+ *
+ * The rest of this language uses `FieldTextInput` because Noodl variables, objects and arrays
+ * are *created by being used* — there is no declared set to choose from, so a dropdown would
+ * have to be over the empty set. App config variables are declared, so the valid keys are
+ * known, finite and typed, and a dropdown turns *"did I spell it right"* into a non-question.
+ *
+ * ## 🔴 Why it is a subclass and not `new Blockly.FieldDropdown(…)`
+ *
+ * A stock dropdown **rewrites a value it does not recognise to the first option in its list**.
+ * Measured in Blockly 12.3.1: save a block on `maxItems`, delete `maxItems` from app settings,
+ * reopen — the field comes back holding whatever key happens to sort first, the console carries
+ * one line saying *"Cannot set the dropdown's value to an unavailable option"*, and the program
+ * now reads a different variable. That is a program changed by the act of opening it, and it is
+ * exactly what VFN-012 criterion 2 forbids.
+ *
+ * Two overrides fix it and nothing else has to change:
+ *
+ * - `doClassValidation_` accepts any string, so the stored value is always the key the author
+ *   chose — the field is a *picker*, not the authority on which keys exist.
+ * - `getText_` renders an undeclared key **as itself, marked** (`⚠ oldKey`), so the block says
+ *   what is wrong rather than quietly reading `undefined`.
+ *
+ * ⚠️ The mark is computed at render time from the provider, and Blockly re-renders a field on
+ * value change — not on app settings changing underneath it. A block already on the canvas keeps
+ * its mark until it is touched or the editor is reopened. Stale in the harmless direction: the
+ * *stored key* is never wrong, only the warning glyph is late.
+ */
+class ConfigKeyField extends Blockly.FieldDropdown {
+  constructor(value?: string) {
+    super(() => appConfigKeyOptions(appConfigVariables()) as Blockly.MenuOption[]);
+    if (typeof value === 'string') {
+      this.setValue(value);
+    }
+  }
+
+  /** Any string is a legal key — including one app settings no longer declares. */
+  protected doClassValidation_(newValue?: string): string | null {
+    return typeof newValue === 'string' ? newValue : null;
+  }
+
+  /** An undeclared key reads as itself, marked. Never as another key. */
+  protected getText_(): string | null {
+    return appConfigKeyDisplay(appConfigVariables(), this.getValue() || '');
+  }
+}
+
+/**
+ * App Config Blocks (VFN-012)
+ *
+ * One block, and one is the whole feature: `Noodl.Config` is immutable at runtime, so there is
+ * no honest setter to offer. See `appConfig.ts` for the reasoning and for everything in this
+ * feature that can be graded without Blockly.
+ */
+function defineAppConfigBlocks() {
+  Blockly.Blocks[APP_CONFIG_BLOCK_TYPE] = {
+    init: function () {
+      const variables = appConfigVariables();
+
+      this.appendDummyInput()
+        .appendField('⚙️ app config')
+        .appendField(new ConfigKeyField(defaultConfigKey(variables)), 'KEY');
+      this.setOutput(true, null);
+      this.setColour(Number(APP_CONFIG_HUE));
+      // A function, so the hover text follows the key the block currently holds — including
+      // "this key is gone", which is the one a builder most needs to read.
+      this.setTooltip(() => appConfigTooltip(appConfigVariables(), this.getFieldValue('KEY') || ''));
       this.setHelpUrl('');
     }
   };

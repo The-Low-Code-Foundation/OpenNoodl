@@ -15,7 +15,10 @@
 import * as Blockly from 'blockly';
 import React, { useEffect, useRef, useState } from 'react';
 
+import { ProjectModel } from '../../models/projectmodel';
+import { openSettingsPanel } from '../panels/SettingsPanel/settingsPanelRoute';
 import { CanvasTheme } from '../nodegrapheditor/canvas/CanvasTheme';
+import { appConfigFlyout, setConfigVariablesProvider, APP_CONFIG_CATEGORY, APP_CONFIG_SETTINGS_BUTTON } from './appConfig';
 import { applyLanguage, currentLanguageCode } from './BlocklyLocale';
 import { registerBlocklyResizeHandler } from './blocklyResize';
 import { buildBlocklyTheme, resolveBlocklyChrome } from './BlocklyTheme';
@@ -236,6 +239,22 @@ export function BlocklyWorkspace({ initialWorkspace, onChange, readOnly = false,
       // whenever a definition is saved, renamed or deleted, and Blockly rebuilds it on every
       // flyout open. Registering it after injection is the documented order.
       workspace.registerToolboxCategoryCallback(MY_BLOCKS_CATEGORY, myBlocksFlyout(myBlocksStore()) as never);
+
+      /**
+       * VFN-012 — the App Config category, and the same dynamic-category mechanism for the same
+       * reason: its contents are the project's app settings, which change under an open editor.
+       *
+       * The provider is set here, not imported by `appConfig.ts`, because that module is in
+       * `initialize.ts`'s import graph and therefore has to stay reachable from the plain-Node
+       * `tests-unit` runner — `ProjectModel` is not. Read live on every flyout open, so a
+       * variable declared in Settings while this editor is open shows up on the next click with
+       * no invalidation to get wrong.
+       */
+      setConfigVariablesProvider(() => ProjectModel.instance?.getConfigVariables() || []);
+      workspace.registerToolboxCategoryCallback(APP_CONFIG_CATEGORY, appConfigFlyout() as never);
+      // Criterion 6: the empty category names where to go, and this is the door. Registered
+      // whether or not the category is empty — "edit these" is as useful as "create some".
+      workspace.registerButtonCallback(APP_CONFIG_SETTINGS_BUTTON, () => openSettingsPanel('project'));
 
       if (initialWorkspace) {
         try {
