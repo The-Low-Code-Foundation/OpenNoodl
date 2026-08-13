@@ -37,8 +37,20 @@ building with the floating Logic Builder.
 > screen for a day**, because the field every layer agreed on (`ComponentModel.id`) was `undefined`.
 > Nothing in this file may claim a drive that did not happen.
 >
-> 🔴 **Start at [NEXT-SESSION-2026-08-13-F.md](NEXT-SESSION-2026-08-13-F.md)** — the single
-> consolidated drive brief. It supersedes -E, whose build fan-out is done.
+> ### 🔴 2026-08-13 — the close-out drive ran: [DRIVE-2026-08-13-G.md](DRIVE-2026-08-13-G.md)
+>
+> **20 of the brief's 31 items driven; 7 defects found, 4 fixed with controls watched red, 3 filed.**
+> Six tasks that had **never** been on screen are now driven. What is still owed is listed at the
+> foot of that file — start there, not at -F, whose list it supersedes.
+>
+> 🔴 **A Chrome with `--remote-debugging-port=9222` started on this machine mid-session and took the
+> port.** Every reading after that came from Chrome, and it looked exactly like the editor crashing.
+> **Check `lsof -i:9222` first, and drive on `NOODL_REMOTE_DEBUG_PORT=9333`.**
+>
+> 🔴 **[NEXT-SESSION-2026-08-13-F.md](NEXT-SESSION-2026-08-13-F.md)** remains the reference for the
+> items not reached; its driving conditions all held, and G adds two: `cdp click` scrolls before it
+> clicks (so a rect read a moment earlier is stale), and a `.blocklyToolboxCategory` **toggles** —
+> always confirm `aria-selected` rather than assuming the flyout you asked for is the one that is up.
 >
 > ⚠️ **[DRIVE-2026-08-13-C.md](DRIVE-2026-08-13-C.md) and
 > [DRIVE-2026-08-13-D.md](DRIVE-2026-08-13-D.md) have STALE COORDINATES.** VFN-005 moved the window
@@ -51,17 +63,17 @@ building with the floating Logic Builder.
 | VFN-001 | ✅ | ✅ | ✅ **fully** — criteria 1–4 |
 | VFN-002 | ✅ | ✅ | 🟡 field measured live; criterion 3's *rendered* ring and criterion 4 owed |
 | VFN-003 | ✅ | ✅ | 🟡 criteria 1, 2, 3, 5 driven; 4 at the seam; one gesture owed |
-| VFN-004 | ✅ | ✅ | 🟡 AC 1–4 driven; AC 5, 6 owed |
-| VFN-005 | ✅ | ✅ | 🔴 **never** (criterion 1's occlusion reproduced pre-build) |
-| VFN-006 | ✅ | ✅ | 🔴 **never** |
-| VFN-007 | ✅ | ✅ | 🔴 **never** |
-| VFN-008 | ✅ | ✅ | 🟡 the ports fix driven; the description round trip and the wire gesture owed |
-| VFN-009 | ✅ | ✅ | 🔴 **never** — not one pixel of it |
-| VFN-010 | ✅ | ✅ | 🔴 **never** |
-| VFN-011 | ✅ | ✅ | 🟡 the flagship gesture driven; items 4, 6, 8, 9 + the copy re-shot owed |
-| VFN-012 | ✅ all three §§ | ✅ | 🟡 §1's flyout and button driven; §1 items 3–5 and all of §2/§3 owed |
+| VFN-004 | ✅ | ✅ | 🟡 AC 1–4 driven; AC 5 driven **for a definition tab only**, AC 6 owed |
+| VFN-005 | ✅ | ✅ | ✅ **criteria 2, 3, 4, the yield and the 640 px title bar all driven (G)** — 🔴 and the drive found **D-5**: the yield can put Home, Park and *Done* off the viewport |
+| VFN-006 | ✅ | ✅ | ✅ **outline, hover trigger and the dialog's pin driven (G)** — 🔴 and found **D-7**, the outline never went away; fixed |
+| VFN-007 | ✅ | ✅ | ✅ **criteria 3 and 4 driven in both themes (G)** |
+| VFN-008 | ✅ | ✅ | 🟡 the ports fix driven; the description proved **on disk and in the flyout** (G); the quit-and-reopen half and the wire gesture owed |
+| VFN-009 | ✅ | ✅ | ✅ **the section, the propagation warning and *Edit blocks* into the floating window all driven (G)** — 🔴 and found **D-1** and **D-2**; both fixed |
+| VFN-010 | ✅ | ✅ | ✅ **launcher section, headings in both themes, cross-project check, delete refusal, clipboard import and criterion 6 all driven (G)** |
+| VFN-011 | ✅ | ✅ | 🟡 the flagship gesture driven; 🔴 **D-6 — all seven strip sentences still clip at 640 px, and the budget's instrument is 16 % low**; items 4, 6, 8, 9 owed |
+| VFN-012 | ✅ all three §§ | ✅ | 🟡 §2/§3's category, flyout, empty state and settings button driven (G) — 🔴 found **D-3** (the caution label can never fit) and **D-4** (the yield never fired from it; fixed). §1 items 3–5 and a real registered library owed |
 | VFN-013 | ✅ | ✅ | ✅ **re-swept live** — 266 and 371 px² to zero; one residual recorded |
-| VFN-014 | ✅ | ✅ | 🟡 criterion 5 reproduced live; criteria 1–2 (one button press) owed |
+| VFN-014 | ✅ | ✅ | ✅ **criteria 1, 2 and 5 driven** — *View Code* leads with the readable program; warnings **16 → 1** |
 
 **Every claim about existing code in these files was read in source**, and every claim that was
 *not* pinned says so and carries a reproduce-first instruction. Six of the eleven reports have a
