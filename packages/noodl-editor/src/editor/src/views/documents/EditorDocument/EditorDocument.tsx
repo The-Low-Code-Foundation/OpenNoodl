@@ -80,6 +80,27 @@ function EditorDocument() {
 
   useImportNodeset(nodeGraph);
 
+  /**
+   * DES-001 — "Preview" on the preview's own design-mode banner.
+   *
+   * Two sources for one action: the bus when the preview is docked in this
+   * renderer, ipc when it is its own window. Both land on the same setter, so
+   * the top bar's segmented control and the banner can never disagree about
+   * which mode the app is in.
+   */
+  useEffect(() => {
+    const eventGroup = {};
+    const exitDesignMode = () => setPreviewMode(true);
+
+    EventDispatcher.instance.on('request-preview-mode', exitDesignMode, eventGroup);
+    ipcRenderer.on('viewer-request-preview-mode', exitDesignMode);
+
+    return () => {
+      EventDispatcher.instance.off(eventGroup);
+      ipcRenderer.off('viewer-request-preview-mode', exitDesignMode);
+    };
+  }, []);
+
   //close detached viewer when EditorDocmument unmounts
   useEffect(() => {
     return () => {
@@ -265,6 +286,25 @@ function EditorDocument() {
           if (node && node.owner && node.owner.owner) {
             const component = node.owner.owner;
             nodeGraph.switchToComponent(component, { node: node, pushHistory: true });
+
+            /**
+             * DES-001 — say what was selected, in the preview.
+             *
+             * Resolved here because this is the process that owns
+             * `ProjectModel`; the preview only renders the string. Gated on
+             * design mode: in preview mode this same handler runs for lessons,
+             * and a toast about design mode there would be a lie.
+             */
+            if (!previewMode) {
+              // `label` falls back to the type's own label for the node, so it
+              // is only empty for a node with no type at all.
+              const label = node.label || 'this element';
+              if (documentLayout === 'detachedPreview') {
+                ipcRenderer.send('viewer-design-selection', label);
+              } else {
+                canvasView?.showDesignSelection(label);
+              }
+            }
           }
         } else {
           const nodes = args.nodeIds.map((id) => ProjectModel.instance.findNodeWithId(id)).filter((node) => !!node);

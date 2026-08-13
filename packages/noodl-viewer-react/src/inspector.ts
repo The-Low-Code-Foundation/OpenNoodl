@@ -40,7 +40,11 @@ export default class Inspector {
 
       const noodlNode = this.findNoodlNode(e.target as Element);
       if (noodlNode) {
-        document.body.style.cursor = 'pointer';
+        // `crosshair`, not `pointer` (DES-001). Every listener below blocks the
+        // event, so a hand cursor over a button in design mode promises a press
+        // that provably cannot happen — and "the button doesn't work" is the
+        // report that promise produces.
+        document.body.style.cursor = 'crosshair';
         onHighlight(noodlNode.id);
       } else {
         document.body.style.cursor = 'initial';

@@ -26,7 +26,13 @@ export class CanvasView extends View {
     deviceName?: string;
     zoom?: number;
     onWebView: (webview: Electron.WebviewTag) => void;
+    designMode?: boolean;
+    onExitDesignMode?: () => void;
+    designSelection?: { label: string; seq: number };
   };
+
+  /** Bumped per selection so the toast re-fires when the same node is clicked twice. */
+  private designSelectionSeq = 0;
 
   _onEditorApiResponse: (event: any, args: any) => void;
 
@@ -63,6 +69,22 @@ export class CanvasView extends View {
           this.webviewDomReady = false;
           this.webview = null;
         }
+      },
+      designMode: false,
+      /**
+       * DES-001 — the preview's own way out of design mode.
+       *
+       * Both signals are sent because this view renders in two windows and does
+       * not know which one it is in: the docked preview is in the editor
+       * renderer, where the bus reaches `EditorDocument` directly, and the
+       * detached preview is a separate renderer, where only main can carry it.
+       * The docked case therefore delivers it twice; `setPreviewMode(true)` is
+       * idempotent, and one path that always works beats a window check that
+       * can be wrong.
+       */
+      onExitDesignMode: () => {
+        EventDispatcher.instance.emit('request-preview-mode');
+        ipcRenderer.send('viewer-request-preview-mode');
       }
     };
   }
@@ -158,6 +180,13 @@ export class CanvasView extends View {
     return this.el;
   }
   renderReact() {
+    // Props can be set before `render()` has made an element (the editor's
+    // mode effects run on mount, ahead of the panel that hosts this view).
+    // They are kept on `this.props` and picked up by the first real render.
+    if (!this.el) {
+      return;
+    }
+
     if (!this.root) {
       this.root = createRoot(this.el as HTMLElement);
     }
@@ -273,10 +302,39 @@ export class CanvasView extends View {
 
   setInspectMode(enabled: boolean) {
     this.inspectMode = enabled;
+
+    // DES-001: inspect mode *is* design mode, so the chrome that says so is
+    // driven from the same call rather than from a second piece of state that
+    // could disagree with it.
+    this.props.designMode = enabled;
+    if (!enabled) {
+      this.props.designSelection = undefined;
+    }
+    this.renderReact();
+
     this.tryWebviewCall(() => {
       this.webview.executeJavaScript(`NoodlEditorInspectorAPI.setEnabled(${enabled})`);
       this.webview.executeJavaScript(`NoodlEditorHighlightAPI.selectNode(null)`);
     });
+  }
+
+  /**
+   * DES-001 — answer a design-mode click *in the preview*, where the click was.
+   *
+   * The properties panel already updates, but it is across the window from the
+   * pointer, so a click on a button in design mode looks from here like nothing
+   * happened at all — which is exactly the "the button doesn't work" report
+   * this came from. The label is resolved by the editor, which owns the project
+   * model; this view only shows it.
+   */
+  showDesignSelection(label: string) {
+    if (!this.inspectMode) {
+      return;
+    }
+
+    this.designSelectionSeq += 1;
+    this.props.designSelection = { label, seq: this.designSelectionSeq };
+    this.renderReact();
   }
 
   setNodeSelected(nodeId: string) {

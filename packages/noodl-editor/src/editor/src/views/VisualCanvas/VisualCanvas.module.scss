@@ -34,6 +34,126 @@
        not danger — phase 23: red means danger only, and a bench is not one. */
     box-shadow: inset 0 -2px 0 var(--theme-color-primary);
   }
+
+  /* DES-001 — the strip is the label on the frame below it, so it carries the
+     same accent edge and joins the stage's ring into one shape. Same accent as
+     the bench for the same reason: this is a mode, not a fault. */
+  &.is-design {
+    background-color: var(--theme-color-primary-bg);
+    box-shadow: inset 0 -2px 0 var(--theme-color-primary);
+  }
+}
+
+/* DES-001 --------------------------------------------------------------------
+   Design mode, said where the pointer is. */
+
+.DesignBanner {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+  font-size: 11.5px;
+  line-height: 1.2;
+  color: var(--theme-color-fg-default);
+
+  strong {
+    color: var(--theme-color-fg-highlight);
+    font-weight: 600;
+  }
+
+  /* The sentence is the first thing to go when the panel is narrow; the words
+     "Design mode" and the way out both survive. */
+  > .DesignBannerText {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+.DesignBannerIcon {
+  color: var(--theme-color-primary);
+}
+
+.DesignBannerExit {
+  flex-shrink: 0;
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: 0;
+  border-radius: var(--radius-md);
+  padding: 3px 8px;
+  font-family: var(--font-family);
+  font-size: 11.5px;
+  font-weight: 600;
+  line-height: 1.2;
+  cursor: pointer;
+  color: var(--theme-color-fg-on-primary);
+  background-color: var(--theme-color-primary);
+
+  &:hover {
+    background-color: var(--theme-color-primary-hover);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--theme-color-primary);
+    outline-offset: 2px;
+  }
+}
+
+.DesignBannerKey {
+  opacity: 0.7;
+  font-weight: 500;
+  font-family: var(--font-family-code);
+  font-size: 10px;
+}
+
+.DesignToast {
+  position: absolute;
+  left: 50%;
+  bottom: 16px;
+  transform: translateX(-50%);
+  max-width: calc(100% - 32px);
+  z-index: 2;
+
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 12px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--theme-color-primary);
+  background-color: var(--theme-color-bg-2);
+  box-shadow: var(--shadow-md);
+
+  /* It explains the click; it must never eat the next one. */
+  pointer-events: none;
+  animation: design-toast-in 120ms var(--easing-base);
+
+  strong {
+    color: var(--theme-color-fg-highlight);
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1.2;
+  }
+
+  span {
+    color: var(--theme-color-fg-muted);
+    font-size: 11px;
+    line-height: 1.3;
+  }
+}
+
+@keyframes design-toast-in {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
 }
 
 .BenchCaption {
@@ -65,6 +185,19 @@
   flex: 1;
   align-self: stretch;
   min-height: 0;
+
+  /* DES-001 — the frame. Drawn as an overlay rather than a border so it costs
+     the preview no layout at all: `CanvasView.updateViewportSize` fits the
+     webview to this box, and a 2px border would silently change the size the
+     app is being previewed at every time the mode is toggled. */
+  &.is-design::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    box-shadow: inset 0 0 0 2px var(--theme-color-primary);
+    pointer-events: none;
+    z-index: 1;
+  }
 }
 
 .ViewportInfo {

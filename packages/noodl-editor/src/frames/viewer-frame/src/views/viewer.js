@@ -59,6 +59,12 @@ class Viewer extends View {
       this.canvasView.setInspectMode(inspectMode);
     });
 
+    // DES-001 — the design-mode toast, resolved to a label by the editor
+    // window (it owns the project model) and shown here, where the click was.
+    ipcRenderer.on('viewer-design-selection', (sender, label) => {
+      this.canvasView.showDesignSelection(label);
+    });
+
     ipcRenderer.on('viewer-set-viewport-size', (sender, viewportSize) => {
       this.canvasView.setViewportSize(viewportSize);
     });

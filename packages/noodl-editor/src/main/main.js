@@ -925,7 +925,10 @@ function launchApp() {
       'viewer-detach',
       'viewer-navigation-state',
       'viewer-capture-thumb-reply',
-      'viewer-inspect-node'
+      'viewer-inspect-node',
+      // DES-001: "Preview" on the detached preview's design-mode banner. The
+      // editor window owns the mode, so the request has to travel back to it.
+      'viewer-request-preview-mode'
     ]);
 
     //events to forward from main window to viewer
@@ -942,6 +945,7 @@ function launchApp() {
       'viewer-set-viewport-size',
       'viewer-set-inspect-mode',
       'viewer-select-node',
+      'viewer-design-selection',
       'viewer-capture-thumb',
       'viewer-show-inspect-menu',
       'editor-api-response'

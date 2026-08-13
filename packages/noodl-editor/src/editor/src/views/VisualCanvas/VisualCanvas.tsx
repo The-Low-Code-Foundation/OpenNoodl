@@ -31,8 +31,11 @@ import { useThrottle } from '@noodl-hooks/useThrottleState';
 import classNames from 'classnames';
 import React, { useEffect, useRef, useState } from 'react';
 
+import { Keybindings } from '@noodl-constants/Keybindings';
+
 import { ProjectModel } from '@noodl-models/projectmodel';
 
+import { Icon, IconName, IconSize } from '@noodl-core-ui/components/common/Icon';
 import { PrimaryButton, PrimaryButtonSize } from '@noodl-core-ui/components/inputs/PrimaryButton';
 import { Box } from '@noodl-core-ui/components/layout/Box';
 import { Label, LabelSize } from '@noodl-core-ui/components/typography/Label';
@@ -57,9 +60,21 @@ export interface VisualCanvasProps {
   onWebView: (webview: Electron.WebviewTag) => void;
   deviceName?: string;
   zoom: number;
+  /** DES-001 — design mode is on, i.e. the app's own clicks are being swallowed. */
+  designMode?: boolean;
+  onExitDesignMode?: () => void;
+  /** The last element clicked in design mode. `seq` re-fires the toast for a repeat click. */
+  designSelection?: { label: string; seq: number };
 }
 
-export function VisualCanvas({ onWebView, deviceName, zoom }: VisualCanvasProps) {
+export function VisualCanvas({
+  onWebView,
+  deviceName,
+  zoom,
+  designMode,
+  onExitDesignMode,
+  designSelection
+}: VisualCanvasProps) {
   const webviewRef = useRef<Electron.WebviewTag>(null);
   const containerRef = useRef(null);
 
@@ -82,6 +97,32 @@ export function VisualCanvas({ onWebView, deviceName, zoom }: VisualCanvasProps)
   /** The bench frame's measured box — see `ComponentBench`'s `onFrameMeasured`. */
   const [benchMeasured, setBenchMeasured] = useState<{ width: number; height: number } | undefined>(undefined);
   const isBench = scope.mode === 'bench';
+
+  /**
+   * DES-001 — design mode said on the surface it applies to.
+   *
+   * The only cue used to be the segmented control in the top bar, two panels
+   * away from the pointer, so people clicked a button, got nothing (the
+   * inspector eats the event in the capture phase) and read it as broken. The
+   * frame is the standing answer, the toast is the answer to a specific click.
+   *
+   * Scoped to `!isBench` deliberately: the bench has its own accent strip for
+   * its own claim, and two accent claims on one surface is two answers to
+   * "what am I looking at".
+   */
+  const showDesignChrome = Boolean(designMode) && !isBench;
+  const [selectionToast, setSelectionToast] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!showDesignChrome || !designSelection) {
+      setSelectionToast(null);
+      return;
+    }
+
+    setSelectionToast(designSelection.label);
+    const timeout = setTimeout(() => setSelectionToast(null), 3200);
+    return () => clearTimeout(timeout);
+  }, [showDesignChrome, designSelection?.seq, designSelection?.label]);
 
   /**
    * BEN-004 §6 — the entry the feature will actually be used through:
@@ -166,12 +207,32 @@ export function VisualCanvas({ onWebView, deviceName, zoom }: VisualCanvasProps)
           strip is in the same place in both modes. It is how you get into the
           bench and it is the only way out — a second "exit" affordance would be
           a second answer to the same question. */}
-      <div className={classNames(css.Chrome, isBench && css['is-bench'])} data-test="preview-chrome">
+      <div
+        className={classNames(css.Chrome, isBench && css['is-bench'], showDesignChrome && css['is-design'])}
+        data-test="preview-chrome"
+      >
         <PreviewScopeControl
           scope={scope}
           onScopeChange={setScope}
           getComponents={() => ProjectModel.instance?.getComponents() ?? []}
         />
+
+        {showDesignChrome && (
+          <div className={css.DesignBanner} data-test="design-mode-banner">
+            <Icon icon={IconName.Pencil} size={IconSize.Small} UNSAFE_className={css.DesignBannerIcon} />
+            <span className={css.DesignBannerText}>
+              <strong>Design mode</strong>
+              <span>&nbsp;— click an element to edit it. The app is not running.</span>
+            </span>
+            {/* The way out, on the surface the confusion happens on — the top
+                bar's toggle is the same switch, two panels away. */}
+            <button className={css.DesignBannerExit} onClick={onExitDesignMode} data-test="design-mode-exit">
+              <Icon icon={IconName.PlayCircle} size={IconSize.Small} />
+              <span>Preview</span>
+              <span className={css.DesignBannerKey}>{Keybindings.TOGGLE_PREVIEW_MODE.label}</span>
+            </button>
+          </div>
+        )}
 
         {isBench && (
           <>
@@ -190,7 +251,7 @@ export function VisualCanvas({ onWebView, deviceName, zoom }: VisualCanvasProps)
         )}
       </div>
 
-      <div className={css.Stages}>
+      <div className={classNames(css.Stages, showDesignChrome && css['is-design'])}>
         {/* PAR-003: size tag per mock — `1280 × 800 · 100%`, mono, top-right.
             Lives inside the stage so it floats over the preview rather than
             over the chrome strip above it. */}
@@ -232,6 +293,17 @@ export function VisualCanvas({ onWebView, deviceName, zoom }: VisualCanvasProps)
             onFrameChange={setFrame}
             onFrameMeasured={setBenchMeasured}
           />
+        )}
+
+        {/* Answers the click at the pointer. `pointer-events: none` — it sits
+            over the app, and a design-mode click that lands on the explanation
+            of design mode instead of on the element under it would be its own
+            small betrayal. */}
+        {selectionToast && (
+          <div className={css.DesignToast} data-test="design-mode-toast">
+            <strong>Selected {selectionToast}</strong>
+            <span>Editing it in the property panel. Switch to Preview to click it for real.</span>
+          </div>
         )}
       </div>
 
