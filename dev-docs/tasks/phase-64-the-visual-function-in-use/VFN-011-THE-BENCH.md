@@ -1,6 +1,21 @@
 # VFN-011 — The bench: sandbox values, and a Run button
 
-**Status:** 📋 open · ⭐ **Tier 1 — the flagship** · ~2 days · no dependencies
+**Status:** 🟡 **built, not driven** · ⭐ Tier 1 — the flagship · no dependencies
+**Branch:** `vfn-bench` (`4420812e`, `e1219147`, `8d4bf513`) · **findings and the owed drive:**
+[NOTES-bench.md](./NOTES-bench.md)
+
+> All eight acceptance criteria are implemented. Four of them are proved by spec (4, 5, 8, and the
+> reporting half of 6); the rest are proved *as far as a headless runner reaches* and are owed a
+> live drive, which this worktree could not do. **Read NOTES-bench.md §"Owed a live drive" before
+> calling anything here done** — in particular that no bench frame has ever reached the badge layer,
+> and that criterion 8 is proved on the workspace string rather than on `project.json`.
+>
+> The gate is `cd packages/noodl-editor && npx jest`: **160 suites / 2310 passing**, from a baseline
+> of 157 / 2265.
+>
+> 🔴 The drift gate found a runtime defect while being written: a reserved `send signal` makes the
+> node pulse **Failure and Success** for the same run and clears its own `error` output. Mirrored by
+> the bench rather than corrected — see NOTES-bench.md.
 
 ## The report
 
