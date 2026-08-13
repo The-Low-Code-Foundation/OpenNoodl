@@ -47,7 +47,7 @@ export interface CanvasTabsProps {
  * the window reaches whatever is underneath: the node canvas, the running app, the panels.
  */
 export function CanvasTabs({ onWorkspaceChange, overlayDrag }: CanvasTabsProps) {
-  const { tabs, activeTabId, switchTab, closeTab, updateTab } = useCanvasTabs();
+  const { tabs, activeTabId, switchTab, closeTab, closeTabs, updateTab } = useCanvasTabs();
   const windowRef = useRef<HTMLDivElement>(null);
 
   /**
@@ -97,14 +97,19 @@ export function CanvasTabs({ onWorkspaceChange, overlayDrag }: CanvasTabsProps) 
   /**
    * Close every tab, which is what closes the window.
    *
-   * `closeTab` fires `LogicBuilder.AllTabsClosed` when the last one goes, and that is the single
+   * `closeTabs` fires `LogicBuilder.AllTabsClosed` when the last one goes, and that is the single
    * route by which the overlay closes — there is deliberately no separate "hide the window"
    * state to get out of step with which tabs are open. Saving is not a step here: an edit is
    * written to the node 300 ms after it settles, so by the time a hand has reached this button
    * the blocks are already on the model.
+   *
+   * ⚠️ One `closeTabs` call and not a loop of `closeTab`. A loop is batched into one render, so
+   * every iteration reads the same `activeTabId` and the "was that the last one?" question is
+   * answered against a tab list that is already out of date — with two tabs open, nothing emits
+   * `AllTabsClosed` at all. See the note on `closeTabs`.
    */
   const handleCloseAll = () => {
-    for (const tab of [...tabs]) closeTab(tab.id);
+    closeTabs(tabs.map((tab) => tab.id));
   };
 
   // Don't render anything if no tabs are open

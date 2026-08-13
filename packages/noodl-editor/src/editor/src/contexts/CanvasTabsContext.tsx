@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useCallback, ReactNode, use
 
 import { EventDispatcher } from '../../../shared/utils/EventDispatcher';
 import { ensureHatsInJson } from '../views/BlocklyEditor/hatMigration';
+import { tabsClosedByNodeRemoval, RemovedNode } from './canvasTabsNodeRemoval';
 
 /**
  * Tab types supported by the canvas tab system
@@ -36,12 +37,21 @@ export interface CanvasTabsContextValue {
   openTab: (tab: Omit<Tab, 'id'> & { id?: string }) => void;
   /** Close a tab by ID */
   closeTab: (tabId: string) => void;
+  /** Close several tabs in one transition — see the note on the implementation */
+  closeTabs: (tabIds: readonly string[]) => void;
   /** Switch to a different tab */
   switchTab: (tabId: string) => void;
   /** Update tab data */
   updateTab: (tabId: string, updates: Partial<Tab>) => void;
   /** Get tab by ID */
   getTab: (tabId: string) => Tab | undefined;
+}
+
+/** What `Model.nodeRemoved` carries, narrowed to the one field VFN-001 reads. */
+interface NodeRemovedEvent {
+  args?: {
+    model?: RemovedNode;
+  };
 }
 
 const CanvasTabsContext = createContext<CanvasTabsContextValue | undefined>(undefined);
@@ -148,34 +158,86 @@ export function CanvasTabsProvider({ children }: CanvasTabsProviderProps) {
   }, [openTab]);
 
   /**
+   * Close a set of tabs in one transition.
+   *
+   * ⚠️ One call rather than a loop of `closeTab`, and that is load-bearing. Two `closeTab` calls
+   * in the same handler are batched, so both read the `activeTabId` of the render they were
+   * scheduled from: the first sees a survivor and hands the active id to it, the second no longer
+   * matches the active id at all, and `LogicBuilder.AllTabsClosed` — the only route by which the
+   * floating window closes — is never emitted. Closing two tabs at once is not exotic: it is what
+   * deleting a group containing two Visual Functions does, and what *Done* does.
+   *
+   * `setActiveTabId` takes the functional form for the same reason: what the next active tab
+   * should be is a question about the tabs that survive, not about the render this was called in.
+   */
+  const closeTabs = useCallback((tabIds: readonly string[]) => {
+    if (tabIds.length === 0) return;
+    const closing = new Set(tabIds);
+
+    setTabs((prevTabs) => {
+      const remaining = prevTabs.filter((t) => !closing.has(t.id));
+      if (remaining.length === prevTabs.length) return prevTabs;
+
+      setActiveTabId((prevActive) => {
+        if (remaining.length === 0) return undefined;
+        if (prevActive && remaining.some((t) => t.id === prevActive)) return prevActive;
+        return remaining[remaining.length - 1].id;
+      });
+
+      if (remaining.length === 0) {
+        // The last tab going is what closes the window. There is deliberately no separate
+        // "window is open" state for this to get out of step with.
+        EventDispatcher.instance.emit('LogicBuilder.AllTabsClosed');
+      }
+
+      return remaining;
+    });
+  }, []);
+
+  /**
    * Close a tab by ID
    */
   const closeTab = useCallback(
     (tabId: string) => {
-      setTabs((prevTabs) => {
-        const tabIndex = prevTabs.findIndex((t) => t.id === tabId);
-        if (tabIndex === -1) {
-          return prevTabs;
-        }
-
-        const newTabs = prevTabs.filter((t) => t.id !== tabId);
-
-        // If closing the active tab, switch to another tab or clear active
-        if (activeTabId === tabId) {
-          if (newTabs.length > 0) {
-            setActiveTabId(newTabs[newTabs.length - 1].id);
-          } else {
-            setActiveTabId(undefined);
-            // Emit event that all Logic Builder tabs are closed
-            EventDispatcher.instance.emit('LogicBuilder.AllTabsClosed');
-          }
-        }
-
-        return newTabs;
-      });
+      closeTabs([tabId]);
     },
-    [activeTabId]
+    [closeTabs]
   );
+
+  /**
+   * 🔴 VFN-001 — a deleted node takes its tab with it.
+   *
+   * The second half of the report: *"including potentially the very logic node you're editing,
+   * and then the editor stays open which shouldn't happen"*. However the node goes — the fixed
+   * Delete, the context menu, an undo of the paste that created it — the tab that was editing it
+   * survived, holding a `nodeId` that resolves to nothing. `BlockTraceClient` keeps arming a node
+   * that is gone, and the 300 ms debounce writes the workspace back to a model that is no longer
+   * in the graph.
+   *
+   * `Model.nodeRemoved` fires once for the removed node, and `forEach` covers it and its
+   * descendants — a Visual Function nested under a group is removed with the group and emits no
+   * event of its own.
+   *
+   * 🔴 Closing through `closeTabs` and nothing else is deliberate. When the last tab goes it fires
+   * `LogicBuilder.AllTabsClosed`, which is the single route by which the window closes; a
+   * "hide the window" flag here would be a second source of truth for the window's open-ness,
+   * which is derived from which tabs are open and from nothing else.
+   */
+  useEffect(() => {
+    const context = {};
+
+    EventDispatcher.instance.on(
+      'Model.nodeRemoved',
+      (event: NodeRemovedEvent) => {
+        closeTabs(tabsClosedByNodeRemoval(tabs, event?.args?.model));
+      },
+      context
+    );
+
+    return () => {
+      EventDispatcher.instance.off(context);
+    };
+  }, [tabs, closeTabs]);
 
   /**
    * Switch to a different tab
@@ -223,6 +285,7 @@ export function CanvasTabsProvider({ children }: CanvasTabsProviderProps) {
     activeTabId,
     openTab,
     closeTab,
+    closeTabs,
     switchTab,
     updateTab,
     getTab

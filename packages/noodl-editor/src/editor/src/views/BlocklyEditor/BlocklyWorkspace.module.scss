@@ -289,15 +289,42 @@
     }
   }
 
-  /* Text input fields */
+  /*
+   * Blockly's field editor. 🔴 VFN-002 — theme it, but do not touch its box.
+   *
+   * *"the number field you can't see what you're typing until you unfocus the field and the
+   * number appears."*
+   *
+   * Blockly sizes this input by measuring the field's rendered text on the block and setting the
+   * widget div to exactly that box; the input is `width: 100%` of it. Its own base rule is
+   * `border: none; padding: 0; box-sizing: border-box`, and every one of those is load-bearing:
+   * with `border-box`, a border and padding come **out of** the measured width rather than off
+   * the outside of it. The 1px border and `4px 8px` that used to be here took **18 px of
+   * horizontal content box** away from a field measured at ~10 px for the digit `2`. The content
+   * box collapsed, `text-align: center` clipped the overflow symmetrically — which is why it was
+   * cut off at *both* ends — and there was nothing to read until the field closed and Blockly
+   * painted the value back as SVG text.
+   *
+   * So the ring is a `box-shadow`: it does not participate in the box model. ⚠️ Not an `outline`
+   * — Blockly's base rule sets `outline: none` on this element and means it; the focus ring is
+   * the widget div's job.
+   *
+   * ⚠️ And no `font-family` here either, which was the same defect one step smaller. Blockly
+   * measures the text with **its own** font (`FIELD_TEXT_FONTFAMILY`, applied to the block's
+   * `<text>`), then applies that same family to `.blocklyHtmlInput` through the renderer
+   * stylesheet — the widget div is given the renderer and theme class names when it is shown,
+   * precisely so the editor and the measurement agree. Overriding the family here broke that
+   * agreement by hand: a wider font overflows a box sized for a narrower one even with the
+   * padding gone. Letting Blockly's rule win makes them the same font by construction.
+   */
   .blocklyWidgetDiv input,
   .blocklyHtmlInput {
     background-color: var(--theme-color-bg-3) !important;
     color: var(--theme-color-fg-default) !important;
-    border: 1px solid var(--theme-color-border-default) !important;
+    border: none !important;
+    padding: 0 !important;
     border-radius: 4px !important;
-    padding: 4px 8px !important;
-    font-family: var(--font-family) !important;
+    box-shadow: 0 0 0 1px var(--theme-color-border-default);
   }
 
   /* Dropdown menus - DARK BACKGROUND with WHITE TEXT (matches Noodl theme) */

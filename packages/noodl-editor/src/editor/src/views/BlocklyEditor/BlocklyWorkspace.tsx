@@ -30,6 +30,7 @@ import { attachMyBlocksSave, type MyBlocksSaveHandle } from './MyBlocksSave';
 import { openSaveBlockDialog } from './MyBlocksSaveDialog';
 import { myBlocksStore } from './MyBlocksShelves';
 import type { BlocklyWorkspaceJson } from './myblocks/format';
+import { initBlocklyDialogs } from './BlocklyDialogs';
 import { initBlocklyIntegration } from './initialize';
 
 /** How long to coalesce edits before serialising and generating code. */
@@ -170,6 +171,17 @@ export function BlocklyWorkspace({ initialWorkspace, onChange, readOnly = false,
       // Custom blocks and generators must exist before the toolbox referencing them is built.
       initBlocklyIntegration();
       initMyBlocks();
+
+      /**
+       * VFN-003 — point `Blockly.dialog` at this editor's dialog layer before anything can ask
+       * it for a name. Its defaults reach `window.prompt`, which an Electron renderer does not
+       * implement, so *Create variable* and *Rename variable* did nothing at all.
+       *
+       * Here rather than in `initBlocklyIntegration` because the dialogs are React and that
+       * module is deliberately reachable from the plain-Node test runner. This is the earliest
+       * point in the React half, and it is ahead of any workspace existing to prompt from.
+       */
+      initBlocklyDialogs();
 
       const labels = await applyLanguage(currentLanguageCode());
       if (disposed || !blocklyDiv.current) return;

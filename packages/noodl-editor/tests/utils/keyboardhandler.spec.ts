@@ -14,6 +14,7 @@
 import { KeyCode, KeyMod } from '../../src/editor/src/utils/keyboard/KeyCode';
 import KeyboardHandler, {
   getKeyboardFocusKind,
+  keyboardTargetOf,
   KeyboardCommand
 } from '../../src/editor/src/utils/keyboardhandler';
 
@@ -314,6 +315,170 @@ describe('F21 KeyboardHandler focus predicate', () => {
       press('Escape');
       expect(fired).toEqual([]);
       expect(document.activeElement).not.toBe(input);
+    });
+  });
+
+  // ------------------------------------------- VFN-001: the read that was already stale --
+
+  /**
+   * 🔴 VFN-001 — L30's fix was correct and insufficient, and its negative control could not
+   * see why.
+   *
+   * `KeyboardHandler` listens on `document`, so it runs last. Blockly binds `keydown` on its own
+   * injection div and, in Blockly 12, individual blocks are focusable DOM nodes. So Blockly's
+   * handler deletes the focused block *first*, `document.activeElement` falls back to `<body>`
+   * inside the same dispatch, and the guard then reads `'none'` and deletes a canvas node too.
+   *
+   * One keypress, two deletions — with the predicate working perfectly the whole time. It was
+   * answering about a DOM that no longer existed.
+   *
+   * These specs press the key the way the browser does: **dispatched at an element**, with that
+   * element removed mid-dispatch. A spec that only checks `activeElement` proves nothing here —
+   * that is the value that lies.
+   */
+  describe('VFN-001 — the keystroke belongs to where it was dispatched', () => {
+    /** A keydown dispatched at an element, as the browser does it — not at `document`. */
+    function pressOn(element: HTMLElement, key: string, type: 'keydown' | 'keyup' = 'keydown') {
+      element.dispatchEvent(new KeyboardEvent(type, { key, bubbles: true, cancelable: true }));
+    }
+
+    function overlay(inner: string): HTMLElement {
+      host.innerHTML = `<div data-keyboard-scope="logic-overlay">${inner}</div>`;
+      return host.firstElementChild as HTMLElement;
+    }
+
+    function registerDelete() {
+      register([
+        { handler: () => fired.push('delete-node'), keybinding: KeyCode.Backspace },
+        { handler: () => fired.push('delete-node'), keybinding: KeyCode.Delete }
+      ]);
+    }
+
+    it('resolves the dispatched element, not the focused one', () => {
+      const root = overlay('<div id="block" tabindex="0"></div>');
+      const block = root.querySelector<HTMLElement>('#block');
+
+      const outside = document.createElement('input');
+      host.appendChild(outside);
+      outside.focus();
+      expect(document.activeElement).toBe(outside);
+
+      let resolved: HTMLElement | null = null;
+      const listener = (e: Event) => (resolved = keyboardTargetOf(e as KeyboardEvent));
+      document.addEventListener('keydown', listener);
+      pressOn(block, 'Backspace');
+      document.removeEventListener('keydown', listener);
+
+      expect(resolved).toBe(block);
+    });
+
+    it('still answers "own-surface" for a block removed from the document mid-dispatch', () => {
+      // The mechanism, in one assertion. Blockly's handler runs on the injection div, below us,
+      // and deletes the block — so by the time we are reached the target is detached and
+      // `activeElement` is `<body>`. The captured path still names the surface.
+      const root = overlay('<div id="workspace"><div id="block" tabindex="0"></div></div>');
+      const block = root.querySelector<HTMLElement>('#block');
+      block.focus();
+
+      // Stand in for Blockly: an earlier handler in the same dispatch removes the focused block.
+      root.addEventListener('keydown', () => block.remove());
+
+      let kind: string | null = null;
+      let activeWhenWeRan: Element | null = null;
+      const listener = (e: Event) => {
+        activeWhenWeRan = document.activeElement;
+        kind = getKeyboardFocusKind(keyboardTargetOf(e as KeyboardEvent));
+      };
+      document.addEventListener('keydown', listener);
+      pressOn(block, 'Backspace');
+      document.removeEventListener('keydown', listener);
+
+      // The precondition — without this the test proves nothing, because the old read would
+      // have been correct.
+      expect(block.isConnected).toBe(false);
+      expect(activeWhenWeRan).toBe(document.body);
+
+      expect(kind).toBe('own-surface');
+    });
+
+    it('does not delete a canvas node when Blockly deletes the focused block', () => {
+      registerDelete();
+
+      const root = overlay('<div id="workspace"><div id="block" tabindex="0"></div></div>');
+      const block = root.querySelector<HTMLElement>('#block');
+      block.focus();
+      root.addEventListener('keydown', () => block.remove());
+
+      pressOn(block, 'Backspace');
+
+      expect(fired).toEqual([]);
+    });
+
+    it('holds for the second and third consecutive press — this is the criterion the old fix failed', () => {
+      // After the first deletion focus is gone, so a press-once test passes vacuously. Blockly
+      // keeps dispatching from the workspace it still owns; the guard must keep saying so.
+      registerDelete();
+
+      const root = overlay('<div id="workspace" tabindex="0"><div id="block"></div></div>');
+      const workspace = root.querySelector<HTMLElement>('#workspace');
+      const block = root.querySelector<HTMLElement>('#block');
+      workspace.focus();
+      root.addEventListener('keydown', () => block.remove(), { once: true });
+
+      pressOn(block, 'Backspace');
+      pressOn(workspace, 'Backspace');
+      pressOn(workspace, 'Delete');
+
+      expect(document.activeElement).toBe(workspace);
+      expect(fired).toEqual([]);
+    });
+
+    it('NEGATIVE CONTROL — the same keystroke from outside the surface still deletes the node', () => {
+      // Without this the suite above is "nothing happened", which is also what a broken
+      // instrument reports.
+      registerDelete();
+
+      overlay('<div id="block" tabindex="0"></div>');
+      const outside = document.createElement('div');
+      outside.tabIndex = 0;
+      host.appendChild(outside);
+
+      pressOn(outside, 'Backspace');
+
+      expect(fired).toEqual(['delete-node']);
+    });
+
+    it('runs every shortcut on a freshly loaded editor with nothing focused (the F21 fallback)', () => {
+      // ⚠️ The `activeElement` fallback is not padding: a keystroke with nothing focused targets
+      // `<body>`, and dropping it would disable ⌘F, ⌫ and the arrows outright.
+      register([
+        { handler: () => fired.push('search'), keybinding: KeyMod.CtrlCmd | KeyCode.KEY_F },
+        { handler: () => fired.push('delete-node'), keybinding: KeyCode.Backspace },
+        { handler: () => fired.push('left'), keybinding: KeyCode.LeftArrow }
+      ]);
+
+      (document.activeElement as HTMLElement)?.blur?.();
+      expect(document.activeElement).toBe(document.body);
+
+      document.body.dispatchEvent(
+        new KeyboardEvent('keydown', { key: 'f', metaKey: true, bubbles: true, cancelable: true })
+      );
+      pressOn(document.body, 'Backspace');
+      pressOn(document.body, 'ArrowLeft');
+
+      expect(fired).toEqual(['search', 'delete-node', 'left']);
+    });
+
+    it('keeps typing in a text field to the field, dispatched at the field', () => {
+      register([{ handler: () => fired.push('canvas-d'), keybinding: KeyCode.KEY_D }]);
+
+      const input = document.createElement('input');
+      input.type = 'text';
+      host.appendChild(input);
+      input.focus();
+
+      pressOn(input, 'd');
+      expect(fired).toEqual([]);
     });
   });
 });

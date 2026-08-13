@@ -106,6 +106,58 @@ function getActiveElement(): HTMLElement | null {
   return element;
 }
 
+/**
+ * 🔴 VFN-001 — the element a keystroke was *dispatched to*, which is not always the element
+ * that holds focus by the time this handler runs.
+ *
+ * `KeyboardHandler` listens on `document`, so it runs last, on the way up. Blockly 12 binds its
+ * own `keydown` on its **injection div** (the only such bind in `inject` is
+ * `conditionalBind(d, "keydown", …)` where `d` is the container), and in Blockly 12 individual
+ * blocks are focusable DOM nodes — `FocusManager`, `getFocusableElement`, `blocklyActiveFocus`.
+ * So deleting the selected block *removes the focused element from the document*, and
+ * `document.activeElement` falls back to `<body>` **inside the same dispatch**.
+ *
+ * The guard then read `'none'` and ran the node-graph Delete as well: one keypress, two
+ * deletions, a node the builder never touched gone — while the predicate was working perfectly.
+ * It was answering a question about a DOM that no longer existed.
+ *
+ * What survives that is the **composed path**: it is captured when the event is dispatched, and
+ * no later handler can rewrite it. Walking it also handles a shadow root, whose `target` would
+ * otherwise report the host rather than the real element.
+ *
+ * 🔴 `composedPath()[0]` on its own is not enough, and it fails for the same reason
+ * `activeElement` did. The deleted block *is* the target, and `Element.closest()` walks the tree
+ * an element is **in** — a detached element has no ancestors, so
+ * `target.closest('[data-keyboard-scope]')` answers `null` on the very element whose removal
+ * started this. Hence `isConnected`: take the first element of the path the document still
+ * holds, which is the block's workspace — inside the scope, and never going anywhere.
+ *
+ * ⚠️ The `activeElement` fallback is load-bearing, not padding. A keystroke with nothing focused
+ * genuinely targets `<body>`, and every canvas shortcut is supposed to run then — dropping the
+ * fallback would disable ⌘F, ⌫ and the arrows on a freshly loaded editor, which is exactly the
+ * F21 defect above.
+ */
+export function keyboardTargetOf(event: KeyboardEvent): HTMLElement | null {
+  const path = typeof event.composedPath === 'function' ? event.composedPath() : [];
+  const candidates: EventTarget[] = path.length ? path : [event.target];
+
+  for (const node of candidates) {
+    const element = node as HTMLElement;
+    // `document` and `window` are in the path too, and a synthesised `document.dispatchEvent`
+    // carries `document` as the target outright. Neither is an element.
+    if (!element || typeof element.closest !== 'function') continue;
+    // `<body>` is where a keystroke with nothing focused genuinely lands, and the path is ordered
+    // from the target upwards — so reaching it means no element below it answered.
+    if (element === document.body || element === document.documentElement) break;
+    // Removed from the document by an earlier handler on this same dispatch. It cannot answer a
+    // `closest` query any more, but its ancestors in the captured path still can.
+    if (element.isConnected === false) continue;
+    return element;
+  }
+
+  return getActiveElement();
+}
+
 export function getKeyboardFocusKind(element: HTMLElement | null): KeyboardFocusKind {
   if (!element) return 'none';
 
@@ -170,12 +222,12 @@ export default class KeyboardHandler {
 
       const code = getKeyMod(event) + KeyCodeUtils.fromString(event.key);
 
-      const focusedElement = getActiveElement();
+      const focusedElement = keyboardTargetOf(event);
       const focusKind = getKeyboardFocusKind(focusedElement);
 
       if (focusKind === 'text-entry') {
         // Escape leaves the field. Everything else is the user typing.
-        if (code === KeyCode.Escape) focusedElement.blur();
+        if (code === KeyCode.Escape) focusedElement.blur?.();
         return;
       }
 
@@ -192,7 +244,7 @@ export default class KeyboardHandler {
         return;
       }
 
-      const focusKind = getKeyboardFocusKind(getActiveElement());
+      const focusKind = getKeyboardFocusKind(keyboardTargetOf(event));
       if (keystrokeBelongsToFocus(event, focusKind)) return;
 
       this.executeCommandMatchingKeyEvent(event, 'up');
