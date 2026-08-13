@@ -45,7 +45,18 @@
   border: 0;
   border-radius: 3px;
   cursor: pointer;
-  color: inherit;
+  /*
+    🔴 DSG-008. This was `color: inherit`, and the intent was right — a `<button>`
+    does not inherit `color` by default, so saying so is how chrome buttons pick
+    up their surface's tone. But **nothing up this chain sets one**, so what it
+    inherited was the document initial value: black. Measured at **1.24:1** in
+    dark mode.
+
+    Only the glyphs showed it: the thread title is a `Text` component carrying its
+    own token, so the row looked fine and the two icons beside it did not.
+    `inherit` is only ever as good as the thing above, and here there was nothing.
+  */
+  color: var(--theme-color-fg-default);
   text-align: left;
 
   p {

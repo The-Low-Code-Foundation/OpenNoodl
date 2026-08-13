@@ -58,17 +58,28 @@ $_y-padding: 8px;
   }
 }
 
+/*
+  🔴 DSG-008. The select's caret measured **1.24:1** in dark mode — black on
+  `bg-2`, because `path { fill }` cannot colour a stroked glyph.
+
+  `caret_down.svg` is a 1.5px `stroke="currentColor"` line, and `fill` is simply
+  the wrong property for it. Worse, the rule *looked* correct and referenced the
+  right token, so nothing about reading this file suggested a problem — the
+  select had a caret nobody could see and a stylesheet that said otherwise.
+
+  `color` drives both eras of the icon set at once (`Icon.module.scss` says so in
+  its header), so it replaces the `path { fill }` rather than joining it: two
+  writers of one glyph's colour is how they drift apart again.
+*/
 .Icon {
   margin-top: calc($_y-padding * -0.5);
   margin-bottom: calc($_y-padding * -0.5);
   margin-right: calc($_x-padding * -0.6);
 
-  path {
-    fill: var(--theme-color-fg-default);
+  color: var(--theme-color-fg-default);
 
-    .DisplayContainer:hover & {
-      fill: var(--theme-color-fg-default-contrast);
-    }
+  .DisplayContainer:hover & {
+    color: var(--theme-color-fg-default-contrast);
   }
 }
 

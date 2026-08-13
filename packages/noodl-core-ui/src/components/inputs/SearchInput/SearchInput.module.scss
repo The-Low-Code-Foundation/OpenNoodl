@@ -6,6 +6,24 @@ $_search-bar-height: 45px;
   background-color: var(--theme-color-bg-1);
 }
 
+/*
+  🔴 DSG-008. The magnifier here measured **1.16:1** in dark mode — the worst
+  glyph in the editor, and effectively invisible.
+
+  It set `opacity` and never `color`, and `Icon.module.scss` is explicit that a
+  glyph paints with `currentColor` and the **host** supplies it. With no host
+  colour anywhere up the chain the computed value was the initial `color`:
+  literally `rgb(0, 0, 0)`, black, on `#12161b`. Nothing in the stylesheet looked
+  wrong, which is why this needed measuring in a running editor rather than
+  reading — see `scripts/devtools/icon-contrast.js`.
+
+  ⚠️ The `opacity: 0.6` is kept because it is the unfocused/focused affordance,
+  but it is part of the contrast sum: `fg-default` at 0.6 over `bg-1` composites
+  to #6b727b, which is **3.73:1** and clears WCAG 1.4.11's 3:1 for a graphical
+  object. At full opacity on focus it is 7.0:1. Anything dimmer than `fg-default`
+  fails once the 0.6 is applied — `fg-muted` composites to 2.21:1 — so the token
+  here is doing two jobs and cannot be quietly stepped down.
+*/
 .SearchInputIcon {
   position: absolute;
   width: 22px;
@@ -14,6 +32,7 @@ $_search-bar-height: 45px;
   transform: translateY(-50%);
   left: 10px;
   pointer-events: none;
+  color: var(--theme-color-fg-default);
   opacity: 0.6;
   transition: opacity 200ms ease-in-out 1000ms; // we lose focus for short amounts of time, make it less noticable
 

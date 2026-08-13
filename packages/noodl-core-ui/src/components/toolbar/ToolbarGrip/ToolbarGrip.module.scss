@@ -1,3 +1,23 @@
+/*
+  🔴 DSG-008. This grip painted dark-on-dark in dark mode, and the reason is one
+  property short of the house rule.
+
+  `grip.svg` is three `stroke="currentColor"` diagonals — a line glyph, not a
+  solid one — so the only thing that colours it is the `color` it inherits, and
+  this rule set `fill` and never `color`. `fill` on an ancestor cannot reach it
+  twice over: the paths declare their own `stroke`, and `fill` is the wrong
+  property for a stroked glyph anyway. So the grip took whatever `color` happened
+  to be ambient wherever it was mounted — in the code editor popout, the footer
+  sets none, `.Root` sets none, and what arrives is the document default.
+
+  `Icon.module.scss` states the rule in its own header: glyphs paint with
+  `currentColor`, and the **host** sets `color`. This is a host that did not.
+
+  `fg-default-shy` (#8b95a1) rather than `fg-muted` (#6b7682): measured on
+  `bg-2`, muted is **3.66:1** and shy is **5.57:1**. A 1px diagonal is the
+  thinnest mark in the product and it is a control affordance, so it takes the
+  larger number rather than the one whose name sounds right.
+*/
 .Root {
   padding: 0 2px 2px 0;
   border: 0;
@@ -6,9 +26,21 @@
   height: 100%;
   cursor: nwse-resize;
 
-  fill: var(--theme-color-fg-muted);
+  color: var(--theme-color-fg-default-shy);
+  /* Kept for any solid glyph a caller swaps in; `color` is what actually paints
+     the shipped one. */
+  fill: currentColor;
 
   display: flex;
   justify-content: flex-end;
   align-items: flex-end;
+
+  &:hover {
+    color: var(--theme-color-fg-highlight);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--theme-color-primary);
+    outline-offset: -2px;
+  }
 }
