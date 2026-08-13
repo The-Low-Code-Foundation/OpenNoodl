@@ -2,6 +2,49 @@
 
 **Status:** ✅ **BUILT AND MEASURED LIVE 2026-08-13 — passes** · **Tier 1** · no dependencies
 
+> ## ✅ Criterion 3, half measured and half handed on — 2026-08-13, lane D
+>
+> Criterion 3 had never been measured at all. It is now measured **from the tokens the rule names**,
+> which is the half that can be settled without a renderer, and it found a failure.
+>
+> ### 🔴 The ring was invisible, and the fix is a token
+>
+> | pair | dark | light | bar |
+> |---|---|---|---|
+> | `--theme-color-fg-default` on `--theme-color-bg-3` — the text | **6.66:1** | **6.54:1** | AA 4.5 ✅ |
+> | `--theme-color-border-default` on `bg-3` — the ring **as it shipped** | **1.01:1** | **1.11:1** | 3.0 🔴 |
+> | `--theme-color-border-control` on `bg-3` — the ring **now** | **3.17:1** | **3.16:1** | 3.0 ✅ |
+>
+> `border-default` is the panel-edge tone; against this rule's own `bg-3` fill it is the same colour
+> as the surface it delimits. Criterion 3 asks for *"a visible border"* and there was not one, in
+> either theme. `--theme-color-border-control` is the token `colors.css` defines for exactly this
+> ("the lightest tone that still clears 3:1 on bg-1, bg-2 and bg-3") and is already how
+> `ExtractToComponentPopup` and VFN-009's own `SavedBlocksSection` draw a control edge.
+>
+> **Changed:** `BlocklyWorkspace.module.scss` — `box-shadow: 0 0 0 1px var(--theme-color-border-control)`.
+> **Gated:** `tests-unit/vfn-002/field-editor-contrast.spec.ts` (9 cases), which reads the token
+> names **out of the stylesheet** rather than restating them, with two negative controls: the
+> replaced token measured at 1.01/1.11, and black-on-white/white-on-white through the same formula.
+> Watched red — with `border-default` restored, both ring assertions failed at 1.01 and 1.11.
+>
+> ### ⚠️ Measured and deliberately not asserted — the ring's *outer* edge
+>
+> A `box-shadow` paints outside the border box, so the ring's other side is the Blockly block. No
+> `--theme-color-*` tone clears 3:1 against the hue circle: the ring is **1.00:1 (dark, worst hue
+> 310)** and **1.01:1 (light, worst hue 30)** against the block, and the field's own `bg-3` fill is
+> **2.43:1 / 2.25:1**. This is the wall VFN-013 hit and answered by taking the theme out of the
+> badge entirely; doing the same to a *text input* would mean a light-theme field with a dark ring,
+> which is a different trade and belongs to whoever sees it on screen. The numbers are logged by the
+> spec so the next person starts from them rather than rediscovering them.
+>
+> ### 🔴 Still owed to the drive
+>
+> 1. **That these rules win.** A declaration that is present and losing looks identical from a
+>    stylesheet parse, and this repo has a register entry about the class of defect where they were.
+> 2. **A screenshot of an open field editor on a block, in both themes** — the ring against the
+>    block, at real zoom, is the reading a token cannot give.
+> 3. **Criterion 4**, the dropdowns, which was never driven either.
+
 > ## ✅ Measured live 2026-08-13, with the pre-fix rule re-injected as the control.
 >
 > ### 🔴 First, a correction to this file's stated instrument

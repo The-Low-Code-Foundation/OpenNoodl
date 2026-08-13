@@ -4,6 +4,70 @@
 **Branch:** `vfn-bench` (`4420812e`, `e1219147`, `8d4bf513`) · **findings and the owed drive:**
 [NOTES-bench.md](./NOTES-bench.md)
 
+> ## ✅ NOTES-bench item 7 closed — the strip copy was ellipsised, and is now budgeted (lane D)
+>
+> The risk that file filed — *"the note is a single `text-overflow: ellipsis` line … it may well be
+> ellipsised into uselessness"* — was real. The drive saw:
+>
+> > *"…Press ▶ Run below to work them out here, with the app stop…"*
+>
+> **The sentence that teaches the bench is the half the ellipsis eats**, because the ellipsis always
+> eats the end and an instruction always keeps its verb there.
+>
+> ### The trim, verbatim
+>
+> | reason | before | after |
+> |---|---|---|
+> | `attached-idle` | `Watching this node. Nothing has run since you opened this editor — trigger it in the app to see values.` | `Watching — trigger it in the app to see values.` |
+> | `no-probes` | `These blocks were generated before value tracing; make any edit to bring them up to date.` | `Made before value tracing; make any edit to update.` |
+> | `not-in-preview` | `The preview is running, but this Visual Function is not on screen in it right now.` | `The preview is running, but not this Visual Function.` |
+> | `no-preview` | `Run the preview to see what these blocks work out.` | `Start the preview to see what these blocks work out.` |
+> | `no-node` | `These are a saved block's own blocks. There is no node behind them, so there is nothing to run and no live values to show — place the block in a Visual Function to watch it work.` | `A saved block's own blocks, with no node behind them — place the block in a Visual Function to see it run.` |
+> | the hint | ` Press ▶ Run below to work them out here, with the app stopped.` | ` Or press ▶ Run to work them out here, app stopped.` |
+>
+> `waiting` and `no-connection` were already short enough and are unchanged.
+>
+> 🔴 **The reported sentence was not the longest one.** Before, in width order: `no-node` 802 px,
+> `attached-idle` 756 px, `no-probes` 706 px, `not-in-preview` 649 px. A fix aimed only at the
+> reason that was *reported* would have left a longer one behind it and the same complaint would
+> have come back wearing a different sentence. **Six of the seven clipped** at the minimum window
+> width; all seven fit now.
+>
+> ⚠️ **"below" was also wrong.** `buildStrip` appends the Run button *first*, so it is on the same
+> row as the note and to its **left**. Trimming removed a false direction as well as six characters,
+> and `strip-reason.spec.ts` now asserts the word cannot come back.
+>
+> ### How it was measured, headlessly
+>
+> `scripts/devtools/text-advance.js` — a new instrument that reads glyph advances out of the font
+> the app renders with (`--font-family` → `-apple-system` → `/System/Library/Fonts/SFNS.ttf`) via
+> `cmap`/`hmtx`, because a character count treats `i` and `W` alike and `scrollWidth` is
+> integer-rounded (VFN-002's own correction). `tests-unit/vfn-011/strip-copy.spec.ts` drives it
+> against the strip's geometry **parsed out of `BlockValueController.ts`**, at
+> `LOGIC_OVERLAY_MIN_WIDTH` (640 px) — the narrowest the window can be resized to, not the width the
+> last drive happened to use. Note room there is 507 px; the budget is 489 px (3.5% held back for
+> the measurer's ±5% optical-size error).
+>
+> | reason | note width @640px | budget |
+> |---|---|---|
+> | `no-node` | 480 px | 544 px |
+> | `no-preview` | 477 px | 489 px |
+> | `no-probes` | 476 px | 489 px |
+> | `not-in-preview` | 474 px | 489 px |
+> | `no-connection` | 451 px | 489 px |
+> | `attached-idle` | 448 px | 489 px |
+> | `waiting` | 422 px | 489 px |
+>
+> **Three negative controls**, all watched red before being inverted: the pre-trim copy fails 6/7;
+> the model **reproduces the reported render**, cutting at exactly `…with the app stop…` for window
+> widths 876–881 px (found by search, not asserted from a guess); and the measurer is shown to read
+> real advances (`W` > 2×`i`, 10 glyphs = 10× one) rather than returning a constant. Restoring the
+> old `attached-idle` string made the gate fail at **700 px against a 489 px budget**.
+>
+> 🔴 **Owed to the drive:** the ±5% band. The budget is arithmetic over the font's default optical
+> instance with no kerning; one screenshot of the strip at a 640 px window settles it. NOTES-bench
+> items 1–6, 8 and 9 are untouched by this and still stand.
+
 > All eight acceptance criteria are implemented. Four of them are proved by spec (4, 5, 8, and the
 > reporting half of 6); the rest are proved *as far as a headless runner reaches* and are owed a
 > live drive, which this worktree could not do. **Read NOTES-bench.md §"Owed a live drive" before

@@ -39,6 +39,21 @@
  * non-scaling-stroke` keeps both at their screen width as the workspace zooms out, which is the
  * rule the canvas glyphs learned the hard way.
  *
+ * ## 🔴 Neither stroke carries a theme token, and the sentence above is why
+ *
+ * "A dark casing underneath" was written as `--theme-color-bg-1`, which is `#12161b` in the dark
+ * theme and **`#ffffff`** in the light one. In the light theme the casing was therefore not dark,
+ * it was white — and a white casing measures **2.58:1** against a Blockly block at hue 60 and
+ * **2.72:1** against hue 55, the My Blocks hue, which is the hue of the blocks this outline is
+ * most often drawn on. Under WCAG 1.4.11's 3:1 for a graphical object, on the one mark whose whole
+ * job is to say *these are the blocks you are about to save*.
+ *
+ * A block body is on Blockly's hue scale and is theme-independent on purpose, so a mark painted on
+ * one has no business following the editor's theme — the standing rule for anything painted on a
+ * wire or a block, and the same conclusion VFN-013 reached about the value badge. These are that
+ * task's own two values (`BADGE_TOKENS.surface`, and the azure it draws its accents in), so the
+ * two marks that share a block also share a palette. Gated in `tests-unit/vfn-006/`.
+ *
  * @module BlocklyEditor
  */
 
@@ -50,11 +65,16 @@ import type { SaveOutline } from './MyBlocksSave';
 /** The class on every element this layer adds. Nothing else in the editor uses it. */
 export const OUTLINE_CLASS = 'noodlMyBlocksSaveOutline';
 
-const OUTLINE_TOKENS: Record<string, ColorSpec> = {
+/**
+ * 🔴 **No `css` on either spec, and that is the property under test.** `resolveThemeTokens` returns
+ * the fallback for a spec with no token, in any document — so these are the colours the outline is
+ * painted with in both themes, by construction rather than by luck.
+ */
+export const OUTLINE_TOKENS: Record<'accent' | 'casing', ColorSpec> = {
   /** The mark itself. Selection, not danger — Phase 23's law reserves red. */
-  accent: { css: '--theme-color-primary', fallback: '#4da3ff' },
+  accent: { fallback: '#4da3ff' },
   /** The casing under it, so the accent reads on a light block as well as a dark one. */
-  casing: { css: '--theme-color-bg-1', fallback: '#11151b' }
+  casing: { fallback: '#0b0e12' }
 };
 
 /** Screen pixels, held constant under zoom by `vector-effect`. */

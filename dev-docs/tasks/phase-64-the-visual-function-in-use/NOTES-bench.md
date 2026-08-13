@@ -56,9 +56,16 @@ headless spec or an owed drive**, and they are separated on purpose.
    ⚠️ Related register entry: `document.activeElement` is stale in a bubble-phase handler. This
    reads it at the *top* of a synchronous repaint, not from a handler, so it should be sound — but
    "should be" is why it is on this list.
-7. **The two new strip sentences at real widths.** The note is a single `text-overflow: ellipsis`
-   line sharing a strip with a slider and now a Run button. `attached-idle` plus the bench hint is
-   ~150 characters. It may well be ellipsised into uselessness.
+7. ✅ **CLOSED — the two new strip sentences at real widths.** This was right, and it was worse than
+   it says. The drive rendered *"…Press ▶ Run below to work them out here, with the app stop…"* —
+   the teaching half gone — and a headless measurement (`scripts/devtools/text-advance.js`, glyph
+   advances out of the system font; `tests-unit/vfn-011/strip-copy.spec.ts`) then found **six of the
+   seven** sentences clipping at the window's 640 px minimum, with `no-node` the longest at 802 px
+   against 564 px of room. All seven are trimmed and budgeted; see VFN-011's task file for the
+   before/after table. 🔴 Two things this note got wrong, worth keeping: the risk was filed against
+   *"the two new sentences"* when five of the seven were already too long before this task touched
+   them, and `attached-idle` — the reported one — was only the **second** longest. Still owed: one
+   screenshot at a 640 px window, because the budget is arithmetic with a ±5% band.
 8. **A genuinely stale node.** `no-probes` needs a project containing a Visual Function whose
    `generatedCode` predates LGC-003 and which has not been edited since. I have not found one; the
    branch has only been exercised with a hand-written string.
