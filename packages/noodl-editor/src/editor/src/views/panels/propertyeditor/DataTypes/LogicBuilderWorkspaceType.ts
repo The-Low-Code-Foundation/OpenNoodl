@@ -4,6 +4,8 @@ import { createRoot, Root } from 'react-dom/client';
 import { PropertyPanelButton } from '@noodl-core-ui/components/property-panel/PropertyPanelButton';
 
 import { EventDispatcher } from '../../../../../../shared/utils/EventDispatcher';
+import { myBlocksStore } from '../../../BlocklyEditor/MyBlocksShelves';
+import { renderReadableCodeFromJson } from '../../../BlocklyEditor/readableCode';
 import { GeneratedCodeModal } from '../GeneratedCodeModal';
 import { TypeView } from '../TypeView';
 import { getEditType } from '../utils';
@@ -128,16 +130,29 @@ export class LogicBuilderWorkspaceType extends TypeView {
     });
   }
 
+  /**
+   * VFN-014 — show the program a person can read; keep the one that runs a press away.
+   *
+   * 🔴 **Nothing here writes.** `generatedCode` is read exactly as before and travels to the modal
+   * byte for byte; the readable rendering is produced from the node's saved `workspace` parameter
+   * by `renderReadableCodeFromJson`, which regenerates with the probe wrapper simply not applied.
+   * The node's parameters are not touched on this path, and a spec asserts the stored program is
+   * byte-identical across a readable render — the generator is a module-level singleton and a
+   * wrapper that failed to restore it would change what the *next* flush writes to disk.
+   */
   onViewCodeClicked() {
     const nodeName = this.parent?.model?.model?.label || this.parent?.model?.type?.displayName || 'Logic Builder';
     const generatedCode = this.parent?.model?.getParameter('generatedCode') || '';
+    const workspace = this.parent?.model?.getParameter('workspace') || '';
+
+    const readable = renderReadableCodeFromJson(workspace, myBlocksStore());
 
     console.log('[LogicBuilderWorkspaceType] Opening generated code modal for node:', nodeName);
 
-    this.showModal(nodeName, generatedCode);
+    this.showModal(nodeName, generatedCode, readable.code, readable.error && readable.error.message);
   }
 
-  showModal(nodeName: string, code: string) {
+  showModal(nodeName: string, code: string, readableCode?: string, readableError?: string) {
     // Create modal container if it doesn't exist
     if (!this.modalContainer) {
       this.modalContainer = document.createElement('div');
@@ -147,7 +162,7 @@ export class LogicBuilderWorkspaceType extends TypeView {
     }
 
     this.isModalOpen = true;
-    this.renderModal(nodeName, code);
+    this.renderModal(nodeName, code, readableCode, readableError);
   }
 
   hideModal() {
@@ -155,7 +170,7 @@ export class LogicBuilderWorkspaceType extends TypeView {
     this.renderModal('', '');
   }
 
-  renderModal(nodeName: string, code: string) {
+  renderModal(nodeName: string, code: string, readableCode?: string, readableError?: string) {
     if (!this.modalRoot) return;
 
     this.modalRoot.render(
@@ -163,6 +178,8 @@ export class LogicBuilderWorkspaceType extends TypeView {
         isOpen: this.isModalOpen,
         nodeName: nodeName,
         code: code,
+        readableCode: readableCode,
+        readableError: readableError,
         onClose: () => this.hideModal()
       })
     );
