@@ -188,7 +188,7 @@ live: `needs-triage`, `node-library`, `severity:blocker/serious/annoying/cosmeti
 `gh issue list --label needs-triage` now returns a real (empty) queue instead of
 failing by construction.
 
-### B5. The content origin's disposition → ALPHA-006 §5 ✅ **Both GitHub actions done 2026-08-07 — only the repo strip left**
+### B5. The content origin's disposition → ALPHA-006 §5 ✅ **Repoint done 2026-08-13 (it was a live 404, not a tidy-up) — repo strip + `getDocsEndpoint()` still owed**
 
 `the-low-code-foundation.github.io/opennoodl-docs` is not a docs site — it is the
 editor's **content CDN for seven payload types**, six of which are not documentation
@@ -224,6 +224,46 @@ safe — the old name still redirects, but the rename is done), then strip
 `opennoodl-docs`'s old doc content per §4's migration table, then the Help Center
 repoint. None of it is an engineering unknown; nobody has done the actual repoint
 + strip yet.
+
+> **2026-08-13 — the repoint is done, and the sentence above was wrong about why
+> it was safe.** "The old name still redirects" is true of `git` and the REST API
+> and **false of GitHub Pages**, which follows no rename redirect at all. So the
+> six payloads were not waiting on a repoint — they had been **hard 404 since the
+> 2026-08-07 rename**: an erroring Library panel, an empty lesson list and an
+> empty template picker, for six days, in the build going out as 0.1.7.
+>
+> The rename broke it a **second** way, independently. It re-ran Pages as a
+> `legacy` build (`build_type: legacy`, source `main:/`), which publishes the repo
+> tree verbatim — where the previous *Docusaurus* build flattened `static/**` up to
+> the site root. The payloads are therefore one level down now, so the endpoint is
+> `.../nodegx-content/static`, **not** `.../nodegx-content`. Note the API reads
+> green throughout: `has_pages: true`, `status: "built"`. Only fetching a real
+> payload path shows the 404.
+>
+> Proved by mirroring every call site's URL join against the live origin: **115 of
+> 116 URLs 200** — all 29 prefabs and 26 modules, each one's index entry, zip and
+> icon, plus `lessons/`, `tutorials/` and `projecttemplates/`. The single failure
+> is `whats-new/feed.json`, which is **not** a regression: no `feed.json` has ever
+> existed in that repo (`gh search code` → 0 hits) and `whats-new.ts` is written to
+> treat an unreachable feed as a normal state.
+>
+> **The `/static` suffix is conditional and someone will trip on it.**
+> `nodegx-content`'s `pages.yaml` still triggers a Docusaurus deploy on any push to
+> its `main`. The next such push flips the published tree back and the suffix must
+> come off in the same breath, or the Library panel breaks again identically.
+> Deciding that — delete `pages.yaml` and keep the repo a dumb file tree, or
+> restore the workflow build and drop the suffix — is the owed follow-up, and it
+> should happen before anyone pushes to that repo.
+>
+> **`getDocsEndpoint()` still carries the dead `opennoodl-docs` origin**, so all
+> four genuine docs links are 404: NodeLabel's "read more", the node picker's docs
+> link, the MCP settings docs probe, and the library card's "Read docs". This is
+> the "Help Center repoint" above and it is *not* a one-line change — the live
+> `NodeGX` site serves `/NodeGX/docs/...`, which does not match the paths those
+> call sites join (`nodeDocs.path`, `MCP_DOCS_PATH`, the index's
+> `/library/prefabs/<slug>/`). It needs a path mapping, or those pages published at
+> the paths that already exist. `EXTERNAL_LINKS.docs` *was* a clean one-liner and
+> is now `.../NodeGX/`.
 
 Not blocking ALPHA-006 §1, which is running now and works entirely off the bundled
 catalog.

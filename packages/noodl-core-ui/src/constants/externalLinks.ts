@@ -13,11 +13,18 @@
  * This module is deliberately dependency-free. `noodl-editor` has
  * `getDocsEndpoint()`, which reads an Electron global to allow a localhost docs
  * server; that cannot live here, because the launcher chrome in `noodl-core-ui`
- * renders in Storybook too and must not reach for `@electron/remote`. The two
- * URLs are the same string on purpose — if the docs domain moves, both move.
+ * renders in Storybook too and must not reach for `@electron/remote`.
+ *
+ * 2026-08-13: this now points at the docs site ALPHA-006 §2/§3 built out of
+ * this monorepo's own `docs-site/`, which has been publishing live since
+ * 2026-08-07. The old `opennoodl-docs` origin is a 404 — its repo was renamed
+ * and GitHub Pages, unlike git and the API, does not follow a rename redirect.
+ * `getDocsEndpoint()` still carries the dead origin: it is not the same
+ * one-line change, because its four call sites join paths (`/nodes/...`, the
+ * MCP page) that the new site does not serve at those paths yet.
  */
 export const EXTERNAL_LINKS = {
-  docs: 'https://the-low-code-foundation.github.io/opennoodl-docs/',
+  docs: 'https://the-low-code-foundation.github.io/NodeGX/',
   youtube: 'https://www.youtube.com/@simple-rick-tutorials',
   discord: 'https://discord.gg/dZw4w5pKf9'
 } as const;
