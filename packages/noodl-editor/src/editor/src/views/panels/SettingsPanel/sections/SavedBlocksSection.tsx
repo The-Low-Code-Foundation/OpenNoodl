@@ -358,13 +358,38 @@ export function SavedBlocksSection({ shelf }: SavedBlocksSectionProps = {}) {
    */
   const handleImport = async () => {
     const target: MyBlocksScope = shelf ?? 'project';
+    let envelope: unknown;
     try {
       const text = await navigator.clipboard.readText();
-      const result = importDefinitions(JSON.parse(text), target);
+      try {
+        envelope = JSON.parse(text);
+      } catch {
+        /**
+         * 🔴 **A parse failure is not a sentence a builder can act on, and it was being shown
+         * raw.** Driven 2026-08-13 with `not json at all` on the clipboard: the toast read
+         * *"Unexpected token 'o', "not json at all" is not valid JSON"* — the V8 parser's own
+         * message, in the launcher, over a gesture whose only possible mistake is "the clipboard
+         * held something else". It says what the parser saw and nothing about what to do.
+         *
+         * The domain refusals below keep their own words untouched: `importDefinitions` throws
+         * sentences that were written to be read (a cycle, a shape it will not take), and
+         * softening those would be the opposite mistake.
+         */
+        ToastLayer.showError(
+          text.trim() === ''
+            ? 'Nothing to import — the clipboard is empty. Copy a block with Export first.'
+            : 'Nothing to import — the clipboard does not hold an exported block. Copy one with Export first.'
+        );
+        refresh();
+        return;
+      }
+
+      const result = importDefinitions(envelope, target);
       ToastLayer.showSuccess(describeImportResult(result.imported.length, result.rejected.length, target));
     } catch (error) {
-      // A parse failure and a cycle refusal both land here, and both are reported: an import that
-      // announced nothing would leave a builder believing the clipboard was empty.
+      // A cycle refusal and a clipboard that cannot be read both land here, and both are
+      // reported: an import that announced nothing would leave a builder believing the
+      // clipboard was empty.
       ToastLayer.showError(error instanceof Error ? error.message : String(error));
     }
     refresh();

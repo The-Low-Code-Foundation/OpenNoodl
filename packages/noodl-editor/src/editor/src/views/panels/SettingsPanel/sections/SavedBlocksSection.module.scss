@@ -26,11 +26,22 @@
 }
 
 /* The glyph the call block wears, so the row and the block read as one thing.
-   `currentColor`, like the tab's mark: it has to survive both themes and a
-   greyscale print without a palette of its own. */
+ *
+ * 🔴 **`currentColor` here was a declaration that resolved to nothing.** It was
+ * copied from `CanvasTabs`' `.SavedBlockMark`, where it is correct because
+ * `.Tab` sets `color: var(--theme-color-fg-default)` two lines above it. Nothing
+ * in this section's ancestry — `.Row`, `.Head`, `CollapsableSection`, the
+ * settings panel, the launcher dialog — sets `color` at all, so `currentColor`
+ * inherited the document initial, **`rgb(0, 0, 0)`**, and the glyph measured
+ * **1.24:1** on `--theme-color-bg-2` in the dark theme. Measured in the running
+ * launcher on 2026-08-13; the same component in project settings had it too.
+ *
+ * A property that is *present and losing* is invisible to a stylesheet parser
+ * and to every spec that asserts the declaration exists, which is why this names
+ * the token the sibling `.Name` names rather than inheriting one. */
 .Glyph {
   flex: 0 0 auto;
-  color: currentColor;
+  color: var(--theme-color-fg-default);
   font-size: 12px;
   line-height: 1;
 }

@@ -132,8 +132,25 @@ export class MyBlocksSaveOutline implements SaveOutline {
     this.render();
   }
 
+  /**
+   * 🔴 **A pin consumes the hover, and that is what makes `unpin` actually clear the workspace.**
+   *
+   * The two requests are deliberately separate — see the class note — but the hover request has
+   * no owner once the menu is gone. Clicking *Save as a block…* destroys the menu row with the
+   * pointer still inside the label, so its `pointerleave` never fires and `hovered` is never
+   * withdrawn. `unpin()` on the dialog's unmount then dropped only the dialog's request and
+   * `render()` fell straight back to the stale hover: **the outline stayed on the workspace
+   * forever.** Driven 2026-08-13 — 7 outlines still painted 5.6 s after the dialog closed, with
+   * no dialog open and nothing hovered.
+   *
+   * Clearing it *here* rather than calling `hide()` from the menu callback is what keeps the
+   * class note's property: there is no moment between the menu closing and the dialog mounting
+   * in which nothing is outlined, because the pin both takes over and finishes the hover in one
+   * step.
+   */
   pin(blockIds: readonly string[]): number {
     this.pinned = blockIds;
+    this.hovered = null;
     return this.render();
   }
 

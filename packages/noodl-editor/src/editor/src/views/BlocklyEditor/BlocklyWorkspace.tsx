@@ -114,6 +114,27 @@ export interface BlocklyWorkspaceProps {
   subject?: 'node' | 'definition';
 }
 
+/**
+ * VFN-005 / VFN-012 — the one way a flyout button opens project settings.
+ *
+ * 🔴 **Two lines, and the second one is the whole of VFN-005's yield from this direction.**
+ * `openSettingsPanel` widens the side dock; `LogicBuilder.SidePanelOpened` is what
+ * `EditorEventBindings` listens for in order to move the floating window clear of it (or park it
+ * when there is nowhere to move to). A door that calls the first and not the second re-opens
+ * DRIVE-C's finding — *Open app settings* putting the panel **behind** the window that offered
+ * it — and that is exactly what §2/§3's button did until it was driven.
+ *
+ * Emitted unconditionally: `yieldLogicOverlayToSidePanel` answers `'clear'` for a window that is
+ * already out of the way and nothing moves, so there is no state for a caller to check first.
+ *
+ * It is a module-scope function rather than a closure so that both registrations are literally
+ * the same callback, and so a spec can assert that they are.
+ */
+export function openProjectSettingsFromFlyout(): void {
+  openSettingsPanel('project');
+  EventDispatcher.instance.emit('LogicBuilder.SidePanelOpened');
+}
+
 export function BlocklyWorkspace({
   initialWorkspace,
   onChange,
@@ -345,10 +366,7 @@ export function BlocklyWorkspace({
        * to. Emitted unconditionally — a window already clear of the dock is answered `'clear'`
        * and nothing moves.
        */
-      workspace.registerButtonCallback(APP_CONFIG_SETTINGS_BUTTON, () => {
-        openSettingsPanel('project');
-        EventDispatcher.instance.emit('LogicBuilder.SidePanelOpened');
-      });
+      workspace.registerButtonCallback(APP_CONFIG_SETTINGS_BUTTON, openProjectSettingsFromFlyout);
 
       /**
        * VFN-012 §2/§3 — the Libraries & Browser category.
@@ -374,7 +392,21 @@ export function BlocklyWorkspace({
       });
       void refreshRegisteredLibraries();
       workspace.registerToolboxCategoryCallback(BROWSER_CATEGORY, browserFlyout() as never);
-      workspace.registerButtonCallback(LIBRARIES_SETTINGS_BUTTON, () => openSettingsPanel('project'));
+      /**
+       * 🔴 **The same two lines as `APP_CONFIG_SETTINGS_BUTTON`, and they were missing.**
+       *
+       * VFN-005's yield (the window moves or parks when the side panel opens under it) is
+       * driven by `LogicBuilder.SidePanelOpened`. §1's button emitted it; this one, built on a
+       * different branch in the same close-out, called `openSettingsPanel` and stopped — so
+       * *Open app settings* from **this** flyout re-opened DRIVE-C's original defect: the panel
+       * appeared behind the window that offered it. Driven and measured 2026-08-13: with the
+       * window at 227,113 989×505 the panel opened to 458 px wide and every point inside it
+       * still answered an element inside the Logic Builder window.
+       *
+       * Both doors now go through `openProjectSettingsFromFlyout` so a third one cannot be
+       * added without the yield.
+       */
+      workspace.registerButtonCallback(LIBRARIES_SETTINGS_BUTTON, openProjectSettingsFromFlyout);
 
       if (initialWorkspace) {
         try {
