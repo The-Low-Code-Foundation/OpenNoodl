@@ -73,7 +73,11 @@ export function installSidePanel({ isLesson }: SetupEditorOptions) {
 
   SidebarModel.instance.register({
     id: 'components',
-    defaultWidth: 280,
+    // Deliberately no `defaultWidth`: this panel and 'PropertyEditor' alternate
+    // in the same slot as the selection changes, so any width of its own moves
+    // the divider — and the canvas with it — on every select and deselect. It
+    // used to declare 280 against the Properties panel's implicit 328, which
+    // jittered the canvas 48px. Both now take DEFAULT_PANEL_WIDTH.
     name: 'Components',
     order: 1,
     icon: IconName.Components,
