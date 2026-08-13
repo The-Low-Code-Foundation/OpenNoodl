@@ -127,6 +127,63 @@ export function collectCallSites(
 }
 
 /**
+ * Every **Blockly workspace variable** the body reads or writes, by name, in document order.
+ *
+ * 🔴 The hazard VFN-008 exists to name. A Blockly `variables_get` refers to a variable in the
+ * workspace it was *saved from*; placed in a different Visual Function, that variable does not
+ * exist. `remapCallTargets` remaps definition ids, not variable ids, and nothing else remaps
+ * them either — so a definition that uses one is a definition that will not travel intact, and
+ * the only honest thing to do is say so before it is saved.
+ *
+ * ⚠️ Blockly variables only, deliberately. `noodl_get_variable` / `noodl_set_variable` are the
+ * *runtime's* variables — global, resolved by name at run time, and unaffected by which
+ * workspace the block is in — so warning about those would be a false alarm on the mechanism
+ * that actually works.
+ *
+ * A variable field serialises as `{ id }` (Blockly 10+) or as a bare name (older exports), and
+ * the id is resolved through the workspace's own `variables` table. Both are read, because an
+ * old definition on disk is exactly the case this warning must not go silent on.
+ */
+export function collectVariableReferences(workspace: BlocklyWorkspaceJson | undefined | null): string[] {
+  const namesById = new Map<string, string>();
+  for (const variable of workspace?.variables ?? []) {
+    if (variable && typeof variable.id === 'string' && typeof variable.name === 'string') {
+      namesById.set(variable.id, variable.name);
+    }
+  }
+
+  const seen = new Set<string>();
+  const ordered: string[] = [];
+
+  walkWorkspace(workspace, ({ block }) => {
+    for (const field of Object.keys(block.fields || {})) {
+      // `VAR` is Blockly's own name for a variable field, and every stock block that binds one
+      // — `variables_get`, `variables_set`, `math_change`, `controls_for`, `controls_forEach` —
+      // uses it. Matching on the field name rather than on a list of block types is what makes
+      // this cover a block nobody has written yet.
+      if (field !== 'VAR') continue;
+
+      const value = block.fields![field];
+      let name: string | undefined;
+      if (typeof value === 'string') {
+        name = value;
+      } else if (value && typeof value === 'object') {
+        const record = value as Record<string, unknown>;
+        if (typeof record.name === 'string') name = record.name;
+        else if (typeof record.id === 'string') name = namesById.get(record.id);
+      }
+
+      if (name && !seen.has(name)) {
+        seen.add(name);
+        ordered.push(name);
+      }
+    }
+  });
+
+  return ordered;
+}
+
+/**
  * Resolve a hole path to the *parent* block and the input name it addresses.
  *
  * Returns `null` when the path does not lead anywhere, which is the honest answer for a path

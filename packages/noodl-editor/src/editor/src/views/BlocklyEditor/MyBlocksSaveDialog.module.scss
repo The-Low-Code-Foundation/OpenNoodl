@@ -25,8 +25,43 @@
 }
 
 /*
- * The shelf picker. Radios and not core-ui's `Select`: see the note in the component — a Select
- * opened from inside a DialogLayer dialog paints behind it.
+ * VFN-008 §4 — the face of the block being named.
+ *
+ * Monospaced and boxed because it is a *picture of the block*, not a sentence about it: the
+ * socket labels line up under each other the way they will on the workspace, and the glyph is
+ * the same `▣` the call block's header field renders (both come from `MY_BLOCKS_BLOCK_GLYPH`).
+ */
+.CallPreview {
+  box-sizing: border-box;
+  margin-top: 2px;
+  padding: 6px 10px;
+  border-radius: 3px;
+  background-color: var(--theme-color-bg-3);
+  color: var(--theme-color-fg-default-contrast);
+  font-family: var(--font-family-mono, monospace);
+  font-size: 12px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.VariableWarning {
+  /* It sits between two cards, so it needs to read as a remark about them, not as a third one. */
+  margin: 0;
+}
+
+/*
+ * 🔴 The shelf picker (VFN-007). **No `<input type="radio">` anywhere below.**
+ *
+ * `BaseDialog` renders every dialog body twice — a zero-height measuring copy and the visible
+ * one — and a native radio group is scoped to the *document* by `name`. Two options were four
+ * radios in one group, and the browser kept the check on the invisible copy: after a click on
+ * "My backpack" not one visible radio was checked, while React's state was correctly `'user'`.
+ * Measured 2026-08-13; the write-up is in `myblocks/shelfChoice.ts`.
+ *
+ * These cards own their selected state entirely through React, so the duplicate render cannot
+ * reach them. Cards rather than core-ui's `Select` for the reason in the component: a `Select`
+ * opened from inside a DialogLayer dialog paints *behind* it — and, more importantly, a
+ * collapsed control hides each shelf's consequence until after the choice has been made.
  *
  * ⚠️ No global `box-sizing` in this repo, so anything with a width and a border sets its own.
  */
@@ -37,30 +72,106 @@
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
 }
 
-.ShelvesLegend {
-  padding: 0;
-  margin-bottom: 4px;
-}
-
+/*
+ * The row *is* the control, so the whole of it — including the consequence note — is the click
+ * target. That is the property the old `<label>` wrapper bought, and it is the one that had to
+ * survive the change.
+ */
 .Shelf {
+  box-sizing: border-box;
   display: flex;
   align-items: flex-start;
-  gap: 8px;
+  gap: 10px;
+  padding: 10px 12px;
   cursor: pointer;
-
-  input {
-    /* Nudged down onto the first line of the label rather than the top of the block. */
-    margin-top: 3px;
-    flex: 0 0 auto;
-    cursor: pointer;
-  }
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: 3px;
+  background-color: var(--theme-color-bg-2);
 
   p {
     margin: 0;
   }
+
+  &:hover {
+    border-color: var(--theme-color-border-strong);
+  }
+
+  /*
+   * ⚠️ `outline` and not a border swap: a border change on focus would move the text by a
+   * pixel, and this row already changes its border on selection.
+   */
+  &:focus-visible,
+  &:focus {
+    outline: 2px solid var(--theme-color-focus-ring);
+    outline-offset: 1px;
+  }
+}
+
+/*
+ * The chosen row.
+ *
+ * The measured numbers, computed from `colors.css` and asserted in
+ * `tests-unit/vfn-007/shelf-picker.test.ts` rather than eyeballed:
+ *
+ *   --theme-color-primary vs --theme-color-bg-3   6.45:1 dark, 4.33:1 light   (the dot)
+ *   --theme-color-border-control vs bg-2          3.66:1 dark, 3.43:1 light   (the empty ring)
+ *
+ * Both clear the 3:1 non-text floor in both themes, which is acceptance criterion 2. The old
+ * native radio could not be measured at all, because it was never checked.
+ */
+.Shelf.is-chosen {
+  border-color: var(--theme-color-primary);
+  background-color: var(--theme-color-bg-3);
+  /*
+   * A second pixel of border without a second pixel of box: an inset shadow does not
+   * participate in the box model, so the row does not shift by 1px when it is chosen.
+   */
+  box-shadow: inset 0 0 0 1px var(--theme-color-primary);
+
+  &:hover {
+    border-color: var(--theme-color-primary);
+  }
+}
+
+/*
+ * The mark. A ring when empty, a ring with a filled centre when chosen — the shape a radio has,
+ * painted on our own tokens rather than on Chromium's light-mode defaults.
+ *
+ * `box-shadow` for the ring rather than `border`, so the element's own 14px box never changes
+ * and the row's text baseline cannot move between the two states.
+ */
+.ShelfMark {
+  box-sizing: border-box;
+  position: relative;
+  flex: 0 0 auto;
+  width: 14px;
+  height: 14px;
+  /* Nudged onto the first line of the label rather than the top of the row. */
+  margin-top: 2px;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1.5px var(--theme-color-border-control);
+}
+
+.Shelf.is-chosen .ShelfMark {
+  box-shadow: inset 0 0 0 1.5px var(--theme-color-primary);
+}
+
+/* The filled centre: a 7px dot with a 2px gap of card between it and the ring. */
+.Shelf.is-chosen .ShelfMark::after {
+  content: '';
+  position: absolute;
+  inset: 3.5px;
+  border-radius: 50%;
+  background-color: var(--theme-color-primary);
+}
+
+.ShelfText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
 .Actions {

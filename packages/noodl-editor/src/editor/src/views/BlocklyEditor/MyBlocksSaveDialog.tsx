@@ -26,9 +26,19 @@
  * be the same failure this feature has already shipped twice in a different costume: a refusal
  * that does not say so.
  *
+ * ## 🔴 VFN-007 — the shelf picker has no native radios, and the reason is structural
+ *
+ * `BaseDialog` renders its children **twice**, once into a zero-height measuring container and
+ * once visibly. A native radio group is document-scoped by `name`, so two options were four
+ * radios in one group and the browser kept the check on the *invisible* copy — a control that
+ * took the builder's decision and showed nothing. The picker is now an ARIA radiogroup of themed
+ * cards, whose entire selected state is React's. See `myblocks/shelfChoice.ts` for the
+ * measurement.
+ *
  * @module BlocklyEditor
  */
 
+import classNames from 'classnames';
 import React, { useMemo, useRef, useState } from 'react';
 
 import { PrimaryButton, PrimaryButtonSize, PrimaryButtonVariant } from '@noodl-core-ui/components/inputs/PrimaryButton';
@@ -43,27 +53,21 @@ import { DialogLayerModel } from '@noodl-models/DialogLayerModel';
 import { ToastLayer } from '../ToastLayer';
 import type { SaveBlockRequest } from './MyBlocksSave';
 import css from './MyBlocksSaveDialog.module.scss';
-import { checkBlockName, describeShape, normaliseBlockName } from './myblocks/saveIntent';
+import {
+  checkBlockName,
+  describeCallPreview,
+  describeShape,
+  describeVariableWarning,
+  MAX_BLOCK_DESCRIPTION_LENGTH,
+  normaliseBlockDescription,
+  normaliseBlockName
+} from './myblocks/saveIntent';
+import { collectVariableReferences } from './myblocks/references';
+import { shelfAfterKey, SHELF_OPTIONS } from './myblocks/shelfChoice';
 import type { MyBlocksScope } from './myblocks/store';
 
-/**
- * ⚠️ **Not core-ui's `Select`.** It renders its option list through `BaseDialog`, which portals
- * into `.dialog-layer-portal-target` — a body sibling at `z-index: 666`, exactly the same as the
- * DialogLayer this dialog lives in. On a tie the later element wins and the portal target is
- * created first, so an option list opened from inside a DialogLayer dialog paints **behind it**.
- * `ReportProblemDialog` hit this and dropped to a native `<select>` for the same reason
- * (ALPHA-007-NOTES.md).
- *
- * Radios rather than a native `<select>` because there are two options and each needs its
- * consequence beside it — which is the whole difference between the shelves, and which a
- * collapsed `<select>` hides until after the choice is made.
- */
-const SHELF_OPTIONS: { value: MyBlocksScope; label: string; note: string }[] = [
-  // "This project" first, and selected by default: it is the shelf that travels with the
-  // project, and §2's whole reason for having two.
-  { value: 'project', label: 'This project', note: 'It travels with the project. Anyone who opens it gets this block.' },
-  { value: 'user', label: 'My backpack', note: 'Only you, but in every project you open.' }
-];
+/** The group's accessible name. Also the visible caption above it — one string, so they agree. */
+const SHELF_LEGEND = 'Save it in';
 
 export interface MyBlocksSaveDialogProps {
   request: SaveBlockRequest;
@@ -72,12 +76,43 @@ export interface MyBlocksSaveDialogProps {
 
 export function MyBlocksSaveDialog({ request, onClose }: MyBlocksSaveDialogProps) {
   const [name, setName] = useState('');
+  const [description, setDescription] = useState('');
   const [scope, setScope] = useState<MyBlocksScope>(request.defaultScope);
   const [refusal, setRefusal] = useState<string | null>(null);
   const committed = useRef(false);
 
+  /**
+   * The row elements, so an arrow key can move focus to the option it just selected.
+   *
+   * ⚠️ Per component *instance*, which is what makes this safe under `BaseDialog`'s double
+   * render: the measuring copy holds its own refs and its own focus, and neither instance can
+   * reach into the other. That is precisely the property the native radio group did not have.
+   */
+  const rows = useRef<Partial<Record<MyBlocksScope, HTMLDivElement | null>>>({});
+
   const shape = useMemo(() => describeShape(request.signature), [request.signature]);
   const verdict = checkBlockName(name, request.taken);
+
+  /**
+   * VFN-008 — the variables this body uses and will not take with it.
+   *
+   * Computed from the body rather than remembered, because it is the body that is about to be
+   * written. Said here, at save time, because it is the last moment the builder can do anything
+   * about it — the alternative honest answer, silently creating the variables in whatever
+   * workspace the block is later dropped into, is a definition authoring someone else's program.
+   */
+  const variableWarning = useMemo(
+    () => describeVariableWarning(collectVariableReferences(request.body)),
+    [request.body]
+  );
+
+  /** The face of the block being named: `▣ Discount   price   rate`. */
+  const preview = describeCallPreview(name, request.signature.params);
+
+  function chooseShelf(next: MyBlocksScope, moveFocus: boolean) {
+    setScope(next);
+    if (moveFocus) rows.current[next]?.focus();
+  }
 
   // Nothing typed yet is not a mistake, it is the starting state — so the refusal message under
   // the field waits until the builder has been in there. The button is disabled either way.
@@ -94,7 +129,14 @@ export function MyBlocksSaveDialog({ request, onClose }: MyBlocksSaveDialogProps
     if (committed.current) return;
     committed.current = true;
     try {
-      const definition = request.commit({ name: normaliseBlockName(name), scope });
+      const definition = request.commit({
+        name: normaliseBlockName(name),
+        // 🔴 `undefined` when blank, never `''` — see `normaliseBlockDescription`. Every
+        // definition written before VFN-008 has this field absent, and "no description" has to
+        // be one value rather than two or every reader downstream inherits the distinction.
+        description: normaliseBlockDescription(description),
+        scope
+      });
       ToastLayer.showSuccess(
         scope === 'project'
           ? `Saved "${definition.name}". It is in the My Blocks category of every Visual Function in this project.`
@@ -142,6 +184,29 @@ export function MyBlocksSaveDialog({ request, onClose }: MyBlocksSaveDialogProps
             </Text>
           ) : null}
 
+          {/*
+            VFN-008 §1 — the tap that was never fitted. `MyBlockDefinition.description` has been
+            in the format and written by `save()` since LGC-007, and nothing ever asked for one,
+            so every definition on every shelf has it `undefined`.
+
+            Optional, and deliberately so: a required description on a save dialog is a field
+            that gets filled with `x`.
+          */}
+          <TextInput
+            label="Description (optional)"
+            value={description}
+            placeholder="What does it do, and when would you use it?"
+            variant={TextInputVariant.InModal}
+            onChange={(event) => setDescription(event.target.value.slice(0, MAX_BLOCK_DESCRIPTION_LENGTH))}
+            onEnter={handleSave}
+            onKeyDown={(event) => {
+              if (event.key === 'Escape') {
+                event.preventDefault();
+                onClose();
+              }
+            }}
+          />
+
           <div className={css.ShapeCard}>
             <VStack hasSpacing={2}>
               <Text size={TextSize.Medium} textType={TextType.Proud} className={css.ShapeName}>
@@ -152,32 +217,80 @@ export function MyBlocksSaveDialog({ request, onClose }: MyBlocksSaveDialogProps
               <Text size={TextSize.Small} textType={TextType.Shy}>
                 {shape.reason} {shape.inputs}
               </Text>
+              {/*
+                VFN-008 §4 — the block's actual face, so the name being typed is visibly being
+                attached to a signature rather than to an abstraction. These are the resolved
+                parameter names `rebuildInputs_` will render, not a restatement of the count.
+              */}
+              <div className={css.CallPreview}>{preview}</div>
             </VStack>
           </div>
 
-          <fieldset className={css.Shelves}>
-            <legend className={css.ShelvesLegend}>
-              <Text size={TextSize.Small} textType={TextType.Shy}>
-                Save it in
-              </Text>
-            </legend>
-            {SHELF_OPTIONS.map((option) => (
-              <label key={option.value} className={css.Shelf}>
-                <input
-                  type="radio"
-                  name="myblocks-shelf"
-                  checked={scope === option.value}
-                  onChange={() => setScope(option.value)}
-                />
-                <span>
-                  <Text size={TextSize.Small}>{option.label}</Text>
-                  <Text size={TextSize.Small} textType={TextType.Shy}>
-                    {option.note}
-                  </Text>
-                </span>
-              </label>
-            ))}
-          </fieldset>
+          {variableWarning ? (
+            // Notice and not Danger: the save is fine and is not being refused. What is being
+            // said is that one part of it will not survive the trip.
+            <Text size={TextSize.Small} textType={TextType.Notice} className={css.VariableWarning}>
+              {variableWarning}
+            </Text>
+          ) : null}
+
+          {/*
+            🔴 VFN-007 — an ARIA radiogroup of cards, and **not** `<input type="radio">`.
+
+            `BaseDialog` renders every dialog body twice (a zero-height measuring copy and the
+            visible one), and a native radio group is scoped to the document by `name` — so the
+            two options were four radios in one group and the browser kept the check on the
+            invisible copy. Nothing painted, while React's state was right the whole time.
+
+            A card owns its selected state entirely through React, so the duplicate render cannot
+            reach it. It also buys the contrast the native control could not: the indicator is on
+            `--theme-color-primary`, which measures 6.45:1 dark and 4.33:1 light against the card
+            it sits on, where a Chromium default radio on a dark sheet had no measurable mark at
+            all.
+
+            ⚠️ The row is the control, so the whole row — including the consequence note, which
+            is the entire reason this is not a `<select>` — is clickable. It is not a `<label>`
+            any more, because a `<label>` with no labelable control inside it labels nothing.
+          */}
+          <div className={css.Shelves} role="radiogroup" aria-label={SHELF_LEGEND}>
+            <Text size={TextSize.Small} textType={TextType.Shy}>
+              {SHELF_LEGEND}
+            </Text>
+            {SHELF_OPTIONS.map((option) => {
+              const isChosen = scope === option.value;
+              return (
+                <div
+                  key={option.value}
+                  ref={(element) => {
+                    rows.current[option.value] = element;
+                  }}
+                  className={classNames(css.Shelf, isChosen && css['is-chosen'])}
+                  data-shelf={option.value}
+                  role="radio"
+                  aria-checked={isChosen}
+                  // Roving tabindex: one Tab stop for the group, arrows move within it.
+                  tabIndex={isChosen ? 0 : -1}
+                  onClick={() => chooseShelf(option.value, false)}
+                  onKeyDown={(event) => {
+                    const next = shelfAfterKey(event.key, scope);
+                    // 🔴 Only ours. Returning the current scope for every unknown key would
+                    // swallow Tab and Escape and trap the builder in the dialog.
+                    if (!next) return;
+                    event.preventDefault();
+                    chooseShelf(next, true);
+                  }}
+                >
+                  <span className={css.ShelfMark} aria-hidden="true" />
+                  <span className={css.ShelfText}>
+                    <Text size={TextSize.Small}>{option.label}</Text>
+                    <Text size={TextSize.Small} textType={TextType.Shy}>
+                      {option.note}
+                    </Text>
+                  </span>
+                </div>
+              );
+            })}
+          </div>
 
           {refusal ? (
             <Text size={TextSize.Small} textType={TextType.Danger}>

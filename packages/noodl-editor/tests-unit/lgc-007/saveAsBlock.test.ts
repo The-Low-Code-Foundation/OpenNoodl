@@ -333,10 +333,14 @@ describe('LGC-007 — saved in one Visual Function, dropped into another', () =>
     expect(definition.shape).toBe('value');
 
     /* --- The toolbox of any other Visual Function --------------------------------------- */
-    const flyout = myBlocksFlyout(store)() as { kind: string; type?: string; extraState?: unknown }[];
-    expect(flyout).toHaveLength(1);
-    expect(flyout[0].kind).toBe('block');
-    expect(flyout[0].type).toBe('myblocks_call_value');
+    const flyout = myBlocksFlyout(store)() as { kind: string; type?: string; text?: string; extraState?: unknown }[];
+    // VFN-008 §3: each definition arrives with its shape sentence above it, so the category is
+    // readable without dragging anything out. The block is still there and still first of its
+    // kind — this is a label *and* a block, not a label instead of one.
+    const block = flyout.find((item) => item.kind === 'block')!;
+    expect(flyout.some((item) => item.kind === 'label')).toBe(true);
+    expect(block).toBeTruthy();
+    expect(block.type).toBe('myblocks_call_value');
 
     /* --- Visual Function B: the block is dragged out and dropped into `… + 1` ------------ */
     const b = new Blockly.Workspace();
@@ -344,7 +348,7 @@ describe('LGC-007 — saved in one Visual Function, dropped into another', () =>
       // The call block is instantiated from the flyout's own JSON — which is the first time
       // `rebuildInputs_` runs anywhere.
       const dropped = Blockly.serialization.blocks.append(
-        { type: flyout[0].type, extraState: flyout[0].extraState } as never,
+        { type: block.type, extraState: block.extraState } as never,
         b
       );
       expect(dropped.outputConnection).toBeTruthy();

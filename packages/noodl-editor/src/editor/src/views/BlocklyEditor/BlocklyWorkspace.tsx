@@ -28,7 +28,13 @@ import { DoItHandle, attachDoIt } from './DoItController';
 import { InterfaceRailsHandle, attachInterfaceRails } from './InterfaceRailsOverlay';
 import { withBlockProbes } from './BlockProbes';
 import { BlockValueHandle, attachBlockValues } from './BlockValueController';
-import { generateWithMyBlocks, initMyBlocks, myBlocksFlyout, MY_BLOCKS_CATEGORY } from './MyBlocksBlocks';
+import {
+  generateWithMyBlocks,
+  initMyBlocks,
+  myBlocksFlyout,
+  setMyBlocksDefinitionSource,
+  MY_BLOCKS_CATEGORY
+} from './MyBlocksBlocks';
 import { attachMyBlocksSave, type MyBlocksSaveHandle } from './MyBlocksSave';
 import { openSaveBlockDialog } from './MyBlocksSaveDialog';
 import { myBlocksStore } from './MyBlocksShelves';
@@ -174,6 +180,16 @@ export function BlocklyWorkspace({ initialWorkspace, onChange, readOnly = false,
       // Custom blocks and generators must exist before the toolbox referencing them is built.
       initBlocklyIntegration();
       initMyBlocks();
+
+      /**
+       * VFN-008 — where a call block's tooltip finds the definition it points at.
+       *
+       * Injected rather than imported by `MyBlocksBlocks`: that module is reachable from the
+       * plain-Node runner, and `myBlocksStore` reaches `ProjectModel` and `EditorSettings`,
+       * which would fail two suites *to run*. The store is a singleton over live shelves, so
+       * registering it on every setup is idempotent and never goes stale.
+       */
+      setMyBlocksDefinitionSource(myBlocksStore());
 
       /**
        * VFN-003 — point `Blockly.dialog` at this editor's dialog layer before anything can ask
