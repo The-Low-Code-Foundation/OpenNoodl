@@ -3,6 +3,11 @@
 **Created:** 2026-08-13, out of [README.md](README.md) and eleven reports from one session of
 building with the floating Logic Builder.
 
+> **Status, 2026-08-13** — tier 1 (VFN-001, 002, 003) is **built and merged in `0067304d`**, and
+> **none of it is driven**. Start at [NEXT-SESSION-2026-08-13.md](NEXT-SESSION-2026-08-13.md): its
+> first item is one drive session that closes tier 1's owed criteria *and* answers VFN-005's and
+> VFN-007's reproduce-first steps, which are acceptance criterion 1 of each.
+
 **Every claim about existing code in these files was read in source**, and every claim that was
 *not* pinned says so and carries a reproduce-first instruction. Six of the eleven reports have a
 mechanism; two do not; three are design work.
