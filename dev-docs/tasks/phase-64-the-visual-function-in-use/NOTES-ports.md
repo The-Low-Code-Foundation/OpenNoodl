@@ -7,7 +7,10 @@ jest` → **135 of 136 suites, 2487 passing** with one pre-existing failure name
 `npx tsc` clean on `noodl-editor`; `noodl-runtime` has two pre-existing errors in files this branch
 does not touch. `cloud-library:check` → **green**, `Committed cloud node library is up to date`.
 
-🔴 **Nothing here has been driven.** No editor was launched. The measurement below is taken against
+⚠️ **Written pre-drive. Session C has since driven the migrate path and it works** — see *What is
+proved, and what is owed* at the foot; only the wire-taking gesture is still owed.
+
+🔴 **Nothing here had been driven when this was written.** No editor was launched. The measurement below is taken against
 the **real artefacts on disk** — Richard's live backpack shelf and the `vfn64-qa` project — which is
 stronger than a fixture and is still not a drive.
 
@@ -192,19 +195,27 @@ The controls themselves, beyond the reverts:
 | Reserved names are still filtered before reaching the canvas | ✅ runtime spec, `updatePorts`' own filter |
 | No port for a definition's internal Blockly variables | ✅ spec (this half always held) |
 | An old call block on disk is repaired from the live shelf on load | ✅ spec + real artefact |
-| The rails and the bench show the same ports | 🟡 follows from the shared traversal; **not separately asserted, and not driven** |
-| The port appears on the canvas and can be wired | 🔴 **owed — needs a drive** |
+| The rails and the bench show the same ports | ✅ **DRIVEN (session C)** — the OUTPUTS rail read `result number 3` beside `total any 21`, a bench-run value through a published port |
+| The port appears on the canvas | ✅ **DRIVEN (session C)** — after a flush the node's outputs gained `result`, typed `number` (before: `total` only, `hasResult: false`) |
+| The port **accepts a wire** | 🔴 **owed — needs a real drag on the canvas** |
 
-### 🔴 Owed, in the order it is worth doing
+### Owed — **updated after DRIVE-2026-08-13-C**
 
-1. **Drive it.** Open `vfn64-qa`, nudge a block in `/ErgCodes`'s Visual Function to force a flush,
-   and confirm a `result` output appears on the node and accepts a connection. The whole chain
-   past `sendDynamicPorts` — the editor's port reader, the canvas, the connection popup — is
-   untested here and is where a dynamic port has surprised this repo before.
-2. **Drag a saved block out of the flyout into a second Visual Function** and confirm the port
-   appears immediately, with no reopen. That is the reported gesture, verbatim.
-3. **Confirm the rails and the bench agree with the node.** They read the same traversal, so they
-   should; "should" is not a measurement.
+⚠️ Item 1 is closed and item 3 with it. **Items 2 and 4 remain.**
+
+1. ✅ **CLOSED — driven.** Opened the fixture, nudged a block in `/ErgCodes`'s Visual Function to
+   force a flush, and the `result` output appeared on the node. **The migrate path works**: before
+   the flush the node's outputs were `total` only with `hasResult: false` — a correct reading, and
+   worth having taken, because it is what makes the after-state mean something.
+   🔴 **Only the migrate path.** That the port **accepts a connection** was not tested; the chain
+   past `sendDynamicPorts` — the canvas and the connection popup — is where a dynamic port has
+   surprised this repo before.
+2. 🔴 **OWED — drag a saved block out of the flyout into a *second* Visual Function** and confirm
+   the port appears immediately, with no reopen, **and takes a wire**. That is the reported gesture,
+   verbatim, and it is the half a migrate can never stand in for.
+3. ✅ **CLOSED — the rails and the bench agree with the node.** They read the same traversal, so they
+   should; "should" is not a measurement, and the measurement was taken: `result number 3` in the
+   OUTPUTS rail in the same frame the node carried the port.
 4. 🔴 **The regeneration sweep — LGC-007 §4, and it belongs with VFN-009.** Editing a definition
    should re-stamp and re-flush every call site, not wait for the next incidental edit. This is the
    remaining staleness, it is bounded and it is the same one `label`/`args` have, but VFN-009 is

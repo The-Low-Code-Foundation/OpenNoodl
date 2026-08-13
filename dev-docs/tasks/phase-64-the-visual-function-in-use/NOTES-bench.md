@@ -18,7 +18,10 @@
 
 ## 🔴 What is proved, and what is not
 
-Nothing here has been driven. This worktree cannot run the editor (`npm run dev` resolves through
+⚠️ **Written before any drive; kept as written, with the outcomes marked in the list below.** Session C
+has since driven four of the nine owed items and the flagship gesture works — read the ✅ marks.
+
+Nothing here had been driven when this was written. This worktree cannot run the editor (`npm run dev` resolves through
 `lerna exec` to the primary checkout, where a human is working), so **every claim below is either a
 headless spec or an owed drive**, and they are separated on purpose.
 
@@ -33,24 +36,30 @@ headless spec or an owed drive**, and they are separated on purpose.
 | **6 — the empty strip names its reason** | `strip-reason.spec.ts` | Seven reasons, the precedence between them, and a negative control that rebuilds the old line and reproduces the reported silence. |
 | The bench enumerates no ports | `bench.spec.ts` | A workspace mutation moves the bench's rows with nothing telling it. |
 
-### 🔴 Owed a live drive — nobody has seen any of this on screen
+### Owed a live drive — **updated after DRIVE-2026-08-13-C; four of nine are closed**
 
-1. **Criterion 1 end to end.** The spec proves value-in → value-out of `outputRows()`. It does not
-   prove the cell is typeable, the ▶ clickable, or that a value appears in the rail. **Do this
-   first**: open a Visual Function with the app stopped, type into a cell, press ▶, screenshot.
-2. **The badges.** `pushFrame` requests a paint through the existing scheduler, and `markFor`
-   should badge a sandbox frame exactly as it badges a live one — but a bench frame has never
-   reached `BlockValueBadgeLayer`. This is the half of criterion 1 most likely to be quietly wrong.
-3. **Criterion 8 on disk.** The spec proves the *workspace string* is unchanged. `project.json` is
-   one level up. Check it is byte-identical after a bench session — the task calls this the one
-   most likely to be quietly false, and it is.
-4. **Criterion 7 with a preview running.** Two sources into one history has never been exercised
-   with both live. A viewer frame and a bench frame interleaved in the scrubber is the case.
-5. **The 152px rail.** `.RailCell` is `width: 100%; box-sizing: border-box` inside a rail whose
-   `overflow` is `hidden`. The arithmetic says it fits in 132px of content box. Nobody has looked.
-   ⚠️ If it needs more room, `.Rail`'s width is **also** hard-coded in
+⚠️ The list below was written before any drive. Session C drove items 1, 2, 3 and 5 and closed them;
+lane D closed item 7. **Items 4, 6, 8 and 9 remain owed**, plus one screenshot the copy trim added.
+See [DRIVE-2026-08-13-C.md](DRIVE-2026-08-13-C.md) and
+[NEXT-SESSION-2026-08-13-F.md](NEXT-SESSION-2026-08-13-F.md).
+
+1. ✅ **CLOSED — criterion 1 end to end.** The spec proves value-in → value-out of `outputRows()`. It
+   does not prove the cell is typeable, the ▶ clickable, or that a value appears in the rail. **The
+   drive did**: typed into a cell, pressed ▶, and the strip read *"Run 1 of 1 · live — Sandbox run —
+   sandbox — not your app's data."* **The flagship works.**
+2. ✅ **CLOSED — the badges.** This was filed as the half of criterion 1 *"most likely to be quietly
+   wrong"*: `pushFrame` requests a paint through the existing scheduler, and `markFor` should badge a
+   sandbox frame exactly as a live one — but a bench frame had never reached `BlockValueBadgeLayer`.
+   It does. **Five badges painted, values `7, 3, 21, 7, 7`.**
+3. ✅ **CLOSED — criterion 8 on disk**, and *not* a vacuous pass. The spec proves the *workspace
+   string* is unchanged; `project.json` is one level up and is byte-identical after a bench session.
+4. 🔴 **OWED — criterion 7 with a preview running.** Two sources into one history has never been
+   exercised with both live. A viewer frame and a bench frame interleaved in the scrubber is the case.
+5. ✅ **CLOSED — the 152 px rail fits.** `.RailCell` is `width: 100%; box-sizing: border-box` inside a
+   rail whose `overflow` is `hidden`; the arithmetic said 132 px of content box and the drive agrees.
+   ⚠️ If it ever needs more room, `.Rail`'s width is **also** hard-coded in
    `views/nodegrapheditor/logicOverlayGeometry.ts` — changing one without the other is a defect.
-6. **The focus-preserving repaint.** `paint()` remembers which cell was focused and where the caret
+6. 🔴 **OWED — the focus-preserving repaint.** `paint()` remembers which cell was focused and where the caret
    was, and restores it after `replaceChildren`. Rails refresh on *every* settled Blockly change,
    so this runs constantly, and it is exactly the sort of thing that measures fine and feels wrong.
    ⚠️ Related register entry: `document.activeElement` is stale in a bubble-phase handler. This
@@ -66,12 +75,13 @@ headless spec or an owed drive**, and they are separated on purpose.
    *"the two new sentences"* when five of the seven were already too long before this task touched
    them, and `attached-idle` — the reported one — was only the **second** longest. Still owed: one
    screenshot at a 640 px window, because the budget is arithmetic with a ±5% band.
-8. **A genuinely stale node.** `no-probes` needs a project containing a Visual Function whose
+8. 🔴 **OWED — a genuinely stale node.** `no-probes` needs a project containing a Visual Function whose
    `generatedCode` predates LGC-003 and which has not been edited since. I have not found one; the
    branch has only been exercised with a hand-written string.
-9. **Part 1's `generatedCode` thread.** It runs property panel → `LogicBuilder.OpenTab` → `Tab` →
-   `BlocklyWorkspace` → `attachBlockValues`. Every hop typechecks; none has been observed carrying a
-   value.
+9. 🔴 **OWED (partly observed) — Part 1's `generatedCode` thread.** It runs property panel →
+   `LogicBuilder.OpenTab` → `Tab` → `BlocklyWorkspace` → `attachBlockValues`. Every hop typechecks.
+   Session C observed badges carrying values, which exercises part of the thread but does not grade
+   it end to end.
 
 ---
 
@@ -139,6 +149,9 @@ current note would say "sandbox run" over whatever frame was selected next.
 ---
 
 ## Where I stopped, and what is next
+
+⚠️ **Updated:** the drive happened. Items 1, 2, 3, 5 are closed and item 7 found a real defect that
+lane D fixed. **Items 4, 6, 8, 9 are still owed**, plus a screenshot of the trimmed strip at 640 px.
 
 The code is complete against all eight acceptance criteria. What is missing is entirely the **drive**
 — items 1–9 above, in that order. The first four are the ones that could still show the feature does

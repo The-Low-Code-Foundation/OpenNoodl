@@ -1,5 +1,8 @@
 # Next session — Phase 64 (VFN): tier 1 is closed. Nine tasks, and the flagship is untouched.
 
+> ⚠️ **SUPERSEDED — historical.** The current brief is [NEXT-SESSION-2026-08-13-F.md](NEXT-SESSION-2026-08-13-F.md);
+> the current task state is [TASKS.md](TASKS.md). Kept for the reasoning, not the status.
+
 **Read this, then [TASKS.md](TASKS.md).** Supersedes
 [NEXT-SESSION-2026-08-13.md](NEXT-SESSION-2026-08-13.md), whose entire first item — one drive
 session closing five tasks' worth of owed proof — **is done**.

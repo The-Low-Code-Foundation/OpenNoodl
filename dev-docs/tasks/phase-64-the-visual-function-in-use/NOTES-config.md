@@ -146,23 +146,31 @@ primary checkout). Everything below is unproven **in the running app**:
 | 1 — block generates `Noodl.Config["key"]` | generated string **proved**; *"reads correctly in the running app"* **not driven** |
 | 2 — deleted key stays, marked, program unchanged | **proved** headless, including the stock-dropdown control; the *rendered* `⚠` mark is unproven visually |
 | 5 — old project opens with identical bytes | block type ids **proved** unchanged; the `project.json` byte diff on a real old project is **not done** |
-| 6 — empty category explains itself | contents **proved**; that Blockly *renders* `kind: 'label'` and `kind: 'button'` items in a dynamic category flyout is **not driven** |
+| 6 — empty category explains itself | ✅ **DRIVEN (session C)** — the flyout rendered both `kind: 'label'` items and the `kind: 'button'` |
 | 7 — `cloud-library:check` | **proved** |
+
+⚠️ **Updated after DRIVE-2026-08-13-C: items 1 and 2 below are closed; 3, 4 and 5 are still owed.**
 
 Specific things a drive should check, in rough order of risk:
 
-1. **The flyout renders labels and a button.** The empty state and the category headings are
-   `kind: 'label'`; *Open app settings* is `kind: 'button'` with `callbackkey`. The shape is right
-   per Blockly's `ButtonOrLabelInfo`, but nothing here has rendered one.
-2. **The button reaches the panel.** `openSettingsPanel('project')` — right helper, never clicked.
-3. **The `⚠` mark's legibility on a hue-90 block.** Dark-on-dark is this repo's recurring defect.
-4. ⚠️ **A stale mark.** `getText_` reads the provider at render time and Blockly re-renders a
+1. ✅ **CLOSED — the flyout renders labels and a button.** Selecting *App Config* with no variables
+   declared rendered *"This app has no config variables yet."*, *"Declare them in Settings → Project
+   → Custom Variables."*, and an **Open app settings** button at `[477, 361, 130, 23]`.
+2. ✅ **CLOSED — the button reaches the panel**, and it found a defect on the way.
+   `openSettingsPanel('project')` opened Settings → Project. 🔴 **The panel opened *behind* the
+   Logic Builder window the button was pressed from** — this feature's own call to action landing
+   somewhere the feature is hiding. That is VFN-005's occlusion with a concrete in-feature
+   consequence, and it is why VFN-005 built the **yield**. The yield itself is undriven.
+3. 🔴 **OWED — the `⚠` mark's legibility on a hue-90 block.** Dark-on-dark is this repo's recurring
+   defect. Needs a config variable declared and then deleted. Take it together with §2/§3's item 7
+   (the same reading on hue 355).
+4. 🔴 **OWED — a stale mark.** `getText_` reads the provider at render time and Blockly re-renders a
    field on *value* change, not on app settings changing underneath it. A block already on the
    canvas keeps its mark until it is touched or the editor is reopened. Stale in the harmless
    direction — the *stored key* is never wrong, only the warning glyph is late — but if it grates
    in use, the fix is a `forceRerender()` sweep on the `appConfig` metadata event.
-5. **A round trip through the runtime**: declare a variable, read it in a Visual Function, run the
-   preview, read the value off the node's output.
+5. 🔴 **OWED — a round trip through the runtime**: declare a variable, read it in a Visual Function,
+   run the preview, read the value off the node's output.
 
 ---
 

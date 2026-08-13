@@ -1,8 +1,12 @@
 # VFN-011 — The bench: sandbox values, and a Run button
 
-**Status:** 🟡 **built, not driven** · ⭐ Tier 1 — the flagship · no dependencies
-**Branch:** `vfn-bench` (`4420812e`, `e1219147`, `8d4bf513`) · **findings and the owed drive:**
-[NOTES-bench.md](./NOTES-bench.md)
+**Status:** ✅ **BUILT** · ✅ **SPEC-PROVED** (the drift gate diffs `runOnBench` against the runtime's
+real `_executeLogic` over 8 programs, four controls) · 🟡 **DRIVEN in part — the flagship gesture
+works** (criterion 1 end to end, badges painted from a bench frame, criterion 8 on disk, the 152 px
+rail) · 🔴 **OWED:** NOTES-bench items 4, 6, 8, 9, plus one screenshot of the trimmed strip at a
+640 px window · ⭐ Tier 1 — the flagship · no dependencies
+**Branch:** `vfn-bench` (`4420812e`, `e1219147`, `8d4bf513`; merged via `f4246048` / `7411c265`;
+copy trimmed `5452720e`) · **findings and the owed drive:** [NOTES-bench.md](./NOTES-bench.md)
 
 > ## ✅ NOTES-bench item 7 closed — the strip copy was ellipsised, and is now budgeted (lane D)
 >

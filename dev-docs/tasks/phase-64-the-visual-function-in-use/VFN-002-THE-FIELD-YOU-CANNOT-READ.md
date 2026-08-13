@@ -1,6 +1,9 @@
 # VFN-002 — The field you cannot read while you type in it
 
-**Status:** ✅ **BUILT AND MEASURED LIVE 2026-08-13 — passes** · **Tier 1** · no dependencies
+**Status:** ✅ **BUILT** (`0067304d`; ring token fixed `5452720e`) · ✅ **SPEC-PROVED** (6 stylesheet
+tests + 9 contrast cases, both controlled) · 🟡 **DRIVEN in part — the clip is measured live and
+passes** · 🔴 **OWED:** criterion 3's ring *rendered on a block* in both themes, and **criterion 4
+(dropdowns)**, never touched · **Tier 1** · no dependencies
 
 > ## ✅ Criterion 3, half measured and half handed on — 2026-08-13, lane D
 >

@@ -5,9 +5,15 @@
 157/2265 baseline by exactly the two suites and 53 tests added here. `npx tsc -p tsconfig.json
 --noEmit` is clean.
 
-🔴 **Nothing in this branch has been driven.** No editor was launched, no screenshot taken, no
-click delivered. Everything below distinguishes what a spec proved from what still needs a drive,
-and the distinction is the point of the file.
+🔴 **Nothing in this branch has been driven — and that is still true after the merge.** No editor
+was launched, no screenshot taken, no click delivered. Everything below distinguishes what a spec
+proved from what still needs a drive, and the distinction is the point of the file.
+
+⚠️ **Status at close-out, 2026-08-13:** both tasks are **merged** into `cline-dev` (VFN-007/008
+`136fa3be` via `7411c265`; VFN-008's ports fix `bf4529d7` via `ad02b43c`). **VFN-008's ports fix has
+since been driven** (DRIVE-C: the migrate path and the OUTPUTS rail). **Everything in *this* file —
+the shelf picker and the description — is still entirely undriven.** The owed list at the foot stands
+as written. Consolidated in [NEXT-SESSION-2026-08-13-F.md](NEXT-SESSION-2026-08-13-F.md).
 
 ---
 

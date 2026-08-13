@@ -109,41 +109,52 @@ In every case the *named* control spec was among the failures, so the controls a
 | AC | Status | What was graded |
 | --- | --- | --- |
 | 1 — tab reads `Component · Node` | ✅ **decision proved** | Label shape, no "Logic Builder", component-side-only truncation, `Unnamed` fallback, no dangling separator. Not the rendered pixels. |
-| 2 — click navigates and leaves the node selected | 🟡 **decision proved, consequence owed** | `tabActivation` returns `navigate`. That `switchToComponent` then changes the canvas is read from its source, not driven. |
-| 3 — click while already there selects and navigates nowhere | 🟡 **decision proved, consequence owed** | `tabActivation` returns `select` and `pushHistory` is `false`. Same caveat. |
-| 4 — away mark present exactly when away | 🟡 **predicate proved, screenshot owed** | Both polarities, plus "no component open" and the never-mark-a-locationless-tab rule. The ring has never been rendered. |
+| 2 — click navigates and leaves the node selected | ✅ **proved and DRIVEN (session D)** | `tabActivation` returns `navigate`. That `switchToComponent` then changes the canvas was read from its source when this was written — it is now measured live: `activeComponent` → `/ErgCodes`, selection `['c6']`. |
+| 3 — click while already there selects and navigates nowhere | ✅ **proved and DRIVEN (session D)** | `tabActivation` returns `select` and `pushHistory` is `false`. Confirmed live: selection `['c6']`, component unchanged. |
+| 4 — away mark present exactly when away | 🟡 **predicate proved, DRIVEN in both states; contrast owed** | Both polarities, plus "no component open" and the never-mark-a-locationless-tab rule. Captured live: **italic when away, upright when home, identical colour** — shape only. 🔴 `--theme-color-fg-default-shy` on the tab background is still unmeasured. |
 | 5 — two tabs distinguishable from the labels alone | ✅ **proved** | Including the hard case: two components sharing a last path segment (`/Admin/Home`, `/Pages/Home`) fall back to full paths when both tabs are open. |
 | 6 — deleted component leaves the tab open with a named refusal | 🟡 **decision and sentence proved, toast owed** | `refuse-missing` is returned, the message names the component and says the blocks stay. That `ToastLayer.showError` renders is not graded. |
 
 ---
 
-## Owed — and it needs a live drive
+## Owed — **updated after DRIVE-2026-08-13-C and -D**
+
+⚠️ This list was written before any drive. **Session C found the whole feature dead** (item 5 below
+was the failure, and it was worse than this note guessed); session D fixed it and drove items 1, 2,
+3 and 5. **Item 4 and half of item 3 remain owed**, along with items 6 and 7, which nobody has
+looked at. See [DRIVE-2026-08-13-D.md](DRIVE-2026-08-13-D.md).
 
 I could not drive the editor: `npm run dev` in this worktree resolves through `lerna exec` to the
 **primary** checkout, so it would exercise the wrong code and kill a human's editor and MCP
 servers. Every item below is a *consequence* that only the real app can report.
 
-1. **The canvas actually moves (AC 2).** Open a Logic Builder on a node in component A, navigate
-   to B, click the tab, and assert `NodeGraphContextTmp.nodeGraph.activeComponent.fullName === A`
-   **and** that the node is in the canvas selection. Assert which component is rendered, not that
-   a function was called.
-2. **Clicking while already there changes no component and pushes no history (AC 3).** The
-   selection and the centring should still happen.
-3. **The away ring in a screenshot, in both themes (AC 4).** It uses `currentColor` against
-   `--theme-color-bg-3` / `--theme-color-bg-1`; the component segment uses
-   `--theme-color-fg-default-shy`, which has **not** been contrast-measured against either tab
-   background here. `scripts/devtools/icon-contrast.js` is the instrument for that class of
-   question.
-4. **The toast (AC 6).** Delete the component out from under an open tab, click the tab, and check
-   a named error toast appears **and** the tab and its blocks are still there.
-5. **`componentId` arrives non-empty in a real project.** The `owner.owner` walk is verified
-   against the model source, not against a running editor. If `nodeModel.owner` is somehow unset
-   at the moment *Edit Logic Blocks* is pressed, every tab silently degrades to node-name-only and
-   never wears an away mark — which is a **quiet** failure, so look for it explicitly.
-6. **`activeComponentChanged` reaches the window.** It is emitted on `EventDispatcher.instance` by
-   `NodeGraphEditor.switchToComponent`, but **only inside** the `activeComponent !== component`
-   guard. A repaint of the away mark on navigation is therefore load-bearing on that guard.
-7. ⚠️ **Two node graphs, one event.** The editor has a frontend and a backend `NodeGraphEditor`,
+1. ✅ **CLOSED — the canvas actually moves (AC 2).** Driven: away → click the tab →
+   `activeComponent` is `/ErgCodes` and the selection is `['c6']`, both read from the running
+   editor rather than inferred from a call. 🔴 The instrument matters: **`ed.selection` does not
+   exist — it is `ed.selector._selected`**, and the wrong accessor reads `[]`, which nearly filed a
+   false *"navigates but does not select"*.
+2. ✅ **CLOSED — clicking while already there changes no component and pushes no history (AC 3).**
+   Selection `['c6']`, component unchanged.
+3. 🟡 **HALF CLOSED — the away mark in a screenshot (AC 4).** Captured in both states: the away
+   state renders the component segment **italic**, the home state upright, and the colour is
+   `rgb(139, 149, 161)` in *both* — so the mark is **shape only**, which is what AC 4 asked for and
+   is colourblind-safe by construction. 🔴 **Still owed: the contrast reading.**
+   `--theme-color-fg-default-shy` has never been measured against either tab background;
+   `scripts/devtools/icon-contrast.js` is the instrument, and it needs a running editor.
+4. 🔴 **OWED — the toast (AC 6).** Delete the component out from under an open tab, click the tab,
+   and check a named error toast appears **and** the tab and its blocks are still there.
+5. 🔴 **THIS WAS THE FAILURE, AND IT WAS NOT `componentId`'s arrival — it was its *content*.** The
+   `owner.owner` walk was fine; `ComponentModel.id` was `undefined` on 5 of 7 components of a v1
+   project, so every tab silently never wore an away mark. Exactly the **quiet** failure this item
+   predicted, one level lower down than it looked. Fixed with `componentInstanceId`
+   (`models/componentIdentity.ts`) and driven. ⚠️ **The lesson generalises: check the identifier
+   before blaming the mechanism.**
+6. ✅ **CLOSED by consequence — `activeComponentChanged` reaches the window.** It is emitted on
+   `EventDispatcher.instance` by `NodeGraphEditor.switchToComponent`, but **only inside** the
+   `activeComponent !== component` guard, so the repaint was load-bearing on that guard. Session D
+   navigated to `/App` and `data-away` flipped to `true` — the event arrives and the guard holds for
+   the frontend graph. (Item 7 is the case it does *not* cover.)
+7. 🔴 **OWED — two node graphs, one event.** The editor has a frontend and a backend `NodeGraphEditor`,
    and `activeComponentChanged` is emitted on the shared dispatcher by both while
    `useActiveComponentId` reads `NodeGraphContextTmp.nodeGraph` (the *active* one). Opening a
    backend component may or may not make a frontend tab read "away" correctly. Untested, and worth

@@ -1,7 +1,9 @@
 # VFN-004 — The window says where it belongs
 
-**Status:** ✅ **BUILT AND DRIVEN 2026-08-13 — AC 1, 2, 3, 4 pass live, each with a control** ·
-**Tier 2** · no dependencies
+**Status:** ✅ **BUILT** (`ca0ef476`, shipped dead, fixed `da090f0b`) · ✅ **SPEC-PROVED** (52 + 16
+specs; 7 go red under the pre-fix body) · ✅ **DRIVEN 2026-08-13 — AC 1, 2, 3, 4 pass live, each with
+a control** · 🔴 **OWED:** AC 5 and AC 6, spec-proved and not driven — both need a second Logic
+Builder node in another component · **Tier 2** · no dependencies
 
 > 🔴 **It shipped dead once. Read this before touching the identity.**
 >

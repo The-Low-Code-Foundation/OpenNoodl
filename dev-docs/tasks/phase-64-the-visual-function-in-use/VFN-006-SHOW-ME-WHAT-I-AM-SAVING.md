@@ -1,6 +1,11 @@
 # VFN-006 — Show me what I am saving
 
-**Status:** 📋 open · **Tier 2** · ~half a day · no dependencies
+**Status:** ✅ **BUILT 2026-08-13 on `vfn-d-overlay`** (`7384df78`; merged `22f9e1fe`; outline
+contrast fixed `5452720e`) · ✅ **SPEC-PROVED** — 31 specs in `tests-unit/vfn-006` + 9 contrast cases,
+with a control that caught criterion 5 passing vacuously · 🔴 **NOT DRIVEN — and the painting is the
+whole feature, so nothing here is finished until it is** · 🔴 **OWED:** the outline painted on a real
+workspace, its **hover trigger** (the weakest thing in the lane — a guess about Blockly 12's menu
+DOM), and `inert` confirmed in a real dialog · **Tier 2** · no dependencies
 
 > ## 🔴 The outline was white in the light theme — found and fixed 2026-08-13, lane D
 >

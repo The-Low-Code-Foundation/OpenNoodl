@@ -83,6 +83,9 @@ See [VFN-011](./VFN-011-THE-BENCH.md). Six of the seven strip sentences clipped 
 
 ## What is owed to the drive
 
+⚠️ These five are carried into the consolidated list as item 31 of
+[NEXT-SESSION-2026-08-13-F.md](NEXT-SESSION-2026-08-13-F.md).
+
 1. **A screenshot of the strip at a 640 px window.** The budget is arithmetic over the system font's
    default optical instance with no kerning — a ±5% band, held back in the budget but not proved.
 2. **`icon-contrast.js` against a running editor**, in both themes, with the Logic Builder window

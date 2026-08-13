@@ -1,7 +1,11 @@
 # VFN-014 — The code nobody can read
 
-**Status:** ✅ **BUILT 2026-08-13** (`vfn-a-asks`) · **Tier 2** · ✅ mechanism pinned in source
-· 🔴 **criteria 1 and 2 owe one press of the button in a driven editor**
+**Status:** ✅ **BUILT 2026-08-13** (`8b243610` on `vfn-a-asks`; merged `c7af5581`) · ✅ **SPEC-PROVED**
+— 19 specs; criterion 3 carries a control (a deliberately leaked generator turns the byte-identity
+comparison red), criterion 4 proved by *running* both renderings and diffing outputs **and signal
+order** · 🟡 **DRIVEN in part: criterion 5 was reproduced and closed live** · 🔴 **OWED: criteria 1
+and 2 — one press of *View Code* in a driven editor**, including whether the 14 lint warnings go ·
+**Tier 2** · ✅ mechanism pinned in source
 
 ## The report
 

@@ -1,5 +1,8 @@
 # Next session — Phase 64 (VFN): tier 1 is built, and every one of it is undriven
 
+> ⚠️ **SUPERSEDED — historical.** The current brief is [NEXT-SESSION-2026-08-13-F.md](NEXT-SESSION-2026-08-13-F.md);
+> the current task state is [TASKS.md](TASKS.md). Kept for the reasoning, not the status.
+
 **Read this, then [TASKS.md](TASKS.md).** Tier 1 — the three reports where a builder loses work or
 cannot proceed — landed in `0067304d` on `cline-dev`. Nine tasks remain, plus the drives that tier 1
 still owes.

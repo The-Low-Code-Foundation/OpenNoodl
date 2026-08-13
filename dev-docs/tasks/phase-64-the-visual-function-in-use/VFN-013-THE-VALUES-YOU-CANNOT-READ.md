@@ -1,7 +1,11 @@
 # VFN-013 — The values you cannot read
 
-**Status:** ✅ **BUILT 2026-08-13** (`vfn-a-asks`) · **Tier 2** · ✅ mechanism pinned in source
-· 🔴 **criteria 1, 4, 5 owe a live re-measure**
+**Status:** ✅ **BUILT 2026-08-13** (`8b243610` on `vfn-a-asks`; merged `c7af5581`) · ✅ **SPEC-PROVED**
+— 17 specs, the control built from the *old* formula (it prints 4 real overlaps) · ✅ **DRIVEN — the
+live re-sweep was taken after the merge** (`d496f8b2`): the two badges the task filed, **266 px² and
+371 px², both go to 0**, and the two top-level nulls stay null · ⚠️ **one residual recorded, not
+rounded up to a pass** — the deepest nested badge still overlaps 152 px² of block body and 36 px² of
+an **empty** field rect · **Tier 2** · ✅ mechanism pinned in source
 
 ## The report
 

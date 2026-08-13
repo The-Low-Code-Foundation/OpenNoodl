@@ -1,8 +1,11 @@
 # VFN-005 — The app is behind the window
 
-**Status:** 🟡 **BUILT 2026-08-13 on `vfn-e-place` (`3c37ca71`) — criteria 1, 2, 4, 5 answered in
-code and graded headlessly; criterion 3 REWRITTEN and its proof, plus criterion 4's fresh-profile
-reading, owed to a drive.** · **Tier 2** · ✅ **REPRODUCED 2026-08-13 — it is OCCLUSION**
+**Status:** ✅ **BUILT 2026-08-13 on `vfn-e-place`** (`3c37ca71`, `70fc6008`; merged `e61986a5`) ·
+✅ **SPEC-PROVED** — criteria 1, 2, 4, 5 answered in code and graded headlessly, **7 negative controls
+watched red** · 🔴 **NOT DRIVEN — no part of Park, Home or the yield has been on screen** · ✅
+**criterion 1 REPRODUCED 2026-08-13 before the build — it is OCCLUSION** · 🔴 **OWED:** all five
+items in [§ What is owed to a drive](#-what-is-owed-to-a-drive), including criterion 3 (rewritten to
+match the ruling) and criterion 4's fresh-profile reading · **Tier 2**
 
 > ## 🔴 The ruling — read this before the proposals below, which it supersedes in part
 >

@@ -1,5 +1,8 @@
 # Next session — Phase 64 (VFN): five tasks are merged and none of them is driven
 
+> ⚠️ **SUPERSEDED — historical.** The current brief is [NEXT-SESSION-2026-08-13-F.md](NEXT-SESSION-2026-08-13-F.md);
+> the current task state is [TASKS.md](TASKS.md). Kept for the reasoning, not the status.
+
 **Read this, then [TASKS.md](TASKS.md).** Supersedes
 [NEXT-SESSION-2026-08-13-B.md](NEXT-SESSION-2026-08-13-B.md), whose first item — landing the
 four-agent batch — is done and merged.

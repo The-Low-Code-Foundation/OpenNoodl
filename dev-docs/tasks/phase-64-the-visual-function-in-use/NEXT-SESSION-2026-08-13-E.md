@@ -1,5 +1,23 @@
 # Close out Phase 64 — the build fan-out, then one serial drive
 
+> # ✅ SUPERSEDED by [NEXT-SESSION-2026-08-13-F.md](NEXT-SESSION-2026-08-13-F.md)
+>
+> **This file's plan was executed and it worked.** All five lanes landed
+> (`e61986a5`, `3acf2941`, `082e2c37`, `db4f6d72`), phase 2's gates are green, and **phase 1 and
+> phase 2 are done**. Lane E's reconciliation — the thing this file called "not a footnote" — is the
+> commit you are reading.
+>
+> **Only phase 3 is left**, and its 13-item list below is now out of date in two ways:
+>
+> - **item 13, "Lane A's placement, in whatever form it took"**, has a concrete form: **Park + Home,
+>   snap-to-halves rejected**, plus a *yield* on `openSettingsPanel`. It has five specific readings,
+>   not one vague one.
+> - **four lanes of new work arrived after this list was written** and each brought owed items of its
+>   own — VFN-010's seven, VFN-012 §2/§3's eight, and the copy/contrast sweep's five.
+>
+> 🔴 **Go to -F for the consolidated drive brief.** The sections below on *driving conditions*, *the
+> standard this phase is held to* and *housekeeping* are still current and are carried into -F.
+
 **Supersedes [NEXT-SESSION-2026-08-13-D.md](NEXT-SESSION-2026-08-13-D.md)**, whose headline item —
 VFN-004 failing live — is fixed and driven (`da090f0b`, [DRIVE-2026-08-13-D.md](DRIVE-2026-08-13-D.md)).
 
@@ -25,6 +43,10 @@ from either without checking `git log --oneline --grep=vfn -i cline-dev`.
 **Fixing this drift is part of closing the phase**, and it is Lane E's job — not a footnote.
 
 ### Ground truth, 2026-08-13 after `da090f0b`
+
+⚠️ **This table is a snapshot from before the five lanes landed and is kept as a record of what they
+were aimed at.** VFN-005, VFN-010 and VFN-012 §2/§3 are no longer unbuilt. **The current table is in
+[TASKS.md](TASKS.md).**
 
 | Task | Built? | Driven? |
 |---|---|---|
@@ -134,10 +156,16 @@ Merge order: E last. For each merge, 🔴 **diff the REMOVED lines** — this re
 merge that looked clean.
 
 ```bash
-npx jest                      # floor: 175 suites / 2622 passing, 0 failures
-npx tsc -p tsconfig.json      # must be clean (run from packages/noodl-editor)
-npm run cloud-library:check   # required PR gate; drifts red on any port-group rename
+npx jest                             # floor: 185 suites / 2806 passing, 0 failures (was 175 / 2622)
+npx tsc -p tsconfig.json --noEmit    # must be clean (run from packages/noodl-editor)
+npm run cloud-library:check          # required PR gate; drifts red on any port-group rename
 ```
+
+🔴 **`--noEmit` is not optional and its absence is silent.** Without it, `tsc` emits ~3096 `.js` and
+`.js.map` files into `packages/*/src`; jest then resolves `BenchRunner.js` over `BenchRunner.ts` and
+**158 of 178 suites fail to run** while the log prints passes and zero failures. The artefacts are
+untracked, so `git status` looks fine. **This file shipped the command without `--noEmit`** — that is
+the drift it was written to warn about, in its own gate block. See `NOTES-contrast-sweep.md`.
 
 ⚠️ `tests-unit/aib-009/turnDeadline.test.ts` asserts on **real timers** and flakes under 175-suite
 parallelism. It passes alone and on a re-run. **Not a regression — do not go hunting.**

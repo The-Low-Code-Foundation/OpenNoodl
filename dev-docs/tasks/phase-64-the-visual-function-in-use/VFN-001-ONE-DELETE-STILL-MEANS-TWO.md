@@ -1,6 +1,7 @@
 # VFN-001 — One Delete still means two
 
-**Status:** ✅ **BUILT AND DRIVEN 2026-08-13 — criteria 1–4 all pass** · ⭐ **Tier 1** · no dependencies
+**Status:** ✅ **BUILT** (`0067304d`) · ✅ **SPEC-PROVED** (13 specs, control watched red) · ✅ **DRIVEN
+2026-08-13 — criteria 1–4 all pass** · **nothing owed** · ⭐ **Tier 1** · no dependencies
 
 > ## ✅ Driven 2026-08-13. All four criteria, each with a negative control.
 >

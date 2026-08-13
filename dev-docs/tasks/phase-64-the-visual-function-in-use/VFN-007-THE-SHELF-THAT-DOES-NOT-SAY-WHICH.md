@@ -1,7 +1,9 @@
 # VFN-007 — The shelf that does not say which
 
-**Status:** 🟡 **BUILT 2026-08-13 on `vfn-saveblock`, NOT DRIVEN** · **Tier 3** · ✅ reproduced —
-and it is NOT contrast
+**Status:** ✅ **BUILT 2026-08-13 on `vfn-saveblock`** (`136fa3be`; merged into `cline-dev` via
+`7411c265`) · ✅ **SPEC-PROVED** — 23 tests, three negative controls; criterion 2 is a measured
+contrast number · 🔴 **NOT DRIVEN** · 🔴 **OWED:** criteria 3 and 4 — the selected state **on screen**
+in both themes, and the keyboard model · **Tier 3** · ✅ reproduced — and it is NOT contrast
 
 > ## ✅ Built. Criteria 1, 2 and 5 closed; 3 and 4 owe a drive
 >

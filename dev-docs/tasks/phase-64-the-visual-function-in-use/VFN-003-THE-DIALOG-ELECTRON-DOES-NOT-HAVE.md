@@ -1,6 +1,8 @@
 # VFN-003 — The dialog Electron does not have
 
-**Status:** ✅ **BUILT AND DRIVEN 2026-08-13 — 1, 2, 3, 5 pass; 4 passes at the seam** · **Tier 1**
+**Status:** ✅ **BUILT** (`0067304d`, `d9f41d20`) · ✅ **SPEC-PROVED** (10 specs) · ✅ **DRIVEN
+2026-08-13 — criteria 1, 2, 3, 5 pass; 4 passes at the seam** · 🔴 **OWED:** the full *delete a
+variable in use* gesture · **Tier 1**
 
 > ## ✅ Driven 2026-08-13. The silence is gone, and the control proves it was there.
 >

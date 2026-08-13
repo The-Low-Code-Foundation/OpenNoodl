@@ -1,6 +1,11 @@
 # VFN-012 — The blocks the app already has
 
-**Status:** 🟡 **all three sections built, NOT driven** · **Tier 3** · no dependencies
+**Status:** ✅ **ALL THREE SECTIONS BUILT — nothing dropped.** §1 `96869d5f`; §2/§3 `69a13622` /
+`a3556bd7` on `vfn-g-config`, merged `082e2c37` · ✅ **SPEC-PROVED** — 85 new specs for §2/§3, **8
+negative controls watched red** · 🟡 **DRIVEN in part: §1's flyout renders its labels and button, and
+*Open app settings* reaches the panel** (DRIVE-C). 🔴 **§2 and §3 have never been driven at all** ·
+🔴 **OWED:** §1 items 3–5, all of §2/§3's eight, and above all — **measure the `Libraries & Browser`
+label against the pane width** · **Tier 3** · no dependencies
 
 > **2026-08-13, branch `vfn-g-config`.** §2 (**registered libraries**) and §3 (**`window`**) are
 > now built and gated, on top of §1. **Nothing was dropped.** Write-up: the second half of

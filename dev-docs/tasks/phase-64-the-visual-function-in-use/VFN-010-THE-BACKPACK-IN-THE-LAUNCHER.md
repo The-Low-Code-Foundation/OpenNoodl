@@ -1,7 +1,9 @@
 # VFN-010 — The backpack, in the launcher
 
-**Status:** ✅ **built** on `vfn-f-backpack`, headless gates green, **never driven** · **Tier 3** ·
-depends on VFN-009 (built and merged, `a5cab23e` / `00261768`)
+**Status:** ✅ **BUILT 2026-08-13 on `vfn-f-backpack`** (`618deb7e`; merged `3acf2941`) · ✅
+**SPEC-PROVED** — 4 new suites / 44 tests · 🔴 **NOT DRIVEN — nothing here has been on screen** · 🔴
+**OWED:** all seven items in [§ What is owed to a drive](#-what-is-owed-to-a-drive) · **Tier 3** ·
+depends on VFN-009 (built and merged, `a5cab23e` / `00261768`, **and amended here** — see below)
 
 > **Gates:** `npx tsc -p tsconfig.json --noEmit` clean · `npx jest` **179 suites / 2666 passing**,
 > up from the 175 / 2622 baseline by exactly the four suites and 44 tests added here.

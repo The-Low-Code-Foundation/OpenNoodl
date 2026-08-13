@@ -1,7 +1,11 @@
 # Phase 64 — The visual function in use (Track VFN)
 
 **Created:** 2026-08-13
-**Status:** 📋 specced, not started. Tasks are **[TASKS.md](TASKS.md)** (VFN-001…012).
+**Status, 2026-08-13:** ✅ **all fourteen tasks BUILT, spec-proved and merged** into `cline-dev`
+(VFN-001…014 — 013 and 014 were added from the first live test). 🔴 **Most of the phase has never
+been driven.** Tasks and their exact built/proved/driven state are **[TASKS.md](TASKS.md)**; the
+remaining work is one bundled drive, listed in
+**[NEXT-SESSION-2026-08-13-F.md](NEXT-SESSION-2026-08-13-F.md)**.
 **Origin:** Richard, 2026-08-13, after using the floating Logic Builder for the first time as a
 builder rather than as its author — the day after [LGC-010](../phase-59-logic-seam/LGC-010-A-WINDOW-NOT-A-PANE.md)
 shipped the window:

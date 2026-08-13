@@ -1,6 +1,24 @@
 # VFN-009 — The library, in the project
 
-**Status:** 📋 open · ⭐ **Tier 2** · ~2 days · depends on VFN-008 · blocks VFN-010
+**Status:** ✅ **BUILT 2026-08-13 on `vfn-b-library`** (`a5cab23e`; merged `00261768`) · ✅
+**SPEC-PROVED** · 🔴 **NOT DRIVEN — not one pixel of this section has ever been on screen** · ⚠️
+**AMENDED by VFN-010's lane** (`618deb7e`, see below) · 🔴 **OWED:** does the section render at all,
+and does *Edit blocks* open the floating window while the settings panel is open? · ⭐ **Tier 2** ·
+depends on VFN-008 (built and merged) · blocks VFN-010 (built and merged)
+
+> ## ⚠️ Amended 2026-08-13 by VFN-010's lane — two defects in the merged manager
+>
+> VFN-010 is a second **instance** of this manager, not a second implementation, so both fixes landed
+> in the shared code and **apply to this section too**:
+>
+> 1. 🔴 **A 1000 ms backpack write window was inherited on five doors.** `EditorSettings.set`
+>    debounces its disk write, which is trap 2 in `MyBlocksShelves.ts`' own header — *"a backpack save
+>    immediately before a quit can be lost."* Every write now flushes via `EditorSettings.store()`.
+> 2. 🔴 **`handleExport` announced success for an empty export**, and rendered *"and its **-1**
+>    dependencies"*. A count derived by subtraction with no floor.
+>
+> Neither was caught here, and neither is visible without either a second reader of the same code or
+> a drive. Both are now gated.
 
 ## The report
 

@@ -1,5 +1,8 @@
 # Next session — Phase 64: the batch landed and was driven. One task now FAILS live.
 
+> ⚠️ **SUPERSEDED — historical.** The current brief is [NEXT-SESSION-2026-08-13-F.md](NEXT-SESSION-2026-08-13-F.md);
+> the current task state is [TASKS.md](TASKS.md). Kept for the reasoning, not the status.
+
 **Read this, then [DRIVE-2026-08-13-C.md](DRIVE-2026-08-13-C.md), then [TASKS.md](TASKS.md).**
 Supersedes [NEXT-SESSION-2026-08-13-C.md](NEXT-SESSION-2026-08-13-C.md), whose four-agent batch and
 bundled drive are both done and merged.

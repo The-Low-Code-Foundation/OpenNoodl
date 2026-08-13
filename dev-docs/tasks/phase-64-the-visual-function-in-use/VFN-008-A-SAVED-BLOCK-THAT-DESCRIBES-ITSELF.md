@@ -1,7 +1,11 @@
 # VFN-008 — A saved block that describes itself
 
-**Status:** 🟡 **BUILT 2026-08-13 on `vfn-saveblock` + `vfn-c-ports`, NOT DRIVEN** · ⭐ **Tier 2** ·
-blocks VFN-009 · **all six criteria now built**; 1 and 4 have a drive outstanding
+**Status:** ✅ **BUILT 2026-08-13 on `vfn-saveblock` + `vfn-c-ports`** (`136fa3be`, `bf4529d7`; merged
+`ad02b43c`) — **all six criteria** · ✅ **SPEC-PROVED**, each half watched red and measured on the real
+`vfn64-qa` artefacts · 🟡 **DRIVEN in part — the ports fix's migrate path is driven** (the OUTPUTS rail
+read `result number 3`, DRIVE-C) · 🔴 **OWED:** the **canvas half** — drag a saved block into a second
+Visual Function and prove the port **accepts a wire** — and criterion 1's quit-and-reopen round trip ·
+⭐ **Tier 2** · blocks VFN-009 (built and merged)
 
 > ## ✅ Criterion 4 — was FALSE AS WRITTEN, FIXED 2026-08-13 on `vfn-c-ports`
 >
