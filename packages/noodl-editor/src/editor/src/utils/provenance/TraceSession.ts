@@ -173,6 +173,19 @@ export class TraceSession extends Model {
   }
 
   /**
+   * The same viewer, for a surface that pulls port values without joining this session.
+   *
+   * Exposed rather than re-derived: the sandbox exclusion above is a rule with a reason and a
+   * measured failure behind it, and a second copy of it is a second thing to get wrong. A caller
+   * that only wants layer 1 (`getPortValues` — no arming, no buffer, nothing to tear down) has
+   * no business owning this session's state, so it addresses the client itself and listens for
+   * its own reply. See `propertyeditor/components/PortsTab/usePortValues`.
+   */
+  public get previewClientId(): string | undefined {
+    return this.clientId;
+  }
+
+  /**
    * Whether a reply that arrived on the broadcast channel is *this session's*.
    *
    * ⚠️ **The relay broadcasts every viewer reply to every editor peer**, and until BEN-003 the
