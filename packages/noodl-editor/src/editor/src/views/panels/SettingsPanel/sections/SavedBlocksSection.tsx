@@ -23,6 +23,25 @@
  * measuring copy is reachable by Tab, so every button in these dialogs has an invisible twin ahead
  * of it in the tab order. Both are `BaseDialog`'s, filed, and on every dialog surface in the app.
  *
+ * ## VFN-010 — 🔴 one component, two instances
+ *
+ * The launcher's backpack manager is **this component with `shelf="user"`**, not a second one.
+ * VFN-010 is explicit that a second Blockly host with its own save path is *"the one-fact-two-stores
+ * shape"*, and the same argument applies one level up: two managers over one shelf would be two
+ * places for rename to be wrong, and this register already carries a finding that parallel agents
+ * solve the same problem twice.
+ *
+ * Exactly three things differ between the instances, and each is a fact about the surface rather
+ * than a preference:
+ *
+ * 1. **Which shelf** — `backpackRows()` reads the user shelf directly, so a backpack definition
+ *    that a project happens to shadow is still managed from the launcher.
+ * 2. **Where the count comes from** — the project instance walks the open project (`usageNow`,
+ *    cheap, on render). The launcher has no open project, so its count is a walk of every recent
+ *    project **off disk**, behind an explicit action, with a timestamp and a stated scope.
+ * 3. **Editing the blocks** — the launcher has no canvas. VFN-010's option 2: it manages the
+ *    metadata and says, in words, that the blocks are opened from a project.
+ *
  * @module SettingsPanel
  */
 
@@ -39,26 +58,47 @@ import { ProjectModel } from '@noodl-models/projectmodel';
 
 import { EventDispatcher } from '../../../../../../shared/utils/EventDispatcher';
 import {
+  backpackRows,
   detachAndRemove,
   duplicateDefinition,
   exportDefinition,
+  importDefinitions,
   openDefinitionTab,
+  removeBackpackDefinition,
   removeDefinition,
   renameDefinition,
   savedBlockRows,
   usageNow,
   type SavedBlockRow
 } from '../../../BlocklyEditor/MyBlocksLibrary';
+import { backpackUsageNow } from '../../../BlocklyEditor/MyBlocksRecentProjects';
 import {
+  noCrossProjectCheck,
+  wasChecked,
+  type CrossProjectUsage
+} from '../../../BlocklyEditor/myblocks/crossProjectUsage';
+import type { MyBlocksScope } from '../../../BlocklyEditor/myblocks/store';
+import {
+  BACKPACK_EDIT_NOTE,
+  BACKPACK_EMPTY,
+  BACKPACK_INTRO,
   MY_BLOCKS_GLYPH,
   SHELF_LABEL,
   SHELF_NOTE,
+  crossProjectLines,
+  describeCheckedAt,
+  describeCrossProjectRefusal,
+  describeCrossProjectUsage,
   describeDeleteRefusal,
   describeDetachOffer,
   describeDetachResult,
+  describeExportResult,
+  describeImportResult,
   describePropagation,
   describeRegeneration,
+  describeUncheckedUsage,
   describeUsageShort,
+  exportSucceeded,
   usageLines
 } from '../../../BlocklyEditor/myblocks/libraryIntent';
 import { ToastLayer } from '../../../ToastLayer/ToastLayer';
@@ -191,8 +231,31 @@ function RenameDialog({ current, onAccept, onClose }: { current: string; onAccep
   );
 }
 
-export function SavedBlocksSection() {
+export interface SavedBlocksSectionProps {
+  /**
+   * Which shelf this instance manages.
+   *
+   * Omitted — the project surface: **both** shelves, because a backpack block that a project uses
+   * has to be visible from that project. `'user'` — the launcher surface: the backpack alone, with
+   * a cross-project usage check in place of the project walk.
+   */
+  shelf?: MyBlocksScope;
+}
+
+export function SavedBlocksSection({ shelf }: SavedBlocksSectionProps = {}) {
+  const isBackpack = shelf === 'user';
   const [rows, setRows] = useState<SavedBlockRow[]>([]);
+
+  /**
+   * VFN-010 — the cross-project answers, keyed by definition id.
+   *
+   * 🔴 Held here rather than on the row because it is **not** a property of the definition: it is
+   * the result of a scan that ran at a particular moment over a particular list of projects, and
+   * a definition with no entry has not been checked rather than being unused. `wasChecked` is that
+   * distinction and every read below goes through it.
+   */
+  const [checks, setChecks] = useState<Record<string, CrossProjectUsage>>({});
+  const [checking, setChecking] = useState<string | null>(null);
 
   /**
    * 🔴 Recomputed, never cached across a gesture.
@@ -205,12 +268,12 @@ export function SavedBlocksSection() {
    */
   const refresh = useCallback(() => {
     try {
-      setRows(savedBlockRows());
+      setRows(isBackpack ? backpackRows() : savedBlockRows());
     } catch (error) {
       console.error('[SavedBlocks] Could not read the saved blocks', error);
       setRows([]);
     }
-  }, []);
+  }, [isBackpack]);
 
   useEffect(() => {
     refresh();
@@ -263,6 +326,50 @@ export function SavedBlocksSection() {
     );
   };
 
+  /**
+   * VFN-010 — *"check where this is used"*, as an action rather than a render.
+   *
+   * ⚠️ Scanning N projects off disk is I/O in a dialog, which is why this is a button and why the
+   * answer arrives with a timestamp beside it. The result is stored under the definition's id and
+   * `wasChecked` keeps "checked, found nothing" apart from "never asked" — rendering the two the
+   * same way is how *"not used anywhere"* gets said about a check that never ran.
+   */
+  const runCheck = async (definitionId: string): Promise<CrossProjectUsage> => {
+    setChecking(definitionId);
+    try {
+      const usage = await backpackUsageNow(definitionId);
+      setChecks((previous) => ({ ...previous, [definitionId]: usage }));
+      return usage;
+    } catch (error) {
+      ToastLayer.showError(`Could not read your recent projects: ${error}`);
+      return noCrossProjectCheck(definitionId);
+    } finally {
+      setChecking(null);
+    }
+  };
+
+  /**
+   * Import — a library file's worth of definitions onto this surface's shelf.
+   *
+   * ⚠️ The clipboard, matching Export beside it: `exportDefinitions` already produces the whole
+   * envelope and `importLibrary` already reads it, so what was missing was a way to move the bytes,
+   * and an Electron file-dialog surface is a larger change than this task needs. A known shortcut,
+   * written down rather than presented as the finished import.
+   */
+  const handleImport = async () => {
+    const target: MyBlocksScope = shelf ?? 'project';
+    try {
+      const text = await navigator.clipboard.readText();
+      const result = importDefinitions(JSON.parse(text), target);
+      ToastLayer.showSuccess(describeImportResult(result.imported.length, result.rejected.length, target));
+    } catch (error) {
+      // A parse failure and a cycle refusal both land here, and both are reported: an import that
+      // announced nothing would leave a builder believing the clipboard was empty.
+      ToastLayer.showError(error instanceof Error ? error.message : String(error));
+    }
+    refresh();
+  };
+
   const handleRename = (row: SavedBlockRow) => {
     DialogLayerModel.instance.showDialog(
       (close) => (
@@ -294,6 +401,11 @@ export function SavedBlocksSection() {
    * with no way forward is how a builder ends up hand-editing `project.json`.
    */
   const handleDelete = (row: SavedBlockRow) => {
+    if (isBackpack) {
+      void handleBackpackDelete(row);
+      return;
+    }
+
     const name = row.definition.name;
     const usage = usageNow(row.definition.id);
 
@@ -341,6 +453,58 @@ export function SavedBlocksSection() {
   };
 
   /**
+   * VFN-010 criterion 5 — delete from the backpack, refusing while a scanned project uses it.
+   *
+   * 🔴 **The scan is run here, not read off a previous check.** A builder who pressed *Check where
+   * this is used* five minutes ago and then presses Delete is entitled to a refusal about the
+   * project as it is now, and this is the one gesture where a stale answer is destructive. It is
+   * the same rule VFN-009's `usageNow` follows for the open project, at the cost this surface has.
+   *
+   * ⚠️ **No inline-and-detach here.** The project surface offers it because it can rewrite the
+   * bodies it is about to break; the launcher cannot — those bodies are in other projects, on disk,
+   * possibly open in another window. Offering a repair this surface cannot perform would be worse
+   * than refusing, so the refusal names where to go and does that instead.
+   */
+  const handleBackpackDelete = async (row: SavedBlockRow) => {
+    const name = row.definition.name;
+    const usage = await runCheck(row.definition.id);
+
+    if (usage.siteCount > 0) {
+      DialogLayerModel.instance.showDialog(
+        (close) => (
+          <LibraryDialog
+            title={`"${name}" is still in use`}
+            message={describeCrossProjectRefusal(name, usage)}
+            lines={crossProjectLines(usage)}
+            note={BACKPACK_EDIT_NOTE}
+            onClose={close}
+          />
+        ),
+        { id: 'myblocks-delete' }
+      );
+      return;
+    }
+
+    DialogLayerModel.instance.showConfirm({
+      id: 'myblocks-delete',
+      title: `Delete "${name}" from your backpack?`,
+      text: describeCrossProjectUsage(name, usage),
+      confirmText: 'Delete',
+      onConfirm: () => {
+        try {
+          // Still through the store's refusal: another saved block on either shelf can call this
+          // one, and that edge is one `referencesTo` away and has nothing to do with projects.
+          removeBackpackDefinition(row.definition.id, usage);
+          ToastLayer.showSuccess(`Deleted "${name}".`);
+        } catch (error) {
+          ToastLayer.showError(error instanceof Error ? error.message : String(error));
+        }
+        refresh();
+      }
+    });
+  };
+
+  /**
    * Export — the definition and its transitive closure, onto the clipboard.
    *
    * ⚠️ The clipboard rather than a file picker, deliberately: `exportDefinitions` already produces
@@ -350,32 +514,65 @@ export function SavedBlocksSection() {
    * finished export.
    */
   const handleExport = async (row: SavedBlockRow) => {
+    const name = row.definition.name;
     try {
       const library = exportDefinition(row.definition.id);
+
+      /**
+       * 🔴 A defect in VFN-009's merged section, found and fixed by VFN-010: the message was
+       * written inline here and read `its ${library.definitions.length - 1} dependencies`, which
+       * is **-1** for a definition that has left the shelf since this row was rendered — announced
+       * as a *success* for a copy of nothing. Both halves are addressed: the arithmetic is in
+       * `libraryIntent.ts` where a runner can grade it, and an empty export reports as a failure.
+       */
+      if (!exportSucceeded(library.definitions.length)) {
+        ToastLayer.showError(describeExportResult(name, library.definitions.length));
+        refresh();
+        return;
+      }
+
       await navigator.clipboard.writeText(JSON.stringify(library, null, 2));
-      ToastLayer.showSuccess(
-        `Copied "${row.definition.name}" and its ${library.definitions.length - 1} dependencies to the clipboard.`
-      );
+      ToastLayer.showSuccess(describeExportResult(name, library.definitions.length));
     } catch (error) {
-      ToastLayer.showError(`Could not copy "${row.definition.name}": ${error}`);
+      ToastLayer.showError(`Could not copy "${name}": ${error}`);
     }
   };
 
   return (
-    <CollapsableSection title="Saved blocks" hasGutter hasVisibleOverflow hasTopDivider>
+    <CollapsableSection
+      title={isBackpack ? 'My backpack' : 'Saved blocks'}
+      hasGutter
+      hasVisibleOverflow
+      hasTopDivider
+    >
       <div className={css.Intro}>
-        Blocks you saved from a Visual Function. Editing one changes every place that uses it.
+        {isBackpack ? BACKPACK_INTRO : 'Blocks you saved from a Visual Function. Editing one changes every place that uses it.'}
       </div>
+
+      {/* 🔴 The launcher's limitation, stated in the UI rather than worked around. VFN-010 option 2. */}
+      {isBackpack ? <div className={css.Intro}>{BACKPACK_EDIT_NOTE}</div> : null}
 
       {rows.length === 0 ? (
         <div className={css.Empty}>
-          Nothing saved yet. In a Visual Function, right-click a block and choose <em>Save as block</em>.
+          {isBackpack ? (
+            BACKPACK_EMPTY
+          ) : (
+            <>
+              Nothing saved yet. In a Visual Function, right-click a block and choose <em>Save as block</em>.
+            </>
+          )}
         </div>
       ) : null}
 
       {rows.map((row) => {
         const { definition, scope, usage } = row;
-        const sites = usageLines(usage);
+        const check = checks[definition.id] ?? noCrossProjectCheck(definition.id);
+        const checked = wasChecked(check);
+
+        // 🔴 Two different questions, and never the same answer rendered for both. `usage` is the
+        // open project's census; `check` is a sample of the recent projects taken on demand. A row
+        // with neither has not been asked, and says so.
+        const sites = usage ? usageLines(usage) : checked ? crossProjectLines(check) : [];
 
         return (
           <div key={definition.id} className={css.Row} data-test="saved-block-row" data-definition-id={definition.id}>
@@ -395,8 +592,18 @@ export function SavedBlocksSection() {
             {definition.description ? <div className={css.Description}>{definition.description}</div> : null}
 
             <div className={css.Usage} data-test="saved-block-usage">
-              {describeUsageShort(usage)}
+              {usage
+                ? describeUsageShort(usage)
+                : checked
+                ? describeCrossProjectUsage(definition.name, check)
+                : describeUncheckedUsage(definition.name)}
             </div>
+
+            {checked ? (
+              <div className={css.Description} data-test="saved-block-checked-at">
+                {describeCheckedAt(check)}
+              </div>
+            ) : null}
 
             {sites.length > 0 ? (
               <ul className={css.Sites}>
@@ -407,9 +614,19 @@ export function SavedBlocksSection() {
             ) : null}
 
             <div className={css.Actions}>
-              <button className={`${css.Action} ${css.ActionPrimary}`} onClick={() => handleEdit(row)}>
-                Edit blocks
-              </button>
+              {isBackpack ? (
+                <button
+                  className={`${css.Action} ${css.ActionPrimary}`}
+                  disabled={checking === definition.id}
+                  onClick={() => void runCheck(definition.id)}
+                >
+                  {checking === definition.id ? 'Checking…' : 'Check where this is used'}
+                </button>
+              ) : (
+                <button className={`${css.Action} ${css.ActionPrimary}`} onClick={() => handleEdit(row)}>
+                  Edit blocks
+                </button>
+              )}
               <button className={css.Action} onClick={() => handleRename(row)}>
                 Rename
               </button>
@@ -426,6 +643,13 @@ export function SavedBlocksSection() {
           </div>
         );
       })}
+
+      {/* Import sits below the list rather than on a row: it is about the shelf, not a definition. */}
+      <div className={css.Actions}>
+        <button className={css.Action} onClick={() => void handleImport()}>
+          Import from clipboard
+        </button>
+      </div>
     </CollapsableSection>
   );
 }

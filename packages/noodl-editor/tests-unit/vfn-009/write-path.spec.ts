@@ -72,9 +72,16 @@ describe('VFN-009 criterion 8 — every write goes through the store', () => {
 
     // Named, and by `toEqual` rather than `toContain`, so that a new kind of call has to be argued
     // for here rather than slipping in beside them. Three of these are reads (`get`, `list`,
-    // `scopeOf`); the three writes are `save`, `rename` and `remove`, and `exportDefinitions`
-    // produces a value and writes nothing.
-    expect(calls).toEqual(['exportDefinitions', 'get', 'list', 'remove', 'rename', 'save', 'scopeOf']);
+    // `scopeOf`); the writes are `save`, `rename`, `remove` and — VFN-010 — `importLibrary`, and
+    // `exportDefinitions` produces a value and writes nothing.
+    //
+    // ⚠️ `importLibrary` had to be argued for right here, which is what this assertion is for. It
+    // is a store method rather than a bypass: every definition it lands goes through `save` inside
+    // the store, so the cycle guard still runs and `shape`, `params` and `requires` are still
+    // recomputed from each imported body. VFN-010's backpack is the surface that needed it —
+    // *"import/export matters more here than in the project"* — and an import written any other
+    // way would be exactly the bypass this file exists to catch.
+    expect(calls).toEqual(['exportDefinitions', 'get', 'importLibrary', 'list', 'remove', 'rename', 'save', 'scopeOf']);
   });
 
   it('neither file reaches a shelf directly', () => {

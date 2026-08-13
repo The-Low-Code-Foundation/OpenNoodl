@@ -221,17 +221,52 @@ export {
 } from './myblocks/libraryIntent';
 export { findNodeById, scanProject } from './MyBlocksProjectScan';
 export {
+  backpackRows,
   detachAndRemove,
   duplicateDefinition,
   exportDefinition,
+  importDefinitions,
   openDefinitionTab,
+  removeBackpackDefinition,
   removeDefinition,
   renameDefinition,
   saveDefinitionBlocks,
   savedBlockRows,
   usageNow
 } from './MyBlocksLibrary';
-export type { DetachResult, SavedBlockRow } from './MyBlocksLibrary';
+export type { DetachResult, ImportResult, SavedBlockRow } from './MyBlocksLibrary';
+
+// VFN-010 — the backpack in the launcher. The shelf grouping the picker shows, the two on-disk
+// project formats, and the cross-project count are all pure and are graded in the plain-Node
+// runner; `MyBlocksRecentProjects` is the disk read and is, like `MyBlocksShelves`, deliberately
+// not. The launcher's section is `SavedBlocksSection` with `shelf="user"` — the same component
+// VFN-009 put in project settings, against a different shelf, and not a second one.
+export { shelfGroups } from './myblocks/shelfGrouping';
+export type { ShelfGroup, ShelfLookup } from './myblocks/shelfGrouping';
+export { displayNameOf, scanFromLegacyProject, scanFromV2Components } from './myblocks/projectFile';
+export type { V2ComponentFiles } from './myblocks/projectFile';
+export { crossProjectNodeIds, crossProjectUsage, noCrossProjectCheck, wasChecked } from './myblocks/crossProjectUsage';
+export type { CrossProjectUsage, ProjectSnapshot, ProjectUsage, UnreadableProject } from './myblocks/crossProjectUsage';
+export {
+  BACKPACK_EDIT_NOTE,
+  BACKPACK_EMPTY,
+  BACKPACK_INTRO,
+  CROSS_PROJECT_CAVEAT,
+  CROSS_PROJECT_PROPAGATION,
+  crossProjectLines,
+  crossProjectSiteLine,
+  describeCheckedAt,
+  describeCrossProjectRefusal,
+  describeCrossProjectUsage,
+  describeExportResult,
+  describeImportResult,
+  describeScannedProjects,
+  describeUncheckedUsage,
+  describeUnreadableProjects,
+  exportSucceeded
+} from './myblocks/libraryIntent';
+export { flushShelves } from './MyBlocksShelves';
+export { backpackUsageNow, readProjectSnapshot, recentProjects, scanRecentProjects } from './MyBlocksRecentProjects';
 
 // LGC-009 — the hat. The block itself is registered by `initNoodlBlocks`; the type id and the
 // default signal name live in `@noodl/runtime` (the viewer window has to know them too), and the

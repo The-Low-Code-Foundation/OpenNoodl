@@ -7,11 +7,13 @@ import { VStack } from '@noodl-core-ui/components/layout/Stack';
 import { CollapsableSection } from '@noodl-core-ui/components/sidebar/CollapsableSection';
 import { Text, TextType } from '@noodl-core-ui/components/typography/Text';
 
+import { flushShelves } from '../../views/BlocklyEditor/MyBlocksShelves';
 import { AiSettingsSection } from '../../views/panels/AiSettings/AiSettingsSection';
+import { SavedBlocksSection } from '../../views/panels/SettingsPanel/sections/SavedBlocksSection';
 import { ThemeSettingRow } from '../../views/panels/SettingsPanel/sections/ThemeSettingRow';
 
 /** Which section to scroll into view when the dialog opens. */
-export type LauncherSettingsSection = 'appearance' | 'ai';
+export type LauncherSettingsSection = 'appearance' | 'ai' | 'backpack';
 
 /**
  * Sized so `AiSettingsSection` — a `CollapsableSection` built for a 380px side
@@ -61,20 +63,44 @@ export interface LauncherSettingsDialogProps {
  * truth for a secret, and a second theme select would be a second source of
  * truth for a preference that is deliberately global. The launcher hosts them;
  * it does not reimplement them.
+ *
+ * VFN-010 adds a third on exactly the same argument. The backpack is
+ * `EditorSettings`' `myBlocks.backpack` — the editor's own JSON on disk, which
+ * follows the builder between projects — so it belongs on this app-wide surface,
+ * and the section that manages it is `SavedBlocksSection` with `shelf="user"`:
+ * the **same component** VFN-009 put in project settings, against a different
+ * shelf. A second manager would be a second writer to one shelf, which is the
+ * one-fact-two-stores shape the task names and refuses.
  */
 export function LauncherSettingsDialog({ onClose, initialSection }: LauncherSettingsDialogProps) {
   const aiRef = React.useRef<HTMLDivElement>(null);
+  const backpackRef = React.useRef<HTMLDivElement>(null);
 
   React.useEffect(() => {
     if (initialSection === 'ai') aiRef.current?.scrollIntoView({ block: 'start' });
+    if (initialSection === 'backpack') backpackRef.current?.scrollIntoView({ block: 'start' });
   }, [initialSection]);
+
+  /**
+   * VFN-010 criterion 6 — *"a backpack write from the launcher survives a quit"*.
+   *
+   * 🔴 `EditorSettings.set` debounces its disk write by 1000 ms, and a launcher
+   * that is quit inside that window loses the write. `MyBlocksLibrary` already
+   * starts the flush on every backpack mutation; this awaits one more on the way
+   * out, so the dialog cannot be dismissed with a write still only in memory.
+   * Belt and braces on purpose: the one gesture after which a builder is most
+   * likely to quit is the one that closes this dialog.
+   */
+  const handleClose = React.useCallback(() => {
+    void flushShelves().then(onClose, onClose);
+  }, [onClose]);
 
   return (
     // `CoreBaseDialog` is what every other dialog in the editor uses: it owns
     // the centring and the backdrop, which the dialog layer deliberately does
     // not (`.Root` is a bare full-viewport container, so a dialog that styles
     // only itself renders in the top-left corner).
-    <CoreBaseDialog title="Settings" isVisible hasBackdrop onClose={onClose}>
+    <CoreBaseDialog title="Settings" isVisible hasBackdrop onClose={handleClose}>
       <div style={DIALOG_STYLE}>
         <Box hasXSpacing hasTopSpacing hasBottomSpacing>
           <Text textType={TextType.Secondary}>
@@ -94,6 +120,11 @@ export function LauncherSettingsDialog({ onClose, initialSection }: LauncherSett
           <div ref={aiRef}>
             <AiSettingsSection />
           </div>
+
+          {/* The backpack: `EditorSettings`, not a project, which is why it is here. */}
+          <div ref={backpackRef}>
+            <SavedBlocksSection shelf="user" />
+          </div>
         </div>
 
         <Box hasXSpacing hasYSpacing UNSAFE_style={{ display: 'flex', justifyContent: 'flex-end' }}>
@@ -101,7 +132,7 @@ export function LauncherSettingsDialog({ onClose, initialSection }: LauncherSett
             label="Done"
             size={PrimaryButtonSize.Small}
             isFitContent
-            onClick={onClose}
+            onClick={handleClose}
             testId="launcher-settings-done"
           />
         </Box>

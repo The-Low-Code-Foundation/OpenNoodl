@@ -68,6 +68,33 @@ class UserShelf implements MyBlocksShelf {
   }
 }
 
+/**
+ * VFN-010 criterion 6 — **close the 1000 ms window**, rather than inheriting it.
+ *
+ * 🔴 Trap 2 in this file's header, fixed at the one place it can be. `EditorSettings.set` marks the
+ * value in memory and debounces the disk write by a second; `store()` is the disk write, and it is
+ * already public and awaitable. Every backpack mutation the *managers* perform is a discrete
+ * gesture — a rename, a duplicate, a delete, an import — so paying for a synchronous write after
+ * each one costs nothing a builder can perceive and removes the case the header describes:
+ *
+ * > *"A backpack save immediately before a quit can be lost."*
+ *
+ * ⚠️ This was **not** done for VFN-009's section either, which offers rename, duplicate and delete
+ * on backpack rows and had the same window. Fixing it here fixes both instances, which is the whole
+ * argument for the launcher being a second instance rather than a second implementation.
+ *
+ * Never fatal: a flush that fails leaves the value in memory and the debounce still pending, which
+ * is exactly the behaviour there was before. It reports rather than throwing, because the write it
+ * is protecting has already happened.
+ */
+export async function flushShelves(): Promise<void> {
+  try {
+    await EditorSettings.instance.store();
+  } catch (error) {
+    console.warn('[MyBlocks] The backpack could not be written to disk immediately.', error);
+  }
+}
+
 let store: MyBlocksStore | null = null;
 
 /**

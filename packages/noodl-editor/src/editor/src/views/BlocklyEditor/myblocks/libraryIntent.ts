@@ -38,6 +38,7 @@
 import type { MyBlocksScope } from './store';
 import type { DefinitionChange } from './definitionChange';
 import { distinctSites, type DefinitionUsage, type UsageSite } from './usage';
+import { wasChecked, type CrossProjectUsage } from './crossProjectUsage';
 
 /** The glyph the call block wears, reused wherever a definition is named in prose. */
 export const MY_BLOCKS_GLYPH = '▣';
@@ -249,3 +250,208 @@ export function describeDetachResult(name: string, rewritten: number): string {
  * that module's own rule is that the copy and the function that picks it are graded against each
  * other, and a seventh reason whose words lived one directory away could not be.
  */
+
+/* ────────────────────────────────────────────────────────────────────────────────────────────
+ * VFN-010 — the backpack, in the launcher.
+ *
+ * Same file rather than a sibling, because the launcher section is the **same component** against
+ * a different shelf, and a second vocabulary file would be the first step towards it becoming a
+ * second implementation. What is genuinely new here is one thing: the launcher's count is a
+ * **sample** and the project's is a census, and every sentence below exists to make that difference
+ * visible rather than to hide it.
+ * ──────────────────────────────────────────────────────────────────────────────────────────── */
+
+/**
+ * 🔴 The caveat that must travel with every cross-project number.
+ *
+ * The launcher knows the projects in its recent list. That is a record of where it has been, not
+ * an inventory of where a block is — the builder may have projects it has never opened, projects on
+ * another machine, and projects a collaborator holds. A count that did not say so would be read as
+ * a total, and *"used in 0 places"* read as a total is a licence to delete.
+ *
+ * A separate constant so that no sentence can accidentally be written without it and so that a spec
+ * can assert its presence in each one rather than matching prose.
+ */
+export const CROSS_PROJECT_CAVEAT =
+  'It may be used in projects not listed here, and in projects on other machines.';
+
+/** What the report asked the warning to end with. Independent of the number, deliberately. */
+export const CROSS_PROJECT_PROPAGATION = 'Changes apply everywhere this block is used.';
+
+/** `Alpha · Pages/Checkout · Order total` — the project, then VFN-009's own site line. */
+export function crossProjectSiteLine(projectName: string, site: UsageSite): string {
+  return `${projectName} · ${siteLine(site)}`;
+}
+
+/**
+ * Every place, named, across every project that was read.
+ *
+ * The same rule as `usageLines`: naming them, not counting them. A count is a number to dismiss;
+ * a list is a thing to check — and here the project name is the first thing on the line, because
+ * "which project" is the question a backpack block raises that a project block does not.
+ */
+export function crossProjectLines(usage: CrossProjectUsage): string[] {
+  const lines: string[] = [];
+  for (const project of usage.projects) {
+    for (const site of project.sites) lines.push(crossProjectSiteLine(project.projectName, site));
+  }
+  return lines;
+}
+
+/** `4 recent projects were checked: Alpha, Beta, Gamma, Delta.` — criterion 3, in one sentence. */
+export function describeScannedProjects(usage: CrossProjectUsage): string {
+  const names = usage.scanned.map((project) => project.name).filter((name) => (name ?? '').trim() !== '');
+  if (names.length === 0) return 'No projects were checked.';
+  return `${plural(names.length, 'recent project')} ${names.length === 1 ? 'was' : 'were'} checked: ${names.join(', ')}.`;
+}
+
+/**
+ * Projects in the list that could not be read, reported rather than folded into the absence.
+ *
+ * 🔴 A project that was skipped is not a project where the block is missing. Counting the two the
+ * same way is how a sample starts presenting itself as a census, and it is the failure this whole
+ * section is arranged to avoid.
+ */
+export function describeUnreadableProjects(usage: CrossProjectUsage): string {
+  if (usage.unreadable.length === 0) return '';
+  const names = usage.unreadable.map((project) => project.name).join(', ');
+  return (
+    `${plural(usage.unreadable.length, 'project')} in your list could not be read and ${usage.unreadable.length === 1 ? 'was' : 'were'} ` +
+    `not counted: ${names}.`
+  );
+}
+
+/**
+ * The whole cross-project answer.
+ *
+ * > *"Used in **8 places across 2 of your 4 recent projects**. It may be used in projects not
+ * > listed here, and in projects on other machines. Changes apply everywhere this block is used."*
+ *
+ * Three properties, all deliberate: the number is real, its scope is stated, and the warning does
+ * not depend on the number being complete — which is why {@link CROSS_PROJECT_PROPAGATION} is
+ * present whether the count is eight or zero.
+ */
+export function describeCrossProjectUsage(name: string, usage: CrossProjectUsage): string {
+  if (!wasChecked(usage)) return describeUncheckedUsage(name);
+
+  const scope = describeScannedProjects(usage);
+  const unreadable = describeUnreadableProjects(usage);
+  const tail = [CROSS_PROJECT_CAVEAT, CROSS_PROJECT_PROPAGATION].join(' ');
+
+  const head =
+    usage.siteCount === 0
+      ? `"${name}" was not found in any of the projects checked.`
+      : `"${name}" is used in ${plural(usage.siteCount, 'place')} across ${plural(usage.projectCount, 'project')}.`;
+
+  return [head, scope, unreadable, tail].filter((part) => part !== '').join(' ');
+}
+
+/**
+ * What the launcher says **before** a check has run.
+ *
+ * ⚠️ Scanning N projects off disk is I/O in a dialog, so the check is an explicit action rather
+ * than something that happens on render. That makes "not checked" a state the project section does
+ * not have, and it must not be rendered as "not used" — `wasChecked` is the distinction and this is
+ * the sentence on the other side of it.
+ */
+export function describeUncheckedUsage(name: string): string {
+  return (
+    `Where "${name}" is used has not been checked. The launcher reads your recent projects on ` +
+    `demand rather than every time this list is shown.`
+  );
+}
+
+/** How long ago the answer was true. Shown beside it, because a scan goes stale immediately. */
+export function describeCheckedAt(usage: CrossProjectUsage, now: Date = new Date()): string {
+  if (!usage.checkedAt) return '';
+
+  const at = new Date(usage.checkedAt).getTime();
+  if (!Number.isFinite(at)) return '';
+
+  const minutes = Math.floor(Math.max(0, now.getTime() - at) / 60000);
+  if (minutes < 1) return 'Checked just now.';
+  return `Checked ${plural(minutes, 'minute')} ago.`;
+}
+
+/**
+ * The delete refusal for a backpack block, naming the **projects** as well as the places.
+ *
+ * Criterion 5. `MyBlocksStore.remove` throws `MyBlocksInUseError` carrying node ids, which is
+ * everything it can know — a node id in another project is not something a builder can go and look
+ * at, and the project name is.
+ */
+export function describeCrossProjectRefusal(name: string, usage: CrossProjectUsage): string {
+  const names = usage.projects.map((project) => project.projectName).join(', ');
+  return (
+    `"${name}" is still used in ${plural(usage.siteCount, 'place')} across ${plural(usage.projectCount, 'project')} ` +
+    `— ${names}. Deleting it from your backpack would leave ${usage.siteCount === 1 ? 'that call block' : 'those call blocks'} ` +
+    `pointing at nothing. ${CROSS_PROJECT_CAVEAT}`
+  );
+}
+
+/**
+ * 🔴 The launcher's one honest limitation, stated in the UI rather than worked around.
+ *
+ * The launcher has no node graph and no Blockly window, and VFN-010 names the two options in
+ * preference order. This is the second: the launcher manages a block's *metadata* and its blocks
+ * are opened from a project. The alternative that is explicitly **not acceptable** is a second
+ * Blockly host in the launcher with its own save path — two writers to one shelf, which is the
+ * one-fact-two-stores shape, and this shelf has a 1000 ms debounce in front of it.
+ */
+export const BACKPACK_EDIT_NOTE =
+  'The launcher has no canvas, so a block’s own blocks are opened from inside a project — ' +
+  'open a project, then Project settings → Saved blocks. Everything else about a block can be ' +
+  'changed here.';
+
+/** What the backpack is, on the surface that owns it. */
+export const BACKPACK_INTRO =
+  'Blocks saved to your backpack. They follow you between projects and are not part of any one of ' +
+  'them, so a collaborator opening a project does not get them.';
+
+/** The empty state. Names the gesture that fills it, on the surface where that gesture is not. */
+export const BACKPACK_EMPTY =
+  'Nothing in your backpack yet. In a project, right-click a block in a Visual Function, choose ' +
+  '“Save as a block…”, and pick My backpack.';
+
+/**
+ * 🔴 What an export **actually copied** — a defect found in VFN-009's merged section, fixed here.
+ *
+ * The section said `Copied "X" and its ${library.definitions.length - 1} dependencies` inline, as a
+ * *success* toast. `exportDefinitions` returns an **empty** library for a definition that is no
+ * longer on either shelf — deleted from a block editor, or from the other instance of this manager,
+ * between the row being rendered and the button being pressed — so that arithmetic produced:
+ *
+ * > *Copied "Discount" and its **-1** dependencies to the clipboard.*
+ *
+ * announcing a success for a copy of nothing. Reproduced against the real store before fixing.
+ *
+ * Two things were wrong and both are addressed. The count went negative; and the reason it could is
+ * that the sentence was written in the `.tsx`, where neither runner can read it — this file exists
+ * precisely so that a sentence with arithmetic in it is gradeable. {@link exportSucceeded} is what
+ * the section branches on, so an empty export reports as a failure rather than as a quieter success.
+ */
+export function describeExportResult(name: string, definitionCount: number): string {
+  if (definitionCount <= 0) {
+    return `"${name}" is not on either shelf any more, so there was nothing to copy.`;
+  }
+  if (definitionCount === 1) return `Copied "${name}" to the clipboard.`;
+  return `Copied "${name}" and the ${plural(definitionCount - 1, 'saved block')} it depends on to the clipboard.`;
+}
+
+/** Whether an export produced anything at all. The branch a toast's severity is chosen by. */
+export function exportSucceeded(definitionCount: number): boolean {
+  return definitionCount > 0;
+}
+
+/** What an import did. Reported from the store's own result, never assumed from the input. */
+export function describeImportResult(count: number, rejected: number, scope: MyBlocksScope): string {
+  const where = scope === 'user' ? 'your backpack' : 'this project';
+  if (count === 0 && rejected === 0) return 'That file contained no saved blocks.';
+
+  const head = count === 0 ? `Nothing was imported into ${where}.` : `Imported ${plural(count, 'saved block')} into ${where}.`;
+  if (rejected === 0) return head;
+
+  // Reported, and in the same breath: a partial import that only announced its successes is an
+  // import the builder believes was complete.
+  return `${head} ${plural(rejected, 'entry', 'entries')} in the file could not be read and ${rejected === 1 ? 'was' : 'were'} skipped.`;
+}
