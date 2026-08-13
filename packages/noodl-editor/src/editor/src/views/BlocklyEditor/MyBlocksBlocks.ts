@@ -50,6 +50,8 @@ import {
   MY_BLOCKS_BLOCK_GLYPH,
   type DescribableDefinition
 } from './myblocks/saveIntent';
+import { SHELF_LABEL } from './myblocks/libraryIntent';
+import { shelfGroups, type ShelfLookup } from './myblocks/shelfGrouping';
 import { inferSignature, STATIC_BLOCK_SCHEMA, type BlockSchema } from './myblocks/shape';
 
 /** The toolbox category id. `buildToolbox` refers to it; `BlocklyWorkspace` fills it in. */
@@ -290,7 +292,7 @@ export function callBlockJson(definition: MyBlockDefinition): BlocklyBlockJson {
  * saved, renamed or deleted, and Blockly rebuilds a `custom` category on every flyout open —
  * the same mechanism `VARIABLE` and `PROCEDURE` already use in `BlocklyToolbox.ts`.
  */
-export function myBlocksFlyout(source: { list(): MyBlockDefinition[] }) {
+export function myBlocksFlyout(source: { list(): MyBlockDefinition[] } & Partial<ShelfLookup>) {
   return function (): unknown[] {
     const definitions = source.list();
     if (definitions.length === 0) {
@@ -322,14 +324,26 @@ export function myBlocksFlyout(source: { list(): MyBlockDefinition[] }) {
      * taught nothing and the only way to find out what a saved block did was to drag it out and
      * read its sockets. The sentences are `saveIntent.ts`; this is the plumbing.
      *
+     * VFN-010 §1 — and each definition now arrives **under its shelf's heading**, because a block
+     * on the backpack works for its author and is missing for a collaborator who opens the project.
+     * The picker is the moment that consequence is choosable. `shelfGroups` is the decision (and is
+     * graded in the plain-Node runner); this is the plumbing for it too.
+     *
      * ⚠️ The flyout is rebuilt on every open, so nothing here is cached and nothing goes stale.
      */
     const items: unknown[] = [];
-    for (const definition of definitions) {
-      for (const text of describeFlyoutLabels(flyoutDescribable(definition))) {
-        items.push({ kind: 'label', text });
+    const lookup = typeof source.scopeOf === 'function' ? (source as ShelfLookup) : undefined;
+    for (const group of shelfGroups(definitions, lookup)) {
+      // No heading when the source could not say which shelf — a heading would be a guess, and the
+      // flyout falls back to exactly the undivided list it was before this existed.
+      if (group.scope) items.push({ kind: 'label', text: SHELF_LABEL[group.scope] });
+
+      for (const definition of group.definitions) {
+        for (const text of describeFlyoutLabels(flyoutDescribable(definition))) {
+          items.push({ kind: 'label', text });
+        }
+        items.push({ kind: 'block', ...callBlockJson(definition) });
       }
-      items.push({ kind: 'block', ...callBlockJson(definition) });
     }
     return items;
   };

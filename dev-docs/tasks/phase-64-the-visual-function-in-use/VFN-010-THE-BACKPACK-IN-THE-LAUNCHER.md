@@ -1,6 +1,11 @@
 # VFN-010 — The backpack, in the launcher
 
-**Status:** 📋 open · **Tier 3** · ~1 day · depends on VFN-009
+**Status:** ✅ **built** on `vfn-f-backpack`, headless gates green, **never driven** · **Tier 3** ·
+depends on VFN-009 (built and merged, `a5cab23e` / `00261768`)
+
+> **Gates:** `npx tsc -p tsconfig.json --noEmit` clean · `npx jest` **179 suites / 2666 passing**,
+> up from the 175 / 2622 baseline by exactly the four suites and 44 tests added here.
+> Nothing in this section has been on screen — see *What is owed to a drive* at the foot.
 
 ## The report
 
@@ -117,3 +122,162 @@ is kept at the edge — write it that way and it is gradeable without a launcher
 
 A drive for the launcher surface itself, and for the quit-survival check: write a rename, quit within
 a second, reopen, and read the shelf. That is the only way that trap has ever been visible.
+
+---
+
+# What was built — 2026-08-13, branch `vfn-f-backpack`
+
+## 🔴 What was REUSED, which is the whole point
+
+VFN-010's own instruction was that this is *"a second instance of VFN-009's section against a
+different shelf"*, not a second implementation. That was held, and it is now held by a spec that
+reads the directories and convicts a second component:
+
+| Reused, unchanged | Where |
+|---|---|
+| **The manager itself** — `SavedBlocksSection` | mounted twice: `ProjectSettingsTab` (no prop) and `LauncherSettingsDialog` (`shelf="user"`) |
+| Every write door — `renameDefinition`, `duplicateDefinition`, `removeDefinition`, `exportDefinition` | `MyBlocksLibrary.ts` |
+| The store, the cycle guard, `remove`'s refusal, `importLibrary`'s id remapping | `myblocks/store.ts` |
+| **`collectReferences` → `scanNodeUsage`** — one authority on what a reference *is* | `myblocks/usage.ts` |
+| `distinctSites` — so "8 places" means eight *nodes*, not eight call blocks | `myblocks/usage.ts` |
+| Every sentence, and `UNPROVABLE_CLAIM` | `myblocks/libraryIntent.ts` |
+| `SHELF_LABEL` — the picker's headings are the section's words | `myblocks/libraryIntent.ts` |
+
+The launcher writes nothing of its own. Its delete ends at the same `store.remove` the project
+delete ends at; the only difference is where the list of referencing node ids came from.
+
+## Genuinely new
+
+**§1 — the picker marks the shelf.** `myblocks/shelfGrouping.ts` (pure) partitions definitions by
+the shelf each one *resolves from*, and `myBlocksFlyout` prints a `kind: 'label'` heading over each
+run. Headings rather than a colour or a per-block glyph, for the two reasons the task gives — the
+block's hue is already the category's, and a mark on an SVG block is the shape that produced nine
+dark-on-dark glyphs in DSG-008.
+
+**Partition, not tag.** *Project wins on an id collision* and `list()` returns only the resolving
+copy, so a definition appears under exactly one heading. A block shown under both would tell the
+builder something false about which body their call blocks expand.
+
+**§2 — the launcher manager.** `<SavedBlocksSection shelf="user" />` in `LauncherSettingsDialog`,
+below Appearance and AI, on the same argument those two are there: the backpack is
+`EditorSettings`' `myBlocks.backpack`, which is app-wide and not part of any project.
+
+**The cross-project count.**
+
+- `myblocks/projectFile.ts` (pure) — a project **on disk** reduced to the same `ProjectScan` a live
+  project reduces to. **Both formats**: legacy `project.json` (`components[].graph.roots[]`, nodes
+  nesting their children) and v2 (`components/<path>/nodes.json`, a **flat** array with children as
+  ids). A converter pointed at the wrong format returns a well-formed scan with no nodes in it,
+  which reads downstream as *"used nowhere"* — the input that turns a refusal into a deletion. Both
+  directions have a watched control.
+- `myblocks/crossProjectUsage.ts` (pure) — counts, and records `scanned`, `unreadable` and
+  `checkedAt` beside the count.
+- `MyBlocksRecentProjects.ts` (edge, I/O) — `LocalProjectsModel` → snapshots. The v2 walk goes over
+  `components/` on disk rather than `_registry.json`, deliberately: a stale registry would make a
+  component invisible, and invisible means "not used".
+
+**The sentence, exactly as the report asked and no further:**
+
+> *"Discount" is used in 8 places across 2 projects. 4 recent projects were checked: Alpha, Beta,
+> Gamma, Delta. It may be used in projects not listed here, and in projects on other machines.
+> Changes apply everywhere this block is used.*
+
+Three properties, each with its own spec: the number is real, its **scope is named** (criterion 3),
+and the propagation clause is present whether the count is eight or zero.
+
+**"Not checked" is a third state.** `wasChecked()` keeps *checked, found nothing* apart from *never
+asked*, and the row says `Where "Discount" is used has not been checked.` until the explicit button
+is pressed. Branching on `siteCount === 0` alone would say "not used anywhere" about a question
+nobody asked — a licence to delete.
+
+**Import.** `importDefinitions` → `store.importLibrary`, `remapExisting` deliberately **off** so
+re-importing your own export updates in place rather than minting a second copy of everything with
+the call blocks split between them.
+
+**Editing the blocks: VFN-010's option 2, stated in the UI.** The launcher has no canvas, so it
+manages metadata and `BACKPACK_EDIT_NOTE` says the blocks are opened from a project. What was
+explicitly *not* built is the thing the task refuses: a second Blockly host in the launcher with its
+own save path.
+
+## 🔴 Two defects found in VFN-009's merged manager, both fixed here
+
+VFN-009 has never been driven, so its code was read sceptically. Two things were wrong, and both
+would have been inherited by this second instance:
+
+**1. The 1000 ms backpack window was inherited on five doors.** `MyBlocksShelves.ts`'s own header
+names it as trap 2 and says *"not fixable from here"* — but `EditorSettings.store()` is public and
+awaitable, and VFN-009's section offers Rename, Duplicate, Delete, Edit blocks and Detach on backpack
+rows with nothing behind any of them. `flushShelves()` now exists and `flushIfBackpack()` fires it
+from every mutating door in `MyBlocksLibrary.ts`; `LauncherSettingsDialog` awaits one more on its way
+out. **This fixes both instances**, which is the argument for one manager rather than two.
+
+**2. `handleExport` announced a success for a copy of nothing, and said "-1".** Reproduced against
+the real store: `exportDefinitions(['gone-id'])` returns an empty library, and the section's inline
+`its ${library.definitions.length - 1} dependencies` produced
+
+> *Copied "Discount" and its **-1** dependencies to the clipboard.*
+
+as a **success** toast. The window is real and this task widens it — the same shelf now has two
+managers over it. Both halves fixed: `describeExportResult` / `exportSucceeded` moved the arithmetic
+into `libraryIntent.ts` where a runner can grade it (VFN-009's own rule, which that one message
+broke), and an empty export now reports as a failure and refreshes the list.
+
+## Acceptance criteria
+
+| # | | |
+|---|---|---|
+| 1 | Picker groups by shelf, with headings | ✅ headless; **the screenshot in both themes is owed to the drive** |
+| 2 | Launcher lists every backpack definition with shape and description | ✅ built; owed to the drive |
+| 3 | The check names the projects it scanned, in the sentence | ✅ `backpack-intent.spec.ts` |
+| 4 | Rename / delete / import / export call the same store | ✅ `backpack-surface.spec.ts` |
+| 5 | Deleting a block a scanned project uses is refused, naming the project | ✅ `cross-project-usage` + `backpack-intent` |
+| 6 | A backpack write survives a quit | 🟡 **half**: the flush exists and is on every door (spec'd); the quit itself is owed to the drive |
+
+## What was proved, and with which control
+
+Every pass below was watched red first by injecting the pre-fix behaviour into the source, running,
+and restoring.
+
+| Claim | Control watched go red |
+|---|---|
+| The flyout prints a shelf heading over each run | `lookup = undefined` (the pre-fix flyout) → **3 of 9 red**, headings absent |
+| The legacy walker descends into `children` | deleted the `children` push → **8 of 11 red** |
+| `unreadable` is never folded into `scanned` | `unreadable: []` → red |
+| `wasChecked` is not `siteCount > 0` | replaced it with exactly that → red |
+| The caveat travels with every count | dropped it for `siteCount === 0` → red |
+| An unchecked result is not rendered as a finding | removed the `wasChecked` guard → red |
+| There is no second manager | added `LauncherBackpackSection.tsx` → red |
+| The flush is on every door | emptied `flushIfBackpack` → red |
+| The export message | restored VFN-009's `- 1` arithmetic verbatim → red |
+
+Two more controls are permanent members of the suite rather than injections: each on-disk converter
+is run over the *other* format and must find nothing **while the same instrument finds it in its own
+format**; and `UNPROVABLE_CLAIM` is run over five sentences this surface is tempted to write
+("Deleting this will break 8 flows across 2 of your projects") and must convict all five.
+
+**Watched, not written:** VFN-009's `write-path.spec.ts` went red on its own when `importLibrary`
+appeared in `MyBlocksLibrary.ts`, and VFN-008's flyout specs went red when the headings appeared.
+Both were updated with the argument in the comment rather than relaxed.
+
+## 🔴 What is owed to a drive
+
+Nothing in this task has been on screen, and VFN-009's section beneath it never has either.
+
+1. **The picker headings, screenshotted in both themes** — criterion 1 says "survives a screenshot",
+   and a `kind: 'label'` in a Blockly flyout has never been rendered in this editor. DSG-008's
+   register entry is about exactly this class of thing.
+2. **The launcher section renders at all.** `SavedBlocksSection` reaches `ProjectModel.instance`
+   (guarded with `?.`), `ToastLayer` and `DialogLayerModel` from a page that has never hosted it.
+   A dialog inside a dialog is supported by `DialogLayerModel`'s ordering but has not been seen.
+3. **⚠️ `BaseDialog` renders every dialog body twice.** Every button in the refusal and confirm
+   dialogs has an invisible twin ahead of it in the tab order. Filter
+   `:not([class*=MeasuringContainer])` when driving.
+4. **The cross-project check against real folders.** The converters are graded against fixtures;
+   `listDirectoryFiles` over a real v2 `components/` tree, and the relative-path arithmetic that
+   turns a `nodes.json` path back into a registry path, are not.
+5. **🔴 Criterion 6, the half that is owed.** *"Write a rename, quit within a second, reopen, and
+   read the shelf."* The flush is proved to exist and to be called; whether the bytes reach
+   `editorSettings.json` before the process dies is only visible this way.
+6. **The delete refusal end to end** — a backpack block used by a recent project, deleted from the
+   launcher, refused by name. The pieces are each graded; the gesture is not.
+7. **Import from the clipboard** — `navigator.clipboard.readText()` in the launcher window.

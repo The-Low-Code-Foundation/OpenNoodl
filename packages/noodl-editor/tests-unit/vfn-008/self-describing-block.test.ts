@@ -337,7 +337,11 @@ describe('VFN-008 §3 — the flyout shows the shape', () => {
       .filter((item) => (item as { kind: string }).kind === 'label')
       .map((item) => (item as { text: string }).text);
 
-    expect(labels).toEqual(['Half — gives a value.']);
+    // ⚠️ VFN-010 §1 put a shelf heading above each run, so the shape sentence is no longer the
+    // only label in the category. The property this test is about — *a definition with no
+    // description still gets its shape sentence* — is unchanged, and the heading is asserted
+    // alongside it rather than filtered away, so a heading going missing is still a failure here.
+    expect(labels).toEqual(['This project', 'Half — gives a value.']);
   });
 
   it('the labels sit above their own block, so two definitions cannot be confused', () => {
@@ -345,9 +349,14 @@ describe('VFN-008 §3 — the flyout shows the shape', () => {
     store.save({ name: 'Half', body: workspace(number(2)), scope: 'project' });
     store.save({ name: 'Finish', body: workspace(setOutput('r', number(1))), scope: 'project' });
 
-    const kinds = (myBlocksFlyout(store)() as { kind: string }[]).map((item) => item.kind);
+    const items = myBlocksFlyout(store)() as { kind: string; text?: string }[];
 
-    expect(kinds).toEqual(['label', 'block', 'label', 'block']);
+    // VFN-010 §1 — one shelf heading first, then the pairs. The pairing is what this asserts and
+    // it survives: every block is still immediately preceded by its own sentence.
+    expect(items.map((item) => item.kind)).toEqual(['label', 'label', 'block', 'label', 'block']);
+    expect(items[0].text).toBe('This project');
+    expect(items[1].text).toContain('Half');
+    expect(items[3].text).toContain('Finish');
   });
 
   it('⚠️ still explains the gesture when the shelf is empty', () => {

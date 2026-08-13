@@ -124,6 +124,23 @@
   border-color: var(--theme-color-primary);
 }
 
+/* VFN-010 — the cross-project check is I/O, so its button has a busy state.
+ *
+ * ⚠️ Muted through the foreground *token* rather than `opacity`. Opacity cannot
+ * dim a control and keep it legible — it multiplies the text and the border
+ * against the background together — and this label ("Checking…") is the only
+ * thing telling the builder the launcher has not frozen, so it has to stay
+ * readable while it is disabled. */
+.Action:disabled {
+  color: var(--theme-color-fg-muted);
+  border-color: var(--theme-color-border-default);
+  cursor: default;
+}
+
+.Action:disabled:hover {
+  border-color: var(--theme-color-border-default);
+}
+
 .Empty {
   box-sizing: border-box;
   padding: 16px;

@@ -32,7 +32,8 @@ import { cloneJson, type BlocklyWorkspaceJson, type MyBlockDefinition, type MyBl
 import { detachDefinition } from './myblocks/expand';
 import { definitionChangeFor, type DefinitionChange } from './myblocks/definitionChange';
 import { definitionUsageMap, referencingNodeIds, parseWorkspaceParameter, WORKSPACE_PARAMETER, type DefinitionUsage } from './myblocks/usage';
-import { myBlocksStore } from './MyBlocksShelves';
+import { crossProjectNodeIds, type CrossProjectUsage } from './myblocks/crossProjectUsage';
+import { flushShelves, myBlocksStore } from './MyBlocksShelves';
 import { findNodeById, scanProject } from './MyBlocksProjectScan';
 import type { MyBlocksScope } from './myblocks/store';
 
@@ -53,7 +54,29 @@ export interface SaveDefinitionResult {
 export interface SavedBlockRow {
   definition: MyBlockDefinition;
   scope: MyBlocksScope;
-  usage: DefinitionUsage;
+  /**
+   * Where it is used **in the open project**.
+   *
+   * 🔴 VFN-010 — `undefined` means *"nobody asked"*, not *"nowhere"*. The launcher has no open
+   * project and no cheap answer: its count is a walk of every recent project off disk, which is
+   * an explicit action rather than something that happens on render. Rendering "Not used yet" for
+   * a question that was never asked is how a builder is talked into a delete.
+   */
+  usage?: DefinitionUsage;
+}
+
+/**
+ * VFN-010 — the backpack's rows, for a surface with no project behind it.
+ *
+ * The **user shelf only**, and no usage: see {@link SavedBlockRow.usage}. `list('user')` rather
+ * than filtering `list()`, because the unqualified list resolves an id collision project-first and
+ * would hide a backpack definition that a project happens to shadow — from the surface whose whole
+ * job is to manage the backpack.
+ */
+export function backpackRows(): SavedBlockRow[] {
+  return myBlocksStore()
+    .list('user')
+    .map((definition) => ({ definition, scope: 'user' as MyBlocksScope }));
 }
 
 /**
@@ -79,6 +102,22 @@ export function savedBlockRows(): SavedBlockRow[] {
     scope: store.scopeOf(definition.id) as MyBlocksScope,
     usage: usage.get(definition.id) as DefinitionUsage
   }));
+}
+
+/**
+ * VFN-010 criterion 6 — start the backpack's disk write **now**, not in a second's time.
+ *
+ * 🔴 `EditorSettings.set` debounces by 1000 ms, so every mutation below leaves a window in which a
+ * quit loses the write. Every one of them is a discrete gesture, so the flush is free, and it is
+ * done here rather than in each of the five call sites because a door added later would otherwise
+ * silently reopen the window. `MyBlocksShelves.flushShelves` never throws.
+ *
+ * ⚠️ Only the backpack. The project shelf is `ProjectModel.setSetting`, which has its own save
+ * path and its own dirty tracking, and forcing an editor-settings write for it would be a write of
+ * an unrelated file.
+ */
+function flushIfBackpack(scope: MyBlocksScope | undefined): void {
+  if (scope === 'user') void flushShelves();
 }
 
 /** One definition's usage, right now. Called at the moment a warning is shown, never earlier. */
@@ -143,14 +182,16 @@ export function saveDefinitionBlocks(definitionId: string, workspaceJson: string
    */
   const change = definitionChangeFor(existing, body);
 
+  const scope = store.scopeOf(existing.id) as MyBlocksScope;
   const definition = store.save({
     id: existing.id,
     name: existing.name,
     description: existing.description,
     body,
     colour: existing.colour,
-    scope: store.scopeOf(existing.id) as MyBlocksScope
+    scope
   });
+  flushIfBackpack(scope);
 
   /**
    * ⚠️ The usage walk runs **only when the interface changed**, which is a rare edit inside a rare
@@ -169,7 +210,12 @@ export function saveDefinitionBlocks(definitionId: string, workspaceJson: string
 export function renameDefinition(definitionId: string, name: string): MyBlockDefinition | undefined {
   const trimmed = (name ?? '').trim();
   if (!trimmed) return undefined;
-  return myBlocksStore().rename(definitionId, trimmed);
+
+  const store = myBlocksStore();
+  const scope = store.scopeOf(definitionId);
+  const renamed = store.rename(definitionId, trimmed);
+  flushIfBackpack(scope);
+  return renamed;
 }
 
 /**
@@ -185,13 +231,16 @@ export function duplicateDefinition(definitionId: string, scope?: MyBlocksScope)
   const existing = store.get(definitionId);
   if (!existing) return undefined;
 
-  return store.save({
+  const target = scope ?? (store.scopeOf(definitionId) as MyBlocksScope);
+  const copy = store.save({
     name: `${existing.name} copy`,
     description: existing.description,
     body: cloneJson(existing.body),
     colour: existing.colour,
-    scope: scope ?? (store.scopeOf(definitionId) as MyBlocksScope)
+    scope: target
   });
+  flushIfBackpack(target);
+  return copy;
 }
 
 /**
@@ -204,7 +253,62 @@ export function duplicateDefinition(definitionId: string, scope?: MyBlocksScope)
  */
 export function removeDefinition(definitionId: string): void {
   const usage = usageNow(definitionId);
-  myBlocksStore().remove(definitionId, { referencingNodeIds: referencingNodeIds(usage) });
+  const store = myBlocksStore();
+  const scope = store.scopeOf(definitionId);
+  store.remove(definitionId, { referencingNodeIds: referencingNodeIds(usage) });
+  flushIfBackpack(scope);
+}
+
+/**
+ * VFN-010 criterion 5 — delete a backpack block, refusing while a **scanned project** still uses it.
+ *
+ * 🔴 The refusal is the same refusal. `MyBlocksStore.remove` counts `referencingNodeIds` and throws
+ * `MyBlocksInUseError`; all this door does is supply that list from a cross-project scan instead of
+ * from the open project, so the launcher and the editor refuse for the same reason and by the same
+ * code. A launcher that decided for itself whether a block was in use would eventually disagree
+ * with the editor, and the disagreement would surface as a delete the launcher allowed.
+ *
+ * ⚠️ **The scan is the caller's, and must be fresh.** The names in the message come from it — the
+ * store knows ids and nothing else — so the caller runs it at the moment of the press and hands it
+ * in. Nothing here re-runs it, because a second walk of every project on disk would be a second
+ * answer, and the one the builder was shown is the one the refusal must be about.
+ *
+ * @throws MyBlocksInUseError while any scanned project, or any other saved block, still calls it.
+ */
+export function removeBackpackDefinition(definitionId: string, usage: CrossProjectUsage): void {
+  const store = myBlocksStore();
+  store.remove(definitionId, { referencingNodeIds: crossProjectNodeIds(usage) });
+  void flushShelves();
+}
+
+export interface ImportResult {
+  imported: MyBlockDefinition[];
+  /** Entries in the file that were not valid definitions. Reported, never silently dropped. */
+  rejected: { index: number; errors: string[] }[];
+}
+
+/**
+ * Import a library file onto a shelf.
+ *
+ * `exportDefinitions` already closes over dependencies and `importLibrary` already remaps ids and
+ * rewrites every reference to them, so this is the way in and not a new mechanism. That matters
+ * most on the backpack: a backpack is where a builder accumulates the blocks worth sharing, and
+ * before this there was an export with nothing on the other end of it.
+ *
+ * ⚠️ **`remapExisting` is deliberately off.** With it on, re-importing a file you already imported
+ * mints fresh ids and you end up with two of everything and call blocks split between them. Off, an
+ * id that is already on a shelf is treated as an update — re-importing the same export is
+ * idempotent, which is what a builder syncing a backpack between machines actually wants. A genuine
+ * "keep both" is `duplicateDefinition` on the result, which is an explicit gesture.
+ *
+ * @throws MyBlocksCycleError when the file's contents would make the definition graph cyclic.
+ *   Nothing is written past that point; the check runs inside `save`, against the graph the write
+ *   would produce.
+ */
+export function importDefinitions(input: unknown, scope: MyBlocksScope): ImportResult {
+  const result = myBlocksStore().importLibrary(input, scope);
+  flushIfBackpack(scope);
+  return { imported: result.imported, rejected: result.rejected };
 }
 
 export interface DetachResult {
@@ -273,6 +377,10 @@ export function detachAndRemove(definitionId: string): DetachResult {
   }
 
   store.remove(definitionId, { force: true });
+
+  // Unconditional: a detach rewrites the bodies of *referring* definitions, and any of them can be
+  // on the backpack whatever shelf the one being removed was on.
+  void flushShelves();
 
   return { rewritten: nodeIds.length + definitionIds.length, nodeIds, definitionIds };
 }
