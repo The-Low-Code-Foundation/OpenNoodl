@@ -16,10 +16,18 @@ import * as Blockly from 'blockly';
 import React, { useEffect, useRef, useState } from 'react';
 
 import { EventDispatcher } from '../../../../shared/utils/EventDispatcher';
+import { listRegisteredLibraries } from '../../../../shared/utils/projectmodules';
 import { ProjectModel } from '../../models/projectmodel';
 import { openSettingsPanel } from '../panels/SettingsPanel/settingsPanelRoute';
 import { CanvasTheme } from '../nodegrapheditor/canvas/CanvasTheme';
 import { appConfigFlyout, setConfigVariablesProvider, APP_CONFIG_CATEGORY, APP_CONFIG_SETTINGS_BUTTON } from './appConfig';
+import {
+  browserFlyout,
+  refreshRegisteredLibraries,
+  setRegisteredLibrariesLoader,
+  BROWSER_CATEGORY,
+  LIBRARIES_SETTINGS_BUTTON
+} from './appLibraries';
 import { applyLanguage, currentLanguageCode } from './BlocklyLocale';
 import { registerBlocklyResizeHandler } from './blocklyResize';
 import { buildBlocklyTheme, resolveBlocklyChrome } from './BlocklyTheme';
@@ -325,6 +333,32 @@ export function BlocklyWorkspace({
       // Criterion 6: the empty category names where to go, and this is the door. Registered
       // whether or not the category is empty — "edit these" is as useful as "create some".
       workspace.registerButtonCallback(APP_CONFIG_SETTINGS_BUTTON, () => openSettingsPanel('project'));
+
+      /**
+       * VFN-012 §2/§3 — the Libraries & Browser category.
+       *
+       * Same dynamic-category mechanism, one difference that decides its whole shape: the
+       * library list lives in `noodl_modules/` **on disk**, and `listRegisteredLibraries` is
+       * async. A flyout callback is not, so the answer has to be in memory before the flyout
+       * opens — hence the snapshot in `appLibraries.ts`, and hence this eager refresh, so the
+       * first open of the category is already loaded rather than saying "reading…".
+       *
+       * 🔴 The loader throws rather than passing an absent directory down.
+       * `scanModuleManifests(undefined)` returns `[]` (`projectmodules.ts:192`), which would
+       * arrive here as a perfectly confident *"this app has no libraries"* for a project that
+       * has never been saved to disk. Throwing is what puts it in the `unavailable` state, which
+       * says something different and true.
+       */
+      setRegisteredLibrariesLoader(() => {
+        const directory = ProjectModel.instance?._retainedProjectDirectory;
+        if (!directory) {
+          return Promise.reject(new Error('this project has no directory on disk yet.'));
+        }
+        return listRegisteredLibraries(directory);
+      });
+      void refreshRegisteredLibraries();
+      workspace.registerToolboxCategoryCallback(BROWSER_CATEGORY, browserFlyout() as never);
+      workspace.registerButtonCallback(LIBRARIES_SETTINGS_BUTTON, () => openSettingsPanel('project'));
 
       if (initialWorkspace) {
         try {

@@ -29,6 +29,7 @@ import { HAT_BLOCK_TYPE } from '@noodl/runtime/src/nodes/std-library/logic-build
 // Two string constants and a category id out of a module that imports nothing but a type — the
 // lazy load above is unaffected.
 import { APP_CONFIG_CATEGORY, APP_CONFIG_HUE } from './appConfig';
+import { BROWSER_CATEGORY, BROWSER_HUE } from './appLibraries';
 
 /** Category colours. Hues, not hex — Blockly derives block shading from these. */
 const HUE = {
@@ -38,6 +39,7 @@ const HUE = {
   objects: '20',
   arrays: '260',
   appConfig: APP_CONFIG_HUE,
+  browser: BROWSER_HUE,
   logic: '210',
   loops: '120',
   math: '230',
@@ -60,8 +62,16 @@ export interface ToolboxLabels {
   noodlVariables: string;
   noodlObjects: string;
   noodlArrays: string;
-  /** VFN-012 — `Noodl.Config`: declared in app settings, typed, read only at runtime. */
+  /** VFN-012 §1 — `Noodl.Config`: declared in app settings, typed, read only at runtime. */
   noodlAppConfig: string;
+  /**
+   * VFN-012 §2/§3 — the libraries this app registered, and `window`.
+   *
+   * One category for both because they are the same escape hatch at two levels of ceremony: a
+   * registered library generates `window.<global>` and the browser block generates
+   * `window["a"]["b"]`. The report asked for them in one sentence, too.
+   */
+  noodlLibraries: string;
   logic: string;
   loops: string;
   math: string;
@@ -80,6 +90,7 @@ export const DEFAULT_TOOLBOX_LABELS: ToolboxLabels = {
   noodlObjects: 'App Objects',
   noodlArrays: 'App Arrays',
   noodlAppConfig: 'App Config',
+  noodlLibraries: 'Libraries & Browser',
   logic: 'Logic',
   loops: 'Loops',
   math: 'Math',
@@ -146,6 +157,16 @@ export function buildToolbox(labels: ToolboxLabels = DEFAULT_TOOLBOX_LABELS) {
        * see `hasAppConfigEmptyState`.
        */
       { kind: 'category', name: labels.noodlAppConfig, colour: HUE.appConfig, custom: APP_CONFIG_CATEGORY },
+      /**
+       * VFN-012 §2/§3 — the libraries the app registered, and `window`. Last in the seam,
+       * because it is the seam to everything *outside* Noodl rather than to the node graph.
+       *
+       * `custom` for App Config's reason and one more: the library list is read off disk
+       * asynchronously, so the contents are not merely stale-able, they are *unknown* for the
+       * first tick of a session — see the tri-state snapshot in `appLibraries.ts`. A static
+       * category could not express that at all.
+       */
+      { kind: 'category', name: labels.noodlLibraries, colour: HUE.browser, custom: BROWSER_CATEGORY },
 
       { kind: 'sep' },
 

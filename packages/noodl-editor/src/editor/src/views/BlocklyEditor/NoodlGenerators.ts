@@ -18,7 +18,9 @@ import { javascriptGenerator, Order } from 'blockly/javascript';
 import { HAT_BLOCK_TYPE } from '@noodl/runtime/src/nodes/std-library/logic-builder-io';
 
 import { appConfigReadExpression, APP_CONFIG_BLOCK_TYPE } from './appConfig';
+import { libraryReadExpression, LIBRARY_GLOBAL_BLOCK_TYPE } from './appLibraries';
 import { initBlockProbes } from './BlockProbes';
+import { windowPathExpression, WINDOW_BLOCK_TYPE } from './windowAccess';
 
 /**
  * Initialize all Noodl code generators
@@ -46,8 +48,11 @@ export function initNoodlGenerators() {
   // Array generators
   initArrayGenerators();
 
-  // App config generators (VFN-012)
+  // App config generators (VFN-012 §1)
   initAppConfigGenerators();
+
+  // Registered libraries and `window` (VFN-012 §2/§3)
+  initBrowserGenerators();
 }
 
 /**
@@ -213,6 +218,37 @@ function initAppConfigGenerators() {
   javascriptGenerator.forBlock[APP_CONFIG_BLOCK_TYPE] = function (block) {
     const key = block.getFieldValue('KEY') || '';
     return [appConfigReadExpression(key), key ? Order.MEMBER : Order.ATOMIC];
+  };
+}
+
+/**
+ * Library and browser generators (VFN-012 §2 and §3)
+ */
+function initBrowserGenerators() {
+  /**
+   * Get a registered library — generates `window.<global>`.
+   *
+   * 🔴 **The global is emitted exactly as stored, whatever the library scan currently says.**
+   * The scan is asynchronous and is empty for the first tick of every session, so a generator
+   * that consulted it would rewrite a program depending on when the debounced save happened to
+   * fire. VFN-012 criterion 3 is a claim about this string, so it is graded on this string, and
+   * nothing here reads the snapshot.
+   */
+  javascriptGenerator.forBlock[LIBRARY_GLOBAL_BLOCK_TYPE] = function (block) {
+    const global = block.getFieldValue('GLOBAL') || '';
+    return [libraryReadExpression(global), global ? Order.MEMBER : Order.ATOMIC];
+  };
+
+  /**
+   * `window` — generates `window["a"]["b"]`.
+   *
+   * `Order.MEMBER` for the neighbouring readers' reason, and `Order.ATOMIC` for a bare `window`,
+   * which is an identifier and binds tighter than anything that could contain it.
+   */
+  javascriptGenerator.forBlock[WINDOW_BLOCK_TYPE] = function (block) {
+    const path = block.getFieldValue('PATH') || '';
+    const code = windowPathExpression(path);
+    return [code, code === 'window' ? Order.ATOMIC : Order.MEMBER];
   };
 }
 
