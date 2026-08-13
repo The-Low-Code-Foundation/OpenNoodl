@@ -1,6 +1,7 @@
 import React, { useLayoutEffect, useRef } from 'react';
 
 import { useCanvasTabs, type Tab } from '../../contexts/CanvasTabsContext';
+import { definitionTabTooltip, editTargetFor, isDefinitionTab, tabTravels } from '../../contexts/tabSubject';
 import { resizeBlocklyWorkspaces } from '../BlocklyEditor/blocklyResize';
 import css from './CanvasTabs.module.scss';
 import { beginOverlayDrag, OverlayResizeHandles, type OverlayDragCallbacks } from './OverlayDragHandles';
@@ -18,6 +19,21 @@ export interface CanvasTabsProps {
    * code for this edit" and "the empty program" is the whole point of the type.
    */
   onWorkspaceChange?: (nodeId: string, workspace: string, code: string | undefined) => void;
+  /**
+   * VFN-009 — a settled edit to a **saved block's** body.
+   *
+   * A separate callback rather than a widened `onWorkspaceChange`, for the reason §2 gives about
+   * the tab's own identity: one entry point meaning two things makes every implementation either
+   * learn the difference or silently do the wrong thing. It also carries no `code`, and that is
+   * the honest signature — a definition is never generated on its own, and there is no
+   * `generatedCode` anywhere on this path to write.
+   *
+   * A callback rather than a call for the same reason `onWorkspaceChange` is one: this component
+   * renders a window and cannot see a shelf. `OverlayViews` supplies it. Omitted, a definition
+   * tab's edits are held in the tab and written nowhere — which is what a document with no
+   * project behind it wants.
+   */
+  onDefinitionChange?: (definitionId: string, workspace: string) => void;
   /**
    * LGC-010 — moving and resizing the floating window.
    *
@@ -58,7 +74,7 @@ export interface CanvasTabsProps {
  * The layer around it (`#canvas-tabs-root`) is `pointer-events: none`, so every click outside
  * the window reaches whatever is underneath: the node canvas, the running app, the panels.
  */
-export function CanvasTabs({ onWorkspaceChange, overlayDrag, onTabActivate }: CanvasTabsProps) {
+export function CanvasTabs({ onWorkspaceChange, onDefinitionChange, overlayDrag, onTabActivate }: CanvasTabsProps) {
   const { tabs, activeTabId, switchTab, closeTab, closeTabs, updateTab } = useCanvasTabs();
   const windowRef = useRef<HTMLDivElement>(null);
 
@@ -112,9 +128,24 @@ export function CanvasTabs({ onWorkspaceChange, overlayDrag, onTabActivate }: Ca
   const handleWorkspaceEdit = ({ tab, workspace, code }: TabWorkspaceEdit) => {
     updateTab(tab.id, { workspace });
 
-    // Notify parent (pass both workspace JSON and generated code)
-    if (onWorkspaceChange && tab.nodeId) {
-      onWorkspaceChange(tab.nodeId, workspace, code);
+    /**
+     * 🔴 VFN-009 — where the edit goes is decided by the tab's **subject**, not by which field
+     * happens to be filled in. `editTargetFor` is a pure function in `contexts/tabSubject.ts` and
+     * is graded there, with the widening §2 forbids as its negative control: a router that read
+     * `tab.nodeId ?? tab.definitionId` would hand `onWorkspaceChange` a definition id, which finds
+     * no node, logs a warning nobody reads, and drops the builder's edit.
+     */
+    const target = editTargetFor(tab);
+
+    if (target.kind === 'node') {
+      // Both the workspace JSON and the generated code. `code` is `undefined` on a refusal.
+      onWorkspaceChange?.(target.nodeId, workspace, code);
+      return;
+    }
+
+    if (target.kind === 'definition') {
+      // No `code`, on purpose: a definition is never generated on its own. See the prop.
+      onDefinitionChange?.(target.definitionId, workspace);
     }
   };
 
@@ -134,7 +165,14 @@ export function CanvasTabs({ onWorkspaceChange, overlayDrag, onTabActivate }: Ca
     switchTab(tabId);
 
     const tab = tabs.find((t) => t.id === tabId);
-    if (tab) onTabActivate?.(tab);
+    /**
+     * 🔴 VFN-009 — only a tab that *lives* somewhere travels. A definition lives on a shelf, not
+     * in a component, so sending one through `navigateToTabComponent` would land on
+     * `tabActivation`'s `refuse-unknown` branch and put *"This tab does not know which component …
+     * came from"* on screen — a refusal about a question nobody asked, delivered as an error toast
+     * on an ordinary click.
+     */
+    if (tab && tabTravels(tab)) onTabActivate?.(tab);
   };
 
   const handleTabClose = (e: React.MouseEvent, tabId: string) => {
@@ -198,9 +236,16 @@ export function CanvasTabs({ onWorkspaceChange, overlayDrag, onTabActivate }: Ca
       >
         {resolvedTabs.map(({ tab, componentLabel, componentPath }) => {
           const isActive = tab.id === activeTabId;
+          const savedBlock = isDefinitionTab(tab);
 
           const segments = tabLabelSegments(tab, { componentName: componentLabel });
-          const away = isTabAway(tab, activeComponentId);
+          /**
+           * VFN-009 — a saved block is never *away*. The away mark means "the canvas is showing a
+           * different component from the one these blocks live in", and a definition lives in no
+           * component at all. `isTabAway` already answers `false` for a tab with no `componentId`
+           * — this says so at the call site too, so the two cannot drift.
+           */
+          const away = !savedBlock && isTabAway(tab, activeComponentId);
 
           return (
             <div
@@ -210,8 +255,13 @@ export function CanvasTabs({ onWorkspaceChange, overlayDrag, onTabActivate }: Ca
               role="tab"
               aria-selected={isActive}
               tabIndex={0}
-              title={tabTooltip(tab, { component: componentPath, away })}
+              title={
+                savedBlock
+                  ? definitionTabTooltip(tab.nodeName ?? '')
+                  : tabTooltip(tab, { component: componentPath, away })
+              }
               data-test="logic-builder-tab"
+              data-subject={savedBlock ? 'definition' : 'node'}
               data-away={away ? 'true' : 'false'}
             >
               {/*
@@ -224,6 +274,18 @@ export function CanvasTabs({ onWorkspaceChange, overlayDrag, onTabActivate }: Ca
                 see `tabTooltip`. Two announcements of one state is noise.
               */}
               {away ? <span className={css['AwayMark']} aria-hidden="true" /> : null}
+
+              {/*
+                VFN-009 — the saved-block mark. The same glyph the call block wears on its header
+                field, so the tab and the block in the workspace are recognisably the same thing.
+                A shape rather than a colour, for the reason the away mark is one; `aria-hidden`
+                because the tab's `title` already says it in words.
+              */}
+              {savedBlock ? (
+                <span className={css['SavedBlockMark']} aria-hidden="true">
+                  ▣
+                </span>
+              ) : null}
 
               <span className={css['TabLabel']}>
                 {segments.component ? (

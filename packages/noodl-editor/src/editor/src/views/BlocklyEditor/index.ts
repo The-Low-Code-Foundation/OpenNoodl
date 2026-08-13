@@ -164,6 +164,55 @@ export { MY_BLOCKS_FORMAT_VERSION, validateDefinition, validateLibrary } from '.
 export type { MyBlockDefinition, MyBlockParam, MyBlocksLibrary, MyBlockShape } from './myblocks/format';
 export type { MyBlocksScope, MyBlocksShelf } from './myblocks/store';
 
+// VFN-009 — the library in the project: where a saved block is used, what an edit to it changes,
+// and every sentence the *Saved blocks* section says. All three are pure and are reached from the
+// plain-Node runner; `MyBlocksProjectScan` and `MyBlocksLibrary` are the two halves that read the
+// project and are, like `MyBlocksShelves`, deliberately not.
+export {
+  LOGIC_BUILDER_NODE_TYPE,
+  WORKSPACE_PARAMETER,
+  definitionUsage,
+  definitionUsageMap,
+  distinctSites,
+  parseWorkspaceParameter,
+  referencingNodeIds,
+  scanNodeUsage
+} from './myblocks/usage';
+export type { DefinitionUsage, ProjectScan, ScannedComponent, ScannedNode, UsageSite } from './myblocks/usage';
+export { definitionChangeFor, signatureOf } from './myblocks/definitionChange';
+export type { DefinitionChange } from './myblocks/definitionChange';
+export {
+  MY_BLOCKS_GLYPH,
+  SHELF_LABEL,
+  SHELF_NOTE,
+  UNPROVABLE_CLAIM,
+  describeDeleteRefusal,
+  describeDetachOffer,
+  describeDetachResult,
+  describeParameterChange,
+  describePropagation,
+  describeRegeneration,
+  describeShapeChange,
+  describeUsage,
+  describeUsageShort,
+  siteLine,
+  unprovableClaimIn,
+  usageLines
+} from './myblocks/libraryIntent';
+export { findNodeById, scanProject } from './MyBlocksProjectScan';
+export {
+  detachAndRemove,
+  duplicateDefinition,
+  exportDefinition,
+  openDefinitionTab,
+  removeDefinition,
+  renameDefinition,
+  saveDefinitionBlocks,
+  savedBlockRows,
+  usageNow
+} from './MyBlocksLibrary';
+export type { DetachResult, SavedBlockRow } from './MyBlocksLibrary';
+
 // LGC-009 — the hat. The block itself is registered by `initNoodlBlocks`; the type id and the
 // default signal name live in `@noodl/runtime` (the viewer window has to know them too), and the
 // migration below is a plain JSON transform with no Blockly in it, so it is safe for

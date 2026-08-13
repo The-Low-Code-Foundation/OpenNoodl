@@ -18,6 +18,7 @@ import { IdentitySection } from './sections/IdentitySection';
 import { LibrariesSection } from './sections/LibrariesSection';
 import { PWASection } from './sections/PWASection';
 import { RuntimeSection } from './sections/RuntimeSection';
+import { SavedBlocksSection } from './sections/SavedBlocksSection';
 import { SEOSection } from './sections/SEOSection';
 import { SitemapSection } from './sections/SitemapSection';
 import { VariablesSection } from './sections/VariablesSection';
@@ -192,6 +193,15 @@ export function ProjectSettingsTab() {
         action with its own verify-before-save step, not a value to bind.
       */}
       <LibrariesSection />
+
+      {/*
+        VFN-009: the saved blocks a builder has made in this project's Visual
+        Functions, on both shelves. Beside Variables and Libraries because it is
+        the same kind of thing — app-wide project furniture with its own
+        operations — and because the engine for all of it (`myblocks/store.ts`)
+        was complete and had no way in at all before this.
+      */}
+      <SavedBlocksSection />
 
       {/*
         The legacy imperative ports view — head code, navigation, and whatever

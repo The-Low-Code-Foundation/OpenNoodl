@@ -90,7 +90,10 @@ describe('VFN-011 Part 1 — which reason the strip owes the builder', () => {
 
   it('every reason has a sentence, and only "nothing to say" is empty', () => {
     const reasons = Object.keys(STATUS_COPY) as BlockStripReason[];
-    expect(reasons).toHaveLength(7);
+    // VFN-009 added the eighth, `no-node` — a saved block's body has no node behind it. Its own
+    // assertions live in `tests-unit/vfn-009/definition-tab.spec.tsx`; the count stays here so
+    // that adding a reason has to face this file.
+    expect(reasons).toHaveLength(8);
 
     for (const key of reasons) {
       if (key === 'attached') {
@@ -109,9 +112,14 @@ describe('VFN-011 Part 1 — which reason the strip owes the builder', () => {
 });
 
 describe('VFN-011 Part 2 — the sentence the bench adds', () => {
-  it('offers Run for every reason except "there is nothing to say"', () => {
+  it('offers Run for every reason except "there is nothing to say" and "there is no node"', () => {
+    // VFN-009's `no-node` is the second exception, and it is a different kind of one: `attached`
+    // has nothing to offer because there is already something to scrub, `no-node` because a
+    // definition tab has no node to run against and is given no Run button at all. ⚠️ VFN-011's
+    // bench is what would make a definition tab genuinely runnable, and this line is the single
+    // place that has to change when it does.
     for (const reason of Object.keys(STATUS_COPY) as BlockStripReason[]) {
-      expect(benchHintApplies(reason)).toBe(reason !== 'attached');
+      expect(benchHintApplies(reason)).toBe(reason !== 'attached' && reason !== 'no-node');
     }
   });
 

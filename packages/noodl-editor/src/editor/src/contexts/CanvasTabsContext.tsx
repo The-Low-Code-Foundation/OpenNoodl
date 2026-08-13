@@ -4,11 +4,15 @@ import { EventDispatcher } from '../../../shared/utils/EventDispatcher';
 import { ensureHatsInJson } from '../views/BlocklyEditor/hatMigration';
 import { tabLocationRefresh } from '../views/CanvasTabs/tabLocation';
 import { tabsClosedByNodeRemoval, RemovedNode } from './canvasTabsNodeRemoval';
+import { subjectOf, tabIdFor, wantsProgramHat, type TabSubject } from './tabSubject';
 
 /**
- * Tab types supported by the canvas tab system
+ * Tab types supported by the canvas tab system.
+ *
+ * VFN-009 adds the second one. Both render a Blockly workspace in the same window; they differ in
+ * what the workspace *is about*, which is `Tab.subject` — see below.
  */
-export type TabType = 'logic-builder';
+export type TabType = 'logic-builder' | 'saved-block';
 
 /**
  * Tab data structure
@@ -18,6 +22,19 @@ export interface Tab {
   id: string;
   /** Type of tab */
   type: TabType;
+  /**
+   * VFN-009 §2 — what this tab is editing: a node's program, or a saved block's body.
+   *
+   * 🔴 A discriminated union, and **`nodeId` was deliberately not widened to carry both**. One
+   * field meaning two kinds of identity would make every consumer — `BlockTraceClient`,
+   * `attachDoIt`, `attachBlockValues`, `onWorkspaceChange` — either learn the difference or
+   * silently do the wrong thing to one of them, and silently is the operative word: arming a trace
+   * socket for a definition id does not throw, it just waits forever.
+   *
+   * Optional, because every tab that existed before this task has none; `subjectOf` reads such a
+   * tab as a node tab, which is what it is. See `contexts/tabSubject.ts`.
+   */
+  subject?: TabSubject;
   /** Node ID (for logic-builder tabs) */
   nodeId?: string;
   /** Node name for display (for logic-builder tabs) */
@@ -110,8 +127,18 @@ export function CanvasTabsProvider({ children }: CanvasTabsProviderProps) {
    * Open a new tab or switch to existing one
    */
   const openTab = useCallback((newTab: Omit<Tab, 'id'> & { id?: string }) => {
-    // Generate ID if not provided
-    const tabId = newTab.id || `${newTab.type}-${newTab.nodeId || Date.now()}`;
+    /**
+     * Generate ID if not provided.
+     *
+     * VFN-009 — from the *subject*, so reopening a definition that is already open switches to it
+     * rather than mounting a second workspace over the same shelf entry. Two workspaces on one
+     * definition would each flush their own copy of the body 300 ms after they settled, and the
+     * last to settle would win, silently, over the other's edits.
+     *
+     * `tabIdFor` on a node subject produces exactly what this line produced before — the tab id
+     * scheme is unchanged, and `tests-unit/vfn-001` still reads `logic-builder-a`.
+     */
+    const tabId = newTab.id || tabIdFor(subjectOf(newTab)) || `${newTab.type}-${Date.now()}`;
 
     setTabs((prevTabs) => {
       // Check if tab already exists
@@ -153,9 +180,18 @@ export function CanvasTabsProvider({ children }: CanvasTabsProviderProps) {
        * freshly dropped Visual Function opens with a hat on the canvas rather than with the
        * empty sheet that used to leave "where does this start?" unanswerable.
        */
+      /**
+       * 🔴 VFN-009 — the hat is put on **programs**, not on saved blocks.
+       *
+       * A definition's body is a fragment that gets spliced into somebody else's stack. Hatting it
+       * here would put a hat block in the shelf on the first settled edit, and every call site
+       * inlining it afterwards would splice that hat into the middle of a stack — a shape Blockly's
+       * grammar has no meaning for. `seedEmpty` is worse again: a definition edited down to nothing
+       * would acquire a signal handler out of thin air. See `wantsProgramHat`.
+       */
       const tab: Tab = {
         ...newTab,
-        workspace: ensureHatsInJson(newTab.workspace, { seedEmpty: true }),
+        workspace: wantsProgramHat(newTab) ? ensureHatsInJson(newTab.workspace, { seedEmpty: true }) : newTab.workspace,
         id: tabId
       };
 
@@ -192,6 +228,10 @@ export function CanvasTabsProvider({ children }: CanvasTabsProviderProps) {
       console.log('[CanvasTabsContext] Received LogicBuilder.OpenTab event:', data);
       openTab({
         type: 'logic-builder',
+        // VFN-009 — stated rather than inferred. `subjectOf` would read this tab as a node tab
+        // from its `nodeId` anyway; saying so at the one emitter that means it is what keeps the
+        // inference a fallback for older callers rather than the mechanism.
+        subject: { kind: 'node', nodeId: data.nodeId },
         nodeId: data.nodeId,
         nodeName: data.nodeName,
         componentId: data.componentId,
@@ -205,7 +245,29 @@ export function CanvasTabsProvider({ children }: CanvasTabsProviderProps) {
       });
     };
 
+    /**
+     * VFN-009 — *Edit blocks* on a row of the **Saved blocks** section in project settings.
+     *
+     * The same window, a different subject. The event carries the definition's body already
+     * stringified, because the shelves live behind `ProjectModel` / `EditorSettings` and this
+     * provider is in the main bundle — the emitter reads the store, this only opens a tab.
+     *
+     * ⚠️ No `nodeId`, no `componentId`, no `generatedCode`, and none of them is an oversight: a
+     * definition has no node, lives in no component, and is never generated on its own. A tab that
+     * carried any of them would make three overlays believe there was something to attach to.
+     */
+    const handleOpenDefinitionTab = (data: { definitionId: string; name: string; workspace: string }) => {
+      openTab({
+        type: 'saved-block',
+        subject: { kind: 'definition', definitionId: data.definitionId },
+        // Display only, exactly like `nodeName` on a node tab, and a snapshot for the same reason.
+        nodeName: data.name,
+        workspace: data.workspace
+      });
+    };
+
     EventDispatcher.instance.on('LogicBuilder.OpenTab', handleOpenTab, context);
+    EventDispatcher.instance.on('LogicBuilder.OpenDefinitionTab', handleOpenDefinitionTab, context);
 
     return () => {
       EventDispatcher.instance.off(context);

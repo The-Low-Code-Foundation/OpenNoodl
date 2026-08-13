@@ -1,5 +1,6 @@
 import React, { Suspense, lazy } from 'react';
 
+import { isDefinitionTab, liveNodeIdOf } from '../../contexts/tabSubject';
 import css from './CanvasTabs.module.scss';
 
 import type { Tab } from '../../contexts/CanvasTabsContext';
@@ -101,7 +102,15 @@ export function buildTabWorkspaces({ tabs, activeTabId, onEdit }: BuildTabWorksp
       >
         <Suspense fallback={<div className={css['TabLoading']}>Loading the block editor…</div>}>
           <BlocklyWorkspace
-            nodeId={tab.nodeId}
+            /**
+             * 🔴 VFN-009 — `liveNodeIdOf`, not `tab.nodeId`. A definition tab answers `undefined`
+             * whatever is in that field, which is the property the discriminated subject exists
+             * for: `nodeId` reaches `attachDoIt`, `attachBlockValues` and `BlockTraceClient`, and
+             * handing any of them a definition id does not fail — it arms a socket for a node that
+             * does not exist and waits.
+             */
+            nodeId={liveNodeIdOf(tab)}
+            subject={isDefinitionTab(tab) ? 'definition' : 'node'}
             initialWorkspace={tab.workspace || undefined}
             // VFN-011 — what the app would run right now, so the strip can say why it is empty.
             // Read-only all the way down; nothing here writes it back.
