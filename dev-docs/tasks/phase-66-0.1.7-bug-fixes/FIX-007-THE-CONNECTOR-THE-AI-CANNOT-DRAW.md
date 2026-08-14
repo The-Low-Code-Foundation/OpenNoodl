@@ -176,6 +176,133 @@ should be re-driven when fix 4 lands, not before — a drive now would only re-m
 (force `evaluateHealth()` on `instanceports` receipt), the ⚠️ rider about `add_connection` dropping
 `label`/`labelT`/`route`, criterion 1's internal-AI half (paid), and criterion 4 (blocked on fix 4).
 
+## ✅ BUILT 2026-08-14 (session 5) — fix 4, and two premises that did not survive checking
+
+### Fix 4 — shipped. The urgent health lane
+
+`NodeGraphModel.scheduleEvaluateHealth` now takes `{ urgent?: boolean }`: **50 ms** instead of
+2000 ms. `bindModels` subscribes to `Model.instancePortsChanged` and takes the fast lane when the
+node whose ports just arrived belongs to *this* graph and its own wires carry a stale
+unresolved-port warning.
+
+Three things had to be right, and each has a spec
+(`tests/nodegraph/urgent-health-pass.spec.ts`, **12 specs**, exported from the nodegraph barrel):
+
+1. 🔴 **The urgent request has to pre-empt a lazy pass already in flight.** The old
+   `if (this.evaluatehealthScheduled) return` **swallowed it** — and the graph is almost always
+   mid-debounce during load, which is exactly when ports arrive. So the boolean became a tracked
+   timer plus a deadline, and `scheduleEvaluateHealth` now compares deadlines rather than asking
+   "is one scheduled". Without this the fix would have been dead code in the only situation it is
+   for. That spec is the load-bearing one.
+2. **The fast lane is gated** on `hasUnresolvedPortWarning(nodeId)` — a wire touching that node
+   carrying `con-no-source-port` or `con-no-target-port`. Deliberately **not** the `-type` or
+   `con-type-mismatch` keys: a port appearing does not make a type verdict stale, and without that
+   distinction the gate degrades into "does this node have any warning", which is nearly always
+   true on a graph the user is fixing. A viewer pushing ports for a hundred healthy nodes now
+   schedules **nothing**.
+3. **Scoped to the owning graph.** `Model.instancePortsChanged` is global; without
+   `node.owner === this`, one Function node's ports would start a health pass in every open
+   component.
+
+Also: `dispose()` now cancels a pending pass. Nothing held the handle before, so a disposed graph's
+timer still walked nodes whose component was gone.
+
+### 🔴 Fix 3 — NOT built, because its premise is false twice over
+
+The task says *"the manual drag passes `getConnectionStatus` … which checks the port exists and is
+compatible before creating"*, and proposes reusing it from `addConnection`. Checked in source:
+
+1. **`getConnectionStatus` does not check port existence.** `NodeGraphModel.ts:527-581` reads
+   `sourcePort`/`targetPort` and then guards *every* branch on `sourcePort && targetPort` — a
+   missing port skips the type check and the duplicate check and returns `{ connectable: true }`.
+   It never needed the check: its only two callers (`ConnectionPopups.ts:246`,
+   `ConnectionBar.tsx:208`) pass port names drawn from an **enumerated port list**, so by
+   construction the ports exist. Wiring it into `addConnection` would therefore report **nothing**
+   for the reported defect.
+2. **The gap it was meant to close is already closed, at a better layer.** The mechanism section's
+   *"no AI/MCP write path ever consults ports at all"* is true of the **model** layer and false of
+   the **validator** layer: `rules/nonexistentPort.ts:55-110` walks both endpoints of every
+   connection, and for a fully static node type emits a `NonexistentPort` **error** with a
+   suggestion and the available alternatives. It abstains only on dynamic-port types — correctly —
+   and that abstention is exactly what shipped **fix 2** closed for Function nodes.
+
+So fix 3 would add nothing for static types (already an error, at the door, with suggestions),
+nothing for dynamic types (`getConnectionStatus` cannot judge them either), and would sit in the
+one place that cannot safely ask the question: `NodeGraphModel.fromJSON:95-97` runs `addConnection`
+in a bulk loop **during project load, before the node library has arrived**, when
+`NodeGraphNode.getPorts()` returns `[]` for every unknown type — the trap
+`tests/models/NodeGraphNodePortCache.test.ts` already documents. A naive port check there reports
+every connection in the project as broken.
+
+**Recommendation: strike fix 3.** If the residue ever matters, the honest version is an eleventh
+check in `authoredPreconditionDiagnostics` (fix 2's proven layer, which has `catalog` and needs no
+loaded NodeLibrary) — not a report in `addConnection`. The one true statement inside fix 3 is that
+`getConnectionStatus` is documented to check existence and does not; that is cosmetic today and
+deliberately left rather than shipped as a branch no caller can reach.
+
+### ✅ The ⚠️ rider — closed, also false
+
+*"`add_connection` still rebuilds a wire from four fields and drops `label`/`labelT`/`route`."*
+It rebuilds from four fields (`graph.ts:300-305`) — but it **refuses duplicates** (`:297-299`), so
+it can only ever append a wire that does not exist yet, and a wire that does not exist has no label
+to drop. Untouched wires survive because `applyOperations` mutates a **copy of the baseline**.
+
+This was already known and already pinned: `packages/noodl-mcp/tests/operationsWritePath.test.ts`
+→ *"SIG-007 R3 — the operations door keeps what it did not author"*, whose own comment says the
+door "was never broken" and that the spec is a **guard**, not a defect proof. `set` is the door
+that needed `carryConnectionPresentation` (`tools/author.ts:281`), and it has it. **Nothing to
+file.** The only residue is remove-then-add on the same endpoints in one batch, which loses the
+label — and that is correct semantics, not a defect.
+
+⚠️ **Tooling note that cost time here:** this repo's `grep` is **ugrep**, which classified
+`packages/noodl-mcp/src/tools/author.ts` as *binary* and silently skipped it — so
+`grep -rn carryConnectionPresentation src/` returned **nothing** for a function defined in that
+file at line 281. Use `/usr/bin/grep -a` before concluding a symbol does not exist.
+
+## ✅ DRIVEN 2026-08-14 (session 5) — criterion 4 measured, and its own control came free
+
+Fixture: **`fix007-c4-drive`**, a scratch copy of `leg003-drive` (source verified untouched by
+mtime afterwards). Its `/Filters` component is the criterion's exact shape and was already correct
+on disk — `Component Inputs → JavaScriptFunction` on **`in-Filters`** and **`in-FilterValues`**,
+and `out-FiltersChanged` / `out-FilterValuesChanged` back out to `Component Outputs`, with
+`ports: []`. Four wires onto runtime-discovered ports, all healthy at rest.
+
+Opened through the **launcher card** (the Launcher is the landing page now, so the phase-59
+`props.route.router` fiber recipe no longer resolves — see the trap below), and confirmed by
+reading back `ProjectModel.instance._retainedProjectDirectory` rather than trusting the click.
+
+The port change was driven through **`node.setDynamicPorts(...)`** — the single line
+`ViewerConnection.ts:203` calls on `instanceports` receipt — so the whole chain under test is the
+real one: `setDynamicPorts` → `instancePortsChanged` → the gate → the urgent lane → `evaluateHealth`
+→ `WarningsModel`. Warning presence was polled at 10 ms, finer than the 50 ms lane being measured.
+
+| Run | ports **removed** → wires go red | ports **restored** → red clears |
+|---|---|---|
+| 1 | **2026 ms** | ✅ **76 ms** |
+| 2 | **2015 ms** | ✅ **76 ms** |
+| 3 | **2017 ms** | ✅ **78 ms** |
+
+✅ **Criterion 4 passes: 76–78 ms, against a "~100 ms" bar.**
+
+🔴 **The left-hand column is the control, and it came free.** Both columns are the same graph, the
+same node, the same function, the same global event — the *only* difference is whether a stale
+unresolved-port warning existed at that moment. Removing ports happens when the wires are healthy,
+so the gate correctly **declines** the fast lane and the change lands on the ordinary 2 s pass
+(2015–2026 ms — the "before" number, measured rather than asserted). Restoring ports happens when
+the warning exists, so the fast lane is taken (76 ms). One run demonstrates both that the lane is
+fast and that the gate is selective; had the gate been decoration, the left column would read ~50 ms
+too.
+
+Final state verified clean: all four wires back to zero warnings, all seven ports present.
+
+⚠️ **Trap for the next drive: the fiber-walk recipe for the router is stale.** The editor now lands
+on the **Launcher** (`Launcher-module__Root`), not `ProjectsPage`, and `props.route.router` exists
+on the latter only — a fiber walk to depth 40 across every `memoizedProps` found **zero** routers.
+Open by clicking the launcher card instead (scroll it into view first — the card was at `y=3102`,
+far below the fold — then tag it and click the tag). Also: **`LocalProjectsModel.loadProject`
+returns a Promise and is not callback-based**; `new Promise(res => loadProject(entry, res))` hangs
+forever and reads as a dead CDP connection.
+
 ## Acceptance criteria
 
 1. 🟡 Asking the internal AI (and the MCP path) to wire a Component Input to a Function-node input
@@ -185,5 +312,20 @@ should be re-driven when fix 4 lands, not before — a drive now would only re-m
    `in-<name>` (negative control: a correct `in-` wire does not).
 3. ✅ The corrected catalog text ships in both `node-catalog.json` and the enriched catalog; the
    catalog gates (`catalog:check`, `cloud-library:check`, `catalog:merge:check`) re-run green.
-4. 🔴 With a viewer running, a staged Function connection shows no red flash longer than ~100 ms
-   after `instanceports` arrives. **Blocked on fix 4, which is not built.**
+4. ✅ With a viewer running, a staged Function connection shows no red flash longer than ~100 ms
+   after `instanceports` arrives. **Driven 2026-08-14: 76 / 76 / 78 ms**, against a measured
+   2015–2026 ms on the lazy lane in the same run.
+
+## Status — one criterion left, and it is not an agent's to spend
+
+| | |
+|---|---|
+| Fix 1 (docs) | ✅ shipped |
+| Fix 2 (write-time gate) | ✅ shipped + driven |
+| Fix 3 (structural) | 🔴 **struck** — premise false twice over, see above |
+| Fix 4 (ergonomic) | ✅ shipped + driven |
+| Rider (`add_connection` presentation) | ✅ **closed** — not a defect, already guarded |
+| Criterion 1's internal-AI half | 🟡 **the only thing left. Paid — needs Richard's go-ahead.** |
+
+Criteria 2, 3 and 4 are closed. Criterion 1's MCP half is closed. **FIX-007 is one paid request
+away from done**, and nothing else in it is blocked on anything.

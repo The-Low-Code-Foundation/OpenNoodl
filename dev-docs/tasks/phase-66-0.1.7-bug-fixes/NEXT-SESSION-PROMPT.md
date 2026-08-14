@@ -1,10 +1,11 @@
 # Phase 66 — next session
 
-**Written 2026-08-14, session 4 (build + drive).** **FIX-008's A, B and E are built and driven** —
-the minimum that closes report 5, plus the detectability fix. Richard ruled *silent backfill on
-open* at the top of the session, which is what made B buildable in the same sitting. **C and D
-remain open**, and the seven batchable rulings are still owed. This file is rewritten at the end of
-**every** session — read §0 for how, and replace it rather than appending.
+**Written 2026-08-14, session 5 (rulings + build + drive).** **The seven-ruling sitting is done** —
+seven tasks are unblocked in one go, and one of them (FIX-003) went *bigger* than its
+recommendation. **FIX-007 fix 4 is built and driven**, which closes criterion 4 and leaves the whole
+task one paid request from done. Two more premises were checked and **did not survive**: fix 3 is
+redundant, and the ⚠️ rider is not a defect. This file is rewritten at the end of **every** session
+— read §0 for how, and replace it rather than appending.
 
 ---
 
@@ -34,144 +35,157 @@ a learning findable six phases later.
 | **FIX-020** | ✅ | ✅ **3/3** | five popups, both themes — **CLOSED** |
 | **FIX-010** | ✅ | ✅ **3/3** | picker anchors + stickiness survives — **CLOSED** |
 | **FIX-018** | ✅ | ✅ **5/5** | chip + stacked edge + freed icon slot + menu — **CLOSED** |
-| **FIX-008** A (honest Connect) | ✅ | ✅ | clicked live; `~/.claude.json` byte-identical after |
-| **FIX-008** B (backfill on open) | ✅ | ✅ | launcher card → both files → `claude mcp list` sees it |
-| **FIX-008** E (bound directory) | ✅ | ✅ | over real stdio, not only the in-process harness |
-| **FIX-008** C, D | 📋 **not built** | — | C stops it recurring; D removes the class |
-| **FIX-007** docs half | ✅ | n/a | both catalogs, all 3 examples, `WIRE_FORMAT_LEGEND` |
-| **FIX-007** gate half | ✅ | ✅ | rejected + accepted through the real MCP door |
+| **FIX-007** fixes 1, 2 | ✅ | ✅ | docs + write-time gate, through the real MCP door |
+| **FIX-007** fix 4 | ✅ | ✅ | **76 ms vs 2017 ms**, with its control in the same run |
+| **FIX-007** fix 3 | 🔴 **struck** | n/a | premise false twice over — do **not** rebuild it |
+| **FIX-007** rider | ✅ **closed** | n/a | not a defect; a guard spec already pins it |
 | **FIX-007** crit 1 | ✅ | 🟡 half | MCP path driven; **internal-AI half is paid** |
-| **FIX-007** crit 4 | 📋 **not built** | 🔴 | blocked on fix 4 — do not re-drive until it lands |
-| **FIX-007** fixes 3 & 4 | 📋 open | — | `addConnection`/`getConnectionStatus`; `evaluateHealth()` |
+| **FIX-008** A, B, E | ✅ | ✅ | idempotent Connect, backfill on open, bound directory |
+| **FIX-008** C, D | 📋 **not built** | — | C stops it recurring; D removes the class |
+| FIX-002/003/009/011/012/014/019 | 📋 open | — | ✅ **all seven now RULED** — buildable by an agent alone |
 | everything else | 📋 open | — | see [TASKS.md](TASKS.md) |
 
-✅ **Three tasks closed, one Tier 1 task most of the way.** Nothing built is waiting on a drive
-except FIX-007 criterion 1's paid half.
+✅ **Three tasks closed; FIX-007 is one paid request from a fourth.** Nothing built is waiting on a
+drive.
 
 ---
 
 ## 2. Gate readings
 
-| Gate | Reading (2026-08-14, session 4, on top of `37fada92`) |
+| Gate | Reading (2026-08-14, session 5, on top of `8b8c25d4`) |
 |---|---|
-| `test:ci` | ✅ **2736 total / 6 failed, seed 34417** — all six inherited, by name |
+| `test:ci` | ✅ **2748 total / 6 failed, seed 04814** — all six inherited, by name |
 | `test:main` (jest: `tests-main` + `tests-unit`) | ✅ **188 suites / 2880 tests, 0 failed** |
 | MCP suite (`packages/noodl-mcp`, jest) | ✅ **41 suites / 467 tests, 0 failed** |
+| `tsc -p packages/noodl-editor/tsconfig.json --noEmit` | ✅ **0 errors** |
 | `tsc -p packages/noodl-editor/tsconfig.tests.json --noEmit` | ✅ **0 errors** |
-| `packages/noodl-mcp` `tsc --noEmit` | 7 errors, **all pre-existing** in files not touched (`connectionPresentation`, `interfaceGate` ×4, `stagingDiagnostics` ×2) |
 | catalog trio, `cloud-library:check` | unchanged — **no catalog, node or library file touched** |
 
 The six `test:ci` failures, by name: `AIX-006 style vocabulary` ×4 · `AI model registry` ×2 — the
-same six as sessions 2 and 3. `test:ci` **totalCount is unchanged at 2736**, which is correct: this
-session added no jasmine specs, only jest ones.
+same six as sessions 2, 3 and 4, now confirmed on a **different seed** (34417 → 04814), so they are
+not seed-dependent.
 
-✅ **`test:main` 2866 → 2880 is exactly the 14 new specs** in
-`tests-main/mcp/connect-bootstrap-server.test.js`. The MCP suite rose by the 9 added there.
+✅ **`test:ci` 2736 → 2748 is exactly the 12 new specs** in
+`tests/nodegraph/urgent-health-pass.spec.ts`. `test:main` is unchanged at 2880, which is correct:
+this session added jasmine specs only.
 
-🔴 **The MCP suite is GREEN, not red.** Memory carried "MCP suite red since DSG-003"; 41/41 pass
-today. That note has been corrected.
-
-⚠️ **Read `packages/noodl-editor/tests/test-results.json` — and check its mtime.** This session
-read it once *before its own run had finished* and got the previous session's numbers back,
-identical seed and all. A results file is only yours if it is younger than your run.
+⚠️ **Read `packages/noodl-editor/tests/test-results.json` — and check its mtime.** Session 4 read it
+before its own run finished and got the previous session's numbers back, seed and all. A results
+file is only yours if it is younger than your run. (Baseline this session was 19:39; the real
+reading was 20:38.)
 
 ---
 
 ## 3. What this session settled — do not re-derive
 
-### The seam: `LocalProjectsModel.bindProject`
+### The seven rulings, all made
 
-The task's first open question — *which seam do all open routes cross?* — is answered.
-**`bindProject`**, and specifically **not `projectFromDirectory`**, which the import engine also
-uses to read a *source* project it is not opening (`import-engine/analyze.ts:104`, `apply.ts:158`);
-backfilling there would write into a folder the user only pointed an importer at. Every route that
-produces an opened project passes through `bindProject`: `loadProject` (launcher rows, recents,
-clone, `projectlibrarymodel`), `_addProject` (new, unzip, open-from-folder), and `EditorPage`'s
-reload.
+Six went to the written recommendation. **One did not:**
 
-### The v2 gate, and why it is read off the folder
+🔴 **FIX-003 — Richard ruled "invert the global `user-select` rule NOW"**, against the
+opt-in-per-surface recommendation. That **enlarges the task from S→M into M/L**: the drag-surface
+test plan that was going to be deferred is now in scope, and the acceptance criteria gain a control
+(dragging still works on canvas nodes, panel tree rows and the sidebar divider). Enumerate the
+opt-*out* list before flipping `style.css:205`, and delete the three now-redundant opt-*ins*.
 
-A legacy project gets **neither file**: `noodl-mcp` refuses a monolithic `project.json`, so the
-registration would be an approval prompt in front of a server that dies at startup. The test is the
-folder's own markers (`components/_registry.json` / `nodegx.project.json`) read through the same
-host the writes go through — 🔴 **not `ProjectModel._projectFormat`**, because at creation time the
-project is still legacy on disk when its config is written, and a model-based gate would have
-silently broken the creating path.
+The other six, in one line each: **FIX-002** Enter=send / Shift+Enter=newline in both composers
+(this changes `TextArea`, so **re-drive BLD-010** and grep every consumer); **FIX-009** `PortEditor`
+joins the width group, three panels only; **FIX-011** per-component size persists behind the
+explicit "Set as default size" gesture, default height = fill the stage; **FIX-012** None clears to
+derived defaults and resets the frame, Delete keeps its values; **FIX-014** model `x`/`y` is
+authoritative, the pass fills gaps and resolves collisions only; **FIX-019** back-to-benched with an
+assertive chip that appears only on divergence.
 
-### What the drive proved, in one line each
+Each is written into its own task file under a `✅ RULED 2026-08-14` heading, and into the README's
+queue. 🟡 **One sub-ruling was NOT asked and is still owed:** FIX-019 14(a) — is the surface called
+"the workbench" *everywhere*, or only in that menu item?
 
-- Connect, clicked when already connected: **success card**, "there was nothing to change",
-  `~/.claude.json` **sha256 identical** before and after. `claude` *is* installed here, so pre-fix
-  this exact click produced the red error in the report.
-- A v2 project opened from its launcher card gained `.mcp.json` + `CLAUDE.md` + the ignore line, and
-  `claude mcp list` **in that folder** then showed `nodegx-fix008-v2` as *pending approval*.
-- A legacy copy gained nothing; a git-tracked copy gained both files and a **three-line**
-  `.gitignore` diff; re-opening either changed no byte and left a hand-edited `CLAUDE.md` intact.
-- `get_project_info` returns `projectDirectory`, driven over real stdio against the built bundle.
+### FIX-007 fix 4 — what had to be true
 
-Full measurement tables: [FIX-008](FIX-008-THE-SERVER-BOUND-TO-THE-WRONG-PROJECT.md) § "What the
-drive measured".
+The urgent lane is 50 ms, gated, and scoped. The load-bearing part was not the number:
 
-### 🔴 The packaged app carries its own MCP bundle
+🔴 **The old `if (this.evaluatehealthScheduled) return` swallowed the urgent request.** The graph is
+almost always mid-debounce during load, which is *exactly* when ports arrive — so without replacing
+the boolean with a tracked timer plus a deadline compare, the fix would have been dead code in the
+only situation it exists for. There is a spec named for that.
 
-Richard's five running servers run
-`/Applications/NodeGX.app/Contents/Resources/noodl-mcp/noodl-mcp.cjs`, **not**
-`packages/noodl-mcp/dist/`. Grepped after this session's rebuild: **0 occurrences** of fix E's new
-string in the packaged copy. So `npm --prefix packages/noodl-mcp run build` fixes the `nodegx`
-bootstrap registration (which points at the checkout) and **nothing else** — every project-bound
-server stays on the old code until the app is repackaged. Last session's "rebuild the dist" lesson
-has a second half.
+The gate is `hasUnresolvedPortWarning`, and it reads **only** `con-no-source-port` /
+`con-no-target-port` — deliberately not the `-type` keys, because a port appearing does not make a
+type verdict stale. Without that distinction the gate degrades into "does this node have any
+warning", which is nearly always true on a graph someone is fixing.
 
-### ⚠️ The posture has a visible edge
+### 🔴 Two more false premises — that is 7 of 16 now
 
-Backfilling into a git repo modifies a **tracked** `.gitignore` (three lines, measured). That is the
-first thing a user will notice about the silent-backfill ruling, and it is deliberate: the
-alternative is a machine-specific `.mcp.json` getting committed.
+- **Fix 3 is redundant, twice over.** `getConnectionStatus` **does not check port existence**
+  (`NodeGraphModel.ts:527-581` guards every branch on `sourcePort && targetPort`, so a missing port
+  returns `connectable: true`); it never needed to, because its only two callers pass names drawn
+  from an enumerated port list. And the gap it was meant to close is already closed at a better
+  layer: `rules/nonexistentPort.ts:55-110` errors on a missing port for any **static** node type,
+  abstaining only on dynamic ones — which is what fix 2 closed for Function nodes. Building it
+  would also have put a port check in `fromJSON`'s bulk loop, which runs **before the node library
+  loads**, when `getPorts()` returns `[]` for everything.
+- **The ⚠️ rider is not a defect.** `add_connection` rebuilds from four fields but **refuses
+  duplicates**, so it only ever appends a wire that does not exist — and a wire that does not exist
+  has no label to drop. `operationsWritePath.test.ts` already pins this and says in its own comment
+  that the door "was never broken".
+
+### What the drive measured
+
+Fixture **`fix007-c4-drive`** (scratch copy of `leg003-drive`; source verified untouched). Ports
+removed → red at **2015–2026 ms**; ports restored → clear at **76 / 76 / 78 ms**. Same graph, same
+node, same event — the only difference is whether a stale warning existed, which is the gate. Full
+table in [FIX-007](FIX-007-THE-CONNECTOR-THE-AI-CANNOT-DRAW.md) § "DRIVEN … session 5".
 
 ---
 
 ## 4. What to do next
 
-1. **The seven-ruling sitting.** Asked at the top of this session and deferred — FIX-002's send key,
-   FIX-003's opt-in, FIX-009's PortEditor, FIX-011's persistence, FIX-012's None, FIX-014's x/y,
-   FIX-019's chip. Each has a written recommendation; **one sitting clears seven tasks' blockers.**
-   Ask first, not last.
-2. **FIX-007 fixes 3 and 4** — fix 4 is the small one and it is what unblocks criterion 4. The ⚠️
-   rider (`add_connection` drops `label`/`labelT`/`route`) is still unfiled.
-3. **FIX-008 fix C** (`--scope project` for the per-project Settings command) if the report should
-   stop recurring. It needs `MCP_SCOPE` split, `McpSettingsSection.tsx:163`, `tests-unit/mcp-001`,
-   and a cleanup hint for the stale user-scope `nodegx-<slug>` entries — `nodegx-puppy-test-3` is
-   **still** visible in every folder on this machine.
-4. **Ask Richard for the paid drive** of FIX-007 criterion 1's internal-AI half. Do not spend it
-   unasked.
-5. **Repackage the app** (or say so out loud) if fix E is to reach the running servers.
+1. **Build the seven ruled tasks** — they are all unblocked and none needs Richard again.
+   FIX-009 and FIX-012 are genuine S's; FIX-002 is S but drags BLD-010's re-drive with it;
+   **FIX-003 is now the big one of the seven** and should not be treated as the S it was filed as.
+   FIX-011 and FIX-019 want the 30px chrome strip laid out **once, together** — do them as a pair.
+2. **Ask Richard for the paid drive** of FIX-007 criterion 1's internal-AI half. It is the *only*
+   thing left in FIX-007. Do not spend it unasked.
+3. **FIX-008 fix C** (`--scope project`) if the report should stop recurring — `MCP_SCOPE` split,
+   `McpSettingsSection.tsx:163`, `tests-unit/mcp-001`, and a cleanup hint for the stale user-scope
+   entries. `nodegx-puppy-test-3` is **still** registered user-scope and visible in every folder.
+4. **Repackage the app** (or say so out loud) if FIX-008 fix E is to reach the running servers —
+   they run `/Applications/NodeGX.app/.../noodl-mcp.cjs`, not `packages/noodl-mcp/dist/`.
 
 **Do not start** FIX-015 or FIX-021's brainstorm halves — they need Richard, not an agent.
+**Do not rebuild** FIX-007 fix 3 or re-file its rider; both are struck with evidence.
 
 ---
 
 ## 5. Rulings still owed by Richard
 
-The batchable smalls (FIX-002, 003, 009, 011, 012, 014, 019) each have a recommendation already
-written — **one sitting clears seven tasks' blockers.**
+The batchable seven are **done**. What remains:
 
-**FIX-008 leftovers:** cleanup of stale user-scope registrations (a "registered elsewhere" list in
-Settings?), and whether two visible NodeGX servers in one session — the project's own plus a stale
-global bound elsewhere — is better or worse for the model. The second is a measurement, not a
-preference; take it before shipping C's copy.
-
-The two big ones (FIX-015's eight style-token rulings, FIX-021's six memory-doc rulings) are their
-own sessions and their output is a new phase, not code in this one.
+- 🟡 **FIX-019 14(a)** — "the workbench" everywhere, or only in that menu item? (Small, missed in
+  this session's sitting.)
+- **FIX-004** conversion block shape, log level, Msg keys · **FIX-005** the category name (reverses
+  VFN-012) · **FIX-006** demote Script from the AI-authorable set? · **FIX-013** what a data-reading
+  component shows on the bench · **FIX-016** signal-input semantics.
+- **FIX-008 leftovers:** cleanup of stale user-scope registrations, and whether two visible NodeGX
+  servers in one session is better or worse for the model — that second one is a *measurement*, so
+  take it before shipping C's copy.
+- The two big ones (**FIX-015**'s eight style-token rulings, **FIX-021**'s six memory-doc rulings)
+  are their own sessions and their output is a new phase, not code in this one.
 
 ---
 
 ## 6. Standing constraints — unchanged, do not relearn
 
 Work on `cline-dev`; **never `git stash`**; `cd` to the repo root in every git call; pathspec-scope
-every `git add`. Check for a sibling session (`git log --since="3 hours ago"`, and read untracked
-files rather than assuming they are yours). **`dev:stop` kills Richard's MCP servers** — kill the
-`scripts/start.ts` pid instead (done this session; all five survived). Restore
-`recently_opened_project.json` after any launcher drive (done — 28 entries in, 28 out).
-⚠️ **Do not restore `~/.claude.json` from a backup**: Richard's live Claude Code sessions write to
-it constantly, and this session's own backup was already stale within the hour. Full list in the
-[README](README.md) § "Standing constraints inherited".
+every `git add`. Check for a sibling session (`git log --since=…`, and read untracked files rather
+than assuming they are yours — `VerifyFix3`/`VerifyFix4` in the test-projects folder are from
+**July**, not from this phase, despite the names). **`dev:stop` kills Richard's MCP servers** — kill
+the `scripts/start.ts` pid instead (done this session; all six survived). Restore
+`recently_opened_project.json` after any launcher drive (done — 28 in, 29 during, 28 out).
+⚠️ **Do not restore `~/.claude.json` from a backup.** Full list in the [README](README.md)
+§ "Standing constraints inherited".
+
+⚠️ **Two drive recipes went stale this session** and are now corrected in FIX-007's drive section:
+the editor lands on the **Launcher**, so the `props.route.router` fiber walk finds nothing — open by
+clicking the card instead; and `LocalProjectsModel.loadProject` **returns a Promise**, so the
+callback form hangs forever and looks like a dead CDP connection.

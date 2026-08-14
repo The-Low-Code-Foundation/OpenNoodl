@@ -48,12 +48,29 @@ spec `tests-unit/update-dialog/release-links.test.ts`) — is the reusable patte
    is an XSS surface AIB-009 did not cover); `ConnectionPopup` `DocsPopup.tsx:129-133` and
    `ConnectionBar.tsx:460-472` raw HTML.
 
-## 🔴 Ruling needed
+## ✅ RULED 2026-08-14 — **invert the global rule now**, not per-surface opt-in
 
-**Invert the global rule, or keep opting in per surface?** Inverting (`user-select: text` default,
-opt *out* on canvas/tree/drag surfaces) is the correct end state but risks drag-behaviour
-regressions on the canvas, panels trees and list rows; per-surface opt-in is safe and incremental.
-Recommend: opt-in now (steps 1-3), file the inversion as a follow-up with a drag-surface test plan.
+The question was: invert (`user-select: text` default, opt *out* on canvas/tree/drag surfaces) or
+keep opting in per surface? The recommendation was opt-in now and file the inversion as a follow-up.
+**Richard ruled the inversion, now** — the correct end state, taken in this phase rather than
+deferred.
+
+🔴 **This enlarges the task.** The written recommendation existed because inverting risks
+drag-behaviour regressions on the canvas, the panel trees and list rows, and the follow-up was to
+carry a **drag-surface test plan**. That plan is now *in scope here*, not deferred:
+
+- Replace `div { user-select: none }` (`style.css:205-208`) with `user-select: text` and add an
+  explicit opt-**out** list. Candidate surfaces to enumerate before flipping, not after: the canvas
+  (`VisualCanvas` and its chrome strip), every panel tree and list row, the node picker, drag
+  handles, the sidebar dividers, and the launcher's project grid.
+- The three existing opt-*ins* (`.react-json-view` `style.css:210`, `AiChatMessage`,
+  `UpdateDialog.module.scss:24`) become redundant — remove them in the same change or they stand as
+  false evidence that the old rule is still in force.
+- Steps 1–3 of the fix direction still ship (they are the AI surfaces' markdown and link policy, a
+  separate concern from selection) — the inversion **replaces step 4's per-surface wrapper sweep**.
+- Acceptance gains a control: **dragging still works** on canvas nodes, panel tree rows and the
+  sidebar divider after the flip. Driven, per surface — this is the regression the ruling accepts
+  the risk of, so it is the one that must be measured.
 
 ## Acceptance criteria
 

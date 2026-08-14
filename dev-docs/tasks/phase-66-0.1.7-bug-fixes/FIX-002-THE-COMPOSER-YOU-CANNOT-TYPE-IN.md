@@ -32,13 +32,18 @@ Backspace→delete binding does not fire here.
 2. Add a **Send button** — Explain has none today; Enter is currently the only way to submit.
 3. Unify the send key (see ruling below) across **both** composers.
 
-## 🔴 Ruling needed — the send key
+## ✅ RULED 2026-08-14 — the send key is **Enter sends, Shift+Enter newlines**
 
 The two composers currently answer to **different keys**: `TextInput.onEnter` fires on plain Enter;
 `TextArea.onEnter` fires on **Shift+Enter** (plain Enter inserts a newline — the *opposite* of the
 industry default of Enter=send / Shift+Enter=newline). Two composers in one app answering to
-different keys is the real bug. Pick one convention and change both. Changing `TextArea`'s
-semantics touches BLD-010's driven acceptance for the Build composer — re-drive it.
+different keys is the real bug.
+
+**Richard ruled the industry default: Enter = send, Shift+Enter = newline, in both composers.**
+That means **`TextArea`'s semantics change**, not Explain's — Explain already sends on plain Enter
+and only gains multiline plus a Send button. ⚠️ Changing `TextArea` touches **BLD-010's driven
+acceptance** for the Build composer, which must be **re-driven**, and `TextArea` is a
+`noodl-core-ui` component — grep every consumer before flipping it, not just the two AI composers.
 
 ## Acceptance criteria
 

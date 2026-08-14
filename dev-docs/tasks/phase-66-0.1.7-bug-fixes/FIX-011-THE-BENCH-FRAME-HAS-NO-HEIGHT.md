@@ -38,16 +38,18 @@ carries a frame **width** but no height (`benchScenarios.ts:59-66`). Near-miss:
    project.
 5. Wire or delete the dead `BenchExport.frame` type — it is currently a lie.
 
-## Rulings needed
+## ✅ RULED 2026-08-14 — persist, behind the explicit gesture
 
-- **Does per-component default size persist to component metadata** (a second deliberate exception
-  to R5 — a default size is arguably authored intent) or stay ephemeral with only scenarios
-  carrying size? (Recommend: persist behind the explicit gesture.)
-- Do **scenarios** gain height? If yes: `readBenchScenarios` + `benchScenarioIsModified` change,
-  and old scenarios must stay readable (they already degrade tolerantly).
-- Is `Stretch` one toggle for both axes, or two?
-- Default height: "fill the stage" (recommended — fixes the reported symptom with no new model)
-  vs a fixed number?
+- ✅ **Per-component default size persists to component metadata**, written **only** by the
+  deliberate "Set as default size" gesture — a second knowing exception to R5, on the grounds that
+  a default size is authored intent. A drag alone never writes; acceptance criterion 4 (a stray
+  resize does not dirty the project) is the control that proves it, and it is load-bearing, not
+  decorative.
+- 🟡 **Still open, and an agent may take the recommendation:** whether scenarios gain height
+  (if yes: `readBenchScenarios` + `benchScenarioIsModified` change, and old scenarios must stay
+  readable — they already degrade tolerantly); whether `Stretch` is one toggle or two.
+- ✅ **Default height = "fill the stage"** — the recommended option, which fixes the reported
+  symptom with no new model. The fixed-number alternative was not taken.
 
 ## Acceptance criteria
 

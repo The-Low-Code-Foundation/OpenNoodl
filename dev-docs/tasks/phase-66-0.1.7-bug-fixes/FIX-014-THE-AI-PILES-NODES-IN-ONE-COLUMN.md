@@ -35,13 +35,16 @@ The discriminator needed already exists on both sides: `catalogVisualPredicate`
 3. **Nice-to-have (L, file separately):** an editor "Tidy this component" command reusing the same
    pass — gives the layout function a non-AI consumer and a reason to be good.
 
-## Rulings
+## ✅ RULED 2026-08-14 — model-supplied `x`/`y` is **authoritative**
 
-- Is model-supplied `x`/`y` **authoritative or advisory**? (Recommend: authoritative; the pass
-  fills gaps and resolves collisions only.)
-- Offset: fixed `x` vs `maxVisualX + gutter`? Do comment/annotation nodes participate?
-- `update_component` on a hand-arranged component must be strictly opt-in for any repositioning —
-  decide before writing the pass, not after.
+- ✅ **Authoritative.** The pass **fills gaps and resolves collisions only** — it never moves a node
+  the model positioned, and never moves a human's arrangement. Acceptance criterion 2 (a
+  model-positioned node is never moved) is the load-bearing control, not a formality: it is the
+  whole difference between this ruling and the advisory one.
+- ✅ Following directly from that: **`update_component` on a hand-arranged component repositions
+  nothing** unless explicitly asked. Decided before the pass is written, as the task required.
+- 🟡 **Still open, agent's call:** fixed `x` vs `maxVisualX + gutter` for the logic column's
+  offset, and whether comment/annotation nodes participate. Neither changes the architecture.
 
 ## Acceptance criteria
 

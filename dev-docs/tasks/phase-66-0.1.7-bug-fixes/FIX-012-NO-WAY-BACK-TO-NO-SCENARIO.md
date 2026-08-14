@@ -28,14 +28,18 @@ Make `resetInputs` also clear `activeScenario` so the two agree. Optionally rese
 `DEFAULT_BENCH_FRAME` for symmetry with `selectScenario`'s frame apply. `benchScenarios.ts` needs
 no change at all.
 
-## Rulings
+## ✅ RULED 2026-08-14 — None clears
 
-- Does "None" **clear all inputs** (ports fall to derived defaults — what the report's "no
-  scenario values" reads as; recommended) or keep values and just detach the label (what Delete
-  does today)?
-- Should selecting None also reset the frame? (Recommend yes, symmetric.)
-- Chip label when not on a scenario: `None` instead of `Unsaved` once scenarios exist —
-  `Unsaved` overclaims pending work.
+- ✅ **"None" clears all inputs.** Ports fall to their derived defaults — what the report's "no
+  scenario values" reads as. The handler is the one already sketched above:
+  `setActiveScenario(undefined); setScenarioNotice(undefined); applyValueSet({})`.
+- ✅ **Selecting None also resets the frame** to `DEFAULT_BENCH_FRAME`, symmetric with
+  `selectScenario`'s frame apply.
+- ✅ **Delete keeps its current behaviour** — it deliberately keeps the values, and that asymmetry
+  is intended, not an oversight. Acceptance criterion 3 is the control that proves None and Delete
+  stayed different.
+- 🟡 Chip label: `None` instead of `Unsaved` once scenarios exist (`Unsaved` overclaims pending
+  work) — take the recommendation.
 
 ## Acceptance criteria
 

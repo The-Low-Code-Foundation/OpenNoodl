@@ -38,14 +38,16 @@ already-dragged width survives the upgrade. Do **not** couple float rects (`FLOA
 a floating Properties card and a floating Components card are separately positioned. The pure
 helper gets a unit test in the pattern of `tests/sidepanel/hideTransitions.spec.ts`.
 
-## Rulings
+## ✅ RULED 2026-08-14
 
-1. `PortEditor` joins the group — recommended, otherwise selecting a Component Inputs node still
-   jumps. Confirm.
-2. **Scope check:** deselect restores `previousActiveId`, which can be *any* panel (Search 340,
-   Docs 420…) — selecting a node while Search is open still moves the divider. The report asks for
-   the two-panel group and that is the safe change; one shared width for the whole docked sidebar
-   is a bigger decision. Recommend the group now; note the wider option.
+1. ✅ **`PortEditor` joins the group.** Confirmed — otherwise selecting a Component Inputs node
+   still jumps, which is the reported symptom on a different node type. The `WIDTH_GROUPS` map
+   above ships as written, all three ids.
+2. ✅ **The three-panel group only — not the whole docked sidebar.** Deselect restores
+   `previousActiveId`, which can be *any* panel (Search 340, Docs 420…), so selecting a node while
+   Search is open still moves the divider. That is **out of scope and deliberately left**: Docs and
+   Search are panels users size differently on purpose. Acceptance criterion 4 (they keep their own
+   widths) is the control that proves the group did not over-reach.
 
 ## Acceptance criteria
 

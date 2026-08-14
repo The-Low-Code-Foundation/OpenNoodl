@@ -29,30 +29,41 @@ bound directory, driven over real stdio. **C and D remain open** — the stale u
 `nodegx-puppy-test-3` is still visible in every folder. Richard ruled **silent backfill on open**,
 reversing BST-005's create-only choice.
 
+**Built and driven (2026-08-14, session 5):** **the seven batchable rulings are all made** (see
+README § the rulings queue — 🔴 FIX-003 went *bigger* than its recommendation: invert the global
+`user-select` now, so its drag-surface test plan is in scope). **FIX-007 fix 4** shipped and driven:
+a wire's red clears in **76 ms** where it took **2017 ms**, measured in the same run as its own
+control. `test:ci` **2748 / 6 failed, seed 04814** — the six inherited by name, and the total rose by
+exactly the 12 new specs. 🔴 **Two more premises did not survive checking:** FIX-007's **fix 3** is
+redundant (`getConnectionStatus` never checked port existence; `rules/nonexistentPort` already errors
+for static types) and its ⚠️ **rider is not a defect** (`add_connection` refuses duplicates, so it has
+no label to drop, and a guard spec already pins it). That is **7 of 16 report premises** now found
+false or already-built.
+
 **States:** built → spec-proved → driven (the phase-64 discipline: a spec proves the decision;
 only a drive proves the pixels).
 
 | Task | One line | Report | Tier | Effort | Blocked on a ruling? |
 |---|---|---|---|---|---|
 | FIX-001 ⭐ | the explainer reads live values, warnings, and the backward walk | 1a–c | **1** | M (+M/L for 1c) | minor (snapshot/truncation) |
-| FIX-002 | the Explain composer becomes a real multiline input with a Send button | 1d | **1** | S | 🔴 the send key |
-| FIX-003 | AI text is selectable and links click, app-wide | 1bis | **1** | S→M | opt-in vs invert (rec: opt-in) |
+| FIX-002 | the Explain composer becomes a real multiline input with a Send button | 1d | **1** | S | ✅ **RULED: Enter=send, Shift+Enter=newline** — changes `TextArea`; re-drive BLD-010 |
+| FIX-003 | AI text is selectable and links click, app-wide | 1bis | **1** | S→**M/L** | ✅ **RULED: invert the global rule now** — drag-surface test plan is in scope |
 | FIX-004 | conversion + log blocks; free toolbox adds; objects-as-data | 2 | 2 | S+XS+M | block shape (minor) |
 | FIX-005 | dropdown contrast fixed; category name ruled | 3 | 2 | S–M | 🔴 naming (reverses VFN-012) |
 | FIX-006 | the AI picks the right code node and writes 2026 JavaScript | 4a–b | 2 | S+S+M | Script demotion (minor) |
-| FIX-007 ✅ | the `in-`/`out-` prefix truth reaches the catalog, the validator, and the write path | 4c | **1** | S+M | no |
+| FIX-007 🟡 | the `in-`/`out-` prefix truth reaches the catalog, the validator, and the write path | 4c | **1** | S+M | no — **1 paid drive from done** (fixes 1/2/4 shipped + driven; fix 3 struck) |
 | FIX-008 ⭐ | Connect is idempotent; every opened project gets its `.mcp.json` | 5 | **1** | S+S/M (+M for scope split) | ✅ **RULED 2026-08-14: silent backfill** — A+B+E built + driven; **C, D open** |
-| FIX-009 | Components/Properties/PortEditor share one stored width | 6 | 2 | S | PortEditor inclusion (rec: yes) |
+| FIX-009 | Components/Properties/PortEditor share one stored width | 6 | 2 | S | ✅ **RULED: PortEditor joins**; three-panel group only |
 | FIX-010 ✅ | a query change re-anchors the picker to its top result | 7 | 2 | S | no (one test updated deliberately) |
-| FIX-011 | the bench frame gets a height, handles, and a per-component default | 8a | 2 | M (symptom fix S) | 🔴 persistence (R5 exception) |
-| FIX-012 | a None row; Reset all stops lying | 8b | 2 | S | None semantics (rec: clear) |
+| FIX-011 | the bench frame gets a height, handles, and a per-component default | 8a | 2 | M (symptom fix S) | ✅ **RULED: persist behind the gesture**; default = fill the stage |
+| FIX-012 | a None row; Reset all stops lying | 8b | 2 | S | ✅ **RULED: None clears** (+ frame); Delete unchanged |
 | FIX-013 | the Data maze is removed; the bench is inputs and outputs | 8c | 2 | S–M | 🔴 zero-rows / AI-preview parity |
-| FIX-014 | logic nodes get their own column, by prompt and by a layout pass | 9 | 2 | S+M | x/y authority (rec: authoritative) |
+| FIX-014 | logic nodes get their own column, by prompt and by a layout pass | 9 | 2 | S+M | ✅ **RULED: x/y authoritative** — fill gaps + collisions only |
 | FIX-015 | style tokens: rulings session → a new phase | 10 | brainstorm | session | 🔴 all eight |
 | FIX-016 | Signal offered at add time; declared-vs-called mismatch diagnosed | 11 | 3 | S+S | signal-input semantics (for the M–L half only) |
 | FIX-017 | completions at an empty position; `Noodl.Records.` answers; TASKS.md reconciled | 12 | 3 | S+M+S | no |
 | FIX-018 ✅ | a component card says it opens; context menu says so too | 13 | 2 | S–M | ✅ **RULED 2026-08-14: option C** — built + driven, **CLOSED** |
-| FIX-019 | "Show in workbench"; the canvas admits when it left the benched component | 14 | 2 | S+S–M | chip direction (minor) |
+| FIX-019 | "Show in workbench"; the canvas admits when it left the benched component | 14 | 2 | S+S–M | ✅ **RULED: back-to-benched, assertive chip**; 🟡 14(a) wording open |
 | FIX-020 ✅ | one stylesheet stops fighting the other; five popups uncrop | 15 | 2 | S | no |
 | FIX-021 | project + global memory docs: slice 0 defect now, brainstorm for the loop | 16 | 3 / brainstorm | S+M+session | 🔴 the six memory rulings |
 

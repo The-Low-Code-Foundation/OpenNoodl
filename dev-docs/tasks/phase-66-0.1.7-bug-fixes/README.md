@@ -93,17 +93,26 @@ the sixteen reports contain one:
   does the AI preview keep its toolbar.
 - FIX-005 — the category name (A keep / B Global Variables + App Settings / C revert VFN-012).
 
-**Small, unblock-a-task (batchable):**
-- FIX-002 — the send key (recommend Enter=send, Shift+Enter=newline, both composers).
-- FIX-003 — global `user-select` inversion now or later (recommend later, opt-in now).
+**Small, unblock-a-task (batchable):** ✅ **seven cleared in one sitting, 2026-08-14 (session 5).**
+- ~~FIX-002 — the send key~~ ✅ **RULED: Enter = send, Shift+Enter = newline, both composers.**
+  ⚠️ This changes **`TextArea`**, not Explain — re-drive BLD-010, and grep every `TextArea` consumer.
+- ~~FIX-003 — global `user-select` inversion now or later~~ ✅ **RULED: invert the global rule NOW**
+  — *against* the written recommendation of opt-in-now. 🔴 The deferred **drag-surface test plan is
+  therefore in scope here**: canvas, panel trees, list rows, node picker, sidebar divider.
 - FIX-004 — conversion block shape; log level; Msg keys.
 - FIX-006 — demote Script from the AI-authorable set? prefer Visual Function?
-- FIX-009 — does `PortEditor` join the width group (recommend yes).
-- FIX-011 — per-component bench size persists to metadata? (recommend yes, behind a gesture).
-- FIX-012 — None = clear to defaults (recommend yes).
-- FIX-014 — is model-supplied x/y authoritative (recommend yes).
+- ~~FIX-009 — does `PortEditor` join the width group~~ ✅ **RULED: yes**, three-panel group only;
+  Docs/Search keep their own widths (that is criterion 4's control).
+- ~~FIX-011 — per-component bench size persists to metadata?~~ ✅ **RULED: yes, behind the explicit
+  "Set as default size" gesture** (a knowing second R5 exception); default height = **fill the stage**.
+- ~~FIX-012 — None = clear to defaults~~ ✅ **RULED: yes**, and None resets the frame too; Delete
+  keeps its values (the asymmetry is intended).
+- ~~FIX-014 — is model-supplied x/y authoritative~~ ✅ **RULED: authoritative** — the pass fills gaps
+  and resolves collisions only, and `update_component` repositions nothing unasked.
 - FIX-016 — signal-input semantics, or rule them out.
-- FIX-019 — jump-back direction; assertive vs passive chip.
+- ~~FIX-019 — jump-back direction; assertive vs passive chip~~ ✅ **RULED: back-to-benched, assertive
+  chip** (appears only on divergence). 🟡 *Not* ruled: whether the surface is called "the workbench"
+  **everywhere** or only in that menu item — 14(a)'s vocabulary sweep still needs a word.
 - ~~FIX-008 — backfill-on-open posture~~ ✅ **ruled 2026-08-14: silent backfill on open** (A+B+E
   built and driven). Still open: **stale-registration cleanup**, and whether fix C's two-servers-in-
   one-session state is better or worse for the model.

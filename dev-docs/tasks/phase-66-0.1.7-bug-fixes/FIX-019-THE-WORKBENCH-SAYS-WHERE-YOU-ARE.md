@@ -44,16 +44,19 @@ the button's handler.
 4. Optional one-liner worth offering in the same ruling: the reverse action — "bench what the
    canvas is showing" (`setScope({ mode: 'bench', target: canvasComponentName })`).
 
-### Rulings
+### ✅ RULED 2026-08-14 — back-to-benched, assertive chip
 
-- **Button direction:** back-to-benched (what the report asks) vs re-bench-current (possibly the
-  more common intent) — two buttons won't fit a 30px strip.
-- Indicator **assertive** (appears only on divergence — the design-banner pattern, recommended)
-  vs passive always-on readout (costs strip width; BEN-004's drive found the strip clipping at
-  640px).
-- Should the Components panel also badge the benched row? (Needs a new bench-scope broadcast —
-  `BENCH_MOUNT_EVENT` is fire-and-forget today. File as optional slice.)
-- ⚠️ Coordinate the strip layout with FIX-011 — both tasks want the same 30px.
+- ✅ **Button direction: back-to-benched**, which is what the report asks. The reverse action
+  ("bench what the canvas is showing", fix direction 4) is **not** taken — two buttons won't fit a
+  30px strip, and the report's direction wins. `revealBenchTarget(scope.target)` is the handler.
+- ✅ **Assertive indicator** — the chip appears **only on divergence**, on the `DesignBannerExit`
+  precedent. Not a passive always-on readout: BEN-004's drive found the strip clipping at 640px and
+  a permanent readout spends width the strip has already been measured as short of. Acceptance
+  criterion 3 (canvas on the benched component → **no** chip) is the control for this.
+- 🟡 Components-panel badge on the benched row: still optional, still needs a new bench-scope
+  broadcast (`BENCH_MOUNT_EVENT` is fire-and-forget today). File as a separate slice; not required.
+- ⚠️ Strip layout still to be settled **once, with FIX-011** — both want the same 30px. The
+  assertive ruling helps: the chip costs zero width in the common case.
 
 ## Acceptance criteria
 
