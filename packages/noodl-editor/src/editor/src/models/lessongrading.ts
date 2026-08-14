@@ -133,6 +133,25 @@ export interface WholeSolutionResult {
   drawnElementCount?: number;
   /** Human-readable problems, in the reporting tool's own words. */
   findings: string[];
+  /**
+   * Set when the check could not run at all — no render harness, no Chrome, a
+   * project this adapter cannot read.
+   *
+   * 🔴 Distinct from `rendered: false`, which means the render *ran* and the page
+   * was empty, and from `valid: false`, which means the project was read and is
+   * wrong. It is the same distinction {@link StepGrade.error} draws for engine 1,
+   * and it exists for the same reason: a learner on a machine with no Chrome has
+   * not failed the lesson, and a card that cannot tell the two apart will tell
+   * them they have. UNI-010 runs this port inside an MCP sidecar, where "no
+   * Chrome" is an ordinary Tuesday rather than an edge case.
+   *
+   * It never *passes* anyone — {@link buildLessonEvidence} withholds `complete`
+   * from a lesson whose whole-solution check could not run — but it does not
+   * make the fields beside it lie: the two halves fail independently, so a
+   * project that cannot be *read* may still have rendered, and `rendered` keeps
+   * reporting what the render actually saw.
+   */
+  unavailable?: string;
 }
 
 /**
@@ -151,6 +170,14 @@ export interface WholeSolutionGrader {
  * A result that claims to have rendered while reporting zero drawn elements is
  * not evidence of a working app; it is the exact shape of the defect the rule
  * exists for. Rewritten rather than trusted.
+ *
+ * ⚠️ It deliberately does **not** force `rendered` false when a result carries
+ * `unavailable`. The two halves of engine 2 fail independently — a project this
+ * adapter cannot *read* may still render perfectly — so `unavailable` does not
+ * imply the render is unknown, and rewriting `rendered` on the strength of it
+ * would contradict the `drawnElementCount` sitting beside it. The guarantee that
+ * an unavailable check never passes anyone lives on the completion flag instead,
+ * where it is stated once: see {@link buildLessonEvidence}.
  */
 export function normaliseWholeSolutionResult(result: WholeSolutionResult): WholeSolutionResult {
   const findings = [...(result.findings ?? [])];
@@ -253,7 +280,13 @@ export interface LessonEvidence {
   complete: boolean;
   /** Per-step pass/fail, positionally. No labels, no parameters, no graph. */
   stepOutcomes: Array<{ index: number; graded: boolean; passed: boolean }>;
-  wholeSolution?: { valid: boolean; rendered: boolean; findingCount: number };
+  /**
+   * `unavailable` is carried as a **flag, not the sentence**. The sentence names
+   * a machine — "NODEGX_RENDER_CLI points at /Users/…" — and this bundle is the
+   * thing that leaves one. A human reviewer (UNI-006) needs to know engine 2 did
+   * not run; they do not need the learner's filesystem to find out.
+   */
+  wholeSolution?: { valid: boolean; rendered: boolean; findingCount: number; unavailable?: true };
   /** Set by the caller. Not sampled here — this module has no clock, so it stays pure. */
   gradedAt?: string;
 }
@@ -277,16 +310,22 @@ export function buildLessonEvidence(
     completionPercent: grade.completionPercent,
     // A lesson with a whole-solution grader attached is only complete when it
     // also drew something — the empty-page rule reaches the completion flag too.
+    //
+    // 🔴 And a check that could not run never completes anyone. This is the one
+    // place that guarantee is stated, precisely so the fields it reads can stay
+    // honest about what each half of engine 2 actually observed.
     complete:
       grade.firstIncompleteStep === -1 &&
-      (!grade.wholeSolution || (grade.wholeSolution.valid && grade.wholeSolution.rendered)),
+      (!grade.wholeSolution ||
+        (grade.wholeSolution.valid && grade.wholeSolution.rendered && !grade.wholeSolution.unavailable)),
     stepOutcomes: grade.steps.map((s) => ({ index: s.index, graded: s.graded, passed: s.passed })),
     ...(grade.wholeSolution
       ? {
           wholeSolution: {
             valid: grade.wholeSolution.valid,
             rendered: grade.wholeSolution.rendered,
-            findingCount: grade.wholeSolution.findings.length
+            findingCount: grade.wholeSolution.findings.length,
+            ...(grade.wholeSolution.unavailable ? { unavailable: true as const } : {})
           }
         }
       : {}),

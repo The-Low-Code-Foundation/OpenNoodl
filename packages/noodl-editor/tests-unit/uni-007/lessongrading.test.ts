@@ -146,6 +146,23 @@ describe('normaliseWholeSolutionResult — clean can mean EMPTY', () => {
     const result = normaliseWholeSolutionResult({ valid: true, rendered: true, findings: [] });
     expect(result.rendered).toBe(true);
   });
+
+  it('does not rewrite `rendered` just because some half was unavailable', () => {
+    // Engine 2's two halves fail independently: a project that cannot be *read*
+    // may still have rendered perfectly. Forcing `rendered: false` here would
+    // contradict the count sitting beside it, which is the very shape this
+    // function exists to catch. The guarantee lives on `complete` instead.
+    const result = normaliseWholeSolutionResult({
+      valid: false,
+      rendered: true,
+      drawnElementCount: 98,
+      findings: [],
+      unavailable: 'The project could not be validated: legacy monolithic project.json'
+    });
+    expect(result.rendered).toBe(true);
+    expect(result.drawnElementCount).toBe(98);
+    expect(result.findings).toEqual([]);
+  });
 });
 
 // ─── Both engines together ──────────────────────────────────────────────────
@@ -261,6 +278,54 @@ describe('buildLessonEvidence', () => {
     // The module has no clock, deliberately — that is what keeps it pure.
     const grade = await gradeLesson(lesson, emptyProject);
     expect('gradedAt' in buildLessonEvidence(lesson, grade)).toBe(false);
+  });
+
+  it('flags that engine 2 could not run, without carrying the machine it could not run on', async () => {
+    // A human reviewer (UNI-006) has to be able to tell "their app draws
+    // nothing" from "nothing looked at it" — those are different conversations.
+    // But the sentence names a filesystem, and this bundle is the thing that
+    // leaves one, so the bundle gets the flag and not the sentence.
+    const grade = await gradeLesson(lesson, correctAttempt, {
+      wholeSolution: grader({
+        valid: true,
+        rendered: false,
+        findings: ['The render could not run: NODEGX_RENDER_CLI points at /Users/someone/nowhere.'],
+        unavailable: 'The render could not run: NODEGX_RENDER_CLI points at /Users/someone/nowhere.'
+      })
+    });
+    const evidence = buildLessonEvidence(lesson, grade);
+
+    expect(evidence.wholeSolution?.unavailable).toBe(true);
+    expect(JSON.stringify(evidence)).not.toContain('/Users/someone');
+    // Conservative in the direction that matters: it never passes anyone.
+    expect(evidence.complete).toBe(false);
+  });
+
+  it('withholds completion when engine 2 could not run, even though it drew', async () => {
+    // 🔴 The guarantee, in the one place it is stated. The render half ran and
+    // the page drew 98 things; the validity half could not run at all. Both
+    // fields are honest about their own half, and the lesson is still not
+    // complete — because half the check did not happen.
+    const grade = await gradeLesson(lesson, correctAttempt, {
+      wholeSolution: grader({
+        valid: true,
+        rendered: true,
+        drawnElementCount: 98,
+        findings: [],
+        unavailable: 'The project could not be validated: legacy monolithic project.json'
+      })
+    });
+    expect(grade.wholeSolution?.rendered).toBe(true);
+    expect(buildLessonEvidence(lesson, grade).complete).toBe(false);
+  });
+
+  it('says nothing about availability when the check ran fine', async () => {
+    const grade = await gradeLesson(lesson, correctAttempt, {
+      wholeSolution: grader({ valid: true, rendered: true, drawnElementCount: 12, findings: [] })
+    });
+    const evidence = buildLessonEvidence(lesson, grade);
+    expect(evidence.wholeSolution).toEqual({ valid: true, rendered: true, findingCount: 0 });
+    expect(evidence.complete).toBe(true);
   });
 });
 

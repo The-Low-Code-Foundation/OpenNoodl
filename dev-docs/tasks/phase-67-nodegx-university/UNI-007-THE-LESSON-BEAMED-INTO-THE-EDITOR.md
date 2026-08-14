@@ -3,15 +3,17 @@
 **Surface:** all three · **Tier 2 (the differentiator)** · **Effort:** L · ✅ **UNBLOCKED — D5 ruled
 2026-08-14**; ~~D12~~ 🔴 **struck 2026-08-14 — already ruled**
 
-> ## 🟡 Slice 1 of the grading runner is BUILT (2026-08-14, third session)
+> ## 🟡 Slices 1–2 of the grading runner are BUILT (2026-08-14, third + fifth sessions)
 >
-> The first code of phase 67. Editor-side, no platform, no account, no MCP wiring.
+> The first code of phase 67. No platform, no account, no UI.
 >
 > | Shipped | Where |
 > |---|---|
 > | **The static two-vocabulary check** — the format contract's own gate, and the one blocker of §11's three that survived the fact-check | [`models/lessonverify.ts`](../../../packages/noodl-editor/src/editor/src/models/lessonverify.ts) |
 > | **The grading runner — both engines, kept apart structurally** | [`models/lessongrading.ts`](../../../packages/noodl-editor/src/editor/src/models/lessongrading.ts) |
-> | 48 tests, `tests-unit/uni-007/` | jest / **`test:main`**, not the electron suite — see below |
+> | 52 tests, `tests-unit/uni-007/` | jest / **`test:main`**, not the electron suite — see below |
+> | ✅ **Engine 2's MCP adapter** (slice 2) — validity via `validate_project`'s own call, "did it draw" via the render harness | [`noodl-mcp/src/lessons/wholeSolutionGrader.ts`](../../../packages/noodl-mcp/src/lessons/wholeSolutionGrader.ts) |
+> | 21 tests, against **real recorded renders** | `noodl-mcp` jest — ⚠️ **not in `test:ci`**, run `npx jest` in that package |
 >
 > **What the two modules actually do.**
 >
@@ -37,12 +39,55 @@
 > that one function**. 🔴 This is what makes "the same verifier, not a fork" achievable: UNI-010
 > runs this runner inside an MCP sidecar with no renderer around it.
 >
+> ### Slice 2 — engine 2 has an implementation (fifth session)
+>
+> `createWholeSolutionGrader(projectDir)` is the port's first implementation. It runs
+> `new ProjectStore(dir)` + `validateOnDisk` — literally the call behind `validate_project` — and
+> `runRenderReport`, and reduces both to the two answers a learner's card shows.
+>
+> - 🔴 **It always reports `drawnElementCount`, including zero.** This is the whole reason the
+>   adapter is worth writing carefully. `normaliseWholeSolutionResult()` rewrites a claimed render
+>   with a zero count into a failure, but it deliberately does **not** invent a count an adapter
+>   omitted — so *an adapter that stays silent about the count opts itself out of the empty-page
+>   check entirely.* There is a spec named for that.
+> - 🔴 **The count applies the render harness's own blank rule, not a second one.** The harness calls
+>   a viewport blank at `text.elements === 0 && images.total === 0`, so drawn = those two summed, and
+>   the aggregate across viewports is the **minimum, not the sum** — the harness raises
+>   `blank-render` if *any* viewport is blank, and summing would let a healthy desktop hide an empty
+>   phone. Two independent reads (the count, and the harness's own `blank-render` finding), and the
+>   conservative one wins if they ever disagree.
+> - 🔴 **It renders with `screenshot: 'none'`.** A screenshot of a learner's project is project
+>   content, and D10 says that never leaves the machine. Engine 2 needs two numbers and a list; it
+>   has no use for the picture.
+> - **It never throws.** No Chrome, no viewer bundle, a legacy project — all come back as
+>   `unavailable`, this package's standing rule for absence. A throw would take engine 1's per-step
+>   verdicts down with it, and those are the half that works without a Chrome.
+> - **Validation is non-strict, and that is a judgement.** Strict mode exists so a typo'd node type
+>   hard-fails an *agent authoring a fresh graph*; a learner dragging nodes out of the picker is not
+>   that population. Warnings are reported, never fatal.
+>
+> **One editor-side change came with it: `WholeSolutionResult.unavailable`.** Engine 2 previously had
+> no way to say *"I could not run"* — only `rendered: false`, which reads as *"your page is empty"*.
+> Those are different conversations with a learner, and UNI-010 runs this port inside an MCP sidecar
+> where "no Chrome" is an ordinary Tuesday. It is the same distinction `StepGrade.error` already drew
+> for engine 1. The evidence bundle carries it as a **flag, not the sentence** — the sentence names a
+> filesystem, and the bundle is the thing that leaves one.
+>
+> 🔴 **It deliberately does *not* force `rendered: false`, and the first draft did.** Engine 2's two
+> halves fail **independently**: a project the validator cannot *read* may still render perfectly, so
+> collapsing them emits `rendered: false` beside `drawnElementCount: 98` — a payload contradicting
+> itself, which is the very shape `normaliseWholeSolutionResult()` exists to catch. Reproducing the
+> defect one layer above the guard against it is easy enough to be worth naming. **The safety
+> property belongs on the decision, not on the observation:** `buildLessonEvidence().complete` now
+> requires `valid && rendered && !unavailable`, stated once, and every field beside it stays honest
+> about what its own half saw.
+>
 > **🔴 What is NOT built, so nobody reads this as more than it is:**
 >
-> - **No MCP adapter for engine 2.** The port has no implementation yet. `validate_project` is
->   reachable (`noodl-mcp/src/validate.ts` already runs on the editor's own `SemanticValidator`);
->   `render_report` spawns `scripts/devtools/render-report.js` as a child process. **Neither is
->   wired.** Criterion 3's whole-solution half is designed, not delivered.
+> - 🔴 **Nothing calls the adapter.** It is a library module with tests, not a wired feature: the
+>   callers are the Learning folder's "check my work" button and UNI-010's sidecar, and neither
+>   exists. It is deliberately **not** an MCP tool — a `grade_lesson` tool needs a `LessonEvalContext`
+>   built from a project on disk, which nothing builds yet.
 > - **No Learning folder, no launcher section, no card, no UI of any kind.** D5's editor-written
 >   section is untouched. Criterion 2 is not started.
 > - **No intake, no pathing, no projection cache.** Criterion 1 is not started — it is platform work.
@@ -183,10 +228,12 @@ against `node-catalog.json` — neither currently does.
    makes exactly one model call ever (the cache spec — Loom's proven guarantee, re-proven here).
 2. A lesson pulled into the Learning folder appears in the launcher's Learning section with its
    metadata, absent from the normal picker flow per D5; reset re-pulls a clean copy.
-3. "Check my work" grades a deliberately-wrong and a correct attempt differently, per step, with
-   **no model call** — per-step via the existing 11-verb evaluator, whole-solution via local MCP
-   tooling. (The "no model call" half is already true today; the criterion is that the two engines
-   stay separate and neither is reimplemented.)
+3. ✅ **MET 2026-08-14.** "Check my work" grades a deliberately-wrong and a correct attempt
+   differently, per step, with **no model call** — per-step via the existing 11-verb evaluator,
+   whole-solution via local MCP tooling. (The "no model call" half is already true today; the
+   criterion is that the two engines stay separate and neither is reimplemented.) Both engines are
+   built and the whole-solution half has its adapter; ⚠️ what remains is a *caller* — the button
+   that runs it lives in the Learning folder, criterion 2.
 4. The format round-trips: a bundle authored by hand (no platform) installs and grades
    identically — proving the open contract before UNI-010 leans on it.
 5. The full loop: completion → evidence → score+feedback on the card → UNI-002 points event.

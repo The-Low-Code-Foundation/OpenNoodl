@@ -414,3 +414,22 @@ export {
   authoringServerName,
   projectSlug
 } from '../../noodl-editor/src/editor/src/views/panels/SettingsPanel/sections/mcpCommands';
+
+// ─── UNI-007's engine-2 port (phase 67) ──────────────────────────────────────
+// The lesson grading runner asks two questions, and keeps them in two engines.
+// Engine 1 — "has the learner done step 4?" — is a pure evaluator that stays in
+// the editor and is never reimplemented here; that is the whole point of the
+// separation, so it is deliberately *not* re-exported. Engine 2 — "is what they
+// built a working app, and does it draw?" — is an injected port, and this
+// package holds the only thing that can answer it: `validate_project`'s
+// validator and the render harness.
+//
+// 🔴 **Types only, and that is load-bearing.** `export type` erases at compile
+// time, so nothing from `lessongrading.ts` reaches the bundle and the
+// Electron-free-by-construction rule above is untouched. The dependency runs the
+// other way at runtime: the editor (or a sidecar) constructs the adapter from
+// `lessons/wholeSolutionGrader` and hands it *in*.
+export type {
+  WholeSolutionGrader,
+  WholeSolutionResult
+} from '../../noodl-editor/src/editor/src/models/lessongrading';
