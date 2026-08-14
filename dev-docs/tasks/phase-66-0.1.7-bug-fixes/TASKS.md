@@ -21,6 +21,14 @@ themes, on a purpose-built fixture. `test:ci` **2736 / 6 failed, seed 04897**; t
 inherited failures by name (`AIX-006 style vocabulary` ×4, `AI model registry` ×2) and the total rose
 by exactly the 10 new specs, which is what proves the barrel registration took.
 
+**Built and driven (2026-08-14, session 4):** **FIX-008 fixes A, B and E** — the minimum that closes
+report 5, plus E. Connect is idempotent (clicked live against the real `~/.claude.json`, which came
+back byte-identical); every opened **v2** project gets `.mcp.json` + `CLAUDE.md`, proved through a
+launcher card click and then through `claude mcp list` in that folder; `get_project_info` returns the
+bound directory, driven over real stdio. **C and D remain open** — the stale user-scope
+`nodegx-puppy-test-3` is still visible in every folder. Richard ruled **silent backfill on open**,
+reversing BST-005's create-only choice.
+
 **States:** built → spec-proved → driven (the phase-64 discipline: a spec proves the decision;
 only a drive proves the pixels).
 
@@ -33,7 +41,7 @@ only a drive proves the pixels).
 | FIX-005 | dropdown contrast fixed; category name ruled | 3 | 2 | S–M | 🔴 naming (reverses VFN-012) |
 | FIX-006 | the AI picks the right code node and writes 2026 JavaScript | 4a–b | 2 | S+S+M | Script demotion (minor) |
 | FIX-007 ✅ | the `in-`/`out-` prefix truth reaches the catalog, the validator, and the write path | 4c | **1** | S+M | no |
-| FIX-008 ⭐ | Connect is idempotent; every opened project gets its `.mcp.json` | 5 | **1** | S+S/M (+M for scope split) | backfill posture (minor) |
+| FIX-008 ⭐ | Connect is idempotent; every opened project gets its `.mcp.json` | 5 | **1** | S+S/M (+M for scope split) | ✅ **RULED 2026-08-14: silent backfill** — A+B+E built + driven; **C, D open** |
 | FIX-009 | Components/Properties/PortEditor share one stored width | 6 | 2 | S | PortEditor inclusion (rec: yes) |
 | FIX-010 ✅ | a query change re-anchors the picker to its top result | 7 | 2 | S | no (one test updated deliberately) |
 | FIX-011 | the bench frame gets a height, handles, and a per-component default | 8a | 2 | M (symptom fix S) | 🔴 persistence (R5 exception) |

@@ -104,7 +104,9 @@ the sixteen reports contain one:
 - FIX-014 — is model-supplied x/y authoritative (recommend yes).
 - FIX-016 — signal-input semantics, or rule them out.
 - FIX-019 — jump-back direction; assertive vs passive chip.
-- FIX-008 — backfill-on-open posture; stale-registration cleanup.
+- ~~FIX-008 — backfill-on-open posture~~ ✅ **ruled 2026-08-14: silent backfill on open** (A+B+E
+  built and driven). Still open: **stale-registration cleanup**, and whether fix C's two-servers-in-
+  one-session state is better or worse for the model.
 
 ## Standing constraints inherited — unchanged, do not relearn
 
