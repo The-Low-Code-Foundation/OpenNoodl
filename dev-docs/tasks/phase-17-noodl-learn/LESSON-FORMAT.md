@@ -135,11 +135,61 @@ Every lesson carries two vocabularies and they are frequently different strings:
   reads in the node picker and on the canvas.
 - **Conditions** (`%Type`, `hastype`) must use the **type name** — the internal
   identifier. `findNodeWithPath` matches `node.type.name`
-  ([lessonevalconditions.ts:246-248](../../../packages/noodl-editor/src/editor/src/views/lessons/lessonevalconditions.ts#L246-L248)),
-  and `hastype` does the same
-  ([:301-303](../../../packages/noodl-editor/src/editor/src/views/lessons/lessonevalconditions.ts#L301-L303)).
+  ([lessonevalconditions.ts](../../../packages/noodl-editor/src/editor/src/views/lessons/lessonevalconditions.ts)),
+  and `hastype` does the same.
 
-Where they diverge today (verified against `node-catalog.json`, 2026-08-09):
+> ✅ **You do not have to hold this in your head any more.** UNI-007 shipped a
+> static check —
+> [`models/lessonverify.ts`](../../../packages/noodl-editor/src/editor/src/models/lessonverify.ts),
+> `verifyLessonManifest()` — which reads every `%Type` segment and every
+> `hasType` in a manifest, classifies it against the catalog, and names the
+> problem. Run it before shipping a lesson. It is the same check UNI-010 runs
+> over an AI-authored bundle before it may install.
+
+##### The real shape of the divergence
+
+🔴 **Corrected 2026-08-14.** This section previously tabulated **nine**
+divergences and named `Variable`, `Button` and `Text Input` among the nodes that
+"use the same string for both". Both statements were wrong. Re-derived from
+`node-catalog.json` (175 entries), there are **three classes**, not one list:
+
+| Class | Count | What it is | What to do |
+|---|---|---|---|
+| **Plain divergence** | **103** | The display name is not any type name and maps to exactly one | Use the type name — the checker suggests it |
+| **Ambiguous** | **4** | The display name maps to **two** type names | 🔴 Write the type name you mean. The checker **rejects and does not substitute** |
+| **Shadowed** | **6** | The string **is** a real type name — of a **deprecated** node — while the node the learner actually places carries it as a *display* name | 🔴 Use the live type name |
+
+**The four ambiguous names:**
+
+| Display name | Could mean |
+|---|---|
+| Array | `Collection` *or* `Collection2` |
+| Object | `Model` *or* `Model2` |
+| Component Object | `Component State` *or* `net.noodl.ComponentObject` |
+| Parent Component Object | `Parent Component State` *or* `net.noodl.ParentComponentObject` |
+
+An ambiguous name is not merely unreachable — it can resolve to the **wrong one
+of two**, which is a lesson that grades the wrong node and says nothing. That is
+why the checker refuses to guess for you.
+
+**The six shadowed names — the dangerous class**, because "does this type exist?"
+returns **true** for every one of them:
+
+| Written in a condition | Actually names | The node the learner places |
+|---|---|---|
+| `Variable` | the deprecated Variable | **`Variable2`** |
+| `Button` | the deprecated Button | **`net.noodl.controls.button`** |
+| `Text Input` | the deprecated Text Input | **`net.noodl.controls.textinput`** |
+| `Checkbox` | the deprecated Checkbox | **`net.noodl.controls.checkbox`** |
+| `Radio Button` | the deprecated Radio Button | **`net.noodl.controls.radiobutton`** |
+| `Cloud Function` | the deprecated Cloud Function | **`CloudFunction2`** |
+
+`Variable` is in the curriculum spine (CURRICULUM-DESIGN D3 — *"Counter first,
+Variable revealed in L6"*), and `Button` and `Text Input` appear in any beginner
+lesson, so this class is not a corner case.
+
+**The nine originally tabulated** are all still true, and are the ones a
+curriculum author meets first:
 
 | Prose says (display name) | Conditions must say (type name) |
 |---|---|
@@ -147,17 +197,17 @@ Where they diverge today (verified against `node-catalog.json`, 2026-08-09):
 | Repeater Item | `For Each Actions` |
 | Static Array | `Static Data` |
 | Delay | `Timer` |
-| Array | `Collection` (or `Collection2`) |
 | Insert Object Into Array | `CollectionInsert` |
-| Object | `Model2` |
 | Record | `DbModel2` |
 | Page Router | `Router` |
+| Array | ⚠️ **ambiguous** — `Collection` *or* `Collection2` |
+| Object | ⚠️ **ambiguous** — `Model` *or* `Model2` |
 
-Most nodes (`Group`, `Text`, `Image`, `Circle`, `Condition`, `Expression`,
-`Counter`, `Variable`) use the same string for both. The failure is silent: a
-condition naming a display name matches nothing, and the learner is told they
-have not done a step they have in fact done. Check the type name in
-`packages/noodl-types/src/node-catalog.json` rather than trusting the picker.
+`Group`, `Text`, `Image`, `Circle`, `Condition`, `Expression` and `Counter` do
+use the same string for both.
+
+The failure is silent: a condition naming a display name matches nothing, and the
+learner is told they have not done a step they have in fact done.
 
 ---
 

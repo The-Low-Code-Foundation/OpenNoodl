@@ -25,8 +25,14 @@
  *    compiles down to.
  */
 
-import { ProjectModel } from '../../models/projectmodel';
-import { NodeGraphContextTmp } from '../../contexts/NodeGraphContext/NodeGraphContext';
+// UNI-007: `ProjectModel` and `NodeGraphContextTmp` are deliberately NOT imported
+// at module scope. They are needed only by `liveLessonEvalContext()`, and a
+// top-level import of `projectmodel` drags in the whole editor — which made this
+// module unloadable outside a renderer, and with it the grading runner built on
+// top of it. UNI-010 runs that runner inside an MCP sidecar with no renderer
+// around it (the OBS-002 rule `tests-unit/` exists for), so the pure core has to
+// be reachable from plain Node. The requires below are inside the one function
+// that needs them.
 
 // ─── Structural views of the editor graph ──────────────────────────────────
 // The evaluator only needs a narrow, stable subset of NodeGraphNode/ProjectModel.
@@ -389,8 +395,13 @@ export function evalConditionsWithContext(conditions: LessonCondition[], ctx: Le
 
 // ─── Live-editor context ────────────────────────────────────────────────────
 
-/** Build a context from the live editor singletons. */
+/** Build a context from the live editor singletons. Renderer-only, by nature. */
 export function liveLessonEvalContext(): LessonEvalContext {
+  /* eslint-disable @typescript-eslint/no-var-requires */
+  const { ProjectModel } = require('../../models/projectmodel');
+  const { NodeGraphContextTmp } = require('../../contexts/NodeGraphContext/NodeGraphContext');
+  /* eslint-enable @typescript-eslint/no-var-requires */
+
   const project = ProjectModel.instance as unknown as {
     components: LessonComponent[];
     getRootNode(): LessonNode | undefined;

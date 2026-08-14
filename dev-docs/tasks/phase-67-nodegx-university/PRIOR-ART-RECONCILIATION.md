@@ -302,6 +302,23 @@ does `Object`. That makes them **class F3 as well as F1** — an ambiguous name 
 to see and is worst when it appears"*. The static check must therefore **reject** these two rather
 than auto-substitute a type name for them. Full re-verification in [RULINGS.md](RULINGS.md).
 
+🔴 **Amended again the same day (third session), and the table above is a subset, not the set.**
+Deriving the classes from the catalog rather than from the recorded nine gives **103 plain
+divergences, 4 ambiguous** (add `Component Object` and `Parent Component Object`) **and a third
+class of 6** that no document carried: **shadowed** names — `Variable`, `Button`, `Text Input`,
+`Checkbox`, `Radio Button`, `Cloud Function` — where the string *is* a real type name, so any
+existence check passes, but it names the **deprecated** node rather than the one in the picker.
+`Variable` is the curriculum's own L6 node. The amendment, and the check that now enforces it
+(`verifyLessonManifest()` in
+[`models/lessonverify.ts`](../../../packages/noodl-editor/src/editor/src/models/lessonverify.ts)),
+are in [RULINGS.md](RULINGS.md) "Blocker 1 — the amendment".
+
+**The pattern held a fourth time.** Every earlier finding in this document was a *register* that had
+outlived its fix. This one is a **measurement** that outlived its method: the nine names were
+correct, and re-checking the nine could only ever confirm the nine. Re-deriving from the source
+found eleven times as many and a class the method could not have seen. **Re-derive, don't
+re-verify.**
+
 ---
 
 ## Rulings made in this session (2026-08-14)

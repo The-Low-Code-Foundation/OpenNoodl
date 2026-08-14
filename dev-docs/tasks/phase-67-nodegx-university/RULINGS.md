@@ -260,6 +260,15 @@ sharpens, and two task tables were found stale in the process.**
 
 ### Blocker 1 — the two-vocabulary rule: **stands, and is worse than recorded**
 
+> 🔴 **AMENDED 2026-08-14 (third session), and the amendment is larger than the finding it
+> replaces.** The counts below — nine divergences, two of them ambiguous — were derived by checking
+> the nine names the archive already listed. Deriving the classes from the catalog *itself* rather
+> than from the recorded list gives **103 divergences, 4 ambiguous, and a third class of 6 that
+> nobody had written down.** The corrected table is under "The amendment" below; the original
+> paragraphs are kept because the reasoning about F1 vs F3 is what the amendment rests on.
+> The check is now built and tested — `verifyLessonManifest()` in
+> [`models/lessonverify.ts`](../../../packages/noodl-editor/src/editor/src/models/lessonverify.ts).
+
 Re-verified against `packages/noodl-types/src/node-catalog.json` (175 entries) on 2026-08-14. The
 nine divergences hold. But **two display names are ambiguous, not one**:
 
@@ -286,6 +295,40 @@ can resolve to the **wrong one of two**, which is class **F3** — the class the
 *"nobody expects to see and is worst when it appears"*, and the one this phase's UNI-010 ruling made
 mandatory verifier work. **The static check must reject a condition naming any of these nine, and
 must treat `Array` and `Object` as ambiguous rather than as fixable by substitution.**
+
+#### The amendment (2026-08-14, third session)
+
+Derived from the catalog rather than from the list, there are **three classes**:
+
+| Class | Count | What it is | Verdict the checker returns |
+|---|---|---|---|
+| Plain divergence | **103** | display name is not any type name, maps to exactly one | reject, **suggest** the type name |
+| Ambiguous | **4** | display name maps to two type names | reject, **no substitution** |
+| **Shadowed** | **6** | the string **is** a real type name — of a **deprecated** node — while the node the learner actually places carries it as a *display* name | reject, suggest the live type |
+
+**Ambiguous is four, not two:** `Array` (`Collection`/`Collection2`), `Object` (`Model`/`Model2`),
+`Component Object` (`Component State`/`net.noodl.ComponentObject`), `Parent Component Object`
+(`Parent Component State`/`net.noodl.ParentComponentObject`).
+
+🔴 **The shadowed class is new, and it is the one that defeats the obvious check.** `Variable`,
+`Button`, `Text Input`, `Checkbox`, `Radio Button` and `Cloud Function` are all **real type names**,
+so `CatalogIndex.hasType()` returns true for every one of them and a "does this type exist?" gate
+passes. Each names the *deprecated* node; the one the learner drags out of the picker is
+`Variable2`, `net.noodl.controls.button`, `net.noodl.controls.textinput`,
+`net.noodl.controls.checkbox`, `net.noodl.controls.radiobutton`, `CloudFunction2`.
+
+**This is not a corner case.** `Variable` is in the curriculum spine — CURRICULUM-DESIGN **D3**
+rules *"Counter first, Variable revealed in L6"* — and `Button` and `Text Input` are in any beginner
+lesson. [LESSON-FORMAT.md §3](../phase-17-noodl-learn/LESSON-FORMAT.md) explicitly listed `Variable`,
+`Button` and `Text Input` among the nodes that *"use the same string for both"*. **Corrected in place
+2026-08-14.** A lesson author following that sentence would have written a step that can never
+complete, for the single most-taught state node in the curriculum.
+
+⚠️ **A side finding, recorded so it is not re-discovered:** `suggestedNodes` (LESSON-FORMAT §3's step
+field) is **dead** — `LessonModel.getCurrentSuggestedNodes()` has no callers anywhere in the editor.
+Which of the two vocabularies it wants is therefore *unestablished*, and the checker deliberately
+does **not** read it. Whoever wires the node picker up to it decides that, and adds it to the check
+in the same change.
 
 ✅ Also re-confirmed: **all 175 catalog entries have no `summary` and no `description` field** — the
 concept-corpus argument in the reconciliation's F3 holds. The available keys are `availableIn`,

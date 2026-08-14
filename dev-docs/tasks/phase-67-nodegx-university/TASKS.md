@@ -26,7 +26,7 @@ editor-outbound sync between them. No task opens an inbound connection to the us
 | [UNI-004](UNI-004-RFPS-AND-COACHING-WITHOUT-A-GATE.md) ⭐ | the RFP board + coaching offers/booking/payment, spam-shielded relay | platform | **1** | L | ✅ **unblocked.** D7 → **Paddle**, coaching only; D8 → **double-blind relay** (also the spam shield). Build so payment can be absent — the email-only v0 stands |
 | [UNI-005](UNI-005-AN-ORG-IS-A-ROSTER-AND-A-SHELF.md) | org workspaces: contact-us provisioning, GitHub org hookup, roster, shared prefab/template shelf | platform | 2 | L | ✅ **unblocked.** D6 → GitHub org **and** invite list, **one** roster; D10 → pseudonymous handles · builds on **phase 51 / COL-004** |
 | [UNI-006](UNI-006-ASSIGN-GRADE-REVIEW.md) | org teaching: push lessons/assignments to members, view graded results, human grading override | platform + bridge | 2 | M/L | ✅ **unblocked.** D10 ✅, D12 struck · no live co-editing (ECO-001 parked) · never branch on membership source |
-| [UNI-007](UNI-007-THE-LESSON-BEAMED-INTO-THE-EDITOR.md) ⭐ | intake → personalised path → lesson project pulled into the editor's Learning folder → graded via MCP tooling | all three | 2 | L | ✅ **unblocked.** D5 → **visible, platform-managed Learning section**, written by the editor process only. **2 of §11's 3 blockers now CLEAR** (see below) |
+| [UNI-007](UNI-007-THE-LESSON-BEAMED-INTO-THE-EDITOR.md) ⭐ | intake → personalised path → lesson project pulled into the editor's Learning folder → graded via MCP tooling | all three | 2 | L | 🟡 **SLICE 1 BUILT 2026-08-14** — the static two-vocabulary check + both grading engines, `models/lessonverify.ts` + `models/lessongrading.ts`, 48 tests in `test:main`. **No MCP adapter, no Learning folder, no intake.** D5 honoured (editor process only) |
 | [UNI-008](UNI-008-ONLINE-IN-ONE-CLICK-OFF-IN-FORTY-FIVE-DAYS.md) | push-to-share hosting: subdomain, 15-day life, manual restarts, 45-day cap, then the self-host off-ramp | platform + editor | 3 | **L+** | 🔴 **D9 ruled *against* the recommendation** — a record-capped backend is in. **Five new obligations**, effort raised, still deliberately last. [RULINGS.md](RULINGS.md) D9 |
 | [UNI-009](UNI-009-THE-COMMUNITY-HOME.md) | the site itself: tutorials/tips, meetup replays, Discourse forum SSO | platform | **1 (minimal cut)** | S/M | ✅ **unblocked.** D2 → it **is** NodeGX Community; the tutorials index is one card on it, not the point of it |
 | [UNI-010](UNI-010-A-TUTORIAL-YOUR-OWN-CLAUDE-CAN-WRITE.md) | the user's own Claude authors a verified lesson into the Learning folder — an experiment with pre-registered kill/keep criteria | editor + MCP | experiment | M | ✅ **unblocked.** D5 → lands in the same section **with no account**; verifier must cover **F1–F6**, and 🔴 **reject `Array`/`Object` as ambiguous** rather than substitute |
@@ -93,10 +93,16 @@ Nothing else depends on it.
      place. Phase 61 is **8 of 9 built on `cline-dev`** with FUN-001 §2's notation **signed**, so
      **L11 is unblocked** — ⚠️ except that FUN-005's ports rail does not exist, so no step may
      reference it.
-   - 🔴 **The two-vocabulary rule is the one that stands, and it is worse than recorded.** Two of
-     the nine display names are **ambiguous**: `Array` → `Collection`/`Collection2`, and **`Object`
-     → `Model`/`Model2`** (recorded as `Model2` alone until now). That makes them class **F3**, not
-     just F1 — the static check must **reject** them, not substitute.
+   - ✅ **The two-vocabulary rule — the surviving blocker — is now CLOSED by a shipped check.**
+     `verifyLessonManifest()` in
+     [`models/lessonverify.ts`](../../../packages/noodl-editor/src/editor/src/models/lessonverify.ts)
+     rejects a condition written in the prose vocabulary and names the type name to use.
+     🔴 **Re-derived from the catalog 2026-08-14 and it is much larger than "nine, two ambiguous":
+     103 plain divergences, 4 ambiguous, and a third class of 6 nobody had recorded** — *shadowed*
+     names (`Variable`, `Button`, `Text Input`, `Checkbox`, `Radio Button`, `Cloud Function`) where
+     the string IS a real type name, so an existence check passes, but it names the deprecated node.
+     `Variable` is the curriculum's own L6 node. [RULINGS.md](RULINGS.md) "Blocker 1 — the
+     amendment".
    - 🔴 **Two task tables were the stale artifact, not the memory.** Phase 61's table marked four
      merged tasks `open`; the curriculum glossary warned "do not author until phase 60 publishes"
      three days after it published. Both corrected in place. **Grep git and read source before

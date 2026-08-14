@@ -3,6 +3,53 @@
 **Surface:** all three · **Tier 2 (the differentiator)** · **Effort:** L · ✅ **UNBLOCKED — D5 ruled
 2026-08-14**; ~~D12~~ 🔴 **struck 2026-08-14 — already ruled**
 
+> ## 🟡 Slice 1 of the grading runner is BUILT (2026-08-14, third session)
+>
+> The first code of phase 67. Editor-side, no platform, no account, no MCP wiring.
+>
+> | Shipped | Where |
+> |---|---|
+> | **The static two-vocabulary check** — the format contract's own gate, and the one blocker of §11's three that survived the fact-check | [`models/lessonverify.ts`](../../../packages/noodl-editor/src/editor/src/models/lessonverify.ts) |
+> | **The grading runner — both engines, kept apart structurally** | [`models/lessongrading.ts`](../../../packages/noodl-editor/src/editor/src/models/lessongrading.ts) |
+> | 48 tests, `tests-unit/uni-007/` | jest / **`test:main`**, not the electron suite — see below |
+>
+> **What the two modules actually do.**
+>
+> - `verifyLessonManifest(manifest)` reads every `%Type` path segment and every `hasType` in a
+>   lesson, classifies it against `node-catalog.json`, and returns findings — never throws, because
+>   both producers of this format hand it machine-written JSON. Ambiguous names are **rejected
+>   without a suggestion**, on purpose: substituting would be choosing which of two nodes the author
+>   meant, and choosing wrong is F3.
+> - `gradeLessonSteps(manifest, ctx)` is **engine 1** — synchronous, pure, and it *calls the
+>   existing evaluator*. It adds no condition logic of its own, which is the whole point.
+> - `WholeSolutionGrader` is **engine 2**, an injected port. `normaliseWholeSolutionResult()`
+>   enforces 🔴 *clean can mean EMPTY* on the way in: a result claiming `rendered: true` with zero
+>   drawn elements is rewritten to `rendered: false` with a finding, so an adapter that forgets
+>   cannot pass a learner on an empty page. The rule reaches the completion flag too.
+> - `buildLessonEvidence()` carries **no project content** — positional step outcomes and counts
+>   only. That is D10, not tidiness: the evidence bundle is the obvious route by which a pupil's
+>   graph would leave the machine.
+>
+> **One upstream change was needed and is worth knowing about.**
+> `views/lessons/lessonevalconditions.ts` imported `ProjectModel` and `NodeGraphContextTmp` at
+> module scope for the sole benefit of `liveLessonEvalContext()`, which made the whole evaluator —
+> and anything built on it — unloadable outside a renderer. Those two are now `require`d **inside
+> that one function**. 🔴 This is what makes "the same verifier, not a fork" achievable: UNI-010
+> runs this runner inside an MCP sidecar with no renderer around it.
+>
+> **🔴 What is NOT built, so nobody reads this as more than it is:**
+>
+> - **No MCP adapter for engine 2.** The port has no implementation yet. `validate_project` is
+>   reachable (`noodl-mcp/src/validate.ts` already runs on the editor's own `SemanticValidator`);
+>   `render_report` spawns `scripts/devtools/render-report.js` as a child process. **Neither is
+>   wired.** Criterion 3's whole-solution half is designed, not delivered.
+> - **No Learning folder, no launcher section, no card, no UI of any kind.** D5's editor-written
+>   section is untouched. Criterion 2 is not started.
+> - **No intake, no pathing, no projection cache.** Criterion 1 is not started — it is platform work.
+> - **Criterion 4 (the format round-trips) is half-proved.** A hand-authored bundle verifies and
+>   grades with no platform involved, and the repo's own worked-lesson fixture passes the new check.
+>   The *install* half needs the Learning folder.
+
 > **D5 — a visible, platform-managed Learning section** ([RULINGS.md](RULINGS.md)). R9's two options
 > resolve in favour of the visible one, because visible progress motivates. **"Immutable" means
 > platform-managed, not read-only:**
