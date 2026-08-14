@@ -59,6 +59,7 @@ import {
   type ComponentInterfaceView
 } from './componentInterface';
 import { DiagnosticCode, type Diagnostic } from './diagnostics';
+import { checkFunctionNodePorts, type FunctionWireLike } from './functionPorts';
 import { checkInstancePorts, type AuthoredPortLike } from './instancePorts';
 import { checkNavigation, checkPageShape, looksLikePageComponent, PAGE_NODE_TYPE } from './navigation';
 import { checkParameterValues } from './parameterValues';
@@ -329,6 +330,17 @@ export interface AuthoredPreconditionOptions {
    * one that eventually is from being rejected for it.
    */
   connections?: ReadonlySet<string>;
+  /**
+   * FIX-007 — the candidate's connections in full, unlike {@link connections},
+   * which is the derived "which inputs carry a wire" set and has thrown away the
+   * source port by the time it arrives.
+   *
+   * **Omitted means "do not check"**, the convention the options above follow.
+   * Only {@link checkFunctionNodePorts} reads it, and only to compare an endpoint
+   * against the ports a Function node's own script creates — the one question in
+   * this layer that needs the wire itself rather than the fact of one.
+   */
+  wires?: readonly FunctionWireLike[];
 }
 
 /**
@@ -368,7 +380,7 @@ export interface AuthoredPreconditionOptions {
  * (see their headers) and reported only on graphs an agent just wrote.
  */
 export function authoredPreconditionDiagnostics(options: AuthoredPreconditionOptions): Diagnostic[] {
-  const { component, nodes, components, urlPaths, catalog, backend, interfaces, connections } = options;
+  const { component, nodes, components, urlPaths, catalog, backend, interfaces, connections, wires } = options;
   return [
     ...checkParameterValues(nodes, catalog, { component }),
     ...(backend ? checkBackendRequirements(nodes, { ...backend, component }) : []),
@@ -381,7 +393,9 @@ export function authoredPreconditionDiagnostics(options: AuthoredPreconditionOpt
     // DSG-004 §2.1 — doctrine §7's only mechanical claim, which had no gate.
     ...checkResponsiveArrangement(nodes, { component, catalog }),
     // DSG-004 §2.3 — doctrine §3, as an info that never blocks.
-    ...checkTypographyHierarchy(nodes, { component, connectedInputs: connections })
+    ...checkTypographyHierarchy(nodes, { component, connectedInputs: connections }),
+    // FIX-007 §2 — the wire the port rule is right to skip and nothing else could see.
+    ...checkFunctionNodePorts(nodes, { component, wires, catalog })
   ];
 }
 

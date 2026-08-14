@@ -250,6 +250,17 @@ export const AUTHORED_PORT_FIELDS: readonly VocabField[] = [
 
 export const AUTHORED_CONNECTION_FIELDS: readonly VocabField[] = [
   { name: 'fromId', kind: 'string', requiredIn: ['editor', 'mcp'] },
+  // FIX-007 note, deliberately a comment and not schema text. Both of these name
+  // the port *name*, never the display label, and on a Function node those
+  // differ (`Outputs.y` is named "out-y", displayed "y") — a wire to the label
+  // dies on the canvas as "Target port doesn't exist". Spelling that out here
+  // cost ~87 tokens of the tool surface across the schema's three renderings and
+  // broke `toolDisclosure`'s 8,200 budget, whose header asks each new cost to
+  // argue for itself. This one does not have to: `checkFunctionNodePorts` now
+  // rejects the wire at write time naming the exact replacement, and a rejection
+  // carrying a suggestion is the carrier this repo has measured as effective.
+  // The rule is stated in WIRE_FORMAT_LEGEND, both catalogs and all three worked
+  // examples.
   {
     name: 'fromProperty',
     kind: 'string',

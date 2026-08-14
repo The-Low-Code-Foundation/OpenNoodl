@@ -35,7 +35,7 @@ Use Script when code needs a real lifecycle — initialize a library or subscrip
 
 _This node's port list changes at runtime (declared-port-groups, runtime-discovered); the tables above may be incomplete for a given instance._
 
-This is the Script node. Ports are declared by the user script in the "code" parameter via "node.addInputProps"/"setOutputs" style APIs; the port set is whatever the script defines.
+This is the Script node. Ports are declared by the user script in the "code" parameter via "node.addInputProps"/"setOutputs" style APIs; the port set is whatever the script defines. Port names are exactly as declared — unlike the Function node ("JavaScriptFunction"), the Script node adds no "in-"/"out-" prefix.
 
 | Condition | Inputs shown | Outputs shown |
 |---|---|---|
@@ -44,7 +44,7 @@ This is the Script node. Ports are declared by the user script in the "code" par
 
 ## Ports at runtime
 
-All data and signal ports are runtime-discovered by parsing the script (JavascriptNodeParser): the keys of the declared `inputs`/`outputs` maps become ports with the declared types, each `signals` entry (or top-level handler function named like a signal input) becomes a signal input, and entries in the `scriptInputs`/`scriptOutputs` proplist parameters add further typed ports. Nothing about the port set is static — an authoring tool must write the script first and wire only names the script (or the proplists) declares. When `useExternalFile` is `yes` the ports come from the downloaded file, so they are unknowable until it loads.
+All data and signal ports are runtime-discovered by parsing the script (JavascriptNodeParser): the keys of the declared `inputs`/`outputs` maps become ports with the declared types, each `signals` entry (or top-level handler function named like a signal input) becomes a signal input, and entries in the `scriptInputs`/`scriptOutputs` proplist parameters add further typed ports. Nothing about the port set is static — an authoring tool must write the script first and wire only names the script (or the proplists) declares. Those names are used verbatim: unlike the Function node (`JavaScriptFunction`), whose mined ports are named `in-x` / `out-y`, the Script node adds no prefix, so a declared input `price` is wired as `toProperty: "price"`. When `useExternalFile` is `yes` the ports come from the downloaded file, so they are unknowable until it loads.
 
 ## Patterns
 

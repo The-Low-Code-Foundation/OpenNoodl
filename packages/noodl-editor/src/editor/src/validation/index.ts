@@ -51,6 +51,19 @@ export type {
 // AAQ-005 — an instance port with no `plug` is inert, and nothing checked it.
 export { checkInstancePorts } from './instancePorts';
 export type { AuthoredPortLike, CheckInstancePortsOptions, PortDeclaringNode } from './instancePorts';
+export {
+  checkFunctionNodePorts,
+  mineFunctionScriptPorts,
+  FUNCTION_NODE_TYPE,
+  FUNCTION_INPUT_PREFIX,
+  FUNCTION_OUTPUT_PREFIX
+} from './functionPorts';
+export type {
+  CheckFunctionNodePortsOptions,
+  FunctionWireLike,
+  MinedFunctionPorts,
+  ScriptCarryingNode
+} from './functionPorts';
 // LAS-001 — an instance parameter that reaches a port that exists.
 export {
   checkComponentPortDirection,

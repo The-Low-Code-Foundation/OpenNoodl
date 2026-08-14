@@ -235,6 +235,10 @@ function preconditionDiagnostics(
     // LAS-012 — a `template` fed by a wire is a working list, and only the
     // candidate's own connections can say so.
     connections: connectedInputs(files.connections.connections),
+    // FIX-007 — the same connections undigested. `connectedInputs` has dropped
+    // the source port by the time it arrives, and a Function node's outputs are
+    // half of what this checks.
+    wires: files.connections.connections,
     catalog: loadDefaultCatalog(),
     backend: options.backend
   });

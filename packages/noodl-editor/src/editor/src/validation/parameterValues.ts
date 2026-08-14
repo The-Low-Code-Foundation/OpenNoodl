@@ -411,7 +411,12 @@ export const WIRE_FORMAT_LEGEND = [
   '  "%" and NOT px. Write {"value":260,"unit":"px"} for 260 pixels; a bare 260 renders at 260% wide.',
   '  There is no "widthUnit"/"heightUnit" parameter — the unit goes inside the object.',
   '- An enum takes one of its listed options, spelled exactly — not the label, not a synonym.',
-  '- color/font/textStyle/image/component take a NAME (a token, a project style, or a component path).'
+  '- color/font/textStyle/image/component take a NAME (a token, a project style, or a component path).',
+  '- Function node (JavaScriptFunction) ports are PREFIXED and its script names are not. `Inputs.x` is the',
+  '  port "in-x", `Outputs.y` (and `Outputs.y()`) is the port "out-y"; the panel shows the bare name as a',
+  '  display label only. Wire toProperty:"in-x" / fromProperty:"out-y". Its declared ports — run, done,',
+  '  success, failure, completed, unchanged, error — stay unprefixed, and the Script node (Javascript2)',
+  '  does not prefix at all.'
 ].join('\n');
 
 /**

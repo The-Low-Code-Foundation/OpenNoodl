@@ -553,7 +553,26 @@ export enum DiagnosticCode {
    * `phase55-s6-qwen35-27b` (16%), and **zero on all ten runs that already
    * label**. 166 of the 214 are `Group`, which is the shape it is named for.
    */
-  UnlabelledNode = 'unlabelled-node'
+  UnlabelledNode = 'unlabelled-node',
+  /**
+   * FIX-007: a connection names a Function node's port by the label the panel
+   * shows instead of the name the port has. `Inputs.amount` creates a port
+   * *named* `in-amount` and *displayed* as `amount`; a wire to `amount`
+   * connects to nothing and the canvas reports "Target port doesn't exist".
+   *
+   * Its own code because it is invisible to every check around it, and
+   * deliberately so: `NonexistentPort` skips `runtime-discovered` types (it
+   * cannot see ports the runtime mints, and reporting them would flood real
+   * projects), while the structural schema and MCP's zod see four well-formed
+   * strings. This check does not guess where that one declines to — it mines
+   * the node's own `functionScript` with the runtime's own regexes and speaks
+   * only when the bare name is a port that very script creates and is not also
+   * one of the node's declared ports (`done` beside `Outputs.done()`).
+   *
+   * Error severity: a wire to a port that provably does not exist, on a node
+   * that provably has the prefixed one, is not something anyone means to write.
+   */
+  UnprefixedFunctionPort = 'unprefixed-function-port'
 }
 
 // ─── Location ─────────────────────────────────────────────────────────────────

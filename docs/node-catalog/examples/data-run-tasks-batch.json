@@ -57,8 +57,8 @@
         { "id": "task_outputs", "type": "Component Outputs", "label": "Task result" }
       ],
       "connections": [
-        { "fromId": "task_inputs", "fromProperty": "title", "toId": "process_item", "toProperty": "title" },
-        { "fromId": "process_item", "fromProperty": "success", "toId": "task_outputs", "toProperty": "success" }
+        { "fromId": "task_inputs", "fromProperty": "title", "toId": "process_item", "toProperty": "in-title" },
+        { "fromId": "process_item", "fromProperty": "out-success", "toId": "task_outputs", "toProperty": "success" }
       ]
     }
   ]

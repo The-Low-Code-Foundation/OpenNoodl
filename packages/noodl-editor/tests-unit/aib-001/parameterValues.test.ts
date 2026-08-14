@@ -251,6 +251,15 @@ describe('the hint the model is given is the rule the gate enforces', () => {
     expect(WIRE_FORMAT_LEGEND).toContain('DROPPED silently');
     expect(WIRE_FORMAT_LEGEND).toContain('var(--token)');
   });
+
+  // FIX-007 — the legend is the one thing both authoring clients send
+  // unconditionally, so the prefix rule goes here rather than only in the
+  // catalog entry a caller may never fetch.
+  it('carries the Function node port prefix, and says which ports it does not apply to', () => {
+    expect(WIRE_FORMAT_LEGEND).toContain('in-x');
+    expect(WIRE_FORMAT_LEGEND).toContain('out-y');
+    expect(WIRE_FORMAT_LEGEND).toContain('stay unprefixed');
+  });
 });
 
 /**

@@ -27,9 +27,9 @@ const NOTES = {
   Expression:
     'Input ports are created for each free variable referenced in the "expression" parameter (e.g. the expression "a + b" yields number inputs named "a" and "b"). The "result" output and its type follow the expression.',
   JavaScriptFunction:
-    'This is the Function node. Input and output ports are discovered from the user script in the "functionScript" parameter: reading "Inputs.xyz" creates input port "xyz", assigning "Outputs.xyz" creates output port "xyz". Signal outputs are created by calling "Outputs.xyz()".',
+    'This is the Function node. Input and output ports are discovered from the user script in the "functionScript" parameter, and the connectable port NAME carries a prefix the script does not: reading "Inputs.xyz" creates the input port "in-xyz", assigning "Outputs.xyz" creates the output port "out-xyz", and calling "Outputs.xyz()" creates the signal output "out-xyz". The property panel and the port list show the unprefixed display name ("xyz"), so connect to "in-xyz"/"out-xyz" — a connection written to the bare script name silently targets a port that does not exist. The node\'s own static ports ("run", "done", "success", "failure", "completed", "unchanged", "error") are never prefixed, so "Outputs.done()" is the separate port "out-done". The Script node ("Javascript2") does NOT prefix; that convention belongs to this node alone.',
   Javascript2:
-    'This is the Script node. Ports are declared by the user script in the "code" parameter via "node.addInputProps"/"setOutputs" style APIs; the port set is whatever the script defines.',
+    'This is the Script node. Ports are declared by the user script in the "code" parameter via "node.addInputProps"/"setOutputs" style APIs; the port set is whatever the script defines. Port names are exactly as declared — unlike the Function node ("JavaScriptFunction"), the Script node adds no "in-"/"out-" prefix.',
   'Logic Builder':
     'Ports are generated from the visual logic program stored in the node parameters; each program variable/event becomes a port.',
   'Component Inputs':

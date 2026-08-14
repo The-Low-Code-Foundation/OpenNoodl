@@ -1,7 +1,7 @@
 {
   "id": "function-compute-on-run",
   "title": "Function node: custom JavaScript with discovered ports",
-  "description": "The Function node (JavaScriptFunction) runs the JavaScript in `functionScript`. Its data ports do not exist until the script mentions them: reading `Inputs.x` creates an input named x, assigning `Outputs.y = …` creates an output named y, and calling `Outputs.done()` fires a signal output — this is why the catalog marks them runtime-determined. The script runs when `run` is triggered (or when connected inputs change, if `run` is unconnected). Here a button converts a text amount to a formatted price.",
+  "description": "The Function node (JavaScriptFunction) runs the JavaScript in `functionScript`. Its data ports do not exist until the script mentions them, and they are named with a prefix the script does not use: reading `Inputs.amount` creates the port `in-amount`, assigning `Outputs.formatted = …` creates the port `out-formatted`, and calling `Outputs.done()` creates the signal output `out-done` — this is why the catalog marks them runtime-determined. Note the connections below: they use `in-amount` and `out-formatted`, not the bare names in the script, which are display labels only. The node's own `run` signal is a declared port and stays unprefixed. The script runs when `run` is triggered (or when connected inputs change, if `run` is unconnected). Here a button converts a text amount to a formatted price.",
   "demonstrates": ["JavaScriptFunction", "Text", "net.noodl.controls.textinput"],
   "components": [
     {
@@ -44,9 +44,9 @@
         }
       ],
       "connections": [
-        { "fromId": "amount_input", "fromProperty": "onTextChanged", "toId": "format_price", "toProperty": "amount" },
+        { "fromId": "amount_input", "fromProperty": "onTextChanged", "toId": "format_price", "toProperty": "in-amount" },
         { "fromId": "format_button", "fromProperty": "onClick", "toId": "format_price", "toProperty": "run" },
-        { "fromId": "format_price", "fromProperty": "formatted", "toId": "price_text", "toProperty": "text" }
+        { "fromId": "format_price", "fromProperty": "out-formatted", "toId": "price_text", "toProperty": "text" }
       ]
     }
   ]

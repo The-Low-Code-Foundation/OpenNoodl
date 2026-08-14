@@ -1,9 +1,9 @@
 ---
 title: "Function"
 ---
-Function: runs multi-line JavaScript; Inputs.* reads create input ports, Outputs.* writes create output ports, Outputs.fn() fires signals.
+Function: runs multi-line JavaScript; `Inputs.x` mints the port `in-x`, `Outputs.y` the port `out-y` — wire the prefixed name.
 
-The Function node executes the JavaScript in `functionScript`. The script's surface *is* its port list: reading `Inputs.name` creates an input port `name`, assigning `Outputs.name = value` creates a value output, and calling `Outputs.name()` creates and fires a signal output (conventionally `Outputs.Success()` / `Outputs.Failure()`). The script runs whenever a ticked input changes, and additionally when the `run` signal fires — connecting `run` takes nothing away; untick an input under Run On Value Change to stop that one triggering a run. A `run` you triggered reports `done` once the script has finished (awaiting an async body first), `failure` if it threw or would not compile, and `unchanged` when there is no script written yet. Scripts may be async and use `await` — fire a signal output when done to sequence downstream work.
+The Function node executes the JavaScript in `functionScript`. The script's surface *is* its port list, but the connectable port **name** is prefixed and the script name is not: reading `Inputs.name` creates an input port called **`in-name`**, assigning `Outputs.name = value` creates a value output called **`out-name`**, and calling `Outputs.name()` creates and fires a signal output called **`out-name`** (conventionally `Outputs.Success()` / `Outputs.Failure()`). The property panel labels each of these with its unprefixed display name, so what you read on the node (`name`) is not what a connection must be written to (`in-name`) — wire to the prefixed name. The node's own static ports (`run`, `done`, `success`, `failure`, `completed`, `unchanged`, `error`) are never prefixed, which is exactly why the prefix exists: a script calling `Outputs.done()` gets `out-done`, distinct from the built-in `done`. The script runs whenever a ticked input changes, and additionally when the `run` signal fires — connecting `run` takes nothing away; untick an input under Run On Value Change to stop that one triggering a run. A `run` you triggered reports `done` once the script has finished (awaiting an async body first), `failure` if it threw or would not compile, and `unchanged` when there is no script written yet. Scripts may be async and use `await` — fire a signal output when done to sequence downstream work.
 
 ## When to use it
 
@@ -57,11 +57,11 @@ Anything beyond a one-liner: data transformation, calling browser APIs or fetch,
 
 _This node's port list changes at runtime (runtime-discovered); the tables above may be incomplete for a given instance._
 
-This is the Function node. Input and output ports are discovered from the user script in the "functionScript" parameter: reading "Inputs.xyz" creates input port "xyz", assigning "Outputs.xyz" creates output port "xyz". Signal outputs are created by calling "Outputs.xyz()".
+This is the Function node. Input and output ports are discovered from the user script in the "functionScript" parameter, and the connectable port NAME carries a prefix the script does not: reading "Inputs.xyz" creates the input port "in-xyz", assigning "Outputs.xyz" creates the output port "out-xyz", and calling "Outputs.xyz()" creates the signal output "out-xyz". The property panel and the port list show the unprefixed display name ("xyz"), so connect to "in-xyz"/"out-xyz" — a connection written to the bare script name silently targets a port that does not exist. The node's own static ports ("run", "done", "success", "failure", "completed", "unchanged", "error") are never prefixed, so "Outputs.done()" is the separate port "out-done". The Script node ("Javascript2") does NOT prefix; that convention belongs to this node alone.
 
 ## Ports at runtime
 
-All data/signal ports are runtime-discovered from the script source: the editor parses `Inputs.x` / `Outputs.y` references (JavascriptNodeParser) and registers matching ports; nothing about them is static. An authoring tool must write the script first and then wire to exactly the names the script uses — including signal outputs, which are the calls, not assignments.
+All data/signal ports are runtime-discovered from the script source: the parser (JavascriptNodeParser) mines `Inputs.x` / `Outputs.y` references and registers a port whose `name` is `in-x` / `out-y` and whose `displayName` is the bare `x` / `y`. An authoring tool must write the script first and then wire to the **prefixed** names — `toProperty: "in-x"`, `fromProperty: "out-y"` — never to the bare name the script uses, which is a display label only. Signal outputs follow the same rule and are the calls (`Outputs.y()`), not the assignments. A connection written to the bare name is accepted by every write path and every static validator (this type's ports are runtime-discovered, so the port-existence gate deliberately does not fire) and then fails on the canvas as "Target port doesn't exist". The node's own static ports — `run`, `done`, `success`, `failure`, `completed`, `unchanged`, `error` — are declared, not mined, and are wired unprefixed. The Script node (`Javascript2`) declares its ports and does not prefix them; the two conventions differ.
 
 ## Patterns
 
@@ -70,6 +70,7 @@ All data/signal ports are runtime-discovered from the script source: the editor 
 
 ## Watch out for
 
+- Wiring to the bare script name — `toProperty: "amount"` for a script reading `Inputs.amount`. The port is `in-amount`; the bare name is only its display label, and the mistake survives every validator to fail on the canvas.
 - Rebuilding what a dedicated node already does (querying cloud data, navigation) — you lose live updates and editor insight.
 - Relying on auto-run while also connecting `run`; once `run` is connected, only the signal executes the script.
 
@@ -77,7 +78,7 @@ All data/signal ports are runtime-discovered from the script source: the editor 
 
 **Function node: custom JavaScript with discovered ports**
 
-The Function node (JavaScriptFunction) runs the JavaScript in `functionScript`. Its data ports do not exist until the script mentions them: reading `Inputs.x` creates an input named x, assigning `Outputs.y = …` creates an output named y, and calling `Outputs.done()` fires a signal output — this is why the catalog marks them runtime-determined. The script runs when `run` is triggered (or when connected inputs change, if `run` is unconnected). Here a button converts a text amount to a formatted price.
+The Function node (JavaScriptFunction) runs the JavaScript in `functionScript`. Its data ports do not exist until the script mentions them, and they are named with a prefix the script does not use: reading `Inputs.amount` creates the port `in-amount`, assigning `Outputs.formatted = …` creates the port `out-formatted`, and calling `Outputs.done()` creates the signal output `out-done` — this is why the catalog marks them runtime-determined. Note the connections below: they use `in-amount` and `out-formatted`, not the bare names in the script, which are display labels only. The node's own `run` signal is a declared port and stays unprefixed. The script runs when `run` is triggered (or when connected inputs change, if `run` is unconnected). Here a button converts a text amount to a formatted price.
 
 ## Related nodes
 
