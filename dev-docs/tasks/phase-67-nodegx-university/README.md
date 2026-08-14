@@ -58,36 +58,68 @@ and opens *everything* on the platform.
    lesson projects from the platform API ("beaming" is a pull), runs grading locally, and *pushes*
    results up. No new listening surface on the user's machine, ever.
 
-## The rulings queue — decisions Richard owes this phase
+## The rulings queue — ✅ EMPTY
 
-> ✅ **Four rulings made 2026-08-14** — D1, D10, R6's clarification and the UNI-010 verifier
-> question. **D12 is struck as a false premise.** All five are written up with their consequences
-> in [PRIOR-ART-RECONCILIATION.md](PRIOR-ART-RECONCILIATION.md). Do not re-litigate them.
+> ✅ **All eleven rulings are made. The register is [RULINGS.md](RULINGS.md)** — read that, not the
+> list below, which is kept only as the record of what was asked.
+>
+> **First session 2026-08-14:** D1, D10, R6's clarification and the UNI-010 verifier question;
+> **D12 struck** as a false premise — written up in
+> [PRIOR-ART-RECONCILIATION.md](PRIOR-ART-RECONCILIATION.md).
+> **Second session 2026-08-14:** **D2–D9 and D11**, with their consequences, in
+> [RULINGS.md](RULINGS.md). 🔴 Do not re-litigate any of them; amend the register instead.
+>
+> **The three headlines a reader needs before opening any task:**
+> 1. The site is **NodeGX Community**; University is its learning wing; the button says **"Sign in
+>    to NodeGX"**; ⚠️ the repo must be renamed to `nodegx-community` **before** any Pages deploy.
+> 2. The **Learning section is visible and platform-managed** (D5) — which unblocks UNI-007 *and*
+>    makes UNI-010 runnable with no platform at all.
+> 3. **D9 went against the recommendation** — hosting includes a record-capped backend, so UNI-008
+>    now carries a data-retention, export and DPA obligation. Five consequences in the register.
 
 **Product-shaping (one sitting each):**
 - ✅ **D1 — RULED 2026-08-14.** New repo, Next.js + Postgres + Drizzle, Docker on Hetzner; no code
-  imported from Loom. Created as **[The-Low-Code-Foundation/nodegx-university](https://github.com/The-Low-Code-Foundation/nodegx-university)**
-  (private, empty). ⚠️ Named from this recommendation while **D2 is still open** — if D2 renames the
-  product, rename the repo *before* attaching GitHub Pages (🔴 Pages does not follow a repo rename).
-- **D2** — naming + domain: "NodeGX University" vs "NodeGX Community" (or University = the
-  learning wing *of* the community site); the subdomain; what the editor's sign-in button says.
-- **D3** — the points economy: the currency's name, and what redemption exists at launch.
-  Recommend: earn-only at launch (leaderboard + profile display); merch and coaching discounts
-  as a later tranche once there are earners.
-- **D4** — badge taxonomy v1 + who draws them (UNI-002 drafts the challenge list; the taxonomy
-  ruling picks the launch set).
-- **D5** — the Learning folder shape (R9 left two options open): hidden-flagged projects vs a
-  launcher **Learning** section. Recommend the visible section — visible progress motivates —
-  with "immutable" meaning *platform-managed*: the learner edits the project freely (that IS the
-  lesson), but can't rename/detach/delete it from the launcher; reset = re-pull a fresh copy.
-- **D6** — is GitHub the only org identity? Recommend: GitHub org hookup per R5 for companies,
-  plus email-domain / invite-list membership for schools (many schools have no GitHub org).
-- **D7** — payments: merchant of record (Paddle vs Lemon Squeezy — EU VAT handled for us) and
-  what is sellable at launch (recommend: coaching sessions only).
-- **D8** — RFP/profile listing policy: who may list (any account? points threshold? later,
-  certification?), moderation, and the response-relay email plumbing.
-- **D9** — hosting v1 scope: static frontend only, or frontend + record-capped multi-tenant
-  backend? Plus caps (records, bundle size), the "built with NodeGX" footer, abuse policy.
+  imported from Loom. Created as `nodegx-university` and ✅ **RENAMED 2026-08-14 to
+  [The-Low-Code-Foundation/nodegx-community](https://github.com/The-Low-Code-Foundation/nodegx-community)**
+  (private, empty) once D2 named the product. The rename was done while the repo was still empty
+  with **no Pages site attached** — verified before and after — which is the only free window,
+  because 🔴 **GitHub Pages does not follow a repo rename.** ⚠️ The phase's *directory* here is still
+  `phase-67-nodegx-university`; that is a local path and is deliberately not renamed.
+- ✅ **D2 — RULED 2026-08-14: "NodeGX Community"**, with **NodeGX University as its learning wing**.
+  Subdomain `community.nodegx.dev`; the editor button says **"Sign in to NodeGX"**. 🔴 **The repo
+  renames to `nodegx-community`** — do it before anything is attached. ⚠️ No domain is committed
+  anywhere in this repo today; `community.nodegx.dev` is a choice, not a fact, and still has to be
+  registered. [RULINGS.md](RULINGS.md) D2.
+- ✅ **D3 — RULED 2026-08-14: earn-only at launch.** Leaderboard + profile display; no redemption.
+  Merch and coaching discounts are a later tranche once there are earners. 🔴 The event ledger is
+  still **append-only and auditable from day one** — that is the part v1 must not skimp. The
+  currency's *name* is deliberately left to UNI-002's UI work.
+- ✅ **D4 — RULED 2026-08-14: four families × three tiers** (Learning, Building, Contributing,
+  Community; bronze/silver/gold) — ~12 flat-SVG artworks. 🔴 The consequence is architectural: **a
+  challenge awards into a (family, tier); it does not own a badge**, which is what keeps R2's long
+  challenge list affordable. A `badgeId` per challenge re-couples them — do not build that.
+- ✅ **D5 — RULED 2026-08-14: the visible launcher Learning section**, "immutable" meaning
+  *platform-managed*: the learner edits the project freely (that IS the lesson) but can't
+  rename/detach/delete it; reset = re-pull a fresh copy. **Unblocks UNI-007 and UNI-010** — and
+  because the section is written by the editor process, a locally-authored lesson lands in it with
+  no account at all.
+- ✅ **D6 — RULED 2026-08-14: both.** GitHub org hookup per R5 for companies, plus invite-list /
+  email-domain membership for schools (most state schools have no GitHub org — and schools are the
+  population D10 was ruled for). One roster table; the source is a column, not a second roster.
+- ✅ **D7 — RULED 2026-08-14: Paddle**, coaching sessions only. Both candidates are merchants of
+  record handling EU VAT; **Lemon Squeezy was acquired by Stripe in 2024** and is no longer an
+  independent bet. Org contracts stay contact-us and invoiced (R4).
+- ✅ **D8 — RULED 2026-08-14: open to anyone** (R3 already said so) behind a profile-completeness
+  bar; **reactive** report-and-review moderation rather than approval-first; a **double-blind
+  relay** that reveals no address until both sides accept — which is also UNI-004's spam shield.
+- 🔴 ✅ **D9 — RULED 2026-08-14: frontend *and* a record-capped backend — against the
+  recommendation.** The full Bubble wow, at the price of holding end-user data on an expiring free
+  tier. **Five obligations follow** and none was in UNI-008's scope: expiry becomes a data-deletion
+  event; **records must be exportable before expiry** (ECO-004's exit requirement now reaches the
+  data, and phase 18's project export no longer covers it); caps/rate-limits/kill-switch are v1 not
+  hardening; a DPA is needed because the builder becomes a controller and we a processor; and
+  **D9 × D10 intersect** — the backend tier should be off by default for org-minor accounts. This
+  **raises UNI-008's effort** and confirms its deliberately-last placement. [RULINGS.md](RULINGS.md) D9.
 - ✅ **D10 — RULED 2026-08-14: org-owned pseudonymous accounts** for under-16s. The school is the
   data controller; we hold no child PII. 🔴 This **reverses a stated design law** in
   [LEARN-005](../phase-17-noodl-learn/LEARN-005-CLASSROOM-MODE.md) ("no accounts by default",
@@ -97,8 +129,10 @@ and opens *everything* on the platform.
   (or we hold PII by another route); UNI-007's tier-1 AI projection is **off by default for org-minor
   accounts**; and phase 18 export stays a hard requirement. See
   [PRIOR-ART-RECONCILIATION.md](PRIOR-ART-RECONCILIATION.md) F4.
-- **D11** — the opt-in "share anonymous usage" toggle (confusion analytics: explain-this-node
-  clicks as a curriculum heat map): in the v1 consent screen, or deferred entirely.
+- ✅ **D11 — RULED 2026-08-14: in the v1 consent screen, default off.** One consent moment rather
+  than re-consenting every existing account later. 🔴 **Not rendered at all for org-minor accounts**
+  (D10 obligation 3) — absent, not shown-and-unchecked. The scope is part of the consent string
+  (*which nodes people ask about, never project content*); the heat-map pipeline stays out of scope.
 - ~~**D12** — LEARN-002's D1–D6~~ 🔴 **STRUCK 2026-08-14 — a false premise.** All six were answered
   **2026-08-09**, along with three new ones (D7–D9), in
   [CURRICULUM-DESIGN.md §10](../phase-17-noodl-learn/CURRICULUM-DESIGN.md). This phase was written

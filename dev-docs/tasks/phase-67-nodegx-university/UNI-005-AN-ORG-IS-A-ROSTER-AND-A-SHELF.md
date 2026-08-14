@@ -1,6 +1,23 @@
 # UNI-005 — an org is a roster and a shelf
 
-**Surface:** platform · **Tier 2 (R1 names orgs in the big focus; R4 makes them contact-us)** · **Effort:** L · **Blocked on:** D6 (org identity), D10 (minors/GDPR)
+**Surface:** platform · **Tier 2 (R1 names orgs in the big focus; R4 makes them contact-us)** · **Effort:** L · ✅ **UNBLOCKED — D6 and D10 ruled 2026-08-14**
+
+> **D6 — two membership sources, one roster** ([RULINGS.md](RULINGS.md)):
+>
+> ```
+> Org identity
+> ├─ Company  ->  GitHub org      (admin role = org admin, per R5)
+> └─ School   ->  invite list / email domain
+>                 the org mints handles and keeps the mapping (D10)
+> ```
+>
+> Both feed **one** roster table. Most state schools have no GitHub org, and schools are the
+> population D10 was ruled for — a GitHub-only identity would exclude the users the privacy ruling
+> exists to serve. 🔴 **Membership source is a column, not a second roster**: roles, assignment and
+> grading (UNI-006) read the roster and must never branch on where a member came from.
+>
+> **D10** — org-owned pseudonymous accounts; the school is the data controller and **the
+> handle→pupil mapping stays with the org**, or we hold child PII by another route.
 
 ## Premise
 

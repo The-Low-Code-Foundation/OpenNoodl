@@ -1,6 +1,21 @@
 # UNI-002 — points, badges, and the long list of challenges
 
-**Surface:** platform · **Tier 1 (R1 — the big focus)** · **Effort:** M/L · **Blocked on:** D3 (currency + redemption), D4 (badge taxonomy)
+**Surface:** platform · **Tier 1 (R1 — the big focus)** · **Effort:** M/L · ✅ **UNBLOCKED — D3 and D4 ruled 2026-08-14**
+
+> **What the rulings fix here** ([RULINGS.md](RULINGS.md)):
+> - **D3 — earn-only at launch.** Points accrue and display on the leaderboard and profile; nothing
+>   is redeemable. No fulfilment, no shipping, no refund policy, no tax question in v1. 🔴 **But the
+>   event ledger must be append-only and auditable from day one** — retro-fitting redemption onto a
+>   ledger you cannot recount is the expensive version of this decision, and it is the one corner v1
+>   must not cut. ⚠️ The currency's *name* is deliberately unruled: a copywriting choice with no
+>   architectural consequence, pick it when the UI is written, do not let it block the engine.
+> - **D4 — four families × three tiers** (Learning, Building, Contributing, Community;
+>   bronze/silver/gold), ~12 flat-SVG artworks in the editor's existing icon idiom.
+>   🔴 **The consequence is a schema constraint, not a decoration:** a challenge awards into a
+>   **(family, tier)** — it does **not** carry a `badgeId`. That is precisely what makes R2's
+>   deliberately-long challenge list affordable: the badge table stays twelve rows while the
+>   challenge registry grows, and no new challenge is ever blocked on a drawing. A per-challenge
+>   `badgeId` re-couples them — **do not build that.**
 
 ## Premise
 

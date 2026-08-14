@@ -1,6 +1,34 @@
 # UNI-008 — online in one click, off in forty-five days
 
-**Surface:** platform + editor · **Tier 3 (deliberately last)** · **Effort:** L · **Blocked on:** D9 (hosting scope + caps)
+**Surface:** platform + editor · **Tier 3 (deliberately last)** · **Effort:** **L+ (raised by D9)** · 🔴 ✅ **D9 RULED 2026-08-14 — against the recommendation**
+
+> **D9: the hosted tier serves the exported frontend *and* a record-capped slice of the inbuilt
+> backend.** The recommendation was static-only; Richard ruled for the backend. The feature is not
+> wrong — it is the strongest version of the Bubble wow, and a data-driven app that works the moment
+> it is pushed is the demo. But it converts this task from a **file-serving** problem into a
+> **data-holding** one, and **five obligations follow that were not in this task's scope**:
+>
+> 1. **Expiry becomes a data-deletion event, not a file deletion.** R7's 15-day life and 45-day cap
+>    now delete *end users'* records, not just the builder's bundle. That needs a stated retention
+>    policy and a warning before it fires.
+> 2. 🔴 **ECO-004's exit requirement now reaches the data.** *"Users' work must remain theirs and
+>    retrievable"* — phase 18's project export is **no longer a sufficient answer**, because the
+>    records are not in the project. **Records must be exportable before expiry**, and ECO-004 calls
+>    that a hard requirement, not a nice-to-have.
+> 3. **A free multi-tenant backend is an open write endpoint.** Record caps, rate limits,
+>    bundle-size caps and a per-app kill switch are **v1 scope, not hardening**.
+> 4. **A published app collecting personal data makes the builder a controller and us a processor**
+>    — which needs a DPA. This is a *different* legal posture from D10: D10 covers **learners**,
+>    this covers **the end users of learners' apps**.
+> 5. 🔴 **D9 × D10 intersect.** A pupil on an org-minor account publishing an app that collects data
+>    from other children is the case to think about before it happens. **Recommend the backend tier
+>    be off by default for org-minor accounts**, matching the AI-projection default D10 already set.
+>
+> **Scheduling:** this **confirms** the deliberately-last placement rather than changing it, and it
+> **raises the effort**. Do not pull this task earlier because the wow is tempting — it is now the
+> only task in the phase carrying both a standing ops burden and a standing legal one.
+> ⚠️ Unchanged: the exporter publishes by allow-list, and hosting **must never widen
+> `PUBLISHABLE_AUTH_FIELDS`**.
 
 ## Premise
 

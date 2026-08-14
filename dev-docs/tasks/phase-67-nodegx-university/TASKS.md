@@ -13,27 +13,39 @@ gates nothing; services not features) are acceptance criteria in every task.
 **Surfaces:** `platform` = the new repo (D1), `editor` = this repo, `bridge` = the
 editor-outbound sync between them. No task opens an inbound connection to the user's machine.
 
-| Task | One line | Surface | Tier | Effort | Blocked on a ruling? |
+> ✅ **THE RULINGS QUEUE IS EMPTY (2026-08-14, second session).** D2–D9 and D11 are ruled; the
+> register is **[RULINGS.md](RULINGS.md)**. **No task in this phase is blocked on a decision any
+> more** — the Blocked column below is now a record of what each task must *honour*, not what it is
+> waiting for.
+
+| Task | One line | Surface | Tier | Effort | Rulings it must honour |
 |---|---|---|---|---|---|
-| [UNI-001](UNI-001-ONE-LOGIN-THAT-GATES-NOTHING.md) ⭐ | the NodeGX account: OAuth, editor sign-in, consent — the spine everything hangs off | platform + editor | **1** | M/L | ~~D1~~ ✅, D2 (D11 for the consent screen) |
-| [UNI-002](UNI-002-POINTS-BADGES-AND-THE-LONG-LIST-OF-CHALLENGES.md) ⭐ | the contribution engine: points, badges, the challenge registry, the event ledger | platform | **1** | M/L | D3, D4 |
-| [UNI-003](UNI-003-THE-PROFILE-THAT-FOLLOWS-YOU.md) | the public dev profile: badges, points, published prefabs, offers | platform | **1** | M | D8 (listing policy) |
-| [UNI-004](UNI-004-RFPS-AND-COACHING-WITHOUT-A-GATE.md) ⭐ | the RFP board + coaching offers/booking/payment, spam-shielded relay | platform | **1** | L | D7, D8 |
-| [UNI-005](UNI-005-AN-ORG-IS-A-ROSTER-AND-A-SHELF.md) | org workspaces: contact-us provisioning, GitHub org hookup, roster, shared prefab/template shelf | platform | 2 | L | D6, ~~D10~~ ✅ · builds on **phase 51 / COL-004** |
-| [UNI-006](UNI-006-ASSIGN-GRADE-REVIEW.md) | org teaching: push lessons/assignments to members, view graded results, human grading override | platform + bridge | 2 | M/L | ~~D10~~ ✅, ~~D12~~ struck · no live co-editing (ECO-001 parked) |
-| [UNI-007](UNI-007-THE-LESSON-BEAMED-INTO-THE-EDITOR.md) ⭐ | intake → personalised path → lesson project pulled into the editor's Learning folder → graded via MCP tooling | all three | 2 | L | D5, ~~D12~~ struck → **CURRICULUM-DESIGN §11's 3 blockers** (phases 59/60/61) |
-| [UNI-008](UNI-008-ONLINE-IN-ONE-CLICK-OFF-IN-FORTY-FIVE-DAYS.md) | push-to-share hosting: subdomain, 15-day life, manual restarts, 45-day cap, then the self-host off-ramp | platform + editor | 3 | L | D9 |
-| [UNI-009](UNI-009-THE-COMMUNITY-HOME.md) | the site itself: tutorials/tips, meetup replays, Discourse forum SSO | platform | **1 (minimal cut)** | S/M | D2 |
-| [UNI-010](UNI-010-A-TUTORIAL-YOUR-OWN-CLAUDE-CAN-WRITE.md) | the user's own Claude authors a verified lesson into the Learning folder — an experiment with pre-registered kill/keep criteria | editor + MCP | experiment | M | D5; needs UNI-007's format + runner |
+| [UNI-001](UNI-001-ONE-LOGIN-THAT-GATES-NOTHING.md) ⭐ | the NodeGX account: OAuth, editor sign-in, consent — the spine everything hangs off | platform + editor | **1** | M/L | ✅ **unblocked.** D2 → button reads **"Sign in to NodeGX"**; D11 → consent row default off, **absent** for org-minor accounts |
+| [UNI-002](UNI-002-POINTS-BADGES-AND-THE-LONG-LIST-OF-CHALLENGES.md) ⭐ | the contribution engine: points, badges, the challenge registry, the event ledger | platform | **1** | M/L | ✅ **unblocked.** D3 → earn-only, ledger append-only + auditable; D4 → **challenges award into a (family, tier), never a `badgeId`** |
+| [UNI-003](UNI-003-THE-PROFILE-THAT-FOLLOWS-YOU.md) | the public dev profile: badges, points, published prefabs, offers | platform | **1** | M | ✅ **unblocked.** D8 → open listing behind a profile bar, reactive moderation |
+| [UNI-004](UNI-004-RFPS-AND-COACHING-WITHOUT-A-GATE.md) ⭐ | the RFP board + coaching offers/booking/payment, spam-shielded relay | platform | **1** | L | ✅ **unblocked.** D7 → **Paddle**, coaching only; D8 → **double-blind relay** (also the spam shield). Build so payment can be absent — the email-only v0 stands |
+| [UNI-005](UNI-005-AN-ORG-IS-A-ROSTER-AND-A-SHELF.md) | org workspaces: contact-us provisioning, GitHub org hookup, roster, shared prefab/template shelf | platform | 2 | L | ✅ **unblocked.** D6 → GitHub org **and** invite list, **one** roster; D10 → pseudonymous handles · builds on **phase 51 / COL-004** |
+| [UNI-006](UNI-006-ASSIGN-GRADE-REVIEW.md) | org teaching: push lessons/assignments to members, view graded results, human grading override | platform + bridge | 2 | M/L | ✅ **unblocked.** D10 ✅, D12 struck · no live co-editing (ECO-001 parked) · never branch on membership source |
+| [UNI-007](UNI-007-THE-LESSON-BEAMED-INTO-THE-EDITOR.md) ⭐ | intake → personalised path → lesson project pulled into the editor's Learning folder → graded via MCP tooling | all three | 2 | L | ✅ **unblocked.** D5 → **visible, platform-managed Learning section**, written by the editor process only. **2 of §11's 3 blockers now CLEAR** (see below) |
+| [UNI-008](UNI-008-ONLINE-IN-ONE-CLICK-OFF-IN-FORTY-FIVE-DAYS.md) | push-to-share hosting: subdomain, 15-day life, manual restarts, 45-day cap, then the self-host off-ramp | platform + editor | 3 | **L+** | 🔴 **D9 ruled *against* the recommendation** — a record-capped backend is in. **Five new obligations**, effort raised, still deliberately last. [RULINGS.md](RULINGS.md) D9 |
+| [UNI-009](UNI-009-THE-COMMUNITY-HOME.md) | the site itself: tutorials/tips, meetup replays, Discourse forum SSO | platform | **1 (minimal cut)** | S/M | ✅ **unblocked.** D2 → it **is** NodeGX Community; the tutorials index is one card on it, not the point of it |
+| [UNI-010](UNI-010-A-TUTORIAL-YOUR-OWN-CLAUDE-CAN-WRITE.md) | the user's own Claude authors a verified lesson into the Learning folder — an experiment with pre-registered kill/keep criteria | editor + MCP | experiment | M | ✅ **unblocked.** D5 → lands in the same section **with no account**; verifier must cover **F1–F6**, and 🔴 **reject `Array`/`Object` as ambiguous** rather than substitute |
 
 **Effort is per-v1-slice, not per-dream** — every task file carries an explicit "not in v1" list.
 
 ## Suggested order, and why
 
 **First sitting: rulings, not code.** ✅ **Held 2026-08-14** — D1 and D10 ruled, R6 clarified, the
-UNI-010 verifier question ruled, D12 struck. **Still owed, and still the cheapest next session:**
-D2 (which also decides whether the new repo keeps its name), then D3 + D4 to unblock the Tier-1
-focus, then D5 (UNI-007 and UNI-010 both wait on it).
+UNI-010 verifier question ruled, D12 struck.
+
+**Second sitting: the rest of the rulings.** ✅ **Held 2026-08-14** — **D2, D3, D4, D5, D6, D7, D8,
+D9 and D11 all ruled**, and the three curriculum blockers fact-checked against source and git.
+**The queue is empty and nothing is waiting on a decision.** The next sitting is code.
+
+🔴 **One action falls out of D2 and is time-critical:** rename the platform repo
+`nodegx-university` → **`nodegx-community`**. It is private, empty, and has no Pages site, so the
+rename is free today and breaks links after the first deploy — **GitHub Pages does not follow a repo
+rename.**
 
 **UNI-001 + UNI-009 (minimal cut) land together.** A login with nothing behind it is a broken
 promise — the account must open onto *something* on day one: replays, tutorials index, the
@@ -74,3 +86,21 @@ Nothing else depends on it.
 2. ⚠️ **The bridge direction is a constraint, not a preference.** Editor-outbound only
    (README, surface 3 — the OBS-004 lesson). Any design sketch that has the platform "pushing"
    to an editor must be rewritten as the editor pulling on its own schedule.
+3. ✅ **The three curriculum blockers — FACT-CHECKED 2026-08-14** against source and git, not
+   against task tables. Full write-up in [RULINGS.md](RULINGS.md).
+   - **Two of three now CLEAR.** Phase 60 is **7/7 closed** and its signal wording shipped
+     (`portCopy.ts`), so **L2 is unblocked** — the curriculum glossary line has been corrected in
+     place. Phase 61 is **8 of 9 built on `cline-dev`** with FUN-001 §2's notation **signed**, so
+     **L11 is unblocked** — ⚠️ except that FUN-005's ports rail does not exist, so no step may
+     reference it.
+   - 🔴 **The two-vocabulary rule is the one that stands, and it is worse than recorded.** Two of
+     the nine display names are **ambiguous**: `Array` → `Collection`/`Collection2`, and **`Object`
+     → `Model`/`Model2`** (recorded as `Model2` alone until now). That makes them class **F3**, not
+     just F1 — the static check must **reject** them, not substitute.
+   - 🔴 **Two task tables were the stale artifact, not the memory.** Phase 61's table marked four
+     merged tasks `open`; the curriculum glossary warned "do not author until phase 60 publishes"
+     three days after it published. Both corrected in place. **Grep git and read source before
+     believing a status column — including these.**
+   - ⚠️ **Two owed items phase 67 never carried**, both from CURRICULUM-DESIGN §11: **curriculum
+     hosting** (§9.3, now partly a D2/D9 question) and the **tutor lesson-context overlay** (§9.1,
+     *"required before L2 testing"*) — UNI-007 runs straight into the second and does not mention it.

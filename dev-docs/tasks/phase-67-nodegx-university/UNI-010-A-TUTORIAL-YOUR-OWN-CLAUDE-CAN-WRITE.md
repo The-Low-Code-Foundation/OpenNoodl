@@ -1,8 +1,24 @@
 # UNI-010 — a tutorial your own Claude can write
 
 **Surface:** editor + MCP (no platform dependency — that is the point) · **Tier: experiment**
-· **Effort:** M (after UNI-007's format exists) · **Blocked on:** D5 + UNI-007's lesson
-format and grading runner (criteria 3 and 4 there are this task's prerequisites)
+· **Effort:** M (after UNI-007's format exists) · ✅ **D5 RULED 2026-08-14** · still needs UNI-007's
+lesson format and grading runner (criteria 3 and 4 there are this task's prerequisites)
+
+> **D5 makes this task's premise literally true** ([RULINGS.md](RULINGS.md)). The Learning section
+> is a **visible launcher section written by the editor process** — so a lesson the user's own
+> Claude authors locally lands in exactly the same place, through exactly the same writer, as one
+> pulled from the platform, **with no account and no platform involved**. "No platform dependency —
+> that is the point" is now a ruling, not an aspiration.
+>
+> 🔴 **The verifier gets sharper: `Array` and `Object` must be REJECTED, not substituted.**
+> Re-verification against `node-catalog.json` on 2026-08-14 found that two of the nine display names
+> are **ambiguous** — `Array` maps to both `Collection` and `Collection2`, and **`Object` maps to
+> both `Model` and `Model2`** (recorded as `Model2` alone until now). A freely-authoring model
+> reaching for a display name therefore risks more than a silent no-match: an ambiguous name can
+> resolve to the **wrong one of two**, which is class **F3** — the class the prior arc predicted
+> *"nobody expects to see and is worst when it appears"*, and the class this task's own ruling made
+> mandatory verifier work. **The static check must reject these two rather than auto-correct them**,
+> because there is no single right substitution to make.
 
 ## Premise
 

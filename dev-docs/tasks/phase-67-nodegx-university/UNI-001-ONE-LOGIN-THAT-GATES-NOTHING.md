@@ -1,6 +1,17 @@
 # UNI-001 — one login that gates nothing
 
-**Surface:** platform + editor · **Tier 1** · **Effort:** M/L · **Blocked on:** D1 (repo/stack), D2 (naming/domain); D11 decides the consent screen's content
+**Surface:** platform + editor · **Tier 1** · **Effort:** M/L · ✅ **UNBLOCKED — D1, D2 and D11 all ruled 2026-08-14**
+
+> **What the rulings fix here** ([RULINGS.md](RULINGS.md)):
+> - **D2** — the site is **NodeGX Community** at `community.nodegx.dev`; the editor's button reads
+>   **"Sign in to NodeGX"**. 🔴 One string, one owner — the FUN-001 shape applies: four surfaces
+>   disagreeing about one piece of copy is worse than blank. Do not reinvent it per surface.
+> - **D11** — the consent screen carries **"Share anonymous usage data", unchecked by default**,
+>   scoped in the string itself as *which nodes people ask about, never project content*. 🔴 For
+>   **org-minor accounts the row is not rendered at all** — absent, not shown-and-off (D10
+>   obligation 3).
+> - **D1** — Next.js + Postgres + Drizzle, Docker on Hetzner. ⚠️ The repo must be renamed
+>   `nodegx-university` → **`nodegx-community`** before any Pages deploy.
 
 ## Premise
 

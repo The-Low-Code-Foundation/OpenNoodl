@@ -1,6 +1,12 @@
 # UNI-003 — the profile that follows you
 
-**Surface:** platform · **Tier 1** · **Effort:** M · **Blocked on:** D8 (who may list a public/dev profile)
+**Surface:** platform · **Tier 1** · **Effort:** M · ✅ **UNBLOCKED — D8 ruled 2026-08-14**
+
+> **D8** ([RULINGS.md](RULINGS.md)): listing is **open to anyone** — R3 already said so — behind a
+> **profile-completeness bar** (account + name + blurb + at least one published thing or lesson
+> completion). Moderation is **reactive**: reported → reviewed → hidden, not approval-first, because
+> an approval queue only one person can clear is a bottleneck that grows with success. The badge and
+> point displays read D4's **(family, tier)** model, not a per-badge list.
 
 ## Premise
 

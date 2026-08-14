@@ -203,7 +203,7 @@ overlay references this list; see TUTOR-BOUNDARY.md §4). Format: *Noodl word �
 general word — one-sentence definition a 13-year-old can repeat.*
 
 - **Property** — *attribute* — a setting on an element that controls how it looks or behaves.
-- **Signal** — *event* — a "this just happened, now" pulse; it carries a moment, not a value. ⚠️ **This wording is no longer owned here — see below.**
+- **Signal** — *event* — a moment, not a value; it runs something on the node it points at. ✅ **Phase 60's shipped wording, cited not paraphrased — see below.**
 - **Value** — *data* — a piece of information that flows along a wire and updates whatever reads it.
 - **Variable / Counter** — *state* — a value the app remembers between events; the app's memory.
 - **Wire / connection** — *data flow* — the path a value or signal travels; downstream updates automatically.
@@ -223,16 +223,31 @@ The glossary is versioned here so lesson text and tutor never drift apart.
 > Phase 61 already defers to phase 60; phase 17 now does too. **This glossary
 > cites phase 60's sentence — it does not paraphrase it.**
 >
-> ⚠️ **And the line above is very likely wrong as written.** Phase 60 read the
-> cast table and found that **`boolean → signal` is allowed**, along with
-> `signal → boolean` and `signal → number`
+> ⚠️ **The line above was wrong as written, and has been corrected.** Phase 60
+> read the cast table and found that **`boolean → signal` is allowed**, along
+> with `signal → boolean` and `signal → number`
 > ([nodelibraryexport.ts:207-240](../../../packages/noodl-runtime/src/nodelibraryexport.ts#L207)).
 > "A signal carries a moment, not a value" is the kind of clean sentence a
 > builder disproves in their first week — the NDA-017 shape, where the only
-> written-down description of a behaviour described a trap as a feature. Phase
-> 60's honest framing: *a signal is a **moment**, and only a boolean has an
-> unambiguous moment in it — the flip to true.* **Do not author the glossary
-> line until phase 60 publishes its wording.**
+> written-down description of a behaviour described a trap as a feature.
+>
+> ✅ **RESOLVED 2026-08-14. Phase 60 is 7/7 closed (2026-08-11) and its wording
+> shipped** — `SIGNAL_SENTENCE` in
+> [`portCopy.ts:85`](../../../packages/noodl-editor/src/editor/src/views/ConnectionPopup/portCopy.ts):
+>
+> > *"Signal — a moment, not a value. It runs something on the node it points
+> > at. Value connections carry their data on their own, so you usually don't
+> > need a signal to set a value — reach for one when you want to control
+> > **when** something happens."*
+>
+> The glossary line now cites the first clause of that sentence verbatim. 🔴 **If
+> `portCopy.ts` changes, this line changes with it** — it is a citation, not an
+> independent definition, and phase 60 owns it. **L2 is unblocked.**
+>
+> 🔴 **This warning outlived its fix by three days** — it said "do not author
+> until phase 60 publishes" while phase 60 had already published. Phase 67's
+> [RULINGS.md](../phase-67-nodegx-university/RULINGS.md) records it as one of
+> three instances of the same pattern found in a single day.
 
 ## 7. Assessment — three layers
 
@@ -329,19 +344,31 @@ come from phases 59, 60 and 61, all specced on 2026-08-09.
 Three items, none of them a design question, all of which silently damage
 lessons if skipped. Listed in the order they bite.
 
-1. **The two-vocabulary rule.** Prose uses display names, conditions use type
-   names, and five of this spine's nodes now differ between the two. A
-   `completeWhen` written in display names matches nothing and tells the learner
-   they failed a step they completed. Rule and mapping:
-   [LESSON-FORMAT.md §3](./LESSON-FORMAT.md).
-2. **Phase 60's signal wording must land first** (D7), or L2 — the lesson that
-   *introduces* events — is authored against a sentence phase 60 has already
-   found to be false.
-3. **Phase 61 changes what L11 teaches** and phase 59 decides whether D9's
-   visual track exists at all. Both were specced on 2026-08-09 and both are
-   upstream of lessons this curriculum commits to. Authoring L1–L3 first (as
-   §8 already requires) keeps the spine clear of them; **L11 should not be
-   authored until phase 61 lands.**
+1. **The two-vocabulary rule.** ⚠️ **Still open — the only one of the three that
+   is.** Prose uses display names, conditions use type names, and five of this
+   spine's nodes now differ between the two. A `completeWhen` written in display
+   names matches nothing and tells the learner they failed a step they
+   completed. Rule and mapping: [LESSON-FORMAT.md §3](./LESSON-FORMAT.md).
+   🔴 **Re-verified 2026-08-14 and it is worse than recorded:** *two* display
+   names are **ambiguous**, not one — `Array` resolves to `Collection` *and*
+   `Collection2`, and **`Object` resolves to `Model` *and* `Model2`** (both §3
+   and phase 67's reconciliation record `Model2` alone). An ambiguous name can
+   resolve to the *wrong* node rather than to none, which is a different and
+   worse failure. Details:
+   [phase 67 RULINGS.md](../phase-67-nodegx-university/RULINGS.md).
+2. ✅ **CLEARED 2026-08-14. Phase 60's signal wording landed** — the phase closed
+   7/7 on 2026-08-11 and the sentence ships in `portCopy.ts`. §6's glossary line
+   now cites it. **L2 is unblocked.**
+3. ✅ **CLEARED 2026-08-14 for L11. Phase 61 is 8 of 9 built on `cline-dev`**
+   (FUN-005, the ports rail, is the only one open), and FUN-001 §2's notation
+   ruling — `Inputs.`/`Outputs.`, never `Noodl.Inputs` — was **signed 2026-08-12
+   and is enforced by `notation.test.ts`**. ⚠️ Phase 61's own task table still
+   marks four merged tasks open; trust git, not the table. **The one caveat:
+   FUN-005 does not exist, so no L11 step may reference a ports rail beside the
+   code.** Phase 59 has surfaced the visual track (LGC-001/009/010 built and
+   driven), so D9's option is real — but ⚠️ **LGC-007's My Blocks has an engine
+   and no UI**, so no lesson may ask a learner to save or reuse a block group.
+   Authoring L1–L3 first (as §8 already requires) remains the right order.
 
 Not blocking authoring, still owed: **curriculum hosting** (§9.3) and the
 **tutor lesson-context overlay** (§9.1, required before L2 testing).

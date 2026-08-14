@@ -1,6 +1,18 @@
 # UNI-004 — RFPs and coaching, without a gate
 
-**Surface:** platform · **Tier 1 (R1, R3)** · **Effort:** L · **Blocked on:** D7 (merchant of record), D8 (listing + moderation policy)
+**Surface:** platform · **Tier 1 (R1, R3)** · **Effort:** L · ✅ **UNBLOCKED — D7 and D8 ruled 2026-08-14**
+
+> **What the rulings fix here** ([RULINGS.md](RULINGS.md)):
+> - **D7 — Paddle as merchant of record; coaching sessions are the only sellable at launch.** Both
+>   Paddle and Lemon Squeezy handle EU VAT on our behalf, which was the requirement; **Lemon Squeezy
+>   was acquired by Stripe in 2024** and is no longer an independent bet. Org contracts stay
+>   contact-us and invoiced outside the platform (R4). ⚠️ **Payments are not a blocker for the board
+>   itself** — build so that the payment step can be absent, and the booking-form-ends-in-an-email
+>   v0 remains valid while the Paddle account is set up.
+> - **D8 — the relay is double-blind.** `client --▸ platform --▸ dev`, with neither side's address
+>   revealed until both accept. 🔴 That is **one mechanism doing two jobs** — it is also the spam
+>   shield this task already asks for, so do not build a second. The address must not leak in a
+>   header, a reply-to, or a bounce.
 
 ## Premise
 

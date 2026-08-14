@@ -1,6 +1,13 @@
 # UNI-009 — the community home
 
-**Surface:** platform · **Tier 1 (minimal cut — lands WITH UNI-001)** · **Effort:** S/M · **Blocked on:** D2 (naming/domain)
+**Surface:** platform · **Tier 1 (minimal cut — lands WITH UNI-001)** · **Effort:** S/M · ✅ **UNBLOCKED — D2 ruled 2026-08-14**
+
+> **D2** ([RULINGS.md](RULINGS.md)): this task **is** the site. The platform is called **NodeGX
+> Community**, served at `community.nodegx.dev`, and **NodeGX University is one wing of it** —
+> the learning section beside the forum, the RFP board, the prefab shelf and the replay library.
+> The tutorials index is a card on this page, not the point of it.
+> ⚠️ The domain is a choice this ruling makes, not a fact it records — **`nodegx.dev` is not
+> registered anywhere in this repo** and still has to be acquired.
 
 ## Premise
 

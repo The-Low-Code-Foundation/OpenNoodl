@@ -282,9 +282,9 @@ Verified against `node-catalog.json` on 2026-08-09 — nine divergences:
 | Repeater Item | `For Each Actions` |
 | Static Array | `Static Data` |
 | Delay | `Timer` |
-| Array | `Collection` (or `Collection2`) |
+| Array | ⚠️ **ambiguous** — `Collection` *and* `Collection2` |
 | Insert Object Into Array | `CollectionInsert` |
-| Object | `Model2` |
+| Object | ⚠️ **ambiguous** — `Model` *and* `Model2` 🔴 **corrected 2026-08-14**, this row read `Model2` alone |
 | Record | `DbModel2` |
 | Page Router | `Router` |
 
@@ -295,21 +295,29 @@ This is exactly the failure Richard named as the risk of AI-authored tutorials, 
 it is statically checkable. **The format contract (UNI-007) must state the rule, and the verifier
 (UNI-010) must enforce it.** Neither currently does.
 
+🔴 **Sharpened 2026-08-14 by re-verification against `node-catalog.json` (175 entries).** Two of the
+nine display names are **ambiguous**, not merely divergent: `Array` carries two type names and so
+does `Object`. That makes them **class F3 as well as F1** — an ambiguous name can resolve to the
+*wrong one of two* rather than to none, and F3 is the class the prior arc predicted *"nobody expects
+to see and is worst when it appears"*. The static check must therefore **reject** these two rather
+than auto-substitute a type name for them. Full re-verification in [RULINGS.md](RULINGS.md).
+
 ---
 
 ## Rulings made in this session (2026-08-14)
 
 | Ruling | Decision |
 |---|---|
-| **D1** — platform repo + stack | **New repo, Next.js + Postgres + Drizzle, Docker on Hetzner**, no code imported from Loom. Created as **[The-Low-Code-Foundation/nodegx-university](https://github.com/The-Low-Code-Foundation/nodegx-university)** (private). ⚠️ Named from D1's recommendation while **D2 is still open** — if D2 renames the product, rename the repo *before* attaching GitHub Pages (🔴 Pages does not follow a repo rename) |
+| **D1** — platform repo + stack | **New repo, Next.js + Postgres + Drizzle, Docker on Hetzner**, no code imported from Loom. Created as `nodegx-university`, then ✅ **renamed 2026-08-14 to [The-Low-Code-Foundation/nodegx-community](https://github.com/The-Low-Code-Foundation/nodegx-community)** (private, empty) once **D2** named the product. The warning worked: the rename happened while the repo was empty with **no Pages site**, verified either side |
 | **D10** — minors + GDPR | **Org-owned pseudonymous accounts.** School is the data controller; no child PII held. Four obligations recorded in F4 |
 | **R6 clarified** | UNI-005/006 build on **phase 51 (async)**, **COL-004 first**. ECO-001 real-time stays parked |
 | **UNI-010 vs §3.1** | **Free authoring stands**; the verifier must absorb **F1–F6**, not F2 alone. Consequences recorded in F3 |
 | **D12** | **Struck — already ruled 2026-08-09.** Replaced by CURRICULUM-DESIGN §11's three authoring blockers |
 
-Still open and unblocking most of the phase: **D2** (naming/domain), **D3** (points economy),
-**D4** (badge taxonomy), **D5** (Learning folder shape), **D6** (org identity), **D7** (payments),
-**D8** (listing policy), **D9** (hosting scope), **D11** (usage-analytics toggle).
+~~Still open and unblocking most of the phase:~~ ✅ **ALL RULED 2026-08-14, second session** — D2,
+D3, D4, D5, D6, D7, D8, D9 and D11, each with its consequences, in **[RULINGS.md](RULINGS.md)**.
+**The queue is empty and no task is blocked on a decision.** 🔴 D9 went *against* the
+recommendation and carries five new obligations for UNI-008.
 
 ---
 

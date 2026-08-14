@@ -1,7 +1,47 @@
 # UNI-007 — the lesson beamed into the editor
 
-**Surface:** all three · **Tier 2 (the differentiator)** · **Effort:** L · **Blocked on:** D5 (Learning
-folder shape); ~~D12~~ 🔴 **struck 2026-08-14 — already ruled**
+**Surface:** all three · **Tier 2 (the differentiator)** · **Effort:** L · ✅ **UNBLOCKED — D5 ruled
+2026-08-14**; ~~D12~~ 🔴 **struck 2026-08-14 — already ruled**
+
+> **D5 — a visible, platform-managed Learning section** ([RULINGS.md](RULINGS.md)). R9's two options
+> resolve in favour of the visible one, because visible progress motivates. **"Immutable" means
+> platform-managed, not read-only:**
+>
+> - The learner **edits the lesson project freely** — that IS the lesson. Nothing in the content is
+>   locked.
+> - The learner **cannot rename, detach or delete it** from the launcher.
+> - **Reset = re-pull a fresh copy.** That is the entire recovery story — no undo stack, no partial
+>   repair path.
+>
+> 🔴 **The editor process writes this state. Never the platform, never an MCP sidecar** — the
+> launcher's recent-projects store is read-only to sidecars, and a design that has the platform
+> writing it is wrong on the bridge direction as well as on this ruling.
+>
+> ⚠️ **Progress metadata must not assume an account.** Completion %, score and feedback are fed
+> either by local grading (this task's runner) or by a pulled platform result, and **the display
+> cannot tell which** — that is what lets UNI-010 run with no platform at all.
+
+> ✅ **CURRICULUM-DESIGN §11's three blockers — FACT-CHECKED 2026-08-14** against source and git.
+> Full write-up in [RULINGS.md](RULINGS.md); the short version:
+>
+> - ✅ **Blocker 2 CLEAR.** Phase 60 is **7/7 closed (2026-08-11)** and its signal wording shipped as
+>   `SIGNAL_SENTENCE` in `portCopy.ts`. The curriculum glossary had never been told and still carried
+>   the paraphrase phase 60 disproved — **corrected in place**. **L2 is unblocked.**
+> - ✅ **Blocker 3 CLEAR.** Phase 61 is **8 of 9 built on `cline-dev`**, and FUN-001 §2's notation
+>   ruling (`Inputs.`/`Outputs.`, never `Noodl.Inputs`) was **signed 2026-08-12** and is enforced by
+>   `notation.test.ts`. Phase 61's own table said otherwise and was stale — corrected.
+>   ⚠️ **FUN-005's ports rail does not exist**, so no L11 step may say "click the port in the rail
+>   beside the code".
+> - 🔴 **Blocker 1 STANDS, and is worse than recorded.** Two of the nine display names are
+>   **ambiguous**, not merely divergent: `Array` → `Collection`/`Collection2`, and **`Object` →
+>   `Model`/`Model2`** (recorded as `Model2` alone until 2026-08-14). **The format contract must
+>   state the two-vocabulary rule and mark those two as unusable in prose**, because an ambiguous
+>   name can resolve to the *wrong* node rather than to none — class F3, not just F1.
+>
+> ⚠️ **Two owed items this task inherits and never mentions**, both from CURRICULUM-DESIGN §11:
+> **curriculum hosting** (§9.3 — now partly a D2/D9 question), and the **tutor lesson-context
+> overlay** (§9.1, *"required before L2 testing"*). The intake → path → beamed-lesson arc runs
+> straight into the second.
 
 > **Corrections from [PRIOR-ART-RECONCILIATION.md](PRIOR-ART-RECONCILIATION.md) (2026-08-14):**
 >
