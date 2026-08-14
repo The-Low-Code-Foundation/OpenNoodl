@@ -1,11 +1,11 @@
 # Phase 66 — next session
 
-**Written 2026-08-14, session 5 (rulings + build + drive + a paid drive).** **The seven-ruling
-sitting is done** — seven tasks unblocked in one go, and one of them (FIX-003) went *bigger* than
-its recommendation. **FIX-007 is CLOSED**: fix 4 built and driven, and Richard authorised the paid
-run that closed criterion 1's internal-AI half. Two more premises were checked and **did not
-survive**: fix 3 is redundant, and the ⚠️ rider is not a defect. This file is rewritten at the end
-of **every** session — read §0 for how, and replace it rather than appending.
+**Written 2026-08-14, session 6 (two of the seven ruled tasks built AND driven).** The seven-ruling
+backlog is now **2 down, 5 to go**. FIX-009 and FIX-012 are **closed** — built, gated and driven
+against the real editor in one launch. Nothing in this session needed Richard, and nothing cost a
+paid request. ⚠️ **A sibling session is live on this checkout** and opened **phase 67** while this
+one ran. This file is rewritten at the end of **every** session — read §0 for how, and replace it
+rather than appending.
 
 ---
 
@@ -35,131 +35,108 @@ a learning findable six phases later.
 | **FIX-020** | ✅ | ✅ **3/3** | five popups, both themes — **CLOSED** |
 | **FIX-010** | ✅ | ✅ **3/3** | picker anchors + stickiness survives — **CLOSED** |
 | **FIX-018** | ✅ | ✅ **5/5** | chip + stacked edge + freed icon slot + menu — **CLOSED** |
-| **FIX-007** fixes 1, 2 | ✅ | ✅ | docs + write-time gate, through the real MCP door |
-| **FIX-007** fix 4 | ✅ | ✅ | **76 ms vs 2017 ms**, with its control in the same run |
-| **FIX-007** fix 3 | 🔴 **struck** | n/a | premise false twice over — do **not** rebuild it |
-| **FIX-007** rider | ✅ **closed** | n/a | not a defect; a guard spec already pins it |
-| **FIX-007** crit 1 | ✅ | ✅ **both halves** | internal AI wrote `in-items`/`out-text`, **right first time** |
+| **FIX-007** | ✅ | ✅ **4/4** | prefix docs, write-time gate, urgent lane, paid drive — **CLOSED** |
+| **FIX-009** | ✅ | ✅ **5/5** | one `selection-slot` key; Search keeps its own — **CLOSED (this session)** |
+| **FIX-012** | ✅ | ✅ **3/3** | None clears + gives the frame back; Delete unchanged — **CLOSED (this session)** |
 | **FIX-008** A, B, E | ✅ | ✅ | idempotent Connect, backfill on open, bound directory |
 | **FIX-008** C, D | 📋 **not built** | — | C stops it recurring; D removes the class |
-| FIX-002/003/009/011/012/014/019 | 📋 open | — | ✅ **all seven now RULED** — buildable by an agent alone |
+| FIX-002/003/011/014/019 | 📋 open | — | ✅ **ruled**, buildable by an agent alone |
 | everything else | 📋 open | — | see [TASKS.md](TASKS.md) |
 
-✅ **FOUR tasks closed — FIX-020, FIX-010, FIX-018 and now FIX-007 (4/4 criteria).** Nothing built
-is waiting on a drive, and nothing in the phase is waiting on a paid request.
+✅ **SIX tasks closed.** Nothing built is waiting on a drive, and nothing in the phase is waiting on
+a paid request.
+
+🔴 **FIX-002 is not the S it was filed as** — see §3.
 
 ---
 
 ## 2. Gate readings
 
-| Gate | Reading (2026-08-14, session 5, on top of `8b8c25d4`) |
+| Gate | Reading (2026-08-14, session 6, on top of `933cf00a`) |
 |---|---|
-| `test:ci` | ✅ **2748 total / 6 failed, seed 04814** — all six inherited, by name |
+| `test:ci` | ✅ **2757 total / 6 failed** — all six inherited, by name |
 | `test:main` (jest: `tests-main` + `tests-unit`) | ✅ **188 suites / 2880 tests, 0 failed** |
-| MCP suite (`packages/noodl-mcp`, jest) | ✅ **41 suites / 467 tests, 0 failed** |
 | `tsc -p packages/noodl-editor/tsconfig.json --noEmit` | ✅ **0 errors** |
 | `tsc -p packages/noodl-editor/tsconfig.tests.json --noEmit` | ✅ **0 errors** |
+| MCP suite | not run — **no MCP file touched this session** |
 | catalog trio, `cloud-library:check` | unchanged — **no catalog, node or library file touched** |
 
 The six `test:ci` failures, by name: `AIX-006 style vocabulary` ×4 · `AI model registry` ×2 — the
-same six as sessions 2, 3 and 4, now confirmed on a **different seed** (34417 → 04814), so they are
-not seed-dependent.
+same six as sessions 2–5.
 
-✅ **`test:ci` 2736 → 2748 is exactly the 12 new specs** in
-`tests/nodegraph/urgent-health-pass.spec.ts`. `test:main` is unchanged at 2880, which is correct:
-this session added jasmine specs only.
+✅ **2748 → 2757 is exactly the 9 new specs** in `tests/sidepanel/widthGroups.spec.ts`. `test:main`
+is unchanged at 2880, which is correct: this session added jasmine specs only.
 
-⚠️ **Read `packages/noodl-editor/tests/test-results.json` — and check its mtime.** Session 4 read it
-before its own run finished and got the previous session's numbers back, seed and all. A results
-file is only yours if it is younger than your run. (Baseline this session was 19:39; the real
-reading was 20:38.)
+🔴 **The backgrounded `test:ci` exit code said `0` while its log ended in `npm error code 1`.**
+The results file is the only readout that told the truth. Read
+`packages/noodl-editor/tests/test-results.json` **and check its mtime is younger than your run** —
+this session found the previous session's 20:38 file still sitting there at launch, and would have
+reported session 5's numbers as its own.
 
 ---
 
 ## 3. What this session settled — do not re-derive
 
-### The seven rulings, all made
+### FIX-009 — the persisted map is the evidence, not the pixels
 
-Six went to the written recommendation. **One did not:**
+After the drags, the drive project stores **one** entry: `{"selection-slot": 300}`. The same
+settings file still holds the pre-fix shape for older projects — `{"components":274,…}`,
+`{"PropertyEditor":394}`, `{"project-docs":448,"PropertyEditor":384}` — which is both the reported
+bug in the wild **and** a real upgrade population for the legacy-inheritance leg. That leg is not
+hypothetical; without it those users' sidebars silently reset.
 
-🔴 **FIX-003 — Richard ruled "invert the global `user-select` rule NOW"**, against the
-opt-in-per-surface recommendation. That **enlarges the task from S→M into M/L**: the drag-surface
-test plan that was going to be deferred is now in scope, and the acceptance criteria gain a control
-(dragging still works on canvas nodes, panel tree rows and the sidebar divider). Enumerate the
-opt-*out* list before flipping `style.css:205`, and delete the three now-redundant opt-*ins*.
+Checked rather than assumed: `useSetupSettings.migrateRetiredPanelIds` rewrites the same
+`editor-sidebar-widths` map but only drops keys in `RETIRED_PANEL_IDS`, so the new group key passes
+through untouched; and all three slot panels declare **no** `defaultWidth`, so the group default is
+uniformly 328 with nothing to reconcile.
 
-The other six, in one line each: **FIX-002** Enter=send / Shift+Enter=newline in both composers
-(this changes `TextArea`, so **re-drive BLD-010** and grep every consumer); **FIX-009** `PortEditor`
-joins the width group, three panels only; **FIX-011** per-component size persists behind the
-explicit "Set as default size" gesture, default height = fill the stage; **FIX-012** None clears to
-derived defaults and resets the frame, Delete keeps its values; **FIX-014** model `x`/`y` is
-authoritative, the pass fills gaps and resolves collisions only; **FIX-019** back-to-benched with an
-assertive chip that appears only on divergence.
+### FIX-012 — three gestures, provably different
 
-Each is written into its own task file under a `✅ RULED 2026-08-14` heading, and into the README's
-queue. 🟡 **One sub-ruling was NOT asked and is still owed:** FIX-019 14(a) — is the surface called
-"the workbench" *everywhere*, or only in that menu item?
+The frame column is what separates them, and it is why they are three buttons and not one:
 
-### FIX-007 fix 4 — what had to be true
+| | values | frame | chip |
+|---|---|---|---|
+| **None** | cleared | **→ 768 (default)** | → `None` |
+| **Reset all** | cleared | **kept** (not an input) | → `None` |
+| **Delete** | **kept** | kept | → empty state |
 
-The urgent lane is 50 ms, gated, and scoped. The load-bearing part was not the number:
+### 🔴 FIX-002 is bigger than filed — check before starting it
 
-🔴 **The old `if (this.evaluatehealthScheduled) return` swallowed the urgent request.** The graph is
-almost always mid-debounce during load, which is *exactly* when ports arrive — so without replacing
-the boolean with a tracked timer plus a deadline compare, the fix would have been dead code in the
-only situation it exists for. There is a spec named for that.
+The ruling flips **`TextArea`**'s Enter semantics, and `TextArea` is a `noodl-core-ui` component.
+Beyond the two AI composers, `onEnter` is passed by **~9 more call sites** — `PageTemplatePopup`,
+`NodeLabel`, `SavedBlocksSection`, `BenchInputsRail`, `BlocklyDialogs`, `MyBlocksSaveDialog` (×2),
+`AiChat`, `AiAuthoringPanel`. Most are `TextInput`, but each has to be *classified* before the flip,
+and `NodeComment` documents in its own source why it deliberately binds no `onEnter` at all. Treat
+it as **M**, with BLD-010's re-drive attached. It was not started this session for that reason.
 
-The gate is `hasUnresolvedPortWarning`, and it reads **only** `con-no-source-port` /
-`con-no-target-port` — deliberately not the `-type` keys, because a port appearing does not make a
-type verdict stale. Without that distinction the gate degrades into "does this node have any
-warning", which is nearly always true on a graph someone is fixing.
+### Two drive recipes, corrected
 
-### 🔴 Two more false premises — that is 7 of 16 now
-
-- **Fix 3 is redundant, twice over.** `getConnectionStatus` **does not check port existence**
-  (`NodeGraphModel.ts:527-581` guards every branch on `sourcePort && targetPort`, so a missing port
-  returns `connectable: true`); it never needed to, because its only two callers pass names drawn
-  from an enumerated port list. And the gap it was meant to close is already closed at a better
-  layer: `rules/nonexistentPort.ts:55-110` errors on a missing port for any **static** node type,
-  abstaining only on dynamic ones — which is what fix 2 closed for Function nodes. Building it
-  would also have put a port check in `fromJSON`'s bulk loop, which runs **before the node library
-  loads**, when `getPorts()` returns `[]` for everything.
-- **The ⚠️ rider is not a defect.** `add_connection` rebuilds from four fields but **refuses
-  duplicates**, so it only ever appends a wire that does not exist — and a wire that does not exist
-  has no label to drop. `operationsWritePath.test.ts` already pins this and says in its own comment
-  that the door "was never broken".
-
-### The paid drive — and what it revealed about which fix is load-bearing
-
-One send against the real Anthropic provider, on a fresh 2-component project, thread provably empty.
-The prompt **never mentioned ports or prefixes**. The AI wrote `in . items → fn . in-items` and
-`fn . out-text → out . text`, with a script reading `Inputs.items` — zero warnings, all three nodes
-present.
-
-🔴 **The panel said "1 step · validated once".** No rejection, no resubmit: **the AI was right the
-first time**, so fix 2's gate never fired. That means **fix 1 (the corrected catalog) is doing the
-work and the gate is the backstop** — which is the right order, and was not knowable before this
-run. Criterion 2 proved the gate *can* catch it; this proved the docs mean it usually will not have
-to. Do not read the gate's silence as the gate being unnecessary.
-
-### What the drive measured
-
-Fixture **`fix007-c4-drive`** (scratch copy of `leg003-drive`; source verified untouched). Ports
-removed → red at **2015–2026 ms**; ports restored → clear at **76 / 76 / 78 ms**. Same graph, same
-node, same event — the only difference is whether a stale warning existed, which is the gate. Full
-table in [FIX-007](FIX-007-THE-CONNECTOR-THE-AI-CANNOT-DRAW.md) § "DRIVEN … session 5".
+- 🔴 **`ed.selectNode()` takes the VIEW node** (`NodeGraphEditorNode`), not the model node. Passing
+  what `model.forEachNode` yields throws `Cannot read properties of undefined (reading 'type')`.
+  Walk `ed.roots` and `.children` instead. (`window.__nodeGraphEditor` is the handle; `ed.selection`
+  still does not exist — it is `ed.selector._selected`.)
+- 🔴 **The panel switch is not visible in the same `eval` that selects it.** React has not
+  re-rendered, so the first read still says "Components" — this session nearly recorded a false
+  negative. Measure in a second call.
+- ✅ A **real divider drag** is drivable with plain synthetic events: `FrameDivider.startDragging`
+  is a React `onMouseDown` and its move/up are `window` listeners, so mousedown → mousemove →
+  mouseup drives it, and `onSizeChanged` (the call that persists) fires on mouseup. Aim at
+  `rootRect.x + RAIL_WIDTH + wantedPanelWidth`; it reads `pageX - bounds.x`.
 
 ---
 
 ## 4. What to do next
 
-1. **Build the seven ruled tasks** — they are all unblocked and none needs Richard again.
-   FIX-009 and FIX-012 are genuine S's; FIX-002 is S but drags BLD-010's re-drive with it;
-   **FIX-003 is now the big one of the seven** and should not be treated as the S it was filed as.
-   FIX-011 and FIX-019 want the 30px chrome strip laid out **once, together** — do them as a pair.
+1. **Build the five remaining ruled tasks.** FIX-011 and FIX-019 want the 30px chrome strip laid
+   out **once, together** — do them as a pair, and FIX-011 is the one FIX-012 already defers to
+   (`DEFAULT_BENCH_FRAME` is imported, not re-declared, so the height ruling flows through with no
+   second edit). **FIX-003** is the big one (the global `user-select` inversion — enumerate the
+   opt-*out* list before flipping `style.css:205`). **FIX-014** is independent. **FIX-002** — see §3
+   before committing to it.
 2. **FIX-008 fix C** (`--scope project`) if the report should stop recurring — `MCP_SCOPE` split,
-   `McpSettingsSection.tsx:163`, `tests-unit/mcp-001`, and a cleanup hint for the stale user-scope
-   entries. `nodegx-puppy-test-3` is **still** registered user-scope and visible in every folder.
+   `McpSettingsSection.tsx:163`, `tests-unit/mcp-001`, plus a cleanup hint for stale user-scope
+   entries. **Five `noodl-mcp.cjs` servers are still registered against `Puppy test 3` user-scope**
+   and visible in every folder.
 3. **Repackage the app** (or say so out loud) if FIX-008 fix E is to reach the running servers —
    they run `/Applications/NodeGX.app/.../noodl-mcp.cjs`, not `packages/noodl-mcp/dist/`.
 
@@ -170,10 +147,8 @@ table in [FIX-007](FIX-007-THE-CONNECTOR-THE-AI-CANNOT-DRAW.md) § "DRIVEN … s
 
 ## 5. Rulings still owed by Richard
 
-The batchable seven are **done**. What remains:
-
-- 🟡 **FIX-019 14(a)** — "the workbench" everywhere, or only in that menu item? (Small, missed in
-  this session's sitting.)
+- 🟡 **FIX-019 14(a)** — "the workbench" everywhere, or only in that menu item? (Small, still owed
+  from session 5's sitting.)
 - **FIX-004** conversion block shape, log level, Msg keys · **FIX-005** the category name (reverses
   VFN-012) · **FIX-006** demote Script from the AI-authorable set? · **FIX-013** what a data-reading
   component shows on the bench · **FIX-016** signal-input semantics.
@@ -188,21 +163,19 @@ The batchable seven are **done**. What remains:
 ## 6. Standing constraints — unchanged, do not relearn
 
 Work on `cline-dev`; **never `git stash`**; `cd` to the repo root in every git call; pathspec-scope
-every `git add`. Check for a sibling session (`git log --since=…`, and read untracked files rather
-than assuming they are yours — `VerifyFix3`/`VerifyFix4` in the test-projects folder are from
-**July**, not from this phase, despite the names). **`dev:stop` kills Richard's MCP servers** — kill
-the `scripts/start.ts` pid instead (done this session; all six survived). Restore
+every `git add`. ⚠️ **A sibling session committed `37d3117b` (phase 67) mid-session** — check
+`git log` before assuming the parent commit is where you left it, and read untracked files rather
+than assuming they are yours. **`dev:stop` kills Richard's MCP servers** — kill the
+`scripts/start.ts` pid instead (done this session; all five survived). Restore
 `recently_opened_project.json` after any launcher drive (done — 28 in, 29 during, 28 out).
 ⚠️ **Do not restore `~/.claude.json` from a backup.** Full list in the [README](README.md)
 § "Standing constraints inherited".
 
-⚠️ **Three drive recipes went stale or bit this session**, all corrected in FIX-007's drive
-sections: the editor lands on the **Launcher**, so the `props.route.router` fiber walk finds nothing
-— open by clicking the card instead; `LocalProjectsModel.loadProject` **returns a Promise**, so the
-callback form hangs forever and looks like a dead CDP connection; and
-🔴 **`NodeGraphModel.forEachNode` stops on a truthy callback return** — it is `Array.some` wearing
-`forEach`'s name, so `forEachNode(n => nodes.push(n))` reads **only the first node** and reports a
-healthy 3-node graph as a 1-node one.
+**Drive fixtures:** `fix012-drive` is a scratch copy of `erg005-qa` (source verified untouched) and
+is the one project on this machine whose `/Probe` component has **6 typed inputs**, which is what
+makes the bench's inputs rail non-empty. Only two projects on disk have a `Component Inputs` node
+with actual ports — that one and `vfn64-drive`'s `/Components/Product photo`. It also holds a real
+component **instance** (`/Probe` placed in `/App`), which most fixtures lack.
 
 ⚠️ **Before any paid drive, verify the provider from `editorSettings.json`, not localStorage** —
 `ai.provider`, `ai.hasKey.anthropic`, `ai.verified.anthropic`. It was live on 2026-08-14.
