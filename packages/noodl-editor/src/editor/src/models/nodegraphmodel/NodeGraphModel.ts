@@ -58,6 +58,44 @@ type NodeGraphModelJson = {
   comments: NodeGraphModelJson[] | undefined;
 };
 
+/**
+ * The ordinary health-pass debounce. A pass walks every node and every
+ * connection in the graph, and its bulk callers (`updateTypes`, module
+ * registration, type renames) fire in storms during load — so it is deliberately
+ * lazy.
+ */
+const EVALUATE_HEALTH_DEBOUNCE_MS = 2000;
+
+/**
+ * FIX-007 fix 4 — the urgent lane.
+ *
+ * `evaluateConnectionHealth` raises `con-no-target-port` whenever a wire's
+ * endpoint is not in `getPort()`. For a **runtime-discovered** port that verdict
+ * is correct and temporary: the ports do not exist until the running viewer
+ * mints them and pushes them back (`instanceports` → `setDynamicPorts` →
+ * `Model.instancePortsChanged`). The wire is fine; the editor does not know yet.
+ *
+ * Clearing it was reaching the user ~2 s late, because the only route from the
+ * ports arriving to a re-evaluation is `instancePortsChanged` →
+ * `scheduleUpdateTypes` (1 ms) → `updateTypes` → `scheduleEvaluateHealth`
+ * (2000 ms). Two seconds of red on a wire that was never wrong — and the user
+ * report this fix comes from is somebody deleting and redrawing that wire.
+ *
+ * This is a second, faster lane rather than a smaller number for everybody: the
+ * bulk callers still want the lazy pass. It is taken only when the node's own
+ * wires actually carry a stale unresolved-port warning
+ * (`hasUnresolvedPortWarning`), so ports arriving for a healthy node schedule
+ * nothing at all.
+ */
+const URGENT_EVALUATE_HEALTH_DEBOUNCE_MS = 50;
+
+/**
+ * The two warning keys that ports arriving can legitimately clear. Deliberately
+ * *not* the `-type` or `con-type-mismatch` keys: those describe a wire that is
+ * wrong about types, and a port appearing does not make them stale.
+ */
+const UNRESOLVED_PORT_WARNING_KEYS = ['con-no-source-port', 'con-no-target-port'];
+
 export class NodeGraphModel extends Model {
   roots: NodeGraphNode[];
 
@@ -70,6 +108,15 @@ export class NodeGraphModel extends Model {
 
   private evaluatehealthScheduled: boolean;
   private updateTypesScheduled: boolean;
+
+  /**
+   * The pending health pass, so an urgent request can pre-empt a lazy one that
+   * is already in flight. The old code kept only a boolean, which meant
+   * `if (scheduled) return` silently swallowed the faster request — exactly the
+   * case FIX-007 fix 4 exists for.
+   */
+  private evaluatehealthTimer: ReturnType<typeof setTimeout> | undefined;
+  private evaluatehealthDeadline = Infinity;
 
   constructor(args?) {
     super();
@@ -105,6 +152,13 @@ export class NodeGraphModel extends Model {
     this.boundTypeModels.forEach((type) => type.off && type.off(this));
     this.boundTypeModels.clear();
     this.removeAllListeners();
+
+    // A pending health pass on a disposed graph walks nodes whose component is
+    // gone. Harmless before, because nothing held the handle to cancel it.
+    if (this.evaluatehealthTimer !== undefined) clearTimeout(this.evaluatehealthTimer);
+    this.evaluatehealthTimer = undefined;
+    this.evaluatehealthScheduled = false;
+    this.evaluatehealthDeadline = Infinity;
   }
 
   scheduleUpdateTypes() {
@@ -139,6 +193,28 @@ export class NodeGraphModel extends Model {
         'Model.portRearranged'
       ],
       () => this.scheduleUpdateTypes(),
+      this
+    );
+
+    // FIX-007 fix 4. Ports arriving from the running viewer is the event that
+    // makes a `con-no-*-port` warning stale, so it is the moment to clear it —
+    // not 2 s later, via the lazy pass `scheduleUpdateTypes` above will book.
+    //
+    // Scoped to this graph's own node (`e.model.owner === this`) so one node's
+    // ports do not start a health pass in every other component, and gated on
+    // there actually being a warning to clear.
+    EventDispatcher.instance.on(
+      'Model.instancePortsChanged',
+      (e) => {
+        const node = e && e.model;
+        // A node can have no graph yet — `setDynamicPorts` runs during
+        // `ComponentModel.fromJSON` before the owner is assigned (see the same
+        // guard in `ViewerConnection`).
+        if (!node || node.owner !== this) return;
+        if (!this.hasUnresolvedPortWarning(node.id)) return;
+
+        this.scheduleEvaluateHealth({ urgent: true });
+      },
       this
     );
 
@@ -601,16 +677,56 @@ export class NodeGraphModel extends Model {
     return { healthy: true };
   }
 
-  scheduleEvaluateHealth() {
+  /**
+   * @param options.urgent run in ~50 ms instead of ~2 s. See
+   * `URGENT_EVALUATE_HEALTH_DEBOUNCE_MS` for when that is worth the extra pass.
+   */
+  scheduleEvaluateHealth(options?: { urgent?: boolean }) {
     const _this = this;
+    const delay = options && options.urgent ? URGENT_EVALUATE_HEALTH_DEBOUNCE_MS : EVALUATE_HEALTH_DEBOUNCE_MS;
+    const deadline = Date.now() + delay;
 
-    if (this.evaluatehealthScheduled) return;
+    // A pass already landing at or before this one covers it. Comparing
+    // deadlines rather than just "is one scheduled" is what lets an urgent
+    // request pre-empt a lazy one — and what stops a lazy request from
+    // *delaying* an urgent one already in flight.
+    if (this.evaluatehealthScheduled && this.evaluatehealthDeadline <= deadline) return;
+
+    if (this.evaluatehealthTimer !== undefined) clearTimeout(this.evaluatehealthTimer);
+
     this.evaluatehealthScheduled = true;
+    this.evaluatehealthDeadline = deadline;
 
-    setTimeout(function () {
+    this.evaluatehealthTimer = setTimeout(function () {
+      _this.evaluatehealthTimer = undefined;
+      _this.evaluatehealthDeadline = Infinity;
       _this.evaluatehealthScheduled && _this.evaluateHealth();
       _this.evaluatehealthScheduled = false;
-    }, 2000);
+    }, delay);
+  }
+
+  /**
+   * Does any wire touching this node currently carry a warning that the node's
+   * ports arriving could clear?
+   *
+   * The gate on the urgent lane. Cheap — one pass over this graph's own
+   * connections, and `getWarnings` is a two-level object lookup — and it keeps
+   * the fast pass off the common path, where a viewer pushing ports for a
+   * hundred healthy nodes during load would otherwise schedule a hundred
+   * graph-wide health passes at 50 ms instead of coalescing into one at 2 s.
+   */
+  hasUnresolvedPortWarning(nodeId: string): boolean {
+    if (!this.owner) return false;
+
+    return this.connections.some((c) => {
+      if (c.fromId !== nodeId && c.toId !== nodeId) return false;
+
+      const w = WarningsModel.instance.getWarnings({ component: this.owner, connection: c });
+      if (!w) return false;
+
+      // Entries are `{ ref, warning }`; the warning's key lives on the ref.
+      return w.warnings.some((entry) => UNRESOLVED_PORT_WARNING_KEYS.indexOf(entry.ref.key) !== -1);
+    });
   }
 
   evaluateHealth() {
