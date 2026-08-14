@@ -172,8 +172,8 @@ export interface WholeSolutionGrader {
  * exists for. Rewritten rather than trusted.
  *
  * ⚠️ It deliberately does **not** force `rendered` false when a result carries
- * `unavailable`. The two halves of engine 2 fail independently — a project this
- * adapter cannot *read* may still render perfectly — so `unavailable` does not
+ * `unavailable`. The two halves of engine 2 fail independently — a project the
+ * validator cannot *read* may still render perfectly — so `unavailable` does not
  * imply the render is unknown, and rewriting `rendered` on the strength of it
  * would contradict the `drawnElementCount` sitting beside it. The guarantee that
  * an unavailable check never passes anyone lives on the completion flag instead,
