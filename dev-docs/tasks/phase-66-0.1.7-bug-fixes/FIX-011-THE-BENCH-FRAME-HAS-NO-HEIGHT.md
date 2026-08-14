@@ -61,3 +61,31 @@ carries a frame **width** but no height (`benchScenarios.ts:59-66`). Near-miss:
 4. A stray resize *without* the gesture does not dirty the project (control).
 5. ⚠️ Coordinate with FIX-019 — both want chrome-strip real estate (30px, six controls, clips at
    640px per BEN-004's drive). Decide the strip layout once, together.
+
+## ✅ CLOSED 2026-08-14 — driven 4/4 on `fix012-drive` :: `/Probe`, dev stack at `519a1e66`
+
+1. ✅ **Frame filled the stage**: 768 × 239 in a 283px stage (239 = exact inner height after 16px
+   padding), `align-self: stretch`, no inline height, height field showing its "Fill" placeholder.
+   Not the 150px sliver. Screenshot taken.
+2. ✅ **Bottom-edge drag, live**: 239 → 179 mid-drag → 150 at release (clamped at the minimum —
+   which happens to equal the old UA sliver, a coincidence worth not being confused by). The
+   readout tracked every step (`768 × 179`, `768 × 150`); the height field took the pinned value;
+   `bench-drag-shield` existed exactly for the drag's duration; a `did-start-loading` counter on
+   the bench webview read **0** — no reload.
+3. ✅ **Pin → persist → restore**: the pin wrote `bench.frame {width:768, height:150}` as Probe's
+   only metadata key; scope → App → re-bench restored 768×150 in the frame, both fields, and the
+   readout, pin shown filled. **The "exactly one key" diff was proven serializer-to-serializer**:
+   clearing the key via `setMetaData(undefined)` and re-pinning, the two editor-written files
+   differ by exactly the six diff lines of that one key. (Byte-comparison against the *pre-editor*
+   file is impossible — the editor's serializer reformats the whole file on first save; see the
+   drive note in NEXT-SESSION-PROMPT §3.)
+4. ✅ **Control held**: after the stray drag (no pin), `project.json`'s SHA and mtime were
+   byte-identical to the pre-launch baseline — the drag wrote nothing, and (v1 fixture) neither
+   did opening.
+5. ✅ Settled at build time; the strip rendered all six controls plus the readout with no clipping
+   at the drive's 1368px width.
+
+**The `<webview>`-swallows-pointer-events claim (register B/§4 ⚠️) remains untested** — the drive
+proves the shipped siblings-plus-shield arrangement works (handle took the mousedown, shield kept
+the moves), not that a child grip would have failed. Settling that needs a deliberate experiment
+nobody now needs.

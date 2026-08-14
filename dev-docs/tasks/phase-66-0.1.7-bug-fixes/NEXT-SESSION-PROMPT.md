@@ -1,11 +1,11 @@
 # Phase 66 — next session
 
-**Written 2026-08-14, session 7 (FIX-011 + FIX-019 built and gated, neither driven).** The
-seven-ruling backlog is now **2 closed, 2 built-not-driven, 3 to go**. Nothing this session needed
-Richard and nothing cost a paid request. ⚠️ **A sibling session was live on this checkout
-throughout**, committing phase-67 and phase-68 work and running `test:ci` concurrently — §2 has what
-that did to the readings, and it is the trap that cost this session twenty minutes. This file is
-rewritten at the end of **every** session — read §0 for how, and replace it rather than appending.
+**Written 2026-08-14, session 8 (FIX-011 and FIX-019 driven and CLOSED; the launch sweep defanged).**
+The seven-ruling backlog is now **4 closed, 0 built-not-driven, 3 to go** (FIX-002/003/014, all
+ruled, all buildable by an agent alone). This session ran **zero paid requests** and wrote **one
+line of product-adjacent code** (a sweep exclusion in `scripts/devtools/dev-processes.js` — §3).
+⚠️ **Three sessions were live on this checkout tonight**; coordination was by direct
+session-to-session messages and it worked — §4 has the protocol that emerged.
 
 ---
 
@@ -30,164 +30,140 @@ Learnings that outlive the phase go to memory, not here.
 
 | Task | Built | Driven | Note |
 |---|---|---|---|
-| **FIX-020** | ✅ | ✅ **3/3** | five popups, both themes — **CLOSED** |
-| **FIX-010** | ✅ | ✅ **3/3** | picker anchors + stickiness survives — **CLOSED** |
-| **FIX-018** | ✅ | ✅ **5/5** | chip + stacked edge + freed icon slot + menu — **CLOSED** |
-| **FIX-007** | ✅ | ✅ **4/4** | prefix docs, write-time gate, urgent lane, paid drive — **CLOSED** |
-| **FIX-009** | ✅ | ✅ **5/5** | one `selection-slot` key; Search keeps its own — **CLOSED** |
-| **FIX-012** | ✅ | ✅ **3/3** | None clears + gives the frame back; Delete unchanged — **CLOSED** |
-| **FIX-011** | ✅ **this session** | 🔴 **0/5** | commit `519a1e66`; **drive recipe in §4** |
-| **FIX-019** | ✅ **this session** | 🔴 **0/4** | same commit; 14(a) scoped to the menu item only |
+| **FIX-020** | ✅ | ✅ 3/3 | **CLOSED** |
+| **FIX-010** | ✅ | ✅ 3/3 | **CLOSED** |
+| **FIX-018** | ✅ | ✅ 5/5 | **CLOSED** |
+| **FIX-007** | ✅ | ✅ 4/4 | **CLOSED** |
+| **FIX-009** | ✅ | ✅ 5/5 | **CLOSED** |
+| **FIX-012** | ✅ | ✅ 3/3 | **CLOSED** |
+| **FIX-011** | ✅ | ✅ **4/4 this session** | **CLOSED** — drive record in the task file |
+| **FIX-019** | ✅ | ✅ **4/4 this session** | **CLOSED** — 🟡 14(a) vocabulary sweep still owed (§5) |
 | **FIX-008** A, B, E | ✅ | ✅ | idempotent Connect, backfill on open, bound directory |
-| **FIX-008** C, D | 📋 **not built** | — | C stops it recurring; D removes the class |
-| FIX-002/003/014 | 📋 open | — | ✅ **ruled**, buildable by an agent alone |
+| **FIX-008** C, D | 📋 not built | — | C stops the report recurring; D removes the class |
+| FIX-002/003/014 | 📋 open | — | ✅ ruled, buildable by an agent alone; 002 is an **M**, not S |
 | everything else | 📋 open | — | see [TASKS.md](TASKS.md) |
 
-🔴 **FIX-011 and FIX-019 are built, gated and committed but NOT driven.** They are not closed. The
-drive was deliberately not attempted — see §2 for why, and §4 for the recipe to run first thing.
+**Eight of 21 tasks are now fully closed.** Nothing in this phase is built-but-not-driven.
 
 🔴 **FIX-002 is still not the S it was filed as** — the `TextArea` Enter flip hits ~9 more `onEnter`
-call sites. Unchanged from session 6; treat as **M**.
+call sites. Unchanged since session 6; treat as **M**.
 
 ---
 
 ## 2. Gate readings
 
-| Gate | Reading (2026-08-14, session 7, on top of `519a1e66`) |
+| Gate | Reading |
 |---|---|
-| `test:ci` | ✅ **2779 total / 6 failed** — all six inherited, by name (**seed 67911**) |
-| `test:main` (jest) | ✅ **190 suites / 2932 tests, 0 failed** |
-| `tsc -p packages/noodl-editor/tsconfig.json --noEmit` | ✅ **0 errors** |
-| `tsc -p packages/noodl-editor/tsconfig.tests.json --noEmit` | ✅ **0 errors** |
-| MCP suite | not run — **no MCP file touched this session** |
-| catalog trio, `cloud-library:check` | unchanged — **no catalog, node or library file touched** |
+| `test:ci` | ✅ **2779 total / 6 failed — the floor exactly, by name** (4 × `AIX-006 style vocabulary`, 2 × `AI model registry`), **seed 81235**, run by the phase-67/68 session on the settled tree at HEAD (`bc373e16` + their `b9664822`), finished 23:19. Reported to this session directly; treat as the trusted baseline. |
+| `test:main` (jest) | ✅ 190 suites / 2932 tests, 0 failed (session 7 reading; nothing jest-adjacent changed since) |
+| typechecks | ✅ 0 errors both configs (session 7 reading, commit `519a1e66`; nothing TS changed since) |
+| MCP suite / catalog trio / `cloud-library:check` | not run — no MCP, catalog, node or library file touched |
 
-The six `test:ci` failures, by name: `AIX-006 style vocabulary` ×4 · `AI model registry` ×2 — the
-same six as sessions 2–6.
+This session changed **no gated code**: the only source edit is `scripts/devtools/dev-processes.js`
+(dev tooling, no suite covers it; verified live instead — §3).
 
-✅ **2757 → 2779 is exactly the 22 new specs.** A copy of the results file this reading came from is
-at `scratchpad/my-test-results-2257.json`, because the sibling started its own `test:ci` minutes
-later and the on-disk file is now contested.
-
-⚠️ **`test:main`'s 188/2880 → 190/2932 is the SIBLING's work, not this session's.** No jest spec was
-added here. Compare names, not counts, if it matters.
-
-### 🔴 The twenty minutes this cost, so the next session does not repeat it
-
-The **first** `test:ci` run came back **13 failures**: the inherited six, one genuine bug of this
-session's own, and **six `BEN-001` failures that were not real**. A clean re-run at a different seed
-returned exactly six. What made the phantoms diagnosable rather than a panic:
-
-- **The seed is in the results file and the floor is seed-specific.** Run one was seed **35665**;
-  the floor of six is pinned to **39386**. Adding 22 specs reshuffles a randomised order.
-- **The failing subset had a shape.** Within one `describe`, the failures were *exactly* the specs
-  that need ports/types to resolve, while the ones checking names and summary text passed. That is
-  order-dependent global registry state, not a code change — and the change under suspicion was a
-  type-only deletion that cannot touch `rootComponent`, `rootNode` or the interface.
-- **A sibling `test:ci` was running.** Confirmed later by `ps`: pid 1016/1452, `test.js --ci`. Two
-  Electron suites against one `tests/testfs` is its own phantom source.
-
-**Do not chase a `BEN-001` cluster before re-running.** One re-run is cheaper than the investigation.
-
-⚠️ The backgrounded run reported **`exit code 0`** while its log ended in `npm error code 1` and the
-results file said 13. The results file is the only readout that tells the truth, and **its mtime has
-to be younger than your run** — this session found session 6's 21:32 file still sitting there.
+⚠️ The sibling's **run 1** tonight (seed 66177, 9 failures) was a **stale bundle**, not a
+regression: `test:ci` webpacks *first*, and `519a1e66` renamed three `BEN-001` specs out from
+under a bundle built mid-edit. The one-step diagnostic — grep a failing spec name across
+`packages/noodl-editor/tests/`; **no match ⇒ you measured a bundle, not the checkout** — is now in
+memory (`a-failing-spec-name-absent-from-the-tree-means-a-stale-bundle`). It looks identical in
+the log to the seed-order cluster; re-running fixes only the seed-order kind.
 
 ---
 
 ## 3. What this session settled — do not re-derive
 
-### FIX-011 — the height was missing from the *type*, and the CSS was cancelling itself
+### Both benches drives passed on the first attempt, with all three controls load-bearing
 
-`.Frame` carried `margin: auto`. Per flexbox §8.1 an **auto cross-axis margin cancels
-`align-items: stretch`**, so the frame shrink-fitted to its content and the `<webview>`'s UA default
-replaced-element height (**150px**) leaked through. The `768 × 150` read-out was honest measurement
-of a box nothing had ever sized. `margin: 0 auto` + `align-self: stretch` is the fix; restoring the
-vertical `auto` silently brings the sliver back.
+Full per-criterion records live in the two task files. What matters beyond "passed":
 
-**The size read-out needed no change at all.** It already printed `measured.height` — it was
-reporting 150 correctly. The fix direction's "extend `benchSizeLabel`" was struck as unnecessary
-rather than done for appearance.
+- **The 150 clamp is a coincidence trap.** `MIN_BENCH_HEIGHT` (150) equals the old `<webview>` UA
+  sliver. A future drive that drags far and reads 150 has hit the *clamp*, not the bug returned.
+- **AC3's "exactly one metadata key" cannot be proven against the pre-editor file bytes.** The
+  editor's serializer reformats the entire `project.json` on first save, so the honest comparison
+  is serializer-to-serializer: save without the key, save with it, diff those two. Done; the diff
+  is exactly the `bench.frame` key. The same trick proved the drag wrote *nothing* (SHA identical
+  to pre-launch baseline), which is the stronger half of the control.
+- **The `<webview>`-swallows-pointer-events claim stays unmeasured** — the shipped
+  siblings-plus-shield grips work end-to-end; whether a child grip would have failed was not
+  settled and no longer needs to be.
 
-**Two 🟡 sub-rulings were taken**, as FIX-011 permitted:
+### 🔴 The launch sweep no longer kills Richard's MCP servers — fixed at source, uncommitted until now
 
-- **Scenarios gained height**, stored as an **absent key** for "fill the stage" rather than `null`.
-  That is what keeps every pre-FIX-011 scenario meaning what it meant: absent reads as fill on both
-  sides, so none of them shows the modified dot on open.
-- **`Stretch` stays one toggle**, width axis only. The height axis already fills by default, so a
-  second toggle would ship switched on and spend width the 30px strip has been measured short of.
-  Clearing the height field is the way back to fill; the placeholder says so.
+All three sweep paths (`dev:stop`, the `dev:debug` startup reap, the watchdog) share
+`findDevProcesses` in `scripts/devtools/dev-processes.js`, whose rule 1 (repo path + `electron/dist`)
+matched the MCP servers' Electron hosts. One seed exclusion — argv containing `noodl-mcp.cjs` —
+now spares them; commented in place, including why age is no heuristic (an MCP server was observed
+minutes old). **Verified three ways**: `dev:stop -- --list` dry-run went 7 targets → 4 (the 4 being
+a live test:ci tree, correctly still swept); an independent session re-verified the same delta; and
+the real launch + real teardown this session left all three MCP pids (34116/37390/4430) untouched
+while reaping the dev stack to zero. Trade accepted knowingly: a genuinely orphaned MCP-hosting
+Electron from this checkout is now unreapable by `sweep()` — a live connection beats a tidy process
+table. ⚠️ `dev:stop` is *safer*, not safe: it still reaps anyone's running `test:ci` tree. The
+narrow habit stands — kill the `scripts/start.ts` pid.
 
-### The strip's width budget — settled once, as both tasks demanded
+### The BaseDialog double-render eats *menu-item* clicks too
 
-**The caption is the only thing that shrinks.** Every control is `flex-shrink: 0`. What a narrow
-panel costs is the explanatory sentence — and the component's name is in the scope chip on the left
-anyway, so the caption is the one genuinely redundant thing in the strip. FIX-011 spends ~74px;
-FIX-019's chip spends **zero in the common case**, which is what made the assertive ruling
-affordable. Written into `VisualCanvas.module.scss` as a rule, not left to be inferred from four
-files.
+FIX-019's drive lost its first click to the `MeasuringContainer` copy of the context menu — same
+label, 36px away, click closes the menu and does nothing. This is the known
+`basedialog-renders-every-dialog-twice` trap arriving through a new door (text-match instead of
+CSS-selector match). Memory updated. Coordinate-vs-consequence checking caught it in one step.
 
-### 🔴 A dead type that cost a file-read to disprove
+### Observation filed, not fixed: the thumbnail capture floods the log with uncaught rejections
 
-`BenchMount.frame` / `BenchExport.frame` were **accepted and echoed straight back** by
-`buildBenchExport` — and no caller ever passed one, no reader ever read one. An early note in this
-session's own commit said they were "never echoed"; that was wrong, and the code proved it. Both are
-deleted. **The spec that asserted the echo looked like frame coverage and was coverage of an echo**;
-it passed for as long as the feature did not exist. What was load-bearing in it — that no wrapper is
-injected into the graph — remains.
+`UseCaptureThumbnails.ts:24` → `CanvasView.captureThumbnail` throws
+`GUEST_VIEW_MANAGER_CALL: UnknownVizError` as an **uncaught (in promise)** rejection every capture
+tick while the app webview is hidden (bench mode) or the window occluded — 15 in one short drive,
+all identical, predating FIX-011/019. Harmless to the drive but it buries real exceptions.
+Candidate: catch it in `captureThumbnail` and skip capture while the app stage is hidden. Small,
+unruled, worth an S task or a rider on FIX-013.
 
-### 🔴 A spec caught a real bug in its own implementation
+### Session-to-session coordination worked, and the transcript pattern is worth keeping
 
-`clampBenchHeight(undefined, 400)` returned `null` instead of `400`. The first cut read "anything
-that stringifies to empty means fill the stage", which wrongly swept in `undefined`. **An emptied
-*field* is someone asking for the stage; `undefined` is nobody having said anything.** Now keyed on
-`typeof raw === 'string'`. This is the one genuine failure of the first `test:ci` run.
+Three sessions shared this checkout tonight. What worked: ask `ListAgents`, message the recent
+sessions directly, get the test-run owner to declare "run 2 is my last, then it's yours", hold
+until the process table *and* the owner agree. What failed silently first: `pgrep -f
+"run-electron-tests"` matches other sessions' *watcher shells* — match the real processes
+(`Electron test.js --ci`, `node scripts/run-electron-tests.js`) instead. Also: "the sibling" is
+never singular on this checkout — attribute observed effects to a session only via `git log`
+authorship or the session's own claim, never by who you happen to be talking to.
 
 ---
 
-## 4. What to do next
+## 4. What to do next and why
 
-1. 🔴 **Drive FIX-011 and FIX-019 first.** They are built and gated; only the app can close them.
-   Both drives are free. The nine acceptance criteria are in the two task files. Notes:
-   - **Do not launch a dev stack while a sibling `test:ci` is running** — check
-     `pgrep -fl "run-electron-tests"` first. That is why this session did not drive.
-   - **Never `dev:stop`** — it kills Richard's MCP servers (three were up all session). Kill the
-     `scripts/start.ts` pid instead.
-   - `NOODL_REMOTE_DEBUG_PORT=9333` — a stray Chrome steals 9222.
-   - Entry to the bench: the scope chip `[data-test="preview-scope-chip"]` then
-     `[data-test="preview-scope-target-<legacyName>"]`; or the components-panel right-click, which
-     now reads **"Show in workbench"**.
-   - New test ids: `bench-frame-height`, `bench-frame-set-default`, `bench-diverged`,
-     `bench-resize-right`/`-bottom`/`-corner`, `bench-drag-shield`.
-   - **FIX-011 AC1** is the reported bug: bench a card component, measure the frame — it must fill
-     the stage, not sit at 150. **AC4 is the control**: drag a handle, then confirm `project.json`
-     is *not* dirtied. Only the pin button writes.
-   - **FIX-019 AC3 is the control**: canvas on the benched component → **no** chip.
-   - ⚠️ **The `<webview>` claim in FIX-011's fix direction is untested.** The grips are built as
-     siblings stacked above the webview with a drag shield, which should hold either way — but
-     whether a child would have worked was never measured, and the drive is where that is settled.
-2. **Build the three remaining ruled tasks.** **FIX-003** is the big one (the global `user-select`
-   inversion — enumerate the opt-*out* list before flipping `style.css:205`). **FIX-014** is
-   independent. **FIX-002** — see §1, it is an M.
-3. **FIX-008 fix C** (`--scope project`) if the report should stop recurring. Five `noodl-mcp.cjs`
-   servers are still registered against `Puppy test 3` user-scope.
+1. **Build the three remaining ruled tasks.** **FIX-003** is the big one (the global `user-select`
+   inversion — enumerate the opt-*out* list before flipping `style.css:205`; the drag-surface test
+   plan is in scope per the ruling). **FIX-014** is independent (x/y authoritative; fill gaps +
+   collisions only). **FIX-002** is an M (§1). All three are agent-runnable without Richard.
+2. **FIX-008 fix C** (`--scope project`) if the report should stop recurring. Five `noodl-mcp.cjs`
+   servers are still registered against `Puppy test 3` user-scope. ⚠️ But read §5 — Richard owes a
+   measurement on C's copy first; build behind it, don't ship past it.
+3. **FIX-001** (Tier 1, the explainer) — only minor rulings outstanding; the M-sized live-value
+   layer is the phase's biggest remaining user-visible win.
 4. **Repackage the app** (or say so out loud) if FIX-008 fix E is to reach the running servers.
 
+**Drive protocol for whoever drives next** (all confirmed working this session): check
+`ListAgents` + message any recent session before launching; wait for real test processes, not
+watcher shells; `NOODL_REMOTE_DEBUG_PORT=9333`; fixture `fix012-drive` (v1 — opening writes
+nothing, which keeps no-dirty controls clean); `BaseDialog` menus need the
+`:not([class*=MeasuringContainer])` filter; kill the `scripts/start.ts` pid to stop; restore
+`recently_opened_project.json` (this session left it at 28 entries, fix012-drive removed;
+fixture left clean: `/Probe` metadata `{}`, no `bench.frame` key, editor-serialized formatting).
+
 **Do not start** FIX-015 or FIX-021's brainstorm halves — they need Richard, not an agent.
-**Do not rebuild** FIX-007 fix 3 or re-file its rider; both are struck with evidence.
 
 ---
 
 ## 5. Rulings still owed by Richard
 
-- 🟡 **FIX-019 14(a)** — **now the one blocking a finish rather than a start.** The menu item says
-  "Show in workbench"; the surface's own caption still says *"— isolated component, not the app"*
-  and the docstrings still say "isolation". Is the surface called **the workbench** everywhere, or
-  only in that menu item? Sweeping it was deliberately not done, because doing so would pre-empt
-  the ruling.
-- **FIX-004** conversion block shape, log level, Msg keys · **FIX-005** the category name (reverses
-  VFN-012) · **FIX-006** demote Script from the AI-authorable set? · **FIX-013** what a data-reading
-  component shows on the bench · **FIX-016** signal-input semantics.
+- 🟡 **FIX-019 14(a)** — the surface's caption still says *"— isolated component, not the app"*
+  and the docstrings still say "isolation", while the menu item now says **workbench**. Is the
+  surface called *the workbench* everywhere? The sweep was deliberately not done; the task is
+  otherwise closed, so this is now a loose thread rather than a blocker.
+- **FIX-004** conversion block shape, log level, Msg keys · **FIX-005** the category name
+  (reverses VFN-012) · **FIX-006** demote Script from the AI-authorable set? · **FIX-013** what a
+  data-reading component shows on the bench · **FIX-016** signal-input semantics.
 - **FIX-008 leftovers:** cleanup of stale user-scope registrations, and whether two visible NodeGX
   servers in one session is better or worse for the model — that second one is a *measurement*, so
   take it before shipping C's copy.
@@ -199,21 +175,15 @@ that stringifies to empty means fill the stage", which wrongly swept in `undefin
 ## 6. Standing constraints — unchanged, do not relearn
 
 Work on `cline-dev`; **never `git stash`**; `cd` to the repo root in every git call; pathspec-scope
-every `git add`. ⚠️ **The sibling session committed four times mid-session** (`15763dd7`,
-`dd81401c`, and phase-67/68 docs) and has uncommitted work across `lessongrading.ts`,
-`tests-unit/uni-007/`, `packages/noodl-mcp/src/lessons/` and `dev-docs/tasks/phase-68-learnbook/`.
-Check `git log` before assuming the parent commit is where you left it, read untracked files rather
-than assuming they are yours, and **name every path in `git add`** — this session's commit staged
-17 files by name for that reason. **`dev:stop` kills Richard's MCP servers.** Restore
-`recently_opened_project.json` after any launcher drive. ⚠️ **Do not restore `~/.claude.json` from a
-backup.** Full list in the [README](README.md) § "Standing constraints inherited".
+every `git add` — ⚠️ the phase-67/68 session left a one-line UNI-007 row edit **uncommitted in
+phase-67's TASKS.md deliberately** (it links untracked `phase-68-learnbook/`); do not sweep it into
+a phase-66 commit. Check `git log` before assuming the parent commit is where you left it. The
+sweep fix (§3) makes launching and stopping the dev stack MCP-safe, but `dev:stop` still kills a
+live sibling `test:ci` — prefer the `start.ts` pid. ⚠️ Do not restore `~/.claude.json` from a
+backup. Full list in the [README](README.md) § "Standing constraints inherited".
 
-**Drive fixtures:** `fix012-drive` is a scratch copy of `erg005-qa` and is the one project on this
-machine whose `/Probe` component has **6 typed inputs**, which is what makes the bench's inputs rail
-non-empty. It also holds a real component **instance** (`/Probe` placed in `/App`). Only two
-projects on disk have a `Component Inputs` node with actual ports — that one and `vfn64-drive`'s
-`/Components/Product photo`.
-
-⚠️ **Before any paid drive, verify the provider from `editorSettings.json`, not localStorage** —
-`ai.provider`, `ai.hasKey.anthropic`, `ai.verified.anthropic`. It was live on 2026-08-14. Neither
-drive in §4 needs one.
+**Drive fixtures:** `fix012-drive` remains the one project whose `/Probe` has 6 typed inputs and a
+real placed instance; `vfn64-drive`'s `/Components/Product photo` is the only other component with
+ports. ⚠️ Before any paid drive, verify the provider from `editorSettings.json`, not localStorage —
+`ai.provider`, `ai.hasKey.anthropic`, `ai.verified.anthropic`. Neither of this session's drives
+needed one, and none of the three remaining ruled builds should either.

@@ -348,6 +348,12 @@ function findDevProcesses({ protectAncestors = true, includeScratchpad = false, 
     if (proc.command.includes('dev-watchdog.js')) continue;
     if (proc.command.includes('dev-processes.js') || proc.command.includes('stop-dev.js')) continue;
 
+    // The user's MCP servers run this checkout's electron/dist binary with
+    // packages/noodl-mcp/dist/noodl-mcp.cjs as argv — repo path AND a known tool,
+    // so rule 1 alone reads them as a dev stack. They are a live connection to a
+    // project, not a stack, and age is no tell (one has been seen minutes old).
+    if (proc.command.includes('noodl-mcp.cjs')) continue;
+
     // Rule 1: repo path AND a known tool. The watchdog is excluded by name — it
     // is the one process that must outlive the sweep it is running.
     const isDevStack = proc.command.includes(ROOT) && DEV_TOOL.test(proc.command);

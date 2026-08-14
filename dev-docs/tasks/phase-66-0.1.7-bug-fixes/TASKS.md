@@ -61,7 +61,7 @@ only a drive proves the pixels).
 | FIX-008 ⭐ | Connect is idempotent; every opened project gets its `.mcp.json` | 5 | **1** | S+S/M (+M for scope split) | ✅ **RULED 2026-08-14: silent backfill** — A+B+E built + driven; **C, D open** |
 | FIX-009 ✅ | Components/Properties/PortEditor share one stored width | 6 | 2 | S | ✅ **CLOSED 2026-08-14** — built + driven 5/5 |
 | FIX-010 ✅ | a query change re-anchors the picker to its top result | 7 | 2 | S | no (one test updated deliberately) |
-| FIX-011 | the bench frame gets a height, handles, and a per-component default | 8a | 2 | M (symptom fix S) | ✅ **RULED: persist behind the gesture**; default = fill the stage |
+| FIX-011 ✅ | the bench frame gets a height, handles, and a per-component default | 8a | 2 | M (symptom fix S) | ✅ **CLOSED 2026-08-14** — built + driven 4/4 |
 | FIX-012 ✅ | a None row; Reset all stops lying | 8b | 2 | S | ✅ **CLOSED 2026-08-14** — built + driven 3/3 |
 | FIX-013 | the Data maze is removed; the bench is inputs and outputs | 8c | 2 | S–M | 🔴 zero-rows / AI-preview parity |
 | FIX-014 | logic nodes get their own column, by prompt and by a layout pass | 9 | 2 | S+M | ✅ **RULED: x/y authoritative** — fill gaps + collisions only |
@@ -69,7 +69,7 @@ only a drive proves the pixels).
 | FIX-016 | Signal offered at add time; declared-vs-called mismatch diagnosed | 11 | 3 | S+S | signal-input semantics (for the M–L half only) |
 | FIX-017 | completions at an empty position; `Noodl.Records.` answers; TASKS.md reconciled | 12 | 3 | S+M+S | no |
 | FIX-018 ✅ | a component card says it opens; context menu says so too | 13 | 2 | S–M | ✅ **RULED 2026-08-14: option C** — built + driven, **CLOSED** |
-| FIX-019 | "Show in workbench"; the canvas admits when it left the benched component | 14 | 2 | S+S–M | ✅ **RULED: back-to-benched, assertive chip**; 🟡 14(a) wording open |
+| FIX-019 ✅ | "Show in workbench"; the canvas admits when it left the benched component | 14 | 2 | S+S–M | ✅ **CLOSED 2026-08-14** — built + driven 4/4; 🟡 14(a) vocabulary sweep still owed |
 | FIX-020 ✅ | one stylesheet stops fighting the other; five popups uncrop | 15 | 2 | S | no |
 | FIX-021 | project + global memory docs: slice 0 defect now, brainstorm for the loop | 16 | 3 / brainstorm | S+M+session | 🔴 the six memory rulings |
 

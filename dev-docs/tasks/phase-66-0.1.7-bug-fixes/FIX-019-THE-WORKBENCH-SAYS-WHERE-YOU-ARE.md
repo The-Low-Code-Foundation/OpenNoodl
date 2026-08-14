@@ -65,3 +65,28 @@ the button's handler.
    clicking it returns the canvas to the benched component (`pushHistory` honoured — Back works).
 3. Canvas on the benched component → no chip (control).
 4. The detached preview window does not throw (null-guard driven).
+
+## ✅ CLOSED 2026-08-14 — driven 4/4 on `fix012-drive` :: `/Probe`, dev stack at `519a1e66`
+
+1. ✅ Menu read **"Show in workbench"** and clicking it benched Probe (mode `bench`, caption
+   `Probe — isolated component, not the app`) and revealed the canvas to `/Probe`.
+   ⚠️ Drive note: the item is inside a `BaseDialog`, which renders **twice** — the first
+   text-match is the `MeasuringContainer` copy, 36px from the real one, and a click there closes
+   the menu without acting. Filter `:not` the measuring copy (memory:
+   `basedialog-renders-every-dialog-twice`, now updated with the menu-item case).
+2. ✅ Canvas → `/App`: chip appeared reading **"Back to Probe"**, title naming App; the bench
+   stayed on Probe (decoupling held). Chip click → canvas `/Probe`, chip gone. **Canvas Back
+   button → `/App` again and the chip reappeared** — `pushHistory` honoured, round trip complete.
+3. ✅ Control observed three separate times: right after benching, after the chip click, and after
+   the detached re-attach — canvas on the benched component, no chip in the DOM.
+4. ✅ Detached the preview (topbar Preview-layout menu → Detached; `NodeGX Viewer` window target
+   appeared, `VisualCanvas` unmounted from the main window mid-bench without a throw). Fired
+   "Show in workbench" while detached: the parked request re-attached the preview, the bench
+   mounted on Probe, the seed ran through the null-guard, and the renderer-exception census was
+   **unchanged** — zero new throws end to end.
+
+Observation, not this task's defect: the dev log fills with
+`GUEST_VIEW_MANAGER_CALL: UnknownVizError` uncaught rejections from
+`CanvasView.captureThumbnail` (`UseCaptureThumbnails.ts:24`) — the periodic thumbnail capture
+failing against a hidden/occluded webview, ~15 during this drive, predating both fixes. Filed in
+NEXT-SESSION-PROMPT §3.
