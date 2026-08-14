@@ -86,6 +86,13 @@ lesson-context overlay** (§9.1, *"required before L2 testing"*).
 it, because which vocabulary it wants is unestablished. Whoever wires it to the node picker decides
 that and adds it to the check in the same change.
 
+⚠️ **A concurrent session was running phase 67 in this same checkout.** By the end of this one it had
+added **D13** to `RULINGS.md` (coaching delivery / **LearnBook** = a new **phase 68**, platform
+stack, reusing UNI-005's roster and UNI-006's state machine) and was mid-edit on the
+`VisualCanvas`/`ComponentBench` cluster. Nothing of theirs was clobbered and nothing of theirs is in
+this session's commit — but **read `RULINGS.md` and `git log` fresh**, because the register moved
+after this prompt was written.
+
 **Standing constraints:**
 - Editor work on `cline-dev`. 🔴 **Never `git stash`**; `cd` to the repo root in every git call;
   **explicit pathspecs** — a sibling session was live during the last one and its uncommitted
