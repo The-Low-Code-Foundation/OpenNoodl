@@ -77,7 +77,7 @@ import {
   type BenchScenario
 } from './benchScenarios';
 import css from './ComponentBench.module.scss';
-import { resolveBenchWidth, type BenchFrame } from './previewScope';
+import { DEFAULT_BENCH_FRAME, resolveBenchWidth, type BenchFrame } from './previewScope';
 import { useBenchOutputs } from './useBenchOutputs';
 
 export interface ComponentBenchProps {
@@ -546,6 +546,50 @@ export function ComponentBench({ target, frame, onFrameChange, onFrameMeasured }
   );
 
   /**
+   * FIX-012 — the way back to "no scenario".
+   *
+   * The none-state was in the model from the start (`activeScenario` is
+   * `undefined` on open and on a target change) and there was no gesture that
+   * reached it: once you selected a scenario you were on one until you deleted
+   * it. Nothing new has to be built to clear the bench — `applyValueSet({})` is
+   * already exactly "clear everything", by whichever of the two routes each
+   * input needs — so this is the gesture, not a mechanism.
+   *
+   * The frame goes back to the default for the same reason selecting a scenario
+   * applies its frame: the width is part of the state a scenario claims, so
+   * leaving one has to give it back. Persisting nothing, per R5 — this is a
+   * *selection*, and selecting has never written to `project.json`.
+   *
+   * Deliberately not what Delete does: Delete throws away the saved name and
+   * keeps what is on screen (see {@link deleteScenario}). This throws away the
+   * values. Both are wanted, which is why they are two gestures.
+   */
+  const clearScenario = useCallback(() => {
+    setActiveScenario(undefined);
+    setScenarioNotice(undefined);
+    applyValueSet({});
+    onFrameChange?.(DEFAULT_BENCH_FRAME);
+  }, [applyValueSet, onFrameChange]);
+
+  /**
+   * FIX-012 — the same defect from the other end.
+   *
+   * The rail's **Reset all** cleared every value and left `activeScenario` set,
+   * so the chip went on reading `test ●` over a bench whose values were gone —
+   * claiming you were on a scenario you were no longer on. Clearing the values
+   * *is* leaving the scenario, so the two now agree.
+   *
+   * The frame is left alone, and that is the difference from
+   * {@link clearScenario}: this is a control over the inputs rail, and the frame
+   * is not an input.
+   */
+  const resetInputsAndScenario = useCallback(() => {
+    setActiveScenario(undefined);
+    setScenarioNotice(undefined);
+    resetInputs();
+  }, [resetInputs]);
+
+  /**
    * Deleting the scenario does not clear the bench.
    *
    * What is on screen is what someone is looking at; throwing away the saved
@@ -652,6 +696,7 @@ export function ComponentBench({ target, frame, onFrameChange, onFrameMeasured }
             modified={scenarioModified}
             notice={scenarioNotice}
             onSelect={selectScenario}
+            onClear={clearScenario}
             onSave={saveScenario}
             onSaveAs={saveScenarioAs}
             onRename={renameScenario}
@@ -665,7 +710,7 @@ export function ComponentBench({ target, frame, onFrameChange, onFrameMeasured }
             onChange={applyInput}
             onReset={resetInput}
             onSignal={sendSignal}
-            onResetAll={resetInputs}
+            onResetAll={resetInputsAndScenario}
           />
           <BenchOutputsRail
             iface={iface}

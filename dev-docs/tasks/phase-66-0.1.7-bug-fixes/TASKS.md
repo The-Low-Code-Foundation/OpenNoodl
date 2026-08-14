@@ -59,10 +59,10 @@ only a drive proves the pixels).
 | FIX-006 | the AI picks the right code node and writes 2026 JavaScript | 4a–b | 2 | S+S+M | Script demotion (minor) |
 | FIX-007 ✅ | the `in-`/`out-` prefix truth reaches the catalog, the validator, and the write path | 4c | **1** | S+M | ✅ **CLOSED 2026-08-14** — 4/4 criteria driven; fixes 1/2/4 shipped, fix 3 struck |
 | FIX-008 ⭐ | Connect is idempotent; every opened project gets its `.mcp.json` | 5 | **1** | S+S/M (+M for scope split) | ✅ **RULED 2026-08-14: silent backfill** — A+B+E built + driven; **C, D open** |
-| FIX-009 | Components/Properties/PortEditor share one stored width | 6 | 2 | S | ✅ **RULED: PortEditor joins**; three-panel group only |
+| FIX-009 ✅ | Components/Properties/PortEditor share one stored width | 6 | 2 | S | ✅ **CLOSED 2026-08-14** — built + driven 5/5 |
 | FIX-010 ✅ | a query change re-anchors the picker to its top result | 7 | 2 | S | no (one test updated deliberately) |
 | FIX-011 | the bench frame gets a height, handles, and a per-component default | 8a | 2 | M (symptom fix S) | ✅ **RULED: persist behind the gesture**; default = fill the stage |
-| FIX-012 | a None row; Reset all stops lying | 8b | 2 | S | ✅ **RULED: None clears** (+ frame); Delete unchanged |
+| FIX-012 ✅ | a None row; Reset all stops lying | 8b | 2 | S | ✅ **CLOSED 2026-08-14** — built + driven 3/3 |
 | FIX-013 | the Data maze is removed; the bench is inputs and outputs | 8c | 2 | S–M | 🔴 zero-rows / AI-preview parity |
 | FIX-014 | logic nodes get their own column, by prompt and by a layout pass | 9 | 2 | S+M | ✅ **RULED: x/y authoritative** — fill gaps + collisions only |
 | FIX-015 | style tokens: rulings session → a new phase | 10 | brainstorm | session | 🔴 all eight |

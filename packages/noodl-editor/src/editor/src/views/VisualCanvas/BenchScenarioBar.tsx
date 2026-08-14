@@ -42,6 +42,11 @@ export interface BenchScenarioBarProps {
   /** What the last action had to say: a skipped input, or a refused value. */
   notice?: string;
   onSelect: (name: string) => void;
+  /**
+   * FIX-012 — leave the scenario: back to the none-state, inputs cleared.
+   * Not the same as deleting one, which keeps what is on the bench.
+   */
+  onClear: () => void;
   /** Overwrite `current` with what is on the bench now. */
   onSave: () => void;
   onSaveAs: (name: string) => void;
@@ -60,6 +65,7 @@ export function BenchScenarioBar({
   modified,
   notice,
   onSelect,
+  onClear,
   onSave,
   onSaveAs,
   onRename,
@@ -193,7 +199,10 @@ export function BenchScenarioBar({
             }}
             data-test="bench-scenario-chip"
           >
-            <span className={css.PickerLabel}>{current ?? 'Unsaved'}</span>
+            {/* FIX-012: "None" and not "Unsaved" — this branch only renders once
+                scenarios exist, so no selection means you are deliberately on
+                none of them, not that you have work pending. */}
+            <span className={css.PickerLabel}>{current ?? 'None'}</span>
             {/* The dot, not a dialog: an unsaved change is worth showing and
                 never worth interrupting someone over. */}
             {modified && (
@@ -206,6 +215,26 @@ export function BenchScenarioBar({
 
           {listOpen && (
             <div className={css.Menu} role="listbox" data-test="bench-scenario-list">
+              {/* FIX-012 — the way back. First row rather than buried in the
+                  overflow, mirroring how the preview picker puts "App preview"
+                  above the component list: the none-state is one of the things
+                  you can be on, so it belongs in the list of them. */}
+              <button
+                type="button"
+                role="option"
+                aria-selected={!current}
+                className={classNames(css.MenuItem, !current && css['is-current'])}
+                onClick={() => {
+                  setListOpen(false);
+                  onClear();
+                }}
+                data-test="bench-scenario-option-none"
+              >
+                None
+              </button>
+
+              <div className={css.MenuDivider} />
+
               {scenarios.map((scenario) => (
                 <button
                   key={scenario.name}

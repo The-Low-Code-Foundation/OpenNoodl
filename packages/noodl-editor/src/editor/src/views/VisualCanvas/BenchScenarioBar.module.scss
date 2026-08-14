@@ -121,6 +121,15 @@
   color: var(--theme-color-danger);
 }
 
+/* FIX-012 — separates the none-state from the saved scenarios. They are picked
+   from the same list but they are not the same kind of thing. */
+.MenuDivider {
+  flex: none;
+  height: 1px;
+  margin: 4px 0;
+  background-color: var(--theme-color-border-subtle);
+}
+
 .Action {
   flex: none;
   padding: 3px 8px;

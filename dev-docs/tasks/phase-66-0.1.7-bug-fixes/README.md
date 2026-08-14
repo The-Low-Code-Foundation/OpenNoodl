@@ -25,10 +25,10 @@ runs on create, markdown rendering that one panel has and its neighbours abandon
 | 4 a–b | [FIX-006](FIX-006-THE-AI-WRITES-CODE-FROM-2019.md) | node-choice + code-style briefs; Script validator |
 | 4 c | [FIX-007](FIX-007-THE-CONNECTOR-THE-AI-CANNOT-DRAW.md) | the `in-`/`out-` prefix; the write-path port gate |
 | 5 | [FIX-008](FIX-008-THE-SERVER-BOUND-TO-THE-WRONG-PROJECT.md) | idempotent Connect; `.mcp.json` backfill; project scope |
-| 6 | [FIX-009](FIX-009-ONE-WIDTH-FOR-THE-SELECTION-SLOT.md) | components + properties share one width |
+| 6 | [FIX-009](FIX-009-ONE-WIDTH-FOR-THE-SELECTION-SLOT.md) | components + properties share one width — ✅ **CLOSED** |
 | 7 | [FIX-010](FIX-010-THE-PICKER-SCROLLS-AWAY-FROM-ITS-ANSWER.md) | search results start at the top |
 | 8 a | [FIX-011](FIX-011-THE-BENCH-FRAME-HAS-NO-HEIGHT.md) | bench height, resize, per-component default |
-| 8 b | [FIX-012](FIX-012-NO-WAY-BACK-TO-NO-SCENARIO.md) | a None row; Reset all clears the chip |
+| 8 b | [FIX-012](FIX-012-NO-WAY-BACK-TO-NO-SCENARIO.md) | a None row; Reset all clears the chip — ✅ **CLOSED** |
 | 8 c | [FIX-013](FIX-013-THE-DATA-MODE-TEARDOWN.md) | remove the Data/sample/real-backend maze |
 | 9 | [FIX-014](FIX-014-THE-AI-PILES-NODES-IN-ONE-COLUMN.md) | logic gets its own column |
 | 10 | [FIX-015](FIX-015-THE-TOKENS-NOBODY-CAN-EDIT.md) | the style-token resurrection → its own phase |
