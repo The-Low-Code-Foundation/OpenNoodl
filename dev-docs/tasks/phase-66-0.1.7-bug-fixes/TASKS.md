@@ -16,6 +16,11 @@ is not built** — not on the drive. 🔴 The drive also found the MCP sidecar `
 the gate was reaching the editor door but **not** the MCP door until it was rebuilt; a running server
 needs a restart to pick it up. See [NEXT-SESSION-PROMPT.md](NEXT-SESSION-PROMPT.md) § 3.
 
+**Built and driven (2026-08-14, session 3):** **FIX-018 is CLOSED** — all five criteria, both
+themes, on a purpose-built fixture. `test:ci` **2736 / 6 failed, seed 04897**; the six are the same
+inherited failures by name (`AIX-006 style vocabulary` ×4, `AI model registry` ×2) and the total rose
+by exactly the 10 new specs, which is what proves the barrel registration took.
+
 **States:** built → spec-proved → driven (the phase-64 discipline: a spec proves the decision;
 only a drive proves the pixels).
 
@@ -38,7 +43,7 @@ only a drive proves the pixels).
 | FIX-015 | style tokens: rulings session → a new phase | 10 | brainstorm | session | 🔴 all eight |
 | FIX-016 | Signal offered at add time; declared-vs-called mismatch diagnosed | 11 | 3 | S+S | signal-input semantics (for the M–L half only) |
 | FIX-017 | completions at an empty position; `Noodl.Records.` answers; TASKS.md reconciled | 12 | 3 | S+M+S | no |
-| FIX-018 | a component card says it opens; context menu says so too | 13 | 2 | S–M | ✅ **RULED 2026-08-14: option C** (chip + stacked card) — buildable now |
+| FIX-018 ✅ | a component card says it opens; context menu says so too | 13 | 2 | S–M | ✅ **RULED 2026-08-14: option C** — built + driven, **CLOSED** |
 | FIX-019 | "Show in workbench"; the canvas admits when it left the benched component | 14 | 2 | S+S–M | chip direction (minor) |
 | FIX-020 ✅ | one stylesheet stops fighting the other; five popups uncrop | 15 | 2 | S | no |
 | FIX-021 | project + global memory docs: slice 0 defect now, brainstorm for the loop | 16 | 3 / brainstorm | S+M+session | 🔴 the six memory rulings |

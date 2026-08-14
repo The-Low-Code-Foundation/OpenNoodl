@@ -2,6 +2,13 @@
 
 **Report 13** · Tier 2 · Effort **S–M** · Mockups delivered
 
+> ## ✅ BUILT AND DRIVEN 2026-08-14 (session 3) — commit `95301039`. **CLOSED, 5/5 criteria.**
+> Option C as ruled: purple `component` chip + diamond glyph on every instance, a 3px stacked-card
+> edge bottom-right, the right icon slot freed for health, and "Open component" in the context menu.
+> 10 new specs in `tests/canvas/NodeComponentMark.test.ts`. Drive record in §"What the drive
+> measured" at the foot of this file — read it before touching the painter again, because two of its
+> findings contradict what this doc assumed.
+
 > ## ✅ RULED 2026-08-14 — **Option C: chip + stacked card.**
 > Richard, on the mockup artifact: *"Chip plus stacked card is awesome, validated."*
 > So the build is: (1) diamond glyph in the 22×22 header chip, purple `#a78bfa` fill, for every
@@ -80,3 +87,86 @@ whole-rect; a sub-rect region would start an ad-hoc pattern), and repurposing th
 4. Selection, hover, diff-annotation, and unhealthy rings all still render correctly over the new
    treatment (the paint-order stack re-driven).
 5. Both themes screenshotted.
+
+---
+
+## What the drive measured (2026-08-14, session 3)
+
+**No existing project could exercise this.** The QA fixture has 24 components and **zero placed
+component instances**; a scan of all ~40 projects in `NodeGX test projects/` found exactly one graph
+containing an instance, and it held a single one. So the drive fixture
+`NodeGX test projects/fix018-drive` was built for it (validates 0 errors / 12 nodes): a Group and a
+Text (plain visual), a component wrapping a Group, a logic-only component instance, a
+`Component Inputs` (the plumbing node that keeps purple by ruling), an `Expression`, and a
+**second logic-only instance parented under the Group** — which is unhealthy for a real reason
+(`allowAsChild` false → "This node cannot be a child in a hierarchy", level `error`), not a faked
+flag.
+
+### The measurements, dark theme, 100% zoom
+
+Chip fill sampled left-of-centre inside the 22px chip (clear of the glyph); band sampled 1.5px
+outside the card's right edge and below its bottom edge.
+
+| Card | isComponent | chip | band right / bottom |
+|---|---|---|---|
+| Screen (Group) | n | `29,43,60` blue | — / — (transparent) |
+| Heading (Text) | n | `29,43,60` blue | — / — |
+| **Product Card** (wraps a Group) | **Y** | **`40,39,59` purple** | `18,22,27` / `18,22,27` |
+| **Cart Totals (unhealthy)** | **Y** | **`40,39,59`** | `18,22,27` / `18,22,27` |
+| **Cart Totals** (logic-only) | **Y** | **`40,39,59`** | `18,22,27` / `18,22,27` |
+| Subtotal (Expression) | n | `52,36,51` | — / — |
+| **Inputs** (Component Inputs) | n | **`40,39,59` — identical purple** | **— / — (no band)** |
+
+The last two rows are the whole ruling, measured: the plumbing node paints the *same* chip as an
+instance, and **the stacked edge is the only thing that separates them.** Pre-fix, Product Card
+painted the identical blue as the Group directly above it.
+
+**Criterion 2, all four facts on one card at once:** `health.level: 'error'`, `hasWarningIcon:
+true`, chip `40,39,59`, band present.
+
+**Criterion 4** — band re-measured under every state, both themes. `plain`, `hovered`,
+`annotated_Created`, `annotated_Deleted` leave it untouched; `selected` tints it (`18,22,27` →
+`26,42,60`) because the glow is 15% alpha, so the silhouette survives rather than being covered.
+
+**Criterion 3** — "Open component" appears **only** on an instance (absent on the Group and on
+Component Inputs), is first in the menu, tooltips "Go into Product Card", navigates `/App` →
+`/Widgets/Product Card`, and a subsequent `goBack()` returns to `/App`, which is what proves
+`pushHistory`.
+
+### 🔴 Two things this doc assumed that the drive contradicts
+
+1. **The edge does *not* stay clear of the unhealthy ring.** The doc required it to. Scanning
+   across the right edge of the unhealthy card: `dx=1` is `114,59,58` — the −1px dashed ring runs
+   *through* the 3px band. It stays readable only because the ring is dashed and the band's own
+   outer stroke (`dx=3`) is clear of it. Both marks are legible in the screenshot, so this was not
+   worth redesigning, but the constraint as written is false and should not be re-derived.
+2. **In light theme the band is carried by two thin strokes, not by fill contrast.** The band is
+   `255,255,255` on a `238,241,245` ground — the load-bearing signal is the front card's border
+   (`231,235,239`) and the back card's (`224,229,235`) with 2px of white between. It reads, but it
+   is quieter than dark. If a later drive says the edge alone is too quiet, this is where it will
+   show first, and the ruling already allows A/B/C to compose.
+
+### One consequence worth knowing
+
+Freeing the icon slot means a healthy component instance no longer sets `node.icon`, so it loses the
+12px `iconOffset` and its title gets 12px more width. That is a **layout** change for every
+component instance in every project, not just a paint one — beneficial (longer labels wrap less),
+but it is why component cards may measure shorter than before.
+
+### Driving traps this cost time to find
+
+- 🔴 **`cdp.js click` on a React-managed element opened the wrong project.** The launcher grid
+  re-rendered between the `eval` that set `id="cdp-target"` and the click, and React had recycled
+  that DOM node for a different card — so the click landed on "Kiln & Co.". The reported
+  `clicked … at 796,396` against a measured centre of `428,472` was the only tell. **Append a
+  `position:fixed` marker to `document.body` instead** — React cannot recycle what it does not own.
+  (Nothing in the wrongly-opened project was written to disk; verified by mtime.)
+- ⚠️ **A theme flip does not apply within the same `eval`.** `CanvasTheme` refreshes off a
+  `MutationObserver`, which is a microtask, so `data-theme = 'light'` followed by a synchronous
+  `layoutAndPaint()` in the same statement measures the **old** theme. Flip in one call, measure in
+  the next — a whole state-stack sweep was silently re-measuring light theme as "dark".
+- ⚠️ **Sampling the band at `y + h/2` collides with the connection-drag circle**, which is painted
+  at `x + width, y + titlebarHeight/2` whenever the node is highlighted. On a 36px card those are
+  the same pixel, and it reads as the edge being erased by hover. Sample at `y + h - 6`.
+- ⚠️ Moving a node needs **both** halves: `model.set({x, y})` alone leaves `view.global.x` stale
+  through `relayout()`. Set `view.x = view.model.x` too.
