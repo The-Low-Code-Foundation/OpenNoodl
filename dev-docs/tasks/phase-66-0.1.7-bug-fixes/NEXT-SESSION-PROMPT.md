@@ -1,11 +1,11 @@
 # Phase 66 — next session
 
-**Written 2026-08-14, session 5 (rulings + build + drive).** **The seven-ruling sitting is done** —
-seven tasks are unblocked in one go, and one of them (FIX-003) went *bigger* than its
-recommendation. **FIX-007 fix 4 is built and driven**, which closes criterion 4 and leaves the whole
-task one paid request from done. Two more premises were checked and **did not survive**: fix 3 is
-redundant, and the ⚠️ rider is not a defect. This file is rewritten at the end of **every** session
-— read §0 for how, and replace it rather than appending.
+**Written 2026-08-14, session 5 (rulings + build + drive + a paid drive).** **The seven-ruling
+sitting is done** — seven tasks unblocked in one go, and one of them (FIX-003) went *bigger* than
+its recommendation. **FIX-007 is CLOSED**: fix 4 built and driven, and Richard authorised the paid
+run that closed criterion 1's internal-AI half. Two more premises were checked and **did not
+survive**: fix 3 is redundant, and the ⚠️ rider is not a defect. This file is rewritten at the end
+of **every** session — read §0 for how, and replace it rather than appending.
 
 ---
 
@@ -39,14 +39,14 @@ a learning findable six phases later.
 | **FIX-007** fix 4 | ✅ | ✅ | **76 ms vs 2017 ms**, with its control in the same run |
 | **FIX-007** fix 3 | 🔴 **struck** | n/a | premise false twice over — do **not** rebuild it |
 | **FIX-007** rider | ✅ **closed** | n/a | not a defect; a guard spec already pins it |
-| **FIX-007** crit 1 | ✅ | 🟡 half | MCP path driven; **internal-AI half is paid** |
+| **FIX-007** crit 1 | ✅ | ✅ **both halves** | internal AI wrote `in-items`/`out-text`, **right first time** |
 | **FIX-008** A, B, E | ✅ | ✅ | idempotent Connect, backfill on open, bound directory |
 | **FIX-008** C, D | 📋 **not built** | — | C stops it recurring; D removes the class |
 | FIX-002/003/009/011/012/014/019 | 📋 open | — | ✅ **all seven now RULED** — buildable by an agent alone |
 | everything else | 📋 open | — | see [TASKS.md](TASKS.md) |
 
-✅ **Three tasks closed; FIX-007 is one paid request from a fourth.** Nothing built is waiting on a
-drive.
+✅ **FOUR tasks closed — FIX-020, FIX-010, FIX-018 and now FIX-007 (4/4 criteria).** Nothing built
+is waiting on a drive, and nothing in the phase is waiting on a paid request.
 
 ---
 
@@ -129,6 +129,19 @@ warning", which is nearly always true on a graph someone is fixing.
   has no label to drop. `operationsWritePath.test.ts` already pins this and says in its own comment
   that the door "was never broken".
 
+### The paid drive — and what it revealed about which fix is load-bearing
+
+One send against the real Anthropic provider, on a fresh 2-component project, thread provably empty.
+The prompt **never mentioned ports or prefixes**. The AI wrote `in . items → fn . in-items` and
+`fn . out-text → out . text`, with a script reading `Inputs.items` — zero warnings, all three nodes
+present.
+
+🔴 **The panel said "1 step · validated once".** No rejection, no resubmit: **the AI was right the
+first time**, so fix 2's gate never fired. That means **fix 1 (the corrected catalog) is doing the
+work and the gate is the backstop** — which is the right order, and was not knowable before this
+run. Criterion 2 proved the gate *can* catch it; this proved the docs mean it usually will not have
+to. Do not read the gate's silence as the gate being unnecessary.
+
 ### What the drive measured
 
 Fixture **`fix007-c4-drive`** (scratch copy of `leg003-drive`; source verified untouched). Ports
@@ -144,12 +157,10 @@ table in [FIX-007](FIX-007-THE-CONNECTOR-THE-AI-CANNOT-DRAW.md) § "DRIVEN … s
    FIX-009 and FIX-012 are genuine S's; FIX-002 is S but drags BLD-010's re-drive with it;
    **FIX-003 is now the big one of the seven** and should not be treated as the S it was filed as.
    FIX-011 and FIX-019 want the 30px chrome strip laid out **once, together** — do them as a pair.
-2. **Ask Richard for the paid drive** of FIX-007 criterion 1's internal-AI half. It is the *only*
-   thing left in FIX-007. Do not spend it unasked.
-3. **FIX-008 fix C** (`--scope project`) if the report should stop recurring — `MCP_SCOPE` split,
+2. **FIX-008 fix C** (`--scope project`) if the report should stop recurring — `MCP_SCOPE` split,
    `McpSettingsSection.tsx:163`, `tests-unit/mcp-001`, and a cleanup hint for the stale user-scope
    entries. `nodegx-puppy-test-3` is **still** registered user-scope and visible in every folder.
-4. **Repackage the app** (or say so out loud) if FIX-008 fix E is to reach the running servers —
+3. **Repackage the app** (or say so out loud) if FIX-008 fix E is to reach the running servers —
    they run `/Applications/NodeGX.app/.../noodl-mcp.cjs`, not `packages/noodl-mcp/dist/`.
 
 **Do not start** FIX-015 or FIX-021's brainstorm halves — they need Richard, not an agent.
@@ -185,7 +196,13 @@ the `scripts/start.ts` pid instead (done this session; all six survived). Restor
 ⚠️ **Do not restore `~/.claude.json` from a backup.** Full list in the [README](README.md)
 § "Standing constraints inherited".
 
-⚠️ **Two drive recipes went stale this session** and are now corrected in FIX-007's drive section:
-the editor lands on the **Launcher**, so the `props.route.router` fiber walk finds nothing — open by
-clicking the card instead; and `LocalProjectsModel.loadProject` **returns a Promise**, so the
-callback form hangs forever and looks like a dead CDP connection.
+⚠️ **Three drive recipes went stale or bit this session**, all corrected in FIX-007's drive
+sections: the editor lands on the **Launcher**, so the `props.route.router` fiber walk finds nothing
+— open by clicking the card instead; `LocalProjectsModel.loadProject` **returns a Promise**, so the
+callback form hangs forever and looks like a dead CDP connection; and
+🔴 **`NodeGraphModel.forEachNode` stops on a truthy callback return** — it is `Array.some` wearing
+`forEach`'s name, so `forEachNode(n => nodes.push(n))` reads **only the first node** and reports a
+healthy 3-node graph as a 1-node one.
+
+⚠️ **Before any paid drive, verify the provider from `editorSettings.json`, not localStorage** —
+`ai.provider`, `ai.hasKey.anthropic`, `ai.verified.anthropic`. It was live on 2026-08-14.

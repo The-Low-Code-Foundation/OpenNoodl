@@ -29,6 +29,12 @@ bound directory, driven over real stdio. **C and D remain open** — the stale u
 `nodegx-puppy-test-3` is still visible in every folder. Richard ruled **silent backfill on open**,
 reversing BST-005's create-only choice.
 
+✅ **FIX-007 CLOSED (2026-08-14, session 5, paid drive).** The internal AI, asked for a
+`Component Inputs → Function → Component Outputs` component **without any mention of ports**, wrote
+`in-items` / `out-text` — correct, zero warnings, and **"validated once"**: right the first time, so
+the docs fix carried it and the write-time gate never had to fire. That is 4/4 criteria and the
+fourth task closed this phase.
+
 **Built and driven (2026-08-14, session 5):** **the seven batchable rulings are all made** (see
 README § the rulings queue — 🔴 FIX-003 went *bigger* than its recommendation: invert the global
 `user-select` now, so its drag-surface test plan is in scope). **FIX-007 fix 4** shipped and driven:
@@ -51,7 +57,7 @@ only a drive proves the pixels).
 | FIX-004 | conversion + log blocks; free toolbox adds; objects-as-data | 2 | 2 | S+XS+M | block shape (minor) |
 | FIX-005 | dropdown contrast fixed; category name ruled | 3 | 2 | S–M | 🔴 naming (reverses VFN-012) |
 | FIX-006 | the AI picks the right code node and writes 2026 JavaScript | 4a–b | 2 | S+S+M | Script demotion (minor) |
-| FIX-007 🟡 | the `in-`/`out-` prefix truth reaches the catalog, the validator, and the write path | 4c | **1** | S+M | no — **1 paid drive from done** (fixes 1/2/4 shipped + driven; fix 3 struck) |
+| FIX-007 ✅ | the `in-`/`out-` prefix truth reaches the catalog, the validator, and the write path | 4c | **1** | S+M | ✅ **CLOSED 2026-08-14** — 4/4 criteria driven; fixes 1/2/4 shipped, fix 3 struck |
 | FIX-008 ⭐ | Connect is idempotent; every opened project gets its `.mcp.json` | 5 | **1** | S+S/M (+M for scope split) | ✅ **RULED 2026-08-14: silent backfill** — A+B+E built + driven; **C, D open** |
 | FIX-009 | Components/Properties/PortEditor share one stored width | 6 | 2 | S | ✅ **RULED: PortEditor joins**; three-panel group only |
 | FIX-010 ✅ | a query change re-anchors the picker to its top result | 7 | 2 | S | no (one test updated deliberately) |

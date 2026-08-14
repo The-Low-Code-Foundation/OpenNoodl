@@ -62,8 +62,8 @@ the sixteen reports contain one:
 
 | Finding | Where |
 |---|---|
-| Function-node ports are `in-<name>` / `out-<name>`; **the catalog docs tell the AI the opposite**, and the validator deliberately skips dynamic-port types — so the AI's wire passes every gate and dies on the canvas | FIX-007 |
-| The manual drag validates ports (`getConnectionStatus`); **no AI/MCP write path ever consults ports at all** | FIX-007 |
+| Function-node ports are `in-<name>` / `out-<name>`; the catalog docs told the AI the opposite — ✅ **fixed, and the AI now writes the prefix unprompted** (driven 2026-08-14) | FIX-007 |
+| 🔴 ~~The manual drag validates ports (`getConnectionStatus`); no AI/MCP write path ever consults ports at all~~ — **FALSE, struck 2026-08-14.** `getConnectionStatus` never checked port *existence*, and `rules/nonexistentPort` errors for every static node type on both write doors | FIX-007 |
 | The Explain panel is static-by-construction, while `TraceSession.resolvePortValues` + `walkEngine.backwardWalk` sit one import away | FIX-001 |
 | The Explain composer's `TextInput` grows to full text width inside `overflow-x: hidden` — backspace works, invisibly | FIX-002 |
 | `div { user-select: none }` (style.css:205) makes every AI surface unselectable; the Build panel **regressed** phase-38's markdown decision (AiChatMessage does it right and is mounted nowhere) | FIX-003 |

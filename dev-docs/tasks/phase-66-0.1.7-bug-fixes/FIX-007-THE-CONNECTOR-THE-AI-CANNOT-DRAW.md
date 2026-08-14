@@ -305,9 +305,10 @@ forever and reads as a dead CDP connection.
 
 ## Acceptance criteria
 
-1. 🟡 Asking the internal AI (and the MCP path) to wire a Component Input to a Function-node input
+1. ✅ Asking the internal AI (and the MCP path) to wire a Component Input to a Function-node input
    produces a working connection with no `con-no-target-port` warning — driven end to end.
-   **MCP path ✅ driven; internal-AI half needs Richard's go-ahead (paid).**
+   **Both halves driven**: MCP path 2026-08-14 (session 4); internal AI 2026-08-14 (session 5,
+   paid) — `in-items` / `out-text`, zero warnings, right the first time.
 2. ✅ A connection deliberately written unprefixed trips the new validator suggestion naming
    `in-<name>` (negative control: a correct `in-` wire does not).
 3. ✅ The corrected catalog text ships in both `node-catalog.json` and the enriched catalog; the
@@ -316,16 +317,64 @@ forever and reads as a dead CDP connection.
    after `instanceports` arrives. **Driven 2026-08-14: 76 / 76 / 78 ms**, against a measured
    2015–2026 ms on the lazy lane in the same run.
 
-## Status — one criterion left, and it is not an agent's to spend
+## ✅ DRIVEN 2026-08-14 (session 5, **paid**) — criterion 1's internal-AI half. The docs alone were enough.
+
+Richard authorised the spend. One send, against the **real Anthropic provider**
+(`editorSettings.json`: `ai.provider = anthropic`, `hasKey`/`verified` both true — verified before
+sending, per the recorded trap that `localStorage` reports "no provider" and is wrong).
+
+Fixture: **`fix007-ai-drive`**, a fresh copy of the 2-component v2 project `test1`, opened on a
+**freshly launched editor** so the Build thread provably started empty. The project-docs interview
+was declined so the run went straight to authoring.
+
+**The prompt deliberately never mentions ports, prefixes, or `in-`/`out-`** — otherwise the test
+proves nothing:
+
+> *"Create a component called Logic/FormatList. It should take a component input named items (an
+> array of strings), feed that into a Function node whose script joins the array into a
+> comma-separated string, and send the result out through a component output named text."*
+
+**What the AI wrote** — read off disk after accepting, not off the panel:
+
+```
+nodes:        in :: Component Inputs · fn :: JavaScriptFunction · out :: Component Outputs
+connections:  in . items     ->  fn . in-items      ✅
+              fn . out-text  ->  out . text         ✅
+script:       Outputs.text = (Inputs.items || []).join(', ');
+```
+
+✅ **Both endpoints correctly prefixed, and the script's `Inputs.items` / `Outputs.text` agree with
+the wires.** This is the exact shape that was dead in the corpus — `data-run-tasks-batch`'s
+`Component Inputs → Function`, and Richard's own `Puppy test 3` → "Format Puppy List".
+
+✅ **Zero warnings on either connection** (`evaluateHealth()` forced, then re-read): no
+`con-no-target-port`. All three nodes present — `roots` and `nodeMap` both 3.
+
+🔴 **The most informative detail: the panel reported "1 step · validated once".** One validation
+pass, no rejection, no resubmit. **The AI got the prefix right the first time, from the corrected
+catalog — fix 2's gate never had to fire.** So fix 1 (docs) is doing the work here and fix 2 is the
+backstop, which is the right order and was not knowable before this drive: criterion 2 proved the
+gate *can* catch it, and this proves the docs mean it usually will not have to.
+
+⚠️ **Trap found while measuring, worth carrying:** `NodeGraphModel.forEachNode` is typed
+`(node) => boolean | void` and **stops on a truthy return** — it is `Array.some`, not
+`Array.forEach`, despite the name. A probe written as `forEachNode(n => nodes.push(n))` reads
+**only the first node**, because `push` returns the new length. That reported a 3-node graph as a
+1-node graph and looked exactly like the recorded "a typeless node emptied the graph" defect. Use
+`forEachNode(n => { nodes.push(n); })`.
+
+## Status — ✅ FIX-007 IS CLOSED
 
 | | |
 |---|---|
-| Fix 1 (docs) | ✅ shipped |
-| Fix 2 (write-time gate) | ✅ shipped + driven |
+| Fix 1 (docs) | ✅ shipped + driven — **and doing the work; the AI needed no correction** |
+| Fix 2 (write-time gate) | ✅ shipped + driven — the backstop, which did not have to fire |
 | Fix 3 (structural) | 🔴 **struck** — premise false twice over, see above |
-| Fix 4 (ergonomic) | ✅ shipped + driven |
+| Fix 4 (ergonomic) | ✅ shipped + driven — 76 ms vs 2017 ms |
 | Rider (`add_connection` presentation) | ✅ **closed** — not a defect, already guarded |
-| Criterion 1's internal-AI half | 🟡 **the only thing left. Paid — needs Richard's go-ahead.** |
 
-Criteria 2, 3 and 4 are closed. Criterion 1's MCP half is closed. **FIX-007 is one paid request
-away from done**, and nothing else in it is blocked on anything.
+**All four acceptance criteria are met and driven. FIX-007 is CLOSED.**
+
+The whole report-4(c) chain is now proved end to end: the catalog tells the truth, both write doors
+reject the wrong wire with the exact replacement, the internal AI writes the right one unprompted,
+and a wire that is briefly unresolvable stops flashing red in 76 ms instead of two seconds.
