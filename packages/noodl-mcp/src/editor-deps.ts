@@ -392,6 +392,7 @@ export type { ImportReport, LegacyFinding, LegacyOutcome } from '../../noodl-edi
 // and the editor writes with `@noodl/platform` over one implementation.
 export {
   AGENT_CONFIG_PATHS,
+  backfillAgentConfig,
   installAgentConfig,
   renderClaudeMd,
   renderMcpJson

@@ -181,7 +181,8 @@ function setupMcpIPC(ipcMain) {
         message: 'NodeGX would not register that.',
         detail: refusal,
         command: typeof command === 'string' ? command : null,
-        probed: []
+        probed: [],
+        replaced: false
       };
     }
 

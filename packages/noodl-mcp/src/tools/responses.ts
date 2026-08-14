@@ -70,6 +70,16 @@ export interface DeletionRefusalDetails {
 
 export interface ProjectInfoResponse {
   name?: string;
+  /**
+   * FIX-008 E — **the directory these tools actually read and write.**
+   *
+   * 🔴 A server bound to the wrong project is otherwise undetectable in-session. The bound path is
+   * announced once, in the `initialize` instructions, and nothing in any tool result repeats it —
+   * so a user with a stale or user-scope registration gets a server that answers every question
+   * confidently about somebody else's project, and accepts every write. Naming the directory in the
+   * one tool an agent is told to call first is what makes the mismatch visible at all.
+   */
+  projectDirectory?: string;
   id?: string;
   version?: string;
   runtimeVersion?: string;

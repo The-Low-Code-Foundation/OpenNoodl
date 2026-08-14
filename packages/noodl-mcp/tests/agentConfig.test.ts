@@ -18,7 +18,13 @@ import * as os from 'os';
 import * as path from 'path';
 
 import type { AgentConfigHost, AgentServerRegistration } from '../src/editor-deps';
-import { AGENT_CONFIG_PATHS, authoringServerName, installAgentConfig, renderClaudeMd } from '../src/editor-deps';
+import {
+  AGENT_CONFIG_PATHS,
+  authoringServerName,
+  backfillAgentConfig,
+  installAgentConfig,
+  renderClaudeMd
+} from '../src/editor-deps';
 import { BOOTSTRAP_INSTRUCTIONS, projectInstructions } from '../src/instructions';
 import { nodeHost, selfRegistration, writeAgentConfig } from '../src/project/agentConfig';
 
@@ -151,6 +157,95 @@ describe('BST-005 the project configures the next agent', () => {
   it('points at docs/ only when there are docs', () => {
     expect(renderClaudeMd(OPTIONS)).toContain('docs/CONVENTIONS.md');
     expect(renderClaudeMd({ ...OPTIONS, hasDocs: false })).not.toContain('docs/CONVENTIONS.md');
+  });
+});
+
+/**
+ * FIX-008 B — the same two files, for a project that already existed.
+ *
+ * Report 5's second half: 43 of 44 projects on the reporter's disk had no `.mcp.json`, because
+ * BST-005 wrote them on creation only. The properties worth pinning here are the two that are
+ * *not* shared with the creating path — the refusal for a project the server would refuse, and
+ * reading `hasDocs` off the folder rather than being told.
+ */
+describe('FIX-008 B the project that was only opened', () => {
+  const BACKFILL = { projectName: 'Reading List', serverName: 'nodegx-reading-list', registration: REGISTRATION };
+
+  /** Either marker is enough — the same two-file test `ProjectStore` applies. */
+  const v2 = (extra: Record<string, string> = {}) => ({ 'components/_registry.json': '{}', ...extra });
+
+  it('writes both files into a v2 project that has neither', async () => {
+    const host = memoryHost(v2());
+    const report = await backfillAgentConfig(host, BACKFILL);
+
+    expect(report.written).toEqual(
+      expect.arrayContaining([AGENT_CONFIG_PATHS.mcp, AGENT_CONFIG_PATHS.claude, AGENT_CONFIG_PATHS.gitignore])
+    );
+    expect(JSON.parse(host.files[AGENT_CONFIG_PATHS.mcp]).mcpServers['nodegx-reading-list']).toEqual(REGISTRATION);
+  });
+
+  it('accepts the other v2 marker on its own', async () => {
+    const host = memoryHost({ 'nodegx.project.json': '{}' });
+    expect((await backfillAgentConfig(host, BACKFILL)).written).toContain(AGENT_CONFIG_PATHS.mcp);
+  });
+
+  it('🔴 refuses a legacy project, because the server it would name refuses it too', async () => {
+    // A registration pointing at a server that dies at startup is worse than no registration: the
+    // user gets an approval prompt and a server that never answers.
+    const host = memoryHost({ 'project.json': '{}' });
+    const report = await backfillAgentConfig(host, BACKFILL);
+
+    expect(report.written).toEqual([]);
+    expect(host.files[AGENT_CONFIG_PATHS.mcp]).toBeUndefined();
+    expect(host.files[AGENT_CONFIG_PATHS.claude]).toBeUndefined();
+    expect(report.files.every((f) => f.outcome === 'skipped')).toBe(true);
+    expect(report.files.every((f) => typeof f.reason === 'string' && f.reason.length > 0)).toBe(true);
+  });
+
+  it('writes nothing into a folder that is not a project at all', async () => {
+    const report = await backfillAgentConfig(memoryHost(), BACKFILL);
+    expect(report.written).toEqual([]);
+  });
+
+  it('keeps whatever the project already had', async () => {
+    // ⚠️ The whole posture rests on this: opening a project must not be able to lose work.
+    const host = memoryHost(
+      v2({ [AGENT_CONFIG_PATHS.claude]: '# my own notes\n', [AGENT_CONFIG_PATHS.mcp]: '{"mcpServers":{"mine":{}}}' })
+    );
+    const report = await backfillAgentConfig(host, BACKFILL);
+
+    expect(host.files[AGENT_CONFIG_PATHS.claude]).toBe('# my own notes\n');
+    expect(host.files[AGENT_CONFIG_PATHS.mcp]).toBe('{"mcpServers":{"mine":{}}}');
+    expect(report.written).toEqual([]);
+  });
+
+  it('asks the folder whether there are docs instead of being told', async () => {
+    // The creating caller knows what it just wrote; a caller opening a project from 2024 does not.
+    const withDocs = memoryHost(v2({ 'docs/BRIEF.md': '# brief\n' }));
+    await backfillAgentConfig(withDocs, BACKFILL);
+    expect(withDocs.files[AGENT_CONFIG_PATHS.claude]).toContain('docs/CONVENTIONS.md');
+
+    const without = memoryHost(v2());
+    await backfillAgentConfig(without, BACKFILL);
+    expect(without.files[AGENT_CONFIG_PATHS.claude]).not.toContain('docs/CONVENTIONS.md');
+  });
+
+  it('produces the same CLAUDE.md a created project gets', async () => {
+    // A backfilled project must be indistinguishable from a created one, or the answer to "why
+    // doesn't my agent know about this project?" becomes "depends when you made it".
+    const created = memoryHost();
+    await installAgentConfig(created, { ...BACKFILL, hasDocs: true });
+    const opened = memoryHost(v2({ 'docs/BRIEF.md': '# brief\n' }));
+    await backfillAgentConfig(opened, BACKFILL);
+
+    expect(opened.files[AGENT_CONFIG_PATHS.claude]).toBe(created.files[AGENT_CONFIG_PATHS.claude]);
+    expect(opened.files[AGENT_CONFIG_PATHS.mcp]).toBe(created.files[AGENT_CONFIG_PATHS.mcp]);
+  });
+
+  it('says the file arrives on open, now that it does', async () => {
+    // ⚠️ BST-006's rule: a reader told to expect something automatic waits instead of acting. The
+    // paragraph promising this was false until FIX-008 B, and it must not go back to being false.
+    expect(renderClaudeMd({ ...OPTIONS })).toContain('opened');
   });
 });
 

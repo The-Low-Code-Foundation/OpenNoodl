@@ -42,7 +42,12 @@ export type ConnectAgentState = 'idle' | 'connecting' | 'connected' | 'failed';
 /** What the main process reported. Mirrors `connectBootstrapServer`'s return. */
 export interface ConnectAgentResult {
   ok: boolean;
-  method: 'cli' | 'config-file' | null;
+  /**
+   * How it went in. **FIX-008 A: `'already-registered'` is a success and nothing was written** —
+   * the config already held exactly this registration, which is the state a second click produces
+   * and which this card used to report as a red error.
+   */
+  method: 'cli' | 'config-file' | 'already-registered' | null;
   serverName: string;
   configPath: string;
   removeCommand: string;
@@ -50,6 +55,8 @@ export interface ConnectAgentResult {
   detail: string | null;
   /** The `claude mcp add …` line, so a failure is never a dead end. */
   command: string | null;
+  /** FIX-008 A — a differing registration under our name was replaced, and the message says so. */
+  replaced?: boolean;
 }
 
 export interface ConnectAgentCardProps {

@@ -19,7 +19,9 @@ const path = require('path');
 const {
   cliArgs,
   connectBootstrapServer,
-  registerViaConfigFile
+  readExistingRegistration,
+  registerViaConfigFile,
+  sameRegistration
 } = require('../../src/main/src/mcp/connectBootstrapServer');
 
 /** A registration of the shape `buildBootstrapCommand` emits for the Electron runtime. */
@@ -236,6 +238,216 @@ describe('a registration that could not be built', () => {
     expect(result.method).toBeNull();
     expect(result.detail).toMatch(/bundle was not found/);
     expect(fs.existsSync(configPath)).toBe(false);
+  });
+});
+
+/**
+ * FIX-008 A — "already connected" is a bad message, not an error.
+ *
+ * The report that opened this task is one sentence: *"I clicked the 'Connect MCP' in the launcher,
+ * and it threw an error about already being connected."* `claude mcp add` refuses a name that
+ * exists, and this module surfaced that refusal raw — a red failure for a state that was already
+ * the one the user asked for.
+ *
+ * The assertions worth having are therefore about **what does not happen**: no spawn, no write, no
+ * removal, when the config already holds exactly what we would put there.
+ */
+describe('FIX-008 A — a registration that is already there', () => {
+  /** `~/.claude.json` with our own registration already under `mcpServers`. */
+  const alreadyRegistered = (entry = REGISTRATION) => ({
+    numStartups: 412,
+    mcpServers: { nodegx: entry, 'someone-elses': { type: 'stdio', command: 'other' } }
+  });
+
+  it('reports success without spawning the CLI at all', () => {
+    fs.writeFileSync(configPath, JSON.stringify(alreadyRegistered(), null, 2));
+    const spawnSync = jest.fn(() => ({ status: 0, stdout: '', stderr: '' }));
+
+    const result = connectBootstrapServer(REGISTRATION, 'claude mcp add …', {
+      configPath,
+      resolveClaudeCli: withCli('claude'),
+      spawnSync
+    });
+
+    expect(result.ok).toBe(true);
+    expect(result.method).toBe('already-registered');
+    expect(result.replaced).toBe(false);
+    expect(result.message).toMatch(/already connected/i);
+    // 🔴 The whole point: the end state was true, so nothing was asked of anything.
+    expect(spawnSync).not.toHaveBeenCalled();
+  });
+
+  it('leaves the file byte-for-byte alone when there is no CLI either', () => {
+    const before = JSON.stringify(alreadyRegistered(), null, 2);
+    fs.writeFileSync(configPath, before);
+
+    const result = connectBootstrapServer(REGISTRATION, null, { configPath, resolveClaudeCli: noCli });
+
+    expect(result.ok).toBe(true);
+    expect(result.method).toBe('already-registered');
+    expect(fs.readFileSync(configPath, 'utf8')).toBe(before);
+    // Not even a backup, because nothing was touched.
+    expect(fs.existsSync(`${configPath}.nodegx-backup`)).toBe(false);
+  });
+
+  it('still counts as ours when the client added a key of its own', () => {
+    // ⚠️ Re-registering on every click would undo whatever the client put there. We author four
+    // fields; a fifth we did not write is not a different registration.
+    fs.writeFileSync(
+      configPath,
+      JSON.stringify(alreadyRegistered({ ...REGISTRATION, disabled: false }), null, 2)
+    );
+    const spawnSync = jest.fn(() => ({ status: 0 }));
+
+    const result = connectBootstrapServer(REGISTRATION, null, {
+      configPath,
+      resolveClaudeCli: withCli('claude'),
+      spawnSync
+    });
+
+    expect(result.method).toBe('already-registered');
+    expect(spawnSync).not.toHaveBeenCalled();
+  });
+
+  it('🔴 does not mistake a project-scope entry for the user-scope one', () => {
+    // Same name, different scope, different visibility. F94: they do not even see each other.
+    fs.writeFileSync(
+      configPath,
+      JSON.stringify({ projects: { '/some/dir': { mcpServers: { nodegx: REGISTRATION } } } }, null, 2)
+    );
+    const spawnSync = jest.fn(() => ({ status: 0 }));
+
+    const result = connectBootstrapServer(REGISTRATION, null, {
+      configPath,
+      resolveClaudeCli: withCli('claude'),
+      spawnSync
+    });
+
+    expect(result.method).toBe('cli');
+    expect(spawnSync).toHaveBeenCalledTimes(1);
+    expect(spawnSync).toHaveBeenCalledWith('claude', cliArgs(REGISTRATION), expect.any(Object));
+  });
+
+  it('does not try to remove anything when the name is free', () => {
+    const spawnSync = jest.fn(() => ({ status: 0 }));
+
+    connectBootstrapServer(REGISTRATION, null, {
+      configPath,
+      resolveClaudeCli: withCli('claude'),
+      spawnSync
+    });
+
+    expect(spawnSync).toHaveBeenCalledTimes(1);
+    expect(spawnSync.mock.calls[0][1]).not.toContain('remove');
+  });
+
+  it('a config it cannot parse changes nothing about how it behaves', () => {
+    // We know nothing, so we claim nothing: the CLI is asked exactly as it was before this fix.
+    fs.writeFileSync(configPath, '{ this is not json');
+    const spawnSync = jest.fn(() => ({ status: 0 }));
+
+    const result = connectBootstrapServer(REGISTRATION, null, {
+      configPath,
+      resolveClaudeCli: withCli('claude'),
+      spawnSync
+    });
+
+    expect(result.method).toBe('cli');
+    expect(result.ok).toBe(true);
+    expect(spawnSync).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('FIX-008 A — a stale registration under our own name', () => {
+  const stale = {
+    type: 'stdio',
+    command: '/Applications/NodeGX.app/Contents/MacOS/NodeGX',
+    args: ['/an/older/install/noodl-mcp.cjs', '--allow-writes'],
+    env: { ELECTRON_RUN_AS_NODE: '1' }
+  };
+
+  it('removes then adds, in that order, and says it replaced one', () => {
+    fs.writeFileSync(configPath, JSON.stringify({ mcpServers: { nodegx: stale } }, null, 2));
+    const spawnSync = jest.fn(() => ({ status: 0, stdout: '', stderr: '' }));
+
+    const result = connectBootstrapServer(REGISTRATION, null, {
+      configPath,
+      resolveClaudeCli: withCli('claude'),
+      spawnSync
+    });
+
+    expect(result.ok).toBe(true);
+    expect(result.replaced).toBe(true);
+    expect(result.message).toMatch(/replaced/i);
+
+    // ⚠️ `claude mcp add` has no update verb, so this sequence is the only one that works.
+    expect(spawnSync.mock.calls.map((call) => call[1])).toEqual([
+      ['mcp', 'remove', '--scope', 'user', 'nodegx'],
+      cliArgs(REGISTRATION)
+    ]);
+  });
+
+  it('stops at a refused removal rather than letting the add fail with the old message', () => {
+    fs.writeFileSync(configPath, JSON.stringify({ mcpServers: { nodegx: stale } }, null, 2));
+
+    const result = connectBootstrapServer(REGISTRATION, 'claude mcp add …', {
+      configPath,
+      resolveClaudeCli: withCli('claude'),
+      spawnSync: () => ({ status: 1, stdout: '', stderr: 'managed settings forbid this' })
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.replaced).toBe(false);
+    expect(result.detail).toMatch(/managed settings forbid this/);
+    // 🔴 The asymmetry still holds: a CLI that refused is not routed around.
+    expect(JSON.parse(fs.readFileSync(configPath, 'utf8')).mcpServers.nodegx).toEqual(stale);
+    // And the route out is still on screen.
+    expect(result.command).toBe('claude mcp add …');
+  });
+
+  it('replaces it on the file route, and says so', () => {
+    fs.writeFileSync(
+      configPath,
+      JSON.stringify({ numStartups: 412, mcpServers: { nodegx: stale, other: { command: 'x' } } }, null, 2)
+    );
+
+    const result = connectBootstrapServer(REGISTRATION, null, { configPath, resolveClaudeCli: noCli });
+
+    expect(result.ok).toBe(true);
+    expect(result.method).toBe('config-file');
+    expect(result.replaced).toBe(true);
+    expect(result.message).toMatch(/replaced/i);
+
+    const after = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+    expect(after.mcpServers.nodegx).toEqual(REGISTRATION);
+    expect(after.mcpServers.other).toEqual({ command: 'x' });
+    expect(after.numStartups).toBe(412);
+  });
+});
+
+describe('FIX-008 A — reading and comparing', () => {
+  it('finds nothing in a file that does not exist', () => {
+    expect(readExistingRegistration(configPath, {})).toEqual({ readable: true, entry: null, detail: null });
+  });
+
+  it('says so, rather than guessing, when the file will not parse', () => {
+    fs.writeFileSync(configPath, 'not json');
+    expect(readExistingRegistration(configPath, {}).readable).toBe(false);
+  });
+
+  it('treats an absent env and an empty one as the same thing', () => {
+    const bare = { type: 'stdio', command: 'node', args: ['/x.cjs'] };
+    expect(sameRegistration(bare, { ...bare, env: {} })).toBe(true);
+  });
+
+  it('sees a changed bundle path, a changed runtime and a changed env', () => {
+    expect(sameRegistration(REGISTRATION, { ...REGISTRATION, args: ['/other.cjs', '--allow-writes'] })).toBe(false);
+    expect(sameRegistration(REGISTRATION, { ...REGISTRATION, command: 'node' })).toBe(false);
+    expect(sameRegistration(REGISTRATION, { ...REGISTRATION, env: {} })).toBe(false);
+  });
+
+  it('sees a dropped argument, which same-length compares would miss', () => {
+    expect(sameRegistration(REGISTRATION, { ...REGISTRATION, args: [REGISTRATION.args[0]] })).toBe(false);
   });
 });
 

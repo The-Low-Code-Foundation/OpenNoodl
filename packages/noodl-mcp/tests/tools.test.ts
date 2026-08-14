@@ -3,6 +3,7 @@
  * the exact code path an external agent exercises, minus the stdio framing.
  */
 import * as fs from 'fs';
+import * as path from 'path';
 
 import type { NodeTypeDetail, NodeTypeLookupMiss, NodeTypeSummary } from '../src/catalog';
 import type { ComponentV2File, ConnectionsV2File, NodesV2File, RegistryV2File } from '../src/editor-deps';
@@ -98,6 +99,17 @@ describe('noodl-mcp tools (end to end)', () => {
     expect(data.mode).toBe('read-write');
     expect(data.rootComponent?.path).toBe('App');
     expect(data.stats?.totalComponents).toBe(3);
+  });
+
+  it('FIX-008 E — says which directory it is bound to, so a mis-bound server is detectable', async () => {
+    // 🔴 The bound path was announced once, in the `initialize` instructions, and repeated nowhere.
+    // A server left registered against somebody else's project therefore answers every question
+    // confidently and accepts every write, and nothing in the session says which project it means.
+    const { data } = await call<ProjectInfoResponse>(session, 'get_project_info');
+    // `path.resolve`, matching the store: the answer must be the path this server holds, not one
+    // normalised a second way, or a user comparing it against their registration sees a difference
+    // that is not there.
+    expect(data.projectDirectory).toBe(path.resolve(dir));
   });
 
   it('get_component returns graph + revision, accepts legacy names', async () => {

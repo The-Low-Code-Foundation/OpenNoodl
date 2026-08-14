@@ -41,6 +41,18 @@ export const AGENT_CONFIG_PATHS = Object.freeze({
 });
 
 /**
+ * Either of these makes a directory a v2 project — the same two-file test
+ * `noodl-mcp`'s own `ProjectStore` applies, and the same one `mcpFrontDoor`
+ * mirrors. Read here from the host rather than taken from the caller so that
+ * "will the server this registration names actually open this folder?" is
+ * answered by the folder.
+ */
+const V2_PROJECT_MARKERS = Object.freeze(['components/_registry.json', 'nodegx.project.json']);
+
+/** What `create_project` writes and a template does not. Its presence is the whole test. */
+const DOCS_BRIEF = 'docs/BRIEF.md';
+
+/**
  * One stdio registration, in the shape the client writes for itself.
  *
  * ✅ **Measured, not guessed** (2026-08-11): `claude mcp add --scope project`
@@ -199,16 +211,17 @@ export function renderClaudeMd(options: AgentConfigOptions): string {
     '## A note on `.mcp.json`',
     '',
     // ⚠️ This paragraph must describe what the build does, not what would be
-    // nice. It said a teammate "generates their own by opening the project in
-    // NodeGX" — the files are written when a project is **created**, and
-    // nothing backfills a cloned checkout (BST-005 §4 left that optional and it
-    // was not taken up). Promising it is the same failure BST-006's rule names:
-    // a reader told to expect something automatic waits instead of acting.
+    // nice. It once promised that a teammate "generates their own by opening
+    // the project in NodeGX" while nothing backfilled a cloned checkout, which
+    // is the failure BST-006's rule names: a reader told to expect something
+    // automatic waits instead of acting. FIX-008 B made the promise true, so
+    // the paragraph says it again — and if the backfill is ever removed, this
+    // sentence has to go with it.
     'It names absolute paths belonging to this machine’s NodeGX install, so it is listed in ' +
       '`.gitignore` — committed, it would point a teammate’s agent at a path that does not exist ' +
-      'on their disk. It is written when a project is created, and **not** regenerated for a ' +
-      'checkout cloned from git. To get one there, open the project in NodeGX and use ' +
-      '“Connect an AI agent” in settings, which emits the registration for that machine.',
+      'on their disk. It is written when a project is created **and whenever the project is opened ' +
+      'in NodeGX without one**, so a checkout cloned from git gets its own on first open. Nothing ' +
+      'here is ever overwritten: edit either file and it stays edited.',
     ''
   );
 
@@ -267,6 +280,56 @@ export async function installAgentConfig(
   }
 
   return { files, written: files.filter((f) => f.outcome === 'written').map((f) => f.path) };
+}
+
+/**
+ * FIX-008 B — the same two files, for a project that already existed.
+ *
+ * BST-005 wrote them **on project creation only**, and left backfill-on-open as an optional §4 item
+ * nobody took up. Measured 2026-08-14: of 44 project folders on the reporter's disk, exactly **one**
+ * had a `.mcp.json`. Every other project opened in Claude Code with no server of its own — only the
+ * user-scope entries, one of them hard-wired to somebody else's project, which is report 5's second
+ * sentence. So opening a project now writes what creating one would have.
+ *
+ * ⚠️ **Two things this does that {@link installAgentConfig} does not, and both are about a folder
+ * whose history we do not know:**
+ *
+ * 1. 🔴 **It refuses a project the server would refuse.** A `.mcp.json` naming a server that dies at
+ *    startup is worse than no `.mcp.json` — the user has a registration, an approval prompt, and a
+ *    server that never answers. A legacy monolithic project gets nothing, and the caller says why.
+ * 2. It reads `hasDocs` off the folder instead of being told. The creating caller knows what it just
+ *    wrote; a caller opening someone's two-year-old project does not.
+ *
+ * Everything else — never overwrite, append to `.gitignore`, report rather than throw — is
+ * {@link installAgentConfig}'s, unchanged and shared, because a backfilled project must be
+ * indistinguishable from a created one.
+ */
+export async function backfillAgentConfig(
+  host: AgentConfigHost,
+  options: Omit<AgentConfigOptions, 'hasDocs'>
+): Promise<AgentConfigReport> {
+  let isV2 = false;
+  for (const marker of V2_PROJECT_MARKERS) {
+    if (await host.exists(marker)) {
+      isV2 = true;
+      break;
+    }
+  }
+
+  if (!isV2) {
+    const reason =
+      'This is not a v2 project, and the authoring server refuses to open one — a registration ' +
+      'naming a server that cannot start is worse than none. Migrate the project first.';
+    return {
+      files: [
+        { path: AGENT_CONFIG_PATHS.mcp, outcome: 'skipped', reason },
+        { path: AGENT_CONFIG_PATHS.claude, outcome: 'skipped', reason }
+      ],
+      written: []
+    };
+  }
+
+  return await installAgentConfig(host, { ...options, hasDocs: await host.exists(DOCS_BRIEF) });
 }
 
 /**

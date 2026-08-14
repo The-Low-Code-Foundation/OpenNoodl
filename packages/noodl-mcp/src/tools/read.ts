@@ -74,9 +74,10 @@ export function registerReadTools(server: McpServer, binding: ProjectBinding, op
     {
       title: 'Get project info',
       description:
-        'Project metadata and orientation: name, settings, root component, routes, global style names, ' +
-        'component stats and whether this server allows writes. On a read-write server it also returns ' +
-        '`authoringDoctrine` — how work is expected to be factored into components. Cheap — call this first.',
+        'Project metadata and orientation: name, the directory this server is bound to, settings, root ' +
+        'component, routes, global style names, component stats and whether this server allows writes. ' +
+        'On a read-write server it also returns `authoringDoctrine` — how work is expected to be ' +
+        'factored into components. Cheap — call this first.',
       inputSchema: {}
     },
     guarded(() => {
@@ -88,6 +89,9 @@ export function registerReadTools(server: McpServer, binding: ProjectBinding, op
       const rootEntry = Object.entries(registry.components).find(([, e]) => e.type === 'root');
       const payload: ProjectInfoResponse = {
         name: project?.name,
+        // FIX-008 E — from the store the other tools use, not from the binding, so this is the
+        // directory that was actually read rather than the one that was asked for.
+        projectDirectory: store.projectDir,
         id: project?.id,
         version: project?.version,
         runtimeVersion: project?.runtimeVersion,

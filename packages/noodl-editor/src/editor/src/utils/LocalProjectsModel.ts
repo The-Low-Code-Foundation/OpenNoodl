@@ -13,7 +13,7 @@ import Model from '../../../shared/model';
 import { detectRuntimeVersion } from '../models/migration/ProjectScanner';
 import { RuntimeVersionInfo } from '../models/migration/types';
 import { projectFromDirectory, unzipIntoDirectory } from '../models/projectmodel.editor';
-import { installProjectAgentConfig } from '../models/template/installAgentConfig';
+import { backfillProjectAgentConfig, installProjectAgentConfig } from '../models/template/installAgentConfig';
 import { installStarterAssets } from '../models/template/starterAssets';
 import { GitHubOAuthService } from '../services/GitHubOAuthService';
 import { isV2FormatEnabled } from '../services/ProjectStructure/featureFlags';
@@ -134,6 +134,13 @@ export class LocalProjectsModel extends Model {
 
   // Bind to a loaded project, update model when renamed of when the thumbnail is updated
   bindProject(project: ProjectModel) {
+    // FIX-008 B — the one seam every open route crosses. `loadProject` (the launcher rows, the
+    // recents list, a freshly cloned repo) and `_addProject` (a new project, an unzipped one, a
+    // folder opened from disk) both land here, and so does EditorPage's reload — which is why the
+    // backfill sits on this method rather than on any of them. Deliberately not awaited: opening a
+    // project must not wait on a filesystem write it does not need.
+    void this.backfillAgentConfigFor(project);
+
     project
       .off(this)
       .on(
@@ -238,6 +245,44 @@ export class LocalProjectsModel extends Model {
     const report = await installProjectAgentConfig({ projectDirectory, projectName });
     for (const file of report.files) {
       if (file.outcome === 'skipped') console.warn(`Agent configuration: ${file.path} — ${file.reason}`);
+    }
+  }
+
+  /**
+   * FIX-008 B — give a project that already existed the same two files a new one gets.
+   *
+   * 🔴 **This writes into a folder the user merely opened**, which reverses BST-005's deliberate
+   * create-only posture (ruled 2026-08-14). The case for it is the measurement: 43 of 44 projects on
+   * the reporter's disk had no `.mcp.json`, so every one of them opened in Claude Code showing only
+   * the user-scope servers — including one hard-wired to somebody else's project, which is the
+   * "bound to a different project" half of report 5. Both files are machine-local and git-ignored,
+   * and neither is ever overwritten.
+   *
+   * ⚠️ **It can modify a tracked `.gitignore`.** Writing `.mcp.json` adds an ignore line for it,
+   * because a committed `.mcp.json` points a teammate's agent at absolute paths on *this* machine.
+   * That is a real diff appearing in a repo the user did not edit — accepted knowingly: the
+   * alternative is a machine-specific file that gets committed.
+   *
+   * Never awaited and never fatal. A project whose agent configuration could not be written is
+   * still a project, so this reports to the console and gets out of the way.
+   */
+  private async backfillAgentConfigFor(project: ProjectModel) {
+    try {
+      const projectDirectory = project._retainedProjectDirectory;
+      if (!projectDirectory) return;
+
+      const report = await backfillProjectAgentConfig({
+        projectDirectory,
+        projectName: project.name || 'Untitled'
+      });
+
+      // Only the write is worth a line. A `kept-existing` on every open would be noise, and a
+      // `skipped` for a legacy project is the expected answer rather than a problem.
+      if (report.written.length) {
+        console.log(`Agent configuration written for this project: ${report.written.join(', ')}`);
+      }
+    } catch (err) {
+      console.warn('Could not backfill the project’s agent configuration', err);
     }
   }
 
