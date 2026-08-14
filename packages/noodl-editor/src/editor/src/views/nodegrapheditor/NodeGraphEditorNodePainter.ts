@@ -130,6 +130,42 @@ function paintCategoryGlyph(ctx: CanvasRenderingContext2D, category: string, cx:
 }
 
 /**
+ * FIX-018 — the "card behind the card" edge, the mark that says this card opens.
+ *
+ * A second card body offset down-right, painted *before* the real one, so all
+ * that survives is a 3px L-shaped band along the bottom and right. Fill and
+ * outline are the card's own, which is the whole point: it reads as another
+ * card of the same kind sitting underneath, not as a thick border.
+ *
+ * Bottom-right is forced, not chosen. The unhealthy ring lives at −1px and the
+ * selection glow is a 6px stroke centred on the card edge; both are painted
+ * later and would sit on top of an edge anywhere else. Bottom-right they
+ * overlap it at 15% alpha, so the silhouette survives selection.
+ *
+ * The band falls outside `pointInside` and the cull rect. At 3px that is fine
+ * and it is why the offset must not grow: this is paint, not hit area.
+ */
+function paintStackedCardEdge(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  theme: TSFixme
+) {
+  const offset = NodeGraphEditorNode.stackedCardEdgeOffset;
+  const radius = NodeGraphEditorNode.cornerRadius;
+
+  ctx.save();
+  ctx.fillStyle = theme.cardBg;
+  fillRoundRect(ctx, x + offset, y + offset, width, height, radius);
+  ctx.strokeStyle = theme.cardBorder;
+  ctx.lineWidth = 1;
+  strokeRoundRect(ctx, x + offset, y + offset, width, height, radius);
+  ctx.restore();
+}
+
+/**
  * The comment stripe's width in *graph* units, widened at low zoom so it never
  * falls below one device pixel (CAN-004 — a mark you must zoom in to see is not
  * a mark). The context transform's horizontal scale is device pixels per graph
@@ -166,13 +202,32 @@ export function paintNode(node: NodeGraphEditorNode, ctx: CanvasRenderingContext
     // Category (UIX-005): existing taxonomy keys only — component / visual /
     // data / javascript / default. colorOverride (AiAssistant metadata) wins,
     // matching the old colorSchemeForNodeColorName precedence.
+    //
+    // FIX-018: a component instance is `component`, whatever its graph is made
+    // of. Left to itself `ComponentModel.get color()` inherits the hue of the
+    // component's own root node (componentmodel.ts:440-449), so a component
+    // wrapping a Group painted the identical blue chip as a Group and a
+    // logic-only one painted grey — nothing about the chip said "component".
+    // Structure beats inheritance here; an explicit colorOverride still wins,
+    // because that is somebody saying so on purpose.
+    const isComponentInstance = node.isComponent();
     const categoryName: string =
-      node.model.metadata?.colorOverride || (node.model.type as TSFixme).color || 'default';
+      node.model.metadata?.colorOverride ||
+      (isComponentInstance ? 'component' : (node.model.type as TSFixme).color) ||
+      'default';
     const cat = CanvasTheme.instance.categoryColors(categoryName);
 
     const isHighligthed = node.owner.isHighlighted(node);
     const horizontalSpacing = 10,
       connectionDragAreaWidth = 10; //the circle icon where you can drag connection from
+
+    // FIX-018. Before the card body and before the clip, so the body covers all
+    // but the 3px that peeks out bottom-right. Gated on the instance itself, not
+    // on the category above, so an AiAssistant-tinted component keeps the
+    // affordance even though its chip keeps its override hue.
+    if (isComponentInstance) {
+      paintStackedCardEdge(ctx, x, y, node.nodeSize.width, node.nodeSize.height, theme);
+    }
 
     ctx.textAlign = 'left';
     ctx.textBaseline = 'middle';

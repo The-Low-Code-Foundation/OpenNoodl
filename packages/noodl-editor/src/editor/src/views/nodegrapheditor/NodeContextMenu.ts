@@ -239,6 +239,28 @@ export class NodeContextMenu {
 
     const selectedNodes = editor.selector.nodes;
 
+    // FIX-018 — the second door into a component. Double-click was the only one,
+    // and the workflow canvas had already reached the same conclusion about the
+    // same gesture (WorkflowDocument.ts:243-249: "double-click … is
+    // undiscoverable"). Single-select only, and only on an instance: the item
+    // names the component it opens, so there is nothing to name for two of them.
+    //
+    // Same call as the double-click path (SelectionActions.ts:168-169),
+    // `pushHistory` included, so the breadcrumb and the back button cannot tell
+    // which door was used.
+    if (selectedNodes.length === 1 && selectedNodes[0].isComponent()) {
+      const node = selectedNodes[0];
+      items.push({
+        label: 'Open component',
+        icon: IconName.Component,
+        onClick: () => editor.switchToComponent(node.model.type, { pushHistory: true }),
+        tooltip: `Go into ${node.model.type.displayName || node.model.type.name}`,
+        tooltipShowAfterMs: 300
+      });
+
+      items.push('divider');
+    }
+
     const canExtract = canExtractToComponent(editor.model, selectedNodes);
     items.push({
       label: 'Extract to component',

@@ -8,6 +8,11 @@ export * from './HitTester.test';
 export * from './NodeCommentStripe.test';
 export * from './WireLabels.test';
 
+// FIX-018: the two marks that say a card is a component instance and can be
+// opened — the purple header chip (overriding the hue the component inherited
+// from its own root node) and the stacked-card edge bottom-right.
+export * from './NodeComponentMark.test';
+
 // BEN-004: the *preview* canvas, not the node graph — which components the
 // bench may be pointed at, and what the frame width control does with the
 // strings a text input hands back.
