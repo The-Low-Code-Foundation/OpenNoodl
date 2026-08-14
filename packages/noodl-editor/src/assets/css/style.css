@@ -761,61 +761,27 @@ button {
 
 /* -------------------------------------------------------------------
    String input popup
+
+   FIX-007's neighbour, FIX-020: this block used to live here and style
+   `.string-input-popup*` alongside `styles/popuplayer.css:604-755`, which is the
+   only class family the two stylesheets shared. That is not a duplicate, it is a
+   trap — the cascade is per-property, so the modern block won every property it
+   declared and this one silently kept the rest. `height: 30px; padding: 5px` on
+   the button row plus `height: 100%` on the buttons survived under the modern
+   `padding: 8px 20px`, and with the F20 `box-sizing: border-box` reset that
+   computes to a **4px content box for a 13px/600 label** — Chromium clips it,
+   which is the report's screenshot. The single-line input kept a stray
+   `margin: 5px` under a `width: 100%` box for the same reason.
+
+   Deleted rather than patched with `height: auto`, because the whole block was
+   superseded and a second copy is what caused this. `display: flex;
+   flex-direction: column` went with it: every child is a block or a flex
+   container in its own right, so block flow stacks them identically and the
+   12px/16px margins do not collapse across the input between them.
+
+   Five popups shared the defect: New port name, New group name, New folder name,
+   the new-component/cloud-function prompt, and the canvas comment editor.
    ------------------------------------------------------------------- */
-.string-input-popup {
-  width: 300px;
-  padding: 5px;
-  display: flex;
-  flex-direction: column;
-}
-
-.string-input-popup-label {
-  display: block;
-  color: var(--theme-color-fg-default-contrast);
-  margin: 5px;
-  margin-bottom: 0px;
-}
-
-.string-input-popup-input {
-  margin: 5px 5px 0px 5px;
-  height: 33px;
-  padding-left: 10px;
-}
-
-.string-input-popup-buttons {
-  height: 30px;
-  padding: 5px;
-  margin-top: 10px;
-}
-
-.string-input-popup-button-ok {
-  background-color: var(--theme-color-primary);
-  border: none;
-  color: var(--theme-color-on-primary);
-  height: 100%;
-  margin: 0px;
-  padding-left: 7px;
-  padding-right: 7px;
-  margin-right: 5px;
-}
-
-.string-input-popup-button-ok:hover {
-  background-color: var(--theme-color-primary-highlight);
-}
-
-.string-input-popup-button-cancel {
-  background-color: var(--theme-color-bg-2);
-  border: none;
-  color: var(--theme-color-fg-default-contrast);
-  height: 100%;
-  margin: 0px;
-  padding-left: 7px;
-  padding-right: 7px;
-}
-
-.string-input-popup-button-cancel:hover {
-  background-color: var(--theme-color-bg-3);
-}
 
 .search-bg {
   background-color: var(--theme-color-bg-3);

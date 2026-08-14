@@ -432,7 +432,11 @@ export function useComponentActions(options: UseComponentActionsOptions = {}) {
       PopupLayer.instance.showPopup({
         content: popup,
         position: 'screen-center',
-        isBackgroundDimmed: true
+        isBackgroundDimmed: true,
+        // FIX-020 — the new-component / cloud-function prompt. See the note in
+        // `componentports.tsx`: the shell is otherwise pinned to a height
+        // measured before layout settled, and paints content outside itself.
+        hasDynamicHeight: true
       });
     },
     [sheetPrefix]
@@ -504,7 +508,9 @@ export function useComponentActions(options: UseComponentActionsOptions = {}) {
     PopupLayer.instance.showPopup({
       content: popup,
       position: 'screen-center',
-      isBackgroundDimmed: true
+      isBackgroundDimmed: true,
+      // FIX-020 — the New folder name prompt, same shell.
+      hasDynamicHeight: true
     });
   }, [sheetPrefix]);
 

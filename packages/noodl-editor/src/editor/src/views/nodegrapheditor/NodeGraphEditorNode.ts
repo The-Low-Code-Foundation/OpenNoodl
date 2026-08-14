@@ -630,7 +630,11 @@ export class NodeGraphEditorNode {
         PopupLayer.instance.showPopup({
           content: popup,
           position: 'screen-center',
-          isBackgroundDimmed: true
+          isBackgroundDimmed: true,
+          // FIX-020 — the canvas comment editor, and the tallest of the five:
+          // it is the one `multiline` caller, so a shell pinned to a stale
+          // measurement clips the most here.
+          hasDynamicHeight: true
         });
       }, 100); // 100ms delay to be extra safe
     });

@@ -274,7 +274,13 @@ export class ComponentPorts extends View {
     PopupLayer.instance.showPopup({
       content: popup,
       attachTo: anchor,
-      position: 'top'
+      position: 'top',
+      // FIX-020: `showPopup` otherwise pins the shell to the height it measured
+      // before layout settled, with no `overflow` on `.popup-layer-popup` — so
+      // content taller than the measurement paints outside its own background.
+      // The clipped buttons were a stylesheet collision, but this is what let
+      // the shell stay too short for them afterwards.
+      hasDynamicHeight: true
     });
   }
 
@@ -355,7 +361,9 @@ export class ComponentPorts extends View {
     PopupLayer.instance.showPopup({
       content: popup,
       attachTo: anchor,
-      position: 'top'
+      position: 'top',
+      // FIX-020, as above — the New group name prompt is the same shell.
+      hasDynamicHeight: true
     });
   }
 
