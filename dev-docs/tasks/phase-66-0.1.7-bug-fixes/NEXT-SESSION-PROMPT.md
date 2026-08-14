@@ -1,8 +1,10 @@
 # Phase 66 — next session
 
-**Written 2026-08-14, session 1 (the first build session; the phase was scoped earlier the same
-day).** Three tasks built and gated, none driven. This file is rewritten at the end of **every**
-session — read §0 for how, and replace it rather than appending.
+**Written 2026-08-14, session 2 (the drive session).** The drive queue session 1 left is **cleared**:
+FIX-020 and FIX-010 are closed, FIX-007 is driven as far as it can go without money or its two
+unbuilt fixes. **No source changed this session** — the work was verification, one gitignored
+artefact rebuild, and the records. This file is rewritten at the end of **every** session — read §0
+for how, and replace it rather than appending.
 
 ---
 
@@ -29,128 +31,121 @@ a learning findable six phases later.
 
 | Task | Built | Driven | Note |
 |---|---|---|---|
+| **FIX-020** | ✅ | ✅ **3/3** | five popups, both themes — **CLOSED** |
+| **FIX-010** | ✅ | ✅ **3/3** | picker anchors + stickiness survives — **CLOSED** |
 | **FIX-007** docs half | ✅ | n/a | both catalogs, all 3 examples, `WIRE_FORMAT_LEGEND` |
-| **FIX-007** gate half | ✅ | 🔴 no | blocks at write time; criteria 1 + 4 need the drive |
-| **FIX-007** fixes 3 & 4 | 📋 open | — | `addConnection`/`getConnectionStatus`; `evaluateHealth()` on `instanceports` |
-| **FIX-020** | ✅ | 🔴 no | all 3 criteria are visual — screenshots vs `new-port-1.png` |
-| **FIX-010** | ✅ | 🔴 no | criteria 1–2 need the drive; specs green |
+| **FIX-007** gate half | ✅ | ✅ | rejected + accepted through the real MCP door |
+| **FIX-007** crit 1 | ✅ | 🟡 half | MCP path driven; **internal-AI half is paid** |
+| **FIX-007** crit 4 | 📋 **not built** | 🔴 | blocked on fix 4 — do not re-drive until it lands |
+| **FIX-007** fixes 3 & 4 | 📋 open | — | `addConnection`/`getConnectionStatus`; `evaluateHealth()` |
 | **FIX-018** | 📋 open | — | ✅ **ruled** (option C) — buildable now, no blocker |
 | everything else | 📋 open | — | see [TASKS.md](TASKS.md) |
 
-🔴 **Three tasks sit at "built, not driven." That is the phase's whole debt right now.** Clear it
-before opening a fourth build lane — a drive queue of three is one sitting; a drive queue of eight is
-how a phase stops being verifiable.
+✅ **The drive debt is cleared.** Two tasks closed outright; the only thing FIX-007 still owes to a
+*drive* is criterion 1's paid half. Criterion 4 is owed to a *build*, not a drive — see §3.
 
 ---
 
-## 2. Gate readings — 2026-08-14, on `3f633df4` + this session's uncommitted work
+## 2. Gate readings
 
-| Gate | Reading |
+🔴 **No source file changed this session**, so session 1's full-suite readings stand unaltered.
+Re-run this session on the same tree, all green:
+
+| Gate | Reading (2026-08-14, session 2, on `343bd0c4`) |
 |---|---|
-| `npx tsc -p tsconfig.json --noEmit` | ✅ clean |
-| `catalog:check` / `catalog:merge:check` | ✅ up to date |
-| `catalog:examples` | ✅ 62/62 strict |
-| `docs:nodes:check` | ✅ 194 files / 175 nodes |
-| `cloud-library:check` | ✅ 84 node types |
+| `catalog:check` | ✅ 175 node types, up to date |
+| `catalog:merge:check` | ✅ 175/175 documented, 62 examples, up to date |
+| `cloud-library:check` | ✅ 84 node types, up to date |
 | MCP suite (`npx jest` in `packages/noodl-mcp`) | ✅ **41 suites / 458 tests** |
-| `test:main` | ✅ **188 suites / 2866 tests** |
-| `test:ci` | ✅ **2726 total / 6 failed, seed 28337** — all 6 inherited **by name** |
+| `tests-unit/fix-007/function-ports.test.ts` | ✅ **17 / 17** |
+| `test:ci` (session 1, unchanged tree) | ✅ **2726 total / 6 failed, seed 28337** |
 
-⚠️ **`test:main`'s baseline moved: 188/2866, not the 144/2107 in older handovers.** The suite grows;
-compare names, not totals.
+**The six `test:ci` failures, read from `test-results.json` and confirmed by name this session** —
+all inherited, zero new:
+`AIX-006 style vocabulary` ×4 · `AI model registry` ×2.
 
-⚠️ **`test:main` flakes under its own parallelism.** `tests-unit/mcp-004/resolveNodeRuntime.test.ts`
-("finds a node that only an rc file puts on PATH") failed once in a full run and passed 24/24 alone;
-the next full run was 188/188. That spec writes a fake shell to a temp dir and *executes* it. Re-run
-the **whole suite** before believing a single spawn-shaped failure.
+⚠️ **`test-results.json` records failures ONLY.** Its keys are `overallStatus, totalCount,
+failedCount, failures, seed` — there is no per-spec pass list, so you cannot confirm a *named* spec
+passed from it. The honest reading is "2726 graded, these 6 named failures, mine is not among them".
+Do not go looking for a passing spec by name in that file and conclude it never ran.
 
-### 2a. ✅ `test:ci` — 2726 / 6 / seed 28337, measured 2026-08-14 16:16 over the full change set
-
-**The floor is still 6, and all six are the inherited baseline by name:**
-`AI model registry` ×2 (`has exactly one default per provider that owns models`,
-`treats openai-compatible as sharing the OpenAI catalogue`) and `AIX-006 style vocabulary` ×4.
-**Zero new failures.** The total is 2726 against the 2670 in older readings — the suite has grown;
-compare names.
-
-⚠️ **The harness reported the backgrounded command as exit 0 while lerna reported `exited 1`.**
-Exactly the recorded trap. `test-results.json` is the only reading that counts, and it said
-`overallStatus: failed` with the six names. Read the file, never the wrapper's exit code.
-
-⚠️ And the inverse trap, hit the same run: piping through `tail -50` **cuts the `Jasmine:` line**, so
-its absence proved nothing here — the JSON showed 2726 specs graded. Do not conclude "graded nothing"
-from a truncated log; check `totalCount` first.
-
-Reminders that cost time when forgotten:
-- Read `packages/noodl-editor/tests/test-results.json`, **not** the log.
-- A run with no `Jasmine:` line **graded nothing** — re-run; never read exit 1 as failures.
-- The *"more than 10000 listeners"* flood is normal and tracks progress, not defects.
-- ⚠️ **Do not edit editor source while it builds.** One run was killed this session for exactly
-  that: `test:ci` webpacks the renderer from `src/`, and edits landing mid-build make the result
-  untrustworthy. Finish the code, *then* start it.
-- Its output is buffered if you pipe through `tail` — you will see nothing until it exits.
+⚠️ `test:main`'s baseline is **188 / 2866**, not the 144 / 2107 in older handovers.
 
 ---
 
 ## 3. What this session settled — do not re-derive
 
-**The `in-`/`out-` prefix is confirmed, from three independent directions**, so treat it as fact:
-`simplejavascript.ts:736-739` passes the prefixes, `javascriptnodeparser.js` stores
-`{name: prefix + p, displayName: p}`, and 80 real-artefact endpoints use the prefixed form.
+### FIX-020 — the fix works, and the measurement that proves it
 
-🔴 **The research had the docs half right and missed the bigger half: all three shipped worked
-examples wired the unprefixed name**, including a `Component Inputs → Function` wire — the reported
-bug, blessed in the corpus the AI reads. `catalog:examples` validated 62/62 **before and after** the
-correction, because the semantic validator skips dynamic-port types by design, so no gate could ever
-have caught it. Generalised to memory as
-`a-doc-that-lies-has-examples-that-lie-too` — **when a doc aimed at an AI is wrong, grep the examples
-that ship beside it in the same commit.**
+`.string-input-popup-button-ok` computes **`height: 31px; padding: 8px 20px`** with
+`scrollHeight === clientHeight`. Pre-fix that same selector computed `height: 20px` under the same
+padding — the 4px content box for a 13px/600 label. `.popup-layer-popup` carries
+`style="height: auto"`, so `hasDynamicHeight: true` is live at all five call sites. Zero children
+escape the padding box on any of the five. Both `data-theme` values, identical geometry — expected,
+since the defect was `height`/`padding` and neither is themed.
 
-**Corpus calibration for the new gate** (44 test projects): 124 endpoints on 71 Function nodes, 80
-prefixed, **12 hits, all 12 in agent-written graphs**, zero in hand-drawn or prefab wires. Canonical:
-`Puppy test 3` → `Pages/Admin` → "Format Puppy List", `Inputs.items`/`Outputs.text` wired
-`items`/`text` with `ports: []` — both wires dead, the list never rendered, report clean.
+The bug screenshot carried **two** defects and the second was never written down: the text input
+also painted past the popup's right edge. It is fixed too (288px input, 320px popup, 16px padding).
 
-**Two of the task files' own directions were wrong, and were changed deliberately:**
-- FIX-007 fix 2 said "give `nonexistentPort` a non-skip branch". It cannot: `NormNode` carries no
-  `parameters`, and that rule is right to skip runtime-discovered types. It went to
-  `authoredPreconditionDiagnostics` instead — which sees parameters, is shared by both authoring
-  doors, and **blocks** rather than warning on canvas.
-- FIX-010 said "invert the keep-on-query-change assertion at `NodePickerReducer.test.ts:35`". There
-  was none to invert: that spec's comment *described* a keystroke but never dispatched `SetQuery`.
-  The comment was corrected and the two missing assertions added.
+### FIX-010 — the precondition was reproduced before the fix was exercised
 
-**FIX-020's caller list is five, not six** — `PropListInput`/`StringListInput` stopped using
-`StringInputPopup` at ERG-003 §3.
+A freshly opened picker cursors `Group` at index 0 of 152 — the exact head-of-list node whose
+`cssClassName`/`styleCss` ports let it survive a "css" query while ranking far below the answers.
+Then, read after **each** of the three keystrokes (not just at the end, because the diagnosis is
+about landing stale): `scrollTop` stays `0` and the cursor re-anchors to index 0 every time.
+Category-rail stickiness survives: cursor kept `Button` across an 18→14 re-rank.
 
-⚠️ **A sentence added to `AUTHORED_*_FIELDS` costs ~3× its length** (the connection and node schemas
-are each inlined three times) and breaks `noodl-mcp`'s `toolDisclosure` **8,200-token surface
-budget**. That gate's header demands each new cost argue for itself. Carry AI-facing rules in the
-catalog, the legend, the examples and the *rejection message* instead — schema prose is the expensive
-seat.
+### 🔴 FIX-007 — the drive found the fix was not reaching the door it was written for
+
+`packages/noodl-mcp/bin/noodl-mcp.js` is one line: `require('../dist/noodl-mcp.cjs')`. That bundle
+was dated **Aug 12 — two days before FIX-007 was built** — and `grep unprefixed-function-port dist/`
+returned nothing. **The editor door had the gate; the MCP door was still serving the old code.**
+`dist/` is gitignored and `build:sidecars` regenerates it, so the packaged product was never wrong —
+but every locally running server was, and a drive against one would have reported the gate missing
+and been believed. Rebuilt (151 ms) and verified in the bundle.
+
+⚠️ **Richard's MCP servers are still running the pre-rebuild copy** — a process holds the bundle it
+loaded. They need a restart before the gate protects them. Nothing else is affected.
+
+**The gate itself works, driven through the real door** on a scratch copy: the unprefixed
+`Component Inputs → Function` wire is **rejected with nothing written**, naming `in-items` and
+`out-text`, and the rejection carries the exclusion (`run, done, success…` are not prefixed) that
+holds it at zero false positives. The prefixed control writes cleanly, 0 errors.
+
+**Criterion 4 cannot pass and this is not a drive failure.** `ProjectModel.scheduleEvaluateHealth`
+(`projectmodel.ts:1374-1384`) still hard-codes `setTimeout(…, 2000)` and nothing forces
+`evaluateHealth()` on `instanceports` receipt. Fix 4 is unbuilt. Re-driving now only re-measures the
+2 s debounce.
+
+### Driving traps this cost time to find
+
+- **`cdp.js click` takes a CSS selector and the FIRST match.** The node graph is Canvas2D, so
+  nothing on it is selectable that way; and clicking a tree row by class hits the header. Tag the
+  intended element `id="cdp-target"` first, and **check the printed `clicked … at x,y` against the
+  box you measured** — that mismatch is the only signal you hit the wrong thing.
+- **To click a canvas node:** walk `ed.roots` (**views**, not `ed.model.roots`), `viewport.centerOn`
+  the node, then click the canvas centre through a 1×1 `pointer-events:none` marker.
+  `ed.selector.select([n])` sets `_selected` but does **not** open the property panel.
+- **`tint-visual` is not the cursor.** A `/tint-v/` probe matches a category tint on most picker
+  cards and returns a plausible wrong card; the cursor class is `is-cursored`.
+- **Ten synthetic `ArrowDown`s in one tick move the cursor once** — batched state. Space them
+  ~120 ms. It reads as "synthetic events don't work here", and it is not that.
+- **A popup shell reporting `scrollHeight 160` vs `clientHeight 140` is not clipping** when it
+  computes `overflow: visible`. Driving `scrollTop = 999` left it at `0`.
 
 ---
 
 ## 4. What to do next
 
-**First, in this order, and it is one sitting:**
-
-1. **Re-run `test:ci`, record §2a, commit.** The three built tasks are uncommitted work in a shared
-   checkout — that is the riskiest state in this repo.
-2. **The drive queue — three tasks, one editor, serialised.** `NOODL_REMOTE_DEBUG_PORT=9333`, check
-   `lsof -i:9222` for a stray Chrome first.
-   - **FIX-020** — open New port name; screenshot against `new-port-1.png`; then New group name, New
-     folder name, the new-component prompt, and the canvas comment editor (the tallest, `multiline`).
-     ⚠️ Filter `:not([class*=MeasuringContainer])` if you query the DOM — but note this is
-     `PopupLayer`, **not** `BaseDialog`, so the double-render trap may not apply; verify rather than
-     assume.
-   - **FIX-010** — type "css" in the node picker; read `.Results`' `scrollTop` and `state.cursorKey`.
-     Expect `scrollTop === 0` and the cursor on the top result. Then arrow to mid-list and change the
-     category rail — the cursor must keep its node.
-   - **FIX-007** — ask the internal AI to wire a Component Input to a Function-node input; expect a
-     working connection and no `con-no-target-port`. Then the negative control: submit an
-     unprefixed wire through MCP and confirm it is **rejected** naming `in-<name>`.
-3. **Then FIX-008** (Tier 1 ⭐, the other AI-trust breaker) or **FIX-018** (ruled, buildable, a
-   visible win). FIX-008 has the larger payoff; FIX-018 has no ruling risk at all.
+1. **Restart Richard's MCP servers** (or tell him to), so the FIX-007 gate actually protects the MCP
+   door. One line of §3 explains why; it costs nothing and the fix is inert without it.
+2. **FIX-008** (Tier 1 ⭐, the other AI-trust breaker) or **FIX-018** (ruled, buildable, a visible
+   win). FIX-008 has the larger payoff; FIX-018 has no ruling risk at all.
+3. **FIX-007 fixes 3 and 4** if you want the task fully closed — fix 4 is the small one and it is
+   what unblocks criterion 4. The ⚠️ rider (`add_connection` drops `label`/`labelT`/`route`) is
+   still unfiled.
+4. **Ask Richard for the paid drive** of FIX-007 criterion 1's internal-AI half — one prompt in the
+   Build panel, wired Component Input → Function input. Do not spend it unasked.
 
 **Do not start** FIX-015 or FIX-021's brainstorm halves — they need Richard, not an agent.
 
@@ -158,10 +153,10 @@ seat.
 
 ## 5. Rulings still owed by Richard
 
-Unchanged from the [README](README.md)'s queue except that FIX-018 is now ruled. The batchable
-smalls (FIX-002's send key, FIX-003's opt-in, FIX-009's PortEditor, FIX-011's persistence, FIX-012's
-None, FIX-014's x/y, FIX-019's chip) each have a recommendation already written — **one sitting
-clears seven tasks' blockers.** Ask for that sitting early in a session, not at the end.
+Unchanged. The batchable smalls (FIX-002's send key, FIX-003's opt-in, FIX-009's PortEditor,
+FIX-011's persistence, FIX-012's None, FIX-014's x/y, FIX-019's chip) each have a recommendation
+already written — **one sitting clears seven tasks' blockers.** Ask for that sitting early in a
+session, not at the end.
 
 The two big ones (FIX-015's eight style-token rulings, FIX-021's six memory-doc rulings) are their
 own sessions and their output is a new phase, not code in this one.
@@ -172,6 +167,6 @@ own sessions and their output is a new phase, not code in this one.
 
 Work on `cline-dev`; **never `git stash`**; `cd` to the repo root in every git call; pathspec-scope
 every `git add`. Check for a sibling session (`git log --since="3 hours ago"`, and read untracked
-files rather than assuming they are yours) — the answer changes mid-session and has been false-then-
-true inside one. `dev:stop` kills Richard's MCP servers; kill the `scripts/start.ts` pid instead.
-Full list in the [README](README.md) § "Standing constraints inherited".
+files rather than assuming they are yours). `dev:stop` kills Richard's MCP servers — kill the
+`scripts/start.ts` pid instead (done this session; all five servers survived). Full list in the
+[README](README.md) § "Standing constraints inherited".

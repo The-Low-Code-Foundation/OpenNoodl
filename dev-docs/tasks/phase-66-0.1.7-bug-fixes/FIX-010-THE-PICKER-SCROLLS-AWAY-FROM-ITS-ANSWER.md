@@ -55,12 +55,47 @@ re-set to the value it already had.
 `overflow-anchor: none`. The smooth scroll is the part that makes it land *stale*: it is still
 animating toward the previous keystroke's answer when the next one lands.
 
-**Still open:** the devtools `scrollTop` read and acceptance criteria 1–2, which need the drive.
+## ✅ DRIVEN 2026-08-14 — 3/3 criteria
+
+Driven live over CDP. **The bug's precondition was reproduced before the fix was exercised**: on a
+freshly opened picker the cursor sits on `Group` at index 0 of 152 browse cards — and `Group` is
+precisely the head-of-list layout node whose `cssClassName`/`styleCss` ports let it *survive* a
+"css" query while ranking far below the real answers. That is the sticky cursor the diagnosis blamed.
+
+**Criterion 1 ✅ — read after each of the three keystrokes, not just at the end**, because the
+diagnosis says the smooth scroll lands *stale* on later keystrokes:
+
+| Query | Cards | Cursored card | Index | `.Results.scrollTop` | In view |
+|---|---|---|---|---|---|
+| `c` | 139 | Color (Variables) | 0 | 0 | yes |
+| `cs` | 24 | CSS Definition (Logic) | 0 | 0 | yes |
+| `css` | 18 | CSS Definition (Logic) | 0 | 0 | yes |
+
+`scrollTop` never leaves 0 and the cursor re-anchors to `itemKeys[0]` on every keystroke. The
+screenshot shows CSS Definition ringed at the top of the pane with its docs in the preview — the
+user's "you don't see the CSS result unless you manually scroll up" is gone.
+
+**Criterion 2 ✅ — the stickiness that had to survive.** Arrowed to mid-list (`Button`, index 8 of
+18 under *All results*), then changed the category rail to *UI Elements*: the list re-ranked to 14
+cards and the cursor **kept `Button`**, now index 7. `SetActiveCategory` was deliberately left
+untouched and that decision holds up live.
+
+**Criterion 3 ✅** — 2726 specs graded in `test:ci`, 6 failures, all six the inherited baseline by
+name (4× `AIX-006 style vocabulary`, 2× `AI model registry`). No nodepicker spec among them.
+
+🔴 **Two driving traps this cost time to find; do not repeat them.**
+- **`tint-v` is not the cursor.** `NodePickerCard-module__Root--tint-visual` is a *category tint* and
+  matches a `/tint-v/` probe on most cards. The cursor class is `is-cursored`
+  (`NodePickerCard.tsx:51`). A probe on the tint reports a plausible, wrong card.
+- **Ten `ArrowDown`s dispatched in one synchronous loop move the cursor once.** Every handler reads
+  the same pre-batch state — the recorded batched-`setState` trap. Space them ~120 ms and they land
+  one for one. Synthetic `KeyboardEvent` is otherwise fine here; it is the batching, not the trust
+  level, that swallows them.
 
 ## Acceptance criteria
 
-1. Open picker → type "css" → the top-ranked CSS result is visible at the top of the pane with no
+1. ✅ Open picker → type "css" → the top-ranked CSS result is visible at the top of the pane with no
    manual scroll. Driven.
-2. Arrow-key to mid-list, change category rail → cursor keeps its node (the stickiness that must
+2. ✅ Arrow-key to mid-list, change category rail → cursor keeps its node (the stickiness that must
    survive).
-3. Reducer specs updated and green.
+3. ✅ Reducer specs updated and green.

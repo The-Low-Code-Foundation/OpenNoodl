@@ -72,12 +72,48 @@ New group name), `useComponentActions.ts` (new component/cloud function, New fol
 `PropListInput`/`StringListInput` no longer use this popup at all (ERG-003 §3 replaced them), so
 the live caller list is five, not six.
 
-**Still open:** all three acceptance criteria are visual and need the drive + screenshot against
-`new-port-1.png`.
+## ✅ DRIVEN 2026-08-14 — all five popups, both themes, 3/3 criteria
+
+Driven live over CDP against a scratch project (`leg003-drive`). The **decisive measurement the task
+asked for first** came back as the fix predicts: `.string-input-popup-button-ok` computes
+`height: 31px; padding: 8px 20px` with `scrollHeight === clientHeight`. Pre-fix that selector
+computed `height: 20px` under the same padding — a **4px content box for a 13px/600 label**. The
+label now has 15px of content box, and `.popup-layer-popup` carries `style="height: auto"`, so
+`hasDynamicHeight: true` is in force at every call site.
+
+| Popup | Call site | ok/cancel height | Escapes the padding box | Verdict |
+|---|---|---|---|---|
+| New port name | `componentports.tsx:256` | 31px / 31px | none | ✅ |
+| New group name | `componentports.tsx:339` | 31px / 31px | none | ✅ |
+| New folder name | `useComponentActions.ts:449` | 31px / 31px | none | ✅ |
+| New component name | `ComponentTemplates.ts:64` | 31px / 31px | none | ✅ |
+| Comment editor (`multiline`) | `NodeGraphEditorNode.ts:596` | Save 31px / 31px | none | ✅ |
+
+**Criterion 1 ✅** — screenshot diffed against `new-port-1.png`. The bug shot shows two defects, and
+both are gone: "Add" was clipped mid-glyph inside its blue pill, and the text input painted **past
+the popup's right edge**. Measured now: the input is 288px inside a 320px popup with 16px padding —
+exactly flush, no overflow. That second defect is the `-input` legacy `margin: 5px` the build found
+while reading; it was never in the written report but it is in the user's screenshot.
+
+**Criterion 2 ✅** — the other four, including the tallest. The comment editor renders its eight-row
+code editor with Save/Cancel fully visible below it.
+
+**Criterion 3 ✅** — a per-child sweep against the popup's padding box reports zero escapes on all
+five.
+
+⚠️ **One false positive worth not re-deriving:** the shell reports `scrollHeight 160` against
+`clientHeight 140`, which reads as 20px of hidden overflow. It is not. `.popup-layer-popup` computes
+`overflow: visible`, and driving `scrollTop = 999` leaves it at `0` — nothing scrolls, and every
+child's bottom (720) sits inside the shell's padding box (736). Same shape as the recorded
+`scrollWidth` trap, in the vertical direction: **drive the scroll, do not read the number.**
+
+**Both themes ✅** — measured under `data-theme="dark"` and `data-theme="light"`; geometry identical
+to the pixel. Expected rather than lucky: the defect was `height`/`padding`, and neither is themed.
+The light screenshot confirms the theme genuinely repaints rather than the attribute being inert.
 
 ## Acceptance criteria
 
-1. "New port name": Add and Cancel labels fully visible, both themes. Screenshot vs `new-port-1.png`.
-2. Same check on New group name, New folder name, new-component prompt, and the canvas comment
+1. ✅ "New port name": Add and Cancel labels fully visible, both themes. Screenshot vs `new-port-1.png`.
+2. ✅ Same check on New group name, New folder name, new-component prompt, and the canvas comment
    editor (multiline — the tallest case).
-3. No popup paints content outside its background (the shell-pin symptom).
+3. ✅ No popup paints content outside its background (the shell-pin symptom).

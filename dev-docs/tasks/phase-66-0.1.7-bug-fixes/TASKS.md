@@ -5,9 +5,16 @@ user-test report. Every row's mechanism was read in source on 2026-08-14; the ta
 file:line evidence.
 
 **Built so far (2026-08-14):** FIX-007 (docs + write-time gate), FIX-020, FIX-010 — code complete
-and gated, all three still owed a live drive for their visual/end-to-end criteria. Gates green:
-`tsc --noEmit`, catalog trio + `catalog:examples` 62/62 + `docs:nodes:check`, `cloud-library:check`,
-MCP suite 458/458, `test:main` 188 suites / 2866.
+and gated. Gates green: `tsc --noEmit`, catalog trio + `catalog:examples` 62/62 + `docs:nodes:check`,
+`cloud-library:check`, MCP suite 458/458, `test:main` 188 suites / 2866, `test:ci` 2726/6 (all six
+inherited by name).
+
+**Driven (2026-08-14, session 2):** **FIX-020 and FIX-010 are CLOSED** — 3/3 criteria each, driven
+live. **FIX-007** is driven for criteria 2 and 3 and for criterion 1's MCP half; criterion 1's
+internal-AI half is *paid* and awaits Richard, and criterion 4 is **blocked on its own fix 4, which
+is not built** — not on the drive. 🔴 The drive also found the MCP sidecar `dist/` two days stale, so
+the gate was reaching the editor door but **not** the MCP door until it was rebuilt; a running server
+needs a restart to pick it up. See [NEXT-SESSION-PROMPT.md](NEXT-SESSION-PROMPT.md) § 3.
 
 **States:** built → spec-proved → driven (the phase-64 discipline: a spec proves the decision;
 only a drive proves the pixels).
