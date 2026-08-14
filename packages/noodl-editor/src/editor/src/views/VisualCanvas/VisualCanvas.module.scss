@@ -156,7 +156,30 @@
   }
 }
 
+/* FIX-011 / FIX-019 — the 30px strip's width budget, settled once.
+   -----------------------------------------------------------------------------
+   BEN-004's drive measured this strip clipping at 640px, and both fixes wanted
+   room in it: FIX-011 for a height field and the "set as default size" button,
+   FIX-019 for a divergence chip. The settlement is one rule, and it lives here
+   because here is where it can be read as a rule rather than inferred from four
+   files:
+
+     **The caption is the only thing that shrinks.**
+
+   Everything else in the strip is `flex-shrink: 0` — the scope chip (R4, the
+   only way out), the frame controls, the divergence chip, the size read-out. So
+   what a narrow panel costs you is the explanatory sentence, in the order a
+   reader would give it up anyway: the component's *name* is in the scope chip
+   on the left as well, so the caption is the one genuinely redundant thing in
+   the strip.
+
+   FIX-019's chip is affordable at all because it is assertive: it appears only
+   on divergence and costs zero width in the common case. */
 .BenchCaption {
+  /* The shrink zone. `1 1 auto` rather than the default `0 1 auto` so it also
+     takes the *slack* — otherwise a wide panel leaves a gap between the caption
+     and the controls, and the strip reads as two clumps rather than one row. */
+  flex: 1 1 auto;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -169,8 +192,48 @@
   }
 }
 
+/* FIX-019 — shown only when the node graph is on a different component. Styled
+   on the `DesignBannerExit` precedent: this is the same kind of thing, a way
+   back offered on the surface where the confusion happens. Quieter than that
+   one, because a divergence is a normal state to be in and not a mode you are
+   stuck in — outlined rather than filled. */
+.BenchDiverged {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 220px;
+  border: 1px solid var(--theme-color-primary);
+  border-radius: var(--radius-md);
+  padding: 2px 8px;
+  font-family: var(--font-family);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.2;
+  cursor: pointer;
+  color: var(--theme-color-primary);
+  background-color: transparent;
+
+  span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &:hover {
+    color: var(--theme-color-fg-on-primary);
+    background-color: var(--theme-color-primary);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--theme-color-primary);
+    outline-offset: 2px;
+  }
+}
+
 .BenchSize {
-  margin-left: auto;
+  /* No `margin-left: auto` — the caption takes the slack now (see above), and
+     an auto margin here as well would fight it for the same space. */
   flex-shrink: 0;
   color: var(--theme-color-fg-muted);
   font-family: var(--font-family-code);

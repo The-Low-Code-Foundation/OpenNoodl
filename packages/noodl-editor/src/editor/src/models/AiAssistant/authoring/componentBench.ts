@@ -61,9 +61,11 @@
  * which is what a page gives a component anyway, is BEN-004's existing job
  * (`CanvasView.setViewportSize` displays exactly this for the app preview), and
  * is measurable in the rendered document rather than inferred from a parameter.
- * `frame` and `stretch` are carried through on the result for that surface to
- * apply. See the phase README register (B3) — whether a graph-level wrapper is
- * ever needed is a live question for BEN-007, not a thing to guess at here.
+ * The surface owns that size outright and this module has no opinion on it:
+ * FIX-011 removed the `frame`/`stretch` pair that used to be accepted and
+ * echoed here, because nothing ever passed one and nothing ever read one back.
+ * See the phase README register (B3) — whether a graph-level wrapper is ever
+ * needed is a live question for BEN-007, not a thing to guess at here.
  *
  * @module AiAssistant/authoring/componentBench
  */
@@ -132,13 +134,24 @@ export interface BenchMount {
   target: string;
   /** Input values, keyed by declared input port name. */
   inputs?: Record<string, unknown>;
-  /**
-   * The frame the component is rendered into. Applied to the preview surface,
-   * not to the graph — see the module note. Omitted = whatever the stage gives.
+  /*
+   * 🔴 There is deliberately **no `frame`/`stretch` here**, and there was until
+   * FIX-011 removed them.
+   *
+   * They were accepted and echoed straight back onto the result — and **no
+   * caller ever passed one and no reader ever read one**, so what the pair
+   * actually did was describe a capability the export does not have. FIX-011
+   * went looking for where the bench's height was handled, found a `height?`
+   * declared right here, and had to read three more files to establish that it
+   * had never been connected to anything. That is the cost of a lying type: it
+   * answers the question wrongly and the reader believes it.
+   *
+   * The frame is applied by the *surface* (`ComponentBench`), and that is the
+   * design rather than an omission: making it a build input would put a
+   * `location.reload()` on the frame control, because a changed export makes the
+   * runtime reload and destroys the state someone opened the bench to look at.
+   * See the module note.
    */
-  frame?: { width?: number; height?: number };
-  /** Whether the component fills the frame or sizes to its own content. Default false. */
-  stretch?: boolean;
   /** `sample_data`-shaped records for the backend the component runs against (BEN-006). */
   userData?: AgentSampleData;
   /** False for "Real backend": ship no dataset, so nothing is faked. */
@@ -150,9 +163,11 @@ export interface BenchMount {
 export interface BenchExport extends SandboxExport {
   /** The interface the parameter set was built from — the inputs rail's schema (BEN-002). */
   interface?: BenchInterface;
-  /** Echoed back so the surface can size its stage without re-deriving anything. */
-  frame?: { width?: number; height?: number };
-  stretch?: boolean;
+  /*
+   * 🔴 The matching half of the removal above: this claimed the frame was
+   * "echoed back so the surface can size its stage", and nothing ever wrote it.
+   * The surface owns the frame outright. See `BenchMount`.
+   */
 }
 
 /** Both spellings of a component reference resolve, exactly as the validator's do. */
@@ -396,8 +411,6 @@ export function buildBenchExport({
   project,
   target,
   inputs,
-  frame,
-  stretch = false,
   userData,
   useSampleData = true,
   signedIn = true
@@ -436,7 +449,7 @@ export function buildBenchExport({
 
   const visual = (component.graph.roots ?? []).some((node: NodeGraphNode) => node.type?.allowAsExportRoot);
   const summary = describe(component, iface, unknown, visual);
-  const result: BenchExport = { json, interface: iface, frame, stretch };
+  const result: BenchExport = { json, interface: iface };
 
   if (!useSampleData) {
     delete json.metadata[SANDBOX_METADATA_KEY];

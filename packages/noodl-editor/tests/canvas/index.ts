@@ -36,3 +36,8 @@ export * from './bench-outputs.test';
 // BEN-005: what a saved scenario is allowed to contain, and what a stale one
 // does to a component whose interface has moved on since it was written.
 export * from './bench-scenarios.test';
+
+// FIX-011: the per-component default size — the second knowing exception to R5,
+// and the only thing besides a scenario save that this surface writes to
+// `project.json`. What reaches disk, and what survives coming back off it.
+export * from './bench-frame-default.test';

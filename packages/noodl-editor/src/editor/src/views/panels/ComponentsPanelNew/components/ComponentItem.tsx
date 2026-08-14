@@ -218,7 +218,18 @@ export function ComponentItem({
        */
       if (!component.isCloudFunction) {
         items.push({
-          label: 'Preview in isolation',
+          /**
+           * FIX-019 14(a) — "in isolation" described the *mechanism*; a user
+           * looking for the surface is looking for the place they work on one
+           * component, and the report's own word for that is the workbench.
+           *
+           * ⚠️ Scoped to this menu item on purpose. Whether "the workbench"
+           * becomes the product word *everywhere* — the surface's own caption,
+           * the docstrings — is a ruling still owed, and sweeping it here would
+           * pre-empt it. The `data-test` ids are untouched either way: live
+           * drive scripts reference them.
+           */
+          label: 'Show in workbench',
           icon: IconName.PlayCircle,
           onClick: () => requestBenchMount(component.name)
         });

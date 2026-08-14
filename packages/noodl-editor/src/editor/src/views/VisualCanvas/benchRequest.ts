@@ -17,6 +17,7 @@
 
 import { ProjectModel } from '@noodl-models/projectmodel';
 
+import { NodeGraphContextTmp } from '../../contexts/NodeGraphContext/NodeGraphContext';
 import { EventDispatcher } from '../../../../shared/utils/EventDispatcher';
 
 export const BENCH_MOUNT_EVENT = 'preview-bench-mount';
@@ -42,6 +43,29 @@ export function revealBenchTarget(target: string): void {
   const component = ProjectModel.instance?.getComponentWithName(target);
   if (!component) return;
   EventDispatcher.instance.notifyListeners('ComponentPanel.SwitchToComponent', { component, pushHistory: true });
+}
+
+/**
+ * FIX-019 — which component the node graph is showing, by legacy name.
+ *
+ * The other half of {@link revealBenchTarget}: that one moves the canvas, this
+ * one reads where it got to, and the chip between them says when the two
+ * surfaces have come apart.
+ *
+ * ⚠️ **`.name` rather than an id, deliberately.** `scope.target` is a legacy
+ * name and this exists to be compared against it, so going via
+ * `componentInstanceId` (what `CanvasTabs`'s `useActiveComponentId` does, for
+ * its own good reasons) would mean resolving straight back to a name — through
+ * a field that is `undefined` on most v1 components.
+ *
+ * ⚠️ **`NodeGraphContextTmp.nodeGraph` is `null` in the detached preview
+ * window**, which has no node graph at all. The optional chaining is the
+ * null-guard FIX-019's fourth acceptance criterion drives, and `undefined` is
+ * read by `isDivergedFromCanvas` as "nothing to diverge from" rather than as a
+ * divergence.
+ */
+export function activeCanvasComponentName(): string | undefined {
+  return NodeGraphContextTmp.nodeGraph?.activeComponent?.name;
 }
 
 /** Ask the preview surface to mount `target` (a component's legacy name). */

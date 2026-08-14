@@ -15,15 +15,20 @@ import {
   APP_SCOPE,
   BENCH_FRAME_PRESETS,
   DEFAULT_BENCH_FRAME,
+  MAX_BENCH_HEIGHT,
   MAX_BENCH_WIDTH,
+  MIN_BENCH_HEIGHT,
   MIN_BENCH_WIDTH,
   benchSizeLabel,
   benchTargetLabel,
   benchTargets,
+  clampBenchHeight,
   clampBenchWidth,
+  isDivergedFromCanvas,
   isMounted,
   matchingPreset,
-  resolveBenchWidth
+  resolveBenchWidth,
+  type PreviewScope
 } from '../../src/editor/src/views/VisualCanvas/previewScope';
 
 const CORPUS = [
@@ -123,14 +128,14 @@ describe('BEN-004 the frame width control', () => {
   });
 
   it('resolves to null while stretched, so the stage writes 100% instead of a stale measurement', () => {
-    expect(resolveBenchWidth({ width: 320, stretch: false })).toBe(320);
-    expect(resolveBenchWidth({ width: 320, stretch: true })).toBeNull();
+    expect(resolveBenchWidth({ width: 320, stretch: false, height: null })).toBe(320);
+    expect(resolveBenchWidth({ width: 320, stretch: true, height: null })).toBeNull();
   });
 });
 
 describe('BEN-004 what the surface says it is showing', () => {
   it('reads out the frame in the same format the app preview uses', () => {
-    expect(benchSizeLabel({ width: 320, stretch: false }, { width: 320, height: 812 })).toBe('320 × 812');
+    expect(benchSizeLabel({ width: 320, stretch: false, height: null }, { width: 320, height: 812 })).toBe('320 × 812');
   });
 
   it('reports the width it MEASURED, not the width that was asked for', () => {
@@ -138,15 +143,15 @@ describe('BEN-004 what the surface says it is showing', () => {
     // wider than the stage, does not give the component the number typed into
     // the field — and a read-out that printed the request would be the tool
     // built to catch a wrong width quietly reporting a wrong width.
-    expect(benchSizeLabel({ width: 320, stretch: false }, { width: 300, height: 812 })).toBe('300 × 812');
+    expect(benchSizeLabel({ width: 320, stretch: false, height: null }, { width: 300, height: 812 })).toBe('300 × 812');
   });
 
   it('says stretched, and still reports what was measured rather than the stage', () => {
-    expect(benchSizeLabel({ width: 320, stretch: true }, { width: 908, height: 780 })).toBe('908 × 780 · stretched');
+    expect(benchSizeLabel({ width: 320, stretch: true, height: null }, { width: 908, height: 780 })).toBe('908 × 780 · stretched');
   });
 
   it('falls back to the requested width before the first layout, when it is the only number there is', () => {
-    expect(benchSizeLabel({ width: 320, stretch: false })).toBe('320 × 0');
+    expect(benchSizeLabel({ width: 320, stretch: false, height: null })).toBe('320 × 0');
   });
 
   it('names the component by its last segment', () => {
@@ -159,5 +164,68 @@ describe('BEN-004 what the surface says it is showing', () => {
     expect(isMounted(APP_SCOPE, '/Components/Card')).toBe(false);
     expect(isMounted({ mode: 'bench', target: '/Components/Card' }, '/Components/Card')).toBe(true);
     expect(isMounted({ mode: 'bench', target: '/Home' }, '/Components/Card')).toBe(false);
+  });
+});
+
+describe('FIX-011 the height the frame never had', () => {
+  it('defaults to filling the stage, which is the reported bug', () => {
+    // 🔴 The whole defect in one assertion. There was no height in `BenchFrame`
+    // at all, so nothing sized the frame box and the `<webview>`'s UA default
+    // replaced-element height (150px) leaked through — the "couple of hundred
+    // pixels" every benched component opened at. `null` is what makes the
+    // surface write no `height` and let `align-self: stretch` do it.
+    expect(DEFAULT_BENCH_FRAME.height).toBeNull();
+  });
+
+  it('reads an emptied field as "fill the stage" rather than as junk', () => {
+    // This is the only way back from a pinned height — the 30px strip had no
+    // room for a second Stretch toggle, so clearing the field is the gesture.
+    expect(clampBenchHeight('', 400)).toBeNull();
+    // A text input hands back a space when someone clears a field with the
+    // space bar, and that is the same intent.
+    expect(clampBenchHeight('   ', 400)).toBeNull();
+  });
+
+  it('keeps the current height for junk, exactly as the width field does', () => {
+    // The phase-55 `"NaNpx"` rule: a NaN reaching a style property is a value
+    // that silently deletes the styling. Junk is not an instruction.
+    expect(clampBenchHeight('abc', 400)).toBe(400);
+    expect(clampBenchHeight(undefined, 400)).toBe(400);
+    // ⚠️ Including when the current height is "fill" — junk must not pin one.
+    expect(clampBenchHeight('abc', null)).toBeNull();
+  });
+
+  it('clamps to bounds, and a number never reads as the empty string', () => {
+    expect(clampBenchHeight(1, null)).toBe(MIN_BENCH_HEIGHT);
+    expect(clampBenchHeight(99999, null)).toBe(MAX_BENCH_HEIGHT);
+    expect(clampBenchHeight('320px', null)).toBe(320);
+    // A drag always pins a height, and this is why: it hands over a number.
+    expect(clampBenchHeight(0, null)).toBe(MIN_BENCH_HEIGHT);
+  });
+});
+
+describe('FIX-019 saying when the canvas and the bench have come apart', () => {
+  const BENCH: PreviewScope = { mode: 'bench', target: '/Components/Card' };
+
+  it('is a divergence when the node graph is on a different component', () => {
+    expect(isDivergedFromCanvas(BENCH, '/Home')).toBe(true);
+  });
+
+  it('is NOT a divergence when the canvas is on the benched component', () => {
+    // The control for the assertive ruling: the chip appears only on
+    // divergence, so this case has to cost the strip nothing.
+    expect(isDivergedFromCanvas(BENCH, '/Components/Card')).toBe(false);
+  });
+
+  it('is never a divergence in app mode', () => {
+    expect(isDivergedFromCanvas(APP_SCOPE, '/Home')).toBe(false);
+  });
+
+  it('treats an unknown canvas component as nothing to diverge from', () => {
+    // ⚠️ The detached preview window has no node graph at all
+    // (`NodeGraphContextTmp.nodeGraph` is null), and so does the moment before
+    // the first `activeComponentChanged`. A chip offering to navigate a canvas
+    // that is not there is worse than no chip.
+    expect(isDivergedFromCanvas(BENCH, undefined)).toBe(false);
   });
 });

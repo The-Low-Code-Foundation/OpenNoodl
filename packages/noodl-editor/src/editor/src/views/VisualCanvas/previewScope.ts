@@ -54,22 +54,50 @@ export const DEFAULT_BENCH_WIDTH = 768;
 export const MIN_BENCH_WIDTH = 80;
 export const MAX_BENCH_WIDTH = 4096;
 
+/** Same bounds as the width, and for the same reason — see above. */
+export const MIN_BENCH_HEIGHT = 80;
+export const MAX_BENCH_HEIGHT = 4096;
+
 export interface BenchFrame {
   /** Resolved width in CSS px. Ignored while `stretch` is on. */
   width: number;
   /**
-   * Give the component the whole stage instead of a fixed frame.
+   * Give the component the stage's full **width** instead of a fixed frame.
    *
    * This is the control for the commonest isolation lie — "it only looked right
    * because a flex parent stretched it". ⚠️ What `stretch` does to a *rendered*
    * component has not been measured; see the phase README register (B3). What
    * it does here is exact and is all this module claims: the frame stops being
    * a fixed width and becomes the stage.
+   *
+   * ⚠️ **The width axis only, and that is FIX-011's ruling rather than an
+   * oversight.** The height axis fills the stage *by default* ({@link height}),
+   * so a second toggle would ship switched on and spend strip width saying
+   * nothing — and the strip has been measured clipping at 640px (BEN-004's
+   * drive). Keeping this key's stored meaning also keeps every scenario written
+   * before FIX-011 applying exactly as it did.
    */
   stretch: boolean;
+  /**
+   * FIX-011 — explicit height in CSS px, or `null` for **fill the stage**.
+   *
+   * `null` is the default and it is the fix for the reported bug: there was no
+   * height in this type at all, so nothing ever sized the frame box and the
+   * `<webview>`'s UA default replaced-element height (150px) leaked through. A
+   * bench that opens as a 150px sliver is the "couple of hundred pixels" in the
+   * report.
+   *
+   * `null` rather than a number, deliberately, and it mirrors
+   * {@link resolveBenchWidth}'s `null`: the surface writes no `height` at all
+   * and lets `align-self: stretch` do it, so the frame cannot be left at a
+   * height that was true one panel-resize ago. There is no `resolveBenchHeight`
+   * to match `resolveBenchWidth` because it would be a pure passthrough — the
+   * stored value *is* the answer.
+   */
+  height: number | null;
 }
 
-export const DEFAULT_BENCH_FRAME: BenchFrame = { width: DEFAULT_BENCH_WIDTH, stretch: false };
+export const DEFAULT_BENCH_FRAME: BenchFrame = { width: DEFAULT_BENCH_WIDTH, stretch: false, height: null };
 
 /**
  * The width the stage should give the bench webview, or `null` for "all of it".
@@ -95,6 +123,29 @@ export function clampBenchWidth(raw: unknown, current: number): number {
   const parsed = typeof raw === 'number' ? raw : parseFloat(String(raw ?? '').trim());
   if (!Number.isFinite(parsed)) return current;
   return Math.min(MAX_BENCH_WIDTH, Math.max(MIN_BENCH_WIDTH, Math.round(parsed)));
+}
+
+/**
+ * Parse whatever was typed into the height field.
+ *
+ * Everything {@link clampBenchWidth} does, plus the one string that *means*
+ * something here: **empty is "fill the stage"**, not junk. That is how a user
+ * who dragged the bottom edge — or typed a number — gets back to the default
+ * without a second control to say so, which is what the 640px strip could not
+ * afford. Whitespace-only counts as empty; a text input hands back `" "` when
+ * someone clears a field with the space bar.
+ */
+export function clampBenchHeight(raw: unknown, current: number | null): number | null {
+  // ⚠️ **A `string` specifically**, not anything that stringifies to empty. The
+  // first cut here read `undefined` as "fill" too, and its own spec caught it:
+  // an emptied *field* is someone asking for the stage, while `undefined` is
+  // nobody having said anything — which is the width field's "junk keeps the
+  // current value" case, not a request to unpin the height.
+  if (typeof raw === 'string' && raw.trim() === '') return null;
+
+  const parsed = typeof raw === 'number' ? raw : parseFloat(String(raw).trim());
+  if (!Number.isFinite(parsed)) return current;
+  return Math.min(MAX_BENCH_HEIGHT, Math.max(MIN_BENCH_HEIGHT, Math.round(parsed)));
 }
 
 /** The preset a width corresponds to, or `undefined` when it is a custom one. */
@@ -180,4 +231,28 @@ export function benchTargets(components: Array<{ name: string }>, query = ''): B
 /** True when `scope` is showing the given component. Used for the picker's tick. */
 export function isMounted(scope: PreviewScope, target: string): boolean {
   return scope.mode === 'bench' && scope.target === target;
+}
+
+/**
+ * FIX-019 — the bench is showing one component and the node graph is showing
+ * another, so the graph you can edit is not the graph you are looking at.
+ *
+ * The decoupling itself is deliberate and stays (`benchRequest.ts`): the canvas
+ * must not be yanked back every time `VisualCanvas` remounts. What was missing
+ * is that nothing *said* the two had come apart, and there was no way back.
+ *
+ * Kept a pure predicate, and out of React, for this module's usual reason — a
+ * rule only a live driver can check is a rule that does not get checked.
+ *
+ * ⚠️ **An unknown canvas component is not a divergence.** `canvasComponent` is
+ * `undefined` in the detached preview window, where `NodeGraphContextTmp` is
+ * `null` — there is no node graph in that window at all, so there is nothing to
+ * be diverged *from*, and a chip offering to navigate a canvas that is not
+ * there is worse than no chip. Same answer before the first
+ * `activeComponentChanged` has been seen.
+ */
+export function isDivergedFromCanvas(scope: PreviewScope, canvasComponent: string | undefined): boolean {
+  if (scope.mode !== 'bench') return false;
+  if (!canvasComponent) return false;
+  return canvasComponent !== scope.target;
 }

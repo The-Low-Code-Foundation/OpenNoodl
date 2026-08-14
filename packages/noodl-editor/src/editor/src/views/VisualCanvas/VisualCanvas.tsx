@@ -29,10 +29,11 @@
 
 import { useThrottle } from '@noodl-hooks/useThrottleState';
 import classNames from 'classnames';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 
 import { Keybindings } from '@noodl-constants/Keybindings';
 
+import { benchComponent } from '@noodl-models/AiAssistant/authoring';
 import { ProjectModel } from '@noodl-models/projectmodel';
 
 import { Icon, IconName, IconSize } from '@noodl-core-ui/components/common/Icon';
@@ -43,7 +44,14 @@ import { Text } from '@noodl-core-ui/components/typography/Text';
 import { useTrackBounds } from '@noodl-core-ui/hooks/useTrackBounds';
 
 import { EventDispatcher } from '../../../../shared/utils/EventDispatcher';
-import { BENCH_MOUNT_EVENT, clearPendingBenchMount, takePendingBenchMount } from './benchRequest';
+import {
+  BENCH_MOUNT_EVENT,
+  activeCanvasComponentName,
+  clearPendingBenchMount,
+  revealBenchTarget,
+  takePendingBenchMount
+} from './benchRequest';
+import { BENCH_FRAME_KEY, benchFrameStore, readBenchFrameDefault } from './benchFrameDefault';
 import { ComponentBench } from './ComponentBench';
 import { BenchFrameControl, PreviewScopeControl } from './PreviewChrome';
 import {
@@ -51,6 +59,7 @@ import {
   DEFAULT_BENCH_FRAME,
   benchSizeLabel,
   benchTargetLabel,
+  isDivergedFromCanvas,
   type BenchFrame,
   type PreviewScope
 } from './previewScope';
@@ -97,6 +106,81 @@ export function VisualCanvas({
   /** The bench frame's measured box — see `ComponentBench`'s `onFrameMeasured`. */
   const [benchMeasured, setBenchMeasured] = useState<{ width: number; height: number } | undefined>(undefined);
   const isBench = scope.mode === 'bench';
+
+  /**
+   * FIX-019 — which component the node graph is on, so the strip can say when
+   * that is not the one the bench is showing.
+   *
+   * ⚠️ **A derivation, never a store**, and seeded rather than only subscribed.
+   * `VisualCanvas` mounts and remounts long after a component is already open,
+   * so a value that waited for the next `activeComponentChanged` would report
+   * "nowhere" — and the chip would be missing exactly when someone opened the
+   * bench from a canvas they were already on. Same shape `useActiveComponentId`
+   * and `ExecutionOverlay` use, deliberately.
+   *
+   * This subscription does **not** move the canvas. The decoupling stays; see
+   * `benchRequest.ts` for why a render must never navigate.
+   */
+  const [canvasComponent, setCanvasComponent] = useState<string | undefined>(activeCanvasComponentName);
+
+  useEffect(() => {
+    const eventGroup = {};
+    EventDispatcher.instance.on(
+      'activeComponentChanged',
+      () => setCanvasComponent(activeCanvasComponentName()),
+      eventGroup
+    );
+    // Re-seeded on entering the bench as well as on mount: the mount seed can
+    // be `undefined` when this surface is built before the node graph is, and
+    // nothing would correct it until the user next navigated.
+    setCanvasComponent(activeCanvasComponentName());
+    return () => EventDispatcher.instance.off(eventGroup);
+  }, [isBench]);
+
+  const diverged = isDivergedFromCanvas(scope, canvasComponent);
+
+  /**
+   * FIX-011 — the component's own default size, read on the way in and written
+   * only by the button.
+   *
+   * It lives here rather than in `ComponentBench` because **this** component
+   * owns `frame`, and a stored size that had to travel up through
+   * `onFrameChange` would be a second writer of one piece of state — which is
+   * how the frame and the strip would end up disagreeing about how wide it is.
+   */
+  const [hasDefaultSize, setHasDefaultSize] = useState(false);
+  /** Named rather than inlined into the deps array, so the effect below reads. */
+  const benchTarget = scope.mode === 'bench' ? scope.target : undefined;
+
+  useEffect(() => {
+    if (!benchTarget) return;
+
+    const component = ProjectModel.instance ? benchComponent(ProjectModel.instance, benchTarget) : undefined;
+    const stored = readBenchFrameDefault(component?.getMetaData(BENCH_FRAME_KEY));
+    setHasDefaultSize(Boolean(stored));
+
+    // ⚠️ Only *applied* when there is one. Falling back to `DEFAULT_BENCH_FRAME`
+    // here would reset the frame every time you pointed the bench at a
+    // component that has no stored default — silently throwing away a width the
+    // user set moments ago, which is the frame control's own version of the
+    // reported bug.
+    if (stored) setFrame(stored);
+  }, [benchTarget]);
+
+  /**
+   * ⚠️ **The only write on this surface that reaches `project.json` besides a
+   * scenario save**, and it is reached from a button and from nothing else. A
+   * resize handle must never call this — see `benchFrameDefault.ts`.
+   */
+  const setDefaultSize = useCallback(() => {
+    if (scope.mode !== 'bench' || !ProjectModel.instance) return;
+
+    const component = benchComponent(ProjectModel.instance, scope.target);
+    if (!component) return;
+
+    component.setMetaData(BENCH_FRAME_KEY, benchFrameStore(frame));
+    setHasDefaultSize(true);
+  }, [frame, scope]);
 
   /**
    * DES-001 — design mode said on the surface it applies to.
@@ -243,7 +327,45 @@ export function VisualCanvas({
               <strong>{benchTargetLabel(scope.target)}</strong>
               <span>&nbsp;— isolated component, not the app</span>
             </div>
-            <BenchFrameControl frame={frame} onFrameChange={setFrame} />
+
+            {/*
+              FIX-019 — the canvas is not on the component the bench is showing,
+              said where the confusion happens, with the way back attached.
+
+              ⚠️ **Assertive, not a passive read-out.** It appears only on
+              divergence, which is why it costs the strip nothing in the common
+              case — BEN-004's drive measured this strip clipping at 640px, and
+              a permanent "canvas: X" would spend width it has already been
+              measured short of. On the `DesignBannerExit` precedent above.
+
+              The click navigates the *canvas*, never the bench: `revealBenchTarget`
+              is the same call the components panel makes, `pushHistory` and all,
+              so Back works afterwards.
+            */}
+            {diverged && (
+              <button
+                className={css.BenchDiverged}
+                onClick={() => revealBenchTarget(scope.target)}
+                // `canvasComponent` is non-empty whenever `diverged` is true —
+                // but this file's own history is a `useTrackBounds` throw that
+                // took the whole preview surface's React tree down, so the
+                // guard costs nothing and the tree stays up.
+                title={`The node graph is showing ${
+                  canvasComponent ? benchTargetLabel(canvasComponent) : 'another component'
+                } — go back to the benched component`}
+                data-test="bench-diverged"
+              >
+                <Icon icon={IconName.ArrowLeft} size={IconSize.Small} />
+                <span>Back to {benchTargetLabel(scope.target)}</span>
+              </button>
+            )}
+
+            <BenchFrameControl
+              frame={frame}
+              onFrameChange={setFrame}
+              onSetDefaultSize={setDefaultSize}
+              hasDefaultSize={hasDefaultSize}
+            />
             <div className={css.BenchSize} data-test="bench-size">
               {benchSizeLabel(frame, benchMeasured)}
             </div>

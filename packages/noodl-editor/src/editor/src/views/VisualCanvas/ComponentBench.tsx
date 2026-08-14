@@ -36,6 +36,7 @@
  */
 
 import { useThrottle } from '@noodl-hooks/useThrottleState';
+import classNames from 'classnames';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import {
@@ -77,7 +78,7 @@ import {
   type BenchScenario
 } from './benchScenarios';
 import css from './ComponentBench.module.scss';
-import { DEFAULT_BENCH_FRAME, resolveBenchWidth, type BenchFrame } from './previewScope';
+import { DEFAULT_BENCH_FRAME, clampBenchHeight, clampBenchWidth, resolveBenchWidth, type BenchFrame } from './previewScope';
 import { useBenchOutputs } from './useBenchOutputs';
 
 export interface ComponentBenchProps {
@@ -618,6 +619,83 @@ export function ComponentBench({ target, frame, onFrameChange, onFrameMeasured }
   const width = resolveBenchWidth(frame);
 
   const frameRef = useRef(null);
+
+  /**
+   * FIX-011 — dragging the frame's right and bottom edges.
+   *
+   * 🔴 **The drag is measured from the frame's real box, not from the frame
+   * state.** With `height: null` the stored state is "fill the stage" and has no
+   * number in it at all, so a drag that started from `frame.height` would have
+   * nothing to add a delta to — the first pixel of the first drag would jump the
+   * frame to the minimum. `getBoundingClientRect()` is where the current size
+   * actually lives, which is the same reason the size read-out is measured
+   * rather than echoed.
+   *
+   * ⚠️ **`window` listeners are not enough on their own.** The pointer spends
+   * the drag over a `<webview>`, which is a guest view: its own page receives
+   * the moves, and this document sees nothing. `.DragShield` is what keeps the
+   * events here — it is rendered for the duration of the drag and covers the
+   * whole bench, the webview included.
+   *
+   * ⚠️ **Nothing here writes to the project.** A drag changes preview state and
+   * only the deliberate "Set as default size" button persists a frame — see
+   * `benchFrameDefault.ts`. FIX-011's fourth acceptance criterion is the control
+   * that proves it.
+   */
+  const [resizing, setResizing] = useState<'right' | 'bottom' | 'corner' | null>(null);
+  /** Torn down on unmount as well as on mouseup — a drag can outlive the bench. */
+  const releaseResize = useRef<(() => void) | undefined>(undefined);
+  useEffect(() => () => releaseResize.current?.(), []);
+
+  const beginResize = useCallback(
+    (axis: 'right' | 'bottom' | 'corner') => (event: React.MouseEvent) => {
+      const box = (frameRef.current as HTMLElement | null)?.getBoundingClientRect();
+      if (!onFrameChange || !box || event.button !== 0) return;
+
+      event.preventDefault();
+      event.stopPropagation();
+
+      const originX = event.clientX;
+      const originY = event.clientY;
+      // The frame as it was when the drag started, so every move is one delta
+      // from a fixed origin rather than an accumulation of rounding.
+      const startFrame = frame;
+      setResizing(axis);
+
+      const onMove = (moveEvent: MouseEvent) => {
+        const next: BenchFrame = { ...startFrame };
+
+        if (axis !== 'bottom') {
+          next.width = clampBenchWidth(box.width + (moveEvent.clientX - originX), startFrame.width);
+          // Dragging a width is asking for that width, so it turns Stretch off
+          // rather than resizing a frame the stretch is overriding — which
+          // would be a drag with no visible consequence.
+          next.stretch = false;
+        }
+
+        if (axis !== 'right') {
+          // A number never reads as the "fill the stage" empty string, so a drag
+          // always pins a height. Clearing the field is how you get fill back.
+          next.height = clampBenchHeight(box.height + (moveEvent.clientY - originY), startFrame.height);
+        }
+
+        onFrameChange(next);
+      };
+
+      const release = () => {
+        releaseResize.current = undefined;
+        setResizing(null);
+        window.removeEventListener('mousemove', onMove);
+        window.removeEventListener('mouseup', release);
+      };
+
+      releaseResize.current = release;
+      window.addEventListener('mousemove', onMove);
+      window.addEventListener('mouseup', release);
+    },
+    [frame, onFrameChange]
+  );
+
   const frameBounds = useThrottle(useTrackBounds(frameRef), 100);
   useEffect(() => {
     onFrameMeasured?.(frameBounds ? { width: frameBounds.width, height: frameBounds.height } : undefined);
@@ -661,7 +739,18 @@ export function ComponentBench({ target, frame, onFrameChange, onFrameMeasured }
       */}
       <div className={css.Body}>
         <div className={css.Stage}>
-          <div ref={frameRef} className={css.Frame} style={{ width: width === null ? '100%' : `${width}px` }}>
+          <div
+            ref={frameRef}
+            className={css.Frame}
+            style={{
+              width: width === null ? '100%' : `${width}px`,
+              // FIX-011: no `height` key at all for "fill the stage", rather
+              // than `'100%'` or a measured number — that is what lets
+              // `align-self: stretch` do it, and a stretch cannot go stale
+              // between a panel resize and the next measurement.
+              ...(frame.height === null ? {} : { height: `${frame.height}px` })
+            }}
+          >
             {result?.json ? (
               <webview
                 className={css.Webview}
@@ -678,6 +767,30 @@ export function ComponentBench({ target, frame, onFrameChange, onFrameMeasured }
               <div className={css.Empty}>
                 <Text textType={TextType.Secondary}>{result?.unrenderable ?? 'Building the bench…'}</Text>
               </div>
+            )}
+
+            {/* FIX-011 — the grips. Siblings of the `<webview>` and stacked
+                above it; see the note on `beginResize` for why that is not
+                enough on its own. Rendered only when there is somewhere to
+                report a resize to. */}
+            {onFrameChange && (
+              <>
+                <div
+                  className={classNames(css.ResizeHandle, css.ResizeRight, resizing === 'right' && css['is-dragging'])}
+                  onMouseDown={beginResize('right')}
+                  data-test="bench-resize-right"
+                />
+                <div
+                  className={classNames(css.ResizeHandle, css.ResizeBottom, resizing === 'bottom' && css['is-dragging'])}
+                  onMouseDown={beginResize('bottom')}
+                  data-test="bench-resize-bottom"
+                />
+                <div
+                  className={classNames(css.ResizeHandle, css.ResizeCorner, resizing === 'corner' && css['is-dragging'])}
+                  onMouseDown={beginResize('corner')}
+                  data-test="bench-resize-corner"
+                />
+              </>
             )}
           </div>
         </div>
@@ -722,6 +835,16 @@ export function ComponentBench({ target, frame, onFrameChange, onFrameMeasured }
           />
         </div>
       </div>
+
+      {/* FIX-011 — what keeps a drag in this document once the pointer crosses
+          the `<webview>`. Covers the whole bench, exists only while dragging. */}
+      {resizing && (
+        <div
+          className={css.DragShield}
+          style={{ cursor: resizing === 'right' ? 'ew-resize' : resizing === 'bottom' ? 'ns-resize' : 'nwse-resize' }}
+          data-test="bench-drag-shield"
+        />
+      )}
     </div>
   );
 }

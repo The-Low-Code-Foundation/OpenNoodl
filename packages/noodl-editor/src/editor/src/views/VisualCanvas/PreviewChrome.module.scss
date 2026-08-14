@@ -151,10 +151,16 @@
   }
 }
 
-.FrameWidth {
+/* FIX-011 — one rule for the pair. The height field is the width field with a
+   different meaning for "empty", so it is styled by the same declarations
+   rather than by a copy that drifts. Both class names still exist in the
+   emitted module, which is what a `css.FrameHeight` lookup needs. */
+.FrameWidth,
+.FrameHeight {
   width: 52px;
   height: 20px;
   padding: 0 6px;
+  flex-shrink: 0;
   border: 1px solid var(--theme-color-border-default);
   border-radius: var(--radius-sm);
   background-color: var(--theme-color-bg-2);
@@ -169,5 +175,47 @@
 
   &:disabled {
     opacity: 0.4;
+  }
+
+  /* "Fill" is a real answer, not absent text, so it is legible rather than
+     ghosted — but still quieter than a typed number, which is the state it is
+     telling you apart from. */
+  &::placeholder {
+    color: var(--theme-color-fg-muted);
+    opacity: 1;
+  }
+}
+
+.FrameTimes {
+  flex-shrink: 0;
+  color: var(--theme-color-fg-muted);
+  font-family: var(--font-family-code);
+  font-size: 10.5px;
+}
+
+/* FIX-011 — the write gesture. Icon-only: the strip is 30px and was already
+   measured clipping at 640px, so the words live in the tooltip. */
+.FrameDefault {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background-color: transparent;
+  color: var(--theme-color-fg-muted);
+  cursor: pointer;
+
+  &:hover {
+    color: var(--theme-color-fg-default);
+    border-color: var(--theme-color-border-default);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--theme-color-primary);
+    outline-offset: 1px;
   }
 }

@@ -104,7 +104,7 @@ describe('BEN-005 what a scenario is allowed to store', () => {
   });
 
   it('records the frame, because “renders correctly at 320” is part of the claim', () => {
-    const draft = benchScenarioFrom('Narrow', { title: 'x' }, { width: 320, stretch: false });
+    const draft = benchScenarioFrom('Narrow', { title: 'x' }, { width: 320, stretch: false, height: null });
 
     expect(draft.scenario.frame).toEqual({ width: 320 });
     expect(draft.scenario.stretch).toBe(false);
@@ -211,11 +211,15 @@ describe('BEN-005 a scenario meeting a component that has moved on', () => {
   });
 
   it('takes the frame from the scenario, and the current one when it has none', () => {
-    const current = { width: 768, stretch: false };
+    const current = { width: 768, stretch: false, height: null };
 
     expect(benchScenarioFrame(scenario({ name: 'a', frame: { width: 320 }, stretch: true }), current)).toEqual({
       width: 320,
-      stretch: true
+      stretch: true,
+      // FIX-011: a scenario that records a width but no height claims the
+      // default, and gets it — *not* the height that happened to be pinned on
+      // the bench when it was selected.
+      height: null
     });
     expect(benchScenarioFrame(scenario({ name: 'a' }), current)).toBe(current);
   });
@@ -254,10 +258,58 @@ describe('BEN-005 the unsaved-changes dot', () => {
   it('follows the frame only when the scenario recorded one', () => {
     const framed = scenario({ name: 'Narrow', inputs: {}, frame: { width: 320 }, stretch: false });
 
-    expect(benchScenarioIsModified(framed, {}, { width: 320, stretch: false })).toBe(false);
-    expect(benchScenarioIsModified(framed, {}, { width: 768, stretch: false })).toBe(true);
-    expect(benchScenarioIsModified(framed, {}, { width: 320, stretch: true })).toBe(true);
-    expect(benchScenarioIsModified(scenario({ name: 'a' }), {}, { width: 999, stretch: true })).toBe(false);
+    expect(benchScenarioIsModified(framed, {}, { width: 320, stretch: false, height: null })).toBe(false);
+    expect(benchScenarioIsModified(framed, {}, { width: 768, stretch: false, height: null })).toBe(true);
+    expect(benchScenarioIsModified(framed, {}, { width: 320, stretch: true, height: null })).toBe(true);
+    expect(benchScenarioIsModified(scenario({ name: 'a' }), {}, { width: 999, stretch: true, height: null })).toBe(false);
+  });
+
+  it('FIX-011 does not call a pre-height scenario drifted for predating the field', () => {
+    // ⚠️ The compatibility case, and the one that would have been noticed only
+    // in the wild: every scenario saved before FIX-011 has no `height` key.
+    // Absent has to read as `null` on *both* sides, or every one of them would
+    // show the modified dot the moment the bench opened.
+    const old = scenario({ name: 'Narrow', inputs: {}, frame: { width: 320 }, stretch: false });
+
+    expect(benchScenarioIsModified(old, {}, { width: 320, stretch: false, height: null })).toBe(false);
+    // But pinning a height it does not record *is* a real difference — and one
+    // that pressing Save can actually record, which is this function's rule.
+    expect(benchScenarioIsModified(old, {}, { width: 320, stretch: false, height: 400 })).toBe(true);
+  });
+});
+
+describe('FIX-011 the height a scenario claims', () => {
+  it('stores a pinned height and leaves the key out for "fill the stage"', () => {
+    const pinned = benchScenarioFrom('Tall', {}, { width: 320, stretch: false, height: 900 });
+    expect(pinned.scenario!.frame).toEqual({ width: 320, height: 900 });
+
+    // Absent rather than `null`: fill is what a scenario with no height gets
+    // anyway, so writing it would put a key in `project.json` that changes
+    // nothing — and would change the bytes of every scenario ever saved.
+    const filled = benchScenarioFrom('Fill', {}, { width: 320, stretch: false, height: null });
+    expect(filled.scenario!.frame).toEqual({ width: 320 });
+  });
+
+  it('reads a stored height back, and drops a junk one rather than defaulting it', () => {
+    const [read] = readBenchScenarios({ scenarios: [{ name: 'Tall', inputs: {}, frame: { width: 320, height: 900 } }] });
+    expect(read.frame).toEqual({ width: 320, height: 900 });
+
+    // One-directional tolerance, as everywhere else in this reader: a junk
+    // height is no height claim, and no height claim is the default.
+    const [junk] = readBenchScenarios({
+      scenarios: [{ name: 'Odd', inputs: {}, frame: { width: 320, height: 'tall' } }]
+    });
+    expect(junk.frame).toEqual({ width: 320 });
+  });
+
+  it('applies a recorded height, and the default when it records none', () => {
+    const current = { width: 768, stretch: false, height: 500 };
+
+    expect(benchScenarioFrame(scenario({ name: 'a', frame: { width: 320, height: 900 } }), current).height).toBe(900);
+    // 🔴 `null`, not `current.height`. Falling back to the current frame would
+    // let a height pinned on the *previous* scenario survive into this one —
+    // the "renders correctly at 320" claim quietly not being honoured.
+    expect(benchScenarioFrame(scenario({ name: 'a', frame: { width: 320 } }), current).height).toBeNull();
   });
 });
 

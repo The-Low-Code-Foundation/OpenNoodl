@@ -31,6 +31,7 @@ import {
   BENCH_FRAME_PRESETS,
   benchTargetLabel,
   benchTargets,
+  clampBenchHeight,
   clampBenchWidth,
   isMounted,
   matchingPreset,
@@ -169,28 +170,58 @@ export function PreviewScopeControl({ scope, onScopeChange, getComponents }: Pre
 export interface BenchFrameControlProps {
   frame: BenchFrame;
   onFrameChange: (frame: BenchFrame) => void;
+  /**
+   * FIX-011 — write this size onto the component as the size it opens at.
+   *
+   * Absent when there is nothing to write it to (no project, no resolvable
+   * component), and the button is then not rendered at all rather than
+   * rendered inert: an affordance that is present and does nothing is the
+   * defect SPR-005 found in "Make Home".
+   */
+  onSetDefaultSize?: () => void;
+  /** Whether the component already stores a default size. Changes the wording only. */
+  hasDefaultSize?: boolean;
 }
 
 /**
- * BEN-004 §5 — the width the component is given.
+ * BEN-004 §5 / FIX-011 — the size the component is given.
  *
  * A component in isolation has no page to inherit width from, so the bench asks
  * rather than guesses: an accidental width is exactly how the retired feature
  * used to show a component that would not survive contact with a page.
  *
- * The field commits on blur or Enter, never per keystroke — typing `3` on the
+ * Both fields commit on blur or Enter, never per keystroke — typing `3` on the
  * way to `320` would otherwise clamp to the minimum under the cursor.
+ *
+ * ## The strip's width budget, settled once (FIX-011 §5 / FIX-019)
+ *
+ * BEN-004's drive measured this 30px strip clipping at 640px, and FIX-011 and
+ * FIX-019 both wanted room in it. The settlement is that **the caption is the
+ * only thing that shrinks** (`VisualCanvas.module.scss`): every control here is
+ * `flex-shrink: 0`, so what a narrow panel costs you is the explanatory
+ * sentence and never a control. FIX-011 spends ~74px on the height field and
+ * this button; FIX-019's chip spends nothing in the common case, because it is
+ * assertive and appears only on divergence.
  */
-export function BenchFrameControl({ frame, onFrameChange }: BenchFrameControlProps) {
+export function BenchFrameControl({ frame, onFrameChange, onSetDefaultSize, hasDefaultSize }: BenchFrameControlProps) {
   const [draft, setDraft] = useState(String(frame.width));
+  /** Empty *is* a value here — "fill the stage". See `clampBenchHeight`. */
+  const [heightDraft, setHeightDraft] = useState(frame.height === null ? '' : String(frame.height));
   const preset = matchingPreset(frame.width);
 
   useEffect(() => setDraft(String(frame.width)), [frame.width]);
+  useEffect(() => setHeightDraft(frame.height === null ? '' : String(frame.height)), [frame.height]);
 
   function commit() {
     const width = clampBenchWidth(draft, frame.width);
     setDraft(String(width));
     if (width !== frame.width) onFrameChange({ ...frame, width });
+  }
+
+  function commitHeight() {
+    const height = clampBenchHeight(heightDraft, frame.height);
+    setHeightDraft(height === null ? '' : String(height));
+    if (height !== frame.height) onFrameChange({ ...frame, height });
   }
 
   return (
@@ -222,6 +253,33 @@ export function BenchFrameControl({ frame, onFrameChange }: BenchFrameControlPro
         data-test="bench-frame-width"
       />
 
+      {/* Says which number is which without a pair of labels the strip cannot
+          afford, and reads as the size read-out on the far right does. */}
+      <span className={css.FrameTimes} aria-hidden="true">
+        ×
+      </span>
+
+      {/*
+        FIX-011 — the height that did not exist. Empty means "fill the stage",
+        which is the default and the way back from a pinned height: the strip
+        had no room for a second Stretch toggle, and clearing a field is a
+        gesture people already have. The placeholder is what says so, so the
+        control is not a piece of folklore.
+      */}
+      <input
+        className={css.FrameHeight}
+        value={heightDraft}
+        placeholder="Fill"
+        aria-label="Bench frame height in pixels, empty to fill the stage"
+        title="Frame height in pixels. Leave empty to fill the stage."
+        onChange={(event) => setHeightDraft(event.target.value)}
+        onBlur={commitHeight}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter') (event.target as HTMLInputElement).blur();
+        }}
+        data-test="bench-frame-height"
+      />
+
       {/*
         The commonest isolation lie is "it only looked right because a flex
         parent stretched it". This is the control that asks. ⚠️ What stretching
@@ -238,6 +296,35 @@ export function BenchFrameControl({ frame, onFrameChange }: BenchFrameControlPro
       >
         Stretch
       </button>
+
+      {/*
+        FIX-011 — the one gesture on this control that writes to `project.json`,
+        and the reason a drag can be as sloppy as it likes.
+
+        ⚠️ It is a *button*, not an autosave on the frame changing, and that is
+        the ruling rather than a preference: a default size is authored intent,
+        a drag is not, and `setMetaData` arms the project autosave on the first
+        write. Icon-only because the strip is 30px and already measured short.
+      */}
+      {onSetDefaultSize && (
+        <button
+          type="button"
+          className={css.FrameDefault}
+          title={
+            hasDefaultSize
+              ? 'Update the size this component opens at on the bench'
+              : 'Set as the size this component opens at on the bench'
+          }
+          aria-label="Set as default size"
+          onClick={onSetDefaultSize}
+          data-test="bench-frame-set-default"
+        >
+          {/* Filled once there is something stored, so the button also answers
+              "does this component have a default size?" — which is otherwise
+              invisible until you close the bench and open it again. */}
+          <Icon icon={hasDefaultSize ? IconName.PinFill : IconName.Pin} size={IconSize.Small} />
+        </button>
+      )}
     </div>
   );
 }

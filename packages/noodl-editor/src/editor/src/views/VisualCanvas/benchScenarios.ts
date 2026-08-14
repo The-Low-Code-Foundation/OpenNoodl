@@ -61,8 +61,15 @@ export interface BenchScenario {
    *
    * Carried because "renders correctly at 320" is part of what a scenario is
    * claiming. Optional so a scenario written by anything else still applies.
+   *
+   * FIX-011: `height` joined it, and it is **absent for "fill the stage"**
+   * rather than stored as `null`. That is what makes every scenario written
+   * before FIX-011 keep its meaning — such a scenario has no `height` key,
+   * absent reads as fill, and fill is what those scenarios actually got.
+   * Storing `null` would have said the same thing while putting a new key in
+   * `project.json` for every scenario that had never heard of height.
    */
-  frame?: { width: number };
+  frame?: { width: number; height?: number };
   stretch?: boolean;
 }
 
@@ -102,8 +109,17 @@ export function readBenchScenarios(stored: unknown): BenchScenario[] {
 
     const scenario: BenchScenario = { name, inputs };
 
-    const width = (candidate.frame as { width?: unknown } | undefined)?.width;
-    if (typeof width === 'number' && Number.isFinite(width)) scenario.frame = { width };
+    const storedFrame = candidate.frame as { width?: unknown; height?: unknown } | undefined;
+    const width = storedFrame?.width;
+    if (typeof width === 'number' && Number.isFinite(width)) {
+      scenario.frame = { width };
+      // Dropped rather than defaulted when it is not a usable number, which is
+      // the same one-directional tolerance the rest of this reader has: a
+      // scenario with a junk height is a scenario with no height claim, and no
+      // height claim is the default this whole file already degrades to.
+      const height = storedFrame?.height;
+      if (typeof height === 'number' && Number.isFinite(height)) scenario.frame.height = height;
+    }
     if (typeof candidate.stretch === 'boolean') scenario.stretch = candidate.stretch;
 
     scenarios.push(scenario);
@@ -201,6 +217,11 @@ export function benchScenarioFrom(name: string, values: Record<string, unknown>,
   const scenario: BenchScenario = { name: trimmed, inputs };
   if (frame) {
     scenario.frame = { width: frame.width };
+    // Absent means "fill the stage" — see `BenchScenario.frame`. Writing the
+    // key only when there is a pinned height is also what keeps this function
+    // agreeing with `benchScenarioIsModified`, which compares what a save
+    // *would* produce rather than the raw state.
+    if (frame.height !== null) scenario.frame.height = frame.height;
     scenario.stretch = frame.stretch;
   }
   return { scenario };
@@ -270,7 +291,15 @@ export function benchScenarioApplyNotice(missing: string[]): string | undefined 
 /** The frame a scenario asks for, or the current one when it carries none. */
 export function benchScenarioFrame(scenario: BenchScenario, current: BenchFrame): BenchFrame {
   if (!scenario.frame) return current;
-  return { width: scenario.frame.width, stretch: scenario.stretch ?? false };
+  return {
+    width: scenario.frame.width,
+    stretch: scenario.stretch ?? false,
+    // A scenario that records a frame but no height claims the default, and
+    // gets it. Falling back to `current.height` instead would let a height
+    // pinned on the *previous* scenario survive into this one, which is the
+    // "renders correctly at 320" claim quietly not being honoured.
+    height: scenario.frame.height ?? null
+  };
 }
 
 /**
@@ -297,7 +326,12 @@ export function benchScenarioIsModified(
   // change is not drift from it — and neither is one the caller did not offer a
   // frame to compare against.
   if (!scenario.frame || !frame) return false;
-  return scenario.frame.width !== frame.width || (scenario.stretch ?? false) !== frame.stretch;
+  if (scenario.frame.width !== frame.width || (scenario.stretch ?? false) !== frame.stretch) return true;
+  // Absent reads as `null` on both sides, so a pre-FIX-011 scenario is *not*
+  // drifted merely for predating the height field — it is drifted once someone
+  // pins a height it does not record, which is a real difference and one that
+  // pressing Save can actually record.
+  return (scenario.frame.height ?? null) !== frame.height;
 }
 
 /**

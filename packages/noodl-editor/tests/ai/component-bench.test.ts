@@ -275,21 +275,22 @@ describe('BEN-001 the harness export', () => {
     expect(shipped.classes.Articles.records[0].title).toBe('A title I typed');
   });
 
-  it('carries the frame through untouched instead of wrapping the graph in one', () => {
+  it('does not wrap the graph in a frame', () => {
     // The deviation from BEN-001 §3, recorded as behaviour: the frame is the
     // size of the surface, not a Group injected into the graph. `sizeMode`
     // silently voids width/height and an unsized absolute Group fills its
     // parent — a wrapper that gets either wrong makes a correct component look
     // broken inside the tool built to tell you whether it is.
-    const result = buildBenchExport({
-      project: loadProject(),
-      target: SHARE_ITEM,
-      frame: { width: 320 },
-      stretch: true
-    });
+    //
+    // 🔴 **This spec used to pass a `frame`/`stretch` pair in and assert them
+    // back out, and that half of it has been deleted by FIX-011.** It looked
+    // like coverage of the frame and was coverage of an echo: nothing in the
+    // product ever passed those arguments and nothing ever read the result, so
+    // the assertion held for as long as the feature did not exist. What is
+    // load-bearing here is the *absence* of a wrapper, which is the sentence
+    // above and is what remains.
+    const result = buildBenchExport({ project: loadProject(), target: SHARE_ITEM });
 
-    expect(result.frame).toEqual({ width: 320 });
-    expect(result.stretch).toBe(true);
     // One node in the harness, and it is the component. No wrapper.
     const harness = result.json!.components.find((c) => c.name === BENCH_COMPONENT_NAME) as TSFixme;
     expect(harness.nodes.length).toBe(1);
