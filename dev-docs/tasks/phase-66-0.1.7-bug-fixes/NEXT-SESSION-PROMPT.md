@@ -77,8 +77,12 @@ the log to the seed-order cluster; re-running fixes only the seed-order kind.
 
 Full per-criterion records live in the two task files. What matters beyond "passed":
 
-- **The 150 clamp is a coincidence trap.** `MIN_BENCH_HEIGHT` (150) equals the old `<webview>` UA
-  sliver. A future drive that drags far and reads 150 has hit the *clamp*, not the bug returned.
+- **80 is the clamp floor; 150 is the bug.** A drag that bottoms out reads **80**
+  (`MIN_BENCH_HEIGHT`, `previewScope.ts:58`; max 4096). A frame measuring **150** unprompted is
+  the `<webview>` UA default — the exact signature of FIX-011 regressing — **never dismiss it as
+  a clamp**. (This bullet originally said the inverse: the drive's 150 was just its commanded
+  −89px from 239, no clamp involved, and the build session caught the error against source before
+  it could misdirect anyone.)
 - **AC3's "exactly one metadata key" cannot be proven against the pre-editor file bytes.** The
   editor's serializer reformats the entire `project.json` on first save, so the honest comparison
   is serializer-to-serializer: save without the key, save with it, diff those two. Done; the diff

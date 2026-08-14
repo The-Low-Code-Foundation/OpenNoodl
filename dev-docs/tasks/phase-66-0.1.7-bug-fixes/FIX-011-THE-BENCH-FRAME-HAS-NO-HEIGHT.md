@@ -67,11 +67,15 @@ carries a frame **width** but no height (`benchScenarios.ts:59-66`). Near-miss:
 1. ✅ **Frame filled the stage**: 768 × 239 in a 283px stage (239 = exact inner height after 16px
    padding), `align-self: stretch`, no inline height, height field showing its "Fill" placeholder.
    Not the 150px sliver. Screenshot taken.
-2. ✅ **Bottom-edge drag, live**: 239 → 179 mid-drag → 150 at release (clamped at the minimum —
-   which happens to equal the old UA sliver, a coincidence worth not being confused by). The
-   readout tracked every step (`768 × 179`, `768 × 150`); the height field took the pinned value;
-   `bench-drag-shield` existed exactly for the drag's duration; a `did-start-loading` counter on
-   the bench webview read **0** — no reload.
+2. ✅ **Bottom-edge drag, live**: 239 → 179 mid-drag (−60px commanded) → 150 at release (−89px
+   commanded; 239 − 89 = 150, pure arithmetic — **no clamp fired**; the floor is
+   `MIN_BENCH_HEIGHT = 80`, `previewScope.ts:58`). The readout tracked every step (`768 × 179`,
+   `768 × 150`); the height field took the pinned value; `bench-drag-shield` existed exactly for
+   the drag's duration; a `did-start-loading` counter on the bench webview read **0** — no reload.
+   ⚠️ An earlier revision of this record claimed the drag "clamped at the minimum" and that the
+   minimum equals the old sliver — both false (caught by the build session against source). **80
+   is the clamp floor; a frame measuring 150 unprompted is the UA-sliver signature, i.e. this fix
+   regressed — never dismiss it as a clamp.**
 3. ✅ **Pin → persist → restore**: the pin wrote `bench.frame {width:768, height:150}` as Probe's
    only metadata key; scope → App → re-bench restored 768×150 in the frame, both fields, and the
    readout, pin shown filled. **The "exactly one key" diff was proven serializer-to-serializer**:
