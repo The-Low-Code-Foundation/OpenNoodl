@@ -7,6 +7,18 @@
 **Time-box:** 4 weeks, hard, on the LEARN-004 precedent
 **Deliverable:** a number and a decision, not a product surface
 
+> 🔴 **Superseding ruling, 2026-08-14 — §3.1 has been overridden.** [Phase 67's
+> UNI-010](../phase-67-nodegx-university/UNI-010-A-TUTORIAL-YOUR-OWN-CLAUDE-CAN-WRITE.md) re-derived
+> this experiment independently, in a form where **the user's own Claude authors the whole lesson
+> bundle including `completeWhen`** — exactly what §3.1 below forbids. Put to Richard as a direct
+> conflict; he ruled that **free authoring stands, and in exchange the verifier must absorb the full
+> F1–F6 taxonomy (§4), not F2 alone.** §3.1's structural guarantee is thereby traded for a gate that
+> carries all the risk. **§3.2 and §3.3 survive as authoring constraints** the MCP brief must teach
+> — they were verified findings, not preferences — but nothing enforces them structurally any more.
+> §4's taxonomy and LEARN-009's harness are unchanged and are now the shared verifier for both
+> producers of the lesson format. Rationale:
+> [PRIOR-ART-RECONCILIATION.md](../phase-67-nodegx-university/PRIOR-ART-RECONCILIATION.md) §F3.
+
 ---
 
 ## 1. Why this arc exists
