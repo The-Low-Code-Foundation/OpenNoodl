@@ -37,8 +37,40 @@ describe('NodePicker pickerReducer — cursor (UIX-013)', () => {
     state = pickerReducer(state, { type: PickerActionType.MoveCursor, skip: 1 });
     expect(state.cursorKey).toBe('b');
 
-    // Another keystroke re-orders the same three results.
+    // A re-rank under the *same* query — a category toggle, or a recompute.
+    // (FIX-010: this used to say "another keystroke", which is the one thing it
+    // does not model. A keystroke dispatches SetQuery first; see below.)
     state = withResults(state, ['c', 'b', 'a']);
+    expect(state.cursorKey).toBe('b');
+  });
+
+  // FIX-010 — the cursor must NOT survive a new query, and the distinction is
+  // the whole fix. `matchNode` matches port names, so the layout nodes at the
+  // head of the browse list match "css" on `cssClassName`/`styleCss` and the
+  // cursored card survives the keystroke — but at RANK_PORT, far down the list,
+  // where its own `scrollIntoView` then drags the pane. The user reported it as
+  // "the results start offset Y downwards".
+  it('re-anchors to the top result when the query itself changes', () => {
+    let state = withResults(stateWith(), ['a', 'b', 'c']);
+    state = pickerReducer(state, { type: PickerActionType.MoveCursor, skip: 2 });
+    expect(state.cursorKey).toBe('c');
+
+    state = pickerReducer(state, { type: PickerActionType.SetQuery, query: 'css' });
+    expect(state.cursorKey).toBeNull();
+
+    // The carried-over node is still a match, and still must not hold the cursor.
+    state = withResults(state, ['x', 'y', 'c']);
+    expect(state.cursorKey).toBe('x');
+  });
+
+  it('leaves the cursor alone when the query is re-set to the value it already had', () => {
+    let state = withResults(stateWith(), ['a', 'b', 'c']);
+    state = pickerReducer(state, { type: PickerActionType.SetQuery, query: 'css' });
+    state = withResults(state, ['a', 'b', 'c']);
+    state = pickerReducer(state, { type: PickerActionType.MoveCursor, skip: 1 });
+    expect(state.cursorKey).toBe('b');
+
+    state = pickerReducer(state, { type: PickerActionType.SetQuery, query: 'css' });
     expect(state.cursorKey).toBe('b');
   });
 

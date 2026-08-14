@@ -70,7 +70,21 @@ export function pickerReducer(state: PickerState, action: PickerAction): PickerS
   switch (action.type) {
     case PickerActionType.SetQuery:
       if (action.query === state.query) return state;
-      return { ...state, query: action.query };
+      // FIX-010: the cursor does not survive a *new query*, only a re-rank.
+      //
+      // It used to survive both, and that is what put the answer below the fold.
+      // `matchNode` matches port names, so the head-of-list layout nodes match
+      // "css" on their `cssClassName`/`styleCss` ports — the cursored card
+      // survives the keystroke. But a port match ranks RANK_PORT (2000) against
+      // ~0 for a name match, so it survives *far down the list*, and the cursored
+      // card's own `scrollIntoView` then drags the pane down to it, leaving the
+      // real CSS results above the fold. Clearing here lets `SetResults`
+      // re-anchor to `itemKeys[0]`, which is the top-ranked result.
+      //
+      // Deliberately not in `SetActiveCategory`: keeping your node while you
+      // filter the rail is the stickiness worth having, and it never scrolls
+      // away from a better answer because the ranking has not changed.
+      return { ...state, query: action.query, cursorKey: null };
 
     case PickerActionType.SetActiveCategory:
       if (action.category === state.activeCategory) return state;

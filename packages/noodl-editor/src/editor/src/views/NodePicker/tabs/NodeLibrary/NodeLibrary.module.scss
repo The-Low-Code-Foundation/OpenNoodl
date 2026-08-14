@@ -19,5 +19,15 @@
   min-width: 0;
   overflow-x: hidden;
   overflow-y: auto;
-  scroll-behavior: smooth;
+  /*
+   * FIX-010: no `scroll-behavior: smooth` here. While you type, every keystroke
+   * re-ranks the list and the cursored card scrolls itself into view — a smooth
+   * scroll is still animating toward the previous keystroke's answer when the
+   * next one lands, so the pane settles somewhere neither query asked for. An
+   * instant jump to the top result is the correct behaviour and the legible one.
+   *
+   * `overflow-anchor` off for the same reason: the browser re-anchoring to a
+   * card that is about to be re-ranked fights the same scroll.
+   */
+  overflow-anchor: none;
 }
