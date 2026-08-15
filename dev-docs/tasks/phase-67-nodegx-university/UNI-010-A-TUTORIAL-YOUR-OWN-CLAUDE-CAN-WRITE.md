@@ -20,6 +20,79 @@ lesson format and grading runner (criteria 3 and 4 there are this task's prerequ
 > mandatory verifier work. **The static check must reject these two rather than auto-correct them**,
 > because there is no single right substitution to make.
 
+> ## 🟡 SLICE 1 BUILT 2026-08-15 — the harness (F1–F4), the deliverable that outlives the experiment
+>
+> Commit `90776d8b`. **46 tests** in `noodl-editor/tests-unit/uni-010/` (jest / `test:main`).
+> No platform, no account, no model call.
+>
+> | Shipped | Where |
+> |---|---|
+> | **The file-backed evaluation context** — grades lesson conditions against project files, with no editor at all | [`models/lessonprojectcontext.ts`](../../../packages/noodl-editor/src/editor/src/models/lessonprojectcontext.ts) |
+> | **The F1–F4 scorecard** — replay, ghostwriting, decoy, render | [`models/lessonbundleverify.ts`](../../../packages/noodl-editor/src/editor/src/models/lessonbundleverify.ts) |
+> | **The bundle reader**, including the `solution/` the bargain requires | [`models/lessonbundleread.ts`](../../../packages/noodl-editor/src/editor/src/models/lessonbundleread.ts) |
+>
+> **Acceptance criterion 1 is met for the four machine-detectable classes** — one deliberately-broken
+> bundle per class, each refused with a sentence naming what to change. F1 reuses the shipped
+> `verifyLessonManifest` (not a fork); F2, F2′ and F3 are new; F4 is engine 2 injected as a port.
+>
+> ### 🔴 The bundle format gains one thing, and it is the price of the ruling
+>
+> **A bundle carries its own solution, at `solution/`.** Without it there is no replay, no decoy and
+> no render — three of the four checkable classes go dark, and the gate that was traded for §3.1's
+> structural guarantee is not actually there. Hence `installable` is a *separate* field from `ok`: a
+> bundle where nothing failed **because nothing was checked** is not a bundle that passed. ⚠️ A
+> curated bundle may legitimately have no solution; the reader says so and lets the caller decide.
+>
+> ### 🔴 What building the caller found — the fourth and fifth time in this phase
+>
+> The harness read complete on its own terms. Running it over the **real slice-4 drive bundles**
+> changed two things:
+>
+> **1. F3 had to become two findings.** The decoy test asks "would this survive a second node of the
+> type it addresses?", and for almost any `%Type` segment carrying a specific assertion the answer is
+> no. Reported as an error that **fails essentially every sound lesson** — `App:%Page:#Greeting` names
+> the page by type because that is how a page component is shaped, and a hypothetical second Page is
+> not a defect. 🔴 *A gate that rejects the correct answer is worse than no gate, and it fails in the
+> one direction this module is most obliged to avoid.* §3.2's binding is narrower and is the right
+> line: permitted *"only where the graph guarantees exactly one node of that type"*. So **error** when
+> a second candidate already exists in the starter or the solution, **warning** when exactly one does.
+>
+> ⚠️ **The solution is what makes the error case reachable**, and that is the neat part: the solution
+> is the graph *after every step*, so a lesson that itself instructs the learner to add a second Text
+> has two Texts in its own answer. That is exactly where F3 was predicted to appear, and it is caught
+> by comparison rather than by guesswork.
+>
+> **2. The scorecard was flattening its own F1 codes.** Every static error mapped onto one opaque
+> code. It reads fine to a human — the message survives — and it destroys the deliverable: LEARN-009
+> is a *regenerable per-lesson score*, and a run that cannot say which F1 defect it hit cannot answer
+> the arc's own pre-registered prediction about which class dominates.
+>
+> ### ✅ The context agrees with the live editor, which is the fidelity claim actually tested
+>
+> Run over `bundle-good` with the starter substituted for the solution, the harness reports **steps 2
+> and 4 failing and step 3 passing** — the *same per-step verdicts the slice-4 drive measured through
+> the UI*. The context is not a paraphrase of the evaluator; it feeds the real one.
+>
+> 🔴 **Two shortcuts would have broken that, and both were live.** A condition's first path segment
+> matches the component's **legacy name**, which is not its directory — this repo's own bundle has
+> `components/__page__/Home` named `/#__page__/Home`. And a stored node serialises only its *dynamic*
+> ports, so `hasPort: "text"` — true of every Text node in the editor — reads false from the file
+> alone. Either one makes the harness report correct lessons as defective, which is the single output
+> a gate must never produce.
+>
+> ⚠️ **A side finding worth carrying:** `%Text` in the drive bundle's own step 2 fails because the
+> Text sits *inside* the Page — a well-formed, correctly-spelt, real-type path that is one level too
+> shallow. [RULINGS.md](RULINGS.md) records depth as the boundary the *static* check cannot reach
+> ("the verifier has no project"). **A solution replay reaches it**, and this is the class of defect
+> that motivates carrying one.
+>
+> ### ⚠️ What is NOT built
+>
+> The **`create_lesson` MCP surface** — the authoring brief and the validating install tool — and the
+> **provenance-labelled install** that runs this scorecard rather than only `verifyLessonManifest`.
+> 🔴 `LearningFolderModel.install()` still gates on **F1 alone**, so an AI-authored bundle installed
+> today gets the static check and nothing else. Criteria 2 and 3 are slice 2's.
+
 ## Premise
 
 Added 2026-08-14: for people who don't want the University platform at all, let **their own

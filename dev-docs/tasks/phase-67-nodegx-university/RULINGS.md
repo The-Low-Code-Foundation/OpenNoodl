@@ -463,6 +463,48 @@ concept-corpus argument in the reconciliation's F3 holds. The available keys are
 `category`, `displayName`, `docs`, `dynamicPorts`, `inNodePicker`, `inputs`, `isDeprecated`,
 `isVisual`, `outputs`, `parameterEncoding`, `providedBy`.
 
+#### The fourth amendment (2026-08-15, eighth session) — a gate can fail in the *other* direction
+
+Found the same way, building UNI-010's F1–F4 harness ([UNI-010](UNI-010-A-TUTORIAL-YOUR-OWN-CLAUDE-CAN-WRITE.md),
+`90776d8b`) and then running it over the real slice-4 drive bundles. The first three amendments were
+all one shape: **a check that did not catch enough.** This one is the mirror, and it is worth its own
+entry because the mirror is the more dangerous failure and nothing here had named it.
+
+The F3 decoy test asks *"would this condition survive a second node of the type it addresses?"* For
+almost any `%Type` segment carrying a specific assertion the answer is no — so as an error it
+**rejects essentially every sound lesson.** A path like `App:%Page:#Greeting` names the page by type
+because that is how a page component is shaped, and a hypothetical second Page is not a defect in the
+lesson.
+
+> 🔴 **A gate that rejects the correct answer is worse than no gate.** A missed defect reaches one
+> learner; a false rejection tells every author their correct work is wrong, and the rational response
+> to it is to stop believing the gate — which disarms the checks that *were* right.
+
+The repair was not to weaken the test but to read the binding it was enforcing. §3.2 permits type-only
+addressing *"only where the graph guarantees exactly one node of that type"* — so **error** when a
+second candidate already exists in the starter or the solution, **warning** when exactly one does.
+
+⚠️ **And the thing that makes the error case reachable is worth stating separately**, because it is
+reusable: **the solution is the graph after every step**, so a lesson that itself instructs the
+learner to add a second Text has two Texts in its own answer. The ambiguity a generated lesson creates
+is therefore visible *in the artifact the lesson ships*, and is caught by comparison rather than by
+guessing at what a learner might do.
+
+✅ **Two related things this settled, both previously open:**
+
+- **Depth is reachable after all.** The second amendment recorded depth as the boundary the static
+  check cannot cross — *"the verifier has no project — it runs before the project it grades exists."*
+  That is still true of `lessonverify`, and a **solution replay** crosses it: the drive bundle's own
+  step 2 (`%Text` where the Text sits inside the Page) is a well-formed, correctly-spelt,
+  real-type path that is one level too shallow, and the harness fails it. The boundary was a property
+  of *having no project*, not of static checking.
+- **The file-backed context agrees with the live editor.** Run over `bundle-good`, it reports steps 2
+  and 4 failing and step 3 passing — the same per-step verdicts the slice-4 drive measured through
+  the UI. 🔴 Two plausible shortcuts would have broken that and both were live: a component is
+  addressed by its **legacy name**, not its directory (`components/__page__/Home` is named
+  `/#__page__/Home`), and a stored node serialises only its **dynamic** ports, so `hasPort: "text"` —
+  true of every Text in the editor — reads false from the file alone.
+
 ### Blocker 2 — phase 60's signal wording: **landed upstream, one downstream edit still owed**
 
 **Phase 60 is 7 of 7 built, merged and closed 2026-08-11** — not the three tasks the memory index
