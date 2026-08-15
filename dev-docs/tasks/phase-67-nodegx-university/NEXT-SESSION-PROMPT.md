@@ -135,20 +135,39 @@ Three commits on `cline-dev`, all gated.
 | **live drive** of the Learning section | ✅ install-refuse, install, card, grade, reset, open, recents-unchanged |
 | `npm run test:ci` | ⚠️ **NOT RUN — see below** |
 
-🔴 **`test:ci` was not run this session, deliberately, and it is the one gate owed.** A phase-66
-session was building three lanes in worktrees all day and needed the primary checkout settled for
-its own `test:ci`; running two would have manufactured failures for both. **Run it early next
-session on a quiet tree.** Expect the floor to be **6 failures by name** — 4 × `AIX-006 style
-vocabulary`, 2 × `AI model registry`. A count of 6 with a *different* name is a regression wearing
-the baseline's clothes. ⚠️ And if a failing spec name greps to **nothing in the tree**, you measured
-a stale bundle, not the checkout.
+🔴 **`test:ci` was not run *by this session*, deliberately** — a phase-66 session was building three
+lanes in worktrees all day and needed the primary checkout settled for its own run; two concurrent
+runs would have manufactured failures for both.
 
-⚠️ **Phase 66's three lanes were unmerged when this was written** (FIX-002 changes `noodl-core-ui`'s
-`TextArea` Enter semantics; FIX-003 inverts the global `user-select` rule and adds `AiMarkdown`;
-FIX-014 unknown). None touches the launcher. **One open question was handed to them and is
-unresolved:** FIX-003's `user-select` opt-out enumerates the *projects* grid only, so after their
-merge the **Learning grid and the projects grid will disagree about text selection**. Both are
-click-to-open card surfaces and should match — check it after their merge lands.
+⚠️ **A run was IN FLIGHT when this was written, and this document does not know how it ended.**
+Phase 66 merged FIX-002 + FIX-003 to `cline-dev` as **`4bb692a8`**, on top of this session's
+`481454be`, and started `test:ci` on that settled tree. Because `test:ci` webpacks from the working
+tree, **that run covers this session's six commits as well as their two lanes.**
+
+**So the first job is to find out, not to assume.** Read `tests/test-results.json` and **check its
+mtime** — a pre-run mtime of Aug 14 23:19 was recorded, so anything older is last night's leftover.
+Then:
+
+- **If it came back at the floor** — `totalCount` 2779, **6 failures, and the *names* are** 4 ×
+  `AIX-006 style vocabulary` + 2 × `AI model registry` — the gate is discharged for both sessions and
+  you can go straight to the "check my work" slice.
+- **If it did not**, re-run it yourself on a quiet tree before believing anything. A count of 6 with
+  a *different* name is a regression wearing the baseline's clothes. ⚠️ And if a failing spec name
+  greps to **nothing** in `packages/noodl-editor/tests/`, you measured a **stale bundle**, not the
+  checkout — that is a different failure from the seed-order `BEN-001` cluster and re-running does
+  not fix it.
+
+✅ **The `user-select` question is closed.** FIX-003's opt-out originally enumerated the *projects*
+grid only, which would have left the two card grids disagreeing about text selection. Phase 66 added
+the line to `LearningSection.module.scss`'s `.Grid` in the merge (`f2d7d2d4`), **per grid rather than
+hoisted to `Projects.module.scss`'s `.Main`** — because `.Main` also wraps the welcome copy and the
+no-results message, and a container-level `user-select: none` there would re-break exactly the prose
+FIX-003 exists to liberate. 🔴 **A new card section must opt its own grid out**, and must never write
+`div { user-select: text }`, which punches through every container-level `none`.
+
+⚠️ Their pre-merge reading of editor jest on the merged tree was **195 suites / 3005 tests**
+(+2 suites / +15 tests over this session's 193/2990). If a later run comes in *below* that, tests
+vanished rather than passed.
 
 ### What was built, in one paragraph each
 
