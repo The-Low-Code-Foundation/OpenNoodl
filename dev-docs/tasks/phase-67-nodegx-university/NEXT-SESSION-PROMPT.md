@@ -140,28 +140,45 @@ hosting** (§9.3 — now partly a D2/D9 question) and the **tutor lesson-context
 | `npm run test:main` | ✅ **203 suites / 3136 tests, 0 failures** — 🔴 **new floor** (was 202 / 3120; the delta is exactly this commit's +1 / +16, confirmed with the peer who shared the tree) |
 | `npx jest` in `packages/noodl-mcp` | ✅ **44 suites / 506 tests, 0 failures** |
 | `npx eslint` on every file touched | ✅ clean |
-| `npm run test:ci` | ⚠️ **NOT RUN BY ME — owed** |
+| `npm run test:ci` | ✅ **2812 / 9 at pinned seed 39393** — the 6-name floor + 3 of a peer's own new specs; **zero `tests/lessons/*` failures**. Run by a phase-66 peer over this tree, results file deleted 13:01 and written 13:14 |
 
-🔴 **`test:ci` is the outstanding gate and it matters more than usual this time.** `test:main` never
-compiles `views/`, so **the `lessonevalconditions` split has not been compiled by the electron suite
-at all.** **Check `tests/lessons/lessonevalconditions.test.ts`, `lessonformat.test.ts` and
-`worked-lesson.test.ts` first.** I read their imports and all three take only pure symbols
-(`evaluateSingleCondition`, `findNodeWithPath`, `evalConditionsWithContext`, `parseArrayValue` and
-types) — none imports the default export or `liveLessonEvalContext` — so the split *should* be
-invisible to them. **That is a prediction from reading imports, not a measurement.**
+✅ **`test:ci` DISCHARGED — and the evaluator split is GREEN, measured.** Run by a phase-66 peer over
+this tree at the pinned seed, results file **deleted 13:01, written 13:14** — freshness proved rather
+than inferred.
 
-⚠️ **And nothing is known about it yet, for a reason worth reading before you trust any `test:ci`
-number.** A phase-66 peer ran the pinned seed over this tree and **their run was killed ~7 minutes in**
-(Electron SIGTERMed, MCP servers all spared — the `dev:stop` signature, since `dev:stop` kills by
-*checkout*). They reported it themselves rather than letting the silence stand.
+```
+totalCount   2812      seed 39393
+failedCount  9         = the 6-name floor + 3 of the peer's own new specs
+```
 
-> 🔴 **`test-results.json` was never written, and npm exited 0.** The shell said pass; the run never
-> reached the end. This is the *other* direction of the stale-file trap the memory index warns about:
-> not a stale file reproducing the floor count, names and seed, but **no file at all behind a zero
-> exit**. `stat` the results file for a *fresh mtime* before believing anything — absence is as
-> silent as staleness.
+🔴 **Zero `tests/lessons/*` failures, and nothing lesson-shaped anywhere in the list.** This was the
+**first electron compile of the `lessonevalconditions` split**, since `test:main` never compiles
+`views/`. All three of `lessonevalconditions.test.ts`, `lessonformat.test.ts` and
+`worked-lesson.test.ts` passed, and neither `views/lessons` nor `models/lessoncheck` appears in any
+failure. My import-read prediction was right and **is now a result rather than a prediction.**
 
-A re-run was in flight when this was written. **Do not read a peer's silence as a green result.**
+Floor unchanged and confirmed by name: 4 × `AIX-006 style vocabulary`, 2 × `AI model registry`,
+**zero `BEN-001`** — worth noting because the peer's 24 added specs shifted the permutation and the
+seed-order cluster still did not appear. The other 3 failures are theirs and were spec-side.
+
+⚠️ **Quote the floor as 2788 / 6, not 2812 / 9.** The tree measured carried the peer's uncommitted
+phase-66 work; +24 specs and +3 failures are theirs, and both numbers move back when it lands
+separately.
+
+> 🔴 **It took three runs, and the two destroyed ones are the part to carry.** Both were reaped
+> part-way; in each case **`test-results.json` was never written and npm exited 0.** That is the
+> mirror of the stale-file trap the memory index warns about — not a stale file reproducing the floor
+> count, names *and* seed, but **no file at all behind a zero exit**. One habit covers both: **delete
+> the file before the run, then require a fresh mtime after.** "Read the JSON" catches neither.
+
+⚠️ **Do not attribute a reaped suite to `dev:stop` on the "MCP spared, suite dead" signature.** I
+wrote that into this handover on the first kill and it was wrong — a plausible explanation, adopted
+early, exactly the failure this phase's own register warns about. Both kills came from a **dev
+stack's lifecycle**: `start.ts`'s sweep at launch, and `dev-watchdog.js` sweeping with
+`protectAncestors: false` when the launcher dies. **Both ends of a stack's life reap a suite**, and
+by-pid teardown spares the MCP servers, which is what makes it look like `dev:stop`. The peer fixed
+`dev-processes.js` and verified both directions. The operational rule is simply that **the checkout
+must stay quiet for the whole ~15 minutes, not just the launch.**
 
 Run it as `NOODL_SPEC_SEED=39393 npm run test:ci` (`tests/SpecRunner.html:41-42`), and 🔴 **delete
 `packages/noodl-editor/tests/test-results.json` before the run or `stat` it after** — a stale file
