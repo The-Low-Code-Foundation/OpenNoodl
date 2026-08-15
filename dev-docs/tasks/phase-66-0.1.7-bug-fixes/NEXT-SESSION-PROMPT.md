@@ -31,7 +31,7 @@ Learnings that outlive the phase go to memory, not here.
 
 | Task | Built | Driven | Note |
 |---|---|---|---|
-| **FIX-017** | ◐ **§A + §B** | ◐ **§B only** | **§A BUILT this session** (`9e8b3198`) — 8 specs, control-checked, typechecked. 🔴 **NOT app-driven.** AC3's premise still false, needs a ruling. §D untouched |
+| **FIX-017** | ◐ **§A + §B** | ◐ **§B + §A partly** | **§A built `9e8b3198`, DRIVEN by s22 (`5d04281d`) — and AC1 is NOT met.** The typing path works; the cursor-landing half is unreachable without a caller. 🔴 **AC1 and AC3 both need rulings.** §D promoted from nicety to the only non-ruling route to AC1's outcome |
 | **FIX-014** | ✅ | ✅ both clients | **CLOSED** s18. 🔴 driven ≠ shipped — packaged app still lacks it |
 | **FIX-019** | ✅ | ✅ 4/4 | **CLOSED** s18 — 14(a) ruled *no sweep* |
 | **FIX-001** | ✅ | ✅ 5/5 | **CLOSED** s17. 🟡 §1a.5 stretch open — re-decide, don't build |
@@ -61,6 +61,14 @@ ruling blocks it.
 | `noodl-core-ui` `tsc --noEmit` | ✅ adds nothing outside `../noodl-editor/**` alias `TS2307` | this session |
 | `noodl-core-ui` jest — **full package** | ✅ **24 suites / 403**, 0 failed (395 + §A's 8) | this session |
 | **§A known-broken control** | ✅ **5 of the 8 new specs go red** with the blanket refusal restored | this session |
+
+🔴 **That control row was discriminating and still blind, and the reason generalises.** The 8 specs
+call `createNoodlCompletionSource(mode)(contextAt(doc))` **directly**, so they prove the source
+*answers* — they cannot prove CodeMirror ever *asks* it. It doesn't, at a cursor landing. **Calling
+the unit directly is exactly what makes a spec fast and exactly what makes it unable to see the
+integration**, and no amount of control-checking inside that boundary would have caught it. The
+task file had warned in those words: *"a completion source that never fires is indistinguishable
+from one that is not installed."*
 | `node --check` on both devtools scripts | ✅ | this session |
 | `dev:stop` **non-dry**, quiet checkout | ✅ exits 0, no crash, MCP intact at 19 | this session |
 
@@ -311,10 +319,17 @@ to every session the launch was announced to.
 
 ## 5. What to do next and why
 
-1. 🔴 **Drive FIX-017 §A.** It is built, committed and gate-green but **not app-driven**, and the
-   task is explicit that it must be driven in Function **and** Expression modes **and driven the
-   other way** ("typing ordinary code is not smothered"). §4 has the recipe end to end including the
-   step that blocked me. This is the shortest path to a real close.
+1. ✅ **DONE by session 22 (`5d04281d`) — and it did not close.** §A is driven; **AC1 is not met**
+   and cannot be by §A alone. `getUpdateType` Activates only on `input.type`; cursor placement is
+   `tr.selection → Reset`, so a fresh popout can never open a menu however good the source is. Full
+   measurements in [FIX-017](FIX-017-THE-EDITOR-SHOWS-WHAT-YOU-CAN-TYPE.md) — **read that before
+   touching this task.** What follows from it:
+   - 🔴 **Build §D.** It is no longer a small independent nicety: a visible button calling
+     `startCompletion` is **the only route to AC1's outcome that does not need a ruling**.
+   - 🔴 **AC1 needs a ruling** (§6) — auto-open on mount is the thing FH-017 deliberately removed.
+   - ⚠️ **Do not "drive" a completion feature with `startCompletion`.** It sets `explicit = true`,
+     bypassing the gate under test, and the globals answered at an empty position *before* §A too —
+     so that drive passes whether or not the change works. Real keys, automatic path.
 2. ✅ **Take `dev:stop -- --list` the next time a `test:ci` is genuinely live** — one command, and it
    now previews **both** kill paths. §3, §3b.
 2b. 🟡 **Settle whether a live suite can share a pgid with a recorded dev group** — `ps -o pid,pgid`
@@ -333,6 +348,13 @@ to every session the launch was announced to.
 
 ## 6. Owed by Richard
 
+- 🔴 **FIX-017 AC1's ruling — NEW, and the one that decides §A's fate.** The completion list cannot
+  appear "the moment the cursor lands" without opening it on mount, and **FH-017 removed exactly
+  that as noise**. So this is a reversal to authorise, not a bug to fix. ⚠️ Reframed by session 22's
+  drive: **a manual trigger already exists** — Ctrl-Space, Alt-`` ` ``, Alt-i all fire today — but
+  **nothing in the product mentions any of them**; the only references are code comments. So the
+  real defect is **discoverability**, and the choice is *auto-open* vs *a visible affordance*
+  (§D). The second needs no ruling and is aimed at the beginners this feature exists for.
 - 🔴 **FIX-017 AC3's ruling** — its premise is false (ports and API names never share a prefix, so
   there is no ranking to control for and `boost: 99` is unobservable). Restate against a prefix
   where the two surfaces genuinely compete, or strike it.
