@@ -78,9 +78,25 @@ The shielded decoy was also absent from `targets`, and the control decoy present
 so the same run demonstrates the shield firing, the shield *not* over-firing, and the group path
 still reporting. Pid file removed and both decoys reaped afterwards; checkout verified quiet.
 
-⚠️ **The `dev:stop` non-dry row still covers less than it sounds like**: the checkout was quiet, so
-it exercises the edited early return but never the kill loops. That is now the only part of this
-area resting on a reading rather than a run — and nothing destructive depends on it.
+✅ **And then the destructive path itself was run, so nothing here rests on a code read any more.**
+The same own-process-group construction that made the dry test safe makes the **real** one safe —
+that was the point I initially missed, having bounded the blast radius and then still stayed in the
+dry path out of habit. With decoys that only a `sleep` could lose, a real `npm run dev:stop`:
+
+| | expected | observed |
+|---|---|---|
+| shielded decoy (`test.js --ci`, own group, in the pid file) | survives | ✅ **survived** |
+| control decoy (dev-stack-shaped, own group, in the pid file) | dies | ✅ **killed** |
+| MCP servers | untouched | ✅ **19 → 19** |
+
+🔴 **The control is again what makes it a result**: a surviving shielded decoy is equally consistent
+with kill loops that did nothing at all. The control dying proves they ran.
+
+🔴 **The technique generalises past this file — bound the blast radius by CONSTRUCTION, then run the
+dangerous path for real.** `perl -e 'setpgrp(0,0); exec …'` puts a decoy in its own process group,
+so a whole-group signal cannot reach anything you care about. Every earlier attempt tonight —
+mine included — avoided the danger by staying in the dry path, and thereby inherited that path's
+blind spots. Removing the danger is strictly better than reasoning around it.
 
 **The six failures by NAME** — quote these, never the count:
 
