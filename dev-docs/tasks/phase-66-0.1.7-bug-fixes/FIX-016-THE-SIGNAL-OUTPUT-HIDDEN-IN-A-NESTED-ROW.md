@@ -284,13 +284,27 @@ easy to miss: the row is labelled `Type` with no mention of Signal, and — see 
 visible and reads `String`"* is driven, while *"it offers `Signal`"* remains a source read
 (`simplejavascript.ts:784-789`). Nobody has yet driven the click that a confused author would make.
 
-⚠️ **And an unexplained discrepancy that must not be resolved by assumption.** The peer who built
-the §3c fix reported that *their* fixture's dynamic `outtype-` child ports never materialised —
-`getPorts()` showed only static ports and no `Type` row rendered — and attributed the difference to
-my node having been "normally created". **It was not: mine was built by `NodeGraphNode.fromJSON` +
-`graph.addRoot` too**, so that cannot be the explanation. Two `fromJSON` nodes, one rendering the
-rows and one not, cause unknown. The likeliest candidates are *when* the editor-side
-`_managePortsForNode` / `_updatePorts` hook ran relative to node creation, and model `getPorts()`
-(static only) versus the rendered panel (which includes editor-pushed dynamic ports) — but that is a
-hypothesis, not a finding. **The rendered-DOM measurement stands on its own; the reason the peer saw
+⚠️ **A discrepancy, now HALF explained — and it matters which half.** The peer who built the §3c fix
+reported that *their* fixture's dynamic `outtype-` child ports never materialised, and attributed it
+to my node having been "normally created". **It was not: mine was `NodeGraphNode.fromJSON` +
+`graph.addRoot` too**, so that explanation was wrong; they corrected it at `d837b379`.
+
+✅ **Resolved — the instruments disagreed because they measure different things.** They then read
+`node.getPorts()` and got the static list only
+(`scriptInputs, scriptOutputs, functionScript, run, success, failure, done, completed, unchanged,
+error`) — **no `outtype-` children.** That is expected: the dynamic children arrive via
+`sendDynamicPorts` and live in the **rendered panel**, not the model. So a model-level absence is
+**no evidence at all** about the row, and their `getPorts()` reading and my DOM reading are both
+correct about different objects.
+
+⚠️ **NOT resolved, and left open deliberately: their DOM query also found nothing.** By their own
+account it was unscoped and taken with the popout open, which makes it the weaker of the two
+observations — but *weaker* is not *explained*. **If those rows genuinely fail to render in some
+node states, that is a far larger discoverability problem than an unclear label**, and it would
+change what ruling 1 is even about. One scoped query on `.sidebar-property-editor` in their fixture
+state settles it. **Do not rule on §1 without that**; §5 item 2 blocks on it.
+
+⚠️ Remaining hypothesis for their DOM negative, untested: *when* the editor-side
+`_managePortsForNode` / `_updatePorts` hook runs relative to `addRoot`. **The rendered-DOM
+measurement stands on its own; the reason the peer saw
 otherwise does not yet have one.**
