@@ -25,7 +25,54 @@
 >
 > ### Slice 4 — "check my work", and the lesson layer that was never there (seventh session)
 >
-> Commits `61d4a6d7`, `c0d04bba`, `c38fcb7b`, `47fa6040`.
+> Commits `61d4a6d7`, `c0d04bba`, `c38fcb7b`, `47fa6040`, `393ec7bf`.
+>
+> #### ✅ DRIVEN in the real editor, against a consequence list written first
+>
+> The list was written before the drive and each line phrased so that **it could not also be true of
+> a broken feature** — the rule phase-66 landed the same morning. One line failed.
+>
+> | Consequence | Result |
+> |---|---|
+> | The grading runner is **in the bundle** | ✅ `__wreq('…/lessongrading.ts').gradeLesson` is a `function` — the exact inverse of the measurement that proved nothing called it |
+> | The **lesson layer attaches** | ✅ `isLesson: true`, 4 steps compiled from `lesson.json`, `.lessonlayerview` mounted, 3 task cards |
+> | The learner can **read the instructions** | ✅ intro popup renders; the three task titles are in the bar |
+> | A wrong and a right state **grade differently** | ✅ deleting `Variable2` took engine 1 from *1 of 3* to *0 of 3*; deleting the `Page` node took engine 2 from *"renders — 2 elements drawn"* to *"renders nothing at all"* — **and each moved without the other**, which is the structural separation, live |
+> | The **card shows score and feedback** | ✅ "Scored 33%" + the sentence, after returning to the launcher |
+> | `drawnElementCount` is a **real number** | ✅ 2, measured off the running viewer |
+> | An empty page is **not** a clean pass | ✅ recorded `valid: true, rendered: false` — the "clean can mean EMPTY" rule end to end, in the app rather than in a spec |
+> | **Reset** re-pulls and clears | ✅ grade and progress both `null`, card back to "Not started", the deleted `Page` node restored |
+> | The verifier still **refuses a bad bundle** | ✅ `shadowed-by-deprecated` + `unmatchable-node-path`, both findings, at install |
+> | **Reopen resumes on the step you left** | ❌ **FAILED** → fixed → ✅ re-driven |
+>
+> #### 🔴 The one that failed, and why no spec could have caught it
+>
+> Reopening restarted the lesson at step 1. The index came from `project.lesson.index`, which
+> `ProjectModel.toJSON` persists — **but only when the project is saved**, and a learner reading
+> instructions has changed no files. *"Carried over, never reset"* was true of the code and false
+> through the UI.
+>
+> ⚠️ **A spec could not have caught it, because a spec has a save in it and a learner does not.** The
+> fix reads the **register**: `recordProgress` writes on every step change with no save anywhere in
+> the path, so it is both fresher and incapable of lagging. The project file stays as the fallback.
+>
+> 🔴 **It was also the consequence most tempting to skip** — the cheap-looking one at the bottom of
+> the list. Restating the standing lesson: *the criterion you would drop is the one carrying the
+> assumption.*
+>
+> #### ⚠️ Two things the drive established about driving, not about lessons
+>
+> - **`cdp click` reported `clicked … at 1166,715` for a click that did nothing.** The coordinates
+>   were right; a `PopupLayer` modal was on top. 🔴 **`document.elementFromPoint(x, y)` is the check** —
+>   if it is not your element, the click is landing somewhere else. This is the mouse twin of
+>   phase-66's key finding the same day (a key event arrives `isTrusted` and runs no editing command
+>   without `Emulation.setFocusEmulationEnabled` on the *same* session): **the transport succeeded and
+>   the effect did not, and CDP reports success either way.**
+> - **A running `test:ci` is indistinguishable from a booting editor** in a bare `ps` grep for
+>   `OpenNoodl/node_modules/electron/dist` — it *is* Electron running the same app. Two sessions read
+>   this suite's host as a fourth party launching an editor. The discriminator is the argv:
+>   `Electron test.js --ci` under a `run-electron-tests.js` parent is a **suite**; `Electron . --dev`
+>   under `start.ts` is a **dev stack**.
 >
 > #### 🔴 The premise that was false: **a Learning-folder lesson had no lesson layer**
 >
@@ -284,10 +331,16 @@
 >   `./src/editor/src/models/lessongrading.ts`"*, because no editor module imported it. It does now.
 > - ✅ ~~**Nothing writes a grade back**~~ — **closed by slice 4.** `recordGrade` and `recordProgress`
 >   both have real callers.
-> - 🟡 **Slice 4 is BUILT and NOT YET DRIVEN.** Every gate is green (see below), and no part of it has
->   been seen working in the real editor. 🔴 **The first thing to check in that drive is that the
->   lesson layer is attached at all** — if `isLesson()` is false the layer is absent and a grade
->   arrived at some other way would still look plausible, which is the same hole one level up.
+> - ✅ **Slice 4 is BUILT and DRIVEN** (2026-08-15). Ten consequences checked, one failed and was
+>   fixed and re-driven — see the drive table above.
+> - ⚠️ **Lesson prose must use explicit markdown links.** `linkify` is off in both Remarkable
+>   instances, so a *bare* URL in a lesson body never becomes an anchor — only `[text](url)` and
+>   `<url>` do. Safe direction, but UNI-010's premise is a model authoring these bodies, so it is a
+>   thing the format's producers have to know.
+> - ⚠️ **`buildLessonEvidence` carries `valid`/`rendered`/`findingCount`, not the drawn count.** The
+>   number reaches the learner through the sentence and the console, never through the bundle. That
+>   is D10 holding — but if UNI-002's points event ever wants it, adding it is a *decision about what
+>   leaves the machine*, not a field.
 > - **Nothing calls the MCP adapter either**, and it is deliberately not an MCP tool — a
 >   `grade_lesson` tool needs a `LessonEvalContext` built from a project on disk, which nothing
 >   builds yet. ⚠️ And `noodl-editor` has **no `@noodl/mcp` dependency**, so the editor's button

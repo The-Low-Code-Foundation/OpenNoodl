@@ -440,6 +440,18 @@ could also be true of a broken feature, it is the wrong sentence.* "The lesson o
 editor" passes that test and hid this bug for a day; "the learner can see step 1's instructions"
 does not.
 
+✅ **Applied immediately, and it paid the same afternoon.** Slice 4's drive was run against a
+consequence list written *before* the drive, ten lines, each phrased to fail that test. **Nine
+passed and one failed** — *"close and reopen the lesson: it resumes on the step you left"*, which was
+true of the code and false through the UI, because the step index rode on `ProjectModel.toJSON` and
+that only persists on **save**, which a learner reading instructions never triggers. Fixed to read
+the register (`393ec7bf`) and re-driven.
+
+🔴 **The line that failed was the cheapest-looking one on the list, and the one most tempting to
+skip.** That is the generalisable half: *the criterion you would drop is the one carrying the
+assumption.* And a spec could not have caught it, because a spec has a save in it and a learner does
+not — which is the standing case for driving at all.
+
 ⚠️ **A side finding, recorded so it is not re-discovered:** `suggestedNodes` (LESSON-FORMAT §3's step
 field) is **dead** — `LessonModel.getCurrentSuggestedNodes()` has no callers anywhere in the editor.
 Which of the two vocabularies it wants is therefore *unestablished*, and the checker deliberately
