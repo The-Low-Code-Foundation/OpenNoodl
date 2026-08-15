@@ -32,7 +32,7 @@
 import { Completion, CompletionContext, CompletionResult } from '@codemirror/autocomplete';
 
 import { getCodeAuthoringContext } from './authoringContext';
-import { globalsFor, noodlMembersFor, type ApiMember } from './noodl-api-surface';
+import { apiMembersAtPath, globalsFor, type ApiMember } from './noodl-api-surface';
 import { completesTopLevel, isDeclarationPosition, isMemberPosition } from './utils/completionPosition';
 import { modeHasDeclaredPorts } from './utils/declaredPorts';
 import { canExpressPort, readExpression, writeExpression } from './utils/notation';
@@ -43,9 +43,11 @@ import { unionPorts } from './utils/unionPorts';
 /**
  * How far back to look for the object whose members are being completed.
  *
- * `Noodl.Variables.` is the longest path this file answers for, so a bounded
- * slice is enough and keeps the cost per keystroke independent of document
- * size.
+ * `Noodl.CloudFunctions.` (21 characters) is the longest path this file answers
+ * for since FIX-017 §B, so a bounded slice is still enough and keeps the cost
+ * per keystroke independent of document size. It bounds the *match*, not the
+ * surface: a path longer than this simply goes unrecognised, so raise it here
+ * if a third level is ever added.
  */
 const MEMBER_PATH_LOOKBEHIND = 64;
 
@@ -141,8 +143,10 @@ function memberCompletions(
   path: string,
   validationType: ValidationType
 ): Completion[] | null {
-  if (path === 'Noodl') return asCompletions(noodlMembersFor(validationType));
-
+  // ⚠️ The project-backed namespaces are tested **before** the static walk and
+  // have to stay that way. `Noodl.Variables` is a name in both surfaces, and
+  // only one of them has the right answer: the walk would report "no second
+  // level" for it, which is true of the static file and false of the editor.
   const namespace = resolveNamespace(path, validationType);
   if (namespace) {
     const project = getCodeAuthoringContext();
@@ -155,6 +159,12 @@ function memberCompletions(
     }
     return fromNames(project.arrays, 'variable', (name) => `Array "${name}", used elsewhere in this project`);
   }
+
+  // `Noodl` itself and everything under it (FIX-017 §B). This subsumes the
+  // former `path === 'Noodl'` branch — a one-segment path walks zero steps and
+  // lands on exactly the list that branch returned.
+  const apiMembers = apiMembersAtPath(path, validationType);
+  if (apiMembers) return asCompletions(apiMembers);
 
   if (validationType !== 'expression') return scriptPortCompletions(context, path);
 

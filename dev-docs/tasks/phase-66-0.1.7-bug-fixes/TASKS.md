@@ -91,7 +91,7 @@ only a drive proves the pixels).
 | FIX-014 ✅ | logic nodes get their own column, by prompt and by a layout pass | 9 | 2 | S+M | ✅ **CLOSED 2026-08-15** — built (`1716236a`); criterion 1 driven in **two halves**: Build panel s16, **MCP s18**. ⚠️ `COLLISION_STEP` ruled 40 → `ROW_SPACING` and driven. 🔴 **Driven ≠ shipped: the packaged app still lacks the pass** (deployment debt, not a blocker) |
 | FIX-015 | style tokens: rulings session → a new phase | 10 | brainstorm | session | 🔴 all eight |
 | FIX-016 | Signal offered at add time; declared-vs-called mismatch diagnosed | 11 | 3 | S+S | signal-input semantics (for the M–L half only) |
-| FIX-017 | completions at an empty position; `Noodl.Records.` answers; TASKS.md reconciled | 12 | 3 | S+M+S | no |
+| FIX-017 ◐ | completions at an empty position; `Noodl.Records.` answers; TASKS.md reconciled | 12 | 3 | S+M+S | no rulings — **§B BUILT + AC4 DONE 2026-08-15**: `Noodl.Records.` and nine more namespaces answer (11 specs, control-checked); phase-61 register reconciled, the residue was **prose, not status**. 🔴 **§B undriven** (nine live editors blocked a launch) · 📋 **§A + §D still open** |
 | FIX-018 ✅ | a component card says it opens; context menu says so too | 13 | 2 | S–M | ✅ **RULED 2026-08-14: option C** — built + driven, **CLOSED** |
 | FIX-019 ✅ | "Show in workbench"; the canvas admits when it left the benched component | 14 | 2 | S+S–M | ✅ **CLOSED 2026-08-14** — built + driven 4/4; 🟡 14(a) vocabulary sweep still owed |
 | FIX-020 ✅ | one stylesheet stops fighting the other; five popups uncrop | 15 | 2 | S | no |

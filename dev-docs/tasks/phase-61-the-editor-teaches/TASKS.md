@@ -26,6 +26,13 @@ it moves the diagnosis and leaves every task standing.
 > 2026-08-12**. **Real state: 8 of 9 built — FUN-005 (the ports rail) is the only one open.**
 > The staleness was found by phase 67, which nearly authored a curriculum lesson around it; see
 > [phase 67 RULINGS.md](../phase-67-nodegx-university/RULINGS.md) "Blocker 3".
+>
+> 🔴 **Corrected again 2026-08-15, and the second pass is the instructive one.** The 08-14 sweep
+> fixed the **status column** and left the **prose in the same row** untouched, so FUN-007 went on
+> claiming its §2 was "not done" for another day while `97e465a2` had built it on 08-12. A register
+> is not reconciled when its states are right; it is reconciled when its *sentences* are. Found by
+> phase 66's FIX-017, whose own §1 was by then stale in the opposite direction — it told its reader
+> this file was four tasks behind, which had already been fixed.
 
 | Task | File | One line | State |
 |---|---|---|---|
@@ -35,7 +42,7 @@ it moves the diagnosis and leaves every task standing.
 | FUN-004 ⭐ | [FUN-004-THE-DIAGNOSTIC-THAT-NAMES-THE-PORT.md](FUN-004-THE-DIAGNOSTIC-THAT-NAMES-THE-PORT.md) | **the flagship** — four messages with one-click fixes, including the observed bug verbatim | ✅ **in `cline-dev`** `6dc6c019` (the linter learns a name is a port, and offers the fix) + `bfc52b4c` (the Ports tab reads the values the running app actually has). Status corrected 2026-08-14, this row read `open` |
 | FUN-005 | [FUN-005-THE-PORTS-RAIL.md](FUN-005-THE-PORTS-RAIL.md) | the ports become clickable beside the code; `+` creates one without leaving; live values | 📋 open |
 | FUN-006 | [FUN-006-THE-BAR-THAT-KNOWS-WHAT-IS-TRUE.md](FUN-006-THE-BAR-THAT-KNOWS-WHAT-IS-TRUE.md) | a dismissable line that names *their* ports and retires itself on success | ✅ **in `cline-dev`** `5f96f1f2` + `7afbf9fe` (the retirement counts *succeeding*, not opening a node that already succeeded) — status corrected 2026-08-14, this row read `open` |
-| FUN-007 | [FUN-007-THE-LOOP-CLOSES-AFTER-THE-RUN.md](FUN-007-THE-LOOP-CLOSES-AFTER-THE-RUN.md) | "this node wrote no output"; runtime errors reach the gutter at the right line | ✅ **merged** `fun-007-lane` — 🔴 **F24 refuted: the observed body throws**, and the premise moved with it. §2's gutter rendering is **not done** — the payload carries `line`/`column`/`hint`, nothing renders them |
+| FUN-007 | [FUN-007-THE-LOOP-CLOSES-AFTER-THE-RUN.md](FUN-007-THE-LOOP-CLOSES-AFTER-THE-RUN.md) | "this node wrote no output"; runtime errors reach the gutter at the right line | ✅ **merged** `fun-007-lane` — 🔴 **F24 refuted: the observed body throws**, and the premise moved with it. ✅ **§2 IS built** — `97e465a2` (2026-08-12) adds `utils/runtimeDiagnostic.ts` + 176 lines of spec and feeds it from `WarningsModel`; both files are in the tree and their specs pass. **This row said §2 was "not done" until 2026-08-15** — the 2026-08-14 sweep corrected the *status column* and did not read the prose beside it |
 | FUN-008 | [FUN-008-COMPLETION-MEETS-THE-WRONG-INSTINCT.md](FUN-008-COMPLETION-MEETS-THE-WRONG-INSTINCT.md) | typing `Inp` offers `Inputs.Input_1` — the smallest task here | ✅ **in `cline-dev`** `ad47b239` — a bare port name completes to its notation, and `Inputs.` stops withholding. Status corrected 2026-08-14, this row read `open` |
 | FUN-009 | [FUN-009-THE-EXPRESSION-NODES-OPPOSITE-RULE.md](FUN-009-THE-EXPRESSION-NODES-OPPOSITE-RULE.md) | the sibling node with the inverse rule, and why the user's guess was reasonable | ✅ **in `cline-dev`** `ace5232f`, **driven** `601dd5d2` — a code port *declares* its notation; the premise held, F17 closed, F35 was one port short. Status corrected 2026-08-14, this row read `open` |
 

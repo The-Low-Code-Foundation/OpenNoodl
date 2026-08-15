@@ -8,10 +8,18 @@
 
 ## Mechanism — substantially more exists than the report assumes
 
-🔴 **First: reconcile `phase-61-the-editor-teaches/TASKS.md` — it is four tasks stale.**
-FUN-004 (`6dc6c019`), FUN-006 (`5f96f1f2`), FUN-007 §2 (`97e465a2`), FUN-008 (`ad47b239`) are all
-built and wired on `cline-dev`; only **FUN-005 (the ports rail)** is unbuilt. Anyone planning from
-that file will rebuild three finished tasks.
+✅ **AC4 discharged 2026-08-15 — and this paragraph was itself stale by then.** It said phase-61's
+`TASKS.md` was "four tasks stale"; that file had already been corrected on **2026-08-14**, before
+this session started. What was left was smaller and less obvious: the 08-14 sweep fixed the **status
+column** and left the **prose inside FUN-007's row**, which went on saying its §2 was "not done"
+while `97e465a2` had built it on 08-12 (`utils/runtimeDiagnostic.ts` + 176 lines of spec, both in
+the tree, specs passing). Corrected, with the two-pass lesson recorded in that file's header.
+
+🔴 **The reusable bit: a stale warning about staleness is worse than none.** Read the register
+before repeating what a task doc says about it — this one would have sent its reader to fix
+something already fixed, and past the one thing that was not.
+
+⚠️ Three of §B's citations below were also wrong, all found by opening them; see §B.
 
 One editor component (CodeMirror 6, `JavaScriptEditor.tsx`), four call sites; the Expression node
 uses the same popout. Completion already does: `Noodl.` → API list; `Noodl.Variables/Objects/
@@ -38,12 +46,27 @@ signal-vs-value; bare `Inp` → boosted port completions (FUN-008).
   🔴 **Must be driven, both ways** — "a completion source that never fires is indistinguishable
   from one that is not installed", and the FH-017 guard exists precisely because menu-on-every-
   line was once the noise.
-- **§B (M) — a second level on the static schema:** `ApiMember` gains
-  `members?: readonly ApiMember[]`; `memberCompletions` walks a dotted path. Fill level 2 from
-  the sources already in-tree: `noodl-runtime/dist-types/src/api/records.d.ts` (12 methods,
-  generated — best), `viewer-react/src/api/*.ts` interfaces (Users, CloudFunctions, Navigation,
-  Files, SEO, Config), `model.js`/`collection.js`. Hand-written-but-cited, exactly as
-  `noodl-api-surface.ts:1-23` argues. (~150 lines of data + a path walk.)
+- ✅ **§B (M) — BUILT 2026-08-15.** `ApiMember` gained `members?: readonly ApiMember[]`, and
+  `apiMembersAtPath` walks a dotted path anchored at `Noodl`. Ten namespaces answer at their own
+  dot: Records, Users, CloudFunctions, Navigation, Files, SEO, Config, Object/Model,
+  Array/Collection, Events/eventEmitter. **11 new specs, 51/51 in the file, 395/395 in the
+  package**, and the walk was run against a **known-broken control** (one-level behaviour restored)
+  where 5 of them go red — so the gate discriminates rather than merely passing.
+  🔴 **Still undriven** — see the criteria.
+
+  **Three of the citations above were wrong, and each was found by opening the file:**
+  1. `dist-types/…/records.d.ts` is real and accurate but **gitignored** (`.gitignore:225`) — a
+     citation no reader can check on a fresh clone. Used `noodl-runtime/src/api/records.js`, which
+     ships. **11 methods, not the 12 claimed.**
+  2. `model.js` / `collection.js` are **`model.ts` / `collection.ts`** — the citation does not
+     resolve.
+  3. **`Config` cannot be a static list.** It is a Proxy over App Setup *plus the project's own
+     config variables* (`api/config.ts:73-90`), so its members are partly unknowable here. Shipped
+     as an explicitly-partial floor with that stated in the module, rather than as a contents page
+     that would tell a user their own variable does not exist.
+
+  Also corrected while in there: the `MEMBER_PATH_LOOKBEHIND` note said `Noodl.Variables.` was the
+  longest path answered for, which §B made false.
 - **§D (S) — the browse affordance:** a toolbar button in the FUN-006 bar that calls
   `startCompletion` explicitly, plus one line of `NOTATION_RULES` copy. The full FUN-005 rail
   stays a phase-61 task — do not absorb it here.
@@ -62,6 +85,12 @@ signal-vs-value; bare `Inp` → boosted port completions (FUN-008).
 1. Open a fresh Function popout, cursor on the empty seed body: a completion listing
    `Inputs`, `Outputs`, `Noodl` (and mode globals) appears without typing. Driven in Function
    **and** Expression modes; and driven the other way — typing ordinary code is not smothered.
-2. `Noodl.Records.` offers `query`, `create`, `save`, `delete`… with signatures in `info`.
+2. ✅ **Met in spec, ⏳ undriven.** `Noodl.Records.` offers `query`, `create`, `save`, `delete`…
+   with signatures in `info`. Pinned by `noodl-completions.test.ts`; **not yet seen in the running
+   editor**, because nine editors were live on the checkout on 08-15 and a launch reaps a peer's
+   work. The completion source is registered and the unit path is exercised, but *"a completion
+   source that never fires is indistinguishable from one that is not installed"* is this task's own
+   warning and it applies to §B as much as §A. **One popout, typing `Noodl.Records.`, closes it.**
 3. Typed `Inp` still ranks `Inputs.<port>` first (control for the boost).
-4. Phase-61 `TASKS.md` reconciled to the tree in the same PR.
+4. ✅ **Done 2026-08-15** — phase-61 `TASKS.md` reconciled to the tree; the residue was prose, not
+   status. See §1.

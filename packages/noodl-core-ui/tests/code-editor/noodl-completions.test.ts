@@ -147,6 +147,87 @@ describe('noodlCompletionSource', () => {
     });
   });
 
+  /**
+   * FIX-017 §B. `Noodl.` has listed `Records` since FH-019, and `Noodl.Records.`
+   * then answered nothing — the editor named a thing and went blank when the
+   * user followed its advice. These pin the second level, and just as
+   * importantly the four places it must *not* answer.
+   */
+  describe('a second level under `Noodl.` (FIX-017 §B)', () => {
+    it('answers `Noodl.Records.` — the literal complaint', () => {
+      expect(labelsFor('Noodl.Records.')).toEqual(
+        expect.arrayContaining(['query', 'create', 'save', 'delete'])
+      );
+    });
+
+    it('carries the call signature in `info`, not just the name', () => {
+      const result = createNoodlCompletionSource('function')(contextAt('Noodl.Records.'))!;
+      const query = result.options.find((option) => option.label === 'query')!;
+
+      expect(query.info).toContain('query(className, query, options)');
+    });
+
+    it('answers for the other namespaces `Noodl.` advertises', () => {
+      expect(labelsFor('Noodl.Users.')).toEqual(expect.arrayContaining(['logIn', 'signUp', 'Current']));
+      expect(labelsFor('Noodl.CloudFunctions.')).toEqual(['run']);
+      expect(labelsFor('Noodl.Navigation.')).toEqual(expect.arrayContaining(['navigate', 'navigateToPath']));
+      expect(labelsFor('Noodl.Files.')).toEqual(['upload']);
+      expect(labelsFor('Noodl.SEO.')).toEqual(expect.arrayContaining(['setTitle', 'setMeta']));
+      expect(labelsFor('Noodl.Config.')).toEqual(expect.arrayContaining(['appName', 'favicon']));
+    });
+
+    it('spells the current user `Current`, because that is what the runtime spells it', () => {
+      // `users.ts:40` — capital C, and the sort of detail a list written from
+      // memory gets wrong in a way no test would have caught.
+      expect(labelsFor('Noodl.Users.')).toContain('Current');
+      expect(labelsFor('Noodl.Users.')).not.toContain('current');
+    });
+
+    it('gives an alias the same members as the thing it aliases', () => {
+      // ⚠️ The `toContain` is not padding. Comparing the two calls alone passes
+      // vacuously when *both* return null — which is exactly what the
+      // pre-§B build did, so the equality below agreed with the defect. Pin
+      // that each side actually answered before pinning that they agree.
+      expect(labelsFor('Noodl.Object.')).toContain('get');
+      expect(labelsFor('Noodl.Array.')).toContain('get');
+      expect(labelsFor('Noodl.Events.')).toContain('emit');
+
+      expect(labelsFor('Noodl.Model.')).toEqual(labelsFor('Noodl.Object.'));
+      expect(labelsFor('Noodl.Collection.')).toEqual(labelsFor('Noodl.Array.'));
+      expect(labelsFor('Noodl.eventEmitter.')).toEqual(labelsFor('Noodl.Events.'));
+    });
+
+    // ⚠️ The four refusals. Each one is a wrong answer this walk could easily
+    // have given, and three of them would be actively worse than silence.
+    it('refuses the bare `Object.` — that is JavaScript’s, not Noodl’s', () => {
+      expect(labelsFor('Object.')).toBeNull();
+      expect(labelsFor('Array.')).toBeNull();
+    });
+
+    it('refuses a second level in an Expression, whose `Noodl` has none', () => {
+      expect(labelsFor('Noodl.Records.', false, 'expression')).toBeNull();
+      expect(labelsFor('Noodl.Users.', false, 'expression')).toBeNull();
+    });
+
+    it('refuses a third level rather than repeating the second', () => {
+      expect(labelsFor('Noodl.Records.query.')).toBeNull();
+      expect(labelsFor('Noodl.Users.Current.')).toBeNull();
+    });
+
+    it('still lets the project answer for `Noodl.Variables.`', () => {
+      // The ordering guard: the static walk knows the *name* `Variables` and
+      // has nothing under it, so running it first would replace a right answer
+      // with silence.
+      setCodeAuthoringContext({ libraries: [], variables: ['cartTotal'], objects: [], arrays: [] });
+      expect(labelsFor('Noodl.Variables.')).toEqual(['cartTotal']);
+    });
+
+    it('still answers plain `Noodl.` — the branch the walk replaced', () => {
+      expect(labelsFor('Noodl.')).toEqual(expect.arrayContaining(['Records', 'Variables']));
+      expect(labelsFor('Noodl.', false, 'expression')).toEqual(['Variables', 'Objects', 'Arrays', 'Object']);
+    });
+  });
+
   describe('at top level', () => {
     it('completes the Noodl namespace itself', () => {
       expect(labelsFor('Nood')).toEqual(['Noodl']);
