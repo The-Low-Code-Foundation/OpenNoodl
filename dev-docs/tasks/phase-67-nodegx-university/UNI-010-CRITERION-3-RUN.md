@@ -110,6 +110,41 @@ it. Checked before starting: `git log` on that file shows its most recent commit
 (AWP-001/002), and phase 69 has **no code at all**. **All five lessons in this run are therefore
 scored on the pre-CN-001 instrument**, which is the recorded answer to "which".
 
+> ## 🔴 AMENDED AFTER THE RUN — the paragraph above is WRONG, and it was wrong the way shared checkouts make things wrong
+>
+> **CN-001 landed mid-run.** `ed28a03c` — *"the render harness was blind to kits — and called it
+> 'Rendered clean'"* — was committed at **00:31:29** and changed `render-from-disk.js` **on disk at
+> 00:26:13**, by a peer working in this same checkout. Bundle write times: L1 `00:20:46`, L2
+> `00:24:40`, L3 `00:25:49`, **L4 `00:27:18`, L5 `00:28:05`**.
+>
+> **So L1–L3 were scored on the old instrument and L4–L5 on the new one. The dataset is split, which
+> is exactly what §3.3 was written to prevent.** Left uncorrected, this run's own recorded answer to
+> "which instrument" would have been a lie.
+>
+> 🔴 **The trap, stated generally, because it is not phase-specific:** *a constraint checked at the
+> start of a run is not discharged for the length of the run — in a shared checkout, an ordering
+> constraint has to be re-checked at the END.* I read `git log`, found phase 69 had no code, wrote
+> "discharged", and stopped thinking about it. Nothing about that check was wrong when I made it.
+>
+> ✅ **Measured, not argued away.** Rather than reason that lesson projects carry no kits, all three
+> pre-CN-001 solutions were re-rendered on the new instrument:
+>
+> | | pre-CN-001 | post-CN-001 |
+> |---|---|---|
+> | L1 solution | `Rendered clean … 2 texts, 0 placeholders` | **identical** |
+> | L2 solution | `Rendered clean … 4 texts, 0 placeholders` | **identical** |
+> | L3 solution | `Rendered clean … 3 texts, 0 placeholders` | **identical** |
+>
+> **Both §8 findings were also reproduced end-to-end on the post-CN-001 instrument** — the L2 broken
+> variant was reconstructed and still writes with F1–F4 all pass beside a `dead-placeholder-text`
+> error, and the L4 blind control still reports `Rendered clean … 2 texts`. **The run's conclusions
+> are instrument-independent**; the pre-registration's claim about which instrument was used is the
+> only thing that needed correcting.
+>
+> ⚠️ And note what §8.2 now says about CN-001 specifically: CN-001 fixed *one* way this harness said
+> "Rendered clean" about a page it had not properly drawn. **It did not fix the other one.** The
+> start-page-only blindness survives it, measured above.
+
 ### 3.4 The trap this run is most likely to hit, named before it happens
 
 From the criterion 2 drive: *"the harness refuses a lesson whose steps are already done in the
@@ -271,8 +306,15 @@ the direct evidence that the About page is never visited.
 
 🔴 **This one is upstream of UNI-010.** The harness itself reports *"Rendered clean"* for a project
 whose second page is broken, so it is not only F4 that inherits it — `render_report` as a tool has
-the same blind spot. **It belongs in front of phase 69's CN-001**, which is already rewriting
-`render-from-disk.js`, rather than being fixed twice.
+the same blind spot. **It belongs with phase 69's CN-001**, which is rewriting the same file.
+
+> 🔴 **And CN-001 landed while this run was in progress (see §3.3's amendment) without closing it.**
+> `ed28a03c`'s own message is *"the render harness was blind to kits — and called it 'Rendered
+> clean'"*: **the same sentence, about a different blindness.** The blind control above was re-run
+> on the post-CN-001 harness and still reports `Rendered clean … 2 texts`. Two independent routes to
+> a falsely-green render report have now been found in this one file within a day, one fixed and one
+> open — which is itself an argument for treating "did it draw?" as a probe that needs its own
+> known-broken control on every route it claims to cover, not just on the route last fixed.
 
 ## 9. The human read — F5, F6, and "worth completing"
 
