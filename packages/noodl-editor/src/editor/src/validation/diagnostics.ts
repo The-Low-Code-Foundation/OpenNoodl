@@ -73,6 +73,39 @@ export enum DiagnosticCode {
   /** Info-level: a port check was skipped because the node determines the port at runtime. */
   DynamicPortSkipped = 'dynamic-port-skipped',
   /**
+   * CN-002. Info-level: a check did **not run** on a node because the node's
+   * type could not be resolved against the catalog.
+   *
+   * `unknown-node-type` reports that we do not recognise the type, and that is
+   * correctly a warning — real projects legitimately use module-provided nodes
+   * the catalog cannot enumerate (see `Severity` above). What it does not say,
+   * and what this code exists to say, is that **every downstream check was then
+   * skipped**: `checkParameterValues` returns on its first line for such a
+   * node, and `nonexistentPort` / `typeIncompatibleConnection` skip its
+   * connection endpoints. Measured on `cashflow-command-centre`: five kit nodes
+   * carrying 26 parameters verified by nothing, and 10 of the project's 28
+   * connection endpoints never reached — reported as
+   * `0 error(s), 5 warning(s), 0 info`.
+   *
+   * A skip reported as a pass is the failure mode this repo tracks as *a probe
+   * that silently exonerates*. `info` is the severity the model already
+   * reserves for it — "surfaced so the user knows a check was deliberately
+   * *not* performed, rather than silently passing" — and nobody had wired this
+   * case to it.
+   *
+   * One diagnostic per **(node, check)** pair, deliberately not per project and
+   * not per endpoint: the point is that a reader can see *which* nodes are
+   * unverified and *what* went unchecked on each.
+   *
+   * ⚠️ These are an instrument as much as a message. When CN-003's project
+   * catalog overlay lands, the count of these for a kit project should go to
+   * **zero**, and that is a far better acceptance signal than "validation seems
+   * to work now" — it is a number, taken before and after, of something that
+   * was previously invisible. Do not collapse or suppress them without
+   * replacing that measurement.
+   */
+  UnknownTypeCheckSkipped = 'unknown-type-check-skipped',
+  /**
    * AIB-001: a parameter carries a value of a shape the port's type cannot
    * consume — an array where the wire format is a comma-separated string, a
    * number where the port wants `{ value, unit }`, an enum value that is not

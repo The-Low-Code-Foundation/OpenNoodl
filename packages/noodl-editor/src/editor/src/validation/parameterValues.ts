@@ -58,6 +58,7 @@
 import { CatalogIndex, nearest, type CatalogPort } from './CatalogIndex';
 import { DiagnosticCode, type Diagnostic, type Severity } from './diagnostics';
 import { conditionForInput, conditionIsUnsatisfied } from './portConditions';
+import { SkippedCheck, unknownTypeSkip } from './unknownTypeSkip';
 
 /** The catalog's `type` field, normalised to its object form. */
 export interface PortTypeShape {
@@ -744,7 +745,23 @@ export function checkParameterValues(
 
   for (const node of nodes) {
     const parameters = node.parameters;
-    if (!parameters || !catalog.hasType(node.type)) continue;
+    if (!parameters) continue; // nothing set — nothing to check, and nothing skipped
+    if (!catalog.hasType(node.type)) {
+      // CN-002 — this is the biggest of the three silent skips: not one check
+      // on one endpoint but *every* parameter on the node. On
+      // `cashflow-command-centre` that was 26 parameters across five kit nodes,
+      // reported as a clean pass. Say that the check did not run.
+      diagnostics.push(
+        unknownTypeSkip({
+          component,
+          nodeId: node.id,
+          nodeType: node.type,
+          nodeLabel: node.label,
+          check: SkippedCheck.ParameterValues
+        })
+      );
+      continue;
+    }
     // Only *runtime-unbounded* dynamism earns the skip below. The broader
     // `isDynamicNode` was exempting all 88 types that declare any dynamic ports,
     // and for 20 of them — `Text`, `Group`, `Image`, `Button`, `Text Input` and

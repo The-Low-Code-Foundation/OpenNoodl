@@ -143,7 +143,19 @@ describe('what it deliberately lets through', () => {
   });
 
   it('a parameter on a node type the catalog does not carry — unknown-node-type owns that', () => {
-    expect(check([{ id: 'm', type: 'module.somethingCustom', parameters: { anything: [1, 2] } }])).toEqual([]);
+    const out = check([{ id: 'm', type: 'module.somethingCustom', parameters: { anything: [1, 2] } }]);
+
+    // CN-002 changed what this returns but not what it *means*. The guarantee
+    // this test protects is that an unresolvable type raises no problem here —
+    // `[1, 2]` on a port we cannot see is not evidence of anything. That still
+    // holds: the only thing emitted is `info`, which never fails a gate and
+    // never blocks authored output.
+    //
+    // What is new is that the skip is now *announced* instead of returning an
+    // empty array that reads as a pass. Asserting `toEqual([])` again would
+    // re-hide it, so this asserts the property rather than the shape.
+    expect(out.filter((d) => d.severity !== 'info')).toEqual([]);
+    expect(out.map((d) => d.code)).toEqual([DiagnosticCode.UnknownTypeCheckSkipped]);
   });
 
   it('a parameter naming an unknown port on a DYNAMIC node — the port is very likely real', () => {

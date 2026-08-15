@@ -18,6 +18,7 @@
 import { CatalogIndex } from '../CatalogIndex';
 import { Diagnostic, DiagnosticCode } from '../diagnostics';
 import { isComponentRef } from '../model';
+import { SkippedCheck, unknownTypeSkip } from '../unknownTypeSkip';
 import { Rule, RuleContext } from './types';
 
 export const typeIncompatibleConnection: Rule = {
@@ -28,6 +29,8 @@ export const typeIncompatibleConnection: Rule = {
   run(ctx: RuleContext): Diagnostic[] {
     const out: Diagnostic[] = [];
     const { catalog } = ctx;
+    // CN-002 — one notice per (node, check); see `unknownTypeSkip`.
+    const skipNoticed = new Set<string>();
 
     for (const { component, nodeById } of ctx.components) {
       for (const conn of component.connections) {
@@ -35,7 +38,28 @@ export const typeIncompatibleConnection: Rule = {
         const to = nodeById.get(conn.toId);
         if (!from || !to) continue;
         if (isComponentRef(from.type) || isComponentRef(to.type)) continue;
-        if (!catalog.hasType(from.type) || !catalog.hasType(to.type)) continue;
+        if (!catalog.hasType(from.type) || !catalog.hasType(to.type)) {
+          // CN-002 — this connection's types go unchecked, and until now that
+          // was silent. Note BOTH ends that are unresolvable: a mismatch needs
+          // two known types, so either end being unknown is a distinct reason
+          // this connection was never examined.
+          for (const node of [from, to]) {
+            if (catalog.hasType(node.type)) continue;
+            const key = `${component.name} ${node.id}`;
+            if (skipNoticed.has(key)) continue;
+            skipNoticed.add(key);
+            out.push(
+              unknownTypeSkip({
+                component: component.name,
+                nodeId: node.id,
+                nodeType: node.type,
+                nodeLabel: node.label,
+                check: SkippedCheck.ConnectionTypes
+              })
+            );
+          }
+          continue;
+        }
 
         const fromPort = catalog.getPort(from.type, 'output', conn.fromProperty);
         const toPort = catalog.getPort(to.type, 'input', conn.toProperty);

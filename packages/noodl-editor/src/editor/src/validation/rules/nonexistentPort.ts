@@ -24,6 +24,7 @@
 import { CatalogIndex, Plug } from '../CatalogIndex';
 import { Diagnostic, DiagnosticCode } from '../diagnostics';
 import { NormNode, isComponentRef } from '../model';
+import { SkippedCheck, unknownTypeSkip } from '../unknownTypeSkip';
 import { Rule, RuleContext } from './types';
 
 const MAX_ALTERNATIVES = 24;
@@ -52,6 +53,9 @@ export const nonexistentPort: Rule = {
   run(ctx: RuleContext): Diagnostic[] {
     const out: Diagnostic[] = [];
     const { catalog } = ctx;
+    // CN-002 — one notice per (node, check), not per endpoint. Four connections
+    // to one unresolvable node are one fact about that node.
+    const skipNoticed = new Set<string>();
 
     for (const { component, nodeById } of ctx.components) {
       for (const conn of component.connections) {
@@ -63,7 +67,27 @@ export const nonexistentPort: Rule = {
         for (const { node, port, plug } of endpoints) {
           if (!node) continue; // dangling — danglingConnection owns this
           if (isComponentRef(node.type)) continue; // component ports are per-instance/dynamic
-          if (!catalog.hasType(node.type)) continue; // unknown type — unknownNodeType owns this
+          if (!catalog.hasType(node.type)) {
+            // CN-002 — `unknownNodeType` owns *reporting the type*; it does not
+            // say that this check then stopped. Say so, or the skip reads as a
+            // pass. Emitted here rather than from a rule that restates what
+            // other rules skip: the notice comes from the code doing the
+            // skipping, so it cannot drift from what actually happened.
+            const key = `${component.name}::${node.id}`;
+            if (!skipNoticed.has(key)) {
+              skipNoticed.add(key);
+              out.push(
+                unknownTypeSkip({
+                  component: component.name,
+                  nodeId: node.id,
+                  nodeType: node.type,
+                  nodeLabel: node.label,
+                  check: SkippedCheck.ConnectionPorts
+                })
+              );
+            }
+            continue;
+          }
 
           ctx.counters.endpointsChecked++;
 
