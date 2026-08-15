@@ -9,6 +9,7 @@ import { NotificationFeedbackDisplay } from '@noodl-core-ui/components/inputs/No
 import { useNotificationFeedbackDisplay } from '@noodl-core-ui/components/inputs/NotificationFeedbackDisplay/NotificationFeedbackDisplay.hooks';
 import { UnsafeStyleProps } from '@noodl-core-ui/types/global';
 
+import { shouldSubmitOnKey } from './TextArea.keys';
 import css from './TextArea.module.scss';
 
 export interface TextAreaProps extends UnsafeStyleProps {
@@ -31,7 +32,15 @@ export interface TextAreaProps extends UnsafeStyleProps {
   onMouseLeave?: MouseEventHandler<HTMLDivElement>;
   onFocus?: FocusEventHandler<HTMLTextAreaElement>;
   onBlur?: FocusEventHandler<HTMLTextAreaElement>;
-  /** Occurs when Shift+Enter is pressed. */
+  /**
+   * Occurs when plain Enter is pressed; Shift+Enter inserts a newline.
+   *
+   * ⚠️ FIX-002 (ruled 2026-08-14): this is the industry default and a **flip**
+   * of this prop's historical meaning — it used to fire on Shift+Enter, the
+   * same prop name as `TextInput.onEnter` behind the opposite keystroke. Both
+   * inputs now answer to plain Enter. The decision itself lives in
+   * {@link shouldSubmitOnKey} so a node-env spec can grade it.
+   */
   onEnter?: () => void;
   /**
    * BLD-016 — every keystroke, before {@link onEnter} decides anything.
@@ -116,11 +125,11 @@ export function TextArea({
           onSelect={onSelect}
           onKeyDown={(ev) => {
             onKeyDown?.(ev);
-            // ⚠️ `defaultPrevented`, not a separate flag: a completion menu that
-            // consumed Enter to pick a row must not also submit the composer,
-            // and the DOM already has the word for "this key is spoken for".
-            if (ev.defaultPrevented) return;
-            if (onEnter && ev.shiftKey && ev.key === 'Enter') {
+            // ⚠️ `defaultPrevented` is read inside `shouldSubmitOnKey`, not a
+            // separate flag: a completion menu that consumed Enter to pick a
+            // row must not also submit the composer, and the DOM already has
+            // the word for "this key is spoken for".
+            if (shouldSubmitOnKey(ev, Boolean(onEnter))) {
               onEnter();
               ev.preventDefault();
             }
