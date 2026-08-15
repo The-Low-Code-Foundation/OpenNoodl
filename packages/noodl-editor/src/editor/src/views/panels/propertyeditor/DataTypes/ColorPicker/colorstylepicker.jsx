@@ -6,6 +6,7 @@ import { StylesModel } from '@noodl-models/StylesModel';
 import { IconName, IconSize } from '@noodl-core-ui/components/common/Icon';
 import { IconButtonVariant, IconButton } from '@noodl-core-ui/components/inputs/IconButton';
 
+import { escapeHtml } from '../../../../../utils/escapeHtml';
 import PopupLayer from '../../../../popuplayer';
 import utils from '../../../../TextStylePicker/utils';
 import { ToastLayer } from '../../../../ToastLayer/ToastLayer';
@@ -83,7 +84,9 @@ function ColorStylePicker(props) {
     const { nodeCount, variantCount } = utils.getStyleUsage('color', name);
 
     if (nodeCount > 0 || variantCount > 0) {
-      let message = `Are you sure you want to delete <strong>${name}</strong>?<br>This color style is used by `;
+      // The style name is user- and AI-authorable and this string is rendered
+      // through `dangerouslySetInnerHTML` by ConfirmModal — escape it (FIX-003).
+      let message = `Are you sure you want to delete <strong>${escapeHtml(name)}</strong>?<br>This color style is used by `;
       if (nodeCount) {
         message += `${nodeCount} ${nodeCount === 1 ? 'node' : 'nodes'}`;
       }
