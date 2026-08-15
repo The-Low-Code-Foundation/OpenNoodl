@@ -71,12 +71,29 @@ failed `the component interface, as the bench reads it` ×3, seed 73375 failed `
 regression breaks the same specs every time. The structural half agrees — `tests/ai/component-bench.test.ts`
 shares no module with anything phase-67 edited.
 
-⚠️ **This revises a floor we have all been quoting.** The flat "**6**" was measured **once**, at seed
-39393. Two independent seeds today both produced **9**. Record the floor as **"6 known-failing names,
-plus a `BEN-001` cluster of ~3 present at most seeds"** — not as a flat 6, or the next session reads
-9 and starts hunting a regression that isn't there. ⚠️ The runner takes **no `--seed` flag**, so the
-ideal control (same seed, pre-change tree) does not exist; the substitutes are the membership check
-above and "does the failing spec file share a module with my change".
+✅ **THE SEED IS PINNABLE — and both of us missed it for a whole session.**
+
+```
+NOODL_SPEC_SEED=39393 npm run test:ci
+```
+
+`tests/SpecRunner.html:41-42` reads `process.env.NOODL_SPEC_SEED` and hands it to
+`jasmine.getEnv().configure({ random: true, seed })`. 🔴 **Grepping `scripts/run-electron-tests.js`
+for a `--seed` flag finds nothing and is the wrong surface** — the seed is read one layer down, in the
+spec runner's HTML. Its own comment has documented this since DEBT-005 (2026-07-25). Two sessions
+concluded "no seed control exists" from that grep, and one of them (me) wrote it into this file.
+
+**So the ideal control does exist**: same seed, pre-change tree. Use it before any of the substitutes.
+
+⚠️ **How to read the floor, stated so it survives either result.** **6 is the floor _at seed 39393_**
+— reproducible, not luck, provided you pin it. At other seeds a **~3-member `BEN-001` cluster**
+appears on top (seeds 50405 and 73375 both gave **9** on an unchanged tree, with *different* members
+each time). So **9 is normal at an unpinned seed and is not a regression** — do not go hunting. Quote
+the floor as "6 at 39393, ~9 unpinned", never as a bare 6.
+
+The membership check ("did the cluster's members change between runs on identical code?") and the
+module-overlap check remain useful, but they are now the *fallback* for when a pinned re-run is not
+available, not the primary instrument.
 
 ---
 
