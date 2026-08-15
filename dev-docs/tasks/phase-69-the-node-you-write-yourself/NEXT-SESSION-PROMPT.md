@@ -77,18 +77,26 @@ turning them on in one place turns them on everywhere, and it does not.
 
 ## 🔴 A SECOND falsely-green route in the same harness — measured, not fixed
 
-Found at the end of this session, prompted by a peer's suggestion and then **measured here rather
-than relayed**. `render-from-disk.js` serves the page for `/` and `/index.html` **and 404s
-everything else**:
+Found at the end of this session and **measured here rather than relayed**. ⚠️ **Source, stated
+precisely because it took two corrections to establish:** the observation came from the **phase 67 /
+UNI-010 criterion-3 session** (socket `61336`), reached me second-hand via a third session that
+mistakenly relayed it as its own, and the `GET`/`404` measurement below is this session's. If you
+need the surrounding context, **ask 61336** — the relaying session is a dead end for it.
+
+`render-from-disk.js` serves the page for `/` and `/index.html` **and 404s everything else**:
 
 ```
 GET /            -> 200
 GET /products    -> 404   ("not found: /products")
 ```
 
-`fix003-drive` declares a page at path `home` and it is unreachable the same way. So the viewer's
-router only ever renders its **startPage**, and `render_report` on a multi-page project measures one
-page and reports *"Rendered clean"* for the whole project — a second instance of exactly what CN-001
+⚠️ **Sharper than first written, after the originating session re-ran it and I re-ran it again:**
+`/home` — the START page's own declared `urlPath` — **also 404s**. So the harness answers exactly one
+URL and lets the SPA boot to whatever the Router names; it does not render "one route", it can reach
+**no named route at all**. Anything about `urlPath` — a Page node's URL, route parameters, deep links
+— is therefore unmeasurable **on the first page too**, so "serve every routed page" is necessary but
+**not sufficient**. `render_report` on a multi-page project measures one page and reports
+*"Rendered clean"* for the whole project — a second instance of exactly what CN-001
 fixed, one level up. The generalisation is worth writing down as the phase's standing rule:
 
 > **A probe needs its own known-broken control on every route it claims to cover.**
