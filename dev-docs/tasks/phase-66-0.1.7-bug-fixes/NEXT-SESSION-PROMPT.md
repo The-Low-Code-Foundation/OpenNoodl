@@ -263,7 +263,13 @@ declining predicate from dead wiring.
     mounts. You also need `LocalProjectsModel.instance.loadProject(entry)` then
     `router.route({ to: 'editor', project: loaded })`. The router is 3 fibers deep from `#root` —
     look for `memoizedProps.route.router`.
-  - ✅ **The view is `el.cmView.view` on `.cm-content`**, not `el.cmTile.view`.
+  - 🔴 **The view is `el.cmTile.view` on `.cm-content` — this line said `el.cmView.view` and was
+    wrong**, while §4 above said `cmTile`, so the file contradicted itself and a reader had to guess.
+    Corrected against three independent measurements: two drives tonight (s23's popout read and s26's
+    §1 drive, which hit this and said so), and `driving-the-codemirror-editor-over-cdp.md`, which
+    records `Object.getOwnPropertyNames(el) === ['cmTile']` and names `.cmView` as the wrong guess.
+    ⚠️ **The handle is non-enumerable**, so a `for…in` or a casual `Object.keys` finds neither name
+    and invites exactly this mistake.
   - ✅ **Count lint runs by appending an update listener at runtime**:
     `view.dispatch({ effects: StateEffect.appendConfig.of(EditorView.updateListener.of(cb)) })`.
     ⚠️ **That append itself schedules a lint** — wait it out and reset the counter before measuring,
