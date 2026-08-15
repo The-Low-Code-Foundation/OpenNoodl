@@ -216,3 +216,20 @@ control is a dropdown. It is **present and visible without expanding anything** 
 better read as *"I never found the Type dropdown"* than *"Signal is missing"*. Two things make it
 easy to miss: the row is labelled `Type` with no mention of Signal, and — see above — **it reads
 `String` whether or not anything is set**, so it looks answered. Richard's call what that is worth.
+
+⚠️ **Scope this observation honestly before ruling on it.** I measured the **rendered DOM** — two
+`PropertyPanelInput-module__Label` rows reading `Type`, each with an `<input>` whose value was
+`String` — and the screenshot shows both. **I never opened either dropdown**, so *"the row is
+visible and reads `String`"* is driven, while *"it offers `Signal`"* remains a source read
+(`simplejavascript.ts:784-789`). Nobody has yet driven the click that a confused author would make.
+
+⚠️ **And an unexplained discrepancy that must not be resolved by assumption.** The peer who built
+the §3c fix reported that *their* fixture's dynamic `outtype-` child ports never materialised —
+`getPorts()` showed only static ports and no `Type` row rendered — and attributed the difference to
+my node having been "normally created". **It was not: mine was built by `NodeGraphNode.fromJSON` +
+`graph.addRoot` too**, so that cannot be the explanation. Two `fromJSON` nodes, one rendering the
+rows and one not, cause unknown. The likeliest candidates are *when* the editor-side
+`_managePortsForNode` / `_updatePorts` hook ran relative to node creation, and model `getPorts()`
+(static only) versus the rendered panel (which includes editor-pushed dynamic ports) — but that is a
+hypothesis, not a finding. **The rendered-DOM measurement stands on its own; the reason the peer saw
+otherwise does not yet have one.**

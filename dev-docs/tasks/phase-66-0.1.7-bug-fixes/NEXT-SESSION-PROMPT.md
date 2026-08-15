@@ -150,6 +150,12 @@ the small end of it. Two things make it easy to miss: the row says only `Type` w
 Signal, and **it reads `String` whether or not anything is set**, so it looks already answered.
 **That is what I saw; what it is worth is Richard's call.**
 
+⚠️ **Two limits on it, both mine, before anyone rules:** I measured the **rendered DOM** and
+**never opened either dropdown** — so *"the row is visible and reads `String`"* is driven, while
+*"it offers Signal"* is still only a source read. And a peer's fixture showed **no** `Type` row at
+all; they put that down to my node being "normally created", but **mine was `fromJSON` too**, so
+that explanation is wrong and the discrepancy is unexplained. Full note in the task file.
+
 ### 3e. The controls, and why the silent rows mean anything
 
 Four known-broken controls, each killing a **different** row — unwire the rule (10 red), drop
