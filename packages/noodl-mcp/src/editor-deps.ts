@@ -457,3 +457,20 @@ export type {
   WholeSolutionGrader,
   WholeSolutionResult
 } from '../../noodl-editor/src/editor/src/models/lessongrading';
+
+// 🔴 The one **value** in this section, and it is deliberate. Engine 2 has two
+// adapters — this package's (spawns the render CLI over a project on disk) and
+// the editor's (drives a hidden Electron window over the running viewer) — and
+// they must not disagree about what "it drew something" means: the `min`-not-
+// `sum` aggregation across viewports is the safety property engine 2 exists for,
+// not a detail of either machinery. `lessondrawncount.ts` imports **nothing at
+// all**, so sharing it costs this bundle a dozen lines and no transitive weight.
+export {
+  BLANK_RENDER,
+  countDrawnElements,
+  reportsBlankRender
+} from '../../noodl-editor/src/editor/src/models/lessondrawncount';
+export type {
+  MeasuredViewportLike,
+  RenderFindingLike
+} from '../../noodl-editor/src/editor/src/models/lessondrawncount';

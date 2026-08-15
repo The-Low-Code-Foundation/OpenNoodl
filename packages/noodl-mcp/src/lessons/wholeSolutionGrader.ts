@@ -51,16 +51,17 @@
  * @module noodl-mcp/lessons/wholeSolutionGrader
  */
 
-import { formatDiagnosticLine } from '../editor-deps';
+import {
+  countDrawnElements as countDrawnFromViewports,
+  formatDiagnosticLine,
+  reportsBlankRender as findingsReportBlankRender
+} from '../editor-deps';
 import type { Diagnostic, ValidationReport, WholeSolutionGrader, WholeSolutionResult } from '../editor-deps';
 import { ToolError } from '../errors';
 import { ProjectStore } from '../project/ProjectStore';
 import { runRenderReport } from '../render';
-import type { RenderReportPayload, RenderViewportPayload } from '../render';
+import type { RenderReportPayload } from '../render';
 import { validateOnDisk } from '../validate';
-
-/** The render finding that says the page drew nothing. Its own code, not a guess at one. */
-const BLANK_RENDER = 'blank-render';
 
 /**
  * How many finding lines a result carries before it starts summarising.
@@ -78,48 +79,20 @@ export const MAX_FINDING_LINES = 20;
  * How many elements the render actually drew, or `undefined` when nothing could
  * be measured at all.
  *
- * 🔴 **This applies the report's own rule rather than a second one.** The
- * harness decides a page is blank with, per viewport:
- *
- * ```js
- * v.text.elements === 0 && v.images.total === 0     // render-report.js
- * ```
- *
- * so "drawn" here is `text.elements + images.total` — the same two numbers, and
- * a count that hits zero exactly when the harness would call that viewport
- * blank. Inventing a broader count (every DOM node, say) would make this adapter
- * disagree with the `blank-render` finding it ships alongside, and the day two
- * measures of one thing disagree is the day the report stops being evidence.
- *
- * **The aggregate across viewports is the minimum, not the sum**, because the
- * harness raises `blank-render` if *any* viewport is blank (`Object.values(…)
- * .some(…)`). A page that draws on desktop and nothing on a phone has not
- * rendered, and summing would hide exactly that.
- *
- * Viewports that failed to measure are skipped, matching `summarise()`'s own
- * `if (!v || v.error) continue`. When every viewport is skipped there is no
- * measurement, and this returns `undefined` — the caller turns that into
- * `unavailable`, never into a zero.
+ * 🔴 **The rule itself is not here, and that is the point.** Engine 2 has two
+ * adapters — this one, and the editor's, which drives a hidden Electron window
+ * instead of the CLI — and the `min`-not-`sum` aggregation is the safety
+ * property engine 2 exists for rather than a detail of either machinery. It
+ * lives in `models/lessondrawncount.ts` so there is one implementation; this is
+ * the payload adaptation and nothing more.
  */
 export function countDrawnElements(report: RenderReportPayload): number | undefined {
-  const counts: number[] = [];
-
-  for (const viewport of Object.values(report?.viewports ?? {})) {
-    const v = viewport as RenderViewportPayload & { error?: unknown };
-    if (!v || v.error) continue;
-    const texts = v.text?.elements;
-    const images = v.images?.total;
-    // A viewport missing either number was not measured, whatever else it holds.
-    if (typeof texts !== 'number' || typeof images !== 'number') continue;
-    counts.push(texts + images);
-  }
-
-  return counts.length === 0 ? undefined : Math.min(...counts);
+  return countDrawnFromViewports(report?.viewports);
 }
 
 /** True when the harness itself concluded the page drew nothing. */
 export function reportsBlankRender(report: RenderReportPayload): boolean {
-  return (report?.findings ?? []).some((f) => f?.code === BLANK_RENDER);
+  return findingsReportBlankRender(report?.findings);
 }
 
 /**
