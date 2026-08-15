@@ -28,6 +28,10 @@
   gap: 8px;
   padding: 0 16px;
 
+  /* FIX-003 opt-out: pure chrome — double-clicking a toolbar button must not
+     select its label. */
+  user-select: none;
+
   /* POL-019: at the narrowest tier every pixel of the left group is one the
      add-node and navigation buttons need, so the toolbar gives back half its
      own gutter. (This rule is also what makes `is-tiny` a real class — CSS

@@ -1108,6 +1108,11 @@ export class PopupLayer {
 
     this.dragItem = item;
 
+    // FIX-003: text is selectable by default now, and this drag crosses panels
+    // full of it. The class (style.css) suspends selection everywhere until
+    // `dragCompleted` lifts it.
+    document.body.classList.add('noodl-dragging');
+
     const placeDragItem = (x: number, y: number) => {
       this.draggerEl.style.opacity = '1';
       this.draggerEl.style.transition = 'none';
@@ -1165,6 +1170,7 @@ export class PopupLayer {
   public dragCompleted() {
     this.draggerEl.style.opacity = '0';
     this.dragItem = undefined;
+    document.body.classList.remove('noodl-dragging');
   }
 
   // -------------------------------- Tooltip ----------------------------------

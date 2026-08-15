@@ -48,7 +48,7 @@ export function AiChatMessage({ user, content, affix }: AiChatMessageProps) {
             </div>
           </Box>
         )}
-        <Markdown content={content} UNSAFE_style={{ marginTop: '2px', userSelect: 'text' }} />
+        <Markdown content={content} UNSAFE_style={{ marginTop: '2px' }} />
       </HStack>
       {Boolean(affix) && <Box hasTopSpacing>{affix}</Box>}
     </Box>

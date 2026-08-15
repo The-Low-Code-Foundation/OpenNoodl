@@ -30,6 +30,10 @@
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 18px;
+  // FIX-003 opt-out: the cards are click/double-click targets — opening a
+  // project must not select its name. Scoped to the grid, NOT the launcher
+  // root: the scoping chat lives in the same window and must stay selectable.
+  user-select: none;
 }
 
 .NoResults {

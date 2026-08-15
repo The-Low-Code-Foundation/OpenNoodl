@@ -1,0 +1,14 @@
+.Root {
+  // FIX-003: explicit rather than inherited. The global default is `text` now,
+  // but an AI surface can be mounted inside an opted-out drag container (a
+  // panel row, a card), and what a model wrote must stay copyable there too.
+  user-select: text;
+  cursor: auto;
+
+  // Word-wrap a bare URL rather than letting it set the panel's width.
+  overflow-wrap: anywhere;
+
+  a {
+    cursor: pointer;
+  }
+}

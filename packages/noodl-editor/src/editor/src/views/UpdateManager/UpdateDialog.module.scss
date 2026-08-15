@@ -17,10 +17,9 @@
   min-height: 0;
   flex: 1 1 auto;
 
-  // `style.css` sets `user-select: none` on EVERY div in the editor. With the
-  // links unclickable too, that left a reader who wanted a URL with no way to
-  // get it out of the dialog at all — not hard to copy, impossible.
-  user-select: text;
+  // FIX-003 inverted the global rule, so the notes are selectable by default
+  // now and the `user-select: text` that used to sit here is gone. The cursor
+  // stays: `body` sets `cursor: default`, and prose should read as prose.
   cursor: auto;
 
   h1,
