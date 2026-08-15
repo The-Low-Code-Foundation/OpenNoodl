@@ -161,3 +161,208 @@ kill direction — a well-informed author failing is worse news than a naive one
 # Results
 
 _Nothing below this line was written before the run._
+
+**Run 2026-08-16, eleventh session.** Five lessons authored, all five scored through `create_lesson`
+over a real MCP stdio connection, F4 measured on the real render harness throughout.
+
+## 6. The headline, before the detail
+
+> ✅ **KEEP on the pre-registered rule — 5 of 5 install and are completable, and at least 3 are
+> clean on the human read.**
+>
+> 🔴 **And the run produced positive evidence for the kill clause's first half at the same time.**
+> Two structural holes in F4 were measured, each with a control pair: a lesson can score
+> **F1–F4 all pass** while its own solution renders dead placeholders, and while the page it exists
+> to teach is never rendered at all.
+
+Both halves are the result. The rule's own parenthetical is the disposition: *"fix the format or the
+brief **before shipping the feature**."* This graduates from experiment to feature **once §8's two
+holes are closed**, and not before.
+
+## 7. The five lessons
+
+Every row is one `create_lesson` call over stdio, `NODEGX_RENDER_CLI` set, `allow_unrendered`
+**not** passed.
+
+| | Lesson | Graded steps | Calls | F1 | F2 | F3 | F4 | Written |
+|---|---|---|---|---|---|---|---|---|
+| **L1** | Text on a page | 3 | 1 | pass | pass | pass | pass | ✅ |
+| **L2** | A list from inline data (*Richard's example*) | 4 | **2** | pass | pass | pass | pass | ✅ |
+| **L3** | A button that counts | 4 | 1 | pass | pass | pass | pass | ✅ |
+| **L4** | A second page, and a way to reach it | 3 | 1 | pass | pass | pass | pass | ✅ |
+| **L5** | Show and hide | 3 | 1 | pass | pass | pass | pass | ✅ |
+
+- **Final pass rate: 5 of 5** (decision rule: ≥3). Cap of three calls never reached.
+- **First-pass pass rate: 5 of 5 wrote a bundle on call #1** — and this number is *misleading on its
+  own*, which is why §3.1 asked for it separately. **L2's first-pass bundle was defective in F4's own
+  class and the gate wrote it anyway.** The second L2 call exists because *I* caught that by
+  rendering the solution by hand, not because the tool refused anything. See §8.1.
+- All five bundles carry `solution/` and are stamped `authoredBy: "ai"` by the producer.
+
+⚠️ **The prediction in §3.4 did not happen.** The already-complete-in-the-starter refusal — predicted
+in advance as the most likely first-pass failure — **fired zero times in five lessons**. Recorded as
+a miss because it was written down first. The likely reason is that I built each starter by
+*subtraction* from the solution, which makes ghostwriting structurally hard to commit; a model
+building the two projects independently would be far more exposed to it, so this says less about the
+trap than about my authoring route (§9).
+
+## 8. 🔴 The two findings, each with a control pair
+
+Both are about **F4**, the class the prior arc pre-registered as *"the top defect"*. Neither is
+about a lesson being wrong; both are about the gate not being able to see that it was.
+
+### 8.1 F4's verdict throws away the render harness's own defect findings
+
+L2's row component declared its interface as `dynamicports`. The editor reads **`ports`** on a
+`Component Inputs` node, and so does the harness's `liftInterface` — so the component had **no
+interface at all**, and the Repeater's items reached nothing.
+
+What the render harness said about that solution, unprompted:
+
+```
+[error] desktop: dead-placeholder-text — 3 elements render a node-type default instead of
+content: 3× "Text". Nothing set those ports. The usual cause is a component instantiated with
+parameters its Component Inputs node does not declare — the graph-side name for it is
+interfaceless-instance.
+```
+
+What `create_lesson` said about the same solution, in the same call, using that same report:
+
+```
+F1 pass   F2 pass   F3 pass   F4 pass        written: true
+```
+
+**The control pair.** The fixed L2 (`ports` instead of `dynamicports`) renders `0 placeholders` and
+is a genuinely working lesson. Its scorecard is **character-for-character identical** to the broken
+one's — same four passes, same three F3 warnings. The two bundles differ in exactly one JSON key in
+one node, one produces three blank rows for the learner and the other does not, and **the gate
+cannot tell them apart.**
+
+🔴 **Why**, precisely: `verifyLessonBundle` fails F4 on `!wholeSolution.valid` or
+`!wholeSolution.rendered`, and `rendered` is `drawnElementCount > 0 && !reportsBlankRender(report)`.
+The L2 page drew four elements — one real heading and three dead placeholders — so `rendered` is
+true. The adapter had already collected the harness's error line into `findings`, and `findings`
+does not participate in the verdict. **The evidence was in the payload and the rule did not read
+it.**
+
+⚠️ And note what this is *not*: it is not the "clean can mean EMPTY" trap the module was built
+against, it is one level up from it. F4 correctly refuses to accept "no errors" as evidence and
+insists on a drawn count — and then a **project-level** drawn count lets an unrelated heading
+vouch for a broken mechanism. `validate_project` on the same directory reports **0 errors, 0
+warnings**, so nothing else covers it either.
+
+### 8.2 F4 renders the start page and nothing else, so a multi-page lesson's subject is unscored
+
+L4 teaches building an **About** page. Its solution renders **2 texts** — Home's heading and the
+button's label. The About page is not rendered, because `render-report.js`'s reachability walk is
+built around `startPage`.
+
+**The control pair, run rather than reasoned about:**
+
+| L4 solution variant | Direct render | `create_lesson` |
+|---|---|---|
+| as authored | `Rendered clean … 2 texts, 0 placeholders` | F1–F4 pass, written |
+| **About page emptied of all content** | `Rendered clean … 2 texts, 0 placeholders` | *(F2 would catch it — a step addresses that Text)* |
+| **an unbound `Text` added to the About page** — no condition addresses it | `Rendered clean … 2 texts, 0 placeholders` | **F1–F4 pass, written** |
+
+The third row is the finding. A dead placeholder sitting on the page the lesson exists to teach is
+invisible to F4 *and* to F2, and the bundle writes. The identical `2 texts` across all three rows is
+the direct evidence that the About page is never visited.
+
+🔴 **This one is upstream of UNI-010.** The harness itself reports *"Rendered clean"* for a project
+whose second page is broken, so it is not only F4 that inherits it — `render_report` as a tool has
+the same blind spot. **It belongs in front of phase 69's CN-001**, which is already rewriting
+`render-from-disk.js`, rather than being fixed twice.
+
+## 9. The human read — F5, F6, and "worth completing"
+
+Done per step, as §4 required. The summary first: **F6 is where these lessons are weak, it is weak
+in one direction, and the direction has a cause.**
+
+**Five steps across four lessons check less than their prose asks for.** In every case the condition
+is the *lenient* one:
+
+| Step | Prose asks for | Condition checks | Consequence if the learner does only what is checked |
+|---|---|---|---|
+| L1 step 4 | Font Size large **and Align X `center`** | both params are *set* | cosmetic — the heading is left-aligned |
+| L2 step 2 | label, **Type = `json`**, and this JSON | type is `Static Data`, `json` is set | 🔴 **real** — Type left on `csv` gives an empty list three steps later |
+| L3 step 2 | label the node **and set Label to `Add one`** | the node is a Button | cosmetic — an unlabelled button |
+| L4 step 2 | create the page **via the Router's Pages list**, then add the Text | the Text exists and says the right thing | 🔴 **real** — a component created outside the router is unreachable and step 4's navigation silently does nothing |
+| L5 step 2 | add the Switch **and turn on On From Start** | the node is a Switch | mild — the text starts hidden, so step 4's "click and it appears" reads inverted |
+
+🔴 **The cause is structural, not carelessness, and it is worth stating plainly:** **F2 punishes a
+condition that is too strong and nothing punishes one that is too weak.** A condition that fails to
+hold against the solution is a hard refusal; a condition that holds too easily is invisible to every
+class. So the gradient an authoring model sits on points at under-checking, and it points there on
+*every* lesson. F6 is the class that would catch it and F6 is human-only by definition.
+
+⚠️ **L4's row is also a format gap, not only an authoring choice.** The thing that needed checking is
+"the Router's `pages.routes` contains this component", and the vocabulary has no comfortable way to
+say it — `paramsEqual` on a nested object with an array in it is the only route, and it is brittle
+enough that no author would reach for it. This is the one place in the run where I could not have
+written a better condition with the verbs available.
+
+**F5 (variant-blind):** thin. L3 step 5 demands the direct `currentCount → text` wire and would
+reject an equally correct route through an Expression or String node; L1 step 3's exact-string
+`paramsEqual` would reject `Hello, NodeGX ` with a trailing space and say nothing useful. Neither is
+severe. F5 is the class this run is least able to speak to, because a single author writing both the
+lesson and the "alternative" solution is not a source of genuine variation.
+
+**Worth completing**, against the brief's own pedagogy list: **L1, L3 and L5 clean** — one idea, 3–5
+steps, instruction before explanation, nothing outside the editor. **L2 clean but for the `type`
+hole.** **L4 carries the router-registration hole**, which is the only one in the set that can leave
+a learner with a lesson marked complete and an app that does not work.
+
+So the ≥3 is met even on the strictest reading available: three lessons are clean on all three
+clauses without qualification.
+
+## 10. ✅ What this closes that was not criterion 3's job
+
+**`create_lesson` over the real stdio transport — driven, and it works.** This was item 2 on the
+phase's next-session list and was recorded as blocked on Richard.
+
+- A server spawned as `node packages/noodl-mcp/dist/noodl-mcp.cjs <project> --allow-writes`, spoken
+  to over newline-delimited JSON-RPC: `initialize` → `notifications/initialized` → `tools/list` →
+  `tools/call`.
+- 🔴 **The `lesson` group is deferred, so the first `tools/list` returns 20 tools and none of them is
+  `create_lesson`.** It takes `find_tools({group: "lesson"})` to reveal them, after which
+  `tools/list` returns 23. **Reaching the tool is a conversation, not a call** — a client that does
+  not refresh on `notifications/tools/list_changed` needs `--all-tools`, which the server says
+  itself.
+- Every scorecard in §7 came back through that connection.
+
+⚠️ **What it does not close.** Richard's **registered** servers still run a pre-slice-2 build and
+cannot reach these tools; that needs a restart, or a repackage if one loads from `/Applications/…`.
+Still his call. What is now known is that the tools work over a transport at all, which nobody had
+established.
+
+## 11. Limitations, revisited now that the numbers exist
+
+§5 predicted the author bias would push the **first-pass rate up**. It did — 5 of 5 — and that
+number should be read as an **upper bound**, not a measurement. Two specifics:
+
+- I built every starter by **subtraction from the solution**, which is why the ghostwriting refusal
+  never fired (§7). A model building two projects independently is much more exposed to it.
+- I consulted `get_node_type` and `get_example` over the transport before authoring, which is what
+  the brief instructs — but I also knew *which* traps to look for.
+
+And the bias did **not** protect me from the one thing that mattered: a well-informed author still
+shipped an F4-class defect on the first call, and the gate wrote it. **That is the strongest single
+data point in the run**, precisely because it happened under favourable conditions.
+
+⚠️ **The pedagogy grader was the author**, as declared. The §9 table is offered as rows a later
+reader can disagree with individually rather than as a verdict.
+
+## 12. What should happen next
+
+1. 🔴 **Close §8.1.** F4 should fail — or at minimum warn loudly — when the render's own findings
+   include `dead-placeholder-text`. The information is already in `WholeSolutionResult.findings`;
+   this is a verdict change, not new machinery.
+2. 🔴 **Take §8.2 to phase 69 / CN-001**, which is rewriting the same file. Rendering every routed
+   page, not just `startPage`, fixes `render_report` and F4 together.
+3. ⚠️ **Consider a "weaker than the prose" pass in the brief.** Not a gate — F6 is human by
+   definition — but the brief could name the gradient in §9 out loud: *"F2 punishes a condition that
+   is too strong and nothing punishes one that is too weak, so check what your prose asked for."*
+4. ⚠️ **A verb for router registration** would close the one hole in the run that better authoring
+   could not.
+
