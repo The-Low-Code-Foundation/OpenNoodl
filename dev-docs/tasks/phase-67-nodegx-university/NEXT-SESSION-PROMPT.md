@@ -134,14 +134,35 @@ hosting** (§9.3 — now partly a D2/D9 question) and the **tutor lesson-context
 | `npx tsc -p tsconfig.json --noEmit` (editor) | ✅ exit 0, no emit into `src/` |
 | `npx eslint` on both touched files | ✅ clean |
 | `npx jest tests-unit/uni-010` | ✅ 4 suites / **64 tests** |
-| `npm run test:ci` | ⚠️ **NOT run by me.** Not needed on its face — the change is a doc comment plus a `tests-unit/` spec, neither compiled by the electron suite — but that is a reading, not a run |
+| `npm run test:ci` | ✅ **DISCHARGED — at the floor.** `2840 / 6` at pinned seed 39393, `test-results.json` mtime **17:42:22** (checked, not inferred). Run by a phase-66 peer over a tree containing `58d5aa8e` |
 
-⚠️ A phase-66 peer started a `test:ci` at ~17:31 on a tree containing this commit plus their own
-uncommitted FIX-001 work. **If you need a `test:ci` number, ask them for theirs before spending
-15 minutes** — and remember the floor is **6 failures at pinned seed 39393** (4 × `AIX-006 style
-vocabulary`, 2 × `AI model registry`), that **npm exits non-zero on any failure so a clean floor run
-looks failed at the shell**, and that you must **delete `packages/noodl-editor/tests/test-results.json`
-before the run and `stat` it after** — a reaped run exits 0 and writes no file at all.
+✅ **`test:ci` was run by a phase-66 peer over a tree carrying this commit plus their own
+uncommitted FIX-001 work, and the six failures are the documented floor by name** — 4 × `AIX-006
+style vocabulary`, 2 × `AI model registry`, zero `BEN-001`. The `totalCount` delta (2840 − 2814 = 26)
+is **exactly their new specs**, which is the coherent check for my half: my two specs live in
+`tests-unit/`, which the electron suite does not run, so this commit was expected to move
+`totalCount` by **zero** and did. What it *did* prove is the half I could not: **`58d5aa8e` compiles
+under Electron**, which neither `tsc` nor `test:main` establishes.
+
+⚠️ **Quote the floor by NAME (6), not by count.** `totalCount` drifts with whoever's specs are in the
+tree — 2788, 2812, 2814 and 2840 have all been correct today. And remember **npm exits non-zero on
+any failure, so a clean floor run looks failed at the shell**; **delete
+`packages/noodl-editor/tests/test-results.json` before the run and `stat` it after** — a reaped run
+and a broken build both exit 0 and write no file.
+
+🔴 **A trap from that same run, and it is not phase-specific.** The peer's first `test:ci` exited 0
+and wrote no results file — the broken-build signature — because one new spec used
+`expect.arrayContaining`, a **jest** matcher, in `tests/`, which is **jasmine**. It had passed in
+their scratch plain-Node jest config. The measurement that followed is worth having:
+
+```
+npx tsc -p tsconfig.json --noEmit --listFiles | grep -c "noodl-editor/tests/"   →  0
+```
+
+**The editor typecheck reads zero files under `tests/`** (`include` is `src/editor`, `src/shared`,
+`src/main`). So a type-broken spec there is green in `tsc`, green in a scratch jest runner with the
+wrong matchers, and reported by the only gate that covers it as an **exit 0**. If you use a scratch
+jest config for fast feedback on `tests/`, use only matchers **both** runners have.
 
 ## ⚠️ Owed, small, and honest about it
 
