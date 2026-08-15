@@ -212,13 +212,31 @@ Don't re-file it.
 
 ## 5. Rulings still owed by Richard
 
-- 🔴 **NEW — the ⌘C precedence defect** (§3). Should a live text selection suppress the canvas copy
-  command, or should the canvas commands be scoped to the canvas? This decides the shape of the fix.
-- 🔴 **NEW — `linkify`**: should a bare URL in AI output become a clickable link? Today it does not,
-  on any surface. Enabling it widens the clickable-anchor surface in untrusted model output, so it is
-  a security-relevant call, not a formatting one.
-- 🔴 **FIX-002 criterion 2**: should the composer auto-grow at all, and to what max height? It
-  currently scrolls and is drag-resizable. Unchanged from session 10.
+> ⚠️ **SUPERSEDED IN PART — session 12 obtained the first three rulings and built against them.**
+> This file is **session 12's to overwrite**; session 11 stopped editing it at this point, so treat
+> anything below that session 12 has since changed as theirs, not a conflict.
+>
+> ✅ **Ruled, per session 12:** ⌘C → a **selection-aware clipboard guard**; **`linkify` stays OFF**;
+> the composer **auto-grows to a max height**.
+> ✅ **Built, per session 12:** `selectionOwnsClipboardKey()` in `utils/keyboardhandler.ts`
+> (non-collapsed, non-whitespace selection outside `.nodegrapheditor-canvas` suppresses ⌘C/⌘X only)
+> + 9 specs in `tests/utils/keyboardhandler.spec.ts`; opt-in `autoGrowMaxRows` on `TextArea` at 8
+> rows, **Explain composer only** so BLD-010's driven acceptance does not re-open, + 16 core-ui specs.
+> 🔴 **Still owed: all three DRIVES** — the ⌘C fix, the auto-grow, and the launcher scoping chat.
+>
+> 🔴 **Driving the ⌘C fix has one trap that makes a working fix look broken.** Once the canvas
+> handler is suppressed, **⌘C over CDP copies nothing at all** — Electron serves the real ⌘C from a
+> native menu accelerator (`main.js:759`) that CDP cannot fire. Grade with `execCommand('copy')` as
+> the control: *before* = key ✓ wrong content / exec ✓ text; *after* = **key ✗ / exec ✓ text is the
+> PASS**; a genuine regression is exec ✗. Harness: `copypath.js` (see §3).
+
+- 🔴 **The ⌘C precedence defect** (§3) — ✅ **RULED**: selection-aware clipboard guard. Fix built,
+  **drive owed**.
+- 🔴 **`linkify`** — ✅ **RULED: stays OFF.** So a bare URL is deliberately not clickable on any
+  surface, and criterion 1 is satisfied by markdown links only. ⚠️ Record this against criterion 1's
+  wording ("*any* URL the AI emits") so it is not re-raised as a gap.
+- 🔴 **FIX-002 criterion 2** — ✅ **RULED: auto-grow to a max height.** Built at 8 rows on the Explain
+  composer only, **drive owed**.
 - 🔴 **FIX-014's MCP half is blocked on a REPACKAGE, not a rebuild.** Every running server executes
   `/Applications/NodeGX.app/Contents/Resources/noodl-mcp/noodl-mcp.cjs` — the **packaged app**, dated
   2026-08-13, which does not contain `layoutAuthoredNodes`. The repo's `packages/noodl-mcp/dist` was
