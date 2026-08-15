@@ -66,7 +66,9 @@ nobody looking. **Open the task file rather than trusting the status line.**
 
 ## 2. Gate readings
 
-**Tree: `6de1ae25`** (s24). The s23 column is at `4be3f1f6`.
+**Tree: `d0891746`** (s25's `test:ci`); the jest/`tsc` rows are `6de1ae25` (s24), s23's at `4be3f1f6`.
+⚠️ **Quote a TREE, not a session** — three sessions wrote this table and the rows are not all at the
+same commit.
 
 | Gate | Reading | When |
 |---|---|---|
@@ -255,8 +257,10 @@ declining predicate from dead wiring.
 
 1. ✅ **DONE — FIX-016 §2's follow-up closed `6de1ae25`**, driven 6/6. Both faults fixed together,
    which was the point: either alone leaves the symptom unchanged. **Start at item 1b.**
-1b. 🟢 **Take `test:ci` — it is two trees stale and one s24 file is outside jest's reach** (§2).
-   Cheapest real risk on the board, needs only a free checkout, and it clears the way for 4 and 5.
+1b. ✅ **DONE — `test:ci` taken at `d0891746`: 2843 / 6, EXACT floor match** (s25, finished 00:00).
+   **Do not re-run it to "check"** — it is the current tree and the six are named in §2.
+   ⚠️ What it does **not** show is in §2: the suite has never covered `CodeEditorType.ts` directly,
+   so this is the absence of a collateral signal, not a test of the change.
 2. **FIX-016 §1** — Richard now has the observation he needed (§3d). Ruling, then a small build.
    ⚠️ **Before building anything here, settle the `Type`-row question — it decides what Richard is
    ruling on.** ✅ Half is settled: `outtype-` is in **zero** editor source files, so a `getPorts()`
