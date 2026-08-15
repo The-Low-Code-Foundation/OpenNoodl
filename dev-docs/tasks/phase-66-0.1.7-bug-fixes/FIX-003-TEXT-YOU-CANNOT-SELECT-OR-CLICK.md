@@ -125,10 +125,19 @@ once the pointer has left the container. `!important` is deliberate — for the 
 must also beat the explicit opt-INs.
 
 ⚠️ **The launcher grew a second grid after this lane was cut.** `a89ec153` added
-`LearningSection.module.scss` with its own `.Grid`, above the projects grid. The opt-out here is
-scoped to the projects grid only, so **the Learning cards are selectable and the project cards are
-not** until someone decides which is right. Deliberately left as a question rather than guessed at:
-the two grids are both click-to-open card surfaces, so they should almost certainly match.
+`LearningSection.module.scss` with its own `.Grid`, above the projects grid, so the opt-out here
+covered only one of the two. The section's author ruled they should match; **the merge adds the
+same opt-out to `LearningSection`'s grid.**
+
+🔴 **Not by hoisting it to a container, and the reason is the whole point of this task.** The
+tempting fix — put `user-select: none` on `Projects.module.scss`'s `.Main` so every present and
+future section inherits it — also swallows the welcome copy and the no-results message, which are
+exactly the kind of prose FIX-003 exists to make selectable. A container-level opt-out is the right
+instrument for a *drag surface* (see `.nodegrapheditor-canvas`, which is drag all the way down) and
+the wrong one for a *page region that happens to contain some cards*. **The convention is therefore
+per-card-grid, in the grid's own module**, and the two grids use different card components anyway,
+so no shared primitive would have covered both. A future launcher section must opt its own grid out
+— `.unselectable` in `style.css` is the helper to reach for from markup.
 
 ### Links
 
@@ -152,6 +161,25 @@ Fixed in `f1647f92` by escaping at both sites through one shared
 replacements — three already exist (`nodeDocs.ts`, `nodeWarning.ts`, `lessonformat.ts`). The sink
 itself is unchanged: the modal still takes HTML on purpose, since both callers rely on `<strong>`
 and `<br>`. Spec: `tests-unit/fix-003/confirmModalEscaping.test.ts`, 7 tests.
+
+### ✅ `AiMarkdown`'s own URL policy — checked against the payloads, not the comment
+
+A concurrent session found the same class of bug one hop further out: `lessonformat.ts` compiled
+lesson prose into HTML and a `[click](javascript:…)` link became a live anchor in a renderer with
+node integration. Escaping would not have stopped it — the payload is a *URL scheme*, not markup.
+That is the same shape as this lane's new `AiMarkdown`, which renders whatever a model wrote, so it
+was measured rather than assumed. **Thirteen payloads through Remarkable 2.0.1 as this component
+configures it** — `javascript:`, `JaVaScRiPt:`, `java\tscript:`, embedded newline and NUL, leading
+space, a leading control byte, `vbscript:`, `data:text/html` (link and image), an HTML-entity
+`&#106;avascript:` — **every one refused**, and refused hard: no anchor is emitted at all, the
+markdown renders as literal text. Only the `https:` control produced an `<a>`.
+
+So the surface is defended three times over, and the layers are independent: Remarkable's own link
+validation, `html: false` at the parser (AIB-009), and `aiLinkActionFor`'s **allow-list** of
+`http:`/`https:` reached through real `URL` parsing, with `preventDefault()` on every branch
+including the refused ones. ⚠️ The allow-list is what makes it survivable — a blocklist of known-bad
+schemes would have to enumerate the spellings above, and the tab/NUL/entity variants are exactly
+what defeats `startsWith('javascript:')`.
 
 ### Gate readings — run by the orchestrator on `f1647f92`, in the worktree
 
