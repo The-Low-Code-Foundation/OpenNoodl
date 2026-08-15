@@ -3,19 +3,107 @@
 **Surface:** all three · **Tier 2 (the differentiator)** · **Effort:** L · ✅ **UNBLOCKED — D5 ruled
 2026-08-14**; ~~D12~~ 🔴 **struck 2026-08-14 — already ruled**
 
-> ## 🟡 Slices 1–3 are BUILT (2026-08-14 third + fifth sessions, 2026-08-15 sixth)
+> ## 🟡 Slices 1–4 are BUILT (2026-08-14 third + fifth sessions, 2026-08-15 sixth + seventh)
 >
-> No platform, no account. Slice 3 adds the first UI, **driven in the real editor**.
+> No platform, no account. Slice 3 adds the first UI; **slice 4 gives the grading runner its first
+> caller anywhere** — and, on the way, found that slice 3's lessons had been opening with no lesson
+> layer at all.
 >
 > | Shipped | Where |
 > |---|---|
+> | ✅ **"Check my work"** (slice 4) — the runner's first caller, and the grade written back | [`models/lessoncheck.ts`](../../../packages/noodl-editor/src/editor/src/models/lessoncheck.ts) + the control in [`views/lessonlayer2.ts`](../../../packages/noodl-editor/src/editor/src/views/lessonlayer2.ts) / `views/lessons/LessonLayerView.jsx` |
+> | ✅ **Engine 2's EDITOR adapter** (slice 4) — live `SemanticValidator` + BLD-014's CDP capture | [`models/lessonwholesolution.ts`](../../../packages/noodl-editor/src/editor/src/models/lessonwholesolution.ts) + `.live.ts` |
+> | ✅ **The drawn-element rule, shared by both adapters** (slice 4) | [`models/lessondrawncount.ts`](../../../packages/noodl-editor/src/editor/src/models/lessondrawncount.ts) |
+> | 🔴 **The lesson layer, for a Learning-folder lesson** (slice 4) — it never attached | [`models/learninglesson.ts`](../../../packages/noodl-editor/src/editor/src/models/learninglesson.ts) + the reader port on `models/lessonmodel.ts` |
 > | **The static two-vocabulary check** — the format contract's own gate, and the one blocker of §11's three that survived the fact-check | [`models/lessonverify.ts`](../../../packages/noodl-editor/src/editor/src/models/lessonverify.ts) |
 > | **The grading runner — both engines, kept apart structurally** | [`models/lessongrading.ts`](../../../packages/noodl-editor/src/editor/src/models/lessongrading.ts) |
 > | ✅ **Engine 2's MCP adapter** (slice 2) — validity via `validate_project`'s own call, "did it draw" via the render harness | [`noodl-mcp/src/lessons/wholeSolutionGrader.ts`](../../../packages/noodl-mcp/src/lessons/wholeSolutionGrader.ts) |
 > | ✅ **The Learning folder register** (slice 3a) — install / reset / progress / grade, D5's guarantees made structural | [`models/learningfolder.ts`](../../../packages/noodl-editor/src/editor/src/models/learningfolder.ts) |
 > | ✅ **The launcher's Learning section** (slice 3b) — cards, install route, reset | [`noodl-core-ui/.../components/LearningSection/`](../../../packages/noodl-core-ui/src/preview/launcher/Launcher/components/LearningSection/LearningSection.tsx) + [`projectsview.learningstate.ts`](../../../packages/noodl-editor/src/editor/src/views/projectsview.learningstate.ts) + `ProjectsPage.tsx` |
-> | **131 tests**, `tests-unit/uni-007/` | jest / **`test:main`**, not the electron suite — see below |
+> | **160 tests**, `tests-unit/uni-007/` | jest / **`test:main`**, not the electron suite — see below |
 > | 21 tests, against **real recorded renders** | `noodl-mcp` jest — ⚠️ **not in `test:ci`**, run `npx jest` in that package |
+>
+> ### Slice 4 — "check my work", and the lesson layer that was never there (seventh session)
+>
+> Commits `61d4a6d7`, `c0d04bba`, `c38fcb7b`, `47fa6040`.
+>
+> #### 🔴 The premise that was false: **a Learning-folder lesson had no lesson layer**
+>
+> The handover said to put the button "in the lesson layer". There was no lesson layer.
+> `EditorPage` attaches one only when `ProjectModel.instance.isLesson()` — `project.lesson !==
+> undefined` — and the **only** code that has ever set that field is
+> `LessonsProjectsModel._cloneLessonIntoDirectory`, the hosted-zip path, which points a `LessonModel`
+> at an HTTP `baseURL`. `handleOpenLearningLesson` never did. So every lesson slice 3 installed
+> opened as **an ordinary project**: no steps, no instructions, no completion evaluation, nothing to
+> grade against.
+>
+> 🔴 **This is the fourth time this phase that building a caller found what a shipped thing does not
+> do — and the first time the thing was a *feature* rather than a check.** The three before were
+> gates that read complete on their own terms. This one had a live drive over it. The drive verified
+> that the project opened and that the recents list did not grow — both true, both what it set out to
+> check, and neither of them *"can this lesson be taught"*. The slice-3 session's own formulation,
+> which is the one to carry:
+>
+> > **A drive proves what it measured, and what it measured is a choice you made before you knew what
+> > was broken.**
+>
+> ⚠️ **And it had already produced a symptom that was explained away.** Slice 3 recorded that the
+> card said "State on a page" while the titlebar said the project's own name, and reasoned about
+> whether the opener should rename the project. The real answer was that there was no lesson layer to
+> show a lesson title. **A plausible explanation is how a defect stops being investigated** — the
+> observation was accurate and the story on top of it closed the question.
+>
+> **The fix** ([`models/learninglesson.ts`](../../../packages/noodl-editor/src/editor/src/models/learninglesson.ts)):
+> the open path attaches a `LessonModel` whose source is read from the **installed directory**.
+> `LessonModel` gains an injected reader for it, because `window.fetch` will not read a `file://`
+> path from the renderer and an installed lesson has no origin for the hosted path's `baseURL` trick.
+> 🔴 Everything after the read — format detection, `compileLessonSource`, steps, annotations — stays
+> the one shared path; a second compiler is how two producers of one format start disagreeing about
+> it. A manifest that will not compile now leaves the layer with no steps instead of an unhandled
+> rejection and a progress bar that waits forever.
+>
+> **The step index is carried over, never reset.** `ProjectModel.toJSON` persists `lesson`, so a
+> learner who closes the editor half way through comes back where they left off; resetting is the
+> launcher's button and re-pulls the whole project. `recordProgress` gets its first real caller here
+> — and writes progress *only*. ⚠️ **Only a grade may say a lesson is complete.**
+>
+> #### The runner finally has a caller
+>
+> `models/lessoncheck.ts` finds the register entry for the open project (its id is on the project —
+> the opener sets it), **re-reads `lesson.json` from disk now** so an author iterating on a bundle
+> grades against what they last wrote, grades with both engines, and records the evidence.
+> `recordGrade` had existed since slice 3 with only a test harness calling it.
+>
+> 🔴 **Three states, not two.** *"The check could not run"* — no browser to render in, a lesson folder
+> that has gone — is neither a pass nor a failure, is styled as neither, and withholds completion
+> without ever telling the learner they failed. That sentence has more damage available to it than
+> any other string in this slice, and the specs pin the three things it must never say.
+>
+> #### Engine 2's second adapter, and why it is not the sidecar's
+>
+> `noodl-editor` has no `@noodl/mcp` dependency and must not gain one, so the editor cannot call
+> `noodl-mcp`'s adapter. It does not need to — it owns both halves:
+>
+> - **validity** → `SemanticValidator` over `ProjectModel.instance`. The **live** project, not a
+>   re-read of disk: the learner is graded on what they have built, and what they have built is in
+>   front of them.
+> - **did it draw** → BLD-014's CDP capture, a hidden `BrowserWindow` over the running viewer.
+>   🔴 Deliberately **not** `scripts/devtools/measure-from-disk.js`, which the sidecar spawns:
+>   `scripts/` is not in `package.json`'s `build.files` and the harness needs a Chrome on the user's
+>   machine, so that route works in this checkout and is **dead for every real learner**. Rendered
+>   with `screenshot: 'none'` (D10).
+>
+> **The counting rule moved to [`models/lessondrawncount.ts`](../../../packages/noodl-editor/src/editor/src/models/lessondrawncount.ts),
+> which imports nothing at all, and `noodl-mcp`'s adapter delegates to it.** Two adapters holding two
+> copies of `min`-not-`sum` is one adapter plus a future defect — the rule is a property of the render
+> harness, not of either caller. It is re-exported through `editor-deps.ts` as the one **value** in an
+> otherwise types-only section; the dependency direction (mcp imports the editor, never the reverse)
+> is untouched. The sidecar's 21 specs pass unchanged.
+>
+> ⚠️ **A `.jsx` file is invisible to `eslint`'s directory scan too**, not only to `tsc` and jest. The
+> control's markup adds ~11 `react/prop-types` errors that `lint:ci` does not count, because
+> `eslint <dir>` resolves `.js`/`.ts`/`.tsx` and not `.jsx`. `test:ci`'s webpack remains the only gate
+> that reads the file at all.
 >
 > ### Slice 3 — the Learning folder, and the hole its gate exposed (sixth session, `e3aec6b6` + `a89ec153`)
 >
@@ -191,13 +279,15 @@
 >
 > **🔴 What is NOT built, so nobody reads this as more than it is:**
 >
-> - 🔴 **NOTHING CALLS THE GRADING RUNNER. This is the next slice and it is the only one left in
->   the editor.** Proved rather than assumed: `__webpack_require__` in the running renderer answers
->   *"Cannot find module `./src/editor/src/models/lessongrading.ts`"* — the runner is **not in the
->   bundle at all**, because no editor module imports it. The Learning folder gave the *register* a
->   caller; the runner still has none. "Check my work" is that caller.
-> - 🔴 **Nothing writes a grade back.** `recordGrade` works and is driven, but only a test harness
->   has ever called it. Same missing button.
+> - ✅ ~~**NOTHING CALLS THE GRADING RUNNER**~~ — **closed by slice 4** (`47fa6040`). It was proved
+>   rather than assumed: `__webpack_require__` in the running renderer answered *"Cannot find module
+>   `./src/editor/src/models/lessongrading.ts`"*, because no editor module imported it. It does now.
+> - ✅ ~~**Nothing writes a grade back**~~ — **closed by slice 4.** `recordGrade` and `recordProgress`
+>   both have real callers.
+> - 🟡 **Slice 4 is BUILT and NOT YET DRIVEN.** Every gate is green (see below), and no part of it has
+>   been seen working in the real editor. 🔴 **The first thing to check in that drive is that the
+>   lesson layer is attached at all** — if `isLesson()` is false the layer is absent and a grade
+>   arrived at some other way would still look plausible, which is the same hole one level up.
 > - **Nothing calls the MCP adapter either**, and it is deliberately not an MCP tool — a
 >   `grade_lesson` tool needs a `LessonEvalContext` built from a project on disk, which nothing
 >   builds yet. ⚠️ And `noodl-editor` has **no `@noodl/mcp` dependency**, so the editor's button

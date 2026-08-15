@@ -407,6 +407,39 @@ payload is a scheme rather than markup.
 from re-deriving instead of re-verifying. This one came from **building the caller**. A check read on
 its own terms looks complete; a check with something depending on it shows you what it does not do.
 
+#### The third amendment (2026-08-15, seventh session) — the same method, and this time it was not a check
+
+Slice 4 set out to add a "check my work" button *in the lesson layer*. **There was no lesson layer.**
+`EditorPage` attaches one only when `ProjectModel.instance.isLesson()` — `project.lesson !==
+undefined` — and the only code that has ever set that field is the hosted-zip path, which points a
+`LessonModel` at an HTTP `baseURL`. The Learning folder's open path never did, so every lesson
+slice 3 installed opened as an ordinary project: no steps, no instructions, no completion evaluation.
+Fixed in `c38fcb7b`; full write-up in [UNI-007](UNI-007-THE-LESSON-BEAMED-INTO-THE-EDITOR.md).
+
+🔴 **Why it belongs here rather than only in the task file:** the first three instances were *checks*
+that read complete on their own terms. This one is a shipped **feature whose visible half was never
+reachable**, and — unlike the other three — **it had a live drive over it**. The drive verified that
+the project opened and that the recents list did not grow. Both true. Both what it set out to check.
+Neither of them is *"can this lesson be taught"*. The slice-3 session's own formulation, offered
+unprompted when the defect was put to them, is the sentence to carry:
+
+> **A drive proves what it measured, and what it measured is a choice you made before you knew what
+> was broken.**
+
+⚠️ **The defect had already produced a symptom, and the symptom was explained away.** Slice 3
+recorded that the card said "State on a page" while the editor titlebar said the project's own name,
+and reasoned carefully about whether the opener should rename the project — a good answer to the
+wrong question, because the real cause was that no lesson layer existed to show a lesson title.
+**A plausible explanation is how a defect stops being investigated.** That is a different and more
+dangerous failure than not noticing, and it is worth pairing with the "verify the CONSEQUENCE, not
+just the mechanism" trap this repo already carries: the consequence you verify is only as good as the
+question you thought you were answering.
+
+**The operational form, for the next drive:** *if the sentence you would write in the drive record
+could also be true of a broken feature, it is the wrong sentence.* "The lesson opened into the
+editor" passes that test and hid this bug for a day; "the learner can see step 1's instructions"
+does not.
+
 ⚠️ **A side finding, recorded so it is not re-discovered:** `suggestedNodes` (LESSON-FORMAT §3's step
 field) is **dead** — `LessonModel.getCurrentSuggestedNodes()` has no callers anywhere in the editor.
 Which of the two vocabularies it wants is therefore *unestablished*, and the checker deliberately
