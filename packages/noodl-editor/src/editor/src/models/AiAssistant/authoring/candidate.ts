@@ -16,6 +16,7 @@
 import { inferComponentType } from '../../../io/ProjectExporter';
 import { metadataWithComment } from '../../../validation/authoringVocabulary';
 import type { ComponentV2File, ConnectionsV2File, NodesV2File, NodeV2 } from '../../../schemas';
+import { layoutAuthoredNodes, positionsUnchangedFrom } from './layout';
 import type { AuthoringRequest, ComponentFiles, SubmitPayload, SubmittedNode } from './types';
 
 /**
@@ -137,12 +138,21 @@ function shapeErrors(nodes: SubmittedNode[], payload: SubmitPayload): string[] {
  * id, created, metadata, canvas comments — and each kept node (same id, same
  * type as in the base) keeps the fields the submit contract cannot express.
  * The component's identity is not the agent's to change; only the graph is.
+ *
+ * FIX-014: `isVisual` feeds the layout pass (`layoutAuthoredNodes`), which
+ * fills position gaps and separates exact collisions — never moving a node the
+ * model positioned, and never touching a position carried unchanged from
+ * `base` (a human's arrangement). Omitting the predicate still lays out: tree
+ * membership (`parent`/`children`) classifies every parented node, and only a
+ * single parentless visual node with no children would then be misfiled into
+ * the logic column.
  */
 export function buildCandidate(
   request: AuthoringRequest,
   payload: SubmitPayload,
   now: string = new Date().toISOString(),
-  base?: ComponentFiles
+  base?: ComponentFiles,
+  isVisual: (typeName: string) => boolean = () => false
 ): CandidateResult {
   // Before anything iterates: the payload's array fields are model output, and
   // a non-array here would throw rather than be reported.
@@ -200,6 +210,15 @@ export function buildCandidate(
     return node;
   });
 
+  // FIX-014 — fill the position gaps the model left and separate exact
+  // collisions. Model-supplied x/y is authoritative (ruled 2026-08-14) and a
+  // position carried unchanged from the base is a human's arrangement: locked,
+  // not even collision-nudged.
+  const laidOut = layoutAuthoredNodes(nodes, isVisual, {
+    connections: (payload.connections ?? []).map((c) => ({ fromId: c.fromId, toId: c.toId })),
+    ...(base ? { lockedIds: positionsUnchangedFrom(nodes, base.nodes.nodes ?? []) } : {})
+  });
+
   const legacyName = pathToLegacyName(request.componentPath);
   const componentId = base?.component.id ?? newId();
   const component: ComponentV2File = base
@@ -234,7 +253,7 @@ export function buildCandidate(
     $schema: 'https://opennoodl.dev/schemas/nodes-v2.json',
     componentId,
     version: base?.nodes.version ?? 1,
-    nodes,
+    nodes: laidOut,
     ...(payload.visualRoots?.length ? { visualRoots: [...payload.visualRoots] } : {}),
     ...(base?.nodes.comments?.length ? { comments: JSON.parse(JSON.stringify(base.nodes.comments)) } : {})
   };

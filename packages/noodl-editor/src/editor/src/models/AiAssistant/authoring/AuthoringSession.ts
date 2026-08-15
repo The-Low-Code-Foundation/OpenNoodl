@@ -1143,7 +1143,11 @@ export class AuthoringSession {
     // authoring run to a `TypeError` costs the user every turn paid for so far.
     let candidate;
     try {
-      candidate = buildCandidate(this.request, payload, undefined, this.baseFiles);
+      // FIX-014: the fifth argument feeds the layout pass — gaps filled,
+      // collisions separated, model-positioned nodes never moved.
+      candidate = buildCandidate(this.request, payload, undefined, this.baseFiles, (t) =>
+        this.context.isVisualType(t)
+      );
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       return {
