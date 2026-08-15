@@ -213,6 +213,21 @@ something in it turns out wrong.
      3 logic nodes; logic must land in its own column with no overlap. ⚠️ Needs a **paid** provider;
      verify from `editorSettings.json` (`ai.provider`, `ai.hasKey.anthropic`,
      `ai.verified.anthropic`), not localStorage.
+
+   🔴 **Before driving anything, decide what the CONSEQUENCE is — a drive that measures the
+   mechanism passes on a feature that does not work.** A phase-67 session shipped a Learning-folder
+   lesson on 08-15 whose live drive verified that *the project opened* and that *recents did not
+   grow*. Both were true. Neither was "can this lesson be taught?" — the handler never set
+   `project.lesson`, so the lesson opened as an ordinary project with no lesson layer and nothing to
+   grade. The drive passed; the feature was broken. A sibling found it a day later by building the
+   caller. For this phase's ten criteria specifically, the consequence is not the mechanism:
+
+   | Task | The mechanism (not enough) | The consequence (what to measure) |
+   |---|---|---|
+   | FIX-002 | Enter fires `onEnter` | the message actually **sends**, and Shift+Enter leaves a **visible** newline the composer grows for |
+   | FIX-003 | the anchor has an `href` | the **system browser opens** on that URL, and ⌘C **yields the text** to the clipboard |
+   | FIX-003 drag | the class appears on `body` | the node/row/divider **actually moves**, and **no selection is left behind** after mouseup |
+   | FIX-014 | the pass runs | the logic nodes are **visibly in their own column**, and a model-positioned node is **byte-identical** to what was asked for |
 2. **FIX-001** (Tier 1, the explainer) — only minor rulings outstanding; the M-sized live-value
    layer is the phase's biggest remaining user-visible win, and the only Tier 1 task with no code.
 3. **FIX-008 fix C** (`--scope project`) if the report should stop recurring — but read §5, Richard
