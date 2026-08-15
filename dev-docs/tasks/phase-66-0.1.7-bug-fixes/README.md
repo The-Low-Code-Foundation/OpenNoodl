@@ -121,11 +121,24 @@ the sixteen reports contain one:
 
 - Work on `cline-dev`. **Never `git stash`**; `cd` to the repo root in every git call; commit with
   explicit pathspecs; check no sibling session is live before running suites.
-- Gates: `test:ci` (floor 6 / 2670 at seed 39386 — compare **names**), `test:main` (144 suites /
-  2107), read `tests/test-results.json` not the log; `npx tsc -p tsconfig.json --noEmit`
+- Gates — 🔴 **these numbers were TWO baselines out of date under a "do not relearn" heading, which
+  is the worst place for a stale figure: it instructs the reader to trust it.** Corrected 2026-08-16
+  (s26): `test:ci` floor is **2843 passed / 6 failed at seed `NOODL_SPEC_SEED=39393`**, tree
+  `d0891746`, reproduced twice four hours apart — compare **names**, never the count (4 ×
+  `AIX-006 style vocabulary`, 2 × `AI model registry`). `test:main` is **205 suites / 3157**
+  (08-16; 203 / 3140 before CN-001/CN-002 landed). ⚠️ *Was* recorded here as `6 / 2670 @ 39386` and
+  `144 / 2107`; the long-quoted `3136` **does not reproduce** either. Read
+  `tests/test-results.json` not the log, and **check its mtime** — a stale one reads as a perfect
+  pass. `npx tsc -p tsconfig.json --noEmit`
   (**never** without `--noEmit`); `cloud-library:check` is a required PR gate; run the MCP suite
   after any catalog change (FIX-007 changes the catalog).
-- `dev:stop` kills Richard's MCP servers — kill the `scripts/start.ts` pid instead.
+- 🔴 **RETRACTED 2026-08-16 (s26): "`dev:stop` kills Richard's MCP servers — kill the
+  `scripts/start.ts` pid instead" is NOT the safe route, and it reads as the careful one.**
+  `scripts/start.ts:74` spawns `dev-watchdog.js`, which on launcher death calls
+  `sweep({ protectAncestors: false })` (`dev-watchdog.js:44`) — **the same checkout-wide sweep, with
+  a protection `dev:stop` leaves ON.** By-pid does spare the MCP servers; it does **not** spare a
+  peer's suite. A teardown that comes out clean is clean because of the shields (`2b758a87` +
+  `4fd2cfdb`), not the command. ✅ **Announce the teardown — that is what actually protects people.**
 - Blockly React-side registration goes in `BlocklyWorkspace.tsx`, never `initialize.ts` —
   but plain-Blockly blocks/generators (FIX-004) belong in `NoodlBlocks.ts`/`NoodlGenerators.ts`,
   which `initialize.ts` reaches safely.
