@@ -74,10 +74,18 @@ and it is a different repo.
 
 ## ⚠️ Owed, small, and honest about it
 
-- 🔴 **One `test:ci` re-run is OWED.** My run read **2779 / 9** — the 6 floor names plus a **3-spec
-  `BEN-001` cluster**. All three names grep to real files, so it is **not** a stale bundle, and a
-  `BEN-001` cluster is documented as **seed-order dependent — re-run before investigating**. Nothing
-  in slice 4 goes near the component bench. **Re-run it and confirm 6.** Details below.
+- ✅ **The `test:ci` re-run was done, and it settles attribution without reaching 6.** Both runs read
+  **2779 / 9** — the 6 floor names plus **3 `BEN-001` specs** — but **the three `BEN-001` members
+  were DIFFERENT each run** on identical code (`the component interface, as the bench reads it` ×3 at
+  seed 50405; `the harness export` ×3 at seed 73375). 🔴 **A deterministic regression cannot change
+  which specs it breaks between runs**, so this is the documented seed-order cluster, not slice 4.
+  Confirmed structurally too: `tests/ai/component-bench.test.ts` imports `componentBench`,
+  `nodegraphmodel` and `projectmodel`, and contains **zero** references to lessons — it shares no
+  module this phase edited.
+  ⚠️ **But do not read this as "back to the floor".** I never reproduced a 6-failure run.
+  **The `test:ci` floor of 6 was measured at one seed (39393) and may itself be a lucky reading**;
+  two independent seeds here both produced 9. If a future run reads 9 with a *third* `BEN-001`
+  membership, that is consistent. **What would be a regression is the same three names twice.**
 - **`noodl-mcp/dist` was rebuilt** (gitignored) but 🔴 **Richard's four live `noodl-mcp.cjs` servers
   still run the old build** — restarting them is his call, not a session's. Note also that a running
   server may load `/Applications/…` rather than the checkout, in which case reaching it needs a
@@ -100,17 +108,27 @@ and it is a different repo.
 | `npm run lint:ci` | ✅ **877** vs a 3916 baseline — unmoved |
 | `npx jest` in `noodl-mcp` | ✅ 21/21 on the engine-2 adapter after the shared-rule refactor |
 | **live drive** | ✅ 10 consequences, 1 failed → fixed → re-driven |
-| `npm run test:ci` | 🟡 **2779 / 9** — see the owed re-run above |
+| `npm run test:ci` | 🟡 **2779 / 9**, run **twice** — 6 floor + 3 `BEN-001`, **different members each time** |
 
-### The `test:ci` reading, in full, because the extra 3 need discharging
+### The `test:ci` reading, in full, because the extra 3 needed discharging
 
-- Deleted `packages/noodl-editor/tests/test-results.json` at **10:16:30**; mtime after the run
-  **10:28:45**. 🟢 Freshness is *proved*, not inferred.
-- Seed **50405** (≠ 39393 / 75857 / 81235).
-- **2779 specs, 9 failures.** The 6 floor names are all present: 4 × `AIX-006 style vocabulary`,
-  2 × `AI model registry`. The extra 3 are `BEN-001 the component interface, as the bench reads it`.
-- Stale-bundle check done: all three failing names grep to real files
-  (`tests/ai/component-bench.test.ts`, `authoring-style.test.ts`, `models.test.ts`).
+Both runs on `393ec7bf`, results file **deleted before each** so freshness is *proved*, not inferred.
+
+| | Run 1 | Run 2 |
+|---|---|---|
+| deleted / mtime | 10:16:30 → **10:28:45** | 10:49:04 → **11:00:56** |
+| seed | **50405** | **73375** |
+| result | 2779 / **9** | 2779 / **9** |
+| the 6 floor names | ✅ all present | ✅ all present |
+| the extra 3 | `BEN-001 the component interface, as the bench reads it` ×3 | `BEN-001 **the harness export**` ×3 |
+
+🔴 **The membership changed on identical code, which is the whole discharge** — a real regression
+breaks the same specs every time. Stale-bundle check also done both times: every failing name greps
+to a real file (`tests/ai/component-bench.test.ts`, `authoring-style.test.ts`, `models.test.ts`).
+
+⚠️ **The runner takes no `--seed` flag**, so a same-seed control against a pre-slice-4 tree was not
+available without disturbing a shared checkout. The structural argument stands in its place: the
+bench spec shares no module this phase edited.
 - ⚠️ `totalCount` did not move, and that is **correct** — everything slice 4 added is in
   `tests-unit/`, which `test:main` grades and the electron suite never sees.
 
@@ -183,6 +201,13 @@ floor count, the floor **names** *and* the seed, because all three check *conten
   `Electron . --dev` under `start.ts` is a stack.
 - ⚠️ **Lesson prose must use explicit markdown links** — `linkify` is off in both Remarkable
   instances, so a bare URL never becomes an anchor. Safe direction, but UNI-010's producer is a model.
+- 🔴 **⌘C over any panel prose copies the selected canvas NODE instead**, found by phase-66 on
+  2026-08-15. The keybinding at `EditorDocument.tsx:562` runs `nodeGraph.copy()`, and
+  `keyboardhandler.ts:165` guards on *focus* with `TEXT_ENTRY_TAGS = {INPUT, TEXTAREA, SELECT}` — a
+  selection inside a `<div>` classifies as `'none'`, so the canvas command wins. **The lesson layer's
+  check summary is exactly such a `<div>`**, so a learner who selects the feedback and hits ⌘C with a
+  node selected gets `{"nodes":[…]}`. Not this phase's to fix; do not "fix" it locally either — the
+  binding is global and the repair belongs with the guard.
 - ⚠️ **A lesson's title and its project's name can still disagree.** The opener sets `project.name`
   only when the project has none, deliberately — forcing it would write into the learner's project.
   The lesson layer showing the lesson title is the right fix and is not built.
