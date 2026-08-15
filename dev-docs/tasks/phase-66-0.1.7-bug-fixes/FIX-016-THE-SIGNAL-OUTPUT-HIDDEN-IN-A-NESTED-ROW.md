@@ -63,6 +63,76 @@ to a named handler?) before it is code.
 
 1. Adding an output from the panel offers Signal at creation time (or an equally direct route),
    and the new signal output accepts a wire to a signal input — driven.
-2. The declared-String-but-called mismatch produces the named diagnostic in the code editor;
-   a correctly-declared signal does not (control).
+2. ✅ **CLOSED `4be3f1f6` — built and driven.** The declared-String-but-called mismatch produces
+   the named diagnostic in the code editor; a correctly-declared signal does not (control).
 3. Panel-declared signal outputs still work end to end after any refactor (the four hops re-run).
+
+## §2 — what shipped, and what the drive changed (2026-08-15, session 23)
+
+**Message 5** in `portDiagnostics.ts`, wording in `notation.ts#outputCalledButNotSignalMessage`.
+52 specs in `portDiagnostics.test.ts`; 419/419 in `noodl-core-ui`; 0 `tsc` errors in either file.
+
+> `Done is a String output, not a Signal, so calling it throws when the node runs. Set its Type to
+> Signal in the property panel, or write Outputs.Done = … instead.`
+
+Three design calls, each pinned by a spec that fails without it:
+
+- **Reads the syntax tree, not `minePorts`.** The miner is text over the whole document —
+  comments included, deliberately, because that is how ports come to exist. *"Your code calls
+  this"* is a claim about code that **runs**. Verified non-vacuous: `minePorts` types `Done` as a
+  signal from `// Outputs.Done();` alone, so a miner-based implementation would fire on a comment.
+- **Only `declared` ports.** An output existing solely because the code calls it is mined *as a
+  signal* and works. The undeclared underscore case (`Outputs.Done_1()` → value port) breaks too,
+  but its fix is `Outputs["Done_1"]()`, not a Type change — that stays with the parser-asymmetry
+  ruling below and is **pinned out** so it cannot be folded in silently.
+- **No fix-it, alone among the five messages.** The repair the author wants is a panel change the
+  editor cannot make; the one it could make — rewriting the call as an assignment — keeps the port
+  and abandons the trigger. Two different programs, not two spellings of one.
+
+### 🔴 The drive rewrote the message
+
+First wording was *"a value output with no Type set"* — true of the stored parameter, **false on
+screen**. `outtype-<label>` is absent until touched, so the effective type is `'*'`; but the panel
+renders the enum's `default: 'string'`, and **an author with nothing stored is looking at a
+dropdown that reads `String`** (measured in the running editor, both Type rows, one stored and one
+absent, displaying identically). A message contradicting the visible dropdown reads as being about
+some other port. Changed to name what they see.
+
+### 🔴 The runtime corroborated the premise unprompted
+
+Beside message 5, on the same line, the editor showed a `Last run` diagnostic:
+**`Line 1: Outputs.Done is not a function`**. The "declared row wins, so the call throws" claim was
+a source read across four hops; it is now a measurement.
+
+### 🔴 Open, and found by this drive: the diagnostic does not clear when you obey it
+
+`setOpenNodeContext` is written **only when the popout opens** (`CodeEditorType.ts:343-354`).
+Changing Type to `Signal` with the popout open leaves message 5 standing — **and it survives a
+forced re-lint**, so the lint did re-run and read a stale port list. It clears on reopen (driven).
+
+Unique to message 5 among the five: messages 1-4 are about the *document*, which changes and
+re-publishes nothing; message 5 is about a **panel setting**, and its own advice is the thing that
+does not take effect. Cheap candidate fix — re-publish the open node when its parameters change.
+
+### Driven matrix
+
+| probe | panel state | message 5 | control (message 2 on `Result`) |
+|---|---|---|---|
+| `Outputs.Done()` | declared, Type untouched | ✅ fires, warning, `Outputs.Done` 0-12, no fix-it | ✅ fires |
+| `Outputs.Done()` | declared, `outtype-Done: signal` | ✅ **silent** | ✅ fires |
+| `Outputs.Done()` | **no panel row at all** | ✅ **silent** (mined as a real signal) | ✅ fires |
+
+🔴 **The control column is what makes the silent rows mean anything.** A diagnostic is a feature
+that can be *willing but never asked* — an absent signal has two causes, *refused* or *never
+requested*, with opposite fixes. The fixture carries a second, known-firing diagnostic so a silence
+is attributable: both → works; control only → the predicate declined; neither → nothing invoked the
+analysis. Without it, a silent row would have sent the next session to the predicate with a
+screwdriver for a wiring fault.
+
+### Also observed for ruling 1 ("drive first"), as an observation, not a verdict
+
+The property panel renders, per output: the name, then a nested row labelled only **`Type`**, whose
+control is a dropdown. It is **present and visible without expanding anything** — so the report is
+better read as *"I never found the Type dropdown"* than *"Signal is missing"*. Two things make it
+easy to miss: the row is labelled `Type` with no mention of Signal, and — see above — **it reads
+`String` whether or not anything is set**, so it looks answered. Richard's call what that is worth.
