@@ -14,7 +14,11 @@
  * nothing is stripped here, including from a label that happens to start with
  * `in-`, because stripping one would name a port that does not exist.
  */
-import { collectDeclaredPorts, modeHasDeclaredPorts } from '@noodl-core-ui/components/code-editor/utils/declaredPorts';
+import {
+  collectDeclaredPorts,
+  declaredPortsEqual,
+  modeHasDeclaredPorts
+} from '@noodl-core-ui/components/code-editor/utils/declaredPorts';
 import { minePorts } from '@noodl-core-ui/components/code-editor/utils/scriptPorts';
 import type { ValidationType } from '@noodl-core-ui/components/code-editor/utils/types';
 
@@ -142,6 +146,79 @@ describe('collectDeclaredPorts', () => {
 
     // And the distinction survives the union: `Extra` was never declared.
     expect(declared.outputs.map((p) => p.name)).toEqual(['Output_1']);
+  });
+});
+
+/**
+ * FIX-016 §2 follow-up. The editor republishes the open node on **any** parameter
+ * write, and this is what stops that becoming a re-lint per keystroke — so its
+ * job is to be sensitive to the things that change the answer and deaf to the
+ * things that do not.
+ *
+ * 🔴 The first three are the ones that matter. `a.length === b.length`, or a
+ * comparison of names alone, passes everything else in this block: the type is
+ * the *entire* subject of message 5, and a `String` → `Signal` change is exactly
+ * one field of one entry.
+ */
+describe('declaredPortsEqual', () => {
+  const PORTS = {
+    inputs: [{ name: 'Celsius', type: 'number' }],
+    outputs: [{ name: 'Done', type: '*' }]
+  };
+
+  it('is true for two reads of an unchanged node', () => {
+    const parameters = {
+      scriptInputs: [{ id: 'a1', label: 'Celsius' }],
+      scriptOutputs: [{ id: 'b2', label: 'Done' }],
+      'intype-Celsius': 'number'
+    };
+    expect(declaredPortsEqual(collectDeclaredPorts(parameters), collectDeclaredPorts(parameters))).toBe(true);
+  });
+
+  it('is false when only an output type changed — the whole point of the message', () => {
+    const before = { inputs: PORTS.inputs, outputs: [{ name: 'Done', type: '*' }] };
+    const after = { inputs: PORTS.inputs, outputs: [{ name: 'Done', type: 'signal' }] };
+    expect(declaredPortsEqual(before, after)).toBe(false);
+  });
+
+  it('is false when only an input type changed', () => {
+    const after = { inputs: [{ name: 'Celsius', type: 'string' }], outputs: PORTS.outputs };
+    expect(declaredPortsEqual(PORTS, after)).toBe(false);
+  });
+
+  it('is false when a port is renamed', () => {
+    const after = { inputs: PORTS.inputs, outputs: [{ name: 'Finished', type: '*' }] };
+    expect(declaredPortsEqual(PORTS, after)).toBe(false);
+  });
+
+  it('is false when a port is added or removed', () => {
+    const more = { inputs: PORTS.inputs, outputs: [...PORTS.outputs, { name: 'Failed', type: 'signal' }] };
+    expect(declaredPortsEqual(PORTS, more)).toBe(false);
+    expect(declaredPortsEqual(more, PORTS)).toBe(false);
+  });
+
+  it('is false when the rows are reordered', () => {
+    // The proplist is the author's own order and the port bar lists ports in it,
+    // so a reorder is a change the open editor should see.
+    const two = { inputs: [], outputs: [{ name: 'A', type: '*' }, { name: 'B', type: 'signal' }] };
+    const swapped = { inputs: [], outputs: [{ name: 'B', type: 'signal' }, { name: 'A', type: '*' }] };
+    expect(declaredPortsEqual(two, swapped)).toBe(false);
+  });
+
+  it('is true across separately-built objects with the same content', () => {
+    // Identity is not the test: the editor builds a fresh list on every write.
+    expect(declaredPortsEqual({ inputs: [...PORTS.inputs], outputs: [...PORTS.outputs] }, PORTS)).toBe(true);
+  });
+
+  it('is true for two empty nodes', () => {
+    expect(declaredPortsEqual({ inputs: [], outputs: [] }, { inputs: [], outputs: [] })).toBe(true);
+  });
+
+  it('does not confuse the two directions', () => {
+    // A port list moved from inputs to outputs is not "no change".
+    const asInputs = { inputs: PORTS.outputs, outputs: [] };
+    const asOutputs = { inputs: [], outputs: PORTS.outputs };
+    expect(declaredPortsEqual(asInputs, asOutputs)).toBe(false);
   });
 });
 

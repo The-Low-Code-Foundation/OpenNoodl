@@ -43,6 +43,7 @@ import { createNoodlCompletionSource } from './noodl-completions';
 import { javascriptDiagnostics } from './utils/esLintDiagnostics';
 import { isExternalValueSync } from './utils/externalValueSync';
 import { defaultPlaceholder } from './utils/modes';
+import { lintNeedsRefresh } from './utils/relint';
 import { runtimeDiagnosticExtension, runtimeDiagnostics } from './utils/runtimeDiagnostic';
 import { syntaxDiagnostics } from './utils/syntaxDiagnostics';
 import { ValidationType } from './utils/types';
@@ -372,7 +373,13 @@ export function createExtensions(options: ExtensionOptions = {}): Extension[] {
     // field simply stays empty, and gating it would mean a second rule to keep
     // in step with the runtime's idea of which ports run.
     runtimeDiagnosticExtension(),
-    linter((view) => [...diagnosticsFor(view.state, validationType), ...runtimeDiagnostics(view.state)]),
+    // ⚠️ `needsRefresh` is not an optimisation — without it the linter re-runs on
+    // document edits **only**, and neither of the two sources above is a pure
+    // function of the document. See `utils/relint.ts` for the plugin internals
+    // that make `forceLinting` a no-op on an idle editor.
+    linter((view) => [...diagnosticsFor(view.state, validationType), ...runtimeDiagnostics(view.state)], {
+      needsRefresh: lintNeedsRefresh
+    }),
     lintGutter(),
     lintGutterClick,
     ...(options.onDiagnostics ? [diagnosticReporter(options.onDiagnostics)] : []),

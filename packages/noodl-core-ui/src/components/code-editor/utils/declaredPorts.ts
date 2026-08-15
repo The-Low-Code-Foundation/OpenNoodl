@@ -124,6 +124,36 @@ export function collectDeclaredPorts(parameters: Record<string, unknown> | undef
 }
 
 /**
+ * Do two reads of a node's declared ports say the same thing?
+ *
+ * FIX-016 §2 follow-up. The editor republishes the open node whenever *any*
+ * parameter of it changes, and the code editor's own save is one of those — a
+ * Cmd-S in the popout writes `functionScript` and would otherwise re-lint the
+ * document it just saved, on every save.
+ *
+ * ⚠️ Compares the **computed ports**, not the parameter names that produced
+ * them. A name filter (`scriptOutputs`, `outtype-*`, …) would be a second copy of
+ * the naming convention `readList` above owns, kept in step by hand; this asks
+ * the question the consumer actually cares about and cannot drift from it.
+ *
+ * Order matters, and deliberately: the proplist is the author's row order and the
+ * port bar lists ports in it, so a reordering is a change worth re-rendering for.
+ */
+export function declaredPortsEqual(a: DeclaredPorts, b: DeclaredPorts): boolean {
+  return sameFacts(a.inputs, b.inputs) && sameFacts(a.outputs, b.outputs);
+}
+
+function sameFacts(a: readonly PortFact[], b: readonly PortFact[]): boolean {
+  if (a.length !== b.length) return false;
+
+  for (let i = 0; i < a.length; i++) {
+    if (a[i].name !== b[i].name || a[i].type !== b[i].type) return false;
+  }
+
+  return true;
+}
+
+/**
  * The modes in which "this node's declared ports" is a question with an answer.
  *
  * `'expression'` is missing deliberately and is the important one. An Expression

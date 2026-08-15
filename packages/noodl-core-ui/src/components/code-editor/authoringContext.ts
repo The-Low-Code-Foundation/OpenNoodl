@@ -150,6 +150,9 @@ let projectHalf: CodeAuthoringContext = EMPTY_AUTHORING_CONTEXT;
 let nodeHalf: OpenNodeFact | undefined;
 let current: CodeAuthoringContext = EMPTY_AUTHORING_CONTEXT;
 
+/** Live editors that want to know when the node half is rewritten. */
+const openNodeListeners = new Set<() => void>();
+
 function recompose(): void {
   const composed: CodeAuthoringContext = { ...projectHalf };
 
@@ -184,10 +187,54 @@ export function setCodeAuthoringContext(next: CodeAuthoringContext | null): void
  * Also pass `null` when opening an editor whose mode has no declared ports
  * (`'expression'`, `'json'`, `'text'`, `'css'`, `'html'`): "no ports here"
  * has to overwrite the previous node just as closing does.
+ *
+ * Call it again with the **same node** whenever its declared ports change while
+ * its editor is open — that is what {@link subscribeToOpenNode} exists to carry.
  */
 export function setOpenNodeContext(next: OpenNodeFact | null): void {
-  nodeHalf = next ?? undefined;
+  const replacement = next ?? undefined;
+
+  // An identical write is not a change. Opening any editor whose mode has no
+  // declared ports clears an already-clear slot, and waking every live editor to
+  // tell it nothing happened is how a signal earns being ignored.
+  if (replacement === nodeHalf) return;
+
+  nodeHalf = replacement;
   recompose();
+
+  // Copied, because a listener is entitled to unsubscribe from inside its own
+  // call — an editor unmounting in response is exactly the case.
+  for (const listener of [...openNodeListeners]) listener();
+}
+
+/**
+ * Hear about writes to the node half (FIX-016 §2 follow-up). Returns the
+ * unsubscribe.
+ *
+ * ## Why the editor is told rather than asked
+ *
+ * The registry's own header explains why the *project* half needs no
+ * notification: a completion source is a function called per keystroke, so
+ * reading at call time can never be stale. The node half has two consumers that
+ * are not like that — the port bar is computed during a React render, and
+ * `portDiagnostics` runs inside a linter that CodeMirror only re-runs when the
+ * **document** changes. Both hold their answer until something makes them
+ * recompute, and a panel setting changing is not something either can observe.
+ *
+ * That is FIX-016 §2's open wrinkle: the diagnostic telling an author to set the
+ * port's Type to `Signal` went on saying so after they did.
+ *
+ * ⚠️ Listeners hear clears too. No live editor currently observes one — every
+ * path that clears the slot has already disposed the popout that was open (see
+ * `CodeEditorType#dispose`, which is what `hidePopout` reaches before the next
+ * editor publishes) — but a subscriber that assumes a non-null `openNode` after
+ * being woken would be assuming something this contract does not promise.
+ */
+export function subscribeToOpenNode(listener: () => void): () => void {
+  openNodeListeners.add(listener);
+  return () => {
+    openNodeListeners.delete(listener);
+  };
 }
 
 /** Read the current surface. Cheap — call it per completion, not per mount. */

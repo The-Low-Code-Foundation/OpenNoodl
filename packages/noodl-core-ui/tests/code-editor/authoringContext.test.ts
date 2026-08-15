@@ -18,6 +18,7 @@ import {
   getCodeAuthoringContext,
   setCodeAuthoringContext,
   setOpenNodeContext,
+  subscribeToOpenNode,
   type CodeAuthoringContext,
   type OpenNodeFact
 } from '@noodl-core-ui/components/code-editor/authoringContext';
@@ -81,6 +82,143 @@ describe('the open-node slot', () => {
     setOpenNodeContext(NODE_A);
     setOpenNodeContext(null);
     expect(getCodeAuthoringContext().openNode).toBeUndefined();
+  });
+});
+
+/**
+ * FIX-016 §2 follow-up — waking the editor that is already open.
+ *
+ * The wrinkle the drive found: message 5 says *"set its Type to Signal in the
+ * property panel"*, the panel is behind the popout, and doing it left the message
+ * standing. The node half was written once, at open. These pin the half of the
+ * repair that lives here — that a republish for the **same node** is a change
+ * anyone can hear, which is precisely the case a "write it on open" design has no
+ * reason to treat as one.
+ */
+describe('the open-node subscription', () => {
+  const NODE_A_SIGNALLED: OpenNodeFact = {
+    ...NODE_A,
+    declaredOutputs: [{ name: 'Output_1', type: 'signal' }]
+  };
+
+  beforeEach(() => {
+    setCodeAuthoringContext(null);
+    setOpenNodeContext(null);
+  });
+
+  it('wakes a listener when the same node is republished with a changed port type', () => {
+    setOpenNodeContext(NODE_A);
+
+    let woken = 0;
+    const stop = subscribeToOpenNode(() => woken++);
+
+    setOpenNodeContext(NODE_A_SIGNALLED);
+
+    expect(woken).toBe(1);
+    expect(getCodeAuthoringContext().openNode).toEqual(NODE_A_SIGNALLED);
+    stop();
+  });
+
+  it('wakes a listener on a clear, so a subscriber cannot assume a node is there', () => {
+    setOpenNodeContext(NODE_A);
+
+    let seen: unknown = 'never called';
+    const stop = subscribeToOpenNode(() => {
+      seen = getCodeAuthoringContext().openNode;
+    });
+
+    setOpenNodeContext(null);
+
+    expect(seen).toBeUndefined();
+    stop();
+  });
+
+  it('does not wake anyone for a clear that clears nothing', () => {
+    // Every editor whose mode has no declared ports clears an already-clear slot.
+    // Waking a live editor to tell it nothing happened is how a signal earns
+    // being ignored.
+    let woken = 0;
+    const stop = subscribeToOpenNode(() => woken++);
+
+    setOpenNodeContext(null);
+    setOpenNodeContext(null);
+
+    expect(woken).toBe(0);
+    stop();
+  });
+
+  it('does not wake anyone for a project-half write', () => {
+    // The project half is republished on a debounce every few keystrokes. If it
+    // woke the open editor, this seam would re-lint the document continuously.
+    setOpenNodeContext(NODE_A);
+
+    let woken = 0;
+    const stop = subscribeToOpenNode(() => woken++);
+
+    setCodeAuthoringContext(PROJECT);
+    setCodeAuthoringContext(null);
+
+    expect(woken).toBe(0);
+    stop();
+  });
+
+  it('stops waking a listener that unsubscribed', () => {
+    let woken = 0;
+    const stop = subscribeToOpenNode(() => woken++);
+
+    setOpenNodeContext(NODE_A);
+    stop();
+    setOpenNodeContext(NODE_B);
+
+    expect(woken).toBe(1);
+  });
+
+  it('survives a listener that unsubscribes from inside its own call', () => {
+    // An editor unmounting in response to what it just heard. Deleting from the
+    // set being iterated is exactly what the copy in `setOpenNodeContext` is for.
+    let woken = 0;
+    let other = 0;
+
+    const stopSelf = subscribeToOpenNode(() => {
+      woken++;
+      stopSelf();
+    });
+    const stopOther = subscribeToOpenNode(() => other++);
+
+    setOpenNodeContext(NODE_A);
+    setOpenNodeContext(NODE_B);
+
+    expect(woken).toBe(1);
+    expect(other).toBe(2);
+    stopOther();
+  });
+
+  it('wakes every live listener, not just the first', () => {
+    const woken: string[] = [];
+    const stopOne = subscribeToOpenNode(() => woken.push('one'));
+    const stopTwo = subscribeToOpenNode(() => woken.push('two'));
+
+    setOpenNodeContext(NODE_A);
+
+    expect(woken).toEqual(['one', 'two']);
+    stopOne();
+    stopTwo();
+  });
+
+  it('has already recomposed by the time a listener reads', () => {
+    // The listener's whole job is to re-read. Notifying before the write landed
+    // would hand it the value it already had.
+    setOpenNodeContext(NODE_A);
+
+    let readBack: unknown = null;
+    const stop = subscribeToOpenNode(() => {
+      readBack = getCodeAuthoringContext().openNode;
+    });
+
+    setOpenNodeContext(NODE_A_SIGNALLED);
+
+    expect(readBack).toEqual(NODE_A_SIGNALLED);
+    stop();
   });
 });
 

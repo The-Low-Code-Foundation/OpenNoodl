@@ -8,8 +8,10 @@ import { WarningsModel } from '@noodl-models/warningsmodel';
 import {
   JavaScriptEditor,
   collectDeclaredPorts,
+  declaredPortsEqual,
   modeHasDeclaredPorts,
   setOpenNodeContext,
+  type DeclaredPorts,
   type RuntimeDiagnostic,
   type ValidationType
 } from '@noodl-core-ui/components/code-editor';
@@ -212,6 +214,15 @@ export class CodeEditorType extends TypeView {
   value: TSFixme;
   default: TSFixme;
 
+  /**
+   * The node this popout is publishing the declared ports of, while it is open.
+   * Held only so `dispose()` can unsubscribe from the exact model it subscribed
+   * to — `parent.model` can be gone by then.
+   */
+  openNode: TSFixme = null;
+  /** The last ports published, so an unrelated parameter write costs nothing. */
+  publishedPorts: DeclaredPorts | null = null;
+
   static fromPort(args): TSFixme {
     const view = new CodeEditorType();
 
@@ -250,6 +261,17 @@ export class CodeEditorType extends TypeView {
     // opened over a different node completes against this node's ports — a live
     // wrong answer rather than an empty one.
     setOpenNodeContext(null);
+
+    // The republish subscription (FIX-016 §2 follow-up). Dropped here rather than
+    // in the popout's `onClose`, for the same reason the slot above is: a panel
+    // teardown can dispose this view out from under an open popout, and that path
+    // does not go through `onClose` — a subscription left standing would publish
+    // an open node whose editor no longer exists.
+    if (this.openNode) {
+      this.openNode.off(this);
+      this.openNode = null;
+    }
+    this.publishedPorts = null;
 
     // Unmount popout root
     if (this.popoutRoot) {
@@ -341,14 +363,38 @@ export class CodeEditorType extends TypeView {
     // `'expression'` mode a consumer acting on them would write `Inputs.foo` into
     // a language where a bare identifier *becomes* a port (`expression.ts:399`).
     if (node && modeHasDeclaredPorts(validationType)) {
-      const declared = collectDeclaredPorts(node.parameters);
+      // FIX-016 §2 follow-up. Publishing once, at open, was the whole of it — and
+      // that made message 5 a diagnostic whose own advice does not take effect.
+      // It says *"set its Type to Signal in the property panel"*, the panel is
+      // right there behind the popout, and doing it changed nothing until the
+      // editor was closed and reopened.
+      //
+      // ⚠️ The other four messages are about the *document*, which re-lints
+      // itself on every keystroke. Message 5 is the only one about a **panel
+      // setting**, which is why it is the only one that could be told and not
+      // hear.
+      const publish = () => {
+        const declared = collectDeclaredPorts(node.parameters);
 
-      setOpenNodeContext({
-        nodeId,
-        typeName: node.typename,
-        declaredInputs: declared.inputs,
-        declaredOutputs: declared.outputs
-      });
+        // Every parameter write lands here, including this editor's own save of
+        // `functionScript` on Cmd-S. Republishing that would re-lint the document
+        // it just wrote, per save, for no change in the answer.
+        if (this.publishedPorts && declaredPortsEqual(this.publishedPorts, declared)) return;
+        this.publishedPorts = declared;
+
+        setOpenNodeContext({
+          nodeId,
+          typeName: node.typename,
+          declaredInputs: declared.inputs,
+          declaredOutputs: declared.outputs
+        });
+      };
+
+      publish();
+
+      // Unsubscribed in `dispose()`, which every close path goes through.
+      this.openNode = node;
+      node.on('parametersChanged', publish, this);
     } else {
       setOpenNodeContext(null);
     }

@@ -15,7 +15,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 
 import { ToolbarGrip } from '@noodl-core-ui/components/toolbar/ToolbarGrip';
 
-import { getCodeAuthoringContext } from './authoringContext';
+import { getCodeAuthoringContext, subscribeToOpenNode } from './authoringContext';
 import { CodeHistoryButton, type CodeSnapshot } from './CodeHistory';
 import {
   createEditorState,
@@ -37,6 +37,7 @@ import {
   shouldRecordSuccess,
   shouldShowBar
 } from './utils/portBar';
+import { requestRelint } from './utils/relint';
 import { setRuntimeDiagnostic } from './utils/runtimeDiagnostic';
 import { isPixelSize, parseSizeProp, type CssSize } from './utils/size';
 import { minimalChange } from './utils/textChange';
@@ -226,6 +227,31 @@ export function JavaScriptEditor({
 
     setRuntimeDiagnostic(view, runtimeDiagnostic ?? null);
   }, [runtimeDiagnostic]);
+
+  // FIX-016 §2 follow-up. The open node's declared ports can change under a
+  // sitting editor — the Type dropdown that message 5 tells the author to use is
+  // in the property panel *behind* this popout, and using it used to leave the
+  // message standing.
+  //
+  // Two consumers, and they need different waking:
+  //
+  // - the **port bar** is computed during render, so it needs a re-render, which
+  //   is what the counter is for. Nothing reads its value; `useState` is being
+  //   used as "render again", and the alternative — mirroring the ports into
+  //   state — would be a second copy of something the registry already holds.
+  // - the **diagnostics** live in CodeMirror, which re-lints on document changes
+  //   only. `requestRelint` is the whole of `utils/relint.ts`.
+  const [, bumpPortRevision] = useState(0);
+  useEffect(
+    () =>
+      subscribeToOpenNode(() => {
+        bumpPortRevision((revision) => revision + 1);
+
+        const view = editorViewRef.current;
+        if (view) requestRelint(view);
+      }),
+    []
+  );
 
   // Toggle read-only on the live editor.
   useEffect(() => {

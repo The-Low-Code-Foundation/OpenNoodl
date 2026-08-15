@@ -46,6 +46,8 @@ import type { Diagnostic } from '@codemirror/lint';
 import { StateEffect, StateField, type EditorState, type Extension } from '@codemirror/state';
 import type { EditorView } from '@codemirror/view';
 
+import { requestRelint } from './relint';
+
 /**
  * What the last run of this node's code reported.
  *
@@ -105,11 +107,23 @@ export function currentRuntimeDiagnostic(state: EditorState): RuntimeDiagnostic 
  *
  * Safe to call on a view whose state does not carry the field — a `MarkdownEditor`
  * or a mode with no linter — rather than throwing at the call site.
+ *
+ * ## 🔴 Why the {@link requestRelint} is load bearing
+ *
+ * Writing the field is only half of it. {@link runtimeDiagnostics} is read by the
+ * `linter()` source, and `@codemirror/lint` re-runs its sources on a **document
+ * change** — an effect-only transaction leaves the plugin's `set` flag `false`
+ * and nothing re-reads the field. The header above says this reaches the gutter
+ * for "a run that happens *while* the popout is open"; between FUN-007 §2 and
+ * this line it only ever did so on **open**, when the mount-time lint happened to
+ * run after the field was written. A node that threw while its editor sat open
+ * stayed clean. `utils/relint.ts` has the plugin internals.
  */
 export function setRuntimeDiagnostic(view: EditorView, diagnostic: RuntimeDiagnostic | null): void {
   if (view.state.field(runtimeDiagnosticField, false) === undefined) return;
 
   view.dispatch({ effects: setRuntimeDiagnosticEffect.of(diagnostic) });
+  requestRelint(view);
 }
 
 /**
