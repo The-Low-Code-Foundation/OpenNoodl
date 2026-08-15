@@ -59,6 +59,16 @@
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 18px;
+  // FIX-003 opt-out, matching the projects grid below: these cards are click
+  // targets, and opening a lesson must not select its title.
+  //
+  // ⚠️ Per grid, in the grid's own module — deliberately NOT hoisted to
+  // `Projects.module.scss`'s `.Main`, which would cover both grids and any
+  // future section but would also swallow the welcome copy and the no-results
+  // message. A container-level opt-out is the right instrument for a surface
+  // that is drag all the way down (the canvas); a page region that merely
+  // contains cards is not that. A new card section opts its own grid out.
+  user-select: none;
 }
 
 .Card {
