@@ -15,6 +15,29 @@ vocabulary is one word. Leave the `data-test` ids alone (live-drive scripts refe
 
 **Ruling:** is the surface now called **the workbench** everywhere, or only in this menu item?
 
+### ✅ RULED 2026-08-15 (session 18) — **only in this menu item.** 14(a) is CLOSED.
+
+Richard ruled **no sweep**: "workbench" stays scoped to the context-menu label, and the bench
+caption keeps describing the mechanism. Nothing further to build.
+
+**The surface was measured first, and it is smaller than this task assumed.** Every remaining
+occurrence of `isolation`/`isolated` under `packages/noodl-editor/src` is a **comment**, a CSS
+property (`VersionControlPanel.tsx:193`, `isolation: 'isolate'` — unrelated), or a colour note
+(`folderColors.ts:32`). The **entire user-visible surface is two strings**:
+
+| Where | String | State |
+|---|---|---|
+| `ComponentsPanelNew/components/ComponentItem.tsx:232` | `'Show in workbench'` | ✅ changed |
+| `VisualCanvas/VisualCanvas.tsx:328` | `— isolated component, not the app` | ✅ **stays, by ruling** |
+
+So the "sweep the caption and the docstrings" framing above was wrong about the scale: there were
+never docstrings to sweep for a *user*, and the caption was the whole question. `data-test` ids were
+never in scope — live drive scripts reference them.
+
+⚠️ **The accepted cost, recorded so nobody re-derives it as a defect:** the surface you reach from
+*"Show in workbench"* never calls itself the workbench, so the word has no referent once you arrive.
+That is a deliberate call, not an oversight.
+
 ## 14(b) — the divergence. The decoupling was decided and is sound; what's missing is the indicator and the way back.
 
 Bench scope (`{ mode: 'bench', target }`, `VisualCanvas.tsx:95`) and the canvas's active component
