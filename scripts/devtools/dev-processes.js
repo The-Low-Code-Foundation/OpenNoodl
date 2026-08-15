@@ -354,6 +354,22 @@ function findDevProcesses({ protectAncestors = true, includeScratchpad = false, 
     // project, not a stack, and age is no tell (one has been seen minutes old).
     if (proc.command.includes('noodl-mcp.cjs')) continue;
 
+    // 🔴 A running `test:ci` is this checkout's electron/dist binary with `test.js
+    // --ci` as argv — repo path AND `electron/dist`, so rule 1 read it as a dev
+    // stack and reaped it. It is a **gate in progress**, not a leftover.
+    //
+    // Measured 2026-08-15: `npm run dev:debug` at 12:51:55 → `start.ts:49`
+    // `reapPreviousSession()` → this sweep → a suite that had been running seven
+    // minutes died at 12:52:01, `test-results.json` was never written, and **npm
+    // still exited 0**. The loss is silent in both directions: the launcher is
+    // told it reaped an orphan, and the suite's owner is told the run passed.
+    //
+    // ⚠️ Age cannot substitute for this exclusion. `sweep()` defaults
+    // `minAgeSeconds` to 0 and `start.ts` passes no floor, so the suite is reaped
+    // at any age — and raising the floor would only make the failure rarer and
+    // harder to attribute, which is worse than losing it every time.
+    if (proc.command.includes('test.js --ci')) continue;
+
     // Rule 1: repo path AND a known tool. The watchdog is excluded by name — it
     // is the one process that must outlive the sweep it is running.
     const isDevStack = proc.command.includes(ROOT) && DEV_TOOL.test(proc.command);
