@@ -61,6 +61,17 @@ describe('safeLessonUrl', () => {
     expect(safeLessonUrl('data:text/html,<script>alert(1)</script>', 'media')).toBeUndefined();
   });
 
+  it('reads the scheme AFTER stripping, not as a prefix of the raw string', () => {
+    // The ordering is the whole defence. `java<TAB>script:` is a working URL in
+    // a browser and walks straight past `startsWith('javascript:')`; stripping
+    // first and matching the scheme on the stripped form is what catches it.
+    // `new URL()` would give this for free but throws on the relative paths
+    // every hosted lesson's media actually uses, so the scheme is matched here.
+    expect(safeLessonUrl(`  java${TAB}${NEWLINE}script:alert(1)`)).toBeUndefined();
+    // …and a relative path that merely CONTAINS a colon later is still relative.
+    expect(safeLessonUrl('media/cat:2.png')).toBe('media/cat:2.png');
+  });
+
   it('treats an empty or absent value as nothing to emit', () => {
     expect(safeLessonUrl('')).toBeUndefined();
     expect(safeLessonUrl('   ')).toBeUndefined();
@@ -89,6 +100,36 @@ describe('the compiler neutralises at the sink', () => {
 
     expect(compiled.steps[0]).not.toMatch(/<img/);
     expect(compiled.steps[0]).not.toMatch(/javascript/i);
+  });
+
+  /**
+   * The HTML-entity spelling, checked on the **compiled output** rather than on
+   * `safeLessonUrl` — because here the two defences compose and neither alone is
+   * the answer.
+   *
+   * `&#106;avascript:` has no scheme `safeLessonUrl` can read (it starts with
+   * `&`), so it is passed through as a relative URL. What makes it inert is the
+   * escaper that follows: `escapeAttr` turns the `&` into `&amp;`, so the
+   * browser decodes the attribute back to the literal text `&#106;avascript:`
+   * and never to a scheme. Pinned so a future "tidy up the double-escaping"
+   * cannot quietly remove the half that is load-bearing.
+   */
+  it('leaves an entity-encoded scheme inert, via the escaper rather than the allow-list', () => {
+    const compiled = compileLessonManifest({
+      title: 'T',
+      steps: [
+        {
+          kind: 'popup',
+          body: 'Click [here](&#106;avascript:alert(1))',
+          media: { type: 'image', src: '&#106;avascript:alert(1)' }
+        }
+      ]
+    });
+
+    // The `&` is escaped, so nothing in the output can be read as a scheme.
+    expect(compiled.steps[0]).not.toMatch(/href="j/i);
+    expect(compiled.steps[0]).not.toMatch(/src="j/i);
+    expect(compiled.steps[0]).toMatch(/&amp;/);
   });
 
   it('still emits an ordinary link and an ordinary image', () => {
