@@ -149,7 +149,11 @@ function snapshot() {
 
   let out;
   try {
-    out = execFileSync('/bin/ps', ['-axo', 'pid=,ppid=,etime=,command='], {
+    // `pgid` is read because the sweep has a second kill path: `killGroup`
+    // signals a whole process group, and a group signal cannot be filtered
+    // per-pid even in principle. Without the group here, a shielded process
+    // sitting in a recorded group would be killed anyway. See `sweepableGroups`.
+    out = execFileSync('/bin/ps', ['-axo', 'pid=,ppid=,pgid=,etime=,command='], {
       maxBuffer: 16 * 1024 * 1024,
       stdio: ['ignore', 'pipe', 'ignore']
     }).toString();
@@ -158,13 +162,14 @@ function snapshot() {
   }
 
   for (const line of out.split('\n')) {
-    const m = /^\s*(\d+)\s+(\d+)\s+(\S+)\s+(.*)$/.exec(line);
+    const m = /^\s*(\d+)\s+(\d+)\s+(\d+)\s+(\S+)\s+(.*)$/.exec(line);
     if (!m) continue;
     table.set(Number(m[1]), {
       pid: Number(m[1]),
       ppid: Number(m[2]),
-      ageSeconds: parseEtime(m[3]),
-      command: m[4]
+      pgid: Number(m[3]),
+      ageSeconds: parseEtime(m[4]),
+      command: m[5]
     });
   }
   return table;
@@ -281,6 +286,39 @@ const NEVER_SWEEP = /noodl-mcp\.cjs|test\.js --ci|run-electron-tests\.js|webpack
  * bargain the MCP servers have always had, and the safe direction for a tool
  * whose failure mode is destroying someone's fifteen-minute gate run.
  */
+/**
+ * The recorded process groups a sweep may actually signal.
+ *
+ * 🔴 The sweep has **two** kill paths, and the shield only ever covered one.
+ * `findDevProcesses` returns pids, which `killPid` signals individually — that
+ * is filterable. `record.groups` is signalled by `killGroup`, i.e.
+ * `process.kill(-pgid, …)`, which reaches an entire process group in one
+ * syscall and **cannot be filtered per-pid even in principle**. So a shielded
+ * process that happens to share a pgid with a recorded group died anyway, with
+ * the shield doing exactly what it was written to do.
+ *
+ * ⚠️ Not theoretical on this checkout. `record.groups` holds the dev stack's own
+ * pgids, and a suite started from its own shell has its own group — but agent
+ * sessions start both from the same non-interactive shell, where job control is
+ * off and children can share a group. "Safe by topology" is the reasoning that
+ * already failed twice here; this drops the group instead of arguing about it.
+ *
+ * Dropping a whole group because one protected process sits in it is the
+ * deliberate direction: the cost is a leftover that must be killed by pid, and
+ * the alternative cost is someone's fifteen-minute gate run.
+ */
+function sweepableGroups(groups, table, shielded) {
+  if (groups.length === 0) return [];
+
+  const protectedGroups = new Set();
+  for (const pid of shielded) {
+    const proc = table.get(pid);
+    if (proc) protectedGroups.add(proc.pgid);
+  }
+
+  return groups.filter((pgid) => !protectedGroups.has(pgid));
+}
+
 function protectedProcesses(table, offLimits) {
   const matched = [];
   for (const proc of table.values()) {
@@ -485,36 +523,46 @@ function sweep({ dryRun = false, onLog, protectAncestors = true, includeScratchp
   if (WINDOWS) {
     // The tree-kill path on Windows lives in start.ts (`taskkill /T /F`), which
     // has no orphan problem: taskkill reaches the whole tree in one call.
-    return { killed: [], dryRun };
+    return { killed: [], groups: [], dryRun };
   }
 
   const targets = findDevProcesses({ protectAncestors, includeScratchpad, minAgeSeconds });
-  const record = readPidFile();
 
-  if (targets.length === 0 && record.groups.length === 0) {
-    return { killed: [], dryRun };
+  // The shield has to be recomputed here rather than reused from
+  // `findDevProcesses`, because the group path below is not expressed in pids.
+  const table = snapshot();
+  const shielded = protectedProcesses(table, selfAndAncestors(table, protectAncestors));
+  const groups = sweepableGroups(readPidFile().groups, table, shielded);
+
+  if (targets.length === 0 && groups.length === 0) {
+    return { killed: [], groups: [], dryRun };
   }
 
   if (dryRun) {
     for (const proc of targets) log(`  would kill ${proc.pid}  ${proc.command.slice(0, 120)}`);
-    return { killed: targets, dryRun: true };
+    // 🔴 The group half must be reported too. It was previously omitted, which
+    // made the dry run a preview of one of the two kill paths while reading as
+    // a preview of the sweep — the same "looks fine" failure the suite guard
+    // had, one layer out: evidence that structurally cannot show the hazard.
+    for (const pgid of groups) log(`  would kill process group ${pgid} (and everything in it)`);
+    return { killed: targets, groups, dryRun: true };
   }
 
   for (const proc of targets) log(`  killing ${proc.pid}  ${proc.command.slice(0, 120)}`);
 
   // Groups first: one signal reaches descendants that have already been
   // reparented, which the process-table walk cannot see.
-  for (const pgid of record.groups) killGroup(pgid, 'SIGTERM');
+  for (const pgid of groups) killGroup(pgid, 'SIGTERM');
   for (const proc of targets) killPid(proc.pid, 'SIGTERM');
 
   sleepSync(1.5);
 
-  for (const pgid of record.groups) killGroup(pgid, 'SIGKILL');
+  for (const pgid of groups) killGroup(pgid, 'SIGKILL');
   for (const proc of targets) {
     if (alive(proc.pid)) killPid(proc.pid, 'SIGKILL');
   }
 
-  return { killed: targets, dryRun: false };
+  return { killed: targets, groups, dryRun: false };
 }
 
 module.exports = {
@@ -526,5 +574,9 @@ module.exports = {
   readPidFile,
   removePidFile,
   sweep,
+  // Exported for testing: the group half of the sweep is the one path a dry run
+  // cannot demonstrate on a quiet checkout, so it needs a way to be exercised
+  // directly rather than shipped on the strength of a reading.
+  sweepableGroups,
   writePidFile
 };

@@ -66,7 +66,14 @@ function humanAge(seconds) {
 const options = { includeScratchpad, minAgeSeconds };
 const found = findDevProcesses(options);
 
-if (found.length === 0) {
+// 🔴 `dev:stop` kills from TWO sources: these pids, and the recorded process
+// groups it signals with `kill(-pgid)`. This listing showed only the first, so
+// `--list` read as a preview of the sweep while previewing half of it — and the
+// half it hid is the one that cannot be filtered per-pid. A dry run that omits
+// a kill path is the same failure as a guard that cannot fire.
+const { groups: reachableGroups } = sweep({ ...options, dryRun: true, onLog: () => {} });
+
+if (found.length === 0 && reachableGroups.length === 0) {
   process.stdout.write('No NodeGX dev processes are running');
   process.stdout.write(includeScratchpad ? '' : ' (dev stack only — add `--all` to include session helpers)');
   process.stdout.write('.\n');
@@ -88,6 +95,13 @@ const scope = [
 process.stdout.write(`Found ${found.length} NodeGX process(es) — ${scope}:\n`);
 for (const proc of found) {
   process.stdout.write(`  ${String(proc.pid).padStart(6)}  ${humanAge(proc.ageSeconds).padEnd(6)}  ${proc.command.slice(0, 110)}\n`);
+}
+
+if (reachableGroups.length) {
+  process.stdout.write(`\nAnd ${reachableGroups.length} recorded process group(s), signalled whole:\n`);
+  for (const pgid of reachableGroups) {
+    process.stdout.write(`  ${String(pgid).padStart(6)}  every process in this group, including any not listed above\n`);
+  }
 }
 
 if (listOnly) {
