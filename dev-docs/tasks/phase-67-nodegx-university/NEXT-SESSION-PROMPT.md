@@ -53,6 +53,26 @@ mechanism* trap, walked into by choosing the D5 guarantee as the consequence. It
 the title mismatch slice 3 recorded as a puzzle: there was no lesson layer to show a lesson title.
 **A symptom described accurately and explained plausibly is how a defect stops being investigated.**
 
+✅ **This is an amendment, not a strike — do NOT re-drive the five guarantees below.** They were
+driven in the real editor and they stand: install **refuses** a bundle written in the prose
+vocabulary, install **accepts** a good one, the card appears **with no reload**, **reset** re-pulls
+and clears the grade, and opening a lesson **does not grow the recents list**. What was never true
+is the *implied* claim that a lesson installed this way could be **taught**. That half lands in
+slice 4 and needs its own drive.
+
+🔴 **Bundles for that drive are ready, so nobody hand-builds one again.** Slice 3's test data was
+cleaned out of Richard's live app (`learning_folder` store back to `[]`, the `Learning` folder
+deleted), so the register is empty — but the two bundles are kept at
+**`/tmp/claude-501/uni-007-drive-bundles/`**:
+
+- `bundle-good/` — a real v2 project (`/App` + `/#__page__/Home`) plus a four-step `lesson.json`.
+  ⚠️ Its step 2 asserts `/#__page__/Home:%Text` and **fails**, because that `Text` sits under the
+  `Page` node — the path grammar is one segment per level. That is a *feature* for a grading drive:
+  it gives you a lesson that is partly satisfiable, so a correct and an incorrect attempt grade
+  differently without editing anything.
+- `bundle-bad/` — trips **both** new verifier findings at once: `%Variable` (shadowed by the
+  deprecated type, suggests `Variable2`) and a component-name-less `%Repeater` (`unmatchable-node-path`).
+
 ## 🔴 STOP — this job may already be done. Check before you build it.
 
 **At 09:44 on 2026-08-15, another session was mid-flight on exactly the slice described below**, in
