@@ -203,3 +203,32 @@ which imports [`render-report.js:41`](../../../scripts/devtools/render-report.js
 - `render-from-disk.js`'s `/react19/` handling, which is already correct.
 - **Shipping the harness to packaged installs** — that is phase 67's open F4 scope call (above), not
   this task's to take.
+
+## 🔴 A SECOND falsely-green route in this same file, found 2026-08-16 and still OPEN
+
+Found by phase 67's UNI-010 criterion-3 run
+([UNI-010-CRITERION-3-RUN.md](../phase-67-nodegx-university/UNI-010-CRITERION-3-RUN.md) §8.2), and
+recorded here because **this file is where the fix belongs**, not there.
+
+**`render-from-disk.js` renders the Router's `startPage` and no other route.** So a project whose
+*second* page is broken is reported as `Rendered clean`. Measured on a purpose-built control — a
+two-page v2 project with an unbound `Text` (the `dead-placeholder-text` case) added to the
+non-start page:
+
+| variant | report |
+|---|---|
+| both pages sound | `Rendered clean … 2 texts, 0 placeholders` |
+| second page emptied of all content | `Rendered clean … 2 texts, 0 placeholders` |
+| second page carrying a dead placeholder | `Rendered clean … 2 texts, 0 placeholders` |
+
+The identical `2 texts` across all three is the direct evidence the second page is never visited.
+`reachability` in `render-report.js` is explicitly a `startPage` walk, which is where it comes from.
+
+🔴 **This was re-measured on the post-`ed28a03c` harness and it survives the kit fix.** Both are
+"the harness said *Rendered clean* about a page it had not properly drawn" — the same sentence about
+a different blindness, and CN-001 closed one of them. ⚠️ **A probe needs its own known-broken
+control on every route it claims to cover, not only on the route last fixed.**
+
+**Why it matters beyond `render_report`:** UNI-010's F4 is graded through this chain, so a lesson
+that *teaches building a second page* has its entire subject unscored — measured end to end, a
+lesson bundle with a dead placeholder on the page it teaches scores F1–F4 all pass and is written.
