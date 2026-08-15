@@ -211,12 +211,69 @@ function escapeHtml(text: string): string {
     .replace(/>/g, '&gt;');
 }
 
+/**
+ * 🔴 URL SCHEMES A LESSON MAY NAME. Added 2026-08-15 (UNI-007 slice 3).
+ *
+ * Compiled step HTML is handed to `innerHTML` (`lessonlayer2.ts`) and to
+ * `dangerouslySetInnerHTML` (`LessonItem.jsx`) inside the **editor's own
+ * renderer**, which has node integration — `require` is reachable from page
+ * script there, as any CDP session will show you. So a `javascript:` href in a
+ * lesson body is not a defaced link; it is arbitrary code with filesystem
+ * access, one click away.
+ *
+ * `escapeAttr` never stopped this and was never meant to: it escapes quotes and
+ * angle brackets, which keeps the attribute well-formed. `javascript:alert(1)`
+ * contains none of those characters and passes through intact.
+ *
+ * ⚠️ **What changed is the threat model, not the code.** Until slice 3 the only
+ * producer of lesson content was `LessonTemplatesModel`'s hosted index — one
+ * first-party endpoint. The Learning folder installs a bundle from **any folder
+ * on disk**, and UNI-010 makes a language model a producer by design. That is
+ * what turns a latent sink into a live one, and it is this task's own doing.
+ *
+ * Neutralising is deliberate belt-and-braces: {@link verifyLessonManifest}
+ * rejects an unsafe URL at install so the author is told, and this drops it at
+ * the sink so anything skipping the verifier — the legacy `lesson.html` path
+ * does — still cannot execute.
+ */
+const SAFE_URL_SCHEMES = /^(?:https?|mailto):/i;
+const SAFE_MEDIA_SCHEMES = /^(?:https?:|data:image\/)/i;
+
+/**
+ * The URL to emit, or `undefined` when the lesson named a scheme it may not.
+ * A URL with no scheme at all is relative and resolved against the lesson's
+ * `baseURL`, which is where every hosted lesson's media already lives.
+ */
+export function safeLessonUrl(value: string, kind: 'link' | 'media' = 'link'): string | undefined {
+  const raw = String(value ?? '').trim();
+  if (!raw) return undefined;
+
+  // Control characters and whitespace are stripped before the scheme is read,
+  // because browsers strip them too — `java\tscript:` is a working URL and a
+  // naive prefix test does not see it.
+  // Filtered by code point rather than by a character-class regex, which
+  // `no-control-regex` rightly objects to.
+  const probe = Array.from(raw)
+    .filter((ch) => ch.charCodeAt(0) > 0x20)
+    .join('');
+  if (!/^[a-z][a-z0-9+.-]*:/i.test(probe)) return raw; // relative
+
+  const allowed = kind === 'media' ? SAFE_MEDIA_SCHEMES : SAFE_URL_SCHEMES;
+  return allowed.test(probe) ? raw : undefined;
+}
+
 function inlineMarkdown(text: string): string {
   return escapeHtml(text)
     .replace(/`([^`]+)`/g, '<code>$1</code>')
     .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
     .replace(/(?:\*|_)([^*_]+)(?:\*|_)/g, '<em>$1</em>')
-    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_m, label, href) => `<a href="${escapeAttr(href)}">${label}</a>`);
+    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_m, label, href) => {
+      const safe = safeLessonUrl(href);
+      // A refused link keeps its words and loses its href. Deleting the label
+      // would leave a hole in a sentence the author wrote; a dead link is
+      // visible feedback that something was rejected.
+      return safe ? `<a href="${escapeAttr(safe)}">${label}</a>` : label;
+    });
 }
 
 /** Render a Markdown-subset string to an HTML fragment (headings, lists, paragraphs, inline). */
@@ -257,9 +314,14 @@ function escapeAttr(value: string): string {
 
 function renderMedia(media: LessonMediaDef | undefined): string {
   if (!media) return '';
-  if (media.type === 'video') return `<video src="${escapeAttr(media.src)}"></video>`;
+  // Same rule as a link, one scheme wider: `data:image/` is how an offline
+  // bundle inlines a picture. A refused src emits no element at all — there is
+  // no label to preserve, and an <img> with no source is a broken-image glyph.
+  const src = safeLessonUrl(media.src, 'media');
+  if (!src) return '';
+  if (media.type === 'video') return `<video src="${escapeAttr(src)}"></video>`;
   // Legacy markup uses <image>, which loadSteps' _loadImages selects via 'img'.
-  return `<img src="${escapeAttr(media.src)}">`;
+  return `<img src="${escapeAttr(src)}">`;
 }
 
 /**

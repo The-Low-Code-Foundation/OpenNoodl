@@ -68,7 +68,7 @@
 import type { NodeCatalog, CatalogNode } from '../validation/CatalogIndex';
 import { CatalogIndex } from '../validation/CatalogIndex';
 import { defaultCatalog, loadDefaultCatalog } from '../validation/catalog';
-import { compileLessonManifest, LessonFormatError } from './lessonformat';
+import { compileLessonManifest, LessonFormatError, safeLessonUrl } from './lessonformat';
 import type { LessonConditionDef, LessonManifest, LessonStepDef } from './lessonformat';
 
 // ─── Findings ───────────────────────────────────────────────────────────────
@@ -86,6 +86,8 @@ export type LessonFindingCode =
   | 'deprecated-node-type'
   /** A node path whose shape means `findNodeWithPath` can never match it. */
   | 'unmatchable-node-path'
+  /** A URL naming a scheme a lesson may not use — `javascript:` and friends. */
+  | 'unsafe-url'
   /** The manifest does not compile — malformed before any vocabulary question arises. */
   | 'malformed-lesson';
 
@@ -364,6 +366,44 @@ function describeStep(step: LessonStepDef | undefined, index: number): string {
   return `Step ${index + 1}${step && step.title ? ` ("${step.title}")` : ''}`;
 }
 
+// ─── URLs a lesson may name ─────────────────────────────────────────────────
+
+/** Markdown links in a prose field. Same pattern the compiler lowers. */
+const MARKDOWN_LINK = /\[([^\]]+)\]\(([^)]+)\)/g;
+
+/**
+ * Every URL one step declares, with the field it came from.
+ *
+ * 🔴 **Why the verifier cares about a URL at all.** Compiled step HTML reaches
+ * `innerHTML` and `dangerouslySetInnerHTML` inside the editor's own renderer,
+ * which has node integration — so a `javascript:` href in a lesson body is
+ * arbitrary code with filesystem access, one click away. The compiler now
+ * neutralises those at the sink; this reports them so the *author* is told
+ * rather than left with a link that silently stopped working.
+ *
+ * ⚠️ Until the Learning folder existed, lesson content came from one first-party
+ * hosted index. It now installs from any folder on disk and UNI-010 makes a
+ * language model a producer, which is what promoted this from latent to live.
+ */
+export function urlsInStep(step: LessonStepDef | undefined): Array<{ field: string; url: string; kind: 'link' | 'media' }> {
+  const found: Array<{ field: string; url: string; kind: 'link' | 'media' }> = [];
+  if (!step || typeof step !== 'object') return found;
+
+  if (step.media && typeof step.media === 'object' && typeof step.media.src === 'string') {
+    found.push({ field: 'media.src', url: step.media.src, kind: 'media' });
+  }
+
+  for (const field of ['title', 'body'] as const) {
+    const text = step[field];
+    if (typeof text !== 'string') continue;
+    for (const match of text.matchAll(MARKDOWN_LINK)) {
+      found.push({ field, url: match[2], kind: 'link' });
+    }
+  }
+
+  return found;
+}
+
 // ─── The verifier ───────────────────────────────────────────────────────────
 
 export interface VerifyLessonOptions {
@@ -417,6 +457,20 @@ export function verifyLessonManifest(
   }
 
   manifest.steps.forEach((step, stepIndex) => {
+    for (const { field, url, kind } of urlsInStep(step)) {
+      if (safeLessonUrl(url, kind)) continue;
+      findings.push({
+        code: 'unsafe-url',
+        severity: 'error',
+        where: `${describeStep(step, stepIndex)} ("${field}")`,
+        step: stepIndex,
+        value: url,
+        message:
+          `"${url}" names a scheme a lesson may not use. Lesson content is rendered inside the editor, ` +
+          `so only http, https, mailto${kind === 'media' ? ', data:image/' : ''} and relative paths are allowed.`
+      });
+    }
+
     const conditions = step && Array.isArray(step.completeWhen) ? step.completeWhen : [];
     conditions.forEach((def, conditionIndex) => {
       if (!def || typeof def !== 'object') return;
