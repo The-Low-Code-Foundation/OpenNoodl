@@ -57,6 +57,32 @@
 > before the project it grades exists — so wrong-but-plausible depth is engine 1's job to reveal,
 > not the static check's.
 >
+> #### 🔴 THE DEFECT SLICE 3 SHIPPED, found by slice 4's author on 2026-08-15
+>
+> **`handleOpenLearningLesson` never set `project.lesson`, so a Learning-folder lesson opened as an
+> ordinary project.** `EditorPage` attaches the lesson layer only when `ProjectModel.isLesson()` —
+> i.e. `project.lesson !== undefined` — and the only code that had ever set that field is
+> `LessonsProjectsModel._cloneLessonIntoDirectory`, the hosted-zip path. The opener written in
+> `a89ec153` loads the project and sets `project.id`, and stops there. **No steps, no instructions,
+> no completion evaluation, nothing to grade against.** Fixed in slice 4 (`models/learninglesson.ts`).
+>
+> 🔴 **The live drive did not catch it, and why is the part worth keeping.** The drive verified that
+> the project opened and that the recents list did not grow. Both true; both exactly what was set
+> out to be checked; neither of them is *"can this lesson be taught?"*. This repo already carries
+> **[verify the CONSEQUENCE, not just the mechanism]** as a standing trap, and slice 3 walked into
+> it — its chosen consequence was the D5 guarantee, and it never asked what the learner would see.
+>
+> ⚠️ **It also retro-explains a symptom slice 3 recorded and explained wrongly.** The handover noted
+> that the card said "State on a page" while the titlebar said the project's name, and reasoned
+> about whether the opener should rename the project. The real answer is that **there was no lesson
+> layer to show a lesson title.** A symptom described accurately and explained plausibly is how a
+> defect stops being investigated.
+>
+> **This is the fourth instance of the "build the caller" method paying**, and the first of a
+> different kind: the first three were a *check* that was incomplete. This is a shipped **feature
+> whose visible half was never reachable**, and it survived a drive because the drive measured the
+> half that worked.
+>
 > #### 🔴 The security hole this slice OPENED, and closed (`6d6d067e`)
 >
 > Compiled step HTML goes to `innerHTML` ([`lessonlayer2.ts:201`](../../../packages/noodl-editor/src/editor/src/views/lessonlayer2.ts))

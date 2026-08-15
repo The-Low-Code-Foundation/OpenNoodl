@@ -17,8 +17,8 @@ one is wrong, amend `RULINGS.md` with a date and a reason. The four to keep in y
 - **D2** — the platform is **NodeGX Community**; **NodeGX University is its learning wing**. Editor
   button: **"Sign in to NodeGX"**. ⚠️ `community.nodegx.dev` is *not registered* — a choice, not a fact.
 - **D5** — the Learning folder is a **visible launcher section, platform-managed**: edit freely,
-  can't rename/detach/delete, reset = re-pull. 🔴 **The editor process writes it.** ✅ **Built and
-  driven 2026-08-15.**
+  can't rename/detach/delete, reset = re-pull. 🔴 **The editor process writes it.** ✅ Built and
+  driven 2026-08-15 — ⚠️ **but the opener shipped without attaching a lesson layer; see below.**
 - **D9** — 🔴 ruled *against* the recommendation: a record-capped backend means UNI-008 holds
   end-user data. Five obligations; effort raised; still last.
 - **D13** — coaching delivery (**LearnBook**) is **phase 68**, platform stack, after Tier 1 + UNI-004.
@@ -36,12 +36,49 @@ one is wrong, amend `RULINGS.md` with a date and a reason. The four to keep in y
 **110 tests** in `noodl-editor/tests-unit/uni-007/` (jest / `test:main`), 21 in `noodl-mcp`.
 Commits: `15763dd7`, `b9664822`, **`e3aec6b6`**, **`a89ec153`**, **`6d6d067e`**, **`d2e4f91c`**.
 
-**Criteria 2, 3 and 4 are met.** Criterion 2 was **driven in the real editor** — install refused a
-bad bundle, install accepted a good one, the card appeared with no reload, reset re-pulled and
-cleared the grade, and opening the lesson **did not grow the recents list** (the D5 guarantee that
-would have failed silently had the opener used `LocalProjectsModel.openProjectFromFolder`).
+**Criterion 2's launcher half is met and was driven in the real editor** — install refused a bad
+bundle, install accepted a good one, the card appeared with no reload, reset re-pulled and cleared
+the grade, and opening the lesson **did not grow the recents list** (the D5 guarantee that would
+have failed silently had the opener used `LocalProjectsModel.openProjectFromFolder`).
+Criteria 3 and 4 are met.
 
-## 🔴 This session's job — "check my work", and it is the last editor slice
+🔴 **But slice 3 shipped a defect the drive did not catch, and slice 4's author found it:
+`handleOpenLearningLesson` never set `project.lesson`, so the lesson opened as an ORDINARY
+PROJECT** — `EditorPage` attaches the lesson layer only when `isLesson()`, and nothing set that
+field outside the hosted-zip path. No steps, no instructions, nothing to grade against.
+
+⚠️ **The drive verified that the project opened and that recents did not grow. Both true, and
+neither is "can this lesson be taught?"** — the recorded *verify the consequence, not just the
+mechanism* trap, walked into by choosing the D5 guarantee as the consequence. It also retro-explains
+the title mismatch slice 3 recorded as a puzzle: there was no lesson layer to show a lesson title.
+**A symptom described accurately and explained plausibly is how a defect stops being investigated.**
+
+## 🔴 STOP — this job may already be done. Check before you build it.
+
+**At 09:44 on 2026-08-15, another session was mid-flight on exactly the slice described below**, in
+this same checkout, uncommitted. Files seen in the working tree, mtimes 09:37–09:42:
+
+```
+?? models/learninglesson.ts          ?? models/lessoncheck.ts
+?? models/lessonwholesolution.ts     ?? models/lessonwholesolution.live.ts
+?? models/lessondrawncount.ts
+ M views/lessonlayer2.ts              M views/lessons/LessonLayerView.jsx
+ M pages/ProjectsPage/ProjectsPage.tsx
+ M noodl-mcp/src/editor-deps.ts       M noodl-mcp/src/lessons/wholeSolutionGrader.ts
+```
+
+**First action of your session: `git log --oneline -15` and `git status`.** If those files are
+committed, this section is history — read it for the constraints, not the job. If they are still
+uncommitted, **find the author before touching anything** (`ListAgents`, then `SendMessage`); do not
+start a second implementation. *Parallel agents solving the same task twice* is a recorded failure
+mode here, and this handover is what would cause it.
+
+⚠️ **`git log --format='%an'` cannot tell sessions apart** — every session commits as "Richard
+Osborne". `ListAgents` plus file mtimes is what separates them. On 2026-08-15 a phase-66 session
+attributed this cluster to *this* session and verified it against their merge on that basis; the
+check was still valid, the attribution was not.
+
+## The job itself — "check my work", the last editor slice
 
 **Nothing calls the grading runner. This is not an assumption — it was measured.**
 `__webpack_require__` in the running renderer answers *"Cannot find module
@@ -78,9 +115,16 @@ Blocker 1 has now been amended **twice**, and the two amendments were found by d
   check looked at* and passed in silence, while never matching at runtime. Same silent failure, a
   different route in. And separately, a lesson body naming `javascript:` compiled into a live anchor
   inside a **node-integrated renderer**. Found by **building the check's caller.**
+- **Third, hours later** (08-15): slice 4's author found that slice 3's opener never attached a
+  lesson layer, so the whole feature opened as an ordinary project. 🔴 **A different kind of
+  instance** — the first two were a *check* that was incomplete; this was a shipped **feature whose
+  visible half was never reachable**, and it survived a live drive because the drive measured the
+  half that worked.
 
-**The method, because it is now three for three: a check read on its own terms looks complete. Give
-it a caller, or re-derive it from source, and it shows you what it does not do.**
+**The method, because it is now four for four: a check — or a feature — read on its own terms looks
+complete. Give it a caller, or re-derive it from source, and it shows you what it does not do.**
+⚠️ **And a drive proves only what it measured, which is a choice you made before you knew what was
+broken.**
 
 ## Standing constraints
 
@@ -188,6 +232,24 @@ like here — not what a pass looks like.** Then, and only then:
 ⚠️ **And the reason nothing else caught it is worth carrying:** a **`.jsx`** file is read by no
 typecheck (`tsc` skips it) and by no jest run unless a spec imports it. `test:ci`'s webpack is its
 only gate. After editing a `.jsx`, a green `test:main` and a clean `tsc` prove nothing at all.
+
+### ✅ The quiet window you have to arrange is ~40 seconds, not 15 minutes
+
+Established 2026-08-15 by timing an actual run, and it makes the sibling problem far cheaper to
+manage than everyone has assumed. `test:ci` is `webpack && run-electron-tests`, so **the bundle is
+frozen the moment webpack finishes** — the log says so itself:
+`webpack 5.108.4 compiled successfully in 37734 ms`. On that run the commit landed at 09:32:27, the
+bundle closed at **~09:33:05**, the suite ran nine more minutes, and `test-results.json` was written
+at **09:42**.
+
+🔴 **Do not read the results-file mtime as the webpack time.** This session made exactly that
+mistake: a third session's first write landed at 09:37:50, which looked like "during the run" and is
+in fact **4¾ minutes after the bundle closed**. The run was clean and the wrong reading nearly went
+into this document as a contamination warning.
+
+**So:** a tree only has to be quiet from launch until webpack reports success. After that a sibling
+can edit freely and cannot reach the bundle — and if you need to know whether a given edit made it
+in, compare its mtime against the **webpack line in the log**, never against the results file.
 
 ✅ **The `user-select` question is closed.** FIX-003's opt-out originally enumerated the *projects*
 grid only, which would have left the two card grids disagreeing about text selection. Phase 66 added
