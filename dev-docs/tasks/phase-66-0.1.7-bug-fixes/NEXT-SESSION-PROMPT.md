@@ -32,7 +32,7 @@ Learnings that outlive the phase go to memory, not here.
 
 | Task | Built | Driven | Note |
 |---|---|---|---|
-| **FIX-016 §2** | ✅ | ✅ **3/3 + control** | **CLOSED `4be3f1f6` this session.** 🔴 Found an open wrinkle: the diagnostic does **not** clear when you obey it — §3c |
+| **FIX-016 §2** | ✅ | ✅ **3/3 + control** | **CLOSED `4be3f1f6`.** The wrinkle it found — the diagnostic not clearing when you obey it — is **also CLOSED, `6de1ae25`**, by the peer who corrected my mechanism for it (§3c) |
 | **FIX-016 §1** | 📋 | — | 🔴 **Ruling 1 is now answerable — I looked. §3d** |
 | **FIX-016 §3** | 📋 | — | Signal *inputs*. Needs Richard's semantics ruling. **This is the only part of FIX-016 that was ever blocked** |
 | **FIX-017** | ◐ §A + §B | ◐ §B + §A(¾) | Unchanged from s22. AC1's "without typing" ✗ and unreachable by §A; **§D promoted**; AC3 premise false |
@@ -132,8 +132,14 @@ worked because it cures both. ⚠️ **The same hole was swallowing FUN-007 §2'
 reached React and stopped. The `Last run` row in §3b was visible only because the **mount-time** lint
 runs after the field is written.
 
-✅ **A peer built both halves after catching this** (`needsRefresh: lintNeedsRefresh` +
-`utils/relint.ts`, 444/444 in `noodl-core-ui`). **Check whether that landed before starting.**
+✅ **CLOSED `6de1ae25`** — a peer caught the mis-stated mechanism and built both halves
+(`needsRefresh: lintNeedsRefresh` + `utils/relint.ts`, 11 files, +583). Verified on the merged tree:
+**25 suites / 444, 0 failed.** The diagnostic now clears the moment you set Type to `Signal`, popout
+open, document untouched — driven 6/6 by them.
+
+✅ **They ran the control I did not**: `forceLinting` alone → **0 view updates**; `requestRelint` →
+**2**. That is the measurement that separates *"ran against stale data"* from *"never ran"*, and it
+is one call.
 
 ### 3d. Ruling 1 is answerable — I looked, and report it as an observation
 
@@ -187,10 +193,9 @@ declining predicate from dead wiring.
 
 ## 5. What to do next and why
 
-1. ⚠️ **FIX-016 §2's follow-up (§3c) — likely ALREADY BUILT by a peer; check before starting.**
-   Two faults, not one: republish the open node on parameter change **and** give the linter a
-   `needsRefresh`, or neither shows. A peer caught my mis-stated mechanism, built both, and reported
-   444/444 in `noodl-core-ui`. If it landed, this is done and item 2 is the next task.
+1. ✅ **DONE — FIX-016 §2's follow-up closed `6de1ae25`** (not by me; verified on the merged tree,
+   25 suites / 444). Both faults fixed together, which was the point: either alone leaves the
+   symptom unchanged. **Start at item 2.**
 2. **FIX-016 §1** — Richard now has the observation he needed (§3d). Ruling, then a small build.
 3. 🔴 **FIX-017's remaining half needs Richard** — AC1 and AC3 are both rulings (§6). **Do not build
    §D speculatively.**
