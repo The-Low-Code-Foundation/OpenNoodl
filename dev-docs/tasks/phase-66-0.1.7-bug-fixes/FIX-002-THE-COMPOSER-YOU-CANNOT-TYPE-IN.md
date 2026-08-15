@@ -153,3 +153,82 @@ assumption. See the phase handover.
 survived FIX-003's inversion because an explicit rule on the element beats the new `:root` default.
 **Measured harmless** — Chromium special-cases form controls, so a real drag still selected the
 composer's full contents and copied them. Recorded in FIX-003 so it is not rediscovered as a defect.
+
+---
+
+## ✅ RULED 2026-08-15 — criterion 2: **auto-grow to a max height**, capped in rows
+
+Session 12. The question session 11 left open — *should the composer auto-grow at all, and to what
+max height?* — was put to Richard and answered: **grow with the content up to a cap, then scroll.**
+
+**The cap is a row count, not a fraction of the panel.** A percentage cap behaves differently in a
+tall panel and a short one, which would make the composer's feel depend on where the user happened to
+drag a divider. A row count is the same everywhere. **Eight rows** for the Explain composer: tall
+enough that a typical follow-up is visible whole, short enough that the answer it is a follow-up *to*
+stays on screen while you write it.
+
+### Build record — 2026-08-15, session 12
+
+| File | Change |
+| --- | --- |
+| `packages/noodl-core-ui/src/components/inputs/TextArea/TextArea.autogrow.ts` | **New.** `autoGrowHeight({scrollHeight, lineHeight, verticalChrome, maxRows})` → `{height, overflowY}`. The whole sizing decision as a pure, import-free module — same reason `TextArea.keys.ts` exists: **both jest runners here are node-env, no jsdom**, so a spec cannot mount or measure. What a spec *can* grade is the decision. |
+| `packages/noodl-core-ui/src/components/inputs/TextArea/TextArea.tsx` | New opt-in `autoGrowMaxRows` prop; a `useLayoutEffect` that releases the height, measures, and applies; `setRefs` to forward `inputRef` rather than consume it; an `onMouseUp` that detects a manual resize. |
+| `packages/noodl-core-ui/src/components/inputs/TextArea/TextArea.module.scss` | `line-height: 20px` on `.Input`. |
+| `packages/noodl-editor/src/editor/src/views/panels/ExplainPanel/ExplainPanel.tsx` | `autoGrowMaxRows={8}`. |
+| `packages/noodl-core-ui/tests/inputs/textAreaAutoGrow.test.ts` | **New suite** (16 specs) — behavioural over `autoGrowHeight`, plus structural reads that the wiring exists. |
+
+Four decisions worth not re-deriving:
+
+- 🔴 **Opt-in, with no default.** `TextArea` has consumers well beyond the two AI composers, and this
+  file's own build record warns that changing it re-opens **BLD-010's driven acceptance** for the
+  Build composer. A prop nobody passes changes nothing, so the Build composer is **deliberately
+  untouched** and owes no re-drive. One structural spec asserts there is no default row count.
+- 🔴 **`line-height: 20px` is required, not cosmetic.** `getComputedStyle` reports the keyword
+  `normal` verbatim rather than resolving it to a number, so without an explicit line height the row
+  cap would have to guess a multiplier. This makes the cap exact: `20 × 8 + 16 = 176px`.
+- ⚠️ **The chrome is in the cap** because `.Input` is `box-sizing: border-box`. A cap of
+  `lineHeight × maxRows` alone would show seven rows and a sliver.
+- ⚠️ **`style.height = 'auto'` before measuring is what makes it shrink.** `scrollHeight` never
+  reports less than the height already set, so without that line the composer sticks at its
+  high-water mark forever — and every behavioural spec still passes. A structural spec holds it.
+- ⚠️ **Auto-grow and the resize corner both write `style.height`, so exactly one owns it.** A drag
+  landing on a height we did not set marks `userHasResized` and auto-grow stands down permanently.
+  The alternative is the composer snapping back on the next keystroke, which reads as the drag
+  having been ignored.
+
+🔴 **Driving note: `min-height` is 51px, which is already two lines.** A two-line message therefore
+shows no growth even when auto-grow works perfectly. **Drive it with four or more lines**, or the
+measurement is vacuous. (Owed to phase-66 session 9.)
+
+### DRIVEN — criterion 2, 2026-08-15 session 12 (fixture `fix003-drive`, port 9556)
+
+✅ **Criterion 2 PASSES — the composer grows to show a newline, and stops at eight rows.** Driven in
+the Explain composer, on a real answer generated in-session.
+
+| value | height | `overflowY` | `scrollHeight` |
+|---|---|---|---|
+| 1 line | 56px | `hidden` | 56 |
+| 4 lines | **176px** | `hidden` | 176 |
+| 6 lines | 176px | **`auto`** | 256 |
+| 20 lines | 176px | `auto` | 816 |
+| back to 1 line | **56px** | `hidden` | 56 |
+
+- **G1 growth** ✅ 56 → 176. ⚠️ Driven with ≥4 lines deliberately: `min-height: 51px` is already two
+  lines, so a two-line probe shows no growth *even when auto-grow works perfectly*.
+- **G2 cap** ✅ exactly **176px** = `20 × 8 + 16`, the arithmetic the spec asserts, confirmed against
+  a live `getComputedStyle`.
+- **G3 shrink** ✅ back to 56px — so `style.height = 'auto'` really is releasing before measuring.
+- ✅ **The boundary case was hit live.** At 4 lines `scrollHeight` was **exactly** the cap (176) and
+  `overflowY` stayed `hidden`; at 6 lines (256 > 176) it flipped to `auto`. That is the
+  strictly-greater rule in `autoGrowHeight`, observed rather than assumed.
+
+**G4 — the opt-in did not leak** ✅, and by a better signal than a height comparison. A non-opted-in
+`TextArea` consumer (the node comment field) *does* change height with content — 48px → 184px — via
+its own long-standing sizer, but its `style.height` and `style.overflowY` are both **`(none)`**. The
+auto-grow effect always sets *both* inline, so its fingerprint is simply absent. It also passed 184px,
+well beyond the 176px cap, confirming it is not governed by the new rule.
+
+⚠️ **Driving note for anyone repeating this:** the Explain composer only renders once an answer
+exists (`{state && …}`), so the drive has to generate one first — "Explain this node" in the panel.
+And `el.value = x` does not drive React; use the native `HTMLTextAreaElement.prototype.value` setter
+plus a bubbling `input` event, then allow ~450ms for the layout effect before measuring.

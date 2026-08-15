@@ -15,6 +15,7 @@ import { KeyCode, KeyMod } from '../../src/editor/src/utils/keyboard/KeyCode';
 import KeyboardHandler, {
   getKeyboardFocusKind,
   keyboardTargetOf,
+  selectionOwnsClipboardKey,
   KeyboardCommand
 } from '../../src/editor/src/utils/keyboardhandler';
 
@@ -479,6 +480,169 @@ describe('F21 KeyboardHandler focus predicate', () => {
 
       pressOn(input, 'd');
       expect(fired).toEqual([]);
+    });
+  });
+
+  // ------------------------------------- FIX-003: ⌘C belongs to the selection, not to focus --
+
+  /**
+   * 🔴 FIX-003 — ⌘C copied the selected canvas node instead of the selected text.
+   *
+   * With a node selected on the canvas and a sentence highlighted in the Explain answer or the
+   * Build thread, ⌘C put `{"nodes":[…],"connections":[],"comments":[]}` on the clipboard. The
+   * whole lane was about making that prose *selectable*, and it succeeded — the text selects
+   * fine, and `execCommand('copy')` on the same selection returns it correctly. What failed was
+   * purely which handler wins the key.
+   *
+   * ⚠️ Neither of the two existing scopes could have caught it. Panel prose lives in a plain
+   * `<div>`: not focusable, so highlighting it moves focus nowhere, the target resolves to
+   * `<body>`, and the kind is a perfectly correct `'none'`. `[data-keyboard-scope]` keys off the
+   * dispatched element and would have changed nothing either. The selection is a third thing.
+   *
+   * The negative controls are the point of this block. "No copy ran" is also what a broken
+   * keybinding looks like, so every suppression below is paired with something that must still
+   * fire.
+   */
+  describe('FIX-003 — a live text selection owns ⌘C', () => {
+    function selectContentsOf(element: HTMLElement) {
+      const range = document.createRange();
+      range.selectNodeContents(element);
+      const selection = window.getSelection();
+      selection.removeAllRanges();
+      selection.addRange(range);
+    }
+
+    /** The Explain answer / Build thread shape: prose in a plain, unfocusable div. */
+    function prose(text: string): HTMLElement {
+      const panel = document.createElement('div');
+      panel.textContent = text;
+      host.appendChild(panel);
+      return panel;
+    }
+
+    /** The node-graph shell, whose whole subtree is `user-select: none`. */
+    function canvas(text: string): HTMLElement {
+      const shell = document.createElement('div');
+      shell.className = 'nodegrapgeditor-bg nodegrapheditor-canvas';
+      shell.textContent = text;
+      host.appendChild(shell);
+      return shell;
+    }
+
+    function registerClipboard() {
+      register([
+        { handler: () => fired.push('copy-nodes'), keybinding: KeyMod.CtrlCmd | KeyCode.KEY_C },
+        { handler: () => fired.push('cut-nodes'), keybinding: KeyMod.CtrlCmd | KeyCode.KEY_X },
+        { handler: () => fired.push('paste-nodes'), keybinding: KeyMod.CtrlCmd | KeyCode.KEY_V }
+      ]);
+    }
+
+    afterEach(() => window.getSelection()?.removeAllRanges());
+
+    it('does NOT copy the canvas node while a sentence is highlighted in a panel', () => {
+      registerClipboard();
+      selectContentsOf(prose('A Group node lays its children out in a row.'));
+
+      press('c', { meta: true });
+      expect(fired).toEqual([]);
+    });
+
+    it('NEGATIVE CONTROL — with nothing highlighted, ⌘C still copies the node', () => {
+      // Without this the spec above is "nothing happened", which is also what a dead keybinding
+      // reports. This is the behaviour the fix must not cost.
+      registerClipboard();
+      window.getSelection().removeAllRanges();
+
+      press('c', { meta: true });
+      expect(fired).toEqual(['copy-nodes']);
+    });
+
+    it('NEGATIVE CONTROL — a collapsed caret is not a selection', () => {
+      registerClipboard();
+      const panel = prose('A Group node lays its children out in a row.');
+      const range = document.createRange();
+      range.setStart(panel.firstChild, 4);
+      range.collapse(true);
+      const selection = window.getSelection();
+      selection.removeAllRanges();
+      selection.addRange(range);
+
+      press('c', { meta: true });
+      expect(fired).toEqual(['copy-nodes']);
+    });
+
+    it('NEGATIVE CONTROL — a selection inside the canvas shell still copies nodes', () => {
+      // The boundary itself. That subtree is `user-select: none`, so a range landing in it is
+      // not prose the user is trying to copy — it must not disarm the canvas command.
+      registerClipboard();
+      selectContentsOf(canvas('Group'));
+
+      expect(selectionOwnsClipboardKey()).toBe(false);
+      press('c', { meta: true });
+      expect(fired).toEqual(['copy-nodes']);
+    });
+
+    it('NEGATIVE CONTROL — a whitespace-only selection still copies nodes', () => {
+      // ⚠️ Yielding the key to a selection with no text would turn a wrong copy into no copy at
+      // all: the native copy writes nothing and the canvas command never ran.
+      registerClipboard();
+      selectContentsOf(prose('   \n  '));
+
+      expect(selectionOwnsClipboardKey()).toBe(false);
+      press('c', { meta: true });
+      expect(fired).toEqual(['copy-nodes']);
+    });
+
+    it('does NOT cut nodes out of the graph while text is highlighted', () => {
+      // The destructive half. A native cut on read-only prose is a no-op, which is a far better
+      // outcome than the canvas silently removing nodes the user was not looking at.
+      registerClipboard();
+      selectContentsOf(prose('A Group node lays its children out in a row.'));
+
+      press('x', { meta: true });
+      expect(fired).toEqual([]);
+    });
+
+    it('still pastes onto the canvas while text is highlighted', () => {
+      // ⌘V is deliberately not in the set: prose is not editable, so a selection has no claim
+      // on paste and the canvas must keep it.
+      registerClipboard();
+      selectContentsOf(prose('A Group node lays its children out in a row.'));
+
+      press('v', { meta: true });
+      expect(fired).toEqual(['paste-nodes']);
+    });
+
+    it('leaves every non-clipboard shortcut alone while text is highlighted', () => {
+      // The guard is scoped to two keys. If highlighting an answer disabled ⌘F or Backspace,
+      // this fix would have re-created F21 on a different trigger.
+      register([
+        { handler: () => fired.push('search'), keybinding: KeyMod.CtrlCmd | KeyCode.KEY_F },
+        { handler: () => fired.push('delete-node'), keybinding: KeyCode.Backspace },
+        { handler: () => fired.push('undo'), keybinding: KeyMod.CtrlCmd | KeyCode.KEY_Z }
+      ]);
+      selectContentsOf(prose('A Group node lays its children out in a row.'));
+
+      press('f', { meta: true });
+      press('Backspace');
+      press('z', { meta: true });
+      expect(fired).toEqual(['search', 'delete-node', 'undo']);
+    });
+
+    it('resolves a selection dragged across two panels to prose, not to the canvas', () => {
+      // `commonAncestorContainer` rather than `anchorNode`: a range that starts in one panel and
+      // ends in another still has to answer "where does this selection live".
+      const first = prose('The Explain answer says this.');
+      const second = prose('And the Build thread says this.');
+
+      const range = document.createRange();
+      range.setStart(first.firstChild, 0);
+      range.setEnd(second.firstChild, 10);
+      const selection = window.getSelection();
+      selection.removeAllRanges();
+      selection.addRange(range);
+
+      expect(selectionOwnsClipboardKey()).toBe(true);
     });
   });
 });

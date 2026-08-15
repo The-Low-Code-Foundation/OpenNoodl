@@ -313,12 +313,19 @@ export function ExplainPanel() {
               broken. A textarea wraps, scrolls and grows instead. Enter sends
               and Shift+Enter inserts a newline (the 2026-08-14 ruling — same
               keys as the Build composer), and the Send button is the
-              first mouse-only route to submitting this panel has had. */}
+              first mouse-only route to submitting this panel has had.
+
+              `autoGrowMaxRows` is criterion 2's ruling (2026-08-15): the
+              composer grows with the text up to eight rows and scrolls beyond.
+              Eight because this panel is a sidebar — tall enough that a typical
+              follow-up is visible whole, short enough that the answer it is a
+              follow-up *to* stays on screen while you write it. */}
           <VStack UNSAFE_style={{ gap: 8 }}>
             <TextArea
               value={question}
               placeholder="Ask a follow-up…"
               isDisabled={state.busy}
+              autoGrowMaxRows={8}
               onChange={(event) => setQuestion(event.target.value)}
               onEnter={askFollowUp}
             />

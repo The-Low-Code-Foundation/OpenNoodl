@@ -26,6 +26,11 @@ $_x-padding: 10px;
   padding: 8px $_x-padding;
   width: 100%;
   font-size: 14px;
+  // FIX-002 — an explicit line height, not `normal`. `autoGrowMaxRows` turns a
+  // row count into a pixel cap, and `getComputedStyle` reports the keyword
+  // `normal` verbatim rather than resolving it — so without this the cap would
+  // have to guess a multiplier. This is the number that makes the cap exact.
+  line-height: 20px;
   font-family: var(--font-family);
   color: var(--theme-color-fg-default);
   border: 0;

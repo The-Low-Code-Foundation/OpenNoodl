@@ -71,6 +71,64 @@ const CODE_EDITOR_SELECTOR = '.cm-editor';
  */
 const OWN_SURFACE_SELECTOR = '[data-keyboard-scope]';
 
+/**
+ * 🔴 FIX-003 — the node-graph shell, which is where a "selection" means nodes rather than text.
+ *
+ * `style.css` already declares this subtree `user-select: none` (the FIX-003 opt-out list), so it
+ * is the existing, documented boundary between the two kinds of selection rather than a new one
+ * invented here. Everything outside it is prose the user can highlight.
+ */
+const CANVAS_SELECTOR = '.nodegrapheditor-canvas';
+
+/**
+ * 🔴 FIX-003 — ⌘C's contract is about the **selection**, not about focus, and that is the one
+ * question `getKeyboardFocusKind` cannot answer.
+ *
+ * The defect: with a node selected on the canvas and a sentence highlighted in the Explain answer
+ * or the Build thread, ⌘C put `{"nodes":[…],"connections":[],"comments":[]}` on the clipboard.
+ * Every panel's prose lives in a plain `<div>`, which is not focusable — so highlighting text
+ * moves focus nowhere, `keyboardTargetOf` resolves `<body>`, the kind is `'none'`, and the canvas
+ * copy command runs exactly as designed. The predicate was working; it was being asked the wrong
+ * question.
+ *
+ * ⚠️ This is also why `[data-keyboard-scope]` cannot fix it. That scope keys off the element the
+ * keystroke was *dispatched at*, and a text selection dispatches nothing — marking the panels as
+ * their own surface would change nothing at all.
+ *
+ * Clicking an Explain citation selects the cited node, so "click citation → read → highlight the
+ * sentence → ⌘C" reproduces it every time. It is the most natural flow in the feature.
+ *
+ * ⚠️ `toString().trim()` is load-bearing, not tidiness. If the selection yields no text, the
+ * native copy would put nothing on the clipboard — so yielding the key there would turn a wrong
+ * copy into no copy at all, which is worse. The key is only given away when there is something
+ * real to give it to.
+ */
+export function selectionOwnsClipboardKey(): boolean {
+  const selection = typeof window.getSelection === 'function' ? window.getSelection() : null;
+  if (!selection || selection.rangeCount === 0 || selection.isCollapsed) return false;
+  if (selection.toString().trim().length === 0) return false;
+
+  const container = selection.getRangeAt(0).commonAncestorContainer;
+  // A text node cannot answer `closest`; its parent is the element the range lives in. The
+  // *common ancestor* rather than the anchor, so a selection dragged across two panels is still
+  // resolved to the subtree that actually contains it.
+  const element = (
+    container.nodeType === Node.ELEMENT_NODE ? container : container.parentElement
+  ) as HTMLElement | null;
+  if (!element || typeof element.closest !== 'function') return false;
+
+  return !element.closest(CANVAS_SELECTOR);
+}
+
+/**
+ * ⌘C and ⌘X only. ⌘V is deliberately absent: prose is not editable, so a text selection has no
+ * claim on paste, and the canvas must keep pasting while an answer happens to be highlighted.
+ *
+ * ⌘X is included even though a native cut on read-only prose is a no-op — the alternative is the
+ * canvas *cutting nodes out of the graph* while the user believes they are cutting text.
+ */
+const CLIPBOARD_KEYBINDINGS = new Set([KeyMod.CtrlCmd | KeyCode.KEY_C, KeyMod.CtrlCmd | KeyCode.KEY_X]);
+
 /** Roles whose keyboard contract includes Space and/or Enter as activation. */
 const ACTIVATABLE_ROLES = new Set([
   'button',
@@ -235,6 +293,11 @@ export default class KeyboardHandler {
       // other shortcut runs, including Escape (which closes the popup the
       // button lives in rather than merely blurring the button).
       if (keystrokeBelongsToFocus(event, focusKind)) return;
+
+      // FIX-003: a live text selection outside the canvas owns ⌘C/⌘X, whatever holds focus.
+      // Returning without running the command leaves the event uncancelled, so Chromium's own
+      // copy proceeds and the highlighted text lands on the clipboard.
+      if (CLIPBOARD_KEYBINDINGS.has(code) && selectionOwnsClipboardKey()) return;
 
       this.executeCommandMatchingKeyEvent(event, 'down');
     };

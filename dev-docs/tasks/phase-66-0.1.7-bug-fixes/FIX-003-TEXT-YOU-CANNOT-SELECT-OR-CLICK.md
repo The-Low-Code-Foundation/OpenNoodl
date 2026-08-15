@@ -324,3 +324,131 @@ block anything** — Chromium special-cases form controls, and a real drag acros
 selected all 29 characters of the probe string, which `execCommand('copy')` then copied exactly. So
 this is a latent wrong-ness, not a live defect: harmless where it sits, and misleading the moment
 anyone reads it as evidence of intent or moves the rule to a non-form-control element.
+
+---
+
+## ✅ RULED 2026-08-15 — two rulings, and the ⌘C fix built
+
+Session 12. Both rulings session 11 raised were put to Richard and answered.
+
+### Ruling 1 — ⌘C precedence: **a selection-aware clipboard guard**
+
+> A live text selection outside the canvas owns ⌘C/⌘X, whatever holds focus.
+
+Chosen over the alternative shape, *scope the canvas commands to the canvas*, for a reason the code
+settles rather than taste: scoping needs a focus model the canvas does not have. `keyboardhandler.ts`
+documents (F21, and again in `keyboardTargetOf`) that **a keystroke with nothing focused targets
+`<body>` and every canvas shortcut is supposed to run then**. The canvas is not focusable, so a
+scope-root test would resolve `<body>` and disable ⌫, ⌘F and the arrows on a freshly loaded editor —
+re-creating the exact F21 defect the predicate exists to prevent.
+
+🔴 **And the third option — mark the panels `[data-keyboard-scope]` — cannot work at all.** That
+scope keys off the element the keystroke was *dispatched at*, and a text selection in a plain `<div>`
+dispatches nothing and moves focus nowhere. It would have changed nothing while looking like a fix.
+This is why a lane entirely about making prose selectable never touched the copy path: **the
+selection is a third thing, and neither existing scope can see it.**
+
+### Ruling 2 — `linkify`: **stays OFF**
+
+A bare URL in AI output does **not** become a clickable link, on any surface. Criterion 1 therefore
+holds for URLs the model writes as markdown links (`[text](url)`, `<https://…>`) and its wording is
+narrowed to say so. The reasoning: enabling `linkify` widens the clickable-anchor surface in
+untrusted model output, on the surface this lane just hardened — a security-relevant widening bought
+for a formatting convenience.
+
+### Build record — 2026-08-15, session 12
+
+| File | Change |
+| --- | --- |
+| `packages/noodl-editor/src/editor/src/utils/keyboardhandler.ts` | **The fix.** New exported `selectionOwnsClipboardKey()`; new `CANVAS_SELECTOR` and `CLIPBOARD_KEYBINDINGS`; one guard line in `onKeyDown`, after the focus checks and before `executeCommandMatchingKeyEvent`. |
+| `packages/noodl-editor/tests/utils/keyboardhandler.spec.ts` | +9 specs in a new `FIX-003 — a live text selection owns ⌘C` block. Five of the nine are negative controls. |
+
+**The rule.** A selection claims ⌘C/⌘X when it is non-collapsed, yields non-whitespace text, and its
+`commonAncestorContainer` is **not** inside `.nodegrapheditor-canvas`.
+
+Three details that are load-bearing rather than defensive padding:
+
+- ✅ **`.nodegrapheditor-canvas` is not a new boundary** — `style.css` already declares that subtree
+  `user-select: none` in FIX-003's own opt-out list. The guard reuses the boundary this lane
+  established instead of inventing a second one that could drift from it.
+- 🔴 **`toString().trim()` is the difference between a fix and a worse bug.** If the selection yields
+  no text, the native copy writes nothing — so yielding the key there turns *a wrong copy* into *no
+  copy at all*. The key is only given away when there is something real to give it to.
+- 🔴 **⌘V is deliberately not in the set.** Prose is not editable, so a selection has no claim on
+  paste, and the canvas must keep pasting while an answer happens to be highlighted. ⌘X **is**
+  included: a native cut on read-only prose is a no-op, which is a far better outcome than the canvas
+  silently cutting nodes out of the graph while the user believes they are cutting text.
+- ⚠️ **Neither existing scope was disturbed.** Blockly's `own-surface` check and the 200 ms
+  `lastBlocklyTabCloseTime` guard both sit earlier in the same handler and are untouched; the new
+  condition runs after them, and only for two keycodes.
+
+### ⚠️ The thing that will make this fix look broken when it works
+
+🔴 **After the guard lands, ⌘C over CDP copies NOTHING — and that is correct, not a regression.**
+Electron serves the real ⌘C from the application menu (`main.js:759` → macOS `copy:` selector), and
+**CDP cannot fire a native menu accelerator**. Before the fix you see the *wrong* content because the
+editor's own JS keybinding runs; suppress that and nothing runs over CDP at all.
+
+✅ **The control that grades it** is `document.execCommand('copy')` on the same selection, with the
+clipboard cleared to a sentinel first:
+
+| | key | exec |
+|---|---|---|
+| before the fix | ✓ **wrong content** (node JSON) | ✓ the text |
+| after the fix | ✗ *(harness limit)* | ✓ the text ← **this is the pass** |
+| a real regression | ✗ | ✗ |
+
+### DRIVEN — criterion 2, 2026-08-15 session 12 (fixture `fix003-drive`, port 9556)
+
+✅ **Criterion 2 PASSES.** The consequences were written before driving (scratchpad
+`CONSEQUENCES.md`), including the negative controls, because "⌘C did not copy node JSON" is also
+what a completely dead shortcut looks like.
+
+| # | Consequence | Result |
+|---|---|---|
+| **C1** | node selected + 54-char live selection → ⌘C does **not** write node JSON | ✅ clipboard stayed `__CLEARED__`, `putNodeJson: false` |
+| **C2** | ⚠️ *control* — same node still selected, selection cleared → ⌘C **still** copies node JSON | ✅ `{"nodes":[{"id":"b6c1f4bb…","type":"Router"…` |
+| **C3** | *control* — `execCommand('copy')` on the C1 selection returns the text | ✅ `"Kiln & Co. — Small-batch ceramics, coffee & home goods"`, `matchesSelectedText: true` |
+| **C5** | a selection whose element stops being laid out must not keep suppressing ⌘C | ✅ range survives (`ranges: 1`) but `len` → 0, and ⌘C copied node JSON |
+
+🔴 **C2 is the load-bearing control, and not for the reason it was written.** Over CDP a suppressed
+⌘C and a ⌘C that never arrived are indistinguishable — both leave the clipboard untouched. C2 fires
+**the same key, on the same connection, in the same harness, with only the selection differing**,
+and it *does* copy. That is what proves the key reaches the editor's JS handler at all, and
+therefore that C1's silence is the guard acting rather than the native-accelerator limit.
+
+🔴 **C5 vindicated `toString().trim()` for a reason the build record under-stated.** The build record
+justified it as "no text ⇒ the native copy writes nothing ⇒ don't give the key away". The drive shows
+something sharper: when a panel unmounts, **the range object survives** — `isCollapsed` is still
+`false` and `rangeCount` is still `1` — and only `toString()` goes empty. A guard keyed on
+`isCollapsed` alone would therefore have suppressed ⌘C **indefinitely** after the first panel swap.
+That is the dead-shortcut bug, and it is strictly worse to diagnose than the one being fixed.
+
+### 🔴 What the drive found about the repro itself — the defect is NOT reachable the way it was described
+
+Measured, and it corrects the session 11 write-up:
+
+- Clicking a canvas node **swaps the left panel to Properties**, which unmounts the Explain/Build
+  thread — its prose measures `0×0` and `Selection.toString()` returns `''` for it.
+- Opening a panel from the rail **deselects the canvas node** (`selector.nodes` → 0).
+- So *via the canvas* the two halves of the stated repro — "a node selected on canvas **and** a live
+  text selection in a panel" — are **mutually exclusive**.
+
+⚠️ **The defect is real; the description of how to reach it was wrong.** Two routes do produce both
+states at once:
+
+1. **The Properties panel is itself the repro**, and it is the most natural one — Properties is on
+   screen *because* a node is selected, and it carries selectable prose (the page description, which
+   is what C1 above actually copied). Read a node's details, highlight a line, ⌘C.
+2. **An Explain citation**, which selects the cited node without leaving the panel.
+
+⚠️ **A trap that cost this session two invalid runs**: an element can be present, `user-select: text`
+and `visibility: visible` while measuring `0×0`, and `Selection.toString()` is `''` for it. **16 of
+17** first-pass prose candidates were exactly that. A probe that picks one reports an empty selection
+and **silently exonerates the bug**. Require a non-zero `getBoundingClientRect()` *and* verify
+`String(getSelection()).length > 0` at pick time.
+
+⚠️ **And tag the prose AFTER selecting the node, not before** — selecting a node re-renders
+Properties and React discards the tagged element, so a tag applied first is gone by the time it is
+used. The re-render is also **async**: a read in the same eval sees the pre-render DOM and reports
+the panel still open. Both of those produced confident, wrong readings before they were caught.
