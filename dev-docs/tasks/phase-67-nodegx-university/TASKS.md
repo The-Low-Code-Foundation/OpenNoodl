@@ -26,7 +26,7 @@ editor-outbound sync between them. No task opens an inbound connection to the us
 | [UNI-004](UNI-004-RFPS-AND-COACHING-WITHOUT-A-GATE.md) ⭐ | the RFP board + coaching offers/booking/payment, spam-shielded relay | platform | **1** | L | ✅ **unblocked.** D7 → **Paddle**, coaching only; D8 → **double-blind relay** (also the spam shield). Build so payment can be absent — the email-only v0 stands |
 | [UNI-005](UNI-005-AN-ORG-IS-A-ROSTER-AND-A-SHELF.md) | org workspaces: contact-us provisioning, GitHub org hookup, roster, shared prefab/template shelf | platform | 2 | L | ✅ **unblocked.** D6 → GitHub org **and** invite list, **one** roster; D10 → pseudonymous handles · builds on **phase 51 / COL-004** |
 | [UNI-006](UNI-006-ASSIGN-GRADE-REVIEW.md) | org teaching: push lessons/assignments to members, view graded results, human grading override | platform + bridge | 2 | M/L | ✅ **unblocked.** D10 ✅, D12 struck · no live co-editing (ECO-001 parked) · never branch on membership source |
-| [UNI-007](UNI-007-THE-LESSON-BEAMED-INTO-THE-EDITOR.md) ⭐ | intake → personalised path → lesson project pulled into the editor's Learning folder → graded via MCP tooling | all three | 2 | L | 🟡 **SLICE 1 BUILT 2026-08-14** — the static two-vocabulary check + both grading engines, `models/lessonverify.ts` + `models/lessongrading.ts`, 48 tests in `test:main`. **No MCP adapter, no Learning folder, no intake.** D5 honoured (editor process only) |
+| [UNI-007](UNI-007-THE-LESSON-BEAMED-INTO-THE-EDITOR.md) ⭐ | intake → personalised path → lesson project pulled into the editor's Learning folder → graded via MCP tooling | all three | 2 | L | 🟡 **SLICES 1–3 BUILT** (08-14, 08-15) — the static check + both grading engines + engine 2's MCP adapter + **the Learning folder register and D5's launcher section**, 108 tests in `test:main`, 21 in `noodl-mcp`. ✅ **Criteria 2, 3 and 4 met**; criterion 2 **driven in the real editor**. 🔴 **NOTHING CALLS THE GRADING RUNNER** — it is not even in the renderer bundle. "Check my work" is the next slice and the last editor one. No intake (platform work) |
 | [UNI-008](UNI-008-ONLINE-IN-ONE-CLICK-OFF-IN-FORTY-FIVE-DAYS.md) | push-to-share hosting: subdomain, 15-day life, manual restarts, 45-day cap, then the self-host off-ramp | platform + editor | 3 | **L+** | 🔴 **D9 ruled *against* the recommendation** — a record-capped backend is in. **Five new obligations**, effort raised, still deliberately last. [RULINGS.md](RULINGS.md) D9 |
 | [UNI-009](UNI-009-THE-COMMUNITY-HOME.md) | the site itself: tutorials/tips, meetup replays, Discourse forum SSO | platform | **1 (minimal cut)** | S/M | ✅ **unblocked.** D2 → it **is** NodeGX Community; the tutorials index is one card on it, not the point of it |
 | [UNI-010](UNI-010-A-TUTORIAL-YOUR-OWN-CLAUDE-CAN-WRITE.md) | the user's own Claude authors a verified lesson into the Learning folder — an experiment with pre-registered kill/keep criteria | editor + MCP | experiment | M | ✅ **unblocked.** D5 → lands in the same section **with no account**; verifier must cover **F1–F6**, and 🔴 **reject `Array`/`Object` as ambiguous** rather than substitute |
@@ -74,6 +74,16 @@ Cheapest possible test of the whole lesson concept.
 standing ops/abuse burden, and the 15/45-day lifecycle (R7) needs the account system mature.
 Nothing else depends on it.
 
+## What follows this phase
+
+**Phase 68 — LearnBook** ([../phase-68-learnbook/](../phase-68-learnbook/README.md), scoped
+2026-08-14, ruling D13): the coaching *delivery* layer — programs, modules, threaded exchange,
+media, assignments the coach validates — for the sessions UNI-004 sells. It consumes UNI-001
+(accounts), UNI-003 (profiles), UNI-004 (the offer/booking it delivers on), UNI-005 (the roster)
+and UNI-006's assignment state machine, so it starts only once those exist. Three phase-67 tasks
+carry a D13 note so they are built reusable rather than forked later: UNI-004 (bookings
+referenceable), UNI-005 (one roster), UNI-006 (grader can be a runner *or* a person).
+
 ## Two things to check before starting any task here
 
 1. ✅ **The old collab scoping (R6) — DONE 2026-08-14.** Located, and it is *two* documents that
@@ -107,6 +117,13 @@ Nothing else depends on it.
      merged tasks `open`; the curriculum glossary warned "do not author until phase 60 publishes"
      three days after it published. Both corrected in place. **Grep git and read source before
      believing a status column — including these.**
+   - 🔴 **AMENDED AGAIN 2026-08-15 — the shipped check had a hole and the format had a sink.**
+     A path written `%Group` (component name omitted) contained *nothing the vocabulary check
+     looked at* and passed in silence, while never matching at runtime — the same silent failure by
+     a different route. And a lesson body naming `javascript:` compiled into a live anchor inside a
+     node-integrated renderer. Both closed (`unmatchable-node-path`, `unsafe-url`). **Both were
+     found by building the check's caller, not by reading the check.** [RULINGS.md](RULINGS.md)
+     "The second amendment".
    - ⚠️ **Two owed items phase 67 never carried**, both from CURRICULUM-DESIGN §11: **curriculum
      hosting** (§9.3, now partly a D2/D9 question) and the **tutor lesson-context overlay** (§9.1,
      *"required before L2 testing"*) — UNI-007 runs straight into the second and does not mention it.

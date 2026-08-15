@@ -146,6 +146,11 @@ and opens *everything* on the platform.
 
 ## What is deliberately NOT in this phase
 
+- **The coaching delivery space (LearnBook)** — D13, ruled 2026-08-14: programs, modules, threaded
+  coach↔coachee exchange, rich media, assignments-with-validation. It is
+  **[phase 68](../phase-68-learnbook/README.md)**, sequenced after Tier 1 + UNI-004, built on the
+  D1 stack (not NodeGX — the reasons are in [RULINGS.md](RULINGS.md) D13, do not re-litigate).
+  UNI-004 keeps only the transaction: offer → booking → payment.
 - **The web-light browser editor** (R10 — parked, a marketing question for later).
 - **Merch fulfilment** (the Backendless $1-cap trick is endorsed, but redemption waits for earners — D3).
 - **Certification** ("NodeGX Certified" via graded builds) — designed for, not built; it slots

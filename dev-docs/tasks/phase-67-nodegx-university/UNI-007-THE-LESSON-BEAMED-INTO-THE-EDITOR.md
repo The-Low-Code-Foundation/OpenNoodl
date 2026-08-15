@@ -3,17 +3,98 @@
 **Surface:** all three · **Tier 2 (the differentiator)** · **Effort:** L · ✅ **UNBLOCKED — D5 ruled
 2026-08-14**; ~~D12~~ 🔴 **struck 2026-08-14 — already ruled**
 
-> ## 🟡 Slices 1–2 of the grading runner are BUILT (2026-08-14, third + fifth sessions)
+> ## 🟡 Slices 1–3 are BUILT (2026-08-14 third + fifth sessions, 2026-08-15 sixth)
 >
-> The first code of phase 67. No platform, no account, no UI.
+> No platform, no account. Slice 3 adds the first UI, **driven in the real editor**.
 >
 > | Shipped | Where |
 > |---|---|
 > | **The static two-vocabulary check** — the format contract's own gate, and the one blocker of §11's three that survived the fact-check | [`models/lessonverify.ts`](../../../packages/noodl-editor/src/editor/src/models/lessonverify.ts) |
 > | **The grading runner — both engines, kept apart structurally** | [`models/lessongrading.ts`](../../../packages/noodl-editor/src/editor/src/models/lessongrading.ts) |
-> | 52 tests, `tests-unit/uni-007/` | jest / **`test:main`**, not the electron suite — see below |
 > | ✅ **Engine 2's MCP adapter** (slice 2) — validity via `validate_project`'s own call, "did it draw" via the render harness | [`noodl-mcp/src/lessons/wholeSolutionGrader.ts`](../../../packages/noodl-mcp/src/lessons/wholeSolutionGrader.ts) |
+> | ✅ **The Learning folder register** (slice 3a) — install / reset / progress / grade, D5's guarantees made structural | [`models/learningfolder.ts`](../../../packages/noodl-editor/src/editor/src/models/learningfolder.ts) |
+> | ✅ **The launcher's Learning section** (slice 3b) — cards, install route, reset | [`noodl-core-ui/.../components/LearningSection/`](../../../packages/noodl-core-ui/src/preview/launcher/Launcher/components/LearningSection/LearningSection.tsx) + [`projectsview.learningstate.ts`](../../../packages/noodl-editor/src/editor/src/views/projectsview.learningstate.ts) + `ProjectsPage.tsx` |
+> | **131 tests**, `tests-unit/uni-007/` | jest / **`test:main`**, not the electron suite — see below |
 > | 21 tests, against **real recorded renders** | `noodl-mcp` jest — ⚠️ **not in `test:ci`**, run `npx jest` in that package |
+>
+> ### Slice 3 — the Learning folder, and the hole its gate exposed (sixth session, `e3aec6b6` + `a89ec153`)
+>
+> **The register is a SECOND store, not a flag on `recentProjects`.** A boolean on
+> `LocalProjectsModel`'s entries would have put lesson projects into the recents list, where
+> `renameProject` and `removeProject` already exist and are already wired to the card menu — so
+> every one of those sites would need a guard, and a rule enforced at N sites is broken at N+1.
+> A separate register makes D5 **structural**: there is no rename, there is no delete, and a lesson
+> cannot appear in the normal picker flow because it is not in the list that flow reads.
+> 🔴 The same reasoning governs *opening*: the card deliberately does **not** call
+> `LocalProjectsModel.openProjectFromFolder`, which would add the lesson to recents and undo all of
+> it. Proved in the live app — recents did not grow.
+>
+> **The verifier is the install gate.** A lesson written in the prose vocabulary can never be
+> completed, and install is the only moment refusing it costs nothing. Warnings do not block: a
+> lesson that will age badly is still one that can be finished today.
+>
+> 🔴 **Reset checks the source BEFORE it deletes anything.** Delete-then-fail loses the learner's
+> work *and* the lesson — strictly worse than the state reset was pressed to repair, from the one
+> button someone presses when they are already stuck.
+>
+> #### 🔴 The hole in the shipped check, found by building its caller
+>
+> `typeNamesInPath` correctly drops the first path segment, because `findNodeWithPath` reads it as a
+> **component name**. Nobody had followed that through: a path written `%Group`, component name
+> omitted, therefore contains *nothing the two-vocabulary check looks at* and passed in silence —
+> while at runtime the evaluator hunts for a component literally called `"%Group"` and never finds
+> one. Same for a bare `App:Group` segment, which reaches `nodes[parseFloat('Group')]` and indexes
+> with `NaN`.
+>
+> Both end in exactly the outcome the vocabulary rule exists to prevent: the step never completes
+> and the learner is told they have not done what they have done. **A gate that catches one spelling
+> of never-matches and not the other is not a gate.** Now `unmatchable-node-path`, shape checked
+> before vocabulary, and both fired against a hand-written bundle in the live editor.
+>
+> ⚠️ **What the static check still cannot catch, and this is a boundary not a bug:** *depth*. The
+> drive's own lesson said `/#__page__/Home:%Text` where the `Text` sits under a `Page` node, so the
+> condition is well-formed, well-spelt and still false. The verifier has no project — it is run
+> before the project it grades exists — so wrong-but-plausible depth is engine 1's job to reveal,
+> not the static check's.
+>
+> #### 🔴 The security hole this slice OPENED, and closed (`6d6d067e`)
+>
+> Compiled step HTML goes to `innerHTML` ([`lessonlayer2.ts:201`](../../../packages/noodl-editor/src/editor/src/views/lessonlayer2.ts))
+> and `dangerouslySetInnerHTML` ([`LessonItem.jsx:117`](../../../packages/noodl-editor/src/editor/src/views/lessons/LessonItem.jsx))
+> **inside the editor's own renderer, which has node integration.** A lesson body containing
+> `[click me](javascript:require("child_process").exec("…"))` compiled into a live anchor:
+> arbitrary code with filesystem access, one click away. `media.src` reached the emitted
+> `<img>`/`<video>` the same way.
+>
+> `escapeAttr` never stopped it and was never meant to — it escapes quotes and angle brackets, and
+> `javascript:alert(1)` contains neither.
+>
+> ⚠️ **The sink is old; the exposure is this task's.** Until slice 3 the only producer of lesson
+> content was `LessonTemplatesModel`'s hosted index — one first-party endpoint. The Learning folder
+> installs from **any folder on disk**, and UNI-010's premise is that the user's own model authors
+> one. Closed with a **scheme allow-list**, not more escaping: `safeLessonUrl()` allows http, https,
+> mailto and relative paths for links, plus `data:image/` for media. Two layers — the verifier
+> reports `unsafe-url` so the author is told, the compiler neutralises at the sink so the legacy
+> `lesson.html` reader (which never passes through the verifier) is covered too.
+>
+> **Two spellings worth carrying to any other URL sink:** `JaVaScRiPt:` and `java<TAB>script:` both
+> work in a browser and both defeat `startsWith('javascript:')`. Strip control characters *before*
+> reading the scheme. And note the general lesson: **escaping and scheme allow-listing are different
+> defences**, and an escaper would not have caught this one.
+>
+> #### Provenance is the caller's word, never the manifest's
+>
+> A bundle that *declared* itself `curated` would be believed, and the one producer this format
+> explicitly invites is an agent on the user's own machine. So provenance is an install argument,
+> and there is now a fourth value — **`local`**, "installed from a folder you pointed us at", which
+> says nothing about who wrote it. UNI-010's route will pass `local-ai` because it will know.
+>
+> #### The empty state reverses an earlier instinct, deliberately
+>
+> "Never show an empty shelf" is right for a shelf only a sign-in can fill — it would be an
+> advertisement. It is **wrong** once a lesson installs from a folder with no account, because then
+> the empty state is the only place that route is discoverable. So the section renders on the
+> presence of an install handler, not on the count, and its copy names no platform and no account.
 >
 > **What the two modules actually do.**
 >
@@ -84,16 +165,24 @@
 >
 > **🔴 What is NOT built, so nobody reads this as more than it is:**
 >
-> - 🔴 **Nothing calls the adapter.** It is a library module with tests, not a wired feature: the
->   callers are the Learning folder's "check my work" button and UNI-010's sidecar, and neither
->   exists. It is deliberately **not** an MCP tool — a `grade_lesson` tool needs a `LessonEvalContext`
->   built from a project on disk, which nothing builds yet.
-> - **No Learning folder, no launcher section, no card, no UI of any kind.** D5's editor-written
->   section is untouched. Criterion 2 is not started.
+> - 🔴 **NOTHING CALLS THE GRADING RUNNER. This is the next slice and it is the only one left in
+>   the editor.** Proved rather than assumed: `__webpack_require__` in the running renderer answers
+>   *"Cannot find module `./src/editor/src/models/lessongrading.ts`"* — the runner is **not in the
+>   bundle at all**, because no editor module imports it. The Learning folder gave the *register* a
+>   caller; the runner still has none. "Check my work" is that caller.
+> - 🔴 **Nothing writes a grade back.** `recordGrade` works and is driven, but only a test harness
+>   has ever called it. Same missing button.
+> - **Nothing calls the MCP adapter either**, and it is deliberately not an MCP tool — a
+>   `grade_lesson` tool needs a `LessonEvalContext` built from a project on disk, which nothing
+>   builds yet. ⚠️ And `noodl-editor` has **no `@noodl/mcp` dependency**, so the editor's button
+>   cannot call that adapter: expect a second, small **editor-side** adapter. One port, one adapter
+>   per process that owns the machinery.
 > - **No intake, no pathing, no projection cache.** Criterion 1 is not started — it is platform work.
-> - **Criterion 4 (the format round-trips) is half-proved.** A hand-authored bundle verifies and
->   grades with no platform involved, and the repo's own worked-lesson fixture passes the new check.
->   The *install* half needs the Learning folder.
+> - ⚠️ **A lesson's title and its project's name can disagree**, and nothing reconciles them. The
+>   card showed "State on a page" while the editor titlebar showed the project's own name. The open
+>   path sets `project.name` only when the project has none, on purpose — forcing it would write
+>   into the learner's project on open. The right fix is for the lesson layer to show the lesson
+>   title, not for the opener to rename anything.
 
 > **D5 — a visible, platform-managed Learning section** ([RULINGS.md](RULINGS.md)). R9's two options
 > resolve in favour of the visible one, because visible progress motivates. **"Immutable" means

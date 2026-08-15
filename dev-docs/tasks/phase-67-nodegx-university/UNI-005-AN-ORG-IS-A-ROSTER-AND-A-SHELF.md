@@ -14,7 +14,9 @@
 > Both feed **one** roster table. Most state schools have no GitHub org, and schools are the
 > population D10 was ruled for — a GitHub-only identity would exclude the users the privacy ruling
 > exists to serve. 🔴 **Membership source is a column, not a second roster**: roles, assignment and
-> grading (UNI-006) read the roster and must never branch on where a member came from.
+> grading (UNI-006) read the roster and must never branch on where a member came from. **Phase 68's
+> coaching groups (D13) also consume this roster** — a coaching group is a use of it, never a
+> second group system.
 >
 > **D10** — org-owned pseudonymous accounts; the school is the data controller and **the
 > handle→pupil mapping stays with the org**, or we hold child PII by another route.

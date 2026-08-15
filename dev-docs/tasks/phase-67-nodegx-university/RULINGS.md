@@ -7,7 +7,8 @@ points here.
 **Status: the queue is empty.** D1 and D10 were ruled 2026-08-14 (first session, written up in
 [PRIOR-ART-RECONCILIATION.md](PRIOR-ART-RECONCILIATION.md)); **D2–D9 and D11 were ruled 2026-08-14
 (second session)** and are recorded below. R6's clarification and the UNI-010 verifier question are
-in the reconciliation document.
+in the reconciliation document. **D13 was ruled 2026-08-14 (fourth session)** — the coaching
+delivery layer (LearnBook) is [phase 68](../phase-68-learnbook/README.md), on the platform stack.
 
 > 🔴 **Do not re-litigate any of these.** If one turns out to be wrong, amend it here with a date
 > and a reason — do not leave two live documents in disagreement. That failure mode is what
@@ -31,6 +32,7 @@ in the reconciliation document.
 | **D10** | Minors + GDPR | **Org-owned pseudonymous accounts**; school is the data controller | 08-14 |
 | **D11** | Usage-analytics toggle | **In the v1 consent screen, default off**; never shown to org-minor accounts | 08-14 |
 | ~~D12~~ | ~~LEARN-002's D1–D6~~ | 🔴 **STRUCK** — a false premise; all six answered 2026-08-09 | 08-14 |
+| **D13** | Coaching delivery (LearnBook) | **Phase 68, platform repo, D1 stack — not NodeGX**; reuses UNI-005's roster and UNI-006's state machine; NodeGX rebuild is a later tranche | 08-14 |
 
 ---
 
@@ -251,6 +253,58 @@ every account that already exists, which costs more and reads worse.
 
 ---
 
+## D13 — coaching delivery (LearnBook) is phase 68, on the platform stack
+
+**Ruled 2026-08-14 (fourth session): the coaching delivery layer — Richard's LearnBook concept:
+programs of modules and threaded coach↔coachee exchanges, rich media, visibility control,
+assignments the coach must validate — is a phase of its own,
+[phase 68](../phase-68-learnbook/README.md), sequenced after this phase's Tier 1 and UNI-004. It is
+built in the platform repo on the D1 stack (Next.js + Postgres + Drizzle), not in NodeGX.**
+
+**Why it exists at all:** D7 made coaching sessions the only sellable at launch, and UNI-004 stops
+at the transaction — offer → booking → confirmation. What happens after someone books is currently
+"an email and a video call URL". LearnBook is the delivery half of the one revenue rail this phase
+has. Richard ran the original LearnBook for real coaching and it worked; this is a rebuild on the
+Community spine, offered to anyone coaching or mentoring through the platform, not only to him
+(the R3 posture).
+
+**Why not NodeGX — recorded so it is not re-litigated:**
+
+1. **D1 already made this call for the platform itself.** LearnBook wants the platform's accounts,
+   roster, relay and Postgres; building it in NodeGX means duplicating that spine or wiring to it
+   awkwardly.
+2. **D9's backend is a record-capped demo tier**, deliberately capped as an abuse shield. It is not
+   production storage for years of coaching threads and video — LearnBook-in-NodeGX would need a
+   real backend anyway, making "made with NodeGX" half-true. Half-true is worse than absent.
+3. **The feature list sits exactly on the node library's gaps** — WYSIWYG with image upload and a
+   table constructor, MediaRecorder audio/video, file attachment, threaded comments, PWA push. None
+   exists as a node today; building the app and the missing node library simultaneously is the 10×
+   cost case, on a revenue rail that has to actually work.
+
+**The dogfooding is inverted, not discarded.** The gaps LearnBook exposes are exactly the prefabs
+the ecosystem needs. Phase 68's recorded *second act* — deliberately not in its v1 — rebuilds the
+coachee-facing frontend as a flagship NodeGX export against the platform API, and every missing
+capability becomes a published prefab on the UNI-005 shelf, earning UNI-002 Building badges. That
+turns the demo into ecosystem assets instead of a tax on the coaching launch.
+
+**Consequences:**
+
+- **UNI-004 builds the transaction only.** Its "Not in v1" now names the delivery space explicitly;
+  build the booking flow so a phase-68 space can attach to a booking later without rework.
+- **UNI-005's roster is consumed.** Phase 68's coaching groups are a *use* of the one roster table,
+  never a second group system.
+- **UNI-006's assignment state machine is reused with a human grader.** Assignment → submission →
+  validation-before-complete → feedback is the same machine; the coach replaces the grading runner.
+  Do not fork it.
+- 🔴 **Vocabulary: phase 68's tree is Program → Module → Thread.** "Lesson" stays reserved for
+  UNI-007's editor-lesson format. Two products sharing the word "lesson" is the two-vocabulary
+  failure this phase spent a day cleaning up — the rename is free today.
+- **D10 reaches it.** Coaching spaces put an adult in private threaded exchange with org-minor
+  accounts; phase 68 opens with that surface **off for org-minor accounts** until its safeguarding
+  ruling (E3 in its queue) says otherwise — the same default-off posture as D9 obligation 5.
+
+---
+
 ## Fact-check — the three curriculum blockers (2026-08-14)
 
 [TASKS.md](TASKS.md) and the reconciliation both point UNI-007 at
@@ -323,6 +377,35 @@ lesson. [LESSON-FORMAT.md §3](../phase-17-noodl-learn/LESSON-FORMAT.md) explici
 `Button` and `Text Input` among the nodes that *"use the same string for both"*. **Corrected in place
 2026-08-14.** A lesson author following that sentence would have written a step that can never
 complete, for the single most-taught state node in the curriculum.
+
+#### The second amendment (2026-08-15, sixth session) — the gate had a hole, and the format had a sink
+
+Both found by **building the caller** rather than by re-reading the check. Full write-up in
+[UNI-007](UNI-007-THE-LESSON-BEAMED-INTO-THE-EDITOR.md); the short version, because both change what
+"the two-vocabulary rule is closed" means:
+
+**1. `unmatchable-node-path`.** `typeNamesInPath` correctly drops the first path segment, because
+`findNodeWithPath` reads it as a **component name**. Nobody followed that through: a path written
+`%Group`, component name omitted, contains *nothing the vocabulary check looks at*, so it passed in
+silence — while at runtime the evaluator hunts for a component literally called `"%Group"` and never
+finds one. A bare `App:Group` segment does the same, reaching `nodes[parseFloat('Group')]`.
+Both end in **exactly the outcome Blocker 1 exists to prevent**. 🔴 A gate that catches one spelling
+of never-matches and not the other is not a gate.
+
+⚠️ **What the static check still cannot catch, and this is a boundary not a bug:** *depth*. A
+condition can be well-formed, correctly spelt and still false because the node sits one level
+deeper. The verifier has no project — it runs before the project it grades exists.
+
+**2. `unsafe-url`, and it was a live security hole.** Compiled step HTML reaches `innerHTML` and
+`dangerouslySetInnerHTML` inside the editor's renderer, which has **node integration**. A lesson body
+naming `javascript:` was arbitrary code with filesystem access. The sink is old; the *exposure* is
+phase 67's, because the Learning folder made third-party bundles installable and UNI-010 makes a
+model a producer. Closed with a scheme allow-list — **escaping would not have caught it**, since the
+payload is a scheme rather than markup.
+
+🔴 **The method, stated once because it is now the third time it has paid:** the first amendment came
+from re-deriving instead of re-verifying. This one came from **building the caller**. A check read on
+its own terms looks complete; a check with something depending on it shows you what it does not do.
 
 ⚠️ **A side finding, recorded so it is not re-discovered:** `suggestedNodes` (LESSON-FORMAT §3's step
 field) is **dead** — `LessonModel.getCurrentSuggestedNodes()` has no callers anywhere in the editor.

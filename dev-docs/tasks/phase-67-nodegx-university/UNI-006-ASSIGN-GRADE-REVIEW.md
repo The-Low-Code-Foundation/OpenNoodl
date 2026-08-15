@@ -25,6 +25,11 @@ assignments** to members, **views graded results**, and can **grade manually ins
 — the human override is a first-class path, not an escape hatch. This is the surface schools
 actually buy consulting around, and the twin of the "corporate onboarding" offer.
 
+> **D13 (2026-08-14):** phase 68's coaching assignments (a coach must validate a coachee's reply
+> before anything marks complete) **reuse this task's state machine with a human grader** —
+> assignment → submission → validation → feedback is the same machine. Design the model so the
+> grader can be a runner *or* a person from day one; phase 68 must not fork it.
+
 ## Scope (v1)
 
 - **Assignment model**: an org admin assigns a lesson (from the curated catalogue or the org's

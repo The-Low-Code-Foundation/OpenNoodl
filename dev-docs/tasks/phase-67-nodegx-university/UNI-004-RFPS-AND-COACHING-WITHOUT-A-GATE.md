@@ -13,6 +13,10 @@
 >   revealed until both accept. 🔴 That is **one mechanism doing two jobs** — it is also the spam
 >   shield this task already asks for, so do not build a second. The address must not leak in a
 >   header, a reply-to, or a bounce.
+> - **D13 (2026-08-14) — this task builds the transaction only.** The coaching *delivery* space
+>   (LearnBook: programs, threads, assignments, media — [phase 68](../phase-68-learnbook/README.md))
+>   is a separate phase after this one. Build the booking flow so a phase-68 program can attach to
+>   a booking later without rework — a booking row should be referenceable, nothing more.
 
 ## Premise
 
@@ -50,4 +54,4 @@ UNI-003's professional flags. This is the phase's first real revenue rail, and i
 ## Not in v1
 
 Platform take-rate, escrow/milestones, dev reviews/ratings, featured listings, the certification
-badge on offers.
+badge on offers, **the coaching delivery space** (programs/modules/threads — phase 68 per D13).
