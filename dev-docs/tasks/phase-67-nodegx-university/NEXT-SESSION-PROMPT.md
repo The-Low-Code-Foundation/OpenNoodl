@@ -33,8 +33,8 @@ one is wrong, amend `RULINGS.md` with a date and a reason. The four to keep in y
 | 3a | **the Learning folder register** | `.../models/learningfolder.ts` |
 | 3b | **the launcher's Learning section** | `noodl-core-ui/.../components/LearningSection/` + `.../views/projectsview.learningstate.ts` + `ProjectsPage.tsx` |
 
-**108 tests** in `noodl-editor/tests-unit/uni-007/` (jest / `test:main`), 21 in `noodl-mcp`.
-Commits: `15763dd7`, `b9664822`, **`e3aec6b6`**, **`a89ec153`**, **`6d6d067e`**.
+**110 tests** in `noodl-editor/tests-unit/uni-007/` (jest / `test:main`), 21 in `noodl-mcp`.
+Commits: `15763dd7`, `b9664822`, **`e3aec6b6`**, **`a89ec153`**, **`6d6d067e`**, **`d2e4f91c`**.
 
 **Criteria 2, 3 and 4 are met.** Criterion 2 was **driven in the real editor** — install refused a
 bad bundle, install accepted a good one, the card appeared with no reload, reset re-pulled and
@@ -129,7 +129,7 @@ Three commits on `cline-dev`, all gated.
 | Gate | Result |
 |---|---|
 | `npx tsc -p tsconfig.json --noEmit` (editor) | ✅ exit 0 |
-| `npm run test:main` | ✅ **193 suites / 2988 tests, zero failures** (was 190/2932) |
+| `npm run test:main` | ✅ **193 suites / 2990 tests, zero failures** (was 190/2932) |
 | `npm run lint:ci` | ✅ 877 vs a 3916 baseline — **unmoved** |
 | `npx eslint` (every touched editor file) | ✅ 0 |
 | **live drive** of the Learning section | ✅ install-refuse, install, card, grade, reset, open, recents-unchanged |
