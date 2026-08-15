@@ -49,6 +49,7 @@ import {
 import type { Turn, TurnActivity, TurnOutcome } from '@noodl-models/AiAssistant/thread';
 
 import { FeedbackType } from '@noodl-constants/FeedbackType';
+import { AiMarkdown } from '@noodl-core-ui/components/ai/AiMarkdown';
 import { Icon, IconName, IconSize } from '@noodl-core-ui/components/common/Icon';
 import { PrimaryButton, PrimaryButtonVariant } from '@noodl-core-ui/components/inputs/PrimaryButton';
 import { TextArea } from '@noodl-core-ui/components/inputs/TextArea';
@@ -78,12 +79,12 @@ export function ActivityRow({ activity }: { activity: AuthoringActivity }) {
         </div>
       );
     case 'assistant':
+      // FIX-003: what the model wrote, rendered as it wrote it — bold, lists,
+      // code, links (selectable, and routed through the shared link policy).
+      // This is the phase-38 AIB-006 behaviour the plain `<Text>` regressed.
       return (
         <div className={css['Assistant']}>
-          <Text textType={TextType.Default}>
-            {activity.text}
-            {activity.streaming ? '…' : ''}
-          </Text>
+          <AiMarkdown content={activity.text + (activity.streaming ? '…' : '')} />
         </div>
       );
     case 'reasoning':
@@ -107,9 +108,10 @@ export function ActivityRow({ activity }: { activity: AuthoringActivity }) {
     case 'question':
       // BLD-008 produces these; the treatment is decided here so that task adds
       // an author rather than a fifth opinion about how a question should look.
+      // Model-authored, so it gets the same markdown treatment as 'assistant'.
       return (
         <div className={css['Question']}>
-          <Text textType={TextType.Default}>{activity.text}</Text>
+          <AiMarkdown content={activity.text} />
         </div>
       );
     case 'submit':
@@ -222,45 +224,56 @@ function OutcomeSummary({ outcome }: { outcome: TurnOutcome }) {
        * `outcomeCard.ts` for why that made a pure module unavoidable rather than
        * optional.
        */
-      return <Text textType={TextType.Default}>{outcomeSentence(stagedComponentCard(outcome))}</Text>;
+      // FIX-003: `AiMarkdown` throughout this component — the sentences are
+      // code-built, but they quote model-chosen names, and every outcome row
+      // should be selectable and render the same way the turn above it did.
+      return <AiMarkdown content={outcomeSentence(stagedComponentCard(outcome))} />;
     case 'accepted-component':
       // BLD-017 F3 — the receipt: this one reached the project.
       return (
         <div className={css['Receipt']}>
           <Icon icon={IconName.Check} variant={FeedbackType.Success} size={IconSize.Small} />
-          <Text textType={TextType.Default}>
-            {outcome.mode === 'update'
-              ? `Updated ${outcome.legacyName} — one undo restores the previous version.`
-              : `Added ${outcome.legacyName} to your project — undo removes it.`}
-          </Text>
+          <AiMarkdown
+            content={
+              outcome.mode === 'update'
+                ? `Updated ${outcome.legacyName} — one undo restores the previous version.`
+                : `Added ${outcome.legacyName} to your project — undo removes it.`
+            }
+          />
         </div>
       );
     case 'plan':
       return (
-        <Text textType={TextType.Default}>
-          A plan of {outcome.plan.operationCount} operation{outcome.plan.operationCount === 1 ? '' : 's'}:{' '}
-          {outcome.plan.targets.join(', ')}.
-        </Text>
+        <AiMarkdown
+          content={
+            `A plan of ${outcome.plan.operationCount} operation${outcome.plan.operationCount === 1 ? '' : 's'}: ` +
+            `${outcome.plan.targets.join(', ')}.`
+          }
+        />
       );
     case 'plan-applied':
       // The other outcome that reached the project, so the same receipt.
       return (
         <div className={css['Receipt']}>
           <Icon icon={IconName.Check} variant={FeedbackType.Success} size={IconSize.Small} />
-          <Text textType={TextType.Default}>
-            Applied — {outcome.componentCount} component{outcome.componentCount === 1 ? '' : 's'} changed
-            {outcome.docs.length > 0 ? `, ${outcome.docs.join(' and ')} written` : ''}
-            {outcome.backendName ? `, backend "${outcome.backendName}" running` : ''}.
-          </Text>
+          <AiMarkdown
+            content={
+              `Applied — ${outcome.componentCount} component${outcome.componentCount === 1 ? '' : 's'} changed` +
+              `${outcome.docs.length > 0 ? `, ${outcome.docs.join(' and ')} written` : ''}` +
+              `${outcome.backendName ? `, backend "${outcome.backendName}" running` : ''}.`
+            }
+          />
         </div>
       );
     case 'docs-drafts':
       return (
-        <Text textType={TextType.Default}>
-          Drafted {outcome.authored} document{outcome.authored === 1 ? '' : 's'}
-          {outcome.declined > 0 ? `, left ${outcome.declined} alone` : ''}
-          {outcome.errors > 0 ? `, ${outcome.errors} failed` : ''}.
-        </Text>
+        <AiMarkdown
+          content={
+            `Drafted ${outcome.authored} document${outcome.authored === 1 ? '' : 's'}` +
+            `${outcome.declined > 0 ? `, left ${outcome.declined} alone` : ''}` +
+            `${outcome.errors > 0 ? `, ${outcome.errors} failed` : ''}.`
+          }
+        />
       );
     case 'note':
       return (
@@ -270,7 +283,7 @@ function OutcomeSummary({ outcome }: { outcome: TurnOutcome }) {
             variant={outcome.tone === 'danger' ? FeedbackType.Danger : FeedbackType.Notice}
             size={IconSize.Small}
           />
-          <Text textType={TextType.Default}>{outcome.text}</Text>
+          <AiMarkdown content={outcome.text} />
         </div>
       );
   }

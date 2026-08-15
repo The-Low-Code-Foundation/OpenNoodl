@@ -50,6 +50,12 @@ module.exports = {
     // fails here, loudly, which is the boundary being enforced.
     '^@noodl-versioning$': '<rootDir>/src/editor/src/versioning/index.ts',
     '^@noodl-versioning/(.*)$': '<rootDir>/src/editor/src/versioning/$1',
-    '^@noodl-models/(.*)$': '<rootDir>/src/editor/src/models/$1'
+    '^@noodl-models/(.*)$': '<rootDir>/src/editor/src/models/$1',
+    // FIX-003: the AI link policy moved to its neutral home in core-ui
+    // (`components/ai/AiMarkdown/linkActions`). Mapping the alias does NOT make
+    // core-ui's components importable here — anything that names React or a
+    // `.module.scss` still fails, loudly. What it makes reachable is the
+    // import-free policy module the update-dialog spec grades.
+    '^@noodl-core-ui/(.*)$': '<rootDir>/../noodl-core-ui/src/$1'
   }
 };

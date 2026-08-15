@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { platform } from '@noodl/platform';
 
+import { linkActionFor } from '@noodl-core-ui/components/ai/AiMarkdown/linkActions';
 import { Markdown } from '@noodl-core-ui/components/common/Markdown';
 import { Checkbox, CheckboxVariant } from '@noodl-core-ui/components/inputs/Checkbox';
 import { PrimaryButton, PrimaryButtonSize, PrimaryButtonVariant } from '@noodl-core-ui/components/inputs/PrimaryButton';
@@ -10,7 +11,6 @@ import { Box } from '@noodl-core-ui/components/layout/Box';
 import { VStack } from '@noodl-core-ui/components/layout/Stack';
 import { Text, TextType } from '@noodl-core-ui/components/typography/Text';
 
-import { linkActionFor } from './releaseLinks';
 import { formatBytes, formatRemaining, UpdateState, UpdateVersion } from './useUpdateState';
 
 import css from './UpdateDialog.module.scss';

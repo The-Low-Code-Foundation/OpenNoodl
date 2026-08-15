@@ -19,6 +19,9 @@
   border-radius: var(--radius-lg);
   background-color: var(--theme-color-bg-1);
   box-shadow: var(--shadow-popup);
+  // FIX-003 opt-out: a rapid click/arrow-key list — double- and shift-clicks
+  // must pick cards, not select their titles.
+  user-select: none;
 }
 
 .Tabs {

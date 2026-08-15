@@ -13,6 +13,11 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
+
+  // FIX-003 opt-out: the bench's resize grips and the chrome strip are gesture
+  // surfaces; a drag over them must not highlight the caption or size read-out.
+  // (The preview itself is a <webview> — its content is unaffected.)
+  user-select: none;
 }
 
 /* BEN-004 — the preview surface's own strip. Present in both modes and in the
