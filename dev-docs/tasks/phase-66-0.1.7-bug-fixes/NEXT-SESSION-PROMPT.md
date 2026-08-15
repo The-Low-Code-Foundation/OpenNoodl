@@ -255,10 +255,16 @@ commit produces a DOM identical to a broken panel.
   and offers no warning on the by-pid alternative.** Both readings are now known to be incomplete:
   the by-pid route invokes the watchdog's sweep with `protectAncestors: false`. **The doc should say
   the shields are what make either safe.**
-- 🟢 **The memory index still has no owner.** `MEMORY.md` gains bytes from every session and loses
-  them from none. ✅ The safe lever is **promote-then-collapse on a closed phase**, and the standing
-  traps must be **promoted out first** — an unlinked memory survives on disk and is invisible in
-  practice.
+- 🟢 **The memory index still has no owner, and s26 is part of the problem — stated plainly rather
+  than as a general lament.** `MEMORY.md` was **19.97 KB** at the start of this session and is
+  **21.3 KB** now against a 17.1 KB target; I added three pointers and tightened only my own lines.
+  The size hook fired **five times** and I deferred it every time. ⚠️ **My reason is the same one
+  that makes it nobody's task:** a 4 KB cut is a judgement about what is still worth knowing, the
+  file was modified on disk by peers *mid-session*, and a rewrite would clobber them. ✅ The safe
+  lever remains **promote-then-collapse on a closed phase**, with the standing traps **promoted out
+  first** — an unlinked memory survives on disk and is invisible in practice. 🔴 **This needs a
+  decision from you, not another session's restraint**: every session so far has correctly declined
+  and correctly added.
 - 🟢 **A lockfile written by `start.ts` at *intent*** — the ~75s window in which no process check can
   be correct is a hole no filter can close.
 
