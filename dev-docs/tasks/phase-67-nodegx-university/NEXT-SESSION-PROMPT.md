@@ -144,18 +144,34 @@ Phase 66 merged FIX-002 + FIX-003 to `cline-dev` as **`4bb692a8`**, on top of th
 `481454be`, and started `test:ci` on that settled tree. Because `test:ci` webpacks from the working
 tree, **that run covers this session's six commits as well as their two lanes.**
 
-**So the first job is to find out, not to assume.** Read `tests/test-results.json` and **check its
-mtime** — a pre-run mtime of Aug 14 23:19 was recorded, so anything older is last night's leftover.
-Then:
+🔴 **The first of those runs graded NOTHING, and it is the most convincing false pass this repo has
+produced.** Recorded in full because every heuristic we had failed:
 
-- **If it came back at the floor** — `totalCount` 2779, **6 failures, and the *names* are** 4 ×
-  `AIX-006 style vocabulary` + 2 × `AI model registry` — the gate is discharged for both sessions and
-  you can go straight to the "check my work" slice.
-- **If it did not**, re-run it yourself on a quiet tree before believing anything. A count of 6 with
-  a *different* name is a regression wearing the baseline's clothes. ⚠️ And if a failing spec name
-  greps to **nothing** in `packages/noodl-editor/tests/`, you measured a **stale bundle**, not the
-  checkout — that is a different failure from the seed-order `BEN-001` cluster and re-running does
+> `test:ci` exited **0**. `test-results.json` said `totalCount: 2779`, `failedCount: 6`, **the exact
+> six floor names**, `seed 81235`. Count, names *and* seed all agreed it was a clean baseline run.
+> **The mtime was still Aug 14 23:19** — it was the previous run's file, untouched. The suite never
+> started, because `test:ci` is `webpack && run-electron-tests` and **the webpack step failed**
+> (a `{/* comment */}` placed between `return (` and the root element parses as an object literal).
+> Fixed as `fb936f6d`.
+
+⚠️ **So "compare the names, not the count" is not sufficient advice, and neither is the seed.** Those
+are checks on the file's *content*, and the content was a real, correct, previous measurement — of
+the floor, which is exactly the thing most likely to be sitting there. 🔴 **Only freshness dissents.**
+
+**Before believing any `test:ci` number: delete `packages/noodl-editor/tests/test-results.json`
+first, or `stat` it and note the mtime. Exit 0 with an unchanged mtime is what a broken BUILD looks
+like here — not what a pass looks like.** Then, and only then:
+
+- **Floor** = `totalCount` 2779, 6 failures, names 4 × `AIX-006 style vocabulary` + 2 ×
+  `AI model registry`. A count of 6 with a *different* name is a regression wearing the baseline's
+  clothes.
+- If a failing spec name greps to **nothing** in `packages/noodl-editor/tests/`, you measured a
+  **stale bundle** — a different failure from the seed-order `BEN-001` cluster, and re-running does
   not fix it.
+
+⚠️ **And the reason nothing else caught it is worth carrying:** a **`.jsx`** file is read by no
+typecheck (`tsc` skips it) and by no jest run unless a spec imports it. `test:ci`'s webpack is its
+only gate. After editing a `.jsx`, a green `test:main` and a clean `tsc` prove nothing at all.
 
 ✅ **The `user-select` question is closed.** FIX-003's opt-out originally enumerated the *projects*
 grid only, which would have left the two card grids disagreeing about text selection. Phase 66 added
