@@ -166,12 +166,17 @@ and a broken build both exit 0 and write no file, and **npm exits non-zero on a 
   ⚠️ **Re-list immediately before sending a teardown** — a peer measured the roster moving in *both*
   directions inside two minutes, so the list you opened with is stale by the time you close.
 - 🔴 **`dev:stop` kills by *checkout***, so here it kills a peer's editor and Richard's MCP servers.
-  **Kill your launcher pid instead** — a peer did exactly that on 2026-08-16 and verified 0 dev-stack
-  processes after, with a positive control on the same pipeline so the zero was not a dead instrument.
+  🔴 **Killing your launcher pid is NOT the safe alternative** — `dev-watchdog.js:44` runs the *same*
+  sweep with **`protectAncestors: false`**. **A clean teardown is the shields, not the command.**
+  ⚠️ **This corrects an earlier version of this file**, which told you to kill by pid on a peer's
+  2026-08-16 teardown; that peer retracted it themselves (`db8efa74`). Their `ps`-showed-zero
+  measurement is still sound — it just measures *their stack died*, not *nothing else did*.
 - ✅ **`test:main` is safe beside a `test:ci` or a live editor** — plain Node. Only another
   `test:main` collides.
-- ✅ **The render harness is safe beside a live editor stack** — it spawns its own Chrome on its own
-  port and does not take 9222. Measured across this whole run beside a peer's `--dev` stack.
+- 🟡 **The render harness ran ~25 minutes beside a peer's live `--dev` stack on 2026-08-16 with no
+  observed collision** — it spawns its own Chrome and does not take 9222. ⚠️ **Stated as the null it
+  is:** there was no arm in which a collision *would* have shown, so this is "not seen to collide
+  once", not "is safe". Announce it anyway.
 - Long-lived `noodl-mcp.cjs` Electron processes are **Richard's MCP servers** — never kill.
 
 ## Things the next person will otherwise re-derive
