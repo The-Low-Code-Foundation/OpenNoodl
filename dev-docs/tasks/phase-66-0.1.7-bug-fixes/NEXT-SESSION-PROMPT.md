@@ -98,8 +98,19 @@ Paired, re-read after an intervening popout open/close, identical both times, sc
 Source names the gate: `simplejavascript.ts:792-793` builds the `outtype-` port only inside
 `if (scriptOutputs !== undefined && scriptOutputs.length > 0)`.
 
-✅ **This explains both previously conflicting readings** — s23's node declared `scriptOutputs`,
-s24's did not. That is the mark of a cause rather than a story.
+🔴 **CORRECTION C4 — I wrote that this "explains both previously conflicting readings". It does not,
+and that sentence is C1's error committed one step further on.** It is the *tidiest* story, and
+nothing forbids writing it down, but s24's null was never varied against anything. **Three live
+candidates, and this drive separated none of them:**
+
+1. their fixture never declared `scriptOutputs`;
+2. **the runtime axis I withdrew in C1** — declared-but-no-live-preview is untested, and s24's null
+   sits in exactly that cell;
+3. a **fixture artefact** — `fromJSON` + `addRoot` writes the *editor's* model, while
+   `_managePortsForNode` is registered on a **runtime's** graphModel.
+
+✅ What is settled is only that **declaration is necessary**, which is the ruling-relevant fact and
+enough to unblock §1. (Peer's catch, `c6ce10fd`.)
 
 🔴 **CORRECTION C1 — "…and NOT on a live viewer" is unsupported, and I broadcast it.** My preview was
 live in **both** arms, so the viewer never varied and **cannot have been tested**. The source puts it

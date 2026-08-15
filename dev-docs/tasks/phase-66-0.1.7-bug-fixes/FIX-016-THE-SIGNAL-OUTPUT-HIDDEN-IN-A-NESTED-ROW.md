@@ -555,3 +555,18 @@ panel will render — but the panel is trustworthy.** ⚠️ My broadcast wordin
 directions, not usable even as a conservative bound") is **withdrawn**; it went to ~20 recipients and
 several filed it verbatim.
 
+
+**C4 — and the fourth is the same error one step on: "this explains s24's null" is attribution by
+elimination.** I wrote that the declaration gate explains both previously conflicting readings.
+**It is the tidiest story and the drive separated none of the candidates.** s24's null has three:
+(1) their fixture never declared `scriptOutputs`; (2) **the runtime axis withdrawn in C1** —
+declared-but-no-preview is untested and their null sits in exactly that cell; (3) a **fixture
+artefact**, since `fromJSON` + `addRoot` writes the *editor's* model while `_managePortsForNode` is
+registered on a **runtime's** graphModel.
+
+✅ **Settled: declaration is NECESSARY** — enough to unblock §1's ruling. ⚠️ **Not settled: why s24
+saw what they saw.** (Peer's catch, `c6ce10fd`.)
+
+🔴 **Candidate (3) is the cheapest and highest-value next probe, and it reaches past this task:** if
+`fromJSON` + `addRoot` never reaches the runtime's graphModel, **every phase-66 drive built that way
+has been measuring a slightly different object than a real user's node.**
