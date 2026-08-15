@@ -308,6 +308,34 @@ the direct evidence that the About page is never visited.
 whose second page is broken, so it is not only F4 that inherits it — `render_report` as a tool has
 the same blind spot. **It belongs with phase 69's CN-001**, which is rewriting the same file.
 
+> ## ✅ CORROBORATED at a lower layer, and my stated mechanism was the wrong half
+>
+> The phase-69 session took this observation and **measured it rather than relaying it**, at the
+> HTTP layer instead of the render-count layer (`07b7ce7a`): `render-from-disk.js` serves `/` and
+> **404s every other route**. Reproduced here on this run's own L4 fixture rather than taken on
+> trust:
+>
+> ```
+> GET /        -> 200      # the app boots, router lands on startPage
+> GET /home    -> 404      # ...and /home is the START page's own urlPath
+> GET /about   -> 404      # the page this lesson exists to teach
+> ```
+>
+> 🔴 **`/home` 404ing is the part neither of us said first, and it moves the finding.** I wrote the
+> mechanism as *"the reachability walk in `render-report.js` is a `startPage` walk"* — that is the
+> **reporting** half, and it is true. The **serving** half is stricter: the harness answers exactly
+> **one path, `/`**, and the SPA then boots to whatever the Router names. So it is not that the
+> harness renders one *route*; it is that it can reach **no named route at all**.
+>
+> ⚠️ **The consequence is bigger than "a second page goes unrendered".** Anything a lesson teaches
+> about `urlPath` — the Page node's own URL, route parameters, deep links — is **unmeasurable by
+> this instrument**, including on the start page. F4 cannot see it, and neither can `render_report`.
+>
+> ✅ Worth recording as method: I was one relay away from filing the HTTP result as corroboration of
+> my own reading. Running the three `curl`s myself is what turned up `/home`, which contradicted the
+> mechanism I had already written down. **A corroboration you did not run is a conclusion, and it
+> arrives with its scope dropped.**
+>
 > 🔴 **And CN-001 landed while this run was in progress (see §3.3's amendment) without closing it.**
 > `ed28a03c`'s own message is *"the render harness was blind to kits — and called it 'Rendered
 > clean'"*: **the same sentence, about a different blindness.** The blind control above was re-run

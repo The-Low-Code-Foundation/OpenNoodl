@@ -232,3 +232,26 @@ control on every route it claims to cover, not only on the route last fixed.**
 **Why it matters beyond `render_report`:** UNI-010's F4 is graded through this chain, so a lesson
 that *teaches building a second page* has its entire subject unscored — measured end to end, a
 lesson bundle with a dead placeholder on the page it teaches scores F1–F4 all pass and is written.
+
+### 🔴 Sharpened 2026-08-16 — it is not one *route*, it is one *path*
+
+The section above stated the mechanism as a `startPage` walk in `render-report.js`. That is the
+**reporting** half. Measured at the HTTP layer by the phase-69 session (`07b7ce7a`) and reproduced
+independently on phase 67's two-page fixture, the **serving** half is stricter — `render-from-disk.js`
+answers exactly one path:
+
+```
+GET /        -> 200      # the app boots and the router lands on startPage
+GET /home    -> 404      # ...and /home is the START page's own urlPath
+GET /about   -> 404      # the second page
+```
+
+🔴 **`/home` 404s.** So the harness cannot reach *any* named route, including the start page's own.
+⚠️ **Therefore anything driven by `urlPath` is unmeasurable by this instrument** — a Page node's URL,
+route parameters, deep links — on every page, not only on the ones after the first. A project can be
+correct about all of it and be reported `Rendered clean` on the strength of `/`.
+
+✅ **Provenance, because it decides what the evidence is worth:** the render-count observation is
+phase 67's (UNI-010 criterion 3, §8.2); the HTTP measurement is the phase-69 session's; the `/home`
+reproduction is phase 67's again. Two instruments, two sessions, one conclusion — which is why it is
+worth more than either half. An earlier relay of this attributed it to a third session by mistake.
