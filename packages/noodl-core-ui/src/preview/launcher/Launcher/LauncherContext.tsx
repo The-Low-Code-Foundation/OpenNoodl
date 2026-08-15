@@ -9,6 +9,7 @@
 import React, { createContext, useContext, ReactNode } from 'react';
 
 import type { ConnectAgentResult, ConnectAgentState } from './components/ConnectAgentCard';
+import type { LauncherLearningData } from './components/LearningSection';
 import { LauncherProjectData } from './components/LauncherProjectCard';
 import { NoodlGitHubRepo, UseGitHubReposReturn } from './hooks/useGitHubRepos';
 
@@ -69,6 +70,26 @@ export interface LauncherContextValue {
   lessons?: LauncherLessonData[];
   onStartLesson?: (lessonId: string) => void;
   onRestartLesson?: (lessonId: string) => void;
+
+  /**
+   * UNI-007 / D5 — the Learning section beside recent projects.
+   *
+   * ⚠️ Not the same thing as `lessons` above, and the two must not be merged.
+   * `lessons` is the hosted *catalogue* the removed Learn tab browsed: things
+   * you could start. This is the set of lessons **installed on this machine**,
+   * each with its own progress, grade and feedback, written by the editor
+   * process into its own register (`models/learningfolder.ts`). One is a shop
+   * window and the other is a shelf.
+   *
+   * Absent in Storybook. An empty list still renders the section when
+   * `onInstallLearningLesson` is supplied, because that is where the
+   * account-free install route is discoverable; with neither, nothing renders.
+   */
+  learning?: LauncherLearningData[];
+  onOpenLearningLesson?: (lessonId: string) => void;
+  onResetLearningLesson?: (lessonId: string) => void;
+  /** Install a bundle from a folder — the account-free route D5 and UNI-010 both rely on. */
+  onInstallLearningLesson?: () => void;
 
   // GitHub OAuth integration (optional - for Storybook compatibility)
   githubUser?: GitHubUser | null;

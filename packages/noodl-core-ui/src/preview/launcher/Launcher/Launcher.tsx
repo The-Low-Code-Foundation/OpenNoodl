@@ -15,6 +15,7 @@ import {
   CloudSyncType,
   LauncherProjectData
 } from '@noodl-core-ui/preview/launcher/Launcher/components/LauncherProjectCard';
+import type { LauncherLearningData } from '@noodl-core-ui/preview/launcher/Launcher/components/LearningSection';
 import { NoodlGitHubRepo, UseGitHubReposReturn } from '@noodl-core-ui/preview/launcher/Launcher/hooks/useGitHubRepos';
 import { usePersistentTab } from '@noodl-core-ui/preview/launcher/Launcher/hooks/usePersistentTab';
 import {
@@ -57,6 +58,12 @@ export interface LauncherProps {
   lessons?: LauncherLessonData[];
   onStartLesson?: (lessonId: string) => void;
   onRestartLesson?: (lessonId: string) => void;
+
+  /** UNI-007 / D5 — lessons installed on this machine. See LauncherContext for why this is not `lessons`. */
+  learning?: LauncherLearningData[];
+  onOpenLearningLesson?: (lessonId: string) => void;
+  onResetLearningLesson?: (lessonId: string) => void;
+  onInstallLearningLesson?: () => void;
 
   // Project organization service (optional - for Storybook compatibility)
   projectOrganizationService?: any;
@@ -221,6 +228,10 @@ export function Launcher({
   lessons,
   onStartLesson,
   onRestartLesson,
+  learning,
+  onOpenLearningLesson,
+  onResetLearningLesson,
+  onInstallLearningLesson,
   projectOrganizationService,
   githubUser,
   githubIsAuthenticated,
@@ -361,6 +372,10 @@ export function Launcher({
         lessons,
         onStartLesson,
         onRestartLesson,
+        learning,
+        onOpenLearningLesson,
+        onResetLearningLesson,
+        onInstallLearningLesson,
         githubUser,
         githubIsAuthenticated,
         githubIsConnecting,

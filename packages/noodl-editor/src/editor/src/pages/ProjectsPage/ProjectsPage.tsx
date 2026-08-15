@@ -27,6 +27,7 @@ import {
   NoodlGitHubRepo,
   GitHubClientInterface
 } from '@noodl-core-ui/preview/launcher/Launcher/hooks/useGitHubRepos';
+import type { LauncherLearningData } from '@noodl-core-ui/preview/launcher/Launcher/components/LearningSection';
 import { Launcher } from '@noodl-core-ui/preview/launcher/Launcher/Launcher';
 import { LauncherLessonData } from '@noodl-core-ui/preview/launcher/Launcher/LauncherContext';
 
@@ -47,8 +48,10 @@ import {
 } from '../../models/AiAssistant/scoping';
 import { App } from '../../models/app';
 import { DialogLayerModel } from '../../models/DialogLayerModel';
+import { LearningFolderModel } from '../../models/learningfolder';
 import { LessonsProjectsModel } from '../../models/LessonsProjectModel';
 import LessonTemplatesModel from '../../models/lessontemplatesmodel';
+import { projectFromDirectory } from '../../models/projectmodel.editor';
 import { ProjectDocsModel } from '../../models/ProjectDocs/ProjectDocsModel';
 import type { ProjectModel } from '../../models/projectmodel';
 import { getAllPresets, setPendingPresetId } from '../../models/StylePresets';
@@ -64,6 +67,7 @@ import { EditorSettings } from '../../utils/editorsettings';
 import getContentEndpoint from '../../utils/getContentEndpoint';
 import { LocalProjectsModel, ProjectItemWithRuntime } from '../../utils/LocalProjectsModel';
 import { tracker } from '../../utils/tracker';
+import { toLearningCards } from '../../views/projectsview.learningstate';
 import { getLessonsState } from '../../views/projectsview.lessonstate';
 import { MigrationWizard } from '../../views/migration/MigrationWizard';
 import { ToastLayer } from '../../views/ToastLayer/ToastLayer';
@@ -218,6 +222,10 @@ export function ProjectsPage(props: ProjectsPageProps) {
   const [lessons, setLessons] = useState<LauncherLessonData[]>([]);
   const [lessonsProjectsModel] = useState(() => new LessonsProjectsModel());
 
+  // UNI-007 / D5 — lessons installed in the Learning folder. Not the same list
+  // as `lessons` above: that one is the hosted catalogue, this one is the shelf.
+  const [learning, setLearning] = useState<LauncherLearningData[]>([]);
+
   // Create project modal state
   const [isCreateModalVisible, setIsCreateModalVisible] = useState(false);
 
@@ -285,6 +293,127 @@ export function ProjectsPage(props: ProjectsPageProps) {
       templatesModel.off(group);
       lessonsModel.off(group);
     };
+  }, []);
+
+  /**
+   * UNI-007 / D5 — read the Learning register, and keep reading it.
+   *
+   * 🔴 The **editor process** owns this state. The register is an
+   * editor-process store and nothing outside this process writes it, so there
+   * is nothing to poll and no platform to ask: one read on mount, and one more
+   * every time this process changes it.
+   */
+  useEffect(() => {
+    const group = {};
+    const model = LearningFolderModel.instance;
+
+    const rebuild = () => setLearning(toLearningCards(model.list()));
+
+    model.on('learningFolderChanged', rebuild, group);
+    rebuild();
+
+    return () => {
+      model.off(group);
+    };
+  }, []);
+
+  /**
+   * Open an installed lesson.
+   *
+   * 🔴 Deliberately **not** `LocalProjectsModel.openProjectFromFolder`. That
+   * would add the lesson to the recents list, where rename and delete already
+   * exist — undoing D5's "cannot rename, detach or delete" and the whole reason
+   * the Learning folder is a separate register. The lesson is loaded straight
+   * from its directory, exactly as `LessonsProjectsModel` loads the hosted ones.
+   */
+  const handleOpenLearningLesson = useCallback(
+    (lessonId: string) => {
+      const entry = LearningFolderModel.instance.get(lessonId);
+      if (!entry) return;
+      if (entry.missing) {
+        ToastLayer.showError('That lesson’s folder is no longer on disk. Reset it to pull a fresh copy.');
+        return;
+      }
+
+      const activityId = 'opening-lesson';
+      ToastLayer.showActivity('Opening lesson', activityId);
+
+      projectFromDirectory(entry.projectDirectory, (project: TSFixme) => {
+        ToastLayer.hideActivity(activityId);
+        if (!project) {
+          ToastLayer.showError('Could not open that lesson. Reset it to pull a fresh copy.');
+          return;
+        }
+        // The id is the register's, not a minted one: it is what the runner
+        // records progress and grades against when the lesson is graded.
+        project.id = entry.id;
+        if (!project.name) project.name = entry.title;
+        props.route.router.route({ to: 'editor', project });
+      });
+    },
+    [props.route]
+  );
+
+  /**
+   * Install a lesson from a folder on this machine.
+   *
+   * 🔴 **This is the account-free route, and it is the point.** D5 makes the
+   * Learning section platform-managed but not platform-*dependent*: a lesson the
+   * user's own Claude writes locally (UNI-010) lands in the same section through
+   * the same editor-owned writer, with no sign-in anywhere in the story. Today
+   * the user points at the folder; when UNI-010's MCP hand-off exists it will
+   * call the same `install`, and pass `local-ai` because it will know who wrote
+   * the bundle.
+   *
+   * ⚠️ Provenance is `'local'`, not `'local-ai'`. Picking a directory says
+   * nothing about who authored what is in it, and the register refuses to read
+   * a self-declared provenance out of the manifest for exactly that reason.
+   *
+   * A refusal is reported in full: the verifier's first message is the useful
+   * half — "this lesson would never have been completable, and here is the line".
+   */
+  const handleInstallLearningLesson = useCallback(async () => {
+    const bundleDir = await filesystem.openDialog({ allowCreateDirectory: false });
+    if (!bundleDir) return;
+
+    const outcome = LearningFolderModel.instance.install({ bundleDir, provenance: 'local' });
+
+    if (outcome.result === 'installed') {
+      const warnings = outcome.verification.findings.filter((f) => f.severity === 'warning');
+      ToastLayer.showSuccess(
+        warnings.length
+          ? `"${outcome.entry.title}" installed, with ${warnings.length} warning(s) — see the console`
+          : `"${outcome.entry.title}" is in your Learning section`
+      );
+      if (warnings.length) console.warn('[Learning] lesson installed with warnings:', warnings);
+      return;
+    }
+
+    if (outcome.verification) console.error('[Learning] lesson refused:', outcome.verification.findings);
+    ToastLayer.showError(outcome.reason);
+  }, []);
+
+  /**
+   * D5's whole recovery story. Destructive to the learner's work, so it asks —
+   * and the register still refuses to delete anything if the source cannot be
+   * re-pulled, so a "yes" here cannot leave them with less than they had.
+   */
+  const handleResetLearningLesson = useCallback((lessonId: string) => {
+    const entry = LearningFolderModel.instance.get(lessonId);
+    if (!entry) return;
+
+    if (
+      !confirm(
+        `Reset "${entry.title}"?\n\nThis throws away your copy of the lesson project and pulls a fresh one. ` +
+          `Anything you have built inside it is lost.`
+      )
+    ) {
+      return;
+    }
+
+    const outcome = LearningFolderModel.instance.reset(lessonId);
+    if (outcome.result === 'reset') ToastLayer.showSuccess(`"${entry.title}" is back to its starting state`);
+    else ToastLayer.showError(outcome.reason);
   }, []);
 
   // Listen for GitHub auth state changes
@@ -1072,6 +1201,12 @@ export function ProjectsPage(props: ProjectsPageProps) {
         lessons={lessons}
         onStartLesson={handleStartLesson}
         onRestartLesson={handleRestartLesson}
+        // UNI-007 / D5 — the Learning section. Empty until something installs
+        // into the register, and the section renders nothing when it is empty.
+        learning={learning}
+        onOpenLearningLesson={handleOpenLearningLesson}
+        onResetLearningLesson={handleResetLearningLesson}
+        onInstallLearningLesson={handleInstallLearningLesson}
         projectOrganizationService={ProjectOrganizationService.instance}
         githubUser={githubUser}
         githubIsAuthenticated={githubIsAuthenticated}

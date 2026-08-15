@@ -55,10 +55,21 @@ import type { LessonVerificationReport } from './lessonverify';
 /**
  * Which producer wrote the bundle. The format is an open contract with two
  * producers from day one (UNI-007), and UNI-010 adds a third that involves no
- * account at all — so provenance is recorded on the entry rather than inferred
- * from where the files came from.
+ * account at all — so provenance is recorded on the entry.
+ *
+ * 🔴 **The caller supplies it and the manifest never does.** A bundle that
+ * *declared* itself `curated` would be believed, and the one producer this
+ * format explicitly invites is an agent on the user's own machine — so a
+ * self-declared field is a claim, not a fact. Only the code that knows the
+ * route the bundle arrived by can answer honestly, which is why this is an
+ * install argument.
+ *
+ * `local` is that honesty made explicit: a folder the user pointed us at is
+ * *installed from disk*, and nothing about it says who wrote it. UNI-010's
+ * agent route will pass `local-ai` because the editor will have watched the MCP
+ * write it.
  */
-export type LessonProvenance = 'curated' | 'org' | 'local-ai';
+export type LessonProvenance = 'curated' | 'org' | 'local-ai' | 'local';
 
 /**
  * Where a lesson came from, kept so **reset can re-pull**. D5's entire recovery
