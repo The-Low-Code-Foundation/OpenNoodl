@@ -14,7 +14,13 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 
 import type { ComponentV2File, ConnectionsV2File, ConnectionV2, NodesV2File, NodeV2 } from '../editor-deps';
-import { foldNodeComment, formatDiagnosticLine, inferComponentType } from '../editor-deps';
+import {
+  foldNodeComment,
+  formatDiagnosticLine,
+  inferComponentType,
+  layoutAuthoredNodes,
+  positionsUnchangedFrom
+} from '../editor-deps';
 import { ToolError } from '../errors';
 import type { ComponentFiles, UpdateOperation } from '../graph';
 import { applyOperations, reconcileHierarchy } from '../graph';
@@ -203,12 +209,17 @@ export function assembleCreateFiles(args: {
   // because the runtime draws a component instance from `componentModel.roots`.
   // The editor cannot produce such a file — it derives the field on every
   // serialize — so only an agent could, and one did.
-  const resolved = resolveVisualRoots(args.nodes, args.visualRoots, args.isVisualType ?? catalogVisualPredicate);
+  const isVisual = args.isVisualType ?? catalogVisualPredicate;
+  const resolved = resolveVisualRoots(args.nodes, args.visualRoots, isVisual);
+  // FIX-014 — fill the position gaps the model left and separate exact
+  // collisions. Everything here is model-emitted this turn, so nothing is
+  // locked; a node the model positioned is still never moved.
+  const laidOut = layoutAuthoredNodes(args.nodes, isVisual, { connections: args.connections ?? [] });
   const nodes: NodesV2File = {
     $schema: 'https://opennoodl.dev/schemas/nodes-v2.json',
     componentId,
     version: 1,
-    nodes: args.nodes,
+    nodes: laidOut,
     ...(resolved.visualRoots ? { visualRoots: resolved.visualRoots } : {})
   };
   const connections: ConnectionsV2File = {
@@ -231,7 +242,15 @@ export function assembleSetFiles(
   isVisualType: VisualTypePredicate = catalogVisualPredicate
 ): ComponentFiles {
   const candidate: ComponentFiles = JSON.parse(JSON.stringify(baseline));
-  candidate.nodes.nodes = set.nodes;
+  // FIX-014 — the gap-fill-and-collide-only pass, with the ruling's second
+  // half made mechanical: a position resubmitted exactly as the baseline had
+  // it is a hand arrangement carried through, locked against even the
+  // collision nudge, so `update_component` on a hand-arranged component
+  // repositions nothing unless the caller changed a coordinate itself.
+  candidate.nodes.nodes = layoutAuthoredNodes(set.nodes, isVisualType, {
+    connections: set.connections ?? baseline.connections.connections ?? [],
+    lockedIds: positionsUnchangedFrom(set.nodes, baseline.nodes.nodes ?? [])
+  });
   // AWP-001 — always recompute unless the caller said otherwise. Leaving the
   // baseline's list in place was the second half of F43: `set` replaces the whole
   // graph, so the inherited ids can name nodes that no longer exist. Re-deriving
@@ -578,6 +597,14 @@ export function registerAuthorTools(
           );
           if (opRoots.visualRoots) candidate.nodes.visualRoots = opRoots.visualRoots;
           else delete candidate.nodes.visualRoots;
+          // FIX-014 — an `add_node` without x/y used to land at the origin.
+          // Every baseline position the batch did not change is locked (a
+          // hand-arranged component is not this door's to tidy); only the
+          // nodes this batch added or explicitly repositioned participate.
+          candidate.nodes.nodes = layoutAuthoredNodes(candidate.nodes.nodes, projectVisualPredicate(store), {
+            connections: candidate.connections.connections ?? [],
+            lockedIds: positionsUnchangedFrom(candidate.nodes.nodes, baseline.nodes.nodes ?? [])
+          });
         }
         candidate.component.modified = new Date().toISOString();
         candidate.component.modifiedBy = 'noodl-mcp';

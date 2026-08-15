@@ -62,7 +62,10 @@ THE AUTHORING CONTRACT
   wires — a component that takes nothing and emits nothing needs neither node.
 - A visual component or page needs one visual root container (usually a Group); pass its id in
   visual_roots.
-- Lay nodes out readably: flow left-to-right or top-to-bottom, roughly 150–300 units apart.
+- Layout is TWO COLUMNS, by node family. The visual tree flows DOWN a left column in tree order,
+  indenting x by ~60 per hierarchy depth, ~120 apart vertically. Logic nodes go in a second column well to
+  the RIGHT of the deepest visual x (leave a ~250 gutter), each at roughly the y of the visual node it
+  feeds. Never give two nodes the same x/y; nodes you leave without x/y are auto-placed by this same rule.
 
 HOW TO WORK — READ LITTLE, THEN BUILD
 You are given a project overview (every component, its size and interface) and a catalog listing (every

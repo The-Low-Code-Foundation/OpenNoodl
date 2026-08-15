@@ -78,6 +78,12 @@ export function projectInstructions(options: ProjectInstructionOptions): string 
     'get_node_type, call get_style_vocabulary for the on-system tokens/variants (set colour/spacing params as ' +
     '"var(--token)", never raw hex/px), then create_component / update_component — every write is ' +
     'validated and rejections return diagnostics with suggested fixes. ' +
+    // FIX-014. The only placement guidance anywhere in the product was one
+    // editor prompt line specifying, in effect, a single column — this server
+    // said nothing at all, and models piled visual and logic nodes together.
+    // One sentence, the same two-family rule the shared layout pass enforces.
+    'LAYOUT: the visual tree flows down a left column, logic nodes in a right column beside the visual ' +
+    'node they feed; nodes sent without x/y are auto-placed; x/y you set are kept verbatim. ' +
     // AAQ-005. The word "Router" appeared nowhere in any guidance a model
     // saw, which is why pages were built that nothing could reach and
     // navigation was aimed at invented URL paths. Both halves are stated:

@@ -156,7 +156,13 @@ describe('LEG-001 — submit_component writes into the bag without disturbing it
   it('adds nothing at all to a node with no comment', () => {
     const nodes = nodesOf(buildCandidate(REQUEST, payload([{ id: 'n1', type: 'Group', label: 'Root' }])));
 
-    expect(nodes[0]).toEqual({ id: 'n1', type: 'Group', label: 'Root' });
+    // `x`/`y` are FIX-014's layout pass filling a position gap — deliberate,
+    // and out of this suite's scope. What LEG-001 guards is that no metadata
+    // bag (and no stray `comment` key) appears where none was authored.
+    const { x, y, ...rest } = nodes[0] as { x?: number; y?: number } & Record<string, unknown>;
+    expect(x).toBeDefined();
+    expect(y).toBeDefined();
+    expect(rest).toEqual({ id: 'n1', type: 'Group', label: 'Root' });
   });
 });
 
