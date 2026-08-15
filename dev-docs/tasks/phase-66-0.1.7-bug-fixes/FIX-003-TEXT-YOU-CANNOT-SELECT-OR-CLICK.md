@@ -202,3 +202,125 @@ what defeats `startsWith('javascript:')`.
    The `noodl-dragging` class is the thing to watch: it is added and lifted by JS, so a drag that
    ends outside the window is the failure mode to look for.
 3. **The two launcher grids' disagreement** (above) needs a call and probably one more opt-out line.
+
+---
+
+## DRIVEN — 2026-08-15, session 11 (fixture `fix003-drive`, port 9555)
+
+Items 1 and 2 above are now **largely discharged**; item 2 was closed by session 10. What follows is
+per criterion, with the evidence rather than the verdict. **Criterion 2 FAILS**, for a reason that
+has nothing to do with `user-select` and was invisible to every spec in this lane.
+
+### How criterion 1 was graded, and why not with a spy
+
+"Opens in the system browser" is a *consequence*. Stubbing `platform.openExternal` and asserting it
+was called grades the **mechanism** and would pass on an app whose links open nothing. So the drive
+ran a local HTTP server and used a URL pointing at it: a hit in that server's log, **with a browser's
+User-Agent**, is the consequence itself — the URL left the app, reached the OS, and something
+outside Electron fetched it.
+
+| Criterion | Verdict | Evidence |
+|---|---|---|
+| **1** — URL opens in system browser | ✅ **PASS**, 2 of 4 surfaces | see below |
+| **2** — text selectable and ⌘C yields it | 🔴 **FAIL** — selects fine, **⌘C copies the wrong thing** | see the defect below |
+| **3** — `noodl-node:` citations still navigate | ✅ **PASS** | cited node revealed, selected, Properties panel followed |
+| **4** — Build panel renders markdown | ✅ **PASS** | real `<strong>`×1, `<li>`×2, `<code>`×1, `<a>`×1 in the assistant turn |
+| **5** — specs green | ✅ (unchanged from the build record) | not re-run this session |
+
+**Criterion 1, per surface.** Both driven surfaces produced a hit from **Firefox 153** with
+`sec-fetch-dest: document` / `sec-fetch-mode: navigate` — a real top-level browser navigation, plus a
+follow-up `/favicon.ico` — while the editor stayed on `file://…/index.html`, so the window never
+navigated:
+
+- **Build thread** (`AiMarkdown`, renderer-side delegated handler) — `/probe-build`, 08:37:23Z.
+- **Explain answer** (own Remarkable + own delegation) — `/probe-explain`, 08:44:46Z.
+- **Launcher scoping chat** — ⛔ **not driven.** Reaching it needs a full project-creation wizard run
+  with a live scoping conversation. ⚠️ It is also the surface most worth driving, because it is the
+  **only** AI surface with *no renderer-side handler* (`ScopingStep.tsx:98,122` renders plain
+  `Markdown`), so it is the only one whose links depend on the main-process `will-navigate` guard
+  alone — and **neither drive above exercised that guard**, since both were `preventDefault`ed in the
+  renderer and routed through `platform.openExternal`. The guard is therefore still unproven in use.
+- **A modal** — ⛔ **not drivable in a dev build at all.** `UpdateDialog` is the only modal rendering
+  markdown, and it opens only from the title-bar update affordance, which requires an available
+  update; `main.js:440` skips `AutoUpdater.setupAutoUpdate` entirely when `devMode`. There is no user
+  path to it here. Its link policy is the same `linkActionFor` module driven twice above, and
+  `release-links.test.ts` covers it — but that is an argument, not a drive.
+
+### 🔴 Criterion 2 FAILS — ⌘C copies the selected canvas **node**, not the selected text
+
+Selection itself is fine. A real mouse drag across assistant text selects it, and the computed
+`user-select` is `text`. The failure is the **copy**:
+
+> With a node selected on the canvas and a live text selection in a panel, ⌘C puts
+> `{"nodes":[{"id":"…","type":"Router",…}],"connections":[],"comments":[]}` on the clipboard.
+
+Measured on **both** panels, so this is not Explain-specific:
+
+| Surface | text selected | ⌘C put on clipboard | `execCommand('copy')` |
+|---|---|---|---|
+| Explain answer | *"This slice is the app's root component, /App…"* | **node JSON** | the text ✅ |
+| Build thread | *"Applied — 2 components changed."* | **node JSON** | the text ✅ |
+
+`execCommand('copy')` returning the correct text on the same selection is what proves the selection
+is genuinely copyable — the defect is entirely in **which handler wins the keystroke**.
+
+**Mechanism, pinned:**
+
+- `EditorDocument.tsx:562-564` binds `CtrlCmd | KEY_C` → `nodeGraph.copy()` →
+  `EditorClipboard.ts:61` → `clipboard.writeText(JSON.stringify(nodeSet.toJSON()))`. That string is
+  byte-for-byte what landed on the clipboard.
+- The guard that should have stopped it is `keyboardhandler.ts:165`, and it is **focus**-based:
+  `TEXT_ENTRY_TAGS = {INPUT, TEXTAREA, SELECT}`. A text selection inside a `<div>` — which is what
+  every panel's prose is — classifies as `'none'`, so all canvas commands run.
+- 🔴 **The guard asks the wrong question.** Focus and selection are different things, and ⌘C's
+  contract depends on the *selection*, not on what is focused. That is why this survived a lane whose
+  whole subject was making text selectable: FIX-003 correctly made the text selectable and never
+  touched who owns the keystroke.
+
+🔴 **The most natural user flow reproduces it every time.** Clicking an Explain citation *selects the
+cited node* (criterion 3, working as designed) — so "click a citation → read the explanation →
+select that sentence → ⌘C" always yields node JSON instead of the sentence. This is precisely
+report 1bis's complaint (*"can't select it to copy and paste"*) surviving in a second form.
+
+**Control, and it is what makes the diagnosis safe:** with **nothing** selected on the canvas, ⌘C
+copies nothing at all — the clipboard keeps its prior value. So the canvas handler is demonstrably
+the thing winning, not some general copy failure.
+
+⚠️ **This needs a ruling before a fix.** The obvious repair — teach the guard about a non-collapsed
+`getSelection()` — is one condition, but it changes a global keybinding's precedence and the right
+answer may instead be to scope the canvas commands to the canvas. Not built on assumption.
+
+### What the harness could and could not prove
+
+⚠️ **The ⌘C *keystroke* is only partly drivable, and the report above is careful about which half is
+which.** Electron serves ⌘C from the application menu (`main.js:759` binds `CmdOrCtrl+C` to the
+macOS `copy:` selector), and **CDP cannot fire a native menu accelerator**. So:
+
+- Where a node **was** selected, the editor's own JS keybinding ran and the wrong content was
+  copied — that is a real, driven observation.
+- Where no node was selected, ⌘C did nothing *over CDP*, which proves nothing about a real keyboard.
+  That half is a harness limit, and it is why the pass/fail above rests on `execCommand` plus the
+  node-selected case rather than on "⌘C did nothing".
+
+✅ **A control test is what separated the two**, and it is worth repeating: run the same copy through
+`execCommand('copy')` on the same selection. Key ✗ / exec ✓ means the key never reached the copy
+path; key ✗ / exec ✗ would have meant the selection genuinely was not copyable.
+
+### Two findings the build record did not have
+
+🔴 **1. A bare URL is never a link, on any surface.** `linkify` is off in both Remarkable instances
+(the default in 2.0.1, never overridden), so only `[text](url)` and `<https://…>` autolinks produce
+an `<a>`. `https://example.com` written as prose renders as inert text. Verified against the exact
+config both renderers construct. ⚠️ Criterion 1 says "**any** URL the AI emits" — as built, that is
+true only for URLs the model happens to write as markdown links. Whether that satisfies the criterion
+is a **ruling**, not something to quietly fix: turning `linkify` on widens what becomes a clickable
+anchor in untrusted model output, which is a security-relevant change to the surface this lane just
+spent its effort hardening.
+
+⚠️ **2. `TextArea.module.scss:37` puts `user-select: none` on the `<textarea>` itself** — and an
+explicit rule on the element **beats** the new `:root { user-select: text }` default, so the
+inversion did not clear it. It predates this lane (initial commit). **Measured: it does not actually
+block anything** — Chromium special-cases form controls, and a real drag across the Build composer
+selected all 29 characters of the probe string, which `execCommand('copy')` then copied exactly. So
+this is a latent wrong-ness, not a live defect: harmless where it sits, and misleading the moment
+anyone reads it as evidence of intent or moves the rule to a non-form-control element.

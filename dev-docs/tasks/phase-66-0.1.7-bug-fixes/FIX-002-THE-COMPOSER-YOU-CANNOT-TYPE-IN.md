@@ -113,3 +113,43 @@ Adjacent surfaces checked and NOT `TextArea` consumers:
 1. **Acceptance criteria 1–4 need DRIVING in the live app.** Every spec here grades source structure or the pure key policy; no jsdom, no Electron. The 200-character caret-visibility claim, the visible newline + growth, Enter/Shift+Enter in both composers, and the Send button are all live-drive obligations.
 2. **BLD-010's driven acceptance for the Build composer must be RE-DRIVEN** — it recorded Shift+Enter as the send key; the ruling (and this build) changes the key under the same binding.
 3. The function-node **AiChat** composer's key flip (site 2) rides along unruled-but-consistent; worth a glance in the same drive.
+
+---
+
+## DRIVEN — criterion 4, 2026-08-15 session 11 (fixture `fix003-drive`, port 9555)
+
+✅ **Criterion 4 PASSES — a Send button submits the current text.** Driven in the Explain composer,
+which is the one this task added it to.
+
+The consequence was written before driving: *clicking Send submits — the composer empties and the
+panel goes busy. A broken Send leaves the text sitting there.* That is what happened:
+
+| Step | Observation |
+|---|---|
+| Explain composer mounted | `<textarea placeholder="Ask a follow-up…">` — the `TextArea` swap is live, not a `TextInput` |
+| Before typing | Send button present and **`disabled: true`** |
+| After typing 127 chars | Send **`disabled: false`** |
+| Click Send | composer `value.length` → **0**, panel busy |
+| Result | a new answer arrived and rendered |
+
+⚠️ **The disabled→enabled transition is the half worth keeping**, because it is what distinguishes a
+working guard from a button that merely happens to fire: the build record says Send is disabled under
+exactly `state.busy || question.trim().length === 0`, and both ends of that were observed rather than
+assumed.
+
+**Criteria 1 and 3 were driven by session 10** (caret visible at 194 characters, Backspace deletes;
+plain Enter submits and Shift+Enter inserts a newline — **BLD-010's reversal confirmed**). This
+session re-confirmed Enter-submits incidentally in the **Build** composer: a prompt typed there and
+submitted with a plain Enter cleared the composer and produced a turn, which is item 2 of "still
+owed" (BLD-010's re-drive) discharged for the send key.
+
+🔴 **Criterion 2 remains half-met and is a RULING, not a bug** — the composer scrolls, it does not
+grow (`min-height: 51px; resize: vertical`, no JS auto-grow). Nothing should be built there on
+assumption. See the phase handover.
+
+### ⚠️ One thing this drive found that belongs to FIX-003, not here
+
+`TextArea.module.scss:37` sets `user-select: none` on the `<textarea>` element itself, and it
+survived FIX-003's inversion because an explicit rule on the element beats the new `:root` default.
+**Measured harmless** — Chromium special-cases form controls, so a real drag still selected the
+composer's full contents and copied them. Recorded in FIX-003 so it is not rediscovered as a defect.

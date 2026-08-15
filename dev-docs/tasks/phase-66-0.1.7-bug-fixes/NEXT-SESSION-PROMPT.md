@@ -1,12 +1,12 @@
 # Phase 66 — next session
 
-**Written 2026-08-15, session 10 (the first drive session since FIX-002/003/014 landed).** Nothing
-was built today. The session did what session 9 said was the critical path: **it drove**.
+**Written 2026-08-15, session 11 (the second drive session).** Nothing was built today either. The
+session drove what session 10 said was the critical path, and it closed most of it.
 
-✅ **FIX-003's drag-surface regression — the one the ruling knowingly accepted the risk of — is
-measured and clean.** That was the phase's largest open risk and it is now closed.
-🔴 **FIX-002 criterion 2 is half-met**: the composer does not grow. That is a new finding and it
-needs a ruling, not a fix-on-assumption.
+✅ **FIX-003 criteria 1, 3 and 4 are driven and pass. FIX-002 criterion 4 is driven and passes.**
+🔴 **FIX-003 criterion 2 FAILS — and not for the reason the lane was about.** Text selects fine;
+**⌘C copies the selected canvas node instead of the selected text.** New defect, fully pinned,
+reproducible by the most natural user flow in the feature. It needs a ruling before a fix.
 
 ---
 
@@ -37,14 +37,13 @@ Learnings that outlive the phase go to memory, not here.
 | **FIX-018** | ✅ | ✅ 5/5 | **CLOSED** |
 | **FIX-019** | ✅ | ✅ 4/4 | **CLOSED** — 🟡 14(a) vocabulary sweep still owed |
 | **FIX-020** | ✅ | ✅ 3/3 | **CLOSED** |
-| **FIX-002** | ✅ | 🟡 **2.5 / 4** | 1 ✅, 2 **half — see §3**, 3 ✅ (+ BLD-010 reversal driven), 4 ❌ |
-| **FIX-003** | ✅ | 🟡 **drag plan ✅, criteria 0/5** | the accepted-risk half is **done**; links/⌘C/citations/markdown owed |
-| **FIX-014** | ✅ | 🔴 **0/1** | not started — needs the editor window |
+| **FIX-002** | ✅ | 🟡 **3.5 / 4** | 1 ✅, 2 **half — ruling owed**, 3 ✅, **4 ✅ NEW** |
+| **FIX-003** | ✅ | 🔴 **3 pass, 1 FAILS, 1 unrun** | drag plan ✅ (s10); **c1 ✅ ×2 surfaces**, **c2 🔴 FAIL**, **c3 ✅**, **c4 ✅**, c5 not re-run |
+| **FIX-014** | ✅ | 🔴 **0/1** | not started; ⚠️ MCP half is **blocked on a repackage**, see §5 |
 | **FIX-008** A, B, E | ✅ | ✅ | C, D not built |
 | everything else | 📋 open | — | see [TASKS.md](TASKS.md) |
 
-**Eight closed, three part-driven, ten open.** The built-not-driven column has stopped growing and
-started shrinking for the first time in this phase.
+**Eight closed, two part-driven with one real failure, ten open.**
 
 ---
 
@@ -52,128 +51,132 @@ started shrinking for the first time in this phase.
 
 | Gate | Reading | When |
 |---|---|---|
-| `test:ci` (jasmine) | ✅ **2779 specs / 6 failures — the floor exactly, by name**, seed **39393** | 09:42:55, HEAD `3ac5f660` |
-| `test:main` (jest, editor) | ✅ **199 suites / 3072 tests, 0 failed** | phase-67 session, after its UNI-007 commits |
-| editor `tsc --noEmit` | ✅ 0 errors | same |
-| `lint:ci` | 877 errors, **unmoved** (baseline 3916) | same |
-| `noodl-mcp` jest | ✅ 43 suites / 494 tests | session 9 |
-| `noodl-core-ui` jest | ✅ 23 suites / 369 tests | session 9 |
+| `test:ci` (jasmine) | ⚠️ **2779 specs / 9 failures**, seed **50405** — 6 floor names present, **+3 a `BEN-001` cluster** | 10:28:45, tree `393ec7bf` (phase-67's run) |
+| `test:ci` re-run | ⏳ **in flight at 10:49** by phase-67, to discharge the `BEN-001` cluster | ask them for the number |
+| `test:main` (jest, editor) | ✅ **199 suites / 3072 tests, 0 failed** | phase-67 session, earlier |
+| editor `tsc --noEmit` | ✅ 0 errors | s10 |
+| `lint:ci` | 877 errors, **unmoved** (baseline 3916) | s10 |
+| `noodl-mcp` jest | ✅ 43 suites / 494 tests | s9 |
+| `noodl-core-ui` jest | ✅ 23 suites / 369 tests | s9 |
 
-✅ **Session 9's in-flight `test:ci` is RESOLVED and it was a real run.** It belonged to a *third*
-session, not phase-66 — but there is one working tree, so it webpacked HEAD `3ac5f660` (FIX-014
-merged). Freshness was established properly: the file did not exist at 09:35, appeared with mtime
-09:42:55, and was read 20 seconds later. Seed `39393` differs from both prior readings (81235 stale,
-75857 last good), so it is not a recycled file. **FIX-014's `candidate.ts` change costs the electron
-suite nothing.**
-
-🔴 **`test:main`'s floor moved to 199 / 3072** — phase-67 landed three `tests-unit/uni-007` suites
-(+50 tests) on top of our 196/3022. Compare against **199/3072** next time, and note phase-67 also
-*measured* 196/3022 rather than inheriting it, so that number is now confirmed rather than relayed.
-
-⚠️ **`lint:ci` cannot see a `.jsx` file either.** Phase-67 added ~11 `react/prop-types` errors in new
-`.jsx` markup and the ratchet did not move: `eslint <dir>` resolves `.js`/`.ts`/`.tsx` and **not
-`.jsx`**. The standing trap was "a `.jsx` file is invisible to `tsc` and to jest" — it is invisible to
-the **lint gate's directory scan** as well. `test:ci`'s webpack is genuinely the only gate that reads
-one.
+🔴 **No gate was run by this session.** Everything above is inherited, and the `test:ci` row is
+**phase-67's tree, not ours** — it does not grade anything phase-66 changed today (we changed no
+source). Its freshness is trustworthy (results file deleted at 10:16:30, mtime 10:28:45, seed differs
+from all three prior readings), and its stale-bundle check was done — all three extra failing names
+grep to real files. **The `BEN-001` cluster is documented as seed-order dependent; the re-run is the
+prescribed discharge and phase-67 started it at 10:49.** Get the number from them before treating 9
+as a new floor.
 
 ---
 
 ## 3. What this session settled — do not re-derive
 
-### ✅ FIX-003's drag-surface plan: three surfaces, all clean
+### 🔴 The finding: ⌘C copies the canvas node, not the selected text
 
-The live stylesheet is the shape the build record claims — `:root { user-select: text }`, **zero
-bare-`div` `user-select` rules**, and the `body.noodl-dragging *` guard present (61 `user-select`
-rules total). Each surface was driven with a real `Input.dispatchMouseEvent` drag, and in every case
-`getSelection().toString()` came back **empty**, which is the regression under test:
+**FIX-003 criterion 2 fails, and the cause is not `user-select`.** Selection works everywhere it was
+measured. The copy does not:
 
-| Surface | Evidence |
-|---|---|
-| Canvas node drag | moved exactly +100,+50 (`-209,-345` → `-109,-295`), restored afterwards |
-| Panel tree row | `pointerdown`/`mousedown` fired, row count unchanged — nothing reparented |
-| Frame divider | canvas `y 537→457`, `h 244→324` — exactly the 80px dragged |
+> With a node selected on canvas and a live text selection in a panel, ⌘C puts
+> `{"nodes":[…],"connections":[],"comments":[]}` on the clipboard.
 
-✅ **The `noodl-dragging` lifecycle is clean.** A `MutationObserver` on `body.className` recorded
-`["", "noodl-dragging", ""]` — added on drag start, lifted on mouseup — **including when the release
-landed outside the window** (`907,-120`).
+Measured on **both** the Explain answer and the Build thread, so it is not one panel's problem.
+`execCommand('copy')` returns the correct text on the same selection in both cases — which is what
+proves the selection is genuinely copyable and the fault is purely **which handler wins the key**.
 
-⚠️ **The honest limit of that last result.** CDP delivers the mouseup regardless of coordinates, so
-it proves the handler copes with out-of-frame *coordinates*, **not** that a physically-lost mouseup
-releases. The stronger test — press, move, never release — could not be run cleanly: holding the
-button mid-drag on the divider makes `cdp eval` hang until you release. If that scenario matters,
-it needs a real pointer, not CDP.
+- `EditorDocument.tsx:562-564` binds `CtrlCmd | KEY_C` → `nodeGraph.copy()` → `EditorClipboard.ts:61`
+  `clipboard.writeText(JSON.stringify(…))`. That is byte-for-byte what appeared on the clipboard.
+- The guard is `keyboardhandler.ts:165` and it is **focus**-based (`INPUT`/`TEXTAREA`/`SELECT`). A
+  text selection inside a `<div>` — every panel's prose — classifies as `'none'`, so canvas commands
+  run.
+- 🔴 **The guard asks the wrong question**: ⌘C's contract depends on the *selection*, not on what is
+  *focused*. That is why a lane entirely about making text selectable never touched it.
+- 🔴 **Clicking an Explain citation selects the cited node** (criterion 3, working correctly), so
+  "click citation → read → select the sentence → ⌘C" reproduces it **every time**.
+- ✅ **Control:** with nothing selected on canvas, ⌘C copies nothing — so the canvas handler is
+  demonstrably the winner, not a general copy failure.
 
-### ✅ The per-grid opt-out rule is vindicated by evidence, not just argument
+### ✅ Criterion 1 was graded on the consequence, not a spy
 
-Both launcher grids carry `user-select: none` (`Projects-module__Grid` and
-`LearningSection-module__Grid` — the merge did add the second). Prose *outside* the grids is `text`,
-and that list includes **`LearningSection`'s empty-state paragraph** ("Lessons you install appear
-here…") — exactly the copy a hoisted `.Main` opt-out would have swallowed. A real drag across launcher
-prose selected **68 characters**; the same drag across a project card name selected **nothing**.
+A stub on `platform.openExternal` would pass on an app whose links open nothing. Instead a local HTTP
+server logged the hits: **Firefox 153**, `sec-fetch-mode: navigate`, plus a `/favicon.ico` follow-up,
+for both the Build thread (`/probe-build`) and the Explain answer (`/probe-explain`) — while the
+editor stayed on `file://…/index.html`. The URL left the app, reached the OS, and a real browser
+outside Electron fetched it.
 
-### 🔴 FIX-002 criterion 2: the composer does not grow — it scrolls
+⚠️ **But neither drive exercised the `will-navigate` guard.** Both surfaces `preventDefault()` in the
+renderer and route through `platform.openExternal`. The **launcher scoping chat is the only surface
+with no renderer handler** (`ScopingStep.tsx:98,122`, plain `Markdown`), so it is the only one that
+depends on the main-process guard — and that guard is still unproven in use.
 
-Driven with real trusted keys. **Enter submits** (composer cleared, thread grew) and **Shift+Enter
-inserts a newline and does not submit**, so the reversal is real and **BLD-010's recorded send key is
-now wrong**, as the task predicted. Backspace deletes. At 194 characters the caret line sat at 74–91
-inside a 39.5–90.5 viewport plus 8px padding — **visible**, with the box auto-scrolled to keep it so.
+### 🔴 A bare URL is never a link, anywhere
 
-But criterion 2 says "the composer **grows** to show it", and it does not.
-`TextArea.module.scss` is `min-height: 51px; resize: vertical` with **no JS auto-grow anywhere**.
-Four lines of content left the height at 51px with `scrollHeight 82`.
+`linkify` is off in both Remarkable instances (2.0.1's default, never overridden). Only
+`[text](url)` and `<https://…>` produce an `<a>`; `https://example.com` as prose is inert text.
+Criterion 1 says "**any** URL the AI emits", so as built it holds only for URLs the model writes as
+markdown links. ⚠️ **This is a ruling, not a quiet fix** — enabling `linkify` widens what becomes a
+clickable anchor in untrusted model output, on the surface this lane just hardened.
 
-⚠️ **This is a half-met criterion, not a bug.** The reported defect — the composer you cannot type in
-— is fixed. Whether "grows" is still wanted is **a ruling for Richard**; if it is, it is a small
-auto-grow bounded by a max-height, and that max-height is its own number.
-⚠️ **51px is two lines** (16.8 line-height + 16 padding), so a two-line message shows no growth even
-if auto-grow existed — test with four or you measure nothing.
+### ⚠️ The modal surface is not drivable in a dev build at all
 
-### 🔴 The harness trap that nearly became a false bug report
+`UpdateDialog` is the only modal rendering markdown, and it opens only from the title-bar update
+affordance, which needs an available update — but `main.js:440` skips `AutoUpdater.setupAutoUpdate`
+when `devMode`. There is no user path to it. Don't spend a session looking for one.
 
-Keys dispatched over CDP arrive `isTrusted: true` and **not** `defaultPrevented` — every listener
-fires — but Chromium runs **no editing command** when the window is not OS-focused. No character
-inserts, Backspace deletes nothing, Cmd+C copies nothing. I nearly filed "Backspace is broken".
+### ⚠️ ⌘C is only half-drivable over CDP, and the report depends on knowing which half
 
-✅ **A control test with a plain `a` key is what caught it**, and the fix is
-`Emulation.setFocusEmulationEnabled {enabled:true}` **on the same CDP session that dispatches the
-keys** — it is session-scoped, so `npm run cdp -- eval` (one connection per command, closed after)
-cannot carry it. `cdp.js type` works throughout because `Input.insertText` bypasses that path, and
-**that asymmetry is the trap**: typing works, so you blame the key. Harness written this session:
-`scratchpad/drive.js`. `w.show()`/`w.focus()`/`app.focus({steal:true})` and `osascript` activation all
-failed — don't spend time there.
+Electron serves ⌘C from the app menu (`main.js:759` → macOS `copy:` selector) and **CDP cannot fire a
+native menu accelerator**. So "⌘C did nothing" over CDP proves nothing. The node-selected case is a
+real driven observation (the editor's own JS keybinding ran); the empty-canvas case is a harness
+limit. ✅ **The control that separates them is `execCommand('copy')` on the same selection** —
+key ✗ / exec ✓ means the key never reached the copy path; key ✗ / exec ✗ would mean genuinely
+uncopyable. Run it before ever filing "copy is broken".
 
-### ⚠️ The Build composer authors on a one-character prompt
+### ⚠️ `TextArea.module.scss:37` — a red herring, now measured
 
-A literal `"a"`, sent only to test the send key, returned **"Applied — 2 components changed."** There
-is no "that wasn't a real request" guard.
+It sets `user-select: none` on the `<textarea>` itself and survived the inversion (an explicit rule
+on the element beats `:root`). **It blocks nothing** — Chromium special-cases form controls; a real
+drag selected the composer's full contents and copied them exactly. Latent wrong-ness, not a defect.
+Don't re-file it.
 
-The fixture ended **clean** — but that had to be proved, not assumed. Method worth repeating:
-`cp -R` the project before the drive, then `diff -rq` after. The files the editor wrote **on quit**
-were byte-identical apart from two `modified` timestamps, restored from the snapshot; the rewritten
-comment text that *looked* like my damage was **already on disk before my call** (`find -newermt`
-showed only the thread transcript, and `git show HEAD:` proved the tree already carried both copies).
-🔴 **`ed.undo()` does not undo an AI apply** — it is the editor's undo *method*, it pops the canvas
-stack, and it silently reverted a node drag I had already restored by hand.
+### Harness notes
+
+- ✅ Working scripts in this session's scratchpad: `linkprobe.js` (the browser-fetch witness),
+  `copypath.js` (separates copy path from selection gesture), `selectcopy.js`, `drive.js`.
+- 🔴 **A leftover tooltip ate a click.** Hovering the sidebar rail to identify panels leaves a
+  `Tooltip-module__Root` on top of the panel content; `cdp click` then reports success on the wrong
+  element. `document.elementFromPoint` caught it. Dismiss with `mouseout`/`mouseleave` first.
+- 🔴 **My own `pgrep -f "run-electron-tests"` wait-loop matched its own command string** and would
+  never have exited — the recorded self-match trap, hit live. Use `ps -p <pid>` on real runner pids.
+- ⚠️ **The sidebar rail buttons carry no label, title or testid.** Identify them by hovering and
+  reading the tooltip. Order today: 1 Components, 2 ⌘+F, **3 Explain**, 4 Build, 5 Problems,
+  6 Docs, 7 Version control, 8 Backend Services, 9 Execution History, 10 Workflows, 11 Provenance.
+- ⚠️ **Switching panels deselects the canvas node**, so a repro needing "node selected + panel text"
+  must select the node **after** the panel is open.
+- ⚠️ `ed.origin` is **not** the canvas pan — it stayed `0,0` across a citation jump that visibly moved
+  the view. Screenshot rather than trusting it.
+- ⚠️ Registering a fixture in the launcher: append to
+  `~/Library/Application Support/NodeGX/recently_opened_project.json` and reload. Give the copy a
+  **fresh project id**, or it collides with the project it was copied from.
 
 ---
 
 ## 4. What to do next and why
 
-1. 🔴 **Finish FIX-003's five criteria.** The blocker is gone — `drive.js` gives you real keys, so
-   ⌘C is now straightforward. Needed: a URL opens in the system browser from each of four surfaces;
-   text selects and ⌘C yields it; `noodl-node:` citations still navigate; the Build panel renders
-   **rich** markdown. ⚠️ `AiMarkdown` **is** mounted (5 roots live in the Build thread) but the one
-   response obtained carried no bold/list/link, so rich rendering is **unproven** — ask a question
-   whose answer must contain a link and a list.
-2. 🔴 **FIX-002 criterion 4** (a Send button submits) — small, and the harness is built.
-3. 🔴 **FIX-014 criterion 1** — untouched. Ask the internal AI *and* the MCP for a page with a visual
-   tree plus 3 logic nodes; logic must land in its own column with no overlap. The provider
-   prerequisite is **verified**: `editorSettings.json` has `ai.provider: anthropic`,
-   `ai.hasKey.anthropic: true`, `ai.verified.anthropic: true` (all nested under the `settings` key).
-   ⚠️ **Drive it in a scratch copy**, not a shared fixture — see the composer warning above.
+1. 🔴 **Get a ruling on the ⌘C defect, then fix it.** It is the one thing standing between FIX-003
+   and closure, and it is the original bug report's own complaint in a second form. The obvious
+   repair — teach `keyboardhandler.ts` about a non-collapsed `getSelection()` — is one condition, but
+   it changes a global keybinding's precedence; scoping the canvas commands to the canvas may be the
+   better shape. **Do not build either on assumption.**
+2. 🔴 **Drive the launcher scoping chat** (FIX-003 criterion 1, last reachable surface). It is worth
+   the project-creation flow specifically because it is the only surface with no renderer handler, so
+   it is the only test of the `will-navigate` guard. Recipe: local HTTP server + a scoping reply
+   containing `[x](http://127.0.0.1:PORT/probe-launcher)`, then check the server log for a browser
+   User-Agent.
+3. 🔴 **FIX-014 criterion 1** — untouched. Drive the **Build panel half** (which runs from the repo
+   and has the pass); record the MCP half as **blocked**, see §5.
 4. **FIX-001** (Tier 1, the explainer) — still the biggest remaining user-visible win and the only
    Tier 1 task with no code.
-5. **FIX-008 fix C** (`--scope project`) — read §5first; Richard owes a measurement on C's copy.
+5. **FIX-008 fix C** (`--scope project`) — Richard owes a measurement on C's copy first.
 
 **Do not start** FIX-015 or FIX-021's brainstorm halves — they need Richard, not an agent.
 
@@ -181,13 +184,19 @@ stack, and it silently reverted a node drag I had already restored by hand.
 
 ## 5. Rulings still owed by Richard
 
-- 🔴 **NEW — FIX-002 criterion 2**: should the composer auto-grow at all, and to what max height? It
-  currently scrolls and is drag-resizable. Nothing should be built here on assumption.
-- ⚠️ **The four live `noodl-mcp.cjs` servers still need restarting.** `packages/noodl-mcp/dist` was
-  rebuilt this morning (by the phase-67 session, covering FIX-014's `src/tools/author.ts` +
-  `src/instructions.ts`), but **the running servers are Richard's and killing them is his call** —
-  they are pids 130, 4430, 9171, 34116, 37390. Until they restart, FIX-014 has not reached the MCP
-  client, which is half of its criterion 1.
+- 🔴 **NEW — the ⌘C precedence defect** (§3). Should a live text selection suppress the canvas copy
+  command, or should the canvas commands be scoped to the canvas? This decides the shape of the fix.
+- 🔴 **NEW — `linkify`**: should a bare URL in AI output become a clickable link? Today it does not,
+  on any surface. Enabling it widens the clickable-anchor surface in untrusted model output, so it is
+  a security-relevant call, not a formatting one.
+- 🔴 **FIX-002 criterion 2**: should the composer auto-grow at all, and to what max height? It
+  currently scrolls and is drag-resizable. Unchanged from session 10.
+- 🔴 **FIX-014's MCP half is blocked on a REPACKAGE, not a rebuild.** Every running server executes
+  `/Applications/NodeGX.app/Contents/Resources/noodl-mcp/noodl-mcp.cjs` — the **packaged app**, dated
+  2026-08-13, which does not contain `layoutAuthoredNodes`. The repo's `packages/noodl-mcp/dist` was
+  rebuilt and *does* have it, so checking `dist` gives the wrong answer about what the servers run.
+  Reaching them means repackaging and restarting — Richard's call, and bigger than "restart the
+  servers". ⚠️ There are now **six** live `noodl-mcp.cjs` servers.
 - 🟡 **FIX-019 14(a)** — is the surface called *the workbench* everywhere? Loose thread.
 - **FIX-004** conversion block shape, log level, Msg keys · **FIX-005** the category name (reverses
   VFN-012) · **FIX-006** demote Script from the AI-authorable set? · **FIX-013** what a data-reading
@@ -206,24 +215,29 @@ Work on `cline-dev`; **never `git stash`**; `cd` to the repo root in every git c
 every `git add`**. ⚠️ `dev-docs/tasks/phase-65-the-library/` is untracked and belongs to **neither**
 this phase nor phase 67 — `MEMORY.md` links into it, so it is one `git clean` from gone. Leave it.
 
-**Coordinating with live sessions worked well again today, and it mattered.** There were **at least
-three** other sessions on this checkout. Announce before **and after** any `test:main`, `test:ci` or
-**editor launch**; use `ListAgents` + `SendMessage`; match **real runner processes**
-(`node scripts/run-electron-tests.js`, `Electron test.js`) and **print the pids**.
-🔴 **`dev:stop` does not separate sessions on the same checkout** — its "only this checkout" safety is
-useless when we share one, so stop your own stack rather than leaving it, and never run it while a
-peer's editor is alive. Pick an explicit `NOODL_REMOTE_DEBUG_PORT` (9333 and 9444 were used today).
-⚠️ **We all commit as "Richard Osborne"** — `git log --format='%an'` cannot tell sessions apart;
-`ListAgents` plus file mtimes can.
+**Coordinating with live sessions worked again, and it mattered twice today.** Announcing *before*
+launching caught a live `test:ci` that would have been corrupted by a dev stack; announcing *after*
+stopping handed phase-67 its re-run window immediately. There were **nine** peers on this checkout.
+Announce before **and** after any `test:ci`, `test:main` or **editor launch**; use `ListAgents` +
+`SendMessage` (peers need their ` [ref]` on first contact).
 
-⚠️ **The memory index needs a prune.** `MEMORY.md` is **19.3 KB** against a 17.1 KB target (24.4 KB
-hard read limit). I compacted the verbose entries this session and it is still over, because getting
-under would mean **dropping live trap entries**, not rewording — that is Richard's call about his own
-knowledge base, not an agent's. Ask him which sections have gone cold.
+🔴 **`dev:stop --list` labels a running `test:ci` as "dev stack"** — it matches on the Electron binary
+path, and a suite's own `Electron test.js --ci` looks identical to a dev Electron. Plain `dev:stop`
+would have **killed the suite**. Read the process *parent*, not the port: a test host binds no ports
+at all, so "fresh Electron + all ports free" is the signature of the **suite**, not of a booting
+stack. Kill your own pids by pid; this session killed exactly two (`52973`, `54160`) and left the six
+MCP servers alone.
 
-**Drive fixtures:** the launcher's "Kiln & Co." **is** `leg003-drive`, a fixture — but it is a git
-repo carrying **other sessions' uncommitted work**, so never `git checkout .` to tidy up after
-yourself. `fix012-drive` has the `/Probe` with 6 typed inputs. `BaseDialog` renders every dialog
-**twice** — filter `:not([class*=MeasuringContainer])`. A React state write is **invisible in the same
-`eval`**. ⚠️ The launcher re-renders as its connect-status resolves, so an element measured in one
-call can be **unmounted by the next** — a drag that hits nothing reads as a selection failure.
+⚠️ **A different CDP port does not let two editors coexist** — the app takes a single-instance lock
+that ignores the port. What makes a launch safe is that nobody else's stack is up.
+
+**Drive fixtures:** `fix003-drive` is this session's — a `cp -R` of `leg003-drive` with a **fresh
+project id**, registered in the launcher's recents as "FIX003 Drive". It is a scratch copy precisely
+because **the Build composer authors on a one-character prompt**; the copy absorbed one AI turn today
+and nothing of value is in it. `leg003-drive` ("Kiln & Co.") is a git repo carrying other sessions'
+uncommitted work — never `git checkout .` there. `fix012-drive` has the `/Probe` with 6 typed inputs.
+`BaseDialog` renders every dialog **twice** — filter `:not([class*=MeasuringContainer])`.
+
+⚠️ **The memory index still needs a prune.** `MEMORY.md` is over its 17.1 KB target and getting under
+means **dropping live trap entries**, which is Richard's call about his own knowledge base. Ask him
+which sections have gone cold.
