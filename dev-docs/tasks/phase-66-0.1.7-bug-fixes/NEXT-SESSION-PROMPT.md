@@ -185,8 +185,14 @@ group.** Nobody has yet shown a live suite sharing a pgid with a recorded group 
 one open question**, and `ps -o pid,pgid` against the pid file settles it. The fix drops the group
 rather than resting on "safe by topology", which is the reasoning that already failed twice here.
 
-⚠️ **A missing `groups: []` in two early returns crashed `--list` on a quiet checkout** — caught
-only because I ran the *boring* case as well as the interesting one.
+🔴 **A missing `groups: []` in two early returns crashed `--list` on a QUIET checkout** — and this
+deserves more than a footnote. **The empty case is the one no interesting test exercises**, because
+every test you *want* to run sets up the state you are studying. It broke at exactly the moment
+someone reaches for the tool to ask *"is anything running?"* — i.e. when they are least expecting
+the instrument itself to be the problem, and most likely to read a crash as a busy checkout.
+
+✅ **So run the boring case too.** I caught it only by re-running the quiet checkout after the decoy
+one, and the decoy case passed throughout.
 
 ---
 
@@ -335,6 +341,16 @@ get a bare pid and a match you cannot identify. Use `ps -Ao pid,ppid,lstart,args
 
 ⚠️ **`dev:stop -- --list` is not purely read-only** — it calls `removePidFile()` when it finds
 nothing. "Kills nothing" and "reads only" are not the same claim.
+
+🔴 **Exercise the DULL state, not just the interesting one.** Three separate failures today shared
+one shape: the hazard absent so a guard never fired; the detector absent so a control could not
+signal; and the *empty* case untested so a fix broke where the tool is most used — a `--list` on a
+quiet checkout, which is what nearly every `--list` here actually is. **Enumerate the states your
+instrument will meet and run the boring ones too.**
+
+⚠️ **Distrust the phrase "X kills exactly what Y returns"** (and its relatives). It asserts an
+equality *between layers* while having been checked on only one. That sentence is how I described
+the group kill path an hour before it turned out to be a second path with different coverage.
 
 ✅ **A package-local jest run is the gate you can still take on a busy checkout.** `noodl-core-ui`'s
 jest is plain Node, spawns no Electron, matches no `DEV_TOOL` pattern, and finishes in ~1.5s.
