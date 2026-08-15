@@ -340,6 +340,25 @@ negative is the dangerous one: it reads as "clear" and gets someone to launch in
 "launching now", the process table cannot distinguish a peer who is starting from a peer who changed
 their mind. Neither the check nor the announcement settles it alone; the pair does.
 
+### ✅ Match the breadth of the check to the direction of the claim
+
+**~20 sibling worktrees exist** (`~/vscode_projects/OpenNoodl-worktrees`: `fix002-lane`,
+`lgc-001`…`008`, `vfn-e/f/g/h`, …), and the standard patterns — `scripts/start.ts`,
+`Electron \. --dev`, `test\.js --ci` — match on **argv shape, not on which checkout**. So they
+match a **superset** of this checkout's processes. That is not a bug to fix; it is a property to
+use, and getting it backwards is what produced two opposite scoping errors in one evening:
+
+| the claim you are making | what you need | why |
+|---|---|---|
+| **"nothing is running"** (a null) | a **BROAD** match | 0 in the superset ⇒ 0 in the subset. **An over-broad instrument makes an all-clear SOUND** |
+| **"something is running, and it's MINE"** (a positive) | a **PATH-SCOPED** match | otherwise it may be a sibling worktree's process — `pgrep -f "OpenNoodl/node_modules/electron/dist.*--dev"`, or `ps -p <pid> -o command` against the repo root |
+
+🔴 **The two failure directions are not equally bad.** An over-broad check yields sound negatives
+and unsound positives — it can make you **wait** for a stack that isn't yours. An under-broad check
+(the `comm` fix above, blind for 75 seconds) yields **unsound negatives** — it reads as *clear* and
+gets someone to launch into a live stack. **Only one of them can hurt anybody.** So err broad for
+an all-clear, and scope tightly only when you are about to attribute or kill something.
+
 ### Etiquette
 
 **Announce before *and* after any `test:ci`, `test:main` or editor launch, and announce your PIDs.**
