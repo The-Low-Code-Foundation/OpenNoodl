@@ -49,6 +49,7 @@ import {
 import { App } from '../../models/app';
 import { DialogLayerModel } from '../../models/DialogLayerModel';
 import { LearningFolderModel } from '../../models/learningfolder';
+import { attachLearningLesson } from '../../models/learninglesson';
 import { LessonsProjectsModel } from '../../models/LessonsProjectModel';
 import LessonTemplatesModel from '../../models/lessontemplatesmodel';
 import { projectFromDirectory } from '../../models/projectmodel.editor';
@@ -348,6 +349,17 @@ export function ProjectsPage(props: ProjectsPageProps) {
         // records progress and grades against when the lesson is graded.
         project.id = entry.id;
         if (!project.name) project.name = entry.title;
+        /*
+         * 🔴 **Without this the lesson opens as an ordinary project.**
+         * `EditorPage` attaches the lesson layer only when
+         * `ProjectModel.instance.isLesson()`, i.e. `project.lesson` is set, and
+         * the only code that had ever set it is the hosted-zip path — which
+         * points a `LessonModel` at an HTTP base URL this lesson does not have.
+         * So slice 3 shipped a Learning section whose lessons opened with no
+         * steps, no instructions and nothing to grade against. Found by
+         * building slice 4's caller; see `models/learninglesson.ts`.
+         */
+        attachLearningLesson(project, entry);
         props.route.router.route({ to: 'editor', project });
       });
     },

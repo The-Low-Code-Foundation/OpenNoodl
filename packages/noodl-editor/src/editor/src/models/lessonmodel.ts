@@ -23,6 +23,23 @@ export interface LessonModelArgs {
   completionBadge?: string;
   numberOfLessons?: number;
   baseURL?: string;
+  /**
+   * UNI-007 — where the lesson source comes from, when it is not an HTTP URL.
+   *
+   * The hosted lessons this model was written for are fetched from a web server,
+   * and `fetch()` below is that. A lesson installed into the **Learning folder**
+   * is a directory on disk with a `lesson.json` in it: there is no origin to
+   * fetch from, and `window.fetch` will not read a `file://` path from the
+   * editor's renderer. So the *reader* is injectable and everything after it —
+   * format detection, `compileLessonSource`, step extraction, annotations — is
+   * shared. 🔴 One reader/compile path, not a fork: a second compiler is how two
+   * producers of one format start disagreeing about it.
+   *
+   * Not serialised by {@link LessonModel.toJSON}, deliberately — a function
+   * cannot be, and the caller that knows where the lesson lives is the caller
+   * that re-attaches it on open.
+   */
+  read?: () => string | undefined | Promise<string | undefined>;
 }
 
 export interface LessonModelJSON {
@@ -53,10 +70,13 @@ export default class LessonModel extends Model {
   lessons?: string[];
   /** Per-step `data-*` annotations, extracted from the step HTML. */
   annotations?: LessonAnnotations[];
+  /** See {@link LessonModelArgs.read}. Absent for the hosted (HTTP) lessons. */
+  read?: () => string | undefined | Promise<string | undefined>;
 
   constructor(args: LessonModelArgs) {
     super();
 
+    this.read = args.read;
     this.index = args.index;
     this.url = args.url;
     this.name = args.name;
@@ -98,15 +118,32 @@ export default class LessonModel extends Model {
       .filter((step) => step.length > 0);
   }
 
-  fetch(callback?: () => void): void {
+  /**
+   * The lesson source, from wherever this lesson lives — an injected reader when
+   * there is one, the network otherwise. Absence is `undefined`, never a throw:
+   * both callers below treat "no text" as "no steps yet".
+   */
+  private readSource(): Promise<string | undefined> {
+    if (this.read) {
+      try {
+        return Promise.resolve(this.read()).catch(() => undefined);
+      } catch {
+        return Promise.resolve(undefined);
+      }
+    }
+
     const url = this.url.startsWith('http') ? this.url : (this.baseURL ?? '') + this.url;
 
     // cache: 'no-store' matches jQuery's `cache: false` (which appended a cache buster)
-    window
+    return window
       .fetch(url, { cache: 'no-store', headers: { Accept: 'text/html, application/json' } })
       .then((response) => (response.ok ? response.text() : undefined))
-      .catch(() => undefined)
-      .then((text) => {
+      .catch(() => undefined);
+  }
+
+  fetch(callback?: () => void): void {
+    this.readSource().then((text) => {
+      try {
         if (text === undefined) {
           this.lessons = undefined;
         } else if (isManifestUrl(this.url) || looksLikeManifest(text)) {
@@ -123,8 +160,18 @@ export default class LessonModel extends Model {
           this.numberOfLessons = this.lessons.length;
           this.extractAnnotations();
         }
-        callback && callback();
-      });
+      } catch (e) {
+        // ⚠️ `compileLessonSource` throws `LessonFormatError` on a malformed
+        // manifest, and this used to escape as an unhandled rejection — no
+        // steps, no callback, and a lesson layer that waits forever with
+        // nothing on screen or in a log to say why. A lesson that will not
+        // compile has no steps; that is the same state as a lesson that could
+        // not be read, and `start()` already declines to announce it.
+        console.error('Could not read lesson', this.url, e);
+        this.lessons = undefined;
+      }
+      callback && callback();
+    });
   }
 
   start(): void {
