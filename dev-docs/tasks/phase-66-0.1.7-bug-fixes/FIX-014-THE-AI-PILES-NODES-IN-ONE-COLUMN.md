@@ -249,3 +249,143 @@ recorded here rather than changed.**
   blocked on a `dist/` repackage. **Criterion 1 is half-driven, and the task is not closed.**
 - ⚠️ The gap-filling branch (a model that omits `x`/`y` entirely) was **never exercised** — the model
   supplied coordinates on all three turns. The collision branch is what ran.
+
+---
+
+## 🚗 DRIVE RECORD — session 18, 2026-08-15 (the MCP half)
+
+**Acceptance criterion 1's remaining half is DRIVEN.** The `noodl-mcp` client applies the layout
+pass through a real MCP stdio session, and **the gap-filling branch — never exercised by session
+16's drive — ran here.** All four claims were written down before the server was started
+(`scratchpad/CLAIMS.md`).
+
+### 🔴 The repackage was NOT the blocker it was recorded as
+
+Two different artefacts were being conflated under "the `dist/` repackage":
+
+| Artefact | Built | Has the pass (`grep -c COLLISION_STEP`) |
+|---|---|---|
+| `packages/noodl-mcp/dist/noodl-mcp.cjs` | 2026-08-15 09:56 | **2** |
+| `/Applications/NodeGX.app/Contents/Resources/noodl-mcp/noodl-mcp.cjs` | 2026-08-13 19:19 | **0** |
+
+The repo `dist/` was already rebuilt (after `7240b99f`, 09:29). What is stale is the **installed
+app**, and the registered `nodegx-puppy-test-3` server runs *that* copy — which is why every
+attempt to drive this through the session's own MCP tools would have measured a build without the
+feature. **Driving the built `dist/` directly needs no repackage and no session restart.**
+
+### Method
+
+`node packages/noodl-mcp/dist/noodl-mcp.cjs <project> --allow-writes` spawned under **plain node**
+(deliberately: plain node matches no `findDevProcesses` `DEV_TOOL` pattern, so this is safe beside
+a peer — an Electron-launched server would have matched `electron/dist`), driven over
+newline-delimited JSON-RPC: `initialize` → `notifications/initialized` → `tools/list` (20 tools)
+→ `tools/call`. Project: a copy of `packages/noodl-mcp/tests/fixtures/demo-app` in the session
+scratchpad. Assertions read `nodes.json` **on disk**, by node id.
+
+### The results
+
+**C2 + C3 — `Library/Fix014McpCollide`**, one node placed by hand and three submitted at an
+identical coordinate:
+
+| id | type | submitted | on disk |
+|---|---|---|---|
+| `fx14c-root` | Group | 900, 50 | **900, 50** — verbatim ✅ |
+| `fx14c-a` | Number | 1200, 400 | **1200, 400** |
+| `fx14c-b` | Counter | 1200, 400 | **1200, 440** |
+| `fx14c-c` | String Format | 1200, 400 | **1200, 480** |
+
+✅ Two consecutive `COLLISION_STEP`s, in submission order — the pass's signature, not a coincidence.
+
+**C1 + C4 — `Library/Fix014McpGap`**, submitted with **no `x`/`y` on any node**:
+
+| id | type | on disk | why that number |
+|---|---|---|---|
+| `fx14g-root` | Group | **40, 40** | `VISUAL_COLUMN_X` / `VISUAL_COLUMN_TOP` |
+| `fx14g-text` | Text (child) | **100, 160** | `40 + 1×HIERARCHY_INDENT_X`; `40 + ROW_SPACING` |
+| `fx14g-counter` | Counter (logic) | **350, 160** | `maxVisualX(100) + LOGIC_COLUMN_GUTTER(250)`; anchored to the `y` of the node it feeds |
+
+✅ Every coordinate is a pass constant. **This is stronger evidence than session 16's run 1**, where
+the model supplied coordinates and the numbers matched the *prompt's* wording rather than the
+pass's: here there is no model in the loop at all, so nothing but the pass could have written them.
+
+### The trap-guards fired, which is why the readings are trusted
+
+- The first gap-fill attempt was **rejected** (`Counter` has no output `count`) and
+  `Fix014McpGap/nodes.json` **did not exist afterwards** — the "silent write failure, stale read"
+  trap was real and the guard caught it. The corrected call created the file at a fresh mtime.
+- `Library/` did not exist in the fixture before the run, so no fixture coordinate could be
+  mistaken for the pass's output.
+- An earlier call also surfaced a **schema detail worth keeping**: `create_component` connections
+  are `fromProperty`/`toProperty`, **not** `fromPort`/`toPort`.
+
+### 🔴 What this drive does NOT show
+
+- **The installed `/Applications/NodeGX.app` still does not have the pass.** Every registered MCP
+  server in every live Claude session loads that copy. The repackage is still owed — but it is now
+  a *deployment* debt, not a blocker on this criterion. Restarting the servers needs Richard.
+- Nothing here re-opens `COLLISION_STEP`: 40 is still shorter than a node is tall (see the session
+  16 record above). The three colliders would still visibly overlap on a canvas. **Ruling still owed.**
+
+---
+
+## ⚖️ RULING 2026-08-15 (session 18) — `COLLISION_STEP` is raised to `ROW_SPACING`
+
+Richard ruled option (a): **raise the constant and accept "usually clear"**, over passing measured
+heights in or leaving it at 40.
+
+```ts
+export const COLLISION_STEP_FLOOR = 120;
+export const COLLISION_STEP = Math.max(ROW_SPACING, COLLISION_STEP_FLOOR);
+```
+
+**And the wording is corrected with it, which was half the defect.** The module header said later
+colliders "are stepped clear" and the code comment said "step down until clear" — *clear* is exactly
+what they were not. Both now state the real promise: **the pass breaks an exact coordinate tie; it
+does not guarantee non-overlap, because it is never given node sizes.** A 190px node still overlaps
+at 120 and the module says so.
+
+### 🔴 Why there is a floor rather than a bare `= ROW_SPACING`
+
+Raised in review by a peer, and it is the kind that brings a fixed bug back. The two constants have
+**different jobs** — `ROW_SPACING` is layout *rhythm*, `COLLISION_STEP` is *clearance* — and are
+equal today only by coincidence of value. Someone tightening rows for density (120 → 100 is a
+plausible visual tweak) would silently cut clearance and re-open this defect, and **every existing
+spec would stay green**, because all of them assert `y + COLLISION_STEP` symbolically. Nothing in
+the suite named the relationship. Two specs now do.
+
+### Verification of the ruling — driven, not just specced
+
+Re-driven through a **rebuilt** `dist/` over MCP stdio, three nodes submitted at an identical
+`(1200, 400)`:
+
+| id | submitted | before the ruling | after |
+|---|---|---|---|
+| `fx14r-root` (control) | 900, 50 | 900, 50 | **900, 50** |
+| `fx14r-a` | 1200, 400 | 1200, 400 | **1200, 400** |
+| `fx14r-b` | 1200, 400 | 1200, 440 | **1200, 520** |
+| `fx14r-c` | 1200, 400 | 1200, 480 | **1200, 640** |
+
+Two consecutive 120s, control untouched.
+
+### Gate readings — session 18, 2026-08-15
+
+| Gate | Reading | When |
+|---|---|---|
+| **`test:ci` (jasmine)** | ✅ **at the floor — 6 by NAME**: 4 × `AIX-006 style vocabulary`, 2 × `AI model registry`. `totalCount` **2843**, `seed` **39393**, `test-results.json` mtime **19:51** (deleted 19:41, so the file proves the run) | 19:51 |
+| editor `tsc --noEmit` | ✅ 0 errors | 19:54 |
+| `fix-014` editor specs | ✅ **19/19** (17 + the 2 new floor specs) | 19:53 |
+| `noodl-mcp` `authoredLayout` | ✅ 6/6 | 19:53 |
+| editor plain-node jest (full) | ✅ **203 suites / 3138, 0 failed** | 19:36 |
+| `noodl-mcp` jest (full) | ✅ **44 suites / 506, 0 failed** | 19:37 |
+
+⚠️ **Two honest limits on the `test:ci` reading, both recorded rather than glossed:**
+
+1. `test:ci` webpacks the **working tree**, not `HEAD`. It graded `d061bc6e` plus two dirty source
+   files: this task's `layout.ts`, and `scripts/library/check.ts`, which belongs to nobody who
+   answered. The latter was **screened, not waved off** — nothing under `packages/noodl-editor/tests/`
+   or `src/` imports it (the only `scripts/library` mention in source is a comment at
+   `starterAssets.ts:68`), so it cannot have influenced the result.
+2. 🔴 **The `COLLISION_STEP_FLOOR` refactor landed AFTER that run.** The computed value is identical
+   (`Math.max(120, 120)` = the 120 the suite graded), so the bundle's behaviour is unchanged — but
+   the jasmine gate has not seen that exact source text, and saying otherwise would be the
+   "gate covered it" claim this phase keeps catching. The editor and MCP specs above did run against it.

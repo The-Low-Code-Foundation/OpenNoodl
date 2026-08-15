@@ -15,8 +15,10 @@
  *
  *  - A node whose `x` and `y` are both present is never assigned a position.
  *    The single exception is two nodes emitted at *identical* coordinates —
- *    the first occupant keeps the spot, later ones are stepped clear — because
- *    a perfect overlap is unreadable and no arrangement can have meant it.
+ *    the first occupant keeps the spot, later ones are stepped down by
+ *    `COLLISION_STEP` — because a perfect overlap is unreadable and no
+ *    arrangement can have meant it. ⚠️ This breaks the *tie*; it does not
+ *    promise the nodes no longer touch. The pass is never given node sizes.
  *  - A node named in `lockedIds` — the caller's record of positions that
  *    predate this write, i.e. a human's arrangement — is never touched at
  *    all, not even to separate a collision. It still occupies its coordinates
@@ -81,8 +83,26 @@ export const HIERARCHY_INDENT_X = 60;
 export const ROW_SPACING = 120;
 /** Gap between the widest visual x and the logic column. */
 export const LOGIC_COLUMN_GUTTER = 250;
-/** Step used to separate two nodes emitted at identical coordinates. */
-export const COLLISION_STEP = 40;
+/**
+ * Step used to separate two nodes emitted at identical coordinates.
+ *
+ * `ROW_SPACING`, not a smaller nudge: this pass is size-blind by design, so the
+ * step is the only lever it has over visual clearance. Measured node heights on
+ * a real canvas run 64–190px, which is why the original 40 left "separated"
+ * nodes visibly overlapping. 120 clears the common case; it cannot *guarantee*
+ * clearance, because a 190px node still overlaps at 120. See the promise stated
+ * at the collision block below — the pass breaks exact ties, it does not
+ * guarantee non-overlap.
+ *
+ * 🔴 **The floor is not decoration.** `ROW_SPACING` and this constant have
+ * different jobs — one is layout *rhythm*, this one is *clearance* — and they
+ * are equal today only by coincidence of value. Tightening rows for density
+ * (120 → 100 is a plausible visual tweak) would otherwise silently cut
+ * clearance and re-open the defect this constant was raised to close. Whatever
+ * happens to `ROW_SPACING`, this may not fall below `COLLISION_STEP_FLOOR`.
+ */
+export const COLLISION_STEP_FLOOR = 120;
+export const COLLISION_STEP = Math.max(ROW_SPACING, COLLISION_STEP_FLOOR);
 
 const hasPosition = (n: NodeV2): boolean => n.x !== undefined && n.y !== undefined;
 
@@ -203,7 +223,10 @@ export function layoutAuthoredNodes(
 
   // ── Collision separation — the one thing applied to positioned nodes too ──
   // Exact coordinate ties only. The first occupant keeps the spot; later ones
-  // step down until clear. Locked nodes claim theirs first and never move —
+  // step down by COLLISION_STEP until the exact pair is free. That is the whole
+  // promise: an exact tie is broken, non-overlap is NOT guaranteed — the pass is
+  // never given node sizes, so it cannot know when two nodes have stopped
+  // touching. Locked nodes claim theirs first and never move —
   // two locked nodes sharing a coordinate are a pre-existing arrangement and
   // stay exactly where they are.
   const keyOf = (n: NodeV2) => `${n.x},${n.y}`;

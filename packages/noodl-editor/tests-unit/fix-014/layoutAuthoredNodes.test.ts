@@ -9,6 +9,7 @@
 import { buildCandidate } from '../../src/editor/src/models/AiAssistant/authoring/candidate';
 import {
   COLLISION_STEP,
+  COLLISION_STEP_FLOOR,
   HIERARCHY_INDENT_X,
   LOGIC_COLUMN_GUTTER,
   ROW_SPACING,
@@ -24,6 +25,32 @@ const VISUAL_TYPES = new Set(['Group', 'Text', 'Image', 'Page']);
 const isVisual = (t: string) => VISUAL_TYPES.has(t);
 
 const byId = (nodes: NodeV2[]) => new Map(nodes.map((n) => [n.id, n]));
+
+describe('FIX-014 — the collision step is a clearance floor, not layout rhythm', () => {
+  /**
+   * Ruled 2026-08-15 after the drive: the original 40 was shorter than a node is
+   * tall (measured heights ran 64–190px), so "separated" nodes still visibly
+   * overlapped. The step is now ROW_SPACING-sized.
+   *
+   * 🔴 This spec exists because the two constants have DIFFERENT JOBS and equal
+   * values. ROW_SPACING is layout rhythm; COLLISION_STEP is clearance. Someone
+   * tightening rows for density (120 → 100 is a plausible visual tweak) would
+   * otherwise silently cut clearance and re-open the defect, and every other
+   * spec here would stay green because they all assert `y + COLLISION_STEP`
+   * symbolically. Nothing else in the suite names this relationship.
+   */
+  it('never falls below the floor, whatever happens to ROW_SPACING', () => {
+    expect(COLLISION_STEP).toBeGreaterThanOrEqual(COLLISION_STEP_FLOOR);
+    expect(COLLISION_STEP_FLOOR).toBe(120);
+  });
+
+  it('clears the node height that made 40 the wrong number', () => {
+    // The tallest node measured on a real canvas during the session-16 drive.
+    // The pass is size-blind, so this is a documented approximation, not a
+    // guarantee — a 190px node still overlaps at 120, which the module says.
+    expect(COLLISION_STEP).toBeGreaterThan(64);
+  });
+});
 
 describe('FIX-014 — layoutAuthoredNodes', () => {
   it('flows an unpositioned visual tree down the left column, indented by depth', () => {

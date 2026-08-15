@@ -88,7 +88,7 @@ only a drive proves the pixels).
 | FIX-011 ✅ | the bench frame gets a height, handles, and a per-component default | 8a | 2 | M (symptom fix S) | ✅ **CLOSED 2026-08-14** — built + driven 4/4 |
 | FIX-012 ✅ | a None row; Reset all stops lying | 8b | 2 | S | ✅ **CLOSED 2026-08-14** — built + driven 3/3 |
 | FIX-013 | the Data maze is removed; the bench is inputs and outputs | 8c | 2 | S–M | 🔴 zero-rows / AI-preview parity |
-| FIX-014 🟡 | logic nodes get their own column, by prompt and by a layout pass | 9 | 2 | S+M | 🟡 **BUILT 2026-08-15** (`1716236a`), gates green — **NOT DRIVEN**: criterion 1 (both clients) owed |
+| FIX-014 ✅ | logic nodes get their own column, by prompt and by a layout pass | 9 | 2 | S+M | ✅ **CLOSED 2026-08-15** — built (`1716236a`); criterion 1 driven in **two halves**: Build panel s16, **MCP s18**. ⚠️ `COLLISION_STEP` ruled 40 → `ROW_SPACING` and driven. 🔴 **Driven ≠ shipped: the packaged app still lacks the pass** (deployment debt, not a blocker) |
 | FIX-015 | style tokens: rulings session → a new phase | 10 | brainstorm | session | 🔴 all eight |
 | FIX-016 | Signal offered at add time; declared-vs-called mismatch diagnosed | 11 | 3 | S+S | signal-input semantics (for the M–L half only) |
 | FIX-017 | completions at an empty position; `Noodl.Records.` answers; TASKS.md reconciled | 12 | 3 | S+M+S | no |
