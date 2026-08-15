@@ -33,7 +33,7 @@ import { Completion, CompletionContext, CompletionResult } from '@codemirror/aut
 
 import { getCodeAuthoringContext } from './authoringContext';
 import { apiMembersAtPath, globalsFor, type ApiMember } from './noodl-api-surface';
-import { completesTopLevel, isDeclarationPosition, isMemberPosition } from './utils/completionPosition';
+import { isDeclarationPosition, isMemberPosition, startsStatement } from './utils/completionPosition';
 import { modeHasDeclaredPorts } from './utils/declaredPorts';
 import { canExpressPort, readExpression, writeExpression } from './utils/notation';
 import { minePorts } from './utils/scriptPorts';
@@ -198,7 +198,22 @@ export function createNoodlCompletionSource(
       return options && options.length > 0 ? { from: word.from, options } : null;
     }
 
-    if (!completesTopLevel(context, word)) return null;
+    // A member position stays an absolute no for top-level names: `foo.` is not
+    // the place to offer `Math.min`, whoever `foo` is.
+    if (isMemberPosition(context, word.from)) return null;
+
+    // §A. `completesTopLevel` refuses every empty position, so a fresh Function
+    // body offered nothing until the user guessed a first letter — withholding
+    // the list from the only person who needs it. It answers here instead when
+    // the cursor is starting a statement, which is true of an empty seed body
+    // and false mid-expression, so ordinary typing is not smothered.
+    //
+    // ⚠️ The shared predicate is deliberately left alone: `library-completions`
+    // uses it too, and the module note above warns that `word.from === word.to`
+    // means opposite things either side of the member check. It is read here
+    // only *after* `isMemberPosition` has ruled, where it does mean "empty".
+    const atEmptyPosition = word.from === word.to && !context.explicit;
+    if (atEmptyPosition && !startsStatement(context, word.from)) return null;
 
     const prefix = word.text.toLowerCase();
     const options = asCompletions(globalsFor(validationType)).filter((option) =>
@@ -207,6 +222,12 @@ export function createNoodlCompletionSource(
 
     // FUN-008. The originating user typed `Input_1`, not `Inputs.`, and nothing
     // was listening. The instinct is not wrong, it is *unprefixed*.
+    //
+    // ✅ §A needs these to stay gated at an empty position — every port on the
+    // node would otherwise land on top of the globals, boosted to 99 — and they
+    // already are, one level down: `barePortCompletions` returns nothing without
+    // a prefix, explicit requests included. Measured, not assumed; a gate added
+    // here as well would have been dead code that read as the load-bearing one.
     const ports = barePortCompletions(context, word, validationType);
 
     if (options.length === 0 && ports.length === 0) return null;

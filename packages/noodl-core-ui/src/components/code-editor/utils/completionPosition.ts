@@ -41,6 +41,29 @@ export function completesTopLevel(context: CompletionContext, word: { from: numb
 }
 
 /**
+ * Is the cursor at the start of a statement — nothing but whitespace between it
+ * and the start of its line?
+ *
+ * FIX-017 §A. `completesTopLevel` refuses every empty position, which is right
+ * for the noise FH-017 removed and wrong for the one position that matters: a
+ * freshly opened Function body, where the user has nothing to type *because*
+ * they do not yet know what is available. The list is written for exactly that
+ * person, and the old guard withheld it from them.
+ *
+ * ⚠️ So this is the discriminator, not a blanket "answer when empty". Starting a
+ * statement is true of an empty seed body and of a fresh line, and false in the
+ * middle of an expression someone is already typing — which is what keeps
+ * ordinary code from being smothered by a menu after every space.
+ *
+ * Deliberately textual rather than a syntax-tree test: an empty document has no
+ * meaningful tree, and that is the case this exists to serve.
+ */
+export function startsStatement(context: CompletionContext, pos: number): boolean {
+  const line = context.state.doc.lineAt(pos);
+  return context.state.doc.sliceString(line.from, pos).trim() === '';
+}
+
+/**
  * Is the cursor naming something, rather than referring to something?
  *
  * FUN-008 §3's third exclusion. `var Inp…` is someone binding a local; offering

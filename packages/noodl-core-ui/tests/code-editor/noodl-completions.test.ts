@@ -237,6 +237,62 @@ describe('noodlCompletionSource', () => {
       expect(labelsFor('const x = ')).toBeNull();
     });
 
+    /**
+     * FIX-017 §A. The list exists for someone who does not know what to type,
+     * and until now it was withheld from exactly that person: a fresh Function
+     * body offered nothing until they guessed a first letter.
+     *
+     * ⚠️ These cases only mean something next to the two guard cases either
+     * side of them — `const x = ` still silent, and ports still gated below. A
+     * source that answered at *every* empty position would pass the first three
+     * of these and be the menu-on-every-keystroke noise FH-017 removed.
+     */
+    describe('on a fresh line, where the user has nothing to type yet', () => {
+      it('offers the Function globals in an empty body, with no keystroke', () => {
+        expect(labelsFor('')).toEqual(['Inputs', 'Outputs', 'Noodl', 'Component', 'Script']);
+      });
+
+      it('offers the Expression globals too — both modes, per the criterion', () => {
+        expect(labelsFor('', false, 'expression')).toContain('Noodl');
+      });
+
+      it('answers on a blank line after existing code', () => {
+        expect(labelsFor('const total = 1;\n')).toContain('Noodl');
+      });
+
+      it('answers on an indented blank line', () => {
+        expect(labelsFor('if (true) {\n  ')).toContain('Noodl');
+      });
+
+      it('stays silent mid-expression, which is what keeps ordinary code readable', () => {
+        // The discriminator is "starting a statement", not "the word is empty".
+        expect(labelsFor('const x = ')).toBeNull();
+        expect(labelsFor('foo(')).toBeNull();
+        expect(labelsFor('const total = 1 + ')).toBeNull();
+      });
+
+      it('still refuses a member position, whoever the object is', () => {
+        expect(labelsFor('myArray.')).toBeNull();
+      });
+
+      it('gates the bare-port offers out, so the globals are not buried', () => {
+        openFunctionNode(['Input_1'], []);
+        const labels = labelsFor('')!;
+
+        expect(labels).toContain('Noodl');
+        expect(labels).not.toContain('Inputs.Input_1');
+      });
+
+      it('keeps them gated even on an explicit request — a prefix is what they answer', () => {
+        // Not a §A decision: `barePortCompletions` has always refused an empty
+        // prefix. Pinned because §A is the change that made the globals appear
+        // beside them, so this is now the only thing keeping the empty-body
+        // menu to the five names the criterion asks for.
+        openFunctionNode(['Input_1'], []);
+        expect(labelsFor('', true)).toEqual(['Inputs', 'Outputs', 'Noodl', 'Component', 'Script']);
+      });
+    });
+
     it('offers what a Function node is compiled with when asked explicitly', () => {
       // `new AsyncFunction('Inputs', 'Outputs', 'Noodl', 'Component', …)`.
       expect(labelsFor('const x = ', true)).toEqual(['Inputs', 'Outputs', 'Noodl', 'Component', 'Script']);
