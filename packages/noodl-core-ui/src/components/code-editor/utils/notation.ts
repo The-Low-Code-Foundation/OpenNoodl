@@ -292,7 +292,8 @@ export const SEED_FUNCTION_BODY = [
 ].join('\n');
 
 /* ------------------------------------------------------------------ *
- * FUN-004 — the four sentences a port diagnostic says
+ * FUN-004 (messages 1-4) and FIX-016 §2 (message 5) — the sentences a
+ * port diagnostic says
  * ------------------------------------------------------------------ */
 
 /**
@@ -360,6 +361,80 @@ export function declaredButUnreadMessage(names: readonly string[]): string {
 
   const listed = names.join(', ');
   return `${listed} are declared on this node but never read. Insert ${readExpression(names[0])} to use the first.`;
+}
+
+/**
+ * `'*'` — the type an output declared in the panel carries until somebody opens
+ * its **Type** row (`simplejavascript.ts:816`, `declaredPorts.ts:73`).
+ *
+ * ⚠️ **Not `'string'`, and the difference is the whole reason this is a
+ * constant.** The `outtype-<label>` proplist port declares `default: 'string'`
+ * (`:806`), which is what the enum *widget* shows — but the parameter itself
+ * stays absent until it is changed, and both the runtime's port registration and
+ * the editor's port list fall back to `'*'`. So the commonest instance of the
+ * defect below is a port with no type at all, and a message hard-coding "String"
+ * would name a type the author never chose.
+ */
+const UNTYPED_OUTPUT = '*';
+
+/**
+ * How to name an output's declared type in a sentence.
+ *
+ * ⚠️ The seven labels the panel shows are exactly `value` with its first letter
+ * capitalised (`simplejavascript.ts:742-771`), so this **derives** the label
+ * rather than copying the table — a copy in this package could not be shared
+ * with the runtime (F32: `noodl-core-ui` has no dependency on `@noodl/runtime`)
+ * and would drift silently. A future enum entry whose label is not simply
+ * capitalised would read slightly differently here, but never wrongly: the word
+ * is always the author's own stored type value.
+ *
+ * ## ⚠️ `'*'` is called **String**, and that is deliberate — measured, not assumed
+ *
+ * An untouched output stores no `outtype-` at all, so {@link UNTYPED_OUTPUT} is
+ * its effective type. The obvious sentence for it — *"a value output with no Type
+ * set"* — was written first and **driven, and the drive killed it**: the property
+ * panel renders the `outtype-` enum's `default: 'string'`, so the author is
+ * looking at a dropdown that reads **String** while being told nothing is set.
+ * Measured 2026-08-15 in the running editor: an output with no stored `outtype-`
+ * displays `String`, identically to one explicitly set to it.
+ *
+ * The message's job is to be checkable against what is on screen (FUN-006's
+ * discipline: name *their* ports, in *their* words). A sentence contradicting the
+ * visible dropdown reads as being about some other port, which is worse than
+ * slightly over-claiming what is stored — and the stored/absent distinction is
+ * invisible to the author and changes nothing about the defect either way.
+ */
+function outputTypeDescription(type: string): string {
+  const displayed = !type || type === UNTYPED_OUTPUT ? 'string' : type;
+
+  return `a ${displayed.charAt(0).toUpperCase()}${displayed.slice(1)} output`;
+}
+
+/**
+ * **Message 5** (FIX-016 §2) — an output declared in the panel as a value, and
+ * called in the body as though it were a signal.
+ *
+ * The trap `unionPorts.ts:24-37` names, said out loud at the call site. The
+ * declared row wins over the mined one, so `Outputs.Done()` against a panel row
+ * that is not `Signal` does not fire anything: only ports whose assembled type
+ * is literally `'signal'` are given a callable
+ * (`simplejavascript.ts:400-415`, reached via `node.outputPorts` at `:863-867`),
+ * so the name holds `undefined` and the call throws.
+ *
+ * ⚠️ **Two routes, and they are different programs — which is why this message
+ * names both and ships no fix-it.** Setting Type to Signal keeps the author's
+ * trigger; rewriting the call as an assignment keeps the port and abandons the
+ * trigger. Every other message here corrects a *spelling* of one intent, and a
+ * one-click choice between two intents is not the same offer.
+ *
+ * ⚠️ Says *"throws when the node runs"* rather than "is wrong": the failure is
+ * not visible until Run, which is exactly why the author has not noticed it.
+ */
+export function outputCalledButNotSignalMessage(name: string, declaredType: string): string {
+  return (
+    `${name} is ${outputTypeDescription(declaredType)}, not a Signal, so calling it throws when the node runs. ` +
+    `Set its Type to Signal in the property panel, or write ${writeExpression(name, 'value').trimEnd()} … instead.`
+  );
 }
 
 /* ------------------------------------------------------------------ *

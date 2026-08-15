@@ -17,15 +17,19 @@
  * | 2 | a local or implicit global written under an **output**'s name | warning |
  * | 3 | an undefined name that is **no** port | warning (`no-undef`'s own) |
  * | 4 | a declared port the code never mentions | **info**, once, at the top |
+ * | 5 | a **value** output called as though it were a signal | warning |
  *
  * 1 and 3 are a rewrite of a `no-undef` message the linter already produced. 2 is
  * a new rule over the syntax tree — the half that lints clean today. 4 is the
  * reverse blind spot, and is only expressible because the declared and mined port
- * lists are kept apart (`authoringContext.ts:69-77`).
+ * lists are kept apart (`authoringContext.ts:69-77`). 5 arrived later, with
+ * FIX-016 §2, and is the only one whose subject is a **panel** setting rather
+ * than something in the document.
  *
- * Every one of them ships a **fix-it**. A beginner who does not know the notation
+ * Messages 1-4 each ship a **fix-it**. A beginner who does not know the notation
  * cannot be asked to type the correction from a description; the click is the
  * teaching, because it shows the shape in their own code with their own names.
+ * Message 5 deliberately ships none — see {@link signalMismatchDiagnostics}.
  *
  * ## ⚠️ None of this may reach `'expression'` mode
  *
@@ -57,6 +61,7 @@ import { modeHasDeclaredPorts } from './declaredPorts';
 import {
   declaredButUnreadMessage,
   localShadowsOutputMessage,
+  outputCalledButNotSignalMessage,
   readExpression,
   undefinedNameIsInputMessage,
   undefinedNameIsNoPortMessage,
@@ -346,6 +351,153 @@ function declarationStart(state: EditorState, definitionFrom: number): number {
 }
 
 /* ------------------------------------------------------------------ *
+ * Message 5 — the panel wins silently over the code
+ * ------------------------------------------------------------------ */
+
+/** More Lezer node names, measured against the same parser as the four above. */
+const CALL_EXPRESSION = 'CallExpression';
+const MEMBER_EXPRESSION = 'MemberExpression';
+const PROPERTY_NAME = 'PropertyName';
+const STRING_LITERAL = 'String';
+
+/**
+ * `Outputs`, or the legacy `Noodl.Outputs` alias, and nothing else.
+ *
+ * ⚠️ Anchored at both ends on purpose. The runtime's mining patterns have **no
+ * left boundary** (F15), so `foo.Outputs.Done()` mines a signal port called
+ * `Done` there — but it is a call on somebody else's object and does not throw,
+ * so it is not this defect and must not be reported as one.
+ */
+const OUTPUTS_OBJECT = /^Noodl\s*\.\s*Outputs$|^Outputs$/;
+
+/**
+ * A `SyntaxNode` without importing one.
+ *
+ * `@lezer/common` is not a dependency of this package — it reaches us only
+ * through `@codemirror/language`, which imports the type but does not re-export
+ * it. Naming it structurally keeps the phantom import out of `package.json`.
+ */
+type SyntaxNode = NonNullable<ReturnType<ReturnType<typeof syntaxTree>['resolveInner']>['parent']>;
+
+/** The text of a member expression's property, in dot form only. */
+function propertyNameOf(state: EditorState, member: SyntaxNode): string | null {
+  const property = member.getChild(PROPERTY_NAME);
+  return property ? state.doc.sliceString(property.from, property.to) : null;
+}
+
+/**
+ * Read `Outputs.Name` / `Outputs["Name"]` out of a member expression, with the
+ * range of the reference itself rather than of the whole call.
+ */
+function outputsMemberReference(
+  state: EditorState,
+  member: SyntaxNode | null
+): { name: string; from: number; to: number } | null {
+  if (!member || member.name !== MEMBER_EXPRESSION) return null;
+
+  const object = member.firstChild;
+  if (!object || !OUTPUTS_OBJECT.test(state.doc.sliceString(object.from, object.to))) return null;
+
+  const dotted = propertyNameOf(state, member);
+  if (dotted) return { name: dotted, from: member.from, to: member.to };
+
+  const literal = member.getChild(STRING_LITERAL);
+  if (!literal) return null;
+
+  // The quotes are the first and last characters of the literal's own range. A
+  // name containing an escaped quote comes back mangled and then matches no
+  // port, which is the safe direction — `canExpressPort` already says such a
+  // name has no round-tripping form at all.
+  const raw = state.doc.sliceString(literal.from, literal.to);
+  return { name: raw.slice(1, -1), from: member.from, to: member.to };
+}
+
+/**
+ * The output port a call expression fires, or `null` if it fires nothing.
+ *
+ * Two spellings, because the runtime supports two: `Outputs.Done()` and
+ * `Outputs.Done.send()` — the value it installs for a signal is callable *and*
+ * carries `.send` (`simplejavascript.ts:409-413`).
+ */
+function calledOutputPort(state: EditorState, callee: SyntaxNode): { name: string; from: number; to: number } | null {
+  const direct = outputsMemberReference(state, callee);
+  if (direct) return direct;
+
+  if (callee.name !== MEMBER_EXPRESSION || propertyNameOf(state, callee) !== 'send') return null;
+
+  return outputsMemberReference(state, callee.firstChild);
+}
+
+/**
+ * Find outputs the body calls that the panel has not typed as `Signal`.
+ *
+ * ## Why this reads the syntax tree and not `minePorts`
+ *
+ * The runtime's miner is text over the whole document, comments and string
+ * literals included — deliberately, because that is how ports come to exist. But
+ * *"your code calls this"* is a claim about code that **runs**, and a
+ * `// Outputs.Done()` in a comment throws nothing. The tree draws that line for
+ * free, and it also sees `Outputs.Done_1()`, which the miner's signal pattern
+ * cannot (no `_` in its class — `notation.ts:38-48`).
+ *
+ * ## ⚠️ Only **declared** ports, and that is not an oversight
+ *
+ * An output that exists solely because the code calls it is mined *as a signal*
+ * and works. The defect needs a panel row to win over the code — which is
+ * exactly the collision `unionPorts.ts:24-37` describes, and why the check is
+ * `port.declared && port.kind !== 'signal'` rather than a test of the call alone.
+ *
+ * The one undeclared case that does break — `Outputs.Done_1()` mining as a
+ * *value* because of the underscore asymmetry — is a different sentence with a
+ * different fix (`Outputs["Done_1"]()`), and FIX-016 files it separately with a
+ * ruling of its own. It is not silently folded in here.
+ *
+ * ## ⚠️ No fix-it, unlike every message above
+ *
+ * The repair the author almost certainly wants is a **panel** change this editor
+ * cannot make, and the repair it *could* make — rewriting the call as an
+ * assignment — keeps the port and throws away the trigger. Those are two
+ * different programs, not two spellings of one, so the message names both routes
+ * and picks neither. A one-click choice between intents would be the same class
+ * of mistake as a fix-it that breaks the document.
+ *
+ * ⚠️ **Warning, never error**, for `outputShadowDiagnostics`' reason and one
+ * more: the port list this rests on can change under a document that is still
+ * correct — renaming the Type row to `Signal` in the panel silences every one of
+ * these without the code being touched.
+ */
+export function signalMismatchDiagnostics(state: EditorState, ports: { outputs: UnionPort[] } | null): Diagnostic[] {
+  if (!ports || ports.outputs.length === 0) return [];
+
+  const found: Diagnostic[] = [];
+
+  syntaxTree(state).iterate({
+    enter(node) {
+      if (node.name !== CALL_EXPRESSION) return;
+
+      const callee = node.node.firstChild;
+      if (!callee) return;
+
+      const reference = calledOutputPort(state, callee);
+      if (!reference) return;
+
+      const port = findPort(ports.outputs, reference.name);
+      if (!port || !port.declared || port.kind === 'signal') return;
+
+      found.push({
+        from: reference.from,
+        to: reference.to,
+        severity: 'warning',
+        message: outputCalledButNotSignalMessage(reference.name, port.type),
+        source: SOURCE
+      });
+    }
+  });
+
+  return found;
+}
+
+/* ------------------------------------------------------------------ *
  * Message 4 — the reverse blind spot
  * ------------------------------------------------------------------ */
 
@@ -447,6 +599,7 @@ export function portDiagnostics(
   return [
     ...enriched,
     ...outputShadowDiagnostics(state, ports),
+    ...signalMismatchDiagnostics(state, ports),
     ...unreadPortDiagnostics(state, ports, named)
   ];
 }

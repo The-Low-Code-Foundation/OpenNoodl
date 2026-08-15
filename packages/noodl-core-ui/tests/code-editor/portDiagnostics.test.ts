@@ -266,6 +266,134 @@ describe('message 4 — a declared port the code never reads', () => {
   });
 });
 
+describe('message 5 — a value output called as though it were a signal (FIX-016 §2)', () => {
+  // The trap `unionPorts.ts:24-37` names: the panel row wins over the code, so a
+  // port declared anything-but-Signal and written `Outputs.Done()` is a *value*
+  // port holding `undefined`, and the call throws on every run. Confirmed at each
+  // hop of the runtime: only ports whose assembled type is literally `'signal'`
+  // reach `node.outputPorts` (`simplejavascript.ts:863-867`) and only those are
+  // given a callable (`:400-415`).
+
+  it('names the declared type, the consequence and both routes out', () => {
+    openNode([], [{ name: 'Done', type: 'string' }]);
+
+    expect(portMessages('Outputs.Done();')).toEqual([
+      'Done is a String output, not a Signal, so calling it throws when the node runs. ' +
+        'Set its Type to Signal in the property panel, or write Outputs.Done = … instead.'
+    ]);
+  });
+
+  it('names the type the panel displays, for an output whose Type was never touched', () => {
+    // ⚠️ The commonest instance of the bug, and the row a drive rewrote.
+    // `outtype-<label>` is **absent** until the Type row is opened, so the
+    // effective type is `'*'` — but the panel renders the enum's
+    // `default: 'string'`, and an author with no stored type is looking at a
+    // dropdown that says **String**. Measured in the running editor 2026-08-15.
+    // Saying "no Type set" here would contradict what is on their screen.
+    openNode([], [{ name: 'Done', type: '*' }]);
+
+    expect(portMessages('Outputs.Done();')[0]).toContain('Done is a String output, not a Signal');
+  });
+
+  it('says nothing about a correctly declared signal — the control', () => {
+    openNode([], [{ name: 'Done', type: 'signal' }]);
+    expect(portMessages('Outputs.Done();')).toEqual([]);
+  });
+
+  it('says nothing about a value output written as a value', () => {
+    openNode([], [{ name: 'Done', type: 'string' }]);
+    expect(portMessages('Outputs.Done = 1;')).toEqual([]);
+  });
+
+  it('reads the bracket form as the same call', () => {
+    openNode([], [{ name: 'Done', type: 'string' }]);
+    expect(portMessages('Outputs["Done"]();')[0]).toContain('not a Signal');
+  });
+
+  it('reads `.send()`, the runtime’s second spelling of a signal', () => {
+    // `simplejavascript.ts:409-413` installs a value that is callable *and*
+    // carries `.send`, so both shapes are the same fire — and both throw when the
+    // value was never installed.
+    openNode([], [{ name: 'Done', type: 'string' }]);
+    expect(portMessages('Outputs.Done.send();')[0]).toContain('not a Signal');
+  });
+
+  it('sees a name the runtime’s own signal pattern cannot', () => {
+    // `/Outputs\.([A-Za-z0-9]+)\s*\(\s*\)/` has no `_` in its class, so `minePorts`
+    // never reports `Done_1` as a signal. Reading the syntax tree instead of the
+    // miner is what makes this row possible — and the message is still right,
+    // because setting Type to Signal in the panel beats the parser asymmetry.
+    openNode([], [{ name: 'Done_1', type: 'string' }]);
+    expect(portMessages('Outputs.Done_1();')[0]).toContain('write Outputs.Done_1 = …');
+  });
+
+  it('ignores a call that only exists in a comment', () => {
+    // The miner is text over the whole document, comments included, because that
+    // is how ports come to exist. "Your code calls it" is a claim about code that
+    // *runs*, and this one does not.
+    openNode([], [{ name: 'Done', type: 'string' }]);
+    expect(portMessages('// Outputs.Done();\nOutputs.Done = 1;')).toEqual([]);
+  });
+
+  it('ignores a call on somebody else’s object', () => {
+    // F15: the runtime's patterns have no left boundary, so `foo.Outputs.Done()`
+    // mines a signal port there. It is still not a call on this node's outputs and
+    // it throws nothing.
+    openNode([], [{ name: 'Done', type: 'string' }]);
+    expect(portMessages('const foo = { Outputs: { Done: () => 1 } };\nfoo.Outputs.Done();')).toEqual([]);
+  });
+
+  it('reports the legacy `Noodl.Outputs` alias, which fires the same port', () => {
+    openNode([], [{ name: 'Done', type: 'string' }]);
+    expect(portMessages('Noodl.Outputs.Done();')[0]).toContain('not a Signal');
+  });
+
+  it('says nothing when the port exists only because the code calls it', () => {
+    // An undeclared `Outputs.Done()` is mined *as a signal* and works, so warning
+    // about it would be warning about correct code. ⚠️ This row passes on the
+    // **kind** test, not the `declared` test — `unionPorts` types the mined port
+    // `'signal'`, so it is already excluded before the panel is consulted. The row
+    // below is the one that holds `declared` in place.
+    expect(portMessages('Outputs.Done();')).toEqual([]);
+  });
+
+  it('stays out of the undeclared underscore case, which is a different fix', () => {
+    // ⚠️ **The deliberate scope boundary, pinned rather than only described.**
+    // `Outputs.Done_1()` with no panel row mines as a *value* port (no `_` in the
+    // signal pattern's class), so this call throws exactly like the reported bug —
+    // but the repair is `Outputs["Done_1"]()`, not a Type change, and FIX-016 files
+    // the parser asymmetry separately with a ruling of its own. Without this row,
+    // `port.declared` is unpinned: dropping it folds a second, differently-fixed
+    // defect into this message and nothing goes red.
+    expect(portMessages('Outputs.Done_1();')).toEqual([]);
+  });
+
+  it('underlines the port reference, not the whole call', () => {
+    openNode([], [{ name: 'Done', type: 'string' }]);
+    const diagnostic = lint('Outputs.Done();').find((d) => d.source === 'nodegx:ports');
+
+    expect(diagnostic.from).toBe(0);
+    expect(diagnostic.to).toBe('Outputs.Done'.length);
+  });
+
+  it('is a warning, and the only message here that offers no fix-it', () => {
+    // Deliberate. The repair the author wants is a panel change this editor cannot
+    // make, and the one it could make — rewriting the call as an assignment — is a
+    // different program, not a different spelling. The message names both routes
+    // and picks neither.
+    openNode([], [{ name: 'Done', type: 'string' }]);
+    const diagnostic = lint('Outputs.Done();').find((d) => d.source === 'nodegx:ports');
+
+    expect(diagnostic.severity).toBe('warning');
+    expect(diagnostic.actions ?? []).toEqual([]);
+  });
+
+  it('reports every call site, because every one of them throws', () => {
+    openNode([], [{ name: 'Done', type: 'string' }]);
+    expect(portMessages('Outputs.Done();\nif (Inputs.Value) Outputs.Done();')).toHaveLength(2);
+  });
+});
+
 describe('§3 — none of it may reach expression mode', () => {
   // The destructive case, and the reason this task was blocked until FUN-009.
   // Every row lints identical text in both modes and asserts the difference.
@@ -292,6 +420,16 @@ describe('§3 — none of it may reach expression mode', () => {
     openNode([], [{ name: 'Output_1', type: 'string' }]);
     expect(portMessages('Output_1 = 1', 'function').length).toBeGreaterThan(0);
     expect(portMessages('Output_1 = 1', 'expression')).toEqual([]);
+  });
+
+  it('does not report a signal mismatch in an expression', () => {
+    // Message 5 has no second mechanism behind it either: nothing about
+    // `Outputs.Done()` trips `no-undef`, so `modeHasDeclaredPorts` is the only
+    // thing standing between an expression author and a sentence about a
+    // property panel they do not have.
+    openNode([], [{ name: 'Done', type: 'string' }]);
+    expect(portMessages('Outputs.Done()', 'function').length).toBeGreaterThan(0);
+    expect(portMessages('Outputs.Done()', 'expression')).toEqual([]);
   });
 
   it('never puts the string `Inputs.` in front of an expression author', () => {
