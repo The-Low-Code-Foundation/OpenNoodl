@@ -332,3 +332,124 @@ state settles it. **Do not rule on §1 without that**; §5 item 2 blocks on it.
 `_managePortsForNode` / `_updatePorts` hook runs relative to `addRoot`. **The rendered-DOM
 measurement stands on its own; the reason the peer saw
 otherwise does not yet have one.**
+
+---
+
+## Session 26 — §5 item 2 DRIVEN. The row's precondition is not the viewer, it is a DECLARED row
+
+Driven in a live editor (`d0891746` + working tree), preview running, fixture a copy of
+`fix003-drive`. Screenshots in the session scratchpad. **The blocking question for ruling 1 is
+settled, and the answer is not either of the two candidate causes on record.**
+
+### The control pair — one variable, paired readings, reproduced
+
+Two `JavaScriptFunction` nodes in one component, built the same way (`NodeGraphNode.fromJSON` +
+`graph.addRoot`), carrying the **identical script**:
+
+```js
+Outputs.Done();
+Outputs.Result = 42;
+```
+
+| node | `scriptOutputs` proplist | property panel (`.sidebar-property-editor`) |
+|---|---|---|
+| **A** | `[{id:'so1',label:'Done'},{id:'so2',label:'Result'}]` | `SCRIPT OUTPUTS │ Done │ Type │ Result │ Type` — 2 rows, both inputs read `String` |
+| **B** | **absent** — outputs exist only because the script text was mined | `SCRIPT OUTPUTS │ ` — **section completely empty. 0 rows, 0 inputs** |
+
+Both read at the same moment, then re-read after an intervening popout open/close: **identical both
+times.** B's panel goes straight from the `SCRIPT OUTPUTS` header to `GENERAL`.
+
+🔴 **So the Type row is gated on the author having DECLARED the output in the `scriptOutputs`
+proplist — not on a live viewer, and not on the panel implementation.** Source agrees and names the
+gate: `simplejavascript.ts:792-793` builds the `outtype-` port only inside
+`if (scriptOutputs !== undefined && scriptOutputs.length > 0)`. A mined output gets its `out-` port
+(it works, it wires, it appears on the canvas) and **no `outtype-` port at all**.
+
+⚠️ **Both candidate causes in the previous section are therefore wrong**, and the second one is the
+one to retract loudly: *"the rows need a live viewer to register the dynamic ports"* — my preview
+**was** live and node B still had no row, while node A beside it did. A shared precondition cannot
+explain a difference between two nodes that share it.
+
+### The diagnostic is silent on exactly the node that has no way to fix itself
+
+Same popout, same document, read through the editor's own lint state
+(`forEachDiagnostic`, `@codemirror/lint`):
+
+| node | diagnostics |
+|---|---|
+| **A** declared | **1** — *"Done is a String output, not a Signal, so calling it throws when the node runs. Set its Type to Signal in the property panel, or write `Outputs.Done = …` instead."* |
+| **B** mined | **0** |
+
+✅ **The silence is attributable, because A is a known-firing control in the same run** — the lint
+ran, the predicate declined. This is the discipline §3e asked for and it is what makes the null
+worth anything.
+
+🔴 **The author who most needs the §2 message is the one who cannot receive it.** Writing
+`Outputs.Done()` without adding a proplist row yields: a working-looking `Done` output on the
+canvas, **no Type control anywhere in the panel**, and **no warning**. The diagnostic §2 shipped
+speaks only to authors who already found the proplist.
+
+⚠️ **Stated as a source read, not driven:** that node B *throws* at runtime.
+`_isSignalType` (`simplejavascript.ts:633-635`) tests `outputPorts[name].type === 'signal'`, and a
+mined output registers as `'*'` (`:697-699`) — the same predicate that makes A throw, and A's throw
+is driven (s23 saw `Line 1: Outputs.Done is not a function`). **I did not run node B.**
+
+### AC1 is driven, and it is false
+
+Clicking `+` beside `SCRIPT OUTPUTS` opens exactly one control:
+
+```html
+<div class="header proplist-header"><div style="height: 35px; position: relative;">
+  <input class="sidebar-panel-dark-input name-edit" placeholder="Entry name" type="text" value="">
+</div></div>
+```
+
+**A name field, and nothing else.** No type control at creation time. AC1's *"offers Signal at
+creation time"* is **false as built** — driven, not inferred.
+
+### The dropdown, finally opened — Signal IS there, and it is last
+
+Real trusted click (`cdp click`, not `.click()`) on Done's Type control on node A. The portal list
+holds **eight** options, in this order:
+
+`String · Boolean · Number · Object · Date · Array · Color · **Signal**`
+
+✅ So *"Signal is missing"* is **false for a declared output** — it is present, offered, and the
+last item in the list. The report is `"I never found the Type dropdown"`, and §3d's two reasons
+stand. ⚠️ The peer's `MeasuringContainer` warning was needed and correct: the DOM held **2** such
+`ul`s and only **1** was real.
+
+### 🔴 Instrument caveat that resolves s24's null without needing their fixture
+
+**`node.dynamicports` is volatile and disagrees with the rendered panel in BOTH directions.**
+Measured in one call, late in the session:
+
+- **A** — panel renders two Type rows; `dynamicports` `outtype-*` list is **empty**
+- **B** — `dynamicports` contains `outtype-Done`; panel renders **no** Type row
+
+🔴 **So neither `getPorts()` nor `dynamicports` is evidence about the row, in either direction.**
+The earlier reading in this file — that a model-level absence is no evidence — was right, and this
+extends it: a model-level **presence** is no evidence either. **The rendered panel is the only
+instrument that has been self-consistent across every reading here.**
+
+⚠️ **This also means my own first measurement of the pair should not be quoted as corroboration.**
+It was model-level, it agreed with the DOM at the time, and by the end of the session it no longer
+did. The finding rests on the DOM readings, which were paired and reproduced.
+
+### ⚠️ One sub-experiment failed to set up — recorded so nobody reads it as a result
+
+I tried to check whether declaring `Done` on node B restores its Type row. The panel showed a `Done`
+row, but `B.parameters` still held **only `functionScript`** — my synthetic `Enter` never committed
+the proplist entry, so the row on screen was an uncommitted edit field. **The question is untested,
+not answered.** (The legacy `sidebar-panel-dark-input name-edit` needs a real blur/commit, not a
+dispatched `KeyboardEvent`.)
+
+### What ruling 1 is now about
+
+Not *"is Signal missing"* (it is not, for a declared output) and not *"does the row render"* (it
+does, when the output is declared). It is:
+
+**An author who writes `Outputs.Done()` and never opens the `scriptOutputs` proplist gets a broken
+signal output, no Type control, and no diagnostic.** That is a different and larger question than
+the label/`String`-default copy issue in §3d, and both are live. Richard is ruling on two things.
+
