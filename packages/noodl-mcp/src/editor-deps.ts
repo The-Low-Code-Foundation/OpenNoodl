@@ -186,6 +186,30 @@ export type {
   RouterPagesValue
 } from '../../noodl-editor/src/editor/src/models/AiAssistant/authoring/pageRegistration';
 
+// ─── The layout pass (FIX-014) ────────────────────────────────────────────────
+// Fills the position gaps a model left and separates exact collisions — never
+// moving a node the model positioned, never touching a human's arrangement
+// (ruled 2026-08-14: model-supplied x/y is authoritative). Pure by
+// construction: `layout.ts` imports only types from the editor's schemas.
+// Shared rather than twinned for the same reason as everything above — two
+// producers of the project format, one rule for where an unpositioned node
+// lands, or "the AI piles nodes in one column" gets fixed in one client and
+// survives in the other.
+export {
+  layoutAuthoredNodes,
+  positionsUnchangedFrom,
+  COLLISION_STEP,
+  HIERARCHY_INDENT_X,
+  LOGIC_COLUMN_GUTTER,
+  ROW_SPACING,
+  VISUAL_COLUMN_TOP,
+  VISUAL_COLUMN_X
+} from '../../noodl-editor/src/editor/src/models/AiAssistant/authoring/layout';
+export type {
+  LayoutAuthoredNodesOptions,
+  LayoutConnectionLike
+} from '../../noodl-editor/src/editor/src/models/AiAssistant/authoring/layout';
+
 // ─── Schemas + structural validator (STRUCT-001) ──────────────────────────────
 export { SchemaValidator, SCHEMA_IDS, formatValidationErrors } from '../../noodl-editor/src/editor/src/schemas';
 export type {

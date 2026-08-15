@@ -146,6 +146,15 @@ export class AuthoringContextBuilder {
     return this.entries;
   }
 
+  /**
+   * FIX-014 — the catalog's answer to "does a node of this type draw?", for
+   * the layout pass. `false` for a component instance (the catalog has never
+   * heard of one); the pass classifies those by tree membership instead.
+   */
+  isVisualType(typeName: string): boolean {
+    return this.catalog.getNode(typeName)?.isVisual === true;
+  }
+
   totalChars(): number {
     return this.entries.reduce((sum, e) => sum + e.chars, 0);
   }
@@ -377,6 +386,13 @@ export class AuthoringContextBuilder {
     const enriched = enrichedNode(typeName)?.enrichment;
     const lines: string[] = [`### ${typeName}${node.category ? ` (${node.category})` : ''}`];
     if (node.isVisual) lines.push('Visual node — place it in the visual hierarchy via `parent`.');
+    // FIX-014 — logic nodes had silence where visual nodes had a placement
+    // sentence, which is half of how everything landed in one column.
+    else
+      lines.push(
+        'Logic node — no `parent`; it sits in the logic column to the right of the visual tree, beside the ' +
+          'visual node it feeds.'
+      );
     const summary = enriched?.summary;
     if (summary) lines.push(summary);
     if (enriched?.description && enriched.description !== summary) lines.push(enriched.description);
