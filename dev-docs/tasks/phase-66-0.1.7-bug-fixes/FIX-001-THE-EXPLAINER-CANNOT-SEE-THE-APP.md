@@ -2,9 +2,11 @@
 
 **Report 1 (a, b, c)** · Tier 1 · Effort **M** (1a) + **S** (1b) + **M/L** (1c)
 
-> **Status (session 14, 2026-08-15).** **1a is built and gated; it is not driven.** 1b is
+> **Status (session 15, 2026-08-15).** **1a is built, gated AND DRIVEN — criteria 1, 2, 3 all
+> pass against the running app.** The drive found one real defect, now fixed (`f8f215d0`). 1b is
 > **verified from source as discoverability — no code is missing on either route**, and that
-> reading is not a repro. 1c is untouched. See §"What shipped" at the foot of this file.
+> reading is not a repro; criterion 4 is still undriven. 1c is untouched. See §"What shipped" and
+> §"The drive" at the foot of this file.
 
 > *"Be able to ask about a node's configuration AND its current input and output signals and values.
 > Right now when I said 'why is the output value null?' it wasn't able to detect and explain."*
@@ -159,3 +161,59 @@ judgement call, not a defect, and is still open.
 ### Gates
 
 Recorded in the phase's `NEXT-SESSION-PROMPT.md` §2 with the reading and its caveats.
+
+---
+
+## The drive — session 15, 2026-08-15
+
+**Criteria 1, 2 and 3 pass.** Driven on a scratchpad **copy** of `NodeGX QA Fixture`, component
+`/erg-rig`, selected node `c1` (`Counter`), question *"Why is the output value null?"* — asked once
+with the preview running and once with it stopped.
+
+### Why this fixture, and what makes the result proof rather than a plausible story
+
+`t1`–`t4` carry **no authored `text` parameter** and the `Counter`s **no authored parameters at
+all**. So pressing the button *N* times puts **N** into `c1.currentCount` — and **N appears nowhere
+in the authored graph**. A model cannot derive it. Two runs used **7** and then **4**, so a stale
+read would have been visible as well.
+
+| Criterion | Result | What was required, and what happened |
+|---|---|---|
+| **1** live values | ✅ | Answer: *"the runtime shows `c1`.currentCount = 7 and `t1`.text = 7"* — then **4** on the re-run. It also **corrected the false premise** in the question ("isn't null — it's at 7"), which authored data alone cannot support. |
+| **2** preview stopped | ✅ | Answer: *"Nothing is running right now, so I can't point to a specific current value"* — and it separated the two states explicitly: *"the cause isn't something happening at runtime — it's that a required input is simply unconnected."* **Not hedging**, which was the bar. |
+| **3** warning quoted | ✅ | Both editor warnings quoted **verbatim** and attributed to the editor (*"the editor's own warning says…"*), **with the preview stopped**, as the criterion requires. |
+
+🔴 **The strongest evidence is that the two runs answer the same question on the same node in
+opposite ways.** That is what separates a working runtime layer from one that is never consulted.
+
+**Stretch (§1a.5) still not built.** The answers *did* name the upstream cause (`obj.modelId` and
+`filt.items` unwired) — but from the **warnings**, not from `backwardWalk`. Criterion 1's stretch
+half remains open.
+
+### 🔴 The defect the drive found — fixed in `f8f215d0`
+
+**A node nobody asked about was reported as "not mounted in the running app right now."**
+
+`renderRuntime` computed absence as `context.nodes − liveNodeIds`, but a node only enters
+`liveNodeIds` if **one of its ports was in the request** — and `portsToResolve` asks only about the
+selected node and ports on a wire, **excluding signals throughout**. `btn`, `obj` and `filt` connect
+to `c1` only by signals, so **zero** of their ports were requested (the whole request was 2 ports
+over a 5-node context), and all three were declared not mounted.
+
+All three were demonstrably **running**: I had clicked `btn` seven times, and `obj.completed` and
+`filt.completed` had each fired seven times — that is what drove counters 2 and 4. The model relayed
+the falsehood faithfully (*"the button isn't currently on screen"*), because `prompts.ts` tells it a
+not-mounted node *"is often the entire answer to why is this empty"*. **The lie was load-bearing.**
+
+⚠️ **`runtime.ts` already guarded this exact failure shape** one line at a time — *"asking the
+runtime for a port in the wrong direction returns `exists: false`, which reads as 'the node is not
+mounted' and is a lie"* — and still derived the general case wrongly.
+
+**The fix:** snapshots carry `askedNodeIds`; absence is `asked − answered`, never
+`everything − answered`; a reader that cannot say what it asked makes **no absence claim at all**.
+Verified on known-good and known-broken input and required to **disagree** (asked-and-silent still
+reports absence; never-asked and undefined both stay silent), then re-driven end-to-end: the false
+line is gone while the real values and warnings remain.
+
+🔴 **No spec caught it and no gate could** — every spec built its own snapshot and so encoded the
+same assumption. Two regression specs now cover it.
