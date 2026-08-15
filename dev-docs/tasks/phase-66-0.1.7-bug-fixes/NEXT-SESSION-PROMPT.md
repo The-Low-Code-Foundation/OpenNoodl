@@ -101,15 +101,39 @@ Beside message 5, on the same line, the editor already showed a `Last run` diagn
 **`Line 1: Outputs.Done is not a function`**. Four hops of source reading turned into a measurement
 I did not have to construct.
 
-### 3c. 🔴 Open: the diagnostic does not clear when you obey it
+### 3c. 🔴 Open: the diagnostic does not clear when you obey it — ⚠️ **mechanism CORRECTED**
 
-`setOpenNodeContext` is written **only when the popout opens** (`CodeEditorType.ts:343-354`).
-Setting Type to `Signal` with the popout open leaves the warning standing — **and it survives a
-forced `forceLinting`**, so the lint re-ran and read a stale port list. It clears on reopen.
+Setting Type to `Signal` with the popout open leaves the warning standing; it clears on reopen.
+Both measured.
 
-Unique to message 5: messages 1-4 are about the *document*, which changes; message 5 is about a
-**panel setting**, so **its own advice is the thing that does not take effect.** Cheap candidate
-fix — re-publish the open node when its parameters change. **Not built; not a ruling; buildable.**
+🔴 **I published the wrong mechanism for it, and the wrong mechanism implies a fix that does
+nothing.** I wrote *"it survives `forceLinting`, so the lint re-ran and read a stale port list."*
+The survival is real; the inference is false. **`forceLinting` is a no-op on an idle editor** —
+`force()` runs only `if (this.set)`, and `update()` sets `set` only on `docChanged` / config change
+/ `needsRefresh`; at `4be3f1f6` `linter()` took **no second argument**, so `needsRefresh` was null.
+**The lint did not read a stale list — it did not run.** (Peer's catch; I verified it in
+`@codemirror/lint/dist/index.js:304-326` and against my own commit.)
+
+⚠️ **A stale read and a lint that never happens look identical from outside, and my probe could not
+tell them apart** — I reported one as measured. Same rule this phase already carries: *a reading
+that fits is not one that excludes.* Ask what you would see if you were wrong; if it is the same
+thing, you measured nothing.
+
+🔴 **Two independent faults, either alone reproducing the symptom:**
+
+1. **Stale registry** — `setOpenNodeContext` is written only at popout-open
+   (`CodeEditorType.ts:343-354`, sole producer). From source, not from my drive.
+2. **Unreachable linter** — neither lint source is a pure function of the document, but without
+   `needsRefresh` the linter re-runs on document edits only.
+
+**Republishing the node alone fixes nothing** — the linter would never re-run to notice. Reopening
+worked because it cures both. ⚠️ **The same hole was swallowing FUN-007 §2's runtime diagnostic**:
+`CodeEditorType.ts:421-429` claims a run's error reaches the gutter while the popout is open; it
+reached React and stopped. The `Last run` row in §3b was visible only because the **mount-time** lint
+runs after the field is written.
+
+✅ **A peer built both halves after catching this** (`needsRefresh: lintNeedsRefresh` +
+`utils/relint.ts`, 444/444 in `noodl-core-ui`). **Check whether that landed before starting.**
 
 ### 3d. Ruling 1 is answerable — I looked, and report it as an observation
 
@@ -163,10 +187,10 @@ declining predicate from dead wiring.
 
 ## 5. What to do next and why
 
-1. **FIX-016 §2's follow-up (§3c) — re-publish the open node when its parameters change.** Small,
-   no ruling, and it fixes a message that currently tells the truth and then ignores you. **The best
-   available build task**, and it improves messages 1-4 as well (a port *rename* has the same
-   staleness).
+1. ⚠️ **FIX-016 §2's follow-up (§3c) — likely ALREADY BUILT by a peer; check before starting.**
+   Two faults, not one: republish the open node on parameter change **and** give the linter a
+   `needsRefresh`, or neither shows. A peer caught my mis-stated mechanism, built both, and reported
+   444/444 in `noodl-core-ui`. If it landed, this is done and item 2 is the next task.
 2. **FIX-016 §1** — Richard now has the observation he needed (§3d). Ruling, then a small build.
 3. 🔴 **FIX-017's remaining half needs Richard** — AC1 and AC3 are both rulings (§6). **Do not build
    §D speculatively.**

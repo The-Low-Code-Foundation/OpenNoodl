@@ -106,13 +106,42 @@ a source read across four hops; it is now a measurement.
 
 ### 🔴 Open, and found by this drive: the diagnostic does not clear when you obey it
 
-`setOpenNodeContext` is written **only when the popout opens** (`CodeEditorType.ts:343-354`).
-Changing Type to `Signal` with the popout open leaves message 5 standing — **and it survives a
-forced re-lint**, so the lint did re-run and read a stale port list. It clears on reopen (driven).
+Changing Type to `Signal` with the popout open leaves message 5 standing. It clears on reopen
+(driven).
+
+🔴 **CORRECTED — I got the mechanism wrong, and the wrong mechanism implies a fix that does
+nothing.** I originally wrote *"it survives a forced re-lint, so the lint did re-run and read a
+stale port list."* The survival is measured; **the inference is false.** `forceLinting` is a
+**no-op on an idle editor**: `force()` runs only `if (this.set)`, and `update()` sets `set` only on
+`docChanged`, a config change, or `needsRefresh` — and at `4be3f1f6` `linter()` was called with **no
+second argument**, so `needsRefresh` was null. After a freshly-opened popout's mount-time lint,
+`set` is `false`. **The lint did not read a stale list; it did not run.** (Found by a peer;
+verified in `@codemirror/lint/dist/index.js:304-326` and `git show 4be3f1f6:…/codemirror-extensions.ts`.)
+
+⚠️ **My probe could not distinguish the two explanations** — a stale read and a lint that never
+happens look identical from the outside — and I reported one of them as measured. The rule I broke
+is one this phase already carries: *a reading that fits is not one that excludes.*
+
+🔴 **There are TWO independent faults here and either alone reproduces the symptom:**
+
+1. **The registry is stale.** `setOpenNodeContext` is written **only when the popout opens**
+   (`CodeEditorType.ts:343-354`, the sole producer) — established from source, not from my drive.
+2. **The linter is unreachable.** Neither lint source is a pure function of the document, but
+   without `needsRefresh` the linter re-runs on **document edits only**.
+
+**Republishing the node — the fix my original note pointed at — would have fixed nothing on its
+own**, because the linter would still never re-run to notice. Reopening the popout worked precisely
+because it cures both at once.
 
 Unique to message 5 among the five: messages 1-4 are about the *document*, which changes and
-re-publishes nothing; message 5 is about a **panel setting**, and its own advice is the thing that
-does not take effect. Cheap candidate fix — re-publish the open node when its parameters change.
+re-lints; message 5 is about a **panel setting**, and its own advice is the thing that does not take
+effect.
+
+⚠️ **The same hole was swallowing FUN-007 §2's runtime diagnostic** (peer's finding):
+`CodeEditorType.ts:421-429` subscribes to `warningsChanged` so a run's error reaches the gutter
+*while the popout is open* — it reached React and stopped, because an effect-only transaction never
+set `set`. The `Last run` row I saw beside message 5 was visible only because the **mount-time** lint
+happens to run after the field is written. A node that threw while its editor sat open stayed clean.
 
 ### Driven matrix
 
@@ -128,6 +157,57 @@ requested*, with opposite fixes. The fixture carries a second, known-firing diag
 is attributable: both → works; control only → the predicate declined; neither → nothing invoked the
 analysis. Without it, a silent row would have sent the next session to the predicate with a
 screwdriver for a wiring fault.
+
+## §2 follow-up — the diagnostic that ignored you (2026-08-15, session 24)
+
+Built. `utils/relint.ts` (new), `authoringContext.ts#subscribeToOpenNode`,
+`declaredPorts.ts#declaredPortsEqual`, `JavaScriptEditor.tsx`, `runtimeDiagnostic.ts`,
+`codemirror-extensions.ts`, `CodeEditorType.ts`. 25 new specs; 444/444 in `noodl-core-ui`;
+`tsc --noEmit` clean in `noodl-editor`, 44 in `noodl-core-ui` (unchanged, none in these files).
+
+### 🔴 s23's reading of the mechanism was wrong, and the correction is the whole fix
+
+s23 recorded: *"it survives a forced `forceLinting`, so the lint re-ran and read a stale port
+list."* The second clause does not follow, and it is false. `@codemirror/lint`:
+
+```js
+force() { if (this.set) { … this.run() } }                       // dist/index.js:324
+update(u) { if (u.docChanged || configChanged ||
+              config.needsRefresh?.(u)) this.set = true … }      // :313-322
+run()   { this.set = false; … }                                  // :304
+```
+
+`needsRefresh` was never configured. So after the first lint of a freshly-opened editor `set` is
+`false`, **and only a document edit can set it again** — `forceLinting` on an idle editor returns
+without running a single source. The lint did not run against a stale list; **it did not run.**
+
+⚠️ Both faults were real and either alone reproduces the symptom: the registry was stale *and* the
+lint was unreachable. Fixing only the republish would have fixed nothing, and a session that
+believed the s23 mechanism would have gone looking in `portDiagnostics`.
+
+### 🔴 The same hole was swallowing FUN-007 §2's runtime diagnostic
+
+`runtimeDiagnostics` is the linter's other source, and `setRuntimeDiagnostic` dispatched an
+effect-only transaction — which sets nothing. `CodeEditorType.ts:421-429` says it subscribes to
+`warningsChanged` *"so an error raised by a run that happens **while** the popout is open reaches
+the gutter"*. It reached React and stopped there. The only reason the diagnostic was ever seen is
+that on **open** the mount-time lint happens to run after the field is written. A node that threw
+while its editor sat open stayed clean. One line: `setRuntimeDiagnostic` now asks for the re-lint.
+
+### Predictions, written before driving
+
+| # | probe | expected |
+|---|---|---|
+| 1 | popout open on `Outputs.Done()`, `Done` declared, Type untouched | message 5 fires; control (message 2 on `Result`) fires |
+| 2 | set `outtype-Done` → `signal` **with the popout open** | message 5 **gone within a beat**, control still firing |
+| 3 | clear `outtype-Done` again | message 5 **returns** — the wake works in both directions, not once |
+| 4 | 🔴 control: `forceLinting(view)` alone, document untouched | **no view update at all** — the pre-fix no-op, reproduced in the fixed build |
+| 5 | `requestRelint(view)`, document untouched | view updates — the lint runs |
+| 6 | push a runtime diagnostic while the popout is open | `Last run` appears in the gutter without touching the text |
+
+🔴 **2 and 3 are the acceptance; 4 is what makes them mean something.** If 4 shows a re-lint
+happening anyway, then something else is waking the linter and the seam I added is unproven cargo —
+a green 2 would be a feature passing on a mechanism I had not identified.
 
 ### Also observed for ruling 1 ("drive first"), as an observation, not a verdict
 
