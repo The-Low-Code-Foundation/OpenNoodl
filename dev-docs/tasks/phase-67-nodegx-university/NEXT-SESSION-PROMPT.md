@@ -149,11 +149,17 @@ first, or `stat` it.** Exit 0 with an unchanged mtime is what a broken webpack l
 file reproduces the floor count, the floor **names** *and* the seed, because all three check
 *content*.
 
-🔴 **The exit code and the log are BOTH unreliable here, in opposite directions.** This run's log
-ended `npm error command failed` and the real shell exit was **1** — because npm exits non-zero
-whenever *any* spec fails, and the floor is 6, so **a clean floor run always looks like a failure at
-the shell.** Meanwhile my harness reported **exit 0**, because I ended the command with an `echo` and
-the compound's status masked npm's. Neither is the readout. **`tests/test-results.json` is.**
+🔴 **The exit code and the log both mislead here, in opposite directions.** This run's log ended
+`npm error command failed` and npm's own status was **1** — because npm exits non-zero whenever *any*
+spec fails, and the floor is 6, so **a clean floor run always looks like a failure at the shell.**
+It was simultaneously reported as **exit 0**, because the command ended `…; echo "exit: $?"` and the
+*compound* genuinely succeeded. Neither signal is the readout. **`tests/test-results.json` is.**
+
+⚠️ **Do not file that as the backgrounded-exit-code trap — it is not, and two sessions filed it that
+way within one hour on 2026-08-15** (one had to correct their handover, `ccf44d1d`). Nothing lied:
+the harness reported the compound's status correctly, and the compound was the wrong question.
+🔴 **A false sighting makes a trap entry *more* trusted**, so check the mechanism before adding a
+tally mark to one.
 
 ## ⚠️ Owed, small, and honest about it
 
