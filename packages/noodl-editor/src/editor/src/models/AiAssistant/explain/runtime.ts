@@ -71,6 +71,30 @@ export interface RuntimeSnapshot {
    * one. Same distinction the Ports tab draws (`PortsTab/portValues`).
    */
   liveNodeIds: readonly string[];
+  /**
+   * Nodes this read actually asked about — the ones a "not mounted" claim may
+   * be made about, and no others.
+   *
+   * 🔴 **Without this, silence was read as absence.** `portsToResolve` asks only
+   * about the selected node's ports and ports on a wire, and it excludes signals
+   * throughout — so a neighbour whose only connection is a signal has *no* port
+   * in the request, can never appear in {@link liveNodeIds}, and was therefore
+   * reported as "not mounted in the running app right now". Measured 2026-08-15
+   * on `erg-rig`: a button being clicked, and two nodes whose `completed` had
+   * just fired seven times, were all three declared not mounted. The prompt
+   * tells the model that a not-mounted node "is often the entire answer to why
+   * is this empty", so the lie was load-bearing.
+   *
+   * The same failure shape is already guarded one line at a time in
+   * {@link instancePortsByDirection} ("asking the runtime for a port in the
+   * wrong direction … reads as 'the node is not mounted' and is a lie"). This is
+   * that rule applied to the general case: a node nobody asked about is
+   * *unknown*, not absent.
+   *
+   * Undefined means the reader could not say what it asked — then no absence
+   * claim is made at all, which is the safe direction.
+   */
+  askedNodeIds?: readonly string[];
   /** Editor warnings for this component. Available with **no** preview at all. */
   diagnoses: readonly RuntimeDiagnosis[];
   /**
@@ -325,8 +349,16 @@ export function renderRuntime(context: ExplainContext, snapshot: RuntimeSnapshot
 
     // A node the runtime never heard of is not a node with no values — it is a
     // node that is not on screen, which is frequently the whole answer.
+    //
+    // 🔴 Only among the nodes this read actually asked about. A node with no
+    // port in the request never answers, and calling that "not mounted" states
+    // a fact about the running app on the strength of a question nobody asked.
+    // See `askedNodeIds`.
     const live = new Set(snapshot.liveNodeIds);
-    const absent = context.nodes.filter((n) => !live.has(n.id)).map((n) => n.id);
+    const asked = snapshot.askedNodeIds ? new Set(snapshot.askedNodeIds) : undefined;
+    const absent = asked
+      ? context.nodes.filter((n) => asked.has(n.id) && !live.has(n.id)).map((n) => n.id)
+      : [];
     if (absent.length) {
       // One line, ids and all: a reader (and a spec) has to be able to see which node the claim
       // is about without reassembling a sentence that was wrapped for tidiness.

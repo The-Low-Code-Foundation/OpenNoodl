@@ -104,6 +104,8 @@ export function createExplainRuntime(componentName: string): ExplainRuntimeFn {
           isPreviewRunning: true,
           values: [...values.values()],
           liveNodeIds: [...liveNodeIds],
+          // Only these nodes were asked about, so only these may be called absent.
+          askedNodeIds: [...new Set(ports.map((p) => p.node))],
           diagnoses,
           ...(error ? { error } : {})
         });

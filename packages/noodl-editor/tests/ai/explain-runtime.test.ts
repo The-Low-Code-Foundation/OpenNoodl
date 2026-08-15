@@ -68,8 +68,19 @@ function has(refs: readonly RuntimePortRef[], node: string, port: string, direct
   return refs.some((r) => r.node === node && r.port === port && r.direction === direction);
 }
 
-function running(values: RuntimeSnapshot['values'], liveNodeIds: string[]): RuntimeSnapshot {
-  return { isPreviewRunning: true, values, liveNodeIds, diagnoses: [] };
+/**
+ * A running-preview snapshot.
+ *
+ * `askedNodeIds` defaults to exactly the nodes that answered, which is the
+ * *conservative* reading: nothing is accused of being absent unless a spec says
+ * it was asked about and stayed silent. See `RuntimeSnapshot.askedNodeIds`.
+ */
+function running(
+  values: RuntimeSnapshot['values'],
+  liveNodeIds: string[],
+  askedNodeIds: string[] = liveNodeIds
+): RuntimeSnapshot {
+  return { isPreviewRunning: true, values, liveNodeIds, askedNodeIds, diagnoses: [] };
 }
 
 /**
@@ -286,12 +297,39 @@ describe('FIX-001 rendering the runtime layer', () => {
 
   it('says which nodes are not mounted, which is often the whole answer', () => {
     const { context } = fixture();
-    const rendered = renderContext(context, running([], [BUILD_QUERY]));
+    // Both were asked about; only one answered.
+    const rendered = renderContext(context, running([], [BUILD_QUERY], [BUILD_QUERY, GRAPHQL]));
 
     const absentLine = rendered.split('\n').find((l) => l.includes('Not mounted')) ?? '';
     expect(absentLine).toContain(GRAPHQL);
     // The one node that did answer is not accused of being absent.
     expect(absentLine).not.toContain(BUILD_QUERY);
+  });
+
+  it('never calls a node absent when the read never asked about it', () => {
+    // 🔴 Measured against the running editor, 2026-08-15. `portsToResolve` excludes signals and
+    // asks only about the selected node and ports on a wire, so a signal-only neighbour has no
+    // port in the request. Deriving absence from `liveNodeIds` alone therefore reported a button
+    // that was being clicked — and two nodes whose `completed` had just fired seven times — as
+    // "not mounted in the running app right now". The prompt tells the model that is "often the
+    // entire answer", so the claim was acted on rather than ignored.
+    const { context } = fixture();
+    const rendered = renderContext(context, running([], [BUILD_QUERY], [BUILD_QUERY]));
+
+    // GRAPHQL is in the context but was never asked about: unknown, not absent.
+    expect(rendered).not.toContain('Not mounted');
+  });
+
+  it('makes no absence claim at all when the reader cannot say what it asked', () => {
+    const { context } = fixture();
+    const snapshot: RuntimeSnapshot = {
+      isPreviewRunning: true,
+      values: [],
+      liveNodeIds: [BUILD_QUERY],
+      diagnoses: []
+    };
+
+    expect(renderContext(context, snapshot)).not.toContain('Not mounted');
   });
 
   it('quotes an editor warning with no preview running at all', () => {
