@@ -1,14 +1,15 @@
 # Phase 66 — next session
 
-**Written 2026-08-15, session 21.** Three things landed: the **`test:ci` floor is re-banked**
-(2843 / 6 at seed 39393, unchanged), **FIX-017 §A is built and committed** (`9e8b3198`, not yet
-driven), and — unplanned — **a live defect in the dev tooling was found, fixed and verified**
-(`2b758a87`).
+**Written 2026-08-15, session 22.** One task driven, and the drive changed what the task is asking
+for. **FIX-017 §A is now DRIVEN** (`5d04281d`): three of AC1's four halves are met, the headline one
+is **not**, and §A alone cannot meet it. Criterion 2's evidence was undercut by the same finding, so
+it was **re-driven rather than defended** — and it stands.
 
-🔴 **The finding that outlives this phase: `d061bc6e` never worked.** The commit that was supposed
-to stop `dev:stop` and editor launches from reaping a running `test:ci` was **inert**, not merely
-unproven. Three sessions read it, agreed the guard was present, and filed it as *awaiting
-evidence*. It was awaiting a **fix**. §3.
+🔴 **The finding that outlives this phase: the obvious way to drive a completion feature is the way
+that cannot fail.** `startCompletion(view)` sets `context.explicit = true`, which is *precisely* the
+branch §A's gate exists to exclude. Driving criterion 1 that way passes whether or not §A works —
+it would have passed **before §A was written**. The same harness had been correct one criterion
+earlier. §3.
 
 ---
 
@@ -31,7 +32,7 @@ Learnings that outlive the phase go to memory, not here.
 
 | Task | Built | Driven | Note |
 |---|---|---|---|
-| **FIX-017** | ◐ **§A + §B** | ◐ **§B + §A partly** | **§A built `9e8b3198`, DRIVEN by s22 (`5d04281d`) — and AC1 is NOT met.** The typing path works; the cursor-landing half is unreachable without a caller. 🔴 **AC1 and AC3 both need rulings.** §D promoted from nicety to the only non-ruling route to AC1's outcome |
+| **FIX-017** | ◐ **§A + §B** | ◐ **§B + §A(¾)** | **§A DRIVEN this session.** AC1: both modes answer, ordinary code not smothered — ✅. **"Without typing" ✗ and unreachable by §A.** AC2 re-driven on the automatic path, **stands**. 🔴 AC3 premise still false. **§D promoted** — see §4 |
 | **FIX-014** | ✅ | ✅ both clients | **CLOSED** s18. 🔴 driven ≠ shipped — packaged app still lacks it |
 | **FIX-019** | ✅ | ✅ 4/4 | **CLOSED** s18 — 14(a) ruled *no sweep* |
 | **FIX-001** | ✅ | ✅ 5/5 | **CLOSED** s17. 🟡 §1a.5 stretch open — re-decide, don't build |
@@ -39,306 +40,229 @@ Learnings that outlive the phase go to memory, not here.
 | **FIX-008** A, B, E | ✅ | ✅ | C, D not built; **C needs a measurement from Richard** |
 | everything else | 📋 open | — | see [TASKS.md](TASKS.md) |
 
-**Thirteen closed, one partly built and partly driven.**
+**Thirteen closed. The built-not-driven column SHRANK this session** — §A moved across, and nothing
+new was built. That was the point: the previous handover asked for a drive rather than another
+build, and the drive is what found the gap.
 
-🔴 **The phase is accumulating BUILT faster than DRIVEN, and that is this table's whole job to
-show.** §A joins FIX-014's shipping half and FIX-003's remaining criteria in the built-not-driven
-column. Each is individually reasonable — the build was gated, the drive ran out of session — but
-the *pattern* is how a phase quietly converts into a pile of work that has never been seen doing
-anything. 🟡 **Prefer driving something already built over building the next thing**, unless a
-ruling blocks it.
+🟡 **Keep preferring a drive of something already built over building the next thing.** This session
+is the argument for it: §A had 8 control-checked specs and looked finished. It took an app drive to
+find that a criterion could not be met at all.
 
 ---
 
 ## 2. Gate readings
 
-**Tree: `9e8b3198`.**
+**Tree: `5d04281d`.** No source changed this session — docs only — so **s21's readings at `9e8b3198`
+still hold** and were not re-run:
 
 | Gate | Reading | When |
 |---|---|---|
-| **`test:ci` (jasmine)** | ✅ **2843 total / 6 failed** at **seed 39393** | **this session, 21:21** |
-| `noodl-core-ui` jest — `tests/code-editor` | ✅ **17 suites / 286**, 0 failed (was 278; +8 from §A) | this session |
-| `noodl-core-ui` `tsc --noEmit` | ✅ adds nothing outside `../noodl-editor/**` alias `TS2307` | this session |
-| `noodl-core-ui` jest — **full package** | ✅ **24 suites / 403**, 0 failed (395 + §A's 8) | this session |
-| **§A known-broken control** | ✅ **5 of the 8 new specs go red** with the blanket refusal restored | this session |
+| **`test:ci` (jasmine)** | ✅ **2843 total / 6 failed** at **seed 39393** | s21, unchanged since |
+| `noodl-core-ui` jest — full package | ✅ **24 suites / 403**, 0 failed | s21 |
+| §A known-broken control | ✅ **5 of 8** new specs go red with the blanket refusal restored | s21 |
 
-🔴 **That control row was discriminating and still blind, and the reason generalises.** The 8 specs
-call `createNoodlCompletionSource(mode)(contextAt(doc))` **directly**, so they prove the source
-*answers* — they cannot prove CodeMirror ever *asks* it. It doesn't, at a cursor landing. **Calling
-the unit directly is exactly what makes a spec fast and exactly what makes it unable to see the
-integration**, and no amount of control-checking inside that boundary would have caught it. The
-task file had warned in those words: *"a completion source that never fires is indistinguishable
-from one that is not installed."*
-| `node --check` on both devtools scripts | ✅ | this session |
-| `dev:stop` **non-dry**, quiet checkout | ✅ exits 0, no crash, MCP intact at 19 | this session |
+🔴 **Quote the six failures by NAME, never the count** — 4 × `AIX-006 style vocabulary`, 2 × `AI
+model registry`. Full strings in the s21 file's history if needed.
 
-✅ **The group drop is proven end to end, in both directions** — this was the last named gap and it
-turned out to be closable safely rather than worth handing on. Two decoys, each forced into **its
-own process group** (`perl -e 'setpgrp(0,0); exec …'`) so that even a stray non-dry sweep could
-only have killed a `sleep`; both pgids written into a real pid file; `--list` run:
+✅ **The checkout was left FREE after BOTH windows** — 0 editors, 0 suites, 0 `webpack.*test-ci`,
+0 `start.ts`, verified after each teardown and announced to all seven OpenNoodl peers.
+**MCP pid list byte-identical before and after both launches** (21 processes; compare **pids, not
+counts** — counts drifted 9→10→11 tonight for unrelated reasons).
 
-| recorded group | contains | expected | observed |
-|---|---|---|---|
-| `76445` | a shielded `Electron test.js --ci` decoy | dropped | ✅ **dropped** |
-| `76446` | **control** — dev-stack-shaped, nothing shielded | listed | ✅ **listed** |
-
-The shielded decoy was also absent from `targets`, and the control decoy present *with its child* —
-so the same run demonstrates the shield firing, the shield *not* over-firing, and the group path
-still reporting. Pid file removed and both decoys reaped afterwards; checkout verified quiet.
-
-✅ **And then the destructive path itself was run, so nothing here rests on a code read any more.**
-The same own-process-group construction that made the dry test safe makes the **real** one safe —
-that was the point I initially missed, having bounded the blast radius and then still stayed in the
-dry path out of habit. With decoys that only a `sleep` could lose, a real `npm run dev:stop`:
-
-| | expected | observed |
-|---|---|---|
-| shielded decoy (`test.js --ci`, own group, in the pid file) | survives | ✅ **survived** |
-| control decoy (dev-stack-shaped, own group, in the pid file) | dies | ✅ **killed** |
-| MCP servers | untouched | ✅ **19 → 19** |
-
-🔴 **The control is again what makes it a result**: a surviving shielded decoy is equally consistent
-with kill loops that did nothing at all. The control dying proves they ran.
-
-🔴 **The technique generalises past this file — bound the blast radius by CONSTRUCTION, then run the
-dangerous path for real.** `perl -e 'setpgrp(0,0); exec …'` puts a decoy in its own process group,
-so a whole-group signal cannot reach anything you care about. Every earlier attempt tonight —
-mine included — avoided the danger by staying in the dry path, and thereby inherited that path's
-blind spots. Removing the danger is strictly better than reasoning around it.
-
-**The six failures by NAME** — quote these, never the count:
-
-```
-AIX-006 style vocabulary   with guidance off, a raw candidate is accepted immediately with no style pass
-AIX-006 style vocabulary   AIB-009 F11: a provider that stalls during the style pass never costs the accepted candidate
-AIX-006 style vocabulary   offers one advisory style pass on a valid-but-raw candidate, then accepts the on-system resubmit
-AIX-006 style vocabulary   a style suggestion never downgrades a valid authoring: agent ignores it, still authored
-AI model registry          treats openai-compatible as sharing the OpenAI catalogue
-AI model registry          has exactly one default per provider that owns models
-```
-
-No `BEN-001`, so no seed-order cluster. **`totalCount` is unchanged from 19:51** — the
-2779 → 2788 → 2812 → 2843 climb of 08-15 has stopped, and the reading is now reproduced across two
-independent runs rather than measured once.
-
-✅ **The checkout was left FREE** — 0 editors, 0 suites, 0 `webpack.*test-ci`, verified after
-teardown and confirmed by a peer.
+⚠️ **One MCP discrepancy resolved rather than waved through:** a peer's baseline listed `85490`; the
+live pair is `85485/85489`, both started **11:07:29**, hours before either launch. Adjacent-pid
+transcription slip, not a death. Checking cost one `ps`.
 
 ---
 
-## 3. 🔴 The finding: a committed guard that could never have worked
+## 3. 🔴 The finding: a drive technique that supplies the condition under test
 
-`d061bc6e` added this to spare a running `test:ci` from `dev:stop`, the launch sweep and the
-watchdog:
-
-```js
-if (proc.command.includes('test.js --ci')) continue;
-```
-
-It sits in the **seed-selection** loop, so it only stops a process being *chosen*. Three lines
-later:
+§A's gate is one line:
 
 ```js
-const all = withDescendants(seeds, table);      // re-adds every child of every seed
-for (const pid of offLimits) all.delete(pid);   // subtracts offLimits ONLY
+const atEmptyPosition = word.from === word.to && !context.explicit;
+if (atEmptyPosition && !startsStatement(context, word.from)) return null;
 ```
 
-A suite is a grandchild of `npm exec lerna exec --scope noodl-editor`, which carries ROOT and
-matches `DEV_TOOL`. The wrapper seeded; the suite came back underneath it. **The guard was passing
-its own test the whole time** — the predicate matched, and the process really was excluded from
-`seeds`.
+`startCompletion(view)` sets `context.explicit = true`. So **the convenient way to open the menu in
+a drive removes the very predicate §A adds.** Worse, the *old* `completesTopLevel` also returned
+true whenever `context.explicit` — so an explicit-request drive of criterion 1 returns the globals
+**on a build where §A does not exist**. A probe that cannot fail.
 
-### How it was measured — the technique is the reusable part
+🔴 **And the technique was correct one criterion earlier.** Criterion 2 (`Noodl.Records.` → 11) asks
+*what* comes back; that branch is not gated on explicitness, so `startCompletion` was a sound
+trigger there. Criterion 1 asks *when the menu appears by itself* — gated on exactly that.
+**A drive technique's validity is per-CRITERION, not per-feature.** "It worked for the last
+criterion" is not transfer.
 
-`dev:stop -- --list` is a **genuine dry run**: `stop-dev.js` `process.exit(0)`s before `sweep()` is
-ever called (read that first, don't take it on trust). It calls the *same* `findDevProcesses`. So
-the hazard can be **present by construction** at zero risk to the run:
+🔴 **Why the gate that shipped it was discriminating and STILL blind** (s21's own analysis of its
+build, worth keeping): the 8 specs call `createNoodlCompletionSource(mode)(contextAt(doc))`
+**directly**. They prove the source *answers*; they cannot prove CodeMirror ever *asks* it — and it
+doesn't, at a cursor landing. **Calling the unit directly is exactly what makes a spec fast and
+exactly what makes it unable to see the integration**, and no amount of control-checking *inside*
+that boundary can catch a defect *at* it. The task file had warned in those words: *"a completion
+source that never fires is indistinguishable from one that is not installed."*
 
-| condition (a real suite live throughout) | targets |
-|---|---|
-| before the fix | **10** — the whole suite tree, `Electron test.js --ci` included |
-| after the fix | **0** |
-| after the fix, with a decoy dev stack | **2** — found, with its child |
+⚠️ **A misreading worth pre-empting, because a peer hit it:** the gate is
+`atEmptyPosition && !startsStatement` — suppression needs **both**. So a space at a statement start
+is *not* an exception that slipped past §A; it is precisely what §A allows. And the fresh-landing
+silence is **not the gate firing** — the source would happily answer there too. Nothing is
+suppressed; nothing is requested.
 
-🔴 **The third row is what makes the other two mean anything.** "0 targets" is equally consistent
-with an enumeration you have simply broken, and a guard that spares everything is not a guard.
+### How it was driven instead
 
-⚠️ **My first decoy exonerated the code and I nearly believed it.** `sh -c 'sleep 90' <marker>`
-**exec-replaces itself** with `sleep 90`, so the ROOT marker left argv, `--list` found nothing, and
-that read for a minute as *"the fix broke `dev:stop`"*. The control was dead, not the code. Printing
-the decoy's own argv from `ps` **before** interpreting its absence is the one-line habit that
-catches it.
+Real keys on the automatic path: `Emulation.setFocusEmulationEnabled` **plus**
+`rawKeyDown`/`char`/`keyUp` **on ONE CDP connection**. `npm run cdp` opens a fresh connection per
+command, and focus emulation is session-scoped, so it must all happen in one process — harness at
+`scratchpad/drive.js`. 🔴 **`cdp type` is `Input.insertText` and never triggers autocomplete**, so
+it is not "real typing" for this question.
 
-### The general shape — why "unproven" was the harmful word
+Two genuinely fresh nodes (`parameters: {}`, so the body is `""` — `functionScript` has no
+`default`) on a **renamed** copy, so which project was open was provable.
 
-The asymmetry between the MCP skip (`e8a55109`, works) and the suite skip (`d061bc6e`, inert) was
-never evidential. It is **process topology**: MCP servers hang off the Claude session pid and are
-never below a dev seed, so seed-exclusion happens to suffice; a suite sits under an npm/lerna
-wrapper, so seed-exclusion is structurally incapable of protecting it.
+| probe | mode | menu | options |
+|---|---|---|---|
+| fresh popout, cursor lands, **no typing** | Function | 🔴 **none** | — |
+| fresh popout, cursor lands, **no typing** | Expression | 🔴 **none** | — |
+| space at a statement start | Function | ✅ rendered | `Inputs, Outputs, Noodl, Component, Script` |
+| blank line after `const total = 1;` | Function | ✅ rendered | the same five |
+| `const x = ` / `foo(1, ` | Function | ✅ **silent** | — |
+| space at a statement start | Expression | ✅ rendered | `Noodl, Variables, Objects, Arrays, min…` |
+| `1 + ` | Expression | ✅ **silent** | — |
 
-🔴 **Filing a defect as a gap in evidence postpones the fix indefinitely.** "Unproven" told three
-sessions to wait for a confirmation that could never arrive. "Inert" told one session to open the
-file. Same defect, two words, a day of difference.
+🔴 **The silent rows are what make the loud ones mean anything.** A source that answered everywhere
+would have passed the positives and been the FH-017 noise that got removed.
 
-### What `2b758a87` does
+### Why "without typing" cannot work
 
-One `NEVER_SWEEP` predicate (`noodl-mcp.cjs`, `test.js --ci`, `run-electron-tests.js`,
-`webpack.test-ci`, `run test:(ci|main)`) and a `shielded` set honoured at **all four** decision
-points: seed selection, the pid-file groups, the ancestor-climb floor, and the subtraction after
-`withDescendants`. The shield covers each protected process's **whole tree** — ancestors *and*
-descendants — because sparing the Electron while killing `npm run test:ci` above it loses the run
-just as completely, and its renderers matter as much as its host.
+`@codemirror/autocomplete`'s `getUpdateType` (`dist/index.cjs:947`) Activates **only** on an
+`input.type` user event or an explicit `startCompletionEffect`. A cursor landing is `tr.selection` →
+`UpdateType.Reset`, which *deactivates*. §A made the source **willing to answer**; nothing **asks**
+it. **No repo file calls `startCompletion`.**
 
-It also closes two things nobody asked for: the **~40s webpack window** (where no `test.js --ci`
-process exists yet, so no argv check could ever see it), and the **latent MCP hole** — that guard
-was lucky, not correct.
+### 3b. The ruling changed shape: a trigger DOES exist
 
-### What is proven, and what is not
+`completionKeymap` is spread into the live keymap (`codemirror-extensions.ts:248`). Driven with real
+chords, each with a **leak control** — doc stayed `""`, cursor stayed `0`, so the menu came from the
+*command* and not from a stray inserted space (a leaked space would have triggered the automatic
+path and passed for the wrong reason):
 
-- ✅ **MCP half, at runtime, hazard present, twice.** MCP process count **19 → 19 → 19** across the
-  launch reap and the teardown sweep, and the *same nine* host pids alive at each point rather than
-  nine survivors. This is a first exercise of the **new implementation**, which moved that guarantee
-  onto an entirely different code path.
-- ⚠️ **Suite half is proven at *enumeration* level.** 🔴 **And "enumeration → kill is a one-line
-  code read" was wrong** — see §3b. It was a second kill path with different coverage.
-  **Close what remains cheaply: take `dev:stop -- --list` once more next time a suite is genuinely
-  live**, which now previews both paths.
-- 🔴 **A reaper started before `2b758a87` still holds the old, inert module.** The fix reaches new
-  reapers only. **The announcement etiquette is still load-bearing and is not retired by this.**
+| chord | leak control | menu |
+|---|---|---|
+| **Ctrl-Space** | clean | ✅ rendered |
+| **Alt-`** | clean | ✅ rendered |
+| **Alt-i** | clean | ✅ rendered |
 
-### 3b. 🔴 The same defect, one layer out — `4fd2cfdb`
+🔴 **All three take the EXPLICIT path, so none is evidence for §A** — they worked before it existed.
+Checked rather than inherited: "a manual trigger exists" would otherwise read as "AC1 is reachable
+today", and it is not.
 
-Two peer sessions read the sweep *after* I reported the fix as verified, and found that
-`2b758a87` covered **one of the sweep's two kill paths**:
+🔴 **So the question for Richard is DISCOVERABILITY, not capability.** Nothing in the product names
+these keys — the placeholder is only `// Enter your JavaScript code here`, and the sole Ctrl-Space
+mentions in either package are **code comments** (`library-completions.ts:64`,
+`completionPosition.ts:9`). A beginner has a working trigger they would never guess.
 
-```js
-for (const pgid of groups) killGroup(pgid, 'SIGTERM');    // process.kill(-pgid) — NOT shielded
-for (const proc of targets) killPid(proc.pid, 'SIGTERM'); // shielded
+🔴 **And Ctrl-Space is NOT reachable by a human on this machine — measured by a peer after my
+drive, and it sharpens the ruling.** Reading the user's own preference domain:
+
+```
+$ defaults read com.apple.symbolichotkeys AppleSymbolicHotKeys
+    60 = { enabled = 1; value = { parameters = ( 32, 49, 262144 ); ... } }
 ```
 
-`killGroup` signals an **entire process group in one syscall**, so it cannot be filtered per-pid
-even in principle. A shielded process sharing a pgid with a recorded group died anyway — with the
-shield doing exactly what it was written to do. **The same shape as the bug it replaced.**
+Symbolic hotkey **60 is "Select the previous input source"**, **enabled**, parameters ASCII 32 /
+keycode 49 / modifier mask 262144 (`NSEventModifierFlagControl`). That is **Ctrl-Space, bound at OS
+level and active**. CodeMirror ships `Alt-`` ` `` and `Alt-i` as mac alternates for exactly this
+reason.
 
-🔴 **And the dry run had the matching hole, which is the worse half.** `sweep()` returned after
-logging `targets` alone, and `stop-dev.js --list` never consulted the group path at all. So my
-"10 → 0" measurement was **structurally incapable** of revealing that hazard — which is precisely
-how the previous guard survived three inspections. A dry run that omits a kill path is the same
-failure as a guard that cannot fire.
+🔴 **So "all three chords fire" is true of the app and false for the user.** CDP injects straight
+into the renderer and **bypasses OS hotkeys** — the one path on which an OS-eaten binding still
+looks alive. My drive could not have caught this.
 
-`4fd2cfdb`: `snapshot()` now reads `pgid`; `sweepableGroups` drops any recorded group containing a
-protected process; both `sweep(dryRun)` and `--list` report groups.
+⚠️ **Scoped honestly:** that is a fact about *Richard's machine configuration*, it is
+user-configurable, and **no physical keypress was tested** — the last inch is one keystroke in a
+Function popout. But it means **documenting Ctrl-Space would document something that does not
+work here**, and the honest statement is narrower: *the only manual triggers reachable by a human on
+this machine are **Alt-`` ` ``** and **Alt-i***. Which argues harder for §D than my original framing
+did, because the cheap "just add a line of copy" option collapses to naming two alt-chords nobody
+would ever guess.
 
-⚠️ **Is the hazard real, or topological luck?** `record.groups` holds the dev stack's own pgids
-(`start.ts:91`), and a suite started from its own shell has its own group. **But agent sessions
-start both from the same non-interactive shell, where job control is off and children can share a
-group.** Nobody has yet shown a live suite sharing a pgid with a recorded group — 🟡 **that is the
-one open question**, and `ps -o pid,pgid` against the pid file settles it. The fix drops the group
-rather than resting on "safe by topology", which is the reasoning that already failed twice here.
+### 3c. Criterion 2 re-driven rather than defended
 
-🔴 **A missing `groups: []` in two early returns crashed `--list` on a QUIET checkout** — and this
-deserves more than a footnote. **The empty case is the one no interesting test exercises**, because
-every test you *want* to run sets up the state you are studying. It broke at exactly the moment
-someone reaches for the tool to ask *"is anything running?"* — i.e. when they are least expecting
-the instrument itself to be the problem, and most likely to read a crash as a busy checkout.
+The false-pass finding undercut criterion 2's evidence, since it used the same trigger. A **source
+argument** said it was fine (the member branch, `noodl-completions.ts:192-199`, runs before any
+explicitness test and never reads `context.explicit`). But I had also **measured** the two paths
+returning different menus at a top-level position — so "explicit ≈ automatic" was demonstrably false
+*somewhere* in this file, and an argument from source is weaker than the observation it is trying to
+explain. Re-driven with real keys:
 
-✅ **So run the boring case too.** I caught it only by re-running the quiet checkout after the decoy
-one, and the decoy case passed throughout.
+| path | tooltip | total | the 11 `Records` methods | extras |
+|---|---|---|---|---|
+| **automatic — real keys** | rendered | **11** | **all 11** | none |
+| explicit | rendered | **11** | **all 11** | none |
+
+**Identical — criterion 2 stands, now measured rather than inferred.** And the top-level difference
+is *explained* rather than explained away: the menu is a **union of sources**
+(`codemirror-extensions.ts:318-319`), `libraryCompletionSource` gates on `explicit`
+(`library-completions.ts:70`), and at a *member* position `isMemberPosition` rules first so neither
+it nor JS built-ins contribute. That is why the paths agree there and diverge at a bare cursor.
+
+### 3d. ⚠️ The control that earned its keep
+
+The first run of the chord probe reported **`KEY_DELIVERY_CONTROL: FAIL`**. The cause was mine:
+`window.__ac` was set in the *previous* window's page and did not exist in the fresh one, so the
+reset step threw **before** `v.focus()` and the editor was never focused. Without a plain-`a`
+control, the silent Ctrl-Space that followed would have read as *"the keymap does not reach the
+popout"* — a false negative on the exact claim under test, and it would have sent the ruling back to
+"no trigger exists".
+
+🔴 **Dispatch one printable key and assert it lands before believing ANY chord result.**
 
 ---
 
 ## 4. What this session settled — do not re-derive
 
-### FIX-017 §A, built (`9e8b3198`)
-
-`completesTopLevel` refused *every* empty position, so a fresh Function body offered nothing until
-the user guessed a first letter — withholding the list from the only person who needs it.
-
-**The discriminator is not "is the word empty" but "is the cursor starting a statement"** — nothing
-but whitespace between it and the start of its line. True of an empty seed body and a blank line,
-false mid-expression, so `const x = ` stays silent. New helper `startsStatement`, deliberately
-textual rather than a syntax-tree test: an empty document has no meaningful tree, and that is the
-case it exists to serve.
-
-`completesTopLevel` itself is **untouched** — `library-completions` shares it, and the module note
-warns `word.from === word.to` means opposite things either side of the member check. The new test is
-read only *after* `isMemberPosition` has ruled.
-
-⚠️ **One measurement removed code instead of adding it.** Gating the bare-port completions at an
-empty position needed **no new gate**: `barePortCompletions` already returns nothing without a
-prefix, explicit requests included. The gate I first wrote would have been dead code sitting exactly
-where a reader looks for the load-bearing one.
-
-### The drive recipe, as far as it was proven
-
-Working, this session:
-
-```js
-// module cache
-let c; window.webpackChunknoodl_editor.push([[Symbol('p')],{},(r)=>{c=r.c;}]);
-// open a COPY and route into the editor
-const LPM = c['./src/editor/src/utils/LocalProjectsModel.ts'].exports.LocalProjectsModel;
-const project = await LPM.instance.openProjectFromFolder(dir);   // returns a Promise
-route.router.route({ to: 'editor', project });
-```
-
-- 🔴 **`openProjectFromFolder` alone does NOT navigate** — it registers the project and leaves you
-  on the launcher. `ProjectModel.instance` stays `false` until the route runs.
-- 🔴 **The router handle is not a module export.** Walk the React fiber from `#root` for
-  `props.route.router.route` — found at depth 3.
-- 🔴 **A `cp -R` copy is INDISTINGUISHABLE from its source in the launcher** — the card shows
-  `project.json`'s `name`, which the copy inherits. Only `_retainedProjectDirectory` separates them.
-  **Rename the copy's `name` field before driving**, or you cannot prove which one you opened.
-- Component switch: click `div.ComponentsPanel-module__TreeItem--…` (the **TreeItem**, not the
-  Label). Tag it with `setAttribute` and click by that attribute — the generated class hashes.
-
-🔴 **Where it stopped, and the answer a peer supplied afterwards** — selecting the node on the
-node-graph canvas:
-
-```js
-const ed = window.__nodeGraphEditor;            // the handle; NOT a module export, NOT on a fiber
-const flat = []; const walk = n => { flat.push(n); (n.children||[]).forEach(walk); };
-ed.roots.forEach(walk);
-ed.selectNode(flat.find(n => n.model && n.model.type === 'JavaScriptFunction'));
-```
-
-- 🔴 **`selectNode` takes the VIEW node, not the model node.** Passing a model node throws
-  `Cannot read properties of undefined (reading 'type')` from inside `nodegrapheditor.ts`, which
-  reads like a broken editor rather than a wrong argument.
-- 🔴 **The panel swap is invisible in the same `eval`** — React has not re-rendered, so measure in a
-  **second** CDP call or record a false negative.
-- ⚠️ `ed.selection` does not exist (`ed.selector._selected`), and `ed.model.forEachNode` **stops on
-  a truthy return** — `arr.push(n)` returns a number, so it reads only the first node.
+- **AC1 is ◐, not ✅ and not ✗.** Three halves met and driven; "without typing" unmet and
+  unreachable by §A. Do not tick it, and do not re-drive the three that are done.
+- **AC2 is closed on the automatic path.** Do not re-litigate it; §3c is the measurement.
+- **§D is promoted.** It was scoped as "a small independent nicety". It is now **the only route to
+  AC1's user outcome that does not need a ruling** — and `NOTATION_RULES` copy naming the shortcut
+  may deliver most of the value on its own, before any button is built.
+- **The drive recipe works end to end** and is worth reusing verbatim:
+  - `openProjectFromFolder(dir)` **registers but does not navigate**; route separately via the
+    router found on the React fiber from `#root` (depth 2-3).
+  - **`NodeGraphContextTmp.switchToComponent(comp, {})`** switches component with no canvas click.
+  - **`NodeGraphContextTmp.nodeGraph`** is the live canvas (not `window.__nodeGraphEditor`);
+    `selectNode` takes the **VIEW** node from `ed.roots`/`.children`.
+  - A fresh node: `NodeGraphNode.fromJSON({...})` + `graph.addRoot(node)`. `parameters: {}` gives a
+    genuinely empty body.
+  - Popout: click `.property-codeeditor-button`; the live view is `.cm-content` → **`el.cmTile.view`**.
+  - 🔴 **Rename the copy's `project.json` `name`** or you cannot prove which project you opened.
+  - `JSON.stringify(...)` your eval result — raw objects fail with *"Object reference chain is too
+    long"*.
 
 ### Cleanup done
 
-Fixture `fix017a-drive` removed; `recentProjects` restored 32 → 31; stack torn down and announced
-to every session the launch was announced to.
+Both fixtures removed; `recentProjects` restored 32 → 31 after each window; both stacks torn down
+and announced to every session the launches were announced to.
 
 ---
 
 ## 5. What to do next and why
 
-1. ✅ **DONE by session 22 (`5d04281d`) — and it did not close.** §A is driven; **AC1 is not met**
-   and cannot be by §A alone. `getUpdateType` Activates only on `input.type`; cursor placement is
-   `tr.selection → Reset`, so a fresh popout can never open a menu however good the source is. Full
-   measurements in [FIX-017](FIX-017-THE-EDITOR-SHOWS-WHAT-YOU-CAN-TYPE.md) — **read that before
-   touching this task.** What follows from it:
-   - 🔴 **Build §D.** It is no longer a small independent nicety: a visible button calling
-     `startCompletion` is **the only route to AC1's outcome that does not need a ruling**.
-   - 🔴 **AC1 needs a ruling** (§6) — auto-open on mount is the thing FH-017 deliberately removed.
-   - ⚠️ **Do not "drive" a completion feature with `startCompletion`.** It sets `explicit = true`,
-     bypassing the gate under test, and the globals answered at an empty position *before* §A too —
-     so that drive passes whether or not the change works. Real keys, automatic path.
-2. ✅ **Take `dev:stop -- --list` the next time a `test:ci` is genuinely live** — one command, and it
-   now previews **both** kill paths. §3, §3b.
-2b. 🟡 **Settle whether a live suite can share a pgid with a recorded dev group** — `ps -o pid,pgid`
-   against the `groups` array in the pid file. It decides whether §3b's hazard was real or
-   topological luck. Cheap, non-destructive, and it is the last unmeasured claim in this area.
-3. **§D (the browse button)** — small and independent, untouched.
-4. **FIX-008 fix C** — Richard owes a measurement. The oldest open item.
-5. **FIX-016 §2** (the declared-String-but-called diagnostic) — no ruling attached, ready home in
-   `portDiagnostics.ts`, buildable today.
+1. 🔴 **FIX-017's remaining half needs Richard** — AC1 and AC3 are both rulings (§6). ⚠️ **The
+   cheap option got weaker after my write-up**: "just add a line of copy naming Ctrl-Space" would
+   document a chord the OS eats on this machine (§3b), so the copy would have to name **Alt-`` ` ``
+   / Alt-i** — two chords nobody would guess. That makes **§D the strongest candidate**, but it is
+   still his call between auto-open and an affordance, so **do not build it speculatively.**
+2. **FIX-016 §2** (the declared-String-but-called diagnostic) — no ruling attached, ready home in
+   `portDiagnostics.ts`, buildable today. **The best available build task.**
+3. ✅ **Take `dev:stop -- --list` the next time a `test:ci` is genuinely live** — one command, and
+   since `4fd2cfdb` it previews **both** kill paths. Still owed; no suite ran this session.
+4. 🟡 **Settle whether a live suite can share a pgid with a recorded dev group** — `ps -o pid,pgid`
+   against the `groups` array in the pid file. Needs a live suite, so it pairs with (3). Last
+   unmeasured claim in that area.
+5. **FIX-008 fix C** — Richard owes a measurement. The oldest open item.
 6. **FIX-013**, **FIX-016 §1** — open, each needs its ruling (§6).
 7. 🟡 **FIX-001 §1a.5 stretch** — re-decide rather than build.
 
@@ -348,37 +272,37 @@ to every session the launch was announced to.
 
 ## 6. Owed by Richard
 
-- 🔴 **FIX-017 AC1's ruling — NEW, and the one that decides §A's fate.** The completion list cannot
-  appear "the moment the cursor lands" without opening it on mount, and **FH-017 removed exactly
-  that as noise**. So this is a reversal to authorise, not a bug to fix. ⚠️ Reframed by session 22's
-  drive: **a manual trigger already exists** — Ctrl-Space, Alt-`` ` ``, Alt-i all fire today — but
-  **nothing in the product mentions any of them**; the only references are code comments. So the
-  real defect is **discoverability**, and the choice is *auto-open* vs *a visible affordance*
-  (§D). The second needs no ruling and is aimed at the beginners this feature exists for.
+- 🔴 **FIX-017 AC1 — the new one, and the most decision-shaped item in the phase.** A trigger
+  **exists and fires in the app** (Ctrl-Space / Alt-` / Alt-i, all driven, leak-controlled) but is
+  **invisible in the product** — the only mentions anywhere are code comments. Three options,
+  materially different in cost: (a) one line of `NOTATION_RULES` / placeholder copy naming the
+  shortcut; (b) §D's visible button; (c) auto-open on mount when the body is empty — the one FH-017
+  argues against, having removed menu-on-every-keystroke as noise.
+  🔴 **Option (a) is weaker than it looks:** `com.apple.symbolichotkeys` key 60 is **enabled** on
+  your machine and binds **Ctrl-Space** to "Select the previous input source", so copy naming
+  Ctrl-Space would name a chord you cannot press. ⚠️ **One keystroke settles it** — press Ctrl-Space
+  in a Function popout; if you get an input-source switch rather than a menu, (a) collapses to
+  naming Alt-` / Alt-i and (b) is the real answer.
 - 🔴 **FIX-017 AC3's ruling** — its premise is false (ports and API names never share a prefix, so
   there is no ranking to control for and `boost: 99` is unobservable). Restate against a prefix
   where the two surfaces genuinely compete, or strike it.
 - 🔴 **`scripts/library/check.ts` is STILL uncommitted and STILL unattributed.** Unchanged through
-  s18, s19, s20 and now s21; eight sessions have asked and none has claimed it. It backs
-  `library:check`, and `cloud-library:check` **is a PR gate**. One `git add -A` from riding along,
-  one `git checkout --` from vanishing. **Attribute it or bin it.** I did not touch it.
+  s18–s22; nine sessions have asked and none has claimed it. It backs `library:check`, and
+  `cloud-library:check` **is a PR gate**. One `git add -A` from riding along, one `git checkout --`
+  from vanishing. **Attribute it or bin it.** I did not touch it.
 - 🔴 **FIX-013's four rulings** — ruling 2 (does the AI authoring preview keep its toolbar?) is the
   big one: "yes" retires a written constraint, "no" makes ~1,500 lines genuinely deletable.
 - 🔴 **FIX-016's signal-input semantics** — re-run the body vs named handlers, or rule signal inputs
   out and document `run` as the only trigger.
 - ⚠️ **The ⌘C ruling** (carried by a peer): text and a canvas node both selected —
   `keyboardhandler.ts:165` guards on **focus**, not selection.
-- ⚠️ **The MCP servers are one pair per live Claude session, not a leak** — ~19-20 processes is ~10
-  pairs, each pair two siblings sharing a `ppid` that is the owning session's own pid. 🔴 What is
-  owed: they all predate the `packages/noodl-mcp/dist` rebuild, so every live server holds
-  pre-rebuild code. Restarting them is your call (each is a live session's connection), and the
-  **repackage** is separately owed for fresh/packaged launches.
+- ⚠️ **MCP servers hold pre-rebuild code** — every live server predates the
+  `packages/noodl-mcp/dist` rebuild. Restarting them is your call (each is a live session's
+  connection); the **repackage** is separately owed for fresh/packaged launches.
 - 🟡 **`run-editor/SKILL.md:23` teaches `nohup … &`**, which reparents the stack to PID 1 and
-  destroys launch provenance; it also does not mention `npm run cdp` is root-only. `run_in_background`
-  preserves provenance — the skill should say so.
-- ⚠️ **`MEMORY.md` was brought back under budget by a peer this session** (18,410 → 16,744) by
-  extracting **Judgement traps** to `judgement-trap-pointers.md`. Nothing deleted. Read that file
-  before assuming a trap is gone.
+  destroys launch provenance; it also does not mention `npm run cdp` is root-only.
+  `run_in_background` preserves provenance — the skill should say so. **Unchanged; I used
+  `run_in_background` both times and it worked.**
 - **FIX-004** conversion block shape · **FIX-005** category name · **FIX-006** demote Script? ·
   **FIX-008** leftovers (incl. a measurement) · **FIX-015** / **FIX-021** are their own sessions.
 
@@ -395,30 +319,24 @@ from gone. **Leave them.**
 
 **Announce before *and* after any `test:ci`, `test:main` or editor launch, and announce your PIDs.**
 🔴 **Check the checkout with an ARGV filter, not a path grep** — `Electron . --dev` for an editor,
-`Electron test.js --ci` for a suite; a path grep on `electron/dist` counts MCP servers as editors
-and cost session 19 an entire drive plan.
+`Electron test.js --ci` for a suite; a path grep on `electron/dist` counts MCP servers as editors.
 
-🔴 **The announcement etiquette is NOT retired by `2b758a87`.** A reaper started before that commit
-holds the old module, and anyone on a worktree cut earlier is unprotected.
+🔴 **The announcement etiquette is NOT retired by `2b758a87` / `4fd2cfdb`.** A reaper started before
+those commits holds the old module, and anyone on a worktree cut earlier is unprotected.
 
-⚠️ `pgrep -af` does **not** print args on macOS — `-a` is not BSD `pgrep`'s "list args" flag, so you
-get a bare pid and a match you cannot identify. Use `ps -Ao pid,ppid,lstart,args` and grep that.
+⚠️ `pgrep -af` does **not** print args on macOS. Use `ps -Ao pid,ppid,lstart,args` and grep that.
 
 ⚠️ **`dev:stop -- --list` is not purely read-only** — it calls `removePidFile()` when it finds
-nothing. "Kills nothing" and "reads only" are not the same claim.
+nothing.
 
-🔴 **Exercise the DULL state, not just the interesting one.** Three separate failures today shared
-one shape: the hazard absent so a guard never fired; the detector absent so a control could not
-signal; and the *empty* case untested so a fix broke where the tool is most used — a `--list` on a
-quiet checkout, which is what nearly every `--list` here actually is. **Enumerate the states your
-instrument will meet and run the boring ones too.**
+🔴 **A peer's all-clear is about THAT PEER.** Seven peers cleared me tonight; that is seven
+statements about seven sessions, not one about the checkout. Verify with `ps` regardless.
 
-⚠️ **Distrust the phrase "X kills exactly what Y returns"** (and its relatives). It asserts an
-equality *between layers* while having been checked on only one. That sentence is how I described
-the group kill path an hour before it turned out to be a second path with different coverage.
+🔴 **Exercise the DULL state, not just the interesting one**, and **run the control before believing
+the probe** — §3d is this session's instance, and it failed first.
 
 ✅ **A package-local jest run is the gate you can still take on a busy checkout.** `noodl-core-ui`'s
-jest is plain Node, spawns no Electron, matches no `DEV_TOOL` pattern, and finishes in ~1.5s.
+jest is plain Node, spawns no Electron, matches no `DEV_TOOL` pattern, ~1.5s.
 
 ✅ **Driving cleanup**: remove the `cp -R` fixture, and filter your entry out of
 `~/Library/Application Support/NodeGX/recently_opened_project.json` (key is **`recentProjects`**).
