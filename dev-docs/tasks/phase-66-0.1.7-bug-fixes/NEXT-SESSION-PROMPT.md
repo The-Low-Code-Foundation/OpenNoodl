@@ -1,19 +1,18 @@
 # Phase 66 — next session
 
-**Written 2026-08-15, session 19.** **FIX-017 §B is built and AC4 is discharged** (`5d793d83`).
-`Noodl.Records.` and nine more namespaces now answer at their own dot, pinned by 11 specs that were
-**run against a known-broken control**. Thirteen tasks stay closed; FIX-017 moves from `open` to
-**partly built, undriven**.
+**Written 2026-08-15, session 20.** **FIX-017 §B is driven.** `Noodl.Records.` answers with 11
+methods in a real Function popout, against a positive *and* a negative control. Criterion 2 is
+closed; FIX-017 goes from *partly built, undriven* to **partly built, partly driven**.
 
-🔴 **The finding that outlives this task: a register "reconciled against git" can still lie.**
-Phase-61's `TASKS.md` was swept on 08-14 and the sweep read the **status column**. FUN-007's row went
-on saying its §2 was *"not done"* in the prose beside the corrected status, while `97e465a2` had
-built it on 08-12. **A register is reconciled when its sentences are right, not when its states
-are.** And FIX-017's own §1 — the paragraph warning that this register was stale — was itself the
-stale thing. §3.
+🔴 **The finding that outlives this task: session 19 cancelled its entire drive plan on a grep of
+the wrong surface.** Its handover says "nine Electron editors were live on the checkout." There were
+**zero**. All nine matches were `noodl-mcp.cjs --allow-writes` — MCP servers, which run under the
+Electron *binary* and therefore match `electron/dist`. One `ps` filtered on **argv** instead of the
+binary path took one call and freed the whole session. §3.
 
-⚠️ **This session drove nothing, and that was forced.** Nine Electron editors were live on the
-checkout. §2 and §5.
+⚠️ **A second thing this session got wrong, and two peers got wrong with me.** My clean `dev:stop`
+was offered by two sessions as the first in-the-wild proof of the sweep fix `d061bc6e`. It proves
+nothing — **zero suites were running**, so nothing existed to be spared. §3b.
 
 ---
 
@@ -36,8 +35,8 @@ Learnings that outlive the phase go to memory, not here.
 
 | Task | Built | Driven | Note |
 |---|---|---|---|
-| **FIX-017** | ◐ **§B only** | 🔴 **no** | **NEW this session** (`5d793d83`). §B + AC4 done; **§A and §D untouched**. See §4 |
-| **FIX-014** | ✅ | ✅ both clients | **CLOSED** s18. 🔴 driven ≠ shipped — the packaged app still lacks the pass |
+| **FIX-017** | ◐ **§B only** | ◐ **§B yes** | **AC2 CLOSED this session** with controls. 🔴 **AC3's premise is false — needs a ruling.** §A and §D untouched |
+| **FIX-014** | ✅ | ✅ both clients | **CLOSED** s18. 🔴 driven ≠ shipped — see §6 on the MCP process topology |
 | **FIX-019** | ✅ | ✅ 4/4 | **CLOSED** s18 — 14(a) ruled *no sweep* |
 | **FIX-001** | ✅ | ✅ 5/5 | **CLOSED** s17. 🟡 §1a.5 stretch open, and worth re-deciding not building |
 | **FIX-002** | ✅ | ✅ 4/4 | **CLOSED** |
@@ -52,108 +51,131 @@ Learnings that outlive the phase go to memory, not here.
 | **FIX-008** A, B, E | ✅ | ✅ | C, D not built; **C needs a measurement from Richard** |
 | everything else | 📋 open | — | see [TASKS.md](TASKS.md) |
 
-**Thirteen closed, one partly built.** FIX-017 is the phase's only partly-driven row — do not let it
-blur into "done" the way FIX-014's did for three sessions.
+**Thirteen closed, one partly driven.**
 
 ---
 
 ## 2. Gate readings
 
-**Tree: `5d793d83`.** ⚠️ **`test:ci` was NOT run this session and that is deliberate** — nine
-Electron editors were live on the checkout, and both a launch *and* a teardown reap a running suite.
-The reading below is therefore **narrower than usual**; do not quote it as a `test:ci` floor.
+**Tree: `03db709a` + doc edits only.** 🔴 **This session changed NO source** — only `dev-docs/` and
+memory. So s19's readings stand unchanged and were not re-derived:
 
 | Gate | Reading | When |
 |---|---|---|
-| `noodl-core-ui` jest — the changed file | ✅ **51/51** (41 pre-existing + 10 new) | 22:0x |
-| `noodl-core-ui` jest — full package | ✅ **24 suites / 395**, 0 failed | 22:0x |
-| `noodl-core-ui` `tsc --noEmit` | ✅ **adds nothing** — 44 errors, *all* `../noodl-editor/**` alias `TS2307`, **0** in `code-editor` | 22:0x |
-| **known-broken control** | ✅ **5 of the 10 new specs go red** with one-level behaviour restored | 22:0x |
-| `test:ci` (jasmine) | ⬜ **not run** — checkout busy. Last trustworthy reading is s18's: **6 by NAME** at `seed 39393` | 08-15 19:51 |
+| `noodl-core-ui` jest — full package | ✅ **24 suites / 395**, 0 failed | s19, 08-15 22:0x |
+| `noodl-core-ui` `tsc --noEmit` | ✅ adds nothing — 44 errors, all `../noodl-editor/**` alias `TS2307` | s19 |
+| **known-broken control** | ✅ 5 of the 10 new specs go red with one-level behaviour restored | s19 |
+| `test:ci` (jasmine) | ⬜ **not run since 08-15 19:51** — **6 by NAME** at `seed 39393` | 08-15 19:51 |
 
 🔴 **Quote the six by NAME, never the count** — `totalCount` moved 2779 → 2843 in a day. A mismatch
 is almost always age, not a regression.
 
-✅ **`noodl-core-ui`'s jest is plain Node and package-local** — it is safe beside live editors, which
-is why this session had any gate at all. It is **not** in `test:ci`; the two do not cover each other.
+✅ **The checkout is FREE and `test:ci` is runnable.** I verified 0 editors / 0 suites / 0
+`webpack.*test-ci` after teardown, and nine peer sessions all confirmed they are running nothing.
+**A `test:ci` floor is the cheapest thing the next session can bank** — it has not been read since
+19:51 and several tasks have landed since.
 
 ---
 
-## 3. 🔴 The finding: a reconciliation that reads the status column
+## 3. 🔴 The finding: "nine live editors" were nine MCP servers
 
-FIX-017's AC4 asked for phase-61's `TASKS.md` to be reconciled. Two layers, and the second is the
-one worth carrying:
+Session 19's §2 and §5 both state the checkout had nine Electron editors live, and it declined to
+drive on that basis. The actual population:
 
-| Claim | Reality |
-|---|---|
-| FIX-017 §1: "it is four tasks stale, you will rebuild three finished tasks" | **Already fixed on 08-14**, before this session |
-| phase-61 FUN-007's row: "§2's gutter rendering is **not done**" | **Built 08-12** by `97e465a2` — `runtimeDiagnostic.ts` + 176 spec lines, in the tree, specs passing |
+```
+ps | grep 'electron/dist'          → 9   ← ALL nine are noodl-mcp.cjs --allow-writes
+Electron . --dev      (editor)     → 0
+Electron test.js --ci (suite)      → 0
+webpack.*test-ci      (pre-suite)  → 0
+```
 
-The 08-14 sweep announced itself as *"corrected against git, not against this table"* and it was —
-for the **status column**. The stale claim sat in the **prose of a row whose status it had just
-corrected**. A status glyph is a handful of tokens and gets checked; the prose is where the actual
-claims live, and it is where a sweep stops reading.
+**MCP servers run under the Electron binary**, so a path grep matches them. The discriminator is the
+**argv tail**, never the binary path and never the count. Five peer sessions reproduced this
+independently within minutes of being told.
 
-**And a stale warning about staleness is worse than none.** FIX-017 §1 would have sent its reader to
-fix four rows already fixed, and **past the one thing that was not**. When a doc tells you a register
-is stale, read the register first — that warning is itself a dated claim.
+🔴 **The count is not just wrong, it is unsanity-checkable.** A checkout hosts **one** editor
+(single-instance lock) and realistically one suite — so *any* count above two is telling you the
+filter is wrong, not that the checkout is busy. Readings today ranged 9 → 13 → 19 → 20 depending on
+the hour and the pattern, all of them "correct".
 
-Saved as `a-reconciliation-pass-fixes-status-and-leaves-prose`.
+⚠️ **And the corrected count is still half the population.** Each server is a **pair of siblings**
+(same ppid — the Claude session's): one `node /Applications/NodeGX.app/…` (packaged build) and one
+Electron host running `packages/noodl-mcp/dist/…` (repo build). I quoted "still 9 MCP servers" as a
+post-teardown all-clear and that was the same undercount one level in; the real figure was 20.
+Nothing ever reaps them, so they accumulate a pair per connection.
+
+Saved to memory as `an-electron-dist-grep-counts-mcp-servers-as-editors` (amended).
+
+### 3b. 🔴 A clean teardown did NOT prove the sweep fix
+
+I ran `dev:stop`: 26 processes reaped, MCP spared, teardown clean. **Two peers independently told me
+this was the first in-the-wild confirmation of `d061bc6e`.** A third dissented and was right: **zero
+suites were running**, so nothing existed to be spared. With the hazard absent, "the guard works"
+and "the guard was deleted" produce a byte-identical reading.
+
+I did confirm by **reading the code** that `dev-processes.js:355` skips `noodl-mcp.cjs` and `:371`
+skips `test.js --ci`, both inside `findDevProcesses` — the shared candidate source behind `dev:stop`,
+the launch sweep and the watchdog. That justifies *"the exclusion is present"*, not *"the exclusion
+works"*. **`d061bc6e` remains unproven in the wild.** To prove it, a `test:ci` must be running
+*through* a `dev:stop` and survive.
+
+⚠️ Note the social shape: two peers agreed with each other, confidently, and were both reasoning
+from the single run I had reported. **Agreement is not replication.** Saved as
+`a-guard-is-not-proven-by-a-run-where-the-hazard-was-absent`.
 
 ---
 
 ## 4. What this session settled — do not re-derive
 
-### FIX-017 §B, built (`5d793d83`)
+### FIX-017 criterion 2, driven
 
-`ApiMember` gained `members?`; `apiMembersAtPath` walks a dotted path **anchored at `Noodl`**. Ten
-namespaces answer: Records, Users, CloudFunctions, Navigation, Files, SEO, Config, Object/Model,
-Array/Collection, Events/eventEmitter.
+Fixture: a `cp -R` copy of `fix012-drive`, component `/Probe`, its `JavaScriptFunction` node.
 
-🔴 **Three of the task's own citations were wrong, each found by opening the file** — the general
-lesson being that a task doc's citation list is a set of claims, not a bibliography:
+| probe | completions | tooltip |
+|---|---|---|
+| `Noodl.` | **19** namespaces incl. `Records` | rendered |
+| **`Noodl.Records.`** | **11** with signatures in `info` | rendered |
+| `Noodl.Nonsense.` | **0** | **none** |
 
-1. `dist-types/…/records.d.ts`, recommended as *"generated — best"*, is accurate but **gitignored**
-   (`.gitignore:225`). A citation there cannot be checked on a fresh clone. Used `records.js`, which
-   ships — **11 methods, not the 12 claimed**.
-2. `model.js` / `collection.js` are **`.ts`**. The citation does not resolve.
-3. **`Config` cannot be a static list at all.** It is a Proxy over App Setup *plus the project's own
-   config variables* (`api/config.ts:73-90`). Shipped as an explicitly-partial floor that says so,
-   rather than a contents page that would tell a user their own variable does not exist.
+The negative control carries the claim — 11 items alone is equally consistent with a resolver that
+says yes to anything. The tooltip was read from `.cm-tooltip-autocomplete`, so the menu **rendered**
+rather than merely resolving.
 
-**Two things the specs caught that the build did not:**
+🔴 **AC3's premise is false and it needs a ruling.** Typed `Inp` returns exactly one option
+(`Inputs`); `Inputs.` returns exactly one (`qty`, the node's real port). **Ports and API members
+never share a list** at these prefixes, so there is no ranking to control for and `boost: 99` is
+unobservable. Restate it against a prefix where the two surfaces genuinely compete, or strike it.
 
-- ⚠️ **An alias assertion passed vacuously.** `expect(labelsFor('Noodl.Model.')).toEqual(labelsFor('Noodl.Object.'))`
-  is `null === null` on the old build — it **agreed with the defect**. Only the known-broken control
-  exposed it. It now pins that each side answered *before* pinning that they agree. This is the
-  [[a-behavioural-guard-can-be-decoration]] shape, in a test.
-- 🔴 **Ordering in `memberCompletions` is load-bearing.** `Variables` is a name in *both* surfaces
-  and only the project has its members, so `resolveNamespace` must run **before** the static walk.
-  Reversed, `Noodl.Variables.` silently loses the project's real variable names. Commented at the
-  site and pinned by a spec.
+⚠️ **`Noodl.Variables.` returned 0 — indeterminate, not a defect.** The fixture has no variables.
+It is the one prefix where the project surface and the static list compete, so it is exactly where
+the build's load-bearing ordering comment should be tested — **on a project that has variables**.
 
-### A `*/` inside a doc comment
+### Two drive-recipe corrections
 
-Citing `dist-types/**/records.d.ts` in a JSDoc block **ended the comment at the glob**, truncating
-the module. 🔴 The compiler then reported `globalsFor` — an export months old and untouched — as
-missing. **When a module reports an export you did not touch, suspect truncation, not the export**;
-typecheck the suspect file *alone* to get the real `TS1443` line. Saved to memory.
+- 🔴 **`LocalProjectsModel.openProjectFromFolder(dir)` now returns a `Promise`**, not a
+  `ProjectModel`. The memory recipe says otherwise and is stale. Await it, then
+  `router.route({to:'editor', project})`.
+- 🔴 **`ProjectModel.instance` is at module key `./src/editor/src/models/projectmodel.ts`.** Scanning
+  the module cache for "a `.instance` with `getComponents`" finds a *different* class whose instance
+  is not the singleton — it answered with plausible component names and an **empty directory**.
+  ⚠️ Component names did **not** disambiguate the copy from its source (both had `/App`+`/Probe`);
+  only `_retainedProjectDirectory` did.
 
 ---
 
 ## 5. What to do next and why
 
-1. 🔴 **Drive FIX-017 §B — it is one popout.** Open a Function node, type `Noodl.Records.`, see
-   `query`/`create`/`save`/`delete`. That closes criterion 2 and it is the cheapest open criterion in
-   the phase. **Do it the moment the checkout is quiet**, and check first — this session could not.
-2. **FIX-008 fix C** — Richard owes a measurement on C's copy. The oldest open item.
-3. **FIX-017 §A** — answer at an empty position. 🔴 The task requires driving it **both ways**
-   ("typing ordinary code is not smothered"), so it is not startable on a busy checkout either.
-   §D (the browse button) is small and independent.
-4. **FIX-013**, **FIX-016** — open, each needs its ruling (§6). ⚠️ Note FIX-016's §2 (the
-   declared-String-but-called diagnostic) has **no ruling attached** and a ready home in
-   `portDiagnostics.ts` — it is buildable today, same as §B was.
-5. 🟡 **FIX-001 §1a.5 stretch** — re-decide rather than build.
+1. ✅ **Run `test:ci` first** — the checkout is free, the floor is 4h stale, and it is the cheapest
+   thing to bank. Announce before and after. Compare the **six names**, not the count.
+2. 🔴 **FIX-017 §A** — answer at an empty position. Requires driving **both ways** ("typing ordinary
+   code is not smothered"). Now startable: the drive recipe in §4 is proven end to end, and §A is a
+   change to the same `createNoodlCompletionSource` the drive already reaches.
+3. **§D (the browse button)** — small and independent.
+4. **FIX-008 fix C** — Richard owes a measurement on C's copy. The oldest open item.
+5. **FIX-016 §2** (the declared-String-but-called diagnostic) — **no ruling attached**, ready home in
+   `portDiagnostics.ts`, buildable today exactly as §B was.
+6. **FIX-013**, **FIX-016 §1** — open, each needs its ruling (§6).
+7. 🟡 **FIX-001 §1a.5 stretch** — re-decide rather than build.
 
 **Do not start** FIX-015 or FIX-021's brainstorm halves — they need Richard, not an agent.
 
@@ -161,25 +183,31 @@ typecheck the suspect file *alone* to get the real `TS1443` line. Saved to memor
 
 ## 6. Owed by Richard
 
-- 🔴 **`scripts/library/check.ts` is STILL uncommitted and STILL unattributed.** Unchanged from s18;
-  six sessions were asked and none claimed it. It is the script behind `library:check`, and
+- 🔴 **FIX-017 AC3's ruling** — new this session. Its premise is false (§4); restate or strike.
+- 🔴 **`scripts/library/check.ts` is STILL uncommitted and STILL unattributed.** Unchanged from s18
+  and s19; seven sessions asked, none claimed it. It backs `library:check`, and
   `cloud-library:check` **is a PR gate**. One `git add -A` from riding along, one `git checkout --`
   from vanishing. **Attribute it or bin it.** I did not touch it.
-- 🔴 **FIX-013's four rulings** — they decide the task's shape, not its details. Ruling 2 (does the
-  AI authoring preview keep its toolbar?) is the big one: "yes" retires a written constraint, "no"
-  makes ~1,500 lines genuinely deletable.
+- 🔴 **FIX-013's four rulings** — ruling 2 (does the AI authoring preview keep its toolbar?) is the
+  big one: "yes" retires a written constraint, "no" makes ~1,500 lines genuinely deletable.
 - 🔴 **FIX-016's signal-input semantics** — re-run the body vs named handlers, or rule signal inputs
   out and document `run` as the only trigger.
-- 🔴 **The `noodl-mcp` repackage** — deployment debt, not a blocker. The packaged app has 0
-  occurrences of FIX-014's layout pass, so it reaches no real user until rebuilt.
-- 🔴 **`MEMORY.md` is over its budget and the hook now nags on every edit.** It cannot be brought
-  under by rewording — getting under means **dropping live trap entries**, which is a call about your
-  own knowledge base. I added two lines and tightened them, but did not drop anyone else's.
-  ⚠️ Several sessions edit it concurrently; targeted single-line edits only.
-- ⚠️ **`d061bc6e` (the sweep fix) is committed but STILL UNPROVEN in the wild** — unchanged from s18.
-  No session has launched over a genuinely running suite with it loaded.
+- ⚠️ **The MCP servers: 20 processes, 10 pairs, oldest ~29h, and they never get reaped.** `dev:stop`
+  spares them by design, so they accumulate one pair per connection. **All of them started before
+  tonight's 19:39 `packages/noodl-mcp/dist` rebuild**, so every live server holds pre-rebuild code
+  regardless of which half serves. 🔴 **Which half answers tool calls, `ps` cannot settle** — two
+  sessions asserted it in opposite directions tonight and both were reading a subset. Restarting
+  them is your call, not a peer's. The **repackage** is separately owed for fresh/packaged launches.
+- 🔴 **`MEMORY.md` is over budget and the hook nags on every edit.** Unchanged from s19: it cannot be
+  brought under by rewording — getting under means **dropping live trap entries**, a call about your
+  own knowledge base. I added one line and amended two files in place rather than adding more.
+  ⚠️ Several sessions edit it concurrently; targeted single-line edits only. I hit a mid-edit
+  conflict on one memory file this session and had to re-read it.
+- ⚠️ **`d061bc6e` is committed but STILL UNPROVEN in the wild** — see §3b, and note that three
+  sessions' clean teardowns have now been mistaken for proof.
 - 🟡 **`run-editor/SKILL.md:23` teaches `nohup … &`**, which reparents the stack to PID 1 and
-  destroys launch provenance; it also does not mention `npm run cdp` is root-only.
+  destroys launch provenance; it also does not mention `npm run cdp` is root-only. I used
+  `run_in_background` instead and provenance survived — the skill should say so.
 - 🟡 **s13's datum on `linkify`**: the scoping model *declines to emit links* (3 refusals).
 - **FIX-004** conversion block shape · **FIX-005** category name · **FIX-006** demote Script? ·
   **FIX-008** leftovers (incl. a measurement) · **FIX-015** / **FIX-021** are their own sessions.
@@ -196,12 +224,19 @@ and belong to neither this phase nor 67 — `MEMORY.md` links into them, so they
 from gone. **Leave them.**
 
 **Announce before *and* after any `test:ci`, `test:main` or editor launch, and announce your PIDs.**
-🔴 **Check the checkout before planning a drive, not after** — `ps -Ao pid,ppid,lstart,command`
-grepped for `electron/dist` took one call this session and changed the whole plan. Nine editors were
-live; `ListAgents` showed nine sessions, but a *listing is not a process* — the `ps` is the evidence.
+🔴 **Check the checkout with an ARGV filter, not a path grep** (§3) — and note `ListAgents` may not
+list every peer: one session appeared only because another relayed it, and its socket was already
+stale. A stale socket (`ENOENT`) is decent evidence a peer has exited, but it means *gone*, not
+*finished cleanly* — check the checkout directly.
 
 ⚠️ **Two hazards, two different windows** — a **launch or teardown** is destructive for a whole
-`test:ci` run; the **~40s webpack** window bounds **source edits** only.
+`test:ci` run; the **~40s webpack** window bounds **source edits** only. `pgrep -f 'webpack.*test-ci'`
+is the check that closes the pre-suite blind spot, because an argv check for `Electron test.js --ci`
+reads clear during a suite's first ~40 seconds.
 
 ✅ **A package-local jest run is the gate you can still take on a busy checkout.** `noodl-core-ui`'s
-jest is plain Node, spawns no Electron, matches no `DEV_TOOL` pattern, and finished in ~1s.
+jest is plain Node, spawns no Electron, matches no `DEV_TOOL` pattern, and finishes in ~1s.
+
+✅ **Driving cleanup**: remove the `cp -R` fixture, and filter your entry out of
+`~/Library/Application Support/NodeGX/recently_opened_project.json` (key is **`recentProjects`**).
+I restored it 32 → 31.

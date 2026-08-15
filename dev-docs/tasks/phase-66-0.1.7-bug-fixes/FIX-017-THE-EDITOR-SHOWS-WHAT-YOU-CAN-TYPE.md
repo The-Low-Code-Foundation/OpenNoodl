@@ -52,7 +52,13 @@ signal-vs-value; bare `Inp` → boosted port completions (FUN-008).
   Array/Collection, Events/eventEmitter. **11 new specs, 51/51 in the file, 395/395 in the
   package**, and the walk was run against a **known-broken control** (one-level behaviour restored)
   where 5 of them go red — so the gate discriminates rather than merely passing.
-  🔴 **Still undriven** — see the criteria.
+  ✅ **DRIVEN 2026-08-15** (session 20) — criterion 2, with a negative control. See the criteria.
+
+  ⚠️ **One namespace answered empty and it is not a defect:** `Noodl.Variables.` returned **0** on
+  the fixture, which has no variables defined. That is the documented shape where an empty list
+  cannot distinguish a firing branch from a dead one — it is **indeterminate**, not a failure, and
+  it is the one prefix where the project surface and the static list genuinely compete. Re-probe it
+  on a project that *has* variables before drawing any conclusion about the ordering fix.
 
   **Three of the citations above were wrong, and each was found by opening the file:**
   1. `dist-types/…/records.d.ts` is real and accurate but **gitignored** (`.gitignore:225`) — a
@@ -85,12 +91,30 @@ signal-vs-value; bare `Inp` → boosted port completions (FUN-008).
 1. Open a fresh Function popout, cursor on the empty seed body: a completion listing
    `Inputs`, `Outputs`, `Noodl` (and mode globals) appears without typing. Driven in Function
    **and** Expression modes; and driven the other way — typing ordinary code is not smothered.
-2. ✅ **Met in spec, ⏳ undriven.** `Noodl.Records.` offers `query`, `create`, `save`, `delete`…
-   with signatures in `info`. Pinned by `noodl-completions.test.ts`; **not yet seen in the running
-   editor**, because nine editors were live on the checkout on 08-15 and a launch reaps a peer's
-   work. The completion source is registered and the unit path is exercised, but *"a completion
-   source that never fires is indistinguishable from one that is not installed"* is this task's own
-   warning and it applies to §B as much as §A. **One popout, typing `Noodl.Records.`, closes it.**
-3. Typed `Inp` still ranks `Inputs.<port>` first (control for the boost).
+2. ✅ **MET AND DRIVEN 2026-08-15** (session 20), in a real Function popout on a copy of
+   `fix012-drive`, `/Probe`'s `JavaScriptFunction` node. Three readings, positive and negative:
+
+   | probe | completions | tooltip |
+   |---|---|---|
+   | `Noodl.` | **19** namespaces incl. `Records` | rendered |
+   | **`Noodl.Records.`** | **11** — `addRelation`, `aggregate`, `count`, `create`, `delete`, `distinct`, `fetch`, `increment`, `query`, `removeRelation`, `save`, each with its signature in `info` | rendered |
+   | `Noodl.Nonsense.` | **0** | **none** |
+
+   The negative control is what makes it a drive: an 11-item list alone is equally consistent with
+   a resolver that says yes to anything. `.cm-tooltip-autocomplete` was read from the DOM, so the
+   menu **rendered** rather than merely resolving. Criterion 2 is closed.
+
+   ⚠️ **The completion menu cannot be opened by typing over CDP** — `cdp type` uses
+   `Input.insertText`, which does not trigger CodeMirror's autocomplete. Driven by dispatching the
+   document into the live `EditorView` (`.cm-content` → `cmTile.view`) and calling
+   `startCompletion(view)`, then reading both `currentCompletions(view.state)` and the tooltip DOM.
+   Everything below that call was the real registered source.
+3. 🔴 **The premise does not hold — this criterion is not falsifiable as written.** Typed `Inp`
+   returns **exactly one** option (`Inputs`, the global); `Inputs.` returns **exactly one** (`qty`,
+   the node's real declared port). Ports and API members **never appear in the same list** at these
+   prefixes, because bare port completions are gated and member completions are anchored at a dot.
+   So there is no ranking to control for, and `boost: 99` is not observable here. Either restate it
+   against a prefix where both surfaces genuinely compete (`Noodl.Variables.` is the only known
+   candidate — a name in both the static list and the project's), or strike it. **Needs a ruling.**
 4. ✅ **Done 2026-08-15** — phase-61 `TASKS.md` reconciled to the tree; the residue was prose, not
    status. See §1.
