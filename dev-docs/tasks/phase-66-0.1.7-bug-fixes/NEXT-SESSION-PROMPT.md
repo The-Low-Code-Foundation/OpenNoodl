@@ -228,6 +228,13 @@ something in it turns out wrong.
    | FIX-003 | the anchor has an `href` | the **system browser opens** on that URL, and ⌘C **yields the text** to the clipboard |
    | FIX-003 drag | the class appears on `body` | the node/row/divider **actually moves**, and **no selection is left behind** after mouseup |
    | FIX-014 | the pass runs | the logic nodes are **visibly in their own column**, and a model-positioned node is **byte-identical** to what was asked for |
+
+   ⚠️ **Apply that test per sentence, not per drive.** The author of the incident above audited
+   their own five-criterion record afterwards: **four sentences survived and one failed** — and the
+   record read as thorough precisely because the other four were genuine consequences. One
+   mechanism-shaped sentence wearing a consequence's clothes is what hid the defect, which is far
+   harder to spot by feel than a uniformly sloppy drive. Write the ten sentences out first, then
+   test each one on its own.
 2. **FIX-001** (Tier 1, the explainer) — only minor rulings outstanding; the M-sized live-value
    layer is the phase's biggest remaining user-visible win, and the only Tier 1 task with no code.
 3. **FIX-008 fix C** (`--scope project`) if the report should stop recurring — but read §5, Richard
