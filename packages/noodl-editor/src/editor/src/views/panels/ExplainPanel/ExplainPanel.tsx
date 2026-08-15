@@ -29,7 +29,7 @@ import { FeedbackType } from '@noodl-constants/FeedbackType';
 import { Icon, IconName, IconSize } from '@noodl-core-ui/components/common/Icon';
 import { PrimaryButton, PrimaryButtonVariant } from '@noodl-core-ui/components/inputs/PrimaryButton';
 import { Select } from '@noodl-core-ui/components/inputs/Select';
-import { TextInput } from '@noodl-core-ui/components/inputs/TextInput';
+import { TextArea } from '@noodl-core-ui/components/inputs/TextArea';
 import { Box } from '@noodl-core-ui/components/layout/Box';
 import { ScrollArea } from '@noodl-core-ui/components/layout/ScrollArea';
 import { HStack, VStack } from '@noodl-core-ui/components/layout/Stack';
@@ -306,13 +306,29 @@ export function ExplainPanel() {
 
       {state && (
         <Section variant={SectionVariant.PanelShy} hasGutter>
-          <TextInput
-            value={question}
-            placeholder="Ask a follow-up…"
-            isDisabled={state.busy}
-            onChange={(event) => setQuestion(event.target.value)}
-            onEnter={askFollowUp}
-          />
+          {/* FIX-002 — a `TextArea`, not a `TextInput`: the single-line input's
+              resizable-input mechanism grew the element to the full width of
+              the string inside an `overflow-x: hidden` wrapper, so past ~40
+              characters the caret left the visible box and Backspace looked
+              broken. A textarea wraps, scrolls and grows instead. Enter sends
+              and Shift+Enter inserts a newline (the 2026-08-14 ruling — same
+              keys as the Build composer), and the Send button is the
+              first mouse-only route to submitting this panel has had. */}
+          <VStack UNSAFE_style={{ gap: 8 }}>
+            <TextArea
+              value={question}
+              placeholder="Ask a follow-up…"
+              isDisabled={state.busy}
+              onChange={(event) => setQuestion(event.target.value)}
+              onEnter={askFollowUp}
+            />
+            <PrimaryButton
+              label="Send"
+              isDisabled={Boolean(state.busy) || question.trim().length === 0}
+              isGrowing
+              onClick={askFollowUp}
+            />
+          </VStack>
         </Section>
       )}
     </BasePanel>

@@ -137,11 +137,13 @@ describe('LEG-005 — the properties that live in the source', () => {
   });
 
   /**
-   * ⚠️ `TextArea.onEnter` fires on **Shift+Enter**; `TextInput.onEnter` fires
-   * on plain Enter. Same prop name, different keys, and `tsc` cannot tell them
-   * apart — a difference that has cost this repo a session. The row binds
-   * neither: Enter inserts a newline, blur commits, and Cmd/Ctrl+Enter is a
-   * keyboard route to the blur.
+   * `TextArea.onEnter` and `TextInput.onEnter` both fire on **plain Enter**
+   * since FIX-002 (before that they were opposite keystrokes behind one prop
+   * name — a difference that cost this repo a session). The row still binds
+   * neither: a comment is prose, Enter must insert a newline, blur commits,
+   * and Cmd/Ctrl+Enter is a keyboard route to the blur. Binding `onEnter`
+   * today would make Enter *commit* instead — exactly the regression this
+   * assertion blocks.
    */
   it('binds no onEnter, so no reader has to know which key it means', () => {
     expect(read(...ROW_COMPONENT)).not.toMatch(/\bonEnter\s*[=:]/);
