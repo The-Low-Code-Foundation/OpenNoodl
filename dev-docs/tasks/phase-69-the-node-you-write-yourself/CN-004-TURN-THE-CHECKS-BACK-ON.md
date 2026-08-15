@@ -73,7 +73,12 @@ the severity in a commit.
    overlay that resolves the type and then matches nothing at runtime — which is failure class F1 by
    a different route, and the exact silent failure UNI-007's `unmatchable-node-path` was added to
    close. Drive the step to completion.
-5. The `test:ci` and `test:main` floors are unchanged — 🔴 quote a **tree, not a commit**.
+5. The `test:ci` and `test:main` floors are unchanged — 🔴 quote a **tree, not a commit**, and
+   🔴 **re-read the floor before comparing; do not use the figure below from memory.** As of
+   2026-08-16 (after CN-001 + CN-002) `test:main` is **205 suites / 3157 tests**; it was 203 / 3140
+   before them. ⚠️ The often-quoted *203 / 3136* does **not** reproduce and never did — it is a
+   4-test error that circulated for weeks. That is the reason this criterion names a date and a
+   task, rather than a bare number a later reader would trust.
 
 ## Traps
 

@@ -83,15 +83,27 @@ UNI-010 criterion-3 session** (socket `61336`), reached me second-hand via a thi
 mistakenly relayed it as its own, and the `GET`/`404` measurement below is this session's. If you
 need the surrounding context, **ask 61336** — the relaying session is a dead end for it.
 
-`render-from-disk.js` serves the page for `/` and `/index.html` **and 404s everything else**:
+`render-from-disk.js` serves the page for `/` and `/index.html` **and 404s everything else**. Every
+row below is a `curl` against `fix003-drive`, and the last column says so — see the note under the
+table for why that column exists:
 
-```
-GET /            -> 200
-GET /products    -> 404   ("not found: /products")
-```
+| request | result | instrument |
+|---|---|---|
+| `GET /` | 200 | measured |
+| `GET /index.html` | 200 | measured |
+| `GET /home` — the start page's own `urlPath` | **404** | measured (twice, two sessions) |
+| `GET /about` | 404 | measured |
 
-⚠️ **Sharper than first written, after the originating session re-ran it and I re-ran it again:**
-`/home` — the START page's own declared `urlPath` — **also 404s**. So the harness answers exactly one
+⚠️ **Why the instrument column is there, and why it should stay on tables like this.** The first
+version of this finding recorded `GET /home -> 404` annotated *"(same code path)"* — **an inference,
+formatted identically to the two real measurements beside it.** It happened to be correct, which is
+exactly what stopped anyone checking it, and the *mechanism* derived from it was still wrong
+("renders only the startPage" rather than "reaches no named route at all"). A corroboration you did
+not run at least has a second session who might re-run it; **an inference wearing a measurement's
+formatting has nobody.** Never mix measured and inferred rows in one table without marking which is
+which — neither a reader nor the author can recover it afterwards.
+
+**The mechanism, stated from those rows:** the harness answers exactly one
 URL and lets the SPA boot to whatever the Router names; it does not render "one route", it can reach
 **no named route at all**. Anything about `urlPath` — a Page node's URL, route parameters, deep links
 — is therefore unmeasurable **on the first page too**, so "serve every routed page" is necessary but

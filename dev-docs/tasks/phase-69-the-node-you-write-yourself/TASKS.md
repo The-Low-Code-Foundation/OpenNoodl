@@ -74,8 +74,12 @@ task, not sentiment.
 
 ## Standing obligations for every task here
 
-- **Build the caller.** This repo's record is 5 for 5: building the thing that *uses* a change is
-  what exposes the hole in it. A kit task that ships without a kit exercising it is not done.
+- **Build the caller.** Building the thing that *uses* a change is what exposes the hole in it. A kit
+  task that ships without a kit exercising it is not done. ⚠️ This bullet used to quote a running
+  score ("5 for 5"), which was already stale when CN-001 shipped — **a tally frozen into a document
+  rots, and it rots inside a heading that tells you not to re-check it.** The live count is in the
+  session memory (`build-the-caller-to-find-a-gates-hole`); the practice is what is standing here,
+  not the number.
 - **Verify the consequence, not the mechanism.** Write down what would be observably true of a
   working feature *before* driving it, and make sure the sentence could not also be true of a
   broken one.
