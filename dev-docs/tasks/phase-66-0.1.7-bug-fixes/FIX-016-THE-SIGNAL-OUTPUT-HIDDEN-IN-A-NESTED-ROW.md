@@ -338,12 +338,30 @@ error`) — **no `outtype-` children.** That is expected: the dynamic children a
 **no evidence at all** about the row, and their `getPorts()` reading and my DOM reading are both
 correct about different objects.
 
-⚠️ **NOT resolved, and left open deliberately: their DOM query also found nothing.** By their own
-account it was unscoped and taken with the popout open, which makes it the weaker of the two
-observations — but *weaker* is not *explained*. **If those rows genuinely fail to render in some
-node states, that is a far larger discoverability problem than an unclear label**, and it would
-change what ruling 1 is even about. One scoped query on `.sidebar-property-editor` in their fixture
-state settles it. **Do not rule on §1 without that**; §5 item 2 blocks on it.
+✅ **SUPERSEDED for the ruling by `bb30773c` — §1 is no longer blocked.** A control pair (identical
+script, one output declared in `scriptOutputs`, one mined from text only) gave `Done │ Type │ Result
+│ Type` versus a **completely empty** SCRIPT OUTPUTS section, source-confirmed at
+`simplejavascript.ts:792-793` where the `outtype-` port is built only inside
+`if (scriptOutputs !== undefined && scriptOutputs.length > 0)`. **Declaration is necessary**, and
+that is the ruling-relevant fact.
+
+⚠️ **But do NOT record session 24's particular null as "explained" — it still is not.** Three
+candidates remain and the drive separated none of them:
+
+1. their fixture never declared `scriptOutputs` (the gate above accounts for it);
+2. **the runtime axis, which that drive could not test** — its preview was live in *both* arms, so
+   the viewer never varied. `_managePortsForNode` is registered only inside
+   `graphModel.on('editorImportComplete', …)` on a **runtime's** graphModel
+   (`simplejavascript.ts:890-904`), so *declared + no live preview* is an untested cell and s24's
+   null sits in it;
+3. a **fixture artefact** — `fromJSON` + `addRoot` writes the *editor's* model and may never reach
+   the runtime's.
+
+🔴 **The drive's author flagged (1) as the explanation and then withdrew the supporting half
+themselves (correction C1).** A control pair proves what you *varied* and nothing about what you
+*held constant*; the viewer was held constant. Keep the gate — it is measured — and keep s24's null
+open, because attributing it to (1) by elimination would be exactly the move this task has now
+punished three times.
 
 ⚠️ Remaining hypothesis for their DOM negative, untested: *when* the editor-side
 `_managePortsForNode` / `_updatePorts` hook runs relative to `addRoot`. **The rendered-DOM
@@ -401,10 +419,21 @@ Same popout, same document, read through the editor's own lint state
 ran, the predicate declined. This is the discipline §3e asked for and it is what makes the null
 worth anything.
 
-🔴 **The author who most needs the §2 message is the one who cannot receive it.** Writing
-`Outputs.Done()` without adding a proplist row yields: a working-looking `Done` output on the
-canvas, **no Type control anywhere in the panel**, and **no warning**. The diagnostic §2 shipped
-speaks only to authors who already found the proplist.
+🔴 **CORRECTED BELOW — read this with the amendment ~100 lines down before acting on it.** As
+written this paragraph is **too broad**, and acting on it would mean loosening `declared` and
+warning about **correct code**.
+
+> ~~**The author who most needs the §2 message is the one who cannot receive it.** Writing
+> `Outputs.Done()` without adding a proplist row yields: a working-looking `Done` output on the
+> canvas, **no Type control anywhere in the panel**, and **no warning**.~~
+
+✅ **Why it is wrong:** a call-shaped `Outputs.Done()` is mined as a **`signal`**
+(`javascriptnodeparser.js:353-356`, `/Outputs\.([A-Za-z0-9]+)\s*\(\s*\)/ → type: 'signal'`), so that
+node **works**, and §2's silence on it is **correct** — `declared` doing its job. Independently
+driven in the §2 matrix above: *"no panel row at all → silent (mined as a real signal)"*.
+🔴 **The real gap is one row, not the whole mined case** — the *value-shaped* call
+(`Outputs.Done_1()`, `Outputs.Done.send()`), which mines as a value port and has **no Type row and
+no diagnostic**. See the table below.
 
 ⚠️ **Stated as a source read, not driven:** that node B *throws* at runtime.
 `_isSignalType` (`simplejavascript.ts:633-635`) tests `outputPorts[name].type === 'signal'`, and a
