@@ -46,14 +46,34 @@ for static types) and its ⚠️ **rider is not a defect** (`add_connection` ref
 no label to drop, and a guard spec already pins it). That is **7 of 16 report premises** now found
 false or already-built.
 
+🟡 **FIX-002 and FIX-003 BUILT (2026-08-15), merged as `4bb692a8` + build fix `fb936f6d`.** Both are
+**built, not driven** — nine acceptance criteria between them, plus the drag-surface regression
+drives the FIX-003 ruling put in scope, plus **BLD-010's re-drive** (its driven acceptance recorded
+Shift+Enter as the Build composer's send key, which FIX-002 reverses). Gates on the merged tree:
+`test:main` **195 / 3005, 0 failed**; `test:ci` **2779 specs / 6 failures, seed 75857** — the floor
+exactly by name, on a **freshly written** results file (mtime moved; see below); editor
+`tsc --noEmit` 0 errors; `noodl-core-ui` 44, the known-red project, none naming a touched file.
+
+🔴 **`test:ci`'s first run on this merge was the most convincing false pass this repo has produced,
+and it is why `fb936f6d` exists.** It exited **0** with `totalCount: 2779`, six failures, the exact
+floor **by name**, seed 81235 — every content check agreeing it was a clean baseline run. The
+**mtime had not moved**: it was the previous night's file. The webpack step had failed (a `{/* … */}`
+between `return (` and the root element in `curveeditor.jsx` parses as an object literal), and
+`test:ci` is `webpack && run-electron-tests`, so the suite never started. ⚠️ **Nothing else could
+have caught it** — no `tests-unit/` spec imports that file so jest never compiled it, and it is
+`.jsx` so the typecheck never read it. **Exit 0 plus an unchanged mtime is what a broken build looks
+like here, not what a pass looks like.** Delete `test-results.json` before a run rather than
+remembering to `stat` it. Both spellings of the bad shape were then scanned for across all of
+`packages/`: zero other instances.
+
 **States:** built → spec-proved → driven (the phase-64 discipline: a spec proves the decision;
 only a drive proves the pixels).
 
 | Task | One line | Report | Tier | Effort | Blocked on a ruling? |
 |---|---|---|---|---|---|
 | FIX-001 ⭐ | the explainer reads live values, warnings, and the backward walk | 1a–c | **1** | M (+M/L for 1c) | minor (snapshot/truncation) |
-| FIX-002 | the Explain composer becomes a real multiline input with a Send button | 1d | **1** | S | ✅ **RULED: Enter=send, Shift+Enter=newline** — changes `TextArea`; re-drive BLD-010 |
-| FIX-003 | AI text is selectable and links click, app-wide | 1bis | **1** | S→**M/L** | ✅ **RULED: invert the global rule now** — drag-surface test plan is in scope |
+| FIX-002 🟡 | the Explain composer becomes a real multiline input with a Send button | 1d | **1** | S→**M** | 🟡 **BUILT 2026-08-15** (`4bb692a8`), gates green — **NOT DRIVEN**: 4 criteria + **BLD-010 re-drive** owed |
+| FIX-003 🟡 | AI text is selectable and links click, app-wide | 1bis | **1** | S→**M/L** | 🟡 **BUILT 2026-08-15** (`4bb692a8`), gates green — **NOT DRIVEN**: 5 criteria + the **drag-surface drives** owed |
 | FIX-004 | conversion + log blocks; free toolbox adds; objects-as-data | 2 | 2 | S+XS+M | block shape (minor) |
 | FIX-005 | dropdown contrast fixed; category name ruled | 3 | 2 | S–M | 🔴 naming (reverses VFN-012) |
 | FIX-006 | the AI picks the right code node and writes 2026 JavaScript | 4a–b | 2 | S+S+M | Script demotion (minor) |
