@@ -6,9 +6,27 @@ import { KeyCode, KeyMod } from '@noodl-utils/keyboard/KeyCode';
 import KeyboardHandler, { KeyboardCommand } from '@noodl-utils/keyboardhandler';
 
 import { EventDispatcher } from '../../../shared/utils/EventDispatcher';
+import { LearningFolderModel } from '../models/learningfolder';
+import { checkMyWork, liveCheckMyWorkDeps } from '../models/lessoncheck';
+import { ProjectModel } from '../models/projectmodel';
 import evalConditions from './lessons/lessonevalconditions';
 import LessonLayerView from './lessons/LessonLayerView';
 import PopupLayer from './popuplayer';
+
+/**
+ * UNI-007 slice 4 — what the "check my work" control is showing.
+ *
+ * ⚠️ `unavailable` is a **third** state beside pass and fail, and it is the one
+ * that matters most to get right: a learner on a machine with no browser to
+ * render in has not failed the lesson, and a control that cannot tell "we could
+ * not check" from "you are not there yet" will tell them they have.
+ */
+interface ILessonCheckState {
+  busy: boolean;
+  summary?: string;
+  unavailable?: boolean;
+  complete?: boolean;
+}
 
 interface ILessonStep {
   isComplete: boolean;
@@ -31,6 +49,9 @@ export class LessonLayer {
   el: TSFixme;
   refreshTimeout: NodeJS.Timeout;
   root: Root | null = null;
+  /** The Learning-folder entry id of the open lesson, or undefined for a hosted one. */
+  learningLessonId: string | undefined;
+  checkState: ILessonCheckState = { busy: false };
 
   constructor() {
     this.keyboardCommands = [
@@ -57,6 +78,7 @@ export class LessonLayer {
     }
 
     this.model = model;
+    this.learningLessonId = learningLessonId();
 
     this.model.on(
       'instructionsChanged',
@@ -114,13 +136,61 @@ export class LessonLayer {
       currentStepIndex: this.model.index,
       onMoveToNextStep: () => {
         this.model.next();
-      }
+      },
+      // Absent for a hosted lesson, which has no register entry to grade
+      // against and nowhere to record a grade — the control is not disabled
+      // there, it does not exist.
+      check: this.learningLessonId
+        ? {
+            busy: this.checkState.busy,
+            summary: this.checkState.summary,
+            unavailable: this.checkState.unavailable,
+            complete: this.checkState.complete,
+            onCheck: () => this.runCheck()
+          }
+        : undefined
     };
 
     if (!this.root) {
       this.root = createRoot(this.div);
     }
     this.root.render(React.createElement(LessonLayerView, props));
+  }
+
+  /**
+   * Run the grading runner over this lesson and show what it said.
+   *
+   * 🔴 This is the runner's first caller anywhere. Until it existed,
+   * `models/lessongrading.ts` was not in the renderer bundle at all — no editor
+   * module imported it — so both engines, their tests and engine 2's adapter
+   * were shipped code that nothing could reach.
+   */
+  async runCheck() {
+    if (this.checkState.busy || !this.learningLessonId) return;
+
+    this.checkState = { busy: true };
+    this._renderReact();
+
+    let next: ILessonCheckState;
+    try {
+      const outcome = await checkMyWork(this.learningLessonId, liveCheckMyWorkDeps());
+      next =
+        outcome.result === 'graded'
+          ? { busy: false, summary: outcome.summary, complete: outcome.evidence.complete }
+          : { busy: false, summary: outcome.reason, unavailable: true };
+    } catch (e) {
+      // `checkMyWork` does not throw; building its live ports can (no store, no
+      // project). Either way the learner pressed a button and is owed a
+      // sentence — and it must not read as a verdict on their work.
+      console.error('lesson check failed', e);
+      next = { busy: false, unavailable: true, summary: 'The check could not run. See the developer console.' };
+    }
+
+    this.checkState = next;
+    // The layer may have been disposed while the render was running — engine 2
+    // takes seconds, and closing the project mid-check is an ordinary thing to
+    // do.
+    if (this.div && this.root) this._renderReact();
   }
 
   _render() {
@@ -354,6 +424,27 @@ export class LessonLayer {
 
       loadSrcAsset(video, this.model.baseURL + url, 'video/*', renderContainer);
     });
+  }
+}
+
+/**
+ * The Learning-folder id of the open project, when it is one.
+ *
+ * ⚠️ Read from the **register**, not from a flag on the project. `project.id` is
+ * set to the entry id by the launcher's open path, so this is a lookup rather
+ * than a claim: a project asserting it is a lesson proves nothing, and the
+ * register is the thing that has to have an entry for `recordGrade` to write to
+ * anyway.
+ */
+function learningLessonId(): string | undefined {
+  try {
+    const id = ProjectModel.instance?.id;
+    return id && LearningFolderModel.instance.get(id) ? id : undefined;
+  } catch (e) {
+    // The register reaches electron-store; a failure there must not take the
+    // lesson layer down with it — a hosted lesson does not need it at all.
+    console.error('could not read the Learning register', e);
+    return undefined;
   }
 }
 

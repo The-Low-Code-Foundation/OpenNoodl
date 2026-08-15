@@ -7,7 +7,7 @@ const { EventDispatcher } = require('../../../../shared/utils/EventDispatcher');
 
 require('./LessonLayerView.css');
 
-function LessonLayerView({ steps, currentStepIndex }) {
+function LessonLayerView({ steps, currentStepIndex, check }) {
   if (!steps) return null; //steps are probably still being fetched
 
   const currentStep = steps && steps[currentStepIndex];
@@ -63,26 +63,29 @@ function LessonLayerView({ steps, currentStepIndex }) {
   return (
     <div className="lesson-bottombar">
       {errorMsg}
-      <div className="lesson-steps">
-        {steps.map((step, i) => {
-          if (!step.itemContent) return null;
+      <div className="lesson-steps-row">
+        <div className="lesson-steps">
+          {steps.map((step, i) => {
+            if (!step.itemContent) return null;
 
-          const hasConditions = step.conditions && step.conditions.length ? true : false;
+            const hasConditions = step.conditions && step.conditions.length ? true : false;
 
-          return (
-            <LessonItem
-              key={i}
-              itemContent={step.itemContent}
-              hasNextButton={step.hasNextButton}
-              popupContent={step.popupContent}
-              isSelected={currentStepIndex === i}
-              isComplete={step.isComplete}
-              stepWidth={step.width}
-              showPopupWhenSelected={hasConditions === false}
-              performActions={() => performActions(step.actions)}
-            />
-          );
-        })}
+            return (
+              <LessonItem
+                key={i}
+                itemContent={step.itemContent}
+                hasNextButton={step.hasNextButton}
+                popupContent={step.popupContent}
+                isSelected={currentStepIndex === i}
+                isComplete={step.isComplete}
+                stepWidth={step.width}
+                showPopupWhenSelected={hasConditions === false}
+                performActions={() => performActions(step.actions)}
+              />
+            );
+          })}
+        </div>
+        {check ? <LessonCheckControl check={check} /> : null}
       </div>
       <div className="lesson-layer-progressbar">
         <div
@@ -90,6 +93,41 @@ function LessonLayerView({ steps, currentStepIndex }) {
           style={{ width: calculateProgress(steps, currentStepIndex) * 100 + '%' }}
         />
       </div>
+    </div>
+  );
+}
+
+/*
+ * UNI-007 slice 4 — "check my work", the grading runner's first caller.
+ *
+ * Rendered only for a lesson installed in the Learning folder, because only
+ * those have a register entry to record a grade against; a hosted lesson has no
+ * such surface and gets no control rather than a disabled one.
+ *
+ * 🔴 Three states, not two. `unavailable` — no browser to render in, a lesson
+ * folder that has gone — is neither a pass nor a fail, and is styled as neither.
+ * A learner whose machine could not run the check has not failed the lesson.
+ * The sentence itself is composed in `models/lessoncheck.ts` (`summariseGrade`),
+ * so this file decides nothing about grading; it shows a string and a class.
+ */
+function LessonCheckControl({ check }) {
+  const stateClass = check.unavailable ? ' unavailable' : check.complete ? ' complete' : '';
+
+  return (
+    <div className="lesson-check" data-test="lesson-check">
+      <button
+        className="lesson-check-button"
+        data-test="lesson-check-run"
+        disabled={check.busy}
+        onClick={check.onCheck}
+      >
+        {check.busy ? 'CHECKING…' : 'CHECK MY WORK'}
+      </button>
+      {check.summary ? (
+        <div className={'lesson-check-summary' + stateClass} data-test="lesson-check-summary">
+          {check.summary}
+        </div>
+      ) : null}
     </div>
   );
 }
