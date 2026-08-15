@@ -121,9 +121,19 @@ Runs 1 and 2 support it independently — the `BEN-001` members **changed on ide
 real regression breaks the same specs every time.
 
 🔴 **`totalCount` reads 2788, not 2779, and that is a sibling's uncommitted work, not mine.** A
-phase-66 session had `tests/utils/keyboardhandler.spec.ts` (+9 specs) in the shared working tree, and
-`test:ci` webpacks **the tree, not HEAD**. The committed baseline is still **2779**. Record the tree
-state beside any total you quote.
+phase-66 session had `tests/utils/keyboardhandler.spec.ts` (+9 specs) and its `keyboardhandler.ts`
+fix in the shared working tree, and `test:ci` webpacks **the tree, not HEAD**. The committed baseline
+is still **2779**. Record the tree state beside any total you quote — including your own.
+
+🔴 **And that weakens the control in a way worth stating precisely, because it is a trap in pinning
+generally: a pinned seed reproduces an *order*, and the order is a permutation of the spec SET.**
+Adding 9 specs to `tests/` changes that permutation, so run 3 was **not** the same execution order as
+the original 6-failure run at 39393 — same seed, different set. What it therefore proves is narrower
+than "identical conditions": *on this tree, at this seed, `BEN-001` does not fire and the floor is
+exactly the six.* That plus the changed-membership evidence plus the structural argument (the bench
+spec shares no module with slice 4) is why the conclusion holds — no single one of the three would
+carry it alone. ⚠️ **If you pin a seed to reproduce someone else's run, match their spec set too, or
+say that you did not.**
 
 ⚠️ **I first reported that the runner had no seed control, and that was wrong** — see the surface
 trap below.
