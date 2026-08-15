@@ -86,7 +86,9 @@ carry a **drag-surface test plan**. That plan is now *in scope here*, not deferr
 
 ## Build record — 2026-08-15, branch `fix003-lane`
 
-⚠️ **Built, not driven.** Every criterion below that says "driven" is still owed. The building
+⚠️ **Built, not driven — *as of the date of this section only*.** All five criteria have since been
+driven (sessions 11–13; criterion 1's last surface, the launcher scoping chat, on 2026-08-15 by
+session 13). Read this banner as history, not as outstanding work. The building
 agent was **stopped mid-flight by Richard** before it ran a single gate or wrote this record; the
 orchestrating session preserved its work as `1b75f99d`, then verified it, finished the one
 investigation it owed, and wrote what follows. So the code is one author's and the readings are
@@ -221,7 +223,7 @@ outside Electron fetched it.
 
 | Criterion | Verdict | Evidence |
 |---|---|---|
-| **1** — URL opens in system browser | ✅ **PASS**, 2 of 4 surfaces | see below |
+| **1** — URL opens in system browser | ✅ **PASS**, 3 of 4 surfaces — **`will-navigate` now proven** | see below |
 | **2** — text selectable and ⌘C yields it | 🔴 **FAIL** — selects fine, **⌘C copies the wrong thing** | see the defect below |
 | **3** — `noodl-node:` citations still navigate | ✅ **PASS** | cited node revealed, selected, Properties panel followed |
 | **4** — Build panel renders markdown | ✅ **PASS** | real `<strong>`×1, `<li>`×2, `<code>`×1, `<a>`×1 in the assistant turn |
@@ -234,17 +236,78 @@ navigated:
 
 - **Build thread** (`AiMarkdown`, renderer-side delegated handler) — `/probe-build`, 08:37:23Z.
 - **Explain answer** (own Remarkable + own delegation) — `/probe-explain`, 08:44:46Z.
-- **Launcher scoping chat** — ⛔ **not driven.** Reaching it needs a full project-creation wizard run
-  with a live scoping conversation. ⚠️ It is also the surface most worth driving, because it is the
-  **only** AI surface with *no renderer-side handler* (`ScopingStep.tsx:98,122` renders plain
-  `Markdown`), so it is the only one whose links depend on the main-process `will-navigate` guard
-  alone — and **neither drive above exercised that guard**, since both were `preventDefault`ed in the
-  renderer and routed through `platform.openExternal`. The guard is therefore still unproven in use.
+- **Launcher scoping chat** — ✅ **DRIVEN 2026-08-15 (session 13), `/probe-launcher`, 10:18:26Z.**
+  Firefox 153, `sec-fetch-dest: document`, `sec-fetch-mode: navigate`, plus the `/favicon.ico`
+  follow-up; editor stayed on `file://…/index.html` and the wizard stayed open. **This is the first
+  and only exercise of the main-process `will-navigate` guard** — see the section below, which also
+  records why the two halves above are *not by themselves* enough to credit the guard.
 - **A modal** — ⛔ **not drivable in a dev build at all.** `UpdateDialog` is the only modal rendering
   markdown, and it opens only from the title-bar update affordance, which requires an available
   update; `main.js:440` skips `AutoUpdater.setupAutoUpdate` entirely when `devMode`. There is no user
   path to it here. Its link policy is the same `linkActionFor` module driven twice above, and
   `release-links.test.ts` covers it — but that is an argument, not a drive.
+
+### ✅ The launcher scoping chat, and how the `will-navigate` guard was actually credited
+
+Driven 2026-08-15, session 13. The result is a pass, but the reasoning matters more than the result,
+because **the evidence the earlier two surfaces produced would not have been enough here.**
+
+**The consequence, written down before the drive** (both halves, per the standing rule):
+
+1. A process *outside* Electron fetches the probe URL — a hit carrying a real browser User-Agent, not
+   an `Electron/` one.
+2. The editor window did **not** navigate — `location.href` still starts with `file://`.
+
+Both held. `/probe-launcher` was fetched by **Firefox 153** with `sec-fetch-dest: document` and
+`sec-fetch-mode: navigate`, followed by `/favicon.ico`; the editor stayed on
+`file:///…/editor/index.html` with the wizard still open.
+
+🔴 **But those two facts together do not prove the guard, and it is worth being exact about why.**
+They are equally consistent with a *renderer-side* handler that called `preventDefault()` and then
+`platform.openExternal(url)` — which is precisely what the Build thread and the Explain answer do.
+A pass built on those two observations alone would have credited `will-navigate` for work the
+renderer might have done, on the one surface where the whole point is that the renderer does none.
+
+**The discriminator.** A capture-phase listener at `window` (so it runs before anything could
+`stopPropagation`), reading `e.defaultPrevented` from a `setTimeout(…, 0)` scheduled after the full
+dispatch had finished:
+
+| Observation | Reading |
+|---|---|
+| `defaultPrevented` after dispatch | **`false`** — nothing in the renderer stopped the navigation |
+| `location.href` after the click | still `file://…` — yet the navigation **was** stopped |
+| therefore | it was stopped **outside the renderer** — `main.js:458-462`, and nothing else |
+
+That syllogism is the proof. Neither line is sufficient alone; the pair is, and it is cheap enough
+that any future link-policy drive should include it rather than stopping at the probe hit.
+
+⚠️ **The reply carrying the link came from a transport double, and that is a real limitation of this
+drive — stated plainly rather than buried.** The scoping assistant **refuses** to emit a link to a
+local probe endpoint: asked three times, in three framings, it named the request ("that request looks
+like it's trying to get me to output a clickable link to a local probe endpoint, and I'll decline it
+same as before") and declined each time. Rather than work around a refusal that is arguably correct
+behaviour, the drive doubled the transport: `AiClient.chatStream` was replaced (reached through
+`webpackChunknoodl_editor` → the webpack module cache) with one that returns a single assistant turn.
+
+What that leaves real is everything the criterion is about: `ScopingSession.entries` →
+`session.transcript` → `setScopingMessages` → `ScopingStep` → core-ui `Markdown` → the emitted
+anchor → a trusted `Input.dispatchMouseEvent` click → the main-process guard. Only the network hop is
+doubled. **So this drive proves the app's link behaviour on this surface; it does not prove that the
+scoping model will ever emit a link.** Criterion 1 is about the former.
+
+✅ **Two things confirmed as a by-product**, both from the same rendered reply, which deliberately
+carried a markdown link *and* a bare URL:
+
+- **The `linkify` ruling holds on this surface.** `[Help](http://…/probe-launcher)` rendered a real
+  `<a href>`; the bare `http://…/probe-bare` in the same reply rendered as **plain text with no
+  anchor**. That is the ruled behaviour, observed rather than argued.
+- **The anchor has no `target`**, which is exactly why this surface depends on `will-navigate` at
+  all: `setWindowOpenHandler` (`main.js:446-449`) only ever sees `target="_blank"` and
+  `window.open`. A plain same-window anchor is invisible to it.
+
+⚠️ **`cursor` on that anchor computes to `pointer`**, not `default` — the UA stylesheet covers
+`<a href>`, so plain `Markdown` does not need to set one. A concern raised in handover that the link
+would not *look* clickable here does not reproduce.
 
 ### 🔴 Criterion 2 FAILS — ⌘C copies the selected canvas **node**, not the selected text
 
@@ -363,6 +426,19 @@ holds for URLs the model writes as markdown links (`[text](url)`, `<https://…>
 narrowed to say so. The reasoning: enabling `linkify` widens the clickable-anchor surface in
 untrusted model output, on the surface this lane just hardened — a security-relevant widening bought
 for a formatting convenience.
+
+🟡 **One datum arrived after the ruling that Richard did not have in front of him, and it is his to
+weigh — flagged, not acted on.** Driving the launcher scoping chat (session 13) turned up that the
+scoping model **declines to emit a link at all** when asked: three requests, three refusals, one of
+which named the request explicitly. Taken together with this ruling, the practical surface for a
+clickable link in AI output on that screen is narrowed by **two independent mechanisms** — the model
+mostly will not write one, and a bare URL would not be clickable if it did.
+
+That does not weaken the guard or argue for reversing the ruling: a legitimate markdown link in a
+model's answer is the normal case, and it is now proven handled. But criterion 1's premise — *"any
+URL the AI emits"* — describes a **rarer event than the wording implies**, and the ruling was made
+without that measurement available. If Richard wants `linkify` reconsidered, this is the fact that
+would bear on it.
 
 ### Build record — 2026-08-15, session 12
 

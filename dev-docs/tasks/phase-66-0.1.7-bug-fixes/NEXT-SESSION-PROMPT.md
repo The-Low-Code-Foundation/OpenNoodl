@@ -1,11 +1,16 @@
 # Phase 66 — next session
 
-**Written 2026-08-15, session 12.** Three rulings obtained, two fixes built, gates run, both fixes
-driven. **FIX-003 is now fully driven and closes. FIX-002 is fully driven and closes.**
+**Written 2026-08-15, session 13.** One drive: the launcher scoping chat, the last surface FIX-003
+criterion 1 was missing. **It passes, and the main-process `will-navigate` guard is proven in use for
+the first time.** No code was written and no gate was re-run — nothing in the tree changed but docs.
 
-✅ **The ⌘C defect session 11 pinned is fixed, gated and driven.** ✅ **FIX-002 criterion 2 is ruled,
-built and driven.** 🔴 **One drive is still owed: the launcher scoping chat** (FIX-003 criterion 1's
-last surface) — recipe in §4.
+✅ **FIX-003 criterion 1 is complete on every drivable surface.** ✅ **FIX-002 and FIX-003 remain
+closed** (`b9d39213`), and sessions 11–12's work was not re-derived. 🟡 **One new datum is owed to
+Richard, not to an agent** — the scoping model *refuses* to emit links, which bears on the `linkify`
+ruling he already made; see §5.
+
+🔴 **The ruled backlog now has no buildable work left except FIX-001.** Everything else open is
+either a Richard ruling or FIX-014's repackage block.
 
 ---
 
@@ -37,7 +42,7 @@ Learnings that outlive the phase go to memory, not here.
 | **FIX-019** | ✅ | ✅ 4/4 | **CLOSED** — 🟡 14(a) vocabulary sweep still owed |
 | **FIX-020** | ✅ | ✅ 3/3 | **CLOSED** |
 | **FIX-002** | ✅ | ✅ **4/4** | **CLOSED** — c2 ruled, built and driven this session |
-| **FIX-003** | ✅ | ✅ **5/5** | **CLOSED** — c2 fixed and driven; c1 holds for markdown links (linkify ruled OFF) |
+| **FIX-003** | ✅ | ✅ **5/5** | **CLOSED** — c2 fixed and driven; **c1 now driven on all 3 drivable surfaces** (s13), `will-navigate` proven |
 | **FIX-014** | ✅ | 🔴 **0/1** | not started; ⚠️ MCP half is **blocked on a repackage**, see §5 |
 | **FIX-008** A, B, E | ✅ | ✅ | C, D not built |
 | everything else | 📋 open | — | see [TASKS.md](TASKS.md) |
@@ -48,7 +53,18 @@ Learnings that outlive the phase go to memory, not here.
 
 ## 2. Gate readings
 
-All taken this session on the working tree (uncommitted at the time of the run; committed after).
+⚠️ **Session 13 ran no gates and changed no code — only docs.** The readings below are session 12's,
+carried forward unchanged and still current for the tree.
+
+🔴 **Quote these against a *tree*, not a commit.** HEAD moved under both `test:ci` runs (peers
+committing mid-run), and `test:ci` webpacks the **working tree**, not `HEAD`. What was measured is
+the tree at ~11:54 — which is why `totalCount` reads 2788 rather than the 2779 in older handovers.
+
+✅ **The floor question is settled, at the pinned seed, by two independent runs.** Session 12's run at
+11:29 and phase-67's control run at 12:04 both returned **2788 / 6 with the same six names** at seed
+**39393** — same seed *and* same spec set, which is the pairing earlier handovers warned was usually
+missing. Runs at other seeds (50405, 73375) returned 2779 / 9. So: **the floor of 6 is real and
+seed-dependent**, and the extra ~3 elsewhere are the seed-order `BEN-001` cluster, not a regression.
 
 | Gate | Reading | When |
 |---|---|---|
@@ -72,7 +88,39 @@ that delta *is* the proof they ran, and it only works for `tests/` specs (a `tes
 
 ## 3. What this session settled — do not re-derive
 
-### ✅ Three rulings obtained from Richard
+### ✅ The launcher scoping chat is driven; `will-navigate` is proven in use
+
+Full record in [FIX-003](FIX-003-TEXT-YOU-CANNOT-SELECT-OR-CLICK.md). The result: `/probe-launcher`
+fetched by **Firefox 153**, `sec-fetch-mode: navigate`, plus the `/favicon.ico` follow-up, while the
+editor stayed on `file://…/index.html`.
+
+🔴 **The lesson is not the pass — it is that the obvious evidence was not sufficient, and would have
+produced a wrong pass.** A probe hit plus a `file://` window is *equally consistent* with a
+renderer-side handler that `preventDefault`ed and called `openExternal` — which is exactly what the
+Build and Explain surfaces already do. Stopping there would have credited the guard for work the
+renderer might have done, on the one surface whose whole point is that the renderer does none.
+
+**The discriminator that settles it**, and the shape to reuse for any link-policy drive:
+
+> A **capture-phase listener at `window`** (runs before anything can `stopPropagation`), reading
+> `e.defaultPrevented` from a `setTimeout(…, 0)` **after the full dispatch**.
+> `defaultPrevented === false` (the renderer did *not* stop it) **+** `location.href` still `file://`
+> (yet it *was* stopped) ⇒ **it was stopped outside the renderer.** That is `will-navigate`
+> (`main.js:458-462`) and nothing else.
+
+⚠️ **The assistant reply carrying the link came from a transport double, and the write-up says so.**
+`AiClient.chatStream` was patched via the webpack module cache to return one turn. Everything below
+the network hop is real — transcript → `setScopingMessages` → `ScopingStep` → core-ui `Markdown` →
+anchor → trusted click → guard. **The drive proves the app's link behaviour; it does not prove the
+model will ever emit a link.** Keep those two claims apart.
+
+✅ **Confirmed as a by-product, from one reply carrying both forms:** `[Help](…)` rendered a real
+`<a href>` **with no `target`** (which is *why* this surface needs the guard — `setWindowOpenHandler`
+only sees `target=_blank` and `window.open`), while a bare URL in the same reply rendered as **plain
+text, no anchor** — the `linkify` ruling, observed rather than argued. And `cursor` on that anchor
+computes to **`pointer`**; a handover claim that it would not look clickable does **not** reproduce.
+
+### ✅ Three rulings obtained from Richard (session 12)
 
 1. **⌘C precedence → a selection-aware clipboard guard.** A live text selection outside the canvas
    owns ⌘C/⌘X, whatever holds focus.
@@ -109,6 +157,38 @@ why a lane entirely about making prose selectable never touched the copy path �
 **third thing**, invisible to both existing scopes.
 
 ### ⚠️ Harness findings
+
+🔴 **NEW (s13) — `cdp click` resolves `#cdp-target` to the FIRST match in document order, and a stale
+tag from an earlier eval is still in the DOM.** Tagging a second element while the first still
+carried the id sent the click to the **old element's coordinates** — silently re-clicking "New
+project" and closing the wizard, while `cdp click` reported success at plausible-looking
+coordinates. It reads as "the app ignored my click", not as a harness fault.
+**Always `document.querySelectorAll('#cdp-target').forEach(e => e.removeAttribute('id'))` before
+every tag**, and sanity-check the reported click coordinates against the rect you just measured — a
+mismatch is the tell.
+
+⚠️ **NEW (s13) — the first `cdp click` on a freshly loaded launcher is swallowed; the second lands.**
+Not a race with layout (the element was present, unoccluded and enabled, and `elementFromPoint`
+returned the button itself). Budget a throwaway click, or poll for the *outcome* rather than trusting
+the first success report.
+
+⚠️ **NEW (s13) — reaching the scoping step needs a `location`, and that field cannot be typed.**
+`isReadonly` on core-ui `TextInput` renders a **`<div>`, not an `<input>`**, and the only way to fill
+it is a **native** folder dialog CDP cannot drive. Stub `filesystem.openDialog` from the webpack
+module cache (`../noodl-platform/src/index.ts` → `filesystem`). The wizard order for AI mode is
+**entry → basics → preset → scoping → review**.
+
+✅ **NEW (s13) — the webpack module cache is a general seam for driving this app.**
+`window.webpackChunknoodl_editor.push([[unique], {}, r => req = r])` yields the require, and
+`req.c['<module path>'].exports` reaches any editor module — used here for both
+`filesystem.openDialog` and `AiClient.chatStream`. ⚠️ `window` state **does** persist across separate
+`cdp eval` calls, so stubs and probes armed in one call are readable in the next.
+
+⚠️ **NEW (s13) — filter the `BaseDialog` double-render *and* the rest of the page.** "Continue" and
+"Next" both appeared enabled; "Continue" belonged to the launcher's Learning card, not the wizard.
+Scope queries to `[class*=ProjectCreationWizard-module__Modal]` and exclude
+`[class*=MeasuringContainer]`. Walking up from a step title stops at `…__Header` (0 buttons) — go to
+`…__Modal`.
 
 🔴 **An element can be `user-select: text`, `visibility: visible` and still measure `0×0`, and
 `Selection.toString()` returns `''` for it.** **16 of 17** first-pass prose candidates were exactly
@@ -158,18 +238,14 @@ remembering before quoting any total as "the branch's".
 
 ## 4. What to do next and why
 
-1. 🔴 **Drive the launcher scoping chat** — FIX-003 criterion 1's last surface, and the **only** test
-   of the main-process `will-navigate` guard, because it is the only surface with no renderer
-   handler (`ScopingStep.tsx:98,122`, plain `Markdown`). Recipe: start a local HTTP server that logs
-   its hits, create a project, get a scoping reply containing `[x](http://127.0.0.1:PORT/probe)`,
-   click it, and check the log for a **browser User-Agent** — that is the consequence, a spy on
-   `platform.openExternal` is not. `linkprobe.js` in session 11's scratchpad does this already.
-   ⚠️ Note the linkify ruling: the probe URL must be a **markdown link**, not a bare URL.
-2. 🔴 **FIX-014 criterion 1** — untouched. Drive the **Build panel half** (runs from the repo);
-   record the MCP half as **blocked**, see §5.
-3. **FIX-001** (Tier 1, the explainer) — the biggest remaining user-visible win and the only Tier 1
-   task with no code at all.
-4. **FIX-008 fix C** (`--scope project`) — Richard owes a measurement on C's copy first.
+✅ **The launcher scoping chat is done — struck from this list.** §3 has the result and the reusable
+discriminator.
+
+1. 🔴 **FIX-014 criterion 1** — untouched, and now the oldest undriven item. Drive the **Build panel
+   half** (runs from the repo); record the MCP half as **blocked**, see §5.
+2. **FIX-001** (Tier 1, the explainer) — the biggest remaining user-visible win and the only Tier 1
+   task with no code at all. **This is the one to pick up if you want to build rather than drive.**
+3. **FIX-008 fix C** (`--scope project`) — Richard owes a measurement on C's copy first.
 
 **Do not start** FIX-015 or FIX-021's brainstorm halves — they need Richard, not an agent.
 
@@ -177,11 +253,22 @@ remembering before quoting any total as "the branch's".
 
 ## 5. Rulings still owed by Richard
 
+- 🟡 **NEW (s13) — a datum that bears on the `linkify` ruling you already made.** Driving the scoping
+  chat turned up that **the scoping model declines to emit links**: asked three times in three
+  framings, it refused each time, once naming the request outright ("that request looks like it's
+  trying to get me to output a clickable link to a local probe endpoint"). Combined with `linkify`
+  being off, the surface for a clickable link in AI output on that screen is narrowed by **two
+  independent mechanisms**. This does **not** argue for reversing the ruling — a legitimate markdown
+  link is the normal case and is now proven handled — but criterion 1's premise, *"any URL the AI
+  emits"*, describes a **rarer event than the wording implies**, and you ruled without that in front
+  of you. Yours to weigh; no agent should act on it.
 - 🔴 **FIX-014's MCP half is blocked on a REPACKAGE, not a rebuild.** Every running server executes
   `/Applications/NodeGX.app/Contents/Resources/noodl-mcp/noodl-mcp.cjs` — the **packaged app**, dated
   2026-08-13, which does not contain `layoutAuthoredNodes`. The repo's `packages/noodl-mcp/dist` was
   rebuilt and *does* have it, so checking `dist` gives the wrong answer about what the servers run.
-  ⚠️ There are now **22** live `noodl-mcp` processes.
+  ⚠️ There are now **26** live `noodl-mcp` processes (one per Claude session, plus three of
+  Richard's long-lived ones). 🔴 They all match `pkill -f "OpenNoodl/node_modules/electron/dist"`,
+  which the `run-editor` skill still suggests — **do not run it**; kill your own pids by pid.
 - 🟡 **FIX-019 14(a)** — is the surface called *the workbench* everywhere? Loose thread.
 - **FIX-004** conversion block shape, log level, Msg keys · **FIX-005** the category name (reverses
   VFN-012) · **FIX-006** demote Script from the AI-authorable set? · **FIX-013** what a data-reading
@@ -197,6 +284,17 @@ remembering before quoting any total as "the branch's".
 ---
 
 ## 6. Standing constraints — unchanged, do not relearn
+
+✅ **The announce-then-verify protocol worked again, and the process table was again the decisive
+tool.** Session 13 launched into a checkout with **14 peers listed** and a live `test:ci`; reading
+`ps -Ao pid,ppid,lstart,command` identified it as phase-67's (shell `83170`, suite `84502`, PPID
+`112`, `NOODL_SPEC_SEED=39393`) before any peer replied. Five peers then confirmed clear. 🔴 **Note
+the pid distinction phase-67 supplied: `83170` was the npm/shell wrapper, the suite itself was
+`Electron test.js --ci` at `84502` — "the wrapper exited" is not "the Electron is gone".**
+
+⚠️ **The webpack finishes ~45s into a `test:ci`; after that the contamination window is closed** and
+source edits are safe. Session 13 waited for the whole run anyway because an **editor launch** (not a
+source edit) is what injects phantom failures.
 
 Work on `cline-dev`; **never `git stash`**; `cd` to the repo root in every git call; **pathspec-scope
 every `git add`**. ⚠️ `dev-docs/tasks/phase-65-the-library/` is untracked and belongs to **neither**
