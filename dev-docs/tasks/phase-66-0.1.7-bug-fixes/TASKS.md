@@ -46,13 +46,17 @@ for static types) and its ⚠️ **rider is not a defect** (`add_connection` ref
 no label to drop, and a guard spec already pins it). That is **7 of 16 report premises** now found
 false or already-built.
 
-🟡 **FIX-002 and FIX-003 BUILT (2026-08-15), merged as `4bb692a8` + build fix `fb936f6d`.** Both are
-**built, not driven** — nine acceptance criteria between them, plus the drag-surface regression
-drives the FIX-003 ruling put in scope, plus **BLD-010's re-drive** (its driven acceptance recorded
-Shift+Enter as the Build composer's send key, which FIX-002 reverses). Gates on the merged tree:
-`test:main` **195 / 3005, 0 failed**; `test:ci` **2779 specs / 6 failures, seed 75857** — the floor
-exactly by name, on a **freshly written** results file (mtime moved; see below); editor
-`tsc --noEmit` 0 errors; `noodl-core-ui` 44, the known-red project, none naming a touched file.
+🟡 **FIX-002, FIX-003 and FIX-014 all BUILT (2026-08-15)** — merged as `4bb692a8`, build fix
+`fb936f6d`, and `1716236a`. **The ruled backlog now has no buildable work left in it; what the phase
+owes is drives.** All three are **built, not driven**: ten acceptance criteria between them, plus the
+drag-surface regression drives the FIX-003 ruling put in scope, plus **BLD-010's re-drive** (its
+driven acceptance recorded Shift+Enter as the Build composer's send key, which FIX-002 reverses).
+
+Gates on the final merged tree at `1716236a`: `test:main` **196 / 3022, 0 failed**; `noodl-mcp`
+**43 / 494**; `noodl-core-ui` **23 / 369**; `test:ci` **2779 specs / 6 failures, seed 39393** — the
+floor exactly by name, on a results file that was **deleted before the run and written again**;
+editor `tsc --noEmit` 0 errors; `noodl-core-ui` 44 and `noodl-mcp` 7, both known-red and both
+verified pre-existing, neither naming a touched file.
 
 🔴 **`test:ci`'s first run on this merge was the most convincing false pass this repo has produced,
 and it is why `fb936f6d` exists.** It exited **0** with `totalCount: 2779`, six failures, the exact
@@ -84,7 +88,7 @@ only a drive proves the pixels).
 | FIX-011 ✅ | the bench frame gets a height, handles, and a per-component default | 8a | 2 | M (symptom fix S) | ✅ **CLOSED 2026-08-14** — built + driven 4/4 |
 | FIX-012 ✅ | a None row; Reset all stops lying | 8b | 2 | S | ✅ **CLOSED 2026-08-14** — built + driven 3/3 |
 | FIX-013 | the Data maze is removed; the bench is inputs and outputs | 8c | 2 | S–M | 🔴 zero-rows / AI-preview parity |
-| FIX-014 | logic nodes get their own column, by prompt and by a layout pass | 9 | 2 | S+M | ✅ **RULED: x/y authoritative** — fill gaps + collisions only |
+| FIX-014 🟡 | logic nodes get their own column, by prompt and by a layout pass | 9 | 2 | S+M | 🟡 **BUILT 2026-08-15** (`1716236a`), gates green — **NOT DRIVEN**: criterion 1 (both clients) owed |
 | FIX-015 | style tokens: rulings session → a new phase | 10 | brainstorm | session | 🔴 all eight |
 | FIX-016 | Signal offered at add time; declared-vs-called mismatch diagnosed | 11 | 3 | S+S | signal-input semantics (for the M–L half only) |
 | FIX-017 | completions at an empty position; `Noodl.Records.` answers; TASKS.md reconciled | 12 | 3 | S+M+S | no |

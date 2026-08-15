@@ -60,19 +60,23 @@ Taken on the merged tree at **`1716236a`** (or its parent where noted), 2026-08-
 | editor `tsc --noEmit` | ✅ 0 errors |
 | `noodl-core-ui` `tsc --noEmit` | 44 errors — **known-red project**, all TS2307 path-alias failures in *editor* files; three independent readings agreed on 44 today |
 | `noodl-mcp` `tsc --noEmit` | 7 errors — **pre-existing**, verified by running the identical check on a clean tree; FIX-014 adds none |
-| `test:ci` (jasmine) | ✅ **2779 specs / 6 failures, seed 75857** at `fb936f6d` — the floor exactly, by name (4 × `AIX-006 style vocabulary`, 2 × `AI model registry`) |
+| `test:ci` (jasmine) | ✅ **2779 specs / 6 failures, seed 39393** at **`1716236a`** — the floor exactly, by name (4 × `AIX-006 style vocabulary`, 2 × `AI model registry`) |
 
-### 🔴 A `test:ci` run was IN FLIGHT when this file was written — resolve it before trusting §1
+### ✅ The `test:ci` that was in flight has LANDED and is discharged
 
-A run was started on **`1716236a`** (FIX-014 merged) and had not finished. FIX-014 changes
-`candidate.ts`, which the electron authoring specs *do* exercise, so this run is **not** a
-formality. Two branches, and the first thing next session does is collapse one:
+Resolved before this file was finished, so §1 stands on a measured gate rather than an assumption.
+The run covered **`1716236a`** — every task in this phase plus the concurrent phase-67 session's six
+commits, since `test:ci` webpacks from the working tree.
 
-- **If `test-results.json` exists and reports ~2779 with the 6 floor failures by name** → the gate
-  is discharged for `1716236a` and §1 stands.
-- **If the file is ABSENT** → the run did not finish (or the build failed). ⚠️ The file was
-  **deliberately deleted before the run**, so absence is meaningful here rather than ambiguous.
-  Re-run on a quiet tree and read §3's warning first.
+Freshness evidence, because a green number is exactly when nobody checks it (§3): the results file
+was **deleted before the run** and **exists again**, written at 09:42, with a **new seed (39393**,
+against 75857 and 81235 on the two earlier runs). The log's own
+`Jasmine: 2779 specs, 6 failures` agrees with the JSON. Both failing spec names resolve to real
+files in the tree (`tests/ai/authoring-style.test.ts`, `tests/ai/models.test.ts`), so it is not a
+stale bundle either.
+
+⚠️ FIX-014 changes `candidate.ts`, which those authoring specs *do* exercise — so this run was not a
+formality, and the floor holding is a real result about FIX-014 rather than an untouched baseline.
 
 ⚠️ **`totalCount` will NOT move for any of today's work** and that is correct, not a miss — every
 spec added today is under `tests-unit/` (graded by `test:main`), and the electron suite never sees
@@ -172,9 +176,7 @@ something in it turns out wrong.
 
 ## 4. What to do next and why
 
-1. 🔴 **Resolve the in-flight `test:ci`** (§2). One read of `test-results.json` — check it exists at
-   all, since it was deleted pre-run.
-2. 🔴 **DRIVE the three built tasks.** This is the phase's critical path now and it is a full
+1. 🔴 **DRIVE the three built tasks.** This is the phase's critical path now and it is a full
    session's work. In rough dependency order:
    - **FIX-003's drag-surface drives** — canvas node drag, panel tree row drag, sidebar divider,
      both launcher grids, each per surface. This is the regression the ruling *knowingly accepted
@@ -189,11 +191,11 @@ something in it turns out wrong.
      3 logic nodes; logic must land in its own column with no overlap. ⚠️ Needs a **paid** provider;
      verify from `editorSettings.json` (`ai.provider`, `ai.hasKey.anthropic`,
      `ai.verified.anthropic`), not localStorage.
-3. **FIX-001** (Tier 1, the explainer) — only minor rulings outstanding; the M-sized live-value
+2. **FIX-001** (Tier 1, the explainer) — only minor rulings outstanding; the M-sized live-value
    layer is the phase's biggest remaining user-visible win, and the only Tier 1 task with no code.
-4. **FIX-008 fix C** (`--scope project`) if the report should stop recurring — but read §5, Richard
+3. **FIX-008 fix C** (`--scope project`) if the report should stop recurring — but read §5, Richard
    owes a measurement on C's copy first.
-5. ⚠️ **`noodl-mcp/dist` needs a rebuild** for FIX-014 to reach Richard's running MCP servers, and
+4. ⚠️ **`noodl-mcp/dist` needs a rebuild** for FIX-014 to reach Richard's running MCP servers, and
    the servers need restarting after it. The merge changed `src/tools/author.ts` and
    `src/instructions.ts`.
 
