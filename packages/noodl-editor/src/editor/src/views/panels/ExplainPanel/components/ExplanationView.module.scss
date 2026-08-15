@@ -74,11 +74,11 @@
     }
   }
 
-  /* Any other link the model emits is not clickable — nothing in this feature
-     opens a browser. */
+  /* FIX-003: any other link the model emits opens in the OS browser, through
+     the same delegated handler that routes citations — see the component. */
   a:not([href^='noodl-node:']) {
-    color: var(--theme-color-fg-default);
+    color: var(--theme-color-primary);
     text-decoration: underline;
-    pointer-events: none;
+    cursor: pointer;
   }
 }

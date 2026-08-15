@@ -49,6 +49,7 @@ import {
 import type { Turn, TurnActivity, TurnOutcome } from '@noodl-models/AiAssistant/thread';
 
 import { FeedbackType } from '@noodl-constants/FeedbackType';
+import { AiMarkdown } from '@noodl-core-ui/components/ai/AiMarkdown';
 import { Icon, IconName, IconSize } from '@noodl-core-ui/components/common/Icon';
 import { PrimaryButton, PrimaryButtonVariant } from '@noodl-core-ui/components/inputs/PrimaryButton';
 import { TextArea } from '@noodl-core-ui/components/inputs/TextArea';
@@ -78,12 +79,12 @@ export function ActivityRow({ activity }: { activity: AuthoringActivity }) {
         </div>
       );
     case 'assistant':
+      // FIX-003: what the model wrote, rendered as it wrote it — bold, lists,
+      // code, links (selectable, and routed through the shared link policy).
+      // This is the phase-38 AIB-006 behaviour the plain `<Text>` regressed.
       return (
         <div className={css['Assistant']}>
-          <Text textType={TextType.Default}>
-            {activity.text}
-            {activity.streaming ? '…' : ''}
-          </Text>
+          <AiMarkdown content={activity.text + (activity.streaming ? '…' : '')} />
         </div>
       );
     case 'reasoning':
@@ -107,9 +108,10 @@ export function ActivityRow({ activity }: { activity: AuthoringActivity }) {
     case 'question':
       // BLD-008 produces these; the treatment is decided here so that task adds
       // an author rather than a fifth opinion about how a question should look.
+      // Model-authored, so it gets the same markdown treatment as 'assistant'.
       return (
         <div className={css['Question']}>
-          <Text textType={TextType.Default}>{activity.text}</Text>
+          <AiMarkdown content={activity.text} />
         </div>
       );
     case 'submit':
@@ -222,45 +224,56 @@ function OutcomeSummary({ outcome }: { outcome: TurnOutcome }) {
        * `outcomeCard.ts` for why that made a pure module unavoidable rather than
        * optional.
        */
-      return <Text textType={TextType.Default}>{outcomeSentence(stagedComponentCard(outcome))}</Text>;
+      // FIX-003: `AiMarkdown` throughout this component — the sentences are
+      // code-built, but they quote model-chosen names, and every outcome row
+      // should be selectable and render the same way the turn above it did.
+      return <AiMarkdown content={outcomeSentence(stagedComponentCard(outcome))} />;
     case 'accepted-component':
       // BLD-017 F3 — the receipt: this one reached the project.
       return (
         <div className={css['Receipt']}>
           <Icon icon={IconName.Check} variant={FeedbackType.Success} size={IconSize.Small} />
-          <Text textType={TextType.Default}>
-            {outcome.mode === 'update'
-              ? `Updated ${outcome.legacyName} — one undo restores the previous version.`
-              : `Added ${outcome.legacyName} to your project — undo removes it.`}
-          </Text>
+          <AiMarkdown
+            content={
+              outcome.mode === 'update'
+                ? `Updated ${outcome.legacyName} — one undo restores the previous version.`
+                : `Added ${outcome.legacyName} to your project — undo removes it.`
+            }
+          />
         </div>
       );
     case 'plan':
       return (
-        <Text textType={TextType.Default}>
-          A plan of {outcome.plan.operationCount} operation{outcome.plan.operationCount === 1 ? '' : 's'}:{' '}
-          {outcome.plan.targets.join(', ')}.
-        </Text>
+        <AiMarkdown
+          content={
+            `A plan of ${outcome.plan.operationCount} operation${outcome.plan.operationCount === 1 ? '' : 's'}: ` +
+            `${outcome.plan.targets.join(', ')}.`
+          }
+        />
       );
     case 'plan-applied':
       // The other outcome that reached the project, so the same receipt.
       return (
         <div className={css['Receipt']}>
           <Icon icon={IconName.Check} variant={FeedbackType.Success} size={IconSize.Small} />
-          <Text textType={TextType.Default}>
-            Applied — {outcome.componentCount} component{outcome.componentCount === 1 ? '' : 's'} changed
-            {outcome.docs.length > 0 ? `, ${outcome.docs.join(' and ')} written` : ''}
-            {outcome.backendName ? `, backend "${outcome.backendName}" running` : ''}.
-          </Text>
+          <AiMarkdown
+            content={
+              `Applied — ${outcome.componentCount} component${outcome.componentCount === 1 ? '' : 's'} changed` +
+              `${outcome.docs.length > 0 ? `, ${outcome.docs.join(' and ')} written` : ''}` +
+              `${outcome.backendName ? `, backend "${outcome.backendName}" running` : ''}.`
+            }
+          />
         </div>
       );
     case 'docs-drafts':
       return (
-        <Text textType={TextType.Default}>
-          Drafted {outcome.authored} document{outcome.authored === 1 ? '' : 's'}
-          {outcome.declined > 0 ? `, left ${outcome.declined} alone` : ''}
-          {outcome.errors > 0 ? `, ${outcome.errors} failed` : ''}.
-        </Text>
+        <AiMarkdown
+          content={
+            `Drafted ${outcome.authored} document${outcome.authored === 1 ? '' : 's'}` +
+            `${outcome.declined > 0 ? `, left ${outcome.declined} alone` : ''}` +
+            `${outcome.errors > 0 ? `, ${outcome.errors} failed` : ''}.`
+          }
+        />
       );
     case 'note':
       return (
@@ -270,7 +283,7 @@ function OutcomeSummary({ outcome }: { outcome: TurnOutcome }) {
             variant={outcome.tone === 'danger' ? FeedbackType.Danger : FeedbackType.Notice}
             size={IconSize.Small}
           />
-          <Text textType={TextType.Default}>{outcome.text}</Text>
+          <AiMarkdown content={outcome.text} />
         </div>
       );
   }
@@ -403,7 +416,7 @@ export interface ComposerBindings {
   /** The text area itself: caret in, caret out, focus. */
   ref?: React.Ref<HTMLTextAreaElement>;
   /** Every keystroke. Call `preventDefault()` to consume one — that also
-   *  suppresses Shift+Enter's send, so picking a menu row cannot submit. */
+   *  suppresses Enter's send (FIX-002), so picking a menu row cannot submit. */
   onKeyDown?: (ev: React.KeyboardEvent<HTMLTextAreaElement>) => void;
   /** The caret moved — a click, an arrow key, a selection. */
   onSelect?: React.ReactEventHandler<HTMLTextAreaElement>;
@@ -632,24 +645,20 @@ export function BuildThread({
             onKeyDown={composer?.onKeyDown}
             onSelect={composer?.onSelect}
             /*
-             * ⚠️ `TextArea.onEnter` is **Shift+Enter**
-             * ([TextArea.tsx:96](../../../../../../../noodl-core-ui/src/components/inputs/TextArea/TextArea.tsx)
-             * — `ev.shiftKey && ev.key === 'Enter'`). `TextInput.onEnter` is
-             * **plain Enter**. They are different keystrokes behind one prop
-             * name, and the refine field below is a `TextInput`, so the two
-             * composers on this panel do not answer to the same key.
-             *
-             * Shift+Enter is nonetheless right *here*: this composer is
-             * multi-line by design — a request spanning four components is a
-             * paragraph — and plain Enter must insert a newline. The old
-             * description field was a `TextArea` with no `onEnter` at all, so
-             * nothing regresses either way.
+             * FIX-002 (ruled 2026-08-14): `TextArea.onEnter` now fires on
+             * **plain Enter**, and Shift+Enter inserts a newline — the same
+             * keys as `TextInput.onEnter` and the Explain composer. Before the
+             * ruling the two composers answered to opposite keystrokes behind
+             * one prop name. A four-component request is still a paragraph;
+             * it just takes Shift+Enter to break the line, like every other
+             * chat composer the user owns.
              *
              * Guarded by exactly the condition that disables the button, so the
              * two cannot disagree. A dropped or mismatched binding here is
              * invisible to `tsc` (`onEnter` is optional) and to every spec in
              * this task — they grade the pure model, which has no keyboard.
-             * BLD-010 drives it.
+             * ⚠️ BLD-010's driven acceptance recorded Shift+Enter as the send
+             * key; the ruling changed the key, so BLD-010 must be RE-DRIVEN.
              */
             onEnter={() => {
               if (busy || !canSend) return;

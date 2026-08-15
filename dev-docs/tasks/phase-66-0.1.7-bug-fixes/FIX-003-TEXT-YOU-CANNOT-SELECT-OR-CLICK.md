@@ -81,3 +81,124 @@ carry a **drag-surface test plan**. That plan is now *in scope here*, not deferr
    not regress LEG-003's citation contract.
 4. The Build panel renders markdown (bold, lists, code, links) in assistant turns.
 5. `release-links.test.ts` still green; new spec on the shared `AiMarkdown` link policy.
+
+---
+
+## Build record — 2026-08-15, branch `fix003-lane`
+
+⚠️ **Built, not driven.** Every criterion below that says "driven" is still owed. The building
+agent was **stopped mid-flight by Richard** before it ran a single gate or wrote this record; the
+orchestrating session preserved its work as `1b75f99d`, then verified it, finished the one
+investigation it owed, and wrote what follows. So the code is one author's and the readings are
+another's — worth knowing if something here turns out wrong.
+
+### Commits
+
+| Commit | What |
+|---|---|
+| `1b75f99d` | The stopped agent's snapshot: the selection inversion, `AiMarkdown`, the link delegation. **No gates had been run when it was taken.** |
+| `f1647f92` | The `ConfirmModal` escaping fix (below) — orchestrator's, after the stop. |
+
+### The inversion, and the shape that makes it survive a new surface
+
+`div { user-select: none }` is gone. The default is now **`:root { user-select: text }`**, and the
+opt-outs are **container-level**, which is the load-bearing detail: `user-select`'s used value
+resolves through the parent, so `none` on a container covers every descendant that does not
+explicitly opt back in. ⚠️ The stylesheet carries the warning in place — **never reintroduce a
+`div { user-select: text }` rule**, because an explicit `text` on every div punches through every
+container-level `none` and silently un-fixes all of this.
+
+Opt-outs taken, each because a drag or a click-to-select gesture would otherwise anchor a stray
+selection: `#top-bar` (the Electron window drag region), `.nodegrapheditor-canvas` (canvas pan,
+rubber-band select, node and wire drags, plus the HUD and comment layers nested inside it),
+`.popup-layer-dragger`, `.drag-handle` (the label-is-the-handle family), `.frames-divider`, the
+node picker, the side panel's float-resize gesture, the launcher's project grid, and the curve
+editor. The three now-redundant opt-*ins* (`.react-json-view`, `AiChatMessage`,
+`UpdateDialog.module.scss`) are removed, so nothing stands as false evidence that the old rule
+still applies.
+
+Plus a rule neither the task nor the ruling anticipated, and which the drag-surface plan needs:
+**`body.noodl-dragging * { user-select: none !important }`**, added on drag start and lifted on
+mouseup by the two drag engines (`PopupLayer`, `FrameDivider`). Both drag on *window* listeners, so
+the gesture crosses panels that are now full of selectable text; a container opt-out cannot help
+once the pointer has left the container. `!important` is deliberate — for the gesture's duration it
+must also beat the explicit opt-INs.
+
+⚠️ **The launcher grew a second grid after this lane was cut.** `a89ec153` added
+`LearningSection.module.scss` with its own `.Grid`, above the projects grid, so the opt-out here
+covered only one of the two. The section's author ruled they should match; **the merge adds the
+same opt-out to `LearningSection`'s grid.**
+
+🔴 **Not by hoisting it to a container, and the reason is the whole point of this task.** The
+tempting fix — put `user-select: none` on `Projects.module.scss`'s `.Main` so every present and
+future section inherits it — also swallows the welcome copy and the no-results message, which are
+exactly the kind of prose FIX-003 exists to make selectable. A container-level opt-out is the right
+instrument for a *drag surface* (see `.nodegrapheditor-canvas`, which is drag all the way down) and
+the wrong one for a *page region that happens to contain some cards*. **The convention is therefore
+per-card-grid, in the grid's own module**, and the two grids use different card components anyway,
+so no shared primitive would have covered both. A future launcher section must opt its own grid out
+— `.unselectable` in `style.css` is the helper to reach for from markup.
+
+### Links
+
+`pointer-events: none` is deleted from `ExplanationView.module.scss`; a delegated container listener
+routes non-citation links through `linkActionFor` → `platform.openExternal`, leaving `noodl-node:`
+citations to navigate as before (LEG-003's contract). `releaseLinks.ts` moved out of `UpdateManager/`
+to its neutral home at `noodl-core-ui/components/ai/AiMarkdown/linkActions.ts`, and the Build
+panel's `ActivityRow` and `OutcomeSummary` now render `AiMarkdown` throughout.
+
+### 🔴 The `ConfirmModal` XSS check — the answer is yes, and it is fixed
+
+Step 4 asked whether any `ConfirmModal` caller passes model-authored content into its
+`dangerouslySetInnerHTML` message. **Two of the three do.** `TextStylePicker` and
+`colorstylepicker` both build their delete confirmation as
+``  `…delete <strong>${name}</strong>?…`  `` — and a style name is chosen by the user or **written by
+the AI**. A style named with a tag executed in the editor's renderer. (The third caller,
+`projectmodel.editor.ts`, passes a static literal and is safe.)
+
+Fixed in `f1647f92` by escaping at both sites through one shared
+`src/editor/src/utils/escapeHtml.ts` rather than a fourth private copy of the same four
+replacements — three already exist (`nodeDocs.ts`, `nodeWarning.ts`, `lessonformat.ts`). The sink
+itself is unchanged: the modal still takes HTML on purpose, since both callers rely on `<strong>`
+and `<br>`. Spec: `tests-unit/fix-003/confirmModalEscaping.test.ts`, 7 tests.
+
+### ✅ `AiMarkdown`'s own URL policy — checked against the payloads, not the comment
+
+A concurrent session found the same class of bug one hop further out: `lessonformat.ts` compiled
+lesson prose into HTML and a `[click](javascript:…)` link became a live anchor in a renderer with
+node integration. Escaping would not have stopped it — the payload is a *URL scheme*, not markup.
+That is the same shape as this lane's new `AiMarkdown`, which renders whatever a model wrote, so it
+was measured rather than assumed. **Thirteen payloads through Remarkable 2.0.1 as this component
+configures it** — `javascript:`, `JaVaScRiPt:`, `java\tscript:`, embedded newline and NUL, leading
+space, a leading control byte, `vbscript:`, `data:text/html` (link and image), an HTML-entity
+`&#106;avascript:` — **every one refused**, and refused hard: no anchor is emitted at all, the
+markdown renders as literal text. Only the `https:` control produced an `<a>`.
+
+So the surface is defended three times over, and the layers are independent: Remarkable's own link
+validation, `html: false` at the parser (AIB-009), and `aiLinkActionFor`'s **allow-list** of
+`http:`/`https:` reached through real `URL` parsing, with `preventDefault()` on every branch
+including the refused ones. ⚠️ The allow-list is what makes it survivable — a blocklist of known-bad
+schemes would have to enumerate the spellings above, and the tab/NUL/entity variants are exactly
+what defeats `startsWith('javascript:')`.
+
+### Gate readings — run by the orchestrator on `f1647f92`, in the worktree
+
+| Gate | Reading |
+|---|---|
+| `noodl-core-ui` jest | ✅ **22 suites / 361 tests, 0 failed** (base 21/337 — +1 suite, +24 tests: the new `aiMarkdownLinkPolicy` spec) |
+| `noodl-editor` jest | ✅ **191 suites / 2939 tests, 0 failed** (this lane's base 190/2932 — +1/+7, the escaping spec; **no total dropped**) |
+| `release-links.test.ts` | ✅ green after the move |
+| `tsc -p packages/noodl-editor --noEmit` | ✅ 0 errors |
+| `tsc -p packages/noodl-core-ui --noEmit` | 44 errors — the known-red project; **none names a file this lane touched**, and two other sessions read 44 independently the same day |
+| `test:ci` (jasmine) | ⛔ not runnable from a worktree — owed on the primary after merge |
+
+### Still owed
+
+1. **All five acceptance criteria need DRIVING.** Every spec here grades source or a pure function;
+   nothing has proven a link opens, text selects, or ⌘C yields anything.
+2. **The drag-surface regression drives the ruling put in scope** — canvas node drag, panel tree row
+   drag, sidebar divider, and the launcher grid — each driven per surface. This is the regression
+   the ruling knowingly accepted the risk of, so it is the one that must actually be measured.
+   The `noodl-dragging` class is the thing to watch: it is added and lifted by JS, so a drag that
+   ends outside the window is the failure mode to look for.
+3. **The two launcher grids' disagreement** (above) needs a call and probably one more opt-out line.

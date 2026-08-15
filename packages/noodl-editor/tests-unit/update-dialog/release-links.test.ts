@@ -11,7 +11,10 @@
  * `shell.openExternal`.
  */
 
-import { linkActionFor } from '../../src/editor/src/views/UpdateManager/releaseLinks';
+// FIX-003 moved the policy to its neutral home in core-ui — it now guards
+// every AI-rendered surface, not just release notes. This spec keeps grading
+// it from the update dialog's point of view.
+import { linkActionFor } from '@noodl-core-ui/components/ai/AiMarkdown/linkActions';
 
 describe('a link in release notes', () => {
   describe('is opened when it is an ordinary web link', () => {

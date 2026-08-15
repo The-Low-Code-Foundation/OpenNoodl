@@ -380,6 +380,7 @@ export function FrameDivider({
       window.removeEventListener('mousemove', onMouseMove);
       onDragEnd && onDragEnd(getFrameDividerRects());
       setCssDragVariables(hash, rootRef.current, false);
+      document.body.classList.remove('noodl-dragging');
     },
     [onMouseMove, onDragEnd, getFrameDividerRects, onSizeChanged, hash]
   );
@@ -404,6 +405,10 @@ export function FrameDivider({
     window.addEventListener('mousemove', onMouseMove);
     onDragStart && onDragStart(getFrameDividerRects());
     setCssDragVariables(hash, rootRef.current, true);
+    // FIX-003: the drag runs on window listeners, so without this the gesture
+    // smears a text selection across the panes on either side (text is
+    // selectable by default now). Lifted in onMouseUp.
+    document.body.classList.add('noodl-dragging');
     eventObject.stopPropagation();
   }
 

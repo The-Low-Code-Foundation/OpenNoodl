@@ -199,8 +199,21 @@
  * — a 13px paragraph taking a 12px panel's leading is how a wall of text
  * happens even when every colour is correct.
  */
-.Assistant {
-  white-space: pre-wrap;
+/*
+ * FIX-003, two changes here:
+ *
+ *  - `white-space: pre-wrap` is gone. The row renders `AiMarkdown` now, and
+ *    the HTML a markdown renderer emits carries literal newlines between
+ *    blocks that pre-wrap would paint as phantom blank lines. Newlines
+ *    *inside* a paragraph survive via the renderer's `breaks: true`.
+ *  - `div.Assistant p`, not `.Assistant p`. The shared Markdown stylesheet
+ *    has its own `.Root p { font-size: 12px }` at equal specificity, which
+ *    would make the winner a question of bundle order; one element token
+ *    makes this row's scale win deterministically. Same below for the other
+ *    rows that host `AiMarkdown`.
+ */
+div.Assistant {
+  overflow-wrap: anywhere;
 
   p {
     font-size: 13px;
@@ -218,7 +231,7 @@
   margin-bottom: 2px;
 }
 
-.Event {
+div.Event {
   display: flex;
   align-items: flex-start;
   gap: 6px;
@@ -244,7 +257,7 @@
  * show a treatment, not to pass an a11y audit; keeping the icon costs 14px of a
  * 400px row and makes the outcome legible without hue.
  */
-.Receipt {
+div.Receipt {
   display: flex;
   align-items: flex-start;
   gap: 6px;
@@ -352,11 +365,14 @@
  * A settled question does not block, so it does not shout. Seven of them stacked
  * with an accent ring each would be noise — the left rule marks the exchange and
  * keeps the accent, at a weight that reads as history rather than as a demand.
- * `pre-wrap` because the text is two lines: the question, then what was said
- * back to it.
+ *
+ * FIX-003: this row renders `AiMarkdown` now, so `pre-wrap` is gone — the
+ * question/answer line break survives as a `<br>` via the renderer's
+ * `breaks: true`, and pre-wrap over rendered HTML would paint the renderer's
+ * own inter-block newlines as phantom blank lines. `div.Question` for the same
+ * specificity reason as `div.Assistant` above.
  */
-.Question {
-  white-space: pre-wrap;
+div.Question {
   padding: 2px 0 2px 11px;
   border-left: 2px solid var(--theme-color-primary);
 
