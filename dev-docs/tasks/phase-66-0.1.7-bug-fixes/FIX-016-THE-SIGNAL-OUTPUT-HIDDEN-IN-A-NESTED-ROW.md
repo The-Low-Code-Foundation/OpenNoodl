@@ -470,3 +470,59 @@ does, when the output is declared). It is:
 signal output, no Type control, and no diagnostic.** That is a different and larger question than
 the label/`String`-default copy issue in §3d, and both are live. Richard is ruling on two things.
 
+
+### 🔴 THREE CORRECTIONS TO THE SECTION ABOVE — all mine, all caught by peers within the hour
+
+Left visible rather than edited away, because two of them carried a ✅.
+
+**C1 — "not on a live viewer" is NOT supported by my experiment, and the source says the runtime IS
+in the path.** My preview was live in **both** arms. I varied declaration and learned about
+declaration; **the viewer never varied, so it cannot have been tested.** Worse, `_managePortsForNode`
+— which holds the `scriptOutputs` gate — is registered only inside
+`graphModel.on('editorImportComplete', …)` on a **runtime's** graphModel
+(`simplejavascript.ts:890-904`), which is exactly why `outtype-` appears in zero editor source files.
+✅ **Correct claim: declaration is NECESSARY.** ⚠️ **Whether a live runtime is ALSO necessary is
+untested**, and the 2×2 has two empty cells:
+
+| | preview LIVE | preview ABSENT |
+|---|---|---|
+| **declared** | ✅ rows present | ⚠️ **untested — and a peer's null sits here** |
+| **mined only** | ✅ section empty | — |
+
+🔴 **The sharper open question**, which supersedes "toggle the preview": for a node created the
+*normal* way, has `editorImportComplete` fired and does the runtime's `graphModel` hold it? A peer's
+null may be a fixture artefact — `fromJSON` + `addRoot` writes the **editor's** model and may never
+reach the runtime's.
+
+**C2 — 🔴 I got the severity BACKWARDS, and the retraction matters more than the finding.** I wrote,
+as a source read, that the mined node throws at runtime. **It does not.** The miner types a
+*call-shaped* `Outputs.Done()` as **`signal`** (`javascriptnodeparser.js:353-356`, `type: 'signal'`);
+only assignment-shaped usage gets `'*'` (`:373-384`). So `_isSignalType` returns true, **node B works,
+and §2's silence on it is CORRECT** — `declared` doing its job.
+
+⚠️ **So "the author who most needs the message has no control and no warning" is too broad**, and
+stated that way it would send someone to loosen `declared` and start warning about correct code. The
+real gap is one row, not the whole mined case:
+
+| written, undeclared | port type | Type row | message 5 | outcome |
+|---|---|---|---|---|
+| `Outputs.Done()` | signal | none | silent | ✅ **works — silence is correct** |
+| **`Outputs.Done_1()`** / `Outputs.Done.send()` | **value** | none | **silent** | 🔴 **throws, no surface anywhere** |
+
+✅ **What survives, and it is still the finding:** row 2's author has **no route at all** — no panel
+control to discover *and* no diagnostic to read. That re-prices the parser-asymmetry ruling from a
+nicety to *the only case with no surface*.
+
+**C3 — one of my two `dynamicports` directions was the gating rule, not an instrument lie.** I cited
+(a) rows rendered with an empty `outtype-*` list, and (b) `outtype-Done` present with no row.
+**(b) is predicted**: node B's `parameters` held **only `functionScript`** — `Done` was never in
+`scriptOutputs`, because my synthetic `Enter` never committed — so "parameter present, no row" is
+exactly the declaration gate behaving correctly.
+
+✅ **This makes the conclusion stronger, not weaker: the rendered panel is a RELIABLE readout of
+declaration.** Only (a) is genuine model-vs-panel disagreement. The correct caveat is narrower:
+**`node.dynamicports` is a cache of what a runtime last pushed, so its *presence* is not evidence the
+panel will render — but the panel is trustworthy.** ⚠️ My broadcast wording ("disagrees in both
+directions, not usable even as a conservative bound") is **withdrawn**; it went to ~20 recipients and
+several filed it verbatim.
+
