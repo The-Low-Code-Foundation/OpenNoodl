@@ -192,12 +192,20 @@ the build's load-bearing ordering comment should be tested — **on a project th
   big one: "yes" retires a written constraint, "no" makes ~1,500 lines genuinely deletable.
 - 🔴 **FIX-016's signal-input semantics** — re-run the body vs named handlers, or rule signal inputs
   out and document `run` as the only trigger.
-- ⚠️ **The MCP servers: 20 processes, 10 pairs, oldest ~29h, and they never get reaped.** `dev:stop`
-  spares them by design, so they accumulate one pair per connection. **All of them started before
-  tonight's 19:39 `packages/noodl-mcp/dist` rebuild**, so every live server holds pre-rebuild code
-  regardless of which half serves. 🔴 **Which half answers tool calls, `ps` cannot settle** — two
-  sessions asserted it in opposite directions tonight and both were reading a subset. Restarting
-  them is your call, not a peer's. The **repackage** is separately owed for fresh/packaged launches.
+- ⚠️ **The MCP servers are NOT a leak — that was my first reading and it was wrong.** ~20 processes
+  is **10 pairs, one per live Claude session**. Each pair is two *siblings* sharing a `ppid`, and
+  that ppid is the owning session's own pid: I verified the ten ppids match the ten
+  `/tmp/cc-socks/<pid>.sock` names **exactly**, with zero dead parents — including the ~29h one.
+  So the count tracks live sessions and should shrink as they exit. ✅ Useful consequence: MCP
+  processes are the one class here that is **cleanly attributable** (`ps -o ppid=`), unlike a dev
+  stack where argv is the recipe, not the author — which is also why `dev:stop` sparing them is
+  *right* rather than merely convenient.
+  🔴 **What IS owed:** all ten started before tonight's 19:39 `packages/noodl-mcp/dist` rebuild, so
+  every live server holds pre-rebuild code, and any conclusion drawn from one describes the build
+  on disk when its session started. **Which half answers tool calls, `ps` cannot settle** — two
+  sessions asserted it in opposite directions tonight, each reading a subset. Restarting them is
+  your call (each is a live session's connection), and the **repackage** is separately owed for
+  fresh/packaged launches.
 - 🔴 **`MEMORY.md` is over budget and the hook nags on every edit.** Unchanged from s19: it cannot be
   brought under by rewording — getting under means **dropping live trap entries**, a call about your
   own knowledge base. I added one line and amended two files in place rather than adding more.
