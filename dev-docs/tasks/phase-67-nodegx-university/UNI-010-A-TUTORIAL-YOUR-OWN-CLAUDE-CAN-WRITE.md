@@ -210,6 +210,121 @@ lesson format and grading runner (criteria 3 and 4 there are this task's prerequ
 >   in practice it authors the solution with the write tools and builds the starter alongside it. This
 >   works and it is not ergonomic; a `derive_starter` step is the obvious slice-3 candidate.
 
+> ## ✅ CRITERION 2 DRIVEN 2026-08-15 (tenth session) — and the F4 hole is bigger than slice 2 recorded
+>
+> Eight consequences written down **before** the producer was run and before the editor was
+> launched, each phrased so it could not also be true of a broken feature. **Eight of eight passed**
+> — and the drive turned up one finding that changes what slice 2's own mitigation is worth.
+>
+> ### The artifacts, and why there are four of them
+>
+> `writeLessonBundle` — `create_lesson`'s implementation — was run over two real project
+> directories derived from the slice-4 drive project (a starter with a bare page, a solution with
+> `Text#Greeting` and `Variable2#Counter`). Everything downstream was derived from its output by
+> deleting things, so no arm is a separately-authored bundle that could differ by accident.
+>
+> | Bundle | `authoredBy` | `solution/` | Outcome at the launcher |
+> |---|---|---|---|
+> | `bundle-ai` | `"ai"` (**stamped by the producer**) | yes | installed · card reads **"Written locally"** |
+> | `bundle-twin` | *line deleted* | yes | installed · card reads **"From disk"** |
+> | `bundle-stripped-ai` | `"ai"` | **no** | 🔴 **REFUSED**, naming F2 and F3 |
+> | `bundle-stripped-noclaim` | *line deleted* | **no** | installed · **"From disk"** |
+> | `bundle-claims-curated` | `"curated"` | yes | installed · **"From disk"** — the claim ignored |
+>
+> 🔴 **The bottom pair is the result.** `diff -rq` says the two directories differ in one file, and
+> `diff` says that file differs by one line — and **one is refused while the other installs.** That
+> is the asymmetry's *bite*, not just its label: the three-class gate genuinely rejects a bundle the
+> one-class gate accepts. A feature that ignored `authoredBy` would have installed both; one that
+> believed the manifest outright would have refused neither.
+>
+> ⚠️ **The label pair alone would not have shown this**, and a first draft of this write-up said
+> "install vs refusal" while describing it. The slice-3 author read that summary, found it
+> internally inconsistent, and asked. *The evidence you show is a summary of the evidence you have,
+> and the gap between them is where wrong conclusions live.*
+>
+> ### What was driven versus what was faked
+>
+> The **only** thing stubbed was the OS folder picker's return value
+> (`filesystem.openDialog`). The real "Install a lesson…" button was clicked, so the shipped
+> handler ran untouched — including its `provenance: 'local'` argument, `resolveProvenance`, the
+> whole scorecard, the register write, the toast and its console line
+> (`[Learning] Checked as local-ai: F1, F2, F3 passed; F4 not checked.`).
+>
+> ⚠️ **The stdio transport was NOT driven.** Richard's registered MCP servers still run a
+> pre-slice-2 build — confirmed rather than assumed: `find_tools`' group enum is
+> `backend|docs|explore|project|theme`, with no `lesson`. What ran is the same
+> `writeLessonBundle`, one call below the transport. **`create_lesson`-over-MCP remains untested
+> end to end**, and that is the honest boundary of this drive.
+>
+> ### 🔴 The finding: the producer can only answer F4 *from a checkout*
+>
+> Slice 2 recorded F4 as "a hole at the installer, answered by the producer". Running the producer
+> found the mitigation is narrower than that sentence:
+>
+> ```
+> The render harness is not present in this installation — render_report needs the repo checkout
+> (scripts/devtools/measure-from-disk.js). Set NODEGX_RENDER_CLI to it, or run this server from a
+> checkout.
+> ```
+>
+> With `NODEGX_RENDER_CLI` pointed at the checkout, F4 **passes** and the bundle writes with all
+> four classes green. Without it, `create_lesson` refuses unless `allow_unrendered` is passed.
+>
+> 🔴 **And UNI-007 had already written down why that matters, one slice earlier**, about this exact
+> file: *"`scripts/` is not in `package.json`'s `build.files` … so that route works in this checkout
+> and is dead for every real learner."* Join the two sentences and the real position is:
+>
+> > **For a user running the packaged sidecar, F4 is checked by nobody.** The installer cannot (the
+> > editor drives the running viewer), and the producer cannot either (the harness it spawns is not
+> > shipped). F4 is the class the prior arc predicted would **dominate**.
+>
+> ⚠️ Nobody had joined them because each statement was true and local to its own slice. **A hole
+> recorded in two halves, in two files, is not a recorded hole** — it reads as covered from either
+> end. This is the sixth "build the caller" instance and the first where *the evidence was already
+> written down and merely unassembled.*
+>
+> **Not fixed here**, because the fix is a scope decision rather than a bug: either ship the harness
+> with the sidecar, or have `create_lesson` say plainly that a packaged install cannot answer F4 and
+> that `allow_unrendered` is the normal case rather than the exception. **Richard's call** — flagged
+> rather than taken.
+>
+> ### ✅ Two more things the drive established
+>
+> - 🔴 **The harness refuses a lesson whose steps are already done in the starter.** Building a
+>   control whose project *was* the solution, install was refused: *"This step is already complete in
+>   the project the learner opens, so it will tick itself the moment they arrive."* This is the trap
+>   UNI-010 most needs, because **the natural way to author a lesson is to build the finished thing
+>   and describe it** — at which point the starter you ship *is* the solution. A model told "write me
+>   a lesson" has every reason to return exactly that.
+> - ✅ **Grading does not depend on provenance, measured rather than assumed.** The AI arm and the
+>   non-AI twin — identical steps, same starter — produced the *same sentence*: *"0 of 2 checked
+>   steps are done. Step 2 … Your app renders — 1 elements drawn."* And it is not a constant:
+>   adding `Text#Greeting` to the AI arm's live graph moved it to **1 of 2 and 2 elements drawn**,
+>   both engines moving on the same edit.
+>
+> ### 🔴 The one code change: the asymmetry's precondition is now executable
+>
+> Raised by the slice-3 author reviewing slice 2: honouring `authoredBy: "ai"` is safe **only while
+> `local-ai` is strictly the most demanding row** in `REQUIRED_CLASSES`. Any future AI fast-path —
+> *"the producer already scored F2, skip it at install"* — reverses the incentive and makes the field
+> worth forging, **and it would arrive in review looking like an optimisation.**
+>
+> Two specs now hold it (`tests-unit/uni-010/lessoninstallpolicy.test.ts`), and the guard was proved
+> to bite rather than assumed to: setting `'local-ai': ['F1']` fails five tests, including the new
+> superset one; reverting passes 18/18. ⚠️ Honest note — only the **structural** superset test
+> catches that mutation; the behavioural twin beside it guards a different regression (a provenance
+> branch inside `decideInstall`) and stays green through it. Two tests, two failure modes, neither
+> redundant.
+>
+> ### ⚠️ One measurement I spoiled, recorded rather than quietly dropped
+>
+> D5 says a lesson must never enter the recents list. I backed up
+> `recently_opened_project.json` before launching, compared after, found it **differed**, and
+> restored it — **before diffing the entries**, so I cannot say whether the difference was my
+> lessons or ordinary launcher churn. What I *can* say is that the restored file (which already
+> contained slice 4's lesson opens) has **zero entries referencing the Learning folder**, so the
+> guarantee held across those. **The next drive should diff the entry ids before restoring.**
+
 ## Premise
 
 Added 2026-08-14: for people who don't want the University platform at all, let **their own

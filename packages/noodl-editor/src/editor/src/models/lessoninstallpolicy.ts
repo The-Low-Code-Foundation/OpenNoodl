@@ -54,6 +54,18 @@
  * the stricter gate and showing the AI-authored label. D5 is untouched — the
  * sidecar wrote a bundle on disk and the editor process wrote the register.
  *
+ * 🔴 **THE ASYMMETRY HAS A PRECONDITION, AND IT IS NOT SELF-EVIDENT.** Honouring
+ * the claim is safe *only while `local-ai` is strictly the most demanding row in
+ * {@link REQUIRED_CLASSES}*. The moment any path makes the AI class cheaper — a
+ * fast-path, a skipped check, an auto-install, a "we already scored it at
+ * authoring time so skip F2 here" — the incentive reverses and the declaration
+ * becomes worth forging in the direction that matters. **That change would arrive
+ * looking like an optimisation, not like a security regression**, which is why it
+ * is asserted by a spec (`a claim may only ever cost the claimant`) rather than
+ * left as a sentence here. If that spec fails, the trust argument has been
+ * inverted — fix the table, do not update the test.
+ * (Raised by the slice-3 author reviewing slice 2, 2026-08-15.)
+ *
  * @module noodl-editor/models/lessoninstallpolicy
  */
 

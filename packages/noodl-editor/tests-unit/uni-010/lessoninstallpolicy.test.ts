@@ -28,6 +28,7 @@ import {
 import {
   decideInstall,
   describeInstallCheck,
+  type FailureClass,
   REQUIRED_CLASSES,
   resolveProvenance
 } from '../../src/editor/src/models/lessoninstallpolicy';
@@ -381,6 +382,48 @@ describe('decideInstall', () => {
     expect(decideInstall(unreplayed, 'org').allowed).toBe(true);
     expect(decideInstall(unreplayed, 'local').allowed).toBe(true);
     expect(decideInstall(unreplayed, 'local-ai').allowed).toBe(false);
+  });
+
+  it('🔴 a claim may only ever COST the claimant — local-ai is a strict superset of every other row', () => {
+    // The precondition the whole trust argument rests on, made executable.
+    //
+    // Honouring `authoredBy: "ai"` is safe *because* it can only tighten: a liar
+    // has no motive to move itself to a harder gate. That reasoning holds only
+    // while `local-ai` demands everything every other provenance demands and
+    // more. A future fast-path — "the producer already scored F2, skip it at
+    // install" — would reverse the incentive and make the field worth forging,
+    // and it would arrive in review looking like an optimisation.
+    //
+    // 🔴 If this fails, the fix is the table, not the assertion.
+    const ai = new Set<FailureClass>(REQUIRED_CLASSES['local-ai']);
+
+    for (const provenance of ['curated', 'org', 'local'] as const) {
+      for (const required of REQUIRED_CLASSES[provenance]) {
+        expect(ai.has(required)).toBe(true);
+      }
+      // ...and strictly more, or the claim costs nothing and buys nothing.
+      expect(ai.size).toBeGreaterThan(REQUIRED_CLASSES[provenance].length);
+    }
+  });
+
+  it('🔴 and no scorecard exists that local-ai admits while another provenance refuses', () => {
+    // The superset check is structural; this is the same guarantee stated over
+    // behaviour, because a table can be a superset and a decision can still
+    // diverge if `decideInstall` ever grows a branch on provenance.
+    const states = ['pass', 'fail', 'not-checked'] as const;
+
+    for (const F1 of states) {
+      for (const F2 of states) {
+        for (const F3 of states) {
+          const scorecard = card({ F1, F2, F3 });
+          if (!decideInstall(scorecard, 'local-ai').allowed) continue;
+
+          for (const provenance of ['curated', 'org', 'local'] as const) {
+            expect(decideInstall(scorecard, provenance).allowed).toBe(true);
+          }
+        }
+      }
+    }
   });
 
   it('says "not checked" out loud rather than omitting the class', () => {

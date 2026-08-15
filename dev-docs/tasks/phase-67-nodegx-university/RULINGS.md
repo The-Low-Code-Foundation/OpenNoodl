@@ -533,6 +533,43 @@ a bundler can follow, which is what the note claimed and did not have.
 lazily" is not a purity argument.* `editor-deps.ts` carries a whole barrel of them and every one is
 load-bearing for the standalone artifact. The check is to **build it**, not to read it.
 
+#### The sixth amendment (2026-08-15, tenth session) — a hole recorded in two halves is not recorded
+
+Found by driving UNI-010's criterion 2. The first five instances were all *"build the caller and it
+shows you what the thing does not do"*. This one is different and worse, because **nothing was
+missing: both halves of the finding were already written down, in this phase, by this arc.**
+
+Slice 2 recorded F4 as a hole at the *installer*, closed at the *producer*: the editor cannot render
+a solution directory, so `create_lesson` — which has the render harness — answers F4 instead. Running
+`create_lesson` for real returns:
+
+> *"The render harness is not present in this installation — `render_report` needs the repo checkout
+> (`scripts/devtools/measure-from-disk.js`)."*
+
+And [UNI-007](UNI-007-THE-LESSON-BEAMED-INTO-THE-EDITOR.md) had already recorded exactly why, one
+slice earlier, about this exact file: *"`scripts/` is not in `package.json`'s `build.files` … so that
+route works in this checkout and is dead for every real learner."*
+
+> 🔴 **Joined up: for a user running the packaged sidecar, F4 is checked by NOBODY** — not the
+> installer, which cannot, and not the producer, whose harness is not shipped. F4 is the class the
+> prior arc predicted would **dominate**.
+
+Each sentence was true and each was local to its own slice, so from either end the hole reads as
+covered by the other. **A gap split across two documents is invisible in both.** The related habit
+this phase already carries — *"we did not look" and "we looked and it was fine" must never be written
+the same way"* — needs a companion: **a mitigation that names another component is not a mitigation
+until you have read what that component says about itself.**
+
+⚠️ **Not fixed — it is a scope decision, not a bug**, and is flagged to Richard: either ship the
+harness with the sidecar, or have `create_lesson` state that a packaged install cannot answer F4 and
+that `allow_unrendered` is then the ordinary case rather than a named exception.
+
+✅ **One thing the same drive made executable.** The slice-3 author, reviewing slice 2, pointed out
+that *a claim may only tighten* holds **only while `local-ai` is strictly the most demanding row** in
+`REQUIRED_CLASSES` — an AI fast-path would reverse the incentive and arrive in review looking like an
+optimisation. That precondition is now two specs rather than a sentence, and the guard was proved to
+bite (inverting the table fails five tests) rather than assumed to.
+
 #### A gate that could not report its own margin (2026-08-15, ninth session)
 
 Not a lesson-format finding, but the same family and it cost the same session an hour, so it is
