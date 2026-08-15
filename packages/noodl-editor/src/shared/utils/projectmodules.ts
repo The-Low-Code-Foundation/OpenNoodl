@@ -7,7 +7,8 @@
  * into either:
  *   - inject-shaped modules for the preview/deploy HTML (`scanProjectModules` /
  *     `injectIntoHtml`), consumed by web-server, the deploy HtmlProcessor, the
- *     headless noodl-preview loader (via HtmlProcessor) and ViewerConnection; or
+ *     headless noodl-preview loader (via HtmlProcessor), ViewerConnection and —
+ *     since CN-001 — `scripts/devtools/render-from-disk.js`; or
  *   - raw manifests for the editor's ProjectModel (`scanModuleManifests`,
  *     consumed by `projectmodel.modules.ts`).
  *
@@ -18,6 +19,16 @@
  * `scanModuleManifests` does the read+parse+validate, and everything else is a
  * pure shaping layer on top.
  *
+ * ⚠️ **That core no longer lives in this file.** As of CN-001 (phase 69) it is
+ * `@nodegx/module-inject` — a no-build workspace package — and this file
+ * re-exports it. Still one scanner; it just no longer *owns* the code. The move
+ * happened because `scripts/devtools/render-from-disk.js`, the server half of
+ * `render_report`, is plain JS that must run in a fresh checkout with no build
+ * step, so it could not require this TypeScript module, and reimplementing the
+ * scan there would have made the third scanner LIB-003 existed to end. If you
+ * are looking for the scan, the schema, the `runtimes` filter or the tag
+ * strings, they are in `packages/nodegx-module-inject/src/index.js`.
+ *
  * Loud, never silent: a manifest that cannot be read or parsed is skipped from
  * the output *with a console warning naming the module*, and one that parses but
  * fails the schema is kept (best-effort, to never regress a working project)
@@ -25,8 +36,8 @@
  *
  * This file is required from the Electron main process (`web-server.js`, via
  * `.default`) and imported from the renderer; it deliberately depends only on
- * `fs` + `ajv` (+ Node's built-in `vm`/`http`/`https` for the ERG-002 additions
- * below), all available in both.
+ * `fs` + `@nodegx/module-inject` (+ Node's built-in `vm`/`http`/`https` for the
+ * ERG-002 additions below), all available in both.
  *
  * ── ERG-002: external libraries in app config ───────────────────────────────
  *
@@ -47,211 +58,37 @@
  * 'external-library'` marker to manifests they write so listing/removal never
  * touches a hand-authored module (an icon set, say) by accident.
  */
+import {
+  buildInjectionTags,
+  injectIntoTemplate,
+  scanModuleManifests,
+  toInjectModules
+} from '@nodegx/module-inject';
+import type { InjectModule, ModuleManifest } from '@nodegx/module-inject';
 import * as fs from 'fs';
 import * as http from 'http';
 import * as https from 'https';
 import * as vm from 'vm';
 
-import Ajv from 'ajv';
-
 // ─── Types ───────────────────────────────────────────────────────────────────
-
-export interface ModuleBrowserManifest {
-  head?: string[];
-  styles?: string[];
-  stylesheets?: (string | unknown)[];
-}
-
-/**
- * The on-disk `manifest.json` shape. Deliberately permissive
- * (`[key: string]: unknown`) — manifests carry extra, module-specific fields
- * (componentIndex, componentAnnotations, previews, …) that must survive.
- */
-export interface ModuleManifest {
-  name?: string;
-  main?: string;
-  type?: 'iconset';
-  /**
-   * Which of NDA-007 §1's icon kinds this set ships. Absent means `'font'`, which is what every
-   * set predating NDA-007 §2 is — the field is what lets a set be something other than a font
-   * without a second registration mechanism.
-   */
-  iconSource?: 'font' | 'sprite';
-  /** `sprite` sets only: module-relative path to the sheet, e.g. `"icons/sprite.svg"`. */
-  sprite?: string;
-  icons?: string[];
-  iconClass?: string;
-  /**
-   * Font sets where each glyph is its own class rather than a codepoint. Read by the icon picker
-   * since long before NDA-007 and never declared here — `additionalProperties: true` is why it
-   * worked.
-   */
-  codeAsClass?: boolean;
-  dependencies?: string[];
-  runtimes?: string[];
-  browser?: ModuleBrowserManifest;
-  componentAnnotations?: Record<string, Record<string, unknown>>;
-  previews?: unknown[];
-  /**
-   * ERG-002. Which noodl_modules producer wrote this manifest. Only
-   * `'external-library'` is written by this file's `registerLibrary`; every
-   * other value (including absent, e.g. hand-authored icon sets) is left
-   * alone by `listRegisteredLibraries`/`removeLibrary` on purpose — those must
-   * never touch a module they didn't create.
-   */
-  kind?: 'external-library' | string;
-  /**
-   * ERG-002. The `window`-attached global name this library is expected to
-   * define, e.g. `"PocketBase"`. Not read by the injector (`injectIntoHtml`
-   * only cares about `dependencies`/`browser`/`runtimes`) — it exists so the
-   * editor can re-verify a library, surface it to the code editors and the AI
-   * authoring loop's context, and warn when it's registered on an SSR/SSG
-   * project (§3: a `window` global does not exist during server rendering).
-   */
-  global?: string;
-  [key: string]: unknown;
-}
-
-/** One scanned module directory. `manifest` is null only for a hard failure. */
-export interface ScannedModule {
-  /** Directory name under noodl_modules/, e.g. "material-icons". */
-  name: string;
-  /** Project-relative path to the module dir, e.g. "noodl_modules/material-icons". */
-  dirPath: string;
-  /** Parsed manifest, or null when the manifest is missing / not valid JSON. */
-  manifest: ModuleManifest | null;
-  /** Human-readable diagnostics for this module (also emitted to console.warn). */
-  warnings: string[];
-}
-
-/** The inject-shaped module the HTML injector consumes. */
-export interface InjectModule {
-  dependencies: string[];
-  browser?: ModuleBrowserManifest;
-  runtimes: string[];
-  index?: string;
-}
-
-// ─── Manifest schema (runtime-validated) ─────────────────────────────────────
 //
-// Intentionally lenient: every field optional, `additionalProperties` open. Its
-// job is to catch a *malformed* manifest (wrong-typed fields) and name it, not
-// to reject unusual-but-valid ones — a false rejection would silently drop a
-// working module, the exact regression this task forbids. A parsed manifest that
-// fails validation is therefore warned about but still used.
+// Re-exported, not restated. `export type { X } from '…'` would leave this
+// file's own consumers importing a type that no longer exists here; a plain
+// re-export keeps every `import { ModuleManifest } from '…/projectmodules'`
+// in the tree working unchanged, which is the point — the extraction must not
+// be visible to a caller.
 
-const manifestSchema = {
-  type: 'object',
-  properties: {
-    name: { type: 'string' },
-    main: { type: 'string' },
-    type: { type: 'string', enum: ['iconset'] },
-    iconSource: { type: 'string', enum: ['font', 'sprite'] },
-    sprite: { type: 'string' },
-    icons: { type: 'array', items: { type: 'string' } },
-    iconClass: { type: 'string' },
-    codeAsClass: { type: 'boolean' },
-    dependencies: { type: 'array', items: { type: 'string' } },
-    runtimes: { type: 'array', items: { type: 'string' } },
-    kind: { type: 'string' },
-    global: { type: 'string' },
-    browser: {
-      type: 'object',
-      properties: {
-        head: { type: 'array', items: { type: 'string' } },
-        styles: { type: 'array', items: { type: 'string' } },
-        stylesheets: { type: 'array' }
-      },
-      additionalProperties: true
-    },
-    componentAnnotations: { type: 'object' },
-    previews: { type: 'array' }
-  },
-  additionalProperties: true
-};
+export type {
+  InjectModule,
+  InjectionTags,
+  ModuleBrowserManifest,
+  ModuleManifest,
+  ScannedModule
+} from '@nodegx/module-inject';
 
-const ajv = new Ajv({ allErrors: true, strict: false });
-const validateManifest = ajv.compile(manifestSchema);
-
-function warn(name: string, message: string): string {
-  const line = `[projectmodules] module "${name}": ${message}`;
-  // eslint-disable-next-line no-console
-  console.warn(line);
-  return line;
-}
-
-// ─── Core scan ───────────────────────────────────────────────────────────────
-
-/**
- * Read every module directory under `<projectDirectory>/noodl_modules`, parse
- * and validate each manifest. Returns one `ScannedModule` per directory (in
- * directory order); a missing `noodl_modules` folder (fresh project) resolves to
- * an empty list, never an error.
- */
-export async function scanModuleManifests(projectDirectory: string | undefined): Promise<ScannedModule[]> {
-  if (!projectDirectory) return [];
-
-  const modulesPath = projectDirectory + '/noodl_modules';
-
-  let entries: string[];
-  try {
-    entries = await fs.promises.readdir(modulesPath);
-  } catch (error: any) {
-    // No noodl_modules folder → no modules. Any other read error is genuine.
-    if (error && (error.code === 'ENOENT' || error.code === 'ENOTDIR')) return [];
-    throw error;
-  }
-
-  const directories = entries.filter((f) => {
-    try {
-      const stats = fs.lstatSync(modulesPath + '/' + f);
-      return stats.isDirectory() || stats.isSymbolicLink();
-    } catch {
-      return false;
-    }
-  });
-
-  const scanned: ScannedModule[] = [];
-
-  for (const dir of directories) {
-    const dirPath = 'noodl_modules/' + dir;
-    const manifestPath = modulesPath + '/' + dir + '/manifest.json';
-    const entry: ScannedModule = { name: dir, dirPath, manifest: null, warnings: [] };
-
-    let raw: string;
-    try {
-      raw = await fs.promises.readFile(manifestPath, 'utf8');
-    } catch {
-      entry.warnings.push(warn(dir, 'manifest.json is missing or unreadable — module skipped'));
-      scanned.push(entry);
-      continue;
-    }
-
-    let parsed: ModuleManifest;
-    try {
-      parsed = JSON.parse(raw);
-    } catch (e: any) {
-      entry.warnings.push(
-        warn(dir, `manifest.json is not valid JSON (${e && e.message ? e.message : 'parse error'}) — module skipped`)
-      );
-      scanned.push(entry);
-      continue;
-    }
-
-    if (!validateManifest(parsed)) {
-      const detail = (validateManifest.errors || [])
-        .map((err) => `${err.instancePath || '/'} ${err.message}`)
-        .join('; ');
-      // Kept, not skipped: JSON parsed, so best-effort use it — but loudly.
-      entry.warnings.push(warn(dir, `manifest.json failed schema validation (${detail}) — using it anyway`));
-    }
-
-    entry.manifest = parsed;
-    scanned.push(entry);
-  }
-
-  return scanned;
-}
+// The scan itself, re-exported so `projectmodel.modules.ts` and the ERG-002
+// surface below both keep calling `scanModuleManifests` from here.
+export { scanModuleManifests };
 
 // ─── ERG-002: verify on add ──────────────────────────────────────────────────
 
@@ -603,9 +440,10 @@ export async function removeLibrary(
  * registered through this file only ever assigns a `window` global — it never
  * calls `defineModule` — so it is invisible to every render that happens
  * server-side, regardless of what `runtimes` says. `runtimes` still gates
- * *whether the injector emits the script tag at all* (`injectIntoHtml:285`);
- * this is a second, independent question — given that the tag IS emitted for
- * this render, will the code that reads the global work.
+ * *whether the injector emits the script tag at all* — that filter is now
+ * `buildInjectionTags` in `@nodegx/module-inject`; this is a second,
+ * independent question — given that the tag IS emitted for this render, will
+ * the code that reads the global work.
  */
 export function libraryNeedsSsrWarning(lib: Pick<RegisteredLibrary, 'runtimes'>, deployRenderingMode: unknown): boolean {
   const isServerRendered = deployRenderingMode === 'ssr' || deployRenderingMode === 'ssg';
@@ -613,45 +451,13 @@ export function libraryNeedsSsrWarning(lib: Pick<RegisteredLibrary, 'runtimes'>,
 }
 
 // ─── Inject-shaping layer ────────────────────────────────────────────────────
-
-function toInjectModules(scanned: ScannedModule[]): InjectModule[] {
-  const modules: InjectModule[] = [];
-
-  for (const s of scanned) {
-    const manifest = s.manifest;
-    if (!manifest) continue; // already warned by the core scan
-
-    const m: InjectModule = {
-      dependencies: [],
-      browser: manifest.browser,
-      runtimes: manifest.runtimes || ['browser'] // default to browser
-    };
-
-    if (manifest.main) {
-      m.index = s.dirPath + '/' + manifest.main;
-    }
-
-    if (manifest.dependencies) {
-      for (let j = 0; j < manifest.dependencies.length; j++) {
-        let d = manifest.dependencies[j];
-        // http(s)-URL dependencies are absolute — keep verbatim; only
-        // project-relative paths get the module directory prefixed.
-        if (!d.startsWith('http')) d = s.dirPath + '/' + d;
-        m.dependencies.push(d);
-      }
-    }
-
-    modules.push(m);
-  }
-
-  // Sort so the order is deterministic — helps the editor understand when node
-  // libraries change, or are the same.
-  const withIndex = modules.filter((m) => m.index);
-  const withoutIndex = modules.filter((m) => !m.index);
-  withIndex.sort((a, b) => (a.index as string).localeCompare(b.index as string));
-
-  return withIndex.concat(withoutIndex);
-}
+//
+// The shaping and the tag strings are `@nodegx/module-inject`'s now (CN-001).
+// This class stays because it is the *published* surface — `web-server.js` reaches
+// it as `require(…).default.instance`, and the deploy HtmlProcessor and
+// ViewerConnection both go through `instance.injectIntoHtml`. Its methods are
+// the same two, with the same signatures and the same callback contract; only
+// the bodies moved.
 
 class ProjectModules {
   static instance: ProjectModules;
@@ -680,64 +486,7 @@ class ProjectModules {
     callback: (injected: string) => void
   ): void {
     this.scanProjectModules(projectDirectory, function (modules) {
-      let dependencies = '';
-      let modulesMain = '';
-      if (modules) {
-        const browserModules = modules.filter((m) => m.runtimes.indexOf('browser') !== -1);
-        for (let i = 0; i < browserModules.length; i++) {
-          const m = browserModules[i];
-          if (m.index) {
-            modulesMain += '<script type="text/javascript" src="' + pathPrefix + m.index + '"></script>\n';
-          }
-
-          // Module javascript dependencies
-          if (m.dependencies) {
-            for (let j = 0; j < m.dependencies.length; j++) {
-              const d = m.dependencies[j];
-              // http(s)-URL deps are absolute; only project-relative get prefixed.
-              const dSrc = d.startsWith('http') ? d : pathPrefix + d;
-              const dTag = '<script type="text/javascript" src="' + dSrc + '"></script>\n';
-              if (dependencies.indexOf(dTag) === -1) dependencies += dTag;
-            }
-          }
-
-          // Browser modules
-          if (m.browser) {
-            if (m.browser.head) {
-              const head = m.browser.head;
-              for (let j = 0; j < head.length; j++) {
-                dependencies += head[j] + '\n';
-              }
-            }
-
-            if (m.browser.styles) {
-              const styles = m.browser.styles;
-              for (let j = 0; j < styles.length; j++) {
-                dependencies += '<style>' + styles[j] + '</style>' + '\n';
-              }
-            }
-
-            if (m.browser.stylesheets) {
-              const sheets = m.browser.stylesheets;
-              for (let j = 0; j < sheets.length; j++) {
-                if (typeof sheets[j] === 'string') {
-                  let path = sheets[j] as string;
-                  if (!path.startsWith('http')) {
-                    path = pathPrefix + path;
-                  }
-
-                  dependencies += '<link href="' + path + '" rel="stylesheet">';
-                }
-              }
-            }
-          }
-        }
-      }
-
-      let injected = template.replace('<%modules_dependencies%>', dependencies);
-      injected = injected.replace('<%modules_main%>', modulesMain);
-
-      callback(injected);
+      callback(injectIntoTemplate(template, buildInjectionTags(modules, pathPrefix)));
     });
   }
 }

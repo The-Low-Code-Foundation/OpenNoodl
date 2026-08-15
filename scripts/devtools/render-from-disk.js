@@ -5,11 +5,14 @@
  * Usage:
  *   node scripts/devtools/render-from-disk.js <project-dir> [--port 8593]
  *   node scripts/devtools/render-from-disk.js <project-dir> --print-project
+ *   node scripts/devtools/render-from-disk.js <project-dir> --print-html
  *
  * `--print-project` skips the server entirely and writes the reconstructed
  * `projectData` to stdout, which is the only way to test the export-contract
- * reconstruction below without a browser. `scripts/devtools/render-report.js`
- * drives the server half.
+ * reconstruction below without a browser. `--print-html` does the same for the
+ * page itself — the only way to assert on what is *emitted* rather than on what
+ * a browser made of it. `scripts/devtools/render-report.js` drives the server
+ * half.
  *
  * Then point a browser — or headless Chrome over CDP — at the printed URL and
  * read computed styles. That last part is the point: three of the layout
@@ -55,6 +58,27 @@ const fs = require('fs');
 const http = require('http');
 const path = require('path');
 
+/**
+ * CN-001 (phase 69) — the eyes must see kits.
+ *
+ * The `<head>` below used to be a template literal carrying two hardcoded
+ * module stylesheets and nothing else. A project whose page uses a custom node
+ * — a `noodl_modules` kit — therefore rendered **without that node**, and the
+ * report on top of this server called it *"Rendered clean"*, zero findings. Not
+ * a blank: a page missing its work, actively exonerated. Every other HTML path
+ * in the product (the preview web-server, the deploy HtmlProcessor, headless
+ * noodl-preview, ViewerConnection) injected correctly; the verification tool
+ * was the only blind one, which is the worst place for it.
+ *
+ * ⚠️ Resolved **through the workspace**, never a relative `require` into
+ * `packages/` — this file's siblings record that a relative path works in a
+ * checkout and breaks everywhere else. `@nodegx/module-inject` is a no-build
+ * package for exactly this: it is the same code the editor runs, so a tag that
+ * appears here appears in the product, and the harness stays evidence about
+ * the product rather than about itself.
+ */
+const { buildInjectionTags, scanProjectModules } = require('@nodegx/module-inject');
+
 const REPO = path.resolve(__dirname, '../..');
 const VIEWER = path.join(REPO, 'packages/noodl-editor/src/external/viewer');
 const TOKENS_SRC = path.join(REPO, 'packages/noodl-editor/src/editor/src/models/StyleTokensModel/DefaultTokens.ts');
@@ -71,6 +95,15 @@ const PROJECT =
 const PORT = Number(flag('--port', process.env.PORT || 8593));
 const BACKEND = { host: '127.0.0.1', port: Number(flag('--backend-port', process.env.BACKEND_PORT || 8581)) };
 const PRINT_PROJECT = argv.includes('--print-project');
+/**
+ * Print the served HTML and exit, the same way `--print-project` prints the
+ * reconstructed project. CN-001's regression test asserts on the **emitted
+ * tag**, deliberately not on "the render is non-blank" — a blank has too many
+ * causes and the blank rule is already subtle. Asserting on the tag needs the
+ * HTML without needing a browser, a port, or a built viewer bundle, which is
+ * what makes that test cheap enough to live in the plain-Node suite.
+ */
+const PRINT_HTML = argv.includes('--print-html');
 /**
  * The running editor's `:root` block, only when asked for.
  *
@@ -338,23 +371,40 @@ const MIME = {
   '.svg': 'image/svg+xml', '.json': 'application/json', '.woff2': 'font/woff2', '.woff': 'font/woff', '.ttf': 'font/ttf'
 };
 
-if (PRINT_PROJECT) {
-  process.stdout.write(JSON.stringify(buildProjectData(), null, 2) + '\n');
-} else
+/**
+ * Build the page, with the project's modules injected.
+ *
+ * The tag ORDER is copied from the product's own template
+ * (`packages/noodl-editor/src/external/viewer/index.html`) and is load-bearing,
+ * not cosmetic: dependencies, then the `Noodl.defineModule` shim, then each
+ * module's `main`, then the viewer. A kit's `index.js` calls `defineModule`, so
+ * it has to run *after* the shim exists and *before* `renderDeployed` reads
+ * `__noodl_modules`. Emitting the tag in the wrong place is indistinguishable
+ * from not emitting it at all, which is the failure this task exists to end —
+ * so this harness places it where the product does rather than somewhere that
+ * merely looks tidy.
+ */
+function buildHtml(cb) {
   tokenCss((tokens) => {
-  const projectData = buildProjectData();
+    const projectData = buildProjectData();
 
-  const html = `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"/>
+    scanProjectModules(PROJECT, (modules) => {
+      const { dependencies, modulesMain } = buildInjectionTags(modules, '/');
+      const moduleCount = modules ? modules.length : 0;
+      const mainCount = (modulesMain.match(/<script/g) || []).length;
+      console.error(`[render] noodl_modules: ${moduleCount} scanned, ${mainCount} module script(s) injected`);
+
+      cb(`<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>${projectData.name}</title>
 ${tokens}
-<link href="/noodl_modules/inter/styles.css" rel="stylesheet">
-<link href="/noodl_modules/lucide-icons/styles.css" rel="stylesheet">
 <style>html,body{margin:0;padding:0}</style>
 </head><body><div id="root"></div>
 <script src="/react19/react.production.min.js"></script>
 <script src="/react19/react-dom.production.min.js"></script>
+${dependencies}
 <script>window.__noodl_modules=[];window.Noodl={defineModule:function(m){window.__noodl_modules.push(m)},deployed:false,Env:{}};</script>
+${modulesMain}
 <script src="/noodl.viewer.js"></script>
 <script>
 window.projectData = ${JSON.stringify(projectData)};
@@ -362,7 +412,17 @@ document.addEventListener("DOMContentLoaded", function () {
   window.Noodl._viewerReact.renderDeployed(document.getElementById('root'), __noodl_modules, window.projectData);
 });
 </script>
-</body></html>`;
+</body></html>`);
+    });
+  });
+}
+
+if (PRINT_PROJECT) {
+  process.stdout.write(JSON.stringify(buildProjectData(), null, 2) + '\n');
+} else if (PRINT_HTML) {
+  buildHtml((html) => process.stdout.write(html + '\n'));
+} else
+  buildHtml((html) => {
 
   http
     .createServer((req, res) => {

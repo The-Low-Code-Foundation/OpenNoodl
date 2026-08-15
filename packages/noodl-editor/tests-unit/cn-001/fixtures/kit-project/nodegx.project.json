@@ -1,0 +1,17 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/project-v2.json",
+  "name": "CN-001 Kit Fixture",
+  "version": "4",
+  "nodegxVersion": "1.1.0",
+  "structure": {
+    "componentsDir": "components",
+    "assetsDir": "assets"
+  },
+  "id": "cn001f00-0000-4000-8000-000000000001",
+  "runtimeVersion": "react19",
+  "rootNodeId": "cn001f-root-group",
+  "settings": {
+    "htmlTitle": "CN-001 Kit Fixture"
+  },
+  "metadata": {}
+}

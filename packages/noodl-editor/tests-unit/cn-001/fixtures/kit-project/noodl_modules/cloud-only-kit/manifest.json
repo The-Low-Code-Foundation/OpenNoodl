@@ -1,0 +1,6 @@
+{
+  "name": "Cloud Only Kit",
+  "main": "index.js",
+  "runtimes": ["cloud"],
+  "_note": "Declares no browser runtime, so nothing of it may reach a browser page. This is the positive control for the `runtimes` filter: if the injector ever stops filtering, this module's tag appears and the test that says it must not will fail."
+}

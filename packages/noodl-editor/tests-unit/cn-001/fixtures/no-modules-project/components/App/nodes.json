@@ -1,0 +1,16 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "cn001n00-0000-4000-8000-000000000002",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "cn001n-root-group",
+      "type": "Group",
+      "x": 0,
+      "y": 0
+    }
+  ],
+  "visualRoots": [
+    "cn001n-root-group"
+  ]
+}

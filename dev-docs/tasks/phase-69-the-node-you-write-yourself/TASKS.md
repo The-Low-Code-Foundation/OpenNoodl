@@ -1,0 +1,86 @@
+# Phase 69 — the tasks (CN: custom nodes as a core concept)
+
+**Created:** 2026-08-15 out of [README.md](README.md). Read the README's two principles first —
+**P1** a custom node is a node (no *capability* difference; provenance display is wanted) and
+**P2** ports are the product, JavaScript is the escape hatch. Both are acceptance criteria in every
+task, not sentiment.
+
+> 🔴 **Read [README.md §4 Prior-art reconciliation](README.md) and [RULINGS.md](RULINGS.md) before
+> starting any task here.** ✅ **D7 is ruled:** phase 69 owns the catalog spine (CN-003 = "this
+> project", exact, feeds validation); **P65 / LBR-008** narrows to "the shelf" — cheap discovery of
+> installable library content, layered on top. P65's row has been updated to point here.
+
+> ✅ **THE RULINGS QUEUE IS EMPTY (2026-08-15).** All eight (D1–D8) are ruled in
+> [RULINGS.md](RULINGS.md). **No task here is blocked on a decision** — the last column is now a
+> record of what each task must *honour*.
+>
+> ⚠️ **Two rulings carry obligations that are easy to lose.** **D5** was ruled *against* the
+> recommendation: the shipped reference kit is deliberately minimal, so **CN-007's docs must carry
+> the cashflow kit as the worked example** or P2 has no demonstration anywhere. **D8** means the
+> cashflow kit's hardcoded hex must move onto tokens before CN-007 cites it, or the worked example
+> teaches the opposite of the ruling.
+
+> 🔴 **CROSS-PHASE, added 2026-08-15: phase 67 shares three surfaces with this phase, and until today
+> neither phase mentioned the other anywhere.** [README §4](README.md) carries the reconciliation;
+> the three, in the rows below:
+>
+> | Surface | Who is affected |
+> |---|---|
+> | `lessonverify.ts` is a **fifth catalog consumer**, and `unknown-node-type` is an **error** there — a lesson teaching a kit node is refused at install under every provenance | **CN-003** (route the overlay in — the seam already exists), **CN-004** (confirm the consequence) |
+> | The **MCP token budget** moved: P67 / UNI-010 spent LEG-001's 58 banked tokens and the bar was renegotiated 8,200 → **8,280**, with a written *"there should not be a third"* | **CN-009** (numbers corrected; `$ref` is the sanctioned move), **CN-006** (competing for the same 57) |
+> | `render-from-disk.js` is the instrument **UNI-010's F4 grades with**, via `NODEGX_RENDER_CLI` | **CN-001** (don't straddle P67's criterion-3 run; and this task does *not* close P67's F4 packaging hole) |
+
+**Tiers:** 0 = instruments (nothing downstream is trustworthy until these land) · 1 = the spine ·
+2 = authoring · 3 = the AI loop · 4 = the full surface · 5 = the dev loop · 6 = distribution & trust.
+
+**Effort:** S ≈ a session · M ≈ 2–3 · L ≈ a week+ · L+ ≈ needs slicing before it starts.
+
+| Task | One line | Surface | Tier | Effort | Depends on / must honour |
+|---|---|---|---|---|---|
+| **[CN-001](CN-001-THE-EYES-MUST-SEE-KITS.md)** ✅ **CLOSED 2026-08-16** | **The eyes must see kits.** ✅ Landed: `@nodegx/module-inject` (no-build package), `projectmodules.ts` re-exports it byte-identically (golden snapshot 9/9 unchanged), `render-from-disk.js` injects, `--print-html` added, 16 new tests both mutation-proven. 🔴 **The defect was not a blank** — the page rendered *without* the kit node and the report said *"Rendered clean", 0 findings*. 🔴 **This spec's stated control was unusable**: `cashflow-command-centre` is v1, so the harness rejects it; a v2 control (`cn001-kit-drive`) had to be built. 🔴 **P67 ordering: CN-001 went FIRST — score all five UNI-010 lessons after.** ⚠️ Found in passing: `@nodegx/render-measure` was in **no gate** (absent from `test:packages`' scope); now added. *Original spec below.* **The eyes must see kits.** `render-from-disk.js` builds its own `<head>` with two hardcoded module stylesheets and never calls `injectIntoHtml` — so `render_report` renders any project using a custom node as a **blank**. Replace the template with the real injector; add a regression fixture that fails if a module script tag stops appearing | editor / devtools | **0** | **S** | none. **Do this first** — every other task's verification is currently lying. ⚠️ **Cross-phase:** this is the instrument P67 / UNI-010's **F4** grades with — do not land it mid-way through UNI-010's five-lesson criterion-3 run, and note it does **not** close P67's F4 packaging hole |
+| **[CN-002](CN-002-NAME-THE-HOLE.md)** | **Name the hole.** Where validation *skips* a check because a type is unknown, say so as an `info` diagnostic that names the node and the skipped check. Today the skip is silent and reads as a pass | editor | **0** | S | `diagnostics.ts` already has `info` for exactly this purpose |
+| **[CN-003](CN-003-THE-PROJECT-CATALOG-OVERLAY.md)** ⭐⭐ | **The project catalog overlay — the keystone.** ✅ **D3 ruled:** the **MCP server** extracts (headless, executing the kit's `index.js` and reading the live register, reusing `scripts/node-catalog/dom-shim.js`); the **editor does not extract at all** — it reads what the viewer already sent over `sendNodeLibrary`. 🔴 **No on-disk cache** (in-memory per session only, keyed on mtime, if speed demands it). Must include a check that the two sources **agree**, or a user will find the divergence | catalog / editor / mcp | **1** | **L** | ✅ **unblocked** — D3, D7 ruled. Everything in tiers 1–4 hangs off this. ⚠️ **Cross-phase:** `lessonverify.ts` is a fifth consumer — route the overlay through `VerifyLessonOptions.vocabulary` (the seam exists), built from **the bundle's own** project files, not the open project |
+| **[CN-004](CN-004-TURN-THE-CHECKS-BACK-ON.md)** | **Turn the checks back on.** Stop skipping `parameterValues` and unknown-port checks for kit-declared types. ✅ **D4 ruled:** kit-declared ⇒ known and **fully checked**; only truly unresolvable types error under `--strict`. ⚠️ **Do not downgrade the new checks to warnings when they first go red** — Richard took this option over the softer rollout knowingly | editor / mcp | **1** | M | CN-003. ✅ **D4**. ⚠️ **Cross-phase:** the lesson path is *stricter* than the path D4 reasoned about — there `unknown-node-type` is an **error** (class F1) and blocks install for **every** provenance, not a warning promoted under `--strict` |
+| **[CN-005](CN-005-THE-DEFINITION-TYPED.md)** | **The definition, typed.** Publish `ReactNodeDefinition` (and the logic-node shape) as a consumable `.d.ts`, reachable from a JSDoc `@type` annotation with **no build step** — the types are the real documentation | runtime / docs | **2** | M | ✅ **D2** — JS is the supported path; **proposing a compile step on the author's side breaks the ruling**. Source of truth is `react-component-node.ts`, already fully typed |
+| **[CN-006](CN-006-SCAFFOLD-A-KIT.md)** ⭐ | **Scaffold a kit.** `create_node_kit` in `noodl-mcp` **and** an editor "New node kit" command that writes the scaffold and **opens `index.js`** (✅ D1). Emits `manifest.json`, `index.js`, one working example node, a README. Output must model **P2** — ports not constants | mcp / editor | **2** | M | CN-005, ✅ **D1**, ✅ **D8** — scaffold emits `var(--token)` ports by default |
+| **[CN-006b](CN-006b-THE-KITS-SURFACE.md)** | **The kits surface** (new, from ✅ **D1**). A kits list in the editor — natural home beside ERG-002's Libraries section — showing each kit, its nodes, version and provenance; plus **provenance in the property panel** ("from Cashflow Kit v1.2" + docs link). P1 allows attribution; it forbids capability gaps | editor | **2** | M | ✅ **D1**. Reuse `ProjectModel.listModules` + the Libraries section pattern |
+| **[CN-007](CN-007-THE-DOCS-PAGE-THAT-REPLACES-THE-BROKEN-ONE.md)** ⭐ | **The docs page that replaces the broken one.** The 2.7 `create-react-lib` guide is the single most-cited dead end in the community. New page: the 21-line node, the `window.React` contract, the port table, the P2 rule. Plus an in-editor entry point so it is discoverable without knowing it exists | docs | **2** | M | CN-005. ⚠️ **D5 obligation: this page MUST carry the cashflow kit as the worked example** — the shipped reference kit is deliberately minimal and cannot demonstrate P2 or composition. Dropping it re-opens D5. Artifact drafted 2026-08-15 is the raw material |
+| **[CN-008](CN-008-THE-AI-CAN-USE-YOUR-NODES.md)** ⭐ | **The AI can use your nodes.** `nodeKitOverview()` in `AuthoringContextBuilder`, beside ERG-002's `libraryOverview()`, so the built-in authoring loop composes a project's own nodes instead of ignoring them | editor / ai | **3** | M | CN-003. Follow `libraryOverview`'s `charge()` / absent-means-omitted pattern exactly |
+| **[CN-009](CN-009-THE-MCP-SURFACE-INSIDE-THE-BUDGET.md)** | **The MCP surface for kits, inside the budget.** Kit-aware `list_node_types` / `get_node_type`, within the **8,200-token** tool-surface gate — of which **56 of 58 banked tokens are already spent**. This task must state what it *displaces*, not just what it adds | mcp | **3** | M | CN-003, ✅ **D7** (this is "this project"; the shelf stays LBR-008's). 🔴 **Budget numbers CORRECTED 2026-08-15** — the bar is **8,280** (not 8,200), measured **8,223**, **57** tokens free, and the test forbids a third renegotiation: the sanctioned move is a `$ref`ed node schema. P67 / UNI-010 is what spent the old slack |
+| **[CN-010](CN-010-DYNAMIC-PORTS.md)** | **Dynamic ports.** `dynamicports` is the difference between a widget and a building block — a node whose ports come from its data. Supported by the runtime, undocumented for kit authors, and it interacts with CN-004's unknown-port checks | runtime / docs | **4** | M | CN-003, CN-004 |
+| **[CN-011](CN-011-KITS-LOOK-LIKE-NODEGX.md)** | **Kits look like NodeGX.** Design tokens (`var(--token)`), `visualStates`, `useVariants`. AIB-001's token passthrough already exists in the bridge — this is about making it the **default an author falls into**, not a rule | runtime / editor | **4** | M | ✅ **D8** — scaffold emits tokens, **nothing validates them** (brand colours and data-viz are legitimate). ⚠️ the cashflow kit hardcodes hex and must move onto tokens before CN-007 cites it |
+| **[CN-012](CN-012-LOGIC-NODES-TOO.md)** | **Logic nodes too.** `module.nodes` via `defineNode` is the non-visual half and is **untested here** — my proof covered `reactNodes` only. Ports, signals, and whether a logic kit can run in the cloud runtime | runtime | **4** | M | Establish current behaviour by **building the caller** before specifying |
+| **[CN-013](CN-013-CLOUD-AND-SSR.md)** | **Cloud and SSR.** The manifest `runtimes` filter and the `ssr` compat field exist; a kit on an SSR/SSG deploy is unproven. ERG-002's `libraryNeedsSsrWarning` is the precedent for warning well | runtime / editor | **4** | M | CN-012 |
+| **[CN-014](CN-014-THE-DEV-LOOP.md)** | **The dev loop.** Editing a kit file should refresh the preview *and* the node library without restarting the editor. `noodl-preview`'s watcher does not exclude `noodl_modules`, so it may already work there — **measure before specifying** | editor / devtools | **5** | M | ⚠️ HMR leaves the mounted editor on the old module — check that trap applies |
+| **[CN-015](CN-015-FAILURES-NAME-THE-KIT.md)** | **Failures name the kit.** A kit that throws, registers a malformed definition, or collides on a type name must fail **loudly and by name**. `projectmodules.ts` already promises "loud, never silent" for manifests; extend the promise to the definitions | runtime / editor | **5** | S/M | CN-002's philosophy, different layer |
+| **[CN-016](CN-016-PUBLISH-A-KIT.md)** | **Publish a kit.** Kits as library entries: `library.json` `type`, `library:build`, install routing, versioning, `minEditorVersion` / `runtimeVersion` compat gating. Ships the **new minimal reference kit** (✅ D5) | library | **6** | L | ✅ **D5** — the shipped reference is deliberately small; the cashflow kit stays a docs example and is **not** shipped content (so no licence sweep needed, but it must keep working). ⚠️ **0 of 29 existing modules have ever been run** (LBR-004), 3 register zero nodes (LBR-006) — do not assume the fleet is healthy |
+| **[CN-017](CN-017-TRUST.md)** | **Trust.** A kit is arbitrary JS with full page access, and the sandbox responder already carries a `noodl_modules/` path carve-out. ✅ **D6:** locally-authored kits run **freely** (gating them would couple authoring to distribution); third-party kits are **verified on install** via ERG-002's `verifyLibrarySource` sandbox pattern, with provenance recorded and **explicit consent** to run | runtime / editor / library | **6** | L | ✅ **D6**. Gates CN-016 for anything not first-party; makes D1's provenance display load-bearing rather than cosmetic |
+
+---
+
+## Suggested order
+
+1. **CN-001 alone, immediately.** It is small, it is a bug, and while it is broken every
+   verification of every other task is unreliable. It is also the one task with no ruling attached.
+2. ✅ **CN-003 — unblocked, and next after CN-001.** D3 and D7 are ruled, so the shape is settled:
+   MCP extracts headlessly, the editor reuses `sendNodeLibrary`, no disk cache, and the two sources
+   must be checked against each other. Nothing in tiers 1–4 is worth starting before the spine
+   exists.
+3. **CN-004 → CN-005 → CN-006 → CN-007** as one authoring arc — each is the previous one's
+   documentation or its consumer.
+4. **CN-008/CN-009** once the catalog is real; they are the reason the catalog work pays off.
+5. Tier 4–6 as appetite allows. **CN-012 and CN-014 must start by measuring**, not by specifying —
+   both describe behaviour nobody has established.
+
+## Standing obligations for every task here
+
+- **Build the caller.** This repo's record is 5 for 5: building the thing that *uses* a change is
+  what exposes the hole in it. A kit task that ships without a kit exercising it is not done.
+- **Verify the consequence, not the mechanism.** Write down what would be observably true of a
+  working feature *before* driving it, and make sure the sentence could not also be true of a
+  broken one.
+- **Two ways an instrument lies.** A check that rejects sound input; a probe that silently
+  exonerates. CN-001 is a live example of the second — run new checks against a **known-good** and
+  new probes against a **known-broken** input.
+- **P2 is an acceptance criterion.** Any task producing a scaffold, doc, prompt or reference kit is
+  incomplete if a reader could come away thinking constants belong in the JavaScript.

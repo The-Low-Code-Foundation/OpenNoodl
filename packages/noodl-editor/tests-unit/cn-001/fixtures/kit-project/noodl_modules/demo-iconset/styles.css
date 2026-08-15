@@ -1,0 +1,8 @@
+/* Stands in for the shipped `inter` / `lucide-icons` sets: a stylesheet-only
+   module with no `main`, so it exercises the branch that emits a `<link>` and
+   no `<script>`. Those two sets were hardcoded into the render harness's
+   `<head>` before CN-001, which is how the harness looked like it was injecting
+   when it was not. */
+.demo.icon-demo::before {
+  content: '\e000';
+}
