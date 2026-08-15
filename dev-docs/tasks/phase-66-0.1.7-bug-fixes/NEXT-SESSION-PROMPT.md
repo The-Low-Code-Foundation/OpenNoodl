@@ -51,21 +51,32 @@ Learnings that outlive the phase go to memory, not here.
 
 | Gate | Reading | When |
 |---|---|---|
-| `test:ci` (jasmine) | ⚠️ **2779 specs / 9 failures**, seed **50405** — 6 floor names present, **+3 a `BEN-001` cluster** | 10:28:45, tree `393ec7bf` (phase-67's run) |
-| `test:ci` re-run | ⏳ **in flight at 10:49** by phase-67, to discharge the `BEN-001` cluster | ask them for the number |
+| `test:ci` (jasmine) | ⚠️ **2779 / 9**, seed **50405** — 6 floor names + a 3-member `BEN-001` cluster | 10:28:45, tree `393ec7bf` (phase-67's) |
+| `test:ci` **re-run** | ⚠️ **2779 / 9**, seed **73375** — same tree, **different cluster members** | 11:00:56, `393ec7bf` (phase-67's) |
 | `test:main` (jest, editor) | ✅ **199 suites / 3072 tests, 0 failed** | phase-67 session, earlier |
 | editor `tsc --noEmit` | ✅ 0 errors | s10 |
 | `lint:ci` | 877 errors, **unmoved** (baseline 3916) | s10 |
 | `noodl-mcp` jest | ✅ 43 suites / 494 tests | s9 |
 | `noodl-core-ui` jest | ✅ 23 suites / 369 tests | s9 |
 
-🔴 **No gate was run by this session.** Everything above is inherited, and the `test:ci` row is
-**phase-67's tree, not ours** — it does not grade anything phase-66 changed today (we changed no
-source). Its freshness is trustworthy (results file deleted at 10:16:30, mtime 10:28:45, seed differs
-from all three prior readings), and its stale-bundle check was done — all three extra failing names
-grep to real files. **The `BEN-001` cluster is documented as seed-order dependent; the re-run is the
-prescribed discharge and phase-67 started it at 10:49.** Get the number from them before treating 9
-as a new floor.
+🔴 **No gate was run by this session.** Everything above is inherited, and both `test:ci` rows are
+**phase-67's tree, not ours** — they grade nothing phase-66 changed today (we changed no source).
+Freshness is trustworthy on both: the results file was deleted before each run, mtimes match, and the
+seeds differ from each other and from all prior readings.
+
+🔴 **The `BEN-001` cluster is DISCHARGED, and by a better argument than a clean re-run.** Two runs on
+the identical tree `393ec7bf` both gave **9**, but the three cluster members **changed** — seed 50405
+failed `the component interface, as the bench reads it` ×3, seed 73375 failed `the harness export`
+×3. **Changing membership on identical code proves order-dependence directly**; a deterministic
+regression breaks the same specs every time. The structural half agrees — `tests/ai/component-bench.test.ts`
+shares no module with anything phase-67 edited.
+
+⚠️ **This revises a floor we have all been quoting.** The flat "**6**" was measured **once**, at seed
+39393. Two independent seeds today both produced **9**. Record the floor as **"6 known-failing names,
+plus a `BEN-001` cluster of ~3 present at most seeds"** — not as a flat 6, or the next session reads
+9 and starts hunting a regression that isn't there. ⚠️ The runner takes **no `--seed` flag**, so the
+ideal control (same seed, pre-change tree) does not exist; the substitutes are the membership check
+above and "does the failing spec file share a module with my change".
 
 ---
 
