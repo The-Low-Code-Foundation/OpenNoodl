@@ -256,10 +256,24 @@ declining predicate from dead wiring.
    defect, and the copy ruling would be answering the wrong question.
 3. 🔴 **FIX-017's remaining half needs Richard** — AC1 and AC3 are both rulings (§6). **Do not build
    §D speculatively.**
-4. ✅ **Take `dev:stop -- --list` the next time a `test:ci` is genuinely live** — still owed; no
-   suite ran this session. Pairs with (5).
-5. 🟡 **Settle whether a live suite can share a pgid with a recorded dev group** — `ps -o pid,pgid`
-   against the `groups` array in the pid file. Needs a live suite.
+4. ✅ **DONE — `dev:stop -- --list` taken with a suite GENUINELY LIVE** (session 25, during its
+   `test:ci`). Owed for several sessions; now closed. **9 live suite processes including the Electron
+   host → 0 targets**, and — the part that makes it mean anything — **a decoy matching `DEV_TOOL` +
+   repo root but not `NEVER_SWEEP` was found as 1 target under identical conditions**, suite alive
+   after both. 🔴 A bare "0 targets" is equally consistent with *the shield worked* and *the tool
+   found nothing*; the decoy is what makes the null attributable. **`2b758a87` / `4fd2cfdb` hold up
+   against the real Electron suite host**, not just at the enumeration layer.
+   ✅ **Corroborated from a second session (s24):** `ps -o pid,pgid,ppid` on all seven reported pids
+   confirmed a single group, PGID **29984**. ⚠️ **That run also works as the peer-attribution
+   example** — the group leader's **PPID is 25417, which is the announcing session's own socket
+   number**. So *"whose stack is this?"* is answerable **without trusting the announcement**: the
+   socket filename is a live pid, and a stack's wrapper points back to it. **Walk `ppid` to the
+   Claude pid rather than inferring ownership from a display name** (§7's identifier-space ⚠️).
+5. 🟡 **NARROWED, not settled — can a live suite share a pgid with a recorded dev group?** Session
+   25's suite ran as **one clean group (PGID 29984)** rooted at its own wrapper, so a suite spawned
+   by a *different* session than the dev stack cannot collide. ⚠️ **The untested case is the
+   dangerous one: a suite started from the same session that has a recorded dev stack.** That still
+   needs `ps -o pid,pgid` against the `groups` array in a live pid file, with both running.
 6. **FIX-008 fix C** — Richard owes a measurement. The oldest open item.
 7. **FIX-013**, **FIX-016 §3** — open, each needs its ruling (§6).
 8. 🟡 **FIX-001 §1a.5 stretch** — re-decide rather than build.
