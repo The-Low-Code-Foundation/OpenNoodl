@@ -41,6 +41,13 @@ Learnings that outlive the phase go to memory, not here.
 
 **Thirteen closed, one partly built and partly driven.**
 
+🔴 **The phase is accumulating BUILT faster than DRIVEN, and that is this table's whole job to
+show.** §A joins FIX-014's shipping half and FIX-003's remaining criteria in the built-not-driven
+column. Each is individually reasonable — the build was gated, the drive ran out of session — but
+the *pattern* is how a phase quietly converts into a pile of work that has never been seen doing
+anything. 🟡 **Prefer driving something already built over building the next thing**, unless a
+ruling blocks it.
+
 ---
 
 ## 2. Gate readings
@@ -52,8 +59,18 @@ Learnings that outlive the phase go to memory, not here.
 | **`test:ci` (jasmine)** | ✅ **2843 total / 6 failed** at **seed 39393** | **this session, 21:21** |
 | `noodl-core-ui` jest — `tests/code-editor` | ✅ **17 suites / 286**, 0 failed (was 278; +8 from §A) | this session |
 | `noodl-core-ui` `tsc --noEmit` | ✅ adds nothing outside `../noodl-editor/**` alias `TS2307` | this session |
+| `noodl-core-ui` jest — **full package** | ✅ **24 suites / 403**, 0 failed (395 + §A's 8) | this session |
 | **§A known-broken control** | ✅ **5 of the 8 new specs go red** with the blanket refusal restored | this session |
 | `node --check` on both devtools scripts | ✅ | this session |
+| `dev:stop` **non-dry**, quiet checkout | ✅ exits 0, no crash, MCP intact at 19 | this session |
+
+⚠️ **What that last row does and does not cover.** It exercises the early return I edited in the
+*real* kill path — worth having, since my equivalent edit to the dry path shipped a crash. But the
+checkout was quiet, so **the kill loops never ran and no recorded group was ever dropped**.
+`sweepableGroups` is covered by a direct test with a control (nothing shielded ⇒ nothing dropped);
+the **integration — `sweep()` actually dropping a real recorded group — has never executed.** That
+is the honest remaining gap, and it is a smaller one than the sentence "the real path is verified"
+would have implied.
 
 **The six failures by NAME** — quote these, never the count:
 
