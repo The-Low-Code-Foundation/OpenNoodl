@@ -133,19 +133,35 @@ Three commits on `cline-dev`, all gated.
 | `npm run lint:ci` | ✅ 877 vs a 3916 baseline — **unmoved** |
 | `npx eslint` (every touched editor file) | ✅ 0 |
 | **live drive** of the Learning section | ✅ install-refuse, install, card, grade, reset, open, recents-unchanged |
-| `npm run test:ci` | ⚠️ **NOT RUN — see below** |
+| `npm run test:ci` | ✅ **2779 / 6 by name** — run by phase 66 on the merged tree; see below |
 
 🔴 **`test:ci` was not run *by this session*, deliberately** — a phase-66 session was building three
 lanes in worktrees all day and needed the primary checkout settled for its own run; two concurrent
 runs would have manufactured failures for both.
 
-⚠️ **A run was IN FLIGHT when this was written, and this document does not know how it ended.**
-Phase 66 merged FIX-002 + FIX-003 to `cline-dev` as **`4bb692a8`**, on top of this session's
-`481454be`, and started `test:ci` on that settled tree. Because `test:ci` webpacks from the working
-tree, **that run covers this session's six commits as well as their two lanes.**
+✅ **DISCHARGED — phase 66 ran it, on a tree containing all six of this session's commits.**
+They merged FIX-002 + FIX-003 as `4bb692a8` on top of `481454be`, hit the false pass described
+below, fixed it, and re-ran on **`fb936f6d`**:
 
-🔴 **The first of those runs graded NOTHING, and it is the most convincing false pass this repo has
-produced.** Recorded in full because every heuristic we had failed:
+| | |
+|---|---|
+| `test:ci` @ `fb936f6d` | ✅ **2779 specs, 6 failures — the floor, by name** (4 × `AIX-006 style vocabulary`, 2 × `AI model registry`) |
+| freshness | 🟢 mtime **moved** to Aug 15 09:25, **and the seed changed** 81235 → 75857 — two independent dissents from the stale file |
+| stale-bundle check | ✅ both failing names grep to real files (`tests/ai/authoring-style.test.ts`, `tests/ai/models.test.ts`) |
+| `test:main` @ merged tip | ✅ **195 suites / 3005 tests, 0 failures** |
+| editor `tsc --noEmit` | ✅ exit 0 |
+
+🔴 **New floors: `test:main` 195 / 3005; `test:ci` 2779 with 6 failures by name.**
+
+⚠️ **`test:ci`'s `totalCount` did not move, and that is correct rather than a miss.** Everything
+this session and phase 66 added lives in **`tests-unit/`**, which `test:main` grades — the electron
+suite never sees it. So the "prove a new spec ran via the `totalCount` delta" rule applies **only to
+specs under `tests/`**; for a `tests-unit/` spec the equivalent check is `test:main`'s own total.
+
+### 🔴 Read this before you trust any `test:ci` number, including the green one above
+
+**The first run graded NOTHING, and it is the most convincing false pass this repo has produced.**
+Recorded in full because every heuristic we had failed:
 
 > `test:ci` exited **0**. `test-results.json` said `totalCount: 2779`, `failedCount: 6`, **the exact
 > six floor names**, `seed 81235`. Count, names *and* seed all agreed it was a clean baseline run.
