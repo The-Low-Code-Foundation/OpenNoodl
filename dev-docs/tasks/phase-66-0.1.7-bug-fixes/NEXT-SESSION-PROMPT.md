@@ -78,6 +78,28 @@ stale bundle either.
 ⚠️ FIX-014 changes `candidate.ts`, which those authoring specs *do* exercise — so this run was not a
 formality, and the floor holding is a real result about FIX-014 rather than an untouched baseline.
 
+✅ **Provenance was challenged and checked: the bundle contains `1716236a` and nothing else.** A
+*third* session began writing into `packages/` (UNI-007's next slice) while the suite was running,
+which is the 08-14 contamination shape exactly. It did not reach this bundle:
+
+- `1716236a` committed **09:32:27**; the log says `webpack … compiled successfully in 37734 ms`, so
+  **the bundle was frozen at ~09:33:05**. `test:ci` is `webpack && run-electron-tests` — nothing
+  written after that point can enter it.
+- The third session's **earliest** write was **09:37:50**, and `ProjectsPage.tsx` was modified at
+  **09:43:22, after the suite had already finished**. All twelve of its files postdate the bundle.
+
+🔴 **The generalisable lesson, which is better than "keep the tree quiet for the whole run": the
+contamination window is only the ~40 seconds of webpack after launch.** A tree has to be quiet for
+that, not for the fifteen minutes everyone assumes — which is a far easier thing to arrange, and
+also means a run that *looks* safely isolated can still be poisoned if a sibling saves during those
+40 seconds.
+
+⚠️ **And a misattribution to learn from: this session read that uncommitted work as the phase-67
+session's leftovers and told them so — wrongly.** We all commit as Richard, so `git log` authorship
+proves nothing. `ListAgents` (eight sessions live at the end of this one, two started within 15
+minutes) plus **file mtimes** is what separates authors. "The sibling is never singular" is a
+recorded trap and it caught this session anyway.
+
 ⚠️ **`totalCount` will NOT move for any of today's work** and that is correct, not a miss — every
 spec added today is under `tests-unit/` (graded by `test:main`), and the electron suite never sees
 those. Use `test:main`'s own total for that check.
@@ -237,6 +259,12 @@ formal window for merges. This worked flawlessly today across two sessions and c
 cross-lane defects neither could see alone. ⚠️ Match **real runner processes**
 (`node scripts/run-electron-tests.js`, `Electron test.js`) and **print the pids** — never the
 npm-script name, which matches stale watcher shells on a completely quiet checkout.
+
+⚠️ **But a negotiated window only covers the sessions you negotiated with.** This checkout ended the
+day with **eight live sessions**, two of which started in the final fifteen minutes and had agreed
+nothing with anyone. The protocol above is necessary and not sufficient: **re-check `ListAgents` and
+`git status` immediately before a run**, and know that the part that must be quiet is the ~40-second
+webpack, not the whole suite (§2).
 
 **Drive fixtures:** `fix012-drive` is the one project whose `/Probe` has 6 typed inputs and a real
 placed instance; `vfn64-drive`'s `/Components/Product photo` is the only other component with ports.
