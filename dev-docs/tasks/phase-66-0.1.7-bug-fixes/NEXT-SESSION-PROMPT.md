@@ -74,15 +74,27 @@ nobody looking. **Open the task file rather than trusting the status line.**
 | `noodl-core-ui` jest — `tests/code-editor/` | ✅ **18 suites / 327** | s24 (was 17/302) |
 | `tsc --noEmit` — `noodl-editor` package | ✅ **0 errors** | s24 |
 | `tsc --noEmit` — `noodl-core-ui` package | ⚠️ **44**, unchanged, **0 in any edited file** — all pre-existing, all in `noodl-editor` sources | s24 |
-| **`test:ci` (jasmine)** | ✅ **2843 / 6 failed** at **seed 39393** | **s21, 21:21** — still not re-run |
+| **`test:ci` (jasmine)** | ✅ **2843 / 6 failed** at **seed 39393** — **EXACT floor match** | **s25, tree `d0891746`, finished 00:00** |
 
 🔴 **Quote the six `test:ci` failures by NAME, never the count** — 4 × `AIX-006 style vocabulary`,
-2 × `AI model registry`.
+2 × `AI model registry`. s25 quoted all six in full and the set is **identical** to the floor.
 
-⚠️ **`test:ci` is now TWO trees stale and one of the s24 files is in `noodl-editor`**
-(`CodeEditorType.ts`), which jest does **not** cover. The change is small and the editor ran with 0
-renderer exceptions through a full drive, but **that is not the same as the suite**. Taking it is
-the first thing worth doing on a free checkout — and it pairs with items 4 and 5 in §5.
+⚠️ **`CodeEditorType.ts` (`6de1ae25`) — say this one precisely, because I first wrote it too
+strongly.** The run proves **the editor still boots and the existing 2843 still pass with that file
+changed**. It does **not** exercise the file's own behaviour: `test:ci` has never covered
+`CodeEditorType.ts` directly, and *"outside jest's reach"* was the reason for the run — it is still
+outside the suite's reach too. 🔴 **This is the absence of a collateral signal, not a test of the
+change.** The 6/6 drive remains the only thing that exercised the behaviour. (Caught by a peer;
+my first wording said "no regression — the gap is closed", which is the same over-claim as item 4's,
+one level down and made while recording item 4's correction.)
+
+✅ **Two disciplines worth copying from that run.** The results file's **mtime was 00:00, after the
+23:48 start**, so it is provably that run's rather than a stale artefact reading as a perfect pass.
+And the total holding at exactly 2843 was **predicted, not hoped for** — a peer first checked that
+no commit since the floor touched `packages/noodl-editor/tests/` (verified here:
+`git log 4be3f1f6..HEAD -- packages/noodl-editor/tests/` is empty). **So the usual "the count
+drifted, it's probably age" hedge was neither needed nor used** — which is the difference between a
+floor comparison that means something and one that absorbs any result.
 
 ✅ **Checkout left FREE (s24).** `dev:stop` stopped 26 processes; verified after with the §7 filter:
 `start.ts` 0, bare `webpack` 0, `Electron . --dev` 0, `Electron test.js --ci` 0. Fixture project
@@ -261,8 +273,19 @@ declining predicate from dead wiring.
    host → 0 targets**, and — the part that makes it mean anything — **a decoy matching `DEV_TOOL` +
    repo root but not `NEVER_SWEEP` was found as 1 target under identical conditions**, suite alive
    after both. 🔴 A bare "0 targets" is equally consistent with *the shield worked* and *the tool
-   found nothing*; the decoy is what makes the null attributable. **`2b758a87` / `4fd2cfdb` hold up
-   against the real Electron suite host**, not just at the enumeration layer.
+   found nothing*; the decoy is what makes the null attributable.
+   🔴 **CORRECTED — I over-claimed this, and backwards.** I wrote *"…**not just at the enumeration
+   layer**"*. `--list` **is** the enumeration layer; it kills nothing. This run proves
+   **`findDevProcesses` excludes a real live suite**, Electron host included — no more.
+   *"The fixes hold up"* silently adds *`sweep()` kills exactly what `findDevProcesses` returns*, a
+   **code read**, over a `sweep()` with **two** kill paths. Same shape as `d061bc6e`: correct to
+   three readers, and inert.
+
+   ⚠️ **But do not swing to the opposite error, which I nearly published.** The **kill** layer *has*
+   been measured — `a905af94`, a real non-dry `dev:stop` in which a **shielded decoy survived while a
+   control decoy died**. So both layers are measured and neither rests on a code read.
+   ✅ **The honest residual is narrow: a decoy stood in for the suite at the kill layer.** Say that,
+   not "the fixes hold up", and not "the kill path is unverified".
    ✅ **Corroborated from a second session (s24):** `ps -o pid,pgid,ppid` on all seven reported pids
    confirmed a single group, PGID **29984**. ⚠️ **That run also works as the peer-attribution
    example** — the group leader's **PPID is 25417, which is the announcing session's own socket
