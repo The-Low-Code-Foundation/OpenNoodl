@@ -85,6 +85,23 @@ Three design calls, each pinned by a spec that fails without it:
   signal* and works. The undeclared underscore case (`Outputs.Done_1()` → value port) breaks too,
   but its fix is `Outputs["Done_1"]()`, not a Type change — that stays with the parser-asymmetry
   ruling below and is **pinned out** so it cannot be folded in silently.
+
+  🔴 **§1's drive (`bb30773c`) makes that excluded case worse than "a different fix", and it should
+  change how the parser-asymmetry ruling is priced.** The `Type` row is gated on the output being
+  **declared in `scriptOutputs`** — a mined-only output gets **no row at all** (driven: the SCRIPT
+  OUTPUTS section is empty). So for an author who never opened the panel:
+
+  | what they wrote | port type | Type row | message 5 | outcome |
+  |---|---|---|---|---|
+  | `Outputs.Done()` | signal | ✗ none | silent | ✅ works — nothing owed |
+  | **`Outputs.Done_1()`** / `Outputs.Done.send()` | **value** | ✗ none | **silent** | 🔴 **throws, with no surface anywhere** |
+
+  ⚠️ **State the scope precisely — the second row only.** A peer summarised this as *"the author who
+  most needs 'set its Type to Signal' has no Type control and no warning"*, which reads as message 5
+  under-firing in general. It does not: row 1 is silent because the code is **correct**. The gap is
+  exactly the pinned-out case, and what §1's drive adds is that those authors have **no route at
+  all** — no panel control to discover, and no diagnostic to read. That is an argument for taking the
+  parser fix (or extending message 5 to it with its own wording), not for loosening `declared`.
 - **No fix-it, alone among the five messages.** The repair the author wants is a panel change the
   editor cannot make; the one it could make — rewriting the call as an assignment — keeps the port
   and abandons the trigger. Two different programs, not two spellings of one.
