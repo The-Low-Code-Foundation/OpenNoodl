@@ -15,7 +15,7 @@
  */
 
 import { renderRuntime, runtimeIndex, type RuntimePortValue, type RuntimeSnapshot } from './runtime';
-import type { ContextNode, ContextNodeType, ExplainContext } from './types';
+import type { ContextConnection, ContextNestedComponent, ContextNode, ContextNodeType, ExplainContext } from './types';
 
 /** Current values for the nodes being rendered, keyed as `node|port|direction`. */
 type RuntimeValues = Map<string, RuntimePortValue>;
@@ -79,6 +79,68 @@ function renderNode(node: ContextNode, values?: RuntimeValues): string {
     }
   }
   if (node.parametersOmitted) lines.push(`    (${node.parametersOmitted} further parameter(s) not shown)`);
+  return lines.join('\n');
+}
+
+function renderConnections(connections: readonly ContextConnection[]): string[] {
+  return connections.map((c) => {
+    const arrow = c.isSignal ? '⇒ (signal)' : '→';
+    return `- \`${c.fromId}\`.${c.fromProperty} ${arrow} \`${c.toId}\`.${c.toProperty}`;
+  });
+}
+
+/**
+ * FIX-001 §1c — one component instance's interior.
+ *
+ * The heading says whose interior it is and the preamble says three things the
+ * model would otherwise have to infer, each of which it infers wrongly: these
+ * nodes are somewhere else, citing them navigates there, and **no runtime value
+ * was read for any of them**. That last one matters most when a preview *is*
+ * running: the Runtime section lists what was asked about, an interior node was
+ * never asked about, and "absent from the list" would otherwise read as "not
+ * mounted" — the exact `asked − answered` confusion the runtime layer was fixed
+ * for in §1a.
+ */
+function renderNested(nested: ContextNestedComponent, parentName: string): string {
+  const instances = nested.instanceIds.map((id) => `\`${id}\``).join(', ');
+  const lines = [
+    `### Inside ${nested.name}`,
+    `This is what the ${nested.instanceIds.length === 1 ? 'instance' : 'instances'} ${instances} in ` +
+      `${parentName} ${nested.instanceIds.length === 1 ? 'is' : 'are'} made of. These nodes live in ` +
+      `${nested.name}, not in ${parentName}; a citation to one navigates the reader into that component.`,
+    `${nested.nodeCount} node(s) in total, ${nested.nodes.length} shown.`
+  ];
+  if (nested.description) lines.push(`description, written by the author: ${nested.description}`);
+
+  // 🔴 The empty cases are stated, never left to inference. Measured on the §1c
+  // drive: given a *complete* two-node interior with no interface, the model
+  // still wrote "this is only a 2-node, bounded read … I can't rule out the
+  // component having its own Inputs defined elsewhere". Both facts were in the
+  // context — as two numbers to compare, and as a line that was simply absent.
+  // A reader cannot tell "no inputs" from "inputs not included", so it hedged,
+  // and the hedge was false. Same rule as §1a's no-preview branch: an absence
+  // that has to be derived gets derived wrongly.
+  lines.push(
+    nested.inputPorts.length
+      ? `it takes in: ${nested.inputPorts.join(', ')}`
+      : `it takes nothing in: it has no Component Inputs ports at all.`
+  );
+  lines.push(
+    nested.outputPorts.length
+      ? `it gives out: ${nested.outputPorts.join(', ')}`
+      : `it gives nothing out: it has no Component Outputs ports at all.`
+  );
+  lines.push(
+    nested.nodesOmitted > 0
+      ? `${nested.nodesOmitted} of its nodes are not shown; do not describe what they do.`
+      : `That is the whole component — nothing inside it was left out of this read.`
+  );
+
+  lines.push('', ...nested.nodes.map((node) => renderNode(node)));
+
+  if (nested.connections.length) {
+    lines.push('', `Wires inside ${nested.name}:`, ...renderConnections(nested.connections));
+  }
   return lines.join('\n');
 }
 
@@ -151,13 +213,28 @@ export function renderContext(context: ExplainContext, runtime?: RuntimeSnapshot
   );
 
   if (context.connections.length) {
-    const lines = context.connections.map((c) => {
-      const arrow = c.isSignal ? '⇒ (signal)' : '→';
-      return `- \`${c.fromId}\`.${c.fromProperty} ${arrow} \`${c.toId}\`.${c.toProperty}`;
-    });
-    sections.push(`## Connections\n${lines.join('\n')}`);
+    sections.push(`## Connections\n${renderConnections(context.connections).join('\n')}`);
   } else {
     sections.push(`## Connections\n(none between the nodes shown)`);
+  }
+
+  // FIX-001 §1c. After the parent's own nodes and wires, because it answers a
+  // question the reader only has once they have those: "and what does that
+  // instance actually do with what I send it".
+  if (context.nested?.length) {
+    sections.push(
+      [
+        `## Inside the component instances that were selected`,
+        `A component instance is a whole other component placed in this graph. The reader selected`,
+        `${context.nested.length === 1 ? 'one' : String(context.nested.length)}, so ${
+          context.nested.length === 1 ? 'its' : 'their'
+        } interior follows. No current values were read for any node below,`,
+        `whatever the Runtime section says — those nodes were never asked about, which is not the`,
+        `same as their being unmounted.`,
+        '',
+        context.nested.map((n) => renderNested(n, context.component.name)).join('\n\n')
+      ].join('\n')
+    );
   }
 
   if (context.nodeTypes.length) {

@@ -20,10 +20,12 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { AiClient } from '@noodl-models/AiAssistant/client';
 import { ExplainContextError } from '@noodl-models/AiAssistant/explain/assemble';
 import { collectAuthoredNotes, type AuthoredNotesResult } from '@noodl-models/AiAssistant/explain/authoredNotes';
+import { componentForCitedNode, componentsInExplanation } from '@noodl-models/AiAssistant/explain/citations';
 import { ExplainSession, type ExplainSessionState } from '@noodl-models/AiAssistant/explain/ExplainSession';
-import { fromComponentModel } from '@noodl-models/AiAssistant/explain/graph';
+import { fromComponentModel, fromProjectModel } from '@noodl-models/AiAssistant/explain/graph';
 import type { ExplainDetail } from '@noodl-models/AiAssistant/explain/prompts';
-import type { ExplainScope } from '@noodl-models/AiAssistant/explain/types';
+import type { ExplainGraph, ExplainScope } from '@noodl-models/AiAssistant/explain/types';
+import { ProjectModel } from '@noodl-models/projectmodel';
 import { createExplainRuntime } from '@noodl-utils/provenance/explainRuntime';
 
 import { FeedbackType } from '@noodl-constants/FeedbackType';
@@ -55,6 +57,26 @@ const DETAIL_OPTIONS = [
   { label: 'In depth', value: 'deep' }
 ];
 
+/**
+ * The graph assembly reads from.
+ *
+ * FIX-001 §1c — the whole project, not just the active component. Assembly
+ * still *renders* only the active component (see `assembleContext`); what the
+ * rest is for is resolving a selected component instance to the component it
+ * instantiates, which cannot be done from one component's nodes. The adapter is
+ * a plain walk producing plain data, so the session stays read-only by
+ * construction exactly as before.
+ *
+ * The single-component fallback is not dead code: `ProjectModel.instance` is
+ * unset in the launcher and during a project switch, and an explanation of the
+ * component in front of the user beats an error.
+ */
+function explainGraph(component: Parameters<typeof fromComponentModel>[0]): ExplainGraph {
+  const project = ProjectModel.instance;
+  if (project) return fromProjectModel(project);
+  return { components: [fromComponentModel(component)] };
+}
+
 /** What the current selection lets the user ask for. */
 function scopeForSelection(selectedNodeIds: string[]): { scope: ExplainScope; label: string } {
   if (selectedNodeIds.length === 1) return { scope: 'node', label: 'Explain this node' };
@@ -81,9 +103,16 @@ export function ExplainPanel() {
   // Drop the session when the user navigates away: an explanation of a component
   // you are no longer looking at is worse than none, because its citations point
   // somewhere off screen.
+  //
+  // 🔴 FIX-001 §1c — "away" now means away from *everything the explanation
+  // covers*, not just the component it was assembled from. An interior citation
+  // navigates into the component it read, which under the old comparison was
+  // indistinguishable from leaving: clicking a link would have disposed the very
+  // answer it was in, and the panel would blank at the moment the feature worked.
   useEffect(() => {
     if (!state) return;
-    if (state.context.component.name !== selection.componentName) {
+    const covered = componentsInExplanation(state.context);
+    if (!selection.componentName || !covered.includes(selection.componentName)) {
       sessionRef.current?.dispose();
       sessionRef.current = null;
       setState(null);
@@ -125,9 +154,8 @@ export function ExplainPanel() {
     setError(null);
 
     try {
-      // Adapt only the active component: explanation never reads the project.
       const session = ExplainSession.create(
-        { components: [fromComponentModel(component)] },
+        explainGraph(component),
         { scope, componentName: component.fullName, nodeIds: selection.selectedNodeIds },
         // FIX-001 §1a. The panel is the only caller with a socket and a
         // `WarningsModel` in reach, so it is the only one that supplies this;
@@ -154,6 +182,23 @@ export function ExplainPanel() {
   }, [question, state?.busy]);
 
   const componentName = state?.context.component.name ?? selection.componentName;
+
+  /**
+   * FIX-001 §1c — where each cited node actually lives.
+   *
+   * Built once per session rather than per click: the context is stable for the
+   * life of a session while `state` changes on every streamed delta, and a
+   * lookup rebuilt on each delta would be rebuilt hundreds of times per answer.
+   */
+  const componentForNode = useMemo(() => {
+    const context = state?.context;
+    if (!context?.nested?.length) return undefined;
+    const owners = new Map<string, string>();
+    for (const nested of context.nested) {
+      for (const node of nested.nodes) owners.set(node.id, componentForCitedNode(context, node.id));
+    }
+    return (nodeId: string) => owners.get(nodeId) ?? context.component.name;
+  }, [state?.context]);
 
   /**
    * LEG-003 §2 — the author's own text, read straight from the project.
@@ -292,7 +337,12 @@ export function ExplainPanel() {
                     <Text textType={TextType.Secondary}>{turn.text}</Text>
                   </HStack>
                 ) : (
-                  <ExplanationView key={index} markdown={turn.text} componentName={componentName ?? ''} />
+                  <ExplanationView
+                    key={index}
+                    markdown={turn.text}
+                    componentName={componentName ?? ''}
+                    componentForNode={componentForNode}
+                  />
                 )
               )}
 

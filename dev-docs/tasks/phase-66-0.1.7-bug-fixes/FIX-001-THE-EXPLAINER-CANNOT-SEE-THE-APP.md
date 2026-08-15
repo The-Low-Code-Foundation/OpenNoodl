@@ -2,11 +2,13 @@
 
 **Report 1 (a, b, c)** · Tier 1 · Effort **M** (1a) + **S** (1b) + **M/L** (1c)
 
-> **Status (session 16, 2026-08-15).** **1a is built, gated AND DRIVEN — criteria 1, 2, 3 all
-> pass against the running app.** The 1a drive found one real defect, now fixed (`f8f215d0`).
-> **1b is DRIVEN — criterion 4 passes on both entry routes**, and the session-14 source reading
-> was right: nothing needed building. **1c is the only part still open.** See §"What shipped",
-> §"The drive" and §"1b DRIVEN" at the foot of this file.
+> **Status (session 17, 2026-08-15). ✅ FIX-001 IS CLOSED — all five acceptance criteria driven
+> against the running app.** 1a driven s15 (criteria 1–3, one defect found and fixed, `f8f215d0`);
+> 1b driven s16 (criterion 4, both entry routes, nothing needed building); **1c built and driven
+> s17 (criterion 5)**. Three defects were found across the three drives and all three are fixed.
+> The only thing left is the **§1a.5 `backwardWalk` stretch**, which s15 showed is worth
+> re-deciding rather than building: the answers already reach the upstream cause via warnings.
+> See §"What shipped", §"The drive", §"1b DRIVEN" and §"1c BUILT/DRIVEN" at the foot of this file.
 
 > *"Be able to ask about a node's configuration AND its current input and output signals and values.
 > Right now when I said 'why is the output value null?' it wasn't able to detect and explain."*
@@ -86,8 +88,12 @@ of context wasted on duplicated port docs; do not repeat that.
   a snapshot with a timestamp? (Recommend: snapshot per turn, re-resolved on each follow-up.)
 - **Truncation/redaction** — port values can be large or secret. What cap per value, and is there
   any redaction story?
-- **1c depth** — one level in, or recursive? Only when the instance is selected, or for neighbours
-  too? Which context bound gives when a nested read doubles the size?
+- ~~**1c depth** — one level in, or recursive? Only when the instance is selected, or for neighbours
+  too? Which context bound gives when a nested read doubles the size?~~ **Answered by the §1c build
+  (session 17), all three:** *one level*, *selected only*, and *no existing bound gives* — the
+  interior gets its **own** budget (40 nodes at node scope, 25 at subgraph, 3 and 2 components
+  respectively) and the type block is deduped across parent and interiors, so the growth is bounded
+  and the parent's slice is unchanged. Re-open only with a measurement, not a preference.
 - The session's *"read-only by construction"* doc claim (`ExplainSession.ts:8-13`) must be re-worded:
   reading port values is still read-only, but the session now holds runtime data.
 
@@ -285,3 +291,216 @@ It is not one — the rendered bounds (ports, labels) extend past `nodeSize`.
 AI build it points at the **detached preview canvas** (`roots: []`, element measures 0×0) while the
 live graph has 9 roots. Navigating does not re-register it. The live editor is
 **`NodeGraphContextTmp.nodeGraph`**, reachable through the webpack module cache.
+
+---
+
+## 1c BUILT — looking inside a component instance, session 17, 2026-08-15
+
+**Built and gated; not yet driven.** Criterion 5 is the drive this owes.
+
+| File | What changed |
+|---|---|
+| `explain/types.ts` | `ContextNestedComponent`; `ExplainContext.nested?`; two new option bounds; `stats.nestedNodeCount?` |
+| `explain/graph.ts` | `isInterfaceNodeType` exported — the rule `componentPorts` already used, now named |
+| `explain/assemble.ts` | `contextNode()` factored out; `readInterior` + `assembleNested`; type docs merged across parent and interiors |
+| `explain/render.ts` | `renderConnections` factored out; `renderNested`; the `## Inside the component instances that were selected` section |
+| `explain/prompts.ts` | new `NODES INSIDE A COMPONENT INSTANCE` section |
+| `explain/citations.ts` | `citableNodeIds`, `componentForCitedNode`, `componentsInExplanation` — resolution now spans the boundary |
+| `explain/ExplainSession.ts` | the debug line reports which interiors were read, and how much of each |
+| `ExplainPanel.tsx` | passes the **project** graph (`explainGraph`), and a per-citation component resolver |
+| `components/ExplanationView.tsx` | optional `componentForNode` — a citation can now navigate to another component |
+| `tests/ai/explain-nested.test.ts` | **new**, 25 specs; exported from `tests/ai/index.ts` |
+
+### Six decisions worth not re-litigating
+
+1. 🔴 **The interior is a separate section, not more entries in `context.nodes`.** Four things take
+   their meaning from "`context.nodes` is one component's slice": the runtime port set
+   (`portsToResolve`), the warning filter in `renderRuntime`, the node budget in `bounds`, and what
+   `revealCitedNode` may reach without switching components. Folding another component's nodes into
+   that list would have redefined all four silently. The pre-existing spec *"does not include the
+   interior of a component instance"* therefore still passes — so it was **renamed and re-commented**
+   to say what it now actually guards, because a spec whose name describes an abandoned promise is
+   worse than no spec.
+2. 🔴 **Selected instances only, one level deep.** A neighbour that happens to be an instance stays a
+   box; otherwise the size of an answer depends on what the selection sits *next to*. This is the
+   ruling FIX-001's open questions asked for ("one level in, or recursive? only when selected?").
+3. 🔴 **A component the graph cannot resolve is skipped silently.** Assembly cannot tell "this
+   project has no such component" from "the caller handed me one component" — the panel passes the
+   project, the MCP and review assemblers pass what they have. A bounds note would be a guess about
+   the caller. Gated: with a single-component graph the rendered context is **byte-identical** to
+   the pre-1c output.
+4. 🔴 **Interface nodes survive the bound first.** `Article Page Header` has its `Component
+   Inputs`/`Outputs` at index 11 and 12 of 22 — a document-order read cut to 5 nodes drops exactly
+   the boundary the parent wired to, and answers "what happens to what I send in" with the one part
+   of the graph that cannot say. What is *kept* is still emitted in document order.
+5. 🔴 **The §1a absence rule, one layer down.** No runtime value is read for an interior node, so an
+   interior node is absent from the Runtime section — and "absent" reads as "not mounted", which the
+   prompt calls *"often the entire answer to why is this empty"*. Both the render and the prompt say
+   outright that nobody asked. A spec asserts `renderRuntime` never names an interior node.
+6. **Type documentation is merged across the parent and every interior**, deduped by type name, with
+   the parent's types first so a type budget cuts interior docs before the selection's. AIX-010
+   measured 63% of a review context going to duplicated port docs; this does not repeat it.
+
+### 🔴 The defect the build found by reading — the click that would have erased its own answer
+
+The panel disposes a session when the user navigates away, comparing
+`state.context.component.name !== selection.componentName`. That rule was exactly right for four
+months: citations never pointed outside the explained component, so leaving it meant every link in
+the answer was now off screen.
+
+**§1c makes an interior citation a navigation away.** `useCanvasSelection` refreshes on
+`activeComponentChanged`, so clicking a link into the instance's interior would have satisfied that
+comparison and **disposed the explanation the click came from** — the panel blanking at the exact
+moment the feature worked, and the navigation still succeeding, so it would have read as "the answer
+disappears when I click a link" rather than as anything to do with §1c.
+
+Fixed before driving: `componentsInExplanation(context)` returns the parent **plus every interior
+read**, and the panel disposes only when the user goes somewhere in neither. A spec pins it.
+
+⚠️ **This was found by reading the diff, not by a gate and not by a drive** — no spec covers the
+panel's disposal effect (React, so out of reach of both runners), and a drive that clicked the
+citation would have seen the navigation work and might well have scored criterion 5 a pass while the
+answer vanished underneath it.
+
+### The instruments were checked against each other
+
+Three mutations, each required to make the specs **disagree** with the green run:
+
+| Mutation | Result |
+|---|---|
+| interior read disabled entirely | **16 of 25 fail** (the 9 survivors are the negative specs, which *should* pass with the feature off) |
+| interface-priority ordering removed | **exactly 1 fails** — the bound spec, as designed |
+| `citableNodeIds` blind to interiors | **exactly 1 fails** — the citation-resolution spec |
+
+### Gates
+
+| Gate | Reading | When |
+|---|---|---|
+| editor `tsc --noEmit` | ✅ **0 errors** | after every edit, last at 17:0x |
+| `eslint` on the changed surfaces | ✅ clean | — |
+| `tests/ai/explain-nested.test.ts` | ✅ **25/25**, plain-Node jest under a scratch config | — |
+| `tests/ai/explain-context.test.ts` | ✅ **30/30**, same runner — the pre-existing assembly suite | — |
+| `test:ci` | ✅ **at the floor — 6 failures by name**, `totalCount` 2843, seed 39393, results mtime **18:13:32**. The 29 new specs all ran and passed | 18:13 |
+
+⚠️ **`explain-runtime.test.ts` and `explain-session.test.ts` cannot run in the plain-Node runner** —
+they import `ExplainSession` → `AiClient` → editor singletons, which is the boundary `jest.config.js`
+documents. They are `test:ci`'s to prove, and `test:ci` is the only gate that covers `tests/ai/` at
+all. The scratch-jest readings above are **early feedback, not the gate**.
+
+✅ **A peer's `test:main` (203 suites / 3138, 0 failures, 17:30) graded this tree** — including
+`tests-unit/leg-003/authoredNotes.test.ts`, which imports `assembleContext`. ⚠️ Its honest scope:
+plain-Node jest never compiles `views/`, so the panel half is untouched by it.
+
+### 🔴 Two gate traps this task walked into, in the same failure
+
+The first `test:ci` **exited 0 with no `test-results.json` written** — the documented signature of a
+broken build, and it was one: the webpack compile failed on **one line of the new spec**.
+
+```
+TS2339: Property 'arrayContaining' does not exist on type '{ … jasmine … }'
+```
+
+1. 🔴 **`expect.arrayContaining` is a jest API; `tests/` runs under jasmine.** The plain-Node jest
+   runner used for early feedback *has* it, so the spec compiled and passed 26/26 there and failed
+   the real build. **Rule for that technique: only use matchers both runners have** — `toContain`
+   twice instead. Early feedback from a different runner is worth having and is not the gate.
+2. 🔴 **`npx tsc --noEmit -p tsconfig.json` never reads `tests/` at all.** Its `include` is
+   `["src/editor", "src/shared", "src/main", "@include-types"]`, and
+   `tsc -p tsconfig.json --listFiles | grep -c "noodl-editor/tests/"` returns **0** — measured, not
+   inferred. So "editor typecheck: 0 errors" says **nothing** about any spec file. The only thing
+   that typechecks `tests/` is `test:ci`'s webpack, whose failure mode is an exit code of 0.
+
+Together: a type error in a spec is invisible to the typecheck, invisible to the plain-Node runner,
+and reported by the one gate that covers it as a **silent pass**.
+
+---
+
+## 🚗 1c DRIVEN — criterion 5, session 17, 2026-08-15
+
+**Criterion 5 passes.** With it, **FIX-001 is closed**: 1a driven (s15), 1b driven (s16), 1c built
+and driven (s17). Only the §1a.5 `backwardWalk` stretch remains, and s15 already showed its marginal
+value is lower than the task assumed.
+
+Fixture: a scratchpad copy of `fix018-drive` — the only project on this disk with placed component
+instances — with **two tokens planted in interiors only**: `MARROWFAT 4193` on a Text inside
+`/Widgets/Product Card`, and `kestrelRebate` in an Expression inside `/Logic/Cart Totals`. Neither
+string exists in `/App`, neither is derivable from a component name, and **the question named
+neither**: the opening turn was the "Explain this node" button with nothing typed.
+
+### The claims, pinned before driving
+
+Seven, written to `DRIVE-CLAIMS.md` before the editor was launched. The load-bearing three are
+C3 (the answer quotes a token that only the interior read could supply), C4 (it cites an interior id)
+and C5 (clicking that citation crosses the component boundary).
+
+| # | Claim | Result |
+|---|---|---|
+| C1 | selecting the card instance yields one interior, 2 nodes, 0 omitted | ✅ `/Widgets/Product Card`, `instanceIds: [bbbbbbbb…102]` |
+| C2 | the **rendered** context carries the token and the interior id | ✅ both; 4,326 chars against the control's 2,372 |
+| C3 ⭐ | the **answer** quotes `MARROWFAT 4193` | ✅ verbatim — *"authored as the literal string \"MARROWFAT 4193\""* |
+| C4 ⭐ | the answer cites an interior id | ✅ **2 of its 4 citations** are `cccccccc…` ids, which do not exist in `/App` |
+| C5 ⭐ | clicking one switches component **and** selects the node | ✅ `activeComponent` `/App` → `/Widgets/Product Card`, selection `cccccccc…101` "Product name" |
+| C6 | control: a non-instance node yields no interior and no token | ✅ `nested: []`, `covers: ['/App']` only |
+| C7 | two instances of one component collapse to one interior | ✅ one section, **two** `instanceIds`, `kestrelRebate` present |
+
+### 🔴 Two controls, because a pass on its own proves less than it looks
+
+**The token control (C6).** A drive where the answer merely *describes* an instance would have passed
+a lazy reading — a model can say "it renders a product card" from the component's name alone. So the
+claim was written against a string a model cannot derive. And the control shows where it comes from:
+selecting the plain `Expression` in the same component, in the same session, produces a context with
+**no interior, no token, and `/App` as the only component covered**.
+
+**The disposal control.** C5's real risk was the opposite of failure — that the answer survived the
+navigation because I had *broken disposal altogether* rather than narrowed it. So the same session
+was then navigated to `/Logic/Cart Totals`, a component the explanation does **not** cover:
+the session was **dropped** (`answerBlocks: 0`), as it should be. Survives what it covers, drops what
+it does not — the two readings disagree, which is what makes either of them evidence.
+
+✅ **The §1a discipline held one layer down, unprompted.** With a preview running, the answer said
+*"the preview is running, but it didn't return values for any port in this context, so I can't
+confirm what's actually rendering on screen right now versus what's authored"* — and made **no**
+"not mounted" claim about the interior nodes, which is exactly the lie §1a was fixed for.
+
+### Two observations worth not re-learning
+
+🔴 **The model hedged about a read that was complete — found by drive, fixed, and re-driven.**
+
+Run 1 ended: *"this is only a 2-node, bounded read of the interior, so I can't rule out the component
+having its own Inputs defined elsewhere."* The read was **whole** (2 of 2 nodes, `nodesOmitted: 0`)
+and the component provably has **no** interface. Both facts were in the context — one as *two numbers
+to compare* ("2 node(s) in total, 2 shown"), the other as a **line that was simply absent**, because
+`it takes in:` rendered only when the port list was non-empty.
+
+**Fix — the empty cases are now stated, never omitted:**
+
+| Case | Was | Is |
+|---|---|---|
+| no input ports | *(line absent)* | `it takes nothing in: it has no Component Inputs ports at all.` |
+| no output ports | *(line absent)* | `it gives nothing out: it has no Component Outputs ports at all.` |
+| whole interior read | two numbers to compare | `That is the whole component — nothing inside it was left out of this read.` |
+
+**Re-driven, same node, same fixture, no question typed.** Run 2: *"it exposes no Component Inputs
+or Component Outputs ports at all … Because it has zero input ports, everything it displays is fixed
+by what's authored inside the component itself … there's no mechanism visible here for /App to change
+the product shown."* **Definite where run 1 hedged, and the definite claim is the true one.** Run 2
+also kept the §1a honesty unprompted: *"no runtime values were read for any port on either the
+instance or its interior nodes."*
+
+⚠️ **The interface is computed from *all* of the component's nodes, not the kept ones** — so
+"it has no Component Inputs ports at all" stays true when the node bound cuts the read short. A spec
+pins exactly that, because computing it from `kept` would turn "cut short" into "has no outputs".
+
+🔴 **This is `asked − answered` in different clothes, and it is the third time this rule has bitten
+this one feature** (§1a's no-preview branch, §1a's absence claim, now §1c's empty interface):
+**an absence a reader has to derive gets derived wrongly. Write the empty case as text.**
+
+⚠️ **The click's reported coordinates did not match the rect measured one call earlier** (`284,481`
+against a box at y 414–429). The effect was correct — the right node was selected — but the
+measurement and the click were **two `cdp` invocations**, and the panel moved between them. Do not
+claim "clicked at the measured point" across two connections; claim the effect.
+
+**Cost:** one AI turn. C1, C2, C6 and C7 were checked by calling the *pure* assembler over the live
+editor's own project graph through the webpack module cache, which needs no provider at all.
+`fromProjectModel` took **0.7 ms** for this project — ⚠️ 3 components, so that is a smoke test, not a
+scale measurement.

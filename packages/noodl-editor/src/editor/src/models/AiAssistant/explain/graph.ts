@@ -76,6 +76,18 @@ interface EditorComponentLike {
 const COMPONENT_INPUT_TYPES = new Set(['Component Inputs', 'PageInputs']);
 const COMPONENT_OUTPUT_TYPES = new Set(['Component Outputs']);
 
+/**
+ * True for the nodes that *are* a component's interface.
+ *
+ * FIX-001 §1c reads them first when a bound cuts an interior short: they are
+ * the boundary the parent actually wired to, so an interior read that dropped
+ * them would answer "what happens to what I send in" with the one part of the
+ * graph that cannot say.
+ */
+export function isInterfaceNodeType(type: string): boolean {
+  return COMPONENT_INPUT_TYPES.has(type) || COMPONENT_OUTPUT_TYPES.has(type);
+}
+
 /** The component's own interface, as a parent graph sees it. */
 export function componentPorts(component: GraphComponent): { inputPorts: string[]; outputPorts: string[] } {
   const inputPorts = new Set<string>();

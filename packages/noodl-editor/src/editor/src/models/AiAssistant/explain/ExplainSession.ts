@@ -11,6 +11,12 @@
  * written to even by accident, which is what lets the panel state the guarantee
  * to the user rather than merely intending it.
  *
+ * FIX-001 §1c widened *what* that graph covers — the panel now adapts the whole
+ * project, so a selected component instance can be resolved to the component it
+ * instantiates — and changed nothing about the guarantee: a wider snapshot of
+ * plain data is still plain data, and assembly still renders one component's
+ * slice plus the interiors it was asked for.
+ *
  * @module AiAssistant/explain/ExplainSession
  */
 
@@ -121,6 +127,11 @@ export class ExplainSession {
       `[explain] ${request.scope} context — ${context.stats.nodeCount} nodes, ` +
         `${context.stats.connectionCount} connections, ${context.stats.nodeTypeCount} types, ` +
         `${context.stats.renderedChars} chars, ${runtimePorts.length} live port(s) to resolve` +
+        (context.nested?.length
+          ? `, inside ${context.nested.length} instance(s): ${context.nested
+              .map((n) => `${n.name} (${n.nodes.length}/${n.nodeCount})`)
+              .join(', ')}`
+          : '') +
         (context.bounds.truncated ? ` (bounded: ${context.bounds.notes.join('; ')})` : '')
     );
 

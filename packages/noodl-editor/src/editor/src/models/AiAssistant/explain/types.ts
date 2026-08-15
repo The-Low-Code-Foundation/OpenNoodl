@@ -157,6 +157,40 @@ export interface ContextComponentShape {
   visualRoots: string[];
 }
 
+/**
+ * FIX-001 §1c — the interior of a component instance the user selected.
+ *
+ * A separate section rather than more entries in {@link ExplainContext.nodes},
+ * and that is a load-bearing choice: everything else in this feature reasons
+ * about "the slice of *this* component" — which ports the runtime was asked
+ * about, which warnings are visible, which nodes the bounds counted, what
+ * `revealCitedNode` may navigate to without switching components. Folding
+ * another component's nodes into that list would quietly change the meaning of
+ * all four. They live here instead, with their own bound and their own owner.
+ */
+export interface ContextNestedComponent {
+  /**
+   * The component, named as the *project* names it — not as the instance's type
+   * string spells it. Navigation resolves this name exactly
+   * (`ProjectModel.getComponentWithName`), and the two forms differ ("/#Home"
+   * vs "Home").
+   */
+  name: string;
+  /** The author's own sentence about it, verbatim. See {@link GraphComponent.description}. */
+  description?: string;
+  /** Selected instances in the parent whose interior this is — always at least one. */
+  instanceIds: string[];
+  /** The component's own interface, as the parent sees it. */
+  inputPorts: string[];
+  outputPorts: string[];
+  /** How many nodes the component has in total, before this read's bound. */
+  nodeCount: number;
+  nodes: ContextNode[];
+  connections: ContextConnection[];
+  /** Nodes inside the component that this read left out. */
+  nodesOmitted: number;
+}
+
 /** What assembly had to leave out, so both the prompt and the UI can say so. */
 export interface ContextBounds {
   /** Nodes in the component that were not included at all. */
@@ -178,12 +212,21 @@ export interface ExplainContext {
   nodes: ContextNode[];
   connections: ContextConnection[];
   nodeTypes: ContextNodeType[];
+  /**
+   * FIX-001 §1c — interiors of the component instances among the selection.
+   * Absent when nothing selected is an instance, when the graph handed to
+   * assembly does not contain the referenced component (a single-component
+   * graph resolves nothing), or when the bound is zero.
+   */
+  nested?: ContextNestedComponent[];
   bounds: ContextBounds;
   /** Rough size accounting, logged so context growth is observable. */
   stats: {
     nodeCount: number;
     connectionCount: number;
     nodeTypeCount: number;
+    /** Nodes read inside component instances — counted apart from `nodeCount`. */
+    nestedNodeCount?: number;
     /** Character length of the rendered context block. */
     renderedChars: number;
   };
@@ -201,4 +244,12 @@ export interface ExplainContextOptions {
   maxParameterChars?: number;
   /** Hard cap on distinct node types documented. */
   maxNodeTypes?: number;
+  /**
+   * FIX-001 §1c — how many *distinct* components to read the interior of. Only
+   * components instantiated by a selected node are candidates; zero disables
+   * the nested read entirely.
+   */
+  maxNestedComponents?: number;
+  /** Hard cap on nodes read inside one component interior. */
+  maxNestedNodes?: number;
 }

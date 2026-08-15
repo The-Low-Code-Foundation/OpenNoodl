@@ -15,6 +15,9 @@ export * from './explain-session.test';
 // FIX-001 §1a: the runtime layer — current values, unmounted nodes and editor
 // warnings, as plain data. The socket that fills it needs a preview; this does not.
 export * from './explain-runtime.test';
+// FIX-001 §1c: reading inside a selected component instance — its own section,
+// its own bound, and citations that cross the component boundary.
+export * from './explain-nested.test';
 
 // AIX-002: the authoring loop. Fully offline — the chat function is a script;
 // the validation gate runs against the real project corpus.
