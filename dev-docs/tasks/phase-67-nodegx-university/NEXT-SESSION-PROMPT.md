@@ -6,10 +6,10 @@ Paste the block below into a fresh session.
 
 Continue phase 67 (NodeGX Community), `dev-docs/tasks/phase-67-nodegx-university/`.
 
-**Read first, in this order:** `RULINGS.md` (thirteen rulings, **and Blocker 1's two amendments** —
-the second one is from 2026-08-15 and changes what "the vocabulary rule is closed" means), then
-`UNI-007-THE-LESSON-BEAMED-INTO-THE-EDITOR.md` (its header records what is built), then `TASKS.md`.
-`PRIOR-ART-RECONCILIATION.md` if you have not read it before.
+**Read first, in this order:** `RULINGS.md` (thirteen rulings, **and Blocker 1's three amendments** —
+the third is from 2026-08-15 and is about *drives*, not about the vocabulary rule), then
+`UNI-007-THE-LESSON-BEAMED-INTO-THE-EDITOR.md` (its header records what is built **and driven**),
+then `TASKS.md`. `PRIOR-ART-RECONCILIATION.md` if you have not read it before.
 
 **🔴 The rulings queue is EMPTY. Nothing is blocked on a decision.** Do not re-litigate D1–D13 — if
 one is wrong, amend `RULINGS.md` with a date and a reason. The four to keep in your head:
@@ -17,322 +17,175 @@ one is wrong, amend `RULINGS.md` with a date and a reason. The four to keep in y
 - **D2** — the platform is **NodeGX Community**; **NodeGX University is its learning wing**. Editor
   button: **"Sign in to NodeGX"**. ⚠️ `community.nodegx.dev` is *not registered* — a choice, not a fact.
 - **D5** — the Learning folder is a **visible launcher section, platform-managed**: edit freely,
-  can't rename/detach/delete, reset = re-pull. 🔴 **The editor process writes it.** ✅ Built and
-  driven 2026-08-15 — ⚠️ **but the opener shipped without attaching a lesson layer; see below.**
+  can't rename/detach/delete, reset = re-pull. 🔴 **The editor process writes it.**
 - **D9** — 🔴 ruled *against* the recommendation: a record-capped backend means UNI-008 holds
   end-user data. Five obligations; effort raised; still last.
 - **D13** — coaching delivery (**LearnBook**) is **phase 68**, platform stack, after Tier 1 + UNI-004.
 
-## What is built (UNI-007 slices 1–3)
+## 🎉 UNI-007's editor arc is COMPLETE — slices 1–4 built and driven
 
 | Slice | What | Where |
 |---|---|---|
-| 1 | static two-vocabulary check | `noodl-editor/src/editor/src/models/lessonverify.ts` |
-| 1 | grading runner, two engines | `.../models/lessongrading.ts` |
-| 2 | engine 2's **MCP** adapter | `noodl-mcp/src/lessons/wholeSolutionGrader.ts` |
-| 3a | **the Learning folder register** | `.../models/learningfolder.ts` |
-| 3b | **the launcher's Learning section** | `noodl-core-ui/.../components/LearningSection/` + `.../views/projectsview.learningstate.ts` + `ProjectsPage.tsx` |
+| 1 | static two-vocabulary check + the grading runner (two engines) | `models/lessonverify.ts`, `models/lessongrading.ts` |
+| 2 | engine 2's **MCP/sidecar** adapter | `noodl-mcp/src/lessons/wholeSolutionGrader.ts` |
+| 3 | the **Learning folder** register + the launcher's Learning section | `models/learningfolder.ts`, `noodl-core-ui/.../LearningSection/` |
+| 4 | **"check my work"**, engine 2's **editor** adapter, and the lesson layer that was never attached | `models/lessoncheck.ts`, `models/lessonwholesolution{,.live}.ts`, `models/lessondrawncount.ts`, `models/learninglesson.ts` |
 
-**110 tests** in `noodl-editor/tests-unit/uni-007/` (jest / `test:main`), 21 in `noodl-mcp`.
-Commits: `15763dd7`, `b9664822`, **`e3aec6b6`**, **`a89ec153`**, **`6d6d067e`**, **`d2e4f91c`**.
+**162 tests** in `noodl-editor/tests-unit/uni-007/` (jest / `test:main`), 21 in `noodl-mcp`.
+Slice-4 commits: `61d4a6d7`, `c0d04bba`, `c38fcb7b`, `47fa6040`, `393ec7bf`, docs `efa93693`, `06808c67`.
 
-**Criterion 2's launcher half is met and was driven in the real editor** — install refused a bad
-bundle, install accepted a good one, the card appeared with no reload, reset re-pulled and cleared
-the grade, and opening the lesson **did not grow the recents list** (the D5 guarantee that would
-have failed silently had the opener used `LocalProjectsModel.openProjectFromFolder`).
-Criteria 3 and 4 are met.
+**Criteria 2, 3 and 4 are met and DRIVEN.** Criterion 5 (the full loop through UNI-002's points
+event) needs the platform. Criterion 1 (intake → path) is platform work and not started.
 
-🔴 **But slice 3 shipped a defect the drive did not catch, and slice 4's author found it:
-`handleOpenLearningLesson` never set `project.lesson`, so the lesson opened as an ORDINARY
-PROJECT** — `EditorPage` attaches the lesson layer only when `isLesson()`, and nothing set that
-field outside the hosted-zip path. No steps, no instructions, nothing to grade against.
+## 🔴 What slice 4 found, because it is the thing to carry forward
 
-⚠️ **The drive verified that the project opened and that recents did not grow. Both true, and
-neither is "can this lesson be taught?"** — the recorded *verify the consequence, not just the
-mechanism* trap, walked into by choosing the D5 guarantee as the consequence. It also retro-explains
-the title mismatch slice 3 recorded as a puzzle: there was no lesson layer to show a lesson title.
-**A symptom described accurately and explained plausibly is how a defect stops being investigated.**
+**A Learning-folder lesson had no lesson layer at all.** `EditorPage` attaches one only when
+`ProjectModel.instance.isLesson()` — `project.lesson !== undefined` — and the only code that had
+ever set that field is the hosted-zip path. So every lesson slice 3 installed opened as an ordinary
+project: no steps, no instructions, nothing to grade against.
 
-✅ **This is an amendment, not a strike — do NOT re-drive the five guarantees below.** They were
-driven in the real editor and they stand: install **refuses** a bundle written in the prose
-vocabulary, install **accepts** a good one, the card appears **with no reload**, **reset** re-pulls
-and clears the grade, and opening a lesson **does not grow the recents list**. What was never true
-is the *implied* claim that a lesson installed this way could be **taught**. That half lands in
-slice 4 and needs its own drive.
+**Slice 3's live drive had passed over it**, because it verified that the project opened and that
+recents did not grow — both true, both what it set out to check, neither of them *"can this lesson
+be taught"*. Hence the rule now in `RULINGS.md`:
 
-🔴 **Bundles for that drive are ready, so nobody hand-builds one again.** Slice 3's test data was
-cleaned out of Richard's live app (`learning_folder` store back to `[]`, the `Learning` folder
-deleted), so the register is empty — but the two bundles are kept at
-**`/tmp/claude-501/uni-007-drive-bundles/`**:
+> **A drive proves what it measured, and what it measured is a choice you made before you knew what
+> was broken.** Write the consequence list *first*, and if a sentence could also be true of a broken
+> feature, it is the wrong sentence.
 
-- `bundle-good/` — a real v2 project (`/App` + `/#__page__/Home`) plus a four-step `lesson.json`.
-  ⚠️ Its step 2 asserts `/#__page__/Home:%Text` and **fails**, because that `Text` sits under the
-  `Page` node — the path grammar is one segment per level. That is a *feature* for a grading drive:
-  it gives you a lesson that is partly satisfiable, so a correct and an incorrect attempt grade
-  differently without editing anything.
-- `bundle-bad/` — trips **both** new verifier findings at once: `%Variable` (shadowed by the
-  deprecated type, suggests `Variable2`) and a component-name-less `%Repeater` (`unmatchable-node-path`).
+✅ **Applied forward the same day, and it paid.** Slice 4 drove ten consequences. **Nine held; one
+failed** — *"reopen and it resumes on the step you left"* was true of the code and false through the
+UI, because the index rode on `ProjectModel.toJSON`, which persists **only on save**, and a learner
+reading instructions never saves. Fixed to read the register (`393ec7bf`) and re-driven.
+🔴 **It was the cheapest-looking line on the list.** *The criterion you would drop is the one
+carrying the assumption.*
 
-## 🔴 STOP — this job may already be done. Check before you build it.
+## What to do next — three options, in the order I'd pick them
 
-**At 09:44 on 2026-08-15, another session was mid-flight on exactly the slice described below**, in
-this same checkout, uncommitted. Files seen in the working tree, mtimes 09:37–09:42:
+**1. UNI-010 (the experiment) — cheapest, and everything it needs now exists.** The user's own Claude
+authors a bundle, it installs with no account, opens with a lesson layer, and grades. The whole arc
+is real today. Its verifier is shared, its criteria are pre-registered, and it needs no platform.
 
-```
-?? models/learninglesson.ts          ?? models/lessoncheck.ts
-?? models/lessonwholesolution.ts     ?? models/lessonwholesolution.live.ts
-?? models/lessondrawncount.ts
- M views/lessonlayer2.ts              M views/lessons/LessonLayerView.jsx
- M pages/ProjectsPage/ProjectsPage.tsx
- M noodl-mcp/src/editor-deps.ts       M noodl-mcp/src/lessons/wholeSolutionGrader.ts
-```
+**2. The two owed items UNI-007 still does not carry**, both CURRICULUM-DESIGN §11: **curriculum
+hosting** (§9.3 — now partly a D2/D9 question) and the **tutor lesson-context overlay**
+(§9.1, *"required before L2 testing"*).
 
-**First action of your session: `git log --oneline -15` and `git status`.** If those files are
-committed, this section is history — read it for the constraints, not the job. If they are still
-uncommitted, **find the author before touching anything** (`ListAgents`, then `SendMessage`); do not
-start a second implementation. *Parallel agents solving the same task twice* is a recorded failure
-mode here, and this handover is what would cause it.
+**3. Platform work (UNI-001 + UNI-009 minimal cut)** — the account and something behind it. Bigger,
+and it is a different repo.
 
-⚠️ **`git log --format='%an'` cannot tell sessions apart** — every session commits as "Richard
-Osborne". `ListAgents` plus file mtimes is what separates them. On 2026-08-15 a phase-66 session
-attributed this cluster to *this* session and verified it against their merge on that basis; the
-check was still valid, the attribution was not.
+## ⚠️ Owed, small, and honest about it
 
-## The job itself — "check my work", the last editor slice
+- 🔴 **One `test:ci` re-run is OWED.** My run read **2779 / 9** — the 6 floor names plus a **3-spec
+  `BEN-001` cluster**. All three names grep to real files, so it is **not** a stale bundle, and a
+  `BEN-001` cluster is documented as **seed-order dependent — re-run before investigating**. Nothing
+  in slice 4 goes near the component bench. **Re-run it and confirm 6.** Details below.
+- **`noodl-mcp/dist` was rebuilt** (gitignored) but 🔴 **Richard's four live `noodl-mcp.cjs` servers
+  still run the old build** — restarting them is his call, not a session's. Note also that a running
+  server may load `/Applications/…` rather than the checkout, in which case reaching it needs a
+  **repackage**, not `npm run build`.
+- ⚠️ `dev-docs/tasks/phase-65-the-library/` is **still untracked** and `MEMORY.md` links into it.
+  One `git clean` from gone. Somebody should commit it.
+- ⚠️ A **`stash@{0}`** exists in this checkout (`WIP on cline-dev: ff74bcc9`) that belongs to no
+  session in today's conversations. 🔴 Never `git stash`/`pop` here. It should be identified with
+  Richard before anyone assumes it is droppable.
+- ⚠️ `MEMORY.md` is at the edge of its read limit and **several sessions append to it concurrently**
+  — a compaction pass will race unless you check for live peers first.
 
-**Nothing calls the grading runner. This is not an assumption — it was measured.**
-`__webpack_require__` in the running renderer answers *"Cannot find module
-`./src/editor/src/models/lessongrading.ts`"*: the runner is **not in the bundle at all**, because no
-editor module imports it. Slice 3 gave the *register* a caller. The runner still has none.
-
-What the slice needs:
-
-1. **A button, in the lesson layer** (`views/lessonlayer2.ts` / `views/lessons/`), shown while a
-   Learning-folder lesson is open. It runs `gradeLesson(manifest, liveLessonEvalContext(), …)`.
-2. **A second, editor-side `WholeSolutionGrader` adapter.** ⚠️ `noodl-editor` has **no `@noodl/mcp`
-   dependency** (verified), so the editor cannot call `noodl-mcp`'s adapter. The editor holds its
-   own `SemanticValidator` and can spawn the same render CLI. **One port, one adapter per process
-   that owns the machinery** — do not add the dependency.
-3. **Write the grade back**: `LearningFolderModel.instance.recordGrade(id, buildLessonEvidence(…))`.
-   That method works and is driven; only a test harness has ever called it.
-   ⚠️ The lesson's id is on the project already — the opener sets `project.id = entry.id`.
-4. 🔴 **The adapter must report `drawnElementCount`, including zero.** An adapter that stays silent
-   opts itself out of the empty-page check. The count is the render harness's own blank rule —
-   `text.elements + images.total`, aggregated across viewports with **`min`, not `sum`**.
-
-Then: **UNI-010** is genuinely runnable end to end with no account, and it is cheap.
-
-## 🔴 The finding that should change how you check things
-
-Blocker 1 has now been amended **twice**, and the two amendments were found by different methods.
-
-- **First** (08-14): the recorded "nine divergences" was **103 plain, 4 ambiguous, and a class of 6
-  nobody had written down** — *shadowed* names like `Variable`, where the string IS a real type so
-  `hasType()` passes, but it names the **deprecated** node. Found by **re-deriving from the catalog
-  instead of re-verifying the list**.
-- **Second** (08-15): the shipped check had a hole. `typeNamesInPath` correctly drops the first path
-  segment, because it is a **component name** — so a path written `%Group` contained *nothing the
-  check looked at* and passed in silence, while never matching at runtime. Same silent failure, a
-  different route in. And separately, a lesson body naming `javascript:` compiled into a live anchor
-  inside a **node-integrated renderer**. Found by **building the check's caller.**
-- **Third, hours later** (08-15): slice 4's author found that slice 3's opener never attached a
-  lesson layer, so the whole feature opened as an ordinary project. 🔴 **A different kind of
-  instance** — the first two were a *check* that was incomplete; this was a shipped **feature whose
-  visible half was never reachable**, and it survived a live drive because the drive measured the
-  half that worked.
-
-**The method, because it is now four for four: a check — or a feature — read on its own terms looks
-complete. Give it a caller, or re-derive it from source, and it shows you what it does not do.**
-⚠️ **And a drive proves only what it measured, which is a choice you made before you knew what was
-broken.**
-
-## Standing constraints
-
-- Editor work on `cline-dev`. 🔴 **Never `git stash`**; `cd` to the repo root in every git call;
-  **explicit pathspecs**.
-- 🔴 **Check for a sibling before any suite or editor run:**
-  `ps aux | grep -e electron -e run-electron-tests`. Three long-lived `noodl-mcp.cjs` Electron
-  processes are Richard's MCP servers, not a test run — don't kill them.
-  ⚠️ **Coordinate over `SendMessage`** — a phase-66 session was live in worktrees all through
-  2026-08-15 and the protocol (announce before `test:main` / `test:ci` / an editor launch, and
-  again after) worked well. `ListAgents` finds them.
-- Gates: `npx tsc -p tsconfig.json --noEmit` (**never** without `--noEmit`), `test:main`, `test:ci`
-  (read `tests/test-results.json`, **check its mtime**), `npm run lint:ci`, `cloud-library:check`.
-- ⚠️ `npx tsc -p packages/noodl-core-ui --noEmit` is **44 errors and known-red** — all path-alias
-  failures in *editor* files, none in core-ui itself. Two sessions read 44 independently on 08-15.
-  It is not a gate. Nor is eslint on core-ui: `npm run lint` covers `packages/noodl-editor/src`
-  only, and core-ui's own eslint config **cannot even load** (`react-app` missing).
-- A new **electron-suite** spec not exported from `tests/.../index.ts` never runs. A **`tests-unit/`**
-  spec needs no barrel — jest finds it by `testMatch`.
-
-## Driving the launcher — recipes that worked on 08-15
-
-- Reach any editor module over CDP:
-  ```js
-  window.webpackChunknoodl_editor.push([['probe'], {}, (req) => { window.__wreq = req; }]);
-  window.__wreq('./src/editor/src/models/learningfolder.ts')
-  ```
-  Module ids are **source paths**. ⚠️ A module nothing imports is **not in the bundle** and this
-  throws — which is itself a useful measurement, and how "nothing calls the runner" was established.
-- 🔴 **A React state change is invisible in the SAME eval.** Writing to the register and reading the
-  card back in one `eval` returned the **old** DOM; a second eval showed the new one. Already
-  recorded for theme flips and `selectNode` — it is general to *any* React state write, not a
-  dialog quirk.
-- `window.confirm` blocks the renderer. Stub it (`window.confirm = () => true`) before clicking
-  anything destructive.
-- The launcher's own test hooks: `[data-test=launcher-learning-section]`,
-  `learning-card-<id>`, `learning-open`, `learning-reset`, `learning-install`, `learning-score`,
-  `learning-check-unavailable`, `learning-empty`, `learning-missing`.
-
----
-
-## Where this session left things (2026-08-15, sixth session)
-
-Three commits on `cline-dev`, all gated.
+## Gates as they stand
 
 | Gate | Result |
 |---|---|
 | `npx tsc -p tsconfig.json --noEmit` (editor) | ✅ exit 0 |
-| `npm run test:main` | ✅ **193 suites / 2990 tests, zero failures** (was 190/2932) |
-| `npm run lint:ci` | ✅ 877 vs a 3916 baseline — **unmoved** |
-| `npx eslint` (every touched editor file) | ✅ 0 |
-| **live drive** of the Learning section | ✅ install-refuse, install, card, grade, reset, open, recents-unchanged |
-| `npm run test:ci` | ✅ **2779 / 6 by name** — run by phase 66 on the merged tree; see below |
+| `npx tsc --noEmit` (`noodl-mcp`) | ✅ clean in `src/` (its `tests/` has 7 **pre-existing** errors) |
+| `npm run test:main` | ✅ **199 suites / 3072 tests, 0 failures** — 🔴 **new floor** |
+| `npm run lint:ci` | ✅ **877** vs a 3916 baseline — unmoved |
+| `npx jest` in `noodl-mcp` | ✅ 21/21 on the engine-2 adapter after the shared-rule refactor |
+| **live drive** | ✅ 10 consequences, 1 failed → fixed → re-driven |
+| `npm run test:ci` | 🟡 **2779 / 9** — see the owed re-run above |
 
-🔴 **`test:ci` was not run *by this session*, deliberately** — a phase-66 session was building three
-lanes in worktrees all day and needed the primary checkout settled for its own run; two concurrent
-runs would have manufactured failures for both.
+### The `test:ci` reading, in full, because the extra 3 need discharging
 
-✅ **DISCHARGED — phase 66 ran it, on a tree containing all six of this session's commits.**
-They merged FIX-002 + FIX-003 as `4bb692a8` on top of `481454be`, hit the false pass described
-below, fixed it, and re-ran on **`fb936f6d`**:
+- Deleted `packages/noodl-editor/tests/test-results.json` at **10:16:30**; mtime after the run
+  **10:28:45**. 🟢 Freshness is *proved*, not inferred.
+- Seed **50405** (≠ 39393 / 75857 / 81235).
+- **2779 specs, 9 failures.** The 6 floor names are all present: 4 × `AIX-006 style vocabulary`,
+  2 × `AI model registry`. The extra 3 are `BEN-001 the component interface, as the bench reads it`.
+- Stale-bundle check done: all three failing names grep to real files
+  (`tests/ai/component-bench.test.ts`, `authoring-style.test.ts`, `models.test.ts`).
+- ⚠️ `totalCount` did not move, and that is **correct** — everything slice 4 added is in
+  `tests-unit/`, which `test:main` grades and the electron suite never sees.
 
-| | |
-|---|---|
-| `test:ci` @ `fb936f6d` | ✅ **2779 specs, 6 failures — the floor, by name** (4 × `AIX-006 style vocabulary`, 2 × `AI model registry`) |
-| freshness | 🟢 mtime **moved** to Aug 15 09:25, **and the seed changed** 81235 → 75857 — two independent dissents from the stale file |
-| stale-bundle check | ✅ both failing names grep to real files (`tests/ai/authoring-style.test.ts`, `tests/ai/models.test.ts`) |
-| `test:main` @ merged tip | ✅ **195 suites / 3005 tests, 0 failures** |
-| editor `tsc --noEmit` | ✅ exit 0 |
+🔴 **Before believing any `test:ci` number: delete the results file first, or `stat` it.** Exit 0
+with an unchanged mtime is what a broken **webpack** looks like here — a stale file reproduces the
+floor count, the floor **names** *and* the seed, because all three check *content*.
 
-🔴 **New floors: `test:main` 195 / 3005; `test:ci` 2779 with 6 failures by name.**
+## Standing constraints
 
-⚠️ **`test:ci`'s `totalCount` did not move, and that is correct rather than a miss.** Everything
-this session and phase 66 added lives in **`tests-unit/`**, which `test:main` grades — the electron
-suite never sees it. So the "prove a new spec ran via the `totalCount` delta" rule applies **only to
-specs under `tests/`**; for a `tests-unit/` spec the equivalent check is `test:main`'s own total.
+- Editor work on `cline-dev`. 🔴 **Never `git stash`**; `cd` to the repo root in every git call
+  (the Bash cwd persists and will bite you); **explicit pathspecs**.
+- 🔴 **This checkout is SHARED and today had up to eight sessions live on it.** Announce over
+  `SendMessage` before `test:main`, `test:ci` or an editor launch, and again after. `ListAgents`
+  finds peers. The protocol caught three real cross-lane problems on 2026-08-15.
+  ⚠️ **`git log` authorship separates nobody** — everyone commits as Richard. Use `ListAgents`,
+  file mtimes, and process argv.
+- 🔴 **`dev:stop` kills by *checkout*, so on this one it kills a peer's editor too.** Only run it
+  for your own stack, and only when no peer is driving.
+- ⚠️ **A different `NOODL_REMOTE_DEBUG_PORT` does not let two editors coexist** — the app takes a
+  single-instance lock that ignores the port, and 8080/8574/8577 are fixed.
+- Three-plus long-lived `noodl-mcp.cjs` Electron processes are **Richard's MCP servers** — never
+  kill them.
 
-### 🔴 Read this before you trust any `test:ci` number, including the green one above
+## Driving recipes that worked on 2026-08-15
 
-**The first run graded NOTHING, and it is the most convincing false pass this repo has produced.**
-Recorded in full because every heuristic we had failed:
+- Reach any editor module:
+  ```js
+  window.webpackChunknoodl_editor.push([['probe'], {}, (req) => { window.__wreq = req; }]);
+  window.__wreq('./src/editor/src/models/lessoncheck.ts')
+  ```
+  Module ids are source paths. ⚠️ Re-push after a `cdp reload`. A module nothing imports is **not in
+  the bundle** and this throws — which is a useful measurement in itself.
+- ⚠️ `cdp eval` wraps nothing: `const x = …` twice in one session throws *"already declared"*. Wrap
+  in `(()=>{ … })()`.
+- 🔴 **A click CDP reports as delivered can do nothing.** `cdp click` printed
+  `clicked [data-test=lesson-check-run] at 1166,715` while a `PopupLayer` modal ate it. Check
+  `document.elementFromPoint(x, y)` — if it is not your element, dismiss the modal first.
+- 🔴 **Keys need `Emulation.setFocusEmulationEnabled` on the *same* CDP connection**, so
+  `cdp eval`/`cdp click` (one connection per command) cannot carry it. `cdp type` works regardless
+  because `Input.insertText` bypasses that path — which is the trap.
+- 🔴 **A React state write is invisible in the same eval.** Always read back in a second one.
+- `window.confirm` blocks the renderer — stub it (`window.confirm = () => true`) before reset.
+- Install a lesson without the native dialog:
+  ```js
+  window.__wreq('./src/editor/src/models/learningfolder.ts')
+    .LearningFolderModel.instance.install({ bundleDir: '…', provenance: 'local' })
+  ```
+- Test hooks: `launcher-learning-section`, `learning-card-<id>`, `learning-open`, `learning-reset`,
+  `learning-install`, `learning-score`, and in the lesson layer `lesson-check`, `lesson-check-run`,
+  `lesson-check-summary`.
+- **Drive bundles are staged** at `/tmp/claude-501/uni-007-drive-bundles/` — `bundle-good` (a real
+  v2 project + a 4-step lesson, deliberately part-satisfiable: 1 pass / 2 fail / 1 ungraded) and
+  `bundle-bad` (trips `shadowed-by-deprecated` **and** `unmatchable-node-path`). ⚠️ `/tmp` is not
+  forever; if they are gone, `bundle-good` is a copy of any v2 project plus a `lesson.json`.
+- The register lives at `~/Library/Application Support/NodeGX/learning_folder.json`, and the
+  installed lessons at `…/NodeGX/Learning/<id>/`.
 
-> `test:ci` exited **0**. `test-results.json` said `totalCount: 2779`, `failedCount: 6`, **the exact
-> six floor names**, `seed 81235`. Count, names *and* seed all agreed it was a clean baseline run.
-> **The mtime was still Aug 14 23:19** — it was the previous run's file, untouched. The suite never
-> started, because `test:ci` is `webpack && run-electron-tests` and **the webpack step failed**
-> (a `{/* comment */}` placed between `return (` and the root element parses as an object literal).
-> Fixed as `fb936f6d`.
+## Things the next person will otherwise re-derive
 
-⚠️ **So "compare the names, not the count" is not sufficient advice, and neither is the seed.** Those
-are checks on the file's *content*, and the content was a real, correct, previous measurement — of
-the floor, which is exactly the thing most likely to be sitting there. 🔴 **Only freshness dissents.**
-
-**Before believing any `test:ci` number: delete `packages/noodl-editor/tests/test-results.json`
-first, or `stat` it and note the mtime. Exit 0 with an unchanged mtime is what a broken BUILD looks
-like here — not what a pass looks like.** Then, and only then:
-
-- **Floor** = `totalCount` 2779, 6 failures, names 4 × `AIX-006 style vocabulary` + 2 ×
-  `AI model registry`. A count of 6 with a *different* name is a regression wearing the baseline's
-  clothes.
-- If a failing spec name greps to **nothing** in `packages/noodl-editor/tests/`, you measured a
-  **stale bundle** — a different failure from the seed-order `BEN-001` cluster, and re-running does
-  not fix it.
-
-⚠️ **And the reason nothing else caught it is worth carrying:** a **`.jsx`** file is read by no
-typecheck (`tsc` skips it) and by no jest run unless a spec imports it. `test:ci`'s webpack is its
-only gate. After editing a `.jsx`, a green `test:main` and a clean `tsc` prove nothing at all.
-
-### ✅ The quiet window you have to arrange is ~40 seconds, not 15 minutes
-
-Established 2026-08-15 by timing an actual run, and it makes the sibling problem far cheaper to
-manage than everyone has assumed. `test:ci` is `webpack && run-electron-tests`, so **the bundle is
-frozen the moment webpack finishes** — the log says so itself:
-`webpack 5.108.4 compiled successfully in 37734 ms`. On that run the commit landed at 09:32:27, the
-bundle closed at **~09:33:05**, the suite ran nine more minutes, and `test-results.json` was written
-at **09:42**.
-
-🔴 **Do not read the results-file mtime as the webpack time.** This session made exactly that
-mistake: a third session's first write landed at 09:37:50, which looked like "during the run" and is
-in fact **4¾ minutes after the bundle closed**. The run was clean and the wrong reading nearly went
-into this document as a contamination warning.
-
-**So:** a tree only has to be quiet from launch until webpack reports success. After that a sibling
-can edit freely and cannot reach the bundle — and if you need to know whether a given edit made it
-in, compare its mtime against the **webpack line in the log**, never against the results file.
-
-✅ **The `user-select` question is closed.** FIX-003's opt-out originally enumerated the *projects*
-grid only, which would have left the two card grids disagreeing about text selection. Phase 66 added
-the line to `LearningSection.module.scss`'s `.Grid` in the merge (`f2d7d2d4`), **per grid rather than
-hoisted to `Projects.module.scss`'s `.Main`** — because `.Main` also wraps the welcome copy and the
-no-results message, and a container-level `user-select: none` there would re-break exactly the prose
-FIX-003 exists to liberate. 🔴 **A new card section must opt its own grid out**, and must never write
-`div { user-select: text }`, which punches through every container-level `none`.
-
-⚠️ Their pre-merge reading of editor jest on the merged tree was **195 suites / 3005 tests**
-(+2 suites / +15 tests over this session's 193/2990). If a later run comes in *below* that, tests
-vanished rather than passed.
-
-### What was built, in one paragraph each
-
-**`learningfolder.ts`** is the register: install, reset, `recordProgress`, `recordGrade`, `list`.
-It is a **second store**, not a flag on `recentProjects`, because a flag would have put lesson
-projects where `renameProject` and `removeProject` already exist and are already wired to the card
-menu — every one of those sites would need a guard, and a rule enforced at N sites is broken at N+1.
-The verifier is the **install gate** (warnings do not block). 🔴 **Reset checks the source before it
-deletes anything** — delete-then-fail loses the learner's work *and* the lesson, which is strictly
-worse than what reset was pressed to repair. Ports are injected behind a lazy `require`, so it
-imports in a plain-Node runner.
-
-**The launcher section** renders on the Projects page (POL-002 removed the Learn tab, so there is no
-other visible surface). No rename, no delete, no kebab. Progress and score are **two numbers** — you
-can be on the last step and failing three graded ones. 🔴 **A recorded grade decides completion and
-step progress never does**; a card inferring "Completed" from 100% progress would be a second,
-weaker completion rule beside `buildLessonEvidence().complete`. "The check didn't run" is its own
-state and never a failure.
-
-**Provenance is the caller's word, never the manifest's** — a bundle declaring itself `curated`
-would be believed, and this format explicitly invites an agent on the user's own machine as a
-producer. Hence the fourth value **`local`**: "installed from a folder you pointed us at".
-
-### Two decisions that were reversed on purpose, so they are not re-reversed
-
-1. **The empty section renders.** "Never show an empty shelf" is right for a shelf only a sign-in
-   can fill. It is **wrong** once a lesson installs from a folder with no account, because then the
-   empty state is the only place that route is discoverable. The test is the presence of an install
-   handler, not the count, and the copy names no platform.
-2. **`unavailable` does not force `rendered: false`** (inherited from slice 2, still load-bearing).
-   Observation fields report what their own half saw; the safety property is enforced **once**, on
-   the decision that consumes them.
-
-### Small things worth one line each
-
-- ⚠️ **A lesson's title and its project's name can disagree** — the card said "State on a page", the
-  editor titlebar said the project's own name. The opener sets `project.name` only when the project
-  has none, deliberately: forcing it would write into the learner's project on open. The right fix
-  is the lesson layer showing the lesson title.
-- ⚠️ **The static check cannot catch path *depth*.** The drive's own lesson said
-  `/#__page__/Home:%Text` where the `Text` sits under a `Page`; well-formed, well-spelt, and false.
-  The verifier has no project. That is engine 1's job to reveal.
+- 🔴 **`scripts/` is not in `package.json`'s `build.files`.** Every `scripts/devtools/*` harness is
+  absent from a packaged editor, so editor code that spawns one works for everyone who tests it and
+  is **dead for real users**. No gate catches this — they all run from the checkout. It is why
+  engine 2's editor adapter drives BLD-014's CDP capture instead of `measure-from-disk.js`.
+- 🔴 **A `.jsx` file is invisible to `tsc`, to jest *and* to `eslint <dir>`** (which does not resolve
+  the extension), so `lint:ci` never counts it. `test:ci`'s webpack is the only gate that reads one.
+  The check control's markup adds ~11 uncounted `react/prop-types` errors.
+- ⚠️ **A running `test:ci` is indistinguishable from a booting editor** in a bare `ps` grep — it *is*
+  Electron running the same app. Two sessions misread this suite's host as a fourth party today.
+  Discriminate on argv: `Electron test.js --ci` under `run-electron-tests.js` is a suite;
+  `Electron . --dev` under `start.ts` is a stack.
+- ⚠️ **Lesson prose must use explicit markdown links** — `linkify` is off in both Remarkable
+  instances, so a bare URL never becomes an anchor. Safe direction, but UNI-010's producer is a model.
+- ⚠️ **A lesson's title and its project's name can still disagree.** The opener sets `project.name`
+  only when the project has none, deliberately — forcing it would write into the learner's project.
+  The lesson layer showing the lesson title is the right fix and is not built.
 - `suggestedNodes` is still **dead** — `LessonModel.getCurrentSuggestedNodes()` has no callers, and
   the verifier deliberately does not check it. Whoever wires it to the node picker decides which
   vocabulary it wants and adds it to the check in the same change.
-- ⚠️ **Two owed items phase 67 still does not carry**, both CURRICULUM-DESIGN §11 and both landing
-  on UNI-007: **curriculum hosting** (§9.3) and the **tutor lesson-context overlay** (§9.1,
-  *"required before L2 testing"*).
-
-### 🔴 Uncommitted / untracked when this was written
-
-- `dev-docs/tasks/phase-65-the-library/` is **untracked** and `MEMORY.md` links into it. It is not
-  this phase's and was left alone — **but an untracked directory a memory index points at is one
-  `git clean` from gone.** Somebody should commit it.
