@@ -45,11 +45,12 @@ export interface NodeCommentProps {
  * blurring, so there is exactly one write path. Enter inserts a newline,
  * because this is a comment and paragraphs are the point.
  *
- * ⚠️ Deliberately **not** `TextArea.onEnter`. That prop fires on *Shift+Enter*
- * (`TextArea.tsx`), while the identically-named prop on `TextInput` fires on
- * plain Enter — a difference `tsc` cannot see and that has cost this repo a
- * session. Stealing Shift+Enter from a multiline field to mean "submit" is also
- * the wrong gesture. So no `onEnter` is bound here, on either component.
+ * ⚠️ Deliberately **not** `TextArea.onEnter`. Since FIX-002 that prop fires on
+ * *plain Enter* (as `TextInput.onEnter` always did — before the ruling they
+ * were opposite keystrokes behind one name, a difference `tsc` cannot see and
+ * that cost this repo a session). Binding it here would make Enter *commit*,
+ * and this is a comment: paragraphs are the point, so Enter must stay a
+ * newline. No `onEnter` is bound here, on either component.
  */
 export function NodeComment({ model }: NodeCommentProps) {
   /**

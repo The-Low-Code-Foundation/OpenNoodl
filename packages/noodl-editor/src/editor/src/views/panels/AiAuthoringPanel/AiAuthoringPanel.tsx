@@ -1739,8 +1739,8 @@ export function AiAuthoringPanel({ width = 'panel' }: AiAuthoringPanelProps = {}
         onSend={() => void send()}
         /*
          * BLD-011 build item 6 — an attachment that could not be read blocks the
-         * send. Folded into the one condition that already governs both Send and
-         * Shift+Enter, rather than a second rule beside it: two conditions that
+         * send. Folded into the one condition that already governs both the Send
+         * button and the Enter key, rather than a second rule beside it: two conditions that
          * can disagree is exactly the defect BLD-001 fixed here when the button
          * and the key answered to different state.
          */

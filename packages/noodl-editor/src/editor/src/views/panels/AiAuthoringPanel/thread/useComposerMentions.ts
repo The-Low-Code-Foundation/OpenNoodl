@@ -178,8 +178,9 @@ export function useComposerMentions({
             const candidate = rows[Math.min(activeIndex, rows.length - 1)];
             if (candidate) pick(candidate);
             // ⚠️ `preventDefault` does double duty: it stops Enter inserting a
-            // newline *and* it is what `TextArea` reads to know Shift+Enter's
-            // send must not also fire. Picking a row cannot submit the message.
+            // newline *and* it is what `TextArea` reads to know Enter's send
+            // (FIX-002: plain Enter submits) must not also fire. Picking a row
+            // cannot submit the message.
             event.preventDefault();
             return;
           }

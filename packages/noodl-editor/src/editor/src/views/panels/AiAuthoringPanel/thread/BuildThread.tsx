@@ -403,7 +403,7 @@ export interface ComposerBindings {
   /** The text area itself: caret in, caret out, focus. */
   ref?: React.Ref<HTMLTextAreaElement>;
   /** Every keystroke. Call `preventDefault()` to consume one — that also
-   *  suppresses Shift+Enter's send, so picking a menu row cannot submit. */
+   *  suppresses Enter's send (FIX-002), so picking a menu row cannot submit. */
   onKeyDown?: (ev: React.KeyboardEvent<HTMLTextAreaElement>) => void;
   /** The caret moved — a click, an arrow key, a selection. */
   onSelect?: React.ReactEventHandler<HTMLTextAreaElement>;
@@ -632,24 +632,20 @@ export function BuildThread({
             onKeyDown={composer?.onKeyDown}
             onSelect={composer?.onSelect}
             /*
-             * ⚠️ `TextArea.onEnter` is **Shift+Enter**
-             * ([TextArea.tsx:96](../../../../../../../noodl-core-ui/src/components/inputs/TextArea/TextArea.tsx)
-             * — `ev.shiftKey && ev.key === 'Enter'`). `TextInput.onEnter` is
-             * **plain Enter**. They are different keystrokes behind one prop
-             * name, and the refine field below is a `TextInput`, so the two
-             * composers on this panel do not answer to the same key.
-             *
-             * Shift+Enter is nonetheless right *here*: this composer is
-             * multi-line by design — a request spanning four components is a
-             * paragraph — and plain Enter must insert a newline. The old
-             * description field was a `TextArea` with no `onEnter` at all, so
-             * nothing regresses either way.
+             * FIX-002 (ruled 2026-08-14): `TextArea.onEnter` now fires on
+             * **plain Enter**, and Shift+Enter inserts a newline — the same
+             * keys as `TextInput.onEnter` and the Explain composer. Before the
+             * ruling the two composers answered to opposite keystrokes behind
+             * one prop name. A four-component request is still a paragraph;
+             * it just takes Shift+Enter to break the line, like every other
+             * chat composer the user owns.
              *
              * Guarded by exactly the condition that disables the button, so the
              * two cannot disagree. A dropped or mismatched binding here is
              * invisible to `tsc` (`onEnter` is optional) and to every spec in
              * this task — they grade the pure model, which has no keyboard.
-             * BLD-010 drives it.
+             * ⚠️ BLD-010's driven acceptance recorded Shift+Enter as the send
+             * key; the ruling changed the key, so BLD-010 must be RE-DRIVEN.
              */
             onEnter={() => {
               if (busy || !canSend) return;
