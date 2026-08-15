@@ -61,6 +61,11 @@ The discriminator needed already exists on both sides: `catalogVisualPredicate`
 **Built, specs green in both packages. ⚠️ Acceptance criterion 1 (driven, both clients, in the
 live app) is NOT met yet — nothing here was driven; that is the next session's job.**
 
+> **Superseded in part by the DRIVE RECORD at the foot of this file (session 16, 2026-08-15):**
+> criterion 1 is driven for the **Build panel**, criteria 2 and 3 were observed live, and the drive
+> found a defect (`COLLISION_STEP = 40` is shorter than a node is tall, so separated nodes still
+> overlap). The **MCP client half is still undriven** and the task is still open.
+
 ### Files changed
 
 - **NEW** `packages/noodl-editor/src/editor/src/models/AiAssistant/authoring/layout.ts` — the pure
@@ -150,3 +155,97 @@ live app) is NOT met yet — nothing here was driven; that is the next session's
    `authoring-candidate.test.ts` was read line-by-line: its assertions are field-scoped
    (children/type/parameters/comments), none pin absent x/y, so no failure is expected there.
 4. The nice-to-have "Tidy this component" editor command (L) — not filed here.
+
+---
+
+## 🚗 DRIVE RECORD — session 16, 2026-08-15
+
+**Acceptance criterion 1 is DRIVEN for the Build-panel client.** Criteria 2 and 3, previously
+spec-only, were also observed in the live app. The MCP client half remains blocked on a repackage.
+
+Fixture: a copy of `nodegx-qa-fixture` in the session scratchpad, opened over CDP; dev stack on
+`NOODL_REMOTE_DEBUG_PORT=9223`; provider `anthropic`, verified. Three real authoring turns.
+
+### The claims were written down before the app was touched
+
+Per the discipline that caught session 15's defect, four falsifiable sentences were pinned in
+advance, **including the trap that matters here**: *"a component can satisfy every claim with the
+pass doing nothing — the prompt half alone can produce a good canvas."* That is exactly what run 1
+turned out to be, and the run would have been scored as a pass for the wrong reason without it.
+
+### Run 1 — a page with a visual tree and three logic nodes
+
+Asked for a group with a title text and a button plus a counter, a string formatter and a
+condition, **dictating no coordinates**. The AI authored `/Library/Widgets/Fix014Probe`, 6 nodes,
+5 connections, passed validation. Accepted into the project. On the canvas:
+
+| Node | Kind | x | y |
+|---|---|---|---|
+| Probe container (Group) | visual | 0 | 0 |
+| Count display (Text) | visual | 60 | 120 |
+| Increment button (Button) | visual | 60 | 240 |
+| Formats the count into the title (String Format) | logic | 420 | 120 |
+| Click counter (Counter) | logic | 420 | 240 |
+| Gate kept true… (Condition) | logic | 420 | 360 |
+
+✅ All four pre-written claims hold: every node has numeric x/y; no two share a coordinate pair;
+`min(logic.x) = 420 > max(visual.x) = 60`; the spread is 0→420, so it is **not** one column.
+The report symptom is gone.
+
+🔴 **But the pass did not place any of it.** The coordinates match **none** of the pass's constants
+(it would emit root `x=40,y=40`, children `x=100`, logic at `maxVisualX + 250 = 310`). They match
+the **prompt's** wording instead (~60 indent per depth, ~120 apart, logic right of the visuals).
+So run 1 is the **prompt half** working, with the structural pass correctly doing nothing — its
+`x`/`y` were model-supplied, and the ruling says those are authoritative.
+
+⚠️ **Instrumenting the pass to prove this directly is not possible over CDP.** Webpack's harmony
+exports are non-configurable, so `layoutAuthoredNodes` cannot be wrapped
+(`defineProperty` → *"Cannot redefine property"*). The constants **can** be read
+(`COLLISION_STEP 40`, `VISUAL_COLUMN_X 40`, `ROW_SPACING 120`, `LOGIC_COLUMN_GUTTER 250`), which is
+what made the "these are not the pass's numbers" inference available.
+
+### Runs 2 and 3 — forcing the pass to act, by asking for collisions
+
+Since a well-behaved model never exercises the structural half, the pass was given work it could
+not refuse: coordinates it must change.
+
+- **Run 2** — *"a second Counter and a String Format, both at exactly x 900, y 200"*.
+  Result on canvas: `(900,200)` and `(900,240)`. Separated by exactly `COLLISION_STEP`.
+- **Run 3** — *"a Number, a Boolean and a Counter, ALL THREE at exactly x 1200, y 400"*.
+  Result: `(1200,400)`, `(1200,440)`, `(1200,480)` — the step applied **twice, in order**.
+
+✅ **Run 3 is the decisive one.** One 40 could be a model's own choice; two consecutive 40s landing
+exactly on the pass's constant is the pass's signature. **Criterion 3 is driven.**
+
+✅ **Criterion 2 is driven as a by-product, and it is the stronger reading of the control:** the six
+model-positioned nodes from run 1 kept their exact coordinates through **both** later update passes.
+A control that survives two subsequent writes is better evidence than a single-shot spec.
+
+### 🔴 What the drive found: a 40px step does not clear a node
+
+**`COLLISION_STEP = 40` is smaller than a node is tall.** Measured on this canvas, node heights ran
+**64 to 190** px. So two nodes separated by the collision rule **no longer share a coordinate — and
+still visibly overlap**: the screenshot shows *"Second string format"* drawn over the lower half of
+*"Second counter"*, and the run-3 trio stacked like shingles.
+
+The loop is `while (occupied.has(keyOf(n))) n.y += COLLISION_STEP` — it stops as soon as the exact
+pair is free, which is what the specs assert. The build record's word for that state is **"until
+clear"**, and *clear* is precisely what it is not.
+
+⚠️ **No spec could have caught this.** All 17 assert coordinate *inequality*; none knows a node has
+a height, because the pure pass is not given sizes. The defect is only visible on a canvas.
+
+**Recommendation (needs a ruling, not a reflex).** Stepping by `ROW_SPACING` (120) instead of 40
+would clear the common case and matches the spacing the prompt already asks for — but it **cannot
+guarantee** non-overlap either, because a 190px node still overlaps at 120 and the pure layer has no
+access to node sizes. Options are (a) raise the constant and accept "usually clear", (b) pass
+measured heights into the pass, or (c) leave it, on the grounds that identical coordinates only
+arise from a misbehaving model. **This is a judgement about what the pass promises, so it is
+recorded here rather than changed.**
+
+### What this drive does NOT show
+
+- ⚠️ **The MCP client is untouched** — criterion 1 says *both clients*, and the MCP half is still
+  blocked on a `dist/` repackage. **Criterion 1 is half-driven, and the task is not closed.**
+- ⚠️ The gap-filling branch (a model that omits `x`/`y` entirely) was **never exercised** — the model
+  supplied coordinates on all three turns. The collision branch is what ran.

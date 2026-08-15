@@ -2,11 +2,11 @@
 
 **Report 1 (a, b, c)** · Tier 1 · Effort **M** (1a) + **S** (1b) + **M/L** (1c)
 
-> **Status (session 15, 2026-08-15).** **1a is built, gated AND DRIVEN — criteria 1, 2, 3 all
-> pass against the running app.** The drive found one real defect, now fixed (`f8f215d0`). 1b is
-> **verified from source as discoverability — no code is missing on either route**, and that
-> reading is not a repro; criterion 4 is still undriven. 1c is untouched. See §"What shipped" and
-> §"The drive" at the foot of this file.
+> **Status (session 16, 2026-08-15).** **1a is built, gated AND DRIVEN — criteria 1, 2, 3 all
+> pass against the running app.** The 1a drive found one real defect, now fixed (`f8f215d0`).
+> **1b is DRIVEN — criterion 4 passes on both entry routes**, and the session-14 source reading
+> was right: nothing needed building. **1c is the only part still open.** See §"What shipped",
+> §"The drive" and §"1b DRIVEN" at the foot of this file.
 
 > *"Be able to ask about a node's configuration AND its current input and output signals and values.
 > Right now when I said 'why is the output value null?' it wasn't able to detect and explain."*
@@ -217,3 +217,71 @@ line is gone while the real values and warnings remain.
 
 🔴 **No spec caught it and no gate could** — every spec built its own snapshot and so encoded the
 same assumption. Two regression specs now cover it.
+
+---
+
+## 🚗 1b DRIVEN — criterion 4, both entry routes, session 16, 2026-08-15
+
+**Criterion 4 passes on both routes. The session-14 source reading was right: the mechanism was
+already complete, and nothing needed building.** FIX-001 is now open only on §1c.
+
+Fixture: `/Library/Widgets/Fix014Probe` in a scratchpad copy of the QA fixture (authored during the
+FIX-014 drive in the same session), three logic nodes with distinctive authored labels.
+
+### The claims, pinned before driving
+
+Four falsifiable sentences, the load-bearing one being **B4: the answer names all three nodes by
+their actual names** — with the rule that **the question must not name them**, so a generic answer
+about "the selected nodes" cannot pass. The three names were known to me and unguessable from the
+question (I typed no question at all; the button was clicked).
+
+### Panel route — marquee → label → answer
+
+A **real marquee drag** over the canvas (`Input.dispatchMouseEvent`, press-move-release, not a
+programmatic `selector.select`), because the mouseup re-read is the mechanism under test:
+
+1. ✅ `selector._selected` held exactly **3** — *Click counter*, *Formats the count into the title*,
+   *Gate kept true; placeholder…*.
+2. ✅ Opening the Explain panel **kept all 3** (FH-008's `panelHoldsCanvasSelection` confirmed live,
+   not just in source), and the panel scope line read **"3 nodes in /Library/Widgets/Fix014Probe."**
+3. ✅ The button read exactly **"Explain these 3 nodes"**.
+4. ✅ The answer named **all three**, quoted `cond`'s authored note verbatim, and traced the loop
+   between them.
+
+✅ **The singular is right too:** a marquee that caught one node relabelled the button
+**"Explain this node"** — the pluralisation was observed in both directions, not assumed.
+
+### Canvas route — right-click → menu → panel
+
+🔴 **A synthetic DOM `MouseEvent` with `button: 2` does nothing.** `InteractionController` reads
+`evt.button === 2` off its own dispatcher, so the menu never opens and the call reports success.
+A genuine `Input.dispatchMouseEvent` with `button: 'right'` is required; `cdp.js` has no such
+command, so one was written against its exported `connect`/`appTarget`
+(`scratchpad/rightclick.js`).
+
+With 3 nodes selected, right-clicking one of them:
+
+1. ✅ The menu item read **"Explain these 3 nodes"** — and the selection stayed at 3, because the
+   gesture handler keeps a multi-selection when the node under the cursor is already in it.
+2. ✅ Clicking it opened the panel with **"3 nodes in /Library/Widgets/Fix014Probe."** — the
+   remembered target carried all three ids across the panel switch.
+3. ✅ The answer discussed **all three** by name.
+
+### A free check on session 15's fix
+
+The panel-route answer ended: *"Nothing is currently running/mounted for any of these nodes, so I
+can't report actual current values."* That absence claim is **correctly scoped to the nodes actually
+asked about** — the `asked − answered = absent` fix from session 15 behaving properly on an
+unrelated drive, on a component that genuinely is not mounted.
+
+### One thing that cost time, worth not repeating
+
+⚠️ **`nodeSize` is not a node's selectable bounds.** A marquee drawn tightly around two nodes'
+`nodeSize` boxes selected **zero**; a wider rectangle around the same two selected both. This looked
+exactly like "overlapping nodes cannot be marquee-selected" and was nearly written up as a defect.
+It is not one — the rendered bounds (ports, labels) extend past `nodeSize`.
+
+⚠️ **`window.__nodeGraphEditor` is set in `render()`, so the last editor to render wins** — after an
+AI build it points at the **detached preview canvas** (`roots: []`, element measures 0×0) while the
+live graph has 9 roots. Navigating does not re-register it. The live editor is
+**`NodeGraphContextTmp.nodeGraph`**, reachable through the webpack module cache.
