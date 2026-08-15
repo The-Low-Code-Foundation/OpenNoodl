@@ -121,22 +121,39 @@ hosting** (§9.3 — now partly a D2/D9 question) and the **tutor lesson-context
 | `npx tsc -p tsconfig.json --noEmit` (editor) | ✅ exit 0 |
 | `npm run test:main` | ✅ **202 suites / 3120 tests, 0 failures** — 🔴 **new floor** (was 199 / 3072; delta is exactly this commit's +3 / +48) |
 | `npx eslint` on the new modules + tests | ✅ clean |
-| `npm run test:ci` | ⏸️ **not run by me** — a peer had a live editor stack up, which is the phantom-failure mechanism |
+| `npm run test:ci` | ✅ **2788 specs / 6 failures at pinned seed 39393** — the exact floor by name, **zero `BEN-001`** |
 
 ✅ **`test:main` is safe beside a peer's live drive** — plain Node, no Electron, no renderer, no
 CDP port. It is the one full gate that does not need the checkout to be quiet. Announce anyway
 (concurrent `test:main` runs manufacture failures), but you do not need to wait for a stack to come
 down.
 
-⚠️ **`test:ci` is unrun on this commit.** The prior session discharged it decisively at
-`393ec7bf` — **6 failures at pinned seed 39393** (`NOODL_SPEC_SEED=39393 npm run test:ci`,
-`tests/SpecRunner.html:41-42`). Slice 1 adds only `tests-unit/` files, which the electron suite never
-compiles, so there is a structural argument that it cannot have moved — **but that is an argument,
-not a measurement.** Say which you are quoting.
+✅ **`test:ci` was run and is discharged.** `NOODL_SPEC_SEED=39393 npm run test:ci`
+(`tests/SpecRunner.html:41-42`), results file **deleted at 11:53:34 before the run**, mtime **12:04**
+— freshness proved rather than inferred. **2788 specs / 6 failures**, the exact floor names (4 ×
+`AIX-006 style vocabulary`, 2 × `AI model registry`), **zero `BEN-001`**. My handover had a
+structural argument in its place (slice 1 adds only `tests-unit/` files, which the electron suite
+never compiles); it is now a measurement instead, which is strictly better.
 
-🔴 **Before believing any `test:ci` number: delete `test-results.json` first, or `stat` it.** Exit 0
-with an unchanged mtime is what a broken webpack looks like — a stale file reproduces the floor
-count, the floor **names** *and* the seed, because all three check *content*.
+✅ **And it is a genuine replicate:** identical seed, spec set, count and names to a peer's 11:29 run
+— the same-seed-*same-set* pairing an earlier handover correctly warned is usually missing.
+
+🔴 **Quote it against a TREE, not a commit.** HEAD was `90776d8b` when the run started and
+`4db77e0d` when it finished — peers committed underneath it mid-run. The webpack ran 11:53:34–11:54:41,
+so what was measured is *the tree at ~11:54*: UNI-010 slice 1 plus phase-66's `keyboardhandler.spec.ts`
+(+9 specs, uncommitted then, committed now). **That is why `totalCount` reads 2788 and not the 2779
+in older handovers** — it is a spec-set difference, not a regression and not a gain.
+
+🔴 **Before believing any `test:ci` number: delete `packages/noodl-editor/tests/test-results.json`
+first, or `stat` it.** Exit 0 with an unchanged mtime is what a broken webpack looks like — a stale
+file reproduces the floor count, the floor **names** *and* the seed, because all three check
+*content*.
+
+🔴 **The exit code and the log are BOTH unreliable here, in opposite directions.** This run's log
+ended `npm error command failed` and the real shell exit was **1** — because npm exits non-zero
+whenever *any* spec fails, and the floor is 6, so **a clean floor run always looks like a failure at
+the shell.** Meanwhile my harness reported **exit 0**, because I ended the command with an `echo` and
+the compound's status masked npm's. Neither is the readout. **`tests/test-results.json` is.**
 
 ## ⚠️ Owed, small, and honest about it
 
