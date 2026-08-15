@@ -74,18 +74,11 @@ and it is a different repo.
 
 ## ⚠️ Owed, small, and honest about it
 
-- ✅ **The `test:ci` re-run was done, and it settles attribution without reaching 6.** Both runs read
-  **2779 / 9** — the 6 floor names plus **3 `BEN-001` specs** — but **the three `BEN-001` members
-  were DIFFERENT each run** on identical code (`the component interface, as the bench reads it` ×3 at
-  seed 50405; `the harness export` ×3 at seed 73375). 🔴 **A deterministic regression cannot change
-  which specs it breaks between runs**, so this is the documented seed-order cluster, not slice 4.
-  Confirmed structurally too: `tests/ai/component-bench.test.ts` imports `componentBench`,
-  `nodegraphmodel` and `projectmodel`, and contains **zero** references to lessons — it shares no
-  module this phase edited.
-  ⚠️ **But do not read this as "back to the floor".** I never reproduced a 6-failure run.
-  **The `test:ci` floor of 6 was measured at one seed (39393) and may itself be a lucky reading**;
-  two independent seeds here both produced 9. If a future run reads 9 with a *third* `BEN-001`
-  membership, that is consistent. **What would be a regression is the same three names twice.**
+- ✅ **`test:ci` is DISCHARGED, decisively — 6 at a pinned seed.** Nothing is owed.
+  ✅ **You can pin the seed: `NOODL_SPEC_SEED=39393 npm run test:ci`** (`tests/SpecRunner.html:41-42`).
+  On this tree that returns **6 failures, the exact floor names, zero `BEN-001`** — so slice 4
+  perturbs nothing. The same four commits gave **9** at seeds 50405 and 73375, with **different**
+  `BEN-001` members each time, which is the documented order-dependent cluster.
 - **`noodl-mcp/dist` was rebuilt** (gitignored) but 🔴 **Richard's four live `noodl-mcp.cjs` servers
   still run the old build** — restarting them is his call, not a session's. Note also that a running
   server may load `/Applications/…` rather than the checkout, in which case reaching it needs a
@@ -108,27 +101,32 @@ and it is a different repo.
 | `npm run lint:ci` | ✅ **877** vs a 3916 baseline — unmoved |
 | `npx jest` in `noodl-mcp` | ✅ 21/21 on the engine-2 adapter after the shared-rule refactor |
 | **live drive** | ✅ 10 consequences, 1 failed → fixed → re-driven |
-| `npm run test:ci` | 🟡 **2779 / 9**, run **twice** — 6 floor + 3 `BEN-001`, **different members each time** |
+| `npm run test:ci` | ✅ **6 failures at pinned seed 39393** — the floor, by name, zero `BEN-001` |
 
-### The `test:ci` reading, in full, because the extra 3 needed discharging
+### The `test:ci` readings, in full — three runs, and the third settles it
 
-Both runs on `393ec7bf`, results file **deleted before each** so freshness is *proved*, not inferred.
+All on `393ec7bf`, results file **deleted before each**, so freshness is *proved* rather than inferred.
 
-| | Run 1 | Run 2 |
-|---|---|---|
-| deleted / mtime | 10:16:30 → **10:28:45** | 10:49:04 → **11:00:56** |
-| seed | **50405** | **73375** |
-| result | 2779 / **9** | 2779 / **9** |
-| the 6 floor names | ✅ all present | ✅ all present |
-| the extra 3 | `BEN-001 the component interface, as the bench reads it` ×3 | `BEN-001 **the harness export**` ×3 |
+| | Run 1 | Run 2 | **Run 3 — the control** |
+|---|---|---|---|
+| deleted → mtime | 10:16:30 → 10:28:45 | 10:49:04 → 11:00:56 | 11:05:15 → **11:16:55** |
+| seed | 50405 | 73375 | **39393, PINNED** |
+| result | 2779 / 9 | 2779 / 9 | **2788 / 6** |
+| the 6 floor names | ✅ | ✅ | ✅ **and nothing else** |
+| the extra 3 | `BEN-001 the component interface…` ×3 | `BEN-001 **the harness export**` ×3 | **none** |
 
-🔴 **The membership changed on identical code, which is the whole discharge** — a real regression
-breaks the same specs every time. Stale-bundle check also done both times: every failing name greps
-to a real file (`tests/ai/component-bench.test.ts`, `authoring-style.test.ts`, `models.test.ts`).
+✅ **Run 3 is the decisive one.** `NOODL_SPEC_SEED` pins jasmine's order, so this is the same seed
+that produced 6 on a pre-slice-4 tree, run *with* slice 4 in it: **the four commits perturb nothing.**
+Runs 1 and 2 support it independently — the `BEN-001` members **changed on identical code**, and a
+real regression breaks the same specs every time.
 
-⚠️ **The runner takes no `--seed` flag**, so a same-seed control against a pre-slice-4 tree was not
-available without disturbing a shared checkout. The structural argument stands in its place: the
-bench spec shares no module this phase edited.
+🔴 **`totalCount` reads 2788, not 2779, and that is a sibling's uncommitted work, not mine.** A
+phase-66 session had `tests/utils/keyboardhandler.spec.ts` (+9 specs) in the shared working tree, and
+`test:ci` webpacks **the tree, not HEAD**. The committed baseline is still **2779**. Record the tree
+state beside any total you quote.
+
+⚠️ **I first reported that the runner had no seed control, and that was wrong** — see the surface
+trap below.
 - ⚠️ `totalCount` did not move, and that is **correct** — everything slice 4 added is in
   `tests-unit/`, which `test:main` grades and the electron suite never sees.
 
@@ -195,6 +193,13 @@ floor count, the floor **names** *and* the seed, because all three check *conten
 - 🔴 **A `.jsx` file is invisible to `tsc`, to jest *and* to `eslint <dir>`** (which does not resolve
   the extension), so `lint:ci` never counts it. `test:ci`'s webpack is the only gate that reads one.
   The check control's markup adds ~11 uncounted `react/prop-types` errors.
+- 🔴 **Grep the right SURFACE, not just the right string.** I grepped `scripts/run-electron-tests.js`
+  for a seed flag, found none, and told two sessions and this handover that no seed control existed.
+  It does — **`NOODL_SPEC_SEED`, read one layer down in `tests/SpecRunner.html:41-42`**, documented
+  since 2026-07-25. The grep was correct and the conclusion was wrong. Same shape as the
+  `dev:stop --list` misread the same morning: right observation, plausible inference, no look at the
+  layer beneath. **Two sessions reached "no seed control exists" independently**, so it is a trap in
+  the codebase's shape rather than one person's lapse.
 - ⚠️ **A running `test:ci` is indistinguishable from a booting editor** in a bare `ps` grep — it *is*
   Electron running the same app. Two sessions misread this suite's host as a fourth party today.
   Discriminate on argv: `Electron test.js --ci` under `run-electron-tests.js` is a suite;
