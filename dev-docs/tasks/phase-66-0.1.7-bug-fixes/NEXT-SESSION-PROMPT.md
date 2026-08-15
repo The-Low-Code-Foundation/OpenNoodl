@@ -64,13 +64,23 @@ ruling blocks it.
 | `node --check` on both devtools scripts | ✅ | this session |
 | `dev:stop` **non-dry**, quiet checkout | ✅ exits 0, no crash, MCP intact at 19 | this session |
 
-⚠️ **What that last row does and does not cover.** It exercises the early return I edited in the
-*real* kill path — worth having, since my equivalent edit to the dry path shipped a crash. But the
-checkout was quiet, so **the kill loops never ran and no recorded group was ever dropped**.
-`sweepableGroups` is covered by a direct test with a control (nothing shielded ⇒ nothing dropped);
-the **integration — `sweep()` actually dropping a real recorded group — has never executed.** That
-is the honest remaining gap, and it is a smaller one than the sentence "the real path is verified"
-would have implied.
+✅ **The group drop is proven end to end, in both directions** — this was the last named gap and it
+turned out to be closable safely rather than worth handing on. Two decoys, each forced into **its
+own process group** (`perl -e 'setpgrp(0,0); exec …'`) so that even a stray non-dry sweep could
+only have killed a `sleep`; both pgids written into a real pid file; `--list` run:
+
+| recorded group | contains | expected | observed |
+|---|---|---|---|
+| `76445` | a shielded `Electron test.js --ci` decoy | dropped | ✅ **dropped** |
+| `76446` | **control** — dev-stack-shaped, nothing shielded | listed | ✅ **listed** |
+
+The shielded decoy was also absent from `targets`, and the control decoy present *with its child* —
+so the same run demonstrates the shield firing, the shield *not* over-firing, and the group path
+still reporting. Pid file removed and both decoys reaped afterwards; checkout verified quiet.
+
+⚠️ **The `dev:stop` non-dry row still covers less than it sounds like**: the checkout was quiet, so
+it exercises the edited early return but never the kill loops. That is now the only part of this
+area resting on a reading rather than a run — and nothing destructive depends on it.
 
 **The six failures by NAME** — quote these, never the count:
 
