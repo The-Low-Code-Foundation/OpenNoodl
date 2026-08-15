@@ -24,8 +24,10 @@ import type {
 
 import { assembleContext, ExplainRequest } from './assemble';
 import { stripUnresolvedCitations } from './citations';
+import { findComponent } from './graph';
 import { followUpMessage, initialUserMessage, systemPrompt, type ExplainDetail } from './prompts';
 import { renderContext } from './render';
+import { portsToResolve, renderRuntime, type RuntimePortRef, type RuntimeSnapshot } from './runtime';
 import type { ExplainContext, ExplainContextOptions, ExplainGraph } from './types';
 
 export type ExplainTurnRole = 'question' | 'answer';
@@ -50,9 +52,23 @@ export interface ExplainSessionOptions extends ExplainContextOptions {
    * of reach of the headless measurement harness.
    */
   chat?: ExplainChatFn;
+  /**
+   * FIX-001 §1a — how the session reads the running app, if it can at all.
+   *
+   * The same injection shape as `chat`, for the same reason and one more: this
+   * is the *only* thing in Explain Mode that touches a socket and a singleton,
+   * so keeping it behind a function is what lets the rest of the module stay
+   * pure and lets a spec render a runtime layer with no preview in sight. Absent
+   * — the MCP assembler, the measurement harness, every existing caller — the
+   * session behaves exactly as it did before, with no Runtime section and no
+   * prompt claiming one.
+   */
+  resolveRuntime?: ExplainRuntimeFn;
 }
 
 export type ExplainChatFn = (request: AiChatRequest, callbacks?: AiStreamCallbacks) => Promise<AiChatResponse>;
+
+export type ExplainRuntimeFn = (ports: RuntimePortRef[]) => Promise<RuntimeSnapshot>;
 
 /** Everything the panel renders, recomputed and published on every change. */
 export interface ExplainSessionState {
@@ -70,11 +86,20 @@ export class ExplainSession {
   private abortController: AbortController | undefined;
 
   readonly context: ExplainContext;
+  /** The authored graph, rendered. The runtime layer is added per turn, not here. */
   readonly renderedContext: string;
+  /** The ports this context would ask a running preview about. Computed once; the values are not. */
+  readonly runtimePorts: readonly RuntimePortRef[];
 
-  private constructor(context: ExplainContext, renderedContext: string, private readonly options: ExplainSessionOptions) {
+  private constructor(
+    context: ExplainContext,
+    renderedContext: string,
+    runtimePorts: readonly RuntimePortRef[],
+    private readonly options: ExplainSessionOptions
+  ) {
     this.context = context;
     this.renderedContext = renderedContext;
+    this.runtimePorts = runtimePorts;
   }
 
   /**
@@ -86,12 +111,16 @@ export class ExplainSession {
   static create(graph: ExplainGraph, request: ExplainRequest, options: ExplainSessionOptions = {}): ExplainSession {
     const context = assembleContext(graph, request, options);
     const rendered = renderContext(context);
-    const session = new ExplainSession(context, rendered, options);
+    // `assembleContext` above already threw if the component is missing, so this
+    // always resolves; the branch below is there so it need not be asserted.
+    const component = findComponent(graph, request.componentName);
+    const runtimePorts = component ? portsToResolve(component, context) : [];
+    const session = new ExplainSession(context, rendered, runtimePorts, options);
 
     console.debug(
       `[explain] ${request.scope} context — ${context.stats.nodeCount} nodes, ` +
         `${context.stats.connectionCount} connections, ${context.stats.nodeTypeCount} types, ` +
-        `${context.stats.renderedChars} chars` +
+        `${context.stats.renderedChars} chars, ${runtimePorts.length} live port(s) to resolve` +
         (context.bounds.truncated ? ` (bounded: ${context.bounds.notes.join('; ')})` : '')
     );
 
@@ -116,11 +145,12 @@ export class ExplainSession {
   async explain(): Promise<void> {
     if (this.messages.length > 0) return;
     this.messages.push({ role: 'system', content: systemPrompt() });
-    this.messages.push({
-      role: 'user',
-      content: initialUserMessage(this.context, this.renderedContext, { detail: this.options.detail })
+    await this.run(async () => {
+      const runtime = await this.readRuntime();
+      return initialUserMessage(this.context, renderContext(this.context, runtime), {
+        detail: this.options.detail
+      });
     });
-    await this.run();
   }
 
   /** A follow-up question in the same context. */
@@ -128,8 +158,37 @@ export class ExplainSession {
     const trimmed = question.trim();
     if (!trimmed || this.abortController) return;
     this.turns.push({ role: 'question', text: trimmed });
-    this.messages.push({ role: 'user', content: followUpMessage(trimmed) });
-    await this.run();
+    await this.run(async () => {
+      // Re-read rather than reuse: the opening turn's values are already history
+      // by the time someone types a follow-up. See `followUpMessage`.
+      const runtime = await this.readRuntime();
+      return followUpMessage(trimmed, runtime ? renderRuntime(this.context, runtime) : undefined);
+    });
+  }
+
+  /**
+   * One reading of the running app, or `undefined` when this session has no way
+   * to take one.
+   *
+   * A failed read is **not** reported as "no preview running". They are different
+   * states — one is "you have not started it", the other is "the editor could not
+   * ask" — and collapsing them would put a wrong instruction in the prompt for
+   * whichever of the two it guessed wrong.
+   */
+  private async readRuntime(): Promise<RuntimeSnapshot | undefined> {
+    const resolve = this.options.resolveRuntime;
+    if (!resolve) return undefined;
+    try {
+      return await resolve([...this.runtimePorts]);
+    } catch (error) {
+      return {
+        isPreviewRunning: false,
+        values: [],
+        liveNodeIds: [],
+        diagnoses: [],
+        error: error instanceof Error ? error.message : String(error)
+      };
+    }
   }
 
   /** Cancel the in-flight request; the partial answer is kept. */
@@ -142,7 +201,13 @@ export class ExplainSession {
     this.listeners.clear();
   }
 
-  private async run(): Promise<void> {
+  /**
+   * `prepare` builds the user turn, and it is a callback rather than a value
+   * because it is allowed to be slow: reading the running app is a socket round
+   * trip, and it belongs *inside* the busy window so the panel shows a spinner
+   * for it rather than sitting inert until the answer starts arriving.
+   */
+  private async run(prepare: () => Promise<string>): Promise<void> {
     const turn: ExplainTurn = { role: 'answer', text: '', streaming: true };
     this.turns.push(turn);
 
@@ -151,6 +216,7 @@ export class ExplainSession {
     this.publish();
 
     try {
+      this.messages.push({ role: 'user', content: await prepare() });
       const chat = this.options.chat ?? ((request, callbacks) => AiClient.chatStream(request, callbacks ?? {}));
       const response = await chat(
         { messages: [...this.messages], abortController },

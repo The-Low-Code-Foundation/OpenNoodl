@@ -12,6 +12,9 @@ export * from './client.test';
 // the one spec that drives a response stubs the client.
 export * from './explain-context.test';
 export * from './explain-session.test';
+// FIX-001 §1a: the runtime layer — current values, unmounted nodes and editor
+// warnings, as plain data. The socket that fills it needs a preview; this does not.
+export * from './explain-runtime.test';
 
 // AIX-002: the authoring loop. Fully offline — the chat function is a script;
 // the validation gate runs against the real project corpus.

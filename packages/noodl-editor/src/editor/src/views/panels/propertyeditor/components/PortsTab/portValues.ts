@@ -93,14 +93,30 @@ export function foldPortValues(replies: readonly PortValueReply[], nodeId: strin
     // The port answered, so the runtime holds this node — whatever the value is.
     nodeIsLive = true;
 
-    const value = entry.value;
-    if (typeof value !== 'string') continue;
-    if (entry.direction === 'input' && value === 'undefined') continue;
-
-    values[portValueKey(entry.node, entry.port, entry.direction)] = value;
+    if (!isReportableValue(entry)) continue;
+    values[portValueKey(entry.node, entry.port, entry.direction)] = entry.value as string;
   }
 
   return { values, nodeIsLive };
+}
+
+/**
+ * Whether one answered port carries a value worth reporting — the rule spelled
+ * out on {@link foldPortValues}, in one place because it now has two callers.
+ *
+ * FIX-001's Explain Mode reads the same channel for a *set* of nodes rather than
+ * one, and gets this wrong in the same way if it re-derives it: an unset input
+ * reported as `undefined` tells an author their `Width` is undefined while the
+ * node lays out happily at its own default. That is the exact confident-wrong
+ * answer both surfaces exist to avoid, so there is one copy of the rule.
+ *
+ * ⚠️ Assumes the caller has already checked `exists` — a port the runtime does
+ * not have is a different fact (the node is not mounted) and is not this
+ * function's to decide.
+ */
+export function isReportableValue(entry: PortValueReply): boolean {
+  if (typeof entry.value !== 'string') return false;
+  return !(entry.direction === 'input' && entry.value === 'undefined');
 }
 
 /**

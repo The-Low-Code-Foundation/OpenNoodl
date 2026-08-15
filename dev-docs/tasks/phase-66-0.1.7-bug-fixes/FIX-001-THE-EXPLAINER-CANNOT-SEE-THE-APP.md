@@ -2,6 +2,10 @@
 
 **Report 1 (a, b, c)** · Tier 1 · Effort **M** (1a) + **S** (1b) + **M/L** (1c)
 
+> **Status (session 14, 2026-08-15).** **1a is built and gated; it is not driven.** 1b is
+> **verified from source as discoverability — no code is missing on either route**, and that
+> reading is not a repro. 1c is untouched. See §"What shipped" at the foot of this file.
+
 > *"Be able to ask about a node's configuration AND its current input and output signals and values.
 > Right now when I said 'why is the output value null?' it wasn't able to detect and explain."*
 
@@ -84,3 +88,74 @@ of context wasted on duplicated port docs; do not repeat that.
   too? Which context bound gives when a nested read doubles the size?
 - The session's *"read-only by construction"* doc claim (`ExplainSession.ts:8-13`) must be re-worded:
   reading port values is still read-only, but the session now holds runtime data.
+
+---
+
+## What shipped — session 14, 2026-08-15
+
+### 1a — built, gated, **not driven**
+
+| File | What it is |
+|---|---|
+| `explain/runtime.ts` | **new**, pure — the snapshot type, `portsToResolve`, `renderRuntime` |
+| `explain/render.ts` | `renderContext(context, runtime?)`; `[now = …]` beside authored inputs |
+| `explain/prompts.ts` | new `AUTHORED VALUES ARE NOT CURRENT VALUES` section; `followUpMessage` carries a re-read |
+| `explain/ExplainSession.ts` | `resolveRuntime` injection seam; **one read per turn**, inside the busy window |
+| `utils/provenance/explainRuntime.ts` | **new** — the only part that touches a socket and a singleton |
+| `PortsTab/portValues.ts` | `isReportableValue` extracted so the unset-input rule has **one** copy |
+| `ExplainPanel.tsx` | supplies the adapter; the only caller with a socket in reach |
+| `tests/ai/explain-runtime.test.ts` | **new**, 22 specs; exported from `tests/ai/index.ts` |
+
+**Five decisions worth not re-litigating:**
+
+1. 🔴 **A missing snapshot renders no Runtime section at all** — which is the exact pre-FIX-001
+   output. The MCP assembler and the measurement harness pass no `resolveRuntime` and are
+   byte-identical to before. Nothing claims a layer it was not given.
+2. 🔴 **A failed read is not "no preview running".** They are different states and the prompt gives
+   *opposite* instructions for them ("start it" vs "it is not answering"). `RuntimeSnapshot.error`
+   keeps them apart; collapsing them would put the wrong instruction in for whichever it guessed.
+3. 🔴 **Criterion 2 is met by words, not by omission.** A context that simply stops after the node
+   types is indistinguishable, to a model, from "every value was null" — and it will answer as if it
+   had seen them. The no-preview branch says so explicitly. This is the criterion most likely to be
+   "passed" by a build that did nothing.
+4. 🔴 **`[now = …]` sits beside the authored value, never over it**, and is omitted when they agree —
+   including when the two were merely **cut at different lengths** (assembly allows 400 characters at
+   node scope, the runtime layer 200). Equality alone would have printed a change that never
+   happened, on every long script body.
+5. **Snapshot per turn**, re-resolved on each follow-up, per the recommendation in the open questions
+   above. `followUpMessage` states that the new block replaces the earlier one — a follow-up answered
+   from the opening turn's numbers is the failure mode that looks exactly like a correct answer.
+
+**The port set is bounded and the rule is deliberate:** every output of a *selected* node (an output
+has no authored value, so the runtime is the only place it exists), its fed-or-authored inputs, and
+for every other node only the ports on a wire inside the context. Signals are excluded throughout.
+Selected nodes are emitted first, so a cap cannot cut away the thing the question was about.
+
+**Not done:** the `backwardWalk` stretch in §1a.5. It needs a topology and a question→port match, and
+the task marks it as a stretch on criterion 1; the criterion's non-stretch half is what shipped.
+
+### 1b — reproduced from source: **discoverability, exactly as the task predicted**
+
+🔴 **Read before building anything here: the mechanism is complete on both routes.**
+
+- **Panel route.** `scopeForSelection` (`ExplainPanel.tsx:59-63`) already returns `subgraph` for >1
+  and already labels the button `Explain these N nodes`.
+- **Canvas route.** `NodeContextMenu.ts:280` already pluralises the same way and
+  `rememberTarget(componentName, selectedNodes.map(n => n.model.id))` captures **every** id.
+- **The selection survives the panel switch.** `panelHoldsCanvasSelection`
+  (`EditorEventBindings.ts:120-122`) lists `ExplainPanel_ID`, so opening Explain does *not* deselect
+  — the trap that bites the Properties panel does not apply here.
+- **`getSelectedNodes()` returns the whole selection**, not a clipboard-filtered subset
+  (`EditorClipboard.ts:32` → `[...editor.selector.nodes]`).
+- Marquee is picked up: `useCanvasSelection` re-reads on `mouseup` while the panel is active,
+  because the canvas emits no event for a marquee.
+
+⚠️ **This is a reading, not a run.** Criterion 4 asks for it *driven, both entry routes*, and that
+has not happened. What the reading rules out is "assembly cannot do it" — so a session that picks
+this up should drive it, and if it reproduces, look at the *label and affordance*, not at assembly.
+The one substantive knob the task names — subgraph `neighbourDepth` 1 → 2 (`assemble.ts:70`) — is a
+judgement call, not a defect, and is still open.
+
+### Gates
+
+Recorded in the phase's `NEXT-SESSION-PROMPT.md` §2 with the reading and its caveats.

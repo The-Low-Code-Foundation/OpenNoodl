@@ -24,6 +24,7 @@ import { ExplainSession, type ExplainSessionState } from '@noodl-models/AiAssist
 import { fromComponentModel } from '@noodl-models/AiAssistant/explain/graph';
 import type { ExplainDetail } from '@noodl-models/AiAssistant/explain/prompts';
 import type { ExplainScope } from '@noodl-models/AiAssistant/explain/types';
+import { createExplainRuntime } from '@noodl-utils/provenance/explainRuntime';
 
 import { FeedbackType } from '@noodl-constants/FeedbackType';
 import { Icon, IconName, IconSize } from '@noodl-core-ui/components/common/Icon';
@@ -128,7 +129,10 @@ export function ExplainPanel() {
       const session = ExplainSession.create(
         { components: [fromComponentModel(component)] },
         { scope, componentName: component.fullName, nodeIds: selection.selectedNodeIds },
-        { detail }
+        // FIX-001 §1a. The panel is the only caller with a socket and a
+        // `WarningsModel` in reach, so it is the only one that supplies this;
+        // the session and everything under it stay pure and injectable.
+        { detail, resolveRuntime: createExplainRuntime(component.fullName) }
       );
       sessionRef.current = session;
       session.onChange(setState);
