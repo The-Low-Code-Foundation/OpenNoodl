@@ -239,6 +239,60 @@ function withDescendants(roots, table) {
   return collected;
 }
 
+/**
+ * Work that a sweep must never touch, however dev-stack-shaped it looks.
+ *
+ * 🔴 Skipping these in the seed loop is NOT enough, and that mistake shipped
+ * twice. A `continue` there only stops a process being *chosen* as a seed; it
+ * cannot stop it being *inherited*, because `withDescendants` re-adds every
+ * child of every seed afterwards and only `offLimits` is subtracted. A running
+ * `test:ci` is a grandchild of `npm exec lerna exec --scope noodl-editor`,
+ * which contains ROOT and matches DEV_TOOL — so the wrapper seeds and the whole
+ * suite came back in underneath it.
+ *
+ * Measured 2026-08-15 21:11 with a suite genuinely live: `dev:stop -- --list`
+ * (a dry run — `stop-dev.js` exits before `sweep()`) listed all ten suite
+ * processes as targets, `Electron test.js --ci` among them, while the seed-loop
+ * skip was doing its job correctly. A guard can pass its own test and still be
+ * inert.
+ *
+ * ⚠️ The MCP skip had the identical hole and looked fine only by topology: an
+ * MCP server hangs off the Claude session pid, so it is never below a dev seed.
+ * Nothing about the old guard protected it. Spawn one under a wrapper and it
+ * would have been swept too.
+ */
+const NEVER_SWEEP = /noodl-mcp\.cjs|test\.js --ci|run-electron-tests\.js|webpack\.test-ci|run test:(ci|main)\b/;
+
+/**
+ * Every protected process, plus the whole tree each one needs to survive in.
+ *
+ * Sparing the guarded pid alone is not enough in either direction:
+ *
+ * - **Downwards** — an Electron suite host owns renderer and GPU helpers, and
+ *   killing those ends the run just as surely as killing the host, but more
+ *   confusingly.
+ * - **Upwards** — the run also dies if its npm/lerna wrapper is killed, and the
+ *   wrapper is precisely what `launcherAncestors` seeds. The climb reuses
+ *   `launcherAncestors` so the shield stops exactly where the seeding stops and
+ *   can never escape into the shell.
+ *
+ * ⚠️ Deliberately absolute: no age floor applies. A genuinely dead suite is
+ * therefore not reapable by `dev:stop` and must be killed by pid — the same
+ * bargain the MCP servers have always had, and the safe direction for a tool
+ * whose failure mode is destroying someone's fifteen-minute gate run.
+ */
+function protectedProcesses(table, offLimits) {
+  const matched = [];
+  for (const proc of table.values()) {
+    if (NEVER_SWEEP.test(proc.command)) matched.push(proc.pid);
+  }
+  if (matched.length === 0) return new Set();
+
+  const shielded = withDescendants(matched, table);
+  for (const pid of launcherAncestors(matched, table, offLimits)) shielded.add(pid);
+  return shielded;
+}
+
 // ---------------------------------------------------------------------------
 // Pid file
 // ---------------------------------------------------------------------------
@@ -341,6 +395,9 @@ function findDevProcesses({ protectAncestors = true, includeScratchpad = false, 
   if (table.size === 0) return [];
 
   const offLimits = selfAndAncestors(table, protectAncestors);
+  // Computed before seeding and honoured at every later step — see NEVER_SWEEP
+  // for why the old seed-loop-only skips could not work.
+  const shielded = protectedProcesses(table, offLimits);
 
   const seeds = [];
   for (const proc of table.values()) {
@@ -352,23 +409,18 @@ function findDevProcesses({ protectAncestors = true, includeScratchpad = false, 
     // packages/noodl-mcp/dist/noodl-mcp.cjs as argv — repo path AND a known tool,
     // so rule 1 alone reads them as a dev stack. They are a live connection to a
     // project, not a stack, and age is no tell (one has been seen minutes old).
-    if (proc.command.includes('noodl-mcp.cjs')) continue;
-
-    // 🔴 A running `test:ci` is this checkout's electron/dist binary with `test.js
-    // --ci` as argv — repo path AND `electron/dist`, so rule 1 read it as a dev
-    // stack and reaped it. It is a **gate in progress**, not a leftover.
     //
-    // Measured 2026-08-15: `npm run dev:debug` at 12:51:55 → `start.ts:49`
-    // `reapPreviousSession()` → this sweep → a suite that had been running seven
-    // minutes died at 12:52:01, `test-results.json` was never written, and **npm
-    // still exited 0**. The loss is silent in both directions: the launcher is
-    // told it reaped an orphan, and the suite's owner is told the run passed.
+    // 🔴 A running `test:ci` is the same binary with `test.js --ci` as argv, and
+    // is a **gate in progress**, not a leftover. Measured 2026-08-15: `npm run
+    // dev:debug` at 12:51:55 → `start.ts:49` `reapPreviousSession()` → this
+    // sweep → a suite that had been running seven minutes died at 12:52:01,
+    // `test-results.json` was never written, and **npm still exited 0**. The
+    // loss is silent in both directions: the launcher is told it reaped an
+    // orphan, and the suite's owner is told the run passed.
     //
-    // ⚠️ Age cannot substitute for this exclusion. `sweep()` defaults
-    // `minAgeSeconds` to 0 and `start.ts` passes no floor, so the suite is reaped
-    // at any age — and raising the floor would only make the failure rarer and
-    // harder to attribute, which is worse than losing it every time.
-    if (proc.command.includes('test.js --ci')) continue;
+    // Both cases now live in NEVER_SWEEP, because skipping them *here* was the
+    // bug — a seed-loop skip cannot survive the descendant expansion below.
+    if (shielded.has(proc.pid)) continue;
 
     // Rule 1: repo path AND a known tool. The watchdog is excluded by name — it
     // is the one process that must outlive the sweep it is running.
@@ -392,7 +444,7 @@ function findDevProcesses({ protectAncestors = true, includeScratchpad = false, 
   // A recorded group leader is a seed even when its own command line gives
   // nothing away: `sh -c npx lerna exec --scope ...` names no path at all.
   for (const pid of readPidFile().groups) {
-    if (offLimits.has(pid) || !table.has(pid)) continue;
+    if (offLimits.has(pid) || shielded.has(pid) || !table.has(pid)) continue;
     // The age floor applies here too. Without it a `--stale 24` sweep, whose whole
     // point is to spare live work, would kill a dev stack started a minute ago.
     if (minAgeSeconds > 0 && table.get(pid).ageSeconds < minAgeSeconds) continue;
@@ -400,11 +452,18 @@ function findDevProcesses({ protectAncestors = true, includeScratchpad = false, 
   }
 
   // Wrappers above the seeds, then everything below the two combined — so a
-  // stack whose middle was pkilled is still swept from both ends.
-  for (const pid of launcherAncestors(seeds, table, offLimits)) seeds.push(pid);
+  // stack whose middle was pkilled is still swept from both ends. The climb is
+  // floored by the shield as well as by `offLimits`, so it cannot ascend
+  // *through* a live suite's wrapper and seed it from above.
+  const climbFloor = new Set([...offLimits, ...shielded]);
+  for (const pid of launcherAncestors(seeds, table, climbFloor)) seeds.push(pid);
 
   const all = withDescendants(seeds, table);
   for (const pid of offLimits) all.delete(pid);
+  // 🔴 This subtraction is the one that makes the shield real. Everything above
+  // only decides what *seeds*; `withDescendants` has just re-added every child
+  // of every seed, so a protected process re-enters here unless removed now.
+  for (const pid of shielded) all.delete(pid);
 
   return [...all].map((pid) => table.get(pid)).filter(Boolean);
 }
