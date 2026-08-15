@@ -295,6 +295,21 @@ declining predicate from dead wiring.
 - ⚠️ **MCP servers hold pre-rebuild code**; the **repackage** is separately owed.
 - 🟡 **`run-editor/SKILL.md:23` teaches `nohup … &`**, which reparents the stack to PID 1 and
   destroys launch provenance. `run_in_background` preserves it — I used it and it worked.
+- 🟢 **NEW — the memory index has no owner, and that is the actual problem.** `MEMORY.md` is
+  **20,956 bytes** against a 17,100 target (hard read limit ~24,400). 🔴 **It gains bytes from every
+  session and loses them from none** — a dozen sessions tonight each added a defensible line and no
+  single addition was wrong. Compaction is nobody's task, so it happens only when a size hook
+  shouts, and a hook that shouts at whoever is mid-task gets deferred by exactly the people best
+  placed to act on it. ⚠️ **Not an agent's call:** "what do we stop carrying" is a judgement about
+  what is still worth knowing, and three sessions were editing the file within the hour, so a
+  rewrite would clobber someone. ✅ **The safe lever is promote-then-collapse on a closed phase**,
+  and it needs a **date** rather than a judgement about what is still true. ⚠️ **But it saves
+  ~1.5–2 KB, not the 4,289 the block measures.** Phase 66's section links **18 files and only ~6 are
+  phase facts** — the rest are standing traps that merely happened to be *found* during it (`grep`
+  skipping source as binary, `Connect` writing the live `~/.claude.json`, the MCP surface budget two
+  other phases depend on, four general judgement traps). **Those pointers must be promoted into the
+  standing sections first**, or the collapse is a silent deletion: `MEMORY.md` is the only file
+  loaded, so an unlinked memory survives on disk and is invisible in practice.
 - 🟢 **NEW, and worth a decision: a lockfile written by `start.ts` at *intent*.** §7 documents a
   ~75-second window in which **no process check can be correct**, because the evidence does not
   exist yet. That is not a filter that needs improving; it is a hole no filter can close. Six
