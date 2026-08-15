@@ -45,6 +45,15 @@
  * and is worst when it appears" (PRIOR-ART-RECONCILIATION F3). Substituting a
  * type name for the author would be choosing which of two nodes they meant.
  *
+ * A SECOND ROUTE TO THE SAME SILENT FAILURE
+ * -----------------------------------------
+ * Added 2026-08-15, found while building the install gate that calls this: a
+ * node path can be *shaped* so that it never resolves, with no vocabulary
+ * question involved at all — `%Group` with the component name left off, or a
+ * bare `Group` segment that is read as a child index. Both end in exactly the
+ * outcome the two-vocabulary rule exists to prevent, so both are checked here.
+ * See {@link nodePathProblems}.
+ *
  * PURITY
  * ------
  * No editor singletons, no DOM, no MCP, no model call — a pure function of
@@ -75,6 +84,8 @@ export type LessonFindingCode =
   | 'shadowed-by-deprecated'
   /** A real, unshadowed type name belonging to a deprecated node. */
   | 'deprecated-node-type'
+  /** A node path whose shape means `findNodeWithPath` can never match it. */
+  | 'unmatchable-node-path'
   /** The manifest does not compile — malformed before any vocabulary question arises. */
   | 'malformed-lesson';
 
@@ -264,6 +275,74 @@ export function typeNamesInPath(path: string): string[] {
     .filter((name) => name.length > 0);
 }
 
+/**
+ * Problems with the *shape* of a node path, independent of any vocabulary
+ * question. Empty when the path can at least in principle match.
+ *
+ * 🔴 **WHY THIS IS HERE AND NOT ONLY IN THE VOCABULARY CHECK.** Found 2026-08-15
+ * while building the install gate that calls this verifier. The two-vocabulary
+ * check reads `%`-prefixed segments — and `typeNamesInPath` correctly drops the
+ * first segment, because `findNodeWithPath` reads it as a **component name**.
+ * The consequence nobody had followed through: a path written as `%Group`, with
+ * the component name left off, contains no checked segment at all, so the
+ * verifier passes it in silence. At runtime `findNodeWithPath` looks for a
+ * *component* called `"%Group"`, finds none, and returns undefined — for ever.
+ *
+ * That is the same failure the two-vocabulary rule exists to prevent, arrived at
+ * by a different route: the step never completes and the learner is told they
+ * have not done a thing they have in fact done (LESSON-FORMAT §3's silent
+ * failure, class F1). A gate that catches one spelling of never-matches and not
+ * the other is not a gate.
+ *
+ * Only the two unarguable shapes are reported. Component names are *not*
+ * checked — this verifier has no project, and a lesson is verified before the
+ * project it grades exists.
+ */
+export function nodePathProblems(path: string): string[] {
+  const problems: string[] = [];
+  const tokens = path.split(':');
+
+  // The first segment is a component name. A `%` there is the type sigil in the
+  // wrong place, which is the mistake an author makes when they think of a path
+  // as "the node" rather than as "where the node lives".
+  if (tokens[0]?.startsWith('%')) {
+    problems.push(
+      `"${path}" starts with a node type. A node path starts with the component the node is in, ` +
+        `e.g. "App:${tokens[0]}" — as written, this looks for a component literally called "${tokens[0]}" ` +
+        `and will never match.`
+    );
+  }
+
+  // After the first, a segment is `#label`, `%Type`, or a child index. Anything
+  // else reaches `nodes[parseFloat(ref)]` and indexes with NaN.
+  tokens.slice(1).forEach((segment, i) => {
+    if (segment.startsWith('%') || segment.startsWith('#')) return;
+    if (!Number.isNaN(parseFloat(segment))) return;
+    problems.push(
+      `"${path}" segment ${i + 2} ("${segment}") is neither a type ("%${segment}"), a label ` +
+        `("#${segment}") nor a child index, so it will never match.`
+    );
+  });
+
+  return problems;
+}
+
+/** Every node path in one authored condition, with the field it was written in. */
+export function nodePathsInCondition(def: LessonConditionDef): Array<{ field: string; path: string }> {
+  const d = def as Record<string, unknown>;
+  const paths: Array<{ field: string; path: string }> = [];
+
+  if (typeof d.node === 'string') paths.push({ field: 'node', path: d.node });
+
+  if ('connection' in d && d.connection && typeof d.connection === 'object') {
+    const c = d.connection as Record<string, unknown>;
+    if (typeof c.from === 'string') paths.push({ field: 'connection.from', path: c.from });
+    if (typeof c.to === 'string') paths.push({ field: 'connection.to', path: c.to });
+  }
+
+  return paths;
+}
+
 /** Every string in one authored condition that is matched against `node.type.name`. */
 export function typeNamesInCondition(def: LessonConditionDef): string[] {
   const d = def as Record<string, unknown>;
@@ -342,6 +421,21 @@ export function verifyLessonManifest(
     conditions.forEach((def, conditionIndex) => {
       if (!def || typeof def !== 'object') return;
       const where = `${describeStep(step, stepIndex)} condition ${conditionIndex + 1}`;
+
+      // Shape before vocabulary: a path that can never resolve is not improved
+      // by being told its type name is spelt correctly.
+      for (const { field, path } of nodePathsInCondition(def)) {
+        for (const message of nodePathProblems(path)) {
+          findings.push({
+            code: 'unmatchable-node-path',
+            severity: 'error',
+            where: `${where} ("${field}")`,
+            step: stepIndex,
+            value: path,
+            message
+          });
+        }
+      }
 
       for (const name of typeNamesInCondition(def)) {
         const verdict = vocabulary.classifyTypeName(name);

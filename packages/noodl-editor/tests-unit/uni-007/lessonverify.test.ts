@@ -19,6 +19,8 @@ import {
   LessonVocabulary,
   defaultLessonVocabulary,
   formatLessonFindings,
+  nodePathProblems,
+  nodePathsInCondition,
   typeNamesInCondition,
   typeNamesInPath,
   verifyLessonManifest,
@@ -327,5 +329,105 @@ describe('the real node catalog', () => {
     for (const typeName of ['Group', 'Text', 'Image', 'Circle', 'Condition', 'Expression', 'Counter']) {
       expect(real.classifyTypeName(typeName).code).toBe('ok');
     }
+  });
+});
+
+// ─── The other route to the same silent failure (2026-08-15) ────────────────
+
+/**
+ * A path can be shaped so it never resolves, with no vocabulary question in it
+ * at all. Found while building the Learning folder's install gate: the
+ * two-vocabulary check reads `%`-prefixed segments and `typeNamesInPath`
+ * correctly drops the first one, because `findNodeWithPath` reads it as a
+ * component name — so a path written as `%Group`, component name omitted, has
+ * *nothing* the check looks at and sailed through in silence. At runtime it
+ * hunts for a component literally called "%Group" and never finds one.
+ *
+ * Same outcome as a display name in a condition: the step cannot complete and
+ * the learner is told they have not done what they have done. A gate that
+ * catches one spelling of never-matches and not the other is not a gate.
+ */
+describe('node path shape', () => {
+  it('accepts the real grammar — component first, then labels, types and indices', () => {
+    for (const path of ['App', 'App:%Group', 'App:%Group:%Text', 'App:#header:%Text', 'App:%Group:0', 'App:2:%Text']) {
+      expect(nodePathProblems(path)).toEqual([]);
+    }
+  });
+
+  it('rejects a path that omits the component name', () => {
+    const problems = nodePathProblems('%Group');
+    expect(problems).toHaveLength(1);
+    expect(problems[0]).toMatch(/starts with the component/);
+    // The message shows the fix rather than only naming the fault.
+    expect(problems[0]).toMatch(/App:%Group/);
+  });
+
+  it('rejects a bare segment that would be read as a child index', () => {
+    // `findNodeWithPath` does `nodes[parseFloat('Group')]` — indexing with NaN.
+    const problems = nodePathProblems('App:Group');
+    expect(problems).toHaveLength(1);
+    expect(problems[0]).toMatch(/never match/);
+    expect(problems[0]).toMatch(/%Group/);
+  });
+
+  it('reads paths out of both halves of a connection condition', () => {
+    expect(
+      nodePathsInCondition({
+        connection: { from: '%Button', to: 'App:%Group', fromPort: 'click', toPort: 'show' }
+      })
+    ).toEqual([
+      { field: 'connection.from', path: '%Button' },
+      { field: 'connection.to', path: 'App:%Group' }
+    ]);
+  });
+
+  it('fails a manifest whose condition can never resolve, and says which field', () => {
+    const manifest: LessonManifest = {
+      title: 'Missing the component name',
+      steps: [{ title: 'Add a Group', completeWhen: [{ node: '%Group', exists: true }] }]
+    };
+
+    const report = verifyLessonManifest(manifest);
+
+    expect(report.ok).toBe(false);
+    const finding = report.findings.find((f) => f.code === 'unmatchable-node-path');
+    expect(finding).toBeDefined();
+    expect(finding?.severity).toBe('error');
+    expect(finding?.value).toBe('%Group');
+    expect(finding?.where).toMatch(/"node"/);
+    expect(finding?.step).toBe(0);
+  });
+
+  it('flags both halves of a broken connection path', () => {
+    const report = verifyLessonManifest({
+      title: 'Wire it up',
+      steps: [
+        {
+          title: 'Connect them',
+          completeWhen: [
+            { connection: { from: '%Button', to: 'App:Group', fromPort: 'click', toPort: 'show' } }
+          ]
+        }
+      ]
+    });
+
+    const paths = report.findings.filter((f) => f.code === 'unmatchable-node-path');
+    expect(paths).toHaveLength(2);
+    expect(paths.map((f) => f.where)).toEqual([
+      expect.stringMatching(/connection\.from/),
+      expect.stringMatching(/connection\.to/)
+    ]);
+  });
+
+  it('leaves a well-formed path to the vocabulary check, which still rejects it', () => {
+    // Shape is fine; `Repeater` is the display name of `For Each`. The two checks
+    // are independent, and this is the one that must still fire.
+    const report = verifyLessonManifest({
+      title: 'Repeat',
+      steps: [{ title: 'Add a Repeater', completeWhen: [{ node: 'App:%Repeater', exists: true }] }]
+    });
+
+    expect(report.findings.some((f) => f.code === 'unmatchable-node-path')).toBe(false);
+    expect(report.findings.some((f) => f.code === 'display-name-used')).toBe(true);
   });
 });
