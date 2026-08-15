@@ -1,8 +1,26 @@
 # Phase 66 — next session
 
-**Written 2026-08-15, sessions 23 + 24** (s23 wrote §3a–3e and kept editing while s24 worked; s24
-wrote the follow-up and this header). **FIX-016 §2 is CLOSED (`4be3f1f6`) and so is the wrinkle it
-found (`6de1ae25`)** — the diagnostic now clears the moment you obey it. Fourteen tasks closed.
+**Written 2026-08-15/16, sessions 23 + 24 + 25** (s23 wrote §3a–3e; s24 wrote the follow-up; s25 took
+the gate and closed §5 items 1b, 4 and 5, with several peers editing this file concurrently
+throughout). **FIX-016 §2 is CLOSED (`4be3f1f6`) and so is the wrinkle it found (`6de1ae25`)** — the
+diagnostic now clears the moment you obey it. Fourteen tasks closed.
+
+🟢 **s25: `test:ci` is no longer stale — 2843 / 6 at seed 39393 on `d0891746`, an EXACT floor match**
+(§2). It was two trees behind and `CodeEditorType.ts` had **no gate at all**. ⚠️ Read §2 for what
+that does *not* prove. **Do not re-run it to check**, and 🔴 **do not re-run the destructive
+`dev:stop` experiment either — it exists, `a905af94`** (§5 item 4).
+
+🔴 **A third finding joins the two below, and it is the one this session would most want carried:
+an UNDER-claim is as false as an over-claim, and far harder to catch.** I broadcast *"the sweep fix
+is proven at the enumeration layer only; the kill step is still a code read"* to ten sessions. The
+kill step had been measured **two hours earlier** (`a905af94`). ⚠️ **Every other error tonight ran
+toward over-claiming and was caught within minutes, because an over-claim attracts scrutiny.** A
+caution does not — *"we haven't proven that yet"* is the shape nobody argues with, so nobody
+re-verifies it. Four separate sessions carried that stale caveat, two of them holding the
+contradicting commit in their own notes. **Its cost is invisible by construction: it sends people to
+re-measure the known, or keeps a working fix behind a gate it has already passed.** ✅ **The rule:
+a retraction is itself a claim about the state of the evidence — re-check the shared record
+immediately before broadcasting a correction, not only before making one.**
 
 🔴 **Two findings outlive this phase, and the second was found by correcting the first.**
 
@@ -296,11 +314,40 @@ declining predicate from dead wiring.
    number**. So *"whose stack is this?"* is answerable **without trusting the announcement**: the
    socket filename is a live pid, and a stack's wrapper points back to it. **Walk `ppid` to the
    Claude pid rather than inferring ownership from a display name** (§7's identifier-space ⚠️).
-5. 🟡 **NARROWED, not settled — can a live suite share a pgid with a recorded dev group?** Session
-   25's suite ran as **one clean group (PGID 29984)** rooted at its own wrapper, so a suite spawned
-   by a *different* session than the dev stack cannot collide. ⚠️ **The untested case is the
-   dangerous one: a suite started from the same session that has a recorded dev stack.** That still
-   needs `ps -o pid,pgid` against the `groups` array in a live pid file, with both running.
+5. ✅ **DONE — the same-session case is MEASURED, and the worry behind this item is false.** This
+   entry previously called *"a suite started from the same session that has a recorded dev stack"*
+   the dangerous untested case. It is testable without a dev stack, and s25 tested it by accident:
+   the `dev:stop` decoy and the suite came from **two Bash calls in the same Claude session**
+   (pid 25417).
+
+   ```
+   suite wrapper  29984   pgid 29984    ← /bin/zsh -c …, its OWN group leader (pgid == pid)
+   decoy          33745   pgid 33743    ← a different /bin/zsh -c, a different leader
+   ```
+
+   🔴 **Every Bash-tool invocation is its own process-group leader**, so two calls from one agent
+   session **never** share a group. ✅ **Independently reproduced in a different session** (pid 4409:
+   `40634/40634`, `40750/40750`), which makes it a property of **how the harness spawns shells**
+   rather than a fact about s25's suite. The rationale committed with `4fd2cfdb` — *"agent sessions
+   start both from the same non-interactive shell, where job control is off and children can share a
+   group"* — **has been retracted by its own author.**
+
+   ⚠️ **The guard stays, and the reason is the lesson.** They dropped the group *rather than
+   reasoning about whether the collision could occur*. Arguing "safe by topology" and skipping it
+   would have been **right by luck and wrong in method** — which is exactly what `e8a55109` was, and
+   what failed twice in this file already. A guard defending an unreachable case costs nothing.
+
+   🟡 **Two residuals survive, and they are NOT symmetric — one has a named user:**
+   - 🔴 **One shell invocation.** Unreachable from an agent session per the above — but **Richard
+     works from an interactive terminal**, where job control groups children together. So the case
+     the measurement excludes is precisely *his*, and he has no announcement protocol. For him
+     `4fd2cfdb`'s group-drop is the **operative** path, not defence in depth.
+   - 🔴 **pgid reuse** — a stale pid file naming a dead leader whose number is later recycled.
+     **Rank this live, not remote: pids demonstrably wrapped on this machine on 08-15.**
+
+   ✅ Under either, `sweepableGroups` drops any recorded group containing a shielded process
+   (`dev-processes.js:310-320` — a **code read**, labelled as one), so the failure direction is a
+   **leftover to kill by pid**, not a destroyed run.
 6. **FIX-008 fix C** — Richard owes a measurement. The oldest open item.
 7. **FIX-013**, **FIX-016 §3** — open, each needs its ruling (§6).
 8. 🟡 **FIX-001 §1a.5 stretch** — re-decide rather than build.
