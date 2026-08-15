@@ -144,13 +144,24 @@ hosting** (§9.3 — now partly a D2/D9 question) and the **tutor lesson-context
 
 🔴 **`test:ci` is the outstanding gate and it matters more than usual this time.** `test:main` never
 compiles `views/`, so **the `lessonevalconditions` split has not been compiled by the electron suite
-at all.** A phase-66 peer's pinned-seed run was in flight over the same working tree and undertook to
-report `tests/lessons/*` by name; I did not see the result before writing this. **Check
-`tests/lessons/lessonevalconditions.test.ts`, `lessonformat.test.ts` and `worked-lesson.test.ts`
-first.** I read their imports and all three take only pure symbols (`evaluateSingleCondition`,
-`findNodeWithPath`, `evalConditionsWithContext`, `parseArrayValue` and types) — none imports the
-default export or `liveLessonEvalContext` — so the split *should* be invisible to them. **That is a
-prediction from reading imports, not a measurement.**
+at all.** **Check `tests/lessons/lessonevalconditions.test.ts`, `lessonformat.test.ts` and
+`worked-lesson.test.ts` first.** I read their imports and all three take only pure symbols
+(`evaluateSingleCondition`, `findNodeWithPath`, `evalConditionsWithContext`, `parseArrayValue` and
+types) — none imports the default export or `liveLessonEvalContext` — so the split *should* be
+invisible to them. **That is a prediction from reading imports, not a measurement.**
+
+⚠️ **And nothing is known about it yet, for a reason worth reading before you trust any `test:ci`
+number.** A phase-66 peer ran the pinned seed over this tree and **their run was killed ~7 minutes in**
+(Electron SIGTERMed, MCP servers all spared — the `dev:stop` signature, since `dev:stop` kills by
+*checkout*). They reported it themselves rather than letting the silence stand.
+
+> 🔴 **`test-results.json` was never written, and npm exited 0.** The shell said pass; the run never
+> reached the end. This is the *other* direction of the stale-file trap the memory index warns about:
+> not a stale file reproducing the floor count, names and seed, but **no file at all behind a zero
+> exit**. `stat` the results file for a *fresh mtime* before believing anything — absence is as
+> silent as staleness.
+
+A re-run was in flight when this was written. **Do not read a peer's silence as a green result.**
 
 Run it as `NOODL_SPEC_SEED=39393 npm run test:ci` (`tests/SpecRunner.html:41-42`), and 🔴 **delete
 `packages/noodl-editor/tests/test-results.json` before the run or `stat` it after** — a stale file
