@@ -93,6 +93,18 @@ export interface LessonManifest {
   description?: string;
   /** Optional badge shown on completion. */
   completionBadge?: string;
+  /**
+   * UNI-010 — a manifest's own claim about who wrote it, and the **only** field
+   * in this format that says anything about trust.
+   *
+   * 🔴 It can move in one direction. Provenance is the installing caller's word
+   * (a bundle declaring itself `curated` would simply be believed), but declaring
+   * `"ai"` *spends* trust rather than buying it: it moves the bundle from a
+   * one-class install gate to a three-class one. A liar has no motive, so this
+   * claim is honoured where a claim of curation would not be. See
+   * `lessoninstallpolicy.resolveProvenance`.
+   */
+  authoredBy?: 'ai';
   steps: LessonStepDef[];
 }
 

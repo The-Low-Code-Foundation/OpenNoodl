@@ -474,3 +474,57 @@ export type {
   MeasuredViewportLike,
   RenderFindingLike
 } from '../../noodl-editor/src/editor/src/models/lessondrawncount';
+
+// ─── UNI-010's lesson harness (phase 67, slice 2) ────────────────────────────
+// The F1–F4 gate, shared rather than forked — which is UNI-007's own requirement
+// ("the same verifier, not a fork") finally collected by a second caller. The
+// `create_lesson` tool runs the identical scorecard the editor's install runs,
+// and adds the one class the editor cannot answer: F4 needs a render, and only
+// this package has the harness.
+//
+// 🔴 **These are bundle-clean, and that took a change to make true.** Every
+// module here is a pure function of files-in / findings-out, but
+// `lessonbundleverify` reaches the condition evaluator, and until slice 2 that
+// evaluator built its live-editor context behind a `require` *inside a function*
+// — a trick that makes a module loadable in plain Node and does nothing whatever
+// for a bundler, which resolves the literal path regardless. Importing this from
+// here dragged in `projectmodel`, the node graph, React and `.scss`, and esbuild
+// failed outright. The live half now lives in `lessonevalconditions.live.ts` and
+// nothing on this path can reach a renderer.
+//
+// ⚠️ The rule generalises to every future entry in this file: "it only requires
+// Electron lazily" is not a purity argument here. Build it and see.
+export {
+  formatBundleScorecard,
+  verifyLessonBundle
+} from '../../noodl-editor/src/editor/src/models/lessonbundleverify';
+export type {
+  FailureClassResult,
+  LessonBundleFinding,
+  LessonBundleScorecard
+} from '../../noodl-editor/src/editor/src/models/lessonbundleverify';
+export { verifyLessonManifest } from '../../noodl-editor/src/editor/src/models/lessonverify';
+export type { LessonVerificationReport } from '../../noodl-editor/src/editor/src/models/lessonverify';
+export { buildLessonEvalContext } from '../../noodl-editor/src/editor/src/models/lessonprojectcontext';
+export type { LessonProjectSource } from '../../noodl-editor/src/editor/src/models/lessonprojectcontext';
+export {
+  MANIFEST_FILE,
+  readLessonBundle,
+  readLessonProject,
+  SOLUTION_DIR
+} from '../../noodl-editor/src/editor/src/models/lessonbundleread';
+export type { LessonBundleFs } from '../../noodl-editor/src/editor/src/models/lessonbundleread';
+export { compileConditions } from '../../noodl-editor/src/editor/src/models/lessonformat';
+export type {
+  LessonConditionDef,
+  LessonManifest,
+  LessonStepDef
+} from '../../noodl-editor/src/editor/src/models/lessonformat';
+// The install gate's policy table, so the producer and the installer cannot
+// disagree about what an AI-authored bundle owes. `create_lesson` refuses to
+// *write* a bundle the editor would refuse to install.
+export {
+  decideInstall,
+  REQUIRED_CLASSES,
+  resolveProvenance
+} from '../../noodl-editor/src/editor/src/models/lessoninstallpolicy';

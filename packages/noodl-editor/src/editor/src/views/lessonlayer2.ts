@@ -9,7 +9,7 @@ import { EventDispatcher } from '../../../shared/utils/EventDispatcher';
 import { LearningFolderModel } from '../models/learningfolder';
 import { checkMyWork, liveCheckMyWorkDeps } from '../models/lessoncheck';
 import { ProjectModel } from '../models/projectmodel';
-import evalConditions from './lessons/lessonevalconditions';
+import evalConditions from './lessons/lessonevalconditions.live';
 import LessonLayerView from './lessons/LessonLayerView';
 import PopupLayer from './popuplayer';
 

@@ -245,8 +245,8 @@ export function buildLessonEvalContext(
     const legacy = reconstructLegacyComponent(
       files.registryPath,
       files.component ?? ({} as ComponentV2File),
-      files.nodes ?? ({ nodes: [] } as NodesV2File),
-      files.connections ?? ({ connections: [] } as ConnectionsV2File)
+      files.nodes ?? ({ componentId: files.registryPath, nodes: [] } as NodesV2File),
+      files.connections ?? ({ componentId: files.registryPath, connections: [] } as ConnectionsV2File)
     );
     // `reconstructLegacyComponent` already resolves this; naming it here keeps
     // the reason visible at the one place a future edit might "simplify" it to

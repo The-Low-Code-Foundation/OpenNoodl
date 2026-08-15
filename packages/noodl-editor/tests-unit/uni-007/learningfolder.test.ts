@@ -146,11 +146,11 @@ function evidence(over: Partial<LessonEvidence> = {}): LessonEvidence {
 // ─── Install: the verifier is the gate ──────────────────────────────────────
 
 describe('installing a lesson bundle', () => {
-  it('installs a verified bundle and copies its files into the Learning folder', () => {
+  it('installs a verified bundle and copies its files into the Learning folder', async () => {
     const { model, fs } = makeModel();
     stageBundle(fs, '/bundles/groups', goodManifest());
 
-    const outcome = model.install({ bundleDir: '/bundles/groups', provenance: 'curated' });
+    const outcome = await model.install({ bundleDir: '/bundles/groups', provenance: 'curated' });
 
     expect(outcome.result).toBe('installed');
     if (outcome.result !== 'installed') return;
@@ -170,14 +170,14 @@ describe('installing a lesson bundle', () => {
     expect(fs.files.get('/data/Learning/make-a-group/media/cat.png')).toBe('PNG');
   });
 
-  it('refuses a lesson whose condition uses the prose vocabulary', () => {
+  it('refuses a lesson whose condition uses the prose vocabulary', async () => {
     const { model, fs } = makeModel();
     stageBundle(fs, '/bundles/repeat', {
       title: 'Repeat yourself',
       steps: [{ title: 'Add a Repeater', completeWhen: [{ node: 'App:%Repeater', exists: true }] }]
     });
 
-    const outcome = model.install({ bundleDir: '/bundles/repeat', provenance: 'local-ai' });
+    const outcome = await model.install({ bundleDir: '/bundles/repeat', provenance: 'local-ai' });
 
     expect(outcome.result).toBe('rejected');
     if (outcome.result !== 'rejected') return;
@@ -188,7 +188,7 @@ describe('installing a lesson bundle', () => {
     expect(fs.exists('/data/Learning/repeat-yourself')).toBe(false);
   });
 
-  it('refuses a SHADOWED name, the class a "does this type exist?" gate waves through', () => {
+  it('refuses a SHADOWED name, the class a "does this type exist?" gate waves through', async () => {
     // `Variable` IS a real catalog type, so `hasType()` returns true — but it is
     // the deprecated one, and the node a learner drags out of the picker under
     // that name is `Variable2`. It is also the curriculum's own L6 node
@@ -199,7 +199,7 @@ describe('installing a lesson bundle', () => {
       steps: [{ title: 'Add a Variable', completeWhen: [{ node: 'App:%Variable', exists: true }] }]
     });
 
-    const outcome = model.install({ bundleDir: '/bundles/l6', provenance: 'curated' });
+    const outcome = await model.install({ bundleDir: '/bundles/l6', provenance: 'curated' });
 
     expect(outcome.result).toBe('rejected');
     if (outcome.result !== 'rejected') return;
@@ -208,7 +208,7 @@ describe('installing a lesson bundle', () => {
     expect(finding?.suggestion).toBe('Variable2');
   });
 
-  it('installs a lesson that only produces warnings — an ageing lesson is still completable', () => {
+  it('installs a lesson that only produces warnings — an ageing lesson is still completable', async () => {
     const { model, fs } = makeModel();
     stageBundle(fs, '/bundles/anim', {
       title: 'Animate it',
@@ -217,7 +217,7 @@ describe('installing a lesson bundle', () => {
       steps: [{ title: 'Find the Animation', completeWhen: [{ node: 'App:%Animation', exists: true }] }]
     });
 
-    const outcome = model.install({ bundleDir: '/bundles/anim', provenance: 'org' });
+    const outcome = await model.install({ bundleDir: '/bundles/anim', provenance: 'org' });
 
     expect(outcome.result).toBe('installed');
     if (outcome.result !== 'installed') return;
@@ -225,59 +225,64 @@ describe('installing a lesson bundle', () => {
     expect(outcome.verification.findings.some((f) => f.severity === 'warning')).toBe(true);
   });
 
-  it('refuses a bundle with no readable lesson.json rather than throwing', () => {
+  it('refuses a bundle with no readable lesson.json rather than throwing', async () => {
     const { model, fs } = makeModel();
     fs.writeFile('/bundles/empty/project.json', '{}');
 
-    expect(model.install({ bundleDir: '/bundles/empty', provenance: 'local-ai' }).result).toBe('rejected');
-    expect(model.install({ bundleDir: '/bundles/nowhere', provenance: 'local-ai' }).result).toBe('rejected');
+    expect((await model.install({ bundleDir: '/bundles/empty', provenance: 'local-ai' })).result).toBe('rejected');
+    expect((await model.install({ bundleDir: '/bundles/nowhere', provenance: 'local-ai' })).result).toBe('rejected');
 
     fs.writeFile('/bundles/broken/lesson.json', '{ not json');
     fs.writeFile('/bundles/broken/project.json', '{}');
-    expect(model.install({ bundleDir: '/bundles/broken', provenance: 'local-ai' }).result).toBe('rejected');
+    expect((await model.install({ bundleDir: '/bundles/broken', provenance: 'local-ai' })).result).toBe('rejected');
   });
 
-  it('refuses an id that would escape the Learning folder', () => {
+  it('refuses an id that would escape the Learning folder', async () => {
     // UNI-010 lets an agent on the user's machine hand over a bundle, so the id
     // is a path-traversal boundary and not a tidiness rule.
+    //
+    // ⚠️ Installed as `curated` deliberately, and the reason is worth keeping:
+    // these fixtures carry no `solution/`, so under `local-ai` slice 2's policy
+    // refuses them *before* the id is looked at — and the test would keep passing
+    // while proving nothing about path traversal. Same for the slug test below.
     const { model, fs } = makeModel();
     stageBundle(fs, '/bundles/ok', goodManifest());
 
     for (const id of ['../../etc', 'a/b', 'a\\b', '', '.hidden', '..']) {
-      const outcome = model.install({ bundleDir: '/bundles/ok', provenance: 'local-ai', id });
+      const outcome = await model.install({ bundleDir: '/bundles/ok', provenance: 'curated', id });
       expect(outcome.result).toBe('rejected');
     }
     expect(fs.exists('/data/Learning/../../etc')).toBe(false);
   });
 
-  it('refuses a lesson whose title slugifies to nothing, instead of installing at the root', () => {
+  it('refuses a lesson whose title slugifies to nothing, instead of installing at the root', async () => {
     const { model, fs } = makeModel();
     stageBundle(fs, '/bundles/unnamed', { title: '!!!', steps: [{ title: 'Do a thing' }] });
 
-    expect(model.install({ bundleDir: '/bundles/unnamed', provenance: 'local-ai' }).result).toBe('rejected');
+    expect((await model.install({ bundleDir: '/bundles/unnamed', provenance: 'curated' })).result).toBe('rejected');
   });
 
-  it('replaces on reinstall and does NOT carry the old grade onto new files', () => {
+  it('replaces on reinstall and does NOT carry the old grade onto new files', async () => {
     const { model, fs } = makeModel();
     stageBundle(fs, '/bundles/groups', goodManifest());
-    model.install({ bundleDir: '/bundles/groups', provenance: 'curated' });
+    await model.install({ bundleDir: '/bundles/groups', provenance: 'curated' });
     model.recordGrade('make-a-group', evidence());
     expect(model.get('make-a-group')?.grade?.complete).toBe(true);
 
-    model.install({ bundleDir: '/bundles/groups', provenance: 'curated' });
+    await model.install({ bundleDir: '/bundles/groups', provenance: 'curated' });
 
     expect(model.list()).toHaveLength(1);
     expect(model.get('make-a-group')?.grade).toBeUndefined();
   });
 
-  it('notifies listeners on every write', () => {
+  it('notifies listeners on every write', async () => {
     const { model, fs } = makeModel();
     stageBundle(fs, '/bundles/groups', goodManifest());
     let changes = 0;
     const group = {};
     model.on('learningFolderChanged', () => changes++, group);
 
-    model.install({ bundleDir: '/bundles/groups', provenance: 'curated' });
+    await model.install({ bundleDir: '/bundles/groups', provenance: 'curated' });
     model.recordProgress('make-a-group', { stepIndex: 1, stepCount: 3 });
     model.recordGrade('make-a-group', evidence());
 
@@ -297,10 +302,10 @@ describe('D5 — the section is platform-managed', () => {
     }
   });
 
-  it('keeps an entry whose folder went missing, and says so — a missing folder is resettable, not gone', () => {
+  it('keeps an entry whose folder went missing, and says so — a missing folder is resettable, not gone', async () => {
     const { model, fs } = makeModel();
     stageBundle(fs, '/bundles/groups', goodManifest());
-    model.install({ bundleDir: '/bundles/groups', provenance: 'curated' });
+    await model.install({ bundleDir: '/bundles/groups', provenance: 'curated' });
 
     fs.removeDirectoryRecursive('/data/Learning/make-a-group');
 
@@ -309,13 +314,13 @@ describe('D5 — the section is platform-managed', () => {
     expect(entry.missing).toBe(true);
   });
 
-  it('lists newest install first', () => {
+  it('lists newest install first', async () => {
     const { model, fs } = makeModel();
     stageBundle(fs, '/bundles/a', goodManifest('Lesson A'));
     stageBundle(fs, '/bundles/b', goodManifest('Lesson B'));
 
-    model.install({ bundleDir: '/bundles/a', provenance: 'curated' });
-    model.install({ bundleDir: '/bundles/b', provenance: 'curated' });
+    await model.install({ bundleDir: '/bundles/a', provenance: 'curated' });
+    await model.install({ bundleDir: '/bundles/b', provenance: 'curated' });
 
     expect(model.list().map((e) => e.id)).toEqual(['lesson-b', 'lesson-a']);
   });
@@ -324,10 +329,10 @@ describe('D5 — the section is platform-managed', () => {
 // ─── Reset ──────────────────────────────────────────────────────────────────
 
 describe('resetting a lesson', () => {
-  it('re-pulls a fresh copy and clears progress and grade', () => {
+  it('re-pulls a fresh copy and clears progress and grade', async () => {
     const { model, fs } = makeModel();
     stageBundle(fs, '/bundles/groups', goodManifest());
-    model.install({ bundleDir: '/bundles/groups', provenance: 'curated' });
+    await model.install({ bundleDir: '/bundles/groups', provenance: 'curated' });
     model.recordProgress('make-a-group', { stepIndex: 2, stepCount: 3 });
     model.recordGrade('make-a-group', evidence({ complete: false, completionPercent: 50 }));
 
@@ -343,12 +348,12 @@ describe('resetting a lesson', () => {
     expect(entry?.grade).toBeUndefined();
   });
 
-  it('🔴 does not delete anything when the source cannot be re-pulled', () => {
+  it('🔴 does not delete anything when the source cannot be re-pulled', async () => {
     // Delete-then-fail loses the learner's work AND the lesson — strictly worse
     // than the state reset was pressed to repair.
     const { model, fs } = makeModel();
     stageBundle(fs, '/bundles/groups', goodManifest());
-    model.install({ bundleDir: '/bundles/groups', provenance: 'curated' });
+    await model.install({ bundleDir: '/bundles/groups', provenance: 'curated' });
     fs.writeFile('/data/Learning/make-a-group/project.json', '{"components":["their work"]}');
 
     fs.removeDirectoryRecursive('/bundles/groups');
@@ -358,10 +363,10 @@ describe('resetting a lesson', () => {
     expect(fs.files.get('/data/Learning/make-a-group/project.json')).toBe('{"components":["their work"]}');
   });
 
-  it('says a platform lesson cannot be reset yet, rather than pretending', () => {
+  it('says a platform lesson cannot be reset yet, rather than pretending', async () => {
     const { model, fs } = makeModel();
     stageBundle(fs, '/bundles/groups', goodManifest());
-    model.install({
+    await model.install({
       bundleDir: '/bundles/groups',
       provenance: 'curated',
       source: { kind: 'platform', url: 'https://community.nodegx.dev/lessons/groups' }
@@ -382,21 +387,21 @@ describe('resetting a lesson', () => {
 // ─── Progress and grades ────────────────────────────────────────────────────
 
 describe('progress and grades on the card', () => {
-  function installed() {
+  async function installed() {
     const made = makeModel();
     stageBundle(made.fs, '/bundles/groups', goodManifest());
-    made.model.install({ bundleDir: '/bundles/groups', provenance: 'curated' });
+    await made.model.install({ bundleDir: '/bundles/groups', provenance: 'curated' });
     return made;
   }
 
-  it('records progress', () => {
-    const { model } = installed();
+  it('records progress', async () => {
+    const { model } = await installed();
     model.recordProgress('make-a-group', { stepIndex: 1, stepCount: 3 });
     expect(model.get('make-a-group')?.progress).toEqual({ stepIndex: 1, stepCount: 3 });
   });
 
-  it('takes its numbers straight from the evidence bundle', () => {
-    const { model } = installed();
+  it('takes its numbers straight from the evidence bundle', async () => {
+    const { model } = await installed();
     model.recordGrade(
       'make-a-group',
       evidence({
@@ -416,8 +421,8 @@ describe('progress and grades on the card', () => {
     });
   });
 
-  it('carries a human override with its feedback — UNI-006 has the final say', () => {
-    const { model } = installed();
+  it('carries a human override with its feedback — UNI-006 has the final say', async () => {
+    const { model } = await installed();
     model.recordGrade('make-a-group', evidence({ complete: false, completionPercent: 80 }), {
       gradedBy: 'human',
       feedback: 'Close — the button works but nothing tells the user it did.',
@@ -429,10 +434,10 @@ describe('progress and grades on the card', () => {
     expect(grade?.feedback).toMatch(/nothing tells the user/);
   });
 
-  it('carries `unavailable` as a flag and never as the sentence', () => {
+  it('carries `unavailable` as a flag and never as the sentence', async () => {
     // The sentence names a filesystem, and this register is read by a card that
     // UNI-002 and UNI-006 also read. Same rule as the evidence bundle's.
-    const { model } = installed();
+    const { model } = await installed();
     model.recordGrade(
       'make-a-group',
       evidence({ complete: false, wholeSolution: { valid: true, rendered: false, findingCount: 0, unavailable: true } })
@@ -443,8 +448,8 @@ describe('progress and grades on the card', () => {
     expect(JSON.stringify(ws)).not.toMatch(/\//);
   });
 
-  it('ignores a grade for a lesson that is not installed', () => {
-    const { model } = installed();
+  it('ignores a grade for a lesson that is not installed', async () => {
+    const { model } = await installed();
     expect(model.recordGrade('other', evidence())).toBeUndefined();
     expect(model.recordProgress('other', { stepIndex: 0, stepCount: 1 })).toBeUndefined();
   });
@@ -473,12 +478,12 @@ describe('lesson ids', () => {
 // ─── The disk saying no ─────────────────────────────────────────────────────
 
 describe('when the disk refuses', () => {
-  it('rejects rather than throwing, and records nothing', () => {
+  it('rejects rather than throwing, and records nothing', async () => {
     const { model, fs } = makeModel();
     stageBundle(fs, '/bundles/groups', goodManifest());
     fs.failWrites = 'EACCES: permission denied';
 
-    const outcome = model.install({ bundleDir: '/bundles/groups', provenance: 'curated' });
+    const outcome = await model.install({ bundleDir: '/bundles/groups', provenance: 'curated' });
 
     expect(outcome.result).toBe('rejected');
     if (outcome.result !== 'rejected') return;

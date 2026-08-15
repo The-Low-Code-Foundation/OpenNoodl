@@ -53,7 +53,7 @@
  */
 
 /** Group ids. `core` is the resident set; everything else is revealed on demand. */
-export type ToolGroupId = 'core' | 'backend' | 'docs' | 'explore' | 'project' | 'theme';
+export type ToolGroupId = 'core' | 'backend' | 'docs' | 'explore' | 'lesson' | 'project' | 'theme';
 
 export interface ToolGroup {
   id: ToolGroupId;
@@ -263,6 +263,22 @@ export const TOOL_GROUPS: readonly ToolGroup[] = Object.freeze([
     resident: false
   },
   {
+    // UNI-010. Deferred without hesitation: authoring a lesson is a thing a user
+    // asks for in so many words, so `find_tools` is a sufficient door — and the
+    // brief alone is several thousand characters, which is exactly the kind of
+    // weight AWP-006 exists to keep off every turn of every other session.
+    id: 'lesson',
+    title: 'Authoring a lesson',
+    // ⚠️ Two lines, because this string is billed on every turn of every session
+    // — including the ones that will never write a lesson. The first draft spent
+    // 58 tokens explaining steps, starters and solutions, and pushed the resident
+    // surface past AWP-006's 8,200-token gate on its own. The brief is where that
+    // belongs, and the brief is deferred.
+    purpose: 'write, verify and grade a tutorial lesson for the editor to teach.',
+    tools: ['get_lesson_brief', 'create_lesson', 'check_lesson'],
+    resident: false
+  },
+  {
     id: 'project',
     title: 'Project lifecycle',
     purpose:
@@ -290,6 +306,14 @@ export const TOOL_GROUPS: readonly ToolGroup[] = Object.freeze([
  */
 export const WRITE_ONLY_TOOLS: ReadonlySet<string> = new Set<string>([
   ...CORE_WRITE_TOOLS,
+  // UNI-010. `create_lesson` writes a directory, so the whole group ships inside
+  // the write gate — including the two that change nothing. Same reasoning, and
+  // the same honesty, as `list_backend_processes` below: recorded as observed.
+  // Splitting the brief out to keep it readable on a read-only server would put a
+  // door in front of a room nobody can enter.
+  'get_lesson_brief',
+  'create_lesson',
+  'check_lesson',
   'provision_backend',
   'stop_backend',
   // Reads the process registry and changes nothing — but it ships in

@@ -50,8 +50,37 @@ import type { CreateComponentResponse, FindToolsResponse } from '../src/tools/re
  * to arrive should have this argument again rather than find room here — and if
  * the answer then is "no", the honest fix is a `$ref`ed node schema, not a
  * shorter sentence in front of a model.
+ *
+ * ---
+ *
+ * 🔴 **UNI-010 raised this again, to 8,280 — and the interesting number is not
+ * the one it added.** Measured 2026-08-15, same fixture, same normalisation:
+ *
+ * | surface | tokens |
+ * |---|---|
+ * | **with UNI-010 entirely absent** | **8,198** — *two* tokens under the bar |
+ * | + the `lesson` group's catalogue entry and `find_tools` enum value | 8,206 |
+ * | + its one-line `purpose` | **8,223** |
+ *
+ * The paragraph above banked 58 tokens of slack on purpose, and by the time
+ * anyone measured again **56 of them had been spent** — by work that never knew
+ * it was spending them, because a one-sided `<=` assertion is silent at 8,197 and
+ * at 8,199 alike. It reports the *crossing* and never the *approach*, so the
+ * headroom a renegotiation deliberately buys is consumed by whoever happens to
+ * come next, and the first person to be told is the one who runs out.
+ *
+ * ⚠️ **That is a property of the gate, not of the work that consumed it.** The
+ * general form is worth carrying: *a budget assertion with no reported margin
+ * cannot distinguish "we have room" from "we had room". If the margin matters,
+ * something has to say what it is on a passing run.*
+ *
+ * Raised to 8,280, which puts the slack back where LEG-001 set it (57 tokens
+ * against a measured 8,223) rather than adding UNI-010's cost on top of a bar
+ * that was already exhausted. The `$ref` fix that paragraph names is still the
+ * honest answer for the *next* one — this is the second renegotiation and there
+ * should not be a third.
  */
-const SURFACE_TOKEN_BUDGET = 8200;
+const SURFACE_TOKEN_BUDGET = 8280;
 
 /**
  * A generous project-directory path length, for normalising the instructions.

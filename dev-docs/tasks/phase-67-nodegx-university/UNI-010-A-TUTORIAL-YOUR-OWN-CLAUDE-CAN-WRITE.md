@@ -92,6 +92,123 @@ lesson format and grading runner (criteria 3 and 4 there are this task's prerequ
 > **provenance-labelled install** that runs this scorecard rather than only `verifyLessonManifest`.
 > 🔴 `LearningFolderModel.install()` still gates on **F1 alone**, so an AI-authored bundle installed
 > today gets the static check and nothing else. Criteria 2 and 3 are slice 2's.
+>
+> ✅ **Both closed by slice 2 (below).**
+
+> ## 🟡 SLICE 2 BUILT 2026-08-15 — the gate is collected, and the surface exists
+>
+> **`create_lesson` / `check_lesson` / `get_lesson_brief`** in `noodl-mcp`, and
+> `LearningFolderModel.install()` now runs the whole F1–F4 scorecard instead of the static check
+> alone. 28 new tests (16 editor-side in `tests-unit/uni-010/`, 12 in `noodl-mcp`).
+>
+> | Shipped | Where |
+> |---|---|
+> | **The install policy** — which classes each provenance must have *passed* | [`models/lessoninstallpolicy.ts`](../../../packages/noodl-editor/src/editor/src/models/lessoninstallpolicy.ts) |
+> | **The install gate**, widened from F1 to the scorecard; `install()` is now `async` | `models/learningfolder.ts` |
+> | **The authoring brief** — the format, the path grammar, the whole condition vocabulary | [`noodl-mcp/src/lessons/authoringBrief.ts`](../../../packages/noodl-mcp/src/lessons/authoringBrief.ts) |
+> | **Score-then-write** — the bundle assembler that writes nothing unless it passed | [`noodl-mcp/src/lessons/bundleWriter.ts`](../../../packages/noodl-mcp/src/lessons/bundleWriter.ts) |
+> | **The three tools**, a deferred `lesson` tool group | [`noodl-mcp/src/tools/lessonTools.ts`](../../../packages/noodl-mcp/src/tools/lessonTools.ts) |
+>
+> ### 🔴 The hard problem was D5, and the answer is an asymmetry
+>
+> The sidecar must not write launcher state, so `create_lesson` writes a **folder** and the learner
+> installs it through the launcher's ordinary picker. That picker passes `local` — pointing at a
+> directory says nothing about who wrote what is in it — so the obvious question is how the editor
+> ever applies the stricter AI gate. Slice 3 had assumed "the editor will have watched the MCP write
+> it". **It does not, and there is no channel that would let it.**
+>
+> The way out is that slice 3's own rule is asymmetric and nobody had noticed. Provenance is the
+> caller's word *because a bundle declaring itself `curated` would be believed* — but declaring
+> `authoredBy: "ai"` **spends** trust rather than buying it: it moves the bundle from a one-class
+> install gate to a three-class one.
+>
+> > 🔴 **A claim may only tighten.** A liar has no motive to make itself less trusted, so the one
+> > direction that costs the claimant is the one direction it is safe to honour.
+>
+> One optional manifest field, one pure `resolveProvenance`, and the MCP route works through the
+> existing dialog with **no new plumbing, no IPC and no bridge** — and D5 is untouched, because the
+> sidecar wrote a folder and the editor process wrote the register.
+>
+> ### 🔴 The gate is a policy TABLE, not slice 1's `installable` — because the editor cannot answer F4
+>
+> Gating install on `installable` ("every class checked and passed") was the obvious move and it is
+> wrong, for a reason only building the caller showed: **nothing in a packaged editor can render a
+> solution directory.** Engine 2's editor adapter drives the *running viewer*; the sidecar's spawns
+> the render harness out of `scripts/`, which is not in `build.files`. So `installable` is
+> unreachable in the shipped editor, and gating on it would mean **no AI-authored lesson could ever be
+> installed** — the fourth amendment's failure, one slice later, in the module that recorded it.
+>
+> So `REQUIRED_CLASSES` is keyed by provenance — `curated`/`org`/`local` → F1; `local-ai` → F1, F2, F3
+> — plus one rule that holds for everyone: **a `fail` in any class blocks**, which also makes curated
+> bundles better checked than slice 3 left them.
+>
+> ⚠️ **F4 is required of nobody at install, and that is a recorded hole rather than a shrug.** It is
+> the class the prior arc predicted would *dominate*, and it is answered by the **producer**
+> (`create_lesson` has the harness and refuses to write without it, unless `allow_unrendered` is
+> passed by name) and not by the installer. A bundle a model hand-writes with its own file tools and
+> installs directly therefore reaches a learner with F4 unchecked. If the editor ever gains the
+> capability, the test named for this is what changes.
+>
+> ### 🔴 What building the caller found this time: a lazy `require` defers execution, not resolution
+>
+> The fifth instance, and unlike the other four it is not about a check at all.
+>
+> UNI-007 moved `ProjectModel` and `NodeGraphContextTmp` out of module scope in
+> `views/lessons/lessonevalconditions.ts` and into a `require` **inside** `liveLessonEvalContext()`,
+> with the reason recorded in the file: *"this is what makes 'the same verifier, not a fork'
+> achievable: UNI-010 runs this runner inside an MCP sidecar with no renderer around it."*
+>
+> That claim was true of jest, which never evaluates the branch, and **false of the sidecar, which is
+> bundled.** esbuild resolves a `require()` with a literal path wherever it sits, so the first import
+> from `noodl-mcp` pulled in `projectmodel` → the node graph → React → `.scss` and `.svg`, and the
+> build failed outright. Three slices rested on the claim because nothing had ever tried to bundle it.
+>
+> > 🔴 **"Loadable in plain Node" and "safe to bundle" are two different properties**, and the trick
+> > that buys the first buys none of the second. The check is to build it, not to read it.
+>
+> Fixed by the split the repo already had a convention for:
+> [`lessonevalconditions.live.ts`](../../../packages/noodl-editor/src/editor/src/views/lessons/lessonevalconditions.live.ts),
+> beside `lessonwholesolution.live.ts`. `lessonevalconditions.ts` now reaches no editor singleton by
+> any route a bundler can follow, which is what the original note claimed and did not have.
+>
+> ### 🔴 A second gate that could not report its own margin
+>
+> Adding a deferred tool group tripped AWP-006's 8,200-token surface budget. Measured, same fixture:
+>
+> | surface | tokens |
+> |---|---|
+> | **UNI-010 entirely absent** | **8,198** — *two* tokens under the bar |
+> | + the `lesson` catalogue entry and `find_tools` enum value | 8,206 |
+> | + its one-line `purpose` | **8,223** |
+>
+> LEG-001 raised that bar to 8,200 and wrote down that it was banking 58 tokens of slack. **56 of them
+> had been spent** by work that never knew it was spending them, because `expect(tokens <= BUDGET)`
+> says nothing at 8,197 and nothing at 8,199 — *it reports the crossing and never the approach*. The
+> first person told is the one who runs out. Raised to 8,280 with the measurements written down.
+>
+> ⚠️ And the group exposed a live staleness bug on the way in: `find_tools`' `group` argument was a
+> **hand-written `z.enum`**, so the new group was advertised in the tool's own description and
+> rejected by its schema. Now derived from the manifest.
+>
+> ### ✅ The brief's examples are typed values, not prose
+>
+> Every condition the brief shows is a real `LessonConditionDef` in `CONDITION_EXAMPLES`, rendered
+> into the text, and the spec compiles all eleven through the real `compileConditions`. The worked
+> manifest is likewise run through the harness and asserted to pass all four classes. A brief whose
+> own example the gate would refuse is worse than no example — and *a doc that lies has examples that
+> lie too* is a trap this repo has already paid for.
+>
+> ### ⚠️ What is still NOT built
+>
+> - **Criterion 2's end-to-end drive.** The provenance plumbing exists and is unit-tested; nobody has
+>   yet installed an MCP-written bundle through the real launcher and watched the AI-authored label
+>   appear. That is the next drive, and its consequence list has to include something only the AI
+>   route could satisfy.
+> - **Criterion 3 — the five-lesson run.** Not started.
+> - **Two projects, one bound server.** `create_lesson` takes two project *directories*, so the
+>   authoring model has to produce the starter and the solution itself. The MCP binds one project, so
+>   in practice it authors the solution with the write tools and builds the starter alongside it. This
+>   works and it is not ergonomic; a `derive_starter` step is the obvious slice-3 candidate.
 
 ## Premise
 

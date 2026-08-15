@@ -25,14 +25,28 @@
  *    compiles down to.
  */
 
-// UNI-007: `ProjectModel` and `NodeGraphContextTmp` are deliberately NOT imported
-// at module scope. They are needed only by `liveLessonEvalContext()`, and a
-// top-level import of `projectmodel` drags in the whole editor — which made this
-// module unloadable outside a renderer, and with it the grading runner built on
-// top of it. UNI-010 runs that runner inside an MCP sidecar with no renderer
-// around it (the OBS-002 rule `tests-unit/` exists for), so the pure core has to
-// be reachable from plain Node. The requires below are inside the one function
-// that needs them.
+// 🔴 UNI-010 slice 2 — THIS MODULE REACHES NO EDITOR SINGLETON AT ALL, and the
+// live half lives next door in `lessonevalconditions.live.ts`.
+//
+// UNI-007 arrived at half of this: `ProjectModel` and `NodeGraphContextTmp` were
+// moved out of module scope into a `require` **inside** `liveLessonEvalContext()`,
+// with the stated purpose that "UNI-010 runs that runner inside an MCP sidecar
+// with no renderer around it". That was true of jest, which never evaluates the
+// branch, and false of the sidecar, which is **bundled**:
+//
+//   ⚠️ **A lazy `require` defers execution. It does not defer resolution.**
+//
+// esbuild resolves a `require()` with a literal path at build time regardless of
+// where it sits, so bundling anything that transitively reached this module
+// pulled in `projectmodel` → the node graph → React → `.scss` and `.svg`, and the
+// build failed outright. Runtime-loadable and bundle-clean are two different
+// properties, and three slices of this arc rested on the wrong one because
+// nothing had tried to bundle it yet.
+//
+// The fix is the split, not a cleverer require: everything here is a pure
+// function of (conditions, context), and the one function that needed a renderer
+// is now in a `.live.ts` sibling — the same convention `lessonwholesolution.live.ts`
+// already uses for exactly this reason.
 
 // ─── Structural views of the editor graph ──────────────────────────────────
 // The evaluator only needs a narrow, stable subset of NodeGraphNode/ProjectModel.
@@ -393,35 +407,8 @@ export function evalConditionsWithContext(conditions: LessonCondition[], ctx: Le
   return conditions.every((c) => evaluateSingleCondition(c, ctx));
 }
 
-// ─── Live-editor context ────────────────────────────────────────────────────
-
-/** Build a context from the live editor singletons. Renderer-only, by nature. */
-export function liveLessonEvalContext(): LessonEvalContext {
-  /* eslint-disable @typescript-eslint/no-var-requires */
-  const { ProjectModel } = require('../../models/projectmodel');
-  const { NodeGraphContextTmp } = require('../../contexts/NodeGraphContext/NodeGraphContext');
-  /* eslint-enable @typescript-eslint/no-var-requires */
-
-  const project = ProjectModel.instance as unknown as {
-    components: LessonComponent[];
-    getRootNode(): LessonNode | undefined;
-    getMetaData(key: string): Record<string, unknown> | undefined;
-  };
-  const activeComponent = NodeGraphContextTmp.nodeGraph?.getActiveComponent?.();
-
-  return {
-    components: project.components,
-    rootNode: project.getRootNode(),
-    getMetaData: (key: string) => project.getMetaData(key),
-    viewerPath: (window as unknown as { noodlEditorPreviewRoute?: string }).noodlEditorPreviewRoute,
-    activeComponentName: activeComponent?.name
-  };
-}
-
-/**
- * Legacy entry point used by the lesson layer: evaluate a step's conditions
- * against the live editor. Retains the original default-export signature.
- */
-export default function evalConditions(conditions: LessonCondition[]): boolean {
-  return evalConditionsWithContext(conditions, liveLessonEvalContext());
-}
+// 🔴 `liveLessonEvalContext()` and the default `evalConditions()` used to live
+// here and are now in `./lessonevalconditions.live.ts`. See the note at the top
+// of this file: an inside-the-function `require` was never enough, because a
+// bundler resolves it anyway. Nothing below this line may reach an editor
+// singleton, directly or through an import.

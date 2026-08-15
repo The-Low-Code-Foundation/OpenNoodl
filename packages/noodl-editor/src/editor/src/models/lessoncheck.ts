@@ -219,7 +219,7 @@ export function summariseGrade(grade: LessonGrade, evidence: LessonEvidence): st
 export function liveCheckMyWorkDeps(): CheckMyWorkDeps {
   /* eslint-disable @typescript-eslint/no-var-requires */
   const { LearningFolderModel } = require('./learningfolder');
-  const { liveLessonEvalContext } = require('../views/lessons/lessonevalconditions');
+  const { liveLessonEvalContext } = require('../views/lessons/lessonevalconditions.live');
   const { liveWholeSolutionGrader } = require('./lessonwholesolution.live');
   const { defaultLearningLessonFs, readLessonManifest } = require('./learninglesson');
   /* eslint-enable @typescript-eslint/no-var-requires */

@@ -33,6 +33,7 @@ import { registerCreateProjectTools } from './tools/createProject';
 import { registerProvisionTools } from './tools/provisionTools';
 import { registerReviewTools } from './tools/review';
 import { registerListProjectsTools } from './tools/listProjects';
+import { registerLessonTools } from './tools/lessonTools';
 import { ToolDisclosure, recordTools, registerFindTools } from './tools/disclosure';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -172,6 +173,11 @@ export function createServer(options: ServerOptions): CreatedServer {
     // that can turn an unbound server into a bound one, so it is the only one
     // that needs to be able to write to either.
     registerCreateProjectTools(rec, { binding, disclosure, deferTools });
+    // UNI-010. Takes no store, for the same reason `create_project` does not: a
+    // lesson bundle is assembled out of two project directories the caller names,
+    // and neither of them is the one this server is pointed at. It writes a
+    // folder on disk and never the editor's launcher state (D5).
+    registerLessonTools(rec);
   }
   // AWP-006 — last, and it has to be: the handles do not all exist until every
   // registration has run, and disabling a group before its tools are registered

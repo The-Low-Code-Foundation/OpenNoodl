@@ -505,6 +505,49 @@ guessing at what a learner might do.
   `/#__page__/Home`), and a stored node serialises only its **dynamic** ports, so `hasPort: "text"` —
   true of every Text in the editor — reads false from the file alone.
 
+#### The fifth amendment (2026-08-15, ninth session) — the trick that made the sidecar possible did not
+
+Same method, fifth time, and this one is not about a check or a feature. It is about a **claim written
+in a module header that no one had any way to falsify until something depended on it.**
+
+UNI-007 moved `ProjectModel` and `NodeGraphContextTmp` out of module scope in
+[`lessonevalconditions.ts`](../../../packages/noodl-editor/src/editor/src/views/lessons/lessonevalconditions.ts)
+into a `require` **inside** `liveLessonEvalContext()`, and recorded why in the file: *"this is what
+makes 'the same verifier, not a fork' achievable: UNI-010 runs this runner inside an MCP sidecar with
+no renderer around it."* Every reader since — including three slices of this arc and this register —
+took it as settled.
+
+It was true of jest, which never evaluates that branch, and false of the sidecar, which is **bundled**.
+
+> 🔴 **A lazy `require` defers execution. It does not defer resolution.** esbuild resolves a
+> `require()` with a literal path wherever it sits, so the first import from `noodl-mcp` pulled in
+> `projectmodel` → the node graph → React → `.scss` and `.svg`, and the build failed outright.
+
+**"Loadable in plain Node" and "safe to bundle" are two different properties**, and the trick that
+buys the first buys none of the second. Fixed with the split the repo already had a convention for —
+[`lessonevalconditions.live.ts`](../../../packages/noodl-editor/src/editor/src/views/lessons/lessonevalconditions.live.ts),
+beside `lessonwholesolution.live.ts` — so the pure module now reaches no editor singleton by any route
+a bundler can follow, which is what the note claimed and did not have.
+
+⚠️ **The generalisation, because this file is full of purity claims:** *"it only requires Electron
+lazily" is not a purity argument.* `editor-deps.ts` carries a whole barrel of them and every one is
+load-bearing for the standalone artifact. The check is to **build it**, not to read it.
+
+#### A gate that could not report its own margin (2026-08-15, ninth session)
+
+Not a lesson-format finding, but the same family and it cost the same session an hour, so it is
+recorded where the traps are. AWP-006's tool-surface budget is asserted as
+`expect(tokens <= SURFACE_TOKEN_BUDGET)`. LEG-001 raised that bar to 8,200 and wrote down, explicitly,
+that it was banking 58 tokens of slack for the next arrival.
+
+Measured on 2026-08-15 with UNI-010 entirely absent: **8,198**. Fifty-six of the fifty-eight had been
+spent by work that never knew it was spending them.
+
+> 🔴 **A one-sided budget assertion reports the crossing and never the approach.** It says nothing at
+> 8,197 and nothing at 8,199, so the headroom a renegotiation deliberately buys is consumed silently
+> and the first person told is the one who runs out. *If a margin matters, something has to state it
+> on a passing run.*
+
 ### Blocker 2 — phase 60's signal wording: **landed upstream, one downstream edit still owed**
 
 **Phase 60 is 7 of 7 built, merged and closed 2026-08-11** — not the three tasks the memory index

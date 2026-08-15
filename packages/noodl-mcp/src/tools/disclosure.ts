@@ -44,7 +44,6 @@ import {
   BOOTSTRAP_TOOLS,
   TOOL_GROUPS,
   deferredGroups,
-  groupOfTool,
   type ToolGroupId
 } from '../toolGroups';
 import type { FindToolsResponse } from './responses';
@@ -365,8 +364,15 @@ export function registerFindTools(server: McpServer, disclosure: ToolDisclosure)
       title: 'Find tools',
       description: bootstrap ? BOOTSTRAP_FIND_TOOLS_DESCRIPTION : boundFindToolsDescription(),
       inputSchema: {
+        // 🔴 Derived from the manifest, not written out. Hand-listed, this enum
+        // is a second statement of which groups exist — and it was already one
+        // group stale the moment UNI-010 added `lesson`: `find_tools` advertised
+        // the group in its own description and then rejected the argument that
+        // reveals it, which is AWP-006's own failure mode ("a tool the model
+        // cannot see is a capability the product does not have") reached from the
+        // inside. The manifest is the one place the set is decided.
         group: z
-          .enum(['backend', 'docs', 'explore', 'project', 'theme'])
+          .enum(deferredGroups().map((g) => g.id) as [ToolGroupId, ...ToolGroupId[]])
           .optional()
           .describe('Reveal every tool in this group'),
         query: z.string().optional().describe('Free-text over tool names and titles, e.g. "roles" or "workflow"')

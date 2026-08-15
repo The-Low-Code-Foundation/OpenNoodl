@@ -49,6 +49,8 @@ import {
 import { App } from '../../models/app';
 import { DialogLayerModel } from '../../models/DialogLayerModel';
 import { LearningFolderModel } from '../../models/learningfolder';
+import { formatBundleScorecard } from '../../models/lessonbundleverify';
+import { describeInstallCheck } from '../../models/lessoninstallpolicy';
 import { attachLearningLesson } from '../../models/learninglesson';
 import { LessonsProjectsModel } from '../../models/LessonsProjectModel';
 import LessonTemplatesModel from '../../models/lessontemplatesmodel';
@@ -377,9 +379,16 @@ export function ProjectsPage(props: ProjectsPageProps) {
    * call the same `install`, and pass `local-ai` because it will know who wrote
    * the bundle.
    *
-   * ⚠️ Provenance is `'local'`, not `'local-ai'`. Picking a directory says
-   * nothing about who authored what is in it, and the register refuses to read
-   * a self-declared provenance out of the manifest for exactly that reason.
+   * ⚠️ Provenance passed here is `'local'`, not `'local-ai'`. Picking a directory
+   * says nothing about who authored what is in it.
+   *
+   * 🔴 **The bundle may still make itself `local-ai`, and only in that
+   * direction** (UNI-010 slice 2). A manifest declaring `curated` would be a
+   * claim that buys trust and is ignored; a manifest declaring `authoredBy: "ai"`
+   * *spends* trust — it moves the bundle from a one-class install gate to a
+   * three-class one — so the register honours it. That is what lets the MCP route
+   * work through this very dialog with no new plumbing: the sidecar writes a
+   * folder, the learner points at it, and the stricter gate still applies.
    *
    * A refusal is reported in full: the verifier's first message is the useful
    * half — "this lesson would never have been completable, and here is the line".
@@ -388,7 +397,7 @@ export function ProjectsPage(props: ProjectsPageProps) {
     const bundleDir = await filesystem.openDialog({ allowCreateDirectory: false });
     if (!bundleDir) return;
 
-    const outcome = LearningFolderModel.instance.install({ bundleDir, provenance: 'local' });
+    const outcome = await LearningFolderModel.instance.install({ bundleDir, provenance: 'local' });
 
     if (outcome.result === 'installed') {
       const warnings = outcome.verification.findings.filter((f) => f.severity === 'warning');
@@ -397,11 +406,12 @@ export function ProjectsPage(props: ProjectsPageProps) {
           ? `"${outcome.entry.title}" installed, with ${warnings.length} warning(s) — see the console`
           : `"${outcome.entry.title}" is in your Learning section`
       );
+      console.log('[Learning]', describeInstallCheck(outcome.scorecard, outcome.entry.provenance));
       if (warnings.length) console.warn('[Learning] lesson installed with warnings:', warnings);
       return;
     }
 
-    if (outcome.verification) console.error('[Learning] lesson refused:', outcome.verification.findings);
+    if (outcome.scorecard) console.error('[Learning] lesson refused:', formatBundleScorecard(outcome.scorecard));
     ToastLayer.showError(outcome.reason);
   }, []);
 

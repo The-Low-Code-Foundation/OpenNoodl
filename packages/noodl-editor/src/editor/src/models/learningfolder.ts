@@ -45,10 +45,15 @@
  */
 
 import Model from '../../../shared/model';
-import type { LessonManifest } from './lessonformat';
-import type { LessonEvidence } from './lessongrading';
-import { verifyLessonManifest } from './lessonverify';
+import type { LessonEvidence, WholeSolutionGrader } from './lessongrading';
+import { verifyLessonBundle } from './lessonbundleverify';
+import type { LessonBundleScorecard } from './lessonbundleverify';
+import { readLessonBundle } from './lessonbundleread';
+import { decideInstall, resolveProvenance } from './lessoninstallpolicy';
+import { buildLessonEvalContext } from './lessonprojectcontext';
+import type { LessonProjectSource } from './lessonprojectcontext';
 import type { LessonVerificationReport } from './lessonverify';
+import type { LessonEvalContext } from '../views/lessons/lessonevalconditions';
 
 // ─── What a Learning-section entry is ───────────────────────────────────────
 
@@ -65,9 +70,17 @@ import type { LessonVerificationReport } from './lessonverify';
  * install argument.
  *
  * `local` is that honesty made explicit: a folder the user pointed us at is
- * *installed from disk*, and nothing about it says who wrote it. UNI-010's
- * agent route will pass `local-ai` because the editor will have watched the MCP
- * write it.
+ * *installed from disk*, and nothing about it says who wrote it.
+ *
+ * 🔴 **UNI-010 slice 2 amended how the AI route reaches `local-ai`, and the
+ * amendment sharpens the rule rather than bending it.** Slice 3 assumed the
+ * editor would "watch the MCP write it" — it does not, and cannot: the sidecar
+ * writes a folder and the learner installs it through the ordinary picker, which
+ * knows nothing. The way out is that this rule is **asymmetric**. Declaring
+ * `curated` buys trust and is ignored; declaring `authoredBy: "ai"` *spends* it,
+ * moving the bundle from a one-class install gate to a three-class one — so a
+ * liar has no motive and the claim is safe to honour in that one direction. See
+ * `lessoninstallpolicy.resolveProvenance`.
  */
 export type LessonProvenance = 'curated' | 'org' | 'local-ai' | 'local';
 
@@ -181,12 +194,30 @@ export interface InstallLessonOptions {
   id?: string;
   /** Defaults to `{ kind: 'local', path: bundleDir }`. */
   source?: LearningSource;
+  /**
+   * Engine 2 over the bundle's **solution**, when the installing process can run
+   * one. Absent means F4 is `not-checked`, which is the shipped editor's ordinary
+   * state and is why F4 is required of nobody — see `lessoninstallpolicy`.
+   */
+  wholeSolution?: WholeSolutionGrader;
 }
 
 export type InstallLessonOutcome =
-  | { result: 'installed'; entry: LearningEntry; verification: LessonVerificationReport }
-  /** The bundle was refused. `verification` is present when the refusal came from the check. */
-  | { result: 'rejected'; reason: string; verification?: LessonVerificationReport };
+  | {
+      result: 'installed';
+      entry: LearningEntry;
+      /** The static half, kept at the top level because callers already read it. */
+      verification: LessonVerificationReport;
+      /** All four classes, as scored at install. */
+      scorecard: LessonBundleScorecard;
+    }
+  /** The bundle was refused. Both reports are present when the refusal came from the check. */
+  | {
+      result: 'rejected';
+      reason: string;
+      verification?: LessonVerificationReport;
+      scorecard?: LessonBundleScorecard;
+    };
 
 export type ResetLessonOutcome =
   | { result: 'reset'; entry: LearningEntry }
@@ -277,13 +308,27 @@ export class LearningFolderModel extends Model {
    * done (LESSON-FORMAT §3). Refusing at install is the only point where that
    * costs nothing; refusing later means a learner has already been stuck.
    *
+   * 🔴 **Slice 2 widened this from F1 to the whole scorecard, and there is one
+   * door.** Until now this ran `verifyLessonManifest` alone, so an AI-authored
+   * bundle got the static check and nothing else — the free-authoring bargain was
+   * priced at four classes and collected at one. The temptation was to add a
+   * second, stricter `installVerified()` beside this and leave the F1-only door
+   * open for the callers that already existed. That is the shape slice 3's own
+   * header argues against ("a rule enforced at N sites is broken at N+1"), so
+   * instead this method absorbed the harness and every caller awaits it.
+   *
+   * Which classes must have *passed* is {@link REQUIRED_CLASSES}, keyed by
+   * provenance — and a `fail` in any class blocks regardless, which also makes
+   * curated bundles better checked than they were.
+   *
    * Warnings do not block. A deprecated-but-unshadowed node type is a lesson
    * that will age badly, not one that cannot be finished.
    *
    * Never throws: both machine producers of this format hand it machine-written
-   * JSON, so a malformed bundle is an outcome, not an exception.
+   * JSON, so a malformed bundle is an outcome, not an exception. The context
+   * builders reconstruct arbitrary on-disk files, so they are guarded too.
    */
-  install(options: InstallLessonOptions): InstallLessonOutcome {
+  async install(options: InstallLessonOptions): Promise<InstallLessonOutcome> {
     const { fs } = this.deps;
     const bundleDir = options.bundleDir;
 
@@ -291,8 +336,8 @@ export class LearningFolderModel extends Model {
       return { result: 'rejected', reason: `There is no lesson bundle at ${bundleDir || '(no path given)'}.` };
     }
 
-    const manifestPath = fs.join(bundleDir, 'lesson.json');
-    const manifest = fs.readJsonFile(manifestPath) as LessonManifest | undefined;
+    const bundle = readLessonBundle(bundleDir, fs);
+    const manifest = bundle.manifest;
     if (!manifest || typeof manifest !== 'object') {
       return {
         result: 'rejected',
@@ -300,16 +345,21 @@ export class LearningFolderModel extends Model {
       };
     }
 
-    const verification = verifyLessonManifest(manifest);
-    if (!verification.ok) {
-      const errors = verification.findings.filter((f) => f.severity === 'error');
-      return {
-        result: 'rejected',
-        reason:
-          `This lesson would not be completable: ${errors.length} problem(s) in its completion conditions. ` +
-          `First: ${errors[0]?.message ?? 'unknown'}`,
-        verification
-      };
+    // The manifest may make the gate stricter and may never make it looser.
+    const provenance = resolveProvenance(options.provenance, manifest.authoredBy);
+
+    const starter = contextFor(bundle.starter);
+    const solution = contextFor(bundle.solution);
+    const scorecard = await verifyLessonBundle(manifest, {
+      ...(starter ? { starter } : {}),
+      ...(solution ? { solution } : {}),
+      ...(options.wholeSolution ? { wholeSolution: options.wholeSolution } : {})
+    });
+    const verification = scorecard.verification;
+
+    const decision = decideInstall(scorecard, provenance);
+    if (!decision.allowed) {
+      return { result: 'rejected', reason: decision.reason ?? 'This lesson was refused.', verification, scorecard };
     }
 
     const id = options.id ?? slugifyLessonId(manifest.title);
@@ -327,14 +377,19 @@ export class LearningFolderModel extends Model {
       fs.makeDirectory(projectDirectory);
       fs.copyRecursive(bundleDir, projectDirectory);
     } catch (e) {
-      return { result: 'rejected', reason: `The lesson could not be written to disk: ${errorText(e)}`, verification };
+      return {
+        result: 'rejected',
+        reason: `The lesson could not be written to disk: ${errorText(e)}`,
+        verification,
+        scorecard
+      };
     }
 
     const entry: LearningEntry = {
       id,
       title: manifest.title ?? id,
       ...(manifest.description ? { description: manifest.description } : {}),
-      provenance: options.provenance,
+      provenance,
       projectDirectory,
       source: options.source ?? { kind: 'local', path: bundleDir },
       installedAt: this.deps.now()
@@ -347,7 +402,7 @@ export class LearningFolderModel extends Model {
     entries.push(entry);
     this.write(entries);
 
-    return { result: 'installed', entry, verification };
+    return { result: 'installed', entry, verification, scorecard };
   }
 
   /**
@@ -443,6 +498,29 @@ export class LearningFolderModel extends Model {
 
 function errorText(e: unknown): string {
   return e instanceof Error ? e.message : String(e);
+}
+
+/**
+ * A project source as an evaluation context, or `undefined` if it is not there
+ * or will not reconstruct.
+ *
+ * 🔴 **The catch is the point, not defensive padding.** `buildLessonEvalContext`
+ * runs the editor's own `reconstructLegacyComponent` over files that, on this
+ * route, were written by a model — so a bundle with a plausible-looking but
+ * malformed `nodes.json` can throw here. A throw would come out of
+ * {@link LearningFolderModel.install} as an exception rather than as a refusal,
+ * and this model's standing rule is that a malformed bundle is an outcome. The
+ * class that could not be built then reports `not-checked`, which for a
+ * `local-ai` bundle refuses the install anyway — the safe direction, arrived at
+ * without pretending we know what was wrong with the file.
+ */
+function contextFor(source: LessonProjectSource | undefined): LessonEvalContext | undefined {
+  if (!source) return undefined;
+  try {
+    return buildLessonEvalContext(source);
+  } catch {
+    return undefined;
+  }
 }
 
 // ─── The real ports ─────────────────────────────────────────────────────────
