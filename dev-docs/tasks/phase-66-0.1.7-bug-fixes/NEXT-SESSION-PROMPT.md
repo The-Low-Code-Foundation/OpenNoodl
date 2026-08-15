@@ -1,26 +1,24 @@
 # Phase 66 — next session
 
-**Written 2026-08-14, session 8 (FIX-011 and FIX-019 driven and CLOSED; the launch sweep defanged).**
-The seven-ruling backlog is now **4 closed, 0 built-not-driven, 3 to go** (FIX-002/003/014, all
-ruled, all buildable by an agent alone). This session ran **zero paid requests** and wrote **one
-line of product-adjacent code** (a sweep exclusion in `scripts/devtools/dev-processes.js` — §3).
-⚠️ **Three sessions were live on this checkout tonight**; coordination was by direct
-session-to-session messages and it worked — §4 has the protocol that emerged.
+**Written 2026-08-15, session 9 (FIX-002, FIX-003 and FIX-014 all BUILT and merged; nothing
+driven).** The seven-ruling backlog is now **empty of buildable work** — every ruled task has code.
+What the phase owes from here is almost entirely **drives**, plus Richard's remaining rulings.
+
+⚠️ **Three tasks landed today and NONE of them has been driven.** Do not read the merge commits as
+closures. §1 is the honest table.
 
 ---
 
 ## 0. How this file works
 
-One `NEXT-SESSION-PROMPT.md` per phase, overwritten each session (the phase-57/60/61 convention).
-It carries exactly four things and nothing else:
+One `NEXT-SESSION-PROMPT.md` per phase, overwritten each session. It carries exactly four things:
 
-1. **Built vs. driven**, per task, as a table — the phase-64 discipline. *Built* is code plus gates;
-   *driven* is the app doing it. Never let the two blur into "done".
+1. **Built vs. driven**, per task, as a table — *built* is code plus gates; *driven* is the app
+   doing it. Never let the two blur into "done".
 2. **Gate readings with their date and commit**, so the next session compares NAMES against a
    reading it can trust rather than re-deriving one.
 3. **What this session settled**, so nobody re-litigates or re-measures it.
-4. **What to do next and why**, ordered, with the rulings still owed by Richard called out
-   separately from the work an agent can do alone.
+4. **What to do next and why**, ordered, with rulings owed by Richard called out separately.
 
 Learnings that outlive the phase go to memory, not here.
 
@@ -30,130 +28,174 @@ Learnings that outlive the phase go to memory, not here.
 
 | Task | Built | Driven | Note |
 |---|---|---|---|
-| **FIX-020** | ✅ | ✅ 3/3 | **CLOSED** |
-| **FIX-010** | ✅ | ✅ 3/3 | **CLOSED** |
-| **FIX-018** | ✅ | ✅ 5/5 | **CLOSED** |
 | **FIX-007** | ✅ | ✅ 4/4 | **CLOSED** |
 | **FIX-009** | ✅ | ✅ 5/5 | **CLOSED** |
+| **FIX-010** | ✅ | ✅ 3/3 | **CLOSED** |
+| **FIX-011** | ✅ | ✅ 4/4 | **CLOSED** |
 | **FIX-012** | ✅ | ✅ 3/3 | **CLOSED** |
-| **FIX-011** | ✅ | ✅ **4/4 this session** | **CLOSED** — drive record in the task file |
-| **FIX-019** | ✅ | ✅ **4/4 this session** | **CLOSED** — 🟡 14(a) vocabulary sweep still owed (§5) |
-| **FIX-008** A, B, E | ✅ | ✅ | idempotent Connect, backfill on open, bound directory |
-| **FIX-008** C, D | 📋 not built | — | C stops the report recurring; D removes the class |
-| FIX-002/003/014 | 📋 open | — | ✅ ruled, buildable by an agent alone; 002 is an **M**, not S |
+| **FIX-018** | ✅ | ✅ 5/5 | **CLOSED** |
+| **FIX-019** | ✅ | ✅ 4/4 | **CLOSED** — 🟡 14(a) vocabulary sweep still owed |
+| **FIX-020** | ✅ | ✅ 3/3 | **CLOSED** |
+| **FIX-002** | ✅ **today** | 🔴 **0/4** | + **BLD-010 must be RE-DRIVEN** — see §3 |
+| **FIX-003** | ✅ **today** | 🔴 **0/5** | + the **drag-surface drives the ruling put in scope** |
+| **FIX-014** | ✅ **today** | 🔴 **0/1** | criterion 1 is "driven, both clients" |
+| **FIX-008** A, B, E | ✅ | ✅ | C, D not built |
 | everything else | 📋 open | — | see [TASKS.md](TASKS.md) |
 
-**Eight of 21 tasks are now fully closed.** Nothing in this phase is built-but-not-driven.
-
-🔴 **FIX-002 is still not the S it was filed as** — the `TextArea` Enter flip hits ~9 more `onEnter`
-call sites. Unchanged since session 6; treat as **M**.
+**Eight closed, three built-not-driven, ten open.** 🔴 **The built-not-driven column is the whole
+story of this session** — it is the largest it has ever been in this phase, and driving is now the
+critical path rather than building.
 
 ---
 
 ## 2. Gate readings
 
+Taken on the merged tree at **`1716236a`** (or its parent where noted), 2026-08-15:
+
 | Gate | Reading |
 |---|---|
-| `test:ci` | ✅ **2779 total / 6 failed — the floor exactly, by name** (4 × `AIX-006 style vocabulary`, 2 × `AI model registry`), **seed 81235**, run by the phase-67/68 session on the settled tree at HEAD (`bc373e16` + their `b9664822`), finished 23:19. Reported to this session directly; treat as the trusted baseline. |
-| `test:main` (jest) | ✅ 190 suites / 2932 tests, 0 failed (session 7 reading; nothing jest-adjacent changed since) |
-| typechecks | ✅ 0 errors both configs (session 7 reading, commit `519a1e66`; nothing TS changed since) |
-| MCP suite / catalog trio / `cloud-library:check` | not run — no MCP, catalog, node or library file touched |
+| `test:main` (jest, editor) | ✅ **196 suites / 3022 tests, 0 failed** — was 190/2932 at the phase-66 start of day |
+| `noodl-mcp` jest | ✅ **43 suites / 494 tests, 0 failed** (includes the instructions token-budget gate) |
+| `noodl-core-ui` jest | ✅ **23 suites / 369 tests, 0 failed** |
+| editor `tsc --noEmit` | ✅ 0 errors |
+| `noodl-core-ui` `tsc --noEmit` | 44 errors — **known-red project**, all TS2307 path-alias failures in *editor* files; three independent readings agreed on 44 today |
+| `noodl-mcp` `tsc --noEmit` | 7 errors — **pre-existing**, verified by running the identical check on a clean tree; FIX-014 adds none |
+| `test:ci` (jasmine) | ✅ **2779 specs / 6 failures, seed 75857** at `fb936f6d` — the floor exactly, by name (4 × `AIX-006 style vocabulary`, 2 × `AI model registry`) |
 
-This session changed **no gated code**: the only source edit is `scripts/devtools/dev-processes.js`
-(dev tooling, no suite covers it; verified live instead — §3).
+### 🔴 A `test:ci` run was IN FLIGHT when this file was written — resolve it before trusting §1
 
-⚠️ The sibling's **run 1** tonight (seed 66177, 9 failures) was a **stale bundle**, not a
-regression: `test:ci` webpacks *first*, and `519a1e66` renamed three `BEN-001` specs out from
-under a bundle built mid-edit. The one-step diagnostic — grep a failing spec name across
-`packages/noodl-editor/tests/`; **no match ⇒ you measured a bundle, not the checkout** — is now in
-memory (`a-failing-spec-name-absent-from-the-tree-means-a-stale-bundle`). It looks identical in
-the log to the seed-order cluster; re-running fixes only the seed-order kind.
+A run was started on **`1716236a`** (FIX-014 merged) and had not finished. FIX-014 changes
+`candidate.ts`, which the electron authoring specs *do* exercise, so this run is **not** a
+formality. Two branches, and the first thing next session does is collapse one:
+
+- **If `test-results.json` exists and reports ~2779 with the 6 floor failures by name** → the gate
+  is discharged for `1716236a` and §1 stands.
+- **If the file is ABSENT** → the run did not finish (or the build failed). ⚠️ The file was
+  **deliberately deleted before the run**, so absence is meaningful here rather than ambiguous.
+  Re-run on a quiet tree and read §3's warning first.
+
+⚠️ **`totalCount` will NOT move for any of today's work** and that is correct, not a miss — every
+spec added today is under `tests-unit/` (graded by `test:main`), and the electron suite never sees
+those. Use `test:main`'s own total for that check.
 
 ---
 
 ## 3. What this session settled — do not re-derive
 
-### Both benches drives passed on the first attempt, with all three controls load-bearing
+### 🔴 The most convincing false pass this repo has produced
 
-Full per-criterion records live in the two task files. What matters beyond "passed":
+The first `test:ci` on the FIX-002/003 merge **exited 0** and `test-results.json` reported
+`totalCount: 2779`, six failures, **the exact floor by name**, `seed 81235`. Every content check
+agreed it was a clean baseline run. **The mtime had not moved** — it was the previous night's file.
 
-- **80 is the clamp floor; 150 is the bug.** A drag that bottoms out reads **80**
-  (`MIN_BENCH_HEIGHT`, `previewScope.ts:58`; max 4096). A frame measuring **150** unprompted is
-  the `<webview>` UA default — the exact signature of FIX-011 regressing — **never dismiss it as
-  a clamp**. (This bullet originally said the inverse: the drive's 150 was just its commanded
-  −89px from 239, no clamp involved, and the build session caught the error against source before
-  it could misdirect anyone.)
-- **AC3's "exactly one metadata key" cannot be proven against the pre-editor file bytes.** The
-  editor's serializer reformats the entire `project.json` on first save, so the honest comparison
-  is serializer-to-serializer: save without the key, save with it, diff those two. Done; the diff
-  is exactly the `bench.frame` key. The same trick proved the drag wrote *nothing* (SHA identical
-  to pre-launch baseline), which is the stronger half of the control.
-- **The `<webview>`-swallows-pointer-events claim stays unmeasured** — the shipped
-  siblings-plus-shield grips work end-to-end; whether a child grip would have failed was not
-  settled and no longer needs to be.
+The webpack step had failed. `test:ci` is `webpack && run-electron-tests`, so the suite never
+started. **Names, count and seed are all checks on *content*, and the content was a real previous
+measurement — of the floor specifically, which is the likeliest thing to be sitting there. Only
+freshness dissents.**
 
-### 🔴 The launch sweep no longer kills Richard's MCP servers — fixed at source, uncommitted until now
+✅ **The fix is procedural: `rm packages/noodl-editor/tests/test-results.json` before every run.**
+Deleting removes the failure mode; stat'ing asks you to remember a check precisely when a green
+number has stopped you looking. This session's third run did exactly that.
 
-All three sweep paths (`dev:stop`, the `dev:debug` startup reap, the watchdog) share
-`findDevProcesses` in `scripts/devtools/dev-processes.js`, whose rule 1 (repo path + `electron/dist`)
-matched the MCP servers' Electron hosts. One seed exclusion — argv containing `noodl-mcp.cjs` —
-now spares them; commented in place, including why age is no heuristic (an MCP server was observed
-minutes old). **Verified three ways**: `dev:stop -- --list` dry-run went 7 targets → 4 (the 4 being
-a live test:ci tree, correctly still swept); an independent session re-verified the same delta; and
-the real launch + real teardown this session left all three MCP pids (34116/37390/4430) untouched
-while reaping the dev stack to zero. Trade accepted knowingly: a genuinely orphaned MCP-hosting
-Electron from this checkout is now unreapable by `sweep()` — a live connection beats a tidy process
-table. ⚠️ `dev:stop` is *safer*, not safe: it still reaps anyone's running `test:ci` tree. The
-narrow habit stands — kill the `scripts/start.ts` pid.
+### 🔴 A `.jsx` file is invisible to every gate but `test:ci`, and that gate fails silently
 
-### The BaseDialog double-render eats *menu-item* clicks too
+The break was a `{/* … */}` placed between `return (` and the root element, which parses as an
+**object literal**. It passed `test:main` (195/3005 green — no `tests-unit/` spec imports
+`curveeditor.jsx`, so jest never compiled it) and passed the typecheck (it is `.jsx`; `tsc` does
+not read it). Fixed in `fb936f6d`.
 
-FIX-019's drive lost its first click to the `MeasuringContainer` copy of the context menu — same
-label, 36px away, click closes the menu and does nothing. This is the known
-`basedialog-renders-every-dialog-twice` trap arriving through a new door (text-match instead of
-CSS-selector match). Memory updated. Coordinate-vs-consequence checking caught it in one step.
+✅ Scanned all of `packages/` for both spellings (`return (` and `=> (`) afterwards: **zero other
+instances**. It is a new-edit hazard, not a latent one — a pre-existing instance in a compiled path
+could not survive. **Cheap check for next time:** parse the file with `@babel/parser` directly;
+it answers in under a second and needs no webpack.
 
-### Observation filed, not fixed: the thumbnail capture floods the log with uncaught rejections
+### 🔴 An HTML sink plus model-authored content — one real bug found, one surface cleared
 
-`UseCaptureThumbnails.ts:24` → `CanvasView.captureThumbnail` throws
-`GUEST_VIEW_MANAGER_CALL: UnknownVizError` as an **uncaught (in promise)** rejection every capture
-tick while the app webview is hidden (bench mode) or the window occluded — 15 in one short drive,
-all identical, predating FIX-011/019. Harmless to the drive but it buries real exceptions.
-Candidate: catch it in `captureThumbnail` and skip capture while the app stage is hidden. Small,
-unruled, worth an S task or a rider on FIX-013.
+FIX-003's step 4 asked whether any `ConfirmModal` caller feeds model-authored content to its
+`dangerouslySetInnerHTML`. **Two do.** `TextStylePicker` and `colorstylepicker` interpolate a
+**style name** raw, and style names are user-chosen or **AI-written** — so a style named with a tag
+executed in the editor's renderer. Fixed via a new shared
+`packages/noodl-editor/src/editor/src/utils/escapeHtml.ts` (three private copies already existed;
+this is the one for new callers).
 
-### Session-to-session coordination worked, and the transcript pattern is worth keeping
+✅ **The markdown path was then measured and is clear — do not re-probe it.** 13 payloads through
+Remarkable as `Markdown` configures it, including every spelling that defeats a naive check
+(`JaVaScRiPt:`, `java\tscript:`, embedded newline/NUL, leading control byte, HTML-entity
+`&#106;avascript:`, `vbscript:`, `data:text/html` on link *and* image): **all refused**, no anchor
+emitted at all. Now pinned in `tests-unit/aib-009/markdownHtml.test.ts`, which previously covered
+three spellings and nothing on the image path.
 
-Three sessions shared this checkout tonight. What worked: ask `ListAgents`, message the recent
-sessions directly, get the test-run owner to declare "run 2 is my last, then it's yours", hold
-until the process table *and* the owner agree. What failed silently first: `pgrep -f
-"run-electron-tests"` matches other sessions' *watcher shells* — match the real processes
-(`Electron test.js --ci`, `node scripts/run-electron-tests.js`) instead. Also: "the sibling" is
-never singular on this checkout — attribute observed effects to a session only via `git log`
-authorship or the session's own claim, never by who you happen to be talking to.
+⚠️ **Escaping and scheme allow-listing are different defences** — the payload is a *scheme*, not
+markup, so `escapeHtml` would not have stopped it. A concurrent phase-67 session found the same
+class in `lessonformat.ts` (a live anchor in a node-integrated renderer) the same day.
+
+### The selection inversion's real shape
+
+`div { user-select: none }` → **`:root { user-select: text }`** plus a **container-level** opt-out
+list. 🔴 **Never add a `div { user-select: text }` rule** — an explicit `text` on every div punches
+through every container-level `none` and silently undoes all of it.
+
+Opt out **per card grid, in that grid's own module** — deliberately *not* hoisted to
+`Projects.module.scss`'s `.Main`, which would also swallow the welcome copy and the no-results
+message. A container opt-out is right for a surface that is drag all the way down (the canvas) and
+wrong for a page region that merely contains cards. Plus one rule the ruling did not anticipate:
+`body.noodl-dragging * { user-select: none !important }`, added/lifted by both drag engines, because
+both drag on *window* listeners and a container opt-out cannot help once the pointer leaves.
+
+### FIX-002's "~9 at-risk sites" were eight `TextInput`s
+
+The nine `onEnter` consumers flagged as needing classification resolved to **two** real `TextArea`
+ones (Build composer, function-node `AiChat`) plus the Explain composer this task converted.
+Verified by resolving the enclosing JSX component at each site — **the prop name tells you nothing**,
+since `TextInput.onEnter` fired on plain Enter before and after and is unaffected by construction.
+No opt-out prop was needed. The policy is a pure module, `TextArea.keys.ts`, checking
+`defaultPrevented` first so BLD-016's completion menu can still consume Enter.
+
+### FIX-014's two open calls, decided by the agent
+
+**Logic column at `maxVisualX + 250`**, not a fixed x (a fixed column collides with any wider visual
+arrangement); all-logic components fall back to `VISUAL_COLUMN_X`. **Comment nodes do not
+participate** — they are `nodes.json`'s separate `comments` array, not `NodeV2`s, and are carried
+verbatim. Collisions are **exact-coordinate ties only**, and a node whose position is carried
+unchanged from the baseline is **locked outright**, which is the mechanism honouring "never move a
+human's arrangement".
+
+### Both remaining agents were stopped mid-flight; their work was preserved and verified
+
+FIX-003's and FIX-014's building agents were stopped by Richard before either committed. Both
+worktrees' contents were committed as clearly-labelled WIP (`1b75f99d`, `7240b99f`), then verified
+by this session. FIX-014's agent had already written a complete build record; FIX-003's had not, so
+**FIX-003's build record is written by a different author than its code** — worth knowing if
+something in it turns out wrong.
 
 ---
 
 ## 4. What to do next and why
 
-1. **Build the three remaining ruled tasks.** **FIX-003** is the big one (the global `user-select`
-   inversion — enumerate the opt-*out* list before flipping `style.css:205`; the drag-surface test
-   plan is in scope per the ruling). **FIX-014** is independent (x/y authoritative; fill gaps +
-   collisions only). **FIX-002** is an M (§1). All three are agent-runnable without Richard.
-2. **FIX-008 fix C** (`--scope project`) if the report should stop recurring. Five `noodl-mcp.cjs`
-   servers are still registered against `Puppy test 3` user-scope. ⚠️ But read §5 — Richard owes a
-   measurement on C's copy first; build behind it, don't ship past it.
+1. 🔴 **Resolve the in-flight `test:ci`** (§2). One read of `test-results.json` — check it exists at
+   all, since it was deleted pre-run.
+2. 🔴 **DRIVE the three built tasks.** This is the phase's critical path now and it is a full
+   session's work. In rough dependency order:
+   - **FIX-003's drag-surface drives** — canvas node drag, panel tree row drag, sidebar divider,
+     both launcher grids, each per surface. This is the regression the ruling *knowingly accepted
+     the risk of*, so it is the one that must actually be measured. ⚠️ Watch `body.noodl-dragging`:
+     it is added and lifted by JS, so **a drag that ends outside the window** is the failure mode —
+     that is the state where the class sticks and nothing anywhere selects.
+   - **FIX-003's five criteria** — a URL opens in the system browser from each of four surfaces,
+     text selects and ⌘C yields it, citations still navigate, the Build panel renders markdown.
+   - **FIX-002's four criteria** + 🔴 **BLD-010's re-drive** (its driven acceptance recorded
+     Shift+Enter as the Build composer's send key; FIX-002 reverses that).
+   - **FIX-014 criterion 1** — ask the internal AI *and* the MCP for a page with a visual tree plus
+     3 logic nodes; logic must land in its own column with no overlap. ⚠️ Needs a **paid** provider;
+     verify from `editorSettings.json` (`ai.provider`, `ai.hasKey.anthropic`,
+     `ai.verified.anthropic`), not localStorage.
 3. **FIX-001** (Tier 1, the explainer) — only minor rulings outstanding; the M-sized live-value
-   layer is the phase's biggest remaining user-visible win.
-4. **Repackage the app** (or say so out loud) if FIX-008 fix E is to reach the running servers.
-
-**Drive protocol for whoever drives next** (all confirmed working this session): check
-`ListAgents` + message any recent session before launching; wait for real test processes, not
-watcher shells; `NOODL_REMOTE_DEBUG_PORT=9333`; fixture `fix012-drive` (v1 — opening writes
-nothing, which keeps no-dirty controls clean); `BaseDialog` menus need the
-`:not([class*=MeasuringContainer])` filter; kill the `scripts/start.ts` pid to stop; restore
-`recently_opened_project.json` (this session left it at 28 entries, fix012-drive removed;
-fixture left clean: `/Probe` metadata `{}`, no `bench.frame` key, editor-serialized formatting).
+   layer is the phase's biggest remaining user-visible win, and the only Tier 1 task with no code.
+4. **FIX-008 fix C** (`--scope project`) if the report should stop recurring — but read §5, Richard
+   owes a measurement on C's copy first.
+5. ⚠️ **`noodl-mcp/dist` needs a rebuild** for FIX-014 to reach Richard's running MCP servers, and
+   the servers need restarting after it. The merge changed `src/tools/author.ts` and
+   `src/instructions.ts`.
 
 **Do not start** FIX-015 or FIX-021's brainstorm halves — they need Richard, not an agent.
 
@@ -161,15 +203,13 @@ fixture left clean: `/Probe` metadata `{}`, no `bench.frame` key, editor-seriali
 
 ## 5. Rulings still owed by Richard
 
-- 🟡 **FIX-019 14(a)** — the surface's caption still says *"— isolated component, not the app"*
-  and the docstrings still say "isolation", while the menu item now says **workbench**. Is the
-  surface called *the workbench* everywhere? The sweep was deliberately not done; the task is
-  otherwise closed, so this is now a loose thread rather than a blocker.
-- **FIX-004** conversion block shape, log level, Msg keys · **FIX-005** the category name
-  (reverses VFN-012) · **FIX-006** demote Script from the AI-authorable set? · **FIX-013** what a
-  data-reading component shows on the bench · **FIX-016** signal-input semantics.
+- 🟡 **FIX-019 14(a)** — is the surface called *the workbench* everywhere? The caption still says
+  "isolated component, not the app" while the menu item says workbench. Loose thread, not a blocker.
+- **FIX-004** conversion block shape, log level, Msg keys · **FIX-005** the category name (reverses
+  VFN-012) · **FIX-006** demote Script from the AI-authorable set? · **FIX-013** what a data-reading
+  component shows on the bench · **FIX-016** signal-input semantics.
 - **FIX-008 leftovers:** cleanup of stale user-scope registrations, and whether two visible NodeGX
-  servers in one session is better or worse for the model — that second one is a *measurement*, so
+  servers in one session is better or worse for the model — that second one is a **measurement**, so
   take it before shipping C's copy.
 - The two big ones (**FIX-015**'s eight style-token rulings, **FIX-021**'s six memory-doc rulings)
   are their own sessions and their output is a new phase, not code in this one.
@@ -178,16 +218,26 @@ fixture left clean: `/Probe` metadata `{}`, no `bench.frame` key, editor-seriali
 
 ## 6. Standing constraints — unchanged, do not relearn
 
-Work on `cline-dev`; **never `git stash`**; `cd` to the repo root in every git call; pathspec-scope
-every `git add` — ⚠️ the phase-67/68 session left a one-line UNI-007 row edit **uncommitted in
-phase-67's TASKS.md deliberately** (it links untracked `phase-68-learnbook/`); do not sweep it into
-a phase-66 commit. Check `git log` before assuming the parent commit is where you left it. The
-sweep fix (§3) makes launching and stopping the dev stack MCP-safe, but `dev:stop` still kills a
-live sibling `test:ci` — prefer the `start.ts` pid. ⚠️ Do not restore `~/.claude.json` from a
-backup. Full list in the [README](README.md) § "Standing constraints inherited".
+Work on `cline-dev`; **never `git stash`**; `cd` to the repo root in every git call; **pathspec-scope
+every `git add`** — the tree carries other sessions' work in progress, and today it carried three
+sessions' at once. ⚠️ `dev-docs/tasks/phase-65-the-library/` is untracked and belongs to **neither**
+this phase nor phase 67; leave it alone. The sweep fix means `dev:stop` no longer kills Richard's
+MCP servers, but it **still reaps a live `test:ci` tree** — kill the `scripts/start.ts` pid instead.
 
-**Drive fixtures:** `fix012-drive` remains the one project whose `/Probe` has 6 typed inputs and a
-real placed instance; `vfn64-drive`'s `/Components/Product photo` is the only other component with
-ports. ⚠️ Before any paid drive, verify the provider from `editorSettings.json`, not localStorage —
-`ai.provider`, `ai.hasKey.anthropic`, `ai.verified.anthropic`. Neither of this session's drives
-needed one, and none of the three remaining ruled builds should either.
+**Parallel work:** use `scripts/devtools/make-worktree.sh`, never the harness's
+`isolation: "worktree"`. Three lanes were cut that way today and merged with **zero conflicts**,
+including the one file two lanes shared — because each lane's prompt named the other's territory as
+off-limits. Fence regions explicitly in the prompt; it is what made the merge free.
+
+**Coordinating with live sessions:** announce before **and after** any `test:main` or `test:ci`
+(two concurrent runs manufacture failures), ask `ListAgents` and message peers directly, and hold a
+formal window for merges. This worked flawlessly today across two sessions and caught two real
+cross-lane defects neither could see alone. ⚠️ Match **real runner processes**
+(`node scripts/run-electron-tests.js`, `Electron test.js`) and **print the pids** — never the
+npm-script name, which matches stale watcher shells on a completely quiet checkout.
+
+**Drive fixtures:** `fix012-drive` is the one project whose `/Probe` has 6 typed inputs and a real
+placed instance; `vfn64-drive`'s `/Components/Product photo` is the only other component with ports.
+`NOODL_REMOTE_DEBUG_PORT=9333` if a stray Chrome holds 9222. `BaseDialog` renders every dialog
+**twice** — filter `:not([class*=MeasuringContainer])` on any text-matched click. A React state write
+is **invisible in the same `eval`**; read it back in a second one.
