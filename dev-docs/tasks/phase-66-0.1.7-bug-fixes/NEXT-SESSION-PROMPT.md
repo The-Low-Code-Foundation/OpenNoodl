@@ -90,10 +90,19 @@ deleted, `recentProjects` restored 32 → 31. **Teardown sent to all nine surviv
 AND to the four sockets that wrote to me** — see the identifier-space ⚠️ in §7; sending to both is
 how you stop guessing.
 
-⚠️ **Three peers on the launch list ended mid-session** (`preflight-db/-d4/-b6` are gone from
-`ListAgents`) and a new one (`preflight-04`) **started inside my drive window**, so it never got the
-hold. I told it the state unprompted. **A launch list goes stale in both directions**, and the new
-arrival is the one that can hurt you.
+🔴 **CORRECTED — the `preflight-*` sessions were never in this checkout, and I announced to them
+anyway.** `preflight-04` replied that it works in `~/vscode_projects/preflight`, a pnpm/Next.js repo
+with no Electron, no webpack and no `cline-dev`. So `preflight-db/-d4/-b6` were almost certainly the
+same, and my "twelve peers" was **a count of Claude sessions on the machine, not in the checkout**.
+
+⚠️ **The noise is harmless; the arithmetic is not.** "Announced to all twelve" reads as coverage of
+the checkout and was coverage of the *machine*. The set that matters is smaller **and is not
+derivable from `ListAgents`** — so a name-based launch list can be over-broad and still miss someone.
+✅ **A session is in this checkout only if it says so, or if you walked `ps -Ao pid,ppid` from a
+process in this tree to its pid.** Ask; do not infer from the name.
+
+⚠️ Also real: a new session (`preflight-04`) started **inside my drive window** and so was never on
+the launch list at all. **A launch list goes stale in both directions.**
 
 ---
 
@@ -237,11 +246,14 @@ declining predicate from dead wiring.
 1b. 🟢 **Take `test:ci` — it is two trees stale and one s24 file is outside jest's reach** (§2).
    Cheapest real risk on the board, needs only a free checkout, and it clears the way for 4 and 5.
 2. **FIX-016 §1** — Richard now has the observation he needed (§3d). Ruling, then a small build.
-   ⚠️ **Before building anything here, settle the `Type`-row discrepancy in §3d** — two `fromJSON`
-   fixtures, one rendering both rows and one rendering none, unexplained. **First hypothesis to
-   test: the model's `getPorts()` returns static ports only, so the dynamic `outtype-` children may
-   render in the panel while being absent from the model.** If that is it, the two sessions simply
-   pointed different instruments at the same node and neither reading was wrong.
+   ⚠️ **Before building anything here, settle the `Type`-row question — it decides what Richard is
+   ruling on.** ✅ Half is settled: `outtype-` is in **zero** editor source files, so a `getPorts()`
+   absence is no evidence about the row and the two sessions' readings were about different objects.
+   ⚠️ The remaining null has **two candidate causes, undiscriminated** — a React-shaped query against
+   what is actually the **legacy** `sidebar-property-editor` view, or the rows needing a **live
+   viewer** to register the dynamic ports. **One drive settles it:** preview running, node live,
+   query `.sidebar-property-editor`. Present ⇒ ruling 1 is the copy question. Absent ⇒ a render
+   defect, and the copy ruling would be answering the wrong question.
 3. 🔴 **FIX-017's remaining half needs Richard** — AC1 and AC3 are both rulings (§6). **Do not build
    §D speculatively.**
 4. ✅ **Take `dev:stop -- --list` the next time a `test:ci` is genuinely live** — still owed; no

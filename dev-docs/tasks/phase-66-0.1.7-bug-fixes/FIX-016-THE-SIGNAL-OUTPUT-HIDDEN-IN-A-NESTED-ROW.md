@@ -264,11 +264,35 @@ appeared, so no `Type` row was there to click. The parameter was written through
 itself is undriven here.
 
 🔴 **And my first explanation for the missing rows was wrong.** I attributed it to my node being
-built by `fromJSON`; s23's was built the same way. The real difference may be instruments rather
-than nodes: **I read the model's `getPorts()`, which returns static ports only**, while the dynamic
-`outtype-` children are pushed separately and may exist in the rendered panel without ever appearing
-there. **Recorded as unexplained.** ⚠️ Nobody has yet driven the dropdown *click* — which is the
-click ruling 1 is actually about.
+built by `fromJSON`; s23's was built the same way.
+
+✅ **Settled since: a model-level absence is no evidence at all about the row.** `outtype-` appears
+in **zero** `noodl-editor` `.ts`/`.tsx` source files — every occurrence is in `noodl-runtime` /
+`noodl-viewer-react` (the nodes that build the ports) or in `noodl-core-ui`'s code-editor utils.
+The editor has **no static knowledge of these ports**; they arrive as *dynamic* ports from the
+runtime. So `getPorts()` returning nothing is correct behaviour, and s23's DOM reading and mine were
+about different objects — neither was wrong. (Peer's lead, verified across the tree here.)
+
+⚠️ **My DOM null is NOT settled, and it has two candidate causes I cannot discriminate:**
+
+1. **Wrong panel implementation.** `propertyeditor.ts:207` sets `sidebar-property-editor` — that
+   panel is the **legacy non-React view**, and my query was unscoped and React-shaped.
+2. **Absent precondition.** If the rows render only once a runtime has registered the dynamic ports,
+   a drive with **no preview running** would find nothing and be *right* to.
+
+🔴 **"Two candidate causes, undiscriminated" — not "unexplained".** The first invites the one drive
+that settles it; the second reads as a mystery and gets inherited as folklore. **The drive:** open
+the panel on that node **with a preview running and the node live**, then query
+`.sidebar-property-editor`. Present ⇒ precondition, and ruling 1 collapses back to the copy
+question. Absent ⇒ a genuine render defect, and Richard is being asked the wrong question.
+
+✅ **Robustness worth stating, because it is a stronger claim than "it works":** this fix is
+**independent of that precondition entirely.** `declaredPorts.ts` reads the **parameter bag**, not
+the node's ports — a package-boundary decision (`noodl-core-ui` owns no project model) that happens
+to mean `outtype-Done` is readable whether or not the *port* was ever registered. The whole drive
+ran with no preview. Nothing here breaks if the row turns out to need a live viewer.
+
+⚠️ Nobody has yet driven the dropdown *click* — which is the click ruling 1 is actually about.
 
 ### Also observed for ruling 1 ("drive first"), as an observation, not a verdict
 
