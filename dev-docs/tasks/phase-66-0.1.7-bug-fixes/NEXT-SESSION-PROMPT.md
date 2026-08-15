@@ -109,6 +109,13 @@ is *not* an exception that slipped past §A; it is precisely what §A allows. An
 silence is **not the gate firing** — the source would happily answer there too. Nothing is
 suppressed; nothing is requested.
 
+🔴 **The consequence, and whoever builds §D must read this first: `§D's job is to ASK, not to
+permit.`** Anyone diagnosing AC1 as *"the gate is too strict"* and loosening `startsStatement` will
+**achieve nothing** — the source is already willing at a cursor landing; nobody is calling it. They
+would weaken a real protection, still see silence, and conclude the change did not work.
+**An absent signal has two causes — *refused* or *never requested* — and they have opposite fixes,
+with the wrong one being a silent no-op.**
+
 ### How it was driven instead
 
 Real keys on the automatic path: `Emulation.setFocusEmulationEnabled` **plus**
