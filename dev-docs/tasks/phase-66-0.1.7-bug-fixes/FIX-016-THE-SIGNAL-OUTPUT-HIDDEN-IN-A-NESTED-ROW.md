@@ -104,7 +104,10 @@ Beside message 5, on the same line, the editor showed a `Last run` diagnostic:
 **`Line 1: Outputs.Done is not a function`**. The "declared row wins, so the call throws" claim was
 a source read across four hops; it is now a measurement.
 
-### 🔴 Open, and found by this drive: the diagnostic does not clear when you obey it
+### ~~Open~~ ✅ CLOSED `6de1ae25` — the diagnostic does not clear when you obey it
+
+**Both faults below are fixed and driven 6/6 (session 24; see the follow-up section further down).**
+Kept in full because the diagnosis is the valuable part, and because it was recorded wrong once.
 
 Changing Type to `Signal` with the popout open leaves message 5 standing. It clears on reopen
 (driven).
@@ -208,6 +211,64 @@ while its editor sat open stayed clean. One line: `setRuntimeDiagnostic` now ask
 🔴 **2 and 3 are the acceptance; 4 is what makes them mean something.** If 4 shows a re-lint
 happening anyway, then something else is waking the linter and the seam I added is unproven cargo —
 a green 2 would be a feature passing on a mechanism I had not identified.
+
+### Driven 6/6 — `6de1ae25`, editor `Electron . --dev` 94344, 0 renderer exceptions
+
+**The acceptance.** Popout open, `Outputs.Done();\nResult = 1;`, `Done`/`Result` declared:
+
+| step | message 5 | control (message 2 on `Result`) | registry | doc |
+|---|---|---|---|---|
+| 0 baseline | ✅ fires | ✅ fires | `Done:*,Result:*` | untouched |
+| 1 Type → `signal` | ✅ **gone** | ✅ fires | `Done:signal` | untouched |
+| 2 Type cleared | ✅ **returns** | ✅ fires | `Done:*` | untouched |
+| 3 Type → `signal` again | ✅ **gone** | ✅ fires | `Done:signal` | untouched |
+
+🔴 **`doc: untouched` is load bearing, not bookkeeping.** `set` is raised by document changes — so a
+diagnostic that cleared because something nudged the text would look identical and would prove the
+opposite of what it appeared to. The column rules out the only other mechanism that could have done
+it. And the control column is what makes rows 1 and 3 a *decline* rather than dead wiring.
+
+**Predictions 4 and 5 — the instrument, checked before the result was believed.** An
+`EditorView.updateListener` appended via `StateEffect.appendConfig`, counting updates on the live
+view, editor idle and document untouched:
+
+- `forceLinting(view)` alone → **0 view updates.** The pre-fix no-op, reproduced in the fixed build.
+- `requestRelint(view)` → **2.**
+
+🔴 **This is the measurement that retires the old mechanism.** Not a source reading: the call did
+nothing, counted. ⚠️ **Replication could not have caught it** — a second reading from the same dead
+instrument agrees with the first. What separates them is a **positive control on the tool**, which
+is what `requestRelint → 2` is.
+
+**Prediction 6 — the runtime diagnostic, with the pre-fix path reproduced live.** Same editor, same
+document, differing by exactly one call:
+
+| step | held in the editor's state | in the gutter |
+|---|---|---|
+| A — field written, no re-lint asked (**pre-fix**) | `PRE-FIX PATH` | *(nothing)* |
+| B — same field, one `requestRelint` | `PRE-FIX PATH` | `PRE-FIX PATH` |
+
+The diagnostic was **inside the editor and not on the screen.** Through the real producer path
+(`WarningsModel.setWarning` with a `line`), `Outputs.Done is not a function` now appears while the
+popout is open and clears when the warning clears.
+
+**The dispose path.** Closing the popout cleared the slot; a parameter write afterwards published
+nothing and threw nothing. No dangling subscription.
+
+### ⚠️ What this drive did NOT do, stated because it would otherwise be assumed
+
+**It did not click the Type dropdown.** The fixture node's dynamic `outtype-` child ports never
+appeared, so no `Type` row was there to click. The parameter was written through
+`NodeGraphNode.setParameter` — which is exactly what `ModelProxy.setParameter` delegates to
+(`ModelProxy.ts:50-59`), so it is the identical write on the identical object — but the widget
+itself is undriven here.
+
+🔴 **And my first explanation for the missing rows was wrong.** I attributed it to my node being
+built by `fromJSON`; s23's was built the same way. The real difference may be instruments rather
+than nodes: **I read the model's `getPorts()`, which returns static ports only**, while the dynamic
+`outtype-` children are pushed separately and may exist in the rendered panel without ever appearing
+there. **Recorded as unexplained.** ⚠️ Nobody has yet driven the dropdown *click* — which is the
+click ruling 1 is actually about.
 
 ### Also observed for ruling 1 ("drive first"), as an observation, not a verdict
 

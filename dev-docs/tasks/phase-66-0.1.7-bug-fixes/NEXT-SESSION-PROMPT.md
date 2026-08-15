@@ -1,15 +1,27 @@
 # Phase 66 — next session
 
-**Written 2026-08-15, session 23.** One task built and driven in the same session:
-**FIX-016 §2 is CLOSED (`4be3f1f6`)** — the diagnostic that tells an author their output is a value
-port, not a Signal. Fourteen tasks now closed.
+**Written 2026-08-15, sessions 23 + 24** (s23 wrote §3a–3e and kept editing while s24 worked; s24
+wrote the follow-up and this header). **FIX-016 §2 is CLOSED (`4be3f1f6`) and so is the wrinkle it
+found (`6de1ae25`)** — the diagnostic now clears the moment you obey it. Fourteen tasks closed.
 
-🔴 **The finding that outlives this phase: the drive rewrote the message it was sent to confirm.**
-The wording *"a value output with no Type set"* is true of the stored parameter and **false on the
-author's screen** — the panel renders the enum's `default: 'string'`, so a port with nothing stored
-displays `String`. A gate-green feature would have shipped a sentence contradicting the dropdown
-beside it. **No spec could have caught this, because the spec and the code agreed with each other
-and both were wrong about the product.** §3.
+🔴 **Two findings outlive this phase, and the second was found by correcting the first.**
+
+**a. The drive rewrote the message it was sent to confirm.** *"A value output with no Type set"* is
+true of the stored parameter and **false on the author's screen** — the panel renders the enum's
+`default: 'string'`, so a port with nothing stored displays `String`. **No spec could have caught
+it: the spec and the code agreed with each other and both were wrong about the product.** §3a.
+
+**b. 🔴 An entire diagnosis sat downstream of a call that never ran.** `forceLinting` was reported
+as evidence the lint re-ran against stale ports. `force()` is `if (this.set)` and nothing else — on
+an idle editor it does **nothing**. Measured: `forceLinting` alone → **0 view updates**,
+`requestRelint` → **2**. §3c.
+
+⚠️ **The two compound, and that is the transferable part.** The wrong mechanism pointed at *one* of
+**two independent faults, either alone sufficient for the symptom** — so building the fix it named
+would have changed nothing on screen, and "no change" reads as *wrong cause* when it was *a* cause.
+A live defect gets re-filed as a mystery that way. 🔴 **Replication cannot rescue it**: a second
+reading from the same dead instrument agrees with the first. What separates them is a **positive
+control on the tool**, not another measurement from it.
 
 ---
 
@@ -54,28 +66,34 @@ nobody looking. **Open the task file rather than trusting the status line.**
 
 ## 2. Gate readings
 
-**Tree: `4be3f1f6`.**
+**Tree: `6de1ae25`** (s24). The s23 column is at `4be3f1f6`.
 
 | Gate | Reading | When |
 |---|---|---|
-| `noodl-core-ui` jest — full package | ✅ **24 suites / 419**, 0 failed | s23, this tree |
-| `noodl-core-ui` jest — `tests/code-editor/` | ✅ 17 suites / 302 | s23 |
-| `tsc --noEmit` (package tsconfig) | ⚠️ 44 errors, **0 in either edited file** — all pre-existing, all in `noodl-editor` | s23 |
-| **`test:ci` (jasmine)** | ✅ **2843 / 6 failed** at **seed 39393** | **s21, 21:21** — not re-run; my change is `noodl-core-ui`-only and jest covers it |
+| `noodl-core-ui` jest — full package | ✅ **25 suites / 444**, 0 failed | **s24, `6de1ae25`** (was 24/419 at `4be3f1f6`) |
+| `noodl-core-ui` jest — `tests/code-editor/` | ✅ **18 suites / 327** | s24 (was 17/302) |
+| `tsc --noEmit` — `noodl-editor` package | ✅ **0 errors** | s24 |
+| `tsc --noEmit` — `noodl-core-ui` package | ⚠️ **44**, unchanged, **0 in any edited file** — all pre-existing, all in `noodl-editor` sources | s24 |
+| **`test:ci` (jasmine)** | ✅ **2843 / 6 failed** at **seed 39393** | **s21, 21:21** — still not re-run |
 
 🔴 **Quote the six `test:ci` failures by NAME, never the count** — 4 × `AIX-006 style vocabulary`,
 2 × `AI model registry`.
 
-✅ **Checkout left FREE.** `dev:stop` stopped 26 processes; verified after with the corrected filter
-(§7): `start.ts` 0, bare `webpack` 0, `Electron . --dev` 0, `Electron test.js --ci` 0. Fixture
-project deleted, `recentProjects` restored 32 → 31. Teardown announced to **all ten** peers the
-launch went to.
+⚠️ **`test:ci` is now TWO trees stale and one of the s24 files is in `noodl-editor`**
+(`CodeEditorType.ts`), which jest does **not** cover. The change is small and the editor ran with 0
+renderer exceptions through a full drive, but **that is not the same as the suite**. Taking it is
+the first thing worth doing on a free checkout — and it pairs with items 4 and 5 in §5.
 
-⚠️ **One MCP server (32434) vanished across the window — not reaped.** Its *parent session* (32376)
-is gone too, which is a session ending rather than a sweep; a reaped server leaves its parent alive.
-⚠️ **My baseline for that comparison was truncated by a `head`**, so two servers looked new that had
-been there all along. **Print the pids and count them, or the comparison is against a list you
-cropped.**
+✅ **Checkout left FREE (s24).** `dev:stop` stopped 26 processes; verified after with the §7 filter:
+`start.ts` 0, bare `webpack` 0, `Electron . --dev` 0, `Electron test.js --ci` 0. Fixture project
+deleted, `recentProjects` restored 32 → 31. **Teardown sent to all nine surviving launch-list names
+AND to the four sockets that wrote to me** — see the identifier-space ⚠️ in §7; sending to both is
+how you stop guessing.
+
+⚠️ **Three peers on the launch list ended mid-session** (`preflight-db/-d4/-b6` are gone from
+`ListAgents`) and a new one (`preflight-04`) **started inside my drive window**, so it never got the
+hold. I told it the state unprompted. **A launch list goes stale in both directions**, and the new
+arrival is the one that can hurt you.
 
 ---
 
@@ -195,14 +213,35 @@ declining predicate from dead wiring.
   - ✅ **Set the node's `functionScript` as a parameter before opening the popout.** No keys, no
     focus emulation, and the lint runs on mount. (Keys were not needed at all this session.)
 
+  **s24 additions — all four were needed and none is in the s22/s23 recipe:**
+  - 🔴 **`window.__webpack_require__` does NOT exist.** Get the module cache with
+    `webpackChunknoodl_editor.push([['x'], {}, (r) => { window.__req = r }])`, then `req.c[...]`.
+    2375 modules, keyed by source path.
+  - 🔴 **`openProjectFromFolder` alone does not navigate.** It builds the model; the editor stays on
+    the projects page and `NodeGraphContextTmp.switchToComponent` is **null** until the editor page
+    mounts. You also need `LocalProjectsModel.instance.loadProject(entry)` then
+    `router.route({ to: 'editor', project: loaded })`. The router is 3 fibers deep from `#root` —
+    look for `memoizedProps.route.router`.
+  - ✅ **The view is `el.cmView.view` on `.cm-content`**, not `el.cmTile.view`.
+  - ✅ **Count lint runs by appending an update listener at runtime**:
+    `view.dispatch({ effects: StateEffect.appendConfig.of(EditorView.updateListener.of(cb)) })`.
+    ⚠️ **That append itself schedules a lint** — wait it out and reset the counter before measuring,
+    or your control starts dirty.
+
 ---
 
 ## 5. What to do next and why
 
-1. ✅ **DONE — FIX-016 §2's follow-up closed `6de1ae25`** (not by me; verified on the merged tree,
-   25 suites / 444). Both faults fixed together, which was the point: either alone leaves the
-   symptom unchanged. **Start at item 2.**
+1. ✅ **DONE — FIX-016 §2's follow-up closed `6de1ae25`**, driven 6/6. Both faults fixed together,
+   which was the point: either alone leaves the symptom unchanged. **Start at item 1b.**
+1b. 🟢 **Take `test:ci` — it is two trees stale and one s24 file is outside jest's reach** (§2).
+   Cheapest real risk on the board, needs only a free checkout, and it clears the way for 4 and 5.
 2. **FIX-016 §1** — Richard now has the observation he needed (§3d). Ruling, then a small build.
+   ⚠️ **Before building anything here, settle the `Type`-row discrepancy in §3d** — two `fromJSON`
+   fixtures, one rendering both rows and one rendering none, unexplained. **First hypothesis to
+   test: the model's `getPorts()` returns static ports only, so the dynamic `outtype-` children may
+   render in the panel while being absent from the model.** If that is it, the two sessions simply
+   pointed different instruments at the same node and neither reading was wrong.
 3. 🔴 **FIX-017's remaining half needs Richard** — AC1 and AC3 are both rulings (§6). **Do not build
    §D speculatively.**
 4. ✅ **Take `dev:stop -- --list` the next time a `test:ci` is genuinely live** — still owed; no
@@ -233,8 +272,8 @@ declining predicate from dead wiring.
 - 🔴 **FIX-017 AC3's ruling** — its premise is false (ports and API names never share a prefix).
   Restate against a prefix where the two surfaces genuinely compete, or strike it.
 - 🔴 **`scripts/library/check.ts` is STILL uncommitted and STILL unattributed.** Unchanged through
-  s18–s23; ten sessions have asked and none has claimed it. It backs `library:check`, and
-  `cloud-library:check` **is a PR gate**. **Attribute it or bin it.** I did not touch it.
+  s18–**s24**; eleven sessions have asked and none has claimed it. It backs `library:check`, and
+  `cloud-library:check` **is a PR gate**. **Attribute it or bin it.** Neither of us touched it.
 - 🔴 **FIX-013's four rulings** — ruling 2 (does the AI authoring preview keep its toolbar?) is the
   big one.
 - 🔴 **FIX-016's signal-input semantics** (§3) — re-run the body vs named handlers, or rule signal
@@ -314,6 +353,13 @@ for me*.
 🔴 **Exercise the DULL state, not just the interesting one**, and **run the control before believing
 the probe**. ✅ **`/usr/bin/grep` calls a file with ⚠️ emoji "binary"** — pass `-a`, or a clean
 source file reads as unsearchable.
+
+🔴 **And the s24 addition, which is the sharper form of "run the control": before trusting a NULL
+result, prove the instrument can produce a non-null one.** A tool that silently declines and a tool
+that ran and found nothing return the same thing. ⚠️ **Measuring again does not help** — the same
+dead instrument agrees with itself, and two agreeing readings feel like confirmation. This is not
+hypothetical here: it is how `forceLinting` produced a mechanism that was written into a task file,
+a handover and the memory index (§3c).
 
 ✅ **A package-local jest run is the gate you can still take on a busy checkout.** `noodl-core-ui`'s
 jest is plain Node, spawns no Electron, matches no `DEV_TOOL` pattern, ~1.5s.
