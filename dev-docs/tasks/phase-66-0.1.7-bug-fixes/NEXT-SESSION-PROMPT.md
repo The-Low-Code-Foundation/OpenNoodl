@@ -125,9 +125,21 @@ briefly believed.
 *same* connection, with only the selection differing. Over CDP both look identical (clipboard
 untouched), so C1 alone proves nothing; C2 copying node JSON is what proves the key path is live.
 
-⚠️ **The backgrounded exit code lied again** — the harness reported exit 0 while the log ended
-`npm error command failed`. Benign here (npm exits non-zero whenever *any* spec fails, and a clean
-floor run has 6), but read `test-results.json`, never the log or the exit code.
+🔴 **CORRECTED — this was NOT the "backgrounded exit code lies" trap, it was self-inflicted, and
+mis-attributing it was the more instructive error.** The harness reported exit 0 while the log ended
+`npm error command failed`, and the recorded trap was blamed. In fact the script's **last statement
+was an `echo`**, so the compound exited 0 and masked npm's 1 — the harness reported the script's
+true status. Phase-67 hit the identical thing independently within the hour, which is what prompted
+the re-check.
+
+⚠️ **The sharper half: the instrumentation was already right and went unread.** The script ended
+`echo "exit: $?"`, and that line printed **`exit: 1 at 11:29:47`** — into the background task's
+output file, which was never opened because the scratchpad *log* was read instead. The evidence
+existed and the wrong source was consulted.
+
+**How to apply:** end a gate command with the gate, not with an `echo`/`date`/`ls`; and if you do
+add a trailing report, **read the file it writes to**. Either way `test-results.json` + its mtime is
+the verdict — that part held and made this a non-event.
 
 ⚠️ **Rail buttons don't map to a stable index.** Clicking them behaved as a toggle, and six
 consecutive indices produced only two distinct panels. Select by **outcome** (does the thing I need
