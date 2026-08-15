@@ -277,10 +277,18 @@ is genuinely copyable — the defect is entirely in **which handler wins the key
   whole subject was making text selectable: FIX-003 correctly made the text selectable and never
   touched who owns the keystroke.
 
-🔴 **The most natural user flow reproduces it every time.** Clicking an Explain citation *selects the
-cited node* (criterion 3, working as designed) — so "click a citation → read the explanation →
-select that sentence → ⌘C" always yields node JSON instead of the sentence. This is precisely
-report 1bis's complaint (*"can't select it to copy and paste"*) surviving in a second form.
+🔴 **A real user flow reproduces it every time.** Clicking an Explain citation *selects the cited
+node* (criterion 3, working as designed) — so "click a citation → read the explanation → select that
+sentence → ⌘C" always yields node JSON instead of the sentence. This is precisely report 1bis's
+complaint (*"can't select it to copy and paste"*) surviving in a second form.
+
+⚠️ **Session 12's drive corrected this section — read "What the drive found about the repro itself"
+below before using anything here as a recipe.** The citation route above is one of *two* valid ones
+and it holds; but the **Properties panel** is the more natural repro, and the *canvas* route this
+section's opening sentence implies is **not reachable at all** — clicking a canvas node swaps the
+panel away, and opening a panel from the rail deselects the node. The drive in this session reached
+the state programmatically (`ed.selector.select(...)` after opening the panel), which is a legitimate
+way to isolate the defect but is **not** a user gesture, and this write-up did not say so.
 
 **Control, and it is what makes the diagnosis safe:** with **nothing** selected on the canvas, ⌘C
 copies nothing at all — the clipboard keeps its prior value. So the canvas handler is demonstrably
