@@ -6,9 +6,9 @@ Paste the block below into a fresh session.
 
 Continue phase 67 (NodeGX Community), `dev-docs/tasks/phase-67-nodegx-university/`.
 
-**Read first, in this order:** `RULINGS.md` (thirteen rulings, **and Blocker 1's four amendments** —
-the fourth is from 2026-08-15 and is the *mirror* of the other three), then
-`UNI-010-A-TUTORIAL-YOUR-OWN-CLAUDE-CAN-WRITE.md` (its header records slice 1), then
+**Read first, in this order:** `RULINGS.md` (thirteen rulings, **and Blocker 1's five amendments** —
+the fifth is from 2026-08-15 and is not about a check at all), then
+`UNI-010-A-TUTORIAL-YOUR-OWN-CLAUDE-CAN-WRITE.md` (slices 1 and 2), then
 `UNI-007-THE-LESSON-BEAMED-INTO-THE-EDITOR.md`, then `TASKS.md`.
 `PRIOR-ART-RECONCILIATION.md` if you have not read it before.
 
@@ -23,195 +23,189 @@ one is wrong, amend `RULINGS.md` with a date and a reason. The four to keep in y
   end-user data. Five obligations; effort raised; still last.
 - **D13** — coaching delivery (**LearnBook**) is **phase 68**, platform stack, after Tier 1 + UNI-004.
 
-## 🎉 UNI-010 slice 1 is BUILT — the F1–F4 harness (`90776d8b`, docs `0a1310e8`)
+## 🎉 UNI-010 slice 2 SHIPPED 2026-08-15 (`8c5a9ef7`) — the gate is collected, the surface exists
 
-The 2026-08-14 ruling let a model author `completeWhen` directly and priced it exactly: *free
-authoring stands, and in exchange the verifier must absorb the full F1–F6 taxonomy.* A structural
-guarantee was traded for a gate. **Slice 1 is that gate.**
+Slice 1 built the F1–F4 harness and **nothing called it**: `LearningFolderModel.install()` still ran
+the static check alone, so an AI-authored bundle was priced at four classes and charged at one. That
+is now closed, and the MCP door a model reaches it through is built.
 
-| Class | What answers it | Where |
-|---|---|---|
-| **F1** unreachable | the shipped `verifyLessonManifest` — reused, not forked | `models/lessonverify.ts` |
-| **F2** dead on solution | replay the conditions against the lesson's own answer | `models/lessonbundleverify.ts` |
-| **F2′** ghostwritten | replay against the **starter** — §3.5's line | same |
-| **F3** ambiguous address | decoy injection + already-ambiguous comparison | same |
-| **F4** empty preview | engine 2, injected as a port | same (adapter is `noodl-mcp`) |
+| Shipped | Where |
+|---|---|
+| **The install policy** — which classes each provenance must have *passed* | `models/lessoninstallpolicy.ts` |
+| **The install gate**, widened from F1 to the whole scorecard; `install()` is **now `async`** | `models/learningfolder.ts` |
+| **The authoring brief** — format, path grammar, the whole condition vocabulary | `noodl-mcp/src/lessons/authoringBrief.ts` |
+| **Score-then-write** — writes nothing unless it passed | `noodl-mcp/src/lessons/bundleWriter.ts` |
+| **`get_lesson_brief` / `create_lesson` / `check_lesson`**, a deferred `lesson` group | `noodl-mcp/src/tools/lessonTools.ts` |
 
-Plus **`models/lessonprojectcontext.ts`** — a `LessonEvalContext` built from project *files*, with no
-editor at all — and **`models/lessonbundleread.ts`** — the bundle on disk.
-**46 tests** in `noodl-editor/tests-unit/uni-010/` (jest / `test:main`).
+**28 new tests** (16 editor in `tests-unit/uni-010/lessoninstallpolicy.test.ts`, 12 in
+`noodl-mcp/tests/lessonTools.test.ts`).
 
-🔴 **The bundle format gains one thing: a bundle carries its own solution, at `solution/`.** Without
-it F2, F2′, F3 and F4 all go dark and the gate that was traded for §3.1 is not actually there. Hence
-`installable` is a **separate field from `ok`** — a bundle where nothing failed *because nothing was
-checked* is not a bundle that passed. A curated bundle may legitimately have none; the reader says so
-and lets the caller decide.
+### 🔴 D5's hard problem, and the asymmetry that answers it
 
-## 🔴 What slice 1 found, because it is the thing to carry forward
+The sidecar must not write launcher state, so `create_lesson` writes a **folder** and the learner
+installs it through the launcher's ordinary picker — which passes `local`, because pointing at a
+directory says nothing about who wrote what is in it. Slice 3 had assumed "the editor will have
+watched the MCP write it". **It does not, and no channel would let it.**
 
-**A gate can fail in the other direction, and that direction is worse.** All four previous
-"building the caller" findings in this phase were one shape: *a check that did not catch enough.*
-This one is the mirror.
+The way out was already in slice 3's own rule, unnoticed: it is **asymmetric**. Provenance is the
+caller's word *because a bundle declaring itself `curated` would be believed* — but declaring
+`authoredBy: "ai"` **spends** trust, moving the bundle from a one-class gate to a three-class one.
 
-The F3 decoy test asks *"would this condition survive a second node of the type it addresses?"* For
-almost any type-addressed path with a specific assertion the answer is **no** — so as an error it
-**rejects essentially every sound lesson**. `App:%Page:#Greeting` names the page by type because that
-is how a page component is shaped; a hypothetical second Page is not a defect.
+> 🔴 **A claim may only tighten.** The one direction that costs the claimant is the one direction it
+> is safe to honour.
 
-> 🔴 **A gate that rejects the correct answer is worse than no gate.** A missed defect reaches one
-> learner; a false rejection tells every author their correct work is wrong, and the rational
-> response is to stop believing the gate — which disarms the checks that *were* right.
+One optional manifest field and one pure `resolveProvenance`. No bridge, no IPC, no sidecar write.
 
-The repair was not to weaken the test but to **re-read the binding it was enforcing**. §3.2 permits
-type-only addressing *"only where the graph guarantees exactly one node of that type"* — so **error**
-when a second candidate already exists in starter or solution, **warning** when exactly one does.
+### 🔴 The gate is a policy TABLE, not slice 1's `installable`
 
-⚠️ **The reusable trick:** compare against the artifact's **own end state**. A solution is the graph
-*after every step*, so a lesson that itself asks for a second Text has two in its own answer — the
-ambiguity is visible in the shipped artifact instead of requiring a guess about learner behaviour.
+`REQUIRED_CLASSES`: `curated`/`org`/`local` → F1; `local-ai` → F1, F2, F3. Plus **a `fail` in any
+class blocks everyone**, which also makes curated bundles better checked than slice 3 left them.
 
-✅ **Two things this settled that were previously recorded as open:**
+Gating on `installable` ("every class checked and passed") was the obvious move and it is wrong:
+**nothing in a packaged editor can render a solution directory.** Engine 2's editor adapter drives the
+*running viewer*; the sidecar's spawns the harness out of `scripts/`, which is not in `build.files`.
+So `installable` is unreachable in the shipped editor, and gating on it would mean **no AI-authored
+lesson could ever install** — the fourth amendment's own failure, one slice later.
 
-- **Depth is reachable after all.** The second amendment recorded depth as the boundary the static
-  check cannot cross (*"the verifier has no project"*). Still true of `lessonverify` — and a
-  **solution replay crosses it**. The drive bundle's own step 2 (`%Text` where the Text sits inside
-  the Page) is well-formed, correctly spelt, real-type, and one level too shallow. The harness fails
-  it. The boundary was a property of *having no project*, not of static checking.
-- **The file-backed context agrees with the live editor.** Over `bundle-good` it reports steps 2 and
-  4 failing and step 3 passing — the same per-step verdicts the slice-4 drive measured through the
-  UI. 🔴 Two plausible shortcuts would have broken that, both live: a component is addressed by its
-  **legacy name**, not its directory (`components/__page__/Home` is named `/#__page__/Home`), and a
-  stored node serialises **only its dynamic ports**, so `hasPort: "text"` — true of every Text in the
-  editor — reads false from the file alone. Reuse `toLegacyName` / `reconstructLegacyComponent` from
-  `io/ProjectImporter.ts`; both are pure (type-only imports) and load in plain Node.
+⚠️ **F4 is therefore required of nobody at install — a recorded hole, not a shrug.** It is the class
+the prior arc predicted would *dominate*, and it is answered by the **producer** (`create_lesson`
+refuses to write without it unless `allow_unrendered` is passed by name) and never by the installer.
+**A model that hand-writes a bundle with its own file tools and installs it directly reaches a learner
+with F4 unchecked.** That is the sharpest thing left open in this task.
+
+### 🔴 The finding to carry: a lazy `require` defers execution, not resolution
+
+The fifth "build the caller" instance, and the first about neither a check nor a feature — about a
+**claim in a module header nobody could falsify until something depended on it.**
+
+UNI-007 moved `ProjectModel` into a `require` **inside** `liveLessonEvalContext()` and recorded that
+this "is what makes 'the same verifier, not a fork' achievable: UNI-010 runs this runner inside an MCP
+sidecar". True of jest, which never evaluates the branch. **False of the sidecar, which is bundled** —
+esbuild resolves a literal `require` path wherever it sits, so the first import from `noodl-mcp`
+pulled in `projectmodel` → the node graph → React → `.scss`, and the build failed outright.
+
+> 🔴 **"Loadable in plain Node" and "safe to bundle" are two different properties.** The check is to
+> **build it**, not to read it — and `editor-deps.ts` is a whole barrel of purity claims that have
+> only ever been checked by building.
+
+Split to `views/lessons/lessonevalconditions.live.ts`, beside `lessonwholesolution.live.ts`.
+
+### 🔴 And a gate that could not report its own margin
+
+Adding a deferred tool group tripped AWP-006's 8,200-token surface budget. Measured, same fixture:
+**8,198 with UNI-010 entirely absent** — LEG-001 banked 58 tokens of slack and **56 had been spent** by
+work that never knew it was spending them, because `expect(tokens <= BUDGET)` says nothing at 8,197
+and nothing at 8,199. *It reports the crossing and never the approach; the first person told is the
+one who runs out.* Raised to 8,280 with the numbers written into the test.
+
+⚠️ On the way in, the group exposed a live staleness bug: `find_tools`' `group` argument was a
+**hand-written `z.enum`**, so the new group was advertised in the tool's own description and rejected
+by its schema. Now derived from the manifest.
+
+### ✅ The brief's examples are typed values, not prose
+
+All eleven conditions it shows are real `LessonConditionDef`s in `CONDITION_EXAMPLES`, rendered into
+the text, and the spec compiles every one through the real `compileConditions`. The worked manifest is
+run through the harness and asserted to pass all four classes. *A doc that lies has examples that lie
+too*, and this one cannot.
 
 ## What to do next — in the order I'd pick
 
-**1. UNI-010 slice 2 — the `create_lesson` MCP surface, and the install that uses the harness.**
-This is the obvious next move and the pieces are all in place.
+**1. Criterion 2 — DRIVE it.** The provenance plumbing is unit-tested end to end and **nobody has
+installed an MCP-written bundle through the real launcher.** Write the consequence list *first*, and
+🔴 make sure at least one line could only be true of the AI route — "the lesson installed" is true of
+a broken feature. Suggested: *"the card reads AI-authored, and the same bundle with `authoredBy`
+removed installs as Local"* — one observation, both halves of the asymmetry.
 
-- 🔴 **`LearningFolderModel.install()` still gates on `verifyLessonManifest` alone**, i.e. **F1 only**.
-  An AI-authored bundle installed today gets the static check and nothing else. Wire the scorecard in,
-  gated on provenance: `local-ai` requires `installable`, `curated` need not.
-- The MCP tool: instructions (the how-to-author brief — format, §3.2 label addressing, §3.3 binding
-  keys, the pedagogy constraints) + a validating install. 🔴 **The sidecar must not write launcher
-  state** (D5): it writes a *bundle on disk* and asks the editor to install it.
-- Share the verifier through `noodl-mcp/src/editor-deps.ts` — the same relative-path re-export
-  pattern slice 2 of UNI-007 used. `lessonverify`/`lessonbundleverify`/`lessonprojectcontext` are all
-  pure; `lessonbundleread`'s fs is injected.
-- ⚠️ Lesson prose must use **explicit markdown links** — `linkify` is off in both Remarkable
-  instances, so a bare URL never becomes an anchor. UNI-010's producer is a model, so the brief must
-  say this.
+**2. Criterion 3 — the five-lesson run**, against the pre-registered kill/keep criteria (≥3 of 5
+install and are completable + worth completing). This is the experiment the task exists for and
+everything it needs now exists.
 
-**2. Then criteria 2 and 3** — a valid bundle installs with the AI-authored label and grades
-identically (the provenance plumbing already exists end to end: `LessonProvenance` has `local-ai`,
-and `LearningSection` renders `PROVENANCE_LABEL`), and the **five-lesson run** written up against the
-pre-registered kill/keep criteria.
+**3. Ergonomics: two projects, one bound server.** `create_lesson` takes two project *directories*, so
+the authoring model produces the starter and the solution itself. The MCP binds one project, so in
+practice it authors the solution with the write tools and builds the starter alongside. It works and
+it is clumsy; a `derive_starter` step is the obvious slice-3 candidate.
 
-**3. The two owed items UNI-007 still does not carry**, both CURRICULUM-DESIGN §11: **curriculum
+**4. The two owed items UNI-007 still does not carry**, both CURRICULUM-DESIGN §11: **curriculum
 hosting** (§9.3 — now partly a D2/D9 question) and the **tutor lesson-context overlay** (§9.1,
 *"required before L2 testing"*).
 
-**4. Platform work (UNI-001 + UNI-009 minimal cut)** — bigger, and a different repo.
+**5. Platform work (UNI-001 + UNI-009 minimal cut)** — bigger, and a different repo.
 
-## Gates as they stand (all run 2026-08-15 on `90776d8b`)
+## Gates as they stand (2026-08-15, on the tree that became `8c5a9ef7`)
 
 | Gate | Result |
 |---|---|
 | `npx tsc -p tsconfig.json --noEmit` (editor) | ✅ exit 0 |
-| `npm run test:main` | ✅ **202 suites / 3120 tests, 0 failures** — 🔴 **new floor** (was 199 / 3072; delta is exactly this commit's +3 / +48) |
-| `npx eslint` on the new modules + tests | ✅ clean |
-| `npm run test:ci` | ✅ **2788 specs / 6 failures at pinned seed 39393** — the exact floor by name, **zero `BEN-001`** |
+| `npm run test:main` | ✅ **203 suites / 3136 tests, 0 failures** — 🔴 **new floor** (was 202 / 3120; the delta is exactly this commit's +1 / +16, confirmed with the peer who shared the tree) |
+| `npx jest` in `packages/noodl-mcp` | ✅ **44 suites / 506 tests, 0 failures** |
+| `npx eslint` on every file touched | ✅ clean |
+| `npm run test:ci` | ⚠️ **NOT RUN BY ME — owed** |
 
-✅ **`test:main` is safe beside a peer's live drive** — plain Node, no Electron, no renderer, no
-CDP port. It is the one full gate that does not need the checkout to be quiet. Announce anyway
-(concurrent `test:main` runs manufacture failures), but you do not need to wait for a stack to come
-down.
+🔴 **`test:ci` is the outstanding gate and it matters more than usual this time.** `test:main` never
+compiles `views/`, so **the `lessonevalconditions` split has not been compiled by the electron suite
+at all.** A phase-66 peer's pinned-seed run was in flight over the same working tree and undertook to
+report `tests/lessons/*` by name; I did not see the result before writing this. **Check
+`tests/lessons/lessonevalconditions.test.ts`, `lessonformat.test.ts` and `worked-lesson.test.ts`
+first.** I read their imports and all three take only pure symbols (`evaluateSingleCondition`,
+`findNodeWithPath`, `evalConditionsWithContext`, `parseArrayValue` and types) — none imports the
+default export or `liveLessonEvalContext` — so the split *should* be invisible to them. **That is a
+prediction from reading imports, not a measurement.**
 
-✅ **`test:ci` was run and is discharged.** `NOODL_SPEC_SEED=39393 npm run test:ci`
-(`tests/SpecRunner.html:41-42`), results file **deleted at 11:53:34 before the run**, mtime **12:04**
-— freshness proved rather than inferred. **2788 specs / 6 failures**, the exact floor names (4 ×
-`AIX-006 style vocabulary`, 2 × `AI model registry`), **zero `BEN-001`**. My handover had a
-structural argument in its place (slice 1 adds only `tests-unit/` files, which the electron suite
-never compiles); it is now a measurement instead, which is strictly better.
-
-✅ **And it is a genuine replicate:** identical seed, spec set, count and names to a peer's 11:29 run
-— the same-seed-*same-set* pairing an earlier handover correctly warned is usually missing.
-
-🔴 **Quote it against a TREE, not a commit.** HEAD was `90776d8b` when the run started and
-`4db77e0d` when it finished — peers committed underneath it mid-run. The webpack ran 11:53:34–11:54:41,
-so what was measured is *the tree at ~11:54*: UNI-010 slice 1 plus phase-66's `keyboardhandler.spec.ts`
-(+9 specs, uncommitted then, committed now). **That is why `totalCount` reads 2788 and not the 2779
-in older handovers** — it is a spec-set difference, not a regression and not a gain.
-
-🔴 **Before believing any `test:ci` number: delete `packages/noodl-editor/tests/test-results.json`
-first, or `stat` it.** Exit 0 with an unchanged mtime is what a broken webpack looks like — a stale
-file reproduces the floor count, the floor **names** *and* the seed, because all three check
-*content*.
-
-🔴 **The exit code and the log both mislead here, in opposite directions.** This run's log ended
-`npm error command failed` and npm's own status was **1** — because npm exits non-zero whenever *any*
-spec fails, and the floor is 6, so **a clean floor run always looks like a failure at the shell.**
-It was simultaneously reported as **exit 0**, because the command ended `…; echo "exit: $?"` and the
-*compound* genuinely succeeded. Neither signal is the readout. **`tests/test-results.json` is.**
-
-⚠️ **Do not file that as the backgrounded-exit-code trap — it is not, and two sessions filed it that
-way within one hour on 2026-08-15** (one had to correct their handover, `ccf44d1d`). Nothing lied:
-the harness reported the compound's status correctly, and the compound was the wrong question.
-🔴 **A false sighting makes a trap entry *more* trusted**, so check the mechanism before adding a
-tally mark to one.
+Run it as `NOODL_SPEC_SEED=39393 npm run test:ci` (`tests/SpecRunner.html:41-42`), and 🔴 **delete
+`packages/noodl-editor/tests/test-results.json` before the run or `stat` it after** — a stale file
+reproduces the floor count, the floor *names* and the seed, because all three check content. Exit 0
+with an unchanged mtime is what a broken webpack looks like. Floor at that seed is **6 failures** (4 ×
+`AIX-006 style vocabulary`, 2 × `AI model registry`), zero `BEN-001`; **npm exits non-zero on any
+failure, so a clean floor run looks failed at the shell.** Read the JSON.
 
 ## ⚠️ Owed, small, and honest about it
 
-- ⚠️ **`MEMORY.md` compaction is PARTIALLY done and still owed.** A hook asks for it under 17.1KB;
-  I got it from 21.2KB to **20.1KB** and stopped. The remaining bulk is ~152 markdown links whose
-  URLs alone are ~4.4KB — cutting further means either dropping entries or renaming memory files,
-  and the rename would break cross-links in the topic files **while 12 sessions are live on this
-  checkout**. All 152 links verified resolving after my pass. Someone should do the rename properly
-  when the checkout is quiet.
-- ⚠️ `dev-docs/tasks/phase-65-the-library/` is **still untracked** and `MEMORY.md` links into it.
-  One `git clean` from gone. Somebody should commit it.
-- ⚠️ A **`stash@{0}`** exists in this checkout (`WIP on cline-dev: ff74bcc9`) belonging to no session
-  in today's conversations. 🔴 Never `git stash`/`pop` here. Identify it with Richard before anyone
-  assumes it is droppable.
-- ⚠️ Richard's four live `noodl-mcp.cjs` servers still run an old build; restarting them is his call.
-  A running server may load `/Applications/…` rather than the checkout, in which case reaching it
-  needs a **repackage**, not `npm run build`.
+- ⚠️ **`MEMORY.md` compaction is PARTIALLY done and still owed.** A hook asks for it under 17.1KB; a
+  previous session got it from 21.2KB to 20.1KB and stopped. The remaining bulk is ~152 markdown links
+  whose URLs alone are ~4.4KB — cutting further means dropping entries or renaming memory files, and
+  the rename would break cross-links while many sessions are live on this checkout.
+- ⚠️ `dev-docs/tasks/phase-65-the-library/` is **still untracked** and `MEMORY.md` links into it. One
+  `git clean` from gone. Somebody should commit it.
+- ⚠️ A **`stash@{0}`** exists (`WIP on cline-dev: ff74bcc9`) belonging to no session in today's
+  conversations. 🔴 Never `git stash`/`pop` here. Identify it with Richard before assuming it is
+  droppable.
+- ⚠️ Richard's `noodl-mcp.cjs` servers still run an old build. **Slice 2 added three tools**, so
+  reaching them needs a restart — and if a server loads `/Applications/…` rather than the checkout,
+  it needs a **repackage**, not `npm run build`. His call.
 
 ## Standing constraints
 
-- Editor work on `cline-dev`. 🔴 **Never `git stash`**; `cd` to the repo root in every git call
-  (the Bash cwd persists and *did* bite me this session); **explicit pathspecs**.
-- 🔴 **This checkout is SHARED — 12 sessions were live on 2026-08-15.** Announce over `SendMessage`
-  before `test:main`, `test:ci` or an editor launch, and again after. `ListAgents` finds peers;
-  reply to a peer by copying its `from=` attribute as your `to`.
+- Editor work on `cline-dev`. 🔴 **Never `git stash`**; `cd` to the repo root in every git call (the
+  Bash cwd persists); **explicit pathspecs** — the tree routinely holds two or three sessions' work.
+- 🔴 **This checkout is SHARED — 14 sessions were live on 2026-08-15.** Announce over `SendMessage`
+  before `test:main`, `test:ci` or an editor launch, and again after. `ListAgents` finds peers; reply
+  to a peer by copying its `from=` attribute as your `to`. ✅ **`test:main` is safe beside a running
+  `test:ci`** — plain Node, no Electron, no renderer, no CDP port (done concurrently this session).
   ⚠️ **`git log` authorship separates nobody** — everyone commits as Richard.
-- 🔴 **`dev:stop` kills by *checkout*, so here it kills a peer's editor too.**
-- ⚠️ A different `NOODL_REMOTE_DEBUG_PORT` does **not** let two editors coexist — the single-instance
-  lock ignores it; 8080/8574/8577 are fixed.
-- Three-plus long-lived `noodl-mcp.cjs` Electron processes are **Richard's MCP servers** — never kill.
+- 🔴 **`dev:stop` kills by *checkout*, so here it kills a peer's editor and reaps a running suite.**
+- ⚠️ A different `NOODL_REMOTE_DEBUG_PORT` does **not** let two editors coexist; 8080/8574/8577 fixed.
+- Long-lived `noodl-mcp.cjs` Electron processes are **Richard's MCP servers** — never kill.
 
 ## Things the next person will otherwise re-derive
 
 - 🔴 **`/usr/bin/grep -a`, always.** Plain `grep` here is ugrep and silently skips `.ts` as binary.
-  And **never `grep -r` across `packages/noodl-editor/src/`** without `--include` — it hits
-  `*.bundle.js.map` and returns 33MB.
-- 🔴 **The authored condition vocabulary is not what you would guess.** It is `hasParams: string[]`
-  (not a string), **`paramsEqual`** (not `paramsEq`), `{ connection: { from, to, fromPort, toPort } }`
-  (no `hasConnection` key), **`previewRouteEquals`** and **`activeComponentEquals`** — which compile
-  to the internal `viewerpatheq` / `activecomponentnameeq`. Read `lessonformat.ts:48-97` before
-  writing a fixture; I wrote a test file against the internal names and it cost a round trip.
-- 🔴 **A path segment matches only at *its* level.** `Home:%Text` will not find a Text that sits
-  inside the page's `%Page` root. The drive bundle's own lesson has this bug in two steps — which is
-  why its slice-4 drive scored "1 pass / 2 fail" and why F2 exists.
-- ⚠️ **Drive bundles are still staged** at `/tmp/claude-501/uni-007-drive-bundles/` — `bundle-good`
-  and `bundle-bad`. Neither carries a `solution/` yet, so both score three classes `not-checked`.
-  `/tmp` is not forever.
-- ⚠️ **`scripts/` is not in `package.json`'s `build.files`**, so every `scripts/devtools/*` harness is
-  absent from a packaged editor. No gate catches it — they all run from the checkout.
-- 🔴 **⌘C over any panel prose copies the selected canvas NODE instead** (phase-66 finding). The
-  lesson layer's check summary is exactly such a `<div>`. Not this phase's to fix, and do not fix it
-  locally — the binding is global and the repair belongs with the guard.
-- `suggestedNodes` is still **dead** — `LessonModel.getCurrentSuggestedNodes()` has no callers, and
-  both the verifier and the harness deliberately do not read it. Whoever wires it to the node picker
-  decides which vocabulary it wants and adds it to the check in the same change.
+  Never `grep -r` across `packages/noodl-editor/src/` without `--include` — it hits `*.bundle.js.map`
+  and returns 33MB. ⚠️ And zsh eats a bare `--include=*.ts`: quote it.
+- 🔴 **The condition vocabulary is not what you would guess** — `hasParams: string[]` (not a string),
+  **`paramsEqual`** (not `paramsEq`), `{ connection: { from, to, fromPort, toPort } }` (no
+  `hasConnection` key), **`previewRouteEquals`** and **`activeComponentEquals`**, which compile to the
+  internal `viewerpatheq` / `activecomponentnameeq`. ✅ **You no longer have to remember this**:
+  `CONDITION_EXAMPLES` in `noodl-mcp/src/lessons/authoringBrief.ts` is one typed example per verb and
+  the spec compiles all of them.
+- 🔴 **A path segment matches only at *its* level**, and the first segment is the component's **legacy
+  name**, not its directory (`components/__page__/Home` is named `/#__page__/Home`).
+- ⚠️ **Test fixtures must not let those two agree.** A fixture whose component `path` equals its
+  directory tests a project shape the editor never produces, and the harness passes over the one
+  mistake it most needs to catch. Both new test files write them deliberately different.
+- ⚠️ **Drive bundles are still staged** at `/tmp/claude-501/uni-007-drive-bundles/` — `bundle-good` and
+  `bundle-bad`. Neither carries a `solution/`, so **neither will install as `local-ai` any more.**
+  That is correct behaviour and it will look like a regression the first time somebody tries it.
+- 🔴 **⌘C over any panel prose copies the selected canvas NODE instead** (phase-66). Not this phase's
+  to fix.
+- `suggestedNodes` is still **dead** — no callers. The brief tells authors not to rely on it.
