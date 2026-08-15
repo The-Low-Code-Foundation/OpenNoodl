@@ -21,7 +21,8 @@ import {
   lessonProgress,
   manifestPath,
   readLessonManifest,
-  readLessonSource
+  readLessonSource,
+  resumeIndex
 } from '../../src/editor/src/models/learninglesson';
 import type { LearningLessonFs } from '../../src/editor/src/models/learninglesson';
 import type { LearningEntry, LearningProgress } from '../../src/editor/src/models/learningfolder';
@@ -139,15 +140,34 @@ describe('buildLearningLessonModel', () => {
   });
 
   it('carries the step index over from the saved project, never resetting it', () => {
-    // `ProjectModel.toJSON` persists `lesson`, so a learner who closes the
-    // editor half way through must come back where they left off. Resetting is
-    // the launcher's button and re-pulls the whole project.
     const { built } = attach({ id: entry.id, lesson: { index: 4 } });
     expect(built.args.index).toBe(4);
   });
 
   it('starts at the first step for a lesson that has never been opened', () => {
     expect(attach({ id: entry.id }).built.args.index).toBe(0);
+  });
+
+  it('🔴 resumes from the REGISTER, which the project file may lag behind', () => {
+    /*
+     * Driven 2026-08-15 and it failed: advance a step, leave the lesson, reopen
+     * it, and it restarted at step 1. `project.lesson.index` is persisted only
+     * when the project is *saved*, and a learner reading instructions has saved
+     * nothing. `recordProgress` writes on every step change with no save in the
+     * path, so the register is both fresher and incapable of lagging.
+     */
+    const withProgress = { ...entry, progress: { stepIndex: 3, stepCount: 5 } };
+    expect(resumeIndex({ id: entry.id }, withProgress)).toBe(3);
+    // Even when the saved project claims otherwise, because it can only be stale.
+    expect(resumeIndex({ id: entry.id, lesson: { index: 0 } }, withProgress)).toBe(3);
+  });
+
+  it('falls back to the project file when nothing has been recorded', () => {
+    // A bundle whose own project.json carries a `lesson` block, or an entry
+    // installed before progress was ever written.
+    expect(resumeIndex({ lesson: { index: 2 } }, entry)).toBe(2);
+    expect(resumeIndex({ lesson: { index: 2 } }, { ...entry, progress: { stepIndex: 0, stepCount: 4 } })).toBe(2);
+    expect(resumeIndex(undefined, undefined)).toBe(0);
   });
 
   it('records progress against the register when the learner moves on', () => {

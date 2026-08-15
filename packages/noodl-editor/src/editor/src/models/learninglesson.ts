@@ -25,11 +25,12 @@
  *     path's base-URL trick has no origin to point at here. Everything after the
  *     read — format detection, `compileLessonSource`, steps, annotations — is
  *     the one shared path.
- *   - The step index is **carried over, never reset**. `project.json` persists
- *     `lesson` on save (`ProjectModel.toJSON`), so a learner who closes the
- *     editor half way through a lesson and comes back must land where they left
- *     off. Resetting the lesson is the launcher's button and re-pulls the whole
- *     project; it is not a side effect of opening one.
+ *   - The step index is **carried over, never reset** — from the *register*,
+ *     not from the project file. See {@link resumeIndex}: the project file
+ *     persists `lesson` only on save, which a learner reading instructions has
+ *     not triggered, and a drive caught it restarting at step 1. Resetting a
+ *     lesson is the launcher's button and re-pulls the whole project; it is not
+ *     a side effect of opening one.
  *   - Progress is written back to the register on every step change, which is
  *     what puts a number on the card.
  *
@@ -120,6 +121,33 @@ export interface AttachableProject {
   lesson?: { index?: number } | undefined;
 }
 
+/**
+ * Which step to reopen a lesson on.
+ *
+ * 🔴 **The register first, the project file second, and the drive is why.**
+ * The obvious source is `project.lesson.index`, since `ProjectModel.toJSON`
+ * persists it — and it is the wrong one, because it is only written when the
+ * project is **saved**. Driven 2026-08-15: advance a step, leave the lesson,
+ * reopen it, and it restarted at step 1, because the learner had changed no
+ * files and nothing had saved. The claim "carried over, never reset" was true
+ * of the code and false through the UI, which is the shape of claim a live
+ * drive exists to catch.
+ *
+ * The register is written **eagerly** — `recordProgress` fires on every step
+ * change, with no save anywhere in the path — so it is both the fresher source
+ * and the one that cannot silently lag. The project file stays as the fallback,
+ * for a bundle whose own `project.json` carries a `lesson` block and for any
+ * entry installed before progress was ever recorded.
+ */
+export function resumeIndex(
+  project: AttachableProject | undefined,
+  entry: Pick<LearningEntry, 'progress'> | undefined
+): number {
+  const recorded = entry?.progress?.stepIndex;
+  if (typeof recorded === 'number' && recorded > 0) return Math.floor(recorded);
+  return Math.max(0, Math.floor(project?.lesson?.index ?? 0));
+}
+
 export interface AttachLearningLessonDeps {
   fs: LearningLessonFs;
   /** Builds the lesson model. Injected so this module never imports `LessonModel`'s dependencies. */
@@ -148,9 +176,7 @@ export function buildLearningLessonModel(
   entry: LearningEntry | LearningEntryView,
   deps: AttachLearningLessonDeps
 ): unknown {
-  // 🔴 Carried over, never reset — see the module note. `project.lesson` is
-  // whatever `project.json` persisted from the last session.
-  const index = Math.max(0, Math.floor(project?.lesson?.index ?? 0));
+  const index = resumeIndex(project, entry);
 
   const lesson = deps.createLessonModel({
     index,
