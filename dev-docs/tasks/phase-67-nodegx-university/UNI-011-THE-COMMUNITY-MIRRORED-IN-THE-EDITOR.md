@@ -34,6 +34,86 @@ D14, D15 and D16 all ruled; nothing is waiting on a decision.
 > ⚠️ **Nothing has talked to a real platform.** `community.nodegx.dev` is unregistered; the
 > drive ran against `next dev` on localhost.
 
+> ## Slice 2a — AC2 is BUILT and DRIVEN (2026-08-16, twenty-first session), editor `f73b1bd6`
+>
+> ✅ **AC2 closes.** The node context menu offers *Ask about this node*; the composer opens
+> prefilled with type, warning, version and OS; the excerpt is off until enabled; and the string
+> shown is the string sent. **31 new specs** (`nodeexcerpt`, `nodequestion`), `test:main`
+> **225 suites / 3489 specs**, eslint clean, `tsc` still at its 31 pre-existing errors.
+>
+> ### 🔴 The finding: no payload in this editor had ever had to hide a PORT name
+>
+> ALPHA-007's project summary is a **histogram** — counts by bucketed type — so no port name has
+> ever left this editor. AC2's excerpt is *"types and wiring"*, and wiring **is** port names.
+>
+> [`NodeGraphNode.getPorts()`](../../../packages/noodl-editor/src/editor/src/models/nodegraphmodel/NodeGraphNode.ts)
+> is `type.ports` ++ `this.ports` ++ `this.dynamicports`. The last two are user-authored by
+> definition. The **first is user-authored too whenever the type is a component instance**,
+> because a component's ports are whatever its `Component Inputs` node declares. So the rule
+> composes with the type rule rather than sitting beside it: **a port name survives only when its
+> node's type survived.** A node bucketed `<component>` or `<unknown>` publishes no port names.
+>
+> ✅ **`bucketTypeName` is exported and imported, not reimplemented.** ALPHA-007 already knew a
+> component instance's type name is a component path. Two implementations of one privacy control
+> is the arrangement where a fix lands on one of them.
+>
+> ### 🔴 The same helper, called two ways, means opposite things
+>
+> `bucketTypeName(name, null)` returns the type name **verbatim**. ALPHA-007's header names that
+> branch and accepts it — defensible for a GitHub issue the reporter deliberately filed about a
+> bug in our editor. Not defensible here, and **the branch is reachable**: the node library
+> arrives asynchronously, which `getPorts()` documents at length. This module passes an **empty
+> set** and gets `<unknown>`.
+>
+> ⚠️ **This is not recorded as an ALPHA-007 defect.** Its own comment names the case and takes
+> the trade knowingly. Calling a documented, accepted trade-off a defect would be the over-claim
+> this phase warns about as loudly as the under-claim — the `renderMarkdown` precedent from slice
+> 1, in a new place. What *is* recorded is that an empty set reads like a long way of writing
+> `null`, so the spec asserts **both** branches, or it gets simplified back.
+>
+> ### The instrument is a closed-vocabulary sweep, not a search for secrets
+>
+> A secret search is right for a regex redactor, where the list of credential shapes **is** the
+> specification. It is wrong here: what leaks out of *structure* is not a secret shape, it is an
+> ordinary string in an ordinary place — a component named after a client — and a search for
+> known secrets only catches the ones on the list, written by the person who wrote the code.
+>
+> So every string the excerpt publishes is collected and asserted to come from a set the editor
+> owns. 🔴 **Graded from both sides**: a known-**broken** probe (an excerpt hand-built with a
+> client's name, which the sweep must reject) so a pass means something, and an assertion of what
+> **survived**, because an excerpt with no nodes passes every absence test ever written.
+>
+> ### ⚠️ An ordering trap between two passes that look independent
+>
+> `WarningsModel` joins messages with `<br>`, so markup must be stripped — but `redact()` **emits**
+> `<url>` and `<path>`. A tag strip running *afterwards* deletes exactly the markers that say a
+> secret was removed, and the sentence reads as though nothing was there. **Strip first, redact
+> second**, pinned by a spec carrying both a tag and a path.
+>
+> ### The drive — 8 consequences written first, 8 observed
+>
+> Ran against a copy of ALPHA-007's own **hostile fixture** project, with wiring and a component
+> instance added so the excerpt had something to bucket. Output for the `Group` node:
+>
+> ```
+> n1: Group   <- this node        n1.hoverStart -> n2.visible
+> n2: Text                        n1.hoverStart -> n3.<port>
+> n3: <component>                 n1.hoverStart -> n4.<port>
+> n4: <unknown>
+> ```
+>
+> `/Acme Legal Client Portal/Invoice Row` → `<component>`; `com.acmelegal.internal.BillingWidget`
+> → `<unknown>`; `clientMatterRef` → `<port>`; and `hoverStart`/`visible` **survive**, so the
+> allow-list is not merely hiding everything. 🔴 **Rows 7 and 8 are the two the unit specs
+> structurally cannot reach** — they are about `libraryPorts()` and `graphInputs()` reading the
+> real `NodeLibrary` and `NodeGraphModel`, which the pure half exists to avoid.
+>
+> ⚠️ **It hands off to the browser; it does not post.** That is D16 — *"until then the entry point
+> opens the browser"* — and the threshold cannot be met because UNI-009's forum does not exist to
+> have threads in. The editor-only half is the **composition**, which is what a browser cannot
+> build. When there is a forum and UNI-001 has an issuer, copy-and-open becomes a `POST` through
+> `communityapi.ts` and nothing above it changes.
+
 > **D14** ([RULINGS.md](RULINGS.md)): the public web platform is the **canonical** community; the
 > editor is a **second client of the same API**, showing the same content. Editor-only features are
 > the reason to transition, not a different feature set.
@@ -178,6 +258,9 @@ a particular order, and that property can be removed by an edit while every test
 > no clock, and the client has no method that writes. 🟡 AC6 **met at the API**, unmet at the
 > surface, because there is no surface. 📋 AC2 and AC3 are untouched: they are the editor-only
 > half, which this task's own sequencing note puts second.
+>
+> **Updated 2026-08-16 (slice 2a).** ✅ **AC2 is MET and driven** — see the slice 2a block above.
+> 📋 AC3 remains the one untouched criterion.
 
 1. A thread visible on the web is visible in the editor, from the same API, with the same content —
    and **no post body is ever rendered as HTML in the editor's own renderer** (proved by the chosen
