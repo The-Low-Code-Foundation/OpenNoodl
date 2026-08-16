@@ -669,7 +669,18 @@ Variables · App Objects · App Arrays · App Config · Libraries & Browser · L
 · Lists · Data · Debug · Variables · Functions · My Blocks` — `Data` is nine rows below `App
 Objects`, in a different visual group.
 
-⚠️ **`window.Blockly` exposes no `getMainWorkspace` in this build**, so the Blockly API route
-returns nothing and reads have to go through the DOM. The class names are the modern ones —
-`blocklyToolboxCategoryLabel`, `blocklyToolboxFlyout` — **not** `blocklyTreeLabel`, which matches
-zero elements and reads as an empty toolbox.
+⚠️ **Instrument notes, and one is a correction to this session's own first reading.**
+`window.Blockly` **exists and has no `getMainWorkspace`**, so that route returns `'no workspace'`.
+🔴 **That is not evidence the API route is dead** — s38's recipe reaches Blockly through the
+**webpack module cache** (`req.c['blockly'].exports.getMainWorkspace()`), which is a *different
+object* from the global. s48 tested only the global and fell back to the DOM; **the module-cache
+route was not re-tested and is probably still the better instrument.**
+
+The DOM route that did work: category labels are `.blocklyToolboxCategoryLabel` and flyout blocks are
+`.blocklyToolboxFlyout .blocklyBlock`. ⚠️ **`blocklyTreeLabel` matches zero elements** and so reads
+as an empty toolbox rather than as a wrong selector.
+
+⚠️ **Opening the builder:** a **double-click on the Visual Function node on the canvas** opens it.
+Node-graph nodes are painted on a canvas, so `cdp.js click` (selector-only) cannot reach them —
+`cdp.js drag "x,y" "x,y"` can, and the property panel's **"Edit Logic Blocks"** button is a third
+route.
