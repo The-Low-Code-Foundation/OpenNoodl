@@ -22,91 +22,89 @@ apply there.
 
 | Track | Tasks | State |
 |---|---|---|
-| **Editor / MCP** | UNI-007, UNI-010, UNI-012 | **Nearly done.** UNI-007 slices 1–5 + tutor overlay; UNI-010 all five slices, criterion 3 run, **KEEP**; UNI-012 scoped, not built |
-| **Platform** | UNI-001, 009 | 🟡 **Spine built** — `bb3ff8d7`, first commit ever in that repo |
-| **Platform** | UNI-002, 003, 004, 005, 006, 008 | 📋 **Six tasks, not started** — but they now land on a schema and a test harness that exist |
+| **Platform** | UNI-001 (AC3), 002, 009 (content cut) | 🟢 **Spine + contribution engine.** `9181f8f`, second commit |
+| **Platform** | UNI-003, 004, 005, 006, 008 | 📋 **Five tasks, not started** — UNI-003 is next and is mostly a *view* of what now exists |
+| **Platform** | UNI-001 (the rest) | 🔴 **Blocked on Richard**: OAuth callback URLs need `community.nodegx.dev`, still unregistered |
+| **Editor / MCP** | UNI-007, UNI-010, UNI-012 | UNI-007 slices 1–5 + tutor overlay; UNI-010 five slices, criterion 3 run, **KEEP**; UNI-012 scoped, not built |
 | **Editor + bridge** | UNI-011 | ✅ **Fully unblocked to build AND to ship** — D15 and D16 are ruled |
 
-**The fourteenth session's job was the bottleneck: the platform repo had `size: 0`, no branches, and
-`/commits` returning 409.** It now has a schema, 57 specs and four served pages. The phase is no
-longer one-third buildable.
+**The fifteenth session built UNI-002 — the contribution engine.** The platform now has points,
+badges, a challenge registry and an auditable ledger, which is what UNI-003, UNI-004 and UNI-006 all
+hang off. **Six of the phase's twelve tasks now have somewhere to land.**
 
-## What is in `nodegx-community` after one sitting
+## What UNI-002 added, in one paragraph each
 
-D1's stack — Next.js App Router, Postgres, Drizzle, Docker on port **55432**.
+**Gates:** `105 specs / 8 files` in `nodegx-community` (baseline was **57 / 5**), `tsc --noEmit`
+clean, `next build` succeeds. ⚠️ **`npm run lint` is NOT a gate there** — no ESLint config exists, so
+the script drops into an interactive setup prompt. It has never run in that repo.
 
-🔴 **The schema is the deliverable, and the rulings are database constraints rather than
-conventions.** The reason is D14: the API has two clients, and a rule enforced *in a client* is a
-rule the other client can disagree with, one release later, silently.
+**The registry is data, and that is the acceptance criterion rather than a preference.** `challenges`
+is a table; the engine selects by `event_key` and **never by `slug`**. AC4 is proved by a challenge
+**invented at runtime with a random slug** — no source file can hold a case for a string that did not
+exist when it was written. The launch set is 47 candidates in
+`src/lib/challenge-catalogue.json`, **validated by inserting every row** rather than by reading it.
 
-| Ruling | How it is enforced |
-|---|---|
-| **D3** | `points_ledger_append_only()` trigger |
-| **D4** | the **absence** of a `badge_id` column — asserted by a spec, because an absence has no other witness |
-| **D6** | `org_members.source`, one roster |
-| **D10** | `account_org_ownership` + `org_minor_holds_no_pii` CHECK constraints |
-| **D11** | `consents_d11_org_minor` trigger |
-| **D15** | `src/lib/community-visibility.ts` |
-| **D16** | `src/lib/community-threshold.ts` |
+**🔴 The rules live in a trigger for a reason sharper than D14's.** The spine's argument was two
+clients. This one is that one of the three award mechanisms is `bridge_event`, and **the bridge is
+the user's own editor** — an award path where the client names the points value is a client that can
+award itself ten thousand points. So the price, the mechanism allowed to claim a challenge, its cap
+and its rate limit are read from the registry *by the database* at insert time. The split is stated
+in the SQL: **the database enforces integrity, the module enforces eligibility, and a caller that
+skips the module cannot skip the database.**
 
-### 🔴 D3 versus UNI-001's AC3 was a real contradiction, and it is resolved rather than papered over
+**`points_ledger.challenge_id` is NOT NULL** — every point traces to a registry row, so there is no
+adjustment back door the price and cap rules cannot see. Balances and badges are **derived, never
+stored**; a revocation is an append of the exact inverse carrying `revokes_id`, so AC2's *"and
+badge"* half falls out of one row instead of needing a second thing remembered.
 
-D3 wants a ledger you can always recount. AC3 wants account deletion to cascade to ledger rows. Both
-cannot be literally true. The resolution: **UPDATE is refused outright — including inside a declared
-erasure, because a licence to delete is not a licence to rewrite** — and DELETE is refused unless
-the transaction has set `app.gdpr_erasure`. So the ledger cannot be tidied, cannot be rewritten, and
-cannot be emptied by a stray cascade, while erasure stays something the system can actually do and
-has to *say* it is doing. There is a spec proving the permission does not leak onto the pooled
-connection afterwards.
-
-### ✅ Every mechanism has a control run — the suite was not trusted because it was green
+### ✅ Nine control runs — and two of them changed the code
 
 | Control | Result |
 |---|---|
-| D15 write leak | **2 fail** — and it caught that the *anonymous* viewer shares that code path, so a leak reaches signed-out users too |
-| D15 capability added to the list | **16 → 18 tests, no spec edited** — coverage extends the day a capability is added |
-| D15 capability list emptied | suite collapses **16 → 4** and the mirror spec fails on *"expected 0 to be greater than 0"* |
-| D3 trigger removed | **4 fail**, the 3 erasure-*success* specs still pass |
-| D10 constraint neutered | exactly the **2** PII specs |
-| D11 trigger removed | exactly the **1** spec |
+| advisory lock removed | **exactly 1 fails** — the two-connection race, and nothing else |
+| the whole integrity trigger never created | **17 fail**, 88 still pass |
+| cap / points / mechanism / revocation-amount / rate-limit each disabled | 6 / 2 / 1 / 1 / 1 |
+| webhook signature verification neutered | 2 fail |
+| `badgesFor` stops excluding revoked awards | 1 fails — AC2's badge half, independent of its points half |
 
-`grep -c CONTROL` returns **0** in both touched files.
+⚠️ **The controls found two vacuity holes and both are closed**: a leaderboard spec asserting
+`board[0]`, therefore coupled to every sibling test's balance; and two catalogue assertions that are
+queries **returning nothing when the table is empty**, which now assert a known-firing precondition
+first.
 
-### 🔴 A footgun found while committing, and removed rather than documented
+### 🔴 Three findings that generalise past this task
 
-`package.json` had `db:push` / `db:generate`. **`drizzle-kit push` generates DDL from
-`src/db/schema.ts`, which has no representation for a CHECK constraint or a trigger** — so it would
-have built a database with **D3, D10 and D11 silently switched off**, and the column-level drift
-check would still have passed, because every *column* would be right. drizzle-kit is no longer a
-dependency. **This is the phase's own recurring shape: the check that passes on the broken artifact.**
-
-## 🔴 What is NOT built, stated plainly
-
-Because *"we did not build it"* and *"we built it and it works"* must never read the same way:
-
-- **No OAuth, no sessions issued, no consent screen UI.** The sign-in button renders D2's string and
-  is **inert**. UNI-001's AC1, AC2 and AC4 are editor-side and untouched; **AC3 is met and proven.**
-- **No Discourse, no SSO, no webhook receiver.** UNI-009's AC1 and AC3 are untouched — the forum is
-  a purchase nobody has made.
-- **No editor bridge.**
-- `forum_threads` has no producer. D16's threshold reads it; nothing fills it.
+1. **A BEFORE ROW trigger runs ahead of NOT NULL *and* foreign-key checks.** Two specs asserted
+   `23502` / `23503` and got `P0001`. Both guards refuse the row — but which one *speaks* is the
+   difference between a spec describing the system and one describing an assumption.
+2. **A type that lies survives because nothing exercises it.** `ledgerId` was `number`; postgres.js
+   returns `int8` as a **string**. Every spec passed, because an id is only ever carried and compared,
+   never added to. ⚠️ And Drizzle's `bigserial` accepts only `'number' | 'bigint'` — it *cannot say*
+   what the driver returns, a third thing that mirror cannot express.
+3. **🔴 A default-argument idiom turned a negative test into a positive one.** `signature ??
+   signBody(body, SECRET)` handed the spec passing `null` — meaning *"no signature header at all"* —
+   a correctly signed body. It asserted the happy path while claiming to assert a refusal. This is
+   the phase's own *"a failure indistinguishable from a missing mechanism"* shape arriving through a
+   language feature rather than a weak assertion.
 
 ---
 
 # What to do next — pick a lane and say which
 
-**LANE A — keep the platform moving. Recommended.** The order `TASKS.md` already rules:
-**UNI-002 → UNI-003**, the contribution engine before the profile, because the profile is mostly a
-*view* of the engine. Both land on a ledger that exists and a suite that runs. ⚠️ D4's binding
-constraint is already structural — **a challenge awards into a `(family, tier)`, never a
-`badgeId`** — so the challenge registry can launch long (R2) without a drawing per challenge.
+**LANE A — keep the platform moving: UNI-003, the profile. Recommended.** `TASKS.md` already rules
+the order UNI-002 → UNI-003, *"because the profile is mostly a view of the engine"* — and the engine
+now exists, with badges, balances and a ledger to render. D8 governs it: open listing behind a
+**profile bar**, reactive moderation. ⚠️ **It will be the first thing to notice that the twelve badge
+SVGs do not exist** — `badges.artwork` holds paths and no artwork has been drawn. That is D4's one
+unbuilt half and it is design work, not code.
 
 **LANE B — make the login real.** Finish UNI-001: OAuth, sessions, the consent screen, the editor
 half. 🔴 **Blocked on Richard, not on work** — callback URLs need `community.nodegx.dev` and the
-domain **is not registered**. Everything else in UNI-001 can be built against a stub provider, but
-shipping it cannot.
+domain **is not registered**. Everything else can be built against a stub provider; shipping it
+cannot. ⚠️ **It also unblocks the admin grant route** UNI-002 deliberately did not build: an admin
+endpoint before sessions exist is a grant-points-to-anyone endpoint.
 
-**LANE C — UNI-011, now fully unblocked.** D15 and D16 are ruled, so it can be built *and* shipped.
+**LANE C — UNI-011, the editor mirror.** D15 and D16 are ruled, so it can be built *and* shipped.
 🔴 The renderer is `nodeIntegration: true` **and so is the launcher** (same `BrowserWindow`): **no
 post body may render as HTML in it.** Pick the `<webview>` island or raw-markdown-plus-sanitiser and
 **prove the boundary with a known-BAD corpus, not a clean one.** ⚠️ D15 says the visibility rule
@@ -116,28 +114,34 @@ lives **behind the API** — do not reimplement it in the editor client.
 adversarial attacks (needs a live provider, and §6's AIX-004 tuning is the same sitting); the D5
 recents measurement, still spoiled.
 
-**My recommendation: A.** The platform now has somewhere to put things, and UNI-002 is the task the
-most others hang off.
+**My recommendation: A.** UNI-003 is the shortest task in the phase that produces something a person
+can look at, and everything it needs was built today.
 
-## ⚠️ For Richard, and only one of them is urgent
+## ⚠️ For Richard — two now, and the first is unchanged and still the only blocker
 
-1. 🔴 **`community.nodegx.dev` is still not registered.** It blocked nothing while the repo was
-   empty. It now blocks UNI-001's OAuth callback URLs, which is the next real step on the platform.
-   **This is the one thing a session cannot do for itself.**
-2. ✅ **The D2 description was fixed 2026-08-16** — it had named University as the platform for two
-   days after D2 ruled Community is. Both halves of D2 are now done.
-3. ⚠️ **GitHub Pages is still unattached** (`has_pages: false`, re-verified today), so D17's v0
-   remains free to set up. It stops being free after the first deploy.
+1. 🔴 **`community.nodegx.dev` is still not registered.** It blocks UNI-001's OAuth callback URLs,
+   which is the next real step on the platform. **This is the one thing a session cannot do for
+   itself.**
+2. 🆕 **The twelve badge artworks need drawing.** D4 ruled ~12 flat SVGs in the editor's icon idiom.
+   The schema, the taxonomy and the earning all work; `badges.artwork` holds paths to files that do
+   not exist. UNI-003 renders them.
+3. ⚠️ **GitHub Pages is still unattached** (`has_pages: false` as of 2026-08-16), so D17's v0 remains
+   free to set up. It stops being free after the first deploy.
+4. ⚠️ **The F4 packaged-install scope call** (UNI-012) is still yours and still open.
 
-## Gates (2026-08-16, fourteenth session)
+## Gates (2026-08-16, fifteenth session)
 
-- **`nodegx-community`: 57 specs / 5 files, all pass. `tsc --noEmit` clean.** Run with
-  `npm run db:up && npm test` from the sibling checkout.
-- **UNI-009 verified by SERVING it**: `/`, `/replays`, `/tutorials`, `/university` all **200 with no
-  cookie**; replays newest-first (08-12, 08-05, 07-29); all three articles; D2's string on all four.
+- **`nodegx-community`: 105 specs / 8 files, all pass. `tsc --noEmit` clean. `next build` succeeds.**
+  Run with `npm run db:up && npm test` from the sibling checkout.
+- **The webhook route was driven with `curl`, not only specced**: signed body → **200** with 45
+  points on the ledger, forged signature → **401**, missing header → **401**, no
+  `DISCOURSE_WEBHOOK_SECRET` → **503** — and the balance after all four is exactly one delivery's
+  worth, so the refusals awarded nothing.
 - **This checkout: nothing touched but `dev-docs/`.** No editor gate was run and none was needed —
   ⚠️ so do **not** quote a `test:ci` or `test:main` figure from this handover. There isn't one.
-- ⚠️ A peer (s38/P66) launched and tore down the editor during this session. Unrelated; no collision.
+  ⚠️ A peer (s38/P66) reported `test:ci` **2843 / 6 @ seed 39393** during this session, six failures
+  unchanged by name. That is **their** measurement on **their** tree, relayed — re-measure before
+  quoting it as a floor.
 
 ## Standing constraints
 
@@ -154,9 +158,13 @@ most others hang off.
 ## Things the next person will otherwise re-derive
 
 - 🔴 **Never generate DDL from `src/db/schema.ts`.** It is a query mirror; the rulings live in
-  `src/db/sql/0001_init.sql`.
-- 🔴 **The drift spec checks tables and columns ONLY** — and says so, because an unstated limit
-  reads as coverage. Constraints and triggers are covered by their own suites.
+  `src/db/sql/`. **And it now has three things it cannot express** — CHECK constraints, triggers, and
+  the string type postgres.js actually returns for a `bigserial`.
+- 🔴 **`MIGRATIONS` is asserted equal to the sorted contents of `src/db/sql/`.** `scripts/seed.mjs`
+  named `0001_init.sql` directly and would have seeded a database with UNI-002's whole engine
+  missing, with nothing failing. Three descriptions of one list; the test is what keeps them agreeing.
+- 🔴 **The drift spec checks tables and columns ONLY** — and says so, because an unstated limit reads
+  as coverage. Constraints and triggers are covered by their own suites.
 - 🔴 **`ports`, not `dynamicports`, is how a `Component Inputs` node declares its interface.**
 - 🔴 **`forEachNode` STOPS on a truthy return.** Use a block body.
 - 🔴 **`/usr/bin/grep -a`, always.** Plain `grep` here is ugrep and silently skips `.ts` as binary.
