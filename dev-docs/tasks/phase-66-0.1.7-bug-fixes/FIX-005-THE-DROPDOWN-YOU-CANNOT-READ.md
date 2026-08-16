@@ -119,3 +119,90 @@ break.
 prove a rule *wins*, and this ruleset is a pile of `!important` where source order decides; that is
 the very defect fixed here, so it is the last thing to take on trust.
 ⚠️ **Part 2 (the rename) is untouched.** It reverses VFN-012 and needs a decision, not a commit.
+
+---
+
+## Part 1 — DRIVEN 2026-08-16 (session 35), both themes. Criteria 1, 2 and 3 CLOSE.
+
+Driven on `fix005-drive` (a renamed copy of `vfn64-drive`), the `number ▾` dropdown on
+`/ErgCodes`'s Logic Builder. **Every state read as a computed style off the live DOM**, not from
+the SCSS — that is the whole point, since the specs read token names *out of* the stylesheet and
+therefore cannot fail when the rule loses.
+
+🔴 **The kill condition was stated before the drive and was NOT met.** `:281` opens a top-level
+`:global { }` and `:507` writes `:global(.blocklyDropDownDiv) :global(.blocklyMenuItem)` — a
+`:global()` function nested inside a `:global` block. If css-loader had dropped or literalised
+that, the whole ruleset would match nothing and all 22 specs would still pass; Blockly appends
+`.blocklyDropDownDiv` to `document.body`, so there is no fallback path. **Resting rows compute
+`border-left: 3px solid transparent`, so the selectors compile and the rules win.**
+
+### All four states, captured simultaneously (pointer resting on `string`, `number` selected)
+
+| row | state | background | left rule | weight |
+|---|---|---|---|---|
+| `any` `boolean` `object` `array` | resting | transparent (on `bg-3`) | transparent | 400 |
+| `string` | `:hover` true | **`bg-4`** | **`primary-highlight`** | 400 |
+| `number` | `aria-selected` | **`bg-5`** | **`primary`** | **600** |
+| `number` at menu-open | selected **+** highlight | **`bg-4`** | `primary` | 600 |
+
+**Measured contrast — every figure reproduces the table above exactly, in both themes.**
+
+| | dark | light |
+|---|---|---|
+| resting text on `bg-3` | **13.03** | **14.20** |
+| hovered text on `bg-4` | **11.04** | **13.18** |
+| selected text on `bg-5` | **9.09** | **12.11** |
+| selected rule vs `bg-5` | **3.89** | **3.40** |
+| hover rule vs `bg-4` | **5.94** | **4.77** |
+
+- ✅ **Criterion 1** — three states mutually distinct on *three* channels (background, rule colour,
+  weight) and every text reading ≥ 9:1, far above AA. Screenshotted in both themes.
+- ✅ **Criterion 2** — the reordering works. At menu-open Blockly puts `blocklyMenuItemHighlight`
+  on the selected row and the background moves `bg-5` → `bg-4` (9.09 → 11.04) while the rule stays
+  `primary` and the weight stays 600. That is the row responding *and* remaining identifiable.
+- ✅ **Criterion 3** — `.blocklyMenuItemCheckbox` computes `display: none` and all six rows report
+  an identical label x of **952px**. Nothing shifts when the selection moves.
+- ⚠️ **Scope on the keyboard half.** The `blocklyMenuItemHighlight` arm was observed live —
+  Blockly applied it on open and moved it onto the hovered row — so the declarations are proven.
+  **Arrow-key navigation itself was not driven**; it shares the same declaration block as `:hover`,
+  so what is untested is only whether Blockly's key handler sets that class, not the styling.
+
+### 🔴 The toolbox-category half of this fix is DEAD CODE — `.blocklyTreeSelected` matches nothing
+
+Measured with the toolbox fully rendered (16 categories) and a category **selected**, in both
+themes, and re-confirmed on a single CDP connection so the selected state could not lapse between
+calls:
+
+| selector this stylesheet targets | matches | Blockly 12 actually emits |
+|---|---|---|
+| `.blocklyTreeSelected` (edited by `5b91e9c8`) | **0** | `.blocklyToolboxSelected` |
+| `.blocklyToolboxDiv` | **0** | `.blocklyToolbox` |
+| `.blocklyTreeRow` | **0** | `.blocklyTreeRowContentContainer` |
+| `.blocklyTreeLabel` | **0** | `.blocklyToolboxCategoryLabel` |
+
+**What actually renders**: Blockly sets the selected category's fill as an *inline style* from the
+category's own colour — `background-color: rgb(91,103,165); border-left: 8px solid rgb(91,103,165)`
+— and its own stock rule `.blocklyToolboxSelected .blocklyToolboxCategoryLabel` paints the label
+`#fff`. That is **5.35:1**, identical in both themes because an inline colour ignores our tokens.
+
+🔴 **So both of this file's toolbox numbers describe a rule that has never applied.** The "worst
+reading in the file, **1.19:1**" was never on screen, and neither is the **4.65 / 5.58** claimed
+after. Both arithmetics are *correct* — recomputed here to 1.19 and 4.65 exactly — but their
+premise, that the selector matches, is false. ⚠️ **There is no live defect**: 5.35:1 passes AA, so
+this is a false claim rather than a broken screen.
+
+⚠️ **This is the same defect as the `.goog-*` rules the same commit deleted** for "matching nothing
+for several major versions while reading as a second set of dropdown rules that might be the ones
+in force". Four more of exactly that were left in place, one of them freshly edited.
+
+**Not fixed here, because the choice is a design decision and not mechanical:** *delete* the four
+dead rules (hygiene, matches what `5b91e9c8` did to `.goog-*`, leaves the toolbox on Blockly's
+category-coloured selection at 5.35:1), or *retarget* them to `.blocklyToolboxSelected` and friends
+(applies the intended `bg-5` + rule treatment, but visibly changes the toolbox and would need
+`!important` to beat Blockly's inline style). ⚠️ **Retargeting is a visible redesign of the
+toolbox** — it should not fall out of a contrast drive.
+
+⚠️ **Method note worth keeping:** a first sweep for "dead Blockly selectors" ran with the dropdown
+**closed** and duly reported every `.blocklyMenuItem` rule as matching nothing. That is a *state*
+difference charged to the selector. Only selectors whose subject UI is on screen can be called
+dead — which is why the toolbox result above is stated and the context-menu rules are not.
