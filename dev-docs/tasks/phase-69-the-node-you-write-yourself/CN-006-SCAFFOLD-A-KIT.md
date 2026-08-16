@@ -352,3 +352,66 @@ Three specific things want a drive, and they are the same three the handover nam
 
 ⚠️ Also unmeasured: **`CodeFileDocument` mounting at all**. It is registered, typechecked and
 reachable from `KitsSection`, and no test mounts React.
+
+---
+
+# DRIVEN — session 11, 2026-08-16. §Owed is closed.
+
+**An editor was launched and all four of §Owed's items were measured.** Full record, including the
+pre-drive observations written *before* the launch: [notes/cn-006-drive-observations.md](notes/cn-006-drive-observations.md).
+
+| §Owed item | Verdict |
+|---|---|
+| **AC1** — node in the picker, placeable | ⚠️ **Half met.** Placeable ✅; **"under its kit's name" ❌** |
+| **AC3** — the *computed* style | ✅ **MET**, every port, discriminator run |
+| **`ProjectModel.modules` staleness** | 🔴 **The hole was REAL** — no longer a hypothesis |
+| `CodeFileDocument` mounting at all | ✅ **MET** — mounts and renders |
+
+## ✅ AC3 closes: the tokens resolve in a real browser
+
+A `drive-kit.StatTile` with **no parameters set**: `paddingLeft` **16px**, `backgroundColor`
+**rgb(255,255,255)**, `borderRadius` **8px**, `borderWidth` **1px**, label **14px**, value **24px**,
+gap → `marginTop` **4px**. ✅ **`)px` occurs 0 times** in the viewer's document and in 95,977
+characters of CSS — and the scan is live, counting 8 real `var(--` in the same pass.
+
+✅ **The pre-drive discriminator was run.** `:root` carries `--space-4: 16px`, so the "tokens were
+never delivered" arm is excluded; and the `)px` bug would have made the declaration invalid and read
+`0px`. **s10's two guards in `react-component-node.ts` hold in a browser.**
+
+## 🔴 The staleness twin was real — `readModules()` is load-bearing
+
+Measured by calling `createNodeKit()` **directly over CDP**, bypassing `KitsSection`: with the files
+on disk, `ProjectModel.instance.modules` did **not** contain the kit; after `readModules()`, it did.
+So the editor's model *is* silently stale without that call, exactly as the MCP side was.
+
+## 🔴 AC1 does not close, and the defect is not in this task's code
+
+The node is placeable — clicking its picker card put `drive-kit.StatTile` in the graph, and it
+rendered its defaults (`Revenue / —`). But the picker files **every** kit node under one category,
+**"External libraries"**, in a subcategory named `''`. With two kits installed it showed two cards
+both reading *"Stat Tile / External libraries"*, same `title` tooltip, **distinguishable only by a
+`data-test` attribute**, and the detail pane said *"No documentation yet."*
+
+✅ **One hard-coded line**, `packages/noodl-runtime/src/nodelibraryexport.ts:917-932` — the loop reads
+`nodeMetadata.module` to *decide* a node is a module node, then emits `{ name: '', items }` and drops
+it. `utils/createnodeindex.ts:115-131` renders that name faithfully, as nothing. ⚠️ **Not CN-006's
+code:** the scaffold sets `module` correctly, which is why `NodeLibrary`'s own type record knows the
+kit (`module: 'drive-kit'`) while the picker does not. **Wants a task**, and it is the provenance
+CN-006b is built on.
+
+## 🔴 Second finding: the file editor shows a Function-node port hint
+
+`CodeFileDocument` reuses `JavaScriptEditor` and inherits FUN-006's port bar, so a kit's `index.js`
+— a file, with no ports of any kind — renders *"This node has no ports yet. Type Inputs. — the name
+you use becomes an input port."* (`JavaScriptEditor.tsx:316`, from
+`getCodeAuthoringContext().openNode`, ambient state unrelated to the open file). The header also
+labels it `SCRIPT`. ⚠️ **Not cosmetic** — it tells a new kit author to use a mechanism that does not
+exist in the file they were just sent to. **Wants a task.**
+
+## ⚠️ Deliberately not claimed
+
+The kit reached the picker **without anyone clicking "reload the preview"**, which would make
+`KitsSection`'s instruction unnecessary. **Not reported as a finding**: peers were editing the tree
+and the log shows `_src_frames_viewer-frame_index.*.hot-update.json`, so **HMR was reloading the
+viewer frame for reasons unrelated to this drive**, and a reload I did not cause is indistinguishable
+from a product that reloads itself. Wants a re-run on an undisturbed tree.
