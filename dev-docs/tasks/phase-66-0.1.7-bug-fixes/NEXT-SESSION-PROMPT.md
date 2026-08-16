@@ -91,14 +91,23 @@ floor run exits **1**. **Prove completion from `test-results.json`'s mtime; dele
 
 ⚠️ **s30 got this wrong first and committed it wrong** (`8b1d829a`, superseded here). The record said
 *"the floor is SEVEN, do not quote 6"*. **That was false and it retired a real measurement.** Corrected
-by finding the primary artifacts. Four `test:ci` runs exist as background-task output:
+by finding the primary artifacts. **Five** jasmine runs exist as background-task output:
 
-| when | tree | reading | `projectmodules` in output |
+| when | specs / failures | seed | `projectmodules` in output |
 |---|---|---|---|
-| 13:14:24 | older (2812 specs) | 9 failures | 13 |
-| 13:29:41 | older (2812 specs) | 6 failures | 13 |
-| **16:01:26** | pre-CN-006 | **2843 / 6** @ 39393 | **0** |
-| 🔴 **21:21:42** | **post-`9e76bae4` — the COMMITTED tree** | **2843 / 6** @ 39393 | **0** |
+| 10:58:17 | 2717 / 6 | **58032** | — |
+| 13:14:24 | 2812 / 9 | 39393 | 13 |
+| 13:29:41 | 2812 / 6 | 39393 | 13 |
+| **16:01:26** | **2843 / 6** — pre-CN-006 | 39393 | **0** |
+| 🔴 **21:21:42** | **2843 / 6** — **post-`9e76bae4`, the COMMITTED tree** | 39393 | **0** |
+
+🔴 **s30 first wrote "four runs exist" and that was false — the trap is worth more than the count.**
+The sweep grepped `"Randomized with seed 39393"`, so the 10:58 run at **seed 58032 was invisible to
+it**, and its filtered result got written up as an unqualified enumeration. **`asked − answered =
+absent`, never `everything − answered`.** Caught by the peer on `uds:/tmp/cc-socks/9204.sock`.
+⚠️ **The listing is also scoped to this checkout's slug directory** (`…/-Users-richardosborne-vscode-
+projects-OpenNoodl/*/tasks/`), so a **sibling worktree's** runs are excluded by construction. Widen
+the glob before claiming a machine-wide count.
 
 ✅ **The floor is 2843 / 6 at seed 39393, and the committed tree IS witnessed** — the 21:21 run is in
 this checkout (`/Users/richardosborne/vscode_projects/OpenNoodl/packages/noodl-editor` in its output),
@@ -118,8 +127,13 @@ produces byte-identical HTML to the committed golden`. It **does not reproduce o
 
 ```
 ls -lt /private/tmp/claude-*/-Users-richardosborne-vscode-projects-OpenNoodl/*/tasks/
-/usr/bin/grep -arl "Randomized with seed 39393" /private/tmp/claude-*/…/tasks/
+/usr/bin/grep -arl "Randomized with seed" /private/tmp/claude-*/…/tasks/    # NOT "… seed 39393"
 ```
+
+⚠️ **Sweep on `"Randomized with seed"` without the number.** Pinning the seed hides every run at a
+different one — which is exactly the run you want when you are asking *"has anyone measured this?"*
+🔴 **And sweep the whole box, not your own session directory:** the run that settled this was another
+session's, and the peer who found the instrument missed the answer by running it only on itself.
 
 🔴 **Background-task output survives a session's context roll.** Prefer it to `test-results.json`, and
 prefer it to any session's reconstruction — **including its account of its own run.** Delete the results
