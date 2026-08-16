@@ -68,7 +68,7 @@ not of my diff alone.
 | **`noodl-mcp` jest** | ✅ **50 suites / 585 tests** | ✅ **s43** |
 | **`noodl-core-ui` jest** | ✅ **25 suites / 444 tests** | ✅ **s43** |
 | `nodegx-backend` jest (full) | ✅ 100 suites / 1085 passed, 10 skipped | s40 — inherited |
-| `test:ci` (jasmine) | ✅ **2843 / 6 @ 39393**, six by name — **witnessed on the COMMITTED tree** | **run output 21:21:42**, this checkout, post-`9e76bae4`. ⚠️ **the results FILE disagrees — see below** |
+| `test:ci` (jasmine) | ⚠️ **2843 / 6 @ 39393**, six by name — **but PRE-CN-006** | newest run **2026-08-16 16:01**; `9e76bae4` landed **20:43**. 🔴 **The committed tree is UNWITNESSED** — see below. A run was in flight at 21:19 |
 | `library:check` (PR gate) | ✅ 58/58, exit 0 | s30 — inherited |
 
 🔴 **`test:main` moved 216 → 220 suites and 3363 → 3396 tests in a day, and most of it was peers'.**
