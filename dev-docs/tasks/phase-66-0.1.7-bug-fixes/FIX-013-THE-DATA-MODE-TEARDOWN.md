@@ -45,6 +45,45 @@ bench **never touches the real backend** — safer than today. The later "import
 input values" idea is a small, self-contained picker writing into `applyValueSet` — it needs none
 of the removed machinery; file separately.
 
+## 🔴 The deletability payoff is attached to the WRONG ruling (measured 2026-08-16, session 33)
+
+Ruling 2 below says that if the AI preview drops its toolbar too, then `sandboxData.ts`
+*"(567 lines, 15 specs)"*, `sandboxDataDraft`, the toolbar, the editor and *"the ~900-line runtime
+shim all become genuinely deletable — a much bigger, cleaner subtraction."* 🔴 **Two of those five
+are not ruling 2's to give.** The import graph, measured:
+
+| module | production importers | deletable by dropping both toolbars? |
+|---|---|---|
+| `SandboxToolbar.tsx`, `SandboxDataEditor.tsx` | the two surfaces only | ✅ **yes** |
+| `sandboxDataDraft.ts` | **exactly one** — `SandboxDataEditor.tsx:66` | ✅ **yes** |
+| `sandboxData.ts` (567) | `componentBench.ts:80` **and `sandboxExport.ts:25`** | 🔴 **no** |
+| runtime shim (`noodl-runtime/src/sandbox/`, **1,121** lines) | `noodl-viewer-react/src/sandbox/index.ts:61` | 🔴 **no** |
+
+🔴 **`sandboxData.ts` and the shim are downstream of `useSampleData`, not of the toolbar.**
+`sandboxExport.ts:221-232` builds the dataset on *every* export unless `useSampleData` is false —
+and this document's own **Fix direction hard-codes `useSampleData: true`**. So the recommended fix
+puts `buildSandboxDataset` on the *only* remaining path: it is called more, not less.
+
+🔴 **The shim is independently un-deletable, for a second reason.** It lives in `noodl-runtime`,
+is installed by the **viewer** (`noodl-viewer-react`), and is already bundled into all three built
+outputs (`noodl.viewer.js`, `noodl.deploy.js`, `ssr/noodl.deploy.js`). Its switch is a URL param
+read at `noodl-viewer-react/src/sandbox/index.ts:51` — `useSampleData: params.get('noodl-sandbox-data') !== 'real'`
+— which **defaults to ON**, and only the literal string `'real'` turns it off. No editor-side
+toolbar removal can reach it.
+
+✅ **What this changes about the decision, without making it:** rulings 1 and 2 are **coupled**, and
+the file presents them as independent. The big subtraction is **ruling 1 option (c)**'s to authorise
+(*shim serves zero rows*), not ruling 2's. Answer ruling 1 with (a) or (b) and `sandboxData.ts` plus
+the shim stay **whatever** ruling 2 says — leaving ruling 2's real payoff at three files: the
+toolbar, the editor, and the draft.
+
+⚠️ **Bounds, stated so they are not assumed away.** This is a static import-graph reading, not a
+drive. It was taken with `-a` and `--exclude-dir` (path, never `| grep -v` — see phase 66 §3g), the
+barrel re-exports at `authoring/index.ts:160-163` were followed to their consumers, and a search for
+dynamic/lazy `require()`/`import()` of either module returned **empty beside a firing positive
+control** on the same pattern in the same directory. The line counts are re-measured (`wc -l`): 567
+holds; the shim is **1,121**, not ~900.
+
 ## 🔴 Rulings needed before building — these decide the task
 
 1. **What does a data-reading component show on the bench?** (a) keep the shim serving synthesized
@@ -54,9 +93,13 @@ of the removed machinery; file separately.
    possibly with (b)'s one-line caption.
 2. **Does the AI authoring preview keep its toolbar row?** If yes, the two surfaces diverge and
    BEN-004 §7's "do not build a second toolbar" constraint is knowingly retired — say so in the
-   doc. If it drops too, `sandboxData.ts` (567 lines, 15 specs), `sandboxDataDraft`, the toolbar,
+   doc. ~~If it drops too, `sandboxData.ts` (567 lines, 15 specs), `sandboxDataDraft`, the toolbar,
    the editor, and the ~900-line runtime shim all become genuinely deletable — a much bigger,
-   cleaner subtraction.
+   cleaner subtraction.~~ 🔴 **CORRECTED s33 — see the section above.** Dropping both toolbars
+   deletes **three** files (toolbar, editor, `sandboxDataDraft`). `sandboxData.ts` and the runtime
+   shim are downstream of **`useSampleData`**, which the Fix direction hard-codes to `true`; their
+   deletability belongs to **ruling 1(c)**, not to this ruling. ⚠️ **Decide ruling 1 first** — it
+   sets the size of this one, not the other way round.
 3. **Signed-in hard-coded** loses the ability to bench a component's signed-out branch (POL-008
    fixed the inverse defect). Acceptable for the bench?
 4. `tests/ai/component-bench.test.ts:259-262` asserts the Real-backend path — delete the
