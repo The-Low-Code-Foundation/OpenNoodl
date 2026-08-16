@@ -47,8 +47,13 @@ describe('the settings section on a machine that has node', () => {
   it('emits exactly the command it shipped with — character for character', () => {
     // ⚠️ The regression this task could most easily cause. Decision 8's reasoning survives intact
     // for this audience, and `node <path>` is legible, portable, and pasteable into any client.
+    //
+    // ⚠️ FIX-008 C changed `--scope user` to `--scope project` here, deliberately and for a
+    // measured reason (see mcp-001). This fence is about the *runtime* half of the string — that
+    // an audience with node keeps getting `node <path>` and never the Electron form — and that
+    // half is unchanged. The scope is pinned on purpose in mcp-001, not weakened here.
     expect(authoringOf(runtime()).command).toBe(
-      'claude mcp add --scope user nodegx-my-app -- node ' +
+      'claude mcp add --scope project nodegx-my-app -- node ' +
         `${AUTHORING_ENTRY} "/Users/me/Documents/My App" --allow-writes`
     );
   });
@@ -75,7 +80,7 @@ describe('the settings section on a machine with no node at all', () => {
 
   it('runs the server with the Electron binary the install already contains', () => {
     expect(authoringOf(none).command).toBe(
-      'claude mcp add --scope user nodegx-my-app -e ELECTRON_RUN_AS_NODE=1 -- ' +
+      'claude mcp add --scope project nodegx-my-app -e ELECTRON_RUN_AS_NODE=1 -- ' +
         `${ELECTRON} ${AUTHORING_ENTRY} "/Users/me/Documents/My App" --allow-writes`
     );
   });

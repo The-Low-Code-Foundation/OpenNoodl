@@ -111,18 +111,36 @@ describe('shell quoting', () => {
 });
 
 describe('the authoring command', () => {
-  it('is a fully substituted, quoted, user-scoped registration', () => {
+  it('is a fully substituted, quoted, project-scoped registration', () => {
     expect(authoringOf(frontDoor()).command).toBe(
-      'claude mcp add --scope user nodegx-my-app -- node ' +
+      'claude mcp add --scope project nodegx-my-app -- node ' +
         '/Applications/NodeGX.app/Contents/Resources/noodl-mcp/noodl-mcp.cjs ' +
         '"/Users/me/Documents/My App" --allow-writes'
     );
   });
 
-  it('is scoped to the user, not to whatever directory it is pasted in', () => {
-    // `claude mcp add` defaults to `local`, which ties the registration to the terminal's cwd —
-    // a directory the editor cannot know. From anywhere else it would look like it had vanished.
-    expect(authoringOf(frontDoor()).command).toContain('--scope user');
+  it('is scoped to the project, because this server is bound to one directory', () => {
+    // FIX-008 C. `user` put a server bound to ONE project in front of an agent working in every
+    // other one. Measured 2026-08-16 against the real client: with only such a server visible the
+    // model reached for it 3 times out of 3 and tried to write into the wrong project; with the
+    // project's own server present it chose correctly 4 times out of 4.
+    expect(authoringOf(frontDoor()).command).toContain('--scope project');
+    expect(authoringOf(frontDoor()).scope).toBe('project');
+  });
+
+  it('names the directory it has to be run in, because the scope is resolved against the cwd', () => {
+    // `--scope project` is resolved against the shell's current directory and the CLI has no flag
+    // to override that, so the one thing that makes this command land correctly is invisible in
+    // the string. Pasted anywhere else it writes a .mcp.json into an unrelated folder and looks
+    // like it worked.
+    expect(authoringOf(frontDoor()).scopeNote).toContain('/Users/me/Documents/My App');
+  });
+
+  it('tells the reader to remove a user-scope entry of the same name', () => {
+    // A user-scope registration silently shadows the project one — measured 2026-08-11, the
+    // project entry is simply absent from `claude mcp list`. This section is what created those
+    // entries, so it is the surface that has to mention removing them.
+    expect(authoringOf(frontDoor()).scopeNote).toContain('claude mcp remove --scope user nodegx-my-app');
   });
 
   it('asks for write access — an agent that cannot author is not the point', () => {
@@ -140,6 +158,15 @@ describe('the observe command', () => {
 
   it('is offered even when no project is open', () => {
     expect(observeOf(frontDoor({ project: null })).command).toBeTruthy();
+  });
+
+  it('stays user-scoped, because it is bound to no project at all', () => {
+    // FIX-008 C split the scope by surface rather than changing it everywhere. Observe attaches to
+    // whatever app is running, so "available in every directory" is the correct promise for it and
+    // project-scoping it would be a regression.
+    expect(observeOf(frontDoor()).command).toContain('--scope user');
+    expect(observeOf(frontDoor()).scope).toBe('user');
+    expect(observeOf(frontDoor()).scopeNote).toContain('any directory');
   });
 });
 
@@ -200,6 +227,13 @@ describe('the bootstrap registration', () => {
 
     expect(command).toContain(' nodegx ');
     expect(command).not.toContain('/Users/me/Documents/My App');
+  });
+
+  it('stays user-scoped after FIX-008 C, because it is bound to no project', () => {
+    // The split is per surface. This registration exists precisely for the case where there is no
+    // project directory yet, so there is no `.mcp.json` for a project scope to write into — and an
+    // agent asked to *create* a project must be able to reach it from wherever it is started.
+    expect(buildBootstrapCommand(frontDoor()).command).toContain('--scope user');
   });
 
   it('🔴 can never collide with a per-project registration', () => {

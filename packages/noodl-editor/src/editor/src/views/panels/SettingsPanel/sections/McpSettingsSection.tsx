@@ -159,10 +159,12 @@ function McpServerRow({
             label={isCopied ? 'Copied — paste it in a terminal' : 'Copy the command'}
             onClick={onCopy}
           />
-          <p className={css.Provenance}>
-            Registers it as <strong>{row.serverName}</strong> for your user account, so it works
-            from any directory.
-          </p>
+          {/*
+            FIX-008 C — the provenance sentence comes from the row, not from here. The two rows no
+            longer register at the same scope, so a literal in this component would promise "your
+            user account, from any directory" for a command that is now project-scoped.
+          */}
+          {row.scopeNote && <p className={css.Provenance}>{row.scopeNote}</p>}
           {/*
             BST-004 — when the command names NodeGX's bundled runtime instead of `node`, say so.
             A command that looks strange and is unexplained reads as a bug; and the failure this

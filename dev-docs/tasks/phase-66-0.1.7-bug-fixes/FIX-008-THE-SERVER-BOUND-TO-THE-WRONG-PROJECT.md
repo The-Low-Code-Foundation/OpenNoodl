@@ -58,7 +58,7 @@ validated and silent.
 |---|---|---|---|---|
 | A | **Idempotent, honest Connect.** Pre-read `~/.claude.json`; identical entry → `ok: 'already-registered'` with a "Connected" card state; different entry (stale path) → offer remove + re-add. Never render the CLI's refusal raw. | `connectBootstrapServer.js`, `useConnectAgent.ts`, `ConnectAgentCard.tsx` | S | ✅ **built + driven** |
 | B | **Backfill `.mcp.json` + `CLAUDE.md` on project open.** One call to `installProjectAgentConfig` on the open seam, honouring the existing never-overwrite rule (`agentConfig.ts:243-249`). Fix the false gitignore banner. Closes every pre-BST-005 project. | `LocalProjectsModel` / open seam | S–M | ✅ **built + driven** |
-| C | **Per-project Settings command becomes `--scope project`.** Split `MCP_SCOPE`: bootstrap stays `user` (it has no folder); per-project writes the project's own `.mcp.json`. Update `McpSettingsSection.tsx:163`, copy, `tests-unit/mcp-001`; add a cleanup hint for existing user-scope `nodegx-<slug>` entries. | `mcpCommands.ts` | M | 📋 open |
+| C | **Per-project Settings command becomes `--scope project`.** Split `MCP_SCOPE`: bootstrap stays `user` (it has no folder); per-project writes the project's own `.mcp.json`. Update `McpSettingsSection.tsx:163`, copy, `tests-unit/mcp-001`; add a cleanup hint for existing user-scope `nodegx-<slug>` entries. | `mcpCommands.ts` | M | ✅ **built s47, NOT driven** |
 | D | **A door into an existing project for the bootstrap server** — an `open_project(dir)` tool calling `binding.bind()` (the mechanism exists and already re-briefs: `createProject.ts:520-535`, `disclosure.ts:183-206`; it is merely gated to newly-created dirs). Minimum: `NO_PROJECT_REFUSAL` and `list_projects` emit the exact `claude mcp add --scope project …` line for the directory instead of prose. | `noodl-mcp` | M (note-only S) | 📋 open |
 | E | **`get_project_info` returns the bound directory** so a mis-bound server is detectable from any tool call. | `tools/read.ts:89-105` | S | ✅ **built + driven** |
 
@@ -193,12 +193,117 @@ coordinates.
 
 ## What is left
 
-- **C** (`--scope project` for the per-project Settings command) and **D** (`open_project` / an
-  emitted registration line) are untouched. A + B close the report; C stops it recurring for users
-  who copy the Settings command, and D removes the class.
+- **D** (`open_project` / an emitted registration line) is untouched. A + B close the report; C
+  stops it recurring for users who copy the Settings command, and D removes the class.
 - The stale user-scope `nodegx-puppy-test-3` is **still registered and still visible in every
   folder** — `claude mcp list` from an unrelated directory shows it. Nothing in A/B/E removes it;
-  that is C's cleanup hint.
+  C's copy now tells the reader how, but **nothing removes it for them**.
+
+---
+
+## ✅ The open measurement, taken 2026-08-16 (session 47)
+
+The question ruled to be an agent's: *"with C, two NodeGX servers can be visible in one session (the
+project's own plus a stale global bound elsewhere); better or worse for the model?"*
+
+**Answer: unambiguously better, and the pre-C arm is worse than it looked.**
+
+**Design.** One variable — whether the project's own server is registered. Both arms ran `claude -p`
+with `--strict-mcp-config --mcp-config <arm>`, so **Richard's real `~/.claude.json` was never
+touched or read as config**; the registration shapes were copied from it read-only. cwd was the
+working project in both arms. All three servers ran the **same** HEAD bundle, so the only difference
+between arms is the server set. Prompt, identical: *"Add a new page component called Pricing to this
+project, with a heading that reads 'Pricing'."* No `CLAUDE.md` in either project — the harder test,
+since nothing hints at which server to use. Model `claude-sonnet-5`.
+
+| arm | servers visible | server the model chose | attempted writes to the wrong project |
+|---|---|---|---|
+| **A — pre-C** | `nodegx` (unbound) + `nodegx-puppy-test-3` (bound elsewhere) | the stale one, **3/3** (16, 14, 18 calls) | **yes, 3/3** |
+| **B — post-C** | those two **+ the project's own** | the project's own, **4/4** (5–7 calls) | none |
+
+In arm B every run wrote into the correct project and the stale project was **byte-identical
+before and after**. Not one call in seven went to the wrong server, in either direction.
+
+🔴 **The arm A disk reading is a trap, and stating it without the caveat would be a lie.** The stale
+project also finished unchanged — but *not* because the model showed restraint. It called
+`create_component` repeatedly and **every write crashed** (below). The model's *intent* was wrong in
+all three runs, and it never once questioned the binding despite fix E putting `projectDirectory` in
+`get_project_info`'s output, which it read first every time. **Had the writes worked, arm A would
+have corrupted a project the user was not in, three times out of three.**
+
+⚠️ **Cost $4.29 across 7 runs.** Harness, configs and per-run transcripts are in this session's
+scratchpad (`run-arm.sh`, `analyze.js`, `arm-{a,b}.mcp.json`, `results/`); the fixtures are
+`fix008c-work` and `puppy-test-3-fix008c` under `NodeGX test projects/`. ⚠️ **Scratchpad is
+cleaned** — the numbers above are the durable record.
+
+### 🔴 A separate, pre-existing bug the measurement fell over
+
+`validate_project`, `create_component` and every write on **`Puppy test 3`** fail with
+`io-error: Unexpected failure: Cannot read properties of undefined (reading 'startsWith')`.
+
+- **Root cause:** one node carrying only `{id, x, y}` and **no `type`**, at
+  `components/Pages/Admin Login/nodes.json`, id `6d5ec795-be88-fdd9-b555-1bb2f6bba281`. It reaches
+  `isComponentRef(node.type)` in the semantic validator, which calls `.startsWith` on `undefined`.
+- **Not a regression, and not mine:** the **packaged Aug-13 bundle fails identically**, so it
+  predates this session's `dist/` rebuild.
+- **Census: 1 of 27 v2 projects on this disk** — but it is precisely the project Richard has a
+  registered user-scope server for, so his own `nodegx-puppy-test-3` cannot author or validate.
+- 🔴 **The editor was hardened against this exact node on 2026-08-11 and the MCP server was not.**
+  `UnknownNodeType.localName` got a fallback so one malformed node costs you the node; memory
+  records that the debris was deliberately left in place. The same node costs the MCP server **the
+  entire project's validate-and-write surface**, behind an `io-error` that names neither the node
+  nor the component.
+
+**Wants its own task** — the fix is a guard in the validator plus an error that names the node.
+
+## ✅ What C built (2026-08-16, session 47)
+
+| File | Change |
+|---|---|
+| `mcpCommands.ts` | `MCP_SCOPE` split into `SCOPE_UNBOUND` (`user`) and `SCOPE_PER_PROJECT` (`project`); `claudeMcpAdd` takes the scope; `McpCommandRow` gains `scope` + `scopeNote`; `perProjectScopeNote` / `unboundScopeNote` |
+| `McpSettingsSection.tsx` | the hardcoded *"for your user account, so it works from any directory"* provenance line replaced by `row.scopeNote` |
+| `tests-unit/mcp-001` | authoring row is `--scope project`; two new specs for the directory sentence and the removal hint; observe and bootstrap pinned to `user` |
+| `tests-unit/mcp-004` | two BST-004 character-for-character fences updated, **with a comment saying the scope moved deliberately and the runtime half is what they fence** |
+
+🔴 **`--scope project` is resolved against the shell's cwd, exactly like `local`** — and `claude mcp
+add` has **no flag naming a target directory** (checked against 2.1.228). So the flag alone does not
+put the registration in the project; the user running it *in the project folder* does. That
+dependency is invisible in the emitted string, which is why the row now carries a `scopeNote` naming
+the folder. ⚠️ **This is the same hazard the original `MCP_SCOPE` comment was written to avoid**, and
+it is not fully solved — it is made visible. A future session may want the emitted command to be
+directory-independent; there is no CLI affordance for that today.
+
+⚠️ **Observe stays `user` deliberately.** It attaches to whatever app is running, so it is bound to
+no project and "works from any directory" is the correct promise. M4 below exists to stop a later
+reader "finishing the job".
+
+**Gates (s47, 2026-08-16):** `test:main` **227 suites / 3526 tests, all green** (s44's
+`bld-004/reasoningChannel` flake passed here); `--findRelatedTests` on both changed source files
+**2 suites / 46**; `tsc -p tsconfig.json` and `tsc -p tsconfig.tests.json` both clean, read off
+**empty output** rather than an exit code.
+
+**Mutation table — all four applied and all four bite** (each announced `[mutant applied]`; source
+`diff`ed back to identical afterwards):
+
+| mutant | bites |
+|---|---|
+| **M1 — per-project server back to `user`** (the bug C fixes) | 🔴 4 of 57 |
+| **M2 — scope note stops naming the directory** | 🔴 1 of 57 |
+| **M3 — stale user-scope cleanup hint dropped** | 🔴 1 of 57 |
+| **M4 — observe project-scoped too** (over-applying the split) | 🔴 2 of 57 |
+
+⚠️ **The first attempt at M2 and M3 did not apply** — a `\$` escaped inside single quotes never
+matched the source — **and said so**, because the helper prints `[MUTANT DID NOT APPLY]` and exits.
+Without that, two rows would have reported a healthy suite passing on unmodified source, which is
+s46's finding repeating itself in a new place.
+
+### What C still needs
+
+**Acceptance criterion 3 is not driven.** *"The Settings per-project command registers at project
+scope; `claude mcp list` from that folder shows the project entry"* is graded only by the emitted
+string. The drive is: open Settings → Connect an AI agent, copy the real command, run it in the
+project folder, and read `claude mcp list` from there and from elsewhere. ⚠️ It writes a real
+`.mcp.json` — **use a project copy**, and remember `.mcp.json` is gitignored but the folder is not.
 
 ## ✅ RULED 2026-08-16 (session 42)
 

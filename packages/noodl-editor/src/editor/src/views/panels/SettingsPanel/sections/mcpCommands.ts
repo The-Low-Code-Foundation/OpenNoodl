@@ -111,6 +111,20 @@ export interface McpCommandRow {
   /** The paths the resolver tried, when that is what went wrong. */
   probed: string[] | null;
   /**
+   * FIX-008 C — which scope this row's command registers at. On the row because the two rows no
+   * longer agree, and because what the copy must promise the reader follows from it.
+   */
+  scope: McpScope;
+  /**
+   * FIX-008 C — what the reader is promised, in the terms of the scope the command actually uses.
+   *
+   * 🔴 **Derived here rather than written in the component**, because the previous copy said "for
+   * your user account, so it works from any directory" for *both* rows — which stops being true for
+   * the project row the moment its scope changes, and a component-side literal is exactly the kind
+   * of claim that goes stale silently. `null` when there is no command to describe.
+   */
+  scopeNote: string | null;
+  /**
    * BST-004 — why this command looks unusual, when it does. `null` for the ordinary `node` form.
    *
    * ⚠️ **A named fallback, not a silent substitution.** The whole failure this task prevents is a
@@ -120,17 +134,35 @@ export interface McpCommandRow {
   runtimeNote: string | null;
 }
 
+/** The scopes `claude mcp add` accepts that we ever emit. `local` is never one of them. */
+export type McpScope = 'user' | 'project';
+
 /**
- * ⚠️ **`--scope user`, deliberately.**
+ * ⚠️ **`--scope user` for a server with no folder, `--scope project` for one that has one.**
  *
  * `claude mcp add`'s default scope is `local`, which ties the registration to the directory the
- * command was run from. The editor has no idea what that directory is — the user pastes into
- * whatever terminal is open — so the default would register the server somewhere arbitrary, and
- * from anywhere else it would look like the registration had silently vanished. `user` makes it
- * available in every directory, which is the only scope whose behaviour we can actually promise
- * from here.
+ * command was run from. That is wrong for every row here, and it is why this constant exists.
+ *
+ * **The bootstrap and observe servers are `user`.** Neither is bound to a project — the bootstrap
+ * server has no project yet, and observe attaches to whatever app is running — so "available in
+ * every directory" is exactly the promise we want, and the only one we can keep from here.
+ *
+ * 🔴 **The per-project authoring server is `project` (FIX-008 C), and `user` was actively harmful.**
+ * A user-scope `nodegx-<slug>` is visible in *every* folder on the machine while being bound to
+ * *one* directory on disk, so in any other project it is a server pointed somewhere else. Measured
+ * 2026-08-16, 3 runs against the real client: with only such a server visible, the model reached
+ * for it **3 times out of 3** and attempted writes into the project the user was not in, never once
+ * questioning the binding. With the project's own server registered alongside it, the model chose
+ * correctly **4 times out of 4**. That measurement is the whole argument for this split.
+ *
+ * ⚠️ **`project` is resolved against the current directory, exactly like `local`.** The CLI has no
+ * flag that names a target directory (checked, `claude mcp add --help`, 2.1.228), so the command
+ * only lands in the right `.mcp.json` if it is run in the project folder. That dependency is
+ * invisible in the string, which is why the row carries `scopeNote` naming the folder rather than
+ * leaving the user to infer it.
  */
-const MCP_SCOPE = 'user';
+const SCOPE_UNBOUND: McpScope = 'user';
+const SCOPE_PER_PROJECT: McpScope = 'project';
 
 /** The longest slug we will put in a server name. Long enough to stay recognisable. */
 const MAX_SLUG_LENGTH = 40;
@@ -256,13 +288,18 @@ export function chooseRuntime(runtime: McpRuntime, preference: RuntimePreference
  * parses. Found by running the emitted command against the real client, which is why the
  * acceptance demands that rather than an inspection of the string.
  */
-function claudeMcpAdd(serverName: string, args: string[], runtime: ChosenRuntime): string {
+function claudeMcpAdd(
+  serverName: string,
+  args: string[],
+  runtime: ChosenRuntime,
+  scope: McpScope
+): string {
   return [
     'claude',
     'mcp',
     'add',
     '--scope',
-    MCP_SCOPE,
+    scope,
     serverName,
     ...runtime.env.flatMap((pair) => ['-e', pair]),
     '--',
@@ -353,7 +390,8 @@ export function buildBootstrapCommand(frontDoor: McpFrontDoor): BootstrapConnect
   const args = [authoring.entry, '--allow-writes'];
 
   return {
-    command: claudeMcpAdd(BOOTSTRAP_SERVER_NAME, args, chosen),
+    // Unbound: it has no project directory, so `user` is the only scope that can promise anything.
+    command: claudeMcpAdd(BOOTSTRAP_SERVER_NAME, args, chosen, SCOPE_UNBOUND),
     registration: {
       type: 'stdio',
       command: chosen.exec,
@@ -409,6 +447,36 @@ function splitEnvPair(pair: string): [string, string] {
   return at === -1 ? [pair, ''] : [pair.slice(0, at), pair.slice(at + 1)];
 }
 
+/** What a `user`-scope row promises: everywhere, because it is bound to nothing. */
+function unboundScopeNote(serverName: string): string {
+  return (
+    `Registers it as ${serverName} for your user account, so it works from any directory. ` +
+    `It is not tied to a project, so one registration is all you need.`
+  );
+}
+
+/**
+ * What a `project`-scope row promises — and the two things that silently break it.
+ *
+ * 🔴 **Both warnings are measured, not defensive.** The directory sentence exists because `--scope
+ * project` resolves against the shell's current directory and the CLI has no flag to override that,
+ * so a command pasted in the wrong terminal writes a `.mcp.json` into an unrelated folder and looks
+ * like it worked. The removal hint exists because a user-scope entry of the same name **silently
+ * shadows** the project one — measured 2026-08-11, the project entry is simply absent from `claude
+ * mcp list`, not reported as a conflict — and this section is what put those user-scope entries on
+ * people's machines in the first place.
+ */
+function perProjectScopeNote(serverName: string, projectDir: string): string {
+  return (
+    `Registers it as ${serverName} in this project's own .mcp.json, so an agent working here gets ` +
+    `this project and no other. Run it in ${projectDir} — the project scope is resolved against ` +
+    `the directory you paste into, so anywhere else writes the registration into the wrong folder. ` +
+    `If you registered ${serverName} for your user account before, remove it with ` +
+    `\`claude mcp remove --scope user ${serverName}\`: a user-scope entry of the same name hides ` +
+    `this one without saying so.`
+  );
+}
+
 /**
  * What to tell the reader about an unusual-looking command.
  *
@@ -456,7 +524,9 @@ export function buildMcpCommands(
     command: null,
     unavailable: null,
     probed: null,
-    runtimeNote: null
+    runtimeNote: null,
+    scope: SCOPE_PER_PROJECT,
+    scopeNote: null
   };
 
   if (!authoring.entry) {
@@ -473,8 +543,14 @@ export function buildMcpCommands(
     // The server's own words, so the button and the spawn failure it is replacing say one thing.
     authoringRow.unavailable = project.message ?? 'This project is not one the authoring server can open.';
   } else {
-    authoringRow.command = claudeMcpAdd(serverName, [authoring.entry, project.dir, '--allow-writes'], chosen);
+    authoringRow.command = claudeMcpAdd(
+      serverName,
+      [authoring.entry, project.dir, '--allow-writes'],
+      chosen,
+      SCOPE_PER_PROJECT
+    );
     authoringRow.runtimeNote = runtimeNote;
+    authoringRow.scopeNote = perProjectScopeNote(serverName, project.dir);
   }
   rows.push(authoringRow);
 
@@ -488,15 +564,18 @@ export function buildMcpCommands(
     command: null,
     unavailable: null,
     probed: null,
-    runtimeNote: null
+    runtimeNote: null,
+    scope: SCOPE_UNBOUND,
+    scopeNote: null
   };
 
   if (!observe.entry) {
     observeRow.unavailable = missingBundleReason(observe, frontDoor.isPackaged);
     observeRow.probed = observe.probed;
   } else {
-    observeRow.command = claudeMcpAdd(OBSERVE_SERVER_NAME, [observe.entry], chosen);
+    observeRow.command = claudeMcpAdd(OBSERVE_SERVER_NAME, [observe.entry], chosen, SCOPE_UNBOUND);
     observeRow.runtimeNote = runtimeNote;
+    observeRow.scopeNote = unboundScopeNote(OBSERVE_SERVER_NAME);
   }
   rows.push(observeRow);
 
