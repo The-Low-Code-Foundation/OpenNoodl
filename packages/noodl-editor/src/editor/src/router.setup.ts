@@ -16,6 +16,10 @@ import { ProjectBackendLifecycle } from './services/ProjectBackendLifecycle';
 import { installProjectBackendStatusToasts } from './services/projectBackendStatusToasts';
 import { AuthoringPreviewDocumentProvider } from './views/documents/AuthoringPreviewDocument';
 import { ChangeReviewDocumentProvider } from './views/documents/ChangeReviewDocument';
+// CN-006 — ✅ D1's "opens index.js in the code editor". The editor's first
+// file-backed code surface; every other CodeMirror here is bound to a node
+// parameter.
+import { CodeFileDocumentProvider } from './views/documents/CodeFileDocument';
 // BLD-009 — the Build panel's second host. A shell: it publishes a box and the
 // panel portals into it, so there is exactly one thread instance in the editor.
 import { ExpandedBuildDocumentProvider } from './views/documents/ExpandedBuildDocument';
@@ -435,6 +439,7 @@ export function installDocuments() {
   appRegistry.registerDocumentProvider(ChangeReviewDocumentProvider.ID, new ChangeReviewDocumentProvider());
   appRegistry.registerDocumentProvider(AuthoringPreviewDocumentProvider.ID, new AuthoringPreviewDocumentProvider());
   appRegistry.registerDocumentProvider(ExpandedBuildDocumentProvider.ID, new ExpandedBuildDocumentProvider());
+  appRegistry.registerDocumentProvider(CodeFileDocumentProvider.ID, new CodeFileDocumentProvider());
 
   if (import.meta.webpackHot) {
     import.meta.webpackHot.accept('./views/documents/EditorDocument', () => {

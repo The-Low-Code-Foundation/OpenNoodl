@@ -1,0 +1,101 @@
+/*
+ * CN-006 — chrome for the file-backed code editor.
+ *
+ * The geometry is `ExpandedBuildDocument.module.scss`'s, which is in turn
+ * `AuthoringPreviewDocument.module.scss`'s: 36px, the panel ground, a 2px rule
+ * underneath. Three documents share this surface and the bar must not change
+ * height as the user moves between them.
+ *
+ * ⚠️ `box-sizing` is declared where it is needed rather than assumed — this repo
+ * has no global `* { box-sizing: border-box }`. Any rule carrying both a padding
+ * and a height states it.
+ */
+
+.Root {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  background-color: var(--theme-color-bg-1);
+}
+
+.Topbar {
+  box-sizing: border-box;
+  height: 36px;
+  flex: 0 0 auto;
+  background-color: var(--theme-color-bg-2);
+  border-bottom: 2px solid var(--theme-color-bg-1);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-right: 8px;
+}
+
+/*
+ * The path, and the dirty marker.
+ *
+ * ⚠️ It shrinks and the actions do not — the same rule `PanelHeader.Title`
+ * states: a fixed-width control pushed out of the bar is a way out of this
+ * document the user cannot reach. Long kit paths make that easy to hit.
+ */
+.Identity {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 8px;
+  min-width: 0;
+
+  p {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+.Actions {
+  margin-left: auto;
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/*
+ * `min-height: 0` is load-bearing, not defensive: CodeMirror is given
+ * `height: 100%`, and a flex child's default `min-height: auto` refuses to
+ * shrink below its content — so a long file would push the editor past the
+ * bottom of the window and its internal scroller would never engage.
+ */
+.Surface {
+  flex: 1 1 auto;
+  min-height: 0;
+  position: relative;
+}
+
+/*
+ * The external-change and conflict notices. Both are advisory rows above the
+ * editor rather than modals: the whole point is that the buffer is *not* lost,
+ * so blocking the author from looking at it would be the wrong shape.
+ */
+.Notice {
+  box-sizing: border-box;
+  flex: 0 0 auto;
+  padding: 8px 12px;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--theme-color-warning);
+  background-color: var(--theme-color-warning-bg);
+  border-bottom: 1px solid var(--theme-color-warning);
+}
+
+.NoticeError {
+  color: var(--theme-color-error);
+  background-color: var(--theme-color-error-bg);
+  border-bottom-color: var(--theme-color-error);
+}
+
+.NoticeSpacer {
+  margin-left: auto;
+}

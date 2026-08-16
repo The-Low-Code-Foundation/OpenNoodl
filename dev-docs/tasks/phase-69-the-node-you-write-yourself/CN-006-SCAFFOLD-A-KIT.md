@@ -79,16 +79,17 @@ criterion, not as taste.
 
 ---
 
-# BUILT — session 9, 2026-08-16. **The MCP half is complete; the editor half is not.**
+# BUILT — MCP half session 9, editor half session 10, 2026-08-16.
 
 | Entry point | State |
 |---|---|
 | `create_node_kit` (`noodl-mcp`) | ✅ **Built, and proven end-to-end** — a kit scaffolded through the tool is extracted by CN-003's real extractor and answers `get_node_type` |
-| "New node kit" (editor, ✅ D1) | 📋 **Not built.** The seam is established below; nothing about it is open |
+| "New node kit" (editor, ✅ D1) | ✅ **Built** — s10. Writes the scaffold, re-reads the project's modules, and opens `index.js` in a **real in-app file editor**, which is what Richard ruled the clause to mean |
 
 The generator is `@nodegx/kit-scaffold` — one no-build workspace package, so the two entry points
-cannot drift into teaching different things. **58 tests** in the package, **6** driving the
-generated kit against the real runtime bridge, **9** driving it through the server.
+cannot drift into teaching different things. **66 tests** in the package, **6** driving the
+generated kit against the real runtime bridge, **9** driving it through the server, **8** driving it
+through a webpack bundle. **31 more** in the editor.
 
 ## 🔴 Two silent runtime holes, both found before the scaffold existed
 
@@ -155,7 +156,7 @@ how 56 of LEG-001's 58 banked tokens were spent by work that never knew it was s
 
 | # | Criterion | State |
 |---|---|---|
-| 1 | Scaffolded node in the picker and placeable, no further edits | ⚠️ **Partial.** The node registers, the bridge accepts it, every documented port arrives, and it renders — asserted against the real bridge and real React. **Not yet driven in the editor's picker**; that needs the editor half |
+| 1 | Scaffolded node in the picker and placeable, no further edits | ⚠️ **Partial, unchanged by s10.** The node registers, the bridge accepts it, every documented port arrives, and it renders — asserted against the real bridge and real React. The editor half now exists, but **the picker has still not been driven in a running editor** — see §Owed |
 | 2 | Autocomplete with no `tsconfig` and no `node_modules` | ✅ **Met.** CN-005's language-service instrument, pointed at the bytes the scaffold writes. 0 diagnostics, definition fields offered, **`document` absent** — and a control stripping the annotation gets `document` back |
 | 3 | Colour/spacing defaults are tokens **and the render picks them up** | ✅ **Met at the style layer** — an instance with no parameters set carries `padding: 'var(--space-4)'`, and the rendered markup contains `margin-top:var(--space-1)` with no `)px` anywhere. ⚠️ Computed style in a browser is **not** measured; that is the editor drive |
 | 4 | Passes CN-004's validation clean | ✅ **Met**, against the same project's summary before the kit. 🔴 This assertion was a **false pass** first time — the tool was deferred, every call returned "Tool disabled", and "same summary before and after" was trivially true. It now asserts the kit landed before grading its effect |
@@ -196,19 +197,158 @@ resolve without `node_modules`. The copy is unavoidable; the question is whether
 CN-005's own React-collision warning by one session, drift inside a day. Refreshed and re-stamped;
 the kit still reports **0 diagnostics** through the language service.
 
-## 📋 The editor half — the seam, established
+---
 
-Nothing here is an open question; it is unbuilt work with its ground surveyed.
+# The editor half — BUILT, session 10, 2026-08-16
 
-- **The generator is done and shared.** `writeKitScaffold(projectDir, {name})` is what the editor
-  calls. Its home is `shared/utils/projectmodules.ts`, beside ERG-002's `registerLibrary`.
-- 🔴 **"Opens `index.js` in the code editor" cannot mean the in-app editor without new work.** The
-  editor's CodeMirror is bound to Function-node *parameters*, not to files on disk, and there is no
-  file editor anywhere in the app. The only precedent for reaching a file is `shell.showItemInFolder`
-  (3 uses). So D1's clause resolves to `shell.openPath` (the OS default editor) or
-  `showItemInFolder` — **and that is a decision worth naming out loud rather than picking quietly.**
-- **UI home:** a control in `ProjectSettingsTab.tsx` beside `LibrariesSection`. ⚠️ The kits *list*
-  is CN-006b, not this task.
-- ⚠️ **Expect the editor twin of hole 2.** `ProjectModel.modules` is populated once by
-  `readProjectModules`; a kit written mid-session may leave it stale exactly as the MCP overlay was.
-  **Measure it, do not assume it** — the MCP side looked fine too.
+**D1's open clause was put to Richard rather than picked quietly, and he ruled for the literal
+reading: build a real in-app file editor.** So the editor now has one, and it is the first
+file-backed code surface in the application — every other CodeMirror in it is bound to a node
+*parameter*.
+
+| Piece | Where |
+|---|---|
+| The command | `SettingsPanel/sections/KitsSection.tsx`, beside `LibrariesSection` |
+| The generator seam | `createNodeKit()` in `shared/utils/projectmodules.ts`, beside `registerLibrary` |
+| The file model | `models/ProjectFiles/ProjectCodeFileModel.ts` |
+| Shared primitives | `models/ProjectFiles/projectFileIo.ts` — **extracted from `ProjectDocsModel`, not copied** |
+| The editing surface | `views/documents/CodeFileDocument/`, registered in `router.setup.ts` |
+
+**31 new tests** in the editor (3 suites), **8** in `@nodegx/kit-scaffold`.
+
+## 🔴 A third silent hole, and this one only exists on the far side of a bundler
+
+Found by probing the path *before* building the caller, the same way the first two were.
+
+`@nodegx/kit-scaffold` reads the published `.d.ts` at call time through
+`require.resolve('@nodegx/node-kit-types/package.json')`. The MCP server is plain Node, where that is
+honest. **The editor renderer is a webpack bundle, where it is not.** Webpack resolves the specifier
+at build time, pulls the `package.json` in as a module, and rewrites the call site to the *module
+id*:
+
+```js
+const pkgPath = /*require.resolve*/(/*! … */ "../nodegx-node-kit-types/package.json");
+```
+
+`fs.readFileSync` then resolves that as a **relative path against `process.cwd()`**. So whether the
+scaffold worked at all became an accident of where the process was started. The line carried a
+comment claiming the opposite — *"keeps working from a packaged build"* — which is true of npm
+layout and false of a bundler.
+
+⚠️ **Nothing in the repository could have caught it.** The package's suite is plain Node; the
+editor's suite never executes a bundle. `resolvePublishedPackageJson` now proposes candidates and
+**verifies each one is an absolute path that exists** before returning it.
+
+### 🔴 The gate was written twice, because the first one graded a broken build as passing
+
+`tests/webpack-caller.test.js` builds this package through webpack with the editor's own target and
+externals, then calls the result. Mutating the fix away left it **green**, twice:
+
+1. Jest's cwd is `packages/nodegx-kit-scaffold`, and `"../nodegx-node-kit-types/package.json"` is a
+   valid *relative* path from there. The broken build read the right file by coincidence.
+2. So is the editor's — `packages/noodl-editor` is a **sibling** of `packages/nodegx-node-kit-types`.
+   Moving the call to the editor's working directory, the obvious correction, reproduced the same
+   accident.
+
+The layout with neither coincidence is the one that ships: a bundle **beside its `node_modules`**,
+with no sibling `packages/` above it. Against that, the mutation fails with the production `ENOENT`
+while all five controls stay green — including one asserting the two coincidences are real and
+absent here, so nobody "simplifies" the fixture away.
+
+⚠️ **Not graded: a real `app.asar`.** The remaining risk is asar path handling, not the resolution
+strategy.
+
+## What the editor half does after writing the files
+
+Writing four files is not the feature; the node arriving is. Three things, and the middle one is the
+editor twin the handover told this session to expect:
+
+1. **`index.js` opens in `CodeFileDocument`** — D1's clause, honoured literally. Done *last*, so a
+   failure to open a document can never cost the author a kit that was written successfully.
+2. **`ProjectModel.readModules()` is called** — `ProjectModel.modules` is filled once at project
+   load, so a kit written after that is on disk and absent from the model. One re-read at the single
+   door that knows the kit set changed; deliberately not a poll or an mtime sweep, per ✅ D3.
+   ⚠️ **Still to measure in a running editor** — see §Owed.
+3. **The author is told to reload the preview.** ✅ D3 puts node definitions in the viewer's gift:
+   the picker lists what a *running runtime* registered and sent over `sendNodeLibrary`, so a kit
+   that has never been executed cannot be in it. ⚠️ Related: `ViewerConnection.sendRefresh()` exists,
+   emits `'reload'`, **and nothing anywhere listens for it** — dead at both ends, so there is no
+   in-app reload to call. Worth a task.
+
+## Why a document rather than a popout
+
+The editor had three ways to show code and none could show a *file*: `CodeEditorType` is a `TypeView`
+bound to `getParameter`/`setParameter`, and both propertyeditor modals are portals over a node
+parameter. All three are anchored to a graph object; a kit's `index.js` is not one.
+
+`ProjectDocsModel`'s discipline was adopted wholesale, because every word of AIX-009's reasoning
+applies harder here — the author *will* have the kit open in VS Code at the same time, since that is
+where this phase told them to edit it. Baseline-checked writes, atomic rename, and a
+content-comparing poll (`IFileSystem` has no watcher and no mtime; `FileStat` is `{ size }`).
+
+✅ **Its two shared primitives were extracted rather than copied.** `writeTextAtomic` and the
+relative-path helper were private to `ProjectDocsModel`; they now live in `projectFileIo.ts` and both
+models import them. A second copy of "temp file, then rename" stays right for about a month.
+
+⚠️ **Both halves of the concurrent-edit guard are needed, and guarding one just picks who loses.**
+The poll refuses to clobber an unsaved buffer *and* the save is refused against a moved baseline.
+Asserted with a control proving the refusal is total — a guard that throws *after* writing passes a
+naive `rejects.toThrow` and has still destroyed the other side's work.
+
+## 🔴 A cross-package golden that no package's own gate can see
+
+`test:ci` came back **2843 / 7 @ seed 39393**. Six are the floor by name. The seventh is
+`projectmodules — injectIntoHtml snapshot … byte-identical HTML to the committed golden`, in the
+file this session edited — so it was treated as mine until proven otherwise. It is not:
+
+- `@nodegx/module-inject` and the golden are both **clean** in the working tree;
+- the only commit touching `__noodl_module_name` is **`f7da52d1`** (*"fix(cn-003): a kit can say its
+  own name"*, 16:39 today), which is an **ancestor of this session's starting HEAD**;
+- reproduced in plain Node: the generator now emits one extra
+  `<script>window.__noodl_module_name = "code-a";</script>` per prefix block, and the committed
+  golden has neither.
+
+⚠️ **`f7da52d1` updated `@nodegx/module-inject`'s own tests and not the editor's golden**, and the
+package's suite is green. So a package changed its output, its own gate agreed, and the only thing
+that noticed was a *different* package's snapshot — visible in `test:ci` alone. **Deliberately not
+fixed here**: regenerating another lane's golden would launder their semantic change through this
+commit. It wants a one-line fix from whoever owns CN-003.
+
+## Gate readings — s10
+
+| Gate | Reading |
+|---|---|
+| `packages/noodl-editor` jest (`test:main`) | ✅ **220 suites / 3396 — 0 failures**, on the settled tree |
+| `@nodegx/kit-scaffold` jest | ✅ **5 suites / 66** (was 4 / 58) |
+| `packages/noodl-editor` `tsc --noEmit` | ✅ **0 errors**, and `--listFiles` confirms all five new files are actually reached |
+| `test:ci` @ `NOODL_SPEC_SEED=39393` | ⚠️ **2843 / 7** — the floor six, plus the pre-existing golden above |
+
+🔴 **An earlier `test:main` in this session read 219/1 failed, and that failure was also not mine** —
+`fix-005/dropdown-contrast.spec.ts` reads `BlocklyWorkspace.module.scss`, which a peer had
+mid-edit; its `.blocklyTreeLabel` rule resolved at HEAD and had been deleted in the working tree.
+The peer committed during the session and the re-run is clean. ⚠️ **The count moved 3379 → 3396 in
+the same session** for the same reason — re-measure, never subtract.
+
+## §Owed — what s10 built but did not drive
+
+🔴 **No editor was launched this session, so nothing below has been seen in a browser.** This is
+stated plainly rather than softened: the code typechecks, its logic is unit-tested against a real
+filesystem, and its bundling is tested against a real webpack build — but a React surface that has
+never been mounted is not a surface that is known to render.
+
+Three specific things want a drive, and they are the same three the handover named:
+
+1. **AC1 — the scaffolded node in the picker, placeable.** Needs a scaffold, a preview reload, and a
+   drag. The runtime half is asserted; the picker half is not.
+2. **AC3 — the *computed* style, not the parameter value.** The style layer is asserted (an instance
+   with no parameters carries `padding: 'var(--space-4)'`, and the rendered markup contains
+   `margin-top:var(--space-1)` with no `)px`). ⚠️ `an-icon-host-that-sets-fill-sets-nothing` is the
+   local precedent for a style that is set and does nothing, and only a browser closes it.
+3. 🔴 **The `ProjectModel.modules` staleness twin — measured, not assumed.** `readModules()` is
+   called after a scaffold *because* the MCP side had exactly this hole. Whether the model was
+   actually stale without it has **not been measured**, and the handover's own warning applies to
+   this session too: *the MCP side looked fine too.* The call is cheap and correct either way, but
+   "the hole existed here as well" is currently a hypothesis, not a finding.
+
+⚠️ Also unmeasured: **`CodeFileDocument` mounting at all**. It is registered, typechecked and
+reachable from `KitsSection`, and no test mounts React.

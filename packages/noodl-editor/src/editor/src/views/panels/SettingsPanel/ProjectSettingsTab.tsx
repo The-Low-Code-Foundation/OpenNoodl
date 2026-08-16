@@ -15,6 +15,7 @@ import { Ports } from '../propertyeditor/DataTypes/Ports';
 import { HTML_TITLE_PORT, ProjectSettingsModel } from './ProjectSettingsModel';
 import { DeploySection } from './sections/DeploySection';
 import { IdentitySection } from './sections/IdentitySection';
+import { KitsSection } from './sections/KitsSection';
 import { LibrariesSection } from './sections/LibrariesSection';
 import { PWASection } from './sections/PWASection';
 import { RuntimeSection } from './sections/RuntimeSection';
@@ -193,6 +194,14 @@ export function ProjectSettingsTab() {
         action with its own verify-before-save step, not a value to bind.
       */}
       <LibrariesSection />
+
+      {/*
+        CN-006 / ✅ D1: "New node kit" — writes the scaffold and opens its
+        index.js in the code editor. Directly after Libraries because the two
+        write to the same place (noodl_modules/) and differ only in what the
+        folder holds: somebody else's script, or your own node.
+      */}
+      <KitsSection />
 
       {/*
         VFN-009: the saved blocks a builder has made in this project's Visual

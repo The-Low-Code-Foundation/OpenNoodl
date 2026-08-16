@@ -26,6 +26,10 @@
 import { filesystem } from '@noodl/platform';
 
 import Model from '../../../../shared/model';
+// CN-006: `writeTextAtomic` and `toRelative` were private to this file until a
+// second model needed both. One implementation, imported — see the module note
+// in `projectFileIo`.
+import { toProjectRelative as toRelative, writeTextAtomic } from '../ProjectFiles/projectFileIo';
 import type { ProjectModel } from '../projectmodel';
 import {
   assertInsideDocs,
@@ -411,36 +415,8 @@ export class ProjectDocsModel extends Model {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-/**
- * Temp file + rename, mirroring `writeJsonAtomic` in the MCP `ProjectStore` and
- * `filesystem.writeJson`. A doc half-written by a crash is a doc the agent then
- * reads as gospel.
- */
-async function writeTextAtomic(absPath: string, content: string): Promise<void> {
-  const tmp = `${absPath}.tmp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-  await filesystem.writeFile(tmp, content);
-  try {
-    await filesystem.renameFile(tmp, absPath);
-  } catch (error) {
-    try {
-      await filesystem.removeFile(tmp);
-    } catch {
-      /* the rename failure is the interesting one */
-    }
-    throw error;
-  }
-}
-
 function baseName(relPath: string): string {
   return relPath.slice(relPath.lastIndexOf('/') + 1);
-}
-
-/** Absolute → project-relative with forward slashes, or undefined when outside. */
-function toRelative(projectDir: string, fullPath: string): string | undefined {
-  const root = projectDir.replace(/\\/g, '/').replace(/\/+$/, '');
-  const p = fullPath.replace(/\\/g, '/');
-  if (!p.startsWith(`${root}/`)) return undefined;
-  return p.slice(root.length + 1);
 }
 
 /** Known docs first, in their declared order; everything else alphabetically. */

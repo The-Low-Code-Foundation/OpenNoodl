@@ -27,6 +27,25 @@ it came from, with a link to its docs.
 ⚠️ **Note for task authors:** this does **not** gate CN-003. The catalog overlay is required for
 validation and the AI whichever way D1 went; D1 only added the editor surface on top.
 
+### D1a — "opens `index.js`" means a real in-app file editor ✅
+
+**Ruled 2026-08-16**, on a question CN-006's editor half could not answer for itself.
+
+D1's create command says it "opens `index.js`". **The editor had nothing that could do that.** Its
+CodeMirror is bound to Function-node *parameters*; the two propertyeditor modals are portals over a
+node parameter; and the only precedent for reaching a file at all was `shell.showItemInFolder` (3
+uses), which hands the author to Finder and a different application. So the clause had three
+possible readings — `shell.openPath`, `showItemInFolder`, or new work — and picking the cheap one
+quietly would have decided a ruling by implementation convenience.
+
+**Richard ruled for the literal reading: build the file editor.** Built in CN-006 s10 as
+`CodeFileDocument` + `ProjectCodeFileModel` — a full-height document with a save, dirty state,
+baseline-checked writes and external-edit detection.
+
+**Consequence, and it is wider than kits:** the editor now has a general file-editing surface.
+`openCodeFile(projectRelativePath)` opens any file inside the open project. Nothing else uses it
+yet; a task that wants to edit a project file no longer needs to invent one.
+
 ---
 
 ## D7 — Phase 69 owns the catalog spine; LBR-008 is rescoped ✅

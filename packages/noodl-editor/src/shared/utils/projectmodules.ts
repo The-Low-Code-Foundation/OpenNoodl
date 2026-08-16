@@ -433,6 +433,71 @@ export async function removeLibrary(
   return { ok: true, message: `"${moduleName}" removed.` };
 }
 
+// ─── CN-006: scaffold a node kit ─────────────────────────────────────────────
+
+/** What the caller gets back about a kit it just asked for. */
+export interface CreateNodeKitResult {
+  ok: boolean;
+  message: string;
+  /** The directory under `noodl_modules/`, on success. */
+  moduleName?: string;
+  /** Project-relative path of the kit's `index.js`, on success — what the editor opens. */
+  indexPath?: string;
+  /** The node type the example node registers, e.g. `weather-kit.StatTile`. */
+  nodeType?: string;
+}
+
+/**
+ * Write a node kit scaffold into a project — the editor's half of ✅ **D1**.
+ *
+ * Deliberately a thin wrapper over `@nodegx/kit-scaffold`'s `writeKitScaffold`,
+ * which is the *same* generator `create_node_kit` calls on the MCP side. That is
+ * the whole reason the generator is its own package: two entry points onto one
+ * file set, so the editor and the agent cannot drift into teaching different
+ * things about what a good kit looks like.
+ *
+ * ⚠️ It refuses rather than overwrites — `writeKitScaffold` returns a
+ * `kit-exists` failure — which is CN-006's AC5 and matters more here than on the
+ * MCP side: a mis-typed name in a text field is a much easier way to land on an
+ * existing kit than a tool call is.
+ *
+ * 🔴 **This file is bundled by webpack in the renderer.** That is not incidental:
+ * the scaffold reads the published `.d.ts` at call time through
+ * `require.resolve`, which webpack rewrites to a module id, and every scaffold
+ * from the editor threw `ENOENT` until `resolvePublishedPackageJson` was taught
+ * to verify its own answer. `nodegx-kit-scaffold/tests/webpack-caller.test.js`
+ * is the gate; do not "simplify" that resolver back to one call.
+ */
+export async function createNodeKit(
+  projectDirectory: string | undefined,
+  name: string
+): Promise<CreateNodeKitResult> {
+  if (!projectDirectory) return { ok: false, message: 'No project is open.' };
+
+  // Required lazily so the main process — which requires this module for
+  // `injectIntoHtml` — does not pay for the generator it never calls.
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const { writeKitScaffold } = require('@nodegx/kit-scaffold');
+
+  let result;
+  try {
+    result = await writeKitScaffold(projectDirectory, { name });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return { ok: false, message: `The kit could not be written: ${message}` };
+  }
+
+  if (!result.ok) return { ok: false, message: result.message };
+
+  return {
+    ok: true,
+    message: `Created "${result.kit.displayName}" with an example node, a README and a copy of the kit types.`,
+    moduleName: result.kit.dirName,
+    indexPath: `noodl_modules/${result.kit.dirName}/index.js`,
+    nodeType: result.kit.nodeType
+  };
+}
+
 /**
  * §3's SSR/SSG trap: `globalThis.__noodl_modules` (read by
  * `packages/noodl-viewer-react/static/ssr/index.js:68`) is populated only by

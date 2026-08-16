@@ -17,6 +17,7 @@
   },
   "devDependencies": {
     "jest": "^29.7.0",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "webpack": "^5.101.3"
   }
 }

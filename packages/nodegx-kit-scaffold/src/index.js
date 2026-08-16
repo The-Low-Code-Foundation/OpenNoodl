@@ -148,17 +148,127 @@ function nodeTypeName(dirName, nodeId) {
 
 // ─── The published types ─────────────────────────────────────────────────────
 
+/** `__dirname`, or `null` where a bundler has compiled it away. */
+function safeDirname() {
+  try {
+    return typeof __dirname === 'string' && __dirname ? __dirname : null;
+  } catch (_) {
+    return null;
+  }
+}
+
+/** `process.cwd()`, or `null` outside Node. */
+function safeCwd() {
+  try {
+    return typeof process !== 'undefined' && typeof process.cwd === 'function' ? process.cwd() : null;
+  } catch (_) {
+    return null;
+  }
+}
+
+/**
+ * Absolute path of the installed `@nodegx/node-kit-types`' `package.json`.
+ *
+ * 🔴 **`require.resolve` alone is wrong here, and it fails silently in the one
+ * caller that matters.** This package is `require`d by two consumers: the MCP
+ * server, which runs as plain Node, and — as of CN-006's editor half — the
+ * editor renderer, which is a **webpack bundle**. Webpack does not leave
+ * `require.resolve` alone. It resolves the specifier at build time, pulls the
+ * `package.json` into the bundle as a module, and rewrites the call site to the
+ * *module id*:
+ *
+ * ```js
+ * const pkgPath = \/*require.resolve*\/(\/*! @nodegx/node-kit-types/package.json *\/ "../nodegx-node-kit-types/package.json");
+ * ```
+ *
+ * That is a webpack identifier, not a path, so the `readFileSync` below threw
+ * `ENOENT` for every scaffold attempted from the editor — measured, not
+ * predicted, against a real bundle built with the editor's own externals
+ * config. The doc comment this replaces claimed the opposite ("keeps working
+ * from a packaged build"), which is true of *npm* layout and false of a bundler.
+ *
+ * ⚠️ **No gate saw it.** This package's tests run in plain Node, where
+ * `require.resolve` is honest; the hole only exists on the other side of a
+ * bundler. `tests/webpack-caller.test.js` is that missing caller, built.
+ *
+ * The strategy is therefore *candidates, then verification* — never a single
+ * answer trusted on its face. A candidate only wins if it is an absolute path
+ * that exists.
+ *
+ * @returns {string}
+ */
+function resolvePublishedPackageJson() {
+  const candidates = [];
+
+  // 1. Plain Node — the honest answer, and the only one that runs in practice
+  //    for the MCP server and this package's own tests.
+  //
+  //    ⚠️ The specifier stays a **string literal**. Hoisting it to a `const` and
+  //    passing the variable makes webpack give up on static analysis and emit
+  //    `Critical dependency: the request of a dependency is an expression`,
+  //    along with a context module covering the whole source directory — a
+  //    build warning and dead weight in the editor bundle, in exchange for
+  //    nothing. Measured; the literal produces neither.
+  try {
+    candidates.push(require.resolve('@nodegx/node-kit-types/package.json'));
+  } catch (_) {
+    /* not resolvable from here; a later candidate may still be */
+  }
+
+  // 2. Under webpack, (1) returned a module id. `__non_webpack_require__` is
+  //    webpack's documented escape hatch — it is emitted as a genuine `require`,
+  //    so `.resolve` does real filesystem resolution from the bundle's location.
+  //    In plain Node the identifier is simply undefined and `typeof` is safe.
+  try {
+    // eslint-disable-next-line camelcase
+    if (typeof __non_webpack_require__ !== 'undefined' && typeof __non_webpack_require__.resolve === 'function') {
+      // eslint-disable-next-line camelcase
+      candidates.push(__non_webpack_require__.resolve('@nodegx/node-kit-types/package.json'));
+    }
+  } catch (_) {
+    /* the bundle may sit somewhere node_modules is not reachable from */
+  }
+
+  // 3. Walk up from wherever this code physically sits, and from the process's
+  //    working directory, looking for an installed copy. Under webpack
+  //    `__dirname` is the *output* directory, which is still a real place on
+  //    disk; `process.cwd()` is the app root for both the Electron editor and
+  //    the MCP server. Two anchors because neither is guaranteed on its own.
+  for (const anchor of [safeDirname(), safeCwd()]) {
+    let dir = anchor;
+    if (!dir) continue;
+    for (let i = 0; i < 12; i++) {
+      candidates.push(path.join(dir, 'node_modules', '@nodegx', 'node-kit-types', 'package.json'));
+      const parent = path.dirname(dir);
+      if (parent === dir) break;
+      dir = parent;
+    }
+  }
+
+  for (const candidate of candidates) {
+    if (typeof candidate !== 'string' || !path.isAbsolute(candidate)) continue;
+    try {
+      if (fs.existsSync(candidate)) return candidate;
+    } catch (_) {
+      /* unreadable candidate is simply not the answer */
+    }
+  }
+
+  throw new Error(
+    'Could not locate @nodegx/node-kit-types. The kit scaffold copies its published types into every kit, ' +
+      'so it cannot run without them. Tried ' +
+      candidates.length +
+      ' candidate location(s).'
+  );
+}
+
 /**
  * The installed `@nodegx/node-kit-types` — its `.d.ts` path and its version.
- *
- * Resolved through `require.resolve` rather than a relative `../../` walk so it
- * keeps working from a packaged build, where the two packages are laid out by
- * npm rather than by the repository.
  *
  * @returns {{ dtsPath: string, version: string }}
  */
 function publishedTypes() {
-  const pkgPath = require.resolve('@nodegx/node-kit-types/package.json');
+  const pkgPath = resolvePublishedPackageJson();
   const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
   const main = typeof pkg.types === 'string' ? pkg.types : 'src/index.d.ts';
   return { dtsPath: path.join(path.dirname(pkgPath), main), version: String(pkg.version) };
