@@ -227,9 +227,23 @@ function defineUtilityBlocks() {
    * `tests-unit/lgc-009/hat-migration.spec.ts` catches by instantiating every toolbox block in
    * real Blockly and comparing `previousConnection` against the list.
    *
-   * `console` needs no runtime work: the browser runtime compiles logic with a plain
-   * `new Function` in global scope, and the cloud sandbox installs `global.console`
-   * (`sandbox.isolate.js:26`) — so this prints in a preview and in a cloud function alike.
+   * `console` needs no runtime work, and **both halves of that are now driven** rather than read
+   * off a file: the browser runtime compiles logic with a plain `new Function` in global scope
+   * (printed in a live viewer, FIX-004 session 35), and a cloud function reaches Node's own
+   * `console` because `nodegx-backend` runs `CloudRunner` **in-process** — measured end to end in
+   * `nodegx-backend/tests/cloud-logic-builder-log.test.ts`.
+   *
+   * ⚠️ This comment used to credit the cloud half to `sandbox.isolate.js:26` installing
+   * `global.console`. **That reason was stale and it misled FIX-004's task file into predicting a
+   * `_noodl_api_call('log', …)` entry instead of stdout.** WF-007 deleted the dev-time
+   * cloud-function-server and its sandbox (`noodl-viewer-cloud/webpack-configs/webpack.prod.js:1-6`),
+   * and `_noodl_api_call` has no implementation in this repo at all — it was the external
+   * `noodl-cloudservice`'s host global. Nothing here loads that bundle.
+   *
+   * 🔴 The consequence an author should know: a block's `console.log` is a **bare** one. Unlike the
+   * `Log` node (`net.noodl.Log`), it is not levelled, carries no request id, never reaches the
+   * execution record, and is **not redacted** — a provisioned secret logged from a block program
+   * goes to stdout in the clear, which the suite above measures against a non-logging control.
    */
   Blockly.Blocks['noodl_log'] = {
     init: function (this: Blockly.Block) {

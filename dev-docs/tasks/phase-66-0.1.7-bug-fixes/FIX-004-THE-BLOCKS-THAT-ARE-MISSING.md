@@ -392,3 +392,149 @@ noodl-mcp tests) — untouched by me.
 
 🔴 The seam-category ruling at line 276 is **unchanged** by this drive. Findability is the open
 question; the blocks themselves work.
+
+---
+
+## Acceptance 2's cloud half — DRIVEN 2026-08-16 (session 40). **Acceptance 2 closes.**
+
+`noodl_log` prints from inside a real cloud function. Acceptance 2 therefore closes on both halves,
+and with it every one of FIX-004 §A+§B's five criteria.
+
+### 🔴 First: the mechanism this task file told the next session to expect is dead code
+
+The note at line 165 said to *"expect a Noodl log entry, not stdout"*, because
+`sandbox.isolate.js:26` installs a `global.console` forwarding to `_noodl_api_call('log', …)`. **That
+prediction was wrong, and it was wrong because it named a retired path.** Two independent readings:
+
+- `noodl-viewer-cloud/webpack-configs/webpack.prod.js:1-6` says so in its own words — *"That server
+  and its cloudruntime sandbox are deleted — cloud functions now run inside nodegx-backend, which
+  esbuilds this package's `src/` directly via the `@cloud-runtime` alias"* (WF-007).
+- **`_noodl_api_call` has no implementation anywhere in this repo** — the only occurrences are the
+  four call sites *inside* `sandbox.isolate.js` itself. It was the external `noodl-cloudservice`'s
+  host global. Nothing in `noodl-editor/src` or `nodegx-backend/src` loads that bundle; the only
+  surviving references are three doc comments.
+
+So the isolate's console shim could not have produced a log entry here even if it were on the path.
+⚠️ **The residual, stated rather than hidden:** the isolate bundle *is* still built as the published
+`@noodl/cloud-runtime` artefact, so a consumer outside this repo could still supply those globals.
+Nothing a spec in this repo can reach.
+
+🔴 **Where the error came from, now fixed at source.** `NoodlBlocks.ts`'s own comment on `noodl_log`
+credited the cloud half to `sandbox.isolate.js:26`. The *conclusion* was right and the *reason* was
+stale, and this task file copied the reason. That comment now records the measured mechanism, the
+retirement, and the redaction consequence below — because the next person to ask "does this work
+server-side?" reads the block, not this file.
+
+### The real mechanism, and what it is on the path of
+
+`nodegx-backend` imports the real `CloudRunner` out of `noodl-viewer-cloud` (`@cloud-runtime`,
+`WorkflowRunner.ts:38`) and runs it **in-process**. `logic-builder.ts:505-532` compiles
+`generatedCode` with a plain `new Function(…)` whose parameter list does **not** include `console`,
+so `console` resolves off the enclosing global — Node's own. The line goes to real stdout.
+
+✅ **The node is reachable server-side at all** because it is in the *shared* list
+(`noodl-runtime.ts:190`) and the `type !== 'cloud'` subtraction at `:323` does not name it.
+Independently confirmed by the generated cloud picker snapshot
+`noodl-editor/src/editor/src/models/nodelibrary/cloud-node-library.json`, which lists
+`'Logic Builder'` under `CustomCode`.
+
+### The drive: a real standalone backend, no jest, no editor
+
+`node packages/nodegx-backend/dist/cli.js serve --data-dir <tmp> --port 8591`, a hand-written
+`workflows/lb.workflow.json`, and `curl`. Both arms answered `{"result":{"ok":"go"}}`.
+
+| arm | `generatedCode` | response | probe on stdout |
+|---|---|---|---|
+| **treatment** | `console.log('FIX004-STDOUT-PROBE-5510');` | 200 | ✅ **present, verbatim, bare** |
+| **control** | `'FIX004-STDOUT-CONTROL-4417';` | 200 | ❌ absent |
+
+🔴 **Both arms carry a unique probe string inside their generated code**, and differ only in whether
+it sits inside the `console.log(…)` the block generates. That is what rules out the boring
+explanation — the runner echoing its own source, its inputs, or an execution record. A single arm
+could not have told those apart.
+
+The line as it came out, between two of the service's own structured lines:
+
+```
+{"ts":"…","level":"info","event":"request","requestId":"3b0b4121-…","method":"POST",…}
+[WorkflowRunner] Executing function: lbLogged
+FIX004-STDOUT-PROBE-5510
+[WorkflowRunner] Function lbLogged completed in 2ms
+```
+
+⚠️ **The probe appears in NO JSON line** (checked: `grep '^{' | grep -c probe` → `0`). No timestamp,
+no level, no `requestId`, no `event`. That is the visible form of the finding below.
+
+⚠️ **A quoting bug ate the first attempt and the runtime caught it**, which is worth recording as a
+positive: `node -e` with nested single quotes wrote `console.log(+PROBE+);`, and the run failed with
+`logic-builder/code-not-compiled` — *"The blocks could not be compiled: Unexpected token ')'"* — so
+the first drive measured shell quoting, not the block. The generator script was moved into a file.
+🔴 **And note what that failure did to the request: it hung until curl's own timeout at 10s**, with
+only `success` wired. That is CWF-018 reproduced incidentally — an unwired `failure` path leaves
+`POST /functions/:name` waiting forever.
+
+### 🔴 The finding: a block's `console.log` is a bare one, and a secret logged from a block leaks
+
+`net.noodl.Log` — the *node* — is levelled, carries the request id, lands in the execution record,
+and is redacted **by key and by value** (CWF-013, `cloud-log-node.test.ts`). A `noodl_log` **block**
+compiles to a bare `console.log` and has none of that. Measured, not reasoned about:
+
+| arm | block program | provisioned secret in output |
+|---|---|---|
+| control | `console.log('SECRETLEN:' + String(Inputs["secret"]).length)` | ❌ absent — and `SECRETLEN:29` present, so the wire was live |
+| **treatment** | `console.log(Inputs["secret"])` | 🔴 **present, in the clear** |
+
+The control is what attributes it. Without an arm that fetches the same secret through the same
+`Secret` node and merely declines to log it, "the secret is in the output" would equally well
+indict the `Secret` node, the runner or the execution record — and would have named the wrong
+mechanism. It runs first, against an output buffer the logging arm has not touched.
+
+⚠️ **This is a consequence of FIX-004, not a defect in it.** The block does exactly what it says.
+But it is a new door onto stdout that no redaction covers, and it wants a ruling — see below.
+
+### Gates
+
+✅ **Taken this session:**
+
+| Gate | Reading |
+|---|---|
+| `nodegx-backend` jest (**full**) | ✅ **100 suites / 1085 passed, 10 skipped, 0 failed** |
+| `noodl-editor` `test:main` (jest) | ✅ **214 suites / 3336 tests, 0 failed** |
+| `tsc -p packages/nodegx-backend/tsconfig.tests.json --noEmit` | ✅ 0 errors |
+| `tsc --noEmit -p packages/noodl-editor/tsconfig.json` | ✅ 0 errors |
+
+⚠️ **`test:ci` (jasmine) NOT taken, and the reason is the claim, not the cost.** The only source
+change this session is **comment-only** (`NoodlBlocks.ts`), which both `tsc` runs prove parses; the
+two new/changed spec files are jest (`tests-unit` and `nodegx-backend/tests`), neither of which
+`test:ci` runs. Nothing this session touched is reachable from it. The floor recorded at s38 —
+2843 / 6 @ seed 39393 — is **inherited, not re-measured.**
+
+🔴 **Both `tsc` readings are read off empty output, not off an exit code**, because `… | tail`
+reports the pipe's status rather than the compiler's.
+
+### 🔴 The instrument bug this suite walked into, and why it matters beyond this task
+
+`tests/cloud-logic-builder-log.test.ts` first captured output by spying `process.stdout.write` —
+copying `cloud-log-node.test.ts`, which does exactly that and is green. **It passed run alone and
+failed all four presence assertions in the full-suite run.**
+
+Jest runs a lone test file in band, where its `Console` ends up on this process's stdout; in a
+**worker** it buffers console output and ships it to the parent over IPC, so `process.stdout.write`
+is never called. `cloud-log-node.test.ts` is immune only because the structured logger calls
+`process.stdout.write` **directly** (`ops/logger.ts:61`), going around jest's console entirely — and
+a bare `console.log` from generated code cannot.
+
+⚠️ **A `process.stdout.write` spy is the wrong instrument for a `console.log` claim, and it is wrong
+in the direction that looks fine locally.** The suite now spies `console.log` as well and asserts on
+the union. ✅ **And this is exactly why the standalone-CLI drive above is the load-bearing evidence
+for "reaches real stdout"**: under jest the assertion is about a `console.log` call, not about the
+process's output. The spec is the gated regression; the CLI run is the measurement.
+
+### Still owed after this drive
+
+- 🟢 **The redaction ruling, NEW.** A `noodl_log` block can print a provisioned secret to stdout in
+  the clear, where the `Log` node cannot. Options: (a) accept — a block program is code, and code
+  can always print; (b) route the block's generator at `console.log` through the same scrubbed sink
+  the `Log` node uses; (c) leave the behaviour and say so in the block's tooltip. ⚠️ (b) is not free:
+  the sink is per-run `runContext`, which generated code has no handle on today.
+- 🔴 The §C seam-category ruling at line 276 is **still** unchanged.

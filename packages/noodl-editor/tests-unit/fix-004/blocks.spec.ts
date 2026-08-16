@@ -194,6 +194,28 @@ describe('FIX-004 §A — log', () => {
     expect(code).toContain("console.log('hello');");
   });
 
+  /**
+   * Acceptance criterion 2's cloud half is driven in another package —
+   * `nodegx-backend/tests/cloud-logic-builder-log.test.ts` starts a real backend, hosts a
+   * `Logic Builder` in a real cloud function and reads the line off stdout. Nothing imports across
+   * that package boundary, so the two suites are coupled by **this exact string**: the drive runs
+   * `console.log('FIX004-CLOUD-PROBE-LOGGED-7391');` as generated code, and this asserts that is
+   * what the generator emits for the program it says it does.
+   *
+   * 🔴 Without this the pair is two true halves that prove nothing together — the drive could go on
+   * passing against a hand-written `console.log` long after the block stopped generating one.
+   */
+  it('emits, for the probe program the cloud drive runs, exactly the code that drive executes', () => {
+    const code = withWorkspace((workspace) => {
+      const log = workspace.newBlock('noodl_log');
+      const literal = workspace.newBlock('text');
+      literal.setFieldValue('FIX004-CLOUD-PROBE-LOGGED-7391', 'TEXT');
+      log.getInput('VALUE')!.connection!.connect(literal.outputConnection!);
+      return generateCode(workspace as Blockly.WorkspaceSvg);
+    });
+    expect(code).toContain("console.log('FIX004-CLOUD-PROBE-LOGGED-7391');");
+  });
+
   it('generates a statement even with an empty socket', () => {
     const code = withWorkspace((workspace) => {
       workspace.newBlock('noodl_log');
