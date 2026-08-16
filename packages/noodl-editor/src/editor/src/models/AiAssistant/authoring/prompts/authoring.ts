@@ -21,6 +21,9 @@
 
 import { DECOMPOSITION_AUTHORING } from './decomposition';
 import { DESIGN_AUTHORING } from './design';
+// FIX-006 — the same two blocks the MCP clients get through `get_project_info`'s traps, so the
+// in-editor loop and an external agent are told the same thing about node choice and code style.
+import { CODE_STYLE, THREE_WAYS_TO_COMPUTE } from './traps';
 import type { AuthoringMode, AuthoringRequest } from '../types';
 
 const FRAMING: Record<AuthoringMode, string> = {
@@ -168,6 +171,10 @@ WHAT NOT TO DO
 - Do not recreate something the project already has a component for — instantiate it.
 - Do not add nodes the task does not need. A node that is wired to nothing and changes nothing is
   dead weight — but do not read this as "keep the graph flat": see COMPOSITION.
+
+${THREE_WAYS_TO_COMPUTE}
+
+${CODE_STYLE}
 
 ${DECOMPOSITION_AUTHORING}
 
