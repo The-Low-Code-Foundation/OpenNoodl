@@ -106,3 +106,50 @@ single-character-edit negative control, idempotence, and that `.mcp.json` is not
 
 🔴 **Slices A and B, and the six memory rulings, are untouched.** This was the *"concrete defect to
 fix regardless of the brainstorm"*, and only that.
+
+
+## Slice 0 — DRIVEN (2026-08-16, session 42, dev stack)
+
+Built at s34 with 7 specs; never run in the app until now. **Acceptance criterion 1 closes on the
+real product**, not only in the suite.
+
+The drive was the actual launcher wizard, start to finish: *New project* → **Start with AI** → name +
+location → preset → **one real scoping turn against the configured provider** (a reading-list app;
+the model came back with a summary, one page and one record) → Continue → **Create project**.
+
+| project | how it was made | `# summary` line | `## Where the decisions are` | bytes |
+|---|---|---|---|---|
+| `fix021-drive-ai` | launcher, **AI mode** | ✅ the scoped summary | ✅ | **1401** |
+| `fix021-drive-ai` (twin) | **`create_project`** (MCP) | ✅ same | ✅ | **1401** |
+| `fix021-drive-plain` | launcher, **Quick Start** | — | — | 963 |
+
+✅ **`diff` of the launcher's file against the MCP twin: identical bytes.** Same project name, same
+summary handed to both paths — which is the criterion as written (*"the same two files, same content
+shape"*), measured on disk rather than through the installer's own test host.
+
+✅ **The control is the third row and it separates.** A Quick Start project writes no `docs/`, so
+`result.written.length > 0` is false, the upgrade never runs, and its `CLAUDE.md` has **neither**
+block. Had that file also carried them, the drive would have measured nothing — the two blocks would
+have been coming from somewhere other than slice 0.
+
+⚠️ **What this drive does *not* cover.** The `kept-existing` guard — the interesting half — was never
+exercised, because a freshly created project's `CLAUDE.md` is by construction the one the installer
+just wrote. The user-edit and template-`CLAUDE.md` refusals remain **spec-only**. Driving them means
+editing the file in the window between creation and `writeScopeDocs` returning, which is a few hundred
+milliseconds; a fixture-level drive of `upgradeAgentConfigForDocs` against a doctored file is the
+cheaper instrument if anyone wants it covered.
+
+### 🔴 Incidental, and not FIX-021's — the wizard has no default location
+
+Found while driving, verified in code and in the app: `ProjectCreationWizard` is rendered with **no
+`initialState`** (`ProjectsPage.tsx:1278-1286`), `WizardProvider` defaults `location: ''`
+(`WizardContext.tsx:116-124`), and the Location field is `isReadonly`
+(`ProjectBasicsStep.tsx:63-70`) — so it can only be filled by **`Browse…` and a native folder
+dialog**. Measured: with a name typed and no location, **`Next` is disabled**
+(`isStepValid('basics')` requires `location.length > 0`); it enabled the instant a location was set.
+
+⚠️ **`LocalProjectsModel.newProject` already has the fallback** — `platform.getDocumentsPath() + name`
+(`LocalProjectsModel.ts:300`) — and the wizard can never reach it, because the wizard always supplies
+`path`. So every new project in every mode costs a native dialog that a sensible default would spare.
+**Not fixed here** (it is a change to the creation UI, outside this task's scope) — wants its own
+task, or a ruling that the explicit choice is deliberate.
