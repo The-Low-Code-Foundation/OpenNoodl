@@ -522,3 +522,22 @@ reader can disagree with individually rather than as a verdict.
    author a way to say the thing; nothing makes them. That is F6, and F6 is human by definition —
    item 3 is the whole of the lever.
 
+   > 🔴 **WHERE SLICE 4 ACTUALLY LANDED — it is not in a commit of its own.** All nine files were
+   > staged and then swept into a **peer's** commit, [`43b2e521`](.) *"feat(fix-004): the Number()
+   > operator and the log block, slices A and B"*, between `git add` and `git commit` — a sibling
+   > session ran an all-paths commit in the same second. **Nothing is lost and nothing is wrong in
+   > the tree**; the files in `43b2e521` are byte-identical to what was written and reviewed here.
+   > What is wrong is the *record*: 674 lines of UNI-010 work sit under a phase-66 Blockly message.
+   >
+   > 🔴 **The consequence to act on, for whoever owns FIX-004:** `43b2e521` cannot be reverted or
+   > re-authored without taking UNI-010 slice 4 with it. **Deliberately not rewritten** — rewriting a
+   > commit another live session has just made, on a checkout that session is still working in, is a
+   > worse hazard than a mixed message.
+   >
+   > ⚠️ **And the gate numbers split across the sweep, which is worth stating rather than smoothing.**
+   > `test:main` **206 / 3196** was measured on slice 4 *alone* and is exactly the floor's 205 / 3171
+   > plus this slice's one file and 25 specs — predicted, not discovered, and therefore attributable.
+   > **HEAD after the sweep is 207 / 3211**, re-run rather than inferred; the extra suite and 15 tests
+   > are the peer's `tests-unit/fix-004/blocks.spec.ts`. Neither number is wrong and they answer
+   > different questions.
+
