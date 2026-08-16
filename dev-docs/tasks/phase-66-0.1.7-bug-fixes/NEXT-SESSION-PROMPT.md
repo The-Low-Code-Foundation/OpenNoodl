@@ -85,9 +85,34 @@ jest's own module graph rather than from your reading of the imports.
 A peer's pinned-seed run **timed out at 900s** with no results file (exit 1, runner said so) while
 s44's dev stack was up — three full webpack rebuilds, ~7 minutes of compile, landed inside their
 window, *triggered by a third party's source saves, not s44's*. They re-ran on an idle checkout and
-will report. **Their prediction is 2843/7** (the seventh a `projectmodules` golden from `f7da52d1`)
-and it is **untested — not confirmed, not refuted**. ✅ **Do not quote 2843/7 until someone posts a
-run that says so.**
+will report.
+
+#### 🔴 The expected 7th failure is on COMMITTED code — `f7da52d1`, mechanism verified
+
+⚠️ **Carried forward from `3e4e9b00`, which s44 briefly discarded** (see §6). An earlier session wrote
+that the 20:37 run *"saw in-flight uncommitted work"*. **That was wrong.**
+
+| fact | evidence |
+|---|---|
+| the spec compares the editor's injector output to a **committed** snapshot | `projectmodules.test.ts:87-92`, golden at `tests/testfs/module-inject/expected-inject.snapshot.txt` |
+| **the injector changed** `2026-08-16 16:39:50` | `f7da52d1` *"fix(cn-003): a kit can say its own name"* → `packages/nodegx-module-inject/src/index.js` |
+| **the golden was NOT regenerated** | last touched **2026-07-25**; `f7da52d1` does not contain it |
+| `f7da52d1` is an **ancestor of HEAD** | `git merge-base --is-ancestor` → yes |
+| the runs straddle it | 16:01 → **6** · `f7da52d1` 16:39:50 · 20:37 → **7** |
+
+🔴 **So the 7th is a genuine regression on committed code, not contamination and not CN-006's.**
+`9e76bae4` (20:43) is a red herring — it landed *after* the run that already showed 7.
+
+⚠️ **The attribution is solid; the COUNT is not witnessed. Record them separately, and do not quote
+2843/7 until a completed run says so.**
+
+⚠️ **The miss worth more than the fix:** `git log -S"injectIntoHtml"` did **not** return `f7da52d1`,
+and that null nearly cleared it. The commit changes the *inputs* the spec compares, never the symbol's
+name. **A symbol-scoped search cannot answer a behavioural question** — same family as a seed-scoped
+sweep and a dateless mtime: filter, then read the null as absence.
+
+🔴 **That golden is the ONLY cross-package check that the editor's injector still agrees with
+`nodegx-module-inject`** (`projectmodules.test.ts:14`). It has been red on the branch since 16:39.
 
 **s44 did not run `test:ci`, as a claim rather than an omission:** `.ts`/`.tsx` under `src/`, two new
 specs, no `.jsx`, nothing under `packages/noodl-editor/tests/`. 🔴 **That reasoning does not transfer
@@ -247,6 +272,18 @@ reassurance. `NEVER_SWEEP` held and their run survived the launch.
 
 🔴 **Reply to a socket on its socket.** ⚠️ **Announce teardown to the FULL launch list.** 🔴 **Keep peer
 messages short and rare.**
+
+### 🔴 s44 overwrote a peer's edit to THIS file, and the cause is one missing Read
+
+This file is **rewritten** each session, and s44 rewrote it from the copy in its context at session
+start — **without re-reading the file first**. A peer had added 29 lines to it (`3e4e9b00`, the
+`f7da52d1` attribution now in §2) forty minutes earlier. The rewrite discarded them silently; they
+were recovered from `git show` and merged back.
+
+✅ **Before rewriting any shared document, `git log -1 --stat` it and re-read it.** A whole-file
+overwrite is the one edit that cannot conflict — git accepts it happily, and the loss is invisible in
+the diff you are looking at. ⚠️ The same rule already exists for `MEMORY.md` and for exactly this
+reason; **it applies to every file peers also write**, which on this checkout is most of `dev-docs/`.
 
 ### Teardown
 
