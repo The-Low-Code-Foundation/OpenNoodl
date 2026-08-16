@@ -58,10 +58,17 @@ and opens *everything* on the platform.
    lesson projects from the platform API ("beaming" is a pull), runs grading locally, and *pushes*
    results up. No new listening surface on the user's machine, ever.
 
-## The rulings queue — ✅ EMPTY
+## The rulings queue — ⚠️ REOPENED 2026-08-15 (D14 ruled · D15, D16 open)
 
-> ✅ **All eleven rulings are made. The register is [RULINGS.md](RULINGS.md)** — read that, not the
-> list below, which is kept only as the record of what was asked.
+> ⚠️ **It was empty, and it is not any more.** 2026-08-15 Richard scoped **UNI-011** — the community
+> mirrored inside the app — which brought **D14** (ruled: the web is canonical, the **editor mirrors
+> it against the same API**, editor-only features are the transition incentive) and left **D15**
+> (community for org-minor accounts) and **D16** (the never-empty launch threshold) open. **D13 is
+> amended** in the same sitting: LearnBook gains an **editor client**; its *build* does not move off
+> the platform. All of it is in [RULINGS.md](RULINGS.md).
+>
+> ✅ **The original eleven are still made. The register is [RULINGS.md](RULINGS.md)** — read that, not
+> the list below, which is kept only as the record of what was asked.
 >
 > **First session 2026-08-14:** D1, D10, R6's clarification and the UNI-010 verifier question;
 > **D12 struck** as a false premise — written up in
@@ -151,6 +158,11 @@ and opens *everything* on the platform.
   **[phase 68](../phase-68-learnbook/README.md)**, sequenced after Tier 1 + UNI-004, built on the
   D1 stack (not NodeGX — the reasons are in [RULINGS.md](RULINGS.md) D13, do not re-litigate).
   UNI-004 keeps only the transaction: offer → booking → payment.
+  ⚠️ **Amended 2026-08-15:** D14's mirror rule reaches it — LearnBook gains an **editor client** as a
+  later phase-68 tranche, because an assignment can then carry **evidence from the real project**
+  (UNI-007's grading runner already evaluates conditions against a live graph). 🔴 D13's reasons were
+  about *where it is built*, and none of them moves: the platform still owns the server and schema.
+  Phase 68's *"no editor-side code, no bridge"* becomes *"none in v1"*.
 - **The web-light browser editor** (R10 — parked, a marketing question for later).
 - **Merch fulfilment** (the Backendless $1-cap trick is endorsed, but redemption waits for earners — D3).
 - **Certification** ("NodeGX Certified" via graded builds) — designed for, not built; it slots

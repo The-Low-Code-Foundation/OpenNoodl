@@ -4,11 +4,19 @@
 future phase re-litigates one. Supersedes the "rulings queue" in [README.md](README.md), which now
 points here.
 
-**Status: the queue is empty.** D1 and D10 were ruled 2026-08-14 (first session, written up in
+**Status: the queue REOPENED 2026-08-15 with three entries — D14 ruled, D15 and D16 open.** D1 and
+D10 were ruled 2026-08-14 (first session, written up in
 [PRIOR-ART-RECONCILIATION.md](PRIOR-ART-RECONCILIATION.md)); **D2–D9 and D11 were ruled 2026-08-14
 (second session)** and are recorded below. R6's clarification and the UNI-010 verifier question are
 in the reconciliation document. **D13 was ruled 2026-08-14 (fourth session)** — the coaching
-delivery layer (LearnBook) is [phase 68](../phase-68-learnbook/README.md), on the platform stack.
+delivery layer (LearnBook) is [phase 68](../phase-68-learnbook/README.md), on the platform stack —
+and is **amended 2026-08-15** by D14 (an editor *client*; the build does not move).
+
+> 🔴 **The queue is no longer empty, and that is deliberate.** 2026-08-15 Richard scoped a new
+> surface — the community, mirrored inside the app — which became **UNI-011** and **D14**. Two
+> questions it raises are *not* ruled (**D15**, **D16**) and both change what gets built, so
+> neither should be discovered mid-build. Anything that reads "the queue is empty" elsewhere in
+> this phase is now stale; this file is the register.
 
 > 🔴 **Do not re-litigate any of these.** If one turns out to be wrong, amend it here with a date
 > and a reason — do not leave two live documents in disagreement. That failure mode is what
@@ -32,7 +40,10 @@ delivery layer (LearnBook) is [phase 68](../phase-68-learnbook/README.md), on th
 | **D10** | Minors + GDPR | **Org-owned pseudonymous accounts**; school is the data controller | 08-14 |
 | **D11** | Usage-analytics toggle | **In the v1 consent screen, default off**; never shown to org-minor accounts | 08-14 |
 | ~~D12~~ | ~~LEARN-002's D1–D6~~ | 🔴 **STRUCK** — a false premise; all six answered 2026-08-09 | 08-14 |
-| **D13** | Coaching delivery (LearnBook) | **Phase 68, platform repo, D1 stack — not NodeGX**; reuses UNI-005's roster and UNI-006's state machine; NodeGX rebuild is a later tranche | 08-14 |
+| **D13** | Coaching delivery (LearnBook) | **Phase 68, platform repo, D1 stack — not NodeGX**; reuses UNI-005's roster and UNI-006's state machine; NodeGX rebuild is a later tranche · ⚠️ **amended 08-15 by D14** — an editor *client* is in scope; the *build* does not move | 08-14 |
+| **D14** | Community surface: web, editor, or both | 🔴 **BOTH — the web is canonical and public; the editor MIRRORS it against the same API.** Editor-only features are the transition incentive, not a different feature set | **08-15** |
+| **D15** | Community for org-minor accounts | 🟡 **OPEN** — blocks UNI-011's visibility rules | — |
+| **D16** | The never-empty launch threshold | 🟡 **OPEN** — blocks UNI-011 shipping, not building | — |
 
 ---
 
@@ -302,6 +313,158 @@ turns the demo into ecosystem assets instead of a tax on the coaching launch.
 - **D10 reaches it.** Coaching spaces put an adult in private threaded exchange with org-minor
   accounts; phase 68 opens with that surface **off for org-minor accounts** until its safeguarding
   ruling (E3 in its queue) says otherwise — the same default-off posture as D9 obligation 5.
+
+### ⚠️ D13 amended 2026-08-15 — LearnBook gets an editor client; the build does not move
+
+**D14 reaches D13.** Richard asked whether LearnBook could be mirrored in the editor, on the
+grounds that *"syncing up what the trainer is asking the learner to do, and what they've actually
+done in the editor"* is the whole difficulty of coaching a builder. **Ruled: yes, as a client —
+and D13's three reasons are untouched.**
+
+The distinction is the whole amendment, so it is stated flatly:
+
+| | |
+|---|---|
+| **D13 ruled** | *where LearnBook is **built*** — platform repo, D1 stack, because the spine is there, D9's backend is a capped demo tier, and the feature list sits on the node library's gaps |
+| **D14 rules** | *how many **clients** that build has* — the web one, and an editor one against the same API |
+
+None of D13's reasons is an argument against a second client; all three are arguments about where
+the *server and the schema* live. Phase 68's **L1 stands verbatim**. What changes is its
+*"No editor-side code, no bridge"* line, which becomes **"no editor-side code in v1"**.
+
+🔴 **Why the editor client is worth more here than anywhere else in the phase, and it is not
+convenience:** LearnBook's assignment thread already requires *"coachee must reply, coach must
+VALIDATE"* (LB-006), reusing **UNI-006's assignment state machine**. UNI-007 already ships a grading
+runner that evaluates completion conditions against a live graph
+([`lessonevalconditions.ts`](../../../packages/noodl-editor/src/editor/src/views/lessons/lessonevalconditions.ts),
+with the sidecar-safe split at `.live.ts`). An editor-side LearnBook can therefore attach
+**evidence from the actual project** to a submission — the coach sees what the learner built rather
+than a description of it. That is a capability the web client cannot have at any price, and it is
+the strongest single argument in this amendment.
+
+⚠️ **Three constraints the editor client inherits and must not quietly drop:**
+
+1. **L5 / E3 hold unchanged.** Org-minor accounts cannot enter coaching spaces in *either* client
+   until E3 is ruled. A second client is a second place to get this wrong.
+2. **Evidence is project content.** D11's consent line — *"which nodes people ask about, never
+   project content"* — binds here exactly as it binds UNI-011. Attaching a graph excerpt or a port
+   value to a submission is opt-in, previewed and redactable even though the recipient is the
+   learner's own coach. **A trusted recipient is not a reason to skip the preview.**
+3. **Sequencing.** The editor client is a **later tranche of phase 68**, after its v1 web surface
+   exists. Building two clients against a schema that has never run gets both rebuilt.
+
+⚠️ **The honest cost, recorded so it is not discovered later:** phase 68's second act (L2) already
+promised a NodeGX-*built* coachee frontend as dogfooding. That is a **different artifact** from an
+editor-*native* client, and both now sit on the roadmap. They must not be conflated — one is an
+exported app proving the node library, the other is editor chrome. If only one survives, say which.
+
+---
+
+## D14 — the web is canonical; the editor mirrors it
+
+**Ruled 2026-08-15 (Richard): both surfaces, one API.** The public web platform is the canonical
+community; **the editor is a second client of the same backend**, showing the same content.
+Editor-only features are the reason to transition — not a different feature set.
+
+```
+                    ┌─────────────────────────┐
+                    │   platform API (D1)     │   one schema, one auth,
+                    │   threads · events ·    │   one points ledger
+                    │   profiles · RFPs       │
+                    └───────────┬─────────────┘
+                                │
+              ┌─────────────────┴─────────────────┐
+              ▼                                   ▼
+   ┌──────────────────────┐            ┌──────────────────────┐
+   │  WEB  (canonical)    │            │  EDITOR  (mirror)    │
+   │  anyone, no install  │            │  + ask about a node  │
+   │  indexed by search   │            │  + share a capture   │
+   │  linkable, shareable │            │  + evidence from the │
+   │  RFP clients, orgs   │            │    real project      │
+   └──────────────────────┘            └──────────────────────┘
+```
+
+**Why this, and not either extreme.** The recommendation put to Richard was a *split* — launcher owns
+browsing, web owns the public face. He rejected it, and was right to: a split makes the editor a
+**reduced** surface, which gives a user a reason to leave it. The mirror keeps one content model and
+makes the editor a **superset**, so moving from web to editor is a gain with no loss. Meanwhile the
+web keeps the property the editor can never have — **anyone can participate without installing
+anything** — which is what RFP clients, school admins, coachees and everyone arriving from a search
+result actually need.
+
+⚠️ **The public landing page already exists and is live** (`nodegx.io`), so the web surface is not a
+hypothetical this ruling creates. It is a running thing that now gets a defined relationship to the
+editor.
+
+**Consequences, in order of how much they cost:**
+
+1. 🔴 **The trust boundary gets *more* important, not less.** A mirror renders posts other people
+   wrote, and the app's renderer is `nodeIntegration: true, contextIsolation: false`
+   ([`main.js:406`](../../../packages/noodl-editor/src/main/main.js#L406)) — **including the
+   launcher**, which is `pages/ProjectsPage` inside that same `BrowserWindow`, not a separate
+   window. This phase already found a live hole of exactly this shape (`unsafe-url`, second
+   amendment below): a `javascript:` URL in a *lesson* body was arbitrary code with filesystem
+   access. Stranger-authored post bodies are the same sink, unbounded and changing daily. **No post
+   body may reach the editor's renderer as HTML.** The two survivable shapes are a sandboxed
+   `<webview>` island (the `legal-window.js` recipe — `nodeIntegration: false`,
+   `contextIsolation: true`, `sandbox: true`, `will-navigate` intercepted) or fetching **raw
+   markdown** and rendering it ourselves through the scheme allow-list `lessonverify` already ships.
+2. **One API, two clients — so the API is a deliverable, not an implementation detail.** Versioning,
+   pagination, and an auth story that works for a desktop client are v1 concerns. A web-shaped API
+   the editor has to scrape is the failure mode.
+3. **The bridge direction is unchanged and still binding.** Editor-outbound only (README surface 3).
+   The mirror *pulls* on its own schedule; the platform never connects in. A "live" mirror is a
+   poll, and an unread count is a poll result.
+4. **"The login gates nothing" acquires a second reading.** Reading the mirror must work signed out,
+   because the web equivalent does. A mirror demanding an account to *read* would be stricter than
+   the public site it mirrors, which inverts principle 1.
+5. **UNI-009 is now the canonical surface being mirrored**, not merely "the site". Its Discourse
+   choice becomes load-bearing for the editor too: the SEO'd public forum is the half the editor
+   cannot supply, and Discourse's API is what the mirror consumes.
+6. ⚠️ **Phase 37 (project tabs) is the enabler Richard named, and it is scoped, NOT built** — six TAB
+   tasks, tiered, unstarted. Its design makes the launcher **tab 0 that never goes away**, which is
+   what would allow reading the community without leaving a project. 🔴 **UNI-011 must not assume
+   it.** Design the mirror to be reachable today and *better* once phase 37 lands — never so that it
+   only makes sense afterwards.
+
+---
+
+## D15 — community visibility for org-minor accounts · 🟡 OPEN
+
+**The question:** is the community surface — web, editor, or both — shown at all to the org-owned
+pseudonymous accounts D10 created for under-16s?
+
+**Why it is not answerable by analogy.** D10 made the school the data controller and kept child PII
+off our systems, but it ruled on *identity*, not on *an open forum*. A pupil posting into a public
+thread is a different exposure from a pupil holding an account: it is public speech by a minor,
+under a handle the school can map back to them, readable by adults we do not vet.
+
+**Recommendation (not a ruling):** default **off**, with the org admin able to enable **read-only** —
+matching D9 obligation 5 and phase 68's L5. 🔴 The value of matching is not tidiness: three surfaces
+disagreeing about what a minor may do is how one of them ends up wrong, and that is the FUN-001
+shape this phase has already paid for once.
+
+**What it blocks:** UNI-011's visibility rules only. The mirror can be built before this is ruled; it
+cannot ship to an org tenant.
+
+---
+
+## D16 — the never-empty threshold · 🟡 OPEN
+
+**The question:** what must be true of the community before the editor surfaces it to every user?
+
+**Why it needs a number rather than a judgement.** A mirror that opens onto three threads from two
+months ago advertises a dead community to every user, every day, from inside the product — and a
+first impression of a community is made once. It is not recoverable by shipping more code.
+
+**Recommendation (not a ruling):** a named, checkable threshold before the entry point appears — for
+example **30 threads, three consecutive weeks with a call held, and a median first reply under 24
+hours**. Until it is met, the entry point opens the browser instead of the mirror.
+
+⚠️ **The related design obligation, which is not optional either way:** the mirror's home must be
+*structurally* incapable of looking empty — events, replays, release notes and the prefab shelf all
+exist whether or not anyone posted this week. A threshold protects the launch; the composition
+protects every quiet week after it.
 
 ---
 
@@ -584,6 +747,14 @@ spent by work that never knew it was spending them.
 > 8,197 and nothing at 8,199, so the headroom a renegotiation deliberately buys is consumed silently
 > and the first person told is the one who runs out. *If a margin matters, something has to state it
 > on a passing run.*
+
+**The outcome, so this entry does not itself go stale:** the bar was **raised to 8,280** against a
+measured **8,223** — restoring LEG-001's slack rather than stacking UNI-010's cost on an exhausted
+bar. **57 tokens remain, and the test note says there should not be a third renegotiation**; the
+sanctioned next move is a `$ref`ed node schema, since the node schema is inlined three times.
+⚠️ **Cross-phase (2026-08-15):** phase 69's **CN-006** and **CN-009** are both designing new MCP tools
+against those same 57 tokens, and were scoped against the old 8,200 figure. Their numbers have been
+corrected; anything this phase adds (a `derive_starter`) competes with them.
 
 ### Blocker 2 — phase 60's signal wording: **landed upstream, one downstream edit still owed**
 

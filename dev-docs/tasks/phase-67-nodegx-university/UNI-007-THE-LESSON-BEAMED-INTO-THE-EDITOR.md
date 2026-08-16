@@ -192,6 +192,28 @@
 > before the project it grades exists — so wrong-but-plausible depth is engine 1's job to reveal,
 > not the static check's.
 >
+> #### 🔴 A second boundary, found 2026-08-15 reconciling with phase 69: the catalog is built-ins only
+>
+> `defaultLessonVocabulary()` is built over `defaultCatalog()`, and `node-catalog.json` is generated
+> from the **live register of built-ins** at repo-build time — a project's own `noodl_modules` kit
+> nodes are not in it and cannot be. So **a lesson that teaches a custom node is refused at install**:
+> `unknown-node-type` is `severity: 'error'` here, that error is class **F1**, and `REQUIRED_CLASSES`
+> demands F1 of *every* provenance — the bundle is rejected for `curated` exactly as for `local-ai`,
+> with a message telling the author their own node type does not exist.
+>
+> ⚠️ **This is a scope cap, not a defect to fix here.** The verifier is right to reject a name it
+> cannot resolve; what is missing is the project-scoped catalog, which is
+> [phase 69 / CN-003](../phase-69-the-node-you-write-yourself/CN-003-THE-PROJECT-CATALOG-OVERLAY.md)'s
+> keystone. ✅ **The seam it needs already exists and costs this task nothing:**
+> `VerifyLessonOptions.vocabulary` is an injection point and `LessonVocabulary`'s constructor takes
+> `(catalog, index)`, so a caller holding a project passes a vocabulary built over the overlaid
+> catalog. 🔴 It must be built from **the bundle's own project files**, not the currently-open
+> project — this check runs before the learner's project exists.
+>
+> Until then: **no UNI-006 or UNI-007 curriculum step may name a kit node type**, and phase 69's
+> CN-004 owns proving the consequence when the overlay lands (the step must *tick*, not merely stop
+> erroring).
+>
 > #### 🔴 THE DEFECT SLICE 3 SHIPPED, found by slice 4's author on 2026-08-15
 >
 > **`handleOpenLearningLesson` never set `project.lesson`, so a Learning-folder lesson opened as an
