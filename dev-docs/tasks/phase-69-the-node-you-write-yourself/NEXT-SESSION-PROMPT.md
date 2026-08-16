@@ -1,12 +1,12 @@
 # Phase 69 — next session
 
-**Written 2026-08-16, session 11.** 🔴 **This file is a REWRITE, not an amendment.** It is
+**Written 2026-08-16, session 12.** 🔴 **This file is a REWRITE, not an amendment.** It is
 overwritten every session; if you find yourself prepending, rewrite it instead. Everything that
 outlives the phase goes to memory, not here.
 
-Read [TASKS.md](TASKS.md) and [RULINGS.md](RULINGS.md) first. **CN-006 is closed on both halves and
-now driven — §Owed is discharged.** The queue is empty and **CN-007 is next**, but read §2 before
-picking it up: the drive produced two product defects that belong to nobody yet.
+Read [TASKS.md](TASKS.md) and [RULINGS.md](RULINGS.md) first. **s11's two loose defects now have
+task numbers, and one of them is built.** The remaining queue is **CN-019, then CN-007** — see §2
+for why CN-019 goes first.
 
 ---
 
@@ -15,144 +15,149 @@ picking it up: the drive produced two product defects that belong to nobody yet.
 | Task | Built | Driven | Note |
 |---|---|---|---|
 | **CN-001** … **CN-005** | ✅ | — | Closed in sessions 4–8 |
-| **CN-006** | ✅ both halves | ✅ **s11** | AC3 ✅, AC1 ⚠️ half, staleness twin 🔴 **real** — §1 |
-| CN-006b … CN-017 | 📋 | — | **CN-007 is next.** §2's F1 is the thing CN-006b is built on |
+| **CN-006** | ✅ both halves | ✅ s11 | Closed. AC3 ✅, AC1 ⚠️ half — the missing half **was CN-018** |
+| **CN-018** | ✅ **producer side, s12** | 🔴 **no** | Needs a viewer build — §3 |
+| **CN-019** | 📋 **specced s12** | — | **Next.** Small, and CN-007 wants it done |
+| CN-006b, CN-007 … CN-017 | 📋 | — | **CN-018 goes before CN-006b; CN-019 before or with CN-007** |
 
-s11 **wrote no product code**. It launched an editor, measured the four things s10 could not, and
-found two defects outside this task's code.
-
----
-
-## 1. What the drive settled
-
-Full record, with the observations written **before** the launch:
-[notes/cn-006-drive-observations.md](notes/cn-006-drive-observations.md).
-
-✅ **AC3 closes.** A `StatTile` with no parameters set: `paddingLeft` **16px**, background
-**rgb(255,255,255)**, radius **8px**, border **1px**, label **14px**, value **24px**. **`)px` occurs
-0 times** in the viewer document and in 95,977 chars of CSS. The discriminator was run —
-`--space-4` resolves on `:root`, so "tokens never delivered" is excluded, and the `)px` bug would
-have read `0px`. **s10's guards hold in a browser.**
-
-🔴 **The `ProjectModel.modules` staleness twin was REAL.** `createNodeKit()` called directly over CDP
-(bypassing `KitsSection`) left the kit on disk and **absent from the model**; `readModules()` brought
-it in. s10's call is load-bearing, not belt-and-braces.
-
-✅ **`CodeFileDocument` mounts and renders** — identity `noodl_modules/drive-kit/index.js`, real bytes
-in the buffer, checked on lines only that file has.
-
-⚠️ **AC1 is half met.** Placeable ✅. *"Under its kit's name"* ❌ — see F1.
+s12 wrote ~40 lines of product code and closed the golden that had been misattributed three times.
 
 ---
 
-## 2. 🔴 Two defects the drive found, both outside CN-006, both wanting task numbers
+## 1. ✅ The cross-package golden is CLOSED — and the story about it was false
 
-### F1 — every kit collapses into one unnamed picker group
+s11 §4 left this proven-real and unowned. It is fixed (`3d3cbb22`).
 
-The picker files all kit nodes under **"External libraries"** in a subcategory named `''`. Two kits
-each shipping a `Stat Tile` showed **two identical cards** — same name, same category, same `title`
-tooltip — separable only by a `data-test` attribute.
+`f7da52d1` (CN-003) taught the injector to emit `window.__noodl_module_name` before each kit's
+script tag and updated **only `@nodegx/module-inject`'s own tests**. The editor's
+`expected-inject.snapshot.txt` was last recorded by LIB-003 (`19ecdff7`) and never moved — generated
+**26** lines, committed golden **24**, one marker line short per prefix block.
 
-✅ **One hard-coded line**, `packages/noodl-runtime/src/nodelibraryexport.ts:917-932`: the loop reads
-`nodeMetadata.module` to decide a node *is* a module node, then emits `{ name: '', items }` and
-throws the name away. `utils/createnodeindex.ts:115-131` renders it faithfully, as nothing.
+What was done, and the order matters:
 
-⚠️ **Not CN-006's code** — the scaffold sets `module` correctly, which is why `NodeLibrary`'s type
-record knows `module: 'drive-kit'` while the picker does not. 🔴 **This is the provenance CN-006b is
-built on**, so it is worth doing before that task rather than inside it.
+- **Reproduced first**, in plain Node, every input at committed state. It reproduced every time.
+  🔴 **The relayed story — three sessions deep — was that this was `test:ci` contamination "that
+  would not reproduce on committed code".** It was false, and CN-006's work was what got blamed for
+  it.
+- **Re-recorded through the editor's exact composition** (`scanModuleManifests` → `toInjectModules`
+  → `injectIntoTemplate` → `buildInjectionTags`, `projectmodules.ts:534-556`) rather than the
+  package's own `injectIntoHtml`, so the golden is checked against the surface the editor test
+  actually calls.
+- **Mutation-proven** — commenting out the marker emission puts it back to 24 lines and fails.
+- The test header now carries a **do-not-regenerate** note naming this episode, because the
+  next person to meet a red byte-comparison will be tempted to re-record it away.
 
-### F2 — the file editor shows a Function-node port hint
-
-`CodeFileDocument` reuses `JavaScriptEditor` and inherits FUN-006's port bar, so a kit's `index.js`
-renders *"This node has no ports yet. Type Inputs. — the name you use becomes an input port."*
-(`JavaScriptEditor.tsx:316`, from `getCodeAuthoringContext().openNode` — ambient state unrelated to
-the open file). The header also labels the file `SCRIPT`. **Not cosmetic**: it tells a new kit author
-to use a mechanism that does not exist in the file this phase just sent them to.
-
----
-
-## 3. ⚠️ One thing observed and deliberately NOT claimed
-
-The kit reached the picker **without anyone clicking "reload the preview"**, which would make
-`KitsSection`'s instruction unnecessary. **This is not reported as a finding.** Peers were editing
-the tree and the log shows `_src_frames_viewer-frame_index.*.hot-update.json` — **HMR was reloading
-the viewer frame for reasons unrelated to the drive**, and a reload I did not cause is
-indistinguishable from a product that reloads itself. **Wants a re-run on an undisturbed tree**:
-scaffold, then poll the viewer's `script[src]` list without touching anything.
+**So `test:ci` should now read 2843 / 6 again.** ⚠️ **Not measured** — no suite was run this session
+(§5). Re-measure; do not quote that figure as observed.
 
 ---
 
-## 4. 🔴 The cross-package golden: now PROVEN real, and still not mine
+## 2. 🔴 CN-019 is next, and the obvious fix is the wrong one
 
-s10 left `projectmodules — injectIntoHtml snapshot … byte-identical HTML to the committed golden`
-failing and attributed it to CN-003. Three sessions then repeated a second-hand story that it was
-**test:ci contamination that would not reproduce on committed code**. **That story is false**, and it
-was checked rather than relayed:
+[CN-019 — A file is not a node](CN-019-A-FILE-IS-NOT-A-NODE.md). `CodeFileDocument` reuses
+`JavaScriptEditor`, so a kit's `index.js` — **the first file CN-006's create command sends a new
+author to** — is labelled `SCRIPT` and greets them with *"This node has no ports yet. Type
+`Inputs.`…"*. It names a mechanism that does not exist in that file.
 
-- reproduced in **plain Node**, no editor, no suite, every input at committed state
-  (`git diff HEAD` empty for the injector, the golden and `projectmodules.ts`);
-- generated output **26 lines**, committed golden **24** — one extra
-  `<script>window.__noodl_module_name = "code-a";</script>` per prefix block;
-- `git log -S "__noodl_module_name" -- packages/nodegx-module-inject` → **exactly one commit,
-  `f7da52d1`** ("fix(cn-003): a kit can say its own name"), and it **is an ancestor of HEAD**;
-- `f7da52d1` updated **that package's own tests** and **not** the editor's golden; the golden's last
-  commit is `19ecdff7` (LIB-003).
+✅ **The lint pass already carries the exact guard the port bar is missing**, and its comment names
+this case by name (`portDiagnostics.ts:634-641`). So one surface of the pair is already right.
 
-**So `test:ci` should read 2843 / 7, and the seventh predates `9e76bae4`.** One-line fix, owned by
-CN-003. ⚠️ **"Clean in the working tree" does not settle this** — it only excludes uncommitted edits.
-It is an absence check on the wrong population; running it on committed code is what answers it.
+🔴 **Do not just copy it.** `openNode != null` fixes the row you observed and keeps the worse one:
 
-✅ **And a second session found a natural experiment that nobody planned** — existing runs, taken
-hours apart for unrelated reasons, bisect it on their own:
-
-| when | what |
+| ambient slot | what the file is told |
 |---|---|
-| 16:01 | run **2843 / 6** — 38 min *before* `f7da52d1` |
-| 16:39 | **`f7da52d1` lands** |
-| 20:37 | run **2843 / 7**, + the projectmodules golden |
-| 20:43 | `9e76bae4` lands — **6 min after the failing run, so it cannot be the cause** |
+| cleared | `no-ports` → *"Type `Inputs.`"* — **the case s11 saw** |
+| a Function popout still live | `unused-ports` → read **that unrelated node's** ports |
 
-The failure appears exactly across `f7da52d1` and nowhere else, and `9e76bae4` is ruled out on
-timing alone. ⚠️ Worth keeping because CN-006's work was what got blamed, second-hand, three times.
+The defect is that the subject is inferred from module-level ambient state (`authoringContext.ts`,
+whose only producer is the property panel). A better inference is not a fix. **Write AC2 — open a
+kit file immediately after closing a Function popout — before writing any code.**
+
+⚠️ `shouldShowBar` honours a dismissal and retires after N successes, so **a clean screenshot on a
+machine that has already dismissed the bar reads exactly like a fix.** Assert on `portBarState`'s
+kind, or force it.
+
+---
+
+## 3. 🔴 CN-018 is built and NOT driven — do not report it as visibly fixed
+
+[CN-018](CN-018-THE-PICKER-NAMES-THE-KIT.md) landed the producer side (`2d8f8e02`): group by
+`metadata.module`, one named picker subcategory per kit, 6 tests, mutation-proven.
+
+**The editor loads its viewer from `packages/noodl-editor/src/external/viewer`, which is gitignored
+build output** (`.gitignore:197`; `src/frames/viewer-frame/index.bundle.js` is untracked too). A
+running editor keeps the old grouping until a viewer build. This is the same *driven ≠ shipped* gap
+the phase keeps meeting — the source is right and the app has not been told.
+
+🔴 **The one-kit blind spot, which is the transferable part.** Every kit fixture in this repo
+installs exactly **one** kit, and with one kit an unnamed group is **indistinguishable** from a
+correctly-named one that happens to be collapsed. A one-kit assertion, drive or screenshot passes
+against the old code. **Two is the minimum for this class of defect** — apply it to CN-006b.
+
+**Owed on that same viewer build, all three at once:**
+
+1. Drive it — two kits installed, two `Stat Tile`s, distinguishable **without reading `data-test`**.
+2. `packages/noodl-mcp/tests/kitAgreement.test.ts:182-185` — its editor expectation is a dated
+   `['Unknown Module', 'Unknown Module']` and its own comment says so at length. Becomes
+   `['Demo Kit', 'Demo Kit']`.
+3. `packages/noodl-editor/tests-unit/cn-003/fixtures/kit-app.editor-nodelibrary.json` — CN-003's
+   owed re-record. (It carries only `nodetypes`, so CN-018 does not change it; it is just the same
+   drive.)
+
+⚠️ **Found in passing, not fixed:** `NodeLibraryImporter.mergeInByName` replaces a group **wholesale
+by name** (`NodeLibraryImporter.ts:366-388`). Under the old `''` grouping a cloud-runtime module
+group replaced **every browser kit group at once**. Named groups narrow that to same-name
+collisions; a kit registering nodes in both runtimes is still last-wins. Unmeasured. Wants a look if
+CN-013 is picked up.
+
+---
+
+## 4. ⚠️ Still carried from s11, unresolved
+
+**§3 of s11 — did the kit reach the picker without a manual preview reload?** Observed, deliberately
+not claimed: peers were editing the tree and HMR was reloading the viewer frame for unrelated
+reasons, so a reload nobody caused is indistinguishable from a product that reloads itself. **Wants
+a re-run on an undisturbed tree**: scaffold, then poll the viewer's `script[src]` list without
+touching anything. This matters because `ViewerConnection.sendRefresh()` is dead at both ends —
+sends `cmd:'refresh'`, the runtime emits `'reload'`, nothing listens — which is *why* `KitsSection`
+has to tell the author to reload by hand.
 
 ---
 
 ## 5. Owed by Richard
 
-Unchanged from s7–s10, all still open:
+Unchanged from s7–s11, all still open:
 
 1. **Widen the project gate to check parameter values?** `checkParameterValues` has one production
    caller, so `validate:project` / `validate_project` check parameter values for **no node of any
    provenance**. `cn004.test.ts`'s last block asserts the silence deliberately — **replace it when
    the call is taken, do not delete it.**
 2. **The ungated typechecks.** `packages/noodl-mcp`'s `tsc --noEmit` is red (8) and runs in no CI
-   job; seven of eleven `typecheck:*` scripts run nowhere, and `scripts/` is in none.
+   job; seven of eleven `typecheck:*` scripts run nowhere, and `scripts/` is in none. ⚠️ Add a
+   twelfth data point: `typecheck:runtime` is **red at HEAD with 2** (`EditorConnection` redeclared
+   across two test files) — confirmed by a control run at HEAD with s12's changes removed, so it is
+   nobody's regression and nothing is watching it.
 3. **Should `project`'s `find_tools` purpose line name kits?** It costs resident tokens out of the
    same 57 CN-009 wants. `tests/kitTools.test.ts` has the control that fails when it changes.
 
-Open, not caused here, all wanting task numbers: 🔴 **F1 and F2 above** · 🔴 `render-from-disk.js`
-answers `/` and `/index.html` and 404s everything else, including the start page's own `urlPath` ·
-🔴 the `@noodl/mcp` provisioning flake · 🔴 `ViewerConnection.sendRefresh()` is dead at both ends
-(sends `cmd:'refresh'`, runtime emits `'reload'`, nothing listens) — which is *why* `KitsSection` has
-to tell the author to reload, and §3 is unresolved partly because of it.
+Open, not caused here, still wanting task numbers: 🔴 `render-from-disk.js` answers `/` and
+`/index.html` and 404s everything else, **including the start page's own `urlPath`** · 🔴 the
+`@noodl/mcp` provisioning flake · 🔴 `ViewerConnection.sendRefresh()` dead at both ends (§4).
 
 ---
 
 ## 6. Checkout conditions
 
-**19 peer sessions live** (≈40 MCP servers, ~2 per session — all with live parents, no orphans).
+**19 peer sessions live** at session start.
 
-- ✅ **An editor WAS launched.** Announced to all 19 before launching and to all 19 (list re-taken)
-  after `dev:stop`. 25 processes stopped, nothing left, 9222 free — verified independently by three
-  peers.
-- ⚠️ **Scope the teardown claim:** MCP servers were live across the sweep and none died, which
-  exercises the MCP half of the shield. It says **nothing** about the suite half — no suite was
-  running, and "the guard works" and "the guard was deleted" read identically then.
-- 🔴 **A peer's edit to `esLintDiagnostics.ts` forced a full HMR reload mid-drive**, dropping the
-  editor to the Launcher and wiping every injected CDP handle. Budget for it; do not assume a drive
-  holds for its whole length.
-- ✅ **No suite was run this session.** `9204` took the window immediately after the teardown.
-- ✅ Fixture `cn006-drive` deleted, both its entries filtered out of NodeGX's
-  `recently_opened_project.json` (2 → 0), source `cn001-kit-drive` verified untouched.
+- ✅ **No editor was launched and no suite was run.** Everything s12 claims was measured in plain
+  Node or in `noodl-runtime`'s jest, both safe beside a live stack.
+- ⚠️ **s12 edited sources** (`nodelibraryexport.ts`, two editor test files). That is inside the
+  `test:ci` contamination window for any peer that was mid-webpack; nobody announced one.
+- ✅ Gates run: `noodl-runtime` full jest **2497 passed / 13 skipped / 136 suites**;
+  `@nodegx/module-inject` **15 passed**; `typecheck:runtime` red at **2**, proven pre-existing by a
+  control run at HEAD.
+- ✅ A peer announced a teardown mid-session (25 stopped, 9222 free). Not used.
 - ✅ **`git commit -F <file> -- <pathspecs>`, always. Never `git add -A`, never `git stash`.**
+  Two commits: `3d3cbb22` (golden), `2d8f8e02` (CN-018 + both specs).
 - Whoever you tell you are starting, tell you have stopped.
