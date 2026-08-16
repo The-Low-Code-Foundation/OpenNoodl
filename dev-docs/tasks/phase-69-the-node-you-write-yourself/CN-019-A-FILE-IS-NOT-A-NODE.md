@@ -7,7 +7,7 @@
 | **Surface** | `editor` (`noodl-core-ui`) |
 | **Rulings** | ✅ **D1a** — the file editor is a real surface, so it has to be right about what it is showing |
 | **Depends on** | CN-006 s10 (`CodeFileDocument`). Nothing depends on this, but **CN-007 does in spirit** |
-| **Status** | 📋 Open |
+| **Status** | ✅ **Built s13** — see [§Built](#-built-2026-08-16-session-13). Drive pending 9222. |
 
 ## Why this exists
 
@@ -127,3 +127,55 @@ none. Inferring the subject from ambient state is the defect; a better inference
 - ⚠️ **The author sees two toolbars** — `CodeFileDocument`'s own `css.Topbar`
   (`CodeFileDocument.tsx:176-206`) sits above `JavaScriptEditor`'s. Worth a look while in here, but
   out of scope unless it is free.
+
+---
+
+## ✅ Built 2026-08-16, session 13
+
+The consumer states its subject; nothing infers it. **~30 lines of product code across five files.**
+
+| File | What changed |
+|---|---|
+| `utils/types.ts` | `CodeSubject = 'node' \| 'file'`, and `JavaScriptEditorProps.subject` |
+| `utils/portBar.ts` | `portBarState(…, subject = 'node')` — `'file'` is `silent` **before anything else is asked** |
+| `utils/modes.ts` | `FILE_LABELS`, and `modeLabel(validationType, subject = 'node')` |
+| `JavaScriptEditor.tsx` | passes `subject` to both; two lines |
+| `CodeFileDocument.tsx` | `subject="file"`, and clears the ambient slot on mount |
+| `code-editor/index.ts` | exports the type |
+
+**Both surfaces of the pair have exactly one production caller** (`portBarState`, `modeLabel`), so
+the default `'node'` reaches the four property-panel call sites unchanged and no popout moved.
+
+### 🔴 The mutation that matters is the *second* one
+
+Removing the guard is the easy proof and it says little. The proof this task asked for is that the
+**copied `openNode != null` guard fails**, and it does — same three new cases, run three ways:
+
+| `portBarState` | AC1 (file, slot clear) | **AC2 (file, slot holds a live node)** | FUN-006's own cases |
+|---|---|---|---|
+| **as built** (`subject`) | ✅ silent | ✅ silent | ✅ 24/24 |
+| **guard deleted** | ✕ *"Type `Inputs.`"* | ✕ *"Read Temperature …"* | ✅ |
+| 🔴 **`if (node == null) return silent`** | **✅ silent** | ✕ *"Read Temperature …"* | ✕ **2 broken** |
+
+Row 3 is the finding: the copied guard **passes AC1** and would have shipped. It also breaks two
+existing FUN-006 cases, because a blank Function node's `openNode` is real and empty — so the naive
+guard does not merely miss the worse row, it retires the feature's whole reason to exist.
+
+⚠️ **AC2's unit form forces the slot rather than closing a popout.** `CodeEditorType#dispose` clears
+it on every close path, so *"immediately after closing a Function popout"* is **AC1 in disguise**.
+The row that bites is a popout still live, and only a forced slot reaches it.
+
+### What clearing the ambient slot is for, given the prop already fixes the bar
+
+`subject="file"` means the port bar never reads `openNode` at all, so AC1's second half looks like
+belt and braces. It is not, and it is the reason to keep it: the **lint** pass still guards on
+`openNode != null` (`portDiagnostics.ts:634-641`), so a file opened over a stale slot would get a
+kit module's `no-undef` dressed up as advice about whichever node was last open. Clearing on mount
+closes that from the other end without touching a passing surface.
+
+### Tests
+
+`tests/code-editor/portBar.test.ts` — a `CN-019` describe of five, including the `?`-button case
+(a *suppressed* bar grows a restore control; a *silent* one must not).
+`tests/code-editor/modes.test.ts` — AC4, with the popout label as the control on every row.
+**Full `noodl-core-ui` suite: 474 passed / 26 suites.**

@@ -64,6 +64,7 @@ export function JavaScriptEditor({
   onSave,
   onClose,
   validationType = 'expression',
+  subject = 'node',
   disabled = false,
   height,
   width,
@@ -312,8 +313,13 @@ export function JavaScriptEditor({
    * Recomputed per render rather than held: it is a pure function of text the
    * component already has, and a second copy of that text is a second thing that
    * can be stale.
+   *
+   * CN-019 — `subject` is what decides whether there is a node to speak about at
+   * all; see `utils/portBar.ts` for why the ambient `openNode` cannot answer
+   * that question in either direction. `'file'` is silent, so the `?` restore
+   * button below is not offered either: there is no hidden hint to bring back.
    */
-  const barState = portBarState(validationType, getCodeAuthoringContext().openNode, documentText);
+  const barState = portBarState(validationType, getCodeAuthoringContext().openNode, documentText, subject);
 
   // ⚠️ §2's auto-retire counts "**wrote** a working output", not "opened the
   // editor". Opening it fifty times without succeeding is exactly when the bar
@@ -384,7 +390,7 @@ export function JavaScriptEditor({
       {/* Toolbar */}
       <div className={css['Toolbar']}>
         <div className={css['ToolbarLeft']}>
-          <span className={css['ModeLabel']}>{modeLabel(validationType)}</span>
+          <span className={css['ModeLabel']}>{modeLabel(validationType, subject)}</span>
           {showsVerdict &&
             (problemCount > 0 ? (
               <button

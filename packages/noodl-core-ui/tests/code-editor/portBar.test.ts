@@ -113,6 +113,79 @@ describe('what the bar says', () => {
   });
 });
 
+/**
+ * CN-019 — a file is not a node.
+ *
+ * A kit's `index.js`, opened through `CodeFileDocument`, was greeted with
+ * *"This node has no ports yet. Type `Inputs.` — the name you use becomes an
+ * input port."* It is a whole module: no property panel, no ports, and
+ * `Inputs.` is not injected into it. It is also the **first** file CN-006's
+ * create command sends a new kit author to, so the first sentence they read
+ * named a mechanism that does not exist where they are standing.
+ *
+ * The mode is `'script'` for a parser reason — a module has top-level
+ * statements a Function-node parse rejects — and that one field was then read a
+ * second time as *"this is a Script node"*.
+ */
+describe('CN-019 — the subject, and why it is not `node != null`', () => {
+  /** What `openCodeFile` opens: a kit's entry module. Mines nothing. */
+  const KIT_INDEX = "define({ name: 'Stat Tile', inputs: {}, outputs: {} });";
+
+  it('says nothing over a file, whatever the mode', () => {
+    // AC1. Not an empty bar — no bar.
+    expect(portBarState('script', null, KIT_INDEX, 'file')).toEqual({ kind: 'silent' });
+    expect(portBarMessage(portBarState('script', null, KIT_INDEX, 'file'))).toBe(null);
+  });
+
+  /**
+   * 🔴 **The case that separates a real fix from a copied guard.**
+   *
+   * The lint pass solved the same problem with `getCodeAuthoringContext().openNode
+   * != null` (`portDiagnostics.ts:634-641`). Copied here it would close the row
+   * above and keep this one: `openNode` is module-level state whose only
+   * producer is the property panel, so a file opened while a Function node's
+   * ports are still in the slot reads a **non-null** node — and is handed that
+   * unrelated node's ports as if they were its own.
+   */
+  it('says nothing over a file opened while another node is still in the ambient slot', () => {
+    // AC2. `stale` is the Function node whose popout the author had open a
+    // moment ago; nothing about this file produced it.
+    const stale = node(['Temperature'], [{ name: 'Result', type: 'string' }]);
+
+    expect(portBarState('script', stale, KIT_INDEX, 'file')).toEqual({ kind: 'silent' });
+
+    // The control, and the whole point of the case: state the subject wrongly
+    // and the file is told to read a port it has never heard of. A guard on
+    // emptiness cannot tell these two calls apart — only the subject can.
+    const asNode = portBarState('script', stale, KIT_INDEX, 'node');
+    expect(asNode.kind).toBe('unused-ports');
+    expect(portBarMessage(asNode)).toContain('Temperature');
+  });
+
+  it('still speaks for a real node, which is the feature this must not retire', () => {
+    // AC3. FUN-006's whole reason to exist, in the mode a Script node uses and
+    // the mode a Function node uses.
+    expect(portBarState('script', node([]), '', 'node')).toEqual({ kind: 'no-ports' });
+    expect(messageFor('', node([]))).toBe(
+      'This node has no ports yet. Type Inputs. — the name you use becomes an input port.'
+    );
+  });
+
+  it('is a node when nobody says otherwise', () => {
+    // The four property-panel call sites pass no subject and must not change.
+    expect(portBarState('function', node([]), '')).toEqual(portBarState('function', node([]), '', 'node'));
+  });
+
+  it('offers no ? button over a file, because there is no hidden hint to restore', () => {
+    // `JavaScriptEditor` renders the restore button on `barMessage !== null &&
+    // !showBar`. A state that is silent rather than suppressed has no message,
+    // so the toolbar does not grow a control that would do nothing.
+    const state = portBarState('script', node(['Temperature']), KIT_INDEX, 'file');
+    expect(portBarMessage(state)).toBe(null);
+    expect(shouldShowBar(state, true)).toBe(false);
+  });
+});
+
 describe('§3 — the bar and FUN-004 never state the same fact', () => {
   it('turns on exactly where minesAnyPort is false', () => {
     // FUN-004's message 4 stands down on the same predicate, from the other side.

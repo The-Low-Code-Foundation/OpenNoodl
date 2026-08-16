@@ -15,7 +15,7 @@ export type { CodeDiffViewProps } from './CodeDiffView';
 export { MarkdownEditor } from './MarkdownEditor';
 export type { MarkdownEditorProps } from './MarkdownEditor';
 export { markdownExtensions, markdownLanguage } from './markdown-language';
-export type { JavaScriptEditorProps, ValidationType } from './utils/types';
+export type { CodeSubject, JavaScriptEditorProps, ValidationType } from './utils/types';
 export type { CodeHistoryProvider, CodeSnapshot } from './CodeHistory/types';
 export { defaultPlaceholder, isValidatedType, modeLabel } from './utils/modes';
 export { lintMessages } from './utils/esLintDiagnostics';

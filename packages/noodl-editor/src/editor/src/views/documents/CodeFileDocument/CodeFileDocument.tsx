@@ -42,7 +42,7 @@ import { AppRegistry, IDocumentProvider } from '@noodl-models/app_registry';
 import { ProjectModel } from '@noodl-models/projectmodel';
 
 import { IconName } from '@noodl-core-ui/components/common/Icon';
-import { JavaScriptEditor } from '@noodl-core-ui/components/code-editor';
+import { JavaScriptEditor, setOpenNodeContext } from '@noodl-core-ui/components/code-editor';
 import { PrimaryButton, PrimaryButtonSize, PrimaryButtonVariant } from '@noodl-core-ui/components/inputs/PrimaryButton';
 import { Label } from '@noodl-core-ui/components/typography/Label';
 import { Text, TextType } from '@noodl-core-ui/components/typography/Text';
@@ -104,6 +104,31 @@ export function CodeFileDocument({ path }: CodeFileDocumentProps) {
   useEffect(() => {
     void reload();
   }, [reload]);
+
+  /*
+   * CN-019 — this document is not a node, so it must not leave one standing.
+   *
+   * `openNode` is module-level state in `noodl-core-ui` whose only producer is
+   * the property panel's `CodeEditorType`, and whose contract calls a slot left
+   * behind by a closed editor *"a live wrong answer, not an empty one"*. That
+   * warning is about the next popout; a file is the same hazard with nothing to
+   * correct it, because nothing here ever writes the slot and so nothing here
+   * ever notices it is wrong.
+   *
+   * ⚠️ This is belt and braces, and deliberately so. `subject="file"` below is
+   * the fix — the port bar never reads the slot for a file, whatever is in it.
+   * What clearing adds is the **lint** pass, which guards on `openNode != null`
+   * (`portDiagnostics.ts:634-641`) and would otherwise dress a kit module's
+   * `no-undef` up as advice about whichever node was last open.
+   *
+   * ⚠️ It clears rather than saves and restores: a document replaces the canvas,
+   * so any popout that was open is behind a full-screen surface the author has
+   * navigated away from, and `CodeEditorType#dispose` will clear the slot again
+   * on its way out regardless.
+   */
+  useEffect(() => {
+    setOpenNodeContext(null);
+  }, [path]);
 
   /*
    * The poll runs only while this document is mounted, and the file is dropped
@@ -242,6 +267,11 @@ export function CodeFileDocument({ path }: CodeFileDocumentProps) {
           onChange={setDraft}
           onSave={(value) => void save(value)}
           validationType={validationTypeFor(path)}
+          // CN-019. The mode above is a parser choice; this is what the editor is
+          // actually holding. Riding both on `validationType` is what told the
+          // author of a kit's `index.js` to "Type `Inputs.`" and called the file
+          // a SCRIPT — a node type, in a file that has no node.
+          subject="file"
           width="100%"
           height="100%"
         />

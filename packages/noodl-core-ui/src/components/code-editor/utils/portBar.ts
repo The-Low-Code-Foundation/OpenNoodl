@@ -51,7 +51,7 @@
 import type { OpenNodeFact } from '../authoringContext';
 import { modeHasDeclaredPorts } from './declaredPorts';
 import { barNoOutputMessage, barNoPortsMessage, barUnusedPortsMessage, type PortKind } from './notation';
-import type { ValidationType } from './types';
+import type { CodeSubject, ValidationType } from './types';
 import { unionPorts, type UnionPort } from './unionPorts';
 
 /** What the bar has to say, before it is worded. */
@@ -83,12 +83,31 @@ export function minesAnyPort(ports: { inputs: UnionPort[]; outputs: UnionPort[] 
  * included: an Expression node's every identifier already *is* a port, so a bar
  * telling its author to type `Inputs.` would be telling them to create a port
  * called `Inputs`. Same gate as FUN-004 §3 and FUN-008 §3.
+ *
+ * ## CN-019 — `subject`, and why it is not `node != null`
+ *
+ * Every row of the table above is a sentence **about a node**. A file has none
+ * to be about, so `'file'` is silent before anything else is asked, and the
+ * node fact is not consulted at all.
+ *
+ * 🔴 The tempting one-liner is to treat a missing node as a missing subject.
+ * It is wrong in both directions. A Function node with an empty proplist
+ * publishes a real `openNode` with two empty lists — that is the blank page the
+ * bar exists for, and dropping it would retire the feature. And the slot is
+ * module-level state written by the property panel, so a file opened while a
+ * Function popout is still live reads a **non-null** node and is handed that
+ * unrelated node's ports: `node != null` silences the case that was observed
+ * and keeps the worse one. Ambient state cannot answer "what am I looking at";
+ * only the consumer can.
  */
 export function portBarState(
   validationType: ValidationType,
   node: OpenNodeFact | null | undefined,
-  code: string
+  code: string,
+  subject: CodeSubject = 'node'
 ): PortBarState {
+  if (subject !== 'node') return { kind: 'silent' };
+
   if (!modeHasDeclaredPorts(validationType)) return { kind: 'silent' };
 
   const ports = unionPorts(node ?? null, code);

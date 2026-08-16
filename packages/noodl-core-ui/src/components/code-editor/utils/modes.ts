@@ -11,12 +11,35 @@
  * @module code-editor/utils
  */
 
-import type { ValidationType } from './types';
+import type { CodeSubject, ValidationType } from './types';
 
 const LABELS: Record<ValidationType, string> = {
   expression: 'Expression',
   function: 'Function',
   script: 'Script',
+  json: 'JSON',
+  text: 'Text',
+  css: 'CSS',
+  html: 'HTML'
+};
+
+/**
+ * The same table for a **file** (CN-019).
+ *
+ * Three of these names — `Expression`, `Function`, `Script` — are node types,
+ * not languages. They are the right answer in a property-panel popout, which is
+ * always editing one of those nodes, and the wrong one over a kit's `index.js`:
+ * that file was opened in `'script'` mode because a module has top-level
+ * statements a Function-node parse would reject, and the toolbar then announced
+ * it as a **SCRIPT**, which is a node the author does not have.
+ *
+ * The rest are unchanged because they were never node names: a `.json` file and
+ * a JSON parameter are both JSON.
+ */
+const FILE_LABELS: Record<ValidationType, string> = {
+  expression: 'JavaScript',
+  function: 'JavaScript',
+  script: 'JavaScript',
   json: 'JSON',
   text: 'Text',
   css: 'CSS',
@@ -51,9 +74,13 @@ export function isValidatedType(validationType: ValidationType): boolean {
   return !UNVALIDATED.includes(validationType);
 }
 
-/** The name shown in the popout's toolbar. */
-export function modeLabel(validationType: ValidationType): string {
-  return LABELS[validationType] ?? 'JavaScript';
+/**
+ * The name shown in the toolbar — of the node type in a popout, of the language
+ * in a file.
+ */
+export function modeLabel(validationType: ValidationType, subject: CodeSubject = 'node'): string {
+  const labels = subject === 'file' ? FILE_LABELS : LABELS;
+  return labels[validationType] ?? 'JavaScript';
 }
 
 /** What an empty editor of this mode suggests. */
