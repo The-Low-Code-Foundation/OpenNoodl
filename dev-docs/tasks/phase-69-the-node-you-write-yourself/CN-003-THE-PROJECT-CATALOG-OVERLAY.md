@@ -53,17 +53,87 @@ asserts they match. When they diverge, the failure must name the divergence, not
 ⚠️ This is not optional polish. It is the specific risk D3 accepted in exchange for a smaller
 surface, and it is written into the ruling.
 
+## ✅ Slice 1 landed 2026-08-16 (`f1663600`) — and it corrects the build plan below
+
+**`@nodegx/kit-catalog`**, the pure half: payload → catalog-shaped overlay entries, `mergeOverlay`,
+and `compareOverlays`/`describeComparison` (the D3 agreement check, which names divergences rather
+than only failing). 26/26 green, added to `test:packages` — that gate scopes **by name**, so a
+package left out of it runs no tests at all. `catalog:check` re-run: committed catalog up to date,
+175 node types, so **acceptance criterion 4 holds**.
+
+🔴 **The two-mapping shape in items 1–3 below was wrong, and the correction is the point of the
+slice.** The spec had the MCP server shape kit nodes through `buildCatalog` while the editor mapped
+from what the viewer sent — **two mappings for one set of facts**, which is the duplication this
+phase exists to end, and a permanent generator of the very divergence D3 accepted as a risk.
+
+Both routes can produce the **same input** instead. `generateNodeLibrary`
+(`@noodl/runtime/src/nodelibraryexport`) is what the viewer sends over `sendNodeLibrary`, and a
+headless extractor that registers a kit against a live register calls the identical function. So the
+editor reads the payload it already holds, the MCP server produces one headlessly, and **both hand it
+to the same mapping**. The agreement obligation then narrows to the question that actually carries
+risk — *do the two registers agree*, not *do two hand-written mappings agree*. `buildCatalog` is
+never touched, which is how criterion 4 is met by construction rather than by care.
+
+⚠️ **What a green `compareOverlays` therefore does and does not say**, written down because the
+weaker reading is the tempting one: it says the two registers agree. It does **not** independently
+verify the mapping — the fixture tests do that. Do not quote a passing agreement check as evidence
+the overlay is correct.
+
+### Measured, not assumed
+
+A throwaway extractor executed the cashflow kit headlessly against a live register (dom-shim,
+`window.React`, `Noodl.defineModule` collecting, `createNodeFromReactComponent`, `registerModule`).
+All five types came out with the port counts the editor's own `NodeLibrary.instance` reported:
+
+| type | this run (headless, 08-16) | editor `NodeLibrary` (recorded 08-15) |
+|---|---|---|
+| `nodegx.cashflow.Lane` | 9 in / 11 out | 9 / 11 |
+| `nodegx.cashflow.Pill` | 23 in / 14 out | 23 / 14 |
+| `nodegx.cashflow.BalanceStrip` | 16 in / 10 out | 16 / 10 |
+| `nodegx.cashflow.DayAxis` | 12 in / 8 out | 12 / 8 |
+| `nodegx.cashflow.DangerBanner` | 19 in / 9 out | 19 / 9 |
+
+⚠️ **Two different instruments, two different days** — the right-hand column is a *recorded* reading
+from another session, not a re-measurement taken today. It is corroboration, not a control.
+
+**Timing: esbuild bundle 74ms, extraction run 104ms.** That is why D3's no-on-disk-cache rule costs
+nothing, and it removes the escalation-to-an-in-memory-cache clause as a live concern.
+
+The test fixture is that **captured** payload (`tests/fixtures/cashflow-kit-nodelibrary.json`), not a
+hand-written one — this phase has already lost time to two specs naming controls that had never been
+run.
+
+### Knowingly absent, with owners
+
+Two catalog fields cannot be recovered from the payload. Both are recorded as knowingly-absent rather
+than guessed, the same reasoning as `DynamicPortSkipped` and CN-002's `unknown-type-check-skipped`:
+
+- **`parameterEncoding`** — derived by *driving* the node's dynamic-port hook (`derive-encoding.js`),
+  which needs the raw definition. Overlay entries carry `{ known: false, reason }`. → **CN-010**.
+- **`ssr`** — `createNodeFromReactComponent` puts an `ssr` key in the register metadata but
+  `generateNodeLibrary` does not export it. Left **absent**, which for an overlay node means *not
+  assessed*, never *safe*. → **CN-013**.
+
 ## What to build
 
-1. **A shared extractor** — a no-build workspace package on the `@nodegx/render-measure` pattern
-   (plain JS, hand-written `.d.ts`, `main` at `src/index.js`, resolved **through the workspace**,
-   never a relative path into `packages/`). It takes a project directory and returns catalog-shaped
-   node entries for every kit it finds. It reuses CN-001's module scan rather than adding a fourth
-   one.
-2. **The MCP caller** — runs the extractor under the dom-shim, merges the result into `CatalogIndex`
-   as a **project-scoped overlay**. Built-ins keep priority on a name collision; a kit shadowing a
-   built-in type name is a diagnostic, not a silent override (see CN-015).
-3. **The editor caller** — builds the same overlay from the node library the viewer already sent.
+1. ✅ **The shared mapping** — done, `@nodegx/kit-catalog` (see above). Reuses CN-001's
+   `scanModuleManifests` for the `runtimes` filter rather than adding a fourth scan.
+2. **The headless extractor + MCP caller** — runs the kit under the dom-shim, calls
+   `generateNodeLibrary`, feeds `catalogNodesFromNodeLibrary`, merges into `CatalogIndex` as a
+   **project-scoped overlay**. Built-ins keep priority on a name collision; the shadow is reported
+   (`Overlay.collisions` already carries it) for CN-015 to surface.
+
+   🔴 **Where this file lives is decided by packaging, not taste.** `scripts/` is outside every
+   shipped package's `files`/`build.files` — the open F4 hole P67 recorded — so the extractor entry
+   **cannot** live in `scripts/node-catalog/` the way `extractor-entry.js` does, or the packaged MCP
+   server cannot reach it. And bundling at runtime is not available either: a packaged app has no
+   esbuild and no `packages/noodl-viewer-react/src`. **The move is a second entry point in
+   `packages/noodl-mcp/build.mjs`** emitting `dist/kit-extract.cjs`, which `files: ["bin","dist"]`
+   already ships; the server then spawns it. Two lines of build config, no new mechanism.
+   ⚠️ Verify against the **packaged** app, not the checkout — "driven ≠ shipped" has already bitten
+   phase 66.
+3. **The editor caller** — builds the same overlay from the node library the viewer already sent
+   (`NodeLibrary.instance`), then `compareOverlays` against the MCP route in a test.
 4. **`CatalogIndex` learns the difference** between "I know this type because we shipped it" and "I
    know this type because a kit declares it". `hasType()` should be true for both; provenance must
    remain queryable, because ✅ **D1** wants it in the property panel and CN-004 needs it for
