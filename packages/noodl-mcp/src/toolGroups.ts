@@ -275,7 +275,17 @@ export const TOOL_GROUPS: readonly ToolGroup[] = Object.freeze([
     // surface past AWP-006's 8,200-token gate on its own. The brief is where that
     // belongs, and the brief is deferred.
     purpose: 'write, verify and grade a tutorial lesson for the editor to teach.',
-    tools: ['get_lesson_brief', 'create_lesson', 'check_lesson'],
+    // ✅ A fourth tool cost this group NOTHING resident, and it was measured
+    // rather than reasoned about (2026-08-16): the surface is 8,223 tokens with
+    // `derive_starter` and 8,223 without, because the only resident mention of a
+    // deferred group is `find_tools`' `(N tools)` — and "3 tools" and "4 tools"
+    // are the same length. 🔴 The handover said this slice "really does cost
+    // surface, it is a tool not a condition verb". It does not. What costs
+    // surface is a *resident* tool (this one measures 276 tokens if it lands
+    // there) or a whole new group (25, which is what UNI-010 spent). The 57
+    // tokens of headroom are untouched and phase 69's CN-006/CN-009 are not
+    // competing with this.
+    tools: ['get_lesson_brief', 'create_lesson', 'check_lesson', 'derive_starter'],
     resident: false
   },
   {
@@ -314,6 +324,7 @@ export const WRITE_ONLY_TOOLS: ReadonlySet<string> = new Set<string>([
   'get_lesson_brief',
   'create_lesson',
   'check_lesson',
+  'derive_starter',
   'provision_backend',
   'stop_backend',
   // Reads the process registry and changes nothing — but it ships in

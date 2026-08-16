@@ -9,12 +9,22 @@
  * the verifier must absorb the full F1–F6 taxonomy.* Slice 1 built that gate.
  * This is the door a model reaches it through.
  *
- * 🔴 **Three tools, and the order matters.** `get_lesson_brief` first, because the
+ * 🔴 **Four tools, and the order matters.** `get_lesson_brief` first, because the
  * condition vocabulary is not guessable and a model that starts writing will
  * write `paramsEq` and `hasConnection`, neither of which exists. Then build the
- * two projects with the ordinary authoring tools. Then `create_lesson`, which
- * scores the pair and writes a bundle only if every machine-checkable class
- * passed.
+ * **solution** with the ordinary authoring tools and `derive_starter` the other
+ * project out of it. Then `create_lesson`, which scores the pair and writes a
+ * bundle only if every machine-checkable class passed.
+ *
+ * ✅ **`derive_starter` is why the order is now four steps rather than three, and
+ * it is not an ergonomic tidy-up.** The criterion-3 run authored five lessons and
+ * built every starter by subtraction from the solution — and the ghostwriting
+ * refusal (*"this step is already complete in the project the learner opens"*)
+ * fired **zero times in five lessons**. Its own §11 reads that number as an upper
+ * bound rather than a result: subtraction makes the mistake structurally hard to
+ * commit, and a model building the two projects *independently* is far more
+ * exposed to it, because the natural way to author a lesson is to build the
+ * finished thing and describe it. This makes the safe route the cheap one.
  *
  * ⚠️ **`create_lesson` writes a folder and nothing else.** It does not install
  * anything: D5 gives the Learning section's register to the editor process, and a
@@ -31,6 +41,7 @@ import { z } from 'zod';
 
 import { EXAMPLE_MANIFEST, lessonAuthoringBrief } from '../lessons/authoringBrief';
 import { nodeBundleFs, scoreLesson, writeLessonBundle } from '../lessons/bundleWriter';
+import { writeDerivedStarter } from '../lessons/starterWriter';
 import { createWholeSolutionGrader } from '../lessons/wholeSolutionGrader';
 import { formatBundleScorecard, readLessonBundle, SOLUTION_DIR, verifyLessonBundle } from '../editor-deps';
 import type { LessonManifest } from '../editor-deps';
@@ -139,6 +150,60 @@ export function registerLessonTools(server: McpServer): void {
               'section and choose "Install from a folder", then point it at that directory. It will be ' +
               'labelled as AI-authored.'
             : 'Nothing was written. Fix what the scorecard names and call create_lesson again.'
+        });
+      }
+    )
+  );
+
+  // ─── Derive the starter ───────────────────────────────────────────────────
+  // 🔴 Registered HERE, inside `registerLessonTools`, and that placement is the
+  // whole of whether it costs anything. `server.ts` calls
+  // `disclosure.applyPolicy` once, after every registration; a tool registered
+  // after that call is resident no matter which group the manifest puts it in,
+  // and nothing asserts otherwise for this group.
+  server.registerTool(
+    'derive_starter',
+    {
+      title: 'Derive a lesson starter from its solution',
+      description:
+        "Build the lesson's STARTER project by subtracting its own steps from the finished solution — the " +
+        'route that makes ghostwriting structurally hard, rather than merely checked for. The condition verb ' +
+        'decides what comes out: hasType/exists/hasLabel remove the node, hasParams/paramsEqual unset those ' +
+        'parameters and keep it, connection removes the wire, routerLists un-lists the page. It then REPLAYS ' +
+        'every graded step against what it produced and writes nothing if any step is still complete.',
+      inputSchema: {
+        solution_dir: z
+          .string()
+          .describe("The finished project — the graph after EVERY step. Not modified."),
+        starter_dir: z
+          .string()
+          .describe('Where to write the starter. Must be new or empty, and outside solution_dir.'),
+        manifest: manifestSchema.describe('The same lesson.json you will pass to create_lesson')
+      }
+    },
+    guarded(
+      async (args: { solution_dir: string; starter_dir: string; manifest: unknown }): Promise<ToolResult> => {
+        const result = writeDerivedStarter(asManifest(args.manifest), {
+          solutionDir: args.solution_dir,
+          starterDir: args.starter_dir
+        });
+
+        return jsonResult({
+          written: result.written,
+          starter_dir: result.starterDir,
+          // Per step and per condition, because "a starter was derived" is not
+          // something an authoring model can check its own prose against and
+          // "step 2: removed the Text, kept the Page" is.
+          retractions: result.retractions,
+          ...(result.stillSatisfied.length ? { still_complete_in_starter: result.stillSatisfied } : {}),
+          ...(result.droppedFromCopy.length ? { dropped_from_copy: result.droppedFromCopy } : {}),
+          ...(result.refusal ? { refused_because: result.refusal } : {}),
+          next_step: result.written
+            ? `The starter is at ${result.starterDir}. Read the retractions against your step prose — the ` +
+              'subtraction is only as good as the conditions, and a condition that checks less than the prose ' +
+              'asks for produces a starter that gives part of the answer away. Then call create_lesson with ' +
+              'this starter_dir and the same solution_dir.'
+            : 'Nothing was written. Fix what the refusal names and call derive_starter again.'
         });
       }
     )

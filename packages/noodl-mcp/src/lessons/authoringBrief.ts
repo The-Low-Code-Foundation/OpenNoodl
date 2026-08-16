@@ -232,6 +232,37 @@ done the work for them — congratulating them for it. This is the easiest mista
 to make when authoring, because you have the solution in front of you while you
 write the starter, and the gate checks for it explicitly.
 
+### ✅ So do not write the starter. Derive it: \`derive_starter\`
+
+Build the **solution** with the ordinary authoring tools, write your steps, then
+call \`derive_starter\` with the solution directory and the manifest. It subtracts
+each graded step from a copy of the solution and hands you the starter.
+
+    derive_starter({ solution_dir, starter_dir, manifest })   ->  the starter
+    create_lesson({ bundle_dir, starter_dir, solution_dir, manifest })
+
+**The condition verb decides what comes out**, which is the part worth reading
+before you write your steps rather than after:
+
+| Your condition | The starter |
+|---|---|
+| \`hasType\` · \`exists\` · \`hasLabel\` · \`hasPort\` | has **no such node** — the learner creates it |
+| \`hasParams\` · \`paramsEqual\` | **has the node**, with those parameters unset — the learner fills them in |
+| \`connection\` | has both nodes, **not wired** |
+| \`routerLists\` | has the page, **not listed by any router** |
+| \`metadata\` | is **without that project setting** |
+
+It then replays every graded step against what it produced and **writes nothing
+if any step is still complete**, naming the step and why it could not be
+subtracted. Two conditions it cannot undo: \`isVisualRoot\` (clearing the project's
+root node leaves a starter that renders nothing at all) and the two verbs that
+observe a running editor.
+
+🔴 **Read the retractions it reports against your own prose.** The subtraction is
+only ever as good as the conditions, so a step that checks less than its prose
+asks for produces a starter that hands part of the answer over — and nothing
+downstream will tell you, because to the gate that starter is correct.
+
 ## Prose, media and links
 
 - Bodies are Markdown. ⚠️ **Auto-linking is off**: a bare URL is never a link.

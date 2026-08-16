@@ -211,7 +211,7 @@ export interface VerifyLessonBundleOptions {
 
 // ─── Condition partitioning ─────────────────────────────────────────────────
 
-interface StepConditions {
+export interface StepConditions {
   index: number;
   step: LessonStepDef;
   where: string;
@@ -223,7 +223,18 @@ interface StepConditions {
   compileError?: string;
 }
 
-function stepConditions(manifest: LessonManifest): StepConditions[] {
+/**
+ * Which steps are graded, and what each one's conditions compile to.
+ *
+ * 🔴 Exported for {@link module:noodl-editor/models/lessonstarter}, and the export
+ * is the point rather than a convenience. `derive_starter` subtracts from a
+ * solution *per graded step*, and this gate then asks whether any graded step is
+ * still satisfied by what came out. If the two disagreed about which steps count
+ * — an ungraded prose step, a step whose conditions do not compile — the deriver
+ * would retract something the gate never asked about, or skip something it did.
+ * One notion of "graded step", in the module that already had to decide.
+ */
+export function stepConditions(manifest: LessonManifest): StepConditions[] {
   const steps: LessonStepDef[] = Array.isArray(manifest?.steps) ? manifest.steps : [];
 
   return steps
