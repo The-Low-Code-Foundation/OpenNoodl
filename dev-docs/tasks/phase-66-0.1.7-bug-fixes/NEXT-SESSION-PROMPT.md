@@ -1,18 +1,17 @@
 # Phase 66 — next session
 
-**Written 2026-08-16, session 44.** A rewrite, per §0. s44 took items 1 and 2 of s43's queue and
-shipped both — `e16684df`, `3d3cc974`, `4b42d835`.
+**Written 2026-08-16, session 45.** A rewrite, per §0. s45 took item 1 of s44's queue and closed it —
+`654a72cf`. **One task, one commit, docs-only.**
 
-🔴 **The queue has no cheap end left.** Everything below is medium or larger. Nothing waits on
-Richard except FIX-013's rulings 2–4 and FIX-021's Q2/Q5/Q6.
+🔴 **The queue has no cheap end left, and s45 spent the last of it.** Everything below is medium or
+larger. Nothing waits on Richard except FIX-013's rulings 2–4 and FIX-021's Q2/Q5/Q6.
 
-🔴 **s44's headline is a method result, not a feature: item 2's premise was FALSE, and the census
-that found it took two minutes.** FIX-016's task file said an author who writes the wrong notation in
-a Script node *"gets no message at all"*. Measured, the editor was **accusing the Script node's own
-API** — telling authors that `define(…)`, the notation the product's own `NOTATION_RULES.script`
-prescribes, is an undeclared port, with a fix-it offering to write `Inputs.define`. **Budget for that
-shape: a premise asserting an ABSENCE is the one nobody has checked, because a silence has nothing to
-trip over.**
+🔴 **s45's headline is again a method result, and it is the second half of s44's.** s44 learned that
+*a premise asserting an ABSENCE is the one nobody has checked*. s45 learned the operational twin:
+**an absence you go and check will pass for free unless the instrument is proven alive at the moment
+you read it.** Both of the session's absence readings were wrong the first time — one because a
+peer's HMR reload had killed the probe, one because the linter had not settled — and **both wrong
+readings were passes.** Details in §3; the general form is now in memory.
 
 🔴 **Every ruling and every build is recorded in its own task file.** §4 here is a work order, not the
 source of truth.
@@ -38,72 +37,50 @@ amendment, rewrite the file instead.**
 | Task | Built | Driven | Note |
 |---|---|---|---|
 | **FIX-001 / 002 / 003 / 007 / 009 / 010 / 011 / 012 / 014 / 017 / 018 / 019 / 020** | ✅ | ✅ | **CLOSED** — thirteen tasks |
-| **FIX-021** slice 0 + wizard location | ✅ | ✅ **s44 3/3** | Acceptance 1 closed s42; the location seed driven s44. **Slices A/B are the open work** |
-| **FIX-016** §2, §3, §3c, **ruling 1** | ✅ | ⚠️ **ruling 1 NOT driven** | Message 6 is spec-level; nobody has seen it in a gutter |
+| **FIX-016** §2, §3, §3c, **ruling 1** | ✅ | ✅ **s45, 2×2 + 2 controls** | **Message 6 has been seen in a gutter.** The mining slice is still open — item 6 |
+| **FIX-021** slice 0 + wizard location | ✅ | ✅ s44 3/3 | Acceptance 1 closed s42; the location seed driven s44. **Slices A/B are the open work** |
 | **FIX-006** — AC1–AC4 | ✅ | ✅ | **The Substring weighting is the one build left** |
 | **FIX-004** §A+§B | ✅ | ✅ | Redaction (b) and §C are RULED and unbuilt |
-| **FIX-022** | ✅ | ✅ | Re-graded s43. **No rule written yet — §3 says why not** |
+| **FIX-022** | ✅ | ✅ | Re-graded s43. **No rule written yet** |
 | **FIX-005** part 1 + dead selectors | ✅ | ✅ | **The rename is unbuilt** |
 | **FIX-008** A, B, E | ✅ | ✅ | C unblocked (**the measurement is an agent's, not Richard's**); D unstarted |
 | **FIX-013** | 📋 | — | Ruling 1 = **(c)**. Rulings 2–4 still open |
 | **FIX-015** | 📋 | — | **Green-lit as its own phase.** Not a P66 build |
 
-**Thirteen closed outright.** ⚠️ **Count the names, don't copy a total.**
+**Thirteen closed outright; FIX-016 ruling 1 is now built AND driven.** ⚠️ **Count the names, don't
+copy a total.**
 
 ---
 
 ## 2. Gate readings
 
-✅ **s44 took all of these itself**, on a checkout with peers' uncommitted work and peers actively
-saving source throughout.
+🔴 **s45 took NONE of these.** Every row below is inherited, and the dates say from where. This is a
+claim rather than an omission: **s45's only commit changes one markdown file** — no `src/`, no specs,
+no fixtures, nothing any gate reads. The drive itself ran against the tree as it stood.
 
 | Gate | Reading | When |
 |---|---|---|
-| **`noodl-core-ui` jest** | ✅ **26 suites / 461 tests** (was 25 / 444) | ✅ **s44** |
-| **`noodl-editor` `test:main`** | ⚠️ **220 / 221 suites — see the flake below** | ✅ **s44** |
-| **`typecheck:core-ui`** | 44 errors, **none in any file touched**; `--listFiles` confirms the changed files are in the compile | ✅ **s44** |
-| **`lint:ci` ratchet** | ✅ exit 0, 876 against a 3916 baseline | ✅ **s44** |
+| **`test:ci` (jasmine)** | ✅ **2843 / 6 @ 39393**, six by name — **WITNESSED on HEAD** (post-`3d3cbb22`) | run **2026-08-16 21:53:37** — inherited |
+| `noodl-core-ui` jest | ✅ 26 suites / 461 tests | s44 — inherited |
+| `noodl-editor` `test:main` | ⚠️ 220 / 221 suites — load-flaky, see below | s44 — inherited |
+| `typecheck:core-ui` | 44 errors, none in any file touched | s44 — inherited |
+| `lint:ci` ratchet | ✅ exit 0, 876 against a 3916 baseline | s44 — inherited |
 | `nodegx-backend` jest | ✅ 100 suites / 1085 | s40 — inherited |
-| `test:ci` (jasmine) | ✅ **2843 / 6 @ 39393**, six by name — **WITNESSED on HEAD** (post-`3d3cbb22`) | run **2026-08-16 21:53:37**, results file fresh + agreeing with stdout |
 | `library:check` | ✅ 58/58 | s30 — inherited |
+
+⚠️ **Re-measure before quoting any of these.** Counts move daily, and the tree moved under s45 twice
+during a single drive.
 
 ### 🔴 `test:main` has two load-flaky suites, and they are not yours
 
-`bld-004/reasoningChannel` failed one full run; `aib-009/turnDeadline` failed the next. Both report
-*"nothing arrived for 0 seconds"*. **Do not spend a session on this the way s44 nearly did.** The
-attribution is measured:
-
-- **`npx jest --findRelatedTests <your changed files>` listed ZERO editor suites** for s44's four.
-- Each suite passes **3/3 in isolation**.
-- The full run was clean twice earlier the same session.
+`bld-004/reasoningChannel` and `aib-009/turnDeadline`, both reporting *"nothing arrived for 0
+seconds"*, on different runs. Each passes **3/3 in isolation**; `npx jest --findRelatedTests` listed
+**zero** editor suites for s44's changed files.
 
 ✅ **`--findRelatedTests` is the cheap instrument for "is that failure mine?"** — it answers from
 jest's own module graph rather than from your reading of the imports.
 
-### 🔴 `test:ci`'s floor is unwitnessed, and a peer is on it
-
-A peer's pinned-seed run **timed out at 900s** with no results file (exit 1, runner said so) while
-s44's dev stack was up — three full webpack rebuilds, ~7 minutes of compile, landed inside their
-window, *triggered by a third party's source saves, not s44's*. They re-ran on an idle checkout and
-will report.
-
-#### 🔴 The expected 7th failure is on COMMITTED code — `f7da52d1`, mechanism verified
-
-⚠️ **Carried forward from `3e4e9b00`, which s44 briefly discarded** (see §6). An earlier session wrote
-that the 20:37 run *"saw in-flight uncommitted work"*. **That was wrong.**
-
-| fact | evidence |
-|---|---|
-| the spec compares the editor's injector output to a **committed** snapshot | `projectmodules.test.ts:87-92`, golden at `tests/testfs/module-inject/expected-inject.snapshot.txt` |
-| **the injector changed** `2026-08-16 16:39:50` | `f7da52d1` *"fix(cn-003): a kit can say its own name"* → `packages/nodegx-module-inject/src/index.js` |
-| **the golden was NOT regenerated** | last touched **2026-07-25**; `f7da52d1` does not contain it |
-| `f7da52d1` is an **ancestor of HEAD** | `git merge-base --is-ancestor` → yes |
-| the runs straddle it | 16:01 → **6** · `f7da52d1` 16:39:50 · 20:37 → **7** |
-
-🔴 **So the 7th is a genuine regression on committed code, not contamination and not CN-006's.**
-`9e76bae4` (20:43) is a red herring — it landed *after* the run that already showed 7.
-
-### ✅ SETTLED — both numbers are right, about different trees
+### ✅ SETTLED — the `test:ci` floor, and both numbers were right about different trees
 
 | tree | reading |
 |---|---|
@@ -120,8 +97,7 @@ check covering processes and *your own* files still misses **a peer's uncommitte
 tree** — on this checkout that is the normal case.
 
 ✅ **So record two facts, not one: `git rev-parse HEAD` AND the mtimes of the fixtures the spec
-reads.** Only the second is what ran. ✅ **The golden's mtime alone settles this in one command** —
-`merge-base`, the commit graph and the spec's imports were all checked, and it was not.
+reads.** Only the second is what ran. ✅ **The golden's mtime alone settles this in one command.**
 
 ✅ **The one unambiguous positive: the prediction was written down as a NUMBER AND A NAME** — *2843/7,
 the `projectmodules` golden* — so it could be wrongly refuted and correctly reinstated inside an hour
@@ -138,70 +114,89 @@ sweep and a dateless mtime: filter, then read the null as absence.
 `3d3cbb22` at **21:52:24** — ✅ **green now, and it did its job: the producer's own package tests
 stayed green throughout while only the consumer's golden noticed.**
 
-**s44 did not run `test:ci`, as a claim rather than an omission:** `.ts`/`.tsx` under `src/`, two new
-specs, no `.jsx`, nothing under `packages/noodl-editor/tests/`. 🔴 **That reasoning does not transfer
-to FIX-005's rename or FIX-004 §C** — both are Blockly, which is `test:ci` territory.
+🔴 **Blockly work is `test:ci` territory** — that covers items 1 and 2 below.
 
 ---
 
-## 3. What s44 built, and the one thing to read before building anything
+## 3. What s45 did, and the two instrument failures worth more than the result
 
-### ✅ FIX-021 — the wizard opens somewhere (`e16684df`, driven `4b42d835`)
+### ✅ FIX-016 ruling 1 — DRIVEN (`654a72cf`)
 
-Ruling (B). `projects.lastCreateLocation` seeds the Location field; `getDocumentsPath()` on first run;
-Browse still overrides and records.
+Fixture `fix016-msg6-drive` (a `cp -R` of `fix003-drive`, identity confirmed by
+`_retainedProjectDirectory`, never by component names). `/Components/PriceDiscount` carries **both**
+node types — `Javascript2 dc5ef4ce…` and `JavaScriptFunction js` — so both arms ran in one component
+with no project switch between them. **The observation was written before the editor was launched.**
 
-🔴 **The existence guard is the part to keep.** `isStepValid('basics')` checks only
-`location.length > 0`, so seeding a folder on an unmounted volume would **enable `Next`** and fail at
-creation — later, and naming a folder the user never typed. Invariant: **empty, or a folder that
-exists.** Driven arm C proves it against the real `filesystem.exists`.
+| document | Script (`Javascript2`) | Function (`JavaScriptFunction`) |
+|---|---|---|
+| `Outputs.Done();` | ✅ **message 6**, `warning`, `nodegx:ports`, **`actions: []`** | ✅ **nothing on `Outputs`** |
+| `define({ inputs:…, outputs:…, run:… })` | ✅ **silent, 0 diagnostics** | ✅ *"No port named define … `Inputs.define`"* + fix-it |
+| `zzzUndefinedThing;` | ✅ plain **`eslint:no-undef`**, no action | ✅ **message 3** + fix-it |
 
-⚠️ **Undriven half:** Browse recording the choice needs the native dialog, which CDP cannot drive.
+🔴 **The bottom-right cell is the defect s44 found, correctly relocated.** That sentence is exactly
+what was being shown on the **Script** node before `3d3cc974`. It now appears only where a missing
+`define` really is a missing port. **The same sentence being right in one cell and wrong in the other
+is the entire content of the fix, and only the 2×2 shows it** — three cells plus an inference would
+not have.
 
-### ✅ FIX-016 ruling 1 — and the census that rewrote it (`3d3cc974`)
+✅ **`openNode != null`, the load-bearing gate, is proven by CONSEQUENCE.** `getCodeAuthoringContext`
+is not exported, so it could not be read; message 6 firing in a real popout *is* the proof the gate
+passed and that `codenotation:'script'` reached the editor. The toolbar independently reads **SCRIPT**.
+✅ **Rendered, not merely resolved** — gutter marker, *"⚠ 1 warning"*, and the full sentence in both
+the hover tooltip and `.cm-panel-lint`, with **no action button** beside the Function node's message 3
+which draws one.
 
-The two nodes are compiled differently and the editor treated them as one mode:
+### 🔴 Both absence readings were wrong first time, and both wrong readings PASSED
 
-| node | compiled as |
-|---|---|
-| Function (`JavaScriptFunction`) | `AsyncFunction('Inputs','Outputs','Noodl','Component', …)` |
-| Script (`Javascript2`) | `Function('define','script','Node','Component', …)` |
+**1. A peer's save HMR-reloaded the renderer mid-drive and the absence check reported success.** Every
+injected handle died; the popout closed; the editor fell back to the Launcher. The next check — a
+shell `grep` for the message-6 text over a `cdp eval` — ran against an eval that had **thrown**,
+matched nothing, and exited after **zero polls** reporting exactly the transition being hoped for.
+**A dead instrument and a genuine absence are the same string.**
+✅ **Every reader now returns an explicit `{alive}` and absence assertions require `alive === true`.**
+⚠️ The recorded consequence of this trap was *"looks like a feature doing nothing"*; this was the
+opposite, on the arm least likely to be re-run.
 
-One ESLint globals list — the union **minus** `define`/`script` — served both, and the completion
-list had the same defect under the misleading name `SCRIPT_GLOBALS`. Now per-mode, plus **message 6**,
-and **script mode gets only message 6**: messages 1–5 all emit `Inputs.`/`Outputs.` notation, and all
-five are wrong on a node that mines no ports from its text. ESLint's own diagnostics still pass
-through.
+**2. 🔴 The CodeMirror linter passes through an intermediate state indistinguishable from the settled
+one.** `dispatch` clears the old diagnostics *before* the new pass runs, so `count === 0` is true of
+both *"correctly silent"* and *"not linted yet"*, and a loop waiting for `count === 0` exits on the
+wrong one. **Two cells changed their answer between the first poll and ~12s.**
 
-🔴 **Left standing on purpose — the next slice.** `unionPorts` calls `minePorts(code)` in script mode
-too, so FUN-005's rail and FUN-006's bar can show a Script node **ports it does not have**. The Script
-node's ports come from `parser.getPorts()` — `Node.Inputs`/`Outputs`/`Signals` or `define()` — never
-from a regex over the document (`javascript.ts:831-840`). Four surfaces; not folded in.
+⚠️ **Consequence for the write-up:** the Function/`Outputs.Done()` arm is recorded as **"no diagnostic
+on `Outputs`"**, *not* "silent". Settled, it emits an unrelated `info` about a declared-but-unread
+port `price` — correct behaviour, nothing to do with this change. **"Silent" would have been a
+true-sounding sentence falsifiable in ten seconds by the next reader.**
+✅ **Settle ~20s and re-read every cell, including the ones that already agreed with you.** A 1→0
+transition is *some* evidence the lint re-ran and is **not sufficient** — a clear-then-relint produces
+the same transition en route to a non-zero settled state.
+
+🔴 **Both are now in memory** (`a-codemirror-lint-read-before-settle-is-a-different-answer`, and a new
+section on `an-hmr-reload-wipes-injected-cdp-state`), linked from `driving-the-app-pointers`.
 
 ---
 
 ## 4. What to do next and why
 
-**Ordered by cost.**
+**Ordered by cost.** s44's item 1 is gone; everything else has moved up one.
 
-1. 🟠 **Drive FIX-016 message 6.** Cheapest way to close a "built, not driven" row: a Script node,
-   `Outputs.Done()` in its popout, read the lint state through `forEachDiagnostic`. ✅ **The control
-   that makes it a measurement:** the identical document on a **Function** node must stay silent, and
-   `define({…})` on the Script node must *also* be silent — the second is the half that was broken.
-2. 🟠 **FIX-004 §C — dual-list the four object-shaped blocks under `App Objects`**, and narrow
+1. 🟠 **FIX-004 §C — dual-list the four object-shaped blocks under `App Objects`**, and narrow
    `browser-blocks.spec.ts`'s byte-identity fence to what its title claims. ⚠️ Blockly ⇒ `test:ci`.
-3. 🟠 **FIX-005 rename → `App Variables` / `App Config`.** ⚠️ **Knowingly reverses VFN-012** — say so
+2. 🟠 **FIX-005 rename → `App Variables` / `App Config`.** ⚠️ **Knowingly reverses VFN-012** — say so
    in the commit. ⚠️ Blockly ⇒ `test:ci`.
-4. 🟠 **FIX-008 C** — take the two-servers-visible measurement yourself (**it is an agent's, not
+3. 🟠 **FIX-008 C** — take the two-servers-visible measurement yourself (**it is an agent's, not
    Richard's**), then build C.
-5. 🔴 **FIX-006 Substring weighting** — the one most likely to be got wrong. The rule is **not**
+4. 🔴 **FIX-006 Substring weighting** — the one most likely to be got wrong. The rule is **not**
    "prefer nodes"; see §5.
-6. 🔴 **FIX-022 — add the reuse-available cell** before writing any rule. ~$0.10 in API, and it is the
+5. 🔴 **FIX-022 — add the reuse-available cell** before writing any rule. ~$0.10 in API, and it is the
    difference between a rule that helps and one that forbids deliberate work.
-7. 🔴 **FIX-016 — the script-mode mining slice** (§3). Four surfaces.
-8. 🔴 **FIX-004 redaction (b)** — route `noodl_log` through the scrubbed sink.
-9. 🔴 **FIX-013** — build against ruling 1(c). ⚠️ Rulings 2–4 still owed.
-10. 🔴 **FIX-021 slices A/B** — the user profile. Big; three of six questions answered.
+6. 🔴 **FIX-016 — the script-mode mining slice.** `unionPorts` calls `minePorts(code)` in script mode,
+   so FUN-005's rail and FUN-006's bar can show a Script node **ports it does not have**; the Script
+   node's ports come from `parser.getPorts()`, never from a regex over the document
+   (`javascript.ts:831-840`). **Four surfaces.** ⚠️ **s45's drive says nothing about this** — it read
+   the code editor's lint state only, not the rail or the bar.
+7. 🔴 **FIX-004 redaction (b)** — route `noodl_log` through the scrubbed sink.
+8. 🔴 **FIX-013** — build against ruling 1(c). ⚠️ Rulings 2–4 still owed.
+9. 🔴 **FIX-021 slices A/B** — the user profile. Big; three of six questions answered.
 
 **Do not start** FIX-015 here — it is its own phase.
 
@@ -209,23 +204,28 @@ from a regex over the document (`javascript.ts:831-840`). Four surfaces; not fol
 
 🔴 **Census before you build, whatever the task file says.** s44's item 2 was *"add the missing
 message"* and the measurement changed what got built. **Ten lines in the package's own node runner**
-— call the real entry point, print the output for both modes — beat four sessions of reading.
+beat four sessions of reading.
 
-🔴 **Grading anything in the code editor:** `javascriptDiagnostics(state, validationType)` is pure and
-runs headlessly in `noodl-core-ui`'s jest. `setOpenNodeContext({typeName, declaredInputs,
-declaredOutputs})` is how you say which node is open; `null` is a code **file**, not a node.
+🔴 **Grading anything in the code editor, headlessly:** `javascriptDiagnostics(state, validationType)`
+is pure and runs in `noodl-core-ui`'s jest. `setOpenNodeContext({typeName, declaredInputs,
+declaredOutputs})` says which node is open; `null` is a code **file**, not a node.
+
+✅ **Grading it in the running editor** (s45's recipe, reusable):
+`forEachDiagnostic` off the module cache at `../../node_modules/@codemirror/lint/dist/index.js`,
+against `document.querySelector('.cm-content').cmTile.view.state`. Select the node by its **view**
+node via `NodeGraphContextTmp.nodeGraph`, then `cdp click "button.property-codeeditor-button"`.
+⚠️ **Settle ~20s before reading, and return `{alive}` from every read.**
 
 🔴 **Grading what the AI plans:** `packages/noodl-editor/scripts/aix002-measure/dist/fix022-plan.cjs`.
 ✅ `--dump=<path>` writes the arm's system prompt and exits before the provider is built. ⚠️ `--model`
-is effectively required. **Authoring** is the sibling `dist/aix002-harness.cjs`; they share one
-`build.mjs`.
+is effectively required. **Authoring** is the sibling `dist/aix002-harness.cjs`.
 
 🔴 **Before deleting anything a spec might grade, search THREE roots**: `src/`, `tests/` **and
-`tests-unit/`**. ⚠️ Exclude `*.bundle.js` — s44 lost a search to a 20MB source-map hit.
+`tests-unit/`**. ⚠️ **Exclude `*.bundle.js`** — s44 lost a search to a 20MB source-map hit and s45 lost
+one to a 6MB viewer bundle in the *first minute*. **Scope the path before you grep.**
 
 ✅ **A mutation check costs one shell call.** Apply the mutant, run the suite, restore, `diff` the
-file back — all in **one** Bash invocation, so the broken-file window is seconds and no peer's
-`git add -A` can catch it. s44 ran four; each one changed what the write-up could claim.
+file back — all in **one** Bash invocation, so no peer's `git add -A` can catch the broken file.
 
 ---
 
@@ -239,7 +239,8 @@ file back — all in **one** Bash invocation, so the broken-file window is secon
   exactly the chain this forbids.** Measure node choice **and** chain shape. ⚠️ n=5 cells are not a
   floor; re-run at n=10. ⚠️ **Coupling:** this preference belongs in FIX-021's user profile, where
   Richard can change it — **do not build it in a way that forecloses slices A/B.**
-- ✅ **FIX-016 ruling 1 — BUILT s44.** ⚠️ The strictness survived: the parser was not loosened.
+- ✅ **FIX-016 ruling 1 — BUILT s44, DRIVEN s45.** ⚠️ The strictness survived: the parser was not
+  loosened, and the drive confirms a genuine typo is still reported in JavaScript's own words.
 - ✅ **FIX-004 — redaction (b)**, scrubbed sink. **§C — dual-list, and narrow the fence** to
   *"changes no existing block type id"*.
 - ✅ **FIX-005 — rename → `App Variables` + `App Config`.** ⚠️ **Reverses VFN-012 knowingly.**
@@ -263,13 +264,14 @@ file back — all in **one** Bash invocation, so the broken-file window is secon
 - 🔴 **FIX-013 rulings 2, 3, 4** · 🔴 **FIX-015's eight** · 🔴 **FIX-021's Q2, Q5, Q6.**
 - 🔴 **`scripts/library/check.ts` — LAND IT.** Attributed (LBR-002), verified, gate passes 58/58.
   **Phase 65's work.** ⚠️ Unlanded work on a PR-gated script is exactly what a sibling's `git add -A`
-  sweeps. **Still uncommitted at s44** — twelve sessions now.
+  sweeps. **Still uncommitted at s45** — thirteen sessions now.
 - 🔴 **`dev-docs/tasks/phase-23-visual-refresh/corpus/run.sh:17`** — an **executable** script whose
-  `pkill` pattern matches MCP servers, **0 editors**, and never reaches `sweep()`. **Twelve sessions
+  `pkill` pattern matches MCP servers, **0 editors**, and never reaches `sweep()`. **Thirteen sessions
   have declined.**
 - ⚠️ **The packaged-app repackage is still owed** (`noodl-mcp/dist` rebuilt s36, gitignored).
-- ⚠️ **New from s44:** the `turnDeadline` timing suites are load-flaky under `test:main` (§2). And
-  `fix021-drive-ai` / `fix021-drive-plain` still point at a scratchpad path that will be cleaned.
+- ⚠️ `fix021-drive-ai` / `fix021-drive-plain` still point at a scratchpad path that will be cleaned.
+- ⚠️ **New from s45:** `fix016-msg6-drive` now exists in the projects dir and is worth keeping — it is
+  the only fixture with **both** JS node types in one component.
 
 ---
 
@@ -279,48 +281,60 @@ Work on `cline-dev`; **never `git stash`**; **absolute paths in every Bash call*
 directory is `phase-66-0.1.7-bug-fixes`.
 
 🔴 **`git commit <pathspecs>` — never `git add` at all.** The only exception is a **new** file: `add`
-and commit in the **same** command. ✅ **s44 committed three times, pathspec-only**; peers' work
-(phase-65, phase-50 notes, phase-68, phase-69 notes, `scripts/library/check.ts`) was untouched
-throughout.
+and commit in the **same** command. ✅ **s45 committed once, pathspec-only**; peers' work (phase-65,
+phase-50 notes, phase-68, `scripts/library/check.ts`, and **new UNI-011 files under
+`models/community/` plus `utils/report/diagnostics.ts`**) was untouched throughout.
 
-⚠️ **This checkout is busy and peers save source constantly.** A save triggers a **~130s** webpack
-rebuild that HMR-reloads the renderer mid-drive — s44 lost two readings to exactly that and spent
-four minutes thinking the editor had crashed. ✅ **A peer will hold saves if you ask.**
+⚠️ **This checkout is busy and peers save source constantly.** A save triggers a webpack rebuild that
+HMR-reloads the renderer mid-drive — **s45 lost the entire first pass of its drive to exactly that**,
+and the reload turned an absence check into a false pass (§3). ✅ **A peer will hold saves if you ask.**
+✅ **Re-establish the whole rig in ONE eval afterwards**, so the re-entry window is a single call.
 
-### 🔴 Peer etiquette — s44's own near-miss
+### 🔴 Peer etiquette — and what s45 did instead of announcing
 
-**An all-clear is about the moment it was sent.** s44 read *"checkout released"* as *"free"*, launched,
-and a different peer had taken the window one message earlier and was mid-`test:ci`. ✅ **What made it
-recoverable was reporting the launch immediately, with a PPID walk showing their tree alive** — not
-reassurance. `NEVER_SWEEP` held and their run survived the launch.
+**`ListAgents` reported 19 peer sessions.** s45 judged a 19-way launch broadcast to be flatly
+incompatible with *"keep peer messages short and rare"*, and **measured instead**, before launch and
+again before teardown: **0 editors, 0 `test:ci`, 0 `test:main`, 0 webpack**, each paired with a
+**positive control on the same pipeline** so the zeros were attributable rather than the signature of
+a dead check. Teardown re-measured, then `dev:stop`; **39 MCP servers survived**, 0 editors left.
 
-🔴 **Reply to a socket on its socket.** ⚠️ **Announce teardown to the FULL launch list.** 🔴 **Keep peer
-messages short and rare.**
+⚠️ **This is a deviation from "announce the launch", and the next session should make its own call.**
+It was defensible here because the reaping bug is fixed and measured and the checkout was provably
+idle — **it is not defensible if anything is running.** 🔴 **If you do announce, announce teardown to
+the FULL launch list**; a launch with no matching close manufactures a reservation that outlives you.
+🔴 **Reply to a socket on its socket.**
 
-### 🔴 s44 overwrote a peer's edit to THIS file, and the cause is one missing Read
+🔴 **All 20 `electron/dist` matches on an idle checkout are MCP servers, not editors.** Attribute by
+**PPID**, never by that path, and never quote a count as evidence of an editor.
 
-This file is **rewritten** each session, and s44 rewrote it from the copy in its context at session
-start — **without re-reading the file first**. A peer had added 29 lines to it (`3e4e9b00`, the
-`f7da52d1` attribution now in §2) forty minutes earlier. The rewrite discarded them silently; they
-were recovered from `git show` and merged back.
+### 🔴 Re-read this file immediately before rewriting it — s45 was saved by doing so
+
+s44 overwrote a peer's 29 lines by rewriting from its context copy. **s45's context copy was stale
+too**: a peer rewrote this file at **22:03**, after the session started, adding the settled `test:ci`
+section now in §2. `git log -1 --stat` plus a full re-read caught it and the content survived.
 
 ✅ **Before rewriting any shared document, `git log -1 --stat` it and re-read it.** A whole-file
 overwrite is the one edit that cannot conflict — git accepts it happily, and the loss is invisible in
-the diff you are looking at. ⚠️ The same rule already exists for `MEMORY.md` and for exactly this
-reason; **it applies to every file peers also write**, which on this checkout is most of `dev-docs/`.
+the diff you are looking at. **On this checkout that is most of `dev-docs/`, and it has now nearly
+happened twice in two sessions.**
 
 ### Teardown
 
 **Use `dev:stop`.** 🔴 Killing your launcher pid is **not** gentler. 🔴 **`pkill` never reaches
-`sweep()`.** ⚠️ **Compare pids, never counts.**
+`sweep()`.** ⚠️ **Compare pids, never counts.** ⚠️ The launcher exiting **144** is `dev:stop` reaping
+it, not a failure.
 
 ### 🔴 Measuring the memory index
 
-**`node`, never `python`.** Budget **17,510 UTF-16**. ✅ **s44 measured 16,113 / 16,200 and added
-nothing to `MEMORY.md`** — new memories were filed under existing pointers, which costs zero budget.
+**`node`, never `python`.** Budget **17,510 UTF-16**.
+🔴 **s45 measured `17,293` code points / `17,385` UTF-16 — roughly 125 characters of headroom.**
+**`MEMORY.md` is effectively FULL.** s45 added **nothing** to it: one new memory and one update were
+filed under the existing `driving-the-app-pointers` entry, which costs zero budget.
 
-🔴 **It moves while you read it.** A peer had already filed s44's `test:ci` finding before s44 could;
-`grep -rl` the memory dir before writing anything up as new.
+🔴 **The next session that needs an index line will have to collapse something first.** Promote traps
+out before collapsing, and a section with a 📚 pointer takes new entries **in the pointer file**.
+
+🔴 **It moves while you read it.** `grep -rl` the memory dir before writing anything up as new.
 
 ```
 node -e 'const s=require("fs").readFileSync(process.argv[1],"utf8");console.log([...s].length,s.length)' \
