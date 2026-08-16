@@ -57,16 +57,30 @@ files and three memory files. Everything below is inherited — **re-measure bef
 | **`tsc --noEmit -p tsconfig.json`** | ✅ 0 errors | s37 |
 | **`tsc -p tsconfig.tests.json`** | ✅ 0 errors | s37 |
 | **`noodl-mcp` jest** | ✅ 45 suites / 530 tests | s36 |
-| **`test:ci` (jasmine)** | ⚠️ 2843 / 6 @ seed 39393 — **inherited, s34 @ `5b91e9c8`** | s34 |
+| **`test:ci` (jasmine)** | ✅ **2843 / 6 @ seed 39393 — RUN, not inherited**; six names verbatim | **s38, finished 16:01** |
 | `noodl-mcp` `tsc` | ⚠️ 8 errors, all pre-existing | s34 |
 | `noodl-core-ui` jest | ✅ 25 suites / 444 | s24 |
 | `library:check` (PR gate) | ✅ 58/58, exit 0 | s30 |
 
-🔴 **`test:ci` has now not been run for four sessions.** A peer re-confirmed the floor as
-**2843 / 6 at seed 39393**, reproduced twice, and says nothing since has touched
-`packages/noodl-editor/tests/` — so **a different total is a finding, not drift.**
-🔴 **Quote the six failures by NAME, never the count** — 4 × `AIX-006 style vocabulary`,
-2 × `AI model registry`.
+✅ **`test:ci` was RUN in s38 after four unrun sessions, and the floor held exactly: 2843 / 6 at
+seed 39393**, six failures identical **by name** — 4 × `AIX-006 style vocabulary`, 2 × `AI model
+registry`. 🔴 **Quote them by name, never the count**: six failures can be six *different* ones.
+
+✅ **It was a prediction, not a hedge, and that is why it means something.** Before the run,
+`git log <floor-tree>..HEAD -- packages/noodl-editor/tests/` was checked and came back **empty** —
+nothing had added a spec — so the expected total was *exactly* 2843, not "about 2843". ⚠️ **Do this
+before every floor comparison.** This repo's total climbed 2779 → 2788 → 2812 → 2843 in one day, so
+*"the count drifted, it's probably age"* is always available as an excuse and makes the floor absorb
+any result. **Age is only an explanation if a commit actually added specs — check, then predict.**
+
+✅ **Proof the run was real, not a stale artefact:** `test-results.json` was **absent before the run
+and present at 16:01**. That, not the exit code, is the evidence — a reaped run writes **no file**,
+and a stale one reads as a *perfect pass*.
+
+🔴 **The exit-code trap fired for real this time, in the dangerous direction.** The suite exited **1**
+(correct for a clean floor — six known failures), and **the running session's own pipeline reported
+`0`**. The conclusion happened to be right; the mechanism means a genuinely broken run would report
+`0` just the same. **Never read this gate's outcome from an exit status.**
 
 ⚠️ **`tsc -p tsconfig.tests-main.json`'s 31 errors are NOT a gate and NOT a regression** — see
 FIX-004's task file. Do not re-derive this a third time.
