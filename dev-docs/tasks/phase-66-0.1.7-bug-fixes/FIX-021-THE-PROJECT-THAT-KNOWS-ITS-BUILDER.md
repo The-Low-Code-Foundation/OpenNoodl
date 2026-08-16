@@ -153,3 +153,33 @@ dialog**. Measured: with a name typed and no location, **`Next` is disabled**
 `path`. So every new project in every mode costs a native dialog that a sensible default would spare.
 **Not fixed here** (it is a change to the creation UI, outside this task's scope) — wants its own
 task, or a ruling that the explicit choice is deliberate.
+
+## ✅ RULED 2026-08-16 (session 42)
+
+**The wizard's missing default location → (B), last-used.** Seed `location` from the last folder the
+user chose, falling back to `platform.getDocumentsPath()` on first run; `Browse…` still overrides.
+Rejected: **(a)** documents-always (ignores where this user actually keeps projects) and **(c)**
+deliberate-every-time (the friction teaches nothing).
+
+**Slices A/B → GREEN, and the shape is a USER PROFILE, not project learnings.** Richard: *"I want a
+NodeGX user profile for the AI to use, even stuff like 'the user speaks casually but avoids swear
+words' or 'User isn't comfortable with pure javascript and we should prefer inbuilt nodes'."*
+
+That settles three of the six brainstorm questions at once:
+
+- **Q4 (privacy / shared-repo boundary)** — it is about the **person**, not the project, so it does
+  **not** go in committed `docs/`. The third scope the question floated is the answer: **per-user and
+  gitignored**.
+- **Q3 (does `CLAUDE.md` become the memory?)** — no. It stays the **signpost**; the profile is a
+  separate document, which keeps the never-overwrite rule intact.
+- **Q1 (who writes updates?)** — seeded and human-authored to begin with. The automatic write-back
+  loop stays a later question, and `DocProposalStore`'s changelog-sludge argument still stands
+  against distilling every session.
+
+🔴 **Still open: Q2** (one file or a set — where does this not overlap CONVENTIONS?), **Q5** (`always`
+vs `pull`, and the per-turn cost of a global always-doc), **Q6** (structured settings vs prose — the
+split that makes the doc defensible).
+
+⚠️ **Note the coupling, because it decides where a rule lives.** Richard's own example —
+*"prefer inbuilt nodes"* — is **FIX-006's ruling**. A preference like that belongs in the profile,
+where this user can change it, rather than hard-coded into the system prompt for everybody.

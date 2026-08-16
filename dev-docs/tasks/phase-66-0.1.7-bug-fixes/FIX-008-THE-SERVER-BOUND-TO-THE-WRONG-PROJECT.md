@@ -199,3 +199,12 @@ coordinates.
 - The stale user-scope `nodegx-puppy-test-3` is **still registered and still visible in every
   folder** — `claude mcp list` from an unrelated directory shows it. Nothing in A/B/E removes it;
   that is C's cleanup hint.
+
+## ✅ RULED 2026-08-16 (session 42)
+
+**Fix C's open measurement is an AGENT's to take, not Richard's.** The question — *"with C, two
+NodeGX servers can be visible in one session (the project's own plus a stale global bound elsewhere);
+better or worse for the model?"* — is measurable on this machine: register both, ask a model to
+author against the project, and see which server it reaches for. It no longer blocks C.
+**Measure it, then build C.** This was the oldest open item on the phase's ruling list and it was
+mis-filed as Richard's.

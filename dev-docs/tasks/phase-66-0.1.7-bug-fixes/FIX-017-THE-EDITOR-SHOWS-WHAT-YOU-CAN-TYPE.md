@@ -243,3 +243,12 @@ signal-vs-value; bare `Inp` → boosted port completions (FUN-008).
    candidate — a name in both the static list and the project's), or strike it. **Needs a ruling.**
 4. ✅ **Done 2026-08-15** — phase-61 `TASKS.md` reconciled to the tree; the residue was prose, not
    status. See §1.
+
+## ✅ RULED 2026-08-16 (session 42)
+
+**AC1 → accept.** The trigger exists and fires; its invisibility is Ctrl-Space being **OS-bound**,
+which is not ours to fix. Document that and close the criterion, rather than leaving it open against
+a fix the product cannot make.
+
+**AC3 → STRIKE.** Its premise is false. Remove the criterion and leave one line saying why, so the
+next reader does not re-derive it a third time.

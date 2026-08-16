@@ -90,3 +90,17 @@ so library-delivered token-bearing components have a publish-path prerequisite.
 2. A new phase folder is scaffolded from those rulings (its own README/TASKS in the house shape).
 3. Phase-9's old docs get a superseded banner pointing at the new phase — they describe a world
    that ended in July and anyone planning from `STYLE-004` will build against dead premises.
+
+## ✅ RULED 2026-08-16 (session 42) — this becomes its own phase
+
+Richard, on the headline (*the token system is an agent-facing API with no human-facing UI*):
+*"Yep we need to look at that, and the panel is probably buggy AF because we never tested it."*
+
+✅ **Green-lit as its own phase**, scoped from the eight rulings — which are still owed, in that
+phase's scoping session, not here.
+
+🔴 **One constraint that sentence adds, and it re-prices slice 1.** *"Un-gate the panel"* is the wrong
+verb. The Design Tokens panel has **never run in any shipped or dev build** — `config.devMode` has
+never been set — and `TokenPicker` has **zero call sites**, so flipping the flag exposes UI nobody
+has ever exercised. Budget slice 1 as **build and test the panel**, not *reveal* it, and expect the
+first drive to be a bug list rather than a confirmation.

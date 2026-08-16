@@ -538,3 +538,17 @@ process's output. The spec is the gated regression; the CLI run is the measureme
   the `Log` node uses; (c) leave the behaviour and say so in the block's tooltip. ⚠️ (b) is not free:
   the sink is per-run `runContext`, which generated code has no handle on today.
 - 🔴 The §C seam-category ruling at line 276 is **still** unchanged.
+
+## ✅ RULED 2026-08-16 (session 42)
+
+**Redaction → (b): route `noodl_log` through the scrubbed sink.** A `noodl_log` block can print a
+provisioned secret to stdout in the clear, where the `Log` node cannot. Rejected: **(a)** accept, and
+**(c)** tooltip-only — a tooltip is not true for anyone who does not read it. ⚠️ **(b) is not free**;
+price it before building.
+
+**§C seam-category → DUAL-LIST, and narrow the fence.** The four object-shaped blocks are listed
+under **`App Objects`** as well as Data, matching the existing `noodl_convert` precedent and the
+findability complaint behind the whole fix. And `tests-unit/vfn-012/browser-blocks.spec.ts`'s
+byte-identity assertion is **narrowed to what its own title claims** — *"changes no existing block
+type id"* — which an addition does not do. ⚠️ Narrowing another phase's guard is only legitimate
+because the guard is stricter than its stated claim; say so in the commit.

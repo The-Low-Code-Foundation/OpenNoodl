@@ -735,3 +735,20 @@ things off.**
   would have made link 1 above collapse. Re-run with `-a`, both callers are there in
   `CodeEditorType.ts`. 🔴 **A "no caller" reading from a grep without `-a` in this repo is an
   instrument artefact, not a finding.**
+
+## ✅ RULED 2026-08-16 (session 42)
+
+**Ruling 1 → keep the Script node STRICT, and make it TEACH.** Richard: *"a Script node has always
+been strict AF, keep it that way, if you want to use the Script node it's because you've got
+something hardcore to achieve, so you should learn the rules (and the node should teach of course)."*
+
+So the fix is **not** to make the parser accept an undeclared `Outputs.Done()`. Declaration stays
+necessary — that is the node's character, not a bug. What is missing is the **editor-time
+diagnostic**: an author who writes `Outputs.Done()` and never opens the `scriptOutputs` proplist gets
+a broken output, no Type control, and **no message at all**. Add the message.
+Rejected: **(a) copy/default**, which would paper over the strictness being kept on purpose.
+
+**§3 signal inputs → RULED OUT for Functions.** Richard: *"Script nodes are the ones to use when you
+want multiple input signals, Functions just have Run."* Document `run` as the Function's only
+trigger; do **not** copy `Node.Signals` into it. ✅ **This closes the only genuinely blocked item in
+the phase.**

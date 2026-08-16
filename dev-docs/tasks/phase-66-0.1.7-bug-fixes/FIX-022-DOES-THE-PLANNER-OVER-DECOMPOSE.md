@@ -332,3 +332,25 @@ grade, and the system-prompt length actually put on the wire. The intents quoted
 those files, not transcribed from a terminal.
 
 ✅ It is plain Node and makes no editor process: **safe beside a live stack**, like `test:main`.
+
+## ✅ RULED 2026-08-16 (session 42) — no numeric floor; the axis is REUSE, not size
+
+Richard: *"I'd say no number. I sometimes create components with just one node inside, like a
+function node, because I want to reuse that function in multiple places, or a 'pill' card with just
+a group and a text for example."*
+
+🔴 **Option (b), the numeric floor, is REJECTED — and it was s41's own recommendation.** A one-node
+component is legitimate *when it is placed more than once*. A node count cannot tell that apart from
+a component created for a single use, so any floor would forbid work the product owner does
+deliberately.
+
+🔴 **This retires the instrument's headline as stated.** The grade counted *"created a whole
+component for that one derived value"* and **never checked how many times the plan places it**. By
+this ruling, creation is not the defect — creation **for a single use** is. So **5/10 is an upper
+bound on the real defect rate, not a measurement of it.**
+
+✅ **Next step is a re-grade, not a build.** The 20 saved plans from s41 can be re-scored for
+**instantiation count** with no new API calls. Only if a real single-use rate survives that is a rule
+worth writing — and it must then be stated on the **reuse** axis (*"factor when it will be placed
+more than once"*), which is what `DECOMPOSITION_PLANNING`'s positive rule already half-says, never on
+node count.

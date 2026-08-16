@@ -270,3 +270,25 @@ independent samples, not one result printed five times.
 `Javascript2` node containing `var` and `s.replace(/[^0-9.]/g, '')`, fails both criteria; the real
 runs pass both. A grader that cannot fail grades nothing. It also scores a run that wrote **no** code
 as `n/a` rather than `pass`, so an arm that dodged AC2 cannot borrow credit for answering it.
+
+## ✅ RULED 2026-08-16 (session 42)
+
+**AC4 `Javascript2` → add the id to the Script line.** `traps.ts:61-63`'s principle — *"the type name
+is what matters"* — is right; the prompt was simply incomplete. Rejected: narrowing the comment.
+
+**`Substring` vs inline code → WEIGHT THE BUILT-IN NODES HEAVIER, with one exception.** Richard:
+*"Let's add a heavier weight to the in built nodes, unless the operation requires more complexity
+which could be easily rolled into a Function, otherwise you end up with function nodes connected to
+substring nodes connected to functions etc."*
+
+🔴 **The exception is the load-bearing half, and the rule is NOT simply "prefer nodes".** The failure
+mode being ruled against is **alternation** — `Function → Substring → Function` chains:
+
+- simple operation ⇒ the **built-in node**;
+- operation complex enough to need a Function ⇒ do **all** of it inside that one Function, rather
+  than splitting it across a node and two code blocks.
+
+⚠️ **Measure any prompt edit on BOTH axes** — node choice *and* chain shape. A rule that only pushes
+"use the node" will manufacture exactly the alternation this ruling exists to prevent, and the
+current criteria would score that as a win. ⚠️ The n=5 cells (`Substring` 10/10 OFF vs 3/10 ON) are
+**not** a floor to build on — re-run at n=10 first, per s41's finding.

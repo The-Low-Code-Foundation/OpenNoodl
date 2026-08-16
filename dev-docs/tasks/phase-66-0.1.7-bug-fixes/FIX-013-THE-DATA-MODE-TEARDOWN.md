@@ -114,3 +114,18 @@ holds; the shim is **1,121**, not ~900.
 3. The bench cannot reach the project's real backend (assert the export always carries the
    sandbox flag).
 4. The AI authoring preview per ruling 2 — either unchanged (control) or swept in the same commit.
+
+## ✅ RULED 2026-08-16 (session 42) — ruling 1 answered
+
+**Ruling 1 → (c): the shim serves ZERO rows.** A data-reading component on the bench shows its real
+empty state and the user feeds it through inputs — closest to *"just inputs and outputs, done"*.
+Rejected: **(a)** synthesized rows served silently (worse than today — the lie loses its label) and
+**(b)** rows plus a caption. ⚠️ Take (b)'s one-line caption anyway wherever an empty frame would
+otherwise read as a broken bench.
+
+✅ **This is the ruling the big subtraction hangs on.** `sandboxData.ts` (567 lines) and the runtime
+shim (1,121) are downstream of **`useSampleData`**, not of the toolbar — so with 1(c) the Fix
+direction must **stop hard-coding `useSampleData: true`**, which it currently does.
+
+🔴 **Rulings 2, 3 and 4 remain open**, and 2 is now smaller than the file originally claimed: its
+payoff is **three** files (toolbar, editor, `sandboxDataDraft`), not five.

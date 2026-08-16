@@ -206,3 +206,31 @@ toolbox** — it should not fall out of a contrast drive.
 **closed** and duly reported every `.blocklyMenuItem` rule as matching nothing. That is a *state*
 difference charged to the selector. Only selectors whose subject UI is on screen can be called
 dead — which is why the toolbox result above is stated and the context-menu rules are not.
+
+## ✅ RULED 2026-08-16 (session 42)
+
+**Dead selectors → DELETE.** All four, matching what `5b91e9c8` did to the `.goog-*` rules.
+Rejected: retargeting to `.blocklyToolboxSelected` — it needs `!important` to beat Blockly's inline
+style and is a **visible redesign of the toolbox**, which should not fall out of a contrast drive.
+The toolbox stays on Blockly's category-coloured selection at 5.35:1, which passes AA.
+
+**The rename → `App Variables` + `App Config`.** `Noodl.Variables` is called **App Variables**, to
+sit with the other `Noodl.*` surfaces; the extra globals in app settings are called **App Config**,
+after the `Noodl.Config` method they represent. ⚠️ **This knowingly reverses VFN-012**, which renamed
+away from `App Variables` — recorded here so it does not read as an accident later.
+
+## 🔴 A much larger idea the rename exposed — NOT this task
+
+Richard: *"the ultimate would be moving the whole damn thing down to 'Variables / Functions / Blocks'
+because it's kind of a drawer by itself… App Variables, Objects, Arrays… they're all declared
+globally and Blockly could just pick them up and display them as a list of blocks, like with the
+blockly variables. I know that's a big change, but it makes so much more sense than dot notation."*
+
+✅ **This is Blockly's own native model, not a departure from it.** Blockly already enumerates
+declared variables and offers them as draggable blocks rather than names you type. App Variables,
+App Config, Objects and Arrays are all declared globally, so the editor can enumerate them the same
+way — which removes dot notation **and** removes having to remember names. Plus `Function Variables`
+for the Blockly-scoped ones, and the whole set moved into its own drawer.
+
+**Wants its own task.** Do not fold it into the rename, and do not let the rename pre-empt its
+naming decisions.
