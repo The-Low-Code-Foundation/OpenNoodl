@@ -249,6 +249,91 @@ name the kit). **Wants a task number.**
   `kitModule` survive the merge and are readable via `catalogOverlayNodes()`, but no `CatalogIndex`
   query exposes them and nothing in the property panel reads them. D1's surface stays open.
 
+## ✅ Slice 4 landed 2026-08-16 — three vocabularies, and the leak the trap did not name
+
+Item 5 (lesson vocabulary) and item 4 (`CatalogIndex` provenance) are both done, and the kit-name
+defect slice 3 found is **fixed** rather than only asserted.
+
+### 🔴 Measured first, and the trap was live in a file nobody had listed
+
+The trap paragraph named three files to route (`learningfolder.ts`, `lessonbundleverify.ts`,
+`lessongrading.ts`). The actual leak was in a **fourth**: `lessonprojectcontext.ts` defaults its
+`catalog` to `loadDefaultCatalog()`, which after slice 3 carries the *open project's* kits. Taken
+against slice 3's code:
+
+| | then | now |
+|---|---|---|
+| a lesson naming the OPEN project's kit node, `gradeLesson(verify)` | `unknown-node-type` **error** | clean |
+| a bundle's node ports, with a kit project open | **the open project's kit** (`label`) | the bundle's own, or none |
+| a bundle carrying the kit it teaches, at install | refused: *"is not a node type"* | refused, and it says **why it cannot tell** |
+
+The middle row is the one that matters: the same bundle installed or was refused depending on what
+was on screen.
+
+### Three vocabularies, chosen by who the subject is
+
+- `projectLessonVocabulary()` — the open project, both halves overlaid, memoised on
+  `catalogGeneration()`. `gradeLesson`'s bare `verify: true` now means *against the open project*.
+- `bundleLessonVocabulary(overlayNodes, unresolved?)` — a directory that is **not** the open one,
+  built from its own kits. `catalogWithOverlay()` (in `validation/catalog.ts`) makes the pair.
+- `defaultLessonVocabulary()` — neither. Unchanged.
+
+### 🔴 Only the MCP server can fill the bundle's half, and both rulings say so
+
+`extractProjectOverlay` takes **any** project directory, and a bundle is one — so
+`lessons/bundleVocabulary.ts` reads a bundle's own kits where bundles are actually written and
+scored (`create_lesson`, `check_lesson`). The editor cannot and must not: ✅ **D3** puts extraction
+in one process, and ✅ **D6** puts consent before running a downloaded bundle's kit code — *a gate
+that runs the code in order to decide whether the code may run has no gate in it*.
+
+So the editor's install path passes the shipped pair explicitly, and when the bundle carries
+`noodl_modules/` it passes a vocabulary that **says it is incomplete**. ✅ **Richard ruled 2026-08-16:
+it still blocks.** Only the claim was fixed — the refusal no longer asserts "there is no such node
+type" about a bundle that ships the kit declaring it.
+
+### Driven on the packaged server, with its control
+
+`dist/noodl-mcp.cjs` over real stdio, `check_lesson` against a bundle built from `kit-app`:
+
+| | F1 | reported |
+|---|---|---|
+| bundle **with** its kit | **pass** | `kits: [Demo Kit]`, `kit_node_types: [demo.kit.Badge, demo.kit.Meter]` |
+| same bundle, kit removed (control) | **FAIL** | `"demo.kit.Badge" is not a node type` ×2 |
+
+F2 then failed as **F2′** ("already complete in the starter") — which is itself the evidence that the
+`hasPort` condition *matched* a kit node, i.e. the ports resolved end to end.
+
+### ✅ Item 4 — provenance is queryable
+
+`CatalogIndex.isProjectKitType()`, `kitModuleOf()`, `projectKitTypeNames()`. 🔴 `hasType()` is true
+for both kinds and **nothing may branch on these to check a kit node less** — D4 rules a kit-declared
+type is fully checked and P1 forbids a capability gap. They exist so D1 and CN-015 can *say* where a
+node came from.
+
+### ✅ The kit name — fixed, not just asserted
+
+`@nodegx/module-inject` sets `window.__noodl_module_name` immediately before each kit's script tag;
+the three runtime bootstraps adopt it in `defineModule`. 🔴 The capture must be there and not in
+`registerModule` — by the time the runtime walks `__noodl_modules` the global holds the *last* kit's
+name. The name is escaped: a manifest is project-supplied and this string reaches a deployed page.
+
+⚠️ **`kitAgreement.test.ts`'s editor half is a recording that predates the fix** and still says
+`'Unknown Module'`. Marked as a fossil in place. Re-recording costs a viewer build and a drive,
+because the editor loads its bootstrap from the gitignored `src/external`.
+
+### 🔴 A test that was green against a restored leak
+
+The first fixture used `App:%…` where a component's legacy name is `/App`, so every condition read
+false and the "does it borrow?" test passed under mutation — a failure indistinguishable from the
+mechanism being absent. Fixed, then re-proven by mutation in both directions.
+
+### Knowingly not done
+
+- **The F2 cost of an unreadable kit.** A kit node reconstructed from a bundle's files carries only
+  its stored ports, so a `hasPort` condition over one reads false against the lesson's own correct
+  solution — a *manufactured* failure. Pre-existing, unchanged, and the reason the blocking question
+  was worth asking.
+
 ## What to build
 
 1. ✅ **The shared mapping** — done, `@nodegx/kit-catalog` (see above). Reuses CN-001's
@@ -271,11 +356,12 @@ name the kit). **Wants a task number.**
 3. ✅ **The editor caller** — done, slice 3 (see above). Original text: builds the same overlay from
    the node library the viewer already sent (`NodeLibrary.instance`), then `compareOverlays` against
    the MCP route in a test.
-4. **`CatalogIndex` learns the difference** between "I know this type because we shipped it" and "I
-   know this type because a kit declares it". `hasType()` should be true for both; provenance must
-   remain queryable, because ✅ **D1** wants it in the property panel and CN-004 needs it for
-   `--strict`.
-5. **The lesson vocabulary takes the overlay too** (added 2026-08-15 — see README §4). `lessonverify.ts`
+4. ✅ **`CatalogIndex` learns the difference** — done, slice 4. `isProjectKitType()`,
+   `kitModuleOf()`, `projectKitTypeNames()`. Original text: between "I know this type because we
+   shipped it" and "I know this type because a kit declares it". `hasType()` should be true for both;
+   provenance must remain queryable, because ✅ **D1** wants it in the property panel and CN-004
+   needs it for `--strict`.
+5. ✅ **The lesson vocabulary takes the overlay too** — done, slice 4 (see above) (added 2026-08-15 — see README §4). `lessonverify.ts`
    builds a `LessonVocabulary` over `defaultCatalog()`, and its `unknown-node-type` is an **error**,
    so a lesson naming a kit node is refused at install under every provenance. ✅ **The seam already
    exists and needs no new plumbing**: `VerifyLessonOptions.vocabulary` is an injection point, and
