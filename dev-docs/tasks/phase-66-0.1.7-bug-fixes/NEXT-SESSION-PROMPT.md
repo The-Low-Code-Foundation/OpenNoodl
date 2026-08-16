@@ -1,21 +1,21 @@
 # Phase 66 — next session
 
-**Written 2026-08-16, session 43.** A rewrite, per §0. s43 took the first four items of s42's build
-queue plus the FIX-022 re-grade, and shipped them as `82b33466`.
+**Written 2026-08-16, session 44.** A rewrite, per §0. s44 took items 1 and 2 of s43's queue and
+shipped both — `e16684df`, `3d3cc974`, `4b42d835`.
 
-🔴 **The queue is still a build queue, and it is now shorter at the cheap end.** Everything left is
-medium or larger, except item 1. Nothing below waits on Richard except FIX-013's rulings 2–4 and
-FIX-015's eight, which are a scoping session of their own.
+🔴 **The queue has no cheap end left.** Everything below is medium or larger. Nothing waits on
+Richard except FIX-013's rulings 2–4 and FIX-021's Q2/Q5/Q6.
 
-🔴 **Two of the four "documentation only" items turned out to be corrections, not transcriptions.**
-FIX-016 §3's fact was already written down in two places — *backwards*, with a spec enforcing it —
-and FIX-005's dead selectors had five green specs grading them. **Budget for that shape: an item
-whose ruling says "just document it" is where the product's own copy is least likely to be right,
-because nobody has had a reason to read it.**
+🔴 **s44's headline is a method result, not a feature: item 2's premise was FALSE, and the census
+that found it took two minutes.** FIX-016's task file said an author who writes the wrong notation in
+a Script node *"gets no message at all"*. Measured, the editor was **accusing the Script node's own
+API** — telling authors that `define(…)`, the notation the product's own `NOTATION_RULES.script`
+prescribes, is an undeclared port, with a fix-it offering to write `Inputs.define`. **Budget for that
+shape: a premise asserting an ABSENCE is the one nobody has checked, because a silence has nothing to
+trip over.**
 
-🔴 **Every ruling is recorded in its own task file under `## ✅ RULED 2026-08-16 (session 42)`, and
-what s43 built is recorded under a `## ✅ … 2026-08-16 (session 43)` heading in the same files.**
-The task files are the durable record. §4 here is a work order, not the source of truth.
+🔴 **Every ruling and every build is recorded in its own task file.** §4 here is a work order, not the
+source of truth.
 
 ---
 
@@ -24,8 +24,7 @@ The task files are the durable record. §4 here is a work order, not the source 
 One `NEXT-SESSION-PROMPT.md` per phase, **overwritten** each session. Four things:
 
 1. **Built vs. driven**, per task — *built* is code plus gates; *driven* is the app doing it.
-2. **Gate readings with their date and tree**, so the next session compares against a reading it
-   can trust. ⚠️ **Mark which ones this session actually took.**
+2. **Gate readings with their date and tree.** ⚠️ **Mark which ones this session actually took.**
 3. **What is settled**, so nobody re-litigates it.
 4. **What to do next**, ordered, with rulings owed by Richard called out separately.
 
@@ -38,368 +37,231 @@ amendment, rewrite the file instead.**
 
 | Task | Built | Driven | Note |
 |---|---|---|---|
-| **FIX-001 / 002 / 003 / 007 / 009 / 010 / 011 / 012 / 014 / 018 / 019 / 020** | ✅ | ✅ | **CLOSED** — twelve tasks |
-| **FIX-006** — AC1–AC4 | ✅ | ✅ | AC4 built **s43**. **The Substring weighting is the one build left in this task** |
+| **FIX-001 / 002 / 003 / 007 / 009 / 010 / 011 / 012 / 014 / 017 / 018 / 019 / 020** | ✅ | ✅ | **CLOSED** — thirteen tasks |
+| **FIX-021** slice 0 + wizard location | ✅ | ✅ **s44 3/3** | Acceptance 1 closed s42; the location seed driven s44. **Slices A/B are the open work** |
+| **FIX-016** §2, §3, §3c, **ruling 1** | ✅ | ⚠️ **ruling 1 NOT driven** | Message 6 is spec-level; nobody has seen it in a gutter |
+| **FIX-006** — AC1–AC4 | ✅ | ✅ | **The Substring weighting is the one build left** |
 | **FIX-004** §A+§B | ✅ | ✅ | Redaction (b) and §C are RULED and unbuilt |
-| **FIX-021** slice 0 | ✅ | ✅ s42 | Acceptance 1 closed — launcher file and MCP twin byte-identical |
-| **FIX-022** | ✅ | ✅ | **RE-GRADED s43 — the defect is REAL on the reuse axis, 11/11 single-use.** No rule written yet, and §3 says why not yet |
-| **FIX-017** | ✅ | ✅ | **CLOSED s43** on documentation — AC1 accepted, AC3 struck |
-| **FIX-016** §2, §3, §3c | ✅ | ✅ | **§3 CLOSED s43.** §1's teaching diagnostic is ruled and unbuilt |
-| **FIX-005** part 1 + dead selectors | ✅ | ✅ | Selectors deleted **s43**. **The rename is unbuilt** |
+| **FIX-022** | ✅ | ✅ | Re-graded s43. **No rule written yet — §3 says why not** |
+| **FIX-005** part 1 + dead selectors | ✅ | ✅ | **The rename is unbuilt** |
 | **FIX-008** A, B, E | ✅ | ✅ | C unblocked (**the measurement is an agent's, not Richard's**); D unstarted |
 | **FIX-013** | 📋 | — | Ruling 1 = **(c)**. Rulings 2–4 still open |
 | **FIX-015** | 📋 | — | **Green-lit as its own phase.** Not a P66 build |
-| **FIX-021** slices A/B | 📋 | — | **GREEN — a user profile.** Three of six questions answered |
 
-**Fifteen closed outright** — FIX-017 is the fifteenth. ⚠️ **Count the names, don't copy a total.**
+**Thirteen closed outright.** ⚠️ **Count the names, don't copy a total.**
 
 ---
 
 ## 2. Gate readings
 
-✅ **s43 took these itself, at tree `82b33466`, on a checkout with peers' uncommitted work in it.**
-That last clause matters: `test:main` compiled their in-flight `router.setup.ts`,
-`projectmodules.ts` and `KitsSection.tsx` alongside mine, so the green is a reading of the *tree*,
-not of my diff alone.
+✅ **s44 took all of these itself**, on a checkout with peers' uncommitted work and peers actively
+saving source throughout.
 
 | Gate | Reading | When |
 |---|---|---|
-| **`noodl-editor` `test:main` (jest)** | ✅ **220 suites / 3396 tests, 0 failed — twice** | ✅ **s43** |
-| **`noodl-mcp` jest** | ✅ **50 suites / 585 tests** | ✅ **s43** |
-| **`noodl-core-ui` jest** | ✅ **25 suites / 444 tests** | ✅ **s43** |
-| `nodegx-backend` jest (full) | ✅ 100 suites / 1085 passed, 10 skipped | s40 — inherited |
-| `test:ci` (jasmine) | ⚠️ **2843 / 6 @ 39393**, six by name — **but PRE-CN-006** | newest run **2026-08-16 16:01**; `9e76bae4` landed **20:43**. 🔴 **The committed tree is UNWITNESSED** — see below. A run was in flight at 21:19 |
-| `library:check` (PR gate) | ✅ 58/58, exit 0 | s30 — inherited |
+| **`noodl-core-ui` jest** | ✅ **26 suites / 461 tests** (was 25 / 444) | ✅ **s44** |
+| **`noodl-editor` `test:main`** | ⚠️ **220 / 221 suites — see the flake below** | ✅ **s44** |
+| **`typecheck:core-ui`** | 44 errors, **none in any file touched**; `--listFiles` confirms the changed files are in the compile | ✅ **s44** |
+| **`lint:ci` ratchet** | ✅ exit 0, 876 against a 3916 baseline | ✅ **s44** |
+| `nodegx-backend` jest | ✅ 100 suites / 1085 | s40 — inherited |
+| `test:ci` (jasmine) | 🔴 **UNWITNESSED on the committed tree** — see below | — |
+| `library:check` | ✅ 58/58 | s30 — inherited |
 
-🔴 **`test:main` moved 216 → 220 suites and 3363 → 3396 tests in a day, and most of it was peers'.**
-Re-measure; never quote a handover's figure as your own.
+### 🔴 `test:main` has two load-flaky suites, and they are not yours
 
-🔴 **The first `test:main` run reported 2 failed suites and I could only identify one** — the tail of
-a piped run truncates the failure list. **Redirect the whole run to a file** (`npx jest > out.txt
-2>&1`) rather than piping to `tail`, or you will be guessing about the failure you cannot see. Two
-clean full runs followed the fix, so the second failure did not reproduce.
+`bld-004/reasoningChannel` failed one full run; `aib-009/turnDeadline` failed the next. Both report
+*"nothing arrived for 0 seconds"*. **Do not spend a session on this the way s44 nearly did.** The
+attribution is measured:
 
-**`test:ci` was NOT run, as a claim rather than an omission.** s43 changed one `.scss`, three `.ts`
-under `src/`, and two jest specs. No `.jsx`, and no file under `packages/noodl-editor/tests/`.
-🔴 **That reasoning does not transfer to FIX-005's rename or FIX-004's §C** — both are Blockly, which
-is `.jsx`/`test:ci` territory.
+- **`npx jest --findRelatedTests <your changed files>` listed ZERO editor suites** for s44's four.
+- Each suite passes **3/3 in isolation**.
+- The full run was clean twice earlier the same session.
 
-✅ **PIN THE SEED: `NOODL_SPEC_SEED=39393`.** 🔴 **`test:ci`'s exit code misleads both ways** — a clean
-floor run exits **1**. **Prove completion from `test-results.json`'s mtime; delete it before a run.**
+✅ **`--findRelatedTests` is the cheap instrument for "is that failure mine?"** — it answers from
+jest's own module graph rather than from your reading of the imports.
 
-### 🔴 `test-results.json` on disk is STALE BY A WHOLE RUN — it says 7, the floor is 6
+### 🔴 `test:ci`'s floor is unwitnessed, and a peer is on it
 
-⚠️ **s30 got this wrong first and committed it wrong** (`8b1d829a`, superseded here). The record said
-*"the floor is SEVEN, do not quote 6"*. **That was false and it retired a real measurement.** Corrected
-by finding the primary artifacts. **Five** jasmine runs exist as background-task output — **with their
-dates, which is the whole point**:
+A peer's pinned-seed run **timed out at 900s** with no results file (exit 1, runner said so) while
+s44's dev stack was up — three full webpack rebuilds, ~7 minutes of compile, landed inside their
+window, *triggered by a third party's source saves, not s44's*. They re-ran on an idle checkout and
+will report. **Their prediction is 2843/7** (the seventh a `projectmodules` golden from `f7da52d1`)
+and it is **untested — not confirmed, not refuted**. ✅ **Do not quote 2843/7 until someone posts a
+run that says so.**
 
-| when | specs / failures | seed |
-|---|---|---|
-| **2026-08-13** 10:58:17 | 2717 / 6 | **58032** |
-| **2026-08-15** 13:14:24 | 2812 / 9 | 39393 |
-| **2026-08-15** 13:29:41 | 2812 / 6 | 39393 |
-| **2026-08-15** 21:21:42 | 2843 / 6 | 39393 |
-| ✅ **2026-08-16** 16:01:26 — **the most recent** | **2843 / 6** | 39393 |
-
-🔴 **THE COMMITTED TREE IS UNWITNESSED**, and the newest complete `test:ci` is 16:01 on 08-16.
-
-### 🔴 The 7th failure is on COMMITTED code — `f7da52d1`, mechanism verified
-
-⚠️ **s30 wrote that the 20:37 run "saw in-flight uncommitted work". That was wrong.** Attribution
-raised by `uds:/tmp/cc-socks/9204.sock` from the timing straddle; **mechanism** then verified here:
-
-| fact | evidence |
-|---|---|
-| the spec compares the editor's injector output to a committed snapshot | `projectmodules.test.ts:87-92`, golden at `tests/testfs/module-inject/expected-inject.snapshot.txt` |
-| **the injector changed** `2026-08-16 16:39:50` | `f7da52d1` *"fix(cn-003): a kit can say its own name"* → `packages/nodegx-module-inject/src/index.js` (+45) |
-| **the golden was NOT regenerated** | last touched **2026-07-25** by `19ecdff7`; `f7da52d1` does not contain it |
-| `f7da52d1` is an **ancestor of HEAD** | `git merge-base --is-ancestor` → yes |
-| the runs straddle it | 16:01 → **6** · `f7da52d1` 16:39:50 · 20:37 → **7** |
-
-🔴 **So the floor on the committed tree is almost certainly 2843 / 7, and the 7th is a genuine
-regression, not contamination and not CN-006's.** `9e76bae4` (20:43) is a red herring — it landed
-*after* the 20:37 run that already showed 7.
-
-⚠️ **"Almost certainly" is doing real work: no completed run has graded the committed tree.** The
-attribution is solid; the count is not witnessed. Record them separately.
-
-⚠️ **s30's own miss, worth the line:** `git log -S"injectIntoHtml"` did **not** return `f7da52d1`, and
-that null nearly cleared it. The commit changes the *inputs* the spec compares, never the symbol's
-name. **A symbol-scoped search cannot answer a behavioural question** — same family as the seed-scoped
-sweep and the dateless mtimes: filter, then read the null as absence.
-
-🔴 **The spec's own header says this golden is the ONLY cross-package check that the editor's injector
-still agrees with `nodegx-module-inject`** (`projectmodules.test.ts:14`). It is doing exactly its job
-and has been red on `main` since 16:39.
-
-🔴 **s30 first wrote "four runs exist" and that was false — the trap is worth more than the count.**
-The sweep grepped `"Randomized with seed 39393"`, so the 10:58 run at **seed 58032 was invisible to
-it**, and its filtered result got written up as an unqualified enumeration. **`asked − answered =
-absent`, never `everything − answered`.** Caught by the peer on `uds:/tmp/cc-socks/9204.sock`.
-⚠️ **The listing is also scoped to this checkout's slug directory** (`…/-Users-richardosborne-vscode-
-projects-OpenNoodl/*/tasks/`), so a **sibling worktree's** runs are excluded by construction. Widen
-the glob before claiming a machine-wide count.
-
-### 🔴 STRUCK — the date error, and the two findings it manufactured
-
-~~The floor is 2843/6 and the committed tree IS witnessed — the 21:21 run postdates `9e76bae4`.~~
-~~`test-results.json` went stale against a LATER COMPLETED RUN of its own suite.~~
-~~The projectmodules golden is contamination that does not reproduce on committed code.~~
-
-🔴 **All three struck 2026-08-16. The 21:21 run is 2026-08-15** — 23 hours earlier than read. s30 and
-the peer on `uds:/tmp/cc-socks/9204.sock` made the **same** error independently: formatted mtimes with
-`stat -t '%H:%M:%S'` — **time, no date** — then compared and sorted that column across a ten-day span,
-so `21:21` sorted after `16:01` and a day-old run read as the newest. **Sorting a time-of-day string is
-not sorting time.** Caught by the session on `87109`.
-
-⚠️ **What each struck claim actually rested on, because the wreckage is instructive:**
-
-| struck claim | why it collapsed |
-|---|---|
-| committed tree witnessed | its only witness is a day older than the commit |
-| *"a completed run failed to write `test-results.json`"* | **no run ever failed to write.** The Aug-15 run wrote it on Aug 15; the Aug-16 20:37 run overwrote it. There was never a completed-but-unwritten run |
-| projectmodules golden = contamination | nothing has run on committed code, so *"does not reproduce"* has no measurement behind it |
-
-🔴 **The middle one is the dangerous one: it retired standing advice.** *"Delete the file, then require
-a fresh mtime"* was declared broken and it is **not** — it stands unchanged. ⚠️ **A false finding that
-retires a working check costs more than a false finding that adds a bogus one**, because the check it
-removes was load-bearing and its removal is invisible.
-
-⚠️ **Same shape, two filters, two sessions:** s30 dropped every run at another **seed**; the peer
-dropped the **day**. Both wrote a filtered view up as a complete one.
-
-✅ **THE RECOVERY INSTRUMENT, which five sessions missed and which settles this class of question:**
-
-```
-ls -lt /private/tmp/claude-*/-Users-richardosborne-vscode-projects-OpenNoodl/*/tasks/
-/usr/bin/grep -arl "Randomized with seed" /private/tmp/claude-*/…/tasks/    # NOT "… seed 39393"
-```
-
-⚠️ **Sweep on `"Randomized with seed"` without the number.** Pinning the seed hides every run at a
-different one — which is exactly the run you want when you are asking *"has anyone measured this?"*
-🔴 **And sweep the whole box, not your own session directory:** the run that settled this was another
-session's, and the peer who found the instrument missed the answer by running it only on itself.
-
-🔴 **Background-task output survives a session's context roll.** Prefer it to `test-results.json`, and
-prefer it to any session's reconstruction — **including its account of its own run.** Delete the results
-file before re-running, and read the run's own output for the verdict.
-
-⚠️ **`tsc -p tsconfig.tests-main.json`'s 31 errors are NOT a gate and NOT a regression.** Do not
-re-derive this a seventh time.
+**s44 did not run `test:ci`, as a claim rather than an omission:** `.ts`/`.tsx` under `src/`, two new
+specs, no `.jsx`, nothing under `packages/noodl-editor/tests/`. 🔴 **That reasoning does not transfer
+to FIX-005's rename or FIX-004 §C** — both are Blockly, which is `test:ci` territory.
 
 ---
 
-## 3. What s43 did, and the two things worth reading before you build
+## 3. What s44 built, and the one thing to read before building anything
 
-### ✅ Five items shipped in `82b33466`
+### ✅ FIX-021 — the wizard opens somewhere (`e16684df`, driven `4b42d835`)
 
-| item | what landed |
+Ruling (B). `projects.lastCreateLocation` seeds the Location field; `getDocumentsPath()` on first run;
+Browse still overrides and records.
+
+🔴 **The existence guard is the part to keep.** `isStepValid('basics')` checks only
+`location.length > 0`, so seeding a folder on an unmounted volume would **enable `Next`** and fail at
+creation — later, and naming a folder the user never typed. Invariant: **empty, or a folder that
+exists.** Driven arm C proves it against the real `filesystem.exists`.
+
+⚠️ **Undriven half:** Browse recording the choice needs the native dialog, which CDP cannot drive.
+
+### ✅ FIX-016 ruling 1 — and the census that rewrote it (`3d3cc974`)
+
+The two nodes are compiled differently and the editor treated them as one mode:
+
+| node | compiled as |
 |---|---|
-| **FIX-017** | AC1 accepted, AC3 struck, both with the reason written where the next reader will hit it. **Task closed** |
-| **FIX-005** | The four dead toolbox selectors deleted (`.blocklyToolboxDiv`, `.blocklyTreeLabel`, `.blocklyTreeRow`, `.blocklyTreeSelected`), plus the five specs that graded them |
-| **FIX-006 AC4** | `traps.ts`'s Script paragraph now leads with `` `Javascript2` `` |
-| **FIX-016 §3** | `run` documented as the Function's only trigger, in `NOTATION_RULES` (mid-edit) and the picker card (pre-choice) |
-| **FIX-022** | The 20 saved plans re-graded on the reuse axis. No API calls |
+| Function (`JavaScriptFunction`) | `AsyncFunction('Inputs','Outputs','Noodl','Component', …)` |
+| Script (`Javascript2`) | `Function('define','script','Node','Component', …)` |
 
-### 🔴 A spec can be green, controlled, and measuring nothing — twice in one session
+One ESLint globals list — the union **minus** `define`/`script` — served both, and the completion
+list had the same defect under the misleading name `SCRIPT_GLOBALS`. Now per-mode, plus **message 6**,
+and **script mode gets only message 6**: messages 1–5 all emit `Inputs.`/`Outputs.` notation, and all
+five are wrong on a node that mines no ports from its text. ESLint's own diagnostics still pass
+through.
 
-**FIX-005.** `tests-unit/fix-005/dropdown-contrast.spec.ts` graded the selected toolbox category in
-both themes: five passing rows and a negative control that fired at **1.19:1**. The selector matches
-**zero elements** and has for several major Blockly versions. **The control could not have caught
-it** — it varied the *background token* and held the *selector* constant, so all it ever proved was
-that the contrast formula separates two colours. Reading a token name out of a stylesheet
-establishes what the file says, never what the browser applies.
-
-**FIX-016 §3.** The chooser's header and `chooserCopy.test.ts`'s docblock both asserted that
-`Node.Signals.X = function(){}` mints unlimited signal inputs *"additional to the built-in `Run`"* —
-a sentence **true of neither node**. `Node.Signals` is read at `javascriptnodeparser.js:203-211`, on
-a path reached only by `Javascript2`, which has **no** built-in `Run`; a Function body compiles as
-`AsyncFunction('Inputs','Outputs','Noodl','Component', …)` (`simplejavascript.ts:609-619`), so
-`Node` is not in scope at all and `run` is its one signal input. **A spec had been enforcing the
-false half since LGC-001.**
-
-✅ **The repair pattern, if you meet this again:** narrow the prohibition to the half that is still
-false (unlimited signal *outputs* are real) rather than deleting it, and give the control **both**
-arms — one showing the forbidden sentence still matches, one showing the now-*required* sentence
-does not. A one-armed negative goes on passing after the list stops catching anything.
-
-### 🔴 FIX-022 — the defect survived the ruling, and the missing control is the finding
-
-Re-scored the 20 saved plans for **how many times the created component is placed**:
-
-| arm | plans that create | placed **once** | placed **twice+** |
-|---|---|---|---|
-| doctrine ON | 5 / 10 | **5** | **0** |
-| doctrine OFF | 6 / 10 | **6** | **0** |
-
-Every creating plan is two operations — one `create`, one `update` placing it in a single parent at
-a single site. So 5/10 and 6/10 stop being an upper bound and **become the rate**.
-
-🔴 **But no arm contains a request where reuse is genuinely available.** `small-logic` asks for a
-reading time beside the author name: one site by construction. So this measures over-decomposition
-where reuse is *impossible*, and says nothing about whether the planner recognises real reuse.
-**A rule pushing "don't factor for a single use" could damage exactly the case Richard builds on
-purpose — one-node components placed many times — and nothing in this instrument would notice.**
-✅ **Add that cell before writing any rule.**
-
-⚠️ The instrument is the plan's **prose**, not a graph: records carry `operations[].intent`, not an
-instance count. "Placed once" is a reading of one operation naming one site.
+🔴 **Left standing on purpose — the next slice.** `unionPorts` calls `minePorts(code)` in script mode
+too, so FUN-005's rail and FUN-006's bar can show a Script node **ports it does not have**. The Script
+node's ports come from `parser.getPorts()` — `Node.Inputs`/`Outputs`/`Signals` or `define()` — never
+from a regex over the document (`javascript.ts:831-840`). Four surfaces; not folded in.
 
 ---
 
 ## 4. What to do next and why
 
-**Ordered by cost. Item 1 is the last cheap one.**
+**Ordered by cost.**
 
-1. 🟢 **FIX-021 — seed the wizard's location from last-used**, falling back to `getDocumentsPath()`
-   on first run. Ruled (B), small, self-contained.
-2. 🟠 **FIX-016 ruling 1 — the teaching diagnostic.** Keep the Script node strict; add the
-   editor-time message an author who writes `Outputs.Done()` without declaring it currently never
-   gets. ⚠️ Read the task file: **the strictness is deliberate and must survive the fix.**
-3. 🟠 **FIX-004 §C — dual-list the four object-shaped blocks under `App Objects`**, and narrow
+1. 🟠 **Drive FIX-016 message 6.** Cheapest way to close a "built, not driven" row: a Script node,
+   `Outputs.Done()` in its popout, read the lint state through `forEachDiagnostic`. ✅ **The control
+   that makes it a measurement:** the identical document on a **Function** node must stay silent, and
+   `define({…})` on the Script node must *also* be silent — the second is the half that was broken.
+2. 🟠 **FIX-004 §C — dual-list the four object-shaped blocks under `App Objects`**, and narrow
    `browser-blocks.spec.ts`'s byte-identity fence to what its title claims. ⚠️ Blockly ⇒ `test:ci`.
-4. 🟠 **FIX-005 rename → `App Variables` / `App Config`.** ⚠️ **Knowingly reverses VFN-012** — say so
+3. 🟠 **FIX-005 rename → `App Variables` / `App Config`.** ⚠️ **Knowingly reverses VFN-012** — say so
    in the commit. ⚠️ Blockly ⇒ `test:ci`.
-5. 🟠 **FIX-008 C** — take the two-servers-visible measurement yourself (**it is an agent's, not
+4. 🟠 **FIX-008 C** — take the two-servers-visible measurement yourself (**it is an agent's, not
    Richard's**), then build C.
-6. 🔴 **FIX-006 Substring weighting** — the one most likely to be got wrong. The rule is **not**
+5. 🔴 **FIX-006 Substring weighting** — the one most likely to be got wrong. The rule is **not**
    "prefer nodes"; see §5.
-7. 🔴 **FIX-022 — add the reuse-available cell** before writing any rule (§3). Cheap in code, ~$0.10
-   in API, and it is the difference between a rule that helps and one that forbids deliberate work.
-8. 🔴 **FIX-004 redaction (b)** — route `noodl_log` through the scrubbed sink. Not free; price it.
+6. 🔴 **FIX-022 — add the reuse-available cell** before writing any rule. ~$0.10 in API, and it is the
+   difference between a rule that helps and one that forbids deliberate work.
+7. 🔴 **FIX-016 — the script-mode mining slice** (§3). Four surfaces.
+8. 🔴 **FIX-004 redaction (b)** — route `noodl_log` through the scrubbed sink.
 9. 🔴 **FIX-013** — build against ruling 1(c). ⚠️ Rulings 2–4 still owed.
 10. 🔴 **FIX-021 slices A/B** — the user profile. Big; three of six questions answered.
 
-**Do not start** FIX-015 here — it is its own phase (§5).
+**Do not start** FIX-015 here — it is its own phase.
 
 ### How to start here
 
-🔴 **If you are grading anything the AI *plans***:
-`packages/noodl-editor/scripts/aix002-measure/dist/fix022-plan.cjs`. Real `PlanningSession`, real
-prompt, real validator. ✅ **`--dump=<path>` writes the arm's system prompt and exits before the
-provider is built** — arms are checkable with no API key. ⚠️ **`--model` is effectively required.**
-The 20 saved plans are in `measurements/`; the re-grade one-liner is in FIX-022 §"Reproducing".
+🔴 **Census before you build, whatever the task file says.** s44's item 2 was *"add the missing
+message"* and the measurement changed what got built. **Ten lines in the package's own node runner**
+— call the real entry point, print the output for both modes — beat four sessions of reading.
 
-🔴 **If you are grading what it *authors*, use the sibling** `dist/aix002-harness.cjs`. They share
-`shared.ts` and one `build.mjs`; **build once, both bundles rebuild.**
+🔴 **Grading anything in the code editor:** `javascriptDiagnostics(state, validationType)` is pure and
+runs headlessly in `noodl-core-ui`'s jest. `setOpenNodeContext({typeName, declaredInputs,
+declaredOutputs})` is how you say which node is open; `null` is a code **file**, not a node.
 
-🔴 **If you are grading a cloud function**, use `packages/nodegx-backend/tests/` — plain Node, safe
-beside a live stack.
+🔴 **Grading what the AI plans:** `packages/noodl-editor/scripts/aix002-measure/dist/fix022-plan.cjs`.
+✅ `--dump=<path>` writes the arm's system prompt and exits before the provider is built. ⚠️ `--model`
+is effectively required. **Authoring** is the sibling `dist/aix002-harness.cjs`; they share one
+`build.mjs`.
 
-🔴 **Before deleting anything a spec might grade, search THREE roots** in this package:
-`src/`, `tests/` **and `tests-unit/`**. s43 searched the first two, concluded "no spec asserts
-these", and `test:main` found five that did. ⚠️ Exclude `*.bundle.js` — build artifacts under
-`tests/` and `src/external/` match everything and drown the result.
+🔴 **Before deleting anything a spec might grade, search THREE roots**: `src/`, `tests/` **and
+`tests-unit/`**. ⚠️ Exclude `*.bundle.js` — s44 lost a search to a 20MB source-map hit.
 
-✅ **To drive the launcher wizard**, s42's route is in FIX-021's task file. The one trap: **the
-Location field is readonly and only a native dialog fills it** — set `WizardContext`'s `location`
-through the React state hook, identifying it **by shape, never hop count**.
-
-⚠️ **s43 launched no editor and no dev stack.** Every gate it ran is plain Node.
+✅ **A mutation check costs one shell call.** Apply the mutant, run the suite, restore, `diff` the
+file back — all in **one** Bash invocation, so the broken-file window is seconds and no peer's
+`git add -A` can catch it. s44 ran four; each one changed what the write-up could claim.
 
 ---
 
-## 5. Rulings — the sixteen from s42, and what a builder must not get wrong
-
-⚠️ **Each is recorded in full, with rejected options, in its own task file.** The five s43 built are
-now marked BUILT there. What is left:
+## 5. Rulings — what a builder must not get wrong
 
 - 🔴 **FIX-006 Substring — "weight built-in nodes heavier" is only HALF the rule.** Richard's
   exception is load-bearing: *"unless the operation requires more complexity which could be easily
   rolled into a Function, otherwise you end up with function nodes connected to substring nodes
   connected to functions."* The failure being ruled against is **alternation**. Simple ⇒ the node;
   complex ⇒ **all of it in one Function**. ⚠️ **A rule that only pushes "use the node" manufactures
-  exactly the chain this forbids — and the current criteria would score that as a win.** Measure
-  node choice **and** chain shape. ⚠️ The n=5 cells are not a floor; re-run at n=10.
-  ⚠️ **Coupling:** Richard's user-profile example — *"prefer inbuilt nodes"* — **is** this ruling.
-  That preference belongs in the profile, where this user can change it. **Do not build the
-  weighting in a way that forecloses FIX-021's slices A/B.**
-- 🔴 **FIX-016 ruling 1 — keep the Script node STRICT, and make it TEACH.** Do **not** make the
-  parser accept an undeclared `Outputs.Done()`. Add the editor-time diagnostic that is absent.
-  Rejected: (a) copy/default.
+  exactly the chain this forbids.** Measure node choice **and** chain shape. ⚠️ n=5 cells are not a
+  floor; re-run at n=10. ⚠️ **Coupling:** this preference belongs in FIX-021's user profile, where
+  Richard can change it — **do not build it in a way that forecloses slices A/B.**
+- ✅ **FIX-016 ruling 1 — BUILT s44.** ⚠️ The strictness survived: the parser was not loosened.
 - ✅ **FIX-004 — redaction (b)**, scrubbed sink. **§C — dual-list, and narrow the fence** to
   *"changes no existing block type id"*.
 - ✅ **FIX-005 — rename → `App Variables` + `App Config`.** ⚠️ **Reverses VFN-012 knowingly.**
-- ✅ **FIX-013 ruling 1 → (c), shim serves zero rows.** ⚠️ The Fix direction currently **hard-codes
+- ✅ **FIX-013 ruling 1 → (c), shim serves zero rows.** ⚠️ The Fix direction **hard-codes
   `useSampleData: true`** and must stop. 🔴 **Rulings 2, 3, 4 still owed.**
-- ✅ **FIX-021 — wizard location (B) last-used. Slices A/B GREEN as a USER PROFILE**, per-user and
+- ✅ **FIX-021 — wizard location (B) BUILT + DRIVEN. Slices A/B GREEN as a USER PROFILE**, per-user and
   gitignored, `CLAUDE.md` stays the signpost, human-authored first. 🔴 **Q2, Q5, Q6 still open.**
-- ✅ **FIX-008 C — the measurement is an AGENT's, not Richard's.** Mis-filed as his for fourteen
-  sessions. Register both servers, ask a model to author, see which it reaches for.
-- ✅ **FIX-022 — no numeric floor; the axis is REUSE.** Re-graded s43: the rate survives. §3 has the
-  one cell still missing before a rule can be written safely.
+- ✅ **FIX-008 C — the measurement is an AGENT's, not Richard's.**
+- ✅ **FIX-022 — no numeric floor; the axis is REUSE.** One cell still missing before a rule is safe.
 
 ### 🔴 Two things Richard raised that are NEW TASKS, not P66 items
 
 - 🔴 **Blockly should enumerate declared globals as draggable blocks** — App Variables, Objects,
-  Arrays, plus `Function Variables` for Blockly-scoped ones, in their own *Variables / Functions /
-  Blocks* drawer. ✅ **This is Blockly's own native model.** **Wants its own task; do not fold it
-  into the rename.**
-- 🔴 **FIX-015 → its own phase, green-lit.** 182 tokens, storage, CSS generation, preview + deploy
-  injection all built and running, and **no shipped build has ever rendered the panel** —
-  `config.devMode` has never been set and `TokenPicker` has **zero call sites**. ⚠️ **Slice 1 is
-  "build and test the panel", not "un-gate it"** — expect the first drive to return a bug list.
+  Arrays, plus `Function Variables`, in their own drawer. ✅ **Blockly's own native model.** **Its own
+  task; do not fold it into the rename.**
+- 🔴 **FIX-015 → its own phase, green-lit.** ⚠️ **Slice 1 is "build and test the panel", not "un-gate
+  it"** — expect the first drive to return a bug list.
 
 ### Still owed by Richard
 
-- 🔴 **FIX-013 rulings 2, 3, 4** · 🔴 **FIX-015's eight** (in the new phase's scoping session) ·
-  🔴 **FIX-021's Q2, Q5, Q6.**
+- 🔴 **FIX-013 rulings 2, 3, 4** · 🔴 **FIX-015's eight** · 🔴 **FIX-021's Q2, Q5, Q6.**
 - 🔴 **`scripts/library/check.ts` — LAND IT.** Attributed (LBR-002), verified, gate passes 58/58.
-  **Phase 65's work**, which is why no P66 session has committed it. ⚠️ **Unlanded work on a
-  PR-gated script is exactly what a sibling's `git add -A` sweeps.** Still uncommitted at s43.
+  **Phase 65's work.** ⚠️ Unlanded work on a PR-gated script is exactly what a sibling's `git add -A`
+  sweeps. **Still uncommitted at s44** — twelve sessions now.
 - 🔴 **`dev-docs/tasks/phase-23-visual-refresh/corpus/run.sh:17`** — an **executable** script whose
-  `pkill` pattern matches MCP servers, **0 editors**, and never reaches `sweep()`. **Eleven
-  sessions have declined.**
+  `pkill` pattern matches MCP servers, **0 editors**, and never reaches `sweep()`. **Twelve sessions
+  have declined.**
 - ⚠️ **The packaged-app repackage is still owed** (`noodl-mcp/dist` rebuilt s36, gitignored).
-- ⚠️ **Minor:** `claude-haiku-4-5-20251001` is missing from the harness's pricing registry, so haiku
-  sessions report `costUsd: null`.
-- ⚠️ **Minor, from s42:** `fix021-drive-ai` / `fix021-drive-plain` sit in the launcher list pointing
-  at a **scratchpad path that will be cleaned**. Harmless, but they will read as broken projects.
+- ⚠️ **New from s44:** the `turnDeadline` timing suites are load-flaky under `test:main` (§2). And
+  `fix021-drive-ai` / `fix021-drive-plain` still point at a scratchpad path that will be cleaned.
 
 ---
 
 ## 6. Standing constraints
 
-Work on `cline-dev`; **never `git stash`**; **absolute paths in every Bash call** — the cwd persists
-between calls, and s43 lost two calls to exactly that (the phase directory is
-`phase-66-0.1.7-bug-fixes`, **not** `phase-66-scoped-from-the-user-test`).
+Work on `cline-dev`; **never `git stash`**; **absolute paths in every Bash call** — the phase
+directory is `phase-66-0.1.7-bug-fixes`.
 
-🔴 **`git commit <pathspecs>` — never `git add` at all.** The only exception is a **new** file:
-`add` and commit in the **same** command. ✅ **s43 committed eleven pathspecs**; the rest of the
-dirty tree was peers' (kit-scaffold, phase-65, ProjectFiles, CodeFileDocument, KitsSection, cn-006).
-⚠️ **Peers were actively writing throughout this session** — five files appeared in `git status`
-between its first and last read.
+🔴 **`git commit <pathspecs>` — never `git add` at all.** The only exception is a **new** file: `add`
+and commit in the **same** command. ✅ **s44 committed three times, pathspec-only**; peers' work
+(phase-65, phase-50 notes, phase-68, phase-69 notes, `scripts/library/check.ts`) was untouched
+throughout.
 
-⚠️ **This checkout is busy.** ✅ **A peer will hold source saves if you ask** — a webpack recompile
-HMR-reloads the renderer and wipes every injected CDP global mid-drive. ✅ The measurement
-instruments in §4 are plain Node and safe beside a live stack, like `test:main`.
+⚠️ **This checkout is busy and peers save source constantly.** A save triggers a **~130s** webpack
+rebuild that HMR-reloads the renderer mid-drive — s44 lost two readings to exactly that and spent
+four minutes thinking the editor had crashed. ✅ **A peer will hold saves if you ask.**
+
+### 🔴 Peer etiquette — s44's own near-miss
+
+**An all-clear is about the moment it was sent.** s44 read *"checkout released"* as *"free"*, launched,
+and a different peer had taken the window one message earlier and was mid-`test:ci`. ✅ **What made it
+recoverable was reporting the launch immediately, with a PPID walk showing their tree alive** — not
+reassurance. `NEVER_SWEEP` held and their run survived the launch.
+
+🔴 **Reply to a socket on its socket.** ⚠️ **Announce teardown to the FULL launch list.** 🔴 **Keep peer
+messages short and rare.**
+
+### Teardown
+
+**Use `dev:stop`.** 🔴 Killing your launcher pid is **not** gentler. 🔴 **`pkill` never reaches
+`sweep()`.** ⚠️ **Compare pids, never counts.**
 
 ### 🔴 Measuring the memory index
 
-**`node`, never `python`.** Budget **17,510 UTF-16**.
+**`node`, never `python`.** Budget **17,510 UTF-16**. ✅ **s44 measured 16,113 / 16,200 and added
+nothing to `MEMORY.md`** — new memories were filed under existing pointers, which costs zero budget.
 
-🔴 **It moves while you read it. Do not quote any figure from a handover: take your own.**
-✅ **Prefer filing into an already-pointed-to memory** — that costs zero budget.
-⚠️ **Whoever trims it must read it immediately before writing** — peers append concurrently, so a
-trim computed from a five-minute-old read silently discards their lines.
+🔴 **It moves while you read it.** A peer had already filed s44's `test:ci` finding before s44 could;
+`grep -rl` the memory dir before writing anything up as new.
 
 ```
 node -e 'const s=require("fs").readFileSync(process.argv[1],"utf8");console.log([...s].length,s.length)' \
   ~/.claude/projects/-Users-richardosborne-vscode-projects-OpenNoodl/memory/MEMORY.md
 ```
-
-If those two numbers come out *equal*, your instrument is wrong, not the file.
-
-### Peer etiquette
-
-🔴 **`SendMessage` needs the `[ref]` for EVERY name.** Copy `name [ref]` from a fresh `ListAgents`.
-🔴 **Reply to a socket on its socket.** ⚠️ **Announce teardown to the FULL launch list**, re-taking
-`ListAgents` first. 🔴 **Keep peer messages short and rare.**
-
-### Teardown
-
-**Use `dev:stop`.** 🔴 Killing your launcher pid is **not** gentler — `dev-watchdog.js:44` runs the
-same sweep with `protectAncestors: false`. 🔴 **`pkill` never reaches `sweep()`.** ✅ The reaping bug
-is **fixed and measured** — but **keep announcing**, because a reaper started before those commits
-still holds the old inert module. ⚠️ **Compare pids, never counts.**
