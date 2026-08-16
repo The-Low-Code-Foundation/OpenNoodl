@@ -914,22 +914,47 @@ function generateNodeLibrary(nodeRegister: NodeRegisterLike, options?: { runtime
     coreNodes
   };
 
-  const moduleNodes: string[] = [];
+  // CN-018 — one picker subcategory per kit, named after the kit.
+  //
+  // 🔴 This loop used to read `nodeMetadata.module` purely as a boolean ("is this
+  // a module node?") and then emit a single group named `''`. Every kit in a
+  // project therefore collapsed into one unnamed section under "External
+  // libraries": two kits each shipping a `Stat Tile` drew two identical cards —
+  // same name, same category, same tooltip — with nothing on screen to tell an
+  // author which kit either came from. Found by driving the editor in CN-006 s11.
+  //
+  // The name was always right here. `NoodlRuntime.registerModule` stamps
+  // `module.name || 'Unknown Module'` onto every definition it registers
+  // (`noodl-runtime.ts:517`), and since CN-003 that name is the kit's
+  // `manifest.json` name, adopted in `defineModule` from the
+  // `window.__noodl_module_name` marker the injector writes before each kit's
+  // script tag. So the only thing missing was carrying it across.
+  //
+  // ⚠️ `'Unknown Module'` is a real group, not a bug to filter out: a kit whose
+  // manifest names it nothing, loaded by a page the injector did not build, is
+  // genuinely unattributable and saying so beats silently merging it into a
+  // neighbour's section.
+  const moduleNodesByKit = new Map<string, string[]>();
 
   nodeTypes.forEach((type) => {
     const nodeMetadata = nodeRegister._constructors[type].metadata;
     if (nodeMetadata.module) {
-      moduleNodes.push(type);
+      const kitName = String(nodeMetadata.module);
+      const items = moduleNodesByKit.get(kitName);
+      if (items) items.push(type);
+      else moduleNodesByKit.set(kitName, [type]);
     }
   });
 
-  if (moduleNodes.length) {
-    obj.nodeIndex.moduleNodes = [
-      {
-        name: '',
-        items: moduleNodes
-      }
-    ];
+  if (moduleNodesByKit.size) {
+    // Sorted by name rather than left in registration order: module load order is
+    // an implementation detail no author can predict, so an alphabetical picker is
+    // the only ordering that stays put between sessions. Plain code-unit
+    // comparison, not `localeCompare` — the latter varies with the runtime's
+    // locale, and this blob is snapshot-compared across machines.
+    obj.nodeIndex.moduleNodes = Array.from(moduleNodesByKit.entries())
+      .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+      .map(([name, items]) => ({ name, items }));
   }
 
   return obj;
