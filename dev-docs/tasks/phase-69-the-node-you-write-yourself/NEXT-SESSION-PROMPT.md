@@ -187,9 +187,10 @@ or the check answers about the wrong kit.
 1. **Widen the project gate to check parameter values?** The 26 unverified parameters on the cashflow
    kit nodes are unverified at project level *for everyone*, kit or built-in. CN-004 assumes turning
    the checks on in one place turns them on everywhere. It does not. **Scope call, not a fix.**
-2. **P67's F4 hole** (`scripts/` outside `build.files`). CN-001 and now slice 2a have both had to
-   route around it. Slice 2a's `dist/` entry point is a worked example of the cheap option. Put it in
-   front of him **with** the call, not after it.
+2. ~~**P67's F4 hole**~~ — ✅ **ALREADY RULED 2026-08-16: ship it, as UNI-012.** Do not re-raise it.
+   Caught because a peer had updated the memory index while this session ran; the earlier draft of
+   this file listed it as owed. Slice 2a's `dist/` entry point is a worked example of the shape
+   UNI-012 needs, so **offer it to whoever picks UNI-012** rather than to Richard.
 3. **The ungated typechecks** (§3). Seven of eleven `typecheck:*` scripts run in no CI job.
 
 ---
@@ -201,8 +202,11 @@ Several sessions share this checkout — P66 (session 35) and P67 were both live
 - ✅ **`git commit -m … -- <pathspecs>`, always. Never `git add -A`, never `git stash`.** Four commits
   landed this session with nothing of a peer's swept, and a peer's commits interleaved cleanly.
 - ⚠️ **`packages/noodl-mcp/tests/toolDisclosure.test.ts` was being edited by a peer as this file was
-  written.** That is the MCP **token-budget** gate — the one holding CN-006 and CN-009's remaining
-  **57 free tokens**. Re-read it before you plan any tool surface; the number may have moved.
+  written.** That is the MCP **token-budget** gate. 🔴 **And the budget is now understood as THREE
+  budgets, not one**: the 8,280 / 57-free figure is the **RESIDENT** surface, so a tool added to an
+  existing **deferred** group costs **0** — but anything reached by `applyPolicy()` becomes resident
+  silently. **Re-read the test before planning CN-006 or CN-009's surface**; the framing this phase
+  inherited ("57 tokens, three-way competition") is the wrong shape.
 - A peer teardown notice arrived mid-session and was answered on the socket it came in on, with
   standing status. Do the same: whoever you tell you are starting, tell you have stopped.
 
