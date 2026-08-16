@@ -1,5 +1,34 @@
 # Phase 66 — next session
 
+**Amended 2026-08-16, session 33.** s33 shipped one commit, **`12f482d7`**, and it came from
+taking the §5 list at its word and then checking the one thing on it nobody had: **not the questions,
+the numbers attached to them.**
+
+🔴 **FIX-013 ruling 2 asked Richard a real design question and priced the answer wrong.** It offered,
+as the reward for dropping the AI preview's toolbar, that `sandboxData.ts` *"(567 lines, 15 specs)"*,
+`sandboxDataDraft`, the toolbar, the editor *"and the ~900-line runtime shim all become genuinely
+deletable — a much bigger, cleaner subtraction."* **Two of those five are not ruling 2's to give:**
+
+| module | production importers | ruling 2 deletes it? |
+|---|---|---|
+| toolbar, editor, `sandboxDataDraft` | the surfaces only (draft has **exactly one**) | ✅ yes |
+| `sandboxData.ts` (567) | bench **+ `sandboxExport.ts:25`** | 🔴 **no** |
+| runtime shim (**1,121**, not ~900) | `noodl-viewer-react/src/sandbox/index.ts:61` | 🔴 **no** |
+
+`sandboxExport.ts:221-232` builds the dataset whenever `useSampleData` is true — and **FIX-013's own
+fix direction hard-codes `useSampleData: true`**, so the recommended fix calls it *more*. The shim
+lives in `noodl-runtime`, is installed by the **viewer**, is already in all three built bundles, and
+its switch is a URL param defaulting **ON** (`sandbox/index.ts:51`, off only on the literal `'real'`).
+
+⚠️ **So rulings 1 and 2 are coupled and the file printed them as parallel.** The big subtraction is
+**ruling 1(c)**'s to authorise. Answered in the printed order, Richard would have priced ruling 2
+with ruling 1's payoff. ✅ **The ruling is untouched and still his — only its size changed.**
+
+🔴 **The transferable rule (§3h): an owed item makes two kinds of statement and only one is a
+question.** *"Should we do X?"* is Richard's. *"If we do X, Y becomes deletable"* is a **claim about
+the code** — checkable, and it is what sets the size of the decision. s30→s32's rule was *open the
+artifact the item names*; all three aimed it at the **question**. ✅ **Aim it at the price tag too.**
+
 **Amended 2026-08-16, session 32.** s32 wrote **no product code and ran no gate**. It set out to
 check s31's one NEW owed item — the `phase-23` `run.sh` `pkill` block — and the check **confirmed
 it**, with a positive control. ✅ **`run.sh:17` matches 13 processes right now: 13 MCP servers, 0
@@ -123,6 +152,12 @@ this line forward.
 ---
 
 ## 2. Gate readings
+
+⚠️ **s33 ran no gate and needed none.** Its only repo edit is a task document
+(`FIX-013-THE-DATA-MODE-TEARDOWN.md`); it changed no source, so the floor below is unmoved and
+inherited. Its measurements are `grep`/`wc` readings of the import graph — safe beside peers, no
+announce. ✅ **Checkout left FREE; no editor launched, no suite run.** 14 peers live throughout
+(15 `ListAgents` rows minus this one).
 
 ⚠️ **s32 ran no gate and needed none — it changed no repo file.** Its only edits are this handover
 and two files in the memory directory. The measurements it did take are `ps` and `find` readings,
@@ -344,6 +379,34 @@ wrong.
 ✅ Filed into the existing `ugrep-silently-skips-a-source-file-as-binary` memory (a third way grep
 lies here) rather than as a new pointer, for the budget reason in §5.
 
+### 3h. 🔴 s33 — the owed item's QUESTION was sound; its PRICE TAG was wrong
+
+**This session's whole result, commit `12f482d7`.** Full detail in the amendment at the top and in
+[FIX-013](FIX-013-THE-DATA-MODE-TEARDOWN.md)'s new section; the part worth carrying is the shape.
+
+Six findings (§3d–§3g) are about records that had **rotted** — stale statuses, an instrument that
+lied. 🔴 **This one had not rotted and nobody was careless.** FIX-013 was written by someone reading
+the bench; the second importer of `sandboxData.ts` sits in a sibling module, and every word of the
+ruling's *question* was sound. What was wrong was the **number attached to it** — the sentence
+telling Richard what answering it would buy.
+
+✅ **The rule: an owed item makes two kinds of statement, and only one of them looks like a
+question.** *"Should we do X?"* is the decision-maker's and an agent must not pre-empt it.
+*"If we do X, then Y becomes deletable / cheap / free"* is a **claim about the code**. It is
+checkable, an agent can settle it alone, and it is what sizes the decision. ⚠️ **s30, s31 and s32 all
+said *open the artifact the item names* — and all three aimed that at the question.**
+
+🔴 **The cheapest version: when an item says "and then Z becomes deletable", grep Z's other callers
+before the decision-maker reads it.** Here that single move demoted a *"much bigger, cleaner
+subtraction"* from five modules to three, and revealed that two supposedly-parallel rulings are
+ordered.
+
+⚠️ **Bounds, kept on the finding rather than assumed away.** Static import-graph reading, not a
+drive: `-a` plus `--exclude-dir` (never `| grep -v`, per §3g), barrel re-exports at
+`authoring/index.ts:160-163` followed to their consumers, and the dynamic/lazy `require()` search
+returned **empty beside a firing positive control** on the same pattern in the same directory — the
+discipline the memory index asks for whenever a null is load-bearing.
+
 ---
 
 ## 4. What to do next and why
@@ -353,7 +416,9 @@ lies here) rather than as a new pointer, for the budget reason in §5.
 2. 🔴 **FIX-017's remaining half needs Richard** — AC1 driven false, AC3's premise false. **Do not
    build §D speculatively.**
 3. **FIX-008 fix C** — Richard owes a measurement. The oldest open item.
-4. **FIX-013**, **FIX-016 §3** — open, each needs its ruling (§5).
+4. **FIX-013**, **FIX-016 §3** — open, each needs its ruling (§5). ✅ **FIX-013's rulings are now
+   correctly sized and ORDERED (s33, §3h) — ruling 1 sets ruling 2's payoff, so it must be answered
+   first. Do not re-run the import-graph sweep; it is in the task file with its bounds.**
 5. 🟡 **FIX-001 §1a.5 stretch** — re-decide rather than build.
 6. 🟢 **The only agent-actionable item left, and it is optional:** s24's null now has **one
    un-eliminated cause** — that their DOM query was aimed at the wrong panel
@@ -461,8 +526,30 @@ Carried forward from s27. **Nothing on this list moved this session** — none o
   it is attributed and it passes — but **"land it."** ⚠️ s30 did **not** commit it: it is phase 65's
   work, a phase this session is not working in, and ten peers were live on the tree.
   🔴 **Unlanded work on a PR-gated script is exactly what a sibling's `git add -A` sweeps.**
-- 🔴 **FIX-013's four rulings** — ruling 2 (does the AI authoring preview keep its toolbar?) is the
-  big one.
+- 🔴 **FIX-013's four rulings** — ~~ruling 2 (does the AI authoring preview keep its toolbar?) is the
+  big one.~~ 🔴 **RE-SIZED AND RE-ORDERED 2026-08-16 (s33, `12f482d7`) — the four rulings still need
+  you, but ruling 2 was NOT the big one and rulings 1 and 2 are not independent.**
+  Ruling 2's stated payoff — *"`sandboxData.ts` (567 lines, 15 specs), `sandboxDataDraft`, the
+  toolbar, the editor, and the ~900-line runtime shim all become genuinely deletable"* — measured:
+
+  | module | production importers | ruling 2 deletes it? |
+  |---|---|---|
+  | toolbar, editor, `sandboxDataDraft` | the surfaces only; draft has **exactly one** | ✅ yes |
+  | `sandboxData.ts` (**567**, confirmed) | bench **+ `sandboxExport.ts:25`** | 🔴 **no** |
+  | runtime shim (**1,121**, not ~900) | `noodl-viewer-react/src/sandbox/index.ts:61` | 🔴 **no** |
+
+  `sandboxExport.ts:221-232` builds the dataset whenever `useSampleData` is true, and **FIX-013's own
+  fix direction hard-codes it true** — the recommended fix calls `buildSandboxDataset` *more*, not
+  less. The shim is in `noodl-runtime`, installed by the **viewer**, already in all three built
+  bundles, and switched by a URL param that **defaults ON** (`sandbox/index.ts:51` — off only on the
+  literal `'real'`). No editor-side removal reaches either.
+  ✅ **So the big subtraction is ruling 1(c)'s to authorise, not ruling 2's; ruling 2's real payoff is
+  three files.** ⚠️ **Answer ruling 1 first** — answered in the printed order you would have priced
+  ruling 2 with ruling 1's payoff.
+  🔴 **Nothing here pre-empts your decision** — the question is unchanged and still yours; only its
+  price tag moved. Bounds are on the finding in the task file (static import-graph read, `-a` +
+  `--exclude-dir`, barrel followed to consumers, dynamic-`require` null taken beside a firing
+  positive control).
 - 🔴 **FIX-016's signal-input semantics** (§3) — re-run the body vs named handlers, or rule signal
   inputs out and document `run` as the only trigger.
 - ~~⚠️ **The ⌘C ruling** (carried by a peer): `keyboardhandler.ts:165` guards on **focus**, not
@@ -554,6 +641,14 @@ Carried forward from s27. **Nothing on this list moved this session** — none o
   it needs to be a rule the other sessions read** — a collapse done here is re-inflated by peers
   within the day. ⚠️ **Current: 17,621 / 17,711, over by 111 / 201** — and that figure is stale the
   moment it is written, which is the point.
+  ⚠️ **s33 re-measured and spent, deliberately.** Opened at **17,621 / 17,711** — *identical* to
+  s32's close, so no peer wrote the index overnight and s32's concurrent-writer finding is about
+  bursts, not a constant drift. s33 filed its finding into an existing memory (no new pointer) but
+  **did** rewrite one pointer to carry a seventh trap, merging the 6th and 7th under one shared
+  imperative: **+52 / +52**, predicted before the edit and confirmed after. **Now 17,673 / 17,763,
+  over by 163 / 253.** 🔴 **Two sessions have now judged a genuinely new trap worth more than the
+  overage, because an unmentioned trap is invisible while an over-budget index still loads.** ✅ **If
+  that trade is wrong, say so — it is the fourth session asking, and the answer is a collapse.**
   ⚠️ **Do not copy a figure from this bullet — re-measure**, since a frozen budget
   number under a standing item is the exact shape §3d is about:
   `node -e 'const s=require("fs").readFileSync(process.argv[1],"utf8");console.log([...s].length,s.length)' ~/.claude/projects/-Users-richardosborne-vscode-projects-OpenNoodl/memory/MEMORY.md`
