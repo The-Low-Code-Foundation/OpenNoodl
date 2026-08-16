@@ -112,8 +112,11 @@ Three design calls, each pinned by a spec that fails without it:
   Type row to discover, no lint warning while authoring — and is reported **only after the node
   runs**. That is materially worse than a declared port, which warns before you run anything, and
   materially better than nothing. It argues for the parser fix or a message-5 variant, **not** for
-  loosening `declared`. ⚠️ **The same "no surface anywhere" claim appears in §3b below and is equally
-  false there.**
+  loosening `declared`. ✅ **The same claim had propagated to four places and all four are now
+  corrected** (`efcfa8b4`) — ⚠️ my own pointer here said *"§3b below"*, which is in the **phase
+  handover**, not this file, so it sent a reader scrolling for a section that was never here. A
+  cross-reference that names a section without naming its file is a broken pointer the moment the
+  two documents drift.
 - **No fix-it, alone among the five messages.** The repair the author wants is a panel change the
   editor cannot make; the one it could make — rewriting the call as an assignment — keeps the port
   and abandons the trigger. Two different programs, not two spellings of one.
