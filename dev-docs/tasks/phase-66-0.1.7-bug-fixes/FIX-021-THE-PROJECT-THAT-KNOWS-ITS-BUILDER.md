@@ -82,3 +82,27 @@ server's every-path-inside-projectDir invariant and needs its own read-only cont
 2. The six rulings recorded with rejected options named; slices A/B built only as ruled.
 3. If slice B ships: a fresh project's Build-panel opening turn shows the global block **last**,
    absent when the file is empty (cache-safety spec extended, not weakened).
+
+
+## Slice 0 — CLOSED (2026-08-16, session 34, `00f5c629`)
+
+The defect reproduced exactly as described: `LocalProjectsModel.writeAgentConfigFor` passes no
+`hasDocs`/`summary`, and `ProjectsPage.finishScopedProject` writes `docs/` afterwards — deliberately,
+because *"a failure here costs the docs, never the project."* So the launcher's `CLAUDE.md` went out
+with **no summary and no "Where the decisions are" section** while the `create_project` twin got both.
+
+✅ **Fixed by re-rendering after the docs land, not by reordering** — the ordering is deliberate and
+worth keeping. `upgradeAgentConfigForDocs` re-renders the *as-created* variant (`hasDocs: false`, no
+summary) and rewrites **only when the bytes on disk match it exactly**.
+
+⚠️ **That guard is the interesting half.** `CLAUDE.md` is *"the user's to own"* — the rule that makes
+`installAgentConfig` never rewrite one, and it is right. A template's own `CLAUDE.md`, a user edit of
+a **single character**, or any future change to the template is left alone and reported
+`kept-existing`. The only file this can replace is one it can prove it wrote.
+
+7 specs in the shared MCP suite, including the acceptance criterion **as a byte equality** — after
+the upgrade the launcher's file and the `create_project` twin's file are the same bytes — plus the
+single-character-edit negative control, idempotence, and that `.mcp.json` is not reconsidered.
+
+🔴 **Slices A and B, and the six memory rulings, are untouched.** This was the *"concrete defect to
+fix regardless of the brainstorm"*, and only that.

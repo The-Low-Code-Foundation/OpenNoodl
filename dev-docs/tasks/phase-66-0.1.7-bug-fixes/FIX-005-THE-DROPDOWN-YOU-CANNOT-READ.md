@@ -81,3 +81,41 @@ specs that pin the string red: `tests-unit/vfn-012/app-config-block.spec.ts:263,
 4. Contrast spec red under the pre-fix rules (negative control), green after.
 5. Whichever naming option is ruled: one vocabulary across toolbox, settings panel, and locales;
    the two pinned specs updated deliberately; the VFN-012 history comment rewritten.
+
+
+## Part 1 — what shipped (2026-08-16, session 34, `5b91e9c8`)
+
+All five ranked root causes are addressed, and the measured table above reproduced exactly before
+anything was changed (2.33 / 3.56 selected; 1.18 / 1.08 hover delta).
+
+| state | before | after |
+|---|---|---|
+| selected | `fg-highlight` on solid `primary` — **2.33 / 3.56**, fails AA both themes | `bg-5` + 3px `primary` rule + weight 600 — **9.09 / 12.11**, rule **3.89 / 3.40** |
+| hover / keyboard | one bg step, **1.18 / 1.08** | `bg-4` + 3px `primary-highlight` rule — **11.04 / 13.18**, rule **5.94 / 4.77** |
+| hovering the selected row | nothing (source order) | background moves to `bg-4`; rule and weight kept |
+| the tick | clipped, label out of column | checkbox hidden, gutter uniform, rule marks selection |
+| `.goog-*` | dead, and read as live | deleted |
+
+🔴 **The design decision, because it is not the obvious one.** Moving selection onto a *background*
+cannot work in this palette and that is measured, not assumed: `bg-4`/`bg-3` is **1.18 / 1.08** and
+even two steps, `bg-5`/`bg-3`, is only **1.43 / 1.17**. Nothing in the neutrals is far enough apart
+to read as a state change in the light theme. So the **rule** carries state and the background only
+says which row. `font-weight` on selected is load-bearing for the same reason — `primary` and
+`primary-highlight` are only **2.02:1** apart, so rule colour alone does not separate *selected*
+from *hovered*, and weight is a channel that works without hue.
+
+🔴 **The toolbox category was worse than the row the report complained about.** `.blocklyTreeSelected`
+was solid primary under a `fg-default` label: **1.19:1 dark / 1.64:1 light**. The fix direction
+called it *"the identical solid-primary problem"*; it was the worst reading in the file, because the
+label there is the muted foreground rather than the highlight one. Now **4.65 / 5.58**.
+
+✅ **Criterion 4 discharged properly.** 22 specs in `tests-unit/fix-005/dropdown-contrast.spec.ts`
+read the token names **out of the SCSS**, so they cannot drift from the rule. With the old selected
+rule restored the suite goes **red with 5 failures** — exactly the selected assertions — while
+resting, hover and the tree stay green, so the failure is scoped to the change rather than a global
+break.
+
+🔴 **Still owed: criteria 1's live half and 2 and 3 — a screenshot in both themes.** A spec cannot
+prove a rule *wins*, and this ruleset is a pile of `!important` where source order decides; that is
+the very defect fixed here, so it is the last thing to take on trust.
+⚠️ **Part 2 (the rename) is untouched.** It reverses VFN-012 and needs a decision, not a commit.

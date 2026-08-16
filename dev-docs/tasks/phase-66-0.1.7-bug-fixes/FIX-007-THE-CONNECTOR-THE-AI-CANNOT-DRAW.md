@@ -111,7 +111,10 @@ cannot drift silently.
 
 ⚠️ **One thing deliberately NOT shipped:** the prefix sentence in the `fromProperty`/`toProperty`
 schema descriptions. It cost ~87 tokens across the connection schema's three renderings and broke
-`toolDisclosure`'s 8,200-token surface budget, whose header asks each new cost to argue for itself.
+`toolDisclosure`'s then-8,200-token surface budget, whose header asks each new cost to argue for
+itself. ⚠️ **The bar moved on 2026-08-15 — it is now 8,280 against a measured 8,223, so 57 tokens are
+free** (P67 / UNI-010 spent LEG-001's slack and renegotiated). That does **not** re-open this: ~87
+tokens still does not fit, and phase 69's CN-006/CN-009 are already competing for the 57.
 It does not have to: the blocking rejection now names the exact replacement, and this repo has
 measured suggestion-carrying rejections as self-corrected at ~100%. Reverted with the reasoning
 recorded in `authoringVocabulary.ts`.

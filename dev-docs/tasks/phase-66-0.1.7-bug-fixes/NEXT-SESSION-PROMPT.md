@@ -1,5 +1,64 @@
 # Phase 66 — next session
 
+**Amended 2026-08-16, session 34.** 🔴 **s34 broke the pattern: five commits of PRODUCT CODE, the
+first in seven sessions.** Richard's instruction was *"can we please move along with phase 66 …
+this is taking forever"*, and the honest reading of s28–s33 is that they were right about the
+records and wrong about the balance — six sessions of auditing a list whose "blocked on Richard"
+label was, for four of these tasks, **only true of part of them**.
+
+**What shipped, all gated, none driven:**
+
+| task | slice | commit |
+|---|---|---|
+| **FIX-004** | A + B — `noodl_convert`, `noodl_log`, 7 free stock blocks, new Debug category | `43b2e521` |
+| **FIX-021** | slice 0 — the launcher's `CLAUDE.md` written before its `docs/` existed | `00f5c629` |
+| **FIX-006** | fixes 1 + 2 — `THREE_WAYS_TO_COMPUTE`, `CODE_STYLE` | `28310bc8` |
+| **FIX-005** | part 1 — the dropdown contrast, and a worse defect above it | `5b91e9c8` |
+| **FIX-013** | (records only) the ruling was sound, its price tag was not | `12f482d7` |
+
+✅ **GATES, and they are the reassuring part.** **`test:ci` 2843 / 6 @ seed 39393 — EXACT floor
+match, the same six by name** (4 × AIX-006 style vocabulary, 2 × AI model registry). `test-results.json`
+was **deleted before the run** and written fresh at 11:37, so this is a real reading and not a stale
+file or a reap. **`test:main` 208 suites / 3233 tests, 0 failures.** `tsc` noodl-editor **0 errors**;
+`noodl-mcp` 44 suites / 519 tests.
+
+🔴 **The `test:main` floor does NOT reconcile and needs re-taking.** Inherited: **205 / 3157 @ tree
+`d0891746`**. My own contribution is **+2 suites / +37 tests** (15 + 22, verified by running the two
+new specs alone), so before this session the tree was **206 / 3196**. But **three peer suites landed
+since that tree** (`cn-001`, `cn-002`, `uni-010`) with **no deletions**, which predicts *more* than
+206, not fewer. ✅ **The HEAD number is trustworthy** — 208 is exactly the file count `jest --listTests`
+reports, so it is internally consistent. ⚠️ **The inherited figure is what is suspect**, most likely
+because it was quoted against a tree it was not measured at — the exact discipline the memory index
+already warns about. **Re-take it and name the tree.**
+
+## 🔴 What s34 found that changes how to read §5 — the three false premises
+
+Every one of these was found by *building* the thing, not by reading about it. That is the finding.
+
+1. **FIX-006 §1 says the traps block is "already shared by both clients".** It is **reachable** from
+   both and **used** by one: `AUTHORING_TRAPS` has exactly two consumers, both in `noodl-mcp`, and
+   **no prompt under `prompts/` imports it.** A fix written to that sentence would have left the
+   in-editor AI — the likelier author of the reported node — exactly as it was.
+2. **FIX-004's ruling 1 was not really open.** Its only stated objection to the dropdown form was
+   *"dropdowns currently read badly — sequence FIX-005 first"*. That is a **dependency, not a
+   question**, and doing FIX-005 in the same session dissolved it.
+3. **FIX-005's fix direction under-ranked its own worst defect.** `.blocklyTreeSelected` is called
+   *"the identical solid-primary problem"*; it measures **1.19:1 dark** against the reported row's
+   2.33, because its label is `fg-default` rather than `fg-highlight`.
+
+⚠️ **And a gate hole, closed in passing.** `hat-migration.spec.ts` looks like it catches a toolbox
+naming a block that does not exist — it instantiates every toolbox type — but its walk is
+`try { newBlock } catch { continue }`, on purpose. **A typo'd or version-dropped toolbox entry
+renders as a silently missing flyout row with every gate green.** `tests-unit/fix-004/blocks.spec.ts`
+now asserts every toolbox type is registered.
+
+🔴 **The transferable rule (§3i), and it is the counterweight to s30–s33.** Those four sessions each
+sharpened *how to read an owed item*. s34's is: **a task file's own premises are claims, and the
+cheapest way to test them is to start building.** Three of them were false, and none would have been
+caught by more careful reading — one needed a `grep` for consumers, one needed noticing that a
+blocker had been discharged, one needed a measurement. ⚠️ **Six sessions of record-keeping found
+real things and moved no product. The balance was wrong, and the user said so.**
+
 **Amended 2026-08-16, session 33.** s33 shipped one commit, **`12f482d7`**, and it came from
 taking the §5 list at its word and then checking the one thing on it nobody had: **not the questions,
 the numbers attached to them.**
@@ -122,9 +181,20 @@ Learnings that outlive the phase go to memory, not here.
 
 ## 1. Built vs. driven
 
-Neither s28 nor s29 built a feature or drove anything. ⚠️ **The rows below did not change state in
-either session — but four of them were WRONG until s29 reconciled them against the task files (§3d),
-and this table is where the corrected picture now lives.**
+🔴 **s34 moved four rows, and every one of them moved to ◐ BUILT-NOT-DRIVEN.** That is the honest
+state and it is worth saying plainly: five commits of product code, gated at the floor, and **not a
+single one of them driven in the app.** ⚠️ **Do not let the commit count read as "done"** — this
+phase's own §3d is about exactly that confusion running the other way.
+
+| Task | Built | Driven | Note |
+|---|---|---|---|
+| **FIX-004** A+B | ✅ **s34** `43b2e521` | — | 15 specs. Acceptance 1–4 all want the **bench**. Slice C + async untouched |
+| **FIX-005** part 1 | ✅ **s34** `5b91e9c8` | — | 22 specs, control-checked red. **Screenshot in both themes owed.** Part 2 = ruling |
+| **FIX-006** 1+2 | ✅ **s34** `28310bc8` | — | Prompt changes; the grade is a re-run of the authoring measurements. **Fix 3 not built** |
+| **FIX-021** slice 0 | ✅ **s34** `00f5c629` | — | 7 specs incl. a byte-equality against the MCP twin. Slices A/B untouched |
+
+⚠️ **The older rows below did not change state in s28–s33 — but four of them were WRONG until s29
+reconciled them against the task files (§3d), and this table is where the corrected picture lives.**
 
 | Task | Built | Driven | Note |
 |---|---|---|---|
@@ -411,6 +481,13 @@ discipline the memory index asks for whenever a null is load-bearing.
 
 ## 4. What to do next and why
 
+0. 🔴 **THE BOTTLENECK IS NOW DRIVING, NOT BUILDING.** s34 left four tasks built-and-gated with
+   nothing driven. In rough order of value: **FIX-005 part 1** (a screenshot in both themes — the
+   specs cannot prove a rule *wins*, and this ruleset is `!important` where source order decides,
+   which is the very defect fixed); **FIX-004 A** (the `"42"` × 0.9 → 37.8 bench drive, the log
+   block in a preview *and* a cloud function, the standalone-hat check); **FIX-006** (re-run the
+   authoring measurements). ⚠️ **All three want an editor**, so read the driving index in memory
+   and announce.
 1. 🔴 **Nothing in FIX-016 §1 should be built until Richard rules** (§5 (a) and (b)). Both questions
    are sized; (b) is much cheaper than the record long said.
 2. 🔴 **FIX-017's remaining half needs Richard** — AC1 driven false, AC3's premise false. **Do not
@@ -526,6 +603,18 @@ Carried forward from s27. **Nothing on this list moved this session** — none o
   it is attributed and it passes — but **"land it."** ⚠️ s30 did **not** commit it: it is phase 65's
   work, a phase this session is not working in, and ten peers were live on the tree.
   🔴 **Unlanded work on a PR-gated script is exactly what a sibling's `git add -A` sweeps.**
+- 🔴 **NEW from s34 — FIX-005 part 2, the rename, is now the ONLY thing blocking that task.** Part 1
+  is built and gated. Three options are written up in the task file (A: keep `Runtime Variables` +
+  a tooltip; B: `Global Variables` + `App Config` → `App Settings`; C: revert to `App Variables`,
+  biggest sweep). ⚠️ **It reverses VFN-012 deliberately** — that rename existed so `Noodl.Config`
+  could be `App Config` without two shelves reading alike, and your stated reason ("the global
+  ones") is the opposite of the reason it was renamed. **A** is cheapest and reverses nothing.
+- ✅ **s34 TOOK four rulings that were flagged as owed, rather than re-carrying them.** Say if any
+  is wrong and it will be changed: **FIX-004** ruling 1 → one multi-mode dropdown (its only stated
+  objection was "FIX-005 first", which shipped the same session), ruling 2 → plain `log`, ruling 3 →
+  English labels; **FIX-006** → Script stays authorable but the traps block says *reach for it last*.
+  🔴 **None of these reverses a prior ruling** — that is the line s34 did not cross, which is why
+  FIX-005 part 2 and FIX-013 are still sitting here untouched.
 - 🔴 **FIX-013's four rulings** — ~~ruling 2 (does the AI authoring preview keep its toolbar?) is the
   big one.~~ 🔴 **RE-SIZED AND RE-ORDERED 2026-08-16 (s33, `12f482d7`) — the four rulings still need
   you, but ruling 2 was NOT the big one and rulings 1 and 2 are not independent.**

@@ -77,3 +77,36 @@ file as its own future task, do not fold into this one.
    check, with a negative control from a pre-fix seed).
 4. New value blocks show live-value badges after a run.
 5. Toolbox renders every added block; `test:ci` and the vfn-012 suites stay green.
+
+
+## §A + §B — what shipped (2026-08-16, session 34, `43b2e521`)
+
+**Slices A and B are built and gated; nothing is driven.**
+
+| | |
+|---|---|
+| `noodl_convert` | value block, 5 modes (`number` / `text` / `true/false` / `whole number from text` / `decimal from text`). The **output check follows the mode**, which is what makes it worth more than the coercion trick: in `text` mode Blockly refuses the maths socket instead of silently producing `"50"` from `"5" + 0` |
+| `noodl_log` | statement, `console.log`. On `HATTABLE_BLOCK_TYPES`. No runtime change needed, as the mechanism section predicted |
+| mode table | `convertModes.ts`, import-free, so block and generator cannot drift and `tests-unit` can grade it directly |
+| homes | convert under **Math** and **Text**; log under a new **Debug** category (+6 locales) |
+| §B | all 7 stock types added and **verified present in Blockly's registry beside a MISSING control** |
+
+**The three rulings, taken rather than deferred.** (1) **One multi-mode dropdown.** Its only stated
+objection was *"dropdowns currently read badly — sequence FIX-005 first or accept the interim"*, and
+FIX-005 part 1 shipped in this same session, so the objection is discharged rather than accepted.
+(2) **Plain `log`**, as recommended. (3) **Hardcoded English labels**, matching every other block here.
+
+🔴 **A gate hole found and closed while doing this.** `hat-migration.spec.ts` looks like it would
+catch a toolbox naming a block that does not exist — it walks the toolbox and instantiates every
+type — but its walk is `try { newBlock } catch { continue }`, deliberately, because *"a type the
+flyout names but this build does not register is not a migration concern."* Correct for that suite,
+and it means **a typo'd or version-dropped toolbox entry renders as a silently missing flyout row
+with every gate green.** Adding seven stock types in one commit is exactly when that matters, so
+`tests-unit/fix-004/blocks.spec.ts` now asserts every toolbox type is registered, with a
+non-empty-toolbox control beside it.
+
+🔴 **Not driven.** Acceptance 1–4 all want the bench: the `"42"` × 0.9 → 37.8 drive, the console
+output in a preview *and* a cloud function, the standalone-hat check, and the live-value badges.
+Criterion 1 is covered *as arithmetic* in the specs (the generated expression is `eval`'d and
+asserted `37.8`, with `"42" + 0 === "420"` as the control) but that is not the same claim.
+⚠️ **Slice C (objects as data) and the async question are untouched.**

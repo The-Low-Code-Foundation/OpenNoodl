@@ -60,3 +60,37 @@
    a correct `define({…})` Script does not (negative control).
 4. The traps block renders in both clients' context (editor `get_project_info` equivalent and MCP)
    — verify on the wire, not in source.
+
+
+## Fixes 1 + 2 — what shipped (2026-08-16, session 34, `28310bc8`)
+
+- **`THREE_WAYS_TO_COMPUTE`** — generated from `NodePicker.chooser.ts`'s own `chooserNotes()`, not
+  retyped, so the picker's comparative copy and the prompt's cannot become two hand-maintained
+  descriptions of the same three nodes. Each line **leads with the type name**: the picker can omit
+  it because its card carries the title beside the copy, but a prompt has no such frame, and a
+  comparison whose options are unnamed is not a comparison. Appended to it is the one thing the
+  chooser deliberately does not carry — the **Script node**, which it excludes entirely, stated as
+  the mechanism section measured it (no run signal, no static outputs, body runs once at parse,
+  mints ports while doing so).
+- **`CODE_STYLE`** — const/let never var; string and array methods over regex where either does;
+  short bodies; `Outputs.X = value` for a value and `Outputs.X()` for a signal. The closing clause
+  is the load-bearing one: *the user reads this code, and often learns JavaScript from it.*
+- **Script demotion ruled as recommended:** keep it authorable, and say *reach for it last*.
+
+## 🔴 A false premise in this task's own §1, found by wiring it up
+
+§1 says the traps block is *"already shared by both clients via `editor-deps.ts:319` and surfaced
+through `get_project_info`"*. That is true about the module being **reachable** from the MCP bundle
+and false about it being **used** by the editor. Measured: `AUTHORING_TRAPS` has exactly **two**
+consumers, `noodl-mcp/src/editor-deps.ts` and `noodl-mcp/src/tools/read.ts`. **No prompt under
+`prompts/` imports it.**
+
+⚠️ **So a trap added only to `traps.ts` would have fixed the report for external agents and left the
+in-editor AI untouched — and the in-editor AI is the likelier author of the reported node**, since
+the reporter was working in the editor. Both blocks are therefore exported and wired into
+`prompts/authoring.ts`'s system prompt as well. The prompt stays byte-identical across calls (the
+block is computed once from a frozen array), which `tests/ai/project-docs.test.ts` asserts.
+
+🔴 **Fix 3 (the validator rule) is NOT built** — a `Javascript2` node with no `define(`/`script(`
+call should be a warning, and that shape still escapes every gate. **Nothing here is driven**: both
+fixes are prompt changes, and the honest grade is a re-run of the authoring measurements.
