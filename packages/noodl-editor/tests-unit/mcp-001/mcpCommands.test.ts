@@ -136,6 +136,14 @@ describe('the authoring command', () => {
     expect(authoringOf(frontDoor()).scopeNote).toContain('/Users/me/Documents/My App');
   });
 
+  it('warns that the server lists as pending approval until the project is trusted', () => {
+    // Found by AC3's drive, 2026-08-16: a project-scope server lists as "⏸ Pending approval" where
+    // every user-scope one lists as "✔ Connected". That is Claude Code's trust prompt for a
+    // .mcp.json — correct, but a behaviour this scope change introduced, and without this sentence
+    // the reader pastes a working command and reads a status that does not say "connected".
+    expect(authoringOf(frontDoor()).scopeNote).toContain('pending approval');
+  });
+
   it('tells the reader to remove a user-scope entry of the same name', () => {
     // A user-scope registration silently shadows the project one — measured 2026-08-11, the
     // project entry is simply absent from `claude mcp list`. This section is what created those

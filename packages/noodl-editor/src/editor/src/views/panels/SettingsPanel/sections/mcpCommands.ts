@@ -456,21 +456,32 @@ function unboundScopeNote(serverName: string): string {
 }
 
 /**
- * What a `project`-scope row promises — and the two things that silently break it.
+ * What a `project`-scope row promises — and the three things that silently break it.
  *
- * 🔴 **Both warnings are measured, not defensive.** The directory sentence exists because `--scope
- * project` resolves against the shell's current directory and the CLI has no flag to override that,
- * so a command pasted in the wrong terminal writes a `.mcp.json` into an unrelated folder and looks
- * like it worked. The removal hint exists because a user-scope entry of the same name **silently
- * shadows** the project one — measured 2026-08-11, the project entry is simply absent from `claude
- * mcp list`, not reported as a conflict — and this section is what put those user-scope entries on
- * people's machines in the first place.
+ * 🔴 **All three warnings are measured, not defensive.** The directory sentence exists because
+ * `--scope project` resolves against the shell's current directory and the CLI has no flag to
+ * override that, so a command pasted in the wrong terminal writes a `.mcp.json` into an unrelated
+ * folder and looks like it worked. The removal hint exists because a user-scope entry of the same
+ * name **silently shadows** the project one — measured 2026-08-11, the project entry is simply
+ * absent from `claude mcp list`, not reported as a conflict — and this section is what put those
+ * user-scope entries on people's machines in the first place.
+ *
+ * 🔴 **The approval sentence is what FIX-008 C's own drive found (2026-08-16, AC3).** A
+ * project-scope server lists as `⏸ Pending approval`, where every user-scope server lists as
+ * `✔ Connected` — Claude Code's trust prompt for a `.mcp.json`, which is correct and desirable now
+ * that a project folder can carry a server definition. But it is a **behaviour this scope change
+ * introduced**: the user pastes the command, runs `claude mcp list`, and sees something that does
+ * not say "connected". That is C's trade stated rather than discovered — the old user-scope
+ * registration was immediately live and wrongly visible everywhere; this one is correctly scoped
+ * and needs one approval.
  */
 function perProjectScopeNote(serverName: string, projectDir: string): string {
   return (
     `Registers it as ${serverName} in this project's own .mcp.json, so an agent working here gets ` +
     `this project and no other. Run it in ${projectDir} — the project scope is resolved against ` +
     `the directory you paste into, so anywhere else writes the registration into the wrong folder. ` +
+    `The first time you start an agent here it will ask you to approve this project's .mcp.json; ` +
+    `until you do, \`claude mcp list\` shows the server as pending approval rather than connected. ` +
     `If you registered ${serverName} for your user account before, remove it with ` +
     `\`claude mcp remove --scope user ${serverName}\`: a user-scope entry of the same name hides ` +
     `this one without saying so.`

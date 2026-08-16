@@ -58,7 +58,7 @@ validated and silent.
 |---|---|---|---|---|
 | A | **Idempotent, honest Connect.** Pre-read `~/.claude.json`; identical entry → `ok: 'already-registered'` with a "Connected" card state; different entry (stale path) → offer remove + re-add. Never render the CLI's refusal raw. | `connectBootstrapServer.js`, `useConnectAgent.ts`, `ConnectAgentCard.tsx` | S | ✅ **built + driven** |
 | B | **Backfill `.mcp.json` + `CLAUDE.md` on project open.** One call to `installProjectAgentConfig` on the open seam, honouring the existing never-overwrite rule (`agentConfig.ts:243-249`). Fix the false gitignore banner. Closes every pre-BST-005 project. | `LocalProjectsModel` / open seam | S–M | ✅ **built + driven** |
-| C | **Per-project Settings command becomes `--scope project`.** Split `MCP_SCOPE`: bootstrap stays `user` (it has no folder); per-project writes the project's own `.mcp.json`. Update `McpSettingsSection.tsx:163`, copy, `tests-unit/mcp-001`; add a cleanup hint for existing user-scope `nodegx-<slug>` entries. | `mcpCommands.ts` | M | ✅ **built s47, NOT driven** |
+| C | **Per-project Settings command becomes `--scope project`.** Split `MCP_SCOPE`: bootstrap stays `user` (it has no folder); per-project writes the project's own `.mcp.json`. Update `McpSettingsSection.tsx:163`, copy, `tests-unit/mcp-001`; add a cleanup hint for existing user-scope `nodegx-<slug>` entries. | `mcpCommands.ts` | M | ✅ **built s47, DRIVEN s48 (AC3)** |
 | D | **A door into an existing project for the bootstrap server** — an `open_project(dir)` tool calling `binding.bind()` (the mechanism exists and already re-briefs: `createProject.ts:520-535`, `disclosure.ts:183-206`; it is merely gated to newly-created dirs). Minimum: `NO_PROJECT_REFUSAL` and `list_projects` emit the exact `claude mcp add --scope project …` line for the directory instead of prose. | `noodl-mcp` | M (note-only S) | 📋 open |
 | E | **`get_project_info` returns the bound directory** so a mis-bound server is detectable from any tool call. | `tools/read.ts:89-105` | S | ✅ **built + driven** |
 
@@ -70,8 +70,8 @@ validated and silent.
 2. Opening a pre-existing project (no `.mcp.json`) in the editor writes `.mcp.json` + `CLAUDE.md`
    (never overwriting either if present), and a subsequent Claude Code session in that folder lists
    `nodegx-<slug>` as connectable.
-3. The Settings per-project command registers at project scope; `claude mcp list` from that folder
-   shows the project entry.
+3. ✅ **MET, driven s48.** The Settings per-project command registers at project scope; `claude mcp
+   list` from that folder shows the project entry. See *"AC3, driven"* below.
 4. `get_project_info` output contains the bound directory.
 5. MCP suite green (`@noodl/mcp`), `tests-unit/mcp-001` updated, and the BST-005 acceptance
    ("same two files, same shape, both creators") re-verified.
@@ -297,13 +297,59 @@ matched the source — **and said so**, because the helper prints `[MUTANT DID N
 Without that, two rows would have reported a healthy suite passing on unmodified source, which is
 s46's finding repeating itself in a new place.
 
-### What C still needs
+## ✅ AC3, driven 2026-08-16 (session 48)
 
-**Acceptance criterion 3 is not driven.** *"The Settings per-project command registers at project
-scope; `claude mcp list` from that folder shows the project entry"* is graded only by the emitted
-string. The drive is: open Settings → Connect an AI agent, copy the real command, run it in the
-project folder, and read `claude mcp list` from there and from elsewhere. ⚠️ It writes a real
-`.mcp.json` — **use a project copy**, and remember `.mcp.json` is gitignored but the folder is not.
+**The command was not hand-written.** `buildMcpCommands` was called directly, with the bundle path
+from `resolveMcpServer('noodl-mcp')` — the same two units the Settings panel composes — so the string
+that was run is the string the panel hands the user. Target: a **copy** of `cn019-drive` (v2) in the
+scratchpad, deleted afterwards.
+
+```
+claude mcp add --scope project nodegx-fix008c-ac3 -- node …/packages/noodl-mcp/dist/noodl-mcp.cjs <projectDir> --allow-writes
+```
+
+**A 2×2 — location × before/after — not a single after-reading:**
+
+| `claude mcp list` | in the project folder | from `$HOME` |
+|---|---|---|
+| **before the add** | absent | absent |
+| **after the add** | ✅ **`nodegx-fix008c-ac3` listed** | ❌ absent |
+
+✅ **The absence at `$HOME` is asserted beside a known-firing signal**, so it is a real absence and
+not a broken command: the same listing still names **three** other `nodegx*` servers, and `claude mcp
+get` from `$HOME` fails with *"No MCP server named …"* while **listing the six that do exist**.
+✅ **`claude mcp list` from `$HOME` is byte-identical before and after the whole drive** (`diff`
+clean) — nothing leaked to user scope.
+
+✅ **Scope asserted directly, not inferred from location:** `claude mcp get` in the folder reports
+**`Scope: Project config (shared via .mcp.json)`**. The written file is exactly the
+`{type, command, args, env}` shape `BootstrapRegistration` documents, which is a schema this repo
+does not own and had only ever read off a live file.
+
+### 🔴 What the drive found that the copy does not say
+
+**A project-scope server lists as `⏸ Pending approval (run claude to approve)`, where every
+user-scope server lists as `✔ Connected`.** This is Claude Code's trust prompt for a `.mcp.json` —
+correct and desirable, since a project folder can now carry a server definition — but it is a
+**behaviour C introduced and `perProjectScopeNote` does not mention**. The user pastes the command,
+runs `claude mcp list`, and sees something that does not say "connected".
+
+🔴 **This is the shape of C's trade, and it should be stated rather than discovered:** the old
+user-scope registration was *immediately live and wrongly visible everywhere*; the new one is
+*correctly scoped and needs one approval*. **Worth a sentence in `perProjectScopeNote`** — small, and
+the suite already fences that string.
+
+⚠️ **The shadowing claim in the same note was NOT re-tested here** and rests on the 2026-08-11
+measurement (`phase-62-cold-start/MEASUREMENTS-CLIENT-CONTRACT.md`): proving it again requires
+writing a user-scope entry into Richard's real `~/.claude.json`, which this drive deliberately did
+not do.
+
+✅ **Incidental corroboration of the bug C exists for**, visible in every reading above:
+`nodegx-puppy-test-3` is a **user-scope** server bound to `…/NodeGX test projects/Puppy test 3` and
+it is `✔ Connected` **from `$HOME` and from an unrelated project folder alike**. That is the
+wrongly-bound server the 3/3 measurement was about, sitting on this machine right now.
+⚠️ It resolves to `/Applications/NodeGX.app/…` — **the packaged Aug-13 bundle**, i.e. pre-fix-E code,
+which is the second reason the repackage is owed.
 
 ## ✅ RULED 2026-08-16 (session 42)
 
