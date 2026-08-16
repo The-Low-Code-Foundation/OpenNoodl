@@ -91,15 +91,22 @@ floor run exits **1**. **Prove completion from `test-results.json`'s mtime; dele
 
 ⚠️ **s30 got this wrong first and committed it wrong** (`8b1d829a`, superseded here). The record said
 *"the floor is SEVEN, do not quote 6"*. **That was false and it retired a real measurement.** Corrected
-by finding the primary artifacts. **Five** jasmine runs exist as background-task output:
+by finding the primary artifacts. **Five** jasmine runs exist as background-task output — **with their
+dates, which is the whole point**:
 
-| when | specs / failures | seed | `projectmodules` in output |
-|---|---|---|---|
-| 10:58:17 | 2717 / 6 | **58032** | — |
-| 13:14:24 | 2812 / 9 | 39393 | 13 |
-| 13:29:41 | 2812 / 6 | 39393 | 13 |
-| **16:01:26** | **2843 / 6** — pre-CN-006 | 39393 | **0** |
-| 🔴 **21:21:42** | **2843 / 6** — **post-`9e76bae4`, the COMMITTED tree** | 39393 | **0** |
+| when | specs / failures | seed |
+|---|---|---|
+| **2026-08-13** 10:58:17 | 2717 / 6 | **58032** |
+| **2026-08-15** 13:14:24 | 2812 / 9 | 39393 |
+| **2026-08-15** 13:29:41 | 2812 / 6 | 39393 |
+| **2026-08-15** 21:21:42 | 2843 / 6 | 39393 |
+| ✅ **2026-08-16** 16:01:26 — **the most recent** | **2843 / 6** | 39393 |
+
+**Anchors:** `9e76bae4` (CN-006, touches projectmodules) committed **2026-08-16 20:43:04**.
+The results file that read **7** was written **2026-08-16 20:37**, on the in-flight uncommitted tree.
+
+🔴 **THEREFORE THE COMMITTED TREE IS UNWITNESSED.** The newest `test:ci` is 16:01 on 08-16, which is
+**four and a half hours BEFORE** `9e76bae4`. Nothing has graded the projectmodules work as committed.
 
 🔴 **s30 first wrote "four runs exist" and that was false — the trap is worth more than the count.**
 The sweep grepped `"Randomized with seed 39393"`, so the 10:58 run at **seed 58032 was invisible to
@@ -109,19 +116,33 @@ absent`, never `everything − answered`.** Caught by the peer on `uds:/tmp/cc-s
 projects-OpenNoodl/*/tasks/`), so a **sibling worktree's** runs are excluded by construction. Widen
 the glob before claiming a machine-wide count.
 
-✅ **The floor is 2843 / 6 at seed 39393, and the committed tree IS witnessed** — the 21:21 run is in
-this checkout (`/Users/richardosborne/vscode_projects/OpenNoodl/packages/noodl-editor` in its output),
-it postdates `9e76bae4` (20:43), and it lists the same six by name.
+### 🔴 STRUCK — the date error, and the two findings it manufactured
 
-🔴 **And `packages/noodl-editor/tests/test-results.json` STILL reads `failedCount 7`, mtime 20:37:49.**
-A run completed at **21:21** and **did not update it**. So the file is not merely a readout that can go
-stale against the *tree* — it went stale against **a later completed run of its own suite**. ⚠️ **Why it
-did not write is NOT established, and s30 is deliberately not naming a mechanism.**
+~~The floor is 2843/6 and the committed tree IS witnessed — the 21:21 run postdates `9e76bae4`.~~
+~~`test-results.json` went stale against a LATER COMPLETED RUN of its own suite.~~
+~~The projectmodules golden is contamination that does not reproduce on committed code.~~
 
-**What the 7 actually was:** the 20:37 run saw the CN-006 projectmodules work in flight and uncommitted
-and produced one extra failure — `projectmodules — injectIntoHtml snapshot (scanner unification)
-produces byte-identical HTML to the committed golden`. It **does not reproduce on committed code**
-(21:21, zero hits). Contamination after all — but that was only knowable from the run outputs.
+🔴 **All three struck 2026-08-16. The 21:21 run is 2026-08-15** — 23 hours earlier than read. s30 and
+the peer on `uds:/tmp/cc-socks/9204.sock` made the **same** error independently: formatted mtimes with
+`stat -t '%H:%M:%S'` — **time, no date** — then compared and sorted that column across a ten-day span,
+so `21:21` sorted after `16:01` and a day-old run read as the newest. **Sorting a time-of-day string is
+not sorting time.** Caught by the session on `87109`.
+
+⚠️ **What each struck claim actually rested on, because the wreckage is instructive:**
+
+| struck claim | why it collapsed |
+|---|---|
+| committed tree witnessed | its only witness is a day older than the commit |
+| *"a completed run failed to write `test-results.json`"* | **no run ever failed to write.** The Aug-15 run wrote it on Aug 15; the Aug-16 20:37 run overwrote it. There was never a completed-but-unwritten run |
+| projectmodules golden = contamination | nothing has run on committed code, so *"does not reproduce"* has no measurement behind it |
+
+🔴 **The middle one is the dangerous one: it retired standing advice.** *"Delete the file, then require
+a fresh mtime"* was declared broken and it is **not** — it stands unchanged. ⚠️ **A false finding that
+retires a working check costs more than a false finding that adds a bogus one**, because the check it
+removes was load-bearing and its removal is invisible.
+
+⚠️ **Same shape, two filters, two sessions:** s30 dropped every run at another **seed**; the peer
+dropped the **day**. Both wrote a filtered view up as a complete one.
 
 ✅ **THE RECOVERY INSTRUMENT, which five sessions missed and which settles this class of question:**
 
