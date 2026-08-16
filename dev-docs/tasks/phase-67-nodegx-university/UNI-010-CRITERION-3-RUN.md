@@ -425,9 +425,34 @@ reader can disagree with individually rather than as a verdict.
 
 ## 12. What should happen next
 
-1. 🔴 **Close §8.1.** F4 should fail — or at minimum warn loudly — when the render's own findings
-   include `dead-placeholder-text`. The information is already in `WholeSolutionResult.findings`;
-   this is a verdict change, not new machinery.
+1. ✅ **§8.1 CLOSED 2026-08-16** (`eff91029`), and it was the verdict change this said it was.
+   `renderDefectCodes()` joins `countDrawnElements` in `lessondrawncount.ts` — one rule, both
+   adapters — `WholeSolutionResult.renderDefects` carries the codes past the prose, and F4 fails on
+   them as **`solution-renders-broken`**, kept separate from `solution-renders-nothing`.
+
+   🔴 **Broader than this item asked for, on purpose.** Naming `dead-placeholder-text` would have
+   left `empty-list`, `broken-image` and `content-not-visible` — all `error` in the harness today —
+   in the identical hole, and excluded whatever it grows next. It reads the harness's own severity
+   instead. `blank-render` is excluded because `rendered` already answers it: one defect, one
+   accusation.
+
+   ✅ **Graded as a control pair, not a case.** The new specs were re-run with the new branch
+   disabled: **three fail, and all 25 pre-existing ones still pass**, so the branch is the only
+   thing that moved. The pair is also pinned on *recorded* renders rather than invented ones —
+   `phase55-replay-haiku` (68 drawn, several of them the word "Text") now reports
+   `['dead-placeholder-text', 'broken-image']`, and `phase55-replay-sonnet`, the build phase 55
+   calls correct, still reports `[]`.
+
+   ⚠️ **One scope call made and worth knowing about:** the learner's "check my work" summary read
+   *"Your app renders — 4 elements drawn, with no blocking problems"* over the same evidence. The
+   sentence is fixed; **the verdict deliberately is not.** A learner mid-build has placeholders they
+   have not filled in yet — that is what progress looks like — so failing them on these codes would
+   be the "gate that rejects the correct answer" pointed at the one person who cannot argue with it.
+   The authoring gate grades a *finished* solution; the two surfaces read one field and reach
+   different conclusions from it, which is the point.
+
+   ⚠️ **What it does not close: §8.2 is untouched**, so a defect on any page but the start page is
+   still invisible — including to this new check, which can only see what the render rendered.
 2. 🔴 **Take §8.2 to phase 69 / CN-001**, which is rewriting the same file. Rendering every routed
    page, not just `startPage`, fixes `render_report` and F4 together.
 3. ⚠️ **Consider a "weaker than the prose" pass in the brief.** Not a gate — F6 is human by

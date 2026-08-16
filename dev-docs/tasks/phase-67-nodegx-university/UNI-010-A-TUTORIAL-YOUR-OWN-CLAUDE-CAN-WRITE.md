@@ -288,6 +288,21 @@ lesson format and grading runner (criteria 3 and 4 there are this task's prerequ
 > that `allow_unrendered` is the normal case rather than the exception. **Richard's call** — flagged
 > rather than taken.
 >
+> > 🔴 **NEW INPUT to that call, 2026-08-15: phase 69 / CN-001 is about to rewrite this same file.**
+> > [CN-001](../phase-69-the-node-you-write-yourself/CN-001-THE-EYES-MUST-SEE-KITS.md) (tier 0, effort
+> > S, no rulings attached) fixes a *different* defect in `render-from-disk.js` — it hardcodes two
+> > module stylesheets and never calls `injectIntoHtml`, so a project using a custom node renders
+> > blank. Its chosen fix is to **extract the pure half into a no-build workspace package** on the
+> > `@nodegx/render-measure` pattern, which is precisely the shape of option one above. **CN-001 does
+> > not close this hole** — `scripts/` is still outside `build.files`, and an injector cannot help a
+> > file that never shipped — but it does most of the structural work, so the two decisions are worth
+> > taking together rather than separately.
+> >
+> > ⚠️ **And an ordering constraint on criterion 3:** CN-001 changes the instrument F4 is scored with.
+> > Do not let the five-lesson run straddle it. Finish criterion 3 first, or land CN-001 first and
+> > score all five afterwards — **and record which**, because a split dataset is not a ≥3-of-5 result.
+> > Lesson projects use no kits today, so nothing already measured is wrong.
+>
 > ### ✅ Two more things the drive established
 >
 > - 🔴 **The harness refuses a lesson whose steps are already done in the starter.** Building a
@@ -324,6 +339,76 @@ lesson format and grading runner (criteria 3 and 4 there are this task's prerequ
 > lessons or ordinary launcher churn. What I *can* say is that the restored file (which already
 > contained slice 4's lesson opens) has **zero entries referencing the Learning folder**, so the
 > guarantee held across those. **The next drive should diff the entry ids before restoring.**
+
+> ## ✅ SLICE 3 — §8.1 CLOSED 2026-08-16 (`eff91029`): F4 now reads the render's findings
+>
+> The criterion-3 run's first finding, and the one it named *"the difference between UNI-010 being
+> an experiment that passed and a feature that can ship"*. Full write-up:
+> [UNI-010-CRITERION-3-RUN.md](UNI-010-CRITERION-3-RUN.md) §8.1 and §12.1. **14 new specs**
+> (`test:main` 205 / **3171**, up from 3157; `noodl-mcp` 44 / 510).
+>
+> **What was wrong.** F4 failed on `!valid` or `!rendered`, and `rendered` is `drawnElementCount > 0`.
+> A lesson whose row component declared `dynamicports` where the editor reads `ports` had no
+> interface, so its Repeater stamped three rows of the literal word `"Text"` beside one real
+> heading — four drawn elements, F1–F4 all pass, written. The harness's own
+> `dead-placeholder-text` **error** was in the same payload, as a **string** in
+> `WholeSolutionResult.findings`, and `findings` did not participate in the verdict.
+>
+> 🔴 **The shape of the defect is worth keeping, because it is not "the gate was too lenient".** F4
+> already refuses to accept "no errors" as evidence — that is the "clean can mean EMPTY" discipline,
+> and it was working. What let the bundle through is that the drawn count is a **project-level**
+> number, so **one working element vouched for every broken one beside it.** The information needed
+> to catch it was already in the payload; the rule could not reach it because it had been flattened
+> to prose one layer earlier.
+>
+> | Shipped | Where |
+> |---|---|
+> | **`renderDefectCodes()`** — the second shared rule, beside `countDrawnElements` | [`models/lessondrawncount.ts`](../../../packages/noodl-editor/src/editor/src/models/lessondrawncount.ts) |
+> | **`WholeSolutionResult.renderDefects`** — the field the codes survive in | [`models/lessongrading.ts`](../../../packages/noodl-editor/src/editor/src/models/lessongrading.ts) |
+> | **F4's new verdict**, `solution-renders-broken` | [`models/lessonbundleverify.ts`](../../../packages/noodl-editor/src/editor/src/models/lessonbundleverify.ts) |
+> | Both engine-2 adapters reporting it | `models/lessonwholesolution.ts`, `noodl-mcp/lessons/wholeSolutionGrader.ts` |
+>
+> 🔴 **It reads severity, not a list of codes.** Naming `dead-placeholder-text` alone would leave
+> `empty-list`, `broken-image` and `content-not-visible` — all `error` in the harness today — in the
+> identical hole, and would exclude whatever it grows next. `blank-render` is excluded because
+> `rendered` already answers it: one defect, one accusation.
+>
+> ⚠️ **`renderDefects` absent means "not reported", never "none found"** — the same distinction
+> `drawnElementCount` draws, with the same consequence: an adapter that stays silent opts itself out.
+> `normaliseWholeSolutionResult` will not invent it, because an invented empty list turns every
+> silent adapter into a clean bill of health.
+>
+> ### ✅ Graded as a control pair, which is the only grade that means anything here
+>
+> The finding was *"two scorecards that should differ are identical"*, so a single broken case would
+> have proved nothing — it passes against a gate that has started failing everything. Two arms:
+>
+> - **The new specs re-run with the new branch disabled: 3 fail, all 25 pre-existing pass.** The
+>   branch is the only thing that moved.
+> - **Pinned on recorded renders, not invented ones.** `phase55-replay-haiku` — a real capture that
+>   draws 68 things, several of them the word "Text" — now reports
+>   `['dead-placeholder-text', 'broken-image']`; `phase55-replay-sonnet`, the build phase 55 calls
+>   correct, still reports `[]`; `ecommerce-example`'s `minimum-layout-width` **warning** is not a
+>   defect and must not become one.
+>
+> ### ⚠️ The scope call inside it: the learner's surface changed its SENTENCE, not its verdict
+>
+> `summariseGrade` printed *"Your app renders — 4 elements drawn, with no blocking problems"* over
+> the identical evidence. That sentence is now honest. **The completion verdict is untouched, and
+> deliberately so:** the authoring gate grades a *finished* solution, while a learner is mid-build
+> and a placeholder they have not filled in yet is what progress looks like. Failing them on these
+> codes would be the same "a gate that rejects the correct answer" mistake F3's first draft made,
+> pointed at the one person who cannot argue with it. Two specs hold the pair — the sentence must
+> change, the `complete` flag must not.
+>
+> ### 🔴 Still open, and this does not touch either
+>
+> - **§8.2** — F4 renders only the Router's `startPage`, so a defect anywhere else is invisible
+>   *including to this new check*, which can only see what was rendered. Belongs to phase 69's
+>   CN-001 (upstream: `render_report` has the same blind spot).
+> - **The F4 packaged-install scope call is still Richard's.** `scripts/` is not in `build.files`, so
+>   on a packaged install F4 is checked by nobody — and a sharper F4 that never runs is still a
+>   sharper F4 that never runs.
 
 ## Premise
 
