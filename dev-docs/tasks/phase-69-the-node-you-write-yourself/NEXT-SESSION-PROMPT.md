@@ -1,13 +1,11 @@
 # Phase 69 — next session
 
-**Written 2026-08-16, session 6.** 🔴 **This file is a REWRITE, not an amendment.** It is overwritten
+**Written 2026-08-16, session 7.** 🔴 **This file is a REWRITE, not an amendment.** It is overwritten
 every session; if you find yourself prepending, rewrite it instead. Everything that outlives the
 phase goes to memory, not here.
 
 Read [TASKS.md](TASKS.md) and [RULINGS.md](RULINGS.md) first — all eight rulings are made and the
-queue is empty. Then read [CN-003](CN-003-THE-PROJECT-CATALOG-OVERLAY.md), whose slice log carries
-the measurements, and **[CN-004](CN-004-TURN-THE-CHECKS-BACK-ON.md), which is next and is not
-started**.
+queue is empty. **CN-005 is next and nothing blocks it.**
 
 ---
 
@@ -16,168 +14,146 @@ started**.
 | Task | Built | Verified | Note |
 |---|---|---|---|
 | **CN-001** | ✅ `ed28a03c` | ✅ | Render harness sees kits |
-| **CN-002** | ✅ `378793bc` | ✅ | A skipped check says it was skipped. Baseline **0/5/8** |
-| **CN-003** slices 1–3 | ✅ | ✅ | Mapping, headless extractor + MCP caller, editor caller |
-| **CN-003** slice 4 | ✅ `43fb9a32` `ffe680c4` | ✅ **driven** | Lesson vocabularies. ✅ **items 4 AND 5 done — CN-003 is complete** |
-| **The kit name** | ✅ `f7da52d1` | ✅ | Fixed, not just asserted. ⚠️ one recording is stale — §3 |
-| **CN-004** | 📋 | — | **Next.** Nothing blocks it. ⚠️ Read §4 before starting — its spec has a false premise |
-| CN-005 … CN-017 | 📋 | — | CN-005/CN-007 were never blocked |
+| **CN-002** | ✅ `378793bc` | ✅ | A skipped check says it was skipped |
+| **CN-003** | ✅ | ✅ | All five items. Slices 1–4 |
+| **CN-004** | ✅ `4df8c5bd` | ✅ | **Closed this session.** Items 1–3 were already done; item 4 was broken — §2 |
+| **CN-005** | 📋 | — | **Next.** `ReactNodeDefinition` as a consumable `.d.ts`, no build step (✅ D2) |
+| CN-006 … CN-017 | 📋 | — | CN-006/CN-007 are the rest of the authoring arc |
 
 ---
 
 ## 1. Gate readings
 
-All taken this session, at HEAD with everything below applied.
+All taken this session at HEAD.
 
 | Gate | Reading |
 |---|---|
-| `test:main` (editor jest) | ✅ **214 suites / 3335** |
-| `test:packages` | ✅ **14 projects**, all green |
-| `@noodl/mcp` jest | ✅ **48 suites / 565** |
-| `@noodl/noodl-viewer-react` jest | ✅ **69 suites / 899** |
+| `test:main` (editor jest) | ✅ **217 suites / 3369** |
+| `test:packages` | ⚠️ **13 of 14 green** — `@noodl/mcp` red on a **pre-existing flake**, §3 |
+| `@nodegx/kit-catalog` jest | ✅ **2 suites / 38** |
+| `@noodl/noodl-viewer-react` jest | ✅ **69 / 899** |
 | `@nodegx/module-inject` jest | ✅ **15** |
-| `catalog:check` | ✅ up to date, **175 node types** (criterion 4 holds) |
+| `@noodl/mcp` jest | ✅ **49 / 576** when it passes — §3 |
+| `catalog:check` | ✅ up to date, **175 node types** |
 | `typecheck:editor`, `typecheck:editor-tests` | ✅ 0 each |
-| `npx tsc --noEmit` in `packages/noodl-mcp` | 🔴 **8 errors — the SAME 8 as last session**, none in touched files. Still in no gate |
+| `npx tsc --noEmit` in `packages/noodl-mcp` | 🔴 **8 errors — the SAME 8 as the last two sessions**, none in touched files. Still in no gate |
 
-⚠️ **Baselines move under you.** `test:main` was 213/3323 last session and is 214/3335 with my one
-suite; the mcp suite was 47/560 and is 48/565. **Re-measure; never subtract from a handover's
-number.**
+⚠️ **Baselines move under you.** `test:main` was 214/3335 last session and is 217/3369 with my two
+suites. **Re-measure; never subtract from a handover's number.**
 
-⚠️ **`test:ci` was not run here and did not need to be** — everything above is plain Node. A peer ran
-it during this session and reported **2843 / 6 @ seed 39393**, six failures unchanged by name. An
-editor launch *or* teardown reaps it while npm still exits 0.
+⚠️ **`test:ci` was not run here and did not need to be** — everything above is plain Node. No editor
+was launched this session.
 
 ---
 
 ## 2. What this session settled
 
-### ✅ CN-003 is complete. Slice 4 routed three vocabularies, not one
+### 🔴 CN-004's items 1–3 were already done, and nothing had ever said so
 
-`projectLessonVocabulary()` (the open project, memoised on `catalogGeneration()`),
-`bundleLessonVocabulary()` (a directory that is *not* it, from its own kits), and the unchanged
-shipped one. `gradeLesson`'s bare `verify: true` now means *against the open project*.
+Every skip site gates on `catalog.hasType()`, which CN-003's overlay makes true — so
+`checkParameterValues`, the unknown-port checks and `--strict` took kit nodes on the normal path the
+moment the overlay landed. **Measured before changing anything**: a kit node with `progress: 'lots'`
+already drew `invalid-parameter-value` / error, identical to the built-in control, and a correct kit
+node was already silent.
 
-🔴 **The trap named three files; the leak was in a fourth.** `lessonprojectcontext.ts` defaults its
-`catalog` to `loadDefaultCatalog()`, so between slices 3 and 4 a bundle installed while a kit project
-was open had its nodes' ports answered by **that project's kit**. Measured, then fixed:
+⚠️ Worth stating rather than quietly shipping, because three things were already true and **none of
+them discriminates** — they are equally true of an overlay that resolves a type and then checks
+nothing: the info count goes to zero, `unknown-node-type` falls silent, "validation knows the type".
+The consequence that does discriminate was written down before anything ran.
 
-| | then | now |
+### 🔴 Item 4 WAS broken, in both directions, and no fixture could see it
+
+The demo kit and the cashflow kit declare **no `dynamicports` at all**, so `toDynamicPorts` ran on
+the empty case for a task and a half. It called all four exported shapes `declared-port-groups` and
+passed the raw entries through:
+
+| | before | after |
 |---|---|---|
-| a lesson naming the OPEN project's kit node, `gradeLesson(verify)` | `unknown-node-type` **error** | clean |
-| a bundle's node ports, with a kit project open | **the open project's kit** | the bundle's own, or none |
-| a bundle carrying the kit it teaches, at install | refused: *"is not a node type"* | refused, and it says **why it cannot tell** |
+| kit node with a `channelPort` | `unknown-parameter` **on a CORRECT kit** — guaranteed, the exporter keeps a channel port out of the static list on purpose | silent |
+| kit node's conditional group, parameter set while off | **nothing** | `inactive-conditional-parameter`, as a built-in draws |
 
-### 🔴 Only the MCP server can read a bundle's kits, and both rulings agree
+The two vocabularies differ: `formatDynamicPorts` emits `{ name, condition, ports: [portObject] }`,
+the catalog stores and every consumer reads `{ condition, inputs: [name] }`. One is a false
+accusation, one a silent miss — a fix for whichever was noticed first leaves the other.
 
-`extractProjectOverlay` takes **any** project directory and a bundle is one — so
-`lessons/bundleVocabulary.ts` reads the bundle's own kits where bundles are written and scored. The
-editor cannot: ✅ **D3** puts extraction in one process, ✅ **D6** puts consent before running a
-downloaded bundle's kit code, and *a gate that runs the code to decide whether the code may run has
-no gate in it*.
+New fixture `packages/noodl-mcp/tests/fixtures/kit-dynports` is a **real kit run by the real
+extractor**; `dynports-kit-nodelibrary.json` is its recorded payload, which is what the mapping suite
+grades against. All of it is mutation-proven: reverting `toDynamicPorts` kills 8 mapping tests and
+both consequence tests, and correctly leaves the 12 parity tests green.
 
-Driven on the **packaged** `dist/noodl-mcp.cjs` over real stdio, with its control:
+### ✅ AC 4b was driven, not just verified
 
-| | F1 | reported |
-|---|---|---|
-| bundle **with** its kit | **pass** | `kits: [Demo Kit]`, both node types |
-| same bundle, kit removed | **FAIL** | `"demo.kit.Badge" is not a node type` ×2 |
-
-### ✅ Richard ruled: an unresolvable kit type still BLOCKS install
-
-Asked and answered 2026-08-16. Only the *claim* was fixed — the refusal no longer asserts "there is
-no such node type" about a bundle that ships the kit declaring it. **Do not soften this** without
-re-opening it; the alternative was measured and named (a typo'd kit lesson reaching a learner).
-
-### ✅ The kit name is fixed
-
-`registerModule` named a module from the object a kit passes to `Noodl.defineModule` — and no kit
-sets that name, so every kit node in the editor was `'Unknown Module'` and the picker's own-nodes
-section was headed by the empty string. `@nodegx/module-inject` now sets `window.__noodl_module_name`
-immediately before each kit's script tag and the three bootstraps adopt it in `defineModule`.
-
-🔴 **The capture must be in `defineModule`, not `registerModule`** — by the time the runtime walks
-`__noodl_modules` the global holds the *last* kit's name. There is a two-kit test that fails if
-someone "simplifies" this.
-
-### ✅ CN-003 item 4 — provenance is queryable
-
-`CatalogIndex.isProjectKitType()`, `kitModuleOf()`, `projectKitTypeNames()`. 🔴 `hasType()` is true
-for both kinds and **nothing may branch on these to check a kit node less** (D4, P1). They exist so
-D1's property panel and CN-015 can *say* where a node came from.
-
-### 🔴 A test of mine was green against a restored defect
-
-The bundle fixture used `App:%…` where a component's legacy name is `/App`, so every condition read
-false and the leak test passed under mutation — a failure indistinguishable from the mechanism being
-absent. **All five fixes in this session are mutation-proven in both directions**, which is the only
-reason that was caught.
+CN-003 slice 4 graded the *install gate*. The criterion asks for the step to **tick**, so
+`lessonStepTicks.test.ts` builds the runtime's own eval context with the node placed and asserts
+`gradeLessonSteps(...).passed`. 🔴 `exists` matches on `node.type.name` off the project graph and
+consults no catalog, so it would tick with no overlay at all — **`hasPort` is the load-bearing half**,
+and its overlay-cleared control is what makes the test mean anything.
 
 ---
 
-## 3. Owed, and small
+## 3. 🔴 The mcp gate is flaky, and it was before this task
 
+`@noodl/mcp`'s provisioning suites (`provision.test.ts`, `projectOwnsBackend.test.ts`) start real
+backend processes and fail intermittently under machine load. **Interleaved A/B runs on this machine:**
+
+| | runs failing |
+|---|---|
+| without CN-004's suite | **2 of 6** |
+| with it | 4 of 6 |
+
+and a 49th suite touching **no package code at all** — 1.5 s of arithmetic — reproduces the same
+failures. `READY_TIMEOUT_MS` is 30 s, so it is not that deadline.
+
+🔴 **A sequential "clean before, red after" comparison on a shared machine measures the machine, not
+your change.** A single before/after sample had me convinced this task caused it, and that reading
+was committed to a comment before the interleaved runs falsified it. **Interleave, on a box with 18
+concurrent sessions.**
+
+**This wants a task number.** It is not CN-004's and no amount of thrift in a new suite closes it.
+
+---
+
+## 4. Owed, and small
+
+- ⚠️ **The packaged `dist/noodl-mcp.cjs` still carries the old mapping.** Registered MCP servers get
+  the item-4 fix only after a rebuild. Deliberately not rebuilt here: 18 peer sessions have a server
+  running out of that path.
 - ⚠️ **Re-record `packages/noodl-editor/tests-unit/cn-003/fixtures/kit-app.editor-nodelibrary.json`.**
-  Its `kitModule` still reads `'Unknown Module'`; `kitAgreement.test.ts` asserts that and is now
-  marked **a fossil in place**, with the note that it is a dated measurement. Re-recording costs a
-  **viewer build and a drive** — the editor loads its bootstrap from `src/external`, which is
-  gitignored build output of `noodl-viewer-react/static`. After it, the expectation becomes
-  `['Demo Kit', 'Demo Kit']`.
-- ⚠️ **The kit-name fix is unverified in the running editor** for the same reason. The injector half
-  and the runtime half are each tested and mutation-proven; what has not been observed is the two of
-  them meeting in a built viewer.
+  Its `kitModule` still reads `'Unknown Module'`; `kitAgreement.test.ts` asserts that and is marked a
+  fossil in place. Costs a **viewer build and a drive** — the editor loads its bootstrap from
+  `src/external`, gitignored build output of `noodl-viewer-react/static`. After it the expectation
+  becomes `['Demo Kit', 'Demo Kit']`.
+- ⚠️ **The kit-name fix is still unverified in the running editor**, for the same reason. Both halves
+  are tested and mutation-proven; what has not been observed is the two meeting in a built viewer.
 
 ---
 
-## 4. What to do next — CN-004, and read this first
+## 5. Owed by Richard
 
-🔴 **CN-004's spec has a false premise and says so nowhere.** It is written as though turning the
-checks on in one place turns them on everywhere. There are **two pipelines**:
-
-- `checkParameterValues` has **exactly one caller**, so neither `validate:project` nor MCP
-  `validate_project` checks parameter values for *any* node — kit or built-in.
-- The cashflow kit came out of slice 2b **completely clean (0/0/0)**. That is a fact about its **28
-  connection endpoints** and says nothing about its **26 parameter values**, which are checked by
-  nothing anywhere. **Do not read that clean run as the kit being verified.**
-
-**Item 1 in §5 is the scope call this raises and it is still open** — see below.
-
-🔴 **Expect real breakage and do not soften it.** D4 was ruled against the softer rollout knowingly.
-
-⚠️ **The lesson path is stricter than the path D4 reasoned about**: there `unknown-node-type` is an
-**error** (class F1) and blocks install for every provenance, not a warning promoted under
-`--strict`. Slice 4 leaves that deliberately blocking (Richard, above).
-
----
-
-## 5. Owed by Richard — ask before or during CN-004
-
-1. **Widen the project gate to check parameter values?** The 26 unverified parameters on the cashflow
-   kit nodes are unverified at project level *for everyone*, kit or built-in. **Scope call, not a
-   fix.** Unchanged from last session.
+1. **Widen the project gate to check parameter values?** Unchanged, and CN-004 sharpened it rather
+   than settling it. `checkParameterValues` has **exactly one** production caller
+   (`authoredPreconditionDiagnostics`), so `validate:project` / `validate_project` check parameter
+   values for **no node of any provenance**. 🔴 That is not a kit-specific hole, so D4's parity holds
+   either way — which is why CN-004 could close without it. `cn004.test.ts`'s last block asserts the
+   silence deliberately, **so it fails loudly on the day the scope call is taken: replace it, do not
+   delete it.**
 2. **The ungated typechecks.** noodl-mcp's is red (8) and runs in no CI job; seven of eleven
-   `typecheck:*` scripts run nowhere, and **`scripts/` is in none of them**, so
-   `validate-project.ts` is typechecked by nothing. Unchanged.
-3. ✅ **Answered 08-16:** who owns the kit's name → fixed this session, in the injector and the three
-   bootstraps. ✅ **Answered 08-16:** the install gate keeps blocking.
+   `typecheck:*` scripts run nowhere, and `scripts/` is in none of them. Unchanged.
 
-Also still open and not caused here: 🔴 **`render-from-disk.js` answers `/` and `/index.html` and
-404s everything else**, including the start page's own `urlPath`. **Wants a task number.**
+Also open and not caused here, both wanting task numbers:
+🔴 **`render-from-disk.js` answers `/` and `/index.html` and 404s everything else**, including the
+start page's own `urlPath`. 🔴 **The mcp provisioning flake**, §3.
 
 ---
 
 ## 6. Checkout conditions
 
-Several sessions share this checkout; peers were active in `phase-50`, `phase-65`, `phase-68`,
-`scripts/library/check.ts` and `packages/noodl-editor/scripts/aix002-measure/` throughout, and none
-was touched.
+Several sessions share this checkout; peers were active in `phase-50`, `phase-65`, `phase-68` and
+`scripts/library/check.ts` throughout, and none was touched. The working tree at handover carries
+exactly the four peer paths it carried at session start.
 
 - ✅ **`git commit -m … -- <pathspecs>`, always. Never `git add -A`, never `git stash`.** Untracked
-  files were added and committed in one chain with the message already in a file.
-- ✅ **No editor was launched this session** — everything is plain Node, so no drive negotiation was
-  needed and no peer's `test:ci` was at risk. A peer announced its own `test:ci` completion and
-  released a hold; nothing was owed back.
-- ⚠️ `packages/noodl-editor/src/external` is **gitignored build output** of
-  `packages/noodl-viewer-react/static`. Edit the tracked source; the copy regenerates. Three
-  `defineModule` bootstraps live there (viewer, deploy, ssr) and all three needed the same one line.
+  fixtures were added and committed in one chain with the message already in a file.
+- ✅ **No editor was launched** — everything is plain Node, so no drive negotiation was needed and no
+  peer's `test:ci` was at risk.
 - Whoever you tell you are starting, tell you have stopped.
