@@ -294,7 +294,32 @@ export const TOOL_GROUPS: readonly ToolGroup[] = Object.freeze([
     purpose:
       'list the NodeGX projects on this machine; create a new project elsewhere on disk; read an imported ' +
       'project\'s conversion report.',
-    tools: ['list_projects', 'create_project', 'get_import_report'],
+    // ✅ CN-006 — `create_node_kit` is here, and the placement was measured
+    // rather than chosen (2026-08-16, same fixture and normalisation as
+    // `tests/toolDisclosure.test.ts`):
+    //
+    // | placement | surface | cost |
+    // |---|---|---|
+    // | baseline | 8,223 | — |
+    // | appended to this group | 8,223 | **0** |
+    // | a new deferred `kit` group | 8,249 | 26 |
+    // | resident | 8,464 | 241 — **184 over the 8,280 bar on its own** |
+    //
+    // Zero, for the reason the `lesson` group's note records: the only resident
+    // trace of a deferred group is `find_tools`' `(N tools)`, and "3 tools" and
+    // "4 tools" are the same length. A `kit` group would read better and would
+    // have spent 26 of the 57 tokens CN-009 is competing for, against a written
+    // *"there should not be a third"* renegotiation.
+    //
+    // 🔴 **What that costs, stated rather than argued away:** the `purpose` line
+    // above does not mention kits, and it is the only description a model reads
+    // before choosing a group. Nothing is unreachable — `find_tools`' `query`
+    // matches tool *names*, so "kit" reveals it from anywhere — but a model
+    // browsing purposes will not meet it. `tests/kitTools.test.ts` asserts that
+    // door works rather than assuming it. Widening the purpose is the fix, and
+    // it costs resident tokens, so it belongs in the same conversation as
+    // CN-009's spend rather than being taken quietly here.
+    tools: ['list_projects', 'create_project', 'get_import_report', 'create_node_kit'],
     resident: false
   },
   {
@@ -370,6 +395,8 @@ export const WRITE_ONLY_TOOLS: ReadonlySet<string> = new Set<string>([
   'write_project_doc',
   'seed_project_docs',
   'create_project',
+  // CN-006 — writes a folder into the project.
+  'create_node_kit',
   'set_project_tokens',
   'set_style_preset'
 ]);

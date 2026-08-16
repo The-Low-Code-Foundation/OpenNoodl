@@ -19,6 +19,7 @@
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",
     "@nodegx/kit-catalog": "*",
+    "@nodegx/kit-scaffold": "*",
     "@nodegx/module-inject": "*",
     "zod": "^3.25.76"
   },

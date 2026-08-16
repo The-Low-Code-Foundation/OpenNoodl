@@ -76,3 +76,139 @@ criterion, not as taste.
 - The kits list and provenance UI — that is **CN-006b**.
 - The published reference kit — ✅ **D5** makes that a separate, deliberately minimal artefact under
   CN-016. This task generates a *starting point*, which is a different job with a different reader.
+
+---
+
+# BUILT — session 9, 2026-08-16. **The MCP half is complete; the editor half is not.**
+
+| Entry point | State |
+|---|---|
+| `create_node_kit` (`noodl-mcp`) | ✅ **Built, and proven end-to-end** — a kit scaffolded through the tool is extracted by CN-003's real extractor and answers `get_node_type` |
+| "New node kit" (editor, ✅ D1) | 📋 **Not built.** The seam is established below; nothing about it is open |
+
+The generator is `@nodegx/kit-scaffold` — one no-build workspace package, so the two entry points
+cannot drift into teaching different things. **58 tests** in the package, **6** driving the
+generated kit against the real runtime bridge, **9** driving it through the server.
+
+## 🔴 Two silent runtime holes, both found before the scaffold existed
+
+Both were found by reading the path D8 commits the scaffold to and then *probing it*, not by
+building something and watching it fail.
+
+### 1. `var(--token)` defaults were dead — and D8 asks for exactly those
+
+This task's own spec states the premise that AIB-001's passthrough "already handles a `var(--token)`
+string on a units-typed port". **Half true, and the wrong half.** AIB-001 guarded `input.set` — the
+path a *set parameter* takes. A port's declared `default` never goes through `set`; it is unit-fitted
+at definition time (`startStyle`) and at instance time (`props`). Measured before anything was
+written:
+
+```
+STYLE = {"paddingLeft":"var(--space-3)px", "backgroundColor":"var(--surface-raised)"}
+PROPS = {"fontSize":"var(--text-sm)px"}
+```
+
+`var(--space-3)px` is invalid CSS. The browser drops the declaration with no error, and the property
+panel still shows the correct token. ⚠️ **The asymmetry that hid it: a colour port has no units**, so
+the colour arm always worked — a scaffold reviewed by eye, or a test asserting the *parameter value*,
+reports "tokens working".
+
+Two guards added to `react-component-node.ts`, each mutation-proven against its own test, plus a
+third mutation (removing unit-fitting entirely) proving the controls bite.
+`tests/cn-006-token-defaults.test.ts`, 5 tests.
+
+### 2. A kit scaffolded mid-session was invisible to the server that scaffolded it
+
+`installProjectOverlay` is idempotent per directory and runs **once at bind**. `create_node_kit`
+writes a kit into the bound project *after* that, so the tool reported four files written and the
+agent's very next `get_node_type` answered **"Unknown node type"**. Nothing broke, nothing logged,
+and the success payload was accurate — the kit really was on disk. AC6 is written against precisely
+this gap. `refreshProjectOverlay` is called from the one door that knows the kit set changed;
+deliberately not a poll or an mtime sweep, which ✅ D3 argues against.
+
+## The tool-surface budget — measured, not argued
+
+Baseline re-measured at **8,223 / 57 under the 8,280 bar**, matching the handover's figure.
+
+| placement | surface | cost |
+|---|---|---|
+| baseline | 8,223 | — |
+| **in the existing deferred `project` group** | **8,223** | **0** ✅ |
+| a new deferred `kit` group | 8,249 | 26 |
+| resident | 8,464 | 241 — **184 over the bar on its own** |
+
+**It costs nothing, and CN-009 still has all 57.** The only resident trace of a deferred group is
+`find_tools`' `(N tools)`, and "3 tools" and "4 tools" are the same length.
+
+🔴 **What the placement costs instead:** `project`'s `purpose` line does not mention kits, and that
+line is the only description a model reads before choosing a group. `find_tools`' `query` matches
+tool *names*, so `query: "kit"` reveals it from anywhere — asserted in `tests/kitTools.test.ts`,
+**with a control asserting that a query about what it *does* finds nothing**. That control fails the
+day somebody widens the purpose line, so the trade-off gets re-decided rather than drifting.
+
+✅ **Also landed, because the budget test asked for it in writing:** the surface test now prints
+`[surface] N tokens … M under the budget` **on a passing run**. Its own header says *"a budget
+assertion with no reported margin cannot distinguish 'we have room' from 'we had room'"* — that is
+how 56 of LEG-001's 58 banked tokens were spent by work that never knew it was spending them.
+
+## Acceptance criteria
+
+| # | Criterion | State |
+|---|---|---|
+| 1 | Scaffolded node in the picker and placeable, no further edits | ⚠️ **Partial.** The node registers, the bridge accepts it, every documented port arrives, and it renders — asserted against the real bridge and real React. **Not yet driven in the editor's picker**; that needs the editor half |
+| 2 | Autocomplete with no `tsconfig` and no `node_modules` | ✅ **Met.** CN-005's language-service instrument, pointed at the bytes the scaffold writes. 0 diagnostics, definition fields offered, **`document` absent** — and a control stripping the annotation gets `document` back |
+| 3 | Colour/spacing defaults are tokens **and the render picks them up** | ✅ **Met at the style layer** — an instance with no parameters set carries `padding: 'var(--space-4)'`, and the rendered markup contains `margin-top:var(--space-1)` with no `)px` anywhere. ⚠️ Computed style in a browser is **not** measured; that is the editor drive |
+| 4 | Passes CN-004's validation clean | ✅ **Met**, against the same project's summary before the kit. 🔴 This assertion was a **false pass** first time — the tool was deferred, every call returned "Tool disabled", and "same summary before and after" was trivially true. It now asserts the kit landed before grading its effect |
+| 5 | Names collide safely | ✅ **Met**, including two names that slug to one directory, and asserting the author's edited file survives the refusal |
+| 6 | **Build the caller** — through the MCP tool, from a real session | ✅ **Met for the server**: `create_node_kit` → `get_node_type` answers with the node, via the extractor that *executes* the generated `index.js`. This is what found hole 2. ⚠️ "Place the node" in the editor is the editor half |
+
+## What the generated kit teaches, asserted rather than intended
+
+`EXAMPLE_PORTS` is the single table the code and the README are both built from, so a port table
+cannot drift from its code. On top of it:
+
+- **Every colour and length port defaults to a `var(--token)`** — and every token it emits is checked
+  against the editor's `DefaultTokens.ts` registry. 🔴 That check earns its place: CN-005's annotated
+  fixture defaults a colour to `var(--color-surface-2)`, **which is not a token in this product**.
+  Harmless in a type fixture, fatal in a scaffold, and invisible to every other assertion because
+  `var(--anything)` is well-formed CSS that resolves to nothing.
+- **No raw hex anywhere** in the generated node — D8's named failure, asserted.
+- **No relational operator against a number literal** in `index.js`. The example's one threshold
+  (*when is this tile highlighted?*) is an input, and the README shows it wired to a stock
+  `Expression` node, with the shortcut quoted as the mistake. Asserted behaviourally too: flipping
+  the input changes the colour, **and the other arm does not**.
+
+## The types copy, and the staleness question the handover left open
+
+A kit carries its own `types/node-kit.d.ts` because CN-005 measured that a bare specifier cannot
+resolve without `node_modules`. The copy is unavoidable; the question is whether its age is
+*answerable*. Three things, none of them "remember to update it":
+
+1. **No second copy in the repository** — the bytes are read from the installed
+   `@nodegx/node-kit-types` at scaffold time, asserted.
+2. **The written copy is stamped** with the version, and `manifest.json` carries `nodeKitTypes` so a
+   kit's types version is readable without opening the `.d.ts`.
+3. **`typesCopyStatus(contents)` answers it for any kit's copy**, including hand-made ones. It
+   compares the **body**, not the stamp — a lying stamp is reported beside the verdict, never
+   *as* it, because deciding staleness from a stamp is the frozen figure this exists to avoid.
+
+✅ **It immediately caught a real one.** The cashflow kit's copy was **not current** — it predated
+CN-005's own React-collision warning by one session, drift inside a day. Refreshed and re-stamped;
+the kit still reports **0 diagnostics** through the language service.
+
+## 📋 The editor half — the seam, established
+
+Nothing here is an open question; it is unbuilt work with its ground surveyed.
+
+- **The generator is done and shared.** `writeKitScaffold(projectDir, {name})` is what the editor
+  calls. Its home is `shared/utils/projectmodules.ts`, beside ERG-002's `registerLibrary`.
+- 🔴 **"Opens `index.js` in the code editor" cannot mean the in-app editor without new work.** The
+  editor's CodeMirror is bound to Function-node *parameters*, not to files on disk, and there is no
+  file editor anywhere in the app. The only precedent for reaching a file is `shell.showItemInFolder`
+  (3 uses). So D1's clause resolves to `shell.openPath` (the OS default editor) or
+  `showItemInFolder` — **and that is a decision worth naming out loud rather than picking quietly.**
+- **UI home:** a control in `ProjectSettingsTab.tsx` beside `LibrariesSection`. ⚠️ The kits *list*
+  is CN-006b, not this task.
+- ⚠️ **Expect the editor twin of hole 2.** `ProjectModel.modules` is populated once by
+  `readProjectModules`; a kit written mid-session may leave it stale exactly as the MCP overlay was.
+  **Measure it, do not assume it** — the MCP side looked fine too.

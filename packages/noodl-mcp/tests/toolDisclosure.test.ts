@@ -221,6 +221,19 @@ describe('AWP-006 — the resident surface fits the budget', () => {
       // named in the server instructions or is the door to the rest, so a surface
       // that shrank below it would be cheap and unusable, which is the failure
       // this task's own warning is about.
+      // ✅ CN-006 — **the margin, on a passing run.** The paragraph above ends
+      // with "if the margin matters, something has to say what it is on a
+      // passing run", and until now nothing did: the assertion below is silent
+      // at 8,197 and at 8,279 alike, which is precisely how 56 of LEG-001's 58
+      // banked tokens were spent by work that never knew it was spending them.
+      // One line, so the next person to add a field is told the price before
+      // they are told the refusal.
+      // eslint-disable-next-line no-console
+      console.log(
+        `[surface] ${tokens} tokens / ${tools.length} resident tools — ` +
+          `${SURFACE_TOKEN_BUDGET - tokens} under the ${SURFACE_TOKEN_BUDGET} budget`
+      );
+
       expect({ tokens: tokens <= SURFACE_TOKEN_BUDGET ? 'within budget' : tokens, tools: tools.length }).toEqual({
         tokens: 'within budget',
         tools: tools.length

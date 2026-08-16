@@ -819,7 +819,14 @@ function createNodeFromReactComponent(def: ReactNodeDefinition): ReactNodeModule
 
     if (hasDefault) {
       const type = input.type as PortType;
-      const value = type.units ? input.default + type.defaultUnit : input.default;
+      // CN-006: the same guard as `input.set` below, on the half AIB-001 did not
+      // reach. AIB-001 fixed the path a *set parameter* takes; a port's declared
+      // `default` never goes through it, so a units-typed port defaulting to a
+      // token was fitted with the unit here and emitted as `var(--space-3)px`.
+      // That is exactly what ✅ D8 asks a scaffold to emit, so the ruling landed
+      // on the one path still broken — silently, because invalid CSS is dropped
+      // without an error and the parameter still reads back as the right token.
+      const value = type.units && !isTokenReference(input.default) ? input.default + type.defaultUnit : input.default;
       if (input.styleTag) {
         startStyles[input.styleTag][name] = value;
       } else {
@@ -899,7 +906,12 @@ function createNodeFromReactComponent(def: ReactNodeDefinition): ReactNodeModule
           // Only the object form of a port type carries units; the bare-name form
           // never does, so reading through it is safe and yields undefined.
           const type = input.type as PortType;
-          if (type.defaultUnit && input.default !== undefined) {
+          // CN-006 — the `inputProps` twin of the `inputCss` guard above. Same
+          // defect, different destination: this one reaches the component as a
+          // prop rather than the style object, so a token default arrived as the
+          // string `var(--text-sm)px` for the component to do nothing useful
+          // with.
+          if (type.defaultUnit && input.default !== undefined && !isTokenReference(input.default)) {
             props[name] = input.default + type.defaultUnit;
           } else {
             props[name] = input.default;

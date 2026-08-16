@@ -1,0 +1,22 @@
+{
+  "name": "@nodegx/kit-scaffold",
+  "version": "1.0.0",
+  "description": "Generates a working node kit \u2014 manifest.json, an annotated index.js with one example node whose every visual decision is a port, a README, and a kit-local copy of the published types. Pure file set plus a refuse-on-collision writer. No build step.",
+  "license": "GPL-3.0",
+  "private": true,
+  "main": "src/index.js",
+  "types": "src/index.d.ts",
+  "files": [
+    "src"
+  ],
+  "scripts": {
+    "test": "jest --config jest.config.js"
+  },
+  "dependencies": {
+    "@nodegx/node-kit-types": "*"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "typescript": "^5.9.3"
+  }
+}

@@ -34,6 +34,7 @@ import { registerCreateProjectTools } from './tools/createProject';
 import { registerProvisionTools } from './tools/provisionTools';
 import { registerReviewTools } from './tools/review';
 import { registerListProjectsTools } from './tools/listProjects';
+import { registerKitTools } from './tools/kitTools';
 import { registerLessonTools } from './tools/lessonTools';
 import { ToolDisclosure, recordTools, registerFindTools } from './tools/disclosure';
 
@@ -195,6 +196,10 @@ export function createServer(options: ServerOptions): CreatedServer {
     // and neither of them is the one this server is pointed at. It writes a
     // folder on disk and never the editor's launcher state (D5).
     registerLessonTools(rec);
+    // CN-006. Takes the binding: unlike `create_lesson`, a kit is written INTO
+    // the project this server is pointed at, which is also why it is refused
+    // outright on an unbound server rather than asking for a directory.
+    registerKitTools(rec, binding);
   }
   // AWP-006 — last, and it has to be: the handles do not all exist until every
   // registration has run, and disabling a group before its tools are registered

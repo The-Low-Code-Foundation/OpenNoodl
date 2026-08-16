@@ -49,6 +49,34 @@ export function installProjectOverlay(projectDir: string): ProjectKitOverlay {
   return installed;
 }
 
+/**
+ * CN-006 — re-extract, because this session just changed what kits exist.
+ *
+ * 🔴 **Found by building the caller.** `installProjectOverlay` is idempotent per
+ * directory and runs once at bind, which is right for every reader — but
+ * `create_node_kit` writes a kit *into the bound project mid-session*, and the
+ * catalog it wrote into had already been computed. The scaffold reported four
+ * files written and the agent's very next `get_node_type` answered **"Unknown
+ * node type"**. Nothing was broken, nothing logged, and the tool's own success
+ * payload was accurate — the kit really was on disk. AC6 is written against
+ * exactly this gap: *"generating files is not the feature; the feature is that
+ * the node arrives."*
+ *
+ * Deliberately **not** a general staleness check. ✅ **D3** forbids an on-disk
+ * cache and prefers not re-running the child for an answer we already have, and
+ * a poll or an mtime sweep would run the extractor on a schedule nobody asked
+ * for. A write door knows precisely when the kit set changed; that is the only
+ * moment this is called.
+ *
+ * ⚠️ Still one process executing project kit code, as D3 requires — this is the
+ * same process, doing it again.
+ */
+export function refreshProjectOverlay(projectDir: string): ProjectKitOverlay {
+  installed = extractProjectOverlay(projectDir);
+  setCatalogOverlay(installed.nodes);
+  return installed;
+}
+
 /** For the suite: forget the session's overlay and put the catalog back to built-ins only. */
 export function clearProjectOverlay(): void {
   installed = null;
