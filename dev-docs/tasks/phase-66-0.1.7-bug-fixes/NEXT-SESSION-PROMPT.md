@@ -1,5 +1,22 @@
 # Phase 66 — next session
 
+**Amended 2026-08-16, session 31.** s31 shipped one commit, **`300d7b47`** — the first time in four
+sessions that an item on §5 was *discharged* rather than re-checked. It took s30's rule one step
+further: s30 said *open the artifact an owed item names*; s31 opened it and found the item had
+**under-described its own subject**.
+
+🔴 **§5's `run-editor/SKILL.md` item named two defects. The file had a third, four sections away,
+and it was the worst of them.** The single-instance trap taught
+`pkill -f "OpenNoodl/node_modules/electron/dist"` and **called the pattern precise**. It is not:
+every MCP server on this checkout runs from that same `electron/dist` binary, one pair per live
+session. ✅ **Measured on an idle checkout: 13 processes matched — 13 MCP servers, 0 editors**
+(`pkill -f "lerna exec"`: 0). 🔴 **And `pkill` is a raw signal, so it never reaches `sweep()`** —
+the `NEVER_SWEEP` shield that names `noodl-mcp.cjs` explicitly (`dev-processes.js:269`) does not
+run. **It was the only teardown route with no protection at all, documented as the careful one.**
+
+⚠️ **The transferable rule (§3f): an item's description of a defect is not the defect's boundary.**
+Read the whole artifact, not the cited lines.
+
 **Amended 2026-08-16, session 30.** s30 wrote **no product code**; like s29 it repaired the phase's
 own records, and it did so by taking s29's own advice — check the inherited status, don't inherit it.
 🔴 **The item Richard had been asked about fourteen times — *"`scripts/library/check.ts` is
@@ -86,7 +103,14 @@ this line forward.
 
 ## 2. Gate readings
 
-**No gate was run this session, and none was needed.** s28's only source edit is a template string
+⚠️ **s31 ran no gate either, and none covers what it changed.** `.claude/skills/run-editor/SKILL.md`
+is a skill document: no gate reads it, no product path imports it, and its correctness is exactly the
+kind that only a measurement establishes — which is why §3f's finding is a `ps` reading rather than a
+test. 🔴 **That is also the hole**: a doc that tells every session how to tear down the stack had a
+peer-killing instruction in it for as long as anyone can tell, and **no gate in this repo could ever
+have caught it.**
+
+**No gate was run in s28 either, and none was needed.** s28's only source edit is a template string
 in `scripts/devtools/cdp.js`, which no gate covers and no product path imports. The floor below is
 inherited and unmoved.
 
@@ -188,6 +212,38 @@ resolves is the kind that survives — check the claim, not just the line.**
 
 ---
 
+### 3f. 🔴 s31 — the owed item under-described its own file, and the unnamed defect was the dangerous one
+
+**This session's whole result, and the commit is `300d7b47`.** §5 carried a 🟡 item against
+`run-editor/SKILL.md` naming two defects: the `nohup … &` launch recipe (line 23) and the unexplained
+*"`dev:stop` … safe to run with a sibling worktree's stack up"*. Both were real and both are fixed.
+🔴 **But the file's worst defect was not on the list**, and nothing about the item would have led a
+session to look for it — it sat ~130 lines below the two that were cited.
+
+| the doc said | measured 2026-08-16 |
+|---|---|
+| `pkill -f "OpenNoodl/node_modules/electron/dist"` — *"use those precise patterns"* | **13 matched: 13 MCP servers, 0 editors** |
+| `pkill -f "lerna exec"` | **0 matched** |
+| implied: this is the careful way to clear a stale editor | **`pkill` never reaches `sweep()` ⇒ `NEVER_SWEEP` (`dev-processes.js:269`) does not run** |
+
+Both *other* teardown routes go through `sweep()` and inherit the shields; **this one gets nothing**.
+So the ranking the docs implied was exactly inverted — the route with no protection was the one
+presented as precise, and the two the §5 item worried about are the protected ones.
+
+✅ **The measurement carries its own positive control**: the pattern matched (13, not 0), so a null
+from a typo is excluded, and the 13/13/0 split is the finding rather than the count.
+
+🔴 **The rule, one step in from s30's.** s30's was *open the artifact an owed item names*. s31's is
+**an item's description of a defect is not the defect's boundary** — read the whole artifact. The
+item was written by someone who had noticed two things; it was carried as though it were an
+inventory. ⚠️ **Note the direction is the same one §3d and §3e keep finding: the item UNDERSTATED
+the hazard.** That is now four sessions running. **Nobody audits caution.**
+
+⚠️ **What s31 did NOT do, deliberately.** `dev-docs/tasks/phase-23-visual-refresh/corpus/run.sh:17-19`
+carries the identical `pkill` block and **is an executable script, not a record** — running it today
+would kill 13 peers' MCP servers. It is a closed phase's directory, so it was flagged rather than
+edited (§5). Six other files match `nohup npm run dev`, all of them task records.
+
 ### 3e. 🔴 s30 — "leave them" was obeyed as "don't look", and it hid an answer for eleven sessions
 
 **This session's whole result.** §5 carried, s18–s29: *"`scripts/library/check.ts` is STILL
@@ -249,6 +305,18 @@ together, and assuming they do is its own error.**
 8. ✅ **`check.ts` is settled as far as an agent can settle it (s30, §3e) — do not re-investigate.**
    Attributed, verified, gate passes. 🔴 **What remains is a commit, and it is Richard's call
    because the work is phase 65's** (§5).
+
+9. ✅ **`run-editor/SKILL.md` is FIXED (s31, §3f, `300d7b47`) — do not re-investigate it.** 🔴 **But
+   `phase-23-visual-refresh/corpus/run.sh` still carries the same `pkill` block and is executable**
+   (§5). That one needs Richard, because it is a closed phase's directory.
+
+🔴 **What s31 adds to how to start a session here.** s30's move was *read the owed list against the
+artifacts it names*; s31's is **read the whole artifact, not the lines the item cites.** §5's
+SKILL.md item named two defects and the file had three — the unnamed one was the only teardown route
+with no shield at all. ⚠️ **An owed item is written by someone who noticed some things; it is not an
+inventory, and four sessions running have now found the inherited record understating rather than
+overstating.** ✅ **The cheapest version of this move: when an item names a file, `grep` that file for
+the hazard class the item is about, not just the line it quotes.**
 
 🔴 **What s30 adds to how to start a session here.** s29's rule was *read the phase index against
 the files it indexes*. s30's is one step further out: 🔴 **read the owed list against the artifacts
@@ -330,10 +398,27 @@ Carried forward from s27. **Nothing on this list moved this session** — none o
   line:number still reads exactly as described. **A stale pointer that still resolves is the kind
   that survives.**
 - ⚠️ **MCP servers hold pre-rebuild code**; the **repackage** is separately owed.
-- 🟡 **`run-editor/SKILL.md:23` teaches `nohup … &`**, which reparents the stack to PID 1 and
-  destroys launch provenance. `run_in_background` preserves it. Same file calls `dev:stop` "safe to
-  run with a sibling worktree's stack up" and offers no warning on the by-pid alternative — **the
-  doc should say the shields are what make either safe** (§6).
+- ~~🟡 **`run-editor/SKILL.md:23` teaches `nohup … &`** … **the doc should say the shields are what
+  make either safe** (§6).~~ 🔴 **DISCHARGED 2026-08-16 (s31), `300d7b47` — and the item was
+  understating its own file.** Both named defects are fixed: the launch recipe now uses the harness's
+  `run_in_background` with the PPID-attribution reason, and the *Stopping* section now says the
+  shields inside `sweep()` are what make either route safe, with the by-pid route named as the
+  **broader** one (`dev-watchdog.js:45` `protectAncestors: false` vs `dev-processes.js:520` default
+  `true`).
+  🔴 **A third defect, unnamed by the item and worse than both, was ~130 lines further down**: the
+  single-instance trap taught `pkill -f "OpenNoodl/node_modules/electron/dist"` and called it
+  *precise*. **Measured: 13 matched, 13 MCP servers, 0 editors**; `pkill -f "lerna exec"` matched 0.
+  `pkill` never reaches `sweep()`, so `NEVER_SWEEP` (`dev-processes.js:269`, which names
+  `noodl-mcp.cjs`) does not run — **the only teardown route with no shield, taught as the careful
+  one.** Replaced with `dev:stop`. Full finding in **§3f**.
+  ⚠️ **Nothing here needed a ruling** — it was a doc defect with a worked-out fix, parked on Richard's
+  list for want of someone opening the file.
+- 🔴 **NEW, and genuinely Richard's: `dev-docs/tasks/phase-23-visual-refresh/corpus/run.sh:17-19`
+  carries the identical `pkill` block, and it is an executable script rather than a record.**
+  Running it today kills 13 peers' MCP servers with no shield. s31 did **not** edit it: it is a
+  **closed phase's** directory and this session is not working in phase 23. **Fix it, delete it, or
+  rule that a closed phase's corpus tooling is allowed to rot.** ⚠️ Six further files match
+  `nohup npm run dev`; all six are task *records*, so they are harmless where they sit.
 - 🟢 **The memory index still has no owner — and s28 measured it properly for the first time.**
   Budget is **17,510** and both counts must be under. Before s28's edit: **17,466 code points but
   17,553 UTF-16** — 🔴 **already 43 over on the UTF-16 measure, silently**, because emoji cost 2
@@ -352,7 +437,16 @@ Carried forward from s27. **Nothing on this list moved this session** — none o
   duplicate — item 3 of the *three distances* block was re-stating item 2's trap **and** cross-
   referencing it to the wrong file. Net **−8 / −8**. 🔴 **Still over on both measures, and two
   sessions of restraint have now bought back 14 characters against an 85-character overage.**
-  **Restraint is not going to close this.** ✅ **Do not copy a figure from this bullet — re-measure**, since a frozen budget
+  🔴 **s31 re-measured and then made it WORSE, on purpose and by a measured amount.** Before:
+  **17,595 / 17,684**. ✅ That reconciles exactly with s28→s29→s30's arithmetic (17,609/17,697,
+  −6/−5, −8/−8), so the chain of restraint is real and it is also the whole problem. s31 rewrote the
+  by-pid pointer to carry a strictly stronger trap (a **third**, unshielded teardown route plus its
+  13/13/0 measurement) for **+6 code points / +7 UTF-16**, having first drafted it at +41 and cut it
+  back by dropping a positive-control clause that already has its own pointer. **Now 17,601 / 17,691
+  — over by 91 / 181.**
+  🔴 **Three sessions of restraint bought back 14 characters; one genuinely new trap cost 6. The
+  ledger says restraint is not the lever and never was.** ✅ **The decision is a collapse, and it is
+  yours.** ⚠️ **Do not copy a figure from this bullet — re-measure**, since a frozen budget
   number under a standing item is the exact shape §3d is about:
   `node -e 'const s=require("fs").readFileSync(process.argv[1],"utf8");console.log([...s].length,s.length)' ~/.claude/projects/-Users-richardosborne-vscode-projects-OpenNoodl/memory/MEMORY.md`
 - 🟢 **A lockfile written by `start.ts` at *intent*** — the ~75s window in which no process check can
@@ -366,6 +460,19 @@ Work on `cline-dev`; **never `git stash`**; `cd` to the repo root in every git c
 cwd persists between calls** — use absolute paths); **pathspec-scope every `git add` / `git
 commit`** — the tree held modified files from at least four other sessions throughout s28's window,
 and both s28 commits were pathspec-scoped for exactly that reason.
+
+🔴 **The FIX-007 hunk in this phase's own directory is NOT this phase's to commit.**
+`FIX-007-THE-CONNECTOR-THE-AI-CANNOT-DRAW.md` has been dirty since 2026-08-15 22:47 with a correct,
+verified edit (the MCP surface budget moved to **8,280** against a measured **8,223**, 57 free —
+checked against `toolDisclosure.test.ts:56-83`, every clause holds). ⚠️ **It looks orphaned and it is
+not**: its mtime clusters within two minutes of `UNI-010`, `UNI-007` and `leg-001-lane-notes`, so it
+is one P67 session's cross-phase sweep that has not landed yet. **Leave it.** ✅ s31 checked this
+before assuming, and the check is the point — *"a P66 file nobody committed"* and *"one file of a
+peer's pending sweep"* look identical in `git status` and have opposite correct responses.
+
+⚠️ **Phase 67 is live on this checkout right now** — 11 further files went dirty *during* s31's
+window (`lessoncheck.ts`, `lessongrading.ts`, `wholeSolutionGrader.ts`, their tests). 🔴 **Pathspec
+every commit; `git add -A` here would take a peer's half-written work.**
 
 ⚠️ `dev-docs/tasks/phase-65-the-library/` and the phase-67 `UNI-011` file are untracked and belong to
 neither this phase nor 67 — **do not commit or modify them.** 🔴 **But DO read them.** s30 rewrote
