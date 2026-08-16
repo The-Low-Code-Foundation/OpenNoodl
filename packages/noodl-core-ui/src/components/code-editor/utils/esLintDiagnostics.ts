@@ -62,17 +62,56 @@ export interface LintMessage {
 }
 
 /**
- * Identifiers the Noodl runtime supplies to a Function/Script node body.
- * `Node` is referenced by the code prefix under `typeof`, and is a real global
- * for the older Script path (`javascriptnodeparser.js:22`).
+ * Identifiers the runtime supplies to a node body — **one list per node**,
+ * because the two nodes are compiled with different parameters and a single
+ * conflated list is wrong in both directions.
+ *
+ * | node | compiled as |
+ * |---|---|
+ * | Function (`JavaScriptFunction`) | `AsyncFunction('Inputs', 'Outputs', 'Noodl', 'Component', prefix + script)` — `simplejavascript.ts:609-619` |
+ * | Script (`Javascript2`) | `Function('define', 'script', 'Node', 'Component', prefix + code)` — `javascriptnodeparser.js:22` |
+ *
+ * 🔴 **The single list this replaces was the union of the two, and it made the
+ * editor accuse the Script node's own API.** `define` and `script` were in
+ * neither half of it, so `define({ inputs: … })` — the notation
+ * `NOTATION_RULES.script` tells the author to write — produced *"No port named
+ * define. Create an input port by reading it: `Inputs.define`"*, with a fix-it
+ * that inserts notation the Script node does not have. Measured before the split.
+ *
+ * The mirror is now reportable too: `Inputs`/`Outputs` in a Script node throw,
+ * and are handled by message 6 rather than by `no-undef`'s own sentence.
+ *
+ * ⚠️ **`Noodl` is declared in both, deliberately.** It is a parameter only of the
+ * Function, but the Script path reads `window.Noodl` when it is there
+ * (`javascriptnodeparser.js#createNoodlAPI`) — so calling it undefined would risk
+ * being wrong about working code, which is the one thing `no-undef` may not be
+ * here.
+ *
+ * ⚠️ **`Script` is declared in both** because the shared code prefix declares it
+ * (`javascriptnodeparser.js:492-494`, `const Script = …`), and both nodes prepend
+ * that prefix.
+ *
+ * ⚠️ **Removing `Node` from the Function list changes nothing on its own**:
+ * `globals.browser` carries the DOM `Node` constructor, so `Node.Signals.X = …`
+ * in a Function body still lints clean. That silence is a real gap (FIX-016 §3 —
+ * the assignment lands on the DOM constructor and mints no port) and it needs its
+ * own rule, not a globals entry.
  */
-const NOODL_FUNCTION_GLOBALS: Record<string, 'readonly' | 'writable'> = {
+const FUNCTION_NODE_GLOBALS: Record<string, 'readonly' | 'writable'> = {
   Inputs: 'readonly',
   Outputs: 'writable',
   Noodl: 'readonly',
   Component: 'readonly',
-  Script: 'readonly',
-  Node: 'readonly'
+  Script: 'readonly'
+};
+
+const SCRIPT_NODE_GLOBALS: Record<string, 'readonly' | 'writable'> = {
+  define: 'readonly',
+  script: 'readonly',
+  Node: 'readonly',
+  Noodl: 'readonly',
+  Component: 'readonly',
+  Script: 'readonly'
 };
 
 /**
@@ -118,7 +157,7 @@ function projectGlobals(): Record<string, 'readonly'> {
 
 /** The flat config for a mode, or `null` if this mode is not JavaScript. */
 function configFor(validationType: ValidationType) {
-  const shared = {
+  const shared = (nodeGlobals: Record<string, 'readonly' | 'writable'>) => ({
     languageOptions: {
       ecmaVersion: 2022 as const,
       sourceType: 'script' as const,
@@ -128,24 +167,31 @@ function configFor(validationType: ValidationType) {
       },
       globals: {
         ...globals.browser,
-        ...NOODL_FUNCTION_GLOBALS,
+        ...nodeGlobals,
         ...projectGlobals()
       }
     }
-  };
+  });
 
   switch (validationType) {
     case 'function':
+      return {
+        ...shared(FUNCTION_NODE_GLOBALS),
+        rules: { ...STRUCTURAL_RULES, 'no-undef': 'warn' }
+      };
+
     case 'script':
       return {
-        ...shared,
+        ...shared(SCRIPT_NODE_GLOBALS),
         rules: { ...STRUCTURAL_RULES, 'no-undef': 'warn' }
       };
 
     case 'expression':
-      // See the module header: an unknown identifier here is a feature.
+      // See the module header: an unknown identifier here is a feature. The
+      // globals hardly matter without `no-undef`; the Function set is the one an
+      // expression's own API is closest to.
       return {
-        ...shared,
+        ...shared(FUNCTION_NODE_GLOBALS),
         rules: { ...STRUCTURAL_RULES }
       };
 

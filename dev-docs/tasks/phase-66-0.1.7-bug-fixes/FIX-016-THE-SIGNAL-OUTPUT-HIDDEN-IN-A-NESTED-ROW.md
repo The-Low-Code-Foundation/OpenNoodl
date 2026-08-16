@@ -794,3 +794,118 @@ and the 7-item touch list in the lane notes is now dead work rather than pending
 (`AiAssistant/templates/function.ts`). It is exported from `noodl-core-ui`'s code-editor barrel but
 no component renders it, so *"the sentence the editor shows a beginner"* is, as of this session,
 aspirational for the function/script lines. The picker card is the surface a person actually reads.
+
+## ✅ RULING 1 BUILT 2026-08-16 (session 44) — and the census found the opposite defect first
+
+🔴 **Before writing the message the ruling asked for, I measured what the editor says today. It was
+not silent. It was accusing the Script node's own API.** Census run through
+`javascriptDiagnostics(state, validationType)` in the `noodl-core-ui` node runner, both modes, five
+documents (throwaway spec, deleted):
+
+| written | `'function'` | `'script'` (before this session) |
+|---|---|---|
+| `define({ inputs: … , outputs: … , run: … })` | *"No port named define. Create an input port by reading it: `Inputs.define`."* | 🔴 **the same message** |
+| `script({ … })` | same shape | 🔴 **the same message** |
+| `Outputs.Done();` | silent (correct — it is a signal there) | 🔴 **silent** — the ruling's premise, confirmed |
+| `Node.Signals.Go = …` | silent | silent |
+
+🔴 **`define` is the notation `NOTATION_RULES.script` tells the author to write**, and the editor
+answered it with a fix-it that inserts `Inputs.define` — notation the Script node does not have. The
+ruling said *"the node should teach"*; it was actively mis-teaching, and nobody had looked because the
+premise on file was *"no message at all"*.
+
+### The cause: one globals list for two differently-compiled nodes
+
+| node | compiled as |
+|---|---|
+| Function (`JavaScriptFunction`) | `AsyncFunction('Inputs', 'Outputs', 'Noodl', 'Component', prefix + script)` — `simplejavascript.ts:609-619` |
+| Script (`Javascript2`) | `Function('define', 'script', 'Node', 'Component', prefix + code)` — `javascriptnodeparser.js:22` |
+
+`esLintDiagnostics.ts` held **one** `NOODL_FUNCTION_GLOBALS` — the *union minus `define`/`script`* —
+and `configFor` handed it to both modes. `noodl-api-surface.ts`'s completion list had the same shape
+and the same name, `SCRIPT_GLOBALS`, while containing the **Function** node's API: a Script node was
+offered `Inputs` and `Outputs`, annotated *"Reading `Inputs.x` creates the port"* — false there — and
+`define` was offered nowhere in the product.
+
+⚠️ **And `codenotation: 'script'` is real and reached**: `javascript.ts:299` declares it on the Script
+node's `code` port, `CodeEditorType.ts:68-72` maps it. This is not a mode nobody opens.
+
+### What shipped
+
+| file | change |
+|---|---|
+| `esLintDiagnostics.ts` | `FUNCTION_NODE_GLOBALS` / `SCRIPT_NODE_GLOBALS`, one per mode |
+| `noodl-api-surface.ts` | `globalsFor('script')` now offers `define`, `Node`, `script` — and not `Inputs`/`Outputs` |
+| `notation.ts` | **message 6**, `functionApiInScriptNodeMessage` |
+| `portDiagnostics.ts` | script mode gets message 6 and **nothing else** from this pass |
+
+> `Outputs is the Function node's API and is not in scope here, so this line throws when it runs. A
+> Script node declares its ports: define({ inputs: { … }, outputs: { … }, run: function (inputs,
+> outputs) { … } }).`
+
+🔴 **The largest decision is the suppression, and it is bigger than the ruling asked for.** Messages
+1–5 all emit `Inputs.`/`Outputs.` notation, and **all five are wrong in a Script node** — it mines no
+ports from its text, so message 3's *"create an input port by reading it"* is an offer that creates
+nothing, and message 1's *"read it with `Inputs.X`"* names a binding that is not in scope. The pass
+was written for the Function node and had been running here unchanged since FUN-004. So script mode
+now gets one true sentence in place of five false ones. ⚠️ **ESLint's own diagnostics still pass
+through** — a genuine typo is still reported, in JavaScript's words. Only the port-notation
+enrichment is dropped.
+
+⚠️ **`Noodl` and `Script` stay declared in both**, because both are reachable in a Script node
+(`window.Noodl` via `createNoodlAPI`; `Script` from the shared code prefix). Warning about them would
+be being wrong about working code, which is the one thing `no-undef` may not be here.
+
+⚠️ **Message 6 needs an open node, and that gate is load-bearing.** `'script'` is also
+`CodeFileDocument`'s mode for a kit's `index.js` (CN-006) — a whole module, no ports, no property
+panel — where `openNode` is null. There `Outputs` gets plain `no-undef`, which is the right answer;
+*"declare ports with define({…})"* would be advice about a node that file is not. There is a spec row
+for it.
+
+### Gates (session 44, this session's own readings)
+
+| gate | reading |
+|---|---|
+| `noodl-core-ui` jest | ✅ **26 suites / 461 tests** (was 25 / 444 — the delta is this task's one suite and 17 tests) |
+| `typecheck:core-ui` | 44 errors, unchanged count, none in any file touched |
+| `lint:ci` ratchet | ✅ exit 0 |
+| `noodl-editor` `test:main` | ⚠️ **220 / 221 suites, one failure that is not this change — see below** |
+
+🔴 **`test:main` failed twice in a row, on two *different* suites, and both are `turnDeadline`
+timing tests.** `bld-004/reasoningChannel` on one run, `aib-009/turnDeadline` on the next; both report
+*"nothing arrived for 0 seconds"*. Attribution, measured rather than argued:
+
+- **`npx jest --findRelatedTests` over all four files I changed lists ZERO editor suites.** Nothing in
+  the editor's runner depends on them.
+- Each suite passes **3/3 in isolation**.
+- The full run was clean twice earlier in this same session, before and after FIX-021 landed.
+
+✅ So these are **load-flaky timing suites**, surfacing under the full 221-suite parallel run. ⚠️ Worth
+a task of their own — a deadline test that measures the machine will keep costing sessions the
+question *"is that mine?"*, and it cost this one three runs.
+
+### The spec, and the two mutants it was checked against
+
+`tests/code-editor/scriptNodeApi.test.ts` — 17 tests. **Every behavioural row is a pair**: the same
+document linted in both modes, so a row asserts a *difference between the nodes* rather than a fact
+about one. A change collapsing the two modes back into one fails here instead of passing quietly.
+
+| mutant | result |
+|---|---|
+| script mode handed `FUNCTION_NODE_GLOBALS` again (undo the globals split) | **8 failed, 9 passed** |
+| the script-mode branch in `portDiagnostics` made unreachable | **7 failed, 10 passed** |
+
+Both applied to the real modules and reverted inside one shell call; both files diffed back
+byte-identical afterwards.
+
+### ⚠️ NOT driven, and one thing deliberately left standing
+
+**No editor was launched for this.** The message is spec-level; nobody has seen it in a gutter.
+
+🔴 **Left unfixed, on purpose, and it is the next slice:** `unionPorts` calls `minePorts(code)` in
+**script** mode too, so the editor's port list for a Script node contains ports mined from
+`Inputs.x` / `Outputs.y` text — and the Script node mines **nothing** from its text
+(`javascript.ts:831-840` merges `parser.getPorts()`, which comes from `Node.Inputs`/`Outputs`/
+`Signals` or `define()`, never from a regex over the document). So FUN-005's rail and FUN-006's bar
+can show a Script node ports it does not have. Not folded in here: it is four surfaces, and message 6
+does not depend on it.

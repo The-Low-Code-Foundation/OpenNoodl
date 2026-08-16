@@ -60,6 +60,7 @@ import { getCodeAuthoringContext } from '../authoringContext';
 import { modeHasDeclaredPorts } from './declaredPorts';
 import {
   declaredButUnreadMessage,
+  functionApiInScriptNodeMessage,
   localShadowsOutputMessage,
   outputCalledButNotSignalMessage,
   readExpression,
@@ -75,6 +76,17 @@ import { unionPorts, type UnionPort } from './unionPorts';
 
 /** `source` on the diagnostics this module owns, so the panel names the rule. */
 const SOURCE = 'nodegx:ports';
+
+/**
+ * The two names a Function node's body is compiled with and a Script node's is
+ * not — see {@link functionApiInScriptNodeMessage}.
+ *
+ * ⚠️ `Noodl`, `Component` and `Script` are deliberately absent: all three are
+ * reachable in a Script node, so reporting them would be warning about working
+ * code. This set is only the names whose *absence* is what the author has got
+ * wrong.
+ */
+const FUNCTION_NODE_API = new Set(['Inputs', 'Outputs']);
 
 /**
  * Levenshtein distance, capped — we only ever care whether it is small.
@@ -202,13 +214,33 @@ function findPort(ports: readonly UnionPort[], name: string): UnionPort | undefi
 export function withPortKnowledge(
   state: EditorState,
   diagnostic: Diagnostic,
-  ports: { inputs: UnionPort[]; outputs: UnionPort[] } | null
+  ports: { inputs: UnionPort[]; outputs: UnionPort[] } | null,
+  isScriptNode = false
 ): Diagnostic {
   if (!ports) return diagnostic;
   if (diagnostic.to <= diagnostic.from) return diagnostic;
 
   const name = state.doc.sliceString(diagnostic.from, diagnostic.to);
   if (!name || !/^[A-Za-z_$][A-Za-z0-9_$]*$/.test(name)) return diagnostic;
+
+  // Message 6 — `Inputs`/`Outputs` reached a Script node, where they are not
+  // parameters and `no-undef` is right to report them.
+  //
+  // 🔴 This has to come first, and the message it replaces is why. Without it,
+  // `Outputs.Done()` in a Script node falls through to message 3 and the author
+  // is told *"No port named Outputs. Create an input port by reading it:
+  // Inputs.Outputs"* — a fix-it that inserts more of the notation that does not
+  // work here, on a click the editor is inviting them to make.
+  if (isScriptNode) {
+    if (!FUNCTION_NODE_API.has(name)) return diagnostic;
+
+    return {
+      ...diagnostic,
+      severity: 'warning',
+      message: functionApiInScriptNodeMessage(name),
+      source: SOURCE
+    };
+  }
 
   const input = findPort(ports.inputs, name);
 
@@ -582,6 +614,36 @@ export function portDiagnostics(
 ): Diagnostic[] {
   const ports = portsFor(state, validationType);
   if (!ports) return base;
+
+  /*
+   * FIX-016 ruling 1 — a Script node gets **one** message from this pass, and it
+   * is message 6.
+   *
+   * 🔴 Every message above emits `Inputs.`/`Outputs.` notation, and all five are
+   * wrong in a Script node: it is compiled with `('define','script','Node',
+   * 'Component')`, it mines no ports out of its text, and mentioning a name
+   * creates nothing. Message 1 would tell an author to read a port with
+   * `Inputs.X`; message 3 would offer to *create* one that way; message 2 and
+   * message 5 would offer `Outputs.X = `. The pass was written for the Function
+   * node and had been running here unchanged.
+   *
+   * ⚠️ ESLint's own diagnostics still pass through untouched — a genuine typo in
+   * a Script node is still reported, in JavaScript's words. What is dropped is
+   * only the port-notation enrichment.
+   */
+  if (validationType === 'script') {
+    // ⚠️ Message 6 needs a node, because the sentence names the Script node's
+    // API. `'script'` is also `CodeFileDocument`'s mode for a kit's `index.js`
+    // (a whole module, no ports, no property panel), and there `openNode` is
+    // null — so that file gets plain `no-undef` on `Outputs`, which is the right
+    // answer there and the wrong one to dress up as port advice.
+    const onANode = getCodeAuthoringContext().openNode != null;
+    if (!onANode) return base;
+
+    return base.map((diagnostic) =>
+      diagnostic.source === 'eslint:no-undef' ? withPortKnowledge(state, diagnostic, ports, true) : diagnostic
+    );
+  }
 
   // The input ports message 1 has already spoken about, so message 4 does not
   // repeat them — see the ⚠️ on `unreadPortDiagnostics`.

@@ -261,18 +261,47 @@ const EXPRESSION_GLOBALS: readonly ApiMember[] = [
 ];
 
 /**
- * The names a Function or Script node's body is compiled with:
+ * The names a **Function** node's body is compiled with:
  * `new AsyncFunction('Inputs', 'Outputs', 'Noodl', 'Component', prefix + script)`
- * (`simplejavascript.ts:446-453`), plus `Script`, which the prefix declares
+ * (`simplejavascript.ts:609-619`), plus `Script`, which the prefix declares
  * from `Node` (`javascriptnodeparser.js:492-494`).
  *
  * Note what is **not** here: `Props` and `State`, both of which the old array
  * offered. Neither is a parameter of that function and neither is a global —
  * completing them was an invitation to write code that throws.
  */
-const SCRIPT_GLOBALS: readonly ApiMember[] = [
+const FUNCTION_GLOBALS: readonly ApiMember[] = [
   { label: 'Inputs', type: 'property', info: "This node's input values. Reading `Inputs.x` creates the port" },
   { label: 'Outputs', type: 'property', info: "This node's outputs. Assigning `Outputs.y` creates the port" },
+  { label: 'Noodl', type: 'namespace', info: 'The Noodl API' },
+  { label: 'Component', type: 'property', info: 'The scope of the component this node sits in' },
+  { label: 'Script', type: 'property', info: 'The script node itself, when there is one' }
+];
+
+/**
+ * The names a **Script** node's body is compiled with:
+ * `new Function(['define', 'script', 'Node', 'Component'], prefix + code)`
+ * (`javascriptnodeparser.js:22`).
+ *
+ * 🔴 **This list used to be the Function node's, and that is the whole defect
+ * FIX-016 ruling 1 is about.** The Script node was offered `Inputs` and
+ * `Outputs` — with the info text *"Reading `Inputs.x` creates the port"*, which
+ * is true of the other node and false here — while `define`, its actual first
+ * argument and the notation `NOTATION_RULES.script` tells authors to use, was
+ * offered nowhere in the product. The editor was completing an API that throws.
+ *
+ * ⚠️ `Noodl` stays: the Script path reads `window.Noodl` when it is there
+ * (`javascriptnodeparser.js#createNoodlAPI`), the same reason the linter's
+ * globals keep it.
+ */
+const SCRIPT_NODE_GLOBALS: readonly ApiMember[] = [
+  {
+    label: 'define',
+    type: 'function',
+    info: 'Declare this node: `define({ inputs: { … }, outputs: { … }, run: function (inputs, outputs) { … } })`'
+  },
+  { label: 'Node', type: 'namespace', info: 'Node.Inputs / Node.Outputs / Node.Signals — the newer declaration API' },
+  { label: 'script', type: 'function', info: 'The second-generation form of `define`' },
   { label: 'Noodl', type: 'namespace', info: 'The Noodl API' },
   { label: 'Component', type: 'property', info: 'The scope of the component this node sits in' },
   { label: 'Script', type: 'property', info: 'The script node itself, when there is one' }
@@ -285,7 +314,9 @@ export function noodlMembersFor(validationType: ValidationType): readonly ApiMem
 
 /** Top-level names this mode puts in scope. */
 export function globalsFor(validationType: ValidationType): readonly ApiMember[] {
-  return validationType === 'expression' ? EXPRESSION_GLOBALS : SCRIPT_GLOBALS;
+  if (validationType === 'expression') return EXPRESSION_GLOBALS;
+  if (validationType === 'script') return SCRIPT_NODE_GLOBALS;
+  return FUNCTION_GLOBALS;
 }
 
 /**

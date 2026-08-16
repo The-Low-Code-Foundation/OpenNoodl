@@ -461,6 +461,39 @@ export function outputCalledButNotSignalMessage(name: string, declaredType: stri
   );
 }
 
+/**
+ * **Message 6** (FIX-016 ruling 1) — the Function node's API written in a Script
+ * node.
+ *
+ * ## The two nodes compile with different parameters, and only one of them has `Inputs`
+ *
+ * | node | compiled as |
+ * |---|---|
+ * | Function (`JavaScriptFunction`) | `AsyncFunction('Inputs', 'Outputs', 'Noodl', 'Component', prefix + script)` — `simplejavascript.ts:609-619` |
+ * | Script (`Javascript2`) | `Function('define', 'script', 'Node', 'Component', prefix + code)` — `javascriptnodeparser.js:22` |
+ *
+ * So `Outputs.Done()` in a Script node is not a port that fails to appear — it
+ * is a `ReferenceError`, and the surrounding `try` turns it into a parse warning
+ * on the node rather than anything the author sees while typing.
+ *
+ * ⚠️ **Richard's ruling is that the strictness stays** (*"a Script node has
+ * always been strict AF, keep it that way … and the node should teach"*). So this
+ * says what is in scope instead, and the parser is not loosened to accept the
+ * other node's notation.
+ *
+ * ⚠️ **No fix-it, for message 5's reason and one more.** The repair is not a
+ * spelling change: `Outputs.Done()` becomes an `outputs.Done` write inside a
+ * handler that has to exist first, which is a different program. Offering to
+ * write half of it would leave a body that still throws.
+ */
+export function functionApiInScriptNodeMessage(name: string): string {
+  return (
+    `${name} is the Function node's API and is not in scope here, so this line throws when it runs. ` +
+    `A Script node declares its ports: define({ inputs: { … }, outputs: { … }, ` +
+    `run: function (inputs, outputs) { … } }).`
+  );
+}
+
 /* ------------------------------------------------------------------ *
  * FUN-006 — what the bar says, if it says anything
  * ------------------------------------------------------------------ */
