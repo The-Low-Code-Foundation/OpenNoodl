@@ -26,6 +26,26 @@
  *    about the capture. Composing is local; the clipboard write and the browser open are both on
  *    the button.
  *
+ * ## UNI-011 AC3 — *"share what you're seeing"*, in the same composer
+ *
+ * > A capture from the running preview can be attached with per-port share toggles, defaulting to
+ * > **off** for anything record-shaped. Nothing leaves the machine before the user posts.
+ *
+ * ⚠️ **AC3 is built here rather than in a second dialog**, because the criterion's own verb is
+ * *attached* — an attachment belongs to a post, and a second composer would mean two payloads, two
+ * previews and two chances for the string shown to stop being the string sent. The rule lives in
+ * [`portshare.ts`](../../../../models/community/portshare.ts); this file owns two things it cannot,
+ * and both are about time rather than disclosure:
+ *
+ * 1. 🔴 **A tick survives the poll.** `usePortValues` re-answers every second, so a component that
+ *    recomputed the default set from the rows on every render would silently re-tick a box the user
+ *    had just cleared. The state held here is therefore the user's **overrides**, and the default is
+ *    consulted only for a port nobody has decided about — which also gives a port that appears
+ *    late, when its component mounts, the same default a port present from the start got.
+ * 2. **The capture is taken on demand.** Grabbing it as the dialog opens would photograph whatever
+ *    was on screen at right-click time, and the reason someone attaches a picture is usually that
+ *    they are about to make the app do the thing.
+ *
  * @module views/DialogLayer/components/AskAboutNodeDialog/AskAboutNodeDialog
  */
 
@@ -43,9 +63,15 @@ import { Text, TextType } from '@noodl-core-ui/components/typography/Text';
 
 import { GraphExcerpt } from '@noodl-models/community/nodeexcerpt';
 import { LibraryPorts } from '@noodl-models/community/nodeexcerpt';
+import { SharablePortRef, saveCaptureNextTo } from '@noodl-models/community/nodesharecontext';
 import { composeNodeQuestion } from '@noodl-models/community/nodequestion';
 import { QuestionEnvironment } from '@noodl-models/community/nodequestion';
+import { OFF_REASON_TEXT, ShareAttachment, describeSharablePorts } from '@noodl-models/community/portshare';
 import { RedactorOptions } from '@noodl-utils/report/redact';
+
+import { captureLivePreview, hasLivePreview, type PreviewCapture } from '../../../SandboxSurface';
+import { portValueKey, type PortValueRef } from '../../../panels/propertyeditor/components/PortsTab/portValues';
+import { usePortValues } from '../../../panels/propertyeditor/components/PortsTab/usePortValues';
 
 import css from './AskAboutNodeDialog.module.scss';
 
@@ -65,6 +91,10 @@ export interface AskAboutNodeDialogProps {
   environment: QuestionEnvironment;
   excerpt: GraphExcerpt | null;
   paths: RedactorOptions;
+  /** AC3 — the node's id in its graph, used to address the live-value poll. Never published. */
+  nodeId: string;
+  /** AC3 — every port worth offering, with the library's verdict on each name already in it. */
+  portRefs: SharablePortRef[];
   onClose: () => void;
 }
 
@@ -75,6 +105,8 @@ export function AskAboutNodeDialog({
   environment,
   excerpt,
   paths,
+  nodeId,
+  portRefs,
   onClose
 }: AskAboutNodeDialogProps) {
   const [asked, setAsked] = useState('');
@@ -83,6 +115,47 @@ export function AskAboutNodeDialog({
   // which one that is.
   const [includeExcerpt, setIncludeExcerpt] = useState(false);
   const [handedOff, setHandedOff] = useState(false);
+  const [savedTo, setSavedTo] = useState<string | null>(null);
+
+  /** AC3 — the user's decisions, keyed by port. Absent means *"has not decided"*, never *"off"*. */
+  const [overrides, setOverrides] = useState<Record<string, boolean>>({});
+  const [capture, setCapture] = useState<PreviewCapture | null>(null);
+  const [includeCapture, setIncludeCapture] = useState(true);
+  const [capturing, setCapturing] = useState(false);
+
+  const valueRefs = useMemo<PortValueRef[]>(
+    () => portRefs.map((ref) => ({ node: ref.node, port: ref.port, direction: ref.direction })),
+    [portRefs]
+  );
+  const live = usePortValues(valueRefs, nodeId);
+
+  /** The rows, with their defaults. Rebuilt from each poll, which is why the *decisions* are not. */
+  const rows = useMemo(
+    () =>
+      describeSharablePorts(
+        portRefs.map((ref) => ({
+          port: ref.port,
+          direction: ref.direction,
+          value: live.values[portValueKey(ref.node, ref.port, ref.direction)],
+          declared: ref.declared
+        })),
+        paths
+      ),
+    [portRefs, live.values, paths]
+  );
+
+  const attachment = useMemo<ShareAttachment>(() => {
+    const shared = new Set<string>();
+    for (const row of rows) {
+      const decided = overrides[row.key];
+      if (decided === undefined ? row.sharedByDefault : decided) shared.add(row.key);
+    }
+    return {
+      capture: capture && includeCapture ? { width: capture.width, height: capture.height, bytes: capture.bytes } : null,
+      ports: rows,
+      shared
+    };
+  }, [rows, overrides, capture, includeCapture]);
 
   const question = useMemo(
     () =>
@@ -93,15 +166,28 @@ export function AskAboutNodeDialog({
         environment,
         excerpt,
         includeExcerpt,
+        attachment,
         question: asked,
         paths
       }),
-    [focus, library, warning, environment, excerpt, includeExcerpt, asked, paths]
+    [focus, library, warning, environment, excerpt, includeExcerpt, attachment, asked, paths]
   );
 
-  function handOff() {
+  async function grabCapture() {
+    setCapturing(true);
+    try {
+      // Local: `capturePage()` on the preview webview. Nothing is sent, and nothing is written to
+      // disk either — the file only appears when the user commits, on the button below.
+      setCapture(await captureLivePreview());
+    } finally {
+      setCapturing(false);
+    }
+  }
+
+  async function handOff() {
     // The exact value that was on screen. Not recomposed, not re-derived.
     void navigator.clipboard.writeText(`${question.title}\n\n${question.body}`);
+    if (capture && includeCapture) setSavedTo(await saveCaptureNextTo(capture.data));
     platform.openExternal(COMMUNITY_URL);
     setHandedOff(true);
   }
@@ -130,6 +216,57 @@ export function AskAboutNodeDialog({
             onChange={(event) => setIncludeExcerpt(event.target.checked)}
           />
 
+          {/*
+            AC3. The capture, then the values — the order they are decided in, and the order they
+            appear in the payload below.
+          */}
+          <VStack hasSpacing={1}>
+            <HStack hasSpacing={2}>
+              <PrimaryButton
+                label={capture ? 'Take another capture' : 'Attach a capture of the running preview'}
+                variant={PrimaryButtonVariant.MutedOnLowBg}
+                size={PrimaryButtonSize.Small}
+                isDisabled={capturing || !hasLivePreview()}
+                onClick={() => void grabCapture()}
+              />
+              {capture && (
+                <Checkbox
+                  variant={CheckboxVariant.Default}
+                  label={`Attach it (${capture.width} × ${capture.height})`}
+                  isChecked={includeCapture}
+                  onChange={(event) => setIncludeCapture(event.target.checked)}
+                />
+              )}
+            </HStack>
+            {!hasLivePreview() && <Text textType={TextType.Shy}>Run the preview to attach a capture.</Text>}
+          </VStack>
+
+          {rows.length > 0 && (
+            <VStack hasSpacing={1}>
+              <Text textType={TextType.Shy}>
+                Live values on this node. Records, text and ports you named yourself start switched off.
+              </Text>
+              <div className={css['PortList']}>
+                {rows.map((row) => {
+                  const checked = overrides[row.key] === undefined ? row.sharedByDefault : overrides[row.key];
+                  const why = row.offBecause.map((reason) => OFF_REASON_TEXT[reason]).join(', ');
+                  return (
+                    <Checkbox
+                      key={row.key}
+                      variant={CheckboxVariant.Default}
+                      label={`${row.port} (${row.direction}) = ${row.value}${why ? `  — ${why}` : ''}`}
+                      UNSAFE_className={css['PortValue']}
+                      isChecked={checked}
+                      onChange={(event) =>
+                        setOverrides((previous) => ({ ...previous, [row.key]: event.target.checked }))
+                      }
+                    />
+                  );
+                })}
+              </div>
+            </VStack>
+          )}
+
           <VStack hasSpacing={1}>
             <Text textType={TextType.Shy}>This is exactly what will be posted:</Text>
             <pre className={css['Payload']}>
@@ -143,7 +280,7 @@ export function AskAboutNodeDialog({
             <PrimaryButton
               label={handedOff ? 'Copied — opened in your browser' : 'Copy and open the community'}
               size={PrimaryButtonSize.Small}
-              onClick={handOff}
+              onClick={() => void handOff()}
             />
             <PrimaryButton
               label="Cancel"
@@ -152,6 +289,12 @@ export function AskAboutNodeDialog({
               onClick={onClose}
             />
           </HStack>
+
+          {/*
+            🔴 Shown here and nowhere in the payload. The path names this machine and usually the
+            project; `formatShareAttachment` publishes the picture's size and never its location.
+          */}
+          {savedTo && <Text textType={TextType.Shy}>{`Capture saved to ${savedTo} — drag it into your post.`}</Text>}
         </VStack>
       </Box>
     </CoreBaseDialog>

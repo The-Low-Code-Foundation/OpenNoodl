@@ -7,6 +7,28 @@
  * The payload preview. It scrolls rather than growing, because a graph excerpt on a busy node is
  * taller than the dialog and a composer that pushes its own buttons off the screen cannot be used.
  */
+/**
+ * UNI-011 AC3 — the per-port consent list.
+ *
+ * It scrolls for the same reason the payload does: a `Group` has over a hundred ports, and a
+ * consent list that pushes the button that ends the decision off the screen is a consent list
+ * nobody reaches the end of.
+ */
+.PortList {
+  max-height: 180px;
+  overflow: auto;
+  padding: 6px 8px;
+  border-radius: 3px;
+  background: var(--theme-color-bg-2);
+}
+
+/** The value beside each toggle, in the same face the payload uses — it is the same string. */
+.PortValue {
+  font-family: var(--theme-font-family-mono, monospace);
+  font-size: 11px;
+  word-break: break-word;
+}
+
 .Payload {
   margin: 0;
   max-height: 260px;

@@ -323,7 +323,9 @@ export class NodeContextMenu {
             nodeId: node.model.id,
             typename: node.model.typename,
             graph: editor.model,
-            warning: warnings?.shortMessage || null
+            warning: warnings?.shortMessage || null,
+            // AC3: the model itself, for its port list. Read at click time with everything else.
+            node: node.model
           });
         },
         tooltip: 'Write a question for the community, with the context filled in. Nothing sends until you say so.',

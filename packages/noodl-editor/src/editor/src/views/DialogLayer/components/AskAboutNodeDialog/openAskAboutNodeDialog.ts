@@ -19,6 +19,7 @@ import { DialogLayerModel } from '@noodl-models/DialogLayerModel';
 
 import { buildGraphExcerpt } from '@noodl-models/community/nodeexcerpt';
 import { graphInputs, libraryPorts, questionEnvironment } from '@noodl-models/community/nodequestioncontext';
+import { sharablePortRefs } from '@noodl-models/community/nodesharecontext';
 import { machinePaths } from '@noodl-utils/report/collect';
 import { AskAboutNodeDialog } from './AskAboutNodeDialog';
 
@@ -33,12 +34,20 @@ export interface AskAboutNodeRequest {
   graph: unknown;
   /** What the node is complaining about, if anything. */
   warning?: string | null;
+  /**
+   * AC3 — the node model itself, for its port list. Duck-typed to `getPorts`.
+   *
+   * ⚠️ Read here, at click time, like everything else: the port list is `type.ports` concatenated
+   * with the instance's own, and a dynamic port can appear the moment somebody edits a parameter.
+   */
+  node?: unknown;
 }
 
 export function openAskAboutNodeDialog(request: AskAboutNodeRequest): void {
   const library = libraryPorts();
   const { nodes, connections } = graphInputs(request.graph as never);
   const excerpt = buildGraphExcerpt(request.nodeId, nodes, connections, { library });
+  const portRefs = sharablePortRefs(request.node as never, library);
 
   DialogLayerModel.instance.showDialog(
     (close) =>
@@ -48,6 +57,8 @@ export function openAskAboutNodeDialog(request: AskAboutNodeRequest): void {
         warning: request.warning ?? null,
         environment: questionEnvironment(),
         excerpt,
+        nodeId: request.nodeId,
+        portRefs,
         // The same machine directories ALPHA-007's reporter uses, so a path in a warning is
         // rewritten by the rules that were written for exactly that job.
         paths: machinePaths(),

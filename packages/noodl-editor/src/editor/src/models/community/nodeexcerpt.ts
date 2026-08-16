@@ -143,19 +143,33 @@ export interface GraphExcerpt {
 }
 
 /**
- * Whether a port name may be published, given the bucket its node's type landed in.
+ * Whether the **library** declares `port` for a node whose type bucketed to `bucketedType` — the
+ * one place that question is answered, for AC2 and AC3 both.
  *
  * The two conditions are one rule, not two checks that happen to both be here: the port table is
  * keyed by type, so asking it about a type that did not survive is asking the wrong question.
  * `<component>` and `<unknown>` are the two answers that mean *"this name is the user's"*, and a
  * component's ports are the user's for the same reason its name is.
  */
-function bucketPortName(bucketedType: string, port: string, library?: LibraryPorts | null): string {
-  if (!library) return PORT_HIDDEN;
-  if (bucketedType === TYPE_COMPONENT || bucketedType === TYPE_UNKNOWN) return PORT_HIDDEN;
+export function isLibraryPort(bucketedType: string, port: string, library?: LibraryPorts | null): boolean {
+  if (!library) return false;
+  if (bucketedType === TYPE_COMPONENT || bucketedType === TYPE_UNKNOWN) return false;
   const declared = library.get(bucketedType);
-  if (!declared || !declared.has(port)) return PORT_HIDDEN;
-  return port;
+  return Boolean(declared && declared.has(port));
+}
+
+/**
+ * The excerpt's use of the rule: publish the name, or the sentinel.
+ *
+ * 🔴 AC3 asks the *same* question and gets a different answer out of it — a port name the library
+ * does not declare is not rewritten there, it is offered to the user with its toggle **off**
+ * ([`portshare.ts`](./portshare.ts) explains why consent replaces the closed vocabulary once there
+ * is a decision per row). One predicate, two consumers: a second copy of "is this port ours" is the
+ * arrangement where a fix lands on one of them, which is the same argument that made
+ * `bucketTypeName` an import rather than a reimplementation.
+ */
+function bucketPortName(bucketedType: string, port: string, library?: LibraryPorts | null): string {
+  return isLibraryPort(bucketedType, port, library) ? port : PORT_HIDDEN;
 }
 
 /**

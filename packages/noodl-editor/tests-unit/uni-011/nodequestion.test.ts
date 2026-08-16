@@ -19,6 +19,7 @@
 
 import { LibraryPorts, buildGraphExcerpt } from '../../src/editor/src/models/community/nodeexcerpt';
 import { MAX_WARNING_CHARS, composeNodeQuestion } from '../../src/editor/src/models/community/nodequestion';
+import { describeSharablePorts, portShareKey } from '../../src/editor/src/models/community/portshare';
 
 const LIBRARY: LibraryPorts = new Map<string, ReadonlySet<string>>([
   ['REST', new Set(['fetch', 'success', 'resource'])],
@@ -211,5 +212,98 @@ describe('UNI-011 AC2 — nothing private reaches the body', () => {
     });
     expect(flood.body).toContain('…');
     expect(flood.body.length).toBeLessThan(MAX_WARNING_CHARS + 400);
+  });
+});
+
+// ───────────────────────────────────────────────────────────────────────────────
+// UNI-011 AC3 — the attachment reaches the same one string
+// ───────────────────────────────────────────────────────────────────────────────
+
+/**
+ * AC3's payload is an attachment to AC2's post, so it must arrive through the same composition —
+ * or AC2's guarantee that *"what it will send is shown before it sends"* holds for part of the
+ * body only. `portshare.test.ts` grades the disclosure rule; these grade the join.
+ */
+describe('UNI-011 AC3 — the attachment is part of the question, not beside it', () => {
+  /**
+   * 🔴 **Deliberately a string the redactor does not touch**, and the control run is what forced
+   * it. This marker was `PRIVATE.component` — `/Acme Legal Client Portal` — which is path-shaped,
+   * so `redact` rewrites it to `<path>` on its own. The "an unticked row is published nowhere"
+   * spec below therefore **passed with the consent set ignored entirely**: it was asserting the
+   * redactor's work and reading it as the toggle's.
+   *
+   * *A spec whose absence is already guaranteed by a different mechanism cannot detect the removal
+   * of the mechanism it names* — the shape UNI-010's slices 4 and 5 each found in their own
+   * controls. No slash, no scheme, no credential: the only thing keeping this out of the body is
+   * the tick.
+   */
+  const UNTICKED_MARKER = 'Acme Legal quarterly retainer';
+
+  const ROWS = describeSharablePorts(
+    [
+      { port: 'visible', direction: 'input', value: 'true', declared: true },
+      { port: 'text', direction: 'input', value: `"${UNTICKED_MARKER}"`, declared: true }
+    ],
+    PATHS
+  );
+
+  function withAttachment(shared: string[], capture: { width: number; height: number; bytes: number } | null = null) {
+    return composeNodeQuestion({
+      focus: { typename: 'REST' },
+      library: LIBRARY,
+      environment: ENVIRONMENT,
+      attachment: { capture, ports: ROWS, shared: new Set(shared) },
+      paths: PATHS
+    });
+  }
+
+  it('adds nothing to the body when no row is ticked and there is no capture', () => {
+    const bare = composeNodeQuestion({ focus: { typename: 'REST' }, library: LIBRARY, environment: ENVIRONMENT });
+    const empty = withAttachment([]);
+
+    expect(empty.body).toBe(bare.body);
+    expect(empty.attached).toEqual({ capture: false, ports: 0 });
+  });
+
+  it('reports what it attached rather than leaving a caller to infer it', () => {
+    const one = withAttachment([portShareKey('visible', 'input')], { width: 800, height: 600, bytes: 40_960 });
+
+    expect(one.attached).toEqual({ capture: true, ports: 1 });
+    expect(one.body).toContain('visible (input) = true');
+    expect(one.body).toContain('800 × 600');
+  });
+
+  /**
+   * 🔴 The default is `false` for the excerpt and the *empty set* for the attachment, and neither
+   * is established by the dialog. An attachment that arrived with a row ticked publishes it; one
+   * that arrived with none publishes nothing. There is no second switch that could disagree.
+   */
+  it('publishes an unticked row nowhere, even though the row is in the attachment', () => {
+    const one = withAttachment([portShareKey('visible', 'input')]);
+
+    expect(one.body).not.toContain(UNTICKED_MARKER);
+    expect(one.body).toContain('visible');
+  });
+
+  /**
+   * ⚠️ The values are redacted once, in `describeSharablePorts`. If the composer ran the redactor
+   * again over its own output, `~/...` would be re-scanned and the sentinel damaged — the same
+   * class of ordering mistake the markup strip above pins, in the other direction.
+   */
+  it('does not re-redact a value that is already redacted', () => {
+    const pathRows = describeSharablePorts(
+      [{ port: 'src', direction: 'input', value: `"${PRIVATE.clientPath}"`, declared: true }],
+      PATHS
+    );
+    const question = composeNodeQuestion({
+      focus: { typename: 'REST' },
+      library: LIBRARY,
+      environment: ENVIRONMENT,
+      attachment: { capture: null, ports: pathRows, shared: new Set([pathRows[0].key]) },
+      paths: PATHS
+    });
+
+    expect(question.body).toContain(pathRows[0].value);
+    expect(question.body).not.toContain(PRIVATE.clientPath);
   });
 });

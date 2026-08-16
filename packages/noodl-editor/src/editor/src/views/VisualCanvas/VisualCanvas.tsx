@@ -51,6 +51,7 @@ import {
   revealBenchTarget,
   takePendingBenchMount
 } from './benchRequest';
+import { registerLivePreview, unregisterLivePreview } from '../SandboxSurface';
 import { BENCH_FRAME_KEY, benchFrameStore, readBenchFrameDefault } from './benchFrameDefault';
 import { ComponentBench } from './ComponentBench';
 import { BenchFrameControl, PreviewScopeControl } from './PreviewChrome';
@@ -244,6 +245,31 @@ export function VisualCanvas({
         setCrashed(true);
       });
     }
+  }, [webviewRef]);
+
+  /**
+   * UNI-011 AC3 — put the **app** preview in the capture registry.
+   *
+   * 🔴 It was never in it, and the drive is what found that. `livePreviewCapture` was built for
+   * BLD-014, whose two hosts are the AI sandbox surfaces — `ComponentBench` and
+   * `AuthoringPreviewDocument` — so `registerLivePreview` had exactly those two callers and
+   * `hasLivePreview()` returned **false** with a preview running in front of the user. UNI-011's
+   * own note that *"both halves already exist"* was true of a different preview from the one AC3
+   * means: the app preview is the surface whose port values the other half reads.
+   *
+   * ⚠️ Registered here rather than beside `onWebView` above, because that effect also runs on
+   * `restart()` and a double `add` to a `Set` is silent — the cleanup is what has to be paired,
+   * and pairing it needs an effect that owns nothing else.
+   *
+   * The registry is newest-last and `captureLivePreview` takes the last, so opening a bench over
+   * this canvas still captures the bench: the app preview is *hidden, never unmounted* (R3), so it
+   * stays registered, and the bench mounts after it.
+   */
+  useEffect(() => {
+    const element = webviewRef.current;
+    if (!element) return undefined;
+    registerLivePreview(element);
+    return () => unregisterLivePreview(element);
   }, [webviewRef]);
 
   function restart() {

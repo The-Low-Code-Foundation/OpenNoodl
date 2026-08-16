@@ -47,6 +47,7 @@
 import { RedactorOptions, redact } from '../../utils/report/redact';
 import { TYPE_COMPONENT, TYPE_UNKNOWN, bucketTypeName } from '../../utils/report/diagnostics';
 import { GraphExcerpt, LibraryPorts, formatGraphExcerpt } from './nodeexcerpt';
+import { ShareAttachment, formatShareAttachment, sharedPorts } from './portshare';
 
 /** How much of a warning may be quoted. Long enough for a real message, short enough not to be a log. */
 export const MAX_WARNING_CHARS = 600;
@@ -82,6 +83,16 @@ export interface NodeQuestionInput {
   excerpt?: GraphExcerpt | null;
   /** 🔴 Defaults to `false`. AC2 makes this a property of the composition. */
   includeExcerpt?: boolean;
+  /**
+   * UNI-011 AC3 — the capture and the ticked port values.
+   *
+   * 🔴 **There is no `includeAttachment` flag beside `includeExcerpt`, and its absence is the
+   * design.** AC2's excerpt is one decision about a whole payload, so it needs a switch. AC3 is
+   * *per row*: the attachment's `shared` set is the decision, and an empty set publishes nothing.
+   * A second, outer flag would be a state that can disagree with the ticks — and a consent screen
+   * whose switch and whose boxes can disagree has one of them lying.
+   */
+  attachment?: ShareAttachment | null;
   /** What the user typed. Their own words, and the one thing here they control completely. */
   question?: string;
   /** This machine's directories, for the redactor. */
@@ -95,6 +106,8 @@ export interface NodeQuestion {
   body: string;
   /** Whether {@link NodeQuestion.body} contains the excerpt. Reported, never inferred by a caller. */
   includesExcerpt: boolean;
+  /** How many port values the body carries, and whether the capture line is in it. */
+  attached: { capture: boolean; ports: number };
   /** The bucketed type, so a caption can name it without repeating the bucketing rule. */
   nodeType: string;
 }
@@ -183,10 +196,19 @@ export function composeNodeQuestion(input: NodeQuestionInput): NodeQuestion {
     );
   }
 
+  // AC3. The values are already redacted by `describeSharablePorts` — redacting again here would
+  // be a second pass over this module's own output, which is how `<path>` becomes `<<path>>`.
+  const attachmentText = input.attachment ? formatShareAttachment(input.attachment) : '';
+  if (attachmentText) sections.push(attachmentText);
+
   return {
     title: composeTitle(nodeType, warning),
     body: sections.join('\n\n'),
     includesExcerpt: includeExcerpt,
+    attached: {
+      capture: Boolean(input.attachment?.capture),
+      ports: input.attachment ? sharedPorts(input.attachment).length : 0
+    },
     nodeType
   };
 }
