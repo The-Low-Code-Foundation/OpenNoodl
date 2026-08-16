@@ -656,3 +656,82 @@ value-shaped calls throw **and warn**:
 at all"* is **false**. ⚠️ **The parser-asymmetry ruling loses its severity argument**: the author
 gets a runtime error naming the line. What remains is only that there is **no Type row** to fix it
 from, which is the same copy/discoverability question as §1 rather than a separate coverage gap.
+
+---
+
+## Session 28 — s24's null: the LAST candidate is FALSE, so the list has NO survivors
+
+s27 left this as §5's cheapest loose end: *"s24's null now has one surviving candidate — that their
+fixture never declared `scriptOutputs`. One look at that fixture finishes it."* It is finished, and
+it finished the **opposite** way to the way it was framed. **No drive was needed and none was run.**
+
+### 🔴 Candidate (1) — *"their fixture never declared `scriptOutputs`"* — is FALSE
+
+s24's fixture **did** declare it, with rows `Done` and `Result`. The proof is s24's own
+contemporaneous drive table plus the source that produces the column it recorded:
+
+| # | link | source |
+|---|---|---|
+| 1 | the drive's `registry` column has exactly one producer | `CodeEditorType.ts:377` → `collectDeclaredPorts(node.parameters)`, published at `:385` as `declaredOutputs` |
+| 2 | every `PortFact.name` comes from a `scriptOutputs` proplist **row label**, and from nowhere else | `declaredPorts.ts:119-123` → `readList(params,'scriptOutputs','outtype-','*')`; the name is `entry.label` (`:90`) |
+| 3 | an **absent** `scriptOutputs` yields an **empty** list — no names at all | `decodePropList` returns `[]` for a non-array (`listValueCodec.ts:214`) |
+| 4 | s24 recorded registry **`Done:*,Result:*`** at baseline | this file, §2 follow-up drive table |
+| 5 | s24's driven matrix labels the panel state **"declared"** on two of its three rows | this file, driven matrix |
+
+⇒ `scriptOutputs` held rows labelled `Done` and `Result`, with `outtype-` unset — which is precisely
+what the `*` in `Done:*` **means** (`declaredPorts.ts:74`, `DEFAULT_OUTPUT_TYPE`). A fixture with no
+`scriptOutputs` **cannot** produce that reading.
+
+🔴 **And the null is recorded as spanning the declared rows.** The claim was that the fixture node's
+dynamic `outtype-` child ports ***never*** appeared — across a drive whose own matrix ran two
+declared rows. So declaration cannot be why they were missing, whatever the third matrix row did.
+
+### ✅ Net effect on the candidate list: three dead, zero standing
+
+1. never declared `scriptOutputs` — 🔴 **DEAD (this session, from s24's own record)**
+2. the runtime axis, *declared + no live preview* — 🔴 DEAD (s27; ⚠️ rests on the always-on-webview
+   observation **no second session has reproduced**)
+3. a fixture artefact, `fromJSON` + `addRoot` — 🔴 DEAD (s27, witnessed)
+
+**s24's null is now fully unexplained**, and that is a better state than it was in yesterday: it was
+being carried as *"one leading explanation, one look from confirmed"*.
+
+### 🔴 The reason the list ran out: an EARLIER, better list was silently dropped
+
+The three-candidate list replaced an earlier **two-cause** list in this same file, and the causes
+were never merged. The dropped one is the **instrument**:
+
+> *"Wrong panel implementation. `propertyeditor.ts:207` sets `sidebar-property-editor` — that panel
+> is the legacy non-React view, and my query was unscoped and React-shaped."*
+
+✅ `propertyeditor.ts:207` verified this session: `this.bodyEl.className = 'sidebar-property-editor'`.
+**That cause was never eliminated by anybody.** It is the only un-refuted explanation on the table.
+
+⚠️ **But do NOT adopt it as the new leading explanation — that is the exact move that just cost three
+sessions.** There is a counter-indication already: the panel *body* is legacy, yet its *rows* are
+React — `PropertyPanelInput` is a `noodl-core-ui` component used from the legacy `DataTypes/*.ts`
+classes (`BasicType.ts`, `EnumType.ts`, `Ports.ts`, …). So a React-shaped selector is not obviously
+wrong, and another session did read `PropertyPanelInput-module__Label` rows out of the real DOM.
+**This candidate needs its own measurement, not promotion.**
+
+### 🔴 The transferable shape: a candidate list is a session's GUESS, inherited as a PARTITION
+
+Three sessions ran elimination over a list one session wrote, and each elimination made the
+remainder look stronger. The arithmetic is only valid if the list is exhaustive, and **nothing ever
+checked that** — while the file itself contained an older, non-overlapping list the whole time.
+⚠️ **Eliminating candidates raises the survivors' apparent odds even when the truth was never on the
+list**, which is [[absence-derived-from-a-partial-request-is-a-lie]] wearing a different hat.
+✅ **When you inherit a candidate list, `grep` the file for an earlier one before you start crossing
+things off.**
+
+### ⚠️ Two bounds on this session's own result, stated because they would otherwise be assumed
+
+- **s24's fixture no longer exists on disk.** No `project.json` under `NodeGX test projects/`
+  contains `Outputs.Done` (26 files searched). So this is a re-reading of s24's **record**, not a
+  re-measurement of their fixture — the "one look" §5.7 asked for was **not available**. It is
+  nonetheless decisive, because the registry column has exactly one producer.
+- **The instrument nearly bit me on the way in.** `/usr/bin/grep -rn` (no `-a`) over `packages/`
+  reported that `collectDeclaredPorts` and `setOpenNodeContext` had **no production caller** — which
+  would have made link 1 above collapse. Re-run with `-a`, both callers are there in
+  `CodeEditorType.ts`. 🔴 **A "no caller" reading from a grep without `-a` in this repo is an
+  instrument artefact, not a finding.**
