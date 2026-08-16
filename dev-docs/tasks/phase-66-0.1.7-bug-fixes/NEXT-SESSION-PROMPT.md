@@ -68,7 +68,7 @@ not of my diff alone.
 | **`noodl-mcp` jest** | ✅ **50 suites / 585 tests** | ✅ **s43** |
 | **`noodl-core-ui` jest** | ✅ **25 suites / 444 tests** | ✅ **s43** |
 | `nodegx-backend` jest (full) | ✅ 100 suites / 1085 passed, 10 skipped | s40 — inherited |
-| `test:ci` (jasmine) | ⚠️ **2843 / 6 @ seed 39393** | s38 — inherited |
+| `test:ci` (jasmine) | 🔴 **2843 / SEVEN @ 39393** — not six. See below | **s30**, read from the results file on disk (mtime 20:37:49) |
 | `library:check` (PR gate) | ✅ 58/58, exit 0 | s30 — inherited |
 
 🔴 **`test:main` moved 216 → 220 suites and 3363 → 3396 tests in a day, and most of it was peers'.**
@@ -86,6 +86,35 @@ is `.jsx`/`test:ci` territory.
 
 ✅ **PIN THE SEED: `NOODL_SPEC_SEED=39393`.** 🔴 **`test:ci`'s exit code misleads both ways** — a clean
 floor run exits **1**. **Prove completion from `test-results.json`'s mtime; delete it before a run.**
+
+### 🔴 The `test:ci` floor is SEVEN on disk, not six — and nobody has re-run it
+
+Found 2026-08-16 by the session on `uds:/tmp/cc-socks/9204.sock`, reproduced independently by s30 from
+`packages/noodl-editor/tests/test-results.json` (**mtime 20:37:49**, 5970 bytes):
+`totalCount 2843 | failedCount 7 | seed 39393 | overallStatus failed`. The six known names are all
+present (4 × `AIX-006 style vocabulary`, 2 × `AI model registry`). **The seventh is new:**
+
+> `projectmodules — injectIntoHtml snapshot (scanner unification) produces byte-identical HTML to the committed golden`
+
+🔴 **Do not quote "6" until someone re-runs.** ⚠️ **And do not file this as contamination, which is the
+comforting reading.** The dating:
+
+| | |
+|---|---|
+| results file written | **20:37:49** |
+| `9e76bae4` *"feat(cn-006): the editor half, and a hole that only exists past a bundler"* — touches projectmodules | **20:43** |
+
+The commit landed **6 minutes after** the run. `test:ci` compiles the working tree, so that run saw the
+CN-006 projectmodules work **in flight and uncommitted** — and that work is **committed now**. So either
+it was repaired before commit and the tree is clean, or the golden-HTML snapshot **fails on committed
+code today**. 🔴 **The results file cannot distinguish those. Only a run on the current tree can**, and
+`projectmodules.ts` is clean in `git status`, so a re-take would measure committed state with nothing
+in flight.
+
+⚠️ **Why it stayed invisible:** the file is the readout, not the log — a stale one reads as a perfect
+pass, and s38's own announced run is the one that wrote it. **Delete the file before re-running.**
+⚠️ **Not re-run by s30** because the CN-006 editor was up (`Electron . --dev` pid 2792, 21:03:53); a
+teardown mid-run reaps the suite. Take it once that stack is down.
 
 ⚠️ **`tsc -p tsconfig.tests-main.json`'s 31 errors are NOT a gate and NOT a regression.** Do not
 re-derive this a seventh time.
