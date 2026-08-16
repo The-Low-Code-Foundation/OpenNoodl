@@ -901,6 +901,7 @@ byte-identical afterwards.
 ### ⚠️ NOT driven, and one thing deliberately left standing
 
 **No editor was launched for this.** The message is spec-level; nobody has seen it in a gutter.
+✅ **Superseded — DRIVEN session 45, see below.**
 
 🔴 **Left unfixed, on purpose, and it is the next slice:** `unionPorts` calls `minePorts(code)` in
 **script** mode too, so the editor's port list for a Script node contains ports mined from
@@ -909,3 +910,86 @@ byte-identical afterwards.
 `Signals` or `define()`, never from a regex over the document). So FUN-005's rail and FUN-006's bar
 can show a Script node ports it does not have. Not folded in here: it is four surfaces, and message 6
 does not depend on it.
+
+## ✅ RULING 1 DRIVEN 2026-08-16 (session 45) — and two readings that were wrong before they settled
+
+**Message 6 has now been seen in a gutter.** Live editor, `dev:debug`, fixture
+`fix016-msg6-drive` (a `cp -R` of `fix003-drive`; identity confirmed by
+`ProjectModel.instance._retainedProjectDirectory`, never by component names). `/Components/PriceDiscount`
+carries **both** node types — `Javascript2` `dc5ef4ce…` and `JavaScriptFunction` `js` — so both arms
+ran in one component with no project switch between them.
+
+🔴 **The observation was written before the editor was launched**, per the standing rule. All four
+predicted cells held; two of them held *only after settling*, and the pre-settle readings said
+something else (below).
+
+### The 2×2 — same document, both nodes, read from the live lint state
+
+Read with `@codemirror/lint`'s own `forEachDiagnostic` off the webpack module cache, against
+`document.querySelector('.cm-content').cmTile.view.state` — the state the gutter draws from, not a
+second opinion about the text.
+
+| document | Script (`Javascript2`) | Function (`JavaScriptFunction`) |
+|---|---|---|
+| `Outputs.Done();` | ✅ **message 6**, `warning`, `nodegx:ports`, **`actions: []`** | ✅ **nothing on `Outputs`** |
+| `define({ inputs:…, outputs:…, run:… })` | ✅ **silent, 0 diagnostics** | ✅ *"No port named define. Create an input port by reading it: `Inputs.define`."* + fix-it |
+| `zzzUndefinedThing;` | ✅ plain **`eslint:no-undef`**, *"'zzzUndefinedThing' is not defined."*, no action | ✅ **message 3** + fix-it *"Create input port zzzUndefinedThing"* |
+
+🔴 **The bottom-right cell is the defect s44 found, correctly relocated.** *"No port named define …
+`Inputs.define`"* is exactly what was being shown on the **Script** node before `3d3cc974`. It now
+appears only on the Function node, where a missing `define` really is a missing port. The same
+sentence being right in one cell and wrong in the other is the whole content of the fix, and the 2×2
+is the only shape that shows it.
+
+✅ **Every absence sits beside a firing signal on the same instrument**, and the third row is why the
+suppression is not over-broad: a *genuine* typo in a Script node is still reported, in JavaScript's
+words, with no port notation attached.
+
+✅ **`openNode != null` — the load-bearing gate — is proven by consequence, not by inspection.**
+`getCodeAuthoringContext` is not exported, so it could not be read directly; message 6 firing in a
+real popout *is* the proof the gate passed, and that `codenotation: 'script'` reached the editor. The
+popout's toolbar independently reads **SCRIPT**.
+
+✅ **Rendered, not merely resolved.** The lint gutter carries one `cm-lint-marker-warning`, the header
+reads **⚠ 1 warning**, and both the hover tooltip and `.cm-panel-lint` render the full sentence with
+`nodegx:ports` beneath it and **no action button** — against the Function node's message 3, which
+draws a *"Create input port"* button in the same panel. Screenshots in the session scratchpad
+(`fix016-msg6-gutter.png`, `fix016-msg6-panel.png`).
+
+### 🔴 Two instrument failures, both of which produced a *passing* reading
+
+**1. A peer's source save HMR-reloaded the renderer mid-drive and my absence check read as a pass.**
+The reload wiped every injected handle (`__view`, `__req`, `__forEach`), closed the popout and dropped
+the editor back to the Launcher. The very next check — *"does the diagnostic list still contain the
+message-6 text?"* — was a shell `grep` over an eval that had **thrown**, so it matched nothing and
+reported the transition I was hoping for, after **zero** polls. **A dead instrument and a cleared
+diagnostic are the same string.**
+✅ **The repair:** every read returns an explicit `{alive: …}` field and the absence assertions require
+`alive === true`. ⚠️ This is [[an-hmr-reload-wipes-injected-cdp-state]] with a new consequence — the
+recorded one is *"the click falls through and looks like a feature doing nothing"*; here it looked
+like a **feature working**.
+
+**2. 🔴 The linter passes through an intermediate state, and it is indistinguishable from the settled
+one except by waiting.** Setting a document clears the old diagnostics *before* the new lint runs, so
+`count === 0` is true of both "correctly silent" and "not linted yet".
+
+| arm | at first poll (~0s) | settled (~12–20s) |
+|---|---|---|
+| Function + `define(…)` | message 4, *"price is declared but never read"* | 🔴 **message 3 on `define`** |
+| Function + `Outputs.Done();` | **0 diagnostics** | 🔴 **message 4 on `price`** |
+| Script + `define(…)` | 0 diagnostics | ✅ 0 diagnostics (unchanged) |
+
+⚠️ **So the arm-B claim in this write-up is narrower than the one I first recorded.** It is **"no
+diagnostic on `Outputs`"**, *not* "silent" — the settled Function node does emit message 4 about
+`price`, an unrelated declared port, which is correct behaviour and has nothing to do with this
+change. Writing "silent" would have been a true-sounding sentence that a later reader could falsify in
+ten seconds.
+✅ **A settle of ~20s, and a re-read of every cell after it.** The A(1)→C(0) transition is *some*
+evidence the lint re-ran, but it is not sufficient on its own, and I only caught this because the
+fourth cell changed its answer under me.
+
+### What is still not driven
+
+⚠️ **The script-mode mining slice is untouched** (`unionPorts` calling `minePorts` in script mode).
+This drive says nothing about FUN-005's rail or FUN-006's bar; it read the code editor's lint state
+only.
