@@ -1,9 +1,9 @@
 # Phase 66 — next session
 
-**Written 2026-08-16, session 38.** A rewrite, per §0. s37 built FIX-004 §C and found that `in`
-answers backwards about every App Object. **s38 drove §C in the real app** — all seven blocks draw,
-the four-block chain runs, and the `in` inversion reproduces in the live viewer runtime. It also
-closed **FIX-006 AC4's editor half** and corrected an overclaim in that task's own record.
+**Written 2026-08-16, session 39.** A rewrite, per §0. s38 drove FIX-004 §C and FIX-006 AC4's editor
+half. **s39 drove FIX-006 AC1 + AC2 — the item s38 called the phase's most valuable agent-actionable
+one — and closed FIX-006 outright.** The criteria pass. The control arm says that is not the same as
+the fix working, and the honest grade is written that way.
 
 ---
 
@@ -27,12 +27,10 @@ amendment, rewrite the file instead.**
 | Task | Built | Driven | Note |
 |---|---|---|---|
 | **FIX-001 / 002 / 003 / 007 / 009 / 010 / 011 / 012 / 014 / 018 / 019 / 020** | ✅ | ✅ | **CLOSED** — twelve tasks |
+| **FIX-006** — all four ACs | ✅ | ✅ **s39** | **CLOSED — the thirteenth.** AC3 s36, AC4 both halves s36+s38, **AC1+AC2 s39** over 20 live authoring sessions. ⚠️ Read §3: the criteria pass and the *cause* is unmeasured |
 | **FIX-005** part 1 | ✅ s34 | ✅ s35 | Criteria 1–3 close, both themes. 🔴 Toolbox half is **dead code**. Part 2 = ruling |
-| **FIX-004** §A+§B | ✅ s34 | ✅ s35 | AC 1, 3, 4, 5 close; AC2 half. Cloud half remains |
-| **FIX-004** §C | ✅ s37 `b9d6966e` | ✅ **s38** | **DRIVEN.** Data category at index 13; all **7** blocks draw in the *flyout*; `JSON.parse → Object.keys → For each → obj[k]` runs and returns **3**; `in` inversion reproduced in the live viewer. Async still deliberately separate |
-| **FIX-006** 1+2 | ✅ s34 | 🔴 — | Prompt changes; **only AC1/AC2 can grade them** — a live authoring run |
-| **FIX-006** fix 3 | ✅ s36 `d6a635f5` | ✅ s36 | AC3 driven over real MCP stdio |
-| **FIX-006** AC4 | ✅ | ✅ **s38** | **BOTH HALVES DRIVEN.** MCP half s36; **editor half s38** — `systemPrompt()` called live in the renderer, both modes carry the block |
+| **FIX-004** §A+§B | ✅ s34 | ✅ s35 | AC 1, 3, 4, 5 close; AC2 half. **Cloud half remains — now the top agent item** |
+| **FIX-004** §C | ✅ s37 | ✅ s38 | Data category at index 13; all 7 blocks draw in the flyout; the chain returns `3`; `in` inversion reproduced live |
 | **FIX-021** slice 0 | ✅ s34 | 🔴 — | 7 specs. Slices A/B need Richard |
 | **FIX-008** A, B, E | ✅ | ✅ | **C, D open**; C needs a measurement from Richard |
 | **FIX-016** §2, §3c | ✅ | ✅ | §1 investigated, awaits a ruling. **§3 (signal inputs) genuinely blocked** |
@@ -40,7 +38,7 @@ amendment, rewrite the file instead.**
 | **FIX-013** | 📋 | — | **Answer ruling 1 first** — see §5 |
 | **FIX-015** | 📋 | — | Brainstorm → its own phase. Needs Richard |
 
-**Twelve closed outright. Three partial** (008, 016, 017). **Two not started:** FIX-013, FIX-015.
+**Thirteen closed outright. Three partial** (008, 016, 017). **Two not started:** FIX-013, FIX-015.
 
 ⚠️ **Count the names, don't copy a total.**
 
@@ -48,105 +46,127 @@ amendment, rewrite the file instead.**
 
 ## 2. Gate readings
 
-🔴 **s38 took NO gates, and owes none: it changed no source.** Its only edits are three task/handover
-files and three memory files. Everything below is inherited — **re-measure before quoting.**
+🔴 **s39 took no gates, and owes none.** Its only source change is
+`packages/noodl-editor/scripts/aix002-measure/` — the measurement harness, which is **in no
+`tsconfig` `include`, no jest project and no jasmine suite** (§3). Nothing it touched is reachable
+from any gate, so running one would have measured nothing about this change. Everything below is
+inherited — **re-measure before quoting.**
 
 | Gate | Reading | When |
 |---|---|---|
+| **`test:ci` (jasmine)** | ✅ **2843 / 6 @ seed 39393**, six failures identical **by name** | s38, 16:01 |
 | **`test:main` (jest)** | ✅ 212 suites / 3313 tests, 0 failed | s37 |
 | **`tsc --noEmit -p tsconfig.json`** | ✅ 0 errors | s37 |
 | **`tsc -p tsconfig.tests.json`** | ✅ 0 errors | s37 |
 | **`noodl-mcp` jest** | ✅ 45 suites / 530 tests | s36 |
-| **`test:ci` (jasmine)** | ✅ **2843 / 6 @ seed 39393 — RUN, not inherited**; six names verbatim | **s38, finished 16:01** |
 | `noodl-mcp` `tsc` | ⚠️ 8 errors, all pre-existing | s34 |
 | `noodl-core-ui` jest | ✅ 25 suites / 444 | s24 |
 | `library:check` (PR gate) | ✅ 58/58, exit 0 | s30 |
 
-✅ **`test:ci` was RUN in s38 after four unrun sessions, and the floor held exactly: 2843 / 6 at
-seed 39393**, six failures identical **by name** — 4 × `AIX-006 style vocabulary`, 2 × `AI model
-registry`. 🔴 **Quote them by name, never the count**: six failures can be six *different* ones.
+✅ **The harness was typechecked by hand** — `tsc` with the project's `paths` and
+`--resolveJsonModule` supplied on the command line reports **0 errors in
+`scripts/aix002-measure/`**. ⚠️ Do this bare (`npx tsc harness.ts`) and you get ~20 phantom
+`TS2307`s from the missing aliases; they are your flags, not the code.
 
-✅ **It was a prediction, not a hedge, and that is why it means something.** Before the run,
-`git log <floor-tree>..HEAD -- packages/noodl-editor/tests/` was checked and came back **empty** —
-nothing had added a spec — so the expected total was *exactly* 2843, not "about 2843". ⚠️ **Do this
-before every floor comparison.** This repo's total climbed 2779 → 2788 → 2812 → 2843 in one day, so
-*"the count drifted, it's probably age"* is always available as an excuse and makes the floor absorb
-any result. **Age is only an explanation if a commit actually added specs — check, then predict.**
+🔴 **`test:ci`'s exit code misleads BOTH ways** — a clean floor run exits **1**, and `… | tail`
+reports the pipe's last command, so it prints 0 whatever the suite did. **Prove completion from
+`test-results.json`'s mtime, never the exit code.** Delete it before a run.
 
-✅ **Proof the run was real, not a stale artefact:** `test-results.json` was **absent before the run
-and present at 16:01**. That, not the exit code, is the evidence — a reaped run writes **no file**,
-and a stale one reads as a *perfect pass*.
-
-🔴 **The exit-code trap fired for real this time, in the dangerous direction.** The suite exited **1**
-(correct for a clean floor — six known failures), and **the running session's own pipeline reported
-`0`**. The conclusion happened to be right; the mechanism means a genuinely broken run would report
-`0` just the same. **Never read this gate's outcome from an exit status.**
+✅ **Predict the count before comparing to the floor**: `git log <floor-tree>..HEAD --
+packages/noodl-editor/tests/`. Empty ⇒ the total must be **exactly** 2843. This repo's total moved
+2779 → 2788 → 2812 → 2843 in one day, so "it probably drifted" is always available and makes the
+floor absorb any result.
 
 ⚠️ **`tsc -p tsconfig.tests-main.json`'s 31 errors are NOT a gate and NOT a regression** — see
 FIX-004's task file. Do not re-derive this a third time.
 
 ---
 
-## 3. What s38 found
+## 3. What s39 found
 
-### ✅ FIX-004 §C is driven, with controls that could have failed
+### ✅ FIX-006 AC1 + AC2 are driven, and FIX-006 closes
 
-Full table in the task file. The four things that matter:
+**Instrument:** `packages/noodl-editor/scripts/aix002-measure` — the real `AuthoringSession`, the
+real context builder, the real validation gate, the real 44-component `git-repo-utf8` project, an
+Anthropic provider built from `.env`. The reported request went into the corpus as
+`fix006-string-math` and **names no node type and no JavaScript**; naming either would have answered
+the criteria in the question. **2 models × 2 arms × n=5 = 20 sessions**, all authored, all valid on
+first submit. **$0.53.**
 
-1. **`Data` is toolbox index 13**, immediately after `Lists` — read from live `getToolboxItems()`.
-2. **All seven blocks draw in the FLYOUT WORKSPACE.** 🔴 This is the reading the toolbox XML cannot
-   give: a block whose *definition* failed to register is still named in the XML and simply does not
-   draw. Controls: `Lists` returns **12** through the same reader (so 7 is not a constant), and a
-   bogus block type is absent from `Blockly.Blocks` while all seven real ones are present.
-3. **The chain runs.** Generated `obj[k]` — a **computed** key, the whole point of the slice — and
-   returned **`3`**, a number. 🔴 **Shown to be falsifiable**: flipping the members dropdown to
-   `VALUES` emits `Object.values` and returns **`NaN`**; restoring `KEYS` returns `3`.
-4. **`in` reproduces in the live viewer runtime**, not just headlessly — `'title' in o` is `false`,
-   `'data' in o` is `true`, and `JSON.stringify` adds the `id`. s37's generator choice is right.
+| model | arm | Script | `var` | regex | `Substring` node | inline `.slice` |
+|---|---|---|---|---|---|---|
+| `claude-sonnet-5` | **ON** | **0/5** | **0/5** | **0/5** | 1/5 | 4/5 |
+| `claude-sonnet-5` | OFF | 0/5 | 0/5 | 0/5 | 5/5 | 0/5 |
+| `claude-haiku-4-5` | **ON** | **0/5** | **0/5** | **0/5** | 2/5 | 3/5 |
+| `claude-haiku-4-5` | OFF | 0/5 | 0/5 | 0/5 | 5/5 | 0/5 |
 
-✅ **The on-screen question is answered: `Data` beside `App Objects` reads fine.** They are ten rows
-apart in different visual groups — `App Objects` in the `App *` seam block, `Data` with the generic
-vocabulary. The collision the toolbox comment worried about does not materialise.
+`claude-sonnet-5` is the shipped Anthropic default and carries `recommendedFor: ['act']`, so the ON
+row is what a real user gets.
 
-### 🔴 FIX-006 AC4's supporting note overclaimed, and the drive caught it
+🔴 **The control arm passes identically, so the blocks are not what makes the criteria pass.** The
+reported 2019-shaped output does not reproduce on either model with or without
+`THREE_WAYS_TO_COMPUTE` and `CODE_STYLE`. **Grade it "criteria met, contribution unmeasured"** — a
+treatment arm alone would have read as proof and been worth nothing, because a current model writes
+`const` and `slice` unprompted.
 
-AC4 itself **passes on both wires**. But the task file said the four checked type names meant *"the
-block really does name the ids an agent must write"*. Measured live: it names **three**
-(`Expression`, `Logic Builder`, `JavaScriptFunction`). The fourth is prose — *"Reach for the Script
-node LAST"* — and **`Javascript2` does not appear in the prompt at all**.
+✅ **The null is readable because the arms demonstrably differ**, three ways: 14,505 vs 13,003 prompt
+chars recorded per session on the wire (the ON figure is byte-identical to s38's live-renderer
+reading, so the treatment arm really is the editor's prompt); a strip that **throws** rather than
+degrades; and a consistent behavioural split — **guidance OFF found the dedicated `Substring` node
+10/10, ON did so 3/10** and inlined `.slice(1)` instead.
 
-⚠️ **Probably not a defect** — an id matters less in a prohibition than in a recommendation. But
-`traps.ts:61-63` states the rule as *"the type name leads every line … it is also the id the agent
-must actually write"*, and item four does not follow it. **Ruling in §5; cheap either way.**
+⚠️ **That direction is a ruling, in §5.** The blocks' one measured effect is to move work *out* of a
+purpose-built node and *into* code, and `THREE_WAYS_TO_COMPUTE` opens with "reaching past them costs
+the user a node that cannot run".
 
-### The instrument lesson, continuing s37's
+⚠️ **The instrument is structurally blind to the report's other half.** `AuthoringSession` is handed
+its `componentPath`, so *"should this have been a component at all"* — the over-decomposition, §4 of
+the mechanism, `decomposition.ts` — cannot be graded here. AC1 and AC2 are worded to ask about node
+choice and code style, and that is what closed. **The planner half is unmeasured and wants its own
+run against `PlanningSession`; see §4 item 2.**
 
-s37's was *ask what your instrument says when the answer is the one you expect*. s38's is narrower
-and it came from a peer, not from me: **a positive control can prove your pipeline works and still
-say nothing about the predicate you are claiming.** My teardown report quoted *"0 dev-stack
-processes, control 24 `electron` lines"*, which two peers called the thing that made the zero
-readable. A third pointed out those 24 lines are almost all **MCP servers matching on the binary
-path** — so the control tested `ps` and the grep, **not** whether `Electron . --dev` would have
-fired had a stack been up. ✅ **The strong version is a decoy carrying the target argv.**
-Filed to memory.
+### 🔴 The harness was dead for eight days and nothing anywhere would have said so
+
+First run died: `Cannot read properties of undefined (reading 'getActiveProvider')`. The harness last
+changed **2026-07-26**; `AuthoringSession` began calling `AiClient.roleRequestFields` on
+**2026-08-08** (`5af9fde6`, LAS-009 roles), putting `AiConfigStore` on the authoring path for the
+first time. **It is in no `tsconfig`, no jest project, no jasmine suite** — esbuild strips types
+without checking them, so a green `build.mjs` proves only that it parsed.
+
+⚠️ **Any harness-derived figure in a task file was produced by a version of the instrument that may
+no longer start. Run it before quoting it.**
+
+Its store stub was wrong twice, and the second is the one that matters:
+
+1. esbuild's `__toESM` builds a namespace from **own keys**, and a `Proxy` with only a `get` trap has
+   none — every named import from the stub was `undefined`.
+2. 🔴 **Had that worked it would have been worse.** A callable noop is **truthy**, so
+   `getActiveProvider()` would have sent `resolveRole` down its override branch and spread a noop
+   `provider` *and* `model` onto every request. The honest stub says **AI is off** (`null`).
+
+⚠️ **`--model` is now effectively required** — *"omit for the registry default"* only ever worked
+through `AiConfigStore.getModel()`. Omitting it fails fast rather than silently measuring elsewhere.
+
+✅ **Two instrument checks worth repeating.** `AuthoringSession` sets no temperature and
+`claudeFrontier` declares `sampling: false`, so none is sent and the API default applies — the five
+runs per cell are **independent samples, not one result printed five times**. And the grader was
+pointed at the reported defect reconstructed (`Javascript2` + `var` + a regex) and **fails it**,
+while the real runs pass; it also scores a run that wrote no code `n/a`, never `pass`.
 
 ---
 
 ## 4. What to do next and why
 
-0. 🔴 **FIX-006 AC1 + AC2 are the whole remaining task there, and they need a live authoring run.**
-   Fixes 1+2 are prompt changes; no spec can grade them. Re-run the authoring measurements against
-   the reported request ("take a string, cut first char, convert to number, multiply by 0.9") and
-   check the model reaches for a Function/Expression, and writes `const`/`slice` not `var`/regex.
-   **Now the single most valuable agent-actionable item in the phase** — everything cheaper is done.
-1. 🟢 **`test:ci`.** Four sessions unrun, and §C's change lives in `views/BlocklyEditor/`, which the
-   jasmine tree does not import. Residual risk is jasmine *runtime* behaviour only — low, but nobody
-   has measured it, and the floor is freshly re-confirmed so a delta would be attributable.
-   ⚠️ **Announce before and after.**
-2. 🟢 **FIX-005's dead selectors** — delete the four dead rules, or retarget them to
+1. 🟢 **FIX-004 AC2's cloud half — now the top agent-actionable item.** ⚠️ `console.log` in the cloud
+   sandbox is **not stdout**: `sandbox.isolate.js` routes it to `_noodl_api_call('log', …)`. Expect
+   a Noodl log entry, not a terminal line.
+2. 🟢 **The FIX-006 half nobody has measured: does the planner over-decompose?** The report's first
+   complaint was a component that should not have existed, and §3 explains why the authoring harness
+   cannot see it. `PlanningSession` + `decomposition.ts:64-66` (the "logic cluster → component" rule)
+   and its counter-rule at `:117-121`. The harness now works and the corpus prompt exists, so this
+   is cheap. **File it as a new task rather than reopening FIX-006, which closed on its own ACs.**
+3. 🟢 **FIX-005's dead selectors** — delete the four dead rules, or retarget them to
    `.blocklyToolboxSelected`. ⚠️ **Retargeting is a visible redesign of the toolbox.** Needs §5.
-3. **FIX-004 AC2's cloud half.** ⚠️ `console.log` in the cloud sandbox is **not stdout**:
-   `sandbox.isolate.js` routes it to `_noodl_api_call('log', …)`. Expect a Noodl log entry.
 4. 🔴 **FIX-016 §1, FIX-017's remaining half, FIX-008 C, FIX-013** — all need Richard (§5).
 
 **Do not start** FIX-015, or FIX-021's slices A/B — they need Richard, not an agent.
@@ -154,28 +174,41 @@ Filed to memory.
 ### How to start here
 
 If you are driving anything Blockly, **read `driving-the-app-pointers.md` first** — s38 added the
-whole Logic Builder recipe to it, including the one that cost the most time: **the property panel is
-not where Blockly lives.** Selecting a `Logic Builder` node renders two buttons and *zero*
-injection divs; the workspace opens in a canvas tab via a `LogicBuilder.OpenTab` event. Reading the
-panel and concluding "no workspace" is a false negative that looks exactly like a broken feature.
+whole Logic Builder recipe, including the one that cost the most time: **the property panel is not
+where Blockly lives.** Selecting a `Logic Builder` node renders two buttons and *zero* injection
+divs; the workspace opens in a canvas tab via a `LogicBuilder.OpenTab` event.
+
+If you are grading a **prompt** change, the harness is the instrument and it is now working:
+
+```sh
+node packages/noodl-editor/scripts/aix002-measure/build.mjs
+node packages/noodl-editor/scripts/aix002-measure/dist/aix002-harness.cjs \
+  --provider=anthropic --model=claude-sonnet-5 --only=<slug> --code-guidance=on|off
+```
+
+🔴 **Always run both arms.** One arm cannot distinguish "the prompt worked" from "the model would
+have done it anyway", and on this evidence the second is the likelier explanation.
 
 ---
 
 ## 5. Owed by Richard
 
+- 🟢 **FIX-006 — the `Substring` question, NEW from s39.** With the compute/code-style blocks in the
+  prompt the model does the string surgery **inline in code** (7/10); with them removed it reaches
+  for the dedicated **`Substring` node** (10/10). Which is the better thing to hand a beginner? If
+  the node is, the blocks are nudging the wrong way and `CODE_STYLE`'s "prefer a string method"
+  clause wants a "…but prefer a node over code where one exists" companion. **Cheap either way.**
 - 🟢 **FIX-004 §C — the seam-category question.** Should `App Objects` also list the four
   object-shaped blocks (`get`/`set property` by expression, `the property names of`,
   `has property`)? And should `tests-unit/vfn-012/browser-blocks.spec.ts`'s byte-identity assertion
-  be narrowed to the claim its own title makes — *no existing block type id changes*? ✅ **s38's
-  drive does not change this**: the blocks work, findability is the open question. **Cheap either
-  way; both are one edit.**
-- 🟢 **FIX-006 AC4 — `Javascript2`, NEW.** Either add the id to the Script line, or narrow
-  `traps.ts:61-63`'s stated rule to the three recommendations. §3 above. **One edit either way.**
-- 🟢 **FIX-005 — the dead-selector decision.** §4 item 2. Delete or retarget. **Cheap either way.**
+  be narrowed to the claim its own title makes — *no existing block type id changes*?
+- 🟢 **FIX-006 AC4 — `Javascript2`.** Either add the id to the Script line, or narrow
+  `traps.ts:61-63`'s stated rule to the three recommendations. **One edit either way.**
+- 🟢 **FIX-005 — the dead-selector decision.** §4 item 3. Delete or retarget.
 - 🔴 **FIX-005 part 2 — the rename.** **A.** Keep `Runtime Variables` + a tooltip — cheapest.
   **B.** `Global Variables` + `App Config` → `App Settings`. **C.** Revert to `App Variables` and
   rename `App Config` — biggest sweep. ⚠️ **It reverses VFN-012 deliberately**, and the stated
-  reason ("the global ones") is the *opposite* of why it was renamed. Copy only, plus two specs.
+  reason ("the global ones") is the *opposite* of why it was renamed.
 - 🟢 **FIX-016 ruling 1.** **(a) Copy/default**: the row says only `Type` and reads `String`
   whether or not anything is stored. **(b) Parser asymmetry, RE-PRICED DOWN**: `Outputs.Done_1()` /
   `Outputs.Done.send()` get a value port and no Type row, but **throw at runtime by name and line**
@@ -193,14 +226,13 @@ panel and concluding "no workspace" is a false negative that looks exactly like 
 - 🔴 **FIX-021 slices A/B** — the six memory rulings. Slice 0 is done.
 - 🔴 **`scripts/library/check.ts` — LAND IT.** Attributed (LBR-002), verified, gate passes 58/58.
   It is **phase 65's work**, which is why no P66 session has committed it. ⚠️ **Unlanded work on a
-  PR-gated script is exactly what a sibling's `git add -A` sweeps.** Still uncommitted at s38.
+  PR-gated script is exactly what a sibling's `git add -A` sweeps.** Still uncommitted at s39.
 - 🔴 **`dev-docs/tasks/phase-23-visual-refresh/corpus/run.sh:17`** — an **executable** script whose
   `pkill` pattern matches MCP servers, **0 editors**, and never reaches `sweep()`. **Fix it, delete
-  it, or rule that a closed phase's corpus tooling may rot.** Six sessions have now declined.
-- 🟢 **MCP servers reached ~39 halves on this checkout and nothing reaps them.** A peer watched it
-  climb 19 → 25 → 33 → 39 across one day; `dev:stop` spares them **by design**, which is right for a
-  live peer and wrong for a dead session, so the population only grows. ⚠️ **Killing processes one
-  can only *infer* are orphaned is your call, not a passing session's.**
+  it, or rule that a closed phase's corpus tooling may rot.** Seven sessions have now declined.
+- 🟢 **MCP servers reached ~39 halves on this checkout and nothing reaps them.** `dev:stop` spares
+  them **by design** — right for a live peer, wrong for a dead session, so the population only grows.
+  ⚠️ **Killing processes one can only *infer* are orphaned is your call, not a passing session's.**
 - ⚠️ **The packaged-app repackage is still owed** (`noodl-mcp/dist` rebuilt s36, gitignored).
 
 ---
@@ -208,23 +240,25 @@ panel and concluding "no workspace" is a false negative that looks exactly like 
 ## 6. Standing constraints
 
 Work on `cline-dev`; **never `git stash`**; **absolute paths in every Bash call** — the cwd persists
-between calls and bit s38 twice in its first minute (`git show -- <path>` returned silently empty
-because the real path is `packages/noodl-editor/src/editor/src/…`, with an extra `src/editor/`;
-`--name-only` is how you get untruncated paths out of `--stat`).
+between calls, and a `cd`-prefixed `node -e` in s39 silently lost a shell variable.
 
 🔴 **`git commit <pathspecs>` — never `git add` at all.** The only exception is a **new** file:
-`add` and commit in the **same** command. ✅ **s38 changed no source and committed nothing**; the
-dozen dirty files at teardown were all peers'.
+`add` and commit in the **same** command. ✅ **s39 committed four files by pathspec** (`c6723f06`);
+the dirty tree at teardown was all peers'.
 
-⚠️ **This checkout is busy** — **19 peer sessions** during s38. ✅ **A peer will hold source saves if
+⚠️ **This checkout is busy** — **19 peer sessions** during s39. ✅ **A peer will hold source saves if
 you ask**: a webpack recompile HMR-reloads the renderer and **wipes every injected CDP global**
-mid-drive, which reads as the app losing state. One short message bought a clean window.
+mid-drive. s39 needed no editor and no announcement — **the authoring harness is plain Node, safe
+beside a live stack**, like `test:main`.
 
 ### 🔴 Measuring the memory index
 
-**`node`, never `python`.** Budget **17,510 UTF-16**. **At s38 close: 17,497 — 13 chars free.**
-🔴 **Do not add an index line.** File findings *into* files that already have pointers, which costs
-zero budget (s37 and s38 both did this).
+**`node`, never `python`.** Budget **17,510 UTF-16**.
+
+🔴 **AT s39 CLOSE IT IS 17,753 UTF-16 (17,660 code points) — 243 OVER, and s39 did not put it
+there.** It was already over on arrival; peers grew it. s39 added **no index line**, filing both its
+findings *into* memories that already have pointers. **Whoever next has slack should trim it**, and
+should do so knowing peers edit this file concurrently — read it immediately before writing.
 
 ```
 node -e 'const s=require("fs").readFileSync(process.argv[1],"utf8");console.log([...s].length,s.length)' \
@@ -233,19 +267,13 @@ node -e 'const s=require("fs").readFileSync(process.argv[1],"utf8");console.log(
 
 If those two numbers come out *equal*, your instrument is wrong, not the file.
 
-### Peer etiquette — two corrections from s38
+### Peer etiquette
 
-🔴 **`SendMessage` now needs the `[ref]` for EVERY name**, not just duplicated ones — 8 of 10
-bare-name sends failed in one batch. Copy `name [ref]` from a fresh `ListAgents`. (Oddly, the only
-bare names that *worked* were the duplicated pair. Don't reason about it; always send the ref.)
+🔴 **`SendMessage` needs the `[ref]` for EVERY name**, not just duplicated ones — 8 of 10 bare-name
+sends failed in one s38 batch. Copy `name [ref]` from a fresh `ListAgents`.
 
-🔴 **Do not let a name-addressed broadcast inherit a socket-sourced fact.** s38 told
-`opennoodl-84 [20954e]` *"you offered to verify"* when the offer had arrived on
-`uds:/tmp/cc-socks/74937.sock`. A third peer wrote back to say it wasn't them and that s38 might be
-waiting on a promise nobody made. **Reply to a socket on its socket.**
-
-⚠️ **Announce teardown to the FULL launch list, re-taking `ListAgents` first** — one name
-(`preflight-95`) arrived mid-window and had never received the launch notice.
+🔴 **Do not let a name-addressed broadcast inherit a socket-sourced fact.** **Reply to a socket on
+its socket.** ⚠️ **Announce teardown to the FULL launch list, re-taking `ListAgents` first.**
 
 ### Teardown
 
@@ -254,8 +282,6 @@ same sweep with `protectAncestors: false`. 🔴 **`pkill` never reaches `sweep()
 ✅ The reaping bug itself is **fixed and measured** (`2b758a87` + `4fd2cfdb`) — but **keep
 announcing**, because a reaper started before those commits still holds the old inert module.
 
-⚠️ **A survivor count is NOT proof the shield was exercised, and a positive control on `electron`
-lines is weaker than it looks** — those lines are mostly MCP servers matching the *binary path*, so
-they prove `ps` and your grep run, **not** that `Electron . --dev` would have fired. The strong
-version is a **decoy carrying the target argv**. ⚠️ **Compare pids, never counts** — MCP totals move
-minute to minute (22, 24 and 39 were all read in the same minute by three sessions).
+⚠️ **A survivor count is NOT proof the shield was exercised**, and a positive control on `electron`
+lines is weaker than it looks — those lines are mostly MCP servers matching the *binary path*. The
+strong version is a **decoy carrying the target argv**. ⚠️ **Compare pids, never counts.**
