@@ -118,6 +118,20 @@ it should be its own task. It matters to this phase because a kit node placed on
 currently unmeasurable, so any CN-0xx verification that puts a kit on a second page will silently
 measure nothing. Worth a task number before tier 4.
 
+## ⚠️ For CN-014 (the dev loop), before you measure anything
+
+Reported 2026-08-16 by the phase-66 FIX-016 session (socket `33742`); **not reproduced here**, so
+treat it as a lead rather than a result — but it would invalidate a measurement if it holds:
+
+- An **always-on `<webview>` "Noodl Viewer" runtime exists with no preview action taken**, and
+  **`cdp targets` does not list it** — `curl :9222/json/list` does. CN-014's brief is *"measure before
+  specifying"*, and this is exactly the kind of thing that makes a preview/HMR measurement read as a
+  null: you can conclude "nothing is running" from the tool that hides it.
+- Related, same source: the runtime pushes `setDynamicPorts` for a **normally-created** node (4
+  witnessed), and `fromJSON + addRoot` is the **product's own creation path**
+  (`NodePicker.utils.ts:15-41`), not a fixture artefact. This **corroborates** the
+  `node.dynamicports` note below rather than changing it — the field is a runtime-pushed cache.
+
 ## Cross-phase, still live
 
 - 🔴 **Phase 67 / UNI-010 criterion 3: CN-001 landed FIRST.** The five-lesson run had not started, so
