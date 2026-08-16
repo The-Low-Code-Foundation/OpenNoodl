@@ -756,6 +756,40 @@ sanctioned next move is a `$ref`ed node schema, since the node schema is inlined
 against those same 57 tokens, and were scoped against the old 8,200 figure. Their numbers have been
 corrected; anything this phase adds (a `derive_starter`) competes with them.
 
+> ### 🔴 The last sentence was wrong, and the correction is more useful than the warning (2026-08-16)
+>
+> `derive_starter` shipped and **cost zero**. Measured, same fixture, same normalisation: **8,223
+> tokens with it and 8,223 without**, 57 headroom either side. A deferred group's tools never reach
+> `tools/list`, and the only resident trace of one is `find_tools`' `(N tools)` — where *"3 tools"*
+> and *"4 tools"* are the same length.
+>
+> **So "the surface budget" is not one budget.** Three different things were being called by one name:
+>
+> | Adding | Costs | Because |
+> |---|---|---|
+> | a tool to an **existing deferred group** | **0** | it is never advertised, and the group's own line does not grow |
+> | a **new deferred group** | ~**25** | one catalogue entry and one `purpose`, both resident inside `find_tools` |
+> | a **resident** tool | its whole schema — **276** for `derive_starter` | resident means re-sent every turn |
+>
+> ⚠️ **The warning to CN-006/CN-009 is therefore narrower and sharper**: if either adds a deferred
+> tool to a group that already exists it is free, and only a new group or a resident slot spends the
+> 57. That is a design lever, not just an accounting note.
+>
+> 🔴 **And the way to get it wrong is invisible.** Two mis-registrations make a tool silently resident:
+> registering on `server` rather than the `rec` proxy (caught by `toolDisclosure.test.ts`'s third
+> property) and registering **after** `server.ts`'s single `disclosure.applyPolicy()` call — which
+> **nothing** catches unless the tool is big enough to breach the bar on its own. Nothing asserts that
+> a deferred group's tools are actually absent from `tools/list`; the disclosure spec hand-lists
+> `provision_backend` and `create_project`, and has never named the `lesson` group. **A one-line
+> manifest-derived assertion would close it**, and is the cheapest hardening available here.
+>
+> ⚠️ **Method note, because it nearly went the other way:** the first measurement said **276 tokens**
+> and I would have reported it. It was wrong because the measuring harness registered the tool on the
+> raw server — *the exact mis-registration the suite's third property exists to catch*, walked into
+> while measuring it. The number only came right after registering through `recordTools` **and**
+> re-running `applyPolicy`. **A measurement instrument has the same failure modes as the code it
+> measures.**
+
 ### Blocker 2 — phase 60's signal wording: **landed upstream, one downstream edit still owed**
 
 **Phase 60 is 7 of 7 built, merged and closed 2026-08-11** — not the three tasks the memory index

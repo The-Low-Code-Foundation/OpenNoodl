@@ -534,6 +534,28 @@ reader can disagree with individually rather than as a verdict.
    > commit another live session has just made, on a checkout that session is still working in, is a
    > worse hazard than a mixed message.
    >
+5. ✅ **DONE 2026-08-16 (slice 5) — `derive_starter`, and this run is where its argument comes from.**
+   Not on this list when it was written, because §7's zero-refusals line and §11's reading of it are
+   what turned "not ergonomic" (slice 2's phrasing) into a defect worth building against: **every
+   starter here was built by subtraction from the solution, the ghostwriting refusal fired zero times
+   in five lessons, and that number is a property of my authoring route rather than of the trap.** A
+   model building the two projects independently walks straight into it, because the natural way to
+   author a lesson is to build the finished thing and describe it.
+
+   `derive_starter({ solution_dir, starter_dir, manifest })` subtracts each graded step from a copy of
+   the solution and **replays every graded step against what it produced**, writing nothing if one
+   still holds.
+
+   🔴 **The postcondition is measured rather than guaranteed, and that is deliberate.** A derivation
+   that promised F2′ by construction would make the gate's F2′ check vacuous for every lesson authored
+   this way — *a check that cannot fail is one nobody audits*. Replaying through the real evaluator
+   keeps F2′ meaningful on a second, independent code path, and both arms are pinned: the derived
+   starter passes it, the solution used as its own starter still fails it.
+
+   ⚠️ **What it does not fix is §9's gradient** — a lenient condition now produces a lenient
+   *starter* as well as a lenient check. The brief says so at the point of use; F6 is still the only
+   thing that catches it.
+
    > ⚠️ **And the gate numbers split across the sweep, which is worth stating rather than smoothing.**
    > `test:main` **206 / 3196** was measured on slice 4 *alone* and is exactly the floor's 205 / 3171
    > plus this slice's one file and 25 specs — predicted, not discovered, and therefore attributable.

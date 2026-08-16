@@ -406,9 +406,103 @@ lesson format and grading runner (criteria 3 and 4 there are this task's prerequ
 > - **§8.2** — F4 renders only the Router's `startPage`, so a defect anywhere else is invisible
 >   *including to this new check*, which can only see what was rendered. Belongs to phase 69's
 >   CN-001 (upstream: `render_report` has the same blind spot).
-> - **The F4 packaged-install scope call is still Richard's.** `scripts/` is not in `build.files`, so
->   on a packaged install F4 is checked by nobody — and a sharper F4 that never runs is still a
->   sharper F4 that never runs.
+> - ✅ ~~**The F4 packaged-install scope call is still Richard's.**~~ **RULED 2026-08-16 — ship the
+>   harness with the sidecar.** Scoped as **[UNI-012](UNI-012-F4-ON-A-PACKAGED-INSTALL.md)** and
+>   deliberately not built: it is verifiable only against a packaged build. ⚠️ **Two facts measured
+>   while scoping it, and the first qualifies the ruling** — the harness needs a **system Chrome**
+>   (`render-report.js` probes for one and refuses without it), so shipping it makes
+>   `allow_unrendered` *rare*, not unnecessary; and the obvious alternative of rendering through the
+>   sidecar's own Electron is closed by `ELECTRON_RUN_AS_NODE=1`, which is load-bearing and measured.
+>   **Both halves of the original either/or are probably wanted.**
+
+> ## ✅ SLICE 5 — `derive_starter` 2026-08-16 (`1332e0d1`): the starter is subtracted, not written
+>
+> The handover's item 1, and the criterion-3 run supplied the argument for it: **the ghostwriting
+> refusal fired zero times in five lessons**, and §11 reads that as an upper bound rather than a
+> result, because every starter in the run was built by subtraction from the solution. A model
+> building the two projects independently is far more exposed — the natural way to author a lesson is
+> to build the finished thing and describe it, at which point the starter you ship **is** the
+> solution. **25 specs** (15 editor, 10 MCP).
+>
+> | Shipped | Where |
+> |---|---|
+> | **The retraction engine**, pure — files in, files out | [`models/lessonstarter.ts`](../../../packages/noodl-editor/src/editor/src/models/lessonstarter.ts) |
+> | **The writer** — copy the solution, overwrite what changed | [`noodl-mcp/src/lessons/starterWriter.ts`](../../../packages/noodl-mcp/src/lessons/starterWriter.ts) |
+> | **`derive_starter`**, a fourth tool in the deferred `lesson` group | `noodl-mcp/src/tools/lessonTools.ts` |
+> | **`stepConditions` exported** so the deriver and the gate cannot disagree about which steps count | `models/lessonbundleverify.ts` |
+>
+> 🔴 **The condition verb decides the granularity, and that is the whole design.** "The learner adds a
+> Text" and "the learner types into the Text that is already there" are different lessons and no
+> amount of reading the prose settles which one this is — but the author already chose a verb.
+> `hasType`/`exists`/`hasLabel`/`hasPort` remove the node; `hasParams`/`paramsEqual` keep it and unset
+> those parameters; `connection` removes the wire; `routerLists` un-lists the page; `metadata` unsets
+> the key.
+>
+> ⚠️ **The one-directional authoring gradient shows up here too, and is not made worse or fixed.** A
+> lenient condition produces a lenient subtraction — a starter that hands part of the answer over.
+> The brief now says so at the point of use; F6 is still the only thing that catches it.
+>
+> ### 🔴 The postcondition is MEASURED, and that is what keeps F2′ alive
+>
+> A derivation that guaranteed F2′ *by construction* — and said so in its header — would make the
+> gate's F2′ check vacuous for every lesson authored this way, and **a check that cannot fail is one
+> nobody audits.** So every graded step is replayed against the derived files through the real
+> evaluator, and nothing is written if any step still holds. F2′ then still means something at
+> `create_lesson`, on a second and independent code path. **Both arms are in the spec**: the derived
+> starter passes F2′, and the same lesson with the solution used as its own starter still fails it.
+>
+> ### ✅ Graded as a control pair — and the control graded the tests
+>
+> Re-run with the retraction branch disabled: **13 of 15 new specs fail, all 98 pre-existing uni-010
+> specs pass.** 🔴 **The first control run had only 11 failing, and the two survivors were the useful
+> half.** One asserted a refusal that is indistinguishable from the mechanism being absent — slice 4's
+> own finding, reproduced in my specs one slice later — and the other asserted *"the solution is
+> unchanged"*, which is true of a function that returns immediately. Both now assert the **reason**
+> and the **work done**. *Budget the disable-the-branch run to grade the tests as well as the feature*
+> was written into the handover, and it paid again.
+>
+> ### 🔴 The handover's cost premise was FALSE, and it was measured rather than argued
+>
+> It read: *"⚠️ Unlike `routerLists`, this one really does cost surface — it is a tool, not a
+> condition verb."* It costs **nothing**.
+>
+> | surface | tokens |
+> |---|---|
+> | resident surface **without** `derive_starter` | **8,223** — 57 headroom |
+> | resident surface **with** it | **8,223** — 57 headroom |
+>
+> The only resident mention of a deferred group is `find_tools`' `(N tools)`, and *"3 tools"* and
+> *"4 tools"* are the same length. **What costs surface is a *resident* tool** — this one measures
+> **276 tokens** if it lands there, which is 219 over the bar — **or a whole new group** (25 tokens,
+> which is what UNI-010 spent). 🔴 **So phase 69's CN-006/CN-009 are not competing with this**, and
+> the sanctioned `$ref` fallback was not needed.
+>
+> ⚠️ **Two ways to make it accidentally cost 276, and the first measurement hit both.** Registering on
+> `server` instead of the `rec` proxy — `toolDisclosure.test.ts`'s third property catches that — and
+> registering **after** `server.ts`'s single `disclosure.applyPolicy` call, which nothing catches
+> unless the tool is large enough to breach the bar. **Nothing asserts that a deferred group's tools
+> are actually hidden**; the disclosure spec hand-lists `provision_backend` and `create_project` and
+> has never mentioned the lesson group.
+>
+> ### ✅ The purity claim was measured, per the fifth amendment
+>
+> Two builds, the control produced by neutralising the export and the registration so esbuild
+> tree-shakes both modules away — **and the control was verified to be one**: `deriveLessonStarter` is
+> absent from it, while `readRouterPagesValue` is already present (3 occurrences).
+>
+> ```
+> without   5,917,637 bytes
+> with      5,936,471 bytes      +18,834 — this slice's own source, no new dependency
+> ```
+>
+> ### ⚠️ Two limits, recorded rather than designed around
+>
+> - **No per-step override.** A step whose default subtraction is wrong is built by hand — exactly
+>   today's position, so nothing regresses. Inventing an override vocabulary with no evidence about
+>   which ones are wanted would be guessing.
+> - **`isVisualRoot` is not retractable.** Clearing the project's root node leaves a starter that
+>   renders nothing at all, which is a worse starter than one that ghostwrites a step. It is reported,
+>   the postcondition then fails honestly, and the author is told which step and why.
 
 ## Premise
 
