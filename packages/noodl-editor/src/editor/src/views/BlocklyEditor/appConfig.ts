@@ -9,12 +9,23 @@
  * The toolbox already had a category called **App Variables**, and it is *not* this. That one
  * generates `Noodl.Variables["name"]` — the runtime bag written by Variable nodes, mutable,
  * created by being used. This one generates `Noodl.Config["key"]` — the variables *declared* in
- * Settings → Project → Custom Variables, typed, and immutable at runtime.
+ * Settings → Project → App Config, typed, and immutable at runtime.
  *
- * Two vocabularies, two lifetimes, and one of them was wearing the other's name. So the old
- * category is now **Runtime Variables** and this one is **App Config**. That rename is copy
- * only: the block type ids `noodl_get_variable` / `noodl_set_variable` are in every saved
- * project and do not change (VFN-012 criterion 5).
+ * Two vocabularies, two lifetimes, and one of them was wearing the other's name.
+ *
+ * 🔴 **VFN-012 resolved that by renaming the other category to `Runtime Variables`. FIX-005
+ * reversed it: `Noodl.Variables` is `App Variables` again**, because every other `Noodl.*` shelf
+ * here is `App <something>` and one vocabulary beats one disambiguation. See the note on
+ * `ToolboxLabels.noodlVariables` for the argument; do not re-litigate it from this side.
+ *
+ * ✅ **What tells the two apart now is this file, not a category name**: the flyout names
+ * {@link APP_CONFIG_SETTINGS_PATH}, so the declared bag says where it is declared and the
+ * runtime bag does not — which is a difference a builder can act on, where two adjectives were
+ * not. The settings section was called *Custom Variables* until FIX-005 and is now **App
+ * Config**, so all three surfaces say one word.
+ *
+ * Both renames are copy only: the block type ids `noodl_get_variable` / `noodl_set_variable`
+ * are in every saved project and do not change (VFN-012 criterion 5).
  *
  * ## Why everything but the field lives here, with no Blockly import
  *
@@ -52,8 +63,15 @@ export const APP_CONFIG_HUE = '90';
 /** Flyout button callback id, registered on the workspace by `BlocklyWorkspace`. */
 export const APP_CONFIG_SETTINGS_BUTTON = 'appConfigOpenSettings';
 
-/** Where a builder goes to declare one. Named, not gestured at — VFN-012 criterion 6. */
-export const APP_CONFIG_SETTINGS_PATH = 'Settings → Project → Custom Variables';
+/**
+ * Where a builder goes to declare one. Named, not gestured at — VFN-012 criterion 6.
+ *
+ * ⚠️ **This string must match the settings panel's own section title**
+ * (`SettingsPanel/sections/VariablesSection.tsx`), which FIX-005 renamed from *Custom Variables*
+ * to *App Config*. It is a route somebody follows with their eyes; a stale one sends them to a
+ * heading that is not there.
+ */
+export const APP_CONFIG_SETTINGS_PATH = 'Settings → Project → App Config';
 
 /** The dropdown entry shown when the project has declared nothing at all. */
 export const NO_CONFIG_VARIABLES_OPTION = '(no app config variables)';

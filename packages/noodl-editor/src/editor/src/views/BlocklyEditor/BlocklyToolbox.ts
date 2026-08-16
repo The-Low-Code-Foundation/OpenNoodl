@@ -65,10 +65,27 @@ export interface ToolboxLabels {
   noodlInputsOutputs: string;
   noodlSignals: string;
   /**
-   * ⚠️ **`Noodl.Variables`, not the app's config.** This was called *App Variables* until
-   * VFN-012, which is the name a builder reads as *"the variables I declared in app settings"* —
-   * a different bag entirely, now under {@link ToolboxLabels.noodlAppConfig}. The label changed;
-   * the block type ids `noodl_get_variable` / `noodl_set_variable` did not, and must not.
+   * `Noodl.Variables` — the runtime bag written by Variable nodes: mutable, created by being
+   * used, gone when the page reloads.
+   *
+   * 🔴 **Called `App Variables`, and this name has been round the houses. Read this before
+   * changing it again.**
+   *
+   * VFN-012 renamed it *away* from `App Variables` to `Runtime Variables`, so that
+   * `Noodl.Config` could be `App Config` without two shelves reading as the same thing.
+   * FIX-005 reverses that, on Richard's ruling and for the opposite reason: every other
+   * `Noodl.*` surface in this toolbox is already `App <something>` — `App Objects`
+   * (`Noodl.Objects`), `App Arrays` (`Noodl.Arrays`), `App Config` (`Noodl.Config`) — so
+   * `Runtime Variables` was the one shelf named after its *lifetime* while its four neighbours
+   * were named after their API. One vocabulary beats one disambiguation.
+   *
+   * ⚠️ **VFN-012's concern was real and is not dismissed**, it is answered elsewhere: the two
+   * bags are told apart by `App Config`'s own flyout, which names
+   * {@link appConfig.APP_CONFIG_SETTINGS_PATH} — *"Settings → Project → App Config"* — so the
+   * declared bag says where it is declared. A category name was never going to carry that.
+   *
+   * 🔴 **Copy only, both times.** The block type ids `noodl_get_variable` /
+   * `noodl_set_variable` are in every saved project and did not change under either rename.
    */
   noodlVariables: string;
   noodlObjects: string;
@@ -108,7 +125,7 @@ export interface ToolboxLabels {
 export const DEFAULT_TOOLBOX_LABELS: ToolboxLabels = {
   noodlInputsOutputs: 'Inputs / Outputs',
   noodlSignals: 'Signals',
-  noodlVariables: 'Runtime Variables',
+  noodlVariables: 'App Variables',
   noodlObjects: 'App Objects',
   noodlArrays: 'App Arrays',
   noodlAppConfig: 'App Config',
@@ -127,6 +144,147 @@ export const DEFAULT_TOOLBOX_LABELS: ToolboxLabels = {
   // or "Procedures", all of which are words a builder has to already know.
   myBlocks: 'My Blocks'
 };
+
+/**
+ * Toolbox category names per language. Only languages translated with confidence appear
+ * here; the rest fall back to {@link DEFAULT_TOOLBOX_LABELS}.
+ */
+const TOOLBOX_LABELS: Record<string, ToolboxLabels> = {
+  fr: {
+    noodlInputsOutputs: 'Entrées / Sorties',
+    noodlSignals: 'Signaux',
+    noodlVariables: "Variables de l'app",
+    noodlObjects: "Objets de l'app",
+    noodlArrays: "Tableaux de l'app",
+    noodlAppConfig: "Config de l'app",
+    noodlLibraries: 'Bibliothèques & navigateur',
+    logic: 'Logique',
+    loops: 'Boucles',
+    math: 'Maths',
+    text: 'Texte',
+    lists: 'Listes',
+    data: 'Données',
+    debug: 'Débogage',
+    variables: 'Variables',
+    functions: 'Fonctions',
+    myBlocks: 'Mes blocs'
+  },
+  es: {
+    noodlInputsOutputs: 'Entradas / Salidas',
+    noodlSignals: 'Señales',
+    noodlVariables: 'Variables de la app',
+    noodlObjects: 'Objetos de la app',
+    noodlArrays: 'Arreglos de la app',
+    noodlAppConfig: 'Config de la app',
+    noodlLibraries: 'Bibliotecas y navegador',
+    logic: 'Lógica',
+    loops: 'Bucles',
+    math: 'Matemáticas',
+    text: 'Texto',
+    lists: 'Listas',
+    data: 'Datos',
+    debug: 'Depuración',
+    variables: 'Variables',
+    functions: 'Funciones',
+    myBlocks: 'Mis bloques'
+  },
+  de: {
+    noodlInputsOutputs: 'Eingänge / Ausgänge',
+    noodlSignals: 'Signale',
+    noodlVariables: 'App-Variablen',
+    noodlObjects: 'App-Objekte',
+    noodlArrays: 'App-Arrays',
+    noodlAppConfig: 'App-Konfiguration',
+    noodlLibraries: 'Bibliotheken & Browser',
+    logic: 'Logik',
+    loops: 'Schleifen',
+    math: 'Mathematik',
+    text: 'Text',
+    lists: 'Listen',
+    data: 'Daten',
+    debug: 'Debug',
+    variables: 'Variablen',
+    functions: 'Funktionen',
+    myBlocks: 'Meine Blöcke'
+  },
+  it: {
+    noodlInputsOutputs: 'Ingressi / Uscite',
+    noodlSignals: 'Segnali',
+    noodlVariables: "Variabili dell'app",
+    noodlObjects: "Oggetti dell'app",
+    noodlArrays: "Array dell'app",
+    noodlAppConfig: "Config dell'app",
+    noodlLibraries: 'Librerie e browser',
+    logic: 'Logica',
+    loops: 'Cicli',
+    math: 'Matematica',
+    text: 'Testo',
+    lists: 'Liste',
+    data: 'Dati',
+    debug: 'Debug',
+    variables: 'Variabili',
+    functions: 'Funzioni',
+    myBlocks: 'I miei blocchi'
+  },
+  nl: {
+    noodlInputsOutputs: 'Invoer / Uitvoer',
+    noodlSignals: 'Signalen',
+    noodlVariables: 'App-variabelen',
+    noodlObjects: 'App-objecten',
+    noodlArrays: 'App-arrays',
+    noodlAppConfig: 'App-configuratie',
+    noodlLibraries: 'Bibliotheken & browser',
+    logic: 'Logica',
+    loops: 'Lussen',
+    math: 'Wiskunde',
+    text: 'Tekst',
+    lists: 'Lijsten',
+    data: 'Gegevens',
+    debug: 'Debug',
+    variables: 'Variabelen',
+    functions: 'Functies',
+    myBlocks: 'Mijn blokken'
+  },
+  'pt-br': {
+    noodlInputsOutputs: 'Entradas / Saídas',
+    noodlSignals: 'Sinais',
+    noodlVariables: 'Variáveis do app',
+    noodlObjects: 'Objetos do app',
+    noodlArrays: 'Arrays do app',
+    noodlAppConfig: 'Config do app',
+    noodlLibraries: 'Bibliotecas e navegador',
+    logic: 'Lógica',
+    loops: 'Laços',
+    math: 'Matemática',
+    text: 'Texto',
+    lists: 'Listas',
+    data: 'Dados',
+    debug: 'Depuração',
+    variables: 'Variáveis',
+    functions: 'Funções',
+    myBlocks: 'Meus blocos'
+  }
+};
+
+/**
+ * The category names for a language code, English for anything untranslated.
+ *
+ * 🔴 **Split out of {@link applyLanguage} so the translations can be graded at all.** That
+ * function loads Blockly and a message bundle first, and **catches every failure into
+ * `DEFAULT_TOOLBOX_LABELS`** — so a spec calling it could not tell "this locale is translated
+ * correctly" from "the message bundle would not load in the test runner", and the second reads
+ * as a pass for any assertion English happens to satisfy. This is the same table `applyLanguage`
+ * returns, reachable without the import that can fail.
+ *
+ * ⚠️ A caller wanting the *side effect* — `Blockly.setLocale`, which is what actually translates
+ * block text — still needs `applyLanguage`. This returns copy, and only copy.
+ */
+export function toolboxLabelsFor(code: string): ToolboxLabels {
+  return TOOLBOX_LABELS[code] || DEFAULT_TOOLBOX_LABELS;
+}
+
+/** The language codes with translated category names. English is the fallback, not a member. */
+export const TRANSLATED_TOOLBOX_LANGUAGES = Object.keys(TOOLBOX_LABELS);
 
 function category(name: string, colour: string, blocks: string[]) {
   return {

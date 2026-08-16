@@ -243,6 +243,109 @@ package's copy-and-token specs live. `test:main` caught it; the grep would not h
 🔴 **Still open in this task: the rename** to `App Variables` / `App Config`. Not started here — it
 is the `.jsx`/`test:ci` half, and it knowingly reverses VFN-012.
 
+## ✅ Part 2 — the rename BUILT 2026-08-16 (session 46). Acceptance 5 closes; not driven.
+
+Four surfaces, one word. `Noodl.Variables` is **App Variables** again; the declared bag is **App
+Config** everywhere, including the settings panel that was calling it something else entirely.
+
+| surface | before | after |
+|---|---|---|
+| `BlocklyToolbox.ts` English label | `Runtime Variables` | **`App Variables`** |
+| `BlocklyLocale.ts` ×6 locales | *Variables d'exécution*, *Laufzeit-Variablen*, … | each mirrors **its own** `App Objects` / `App Arrays` wording — `Variables de l'app`, `App-Variablen`, `Variabili dell'app`, `App-variabelen`, `Variáveis do app`, `Variables de la app` |
+| `appConfig.ts` `APP_CONFIG_SETTINGS_PATH` | `Settings → Project → Custom Variables` | **`… → App Config`** |
+| `VariablesSection.tsx` section title | `Custom Variables` | **`App Config`** |
+
+⚠️ **The locales were not translated from the English.** Each took the "app" wording that language
+*already* used for `App Objects` and `App Arrays` — which are not being changed — so the renamed
+shelf sits *with* its neighbours in every language rather than merely being a correct translation.
+That is the claim the new spec grades, and it is why the marker is per-language.
+
+🔴 **`App Config` is the whole vocabulary now, and the settings panel is where that bit down.** The
+section was called *Custom Variables* — a **third** name for the second of two bags — while
+`APP_CONFIG_SETTINGS_PATH` told builders to go to *"Settings → Project → Custom Variables"*. Both
+moved together, and a spec now requires the route's last segment to equal the heading's text,
+because that pair is a route somebody follows with their eyes and no gate watched it.
+
+### 🔴 The finding: nothing could grade the six locales, and nothing ever had
+
+`toolbox-vocabulary.spec.ts` failed to even load on its first run:
+
+```
+Cannot find module '@noodl-utils/editorsettings' from '…/BlocklyEditor/BlocklyLocale.ts'
+```
+
+**`BlocklyLocale.ts` imports editor settings at module scope, so the entire translation table was
+unreachable from `tests-unit` — the only runner that could have graded it.** Six languages of
+category copy, ungated since VFN-012 shipped them.
+
+✅ **Fixed the way this codebase already fixes it:** the table moved into `BlocklyToolbox.ts`, which
+imports nothing a plain-Node runner cannot resolve — the same reason `convertModes.ts` and
+`objectData.ts` exist as separate import-free modules (both recorded in FIX-004). `BlocklyLocale`
+keeps the Blockly message loaders and `applyLanguage`, and now calls `toolboxLabelsFor`.
+
+🔴 **And note why testing through `applyLanguage` would have been worse than not testing at all.**
+It loads Blockly and a message bundle, and **catches every failure into `DEFAULT_TOOLBOX_LABELS`** —
+so a spec calling it cannot distinguish *"this locale is translated correctly"* from *"the bundle
+would not load under jest"*, and the second silently satisfies any assertion English happens to
+meet. The accessor was split out to get a reading that is not the fallback, and the spec asserts
+`labels !== DEFAULT_TOOLBOX_LABELS` explicitly so a fallback cannot masquerade as a pass.
+
+### The four mutants — one per surface, because a rename fails at the surface nobody listed
+
+| mutant | result |
+|---|---|
+| **M5** — leave the German locale on `Laufzeit-Variablen` | 🔴 2 failed |
+| **M6** — settings section keeps `Custom Variables` | 🔴 2 failed |
+| **M7** — `APP_CONFIG_SETTINGS_PATH` goes stale | 🔴 3 failed |
+| **M8** — English label never moves | 🔴 1 failed here **+ 1 in `vfn-012/app-config-block.spec.ts`** |
+
+🔴 **The first attempt at this table was a dead instrument, and it reported four passes.** The
+mutation helper ran via `node -e`, where `process.argv[1]` is the first *user* argument, not a
+script path — so every substitution tried to open the search pattern as a filename, `ENOENT`'d, and
+**mutated nothing**. Four suites then ran against unmodified source and printed `7 passed`, which is
+exactly the shape of a controls table that proves nothing. It was caught only because node's error
+was loud; a helper that failed silently would have published the table above with no mutant behind
+it. ✅ **The rerun used a script file, and each row prints `[mutant applied]` before its suite.**
+
+### ⚠️ Two corrections to this task file's own blast-radius list (line 70)
+
+- **`browser-blocks.spec.ts:299` does not pin the string.** It reads
+  `DEFAULT_TOOLBOX_LABELS.noodlVariables` **by reference**, so it followed the rename for free. The
+  only spec that pinned the literal was `app-config-block.spec.ts:263`, updated deliberately with
+  the reversal recorded in place.
+- **There is no `.jsx` in this rename's blast radius**, so line 244's *"it is the `.jsx`/`test:ci`
+  half"* does not hold. `VariablesSection.tsx` is TypeScript and `tsc` reads it; the only jasmine
+  spec naming `SettingsPanel` grades a **route module**, not this section.
+
+### Gates
+
+| Gate | Reading |
+|---|---|
+| `noodl-editor` `test:main` (**full**) | ⚠️ **225 of 226 suites, 3498 / 3499** — the one failure is `bld-004/reasoningChannel`, below |
+| `--findRelatedTests` over all four changed source files | ✅ **26 suites / 492 tests, 0 failed** |
+| `tsc --noEmit -p …/tsconfig.json` | ✅ 0 errors |
+| `tsc --noEmit -p …/tsconfig.tests.json` | ✅ 0 errors |
+
+✅ **The failure is s44's known load-flake, and it was attributed rather than assumed.**
+`bld-004/reasoningChannel` **passed 3/3 in isolation**, is **absent from `--findRelatedTests`** for
+every file this session touched, and **passed in this session's own earlier full run at 22:21**
+(FIX-004's gates, same tree bar these edits). Three independent readings, none of them "it looks
+unrelated".
+
+⚠️ **`test:ci` not taken, for FIX-004's reasons in the same session** — no jasmine spec reads any of
+these modules, and a **peer's editor stack was live throughout** (`start.ts`, three webpacks, an
+editor on 9222) with uncommitted `noodl-core-ui` edits, so a run would have compiled their working
+tree. Floor stays inherited: **2843 / 6 @ 39393**.
+
+### 🔴 Not driven — and this one genuinely wants a drive
+
+Criterion 5 is a copy claim and the specs close it, but **nobody has seen the flyout say `App
+Variables`, and nobody has opened Settings → Project and seen `App Config`.** The settings-panel half
+is graded by **reading source text** for the `title` prop — stated as a limitation in the spec
+itself: it cannot prove the section renders or that `CollapsableSection` draws its title at all.
+✅ **It shares a rig with FIX-004 §C's owed drive** — same toolbox, and the `App Objects` category
+this session also changed.
+
 ## 🔴 A much larger idea the rename exposed — NOT this task
 
 Richard: *"the ultimate would be moving the whole damn thing down to 'Variables / Functions / Blocks'

@@ -259,10 +259,24 @@ describe('VFN-012 criterion 2 — deleting the variable must not change the prog
 });
 
 describe('VFN-012 criterion 5 — the rename is copy, and only copy', () => {
-  it('renames the category that was claiming this one’s name', () => {
-    expect(DEFAULT_TOOLBOX_LABELS.noodlVariables).toBe('Runtime Variables');
+  /**
+   * 🔴 **This assertion said `Runtime Variables` until FIX-005, and the change is a reversal of
+   * VFN-012's own ruling, not a drift.**
+   *
+   * VFN-012 renamed `App Variables` → `Runtime Variables` so `Noodl.Config` could be `App
+   * Config` without two shelves reading alike. Richard ruled the other way in session 42: every
+   * other `Noodl.*` shelf is `App <something>`, so the runtime bag goes back to `App Variables`
+   * and the two are told apart by `App Config`'s flyout naming where its variables are
+   * declared — which VFN-012's own criterion 6 already required.
+   *
+   * ⚠️ **Criterion 5 is untouched by any of it**, and that is the half worth defending: the
+   * claim was always *"the rename is copy, and only copy"*. The test below is the one that
+   * says so, and it has never changed.
+   */
+  it('names the runtime bag after its API, like every other Noodl shelf', () => {
+    expect(DEFAULT_TOOLBOX_LABELS.noodlVariables).toBe('App Variables');
     expect(DEFAULT_TOOLBOX_LABELS.noodlAppConfig).toBe('App Config');
-    // Two shelves, two names, neither readable as the other.
+    // Still two shelves and two names — the reversal did not collapse them into one string.
     expect(DEFAULT_TOOLBOX_LABELS.noodlVariables).not.toBe(DEFAULT_TOOLBOX_LABELS.noodlAppConfig);
   });
 
