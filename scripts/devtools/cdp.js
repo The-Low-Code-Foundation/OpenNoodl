@@ -141,7 +141,14 @@ async function appTarget(name = TARGET) {
     const open = pages.map((p) => p.url).join('\n    ') || '(none)';
     throw new Error(
       `No '${name}' page target found. Open pages:\n    ${open}\n` +
-        (name === 'viewer' ? 'The viewer window only exists while a project preview is running.' : '')
+        // Do NOT restore "only exists while a project preview is running" — it
+        // contradicts this module's own doc above and sends a caller who has a
+        // project open away from a target that is very often there. `viewer`
+        // matches the detached preview window *or* the editor's embedded
+        // preview `webview`, and the embedded one has been seen attached with
+        // no preview started. What is reliably true is the precondition below.
+        (name === 'viewer' ? 'No viewer target: `viewer` matches the detached preview window or the\n' +
+          "    editor's embedded preview webview, and neither exists before a project is open." : '')
     );
   }
   return match;
