@@ -172,6 +172,83 @@ path so it stays fixed.
   `unavailable`. **Omitted entirely** for a project with no `noodl_modules`. No tool was added, so the
   tool-surface budget is untouched.
 
+## ✅ Slice 3 landed 2026-08-16 — the editor caller, and the agreement check D3 asked for
+
+The editor now installs the same overlay from the node library the viewer already sent it, and the
+two routes are compared against each other in a test. ✅ **D3 is discharged.**
+
+**What was built.** `validation/kitOverlay.ts` maps `NodeLibrary.instance.library` with the shared
+`@nodegx/kit-catalog` (no execution, no child process, no disk — the ruling's whole point);
+`validation/catalog.ts` grew the same overlay seam the MCP server has (`setCatalogOverlay`,
+`catalogGeneration`, `projectCatalog`), and `NodeLibrary.loadLibrary()` — the one function every
+library change goes through, including a bare `reload()` — installs it. So `loadDefaultCatalog()`,
+and with it `SemanticValidator`, the Problems panel, the AI authoring gate, `docLint` and the import
+engine, now know the open project's own node types.
+
+### 🔴 Measured in the running editor, with the control beside it
+
+Not in jest — in the app, with `packages/noodl-mcp/tests/fixtures/kit-app` copied out and opened, by
+reading `ProjectValidationService.instance` (the Problems panel's own service):
+
+| `ProjectValidationService.report.summary` | errors | warnings | infos | **endpoints checked** |
+|---|---|---|---|---|
+| overlay removed (control) | 0 | 5 | **8** | **0** |
+| after `NodeLibrary.instance.reload()` | **1** | 0 | 0 | **4** |
+
+and the error is `nonexistent-port [error] /Broken/broken_badge :: demo.kit.Badge has no input named
+"progres"`. The control is the load-bearing half: it was taken by *removing* the overlay in the live
+editor and revalidating, so the numbers are attributable to the overlay rather than to the fixture.
+It also proves the two things a passing jest run would not: that `loadLibrary()` really is the seam
+the caller sits on, and that the generation counter rebuilds the panel's long-lived validator —
+without it the overlay installs correctly and is read by a validator that has never heard of it,
+which looks exactly like a project whose kits are unknown.
+
+### The agreement check
+
+`packages/noodl-mcp/tests/kitAgreement.test.ts`: the MCP route extracted **live** from the fixture
+project, the editor route from a **recording** of `NodeLibrary.instance.library` taken during that
+drive (`packages/noodl-editor/tests-unit/cn-003/fixtures/kit-app.editor-nodelibrary.json`, whose
+header records when, from what and how it was reduced). They agree on the type set and on every port
+name and port type. Three of the nine tests are **failure controls** — a dropped port, a dropped
+type, a changed port type — each asserting the *message* names the divergence, because an agreement
+check is exactly the shape that passes on two empty lists.
+
+⚠️ A green run says **the two registers agree**. It does not verify the mapping (both sides run the
+same one, deliberately), and both still share the runtime, the viewer's definitions and
+`generateNodeLibrary`. What differs is a browser frame with the project loaded versus a bare Node
+process under a DOM shim.
+
+### 🔴 The one real divergence, found by building the check
+
+`compareOverlays` does not compare `kitModule`, and when the two overlays were put side by side they
+disagreed about it for **every** node:
+
+- MCP route → `'Demo Kit'`, read from `manifest.json` by `entry.js`.
+- Editor route → `'Unknown Module'`, because `registerModule` names a module from the object passed
+  to `Noodl.defineModule` (`noodl-runtime.ts:517`) and **no kit sets that name** — not this fixture,
+  not the cashflow reference kit. The manifest holds it and the viewer never reads it.
+
+Measured with it: `nodeIndex.moduleNodes` carried one entry whose `name` was the **empty string**, so
+the picker's section for a project's own nodes is unnamed as well.
+
+This is asserted in the suite rather than fixed, because the fix belongs wherever the viewer is given
+the manifest name — the deployed runtime's path as much as the editor's. **It matters to ✅ D1**
+(provenance in the property panel is currently "Unknown Module") **and to CN-015** (failures that
+name the kit). **Wants a task number.**
+
+### Also done here, and knowingly not done
+
+- `defaultLessonVocabulary()` now takes `shippedCatalogIndex()`. It used to pair `defaultCatalog()`'s
+  data with `loadDefaultCatalog()`'s index, which after this change would have resolved kit types
+  through the index while the display-name map had never heard of them — and memoised, so which
+  halves it got would have depended on whether a project was open the first time a lesson was
+  verified. Slice 4 routes a *project* vocabulary in deliberately, from the bundle's own files.
+- `defaultCatalog()` still means **the shipped catalog** and is unchanged for its four other callers.
+  Only the *index* takes the overlay.
+- **`CatalogIndex` provenance (item 4 below) is not built.** `providedBy: 'project-kit'` and
+  `kitModule` survive the merge and are readable via `catalogOverlayNodes()`, but no `CatalogIndex`
+  query exposes them and nothing in the property panel reads them. D1's surface stays open.
+
 ## What to build
 
 1. ✅ **The shared mapping** — done, `@nodegx/kit-catalog` (see above). Reuses CN-001's
@@ -191,8 +268,9 @@ path so it stays fixed.
    already ships; the server then spawns it. Two lines of build config, no new mechanism.
    ⚠️ Verify against the **packaged** app, not the checkout — "driven ≠ shipped" has already bitten
    phase 66.
-3. **The editor caller** — builds the same overlay from the node library the viewer already sent
-   (`NodeLibrary.instance`), then `compareOverlays` against the MCP route in a test.
+3. ✅ **The editor caller** — done, slice 3 (see above). Original text: builds the same overlay from
+   the node library the viewer already sent (`NodeLibrary.instance`), then `compareOverlays` against
+   the MCP route in a test.
 4. **`CatalogIndex` learns the difference** between "I know this type because we shipped it" and "I
    know this type because a kit declares it". `hasType()` should be true for both; provenance must
    remain queryable, because ✅ **D1** wants it in the property panel and CN-004 needs it for

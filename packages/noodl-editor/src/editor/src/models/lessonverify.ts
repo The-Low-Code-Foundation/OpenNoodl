@@ -67,7 +67,7 @@
 
 import type { NodeCatalog, CatalogNode } from '../validation/CatalogIndex';
 import { CatalogIndex } from '../validation/CatalogIndex';
-import { defaultCatalog, loadDefaultCatalog } from '../validation/catalog';
+import { defaultCatalog, shippedCatalogIndex } from '../validation/catalog';
 import { compileLessonManifest, LessonFormatError, safeLessonUrl } from './lessonformat';
 import type { LessonConditionDef, LessonManifest, LessonStepDef } from './lessonformat';
 
@@ -250,9 +250,23 @@ export class LessonVocabulary {
 
 let cachedVocabulary: LessonVocabulary | undefined;
 
-/** The vocabulary over the bundled node catalog (memoised, like `loadDefaultCatalog`). */
+/**
+ * The vocabulary over the bundled node catalog (memoised).
+ *
+ * 🔴 CN-003: **both halves are the shipped catalog**, deliberately. The index
+ * used to be `loadDefaultCatalog()`, which now carries the open project's kit
+ * types — so this vocabulary would have resolved a kit type through its index
+ * while its display-name map, built from `defaultCatalog()`, had never heard of
+ * it. Memoised, so which halves it got would have depended on whether a project
+ * was open the first time a lesson was verified.
+ *
+ * A lesson *should* eventually know a project's kit types — but built from **the
+ * bundle's own project files**, not from whatever is open, because
+ * `verifyLessonManifest` runs at install, before the project exists. That is
+ * slice 4, and the seam it uses is `VerifyLessonOptions.vocabulary`.
+ */
 export function defaultLessonVocabulary(): LessonVocabulary {
-  if (!cachedVocabulary) cachedVocabulary = new LessonVocabulary(defaultCatalog(), loadDefaultCatalog());
+  if (!cachedVocabulary) cachedVocabulary = new LessonVocabulary(defaultCatalog(), shippedCatalogIndex());
   return cachedVocabulary;
 }
 

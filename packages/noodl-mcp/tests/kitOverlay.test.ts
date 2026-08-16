@@ -40,7 +40,7 @@ import { clearProjectOverlay, extractProjectOverlay, installProjectOverlay, reso
 import { ProjectStore } from '../src/project/ProjectStore';
 import { validateOnDisk } from '../src/validate';
 import { deriveVisualRootIdsInProject } from '../src/visualRoots';
-import { connect, copyFixture } from './helpers';
+import { buildKitExtractor, connect, copyFixture } from './helpers';
 import type { ProjectInfoResponse } from '../src/tools/responses';
 
 const FIXTURES = path.join(__dirname, 'fixtures');
@@ -50,29 +50,11 @@ const DEMO_APP = path.join(FIXTURES, 'demo-app');
 
 let tempDir: string;
 
-/**
- * Bundle the extractor from source, the way `build.mjs` does, into a temp file.
- *
- * Async because `extractorBuildOptions` carries the type-only-module stub as an
- * esbuild plugin, and esbuild refuses plugins in `buildSync`.
- */
-async function buildExtractor(): Promise<string> {
-  const outfile = path.join(tempDir, 'kit-extract.cjs');
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const esbuild = require('esbuild');
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const { extractorBuildOptions } = require('../../../scripts/node-catalog/lib/bundle.js');
-  await esbuild.build({
-    ...extractorBuildOptions(path.resolve(__dirname, '..', 'src', 'kitExtract', 'entry.js'), outfile),
-    target: 'node18',
-    logLevel: 'silent'
-  });
-  return outfile;
-}
-
 beforeAll(async () => {
   tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'cn003-'));
-  process.env.NODEGX_KIT_EXTRACT = await buildExtractor();
+  // `buildKitExtractor` moved to ./helpers when slice 3's agreement suite became
+  // its second caller; the reasoning above is now in its doc comment.
+  process.env.NODEGX_KIT_EXTRACT = await buildKitExtractor(tempDir);
 }, 120_000);
 
 afterAll(() => {

@@ -12,6 +12,12 @@ import type { NodeLibraryProjectSettings } from '@noodl-models/nodelibrary/NodeL
 import { UnknownNodeType } from '@noodl-models/nodelibrary/UnknownNodeType';
 
 import Model from '../../../../shared/model';
+// CN-003: the two halves of the project catalog overlay — the mapping (pure) and
+// the seam it is installed into. Imported from the modules rather than through
+// `../../validation`'s barrel, which would pull the whole rule engine into every
+// module that touches the node library.
+import { setCatalogOverlay } from '../../validation/catalog';
+import { overlayFromNodeLibrary } from '../../validation/kitOverlay';
 import { CanvasTheme } from '../../views/nodegrapheditor/canvas/CanvasTheme';
 import { ModelProxy } from '../../views/panels/propertyeditor/models/modelProxy';
 
@@ -65,6 +71,18 @@ export class NodeLibrary extends Model {
     this.unkownNodeTypes = {};
 
     this.library = (typeof window !== 'undefined' ? window.NodeLibraryData : {}) || {};
+
+    // CN-003 ✅ D3 — the project catalog overlay, installed from the library the
+    // viewer already sent. Here rather than in `NodeLibraryImporter` because
+    // this is the one function that runs on *every* path that changes what the
+    // editor believes the node types are, including a `reload()` no importer
+    // triggered; and because it is the read of `NodeLibrary.instance` the ruling
+    // describes. It maps and merges — it never executes project code.
+    //
+    // The catalog this installs into is what `SemanticValidator` validates
+    // against, so an empty library (no project open) installs an empty overlay
+    // and puts the catalog back to built-ins only. That is the clearing path.
+    setCatalogOverlay(overlayFromNodeLibrary(this.library).nodes);
 
     // Register basic types from the node library
     for (const i in this.library.nodetypes) {

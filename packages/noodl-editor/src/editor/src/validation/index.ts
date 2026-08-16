@@ -12,7 +12,18 @@ export * from './diagnostics';
 export * from './model';
 export { CatalogIndex, levenshtein, nearest } from './CatalogIndex';
 export type { NodeCatalog, CatalogNode, CatalogPort, Plug } from './CatalogIndex';
-export { defaultCatalog, loadDefaultCatalog } from './catalog';
+export {
+  catalogGeneration,
+  catalogOverlayNodes,
+  defaultCatalog,
+  loadDefaultCatalog,
+  projectCatalog,
+  setCatalogOverlay,
+  shippedCatalogIndex
+} from './catalog';
+// CN-003 — the open project's own node types, read from what the viewer sent.
+export { builtinTypeNamesFor, overlayFromNodeLibrary } from './kitOverlay';
+export type { NodeLibraryPayload, Overlay, OverlayCatalogNode } from './kitOverlay';
 export { fromLegacyProject, normalizeV2Component } from './normalize';
 export type { LegacyProjectLike } from './normalize';
 export {

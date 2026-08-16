@@ -19,6 +19,7 @@ import {
   authoredNodes,
   authoredPreconditionDiagnostics,
   buildComponentRefs,
+  catalogGeneration,
   componentInterfaces,
   connectedInputs,
   declaredUrlPaths as collectUrlPaths,
@@ -41,8 +42,22 @@ import type { GraphComponent, ExplainGraph } from '../explain/types';
 import type { CandidateValidation, ComponentFiles, StructuralFailure } from './types';
 
 let semanticValidator: SemanticValidator | undefined;
+/**
+ * CN-003: memoised against the catalog generation, not forever.
+ *
+ * A `SemanticValidator` captures its `CatalogIndex` at construction, and this
+ * one is a module singleton that outlives every project opened in the session.
+ * Held across a project catalog overlay change it would validate the new
+ * project's kit nodes against the previous project's catalog — silently, and
+ * only in the checks it then skips, which looks exactly like a project whose
+ * kits are unknown.
+ */
+let validatorGeneration = -1;
 function validator(): SemanticValidator {
-  if (!semanticValidator) semanticValidator = new SemanticValidator();
+  if (!semanticValidator || validatorGeneration !== catalogGeneration()) {
+    semanticValidator = new SemanticValidator();
+    validatorGeneration = catalogGeneration();
+  }
   return semanticValidator;
 }
 

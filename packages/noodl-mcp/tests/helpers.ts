@@ -118,3 +118,30 @@ export function readJson<T>(projectDir: string, rel: string): T {
 export function exists(projectDir: string, rel: string): boolean {
   return fs.existsSync(path.join(projectDir, rel));
 }
+
+/**
+ * CN-003 — bundle the kit extractor from source into `outDir`, the way
+ * `build.mjs` does, and return the path.
+ *
+ * 🔴 **Deliberately not `dist/kit-extract.cjs`.** `dist/` is gitignored, so a
+ * suite that read it would be *skipped* in a fresh checkout and would silently
+ * grade a **stale** artifact in a working one — this repo's most expensive
+ * recurring failure. Building per run costs ~110 ms and always grades the
+ * source. Callers set `process.env.NODEGX_KIT_EXTRACT` to the result.
+ *
+ * Async because `extractorBuildOptions` carries the type-only-module stub as an
+ * esbuild plugin, and esbuild refuses plugins in `buildSync`.
+ */
+export async function buildKitExtractor(outDir: string): Promise<string> {
+  const outfile = path.join(outDir, 'kit-extract.cjs');
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const esbuild = require('esbuild');
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const { extractorBuildOptions } = require('../../../scripts/node-catalog/lib/bundle.js');
+  await esbuild.build({
+    ...extractorBuildOptions(path.resolve(__dirname, '..', 'src', 'kitExtract', 'entry.js'), outfile),
+    target: 'node18',
+    logLevel: 'silent'
+  });
+  return outfile;
+}
