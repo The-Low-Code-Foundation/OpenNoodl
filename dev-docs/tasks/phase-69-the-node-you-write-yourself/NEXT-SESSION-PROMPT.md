@@ -47,8 +47,42 @@ What was done, and the order matters:
 - The test header now carries a **do-not-regenerate** note naming this episode, because the
   next person to meet a red byte-comparison will be tempted to re-record it away.
 
-**So `test:ci` should now read 2843 / 6 again.** ⚠️ **Not measured** — no suite was run this session
-(§5). Re-measure; do not quote that figure as observed.
+**`test:ci` now reads 2843 / 6 with the golden PASSING** — measured by peer `9204` at 21:53:37, not
+by me. The floor on genuinely pre-fix code was **7**; on HEAD it is **6**. Both are real readings of
+**different trees**.
+
+### 🔴 That measurement was first reported as REFUTING the fix, and the reasoning is worth keeping
+
+`9204` read its own green as proof the seventh failure never existed — *"every premise held and the
+conclusion was still false"* — and offered to retract the corroboration it had given. It had
+measured **the fix**:
+
+```
+21:32:56  the corrected 26-line golden written to the WORKING TREE
+21:40:28  tests/index.bundle.js rebuilt (contains the marker emitter)
+21:52:24  3d3cbb22 commits the golden
+21:53:37  the peer's test-results.json
+```
+
+🔴 **"Committed tree" described git state; the spec reads
+`fs.readFileSync(path.join(process.cwd(), …))` — the working tree.** A clean `git status` and an
+idle checkout are both true and both irrelevant when the fixture is read from cwd. **Both of us
+reached for the commit graph — ancestry, `git diff HEAD`, `git log -S` — and neither for an mtime.**
+
+✅ **The inversion, and it is the useful half: their pass is evidence FOR the fix.** Their
+alternative explanation (a second tag-building path in `projectmodules.ts` that emits no marker)
+predicts 24 generated lines, which would have **failed** against the 26-line golden then on disk. It
+passed — so the spec's path and the plain-Node reproduction agree, which is what composing the
+editor's exact four calls had already controlled for.
+
+✅ **The content argument, needing no clock:** `git show 3d3cbb22^:<golden>` is **23**
+newline-terminated lines, generated is **25**.
+
+⚠️ **The `projectmodules.ts` "second implementation" lead is a misreading — do not open a task for
+it.** `:509`'s *"this is a second, independent question"* is about a **question** (SSR globals vs tag
+emission) inside `libraryNeedsSsrWarning`, which returns a boolean and builds no tags. `:520` says
+the opposite of how it scans: *"the tag strings are `@nodegx/module-inject`'s **now** (CN-001)… only
+the bodies moved."* One tag-building path.
 
 ---
 
@@ -158,6 +192,8 @@ Open, not caused here, still wanting task numbers: 🔴 `render-from-disk.js` an
   `@nodegx/module-inject` **15 passed**; `typecheck:runtime` red at **2**, proven pre-existing by a
   control run at HEAD.
 - ✅ A peer announced a teardown mid-session (25 stopped, 9222 free). Not used.
+- ✅ **Peer `9204` ran `test:ci` at 21:53:37 on an idle checkout: 2843 / 6 @ seed 39393**, golden
+  passing. That is HEAD **with** s12's fix in the tree — see §1 before quoting it as a floor.
 - ✅ **`git commit -F <file> -- <pathspecs>`, always. Never `git add -A`, never `git stash`.**
   Two commits: `3d3cbb22` (golden), `2d8f8e02` (CN-018 + both specs).
 - Whoever you tell you are starting, tell you have stopped.
