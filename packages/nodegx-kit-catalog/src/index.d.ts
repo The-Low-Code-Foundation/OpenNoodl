@@ -77,10 +77,30 @@ export interface OverlayCatalogPort {
   allowVisualStates?: unknown;
 }
 
+/**
+ * One conditionally-declared group of ports, in the shape the shipped catalog
+ * stores and every consumer reads (`conditionForInput`,
+ * `CatalogIndex.computePortNames`). ⚠️ **Not** the shape `formatDynamicPorts`
+ * exports — see `toDynamicPorts` for the translation and why it matters.
+ */
+export interface OverlayDeclaredPortGroup {
+  condition?: string;
+  inputs?: string[];
+  outputs?: string[];
+}
+
 export interface OverlayDynamicPortInfo {
+  /**
+   * `declared-port-groups` when the node has an enumerable conditional set,
+   * `runtime-discovered` when it mints ports at runtime, both when it does both.
+   * A node whose every entry is unrecognised gets `runtime-discovered`, because
+   * the conservative answer costs a skipped check rather than a false warning on
+   * a correct kit.
+   */
   mechanisms: string[];
   description: string;
-  declaredPortGroups?: unknown[];
+  /** Absent — never `[]` — when the node declares no enumerable group. */
+  declaredPortGroups?: OverlayDeclaredPortGroup[];
 }
 
 /**

@@ -1,5 +1,64 @@
 # CN-004 — Turn the checks back on
 
+> ## ✅ CLOSED 2026-08-16 — and it was not the task it was written as
+>
+> 🔴 **Items 1–3 were already done when this session started.** Every skip site
+> gates on `catalog.hasType()`, and CN-003's overlay makes that true for a kit
+> type — so `checkParameterValues`, the unknown-port checks and `--strict` all
+> took kit nodes on the normal path the moment the overlay landed. **Nothing had
+> ever asserted it.** Measured before anything was changed: a kit node with
+> `progress: 'lots'` already produced `invalid-parameter-value` / error, the same
+> code, severity and message a built-in draws for the same mistake, and a correct
+> kit node was already silent.
+>
+> ⚠️ The task's own trap is why that is worth stating rather than quietly
+> shipping. Three things were true before this session and are *also* true of an
+> implementation that resolves the type and checks nothing: the info count goes
+> to zero, `unknown-node-type` stops warning, and "validation knows the type".
+> None of them discriminates. The consequence that does — **a wrong parameter on
+> a kit node is reported** — was written down before anything ran and is now
+> asserted, with its built-in control beside it, in every case.
+>
+> ### 🔴 What *was* broken: item 4, in both directions
+>
+> The dynamic-port carve-out was not kept, and no fixture could see it — the demo
+> kit and the cashflow kit declare no `dynamicports` at all, so the mapping ran on
+> the empty case for a task and a half. `toDynamicPorts` labelled **every** entry
+> `declared-port-groups` and passed the raw exported entries through:
+>
+> | | before | after |
+> |---|---|---|
+> | a kit node with a `channelPort` (ports minted at runtime) | `unknown-parameter` **warning on a correct kit** — guaranteed, since the exporter keeps a channel port out of the static list | silent |
+> | a kit node's conditional group, parameter set while switched off | **nothing** — the condition lived under `ports`, where `conditionForInput` does not look | `inactive-conditional-parameter`, as a built-in draws |
+>
+> The two vocabularies simply differ: `formatDynamicPorts` emits
+> `{ name, condition, ports: [portObject] }`, the catalog stores
+> `{ condition, inputs: [name] }`. One is a false accusation, one a silent miss;
+> a fix for whichever was noticed first would have left the other. Both are
+> mutation-proven — reverting `toDynamicPorts` kills 8 mapping tests and both
+> consequence tests, and leaves the 12 parity tests correctly green.
+>
+> ### What landed
+>
+> - `@nodegx/kit-catalog` — `toDynamicPorts` classifies per entry and unions the
+>   mechanisms; `toDeclaredPortGroup` translates to the shape consumers read.
+> - `tests/fixtures/kit-dynports` — a **real** kit declaring both shapes, run by
+>   the real extractor. `dynports-kit-nodelibrary.json` is its recorded payload.
+> - 45 tests: `nodegx-kit-catalog/tests/dynamicPorts.test.js` (mapping, against
+>   the recording), `noodl-editor/tests-unit/cn-004/` (parity + AC 4b's drive),
+>   `noodl-mcp/tests/cn004.test.ts` (end to end through the real callers).
+>
+> ### 🔴 Two findings that outlive this task
+>
+> 1. **`@noodl/mcp`'s provisioning suites are intermittently red under machine
+>    load, and were before this task.** Interleaved A/B runs: **2 of 6** failing
+>    without CN-004's suite, 4 of 6 with. A 49th suite touching *no package code*
+>    — 1.5s of arithmetic — reproduces it. ⚠️ A sequential "clean before, red
+>    after" comparison on a shared machine measures the machine; that single
+>    sample briefly convinced me this task had caused it. **Wants a task number.**
+> 2. **The packaged `dist/noodl-mcp.cjs` still carries the old mapping.** The fix
+>    reaches registered MCP servers only after a rebuild.
+
 | Field | Value |
 |---|---|
 | **Tier** | 1 |

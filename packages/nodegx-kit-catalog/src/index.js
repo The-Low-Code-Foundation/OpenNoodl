@@ -142,13 +142,68 @@ function splitPorts(ports) {
 }
 
 /**
+ * One exported `dynamicports` entry → the group shape the catalog stores.
+ *
+ * 🔴 **The two vocabularies do not match, and CN-004 was the first thing to
+ * read the result.** `formatDynamicPorts` (`@noodl/runtime/nodelibraryexport`)
+ * emits a conditional group as `{ name, condition, ports: [portObject] }`,
+ * while the shipped catalog stores `{ condition, inputs: [name] }` and every
+ * consumer reads the latter — `conditionForInput` filters on `g.inputs`,
+ * `CatalogIndex.computePortNames` folds in `g.inputs`/`g.outputs`. Handing the
+ * raw exported entry through meant a kit's conditions were never found, so
+ * `InactiveConditionalParameter` and `InertDimension` could not fire on a kit
+ * node at all. Translate here, once, where both shapes are in view.
+ *
+ * @param {Record<string, unknown>} entry
+ * @returns {{ condition?: string, inputs?: string[], outputs?: string[] }}
+ */
+function toDeclaredPortGroup(entry) {
+  /** @type {{ condition?: string, inputs?: string[], outputs?: string[] }} */
+  const group = {};
+  if (typeof entry.condition === 'string') group.condition = entry.condition;
+
+  // The name-list form, when a kit already writes what the editor expects.
+  const inputs = Array.isArray(entry.inputs) ? entry.inputs.filter((n) => typeof n === 'string') : [];
+  const outputs = Array.isArray(entry.outputs) ? entry.outputs.filter((n) => typeof n === 'string') : [];
+
+  // The exported form: one `ports` array carrying both plugs.
+  for (const port of Array.isArray(entry.ports) ? entry.ports : []) {
+    if (!port || typeof port.name !== 'string') continue;
+    if (port.plug === 'output' || port.plug === 'input/output') outputs.push(port.name);
+    if (port.plug === 'input' || port.plug === 'input/output' || port.plug === undefined) inputs.push(port.name);
+  }
+
+  if (inputs.length) group.inputs = inputs;
+  if (outputs.length) group.outputs = outputs;
+  return group;
+}
+
+/**
  * `dynamicPorts` as far as the payload can say.
  *
- * The generator detects four further mechanisms by inspecting the raw
- * definition's function sources; none of that survives into the payload. What
- * does survive is a node's *declared* `dynamicports`, which is the one mechanism
- * a kit author writes by hand — so a kit that declares them is reported as
- * having them, and a kit that does not gets `null`, which is the truth.
+ * The generator detects further mechanisms by inspecting the raw definition's
+ * function sources; none of that survives into the payload. What does survive is
+ * a node's *declared* `dynamicports` — and that list is **not one mechanism**.
+ * `formatDynamicPorts` passes four entry shapes through:
+ *
+ * | Entry carries | What it means | Mechanism |
+ * |---|---|---|
+ * | `ports` / `inputs` / `outputs` + `condition` | a fixed, enumerable set switched on by a sibling parameter | `declared-port-groups` |
+ * | `template` | ports minted per item at runtime — the names cannot be known | `runtime-discovered` |
+ * | `port` | a single port whose *name* comes from another parameter's value | `runtime-discovered` |
+ * | `channelPort` | a port named by a channel, and **excluded from the static `ports` list** by the exporter | `runtime-discovered` |
+ *
+ * 🔴 Calling all four `declared-port-groups`, as this did until CN-004,
+ * inverts the carve-out `checkParameterValues` makes: `hasRuntimeDynamicPorts`
+ * returns false, so a port the kit genuinely creates at runtime is reported as
+ * `unknown-parameter` — **a warning on a correct kit**, and for the
+ * `channelPort` shape a guaranteed one, since the exporter deliberately keeps
+ * those out of `ports`. That is the "check that rejects sound input" half of the
+ * two-ways-an-instrument-lies pair, and the population it cries wolf at is kit
+ * authors, which is the population this whole phase exists to serve.
+ *
+ * A node may mix the two: the mechanisms list is a union, and a runtime entry
+ * does not cost the enumerable entries their conditions.
  *
  * @param {import('./index').ExportedNodeType} nodeType
  * @returns {import('./index').OverlayDynamicPortInfo | null}
@@ -156,12 +211,37 @@ function splitPorts(ports) {
 function toDynamicPorts(nodeType) {
   const declared = nodeType.dynamicports;
   if (!Array.isArray(declared) || declared.length === 0) return null;
+
+  const declaredPortGroups = [];
+  let runtime = false;
+
+  for (const entry of declared) {
+    if (!entry || typeof entry !== 'object') continue;
+    const e = /** @type {Record<string, unknown>} */ (entry);
+    // Checked first and independently of the group shape: an entry may carry
+    // both, and the runtime half is the one that must not be under-claimed.
+    if (e.template !== undefined || e.port !== undefined || e.channelPort !== undefined) runtime = true;
+    if (e.ports !== undefined || e.inputs !== undefined || e.outputs !== undefined) {
+      const group = toDeclaredPortGroup(e);
+      if (group.inputs || group.outputs) declaredPortGroups.push(group);
+    }
+  }
+
+  const mechanisms = [];
+  if (declaredPortGroups.length) mechanisms.push('declared-port-groups');
+  if (runtime) mechanisms.push('runtime-discovered');
+  // Every entry was a shape this mapping does not recognise. Reporting no
+  // mechanisms would read as "this node has no dynamic ports", which is the one
+  // thing the presence of `dynamicports` rules out — so claim the conservative
+  // mechanism, which costs a skipped check rather than a false accusation.
+  if (mechanisms.length === 0) mechanisms.push('runtime-discovered');
+
   return {
-    mechanisms: ['declared-port-groups'],
+    mechanisms,
     description:
       'This node declares dynamic port groups. The names were read from the kit’s own ' +
       '`dynamicports` metadata; unlike built-in types they were not observed by driving the node.',
-    declaredPortGroups: declared
+    ...(declaredPortGroups.length ? { declaredPortGroups } : {})
   };
 }
 

@@ -1,0 +1,23 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "c_dynapp",
+  "version": 1,
+  "nodes": [
+    { "id": "dyn_group", "type": "Group", "label": "App Root", "children": ["dyn_panel", "dyn_feed"] },
+    {
+      "id": "dyn_panel",
+      "type": "dynports.kit.Panel",
+      "label": "List Panel",
+      "parent": "dyn_group",
+      "parameters": { "title": "Lanes", "mode": "list", "itemCount": 4 }
+    },
+    {
+      "id": "dyn_feed",
+      "type": "dynports.kit.Feed",
+      "label": "Live Feed",
+      "parent": "dyn_group",
+      "parameters": { "heading": "Live", "channelName": "ticks" }
+    }
+  ],
+  "visualRoots": ["dyn_group"]
+}
