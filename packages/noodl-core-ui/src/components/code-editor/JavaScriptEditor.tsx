@@ -168,6 +168,9 @@ export function JavaScriptEditor({
         value || '',
         createExtensions({
           validationType,
+          // CN-019. Fixed for the lifetime of an editor instance, like
+          // `validationType` beside it — a document does not become a node.
+          subject,
           placeholder: resolvedPlaceholder,
           readOnly: disabled,
           onChange: (newValue) => handleChangeRef.current(newValue),

@@ -48,7 +48,7 @@ import globals from 'globals';
 import { getCodeAuthoringContext } from '../authoringContext';
 import { portDiagnostics } from './portDiagnostics';
 import { widen } from './syntaxDiagnostics';
-import type { ValidationType } from './types';
+import type { CodeSubject, ValidationType } from './types';
 
 /** A diagnostic in *document* coordinates: 1-based line, 1-based column. */
 export interface LintMessage {
@@ -298,7 +298,11 @@ function offsetOf(state: EditorState, line: number, column: number): number {
  * beside the message — so "'totl' is not defined" carries `eslint:no-undef` and
  * the reader can tell a typo report from a parse failure.
  */
-export function javascriptDiagnostics(state: EditorState, validationType: ValidationType): Diagnostic[] {
+export function javascriptDiagnostics(
+  state: EditorState,
+  validationType: ValidationType,
+  subject: CodeSubject = 'node'
+): Diagnostic[] {
   const messages = lintMessages(state.doc.toString(), validationType);
 
   const base = messages.map((message) => {
@@ -321,5 +325,5 @@ export function javascriptDiagnostics(state: EditorState, validationType: Valida
   // be one, and adds the two rules ESLint cannot express. It is a no-op in every
   // mode without declared ports, `'expression'` most importantly: see the ⚠️ in
   // `portDiagnostics.ts`.
-  return portDiagnostics(state, validationType, base);
+  return portDiagnostics(state, validationType, base, subject);
 }

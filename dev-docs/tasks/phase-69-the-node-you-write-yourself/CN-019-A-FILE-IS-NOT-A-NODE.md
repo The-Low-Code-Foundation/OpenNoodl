@@ -7,7 +7,7 @@
 | **Surface** | `editor` (`noodl-core-ui`) |
 | **Rulings** | ✅ **D1a** — the file editor is a real surface, so it has to be right about what it is showing |
 | **Depends on** | CN-006 s10 (`CodeFileDocument`). Nothing depends on this, but **CN-007 does in spirit** |
-| **Status** | ✅ **Built s13** — see [§Built](#-built-2026-08-16-session-13). Drive pending 9222. |
+| **Status** | ✅ **BUILT + DRIVEN s13** — AC1/AC2/AC3/AC4/AC5 met. 🔴 **AC1's second clause was retired by the drive** — see [§The drive](#-driven-2026-08-16-session-13--and-the-first-fix-broke-a-neighbour) |
 
 ## Why this exists
 
@@ -139,8 +139,10 @@ The consumer states its subject; nothing infers it. **~30 lines of product code 
 | `utils/types.ts` | `CodeSubject = 'node' \| 'file'`, and `JavaScriptEditorProps.subject` |
 | `utils/portBar.ts` | `portBarState(…, subject = 'node')` — `'file'` is `silent` **before anything else is asked** |
 | `utils/modes.ts` | `FILE_LABELS`, and `modeLabel(validationType, subject = 'node')` |
-| `JavaScriptEditor.tsx` | passes `subject` to both; two lines |
-| `CodeFileDocument.tsx` | `subject="file"`, and clears the ambient slot on mount |
+| `JavaScriptEditor.tsx` | passes `subject` to the bar, the label and `createExtensions` |
+| `codemirror-extensions.ts` | `ExtensionOptions.subject`, threaded into the linter |
+| `utils/esLintDiagnostics.ts` · `utils/portDiagnostics.ts` | `subject`, and the pass stands down for a file before anything is asked |
+| `CodeFileDocument.tsx` | `subject="file"` — and **nothing else**; see the drive below for what was removed |
 | `code-editor/index.ts` | exports the type |
 
 **Both surfaces of the pair have exactly one production caller** (`portBarState`, `modeLabel`), so
@@ -165,17 +167,108 @@ guard does not merely miss the worse row, it retires the feature's whole reason 
 it on every close path, so *"immediately after closing a Function popout"* is **AC1 in disguise**.
 The row that bites is a popout still live, and only a forced slot reaches it.
 
-### What clearing the ambient slot is for, given the prop already fixes the bar
+### Both surfaces of the pair, not just the bar
 
-`subject="file"` means the port bar never reads `openNode` at all, so AC1's second half looks like
-belt and braces. It is not, and it is the reason to keep it: the **lint** pass still guards on
-`openNode != null` (`portDiagnostics.ts:634-641`), so a file opened over a stale slot would get a
-kit module's `no-undef` dressed up as advice about whichever node was last open. Clearing on mount
-closes that from the other end without touching a passing surface.
+`subject` is carried into the **lint** pass as well. That was not the first version — the first
+version cleared the ambient slot from `CodeFileDocument` instead, which is what the AC asked for and
+what the drive below proved wrong. `portDiagnostics`'s own `openNode != null` guard survives inside
+the `'script'` branch, where it is still right for its stated reason (message 6 names a node's API),
+but it is **no longer what keeps the pass off a file**, and its comment now says so.
 
 ### Tests
 
 `tests/code-editor/portBar.test.ts` — a `CN-019` describe of five, including the `?`-button case
 (a *suppressed* bar grows a restore control; a *silent* one must not).
 `tests/code-editor/modes.test.ts` — AC4, with the popout label as the control on every row.
-**Full `noodl-core-ui` suite: 474 passed / 26 suites.**
+`tests/code-editor/portDiagnostics.test.ts` — the lint half, each absence beside the identical text
+in the identical mode with the subject flipped.
+**Full `noodl-core-ui` suite: 477 passed / 26 suites.**
+
+---
+
+## ✅ Driven 2026-08-16, session 13 — and the first fix broke a neighbour
+
+Live editor (`dev:debug`), fixture **`cn019-drive`**: a `cp -R` of `fix016-msg6-drive` (both node
+types in one component, so every row runs with no project switch) plus `cn001-kit-drive`'s
+`cashflow-kit` under `noodl_modules/`. Identity confirmed by
+`ProjectModel.instance._retainedProjectDirectory`, never by component names.
+
+🔴 **The observation was written before the editor was launched.** Both instrument traps it named
+fired.
+
+### 🔴 The regression the drive found, which is the reason to have driven it
+
+The first version also cleared the ambient slot on mount, satisfying AC1's *"with the ambient slot
+cleared"* literally. **It is wrong, and it was wrong in the direction this whole task is about.**
+
+The comment justifying it said a popout would be *"behind a full-screen surface the author has
+navigated away from"*. A code popout is a **portal**. Opening a file leaves it mounted **and on
+top** — measured, not assumed: `document.elementFromPoint` at the popout's centre returns an element
+inside the popout, and the file editor's centre returns one that is not.
+
+| | the Function popout says |
+|---|---|
+| before the fix | *"Read `price` with `Inputs.price`, write `discountedPrice` with `Outputs.discountedPrice` = …."* ✅ |
+| **with the clearing** | 🔴 *"This node has no ports yet. Type `Inputs.`"* — about a node whose panel, in the same screenshot, lists `price` and `discountedPrice` |
+
+![the clearing's regression](notes/cn019-clearing-regression.png)
+
+**I had traded one live wrong answer for another**, and the new one was the exact sentence this task
+exists to delete, moved one window across. ⚠️ **Note what caused it: fixing a shared component by
+writing global state from a consumer** — the same shape as the defect, one layer up.
+
+✅ **The repair is the one the task called correct all along**: `subject` is now carried into the
+**lint** pass too (`createExtensions` → `diagnosticsFor` → `javascriptDiagnostics` →
+`portDiagnostics`, four signatures, all defaulted to `'node'`), so neither surface consults the
+ambient slot for a file, and `CodeFileDocument` writes nothing global. **The clearing is deleted.**
+
+🔴 **AC1's second clause — "with the ambient slot cleared" — is retired, deliberately.** The
+replacement is stronger and is what AC2 now asserts: the slot demonstrably **still holds `js`**
+while the file editor shows nothing. A cleared slot could not have distinguished the fix from the
+guard it was warning about; a populated one does.
+
+### The rows, all read with `alive === true` and the popout's hint beside every absence
+
+| # | editor | port hint | mode label | ambient slot |
+|---|---|---|---|---|
+| **A** | `index.js` via `openCodeFile`, slot clear | **0** | **JAVASCRIPT** | `null` |
+| **B** | `index.js` opened with the popout **still live** | **0** | **JAVASCRIPT** | 🔴 **`js`** |
+| **C** | the `JavaScriptFunction` popout (control) | **1** — *"Read `price` with `Inputs.price`, write `discountedPrice` with `Outputs.discountedPrice` = …."* | **FUNCTION** | `js` |
+
+![both editors, driven](notes/cn019-driven.png)
+
+Row B is the whole task in one line: **a non-null, unrelated node in the slot, and no hint.** Row C
+is the same component, the same `localStorage`, the same `role="status"` div — so row A/B's zeros
+are an absence rather than a dead instrument. No `?` restore button in any row (a *silent* state has
+no message to bring back; a merely *suppressed* one would have grown the control).
+
+### And the lint half, as a 2×2 on one instrument
+
+Same text in both editors, read from `forEachDiagnostic` off the live lint state after a settle:
+
+| document | file (`JAVASCRIPT`) | node (`FUNCTION`) |
+|---|---|---|
+| `Outputs.Total = 1;` | `eslint:no-undef` — *"'Outputs' is not defined."* ✅ | `nodegx:ports` — *"price is declared on this node but never read."* ✅ |
+
+Both non-empty, which is what makes each one evidence. The file gets JavaScript's words about a
+name a module genuinely has not defined; the node gets port knowledge. ⚠️ Read **after ~25s**: an
+earlier read had both at `0`, and `0` means *"silent"* or *"not linted yet"* indistinguishably.
+
+### 🔴 Two instrument failures, both of which would have produced a passing reading
+
+**1. The bar was already retired on this machine.** `localStorage.codeeditor_portbar_successes` held
+`["js", "eeeeeeee…40", "dc5ef4ce…"]` — **three**, and `RETIRE_AFTER_SUCCESSES` is 3, so
+`shouldShowBar` was returning `false` for *every* state. Left alone, all four rows read "no hint"
+and the drive passes against completely unfixed code. Left over from **FIX-016 s45's** drive: two of
+those three ids are the very nodes in this fixture. **Cleared before reading anything, and re-read
+on every row** (the reader returns `dismissed`/`successes` every time).
+
+**2. `portBarState.length === 3` is not the version check it looks like.** I reached for arity to
+confirm the running renderer had the fix. `Function.length` stops at the first defaulted parameter,
+so `subject = 'node'` is invisible and **both versions read 3**. The check that actually
+discriminates is behavioural: pre-fix code returns `no-ports` for a file, and it returned `silent`.
+
+⚠️ **And the HMR trap fired on schedule** — editing `codemirror-extensions.ts` mid-drive printed
+*"[HMR] Error: Aborted because … is not accepted"*, full-reloaded the renderer, wiped `__req` /
+`__cn019` and dropped the editor to the Launcher. Every handle was re-injected and **every row
+re-read** against the corrected build; nothing above is a pre-repair reading.

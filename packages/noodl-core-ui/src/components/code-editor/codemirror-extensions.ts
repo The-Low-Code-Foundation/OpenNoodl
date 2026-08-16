@@ -46,7 +46,7 @@ import { defaultPlaceholder } from './utils/modes';
 import { lintNeedsRefresh } from './utils/relint';
 import { runtimeDiagnosticExtension, runtimeDiagnostics } from './utils/runtimeDiagnostic';
 import { syntaxDiagnostics } from './utils/syntaxDiagnostics';
-import { ValidationType } from './utils/types';
+import { CodeSubject, ValidationType } from './utils/types';
 
 export { externalValueSync, isExternalValueSync } from './utils/externalValueSync';
 
@@ -56,6 +56,12 @@ export { externalValueSync, isExternalValueSync } from './utils/externalValueSyn
 export interface ExtensionOptions {
   /** What is being edited — picks the language, the linter and the toolbar label. */
   validationType?: ValidationType;
+  /**
+   * Whose code it is (CN-019). `'file'` suppresses the port-knowledge pass, which
+   * is a set of sentences about a node's API and has nothing true to say about a
+   * module on disk. Defaults to `'node'`.
+   */
+  subject?: CodeSubject;
   /** Placeholder text. Omit it and the mode's own suggestion is used. */
   placeholder?: string;
   /** Is editor read-only? */
@@ -94,12 +100,16 @@ const NO_PROBLEMS: DiagnosticSummary = { errors: 0, warnings: 0 };
  * nothing — valid CSS underlined as a JavaScript error was CED-001's bug and
  * must not come back.
  */
-export function diagnosticsFor(state: EditorState, validationType: ValidationType): Diagnostic[] {
+export function diagnosticsFor(
+  state: EditorState,
+  validationType: ValidationType,
+  subject: CodeSubject = 'node'
+): Diagnostic[] {
   switch (validationType) {
     case 'expression':
     case 'function':
     case 'script':
-      return javascriptDiagnostics(state, validationType);
+      return javascriptDiagnostics(state, validationType, subject);
 
     case 'json':
       return syntaxDiagnostics(state);
@@ -325,7 +335,7 @@ function languageSupport(validationType: ValidationType): Extension {
  * Create all CodeMirror extensions
  */
 export function createExtensions(options: ExtensionOptions = {}): Extension[] {
-  const { validationType = 'expression', readOnly = false, onChange, tabSize = 2 } = options;
+  const { validationType = 'expression', subject = 'node', readOnly = false, onChange, tabSize = 2 } = options;
   const placeholder = options.placeholder ?? defaultPlaceholder(validationType);
 
   return [
@@ -377,7 +387,7 @@ export function createExtensions(options: ExtensionOptions = {}): Extension[] {
     // document edits **only**, and neither of the two sources above is a pure
     // function of the document. See `utils/relint.ts` for the plugin internals
     // that make `forceLinting` a no-op on an idle editor.
-    linter((view) => [...diagnosticsFor(view.state, validationType), ...runtimeDiagnostics(view.state)], {
+    linter((view) => [...diagnosticsFor(view.state, validationType, subject), ...runtimeDiagnostics(view.state)], {
       needsRefresh: lintNeedsRefresh
     }),
     lintGutter(),

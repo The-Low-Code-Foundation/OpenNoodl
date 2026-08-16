@@ -42,7 +42,7 @@ import { AppRegistry, IDocumentProvider } from '@noodl-models/app_registry';
 import { ProjectModel } from '@noodl-models/projectmodel';
 
 import { IconName } from '@noodl-core-ui/components/common/Icon';
-import { JavaScriptEditor, setOpenNodeContext } from '@noodl-core-ui/components/code-editor';
+import { JavaScriptEditor } from '@noodl-core-ui/components/code-editor';
 import { PrimaryButton, PrimaryButtonSize, PrimaryButtonVariant } from '@noodl-core-ui/components/inputs/PrimaryButton';
 import { Label } from '@noodl-core-ui/components/typography/Label';
 import { Text, TextType } from '@noodl-core-ui/components/typography/Text';
@@ -106,29 +106,23 @@ export function CodeFileDocument({ path }: CodeFileDocumentProps) {
   }, [reload]);
 
   /*
-   * CN-019 — this document is not a node, so it must not leave one standing.
+   * 🔴 CN-019 — this document deliberately does **not** touch the ambient
+   * `openNode` slot, and the drive is why.
    *
-   * `openNode` is module-level state in `noodl-core-ui` whose only producer is
-   * the property panel's `CodeEditorType`, and whose contract calls a slot left
-   * behind by a closed editor *"a live wrong answer, not an empty one"*. That
-   * warning is about the next popout; a file is the same hazard with nothing to
-   * correct it, because nothing here ever writes the slot and so nothing here
-   * ever notices it is wrong.
+   * Clearing it on mount was the first version, and it looked free: a file is
+   * not a node, the slot describes a node, so empty it. It was measured wrong in
+   * a running editor. A code popout is a **portal**, not part of the canvas this
+   * document replaces — opening a file leaves it mounted and on top, and
+   * clearing the slot under it turned a correct bar (*"Read price with
+   * `Inputs.price` …"*) into *"This node has no ports yet"* about a node with two
+   * declared ports. The screenshot is in CN-019's task file.
    *
-   * ⚠️ This is belt and braces, and deliberately so. `subject="file"` below is
-   * the fix — the port bar never reads the slot for a file, whatever is in it.
-   * What clearing adds is the **lint** pass, which guards on `openNode != null`
-   * (`portDiagnostics.ts:634-641`) and would otherwise dress a kit module's
-   * `no-undef` up as advice about whichever node was last open.
-   *
-   * ⚠️ It clears rather than saves and restores: a document replaces the canvas,
-   * so any popout that was open is behind a full-screen surface the author has
-   * navigated away from, and `CodeEditorType#dispose` will clear the slot again
-   * on its way out regardless.
+   * ✅ Nothing is needed here. `subject="file"` below is carried into both
+   * surfaces that ask — the port bar and the lint pass — so neither consults the
+   * slot for this editor whatever it holds. Fixing a shared component by writing
+   * global state from a consumer is what created the second bug; the prop is the
+   * fix, and it is the whole fix.
    */
-  useEffect(() => {
-    setOpenNodeContext(null);
-  }, [path]);
 
   /*
    * The poll runs only while this document is mounted, and the file is dropped

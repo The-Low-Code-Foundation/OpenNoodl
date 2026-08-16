@@ -70,7 +70,7 @@ import {
   canExpressPort,
   type PortKind
 } from './notation';
-import type { ValidationType } from './types';
+import type { CodeSubject, ValidationType } from './types';
 import { minesAnyPort } from './portBar';
 import { unionPorts, type UnionPort } from './unionPorts';
 
@@ -610,8 +610,23 @@ export function unreadPortDiagnostics(
 export function portDiagnostics(
   state: EditorState,
   validationType: ValidationType,
-  base: Diagnostic[]
+  base: Diagnostic[],
+  subject: CodeSubject = 'node'
 ): Diagnostic[] {
+  /*
+   * CN-019. Every message this pass adds is a sentence about a node's ports. A
+   * file has none, so the whole pass stands down before anything is asked —
+   * a kit's `index.js` gets plain JavaScript diagnostics, in JavaScript's words.
+   *
+   * 🔴 This replaces the `openNode != null` test that used to stand in for it
+   * below, which was measured to be wrong in a running editor. That test asks
+   * about **module-level state written by the property panel**, so it answered
+   * *"yes, a node"* for a file opened while a Function popout was still live,
+   * and the file was handed that unrelated node's ports. The consumer knows
+   * what it opened; the ambient slot never did.
+   */
+  if (subject !== 'node') return base;
+
   const ports = portsFor(state, validationType);
   if (!ports) return base;
 
@@ -633,10 +648,14 @@ export function portDiagnostics(
    */
   if (validationType === 'script') {
     // ⚠️ Message 6 needs a node, because the sentence names the Script node's
-    // API. `'script'` is also `CodeFileDocument`'s mode for a kit's `index.js`
-    // (a whole module, no ports, no property panel), and there `openNode` is
-    // null — so that file gets plain `no-undef` on `Outputs`, which is the right
-    // answer there and the wrong one to dress up as port advice.
+    // API, and a script-mode editor can be open with nothing published.
+    //
+    // ⚠️ This used to be the guard that kept the pass off a kit's `index.js`
+    // too — `'script'` is `CodeFileDocument`'s mode for it. It is not any more,
+    // and must not be relied on for that again: it reads ambient state and so
+    // answers *"yes, a node"* whenever a popout happens to be live. CN-019's
+    // `subject` check at the top of this function is what covers files, and it
+    // cannot be fooled that way.
     const onANode = getCodeAuthoringContext().openNode != null;
     if (!onANode) return base;
 

@@ -479,3 +479,59 @@ describe('the whole originating bug', () => {
     expect(portMessages('Outputs.Output_1 = Inputs.Input_1;')).toEqual([]);
   });
 });
+
+/**
+ * CN-019 — the lint pass over a **file**.
+ *
+ * `'script'` is `CodeFileDocument`'s mode for a kit's `index.js`, chosen because
+ * a module has top-level statements a Function-node parse rejects. The pass used
+ * to stand down there on `getCodeAuthoringContext().openNode != null` — and that
+ * test asks about module-level state written by the property panel, not about
+ * what this editor is showing.
+ *
+ * 🔴 **Measured in a running editor, 2026-08-16:** a code popout is a portal, so
+ * opening a file leaves it mounted and its node in the slot. The guard therefore
+ * answered *"yes, a node"* over a file. `subject` is what replaced it.
+ */
+describe('CN-019 — a file gets JavaScript diagnostics, not port advice', () => {
+  /** Reaches for a name a kit module has no reason to define. */
+  const KIT_INDEX = 'Outputs.Total = 1;';
+
+  function lintAs(code: string, validationType: ValidationType, subject: 'node' | 'file') {
+    const state = EditorState.create({ doc: code, extensions: [javascript()] });
+    return javascriptDiagnostics(state, validationType, subject);
+  }
+
+  it('says nothing about ports over a file, even with a live node in the slot', () => {
+    // The row the old guard got wrong: `openNode` is non-null and belongs to a
+    // node the author is not looking at.
+    openNode(['price'], [{ name: 'discountedPrice', type: 'number' }]);
+
+    const file = lintAs(KIT_INDEX, 'script', 'file');
+    expect(file.filter((d) => d.source === 'nodegx:ports')).toEqual([]);
+
+    // ⚠️ Beside a known-firing signal on the same instrument: the identical text
+    // in the identical mode, differing only in the subject, DOES get message 6.
+    // Without this row, an empty list is indistinguishable from a dead linter.
+    const node = lintAs(KIT_INDEX, 'script', 'node');
+    expect(node.filter((d) => d.source === 'nodegx:ports').length).toBeGreaterThan(0);
+  });
+
+  it('still reports the plain JavaScript problem, which is the right answer there', () => {
+    // Suppressing port *advice* must not suppress the diagnostic itself — a
+    // genuine typo in a kit module is still a typo.
+    openNode(['price']);
+    const file = lintAs('zzzUndefinedThing;', 'script', 'file');
+
+    expect(file.some((d) => d.source === 'eslint:no-undef')).toBe(true);
+  });
+
+  it('is a node when nobody says otherwise', () => {
+    openNode(['price']);
+    const asDefault = javascriptDiagnostics(
+      EditorState.create({ doc: KIT_INDEX, extensions: [javascript()] }),
+      'script'
+    );
+    expect(asDefault.filter((d) => d.source === 'nodegx:ports').length).toBeGreaterThan(0);
+  });
+});
