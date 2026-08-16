@@ -68,7 +68,7 @@ not of my diff alone.
 | **`noodl-mcp` jest** | ✅ **50 suites / 585 tests** | ✅ **s43** |
 | **`noodl-core-ui` jest** | ✅ **25 suites / 444 tests** | ✅ **s43** |
 | `nodegx-backend` jest (full) | ✅ 100 suites / 1085 passed, 10 skipped | s40 — inherited |
-| `test:ci` (jasmine) | 🔴 **2843 / SEVEN @ 39393** — not six. See below | **s30**, read from the results file on disk (mtime 20:37:49) |
+| `test:ci` (jasmine) | ✅ **2843 / 6 @ 39393**, six by name — **witnessed on the COMMITTED tree** | **run output 21:21:42**, this checkout, post-`9e76bae4`. ⚠️ **the results FILE disagrees — see below** |
 | `library:check` (PR gate) | ✅ 58/58, exit 0 | s30 — inherited |
 
 🔴 **`test:main` moved 216 → 220 suites and 3363 → 3396 tests in a day, and most of it was peers'.**
@@ -87,34 +87,43 @@ is `.jsx`/`test:ci` territory.
 ✅ **PIN THE SEED: `NOODL_SPEC_SEED=39393`.** 🔴 **`test:ci`'s exit code misleads both ways** — a clean
 floor run exits **1**. **Prove completion from `test-results.json`'s mtime; delete it before a run.**
 
-### 🔴 The `test:ci` floor is SEVEN on disk, not six — and nobody has re-run it
+### 🔴 `test-results.json` on disk is STALE BY A WHOLE RUN — it says 7, the floor is 6
 
-Found 2026-08-16 by the session on `uds:/tmp/cc-socks/9204.sock`, reproduced independently by s30 from
-`packages/noodl-editor/tests/test-results.json` (**mtime 20:37:49**, 5970 bytes):
-`totalCount 2843 | failedCount 7 | seed 39393 | overallStatus failed`. The six known names are all
-present (4 × `AIX-006 style vocabulary`, 2 × `AI model registry`). **The seventh is new:**
+⚠️ **s30 got this wrong first and committed it wrong** (`8b1d829a`, superseded here). The record said
+*"the floor is SEVEN, do not quote 6"*. **That was false and it retired a real measurement.** Corrected
+by finding the primary artifacts. Four `test:ci` runs exist as background-task output:
 
-> `projectmodules — injectIntoHtml snapshot (scanner unification) produces byte-identical HTML to the committed golden`
+| when | tree | reading | `projectmodules` in output |
+|---|---|---|---|
+| 13:14:24 | older (2812 specs) | 9 failures | 13 |
+| 13:29:41 | older (2812 specs) | 6 failures | 13 |
+| **16:01:26** | pre-CN-006 | **2843 / 6** @ 39393 | **0** |
+| 🔴 **21:21:42** | **post-`9e76bae4` — the COMMITTED tree** | **2843 / 6** @ 39393 | **0** |
 
-🔴 **Do not quote "6" until someone re-runs.** ⚠️ **And do not file this as contamination, which is the
-comforting reading.** The dating:
+✅ **The floor is 2843 / 6 at seed 39393, and the committed tree IS witnessed** — the 21:21 run is in
+this checkout (`/Users/richardosborne/vscode_projects/OpenNoodl/packages/noodl-editor` in its output),
+it postdates `9e76bae4` (20:43), and it lists the same six by name.
 
-| | |
-|---|---|
-| results file written | **20:37:49** |
-| `9e76bae4` *"feat(cn-006): the editor half, and a hole that only exists past a bundler"* — touches projectmodules | **20:43** |
+🔴 **And `packages/noodl-editor/tests/test-results.json` STILL reads `failedCount 7`, mtime 20:37:49.**
+A run completed at **21:21** and **did not update it**. So the file is not merely a readout that can go
+stale against the *tree* — it went stale against **a later completed run of its own suite**. ⚠️ **Why it
+did not write is NOT established, and s30 is deliberately not naming a mechanism.**
 
-The commit landed **6 minutes after** the run. `test:ci` compiles the working tree, so that run saw the
-CN-006 projectmodules work **in flight and uncommitted** — and that work is **committed now**. So either
-it was repaired before commit and the tree is clean, or the golden-HTML snapshot **fails on committed
-code today**. 🔴 **The results file cannot distinguish those. Only a run on the current tree can**, and
-`projectmodules.ts` is clean in `git status`, so a re-take would measure committed state with nothing
-in flight.
+**What the 7 actually was:** the 20:37 run saw the CN-006 projectmodules work in flight and uncommitted
+and produced one extra failure — `projectmodules — injectIntoHtml snapshot (scanner unification)
+produces byte-identical HTML to the committed golden`. It **does not reproduce on committed code**
+(21:21, zero hits). Contamination after all — but that was only knowable from the run outputs.
 
-⚠️ **Why it stayed invisible:** the file is the readout, not the log — a stale one reads as a perfect
-pass, and s38's own announced run is the one that wrote it. **Delete the file before re-running.**
-⚠️ **Not re-run by s30** because the CN-006 editor was up (`Electron . --dev` pid 2792, 21:03:53); a
-teardown mid-run reaps the suite. Take it once that stack is down.
+✅ **THE RECOVERY INSTRUMENT, which five sessions missed and which settles this class of question:**
+
+```
+ls -lt /private/tmp/claude-*/-Users-richardosborne-vscode-projects-OpenNoodl/*/tasks/
+/usr/bin/grep -arl "Randomized with seed 39393" /private/tmp/claude-*/…/tasks/
+```
+
+🔴 **Background-task output survives a session's context roll.** Prefer it to `test-results.json`, and
+prefer it to any session's reconstruction — **including its account of its own run.** Delete the results
+file before re-running, and read the run's own output for the verdict.
 
 ⚠️ **`tsc -p tsconfig.tests-main.json`'s 31 errors are NOT a gate and NOT a regression.** Do not
 re-derive this a seventh time.
