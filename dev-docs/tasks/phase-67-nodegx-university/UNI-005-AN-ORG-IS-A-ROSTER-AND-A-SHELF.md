@@ -1,6 +1,17 @@
 # UNI-005 — an org is a roster and a shelf
 
-**Surface:** platform · **Tier 2 (R1 names orgs in the big focus; R4 makes them contact-us)** · **Effort:** L · ✅ **UNBLOCKED — D6 and D10 ruled 2026-08-14**
+**Surface:** platform · **Tier 2 (R1 names orgs in the big focus; R4 makes them contact-us)** · **Effort:** L · ✅ **BUILT 2026-08-16 (eighteenth session) — all five acceptance criteria met**
+
+> ✅ **BUILT.** `nodegx-community`, fifth commit. **363 specs / 16 files** (baseline 245/12),
+> `tsc --noEmit` clean, `next build` succeeds with **14 routes** (was 11). Driven over HTTP
+> against **30 consequences written before the drive, 30/30 passed**. Ten control runs.
+> **The write-up is [§ What was built](#-what-was-built-2026-08-16) at the foot of this file.**
+>
+> 🔴 **AC5 was already met before this session started** and is the phase's own trap in
+> miniature: [LEARN-005's amendment](../phase-17-noodl-learn/LEARN-005-CLASSROOM-MODE.md) was
+> written 2026-08-14 by the first session. Checked before writing one, per *"grep the record
+> before claiming a new finding"*. Its condition 2 — *"the handle → pupil-name mapping stays
+> with the org"* — is the constraint the schema had to honour, and it is now a trigger.
 
 > **D6 — two membership sources, one roster** ([RULINGS.md](RULINGS.md)):
 >
@@ -107,3 +118,137 @@ phase 51. ECO-001 stays parked** — nothing here may assume live co-editing.
 
 Self-serve org creation, billing/seats, real-time collab (the old phases' build — referenced,
 not implemented), cross-org sharing, SSO beyond GitHub.
+
+---
+
+# ✅ What was built (2026-08-16)
+
+**Files:** `src/db/sql/0005_uni005_orgs.sql` (five tables, six functions, four triggers),
+`src/lib/orgs.ts`, `src/lib/shelf.ts`, `src/lib/viewer.ts`, four suites
+(`uni005-orgs`, `uni005-shelf`, `uni005-inspection-boundary`, `uni005-data-inventory`),
+three routes under `/orgs`, `scripts/provision-org.mjs`, and UNI-005's half of `scripts/seed.mjs`.
+
+## The five criteria
+
+| AC | State | How it is proved |
+|---|---|---|
+| **1** provisioning, three rails, removal on sync | ✅ | 33 specs. The removal half is asserted as **two** claims — the membership goes and the **account, its handle and its OAuth identity stay** — because the criterion is two claims in one sentence |
+| **2** shelf visible to members, invisible to non-members **including via direct URL** | ✅ | One SQL function, **quantified over the module's own exported readers** × four kinds of non-member, plus the mirror that proves a member DOES see it |
+| **3** an admin cannot read a member's non-org data through **any** org endpoint | ✅ | A **sentinel sweep over every export of both modules**, with a recipe-coverage assertion and **two known-firing controls** |
+| **4** no table, log or analytics event can hold a pupil's real name or email | ✅ | A **data inventory censused against `information_schema`** — 73 columns, every one classified, and nine executable probes |
+| **5** LEARN-005 carries the amendment | ✅ | **Already true**, written 2026-08-14. Verified rather than rewritten |
+
+## 🔴 The four things worth carrying past this task
+
+**1. `orgsFor` had no viewer, and building AC3's sweep is what found it.** The first version
+read `orgsFor(sql, accountId)` with a comment saying *"its own membership, so no viewer
+argument is needed"* — true of every call site that existed, and false as a property. An org
+admin legitimately holds a member's account id, so a self-scoped endpoint with no viewer is one
+call away from telling them **which other organisations that member belongs to**. The sixth
+instance in this phase of *build the caller and it shows you what the thing does not do* — and
+the first where the caller was **a test being designed**, not a feature. ⚠️ Its control is the
+sharpest in the set: removing the viewer check fails exactly one spec, and that spec is the
+sweep.
+
+**2. The sync's rail scoping is a read of `source`, and D6's ban is on *consumers*.** The
+obvious reconciliation — *delete every member not in the GitHub list* — is correct for an org
+with one rail and catastrophic for the org D6 describes, where a school has invited teachers,
+minted pupil seats **and** a GitHub org. D6 says roles, assignment and grading must never
+*branch* on `source`; a rail reconciling itself is the one legitimate reader, because the
+question it asks is literally *"is this row mine"*. 🔴 The spec runs a sync over a roster holding
+all three sources rather than asserting the `where` clause exists — *asserting the clause would
+pass on a query that had it in the SELECT and not the DELETE.* Control: the naive delete fails
+exactly that spec.
+
+**3. A control found the module's own header to be true of one reader and false of the other.**
+`src/lib/shelf.ts` claimed *"every reader is defined in terms of `shelf_item_visible_to`"*.
+`shelfItem` was; `orgShelf` filtered `hidden_at` inline and agreed **by coincidence**. The
+control that makes the function always-true failed five specs rather than nine and nothing
+looked wrong — a control quietly measuring half the surface it names.
+
+🔴 **And the fix was initially unmeasurable, which is the more useful half.** With the listing
+routed through the function, the obvious control (drop `hidden_at` from the function) still
+failed **1** spec either way — because the one spec that touched hidden-ness asserted *both*
+readers at once, so it failed for `shelfItem`'s reason regardless. **A spec that fails for
+either of two reasons cannot be a control for one of them.** Split into two specs, the arms
+separate: **as shipped 2 fail, with the inline copy restored 1 fails** — the listing carrying
+a second copy of the rule survives the rule being deleted.
+
+**4. An inventory that cannot go stale.** AC4 says *"prove it the hard way"* and a written
+inventory is a snapshot — the artifact this phase repeatedly finds stale. So the inventory is a
+**census**: all 73 free-text columns in the live schema must carry a classification, an
+unclassified one fails the suite by name, and a classification naming a column that no longer
+exists fails too. Control: adding `org_members.pupil_real_name` fails **three** specs — the
+census, the *"the roster has no free-text column at all"* assertion, and the drift test.
+
+⚠️ **Where AC4's claim stops, stated in the suite rather than implied:** six columns are
+`adult-authored`, and no mechanism stops a teacher typing a pupil's name into an org name or a
+report reason. The claim is that **no pupil-facing path deposits child PII and no field is
+*for* it** — which is the data-controller boundary D10 already drew. It is not a claim that no
+adult ever typed a child's name anywhere, and a census that implied otherwise would be worse
+than none.
+
+## The judgement calls, both reversible in one line
+
+🔴 **An org-minor account reads the shelf and does not publish to it.** `payload` and `summary`
+are free text, and no mechanism short of refusing the write keeps a name out of a free-text
+field — the conclusion 0003 already reached about a profile bio. The cost is real and is not
+hidden: **a school shelf that pupils cannot publish to is a teacher's shelf.** UNI-006 is where
+pupil work is meant to go, and a submission has one reader where a shelf item has an
+organisation, so it can answer this differently. One line in `shelf_publisher_gate()`.
+
+⚠️ **An org-minor account belongs to exactly one org — the one that owns it — and can never be
+an admin.** Derived from LEARN-005's condition 2: the mapping is held by one school, and a
+pupil rostered into a second org makes the platform the join between two parties each holding
+half an identification. Trigger, not convention.
+
+## What is NOT built
+
+- **No GitHub API call.** `syncGithubOrg()` takes the membership list as an argument; the fetch
+  needs an org token nobody has issued. What is built is the **reconciliation**, which is where
+  AC1 is either true or false.
+- **No email is sent** — an invite is a row with a hashed token, and there is still no sender.
+- **No write path in a browser.** Inviting, publishing, syncing and hiding are specced and
+  reachable only from a test, exactly as UNI-002/3/4 left their writes — because there is no
+  way to sign in and therefore no way to be an admin at a URL.
+- 🔴 **`src/lib/viewer.ts` is a session READER and nothing mints one but `db:seed`.** Built
+  because UNI-005 is the phase's first task with **no public half at all**: every route would
+  otherwise have exactly one reachable branch, the 404, and *a drive over a surface that 404s
+  for everybody passes identically when the surface is broken.* The mechanism is UNI-001's real
+  one against UNI-001's real table; the missing half is the issuer, which needs the domain.
+
+## The drive — 30 consequences written first, 30/30 passed
+
+Personas: an Acme **admin**, an Acme **member**, a signed-in **member of no org**, and an
+**org-owned seat** at a school. Non-members 404 at the org page and at a shelf item's direct
+URL; an ordinary member sees the roster and **not** the settings; the wrong org slug with the
+right item id renders for a member and 404s for a non-member (the slug is decoration, and the
+page says so); COL-004's *"1 person has this open"* renders.
+
+🔴 **The absence assertion carries its own known-firing signal.** *"No email address anywhere on
+the school's page"* is worthless alone — so the record also shows the teacher's **handle** on
+that page (the grep reaches the roster), her display name and address **absent**, and the same
+grep finding that address when it is present. ⚠️ Two instrument caveats carried from UNI-003/4
+and both still bite: strip React's `<!-- -->` before grepping, and never read a `grep -c` on
+HTML as an occurrence count.
+
+## Ten controls
+
+| # | Control | Result |
+|---|---|---|
+| 1 | D10's foreign-org check removed | **2 fail** (the D10 spec, the AC4 probe) |
+| 2 | the shelf's org-minor publisher gate removed | **2 fail** |
+| 3 | `shelf_item_visible_to` always-true | **5 fail** — and the number is the finding, see above |
+| 3b | `hidden_at` dropped from the function, **as shipped** | **2 fail** |
+| 3c | same patch, **listing checking inline** | **1 fail** — the arm that proves the duplicate |
+| 4 | the naive sync (delete everyone not in the list) | **1 fail** — the mixed-roster spec |
+| 5 | `orgsFor` without its viewer check | **1 fail** — the sweep |
+| 6 | `orgMemberActivity` without its admin check | **1 fail** |
+| 7 | `orgMemberActivity` widened to every org's shelf | **2 fail** |
+| 8 | a `pupil_real_name` column added to the roster | **3 fail** |
+| 9 | the advisory claim turned into a lock | **2 fail** — the behavioural spec **and** the structural one |
+
+⚠️ **Patched literally, never with `perl -0pi`.** UNI-004's control that measured nothing used a
+replacement containing `$$`, which perl expands to the **process id**. The harness here does a
+literal split/join in Node **and prints the patched region before running**, so a control that
+failed to apply cannot read as a result.
