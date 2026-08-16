@@ -33,7 +33,7 @@ platform surface, and the community has a page you can point at a person.
 
 ## What UNI-003 added, and the one thing it found
 
-**Gates:** `164 specs / 10 files` in `nodegx-community` (baseline **105 / 9**), `tsc --noEmit` clean,
+**Gates:** `164 specs / 9 files` in `nodegx-community` (baseline **105 / 8**), `tsc --noEmit` clean,
 `next build` succeeds. ⚠️ **`npm run lint` is STILL not a gate there** — no ESLint config, so the
 script drops into an interactive setup prompt. It has never run in that repo.
 
@@ -147,7 +147,7 @@ and it is the one that turns the community into something with a revenue rail at
 
 ## Gates (2026-08-16, sixteenth session)
 
-- **`nodegx-community`: 164 specs / 10 files, all pass. `tsc --noEmit` clean. `next build` succeeds**
+- **`nodegx-community`: 164 specs / 9 files, all pass. `tsc --noEmit` clean. `next build` succeeds**
   (8 routes). Run with `npm run db:up && npm test` from the sibling checkout.
 - **The four new routes were driven with `curl` against a seeded database**, not only specced — see
   the drive above. `npm run db:seed` now seeds four profiles chosen so every branch is reachable by

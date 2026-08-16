@@ -52,7 +52,7 @@ minefield — deliberately deferred), custom profile URLs.
 `src/lib/profiles.ts`, `src/app/u/[handle]/page.tsx`, `src/app/people/page.tsx`,
 `tests/uni003-profiles.test.ts`.
 
-**Gates:** **164 specs / 10 files, all pass** (baseline 105/9 — this task adds 56 specs of its own
+**Gates:** **164 specs / 9 files, all pass** (baseline 105/8 — this task adds 56 specs of its own
 and 3 the drift suite generates for the new tables). `tsc --noEmit` clean. `next build` succeeds, 8
 routes. ⚠️ **`npm run lint` is still not a gate in that repo** — no ESLint config exists, so the
 script drops into an interactive setup prompt. It has never run there and this task did not change
