@@ -22,126 +22,140 @@ apply there.
 
 | Track | Tasks | State |
 |---|---|---|
-| **Platform** | UNI-001 (AC3), 002, 009 (content cut) | 🟢 **Spine + contribution engine.** `9181f8f`, second commit |
-| **Platform** | UNI-003, 004, 005, 006, 008 | 📋 **Five tasks, not started** — UNI-003 is next and is mostly a *view* of what now exists |
+| **Platform** | UNI-001 (AC3), 002, 003, 009 (content cut) | 🟢 **Spine + engine + profile.** `58d6787`, third commit, **pushed** |
+| **Platform** | UNI-004, 005, 006, 008 | 📋 **Four tasks, not started** — UNI-004 is next and now has profiles to hang off |
 | **Platform** | UNI-001 (the rest) | 🔴 **Blocked on Richard**: OAuth callback URLs need `community.nodegx.dev`, still unregistered |
-| **Editor / MCP** | UNI-007, UNI-010, UNI-012 | UNI-007 slices 1–5 + tutor overlay; UNI-010 five slices, criterion 3 run, **KEEP**; UNI-012 scoped, not built |
+| **Editor / MCP** | UNI-007, UNI-010, UNI-012 | UNI-007 slices 1–5 + tutor overlay; UNI-010 five slices, **KEEP**; UNI-012 scoped, not built |
 | **Editor + bridge** | UNI-011 | ✅ **Fully unblocked to build AND to ship** — D15 and D16 are ruled |
 
-**The fifteenth session built UNI-002 — the contribution engine.** The platform now has points,
-badges, a challenge registry and an auditable ledger, which is what UNI-003, UNI-004 and UNI-006 all
-hang off. **Six of the phase's twelve tasks now have somewhere to land.**
+**The sixteenth session built UNI-003 — the profile.** Seven of the phase's twelve tasks now have a
+platform surface, and the community has a page you can point at a person.
 
-## What UNI-002 added, in one paragraph each
+## What UNI-003 added, and the one thing it found
 
-**Gates:** `105 specs / 8 files` in `nodegx-community` (baseline was **57 / 5**), `tsc --noEmit`
-clean, `next build` succeeds. ⚠️ **`npm run lint` is NOT a gate there** — no ESLint config exists, so
-the script drops into an interactive setup prompt. It has never run in that repo.
+**Gates:** `164 specs / 10 files` in `nodegx-community` (baseline **105 / 9**), `tsc --noEmit` clean,
+`next build` succeeds. ⚠️ **`npm run lint` is STILL not a gate there** — no ESLint config, so the
+script drops into an interactive setup prompt. It has never run in that repo.
 
-**The registry is data, and that is the acceptance criterion rather than a preference.** `challenges`
-is a table; the engine selects by `event_key` and **never by `slug`**. AC4 is proved by a challenge
-**invented at runtime with a random slug** — no source file can hold a case for a string that did not
-exist when it was written. The launch set is 47 candidates in
-`src/lib/challenge-catalogue.json`, **validated by inserting every row** rather than by reading it.
+**AC1's *"opting out returns 404, not a stub"* is a single `null`.** `publicProfile()` answers `null`
+for a private profile, a hidden one and an account that never made one — the same value for all
+three, so no route can render a *"this profile is hidden"* page and no stranger learns there was
+something to look for. The criterion is met by there being nothing to render.
 
-**🔴 The rules live in a trigger for a reason sharper than D14's.** The spine's argument was two
-clients. This one is that one of the three award mechanisms is `bridge_event`, and **the bridge is
-the user's own editor** — an award path where the client names the points value is a client that can
-award itself ten thousand points. So the price, the mechanism allowed to claim a challenge, its cap
-and its rate limit are read from the registry *by the database* at insert time. The split is stated
-in the SQL: **the database enforces integrity, the module enforces eligibility, and a caller that
-skips the module cannot skip the database.**
+**Hiding is deliberately NOT `visibility = 'private'`.** If moderation reused the owner's own toggle,
+the owner could not tell their own opt-out from someone else's decision about them — and AC4's *"the
+owner sees why"* would have nowhere to live. `hidden_at` and `hidden_reason` are a **biconditional
+CHECK**, so a reasonless hide is impossible to record rather than merely discouraged.
 
-**`points_ledger.challenge_id` is NOT NULL** — every point traces to a registry row, so there is no
-adjustment back door the price and cap rules cannot see. Balances and badges are **derived, never
-stored**; a revocation is an append of the exact inverse carrying `revokes_id`, so AC2's *"and
-badge"* half falls out of one row instead of needing a second thing remembered.
+**D8's bar gates the LISTING, not the page and not the flags.** AC1 and AC3 are both literal about
+the toggle and the two professional flags being unconditional, so the bar applies where D8's own words
+put it — *"to list"*. And `profileBar()` returns its **components rather than a boolean**, which is
+D16's *"a threshold nobody can see the approach to is a threshold that gets crossed by rounding"*
+applied one task early. ⚠️ Its evidence half reads **D4's taxonomy, not a slug list**, or UNI-002's
+AC4 breaks the day a second publishing challenge is added.
 
-### ✅ Nine control runs — and two of them changed the code
+### 🔴 The finding: a badge that vouched for something the challenge did not mean
 
-| Control | Result |
-|---|---|
-| advisory lock removed | **exactly 1 fails** — the two-connection race, and nothing else |
-| the whole integrity trigger never created | **17 fail**, 88 still pass |
-| cap / points / mechanism / revocation-amount / rate-limit each disabled | 6 / 2 / 1 / 1 / 1 |
-| webhook signature verification neutered | 2 fail |
-| `badgesFor` stops excluding revoked awards | 1 fails — AC2's badge half, independent of its points half |
+`project-first-built` — awarded on `project.first_saved`, for pressing save — carried **(building,
+bronze)**, whose badge row reads, in D4's own words, **"Published — Published your first prefab."**
 
-⚠️ **The controls found two vacuity holes and both are closed**: a leaderboard spec asserting
-`board[0]`, therefore coupled to every sibling test's balance; and two catalogue assertions that are
-queries **returning nothing when the table is empty**, which now assert a known-firing precondition
-first.
+- On the profile it rendered as a claim about publishing the holder never made.
+- 🔴 **And it silently cleared D8's evidence bar**, so anyone who had ever saved a project qualified
+  for professional listing on the RFP board UNI-004 is about to build.
 
-### 🔴 Three findings that generalise past this task
+The defect was in UNI-002's **data**, and only a consumer of that data could see it. Fixed as data,
+which is what AC4 was built for: the row keeps its 20 points and awards no badge, and a once-only
+**`prefab-first-published`** awards the badge on `prefab.published`. ✅ **UNI-002's own *"every one of
+D4's twelve badges is reachable"* spec is what made the fix safe** — a guard written one task earlier
+caught the second half of a change made in the next. ⚠️ **Nothing mechanically checks that a
+challenge's *meaning* matches its badge**; two specs pin these rows by hand.
 
-1. **A BEFORE ROW trigger runs ahead of NOT NULL *and* foreign-key checks.** Two specs asserted
-   `23502` / `23503` and got `P0001`. Both guards refuse the row — but which one *speaks* is the
-   difference between a spec describing the system and one describing an assumption.
-2. **A type that lies survives because nothing exercises it.** `ledgerId` was `number`; postgres.js
-   returns `int8` as a **string**. Every spec passed, because an id is only ever carried and compared,
-   never added to. ⚠️ And Drizzle's `bigserial` accepts only `'number' | 'bigint'` — it *cannot say*
-   what the driver returns, a third thing that mirror cannot express.
-3. **🔴 A default-argument idiom turned a negative test into a positive one.** `signature ??
-   signBody(body, SECRET)` handed the spec passing `null` — meaning *"no signature header at all"* —
-   a correctly signed body. It asserted the happy path while claiming to assert a refusal. This is
-   the phase's own *"a failure indistinguishable from a missing mechanism"* shape arriving through a
-   language feature rather than a weak assertion.
+### ✅ Thirteen control runs, and one of them is the useful kind
+
+Every mechanism was disabled and watched to fail: the org-minor trigger (**2**), the URL scheme
+allow-list (**6**), the display-name rules (**7**), the four small integrity rules (2/1/1/1),
+`publicProfile`'s two clauses (4/3), D8's evidence half in both places (1/2), the catalogue defect put
+back (**1**).
+
+🔴 **The thirteenth is the one worth keeping**: `badgesFor` stopped excluding revoked awards and
+**2 fail — mine and UNI-002's own**. That is what proves AC2's *"live, not copied"* spec has teeth on
+a mechanism it does not own.
+
+### ✅ Driven over HTTP, against consequences written before the drive
+
+`/u/quiet-quentin` **404** with her bio string appearing **nowhere** in the body; `/u/nia-new` **200
+while `/people` omits her and includes ada** — the D8 seam in one reading; hiding ada made
+`/u/ada-builds` **404 on the very next request**; `/` and `/replays` still 200 after the shared layout
+and CSS changed.
+
+🔴 **A method note that nearly cost a false negative.** The contribution line was checked against a
+second instrument — the page says **105 points · 2 of 12 badges** and `psql` says **105 points, 2
+badges**. It took three attempts, because **React interleaves `<!-- -->` between text nodes**, so a
+grep for `[0-9]* points` returns nothing — which reads exactly like a page rendering no number at all.
+*A silent grep is not a measurement; it is an instrument that failed to reach the thing.*
 
 ---
 
 # What to do next — pick a lane and say which
 
-**LANE A — keep the platform moving: UNI-003, the profile. Recommended.** `TASKS.md` already rules
-the order UNI-002 → UNI-003, *"because the profile is mostly a view of the engine"* — and the engine
-now exists, with badges, balances and a ledger to render. D8 governs it: open listing behind a
-**profile bar**, reactive moderation. ⚠️ **It will be the first thing to notice that the twelve badge
-SVGs do not exist** — `badges.artwork` holds paths and no artwork has been drawn. That is D4's one
-unbuilt half and it is design work, not code.
+**LANE A — UNI-004, the RFP board and coaching offers. Recommended.** `TASKS.md` already rules the
+order: *"UNI-004 rides once profiles exist"* — and they now do, with the two professional flags, the
+directory, and `listDirectory({availableForWork})` already the query a client would use to find a
+builder. D7 → **Paddle**, coaching only, and *build so payment can be absent* (the
+booking-form-ends-in-an-email v0 stands). D8 → the **double-blind relay**, which is also the spam
+shield, and 🔴 neither side sees an email address until both accept — not in a header, not in a
+reply-to, not in a bounce.
 
 **LANE B — make the login real.** Finish UNI-001: OAuth, sessions, the consent screen, the editor
 half. 🔴 **Blocked on Richard, not on work** — callback URLs need `community.nodegx.dev` and the
-domain **is not registered**. Everything else can be built against a stub provider; shipping it
-cannot. ⚠️ **It also unblocks the admin grant route** UNI-002 deliberately did not build: an admin
-endpoint before sessions exist is a grant-points-to-anyone endpoint.
+domain **is not registered**. ⚠️ It is now blocking **three** things rather than one: the admin
+routes UNI-002 and UNI-003 both deliberately did not build, and **UNI-003's owner-facing account
+page** — `ownProfile()` is built and specced and returns the moderation reason, so AC4's owner half is
+met **at the API and not yet at a URL**.
 
 **LANE C — UNI-011, the editor mirror.** D15 and D16 are ruled, so it can be built *and* shipped.
 🔴 The renderer is `nodeIntegration: true` **and so is the launcher** (same `BrowserWindow`): **no
-post body may render as HTML in it.** Pick the `<webview>` island or raw-markdown-plus-sanitiser and
-**prove the boundary with a known-BAD corpus, not a clean one.** ⚠️ D15 says the visibility rule
-lives **behind the API** — do not reimplement it in the editor client.
+post body may render as HTML in it.** ⚠️ **UNI-003 just made this concrete rather than theoretical** —
+profile bios and links are stranger-authored content the mirror will render, which is why the scheme
+allow-list is a database constraint on the platform side. Prove the boundary with a known-**BAD**
+corpus, not a clean one. D15 says the visibility rule lives **behind the API** — do not reimplement it
+in the editor client.
 
 **LANE D — the editor remainder.** UNI-012 with a packaged build budgeted; TUTOR-BOUNDARY §5's six
 adversarial attacks (needs a live provider, and §6's AIX-004 tuning is the same sitting); the D5
 recents measurement, still spoiled.
 
-**My recommendation: A.** UNI-003 is the shortest task in the phase that produces something a person
-can look at, and everything it needs was built today.
+**My recommendation: A.** UNI-004 is the last Tier-1 platform task, everything it needs now exists,
+and it is the one that turns the community into something with a revenue rail attached.
 
-## ⚠️ For Richard — two now, and the first is unchanged and still the only blocker
+## ⚠️ For Richard — the first is unchanged and still the only hard blocker
 
-1. 🔴 **`community.nodegx.dev` is still not registered.** It blocks UNI-001's OAuth callback URLs,
-   which is the next real step on the platform. **This is the one thing a session cannot do for
-   itself.**
-2. 🆕 **The twelve badge artworks need drawing.** D4 ruled ~12 flat SVGs in the editor's icon idiom.
-   The schema, the taxonomy and the earning all work; `badges.artwork` holds paths to files that do
-   not exist. UNI-003 renders them.
+1. 🔴 **`community.nodegx.dev` is still not registered.** It blocks UNI-001's OAuth callback URLs.
+   **This is the one thing a session cannot do for itself**, and it now holds up three built-but-
+   unroutable things (see Lane B).
+2. **The twelve badge artworks still need drawing.** D4 ruled ~12 flat SVGs in the editor's icon
+   idiom. UNI-003 renders the **family mark and the tier colour** instead, so nothing is broken and
+   nothing is blocked — but the profile is visibly waiting for them. ⚠️ It is deliberately *not* a
+   placeholder graphic pretending to be a badge.
 3. ⚠️ **GitHub Pages is still unattached** (`has_pages: false` as of 2026-08-16), so D17's v0 remains
    free to set up. It stops being free after the first deploy.
 4. ⚠️ **The F4 packaged-install scope call** (UNI-012) is still yours and still open.
+5. 🆕 **A judgement call you may want to take back:** UNI-003 changed UNI-002's challenge catalogue
+   (the badge defect above). The fix is data, it is specced, and D4's taxonomy decided it — but
+   *"saving your first project"* losing its badge is a product call as much as a correctness one. If
+   you want first-save to carry a badge, it needs a family D4 does not currently give it.
 
-## Gates (2026-08-16, fifteenth session)
+## Gates (2026-08-16, sixteenth session)
 
-- **`nodegx-community`: 105 specs / 8 files, all pass. `tsc --noEmit` clean. `next build` succeeds.**
-  Run with `npm run db:up && npm test` from the sibling checkout.
-- **The webhook route was driven with `curl`, not only specced**: signed body → **200** with 45
-  points on the ledger, forged signature → **401**, missing header → **401**, no
-  `DISCOURSE_WEBHOOK_SECRET` → **503** — and the balance after all four is exactly one delivery's
-  worth, so the refusals awarded nothing.
+- **`nodegx-community`: 164 specs / 10 files, all pass. `tsc --noEmit` clean. `next build` succeeds**
+  (8 routes). Run with `npm run db:up && npm test` from the sibling checkout.
+- **The four new routes were driven with `curl` against a seeded database**, not only specced — see
+  the drive above. `npm run db:seed` now seeds four profiles chosen so every branch is reachable by
+  looking: listed-and-available, listed-and-coaching, **public but below the bar**, and **private**.
 - **This checkout: nothing touched but `dev-docs/`.** No editor gate was run and none was needed —
   ⚠️ so do **not** quote a `test:ci` or `test:main` figure from this handover. There isn't one.
-  ⚠️ A peer (s38/P66) reported `test:ci` **2843 / 6 @ seed 39393** during this session, six failures
-  unchanged by name. That is **their** measurement on **their** tree, relayed — re-measure before
-  quoting it as a floor.
+  ⚠️ A peer (s38/P66) reported `test:ci` **2843 / 6 @ seed 39393** on **their** tree during the
+  fifteenth session. Relayed, not measured here — re-measure before quoting it as a floor.
 
 ## Standing constraints
 
@@ -158,13 +172,15 @@ can look at, and everything it needs was built today.
 ## Things the next person will otherwise re-derive
 
 - 🔴 **Never generate DDL from `src/db/schema.ts`.** It is a query mirror; the rulings live in
-  `src/db/sql/`. **And it now has three things it cannot express** — CHECK constraints, triggers, and
-  the string type postgres.js actually returns for a `bigserial`.
-- 🔴 **`MIGRATIONS` is asserted equal to the sorted contents of `src/db/sql/`.** `scripts/seed.mjs`
-  named `0001_init.sql` directly and would have seeded a database with UNI-002's whole engine
-  missing, with nothing failing. Three descriptions of one list; the test is what keeps them agreeing.
+  `src/db/sql/`. It cannot express CHECK constraints, triggers, or the string type postgres.js
+  actually returns for a `bigserial`.
+- 🔴 **`MIGRATIONS` is asserted equal to the sorted contents of `src/db/sql/`** — three descriptions
+  of one list, and the test is what keeps them agreeing.
 - 🔴 **The drift spec checks tables and columns ONLY** — and says so, because an unstated limit reads
-  as coverage. Constraints and triggers are covered by their own suites.
+  as coverage. Its non-vacuity floor was raised 9 → 12 with UNI-003's tables.
+- ⚠️ **An invisible-character class must be written as escapes.** UNI-003's display-name rule refuses
+  bidi overrides and zero-width characters; written literally it would be a line no reviewer can read
+  and no diff can show changing — unauditable by exactly the property that makes it necessary.
 - 🔴 **`ports`, not `dynamicports`, is how a `Component Inputs` node declares its interface.**
 - 🔴 **`forEachNode` STOPS on a truthy return.** Use a block body.
 - 🔴 **`/usr/bin/grep -a`, always.** Plain `grep` here is ugrep and silently skips `.ts` as binary.
