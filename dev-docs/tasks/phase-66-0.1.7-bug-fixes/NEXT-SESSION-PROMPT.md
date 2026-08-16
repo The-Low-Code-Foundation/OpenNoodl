@@ -125,10 +125,22 @@ upstream: `_managePortsForNode` is registered only inside
 | **declared** | ✅ rows present | ⚠️ **UNTESTED — a peer's null sits here** |
 | **mined only** | ✅ section empty | — |
 
-🔴 **The sharper question, which supersedes "toggle the preview":** for a node created the *normal*
-way, has `editorImportComplete` fired and does the runtime's `graphModel` hold it? The peer's null
-may be a **fixture artefact** — `fromJSON` + `addRoot` writes the *editor's* model and may never
-reach the runtime's. **One eval separates product behaviour from fixture.**
+🔴 **SUPERSEDED (s27) — do not act on the paragraph this replaces; it contradicted the ✅ DEAD
+marker twenty lines above it in this same subsection.** It asked whether the peer's null was a
+**fixture artefact**, on the theory that `fromJSON` + `addRoot` writes only the editor's model.
+**It does not: that is `NodePicker`'s own creation path** (`NodePicker.utils.ts:15-41`, verified),
+and s27 witnessed **4 `setDynamicPorts` pushes from the runtime for a normally-created node.**
+
+✅ **And the runtime axis is dead too** — an **always-on `<webview>` "Noodl Viewer" runtime exists
+with no preview action** (⚠️ `npm run cdp -- targets` hides it; `curl :9222/json/list` shows it). So
+"declared but no live runtime" is not a state a normal author is in, and the UNTESTED cell in the
+table above is **not reachable in the product**.
+
+🔴 **So all three candidates are gone and the remaining explanation is the dull one: the peer's DOM
+query was simply wrong** — unscoped, React-shaped, run with the popout open, against what is the
+**legacy** `sidebar-property-editor` view. ⚠️ **That was flagged as a weak instrument at the time
+and three sessions proposed mechanisms past it anyway.** When a reading's own instrument is already
+suspect, exhaust that before inventing product behaviour.
 
 ### 3b. 🔴 The severity claim was BACKWARDS — correction C2
 
